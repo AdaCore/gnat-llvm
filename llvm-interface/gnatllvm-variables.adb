@@ -138,6 +138,14 @@ package body GNATLLVM.Variables is
    --  Determine the proper GL_Type to use for Def_Ident.  If Expr is Present,
    --  it's an initializing expression for Def_Ident.
 
+   function Is_Volatile_Entity (Def_Ident : Entity_Id) return Boolean is
+     (Is_Volatile_Object (Def_Ident) or else Treat_As_Volatile (Def_Ident)
+        or else Address_Taken (Def_Ident))
+     with Pre => Ekind_In (Def_Ident, E_Variable, E_Constant, E_Exception,
+                           E_Loop_Parameter);
+   --  True iff Def_Ident is an entity (a variable or constant) that we
+   --  need to treat as volatile for any reason.
+
    function Make_Global_Variable
      (Def_Ident  : Entity_Id;
       GT         : GL_Type;
@@ -650,7 +658,7 @@ package body GNATLLVM.Variables is
 
    begin
       if No (Decl) or else not Is_True_Constant (E)
-        or else Is_Volatile_Object (E) or else Treat_As_Volatile (E)
+        or else Is_Volatile_Entity (E)
         or else (Nkind (Decl) = N_Object_Declaration
                    and then No_Initialization (Decl))
       then
@@ -1466,8 +1474,7 @@ package body GNATLLVM.Variables is
         (Has_Addr and then not Has_Static_Addr) or else Needs_Alloc
           or else (Present (Renamed_Object (Def_Ident))
                      and then Is_Name (Renamed_Object (Def_Ident)));
-      Is_Volatile     : constant Boolean :=
-        Is_Volatile_Object (Def_Ident) or else Treat_As_Volatile (Def_Ident);
+      Is_Volatile     : constant Boolean := Is_Volatile_Entity (Def_Ident);
       Linker_Alias    : constant Node_Id :=
         Get_Pragma (Def_Ident, Pragma_Linker_Alias);
 
@@ -1643,8 +1650,7 @@ package body GNATLLVM.Variables is
         (Has_Addr and then not Has_Static_Addr) or else Needs_Alloc;
       --  True if we need to use an indirection for this variable
 
-      Is_Volatile     : constant Boolean   :=
-        Is_Volatile_Object (Def_Ident) or else Treat_As_Volatile (Def_Ident);
+      Is_Volatile     : constant Boolean   := Is_Volatile_Entity (Def_Ident);
       --  True if we need to consider Def_Ident as volatile
 
       Value           : GL_Value           :=
@@ -2050,8 +2056,7 @@ package body GNATLLVM.Variables is
    procedure Emit_Renaming_Declaration (N : Node_Id) is
       Def_Ident   : constant Entity_Id := Defining_Identifier (N);
       GT          : constant GL_Type   := Full_GL_Type (Def_Ident);
-      Is_Volatile : constant Boolean   :=
-        Is_Volatile_Object (Def_Ident) or else Treat_As_Volatile (Def_Ident);
+      Is_Volatile : constant Boolean   := Is_Volatile_Entity (Def_Ident);
       Use_LHS     : constant Boolean   :=
         Is_Name (Name (N))
         and then (Nkind (Name (N)) not in N_Has_Entity
@@ -2116,8 +2121,7 @@ package body GNATLLVM.Variables is
          LLVM_Var := Mark_Volatile
            (Add_Global (GT, Get_Ext_Name (Def_Ident),
                         Need_Reference => Use_LHS),
-            Is_Volatile_Object (Def_Ident)
-              or else Treat_As_Volatile (Def_Ident));
+            Is_Volatile);
          Set_Value (Def_Ident, LLVM_Var);
          Set_Initializer
            (LLVM_Var,

@@ -381,9 +381,12 @@ package body GNATLLVM.GLType is
         and then Present (In_Sz) and then Present (Size)
       then
          declare
+            Align_V1     : constant Nat      :=
+              (if    Present (Align_For_Msg) then UI_To_Int (Align_For_Msg)
+               elsif Present (Align) and then Is_Composite_Type (GT)
+               then  UI_To_Int (Align) else BPU);
             Align_V      : constant Nat      :=
-              (if   Present (Align_For_Msg) then UI_To_Int (Align_For_Msg)
-               else Get_Type_Alignment (GT));
+              Nat'Max (Align_V1, Get_Type_Alignment (GT));
             Out_Sz       : constant GL_Value := Size_Const_Int (Size);
             In_Sz_Align  : constant GL_Value :=
               Align_To (GT_Size (GT), 1, Align_V);

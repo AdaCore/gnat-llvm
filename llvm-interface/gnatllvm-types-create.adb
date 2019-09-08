@@ -424,7 +424,9 @@ package body GNATLLVM.Types.Create is
                end if;
             end if;
 
-            --  Ensure the alignment is valid
+            --  Ensure the alignment is valid.  Note, that Align was
+            --  previously measured in units of bytes, but is now measured
+            --  in bits.
 
             Align := Validate_Alignment
               (TE, Align, Get_Type_Alignment (GT, Use_Specified => False));
@@ -472,37 +474,54 @@ package body GNATLLVM.Types.Create is
            ("reverse storage order for & not supported by 'L'L'V'M", TE, TE);
       end if;
 
-      --  Back-annotate sizes of non-scalar types if there isn't one
-      --  ???  Don't do anything for access subprogram since this will cause
-      --  warnings for UC's in g-thread and g-spipat.  They UC from
-      --  pointer to subprogram to System.Address.
+      --  Back-annotate sizes and alignments if not already set.  Be sure
+      --  to annotate the original array type if there is one. Don't try to
+      --  do this before Size_Type is elaborated since we can't compute
+      --  sizes that early. ???  Don't do anything for access subprogram
+      --  since this will cause warnings for UC's in g-thread and g-spipat.
+      --  They UC from pointer to subprogram to System.Address.
 
-      if not Is_Access_Subprogram_Type (TE) and then not Is_Scalar_Type (TE)
+      if not Is_Access_Subprogram_Type (TE)
+        and then Present (Size_GL_Type)
       then
-         if Unknown_Esize (TE) then
-            Set_Esize   (TE, Annotated_Object_Size (GT, Do_Align => True));
-         end if;
+         declare
+            BA_Esize   : constant Node_Ref_Or_Val :=
+              Annotated_Object_Size (GT, Do_Align => True);
+            BA_RM_Size : constant Node_Ref_Or_Val :=
+              Annotated_Value (Get_Type_Size (GT, No_Padding => True));
+            BA_Align   : constant Uint              :=
+              UI_From_Int (Get_Type_Alignment (GT, Use_Specified => False) /
+                             BPU);
+            OAT        : constant Entity_Id       :=
+              (if  (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
+                   and then Present (Original_Array_Type (TE))
+               then Original_Array_Type (TE) else Empty);
 
-         if Unknown_RM_Size (TE) then
-            Set_RM_Size (TE, Annotated_Value
-                           (Get_Type_Size (GT, No_Padding => True)));
-         end if;
-      end if;
+         begin
+            if Unknown_Esize (TE) then
+               Set_Esize (TE, BA_Esize);
+            end if;
 
-      if Unknown_Alignment (TE) then
-         Set_Alignment
-           (TE, UI_From_ULL
-              (Get_Type_Alignment (GT, Use_Specified => False)) / BPU);
-      end if;
+            if Present (OAT) and then Unknown_Esize (OAT) then
+               Set_Esize (OAT, BA_Esize);
+            end if;
 
-      if (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
-        and then Present (Original_Array_Type (TE))
-        and then Unknown_Alignment (Original_Array_Type (TE))
-      then
-         Set_Alignment
-           (Original_Array_Type (TE),
-            UI_From_ULL
-              (Get_Type_Alignment (GT, Use_Specified => False)) / BPU);
+            if Unknown_RM_Size (TE) then
+               Set_RM_Size (TE, BA_RM_Size);
+            end if;
+
+            if Present (OAT) and then Unknown_RM_Size (OAT) then
+               Set_RM_Size (OAT, BA_RM_Size);
+            end if;
+
+            if Unknown_Alignment (TE) then
+               Set_Alignment (TE, BA_Align);
+            end if;
+
+            if Present (OAT) and then Unknown_Alignment (OAT) then
+               Set_Alignment (OAT, BA_Align);
+            end if;
+         end;
       end if;
 
       --  Consider an alignment as suspicious if the alignment/size

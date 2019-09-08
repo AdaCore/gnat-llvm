@@ -1509,7 +1509,7 @@ package body GNATLLVM.Subprograms is
          Ent_Caller := Subps.Table (Subp_Index (Current_Subp));
 
          if Parent = Current_Subp then
-            Result := (if Present (Ent.ARECnP)
+            Result := (if   Present (Ent.ARECnP)
                        then Get (Get_Value (Ent.ARECnP), Data)
                        else Get_Undef (A_Char_GL_Type));
          elsif No (Ent_Caller.ARECnF) then

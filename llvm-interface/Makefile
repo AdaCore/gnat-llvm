@@ -74,29 +74,16 @@ build: setup force
 	$(GPRBUILD) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
 	$(GPRBUILD) -Ptools -j$(PROCS)
-	$(MAKE) bugs-bins
 
 build-uninit: setup force
 	$(GPRBUILD) -XBuild=Uninitialized -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
 	$(GPRBUILD) -Ptools -j$(PROCS)
-	$(MAKE) bugs-bins
 
 build-opt: setup force
 	$(GPRBUILD) $(GPROPT) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
 	$(GPRBUILD) $(GPROPT) -Ptools -j$(PROCS)
-	$(MAKE) bugs-bins
-
-bugs-bins:
-	$(RMDIR) bugs/bin
-	$(MKDIR) bugs/bin
-	for f in gcc gnat1 gnat gnatbind gnatchop gnatclean gnatkr gnatlink gnatls gnatmake gnatname gnatprep gnatxref; do \
-	  rm -f $$f; ln bin/llvm-$$f bugs/bin/$$f; \
-	done
-	echo "#!/bin/sh" > bugs/bin/gprbuild
-	echo "`which gprbuild` --target=llvm "\$$\@ >> bugs/bin/gprbuild
-	chmod +x bugs/bin/gprbuild
 
 # Bootstrap targets
 

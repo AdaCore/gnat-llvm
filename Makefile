@@ -1,5 +1,5 @@
 all: sanity-check
-	$(MAKE) -C llvm-interface build gnatlib
+	$(MAKE) -C llvm-interface build gnatlib-automated
 
 .PHONY: acats llvm clean distclean
 

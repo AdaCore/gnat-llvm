@@ -291,27 +291,31 @@ package body GNATLLVM.Conversions is
       --  an overflow check is required, we know this is NOT an unchecked
       --  conversion.
 
-      --  First, if we're converting between two access subprogram access
-      --  types and one is a foreign convention and one isn't, issue a
-      --  warning since that can cause issues with nested subprograms.
+      --  First, if we're converting from an subprogram access type that's
+      --  convention Ada to one that's a foreign convention, give a warning
+      --  since that can cause issues with nested subprograms because we
+      --  don't have a way of making a trampoline at this point.  However,
+      --  the other direction works fine since if an activation record is
+      --  needed, the "subprogram address" will be a trampoline that will load
+      --  it (the value in the second part of the fat subprogram pointer will
+      --  be unused.
+      --  ??? Even in the "bad" direction, if we have a constant, we may be
+      --  able to know more about whether it needs an activation record, for
+      --  example if it's not a nested function.
 
       if Is_Access_Subprogram_Type (GT)
         and then Is_Access_Subprogram_Type (In_GT)
-        and then ((Has_Foreign_Convention (GT)
-                     or else not Can_Use_Internal_Rep (GT)) /=
-                    (Has_Foreign_Convention (In_GT)
-                       or else not Can_Use_Internal_Rep (GT)))
+        and then (Has_Foreign_Convention (GT)
+                    or else not Can_Use_Internal_Rep (GT))
+        and then not (Has_Foreign_Convention (In_GT)
+                       or else not Can_Use_Internal_Rep (In_GT))
       then
          Error_Msg_Node_1 := Full_Etype (In_GT);
          Error_Msg_Node_2 := Full_Etype (GT);
          Error_Msg
-           ("??conversion between subprogram access types of different",
-            Sloc (Error_N));
+           ("??conversion between & and & may not work if ", Sloc (Error_N));
          Error_Msg
-           ("\conventions, & and &, will not work if the former points ",
-            Sloc (Error_N));
-         Error_Msg
-           ("\to a subprogram that references parent variables.",
+           ("\the former is a subprogram referencing parent variables.",
             Sloc (Error_N));
       end if;
 

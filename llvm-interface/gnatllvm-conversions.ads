@@ -140,6 +140,11 @@ package GNATLLVM.Conversions is
      with Pre => Present (V) and then Present (GT);
    --  Return True iff Convert_Aggregate_Constant can convert V to GT
 
+   function Is_Nonsymbolic_Constant (V : Value_T) return Boolean
+     with Pre => Present (V);
+   --  Return True iff V is a constant and that constant contains no
+   --  symbolic or pointer values.
+
    function Strip_Complex_Conversions (N : Node_Id) return Node_Id;
    --  Remove any conversion from N, if Present, if they are record or array
    --  conversions that increase the complexity of the size of the

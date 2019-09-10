@@ -18,7 +18,7 @@ gnatlib: sanity-check
 	$(MAKE) -C llvm-interface gnatlib
 
 automated:
-	$(MAKE) -C llvm-interface build-opt
+	$(MAKE) -C llvm-interface build
 	$(MAKE) -C llvm-interface gnatlib-automated
 
 llvm:

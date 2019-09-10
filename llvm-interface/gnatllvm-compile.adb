@@ -38,6 +38,7 @@ with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
+with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;

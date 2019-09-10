@@ -19,8 +19,9 @@ with Sinfo;    use Sinfo;
 
 with LLVM.Core;  use LLVM.Core;
 
-with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
-with GNATLLVM.Variables;   use GNATLLVM.Variables;
+with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
+with GNATLLVM.Instructions; use GNATLLVM.Instructions;
+with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package GNATLLVM.Exprs is
    --  This can't be named GNATLLVM.Expressions because it conflicts

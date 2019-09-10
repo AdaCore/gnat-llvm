@@ -24,10 +24,11 @@ with Sprint;     use Sprint;
 with Table;
 with Uintp.LLVM; use Uintp.LLVM;
 
-with GNATLLVM.Conversions; use GNATLLVM.Conversions;
-with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
-with GNATLLVM.Records;     use GNATLLVM.Records;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
+with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
+with GNATLLVM.Instructions; use GNATLLVM.Instructions;
+with GNATLLVM.Records;      use GNATLLVM.Records;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body GNATLLVM.GLType is
 

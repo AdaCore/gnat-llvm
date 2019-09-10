@@ -29,14 +29,15 @@ with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core;  use LLVM.Core;
 
-with GNATLLVM.Compile;      use GNATLLVM.Compile;
-with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
-with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
-with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
-with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
-with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
-with GNATLLVM.Utils;        use GNATLLVM.Utils;
-with GNATLLVM.Variables;    use GNATLLVM.Variables;
+with GNATLLVM.Compile;       use GNATLLVM.Compile;
+with GNATLLVM.Conditionals;  use GNATLLVM.Conditionals;
+with GNATLLVM.Conversions;   use GNATLLVM.Conversions;
+with GNATLLVM.DebugInfo;     use GNATLLVM.DebugInfo;
+with GNATLLVM.Exprs;         use GNATLLVM.Exprs;
+with GNATLLVM.Instructions;  use GNATLLVM.Instructions;
+with GNATLLVM.Subprograms;   use GNATLLVM.Subprograms;
+with GNATLLVM.Utils;         use GNATLLVM.Utils;
+with GNATLLVM.Variables;     use GNATLLVM.Variables;
 
 package body GNATLLVM.Records is
 

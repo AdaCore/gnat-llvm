@@ -24,12 +24,13 @@ with LLVM.Core; use LLVM.Core;
 
 with GNAT.Strings; use GNAT.Strings;
 
-with GNATLLVM.Compile;     use GNATLLVM.Compile;
-with GNATLLVM.Exprs;       use GNATLLVM.Exprs;
-with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
-with GNATLLVM.Variables;   use GNATLLVM.Variables;
+with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
+with GNATLLVM.Instructions; use GNATLLVM.Instructions;
+with GNATLLVM.Types;        use GNATLLVM.Types;
+with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Builtins is
 

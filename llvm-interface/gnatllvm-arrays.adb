@@ -25,6 +25,7 @@ with GNATLLVM.Compile;       use GNATLLVM.Compile;
 with GNATLLVM.Conversions;   use GNATLLVM.Conversions;
 with GNATLLVM.DebugInfo;     use GNATLLVM.DebugInfo;
 with GNATLLVM.Exprs;         use GNATLLVM.Exprs;
+with GNATLLVM.Instructions;  use GNATLLVM.Instructions;
 with GNATLLVM.Records;       use GNATLLVM.Records;
 with GNATLLVM.Variables;     use GNATLLVM.Variables;
 

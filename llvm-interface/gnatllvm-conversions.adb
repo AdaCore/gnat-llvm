@@ -23,6 +23,7 @@ with Snames;   use Snames;
 with GNATLLVM.Arrays;    use GNATLLVM.Arrays;
 with GNATLLVM.Compile;   use GNATLLVM.Compile;
 with GNATLLVM.Exprs;     use GNATLLVM.Exprs;
+with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types;     use GNATLLVM.Types;
 with GNATLLVM.Utils;     use GNATLLVM.Utils;
 with GNATLLVM.Wrapper;   use GNATLLVM.Wrapper;

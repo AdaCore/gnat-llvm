@@ -22,8 +22,9 @@ with Sinfo;   use Sinfo;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
+with GNATLLVM.Instructions; use GNATLLVM.Instructions;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package GNATLLVM.Types is
 

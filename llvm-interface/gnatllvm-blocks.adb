@@ -35,6 +35,7 @@ with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
+with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;

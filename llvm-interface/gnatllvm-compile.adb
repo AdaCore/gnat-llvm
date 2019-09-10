@@ -486,15 +486,13 @@ package body GNATLLVM.Compile is
                LHS_And_Component_For_Assignment (Name (N), LHS, F, Idxs,
                                                  For_LHS => True);
 
-               --  If this is a reference, set atomic or volatile, as neeed
+               --  If this is a reference, set atomic or volatile as neeed
 
                if Present (F) or else Idxs /= null then
-                  LHS := Mark_Atomic
-                    (Mark_Volatile (LHS,
-                                    Atomic_Sync_Required (Name (N))
-                                      or else Is_Volatile_Reference
-                                      (Name (N))),
-                     Atomic_Sync_Required (Name (N)));
+                  Mark_Volatile (LHS,
+                                 Atomic_Sync_Required (Name (N))
+                                   or else Is_Volatile_Reference (Name (N)));
+                  Mark_Atomic   (LHS, Atomic_Sync_Required (Name (N)));
                end if;
 
                --  Now do the operation
@@ -835,12 +833,12 @@ package body GNATLLVM.Compile is
          end if;
       end if;
 
-      --  Now mark the result as volatile or atomic, as needed, maybe add
+      --  Now mark the result as volatile or atomic as needed, maybe add
       --  it to the LValue list, and return it.
 
-      return Add_To_LValue_List
-        (Mark_Atomic (Mark_Volatile (Result, Is_Volatile or else Is_Atomic),
-                      Is_Atomic));
+      Mark_Volatile (Result, Is_Volatile or else Is_Atomic);
+      Mark_Atomic   (Result, Is_Atomic);
+      return Add_To_LValue_List (Result);
    end Emit;
 
    --------------------
@@ -915,10 +913,11 @@ package body GNATLLVM.Compile is
 
          when N_Unchecked_Type_Conversion =>
 
-            return Clear_Overflowed
-              (Emit_Conversion (Expression (N), GT, N,
-                                Is_Unchecked  => True,
-                                No_Truncation => No_Truncation (N)));
+            Result := Emit_Conversion (Expression (N), GT, N,
+                                       Is_Unchecked  => True,
+                                       No_Truncation => No_Truncation (N));
+            Clear_Overflowed (Result);
+            return Result;
 
          when N_Type_Conversion =>
 

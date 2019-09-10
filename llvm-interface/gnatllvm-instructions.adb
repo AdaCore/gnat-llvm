@@ -283,8 +283,8 @@ package body GNATLLVM.Instructions is
       V := (if   Is_Add
             then Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name)
             else Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name));
-      Result := Mark_Overflowed (G_From (Set_Arith_Attrs (V, LHS), LHS),
-                                 Overflowed (LHS) or else Overflowed (RHS));
+      Result := G_From (Set_Arith_Attrs (V, LHS), LHS);
+      Mark_Overflowed (Result, Overflowed (LHS) or else Overflowed (RHS));
 
       --  If either operand or the result isn't a constant integer, if this
       --  is a modular integer type, or if we already had an overflow, we
@@ -308,8 +308,9 @@ package body GNATLLVM.Instructions is
             Res_I : constant ULL := Get_Const_Int_Value_ULL (Result);
 
          begin
-            return Mark_Overflowed
+            Mark_Overflowed
               (Result, (if Is_Add then Res_I < LHS_I else LHS_I < RHS_I));
+            return Result;
          end;
 
       else
@@ -325,8 +326,9 @@ package body GNATLLVM.Instructions is
               (if Is_Add then LHS_Neg = RHS_Neg else LHS_Neg = not RHS_Neg);
 
          begin
-            return Mark_Overflowed (Result,
-                                    Maybe_Ovfl and then LHS_Neg = not Res_Neg);
+            Mark_Overflowed (Result,
+                             Maybe_Ovfl and then LHS_Neg = not Res_Neg);
+            return Result;
 
          end;
       end if;
@@ -356,13 +358,11 @@ package body GNATLLVM.Instructions is
 
       --  Otherwise, perform the operation and respect any overflow flags
 
-      Result := Mark_Overflowed
-        (G_From
-           (Set_Arith_Attrs (Mul (IR_Builder, LLVM_Value (LHS),
-                                  LLVM_Value (RHS), Name),
-                             LHS),
-            LHS),
-         Overflowed (LHS) or else Overflowed (RHS));
+      Result := G_From (Set_Arith_Attrs (Mul (IR_Builder, LLVM_Value (LHS),
+                                              LLVM_Value (RHS), Name),
+                                         LHS),
+                        LHS);
+      Mark_Overflowed (Result, Overflowed (LHS) or else Overflowed (RHS));
 
       --  If either operand or the result isn't a constant integer, if this
       --  is a modular integer type, or if we already had an overflow, we
@@ -381,7 +381,8 @@ package body GNATLLVM.Instructions is
             Res_I : constant LLI := Get_Const_Int_Value (Result);
 
          begin
-            return Mark_Overflowed (Result, Res_I / LHS_I /= RHS_I);
+            Mark_Overflowed (Result, Res_I / LHS_I /= RHS_I);
+            return Result;
          end;
       end if;
 
@@ -441,13 +442,14 @@ package body GNATLLVM.Instructions is
    function Trunc
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-      T      : constant Type_T   := Type_Of (GT);
-      Result : constant GL_Value :=
+      T      : constant Type_T := Type_Of (GT);
+      Result :  GL_Value       :=
         G (Trunc (IR_Builder, LLVM_Value (V), T, Name), GT);
 
    begin
-      return Mark_Overflowed
-        (Result, Overflowed (V) or else Trunc_Overflowed (V, Result));
+      Mark_Overflowed (Result,
+                       Overflowed (V) or else Trunc_Overflowed (V, Result));
+      return Result;
 
    end Trunc;
 
@@ -461,12 +463,13 @@ package body GNATLLVM.Instructions is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-      Result : constant GL_Value :=
+      Result : GL_Value :=
         G (Trunc (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V), R);
 
    begin
-      return Mark_Overflowed
-        (Result, Overflowed (V) or else Trunc_Overflowed (V, Result));
+      Mark_Overflowed (Result,
+                       Overflowed (V) or else Trunc_Overflowed (V, Result));
+      return Result;
 
    end Trunc_To_Relationship;
 

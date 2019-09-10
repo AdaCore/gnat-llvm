@@ -161,38 +161,37 @@ package body GNATLLVM.GLValue is
    -- Not_Pristine --
    ------------------
 
-   function Not_Pristine (V : GL_Value) return GL_Value is
-      Result : GL_Value := G_From (LLVM_Value (V), V);
+   procedure Not_Pristine (V : in out GL_Value) is
    begin
-      Result.Is_Pristine := False;
-      return Result;
+      V.Is_Pristine := False;
    end Not_Pristine;
 
    -------------------
    -- Mark_Volatile --
    -------------------
 
-   function Mark_Volatile
-     (V : GL_Value; Flag : Boolean := True) return GL_Value
-   is
-      Result : GL_Value := G_From (LLVM_Value (V), V);
+   procedure Mark_Volatile (V : in out GL_Value; Flag : Boolean := True) is
    begin
-      Result.Is_Volatile := Result.Is_Volatile or Flag;
-      return Result;
+      V.Is_Volatile := V.Is_Volatile or Flag;
    end Mark_Volatile;
 
    -----------------
    -- Mark_Atomic --
    -----------------
 
-   function Mark_Atomic
-     (V : GL_Value; Flag : Boolean := True) return GL_Value
-   is
-      Result : GL_Value := G_From (LLVM_Value (V), V);
+   procedure Mark_Atomic (V : in out GL_Value; Flag : Boolean := True) is
    begin
-      Result.Is_Atomic := Result.Is_Atomic or Flag;
-      return Result;
+      V.Is_Atomic := V.Is_Atomic or Flag;
    end Mark_Atomic;
+
+   ---------------------
+   -- Mark_Overflowed --
+   ---------------------
+
+   procedure Mark_Overflowed (V : in out GL_Value; Flag : Boolean := True) is
+   begin
+      V.Overflowed := V.Overflowed or Flag;
+   end Mark_Overflowed;
 
    ---------------------
    -- Mark_Overflowed --
@@ -201,21 +200,19 @@ package body GNATLLVM.GLValue is
    function Mark_Overflowed
      (V : GL_Value; Flag : Boolean := True) return GL_Value
    is
-      Result : GL_Value := G_From (LLVM_Value (V), V);
+      New_V : GL_Value := V;
    begin
-      Result.Overflowed := Result.Overflowed or Flag;
-      return Result;
+      Mark_Overflowed (New_V, Flag);
+      return New_V;
    end Mark_Overflowed;
 
    ----------------------
    -- Clear_Overflowed --
    ----------------------
 
-   function Clear_Overflowed (V : GL_Value) return GL_Value is
-      Result : GL_Value := G_From (LLVM_Value (V), V);
+   procedure Clear_Overflowed (V : in out GL_Value) is
    begin
-      Result.Overflowed := False;
-      return Result;
+      V.Overflowed := False;
    end Clear_Overflowed;
 
    ----------------
@@ -609,8 +606,11 @@ package body GNATLLVM.GLValue is
    ---------------
 
    procedure Set_Value (VE : Entity_Id; VL : GL_Value) is
+      New_VL : GL_Value := VL;
+
    begin
-      Set_Value_R (VE, Not_Pristine (VL));
+      Not_Pristine (New_VL);
+      Set_Value_R (VE, New_VL);
    end Set_Value;
 
    ---------

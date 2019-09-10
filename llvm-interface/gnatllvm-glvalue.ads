@@ -567,36 +567,32 @@ package GNATLLVM.GLValue is
           Post => Is_Reference (GM_Ref'Result);
    --  Likewise, but copy the rest of the attributes from GV
 
-   function Not_Pristine (V : GL_Value) return GL_Value
-     with Pre => Present (V), Post => not Is_Pristine (Not_Pristine'Result),
+   procedure Not_Pristine (V : in out GL_Value)
+     with Pre => Present (V), Post => not Is_Pristine (V),
           Inline;
-   --  Make a copy of V with the Is_Pristine flag cleared
+   --  Clear the Is_Pristine flag from V
 
-   function Mark_Volatile
-     (V : GL_Value; Flag : Boolean := True) return GL_Value
-     with Pre  => Present (V),
-          Post => not Flag or else Is_Volatile (Mark_Volatile'Result),
-          Inline;
-   --  Make a copy of V with the Is_Volatile flag set if Flag is True
+   procedure Mark_Volatile (V : in out GL_Value; Flag : Boolean := True)
+     with Pre => Present (V), Post => not Flag or else Is_Volatile (V), Inline;
+   --  If Flag is true, mark V as volatile
 
-   function Mark_Atomic
-     (V : GL_Value; Flag : Boolean := True) return GL_Value
-     with Pre  => Present (V),
-          Post => not Flag or else Is_Atomic (Mark_Atomic'Result),
-          Inline;
-   --  Make a copy of V with the Is_Atomic flag set if Flag is True
+   procedure Mark_Atomic (V : in out GL_Value; Flag : Boolean := True)
+     with Pre => Present (V), Post => not Flag or else Is_Atomic (V), Inline;
+   --  If Flag is true, mark V as atomic
+
+   procedure Mark_Overflowed (V : in out GL_Value; Flag : Boolean := True)
+     with Pre => Present (V), Post => not Flag or else Overflowed (V), Inline;
+   --  If Flag is true, mark V as overflowed
 
    function Mark_Overflowed
      (V : GL_Value; Flag : Boolean := True) return GL_Value
      with Pre  => Present (V),
-          Post => not Flag or else Overflowed (Mark_Overflowed'Result),
-          Inline;
-   --  Make a copy of V with the Overflowed flag set if Flag is True
+          Post => not Flag or else Overflowed (Mark_Overflowed'Result), Inline;
+   --  Likewise, but return a copy and mark as overflowed
 
-   function Clear_Overflowed (V : GL_Value) return GL_Value
-     with Pre  => Present (V),
-          Post => not Overflowed (Clear_Overflowed'Result), Inline;
-   --  Clear the overflow flag in V and return the result
+   procedure Clear_Overflowed (V : in out GL_Value)
+     with Pre => Present (V), Post => not Overflowed (V), Inline;
+   --  Clear the overflow flag in V
 
    procedure Discard (V : GL_Value)
      with Inline;

@@ -1238,15 +1238,15 @@ package body GNATLLVM.Arrays is
       Array_Data : constant GL_Value :=
         Get (To_Primitive (V, No_Copy => True), Reference);
       Fortran    : constant Boolean  := Convention (GT) = Convention_Fortran;
+      Result     : GL_Value;
 
    begin
       if not Is_Nonnative_Type (GT) then
-         return Mark_Atomic
-           (Mark_Volatile
-              (GEP (Comp_GT, Array_Data,
-                    GL_Value_Array'(1 => Size_Const_Null) & Idxs),
-               Has_Volatile_Components (GT)),
-            Has_Atomic_Components (GT));
+         Result := GEP (Comp_GT, Array_Data,
+                        GL_Value_Array'(1 => Size_Const_Null) & Idxs);
+         Mark_Atomic   (Result, Has_Atomic_Components (GT));
+         Mark_Volatile (Result, Has_Volatile_Components (GT));
+         return Result;
       end if;
 
       --  Otherwise, we choose a type to use for the indexing.  If the
@@ -1289,12 +1289,9 @@ package body GNATLLVM.Arrays is
             Dim   := (if Fortran then Dim - 1 else Dim + 1);
          end loop;
 
-         Index := Index * Unit_Mult;
-         return Ptr_To_Ref
-           (Mark_Volatile
-              (GEP (Unit_GT, Data, (1 => Index), "arr-lvalue"),
-               Has_Volatile_Components (GT)),
-            Comp_GT);
+         Result := GEP (Unit_GT, Data, (1 => Index * Unit_Mult), "arr-lvalue");
+         Mark_Volatile (Result, Has_Volatile_Components (GT));
+         return Ptr_To_Ref (Result, Comp_GT);
       end;
 
    end Get_Indexed_LValue;

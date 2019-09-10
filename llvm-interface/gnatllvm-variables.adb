@@ -1554,26 +1554,24 @@ package body GNATLLVM.Variables is
       --  that's the default if there's no initializer.
 
       else
-         LLVM_Var := Mark_Atomic
-           (Mark_Volatile
-              (Add_Global
-                 (GT, Get_Ext_Name (Def_Ident), Need_Reference => Is_Ref),
-               Is_Volatile),
-            Is_Atomic (Def_Ident) or else Is_Atomic (GT));
-         Set_Thread_Local
-           (LLVM_Var,
-            Has_Pragma_Thread_Local_Storage (Def_Ident));
+         LLVM_Var := Add_Global (GT, Get_Ext_Name (Def_Ident),
+                                 Need_Reference => Is_Ref);
+         Mark_Volatile    (LLVM_Var, Is_Volatile);
+         Mark_Atomic      (LLVM_Var,
+                           Is_Atomic (Def_Ident) or else Is_Atomic (GT));
+         Set_Thread_Local (LLVM_Var,
+                           Has_Pragma_Thread_Local_Storage (Def_Ident));
 
          if not Is_Public (Def_Ident) and not Is_Imported (Def_Ident) then
             Set_Linkage (LLVM_Var, Internal_Linkage);
          end if;
 
          Set_Dup_Global_Value (Def_Ident, LLVM_Var);
-         Set_Linker_Section (LLVM_Var, Def_Ident);
-         Process_Pragmas (Def_Ident, LLVM_Var);
+         Set_Linker_Section   (LLVM_Var, Def_Ident);
+         Process_Pragmas      (Def_Ident, LLVM_Var);
 
          if not Is_Ref then
-            Set_Object_Align (LLVM_Var, GT, Def_Ident);
+            Set_Object_Align  (LLVM_Var, GT, Def_Ident);
          end if;
 
          if not DSO_Preemptable then
@@ -1811,9 +1809,9 @@ package body GNATLLVM.Variables is
               Int_To_Ref ((if   Present (Addr) then Addr
                            else Emit_Expression (Addr_Expr)),
                           GT);
-            LLVM_Var := Mark_Atomic (Mark_Volatile (LLVM_Var, Is_Volatile),
-                                     Is_Atomic (Def_Ident)
-                                       or else Is_Atomic (GT));
+            Mark_Volatile (LLVM_Var, Is_Volatile);
+            Mark_Atomic   (LLVM_Var,
+                           Is_Atomic (Def_Ident) or else Is_Atomic (GT));
             Set_Init := True;
             Set_Value (Def_Ident, LLVM_Var);
          else
@@ -2027,9 +2025,9 @@ package body GNATLLVM.Variables is
          LLVM_Var := Allocate_For_Type (GT, Alloc_GT, Def_Ident, Value, Expr,
                                         Def_Ident => Def_Ident,
                                         Max_Size  => Is_Max_Size (GT));
-         LLVM_Var := Mark_Atomic (Mark_Volatile (LLVM_Var, Is_Volatile),
-                                  Is_Atomic (Def_Ident)
-                                    or else Is_Atomic (GT));
+         Mark_Volatile (LLVM_Var, Is_Volatile);
+         Mark_Atomic   (LLVM_Var,
+                        Is_Atomic (Def_Ident) or else Is_Atomic (GT));
          Copied := True;
       end if;
 
@@ -2121,10 +2119,11 @@ package body GNATLLVM.Variables is
          --  If this is a constant, we're going to put the actual value there;
          --  otherwise, we'll put the address of the expression.
 
-         LLVM_Var := Mark_Volatile
-           (Add_Global (GT, Get_Ext_Name (Def_Ident),
-                        Need_Reference => Use_LHS),
-            Is_Volatile);
+         LLVM_Var := Add_Global (GT, Get_Ext_Name (Def_Ident),
+                                 Need_Reference => Use_LHS);
+         Mark_Volatile (LLVM_Var, Is_Volatile);
+         Mark_Atomic   (LLVM_Var,
+                        Is_Atomic (Def_Ident) or else Is_Atomic (GT));
          Set_Value (Def_Ident, LLVM_Var);
          Set_Initializer
            (LLVM_Var,

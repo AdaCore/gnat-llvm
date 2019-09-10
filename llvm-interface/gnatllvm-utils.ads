@@ -200,7 +200,7 @@ package GNATLLVM.Utils is
 
    function Is_Layout_Identical (T1, T2 : Type_T) return Boolean
      with Pre => Present (T1) and then Present (T2);
-   --  Return True iff types T1 and T2 have identifical layout.
+   --  Return True iff types T1 and T2 have identical layout.
    --  We can't use the LLVM routine of similar name because we want to
    --  recurse into records: two fields are of types with identical
    --  layout are enough for the fields to be considered the same layout:

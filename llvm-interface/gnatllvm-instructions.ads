@@ -15,12 +15,57 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Sinfo; use Sinfo;
+
 with LLVM.Core;       use LLVM.Core;
 
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package GNATLLVM.Instructions is
+
+   --  A type used to save a position at some earlier point in emitting
+   --  code so that we can go back to it to emit more code.  Instr can
+   --  be empty, in which case we mean to insert at the beginning of
+   --  the basic block.
+
+   type Position_T is record
+      BB    : Basic_Block_T;
+      Instr : Value_T;
+   end record;
+
+   No_Position_T : Position_T := (No_BB_T, No_Value_T);
+
+   function No      (P : Position_T) return Boolean is (P =  No_Position_T);
+   function Present (P : Position_T) return Boolean is (P /= No_Position_T);
+
+   function  Get_Current_Position return Position_T;
+   procedure Set_Current_Position (P : Position_T);
+   --  Save and restore the current position within a basic block. Note that
+   --  this is meant to only insert small sequences of instructions, which
+   --  cannot include a terminator.
+
+   type Pred_Mapping is record
+      Signed   : Int_Predicate_T;
+      Unsigned : Int_Predicate_T;
+      Real     : Real_Predicate_T;
+   end record;
+
+   function Get_Preds (Kind : Node_Kind) return Pred_Mapping is
+     (case Kind is
+        when N_Op_Eq => (Int_EQ, Int_EQ, Real_OEQ),
+        when N_Op_Ne => (Int_NE, Int_NE, Real_ONE),
+        when N_Op_Lt => (Int_SLT, Int_ULT, Real_OLT),
+        when N_Op_Le => (Int_SLE, Int_ULE, Real_OLE),
+        when N_Op_Gt => (Int_SGT, Int_UGT, Real_OGT),
+        when N_Op_Ge => (Int_SGE, Int_UGE, Real_OGE),
+        when others => (others => <>));
+
+   function Are_In_Dead_Code return Boolean;
+   --  True if we're in dead code (the last instruction is a terminator)
+
+   procedure Position_Builder_At_End (BB : Basic_Block_T)
+     with Pre => Present (BB);
 
    function Alloca
      (GT        : GL_Type;
@@ -573,6 +618,15 @@ package GNATLLVM.Instructions is
                  and then Present (C_Then) and then Present (C_Else),
           Inline;
 
+   procedure Build_Br (BB : Basic_Block_T)
+     with Pre => Present (BB);
+
+   procedure Maybe_Build_Br (BB : Basic_Block_T);
+   --  Like Build_Br, but do nothing if No (BB) or if we're in dead code
+
+   procedure Move_To_BB (BB : Basic_Block_T);
+   --  If BB is Present, generate a branch to it and position there
+
    procedure Build_Ret (V : GL_Value)
      with Pre => Present (V), Inline;
 
@@ -726,6 +780,15 @@ package GNATLLVM.Instructions is
               Arg))
      with  Pre  => Present (Arg) and then Present (Elt),
            Post => Present (Insert_Value'Result);
+
+   function GEP
+     (Bld     : Builder_T;
+      Ptr     : Value_T;
+      Indices : Value_Array;
+      Name    : String := "")
+     return Value_T
+     with Pre  => Present (Bld) and then Present (Ptr),
+          Post => Present (GEP'Result);
 
    function GEP_To_Relationship
      (GT      : GL_Type;

@@ -34,6 +34,7 @@ with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
 with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 

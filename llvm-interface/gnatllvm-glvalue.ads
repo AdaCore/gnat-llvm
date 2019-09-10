@@ -967,6 +967,11 @@ package GNATLLVM.GLValue is
      (GT : GL_Type; N : ULL; Sign_Extend : Boolean := False) return GL_Value
      with Pre  => Present (GT), Post => Present (Const_Int'Result), Inline;
 
+   function Const_Ones (T : Type_T) return Value_T is
+     (Const_Int (T, ULL'Last, Sign_Extend => True))
+     with Pre => Present (T), Post => Present (Const_Ones'Result);
+   --  Return an LLVM value for the given type where all bits are set
+
    function Const_Ones (GT : GL_Type) return GL_Value is
      (Const_Int (GT, ULL'Last, Sign_Extend => True))
      with Pre => Present (GT), Post => Present (Const_Ones'Result);

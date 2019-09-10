@@ -18,6 +18,8 @@
 with Ada.Text_IO; use Ada.Text_IO;
 with System.Storage_Elements; use System.Storage_Elements;
 
+with LLVM.Core; use LLVM.Core;
+
 with Errout;   use Errout;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
@@ -40,48 +42,6 @@ package body GNATLLVM.Utils is
       return Hash_Type ((To_Integer (UC (Val)) / (Val'Size / 8))
                         rem Hash_Type'Modulus);
    end Hash_Value_T;
-
-   --------------------------
-   -- Get_Current_Position --
-   --------------------------
-
-   function Get_Current_Position return Position_T is
-      BB : constant Basic_Block_T := Get_Insert_Block;
-
-   begin
-      return (BB, Get_Last_Instruction (BB));
-   end Get_Current_Position;
-
-   --------------------------
-   -- Set_Current_Position --
-   --------------------------
-
-   procedure Set_Current_Position (P : Position_T) is
-      BB   : constant Basic_Block_T := P.BB;
-      Next : Value_T;
-
-   begin
-      --  There are two tricky parts here.  First is that if there's no
-      --  instruction, LLVM will treat this as a request to insert at the
-      --  end of a basic block, but we mean the beginning.  So we need to
-      --  get the first instruction in the block and set the insertion
-      --  point in front of it.  Secondly, if we have an instruction, the
-      --  builder operation inserts in front of it, but we want to insert
-      --  after.  The way to do that is to get the next instruction and
-      --  insert before that, but there may not be another instruction.
-      --  If so, then insert at the end of the block.
-
-      if Present (P.Instr) then
-         Next := Get_Next_Instruction (P.Instr);
-         if Present (Next) then
-            Position_Builder (IR_Builder, BB, Next);
-         else
-            Position_Builder_At_End (IR_Builder, BB);
-         end if;
-      else
-         Position_Builder (IR_Builder, BB, Get_First_Instruction (BB));
-      end if;
-   end Set_Current_Position;
 
    ------------------
    -- Decode_Range --
@@ -403,75 +363,6 @@ package body GNATLLVM.Utils is
             return False;
       end case;
    end Is_Layout_Identical;
-
-   ----------------------
-   -- Are_In_Dead_Code --
-   ----------------------
-
-   function Are_In_Dead_Code return Boolean is
-      Last_Inst : constant Value_T := Get_Last_Instruction (Get_Insert_Block);
-   begin
-      --  We're in dead code if there is an instruction in this basic block
-      --  and the last is a terminator.
-
-      return Present (Last_Inst)
-        and then Present (Is_A_Terminator_Inst (Last_Inst));
-   end Are_In_Dead_Code;
-
-   -----------------------------
-   -- Position_Builder_At_End --
-   -----------------------------
-
-   procedure Position_Builder_At_End (BB : Basic_Block_T) is
-   begin
-      Position_Builder_At_End (IR_Builder, BB);
-   end Position_Builder_At_End;
-
-   --------------
-   -- Build_Br --
-   --------------
-
-   procedure Build_Br (BB : Basic_Block_T) is
-   begin
-      if not Are_In_Dead_Code then
-         Discard (Build_Br (IR_Builder, BB));
-      end if;
-   end Build_Br;
-
-   --------------------
-   -- Maybe_Build_Br --
-   --------------------
-
-   procedure Maybe_Build_Br (BB : Basic_Block_T) is
-   begin
-      if not Are_In_Dead_Code and then Present (BB) then
-         Build_Br (BB);
-      end if;
-   end Maybe_Build_Br;
-
-   ----------------
-   -- Move_To_BB --
-   ----------------
-
-   procedure Move_To_BB (BB : Basic_Block_T) is
-   begin
-      if Present (BB) then
-         Build_Br (BB);
-         Position_Builder_At_End (BB);
-      end if;
-   end Move_To_BB;
-
-   ---------
-   -- GEP --
-   ---------
-
-   function GEP
-     (Bld     : Builder_T;
-      Ptr     : Value_T;
-      Indices : Value_Array;
-      Name    : String := "") return Value_T
-   is
-     (GEP (Bld, Ptr, Indices'Address, Indices'Length, Name));
 
    ------------------------
    -- Set_Linker_Section --

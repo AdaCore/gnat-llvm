@@ -39,10 +39,10 @@ with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
-with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Subprograms is

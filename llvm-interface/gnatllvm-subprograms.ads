@@ -17,8 +17,8 @@
 
 with Sinfo; use Sinfo;
 
-with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
+with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 
 package GNATLLVM.Subprograms is
 

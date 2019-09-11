@@ -950,7 +950,7 @@ package body GNATLLVM.GLType is
    ----------------------
 
    function Convert_Via_Copy (V : GL_Value; GT : GL_Type) return GL_Value is
-      Memory : constant GL_Value := Allocate_For_Type (GT, GT, Empty);
+      Memory : constant GL_Value := Allocate_For_Type (GT);
 
    begin
       --  We've allocated memory for the type we're converting into, which

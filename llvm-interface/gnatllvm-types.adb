@@ -587,8 +587,8 @@ package body GNATLLVM.Types is
 
    function Allocate_For_Type
      (GT        : GL_Type;
-      Alloc_GT  : GL_Type;
-      N         : Node_Id;
+      Alloc_GT  : GL_Type   := No_GL_Type;
+      N         : Node_Id   := Empty;
       V         : GL_Value  := No_GL_Value;
       Expr      : Node_Id   := Empty;
       Def_Ident : Entity_Id := Empty;
@@ -596,8 +596,10 @@ package body GNATLLVM.Types is
       Max_Size  : Boolean   := False) return GL_Value
    is
       Max_Alloc  : constant ULL     := 20_000_000;
+      A_GT       : constant GL_Type :=
+        (if Present (Alloc_GT) then Alloc_GT else GT);
       Align      : constant Nat     :=
-        Get_Alloc_Alignment (GT, Alloc_GT, Def_Ident);
+        Get_Alloc_Alignment (GT, A_GT, Def_Ident);
       Overalign  : constant Boolean := Align > (Get_Stack_Alignment * BPU);
       Value      : GL_Value         := V;
       Element_GT : GL_Type;
@@ -617,9 +619,9 @@ package body GNATLLVM.Types is
       --  If this is an undef, it likely means that we already said we were
       --  raising constraint error, so if we did, omit this one.
 
-      elsif not Is_Nonnative_Type (Alloc_GT) and then not Overalign then
+      elsif not Is_Nonnative_Type (A_GT) and then not Overalign then
          if Do_Stack_Check
-           and then Get_Type_Size (Type_Of (Alloc_GT)) > Max_Alloc * ULL (BPU)
+           and then Get_Type_Size (Type_Of (A_GT)) > Max_Alloc * ULL (BPU)
          then
             Emit_Raise_Call (N, SE_Object_Too_Large);
             Error_Msg_N ("??`Storage_Error` will be raised at run time!", N);
@@ -627,13 +629,13 @@ package body GNATLLVM.Types is
          else
             declare
                Align_GT : constant GL_Type :=
-                 (if   GT_Alignment (Alloc_GT) >= Align then Alloc_GT
-                  else Make_GT_Alternative (Alloc_GT, N,
+                 (if   GT_Alignment (A_GT) >= Align then A_GT
+                  else Make_GT_Alternative (A_GT, N,
                                             Align => UI_From_Int (Align)));
 
             begin
                return Move_Into_Memory (Alloca (Align_GT, Def_Ident, Name),
-                                        Value, Expr, GT, Alloc_GT);
+                                        Value, Expr, GT, A_GT);
             end;
          end if;
       end if;
@@ -648,23 +650,23 @@ package body GNATLLVM.Types is
       --  we need to find the bounds, so evaluate Expr if Present and
       --  there's no Value.
 
-      if Is_Unconstrained_Array (Alloc_GT) and then No (Value)
+      if Is_Unconstrained_Array (A_GT) and then No (Value)
         and then Present (Expr)
       then
          Value := Emit (Expr);
       end if;
 
-      if Is_Array_Type (Alloc_GT)
-        and then Is_Native_Component_GT (Full_Component_GL_Type (Alloc_GT))
+      if Is_Array_Type (A_GT)
+        and then Is_Native_Component_GT (Full_Component_GL_Type (A_GT))
         and then not Is_Constr_Subt_For_UN_Aliased (GT)
         and then not Overalign
       then
-         Element_GT := Full_Component_GL_Type (Alloc_GT);
-         Num_Elts   := Get_Array_Elements (Value, Full_Etype (Alloc_GT));
+         Element_GT := Full_Component_GL_Type (A_GT);
+         Num_Elts   := Get_Array_Elements (Value, Full_Etype (A_GT));
       else
          Element_GT := SSI_GL_Type;
          Num_Elts   :=
-           To_Bytes (Get_Alloc_Size (GT, Alloc_GT, Value, Max_Size));
+           To_Bytes (Get_Alloc_Size (GT, A_GT, Value, Max_Size));
       end if;
 
       --  Handle overalignment by adding the alignment to the size
@@ -716,7 +718,7 @@ package body GNATLLVM.Types is
          Set_Value_Name (Result, Get_Alloca_Name (Def_Ident, Name));
       end if;
 
-      return Move_Into_Memory (Result, Value, Expr, GT, Alloc_GT);
+      return Move_Into_Memory (Result, Value, Expr, GT, A_GT);
 
    end Allocate_For_Type;
 
@@ -726,7 +728,7 @@ package body GNATLLVM.Types is
 
    function Heap_Allocate_For_Type
      (GT        : GL_Type;
-      Alloc_GT  : GL_Type;
+      Alloc_GT  : GL_Type   := No_GL_Type;
       V         : GL_Value  := No_GL_Value;
       N         : Node_Id   := Empty;
       Expr      : Node_Id   := Empty;
@@ -735,14 +737,16 @@ package body GNATLLVM.Types is
       Def_Ident : Entity_Id := Empty;
       Max_Size  : Boolean   := False) return GL_Value
    is
+      A_GT    : constant GL_Type   :=
+        (if Present (Alloc_GT) then Alloc_GT else GT);
       Value   : constant GL_Value :=
         (if    Present (V) then V
-         elsif Is_Self_Referential_Type (Alloc_GT) and then Present (Expr)
+         elsif Is_Self_Referential_Type (A_GT) and then Present (Expr)
          then  Emit (Expr) else No_GL_Value);
       Size    : constant GL_Value :=
-        Get_Alloc_Size (GT, Alloc_GT, Value, Max_Size);
+        Get_Alloc_Size (GT, A_GT, Value, Max_Size);
       Align   : constant Nat      :=
-        Get_Alloc_Alignment (GT, Alloc_GT, Def_Ident);
+        Get_Alloc_Alignment (GT, A_GT, Def_Ident);
       Align_V : constant GL_Value := Size_Const_Int (ULL (Align));
       Result  : GL_Value;
 
@@ -842,7 +846,7 @@ package body GNATLLVM.Types is
       --  If we're doing this for an unconstrained array, we have the pointer
       --  to the raw array, not a fat pointer.
 
-      return Move_Into_Memory (Result, Value, Expr, GT, Alloc_GT);
+      return Move_Into_Memory (Result, Value, Expr, GT, A_GT);
    end Heap_Allocate_For_Type;
 
    ---------------------

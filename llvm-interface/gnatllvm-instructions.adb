@@ -766,7 +766,7 @@ package body GNATLLVM.Instructions is
       --  type, and return that value.
 
       if Special_Atomic then
-         Memory := Allocate_For_Type (Load_GT, Load_GT, Empty);
+         Memory := Allocate_For_Type (Load_GT);
          Discard (Build_Store (IR_Builder, Load_Inst,
                                Pointer_Cast (IR_Builder, LLVM_Value (Memory),
                                              Equiv_T, "")));
@@ -807,7 +807,7 @@ package body GNATLLVM.Instructions is
       --  into into the pointer-punned result.
 
       if Special_Atomic then
-         Memory := Allocate_For_Type (GT, GT, Empty);
+         Memory := Allocate_For_Type (GT);
          Discard (Build_Store (IR_Builder, Val_To_Store, LLVM_Value (Memory)));
          Val_To_Store := Load (IR_Builder,
                                Pointer_Cast (IR_Builder, LLVM_Value (Memory),

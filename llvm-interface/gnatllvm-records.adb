@@ -1776,7 +1776,7 @@ package body GNATLLVM.Records is
             then
                Result := Get_Undef (GT);
             else
-               Result := Allocate_For_Type (GT, GT, N);
+               Result := Allocate_For_Type (GT, N => N);
             end if;
          end if;
 
@@ -1987,7 +1987,7 @@ package body GNATLLVM.Records is
                   declare
                      Memory         : constant GL_Value :=
                        (if   Present (LHS) then LHS
-                        else Allocate_For_Type (F_GT, F_GT, Empty));
+                        else Allocate_For_Type (F_GT));
                      Mem_As_Int_Ptr : constant GL_Value :=
                        G (Bit_Cast (IR_Builder, LLVM_Value (Memory),
                                     Pointer_Type (Type_Of (Result), 0), ""),
@@ -2077,7 +2077,7 @@ package body GNATLLVM.Records is
                  and then (not Is_Nonsymbolic_Constant (LHS)
                              or else not Is_Nonsymbolic_Constant (RHS_Cvt)
                              or else Is_Large_Array_Bitfield (F))
-            then Allocate_For_Type (R_GT, R_GT, Empty, LHS) else LHS);
+            then Allocate_For_Type (R_GT, V => LHS) else LHS);
          RHS_GT         : constant GL_Type  := Related_Type (RHS_Cvt);
          RHS_T          : Type_T            := Type_Of (RHS_GT);
          RHS_Width      : constant ULL      := Get_Scalar_Bit_Size (RHS_T);

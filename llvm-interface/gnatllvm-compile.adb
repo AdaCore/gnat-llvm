@@ -1466,9 +1466,12 @@ package body GNATLLVM.Compile is
                --  initialize it.
 
                Bounds_From_Type (Var_GT, Low, High);
-               LLVM_Var := Allocate_For_Type (Var_GT, Var_GT, Def_Ident,
-                                              (if Reversed then High else Low),
-                                              Def_Ident => Def_Ident);
+               LLVM_Var := Allocate_For_Type
+                 (Var_GT,
+                  N         => Def_Ident,
+                  V         => (if Reversed then High else Low),
+                  Def_Ident => Def_Ident);
+
                Set_Value (Def_Ident, LLVM_Var);
                Create_Local_Variable_Debug_Data (Def_Ident, LLVM_Var);
 

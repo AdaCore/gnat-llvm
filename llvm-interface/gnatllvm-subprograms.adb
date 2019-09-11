@@ -1017,10 +1017,13 @@ package body GNATLLVM.Subprograms is
             --  the variable is no longer a parameter.
 
             if PK_Is_Out (PK) then
-               LLVM_Param := Allocate_For_Type (GT, GT, Param, V,
-                                                Def_Ident => Param,
-                                                Name      => Name.all);
                P_Num      := 0;
+               LLVM_Param := Allocate_For_Type
+                 (GT,
+                  N         => Param,
+                  V         => V,
+                  Def_Ident => Param,
+                  Name      => Name.all);
 
             --  Handle the case where we have to pun the object from
             --  integer to its actual type.
@@ -1030,9 +1033,12 @@ package body GNATLLVM.Subprograms is
                   Size : constant ULL := Get_Type_Size (Type_Of (GT));
 
                begin
-                  LLVM_Param := Allocate_For_Type (GT, GT, Param,
-                                                   Def_Ident => Param,
-                                                   Name      => Name.all);
+                  LLVM_Param := Allocate_For_Type
+                    (GT,
+                     N         => Param,
+                     Def_Ident => Param,
+                     Name      => Name.all);
+
                   Store (V,
                          Pointer_Cast_To_Relationship
                            (LLVM_Param, Pointer_Type (Int_Ty (Size), 0),
@@ -1898,7 +1904,8 @@ package body GNATLLVM.Subprograms is
 
       if RK = Return_By_Parameter then
          Args (In_Idx) :=
-           Get (Allocate_For_Type (Return_GT, Return_GT, Subp,
+           Get (Allocate_For_Type (Return_GT,
+                                   N        => Subp,
                                    Name     => "return",
                                    Max_Size =>
                                      Is_Unconstrained_Record (Return_GT)),
@@ -1972,7 +1979,8 @@ package body GNATLLVM.Subprograms is
 
                   pragma Assert (Idxs = null);
                   if Present (F) then
-                     Arg := Allocate_For_Type (GT, GT, N => Actual,
+                     Arg := Allocate_For_Type (GT,
+                                               N => Actual,
                                                V => Build_Field_Load (LHS, F));
                      WBs (In_Idx) := (LHS   => LHS,
                                       RHS   => Arg,
@@ -1989,7 +1997,6 @@ package body GNATLLVM.Subprograms is
 
                      if Copy then
                         Arg  := Allocate_For_Type (Related_Type (LHS),
-                                                   Related_Type (LHS),
                                                    N => Actual,
                                                    V => LHS);
                         if Ekind (Param) /= E_In_Parameter then

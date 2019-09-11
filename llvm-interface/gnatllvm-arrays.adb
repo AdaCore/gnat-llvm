@@ -1014,7 +1014,7 @@ package body GNATLLVM.Arrays is
          declare
             Result : constant GL_Value :=
               (if   Present (Value_So_Far) then Value_So_Far
-               else Allocate_For_Type (GT, GT, N));
+               else Allocate_For_Type (GT, N => N));
 
          begin
             Emit_Others_Aggregate (Result, N);
@@ -1050,7 +1050,7 @@ package body GNATLLVM.Arrays is
             then
                Cur_Value := Get_Undef (GT);
             else
-               Cur_Value := Allocate_For_Type (GT, GT, N);
+               Cur_Value := Allocate_For_Type (GT, N => N);
             end if;
          end if;
 

@@ -1515,7 +1515,7 @@ package body GNATLLVM.Compile is
       Position_Builder_At_End (BB_Stmts);
       Push_Loop (Loop_Identifier, BB_Next);
       Push_Block;
-      Start_Block_Statements (Empty, No_List);
+      Start_Block_Statements;
       Emit (Statements (N));
       Set_Debug_Pos_At_Node (N);
       Pop_Block;

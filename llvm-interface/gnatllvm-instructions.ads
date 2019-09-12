@@ -61,11 +61,12 @@ package GNATLLVM.Instructions is
         when N_Op_Ge => (Int_SGE, Int_UGE, Real_OGE),
         when others => (others => <>));
 
-   function Are_In_Dead_Code return Boolean;
+   function Are_In_Dead_Code return Boolean
+     with Inline;
    --  True if we're in dead code (the last instruction is a terminator)
 
    procedure Position_Builder_At_End (BB : Basic_Block_T)
-     with Pre => Present (BB);
+     with Pre => Present (BB), Inline;
 
    function Alloca
      (GT        : GL_Type;
@@ -188,7 +189,7 @@ package GNATLLVM.Instructions is
    function Trunc
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Present (GT),
-          Post => Is_Discrete_Or_Fixed_Point_Type (Trunc'Result);
+          Post => Is_Discrete_Or_Fixed_Point_Type (Trunc'Result), Inline;
 
    function Trunc_To_Relationship
      (V    : GL_Value;
@@ -619,12 +620,14 @@ package GNATLLVM.Instructions is
           Inline;
 
    procedure Build_Br (BB : Basic_Block_T)
-     with Pre => Present (BB);
+     with Pre => Present (BB), Inline;
 
-   procedure Maybe_Build_Br (BB : Basic_Block_T);
+   procedure Maybe_Build_Br (BB : Basic_Block_T)
+     with Inline;
    --  Like Build_Br, but do nothing if No (BB) or if we're in dead code
 
-   procedure Move_To_BB (BB : Basic_Block_T);
+   procedure Move_To_BB (BB : Basic_Block_T)
+     with Inline;
    --  If BB is Present, generate a branch to it and position there
 
    procedure Build_Ret (V : GL_Value)
@@ -636,6 +639,9 @@ package GNATLLVM.Instructions is
    procedure Build_Unreachable
      with Inline;
 
+   procedure Maybe_Build_Unreachable
+     with Inline;
+
    function Build_Phi
      (GL_Values : GL_Value_Array;
       BBs       : Basic_Block_Array;
@@ -645,8 +651,7 @@ package GNATLLVM.Instructions is
           Post => Present (Build_Phi'Result);
 
    function Int_To_Ref
-     (V : GL_Value; GT : GL_Type; Name : String := "")
-     return GL_Value
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Present (GT),
           Post => Is_Pointer (Int_To_Ref'Result), Inline;
    --  Similar to Int_To_Ptr, but GT is the Designed_Type, not the
@@ -785,8 +790,7 @@ package GNATLLVM.Instructions is
      (Bld     : Builder_T;
       Ptr     : Value_T;
       Indices : Value_Array;
-      Name    : String := "")
-     return Value_T
+      Name    : String := "") return Value_T
      with Pre  => Present (Bld) and then Present (Ptr),
           Post => Present (GEP'Result);
 
@@ -812,7 +816,8 @@ package GNATLLVM.Instructions is
      (GT      : GL_Type;
       Ptr     : GL_Value;
       Indices : GL_Value_Array;
-      Name    : String := "") return GL_Value is
+      Name    : String := "") return GL_Value
+   is
      (GEP_To_Relationship (GT, Reference, Ptr, Indices, Name))
      with Pre  => Is_Pointer (Ptr) and then Present (GT),
           Post => Is_Pointer (GEP'Result), Inline;
@@ -821,7 +826,8 @@ package GNATLLVM.Instructions is
      (GT      : GL_Type;
       Ptr     : GL_Value;
       Indices : Index_Array;
-      Name    : String := "") return GL_Value is
+      Name    : String := "") return GL_Value
+   is
      (GEP_Idx_To_Relationship (GT, Reference, Ptr, Indices, Name))
      with Pre  => Is_Pointer (Ptr) and then Present (GT),
           Post => Is_Pointer (GEP_Idx'Result), Inline;

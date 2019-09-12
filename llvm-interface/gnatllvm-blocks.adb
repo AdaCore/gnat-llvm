@@ -57,43 +57,51 @@ package body GNATLLVM.Blocks is
    --  we're in and we construct a table to act as a block stack.
 
    type Block_Info is record
-      In_Stmts          : Boolean;
+      In_Stmts           : Boolean;
       --  True if we are in the statement section of the current block
 
-      Unprotected       : Boolean;
+      Unprotected        : Boolean;
       --  True if we've reached the pop of the block (in the end handler
       --  or its fixup) where calls aren't protected by exceptions or
       --  At_End handlers in this block.
 
-      At_Entry_Start    : Boolean;
+      At_Entry_Start     : Boolean;
       --  True if this block start at the start of the entry block
 
-      Stack_Save        : GL_Value;
+      Stack_Save         : GL_Value;
       --  Value of the stack pointer at entry to the block, if saved
 
-      Starting_Position : Position_T;
+      Starting_Position  : Position_T;
       --  The position at the start of the block
 
-      At_End_Proc       : GL_Value;
+      At_End_Proc        : GL_Value;
       --  Procedure to be called at normal or abnormal exit of the block
 
-      At_End_Parameter  : GL_Value;
-      --  A parameter to pass to the At_End_Proc, for example an
+      At_End_Parameter   : GL_Value;
+      --  If Present, a parameter to pass to the At_End_Proc, for example an
       --  activation record.
 
-      Landing_Pad       : Basic_Block_T;
+      At_End_Parameter_2 : GL_Value;
+      --  If Present, a second parameter to pass to the At_End_Proc.  This is
+      --  currently only used for calling the End_Handler procedure.
+
+      At_End_Pass_Excptr : Boolean;
+      --  If True, pass the exception pointer as a third parameter to the
+      --  At_End_Proc.
+
+      Landing_Pad        : Basic_Block_T;
       --  Basic block containing the landing pad for this block, if any.
 
-      EH_List           : List_Id;
+      EH_List            : List_Id;
       --  List of exception handlers
 
-      Dispatch_BB       : Basic_Block_T;
+      Dispatch_BB        : Basic_Block_T;
       --  BB created by an inner handler to branch to our dispatch code
 
-      Exc_Ptr           : GL_Value;
+      Exc_Ptr            : GL_Value;
       --  The exception pointer for the block
 
-      Lifetime_List     : A_Lifetime_Data;
+      Lifetime_List      : A_Lifetime_Data;
       --  List of memory locations whose lifetimes end at the end of this
       --  block.
    end record;
@@ -285,8 +293,11 @@ package body GNATLLVM.Blocks is
    function Find_Exit_Point (N : Node_Id) return Exit_Point_Level;
    --  Find the index into the exit point table for node N, if Present
 
-   procedure Call_At_End (Block : Block_Stack_Level);
-   --  Call the At_End procedure of Block, if any
+   procedure Call_At_End
+     (Block : Block_Stack_Level; For_Exception : Boolean := False);
+   --  Call the At_End procedure of Block, if any.  If For_Exception is True,
+   --  this is the exception case.  This only matters when At_End_Pass_Excptr
+   --  is set, which is only for the End_Handler.
 
    procedure Build_Fixups_From_To (From, To : Block_Stack_Level);
    --  We're currently in block From and going to block To.  Call any
@@ -384,19 +395,21 @@ package body GNATLLVM.Blocks is
 
    procedure Push_Block is
    begin
-      Block_Stack.Append ((Stack_Save        => No_GL_Value,
-                           Starting_Position => Get_Current_Position,
-                           At_End_Proc       => No_GL_Value,
-                           At_End_Parameter  => No_GL_Value,
-                           Landing_Pad       => No_BB_T,
-                           Dispatch_BB       => No_BB_T,
-                           Exc_Ptr           => No_GL_Value,
-                           EH_List           => No_List,
-                           In_Stmts          => False,
-                           Unprotected       => False,
-                           At_Entry_Start    =>
+      Block_Stack.Append ((Stack_Save         => No_GL_Value,
+                           Starting_Position  => Get_Current_Position,
+                           At_End_Proc        => No_GL_Value,
+                           At_End_Parameter   => No_GL_Value,
+                           At_End_Parameter_2 => No_GL_Value,
+                           At_End_Pass_Excptr => False,
+                           Landing_Pad        => No_BB_T,
+                           Dispatch_BB        => No_BB_T,
+                           Exc_Ptr            => No_GL_Value,
+                           EH_List            => No_List,
+                           In_Stmts           => False,
+                           Unprotected        => False,
+                           At_Entry_Start     =>
                              Get_Current_Position = Entry_Block_Allocas,
-                           Lifetime_List     => null));
+                           Lifetime_List      => null));
 
    end Push_Block;
 
@@ -450,7 +463,7 @@ package body GNATLLVM.Blocks is
    -----------------------------
 
    procedure Start_Block_Statements
-     (At_End_Proc : Entity_Id; EH_List : List_Id)
+     (At_End_Proc : Entity_Id := Empty; EH_List : List_Id := No_List)
    is
       BI   : Block_Info renames Block_Stack.Table (Block_Stack.Last);
       Subp : Entity_Id;
@@ -514,19 +527,42 @@ package body GNATLLVM.Blocks is
    -- Call_At_End --
    -----------------
 
-   procedure Call_At_End (Block : Block_Stack_Level) is
+   procedure Call_At_End
+     (Block : Block_Stack_Level; For_Exception : Boolean := False)
+   is
+      procedure Push_If_Present (V : GL_Value) with Inline;
+      --  Push V onto the Params array below if it's Present
+
       BI          : Block_Info renames Block_Stack.Table (Block);
-      Unprotected : constant Boolean := BI.Unprotected;
+      Our_BI      : constant Block_Info :=
+        Block_Stack.Table (Block_Stack.Last);
+      Our_Exc_Ptr : constant GL_Value   :=
+        (if    not BI.At_End_Pass_Excptr then No_GL_Value
+         elsif For_Exception then Our_BI.Exc_Ptr
+         else  Const_Null (A_Char_GL_Type));
+      Unprotected : constant Boolean   := BI.Unprotected;
+      Params      : GL_Value_Array (1 .. 3);
+      Last_Param  : Nat                := 0;
+
+      ---------------------
+      -- Push_If_Present --
+      ---------------------
+
+      procedure Push_If_Present (V : GL_Value) is
+      begin
+         if Present (V) then
+            Last_Param := Last_Param + 1;
+            Params (Last_Param) := V;
+         end if;
+      end Push_If_Present;
 
    begin
       if Present (BI.At_End_Proc) then
+         Push_If_Present (BI.At_End_Parameter);
+         Push_If_Present (BI.At_End_Parameter_2);
+         Push_If_Present (Our_Exc_Ptr);
          BI.Unprotected := True;
-         if Present (BI.At_End_Parameter) then
-            Call (BI.At_End_Proc, (1 => BI.At_End_Parameter));
-         else
-            Call (BI.At_End_Proc, (1 .. 0 => <>));
-         end if;
-
+         Call (BI.At_End_Proc, Params (1 .. Last_Param));
          BI.Unprotected := Unprotected;
       end if;
    end Call_At_End;
@@ -604,13 +640,15 @@ package body GNATLLVM.Blocks is
                              Void_GL_Type);
 
       Begin_Handler_Fn :=
-        Add_Global_Function ("__gnat_begin_handler",
-                             Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
-                             Void_GL_Type);
+        Add_Global_Function ("__gnat_begin_handler_v1",
+                             Fn_Ty ((1 => Void_Ptr_Type), Void_Ptr_Type),
+                             A_Char_GL_Type);
 
       End_Handler_Fn   :=
-        Add_Global_Function ("__gnat_end_handler",
-                             Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
+        Add_Global_Function ("__gnat_end_handler_v1",
+                             Fn_Ty ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
+                                     3 => Void_Ptr_Type),
+                                    Void_Type),
                              Void_GL_Type);
 
       Reraise_Fn       :=
@@ -883,8 +921,6 @@ package body GNATLLVM.Blocks is
 
    procedure Emit_Handlers (Block : Block_Stack_Level) is
       BI                : Block_Info renames Block_Stack.Table (Block);
-      Lpad              : constant Basic_Block_T := BI.Landing_Pad;
-      EH_List           : constant List_Id       := BI.EH_List;
       LP_Type           : constant Type_T        :=
         Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (Nat (32))));
       Have_Cleanup      : constant Boolean       :=
@@ -893,7 +929,7 @@ package body GNATLLVM.Blocks is
            and then (not Block_Stack.Table (J).Unprotected or else J = Block));
       LP_Inst           : GL_Value               := No_GL_Value;
       N_Dispatch_Froms  : Nat                    :=
-        (if Present (Lpad) then 1 else 0);
+        (if Present (BI.Landing_Pad) then 1 else 0);
       Next_BB           : Basic_Block_T;
       DDT               : D_D_Info;
       BB                : Basic_Block_T;
@@ -975,8 +1011,8 @@ package body GNATLLVM.Blocks is
       --  If somebody asked for landing pad, make one and set it as
       --  needing cleanup if it does.
 
-      if Present (Lpad) then
-         Position_Builder_At_End (Lpad);
+      if Present (BI.Landing_Pad) then
+         Position_Builder_At_End (BI.Landing_Pad);
          LP_Inst := Landing_Pad (LP_Type, Personality_Fn);
          if Have_Cleanup then
             Set_Cleanup (LP_Inst);
@@ -988,8 +1024,8 @@ package body GNATLLVM.Blocks is
       --  instruction, add them to it.  Also record what we've seen here
       --  for the following code.
 
-      if Present (EH_List) then
-         Handler := First_Non_Pragma (EH_List);
+      if Present (BI.EH_List) then
+         Handler := First_Non_Pragma (BI.EH_List);
          while Present (Handler) loop
             BB     := Create_Basic_Block;
             Choice := First (Exception_Choices (Handler));
@@ -1063,7 +1099,7 @@ package body GNATLLVM.Blocks is
             From_Idx  : Nat := 1;
 
          begin
-            if Present (Lpad) then
+            if Present (BI.Landing_Pad) then
                From_Vals (1) := LP_Inst;
                From_BBs  (1) := Get_Insert_Block;
                From_Idx      := 2;
@@ -1087,13 +1123,13 @@ package body GNATLLVM.Blocks is
          --  This is the simple case: nobody goes to us
 
          EH_Data := LP_Inst;
-         BB      := Lpad;
+         BB      := BI.Landing_Pad;
       end if;
 
       --  Generate handlers and the code to dispatch to them
 
       Next_BB := Create_Basic_Block;
-      if Present (EH_List) then
+      if Present (BI.EH_List) or else BI.At_End_Pass_Excptr then
 
          --  Extract the selector and the exception pointer
 
@@ -1111,18 +1147,20 @@ package body GNATLLVM.Blocks is
             if No (Get_Last_Instruction (Clauses.Table (J).BB)) then
                Position_Builder_At_End (Clauses.Table (J).BB);
                Push_Block;
+               Start_Block_Statements;
 
                declare
                   BI_Inner : Block_Info
                     renames Block_Stack.Table (Block_Stack.Last);
 
                begin
-                  BI_Inner.At_End_Proc      := End_Handler_Fn;
-                  BI_Inner.At_End_Parameter := Exc_Ptr;
-                  BI_Inner.Unprotected      := True;
+                  BI_Inner.At_End_Proc        := End_Handler_Fn;
+                  BI_Inner.At_End_Parameter   := Exc_Ptr;
+                  BI_Inner.At_End_Parameter_2 :=
+                    Call (Begin_Handler_Fn, A_Char_GL_Type, (1 => Exc_Ptr));
+                  BI_Inner.At_End_Pass_Excptr := True;
                end;
 
-               Call (Begin_Handler_Fn, (1 => Exc_Ptr));
                if Present (Clauses.Table (J).Param) then
                   declare
                      Param   : constant Entity_Id  := Clauses.Table (J).Param;
@@ -1141,6 +1179,7 @@ package body GNATLLVM.Blocks is
                Emit (Clauses.Table (J). Stmts);
                Maybe_Build_Br (Next_BB);
                Pop_Block;
+               Maybe_Build_Unreachable;
             end if;
          end loop;
 
@@ -1160,7 +1199,7 @@ package body GNATLLVM.Blocks is
       --  code, so no exception handler in this block is being entered.
 
       Position_Builder_At_End (BB);
-      Call_At_End (Block);
+      Call_At_End (Block, For_Exception => True);
 
       --  Finally, see if there's an outer block that has an "at end" or
       --  exception handlers.  Ignore any block that's no longer
@@ -1185,9 +1224,10 @@ package body GNATLLVM.Blocks is
                   BI.Dispatch_BB := Create_Basic_Block ("dispatch");
                end if;
 
-               Dispatch_Info.Append ((BI.Dispatch_BB, Get_Insert_Block,
-                                      EH_Data));
                Build_Fixups_From_To (Block - 1, J);
+               Dispatch_Info.Append ((Dispatch_BB  => BI.Dispatch_BB,
+                                      From_BB      => Get_Insert_Block,
+                                      From_EH_Data => EH_Data));
                Build_Br (BI.Dispatch_BB);
                Position_Builder_At_End (Next_BB);
                return;

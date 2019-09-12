@@ -621,6 +621,18 @@ package body GNATLLVM.Instructions is
       Discard (Build_Unreachable (IR_Builder));
    end Build_Unreachable;
 
+   -----------------------------
+   -- Maybe_Build_Unreachable --
+   -----------------------------
+
+   procedure Maybe_Build_Unreachable is
+   begin
+      if not Are_In_Dead_Code then
+         Build_Unreachable;
+      end if;
+
+   end Maybe_Build_Unreachable;
+
    ---------------
    -- Build_Phi --
    ---------------

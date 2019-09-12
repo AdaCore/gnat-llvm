@@ -54,7 +54,7 @@ package GNATLLVM.Blocks is
    --  Add an entry for a variable lifetime that ends at the end of this block
 
    procedure Start_Block_Statements
-     (At_End_Proc : Entity_Id; EH_List : List_Id)
+     (At_End_Proc : Entity_Id := Empty; EH_List : List_Id := No_List)
      with Pre => not Library_Level;
    --  Indicate that this is the start of a region of the block to be
    --  protected by the exception handlers and an At_End_Proc and provide

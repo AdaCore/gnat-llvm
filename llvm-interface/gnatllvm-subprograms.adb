@@ -1134,15 +1134,7 @@ package body GNATLLVM.Subprograms is
       end if;
 
       Pop_Block;
-
-      --  If we're in dead code here, it means that we made a label for the
-      --  end of the outermost block, but didn't do anything with it.  So
-      --  mark it as unreachable.
-
-      if not Are_In_Dead_Code then
-         Build_Unreachable;
-      end if;
-
+      Maybe_Build_Unreachable;
       Pop_Debug_Scope;
       Leave_Subp;
       Reset_Block_Tables;
@@ -1333,8 +1325,8 @@ package body GNATLLVM.Subprograms is
 
       In_Elab_Proc       := False;
       In_Elab_Proc_Stmts := True;
-      Start_Block_Statements
-        (Empty, (if No (Stmts) then No_List else Exception_Handlers (Stmts)));
+      Start_Block_Statements (EH_List => (if   No (Stmts) then No_List
+                                          else Exception_Handlers (Stmts)));
       Emit (S_List);
       Pop_Block;
       Build_Ret_Void;

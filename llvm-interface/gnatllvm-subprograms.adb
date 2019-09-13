@@ -952,10 +952,14 @@ package body GNATLLVM.Subprograms is
       Param           : Entity_Id;
 
    begin
-      --  If we're compiling this for inline, set the proper linkage
+      --  If we're compiling this for inline, set the proper linkage, which
+      --  depends on whether the function is marked Public or not.
 
       if For_Inline then
-         Set_Linkage (Func, Available_Externally_Linkage);
+         Set_Linkage (Func,
+                      (if   Is_Public (Def_Ident)
+                       then Available_Externally_Linkage
+                       else Internal_Linkage));
 
       --  If the linkage was weak external, change to weak
 
@@ -2298,6 +2302,7 @@ package body GNATLLVM.Subprograms is
       elsif No (LLVM_Func) then
          LLVM_Func := Add_Function (Actual_Name,
                                     Subp_Type, Full_GL_Type (Def_Ident));
+
          --  Define the appropriate linkage
 
          if not In_Extended_Main_Code_Unit (Def_Ident) then

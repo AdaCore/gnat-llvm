@@ -1177,9 +1177,8 @@ package body GNATLLVM.Blocks is
                end if;
 
                Emit (Clauses.Table (J). Stmts);
-               Maybe_Build_Br (Next_BB);
                Pop_Block;
-               Maybe_Build_Unreachable;
+               Maybe_Build_Br (Next_BB);
             end if;
          end loop;
 

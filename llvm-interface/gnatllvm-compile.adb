@@ -616,49 +616,7 @@ package body GNATLLVM.Compile is
 
          when N_Pragma =>
 
-            case Get_Pragma_Id (N) is
-
-               when Pragma_Reviewable =>
-                  if not Emit_Debug_Info then
-                     Error_Msg_N ("??must specify -g", N);
-                  end if;
-
-               when Pragma_Optimize =>
-
-                  case Chars (Expression
-                                (First (Pragma_Argument_Associations (N)))) is
-
-                     when Name_Off =>
-                        if Code_Opt_Level /= 0 then
-                           Error_Msg_N ("??must specify -O0", N);
-                        end if;
-
-                     when Name_Space =>
-                        if Size_Opt_Level = 0 then
-                           Error_Msg_N ("??must specify -Os or -Oz", N);
-                        end if;
-
-                     when Name_Time =>
-                        if Code_Opt_Level = 0 then
-                           Error_Msg_N ("??insufficient -O value", N);
-                        end if;
-
-                     when others =>
-                        pragma Assert (False);
-                  end case;
-
-               --  ??? These are the ones that Gigi supports and we
-               --  should support as well at some point.
-
-               when Pragma_Inspection_Point
-                  | Pragma_Loop_Optimize
-                  | Pragma_Warning_As_Error
-                  | Pragma_Warnings
-                  =>
-                  null;
-
-               when others => null;
-            end case;
+            Emit_Pragma (N);
 
          when N_Case_Statement =>
 

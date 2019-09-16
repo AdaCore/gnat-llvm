@@ -22,6 +22,7 @@ with Eval_Fat;   use Eval_Fat;
 with Exp_Code;   use Exp_Code;
 with Nlists;     use Nlists;
 with Sem_Aggr;   use Sem_Aggr;
+with Sem_Util;   use Sem_Util;
 with Snames;     use Snames;
 with Stringt;    use Stringt;
 with Uintp.LLVM; use Uintp.LLVM;
@@ -30,6 +31,7 @@ with Urealp;     use Urealp;
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
+with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
@@ -808,6 +810,58 @@ package body GNATLLVM.Exprs is
             Bits := Uint_0;
       end case;
    end Emit_For_Address;
+
+   -----------------
+   -- Emit_Pragma --
+   -----------------
+
+   procedure Emit_Pragma (N : Node_Id) is
+      PAAs : constant List_Id := Pragma_Argument_Associations (N);
+
+   begin
+      case Get_Pragma_Id (N) is
+
+         when Pragma_Reviewable =>
+            if not Emit_Debug_Info then
+               Error_Msg_N ("??must specify -g", N);
+            end if;
+
+         when Pragma_Optimize =>
+
+            case Chars (Expression (First (PAAs))) is
+
+               when Name_Off =>
+                  if Code_Opt_Level /= 0 then
+                     Error_Msg_N ("??must specify -O0", N);
+                  end if;
+
+               when Name_Space =>
+                  if Size_Opt_Level = 0 then
+                     Error_Msg_N ("??must specify -Os or -Oz", N);
+                  end if;
+
+               when Name_Time =>
+                  if Code_Opt_Level = 0 then
+                     Error_Msg_N ("??insufficient -O value", N);
+                  end if;
+
+               when others =>
+                  pragma Assert (False);
+            end case;
+
+            --  ??? These are the ones that Gigi supports and we
+            --  should support as well at some point.
+
+         when Pragma_Inspection_Point
+            | Pragma_Loop_Optimize
+            | Pragma_Warning_As_Error
+            | Pragma_Warnings
+            =>
+            null;
+
+         when others => null;
+      end case;
+   end Emit_Pragma;
 
    ------------------------------
    -- Emit_Attribute_Reference --

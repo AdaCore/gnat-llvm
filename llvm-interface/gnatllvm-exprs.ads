@@ -84,6 +84,10 @@ package GNATLLVM.Exprs is
      with Pre => Present (GT), Post => Present (Emit_Undef'Result);
    --  Emit an undef appropriate for a return value of type TE
 
+   procedure Emit_Pragma (N : Node_Id)
+     with Pre => Nkind (N) = N_Pragma;
+   --  Handle N_Pragma nodes
+
    function Emit_Attribute_Reference (N : Node_Id) return GL_Value
      with Pre  => Nkind (N) = N_Attribute_Reference,
           Post => Present (Emit_Attribute_Reference'Result);

@@ -112,6 +112,7 @@ package GNATLLVM.Utils is
    procedure Discard (V  : Value_T)        with Pre => Present (V);
    procedure Discard (T  : Type_T)         with Pre => Present (T);
    procedure Discard (BB : Basic_Block_T)  with Pre => Present (BB);
+   procedure Discard (B  : Boolean);
 
    function Get_Ext_Name (E : Entity_Id) return String
      with Pre => Present (E);

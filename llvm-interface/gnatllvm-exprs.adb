@@ -817,6 +817,7 @@ package body GNATLLVM.Exprs is
 
    procedure Emit_Pragma (N : Node_Id) is
       PAAs : constant List_Id := Pragma_Argument_Associations (N);
+      Expr : Node_Id;
 
    begin
       case Get_Pragma_Id (N) is
@@ -849,14 +850,25 @@ package body GNATLLVM.Exprs is
                   pragma Assert (False);
             end case;
 
-            --  ??? These are the ones that Gigi supports and we
-            --  should support as well at some point.
+         when Pragma_Compile_Time_Error | Pragma_Compile_Time_Warning =>
+
+            --  We need to force elaboration of any types here.  This should
+            --  be an expression that doesn't need any elaboration proc,
+            --  but testing to see that it doesn't will elaborate the types.
+
+            Expr := First (PAAs);
+            while Present (Expr) loop
+               Discard (Is_No_Elab_Needed (Expression (Expr)));
+               Next (Expr);
+            end loop;
 
          when Pragma_Inspection_Point
             | Pragma_Loop_Optimize
             | Pragma_Warning_As_Error
-            | Pragma_Warnings
-            =>
+            | Pragma_Warnings =>
+            --  ??? These are the ones that Gigi supports and we may want
+            --  to support as well at some point.
+
             null;
 
          when others => null;

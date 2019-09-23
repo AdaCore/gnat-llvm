@@ -514,42 +514,40 @@ package GNATLLVM.Instructions is
                    and then Is_Floating_Point_Type (RHS),
            Post => Is_Floating_Point_Type (F_Div'Result);
 
+   function Shift
+     (V              : GL_Value;
+      Count          : GL_Value;
+      Left           : Boolean;
+      Arithmetic     : Boolean;
+      Allow_Overflow : Boolean;
+      Name           : String := "") return GL_Value
+     with Pre  => Present (V) and then Present (Count),
+          Post => Present (Shift'Result);
+
    function Shl
      (V              : GL_Value;
       Count          : GL_Value;
       Name           : String  := "";
       Allow_Overflow : Boolean := False) return GL_Value
    is
-      (Set_Alignment
-         (G_From ((if   Allow_Overflow
-                   then Shl (IR_Builder, LLVM_Value (V),
-                             LLVM_Value (Count), Name)
-                   else Set_Arith_Attrs
-                          (Shl (IR_Builder, LLVM_Value (V), LLVM_Value (Count),
-                                Name),
-                           V)),
-                     V),
-          BPU))
+     (Shift (V, Count, Left => True, Arithmetic => False,
+             Allow_Overflow => Allow_Overflow, Name => Name))
       with Pre  => Present (V) and then Present (Count),
            Post => Present (Shl'Result);
 
    function L_Shr
      (V, Count : GL_Value; Name : String := "") return GL_Value
    is
-     (Set_Alignment
-        (G_From (L_Shr (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name),
-                 V),
-         BPU))
+     (Shift (V, Count, Left => False, Arithmetic => False,
+             Allow_Overflow => False, Name => Name))
       with Pre  => Present (V) and then Present (Count),
            Post => Present (L_Shr'Result);
 
    function A_Shr
      (V, Count : GL_Value; Name : String := "") return GL_Value
    is
-     (Set_Alignment
-        (G_From (A_Shr (IR_Builder, LLVM_Value (V), LLVM_Value (Count), Name),
-                 V),
-         BPU))
+     (Shift (V, Count, Left => False, Arithmetic => True,
+             Allow_Overflow => False, Name => Name))
       with Pre  => Present (V) and then Present (Count),
            Post => Present (A_Shr'Result);
 

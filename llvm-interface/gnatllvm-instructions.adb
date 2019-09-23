@@ -443,6 +443,79 @@ package body GNATLLVM.Instructions is
       return Result;
    end Div;
 
+   -----------
+   -- Shift --
+   -----------
+
+   function Shift
+     (V              : GL_Value;
+      Count          : GL_Value;
+      Left           : Boolean;
+      Arithmetic     : Boolean;
+      Allow_Overflow : Boolean;
+      Name           : String := "") return GL_Value
+   is
+      VV     : constant Value_T := LLVM_Value (V);
+      CV     : constant Value_T := LLVM_Value (Count);
+      RV     : Value_T;
+      Result : GL_Value;
+
+   begin
+      --  Constant fold shifting by zero
+
+      if Is_Const_Int_Value (Count, 0) then
+         return V;
+      end if;
+
+      --  Perform the shift desired shift operation
+
+      if Left then
+         RV := Shl   (IR_Builder, VV, CV, Name);
+      elsif Arithmetic then
+         RV := A_Shr (IR_Builder, VV, CV, Name);
+      else
+         RV := L_Shr (IR_Builder, VV, CV, Name);
+      end if;
+
+      --  For left shift, set NUW/NSW unless we're told not to
+
+      if Left and then not Allow_Overflow then
+         RV := Set_Arith_Attrs (RV, V);
+      end if;
+
+      --  Build the result and propagate the overflow indication.  We're
+      --  not going to check for a possible constant overflow in the
+      --  shift itself.
+
+      Result := G_From (RV, V);
+      Mark_Overflowed (Result, Overflowed (V) or else Overflowed (Count));
+
+      --  If count is a positive constant, we can compute the alignment of
+      --  the result from the input.  Otherwise we don't know anything
+      --  about the alignment.
+
+      if Is_A_Const_Int (Count) and then Get_Const_Int_Value (Count) > 0 then
+         if Get_Const_Int_Value (Count) >= 10 then
+            Set_Alignment (Result, (if Left then Max_Align else BPU));
+         else
+            declare
+               Ratio : constant Nat :=
+                 2 ** Integer (Get_Const_Int_Value (Count));
+
+            begin
+               Set_Alignment
+                 (Result,
+                  (if   Left then Nat'Min (Alignment (V) * Ratio, Max_Align)
+                   else Nat'Max (Alignment (V) / Ratio, BPU)));
+            end;
+         end if;
+      else
+         Set_Alignment (Result, BPU);
+      end if;
+
+      return Result;
+   end Shift;
+
    ---------------------
    -- Trunc_Oveflowed --
    ---------------------

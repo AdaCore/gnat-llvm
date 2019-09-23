@@ -566,6 +566,7 @@ package GNATLLVM.GLValue is
       Overflowed  : Boolean := False) return GL_Value
    is
      (G (V, GT, Relationship_For_Ref (GT),
+         Alignment   => Alignment,
          Is_Pristine => Is_Pristine,
          Is_Volatile => Is_Volatile,
          Is_Atomic   => Is_Atomic,

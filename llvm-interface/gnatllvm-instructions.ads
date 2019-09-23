@@ -379,16 +379,18 @@ package GNATLLVM.Instructions is
                   and then Is_Discrete_Or_Fixed_Point_Type (RHS),
           Post => Is_Discrete_Or_Fixed_Point_Type (Mul'Result);
 
+   function Div
+     (LHS, RHS : GL_Value;
+      Signed   : Boolean;
+      Name     : String := "") return GL_Value
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
+                  and then Is_Discrete_Or_Fixed_Point_Type (RHS),
+          Post => Is_Discrete_Or_Fixed_Point_Type (Div'Result);
+
    function S_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (Set_Alignment
-        (Mark_Overflowed
-           (G_From (S_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                           Name),
-                    LHS),
-            Overflowed (LHS) or else Overflowed (RHS)),
-         BPU))
+     (Div (LHS, RHS, True, Name))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (S_Div'Result);
@@ -396,13 +398,7 @@ package GNATLLVM.Instructions is
    function U_Div
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (Set_Alignment
-        (Mark_Overflowed
-           (G_From (U_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                           Name),
-                    LHS),
-            Overflowed (LHS) or else Overflowed (RHS)),
-         BPU))
+     (Div (LHS, RHS, False, Name))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (U_Div'Result);
@@ -416,7 +412,7 @@ package GNATLLVM.Instructions is
                            Name),
                     LHS),
             Overflowed (LHS) or else Overflowed (RHS)),
-         BPU))
+         Nat'Min (Alignment (LHS), Alignment (RHS))))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (S_Rem'Result);
@@ -430,7 +426,7 @@ package GNATLLVM.Instructions is
                            Name),
                     LHS),
             Overflowed (LHS) or else Overflowed (RHS)),
-         BPU))
+         Nat'Min (Alignment (LHS), Alignment (RHS))))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (LHS)
                    and then Is_Discrete_Or_Fixed_Point_Type (RHS),
            Post => Is_Discrete_Or_Fixed_Point_Type (U_Rem'Result);

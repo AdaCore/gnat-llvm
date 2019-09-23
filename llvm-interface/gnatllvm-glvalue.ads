@@ -858,6 +858,10 @@ package GNATLLVM.GLValue is
      (ULL (Const_Int_Get_S_Ext_Value (LLVM_Value (V))))
      with Pre => Is_A_Const_Int (V);
 
+   function Get_Const_Int_Value_Nat (V : GL_Value) return Nat is
+     (Nat (Const_Int_Get_S_Ext_Value (LLVM_Value (V))))
+     with Pre => Is_A_Const_Int (V);
+
    function UI_From_GL_Value (V : GL_Value) return Uint is
      (UI_From_LLI (Get_Const_Int_Value (V)))
      with Pre => Is_A_Const_Int (V);
@@ -940,9 +944,9 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V) or else Is_A_Global_Variable (V), Inline;
    --  Add the DSOlocal attribute to a global (variable or function)
 
-   function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
+   function Is_Const_Int_Value (V : GL_Value; Val : LLI) return Boolean is
      (Is_A_Const_Int (V) and then not Overflowed (V)
-      and then Get_Const_Int_Value_ULL (V) = Val)
+      and then Get_Const_Int_Value (V) = Val)
      with Pre => Present (V);
    --  Return True if V is a constant integer of value Val
 

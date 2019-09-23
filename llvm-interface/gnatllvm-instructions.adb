@@ -396,6 +396,53 @@ package body GNATLLVM.Instructions is
 
    end Mul;
 
+   ---------
+   -- Div --
+   ---------
+
+   function Div
+     (LHS, RHS : GL_Value;
+      Signed   : Boolean;
+      Name     : String := "") return GL_Value
+   is
+      Result : GL_Value;
+
+   begin
+      --  Constant fold dividing by one
+
+      if Is_Const_Int_Value (RHS, 1) then
+         return LHS;
+      end if;
+
+      --  Otherwise, compute the value and check for overflow
+
+      Result := G_From ((if Signed
+                         then S_Div (IR_Builder, LLVM_Value (LHS),
+                                     LLVM_Value (RHS), Name)
+                         else U_Div (IR_Builder, LLVM_Value (LHS),
+                                     LLVM_Value (RHS), Name)),
+                        LHS);
+      Mark_Overflowed (Result,
+                       Overflowed (LHS) or else Overflowed (RHS)
+                       or else (Signed and Is_Const_Int_Value (RHS, -1)));
+
+      --  If RHS is a constant power of two, we can compute the alignment
+      --  of the result from the input, but only check for small powers of
+      --  two.  Otherwise we don't know anything about the alignment.
+
+      if Is_Const_Int_Value (RHS, 2) or else Is_Const_Int_Value (RHS, 4)
+        or else Is_Const_Int_Value (RHS, 8)
+      then
+         Set_Alignment
+           (Result, Nat'Max (Alignment (LHS) / Get_Const_Int_Value_Nat (RHS),
+                             BPU));
+      else
+         Set_Alignment (Result, BPU);
+      end if;
+
+      return Result;
+   end Div;
+
    ---------------------
    -- Trunc_Oveflowed --
    ---------------------

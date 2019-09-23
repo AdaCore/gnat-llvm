@@ -85,6 +85,17 @@ package body GNATLLVM.GLValue is
          return False;
       end if;
 
+      --  The alignment must be between BPU and the largest alignment and
+      --  be a multiple of BPU.
+
+      if V.Alignment < BPU or else V.Alignment > Max_Align
+        or else V.Alignment mod BPU /= 0
+      then
+         return False;
+      end if;
+
+      --  The rest of our tests are relationship-specific
+
       case V.Relationship is
          when Data | Boolean_And_Data =>
 
@@ -156,6 +167,26 @@ package body GNATLLVM.GLValue is
      (LHS >= Const_Int (LHS, UI_From_Int (RHS)));
    function "=" (LHS : GL_Value; RHS : Int) return Boolean is
      (LHS = Const_Int (LHS, UI_From_Int (RHS)));
+
+   -------------------
+   -- Set_Alignment --
+   -------------------
+
+   procedure Set_Alignment (V : in out GL_Value; Align : Nat) is
+   begin
+      V.Alignment := Align;
+   end Set_Alignment;
+
+   -------------------
+   -- Set_Alignment --
+   -------------------
+
+   function Set_Alignment (V : GL_Value; Align : Nat) return GL_Value is
+      New_V : GL_Value := V;
+   begin
+      Set_Alignment (New_V, Align);
+      return New_V;
+   end Set_Alignment;
 
    ------------------
    -- Not_Pristine --
@@ -688,11 +719,11 @@ package body GNATLLVM.GLValue is
                T       : constant Type_T        := Type_Of (V);
                Promote : constant Basic_Block_T := Maybe_Promote_Alloca (T);
                Inst    : constant Value_T       := Alloca (IR_Builder, T, "");
+               Align   : constant Nat           := Set_Object_Align (Inst, GT);
 
             begin
-               Set_Object_Align (Inst, GT, Empty);
                Done_Promoting_Alloca (Inst, Promote, T);
-               Result := G (Inst, GT, Ref (Our_R));
+               Result := G (Inst, GT, Ref (Our_R), Alignment => Align);
                Store (V, Result);
                return Result;
             end;
@@ -985,23 +1016,28 @@ package body GNATLLVM.GLValue is
    -- Set_Object_Align --
    ----------------------
 
-   procedure Set_Object_Align (Obj : Value_T; GT : GL_Type; E : Entity_Id) is
+   function Set_Object_Align
+     (Obj : Value_T; GT : GL_Type; E : Entity_Id := Empty) return Nat
+   is
       GT_Align : constant Nat := Get_Type_Alignment (GT);
       E_Align  : constant Nat :=
         (if   Present (E) and then Known_Alignment (E)
          then UI_To_Int (Alignment (E)) else BPU);
+      Align    : constant Nat := Nat'Max (GT_Align, E_Align);
 
    begin
-      Set_Alignment (Obj, unsigned (To_Bytes (Nat'Max (GT_Align, E_Align))));
+      Set_Alignment (Obj, unsigned (To_Bytes (Align)));
+      return Nat'Min (Align, Max_Align);
    end Set_Object_Align;
 
    ----------------------
    -- Set_Object_Align --
    ----------------------
 
-   procedure Set_Object_Align (Obj : GL_Value; GT : GL_Type; E : Entity_Id) is
+   function Set_Object_Align
+     (Obj : GL_Value; GT : GL_Type; E : Entity_Id := Empty) return Nat is
    begin
-      Set_Object_Align (LLVM_Value (Obj), GT, E);
+      return Set_Object_Align (LLVM_Value (Obj), GT, E);
    end Set_Object_Align;
 
    ---------------
@@ -1031,7 +1067,7 @@ package body GNATLLVM.GLValue is
    ----------------
 
    function Const_Null (GT : GL_Type) return GL_Value is
-     (G (Const_Null (Type_Of (GT)), GT));
+     (G (Const_Null (Type_Of (GT)), GT, Alignment => Max_Align));
 
    ----------------------
    -- Const_Null_Alloc --
@@ -1040,14 +1076,16 @@ package body GNATLLVM.GLValue is
    function Const_Null_Alloc (GT : GL_Type) return GL_Value is
      (G (Const_Null (Type_For_Relationship
                        (GT, Deref (Relationship_For_Alloc (GT)))),
-         GT, Deref (Relationship_For_Alloc (GT))));
+         GT, Deref (Relationship_For_Alloc (GT)),
+         Alignment => Max_Align));
 
    --------------------
    -- Const_Null_Ref --
    --------------------
 
    function Const_Null_Ref (GT : GL_Type) return GL_Value is
-     (G_Ref (Const_Null (Create_Access_Type_To (GT)), GT));
+     (G_Ref (Const_Null (Create_Access_Type_To (GT)), GT,
+             Alignment => Max_Align));
 
    ----------------
    -- Const_True --
@@ -1063,7 +1101,7 @@ package body GNATLLVM.GLValue is
 
    function Const_False return GL_Value is
      (G (Const_Int (Bit_T, ULL (0), False), Boolean_GL_Type,
-         Boolean_Data));
+         Boolean_Data, Alignment => Max_Align));
 
    ---------------
    -- Const_Int --
@@ -1079,19 +1117,24 @@ package body GNATLLVM.GLValue is
    function Const_Int
      (V : GL_Value; N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Related_Type (V), N, Sign_Extend));
+     (Set_Alignment (Const_Int (Related_Type (V), N, Sign_Extend),
+                     ULL_Align_Bytes (N)));
 
    ---------------
    -- Const_Int --
    ---------------
 
    function Const_Int (GT : GL_Type; N : Uint) return GL_Value is
-      Result  : constant GL_Value := G (Const_Int (Type_Of (GT), N), GT);
+      Result  : GL_Value          := G (Const_Int (Type_Of (GT), N), GT);
       Val     : constant LLI      := Get_Const_Int_Value (Result);
       Bitsize : constant Integer  :=
         Integer (Get_Scalar_Bit_Size (Type_Of (Result)));
 
    begin
+      --  Set the alignment from the value
+
+      Set_Alignment (Result, ULL_Align_Bytes (ULL (Val)));
+
       --  We're OK if this is a modular type or if the value matches.
 
       if Is_Modular_Integer_Type (GT) or else UI_From_LLI (Val) = N then
@@ -1101,21 +1144,22 @@ package body GNATLLVM.GLValue is
       --  we've overflowed.
 
       elsif not Is_Unsigned_Type (GT) or else Bitsize >= ULL'Size then
-         return Mark_Overflowed (Result, True);
-
-      end if;
+         Mark_Overflowed (Result);
 
       --  Otherwise, mask off any non-significant bits (that were
       --  sign-extended) and see if we match.
 
-      declare
-         Mask   : constant ULL := (ULL (2) ** Bitsize) - 1;
-         Masked : constant ULL := Get_Const_Int_Value_ULL (Result) and Mask;
+      else
+         declare
+            Mask   : constant ULL := (ULL (2) ** Bitsize) - 1;
+            Masked : constant ULL := Get_Const_Int_Value_ULL (Result) and Mask;
 
-      begin
-         return Mark_Overflowed (Result,
-                                 UI_From_LLI (LLI (Masked)) /= N);
-      end;
+         begin
+            Mark_Overflowed (Result, UI_From_LLI (LLI (Masked)) /= N);
+         end;
+      end if;
+
+      return Result;
    end Const_Int;
 
    ---------------
@@ -1127,7 +1171,8 @@ package body GNATLLVM.GLValue is
       N           : unsigned;
       Sign_Extend : Boolean := False) return GL_Value
    is
-     (Const_Int (Related_Type (V), ULL (N), Sign_Extend));
+     (Set_Alignment (Const_Int (Related_Type (V), ULL (N), Sign_Extend),
+                     ULL_Align_Bytes (ULL (N))));
 
    ---------------
    -- Const_Int --
@@ -1136,7 +1181,8 @@ package body GNATLLVM.GLValue is
    function Const_Int
      (GT : GL_Type; N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is
-     (G (Const_Int (Type_Of (GT), N, Sign_Extend => Sign_Extend), GT));
+     (G (Const_Int (Type_Of (GT), N, Sign_Extend => Sign_Extend), GT,
+         Alignment => ULL_Align_Bytes (N)));
 
    ----------------
    -- Const_Real --
@@ -1791,6 +1837,9 @@ package body GNATLLVM.GLValue is
 
       Dump_LLVM_Value (V.Value);
       Dump_LLVM_Type (Type_Of (V.Value));
+      Write_Str ("Align=");
+      Write_Int (V.Alignment);
+      Write_Str (" ");
       if Is_Pristine (V) then
          Write_Str ("Pristine ");
       end if;

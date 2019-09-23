@@ -620,9 +620,9 @@ package body GNATLLVM.Types.Create is
    function Validate_Alignment
      (E : Entity_Id; Align : Uint; Current_Align : Nat) return Uint
    is
-      TE        : constant Entity_Id :=
+      TE              : constant Entity_Id :=
         (if Is_Type (E) then E else Full_Etype (E));
-      Max_Align : constant Uint      := UI_From_Int (2 ** 29);
+      Max_Valid_Align : constant Uint      := UI_From_Int (2 ** 29);
       --  This is the maximum permitted alignment, not the maximum default
       --  alignment that's assigned to a type (which is
       --  Get_Maximum_Alignment).
@@ -663,13 +663,13 @@ package body GNATLLVM.Types.Create is
       --  maximum allowed, give an error.  Otherwise, we try to use the new
       --  alignment if one is specified.
 
-      if not UI_Is_In_Int_Range (Align) or else Align > Max_Align then
+      if not UI_Is_In_Int_Range (Align) or else Align > Max_Valid_Align then
          if not No_Error then
             Error_Msg_NE_Num ("largest supported alignment for& is ^",
-                              N, E, Max_Align);
+                              N, E, Max_Valid_Align);
          end if;
 
-         return Max_Align;
+         return Max_Valid_Align;
 
       elsif Present (Align) and then Align /= 0 then
          New_Align := UI_To_Int (Align) * BPU;

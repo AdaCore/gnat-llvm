@@ -1571,7 +1571,10 @@ package body GNATLLVM.Variables is
          Process_Pragmas      (Def_Ident, LLVM_Var);
 
          if not Is_Ref then
-            Set_Object_Align  (LLVM_Var, GT, Def_Ident);
+            Set_Alignment (LLVM_Var,
+                           Set_Object_Align (LLVM_Var, GT, Def_Ident));
+         else
+            Set_Alignment (LLVM_Var, Get_Type_Alignment (Type_Of (LLVM_Var)));
          end if;
 
          if not DSO_Preemptable then

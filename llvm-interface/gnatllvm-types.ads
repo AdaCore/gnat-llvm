@@ -252,6 +252,18 @@ package GNATLLVM.Types is
      --  we need the size, including padding.  This is important for some
      --  of the FP types.
 
+   function To_Bytes (Size : Nat) return Nat is
+     ((Size + (BPU - 1)) / BPU);
+
+   function To_Bytes (Size : ULL) return ULL is
+     ((Size + (ULL (BPU) - 1)) / ULL (BPU));
+
+   function To_Bits (Size : Nat) return Nat is
+     (Size * BPU);
+
+   function To_Bits (Size : ULL) return ULL is
+     (Size * ULL (BPU));
+
    function Get_Type_Size (T : Type_T) return GL_Value is
      (Size_Const_Int (Get_Type_Size (T)))
      with Pre => Present (T), Post => Present (Get_Type_Size'Result);
@@ -267,7 +279,7 @@ package GNATLLVM.Types is
    --  Return the size of an LLVM type, in bits
 
    function Get_Type_Alignment (T : Type_T) return ULL is
-     (ULL (ABI_Alignment_Of_Type (Module_Data_Layout, T)) * ULL (BPU))
+     (To_Bits (ULL (ABI_Alignment_Of_Type (Module_Data_Layout, T))))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
@@ -280,16 +292,14 @@ package GNATLLVM.Types is
      (Size_Const_Int (ULL (Nat'(Get_Type_Alignment (T)))));
    --  Return the alignment of an LLVM type, in bytes, as an LLVM constant
 
-   function To_Bytes (Size : Nat) return Nat is
-     ((Size + (BPU - 1)) / BPU);
-
-   function To_Bytes (Size : ULL) return ULL is
-     ((Size + (ULL (BPU) - 1)) / ULL (BPU));
-
-   function Max_Align (C : ULL) return Nat;
+   function ULL_Align (C : ULL) return Nat;
    --  Return the maximum alignment that a constant C, representing a
    --  position or offset, has.  This is the highest power of two that
    --  divides C up to the maximum alignment.
+
+   function ULL_Align_Bytes (C : ULL) return Nat is
+     (ULL_Align (C * ULL (BPU)));
+   --  Likewise, but ULL represents a number of bytes, not bits
 
    function Is_Loadable_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);

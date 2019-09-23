@@ -327,7 +327,7 @@ package body GNATLLVM.Records.Create is
       --  Used for a cache in Find_Field_In_Entity_List to avoid quadratic
       --  behavior.
 
-      Split_Align    : Nat                 := Get_Maximum_Alignment * BPU;
+      Split_Align    : Nat                 := Max_Align;
       --  We need to split an LLVM fragment type if the alignment of the
       --  next field is greater than both this and Last_Align.  This occurs
       --  for variant records; see details there.  It also occurs for the

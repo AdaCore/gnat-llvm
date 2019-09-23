@@ -207,9 +207,10 @@ package GNATLLVM is
    Int_32_Type       : Entity_Id;
    --  Type for 32-bit integers (for GEP indexes)
 
-   BPU                : Int;
+   BPU                : Nat;
    Bit_T              : Type_T;
    Byte_T             : Type_T;
+   Max_Align          : Nat;
 
    --  GNAT LLVM switches
 

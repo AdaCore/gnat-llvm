@@ -18,7 +18,6 @@
 with Ada.Containers.Generic_Sort;
 
 with Elists;     use Elists;
-with Get_Targ;   use Get_Targ;
 with Nlists;     use Nlists;
 with Output;     use Output;
 with Repinfo;    use Repinfo;
@@ -496,7 +495,7 @@ package body GNATLLVM.Records is
             Must_Align := BPU;
             Is_Align   :=
               (if   Sz_Is_Const (Total_Size)
-               then Max_Align (Sz_Const_Val (Total_Size + This_Size))
+               then ULL_Align (Sz_Const_Val (Total_Size + This_Size))
                else Nat'(BPU));
 
          --  For a GNAT type, do similar, except that we know more about
@@ -539,7 +538,7 @@ package body GNATLLVM.Records is
 
          else
             Must_Align := BPU;
-            Is_Align   := Get_Maximum_Alignment * BPU;
+            Is_Align   := Max_Align;
             This_Size  := Sz_Const (0);
          end if;
 
@@ -683,13 +682,10 @@ package body GNATLLVM.Records is
          Max_Size    : Boolean        := False;
          No_Padding  : Boolean        := False) return Result
       is
-         Our_BPU      : constant Nat   := BPU;
-         --  ??? The above shouldn't be needed, but we get a weird error
          Total_Size   : Result         :=
            (if Present (In_Size) then In_Size else Sz_Const (0));
          Cur_Align    : Nat            :=
-           (if   Present (In_Size) then Our_BPU
-            else Get_Maximum_Alignment * Our_BPU);
+           (if   Present (In_Size) then BPU else Max_Align);
          Cur_Idx      : Record_Info_Id :=
            (if    Present (Start_Idx) then Start_Idx
             elsif Present (TE) then Get_Record_Info (TE)
@@ -1344,8 +1340,7 @@ package body GNATLLVM.Records is
       R_Align : constant Nat       :=
         (if    Known_Alignment (TE) then UI_To_Int (Alignment (TE)) * BPU
          elsif Known_RM_Size (TE) and then Strict_Alignment (TE)
-         then  Max_Align (UI_To_ULL (RM_Size (TE)))
-         else  Get_Maximum_Alignment * BPU);
+         then  ULL_Align (UI_To_ULL (RM_Size (TE))) else  Max_Align);
       --  If an alignment is specified for the record, use it.  If not, but
       --  a size is specified for the record and we require strict alignment,
       --  derive the alignment from that.  Otherwise, the only contributions

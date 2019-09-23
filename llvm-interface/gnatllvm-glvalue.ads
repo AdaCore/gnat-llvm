@@ -330,6 +330,19 @@ package GNATLLVM.GLValue is
       Relationship         : GL_Relationship;
       --  The relationship between Value and Typ.
 
+      Alignment            : Nat;
+      --  The maximum alignment, expressed in bits, and no larger than the
+      --  largest supported alignment, that the represented value is known
+      --  to have if used as an address.  This corresponds to the largest
+      --  power of two known to divide the value multiplied by the number
+      --  of bits per unit.  If we know nothing about this value, the
+      --  alignment is BPU.  If this value is the address of a variable, we
+      --  set the alignment to that of the variables.  If we have a pointer
+      --  to the type, either by dereferencing an access type or as a
+      --  parameter to or return value from a subprogram, we initialize
+      --  this to the alignment of the type.  For other operations (e.g.,
+      --  arithmetic), we track the effect on the alignment.
+
       Is_Pristine          : Boolean;
       --  Set when this value has just been allocated and there's no chance
       --  yet of it being written.  We know that no expression can conflict
@@ -350,6 +363,11 @@ package GNATLLVM.GLValue is
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make
    --  a subtype for that purpose.
+
+   function "=" (V1, V2 : GL_Value_Base) return Boolean is
+     (V1.Value = V2.Value and then V1.Typ = V2.Typ);
+   --  Two GL_Types are the same if their LLVM values and GL_types are
+   --  the same.  We don't want to compare flags.
 
    function GL_Value_Is_Valid (V : GL_Value_Base) return Boolean;
    --  Return whether V is a valid GL_Value or not
@@ -375,42 +393,41 @@ package GNATLLVM.GLValue is
                                                      Access_GL_Value_Array);
 
    No_GL_Value : constant GL_Value :=
-     (No_Value_T, No_GL_Type, Data, False, False, False, False);
+     (No_Value_T, No_GL_Type, Data, BPU, False, False, False, False);
 
    function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
    function Present (V : GL_Value) return Boolean      is (V /= No_GL_Value);
 
    --  Define basic accessors for components of GL_Value
 
-   function LLVM_Value (V : GL_Value)   return Value_T is
+   function LLVM_Value (V : GL_Value)    return Value_T is
      (V.Value)
      with Pre => Present (V), Post => Present (LLVM_Value'Result);
    --  Return the LLVM value in the GL_Value
 
-   function Related_Type (V : GL_Value) return GL_Type is
+   function Related_Type (V : GL_Value)  return GL_Type is
      (V.Typ)
      with Pre => Present (V), Post => Present (Related_Type'Result);
    --  Return the GL_Type to which V is related, irrespective of the
    --  relationship.
 
-   function Relationship (V : GL_Value) return GL_Relationship is
+   function Relationship (V : GL_Value)  return GL_Relationship is
      (V.Relationship)
      with Pre => Present (V);
 
-   function Is_Pristine (V : GL_Value)  return Boolean is
-     (V.Is_Pristine)
+   function Alignment    (V : GL_Value)  return Nat     is (V.Alignment)
      with Pre => Present (V);
 
-   function Is_Volatile (V : GL_Value)  return Boolean is
-     (V.Is_Volatile)
+   function Is_Pristine  (V : GL_Value)  return Boolean is (V.Is_Pristine)
      with Pre => Present (V);
 
-   function Is_Atomic (V : GL_Value)  return Boolean is
-     (V.Is_Atomic)
+   function Is_Volatile  (V : GL_Value)  return Boolean is (V.Is_Volatile)
      with Pre => Present (V);
 
-   function Overflowed (V : GL_Value)  return Boolean is
-     (V.Overflowed)
+   function Is_Atomic    (V : GL_Value)  return Boolean is (V.Is_Atomic)
+     with Pre => Present (V);
+
+   function Overflowed   (V : GL_Value)  return Boolean is (V.Overflowed)
      with Pre => Present (V);
 
    --  Define functions about relationships
@@ -464,13 +481,14 @@ package GNATLLVM.GLValue is
      (V           : Value_T;
       GT          : GL_Type;
       R           : GL_Relationship := Data;
+      Alignment   : Nat             := BPU;
       Is_Pristine : Boolean         := False;
       Is_Volatile : Boolean         := False;
       Is_Atomic   : Boolean         := False;
       Overflowed  : Boolean         := False) return GL_Value is
-     ((V, GT, R, Is_Pristine, Is_Volatile, Is_Atomic, Overflowed))
+     ((V, GT, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic, Overflowed))
      with Pre => Present (V) and then Present (GT);
-   --  Raw constructor that allow full specification of all fields
+   --  Raw constructor that allows full specification of all fields
 
    function GM
      (V  : Value_T;
@@ -478,10 +496,11 @@ package GNATLLVM.GLValue is
       R  : GL_Relationship := Data;
       GV : GL_Value) return GL_Value is
      (G (V, GT, R,
+         Alignment   => Alignment   (GV),
          Is_Pristine => Is_Pristine (GV),
          Is_Volatile => Is_Volatile (GV),
-         Is_Atomic   => Is_Atomic (GV),
-         Overflowed  => Overflowed (GV)))
+         Is_Atomic   => Is_Atomic   (GV),
+         Overflowed  => Overflowed  (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
           Post => Present (GM'Result);
    --  Likewise, but copy all but type and relationship from an existing value
@@ -540,6 +559,7 @@ package GNATLLVM.GLValue is
    function G_Ref
      (V           : Value_T;
       GT          : GL_Type;
+      Alignment   : Nat     := BPU;
       Is_Pristine : Boolean := False;
       Is_Volatile : Boolean := False;
       Is_Atomic   : Boolean := False;
@@ -559,13 +579,22 @@ package GNATLLVM.GLValue is
      (V : Value_T; GT : GL_Type; GV : GL_Value) return GL_Value
    is
      (G_Ref (V, GT,
+             Alignment   => Alignment   (GV),
              Is_Pristine => Is_Pristine (GV),
              Is_Volatile => Is_Volatile (GV),
-             Is_Atomic   => Is_Atomic (GV),
-             Overflowed  => Overflowed (GV)))
+             Is_Atomic   => Is_Atomic   (GV),
+             Overflowed  => Overflowed  (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
           Post => Is_Reference (GM_Ref'Result);
    --  Likewise, but copy the rest of the attributes from GV
+
+   procedure Set_Alignment (V : in out GL_Value; Align : Nat)
+     with Pre => Present (V), Post => Alignment (V) = Align;
+   --  Set the alignment of V to the specified value
+
+   function Set_Alignment (V : GL_Value; Align : Nat) return GL_Value
+     with Pre => Present (V), Post => Alignment (Set_Alignment'Result) = Align;
+   --  Set the alignment of V to the specified value
 
    procedure Not_Pristine (V : in out GL_Value)
      with Pre => Present (V), Post => not Is_Pristine (V),
@@ -932,7 +961,8 @@ package GNATLLVM.GLValue is
    function Get_Undef_Relationship
      (GT : GL_Type; R : GL_Relationship) return GL_Value
    is
-     (G (Get_Undef (Type_For_Relationship (GT, R)), GT, R, True))
+     (G (Get_Undef (Type_For_Relationship (GT, R)), GT, R,
+         Is_Pristine => True))
      with Pre  => Present (GT),
           Post => Present (Get_Undef_Relationship'Result);
 
@@ -1075,11 +1105,14 @@ package GNATLLVM.GLValue is
    function Pred_FP (V : GL_Value) return GL_Value
      with Pre => Present (V), Post => Present (Pred_FP'Result), Inline;
 
-   procedure Set_Object_Align (Obj : Value_T; GT : GL_Type; E : Entity_Id)
+   function Set_Object_Align
+     (Obj : Value_T; GT : GL_Type; E : Entity_Id := Empty) return Nat
      with Pre => Present (Obj) and then Present (GT), Inline;
-   procedure Set_Object_Align (Obj : GL_Value; GT : GL_Type; E : Entity_Id)
+   function Set_Object_Align
+     (Obj : GL_Value; GT : GL_Type; E : Entity_Id := Empty) return Nat
      with Pre => Present (Obj) and then Present (GT), Inline;
    --  Set the alignment of alloca inst or global from GT and E (if present)
+   --  and return the resulting alignment (in bits).
 
    function Block_Address
      (Func : GL_Value; BB : Basic_Block_T) return GL_Value

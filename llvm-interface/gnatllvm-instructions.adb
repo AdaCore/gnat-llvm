@@ -116,11 +116,12 @@ package body GNATLLVM.Instructions is
       Promote : constant Basic_Block_T   := Maybe_Promote_Alloca (T);
       Inst    : constant Value_T         :=
         Alloca (IR_Builder, T, Get_Alloca_Name (Def_Ident, Name));
+      Align   : constant Nat             :=
+        Set_Object_Align (Inst, GT, Def_Ident);
 
    begin
-      Set_Object_Align (Inst, GT, Def_Ident);
       Done_Promoting_Alloca (Inst, Promote, T);
-      return G (Inst, GT, R, Is_Pristine => True);
+      return G (Inst, GT, R, Is_Pristine => True, Alignment => Align);
    end Alloca;
 
    ------------------
@@ -138,11 +139,12 @@ package body GNATLLVM.Instructions is
       Inst    : constant Value_T       :=
         Array_Alloca (IR_Builder, Type_Of (GT), LLVM_Value (Num_Elts),
                       Get_Alloca_Name (Def_Ident, Name));
+      Align   : constant Nat             :=
+        Set_Object_Align (Inst, GT, Def_Ident);
 
    begin
-      Set_Object_Align (Inst, GT, Def_Ident);
       Done_Promoting_Alloca (Inst, Promote, T, Num_Elts);
-      return G_Ref (Inst, GT, Is_Pristine => True);
+      return G_Ref (Inst, GT, Is_Pristine => True, Alignment => Align);
    end Array_Alloca;
 
    ----------------
@@ -278,13 +280,15 @@ package body GNATLLVM.Instructions is
                                  Overflowed (LHS));
       end if;
 
-      --  Otherwise, perform the operation and respect any overflow flags
+      --  Otherwise, perform the operation, respect any overflow flags,
+      --  and indicate what it does to the alignment
 
       V := (if   Is_Add
             then Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name)
             else Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name));
       Result := G_From (Set_Arith_Attrs (V, LHS), LHS);
       Mark_Overflowed (Result, Overflowed (LHS) or else Overflowed (RHS));
+      Set_Alignment (Result, Nat'Min (Alignment (LHS), Alignment (RHS)));
 
       --  If either operand or the result isn't a constant integer, if this
       --  is a modular integer type, or if we already had an overflow, we
@@ -356,13 +360,17 @@ package body GNATLLVM.Instructions is
          return Mark_Overflowed (RHS, Overflowed (LHS));
       end if;
 
-      --  Otherwise, perform the operation and respect any overflow flags
+      --  Otherwise, perform the operation, respect any overflow flags,
+      --  and set the resulting alignment.
 
       Result := G_From (Set_Arith_Attrs (Mul (IR_Builder, LLVM_Value (LHS),
                                               LLVM_Value (RHS), Name),
                                          LHS),
                         LHS);
       Mark_Overflowed (Result, Overflowed (LHS) or else Overflowed (RHS));
+      Set_Alignment (Result,
+                     Nat'Min (Alignment (LHS) * Alignment (RHS) / BPU,
+                              Max_Align));
 
       --  If either operand or the result isn't a constant integer, if this
       --  is a modular integer type, or if we already had an overflow, we
@@ -444,7 +452,8 @@ package body GNATLLVM.Instructions is
    is
       T      : constant Type_T := Type_Of (GT);
       Result :  GL_Value       :=
-        G (Trunc (IR_Builder, LLVM_Value (V), T, Name), GT);
+        G (Trunc (IR_Builder, LLVM_Value (V), T, Name), GT,
+           Alignment => Alignment (V));
 
    begin
       Mark_Overflowed (Result,
@@ -464,7 +473,8 @@ package body GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        G (Trunc (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V), R);
+        G (Trunc (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V), R,
+          Alignment => Alignment (V));
 
    begin
       Mark_Overflowed (Result,
@@ -490,6 +500,7 @@ package body GNATLLVM.Instructions is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
      (G (Z_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+         Alignment  => Alignment  (V),
          Overflowed => Overflowed (V)));
 
    --------------
@@ -643,16 +654,21 @@ package body GNATLLVM.Instructions is
       Name      : String := "") return GL_Value
    is
       Values  : aliased Value_Array (GL_Values'Range);
+      Align   : Nat := BPU;
       Our_Phi : Value_T;
+      Result  : GL_Value;
 
    begin
       for J in Values'Range loop
          Values (J) := LLVM_Value (GL_Values (J));
+         Align := Nat'Min (Align, Alignment (GL_Values (J)));
       end loop;
 
       Our_Phi := Phi (IR_Builder, Type_Of (GL_Values (GL_Values'First)), Name);
       Add_Incoming (Our_Phi, Values'Address, BBs'Address, Values'Length);
-      return G_From (Our_Phi, GL_Values (GL_Values'First));
+      Result := G_From (Our_Phi, GL_Values (GL_Values'First));
+      Set_Alignment (Result, Align);
+      return Result;
    end Build_Phi;
 
    ---------
@@ -679,16 +695,18 @@ package body GNATLLVM.Instructions is
       Name    : String := "") return GL_Value
    is
       Val_Idxs : aliased Value_Array (Indices'Range);
-      Result   : Value_T;
+      Result   : GL_Value;
 
    begin
       for J in Indices'Range loop
          Val_Idxs (J) := LLVM_Value (Indices (J));
       end loop;
 
-      Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
-                               Val_Idxs'Length, Name);
-      return GM (Result, GT, R, Ptr);
+      Result := GM (In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr),
+                                   Val_Idxs'Address, Val_Idxs'Length, Name),
+                    GT, R, Ptr);
+      Set_Alignment (Result, BPU);
+      return Result;
    end GEP_To_Relationship;
 
    -----------------------------
@@ -703,7 +721,7 @@ package body GNATLLVM.Instructions is
       Name    : String := "") return GL_Value
    is
       Val_Idxs : aliased Value_Array (Indices'Range);
-      Result   : Value_T;
+      Result   : GL_Value;
 
    begin
       for J in Indices'Range loop
@@ -711,9 +729,11 @@ package body GNATLLVM.Instructions is
            Const_Int (Int_Ty (Nat (32)), ULL (Indices (J)), False);
       end loop;
 
-      Result := In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr), Val_Idxs'Address,
-                               Val_Idxs'Length, Name);
-      return GM (Result, GT, R, Ptr);
+      Result := GM (In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr),
+                                   Val_Idxs'Address, Val_Idxs'Length, Name),
+                    GT, R, Ptr);
+      Set_Alignment (Result, BPU);
+      return Result;
    end GEP_Idx_To_Relationship;
 
    ----------

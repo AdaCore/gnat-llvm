@@ -243,17 +243,17 @@ package body GNATLLVM.Types is
    end Is_Dynamic_Size;
 
    ---------------
-   -- Max_Align --
+   -- ULL_Align --
    ---------------
 
-   function Max_Align (C : ULL) return Nat is
+   function ULL_Align (C : ULL) return Nat is
    begin
-      return Align : Nat := Get_Maximum_Alignment * BPU do
+      return Align : Nat := Max_Align do
          while C mod ULL (Align) /= 0 loop
             Align := Align / 2;
          end loop;
       end return;
-   end Max_Align;
+   end ULL_Align;
 
    ----------------------
    -- Is_Loadable_Type --
@@ -630,7 +630,7 @@ package body GNATLLVM.Types is
             declare
                Align_GT : constant GL_Type :=
                  (if   GT_Alignment (A_GT) >= Align then A_GT
-                  else Make_GT_Alternative (A_GT, N,
+                  else Make_GT_Alternative (A_GT, Def_Ident,
                                             Align => UI_From_Int (Align)));
 
             begin

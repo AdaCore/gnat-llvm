@@ -113,10 +113,10 @@ package body GNATLLVM.GLType is
       --  If Present, link to next alternative
 
       Size      : GL_Value;
-      --  If Present, size of this alternative in bytes
+      --  If Present, size of this alternative in bits
 
-      Alignment : GL_Value;
-      --  If Present, alignment of this alternative in bytes
+      Alignment : Nat;
+      --  If nonzero, the alignment of this alternative in bits
 
       Bias      : GL_Value;
       --  If Present, the amount of bias for integral types
@@ -232,8 +232,7 @@ package body GNATLLVM.GLType is
       elsif not Is_Type_Or_Void (TE) or else No (T)
         or else (GTI.Size /= No_GL_Value
                    and then No (Is_A_Constant_Int (GTI.Size.Value)))
-        or else (GTI.Alignment /= No_GL_Value
-                   and then No (Is_A_Constant_Int (GTI.Alignment.Value)))
+        or else (GTI.Alignment /= 0 and then GTI.Alignment mod BPU /= 0)
         or else (GTI.Bias /= No_GL_Value
                    and then No (Is_A_Constant_Int (GTI.Bias.Value)))
       then
@@ -305,7 +304,7 @@ package body GNATLLVM.GLType is
    -- GT_Alignment --
    ------------------
 
-   function GT_Alignment (GT : GL_Type) return GL_Value is
+   function GT_Alignment (GT : GL_Type) return Nat is
      (GL_Type_Table.Table (GT).Alignment);
 
    ---------------------------
@@ -335,7 +334,7 @@ package body GNATLLVM.GLType is
                              LLVM_Type => No_Type_T,
                              Next      => Get_GL_Type (TE),
                              Size      => No_GL_Value,
-                             Alignment => No_GL_Value,
+                             Alignment => 0,
                              Bias      => No_GL_Value,
                              Max_Size  => False,
                              Kind      => None,
@@ -459,15 +458,15 @@ package body GNATLLVM.GLType is
         not Is_Dynamic_Size (Prim_GT, Allow_Overflow => True);
       Prim_Size   : constant GL_Value     :=
         (if Prim_Fixed then Get_Type_Size (Prim_GT) else No_GL_Value);
-      Prim_Align  : constant GL_Value     := Get_Type_Alignment (Prim_GT);
+      Prim_Align  : constant Nat          := Get_Type_Alignment (Prim_GT);
       Int_Sz      : constant Uint         :=
         (if Size = 0 then Uint_1 else Size);
       Size_V      : GL_Value              :=
         (if   No (Size) or else not UI_Is_In_ULL_Range (Size)
               or else Is_Dynamic_SO_Ref (Size)
          then In_GTI.Size else Size_Const_Int (Size));
-      Align_V     : constant GL_Value     :=
-        (if No (Align) then In_GTI.Alignment else Size_Const_Int (Align));
+      Align_N     : constant Nat          :=
+        (if No (Align) then In_GTI.Alignment else UI_To_Int (Align));
       Found_GT    : GL_Type               := Get_GL_Type (TE);
 
       ----------------------
@@ -499,7 +498,7 @@ package body GNATLLVM.GLType is
       --  maximum size, we want the original type.  This isn't quite the
       --  same test as below since it will get confused with 0-sized types.
 
-      if No (Size_V) and then No (Align_V) and then not Needs_Max then
+      if No (Size_V) and then Align_N = 0 and then not Needs_Max then
          return GT;
 
       --  If the best type we had is a dummy type, don't make any alternatives
@@ -518,11 +517,10 @@ package body GNATLLVM.GLType is
 
       --  If this is for a type, we have to align the input size
 
-      if For_Type and then Present (Size_V) and then Present (Align_V)
-        and then U_Rem (Size_V, Align_V) /= 0
+      if For_Type and then Present (Size_V) and then Align_N /= 0
+        and then Get_Const_Int_Value_ULL (Size_V) mod ULL (Align_N) /= 0
       then
-         Size_V := Align_To (Size_V, 1,
-                             Nat (Get_Const_Int_Value_ULL (Align_V)));
+         Size_V := Align_To (Size_V, 1, Align_N);
       end if;
 
       --  See if we already made a matching GL_Type
@@ -531,7 +529,7 @@ package body GNATLLVM.GLType is
          declare
             GTI : constant GL_Type_Info := GL_Type_Table.Table (Found_GT);
          begin
-            if (Size_V = GTI.Size and then Align_V = GTI.Alignment
+            if (Size_V = GTI.Size and then Align_N = GTI.Alignment
                   and then Needs_Bias = (GTI.Kind = Biased)
                   and then not (Needs_Max
                                   and then (No (Size_V)
@@ -550,7 +548,7 @@ package body GNATLLVM.GLType is
               --  number of bits.
 
               or else (Needs_Max and then GTI.Max_Size
-                      and then Align_V = GTI.Alignment)
+                      and then Align_N = GTI.Alignment)
               --  It's also the same type even if there's no match if
               --  we want the maximum size and we have an entry where
               --  we got the maximum size.  But we need the right alignment.
@@ -574,7 +572,7 @@ package body GNATLLVM.GLType is
          --  Record the basic parameters of what we're making
 
          GTI.Size      := Size_V;
-         GTI.Alignment := Align_V;
+         GTI.Alignment := Align_N;
          GTI.Max_Size  := Needs_Max;
 
          --  If this is a biased type, make a narrower integer and set the
@@ -630,8 +628,7 @@ package body GNATLLVM.GLType is
 
          elsif Prim_Native and then Present (Size_V)
            and then (Size_V > Prim_Size
-                       or else (Present (Align_V)
-                                  and then Prim_Align /= Align_V))
+                       or else (Align_N /= 0 and then Prim_Align /= Align_N))
          then
             declare
                Pad_Size  : constant GL_Value := Size_V - Prim_Size;
@@ -1338,9 +1335,9 @@ package body GNATLLVM.GLType is
          Write_Str (", S=");
          Write_Int_From_LLI (Get_Const_Int_Value (GTI.Size));
       end if;
-      if Present (GTI.Alignment) then
+      if GTI.Alignment /= 0 then
          Write_Str (", A=");
-         Write_Int_From_LLI (Get_Const_Int_Value (GTI.Alignment));
+         Write_Int (GTI.Alignment);
       end if;
       if Present (GTI.Bias) then
          Write_Str (", B=");

@@ -182,7 +182,7 @@ package GNATLLVM.GLType is
    function Is_Max_Size (GT : GL_Type)           return Boolean
      with Pre => Present (GT), Inline;
 
-   function GT_Alignment (GT : GL_Type)          return GL_Value
+   function GT_Alignment (GT : GL_Type)          return Nat
      with Pre => Present (GT), Inline;
 
    function Is_Dummy_Type (GT : GL_Type)         return Boolean

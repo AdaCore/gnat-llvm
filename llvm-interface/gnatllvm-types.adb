@@ -965,14 +965,14 @@ package body GNATLLVM.Types is
      (GT : GL_Type; Use_Specified : Boolean := True) return Nat
    is
       TE    : constant Entity_Id := Full_Etype (GT);
-      Align : constant GL_Value  := GT_Alignment (GT);
+      Align : constant Nat       := GT_Alignment (GT);
       T     : constant Type_T    := Type_Of (GT);
 
    begin
       --  If there's a known alignment in this GL_Type, use it
 
-      if Present (Align) and then Is_A_Const_Int (Align) then
-         return Nat (Get_Const_Int_Value (Align));
+      if Align /= 0 then
+         return Align;
 
       --  If the alignment is specified (or back-annotated) in the tree,
       --  use that value.

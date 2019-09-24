@@ -548,7 +548,9 @@ package body GNATLLVM.GLType is
               --  number of bits.
 
               or else (Needs_Max and then GTI.Max_Size
-                      and then Align_N = GTI.Alignment)
+                         and then ((No (Size_V) and then No (GTI.Size))
+                                   or else Size_V = GTI.Size)
+                         and then Align_N = GTI.Alignment)
               --  It's also the same type even if there's no match if
               --  we want the maximum size and we have an entry where
               --  we got the maximum size.  But we need the right alignment.

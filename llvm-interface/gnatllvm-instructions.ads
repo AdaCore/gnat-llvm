@@ -740,7 +740,9 @@ package GNATLLVM.Instructions is
       Index : unsigned;
       Name  : String := "") return GL_Value
    is
-     (G_Ref (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), GT))
+     (Initialize_Alignment
+        (G_Ref (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name),
+                GT)))
      with  Pre  => Present (Arg) and then Present (GT),
            Post => Is_Pointer (Extract_Value_To_Ref'Result);
 
@@ -751,8 +753,8 @@ package GNATLLVM.Instructions is
       R     : GL_Relationship;
       Name  : String := "") return GL_Value
    is
-     (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name),
-         GT, R))
+     (Initialize_Alignment
+        (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), GT, R)))
      with  Pre  => Present (Arg) and then Present (GT),
            Post => Present (Extract_Value_To_Relationship'Result);
 
@@ -786,8 +788,10 @@ package GNATLLVM.Instructions is
       Idx_Arr : Index_Array;
       Name    : String := "") return GL_Value
    is
-     (G_Ref (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
-                                  Idx_Arr'Address, Idx_Arr'Length, Name), GT))
+     (Initialize_Alignment
+        (G_Ref (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
+                                     Idx_Arr'Address, Idx_Arr'Length, Name),
+                GT)))
      with  Pre  => Present (GT) and then Present (Arg),
            Post => Present (Extract_Value_To_Ref'Result);
 
@@ -798,9 +802,10 @@ package GNATLLVM.Instructions is
       R       : GL_Relationship;
       Name    : String := "") return GL_Value
    is
-     (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
+     (Initialize_Alignment
+        (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
                               Idx_Arr'Address, Idx_Arr'Length, Name),
-         GT, R))
+         GT, R)))
      with  Pre  => Present (GT) and then Present (Arg),
            Post => Present (Extract_Value_To_Relationship'Result);
 

@@ -591,8 +591,6 @@ package GNATLLVM.GLValue is
 
    procedure Set_Alignment (V : in out GL_Value; Align : Nat)
      with Pre => Present (V), Post => Alignment (V) = Align, Inline;
-   --  Set the alignment of V to the specified value
-
    function Set_Alignment (V : GL_Value; Align : Nat) return GL_Value
      with Pre => Present (V), Post => Alignment (Set_Alignment'Result) = Align,
           Inline;
@@ -600,12 +598,19 @@ package GNATLLVM.GLValue is
 
    procedure Clear_Alignment (V : in out GL_Value)
      with Pre => Present (V), Post => Alignment (V) = BPU, Inline;
-   --  Show that we know nothing about the alignment of V
-
    function Clear_Alignment (V : GL_Value) return GL_Value
      with Pre => Present (V), Post => Alignment (Clear_Alignment'Result) = BPU,
           Inline;
    --  Show that we know nothing about the alignment of V
+
+   procedure Initialize_Alignment (V : in out GL_Value)
+     with Pre => Present (V);
+   function Initialize_Alignment (V : GL_Value) return GL_Value
+     with Pre => Present (V);
+   --  V is a value that we know nothing about except for its type.  If it's
+   --  data, we have no idea of its alignment, but if it's a reference or
+   --  double reference, we know at least a minimum alignment, from either
+   --  the type or the alignment of a pointer to the type.
 
    procedure Not_Pristine (V : in out GL_Value)
      with Pre => Present (V), Post => not Is_Pristine (V),

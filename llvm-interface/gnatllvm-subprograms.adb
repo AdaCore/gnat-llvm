@@ -1097,13 +1097,12 @@ package body GNATLLVM.Subprograms is
                Activation_Rec_Param := From_Access (LLVM_Param);
             end if;
 
-            --  Add the parameter to the environnment
-
-            Set_Value (Param, LLVM_Param);
             if PK_Is_In_Or_Ref (PK) then
                Param_Num := Param_Num + 1;
             end if;
 
+            Set_Value (Param, LLVM_Param);
+            Initialize_Alignment (LLVM_Param);
             Annotate_Object_Size_And_Alignment (Param, GT, Want_Max => False);
             Create_Local_Variable_Debug_Data (Param, LLVM_Param, P_Num);
             Next_Formal_With_Extras (Param);

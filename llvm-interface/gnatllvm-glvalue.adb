@@ -208,6 +208,47 @@ package body GNATLLVM.GLValue is
       return New_V;
    end Clear_Alignment;
 
+   --------------------------
+   -- Initialize_Alignment --
+   --------------------------
+
+   procedure Initialize_Alignment (V : in out GL_Value) is
+      R : constant GL_Relationship := Relationship (V);
+
+   begin
+      --  If this is a double reference or a pointer to an activation
+      --  record, the alignment is that of a pointer.
+
+      if Is_Double_Reference (R) or else R = Reference_To_Activation_Record
+      then
+         Set_Alignment (V, Get_Type_Alignment (Void_Ptr_Type));
+
+      --  If this is a pointer to an object, we can use the alignment of
+      --  the type of the object.
+
+      elsif Deref (R) in Data | Bounds | Bounds_And_Data then
+         Set_Alignment (V, Nat'Min (Get_Type_Alignment (Related_Type (V)),
+                                    Max_Align));
+
+      --  Otherwise, we know nothing about this value's alignment
+
+      else
+         Clear_Alignment (V);
+      end if;
+
+   end Initialize_Alignment;
+
+   --------------------------
+   -- Initialize_Alignment --
+   --------------------------
+
+   function Initialize_Alignment (V : GL_Value) return GL_Value is
+      New_V : GL_Value := V;
+   begin
+      Initialize_Alignment (New_V);
+      return New_V;
+   end Initialize_Alignment;
+
    ------------------
    -- Not_Pristine --
    ------------------

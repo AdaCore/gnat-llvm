@@ -927,7 +927,7 @@ package body GNATLLVM.Instructions is
 
       --  Now build the result, with the proper GT and relationship
 
-      return G (Load_Inst, Load_GT, New_R);
+      return Initialize_Alignment (G (Load_Inst, Load_GT, New_R));
    end Load;
 
    -----------
@@ -1034,8 +1034,9 @@ package body GNATLLVM.Instructions is
      (Func : GL_Value;
       GT   : GL_Type;
       Args : GL_Value_Array;
-      Name : String := "") return GL_Value is
-     (G (Call_Internal (Func, Args, Name), GT));
+      Name : String := "") return GL_Value
+   is
+     (Initialize_Alignment (G (Call_Internal (Func, Args, Name), GT)));
 
    --------------
    -- Call_Ref --
@@ -1045,8 +1046,9 @@ package body GNATLLVM.Instructions is
      (Func : GL_Value;
       GT   : GL_Type;
       Args : GL_Value_Array;
-      Name : String := "") return GL_Value is
-     (G_Ref (Call_Internal (Func, Args, Name), GT));
+      Name : String := "") return GL_Value
+   is
+     (Initialize_Alignment (G_Ref (Call_Internal (Func, Args, Name), GT)));
 
    -----------------------
    -- Call_Relationship --
@@ -1057,8 +1059,9 @@ package body GNATLLVM.Instructions is
       GT   : GL_Type;
       Args : GL_Value_Array;
       R    : GL_Relationship;
-      Name : String := "") return GL_Value is
-     (G (Call_Internal (Func, Args, Name), GT, R));
+      Name : String := "") return GL_Value
+   is
+     (Initialize_Alignment (G (Call_Internal (Func, Args, Name), GT, R)));
 
    ----------
    -- Call --
@@ -1138,6 +1141,7 @@ package body GNATLLVM.Instructions is
          Arg_Types (J) := Type_Of (Args (J));
       end loop;
 
+      --  ??? Is the Relationship really right?
       return G (Const_Inline_Asm (Fn_Ty (Arg_Types, T), Template,
                                   Constraints, Is_Volatile, Is_Stack_Align),
                 GT, Reference_To_Subprogram);

@@ -188,6 +188,26 @@ package body GNATLLVM.GLValue is
       return New_V;
    end Set_Alignment;
 
+   ---------------------
+   -- Clear_Alignment --
+   ---------------------
+
+   procedure Clear_Alignment (V : in out GL_Value) is
+   begin
+      Set_Alignment (V, BPU);
+   end Clear_Alignment;
+
+   ---------------------
+   -- Clear_Alignment --
+   ---------------------
+
+   function Clear_Alignment (V : GL_Value) return GL_Value is
+      New_V : GL_Value := V;
+   begin
+      Set_Alignment (New_V, BPU);
+      return New_V;
+   end Clear_Alignment;
+
    ------------------
    -- Not_Pristine --
    ------------------

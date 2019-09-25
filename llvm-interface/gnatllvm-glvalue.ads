@@ -590,12 +590,22 @@ package GNATLLVM.GLValue is
    --  Likewise, but copy the rest of the attributes from GV
 
    procedure Set_Alignment (V : in out GL_Value; Align : Nat)
-     with Pre => Present (V), Post => Alignment (V) = Align;
+     with Pre => Present (V), Post => Alignment (V) = Align, Inline;
    --  Set the alignment of V to the specified value
 
    function Set_Alignment (V : GL_Value; Align : Nat) return GL_Value
-     with Pre => Present (V), Post => Alignment (Set_Alignment'Result) = Align;
+     with Pre => Present (V), Post => Alignment (Set_Alignment'Result) = Align,
+          Inline;
    --  Set the alignment of V to the specified value
+
+   procedure Clear_Alignment (V : in out GL_Value)
+     with Pre => Present (V), Post => Alignment (V) = BPU, Inline;
+   --  Show that we know nothing about the alignment of V
+
+   function Clear_Alignment (V : GL_Value) return GL_Value
+     with Pre => Present (V), Post => Alignment (Clear_Alignment'Result) = BPU,
+          Inline;
+   --  Show that we know nothing about the alignment of V
 
    procedure Not_Pristine (V : in out GL_Value)
      with Pre => Present (V), Post => not Is_Pristine (V),

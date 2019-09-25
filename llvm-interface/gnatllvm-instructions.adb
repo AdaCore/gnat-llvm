@@ -437,7 +437,7 @@ package body GNATLLVM.Instructions is
            (Result, Nat'Max (Alignment (LHS) / Get_Const_Int_Value_Nat (RHS),
                              BPU));
       else
-         Set_Alignment (Result, BPU);
+         Clear_Alignment (Result);
       end if;
 
       return Result;
@@ -510,7 +510,7 @@ package body GNATLLVM.Instructions is
             end;
          end if;
       else
-         Set_Alignment (Result, BPU);
+         Clear_Alignment (Result);
       end if;
 
       return Result;
@@ -825,7 +825,7 @@ package body GNATLLVM.Instructions is
       Result := GM (In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr),
                                    Val_Idxs'Address, Val_Idxs'Length, Name),
                     GT, R, Ptr);
-      Set_Alignment (Result, BPU);
+      Clear_Alignment (Result);
       return Result;
    end GEP_To_Relationship;
 
@@ -852,7 +852,7 @@ package body GNATLLVM.Instructions is
       Result := GM (In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr),
                                    Val_Idxs'Address, Val_Idxs'Length, Name),
                     GT, R, Ptr);
-      Set_Alignment (Result, BPU);
+      Clear_Alignment (Result);
       return Result;
    end GEP_Idx_To_Relationship;
 

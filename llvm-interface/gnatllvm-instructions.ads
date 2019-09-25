@@ -554,9 +554,8 @@ package GNATLLVM.Instructions is
    function Build_Not
      (V : GL_Value; Name : String := "") return GL_Value
    is
-     (Set_Alignment
-        (G_From (Build_Not (IR_Builder, LLVM_Value (V), Name), V),
-         BPU))
+     (Clear_Alignment
+        (G_From (Build_Not (IR_Builder, LLVM_Value (V), Name), V)))
       with Pre  => Present (V),
            Post => Present (Build_Not'Result);
 
@@ -762,9 +761,10 @@ package GNATLLVM.Instructions is
       Index    : unsigned;
       Name     : String := "") return GL_Value
    is
-     (G_From (Insert_Value (IR_Builder, LLVM_Value (Arg), LLVM_Value (Elt),
-                            Index, Name),
-              Arg))
+     (Clear_Alignment
+        (G_From (Insert_Value (IR_Builder, LLVM_Value (Arg), LLVM_Value (Elt),
+                               Index, Name),
+                 Arg)))
      with  Pre  => Present (Arg) and then Present (Elt),
            Post => Present (Insert_Value'Result);
 

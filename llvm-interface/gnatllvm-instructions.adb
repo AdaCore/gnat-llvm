@@ -368,9 +368,7 @@ package body GNATLLVM.Instructions is
                                          LHS),
                         LHS);
       Mark_Overflowed (Result, Overflowed (LHS) or else Overflowed (RHS));
-      Set_Alignment (Result,
-                     Nat'Min (Alignment (LHS) * Alignment (RHS) / BPU,
-                              Max_Align));
+      Set_Alignment (Result, Alignment (LHS) * Alignment (RHS) / BPU);
 
       --  If either operand or the result isn't a constant integer, if this
       --  is a modular integer type, or if we already had an overflow, we
@@ -433,9 +431,8 @@ package body GNATLLVM.Instructions is
       if Is_Const_Int_Value (RHS, 2) or else Is_Const_Int_Value (RHS, 4)
         or else Is_Const_Int_Value (RHS, 8)
       then
-         Set_Alignment
-           (Result, Nat'Max (Alignment (LHS) / Get_Const_Int_Value_Nat (RHS),
-                             BPU));
+         Set_Alignment (Result,
+                        Alignment (LHS) / Get_Const_Int_Value_Nat (RHS));
       else
          Clear_Alignment (Result);
       end if;
@@ -499,14 +496,12 @@ package body GNATLLVM.Instructions is
             Set_Alignment (Result, (if Left then Max_Align else BPU));
          else
             declare
-               Ratio : constant Nat :=
-                 2 ** Integer (Get_Const_Int_Value (Count));
+               R : constant Nat := 2 ** Integer (Get_Const_Int_Value (Count));
 
             begin
                Set_Alignment
                  (Result,
-                  (if   Left then Nat'Min (Alignment (V) * Ratio, Max_Align)
-                   else Nat'Max (Alignment (V) / Ratio, BPU)));
+                  (if Left then Alignment (V) * R else Alignment (V) / R));
             end;
          end if;
       else

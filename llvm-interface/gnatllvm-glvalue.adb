@@ -174,7 +174,11 @@ package body GNATLLVM.GLValue is
 
    procedure Set_Alignment (V : in out GL_Value; Align : Nat) is
    begin
-      V.Alignment := Align;
+      --  We definitely don't want a value less than BPU.  It's unclear
+      --  whether or not we ever want a value greater than Max_Align.
+      --  ??? For now, make that our largest.
+
+      V.Alignment := Nat'Min (Nat'Max (Align, BPU), Max_Align);
    end Set_Alignment;
 
    -------------------
@@ -227,8 +231,7 @@ package body GNATLLVM.GLValue is
       --  the type of the object.
 
       elsif Deref (R) in Data | Bounds | Bounds_And_Data then
-         Set_Alignment (V, Nat'Min (Get_Type_Alignment (Related_Type (V)),
-                                    Max_Align));
+         Set_Alignment (V, Get_Type_Alignment (Related_Type (V)));
 
       --  Otherwise, we know nothing about this value's alignment
 
@@ -1088,7 +1091,7 @@ package body GNATLLVM.GLValue is
 
    begin
       Set_Alignment (Obj, unsigned (To_Bytes (Align)));
-      return Nat'Min (Align, Max_Align);
+      return Align;
    end Set_Object_Align;
 
    ----------------------

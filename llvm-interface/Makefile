@@ -135,10 +135,17 @@ clean:
 
 target=$(shell gcc -dumpmachine)
 
-target_list=$(subst -, ,$(target))
+target_list1=$(subst -, ,$(target))
+target_list=$(filter-out gnu,$(target_list1))
 target_cpu=$(word 1,$(target_list))
-target_vendor=$(word 2,$(target_list))
-target_os=$(word 3,$(target_list))
+
+ifeq ($(words $(target_list)),2)
+  target_vendor=
+  target_os=$(word 2,$(target_list))
+else
+  target_vendor=$(word 2,$(target_list))
+  target_os=$(word 3,$(target_list))
+endif
 
 objext=.o
 arext=.a

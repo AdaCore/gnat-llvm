@@ -123,9 +123,6 @@ bootstrap-compare:
 	@rm -rf bootstrap-compare
 	@echo "Comparison successful."
 
-fast:
-	$(MAKE) DEBUG=0
-
 force:
 
 clean:
@@ -135,8 +132,7 @@ clean:
 
 target=$(shell gcc -dumpmachine)
 
-target_list1=$(subst -, ,$(target))
-target_list=$(filter-out gnu,$(target_list1))
+target_list=$(filter-out gnu,$(subst -, ,$(target)))
 target_cpu=$(word 1,$(target_list))
 
 ifeq ($(words $(target_list)),2)

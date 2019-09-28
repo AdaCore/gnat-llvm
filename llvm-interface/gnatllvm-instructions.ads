@@ -71,6 +71,7 @@ package GNATLLVM.Instructions is
    function Alloca
      (GT        : GL_Type;
       Def_Ident : Entity_Id := Empty;
+      Align     : Nat       := 0;
       Name      : String    := "") return GL_Value
      with Pre  => Present (GT), Post => Is_Reference (Alloca'Result),
           Inline;
@@ -79,6 +80,7 @@ package GNATLLVM.Instructions is
      (GT        : GL_Type;
       Num_Elts  : GL_Value;
       Def_Ident : Entity_Id := Empty;
+      Align     : Nat       := 0;
       Name      : String    := "") return GL_Value
      with Pre  => Present (GT) and then Present (Num_Elts),
           Post => Is_Reference (Array_Alloca'Result), Inline;
@@ -896,17 +898,6 @@ package GNATLLVM.Instructions is
 
    procedure Call
      (Func : GL_Value; Args : GL_Value_Array; Name : String := "")
-     with Pre => Present (Func), Inline;
-
-   procedure Call_With_Align
-     (Func : GL_Value; Args : GL_Value_Array; Align : Nat; Name : String := "")
-     with Pre => Present (Func), Inline;
-
-   procedure Call_With_Align_2
-     (Func             : GL_Value;
-      Args             : GL_Value_Array;
-      Align_1, Align_2 : Nat;
-      Name             : String := "")
      with Pre => Present (Func), Inline;
 
    function Landing_Pad

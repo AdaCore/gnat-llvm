@@ -405,3 +405,18 @@ Pred_FP (LLVMContext *Context, Type *T, Value *Val)
   apf.multiply(one, APFloat::rmTowardZero);
   return ConstantFP:: get (*Context, apf);
 }
+
+extern "C"
+bool
+Get_GEP_Constant_Offset (Value *GEP, DataLayout &dl, uint64_t *result)
+{
+  auto Offset = APInt (sizeof (char *) * 8, 0);
+  auto GEPO = dyn_cast<GEPOperator> (GEP);
+
+  if (!GEPO || !GEPO->accumulateConstantOffset (dl, Offset)
+      || !Offset.isIntN (64))
+    return false;
+
+  *result = Offset.getZExtValue ();
+  return true;
+}

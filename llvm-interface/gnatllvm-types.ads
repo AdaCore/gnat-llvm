@@ -412,10 +412,10 @@ package GNATLLVM.Types is
    --  set by the front end or by us via back-annotation, return the value
    --  as a Uint.  Otherwise, return No_Uint.
 
-   procedure Add_Type_Data_To_Instruction
+   procedure Add_Flags_To_Instruction
      (Inst : Value_T; V : GL_Value; Special_Atomic : Boolean := False)
      with Pre => Present (Inst) and then Present (V);
-   --  Add type data (e.g., volatility and TBAA info) to an Instruction
+   --  Add flags (e.g., volatility and TBAA info) to an Instruction
    --  using information from V, which is the pointer.
 
    --  In order to use the generic functions that computing sizing

@@ -32,7 +32,8 @@ package GNATLLVM.Wrapper is
    function Create_TBAA_Scalar_Type_Node
      (MDBld : MD_Builder_T;
       Name  : String;
-      Parent  : Metadata_T) return Metadata_T;
+      Parent  : Metadata_T) return Metadata_T
+     with Inline;
    --  Create a TBAA metadata node for a scalar type
 
    function Create_TBAA_Access_Tag
@@ -117,7 +118,8 @@ package GNATLLVM.Wrapper is
       Aggr     : Value_T;
       Idx_List : System.Address;
       Num_Idx  : unsigned;
-      Name     : String) return Value_T;
+      Name     : String) return Value_T
+     with Inline;
 
    function Build_Insert_Value
      (Bld      : Builder_T;
@@ -125,7 +127,8 @@ package GNATLLVM.Wrapper is
       Elt      : Value_T;
       Idx_List : System.Address;
       Num_Idx  : unsigned;
-      Name     : String) return Value_T;
+      Name     : String) return Value_T
+     with Inline;
 
    function Does_Not_Throw (Fn : Value_T) return Boolean
      with Import, Convention => C, External_Name => "Does_Not_Throw",
@@ -159,7 +162,8 @@ package GNATLLVM.Wrapper is
       No_Unit_At_A_Time     : Boolean;
       No_Unroll_Loops       : Boolean;
       No_Loop_Vectorization : Boolean;
-      No_SLP_Vectorization  : Boolean);
+      No_SLP_Vectorization  : Boolean)
+     with Inline;
    --  Perform optimizations on the module
 
    procedure Add_Debug_Flags (Module : Module_T)
@@ -174,7 +178,8 @@ package GNATLLVM.Wrapper is
      (Builder     : DI_Builder_T;
       Name        : String;
       Value       : unsigned_long_long;
-      Is_Unsigned : Boolean) return Metadata_T;
+      Is_Unsigned : Boolean) return Metadata_T
+     with Inline;
 
    function Get_Float_From_Words_And_Exp
      (Context   : Context_T;
@@ -188,5 +193,9 @@ package GNATLLVM.Wrapper is
    function Pred_FP
      (Context : Context_T; T : Type_T; V : Value_T) return Value_T
      with Import, Convention => C, External_Name => "Pred_FP";
+
+   function Get_GEP_Constant_Offset
+     (GEP : Value_T; Layout : Target_Data_T; Offset : out ULL) return Boolean
+     with Inline;
 
 end GNATLLVM.Wrapper;

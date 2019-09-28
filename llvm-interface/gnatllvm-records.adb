@@ -1719,9 +1719,9 @@ package body GNATLLVM.Records is
       --  type of this piece (which has no corresponding GNAT type).
 
       if Is_Nonnative_Type (Rec_Type) then
-         Result := G (Pointer_Cast (IR_Builder, LLVM_Value (Result),
-                                    Pointer_Type (RI.LLVM_Type, 0), ""),
-                      Rec_GT, Reference_To_Unknown);
+         Result := GM (Pointer_Cast (IR_Builder, LLVM_Value (Result),
+                                     Pointer_Type (RI.LLVM_Type, 0), ""),
+                       Rec_GT, Reference_To_Unknown, Result);
       else
          Result := Convert_Ref (Result, Rec_GT);
       end if;
@@ -1984,9 +1984,9 @@ package body GNATLLVM.Records is
                        (if   Present (LHS) then LHS
                         else Allocate_For_Type (F_GT));
                      Mem_As_Int_Ptr : constant GL_Value :=
-                       G (Bit_Cast (IR_Builder, LLVM_Value (Memory),
-                                    Pointer_Type (Type_Of (Result), 0), ""),
-                          F_GT, Reference_To_Unknown);
+                       GM (Bit_Cast (IR_Builder, LLVM_Value (Memory),
+                                     Pointer_Type (Type_Of (Result), 0), ""),
+                           F_GT, Reference_To_Unknown, Memory);
 
                   begin
                      Store (Result, Mem_As_Int_Ptr);
@@ -2148,12 +2148,11 @@ package body GNATLLVM.Records is
                                (LLVM_Value (RHS), New_RHS_T),
                              Related_Type (RHS_Cvt), Unknown);
             else
-               RHS_Cvt := Load (G (Bit_Cast (IR_Builder,
-                                             LLVM_Value (Get (RHS_Cvt,
-                                                              Reference)),
-                                             Pointer_Type (New_RHS_T, 0), ""),
-                                   Related_Type (RHS_Cvt),
-                                   Reference_To_Unknown));
+               RHS_Cvt := Get (RHS_Cvt, Reference);
+               RHS_Cvt := Load (GM (Bit_Cast (IR_Builder, LLVM_Value (RHS_Cvt),
+                                              Pointer_Type (New_RHS_T, 0), ""),
+                                    Related_Type (RHS_Cvt),
+                                    Reference_To_Unknown, RHS_Cvt));
             end if;
          else
             RHS_Cvt := Get (RHS_Cvt, Data);

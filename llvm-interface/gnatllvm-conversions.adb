@@ -369,7 +369,8 @@ package body GNATLLVM.Conversions is
       then
          --  If GT is an access to unconstrained, this means that the
          --  address is to be taken as a thin pointer.  We also need special
-         --  code in the case of access to subprogram.
+         --  code in the case of access to subprogram and we also need
+         --  to show that the alignment is of the designated type.
 
          if Is_Unconstrained_Array (Full_Designated_Type (GT)) then
             Result := Int_To_Relationship (Get (Result, Data),
@@ -384,6 +385,7 @@ package body GNATLLVM.Conversions is
          end if;
 
          Result := Convert_To_Access (Result, GT);
+         Initialize_Alignment (Result);
 
       --  We can unchecked convert floating point of the same width
       --  (the only way that UC is formally defined) with a "bitcast"
@@ -898,7 +900,8 @@ package body GNATLLVM.Conversions is
       --  If the input is an actual pointer, convert it
 
       elsif Get_Type_Kind (T) = Pointer_Type_Kind then
-         return G (Pointer_Cast (IR_Builder, LLVM_Value (V), T, ""), GT, R);
+         return GM (Pointer_Cast (IR_Builder, LLVM_Value (V), T, ""),
+                    GT, R, V);
       end if;
 
       --  Otherwise, we have a composite pointer and must make a new
@@ -918,7 +921,7 @@ package body GNATLLVM.Conversions is
          end;
       end loop;
 
-      return G (Value, GT, R);
+      return GM (Value, GT, R, V);
    end Convert_Pointer;
 
    ------------------------------

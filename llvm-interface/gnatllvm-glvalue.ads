@@ -415,6 +415,14 @@ package GNATLLVM.GLValue is
      (V.Relationship)
      with Pre => Present (V);
 
+   function Deref (V : GL_Value) return GL_Relationship is
+     (Deref (Relationship (V)))
+     with Pre => Present (V);
+
+   function Ref (V : GL_Value)   return GL_Relationship is
+     (Ref (Relationship (V)))
+     with Pre => Present (V);
+
    function Alignment    (V : GL_Value)  return Nat     is (V.Alignment)
      with Pre => Present (V);
 
@@ -869,6 +877,11 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Return True if V is a constant integer
 
+   function Is_A_Constant_Pointer_Null (V : GL_Value) return Boolean is
+     (Present (Is_A_Constant_Pointer_Null (LLVM_Value (V))))
+     with Pre => Present (V);
+   --  Return True if V is a null pointer
+
    function Get_Const_Int_Value (V : GL_Value) return LLI is
      (Const_Int_Get_S_Ext_Value (LLVM_Value (V)))
      with Pre => Is_A_Const_Int (V);
@@ -1131,13 +1144,20 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Post => Present (Pred_FP'Result), Inline;
 
    function Set_Object_Align
-     (Obj : Value_T; GT : GL_Type; E : Entity_Id := Empty) return Nat
+     (Obj   : Value_T;
+      GT    : GL_Type;
+      E     : Entity_Id := Empty;
+      Align : Nat := 0) return Nat
      with Pre => Present (Obj) and then Present (GT), Inline;
    function Set_Object_Align
-     (Obj : GL_Value; GT : GL_Type; E : Entity_Id := Empty) return Nat
+     (Obj   : GL_Value;
+      GT    : GL_Type;
+      E     : Entity_Id := Empty;
+      Align : Nat := 0) return Nat
      with Pre => Present (Obj) and then Present (GT), Inline;
-   --  Set the alignment of alloca inst or global from GT and E (if present)
-   --  and return the resulting alignment (in bits).
+   --  Set the alignment of alloca inst or global from GT and E (if
+   --  present), allowing Align (in bits if nonzero) to override, and
+   --  return the resulting alignment (in bits).
 
    function Block_Address
      (Func : GL_Value; BB : Basic_Block_T) return GL_Value
@@ -1275,6 +1295,15 @@ package GNATLLVM.GLValue is
      with Post => Idxs'Length = Idxs_From_GL_Values'Result'Length, Inline;
    --  Convert an array of GL_Value indices into the corresponding arrays
    --  of constants.
+
+   function Get_GEP_Constant_Offset
+     (GEP : GL_Value; Offset : out ULL) return Boolean
+     with Pre => Present (GEP);
+   --  If all the offsets of GEP are constant, return the total offset
+
+   function Get_GEP_Offset_Alignment (GEP : GL_Value) return Nat
+     with Pre => Present (GEP);
+   --  Return the best known alignment of the cumulative offset of GEP
 
    function Get_Alloca_Name
      (Def_Ident : Entity_Id; Name : String) return String;

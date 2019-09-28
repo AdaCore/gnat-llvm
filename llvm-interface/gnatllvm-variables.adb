@@ -1449,8 +1449,8 @@ package body GNATLLVM.Variables is
       --  Now make a GL_Value.  We do this here since different constant
       --  literals may have different types (i.e., bounds).
 
-      return G (Const_Map.Element (LLVM_Value (In_V)),
-                GT, Ref (Relationship (In_V)));
+      return G (Const_Map.Element (LLVM_Value (In_V)), GT, Ref (In_V),
+                Alignment => Get_Type_Alignment (GT));
    end Make_Global_Constant;
 
    --------------------------
@@ -1973,10 +1973,13 @@ package body GNATLLVM.Variables is
             Copied := True;
          end if;
 
-      --  Otherwise, if we have an address, that's what we use
+      --  Otherwise, if we have an address, that's what we use.  But it's
+      --  erroneous if the address is not a multiple of the alignment, so
+      --  show that we know this alignment.
 
       elsif Has_Addr then
          LLVM_Var := Addr;
+         Initialize_Alignment (LLVM_Var);
 
       --  If this is a true constant, we can just use the expression that
       --  computed the constant as the value, once converted to the proper

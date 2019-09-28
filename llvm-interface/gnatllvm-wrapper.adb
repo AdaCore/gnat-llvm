@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Interfaces.C; use Interfaces.C;
+
 package body GNATLLVM.Wrapper is
 
    ----------------------------------
@@ -25,7 +27,8 @@ package body GNATLLVM.Wrapper is
      (MDBld  : MD_Builder_T;
       Name   : String;
       Parent : Metadata_T)
-     return Metadata_T is
+     return Metadata_T
+   is
       function Create_TBAA_Scalar_Type_Node_C
         (MDBld  : MD_Builder_T;
          Name   : String;
@@ -147,5 +150,24 @@ package body GNATLLVM.Wrapper is
                               No_Inlining_B, No_Unit_B, No_Unroll_B,
                               No_Loop_Vect_B, No_SLP_Vect_B);
    end LLVM_Optimize_Module;
+
+   function Get_GEP_Constant_Offset
+     (GEP : Value_T; Layout : Target_Data_T; Offset : out ULL) return Boolean
+   is
+      function Get_GEP_Constant_Offset_C
+        (GEP : Value_T;
+         Layout : Target_Data_T;
+         Offset : access ULL) return Bool_T
+        with Import, Convention => C,
+             External_Name => "Get_GEP_Constant_Offset";
+
+      Result_Offset : aliased ULL;
+      Result        : constant Bool_T :=
+        Get_GEP_Constant_Offset_C (GEP, Layout, Result_Offset'Access);
+
+   begin
+      Offset := Result_Offset;
+      return (if Result = 0 then False else True);
+   end Get_GEP_Constant_Offset;
 
 end GNATLLVM.Wrapper;

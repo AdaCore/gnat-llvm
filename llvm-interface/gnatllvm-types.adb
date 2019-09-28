@@ -634,7 +634,8 @@ package body GNATLLVM.Types is
                                             Align => UI_From_Int (Align)));
 
             begin
-               return Move_Into_Memory (Alloca (Align_GT, Def_Ident, Name),
+               return Move_Into_Memory (Alloca (Align_GT, Def_Ident, Align,
+                                                Name),
                                         Value, Expr, GT, A_GT);
             end;
          end if;
@@ -709,7 +710,7 @@ package body GNATLLVM.Types is
       --  Now allocate the object, align if necessary, and then move
       --  any data into it.
 
-      Result := Array_Alloca (Element_GT, Num_Elts, Def_Ident,
+      Result := Array_Alloca (Element_GT, Num_Elts, Def_Ident, Align,
                               (if Overalign then "%%" else Name));
       if Overalign then
          Result := Ptr_To_Int (Result, Size_GL_Type);
@@ -843,9 +844,9 @@ package body GNATLLVM.Types is
          Result := Call_Alloc (Proc, (1 => To_Bytes (Size)));
       end if;
 
-      --  If we're doing this for an unconstrained array, we have the pointer
-      --  to the raw array, not a fat pointer.
+      --  Set the known alignment for the address and move any data into it
 
+      Set_Alignment (Result, Align);
       return Move_Into_Memory (Result, Value, Expr, GT, A_GT);
    end Heap_Allocate_For_Type;
 
@@ -1373,39 +1374,49 @@ package body GNATLLVM.Types is
       return (if Is_Static_SO_Ref (Ret) then Ret else No_Uint);
    end Get_Attribute_From_Annotation;
 
-   ----------------------------------
-   -- Add_Type_Data_To_Instruction --
-   ----------------------------------
+   ------------------------------
+   -- Add_Flags_To_Instruction --
+   ------------------------------
 
-   procedure Add_Type_Data_To_Instruction
+   procedure Add_Flags_To_Instruction
      (Inst : Value_T; V : GL_Value; Special_Atomic : Boolean := False)
    is
-      GT    : constant GL_Type    := Related_Type (V);
-      TBAA  : constant Metadata_T := Get_TBAA (Full_Etype (GT));
-      Align : constant Nat        := Get_Type_Alignment (GT);
+      GT           : constant GL_Type    := Related_Type (V);
+      Align        : constant Nat        := Alignment (V);
+      Our_Volatile : constant Boolean    := Is_Volatile (V);
+      Our_Atomic   : constant Boolean    :=
+        Is_Atomic (V)
+        and then (Special_Atomic
+                    or else (Atomic_Kind (Get_Element_Type (Type_Of (V)))));
+      TBAA         : constant Metadata_T := Get_TBAA (Full_Etype (GT));
 
    begin
-      Set_Volatile  (Inst, Is_Volatile (V));
+      --  We always set the alignment, since that's correct for all references
+
+      Set_Alignment (Inst, unsigned (To_Bytes (Align)));
+
+      --  But nothing else is
+
+      if not Is_Data (Deref (V)) then
+         return;
+      end if;
+
+      --  If this is Atomic, the alignment must be at least as large as the
+      --  size.
+
+      pragma Assert (not Our_Atomic
+                       or else ULL (Align) >= Get_Type_Size (Type_Of (GT)));
+      Set_Volatile  (Inst, Our_Volatile);
       Set_Ordering  (Inst,
-                     (if   Is_Atomic (V)
-                           and then (Special_Atomic
-                                       or else (Atomic_Kind
-                                                  (Get_Element_Type
-                                                     (Type_Of (V)))))
+                     (if  Our_Atomic
                       then Atomic_Ordering_Sequentially_Consistent
                       else Atomic_Ordering_Not_Atomic));
-
-      --  ??? We do lots of pointer punning that breaks alignment.
-      --  x86_64 is actually strict alignment for alignment of 128 bits,
-      --  so don't give an alignment larger than that for now.
-
-      Set_Alignment (Inst, unsigned (To_Bytes (Nat'Min (Align, 64))));
 
       if Present (TBAA) and then not Universal_Aliasing (GT) then
          Add_TBAA_Access
            (Inst, Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, 0));
       end if;
-   end Add_Type_Data_To_Instruction;
+   end Add_Flags_To_Instruction;
 
    ------------------------------
    -- Check_OK_For_Atomic_Type --

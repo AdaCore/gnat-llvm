@@ -928,7 +928,7 @@ package body GNATLLVM.Subprograms is
             if Is_Unconstrained_Array (GT) then
                return From_Access (Value);
             else
-               return Int_To_Ref (Value, GT);
+               return Initialize_Alignment (Int_To_Ref (Value, GT));
             end if;
          end;
       else
@@ -1101,10 +1101,10 @@ package body GNATLLVM.Subprograms is
                Param_Num := Param_Num + 1;
             end if;
 
-            Set_Value (Param, LLVM_Param);
             Initialize_Alignment (LLVM_Param);
             Annotate_Object_Size_And_Alignment (Param, GT, Want_Max => False);
             Create_Local_Variable_Debug_Data (Param, LLVM_Param, P_Num);
+            Set_Value (Param, LLVM_Param);
             Next_Formal_With_Extras (Param);
          end;
       end loop;
@@ -2199,8 +2199,8 @@ package body GNATLLVM.Subprograms is
             Addr      : GL_Value                 := Get_Value (Addr_Expr);
 
             function Int_To_Subp (V : GL_Value) return GL_Value is
-              (G (Int_To_Ptr (IR_Builder, LLVM_Value (Addr), Subp_T, ""),
-                  GT, R))
+              (GM (Int_To_Ptr (IR_Builder, LLVM_Value (Addr), Subp_T, ""),
+                   GT, R, V))
               with Pre => Present (V), Post => Present (Int_To_Subp'Result);
 
          begin

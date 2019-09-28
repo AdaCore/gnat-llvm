@@ -233,6 +233,12 @@ package body GNATLLVM.GLValue is
       elsif Deref (R) in Data | Bounds | Bounds_And_Data then
          Set_Alignment (V, Get_Type_Alignment (Related_Type (V)));
 
+      --  If it's Data but an access type, get the alignment of the
+      --  designated type.
+
+      elsif R = Data and then Is_Access_Type (V) then
+         Set_Alignment (V, Get_Type_Alignment (Full_Designated_GL_Type (V)));
+
       --  Otherwise, we know nothing about this value's alignment
 
       else
@@ -787,7 +793,8 @@ package body GNATLLVM.GLValue is
 
             begin
                Done_Promoting_Alloca (Inst, Promote, T);
-               Result := G (Inst, GT, Ref (Our_R), Alignment => Align);
+               Result := G (Inst, GT, Ref (Our_R));
+               Set_Alignment (Result, Align);
                Store (V, Result);
                return Result;
             end;
@@ -1061,7 +1068,7 @@ package body GNATLLVM.GLValue is
    ---------------
 
    function To_Access (V : GL_Value; GT : GL_Type) return GL_Value is
-     (G (LLVM_Value (V), GT));
+     (GM (LLVM_Value (V), GT, Data, V));
 
    -----------------
    -- From_Access --
@@ -1073,7 +1080,7 @@ package body GNATLLVM.GLValue is
       R      : constant GL_Relationship := Relationship_For_Access_Type (GT);
 
    begin
-      return G (LLVM_Value (V), Acc_GT, R);
+      return GM (LLVM_Value (V), Acc_GT, R, V);
    end From_Access;
 
    ----------------------
@@ -1081,17 +1088,21 @@ package body GNATLLVM.GLValue is
    ----------------------
 
    function Set_Object_Align
-     (Obj : Value_T; GT : GL_Type; E : Entity_Id := Empty) return Nat
+     (Obj   : Value_T;
+      GT    : GL_Type;
+      E     : Entity_Id := Empty;
+      Align : Nat := 0) return Nat
    is
-      GT_Align : constant Nat := Get_Type_Alignment (GT);
-      E_Align  : constant Nat :=
+      GT_Align  : constant Nat := Get_Type_Alignment (GT);
+      E_Align   : constant Nat :=
         (if   Present (E) and then Known_Alignment (E)
          then UI_To_Int (Alignment (E)) else BPU);
-      Align    : constant Nat := Nat'Max (GT_Align, E_Align);
+      Our_Align : constant Nat :=
+        (if Align /= 0 then Align else Nat'Max (GT_Align, E_Align));
 
    begin
-      Set_Alignment (Obj, unsigned (To_Bytes (Align)));
-      return Align;
+      Set_Alignment (Obj, unsigned (To_Bytes (Our_Align)));
+      return Nat'Min (Our_Align, Max_Align);
    end Set_Object_Align;
 
    ----------------------
@@ -1099,9 +1110,12 @@ package body GNATLLVM.GLValue is
    ----------------------
 
    function Set_Object_Align
-     (Obj : GL_Value; GT : GL_Type; E : Entity_Id := Empty) return Nat is
+     (Obj   : GL_Value;
+      GT    : GL_Type;
+      E     : Entity_Id := Empty;
+      Align : Nat := 0) return Nat is
    begin
-      return Set_Object_Align (LLVM_Value (Obj), GT, E);
+      return Set_Object_Align (LLVM_Value (Obj), GT, E, Align);
    end Set_Object_Align;
 
    ---------------
@@ -1864,6 +1878,83 @@ package body GNATLLVM.GLValue is
          end loop;
       end return;
    end Idxs_From_GL_Values;
+
+   -----------------------------
+   -- Get_GEP_Constant_Offset --
+   -----------------------------
+   function Get_GEP_Constant_Offset
+     (GEP : GL_Value; Offset : out ULL) return Boolean is
+   begin
+      return Get_GEP_Constant_Offset (LLVM_Value (GEP), Module_Data_Layout,
+                                      Offset);
+   end Get_GEP_Constant_Offset;
+
+   ------------------------------
+   -- Get_GEP_Offset_Alignment --
+   ------------------------------
+
+   function Get_GEP_Offset_Alignment (GEP : GL_Value) return Nat is
+      Inst         : constant Value_T := LLVM_Value (GEP);
+      Num_Operands : constant Nat     := Nat (Get_Num_Operands (Inst));
+      Op_Num       : unsigned         := 1;
+      Align        : Nat              := Max_Align;
+      T            : Type_T;
+      Offset       : ULL;
+
+   begin
+      --  If this is an undef, we know nothing of the alignmetn
+
+      if Is_Undef (GEP) then
+         return BPU;
+
+      --  If it's null, it's fully aligned
+
+      elsif Is_A_Constant_Pointer_Null (GEP) then
+         return Max_Align;
+
+      --  If this GEP is for a constant offset, we can deduce the alignment
+      --  from that.
+
+      elsif Get_GEP_Constant_Offset (GEP, Offset) then
+         return ULL_Align_Bytes (Offset);
+      end if;
+
+      --  Otherwise, loop through operands as long as we have operands left
+      --  and T is a pointer or array.  For each, take the alignment of
+      --  what T points to and, if the operand is a constant, multiply that
+      --  alignment by the alignment of the constant.
+
+      T := Type_Of (Get_Operand (Inst, 0));
+      while Nat (Op_Num) < Num_Operands
+        and then Get_Type_Kind (T) in Pointer_Type_Kind | Array_Type_Kind
+      loop
+         declare
+            This_Op    : constant Value_T := Get_Operand (Inst, Op_Num);
+            Next_T     : constant Type_T  := Get_Element_Type (T);
+            This_Align : Nat              := Get_Type_Alignment (Next_T);
+            Const_Val  : ULL;
+
+         begin
+            if Present (Is_A_Constant_Int (This_Op)) then
+               Const_Val := ULL (Const_Int_Get_S_Ext_Value (This_Op));
+               This_Align := This_Align * ULL_Align_Bytes (Const_Val) / BPU;
+            end if;
+
+            Align  := Nat'Min (Align, This_Align);
+            Op_Num := Op_Num + 1;
+            T      := Next_T;
+         end;
+      end loop;
+
+      --  If we have operands left but have no way of handling them. they
+      --  may further constrain the alignment in ways we don't know.
+
+      if Nat (Op_Num) < Num_Operands then
+         Align := BPU;
+      end if;
+
+      return Align;
+   end Get_GEP_Offset_Alignment;
 
    ---------------------
    -- Get_Alloca_Name --

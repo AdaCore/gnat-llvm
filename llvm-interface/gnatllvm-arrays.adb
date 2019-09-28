@@ -72,6 +72,16 @@ package body GNATLLVM.Arrays is
           Post => Swap_Indices'Result'Length = Idxs'Length;
    --  Given a list of indices, swap them if V is a Fortran array
 
+   procedure Adjust_Array_Component_Alignment
+     (Result : in out GL_Value; Base : GL_Value; Comp_GT : GL_Type)
+     with Pre => Present (Result) and then Present (Base)
+                 and then Present (Comp_GT);
+   --  If the native type of Comp_GT has less strict alignment than the
+   --  alignment of the type, the alignment computed from the GEP (in
+   --  Result) will be too conservative.  But if the alignment agrees,
+   --  use the value computed by GEP since it takes into account any
+   --  alignment of the indices, which we don't want to bother doing here.
+
    --  We put the routines used to compute sizes into a generic so that we
    --  can instantiate them using various types of sizing.  The most common
    --  case is an actual size computation, where we produce a GL_Value.
@@ -926,15 +936,14 @@ package body GNATLLVM.Arrays is
          Value := Emit_Convert_Value (E, SSI_GL_Type);
       end if;
 
-      Call_With_Align
+      Call
         (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_GL_Type),
          (1 => Pointer_Cast (Get (To_Primitive (LValue, No_Copy => True),
                                   Reference),
                              A_Char_GL_Type),
           2 => Value,
           3 => To_Bytes (Get_Type_Size (GT)),
-          4 => (if Is_Volatile (LValue) then Const_True else Const_False)),
-         Get_Type_Alignment (GT) / BPU);
+          4 => (if Is_Volatile (LValue) then Const_True else Const_False)));
    end Emit_Others_Aggregate;
 
    -----------------------------
@@ -1225,6 +1234,26 @@ package body GNATLLVM.Arrays is
       return Idxs;
    end Get_Indices;
 
+   --------------------------------------
+   -- Adjust_Array_Component_Alignment --
+   --------------------------------------
+
+   procedure Adjust_Array_Component_Alignment
+     (Result : in out GL_Value; Base : GL_Value; Comp_GT : GL_Type)
+   is
+      Native_Align : constant Nat :=
+        (if   Is_Nonnative_Type (Comp_GT) then BPU
+         else Get_Type_Alignment (Type_Of (Comp_GT)));
+      Our_Align    : constant Nat := Get_Type_Alignment (Comp_GT);
+      Base_Align   : constant Nat := Alignment (Base);
+
+   begin
+      if Native_Align < Our_Align then
+         Set_Alignment (Result, Nat'Min (Base_Align, Our_Align));
+      end if;
+
+   end Adjust_Array_Component_Alignment;
+
    ------------------------
    -- Get_Indexed_LValue --
    ------------------------
@@ -1246,6 +1275,7 @@ package body GNATLLVM.Arrays is
                         GL_Value_Array'(1 => Size_Const_Null) & Idxs);
          Mark_Atomic   (Result, Has_Atomic_Components (GT));
          Mark_Volatile (Result, Has_Volatile_Components (GT));
+         Adjust_Array_Component_Alignment (Result, V, Comp_GT);
          return Result;
       end if;
 
@@ -1291,6 +1321,7 @@ package body GNATLLVM.Arrays is
 
          Result := GEP (Unit_GT, Data, (1 => Index * Unit_Mult), "arr-lvalue");
          Mark_Volatile (Result, Has_Volatile_Components (GT));
+         Adjust_Array_Component_Alignment (Result, V, Comp_GT);
          return Ptr_To_Ref (Result, Comp_GT);
       end;
 
@@ -1314,6 +1345,8 @@ package body GNATLLVM.Arrays is
       Index_Shift : constant GL_Value := Cvt_Index - Cvt_LB;
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
+      Comp_GT     : constant GL_Type  := Full_Component_GL_Type (Arr_GT);
+      Result      : GL_Value;
 
    begin
       --  Like in Get_Indexed_LValue, we have to hande both the fake and
@@ -1322,14 +1355,15 @@ package body GNATLLVM.Arrays is
       --  we need to cast to the result (array) type in both cases.
 
       if not Is_Nonnative_Type (Arr_GT) then
-         return Ptr_To_Ref (GEP (GT, Array_Data,
-                                 (1 => Size_Const_Null, 2 => Index_Shift),
-                                 "arr-lvalue"),
-                            GT);
+         Result := Ptr_To_Ref (GEP (GT, Array_Data,
+                                    (1 => Size_Const_Null, 2 => Index_Shift),
+                                    "arr-lvalue"),
+                               GT);
+         Adjust_Array_Component_Alignment (Result, V, Comp_GT);
+         return Result;
       end if;
 
       declare
-         Comp_GT   : constant GL_Type  := Full_Component_GL_Type (Arr_GT);
          Comp_Unc  : constant Boolean  := Is_Unconstrained_Record (Comp_GT);
          Use_Comp  : constant Boolean  := Is_Native_Component_GT (Comp_GT);
          Unit_GT   : constant GL_Type  :=
@@ -1343,8 +1377,10 @@ package body GNATLLVM.Arrays is
            To_Size_Type (Index_Shift) * Unit_Mult;
 
       begin
-         return Ptr_To_Ref
-           (GEP (Arr_GT, Data, (1 => Index), "arr-lvalue"), GT);
+         Result := Ptr_To_Ref (GEP (Arr_GT, Data,
+                                    (1 => Index), "arr-lvalue"), GT);
+         Adjust_Array_Component_Alignment (Result, V, Comp_GT);
+         return Result;
       end;
 
    end Get_Slice_LValue;

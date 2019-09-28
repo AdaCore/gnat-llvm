@@ -1311,13 +1311,13 @@ package body GNATLLVM.Exprs is
               Compute_Size (Dest_GT, Related_Type (Src), Dest, Src);
 
          begin
-            Call_With_Align
+            Call
               (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_GL_Type),
                (1 => Pointer_Cast (Get (Dest, Reference), A_Char_GL_Type),
                 2 => Const_Null (SSI_GL_Type),
                 3 => To_Bytes (Size),
-                4 => (if Is_Volatile (Dest) then Const_True else Const_False)),
-               Get_Type_Alignment (Dest_GT) / BPU);
+                4 => (if   Is_Volatile (Dest) then Const_True
+                      else Const_False)));
          end;
 
       --  Now see if the source is of an LLVM value small enough to store, but
@@ -1372,16 +1372,14 @@ package body GNATLLVM.Exprs is
                Size := Size + Get_Bound_Size (Related_Type (Src));
             end if;
 
-            Call_With_Align_2
+            Call
               (Build_Intrinsic
                  (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i", Size_GL_Type),
                (1 => Pointer_Cast (Get (Dest, Dest_R), A_Char_GL_Type),
                 2 => Pointer_Cast (Get (Src,  Src_R),  A_Char_GL_Type),
                 3 => To_Bytes (Size),
                 4 => (if   Is_Volatile (Dest) or else Is_Volatile (Src)
-                      then Const_True else Const_False)), -- Is_Volatile
-               Get_Type_Alignment (Dest_GT) / BPU,
-               Get_Type_Alignment (Related_Type (Src)) / BPU);
+                      then Const_True else Const_False)));
          end;
       end if;
    end Emit_Assignment;

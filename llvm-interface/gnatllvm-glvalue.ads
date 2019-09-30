@@ -833,6 +833,11 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Return True if V is a global variable
 
+   function Is_Global_Constant (V : GL_Value) return Boolean is
+     (Is_Global_Constant (LLVM_Value (V)))
+     with Pre => Is_A_Global_Variable (V);
+   --  Return True if V is a global constant
+
    function Is_A_Function (V : GL_Value) return Boolean is
      (Present (Is_A_Function (LLVM_Value (V))))
      with Pre => Present (V);
@@ -1206,6 +1211,12 @@ package GNATLLVM.GLValue is
    procedure Set_Does_Not_Return (V : GL_Value)
      with Pre => Present (V), Inline;
    --  Indicate that V does not return
+
+   function Get_Initializer (V : GL_Value) return GL_Value is
+     (Initialize_Alignment (G (Get_Initializer (LLVM_Value (V)),
+                               Related_Type (V), Data)))
+     with Pre  => Is_A_Global_Variable (V) and then Is_Global_Constant (V),
+          Post => Present (Get_Initializer'Result);
 
    procedure Set_Initializer (V, Expr : GL_Value)
      with Pre => Present (V) and then Present (Expr), Inline;

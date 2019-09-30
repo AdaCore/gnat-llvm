@@ -913,10 +913,22 @@ package body GNATLLVM.Compile is
 
          when N_Explicit_Dereference =>
 
-            --  Dereference the value, then see if we have an
-            --  Actual_Designated_Subtype that we have to convert to.
+            --  Get a reference to our prefix
 
             Result := From_Access (Emit_Expression (Prefix (N)));
+
+            --  If we have a reference to a global constant, we can
+            --  use the value instead.
+
+            if Is_Reference (Result) and then Is_A_Global_Variable (Result)
+              and then Is_Global_Constant (Result)
+            then
+               Result := Get_Initializer (Result);
+            end if;
+
+            --  Finally see if we have an Actual_Designated_Subtype that we
+            --  have to convert to.
+
             if Present (Actual_Designated_Subtype (N)) then
                Result := Convert_Ref (Get (Result, Reference),
                                       Default_GL_Type

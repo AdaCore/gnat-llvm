@@ -7,8 +7,12 @@ front-end to the LLVM code generator.
 This is a work-in-progress research project that's not meant for and
 shouldn't be used for industrial purposes. It's meant to show the
 feasibility of generating LLVM byte code for Ada and to open the LLVM
-ecosystem to Ada, including tools such as KLEE. There are known bugs and
-limitations in this version.
+ecosystem to Ada, including tools such as [KLEE](https://klee.github.io).
+
+Note that we are not planning on replacing any existing GNAT port based on GCC,
+so this project goes in addition rather than in replacement.
+
+There are known bugs and limitations in this version.
 
 Early users are welcome to experiment with this technology and provide
 feedback on successes, usages, limitations, pull requests, etc.

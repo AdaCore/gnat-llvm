@@ -13,10 +13,6 @@ CHMOD=chmod
 AR=ar q
 LN_S=ln -sf
 
-ifeq ($(filter-out CYGWIN%,$(uname)),)
-  LN_S=cp -p
-endif
-
 GNATMAKE=gnatmake
 
 GPROPT=-XBuild=Production
@@ -38,7 +34,8 @@ LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs) \
   -static-libstdc++
 CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags)
 
-ifeq ($(filter-out CYGWIN%,$(uname)),)
+ifeq ($(filter-out CYGWIN% MINGW%,$(uname)),)
+  LN_S=cp -p
   LDFLAGS+=-Wl,--stack=0x2000000
 endif
 

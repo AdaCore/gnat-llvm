@@ -33,7 +33,7 @@ project Tools is
    type Build_Type is ("Debug", "Production");
    Build : Build_Type := External ("Build", "Debug");
 
-   Common_Switches := ("-g", "-gnatg", "-gnata");
+   Common_Switches := ("-g", "-gnatg");
 
    package Compiler is
       case Build is

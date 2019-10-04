@@ -1,8 +1,7 @@
 with "gnat_llvm_c";
 
 project Gnat_LLVM is
-   for Source_Dirs use
-     (".", "obj", "gnat_src", "../llvm/adainclude");
+   for Source_Dirs use (".", "obj", "gnat_src", "../llvm/adainclude");
    for Object_Dir use "obj";
    for Exec_Dir use "bin";
    for Languages use ("Ada");
@@ -16,7 +15,7 @@ project Gnat_LLVM is
       for Switches ("Ada") use ("-m");
    end Builder;
 
-   Common_Switches := ("-g", "-gnatg", "-gnata");
+   Common_Switches := ("-g", "-gnatg");
 
    package Compiler is
       case Build is
@@ -24,7 +23,7 @@ project Gnat_LLVM is
             for Switches ("Ada") use Common_Switches & ("-gnata", "-gnateE");
 
          when "Production" =>
-            for Switches ("Ada") use Common_Switches & ("-O2");
+            for Switches ("Ada") use Common_Switches & ("-O2", "-gnatpn");
       end case;
    end Compiler;
 

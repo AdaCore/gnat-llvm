@@ -339,7 +339,9 @@ package body GNATLLVM.DebugInfo is
       Name        : constant String     := Get_Name (TE);
       T           : constant Type_T     := Type_Of (GT);
       Size        : constant UL         :=
-        (if Type_Is_Sized (T) then UL (ULL'(Get_Type_Size (T))) else 0);
+        (if   Type_Is_Sized (T)
+              and then ULL'(Get_Type_Size (T)) <= ULL (UL'Last)
+         then UL (ULL'(Get_Type_Size (T))) else 0);
       Align       : constant unsigned   :=
         unsigned (Nat'(Get_Type_Alignment (GT)));
       S           : constant Source_Ptr := Sloc (TE);

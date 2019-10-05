@@ -32,6 +32,8 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
+with stddef_h; use stddef_h;
+
 package body GNATLLVM.DebugInfo is
 
    Debug_Compile_Unit  : Metadata_T;
@@ -182,9 +184,9 @@ package body GNATLLVM.DebugInfo is
          Name      : constant String     :=
            Get_Name_String (Debug_Source_Name (File));
          DIFile    : constant Metadata_T :=
-           DI_Create_File (DI_Builder, Name, UL (Name'Length),
+           DI_Create_File (DI_Builder, Name, Name'Length,
                            Full_Name (1 .. Full_Name'Length - Name'Length),
-                           UL (Full_Name'Length - Name'Length));
+                           Full_Name'Length - Name'Length);
       begin
          DI_Cache (File) := DIFile;
          return DIFile;
@@ -338,10 +340,8 @@ package body GNATLLVM.DebugInfo is
       TE          : constant Entity_Id  := Full_Etype (GT);
       Name        : constant String     := Get_Name (TE);
       T           : constant Type_T     := Type_Of (GT);
-      Size        : constant UL         :=
-        (if   Type_Is_Sized (T)
-              and then ULL'(Get_Type_Size (T)) <= ULL (UL'Last)
-         then UL (ULL'(Get_Type_Size (T))) else 0);
+      Size        : constant uint64_t   :=
+        (if Type_Is_Sized (T) then uint64_t (ULL'(Get_Type_Size (T))) else 0);
       Align       : constant unsigned   :=
         unsigned (Nat'(Get_Type_Alignment (GT)));
       S           : constant Source_Ptr := Sloc (TE);
@@ -374,7 +374,7 @@ package body GNATLLVM.DebugInfo is
          when Integer_Kind | Fixed_Point_Kind =>
             Result := DI_Create_Basic_Type
               (DI_Builder, Name, Name'Length, Size,
-               (if    Size = UL (BPU)
+               (if    Size = uint64_t (BPU)
                 then  (if   Is_Unsigned_Type (TE) then DW_ATE_Unsigned_Char
                        else DW_ATE_Signed_Char)
                 elsif Is_Unsigned_Type (TE) then DW_ATE_Unsigned

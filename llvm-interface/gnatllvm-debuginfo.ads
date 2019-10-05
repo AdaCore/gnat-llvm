@@ -92,18 +92,6 @@ package GNATLLVM.DebugInfo is
 
 private
 
-   subtype UL is Interfaces.C.unsigned_long;
-
-   function "+" (L, R : UL)  return UL renames Interfaces.C."+";
-   function "-" (L, R : UL)  return UL renames Interfaces.C."-";
-   function "*" (L, R : UL)  return UL renames Interfaces.C."*";
-   function "/" (L, R : UL)  return UL renames Interfaces.C."/";
-   function "=" (L, R : UL)  return Boolean  renames Interfaces.C."=";
-   function ">" (L, R : UL)  return Boolean  renames Interfaces.C.">";
-   function "<" (L, R : UL)  return Boolean  renames Interfaces.C."<";
-   function "<=" (L, R : UL) return Boolean  renames Interfaces.C."<=";
-   function ">=" (L, R : UL) return Boolean  renames Interfaces.C.">=";
-
    --  Define the various Dwarf type attributes.  This is encoded in
    --  lvm/BinaryFormat/Dwarf.def, but it's simpler to just repeat them
    --  here since they are part of the standard and won't change.

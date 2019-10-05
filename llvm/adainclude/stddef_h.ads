@@ -4,7 +4,7 @@ with Interfaces.C; use Interfaces.C;
 
 package stddef_h is
 
-   subtype size_t is unsigned_long;
-   subtype off_t is unsigned_long;
+   type size_t is mod 2 ** Standard'Address_Size;
+   subtype off_t is long;
 
 end stddef_h;

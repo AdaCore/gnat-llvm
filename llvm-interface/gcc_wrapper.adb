@@ -97,11 +97,22 @@ begin
          Arg : constant String := Argument (1);
       begin
          if Arg = "-v" then
-            Put_Line ("Target: llvm");
-            Put_Line (Base_Name (GCC) & " version " &
-                      Gnatvsn.Library_Version & " for GNAT " &
-                      Gnatvsn.Gnat_Version_String);
-            OS_Exit (0);
+            declare
+               Version : constant String := Gnatvsn.Gnat_Version_String;
+            begin
+               Put_Line ("Target: llvm");
+
+               if Version = "1.0" then
+                  Put_Line (Base_Name (GCC) & " version " &
+                            Gnatvsn.Library_Version);
+               else
+                  Put_Line (Base_Name (GCC) & " version " &
+                            Gnatvsn.Library_Version & " (for GNAT " &
+                            Gnatvsn.Gnat_Version_String & ")");
+               end if;
+
+               OS_Exit (0);
+            end;
 
          elsif Arg = "-dumpversion" then
 
@@ -118,10 +129,20 @@ begin
             OS_Exit (0);
 
          elsif Arg = "--version" then
-            Put_Line (Base_Name (GCC) & " " &
-                      Gnatvsn.Library_Version & " for GNAT " &
-                      Gnatvsn.Gnat_Version_String);
-            Put_Line ("Copyright (C) 2018 Free Software Foundation, Inc.");
+            declare
+               Version : constant String := Gnatvsn.Gnat_Version_String;
+            begin
+               if Version = "1.0" then
+                  Put_Line (Base_Name (GCC) & " " & Gnatvsn.Library_Version);
+               else
+                  Put_Line (Base_Name (GCC) & " " &
+                            Gnatvsn.Library_Version & " (for GNAT " &
+                            Version & ")");
+               end if;
+            end;
+
+            Put_Line ("Copyright (C) 2018-" & Gnatvsn.Current_Year &
+                      " Free Software Foundation, Inc.");
             Put_Line ("This is free software; see the source for copying " &
                       "conditions.");
             Put_Line ("See your AdaCore support agreement for details of " &

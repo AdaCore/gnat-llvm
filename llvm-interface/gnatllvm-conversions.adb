@@ -385,7 +385,6 @@ package body GNATLLVM.Conversions is
          end if;
 
          Result := Convert_To_Access (Result, GT);
-         Initialize_Alignment (Result);
 
       --  We can unchecked convert floating point of the same width
       --  (the only way that UC is formally defined) with a "bitcast"
@@ -506,6 +505,13 @@ package body GNATLLVM.Conversions is
                                        else A_Shr (Left_Shift, Shift_Count)),
                                       GT);
          end;
+      end if;
+
+      --  For unchecked conversion, we know that the alignment is at least
+      --  that of the type (or the type pointed to if this is an access type).
+
+      if Is_Unchecked then
+         Initialize_Alignment (Result);
       end if;
 
       return Result;

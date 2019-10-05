@@ -124,6 +124,9 @@ package GNATLLVM.Environment is
       --  For an expression, the value returned by Create_Dynamic_SO_Ref,
       --  used for back-annotation purposes.
 
+      Flag1                 : Boolean;
+      --  Used for multiple purposes, depending on Ekind
+
    end record;
 
    LLVM_Info_Low_Bound  : constant := 200_000_000;
@@ -206,6 +209,9 @@ package GNATLLVM.Environment is
    function Get_Label_Info            (VE : Entity_Id)  return Label_Info_Id
      with Pre => Present (VE), Inline;
 
+   function Get_Flag1                 (VE : Entity_Id)  return Boolean
+      with Pre => Present (VE), Inline;
+
    procedure Set_GL_Type              (TE : Entity_Id; GT : GL_Type)
      with Pre => Is_Type_Or_Void (TE), Post => Get_GL_Type (TE) = GT, Inline;
 
@@ -275,5 +281,9 @@ package GNATLLVM.Environment is
                   and then (No (Get_Label_Info (VE))
                               or else Get_Label_Info (VE) = LI),
           Post => Get_Label_Info (VE) = LI, Inline;
+
+   procedure Set_Flag1                 (VE : Entity_Id; F : Boolean)
+     with Pre  => Present (VE),
+          Post => Get_Flag1 (VE) = F, Inline;
 
 end GNATLLVM.Environment;

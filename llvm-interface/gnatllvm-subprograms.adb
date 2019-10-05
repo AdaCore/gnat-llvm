@@ -701,6 +701,12 @@ package body GNATLLVM.Subprograms is
                else Get_Type_Size (T));
 
          begin
+            --  Save whether the original mechanism used was by-ref before
+            --  we change it.  We need this to warn on misaligned actuals.
+
+            Set_Orig_By_Ref_Mech (Param_Ent,
+                                  Mechanism (Param_Ent) = By_Reference);
+
             --  If the mechanism requested was by-copy and we use by-ref,
             --  give a warning.  If the mechanism was defaulted, set
             --  what we used.
@@ -1725,7 +1731,19 @@ package body GNATLLVM.Subprograms is
         (N : Node_Id; GT : GL_Type) return Boolean
         with Pre => Present (N) and then Present (GT);
       --  Return whether actual parameter corresponding N of formal type GT
-      --  must be passed by copy in a call as per RM C.6(19).
+      --  must be passed by copy in a call as per RM C.6(19).  Produce any
+      --  required errors or warnings.
+
+      function Misaligned_Copy_Required
+        (V        : GL_Value;
+         Actual   : Node_Id;
+         Formal   : Entity_Id;
+         Bitfield : Boolean) return Boolean
+        with Pre => Present (V) and then Present (Param);
+      --  Return whether V, when passed to a by-reference Formal, must be
+      --  copied due to a misalignment.  If Bitfield is True, we know that
+      --  we have a bitfield.  Also produce any required errors or
+      --  warnings.
 
       type WB is record
          LHS, RHS : GL_Value;
@@ -1869,6 +1887,75 @@ package body GNATLLVM.Subprograms is
          end if;
       end Atomic_Or_Volatile_Copy_Required;
 
+      ------------------------------
+      -- Misaligned_Copy_Required --
+      ------------------------------
+
+      function Misaligned_Copy_Required
+        (V        : GL_Value;
+         Actual   : Node_Id;
+         Formal   : Entity_Id;
+         Bitfield : Boolean) return Boolean
+      is
+         GT           : constant GL_Type := Full_GL_Type (Formal);
+         Our_Bitfield : Boolean          := Bitfield;
+         N            : Node_Id          := Actual;
+
+      begin
+         --  If this is a fat pointer type, we don't need a copy.  Don't
+         --  give error if just analyzing decls.  And if this is an undef,
+         --  we already know that we have an error
+
+         if Relationship (V) in Fat_Pointer | Fat_Reference_To_Subprogram
+           or else Decls_Only or else Is_Undef (V)
+         then
+            return False;
+         end if;
+
+         --  Otherwise see if Actual involves a bitfield reference
+
+         while not Our_Bitfield loop
+            case Nkind (N) is
+               when N_Selected_Component =>
+                  if Is_Bitfield_By_Rep (Entity (Selector_Name (N))) then
+                     Our_Bitfield := True;
+                  end if;
+
+                  N := Prefix (N);
+
+               when N_Indexed_Component =>
+                  N := Prefix (N);
+
+               when others =>
+                  exit;
+            end case;
+         end loop;
+
+         --  If the alignment is at least as strict as that for the type and
+         --  we don't have a bitfield, we don't have an issue.
+
+         if not Our_Bitfield and then Alignment (V) >= Get_Type_Alignment (GT)
+         then
+            return False;
+
+         --  If the formal is passed by reference, a copy is not allowed
+
+         elsif Is_Aliased (Formal) or else Is_By_Reference_Type (GT) then
+            Error_Msg_N ("misaligned actual cannot be passed by reference",
+                         Actual);
+
+         --  If the mechanism was forced to by-ref, a copy is not allowed
+         --  but we issue only a warning because this case is not strict
+         --  Ada.
+
+         elsif Get_Orig_By_Ref_Mech (Formal) then
+            Error_Msg_N ("??misaligned actual cannot be passed by reference",
+                         Actual);
+         end if;
+
+         return True;
+      end Misaligned_Copy_Required;
+
    begin  -- Start of processing for Emit_Call
 
       --  See if this is an instrinsic subprogram that we handle.  We're
@@ -1944,12 +2031,11 @@ package body GNATLLVM.Subprograms is
                --  If the param isn't passed by reference, convert the
                --  value to the parameter's type.  If it is, convert the
                --  pointer to being a pointer to the parameter's type.
+
                if PK_Is_Reference (PK) then
 
                   --  If we're required to make a copy due to volatility or
                   --  atomicity, make a note of that.
-                  --  ??? We also have to do this for mis-aligned, but have
-                  --  no way easy way of doing that for now.
 
                   if Comes_From_Source (N)
                     and then Atomic_Or_Volatile_Copy_Required (Actual, GT)
@@ -1973,7 +2059,10 @@ package body GNATLLVM.Subprograms is
                   --  the field load, and set up for a writeback.
 
                   pragma Assert (Idxs = null);
-                  if Present (F) then
+                  if Present (F)
+                    and then Misaligned_Copy_Required (LHS, Actual, Param,
+                                                       True)
+                  then
                      Arg := Allocate_For_Type (GT,
                                                N => Actual,
                                                V => Build_Field_Load (LHS, F));
@@ -1990,7 +2079,10 @@ package body GNATLLVM.Subprograms is
                      --  If we have to make a copy, do so.  Also set up a
                      --  writeback if we have to.
 
-                     if Copy then
+                     if Copy
+                       or else Misaligned_Copy_Required (LHS, Actual, Param,
+                                                         False)
+                     then
                         Arg  := Allocate_For_Type (Related_Type (LHS),
                                                    N => Actual,
                                                    V => LHS);
@@ -2001,17 +2093,19 @@ package body GNATLLVM.Subprograms is
                                             Idxs  => null,
                                             VFA   => Is_VFA_Ref (Actual));
                         end if;
+                     else
+                        Arg := LHS;
                      end if;
 
                      --  Now convert to a pointer to the proper type
 
                      Arg := (if    PK = Foreign_By_Ref
-                             then  Ptr_To_Relationship (Get (LHS, R), GT, R)
+                             then  Ptr_To_Relationship (Get (Arg, R), GT, R)
                              elsif PK = Foreign_By_Component_Ref
                              then  Ptr_To_Relationship
-                                     (Get (LHS, R),
+                                     (Get (Arg, R),
                                        Full_Component_GL_Type (GT), R)
-                             else  Get (Convert_Ref (LHS, GT), R));
+                             else  Get (Convert_Ref (Arg, GT), R));
                   end if;
 
                else
@@ -2096,9 +2190,9 @@ package body GNATLLVM.Subprograms is
 
          when Subprog_Return =>
             if RK = RK_By_Reference then
-               return Call_Ref (LLVM_Func, Return_GT, Args);
+               Result := Call_Ref (LLVM_Func, Return_GT, Args);
             else
-               return Call (LLVM_Func, Return_GT, Args);
+               Result := Call (LLVM_Func, Return_GT, Args);
             end if;
 
          when Out_Return =>

@@ -443,6 +443,15 @@ package body GNATLLVM.Utils is
       end return;
    end Enclosing_Subprogram_Scope;
 
+   --------------------------
+   -- Set_Orig_By_Ref_Mech --
+   --------------------------
+
+   procedure Set_Orig_By_Ref_Mech (E : Entity_Id; F : Boolean) is
+   begin
+      Set_Flag1 (E, F);
+   end Set_Orig_By_Ref_Mech;
+
    ----------------------
    -- Error_Msg_NE_Num --
    ----------------------

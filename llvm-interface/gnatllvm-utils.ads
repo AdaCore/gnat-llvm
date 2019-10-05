@@ -23,7 +23,8 @@ with Nlists;     use Nlists;
 with Sinfo;      use Sinfo;
 with Uintp.LLVM; use Uintp.LLVM;
 
-with GNATLLVM.GLValue; use GNATLLVM.GLValue;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Utils is
 
@@ -134,6 +135,16 @@ package GNATLLVM.Utils is
    --  recurse into records: two fields are of types with identical
    --  layout are enough for the fields to be considered the same layout:
    --  we don't actually need identical types.
+
+   function Get_Orig_By_Ref_Mech (E : Entity_Id) return Boolean is
+     (Get_Flag1 (E))
+     with Pre => Ekind_In (E, E_In_Parameter, E_Out_Parameter,
+                             E_In_Out_Parameter);
+   procedure Set_Orig_By_Ref_Mech (E : Entity_Id; F : Boolean)
+     with Pre => Ekind_In (E, E_In_Parameter, E_Out_Parameter,
+                             E_In_Out_Parameter);
+   --  Set and get a flag indicating that this parameter was originally
+   --  specified with a Mechanism of By_Ref.
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 

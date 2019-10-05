@@ -248,7 +248,7 @@ package body GNATLLVM.Types is
 
    function ULL_Align (C : ULL) return Nat is
    begin
-      return Align : Nat := Max_Align do
+      return Align : Nat := Max_Align * BPU do
          while C mod ULL (Align) /= 0 loop
             Align := Align / 2;
          end loop;

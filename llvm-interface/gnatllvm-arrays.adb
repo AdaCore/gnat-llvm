@@ -1321,7 +1321,7 @@ package body GNATLLVM.Arrays is
 
          Result := GEP (Unit_GT, Data, (1 => Index * Unit_Mult), "arr-lvalue");
          Mark_Volatile (Result, Has_Volatile_Components (GT));
-         Adjust_Array_Component_Alignment (Result, V, Comp_GT);
+         Adjust_Array_Component_Alignment (Result, Data, Comp_GT);
          return Ptr_To_Ref (Result, Comp_GT);
       end;
 
@@ -1379,7 +1379,7 @@ package body GNATLLVM.Arrays is
       begin
          Result := Ptr_To_Ref (GEP (Arr_GT, Data,
                                     (1 => Index), "arr-lvalue"), GT);
-         Adjust_Array_Component_Alignment (Result, V, Comp_GT);
+         Adjust_Array_Component_Alignment (Result, Data, Comp_GT);
          return Result;
       end;
 

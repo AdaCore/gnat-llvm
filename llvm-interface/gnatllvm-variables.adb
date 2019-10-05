@@ -1450,7 +1450,7 @@ package body GNATLLVM.Variables is
       --  literals may have different types (i.e., bounds).
 
       return G (Const_Map.Element (LLVM_Value (In_V)), GT, Ref (In_V),
-                Alignment => Get_Type_Alignment (GT));
+                Alignment => Get_Type_Alignment (Default_GL_Type (GT)));
    end Make_Global_Constant;
 
    --------------------------

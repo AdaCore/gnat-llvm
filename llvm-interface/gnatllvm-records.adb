@@ -1675,9 +1675,9 @@ package body GNATLLVM.Records is
       FI      := Field_Info_Table.Table (F_Idx);
       F_GT    := FI.GT;
       Our_Idx := FI.Rec_Info_Idx;
-      Offset  := Get_Record_Size_So_Far (Rec_Type, V,
-                                         Start_Idx => First_Idx,
-                                         Idx       => Our_Idx);
+      Offset  := To_Bytes (Get_Record_Size_So_Far (Rec_Type, V,
+                                                   Start_Idx => First_Idx,
+                                                   Idx       => Our_Idx));
       RI      := Record_Info_Table.Table (Our_Idx);
 
       --  If this is the "_parent" field, just do a conversion so we point
@@ -1695,9 +1695,10 @@ package body GNATLLVM.Records is
 
       elsif Present (RI.GT) then
          pragma Assert (not Is_Bitfield (Field));
-         return Ptr_To_Ref (GEP (SSI_GL_Type, Pointer_Cast (V, A_Char_GL_Type),
-                                 (1 => To_Bytes (Offset))),
-                            F_GT);
+         Result := GEP (SSI_GL_Type, Pointer_Cast (V, A_Char_GL_Type),
+                        (1 => Offset));
+         Set_Alignment (Result, Nat'Min (Alignment (V), Alignment (Offset)));
+         return Ptr_To_Ref (Result, F_GT);
       end if;
 
       --  Get the primitive form of V and make sure that it's not a fat or
@@ -1711,8 +1712,10 @@ package body GNATLLVM.Records is
       --  the field (in bytes).
 
       if Our_Idx /= First_Idx then
-         Result := GEP (SSI_GL_Type, Pointer_Cast (Result, A_Char_GL_Type),
-                        (1 => To_Bytes (Offset)));
+         Result := Set_Alignment
+           (GEP (SSI_GL_Type, Pointer_Cast (Result, A_Char_GL_Type),
+                 (1 => Offset)),
+            Nat'Min (Alignment (V), Alignment (Offset)));
       end if;
 
       --  If the type is not native, we have to convert the pointer to the

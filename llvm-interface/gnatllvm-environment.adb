@@ -60,6 +60,8 @@ package body GNATLLVM.Environment is
      (LI.Orig_Array_Info);
    function Raw_Get_Record (LI : Access_LLVM_Info) return Record_Info_Id is
      (LI.Record_Info);
+   function Raw_Get_Flag1  (LI : Access_LLVM_Info) return Boolean is
+     (LI.Flag1);
 
    --  Define procedures to set values into LLVM_Info
 
@@ -88,6 +90,8 @@ package body GNATLLVM.Environment is
    procedure Raw_Set_O_A    (LI : Access_LLVM_Info; Val : Array_Info_Id)
        with Inline;
    procedure Raw_Set_Record (LI : Access_LLVM_Info; Val : Record_Info_Id)
+       with Inline;
+   procedure Raw_Set_Flag1  (LI : Access_LLVM_Info; Val : Boolean)
        with Inline;
 
    procedure Raw_Set_GLT    (LI : Access_LLVM_Info; Val : GL_Type) is
@@ -128,6 +132,9 @@ package body GNATLLVM.Environment is
 
    procedure Raw_Set_Record (LI : Access_LLVM_Info; Val : Record_Info_Id) is
    begin LI.Record_Info := Val; end Raw_Set_Record;
+
+   procedure Raw_Set_Flag1  (LI : Access_LLVM_Info; Val : Boolean) is
+   begin LI.Flag1 := Val; end Raw_Set_Flag1;
 
    -------------------
    -- Get_LLVM_Info --
@@ -170,7 +177,8 @@ package body GNATLLVM.Environment is
                                   Array_Info          => Empty_Array_Info_Id,
                                   Label_Info          => Empty_Label_Info_Id,
                                   Orig_Array_Info     => Empty_Array_Info_Id,
-                                  SO_Info             => No_Uint));
+                                  SO_Info             => No_Uint,
+                                  Flag1               => False));
          Id := LLVM_Info_Table.Last;
          LLVM_Info_Map (E) := Id;
       end if;
@@ -279,6 +287,8 @@ package body GNATLLVM.Environment is
                                          Raw_Get_Array, Raw_Set_Array);
    package Env_NN_N     is new Pkg_None (Boolean, False,
                                          Raw_Get_NN, Raw_Set_NN);
+   package Env_Flag1    is new Pkg_None (Boolean, False,
+                                         Raw_Get_Flag1, Raw_Set_Flag1);
 
    package Env_AGLT   is new Pkg_Elab (GL_Type, Raw_Get_AGLT, Raw_Set_AGLT);
    package Env_TBAA   is new Pkg_Elab (Metadata_T, Raw_Get_TBAA, Raw_Set_TBAA);
@@ -372,6 +382,11 @@ package body GNATLLVM.Environment is
      renames Env_Record_N.Get;
    procedure Set_Record_Info          (TE : Entity_Id; RI : Record_Info_Id)
      renames Env_Record.Set;
+
+   function  Get_Flag1                (VE : Entity_Id) return Boolean
+     renames Env_Flag1.Get;
+   procedure Set_Flag1                (VE : Entity_Id; F : Boolean)
+     renames Env_Flag1.Set;
 
 begin
 

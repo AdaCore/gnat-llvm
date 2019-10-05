@@ -624,7 +624,7 @@ package GNATLLVM.Instructions is
      (LHS mod Const_Int (LHS, UI_From_Int (RHS)));
 
    function To_Bytes (V : GL_Value) return GL_Value is
-     ((V + (BPU - 1)) / BPU)
+     (Set_Alignment ((V + (BPU - 1)) / BPU, Alignment (V) / BPU))
      with Pre => Present (V), Post => Present (To_Bytes'Result);
 
    function Build_Select
@@ -732,7 +732,8 @@ package GNATLLVM.Instructions is
       Index : unsigned;
       Name  : String := "") return GL_Value
    is
-     (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), GT))
+      (Initialize_Alignment
+         (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), GT)))
      with  Pre  => Present (Arg) and then Present (GT),
            Post => Present (Extract_Value'Result);
 
@@ -778,9 +779,10 @@ package GNATLLVM.Instructions is
       Idx_Arr : Index_Array;
       Name    : String := "") return GL_Value
    is
-     (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
-                              Idx_Arr'Address, Idx_Arr'Length, Name),
-         GT))
+     (Initialize_Alignment
+        (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
+                                 Idx_Arr'Address, Idx_Arr'Length, Name),
+            GT)))
      with  Pre  => Present (GT) and then Present (Arg),
            Post => Present (Extract_Value'Result);
 

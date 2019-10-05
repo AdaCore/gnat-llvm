@@ -85,12 +85,9 @@ package body GNATLLVM.GLValue is
          return False;
       end if;
 
-      --  The alignment must be between BPU and the largest alignment and
-      --  be a multiple of BPU.
+      --  The alignment must be a multiple of BPU
 
-      if V.Alignment < BPU or else V.Alignment > Max_Align
-        or else V.Alignment mod BPU /= 0
-      then
+      if V.Alignment mod BPU /= 0 then
          return False;
       end if;
 
@@ -174,11 +171,9 @@ package body GNATLLVM.GLValue is
 
    procedure Set_Alignment (V : in out GL_Value; Align : Nat) is
    begin
-      --  We definitely don't want a value less than BPU.  It's unclear
-      --  whether or not we ever want a value greater than Max_Align.
-      --  ??? For now, make that our largest.
+      --  We don't want a value less than BPU
 
-      V.Alignment := Nat'Min (Nat'Max (Align, BPU), Max_Align);
+      V.Alignment := Nat'Max (Align, BPU);
    end Set_Alignment;
 
    -------------------
@@ -217,7 +212,8 @@ package body GNATLLVM.GLValue is
    --------------------------
 
    procedure Initialize_Alignment (V : in out GL_Value) is
-      R : constant GL_Relationship := Relationship (V);
+      R     : constant GL_Relationship := Relationship (V);
+      Align : Nat                      := BPU;
 
    begin
       --  If this is a double reference or a pointer to an activation
@@ -225,25 +221,26 @@ package body GNATLLVM.GLValue is
 
       if Is_Double_Reference (R) or else R = Reference_To_Activation_Record
       then
-         Set_Alignment (V, Get_Type_Alignment (Void_Ptr_Type));
+         Align := Get_Type_Alignment (Void_Ptr_Type);
 
       --  If this is a pointer to an object, we can use the alignment of
       --  the type of the object.
 
       elsif Deref (R) in Data | Bounds | Bounds_And_Data then
-         Set_Alignment (V, Get_Type_Alignment (Related_Type (V)));
+         Align := Get_Type_Alignment (Default_GL_Type (V));
 
       --  If it's Data but an access type, get the alignment of the
       --  designated type.
 
       elsif R = Data and then Is_Access_Type (V) then
-         Set_Alignment (V, Get_Type_Alignment (Full_Designated_GL_Type (V)));
-
-      --  Otherwise, we know nothing about this value's alignment
-
-      else
-         Clear_Alignment (V);
+         Align := Get_Type_Alignment (Default_GL_Type
+                                        (Full_Designated_GL_Type (V)));
       end if;
+
+      --  Now set the alignment to the maximum of any alignment we may
+      --  already have and that dictated by its type, as computed above.
+
+      Set_Alignment (V, Nat'Max (Alignment (V), Align));
 
    end Initialize_Alignment;
 
@@ -1080,7 +1077,7 @@ package body GNATLLVM.GLValue is
       R      : constant GL_Relationship := Relationship_For_Access_Type (GT);
 
    begin
-      return GM (LLVM_Value (V), Acc_GT, R, V);
+      return Initialize_Alignment (GM (LLVM_Value (V), Acc_GT, R, V));
    end From_Access;
 
    ----------------------
@@ -1093,16 +1090,16 @@ package body GNATLLVM.GLValue is
       E     : Entity_Id := Empty;
       Align : Nat := 0) return Nat
    is
-      GT_Align  : constant Nat := Get_Type_Alignment (GT);
+      GT_Align  : constant Nat := Get_Type_Alignment (Default_GL_Type (GT));
       E_Align   : constant Nat :=
         (if   Present (E) and then Known_Alignment (E)
-         then UI_To_Int (Alignment (E)) else BPU);
+         then To_Bits (UI_To_Int (Alignment (E))) else BPU);
       Our_Align : constant Nat :=
         (if Align /= 0 then Align else Nat'Max (GT_Align, E_Align));
 
    begin
       Set_Alignment (Obj, unsigned (To_Bytes (Our_Align)));
-      return Nat'Min (Our_Align, Max_Align);
+      return Our_Align;
    end Set_Object_Align;
 
    ----------------------
@@ -1145,7 +1142,7 @@ package body GNATLLVM.GLValue is
    ----------------
 
    function Const_Null (GT : GL_Type) return GL_Value is
-     (G (Const_Null (Type_Of (GT)), GT, Alignment => Max_Align));
+     (G (Const_Null (Type_Of (GT)), GT, Alignment => Max_Align * BPU));
 
    ----------------------
    -- Const_Null_Alloc --
@@ -1155,7 +1152,7 @@ package body GNATLLVM.GLValue is
      (G (Const_Null (Type_For_Relationship
                        (GT, Deref (Relationship_For_Alloc (GT)))),
          GT, Deref (Relationship_For_Alloc (GT)),
-         Alignment => Max_Align));
+         Alignment => Max_Align * BPU));
 
    --------------------
    -- Const_Null_Ref --
@@ -1163,7 +1160,7 @@ package body GNATLLVM.GLValue is
 
    function Const_Null_Ref (GT : GL_Type) return GL_Value is
      (G_Ref (Const_Null (Create_Access_Type_To (GT)), GT,
-             Alignment => Max_Align));
+             Alignment => Max_Align * BPU));
 
    ----------------
    -- Const_True --
@@ -1179,7 +1176,7 @@ package body GNATLLVM.GLValue is
 
    function Const_False return GL_Value is
      (G (Const_Int (Bit_T, ULL (0), False), Boolean_GL_Type,
-         Boolean_Data, Alignment => Max_Align));
+         Boolean_Data, Alignment => Max_Align * BPU));
 
    ---------------
    -- Const_Int --
@@ -1910,7 +1907,7 @@ package body GNATLLVM.GLValue is
       --  If it's null, it's fully aligned
 
       elsif Is_A_Constant_Pointer_Null (GEP) then
-         return Max_Align;
+         return Max_Align * BPU;
 
       --  If this GEP is for a constant offset, we can deduce the alignment
       --  from that.

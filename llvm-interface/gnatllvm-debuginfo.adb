@@ -342,8 +342,8 @@ package body GNATLLVM.DebugInfo is
       T           : constant Type_T     := Type_Of (GT);
       Size        : constant uint64_t   :=
         (if Type_Is_Sized (T) then uint64_t (ULL'(Get_Type_Size (T))) else 0);
-      Align       : constant unsigned   :=
-        unsigned (Nat'(Get_Type_Alignment (GT)));
+      Align       : constant uint32_t   :=
+        uint32_t (Nat'(Get_Type_Alignment (GT)));
       S           : constant Source_Ptr := Sloc (TE);
       Result      : Metadata_T          := Get_Debug_Type (TE);
 
@@ -470,7 +470,7 @@ package body GNATLLVM.DebugInfo is
                                 (Get_Source_File_Index (F_S)),
                               unsigned (Get_Logical_Line_Number (F_S)),
                               uint64_t (UI_To_ULL (Esize (F))),
-                              unsigned (Nat'(Get_Type_Alignment (F_GT))),
+                              uint32_t (Nat'(Get_Type_Alignment (F_GT))),
                               uint64_t (UI_To_ULL (Component_Bit_Offset (F))),
                               (if   Is_Bitfield (F) then DI_Flag_Bit_Field
                                else DI_Flag_Zero),
@@ -564,7 +564,7 @@ package body GNATLLVM.DebugInfo is
                Get_Debug_File_Node (Get_Source_File_Index (S)),
                unsigned (Get_Logical_Line_Number (S)),
                Type_Data, False, Empty_DI_Expr, No_Metadata_T,
-               unsigned (Nat'(Get_Type_Alignment (GT)) * BPU)));
+               uint32_t (Nat'(Get_Type_Alignment (GT)) * BPU)));
       end if;
    end Create_Global_Variable_Debug_Data;
 
@@ -594,7 +594,7 @@ package body GNATLLVM.DebugInfo is
                Get_Debug_File_Node (Get_Source_File_Index (Sloc (Def_Ident))),
                unsigned (Get_Logical_Line_Number (Sloc (Def_Ident))),
                Type_Data, False, DI_Flag_Zero,
-               unsigned (Nat'(Get_Type_Alignment (GT)) * BPU));
+               uint32_t (Nat'(Get_Type_Alignment (GT)) * BPU));
          else
             Var_Data :=
               DI_Create_Parameter_Variable

@@ -37,10 +37,12 @@ produce that code from scratch) and we need at least some sort of
 intermediate structure between the GNAT tree and the LLVM IR.  But a
 disadvantage is that DragonEgg's goal and strength is the ability to
 support all GCC front-ends and here we are focusing on good Ada support, so
-we wouldn't really be taking advantage of this strength.
+we wouldn't really be taking advantage of this strength.  Another
+disadvantage is that some concepts (such as alias sets) don't map well
+between GCC and LLVM and it's better to directly generate the LLVM style
+of the concepts directly from the sources.
 
 Finally, DragonEgg was meant as a way to bring many language front-ends to
 LLVM. Since then, all languages supported by GCC have been plugged to
 LLVM except Ada, so this would leave DragonEgg Ada specific,
-with lots of the complexity unnecessary.
-
+with lots of unnecessary complexity.

@@ -56,10 +56,13 @@ package GNATLLVM.Codegen is
 
    Flag_No_Strict_Aliasing : Boolean := False;
    No_Inlining             : Boolean := False;
-   No_Unit_At_A_Time       : Boolean := False;
    No_Unroll_Loops         : Boolean := False;
    No_Loop_Vectorization   : Boolean := False;
    No_SLP_Vectorization    : Boolean := False;
+   Merge_Functions         : Boolean := True;
+   PrepareForThinLTO       : Boolean := False;
+   PrepareForLTO           : Boolean := False;
+   RerollLoops             : Boolean := False;
    --  Switch options for optimization
 
    Optimize_IR           : Boolean := False;

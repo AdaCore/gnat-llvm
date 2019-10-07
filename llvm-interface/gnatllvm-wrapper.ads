@@ -159,10 +159,13 @@ package GNATLLVM.Wrapper is
       Code_Opt_Level        : Nat;
       Size_Opt_Level        : Nat;
       No_Inlining           : Boolean;
-      No_Unit_At_A_Time     : Boolean;
       No_Unroll_Loops       : Boolean;
       No_Loop_Vectorization : Boolean;
-      No_SLP_Vectorization  : Boolean)
+      No_SLP_Vectorization  : Boolean;
+      Merge_Functions       : Boolean;
+      PrepareForThinLTO     : Boolean;
+      PrepareForLTO         : Boolean;
+      RerollLoops           : Boolean)
      with Inline;
    --  Perform optimizations on the module
 

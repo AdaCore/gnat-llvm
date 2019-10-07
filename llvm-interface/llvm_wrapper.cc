@@ -330,8 +330,10 @@ extern "C"
 void
 LLVM_Optimize_Module (Module *M, TargetMachine *TM,
 		      int Code_Opt_Level, int Size_Opt_Level, bool No_Inlining,
-		      bool No_Unit_At_A_Time, bool No_Unroll_Loops,
-		      bool No_Loop_Vectorization, bool No_SLP_Vectorization)
+		      bool No_Unroll_Loops, bool No_Loop_Vectorization,
+		      bool No_SLP_Vectorization, bool MergeFunctions,
+		      bool PrepareForThinLTO, bool PrepareForLTO,
+		      bool RerollLoops)
 {
   legacy::PassManager Passes;
   std::unique_ptr<legacy::FunctionPassManager> FPasses;
@@ -357,14 +359,18 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM,
   else if (! No_Inlining)
     Builder.Inliner = createAlwaysInlinerLegacyPass();
 
-  Builder.DisableUnitAtATime = ! No_Unit_At_A_Time;
   Builder.DisableUnrollLoops = Code_Opt_Level == 0 || No_Unroll_Loops;
-
+  Builder.LoopsInterleaved = Code_Opt_Level != 0 && ! No_Unroll_Loops;
   Builder.LoopVectorize = (No_Loop_Vectorization ? false
 			   : Code_Opt_Level > 1 && Size_Opt_Level < 2);
 
   Builder.SLPVectorize = (No_SLP_Vectorization ? false
 			  : Code_Opt_Level > 1 && Size_Opt_Level < 2);
+
+  Builder.MergeFunctions = Code_Opt_Level != 0 && MergeFunctions;
+  Builder.PrepareForThinLTO = Code_Opt_Level != 0 && PrepareForThinLTO;
+  Builder.PrepareForLTO = Code_Opt_Level != 0 && PrepareForLTO;
+  Builder.RerollLoops = Code_Opt_Level != 0 && RerollLoops;
 
   TM->adjustPassManager(Builder);
 

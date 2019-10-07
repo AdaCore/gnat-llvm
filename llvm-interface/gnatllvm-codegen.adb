@@ -135,8 +135,6 @@ package body GNATLLVM.Codegen is
          end case;
       elsif Switch = "-fno-strict-aliasing" then
          Flag_No_Strict_Aliasing := True;
-      elsif Switch = "-fno-unit-at-a-time" then
-         No_Unit_At_A_Time := True;
       elsif Switch = "-fno-unroll-loops" then
          No_Unroll_Loops := True;
       elsif Switch = "-funroll-loops" then
@@ -151,6 +149,23 @@ package body GNATLLVM.Codegen is
          No_SLP_Vectorization := False;
       elsif Switch = "-fno-inline" then
          No_Inlining := True;
+      elsif Switch = "-fmerge-functions" then
+         Merge_Functions := True;
+      elsif Switch = "-fno-merge-functions" then
+         Merge_Functions := False;
+      elsif Switch = "-fno-lto" then
+         PrepareForThinLTO := False;
+         PrepareForLTO     := False;
+      elsif Switch = "-flto" or else Switch = "-flto=full" then
+         PrepareForThinLTO := False;
+         PrepareForLTO     := True;
+      elsif Switch = "-flto=thin" then
+         PrepareForThinLTO := True;
+         PrepareForLTO     := False;
+      elsif Switch = "-freroll-loops" then
+         RerollLoops := True;
+      elsif Switch = "-fno-reroll-loops" then
+         RerollLoops := False;
       elsif Switch = "-mdso-preemptable" then
          DSO_Preemptable := True;
       elsif Switch = "-mdso-local" then
@@ -317,10 +332,13 @@ package body GNATLLVM.Codegen is
             Code_Opt_Level        => Code_Opt_Level,
             Size_Opt_Level        => Size_Opt_Level,
             No_Inlining           => No_Inlining,
-            No_Unit_At_A_Time     => No_Unit_At_A_Time,
             No_Unroll_Loops       => No_Unroll_Loops,
             No_Loop_Vectorization => No_Loop_Vectorization,
-            No_SLP_Vectorization  => No_SLP_Vectorization);
+            No_SLP_Vectorization  => No_SLP_Vectorization,
+            Merge_Functions       => Merge_Functions,
+            PrepareForThinLTO     => PrepareForThinLTO,
+            PrepareForLTO         => PrepareForLTO,
+            RerollLoops           => RerollLoops);
       end if;
 
       --  Output the translation

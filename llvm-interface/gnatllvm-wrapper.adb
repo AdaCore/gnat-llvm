@@ -123,10 +123,13 @@ package body GNATLLVM.Wrapper is
       Code_Opt_Level        : Nat;
       Size_Opt_Level        : Nat;
       No_Inlining           : Boolean;
-      No_Unit_At_A_Time     : Boolean;
       No_Unroll_Loops       : Boolean;
       No_Loop_Vectorization : Boolean;
-      No_SLP_Vectorization  : Boolean)
+      No_SLP_Vectorization  : Boolean;
+      Merge_Functions       : Boolean;
+      PrepareForThinLTO     : Boolean;
+      PrepareForLTO         : Boolean;
+      RerollLoops           : Boolean)
    is
       procedure LLVM_Optimize_Module_C
         (Module                : Module_T;
@@ -134,21 +137,28 @@ package body GNATLLVM.Wrapper is
          Code_Opt_Level        : Nat;
          Size_Opt_Level        : Nat;
          No_Inlining           : Bool_T;
-         No_Unit_At_A_Time     : Bool_T;
          No_Unroll_Loops       : Bool_T;
          No_Loop_Vectorization : Bool_T;
-         No_SLP_Vectorization  : Bool_T)
+         No_SLP_Vectorization  : Bool_T;
+         Merge_Functions       : Bool_T;
+         PrepareForThinLTO     : Bool_T;
+         PrepareForLTO         : Bool_T;
+         RerollLoopS           : Bool_T)
         with Import, Convention => C, External_Name => "LLVM_Optimize_Module";
       No_Inlining_B  : constant Bool_T := Boolean'Pos (No_Inlining);
-      No_Unit_B      : constant Bool_T := Boolean'Pos (No_Unit_At_A_Time);
       No_Unroll_B    : constant Bool_T := Boolean'Pos (No_Unroll_Loops);
       No_Loop_Vect_B : constant Bool_T := Boolean'Pos (No_Loop_Vectorization);
       No_SLP_Vect_B  : constant Bool_T := Boolean'Pos (No_SLP_Vectorization);
+      Merge_B        : constant Bool_T := Boolean'Pos (Merge_Functions);
+      Thin_LTO_B     : constant Bool_T := Boolean'Pos (PrepareForThinLTO);
+      LTO_B          : constant Bool_T := Boolean'Pos (PrepareForLTO);
+      Reroll_B       : constant Bool_T := Boolean'Pos (RerollLoops);
+
    begin
       LLVM_Optimize_Module_C (Module, Target_Machine,
-                              Code_Opt_Level, Size_Opt_Level,
-                              No_Inlining_B, No_Unit_B, No_Unroll_B,
-                              No_Loop_Vect_B, No_SLP_Vect_B);
+                              Code_Opt_Level, Size_Opt_Level, No_Inlining_B,
+                              No_Unroll_B, No_Loop_Vect_B, No_SLP_Vect_B,
+                              Merge_B, Thin_LTO_B, LTO_B, Reroll_B);
    end LLVM_Optimize_Module;
 
    function Get_GEP_Constant_Offset

@@ -207,11 +207,11 @@ quicklib: $(RTSDIR)
 	  $(GNATRTL_OBJS) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
 # Create libgnat/libgnarl.a
 	$(RM) $(RTSLIB)/libgnat$(arext) $(RTSLIB)/libgnarl$(arext)
-	@$(AR_FOR_TARGET) $(AR_FLAGS) $(RTSLIB)/libgnat$(arext) \
-	  $(addprefix $(RTSLIB)/,$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS))
+	@cd $(RTSLIB) && $(AR_FOR_TARGET) $(AR_FLAGS) libgnat$(arext) \
+	  $(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS)
 	$(RANLIB_FOR_TARGET) $(RTSLIB)/libgnat$(arext)
-	@$(AR_FOR_TARGET) $(AR_FLAGS) $(RTSLIB)/libgnarl$(arext) \
-	  $(addprefix $(RTSLIB)/,$(GNATRTL_TASKING_OBJS))
+	@cd $(RTSLIB) && $(AR_FOR_TARGET) $(AR_FLAGS) libgnarl$(arext) \
+	  $(GNATRTL_TASKING_OBJS)
 	$(RANLIB_FOR_TARGET) $(RTSLIB)/libgnarl$(arext)
 	$(CHMOD) a-wx $(RTSLIB)/*.ali
 	$(RMDIR) $(RTSOBJ)

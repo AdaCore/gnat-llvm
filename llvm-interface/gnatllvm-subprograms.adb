@@ -2464,7 +2464,6 @@ package body GNATLLVM.Subprograms is
                   --  so we can set this as nocapture.
 
                   Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, GT);
-                  Add_Noalias_Attribute         (LLVM_Func, Param_Num);
                   Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
                   if Ekind (Formal) = E_In_Parameter then
                      Add_Readonly_Attribute     (LLVM_Func, Param_Num);
@@ -2472,13 +2471,21 @@ package body GNATLLVM.Subprograms is
                      Add_Writeonly_Attribute    (LLVM_Func, Param_Num);
                   end if;
 
+                  --  See RM 6.2(12) for a discussion of when parameters
+                  --  can alias.  If the mechanism is specified as being
+                  --  by reference, they can alias.  Likewise if they're
+                  --  explicitly marked as aliased.
+
+                  if not Is_Aliased (Formal)
+                    and then not Is_By_Reference_Type (GT)
+                  then
+                     Add_Noalias_Attribute         (LLVM_Func, Param_Num);
+                  end if;
+
                elsif PK_Is_In_Or_Ref (PK) and then Is_Access_Type (GT)
                  and then not Is_Unconstrained_Array (DT)
                  and then Ekind (DT) /= E_Subprogram_Type
                then
-                  --  ??? This seems wrong if we have an access type
-                  --  returned by reference.
-
                   if Can_Never_Be_Null (GT) then
                      Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, DT);
                   else

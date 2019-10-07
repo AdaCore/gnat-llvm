@@ -2003,12 +2003,10 @@ package body GNATLLVM.Variables is
                       else Emit_Conversion (Expr, GT));
          end if;
 
-         --  If this is an elementary type (except if it's a PAT),
-         --  be sure it's a value.  In any case, if it is a value, use that
-         --  value for this variable.
+         --  If this is an elementary type, be sure it's a value.  In any
+         --  case, if it is a value, use that value for this variable.
 
-         if Is_Elementary_Type (GT) and then not Is_Packed_Array_Impl_Type (GT)
-         then
+         if Is_Elementary_Type (GT) then
             LLVM_Var := Get (Value, Data);
             Copied   := True;
          elsif Is_Data (Value) then
@@ -2233,6 +2231,18 @@ package body GNATLLVM.Variables is
 
             elsif No (V) and then Decls_Only then
                V := Emit_Undef (GT);
+            end if;
+
+            --  If we're not looking for an LHS and this is a modular integer
+            --  type that's a packed array implementation type, we need to
+            --  mask to only the defined bits.  It may be more efficient
+            --  to do this when storing the data, but this is easier and
+            --  safer.
+
+            if not Prefer_LHS and then Is_Modular_Integer_Type (GT)
+              and then Is_Packed_Array_Impl_Type (GT)
+            then
+               V := From_Primitive (To_Primitive (V), GT);
             end if;
 
             --  Now return what we got (if we didn't get anything by now,

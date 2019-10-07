@@ -463,13 +463,22 @@ package body GNATLLVM.Conversions is
          then
             Result := G_Is (Result, Prim_GT);
 
-         --  Otherwise, do an actual pointer pun
+            --  Otherwise, do an actual pointer pun.  But if we have a modular
+            --  integer type that's a packed array implementation type,
+            --  we can't use the primitive since that's i1 and the data
+            --  will have been stored as i8.
 
          else
-            Result := Convert_Ref (Get (Result, Any_Reference), Prim_GT);
+            Result :=
+              Convert_Ref (Get (Result, Any_Reference),
+                           (if   Is_Modular_Integer_Type (GT)
+                                 and then Is_Packed_Array_Impl_Type (GT)
+                            then GT else Prim_GT));
          end if;
 
-         Result := From_Primitive (Result, GT, No_Copy => Is_Unchecked);
+         if Related_Type (Result) /= GT then
+            Result := From_Primitive (Result, GT, No_Copy => Is_Unchecked);
+         end if;
       end if;
 
       --  For unchecked conversion, if the result is a non-biased

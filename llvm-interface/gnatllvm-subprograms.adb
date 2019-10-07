@@ -2589,7 +2589,8 @@ package body GNATLLVM.Subprograms is
          for J in 1 .. Global_Constructors.Last loop
             Constructors (J) :=
               Const_Struct ((1 => Const_Int_32 (Uint_1),
-                             2 => Get_Value (Global_Constructors.Table (J))),
+                             2 => Get_Value (Global_Constructors.Table (J)),
+                             3 => Const_Null (A_Char_GL_Type)),
                             Any_Array_GL_Type, False);
          end loop;
 
@@ -2604,7 +2605,8 @@ package body GNATLLVM.Subprograms is
          for J in 1 .. Global_Destructors.Last loop
             Destructors (J) :=
               Const_Struct ((1 => Const_Int_32 (Uint_1),
-                             2 => Get_Value (Global_Destructors.Table (J))),
+                             2 => Get_Value (Global_Destructors.Table (J)),
+                             3 => Const_Null (A_Char_GL_Type)),
                             Any_Array_GL_Type, False);
          end loop;
 

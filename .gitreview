@@ -1,5 +1,5 @@
 [gerrit]
 host = git.adacore.com
 project = gnat-llvm
-defaultbranch = master
+defaultbranch = 20.0
 defaultremote = origin

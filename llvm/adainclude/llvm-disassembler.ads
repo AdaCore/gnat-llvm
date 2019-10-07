@@ -9,22 +9,22 @@ with stddef_h;
 
 package LLVM.Disassembler is
 
-   LLVMDisassembler_Option_UseMarkup : constant := 1;  --  llvm-8.0.1.src/include/llvm-c/Disassembler.h:76
+   LLVMDisassembler_Option_UseMarkup : constant := 1;  --  llvm-9.0.0.src/include/llvm-c/Disassembler.h:76
 
-   LLVMDisassembler_Option_PrintImmHex : constant := 2;  --  llvm-8.0.1.src/include/llvm-c/Disassembler.h:78
+   LLVMDisassembler_Option_PrintImmHex : constant := 2;  --  llvm-9.0.0.src/include/llvm-c/Disassembler.h:78
 
-   LLVMDisassembler_Option_AsmPrinterVariant : constant := 4;  --  llvm-8.0.1.src/include/llvm-c/Disassembler.h:80
+   LLVMDisassembler_Option_AsmPrinterVariant : constant := 4;  --  llvm-9.0.0.src/include/llvm-c/Disassembler.h:80
 
-   LLVMDisassembler_Option_SetInstrComments : constant := 8;  --  llvm-8.0.1.src/include/llvm-c/Disassembler.h:82
+   LLVMDisassembler_Option_SetInstrComments : constant := 8;  --  llvm-9.0.0.src/include/llvm-c/Disassembler.h:82
 
-   LLVMDisassembler_Option_PrintLatency : constant := 16;  --  llvm-8.0.1.src/include/llvm-c/Disassembler.h:84
+   LLVMDisassembler_Option_PrintLatency : constant := 16;  --  llvm-9.0.0.src/include/llvm-c/Disassembler.h:84
 
   --===-- llvm-c/Disassembler.h - Disassembler Public C Interface ---*- C -*-===*|*                                                                            *|
   --|
-  --|*                     The LLVM Compiler Infrastructure                       *|
-  --|*                                                                            *|
-  --|* This file is distributed under the University of Illinois Open Source      *|
-  --|* License. See LICENSE.TXT for details.                                      *|
+  --|* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|
+  --|* Exceptions.                                                                *|
+  --|* See https://llvm.org/LICENSE.txt for license information.                  *|
+  --|* SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception                    *|
   --|*                                                                            *|
   --|*===----------------------------------------------------------------------===*|
   --|*                                                                            *|
@@ -125,7 +125,7 @@ function Create_Disasm_CPU_Features
   -- * otherwise.
   --  
 
-   function Set_Disasm_Options (DC : LLVM.Disassembler_Types.Disasm_Context_T; Options : stdint_h.uint64_t) return int;  -- llvm-8.0.1.src/include/llvm-c/Disassembler.h:73
+   function Set_Disasm_Options (DC : LLVM.Disassembler_Types.Disasm_Context_T; Options : stdint_h.uint64_t) return int;  -- llvm-9.0.0.src/include/llvm-c/Disassembler.h:73
    pragma Import (C, Set_Disasm_Options, "LLVMSetDisasmOptions");
 
   -- The option to produce marked up assembly.  
@@ -137,7 +137,7 @@ function Create_Disasm_CPU_Features
   -- * Dispose of a disassembler context.
   --  
 
-   procedure Disasm_Dispose (DC : LLVM.Disassembler_Types.Disasm_Context_T);  -- llvm-8.0.1.src/include/llvm-c/Disassembler.h:89
+   procedure Disasm_Dispose (DC : LLVM.Disassembler_Types.Disasm_Context_T);  -- llvm-9.0.0.src/include/llvm-c/Disassembler.h:89
    pragma Import (C, Disasm_Dispose, "LLVMDisasmDispose");
 
   --*

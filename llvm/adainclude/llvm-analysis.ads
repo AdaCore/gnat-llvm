@@ -8,10 +8,10 @@ package LLVM.Analysis is
 
   --===-- llvm-c/Analysis.h - Analysis Library C Interface --------*- C++ -*-===*|*                                                                            *|
   --|
-  --|*                     The LLVM Compiler Infrastructure                       *|
-  --|*                                                                            *|
-  --|* This file is distributed under the University of Illinois Open Source      *|
-  --|* License. See LICENSE.TXT for details.                                      *|
+  --|* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|
+  --|* Exceptions.                                                                *|
+  --|* See https://llvm.org/LICENSE.txt for license information.                  *|
+  --|* SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception                    *|
   --|*                                                                            *|
   --|*===----------------------------------------------------------------------===*|
   --|*                                                                            *|
@@ -38,7 +38,7 @@ package LLVM.Analysis is
      (Abort_Process_Action,
       Print_Message_Action,
       Return_Status_Action);
-   pragma Convention (C, Verifier_Failure_Action_T);  -- llvm-8.0.1.src/include/llvm-c/Analysis.h:39
+   pragma Convention (C, Verifier_Failure_Action_T);  -- llvm-9.0.0.src/include/llvm-c/Analysis.h:39
 
   -- Verifies that a module is valid, taking the specified action if not.
   --   Optionally returns a human-readable description of any invalid constructs.
@@ -66,16 +66,16 @@ function Verify_Module
    function Verify_Function_C
      (Fn     : LLVM.Types.Value_T;
       Action : Verifier_Failure_Action_T)
-      return LLVM.Types.Bool_T;  -- llvm-8.0.1.src/include/llvm-c/Analysis.h:50
+      return LLVM.Types.Bool_T;  -- llvm-9.0.0.src/include/llvm-c/Analysis.h:50
    pragma Import (C, Verify_Function_C, "LLVMVerifyFunction");
 
   -- Open up a ghostview window that displays the CFG of the current function.
   --   Useful for debugging.  
 
-   procedure View_Function_CFG (Fn : LLVM.Types.Value_T);  -- llvm-8.0.1.src/include/llvm-c/Analysis.h:54
+   procedure View_Function_CFG (Fn : LLVM.Types.Value_T);  -- llvm-9.0.0.src/include/llvm-c/Analysis.h:54
    pragma Import (C, View_Function_CFG, "LLVMViewFunctionCFG");
 
-   procedure View_Function_CFG_Only (Fn : LLVM.Types.Value_T);  -- llvm-8.0.1.src/include/llvm-c/Analysis.h:55
+   procedure View_Function_CFG_Only (Fn : LLVM.Types.Value_T);  -- llvm-9.0.0.src/include/llvm-c/Analysis.h:55
    pragma Import (C, View_Function_CFG_Only, "LLVMViewFunctionCFGOnly");
 
   --*

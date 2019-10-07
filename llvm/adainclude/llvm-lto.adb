@@ -175,6 +175,28 @@ package body LLVM.lto is
       return Value (thinlto_module_get_object_file_C (cg, index));
    end thinlto_module_get_object_file;
 
+   function Input_Create
+     (buffer      : System.Address;
+      Buffer_Size : stddef_h.size_t;
+      path        : String)
+      return Input_T_T
+   is
+      path_Array  : aliased char_array := To_C (path);
+      path_String : constant chars_ptr := To_Chars_Ptr (path_Array'Unchecked_Access);
+   begin
+      return Input_Create_C (buffer, Buffer_Size, path_String);
+   end Input_Create;
+
+   function Input_Get_Dependent_Library
+     (input : Input_T_T;
+      index : stddef_h.size_t;
+      size  : stddef_h.size_t)
+      return String
+   is
+   begin
+      return Value (Input_Get_Dependent_Library_C (input, index, size));
+   end Input_Get_Dependent_Library;
+
    procedure Module_Set_Target_Triple
      (C_Mod  : Module_T_T;
       triple : String)

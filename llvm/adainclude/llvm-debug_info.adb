@@ -147,6 +147,48 @@ package body LLVM.Debug_Info is
       return DI_Builder_Create_Imported_Declaration_C (Builder, Scope, Decl, File, Line, Name_String, Name_Len);
    end DI_Create_Imported_Declaration;
 
+   function DI_File_Get_Directory
+     (File : LLVM.Types.Metadata_T;
+      Len  : unsigned)
+      return String
+   is
+   begin
+      return Value (DI_File_Get_Directory_C (File, Len));
+   end DI_File_Get_Directory;
+
+   function DI_File_Get_Filename
+     (File : LLVM.Types.Metadata_T;
+      Len  : unsigned)
+      return String
+   is
+   begin
+      return Value (DI_File_Get_Filename_C (File, Len));
+   end DI_File_Get_Filename;
+
+   function DI_File_Get_Source
+     (File : LLVM.Types.Metadata_T;
+      Len  : unsigned)
+      return String
+   is
+   begin
+      return Value (DI_File_Get_Source_C (File, Len));
+   end DI_File_Get_Source;
+
+   function DI_Create_Enumerator
+     (Builder     : LLVM.Types.DI_Builder_T;
+      Name        : String;
+      Name_Len    : stddef_h.size_t;
+      Value       : stdint_h.int64_t;
+      Is_Unsigned : Boolean)
+      return LLVM.Types.Metadata_T
+   is
+      Name_Array       : aliased char_array := To_C (Name);
+      Name_String      : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+      Is_Unsigned_Bool : constant LLVM.Types.Bool_T := Boolean'Pos (Is_Unsigned);
+   begin
+      return DI_Builder_Create_Enumerator_C (Builder, Name_String, Name_Len, Value, Is_Unsigned_Bool);
+   end DI_Create_Enumerator;
+
    function DI_Create_Enumeration_Type
      (Builder       : LLVM.Types.DI_Builder_T;
       Scope         : LLVM.Types.Metadata_T;

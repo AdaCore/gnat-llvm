@@ -9,10 +9,10 @@ package LLVM.Support is
 
   --===-- llvm-c/Support.h - Support C Interface --------------------*- C -*-===*|*                                                                            *|
   --|
-  --|*                     The LLVM Compiler Infrastructure                       *|
-  --|*                                                                            *|
-  --|* This file is distributed under the University of Illinois Open Source      *|
-  --|* License. See LICENSE.TXT for details.                                      *|
+  --|* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|
+  --|* Exceptions.                                                                *|
+  --|* See https://llvm.org/LICENSE.txt for license information.                  *|
+  --|* SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception                    *|
   --|*                                                                            *|
   --|*===----------------------------------------------------------------------===*|
   --|*                                                                            *|
@@ -32,7 +32,7 @@ package LLVM.Support is
       return Boolean;
    function Load_Library_Permanently_C
      (Filename : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Bool_T;  -- llvm-8.0.1.src/include/llvm-c/Support.h:30
+      return LLVM.Types.Bool_T;  -- llvm-9.0.0.src/include/llvm-c/Support.h:30
    pragma Import (C, Load_Library_Permanently_C, "LLVMLoadLibraryPermanently");
 
   --*
@@ -67,7 +67,7 @@ procedure Parse_Command_Line_Options
       return System.Address;
    function Search_For_Address_Of_Symbol_C
      (symbol_Name : Interfaces.C.Strings.chars_ptr)
-      return System.Address;  -- llvm-8.0.1.src/include/llvm-c/Support.h:50
+      return System.Address;  -- llvm-9.0.0.src/include/llvm-c/Support.h:50
    pragma Import (C, Search_For_Address_Of_Symbol_C, "LLVMSearchForAddressOfSymbol");
 
   --*
@@ -83,7 +83,7 @@ procedure Parse_Command_Line_Options
       symbol_Value : System.Address);
    procedure Add_Symbol_C
      (symbol_Name  : Interfaces.C.Strings.chars_ptr;
-      symbol_Value : System.Address);  -- llvm-8.0.1.src/include/llvm-c/Support.h:59
+      symbol_Value : System.Address);  -- llvm-9.0.0.src/include/llvm-c/Support.h:59
    pragma Import (C, Add_Symbol_C, "LLVMAddSymbol");
 
 end LLVM.Support;

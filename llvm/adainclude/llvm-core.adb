@@ -782,6 +782,17 @@ package body LLVM.Core is
       return Has_Personality_Fn_C (Fn) /= 0;
    end Has_Personality_Fn;
 
+   function Lookup_Intrinsic_ID
+     (Name     : String;
+      Name_Len : stddef_h.size_t)
+      return unsigned
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Lookup_Intrinsic_ID_C (Name_String, Name_Len);
+   end Lookup_Intrinsic_ID;
+
    function Intrinsic_Get_Name
      (ID          : unsigned;
       Name_Length : stddef_h.size_t)
@@ -831,6 +842,54 @@ package body LLVM.Core is
       return Get_String_Attribute_At_Index_C (F, Idx, K_String, K_Len);
    end Get_String_Attribute_At_Index;
 
+   function Add_Global_I_Func
+     (M          : LLVM.Types.Module_T;
+      Name       : String;
+      Name_Len   : stddef_h.size_t;
+      Ty         : LLVM.Types.Type_T;
+      Addr_Space : unsigned;
+      Resolver   : LLVM.Types.Value_T)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Add_Global_I_Func_C (M, Name_String, Name_Len, Ty, Addr_Space, Resolver);
+   end Add_Global_I_Func;
+
+   function Get_Named_Global_I_Func
+     (M        : LLVM.Types.Module_T;
+      Name     : String;
+      Name_Len : stddef_h.size_t)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Get_Named_Global_I_Func_C (M, Name_String, Name_Len);
+   end Get_Named_Global_I_Func;
+
+   function MD_String_In_Context2
+     (C     : LLVM.Types.Context_T;
+      Str   : String;
+      S_Len : stddef_h.size_t)
+      return LLVM.Types.Metadata_T
+   is
+      Str_Array  : aliased char_array := To_C (Str);
+      Str_String : constant chars_ptr := To_Chars_Ptr (Str_Array'Unchecked_Access);
+   begin
+      return MD_String_In_Context2_C (C, Str_String, S_Len);
+   end MD_String_In_Context2;
+
+   function Get_MD_String
+     (V      : LLVM.Types.Value_T;
+      Length : unsigned)
+      return String
+   is
+   begin
+      return Value (Get_MD_String_C (V, Length));
+   end Get_MD_String;
+
    function MD_String_In_Context
      (C     : LLVM.Types.Context_T;
       Str   : String;
@@ -853,15 +912,6 @@ package body LLVM.Core is
    begin
       return MD_String_C (Str_String, S_Len);
    end MD_String;
-
-   function Get_MD_String
-     (V      : LLVM.Types.Value_T;
-      Length : unsigned)
-      return String
-   is
-   begin
-      return Value (Get_MD_String_C (V, Length));
-   end Get_MD_String;
 
    function Value_Is_Basic_Block
      (Val : LLVM.Types.Value_T)

@@ -8,23 +8,36 @@ with Interfaces.C.Strings; use Interfaces.C.Strings;pragma Unreferenced (Interfa
 
 package body LLVM.Object is
 
-   function Is_Section_Iterator_At_End
-     (Object_File : Object_File_T;
-      SI          : Section_Iterator_T)
-      return Boolean
+   function Mach_O_Universal_Binary_Copy_Object_For_Arch
+     (BR            : LLVM.Types.Binary_T;
+      Arch          : String;
+      Arch_Len      : stddef_h.size_t;
+      Error_Message : System.Address)
+      return LLVM.Types.Binary_T
    is
+      Arch_Array  : aliased char_array := To_C (Arch);
+      Arch_String : constant chars_ptr := To_Chars_Ptr (Arch_Array'Unchecked_Access);
    begin
-      return Is_Section_Iterator_At_End_C (Object_File, SI) /= 0;
-   end Is_Section_Iterator_At_End;
+      return Mach_O_Universal_Binary_Copy_Object_For_Arch_C (BR, Arch_String, Arch_Len, Error_Message);
+   end Mach_O_Universal_Binary_Copy_Object_For_Arch;
 
-   function Is_Symbol_Iterator_At_End
-     (Object_File : Object_File_T;
-      SI          : Symbol_Iterator_T)
+   function Object_File_Is_Section_Iterator_At_End
+     (BR : LLVM.Types.Binary_T;
+      SI : Section_Iterator_T)
       return Boolean
    is
    begin
-      return Is_Symbol_Iterator_At_End_C (Object_File, SI) /= 0;
-   end Is_Symbol_Iterator_At_End;
+      return Object_File_Is_Section_Iterator_At_End_C (BR, SI) /= 0;
+   end Object_File_Is_Section_Iterator_At_End;
+
+   function Object_File_Is_Symbol_Iterator_At_End
+     (BR : LLVM.Types.Binary_T;
+      SI : Symbol_Iterator_T)
+      return Boolean
+   is
+   begin
+      return Object_File_Is_Symbol_Iterator_At_End_C (BR, SI) /= 0;
+   end Object_File_Is_Symbol_Iterator_At_End;
 
    function Get_Section_Name
      (SI : Section_Iterator_T)
@@ -83,5 +96,23 @@ package body LLVM.Object is
    begin
       return Value (Get_Relocation_Value_String_C (RI));
    end Get_Relocation_Value_String;
+
+   function Is_Section_Iterator_At_End
+     (Object_File : Object_File_T;
+      SI          : Section_Iterator_T)
+      return Boolean
+   is
+   begin
+      return Is_Section_Iterator_At_End_C (Object_File, SI) /= 0;
+   end Is_Section_Iterator_At_End;
+
+   function Is_Symbol_Iterator_At_End
+     (Object_File : Object_File_T;
+      SI          : Symbol_Iterator_T)
+      return Boolean
+   is
+   begin
+      return Is_Symbol_Iterator_At_End_C (Object_File, SI) /= 0;
+   end Is_Symbol_Iterator_At_End;
 
 end LLVM.Object;

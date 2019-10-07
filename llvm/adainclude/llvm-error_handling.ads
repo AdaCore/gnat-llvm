@@ -7,10 +7,10 @@ package LLVM.Error_Handling is
 
   --===-- llvm-c/ErrorHandling.h - Error Handling C Interface -------*- C -*-===*|*                                                                            *|
   --|
-  --|*                     The LLVM Compiler Infrastructure                       *|
-  --|*                                                                            *|
-  --|* This file is distributed under the University of Illinois Open Source      *|
-  --|* License. See LICENSE.TXT for details.                                      *|
+  --|* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|
+  --|* Exceptions.                                                                *|
+  --|* See https://llvm.org/LICENSE.txt for license information.                  *|
+  --|* SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception                    *|
   --|*                                                                            *|
   --|*===----------------------------------------------------------------------===*|
   --|*                                                                            *|
@@ -19,7 +19,7 @@ package LLVM.Error_Handling is
   --\*===----------------------------------------------------------------------=== 
 
    type Fatal_Error_Handler_T is access procedure  (arg1 : Interfaces.C.Strings.chars_ptr);
-   pragma Convention (C, Fatal_Error_Handler_T);  -- llvm-8.0.1.src/include/llvm-c/ErrorHandling.h:21
+   pragma Convention (C, Fatal_Error_Handler_T);  -- llvm-9.0.0.src/include/llvm-c/ErrorHandling.h:21
 
   --*
   -- * Install a fatal error handler. By default, if LLVM detects a fatal error, it
@@ -29,7 +29,7 @@ package LLVM.Error_Handling is
   -- * call to exit(1).
   --  
 
-   procedure Install_Fatal_Error_Handler (Handler : Fatal_Error_Handler_T);  -- llvm-8.0.1.src/include/llvm-c/ErrorHandling.h:30
+   procedure Install_Fatal_Error_Handler (Handler : Fatal_Error_Handler_T);  -- llvm-9.0.0.src/include/llvm-c/ErrorHandling.h:30
    pragma Import (C, Install_Fatal_Error_Handler, "LLVMInstallFatalErrorHandler");
 
   --*
@@ -37,7 +37,7 @@ package LLVM.Error_Handling is
   -- * behavior to the default.
   --  
 
-   procedure Reset_Fatal_Error_Handler;  -- llvm-8.0.1.src/include/llvm-c/ErrorHandling.h:36
+   procedure Reset_Fatal_Error_Handler;  -- llvm-9.0.0.src/include/llvm-c/ErrorHandling.h:36
    pragma Import (C, Reset_Fatal_Error_Handler, "LLVMResetFatalErrorHandler");
 
   --*
@@ -46,7 +46,7 @@ package LLVM.Error_Handling is
   -- * crash.
   --  
 
-   procedure Enable_Pretty_Stack_Trace;  -- llvm-8.0.1.src/include/llvm-c/ErrorHandling.h:43
+   procedure Enable_Pretty_Stack_Trace;  -- llvm-9.0.0.src/include/llvm-c/ErrorHandling.h:43
    pragma Import (C, Enable_Pretty_Stack_Trace, "LLVMEnablePrettyStackTrace");
 
 end LLVM.Error_Handling;

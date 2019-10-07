@@ -174,7 +174,7 @@ package body GNATLLVM.Codegen is
       elsif Switch = "-mrelocation-model=default" then
          Reloc_Mode := Reloc_Default;
       elsif Starts_With ("-llvm-") then
-         Switch_Table.Append (new String'(Switch_Value ("-llvm-")));
+         Switch_Table.Append (new String'(Switch_Value ("-llvm")));
       end if;
    end Process_Switch;
 
@@ -214,15 +214,18 @@ package body GNATLLVM.Codegen is
    ----------------------------
 
    procedure Initialize_LLVM_Target is
-      Num_Builtin : constant := 2;
+      Num_Builtin : constant := 3;
 
       type    Addr_Arr     is array (Interfaces.C.int range <>) of Address;
       subtype Switch_Addrs is Addr_Arr (1 .. Switch_Table.Last + Num_Builtin);
 
       Opt0        : constant String   := "filename" & ASCII.NUL;
       Opt1        : constant String   := "-enable-shrink-wrap=0" & ASCII.NUL;
+      Opt2        : constant String   :=
+        "-generate-arange-section" & ASCII.NUL;
       Addrs       : Switch_Addrs      :=
-        (1 => Opt0'Address, 2 => Opt1'Address, others => <>);
+        (1 => Opt0'Address, 2 => Opt1'Address, 3 => Opt2'Address,
+         others => <>);
       Ptr_Err_Msg : aliased Ptr_Err_Msg_Type;
 
    begin

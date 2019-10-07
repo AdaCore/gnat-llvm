@@ -6,7 +6,7 @@ front-end to the LLVM code generator.
 
 This is a work-in-progress research project that's not meant for and
 shouldn't be used for industrial purposes. It's meant to show the
-feasibility of generating LLVM byte code for Ada and to open the LLVM
+feasibility of generating LLVM bit code for Ada and to open the LLVM
 ecosystem to Ada, including tools such as [KLEE](https://klee.github.io).
 
 Note that we are not planning on replacing any existing GNAT port that's
@@ -79,7 +79,7 @@ Usage
 
       $ gprbuild --target=llvm -Pprj ...
 
-- To generate LLVM byte code (will generate a .bc file):
+- To generate LLVM bit code (will generate a .bc file):
 
       $ llvm-gcc -c -emit-llvm file.adb
 

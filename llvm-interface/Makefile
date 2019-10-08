@@ -37,6 +37,9 @@ CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags)
 ifeq ($(filter-out CYGWIN% MINGW%,$(uname)),)
   LN_S=cp -p
   LDFLAGS+=-Wl,--stack=0x2000000
+  soext=.dll
+else
+  soext=.so
 endif
 
 compare=cmp --ignore-initial=16
@@ -150,10 +153,11 @@ RTSLIB=$(pwd)/lib/rts-native/adalib
 RTSOBJ=$(pwd)/lib/rts-native/obj
 ADAFLAGS=-gnatpg
 ADA_INCLUDES=-nostdinc -I../adainclude
-CFLAGS = -O2 -g
-GNATLIBCFLAGS = -DIN_RTS=1 -fexceptions -DSTANDALONE
-ALL_ADAFLAGS = $(CFLAGS) $(ADAFLAGS) $(ADA_INCLUDES)
-INCLUDES = -I../adainclude -I../include
+CFLAGS=-O2 -g
+EXTRALIBFLAGS=
+GNATLIBCFLAGS=-DIN_RTS=1 -fexceptions -DSTANDALONE $(EXTRALIBFLAGS)
+ALL_ADAFLAGS=$(CFLAGS) $(ADAFLAGS) $(ADA_INCLUDES) $(EXTRALIBFLAGS)
+INCLUDES=-I../adainclude -I../include
 
 ADAC=$(pwd)/bin/llvm-gcc
 CROSSC=clang
@@ -198,6 +202,24 @@ gnatlib-automated: build
 	$(MAKE) quicklib LN_S="cp -p"
 	$(RMDIR) $(RTSOBJ)
 
+gnatlib-shared:
+	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
+	  ADAC=$(ADAC) CC=$(CROSSC) EXTRALIBFLAGS="-fPIC" \
+	  $(GNATRTL_OBJS) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
+	@cd $(RTSLIB) && $(CROSSC) -shared $(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS) -o libgnat$(soext)
+	@cd $(RTSLIB) && $(CROSSC) -shared $(GNATRTL_TASKING_OBJS) -o libgnarl$(soext)
+	@cd $(RTSLIB) && $(CHMOD) a-wx *.ali && $(RM) *.o
+
+gnatlib-bc:
+	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
+	  ADAC=$(ADAC) CC=$(CROSSC) EXTRALIBFLAGS="-emit-llvm" \
+	  $(GNATRTL_OBJS) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
+	@echo "creating libgnat.bc"
+	@cd $(RTSLIB) && llvm-link $(subst .o,.bc,$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS)) -o=libgnat.bc-tmp
+	@echo "creating libgnarl.bc"
+	@cd $(RTSLIB) && llvm-link $(subst .o,.bc,$(GNATRTL_TASKING_OBJS)) -o=libgnarl.bc-tmp
+	@cd $(RTSLIB) && $(RM) *.bc && $(MV) libgnat.bc-tmp libgnat.bc && $(MV) libgnarl.bc-tmp libgnarl.bc
+
 quicklib: $(RTSDIR)
 	if [ -d $(RTSOBJ) ]; then \
 	  $(MV) $(RTSOBJ)/*.o $(RTSLIB); \
@@ -213,10 +235,9 @@ quicklib: $(RTSDIR)
 	@cd $(RTSLIB) && $(AR_FOR_TARGET) $(AR_FLAGS) libgnarl$(arext) \
 	  $(GNATRTL_TASKING_OBJS)
 	$(RANLIB_FOR_TARGET) $(RTSLIB)/libgnarl$(arext)
-	$(CHMOD) a-wx $(RTSLIB)/*.ali
 	$(RMDIR) $(RTSOBJ)
 	$(MKDIR) $(RTSOBJ)
-	$(MV) $(RTSLIB)/*.o $(RTSOBJ)
+	cd $(RTSLIB) && $(CHMOD) a-wx *.ali && $(MV) *.o $(RTSOBJ)
 
 $(RTSDIR): bin/llvm-gnat1
 	$(RMDIR) $(RTSLIB) $(RTSOBJ)

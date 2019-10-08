@@ -741,6 +741,19 @@ package body GNATLLVM.Conversions is
             Result := Insert_Value (Result, Int_To_Ref (As_Ref, DT), 0);
          end if;
 
+       --  If this is a unchecked conversion to a thin pointer from a
+       --  non-array type, this isn't going to work if we look at bounds,
+       --  but just copy the pointer to avoid blowing up below looking for
+       --  bounds.
+
+      elsif Is_Unchecked and then R = Thin_Pointer
+        and then not Is_Array_Type (As_Ref)
+      then
+         Result := Ptr_To_Relationship (As_Ref, DT, Thin_Pointer);
+
+      --  Otherwise, get the input in the desired relationship and then
+      --  convert the pointer.
+
       else
          Result := Convert_Pointer (Get (As_Ref, R), DT);
       end if;

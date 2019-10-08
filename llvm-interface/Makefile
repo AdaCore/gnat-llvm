@@ -37,9 +37,6 @@ CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags)
 ifeq ($(filter-out CYGWIN% MINGW%,$(uname)),)
   LN_S=cp -p
   LDFLAGS+=-Wl,--stack=0x2000000
-  soext=.dll
-else
-  soext=.so
 endif
 
 compare=cmp --ignore-initial=16
@@ -145,6 +142,7 @@ endif
 
 objext=.o
 arext=.a
+soext=.so
 AR_FOR_TARGET=ar
 AR_FLAGS=q
 RANLIB_FOR_TARGET=ranlib

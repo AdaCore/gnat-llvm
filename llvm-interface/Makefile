@@ -32,7 +32,8 @@ endif
 
 LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs) \
   -static-libstdc++
-CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags)
+CXXFLAGS=
+ALL_CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags) $(CXXFLAGS)
 
 ifeq ($(filter-out CYGWIN% MINGW%,$(uname)),)
   LN_S=cp -p
@@ -69,17 +70,17 @@ setup:
 
 build: setup force
 	$(GPRBUILD) -Pgnat_llvm -j$(PROCS) \
-	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
+	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
 	$(GPRBUILD) -Ptools -j$(PROCS)
 
 build-uninit: setup force
 	$(GPRBUILD) -XBuild=Uninitialized -Pgnat_llvm -j$(PROCS) \
-	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
+	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
 	$(GPRBUILD) -Ptools -j$(PROCS)
 
 build-opt: setup force
 	$(GPRBUILD) $(GPROPT) -Pgnat_llvm -j$(PROCS) \
-	  -largs $(LDFLAGS) -cargs:c++ $(CXXFLAGS)
+	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
 	$(GPRBUILD) $(GPROPT) -Ptools -j$(PROCS)
 
 # Bootstrap targets

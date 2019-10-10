@@ -57,10 +57,6 @@ update_path (char *path, char *key)
   return path;
 }
 
-/* Originally defined in link.c */
-unsigned char __gnat_separate_run_path_options = 0;
-const char *__gnat_default_libgcc_subdir = "lib";
-
 /* Originally defined in version.c */
 const char version_string[] = "1.0";
 

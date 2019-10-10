@@ -1,5 +1,6 @@
 project GNAT_LLVM_C is
    for Languages use ("C", "C++");
+   for Source_Dirs use (".", "obj");
    for Object_Dir use "obj";
 
    package Compiler is

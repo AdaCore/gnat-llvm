@@ -31,7 +31,6 @@
 
 #define TARGET_OBJECT_SUFFIX ".o"
 #define TARGET_EXECUTABLE_SUFFIX ""
-unsigned char __gnat_objlist_file_supported = 0; /* TODO??? */
 
 const char *__gnat_target_object_extension = TARGET_OBJECT_SUFFIX;
 const char *__gnat_target_executable_extension = TARGET_EXECUTABLE_SUFFIX;

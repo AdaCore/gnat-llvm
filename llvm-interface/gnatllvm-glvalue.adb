@@ -1751,6 +1751,15 @@ package body GNATLLVM.GLValue is
       Set_Volatile_For_Atomic (LLVM_Value (V));
    end Set_Volatile_For_Atomic;
 
+   ----------------------------
+   -- Add_Function_To_Module --
+   ----------------------------
+
+   procedure Add_Function_To_Module (V : GL_Value) is
+   begin
+      Add_Function_To_Module (LLVM_Value (V), Module);
+   end Add_Function_To_Module;
+
    ---------------------
    -- Set_Arith_Attrs --
    ---------------------

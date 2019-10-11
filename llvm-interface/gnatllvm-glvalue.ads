@@ -1186,9 +1186,12 @@ package GNATLLVM.GLValue is
           Inline;
 
    function Add_Function
-     (Name : String; T : Type_T; Return_GT : GL_Type) return GL_Value
+     (Name       : String;
+      T          : Type_T;
+      Return_GT  : GL_Type;
+      Is_Builtin : Boolean := False) return GL_Value
    is
-     (G (Add_Function (Module, Name, T),
+     (G (Add_Function ((if Is_Builtin then Module else No_Module_T), Name, T),
          Return_GT, Reference_To_Subprogram))
      with Pre  => Present (T) and then Present (Return_GT),
           Post => Present (Add_Function'Result);
@@ -1265,6 +1268,9 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Global_Variable (V), Inline;
 
    procedure Set_Volatile_For_Atomic (V : GL_Value)
+     with Pre => Present (V), Inline;
+
+   procedure Add_Function_To_Module (V : GL_Value)
      with Pre => Present (V), Inline;
 
    function Get_Subprogram (V : GL_Value) return Metadata_T is

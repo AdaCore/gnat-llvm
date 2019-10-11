@@ -251,6 +251,14 @@ package body GNATLLVM.Subprograms is
       Table_Increment      => 5,
       Table_Name           => "Global_Destructors");
 
+   package Created_Subprograms is new Table.Table
+     (Table_Component_Type => Entity_Id,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 100,
+      Table_Increment      => 50,
+      Table_Name           => "Created_Subprograms");
+
    function Get_Activation_Record_Ptr
      (V : GL_Value; E : Entity_Id) return GL_Value
      with Pre  => Is_Reference (V) and then Is_Record_Type (Related_Type (V))
@@ -816,7 +824,7 @@ package body GNATLLVM.Subprograms is
               Pointer_Type (Subp_Type, 0), S),
             Func);
       else
-         Func := Add_Function (S, Subp_Type, GT);
+         Func := Add_Function (S, Subp_Type, GT, Is_Builtin => True);
 
          if not Can_Throw then
             Set_Does_Not_Throw (Func);
@@ -976,6 +984,8 @@ package body GNATLLVM.Subprograms is
       --  Now set up to process this subprogram
 
       Current_Subp := Def_Ident;
+      Add_Function_To_Module (Func);
+      Set_Added_To_Module (Def_Ident);
       Enter_Subp (Func);
       Push_Debug_Scope
         (Get_Source_File_Index (Sloc (N)),
@@ -1284,7 +1294,8 @@ package body GNATLLVM.Subprograms is
       then
          LLVM_Func := Ada_Main_Elabb;
       else
-         LLVM_Func := Add_Function (Name, Elab_Type, Void_GL_Type);
+         LLVM_Func := Add_Function (Name, Elab_Type, Void_GL_Type,
+                                    Is_Builtin => True);
       end if;
 
       --  Do the mechanics of setting up the elab procedure
@@ -2408,6 +2419,11 @@ package body GNATLLVM.Subprograms is
          Process_Pragmas      (Def_Ident, LLVM_Func);
          Set_Dup_Global_Value (Def_Ident, LLVM_Func);
 
+         --  Add function to the table of
+         --  subprograms that we've created, so we can add it to the module.
+
+         Created_Subprograms.Append (Def_Ident);
+
          --  Now deal with function and parameter attributes
          --  ??? We don't handle some return value attributes yet.
 
@@ -2503,6 +2519,8 @@ package body GNATLLVM.Subprograms is
          end loop;
 
       end if;
+
+      --  Save the value for this subprogram
 
       Set_Value (Def_Ident, LLVM_Func);
 
@@ -2625,5 +2643,18 @@ package body GNATLLVM.Subprograms is
       end if;
 
    end Output_Global_Constructors_Destructors;
+
+   -----------------------------
+   -- Add_Functions_To_Module --
+   -----------------------------
+
+   procedure Add_Functions_To_Module is
+   begin
+      for J in 1 .. Created_Subprograms.Last loop
+         if not Get_Added_To_Module (Created_Subprograms.Table (J)) then
+            Add_Function_To_Module (Get_Value (Created_Subprograms.Table (J)));
+         end if;
+      end loop;
+   end Add_Functions_To_Module;
 
 end GNATLLVM.Subprograms;

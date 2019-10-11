@@ -660,7 +660,7 @@ package body GNATLLVM.Blocks is
       EH_Slot_Id_Fn    :=
         Add_Function ("llvm.eh.typeid.for",
                       Fn_Ty ((1 => Void_Ptr_Type), Int_Ty (Nat (32))),
-                      Int_32_GL_Type);
+                      Int_32_GL_Type, Is_Builtin => True);
       Set_Does_Not_Throw (EH_Slot_Id_Fn);
 
       Others_Value     := Add_Global (SSI_GL_Type, "__gnat_others_value");

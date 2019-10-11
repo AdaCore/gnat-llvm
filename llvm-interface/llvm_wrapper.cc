@@ -297,6 +297,13 @@ Set_Volatile_For_Atomic (Instruction *inst)
 
 extern "C"
 void
+Add_Function_To_Module (Function *f, Module *m)
+{
+  m->getFunctionList().push_back(f);
+}
+
+extern "C"
+void
 Inst_Add_Combine_Function (legacy::PassManager *PM, TargetMachine *TM)
 {
   /* Create the minimum we need to run the InstructionCombining pass.

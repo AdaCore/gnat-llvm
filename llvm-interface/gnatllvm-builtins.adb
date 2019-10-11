@@ -174,7 +174,8 @@ package body GNATLLVM.Builtins is
                Void_Type);
       end case;
 
-      Result := Add_Function (Full_Name, Fun_Ty, Return_GT);
+      Result := Add_Function (Full_Name, Fun_Ty, Return_GT,
+                              Is_Builtin => True);
       Set_Does_Not_Throw (Result);
       if Kind = Memcpy then
          Add_Nocapture_Attribute (Result, 0);
@@ -773,7 +774,7 @@ package body GNATLLVM.Builtins is
       if No (Stack_Save_Fn) then
          Stack_Save_Fn := Add_Function
            ("llvm.stacksave", Fn_Ty ((1 .. 0 => <>), Void_Ptr_Type),
-            A_Char_GL_Type);
+            A_Char_GL_Type, Is_Builtin => True);
          Set_Does_Not_Throw (Stack_Save_Fn);
       end if;
 
@@ -789,7 +790,8 @@ package body GNATLLVM.Builtins is
       if No (Stack_Restore_Fn) then
          Stack_Restore_Fn := Add_Function
            ("llvm.stackrestore",
-            Fn_Ty ((1 => Void_Ptr_Type), Void_Type), Void_GL_Type);
+            Fn_Ty ((1 => Void_Ptr_Type), Void_Type), Void_GL_Type,
+            Is_Builtin => True);
          Set_Does_Not_Throw (Stack_Restore_Fn);
       end if;
 
@@ -808,7 +810,7 @@ package body GNATLLVM.Builtins is
             Fn_Ty ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
                     3 => Void_Ptr_Type),
                    Void_Type),
-            Void_GL_Type);
+            Void_GL_Type, Is_Builtin => True);
          Set_Does_Not_Throw (Tramp_Init_Fn);
       end if;
 
@@ -824,7 +826,8 @@ package body GNATLLVM.Builtins is
       if No (Tramp_Adjust_Fn) then
          Tramp_Adjust_Fn := Add_Function
            ("llvm.adjust.trampoline",
-            Fn_Ty ((1 => Void_Ptr_Type), Void_Ptr_Type), A_Char_GL_Type);
+            Fn_Ty ((1 => Void_Ptr_Type), Void_Ptr_Type), A_Char_GL_Type,
+            Is_Builtin => True);
          Set_Does_Not_Throw (Tramp_Adjust_Fn);
       end if;
 
@@ -841,7 +844,7 @@ package body GNATLLVM.Builtins is
          Lifetime_Start_Fn := Add_Function
            ("llvm.lifetime.start.p0i8",
             Fn_Ty ((1 => LLVM_Size_Type, 2 => Void_Ptr_Type), Void_Type),
-            Void_GL_Type);
+            Void_GL_Type, Is_Builtin => True);
          Set_Does_Not_Throw      (Lifetime_Start_Fn);
          Add_Nocapture_Attribute (Lifetime_Start_Fn, 1);
          Add_Readonly_Attribute  (Lifetime_Start_Fn, 1);
@@ -861,7 +864,7 @@ package body GNATLLVM.Builtins is
          Lifetime_End_Fn := Add_Function
            ("llvm.lifetime.end.p0i8",
             Fn_Ty ((1 => LLVM_Size_Type, 2 => Void_Ptr_Type), Void_Type),
-            Void_GL_Type);
+            Void_GL_Type, Is_Builtin => True);
          Set_Does_Not_Throw      (Lifetime_End_Fn);
          Add_Nocapture_Attribute (Lifetime_End_Fn, 1);
          Add_Readonly_Attribute  (Lifetime_End_Fn, 1);
@@ -881,7 +884,7 @@ package body GNATLLVM.Builtins is
          Expect_Fn := Add_Function
            ("llvm.expect.i1",
             Fn_Ty ((1 => Bit_T, 2 => Bit_T), Bit_T),
-            Void_GL_Type);
+            Void_GL_Type, Is_Builtin => True);
          Set_Does_Not_Throw      (Get_Expect_Fn);
       end if;
 

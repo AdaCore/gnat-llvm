@@ -146,6 +146,14 @@ package GNATLLVM.Utils is
    --  Set and get a flag indicating that this parameter was originally
    --  specified with a Mechanism of By_Ref.
 
+   function Get_Added_To_Module (E : Entity_Id) return Boolean is
+     (Get_Flag1 (E))
+     with Pre => Ekind_In (E, E_Function, E_Procedure);
+   procedure Set_Added_To_Module (E : Entity_Id; F : Boolean := True)
+     with Pre => Ekind_In (E, E_Function, E_Procedure);
+   --  Set and get a flag indicating that this subprogram was already added
+   --  to the module.
+
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 
    procedure Dump_LLVM_Value (V : Value_T)

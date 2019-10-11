@@ -153,6 +153,9 @@ package GNATLLVM.Wrapper is
    procedure Set_Volatile_For_Atomic (V : Value_T)
      with Import, Convention => C, External_Name => "Set_Volatile_For_Atomic";
 
+   procedure Add_Function_To_Module (Fn : Value_T; Module : Module_T)
+     with Import, Convention => C, External_Name => "Add_Function_To_Module";
+
    procedure LLVM_Optimize_Module
      (Module                : Module_T;
       Target_Machine        : Target_Machine_T;

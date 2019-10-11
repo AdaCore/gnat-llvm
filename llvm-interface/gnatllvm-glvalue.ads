@@ -1162,7 +1162,7 @@ package GNATLLVM.GLValue is
    function Block_Address
      (Func : GL_Value; BB : Basic_Block_T) return GL_Value
    is
-      (G (Block_Address (LLVM_Value (Func), BB), A_Char_GL_Type))
+      (G (Block_Address (LLVM_Value (Func), BB), SSI_GL_Type, Reference))
      with Pre  => Present (Func) and then Present (BB),
           Post => Present (Block_Address'Result);
 

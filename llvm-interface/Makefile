@@ -194,7 +194,7 @@ include $(GNAT_SRC)/Makefile.rtl
 
 gnatlib: build
 	$(RMDIR) $(RTSLIB) $(RTSDIR) $(RTSOBJ)
-	$(MAKE) quicklib
+	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" quicklib
 
 gnatlib-automated: build
 	$(RMDIR) $(RTSLIB) $(RTSDIR) $(RTSOBJ)
@@ -203,7 +203,7 @@ gnatlib-automated: build
 
 gnatlib-shared:
 	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
-	  ADAC=$(ADAC) CC=$(CROSSC) EXTRALIBFLAGS="-fPIC" \
+	  ADAC=$(ADAC) CC=$(CROSSC) EXTRALIBFLAGS="-fPIC $(EXTRALIBFLAGS)" \
 	  $(GNATRTL_OBJS) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
 	@cd $(RTSLIB) && $(CROSSC) -shared $(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS) -o libgnat$(soext)
 	@cd $(RTSLIB) && $(CROSSC) -shared $(GNATRTL_TASKING_OBJS) -o libgnarl$(soext)
@@ -211,7 +211,8 @@ gnatlib-shared:
 
 gnatlib-bc:
 	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
-	  ADAC=$(ADAC) CC=$(CROSSC) EXTRALIBFLAGS="-emit-llvm" \
+	  ADAC=$(ADAC) CC=$(CROSSC) \
+	  EXTRALIBFLAGS="-emit-llvm $(EXTRALIBFLAGS)" \
 	  $(GNATRTL_OBJS) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
 	@echo "creating libgnat.bc"
 	@cd $(RTSLIB) && llvm-link $(subst .o,.bc,$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS)) -o=libgnat.bc-tmp
@@ -225,6 +226,7 @@ quicklib: $(RTSDIR)
 	fi
 	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
 	  ADAC=$(ADAC) CC=$(CROSSC) \
+	  CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
 	  $(GNATRTL_OBJS) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
 # Create libgnat/libgnarl.a
 	$(RM) $(RTSLIB)/libgnat$(arext) $(RTSLIB)/libgnarl$(arext)

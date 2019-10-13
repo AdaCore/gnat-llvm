@@ -2193,7 +2193,9 @@ package body GNATLLVM.Variables is
                                    GT);
 
          when E_Label =>
-            return Block_Address (Current_Func, Get_Label_BB (Def_Ident));
+            return
+              Block_Address (Current_Func,
+                             Get_Label_BB (Def_Ident, For_Address => True));
 
          when Subprogram_Kind =>
             return Emit_Subprogram_Identifier (Def_Ident, N, GT);

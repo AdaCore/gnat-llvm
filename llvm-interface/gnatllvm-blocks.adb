@@ -255,6 +255,8 @@ package body GNATLLVM.Blocks is
 
       From_Block      : Block_Stack_Level;
       --  The starting block depth of Exit_BB or -1 if none
+      --  ??? There is no Exit_BB here and it's not clear why we have two
+      --  block depths here.
 
       Has_Open_Branch : Boolean;
       --  True if we've made an entry in the Open_Branches table for this
@@ -1415,7 +1417,9 @@ package body GNATLLVM.Blocks is
    -- Get_Label_BB --
    ------------------
 
-   function Get_Label_BB (E : Entity_Id) return Basic_Block_T is
+   function Get_Label_BB
+     (E : Entity_Id; For_Address : Boolean := False) return Basic_Block_T
+   is
       Depth : constant Block_Stack_Level := Block_Stack.Last;
       L_Idx : Label_Info_Id              := Get_Label_Info (E);
 
@@ -1440,12 +1444,18 @@ package body GNATLLVM.Blocks is
          Orig_BB    : constant Basic_Block_T := LI.Orig_BB;
 
       begin
-         --  First see if we know where this label is.  If we do, and the
-         --  depth of this entry is our depth, we have the label to branch
-         --  to which includes the needed fixups.  If not, we can make a
-         --  block for the fixups.
+         --  If we're getting this label to take its address, ignore any
+         --  possible fixup issues.
 
-         if LI.Block_Depth >= 0 then
+         if For_Address then
+            return Orig_BB;
+
+         --  Otherwise see if we know where this label is.  If we do, and
+         --  the depth of this entry is our depth, we have the label to
+         --  branch to which includes the needed fixups.  If not, we can
+         --  make a block for the fixups.
+
+         elsif LI.Block_Depth >= 0 then
             if LI.From_Block /= Depth then
                LI.From_Block := Depth;
                LI.Fixup_BB   := Create_Basic_Block (Get_Name (E) & "-f");
@@ -1521,10 +1531,23 @@ package body GNATLLVM.Blocks is
       --  Otherwise, get a new one.
 
    begin
-      --  Now, unless this is our basic block, jump to it and position there
+      --  Now, unless this is our basic block, jump to it and position there.
+      --  If we take the address of this label, we have to do this with
+      --  an indirectbr.
 
       if BB /= This_BB then
-         Move_To_BB (BB);
+         if Present (E) and then Address_Taken (E) then
+            declare
+               BB_Val : constant GL_Value := Block_Address (Current_Func, BB);
+               Ind_Br : constant Value_T  := Build_Indirect_Br (BB_Val);
+
+            begin
+               Add_Destination (Ind_Br, BB);
+               Position_Builder_At_End (BB);
+            end;
+         else
+            Move_To_BB (BB);
+         end if;
       end if;
 
       --  If we don't have an entity to point to the block, we're done

@@ -77,11 +77,13 @@ package GNATLLVM.Blocks is
      with Pre => Kind in N_Raise_xxx_Error;
    --  Get the last entry in the exception goto stack for Kind, if any
 
-   function Get_Label_BB (E : Entity_Id) return Basic_Block_T
+   function Get_Label_BB
+     (E : Entity_Id; For_Address : Boolean := False) return Basic_Block_T
      with Pre  => Ekind (E) = E_Label,
           Post => Present (Get_Label_BB'Result);
    --  Lazily get the basic block associated with label E, creating it
-   --  if we don't have it already.
+   --  if we don't have it already.  If For_Address is True, we're getting
+   --  this label to take its address, so we ignore any fixups.
 
    function Enter_Block_With_Node (Node : Node_Id) return Basic_Block_T
      with Post => Present (Enter_Block_With_Node'Result);

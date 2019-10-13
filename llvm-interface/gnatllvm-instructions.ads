@@ -932,4 +932,10 @@ package GNATLLVM.Instructions is
      with Pre  => Present (V) and then Present (Default),
           Post => Present (Build_Switch'Result);
 
+   function Build_Indirect_Br
+     (V : GL_Value; Dests : Nat := 2) return Value_T
+   is
+     (Build_Indirect_Br (IR_Builder, LLVM_Value (V), unsigned (Dests)))
+     with Pre => Present (V), Post => Present (Build_Indirect_Br'Result);
+
 end GNATLLVM.Instructions;

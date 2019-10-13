@@ -16,7 +16,7 @@ alis.list
 obj
 
 # Imported sources
-llvm/llvm-8.0.1.src
+llvm/llvm-9.0.0.src
 acats/acats
 fixedbugs/bugs
 

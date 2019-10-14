@@ -18,6 +18,7 @@
 with Ada.Unchecked_Deallocation;
 
 with Debug;    use Debug;
+with Errout;   use Errout;
 with Exp_Ch11; use Exp_Ch11;
 with Exp_Unst; use Exp_Unst;
 with Nlists;   use Nlists;
@@ -30,6 +31,7 @@ with Table;    use Table;
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
+with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
@@ -1544,6 +1546,14 @@ package body GNATLLVM.Blocks is
             begin
                Add_Destination (Ind_Br, BB);
                Position_Builder_At_End (BB);
+
+               --  The optimizer will undo what we did, so verify that we're
+               --  not compiling with optimization.
+
+               if Code_Gen_Level /= Code_Gen_Level_None then
+                  Error_Msg_NE
+                    ("??optimization breaks taking addresses of labels", E, E);
+               end if;
             end;
          else
             Move_To_BB (BB);

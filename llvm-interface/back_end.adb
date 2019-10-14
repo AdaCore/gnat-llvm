@@ -29,7 +29,7 @@ package body Back_End is
 
    package GNAT2LLVM is new Adabkend
      (Product_Name       => "GNAT for LLVM",
-      Copyright_Years    => "2013-2018",
+      Copyright_Years    => "2013-2019",
       Driver             => GNAT_To_LLVM,
       Is_Back_End_Switch => Is_Back_End_Switch);
 

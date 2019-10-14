@@ -154,7 +154,8 @@ ADAFLAGS=-gnatpg
 ADA_INCLUDES=-nostdinc -I../adainclude
 CFLAGS=-O2 -g
 EXTRALIBFLAGS=
-GNATLIBCFLAGS=-DIN_RTS=1 -fexceptions -DSTANDALONE $(EXTRALIBFLAGS)
+GNATLIBCFLAGS=-DIN_RTS=1 -fexceptions -gdwarf-aranges -DSTANDALONE \
+  $(EXTRALIBFLAGS)
 ALL_ADAFLAGS=$(CFLAGS) $(ADAFLAGS) $(ADA_INCLUDES) $(EXTRALIBFLAGS)
 INCLUDES=-I../adainclude -I../include
 
@@ -167,7 +168,11 @@ FORCE_DEBUG_ADAFLAGS = -g
 NO_INLINE_ADAFLAGS = -fno-inline
 NO_OMIT_ADAFLAGS = -fno-omit-frame-pointer
 NO_SIBLING_ADAFLAGS=-fno-optimize-sibling-calls
-NO_REORDER_ADAFLAGS=-fno-toplevel-reorder
+
+# -fno-toplevel-reorder is actually ignored by LLVM, keep it for reference
+# purposes. Achieve instead an equivalent effect by disabling all
+# optimizations.
+NO_REORDER_ADAFLAGS=-fno-toplevel-reorder -O0
 
 OSCONS_CC=$(CROSSGCC)
 OSCONS_CPP=$(OSCONS_CC) -E -C -DTARGET=\"$(target)\" -iquote $(GNAT_SRC) \
@@ -257,4 +262,10 @@ $(RTSDIR): bin/llvm-gnat1
 tracebak.o: tracebak.c tb-gcc.c
 	$(CC) -c $(CFLAGS) $(GNATLIBCFLAGS) \
 	  $(ALL_CPPFLAGS) $(INCLUDES) $(NO_OMIT_ADAFLAGS) $<
+
+# Need to keep functions ordered on g-debpoo.o since labels are used to
+# exclude subprograms from traceback computation.
+
+g-debpoo.o: g-debpoo.adb g-debpoo.ads
+	$(ADAC) -c $(ALL_ADAFLAGS) $(NO_REORDER_ADAFLAGS) $<
 

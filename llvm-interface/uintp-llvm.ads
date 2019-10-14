@@ -31,7 +31,7 @@ package Uintp.LLVM is
    --  Like UI_To_Int, but for Unsigned_Long_Long
 
    function UI_Is_In_ULL_Range (U : Uint) return Boolean;
-   --  LIke UI_Is_In_Int_Range, but for Unsigned_Long_Long;
+   --  Like UI_Is_In_Int_Range, but for Unsigned_Long_Long;
 
    function UI_From_ULL (V : ULL) return Uint is
      (UI_From_LLI (LLI (V)));

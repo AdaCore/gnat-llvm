@@ -123,6 +123,15 @@ Add_Inline_No_Attribute (Function *fn)
 
 extern "C"
 void
+Add_Named_Attribute (Function *fn, const char *name, const char *val,
+		     LLVMContext &Ctx)
+{
+    fn->addFnAttr (Attribute::get (Ctx, StringRef (name, strlen (name)),
+				   StringRef (val, strlen (val))));
+}
+
+extern "C"
+void
 Add_Nest_Attribute (Value *v, unsigned idx)
 {
   if (Function *fn = dyn_cast<Function>(v))

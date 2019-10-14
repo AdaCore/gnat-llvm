@@ -63,6 +63,7 @@ package GNATLLVM.Codegen is
    PrepareForThinLTO       : Boolean := False;
    PrepareForLTO           : Boolean := False;
    RerollLoops             : Boolean := False;
+   No_Tail_Calls           : Boolean := False;
    --  Switch options for optimization
 
    Optimize_IR           : Boolean := False;

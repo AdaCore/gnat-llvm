@@ -166,6 +166,8 @@ package body GNATLLVM.Codegen is
          RerollLoops := True;
       elsif Switch = "-fno-reroll-loops" then
          RerollLoops := False;
+      elsif Switch = "-fno-optimize-sibling-calls" then
+         No_Tail_Calls := True;
       elsif Switch = "-mdso-preemptable" then
          DSO_Preemptable := True;
       elsif Switch = "-mdso-local" then

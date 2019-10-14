@@ -2428,6 +2428,10 @@ package body GNATLLVM.Subprograms is
          --  ??? We don't handle some return value attributes yet.
 
          Add_Inline_Attribute (LLVM_Func, Def_Ident);
+         if No_Tail_Calls then
+            Add_Named_Attribute (LLVM_Func, "disable-tail-calls", "true");
+         end if;
+
          if No_Return (Def_Ident) then
             Set_Does_Not_Return (LLVM_Func);
          end if;

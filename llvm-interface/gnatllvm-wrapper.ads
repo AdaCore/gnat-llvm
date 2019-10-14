@@ -78,6 +78,10 @@ package GNATLLVM.Wrapper is
    procedure Add_Inline_No_Attribute (Func : Value_T)
      with Import, Convention => C, External_Name => "Add_Inline_No_Attribute";
 
+   procedure Add_Named_Attribute
+     (Func : Value_T; Name, Value : String; Ctx : Context_T)
+     with Inline;
+
    procedure Add_Nest_Attribute (Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name =>  "Add_Nest_Attribute";
 

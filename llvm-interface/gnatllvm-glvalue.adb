@@ -1580,6 +1580,15 @@ package body GNATLLVM.GLValue is
       end if;
    end Add_Inline_Attribute;
 
+   -------------------------
+   -- Add_Named_Attribute --
+   -------------------------
+
+   procedure Add_Named_Attribute (V : GL_Value; Name, Value : String) is
+   begin
+      Add_Named_Attribute (LLVM_Value (V), Name, Value, Context);
+   end Add_Named_Attribute;
+
    ------------------------
    -- Add_Nest_Attribute --
    -----------------------

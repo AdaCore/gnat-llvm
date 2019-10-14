@@ -112,6 +112,20 @@ package body GNATLLVM.Wrapper is
       return Build_Insert_Value_C (Bld, Aggr, Elt, Idx_List, Num_Idx,
                                    Name & ASCII.NUL);
    end Build_Insert_Value;
+   -------------------------
+   -- Add_Named_Attribute --
+   -------------------------
+
+   procedure Add_Named_Attribute
+     (Func : Value_T; Name, Value : String; Ctx : Context_T)
+   is
+      procedure Add_Named_Attribute_C
+        (Func : Value_T; Name, Value : String; Ctx : Context_T)
+        with Import, Convention => C, External_Name => "Add_Named_Attribute";
+
+   begin
+      Add_Named_Attribute_C (Func, Name & ASCII.NUL, Value & ASCII.NUL, Ctx);
+   end Add_Named_Attribute;
 
    ---------------------------
    --  LLVM_Optimize_Module --

@@ -172,43 +172,34 @@ package body GNATLLVM.Records is
 
    generic
       type Result is private;
-      Empty_Result : Result;
-      with function Sz_Const
+      No_Result : Result;
+      with function Size_Const_Int
         (C : ULL; Sign_Extend : Boolean := False) return Result;
-      with function Sz_Type_Size
+      with function Get_Type_Size
         (GT         : GL_Type;
          V          : GL_Value := No_GL_Value;
          Max_Size   : Boolean := False;
          No_Padding : Boolean := False) return Result;
-      with function Sz_Variant_Size
+      with function Get_Variant_Size
         (RI          : Record_Info;
          V           : GL_Value;
          In_Size     : Result;
          Force_Align : Nat;
          No_Padding  : Boolean := False) return Result;
-      with function  Sz_I_Cmp
-        (Op : Int_Predicate_T;
-         LHS : Result;
-         RHS : Result;
-         Name : String := "") return Result;
       with function "+" (V1, V2 : Result) return Result;
       with function "-" (V1, V2 : Result) return Result;
-      with function Sz_Neg (V : Result; Name : String := "") return Result;
-      with function Sz_And
+      with function Neg (V : Result; Name : String := "") return Result;
+      with function Build_And
         (V1, V2 : Result; Name : String := "") return Result;
-      with function Sz_Select
-        (V_If, V_Then, V_Else : Result; Name : String := "") return Result;
-      with function Sz_Min
+      with function Build_Max
         (V1, V2 : Result; Name : String := "") return Result;
-      with function Sz_Max
-        (V1, V2 : Result; Name : String := "") return Result;
-      with function Sz_Is_Const (V : Result) return Boolean;
-      with function Sz_Const_Val (V : Result) return ULL;
-      with function Sz_Replace_Val (O, N : Result) return Result;
+      with function Is_A_Const_Int          (V : Result)    return Boolean;
+      with function Get_Const_Int_Value_ULL (V : Result)    return ULL;
+      with function Replace_Val             (O, N : Result) return Result;
    package Size is
 
-      function No      (V : Result) return Boolean is (V =  Empty_Result);
-      function Present (V : Result) return Boolean is (V /= Empty_Result);
+      function No      (V : Result) return Boolean is (V =  No_Result);
+      function Present (V : Result) return Boolean is (V /= No_Result);
 
       function Only_Overlap_RIs (Idx : Record_Info_Id) return Boolean;
       --  Return True if Idx is null or if the only RIs after it are RIs
@@ -259,7 +250,7 @@ package body GNATLLVM.Records is
          V           : GL_Value;
          Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
          Idx         : Record_Info_Id := Empty_Record_Info_Id;
-         In_Size     : Result         := Empty_Result;
+         In_Size     : Result         := No_Result;
          Force_Align : Nat            := BPU;
          Max_Size    : Boolean        := False;
          No_Padding  : Boolean        := False) return Result;
@@ -477,13 +468,14 @@ package body GNATLLVM.Records is
       is
          T         : constant Type_T  := RI.LLVM_Type;
          GT        : constant GL_Type := RI.GT;
-         This_Size : Result           := Empty_Result;
+         This_Size : Result           := No_Result;
 
       begin
          --  If this piece has a starting position specified, move to it.
 
          if RI.Position /= 0 then
-            Total_Size := Sz_Replace_Val (Total_Size, Sz_Const (RI.Position));
+            Total_Size := Replace_Val (Total_Size,
+                                       Size_Const_Int (RI.Position));
          end if;
 
          --  If we have an LLVM type, it's packed record, so our size will
@@ -491,11 +483,12 @@ package body GNATLLVM.Records is
          --  our total size is a constant, we can say what our alignment is.
 
          if Present (T) then
-            This_Size  := Sz_Const (Get_Type_Size (T));
+            This_Size  := Size_Const_Int (Get_Type_Size (T));
             Must_Align := BPU;
             Is_Align   :=
-              (if   Sz_Is_Const (Total_Size)
-               then ULL_Align (Sz_Const_Val (Total_Size + This_Size))
+              (if   Is_A_Const_Int (Total_Size)
+               then ULL_Align (Get_Const_Int_Value_ULL
+                                 (Total_Size + This_Size))
                else Nat'(BPU));
 
          --  For a GNAT type, do similar, except that we know more about
@@ -505,7 +498,7 @@ package body GNATLLVM.Records is
             Must_Align   := Get_Type_Alignment (GT);
             Is_Align     := Must_Align;
             if Return_Size then
-               This_Size := Sz_Type_Size (GT, V, Max_Size);
+               This_Size := Get_Type_Size (GT, V, Max_Size);
             end if;
 
          --  For a variant, we've already set the variant alignment, so use
@@ -529,8 +522,8 @@ package body GNATLLVM.Records is
                  (if   Max_Size
                   then Get_Variant_Max_Size (RI, Total_Size, Must_Align,
                                              No_Padding => No_Padding)
-                  else Sz_Variant_Size (RI, V, Total_Size, Must_Align,
-                                        No_Padding => No_Padding));
+                  else Get_Variant_Size (RI, V, Total_Size, Must_Align,
+                                         No_Padding => No_Padding));
                return;
             end if;
 
@@ -539,7 +532,7 @@ package body GNATLLVM.Records is
          else
             Must_Align := BPU;
             Is_Align   := Max_Align;
-            This_Size  := Sz_Const (0);
+            This_Size  := Size_Const_Int (0);
          end if;
 
          --  Take into account any alignment we set for this RI.  We
@@ -557,7 +550,8 @@ package body GNATLLVM.Records is
          Must_Align := Nat'Max (Force_Align, Must_Align);
          if Return_Size then
             if Only_Overlap_RIs (RI.Next) and then No_Padding then
-               This_Size := This_Size - Sz_Const (UI_To_ULL (RI.Unused_Bits));
+               This_Size :=
+                 This_Size - Size_Const_Int (UI_To_ULL (RI.Unused_Bits));
             end if;
 
             Total_Size
@@ -631,7 +625,7 @@ package body GNATLLVM.Records is
          No_Padding  : Boolean := False) return Result
       is
          Max_Const_Size : ULL    := 0;
-         Max_Var_Size   : Result := Empty_Result;
+         Max_Var_Size   : Result := No_Result;
          Our_Size       : Result;
 
       begin
@@ -646,25 +640,25 @@ package body GNATLLVM.Records is
                                            Force_Align,
                                            Max_Size   => True,
                                            No_Padding => No_Padding);
-            if Sz_Is_Const (Our_Size) then
-               if Sz_Const_Val (Our_Size) > Max_Const_Size then
-                  Max_Const_Size := Sz_Const_Val (Our_Size);
+            if Is_A_Const_Int (Our_Size) then
+               if Get_Const_Int_Value_ULL (Our_Size) > Max_Const_Size then
+                  Max_Const_Size := Get_Const_Int_Value_ULL (Our_Size);
                end if;
             elsif No (Max_Var_Size) then
                Max_Var_Size := Our_Size;
             else
-               Max_Var_Size := Sz_Max (Our_Size, Max_Var_Size);
+               Max_Var_Size := Build_Max (Our_Size, Max_Var_Size);
             end if;
          end loop;
 
          --  Now merge the variable and constant sizes
 
          if No (Max_Var_Size) then
-            return Sz_Const (Max_Const_Size);
+            return Size_Const_Int (Max_Const_Size);
          elsif Max_Const_Size = 0 then
             return Max_Var_Size;
          else
-            return Sz_Max (Max_Var_Size, Sz_Const (Max_Const_Size));
+            return Build_Max (Max_Var_Size, Size_Const_Int (Max_Const_Size));
          end if;
       end Get_Variant_Max_Size;
 
@@ -677,13 +671,13 @@ package body GNATLLVM.Records is
          V           : GL_Value;
          Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
          Idx         : Record_Info_Id := Empty_Record_Info_Id;
-         In_Size     : Result         := Empty_Result;
+         In_Size     : Result         := No_Result;
          Force_Align : Nat            := BPU;
          Max_Size    : Boolean        := False;
          No_Padding  : Boolean        := False) return Result
       is
          Total_Size   : Result         :=
-           (if Present (In_Size) then In_Size else Sz_Const (0));
+           (if Present (In_Size) then In_Size else Size_Const_Int (0));
          Cur_Align    : Nat            :=
            (if   Present (In_Size) then BPU else Max_Align);
          Cur_Idx      : Record_Info_Id :=
@@ -740,7 +734,7 @@ package body GNATLLVM.Records is
                if No (New_Idx) then
                   New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Idx, True);
                   if Present (New_Idx) then
-                     Total_Size := Sz_Const (0);
+                     Total_Size := Size_Const_Int (0);
                   end if;
                end if;
             end if;
@@ -827,7 +821,7 @@ package body GNATLLVM.Records is
          --  position is undefined.
 
          if No (F_Idx) then
-            return Empty_Result;
+            return No_Result;
          end if;
 
          FI     := Field_Info_Table.Table (F_Idx);
@@ -851,7 +845,7 @@ package body GNATLLVM.Records is
                  Offset_Of_Element (Module_Data_Layout, RI.LLVM_Type, Ordinal);
 
             begin
-               return Offset + Sz_Const (This_Offset * ULL (BPU));
+               return Offset + Size_Const_Int (This_Offset * ULL (BPU));
             end;
          end if;
       end Emit_Field_Position;
@@ -869,8 +863,8 @@ package body GNATLLVM.Records is
          if Must_Align <= Cur_Align then
             return V;
          else
-            return Sz_And (V + Sz_Const (ULL (Must_Align - 1)),
-                           Sz_Neg (Sz_Const (ULL (Must_Align))));
+            return Build_And (V + Size_Const_Int (ULL (Must_Align - 1)),
+                              Neg (Size_Const_Int (ULL (Must_Align))));
          end if;
       end Align_To;
 
@@ -903,18 +897,18 @@ package body GNATLLVM.Records is
          --  The resulting size is the maximum of that and the size of the
          --  overlap portion (but special-case zero).
 
-         if Variant_Size = Sz_Const (0) then
+         if Variant_Size = Size_Const_Int (0) then
             return Overlap_Size;
-         elsif Overlap_Size = Sz_Const (0) then
+         elsif Overlap_Size = Size_Const_Int (0) then
             return Variant_Size;
          else
-            return Sz_Max (Variant_Size, Overlap_Size);
+            return Build_Max (Variant_Size, Overlap_Size);
          end if;
       end Variant_Part_Size;
 
    end Size;
 
-   --  Sz_Replace_Val is used to replace a size value with a new value.
+   --  Replace_Val is used to replace a size value with a new value.
    --  For both the normal and back-annotation cases, this is the second
    --  operand.  However, for the purpose of determining if this is of
    --  dynamic size, we need to conside the size variable if either the old
@@ -936,22 +930,19 @@ package body GNATLLVM.Records is
    --  the LLVM value the size and make those visible to clients.
 
    package LLVM_Size is
-      new Size (Result          => GL_Value,
-                Empty_Result    => No_GL_Value,
-                Sz_Const        => Size_Const_Int,
-                "+"             => "+",
-                "-"             => "-",
-                Sz_And          => Build_And,
-                Sz_Neg          => Neg,
-                Sz_I_Cmp        => I_Cmp,
-                Sz_Select       => Build_Select,
-                Sz_Min          => Build_Min,
-                Sz_Max          => Build_Max,
-                Sz_Is_Const     => Is_A_Const_Int,
-                Sz_Const_Val    => Get_Const_Int_Value_ULL,
-                Sz_Type_Size    => Get_Type_Size,
-                Sz_Variant_Size => Get_Variant_Size,
-                Sz_Replace_Val  => Replace_Val);
+      new Size (Result                  => GL_Value,
+                No_Result               => No_GL_Value,
+                Size_Const_Int          => Size_Const_Int,
+                "+"                     => "+",
+                "-"                     => "-",
+                Neg                     => Neg,
+                Build_And               => Build_And,
+                Build_Max               => Build_Max,
+                Is_A_Const_Int          => Is_A_Const_Int,
+                Get_Const_Int_Value_ULL => Get_Const_Int_Value_ULL,
+                Get_Type_Size           => Get_Type_Size,
+                Get_Variant_Size        => Get_Variant_Size,
+                Replace_Val             => Replace_Val);
 
    function Get_Record_Size_So_Far
      (TE          : Entity_Id;
@@ -992,22 +983,19 @@ package body GNATLLVM.Records is
    --  whether a size is dynamic or not and make those visible to clients.
 
    package IDS_Size is
-      new Size (Result          => IDS,
-                Empty_Result    => No_IDS,
-                Sz_Const        => Const,
-                "+"             => "+",
-                "-"             => "-",
-                Sz_And          => Build_And,
-                Sz_Neg          => Neg,
-                Sz_I_Cmp        => I_Cmp,
-                Sz_Select       => Build_Select,
-                Sz_Min          => Build_Min,
-                Sz_Max          => Build_Max,
-                Sz_Is_Const     => Is_Const,
-                Sz_Const_Val    => Const_Val_ULL,
-                Sz_Type_Size    => Get_Type_Size,
-                Sz_Variant_Size => Get_Variant_Size,
-                Sz_Replace_Val  => Replace_Val);
+      new Size (Result                  => IDS,
+                No_Result               => No_IDS,
+                Size_Const_Int          => Const,
+                "+"                     => "+",
+                "-"                     => "-",
+                Neg                     => Neg,
+                Build_And               => Build_And,
+                Build_Max               => Build_Max,
+                Is_A_Const_Int          => Is_Const,
+                Get_Const_Int_Value_ULL => Const_Val_ULL,
+                Get_Type_Size           => Get_Type_Size,
+                Get_Variant_Size        => Get_Variant_Size,
+                Replace_Val             => Replace_Val);
 
    function Get_Record_Type_Size
      (TE         : Entity_Id;
@@ -1044,22 +1032,19 @@ package body GNATLLVM.Records is
    --  back-annotation trees.
 
    package BA_Size is
-      new Size (Result          => BA_Data,
-                Empty_Result    => No_BA,
-                Sz_Const        => Const,
-                "+"             => "+",
-                "-"             => "-",
-                Sz_And          => Build_And,
-                Sz_Neg          => Neg,
-                Sz_I_Cmp        => I_Cmp,
-                Sz_Select       => Build_Select,
-                Sz_Min          => Build_Min,
-                Sz_Max          => Build_Max,
-                Sz_Is_Const     => Is_Const,
-                Sz_Const_Val    => Const_Val_ULL,
-                Sz_Type_Size    => Get_Type_Size,
-                Sz_Variant_Size => Get_Variant_Size,
-                Sz_Replace_Val  => Replace_Val);
+      new Size (Result                  => BA_Data,
+                No_Result               => No_BA,
+                Size_Const_Int          => Const,
+                "+"                     => "+",
+                "-"                     => "-",
+                Neg                     => Neg,
+                Build_And               => Build_And,
+                Build_Max               => Build_Max,
+                Is_A_Const_Int          => Is_Const,
+                Get_Const_Int_Value_ULL => Const_Val_ULL,
+                Get_Type_Size           => Get_Type_Size,
+                Get_Variant_Size        => Get_Variant_Size,
+                Replace_Val             => Replace_Val);
 
    function Get_Record_Type_Size
      (TE         : Entity_Id;

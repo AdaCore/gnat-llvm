@@ -129,17 +129,17 @@ package body GNATLLVM.Types is
    generic
       type Result is private;
       Empty_Result : Result;
-      with function Sz_From_Const (V : GL_Value) return Result;
-      with function Sz_Record_Type_Size
+      with function From_Const (V : GL_Value) return Result;
+      with function Get_Record_Type_Size
         (TE         : Entity_Id;
          V          : GL_Value;
          Max_Size   : Boolean := False;
          No_Padding : Boolean := False) return Result;
-      with function Sz_Unc_Array_Type_Size
+      with function Get_Unc_Array_Type_Size
         (TE         : Entity_Id;
          V          : GL_Value;
          Max_Size   : Boolean := False) return Result;
-      with function Sz_Array_Type_Size
+      with function Get_Array_Type_Size
         (TE         : Entity_Id;
          V          : GL_Value;
          Max_Size   : Boolean := False) return Result;
@@ -1071,7 +1071,7 @@ package body GNATLLVM.Types is
          if Present (V) and then Is_Data (V)
            and then not Use_Max_Size and then not Unpad_Record
          then
-            Our_Size := Sz_From_Const (Get_Type_Size (Type_Of (V)));
+            Our_Size := From_Const (Get_Type_Size (Type_Of (V)));
 
             --  However, if this is both bounds and data, we have to subtract
             --  the size of the bounds since we define the size of the
@@ -1079,7 +1079,7 @@ package body GNATLLVM.Types is
 
             if Relationship (V) = Bounds_And_Data then
                Our_Size :=
-                 Our_Size - Sz_From_Const (Get_Bound_Size (Related_Type (V)));
+                 Our_Size - From_Const (Get_Bound_Size (Related_Type (V)));
             end if;
 
             return Our_Size;
@@ -1088,7 +1088,7 @@ package body GNATLLVM.Types is
          --  unless we aren't to remove padding and this is a record type.
 
          elsif Present (Size_In_GT) and then not Unpad_Record then
-            return Sz_From_Const (Size_In_GT);
+            return From_Const (Size_In_GT);
 
          --  If this is a subprogram type, it doesn't have a size
 
@@ -1100,17 +1100,17 @@ package body GNATLLVM.Types is
          --  record type.
 
          elsif not Is_Nonnative_Type (GT) and then not Unpad_Record then
-            return Sz_From_Const (Get_Type_Size (Type_Of (GT)));
+            return From_Const (Get_Type_Size (Type_Of (GT)));
 
          elsif Is_Record_Type (GT) then
-            return Sz_Record_Type_Size (Full_Etype (GT), V,
-                                        Max_Size   => Use_Max_Size,
-                                        No_Padding => No_Padding
-                                          and then not Strict_Alignment (GT));
+            return Get_Record_Type_Size (Full_Etype (GT), V,
+                                         Max_Size   => Use_Max_Size,
+                                         No_Padding => No_Padding
+                                           and then not Strict_Alignment (GT));
          elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
-            return Sz_Unc_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
+            return Get_Unc_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
          elsif Is_Array_Type (GT) then
-            return Sz_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
+            return Get_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
          else
             pragma Assert (False);
             return Empty_Result;
@@ -1120,13 +1120,13 @@ package body GNATLLVM.Types is
    end Size;
 
    package LLVM_Size is
-      new Size (Result                 => GL_Value,
-                Empty_Result           => No_GL_Value,
-                Sz_From_Const          => From_Const,
-                Sz_Record_Type_Size    => Get_Record_Type_Size,
-                Sz_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
-                Sz_Array_Type_Size     => Get_Array_Type_Size,
-                "-"                    => "-");
+      new Size (Result                  => GL_Value,
+                Empty_Result            => No_GL_Value,
+                From_Const              => From_Const,
+                Get_Record_Type_Size    => Get_Record_Type_Size,
+                Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
+                Get_Array_Type_Size     => Get_Array_Type_Size,
+                "-"                     => "-");
 
    function Get_Type_Size
      (GT         : GL_Type;
@@ -1136,13 +1136,13 @@ package body GNATLLVM.Types is
      renames LLVM_Size.Get_Type_Size;
 
    package IDS_Size is
-      new Size (Result                 => IDS,
-                Empty_Result           => No_IDS,
-                Sz_From_Const          => From_Const,
-                Sz_Record_Type_Size    => Get_Record_Type_Size,
-                Sz_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
-                Sz_Array_Type_Size     => Get_Array_Type_Size,
-                "-"                    => "-");
+      new Size (Result                  => IDS,
+                Empty_Result            => No_IDS,
+                From_Const              => From_Const,
+                Get_Record_Type_Size    => Get_Record_Type_Size,
+                Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
+                Get_Array_Type_Size     => Get_Array_Type_Size,
+                "-"                     => "-");
 
    function Get_Type_Size
      (GT         : GL_Type;
@@ -1152,13 +1152,13 @@ package body GNATLLVM.Types is
      renames IDS_Size.Get_Type_Size;
 
    package BA_Size is
-      new Size (Result                 => BA_Data,
-                Empty_Result           => No_BA,
-                Sz_From_Const          => From_Const,
-                Sz_Record_Type_Size    => Get_Record_Type_Size,
-                Sz_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
-                Sz_Array_Type_Size     => Get_Array_Type_Size,
-                "-"                    => "-");
+      new Size (Result                  => BA_Data,
+                Empty_Result            => No_BA,
+                From_Const              => From_Const,
+                Get_Record_Type_Size    => Get_Record_Type_Size,
+                Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
+                Get_Array_Type_Size     => Get_Array_Type_Size,
+                "-"                     => "-");
 
    function Get_Type_Size
      (GT         : GL_Type;

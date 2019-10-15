@@ -22,6 +22,7 @@ with Snames;   use Snames;
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
@@ -227,6 +228,8 @@ package body GNATLLVM.Arrays.Create is
       Last_Dim          : constant Nat       :=
         (if   Ekind (A_TE) = E_String_Literal_Subtype
          then 1 else Number_Dimensions (A_TE) - 1);
+      Total_Size        : GL_Value           :=
+        (if This_Nonnative then Size_Const_Null else Get_Type_Size (Comp_GT));
       Dim_Infos         : Dim_Info_Array (0 .. Last_Dim);
       First_Info        : Array_Info_Id;
       Index             : Entity_Id;
@@ -317,6 +320,7 @@ package body GNATLLVM.Arrays.Create is
                  Bounds_To_Length (Size_Const_Int (Dim_Info.Low.Cnst),
                                    Size_Const_Int (Dim_Info.High.Cnst),
                                    Size_GL_Type, Dim_Info.Not_Superflat);
+               Total_Size := Total_Size * Dim_Info.Bound_Range;
             else
                This_Nonnative := True;
                if Dim /= 0 then
@@ -338,6 +342,16 @@ package body GNATLLVM.Arrays.Create is
       for J in Dim_Infos'Range loop
          Array_Info.Append (Dim_Infos (J));
       end loop;
+
+      --  If the total size of this type is bigger than we can fit in an
+      --  Int, use a nonnative type.
+
+      if not This_Nonnative
+        and then (Overflowed (Total_Size)
+                    or else Get_Const_Int_Value (Total_Size) > LLI (Int'Last))
+      then
+         This_Nonnative := True;
+      end if;
 
       --  If not using a native types, then make a type with a zero
       --  number of elements and the type we set above. Otherwise loop

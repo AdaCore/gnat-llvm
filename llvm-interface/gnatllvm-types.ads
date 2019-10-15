@@ -438,8 +438,7 @@ package GNATLLVM.Types is
    function Present (V : IDS) return Boolean is (V /= No_IDS);
 
    function Is_Const  (V : IDS) return Boolean is
-     (Present (V.Value) and then not Overflowed (V.Value)
-        and then not Is_Undef (V.Value));
+     (Present (V.Value) and then not Is_Undef (V.Value));
 
    function Const (C : ULL; Sign_Extend : Boolean := False) return IDS is
      ((False,  Size_Const_Int (C, Sign_Extend)))
@@ -456,6 +455,14 @@ package GNATLLVM.Types is
    function Const_Int (V : IDS) return LLI is
      (Get_Const_Int_Value (V.Value))
      with Pre => Is_Const (V);
+
+   function Overflowed (V : IDS) return Boolean is
+     (Present (V.Value) and then Overflowed (V.Value))
+     with Pre => Present (V);
+
+   function Related_Type (V : IDS) return GL_Type is
+     (Related_Type (V.Value))
+     with Pre => Present (V);
 
    function Get_Type_Size
      (GT         : GL_Type;
@@ -623,6 +630,14 @@ package GNATLLVM.Types is
      (Is_Const (V) and then Const_Int (V) = 0);
    function Is_Const_1 (V : BA_Data) return Boolean is
      (Is_Const (V) and then Const_Int (V) = 1);
+
+   function Overflowed (V : BA_Data) return Boolean is
+     (Present (V) and then not V.Is_None and then Present (V.C_Value)
+        and then Overflowed (V.C_Value));
+
+   function Related_Type (V : BA_Data) return GL_Type is
+     (Related_Type (V.C_Value))
+     with Pre => Present (V);
 
    function Const
      (C : ULL; Sign_Extend : Boolean := False) return BA_Data

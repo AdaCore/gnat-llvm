@@ -132,9 +132,11 @@ package body GNATLLVM.Arrays is
         (V : Node_Id; LHS : Result := Empty_Result) return Result;
       with function  Sz_Emit_Convert
         (N : Node_Id; GT : GL_Type) return Result;
-      with function  Sz_Undef     (GT : GL_Type) return Result;
-      with function  Sz_Is_Const  (V : Result) return Boolean;
-      with function  Sz_Const_Val (V : Result) return ULL;
+      with function  Sz_Undef        (GT : GL_Type) return Result;
+      with function  Sz_Is_Const     (V : Result)   return Boolean;
+      with function  Sz_Overflowed   (V : Result)   return Boolean;
+      with function  Sz_Related_Type (V : Result)   return GL_Type;
+      with function  Sz_Const_Val    (V : Result)   return ULL;
    package Size is
 
       function No      (V : Result) return Boolean is (V = Empty_Result);
@@ -213,33 +215,50 @@ package body GNATLLVM.Arrays is
          GT              : GL_Type;
          Not_Superflat   : Boolean := False) return Result
       is
-         Low      : constant Result          := Sz_Convert (In_Low, GT);
-         High     : constant Result          := Sz_Convert (In_High, GT);
-         Const_0  : constant Result          := Sz_Const_Int (GT, Uint_0);
-         Const_1  : constant Result          := Sz_Const_Int (GT, Uint_1);
-         Cmp_Kind : constant Int_Predicate_T :=
-           (if Is_Unsigned_Type (GT) then Int_UGT else Int_SGT);
+         Low       : constant Result          := Sz_Convert (In_Low, GT);
+         High      : constant Result          := Sz_Convert (In_High, GT);
+         Ovfl_Low  : constant Boolean         := Sz_Overflowed (Low);
+         Ovfl_High : constant Boolean         := Sz_Overflowed (High);
+         Overflow  : constant Boolean         := Ovfl_Low or else Ovfl_High;
+         Comp_Low  : constant Result          :=
+           (if Overflow then In_Low else Low);
+         Comp_High : constant Result          :=
+           (if Overflow then In_High else High);
+         Comp_GT   : constant GL_Type         :=
+            (if    Ovfl_Low  then Sz_Related_Type (In_Low)
+             elsif Ovfl_High then Sz_Related_Type (In_High) else GT);
+         Const_0   : constant Result          :=
+           Sz_Const_Int (Comp_GT, Uint_0);
+         Const_1   : constant Result          :=
+           Sz_Const_Int (Comp_GT, Uint_1);
+         Cmp_Kind  : constant Int_Predicate_T :=
+           (if Is_Unsigned_Type (Comp_GT) then Int_UGT else Int_SGT);
+         Res       : Result;
 
       begin
          --  If the low bound is 1, then this is either the max of zero and the
          --  high bound or the high bound if this is known not to be superflat.
 
-         if Low = Const_1 then
-            return (if Not_Superflat then High else Sz_Max (High, Const_0));
+         if Comp_Low = Const_1 then
+            Res := (if   Not_Superflat then Comp_High
+                    else Sz_Max (Comp_High, Const_0));
 
          --  Otherwise, it's zero if this is flat or superflat and High -
          --  Low + 1 otherwise.
 
          elsif Not_Superflat then
-            return High - Low + Const_1;
+            Res := Comp_High - Comp_Low + Const_1;
 
          else
-            return Sz_Select
-              (C_If   => Sz_I_Cmp (Cmp_Kind, Low, High, "is-empty"),
+            Res := Sz_Select
+              (C_If   => Sz_I_Cmp (Cmp_Kind, Comp_Low, Comp_High, "is-empty"),
                C_Then => Const_0,
-               C_Else => High - Low + Const_1);
+               C_Else => Comp_High - Comp_Low + Const_1);
          end if;
 
+         --  Finally convert result to output type
+
+         return Sz_Convert (Res, GT);
       end Bounds_To_Length;
 
       --------------------------
@@ -546,6 +565,8 @@ package body GNATLLVM.Arrays is
                 Sz_Emit_Expr     => Emit_Safe_Expr,
                 Sz_Emit_Convert  => Emit_Convert_Value,
                 Sz_Is_Const      => Is_A_Const_Int,
+                Sz_Overflowed    => Overflowed,
+                Sz_Related_Type  => Related_Type,
                 Sz_Const_Val     => Get_Const_Int_Value_ULL,
                 Sz_Undef         => Get_Undef);
 
@@ -611,6 +632,8 @@ package body GNATLLVM.Arrays is
                 Sz_Emit_Expr     => Emit_Expr,
                 Sz_Emit_Convert  => Emit_Convert,
                 Sz_Is_Const      => Is_Const,
+                Sz_Overflowed    => Overflowed,
+                Sz_Related_Type  => Related_Type,
                 Sz_Const_Val     => Const_Val_ULL,
                 Sz_Undef         => Undef);
 
@@ -644,6 +667,8 @@ package body GNATLLVM.Arrays is
                 Sz_Emit_Expr     => Emit_Expr,
                 Sz_Emit_Convert  => Emit_Convert,
                 Sz_Is_Const      => Is_Const,
+                Sz_Overflowed    => Overflowed,
+                Sz_Related_Type  => Related_Type,
                 Sz_Const_Val     => Const_Val_ULL,
                 Sz_Undef         => Undef);
 

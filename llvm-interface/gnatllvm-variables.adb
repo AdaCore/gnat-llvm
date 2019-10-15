@@ -1393,13 +1393,17 @@ package body GNATLLVM.Variables is
       end if;
 
       --  Get the proper GT for this object given all of the above
-      --  computations.
+      --  computations.  But don't use a size that overflows.
 
-      GT := Make_GT_Alternative (GT, Def_Ident, Size, Align,
-                                 For_Type      => False,
-                                 For_Component => False,
-                                 Max_Size      => Max_Size,
-                                 Is_Biased     => Biased);
+      GT := Make_GT_Alternative
+        (GT, Def_Ident,
+         Size          =>
+           (if UI_Is_In_Int_Range (Size) then Size else No_Uint),
+         Align         => Align,
+         For_Type      => False,
+         For_Component => False,
+         Max_Size      => Max_Size,
+         Is_Biased     => Biased);
 
       --  To avoid linker issues, pad a zero-size object to one byte, but
       --  don't get confused for cases where we need to store bounds.

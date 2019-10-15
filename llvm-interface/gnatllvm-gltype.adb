@@ -507,12 +507,16 @@ package body GNATLLVM.GLType is
          return Prim_GT;
 
       --  If we're asking for the maximum size, the maximum size is a
-      --  constant, and we don't have a specified size, use the maximum size.
+      --  constant, and we don't have a specified size, use the maximum size
+      --  if we have one.
 
       elsif Needs_Max and then not Is_Dynamic_Size (Prim_GT, Max_Size => True)
         and then No (Size_V)
       then
          Size_V := Get_Type_Size (Prim_GT, Max_Size => True);
+         if Overflowed (Size_V) then
+            Size_V := No_GL_Value;
+         end if;
       end if;
 
       --  If this is for a type, we have to align the input size

@@ -784,7 +784,6 @@ package body GNATLLVM.Types.Create is
 
       elsif Is_Dynamic then
          Error_Msg_NE (Msg_Prefix & " for& too small", Error_Node, E);
-
          return No_Uint;
       end if;
 
@@ -810,6 +809,12 @@ package body GNATLLVM.Types.Create is
         and then (Size = Get_Pointer_Size or else Size = Get_Pointer_Size * 2)
       then
          return Size;
+
+      --  If the size overflowed, our size is definitely too small
+
+      elsif Overflowed (In_Size) then
+         Error_Msg_NE (Msg_Prefix & " for& too small", Error_Node, E);
+         return No_Uint;
 
       --  If too small, we can't use it
 

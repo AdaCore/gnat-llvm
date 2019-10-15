@@ -235,10 +235,19 @@ package body GNATLLVM.Types is
       --  with how we create arrays.
 
       Size := Get_Type_Size (GT, No_GL_Value, Max_Size);
-      return not Is_Const (Size)
-        or else (not Allow_Overflow
-                   and then (Const_Int (Size) < 0
-                               or else Const_Int (Size) > LLI (Int'Last)));
+
+      --  If the size isn't a constant, this is dynamically-sized.  If it's
+      --  a constant and we allow overflow, it isn't.  Otherwise, we need to
+      --  check for overflow.
+
+      if not Is_Const (Size) then
+         return True;
+      elsif Allow_Overflow then
+         return False;
+      else
+         return Overflowed (Size) or else Const_Int (Size) < 0
+           or else Const_Int (Size) > LLI (Int'Last);
+      end if;
 
    end Is_Dynamic_Size;
 
@@ -684,10 +693,25 @@ package body GNATLLVM.Types is
       if Do_Stack_Check
         and then Get_Type_Size (Element_GT) /= Size_Const_Null
       then
-         Emit_Raise_Call_If (I_Cmp (Int_UGT, Num_Elts,
-                                    U_Div (Size_Const_Int (Max_Alloc),
-                                           Get_Type_Size (Element_GT))),
-                             N, SE_Object_Too_Large);
+         --  If everything is constant, we may know that we unconditionally
+         --  overflow.
+
+         if not Is_Dynamic_Size (A_GT, Allow_Overflow => True) then
+            if Overflowed (GL_Value'(Get_Type_Size (A_GT)))
+              or else Get_Const_Int_Value_ULL (Get_Type_Size (A_GT)) >
+                        Max_Alloc * ULL (BPU)
+            then
+               Emit_Raise_Call (N, SE_Object_Too_Large);
+               Error_Msg_N
+                 ("??`Storage_Error` will be raised at run time!", N);
+               return Get_Undef_Ref (GT);
+            end if;
+         else
+            Emit_Raise_Call_If (I_Cmp (Int_UGT, Num_Elts,
+                                       U_Div (Size_Const_Int (Max_Alloc),
+                                              Get_Type_Size (Element_GT))),
+                                N, SE_Object_Too_Large);
+         end if;
       end if;
 
       --  If the number of elements overflowed, raise Storage_Error.  But

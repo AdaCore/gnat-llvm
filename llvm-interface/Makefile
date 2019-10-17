@@ -3,8 +3,6 @@ GPRBUILD=gprbuild -v
 # number of processors
 PROCS=0
 
-uname=$(shell uname)
-
 RM=rm -f
 RMDIR=rm -rf
 MV=mv -f
@@ -21,7 +19,6 @@ GNAT_SRC=$(pwd)/gnat_src
 ADAINCLUDE=lib/rts-llvm/adainclude
 ADALIB=lib/rts-llvm/adalib
 
-uname:=$(shell uname)
 pwd:=$(shell pwd)
 
 ifneq ($(wildcard $(pwd)/../llvm/llvm-obj/bin/llvm-config),)
@@ -35,7 +32,7 @@ LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs) \
 CXXFLAGS=
 ALL_CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags) $(CXXFLAGS)
 
-ifeq ($(filter-out CYGWIN% MINGW%,$(uname)),)
+ifeq ($(OS),Windows_NT)
   LN_S=cp -p
   LDFLAGS+=-Wl,--stack=0x2000000
 endif
@@ -48,7 +45,7 @@ all: setup build
 	$(MAKE) quicklib
 
 LOCAL_RT_FILES=../link.c s-rident.ads gnat.ads g-dynhta.ads g-dynhta.adb \
-  g-sets.ads g-sets.adb g-lists.ads g-lists.adb g-sets.ads \
+  g-sets.ads g-sets.adb g-lists.ads g-lists.adb \
   g-graphs.ads g-graphs.adb g-htable.adb g-byorma.adb g-speche.adb \
   g-spchge.adb g-u3spch.adb g-comlin.ads g-comlin.adb g-dirope.adb \
   g-os_lib.ads g-os_lib.adb g-regexp.ads g-string.ads g-io.adb g-casuti.adb \

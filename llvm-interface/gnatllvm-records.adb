@@ -1341,7 +1341,8 @@ package body GNATLLVM.Records is
       --  Otherwise, if the field is packable its alignment doesn't
       --  contribute to the alignment.
 
-      elsif Is_Packable_Field (AF, Force => True, Ignore_Size => True) then
+      elsif Field_Pack_Kind (AF, Force => True, Ignore_Size => True) /= None
+      then
          return BPU;
 
       --  If there's no component clause use this field's alignment.  But
@@ -1457,14 +1458,14 @@ package body GNATLLVM.Records is
       end return;
    end Ancestor_Field;
 
-   -----------------------
-   -- Is_Packable_Field --
-   -----------------------
+   ---------------------
+   -- Field_Pack_Kind --
+   ---------------------
 
-   function Is_Packable_Field
+   function Field_Pack_Kind
      (F           : Entity_Id;
       Force       : Boolean := False;
-      Ignore_Size : Boolean := False) return Boolean
+      Ignore_Size : Boolean := False) return Pack_Kind
    is
       AF : constant Entity_Id := Ancestor_Field (F);
       GT : constant GL_Type   := Full_GL_Type (AF);
@@ -1475,33 +1476,35 @@ package body GNATLLVM.Records is
 
    begin
       --  If we have a rep clause, we'll use that rather than packing it.
-      --  If the record isn't packed, neither is the field.  Aliased
-      --  fields or fields whose types are strictly aligned aren't packed
-      --  either.
+      --  If the record isn't packed, neither is the field.  Aliased fields
+      --  or fields whose types are strictly aligned aren't packed either.
+      --  If the type's size is variable or if the type is nonnative, we
+      --  can't pack, even to a byte boundary.
 
       if Present (Component_Clause (AF))
         or else (Component_Alignment (TE) /= Calign_Storage_Unit
                    and then not Is_Packed (TE))
         or else Cant_Misalign_Field (AF, GT)
+        or else Is_Nonnative_Type (GT)
+        or else not Is_Static_SO_Ref (Esize (GT))
       then
-         return False;
-      end if;
+         return None;
 
-      --  If the type's size is variable or if the type is nonnative, we
-      --  can't pack.  We avoid packing if the field would be larger than
-      --  64 bits since that's usually not worth it.  We do pack if the
-      --  RM_Size of the field's type is smaller than the Esize of the type
-      --  or if Cur_Pos is not a multiple of the alignment of the field.
+      --  We can pack to a bit boundary if the record is packed, the
+      --  field's RM Size is known and smaller than the Esize (unless we're
+      --  forcing packing), and the field isn't too large (unless we're to
+      --  ignore that test).  Otherwise, we pack only to a byte boundary.
       --  We rely here on back-annotation of types so we're sure that both
       --  sizes are set.
 
-      return not Is_Nonnative_Type (GT)
-        and then Is_Static_SO_Ref (RM_Size (GT))
-        and then Is_Static_SO_Ref (Esize (GT))
-        and then (Ignore_Size or else RM_Size (GT) <= 64)
-        and then (Force or else RM_Size (GT) < Esize (GT));
+      else
+         return (if   Is_Packed (TE) and then Is_Static_SO_Ref (RM_Size (GT))
+                      and then (Ignore_Size or else RM_Size (GT) <= 64)
+                      and then (Force or else RM_Size (GT) < Esize (GT))
+                 then Bit else Byte);
+      end if;
 
-   end Is_Packable_Field;
+   end Field_Pack_Kind;
 
    ------------------------
    -- Is_Bitfield_By_Rep --
@@ -1520,8 +1523,8 @@ package body GNATLLVM.Records is
          then  Component_Bit_Offset (F) else No_Uint);
       Our_Size : constant Uint      :=
         (if    Use_Pos_Size then Size
-         elsif Known_Static_Esize (F) then  Esize (F)
-         elsif Is_Packable_Field (F) then RM_Size (TE) else No_Uint);
+         elsif Known_Static_Esize (F)    then Esize (F)
+         elsif Field_Pack_Kind (F) = Bit then RM_Size (TE) else No_Uint);
 
    begin
       --  If the position is specified and isn't byte-aligned, it's a bitfield

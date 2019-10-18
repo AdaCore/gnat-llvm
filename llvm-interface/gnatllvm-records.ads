@@ -25,6 +25,15 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package GNATLLVM.Records is
 
+   --  There are three options for how fields can be packed:
+   --
+   --  1) They can't be packed at all and must remain at their natural
+   --     alignment
+   --  2) They can be packed to a byte boundary, but no further
+   --  3) They can be packed to a bit boundary
+
+   type Pack_Kind is (None, Byte, Bit);
+
    function Use_Discriminant_For_Bound (E : Entity_Id) return GL_Value
      with Pre  => Ekind (E) = E_Discriminant,
           Post => Present (Use_Discriminant_For_Bound'Result);
@@ -148,16 +157,16 @@ package GNATLLVM.Records is
    --  Return True iff a field F, whose type is GT, is not permitted to be
    --  misaligned.
 
-   function Is_Packable_Field
+   function Field_Pack_Kind
      (F           : Entity_Id;
       Force       : Boolean := False;
-      Ignore_Size : Boolean := False) return Boolean
+      Ignore_Size : Boolean := False) return Pack_Kind
      with Pre  => Ekind_In (F, E_Component, E_Discriminant);
-   --  Indicate whether F is a field that we'll be packing.  If Force is True,
-   --  we want to pack the field if it's valid to do so, not only when we
-   --  does something from the perspective of this field (e.g., because we
-   --  have some bits to fill).  If Ignore_Size, ignore the fact that the
-   --  field may be too large to pack.
+   --  Returns how tightly we can pack F.  If Force is True, we want to
+   --  pack the field if it's valid to do so, not only when we does
+   --  something from the perspective of this field (e.g., because we have
+   --  some bits to fill).  If Ignore_Size, ignore the fact that the field
+   --  may be too large to pack.
 
    function Is_Bitfield_By_Rep
      (F            : Entity_Id;

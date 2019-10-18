@@ -1270,8 +1270,8 @@ package body GNATLLVM.Records.Create is
               Is_Dynamic_Size (Left_GT,  Is_Unconstrained_Record (Left_GT));
             Dynamic_R : constant Boolean     :=
               Is_Dynamic_Size (Right_GT, Is_Unconstrained_Record (Right_GT));
-            Pack_L    : constant Boolean     := Is_Packable_Field (Left_F);
-            Pack_R    : constant Boolean     := Is_Packable_Field (Right_F);
+            Pack_L    : constant Pack_Kind   := Field_Pack_Kind (Left_F);
+            Pack_R    : constant Pack_Kind   := Field_Pack_Kind (Right_F);
 
          begin
             --  This function must satisfy the conditions of A.18(5/3),
@@ -1348,9 +1348,9 @@ package body GNATLLVM.Records.Create is
                return False;
             elsif Reorder and then not Dynamic_L and then Dynamic_R then
                return True;
-            elsif Reorder and then Pack_L and then not Pack_R then
+            elsif Reorder and then Pack_L /= None and then Pack_R =  None then
                return False;
-            elsif Reorder and then not Pack_L and then Pack_R then
+            elsif Reorder and then Pack_L =  None and then Pack_R /= None then
                return True;
 
             --  Otherwise, keep the original sequence intact
@@ -1581,6 +1581,9 @@ package body GNATLLVM.Records.Create is
                  Has_Biased_Representation (F);
                --  True if we need a biased representation for this field
 
+               Packed    : constant Pack_Kind   := Field_Pack_Kind (AF.AF);
+               --  The kind of packing we need to do for this field
+
                F_GT      : GL_Type              :=
                    Make_GT_Alternative (Def_GT, F,
                                         Size          => Size,
@@ -1653,7 +1656,7 @@ package body GNATLLVM.Records.Create is
                --  for packable fields, clear out that location.
 
                if Present (Packed_Field_Bitpos) and then No (Pos)
-                 and then not Is_Packable_Field (AF.AF)
+                 and then Packed /= Bit
                then
                   Packed_Field_Bitpos := No_Uint;
 
@@ -1661,9 +1664,7 @@ package body GNATLLVM.Records.Create is
                --  location for them, set one up and initialize the position
                --  and size of this field as well as following ones.
 
-               elsif No (Packed_Field_Bitpos)
-                 and then Is_Packable_Field (AF.AF)
-               then
+               elsif No (Packed_Field_Bitpos) and then Packed = Bit then
                   Pos                 := UI_From_ULL (Cur_RI_Pos);
                   Size                := RM_Size (F_GT);
                   Packed_Field_Bitpos := Pos + Size;
@@ -1685,7 +1686,7 @@ package body GNATLLVM.Records.Create is
                         AF_K : Added_Field renames Added_Field_Table.Table (K);
 
                      begin
-                        exit when not Is_Packable_Field
+                        exit when Bit /= Field_Pack_Kind
                           (AF_K.AF, Packed_Field_Bitpos mod BPU /= 0);
                         exit when AF_K.Var_Depth /= Last_Var_Depth;
 
@@ -1854,8 +1855,8 @@ package body GNATLLVM.Records.Create is
 
       Cur_Field := First_Component_Or_Discriminant (BT);
       while Present (Cur_Field) loop
-         if not Is_Packable_Field (Cur_Field, Force => True,
-                                   Ignore_Size => True)
+         if None = Field_Pack_Kind (Cur_Field, Force => True,
+                                    Ignore_Size => True)
            and then not Is_Nonnative_Type (Full_GL_Type (Cur_Field))
          then
             Has_NP_Fixed := True;

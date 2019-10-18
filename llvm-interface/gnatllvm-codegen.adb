@@ -308,15 +308,12 @@ package body GNATLLVM.Codegen is
       Err_Msg : aliased Ptr_Err_Msg_Type;
 
    begin
-      --  Complete and verify the translation.  Unless just writing IR,
-      --  suppress doing anything else if there's an error.
+      --  Verify the translation.  Unless just writing IR, suppress
+      --  doing anything else if there's an error.
 
-      if not Decls_Only
-        and then Verify_Module (Module, Print_Message_Action, Null_Address)
-      then
-         Error_Msg_N ("the backend generated bad 'L'L'V'M code", GNAT_Root);
-      end if;
-
+      pragma Assert (Decls_Only
+                     or else not Verify_Module (Module, Print_Message_Action,
+                                                Null_Address));
       if Serious_Errors_Detected /= 0
         and then Code_Generation not in Dump_IR | Write_IR
       then

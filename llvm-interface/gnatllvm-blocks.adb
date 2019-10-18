@@ -256,9 +256,7 @@ package body GNATLLVM.Blocks is
       --  The block depth of Orig_BB, or -1 if not known
 
       From_Block      : Block_Stack_Level;
-      --  The starting block depth of Exit_BB or -1 if none
-      --  ??? There is no Exit_BB here and it's not clear why we have two
-      --  block depths here.
+      --  The depth containing the current fixup label for this label, if any
 
       Has_Open_Branch : Boolean;
       --  True if we've made an entry in the Open_Branches table for this

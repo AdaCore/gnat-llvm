@@ -304,17 +304,24 @@ package body GNATLLVM.Codegen is
    ------------------------
 
    procedure LLVM_Generate_Code (GNAT_Root : Node_Id) is
-      Err_Msg : aliased Ptr_Err_Msg_Type;
+      Verified : Boolean := True;
+      Err_Msg  : aliased Ptr_Err_Msg_Type;
 
    begin
-      --  Verify the translation.  Unless just writing IR, suppress
-      --  doing anything else if there's an error.
+      --  We always want to write IR, even if there were errors.
+      --  First verify the translation unless we're just processing
+      --  for decls.
 
-      pragma Assert (Decls_Only
-                     or else not Verify_Module (Module, Print_Message_Action,
-                                                Null_Address));
-      if Serious_Errors_Detected /= 0
-        and then Code_Generation not in Dump_IR | Write_IR
+      if not Decls_Only then
+         Verified :=
+           not Verify_Module (Module, Print_Message_Action, Null_Address);
+      end if;
+
+      --  Unless just writing IR, suppress doing anything else if it fails
+      --  or there's an error.
+
+      if (Serious_Errors_Detected /= 0 or else not Verified)
+        and then Code_Generation not in Dump_IR | Write_IR | Write_BC
       then
          Code_Generation := None;
       end if;
@@ -408,6 +415,8 @@ package body GNATLLVM.Codegen is
 
       Dispose_Builder (IR_Builder);
       Dispose_Module (Module);
+
+      pragma Assert (Verified);
    end LLVM_Generate_Code;
 
    ------------------------

@@ -53,6 +53,11 @@ package GNATLLVM.Blocks is
      with Pre => Present (Inst) and then Present (Size);
    --  Add an entry for a variable lifetime that ends at the end of this block
 
+   procedure Add_Invariant_Entry (Def_Ident : Entity_Id; Size : GL_Value)
+     with Pre => Present (Def_Ident) and then Present (Size);
+   --  Add an entry for a constant whose invariant point starts at the
+   --  start of the code for this block.
+
    procedure Start_Block_Statements
      (At_End_Proc : Entity_Id := Empty; EH_List : List_Id := No_List)
      with Pre => not Library_Level;

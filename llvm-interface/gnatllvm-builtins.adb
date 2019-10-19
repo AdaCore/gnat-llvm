@@ -97,28 +97,31 @@ package body GNATLLVM.Builtins is
    --  Generate a call to the atomic load function if the operands are the
    --  right type.
 
-   Default_Alloc_Fn  : GL_Value := No_GL_Value;
+   Default_Alloc_Fn   : GL_Value := No_GL_Value;
    --  Default memory allocation function
 
-   Default_Free_Fn   : GL_Value := No_GL_Value;
+   Default_Free_Fn    : GL_Value := No_GL_Value;
    --  Default memory deallocation function
 
-   Memory_Compare_Fn : GL_Value := No_GL_Value;
+   Memory_Compare_Fn  : GL_Value := No_GL_Value;
    --  Function to compare memory
 
-   Stack_Save_Fn     : GL_Value := No_GL_Value;
-   Stack_Restore_Fn  : GL_Value := No_GL_Value;
+   Stack_Save_Fn      : GL_Value := No_GL_Value;
+   Stack_Restore_Fn   : GL_Value := No_GL_Value;
    --  Functions to save and restore the stack pointer
 
-   Tramp_Init_Fn     : GL_Value := No_GL_Value;
-   Tramp_Adjust_Fn   : GL_Value := No_GL_Value;
+   Tramp_Init_Fn      : GL_Value := No_GL_Value;
+   Tramp_Adjust_Fn    : GL_Value := No_GL_Value;
    --  Functions to initialize and adjust a trampoline
 
-   Lifetime_Start_Fn : GL_Value := No_GL_Value;
-   Lifetime_End_Fn   : GL_Value := No_GL_Value;
-   --  Function to mark the start and end of the lifetime of a variable
+   Lifetime_Start_Fn  : GL_Value := No_GL_Value;
+   Lifetime_End_Fn    : GL_Value := No_GL_Value;
+   Invariant_Start_Fn : GL_Value := No_GL_Value;
+   Invariant_End_Fn   : GL_Value := No_GL_Value;
+   --  Functions to mark the start and end of the lifetime of a variable or
+   --  constant, and, for the latter, when it starts becoming constant.
 
-   Expect_Fn         : GL_Value := No_GL_Value;
+   Expect_Fn          : GL_Value := No_GL_Value;
    --  Function to provide branch prediction information
 
    ---------------------
@@ -873,6 +876,50 @@ package body GNATLLVM.Builtins is
 
       return Lifetime_End_Fn;
    end Get_Lifetime_End_Fn;
+
+   ----------------------------
+   -- Get_Invariant_Start_Fn --
+   ----------------------------
+
+   function Get_Invariant_Start_Fn return GL_Value is
+   begin
+      if No (Invariant_Start_Fn) then
+         Invariant_Start_Fn := Add_Function
+           ("llvm.invariant.start.p0i8",
+            Fn_Ty ((1 => LLVM_Size_Type, 2 => Void_Ptr_Type),
+                   Pointer_Type
+                     (Build_Struct_Type ((1 .. 0 => <>), False), 0)),
+            A_Char_GL_Type, Is_Builtin => True);
+         Set_Does_Not_Throw      (Invariant_Start_Fn);
+         Add_Nocapture_Attribute (Invariant_Start_Fn, 1);
+         Add_Readonly_Attribute  (Invariant_Start_Fn, 1);
+         Add_Non_Null_Attribute  (Invariant_Start_Fn, 1);
+      end if;
+
+      return Invariant_Start_Fn;
+   end Get_Invariant_Start_Fn;
+
+   --------------------------
+   -- Get_Invariant_End_Fn --
+   --------------------------
+   function Get_Invariant_End_Fn return GL_Value is
+   begin
+      if No (Invariant_End_Fn) then
+         Invariant_End_Fn := Add_Function
+           ("llvm.invariant.end.p0i8",
+            Fn_Ty ((1 => Pointer_Type
+                      (Build_Struct_Type ((1 .. 0 => <>), False), 0),
+                    2 => LLVM_Size_Type, 3 => Void_Ptr_Type),
+                   Void_Type),
+            Void_GL_Type, Is_Builtin => True);
+         Set_Does_Not_Throw      (Invariant_End_Fn);
+         Add_Nocapture_Attribute (Invariant_End_Fn, 2);
+         Add_Readonly_Attribute  (Invariant_End_Fn, 2);
+         Add_Non_Null_Attribute  (Invariant_End_Fn, 2);
+      end if;
+
+      return Invariant_End_Fn;
+   end Get_Invariant_End_Fn;
 
    -------------------
    -- Get_Expect_Fn --

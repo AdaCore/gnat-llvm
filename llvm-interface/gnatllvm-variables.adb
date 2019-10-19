@@ -1055,7 +1055,7 @@ package body GNATLLVM.Variables is
                Our_NS := True;
                Our_RT := True;
 
-               if Get_Type_Size (GT) >= 1024 * BPU then
+               if Get_Type_Size (GT) >= To_Bits (1024) then
                   return False;
                end if;
             end if;
@@ -1146,7 +1146,7 @@ package body GNATLLVM.Variables is
                Num_Elts    : constant ULL :=
                  (if   Present (Elts) then Get_Const_Int_Value_ULL (Elts)
                   else 1);
-               Alloc_Bytes : constant ULL := T_Size * Num_Elts / ULL (BPU);
+               Alloc_Bytes : constant ULL := To_Bytes (T_Size * Num_Elts);
 
             begin
                Add_Lifetime_Entry (Alloca, Size_Const_Int (Alloc_Bytes));
@@ -2032,11 +2032,24 @@ package body GNATLLVM.Variables is
       if No (LLVM_Var) then
          LLVM_Var := Allocate_For_Type (GT, Alloc_GT, Def_Ident, Value, Expr,
                                         Def_Ident => Def_Ident,
-                                        Max_Size  => Is_Max_Size (GT));
+                                        Max_Size  => Is_Max_Size (Alloc_GT));
          Mark_Volatile (LLVM_Var, Is_Volatile);
          Mark_Atomic   (LLVM_Var,
                         Is_Atomic (Def_Ident) or else Is_Atomic (GT));
          Copied := True;
+
+         --  If this is a constant, but we're not assigning it here, it'll
+         --  be assigned in the declarative part of the block and be constant
+         --  in the code for the block, so add an entry indicating that it's
+         --  constant from that point on.  But only do this for fixed-size
+         --  objects.
+
+         if Is_True_Constant (Def_Ident) and then No (Value) and then No (Expr)
+           and then not Is_Dynamic_Size (Alloc_GT)
+         then
+            Add_Invariant_Entry (Def_Ident,
+                                 To_Bytes (Get_Type_Size (Alloc_GT)));
+         end if;
       end if;
 
       --  If we haven't already set the value, set it now

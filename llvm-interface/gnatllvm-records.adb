@@ -1428,7 +1428,13 @@ package body GNATLLVM.Records is
    ----------------
 
    function Field_Type (F : Entity_Id) return GL_Type is
-     (Field_Info_Table.Table (Get_Field_Info (F)).GT);
+      GT : constant GL_Type := Field_Info_Table.Table (Get_Field_Info (F)).GT;
+   begin
+      --  GT may be a dummy type.  In that case, we need to get the
+      --  replacement default type.
+
+      return (if Is_Dummy_Type (GT) then Default_GL_Type (GT) else GT);
+   end Field_Type;
 
    --------------------
    -- Ancestor_Field --

@@ -1137,7 +1137,7 @@ package body GNATLLVM.Variables is
          --  If this is a large enough object to be worthwhile, emit a
          --  call to indicate the start of the lifetime and set up to
          --  emit the end of the lifetime when the block ends.  Note that
-         --  we know this has a constant size becase Maybe_Promote_Alloca
+         --  we know this has a constant size because Maybe_Promote_Alloca
          --  promoted this.
 
          if not Alloca_Smaller_Than (T, Elts, Min_Lifetime_Size) then

@@ -22,7 +22,7 @@ with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 package GNATLLVM.Aliasing is
 
    procedure Initialize;
-   --  Perform initialization for this module
+   --  Perform initialization for this compilation
 
    procedure Record_TBAA_For_Type (TE : Entity_Id)
      with Pre => Is_Type_Or_Void (TE);

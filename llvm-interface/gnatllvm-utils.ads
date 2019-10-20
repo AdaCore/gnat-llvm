@@ -20,6 +20,7 @@ with Ada.Containers.Hashed_Maps;
 with Ada.Unchecked_Conversion;
 
 with Nlists;     use Nlists;
+with Sem_Util;   use Sem_Util;
 with Sinfo;      use Sinfo;
 with Uintp.LLVM; use Uintp.LLVM;
 
@@ -153,6 +154,20 @@ package GNATLLVM.Utils is
      with Pre => Ekind_In (E, E_Function, E_Procedure);
    --  Set and get a flag indicating that this subprogram was already added
    --  to the module.
+
+   function Is_Generic_Item (N : Node_Id) return Boolean is
+     (Nkind_In (N, N_Subprogram_Body, N_Function_Specification,
+                   N_Procedure_Specification, N_Package_Specification,
+                   N_Package_Body)
+        and then Ekind (Unique_Defining_Entity (N)) in Generic_Unit_Kind)
+     with Pre => Present (N);
+   --  Return True iff N is a node representing a generic package or
+   --  subprogram.
+
+   generic
+      with procedure Scan (N : Node_Id);
+   procedure Scan_Library_Item (U : Node_Id);
+   --  Procedure to scan all library units calling the parameter for each
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 

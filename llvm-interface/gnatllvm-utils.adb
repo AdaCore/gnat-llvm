@@ -461,6 +461,32 @@ package body GNATLLVM.Utils is
       Set_Flag1 (E, F);
    end Set_Added_To_Module;
 
+   -----------------------
+   -- Scan_Library_Item --
+   -----------------------
+
+   procedure Scan_Library_Item (U : Node_Id) is
+      N : Node_Id;
+
+   begin
+      --  Skip generic package and subprograms
+
+      if Is_Generic_Item (U) then
+         return;
+
+      --  Scan the declarations and then the unit itself
+
+      elsif Present (Parent (U)) then
+         N := First (Declarations (Aux_Decls_Node (Parent (U))));
+         while Present (N) loop
+            Scan (N);
+            Next (N);
+         end loop;
+      end if;
+
+      Scan (U);
+   end Scan_Library_Item;
+
    ----------------------
    -- Error_Msg_NE_Num --
    ----------------------

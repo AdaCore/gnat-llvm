@@ -376,38 +376,17 @@ package body GNATLLVM.Variables is
 
    procedure Detect_Duplicate_Global_Names is
 
-      procedure Scan_Library_Item (U : Node_Id);
-      --  Scan one library item looking for pragma Import or Export
-
-      procedure Scan_All_Units is
-         new Sem.Walk_Library_Items (Action => Scan_Library_Item);
-
       function Scan_One_Node (N : Node_Id) return Traverse_Result;
       --  Scan a single node looking for pragma Import or Export
 
       procedure Scan is new Traverse_Proc (Scan_One_Node);
       --  Used to scan most of a library unit looking for pragma Import/Export
 
-      -----------------------
-      -- Scan_Library_Item --
-      -----------------------
+      procedure Scan_Unit is new Scan_Library_Item (Scan => Scan);
+      --  Scan one library item looking for pragma Import or Export
 
-      procedure Scan_Library_Item (U : Node_Id) is
-         N : Node_Id;
-
-      begin
-         --  Scan the declarations and then the unit itself
-
-         if Present (Parent (U)) then
-            N := First (Declarations (Aux_Decls_Node (Parent (U))));
-            while Present (N) loop
-               Scan (N);
-               Next (N);
-            end loop;
-         end if;
-
-         Scan (U);
-      end Scan_Library_Item;
+      procedure Scan_All_Units is
+         new Sem.Walk_Library_Items (Action => Scan_Unit);
 
       -------------------
       -- Scan_One_Node --
@@ -420,8 +399,13 @@ package body GNATLLVM.Variables is
          --  If we run into a stub, we have to search inside it because
          --  Library_Unit is a semantic, not syntactic, field.
 
-         if Nkind (N) in N_Body_Stub then
+         if Nkind (N) in N_Body_Stub and then Present (Library_Unit (N)) then
             Scan (Library_Unit (N));
+
+         --  Ignore if this is generic
+
+         elsif Is_Generic_Item (N) then
+            return Skip;
 
          --  Otherwise, check for cases where we have an interface name
          --  and process each of them to check for duplicates.

@@ -23,6 +23,7 @@ with Restrict; use Restrict;
 with Snames;   use Snames;
 with Table;    use Table;
 
+with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
@@ -36,7 +37,6 @@ with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
-with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Types is
 
@@ -1412,7 +1412,6 @@ package body GNATLLVM.Types is
         Is_Atomic (V)
         and then (Special_Atomic
                     or else (Atomic_Kind (Get_Element_Type (Type_Of (V)))));
-      TBAA         : constant Metadata_T := Get_TBAA (Full_Etype (GT));
 
    begin
       --  We always set the alignment, since that's correct for all references
@@ -1436,10 +1435,7 @@ package body GNATLLVM.Types is
                       then Atomic_Ordering_Sequentially_Consistent
                       else Atomic_Ordering_Not_Atomic));
 
-      if Present (TBAA) and then not Universal_Aliasing (GT) then
-         Add_TBAA_Access
-           (Inst, Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, 0));
-      end if;
+      Add_Aliasing_To_Instruction (Inst, V);
    end Add_Flags_To_Instruction;
 
    ------------------------------

@@ -416,7 +416,7 @@ package GNATLLVM.Types is
 
    procedure Add_Flags_To_Instruction
      (Inst : Value_T; V : GL_Value; Special_Atomic : Boolean := False)
-     with Pre => Present (Inst) and then Present (V);
+     with Pre => Present (Is_A_Instruction (Inst)) and then Present (V);
    --  Add flags (e.g., volatility and TBAA info) to an Instruction
    --  using information from V, which is the pointer.
 

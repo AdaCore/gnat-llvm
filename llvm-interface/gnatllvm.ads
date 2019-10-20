@@ -174,9 +174,6 @@ package GNATLLVM is
    MD_Builder         : MD_Builder_T;
    --  The current LLVM Metadata builder
 
-   TBAA_Root          : Metadata_T;
-   --  Root of tree for Type-Based alias Analysis (TBAA) metadata
-
    Module_Data_Layout : Target_Data_T;
    --  LLVM current module data layout.
 

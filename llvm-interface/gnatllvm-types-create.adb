@@ -25,16 +25,15 @@ with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core; use LLVM.Core;
 
+with GNATLLVM.Aliasing;       use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;         use GNATLLVM.Arrays;
 with GNATLLVM.Arrays.Create;  use GNATLLVM.Arrays.Create;
-with GNATLLVM.Codegen;        use GNATLLVM.Codegen;
 with GNATLLVM.Environment;    use GNATLLVM.Environment;
 with GNATLLVM.GLType;         use GNATLLVM.GLType;
 with GNATLLVM.Records;        use GNATLLVM.Records;
 with GNATLLVM.Records.Create; use GNATLLVM.Records.Create;
 with GNATLLVM.Subprograms;    use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;          use GNATLLVM.Utils;
-with GNATLLVM.Wrapper;        use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Types.Create is
 
@@ -268,7 +267,6 @@ package body GNATLLVM.Types.Create is
       Align : Uint    := No_Uint;
       GT    : GL_Type;
       T     : Type_T;
-      TBAA  : Metadata_T;
 
    begin
       Check_Convention (TE);
@@ -352,10 +350,7 @@ package body GNATLLVM.Types.Create is
 
       --  Now make and record the TBAA for the type, if any
 
-      TBAA := Create_TBAA (TE);
-      if Present (TBAA) then
-         Set_TBAA (TE, TBAA);
-      end if;
+      Record_TBAA_For_Type (TE);
 
       --  If this is a packed array implementation type and the original
       --  type is an array, set information about the bounds of the
@@ -583,35 +578,6 @@ package body GNATLLVM.Types.Create is
         (Def_Ident,
          UI_From_Int (Get_Type_Alignment (GT, Use_Specified => False)) / BPU);
    end Annotate_Object_Size_And_Alignment;
-
-   -----------------
-   -- Create_TBAA --
-   -----------------
-
-   function Create_TBAA (TE : Entity_Id) return Metadata_T is
-      BT   : constant Entity_Id  := Full_Base_Type (TE);
-      TBAA : constant Metadata_T := Get_TBAA (BT);
-
-   begin
-      --  If we have -fno-strict-aliasing, don't create a TBAA
-
-      if Flag_No_Strict_Aliasing then
-         return No_Metadata_T;
-
-      --  If the base type has a TBAA, use it for us.  If it doesn't, it's
-      --  probably because this is the base type, in which case, make a
-      --  new entry for it.  If it's a type that we don't currently make
-      --  TBAA information for, return none.
-
-      elsif Present (TBAA) then
-         return TBAA;
-      elsif Is_Scalar_Type (BT) then
-         return Create_TBAA_Scalar_Type_Node (MD_Builder, Get_Name (BT),
-                                              TBAA_Root);
-      else
-         return No_Metadata_T;
-      end if;
-   end Create_TBAA;
 
    ------------------------
    -- Validate_Alignment --

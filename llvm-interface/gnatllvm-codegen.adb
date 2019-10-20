@@ -295,7 +295,6 @@ package body GNATLLVM.Codegen is
            Code_Model => Code_Model);
 
       Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
-      TBAA_Root          := Create_TBAA_Root (MD_Builder);
       Set_Target             (Module, Target_Triple.all);
       Set_Module_Data_Layout (Module, Module_Data_Layout);
    end Initialize_LLVM_Target;

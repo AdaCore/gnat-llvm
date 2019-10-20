@@ -29,6 +29,7 @@ with Table;    use Table;
 
 with LLVM.Core; use LLVM.Core;
 
+with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
@@ -104,6 +105,10 @@ package body GNATLLVM.Compile is
       else
          Size_Type := Standard_Integer;
       end if;
+
+      --  We have to initialize aliasing before we create any types
+
+      GNATLLVM.Aliasing.Initialize;
 
       --  We must elaborate Size_Type first because its needed to elaborate
       --  all other types and we need to have a kludge here to set the sizes

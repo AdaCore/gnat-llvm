@@ -37,9 +37,6 @@ package GNATLLVM.Types.Create is
      --  Want_Max is True, we want the maximum size of GT, in case
      --  its an unconstrained record type.
 
-   function Create_TBAA (TE : Entity_Id) return Metadata_T
-     with Pre => Is_Type_Or_Void (TE);
-
    function Validate_Alignment
      (E : Entity_Id; Align : Uint; Current_Align : Nat) return Uint
      with Pre  => Present (E),

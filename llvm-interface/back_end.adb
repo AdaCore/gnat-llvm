@@ -19,6 +19,12 @@ with GNATLLVM;         use GNATLLVM;
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Compile; use GNATLLVM.Compile;
 
+with Ada.Directories; use Ada.Directories;
+with GNAT.OS_Lib;     use GNAT.OS_Lib;
+with Namet;           use Namet;
+with Osint;           use Osint;
+with Osint.C;         use Osint.C;
+
 with Adabkend;
 with Errout; use Errout;
 with Lib;    use Lib;
@@ -80,13 +86,23 @@ package body Back_End is
    -------------------------------
 
    procedure Gen_Or_Update_Object_File is
+      Obj_File_Name : constant String :=
+        (if Output_File_Name_Present then Get_Output_Object_File_Name
+         else Base_Name
+                (Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))))
+                & Get_Target_Object_Suffix.all);
+      Success       : Boolean;
+      pragma Unreferenced (Success);
+
    begin
-      null;
+      Osint.C.Set_File_Name (ALI_Suffix.all);
+      GNAT.OS_Lib.Copy_Time_Stamps
+        (Name_Buffer (1 .. Name_Len), Obj_File_Name, Success);
    end Gen_Or_Update_Object_File;
 
 begin
    --  Set the switches in Opt that we depend on
 
-   Expand_Nonbinary_Modular_Ops    := True;
-   Unnest_Subprogram_Mode          := True;
+   Expand_Nonbinary_Modular_Ops := True;
+   Unnest_Subprogram_Mode       := True;
 end Back_End;

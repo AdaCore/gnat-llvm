@@ -499,6 +499,12 @@ package body GNATLLVM.Variables is
 
          when N_Defining_Identifier | N_Defining_Operator_Symbol =>
 
+            --  If this is a deferred constant, look at the full view
+
+            if Ekind (N) = E_Constant and then Present (Full_View (N)) then
+               return Is_Static_Location (Full_View (N));
+            end if;
+
             --  If this is at top level and has an address clause, we'll
             --  still allocate the variable, but set the initial value to
             --  be the address, so we can't consider this a static location

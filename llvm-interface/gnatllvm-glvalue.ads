@@ -1276,6 +1276,13 @@ package GNATLLVM.GLValue is
    procedure Add_Function_To_Module (V : GL_Value)
      with Pre => Present (V), Inline;
 
+   function Create_TBAA_Scalar_Type_Node
+     (Name : String; Size : GL_Value; Parent : Metadata_T) return Metadata_T
+   is
+     (Create_TBAA_Scalar_Type_Node (Context, MD_Builder, Name,
+                                    LLVM_Value (Size), Parent))
+     with Pre => Is_A_Const_Int (Size) and then Present (Parent);
+
    function Get_Subprogram (V : GL_Value) return Metadata_T is
      (Get_Subprogram (LLVM_Value (V)))
      with Pre => Is_A_Function (V), Inline;

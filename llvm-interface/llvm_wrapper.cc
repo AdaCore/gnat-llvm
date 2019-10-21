@@ -193,10 +193,13 @@ Add_Writeonly_Attribute (Function *fn, unsigned idx)
 
 extern "C"
 MDNode *
-Create_TBAA_Scalar_Type_Node_C (MDBuilder *MDHelper, const char *name,
+Create_TBAA_Scalar_Type_Node_C (LLVMContext &ctx, MDBuilder *MDHelper,
+				const char *name, Constant *size,
 				MDNode *parent)
 {
-  return MDHelper->createTBAAScalarTypeNode (name, parent);
+  auto MDname = MDHelper->createString (name);
+  auto MDsize = MDHelper->createConstant (size);
+  return MDNode::get(ctx, {parent, MDsize, MDname});
 }
 
 extern "C"
@@ -209,9 +212,10 @@ Get_Stack_Alignment (DataLayout *dl)
 extern "C"
 MDNode *
 Create_TBAA_Access_Tag (MDBuilder *MDHelper, MDNode *BaseType,
-			MDNode *AccessType, unsigned long long offset)
+			MDNode *AccessType, uint64_t offset,
+			uint64_t size) 
 {
-  return MDHelper->createTBAAStructTagNode (BaseType, AccessType, offset);
+  return MDHelper->createTBAAAccessTag (BaseType, AccessType, offset, size);
 }
 
 extern "C"

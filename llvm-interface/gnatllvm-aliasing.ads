@@ -24,10 +24,6 @@ package GNATLLVM.Aliasing is
    procedure Initialize;
    --  Perform initialization for this compilation
 
-   procedure Record_TBAA_For_Type (TE : Entity_Id)
-     with Pre => Is_Type_Or_Void (TE);
-   --  Compute and record the TBAA for TE
-
    procedure Add_Aliasing_To_Instruction (Inst : Value_T; V : GL_Value)
      with Pre => Present (Is_A_Instruction (Inst)) and then Present (V);
    --  Add aliasing information from V to Inst

@@ -30,17 +30,19 @@ package GNATLLVM.Wrapper is
    --  Create the root of the TBAA metadata tree
 
    function Create_TBAA_Scalar_Type_Node
-     (MDBld : MD_Builder_T;
-      Name  : String;
-      Parent  : Metadata_T) return Metadata_T
+     (Ctx    : Context_T;
+      MDBld  : MD_Builder_T;
+      Name   : String;
+      Size   : Value_T;
+      Parent : Metadata_T) return Metadata_T
      with Inline;
    --  Create a TBAA metadata node for a scalar type
 
    function Create_TBAA_Access_Tag
      (MDBld                  : MD_Builder_T;
       Base_Type, Access_Type : Metadata_T;
-      Offset                 : ULL) return Metadata_T
-     with Import, Convention => C, External_Name => "Create_TBAA_Access_Tag";
+      Offset, Size           : ULL;
+      Immutable              : Boolean) return Metadata_T;
 
    procedure Add_TBAA_Access (Value : Value_T; TBAA : Metadata_T)
      with Import, Convention => C, External_Name => "Add_TBAA_Access";

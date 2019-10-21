@@ -187,8 +187,8 @@ package body GNATLLVM.Aliasing is
 
    function Create_TBAA_For_Type (TE : Entity_Id) return Metadata_T is
       BT   : constant Entity_Id    := Full_Base_Type (TE);
-      TBAA : constant Metadata_T   := Get_TBAA (BT);
       Grp  : constant UC_Group_Idx := Find_UC_Group (BT);
+      TBAA : Metadata_T   := Get_TBAA (BT);
 
    begin
       --  If we have -fno-strict-aliasing, don't create a TBAA
@@ -211,7 +211,8 @@ package body GNATLLVM.Aliasing is
 
             begin
                if UCE.Group = Grp and then Present (Get_TBAA_N (UCE.TE)) then
-                  return Get_TBAA (UCE.TE);
+                  TBAA := Get_TBAA (UCE.TE);
+                  exit;
                end if;
             end;
          end loop;
@@ -220,26 +221,20 @@ package body GNATLLVM.Aliasing is
       --  Otherwise, make a new TBAA for this type.  If it's a type that we
       --  don't currently make TBAA information for, return none.
 
-      if Is_Scalar_Type (BT) then
-         return Create_TBAA_Scalar_Type_Node (MD_Builder, Get_Name (BT),
-                                              TBAA_Root);
-      else
-         return No_Metadata_T;
+      if No (TBAA) and then Is_Scalar_Type (BT) then
+         TBAA := Create_TBAA_Scalar_Type_Node
+           (Get_Name (BT), Get_Type_Size (Default_GL_Type (BT)), TBAA_Root);
       end if;
+
+      --  Now save and return the TBAA value
+
+      if Present (TBAA) then
+         Set_TBAA (BT, TBAA);
+      end if;
+
+      return TBAA;
 
    end Create_TBAA_For_Type;
-
-   --------------------------
-   -- Record_TBAA_For_Type --
-   --------------------------
-
-   procedure Record_TBAA_For_Type (TE : Entity_Id) is
-      TBAA : constant Metadata_T := Create_TBAA_For_Type (TE);
-   begin
-      if Present (TBAA) then
-         Set_TBAA (TE, TBAA);
-      end if;
-   end Record_TBAA_For_Type;
 
    ---------------------------------
    -- Add_Aliasing_To_Instruction --
@@ -247,12 +242,16 @@ package body GNATLLVM.Aliasing is
 
    procedure Add_Aliasing_To_Instruction (Inst : Value_T; V : GL_Value) is
       GT           : constant GL_Type    := Related_Type (V);
-      TBAA         : constant Metadata_T := Get_TBAA (Full_Etype (GT));
+      TBAA         : constant Metadata_T :=
+        Create_TBAA_For_Type (Full_Etype (GT));
 
    begin
       if Present (TBAA) and then not Universal_Aliasing (GT) then
          Add_TBAA_Access
-           (Inst, Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, 0));
+           (Inst,
+            Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, 0,
+                                    To_Bytes (Get_Type_Size (Type_Of (GT))),
+                                    False));
       end if;
    end Add_Aliasing_To_Instruction;
 

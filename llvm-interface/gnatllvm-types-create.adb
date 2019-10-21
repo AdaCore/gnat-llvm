@@ -25,7 +25,6 @@ with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM.Aliasing;       use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;         use GNATLLVM.Arrays;
 with GNATLLVM.Arrays.Create;  use GNATLLVM.Arrays.Create;
 with GNATLLVM.Environment;    use GNATLLVM.Environment;
@@ -347,10 +346,6 @@ package body GNATLLVM.Types.Create is
       if Dummy or else Ekind (TE) = E_Void then
          return T;
       end if;
-
-      --  Now make and record the TBAA for the type, if any
-
-      Record_TBAA_For_Type (TE);
 
       --  If this is a packed array implementation type and the original
       --  type is an array, set information about the bounds of the

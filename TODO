@@ -3,7 +3,6 @@ Limitations and missing features (identified so far):
 - use compatible calling convention on x86-64 for C structures
 - create better debug info for subprogram return
 - debug info for non C compatible types
-- incomplete debug info for symbolic tracebacks
 - support for some -fxxx and -m (e.g -mtune) code generation switches
 - track alignment of GL_Values
 - properly set and track TBAA tags

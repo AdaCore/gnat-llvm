@@ -20,12 +20,13 @@ with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Table;    use Table;
 
-with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
-with GNATLLVM.GLType;      use GNATLLVM.GLType;
-with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
-with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
+with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
+with GNATLLVM.Environment;  use GNATLLVM.Environment;
+with GNATLLVM.GLType;       use GNATLLVM.GLType;
+with GNATLLVM.Instructions; use GNATLLVM.Instructions;
+with GNATLLVM.Types;        use GNATLLVM.Types;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Aliasing is
 
@@ -222,8 +223,13 @@ package body GNATLLVM.Aliasing is
       --  don't currently make TBAA information for, return none.
 
       if No (TBAA) and then Is_Scalar_Type (BT) then
-         TBAA := Create_TBAA_Scalar_Type_Node
-           (Get_Name (BT), Get_Type_Size (Default_GL_Type (BT)), TBAA_Root);
+         declare
+            Size : constant GL_Value := Get_Type_Size (Default_GL_Type (BT));
+
+         begin
+            TBAA := Create_TBAA_Scalar_Type_Node (Get_Name (BT),
+                                                  To_Bytes (Size), TBAA_Root);
+         end;
       end if;
 
       --  Now save and return the TBAA value

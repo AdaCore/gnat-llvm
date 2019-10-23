@@ -21,6 +21,38 @@ with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.Aliasing is
 
+   --  LLVM has "new format" TBAA type and access tags.  We use them because
+   --  they allow the access type to be an aggregate.  We need this because
+   --  loads and stores of aggregates are very common in Ada.
+   --
+   --  Unfortunately, there's no documentation of this "new format" in LLVM
+   --  and the only way to find out about it is to read the relevant source
+   --  file, which is lib/Analysis/TypeBasedAliasAnalysis.cpp, so we're
+   --  including that documentation here.
+   --
+   --  The major difference in the "new format" is that sizes are included.
+   --  This applies to types, fields, and access tags.
+   --
+   --  The format of a scalar type tag is:
+   --
+   --    !1 = !{!2, i64 4, !"integer", i64 0}
+   --
+   --  where !2 is a pointer to the parent, in this case the root, 4 is the
+   --  size, in bytes, of the type, and 0 means that this isn't a type where
+   --  all members are constant (a value of 1 indicates an immutable type).
+   --
+   --  The format of an aggregate type tag is:
+   --
+   --    TBD
+   --
+   --  The format of an access tag is:
+   --
+   --  !0 = !{!1, !1, i64 0, i64 4, i64 1}
+   --
+   --  where !1 is both a pointer to the base and access type, 0 is the offset
+   --  from the start of the base type, 4 is the size (in bytes) of the access,
+   --  and 1 means that this access is to constant (immutable) memory.
+
    procedure Initialize;
    --  Perform initialization for this compilation
 

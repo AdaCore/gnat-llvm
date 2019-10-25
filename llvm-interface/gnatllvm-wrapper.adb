@@ -44,29 +44,6 @@ package body GNATLLVM.Wrapper is
                                              Size, Parent);
    end Create_TBAA_Scalar_Type_Node;
 
-   ----------------------------
-   -- Create_TBAA_Access_Tag --
-   ----------------------------
-
-   function Create_TBAA_Access_Tag
-     (MDBld                  : MD_Builder_T;
-      Base_Type, Access_Type : Metadata_T;
-      Offset, Size           : ULL;
-      Immutable              : Boolean) return Metadata_T
-   is
-      function Create_TBAA_Access_Tag_C
-        (MDBld                  : MD_Builder_T;
-         Base_Type, Access_Type : Metadata_T;
-         Offset, Size           : ULL;
-         Immutable              : Bool_T) return Metadata_T
-        with Import, Convention => C,
-             External_Name => "Create_TBAA_Access_Tag";
-
-   begin
-      return Create_TBAA_Access_Tag_C (MDBld, Base_Type, Access_Type, Offset,
-                                       Size, Boolean'Pos (Immutable));
-   end Create_TBAA_Access_Tag;
-
    -----------------------
    -- Create_Enumerator --
    -----------------------

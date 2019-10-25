@@ -256,8 +256,7 @@ package body GNATLLVM.Aliasing is
          Add_TBAA_Access
            (Inst,
             Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, 0,
-                                    To_Bytes (Get_Type_Size (Type_Of (GT))),
-                                    False));
+                                    To_Bytes (Get_Type_Size (Type_Of (GT)))));
       end if;
    end Add_Aliasing_To_Instruction;
 

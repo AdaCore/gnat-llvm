@@ -215,7 +215,8 @@ Create_TBAA_Access_Tag (MDBuilder *MDHelper, MDNode *BaseType,
 			MDNode *AccessType, uint64_t offset,
 			uint64_t size) 
 {
-  return MDHelper->createTBAAAccessTag (BaseType, AccessType, offset, size);
+  return MDHelper->createTBAAAccessTag (BaseType, AccessType, offset, size,
+					false);
 }
 
 extern "C"

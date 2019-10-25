@@ -52,6 +52,12 @@ package GNATLLVM.Aliasing is
    --  where !1 is both a pointer to the base and access type, 0 is the offset
    --  from the start of the base type, 4 is the size (in bytes) of the access,
    --  and 1 means that this access is to constant (immutable) memory.
+   --
+   --  Note that "immutable" here means that the value of the memory in
+   --  question is NEVER changed, not that it isn't changed at a later point
+   --  in the execution (the latter is what the invariant.start intrinsic is
+   --  for).  However, LLVM already knows when memory is actually a constant,
+   --  so it's not clear when we'd actually use this option.
 
    procedure Initialize;
    --  Perform initialization for this compilation

@@ -117,7 +117,6 @@ package body GNATLLVM.Builtins is
    Lifetime_Start_Fn  : GL_Value := No_GL_Value;
    Lifetime_End_Fn    : GL_Value := No_GL_Value;
    Invariant_Start_Fn : GL_Value := No_GL_Value;
-   Invariant_End_Fn   : GL_Value := No_GL_Value;
    --  Functions to mark the start and end of the lifetime of a variable or
    --  constant, and, for the latter, when it starts becoming constant.
 
@@ -898,28 +897,6 @@ package body GNATLLVM.Builtins is
 
       return Invariant_Start_Fn;
    end Get_Invariant_Start_Fn;
-
-   --------------------------
-   -- Get_Invariant_End_Fn --
-   --------------------------
-   function Get_Invariant_End_Fn return GL_Value is
-   begin
-      if No (Invariant_End_Fn) then
-         Invariant_End_Fn := Add_Function
-           ("llvm.invariant.end.p0i8",
-            Fn_Ty ((1 => Pointer_Type
-                      (Build_Struct_Type ((1 .. 0 => <>), False), 0),
-                    2 => LLVM_Size_Type, 3 => Void_Ptr_Type),
-                   Void_Type),
-            Void_GL_Type, Is_Builtin => True);
-         Set_Does_Not_Throw      (Invariant_End_Fn);
-         Add_Nocapture_Attribute (Invariant_End_Fn, 2);
-         Add_Readonly_Attribute  (Invariant_End_Fn, 2);
-         Add_Non_Null_Attribute  (Invariant_End_Fn, 2);
-      end if;
-
-      return Invariant_End_Fn;
-   end Get_Invariant_End_Fn;
 
    -------------------
    -- Get_Expect_Fn --

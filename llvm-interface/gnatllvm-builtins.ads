@@ -74,10 +74,6 @@ package GNATLLVM.Builtins is
      with Post => Present (Get_Invariant_Start_Fn'Result);
    --  Get function to mark start of where a constant becomes invariant
 
-   function Get_Invariant_End_Fn return GL_Value
-     with Post => Present (Get_Invariant_End_Fn'Result);
-   --  Get function to mark end of where a constant becomes invariant
-
    function Get_Expect_Fn return GL_Value
      with Post => Present (Get_Expect_Fn'Result);
    --  Get function corresponing to llvm.expect

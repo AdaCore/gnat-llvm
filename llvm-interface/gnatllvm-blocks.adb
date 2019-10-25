@@ -38,6 +38,7 @@ with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
+
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
@@ -56,17 +57,14 @@ package body GNATLLVM.Blocks is
    end record;
 
    --  We record a list of variables and sizes that we must mark as
-   --  becoming invariant at the start of code for a block, as well as the
-   --  value returned from invariant.start once we call it.
+   --  becoming invariant at the start of code for a block.
 
    type Invariant_Data;
    type A_Invariant_Data is access Invariant_Data;
    type Invariant_Data is record
-     Next      : A_Invariant_Data;
-     Var       : Entity_Id;
-     Memory    : GL_Value;
-     Size      : GL_Value;
-     Start_Val : GL_Value;
+     Next   : A_Invariant_Data;
+     Memory : GL_Value;
+     Size   : GL_Value;
    end record;
 
    --  This data structure records the information about each block that
@@ -483,13 +481,11 @@ package body GNATLLVM.Blocks is
    -- Add_Invariant_Entry --
    -------------------------
 
-   procedure Add_Invariant_Entry (Def_Ident : Entity_Id; Size : GL_Value) is
+   procedure Add_Invariant_Entry (V : GL_Value; Size : GL_Value) is
       BI     : Block_Info renames Block_Stack.Table (Block_Stack.Last);
 
    begin
-      BI.Invariant_List :=
-        new Invariant_Data'(BI.Invariant_List, Def_Ident, No_GL_Value, Size,
-                            No_GL_Value);
+      BI.Invariant_List := new Invariant_Data'(BI.Invariant_List, V, Size);
    end Add_Invariant_Entry;
 
    -----------------------------
@@ -503,6 +499,8 @@ package body GNATLLVM.Blocks is
       Invariants : A_Invariant_Data := BI.Invariant_List;
       Subp       : Entity_Id;
 
+      procedure Free is new Ada.Unchecked_Deallocation (Invariant_Data,
+                                                        A_Invariant_Data);
    begin
       pragma Assert (not BI.In_Stmts);
 
@@ -533,16 +531,15 @@ package body GNATLLVM.Blocks is
 
       while Invariants /= null loop
          declare
-            Ptr : constant GL_Value :=
-              Ptr_To_Ref (Get (Get_Value (Invariants.Var), Any_Reference),
-                          SSI_GL_Type);
+            Ptr  : constant GL_Value         :=
+              Ptr_To_Ref (Invariants.Memory, SSI_GL_Type);
+            Next : constant A_Invariant_Data := Invariants.Next;
 
          begin
-            Invariants.Start_Val :=
-              Call (Get_Invariant_Start_Fn, A_Char_GL_Type,
-                    (1 => Invariants.Size, 2 => Ptr));
-            Invariants.Memory    := Ptr;
-            Invariants := Invariants.Next;
+            Discard (Call (Get_Invariant_Start_Fn, A_Char_GL_Type,
+                           (1 => Invariants.Size, 2 => Ptr)));
+            Free (Invariants);
+            Invariants := Next;
          end;
       end loop;
 
@@ -633,29 +630,6 @@ package body GNATLLVM.Blocks is
       --  we pass and then restore the outermost stack pointer.
 
       for J in reverse To + 1 .. From loop
-
-         --  Process any ends of variable invariants
-
-         declare
-            Invariants : A_Invariant_Data :=
-              Block_Stack.Table (J).Invariant_List;
-
-         begin
-            while Invariants /= null loop
-
-               --  ???  We'd like to write out the invariant.end at the end of
-               --  the block, but this will crash the LLVM optimizer if the
-               --  variable is never referenced.  See LLVM PR 43723.
-
-               --  if Present (Invariants.Start_Val) then
-               --  Call (Get_Invariant_End_Fn,
-               --  (1 => Invariants.Start_Val, 2 => Invariants.Size,
-               --  3 => Invariants.Memory));
-               --  end if;
-
-               Invariants := Invariants.Next;
-            end loop;
-         end;
 
          --  Process any ends of variable lifetimes
 
@@ -1322,23 +1296,18 @@ package body GNATLLVM.Blocks is
    ---------------
 
    procedure Pop_Block is
-      Depth      : constant Block_Stack_Level := Block_Stack.Last;
-      BI         : Block_Info renames Block_Stack.Table (Depth);
-      At_Dead    : constant Boolean           := Are_In_Dead_Code;
-      EH_Work    : constant Boolean           :=
+      Depth     : constant Block_Stack_Level := Block_Stack.Last;
+      BI        : Block_Info renames Block_Stack.Table (Depth);
+      At_Dead   : constant Boolean           := Are_In_Dead_Code;
+      EH_Work   : constant Boolean           :=
         Present (BI.Landing_Pad) or else Present (BI.Dispatch_BB);
-      Next_BB    : constant Basic_Block_T     :=
+      Next_BB   : constant Basic_Block_T     :=
         (if EH_Work and then not At_Dead then Create_Basic_Block else No_BB_T);
-      Lifetimes  : A_Lifetime_Data            := BI.Lifetime_List;
-      Invariants : A_Invariant_Data           := BI.Invariant_List;
-      Next_L     : A_Lifetime_Data;
-      Next_I     : A_Invariant_Data;
+      Lifetimes : A_Lifetime_Data            := BI.Lifetime_List;
+      Next      : A_Lifetime_Data;
 
       procedure Free is new Ada.Unchecked_Deallocation (Lifetime_Data,
                                                         A_Lifetime_Data);
-
-      procedure Free is new Ada.Unchecked_Deallocation (Invariant_Data,
-                                                        A_Invariant_Data);
    begin
       --  If we're not in dead code, we have to fixup the block and the branch
       --  around any landingpad.  But that code is not protected by any
@@ -1396,18 +1365,12 @@ package body GNATLLVM.Blocks is
 
       Move_To_BB (Next_BB);
 
-      --  Free the lifetime and invariant data associated with this block
+      --  Free the lifetime data associated with this block
 
       while Lifetimes /= null loop
-         Next_L := Lifetimes.Next;
+         Next := Lifetimes.Next;
          Free (Lifetimes);
-         Lifetimes := Next_L;
-      end loop;
-
-      while Invariants /= null loop
-         Next_I := Invariants.Next;
-         Free (Invariants);
-         Invariants := Next_I;
+         Lifetimes := Next;
       end loop;
 
       --  And finally pop our stack

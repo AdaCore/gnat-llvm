@@ -2037,7 +2037,7 @@ package body GNATLLVM.Variables is
          if Is_True_Constant (Def_Ident) and then No (Value) and then No (Expr)
            and then not Is_Dynamic_Size (Alloc_GT)
          then
-            Add_Invariant_Entry (Def_Ident,
+            Add_Invariant_Entry (LLVM_Var,
                                  To_Bytes (Get_Type_Size (Alloc_GT)));
          end if;
       end if;

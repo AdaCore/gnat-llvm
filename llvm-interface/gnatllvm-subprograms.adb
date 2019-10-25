@@ -2512,6 +2512,10 @@ package body GNATLLVM.Subprograms is
                      Add_Dereferenceable_Or_Null_Attribute (LLVM_Func,
                                                             Param_Num, DT);
                   end if;
+
+                  if Is_Access_Constant (GT) then
+                     Add_Readonly_Attribute (LLVM_Func, Param_Num);
+                  end if;
                end if;
 
                if PK_Is_In_Or_Ref (PK) then

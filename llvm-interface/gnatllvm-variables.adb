@@ -30,6 +30,7 @@ with Table;    use Table;
 
 with LLVM.Core;  use LLVM.Core;
 
+with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
@@ -1540,6 +1541,7 @@ package body GNATLLVM.Variables is
                                          LLVM_Value (Get_Value (E)),
                                          Get_Ext_Name (Def_Ident)),
                               GT, Reference);
+               Initialize_TBAA (LLVM_Var);
             end if;
          end;
 
@@ -1563,6 +1565,7 @@ package body GNATLLVM.Variables is
          Set_Dup_Global_Value (Def_Ident, LLVM_Var);
          Set_Linker_Section   (LLVM_Var, Def_Ident);
          Process_Pragmas      (Def_Ident, LLVM_Var);
+         Initialize_TBAA      (LLVM_Var);
 
          if not Is_Ref then
             Set_Alignment (LLVM_Var,

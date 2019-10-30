@@ -29,6 +29,7 @@ with Table;    use Table;
 
 with LLVM.Core; use LLVM.Core;
 
+with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
@@ -942,7 +943,8 @@ package body GNATLLVM.Subprograms is
             if Is_Unconstrained_Array (GT) then
                return From_Access (Value);
             else
-               return Initialize_Alignment (Int_To_Ref (Value, GT));
+               return Initialize_TBAA (Initialize_Alignment
+                                         (Int_To_Ref (Value, GT)));
             end if;
          end;
       else
@@ -1118,6 +1120,7 @@ package body GNATLLVM.Subprograms is
             end if;
 
             Initialize_Alignment (LLVM_Param);
+            Initialize_TBAA      (LLVM_Param);
             Annotate_Object_Size_And_Alignment (Param, GT, Want_Max => False);
             Create_Local_Variable_Debug_Data (Param, LLVM_Param, P_Num);
             Set_Value (Param, LLVM_Param);

@@ -360,6 +360,16 @@ package GNATLLVM.GLValue is
       --  an error message about the overflow, this will be converted
       --  to an undef.
 
+      TBAA_Type            : Metadata_T;
+      --  The TBAA node representing the type that this value, treated as
+      --  an address, points to (for a scalar) or points into (for an
+      --  aggregate).
+
+      TBAA_Offset          : ULL;
+      --  The offset in bytes that this value, treated as an address, points
+      --  to from the start of the type given by TBAA_Type (always zero
+      --  if a scalar type).
+
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make
    --  a subtype for that purpose.
@@ -393,10 +403,11 @@ package GNATLLVM.GLValue is
                                                      Access_GL_Value_Array);
 
    No_GL_Value : constant GL_Value :=
-     (No_Value_T, No_GL_Type, Data, BPU, False, False, False, False);
+     (No_Value_T, No_GL_Type, Data, BPU, False, False, False, False,
+      No_Metadata_T, 0);
 
-   function No      (V : GL_Value) return Boolean      is (V =  No_GL_Value);
-   function Present (V : GL_Value) return Boolean      is (V /= No_GL_Value);
+   function Present (V : GL_Value) return Boolean      is (Present (V.Value));
+   function No      (V : GL_Value) return Boolean      is (No      (V.Value));
 
    --  Define basic accessors for components of GL_Value
 
@@ -423,19 +434,25 @@ package GNATLLVM.GLValue is
      (Ref (Relationship (V)))
      with Pre => Present (V);
 
-   function Alignment    (V : GL_Value)  return Nat     is (V.Alignment)
+   function Alignment    (V : GL_Value)  return Nat        is (V.Alignment)
      with Pre => Present (V);
 
-   function Is_Pristine  (V : GL_Value)  return Boolean is (V.Is_Pristine)
+   function Is_Pristine  (V : GL_Value)  return Boolean    is (V.Is_Pristine)
      with Pre => Present (V);
 
-   function Is_Volatile  (V : GL_Value)  return Boolean is (V.Is_Volatile)
+   function Is_Volatile  (V : GL_Value)  return Boolean    is (V.Is_Volatile)
      with Pre => Present (V);
 
-   function Is_Atomic    (V : GL_Value)  return Boolean is (V.Is_Atomic)
+   function Is_Atomic    (V : GL_Value)  return Boolean    is (V.Is_Atomic)
      with Pre => Present (V);
 
-   function Overflowed   (V : GL_Value)  return Boolean is (V.Overflowed)
+   function Overflowed   (V : GL_Value)  return Boolean    is (V.Overflowed)
+     with Pre => Present (V);
+
+   function TBAA_Type    (V : GL_Value)  return Metadata_T is (V.TBAA_Type)
+     with Pre => Present (V);
+
+   function TBAA_Offset  (V : GL_Value)  return ULL        is (V.TBAA_Offset)
      with Pre => Present (V);
 
    --  Define functions about relationships
@@ -483,6 +500,10 @@ package GNATLLVM.GLValue is
      with Pre => Present (T);
    --  Return True if type T is valid for an atomic operation
 
+   procedure Discard (V : GL_Value)
+     with Inline;
+   --  Evaluate V and throw away the result
+
    --  Constructors for a GL_Value
 
    function G
@@ -493,8 +514,11 @@ package GNATLLVM.GLValue is
       Is_Pristine : Boolean         := False;
       Is_Volatile : Boolean         := False;
       Is_Atomic   : Boolean         := False;
-      Overflowed  : Boolean         := False) return GL_Value is
-     ((V, GT, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic, Overflowed))
+      Overflowed  : Boolean         := False;
+      TBAA_Type   : Metadata_T      := No_Metadata_T;
+      TBAA_Offset : ULL             := 0) return GL_Value is
+      ((V, GT, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic, Overflowed,
+        TBAA_Type, TBAA_Offset))
      with Pre => Present (V) and then Present (GT);
    --  Raw constructor that allows full specification of all fields
 
@@ -508,7 +532,9 @@ package GNATLLVM.GLValue is
          Is_Pristine => Is_Pristine (GV),
          Is_Volatile => Is_Volatile (GV),
          Is_Atomic   => Is_Atomic   (GV),
-         Overflowed  => Overflowed  (GV)))
+         Overflowed  => Overflowed  (GV),
+         TBAA_Type   => TBAA_Type   (GV),
+         TBAA_Offset => TBAA_Offset (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
           Post => Present (GM'Result);
    --  Likewise, but copy all but type and relationship from an existing value
@@ -567,18 +593,22 @@ package GNATLLVM.GLValue is
    function G_Ref
      (V           : Value_T;
       GT          : GL_Type;
-      Alignment   : Nat     := BPU;
-      Is_Pristine : Boolean := False;
-      Is_Volatile : Boolean := False;
-      Is_Atomic   : Boolean := False;
-      Overflowed  : Boolean := False) return GL_Value
+      Alignment   : Nat        := BPU;
+      Is_Pristine : Boolean    := False;
+      Is_Volatile : Boolean    := False;
+      Is_Atomic   : Boolean    := False;
+      Overflowed  : Boolean    := False;
+      TBAA_Type   : Metadata_T := No_Metadata_T;
+      TBAA_Offset : ULL        := 0) return GL_Value
    is
      (G (V, GT, Relationship_For_Ref (GT),
          Alignment   => Alignment,
          Is_Pristine => Is_Pristine,
          Is_Volatile => Is_Volatile,
          Is_Atomic   => Is_Atomic,
-         Overflowed  => Overflowed))
+         Overflowed  => Overflowed,
+         TBAA_Type   => TBAA_Type,
+         TBAA_Offset => TBAA_Offset))
      with Pre  => Present (V) and then Present (GT),
           Post => Is_Reference (G_Ref'Result);
    --  Constructor for case where we create a value that's a pointer
@@ -592,7 +622,9 @@ package GNATLLVM.GLValue is
              Is_Pristine => Is_Pristine (GV),
              Is_Volatile => Is_Volatile (GV),
              Is_Atomic   => Is_Atomic   (GV),
-             Overflowed  => Overflowed  (GV)))
+             Overflowed  => Overflowed  (GV),
+             TBAA_Type   => TBAA_Type   (GV),
+             TBAA_Offset => TBAA_Offset (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
           Post => Is_Reference (GM_Ref'Result);
    --  Likewise, but copy the rest of the attributes from GV
@@ -647,9 +679,11 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Post => not Overflowed (V), Inline;
    --  Clear the overflow flag in V
 
-   procedure Discard (V : GL_Value)
-     with Inline;
-   --  Evaluate V and throw away the result
+   procedure Set_TBAA_Type (V : in out GL_Value; M : Metadata_T)
+     with Pre => Present (V), Post => TBAA_Type (V) = M;
+   procedure Set_TBAA_Offset (V : in out GL_Value; Offset : ULL)
+     with Pre => Present (V), Post => TBAA_Offset (V) = Offset;
+   --  Set the TBAA type and offset of V
 
    procedure Set_Value (VE : Entity_Id; VL : GL_Value)
      with Inline;

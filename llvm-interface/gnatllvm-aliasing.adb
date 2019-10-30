@@ -87,6 +87,31 @@ package body GNATLLVM.Aliasing is
       Search_For_UCs;
    end Initialize;
 
+   ---------------------
+   -- Initialize_TBAA --
+   ---------------------
+
+   procedure Initialize_TBAA (V : in out GL_Value) is
+   begin
+      if Relationship (V) = Reference then
+         V.TBAA_Type   := Create_TBAA_For_Type (Full_Etype (V));
+         V.TBAA_Offset := 0;
+      else
+         V.TBAA_Type := No_Metadata_T;
+      end if;
+   end Initialize_TBAA;
+
+   ---------------------
+   -- Initialize_TBAA --
+   ---------------------
+
+   function Initialize_TBAA (V : GL_Value) return GL_Value is
+      New_V : GL_Value := V;
+   begin
+      Initialize_TBAA (New_V);
+      return New_V;
+   end Initialize_TBAA;
+
    --------------------
    -- Search_For_UCs --
    --------------------
@@ -189,7 +214,7 @@ package body GNATLLVM.Aliasing is
    function Create_TBAA_For_Type (TE : Entity_Id) return Metadata_T is
       BT   : constant Entity_Id    := Full_Base_Type (TE);
       Grp  : constant UC_Group_Idx := Find_UC_Group (BT);
-      TBAA : Metadata_T   := Get_TBAA (BT);
+      TBAA : Metadata_T            := Get_TBAA (BT);
 
    begin
       --  If we have -fno-strict-aliasing, don't create a TBAA
@@ -248,14 +273,14 @@ package body GNATLLVM.Aliasing is
 
    procedure Add_Aliasing_To_Instruction (Inst : Value_T; V : GL_Value) is
       GT           : constant GL_Type    := Related_Type (V);
-      TBAA         : constant Metadata_T :=
-        Create_TBAA_For_Type (Full_Etype (GT));
+      TBAA         : constant Metadata_T := TBAA_Type    (V);
+      Offset       : constant ULL        := TBAA_Offset  (V);
 
    begin
       if Present (TBAA) and then not Universal_Aliasing (GT) then
          Add_TBAA_Access
            (Inst,
-            Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, 0,
+            Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, Offset,
                                     To_Bytes (Get_Type_Size (Type_Of (GT)))));
       end if;
    end Add_Aliasing_To_Instruction;

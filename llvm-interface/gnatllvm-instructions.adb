@@ -17,6 +17,7 @@
 
 with Ada.Unchecked_Conversion;
 
+with GNATLLVM.Aliasing;    use GNATLLVM.Aliasing;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
@@ -111,18 +112,21 @@ package body GNATLLVM.Instructions is
       Align     : Nat       := 0;
       Name      : String    := "") return GL_Value
    is
-      R        : constant GL_Relationship := Relationship_For_Alloc (GT);
-      PT       : constant Type_T          := Type_For_Relationship (GT, R);
-      T        : constant Type_T          := Get_Element_Type (PT);
-      Promote  : constant Basic_Block_T   := Maybe_Promote_Alloca (T);
-      Inst     : constant Value_T         :=
+      R         : constant GL_Relationship := Relationship_For_Alloc (GT);
+      PT        : constant Type_T          := Type_For_Relationship (GT, R);
+      T         : constant Type_T          := Get_Element_Type (PT);
+      Promote   : constant Basic_Block_T   := Maybe_Promote_Alloca (T);
+      Inst      : constant Value_T         :=
         Alloca (IR_Builder, T, Get_Alloca_Name (Def_Ident, Name));
       Our_Align : constant Nat             :=
         Set_Object_Align (Inst, GT, Def_Ident, Align);
+      Result    : GL_Value                 :=
+        G (Inst, GT, R, Is_Pristine => True, Alignment => Our_Align);
 
    begin
       Done_Promoting_Alloca (Inst, Promote, T);
-      return G (Inst, GT, R, Is_Pristine => True, Alignment => Our_Align);
+      Initialize_TBAA (Result);
+      return Result;
    end Alloca;
 
    ------------------
@@ -143,10 +147,13 @@ package body GNATLLVM.Instructions is
                       Get_Alloca_Name (Def_Ident, Name));
       Our_Align : constant Nat           :=
         Set_Object_Align (Inst, GT, Def_Ident, Align);
+      Result    : GL_Value               :=
+        G_Ref (Inst, GT, Is_Pristine => True, Alignment => Our_Align);
 
    begin
       Done_Promoting_Alloca (Inst, Promote, T, Num_Elts);
-      return G_Ref (Inst, GT, Is_Pristine => True, Alignment => Our_Align);
+      Initialize_TBAA (Result);
+      return Result;
    end Array_Alloca;
 
    ----------------
@@ -901,6 +908,9 @@ package body GNATLLVM.Instructions is
       Memory    : GL_Value;
       --  Memory to use as temporary
 
+      Result    : GL_Value;
+      --  Data to return
+
    begin
       Add_Flags_To_Instruction (Load_Inst, Ptr, Special_Atomic);
 
@@ -918,7 +928,10 @@ package body GNATLLVM.Instructions is
 
       --  Now build the result, with the proper GT and relationship
 
-      return Initialize_Alignment (G (Load_Inst, Load_GT, New_R));
+      Result := G (Load_Inst, Load_GT, New_R);
+      Initialize_Alignment (Result);
+      Initialize_TBAA      (Result);
+      return Result;
    end Load;
 
    -----------
@@ -1034,7 +1047,8 @@ package body GNATLLVM.Instructions is
       Args : GL_Value_Array;
       Name : String := "") return GL_Value
    is
-     (Initialize_Alignment (G (Call_Internal (Func, Args, Name), GT)));
+     (Initialize_TBAA
+        (Initialize_Alignment (G (Call_Internal (Func, Args, Name), GT))));
 
    --------------
    -- Call_Ref --
@@ -1046,7 +1060,8 @@ package body GNATLLVM.Instructions is
       Args : GL_Value_Array;
       Name : String := "") return GL_Value
    is
-     (Initialize_Alignment (G_Ref (Call_Internal (Func, Args, Name), GT)));
+     (Initialize_TBAA
+        (Initialize_Alignment (G_Ref (Call_Internal (Func, Args, Name), GT))));
 
    -----------------------
    -- Call_Relationship --
@@ -1059,7 +1074,8 @@ package body GNATLLVM.Instructions is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-     (Initialize_Alignment (G (Call_Internal (Func, Args, Name), GT, R)));
+     (Initialize_TBAA
+        (Initialize_Alignment (G (Call_Internal (Func, Args, Name), GT, R))));
 
    ----------
    -- Call --

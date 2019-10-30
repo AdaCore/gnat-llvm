@@ -62,6 +62,14 @@ package GNATLLVM.Aliasing is
    procedure Initialize;
    --  Perform initialization for this compilation
 
+   procedure Initialize_TBAA (V : in out GL_Value)
+     with Pre => Present (V);
+   function Initialize_TBAA (V : GL_Value) return GL_Value
+     with Pre => Present (V);
+   --  V is a value that we know nothing about except for its type.  If
+   --  it's data, we have no idea of its TBAA information, but if it's a
+   --  reference we can initialize the TBAA data.
+
    procedure Add_Aliasing_To_Instruction (Inst : Value_T; V : GL_Value)
      with Pre => Present (Is_A_Instruction (Inst)) and then Present (V);
    --  Add aliasing information from V to Inst

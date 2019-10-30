@@ -23,6 +23,7 @@ with Output; use Output;
 with Sprint; use Sprint;
 
 with GNATLLVM.Arrays;        use GNATLLVM.Arrays;
+with GNATLLVM.Aliasing;      use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
 with GNATLLVM.Conversions;   use GNATLLVM.Conversions;
 with GNATLLVM.Environment;   use GNATLLVM.Environment;
@@ -312,6 +313,24 @@ package body GNATLLVM.GLValue is
    begin
       V.Overflowed := False;
    end Clear_Overflowed;
+
+   -------------------
+   -- Set_TBAA_Type --
+   -------------------
+
+   procedure Set_TBAA_Type (V : in out GL_Value; M : Metadata_T) is
+   begin
+      V.TBAA_Type := M;
+   end Set_TBAA_Type;
+
+   ---------------------
+   -- Set_TBAA_Offset --
+   ---------------------
+
+   procedure Set_TBAA_Offset (V : in out GL_Value; Offset : ULL) is
+   begin
+      V.TBAA_Offset := Offset;
+   end Set_TBAA_Offset;
 
    ----------------
    -- Full_Etype --
@@ -1075,9 +1094,11 @@ package body GNATLLVM.GLValue is
       GT     : constant GL_Type         := Related_Type (V);
       Acc_GT : constant GL_Type         := Full_Designated_GL_Type (V);
       R      : constant GL_Relationship := Relationship_For_Access_Type (GT);
-
+      Result : GL_Value                 := GM (LLVM_Value (V), Acc_GT, R, V);
    begin
-      return Initialize_Alignment (GM (LLVM_Value (V), Acc_GT, R, V));
+      Initialize_Alignment (Result);
+      Initialize_TBAA      (Result);
+      return Result;
    end From_Access;
 
    ----------------------

@@ -1333,8 +1333,7 @@ package body GNATLLVM.Exprs is
       then
          Src := Get (Src, (if Src_R = Bounds_And_Data then Src_R else Data));
          if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
-            Dest := Ptr_To_Relationship (Get (Dest, Reference),
-                                         Pointer_Type (Type_Of (Src), 0),
+            Dest := Ptr_To_Relationship (Get (Dest, Reference), Src,
                                          Ref (Relationship (Src)));
          end if;
 

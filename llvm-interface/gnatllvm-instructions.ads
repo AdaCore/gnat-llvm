@@ -180,7 +180,8 @@ package GNATLLVM.Instructions is
    is
      (GM (Pointer_Cast (IR_Builder, LLVM_Value (V), T, Name),
           Related_Type (V), R, V))
-     with Pre  => Is_Pointer (V) and then Present (T),
+     with Pre  => Is_Pointer (V) and then Present (T)
+                  and then R = Reference_To_Unknown,
           Post => Is_Pointer (Ptr_To_Relationship'Result), Inline;
 
    function Ptr_To_Relationship

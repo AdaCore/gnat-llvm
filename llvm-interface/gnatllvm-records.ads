@@ -117,6 +117,12 @@ package GNATLLVM.Records is
    --  Present, V is a value of that type, which is used in the case
    --  of a discriminated record.
 
+   function TBAA_Type (Ridx : Record_Info_Id) return Metadata_T
+     with Pre => Present (Ridx), Inline;
+   procedure Set_TBAA_Type (Ridx : Record_Info_Id; M : Metadata_T)
+     with Pre => Present (Ridx), Post => TBAA_Type (Ridx) = M, Inline;
+   --  Set and get the TBAA type entry for Ridx
+
    function Field_Ordinal (F : Entity_Id) return unsigned
      with Pre => Ekind_In (F, E_Component, E_Discriminant);
    --  Return the index of the field denoted by F. We assume here, but
@@ -375,6 +381,9 @@ private
 
       First_Field      : Field_Info_Id;
       --  Id of the first field contained in this record part, if any
+
+      TBAA_Type        : Metadata_T;
+      --  TBAA type entry for this TBAA, if any
 
       Unused_Bits      : Uint;
       --  The number of unused bits in the last type for this RI, either

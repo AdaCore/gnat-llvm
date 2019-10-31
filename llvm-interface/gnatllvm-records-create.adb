@@ -437,6 +437,7 @@ package body GNATLLVM.Records.Create is
             Variants         => Variants,
             Overlap_Variants => Overlap_Variants,
             First_Field      => First_Field_Id,
+            TBAA_Type        => No_Metadata_T,
             Unused_Bits      => Unused_Bits);
 
          --  If we've had a previous RI for this part, link us to it.

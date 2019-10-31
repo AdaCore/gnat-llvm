@@ -1414,6 +1414,22 @@ package body GNATLLVM.Records is
       end return;
    end Get_Record_Type_Alignment;
 
+   ---------------
+   -- TBAA_Type --
+   ---------------
+
+   function TBAA_Type (Ridx : Record_Info_Id) return Metadata_T is
+     (Record_Info_Table.Table (Ridx).TBAA_Type);
+
+   -------------------
+   -- Set_TBAA_Type --
+   -------------------
+
+   procedure Set_TBAA_Type (Ridx : Record_Info_Id; M : Metadata_T) is
+   begin
+      Record_Info_Table.Table (Ridx).TBAA_Type := M;
+   end Set_TBAA_Type;
+
    -------------------
    -- Field_Ordinal --
    -------------------

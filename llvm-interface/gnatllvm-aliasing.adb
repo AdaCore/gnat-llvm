@@ -70,9 +70,24 @@ package body GNATLLVM.Aliasing is
    TBAA_Root : Metadata_T;
    --  Root of tree for Type-Based alias Analysis (TBAA) metadata
 
-   function Create_TBAA_For_Type (TE : Entity_Id) return Metadata_T
+   function Create_TBAA_Type
+     (TE : Entity_Id; Unique : Boolean := False) return Metadata_T
      with Pre => Is_Type_Or_Void (TE);
-   --  Create a TBAA type entry for the specified GNAT type
+   function Create_TBAA_Type
+     (GT : GL_Type; Unique : Boolean := False) return Metadata_T
+     with Pre => Present (GT);
+   --  Create a TBAA type entry for the specified type.  If Unique is
+   --  True, make a new entry for that type instead of reusing a previous one.
+
+   function Create_TBAA_Type
+     (Ridx : Record_Info_Id; Unique : Boolean := False) return Metadata_T
+     with Pre => Present (Ridx);
+   --  Create a TBAA type entry for the specified Record_Info Id
+
+   function New_TBAA_Type
+     (TE : Entity_Id; Unique : Boolean := False) return Metadata_T
+     with Pre => Is_Full_Base_Type (TE);
+   --  Make a new TBAA type entry for TE, which is known to be a base type
 
    procedure Search_For_UCs;
    --  Look through all units for UC's between two access types
@@ -94,7 +109,7 @@ package body GNATLLVM.Aliasing is
    procedure Initialize_TBAA (V : in out GL_Value) is
    begin
       if Relationship (V) = Reference then
-         V.TBAA_Type   := Create_TBAA_For_Type (Full_Etype (V));
+         V.TBAA_Type   := Create_TBAA_Type (Related_Type (V));
          V.TBAA_Offset := 0;
       else
          V.TBAA_Type := No_Metadata_T;
@@ -207,30 +222,33 @@ package body GNATLLVM.Aliasing is
       Scan_All_Units;
    end Search_For_UCs;
 
-   --------------------------
-   -- Create_TBAA_For_Type --
-   --------------------------
+   ----------------------
+   -- Create_TBAA_Type --
+   ----------------------
 
-   function Create_TBAA_For_Type (TE : Entity_Id) return Metadata_T is
+   function Create_TBAA_Type
+     (TE : Entity_Id; Unique : Boolean := False) return Metadata_T
+   is
       BT   : constant Entity_Id    := Full_Base_Type (TE);
       Grp  : constant UC_Group_Idx := Find_UC_Group (BT);
       TBAA : Metadata_T            := Get_TBAA (BT);
 
    begin
-      --  If we have -fno-strict-aliasing, don't create a TBAA
+      --  If we have -fno-strict-aliasing or this is a void type, don't
+      --  create a TBAA.
 
-      if Flag_No_Strict_Aliasing then
+      if Flag_No_Strict_Aliasing or else Ekind (BT) = E_Void then
          return No_Metadata_T;
 
       --  If the base type has a TBAA, use it for this type
 
-      elsif Present (TBAA) then
+      elsif not Unique and then Present (TBAA) then
          return TBAA;
 
       --  If this type is in a group related by UC's between access types,
       --  use any TBAA we've already made for a type in that group.
 
-      elsif Present (Grp) then
+      elsif Present (Grp) and then not Unique then
          for J in 1 .. UC_Table.Last loop
             declare
                UCE : constant UC_Entry := UC_Table.Table (J);
@@ -244,28 +262,82 @@ package body GNATLLVM.Aliasing is
          end loop;
       end if;
 
-      --  Otherwise, make a new TBAA for this type.  If it's a type that we
-      --  don't currently make TBAA information for, return none.
+      --  Otherwise, make a new TBAA for this type
 
-      if No (TBAA) and then Is_Scalar_Type (BT) then
-         declare
-            Size : constant GL_Value := Get_Type_Size (Default_GL_Type (BT));
-
-         begin
-            TBAA := Create_TBAA_Scalar_Type_Node (Get_Name (BT),
-                                                  To_Bytes (Size), TBAA_Root);
-         end;
+      if No (TBAA) then
+         TBAA := New_TBAA_Type (BT);
       end if;
 
-      --  Now save and return the TBAA value
+      --  Now save and return the TBAA value, if any and if requested
 
-      if Present (TBAA) then
+      if Present (TBAA) and then not Unique then
          Set_TBAA (BT, TBAA);
       end if;
 
       return TBAA;
 
-   end Create_TBAA_For_Type;
+   end Create_TBAA_Type;
+
+   ----------------------
+   -- Create_TBAA_Type --
+   ----------------------
+
+   function Create_TBAA_Type
+     (GT : GL_Type; Unique : Boolean := False) return Metadata_T
+   is
+     (Create_TBAA_Type (Full_Etype (GT), Unique));
+
+   ----------------------
+   -- Create_TBAA_Type --
+   ----------------------
+
+   function Create_TBAA_Type
+     (Ridx : Record_Info_Id; Unique : Boolean := False) return Metadata_T
+   is
+      pragma Unreferenced (Ridx);
+      pragma Unreferenced (Unique);
+   begin
+      return No_Metadata_T;
+   end Create_TBAA_Type;
+
+   -------------------
+   -- New_TBAA_Type --
+   -------------------
+
+   function New_TBAA_Type
+     (TE : Entity_Id; Unique : Boolean := False) return Metadata_T is
+
+   begin
+      --  If this isn't a native type, we can't make a TBAA type entry for it
+
+      if Is_Nonnative_Type (TE) then
+         return No_Metadata_T;
+
+      --  If it's a scalar type, make a scalar type node
+
+      elsif Is_Scalar_Type (TE) then
+         declare
+            Size : constant GL_Value := Get_Type_Size (Default_GL_Type (TE));
+
+         begin
+            return Create_TBAA_Scalar_Type_Node (Get_Name (TE),
+                                                 To_Bytes (Size), TBAA_Root);
+         end;
+
+      --  If it's a record type, we know above that its a native type, meaning
+      --  that it just has one Record_Info entry, so its TBAA type entry is
+      --  that of that entry.
+
+      elsif Is_Record_Type (TE) then
+         return Create_TBAA_Type (Get_Record_Info (TE), Unique);
+
+      --  Otherwise, we can't (yet) make a type entry for it
+
+      else
+         return No_Metadata_T;
+      end if;
+
+   end New_TBAA_Type;
 
    ---------------------------------
    -- Add_Aliasing_To_Instruction --

@@ -342,10 +342,10 @@ private
 
    type Record_Info_Base is record
       LLVM_Type        : Type_T;
-      --  The LLVM type corresponding to this fragment, if any
+      --  LLVM type corresponding to this fragment, if any
 
       GT               : GL_Type;
-      --  The GL_Type corresponding to this fragment, if any
+      --  GL_Type corresponding to this fragment, if any
 
       Align            : Nat;
       --  If specified, the alignment of this piece
@@ -372,6 +372,9 @@ private
       --  Likewise for any part of the variant who offset starts at
       --  the beginning of a record (for field with record rep
       --  clauses).
+
+      First_Field      : Field_Info_Id;
+      --  Id of the first field contained in this record part, if any
 
       Unused_Bits      : Uint;
       --  The number of unused bits in the last type for this RI, either
@@ -401,15 +404,21 @@ private
    --  used to represent the field and bit positions if this is a bitfield.
 
    type Field_Info is record
+      Field                : Entity_Id;
+      --  Field for this which this is the information
+
       Rec_Info_Idx         : Record_Info_Id;
       --  Index into the record info table that contains this field
+
+      Next                 : Field_Info_Id;
+      --  Index of the next field in the Rec_Info_Idx
 
       Field_Ordinal        : Nat;
       --  Ordinal of this field within the contents of the record info table
 
       GT                   : GL_Type;
-      --  The GL_Type correspond to this field, which takes into account
-      --  a possible change in size
+      --  GL_Type correspond to this field, which takes into account a
+      --  possible change in size
 
       First_Bit            : Uint;
       --  If Present, the first bit (0-origin) within the LLVM field that

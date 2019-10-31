@@ -333,6 +333,12 @@ package body GNATLLVM.Records.Create is
       --  for variant records; see details there.  It also occurs for the
       --  same reason after a variable-size field.
 
+      First_Field_Id : Field_Info_Id       := Empty_Field_Info_Id;
+      --  First Field_Info_Id in this RI
+
+      Last_Field_Id  : Field_Info_Id       := Empty_Field_Info_Id;
+      --  Last Field_Info_Id created, if any
+
       GT             :  GL_Type            :=
         Default_GL_Type (TE, Create => False);
       --  The GL_Type for this record type
@@ -430,6 +436,7 @@ package body GNATLLVM.Records.Create is
             Variant_Expr     => Variant_Expr,
             Variants         => Variants,
             Overlap_Variants => Overlap_Variants,
+            First_Field      => First_Field_Id,
             Unused_Bits      => Unused_Bits);
 
          --  If we've had a previous RI for this part, link us to it.
@@ -450,6 +457,11 @@ package body GNATLLVM.Records.Create is
          Prev_Idx := Cur_Idx;
          Record_Info_Table.Increment_Last;
          Cur_Idx := Record_Info_Table.Last;
+
+         --  Reset the chain info for FIs
+
+         First_Field_Id := Empty_Field_Info_Id;
+         Last_Field_Id  := Empty_Field_Info_Id;
       end Add_RI;
 
       ------------
@@ -469,15 +481,12 @@ package body GNATLLVM.Records.Create is
          Matching_Field : Entity_Id;
 
       begin
-         --  If this field really isn't in the record we're working on, it
-         --  must be in a parent.  So it was correct to allocate space for
-         --  it, but let the record description be from the type that it's
-         --  actually in.  And finally,
-         --
-         --  If we're using a matching field, update F_GT to its type.
+         --  Create an entry for this field and properly chain it
 
          Field_Info_Table.Append
-           ((Rec_Info_Idx         => RI_Idx,
+           ((Field                => E,
+             Next                 => Empty_Field_Info_Id,
+             Rec_Info_Idx         => RI_Idx,
              GT                   => F_GT,
              Field_Ordinal        => Ordinal,
              First_Bit            => First_Bit,
@@ -485,6 +494,22 @@ package body GNATLLVM.Records.Create is
              Array_Bitfield       => Array_Bitfield,
              Large_Array_Bitfield => Large_Array_Bitfield));
 
+         if No (Last_Field_Id) then
+            First_Field_Id := Field_Info_Table.Last;
+         else
+            Field_Info_Table.Table (Last_Field_Id).Next :=
+              Field_Info_Table.Last;
+         end if;
+
+         Last_Field_Id := Field_Info_Table.Last;
+
+         --  If this field really isn't in the record we're working on, it
+         --  must be in a parent.  So it was correct to allocate space for
+         --  it, but we let the record description be from the type that
+         --  it's actually in.
+         --
+         --  If we're using a matching field, update F_GT to its type.
+         --
          --  The fields in the entity list for this type are almost, but
          --  not quite, in the same order as in the component list, so we
          --  have to search for a field in that list with the same

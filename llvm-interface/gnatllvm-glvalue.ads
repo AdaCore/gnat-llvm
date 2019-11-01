@@ -680,10 +680,13 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Post => not Overflowed (V), Inline;
    --  Clear the overflow flag in V
 
-   procedure Set_TBAA_Type (V : in out GL_Value; M : Metadata_T)
-     with Pre => Present (V), Post => TBAA_Type (V) = M;
+   procedure Set_TBAA_Type (V : in out GL_Value; MD : Metadata_T)
+     with Pre => Present (V), Post => TBAA_Type (V) = MD, inline;
    procedure Set_TBAA_Offset (V : in out GL_Value; Offset : ULL)
-     with Pre => Present (V), Post => TBAA_Offset (V) = Offset;
+     with Pre => Present (V), Post => TBAA_Offset (V) = Offset, Inline;
+   function Set_TBAA_Type (V : GL_Value; MD : Metadata_T) return GL_Value
+     with Pre => Present (V), Post => TBAA_Type (Set_TBAA_Type'Result) = MD,
+          Inline;
    --  Set the TBAA type and offset of V
 
    procedure Set_Value (VE : Entity_Id; VL : GL_Value)

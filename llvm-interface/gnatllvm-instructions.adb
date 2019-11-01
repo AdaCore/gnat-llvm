@@ -17,7 +17,6 @@
 
 with Ada.Unchecked_Conversion;
 
-with GNATLLVM.Aliasing;    use GNATLLVM.Aliasing;
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
@@ -162,9 +161,15 @@ package body GNATLLVM.Instructions is
 
    function Int_To_Ptr
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
-  is
-     (GM (Int_To_Ptr (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-          GV => V));
+   is
+      Result : GL_Value :=
+        GM (Int_To_Ptr (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+            GV => V);
+
+   begin
+      Initialize_TBAA (Result);
+      return Result;
+   end Int_To_Ptr;
 
    ----------------
    -- Ptr_To_Int --
@@ -183,9 +188,16 @@ package body GNATLLVM.Instructions is
    function Int_To_Ref
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-      (GM_Ref (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                           Pointer_Type (Type_Of (GT), 0), Name),
-               GT, V));
+      Result : GL_Value :=
+        GM_Ref (Int_To_Ptr (IR_Builder, LLVM_Value (V),
+                            Pointer_Type (Type_Of (GT), 0), Name),
+                GT, V);
+
+   begin
+      Initialize_TBAA (Result);
+      return Result;
+
+   end Int_To_Ref;
 
    -------------------------
    -- Int_To_Relationship --
@@ -197,9 +209,16 @@ package body GNATLLVM.Instructions is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-     (GM (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                      Type_For_Relationship (GT, R), Name),
-         GT, R, GV => V));
+      Result : GL_Value :=
+        GM (Int_To_Ptr (IR_Builder, LLVM_Value (V),
+                        Type_For_Relationship (GT, R), Name),
+            GT, R, GV => V);
+
+   begin
+      Initialize_TBAA (Result);
+      return Result;
+
+   end Int_To_Relationship;
 
    --------------
    -- Bit_Cast --
@@ -218,8 +237,14 @@ package body GNATLLVM.Instructions is
    function Pointer_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (GM (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-          GV => V));
+      Result : GL_Value :=
+        GM (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+            GV => V);
+   begin
+      Initialize_TBAA (Result);
+      return Result;
+
+   end Pointer_Cast;
 
    ----------------
    -- Ptr_To_Ref --
@@ -228,9 +253,16 @@ package body GNATLLVM.Instructions is
    function Ptr_To_Ref
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (GM_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                            Pointer_Type (Type_Of (GT), 0), Name),
-              GT, V));
+      Result : GL_Value :=
+        GM_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                              Pointer_Type (Type_Of (GT), 0), Name),
+                GT, V);
+
+   begin
+      Initialize_TBAA (Result);
+      return Result;
+
+   end Ptr_To_Ref;
 
    ----------------
    -- Ptr_To_Ref --
@@ -238,9 +270,16 @@ package body GNATLLVM.Instructions is
 
    function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
    is
-     (GM_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                            Pointer_Type (Type_Of (T), 0), Name),
-              Full_Designated_GL_Type (T), V));
+      Result : GL_Value :=
+        GM_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                              Pointer_Type (Type_Of (T), 0), Name),
+                Full_Designated_GL_Type (T), V);
+
+   begin
+      Initialize_TBAA (Result);
+      return Result;
+
+   end Ptr_To_Ref;
 
    -------------------------
    -- Ptr_To_Relationship --
@@ -252,9 +291,16 @@ package body GNATLLVM.Instructions is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-     (GM (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                        Type_For_Relationship (GT, R), Name),
-          GT, R, V));
+      Result : GL_Value :=
+        GM (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                          Type_For_Relationship (GT, R), Name),
+            GT, R, V);
+
+   begin
+      Initialize_TBAA (Result);
+      return Result;
+
+   end Ptr_To_Relationship;
 
    -------------------------
    -- Ptr_To_Relationship --
@@ -265,9 +311,16 @@ package body GNATLLVM.Instructions is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-      (GM (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                         Type_For_Relationship (Related_Type (T), R), Name),
-           Related_Type (T), R, V));
+      Result : GL_Value :=
+        GM (Pointer_Cast (IR_Builder, LLVM_Value (V),
+                          Type_For_Relationship (Related_Type (T), R), Name),
+            Related_Type (T), R, V);
+
+   begin
+      Initialize_TBAA (Result);
+      return Result;
+
+   end Ptr_To_Relationship;
 
    -------------
    -- Add_Sub --
@@ -298,6 +351,34 @@ package body GNATLLVM.Instructions is
       Result := G_From (Set_Arith_Attrs (V, LHS), LHS);
       Mark_Overflowed (Result, Overflowed (LHS) or else Overflowed (RHS));
       Set_Alignment (Result, Nat'Min (Alignment (LHS), Alignment (RHS)));
+
+      --  If we have a TBAA type on the LHS (and hence on the result),
+      --  we can only leave it that way (and update the offset) if there's
+      --  no TBAA type on the RHS and the RHS is a constant.  It must also
+      --  be true that the new offset is not negative.
+
+      if Present (TBAA_Type (Result)) then
+         if Present (TBAA_Type (RHS)) or else not Is_A_Const_Int (RHS)
+           or else Overflowed (RHS)
+         then
+            Set_TBAA_Type (Result, No_Metadata_T);
+         else
+            declare
+               Old_Offset      : constant LLI := LLI (TBAA_Offset (Result));
+               RHS_Value       : constant LLI := Get_Const_Int_Value (RHS);
+               RHS_Effective_V : constant LLI :=
+                 (if Is_Add then RHS_Value else -RHS_Value);
+               New_Offset      : constant LLI := Old_Offset + RHS_Effective_V;
+
+            begin
+               if New_Offset < 0 then
+                  Set_TBAA_Type   (Result, No_Metadata_T);
+               else
+                  Set_TBAA_Offset (Result, ULL (New_Offset));
+               end if;
+            end;
+         end if;
+      end if;
 
       --  If either operand or the result isn't a constant integer, if this
       --  is a modular integer type, or if we already had an overflow, we
@@ -377,7 +458,8 @@ package body GNATLLVM.Instructions is
                                          LHS),
                         LHS);
       Mark_Overflowed (Result, Overflowed (LHS) or else Overflowed (RHS));
-      Set_Alignment (Result, Alignment (LHS) * Alignment (RHS) / BPU);
+      Set_Alignment   (Result, Alignment (LHS) * Alignment (RHS) / BPU);
+      Set_TBAA_Type   (Result, No_Metadata_T);
 
       --  If either operand or the result isn't a constant integer, if this
       --  is a modular integer type, or if we already had an overflow, we
@@ -432,6 +514,7 @@ package body GNATLLVM.Instructions is
       Mark_Overflowed (Result,
                        Overflowed (LHS) or else Overflowed (RHS)
                        or else (Signed and Is_Const_Int_Value (RHS, -1)));
+      Set_TBAA_Type   (Result, No_Metadata_T);
 
       --  If RHS is a constant power of two, we can compute the alignment
       --  of the result from the input, but only check for small powers of
@@ -495,6 +578,7 @@ package body GNATLLVM.Instructions is
 
       Result := G_From (RV, V);
       Mark_Overflowed (Result, Overflowed (V) or else Overflowed (Count));
+      Set_TBAA_Type   (Result, No_Metadata_T);
 
       --  If count is a positive constant, we can compute the alignment of
       --  the result from the input.  Otherwise we don't know anything
@@ -685,6 +769,47 @@ package body GNATLLVM.Instructions is
      (G (SI_To_FP (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
          Overflowed => Overflowed (V)));
 
+   ------------------
+   -- Build_Select --
+   ------------------
+
+   function Build_Select
+     (C_If, C_Then, C_Else : GL_Value; Name : String := "") return GL_Value
+   is
+      Result : GL_Value;
+
+   begin
+      --  If we know the direction this will go, we can constant fold
+
+      if C_If = Const_True then
+         return C_Then;
+      elsif C_If = Const_False then
+         return C_Else;
+
+      --  Otherwise, form the result.  The alignment can be the most
+      --  conservative of the two, but we can only keep the TBAA information
+      --  if it's the same on both arms.
+
+      else
+         Result := G_From (Build_Select (IR_Builder, C_If => LLVM_Value (C_If),
+                                         C_Then => LLVM_Value (C_Then),
+                                         C_Else => LLVM_Value (C_Else),
+                                         Name => Name),
+                           C_Then);
+         Set_Alignment (Result,
+                        Nat'Min (Alignment (C_Then), Alignment (C_Else)));
+
+         if TBAA_Type (C_Then) /= TBAA_Type (C_Else)
+           or else TBAA_Offset (C_Then) /= TBAA_Offset (C_Else)
+         then
+            Set_TBAA_Type (Result, No_Metadata_T);
+         end if;
+
+         return Result;
+      end if;
+
+   end Build_Select;
+
    -------------------
    -- Build_Cond_Br --
    -------------------
@@ -819,6 +944,7 @@ package body GNATLLVM.Instructions is
    is
       Val_Idxs : aliased Value_Array (Indices'Range);
       Result   : GL_Value;
+      Offset   : ULL;
 
    begin
       for J in Indices'Range loop
@@ -831,6 +957,15 @@ package body GNATLLVM.Instructions is
 
       Set_Alignment (Result, Nat'Min (Alignment (Ptr),
                                       Get_GEP_Offset_Alignment (Result)));
+
+      --  See if we can update Result's TBAA offset
+
+      if Get_GEP_Constant_Offset (Result, Offset) then
+         Set_TBAA_Offset (Result, TBAA_Offset (Result) + Offset);
+      else
+         Set_TBAA_Type   (Result, No_Metadata_T);
+      end if;
+
       return Result;
    end GEP_To_Relationship;
 
@@ -847,6 +982,7 @@ package body GNATLLVM.Instructions is
    is
       Val_Idxs : aliased Value_Array (Indices'Range);
       Result   : GL_Value;
+      Offset   : ULL;
 
    begin
       for J in Indices'Range loop
@@ -859,6 +995,15 @@ package body GNATLLVM.Instructions is
                     GT, R, Ptr);
       Set_Alignment (Result, Nat'Min (Alignment (Ptr),
                                       Get_GEP_Offset_Alignment (Result)));
+
+      --  See if we can update Result's TBAA offset
+
+      if Get_GEP_Constant_Offset (Result, Offset) then
+         Set_TBAA_Offset (Result, TBAA_Offset (Result) + Offset);
+      else
+         Set_TBAA_Type   (Result, No_Metadata_T);
+      end if;
+
       return Result;
    end GEP_Idx_To_Relationship;
 

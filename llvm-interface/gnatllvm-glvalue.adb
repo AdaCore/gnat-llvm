@@ -318,9 +318,20 @@ package body GNATLLVM.GLValue is
    -- Set_TBAA_Type --
    -------------------
 
-   procedure Set_TBAA_Type (V : in out GL_Value; M : Metadata_T) is
+   procedure Set_TBAA_Type (V : in out GL_Value; MD : Metadata_T) is
    begin
-      V.TBAA_Type := M;
+      V.TBAA_Type := MD;
+   end Set_TBAA_Type;
+
+   -------------------
+   -- Set_TBAA_Type --
+   -------------------
+
+   function Set_TBAA_Type (V : GL_Value; MD : Metadata_T) return GL_Value is
+      New_V : GL_Value := V;
+   begin
+      Set_TBAA_Type (New_V, MD);
+      return New_V;
    end Set_TBAA_Type;
 
    ---------------------

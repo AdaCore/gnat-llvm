@@ -340,6 +340,27 @@ Dump_Metadata (MDNode *MD)
 }
 
 extern "C"
+unsigned
+Get_Metadata_Num_Operands (MDNode *MD)
+{
+  return MD->getNumOperands ();
+}
+
+extern "C"
+uint64_t
+Get_Metadata_Operand_Constant_Value (MDNode *MD, unsigned i)
+{
+  return mdconst::extract<ConstantInt> (MD->getOperand (i))->getZExtValue ();
+}
+
+extern "C"
+MDNode *
+Get_Metadata_Operand (MDNode *MD, unsigned i)
+{
+  return dyn_cast<MDNode> (MD->getOperand (i));
+}
+
+extern "C"
 void
 Initialize_LLVM (void)
 {

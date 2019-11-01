@@ -130,6 +130,20 @@ package body GNATLLVM.Wrapper is
       Add_Named_Attribute_C (Func, Name & ASCII.NUL, Value & ASCII.NUL, Ctx);
    end Add_Named_Attribute;
 
+   -----------------------------------------
+   -- Get_Metadata_Operand_Constant_Value --
+   -----------------------------------------
+   function Get_Metadata_Operand_Constant_Value
+     (MD : Metadata_T; Idx : Nat) return ULL
+   is
+      function Get_Metadata_Operand_Constant_Value_C
+        (MD : Metadata_T; Idx : unsigned) return uint64_t
+        with Import, Convention => C,
+             External_Name => "Get_Metadata_Operand_Constant_Value";
+   begin
+      return ULL (Get_Metadata_Operand_Constant_Value_C (MD, unsigned (Idx)));
+   end Get_Metadata_Operand_Constant_Value;
+
    ---------------------------
    --  LLVM_Optimize_Module --
    ---------------------------

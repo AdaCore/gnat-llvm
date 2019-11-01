@@ -165,6 +165,17 @@ package GNATLLVM.Wrapper is
    procedure Dump_Metadata (MD : Metadata_T)
      with Import, Convention => C, External_Name => "Dump_Metadata";
 
+   function Get_Metadata_Num_Operands (MD : Metadata_T) return Nat
+     with Import, Convention => C,
+          External_Name => "Get_Metadata_Num_Operands";
+
+   function Get_Metadata_Operand (MD : Metadata_T; Idx : Nat) return Metadata_T
+     with Import, Convention => C, External_Name => "Get_Metadata_Operand";
+
+   function Get_Metadata_Operand_Constant_Value
+     (MD : Metadata_T; Idx : Nat) return ULL
+     with Pre => Present (MD), Inline;
+
    procedure LLVM_Optimize_Module
      (Module                : Module_T;
       Target_Machine        : Target_Machine_T;

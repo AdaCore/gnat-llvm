@@ -43,7 +43,14 @@ package GNATLLVM.Aliasing is
    --
    --  The format of an aggregate type tag is:
    --
-   --    TBD
+   --    !1 = !{!2, i64 16, !"rectbaa__r", !3, i64 0, i64 4, !4, i64 4,
+   --           i64 4, !5, i64 8, i64 4, !6, i64 12, i64 4}
+   --
+   --  where !2 is also a pointer to the parent, 16 is the size, in bytes,
+   --  of the type, and then we have triples of three entries each.  The
+   --  first in each triple is the type tag for that field, the second is
+   --  the offset of that type from the start of the struct, and the third is
+   --  the size of that field.
    --
    --  The format of an access tag is:
    --

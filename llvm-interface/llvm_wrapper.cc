@@ -59,7 +59,7 @@ extern "C"
 MDNode *
 Create_TBAA_Root (MDBuilder *MDHelper)
 {
-  return MDHelper->createTBAARoot ("Ada TBAA");
+  return MDHelper->createTBAARoot ("Ada Root");
 }
 
 extern "C"
@@ -193,13 +193,33 @@ Add_Writeonly_Attribute (Function *fn, unsigned idx)
 
 extern "C"
 MDNode *
-Create_TBAA_Scalar_Type_Node_C (LLVMContext &ctx, MDBuilder *MDHelper,
-				const char *name, Constant *size,
-				MDNode *parent)
+Create_TBAA_Scalar_Type_Node (LLVMContext &ctx, MDBuilder *MDHelper,
+			      const char *name, Constant *size, MDNode *parent)
 {
   auto MDname = MDHelper->createString (name);
   auto MDsize = MDHelper->createConstant (size);
   return MDNode::get(ctx, {parent, MDsize, MDname});
+}
+
+extern "C"
+MDNode *
+Create_TBAA_Struct_Type_Node (LLVMContext &ctx, MDBuilder *MDHelper,
+			      const char *name, Constant *size, int num_fields,
+			      MDNode *parent, MDNode *fields[],
+			      Constant *offsets[], Constant *sizes[])
+{
+  SmallVector<Metadata *, 8> Ops (num_fields * 3 + 3);
+  Ops [0] = parent;
+  Ops [1] = MDHelper->createConstant (size);
+  Ops [2] = MDHelper->createString (name);
+  for (unsigned i = 0; i < num_fields; i++)
+    {
+      Ops[3 + i * 3] = fields[i];
+      Ops[3 + i * 3 + 1] = MDHelper->createConstant (offsets[i]);
+      Ops[3 + i * 3 + 2] = MDHelper->createConstant (sizes[i]);
+    }
+
+  return MDNode:: get (ctx, Ops);
 }
 
 extern "C"
@@ -474,4 +494,12 @@ Get_GEP_Constant_Offset (Value *GEP, DataLayout &dl, uint64_t *result)
 
   *result = Offset.getZExtValue ();
   return true;
+}
+
+extern "C"
+int64_t
+Get_Element_Offset (DataLayout &DL, StructType *ST, unsigned idx)
+{
+    const StructLayout *SL = DL.getStructLayout (ST);
+    return SL->getElementOffset (idx);
 }

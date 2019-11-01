@@ -37,12 +37,46 @@ package body GNATLLVM.Wrapper is
          Size   : Value_T;
          Parent : Metadata_T) return Metadata_T
         with Import, Convention => C,
-             External_Name => "Create_TBAA_Scalar_Type_Node_C";
+             External_Name => "Create_TBAA_Scalar_Type_Node";
 
    begin
       return Create_TBAA_Scalar_Type_Node_C (Ctx, MDBld, Name & ASCII.NUL,
                                              Size, Parent);
    end Create_TBAA_Scalar_Type_Node;
+
+   ----------------------------------
+   -- Create_TBAA_Struct_Type_Node --
+   ----------------------------------
+
+   function Create_TBAA_Struct_Type_Node
+     (Ctx        : Context_T;
+      MDBld      : MD_Builder_T;
+      Name       : String;
+      Size       : Value_T;
+      Num_Fields : Nat;
+      Parent     : Metadata_T;
+      Fields     : System.Address;
+      Offsets    : System.Address;
+      Sizes      : System.Address) return Metadata_T
+   is
+      function Create_TBAA_Struct_Type_Node_C
+        (Ctx        : Context_T;
+         MDBld      : MD_Builder_T;
+         Name       : String;
+         Size       : Value_T;
+         Num_Fields : Nat;
+         Parent     : Metadata_T;
+         Fields     : System.Address;
+         Offsets    : System.Address;
+         Sizes      : System.Address) return Metadata_T
+        with Import, Convention => C,
+             External_Name => "Create_TBAA_Struct_Type_Node";
+
+   begin
+      return Create_TBAA_Struct_Type_Node_C (Ctx, MDBld, Name & ASCII.NUL,
+                                             Size, Num_Fields, Parent, Fields,
+                                             Offsets, Sizes);
+   end Create_TBAA_Struct_Type_Node;
 
    -----------------------
    -- Create_Enumerator --
@@ -192,11 +226,15 @@ package body GNATLLVM.Wrapper is
                               Merge_B, Thin_LTO_B, LTO_B, Reroll_B);
    end LLVM_Optimize_Module;
 
+   -----------------------------
+   -- Get_GEP_Constant_Offset --
+   -----------------------------
+
    function Get_GEP_Constant_Offset
      (GEP : Value_T; Layout : Target_Data_T; Offset : out ULL) return Boolean
    is
       function Get_GEP_Constant_Offset_C
-        (GEP : Value_T;
+        (GEP    : Value_T;
          Layout : Target_Data_T;
          Offset : access ULL) return Bool_T
         with Import, Convention => C,
@@ -210,5 +248,18 @@ package body GNATLLVM.Wrapper is
       Offset := Result_Offset;
       return (if Result = 0 then False else True);
    end Get_GEP_Constant_Offset;
+
+   ------------------------
+   -- Get_Element_Offset --
+   ------------------------
+
+   function Get_Element_Offset (T : Type_T; Idx : unsigned) return ULL
+   is
+      function Get_Element_Offset_C
+        (Layout : Target_Data_T; T : Type_T; Idx : unsigned) return int64_t
+        with Import, Convention => C, External_Name => "Get_Element_Offset";
+   begin
+      return ULL (Get_Element_Offset_C (Module_Data_Layout, T, Idx));
+   end Get_Element_Offset;
 
 end GNATLLVM.Wrapper;

@@ -77,6 +77,15 @@ package GNATLLVM.Aliasing is
    --  it's data, we have no idea of its TBAA information, but if it's a
    --  reference we can initialize the TBAA data.
 
+   function Create_TBAA_Type
+     (TE : Entity_Id; Unique : Boolean := False) return Metadata_T
+     with Pre => Is_Type_Or_Void (TE);
+   function Create_TBAA_Type
+     (GT : GL_Type; Unique : Boolean := False) return Metadata_T
+     with Pre => Present (GT);
+   --  Create a TBAA type entry for the specified type.  If Unique is
+   --  True, make a new entry for that type instead of reusing a previous one.
+
    procedure Add_Aliasing_To_Instruction (Inst : Value_T; V : GL_Value)
      with Pre => Present (Is_A_Instruction (Inst)) and then Present (V);
    --  Add aliasing information from V to Inst

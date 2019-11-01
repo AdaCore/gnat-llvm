@@ -24,11 +24,34 @@ with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
+with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Aliasing is
+
+   --  Define accessor functions for type tags
+
+   function Size_In_Bytes (MD : Metadata_T) return ULL is
+     (Get_Metadata_Operand_Constant_Value (MD, 1))
+     with Pre => Present (MD);
+
+   function Is_Struct_Tag (MD : Metadata_T) return Boolean is
+     (Get_Metadata_Num_Operands (MD) > 3)
+     with Pre => Present (MD);
+
+   function Last_Field_Index (MD : Metadata_T) return Nat is
+     ((Get_Metadata_Num_Operands (MD) - 3) / 3 - 1)
+     with Pre => Is_Struct_Tag (MD);
+
+   function Field_Type (MD : Metadata_T; Idx : Nat) return Metadata_T is
+     (Get_Metadata_Operand (MD, 3 + Idx * 3))
+     with Pre => Is_Struct_Tag (MD);
+
+   function Field_Offset (MD : Metadata_T; Idx : Nat) return ULL is
+     (Get_Metadata_Operand_Constant_Value (MD, 3 + Idx * 3 + 1))
+     with Pre => Is_Struct_Tag (MD);
 
    --  We need to record all types that are the designated types of access
    --  types that are unchecked-converted into each other.  All of those
@@ -72,30 +95,53 @@ package body GNATLLVM.Aliasing is
      with Pre => Is_Type (TE);
    --  Return the UC_Group_Idx corresponding to TE, if any
 
+   procedure Search_For_UCs;
+   --  Look through all units for UC's between two access types
+
    TBAA_Root : Metadata_T;
    --  Root of tree for Type-Based alias Analysis (TBAA) metadata
 
    function Create_TBAA_Type
-     (TE : Entity_Id; Unique : Boolean := False) return Metadata_T
-     with Pre => Is_Type_Or_Void (TE);
-   function Create_TBAA_Type
-     (GT : GL_Type; Unique : Boolean := False) return Metadata_T
-     with Pre => Present (GT);
-   --  Create a TBAA type entry for the specified type.  If Unique is
-   --  True, make a new entry for that type instead of reusing a previous one.
-
-   function Create_TBAA_Type
-     (Ridx : Record_Info_Id; Unique : Boolean := False) return Metadata_T
+     (TE     : Entity_Id;
+      Ridx   : Record_Info_Id;
+      Unique : Boolean := False) return Metadata_T
      with Pre => Present (Ridx);
-   --  Create a TBAA type entry for the specified Record_Info Id
+   --  Create a TBAA type entry for the specified Record_Info Id.
+   --  If TE is Present, this is the only RI for TE
 
-   function New_TBAA_Type
-     (TE : Entity_Id; Unique : Boolean := False) return Metadata_T
+   function Create_TBAA_Type_Internal
+     (TE     : Entity_Id;
+      Ridx   : Record_Info_Id;
+      Unique : Boolean := False) return Metadata_T
+     with Pre => Present (Ridx);
+   --  Helper for above function when we know that we can't use an existing
+   --  TBAA type
+
+   function New_TBAA_Type (TE : Entity_Id; Unique : Boolean) return Metadata_T
      with Pre => Is_Full_Base_Type (TE);
    --  Make a new TBAA type entry for TE, which is known to be a base type
 
-   procedure Search_For_UCs;
-   --  Look through all units for UC's between two access types
+   function Get_TBAA_Name (TE : Entity_Id; Unique : Boolean) return String;
+   --  Return the name to use for a TBAA type entry for TE, if present,
+   --  taking into account whether we need a unique entry.
+
+   Name_Idx      : Nat := 0;
+   --  The index used to create a unique name for the above function
+
+   function Extract_Access_Type
+     (MD                : Metadata_T;
+      Offset            : in out ULL;
+      Our_Size_In_Bytes : ULL) return Metadata_T
+     with Pre  => Present (MD) and then Our_Size_In_Bytes /= 0
+                  and then (Offset = 0 or else Is_Struct_Tag (MD))
+                  and then (Is_Struct_Tag (MD)
+                              or else Our_Size_In_Bytes = Size_In_Bytes (MD)),
+          Post => Present (Extract_Access_Type'Result)
+                  and then Offset'Old >= Offset;
+   --  MD is a type tag and we are doing an access of Size_In_Bytes wide
+   --  from it at Offset bytes from it.  Return the corresponding access
+   --  tag and new offset.  If MD is not a struct tag or if we're accessing
+   --  the entire structure, we keep Offset unchanged and return MD.
 
    ----------------
    -- Initialize --
@@ -232,6 +278,23 @@ package body GNATLLVM.Aliasing is
       Scan_All_Units;
    end Search_For_UCs;
 
+   -------------------
+   -- Get_TBAA_Name --
+   -------------------
+
+   function Get_TBAA_Name (TE : Entity_Id; Unique : Boolean) return String is
+      Buf : Bounded_String (Max_Length => 20);
+   begin
+      if No (TE) or else Unique then
+         Append (Buf, "TBAA_");
+         Append (Buf, Name_Idx);
+         Name_Idx := Name_Idx + 1;
+         return +Buf;
+      else
+         return Get_Name (TE);
+      end if;
+   end Get_TBAA_Name;
+
    ----------------------
    -- Create_TBAA_Type --
    ----------------------
@@ -250,6 +313,12 @@ package body GNATLLVM.Aliasing is
       if Flag_No_Strict_Aliasing or else Ekind (BT) = E_Void then
          return No_Metadata_T;
 
+      --  ??? For now, it this is a scalar and the sizes of the base type
+      --  differs from this type, don't create a TBAA.
+
+      elsif Esize (TE) /= Esize (BT) then
+         return No_Metadata_T;
+
       --  If the base type has a TBAA, use it for this type
 
       elsif not Unique and then Present (TBAA) then
@@ -259,6 +328,15 @@ package body GNATLLVM.Aliasing is
       --  use any TBAA we've already made for a type in that group.
 
       elsif Present (Grp) and then not Unique then
+
+         --  If this is an aggregate type, we can't use the same type tag
+         --  because looking into the structures will fail.  We have no choice
+         --  here but to not return a type tag in this case.
+
+         if Is_Aggregate_Type (BT) then
+            return No_Metadata_T;
+         end if;
+
          for J in 1 .. UC_Table.Last loop
             declare
                UCE : constant UC_Entry := UC_Table.Table (J);
@@ -282,7 +360,7 @@ package body GNATLLVM.Aliasing is
       --  If we haven't found one yet, make a new TBAA for this type
 
       if No (TBAA) then
-         TBAA := New_TBAA_Type (BT);
+         TBAA := New_TBAA_Type (BT, Unique);
       end if;
 
       --  Now save and return the TBAA value, if any and if requested
@@ -302,28 +380,108 @@ package body GNATLLVM.Aliasing is
    function Create_TBAA_Type
      (GT : GL_Type; Unique : Boolean := False) return Metadata_T
    is
-     (Create_TBAA_Type (Full_Etype (GT), Unique));
+     ((if   Is_Primitive_GL_Type (GT)
+       then Create_TBAA_Type (Full_Etype (GT), Unique) else No_Metadata_T));
 
    ----------------------
    -- Create_TBAA_Type --
    ----------------------
 
    function Create_TBAA_Type
-     (Ridx : Record_Info_Id; Unique : Boolean := False) return Metadata_T
+     (TE     : Entity_Id;
+      Ridx   : Record_Info_Id;
+      Unique : Boolean := False) return Metadata_T
    is
-      pragma Unreferenced (Ridx);
-      pragma Unreferenced (Unique);
+      TBAA : Metadata_T := TBAA_Type (Ridx);
+
    begin
-      return No_Metadata_T;
+      if No (TBAA) or else Unique then
+         TBAA := Create_TBAA_Type_Internal (TE, Ridx, Unique);
+      end if;
+
+      if Present (TBAA) and then not Unique then
+         Set_TBAA_Type (Ridx, TBAA);
+      end if;
+
+      return TBAA;
    end Create_TBAA_Type;
+
+   -------------------------------
+   -- Create_TBAA_Type_Internal --
+   -------------------------------
+
+   function Create_TBAA_Type_Internal
+     (TE     : Entity_Id;
+      Ridx   : Record_Info_Id;
+      Unique : Boolean := False) return Metadata_T
+   is
+      Struct_Fields : constant Struct_Field_Array :=
+        RI_To_Struct_Field_Array (Ridx);
+      Offsets       : Value_Array    (Struct_Fields'Range);
+      Sizes         : Value_Array    (Struct_Fields'Range);
+      TBAAs         : Metadata_Array (Struct_Fields'Range);
+      TBAA          : Metadata_T;
+
+   begin
+      --  If we have no data, this is an empty structure, so we can't have
+      --  an access into it.
+
+      if Struct_Fields'Length = 0 then
+         return No_Metadata_T;
+      end if;
+
+      --  Otherwise fill in the three arrays above.  If we can't get a
+      --  TBAA entry for a field, we can't make a TBAA type for the struct.
+
+      for J in Struct_Fields'Range loop
+         Offsets (J) := Const_Int (LLVM_Size_Type,
+                                   Struct_Fields (J).Offset, False);
+         Sizes   (J) := Const_Int
+           (LLVM_Size_Type, To_Bytes (Get_Type_Size (Struct_Fields (J).T)),
+            False);
+
+         --  If there's no GT for the field, this is a field used to store
+         --  bitfields.  So we make a unique scalar TBAA type entry for it.
+
+         if No (Struct_Fields (J).GT) then
+            TBAA := Create_TBAA_Scalar_Type_Node
+              ("BF", G (Sizes (J), Size_GL_Type), TBAA_Root);
+
+         --  Otherwise, if this GT isn't the primitive GT, we can't make
+         --  a TBAA type entry for it, at least for now.
+
+         elsif not Is_Primitive_GL_Type (Struct_Fields (J).GT) then
+            TBAA := No_Metadata_T;
+
+         --  Otherwise, try to get or make a type entry
+
+         else
+            TBAA := Create_TBAA_Type (Struct_Fields (J).GT,
+                                      not Struct_Fields (J).Is_Aliased);
+         end if;
+
+         --  If we found an entry, store it.  Otherwise, we fail.
+
+         if Present (TBAA) then
+            TBAAs (J) := TBAA;
+         else
+            return No_Metadata_T;
+         end if;
+      end loop;
+
+      return Create_TBAA_Struct_Type_Node
+        (Context, MD_Builder, Get_TBAA_Name (TE, Unique),
+         LLVM_Value (RI_Size_In_Bytes (Ridx)), Struct_Fields'Length,
+         TBAA_Root, TBAAs'Address, Offsets'Address, Sizes'Address);
+
+   end Create_TBAA_Type_Internal;
 
    -------------------
    -- New_TBAA_Type --
    -------------------
 
-   function New_TBAA_Type
-     (TE : Entity_Id; Unique : Boolean := False) return Metadata_T is
-
+   function New_TBAA_Type (TE : Entity_Id; Unique : Boolean) return Metadata_T
+   is
    begin
       --  If this isn't a native type, we can't make a TBAA type entry for it
 
@@ -337,7 +495,7 @@ package body GNATLLVM.Aliasing is
             Size : constant GL_Value := Get_Type_Size (Default_GL_Type (TE));
 
          begin
-            return Create_TBAA_Scalar_Type_Node (Get_Name (TE),
+            return Create_TBAA_Scalar_Type_Node (Get_TBAA_Name (TE, Unique),
                                                  To_Bytes (Size), TBAA_Root);
          end;
 
@@ -346,7 +504,7 @@ package body GNATLLVM.Aliasing is
       --  that of that entry.
 
       elsif Is_Record_Type (TE) then
-         return Create_TBAA_Type (Get_Record_Info (TE), Unique);
+         return Create_TBAA_Type (TE, Get_Record_Info (TE), Unique);
 
       --  Otherwise, we can't (yet) make a type entry for it
 
@@ -356,21 +514,75 @@ package body GNATLLVM.Aliasing is
 
    end New_TBAA_Type;
 
+   --------------------------
+   --  Extract_Access_Type --
+   --------------------------
+
+   function Extract_Access_Type
+     (MD                : Metadata_T;
+      Offset            : in out ULL;
+      Our_Size_In_Bytes : ULL) return Metadata_T is
+   begin
+      --  If we're accessing the entire object, we return it and we're done
+
+      if Size_In_Bytes (MD) = Our_Size_In_Bytes then
+         return MD;
+      end if;
+
+      --  Otherwise we know (from the preconditions) that MD is a struct
+      --  tag.  We find the last field whose offset is less than or equal
+      --  to our offset and recurse in case we're into a nested struct.
+
+      for J in 0 .. Last_Field_Index (MD) loop
+         if J = Last_Field_Index (MD)
+           or else Field_Offset (MD, J + 1) > Offset
+         then
+            Offset := Offset - Field_Offset (MD, J);
+            return Extract_Access_Type (Field_Type (MD, J), Offset,
+                                        Our_Size_In_Bytes);
+         end if;
+      end loop;
+
+      --  We should never hit here because the above will always stop us
+      --  at the last field, at worst
+
+      return No_Metadata_T;
+   end Extract_Access_Type;
+
    ---------------------------------
    -- Add_Aliasing_To_Instruction --
    ---------------------------------
 
    procedure Add_Aliasing_To_Instruction (Inst : Value_T; V : GL_Value) is
-      GT           : constant GL_Type    := Related_Type (V);
-      TBAA         : constant Metadata_T := TBAA_Type    (V);
-      Offset       : constant ULL        := TBAA_Offset  (V);
+      GT            : constant GL_Type :=
+        (if   Is_Data (V) then Full_Designated_GL_Type (V)
+         else Related_Type (V));
+      Size_In_Bytes : constant ULL     :=
+          To_Bytes (Get_Type_Size (Type_Of (GT)));
+      Orig_Offset   : constant ULL     := TBAA_Offset  (V);
+      Base_Type     : Metadata_T       := TBAA_Type    (V);
+      Offset        : ULL              := Orig_Offset;
+      Access_Type   : Metadata_T;
 
    begin
-      if Present (TBAA) and then not Universal_Aliasing (GT) then
+      --  If we couldn't track V's TBAA information, we can try to just use
+      --  the TBAA information from the type.
+
+      if No (Base_Type) then
+         Base_Type := Create_TBAA_Type (GT);
+         Offset    := 0;
+      end if;
+
+      --  If we still couldn't find a tag, if this type is marked to alias
+      --  everything, or if our size is zero, don't do anything.
+
+      if Present (Base_Type) and then not Universal_Aliasing (GT)
+        and then Size_In_Bytes /= 0
+      then
+         Access_Type := Extract_Access_Type (Base_Type, Offset, Size_In_Bytes);
          Add_TBAA_Access
-           (Inst,
-            Create_TBAA_Access_Tag (MD_Builder, TBAA, TBAA, Offset,
-                                    To_Bytes (Get_Type_Size (Type_Of (GT)))));
+           (Inst, Create_TBAA_Access_Tag (MD_Builder, Base_Type, Access_Type,
+                                          Orig_Offset, Size_In_Bytes));
       end if;
    end Add_Aliasing_To_Instruction;
 

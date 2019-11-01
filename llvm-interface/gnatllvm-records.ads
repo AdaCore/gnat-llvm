@@ -123,6 +123,29 @@ package GNATLLVM.Records is
      with Pre => Present (Ridx), Post => TBAA_Type (Ridx) = M, Inline;
    --  Set and get the TBAA type entry for Ridx
 
+   --  Because the structure of record and field info is private and we
+   --  don't want to generate too many accessors, we provide a function
+   --  here to collect and return information about fields in an RI.
+
+   type Struct_Field is record
+      Offset     : ULL;
+      T          : Type_T;
+      GT         : GL_Type;
+      Is_Aliased : Boolean;
+   end record;
+
+   type Struct_Field_Array is array (Nat range <>) of Struct_Field;
+
+   function RI_To_Struct_Field_Array
+     (Ridx : Record_Info_Id) return Struct_Field_Array
+     with Pre => Present (Ridx);
+   --  Return an array of struct field entries for the fields in the RI
+
+   function RI_Size_In_Bytes (Ridx : Record_Info_Id) return GL_Value
+     with Pre => Present (Ridx);
+   --  Only valid when Ridx is known to be of a single LLVM type and is
+   --  the size of the RI (i.e. the size of the type) in bytes.
+
    function Field_Ordinal (F : Entity_Id) return unsigned
      with Pre => Ekind_In (F, E_Component, E_Discriminant);
    --  Return the index of the field denoted by F. We assume here, but

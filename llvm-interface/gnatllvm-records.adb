@@ -35,6 +35,7 @@ with GNATLLVM.Instructions;  use GNATLLVM.Instructions;
 with GNATLLVM.Subprograms;   use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;         use GNATLLVM.Utils;
 with GNATLLVM.Variables;     use GNATLLVM.Variables;
+with GNATLLVM.Wrapper;       use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Records is
 
@@ -1477,6 +1478,83 @@ package body GNATLLVM.Records is
          end loop;
       end return;
    end Ancestor_Field;
+
+   ------------------------------
+   -- RI_To_Struct_Field_Array --
+   ------------------------------
+
+   function RI_To_Struct_Field_Array
+     (Ridx : Record_Info_Id) return Struct_Field_Array
+   is
+      package Field_Table is new Table.Table
+        (Table_Component_Type => Struct_Field,
+         Table_Index_Type     => Nat,
+         Table_Low_Bound      => 1,
+         Table_Initial        => 20,
+         Table_Increment      => 5,
+         Table_Name           => "Field_Table");
+
+      Last_Ord : Int               := -1;
+      RI       : constant Record_Info := Record_Info_Table.Table (Ridx);
+      F_Idx    : Field_Info_Id        := RI.First_Field;
+      FI       : Field_Info;
+
+   begin
+      --  If this doesn't contain an LLVM type, this is not a native LLVM
+      --  structure, so we can't do anything.
+
+      if No (RI.LLVM_Type) then
+         return Struct_Field_Array'(1 .. 0 => <>);
+      end if;
+
+      --  Otherwise, loop through all the fields in this record.  There may
+      --  be multiple fields corresponding to one ordinal, so just look at
+      --  one of them.
+
+      while Present (F_Idx) loop
+         FI := Field_Info_Table.Table (F_Idx);
+         if FI.Field_Ordinal /= Last_Ord then
+            Last_Ord := FI.Field_Ordinal;
+            declare
+               F_Type : constant Type_T     :=
+                 Struct_Get_Type_At_Index (RI.LLVM_Type, unsigned (Last_Ord));
+               Offset : constant ULL        :=
+                 Get_Element_Offset (RI.LLVM_Type, unsigned (Last_Ord));
+               GT     : constant GL_Type    :=
+                 (if Is_Bitfield_By_Rep (FI.Field) then No_GL_Type else FI.GT);
+
+            begin
+               Field_Table.Append
+                 ((Offset, F_Type, GT, Is_Aliased (FI.Field)));
+            end;
+         end if;
+
+         F_Idx := FI.Next;
+      end loop;
+
+      declare
+         Result : Struct_Field_Array (1 .. Field_Table.Last);
+
+      begin
+         for J in Result'Range loop
+            Result (J) := Field_Table.Table (J);
+         end loop;
+
+         return Result;
+      end;
+   end RI_To_Struct_Field_Array;
+
+   ----------------------
+   -- RI_Size_In_Bytes --
+   ----------------------
+
+   function RI_Size_In_Bytes (Ridx : Record_Info_Id) return GL_Value is
+      RI : constant Record_Info := Record_Info_Table.Table (Ridx);
+   begin
+      pragma Assert (Present (RI.LLVM_Type));
+
+      return To_Bytes (Get_Type_Size (RI.LLVM_Type));
+   end RI_Size_In_Bytes;
 
    ---------------------
    -- Field_Pack_Kind --

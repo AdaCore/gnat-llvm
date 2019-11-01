@@ -36,6 +36,11 @@ package body GNATLLVM.Instructions is
      with Pre => Present (V) and then Present (Result);
    --  Return True if the truncation operation from V to Result overflowed
 
+   procedure Update_Offset_For_GEP (Result : in out GL_Value; Ptr : GL_Value)
+     with Pre => Present (Result) and then Present (Ptr);
+   --  Result is the result of a GEP whose pointer is Ptr.  Update the
+   --  TBAA offset of Result or clear the TBAA data if we can't compute it.
+
    --------------------------
    -- Get_Current_Position --
    --------------------------
@@ -919,6 +924,51 @@ package body GNATLLVM.Instructions is
       return Result;
    end Build_Phi;
 
+   ---------------------------
+   -- Update_Offset_For_GEP --
+   ---------------------------
+
+   procedure Update_Offset_For_GEP (Result : in out GL_Value; Ptr : GL_Value)
+   is
+      Orig_Offset : ULL;
+      New_Offset  : ULL;
+
+   begin
+      --  We know that Result is a GEP, but it's possible that Ptr was also
+      --  a GEP with the same input as Result and that Result is folded
+      --  into a GEP with an additional operand.  In that case,
+      --  incrementing the TBAA offset of Ptr by the offset of Result is
+      --  wrong since that would be counting the offset of Ptr's GEP twice.
+      --
+      --  First see if there's no TBAA data for Result or if we can't
+      --  compute an offset for it.
+
+      if No (TBAA_Type (Result)) then
+         return;
+      elsif not Get_GEP_Constant_Offset (Result, New_Offset) then
+         Set_TBAA_Type (Result, No_Metadata_T);
+         return;
+
+      --  Otherwise, adjust Result's offset.  Then see if we may have the
+      --  folded case above.
+
+      else
+         Set_TBAA_Offset (Result, TBAA_Offset (Result) + New_Offset);
+         if Get_Value_Kind (Ptr)
+             in Constant_Expr_Value_Kind | Instruction_Value_Kind
+           and then Get_Num_Operands (Ptr) >= 1
+           and then Get_Operand (Result, 0) = Get_Operand (Ptr, 0)
+         then
+            if not Get_GEP_Constant_Offset (Ptr, Orig_Offset) then
+               Set_TBAA_Type (Result, No_Metadata_T);
+            else
+               Set_TBAA_Offset (Result, TBAA_Offset (Result) - Orig_Offset);
+            end if;
+         end if;
+      end if;
+
+   end Update_Offset_For_GEP;
+
    ---------
    -- GEP --
    ---------
@@ -944,7 +994,6 @@ package body GNATLLVM.Instructions is
    is
       Val_Idxs : aliased Value_Array (Indices'Range);
       Result   : GL_Value;
-      Offset   : ULL;
 
    begin
       for J in Indices'Range loop
@@ -957,14 +1006,7 @@ package body GNATLLVM.Instructions is
 
       Set_Alignment (Result, Nat'Min (Alignment (Ptr),
                                       Get_GEP_Offset_Alignment (Result)));
-
-      --  See if we can update Result's TBAA offset
-
-      if Get_GEP_Constant_Offset (Result, Offset) then
-         Set_TBAA_Offset (Result, TBAA_Offset (Result) + Offset);
-      else
-         Set_TBAA_Type   (Result, No_Metadata_T);
-      end if;
+      Update_Offset_For_GEP (Result, Ptr);
 
       return Result;
    end GEP_To_Relationship;
@@ -982,7 +1024,6 @@ package body GNATLLVM.Instructions is
    is
       Val_Idxs : aliased Value_Array (Indices'Range);
       Result   : GL_Value;
-      Offset   : ULL;
 
    begin
       for J in Indices'Range loop
@@ -995,14 +1036,7 @@ package body GNATLLVM.Instructions is
                     GT, R, Ptr);
       Set_Alignment (Result, Nat'Min (Alignment (Ptr),
                                       Get_GEP_Offset_Alignment (Result)));
-
-      --  See if we can update Result's TBAA offset
-
-      if Get_GEP_Constant_Offset (Result, Offset) then
-         Set_TBAA_Offset (Result, TBAA_Offset (Result) + Offset);
-      else
-         Set_TBAA_Type   (Result, No_Metadata_T);
-      end if;
+      Update_Offset_For_GEP (Result, Ptr);
 
       return Result;
    end GEP_Idx_To_Relationship;

@@ -38,6 +38,19 @@ package GNATLLVM.Wrapper is
      with Inline;
    --  Create a TBAA metadata node for a scalar type
 
+   function Create_TBAA_Struct_Type_Node
+     (Ctx        : Context_T;
+      MDBld      : MD_Builder_T;
+      Name       : String;
+      Size       : Value_T;
+      Num_Fields : Nat;
+      Parent     : Metadata_T;
+      Fields     : System.Address;
+      Offsets    : System.Address;
+      Sizes      : System.Address) return Metadata_T
+     with Inline;
+   --  Create a TBAA metadata node for an aggregate type
+
    function Create_TBAA_Access_Tag
      (MDBld                  : MD_Builder_T;
       Base_Type, Access_Type : Metadata_T;
@@ -222,6 +235,9 @@ package GNATLLVM.Wrapper is
 
    function Get_GEP_Constant_Offset
      (GEP : Value_T; Layout : Target_Data_T; Offset : out ULL) return Boolean
+     with Inline;
+
+   function Get_Element_Offset (T : Type_T; Idx : unsigned) return ULL
      with Inline;
 
 end GNATLLVM.Wrapper;

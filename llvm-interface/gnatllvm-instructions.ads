@@ -705,10 +705,6 @@ package GNATLLVM.Instructions is
       Order         : Atomic_Ordering_T :=
         Atomic_Ordering_Sequentially_Consistent;
       Single_Thread : Boolean := False) return GL_Value
-   is
-      (G_From (Atomic_RMW (IR_Builder, Op, LLVM_Value (Ptr), LLVM_Value (V),
-                           Order, Single_Thread),
-               V))
       with Pre  => Is_Pointer (Ptr) and then Present (V),
            Post => Present (Atomic_RMW'Result);
 
@@ -721,11 +717,9 @@ package GNATLLVM.Instructions is
       Failure_Ordering : Atomic_Ordering_T :=
         Atomic_Ordering_Sequentially_Consistent;
       Single_Thread    : Boolean           := False) return GL_Value
-   is
-     (G (Atomic_Cmp_Xchg (IR_Builder, LLVM_Value (Ptr), LLVM_Value (Cmp),
-                          LLVM_Value (C_New), Success_Ordering,
-                          Failure_Ordering, Single_Thread),
-         Related_Type (Cmp), Boolean_And_Data));
+     with Pre  => Is_Pointer (Ptr) and then Present (Cmp)
+                  and then Present (C_New),
+           Post => Present (Atomic_Cmp_Xchg'Result);
 
    function Extract_Value
      (GT    : GL_Type;

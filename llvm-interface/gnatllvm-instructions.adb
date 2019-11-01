@@ -977,6 +977,50 @@ package body GNATLLVM.Instructions is
 
    end Store;
 
+   ----------------
+   -- Atomic_RMW --
+   ----------------
+
+   function Atomic_RMW
+     (Op            : Atomic_RMW_Bin_Op_T;
+      Ptr           : GL_Value;
+      V             : GL_Value;
+      Order         : Atomic_Ordering_T :=
+        Atomic_Ordering_Sequentially_Consistent;
+      Single_Thread : Boolean := False) return GL_Value
+   is
+      Inst : constant Value_T :=
+        Atomic_RMW (IR_Builder, Op, LLVM_Value (Ptr), LLVM_Value (V), Order,
+                    Single_Thread);
+
+   begin
+      Add_Aliasing_To_Instruction (Inst, Ptr);
+      return G_From (Inst, V);
+   end Atomic_RMW;
+
+   ---------------------
+   -- Atomic_Cmp_Xchg --
+   ---------------------
+
+   function Atomic_Cmp_Xchg
+     (Ptr              : GL_Value;
+      Cmp              : GL_Value;
+      C_New            : GL_Value;
+      Success_Ordering : Atomic_Ordering_T :=
+        Atomic_Ordering_Sequentially_Consistent;
+      Failure_Ordering : Atomic_Ordering_T :=
+        Atomic_Ordering_Sequentially_Consistent;
+      Single_Thread    : Boolean           := False) return GL_Value
+   is
+      Inst : constant Value_T :=
+        Atomic_Cmp_Xchg (IR_Builder, LLVM_Value (Ptr), LLVM_Value (Cmp),
+                         LLVM_Value (C_New), Success_Ordering,
+                         Failure_Ordering, Single_Thread);
+   begin
+      Add_Aliasing_To_Instruction (Inst, Ptr);
+      return G (Inst, Related_Type (Cmp), Boolean_And_Data);
+   end Atomic_Cmp_Xchg;
+
    -------------------
    -- Call_Internal --
    ------------------

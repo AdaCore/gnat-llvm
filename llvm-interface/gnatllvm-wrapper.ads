@@ -162,6 +162,9 @@ package GNATLLVM.Wrapper is
    procedure Add_Function_To_Module (Fn : Value_T; Module : Module_T)
      with Import, Convention => C, External_Name => "Add_Function_To_Module";
 
+   procedure Dump_Metadata (MD : Metadata_T)
+     with Import, Convention => C, External_Name => "Dump_Metadata";
+
    procedure LLVM_Optimize_Module
      (Module                : Module_T;
       Target_Machine        : Target_Machine_T;

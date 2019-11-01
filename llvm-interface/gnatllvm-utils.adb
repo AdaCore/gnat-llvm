@@ -27,7 +27,8 @@ with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
 
-with GNATLLVM.Types; use GNATLLVM.Types;
+with GNATLLVM.Types;   use GNATLLVM.Types;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
 
@@ -509,8 +510,6 @@ package body GNATLLVM.Utils is
       Error_Msg_NE (Msg, N, E);
    end Error_Msg_NE_Num;
 
-   pragma Annotate (Xcov, Exempt_On, "Debug helpers");
-
    ---------------------
    -- Dump_LLVM_Value --
    ---------------------
@@ -520,6 +519,16 @@ package body GNATLLVM.Utils is
       Dump_Value (V);
       New_Line (Current_Error);
    end Dump_LLVM_Value;
+
+   ------------------------
+   -- Dump_LLVM_Metadata --
+   ------------------------
+
+   procedure Dump_LLVM_Metadata (MD : Metadata_T) is
+   begin
+      Dump_Metadata (MD);
+      New_Line (Current_Error);
+   end Dump_LLVM_Metadata;
 
    ----------------------
    -- Dump_LLVM_Module --
@@ -539,7 +548,5 @@ package body GNATLLVM.Utils is
       Dump_Type (T);
       New_Line (Current_Error);
    end Dump_LLVM_Type;
-
-   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
 end GNATLLVM.Utils;

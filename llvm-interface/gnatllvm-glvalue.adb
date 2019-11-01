@@ -2028,6 +2028,9 @@ package body GNATLLVM.GLValue is
 
       Dump_LLVM_Value (V.Value);
       Dump_LLVM_Type (Type_Of (V.Value));
+      if Present (V.TBAA_Type) then
+         Dump_LLVM_Metadata (V.TBAA_Type);
+      end if;
       Write_Str ("Align=");
       Write_Int (V.Alignment);
       Write_Str (" ");
@@ -2042,6 +2045,11 @@ package body GNATLLVM.GLValue is
       end if;
       if Overflowed (V) then
          Write_Str ("Overflowed ");
+      end if;
+      if Present (V.TBAA_Type) then
+         Write_Str ("TBAA_Offset = ");
+         Write_Int (Int (V.TBAA_Offset));
+         Write_Str (" ");
       end if;
       Write_Str (GL_Relationship'Image (V.Relationship) & "(");
       Dump_GL_Type_Int (V.Typ, False);

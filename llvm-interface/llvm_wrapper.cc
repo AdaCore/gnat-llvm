@@ -334,6 +334,13 @@ Inst_Add_Combine_Function (legacy::PassManager *PM, TargetMachine *TM)
 
 extern "C"
 void
+Dump_Metadata (MDNode *MD)
+{
+  MD->print (errs ());
+}
+
+extern "C"
+void
 Initialize_LLVM (void)
 {
   // Initialize the target registry etc.  These functions appear to be

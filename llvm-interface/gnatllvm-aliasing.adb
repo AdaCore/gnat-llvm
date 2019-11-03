@@ -38,6 +38,10 @@ package body GNATLLVM.Aliasing is
    --  that we traverse inefficiently.  The table maps the entity for a
    --  type (the designated type) into an ordinal corresponding to the
    --  types which have access types that are UC'ed to each other.
+   --  If any of these objects are aggregates, we can't do this because we
+   --  can't use the same struct type tag for other than that struct.  We
+   --  also can't do this if any objects in the group are of different sizes.
+   --  So check for that and invalidate the group if so.
 
    type UC_Group_Idx is new Nat;
    Empty_UC_Group_Idx : constant UC_Group_Idx := 0;
@@ -50,6 +54,7 @@ package body GNATLLVM.Aliasing is
    type UC_Entry is record
       TE    : Entity_Id;
       Group : UC_Group_Idx;
+      Valid : Boolean;
    end record;
 
    package UC_Table is new Table.Table
@@ -183,6 +188,9 @@ package body GNATLLVM.Aliasing is
             TBT   : constant Entity_Id    := Full_Base_Type (TDT);
             S_Grp : constant UC_Group_Idx := Find_UC_Group (SBT);
             T_Grp : constant UC_Group_Idx := Find_UC_Group (TBT);
+            Valid : constant Boolean      :=
+              Esize (SBT) = Esize (TBT) and then not Is_Aggregate_Type (SBT)
+              and then not Is_Aggregate_Type (TBT);
 
          begin
             --  If neither was seen before, allocate a new group and put them
@@ -190,16 +198,16 @@ package body GNATLLVM.Aliasing is
 
             if No (S_Grp) and then No (T_Grp) then
                Last_UC_Group := Last_UC_Group + 1;
-               UC_Table.Append ((SBT, Last_UC_Group));
-               UC_Table.Append ((TBT, Last_UC_Group));
+               UC_Table.Append ((SBT, Last_UC_Group, Valid));
+               UC_Table.Append ((TBT, Last_UC_Group, Valid));
 
             --  If one has a group and the other doesn't, add the other
             --  pointing to that group.
 
             elsif No (S_Grp) and then Present (T_Grp) then
-               UC_Table.Append ((SBT, T_Grp));
+               UC_Table.Append ((SBT, T_Grp, Valid));
             elsif Present (S_Grp) and then No (T_Grp) then
-               UC_Table.Append ((TBT, S_Grp));
+               UC_Table.Append ((TBT, S_Grp, Valid));
 
             --  If both were assigned groups, move everything in the target's
             --  group to the group of the source.
@@ -208,6 +216,8 @@ package body GNATLLVM.Aliasing is
                for J in 1 .. UC_Table.Last loop
                   if UC_Table.Table (J).Group = T_Grp then
                      UC_Table.Table (J).Group := S_Grp;
+                     UC_Table.Table (J).Valid :=
+                       UC_Table.Table (J).Valid and Valid;
                   end if;
                end loop;
             end if;
@@ -254,15 +264,22 @@ package body GNATLLVM.Aliasing is
                UCE : constant UC_Entry := UC_Table.Table (J);
 
             begin
-               if UCE.Group = Grp and then Present (Get_TBAA_N (UCE.TE)) then
+               if UCE.Group = Grp and then Present (Get_TBAA_N (UCE.TE))
+                 and then No (TBAA)
+               then
                   TBAA := Get_TBAA (UCE.TE);
-                  exit;
+               end if;
+
+               --  Check for something invalidating the group
+
+               if UCE.Group = Grp and then not UCE.Valid then
+                  return No_Metadata_T;
                end if;
             end;
          end loop;
       end if;
 
-      --  Otherwise, make a new TBAA for this type
+      --  If we haven't found one yet, make a new TBAA for this type
 
       if No (TBAA) then
          TBAA := New_TBAA_Type (BT);

@@ -938,6 +938,14 @@ package GNATLLVM.GLValue is
      (Get_Value_Name (LLVM_Value (V)))
      with Pre => Present (V);
 
+   function Get_Num_Operands (V : GL_Value) return Nat is
+     (Int (Get_Num_Operands (LLVM_Value (V))))
+     with Pre => Present (V);
+
+   function Get_Operand (V : GL_Value; Idx : Nat) return Value_T is
+     (Get_Operand (LLVM_Value (V), unsigned (Idx)))
+     with Pre => Present (V);
+
    procedure Set_Value_Name (V : GL_Value; Name : String)
      with Pre => Present (V), Inline;
 

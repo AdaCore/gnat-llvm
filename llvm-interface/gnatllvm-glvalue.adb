@@ -1930,15 +1930,14 @@ package body GNATLLVM.GLValue is
    ------------------------------
 
    function Get_GEP_Offset_Alignment (GEP : GL_Value) return Nat is
-      Inst         : constant Value_T := LLVM_Value (GEP);
-      Num_Operands : constant Nat     := Nat (Get_Num_Operands (Inst));
-      Op_Num       : unsigned         := 1;
-      Align        : Nat              := Max_Align;
+      Num_Operands : constant Nat := Get_Num_Operands (GEP);
+      Op_Num       : Nat          := 1;
+      Align        : Nat          := Max_Align;
       T            : Type_T;
       Offset       : ULL;
 
    begin
-      --  If this is an undef, we know nothing of the alignmetn
+      --  If this is an undef, we know nothing of the alignment
 
       if Is_Undef (GEP) then
          return BPU;
@@ -1960,12 +1959,12 @@ package body GNATLLVM.GLValue is
       --  what T points to and, if the operand is a constant, multiply that
       --  alignment by the alignment of the constant.
 
-      T := Type_Of (Get_Operand (Inst, 0));
-      while Nat (Op_Num) < Num_Operands
+      T := Type_Of (Get_Operand (GEP, 0));
+      while Op_Num < Num_Operands
         and then Get_Type_Kind (T) in Pointer_Type_Kind | Array_Type_Kind
       loop
          declare
-            This_Op    : constant Value_T := Get_Operand (Inst, Op_Num);
+            This_Op    : constant Value_T := Get_Operand (GEP, Op_Num);
             Next_T     : constant Type_T  := Get_Element_Type (T);
             This_Align : Nat              := Get_Type_Alignment (Next_T);
             Const_Val  : ULL;
@@ -1985,7 +1984,7 @@ package body GNATLLVM.GLValue is
       --  If we have operands left but have no way of handling them. they
       --  may further constrain the alignment in ways we don't know.
 
-      if Nat (Op_Num) < Num_Operands then
+      if Op_Num < Num_Operands then
          Align := BPU;
       end if;
 

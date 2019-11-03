@@ -368,7 +368,8 @@ package GNATLLVM.GLValue is
       TBAA_Offset          : ULL;
       --  The offset in bytes that this value, treated as an address, points
       --  to from the start of the type given by TBAA_Type (always zero
-      --  if a scalar type).
+      --  if a scalar type).  If TBAA_Type isn't Present, this value is
+      --  undefined.
 
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make

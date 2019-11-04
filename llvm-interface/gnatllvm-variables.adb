@@ -649,8 +649,12 @@ package body GNATLLVM.Variables is
       CV     : Node_Id;
 
    begin
+      --  First check for cases where we don't have or can't use the
+      --  initialized value.  But if this is in Standard, we have to use
+      --  the initialized value even if it appears to be volatile.
+
       if No (Decl) or else not Is_True_Constant (E)
-        or else Is_Volatile_Entity (E)
+        or else (Is_Volatile_Entity (E) and then Sloc (E) > Standard_Location)
         or else (Nkind (Decl) = N_Object_Declaration
                    and then No_Initialization (Decl))
       then

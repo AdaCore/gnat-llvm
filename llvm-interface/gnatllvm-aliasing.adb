@@ -313,7 +313,7 @@ package body GNATLLVM.Aliasing is
       if Flag_No_Strict_Aliasing or else Ekind (BT) = E_Void then
          return No_Metadata_T;
 
-      --  ??? For now, it this is a scalar and the sizes of the base type
+      --  ??? For now, if this is a scalar and the size of the base type
       --  differs from this type, don't create a TBAA.
 
       elsif Esize (TE) /= Esize (BT) then
@@ -480,8 +480,8 @@ package body GNATLLVM.Aliasing is
    -- New_TBAA_Type --
    -------------------
 
-   function New_TBAA_Type (TE : Entity_Id; Unique : Boolean) return Metadata_T
-   is
+   function New_TBAA_Type
+     (TE : Entity_Id; Unique : Boolean) return Metadata_T is
    begin
       --  If this isn't a native type, we can't make a TBAA type entry for it
 

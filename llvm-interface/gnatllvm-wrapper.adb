@@ -253,8 +253,7 @@ package body GNATLLVM.Wrapper is
    -- Get_Element_Offset --
    ------------------------
 
-   function Get_Element_Offset (T : Type_T; Idx : unsigned) return ULL
-   is
+   function Get_Element_Offset (T : Type_T; Idx : unsigned) return ULL is
       function Get_Element_Offset_C
         (Layout : Target_Data_T; T : Type_T; Idx : unsigned) return int64_t
         with Import, Convention => C, External_Name => "Get_Element_Offset";

@@ -201,7 +201,6 @@ package body GNATLLVM.Instructions is
    begin
       Initialize_TBAA (Result);
       return Result;
-
    end Int_To_Ref;
 
    -------------------------
@@ -222,7 +221,6 @@ package body GNATLLVM.Instructions is
    begin
       Initialize_TBAA (Result);
       return Result;
-
    end Int_To_Relationship;
 
    --------------
@@ -248,7 +246,6 @@ package body GNATLLVM.Instructions is
    begin
       Initialize_TBAA (Result);
       return Result;
-
    end Pointer_Cast;
 
    ----------------
@@ -266,7 +263,6 @@ package body GNATLLVM.Instructions is
    begin
       Initialize_TBAA (Result);
       return Result;
-
    end Ptr_To_Ref;
 
    ----------------
@@ -283,7 +279,6 @@ package body GNATLLVM.Instructions is
    begin
       Initialize_TBAA (Result);
       return Result;
-
    end Ptr_To_Ref;
 
    -------------------------
@@ -304,7 +299,6 @@ package body GNATLLVM.Instructions is
    begin
       Initialize_TBAA (Result);
       return Result;
-
    end Ptr_To_Relationship;
 
    -------------------------
@@ -324,7 +318,6 @@ package body GNATLLVM.Instructions is
    begin
       Initialize_TBAA (Result);
       return Result;
-
    end Ptr_To_Relationship;
 
    -------------
@@ -411,7 +404,6 @@ package body GNATLLVM.Instructions is
               (Result, (if Is_Add then Res_I < LHS_I else LHS_I < RHS_I));
             return Result;
          end;
-
       else
          --  For signed, we overflow if the two operands have the same (for
          --  addition) or different (for subtraction) sign and the sign of
@@ -428,10 +420,8 @@ package body GNATLLVM.Instructions is
             Mark_Overflowed (Result,
                              Maybe_Ovfl and then LHS_Neg = not Res_Neg);
             return Result;
-
          end;
       end if;
-
    end Add_Sub;
 
    ---------
@@ -487,7 +477,6 @@ package body GNATLLVM.Instructions is
             return Result;
          end;
       end if;
-
    end Mul;
 
    ---------
@@ -671,7 +660,6 @@ package body GNATLLVM.Instructions is
       Mark_Overflowed (Result,
                        Overflowed (V) or else Trunc_Overflowed (V, Result));
       return Result;
-
    end Trunc;
 
    ---------------------------
@@ -692,7 +680,6 @@ package body GNATLLVM.Instructions is
       Mark_Overflowed (Result,
                        Overflowed (V) or else Trunc_Overflowed (V, Result));
       return Result;
-
    end Trunc_To_Relationship;
 
    -----------
@@ -812,7 +799,6 @@ package body GNATLLVM.Instructions is
 
          return Result;
       end if;
-
    end Build_Select;
 
    -------------------
@@ -894,7 +880,6 @@ package body GNATLLVM.Instructions is
       if not Are_In_Dead_Code then
          Build_Unreachable;
       end if;
-
    end Maybe_Build_Unreachable;
 
    ---------------
@@ -928,7 +913,8 @@ package body GNATLLVM.Instructions is
    -- Update_Offset_For_GEP --
    ---------------------------
 
-   procedure Update_Offset_For_GEP (Result : in out GL_Value; Ptr : GL_Value)
+   procedure Update_Offset_For_GEP
+     (Result : in out GL_Value; Ptr : GL_Value)
    is
       Orig_Offset : ULL;
       New_Offset  : ULL;
@@ -966,7 +952,6 @@ package body GNATLLVM.Instructions is
             end if;
          end if;
       end if;
-
    end Update_Offset_For_GEP;
 
    ---------
@@ -1153,7 +1138,6 @@ package body GNATLLVM.Instructions is
 
       Store_Inst := Build_Store (IR_Builder, Val_To_Store, Ptr_Val);
       Add_Flags_To_Instruction (Store_Inst, Ptr, Special_Atomic);
-
    end Store;
 
    ----------------

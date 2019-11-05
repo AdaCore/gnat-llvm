@@ -271,6 +271,19 @@ package body GNATLLVM.Utils is
       end if;
    end Get_Acting_Spec;
 
+   --------------
+   -- Get_Name --
+   --------------
+
+   function Get_Name (E : Entity_Id; Suffix : String := "") return String is
+      Buf : Bounded_String;
+
+   begin
+      Append (Buf, Chars (E));
+      Append (Buf, Suffix);
+      return +Buf;
+   end Get_Name;
+
    ------------------
    -- Get_Ext_Name --
    ------------------

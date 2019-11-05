@@ -90,10 +90,9 @@ package GNATLLVM.Utils is
      return Value_T renames UI_To_LLVM;
    --  Return an LLVM value corresponding to the universal int Value
 
-   function Get_Name (E : Entity_Id) return String is
-      (Get_Name_String (Chars (E)))
+   function Get_Name (E : Entity_Id; Suffix : String := "") return String
      with Pre => Present (E);
-   --  Return the name of an entity: Get_Name_String (Chars (E))
+   --  Return the name of an entity concatenated with Suffix.
 
    function Get_Acting_Spec (Subp_Body : Node_Id) return Node_Id
      with Pre => Present (Subp_Body);

@@ -33,6 +33,10 @@ package body GNATLLVM.Aliasing is
 
    --  Define accessor functions for type tags
 
+   function TBAA_Parent (MD : Metadata_T) return Metadata_T is
+     (Get_Metadata_Operand (MD, 0))
+     with Pre => Present (MD);
+
    function Size_In_Bytes (MD : Metadata_T) return ULL is
      (Get_Metadata_Operand_Constant_Value (MD, 1))
      with Pre => Present (MD);
@@ -104,26 +108,28 @@ package body GNATLLVM.Aliasing is
    function Create_TBAA_Type
      (TE     : Entity_Id;
       Ridx   : Record_Info_Id;
-      Unique : Boolean := False) return Metadata_T
-     with Pre => Present (Ridx);
+      Parent : Metadata_T;
+      Kind   : TBAA_Kind) return Metadata_T
+     with Pre => Present (Ridx) and then Present (Parent);
    --  Create a TBAA type entry for the specified Record_Info Id.
    --  If TE is Present, this is the only RI for TE
 
    function Create_TBAA_Type_Internal
      (TE     : Entity_Id;
       Ridx   : Record_Info_Id;
-      Unique : Boolean := False) return Metadata_T
-     with Pre => Present (Ridx);
+      Parent : Metadata_T;
+      Kind   : TBAA_Kind) return Metadata_T
+     with Pre => Present (Ridx) and then Present (Parent);
    --  Helper for above function when we know that we can't use an existing
    --  TBAA type
 
-   function New_TBAA_Type (TE : Entity_Id; Unique : Boolean) return Metadata_T
+   function New_TBAA_Type
+     (TE : Entity_Id; Parent : Metadata_T; Kind : TBAA_Kind) return Metadata_T
      with Pre => Is_Full_Base_Type (TE);
    --  Make a new TBAA type entry for TE, which is known to be a base type
 
-   function Get_TBAA_Name (TE : Entity_Id; Unique : Boolean) return String;
-   --  Return the name to use for a TBAA type entry for TE, if present,
-   --  taking into account whether we need a unique entry.
+   function Get_TBAA_Name (TE : Entity_Id; Kind : TBAA_Kind) return String;
+   --  Return the name to use for a TBAA type entry for TE, if present
 
    Name_Idx      : Nat := 0;
    --  The index used to create a unique name for the above function
@@ -160,7 +166,7 @@ package body GNATLLVM.Aliasing is
    procedure Initialize_TBAA (V : in out GL_Value) is
    begin
       if Relationship (V) = Reference then
-         V.TBAA_Type   := Create_TBAA_Type (Related_Type (V));
+         V.TBAA_Type   := Create_TBAA_Type (Related_Type (V), Base);
          V.TBAA_Offset := 0;
       else
          V.TBAA_Type := No_Metadata_T;
@@ -282,17 +288,27 @@ package body GNATLLVM.Aliasing is
    -- Get_TBAA_Name --
    -------------------
 
-   function Get_TBAA_Name (TE : Entity_Id; Unique : Boolean) return String is
-      Buf : Bounded_String (Max_Length => 20);
+   function Get_TBAA_Name (TE : Entity_Id; Kind : TBAA_Kind) return String is
+      Buf : Bounded_String;
    begin
-      if No (TE) or else Unique then
-         Append (Buf, "TBAA_");
-         Append (Buf, Name_Idx);
-         Name_Idx := Name_Idx + 1;
-         return +Buf;
+      if Present (TE) then
+         Append (Buf, Chars (TE));
       else
-         return Get_Name (TE);
+         Append (Buf, "TBAA");
       end if;
+
+      case Kind is
+         when Base =>
+            Append (Buf, "#TB");
+         when For_Aliased =>
+            null;
+         when Unique =>
+            Append (Buf, "#T");
+            Append (Buf, Name_Idx);
+            Name_Idx := Name_Idx + 1;
+      end case;
+
+      return +Buf;
    end Get_TBAA_Name;
 
    ----------------------
@@ -300,11 +316,12 @@ package body GNATLLVM.Aliasing is
    ----------------------
 
    function Create_TBAA_Type
-     (TE : Entity_Id; Unique : Boolean := False) return Metadata_T
+     (TE : Entity_Id; Kind : TBAA_Kind) return Metadata_T
    is
-      BT   : constant Entity_Id    := Full_Base_Type (TE);
-      Grp  : constant UC_Group_Idx := Find_UC_Group (BT);
-      TBAA : Metadata_T            := Get_TBAA (BT);
+      BT        : constant Entity_Id    := Full_Base_Type (TE);
+      Grp       : constant UC_Group_Idx := Find_UC_Group (BT);
+      TBAA      : Metadata_T            := Get_TBAA (BT);
+      Base_TBAA : Metadata_T;
 
    begin
       --  If we have -fno-strict-aliasing or this is a void type, don't
@@ -319,15 +336,11 @@ package body GNATLLVM.Aliasing is
       elsif Esize (TE) /= Esize (BT) then
          return No_Metadata_T;
 
-      --  If the base type has a TBAA, use it for this type
+      --  If we haven't already saved TBAA data and this type is in a
+      --  group related by UC's between access types, use any TBAA
+      --  we've already made for a type in that group.
 
-      elsif not Unique and then Present (TBAA) then
-         return TBAA;
-
-      --  If this type is in a group related by UC's between access types,
-      --  use any TBAA we've already made for a type in that group.
-
-      elsif Present (Grp) and then not Unique then
+      elsif No (TBAA) and then Present (Grp) then
 
          --  If this is an aggregate type, we can't use the same type tag
          --  because looking into the structures will fail.  We have no choice
@@ -357,19 +370,31 @@ package body GNATLLVM.Aliasing is
          end loop;
       end if;
 
-      --  If we haven't found one yet, make a new TBAA for this type
+      --  If we haven't saved a TBAA type tag, we first need to make base
+      --  and aliased TBAA type tags and save the latter.
 
-      if No (TBAA) then
-         TBAA := New_TBAA_Type (BT, Unique);
-      end if;
+      if Present (TBAA) then
+         Base_TBAA := TBAA_Parent (TBAA);
+      else
+         Base_TBAA := New_TBAA_Type (BT, TBAA_Root, Base);
+         if No (Base_TBAA) then
+            return No_Metadata_T;
+         end if;
 
-      --  Now save and return the TBAA value, if any and if requested
-
-      if Present (TBAA) and then not Unique then
+         TBAA      := New_TBAA_Type (BT, Base_TBAA, For_Aliased);
          Set_TBAA (BT, TBAA);
       end if;
 
-      return TBAA;
+      --  Finally, return the proper TBAA type tag for our usage
+
+      case Kind is
+         when Base =>
+            return Base_TBAA;
+         when For_Aliased =>
+            return TBAA;
+         when Unique =>
+            return New_TBAA_Type (BT, Base_TBAA, Unique);
+      end case;
 
    end Create_TBAA_Type;
 
@@ -378,10 +403,10 @@ package body GNATLLVM.Aliasing is
    ----------------------
 
    function Create_TBAA_Type
-     (GT : GL_Type; Unique : Boolean := False) return Metadata_T
+     (GT : GL_Type; Kind : TBAA_Kind) return Metadata_T
    is
      ((if   Is_Primitive_GL_Type (GT)
-       then Create_TBAA_Type (Full_Etype (GT), Unique) else No_Metadata_T));
+       then Create_TBAA_Type (Full_Etype (GT), Kind) else No_Metadata_T));
 
    ----------------------
    -- Create_TBAA_Type --
@@ -390,16 +415,19 @@ package body GNATLLVM.Aliasing is
    function Create_TBAA_Type
      (TE     : Entity_Id;
       Ridx   : Record_Info_Id;
-      Unique : Boolean := False) return Metadata_T
+      Parent : Metadata_T;
+      Kind   : TBAA_Kind) return Metadata_T
    is
       TBAA : Metadata_T := TBAA_Type (Ridx);
 
    begin
-      if No (TBAA) or else Unique then
-         TBAA := Create_TBAA_Type_Internal (TE, Ridx, Unique);
+      if No (TBAA) or else TBAA_Parent (TBAA) /= Parent
+        or else Kind = Unique
+      then
+         TBAA := Create_TBAA_Type_Internal (TE, Ridx, Parent, Kind);
       end if;
 
-      if Present (TBAA) and then not Unique then
+      if Present (TBAA) and then Kind /= Unique then
          Set_TBAA_Type (Ridx, TBAA);
       end if;
 
@@ -413,7 +441,8 @@ package body GNATLLVM.Aliasing is
    function Create_TBAA_Type_Internal
      (TE     : Entity_Id;
       Ridx   : Record_Info_Id;
-      Unique : Boolean := False) return Metadata_T
+      Parent : Metadata_T;
+      Kind   : TBAA_Kind) return Metadata_T
    is
       Struct_Fields : constant Struct_Field_Array :=
         RI_To_Struct_Field_Array (Ridx);
@@ -457,7 +486,8 @@ package body GNATLLVM.Aliasing is
 
          else
             TBAA := Create_TBAA_Type (Struct_Fields (J).GT,
-                                      not Struct_Fields (J).Is_Aliased);
+                                      (if   Struct_Fields (J).Is_Aliased
+                                       then For_Aliased else Unique));
          end if;
 
          --  If we found an entry, store it.  Otherwise, we fail.
@@ -470,9 +500,9 @@ package body GNATLLVM.Aliasing is
       end loop;
 
       return Create_TBAA_Struct_Type_Node
-        (Context, MD_Builder, Get_TBAA_Name (TE, Unique),
+        (Context, MD_Builder, Get_TBAA_Name (TE, Kind),
          LLVM_Value (RI_Size_In_Bytes (Ridx)), Struct_Fields'Length,
-         TBAA_Root, TBAAs'Address, Offsets'Address, Sizes'Address);
+         Parent, TBAAs'Address, Offsets'Address, Sizes'Address);
 
    end Create_TBAA_Type_Internal;
 
@@ -481,7 +511,9 @@ package body GNATLLVM.Aliasing is
    -------------------
 
    function New_TBAA_Type
-     (TE : Entity_Id; Unique : Boolean) return Metadata_T is
+     (TE     : Entity_Id;
+      Parent : Metadata_T;
+      Kind   : TBAA_Kind) return Metadata_T is
    begin
       --  If this isn't a native type, we can't make a TBAA type entry for it
 
@@ -495,8 +527,8 @@ package body GNATLLVM.Aliasing is
             Size : constant GL_Value := Get_Type_Size (Default_GL_Type (TE));
 
          begin
-            return Create_TBAA_Scalar_Type_Node (Get_TBAA_Name (TE, Unique),
-                                                 To_Bytes (Size), TBAA_Root);
+            return Create_TBAA_Scalar_Type_Node (Get_TBAA_Name (TE, Kind),
+                                                 To_Bytes (Size), Parent);
          end;
 
       --  If it's a record type, we know above that its a native type, meaning
@@ -504,7 +536,7 @@ package body GNATLLVM.Aliasing is
       --  that of that entry.
 
       elsif Is_Record_Type (TE) then
-         return Create_TBAA_Type (TE, Get_Record_Info (TE), Unique);
+         return Create_TBAA_Type (TE, Get_Record_Info (TE), Parent, Kind);
 
       --  Otherwise, we can't (yet) make a type entry for it
 
@@ -569,7 +601,7 @@ package body GNATLLVM.Aliasing is
       --  the TBAA information from the type.
 
       if No (Base_Type) then
-         Base_Type := Create_TBAA_Type (GT);
+         Base_Type := Create_TBAA_Type (GT, Base);
          Offset    := 0;
       end if;
 

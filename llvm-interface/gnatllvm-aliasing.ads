@@ -66,6 +66,52 @@ package GNATLLVM.Aliasing is
    --  for).  However, LLVM already knows when memory is actually a constant,
    --  so it's not clear when we'd actually use this option.
 
+   --  Unlike in C, access types can only point to aliased objects
+   --  (RM 3.10(9/3)), so if we have two names for the same type, they can
+   --  only reference the same location if both are aliased.  We implement
+   --  this by using a per-type TBAA type tag for the cases where the object
+   --  is aliased and a unique TBAA type tag for other references to objects
+   --  of the type (e.g., a non-aliased field) and track the TBAA type tag
+   --  for each GL_Value.
+   --
+   --  However, there will be cases where the operations performed on
+   --  GL_Values are too complex to accurately track (we need to know both
+   --  the struct tag and offset and may not be able to find a constant
+   --  offset).  We could omit giving those a TBAA type tag, but that would
+   --  mean any such could alias any other such, which would pessimize the
+   --  code because we do know that it can't alias anything other than its
+   --  own type (with the exception of unchecked-converion issues, which
+   --  are handled elsewhere).  So instead, we define a "base" TBAA type
+   --  for a type (not to be be confused with the base type of that type)
+   --  which is the parent of both the TBAA type for aliased objects of
+   --  that type and all the unique TBAA types made for that type.
+   --
+   --  This produces the following, which is exactly the semantics we need:
+   --
+   --  - No GL_Value known to be from an aliased TBAA type tag will alias
+   --    with any GL_Value known to be from a non-aliased TBAA type tag
+   --
+   --  - No GL_Value known to be from one unique non-aliased TBAA type tag
+   --    will alias any other such valule from a different tag
+   --
+   --  - A GL_Value of the same type for which we don't know its origin
+   --    can potentially alias with either of the above cases.
+   --
+   --  We implement this by storing the TBAA type to be used for aliased
+   --  objects as the TBAA type tag for a type because we can obtain the
+   --  base TBAA type tag (its parent) from it and use an enumeration
+   --  type to specify what kind of TBAA type we're looking for.
+
+   type TBAA_Kind is (Base, For_Aliased, Unique);
+
+   function Create_TBAA_Type
+     (TE : Entity_Id; Kind : TBAA_Kind) return Metadata_T
+     with Pre => Is_Type_Or_Void (TE);
+   function Create_TBAA_Type (GT : GL_Type; Kind : TBAA_Kind) return Metadata_T
+     with Pre => Present (GT);
+   --  Create a TBAA type entry for the specified type.  If Unique is
+   --  True, make a new entry for that type instead of reusing a previous one.
+
    procedure Initialize;
    --  Perform initialization for this compilation
 
@@ -76,15 +122,6 @@ package GNATLLVM.Aliasing is
    --  V is a value that we know nothing about except for its type.  If
    --  it's data, we have no idea of its TBAA information, but if it's a
    --  reference we can initialize the TBAA data.
-
-   function Create_TBAA_Type
-     (TE : Entity_Id; Unique : Boolean := False) return Metadata_T
-     with Pre => Is_Type_Or_Void (TE);
-   function Create_TBAA_Type
-     (GT : GL_Type; Unique : Boolean := False) return Metadata_T
-     with Pre => Present (GT);
-   --  Create a TBAA type entry for the specified type.  If Unique is
-   --  True, make a new entry for that type instead of reusing a previous one.
 
    procedure Add_Aliasing_To_Instruction (Inst : Value_T; V : GL_Value)
      with Pre => Present (Is_A_Instruction (Inst)) and then Present (V);

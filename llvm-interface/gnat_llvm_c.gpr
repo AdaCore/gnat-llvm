@@ -3,7 +3,15 @@ project GNAT_LLVM_C is
    for Source_Dirs use (".", "obj");
    for Object_Dir use "obj";
 
+   Target := project'Canonical_Target;
+
    package Compiler is
+      --  Force g++ during bootstrap, this is needed on some linux distribs
+      case Target is
+         when "llvm" =>
+            for Driver ("C++") use "g++";
+      end case;
+
       for Switches ("C++") use ("-g");
    end Compiler;
 

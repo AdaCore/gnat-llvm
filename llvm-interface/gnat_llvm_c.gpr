@@ -10,6 +10,8 @@ project GNAT_LLVM_C is
       case Target is
          when "llvm" =>
             for Driver ("C++") use "g++";
+         when others =>
+            null;
       end case;
 
       for Switches ("C++") use ("-g");

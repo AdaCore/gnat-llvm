@@ -59,15 +59,16 @@ package body GNATLLVM.Aliasing is
 
    --  We need to record all types that are the designated types of access
    --  types that are unchecked-converted into each other.  All of those
-   --  types need to have the same TBAA value.
+   --  types need to have the same TBAA value.  Likewise for a UC where one
+   --  of the types is an aggregate.
    --
-   --  We rely on the fact that such UC's are rare, so we can have a table
+   --  We rely on the fact that UC's are uncommon, so we can have a table
    --  that we traverse inefficiently.  The table maps the entity for a
    --  type (the designated type) into an ordinal corresponding to the
-   --  types which have access types that are UC'ed to each other.
-   --  If any of these objects are aggregates, we can't do this because we
-   --  can't use the same struct type tag for other than that struct.  We
-   --  also can't do this if any objects in the group are of different sizes.
+   --  types which have access types that are UC'ed to each other.  If any
+   --  of these objects are aggregates, we can't do this because we can't
+   --  use the same struct type tag for other than that struct.  We also
+   --  can't do this if any objects in the group are of different sizes.
    --  So check for that and invalidate the group if so.
 
    type UC_Group_Idx is new Nat;
@@ -205,6 +206,10 @@ package body GNATLLVM.Aliasing is
       ------------------
 
       function Check_For_UC (N : Node_Id) return Traverse_Result is
+         STE            : Entity_Id;
+         TTE            : Entity_Id;
+         Access_Types   : Boolean;
+
       begin
          --  If we run into a stub, we have to search inside it because
          --  Library_Unit is a semantic, not syntactic, field.
@@ -219,11 +224,17 @@ package body GNATLLVM.Aliasing is
             return Skip;
 
          --  Otherwise, all we care about are N_Validate_Unchecked_Conversion
-         --  nodes between access types.
+         --  nodes between access types or where one type is an aggregate.
 
-         elsif Nkind (N) /= N_Validate_Unchecked_Conversion
-           or else not Is_Access_Type (Get_Full_View (Source_Type (N)))
-           or else not Is_Access_Type (Get_Full_View (Target_Type (N)))
+         elsif Nkind (N) /= N_Validate_Unchecked_Conversion then
+            return OK;
+         end if;
+
+         STE          := Get_Full_View (Source_Type (N));
+         TTE          := Get_Full_View (Target_Type (N));
+         Access_Types := Is_Access_Type (STE) and then Is_Access_Type (TTE);
+         if not Access_Types
+           and then Is_Elementary_Type (STE) and then Is_Elementary_Type (TTE)
          then
             return OK;
          end if;
@@ -232,10 +243,10 @@ package body GNATLLVM.Aliasing is
          --  types should have the same TBAA value.
 
          declare
-            STE   : constant Entity_Id    := Get_Full_View (Source_Type (N));
-            TTE   : constant Entity_Id    := Get_Full_View (Target_Type (N));
-            SDT   : constant Entity_Id    := Full_Designated_Type (STE);
-            TDT   : constant Entity_Id    := Full_Designated_Type (TTE);
+            SDT   : constant Entity_Id    :=
+              (if Access_Types then Full_Designated_Type (STE) else STE);
+            TDT   : constant Entity_Id    :=
+              (if Access_Types then Full_Designated_Type (TTE) else TTE);
             SBT   : constant Entity_Id    := Full_Base_Type (SDT);
             TBT   : constant Entity_Id    := Full_Base_Type (TDT);
             S_Grp : constant UC_Group_Idx := Find_UC_Group (SBT);

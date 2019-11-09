@@ -19,6 +19,7 @@ with Snames;   use Snames;
 
 with LLVM.Core;  use LLVM.Core;
 
+with GNATLLVM.Aliasing;      use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
 with GNATLLVM.Builtins;      use GNATLLVM.Builtins;
 with GNATLLVM.Compile;       use GNATLLVM.Compile;
@@ -1335,6 +1336,7 @@ package body GNATLLVM.Arrays is
          Result := GEP (Unit_GT, Data, (1 => Index * Unit_Mult), "arr-lvalue");
          Mark_Volatile (Result, Has_Volatile_Components (GT));
          Adjust_Array_Component_Alignment (Result, Data, Comp_GT);
+         Initialize_TBAA (Result);
          return Ptr_To_Ref (Result, Comp_GT);
       end;
 

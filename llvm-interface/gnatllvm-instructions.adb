@@ -129,7 +129,10 @@ package body GNATLLVM.Instructions is
 
    begin
       Done_Promoting_Alloca (Inst, Promote, T);
-      Initialize_TBAA (Result);
+      Initialize_TBAA (Result,
+                       (if   Present (Def_Ident)
+                             and then Is_Aliased (Def_Ident)
+                        then For_Aliased else Unique));
       return Result;
    end Alloca;
 
@@ -156,7 +159,10 @@ package body GNATLLVM.Instructions is
 
    begin
       Done_Promoting_Alloca (Inst, Promote, T, Num_Elts);
-      Initialize_TBAA (Result);
+      Initialize_TBAA (Result,
+                       (if   Present (Def_Ident)
+                             and then Is_Aliased (Def_Ident)
+                        then For_Aliased else Unique));
       return Result;
    end Array_Alloca;
 
@@ -172,7 +178,7 @@ package body GNATLLVM.Instructions is
             GV => V);
 
    begin
-      Initialize_TBAA (Result);
+      Initialize_TBAA_If_Changed (Result, V);
       return Result;
    end Int_To_Ptr;
 
@@ -199,7 +205,7 @@ package body GNATLLVM.Instructions is
                 GT, V);
 
    begin
-      Initialize_TBAA (Result);
+      Initialize_TBAA_If_Changed (Result, V);
       return Result;
    end Int_To_Ref;
 
@@ -219,7 +225,7 @@ package body GNATLLVM.Instructions is
             GT, R, GV => V);
 
    begin
-      Initialize_TBAA (Result);
+      Initialize_TBAA_If_Changed (Result, V);
       return Result;
    end Int_To_Relationship;
 
@@ -244,7 +250,7 @@ package body GNATLLVM.Instructions is
         GM (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
             GV => V);
    begin
-      Initialize_TBAA (Result);
+      Initialize_TBAA_If_Changed (Result, V);
       return Result;
    end Pointer_Cast;
 
@@ -261,7 +267,7 @@ package body GNATLLVM.Instructions is
                 GT, V);
 
    begin
-      Initialize_TBAA (Result);
+      Initialize_TBAA_If_Changed (Result, V);
       return Result;
    end Ptr_To_Ref;
 
@@ -277,7 +283,7 @@ package body GNATLLVM.Instructions is
                 Full_Designated_GL_Type (T), V);
 
    begin
-      Initialize_TBAA (Result);
+      Initialize_TBAA_If_Changed (Result, V);
       return Result;
    end Ptr_To_Ref;
 
@@ -297,7 +303,7 @@ package body GNATLLVM.Instructions is
             GT, R, V);
 
    begin
-      Initialize_TBAA (Result);
+      Initialize_TBAA_If_Changed (Result, V);
       return Result;
    end Ptr_To_Relationship;
 
@@ -316,7 +322,7 @@ package body GNATLLVM.Instructions is
             Related_Type (T), R, V);
 
    begin
-      Initialize_TBAA (Result);
+      Initialize_TBAA_If_Changed (Result, V);
       return Result;
    end Ptr_To_Relationship;
 
@@ -920,23 +926,24 @@ package body GNATLLVM.Instructions is
       New_Offset  : ULL;
 
    begin
-      --  We know that Result is a GEP, but it's possible that Ptr was also
-      --  a GEP with the same input as Result and that Result is folded
-      --  into a GEP with an additional operand.  In that case,
-      --  incrementing the TBAA offset of Ptr by the offset of Result is
-      --  wrong since that would be counting the offset of Ptr's GEP twice.
-      --
-      --  First see if there's no TBAA data for Result or if we can't
-      --  compute an offset for it.
+      --  First see if there's no TBAA data for Result, if we can't
+      --  compute an offset for it, or if the input's type is SSI_GL_Type,
+      --  in which case we know nothing about this.
 
       if No (TBAA_Type (Result)) then
          return;
-      elsif not Get_GEP_Constant_Offset (Result, New_Offset) then
+      elsif not Get_GEP_Constant_Offset (Result, New_Offset)
+        or else Related_Type (Ptr) = SSI_GL_Type
+      then
          Set_TBAA_Type (Result, No_Metadata_T);
          return;
 
-      --  Otherwise, adjust Result's offset.  Then see if we may have the
-      --  folded case above.
+      --  Otherwise, adjust Result's offset. We know that Result is a GEP,
+      --  but it's possible that Ptr was also a GEP with the same input as
+      --  Result and that Result is folded into a GEP with an additional
+      --  operand.  In that case, incrementing the TBAA offset of Ptr by
+      --  the offset of Result is wrong since that would be counting the
+      --  offset of Ptr's GEP twice.
 
       else
          Set_TBAA_Offset (Result, TBAA_Offset (Result) + New_Offset);
@@ -1231,7 +1238,7 @@ package body GNATLLVM.Instructions is
          Add_Nest_Attribute (Call_Inst, unsigned (Act_Param));
       end if;
 
-      --  For each parameter that's a pointer, set the alignment
+      --  For each parameter that's a pointer, set the alignment and
 
       for J in Args'Range loop
          if Get_Type_Kind (Type_Of (Args (J))) = Pointer_Type_Kind then
@@ -1255,7 +1262,8 @@ package body GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (Initialize_Alignment (G (Call_Internal (Func, Args, Name), GT))));
+        (Initialize_Alignment (G (Call_Internal (Func, Args, Name), GT)),
+         For_Aliased));
 
    --------------
    -- Call_Ref --
@@ -1268,7 +1276,8 @@ package body GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (Initialize_Alignment (G_Ref (Call_Internal (Func, Args, Name), GT))));
+        (Initialize_Alignment (G_Ref (Call_Internal (Func, Args, Name), GT)),
+         For_Aliased));
 
    -----------------------
    -- Call_Relationship --
@@ -1282,7 +1291,8 @@ package body GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (Initialize_Alignment (G (Call_Internal (Func, Args, Name), GT, R))));
+        (Initialize_Alignment (G (Call_Internal (Func, Args, Name), GT, R)),
+         For_Aliased));
 
    ----------
    -- Call --

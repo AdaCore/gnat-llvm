@@ -164,10 +164,10 @@ package body GNATLLVM.Aliasing is
    -- Initialize_TBAA --
    ---------------------
 
-   procedure Initialize_TBAA (V : in out GL_Value) is
+   procedure Initialize_TBAA (V : in out GL_Value; Kind : TBAA_Kind := Base) is
    begin
       if Relationship (V) = Reference then
-         V.TBAA_Type   := Create_TBAA_Type (Related_Type (V), Base);
+         V.TBAA_Type   := Create_TBAA_Type (Related_Type (V), Kind);
          V.TBAA_Offset := 0;
       else
          V.TBAA_Type := No_Metadata_T;
@@ -178,12 +178,28 @@ package body GNATLLVM.Aliasing is
    -- Initialize_TBAA --
    ---------------------
 
-   function Initialize_TBAA (V : GL_Value) return GL_Value is
+   function Initialize_TBAA
+     (V : GL_Value; Kind : TBAA_Kind := Base) return GL_Value
+   is
       New_V : GL_Value := V;
    begin
-      Initialize_TBAA (New_V);
+      Initialize_TBAA (New_V, Kind);
       return New_V;
    end Initialize_TBAA;
+
+   --------------------------------
+   -- Initialize_TBAA_If_Changed --
+   --------------------------------
+
+   procedure Initialize_TBAA_If_Changed
+     (V : in out GL_Value; Old_V : GL_Value) is
+   begin
+      if Related_Type (V) /= Related_Type (Old_V)
+        or else Relationship (V) /= Relationship (Old_V)
+      then
+         Initialize_TBAA (V);
+      end if;
+   end Initialize_TBAA_If_Changed;
 
    --------------------
    -- Search_For_UCs --

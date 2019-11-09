@@ -352,15 +352,6 @@ package body GNATLLVM.Aliasing is
       --  we've already made for a type in that group.
 
       elsif No (TBAA) and then Present (Grp) then
-
-         --  If this is an aggregate type, we can't use the same type tag
-         --  because looking into the structures will fail.  We have no choice
-         --  here but to not return a type tag in this case.
-
-         if Is_Aggregate_Type (BT) then
-            return No_Metadata_T;
-         end if;
-
          for J in 1 .. UC_Table.Last loop
             declare
                UCE : constant UC_Entry := UC_Table.Table (J);
@@ -372,7 +363,11 @@ package body GNATLLVM.Aliasing is
                   TBAA := Get_TBAA (UCE.TE);
                end if;
 
-               --  Check for something invalidating the group
+               --  Check for something invalidating the group, such as an
+               --  aggregate type, because can't use the same type tag
+               --  because looking into the structures will fail.  We have
+               --  no choice here but to not return a type tag in this
+               --  case.
 
                if UCE.Group = Grp and then not UCE.Valid then
                   return No_Metadata_T;

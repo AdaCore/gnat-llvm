@@ -1545,9 +1545,7 @@ package body GNATLLVM.Variables is
                                          LLVM_Value (Get_Value (E)),
                                          Get_Ext_Name (Def_Ident)),
                               GT, Reference);
-               Initialize_TBAA (LLVM_Var,
-                                (if   Is_Aliased (Def_Ident) then For_Aliased
-                                 else Unique));
+               Initialize_TBAA (LLVM_Var, Kind_From_Decl (Def_Ident));
             end if;
          end;
 
@@ -1571,9 +1569,7 @@ package body GNATLLVM.Variables is
          Set_Dup_Global_Value (Def_Ident, LLVM_Var);
          Set_Linker_Section   (LLVM_Var, Def_Ident);
          Process_Pragmas      (Def_Ident, LLVM_Var);
-         Initialize_TBAA      (LLVM_Var,
-                               (if   Is_Aliased (Def_Ident) then For_Aliased
-                                else Unique));
+         Initialize_TBAA      (LLVM_Var, Kind_From_Decl (Def_Ident));
 
          if not Is_Ref then
             Set_Alignment (LLVM_Var,

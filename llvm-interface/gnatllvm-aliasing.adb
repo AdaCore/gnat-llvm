@@ -20,7 +20,6 @@ with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Table;    use Table;
 
-with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
@@ -508,8 +507,8 @@ package body GNATLLVM.Aliasing is
 
          else
             TBAA := Create_TBAA_Type (Struct_Fields (J).GT,
-                                      (if   Struct_Fields (J).Is_Aliased
-                                       then For_Aliased else Unique));
+                                      Kind_From_Aliased
+                                        (Struct_Fields (J).Is_Aliased));
          end if;
 
          --  If we found an entry, store it.  Otherwise, we fail.

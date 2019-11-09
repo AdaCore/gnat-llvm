@@ -55,6 +55,7 @@ package GNATLLVM.Codegen is
    --  this is rare enough that we'll just provide a switch instead.
 
    Flag_No_Strict_Aliasing : Boolean := False;
+   Flag_C_Style_Aliasing   : Boolean := False;
    No_Inlining             : Boolean := False;
    No_Unroll_Loops         : Boolean := False;
    No_Loop_Vectorization   : Boolean := False;

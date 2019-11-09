@@ -17,6 +17,7 @@
 
 with LLVM.Core; use LLVM.Core;
 
+with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.Aliasing is
@@ -103,6 +104,15 @@ package GNATLLVM.Aliasing is
    --  type to specify what kind of TBAA type we're looking for.
 
    type TBAA_Kind is (Base, For_Aliased, Unique);
+
+   function Kind_From_Aliased (Is_Aliased : Boolean) return TBAA_Kind is
+     ((if Flag_C_Style_Aliasing or Is_Aliased then For_Aliased else Unique));
+   --  Given whether an item is aliased, return the TBAA_Kind to use
+
+   function Kind_From_Decl (Def_Ident : Entity_Id) return TBAA_Kind is
+     (Kind_From_Aliased (Present (Def_Ident) and then Is_Aliased (Def_Ident)));
+   --  Given Def_Ident (which may be Empty), determine what TBAA_Kind is
+   --  appropriate for something that points to that decl, if any.
 
    function Create_TBAA_Type
      (TE : Entity_Id; Kind : TBAA_Kind) return Metadata_T

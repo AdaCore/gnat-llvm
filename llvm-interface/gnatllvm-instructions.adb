@@ -129,10 +129,7 @@ package body GNATLLVM.Instructions is
 
    begin
       Done_Promoting_Alloca (Inst, Promote, T);
-      Initialize_TBAA (Result,
-                       (if   Present (Def_Ident)
-                             and then Is_Aliased (Def_Ident)
-                        then For_Aliased else Unique));
+      Initialize_TBAA (Result, Kind_From_Decl (Def_Ident));
       return Result;
    end Alloca;
 
@@ -159,10 +156,7 @@ package body GNATLLVM.Instructions is
 
    begin
       Done_Promoting_Alloca (Inst, Promote, T, Num_Elts);
-      Initialize_TBAA (Result,
-                       (if   Present (Def_Ident)
-                             and then Is_Aliased (Def_Ident)
-                        then For_Aliased else Unique));
+      Initialize_TBAA (Result, Kind_From_Decl (Def_Ident));
       return Result;
    end Array_Alloca;
 

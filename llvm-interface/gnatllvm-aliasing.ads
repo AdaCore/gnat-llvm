@@ -102,6 +102,11 @@ package GNATLLVM.Aliasing is
    --  objects as the TBAA type tag for a type because we can obtain the
    --  base TBAA type tag (its parent) from it and use an enumeration
    --  type to specify what kind of TBAA type we're looking for.
+   --
+   --  We support three options for aliasing: the default, which is the above,
+   --  -fno-strict-aliasing, where we don't generate TBAA tags at all, and
+   --  -fc-style-aliasing, where we effectively treat all objects and
+   --  components as aliased.
 
    type TBAA_Kind is (Base, For_Aliased, Unique);
 

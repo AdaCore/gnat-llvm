@@ -240,7 +240,6 @@ package body GNATLLVM.Aliasing is
 
          --  Otherwise, all we care about are N_Validate_Unchecked_Conversion
          --  nodes between access types or where one type is an aggregate.
-
          elsif Nkind (N) /= N_Validate_Unchecked_Conversion then
             return OK;
          end if;
@@ -248,8 +247,14 @@ package body GNATLLVM.Aliasing is
          STE          := Get_Full_View (Source_Type (N));
          TTE          := Get_Full_View (Target_Type (N));
          Access_Types := Is_Access_Type (STE) and then Is_Access_Type (TTE);
-         if not Access_Types
-           and then Is_Elementary_Type (STE) and then Is_Elementary_Type (TTE)
+
+         --  If the target type has No_Strict_Aliasing set, we're taking
+         --  care of this another way, so we're OK here.
+
+         if (Is_Access_Type (TTE) and then No_Strict_Aliasing (TTE))
+           or else (not Access_Types
+                      and then Is_Elementary_Type (STE)
+                      and then Is_Elementary_Type (TTE))
          then
             return OK;
          end if;
@@ -350,10 +355,12 @@ package body GNATLLVM.Aliasing is
       Base_TBAA : Metadata_T;
 
    begin
-      --  If we have -fno-strict-aliasing or this is a void type, don't
-      --  create a TBAA.
+      --  If we have -fno-strict-aliasing, this type isn't to use
+      --  type-based aliasing, or this is a void type, don't create a TBAA.
 
-      if Flag_No_Strict_Aliasing or else Ekind (BT) = E_Void then
+      if Flag_No_Strict_Aliasing or else Ekind (BT) = E_Void
+        or else Universal_Aliasing (BT)
+      then
          return No_Metadata_T;
 
       --  ??? For now, if this is a scalar and the size of the base type
@@ -618,20 +625,24 @@ package body GNATLLVM.Aliasing is
       Access_Type   : Metadata_T;
 
    begin
+      --  If this object is marked to alias everything, we don't add any
+      --  anotations.
+
+      if Aliases_All (V) then
+         return;
+
       --  If we couldn't track V's TBAA information, we can try to just use
       --  the TBAA information from the type.
 
-      if No (Base_Type) then
+      elsif No (Base_Type) then
          Base_Type := Create_TBAA_Type (GT, Base);
          Offset    := 0;
       end if;
 
-      --  If we still couldn't find a tag, if this type is marked to alias
-      --  everything, or if our size is zero, don't do anything.
+      --  If we still couldn't find a tag or if our size is zero, don't do
+      --  anything.
 
-      if Present (Base_Type) and then not Universal_Aliasing (GT)
-        and then Size_In_Bytes /= 0
-      then
+      if Present (Base_Type) and then Size_In_Bytes /= 0 then
          Access_Type := Extract_Access_Type (Base_Type, Offset, Size_In_Bytes);
          Add_TBAA_Access
            (Inst, Create_TBAA_Access_Tag (MD_Builder, Base_Type, Access_Type,

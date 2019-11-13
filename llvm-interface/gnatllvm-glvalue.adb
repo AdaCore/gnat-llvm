@@ -314,6 +314,15 @@ package body GNATLLVM.GLValue is
       V.Overflowed := False;
    end Clear_Overflowed;
 
+   ---------------------
+   -- Set_Aliases_All --
+   ---------------------
+
+   procedure Set_Aliases_All (V : in out GL_Value) is
+   begin
+      V.Aliases_All := True;
+   end Set_Aliases_All;
+
    -------------------
    -- Set_TBAA_Type --
    -------------------
@@ -1103,12 +1112,19 @@ package body GNATLLVM.GLValue is
 
    function From_Access (V : GL_Value) return GL_Value is
       GT     : constant GL_Type         := Related_Type (V);
-      Acc_GT : constant GL_Type         := Full_Designated_GL_Type (V);
+      Acc_GT : constant GL_Type         := Full_Designated_GL_Type (GT);
       R      : constant GL_Relationship := Relationship_For_Access_Type (GT);
       Result : GL_Value                 := GM (LLVM_Value (V), Acc_GT, R, V);
+
    begin
       Initialize_Alignment (Result);
-      Initialize_TBAA      (Result);
+
+      if No_Strict_Aliasing (GT) then
+         Set_Aliases_All (Result);
+      else
+         Initialize_TBAA (Result);
+      end if;
+
       return Result;
    end From_Access;
 
@@ -2055,6 +2071,9 @@ package body GNATLLVM.GLValue is
       end if;
       if Overflowed (V) then
          Write_Str ("Overflowed ");
+      end if;
+      if Aliases_All (V) then
+         Write_Str ("Aliases_All ");
       end if;
       if Present (V.TBAA_Type) then
          Write_Str ("TBAA_Offset = ");

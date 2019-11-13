@@ -360,6 +360,14 @@ package GNATLLVM.GLValue is
       --  an error message about the overflow, this will be converted
       --  to an undef.
 
+      Aliases_All          : Boolean;
+      --  Set when this GL_Value is allowed to alias anything.  This is
+      --  used to implement the No_Strict_Aliasing pragma on an access
+      --  type.  In that case, all references to objects of that type
+      --  can alias anything.  We need a separate flag here rather than
+      --  relying on no TBAA_Type because without this flag, we might
+      --  deduce some type-based TBAA as we manipulate this value.
+
       TBAA_Type            : Metadata_T;
       --  The TBAA node representing the type that this value, treated as
       --  an address, points to (for a scalar) or points into (for an
@@ -404,8 +412,17 @@ package GNATLLVM.GLValue is
                                                      Access_GL_Value_Array);
 
    No_GL_Value : constant GL_Value :=
-     (No_Value_T, No_GL_Type, Data, BPU, False, False, False, False,
-      No_Metadata_T, 0);
+     (Value        => No_Value_T,
+      Typ          => No_GL_Type,
+      Relationship => Data,
+      Alignment    => BPU,
+      Is_Pristine  => False,
+      Is_Volatile  => False,
+      Is_Atomic    => False,
+      Overflowed   => False,
+      Aliases_All  => False,
+      TBAA_Type    => No_Metadata_T,
+      TBAA_Offset  => 0);
 
    function Present (V : GL_Value) return Boolean      is (Present (V.Value));
    function No      (V : GL_Value) return Boolean      is (No      (V.Value));
@@ -448,6 +465,9 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function Overflowed   (V : GL_Value)  return Boolean    is (V.Overflowed)
+     with Pre => Present (V);
+
+   function Aliases_All  (V : GL_Value)  return Boolean    is (V.Aliases_All)
      with Pre => Present (V);
 
    function TBAA_Type    (V : GL_Value)  return Metadata_T is (V.TBAA_Type)
@@ -516,10 +536,11 @@ package GNATLLVM.GLValue is
       Is_Volatile : Boolean         := False;
       Is_Atomic   : Boolean         := False;
       Overflowed  : Boolean         := False;
+      Aliases_All : Boolean         := False;
       TBAA_Type   : Metadata_T      := No_Metadata_T;
       TBAA_Offset : ULL             := 0) return GL_Value is
       ((V, GT, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic, Overflowed,
-        TBAA_Type, TBAA_Offset))
+        Aliases_All, TBAA_Type, TBAA_Offset))
      with Pre => Present (V) and then Present (GT);
    --  Raw constructor that allows full specification of all fields
 
@@ -534,6 +555,7 @@ package GNATLLVM.GLValue is
          Is_Volatile => Is_Volatile (GV),
          Is_Atomic   => Is_Atomic   (GV),
          Overflowed  => Overflowed  (GV),
+         Aliases_All => Aliases_All (GV),
          TBAA_Type   => TBAA_Type   (GV),
          TBAA_Offset => TBAA_Offset (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
@@ -599,6 +621,7 @@ package GNATLLVM.GLValue is
       Is_Volatile : Boolean    := False;
       Is_Atomic   : Boolean    := False;
       Overflowed  : Boolean    := False;
+      Aliases_All : Boolean    := False;
       TBAA_Type   : Metadata_T := No_Metadata_T;
       TBAA_Offset : ULL        := 0) return GL_Value
    is
@@ -608,6 +631,7 @@ package GNATLLVM.GLValue is
          Is_Volatile => Is_Volatile,
          Is_Atomic   => Is_Atomic,
          Overflowed  => Overflowed,
+         Aliases_All => Aliases_All,
          TBAA_Type   => TBAA_Type,
          TBAA_Offset => TBAA_Offset))
      with Pre  => Present (V) and then Present (GT),
@@ -624,6 +648,7 @@ package GNATLLVM.GLValue is
              Is_Volatile => Is_Volatile (GV),
              Is_Atomic   => Is_Atomic   (GV),
              Overflowed  => Overflowed  (GV),
+             Aliases_All => Aliases_All (GV),
              TBAA_Type   => TBAA_Type   (GV),
              TBAA_Offset => TBAA_Offset (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
@@ -679,6 +704,9 @@ package GNATLLVM.GLValue is
    procedure Clear_Overflowed (V : in out GL_Value)
      with Pre => Present (V), Post => not Overflowed (V), Inline;
    --  Clear the overflow flag in V
+
+   procedure Set_Aliases_All (V : in out GL_Value)
+     with Pre => Present (V), Post => Aliases_All (V), Inline;
 
    procedure Set_TBAA_Type (V : in out GL_Value; MD : Metadata_T)
      with Pre => Present (V), Post => TBAA_Type (V) = MD, inline;

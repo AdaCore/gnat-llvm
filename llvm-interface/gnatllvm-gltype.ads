@@ -474,6 +474,10 @@ package GNATLLVM.GLType is
      (Is_Descendant_Of_Address (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function No_Strict_Aliasing (GT : GL_Type) return Boolean is
+     (No_Strict_Aliasing (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Universal_Aliasing (GT : GL_Type) return Boolean is
      (Universal_Aliasing (Full_Etype (GT)))
      with Pre => Present (GT);

@@ -15,7 +15,11 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Errout;   use Errout;
+with Lib;      use Lib;
+with Opt;
 with Sem;      use Sem;
+with Sem_Aux;  use Sem_Aux;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Table;    use Table;
@@ -155,8 +159,15 @@ package body GNATLLVM.Aliasing is
 
    procedure Initialize is
    begin
+      if Opt.No_Strict_Aliasing then
+         Flag_No_Strict_Aliasing := True;
+      end if;
+
       TBAA_Root := Create_TBAA_Root (MD_Builder);
-      Search_For_UCs;
+
+      if not Flag_No_Strict_Aliasing then
+         Search_For_UCs;
+      end if;
    end Initialize;
 
    ---------------------
@@ -221,9 +232,34 @@ package body GNATLLVM.Aliasing is
       ------------------
 
       function Check_For_UC (N : Node_Id) return Traverse_Result is
-         STE            : Entity_Id;
-         TTE            : Entity_Id;
-         Access_Types   : Boolean;
+         STE : Entity_Id;
+         TTE : Entity_Id;
+
+         function OK_Unit (N : Node_Id; TE : Entity_Id) return Boolean is
+           (In_Same_Extended_Unit (N, TE)
+              or else In_Extended_Main_Code_Unit (TE))
+           with Pre => Present (N) and then Is_Type (TE);
+         --  We can do something with TE if it's either in the code unit
+         --  that we're compiling or in the same (extended) unit as the UC.
+
+         function Is_Data_Access_Type (TE : Entity_Id) return Boolean is
+           (Is_Access_Type (TE)
+              and then Ekind (TE) /= E_Access_Subprogram_Type)
+           with Pre => Is_Type (TE);
+         --  We don't want to treat access to subprogram as an access type
+         --  since we never load a subprogram as data.
+
+         function Is_Tagged_Or_Derived_Aggregate_Type
+           (TE : Entity_Id) return Boolean
+         is
+           (Is_Tagged_Type (TE)
+              or else (Is_Aggregate_Type (TE) and then Is_Derived_Type (TE)))
+           with Pre => Is_Type (TE);
+         --  We need to get the root type if this is a tagged type or
+         --  a derived aggregate type since we ensure that those types
+         --  are set up properly with respect to types derived from them.
+         --  ??? well, actually not quite yet, but we need this to avoid
+         --  spurious warnings.
 
       begin
          --  If we run into a stub, we have to search inside it because
@@ -238,23 +274,21 @@ package body GNATLLVM.Aliasing is
          elsif Is_Generic_Item (N) then
             return Skip;
 
-         --  Otherwise, all we care about are N_Validate_Unchecked_Conversion
-         --  nodes between access types or where one type is an aggregate.
+         --  All we care about are N_Validate_Unchecked_Conversion nodes
+         --  between access types.  If the target type has
+         --  No_Strict_Aliasing set, we're taking care of this another way,
+         --  so we're OK here.
+
          elsif Nkind (N) /= N_Validate_Unchecked_Conversion then
             return OK;
          end if;
 
-         STE          := Get_Full_View (Source_Type (N));
-         TTE          := Get_Full_View (Target_Type (N));
-         Access_Types := Is_Access_Type (STE) and then Is_Access_Type (TTE);
+         STE := Get_Fullest_View (Source_Type (N));
+         TTE := Get_Fullest_View (Target_Type (N));
 
-         --  If the target type has No_Strict_Aliasing set, we're taking
-         --  care of this another way, so we're OK here.
-
-         if (Is_Access_Type (TTE) and then No_Strict_Aliasing (TTE))
-           or else (not Access_Types
-                      and then Is_Elementary_Type (STE)
-                      and then Is_Elementary_Type (TTE))
+         if not Is_Data_Access_Type (STE)
+           or else not Is_Data_Access_Type (TTE)
+           or else No_Strict_Aliasing (TTE)
          then
             return OK;
          end if;
@@ -263,12 +297,14 @@ package body GNATLLVM.Aliasing is
          --  types should have the same TBAA value.
 
          declare
-            SDT   : constant Entity_Id    :=
-              (if Access_Types then Full_Designated_Type (STE) else STE);
-            TDT   : constant Entity_Id    :=
-              (if Access_Types then Full_Designated_Type (TTE) else TTE);
-            SBT   : constant Entity_Id    := Full_Base_Type (SDT);
-            TBT   : constant Entity_Id    := Full_Base_Type (TDT);
+            SDT   : constant Entity_Id    := Full_Designated_Type (STE);
+            TDT   : constant Entity_Id    := Full_Designated_Type (TTE);
+            SBT   : constant Entity_Id    :=
+              (if   Is_Tagged_Or_Derived_Aggregate_Type (SDT)
+               then Root_Type_Of_Full_View (SDT) else Full_Base_Type (SDT));
+            TBT   : constant Entity_Id    :=
+              (if   Is_Tagged_Or_Derived_Aggregate_Type (TDT)
+               then Root_Type_Of_Full_View (TDT) else Full_Base_Type (TDT));
             S_Grp : constant UC_Group_Idx := Find_UC_Group (SBT);
             T_Grp : constant UC_Group_Idx := Find_UC_Group (TBT);
             Valid : constant Boolean      :=
@@ -276,6 +312,53 @@ package body GNATLLVM.Aliasing is
               and then not Is_Aggregate_Type (TBT);
 
          begin
+            --  If the two types are the same, we have nothing to do.
+            --  This can happen when we have two access types to the same
+            --  underlying type or in some subtype cases.  Likewise if
+            --  the3 target has been marked for universal aliasing.
+
+            if TBT = SBT or else Universal_Aliasing (TBT) then
+               return OK;
+
+            --  The most efficient way of dealing with this if the
+            --  target is an access type is to set No_Strict_Aliasing on
+            --  that type because that will only affect references to the
+            --  designated type via that access type.   The front end has
+            --  already done that for us in the cases where it can be done
+            --  and we've checked for that above.
+            --
+            --  The next best option is to make a table entry.  However, we
+            --  can't do that if this UC is in a body and one of the types
+            --  isn't in the same compilation unit.
+
+            elsif Nkind_In (Unit (Enclosing_Comp_Unit_Node (N)),
+                                 N_Package_Body, N_Subprogram_Body)
+              and then (not OK_Unit (N, SBT) or else not OK_Unit (N, TBT))
+            then
+               --  If the target type is in the same unit (meaning that the
+               --  source type isn't), we can still make this work by
+               --  setting Universal_Aliasing on the target if it's not
+               --  an access type.
+
+               if OK_Unit (N, TBT) and then not Is_Data_Access_Type (TTE) then
+                  Set_Universal_Aliasing (TBT, True);
+                  return OK;
+
+               --  If we aren't optimizing, there's actually no problem, so
+               --  don't issue a warning.
+
+               elsif Code_Gen_Level /= Code_Gen_Level_None
+                 and then not Is_Unconstrained_Array (TBT)
+               then
+                  Error_Msg_NE
+                    ("?possible aliasing problem for type&", N, TTE);
+                  Error_Msg_N
+                    ("\\?use -fno-strict-aliasing switch for references", N);
+                  Error_Msg_NE
+                    ("\\?or use `pragma No_Strict_Aliasing (&);`", N, TTE);
+               end if;
+            end if;
+
             --  If neither was seen before, allocate a new group and put them
             --  both in it.
 

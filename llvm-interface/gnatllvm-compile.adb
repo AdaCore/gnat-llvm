@@ -877,12 +877,26 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Unchecked_Type_Conversion =>
+            declare
+               Expr   : constant Node_Id   := Expression (N);
+               BT     : constant Entity_Id := Full_Base_Type (GT);
 
-            Result := Emit_Conversion (Expression (N), GT, N,
-                                       Is_Unchecked  => True,
-                                       No_Truncation => No_Truncation (N));
-            Clear_Overflowed (Result);
-            return Result;
+            begin
+               --  The result can't have overflowed (this is unchecked),
+               --  but if this is not just converting between subtypes of
+               --  the same base type, it must be marked as aliasing
+               --  everything.
+
+               Result := Emit_Conversion (Expr, GT, N,
+                                          Is_Unchecked  => True,
+                                          No_Truncation => No_Truncation (N));
+               Clear_Overflowed (Result);
+               if Full_Base_Type (Full_Etype (Expr)) /= BT then
+                  Set_Aliases_All (Result);
+               end if;
+
+               return Result;
+            end;
 
          when N_Type_Conversion =>
 

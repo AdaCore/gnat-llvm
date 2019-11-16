@@ -1122,7 +1122,7 @@ package body GNATLLVM.GLValue is
       if No_Strict_Aliasing (GT) then
          Set_Aliases_All (Result);
       else
-         Initialize_TBAA (Result);
+         Initialize_TBAA (Result, For_Aliased);
       end if;
 
       return Result;

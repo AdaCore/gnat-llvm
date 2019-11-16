@@ -109,6 +109,9 @@ package body GNATLLVM.GLType is
       LLVM_Type : Type_T;
       --  LLVM type used for this alternative
 
+      TBAA      : Metadata_T;
+      --  If Present, the TBAA tag to use
+
       Next      : GL_Type;
       --  If Present, link to next alternative
 
@@ -307,6 +310,22 @@ package body GNATLLVM.GLType is
    function GT_Alignment (GT : GL_Type) return Nat is
      (GL_Type_Table.Table (GT).Alignment);
 
+   ---------------
+   -- TBAA_Type --
+   ---------------
+
+   function TBAA_Type (GT : GL_Type) return Metadata_T is
+     (GL_Type_Table.Table (GT).TBAA);
+
+   -------------------
+   -- Set_TBAA_Type --
+   -------------------
+
+   procedure Set_TBAA_Type (GT : GL_Type; MD : Metadata_T) is
+   begin
+      GL_Type_Table.Table (GT).TBAA := MD;
+   end Set_TBAA_Type;
+
    ---------------------------
    -- Get_Or_Create_GL_Type --
    ---------------------------
@@ -332,6 +351,7 @@ package body GNATLLVM.GLType is
    begin
       GL_Type_Table.Append ((GNAT_Type => TE,
                              LLVM_Type => No_Type_T,
+                             TBAA      => No_Metadata_T,
                              Next      => Get_GL_Type (TE),
                              Size      => No_GL_Value,
                              Alignment => 0,

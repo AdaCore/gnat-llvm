@@ -185,6 +185,13 @@ package GNATLLVM.GLType is
    function GT_Alignment (GT : GL_Type)          return Nat
      with Pre => Present (GT), Inline;
 
+   function TBAA_Type (GT : GL_Type) return Metadata_T
+     with Pre => Present (GT), Inline;
+
+   procedure Set_TBAA_Type (GT : GL_Type; MD : Metadata_T)
+     with Pre  => Present (GT) and then Present (MD),
+          Post => TBAA_Type (GT) = MD, Inline;
+
    function Is_Dummy_Type (GT : GL_Type)         return Boolean
      with Pre => Present (GT), Inline;
 

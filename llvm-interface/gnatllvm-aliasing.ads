@@ -119,14 +119,6 @@ package GNATLLVM.Aliasing is
    --  Given Def_Ident (which may be Empty), determine what TBAA_Kind is
    --  appropriate for something that points to that decl, if any.
 
-   function Create_TBAA_Type
-     (TE : Entity_Id; Kind : TBAA_Kind) return Metadata_T
-     with Pre => Is_Type_Or_Void (TE);
-   function Create_TBAA_Type (GT : GL_Type; Kind : TBAA_Kind) return Metadata_T
-     with Pre => Present (GT);
-   --  Create a TBAA type entry for the specified type.  If Unique is
-   --  True, make a new entry for that type instead of reusing a previous one.
-
    procedure Initialize;
    --  Perform initialization for this compilation
 

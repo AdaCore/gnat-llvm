@@ -110,6 +110,14 @@ package body GNATLLVM.Aliasing is
    --  Root of tree for Type-Based alias Analysis (TBAA) metadata
 
    function Create_TBAA_Type
+     (TE : Entity_Id; Kind : TBAA_Kind) return Metadata_T
+     with Pre => Is_Type_Or_Void (TE);
+   function Create_TBAA_Type (GT : GL_Type; Kind : TBAA_Kind) return Metadata_T
+     with Pre => Present (GT);
+   --  Create a TBAA type entry for the specified type.  If Unique is
+   --  True, make a new entry for that type instead of reusing a previous one.
+
+   function Create_TBAA_Type
      (TE     : Entity_Id;
       Ridx   : Record_Info_Id;
       Parent : Metadata_T;
@@ -169,47 +177,6 @@ package body GNATLLVM.Aliasing is
          Search_For_UCs;
       end if;
    end Initialize;
-
-   ---------------------
-   -- Initialize_TBAA --
-   ---------------------
-
-   procedure Initialize_TBAA (V : in out GL_Value; Kind : TBAA_Kind := Base) is
-   begin
-      if Relationship (V) = Reference then
-         V.TBAA_Type   := Create_TBAA_Type (Related_Type (V), Kind);
-         V.TBAA_Offset := 0;
-      else
-         V.TBAA_Type := No_Metadata_T;
-      end if;
-   end Initialize_TBAA;
-
-   ---------------------
-   -- Initialize_TBAA --
-   ---------------------
-
-   function Initialize_TBAA
-     (V : GL_Value; Kind : TBAA_Kind := Base) return GL_Value
-   is
-      New_V : GL_Value := V;
-   begin
-      Initialize_TBAA (New_V, Kind);
-      return New_V;
-   end Initialize_TBAA;
-
-   --------------------------------
-   -- Initialize_TBAA_If_Changed --
-   --------------------------------
-
-   procedure Initialize_TBAA_If_Changed
-     (V : in out GL_Value; Old_V : GL_Value) is
-   begin
-      if Related_Type (V) /= Related_Type (Old_V)
-        or else Relationship (V) /= Relationship (Old_V)
-      then
-         Initialize_TBAA (V);
-      end if;
-   end Initialize_TBAA_If_Changed;
 
    --------------------
    -- Search_For_UCs --
@@ -397,6 +364,61 @@ package body GNATLLVM.Aliasing is
 
       Scan_All_Units;
    end Search_For_UCs;
+
+   -------------------
+   -- Find_UC_Group --
+   -------------------
+
+   function Find_UC_Group (TE : Entity_Id) return UC_Group_Idx is
+   begin
+      for J in 1 .. UC_Table.Last loop
+         if UC_Table.Table (J).TE = TE then
+            return UC_Table.Table (J).Group;
+         end if;
+      end loop;
+
+      return Empty_UC_Group_Idx;
+   end Find_UC_Group;
+   ---------------------
+   -- Initialize_TBAA --
+   ---------------------
+
+   procedure Initialize_TBAA (V : in out GL_Value; Kind : TBAA_Kind := Base) is
+   begin
+      if Relationship (V) = Reference then
+         V.TBAA_Type   := Create_TBAA_Type (Related_Type (V), Kind);
+         V.TBAA_Offset := 0;
+      else
+         V.TBAA_Type := No_Metadata_T;
+      end if;
+   end Initialize_TBAA;
+
+   ---------------------
+   -- Initialize_TBAA --
+   ---------------------
+
+   function Initialize_TBAA
+     (V : GL_Value; Kind : TBAA_Kind := Base) return GL_Value
+   is
+      New_V : GL_Value := V;
+   begin
+      Initialize_TBAA (New_V, Kind);
+      return New_V;
+   end Initialize_TBAA;
+
+   --------------------------------
+   -- Initialize_TBAA_If_Changed --
+   --------------------------------
+
+   procedure Initialize_TBAA_If_Changed
+     (V : in out GL_Value; Old_V : GL_Value) is
+   begin
+      if Related_Type (V) /= Related_Type (Old_V)
+        or else Relationship (V) /= Relationship (Old_V)
+      then
+         Initialize_TBAA (V);
+      end if;
+   end Initialize_TBAA_If_Changed;
 
    -------------------
    -- Get_TBAA_Name --
@@ -733,18 +755,4 @@ package body GNATLLVM.Aliasing is
       end if;
    end Add_Aliasing_To_Instruction;
 
-   -------------------
-   -- Find_UC_Group --
-   -------------------
-
-   function Find_UC_Group (TE : Entity_Id) return UC_Group_Idx is
-   begin
-      for J in 1 .. UC_Table.Last loop
-         if UC_Table.Table (J).TE = TE then
-            return UC_Table.Table (J).Group;
-         end if;
-      end loop;
-
-      return Empty_UC_Group_Idx;
-   end Find_UC_Group;
 end GNATLLVM.Aliasing;

@@ -1741,13 +1741,6 @@ package body GNATLLVM.Subprograms is
       --  Write the value in In_RHS to the location In_LHS.  F, if Present,
       --  is a field into In_LHS to write.
 
-      function Atomic_Or_Volatile_Copy_Required
-        (N : Node_Id; GT : GL_Type) return Boolean
-        with Pre => Present (N) and then Present (GT);
-      --  Return whether actual parameter corresponding N of formal type GT
-      --  must be passed by copy in a call as per RM C.6(19).  Produce any
-      --  required errors or warnings.
-
       function Misaligned_Copy_Required
         (V        : GL_Value;
          Actual   : Node_Id;
@@ -1868,38 +1861,6 @@ package body GNATLLVM.Subprograms is
          end if;
 
       end Write_Back;
-
-      --------------------------------------
-      -- Atomic_Or_Volatile_Copy_Required --
-      --------------------------------------
-
-      function Atomic_Or_Volatile_Copy_Required
-        (N : Node_Id; GT : GL_Type) return Boolean is
-      begin
-         --  We use the same predicates as in the front-end for RM C.6(12)
-         --  because it's purely a legality issue.
-
-         --  We should not have a scalar type here because such a type is
-         --  passed by copy.  But the Interlocked routines in
-         --  System.Aux_DEC force some of the their scalar parameters to be
-         --  passed by reference so we need to preserve that if we do not
-         --  want to break the interface.
-
-         if Is_Scalar_Type (GT) then
-            return False;
-
-         elsif Is_Atomic_Object (N) and then not Is_Atomic (GT) then
-            Error_Msg_N ("??atomic actual passed by copy (RM C.6(19))", N);
-            return True;
-
-         elsif Is_Volatile_Object (N) and then not Is_Volatile (GT) then
-            Error_Msg_N ("??volatile actual passed by copy (RM C.6(19))", N);
-            return True;
-         else
-            return False;
-
-         end if;
-      end Atomic_Or_Volatile_Copy_Required;
 
       ------------------------------
       -- Misaligned_Copy_Required --
@@ -2028,7 +1989,6 @@ package body GNATLLVM.Subprograms is
             F    : Entity_Id                := Empty;
             Idxs : Access_GL_Value_Array    := null;
             LHS  : GL_Value                 := No_GL_Value;
-            Copy : Boolean                  := False;
             Arg  : GL_Value;
 
          begin
@@ -2047,15 +2007,6 @@ package body GNATLLVM.Subprograms is
                --  pointer to being a pointer to the parameter's type.
 
                if PK_Is_Reference (PK) then
-
-                  --  If we're required to make a copy due to volatility or
-                  --  atomicity, make a note of that.
-
-                  if Comes_From_Source (N)
-                    and then Atomic_Or_Volatile_Copy_Required (Actual, GT)
-                  then
-                     Copy := True;
-                  end if;
 
                   --  If this is an Out or In Out parameter, we need to check
                   --  if this is a bitfield reference.
@@ -2085,7 +2036,6 @@ package body GNATLLVM.Subprograms is
                                       Field => F,
                                       Idxs  => Idxs,
                                       VFA   => Is_VFA_Ref (Actual));
-                     Copy         := False;
 
                      Arg := Get (Arg, R);
 
@@ -2093,9 +2043,7 @@ package body GNATLLVM.Subprograms is
                      --  If we have to make a copy, do so.  Also set up a
                      --  writeback if we have to.
 
-                     if Copy
-                       or else Misaligned_Copy_Required (LHS, Actual, Param,
-                                                         False)
+                     if Misaligned_Copy_Required (LHS, Actual, Param, False)
                      then
                         Arg  := Allocate_For_Type (Related_Type (LHS),
                                                    N => Actual,

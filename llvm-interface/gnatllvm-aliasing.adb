@@ -193,10 +193,10 @@ package body GNATLLVM.Aliasing is
 
    function Base_Type_For_Aliasing (TE : Entity_Id) return Entity_Id is
    begin
-      --  If this is a scalar type, we can use the exact subtype
+      --  If this is an elementary type, we can use the exact subtype
       --  since access types are sub-type specific.
 
-      if Is_Scalar_Type (TE) then
+      if Is_Elementary_Type (TE) then
          return TE;
 
       --  Otherwise, if this isn't a base type, we want to start from there
@@ -616,28 +616,46 @@ package body GNATLLVM.Aliasing is
       Kind   : TBAA_Kind;
       Parent : Metadata_T := TBAA_Root) return Metadata_T
    is
-      BT   : constant Entity_Id  := Base_Type_For_Aliasing (GT);
-      TBAA : constant Metadata_T := Get_TBAA_Type (BT, For_Aliased);
+      BT        : constant Entity_Id  := Base_Type_For_Aliasing (GT);
+      TBAA      : constant Metadata_T := Get_TBAA_Type (BT, For_Aliased);
+      Prim_GT   : constant GL_Type    := Primitive_GL_Type (GT);
+      Prim_TBAA : constant Metadata_T :=
+        (if   No (TBAA) then No_Metadata_T
+         else (case Kind is when For_Aliased => TBAA,
+                 when Base => TBAA_Parent (TBAA),
+                 when Unique => Create_TBAA_Type (BT, Unique, Parent)));
 
    begin
-      --  If we couldn't get a type tag for our base type, we can't get
-      --  one for this GT.
+      --  If we couldn't get a type tag for our base type, or if this is a
+      --  byte array or truncated type, we can't get one for this GT.
 
-      if No (TBAA) then
+      if No (TBAA) or else Is_Byte_Array_GL_Type (GT)
+        or else Is_Truncated_GL_Type (GT)
+      then
          return No_Metadata_T;
 
-         --  Otherwise, if this is a primitive type, return and/or make the
-         --  proper type tag.
+      --  Otherwise, if this is a primitive type, return its type tag
 
       elsif Is_Primitive_GL_Type (GT) then
-         case Kind is
-            when For_Aliased =>
-               return TBAA;
-            when Base =>
-               return TBAA_Parent (TBAA);
-            when Unique =>
-               return Create_TBAA_Type (BT, Unique, Parent);
-         end case;
+         return Prim_TBAA;
+
+      --  If this is a padded type, make a struct type with the primitive
+      --  tag as the only field since we don't care about padding.
+
+      elsif Is_Padded_GL_Type (GT) then
+         declare
+            TBAAs   : constant Metadata_Array (1 .. 1) := (1 => Prim_TBAA);
+            Sizes   : constant Value_Array (1 .. 1)    :=
+              (1 => LLVM_Value (To_Bytes (Get_Type_Size (Type_Of (Prim_GT)))));
+            Offsets : constant Value_Array (1 .. 1)    :=
+              (1 => Const_Int (LLVM_Size_Type, ULL (0), False));
+
+         begin
+            return Create_TBAA_Struct_Type_Node
+              (Context, MD_Builder, Get_TBAA_Name (Kind, GT => GT, TE => BT),
+               LLVM_Value (To_Bytes (GT_Size (GT))), 1, Parent, TBAAs'Address,
+               Offsets'Address, Sizes'Address);
+         end;
 
       --  We don't support any other cases for now
 
@@ -657,21 +675,34 @@ package body GNATLLVM.Aliasing is
    is
    begin
       --  If this isn't a native type, we can't make a TBAA type entry for it
+      --  ??? For now, don't deal with tagged types either
 
-      if Is_Nonnative_Type (TE) then
+      if Is_Nonnative_Type (TE) or else Is_Tagged_Type (TE) then
          return No_Metadata_T;
 
-         --  If it's a scalar type, make a scalar type node.  Note that all
-         --  sizes must be the actual reference size of the LLVM type.
+         --  If it's an elementary type, make a scalar type node.  Note
+         --  that all sizes must be the actual reference size of the LLVM
+         --  type.
 
-      elsif Is_Scalar_Type (TE) then
+      elsif Is_Elementary_Type (TE) then
          declare
             GT   : constant GL_Type  := Primitive_GL_Type (TE);
             Size : constant GL_Value := Get_Type_Size (Type_Of (GT));
 
          begin
-            return Create_TBAA_Scalar_Type_Node
-              (Get_TBAA_Name (Kind, TE => TE), To_Bytes (Size), Parent);
+            --  ??? This is a fat pointer, we currently have no mechanism
+            --  to make a node for it (but it's not a scalar node in any
+            --  event.
+
+            if (Is_Access_Type (TE)
+                  and then Relationship_For_Access_Type (GT) = Fat_Pointer)
+              or else Is_Access_Subprogram_Type (TE)
+            then
+               return No_Metadata_T;
+            else
+               return Create_TBAA_Scalar_Type_Node
+                 (Get_TBAA_Name (Kind, TE => TE), To_Bytes (Size), Parent);
+            end if;
          end;
 
       --  If it's a record type, we know above that its a native type, meaning

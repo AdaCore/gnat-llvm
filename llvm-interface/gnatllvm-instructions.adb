@@ -1070,9 +1070,6 @@ package body GNATLLVM.Instructions is
         Load (IR_Builder, Ptr_Val, Name);
       --  The actual load instruction
 
-      Memory    : GL_Value;
-      --  Memory to use as temporary
-
       Result    : GL_Value;
       --  Data to return
 
@@ -1084,11 +1081,20 @@ package body GNATLLVM.Instructions is
       --  type, and return that value.
 
       if Special_Atomic then
-         Memory := Allocate_For_Type (Load_GT);
-         Discard (Build_Store (IR_Builder, Load_Inst,
-                               Pointer_Cast (IR_Builder, LLVM_Value (Memory),
-                                             Equiv_T, "")));
-         Load_Inst := Load (IR_Builder, LLVM_Value (Memory), "");
+         declare
+            Memory     : constant GL_Value := Allocate_For_Type (Load_GT);
+            Store_Inst : constant Value_T  :=
+              Build_Store (IR_Builder, Load_Inst,
+                           Pointer_Cast (IR_Builder, LLVM_Value (Memory),
+                                         Equiv_T, ""));
+            Align      : constant unsigned :=
+              unsigned (To_Bytes (Alignment (Ptr)));
+
+         begin
+            Load_Inst := Load (IR_Builder, LLVM_Value (Memory), "");
+            Set_Alignment (Store_Inst, Align);
+            Set_Alignment (Load_Inst, Align);
+         end;
       end if;
 
       --  Now build the result, with the proper GT and relationship

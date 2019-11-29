@@ -98,6 +98,15 @@ package GNATLLVM.Types is
    --  or an atomic component.  Produce an error message if we can't make
    --  it atomic.
 
+   function Field_Error_Msg
+     (E : Entity_Id; GT : GL_Type; Only_Special : Boolean) return String
+     with Pre => Present (E) and then Present (GT);
+   --  If E is a field in a record, return a string to use to describe
+   --  any special attributes (e.g., atomic) for use in an error
+   --  message.  If Only_Special, then return a null string if there's
+   --  no special attribute.  Otherwise, just return "&".  GT is the
+   --  type to be used.
+
    procedure Bounds_From_Type (GT : GL_Type; Low, High : out GL_Value)
      with Pre => Present (GT), Post => Present (Low) and then Present (High),
           Inline;

@@ -958,14 +958,7 @@ package body GNATLLVM.Records.Create is
             then Full_Parent_Subtype (R_TE) else Empty);
          Atomic      : constant Boolean   :=
            Is_Atomic_Or_VFA (E) or else Is_Atomic_Or_VFA (F_GT);
-         Independent : constant Boolean   :=
-           Is_Independent (E) or else Is_Independent (F_GT);
-         Error_Str   : constant String    :=
-           (if    Atomic                  then "atomic &"
-            elsif Is_Aliased (E)          then "aliased &"
-            elsif Independent             then "independent &"
-            elsif Strict_Alignment (F_GT) then "& with aliased or tagged part"
-            else  "");
+         Error_Str   : constant String    := Field_Error_Msg (E, F_GT, True);
          Pos         : Uint               :=
            (if Present (Clause) then Component_Bit_Offset (E) else No_Uint);
          Size        : Uint               :=
@@ -1011,12 +1004,12 @@ package body GNATLLVM.Records.Create is
             Pos := No_Uint;
 
           --  If the position is not a multiple of the storage unit, then
-          --  error out and reset the position.
+          --  give error.
 
          elsif Present (Clause) and then Pos mod BPU /= 0
            and then Error_Str'Length > 0
          then
-            Error_Msg_NE ("position for " & Error_Str &
+            Error_Msg_NE ("position for" & Error_Str &
                             " must be multiple of Storage_Unit",
                           First_Bit (Clause), E);
             Pos := No_Uint;
@@ -1028,7 +1021,7 @@ package body GNATLLVM.Records.Create is
            and then Error_Str'Length > 0
          then
             Error_Msg_NE_Num
-              ("position for " & Error_Str & " must be multiple of ^",
+              ("position for" & Error_Str & " must be multiple of ^",
                   First_Bit (Clause), E, Align / BPU);
             Error_Msg_NE_Num
               ("\\because alignment of its type& is ^",
@@ -1042,21 +1035,20 @@ package body GNATLLVM.Records.Create is
             Check_OK_For_Atomic_Type (F_GT, E);
          end if;
 
-         --  If the size is not a multiple of the storage unit, then error
-         --  out and reset the size.
+         --  If the size is not a multiple of the storage unit, issue error
 
          if Present (Clause) and then Present (Size)
            and then Size mod BPU /= 0 and then Error_Str'Length > 0
          then
-            Error_Msg_NE ("size for " & Error_Str &
+            Error_Msg_NE ("size for" & Error_Str &
                             " must be multiple of Storage_Unit",
                           Last_Bit (Clause), E);
             Size := No_Uint;
 
-         --  If a size is specified and constant and is lower than
-         --  the size of the type or larger than the type and the field
-         --  is atomic or aliased, we may have to give an error. (The
-         --  variable case is handled above.)
+         --  If a size is specified and constant and is lower than the size
+         --  of the type or larger than the type and the field is atomic or
+         --  aliased, we may have to give an error. (The variable case is
+         --  handled above.)
 
          elsif Present (Clause) and then Present (Size)
            and then not Is_Dynamic_Size (Def_GT)
@@ -1068,11 +1060,11 @@ package body GNATLLVM.Records.Create is
          then
             if Atomic or else Is_Aliased (E) then
                Error_Msg_NE_Num
-                 ("size for " & Error_Str & " must be ^",
+                 ("size for" & Error_Str & " must be ^",
                   Last_Bit (Clause), E, Esize (Full_Etype (E)));
             else
                Error_Msg_NE_Num
-                 ("size for " & Error_Str & " must be at least ^",
+                 ("size for" & Error_Str & " must be at least ^",
                   Last_Bit (Clause), E, Esize (Full_Etype (E)));
             end if;
 

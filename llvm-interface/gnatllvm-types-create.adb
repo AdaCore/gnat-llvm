@@ -689,6 +689,9 @@ package body GNATLLVM.Types.Create is
         (if    For_Component then "component size"
          elsif Is_RM_Size and then Present (Val_Clause)
          then  "Value_Size" else "size");
+      Error_Str  : constant String   := Field_Error_Msg (E, GT, False);
+      Atomic      : constant Boolean :=
+        Is_Atomic_Or_VFA (E) or else Is_Atomic_Or_VFA (GT);
       Size_GT    : GL_Type           := Primitive_GL_Type (GT);
       Is_Dynamic : Boolean           :=
          Is_Dynamic_Size (Size_GT,
@@ -723,7 +726,8 @@ package body GNATLLVM.Types.Create is
       --  The size of objects must always be a multiple of a byte
 
       elsif Is_Var and then Size mod BPU /= 0 then
-         Error_Msg_NE (Msg_Prefix & " for& is not a multiple of Storage_Unit",
+         Error_Msg_NE (Msg_Prefix & " for" & Error_Str &
+                         " is not a multiple of Storage_Unit",
                        Error_Node, E);
          return No_Uint;
 
@@ -744,7 +748,8 @@ package body GNATLLVM.Types.Create is
       --  If the type is of variable size, we can't have a size clause
 
       elsif Is_Dynamic then
-         Error_Msg_NE (Msg_Prefix & " for& too small", Error_Node, E);
+         Error_Msg_NE (Msg_Prefix & " for" & Error_Str & " too small",
+                       Error_Node, E);
          return No_Uint;
       end if;
 
@@ -774,15 +779,20 @@ package body GNATLLVM.Types.Create is
       --  If the size overflowed, our size is definitely too small
 
       elsif Overflowed (In_Size) then
-         Error_Msg_NE (Msg_Prefix & " for& too small", Error_Node, E);
-         return No_Uint;
+         Error_Msg_NE (Msg_Prefix & " for" & Error_Str & " too small",
+                       Error_Node, E);
+         return UI_From_GL_Value (In_Size);
 
-      --  If too small, we can't use it
+      --  If too small, we can't use it, but give a different error message
+      --  for an aliased or atomic field.
 
       elsif Size_Const_Int (Size) < In_Size then
-         Error_Msg_NE_Num (Msg_Prefix &
-                             " for& too small, minimum allowed is ^",
-                           Error_Node, E, In_Size);
+         Error_Msg_NE_Num (Msg_Prefix & " for" & Error_Str &
+                             (if   Ekind_In (E, E_Component, E_Discriminant)
+                                   and then (Is_Aliased (E) or else Atomic)
+                              then " must be ^"
+                              else " too small, minimum allowed is ^"),
+                              Error_Node, E, In_Size);
          return UI_From_GL_Value (In_Size);
       end if;
 

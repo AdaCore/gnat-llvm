@@ -1499,6 +1499,35 @@ package body GNATLLVM.Types is
 
    end Check_OK_For_Atomic_Type;
 
+   ---------------------
+   -- Field_Error_Msg --
+   ---------------------
+
+   function Field_Error_Msg
+     (E : Entity_Id; GT : GL_Type; Only_Special : Boolean) return String
+   is
+      Atomic      : constant Boolean   :=
+        Is_Atomic_Or_VFA (E) or else Is_Atomic_Or_VFA (GT);
+      Independent : constant Boolean   :=
+        Is_Independent (E) or else Is_Independent (GT);
+      By_Ref_Type : constant Boolean   := Is_By_Reference_Type (GT);
+      Error_Str   : constant String    :=
+        (if    Atomic                  then " atomic &"
+         elsif Is_Aliased (E)          then " aliased &"
+         elsif Independent             then " independent &"
+         elsif By_Ref_Type             then "& with by-reference type"
+         elsif Strict_Alignment (GT)   then "& with aliased part"
+         elsif Only_Special            then "" else "&");
+
+   begin
+      if Ekind_In (E, E_Component, E_Discriminant) then
+         return Error_Str;
+      else
+         return "&";
+      end if;
+
+   end Field_Error_Msg;
+
    ---------------
    -- Build_Min --
    ---------------

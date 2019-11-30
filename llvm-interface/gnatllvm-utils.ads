@@ -139,10 +139,10 @@ package GNATLLVM.Utils is
    function Get_Orig_By_Ref_Mech (E : Entity_Id) return Boolean is
      (Get_Flag1 (E))
      with Pre => Ekind_In (E, E_In_Parameter, E_Out_Parameter,
-                             E_In_Out_Parameter);
+                           E_In_Out_Parameter);
    procedure Set_Orig_By_Ref_Mech (E : Entity_Id; F : Boolean)
      with Pre => Ekind_In (E, E_In_Parameter, E_Out_Parameter,
-                             E_In_Out_Parameter);
+                           E_In_Out_Parameter);
    --  Set and get a flag indicating that this parameter was originally
    --  specified with a Mechanism of By_Ref.
 

@@ -1735,9 +1735,7 @@ package body GNATLLVM.Subprograms is
          In_RHS  : GL_Value;
          VFA     : Boolean)
         with Pre => Present (In_RHS) and then Is_Reference (In_LHS)
-                    and then (No (F)
-                                or else Ekind_In (F, E_Component,
-                                                  E_Discriminant));
+                    and then (No (F) or else Is_Field (F));
       --  Write the value in In_RHS to the location In_LHS.  F, if Present,
       --  is a field into In_LHS to write.
 

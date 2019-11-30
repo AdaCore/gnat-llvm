@@ -43,8 +43,7 @@ package GNATLLVM.Records is
 
    function Record_Field_Offset
      (V : GL_Value; Field : Entity_Id) return GL_Value
-     with Pre  => not Is_Data (V)
-                  and then Ekind_In (Field, E_Discriminant, E_Component),
+     with Pre  => not Is_Data (V) and then Is_Field (Field),
           Post => Present (Record_Field_Offset'Result);
    --  Return a GL_Value that represents the offset of a given record field
 
@@ -80,8 +79,7 @@ package GNATLLVM.Records is
      with Pre  => Is_Record_Type (TE);
 
    function Effective_Field_Alignment (F : Entity_Id) return Nat
-     with Pre  => Ekind_In (F, E_Discriminant, E_Component),
-          Post => Effective_Field_Alignment'Result > 0;
+     with Pre => Is_Field (F), Post => Effective_Field_Alignment'Result > 0;
 
    function Get_Record_Type_Alignment (TE : Entity_Id) return Nat
      with Pre => Is_Record_Type (TE);
@@ -98,8 +96,7 @@ package GNATLLVM.Records is
 
    function Find_Matching_Field
      (TE : Entity_Id; Field : Entity_Id) return Entity_Id
-     with Pre  => Is_Record_Type (TE)
-     and then Ekind_In (Field, E_Discriminant, E_Component);
+     with Pre  => Is_Record_Type (TE) and then Is_Field (Field);
    --  Find a field in the entity list of TE that has the same name as
    --  F and has Field_Info.
 
@@ -108,7 +105,7 @@ package GNATLLVM.Records is
    --  True if TE has a field whose type if an unconstrained record.
 
    function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
-     with Pre  => Ekind_In (E, E_Discriminant, E_Component),
+     with Pre  => Is_Field (E),
           Post => No (Emit_Field_Position'Result)
                   or else (Type_Of (Emit_Field_Position'Result) =
                              LLVM_Size_Type);
@@ -147,12 +144,12 @@ package GNATLLVM.Records is
    --  the size of the RI (i.e. the size of the type) in bytes.
 
    function Field_Ordinal (F : Entity_Id) return unsigned
-     with Pre => Ekind_In (F, E_Component, E_Discriminant);
+     with Pre => Is_Field (F);
    --  Return the index of the field denoted by F. We assume here, but
    --  don't check, that the F is in a record with just a single RI.
 
    function Ancestor_Field (F : Entity_Id) return Entity_Id
-     with Pre  => Ekind_In (F, E_Component, E_Discriminant),
+     with Pre  => Is_Field (F),
           Post => Ekind (F) = Ekind (Ancestor_Field'Result);
    --  Find the ancestor field by walking up both the
    --  Original_Record_Component chain and the
@@ -160,20 +157,17 @@ package GNATLLVM.Records is
    --  have the same representation as our record.
 
    function Field_Type (F : Entity_Id) return GL_Type
-     with Pre  => Ekind_In (F, E_Component, E_Discriminant)
-                  and then Present (Get_Field_Info (F)),
+     with Pre  => Is_Field (F) and then Present (Get_Field_Info (F)),
           Post => Present (Field_Type'Result);
    --  Return the GL_Type of the field denoted by F
 
    function Field_Bit_Offset (F : Entity_Id) return Uint
-     with Pre  => Ekind_In (F, E_Component, E_Discriminant)
-                  and then Present (Get_Field_Info (F)),
+     with Pre  => Is_Field (F) and then Present (Get_Field_Info (F)),
           Post => Present (Field_Bit_Offset'Result);
    --  Return the bitfield offset of F or zero if it's not a bitfield
 
    function Is_Bitfield (F : Entity_Id) return Boolean
-     with Pre => Ekind_In (F, E_Component, E_Discriminant)
-                 and then Present (Get_Field_Info (F));
+     with Pre => Is_Field (F) and then Present (Get_Field_Info (F));
    --  Indicate whether F is a bitfield, meaning that shift/mask operations
    --  are required to access it.
 
@@ -181,8 +175,7 @@ package GNATLLVM.Records is
      (Strict_Alignment (GT) or else Is_Aliased (F)
         or else Is_Independent (F) or else Is_Independent (GT)
         or else Is_Atomic_Or_VFA (F) or else Is_Atomic_Or_VFA (GT))
-     with Pre => Ekind_In (F, E_Component, E_Discriminant)
-                 and then Present (GT);
+     with Pre => Is_Field (F) and then Present (GT);
    --  Return True iff a field F, whose type is GT, is not permitted to be
    --  misaligned.
 
@@ -190,7 +183,7 @@ package GNATLLVM.Records is
      (F           : Entity_Id;
       Force       : Boolean := False;
       Ignore_Size : Boolean := False) return Pack_Kind
-     with Pre  => Ekind_In (F, E_Component, E_Discriminant);
+     with Pre  => Is_Field (F);
    --  Returns how tightly we can pack F.  If Force is True, we want to
    --  pack the field if it's valid to do so, not only when we does
    --  something from the perspective of this field (e.g., because we have
@@ -202,20 +195,18 @@ package GNATLLVM.Records is
       Pos          : Uint := No_Uint;
       Size         : Uint := No_Uint;
       Use_Pos_Size : Boolean := False) return Boolean
-     with Pre => Ekind_In (F, E_Component, E_Discriminant);
+     with Pre => Is_Field (F);
    --  True if we need bitfield processing for this field based on its
    --  rep clause.  If Use_Pos_Size is specified, Pos and Size
    --  override that from F.
 
    function Is_Array_Bitfield (F : Entity_Id) return Boolean
-     with Pre  => Ekind_In (F, E_Component, E_Discriminant)
-                  and then Present (Get_Field_Info (F));
+     with Pre  => Is_Field (F) and then Present (Get_Field_Info (F));
    --  If True, this is a bitfield and the underlying LLVM field is an
    --  array.
 
    function Is_Large_Array_Bitfield (F : Entity_Id) return Boolean
-     with Pre  => Ekind_In (F, E_Component, E_Discriminant)
-                  and then Present (Get_Field_Info (F));
+     with Pre  => Is_Field (F) and then Present (Get_Field_Info (F));
    --  Likewise, but it's also a large array
 
    function Align_To
@@ -232,7 +223,7 @@ package GNATLLVM.Records is
       Prefer_LHS : Boolean  := False;
       VFA        : Boolean  := False) return GL_Value
      with  Pre  => Is_Record_Type (Related_Type (In_V))
-                   and then Ekind_In (In_F, E_Component, E_Discriminant),
+                   and then Is_Field (In_F),
            Post => Present (Build_Field_Load'Result);
    --  V represents a record.  Return a value representing loading field
    --  In_F from that record.  If For_LHS is True, this must be a reference
@@ -245,8 +236,7 @@ package GNATLLVM.Records is
       RHS    : GL_Value;
       VFA    : Boolean := False) return GL_Value
      with Pre => Is_Record_Type (Related_Type (In_LHS))
-                 and then Present (RHS)
-                 and then Ekind_In (In_F, E_Component, E_Discriminant);
+                 and then Present (RHS) and then Is_Field (In_F);
    --  Likewise, but perform a store of RHS into the F component of In_LHS.
    --  If we return a value, that's the record that needs to be stored into
    --  the actual LHS.  If no value if returned, all our work is done.
@@ -254,15 +244,13 @@ package GNATLLVM.Records is
    procedure Build_Field_Store
      (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value; VFA : Boolean := False)
      with  Pre => Is_Record_Type (Related_Type (LHS))
-                  and then Present (RHS)
-                  and then Ekind_In (In_F, E_Component, E_Discriminant);
+                  and then Present (RHS) and then Is_Field (In_F);
    --  Similar to the function version, but we always update LHS.
 
    procedure Add_Write_Back (LHS : GL_Value; F : Entity_Id; RHS : GL_Value)
      with  Pre  => (No (F) or else Is_Record_Type (Related_Type (LHS)))
                    and then Present (RHS)
-                   and then (No (F) or else Ekind_In (F, E_Component,
-                                                      E_Discriminant));
+                   and then (No (F) or else Is_Field (F));
    --  Like Build_Field_Store, but stack the operation to be performed
    --  later.  The operations are performed LIFO.
 
@@ -488,7 +476,7 @@ private
    --  Get the expression that constrains the discriminant E of type TE
 
    function Field_Position (E : Entity_Id; V : GL_Value) return BA_Data
-     with Pre => Ekind_In (E, E_Component, E_Discriminant);
+     with Pre => Is_Field (E);
    --  Back-annotation version of Emit_Field_Position
 
 end GNATLLVM.Records;

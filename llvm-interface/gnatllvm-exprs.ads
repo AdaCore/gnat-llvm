@@ -43,8 +43,7 @@ package GNATLLVM.Exprs is
       Only_Bitfield : Boolean := False)
      with Pre  => Present (N),
           Post => Present (LHS)
-                  and then (No (F) or else Ekind_In (F, E_Component,
-                                                     E_Discriminant));
+                  and then (No (F) or else Is_Field (F));
    --  N is an expression that's used in a LHS context, either the LHS side
    --  of an N_Assignment_Statement or an actual corresponding to an Out
    --  (or in Out) parameter.  If N represents an field selection (if

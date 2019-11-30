@@ -204,7 +204,7 @@ package GNATLLVM.Environment is
      with Pre => Is_Record_Type (TE), Inline;
 
    function Get_Field_Info            (VE : Entity_Id)  return Field_Info_Id
-     with Pre => Ekind_In (VE, E_Discriminant, E_Component), Inline;
+     with Pre => Is_Field (VE), Inline;
 
    function Get_Label_Info            (VE : Entity_Id)  return Label_Info_Id
      with Pre => Present (VE), Inline;
@@ -271,9 +271,8 @@ package GNATLLVM.Environment is
           Post => Get_Record_Info_N (TE) = RI, Inline;
 
    procedure Set_Field_Info            (VE : Entity_Id; FI : Field_Info_Id)
-     with Pre  => Ekind_In (VE, E_Discriminant, E_Component)
-                  and then (No (Get_Field_Info (VE))
-                              or else Get_Field_Info (VE) = FI),
+     with Pre  => Is_Field (VE) and then (No (Get_Field_Info (VE))
+                                            or else Get_Field_Info (VE) = FI),
           Post => Get_Field_Info (VE) = FI, Inline;
 
    procedure Set_Label_Info            (VE : Entity_Id; LI : Label_Info_Id)

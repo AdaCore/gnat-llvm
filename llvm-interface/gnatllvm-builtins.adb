@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Errout;   use Errout;
 with Sem_Eval; use Sem_Eval;
 with Sem_Util; use Sem_Util;
 with Stand;    use Stand;
@@ -22,7 +23,8 @@ with Table;    use Table;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNAT.Strings; use GNAT.Strings;
+with Ada.Characters.Handling; use Ada.Characters.Handling;
+with GNAT.Strings;            use GNAT.Strings;
 
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
@@ -62,14 +64,69 @@ package body GNATLLVM.Builtins is
    --  a supported LLVM atomicrmw instruction.  If so, set End_Index
    --  to after the name and Op to the code for the operation and return True.
 
+   function Last_Non_Suffix (S : String) return Integer;
+   --  S is the name of some intrinsic function.  Return the index of
+   --  the last character of that name that doesn't include a "_N" suffix
+   --  where N is a string of digits denoting a size.
+
    function Type_Size_Matches_Name
      (S        : String;
-      Index    : Integer;
       In_Bytes : Boolean;
-      GT       : GL_Type) return Boolean;
-   --  Return True if the string S, starting at position Index, represents
-   --  an integer corresponding to the size of GT measured in bytes or
-   --  bits, depending on In_Bytes.
+      GT       : GL_Type) return Boolean
+     with Pre => Present (GT);
+   --  Return True if the characteers at the end of string S
+   --  represents an integer corresponding to the size of GT measured
+   --  in bytes or bits, depending on In_Bytes.
+
+   function Emit_Ptr
+     (Ptr : Node_Id; GT : GL_Type) return GL_Value
+     with Pre => Present (Ptr) and then Present (GT);
+   --  If Ptr is an Address or an access type pointing to GT, return a
+   --  GL_Value that's a Reference to GT.  If not, or if GT is not an
+   --  elementary type, return No_GL_Value.
+
+   function Memory_Order
+     (N          : Node_Id;
+      No_Acq     : Boolean     := False;
+      No_Release : Boolean := False) return Atomic_Ordering_T
+     with Pre => Present (N);
+   --  N is an expression being passed as an operand for a memory order.
+   --  Return the corresponding memory ordering for an instruction.
+
+   function Emit_Fetch_And_Op
+     (Ptr     : Node_Id;
+      Val     : Entity_Id;
+      Op      : Atomic_RMW_Bin_Op_T;
+      Op_Back : Boolean;
+      Order   : Atomic_Ordering_T;
+      S       : String;
+      GT      : GL_Type) return GL_Value
+     with Pre => Present (Ptr) and then Present (Val) and then Present (GT);
+   --  Perform the Fetch_And_Op (Atomic_RMW) given by Op at the location
+   --  Ptr.  If Op_Back is True, we want the new value, so we have to
+   --  perform the operation on the result.  Order is the memory ordering
+   --  needed.  S and GT are as for Type_Size_Matches_Name.  If we can
+   --  peform the operation, return the result.  Otherwise, return
+   --  No_GL_Value.
+
+   function Emit_Compare_Xchg
+     (Ptr_Val  : GL_Value;
+      Old_Val  : GL_Value;
+      New_Val  : GL_Value;
+      S_Order  : Atomic_Ordering_T;
+      F_Order  : Atomic_Ordering_T;
+      Weak     : Boolean;
+      Want_Val : Boolean) return GL_Value
+     with Pre  => Present (Ptr_Val) and then Present (Old_Val)
+                  and then Present (New_Val)
+                  and then Related_Type (Ptr_Val) = Related_Type (Old_Val)
+                  and then Related_Type (Ptr_Val) = Related_Type (New_Val),
+          Post => Present (Emit_Compare_Xchg'Result);
+   --  Emit an atomic compare-exchange operation at Ptr with the given old
+   --  and new values. Weak, S_Order, and F_Order give the desired
+   --  atomicity parameters.  If Want_Val is True, we return the old value
+   --  at Ptr, but if False, we return a boolean saying whether the
+   --  value was written.
 
    function Emit_Bswap_Call (N : Node_Id; S : String) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
@@ -244,13 +301,46 @@ package body GNATLLVM.Builtins is
       return False;
    end Name_To_RMW_Op;
 
+   ---------------------
+   -- Last_Non_Suffix --
+   ---------------------
+
+   function Last_Non_Suffix (S : String) return Integer is
+   begin
+      --  If there's no digit at the end, return the highest index
+
+      if not Is_Digit (S (S'Last)) then
+         return S'Last;
+
+      --  Otherwise, search for the last non-digit.  We know that the
+      --  last character is a digit.
+
+      else
+         return Idx : Integer := S'Last - 1 do
+            while Idx >= S'First and then Is_Digit (S (Idx)) loop
+               Idx := Idx - 1;
+            end loop;
+
+            --  If we have characters left, and we're preceeded by a '_',
+            --  return the index of the character before that.  Otherwise,
+            --  the string doesn't look like "xxx_N", so return 'Last.
+
+            if Idx >= S'First + 1 and then S (Idx) = '_' then
+               Idx := Idx - 1;
+            else
+               Idx := S'Last;
+            end if;
+         end return;
+      end if;
+
+   end Last_Non_Suffix;
+
    ----------------------------
    -- Type_Size_Matches_Name --
    ----------------------------
 
    function Type_Size_Matches_Name
      (S        : String;
-      Index    : Integer;
       In_Bytes : Boolean;
       GT       : GL_Type) return Boolean
    is
@@ -264,102 +354,129 @@ package body GNATLLVM.Builtins is
       --  We don't match if the rest of the string isn't the right length
       --  and we also don't deal with three-digit sizes.
 
-      if S'Last /= Index + Digs - 1 or else Digs > 2 then
+      if S'Length < Digs + 1 or else Digs > 2 then
          return False;
 
       --  If there's only one digit, see if it's the right one
 
       elsif Digs = 1 then
-         return S (Index) = Character'Val (Character'Pos ('0') + Size);
+         return S (S'Last) = Character'Val (Character'Pos ('0') + Size)
+           and then S (S'Last - 1) = '_';
 
       --  If there are two digits (the only remaining case), check both
 
       else
-         return S (Index) = Character'Val (Character'Pos ('0') + Size / 10)
-           and then S (Index + 1) = Character'Val
-                                      (Character'Pos ('0') + Size mod 10);
+         return S (S'Last) = Character'Val (Character'Pos ('0') + Size / 10)
+           and then S (S'Last - 1) = Character'Val
+                                      (Character'Pos ('0') + Size mod 10)
+           and then S (S'Last - 2) = '_';
       end if;
 
    end Type_Size_Matches_Name;
 
-   --------------------------
-   -- Emit_Sync_Fetch_Call --
-   --------------------------
+   ------------------
+   -- Memory_Order --
+   ------------------
 
-   function Emit_Sync_Fetch_Call (N : Node_Id; S : String) return GL_Value is
-      Ptr       : constant Node_Id := First_Actual (N);
-      Index     : Integer := S'First + 7;
-      Val       : Node_Id;
-      Op        : Atomic_RMW_Bin_Op_T;
-      Op_Back   : Boolean;
-      New_Index : Integer;
-      GT        : GL_Type;
-      Ptr_Val   : GL_Value;
-      Value     : GL_Value;
-      Result    : GL_Value;
+   function Memory_Order
+     (N          : Node_Id;
+      No_Acq     : Boolean     := False;
+      No_Release : Boolean := False) return Atomic_Ordering_T
+   is
+      Val   : Uint;
+      Order : Atomic_Ordering_T;
 
    begin
-      --  This is supposedly a __sync builtin.  Parse it to see what it
-      --  tells us to do.  If anything is wrong with the builtin or its
-      --  operands, just return No_GL_Value and a normal call will result,
-      --  which will produce a link error.
-      --
-      --  We need to have "Op_and_fetch", "fetch_and_Op", or
-      --  "lock_test_and_set".
+      if not Compile_Time_Known_Value (N) then
+         return Atomic_Ordering_Sequentially_Consistent;
+      end if;
 
-      if Name_To_RMW_Op (S, Index, New_Index, Op)
-        and then S'Last > New_Index + 9
-        and then S (New_Index .. New_Index + 9) = "_and_fetch"
+      Val := Expr_Value (N);
+      if Val = Uint_0 then
+         return Atomic_Ordering_Unordered;
+      elsif Val =  Uint_1 or else Val = Uint_2 then
+         Order := Atomic_Ordering_Acquire;
+      elsif Val = Uint_3 then
+         Order := Atomic_Ordering_Release;
+      elsif Val = Uint_4 then
+         Order := Atomic_Ordering_Acquire_Release;
+      else
+         return Atomic_Ordering_Sequentially_Consistent;
+      end if;
+
+      --  Test to see if we have an ordering that's not supported by the
+      --  operation.
+
+      if (Order = Atomic_Ordering_Acquire_Release
+            and then (No_Acq or else No_Release))
+        or else (Order = Atomic_Ordering_Acquire and then No_Acq)
+        or else (Order = Atomic_Ordering_Release and then No_Release)
       then
-         Op_Back := True;
-         Index   := New_Index + 10;
-      elsif S'Last > Index + 9 and then S (Index .. Index + 9) = "fetch_and_"
-        and then Name_To_RMW_Op (S, Index + 10, New_Index, Op)
-      then
-         Op_Back := False;
-         Index   := New_Index;
-      elsif S (Index .. Index + 17) = "lock_test_and_set_" then
-         Index   := Index + 17;
-         Op      := Atomic_RMW_Bin_Op_Xchg;
-         Op_Back := False;
+         Error_Msg_N ("Invalid memory ordering for operation", N);
+         Order := Atomic_Ordering_Sequentially_Consistent;
+      end if;
+
+      return Order;
+
+   end Memory_Order;
+
+   --------------
+   -- Emit_Ptr --
+   --------------
+
+   function Emit_Ptr
+     (Ptr : Node_Id; GT : GL_Type) return GL_Value
+   is
+      Ptr_Val : GL_Value := Emit_Expression (Ptr);
+
+   begin
+      if not Is_Elementary_Type (GT) then
+         return No_GL_Value;
+
+      --  If the pointer is derived from System.Address convert to GT
+
+      elsif Is_Descendant_Of_Address (Ptr_Val) then
+         return Int_To_Ref (Ptr_Val, GT);
+      elsif Is_Access_Type (Ptr_Val) then
+         Ptr_Val := From_Access (Ptr_Val);
+         return (if Related_Type (Ptr_Val) = GT then Ptr_Val else No_GL_Value);
       else
          return No_GL_Value;
       end if;
 
-      --  There must be exactly two actuals with the second an elementary
-      --  type and the first an access type to it or System.Address.  The
-      --  name of the function must also correspond to the size.
+   end Emit_Ptr;
 
-      if No (Ptr) then
-         return No_GL_Value;
-      end if;
+   -----------------------
+   -- Emit_Fetch_And_Op --
+   -----------------------
 
-      Val := Next_Actual (Ptr);
-      if No (Val) or else Present (Next_Actual (Val)) then
-         return No_GL_Value;
-      end if;
+   function Emit_Fetch_And_Op
+     (Ptr     : Node_Id;
+      Val     : Entity_Id;
+      Op      : Atomic_RMW_Bin_Op_T;
+      Op_Back : Boolean;
+      Order   : Atomic_Ordering_T;
+      S       : String;
+      GT      : GL_Type) return GL_Value
+   is
+      Ptr_Val : GL_Value;
+      Value   : GL_Value;
+      Result  : GL_Value;
 
-      --  If the pointer is System.Address, make it an access type
+   begin
+      --  Emit all operands and validate all our conditions
 
-      GT      := Full_GL_Type (Val);
-      Ptr_Val := Emit_Expression (Ptr);
-      if Is_Descendant_Of_Address (Ptr_Val) then
-         Ptr_Val := Int_To_Ref (Ptr_Val, GT);
-      elsif Is_Access_Type (Ptr_Val) then
-         Ptr_Val := From_Access (Ptr_Val);
-      end if;
-
-      if not Is_Elementary_Type (GT)
-        or else Related_Type (Ptr_Val) /= GT
-        or else not Type_Size_Matches_Name (S, Index + 1, True, GT)
+      Ptr_Val := Emit_Ptr (Ptr, GT);
+      Value   := Emit_Expression (Val);
+      if No (Ptr_Val) or else Related_Type (Value) /= GT
+        or else not Type_Size_Matches_Name (S, True, GT)
       then
          return No_GL_Value;
       end if;
 
       --  Now we can emit the operation
 
-      Value  := Emit_Expression (Val);
-      Result := Atomic_RMW (Op, Ptr_Val, Value);
+      Result := Atomic_RMW (Op, Ptr_Val, Value, Order);
       Set_Volatile_For_Atomic (Result);
 
       --  If we want the value before the operation, we're done.  Otherwise,
@@ -398,6 +515,84 @@ package body GNATLLVM.Builtins is
             return Build_Min (Result, Value);
       end case;
 
+   end Emit_Fetch_And_Op;
+
+   -----------------------
+   -- Emit_Compare_Xchg --
+   -----------------------
+
+   function Emit_Compare_Xchg
+     (Ptr_Val  : GL_Value;
+      Old_Val  : GL_Value;
+      New_Val  : GL_Value;
+      S_Order  : Atomic_Ordering_T;
+      F_Order  : Atomic_Ordering_T;
+      Weak     : Boolean;
+      Want_Val : Boolean) return GL_Value
+   is
+      Result : constant GL_Value :=
+        Atomic_Cmp_Xchg (Ptr_Val, Old_Val, New_Val, S_Order, F_Order,
+                         Weak => Weak);
+
+   begin
+      Set_Volatile_For_Atomic (Result);
+
+      if Want_Val then
+         return Get (Result, Data);
+      else
+         return Get (G_Is_Relationship (Result, Boolean_GL_Type,
+                                        Boolean_And_Data),
+                     Boolean_Data);
+      end if;
+
+   end Emit_Compare_Xchg;
+
+   --------------------------
+   -- Emit_Sync_Fetch_Call --
+   --------------------------
+
+   function Emit_Sync_Fetch_Call (N : Node_Id; S : String) return GL_Value is
+      Ptr       : constant Node_Id := First_Actual (N);
+      Val       : constant Node_Id := Next_Actual (Ptr);
+      GT        : constant GL_Type := Full_GL_Type (Val);
+      Index     : constant Integer := S'First + 7;
+      Last      : constant Integer := Last_Non_Suffix (S);
+      Op        : Atomic_RMW_Bin_Op_T;
+      Op_Back   : Boolean;
+      New_Index : Integer;
+
+   begin
+      --  This is supposedly a __sync builtin.  Parse it to see what it
+      --  tells us to do.  If anything is wrong with the builtin or its
+      --  operands, just return No_GL_Value and a normal call will result,
+      --  which will produce a link error.
+      --
+      --  We need to have "Op_and_fetch", "fetch_and_Op", or
+      --  "lock_test_and_set".
+
+      if Name_To_RMW_Op (S, Index, New_Index, Op)
+        and then Last = New_Index + 9
+        and then S (New_Index .. Last) = "_and_fetch"
+      then
+         Op_Back := True;
+      elsif S'Last > Index + 9 and then S (Index .. Index + 9) = "fetch_and_"
+        and then Name_To_RMW_Op (S, Index + 10, New_Index, Op)
+        and then New_Index - 1 = Last
+      then
+         Op_Back := False;
+      elsif Index + 17 = Last
+        and then S (Index .. Index + 17) = "lock_test_and_set_"
+      then
+         Op      := Atomic_RMW_Bin_Op_Xchg;
+         Op_Back := False;
+      else
+         return No_GL_Value;
+      end if;
+
+      return Emit_Fetch_And_Op
+        (Ptr, Val, Op, Op_Back, Atomic_Ordering_Sequentially_Consistent,
+         S, GT);
+
    end Emit_Sync_Fetch_Call;
 
    ----------------------------
@@ -406,13 +601,12 @@ package body GNATLLVM.Builtins is
 
    function Emit_Sync_Compare_Call (N : Node_Id; S : String) return GL_Value is
       Ptr     : constant Node_Id := First_Actual (N);
-      Index   : Integer          := S'First + 7;
-      Old_Val : Node_Id;
-      New_Val : Node_Id;
-      GT      : GL_Type;
-      Ptr_Val : GL_Value;
-      Is_Bool : Boolean;
-      Result  : GL_Value;
+      Old_Val : constant Node_Id := Next_Actual (Ptr);
+      New_Val : constant Node_Id := Next_Actual (Old_Val);
+      GT      : constant GL_Type := Full_GL_Type (Old_Val);
+      Index   : constant Integer := S'First + 7;
+      Ptr_Val : constant GL_Value := Emit_Ptr (Ptr, GT);
+      Is_Val  : Boolean;
 
    begin
       --  See if we are to return the value of the variable or a boolean
@@ -421,66 +615,28 @@ package body GNATLLVM.Builtins is
       if S'Length > 29
         and then S (Index .. Index + 21) = "bool_compare_and_swap_"
       then
-         Index   := Index + 22;
-         Is_Bool := True;
+         Is_Val := True;
       elsif S'Length > 28
         and then S (Index .. Index + 20) = "val_compare_and_swap_"
       then
-         Index   := Index + 21;
-         Is_Bool := False;
+         Is_Val := False;
       end if;
 
-      --  There must be exactly three actuals with the second an elementary
-      --  type, the first either an access type to it or System.Address,
-      --  and the third the same as the second and the size specified in
-      --  the name must agree with that of the type.
+      --  Validate all our conditions
 
-      if No (Ptr) then
-         return No_GL_Value;
-      end if;
-
-      Old_Val := Next_Actual (Ptr);
-      if No (Old_Val) then
-         return No_GL_Value;
-      end if;
-
-      New_Val := Next_Actual (Old_Val);
-      if No (New_Val) or else Present (Next_Actual (New_Val)) then
-         return No_GL_Value;
-      end if;
-
-      --  If the pointer is System.Address, make it an access type
-
-      GT      := Full_GL_Type (Old_Val);
-      Ptr_Val := Emit_Expression (Ptr);
-      if Is_Descendant_Of_Address (Ptr_Val) then
-         Ptr_Val := Int_To_Ref (Ptr_Val, GT);
-      elsif Is_Access_Type (Ptr_Val) then
-         Ptr_Val := From_Access (Ptr_Val);
-      end if;
-
-      if not Is_Elementary_Type (GT)
-        or else Full_GL_Type (New_Val) /= GT
-        or else Related_Type (Ptr_Val) /= GT
-        or else not Type_Size_Matches_Name (S, Index, True, GT)
+      if No (Ptr_Val) or else Full_GL_Type (New_Val) /= GT
+        or else not Type_Size_Matches_Name (S, True, GT)
       then
          return No_GL_Value;
       end if;
 
       --  Now we can emit the operation and return the result
 
-      Result := Atomic_Cmp_Xchg (Ptr_Val, Emit_Expression (Old_Val),
-                                 Emit_Expression (New_Val));
-      Set_Volatile_For_Atomic (Result);
-
-      if Is_Bool then
-         return Get (G_Is_Relationship (Result, Boolean_GL_Type,
-                                        Boolean_And_Data),
-                     Boolean_Data);
-      else
-         return Get (Result, Data);
-      end if;
-
+      return Emit_Compare_Xchg (Ptr_Val, Emit_Expression (Old_Val),
+                                Emit_Expression (New_Val),
+                                Atomic_Ordering_Sequentially_Consistent,
+                                Atomic_Ordering_Sequentially_Consistent,
+                                False, Is_Val);
    end Emit_Sync_Compare_Call;
 
    ---------------------
@@ -501,7 +657,7 @@ package body GNATLLVM.Builtins is
 
       GT := Full_GL_Type (Val);
       if not Is_Elementary_Type (GT)
-        or else not Type_Size_Matches_Name (S, 16, False, GT)
+        or else not Type_Size_Matches_Name (S, False, GT)
       then
          return No_GL_Value;
       end if;
@@ -561,12 +717,11 @@ package body GNATLLVM.Builtins is
 
    function Emit_Atomic_Call (N : Node_Id; S : String) return GL_Value is
       Ptr        : constant Node_Id := First_Actual (N);
+      GT         : constant GL_Type := Full_GL_Type (N);
       Ptr_Val    : GL_Value;
       Order      : Node_Id;
-      GT         : GL_Type;
-      Order_UI   : Uint;
-      Inst_Order : Atomic_Ordering_T;
       Inst       : Value_T;
+
    begin
       --  Verify that the types and number of arguments are correct
 
@@ -574,34 +729,24 @@ package body GNATLLVM.Builtins is
          return No_GL_Value;
       end if;
 
-      --  If the pointer is System.Address, make it an access type
+      --  Deal with the pointer and validate all our conditions
 
-      GT      := Full_GL_Type (N);
-      Ptr_Val := Emit_Expression (Ptr);
-      if Is_Descendant_Of_Address (Related_Type (Ptr_Val)) then
-         Ptr_Val := Int_To_Ref (Ptr_Val, GT);
-      elsif Is_Access_Type (Related_Type (Ptr_Val)) then
-         Ptr_Val := From_Access (Ptr_Val);
-      end if;
-
-      Order := Next_Actual (Ptr);
-      if No (Order) or else Present (Next_Actual (Order))
-        or else not Type_Size_Matches_Name (S, 15, True, GT)
-        or else Related_Type (Ptr_Val) /= GT
-        or else not Compile_Time_Known_Value (Order)
-      then
+      Ptr_Val := Emit_Ptr (Ptr, GT);
+      if No (Ptr_Val) or else not Type_Size_Matches_Name (S, True, GT) then
          return No_GL_Value;
       end if;
 
-      Order_UI := Expr_Value (Order);
-      Inst_Order := (if    Order_UI = 0 then Atomic_Ordering_Unordered
-                     elsif Order_UI = 2 then Atomic_Ordering_Acquire
-                     elsif Order_UI = 3 then Atomic_Ordering_Release
-                     elsif Order_UI = 4 then Atomic_Ordering_Acquire_Release
-                     else  Atomic_Ordering_Sequentially_Consistent);
+      --  Now validate the Order argument
+
+      Order := Next_Actual (Ptr);
+      if No (Order) or else Present (Next_Actual (Order)) then
+         return No_GL_Value;
+      end if;
+
+      --  Finally emit the desired load
 
       Inst := Load  (IR_Builder, LLVM_Value (Ptr_Val), "");
-      Set_Ordering  (Inst, Inst_Order);
+      Set_Ordering  (Inst, Memory_Order (Order, No_Release => True));
       Set_Volatile  (Inst, True);
       Set_Alignment (Inst,
                      unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
@@ -618,6 +763,7 @@ package body GNATLLVM.Builtins is
    is
       Fn_Name : constant String  := Get_Ext_Name (Subp);
       J       : constant Integer := Fn_Name'First;
+      N_Args  : constant Nat     := Num_Actuals (N);
       Len     : Integer;
 
       type FP_Builtin is record
@@ -642,11 +788,12 @@ package body GNATLLVM.Builtins is
       --  First see if this is a __sync class of subprogram
 
       if Fn_Name'Length > 12 and then Fn_Name (J .. J + 6) = "__sync_" then
-         if Fn_Name (J + 7 .. J + 10) = "val_"
-           or else Fn_Name (J + 7 .. J + 11) = "bool_"
+         if (Fn_Name (J + 7 .. J + 10) = "val_"
+               or else Fn_Name (J + 7 .. J + 11) = "bool_")
+           and then N_Args = 3
          then
             return Emit_Sync_Compare_Call (N, Fn_Name);
-         else
+         elsif N_Args = 2 then
             return Emit_Sync_Fetch_Call (N, Fn_Name);
          end if;
 

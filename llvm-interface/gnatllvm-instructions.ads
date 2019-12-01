@@ -724,7 +724,8 @@ package GNATLLVM.Instructions is
         Atomic_Ordering_Sequentially_Consistent;
       Failure_Ordering : Atomic_Ordering_T :=
         Atomic_Ordering_Sequentially_Consistent;
-      Single_Thread    : Boolean           := False) return GL_Value
+      Single_Thread    : Boolean           := False;
+      Weak             : Boolean           := False) return GL_Value
      with Pre  => Is_Pointer (Ptr) and then Present (Cmp)
                   and then Present (C_New),
            Post => Present (Atomic_Cmp_Xchg'Result);

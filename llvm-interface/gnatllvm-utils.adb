@@ -173,11 +173,10 @@ package body GNATLLVM.Utils is
    ----------------------------
 
    function List_Length_Non_Pragma (List : List_Id) return Nat is
-      Node   : Node_Id;
+      Node : Node_Id := First_Non_Pragma (List);
 
    begin
-      return  Result : Nat := 0 do
-         Node := First_Non_Pragma (List);
+      return Result : Nat := 0 do
          while Present (Node) loop
             Result := Result + 1;
             Next_Non_Pragma (Node);
@@ -185,6 +184,23 @@ package body GNATLLVM.Utils is
       end return;
 
    end List_Length_Non_Pragma;
+
+   -----------------
+   -- Num_Actuals --
+   -----------------
+
+   function Num_Actuals (N : Node_Id) return Nat is
+      Actual : Node_Id := First_Actual (N);
+
+   begin
+      return Result : Nat := 0 do
+         while Present (Actual) loop
+            Result := Result + 1;
+            Next_Actual (Actual);
+         end loop;
+      end return;
+
+   end Num_Actuals;
 
    ------------------------------
    -- Has_Volatile_Full_Access --

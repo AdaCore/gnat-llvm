@@ -1180,7 +1180,8 @@ package body GNATLLVM.Instructions is
         Atomic_Ordering_Sequentially_Consistent;
       Failure_Ordering : Atomic_Ordering_T :=
         Atomic_Ordering_Sequentially_Consistent;
-      Single_Thread    : Boolean           := False) return GL_Value
+      Single_Thread    : Boolean           := False;
+      Weak             : Boolean           := False) return GL_Value
    is
       Inst : constant Value_T :=
         Atomic_Cmp_Xchg (IR_Builder, LLVM_Value (Ptr), LLVM_Value (Cmp),
@@ -1188,6 +1189,10 @@ package body GNATLLVM.Instructions is
                          Failure_Ordering, Single_Thread);
    begin
       Add_Aliasing_To_Instruction (Inst, Ptr);
+      if Weak then
+         Set_Weak_For_Atomic_Xchg (Inst);
+      end if;
+
       return G (Inst, Related_Type (Cmp), Boolean_And_Data);
    end Atomic_Cmp_Xchg;
 

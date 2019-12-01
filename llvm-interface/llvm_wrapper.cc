@@ -331,6 +331,13 @@ Set_Volatile_For_Atomic (Instruction *inst)
 
 extern "C"
 void
+Set_Weak_For_Atomic_Xchg (AtomicCmpXchgInst *inst)
+{
+  inst->setWeak(true);
+}
+
+extern "C"
+void
 Add_Function_To_Module (Function *f, Module *m)
 {
   m->getFunctionList().push_back(f);

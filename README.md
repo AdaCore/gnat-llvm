@@ -6,7 +6,7 @@ front-end to the LLVM code generator.
 
 This is a work-in-progress research project that's not meant for and
 shouldn't be used for industrial purposes. It's meant to show the
-feasibility of generating LLVM bit code for Ada and to open the LLVM
+feasibility of generating LLVM bitcode for Ada and to open the LLVM
 ecosystem to Ada, including tools such as [KLEE](https://klee.github.io).
 
 Note that we are not planning on replacing any existing GNAT port that's
@@ -30,13 +30,18 @@ Building
 
 To build GNAT LLVM from sources, follow these steps:
 
-- Obtain a check out of the GNAT sources from gcc.gnu.org under the
-  llvm-interface directory:
+- First do a checkout of this repository and go to this directory:
+
+      $ git clone https://github.com/AdaCore/gnat-llvm.git
+      $ cd gnat-llvm
+
+- Then obtain a check out of the latest GNAT sources from gcc.gnu.org under
+  the llvm-interface directory:
 
       $ svn co svn://gcc.gnu.org/svn/gcc/trunk/gcc/ada llvm-interface/gnat_src
 
-- Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2019 or
-  GCC 8
+- Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2019,
+  GCC 8 or GCC 9.
 
 - Build/install LLVM and Clang 9.0.0
 
@@ -60,6 +65,13 @@ llvm-interface which you can put in your PATH:
 
     PATH=$PWD/llvm-interface/bin:$PATH
 
+- If you want in addition to generate bitcode for the GNAT runtime, you can do:
+
+      $ make gnatlib-bc
+
+  This will generate libgnat.bc and libgnarl.bc in the adalib directory, along
+  with libgnat.a and libgnarl.a.
+
 Usage
 -----
 
@@ -79,7 +91,7 @@ Usage
 
       $ gprbuild --target=llvm -Pprj ...
 
-- To generate LLVM bit code (will generate a .bc file):
+- To generate LLVM bitcode (will generate a .bc file):
 
       $ llvm-gcc -c -emit-llvm file.adb
 

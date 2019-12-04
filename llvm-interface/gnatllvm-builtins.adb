@@ -550,13 +550,14 @@ package body GNATLLVM.Builtins is
       Ptr       : constant Node_Id  := First_Actual (N);
       N_Args    : constant Nat      := Num_Actuals (N);
       Val       : constant Node_Id  :=
-        (if N_Args < 2 then Empty else Next_Actual (Ptr));
-      GT        : constant GL_Type  := Full_GL_Type (Val);
+        (if N_Args >= 2 then Next_Actual (Ptr) else Empty);
+      GT        : constant GL_Type  :=
+        (if Present (Val) then Full_GL_Type (Val) else No_GL_Type);
       First     : constant Integer  := S'First + String'("__sync_")'Length;
       Last      : constant Integer  := Last_Non_Suffix (S);
       Name      : constant String   := S (First .. Last);
       Ptr_Val   : constant GL_Value :=
-        (if N_Args = 0 then No_GL_Value else Emit_Ptr (Ptr, GT));
+        (if Present (Val) then Emit_Ptr (Ptr, GT) else No_GL_Value);
       Order     : Atomic_Ordering_T := Atomic_Ordering_Sequentially_Consistent;
       Op        : Atomic_RMW_Bin_Op_T;
       Op_Back   : Boolean;
@@ -589,13 +590,20 @@ package body GNATLLVM.Builtins is
                return No_GL_Value;
             end if;
          end;
-      end if;
+
+      --  Now handle fence
+
+      elsif Name = "synchronize" and then N_Args = 0
+        and then Nkind (N) = N_Procedure_Call_Statement
+      then
+         Fence;
+         return Size_Const_Null;
 
       --  The remaining possibility is to have "Op_and_fetch",
       --  "fetch_and_Op", or "lock_test_and_set", all of which are
       --  fetch-and-ops.
 
-      if Name_To_RMW_Op (S, First, Index, Op) and then Last = Index + 9
+      elsif Name_To_RMW_Op (S, First, Index, Op) and then Last = Index + 9
         and then S (Index .. Last) = "_and_fetch"
         and then Nkind (N) = N_Function_Call and then N_Args = 2
       then
@@ -744,7 +752,6 @@ package body GNATLLVM.Builtins is
    is
       Fn_Name : constant String  := Get_Ext_Name (Subp);
       J       : constant Integer := Fn_Name'First;
-      N_Args  : constant Nat     := Num_Actuals (N);
       Len     : Integer;
 
       type FP_Builtin is record
@@ -768,9 +775,7 @@ package body GNATLLVM.Builtins is
    begin
       --  First see if this is a __sync class of subprogram
 
-      if Fn_Name'Length > 7 and then Fn_Name (J .. J + 6) = "__sync_"
-        and then N_Args >= 2
-      then
+      if Fn_Name'Length > 7 and then Fn_Name (J .. J + 6) = "__sync_" then
          return Emit_Sync_Call (N, Fn_Name);
 
       --  Check for __builtin_bswap, __builtin_expect, and __atomic_load

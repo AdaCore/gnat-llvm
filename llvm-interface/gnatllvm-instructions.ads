@@ -716,6 +716,12 @@ package GNATLLVM.Instructions is
       with Pre  => Is_Pointer (Ptr) and then Present (V),
            Post => Present (Atomic_RMW'Result);
 
+   procedure Fence
+     (Order         : Atomic_Ordering_T :=
+       Atomic_Ordering_Sequentially_Consistent;
+      Single_Thread : Boolean           := False;
+      Name          : String            := "");
+
    function Atomic_Cmp_Xchg
      (Ptr              : GL_Value;
       Cmp              : GL_Value;

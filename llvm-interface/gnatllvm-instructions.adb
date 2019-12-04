@@ -1168,6 +1168,20 @@ package body GNATLLVM.Instructions is
       return G_From (Inst, V);
    end Atomic_RMW;
 
+   -----------
+   -- Fence --
+   -----------
+
+   procedure Fence
+     (Order         : Atomic_Ordering_T :=
+       Atomic_Ordering_Sequentially_Consistent;
+      Single_Thread : Boolean           := False;
+      Name          : String            := "")
+   is
+   begin
+      Discard (Fence (IR_Builder, Order, Single_Thread, Name));
+   end Fence;
+
    ---------------------
    -- Atomic_Cmp_Xchg --
    ---------------------

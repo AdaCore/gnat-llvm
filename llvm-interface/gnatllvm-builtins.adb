@@ -87,7 +87,7 @@ package body GNATLLVM.Builtins is
 
    function Memory_Order
      (N          : Node_Id;
-      No_Acq     : Boolean     := False;
+      No_Acquire : Boolean     := False;
       No_Release : Boolean := False) return Atomic_Ordering_T
      with Pre => Present (N);
    --  N is an expression being passed as an operand for a memory order.
@@ -166,8 +166,7 @@ package body GNATLLVM.Builtins is
 
    function Emit_Atomic_Call (N : Node_Id; S : String) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
-   --  Generate a call to the atomic load function if the operands are the
-   --  right type.
+   --  Generate a call to the an __atomic builtin if valid
 
    Default_Alloc_Fn   : GL_Value := No_GL_Value;
    --  Default memory allocation function
@@ -395,7 +394,7 @@ package body GNATLLVM.Builtins is
 
    function Memory_Order
      (N          : Node_Id;
-      No_Acq     : Boolean     := False;
+      No_Acquire : Boolean     := False;
       No_Release : Boolean := False) return Atomic_Ordering_T
    is
       Val   : Uint;
@@ -423,8 +422,8 @@ package body GNATLLVM.Builtins is
       --  operation.
 
       if (Order = Atomic_Ordering_Acquire_Release
-            and then (No_Acq or else No_Release))
-        or else (Order = Atomic_Ordering_Acquire and then No_Acq)
+            and then (No_Acquire or else No_Release))
+        or else (Order = Atomic_Ordering_Acquire and then No_Acquire)
         or else (Order = Atomic_Ordering_Release and then No_Release)
       then
          Error_Msg_N ("Invalid memory ordering for operation", N);
@@ -777,34 +776,45 @@ package body GNATLLVM.Builtins is
    ----------------------
 
    function Emit_Atomic_Call (N : Node_Id; S : String) return GL_Value is
-      Ptr        : constant Node_Id := First_Actual (N);
-      GT         : constant GL_Type := Full_GL_Type (N);
-      Ptr_Val    : GL_Value;
-      Order      : Node_Id;
+      Ptr       : constant Node_Id  := First_Actual (N);
+      N_Args    : constant Nat      := Num_Actuals (N);
+      Is_Proc   : constant Boolean  := Nkind (N) = N_Procedure_Call_Statement;
+      GT        : constant GL_Type  :=
+        (if Present (Ptr) and then Is_Access_Type (Full_Etype (Ptr))
+         then  Full_Designated_GL_Type (Full_Etype (Ptr)) else No_GL_Type);
+      First     : constant Integer  := S'First + String'("__atomic_")'Length;
+      Last      : constant Integer  := Last_Non_Suffix (S);
+      Name      : constant String   := S (First .. Last);
+      Result    : GL_Value;
 
    begin
-      --  Verify that the types and number of arguments are correct
+      --  First check for the function form of load
 
-      if Nkind (N) /= N_Function_Call or else No (Ptr) then
-         return No_GL_Value;
+      if not Is_Proc and then N_Args = 2 and then Name = "load"
+        and then Type_Size_Matches_Name (S, True, GT)
+        and then Full_GL_Type (N) = GT
+      then
+         return Emit_Atomic_Load
+           (Emit_Expression (Ptr),
+            Memory_Order (Next_Actual (Ptr), No_Release => True),
+            GT);
+
+      --  Next check for the procedural form of load
+
+      elsif Is_Proc and then N_Args = 3 and then Name = "load"
+        and then Is_Access_Type (Full_Etype (Next_Actual (Ptr)))
+        and then Full_Designated_GL_Type (Full_Etype (Next_Actual (Ptr))) = GT
+        and then Type_Size_Matches_Name (S, True, GT)
+      then
+         Result := Emit_Atomic_Load
+           (Emit_Expression (Ptr),
+            Memory_Order (Next_Actual (Next_Actual (Ptr)), No_Release => True),
+            GT);
+         Store (Result, From_Access (Emit_Expression (Next_Actual (Ptr))));
+         return Size_Const_Null;
       end if;
 
-      --  Deal with the pointer and validate all our conditions
-
-      Ptr_Val := Emit_Ptr (Ptr, GT);
-      if No (Ptr_Val) or else not Type_Size_Matches_Name (S, True, GT) then
-         return No_GL_Value;
-      end if;
-
-      --  Now validate the Order argument
-
-      Order := Next_Actual (Ptr);
-      if No (Order) or else Present (Next_Actual (Order)) then
-         return No_GL_Value;
-      end if;
-
-      return Emit_Atomic_Load
-        (Ptr_Val, Memory_Order (Order, No_Release => True), GT);
+      return No_GL_Value;
 
    end Emit_Atomic_Call;
 
@@ -894,8 +904,8 @@ package body GNATLLVM.Builtins is
         or else S = "__builtin_unlikely"
       then
          return Emit_Branch_Prediction_Call (N, S);
-      elsif S'Length > 14
-        and then S (First .. First + 13) = "__atomic_load_"
+      elsif S'Length > 9
+        and then S (First .. First + 8) = "__atomic_"
       then
          return Emit_Atomic_Call (N, S);
 

@@ -552,12 +552,14 @@ package body GNATLLVM.Builtins is
       Val       : constant Node_Id  :=
         (if N_Args >= 2 then Next_Actual (Ptr) else Empty);
       GT        : constant GL_Type  :=
-        (if Present (Val) then Full_GL_Type (Val) else No_GL_Type);
+        (if    Present (Val) then Full_GL_Type (Val)
+         elsif Present (Ptr) and then Is_Access_Type (Full_Etype (Ptr))
+         then  Full_Designated_GL_Type (Full_Etype (Ptr)) else No_GL_Type);
       First     : constant Integer  := S'First + String'("__sync_")'Length;
       Last      : constant Integer  := Last_Non_Suffix (S);
       Name      : constant String   := S (First .. Last);
       Ptr_Val   : constant GL_Value :=
-        (if Present (Val) then Emit_Ptr (Ptr, GT) else No_GL_Value);
+        (if Present (Ptr) then Emit_Ptr (Ptr, GT) else No_GL_Value);
       Order     : Atomic_Ordering_T := Atomic_Ordering_Sequentially_Consistent;
       Op        : Atomic_RMW_Bin_Op_T;
       Op_Back   : Boolean;
@@ -598,6 +600,26 @@ package body GNATLLVM.Builtins is
       then
          Fence;
          return Size_Const_Null;
+
+      --  Handle __sync_release, which is an atomic write of zero
+
+      elsif Name = "lock_release" and then N_Args = 1
+        and then Nkind (N) = N_Procedure_Call_Statement
+        and then Present (GT)
+        and then Type_Size_Matches_Name (S, True, GT)
+      then
+         declare
+            Inst : constant Value_T :=
+              Build_Store (IR_Builder, LLVM_Value (Const_Null (GT)),
+                           LLVM_Value (Ptr_Val));
+
+         begin
+            Set_Ordering (Inst, Atomic_Ordering_Release);
+            Set_Volatile  (Inst, True);
+            Set_Alignment
+              (Inst, unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
+            return Size_Const_Null;
+         end;
 
       --  The remaining possibility is to have "Op_and_fetch",
       --  "fetch_and_Op", or "lock_test_and_set", all of which are

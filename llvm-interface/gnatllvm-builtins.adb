@@ -128,6 +128,22 @@ package body GNATLLVM.Builtins is
    --  at Ptr, but if False, we return a boolean saying whether the
    --  value was written.
 
+   function Emit_Atomic_Load
+     (Ptr_Val : GL_Value;
+      Order   : Atomic_Ordering_T;
+      GT      : GL_Type) return GL_Value
+     with Pre  => Present (Ptr_Val) and then Present (GT),
+          Post => Present (Emit_Atomic_Load'Result);
+   --  Emit an atomic load from Ptr_Val with the specified memory order and
+   --  result type.
+
+   procedure Emit_Atomic_Store
+     (Ptr_Val, Val : GL_Value; Order : Atomic_Ordering_T; GT : GL_Type)
+     with Pre => Present (Ptr_Val) and then Present (Val)
+                 and then Present (GT);
+   --  Emit an atomic Store of Val from to Ptr_Val with the specified
+   --  memory order and data type.
+
    function Emit_Bswap_Call (N : Node_Id; S : String) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  If N is a valid call to builtin_bswap, generate it
@@ -546,6 +562,44 @@ package body GNATLLVM.Builtins is
 
    end Emit_Compare_Xchg;
 
+   ----------------------
+   -- Emit_Atomic_Load --
+   ----------------------
+
+   function Emit_Atomic_Load
+     (Ptr_Val : GL_Value;
+      Order   : Atomic_Ordering_T;
+      GT      : GL_Type) return GL_Value
+   is
+      Inst       : constant Value_T :=
+        Load  (IR_Builder, LLVM_Value (Ptr_Val), "");
+
+   begin
+      Set_Ordering  (Inst, Order);
+      Set_Volatile  (Inst, True);
+      Set_Alignment (Inst,
+                     unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
+
+      return G (Inst, GT);
+   end Emit_Atomic_Load;
+
+   -----------------------
+   -- Emit_Atomic_Store --
+   -----------------------
+
+   procedure Emit_Atomic_Store
+     (Ptr_Val, Val : GL_Value; Order : Atomic_Ordering_T; GT : GL_Type)
+   is
+      Inst : constant Value_T :=
+        Build_Store (IR_Builder, LLVM_Value (Val), LLVM_Value (Ptr_Val));
+
+   begin
+      Set_Ordering (Inst, Order);
+      Set_Volatile  (Inst, True);
+      Set_Alignment
+        (Inst, unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
+   end Emit_Atomic_Store;
+
    --------------------
    -- Emit_Sync_Call --
    --------------------
@@ -612,18 +666,10 @@ package body GNATLLVM.Builtins is
         and then Present (GT)
         and then Type_Size_Matches_Name (S, True, GT)
       then
-         declare
-            Inst : constant Value_T :=
-              Build_Store (IR_Builder, LLVM_Value (Const_Null (GT)),
-                           LLVM_Value (Ptr_Val));
+         Emit_Atomic_Store
+           (Ptr_Val, Const_Null (GT), Atomic_Ordering_Release, GT);
 
-         begin
-            Set_Ordering (Inst, Atomic_Ordering_Release);
-            Set_Volatile  (Inst, True);
-            Set_Alignment
-              (Inst, unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
-            return Size_Const_Null;
-         end;
+         return Size_Const_Null;
 
       --  The remaining possibility is to have "Op_and_fetch",
       --  "fetch_and_Op", or "lock_test_and_set", all of which are
@@ -735,7 +781,6 @@ package body GNATLLVM.Builtins is
       GT         : constant GL_Type := Full_GL_Type (N);
       Ptr_Val    : GL_Value;
       Order      : Node_Id;
-      Inst       : Value_T;
 
    begin
       --  Verify that the types and number of arguments are correct
@@ -758,15 +803,8 @@ package body GNATLLVM.Builtins is
          return No_GL_Value;
       end if;
 
-      --  Finally emit the desired load
-
-      Inst := Load  (IR_Builder, LLVM_Value (Ptr_Val), "");
-      Set_Ordering  (Inst, Memory_Order (Order, No_Release => True));
-      Set_Volatile  (Inst, True);
-      Set_Alignment (Inst,
-                     unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
-
-      return G (Inst, GT);
+      return Emit_Atomic_Load
+        (Ptr_Val, Memory_Order (Order, No_Release => True), GT);
 
    end Emit_Atomic_Call;
 

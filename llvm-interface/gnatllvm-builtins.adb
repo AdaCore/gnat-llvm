@@ -132,6 +132,10 @@ package body GNATLLVM.Builtins is
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  If N is a valid call to builtin_bswap, generate it
 
+   function Emit_FP_Builtin_Call (N : Node_Id; S : String) return GL_Value
+     with Pre  => Nkind (N) in N_Subprogram_Call;
+   --  If N is a valid call to a floating point builtin, generate it
+
    function Emit_Sync_Call (N : Node_Id; S : String) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  If S is a valid __sync name for an instrinsic subprogram and
@@ -766,16 +770,11 @@ package body GNATLLVM.Builtins is
 
    end Emit_Atomic_Call;
 
-   -------------------------
-   -- Emit_Intrinsic_Call --
-   -------------------------
+   --------------------------
+   -- Emit_FP_Builtin_Call --
+   --------------------------
 
-   function Emit_Intrinsic_Call (N : Node_Id; Subp : Entity_Id) return GL_Value
-   is
-      Fn_Name : constant String  := Get_Ext_Name (Subp);
-      J       : constant Integer := Fn_Name'First;
-      Len     : Integer;
-
+   function Emit_FP_Builtin_Call (N : Node_Id; S : String) return GL_Value is
       type FP_Builtin is record
          Length : Integer;
          Name   : String (1 .. 5);
@@ -783,6 +782,7 @@ package body GNATLLVM.Builtins is
       end record;
 
       type FP_Builtin_Array is array (Integer range <>) of FP_Builtin;
+
       FP_Builtins : constant FP_Builtin_Array :=
         ((4, "sqrt ", Unary),
          (3, "sin  ", Unary),
@@ -793,39 +793,18 @@ package body GNATLLVM.Builtins is
          (3, "log  ", Unary),
          (5, "log10", Unary),
          (4, "log2 ", Unary));
+      Len         : Integer;
 
    begin
-      --  First see if this is a __sync class of subprogram
-
-      if Fn_Name'Length > 7 and then Fn_Name (J .. J + 6) = "__sync_" then
-         return Emit_Sync_Call (N, Fn_Name);
-
-      --  Check for __builtin_bswap, __builtin_expect, and __atomic_load
-
-      elsif Fn_Name'Length > 16
-        and then Fn_Name (J .. J + 14) = "__builtin_bswap"
-      then
-         return Emit_Bswap_Call (N, Fn_Name);
-      elsif Fn_Name = "__builtin_expect" or else Fn_Name = "__builtin_likely"
-        or else Fn_Name = "__builtin_unlikely"
-      then
-         return Emit_Branch_Prediction_Call (N, Fn_Name);
-      elsif Fn_Name'Length > 14
-        and then Fn_Name (J .. J + 13) = "__atomic_load_"
-      then
-         return Emit_Atomic_Call (N, Fn_Name);
-      end if;
-
-      --  Now see if this is a FP builtin
-
       for FP of FP_Builtins loop
          Len := FP.Length;
-         if Fn_Name'Length >= Len + 10
-           and then Fn_Name (J .. J + 9) = "__builtin_"
-           and then Fn_Name (J + 10 .. J + Len + 9) = FP.Name (1 .. Len)
-           and then (Fn_Name'Length = Len + 10
-                       or else (Fn_Name'Length = Len + 11
-                                  and then (Fn_Name (J + Len + 10)
+         if Num_Actuals (N) = (if FP.Kind = Unary then 1 else 2)
+           and then S'Length >= Len + 10
+           and then S (S'First .. S'First + 9) = "__builtin_"
+           and then S (S'First + 10 .. S'First + Len + 9) = FP.Name (1 .. Len)
+           and then (S'Length = Len + 10
+                       or else (S'Length = Len + 11
+                                  and then (S (S'First + Len + 10)
                                               in 'f' | 'l')))
          then
             declare
@@ -847,6 +826,49 @@ package body GNATLLVM.Builtins is
             end;
          end if;
       end loop;
+
+      return No_GL_Value;
+   end Emit_FP_Builtin_Call;
+
+   -------------------------
+   -- Emit_Intrinsic_Call --
+   -------------------------
+
+   function Emit_Intrinsic_Call (N : Node_Id; Subp : Entity_Id) return GL_Value
+   is
+      S      : constant String  := Get_Ext_Name (Subp);
+      First  : constant Integer := S'First;
+      Last   : constant Integer := Last_Non_Suffix (S);
+      Name   : constant String  := S (First .. Last);
+      Result : GL_Value;
+
+   begin
+      --  First see if this is a __sync class of subprogram
+
+      if S'Length > 7 and then S (First .. First + 6) = "__sync_" then
+         return Emit_Sync_Call (N, S);
+
+      --  Check for __builtin_bswap, __builtin_expect, and __atomic_load
+
+      elsif Name = "__builtin_bswap" then
+         return Emit_Bswap_Call (N, S);
+      elsif S = "__builtin_expect" or else S = "__builtin_likely"
+        or else S = "__builtin_unlikely"
+      then
+         return Emit_Branch_Prediction_Call (N, S);
+      elsif S'Length > 14
+        and then S (First .. First + 13) = "__atomic_load_"
+      then
+         return Emit_Atomic_Call (N, S);
+
+      --  Now see if this is a FP builtin
+
+      elsif Nkind (N) = N_Function_Call then
+         Result := Emit_FP_Builtin_Call (N, S);
+         if Present (Result) then
+            return Result;
+         end if;
+      end if;
 
       --  That's all we support for now
 

@@ -78,12 +78,17 @@ package body GNATLLVM.Builtins is
    --  represents an integer corresponding to the size of GT measured
    --  in bytes or bits, depending on In_Bytes.
 
-   function Emit_Ptr
-     (Ptr : Node_Id; GT : GL_Type) return GL_Value
+   function Emit_Ptr (Ptr : Node_Id; GT : GL_Type) return GL_Value
      with Pre => Present (Ptr) and then Present (GT);
    --  If Ptr is an Address or an access type pointing to GT, return a
    --  GL_Value that's a Reference to GT.  If not, or if GT is not an
    --  elementary type, return No_GL_Value.
+
+   function Emit_And_Maybe_Deref (Ptr : Node_Id; GT : GL_Type) return GL_Value
+     with Pre => Present (Ptr) and then Present (GT);
+   --  If Ptr's type is GT or if it's an access type to GT, return the
+   --  evaluated expression (with a dereference if an access type).  If
+   --  not, return No_GL_Value.
 
    function Memory_Order
      (N          : Node_Id;
@@ -460,6 +465,26 @@ package body GNATLLVM.Builtins is
 
    end Emit_Ptr;
 
+   --------------------------
+   -- Emit_And_Maybe_Deref --
+   --------------------------
+
+   function Emit_And_Maybe_Deref (Ptr : Node_Id; GT : GL_Type) return GL_Value
+   is
+      Result : GL_Value := Emit_Expression (Ptr);
+
+   begin
+      if Related_Type (Result) = GT then
+         return Result;
+      elsif Is_Access_Type (Result) then
+         Result := Get (From_Access (Result), Data);
+         return (if Related_Type (Result) = GT then Result else No_GL_Value);
+      else
+         return No_GL_Value;
+      end if;
+
+   end Emit_And_Maybe_Deref;
+
    -----------------------
    -- Emit_Fetch_And_Op --
    -----------------------
@@ -812,6 +837,23 @@ package body GNATLLVM.Builtins is
             GT);
          Store (Result, From_Access (Emit_Expression (Next_Actual (Ptr))));
          return Size_Const_Null;
+
+      --  Check for store
+
+      elsif Is_Proc and then N_Args = 3 and then Name = "store"
+        and then Type_Size_Matches_Name (S, True, GT)
+      then
+         Result := Emit_And_Maybe_Deref (Next_Actual (Ptr), GT);
+         if No (Result) then
+            return No_GL_Value;
+         else
+            Emit_Atomic_Store (Emit_Expression (Ptr), Result,
+                               Memory_Order (Next_Actual (Next_Actual (Ptr)),
+                                             No_Acquire => True),
+                               GT);
+
+            return Size_Const_Null;
+         end if;
       end if;
 
       return No_GL_Value;

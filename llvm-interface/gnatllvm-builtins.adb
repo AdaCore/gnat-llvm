@@ -132,16 +132,11 @@ package body GNATLLVM.Builtins is
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  If N is a valid call to builtin_bswap, generate it
 
-   function Emit_Sync_Fetch_Call (N : Node_Id; S : String) return GL_Value
+   function Emit_Sync_Call (N : Node_Id; S : String) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
-   --  If S is a valid __sync name for a Fetch_And_Op or Op_And_Fetch, emit
-   --  the LLVM for it and return the result.  Otherwise, return
+   --  If S is a valid __sync name for an instrinsic subprogram and
+   --  the operands are value, emit it. Otherwise, return
    --  No_GL_Value.
-
-   function Emit_Sync_Compare_Call (N : Node_Id; S : String) return GL_Value
-     with Pre  => Nkind (N) in N_Subprogram_Call;
-   --  If S is a valid __sync name for a compare and swap, emit the LLVM
-   --  for it and return the result.  Otherwise, return No_GL_Value.
 
    function Emit_Branch_Prediction_Call
      (N : Node_Id; S : String) return GL_Value
@@ -547,97 +542,83 @@ package body GNATLLVM.Builtins is
 
    end Emit_Compare_Xchg;
 
-   --------------------------
-   -- Emit_Sync_Fetch_Call --
-   --------------------------
+   --------------------
+   -- Emit_Sync_Call --
+   --------------------
 
-   function Emit_Sync_Fetch_Call (N : Node_Id; S : String) return GL_Value is
-      Ptr       : constant Node_Id := First_Actual (N);
-      Val       : constant Node_Id := Next_Actual (Ptr);
-      GT        : constant GL_Type := Full_GL_Type (Val);
-      Index     : constant Integer := S'First + 7;
-      Last      : constant Integer := Last_Non_Suffix (S);
+   function Emit_Sync_Call (N : Node_Id; S : String) return GL_Value is
+      Ptr       : constant Node_Id  := First_Actual (N);
+      N_Args    : constant Nat      := Num_Actuals (N);
+      Val       : constant Node_Id  :=
+        (if N_Args < 2 then Empty else Next_Actual (Ptr));
+      GT        : constant GL_Type  := Full_GL_Type (Val);
+      First     : constant Integer  := S'First + String'("__sync_")'Length;
+      Last      : constant Integer  := Last_Non_Suffix (S);
+      Name      : constant String   := S (First .. Last);
+      Ptr_Val   : constant GL_Value :=
+        (if N_Args = 0 then No_GL_Value else Emit_Ptr (Ptr, GT));
+      Order     : Atomic_Ordering_T := Atomic_Ordering_Sequentially_Consistent;
       Op        : Atomic_RMW_Bin_Op_T;
       Op_Back   : Boolean;
-      New_Index : Integer;
+      Index     : Integer;
 
    begin
-      --  This is supposedly a __sync builtin.  Parse it to see what it
-      --  tells us to do.  If anything is wrong with the builtin or its
-      --  operands, just return No_GL_Value and a normal call will result,
-      --  which will produce a link error.
+      --  This may be a __sync builtin.  Parse it to see what it tells us
+      --  to do.  If anything is wrong with the builtin or its operands,
+      --  just return No_GL_Value and a normal call will result, which will
+      --  produce a link error.
       --
-      --  We need to have "Op_and_fetch", "fetch_and_Op", or
-      --  "lock_test_and_set".
+      --  First handle the compare_and_swap variants.
 
-      if Name_To_RMW_Op (S, Index, New_Index, Op)
-        and then Last = New_Index + 9
-        and then S (New_Index .. Last) = "_and_fetch"
+      if (Name = "bool_compare_and_swap" or else Name = "val_compare_and_swap")
+        and then N_Args = 3 and then Nkind (N) = N_Function_Call
+      then
+         declare
+            New_Val : constant GL_Value := Emit_Expression (Next_Actual (Val));
+
+         begin
+            if Present (Ptr_Val) and then Related_Type (New_Val) = GT
+              and then Type_Size_Matches_Name (S, True, GT)
+            then
+               return
+                 Emit_Compare_Xchg (Ptr_Val, Emit_Expression (Val), New_Val,
+                                    Atomic_Ordering_Sequentially_Consistent,
+                                    Atomic_Ordering_Sequentially_Consistent,
+                                    False, Name (Name'First) = 'v');
+            else
+               return No_GL_Value;
+            end if;
+         end;
+      end if;
+
+      --  The remaining possibility is to have "Op_and_fetch",
+      --  "fetch_and_Op", or "lock_test_and_set", all of which are
+      --  fetch-and-ops.
+
+      if Name_To_RMW_Op (S, First, Index, Op) and then Last = Index + 9
+        and then S (Index .. Last) = "_and_fetch"
+        and then Nkind (N) = N_Function_Call and then N_Args = 2
       then
          Op_Back := True;
-      elsif S'Last > Index + 9 and then S (Index .. Index + 9) = "fetch_and_"
-        and then Name_To_RMW_Op (S, Index + 10, New_Index, Op)
-        and then New_Index - 1 = Last
+      elsif S'Last > First + 9 and then S (First .. First + 9) = "fetch_and_"
+        and then Name_To_RMW_Op (S, First + 10, Index, Op)
+        and then Index - 1 = Last
+        and then Nkind (N) = N_Function_Call and then N_Args = 2
       then
          Op_Back := False;
-      elsif Index + 17 = Last
-        and then S (Index .. Index + 17) = "lock_test_and_set_"
+      elsif Name = "lock_test_and_set" and then Nkind (N) = N_Function_Call
+        and then N_Args = 2
       then
          Op      := Atomic_RMW_Bin_Op_Xchg;
          Op_Back := False;
+         Order   := Atomic_Ordering_Acquire;
       else
          return No_GL_Value;
       end if;
 
-      return Emit_Fetch_And_Op
-        (Ptr, Val, Op, Op_Back, Atomic_Ordering_Sequentially_Consistent,
-         S, GT);
+      return Emit_Fetch_And_Op (Ptr, Val, Op, Op_Back, Order, S, GT);
 
-   end Emit_Sync_Fetch_Call;
-
-   ----------------------------
-   -- Emit_Sync_Compare_Call --
-   ----------------------------
-
-   function Emit_Sync_Compare_Call (N : Node_Id; S : String) return GL_Value is
-      Ptr     : constant Node_Id := First_Actual (N);
-      Old_Val : constant Node_Id := Next_Actual (Ptr);
-      New_Val : constant Node_Id := Next_Actual (Old_Val);
-      GT      : constant GL_Type := Full_GL_Type (Old_Val);
-      Index   : constant Integer := S'First + 7;
-      Ptr_Val : constant GL_Value := Emit_Ptr (Ptr, GT);
-      Is_Val  : Boolean;
-
-   begin
-      --  See if we are to return the value of the variable or a boolean
-      --  that says whether it matches.
-
-      if S'Length > 29
-        and then S (Index .. Index + 21) = "bool_compare_and_swap_"
-      then
-         Is_Val := True;
-      elsif S'Length > 28
-        and then S (Index .. Index + 20) = "val_compare_and_swap_"
-      then
-         Is_Val := False;
-      end if;
-
-      --  Validate all our conditions
-
-      if No (Ptr_Val) or else Full_GL_Type (New_Val) /= GT
-        or else not Type_Size_Matches_Name (S, True, GT)
-      then
-         return No_GL_Value;
-      end if;
-
-      --  Now we can emit the operation and return the result
-
-      return Emit_Compare_Xchg (Ptr_Val, Emit_Expression (Old_Val),
-                                Emit_Expression (New_Val),
-                                Atomic_Ordering_Sequentially_Consistent,
-                                Atomic_Ordering_Sequentially_Consistent,
-                                False, Is_Val);
-   end Emit_Sync_Compare_Call;
+   end Emit_Sync_Call;
 
    ---------------------
    -- Emit_Bswap_Call --
@@ -787,15 +768,10 @@ package body GNATLLVM.Builtins is
    begin
       --  First see if this is a __sync class of subprogram
 
-      if Fn_Name'Length > 12 and then Fn_Name (J .. J + 6) = "__sync_" then
-         if (Fn_Name (J + 7 .. J + 10) = "val_"
-               or else Fn_Name (J + 7 .. J + 11) = "bool_")
-           and then N_Args = 3
-         then
-            return Emit_Sync_Compare_Call (N, Fn_Name);
-         elsif N_Args = 2 then
-            return Emit_Sync_Fetch_Call (N, Fn_Name);
-         end if;
+      if Fn_Name'Length > 7 and then Fn_Name (J .. J + 6) = "__sync_"
+        and then N_Args >= 2
+      then
+         return Emit_Sync_Call (N, Fn_Name);
 
       --  Check for __builtin_bswap, __builtin_expect, and __atomic_load
 

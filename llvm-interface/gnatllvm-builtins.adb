@@ -100,7 +100,7 @@ package body GNATLLVM.Builtins is
 
    function Emit_Fetch_And_Op
      (Ptr     : Node_Id;
-      Val     : Entity_Id;
+      Val     : GL_Value;
       Op      : Atomic_RMW_Bin_Op_T;
       Op_Back : Boolean;
       Order   : Atomic_Ordering_T;
@@ -491,7 +491,7 @@ package body GNATLLVM.Builtins is
 
    function Emit_Fetch_And_Op
      (Ptr     : Node_Id;
-      Val     : Entity_Id;
+      Val     : GL_Value;
       Op      : Atomic_RMW_Bin_Op_T;
       Op_Back : Boolean;
       Order   : Atomic_Ordering_T;
@@ -499,15 +499,13 @@ package body GNATLLVM.Builtins is
       GT      : GL_Type) return GL_Value
    is
       Ptr_Val : GL_Value;
-      Value   : GL_Value;
       Result  : GL_Value;
 
    begin
       --  Emit all operands and validate all our conditions
 
       Ptr_Val := Emit_Ptr (Ptr, GT);
-      Value   := Emit_Expression (Val);
-      if No (Ptr_Val) or else Related_Type (Value) /= GT
+      if No (Ptr_Val) or else Related_Type (Val) /= GT
         or else not Type_Size_Matches_Name (S, True, GT)
       then
          return No_GL_Value;
@@ -515,7 +513,7 @@ package body GNATLLVM.Builtins is
 
       --  Now we can emit the operation
 
-      Result := Atomic_RMW (Op, Ptr_Val, Value, Order);
+      Result := Atomic_RMW (Op, Ptr_Val, Val, Order);
       Set_Volatile_For_Atomic (Result);
 
       --  If we want the value before the operation, we're done.  Otherwise,
@@ -530,28 +528,28 @@ package body GNATLLVM.Builtins is
             return Result;
 
          when Atomic_RMW_Bin_Op_Add =>
-            return Result + Value;
+            return Result + Val;
 
          when Atomic_RMW_Bin_Op_Sub =>
-            return Result - Value;
+            return Result - Val;
 
          when Atomic_RMW_Bin_Op_And =>
-            return Build_And (Result, Value);
+            return Build_And (Result, Val);
 
          when Atomic_RMW_Bin_Op_Nand =>
-            return Build_Not (Build_And (Result, Value));
+            return Build_Not (Build_And (Result, Val));
 
          when Atomic_RMW_Bin_Op_Or =>
-            return Build_Or (Result, Value);
+            return Build_Or (Result, Val);
 
          when Atomic_RMW_Bin_Op_Xor =>
-            return Build_Xor (Result, Value);
+            return Build_Xor (Result, Val);
 
          when Atomic_RMW_Bin_Op_Max | Atomic_RMW_Bin_Op_U_Max =>
-            return Build_Max (Result, Value);
+            return Build_Max (Result, Val);
 
          when Atomic_RMW_Bin_Op_Min | Atomic_RMW_Bin_Op_U_Min =>
-            return Build_Min (Result, Value);
+            return Build_Min (Result, Val);
       end case;
 
    end Emit_Fetch_And_Op;
@@ -720,7 +718,8 @@ package body GNATLLVM.Builtins is
          return No_GL_Value;
       end if;
 
-      return Emit_Fetch_And_Op (Ptr, Val, Op, Op_Back, Order, S, GT);
+      return Emit_Fetch_And_Op (Ptr, Emit_Expression (Val), Op, Op_Back,
+                                Order, S, GT);
 
    end Emit_Sync_Call;
 
@@ -804,6 +803,16 @@ package body GNATLLVM.Builtins is
       Ptr       : constant Node_Id  := First_Actual (N);
       N_Args    : constant Nat      := Num_Actuals (N);
       Is_Proc   : constant Boolean  := Nkind (N) = N_Procedure_Call_Statement;
+      Arg2      : constant Node_Id  :=
+        (if N_Args >= 2 then Next_Actual (Ptr) else Empty);
+      Arg3      : constant Node_Id  :=
+        (if N_Args >= 3 then Next_Actual (Arg2) else Empty);
+      Arg4      : constant Node_Id  :=
+        (if N_Args >= 4 then Next_Actual (Arg3) else Empty);
+      Arg5      : constant Node_Id  :=
+        (if N_Args >= 5 then Next_Actual (Arg4) else Empty);
+      Arg6      : constant Node_Id  :=
+        (if N_Args >= 6 then Next_Actual (Arg5) else Empty);
       GT        : constant GL_Type  :=
         (if Present (Ptr) and then Is_Access_Type (Full_Etype (Ptr))
          then  Full_Designated_GL_Type (Full_Etype (Ptr)) else No_GL_Type);
@@ -828,14 +837,13 @@ package body GNATLLVM.Builtins is
 
       elsif Is_Proc and then N_Args = 3 and then Name = "load"
         and then Is_Access_Type (Full_Etype (Next_Actual (Ptr)))
-        and then Full_Designated_GL_Type (Full_Etype (Next_Actual (Ptr))) = GT
+        and then Full_Designated_GL_Type (Full_Etype (Arg2)) = GT
         and then Type_Size_Matches_Name (S, True, GT)
       then
          Result := Emit_Atomic_Load
            (Emit_Expression (Ptr),
-            Memory_Order (Next_Actual (Next_Actual (Ptr)), No_Release => True),
-            GT);
-         Store (Result, From_Access (Emit_Expression (Next_Actual (Ptr))));
+            Memory_Order (Arg3, No_Release => True), GT);
+         Store (Result, From_Access (Emit_Expression (Arg2)));
          return Size_Const_Null;
 
       --  Check for store
@@ -848,12 +856,95 @@ package body GNATLLVM.Builtins is
             return No_GL_Value;
          else
             Emit_Atomic_Store (Emit_Expression (Ptr), Result,
-                               Memory_Order (Next_Actual (Next_Actual (Ptr)),
-                                             No_Acquire => True),
+                               Memory_Order (Arg3, No_Acquire => True),
                                GT);
 
             return Size_Const_Null;
          end if;
+
+      --  Handle exchange, which is a fetch-and operation
+
+      elsif not Is_Proc and then N_Args = 3 and then Name = "exchange"
+        and then Full_GL_Type (N) = GT
+      then
+         return
+           Emit_Fetch_And_Op (Ptr, Emit_Expression (Arg2),
+                              Atomic_RMW_Bin_Op_Xchg, False,
+                              Memory_Order (Arg3), S, GT);
+      elsif Is_Proc and then N_Args = 4 and then Name = "exchange"
+        and then Full_Designated_GL_Type (Full_Etype (Arg3)) = GT
+      then
+         Result := Emit_Fetch_And_Op (Ptr, Emit_And_Maybe_Deref (Arg2, GT),
+                                      Atomic_RMW_Bin_Op_Xchg, False,
+                                      Memory_Order (Arg4), S, GT);
+         if No (Result) then
+            return No_GL_Value;
+         else
+            Store (Result, From_Access (Emit_Expression (Arg3)));
+            return Size_Const_Null;
+         end if;
+
+      --  Next is compare-exchange
+
+      elsif not Is_Proc and then N_Args = 6 and then Name = "compare_exchange"
+        and then Is_Boolean_Type (Full_Etype (N))
+        and then Is_Boolean_Type (Full_Etype (Arg4))
+        and then Full_Designated_GL_Type (Full_Etype (Arg2)) = GT
+        and then Full_GL_Type (Arg3) = GT
+        and then Type_Size_Matches_Name (S, True, GT)
+      then
+         declare
+            Weak    : constant Boolean           :=
+              Compile_Time_Known_Value (Arg4)
+              and then Expr_Value (Arg4) = Uint_1;
+            S_Order : constant Atomic_Ordering_T := Memory_Order (Arg5);
+            F_Order : Atomic_Ordering_T          :=
+              Memory_Order (Arg6, No_Release => True);
+
+         begin
+            if F_Order > S_Order then
+               Error_Msg_N
+                 ("Failure order cannot be stronger than success order", N);
+               F_Order := S_Order;
+            end if;
+
+            return Emit_Compare_Xchg (Emit_Ptr (Ptr, GT),
+                                      Emit_And_Maybe_Deref (Arg2, GT),
+                                      Emit_Expression (Arg3),
+                                      S_Order, F_Order, Weak, False);
+         end;
+
+      --  Now test-and-set, which is an exchange
+
+      elsif not Is_Proc and then N_Args = 2 and then Name = "test_and_set"
+        and then Is_Boolean_Type (Full_Etype (N))
+      then
+         Result := Emit_Fetch_And_Op (Ptr, Const_Int (GT, Uint_1),
+                                      Atomic_RMW_Bin_Op_Xchg, False,
+                                      Memory_Order (Arg2), S, GT);
+
+         if No (Result) then
+            return No_GL_Value;
+         else
+            return I_Cmp (Int_NE, Result, Const_Null (GT));
+         end if;
+
+      --  Next is clear, which is a store of zero
+
+      elsif Is_Proc and then N_Args = 2 and then Name = "clear"
+        and then Type_Size_Matches_Name (S, True, GT)
+      then
+         Emit_Atomic_Store (Emit_Ptr (Ptr, GT), Const_Null (GT),
+                            Memory_Order (Arg2, No_Acquire => True), GT);
+         return Size_Const_Null;
+
+      --  Now we have the fence operations, which we treat the same
+
+      elsif Is_Proc and then N_Args = 1
+        and then (Name = "thread_fence" or else Name = "signal_fence")
+      then
+         Fence (Order => Memory_Order (Ptr));
+         return Size_Const_Null;
       end if;
 
       return No_GL_Value;

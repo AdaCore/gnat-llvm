@@ -945,6 +945,18 @@ package body GNATLLVM.Builtins is
       then
          Fence (Order => Memory_Order (Ptr));
          return Size_Const_Null;
+
+      --  Handle always_lock_free and is_lock_free
+
+      elsif not Is_Proc and then N_Args in 1 .. 2
+        and then Compile_Time_Known_Value (Ptr)
+        and then (Name = "always_lock_free" or else Name = "is_lock_free")
+      then
+         return (if   Expr_Value (Ptr) = Uint_1
+                      or else Expr_Value (Ptr) = Uint_2
+                      or else Expr_Value (Ptr) = Uint_4
+                      or else Expr_Value (Ptr) = Uint_8
+                 then Const_True else Const_False);
       end if;
 
       return No_GL_Value;

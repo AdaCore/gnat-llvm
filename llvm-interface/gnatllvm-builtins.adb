@@ -67,7 +67,7 @@ package body GNATLLVM.Builtins is
    function Last_Non_Suffix (S : String) return Integer;
    --  S is the name of some intrinsic function.  Return the index of
    --  the last character of that name that doesn't include a "_N" suffix
-   --  where N is a string of digits denoting a size.
+   --  where N is a string of digits denoting a size and the '_' is optional.
 
    function Type_Size_Matches_Name
      (S        : String;
@@ -76,7 +76,8 @@ package body GNATLLVM.Builtins is
      with Pre => Present (GT);
    --  Return True if the characteers at the end of string S
    --  represents an integer corresponding to the size of GT measured
-   --  in bytes or bits, depending on In_Bytes.
+   --  in bytes or bits, depending on In_Bytes.  If it's in bits, a
+   --  leading underscore isn't required.
 
    function Emit_Ptr (Ptr : Node_Id; GT : GL_Type) return GL_Value
      with Pre => Present (Ptr) and then Present (GT);
@@ -341,13 +342,11 @@ package body GNATLLVM.Builtins is
             end loop;
 
             --  If we have characters left, and we're preceeded by a '_',
-            --  return the index of the character before that.  Otherwise,
+            --  return the index of the character before that.
             --  the string doesn't look like "xxx_N", so return 'Last.
 
             if Idx >= S'First + 1 and then S (Idx) = '_' then
                Idx := Idx - 1;
-            else
-               Idx := S'Last;
             end if;
          end return;
       end if;
@@ -370,25 +369,32 @@ package body GNATLLVM.Builtins is
         (if Size >= 100 then 3 elsif Size >= 10 then 2 else 1);
 
    begin
+      --  If the last characeter isn't a digit, then we always match since
+      --  this is the generic form.
+
+      if not Is_Digit (S (S'Last)) then
+         return True;
+
       --  We don't match if the rest of the string isn't the right length
       --  and we also don't deal with three-digit sizes.
 
-      if S'Length < Digs + 1 or else Digs > 2 then
+      elsif S'Length < Digs + 1 or else Digs > 2 then
          return False;
 
       --  If there's only one digit, see if it's the right one
 
       elsif Digs = 1 then
          return S (S'Last) = Character'Val (Character'Pos ('0') + Size)
-           and then S (S'Last - 1) = '_';
+           and then (not In_Bytes or else S (S'Last - 1) = '_');
 
       --  If there are two digits (the only remaining case), check both
 
       else
-         return S (S'Last) = Character'Val (Character'Pos ('0') + Size / 10)
-           and then S (S'Last - 1) = Character'Val
+         return S (S'Last - 1) =
+                  Character'Val (Character'Pos ('0') + Size / 10)
+           and then S (S'Last) = Character'Val
                                       (Character'Pos ('0') + Size mod 10)
-           and then S (S'Last - 2) = '_';
+           and then (not In_Bytes or else S (S'Last - 2) = '_');
       end if;
 
    end Type_Size_Matches_Name;
@@ -476,6 +482,8 @@ package body GNATLLVM.Builtins is
    begin
       if Related_Type (Result) = GT then
          return Result;
+      elsif Is_Descendant_Of_Address (Result) then
+         return Get (Int_To_Ref (Result, GT), Data);
       elsif Is_Access_Type (Result) then
          Result := Get (From_Access (Result), Data);
          return (if Related_Type (Result) = GT then Result else No_GL_Value);
@@ -511,9 +519,13 @@ package body GNATLLVM.Builtins is
          return No_GL_Value;
       end if;
 
-      --  Now we can emit the operation
+      --  Now we can emit the operation.  But we can't have unordered
+      --  atomic RMW operations, so silently avoid that.
 
-      Result := Atomic_RMW (Op, Ptr_Val, Val, Order);
+      Result := Atomic_RMW (Op, Ptr_Val, Val,
+                            (if   Order = Atomic_Ordering_Unordered
+                             then Atomic_Ordering_Sequentially_Consistent
+                             else Order));
       Set_Volatile_For_Atomic (Result);
 
       --  If we want the value before the operation, we're done.  Otherwise,
@@ -567,8 +579,15 @@ package body GNATLLVM.Builtins is
       Weak     : Boolean;
       Want_Val : Boolean) return GL_Value
    is
+      Our_S_Order : constant Atomic_Ordering_T :=
+        (if   S_Order = Atomic_Ordering_Unordered
+              or else F_Order = Atomic_Ordering_Unordered
+         then Atomic_Ordering_Sequentially_Consistent else S_Order);
+      Our_F_Order : constant Atomic_Ordering_T :=
+        (if   F_Order = Atomic_Ordering_Unordered
+         then Atomic_Ordering_Sequentially_Consistent else F_Order);
       Result : constant GL_Value :=
-        Atomic_Cmp_Xchg (Ptr_Val, Old_Val, New_Val, S_Order, F_Order,
+        Atomic_Cmp_Xchg (Ptr_Val, Old_Val, New_Val, Our_S_Order, Our_F_Order,
                          Weak => Weak);
 
    begin
@@ -679,7 +698,7 @@ package body GNATLLVM.Builtins is
         and then Nkind (N) = N_Procedure_Call_Statement
       then
          Fence;
-         return Size_Const_Null;
+         return Const_True;
 
       --  Handle __sync_release, which is an atomic write of zero
 
@@ -691,21 +710,19 @@ package body GNATLLVM.Builtins is
          Emit_Atomic_Store
            (Ptr_Val, Const_Null (GT), Atomic_Ordering_Release, GT);
 
-         return Size_Const_Null;
+         return Const_True;
 
       --  The remaining possibility is to have "Op_and_fetch",
       --  "fetch_and_Op", or "lock_test_and_set", all of which are
       --  fetch-and-ops.
 
       elsif Name_To_RMW_Op (S, First, Index, Op) and then Last = Index + 9
-        and then S (Index .. Last) = "_and_fetch"
-        and then Nkind (N) = N_Function_Call and then N_Args = 2
+        and then S (Index .. Last) = "_and_fetch" and then N_Args = 2
       then
          Op_Back := True;
       elsif S'Last > First + 9 and then S (First .. First + 9) = "fetch_and_"
         and then Name_To_RMW_Op (S, First + 10, Index, Op)
-        and then Index - 1 = Last
-        and then Nkind (N) = N_Function_Call and then N_Args = 2
+        and then Index - 1 = Last and then N_Args = 2
       then
          Op_Back := False;
       elsif Name = "lock_test_and_set" and then Nkind (N) = N_Function_Call
@@ -814,8 +831,19 @@ package body GNATLLVM.Builtins is
       Arg6      : constant Node_Id  :=
         (if N_Args >= 6 then Next_Actual (Arg5) else Empty);
       GT        : constant GL_Type  :=
-        (if Present (Ptr) and then Is_Access_Type (Full_Etype (Ptr))
-         then  Full_Designated_GL_Type (Full_Etype (Ptr)) else No_GL_Type);
+        (if    Present (Ptr) and then Is_Access_Type (Full_Etype (Ptr))
+         then  Full_Designated_GL_Type (Full_Etype (Ptr))
+         elsif N_Args > 2
+               and then not Is_Access_Type (Full_Etype (Arg2))
+               and then not Is_Descendant_Of_Address (Full_Etype (Arg2))
+         then  Full_GL_Type (Arg2)
+         elsif N_Args > 3 then Full_GL_Type (Arg3)
+         elsif not Is_Proc then Full_GL_Type (N) else No_GL_Type);
+      --  The above is a bit of a kludge to get the "operation" GL_Type
+      --  given all the possible variants of atomic operations.  The last
+      --  argument is always an ordering type, so can't determine the
+      --  needed type.
+
       First     : constant Integer  := S'First + String'("__atomic_")'Length;
       Last      : constant Integer  := Last_Non_Suffix (S);
       Name      : constant String   := S (First .. Last);
@@ -832,9 +860,8 @@ package body GNATLLVM.Builtins is
         and then Full_GL_Type (N) = GT
       then
          return Emit_Atomic_Load
-           (Emit_Expression (Ptr),
-            Memory_Order (Next_Actual (Ptr), No_Release => True),
-            GT);
+           (Emit_Ptr (Ptr, GT),
+            Memory_Order (Next_Actual (Ptr), No_Release => True), GT);
 
       --  Next check for the procedural form of load
 
@@ -844,10 +871,9 @@ package body GNATLLVM.Builtins is
         and then Type_Size_Matches_Name (S, True, GT)
       then
          Result := Emit_Atomic_Load
-           (Emit_Expression (Ptr),
-            Memory_Order (Arg3, No_Release => True), GT);
-         Store (Result, From_Access (Emit_Expression (Arg2)));
-         return Size_Const_Null;
+           (Emit_Ptr (Ptr, GT), Memory_Order (Arg3, No_Release => True), GT);
+         Store (Result, Emit_Ptr (Arg2, GT));
+         return Const_True;
 
       --  Check for store
 
@@ -858,11 +884,11 @@ package body GNATLLVM.Builtins is
          if No (Result) then
             return No_GL_Value;
          else
-            Emit_Atomic_Store (Emit_Expression (Ptr), Result,
+            Emit_Atomic_Store (Emit_Ptr (Ptr, GT), Result,
                                Memory_Order (Arg3, No_Acquire => True),
                                GT);
 
-            return Size_Const_Null;
+            return Const_True;
          end if;
 
       --  Handle exchange, which is a fetch-and operation
@@ -877,14 +903,18 @@ package body GNATLLVM.Builtins is
       elsif Is_Proc and then N_Args = 4 and then Name = "exchange"
         and then Full_Designated_GL_Type (Full_Etype (Arg3)) = GT
       then
-         Result := Emit_Fetch_And_Op (Ptr, Emit_And_Maybe_Deref (Arg2, GT),
-                                      Atomic_RMW_Bin_Op_Xchg, False,
-                                      Memory_Order (Arg4), S, GT);
+         Result := Emit_And_Maybe_Deref (Arg2, GT);
+         if Present (Result) then
+            Result := Emit_Fetch_And_Op (Ptr, Result,
+                                         Atomic_RMW_Bin_Op_Xchg, False,
+                                         Memory_Order (Arg4), S, GT);
+         end if;
+
          if No (Result) then
             return No_GL_Value;
          else
-            Store (Result, From_Access (Emit_Expression (Arg3)));
-            return Size_Const_Null;
+            Store (Result, Emit_Ptr (Arg3, GT));
+            return Const_True;
          end if;
 
       --  Next is compare-exchange
@@ -892,7 +922,6 @@ package body GNATLLVM.Builtins is
       elsif not Is_Proc and then N_Args = 6 and then Name = "compare_exchange"
         and then Is_Boolean_Type (Full_Etype (N))
         and then Is_Boolean_Type (Full_Etype (Arg4))
-        and then Full_Designated_GL_Type (Full_Etype (Arg2)) = GT
         and then Full_GL_Type (Arg3) = GT
         and then Type_Size_Matches_Name (S, True, GT)
       then
@@ -900,21 +929,26 @@ package body GNATLLVM.Builtins is
             Weak    : constant Boolean           :=
               Compile_Time_Known_Value (Arg4)
               and then Expr_Value (Arg4) = Uint_1;
+            Old_Val : constant GL_Value          :=
+              Emit_And_Maybe_Deref (Arg2, GT);
+            New_Val : constant GL_Value          :=
+              Emit_And_Maybe_Deref (Arg3, GT);
             S_Order : constant Atomic_Ordering_T := Memory_Order (Arg5);
             F_Order : Atomic_Ordering_T          :=
               Memory_Order (Arg6, No_Release => True);
 
          begin
-            if F_Order > S_Order then
+            if No (Old_Val) or else No (New_Val) then
+               return No_GL_Value;
+            elsif F_Order > S_Order then
                Error_Msg_N
                  ("Failure order cannot be stronger than success order", N);
                F_Order := S_Order;
             end if;
 
-            return Emit_Compare_Xchg (Emit_Ptr (Ptr, GT),
-                                      Emit_And_Maybe_Deref (Arg2, GT),
-                                      Emit_Expression (Arg3),
-                                      S_Order, F_Order, Weak, False);
+            Result := Emit_Compare_Xchg (Emit_Ptr (Ptr, GT), Old_Val, New_Val,
+                                         S_Order, F_Order, Weak, False);
+            return Result;
          end;
 
       --  Now test-and-set, which is an exchange
@@ -934,12 +968,17 @@ package body GNATLLVM.Builtins is
 
       --  Next is clear, which is a store of zero
 
-      elsif Is_Proc and then N_Args = 2 and then Name = "clear"
-        and then Type_Size_Matches_Name (S, True, GT)
-      then
-         Emit_Atomic_Store (Emit_Ptr (Ptr, GT), Const_Null (GT),
-                            Memory_Order (Arg2, No_Acquire => True), GT);
-         return Size_Const_Null;
+      elsif Is_Proc and then N_Args = 2 and then Name = "clear" then
+         declare
+            Our_GT : constant GL_Type :=
+              (if Present (GT) then GT else SSI_GL_Type);
+
+         begin
+            Emit_Atomic_Store (Emit_Ptr (Ptr, Our_GT), Const_Null (Our_GT),
+                               Memory_Order (Arg2, No_Acquire => True),
+                               Our_GT);
+            return Const_True;
+         end;
 
       --  Now we have the fence operations, which we treat the same
 
@@ -947,7 +986,7 @@ package body GNATLLVM.Builtins is
         and then (Name = "thread_fence" or else Name = "signal_fence")
       then
          Fence (Order => Memory_Order (Ptr));
-         return Size_Const_Null;
+         return Const_True;
 
       --  Handle always_lock_free and is_lock_free
 

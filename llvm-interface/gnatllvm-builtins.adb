@@ -819,6 +819,9 @@ package body GNATLLVM.Builtins is
       First     : constant Integer  := S'First + String'("__atomic_")'Length;
       Last      : constant Integer  := Last_Non_Suffix (S);
       Name      : constant String   := S (First .. Last);
+      Op        : Atomic_RMW_Bin_Op_T;
+      Op_Back   : Boolean;
+      Index     : Integer;
       Result    : GL_Value;
 
    begin
@@ -957,9 +960,26 @@ package body GNATLLVM.Builtins is
                       or else Expr_Value (Ptr) = Uint_4
                       or else Expr_Value (Ptr) = Uint_8
                  then Const_True else Const_False);
+
+      --  The remaining possibilityes are "op_fetch" and "fetch_op"
+
+      elsif Name_To_RMW_Op (S, First, Index, Op) and then Last = Index + 5
+        and then S (Index .. Last) = "_fetch"
+        and then Nkind (N) = N_Function_Call and then N_Args = 3
+      then
+         Op_Back := True;
+      elsif S'Last > First + 5 and then S (First .. First + 5) = "fetch_"
+        and then Name_To_RMW_Op (S, First + 6, Index, Op)
+        and then Index - 1 = Last
+        and then Nkind (N) = N_Function_Call and then N_Args = 3
+      then
+         Op_Back := False;
+      else
+         return No_GL_Value;
       end if;
 
-      return No_GL_Value;
+      return Emit_Fetch_And_Op (Ptr, Emit_Expression (Arg2), Op, Op_Back,
+                                Memory_Order (Arg3), S, GT);
 
    end Emit_Atomic_Call;
 

@@ -115,25 +115,6 @@ package body GNATLLVM.Builtins is
    --  peform the operation, return the result.  Otherwise, return
    --  No_GL_Value.
 
-   function Emit_Compare_Xchg
-     (Ptr_Val  : GL_Value;
-      Old_Val  : GL_Value;
-      New_Val  : GL_Value;
-      S_Order  : Atomic_Ordering_T;
-      F_Order  : Atomic_Ordering_T;
-      Weak     : Boolean;
-      Want_Val : Boolean) return GL_Value
-     with Pre  => Present (Ptr_Val) and then Present (Old_Val)
-                  and then Present (New_Val)
-                  and then Related_Type (Ptr_Val) = Related_Type (Old_Val)
-                  and then Related_Type (Ptr_Val) = Related_Type (New_Val),
-          Post => Present (Emit_Compare_Xchg'Result);
-   --  Emit an atomic compare-exchange operation at Ptr with the given old
-   --  and new values. Weak, S_Order, and F_Order give the desired
-   --  atomicity parameters.  If Want_Val is True, we return the old value
-   --  at Ptr, but if False, we return a boolean saying whether the
-   --  value was written.
-
    function Emit_Atomic_Load
      (Ptr_Val : GL_Value;
       Order   : Atomic_Ordering_T;
@@ -562,42 +543,6 @@ package body GNATLLVM.Builtins is
       end case;
    end Emit_Fetch_And_Op;
 
-   -----------------------
-   -- Emit_Compare_Xchg --
-   -----------------------
-
-   function Emit_Compare_Xchg
-     (Ptr_Val  : GL_Value;
-      Old_Val  : GL_Value;
-      New_Val  : GL_Value;
-      S_Order  : Atomic_Ordering_T;
-      F_Order  : Atomic_Ordering_T;
-      Weak     : Boolean;
-      Want_Val : Boolean) return GL_Value
-   is
-      Our_S_Order : constant Atomic_Ordering_T :=
-        (if   S_Order = Atomic_Ordering_Unordered
-              or else F_Order = Atomic_Ordering_Unordered
-         then Atomic_Ordering_Sequentially_Consistent else S_Order);
-      Our_F_Order : constant Atomic_Ordering_T :=
-        (if   F_Order = Atomic_Ordering_Unordered
-         then Atomic_Ordering_Sequentially_Consistent else F_Order);
-      Result : constant GL_Value :=
-        Atomic_Cmp_Xchg (Ptr_Val, Old_Val, New_Val, Our_S_Order, Our_F_Order,
-                         Weak => Weak);
-
-   begin
-      Set_Volatile_For_Atomic (Result);
-
-      if Want_Val then
-         return Get (Result, Data);
-      else
-         return Get (G_Is_Relationship (Result, Boolean_GL_Type,
-                                        Boolean_And_Data),
-                     Boolean_Data);
-      end if;
-   end Emit_Compare_Xchg;
-
    ----------------------
    -- Emit_Atomic_Load --
    ----------------------
@@ -658,6 +603,7 @@ package body GNATLLVM.Builtins is
       Op        : Atomic_RMW_Bin_Op_T;
       Op_Back   : Boolean;
       Index     : Integer;
+      Result    : GL_Value;
 
    begin
       --  This may be a __sync builtin.  Parse it to see what it tells us
@@ -672,16 +618,17 @@ package body GNATLLVM.Builtins is
       then
          declare
             New_Val : constant GL_Value := Emit_Expression (Next_Actual (Val));
+            For_Val : constant Boolean  := Name (Name'First) = 'v';
 
          begin
             if Present (Ptr_Val) and then Related_Type (New_Val) = GT
               and then Type_Size_Matches_Name (S, True, GT)
             then
-               return
-                 Emit_Compare_Xchg (Ptr_Val, Emit_Expression (Val), New_Val,
-                                    Atomic_Ordering_Sequentially_Consistent,
-                                    Atomic_Ordering_Sequentially_Consistent,
-                                    False, Name (Name'First) = 'v');
+               Result :=
+                 Atomic_Cmp_Xchg (Ptr_Val, Emit_Expression (Val), New_Val);
+               Set_Volatile_For_Atomic (Result);
+
+               return Get (Result, (if For_Val then Data else Boolean_Data));
             else
                return No_GL_Value;
             end if;
@@ -837,6 +784,11 @@ package body GNATLLVM.Builtins is
       --  argument is always an ordering type, so can't determine the
       --  needed type.
 
+      Def_GT    : constant GL_Type  :=
+        (if Present (GT) then GT else SSI_GL_Type);
+      --  In some cases (test_and_set and clear), we may not have a type at
+      --  all.  In that case, we mean to use a byte.
+
       First     : constant Integer  := S'First + String'("__atomic_")'Length;
       Last      : constant Integer  := Last_Non_Suffix (S);
       Name      : constant String   := S (First .. Last);
@@ -919,16 +871,24 @@ package body GNATLLVM.Builtins is
         and then Type_Size_Matches_Name (S, True, GT)
       then
          declare
-            Weak    : constant Boolean           :=
+            Weak         : constant Boolean           :=
               Compile_Time_Known_Value (Arg4)
               and then Expr_Value (Arg4) = Uint_1;
-            Old_Val : constant GL_Value          :=
+            Old_Val      : constant GL_Value          :=
               Emit_And_Maybe_Deref (Arg2, GT);
-            New_Val : constant GL_Value          :=
+            New_Val      : constant GL_Value          :=
               Emit_And_Maybe_Deref (Arg3, GT);
-            S_Order : constant Atomic_Ordering_T := Memory_Order (Arg5);
-            F_Order : Atomic_Ordering_T          :=
+            Old_As_Ptr   : constant GL_Value          := Emit_Ptr (Arg2, GT);
+            Orig_S_Order : constant Atomic_Ordering_T := Memory_Order (Arg5);
+            Orig_F_Order : constant Atomic_Ordering_T :=
               Memory_Order (Arg6, No_Release => True);
+            S_Order      : constant Atomic_Ordering_T :=
+              (if   Orig_S_Order = Atomic_Ordering_Unordered
+                   or else Orig_F_Order = Atomic_Ordering_Unordered
+               then Atomic_Ordering_Sequentially_Consistent else Orig_S_Order);
+            F_Order      : Atomic_Ordering_T          :=
+             (if   Orig_F_Order = Atomic_Ordering_Unordered
+              then Atomic_Ordering_Sequentially_Consistent else Orig_F_Order);
 
          begin
             if No (Old_Val) or else No (New_Val) then
@@ -939,9 +899,17 @@ package body GNATLLVM.Builtins is
                F_Order := S_Order;
             end if;
 
-            Result := Emit_Compare_Xchg (Emit_Ptr (Ptr, GT), Old_Val, New_Val,
-                                         S_Order, F_Order, Weak, False);
-            return Result;
+            --  Now do the operation.  Return the result as a boolean, but
+            --  if "expected" was a pointer (or address), set it to the old
+            --  value.
+
+            Result := Atomic_Cmp_Xchg (Emit_Ptr (Ptr, GT), Old_Val, New_Val,
+                                       S_Order, F_Order, Weak => Weak);
+            if Present (Old_As_Ptr) then
+               Store (Get (Result, Data), Old_As_Ptr);
+            end if;
+
+            return Get (Result, Boolean_Data);
          end;
 
       --  Now test-and-set, which is an exchange
@@ -949,29 +917,23 @@ package body GNATLLVM.Builtins is
       elsif not Is_Proc and then N_Args = 2 and then Name = "test_and_set"
         and then Is_Boolean_Type (Full_Etype (N))
       then
-         Result := Emit_Fetch_And_Op (Ptr, Const_Int (GT, Uint_1),
+         Result := Emit_Fetch_And_Op (Ptr, Const_Int (Def_GT, Uint_1),
                                       Atomic_RMW_Bin_Op_Xchg, False,
-                                      Memory_Order (Arg2), S, GT);
+                                      Memory_Order (Arg2), S, Def_GT);
 
          if No (Result) then
             return No_GL_Value;
          else
-            return I_Cmp (Int_NE, Result, Const_Null (GT));
+            return I_Cmp (Int_NE, Result, Const_Null (Def_GT));
          end if;
 
       --  Next is clear, which is a store of zero
 
       elsif Is_Proc and then N_Args = 2 and then Name = "clear" then
-         declare
-            Our_GT : constant GL_Type :=
-              (if Present (GT) then GT else SSI_GL_Type);
-
-         begin
-            Emit_Atomic_Store (Emit_Ptr (Ptr, Our_GT), Const_Null (Our_GT),
-                               Memory_Order (Arg2, No_Acquire => True),
-                               Our_GT);
-            return Const_True;
-         end;
+         Emit_Atomic_Store (Emit_Ptr (Ptr, Def_GT), Const_Null (Def_GT),
+                            Memory_Order (Arg2, No_Acquire => True),
+                            Def_GT);
+         return Const_True;
 
       --  Now we have the fence operations, which we treat the same
 

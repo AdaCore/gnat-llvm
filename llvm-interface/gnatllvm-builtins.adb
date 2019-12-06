@@ -218,7 +218,6 @@ package body GNATLLVM.Builtins is
       Result    : GL_Value;
 
    begin
-
       for J in 1 .. Intrinsic_Functions_Table.Last loop
          if Intrinsic_Functions_Table.Table (J).Name.all = Name
            and then Intrinsic_Functions_Table.Table (J).Width = Width
@@ -253,9 +252,10 @@ package body GNATLLVM.Builtins is
                Void_Type);
       end case;
 
-      Result := Add_Function (Full_Name, Fun_Ty, Return_GT,
-                              Is_Builtin => True);
+      Result := Add_Function
+        (Full_Name, Fun_Ty, Return_GT, Is_Builtin => True);
       Set_Does_Not_Throw (Result);
+
       if Kind = Memcpy then
          Add_Nocapture_Attribute (Result, 0);
          Add_Nocapture_Attribute (Result, 1);
@@ -263,6 +263,7 @@ package body GNATLLVM.Builtins is
          Add_Non_Null_Attribute  (Result, 1);
          Add_Writeonly_Attribute (Result, 0);
          Add_Readonly_Attribute  (Result, 1);
+
       elsif Kind = Memset then
          Add_Nocapture_Attribute (Result, 0);
          Add_Non_Null_Attribute  (Result, 0);
@@ -288,6 +289,7 @@ package body GNATLLVM.Builtins is
          Name   : String (1 .. 4);
          Op     : Atomic_RMW_Bin_Op_T;
       end record;
+
       type RMW_Op_Array is array (Integer range <>) of RMW_Op;
 
       Len : Integer;
@@ -350,7 +352,6 @@ package body GNATLLVM.Builtins is
             end if;
          end return;
       end if;
-
    end Last_Non_Suffix;
 
    ----------------------------
@@ -396,7 +397,6 @@ package body GNATLLVM.Builtins is
                                       (Character'Pos ('0') + Size mod 10)
            and then (not In_Bytes or else S (S'Last - 2) = '_');
       end if;
-
    end Type_Size_Matches_Name;
 
    ------------------
@@ -442,7 +442,6 @@ package body GNATLLVM.Builtins is
       end if;
 
       return Order;
-
    end Memory_Order;
 
    --------------
@@ -468,15 +467,14 @@ package body GNATLLVM.Builtins is
       else
          return No_GL_Value;
       end if;
-
    end Emit_Ptr;
 
    --------------------------
    -- Emit_And_Maybe_Deref --
    --------------------------
 
-   function Emit_And_Maybe_Deref (Ptr : Node_Id; GT : GL_Type) return GL_Value
-   is
+   function Emit_And_Maybe_Deref
+     (Ptr : Node_Id; GT : GL_Type) return GL_Value is
       Result : GL_Value := Emit_Expression (Ptr);
 
    begin
@@ -490,7 +488,6 @@ package body GNATLLVM.Builtins is
       else
          return No_GL_Value;
       end if;
-
    end Emit_And_Maybe_Deref;
 
    -----------------------
@@ -563,7 +560,6 @@ package body GNATLLVM.Builtins is
          when Atomic_RMW_Bin_Op_Min | Atomic_RMW_Bin_Op_U_Min =>
             return Build_Min (Result, Val);
       end case;
-
    end Emit_Fetch_And_Op;
 
    -----------------------
@@ -600,7 +596,6 @@ package body GNATLLVM.Builtins is
                                         Boolean_And_Data),
                      Boolean_Data);
       end if;
-
    end Emit_Compare_Xchg;
 
    ----------------------
@@ -737,7 +732,6 @@ package body GNATLLVM.Builtins is
 
       return Emit_Fetch_And_Op (Ptr, Emit_Expression (Val), Op, Op_Back,
                                 Order, S, GT);
-
    end Emit_Sync_Call;
 
    ---------------------
@@ -809,7 +803,6 @@ package body GNATLLVM.Builtins is
                                 (1 => Get (Emit (Val), Boolean_Data),
                                  2 => Expected),
                                 Boolean_Data);
-
    end Emit_Branch_Prediction_Call;
 
    ----------------------
@@ -1000,7 +993,7 @@ package body GNATLLVM.Builtins is
                       or else Expr_Value (Ptr) = Uint_8
                  then Const_True else Const_False);
 
-      --  The remaining possibilityes are "op_fetch" and "fetch_op"
+      --  The remaining possibilities are "op_fetch" and "fetch_op"
 
       elsif Name_To_RMW_Op (S, First, Index, Op) and then Last = Index + 5
         and then S (Index .. Last) = "_fetch"
@@ -1019,7 +1012,6 @@ package body GNATLLVM.Builtins is
 
       return Emit_Fetch_And_Op (Ptr, Emit_Expression (Arg2), Op, Op_Back,
                                 Memory_Order (Arg3), S, GT);
-
    end Emit_Atomic_Call;
 
    --------------------------
@@ -1045,7 +1037,8 @@ package body GNATLLVM.Builtins is
          (3, "log  ", Unary),
          (5, "log10", Unary),
          (4, "log2 ", Unary));
-      Len         : Integer;
+
+      Len : Integer;
 
    begin
       for FP of FP_Builtins loop
@@ -1086,7 +1079,8 @@ package body GNATLLVM.Builtins is
    -- Emit_Intrinsic_Call --
    -------------------------
 
-   function Emit_Intrinsic_Call (N : Node_Id; Subp : Entity_Id) return GL_Value
+   function Emit_Intrinsic_Call
+     (N : Node_Id; Subp : Entity_Id) return GL_Value
    is
       S      : constant String  := Get_Ext_Name (Subp);
       First  : constant Integer := S'First;

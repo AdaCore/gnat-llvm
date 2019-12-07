@@ -159,6 +159,9 @@ package body GNATLLVM.GLType is
    procedure Next (GT : in out GL_Type)
      with Pre => Present (GT), Inline;
 
+   function Is_Default (GT : GL_Type) return Boolean
+     with Pre => Present (GT), Inline;
+
    function Get_Or_Create_GL_Type
      (TE : Entity_Id; Create : Boolean) return GL_Type
      with Pre  => Is_Type_Or_Void (TE),
@@ -302,6 +305,13 @@ package body GNATLLVM.GLType is
 
    function Is_Max_Size (GT : GL_Type) return Boolean is
      (GL_Type_Table.Table (GT).Max_Size);
+
+   ----------------
+   -- Is_Default --
+   ----------------
+
+   function Is_Default (GT : GL_Type) return Boolean is
+     (GL_Type_Table.Table (GT).Default);
 
    ------------------
    -- GT_Alignment --
@@ -910,17 +920,21 @@ package body GNATLLVM.GLType is
             Bits := Bits + Esize (GT) - RM_Size (GT);
          end if;
 
-         --  Another case is if we have a padding type.  The padded type may
-         --  be padding further than the default size of the type.
+         --  Another case is if we have a GT that's not the default, in
+         --  which case we have to adjust between its size and the default
+         --  size.  For elementary types, we only do this for padding types
+         --  and if the difference is positive.
 
-         if Has_Padding (GT) then
+         if not Is_Default (GT) and then not Is_Dynamic_Size (GT) then
             declare
                Def_GT   : constant GL_Type  := Default_GL_Type (GT);
                Our_Size : constant GL_Value := Get_Type_Size (GT);
 
             begin
                if not Is_Dynamic_Size (Def_GT)
-                 and then Our_Size > Get_Type_Size (Def_GT)
+                 and then (Is_Composite_Type (GT)
+                             or else (Our_Size > Get_Type_Size (Def_GT)
+                                        and then Has_Padding (GT)))
                then
                   Bits := Bits + (Our_Size - Get_Type_Size (Def_GT));
                end if;

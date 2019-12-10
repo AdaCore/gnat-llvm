@@ -748,9 +748,7 @@ package GNATLLVM.GLValue is
           Post => Is_Type_Or_Void (Full_Designated_Type'Result);
 
    function Full_Base_Type (V : GL_Value) return Entity_Id
-     with Pre  => not Is_Reference (V),
-          Post => Is_Type (Full_Base_Type'Result),
-          Inline;
+     with Pre => Present (V), Post => Is_Type (Full_Base_Type'Result), Inline;
 
    function Is_Dynamic_Size (V : GL_Value) return Boolean
      with Pre => Present (V), Inline;

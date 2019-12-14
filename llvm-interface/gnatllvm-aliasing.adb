@@ -742,7 +742,6 @@ package body GNATLLVM.Aliasing is
             Offsets       : Value_Array    (Struct_Fields'Range);
             Sizes         : Value_Array    (Struct_Fields'Range);
             TBAAs         : Metadata_Array (Struct_Fields'Range);
-            F_TBAA        : Metadata_T;
 
          begin
             --  If we have no data, this is an empty structure, so we can't
@@ -757,37 +756,40 @@ package body GNATLLVM.Aliasing is
             --  struct.
 
             for J in Struct_Fields'Range loop
-               Offsets (J) := Const_Int (LLVM_Size_Type,
-                                         Struct_Fields (J).Offset, False);
-               Sizes   (J) := Const_Int
-                 (LLVM_Size_Type,
-                  To_Bytes (Get_Type_Size (Struct_Fields (J).T)),
-                  False);
+               declare
+                  SF : constant Struct_Field := Struct_Fields (J);
 
-               --  If there's no GT for the field, this is a field used to
-               --  store bitfields.  So we make a unique scalar TBAA type
-               --  entry for it.
+               begin
+                  Offsets (J) := Const_Int (LLVM_Size_Type, SF.Offset, False);
+                  Sizes   (J) := Const_Int
+                    (LLVM_Size_Type, To_Bytes (Get_Type_Size (SF.T)), False);
 
-               if No (Struct_Fields (J).GT) then
-                  F_TBAA := Create_TBAA_Scalar_Type_Node
-                    ("BF", G (Sizes (J), Size_GL_Type), TBAA_Root);
+                  --  If there's no GT for the field, this is a field used
+                  --  to store bitfields.  So we make a unique scalar TBAA
+                  --  type entry for it.
 
-               --  Otherwise, try to get or make a type entry
+                  if No (SF.GT) then
+                     TBAAs (J) := Create_TBAA_Scalar_Type_Node
+                       ("BF", G (Sizes (J), Size_GL_Type), TBAA_Root);
 
-               else
-                  F_TBAA :=
-                    Get_TBAA_Type (Struct_Fields (J).GT,
-                                   Kind_From_Aliased
-                                     (Struct_Fields (J).Is_Aliased));
-               end if;
+                  --  Otherwise, try to get or make a type entry
 
-               --  If we found an entry, store it.  Otherwise, we fail.
+                  else
+                     TBAAs (J) := TBAA_Type (SF.AF_Fidx);
+                     if No (TBAAs (J)) then
+                        TBAAs (J) :=
+                          Get_TBAA_Type (SF.GT,
+                                         Kind_From_Aliased (SF.Is_Aliased));
+                        Set_TBAA_Type (SF.AF_Fidx, TBAAs (J));
+                     end if;
+                  end if;
 
-               if Present (F_TBAA) then
-                  TBAAs (J) := F_TBAA;
-               else
-                  return No_Metadata_T;
-               end if;
+                  --  If we found an entry, store it.  Otherwise, we fail.
+
+                  if No (TBAAs (J)) then
+                     return No_Metadata_T;
+                  end if;
+               end;
             end loop;
 
             TBAA := Create_TBAA_Struct_Type_Node

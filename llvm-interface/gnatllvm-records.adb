@@ -1454,6 +1454,22 @@ package body GNATLLVM.Records is
       return (if Is_Dummy_Type (GT) then Default_GL_Type (GT) else GT);
    end Field_Type;
 
+   ---------------
+   -- TBAA_Type --
+   ---------------
+
+   function TBAA_Type (Fidx : Field_Info_Id) return Metadata_T is
+     (Field_Info_Table.Table (Fidx).TBAA_Type);
+
+   -------------------
+   -- Set_TBAA_Type --
+   -------------------
+
+   procedure Set_TBAA_Type (Fidx : Field_Info_Id; M : Metadata_T) is
+   begin
+      Field_Info_Table.Table (Fidx).TBAA_Type := M;
+   end Set_TBAA_Type;
+
    --------------------
    -- Ancestor_Field --
    --------------------
@@ -1519,16 +1535,18 @@ package body GNATLLVM.Records is
          if FI.Field_Ordinal /= Last_Ord then
             Last_Ord := FI.Field_Ordinal;
             declare
-               F_Type : constant Type_T     :=
+               F_Type  : constant Type_T        :=
                  Struct_Get_Type_At_Index (RI.LLVM_Type, unsigned (Last_Ord));
-               Offset : constant ULL        :=
+               Offset  : constant ULL           :=
                  Get_Element_Offset (RI.LLVM_Type, unsigned (Last_Ord));
-               GT     : constant GL_Type    :=
+               GT      : constant GL_Type       :=
                  (if Is_Bitfield_By_Rep (FI.Field) then No_GL_Type else FI.GT);
+               AF_Fidx : constant Field_Info_Id :=
+                 Get_Field_Info (Ancestor_Field (FI.Field));
 
             begin
                Field_Table.Append
-                 ((Offset, F_Type, GT, Is_Aliased (FI.Field)));
+                 ((Offset, F_Type, GT, AF_Fidx, Is_Aliased (FI.Field)));
             end;
          end if;
 

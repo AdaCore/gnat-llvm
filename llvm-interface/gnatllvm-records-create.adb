@@ -492,6 +492,7 @@ package body GNATLLVM.Records.Create is
              Field_Ordinal        => Ordinal,
              First_Bit            => First_Bit,
              Num_Bits             => Num_Bits,
+             TBAA_Type            => No_Metadata_T,
              Array_Bitfield       => Array_Bitfield,
              Large_Array_Bitfield => Large_Array_Bitfield));
 

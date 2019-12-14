@@ -128,6 +128,7 @@ package GNATLLVM.Records is
       Offset     : ULL;
       T          : Type_T;
       GT         : GL_Type;
+      AF_Fidx    : Field_Info_Id;
       Is_Aliased : Boolean;
    end record;
 
@@ -208,6 +209,12 @@ package GNATLLVM.Records is
    function Is_Large_Array_Bitfield (F : Entity_Id) return Boolean
      with Pre  => Is_Field (F) and then Present (Get_Field_Info (F));
    --  Likewise, but it's also a large array
+
+   function TBAA_Type (Fidx : Field_Info_Id) return Metadata_T
+     with Pre => Present (Fidx), Inline;
+   procedure Set_TBAA_Type (Fidx : Field_Info_Id; M : Metadata_T)
+     with Pre => Present (Fidx), Post => TBAA_Type (Fidx) = M, Inline;
+   --  Set and get the TBAA type entry for Fidx
 
    function Align_To
      (V : GL_Value; Cur_Align, Must_Align : Nat) return GL_Value
@@ -447,6 +454,9 @@ private
       Num_Bits             : Uint;
       --  If Present, the number of bits within the LLVM field that
       --  corresponds to this field.
+
+      TBAA_Type            : Metadata_T;
+      --  The TBAA type tag corresponding to this field
 
       Array_Bitfield       : Boolean;
       --  If True, the underlying LLVM field is an array.  This means that

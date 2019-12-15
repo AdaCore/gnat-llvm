@@ -472,29 +472,7 @@ package body GNATLLVM.Types is
       GT    : GL_Type;
 
    begin
-      --  Before we do anything, see if this isn't a base type and process
-      --  the base type if so.  Copy sizes from the base type if a size
-      --  clause was present and the corresponding value hasn't already
-      --  been set.
-
-      if not Is_Full_Base_Type (TE) then
-         declare
-            BT : constant Entity_Id := Full_Base_Type (TE);
-
-         begin
-            Discard (Type_Of (BT));
-
-            if Has_Size_Clause (BT) and then Unknown_RM_Size (TE) then
-               Set_RM_Size (TE, RM_Size (BT));
-            end if;
-
-            if Has_Object_Size_Clause (BT) and then Unknown_Esize (TE) then
-               Set_Esize (TE, Esize (BT));
-            end if;
-         end;
-      end if;
-
-      --  Next see if we already have a suitable type
+      --  First see if we already have a suitable type
 
       GT := Default_GL_Type (TE, Create => False);
 

@@ -268,14 +268,41 @@ package body GNATLLVM.Types.Create is
       T     : Type_T;
 
    begin
-      Check_Convention (TE);
-
       --  Set that we're elaborating the type.  Note that we have to do this
       --  here rather than right before the case statement because we may
       --  have two different types being elaborated that have the same
       --  base type.
 
       Set_Is_Being_Elaborated (TE, True);
+
+      --  If this is a derived type, ensure we're processed  that type first
+
+      if Is_Derived_Type (TE) then
+         Discard (Type_Of (Full_Etype (TE)));
+      end if;
+
+      --  Now see if this isn't a base type and process the base type if
+      --  so.  Copy sizes from the base type if a size clause was present
+      --  and the corresponding value hasn't already been set.
+
+      if not Is_Full_Base_Type (TE) then
+         declare
+            BT : constant Entity_Id := Full_Base_Type (TE);
+
+         begin
+            Discard (Type_Of (BT));
+
+            if Has_Size_Clause (BT) and then Unknown_RM_Size (TE) then
+               Set_RM_Size (TE, RM_Size (BT));
+            end if;
+
+            if Has_Object_Size_Clause (BT) and then Unknown_Esize (TE) then
+               Set_Esize (TE, Esize (BT));
+            end if;
+         end;
+      end if;
+
+      Check_Convention (TE);
 
       case Ekind (TE) is
          when E_Void =>

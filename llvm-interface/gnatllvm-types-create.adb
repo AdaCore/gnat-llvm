@@ -275,7 +275,7 @@ package body GNATLLVM.Types.Create is
 
       Set_Is_Being_Elaborated (TE, True);
 
-      --  If this is a derived type, ensure we're processed  that type first
+      --  If this is a derived type, ensure we've processed that type first
 
       if Is_Derived_Type (TE) then
          Discard (Type_Of (Full_Etype (TE)));

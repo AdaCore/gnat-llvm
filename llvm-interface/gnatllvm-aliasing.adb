@@ -484,7 +484,7 @@ package body GNATLLVM.Aliasing is
             Append (Buf, "#TN");
          when For_Aliased =>
             null;
-         when Unique =>
+         when Unique | Unique_Aliased =>
             Append (Buf, "#T");
             Append (Buf, Name_Idx);
             Name_Idx := Name_Idx + 1;
@@ -528,6 +528,8 @@ package body GNATLLVM.Aliasing is
             return TBAA;
          when Unique =>
             return Create_TBAA_Type (GT, Unique, Parent => Native_TBAA);
+         when Unique_Aliased =>
+            return Create_TBAA_Type (GT, Unique_Aliased, Parent => TBAA);
       end case;
    end Get_TBAA_Type;
 
@@ -605,6 +607,8 @@ package body GNATLLVM.Aliasing is
             return TBAA;
          when Unique =>
             return Create_TBAA_Type (TE, Unique, Parent => Native_TBAA);
+         when Unique_Aliased =>
+            return Create_TBAA_Type (TE, Unique_Aliased, Parent => TBAA);
       end case;
 
    end Get_TBAA_Type;
@@ -625,7 +629,8 @@ package body GNATLLVM.Aliasing is
         (if   No (TBAA) then No_Metadata_T
          else (case Kind is when For_Aliased => TBAA,
                  when Native => TBAA_Parent (TBAA),
-                 when Unique => Create_TBAA_Type (BT, Unique, Parent)));
+                 when Unique | Unique_Aliased =>
+                    Create_TBAA_Type (BT, Kind, Parent)));
 
    begin
       --  If we couldn't get a type tag for our base type, or if this is a
@@ -736,7 +741,7 @@ package body GNATLLVM.Aliasing is
 
    begin
       if No (TBAA) or else TBAA_Parent (TBAA) /= Parent
-        or else Kind = Unique
+        or else Kind in Unique | Unique_Aliased
       then
          declare
             Struct_Fields : constant Struct_Field_Array :=
@@ -801,7 +806,7 @@ package body GNATLLVM.Aliasing is
          end;
       end if;
 
-      if Present (TBAA) and then Kind /= Unique then
+      if Present (TBAA) and then Kind not in Unique | Unique_Aliased then
          Set_TBAA_Type (Ridx, TBAA);
       end if;
 

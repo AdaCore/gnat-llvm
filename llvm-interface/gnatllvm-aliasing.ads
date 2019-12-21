@@ -108,10 +108,28 @@ package GNATLLVM.Aliasing is
    --  -fc-style-aliasing, where we effectively treat all objects and
    --  components as aliased.
 
-   type TBAA_Kind is (Native, For_Aliased, Unique);
+   type TBAA_Kind is
+     (Native,
+      --  The lowest-level TBAA type for a type.  Everything else related
+      --  to that type has it as a parent.  We use this for accesses where
+      --  all we know is the type.
+
+      For_Aliased,
+      --  Used for references via an access type and is also in the parent
+      --  chain for any aliased object.
+
+      Unique,
+      --  Used for non-aliased objects of the type (but not if
+      --  -fc-style-aliasing).  The parent is the Native kind.
+
+      Unique_Aliased
+      --  Used for aliased object of the type (or all objects if
+      --  -fc-style-aliasing).  The parent is the For_Aliased kind.
+     );
 
    function Kind_From_Aliased (Is_Aliased : Boolean) return TBAA_Kind is
-     ((if Flag_C_Style_Aliasing or Is_Aliased then For_Aliased else Unique));
+     ((if   Flag_C_Style_Aliasing or Is_Aliased
+       then Unique_Aliased else Unique));
    --  Given whether an item is aliased, return the TBAA_Kind to use
 
    function Kind_From_Decl (Def_Ident : Entity_Id) return TBAA_Kind is

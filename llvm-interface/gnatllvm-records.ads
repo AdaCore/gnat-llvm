@@ -114,6 +114,11 @@ package GNATLLVM.Records is
    --  Present, V is a value of that type, which is used in the case
    --  of a discriminated record.
 
+   function Ridx_TE (Ridx : Record_Info_Id) return Entity_Id
+     with Pre => Present (Ridx), Post => Present (Ridx_TE'Result), Inline;
+   --  Given a Record_Info_Id, return the type that it (possibly partially)
+   --  represents
+
    function TBAA_Type (Ridx : Record_Info_Id) return Metadata_T
      with Pre => Present (Ridx), Inline;
    procedure Set_TBAA_Type (Ridx : Record_Info_Id; M : Metadata_T)
@@ -365,6 +370,9 @@ private
    --      relative offset of these fields is zero.
 
    type Record_Info_Base is record
+      TE               : Entity_Id;
+      --  GNAT that that this (possibly partially) represents
+
       LLVM_Type        : Type_T;
       --  LLVM type corresponding to this fragment, if any
 

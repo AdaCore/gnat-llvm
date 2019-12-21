@@ -427,7 +427,8 @@ package body GNATLLVM.Records.Create is
          --  but we may not actually end up using that one.
 
          Record_Info_Table.Table (Cur_Idx) :=
-           (LLVM_Type        => T,
+           (TE               => TE,
+            LLVM_Type        => T,
             GT               => F_GT,
             Align            => Align,
             Position         => Position,

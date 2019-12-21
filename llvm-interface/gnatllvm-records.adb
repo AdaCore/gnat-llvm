@@ -1418,6 +1418,13 @@ package body GNATLLVM.Records is
       end return;
    end Get_Record_Type_Alignment;
 
+   -------------
+   -- Ridx_TE --
+   -------------
+
+   function Ridx_TE (Ridx : Record_Info_Id) return Entity_Id is
+     (Record_Info_Table.Table (Ridx).TE);
+
    ---------------
    -- TBAA_Type --
    ---------------

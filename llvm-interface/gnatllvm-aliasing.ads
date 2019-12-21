@@ -82,10 +82,10 @@ package GNATLLVM.Aliasing is
    --  mean any such could alias any other such, which would pessimize the
    --  code because we do know that it can't alias anything other than its
    --  own type (with the exception of unchecked-converion issues, which
-   --  are handled elsewhere).  So instead, we define a "base" TBAA type
-   --  for a type (not to be be confused with the base type of that type)
-   --  which is the parent of both the TBAA type for aliased objects of
-   --  that type and all the unique TBAA types made for that type.
+   --  are handled elsewhere).  So instead, we define a "native" TBAA type
+   --  for a type which is the parent of both the TBAA type for aliased
+   --  objects of that type and all the unique TBAA types made for that
+   --  type.
    --
    --  This produces the following, which is exactly the semantics we need:
    --
@@ -100,7 +100,7 @@ package GNATLLVM.Aliasing is
    --
    --  We implement this by storing the TBAA type to be used for aliased
    --  objects as the TBAA type tag for a type because we can obtain the
-   --  base TBAA type tag (its parent) from it and use an enumeration
+   --  native TBAA type tag (its parent) from it and use an enumeration
    --  type to specify what kind of TBAA type we're looking for.
    --
    --  We support three options for aliasing: the default, which is the above,
@@ -108,7 +108,7 @@ package GNATLLVM.Aliasing is
    --  -fc-style-aliasing, where we effectively treat all objects and
    --  components as aliased.
 
-   type TBAA_Kind is (Base, For_Aliased, Unique);
+   type TBAA_Kind is (Native, For_Aliased, Unique);
 
    function Kind_From_Aliased (Is_Aliased : Boolean) return TBAA_Kind is
      ((if Flag_C_Style_Aliasing or Is_Aliased then For_Aliased else Unique));
@@ -122,10 +122,10 @@ package GNATLLVM.Aliasing is
    procedure Initialize;
    --  Perform initialization for this compilation
 
-   procedure Initialize_TBAA (V : in out GL_Value; Kind : TBAA_Kind := Base)
+   procedure Initialize_TBAA (V : in out GL_Value; Kind : TBAA_Kind := Native)
      with Pre => Present (V);
    function Initialize_TBAA
-     (V : GL_Value; Kind : TBAA_Kind := Base) return GL_Value
+     (V : GL_Value; Kind : TBAA_Kind := Native) return GL_Value
      with Pre => Present (V);
    --  V is a value that we know nothing about except for its type.  If
    --  it's data, we have no idea of its TBAA information, but if it's a

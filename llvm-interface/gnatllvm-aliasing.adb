@@ -416,7 +416,9 @@ package body GNATLLVM.Aliasing is
    -- Initialize_TBAA --
    ---------------------
 
-   procedure Initialize_TBAA (V : in out GL_Value; Kind : TBAA_Kind := Base) is
+   procedure Initialize_TBAA
+     (V : in out GL_Value; Kind : TBAA_Kind := Native)
+   is
    begin
       if Relationship (V) = Reference then
          V.TBAA_Type   := Get_TBAA_Type (Related_Type (V), Kind);
@@ -431,7 +433,7 @@ package body GNATLLVM.Aliasing is
    ---------------------
 
    function Initialize_TBAA
-     (V : GL_Value; Kind : TBAA_Kind := Base) return GL_Value
+     (V : GL_Value; Kind : TBAA_Kind := Native) return GL_Value
    is
       New_V : GL_Value := V;
    begin
@@ -478,8 +480,8 @@ package body GNATLLVM.Aliasing is
       end if;
 
       case Kind is
-         when Base =>
-            Append (Buf, "#TB");
+         when Native =>
+            Append (Buf, "#TN");
          when For_Aliased =>
             null;
          when Unique =>
@@ -498,34 +500,34 @@ package body GNATLLVM.Aliasing is
    function Get_TBAA_Type
      (GT : GL_Type; Kind : TBAA_Kind) return Metadata_T
    is
-      TBAA      : Metadata_T := TBAA_Type (GT);
-      Base_TBAA : Metadata_T;
+      TBAA        : Metadata_T := TBAA_Type (GT);
+      Native_TBAA : Metadata_T;
 
    begin
-      --  If we haven't saved a TBAA type tag, we first need to make base
+      --  If we haven't saved a TBAA type tag, we first need to make native
       --  and aliased TBAA type tags and save the latter.
 
       if Present (TBAA) then
-         Base_TBAA := TBAA_Parent (TBAA);
+         Native_TBAA := TBAA_Parent (TBAA);
       else
-         Base_TBAA := Create_TBAA_Type (GT, Base);
-         if No (Base_TBAA) then
+         Native_TBAA := Create_TBAA_Type (GT, Native);
+         if No (Native_TBAA) then
             return No_Metadata_T;
          end if;
 
-         TBAA := Create_TBAA_Type (GT, For_Aliased, Parent => Base_TBAA);
+         TBAA := Create_TBAA_Type (GT, For_Aliased, Parent => Native_TBAA);
          Set_TBAA_Type (GT, TBAA);
       end if;
 
       --  Finally, return the proper TBAA type tag for our usage
 
       case Kind is
-         when Base =>
-            return Base_TBAA;
+         when Native =>
+            return Native_TBAA;
          when For_Aliased =>
             return TBAA;
          when Unique =>
-            return Create_TBAA_Type (GT, Unique, Parent => Base_TBAA);
+            return Create_TBAA_Type (GT, Unique, Parent => Native_TBAA);
       end case;
    end Get_TBAA_Type;
 
@@ -536,9 +538,9 @@ package body GNATLLVM.Aliasing is
    function Get_TBAA_Type
      (TE : Entity_Id; Kind : TBAA_Kind) return Metadata_T
    is
-      Grp       : constant UC_Group_Idx := Find_UC_Group (TE);
-      TBAA      : Metadata_T            := Get_TBAA (TE);
-      Base_TBAA : Metadata_T;
+      Grp         : constant UC_Group_Idx := Find_UC_Group (TE);
+      TBAA        : Metadata_T            := Get_TBAA (TE);
+      Native_TBAA : Metadata_T;
 
    begin
       --  If we have -fno-strict-aliasing, this type isn't to use
@@ -579,30 +581,30 @@ package body GNATLLVM.Aliasing is
          end loop;
       end if;
 
-      --  If we haven't saved a TBAA type tag, we first need to make base
+      --  If we haven't saved a TBAA type tag, we first need to make native
       --  and aliased TBAA type tags and save the latter.
 
       if Present (TBAA) then
-         Base_TBAA := TBAA_Parent (TBAA);
+         Native_TBAA := TBAA_Parent (TBAA);
       else
-         Base_TBAA := Create_TBAA_Type (TE, Base);
-         if No (Base_TBAA) then
+         Native_TBAA := Create_TBAA_Type (TE, Native);
+         if No (Native_TBAA) then
             return No_Metadata_T;
          end if;
 
-         TBAA := Create_TBAA_Type (TE, For_Aliased, Parent => Base_TBAA);
+         TBAA := Create_TBAA_Type (TE, For_Aliased, Parent => Native_TBAA);
          Set_TBAA (TE, TBAA);
       end if;
 
       --  Finally, return the proper TBAA type tag for our usage
 
       case Kind is
-         when Base =>
-            return Base_TBAA;
+         when Native =>
+            return Native_TBAA;
          when For_Aliased =>
             return TBAA;
          when Unique =>
-            return Create_TBAA_Type (TE, Unique, Parent => Base_TBAA);
+            return Create_TBAA_Type (TE, Unique, Parent => Native_TBAA);
       end case;
 
    end Get_TBAA_Type;
@@ -622,7 +624,7 @@ package body GNATLLVM.Aliasing is
       Prim_TBAA : constant Metadata_T :=
         (if   No (TBAA) then No_Metadata_T
          else (case Kind is when For_Aliased => TBAA,
-                 when Base => TBAA_Parent (TBAA),
+                 when Native => TBAA_Parent (TBAA),
                  when Unique => Create_TBAA_Type (BT, Unique, Parent)));
 
    begin
@@ -867,7 +869,7 @@ package body GNATLLVM.Aliasing is
       --  the TBAA information from the type.
 
       elsif No (Base_Type) then
-         Base_Type := Get_TBAA_Type (GT, Base);
+         Base_Type := Get_TBAA_Type (GT, Native);
          Offset    := 0;
       end if;
 

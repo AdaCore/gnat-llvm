@@ -26,6 +26,7 @@ with Uintp.LLVM; use Uintp.LLVM;
 
 with LLVM.Core;  use LLVM.Core;
 
+with GNATLLVM.Aliasing;      use GNATLLVM.Aliasing;
 with GNATLLVM.Compile;       use GNATLLVM.Compile;
 with GNATLLVM.Conditionals;  use GNATLLVM.Conditionals;
 with GNATLLVM.Conversions;   use GNATLLVM.Conversions;
@@ -1808,15 +1809,26 @@ package body GNATLLVM.Records is
          Result := Convert_Ref (Result, Rec_GT);
       end if;
 
-      --  Finally, do a regular GEP for the field and we're done
+      --  Do a regular GEP for the field an
 
-      return GEP_To_Relationship
+      Result := GEP_To_Relationship
         (F_GT,
          (if Is_Bitfield (Field) then Reference_To_Unknown else Reference),
          Result,
          (1 => Const_Null_32,
           2 => Const_Int_32 (unsigned (FI.Field_Ordinal))));
 
+      --  If this isn't a bitfield and we don't have a TBAA tag, use the
+      --  one for the field, if any.
+
+      if No (TBAA_Type (Result)) and then not Is_Bitfield (Field) then
+         Set_TBAA_Type (Result,
+                        Get_Field_TBAA (Get_Field_Info
+                                          (Ancestor_Field (Field)),
+                                        F_GT, Is_Aliased (Field)));
+      end if;
+
+      return Result;
    end Record_Field_Offset;
 
    ---------------------------

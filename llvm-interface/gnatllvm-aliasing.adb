@@ -25,7 +25,6 @@ with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Table;    use Table;
 
-with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Records;      use GNATLLVM.Records;
@@ -485,6 +484,26 @@ package body GNATLLVM.Aliasing is
       end if;
    end Initialize_TBAA_If_Changed;
 
+   --------------------
+   -- Get_Field_TBAA --
+   --------------------
+
+   function Get_Field_TBAA
+     (Fidx       : Field_Info_Id;
+      GT         : GL_Type;
+      Is_Aliased : Boolean) return Metadata_T
+   is
+      TBAA : Metadata_T := TBAA_Type (Fidx);
+
+   begin
+      if No (TBAA) then
+         TBAA := Get_TBAA_Type (GT, Kind_From_Aliased (Is_Aliased));
+         Set_TBAA_Type (Fidx, TBAA);
+      end if;
+
+      return TBAA;
+   end Get_Field_TBAA;
+
    -------------------
    -- Get_TBAA_Name --
    -------------------
@@ -813,12 +832,7 @@ package body GNATLLVM.Aliasing is
                --  Otherwise, try to get or make a type entry
 
             else
-               TBAAs (J) := TBAA_Type (SF.AF_Fidx);
-               if No (TBAAs (J)) then
-                  TBAAs (J) :=
-                    Get_TBAA_Type (SF.GT, Kind_From_Aliased (SF.Is_Aliased));
-                  Set_TBAA_Type (SF.AF_Fidx, TBAAs (J));
-               end if;
+               TBAAs (J) := Get_Field_TBAA (SF.AF_Fidx, SF.GT, SF.Is_Aliased);
             end if;
 
             --  If we found an entry, store it.  Otherwise, we fail.

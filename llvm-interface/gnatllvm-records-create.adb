@@ -427,8 +427,7 @@ package body GNATLLVM.Records.Create is
          --  but we may not actually end up using that one.
 
          Record_Info_Table.Table (Cur_Idx) :=
-           (TE               => TE,
-            LLVM_Type        => T,
+           (LLVM_Type        => T,
             GT               => F_GT,
             Align            => Align,
             Position         => Position,
@@ -438,7 +437,6 @@ package body GNATLLVM.Records.Create is
             Variants         => Variants,
             Overlap_Variants => Overlap_Variants,
             First_Field      => First_Field_Id,
-            TBAA_Type        => No_Metadata_T,
             Unused_Bits      => Unused_Bits);
 
          --  If we've had a previous RI for this part, link us to it.

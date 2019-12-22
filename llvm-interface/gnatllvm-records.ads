@@ -114,17 +114,6 @@ package GNATLLVM.Records is
    --  Present, V is a value of that type, which is used in the case
    --  of a discriminated record.
 
-   function Ridx_TE (Ridx : Record_Info_Id) return Entity_Id
-     with Pre => Present (Ridx), Post => Present (Ridx_TE'Result), Inline;
-   --  Given a Record_Info_Id, return the type that it (possibly partially)
-   --  represents
-
-   function TBAA_Type (Ridx : Record_Info_Id) return Metadata_T
-     with Pre => Present (Ridx), Inline;
-   procedure Set_TBAA_Type (Ridx : Record_Info_Id; M : Metadata_T)
-     with Pre => Present (Ridx), Post => TBAA_Type (Ridx) = M, Inline;
-   --  Set and get the TBAA type entry for Ridx
-
    --  Because the structure of record and field info is private and we
    --  don't want to generate too many accessors, we provide a function
    --  here to collect and return information about fields in an RI.
@@ -143,11 +132,6 @@ package GNATLLVM.Records is
      (Ridx : Record_Info_Id) return Struct_Field_Array
      with Pre => Present (Ridx);
    --  Return an array of struct field entries for the fields in the RI
-
-   function RI_Size_In_Bytes (Ridx : Record_Info_Id) return GL_Value
-     with Pre => Present (Ridx);
-   --  Only valid when Ridx is known to be of a single LLVM type and is
-   --  the size of the RI (i.e. the size of the type) in bytes.
 
    function Field_Ordinal (F : Entity_Id) return unsigned
      with Pre => Is_Field (F);
@@ -370,9 +354,6 @@ private
    --      relative offset of these fields is zero.
 
    type Record_Info_Base is record
-      TE               : Entity_Id;
-      --  GNAT that that this (possibly partially) represents
-
       LLVM_Type        : Type_T;
       --  LLVM type corresponding to this fragment, if any
 
@@ -407,9 +388,6 @@ private
 
       First_Field      : Field_Info_Id;
       --  Id of the first field contained in this record part, if any
-
-      TBAA_Type        : Metadata_T;
-      --  TBAA type entry for this TBAA, if any
 
       Unused_Bits      : Uint;
       --  The number of unused bits in the last type for this RI, either

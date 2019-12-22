@@ -134,16 +134,14 @@ package body GNATLLVM.Aliasing is
       Kind   : TBAA_Kind;
       Parent : Metadata_T := No_Metadata_T) return Metadata_T
      with Pre => Is_Type (TE);
-   --  Make a new TBAA type entry
 
-   function Create_TBAA_Type
-     (TE     : Entity_Id;
-      Ridx   : Record_Info_Id;
-      Parent : Metadata_T;
-      Kind   : TBAA_Kind) return Metadata_T
-     with Pre => Present (Ridx) and then Present (Parent);
-   --  Create a TBAA type entry for the specified Record_Info Id.
-   --  If TE is Present, this is the only RI for TE
+   function Create_TBAA_For_Elementary_Type
+     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
+     with Pre => Is_Elementary_Type (TE) and then Present (Parent);
+   function Create_TBAA_For_Record_Type
+     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
+     with Pre => Is_Record_Type (TE) and then Present (Parent);
+   --  Subprograms of above
 
    function Get_TBAA_Name
      (Kind : TBAA_Kind;
@@ -728,37 +726,13 @@ package body GNATLLVM.Aliasing is
       if Is_Nonnative_Type (TE) or else Is_Tagged_Type (TE) then
          return No_Metadata_T;
 
-         --  If it's an elementary type, make a scalar type node.  Note
-         --  that all sizes must be the actual reference size of the LLVM
-         --  type.
+      --  All other types are done by subprograms, if supported
 
       elsif Is_Elementary_Type (TE) then
-         declare
-            GT   : constant GL_Type  := Primitive_GL_Type (TE);
-            Size : constant GL_Value := Get_Type_Size (Type_Of (GT));
-
-         begin
-            --  ??? This is a fat pointer, we currently have no mechanism
-            --  to make a node for it (but it's not a scalar node in any
-            --  event.
-
-            if (Is_Access_Type (TE)
-                  and then Relationship_For_Access_Type (GT) = Fat_Pointer)
-              or else Is_Access_Subprogram_Type (TE)
-            then
-               return No_Metadata_T;
-            else
-               return Create_TBAA_Scalar_Type_Node
-                 (Get_TBAA_Name (Kind, TE => TE), To_Bytes (Size), Our_Parent);
-            end if;
-         end;
-
-      --  If it's a record type, we know above that its a native type, meaning
-      --  that it just has one Record_Info entry, so its TBAA type entry is
-      --  that of that entry.
+         return Create_TBAA_For_Elementary_Type (TE, Kind, Our_Parent);
 
       elsif Is_Record_Type (TE) then
-         return Create_TBAA_Type (TE, Get_Record_Info (TE), Our_Parent, Kind);
+         return Create_TBAA_For_Record_Type (TE, Kind, Our_Parent);
 
       --  Otherwise, we can't (yet) make a type entry for it
 
@@ -768,91 +742,100 @@ package body GNATLLVM.Aliasing is
 
    end Create_TBAA_Type;
 
-   ----------------------
-   -- Create_TBAA_Type --
-   ----------------------
+   -------------------------------------
+   -- Create_TBAA_For_Elementary_Type --
+   -------------------------------------
 
-   function Create_TBAA_Type
-     (TE     : Entity_Id;
-      Ridx   : Record_Info_Id;
-      Parent : Metadata_T;
-      Kind   : TBAA_Kind) return Metadata_T
+   function Create_TBAA_For_Elementary_Type
+     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
    is
-      TBAA : Metadata_T := TBAA_Type (Ridx);
+      GT   : constant GL_Type  := Primitive_GL_Type (TE);
+      Size : constant GL_Value := Get_Type_Size (Type_Of (GT));
 
    begin
-      if No (TBAA) or else TBAA_Parent (TBAA) /= Parent
-        or else Kind in Unique | Unique_Aliased
+      --  ??? This is a fat pointer, we currently have no mechanism to make
+      --  a node for it (but it's not a scalar node in any event.
+
+      if (Is_Access_Type (TE)
+            and then Relationship_For_Access_Type (GT) = Fat_Pointer)
+        or else Is_Access_Subprogram_Type (TE)
       then
+         return No_Metadata_T;
+      else
+         return Create_TBAA_Scalar_Type_Node
+           (Get_TBAA_Name (Kind, TE => TE), To_Bytes (Size), Parent);
+      end if;
+
+   end Create_TBAA_For_Elementary_Type;
+
+   ---------------------------------
+   -- Create_TBAA_For_Record_Type --
+   ---------------------------------
+
+   function Create_TBAA_For_Record_Type
+     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
+   is
+      Ridx          : constant Record_Info_Id     := Get_Record_Info (TE);
+      Struct_Fields : constant Struct_Field_Array :=
+        RI_To_Struct_Field_Array (Ridx);
+      Offsets       : Value_Array    (Struct_Fields'Range);
+      Sizes         : Value_Array    (Struct_Fields'Range);
+      TBAAs         : Metadata_Array (Struct_Fields'Range);
+
+   begin
+      --  If we have no data, this is an empty structure, so we can't have
+      --  an access into it.
+
+      if Struct_Fields'Length = 0 then
+         return No_Metadata_T;
+      end if;
+
+      --  Otherwise fill in the three arrays above.  If we can't get a TBAA
+      --  entry for a field, we can't make a TBAA type for the struct.
+
+      for J in Struct_Fields'Range loop
          declare
-            Struct_Fields : constant Struct_Field_Array :=
-              RI_To_Struct_Field_Array (Ridx);
-            Offsets       : Value_Array    (Struct_Fields'Range);
-            Sizes         : Value_Array    (Struct_Fields'Range);
-            TBAAs         : Metadata_Array (Struct_Fields'Range);
+            SF : constant Struct_Field := Struct_Fields (J);
 
          begin
-            --  If we have no data, this is an empty structure, so we can't
-            --  have an access into it.
+            Offsets (J) := Const_Int (LLVM_Size_Type, SF.Offset, False);
+            Sizes   (J) := Const_Int
+              (LLVM_Size_Type, To_Bytes (Get_Type_Size (SF.T)), False);
 
-            if Struct_Fields'Length = 0 then
-               return No_Metadata_T;
+            --  If there's no GT for the field, this is a field used to
+            --  store bitfields.  So we make a unique scalar TBAA type
+            --  entry for it.
+
+            if No (SF.GT) then
+               TBAAs (J) := Create_TBAA_Scalar_Type_Node
+                 ("BF", G (Sizes (J), Size_GL_Type), TBAA_Root);
+
+               --  Otherwise, try to get or make a type entry
+
+            else
+               TBAAs (J) := TBAA_Type (SF.AF_Fidx);
+               if No (TBAAs (J)) then
+                  TBAAs (J) :=
+                    Get_TBAA_Type (SF.GT, Kind_From_Aliased (SF.Is_Aliased));
+                  Set_TBAA_Type (SF.AF_Fidx, TBAAs (J));
+               end if;
             end if;
 
-            --  Otherwise fill in the three arrays above.  If we can't get
-            --  a TBAA entry for a field, we can't make a TBAA type for the
-            --  struct.
+            --  If we found an entry, store it.  Otherwise, we fail.
 
-            for J in Struct_Fields'Range loop
-               declare
-                  SF : constant Struct_Field := Struct_Fields (J);
-
-               begin
-                  Offsets (J) := Const_Int (LLVM_Size_Type, SF.Offset, False);
-                  Sizes   (J) := Const_Int
-                    (LLVM_Size_Type, To_Bytes (Get_Type_Size (SF.T)), False);
-
-                  --  If there's no GT for the field, this is a field used
-                  --  to store bitfields.  So we make a unique scalar TBAA
-                  --  type entry for it.
-
-                  if No (SF.GT) then
-                     TBAAs (J) := Create_TBAA_Scalar_Type_Node
-                       ("BF", G (Sizes (J), Size_GL_Type), TBAA_Root);
-
-                  --  Otherwise, try to get or make a type entry
-
-                  else
-                     TBAAs (J) := TBAA_Type (SF.AF_Fidx);
-                     if No (TBAAs (J)) then
-                        TBAAs (J) :=
-                          Get_TBAA_Type (SF.GT,
-                                         Kind_From_Aliased (SF.Is_Aliased));
-                        Set_TBAA_Type (SF.AF_Fidx, TBAAs (J));
-                     end if;
-                  end if;
-
-                  --  If we found an entry, store it.  Otherwise, we fail.
-
-                  if No (TBAAs (J)) then
-                     return No_Metadata_T;
-                  end if;
-               end;
-            end loop;
-
-            TBAA := Create_TBAA_Struct_Type_Node
-              (Context, MD_Builder, Get_TBAA_Name (Kind, TE => TE),
-               LLVM_Value (RI_Size_In_Bytes (Ridx)), Struct_Fields'Length,
-               Parent, TBAAs'Address, Offsets'Address, Sizes'Address);
+            if No (TBAAs (J)) then
+               return No_Metadata_T;
+            end if;
          end;
-      end if;
+      end loop;
 
-      if Present (TBAA) and then Kind not in Unique | Unique_Aliased then
-         Set_TBAA_Type (Ridx, TBAA);
-      end if;
+      return Create_TBAA_Struct_Type_Node
+        (Context, MD_Builder, Get_TBAA_Name (Kind, TE => TE),
+         LLVM_Value (To_Bytes (Get_Type_Size (Primitive_GL_Type (TE)))),
+         Struct_Fields'Length, Parent, TBAAs'Address, Offsets'Address,
+         Sizes'Address);
 
-      return TBAA;
-   end Create_TBAA_Type;
+   end Create_TBAA_For_Record_Type;
 
    --------------------------
    --  Extract_Access_Type --
@@ -898,7 +881,7 @@ package body GNATLLVM.Aliasing is
         (if   Is_Data (V) then Full_Designated_GL_Type (V)
          else Related_Type (V));
       Size_In_Bytes : constant ULL     :=
-          To_Bytes (Get_Type_Size (Type_Of (GT)));
+        To_Bytes (Get_Type_Size (Type_Of (GT)));
       Orig_Offset   : constant ULL     := TBAA_Offset  (V);
       Base_Type     : Metadata_T       := TBAA_Type    (V);
       Offset        : ULL              := Orig_Offset;

@@ -1418,29 +1418,6 @@ package body GNATLLVM.Records is
       end return;
    end Get_Record_Type_Alignment;
 
-   -------------
-   -- Ridx_TE --
-   -------------
-
-   function Ridx_TE (Ridx : Record_Info_Id) return Entity_Id is
-     (Record_Info_Table.Table (Ridx).TE);
-
-   ---------------
-   -- TBAA_Type --
-   ---------------
-
-   function TBAA_Type (Ridx : Record_Info_Id) return Metadata_T is
-     (Record_Info_Table.Table (Ridx).TBAA_Type);
-
-   -------------------
-   -- Set_TBAA_Type --
-   -------------------
-
-   procedure Set_TBAA_Type (Ridx : Record_Info_Id; M : Metadata_T) is
-   begin
-      Record_Info_Table.Table (Ridx).TBAA_Type := M;
-   end Set_TBAA_Type;
-
    -------------------
    -- Field_Ordinal --
    -------------------
@@ -1571,18 +1548,6 @@ package body GNATLLVM.Records is
          return Result;
       end;
    end RI_To_Struct_Field_Array;
-
-   ----------------------
-   -- RI_Size_In_Bytes --
-   ----------------------
-
-   function RI_Size_In_Bytes (Ridx : Record_Info_Id) return GL_Value is
-      RI : constant Record_Info := Record_Info_Table.Table (Ridx);
-   begin
-      pragma Assert (Present (RI.LLVM_Type));
-
-      return To_Bytes (Get_Type_Size (RI.LLVM_Type));
-   end RI_Size_In_Bytes;
 
    ---------------------
    -- Field_Pack_Kind --

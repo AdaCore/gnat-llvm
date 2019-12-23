@@ -201,7 +201,6 @@ package body GNATLLVM.Aliasing is
          return Root_Type_For_Aliasing (Full_Base_Type (TE));
 
       --  If this is a tagged type, we want the root type
-      --  ??? at least for now
 
       elsif Is_Tagged_Type (TE) then
          return Root_Type_Of_Full_View (TE);
@@ -233,17 +232,13 @@ package body GNATLLVM.Aliasing is
       if not Is_Base_Type (TE) then
          return Full_Base_Type (TE);
 
-      --  If this is a tagged type, we want the root type
-      --  ??? at least for now
+      --  If this is a derived record type with the same
+      --  representation as its parent or a tagged type use the parent.
 
-      elsif Is_Tagged_Type (TE) then
-         return Root_Type_Of_Full_View (TE);
-
-      --  Otherwise, if this is a derived record type with the same
-      --  representation as its parent, use the parent.
-
-      elsif Is_Record_Type (TE) and then Is_Derived_Type (TE)
-        and then Same_Representation (TE, Full_Etype (TE))
+      elsif Is_Record_Type (TE)
+        and then ((Is_Derived_Type (TE)
+                    and then Same_Representation (TE, Full_Etype (TE)))
+                  or else (Is_Tagged_Type (TE) and then Full_Etype (TE) /= TE))
       then
          return Full_Etype (TE);
 
@@ -750,9 +745,8 @@ package body GNATLLVM.Aliasing is
 
    begin
       --  If this isn't a native type, we can't make a TBAA type entry for it
-      --  ??? For now, don't deal with tagged types either
 
-      if Is_Nonnative_Type (TE) or else Is_Tagged_Type (TE) then
+      if Is_Nonnative_Type (TE) then
          return No_Metadata_T;
 
       --  All other types are done by subprograms, if supported

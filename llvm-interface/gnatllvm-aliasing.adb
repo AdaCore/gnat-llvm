@@ -520,6 +520,16 @@ package body GNATLLVM.Aliasing is
    begin
       if Present (Our_TE) then
          Append (Buf, Chars (Our_TE));
+
+         --  If this is an integer type in Standard, its first subtype will
+         --  have the same name, so distinguish.
+
+         if Ekind (Our_TE) = E_Signed_Integer_Type
+           and then Sloc (Our_TE) = Standard_Location
+         then
+            Append (Buf, "B");
+         end if;
+
          if Present (GT) and then not Is_Primitive_GL_Type (GT) then
             Append (Buf, "#GL");
             Append (Buf, Int (GT - GL_Type_Low_Bound));

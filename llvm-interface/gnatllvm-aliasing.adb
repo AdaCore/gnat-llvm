@@ -109,12 +109,20 @@ package body GNATLLVM.Aliasing is
    TBAA_Root : Metadata_T;
    --  Root of tree for Type-Based alias Analysis (TBAA) metadata
 
-   function Root_Type_For_Aliasing (TE : Entity_Id) return Entity_Id
-     with Pre => Is_Type (TE), Post => Is_Type (Root_Type_For_Aliasing'Result);
    function Base_Type_For_Aliasing (TE : Entity_Id) return Entity_Id
      with Pre => Is_Type (TE), Post => Is_Type (Base_Type_For_Aliasing'Result);
-   --  Given a type, return the GNAT type to be used to as the root or base
-   --  type for aliasing purposes, respectively
+   --  Given a type, return the GNAT type to be used to as the base type
+   --  for aliasing purposes.
+
+   function Is_Subtype_For_Aliasing (TE1, TE2 : Entity_Id) return Boolean
+     with Pre => Is_Type (TE1) and then Is_Type (TE2);
+   --  Return True iff TE1 is TE2 or a subtype of it using the above
+   --  definition of base type.
+
+   function Universal_Aliasing_Including_Bases (TE : Entity_Id) return Boolean
+     with Pre => Is_Type (TE);
+   --  Return True iff TE or any base type for aliasing has Universal_Aliasing
+   --  set.
 
    function Get_TBAA_Type
      (TE : Entity_Id; Kind : TBAA_Kind) return Metadata_T
@@ -184,44 +192,6 @@ package body GNATLLVM.Aliasing is
    end Initialize;
 
    ----------------------------
-   -- Root_Type_For_Aliasing --
-   ----------------------------
-
-   function Root_Type_For_Aliasing (TE : Entity_Id) return Entity_Id is
-   begin
-      --  If this is an elementary type, we can use the exact subtype
-      --  since access types are sub-type specific.
-
-      if Is_Elementary_Type (TE) then
-         return TE;
-
-      --  Otherwise, if this isn't a base type, we want to start from there
-
-      elsif not Is_Base_Type (TE) then
-         return Root_Type_For_Aliasing (Full_Base_Type (TE));
-
-      --  If this is a tagged type, we want the root type
-
-      elsif Is_Tagged_Type (TE) then
-         return Root_Type_Of_Full_View (TE);
-
-      --  Otherwise, if this is a derived record type with the same
-      --  representation as its parent, use the parent.
-
-      elsif Is_Record_Type (TE) and then Is_Derived_Type (TE)
-        and then Same_Representation (TE, Full_Etype (TE))
-      then
-         return Root_Type_For_Aliasing (Full_Etype (TE));
-
-      --  Otherwise, this is the type to use
-
-      else
-         return TE;
-      end if;
-
-   end Root_Type_For_Aliasing;
-
-   ----------------------------
    -- Base_Type_For_Aliasing --
    ----------------------------
 
@@ -250,11 +220,41 @@ package body GNATLLVM.Aliasing is
 
    end Base_Type_For_Aliasing;
 
+   -----------------------------
+   -- Is_Subtype_For_Aliasing --
+   -----------------------------
+
+   function Is_Subtype_For_Aliasing (TE1, TE2 : Entity_Id) return Boolean is
+      BT : constant Entity_Id := Base_Type_For_Aliasing (TE2);
+
+   begin
+      return TE1 = TE2
+        or else (BT /= TE2 and then Is_Subtype_For_Aliasing (TE1, BT));
+   end Is_Subtype_For_Aliasing;
+
+   ----------------------------------------
+   -- Universal_Aliasing_Including_Bases --
+   ----------------------------------------
+
+   function Universal_Aliasing_Including_Bases (TE : Entity_Id) return Boolean
+   is
+      BT : constant Entity_Id := Base_Type_For_Aliasing (TE);
+
+   begin
+      return Universal_Aliasing (TE)
+        or else (BT /= TE and then Universal_Aliasing_Including_Bases (BT));
+   end Universal_Aliasing_Including_Bases;
+
    --------------------
    -- Search_For_UCs --
    --------------------
 
    procedure Search_For_UCs is
+
+      procedure Add_To_UC_Table (STE, TTE : Entity_Id; Valid : in out Boolean)
+        with Pre => Is_Type (STE) and then Is_Type (TTE);
+      --  Make an entry in the UC table showing that STE and TTE are to
+      --  be treated identically.  If we can't do that, clear Valid.
 
       function Check_For_UC (N : Node_Id) return Traverse_Result;
 
@@ -265,6 +265,71 @@ package body GNATLLVM.Aliasing is
 
       procedure Scan_All_Units is
          new Sem.Walk_Library_Items (Action => Scan_Unit);
+
+      ---------------------
+      -- Add_To_UC_Table --
+      ---------------------
+
+      procedure Add_To_UC_Table (STE, TTE : Entity_Id; Valid : in out Boolean)
+      is
+         SBT       : constant Entity_Id    := Base_Type_For_Aliasing (STE);
+         TBT       : constant Entity_Id    := Base_Type_For_Aliasing (TTE);
+         S_Is_Base : constant Boolean      := SBT = STE;
+         T_Is_Base : constant Boolean      := TBT = TTE;
+         S_Grp     : constant UC_Group_Idx := Find_UC_Group (STE);
+         T_Grp     : constant UC_Group_Idx := Find_UC_Group (TTE);
+         Our_Valid : Boolean               :=
+           Valid and then Esize (STE) = Esize (TTE)
+           and then not Is_Aggregate_Type (STE)
+           and then not Is_Aggregate_Type (TTE) and then S_Is_Base = T_Is_Base;
+
+      begin
+         --  If neither of these are base types for aliasing purposes, make
+         --  an entry for the base types.  This will produce entries all the
+         --  way up the base chain to make those types equivalent.  If any
+         --  aren't valid, then the below call will make the subtypes invalid.
+
+         if not S_Is_Base and then not T_Is_Base then
+            Add_To_UC_Table (SBT, TBT, Our_Valid);
+         end if;
+
+         --  If neither was seen before, allocate a new group and put them
+         --  both in it.
+
+         if No (S_Grp) and then No (T_Grp) then
+            Last_UC_Group := Last_UC_Group + 1;
+            UC_Table.Append ((STE, Last_UC_Group, Our_Valid));
+            UC_Table.Append ((TTE, Last_UC_Group, Our_Valid));
+
+         --  If one has a group and the other doesn't, add the other pointing
+         --  to that group.
+
+         elsif No (S_Grp) and then Present (T_Grp) then
+            UC_Table.Append ((STE, T_Grp, Our_Valid));
+         elsif Present (S_Grp) and then No (T_Grp) then
+            UC_Table.Append ((TTE, S_Grp, Our_Valid));
+
+         --  If both were assigned groups, move everything in the target's
+         --  group to the group of the source.
+
+         else
+            for J in 1 .. UC_Table.Last loop
+               if UC_Table.Table (J).Group = T_Grp then
+                  UC_Table.Table (J).Group := S_Grp;
+                  UC_Table.Table (J).Valid :=
+                    UC_Table.Table (J).Valid and Our_Valid;
+
+                  if not UC_Table.Table (J).Valid then
+                     Our_Valid := False;
+                  end if;
+               end if;
+            end loop;
+         end if;
+
+         --  Update our input validity flag to correspond with what we found
+
+         Valid := Valid and Our_Valid;
+      end Add_To_UC_Table;
 
       ------------------
       -- Check_For_UC --
@@ -320,27 +385,24 @@ package body GNATLLVM.Aliasing is
             return OK;
          end if;
 
-         --  We have to add one or more entries showing that the designated
-         --  types should have the same TBAA value.
+         --  There's a potential issue with these types, so we have to check
+         --  further and possibly take some action.
 
          declare
             SDT   : constant Entity_Id    := Full_Designated_Type (STE);
             TDT   : constant Entity_Id    := Full_Designated_Type (TTE);
-            SBT   : constant Entity_Id    := Root_Type_For_Aliasing (SDT);
-            TBT   : constant Entity_Id    := Root_Type_For_Aliasing (TDT);
-            S_Grp : constant UC_Group_Idx := Find_UC_Group (SBT);
-            T_Grp : constant UC_Group_Idx := Find_UC_Group (TBT);
-            Valid : constant Boolean      :=
-              Esize (SBT) = Esize (TBT) and then not Is_Aggregate_Type (SBT)
-              and then not Is_Aggregate_Type (TBT);
+            Valid : Boolean               := True;
 
          begin
-            --  If the two types are the same, we have nothing to do.
-            --  This can happen when we have two access types to the same
-            --  underlying type or in some subtype cases.  Likewise if
-            --  the3 target has been marked for universal aliasing.
+            --  If the the target is either the same or a subtype of the
+            --  source, we have nothing to do.  This can happen when we
+            --  have two access types to the same underlying type or in
+            --  some subtype cases.  Likewise if the target has been marked
+            --  for universal aliasing.
 
-            if TBT = SBT or else Universal_Aliasing (TBT) then
+            if Is_Subtype_For_Aliasing (TDT, SDT)
+              or else Universal_Aliasing_Including_Bases (TDT)
+            then
                return OK;
 
             --  The most efficient way of dealing with this if the
@@ -356,22 +418,22 @@ package body GNATLLVM.Aliasing is
 
             elsif Nkind_In (Unit (Enclosing_Comp_Unit_Node (N)),
                                  N_Package_Body, N_Subprogram_Body)
-              and then (not OK_Unit (N, SBT) or else not OK_Unit (N, TBT))
+              and then (not OK_Unit (N, SDT) or else not OK_Unit (N, TDT))
             then
                --  If the target type is in the same unit (meaning that the
                --  source type isn't), we can still make this work by
                --  setting Universal_Aliasing on the target if it's not
                --  an access type.
 
-               if OK_Unit (N, TBT) and then not Is_Data_Access_Type (TTE) then
-                  Set_Universal_Aliasing (TBT, True);
+               if OK_Unit (N, TDT) and then not Is_Data_Access_Type (TTE) then
+                  Set_Universal_Aliasing (TDT, True);
                   return OK;
 
-               --  If we aren't optimizing, there's actually no problem, so
-               --  don't issue a warning.
+               --  Otherwise, issue a warning that there may be an issue.
+               --  But if we aren't optimizing, there's actually no problem.
 
                elsif Code_Gen_Level /= Code_Gen_Level_None
-                 and then not Is_Unconstrained_Array (TBT)
+                 and then not Is_Unconstrained_Array (TDT)
                then
                   Error_Msg_NE
                     ("?possible aliasing problem for type&", N, TTE);
@@ -382,34 +444,7 @@ package body GNATLLVM.Aliasing is
                end if;
             end if;
 
-            --  If neither was seen before, allocate a new group and put them
-            --  both in it.
-
-            if No (S_Grp) and then No (T_Grp) then
-               Last_UC_Group := Last_UC_Group + 1;
-               UC_Table.Append ((SBT, Last_UC_Group, Valid));
-               UC_Table.Append ((TBT, Last_UC_Group, Valid));
-
-            --  If one has a group and the other doesn't, add the other
-            --  pointing to that group.
-
-            elsif No (S_Grp) and then Present (T_Grp) then
-               UC_Table.Append ((SBT, T_Grp, Valid));
-            elsif Present (S_Grp) and then No (T_Grp) then
-               UC_Table.Append ((TBT, S_Grp, Valid));
-
-            --  If both were assigned groups, move everything in the target's
-            --  group to the group of the source.
-
-            else
-               for J in 1 .. UC_Table.Last loop
-                  if UC_Table.Table (J).Group = T_Grp then
-                     UC_Table.Table (J).Group := S_Grp;
-                     UC_Table.Table (J).Valid :=
-                       UC_Table.Table (J).Valid and Valid;
-                  end if;
-               end loop;
-            end if;
+            Add_To_UC_Table (SDT, TDT, Valid);
          end;
 
          return OK;
@@ -604,7 +639,7 @@ package body GNATLLVM.Aliasing is
       --  TBAA tag.
 
       if Flag_No_Strict_Aliasing or else Ekind (TE) = E_Void
-        or else Universal_Aliasing (TE)
+        or else Universal_Aliasing_Including_Bases (TE)
       then
          return No_Metadata_T;
 

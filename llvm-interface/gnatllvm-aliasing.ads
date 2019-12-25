@@ -18,7 +18,6 @@
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
-with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Aliasing is
@@ -138,14 +137,6 @@ package GNATLLVM.Aliasing is
    --  Given Def_Ident (which may be Empty), determine what TBAA_Kind is
    --  appropriate for something that points to that decl, if any.
 
-   function Get_Field_TBAA
-     (Fidx       : Field_Info_Id;
-      GT         : GL_Type;
-      Is_Aliased : Boolean) return Metadata_T
-     with Pre => Present (Fidx);
-   --  Get (and maybe create) a TBAA tag for the field corresponding to
-   --  Fidx of type GT.  Is_Aliased indicates if the field is aliased.
-
    procedure Initialize;
    --  Perform initialization for this compilation
 
@@ -162,6 +153,11 @@ package GNATLLVM.Aliasing is
      with Pre => Present (V) and Present (Old_V);
    --  Like Initialize_TBAA, but only set the new TBAA data if V and Old_V
    --  have different types or relationships.
+
+   procedure Maybe_Initialize_TBAA_For_Field
+     (V : in out GL_Value; F : Entity_Id; F_GT : GL_Type)
+     with Pre => Present (V) and then Is_Field (F);
+   --  If V doesn't have a TBAA type tag, set it one corresponding to F
 
    procedure Add_Aliasing_To_Instruction (Inst : Value_T; V : GL_Value)
      with Pre => Present (Is_A_Instruction (Inst)) and then Present (V);

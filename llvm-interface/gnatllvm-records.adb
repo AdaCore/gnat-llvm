@@ -1809,7 +1809,7 @@ package body GNATLLVM.Records is
          Result := Convert_Ref (Result, Rec_GT);
       end if;
 
-      --  Do a regular GEP for the field an
+      --  Finally, do a regular GEP for the field
 
       Result := GEP_To_Relationship
         (F_GT,
@@ -1818,17 +1818,9 @@ package body GNATLLVM.Records is
          (1 => Const_Null_32,
           2 => Const_Int_32 (unsigned (FI.Field_Ordinal))));
 
-      --  If this isn't a bitfield and we don't have a TBAA tag, use the
-      --  one for the field, if any.
-
-      if No (TBAA_Type (Result)) and then not Is_Bitfield (Field) then
-         Set_TBAA_Type (Result,
-                        Get_Field_TBAA (Get_Field_Info
-                                          (Ancestor_Field (Field)),
-                                        F_GT, Is_Aliased (Field)));
-      end if;
-
+      Maybe_Initialize_TBAA_For_Field (Result, Field, F_GT);
       return Result;
+
    end Record_Field_Offset;
 
    ---------------------------

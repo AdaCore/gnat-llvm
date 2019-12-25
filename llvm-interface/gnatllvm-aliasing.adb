@@ -25,6 +25,7 @@ with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Table;    use Table;
 
+with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Records;      use GNATLLVM.Records;
@@ -174,7 +175,15 @@ package body GNATLLVM.Aliasing is
    --  tag and new offset.  If MD is not a struct tag or if we're accessing
    --  the entire structure, we keep Offset unchanged and return MD.
 
-   ----------------
+   function Get_Field_TBAA
+     (Fidx       : Field_Info_Id;
+      GT         : GL_Type;
+      Is_Aliased : Boolean) return Metadata_T
+     with Pre => Present (Fidx);
+   --  Get (and maybe create) a TBAA tag for the field corresponding to
+   --  Fidx of type GT.  Is_Aliased indicates if the field is aliased.
+
+   -----------------
    -- Initialize --
    ----------------
 
@@ -513,6 +522,19 @@ package body GNATLLVM.Aliasing is
          Initialize_TBAA (V);
       end if;
    end Initialize_TBAA_If_Changed;
+
+   --------------------------------------
+   --  Maybe_Initialize_TBAA_For_Field --
+   --------------------------------------
+
+   procedure Maybe_Initialize_TBAA_For_Field
+     (V : in out GL_Value; F : Entity_Id; F_GT : GL_Type) is
+   begin
+      if No (TBAA_Type (V)) and then not Is_Bitfield (F) then
+         Set_TBAA_Type (V, Get_Field_TBAA (Get_Field_Info (Ancestor_Field (F)),
+                                           F_GT, Is_Aliased (F)));
+      end if;
+   end Maybe_Initialize_TBAA_For_Field;
 
    --------------------
    -- Get_Field_TBAA --

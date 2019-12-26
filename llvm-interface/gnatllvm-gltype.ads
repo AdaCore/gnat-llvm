@@ -209,6 +209,13 @@ package GNATLLVM.GLType is
      (Is_Biased_GL_Type (Related_Type (V)))
      with Pre => Present (V);
 
+   function Is_Int_Alt_GL_Type (GT : GL_Type)     return Boolean
+     with Pre => Present (GT), Inline;
+
+   function Is_Int_Alt_GL_Type (V : GL_Value)     return Boolean is
+     (Is_Int_Alt_GL_Type (Related_Type (V)))
+     with Pre => Present (V);
+
    function Is_Padded_GL_Type (GT : GL_Type)     return Boolean
      with Pre => Present (GT), Inline;
 

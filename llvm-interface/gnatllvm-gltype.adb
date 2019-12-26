@@ -1247,6 +1247,13 @@ package body GNATLLVM.GLType is
    function Is_Biased_GL_Type (GT : GL_Type) return Boolean is
      (GT_Kind (GT) = Biased);
 
+   -------------------------
+   --  Is_Int_Alt_GL_Type --
+   -------------------------
+
+   function Is_Int_Alt_GL_Type (GT : GL_Type) return Boolean is
+     (GT_Kind (GT) = Int_Alt);
+
    ------------------------
    --  Is_Padded_GL_Type --
    ------------------------

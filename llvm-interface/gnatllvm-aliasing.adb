@@ -740,7 +740,8 @@ package body GNATLLVM.Aliasing is
       Prim_GT    : constant GL_Type    := Primitive_GL_Type (GT);
       Prim_TBAA  : constant Metadata_T :=
         (if   No (TBAA) then No_Metadata_T
-         else (case Kind is when For_Aliased => TBAA,
+         else (case Kind is
+                 when For_Aliased => TBAA,
                  when Native => TBAA_Parent (TBAA),
                  when Unique | Unique_Aliased =>
                     Create_TBAA_Type (TE, Kind, Our_Parent)));
@@ -776,6 +777,14 @@ package body GNATLLVM.Aliasing is
                LLVM_Value (To_Bytes (GT_Size (GT))), 1, Our_Parent,
                TBAAs'Address, Offsets'Address, Sizes'Address);
          end;
+
+      --  If this is an alternate integer representation (including biased),
+      --  make a new type tag for this as a scalar type.
+
+      elsif Is_Int_Alt_GL_Type (GT) or else Is_Biased_GL_Type (GT) then
+         return Create_TBAA_Scalar_Type_Node
+           (Get_TBAA_Name (Kind, GT => GT, TE => TE),
+            To_Bytes (Get_Type_Size (Type_Of (GT))), Our_Parent);
 
       --  We don't support any other cases for now
 

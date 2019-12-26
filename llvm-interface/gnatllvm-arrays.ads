@@ -76,10 +76,9 @@ package GNATLLVM.Arrays is
       For_Orig : Boolean := False) return GL_Value
      with Pre  => Present (GT),
           Post => Present (Get_Array_Bound'Result);
-   --  Get the bound (lower if Is_Low, else upper) for dimension number
-   --  Dim (0-origin) of an array whose LValue is Value and is of type
-   --  Arr_Typ.  If For_Orig is True, get the information from
-   --  Original_Array_Type of GT.
+   --  Get the bound (lower if Is_Low, else upper) for dimension number Dim
+   --  (0-origin) of an array whose LValue is Value and is of type Arr_Typ.
+   --  If For_Orig is True, get the information from Original_Array_Type of GT.
 
    function Get_Array_Length
      (TE       : Entity_Id;

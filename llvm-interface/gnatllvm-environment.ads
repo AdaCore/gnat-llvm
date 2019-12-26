@@ -48,6 +48,13 @@ package GNATLLVM.Environment is
    type Label_Info_Id is range Label_Info_Low_Bound .. Label_Info_High_Bound;
    Empty_Label_Info_Id   : constant Label_Info_Id := Label_Info_Low_Bound;
 
+   --  700_000_000 .. 7999_999_999 is GL_Type, defined in our parent
+
+   TBAA_Info_Low_Bound   : constant := 800_000_000;
+   TBAA_Info_High_Bound  : constant := 899_999_999;
+   type TBAA_Info_Id is range TBAA_Info_Low_Bound .. TBAA_Info_High_Bound;
+   Empty_TBAA_Info_Id   : constant TBAA_Info_Id := TBAA_Info_Low_Bound;
+
    function "+" (A : Array_Info_Id; N : Nat) return Array_Info_Id is
      (Array_Info_Id (Nat (A) + N));
 
@@ -59,6 +66,8 @@ package GNATLLVM.Environment is
       (A = Empty_Array_Info_Id);
    function No (L : Label_Info_Id)       return Boolean is
       (L = Empty_Label_Info_Id);
+   function No (T : TBAA_Info_Id)       return Boolean is
+      (T = Empty_TBAA_Info_Id);
    function Present (R : Record_Info_Id) return Boolean is
       (R /= Empty_Record_Info_Id);
    function Present (F : Field_Info_Id)  return Boolean is
@@ -67,6 +76,8 @@ package GNATLLVM.Environment is
       (A /= Empty_Array_Info_Id);
    function Present (L : Label_Info_Id)  return Boolean is
       (L /= Empty_Label_Info_Id);
+   function Present (T : TBAA_Info_Id)  return Boolean is
+      (T /= Empty_TBAA_Info_Id);
 
    --  For each GNAT entity, we store various information.  Not all of this
    --  information is used for each Ekind.
@@ -115,6 +126,9 @@ package GNATLLVM.Environment is
 
       Label_Info            : Label_Info_Id;
       --  For labels, points to information about that label
+
+      TBAA_Array_Info       : TBAA_Info_Id;
+      --  For arrays, points to various TBAA information related to the array
 
       Orig_Array_Info       : Array_Info_Id;
       --  For a packed array implementation type, the bound information for
@@ -172,6 +186,12 @@ package GNATLLVM.Environment is
 
    function Get_TBAA_N                (TE : Entity_Id) return Metadata_T
      with Pre => Is_Type_Or_Void (TE), Inline;
+
+   function Get_TBAA_Info             (TE : Entity_Id) return TBAA_Info_Id
+     with Pre => Is_Array_Type (TE), Inline;
+
+   function Get_TBAA_Info_N           (TE : Entity_Id) return TBAA_Info_Id
+     with Pre => Is_Array_Type (TE), Inline;
 
    function Get_Value                 (VE : Entity_Id) return GL_Value
      with Pre => Present (VE), Inline;
@@ -235,6 +255,10 @@ package GNATLLVM.Environment is
    procedure Set_TBAA                 (TE : Entity_Id; TBAA : Metadata_T)
      with Pre  => Is_Type_Or_Void (TE) and then Present (TBAA),
           Post => Get_TBAA_N (TE) = TBAA, Inline;
+
+   procedure Set_TBAA_Info            (TE : Entity_Id; T : TBAA_Info_Id)
+     with Pre  => Is_Array_Type (TE) and then Present (T),
+          Post => Get_TBAA_Info_N (TE) = T, Inline;
 
    procedure Set_Value_R              (VE : Entity_Id; VL : GL_Value)
      with Pre  => Present (VE) and then Present (VL)

@@ -52,6 +52,8 @@ package body GNATLLVM.Environment is
      (LI.Is_Nonnative_Type);
    function Raw_Get_TBAA   (LI : Access_LLVM_Info) return Metadata_T is
      (LI.TBAA);
+   function Raw_Get_TBAA_I (LI : Access_LLVM_Info) return TBAA_Info_Id is
+     (LI.TBAA_Array_Info);
    function Raw_Get_Debug  (LI : Access_LLVM_Info) return Metadata_T is
      (LI.Debug_Type);
    function Raw_Get_Array  (LI : Access_LLVM_Info) return Array_Info_Id is
@@ -82,6 +84,8 @@ package body GNATLLVM.Environment is
    procedure Raw_Set_NN     (LI : Access_LLVM_Info; Val : Boolean)
        with Inline;
    procedure Raw_Set_TBAA   (LI : Access_LLVM_Info; Val : Metadata_T)
+       with Inline;
+   procedure Raw_Set_TBAA_I (LI : Access_LLVM_Info; Val : TBAA_Info_Id)
        with Inline;
    procedure Raw_Set_Debug  (LI : Access_LLVM_Info; Val : Metadata_T)
        with Inline;
@@ -120,6 +124,9 @@ package body GNATLLVM.Environment is
 
    procedure Raw_Set_TBAA   (LI : Access_LLVM_Info; Val : Metadata_T) is
    begin LI.TBAA := Val; end Raw_Set_TBAA;
+
+   procedure Raw_Set_TBAA_I (LI : Access_LLVM_Info; Val : TBAA_Info_Id) is
+   begin LI.TBAA_Array_Info := Val; end Raw_Set_TBAA_I;
 
    procedure Raw_Set_Debug  (LI : Access_LLVM_Info; Val : Metadata_T) is
    begin LI.Debug_Type := Val; end Raw_Set_Debug;
@@ -169,6 +176,7 @@ package body GNATLLVM.Environment is
                                   GLType              => No_GL_Type,
                                   Associated_GL_Type  => No_GL_Type,
                                   TBAA                => No_Metadata_T,
+                                  TBAA_Array_Info     => Empty_TBAA_Info_Id,
                                   Is_Nonnative_Type   => False,
                                   Is_Being_Elaborated => False,
                                   Record_Info         => Empty_Record_Info_Id,
@@ -277,6 +285,8 @@ package body GNATLLVM.Environment is
                                          Raw_Get_AGLT, Raw_Set_AGLT);
    package Env_TBAA_N   is new Pkg_None (Metadata_T, No_Metadata_T,
                                          Raw_Get_TBAA, Raw_Set_TBAA);
+   package Env_TBAA_N_I is new Pkg_None (TBAA_Info_Id, Empty_TBAA_Info_Id,
+                                         Raw_Get_TBAA_I, Raw_Set_TBAA_I);
    package Env_O_A_N    is new Pkg_None (Array_Info_Id, Empty_Array_Info_Id,
                                          Raw_Get_O_A, Raw_Set_O_A);
    package Env_Record_N is new Pkg_None (Record_Info_Id, Empty_Record_Info_Id,
@@ -292,6 +302,8 @@ package body GNATLLVM.Environment is
 
    package Env_AGLT   is new Pkg_Elab (GL_Type, Raw_Get_AGLT, Raw_Set_AGLT);
    package Env_TBAA   is new Pkg_Elab (Metadata_T, Raw_Get_TBAA, Raw_Set_TBAA);
+   package Env_TBAA_I is new Pkg_Elab (TBAA_Info_Id, Raw_Get_TBAA_I,
+                                       Raw_Set_TBAA_I);
    package Env_O_A    is new Pkg_Elab (Array_Info_Id,
                                        Raw_Get_O_A, Raw_Set_O_A);
    package Env_Record is new Pkg_Elab (Record_Info_Id,
@@ -354,6 +366,13 @@ package body GNATLLVM.Environment is
      renames Env_TBAA_N.Get;
    procedure Set_TBAA                 (TE : Entity_Id; TBAA : Metadata_T)
      renames Env_TBAA.Set;
+
+   function  Get_TBAA_Info            (TE : Entity_Id) return TBAA_Info_Id
+     renames Env_TBAA_I.Get;
+   function  Get_TBAA_Info_N          (TE : Entity_Id) return TBAA_Info_Id
+     renames Env_TBAA_N_I.Get;
+   procedure Set_TBAA_Info            (TE : Entity_Id; T : TBAA_Info_Id)
+     renames Env_TBAA_I.Set;
 
    function  Get_Debug_Type           (TE : Entity_Id) return Metadata_T
      renames Env_Debug.Get;

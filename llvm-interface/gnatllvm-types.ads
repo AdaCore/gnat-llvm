@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -267,11 +267,17 @@ package GNATLLVM.Types is
    function To_Bytes (Size : ULL) return ULL is
      ((Size + (ULL (BPU) - 1)) / ULL (BPU));
 
+   function To_Bytes (Size : LLI) return LLI is
+     ((Size + (LLI (BPU) - 1)) / LLI (BPU));
+
    function To_Bits (Size : Nat) return Nat is
      (Size * BPU);
 
    function To_Bits (Size : ULL) return ULL is
      (Size * ULL (BPU));
+
+   function To_Bits (Size : LLI) return LLI is
+     (Size * LLI (BPU));
 
    function Get_Type_Size (T : Type_T) return GL_Value is
      (Size_Const_Int (Get_Type_Size (T)))
@@ -458,11 +464,11 @@ package GNATLLVM.Types is
      with Pre  => Present (GT) and then Present (C);
 
    function Const_Val_ULL (V : IDS) return ULL is
-     (Get_Const_Int_Value_ULL (V.Value))
+     (+V.Value)
      with Pre => Is_Const (V);
 
    function Const_Int (V : IDS) return LLI is
-     (Get_Const_Int_Value (V.Value))
+     (+V.Value)
      with Pre => Is_Const (V);
 
    function Overflowed (V : IDS) return Boolean is
@@ -628,11 +634,11 @@ package GNATLLVM.Types is
         and then not Is_Undef (V.C_Value));
 
    function Const_Val_ULL (V : BA_Data) return ULL is
-     (Get_Const_Int_Value_ULL (V.C_Value))
+     (+V.C_Value)
      with Pre => Is_Const (V);
 
    function Const_Int (V : BA_Data) return LLI is
-     (Get_Const_Int_Value (V.C_Value))
+     (+V.C_Value)
      with Pre => Is_Const (V);
 
    function Is_Const_0 (V : BA_Data) return Boolean is

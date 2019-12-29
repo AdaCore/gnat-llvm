@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -2030,7 +2030,7 @@ package body GNATLLVM.Records is
             Shr       : constant Opf      :=
               (if Uns then L_Shr'Access else A_Shr'Access);
             Res_Width : constant ULL      :=
-              Get_Const_Int_Value_ULL (Align_To (GT_Size (F_GT), 1, BPU));
+                +Align_To (GT_Size (F_GT), 1, BPU);
 
          begin
             Result := Shl (Loaded,

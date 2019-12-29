@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -477,7 +477,7 @@ package body GNATLLVM.Subprograms is
          elsif Foreign and then C_Pass_By_Copy (GT) then
             Mech := By_Copy;
          else
-            Mech := (if   Get_Const_Int_Value (Get_Type_Size (GT)) > LLI (Mech)
+            Mech := (if   +Get_Type_Size (GT) > LLI (Mech)
                      then By_Reference else By_Copy);
          end if;
       elsif Mech not in Default_Mechanism | By_Reference | By_Copy then

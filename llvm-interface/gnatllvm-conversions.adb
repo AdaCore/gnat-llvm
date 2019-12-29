@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -587,7 +587,7 @@ package body GNATLLVM.Conversions is
          return Mark_Overflowed (G_Is (In_V, GT),
                                  not Dest_Uns and then Src_Uns
                                    and then Is_A_Const_Int (In_V)
-                                   and then Get_Const_Int_Value (In_V) < 0);
+                                   and then +In_V < ULL (0));
 
       --  If we're converting between two GL_Types corresponding to the same
       --  GNAT type, convert to the primitive type and the to the desired

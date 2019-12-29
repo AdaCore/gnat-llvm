@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -959,8 +959,15 @@ package GNATLLVM.GLValue is
      (Nat (Const_Int_Get_S_Ext_Value (LLVM_Value (V))))
      with Pre => Is_A_Const_Int (V);
 
+   function "+" (V : GL_Value) return LLI is
+     (Get_Const_Int_Value (V));
+   function "+" (V : GL_Value) return Nat is
+     (Get_Const_Int_Value_Nat (V));
+   function "+" (V : GL_Value) return ULL is
+     (Get_Const_Int_Value_ULL (V));
+
    function UI_From_GL_Value (V : GL_Value) return Uint is
-     (UI_From_LLI (Get_Const_Int_Value (V)))
+     (UI_From_LLI (+V))
      with Pre => Is_A_Const_Int (V);
 
    function Get_Value_Name (V : GL_Value) return String is
@@ -1053,8 +1060,7 @@ package GNATLLVM.GLValue is
    --  Add the DSOlocal attribute to a global (variable or function)
 
    function Is_Const_Int_Value (V : GL_Value; Val : LLI) return Boolean is
-     (Is_A_Const_Int (V) and then not Overflowed (V)
-      and then Get_Const_Int_Value (V) = Val)
+     (Is_A_Const_Int (V) and then not Overflowed (V) and then +V = Val)
      with Pre => Present (V);
    --  Return True if V is a constant integer of value Val
 

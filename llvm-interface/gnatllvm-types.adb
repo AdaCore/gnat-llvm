@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -676,8 +676,7 @@ package body GNATLLVM.Types is
 
          if not Is_Dynamic_Size (A_GT, Allow_Overflow => True) then
             if Overflowed (GL_Value'(Get_Type_Size (A_GT)))
-              or else Get_Const_Int_Value_ULL (Get_Type_Size (A_GT)) >
-                        Max_Alloc * ULL (BPU)
+              or else +Get_Type_Size (A_GT) > Max_Alloc * ULL (BPU)
             then
                Emit_Raise_Call (N, SE_Object_Too_Large);
                Error_Msg_N
@@ -1446,8 +1445,7 @@ package body GNATLLVM.Types is
 
         or else (not Is_Dynamic_Size (GT)
                    and then Align <= Get_Bits_Per_Word * 2
-                   and then ULL (Align) = Get_Const_Int_Value_ULL
-                                            (Get_Type_Size (GT)))
+                   and then ULL (Align) = +Get_Type_Size (GT))
       then
          return;
       end if;

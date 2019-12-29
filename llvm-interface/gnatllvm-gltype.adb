@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -552,7 +552,7 @@ package body GNATLLVM.GLType is
       --  If this is for a type, we have to align the input size
 
       if For_Type and then Present (Size_V) and then Align_N /= 0
-        and then Get_Const_Int_Value_ULL (Size_V) mod ULL (Align_N) /= 0
+        and then (+Size_V) mod ULL (Align_N) /= 0
       then
          Size_V := Align_To (Size_V, 1, Align_N);
       end if;
@@ -668,18 +668,17 @@ package body GNATLLVM.GLType is
          then
             declare
                Pad_Size  : constant GL_Value := Size_V - Prim_Size;
-               Pad_Count : constant LLI      := Get_Const_Int_Value (Pad_Size);
+               Pad_Count : constant LLI      := To_Bytes (+Pad_Size);
 
             begin
-               --  If there's a padding amount, thisis a padded type.
+               --  If there's a padding amount, this a padded type.
                --  Otherwise, this is an aligning type.
 
                if Pad_Count > 0 then
                   GTI.LLVM_Type :=
-                    Build_Struct_Type ((1 => Prim_T,
-                                        2 => Make_Large_Array
-                                               (To_Bytes (ULL (Pad_Count)))),
-                                       Packed => True);
+                    Build_Struct_Type
+                    ((1 => Prim_T, 2 => Make_Large_Array (ULL (Pad_Count))),
+                     Packed => True);
                   GTI.Kind      := Padded;
                else
                   GTI.LLVM_Type := Prim_T;
@@ -700,8 +699,7 @@ package body GNATLLVM.GLType is
          --  Byte_Array.
 
          elsif not Prim_Native and then Present (Size_V) then
-            GTI.LLVM_Type := Make_Large_Array (Get_Const_Int_Value_ULL
-                                                 (To_Bytes (Size_V)));
+            GTI.LLVM_Type := Make_Large_Array (To_Bytes (+Size_V));
             GTI.Kind      := Byte_Array;
 
          --  If we're looking for the maximum size and none of the above cases
@@ -1380,7 +1378,7 @@ package body GNATLLVM.GLType is
       Write_Int (Int (GTI.GNAT_Type));
       if Present (GTI.Size) then
          Write_Str (", S=");
-         Write_Int_From_LLI (Get_Const_Int_Value (GTI.Size));
+         Write_Int_From_LLI (+GTI.Size);
       end if;
       if GTI.Alignment /= 0 then
          Write_Str (", A=");
@@ -1388,7 +1386,7 @@ package body GNATLLVM.GLType is
       end if;
       if Present (GTI.Bias) then
          Write_Str (", B=");
-         Write_Int_From_LLI (Get_Const_Int_Value (GTI.Bias));
+         Write_Int_From_LLI (+GTI.Bias);
       end if;
       if GTI.Default then
          Write_Str (", default");

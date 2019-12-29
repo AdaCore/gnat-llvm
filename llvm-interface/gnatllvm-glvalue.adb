@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -1249,7 +1249,7 @@ package body GNATLLVM.GLValue is
 
    function Const_Int (GT : GL_Type; N : Uint) return GL_Value is
       Result  : GL_Value          := G (Const_Int (Type_Of (GT), N), GT);
-      Val     : constant LLI      := Get_Const_Int_Value (Result);
+      Val     : constant LLI      := +Result;
       Bitsize : constant Integer  :=
         Integer (Get_Scalar_Bit_Size (Type_Of (Result)));
 
@@ -1275,7 +1275,7 @@ package body GNATLLVM.GLValue is
       else
          declare
             Mask   : constant ULL := (ULL (2) ** Bitsize) - 1;
-            Masked : constant ULL := Get_Const_Int_Value_ULL (Result) and Mask;
+            Masked : constant ULL := +Result and Mask;
 
          begin
             Mark_Overflowed (Result, UI_From_LLI (LLI (Masked)) /= N);
@@ -1925,7 +1925,7 @@ package body GNATLLVM.GLValue is
    begin
       return C_Idxs : Index_Array (Idxs'Range) do
          for J in Idxs'Range loop
-            Bound := Get_Const_Int_Value (Idxs (J));
+            Bound := +Idxs (J);
 
             --  Since this is an LLVM object, we know that all valid bounds
             --  are within the range of unsigned.  But we don't want to get

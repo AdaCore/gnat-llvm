@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -363,7 +363,7 @@ package body GNATLLVM.Instructions is
          else
             declare
                Old_Offset      : constant LLI := LLI (TBAA_Offset (Result));
-               RHS_Value       : constant LLI := Get_Const_Int_Value (RHS);
+               RHS_Value       : constant LLI := +RHS;
                RHS_Effective_V : constant LLI :=
                  (if Is_Add then RHS_Value else -RHS_Value);
                New_Offset      : constant LLI := Old_Offset + RHS_Effective_V;
@@ -395,9 +395,9 @@ package body GNATLLVM.Instructions is
 
       elsif Is_Unsigned_Type (Result) then
          declare
-            LHS_I : constant ULL := Get_Const_Int_Value_ULL (LHS);
-            RHS_I : constant ULL := Get_Const_Int_Value_ULL (RHS);
-            Res_I : constant ULL := Get_Const_Int_Value_ULL (Result);
+            LHS_I : constant ULL := +LHS;
+            RHS_I : constant ULL := +RHS;
+            Res_I : constant ULL := +Result;
 
          begin
             Mark_Overflowed
@@ -410,9 +410,9 @@ package body GNATLLVM.Instructions is
          --  the result differs.
 
          declare
-            LHS_Neg    : constant Boolean  := Get_Const_Int_Value (LHS) < 0;
-            RHS_Neg    : constant Boolean  := Get_Const_Int_Value (RHS) < 0;
-            Res_Neg    : constant Boolean  := Get_Const_Int_Value (Result) < 0;
+            LHS_Neg    : constant Boolean  := +LHS    < LLI (0);
+            RHS_Neg    : constant Boolean  := +RHS    < LLI (0);
+            Res_Neg    : constant Boolean  := +Result < LLI (0);
             Maybe_Ovfl : constant Boolean  :=
               (if Is_Add then LHS_Neg = RHS_Neg else LHS_Neg = not RHS_Neg);
 
@@ -468,9 +468,9 @@ package body GNATLLVM.Instructions is
 
       else
          declare
-            LHS_I : constant LLI := Get_Const_Int_Value (LHS);
-            RHS_I : constant LLI := Get_Const_Int_Value (RHS);
-            Res_I : constant LLI := Get_Const_Int_Value (Result);
+            LHS_I : constant LLI := +LHS;
+            RHS_I : constant LLI := +RHS;
+            Res_I : constant LLI := +Result;
 
          begin
             Mark_Overflowed (Result, Res_I / LHS_I /= RHS_I);
@@ -517,8 +517,7 @@ package body GNATLLVM.Instructions is
       if Is_Const_Int_Value (RHS, 2) or else Is_Const_Int_Value (RHS, 4)
         or else Is_Const_Int_Value (RHS, 8)
       then
-         Set_Alignment (Result,
-                        Alignment (LHS) / Get_Const_Int_Value_Nat (RHS));
+         Set_Alignment (Result, Alignment (LHS) / (+RHS));
       else
          Clear_Alignment (Result);
       end if;
@@ -578,8 +577,8 @@ package body GNATLLVM.Instructions is
       --  the result from the input.  Otherwise we don't know anything
       --  about the alignment.
 
-      if Is_A_Const_Int (Count) and then Get_Const_Int_Value (Count) > 0 then
-         if Get_Const_Int_Value (Count) >= 10 then
+      if Is_A_Const_Int (Count) and then +Count > ULL (0) then
+         if +Count >= ULL (10) then
             Set_Alignment (Result, (if Left then Max_Align else BPU));
          else
             declare
@@ -617,7 +616,7 @@ package body GNATLLVM.Instructions is
         --  If the values of the old and new constants are the same, there's
         --  no overflow.
 
-        or else Get_Const_Int_Value (V) = Get_Const_Int_Value (Result)
+        or else Get_Const_Int_Value (V) = +Result
       then
          return False;
 
@@ -635,9 +634,8 @@ package body GNATLLVM.Instructions is
       else
          declare
             Mask          : constant ULL := (ULL (2) ** Bitsize) - 1;
-            Orig          : constant ULL := Get_Const_Int_Value_ULL (V);
-            Masked_Result : constant ULL :=
-              Get_Const_Int_Value_ULL (V) and Mask;
+            Orig          : constant ULL := +V;
+            Masked_Result : constant ULL := +V and Mask;
 
          begin
             return Orig /= Masked_Result;

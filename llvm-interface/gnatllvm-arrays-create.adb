@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -130,7 +130,7 @@ package body GNATLLVM.Arrays.Create is
 
          begin
             if Is_A_Const_Int (V) then
-               Val := Get_Const_Int_Value (V);
+               Val := +V;
                if Val in LLI (Int'First) .. LLI (Int'Last) then
                   return (Cnst => UI_From_LLI (Val), Value => Empty);
                end if;
@@ -347,8 +347,7 @@ package body GNATLLVM.Arrays.Create is
       --  Int, use a nonnative type.
 
       if not This_Nonnative
-        and then (Overflowed (Total_Size)
-                    or else Get_Const_Int_Value (Total_Size) > LLI (Int'Last))
+        and then (Overflowed (Total_Size) or else +Total_Size > LLI (Int'Last))
       then
          This_Nonnative := True;
       end if;

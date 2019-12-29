@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -1073,8 +1073,7 @@ package body GNATLLVM.Variables is
       Var_Size         : constant Boolean      :=
         Present (Elts) and then not Is_A_Const_Int (Elts);
       Elts_ULL         : constant ULL          :=
-        (if   Present (Elts) and then not Var_Size
-         then Get_Const_Int_Value_ULL (Elts) else 1);
+        (if Present (Elts) and then not Var_Size then +Elts else 1);
 
    begin
       return not Var_Size and then T_Size * Elts_ULL < Max;
@@ -1139,8 +1138,7 @@ package body GNATLLVM.Variables is
             declare
                T_Size      : constant ULL := Get_Type_Size (T);
                Num_Elts    : constant ULL :=
-                 (if   Present (Elts) then Get_Const_Int_Value_ULL (Elts)
-                  else 1);
+                 (if Present (Elts) then +Elts else 1);
                Alloc_Bytes : constant ULL := To_Bytes (T_Size * Num_Elts);
 
             begin
@@ -1325,8 +1323,7 @@ package body GNATLLVM.Variables is
       In_Size      : constant GL_Value  :=
         (if Is_Dynamic_Size (GT) then No_GL_Value else Get_Type_Size (GT));
       In_Align     : constant GL_Value  := Get_Type_Alignment (GT);
-      In_Align_Nat : constant Nat       :=
-        Nat (Get_Const_Int_Value_ULL (In_Align));
+      In_Align_Nat : constant Nat       := +In_Align;
       Size         : constant Uint      :=
         (if   Unknown_Esize (Def_Ident) then No_Uint
          else Validate_Size (Def_Ident, GT, Esize (Def_Ident),
@@ -1359,7 +1356,7 @@ package body GNATLLVM.Variables is
                                and then No (Address_Clause (Def_Ident))))
       then
          declare
-            In_Size_ULL : constant ULL := Get_Const_Int_Value_ULL (In_Size);
+            In_Size_ULL : constant ULL := +In_Size;
             Our_Align   : Nat          := 0;
 
          begin

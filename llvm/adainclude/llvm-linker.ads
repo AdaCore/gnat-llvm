@@ -26,7 +26,7 @@ package LLVM.Linker is
    type Linker_Mode_T is 
      (Linker_Destroy_Source,
       Linkerpreservesource_Removed);
-   pragma Convention (C, Linker_Mode_T);  -- llvm-9.0.0.src/include/llvm-c/Linker.h:28
+   pragma Convention (C, Linker_Mode_T);  -- llvm-9.0.1.src/include/llvm-c/Linker.h:28
 
   -- Links the source module into the destination module. The source module is
   -- * destroyed.
@@ -41,7 +41,7 @@ package LLVM.Linker is
    function Link_Modules2_C
      (Dest : LLVM.Types.Module_T;
       Src  : LLVM.Types.Module_T)
-      return LLVM.Types.Bool_T;  -- llvm-9.0.0.src/include/llvm-c/Linker.h:35
+      return LLVM.Types.Bool_T;  -- llvm-9.0.1.src/include/llvm-c/Linker.h:35
    pragma Import (C, Link_Modules2_C, "LLVMLinkModules2");
 
 end LLVM.Linker;

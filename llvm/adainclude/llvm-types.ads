@@ -24,7 +24,7 @@ package LLVM.Types is
   -- * @{
   --  
 
-   subtype Bool_T is int;  -- llvm-9.0.0.src/include/llvm-c/Types.h:29
+   subtype Bool_T is int;  -- llvm-9.0.1.src/include/llvm-c/Types.h:29
 
   -- Opaque types.  
   --*
@@ -46,7 +46,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueMemoryBuffer
 
-   type Memory_Buffer_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:49
+   type Memory_Buffer_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:49
 
   --*
   -- * The top-level container for all LLVM global data. See the LLVMContext class.
@@ -54,7 +54,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueContext
 
-   type Context_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:54
+   type Context_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:54
 
   --*
   -- * The top-level container for all other LLVM Intermediate Representation (IR)
@@ -65,7 +65,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueModule
 
-   type Module_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:62
+   type Module_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:62
 
   --*
   -- * Each value in the LLVM IR has a type, an LLVMTypeRef.
@@ -75,7 +75,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueType
 
-   type Type_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:69
+   type Type_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:69
 
   --*
   -- * Represents an individual value in LLVM IR.
@@ -85,7 +85,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueValue
 
-   type Value_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:76
+   type Value_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:76
 
   --*
   -- * Represents a basic block of instructions in LLVM IR.
@@ -95,7 +95,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueBasicBlock
 
-   type Basic_Block_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:83
+   type Basic_Block_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:83
 
   --*
   -- * Represents an LLVM Metadata.
@@ -105,7 +105,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueMetadata
 
-   type Metadata_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:90
+   type Metadata_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:90
 
   --*
   -- * Represents an LLVM Named Metadata Node.
@@ -115,7 +115,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueNamedMDNode
 
-   type Named_MD_Node_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:97
+   type Named_MD_Node_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:97
 
   --*
   -- * Represents an entry in a Global Object's metadata attachments.
@@ -135,7 +135,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueBuilder
 
-   type Builder_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:111
+   type Builder_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:111
 
   --*
   -- * Represents an LLVM debug info builder.
@@ -145,7 +145,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueDIBuilder
 
-   type DI_Builder_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:118
+   type DI_Builder_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:118
 
   --*
   -- * Interface used to provide a module to JIT or interpreter.
@@ -155,17 +155,17 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueModuleProvider
 
-   type Module_Provider_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:125
+   type Module_Provider_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:125
 
   --* @see llvm::PassManagerBase  
    --  skipped empty struct LLVMOpaquePassManager
 
-   type Pass_Manager_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:128
+   type Pass_Manager_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:128
 
   --* @see llvm::PassRegistry  
    --  skipped empty struct LLVMOpaquePassRegistry
 
-   type Pass_Registry_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:131
+   type Pass_Registry_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:131
 
   --*
   -- * Used to get the users and usees of a Value.
@@ -174,7 +174,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueUse
 
-   type Use_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:137
+   type Use_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:137
 
   --*
   -- * Used to represent an attributes.
@@ -184,7 +184,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueAttributeRef
 
-   type Attribute_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:144
+   type Attribute_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:144
 
   --*
   -- * @see llvm::DiagnosticInfo
@@ -192,7 +192,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueDiagnosticInfo
 
-   type Diagnostic_Info_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:149
+   type Diagnostic_Info_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:149
 
   --*
   -- * @see llvm::Comdat
@@ -200,7 +200,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMComdat
 
-   type Comdat_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:154
+   type Comdat_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:154
 
   --*
   -- * @see llvm::Module::ModuleFlagEntry
@@ -216,7 +216,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueJITEventListener
 
-   type JIT_Event_Listener_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:164
+   type JIT_Event_Listener_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:164
 
   --*
   -- * @see llvm::object::Binary
@@ -224,7 +224,7 @@ package LLVM.Types is
 
    --  skipped empty struct LLVMOpaqueBinary
 
-   type Binary_T is new System.Address;  -- llvm-9.0.0.src/include/llvm-c/Types.h:169
+   type Binary_T is new System.Address;  -- llvm-9.0.1.src/include/llvm-c/Types.h:169
 
   --*
   -- * @}

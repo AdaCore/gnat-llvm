@@ -34,7 +34,7 @@ package LLVM.Comdat is
       Largest_Comdat_Selection_Kind,
       No_Duplicates_Comdat_Selection_Kind,
       Same_Size_Comdat_Selection_Kind);
-   pragma Convention (C, Comdat_Selection_Kind_T);  -- llvm-9.0.0.src/include/llvm-c/Comdat.h:33
+   pragma Convention (C, Comdat_Selection_Kind_T);  -- llvm-9.0.1.src/include/llvm-c/Comdat.h:33
 
   --*
   -- * Return the Comdat in the module with the specified name. It is created
@@ -50,7 +50,7 @@ package LLVM.Comdat is
    function Get_Or_Insert_Comdat_C
      (M    : LLVM.Types.Module_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Comdat_T;  -- llvm-9.0.0.src/include/llvm-c/Comdat.h:41
+      return LLVM.Types.Comdat_T;  -- llvm-9.0.1.src/include/llvm-c/Comdat.h:41
    pragma Import (C, Get_Or_Insert_Comdat_C, "LLVMGetOrInsertComdat");
 
   --*
@@ -59,7 +59,7 @@ package LLVM.Comdat is
   -- * @see llvm::GlobalObject::getComdat()
   --  
 
-   function Get_Comdat (V : LLVM.Types.Value_T) return LLVM.Types.Comdat_T;  -- llvm-9.0.0.src/include/llvm-c/Comdat.h:48
+   function Get_Comdat (V : LLVM.Types.Value_T) return LLVM.Types.Comdat_T;  -- llvm-9.0.1.src/include/llvm-c/Comdat.h:48
    pragma Import (C, Get_Comdat, "LLVMGetComdat");
 
   --*
@@ -68,7 +68,7 @@ package LLVM.Comdat is
   -- * @see llvm::GlobalObject::setComdat()
   --  
 
-   procedure Set_Comdat (V : LLVM.Types.Value_T; C : LLVM.Types.Comdat_T);  -- llvm-9.0.0.src/include/llvm-c/Comdat.h:55
+   procedure Set_Comdat (V : LLVM.Types.Value_T; C : LLVM.Types.Comdat_T);  -- llvm-9.0.1.src/include/llvm-c/Comdat.h:55
    pragma Import (C, Set_Comdat, "LLVMSetComdat");
 
   -- * Get the conflict resolution selection kind for the Comdat.
@@ -76,7 +76,7 @@ package LLVM.Comdat is
   -- * @see llvm::Comdat::getSelectionKind()
   --  
 
-   function Get_Comdat_Selection_Kind (C : LLVM.Types.Comdat_T) return Comdat_Selection_Kind_T;  -- llvm-9.0.0.src/include/llvm-c/Comdat.h:62
+   function Get_Comdat_Selection_Kind (C : LLVM.Types.Comdat_T) return Comdat_Selection_Kind_T;  -- llvm-9.0.1.src/include/llvm-c/Comdat.h:62
    pragma Import (C, Get_Comdat_Selection_Kind, "LLVMGetComdatSelectionKind");
 
   -- * Set the conflict resolution selection kind for the Comdat.
@@ -84,7 +84,7 @@ package LLVM.Comdat is
   -- * @see llvm::Comdat::setSelectionKind()
   --  
 
-   procedure Set_Comdat_Selection_Kind (C : LLVM.Types.Comdat_T; Kind : Comdat_Selection_Kind_T);  -- llvm-9.0.0.src/include/llvm-c/Comdat.h:69
+   procedure Set_Comdat_Selection_Kind (C : LLVM.Types.Comdat_T; Kind : Comdat_Selection_Kind_T);  -- llvm-9.0.1.src/include/llvm-c/Comdat.h:69
    pragma Import (C, Set_Comdat_Selection_Kind, "LLVMSetComdatSelectionKind");
 
 end LLVM.Comdat;

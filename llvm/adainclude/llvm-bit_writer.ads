@@ -40,7 +40,7 @@ package LLVM.Bit_Writer is
    function Write_Bitcode_To_File_C
      (M    : LLVM.Types.Module_T;
       Path : Interfaces.C.Strings.chars_ptr)
-      return int;  -- llvm-9.0.0.src/include/llvm-c/BitWriter.h:38
+      return int;  -- llvm-9.0.1.src/include/llvm-c/BitWriter.h:38
    pragma Import (C, Write_Bitcode_To_File_C, "LLVMWriteBitcodeToFile");
 
   --* Writes a module to an open file descriptor. Returns 0 on success.  
@@ -48,17 +48,17 @@ package LLVM.Bit_Writer is
      (M : LLVM.Types.Module_T;
       FD : int;
       Should_Close : int;
-      Unbuffered : int) return int;  -- llvm-9.0.0.src/include/llvm-c/BitWriter.h:41
+      Unbuffered : int) return int;  -- llvm-9.0.1.src/include/llvm-c/BitWriter.h:41
    pragma Import (C, Write_Bitcode_To_FD, "LLVMWriteBitcodeToFD");
 
   --* Deprecated for LLVMWriteBitcodeToFD. Writes a module to an open file
   --    descriptor. Returns 0 on success. Closes the Handle.  
 
-   function Write_Bitcode_To_File_Handle (M : LLVM.Types.Module_T; Handle : int) return int;  -- llvm-9.0.0.src/include/llvm-c/BitWriter.h:46
+   function Write_Bitcode_To_File_Handle (M : LLVM.Types.Module_T; Handle : int) return int;  -- llvm-9.0.1.src/include/llvm-c/BitWriter.h:46
    pragma Import (C, Write_Bitcode_To_File_Handle, "LLVMWriteBitcodeToFileHandle");
 
   --* Writes a module to a new memory buffer and returns it.  
-   function Write_Bitcode_To_Memory_Buffer (M : LLVM.Types.Module_T) return LLVM.Types.Memory_Buffer_T;  -- llvm-9.0.0.src/include/llvm-c/BitWriter.h:49
+   function Write_Bitcode_To_Memory_Buffer (M : LLVM.Types.Module_T) return LLVM.Types.Memory_Buffer_T;  -- llvm-9.0.1.src/include/llvm-c/BitWriter.h:49
    pragma Import (C, Write_Bitcode_To_Memory_Buffer, "LLVMWriteBitcodeToMemoryBuffer");
 
   --*

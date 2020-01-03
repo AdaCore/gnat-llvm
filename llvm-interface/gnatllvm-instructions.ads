@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -687,7 +687,8 @@ package GNATLLVM.Instructions is
       BBs       : Basic_Block_Array;
       Name      : String := "") return GL_Value
      with Pre  => GL_Values'First = BBs'First
-                  and then GL_Values'Last = BBs'Last,
+                  and then GL_Values'Last = BBs'Last
+                  and then (for all V of GL_Values => Present (V)),
           Post => Present (Build_Phi'Result);
 
    function Int_To_Ref
@@ -843,7 +844,8 @@ package GNATLLVM.Instructions is
       Ptr     : Value_T;
       Indices : Value_Array;
       Name    : String := "") return Value_T
-     with Pre  => Present (Bld) and then Present (Ptr),
+     with Pre  => Present (Bld) and then Present (Ptr)
+                  and then (for all V of Indices => Present (V)),
           Post => Present (GEP'Result);
 
    function GEP_To_Relationship
@@ -852,7 +854,8 @@ package GNATLLVM.Instructions is
       Ptr     : GL_Value;
       Indices : GL_Value_Array;
       Name    : String := "") return GL_Value
-     with Pre  => Is_Pointer (Ptr) and then Present (GT),
+     with Pre  => Is_Pointer (Ptr) and then Present (GT)
+                  and then (for all V of Indices => Present (V)),
           Post => Is_Pointer (GEP_To_Relationship'Result);
 
    function GEP_Idx_To_Relationship
@@ -871,7 +874,8 @@ package GNATLLVM.Instructions is
       Name    : String := "") return GL_Value
    is
      (GEP_To_Relationship (GT, Reference, Ptr, Indices, Name))
-     with Pre  => Is_Pointer (Ptr) and then Present (GT),
+     with Pre  => Is_Pointer (Ptr) and then Present (GT)
+                  and then (for all V of Indices => Present (V)),
           Post => Is_Pointer (GEP'Result), Inline;
 
    function GEP_Idx
@@ -889,7 +893,8 @@ package GNATLLVM.Instructions is
       GT   : GL_Type;
       Args : GL_Value_Array;
       Name : String := "") return GL_Value
-     with Pre  => Present (Func) and then Present (GT),
+     with Pre  => Present (Func) and then Present (GT)
+                  and then (for all V of Args => Present (V)),
           Post => Present (Call'Result), Inline;
 
    function Call_Ref
@@ -897,7 +902,8 @@ package GNATLLVM.Instructions is
       GT   : GL_Type;
       Args : GL_Value_Array;
       Name : String := "") return GL_Value
-     with Pre  => Present (Func) and then Present (GT),
+     with Pre  => Present (Func) and then Present (GT)
+                  and then (for all V of Args => Present (V)),
           Post => Is_Reference (Call_Ref'Result), Inline;
 
    function Call_Relationship
@@ -906,14 +912,17 @@ package GNATLLVM.Instructions is
       Args : GL_Value_Array;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
-     with Pre  => Present (Func) and then Present (GT),
+     with Pre  => Present (Func) and then Present (GT)
+                  and then (for all V of Args => Present (V)),
           Post => Present (Call_Relationship'Result), Inline;
      --  Used when an LLVM function is returning something of a specified
      --  relationship.
 
    procedure Call
      (Func : GL_Value; Args : GL_Value_Array; Name : String := "")
-     with Pre => Present (Func), Inline;
+     with Pre => Present (Func)
+                  and then (for all V of Args => Present (V)),
+          Inline;
 
    function Landing_Pad
      (T                : Type_T;
@@ -936,7 +945,9 @@ package GNATLLVM.Instructions is
       Template       : String;
       Constraints    : String;
       Is_Volatile    : Boolean := False;
-      Is_Stack_Align : Boolean := False) return GL_Value;
+      Is_Stack_Align : Boolean := False) return GL_Value
+     with Pre  => (for all V of Args => Present (V)),
+          Post => Present (Inline_Asm'Result);
 
    function Build_Switch
      (V : GL_Value; Default : Basic_Block_T; Blocks : Nat := 15) return Value_T

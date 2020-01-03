@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -119,11 +119,10 @@ package GNATLLVM.Records is
    --  here to collect and return information about fields in an RI.
 
    type Struct_Field is record
+      Field      : Entity_Id;
       Offset     : ULL;
       T          : Type_T;
       GT         : GL_Type;
-      AF_Fidx    : Field_Info_Id;
-      Is_Aliased : Boolean;
    end record;
 
    type Struct_Field_Array is array (Nat range <>) of Struct_Field;
@@ -138,13 +137,16 @@ package GNATLLVM.Records is
    --  Return the index of the field denoted by F. We assume here, but
    --  don't check, that the F is in a record with just a single RI.
 
+   function Parent_Field (F : Entity_Id) return Entity_Id
+     with Pre  => Is_Field (F);
    function Ancestor_Field (F : Entity_Id) return Entity_Id
      with Pre  => Is_Field (F),
           Post => Ekind (F) = Ekind (Ancestor_Field'Result);
-   --  Find the ancestor field by walking up both the
+   --  Find the parent or ancestor field by walking up both the
    --  Original_Record_Component chain and the
-   --  Corresponding_Record_Component chains.  Only look at records the
-   --  have the same representation as our record.
+   --  Corresponding_Record_Component chains.  Only look at records whose
+   --  base types have the same representation as our base type.  Only return
+   --  a parent if there is one, but the ancestor can be the original field.
 
    function Field_Type (F : Entity_Id) return GL_Type
      with Pre  => Is_Field (F) and then Present (Get_Field_Info (F)),

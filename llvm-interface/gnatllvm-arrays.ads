@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -99,7 +99,10 @@ package GNATLLVM.Arrays is
    function Array_Index_GT (GT : GL_Type; Dim : Nat) return GL_Type
      with Pre  => Is_Array_Type (GT) and then Dim < Number_Dimensions (GT),
           Post => Present (Array_Index_GT'Result);
-   --  Get the type of the Dim'th index of TE
+   function Array_Index_GT (TE : Entity_Id; Dim : Nat) return GL_Type
+     with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE),
+          Post => Present (Array_Index_GT'Result);
+   --  Get the type of the Dim'th index of a type
 
    function Get_Array_Size_Complexity
      (TE : Entity_Id; Max_Size : Boolean := False) return Nat

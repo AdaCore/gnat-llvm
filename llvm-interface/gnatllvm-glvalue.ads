@@ -1206,7 +1206,9 @@ package GNATLLVM.GLValue is
 
    function Const_Array
      (Elmts : GL_Value_Array; GT : GL_Type) return GL_Value
-     with Pre => Present (GT), Post => Present (Const_Array'Result), Inline;
+     with Pre  => Present (GT)
+                  and then (for all V of Elmts => Present (V)),
+          Post => Present (Const_Array'Result), Inline;
 
    function Const_String (S : String; GT : GL_Type) return GL_Value is
      (G (Const_String (S, unsigned (S'Length), True), GT))
@@ -1214,7 +1216,9 @@ package GNATLLVM.GLValue is
 
    function Const_Struct
      (Elmts : GL_Value_Array; GT : GL_Type; Packed : Boolean) return GL_Value
-     with Pre => Present (GT), Post => Present (Const_Struct'Result), Inline;
+     with Pre =>  Present (GT)
+                  and then (for all V of Elmts => Present (V)),
+          Post => Present (Const_Struct'Result), Inline;
 
    function Get_Float_From_Words_And_Exp
      (GT : GL_Type; Exp : Int; Words : Word_Array) return GL_Value
@@ -1359,7 +1363,25 @@ package GNATLLVM.GLValue is
    is
      (Create_TBAA_Scalar_Type_Node (Context, MD_Builder, Name,
                                     LLVM_Value (Size), Parent))
-     with Pre => Is_A_Const_Int (Size) and then Present (Parent);
+     with Pre  => Is_A_Const_Int (Size) and then Present (Parent),
+          Post => Present (Create_TBAA_Scalar_Type_Node'Result);
+
+   function Create_TBAA_Struct_Type_Node
+     (Name    : String;
+      Size    : GL_Value;
+      Parent  : Metadata_T;
+      Offsets : GL_Value_Array;
+      Sizes   : GL_Value_Array;
+      TBAAs   : Metadata_Array) return Metadata_T
+     with Pre  => Is_A_Const_Int (Size) and then Present (Parent)
+                  and then Sizes'First = Offsets'First
+                  and then Sizes'Last  = Offsets'Last
+                  and then TBAAs'First = Offsets'First
+                  and then TBAAs'Last  = Offsets'Last
+                  and then (for all V of Offsets => Present (V))
+                  and then (for all V of Sizes   => Present (V))
+                  and then (for all T of TBAAs   => Present (T)),
+          Post => Present (Create_TBAA_Struct_Type_Node'Result);
 
    function Get_Subprogram (V : GL_Value) return Metadata_T is
      (Get_Subprogram (LLVM_Value (V)))
@@ -1386,7 +1408,8 @@ package GNATLLVM.GLValue is
    --  Likewise but for native LLVM objects
 
    function Idxs_From_GL_Values (Idxs : GL_Value_Array) return Index_Array
-     with Post => Idxs'Length = Idxs_From_GL_Values'Result'Length, Inline;
+     with Pre => (for all V of Idxs => Present (V)),
+          Post => Idxs'Length = Idxs_From_GL_Values'Result'Length, Inline;
    --  Convert an array of GL_Value indices into the corresponding arrays
    --  of constants.
 

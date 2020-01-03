@@ -1455,32 +1455,49 @@ package body GNATLLVM.Records is
       Field_Info_Table.Table (Fidx).TBAA_Type := M;
    end Set_TBAA_Type;
 
+   ------------------
+   -- Parent_Field --
+   ------------------
+
+   function Parent_Field (F : Entity_Id) return Entity_Id is
+      R_TE : constant Entity_Id := Full_Scope (F);
+      ORC  : constant Entity_Id := Original_Record_Component (F);
+      CRC  : constant Entity_Id := Corresponding_Record_Component (F);
+
+   begin
+      if Present (ORC) and then ORC /= F
+        and then Same_Representation (R_TE, Full_Scope (ORC))
+      then
+         return ORC;
+      elsif Present (CRC) and then CRC /= F
+        and then Same_Representation (R_TE, Full_Scope (CRC))
+      then
+         return CRC;
+      else
+         return Empty;
+      end if;
+
+   end Parent_Field;
+
    --------------------
    -- Ancestor_Field --
    --------------------
 
    function Ancestor_Field (F : Entity_Id) return Entity_Id is
-      R_TE     : constant Entity_Id := Full_Scope (F);
-      ORC, CRC : Entity_Id;
+      PF : Entity_Id;
 
    begin
       return AF : Entity_Id := F do
          loop
-            ORC := Original_Record_Component (AF);
-            CRC := Corresponding_Record_Component (AF);
-            if Present (ORC) and then ORC /= AF
-              and then Same_Representation (R_TE, Full_Scope (ORC))
-            then
-               AF := ORC;
-            elsif Present (CRC) and then CRC /= AF
-              and then Same_Representation (R_TE, Full_Scope (CRC))
-            then
-               AF := CRC;
+            PF := Parent_Field (AF);
+            if Present (PF) then
+               AF := PF;
             else
                exit;
             end if;
          end loop;
       end return;
+
    end Ancestor_Field;
 
    ------------------------------
@@ -1526,12 +1543,9 @@ package body GNATLLVM.Records is
                  Get_Element_Offset (RI.LLVM_Type, unsigned (Last_Ord));
                GT      : constant GL_Type       :=
                  (if Is_Bitfield_By_Rep (FI.Field) then No_GL_Type else FI.GT);
-               AF_Fidx : constant Field_Info_Id :=
-                 Get_Field_Info (Ancestor_Field (FI.Field));
 
             begin
-               Field_Table.Append
-                 ((Offset, F_Type, GT, AF_Fidx, Is_Aliased (FI.Field)));
+               Field_Table.Append ((FI.Field, Offset, F_Type, GT));
             end;
          end if;
 

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -692,6 +692,17 @@ package body GNATLLVM.Arrays is
       return Array_Info.Table (Info_Id + Dim).Bound_GT;
    end Array_Index_GT;
 
+   --------------------
+   -- Array_Index_GT --
+   --------------------
+
+   function Array_Index_GT (TE : Entity_Id; Dim : Nat) return GL_Type is
+      Info_Id : constant Array_Info_Id := Get_Array_Info (TE);
+
+   begin
+      return Array_Info.Table (Info_Id + Dim).Bound_GT;
+   end Array_Index_GT;
+
    -------------------------------
    -- Get_Array_Size_Complexity --
    -------------------------------
@@ -1367,7 +1378,9 @@ package body GNATLLVM.Arrays is
       --  Like in Get_Indexed_LValue, we have to hande both the fake and
       --  non-fake cases.  Luckily, we know we're only a single dimension.
       --  However, GEP's result type is a pointer to the component type, so
-      --  we need to cast to the result (array) type in both cases.
+      --  we need to cast to the result (array) type in both cases.  We also
+      --  need to reinitialize any TBAA type since we've potentially changed
+      --  the size.
 
       if not Is_Nonnative_Type (Arr_GT) then
          Result := Ptr_To_Ref (GEP (GT, Array_Data,
@@ -1375,6 +1388,7 @@ package body GNATLLVM.Arrays is
                                     "arr-lvalue"),
                                GT);
          Adjust_Array_Component_Alignment (Result, V, Comp_GT);
+         Initialize_TBAA (Result);
          return Result;
       end if;
 
@@ -1395,6 +1409,7 @@ package body GNATLLVM.Arrays is
          Result := Ptr_To_Ref (GEP (Arr_GT, Data,
                                     (1 => Index), "arr-lvalue"), GT);
          Adjust_Array_Component_Alignment (Result, Data, Comp_GT);
+         Initialize_TBAA (Result);
          return Result;
       end;
 

@@ -598,9 +598,9 @@ package body GNATLLVM.GLValue is
    function Type_For_Relationship
      (GT : GL_Type; R : GL_Relationship) return Type_T
    is
-      T       : constant Type_T  := Type_Of (GT);
-      P_T : constant Type_T      := Pointer_Type (T, 0);
-      TE  : constant Entity_Id   := Full_Etype (GT);
+      T   : constant Type_T    := Type_Of (GT);
+      P_T : constant Type_T    := Pointer_Type (T, 0);
+      TE  : constant Entity_Id := Full_Etype (GT);
 
    begin
       --  If this is a reference to some other relationship, get the type for
@@ -1914,6 +1914,32 @@ package body GNATLLVM.GLValue is
       return Const_Named_Struct (T, Values'Address, unsigned (Num_Elmts));
 
    end Convert_Struct_Constant;
+
+   ----------------------------------
+   -- Create_TBAA_Struct_Type_Node --
+   ----------------------------------
+
+   function Create_TBAA_Struct_Type_Node
+     (Name    : String;
+      Size    : GL_Value;
+      Parent  : Metadata_T;
+      Offsets : GL_Value_Array;
+      Sizes   : GL_Value_Array;
+      TBAAs   : Metadata_Array) return Metadata_T
+   is
+      LLVM_Offsets : Value_Array (Offsets'Range);
+      LLVM_Sizes   : Value_Array (Sizes'Range);
+
+   begin
+      for J in Offsets'Range loop
+         LLVM_Offsets (J) := LLVM_Value (Offsets (J));
+         LLVM_Sizes (J)   := LLVM_Value (Sizes (J));
+      end loop;
+
+      return Create_TBAA_Struct_Type_Node
+        (Context, MD_Builder, Name, LLVM_Value (Size), Offsets'Length,
+         Parent, TBAAs'Address, LLVM_Offsets'Address, LLVM_Sizes'Address);
+   end Create_TBAA_Struct_Type_Node;
 
    -------------------------
    -- Idxs_From_GL_Values --

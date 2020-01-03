@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2020, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -25,13 +25,15 @@ with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Table;    use Table;
 
-with GNATLLVM.Environment;  use GNATLLVM.Environment;
-with GNATLLVM.GLType;       use GNATLLVM.GLType;
-with GNATLLVM.Instructions; use GNATLLVM.Instructions;
-with GNATLLVM.Records;      use GNATLLVM.Records;
-with GNATLLVM.Types;        use GNATLLVM.Types;
-with GNATLLVM.Utils;        use GNATLLVM.Utils;
-with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
+with GNATLLVM.Arrays;        use GNATLLVM.Arrays;
+with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
+with GNATLLVM.Environment;   use GNATLLVM.Environment;
+with GNATLLVM.GLType;        use GNATLLVM.GLType;
+with GNATLLVM.Instructions;  use GNATLLVM.Instructions;
+with GNATLLVM.Records;       use GNATLLVM.Records;
+with GNATLLVM.Types;         use GNATLLVM.Types;
+with GNATLLVM.Utils;         use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;       use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Aliasing is
 
@@ -107,6 +109,34 @@ package body GNATLLVM.Aliasing is
    procedure Search_For_UCs;
    --  Look through all units for UC's between two access types
 
+   --  There are various objects related to arrays that each need to have
+   --  their own TBAAA type tags.  These basically correspond to different
+   --  GL_Relationships.  In most cases, these are always aliased, but
+   --  fat pointers usually aren't.  So in that case, we do the same as we
+   --  do for other TBAA type tags and store both a native and For_Aliased
+   --  values.  For most values here, the type data for both the base type
+   --  and subtypes are the same.  The exception is Bounds_And_Data, which
+   --  is only defined for constrained subtypes.  In that case, it represents
+   --  a structure consisting of both the bounds (which are the same for
+   --  all subtypes) and the data (which is unique to the subtype and defined
+   --  only for that subtype).  Note that the TBAA type tag for the data
+   --  isn't stored here, but rather as the TBAA data for the subtype.
+
+   type TBAA_Array_Info is record
+      Fat_Pointer     : Metadata_T;
+      Bounds          : Metadata_T;
+      Bounds_And_Data : Metadata_T;
+      Component       : Metadata_T;
+   end record;
+
+   package TBAA_Array_Info_Table is new Table.Table
+     (Table_Component_Type => TBAA_Array_Info,
+      Table_Index_Type     => TBAA_Info_Id'Base,
+      Table_Low_Bound      => TBAA_Info_Low_Bound,
+      Table_Initial        => 100,
+      Table_Increment      => 50,
+      Table_Name           => "TBAA_Array_Info_Table");
+
    TBAA_Root : Metadata_T;
    --  Root of tree for Type-Based alias Analysis (TBAA) metadata
 
@@ -151,10 +181,27 @@ package body GNATLLVM.Aliasing is
      with Pre => Is_Record_Type (TE) and then Present (Parent);
    --  Subprograms of above
 
+   function Create_TBAA_For_Fat_Pointer
+     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
+     with Pre  => Is_Array_Type (TE) and then Present (Parent),
+          Post => Present (Create_TBAA_For_Fat_Pointer'Result);
+   --  Create a TBAA type for a fat pointer
+
+   function TBAA_Data_For_Array_Type (TE : Entity_Id) return TBAA_Info_Id
+     with Pre  => Is_Array_Type (TE) and then Is_Base_Type (TE),
+          Post => Present (TBAA_Data_For_Array_Type'Result);
+   --  If not already created, make a TBAA_Array_Info entity for TE
+
+   function Create_TBAA_For_Array_Data
+     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
+     with Pre => Is_Array_Type (TE);
+   --  If TE is a small, constrained array, create metadata for it
+
    function Get_TBAA_Name
-     (Kind : TBAA_Kind;
-      TE   : Entity_Id := Empty;
-      GT   : GL_Type   := No_GL_Type) return String;
+     (Kind   : TBAA_Kind;
+      TE     : Entity_Id := Empty;
+      GT     : GL_Type   := No_GL_Type;
+      Suffix : String    := "") return String;
    --  Return the name to use for a TBAA type entry for GT and TE, if present
 
    Name_Idx      : Nat := 0;
@@ -175,13 +222,9 @@ package body GNATLLVM.Aliasing is
    --  tag and new offset.  If MD is not a struct tag or if we're accessing
    --  the entire structure, we keep Offset unchanged and return MD.
 
-   function Get_Field_TBAA
-     (Fidx       : Field_Info_Id;
-      GT         : GL_Type;
-      Is_Aliased : Boolean) return Metadata_T
-     with Pre => Present (Fidx);
-   --  Get (and maybe create) a TBAA tag for the field corresponding to
-   --  Fidx of type GT.  Is_Aliased indicates if the field is aliased.
+   function Get_Field_TBAA (F : Entity_Id; GT : GL_Type) return Metadata_T
+     with Pre => Is_Field (F);
+   --  Get (and maybe create) a TBAA tag for field F of type GT
 
    -----------------
    -- Initialize --
@@ -489,10 +532,10 @@ package body GNATLLVM.Aliasing is
    is
    begin
       if Relationship (V) = Reference then
-         V.TBAA_Type   := Get_TBAA_Type (Related_Type (V), Kind);
-         V.TBAA_Offset := 0;
+         Set_TBAA_Type   (V, Get_TBAA_Type (Related_Type (V), Kind));
+         Set_TBAA_Offset (V, 0);
       else
-         V.TBAA_Type := No_Metadata_T;
+         Set_TBAA_Type (V, No_Metadata_T);
       end if;
    end Initialize_TBAA;
 
@@ -531,8 +574,8 @@ package body GNATLLVM.Aliasing is
      (V : in out GL_Value; F : Entity_Id; F_GT : GL_Type) is
    begin
       if No (TBAA_Type (V)) and then not Is_Bitfield (F) then
-         Set_TBAA_Type (V, Get_Field_TBAA (Get_Field_Info (Ancestor_Field (F)),
-                                           F_GT, Is_Aliased (F)));
+         Set_TBAA_Type   (V, Get_Field_TBAA (F, F_GT));
+         Set_TBAA_Offset (V, 0);
       end if;
    end Maybe_Initialize_TBAA_For_Field;
 
@@ -540,16 +583,33 @@ package body GNATLLVM.Aliasing is
    -- Get_Field_TBAA --
    --------------------
 
-   function Get_Field_TBAA
-     (Fidx       : Field_Info_Id;
-      GT         : GL_Type;
-      Is_Aliased : Boolean) return Metadata_T
-   is
-      TBAA : Metadata_T := TBAA_Type (Fidx);
+   function Get_Field_TBAA (F : Entity_Id; GT : GL_Type) return Metadata_T is
+      Fidx   : constant Field_Info_Id := Get_Field_Info (F);
+      Kind   : constant TBAA_Kind     := Kind_From_Aliased (Is_Aliased (F));
+      TBAA   : Metadata_T             := TBAA_Type (Fidx);
+      PF     : constant Entity_Id     := Parent_Field (F);
+      Parent : Metadata_T             := No_Metadata_T;
 
    begin
       if No (TBAA) then
-         TBAA := Get_TBAA_Type (GT, Kind_From_Aliased (Is_Aliased));
+
+         --  If we have a parent field, its TBAA type tag, if any, is our
+         --  parent and we make a new TBAA type tag for our type.  If not,
+         --  we get a new TBAA type tag for GT.
+
+         if Present (PF)
+           and then not (Ekind (PF) = E_Discriminant
+                           and then Is_Completely_Hidden (PF))
+         then
+            Parent := Get_Field_TBAA (PF, Field_Type (PF));
+         end if;
+
+         if Present (Parent) then
+            TBAA := Create_TBAA_Type (GT, Kind, Parent);
+         else
+            TBAA := Get_TBAA_Type (GT, Kind);
+         end if;
+
          Set_TBAA_Type (Fidx, TBAA);
       end if;
 
@@ -561,9 +621,10 @@ package body GNATLLVM.Aliasing is
    -------------------
 
    function Get_TBAA_Name
-     (Kind : TBAA_Kind;
-      TE   : Entity_Id := Empty;
-      GT   : GL_Type   := No_GL_Type) return String
+     (Kind   : TBAA_Kind;
+      TE     : Entity_Id := Empty;
+      GT     : GL_Type   := No_GL_Type;
+      Suffix : String    := "") return String
    is
       Our_TE : constant Entity_Id :=
         (if Present (TE) then TE else Full_Etype (GT));
@@ -601,6 +662,7 @@ package body GNATLLVM.Aliasing is
             Name_Idx := Name_Idx + 1;
       end case;
 
+      Append (Buf, Suffix);
       return +Buf;
    end Get_TBAA_Name;
 
@@ -766,16 +828,15 @@ package body GNATLLVM.Aliasing is
       elsif Is_Padded_GL_Type (GT) then
          declare
             TBAAs   : constant Metadata_Array (1 .. 1) := (1 => Prim_TBAA);
-            Sizes   : constant Value_Array (1 .. 1)    :=
-              (1 => LLVM_Value (To_Bytes (Get_Type_Size (Type_Of (Prim_GT)))));
-            Offsets : constant Value_Array (1 .. 1)    :=
-              (1 => Const_Int (LLVM_Size_Type, ULL (0), False));
+            Sizes   : constant GL_Value_Array (1 .. 1)    :=
+              (1 => To_Bytes (Get_Type_Size (Type_Of (Prim_GT))));
+            Offsets : constant GL_Value_Array (1 .. 1)    :=
+              (1 => Size_Const_Null);
 
          begin
             return Create_TBAA_Struct_Type_Node
-              (Context, MD_Builder, Get_TBAA_Name (Kind, GT => GT, TE => TE),
-               LLVM_Value (To_Bytes (GT_Size (GT))), 1, Our_Parent,
-               TBAAs'Address, Offsets'Address, Sizes'Address);
+              (Get_TBAA_Name (Kind, GT => GT, TE => TE),
+               To_Bytes (GT_Size (GT)), Our_Parent, Offsets, Sizes, TBAAs);
          end;
 
       --  If this is an alternate integer representation (including biased),
@@ -823,7 +884,10 @@ package body GNATLLVM.Aliasing is
       elsif Is_Record_Type (TE) then
          return Create_TBAA_For_Record_Type (TE, Kind, Our_Parent);
 
-      --  Otherwise, we can't (yet) make a type entry for it
+      elsif Is_Array_Type (TE) then
+         return Create_TBAA_For_Array_Data (TE, Kind, Our_Parent);
+
+      --  Otherwise, we can't make a type entry for it
 
       else
          return No_Metadata_T;
@@ -867,8 +931,8 @@ package body GNATLLVM.Aliasing is
       Ridx          : constant Record_Info_Id     := Get_Record_Info (TE);
       Struct_Fields : constant Struct_Field_Array :=
         RI_To_Struct_Field_Array (Ridx);
-      Offsets       : Value_Array    (Struct_Fields'Range);
-      Sizes         : Value_Array    (Struct_Fields'Range);
+      Offsets       : GL_Value_Array (Struct_Fields'Range);
+      Sizes         : GL_Value_Array (Struct_Fields'Range);
       TBAAs         : Metadata_Array (Struct_Fields'Range);
 
    begin
@@ -887,22 +951,21 @@ package body GNATLLVM.Aliasing is
             SF : constant Struct_Field := Struct_Fields (J);
 
          begin
-            Offsets (J) := Const_Int (LLVM_Size_Type, SF.Offset, False);
-            Sizes   (J) := Const_Int
-              (LLVM_Size_Type, To_Bytes (Get_Type_Size (SF.T)), False);
+            Offsets (J) := Size_Const_Int (SF.Offset);
+            Sizes   (J) := To_Bytes (Get_Type_Size (SF.T));
 
             --  If there's no GT for the field, this is a field used to
             --  store bitfields.  So we make a unique scalar TBAA type
             --  entry for it.
 
             if No (SF.GT) then
-               TBAAs (J) := Create_TBAA_Scalar_Type_Node
-                 ("BF", G (Sizes (J), Size_GL_Type), TBAA_Root);
+               TBAAs (J) :=
+                 Create_TBAA_Scalar_Type_Node ("BF", Sizes (J), TBAA_Root);
 
                --  Otherwise, try to get or make a type entry
 
             else
-               TBAAs (J) := Get_Field_TBAA (SF.AF_Fidx, SF.GT, SF.Is_Aliased);
+               TBAAs (J) := Get_Field_TBAA (SF.Field, SF.GT);
             end if;
 
             --  If we found an entry, store it.  Otherwise, we fail.
@@ -914,12 +977,154 @@ package body GNATLLVM.Aliasing is
       end loop;
 
       return Create_TBAA_Struct_Type_Node
-        (Context, MD_Builder, Get_TBAA_Name (Kind, TE => TE),
-         LLVM_Value (To_Bytes (Get_Type_Size (Primitive_GL_Type (TE)))),
-         Struct_Fields'Length, Parent, TBAAs'Address, Offsets'Address,
-         Sizes'Address);
+        (Get_TBAA_Name (Kind, TE => TE),
+         To_Bytes (Get_Type_Size (Primitive_GL_Type (TE))), Parent, Offsets,
+         Sizes, TBAAs);
 
    end Create_TBAA_For_Record_Type;
+
+   ---------------------------------
+   -- Create_TBAA_For_Fat_Pointer --
+   ---------------------------------
+
+   function Create_TBAA_For_Fat_Pointer
+     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
+   is
+      FP_T   : constant Type_T     := Create_Array_Fat_Pointer_Type (TE);
+      Size   : constant GL_Value   := To_Bytes (Get_Type_Size (FP_T));
+
+   begin
+      --  A fat pointer really isn't a scalar, but we're not going to be
+      --  addressing into it and it's simpler if we treat it that way.
+
+      return Create_TBAA_Scalar_Type_Node
+        (Get_TBAA_Name (Kind, TE => TE, Suffix => "#FP"), Size, Parent);
+   end Create_TBAA_For_Fat_Pointer;
+
+   ------------------------------
+   -- TBAA_Data_For_Array_Type --
+   ------------------------------
+
+   function TBAA_Data_For_Array_Type (TE : Entity_Id) return TBAA_Info_Id is
+      Comp_GT : constant GL_Type    := Full_Component_GL_Type (TE);
+      Tidx    : TBAA_Info_Id        := Get_TBAA_Info (TE);
+      TI      : TBAA_Array_Info     := (others => No_Metadata_T);
+
+   begin
+      --  If we already made one, return it
+
+      if Present (Tidx) then
+         return Tidx;
+      end if;
+
+      --  Start by setting the component type tag, if there is one, and the
+      --  fat pointer, which has both a Native and For_Aliased TBAA type.
+
+      TI.Component   :=
+        Get_TBAA_Type (Comp_GT,
+                       Kind_From_Aliased (Has_Aliased_Components (TE)));
+      TI.Fat_Pointer :=
+        Create_TBAA_For_Fat_Pointer
+        (TE, For_Aliased, Create_TBAA_For_Fat_Pointer (TE, Native, TBAA_Root));
+
+      --  Now compute the TBAA struct tag for bounds.  Since bounds can't
+      --  be modified, use a non-aliased unique version of the bound type.
+
+      declare
+         Ndims   : constant Nat := Number_Dimensions (TE);
+         Offset  : GL_Value     := Size_Const_Null;
+         Offsets : GL_Value_Array (0 .. Ndims * 2 - 1);
+         Sizes   : GL_Value_Array (0 .. Ndims * 2 - 1);
+         TBAAs   : Metadata_Array (0 .. Ndims * 2 - 1);
+         Dim_GT  : GL_Type;
+         Size    : GL_Value;
+
+      begin
+         for Dim in 0 .. Number_Dimensions (TE) - 1 loop
+            Dim_GT := Array_Index_GT (TE, Dim);
+            Size   := To_Bytes (Get_Type_Size (Type_Of (Dim_GT)));
+
+            Offsets (Dim * 2)     := Offset;
+            Offsets (Dim * 2 + 1) := Offset + Size;
+            Sizes   (Dim * 2)     := Size;
+            Sizes   (Dim * 2 + 1) := Size;
+            TBAAs   (Dim * 2)     := Get_TBAA_Type (Dim_GT, Unique);
+            TBAAs   (Dim * 2 + 1) := Get_TBAA_Type (Dim_GT, Unique);
+
+            Offset := Offset + (Size * 2);
+         end loop;
+
+         --  If one of the index types has Universal_Aliasing, we won't
+         --  have a TBAA type for it above.  So we can't form a TBAA type
+         --  for our bounds either.
+         --  ??? Should we do something about this?
+
+         if (for all T of TBAAs => Present (T)) then
+            TI.Bounds :=
+              Create_TBAA_Struct_Type_Node
+              (Get_TBAA_Name (Unique, TE => TE, Suffix => "#BND"),
+               Offset, TBAA_Root, Offsets, Sizes, TBAAs);
+         end if;
+      end;
+
+      TBAA_Array_Info_Table.Append (TI);
+      Tidx := TBAA_Array_Info_Table.Last;
+      Set_TBAA_Info (TE, Tidx);
+      return Tidx;
+   end TBAA_Data_For_Array_Type;
+
+   --------------------------------
+   -- Create_TBAA_For_Array_Data --
+   --------------------------------
+
+   function Create_TBAA_For_Array_Data
+     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
+   is
+      C_GT   : constant GL_Type      := Full_Component_GL_Type (TE);
+      C_Size : constant GL_Value     := To_Bytes (Get_Type_Size (C_GT));
+      GT     : constant GL_Type      := Primitive_GL_Type (TE);
+      BT     : constant Entity_Id    := Full_Base_Type (TE);
+      Tidx   : constant TBAA_Info_Id := TBAA_Data_For_Array_Type (BT);
+      C_TBAA : constant Metadata_T   :=
+        TBAA_Array_Info_Table.Table (Tidx).Component;
+
+   begin
+      --  If this isn't a loadable type, we don't need to handle this and
+      --  we either might not be able to (if it's of variable size) or don't
+      --  want to (if it has too many elements).  We also can't do anything
+      --  if there's no type tag for the component or if the component is
+      --  of zero size.
+
+      if not Is_Loadable_Type (GT) or else No (C_TBAA) or else C_Size = 0 then
+         return No_Metadata_T;
+      end if;
+
+      --  Otherwise, we know that everything is of constant (and small) size,
+      --  so set up to make a structure type tag for this array.
+
+      declare
+         Size      : constant GL_Value     := To_Bytes (Get_Type_Size (GT));
+         C_Aliased : constant Boolean      := Has_Aliased_Components (TE);
+         Elmts     : constant Nat          := +(Size / C_Size);
+         Offset    : GL_Value              := Size_Const_Null;
+         Offsets   : GL_Value_Array (1 .. Elmts);
+         Sizes     : GL_Value_Array (1 .. Elmts);
+         TBAAs     : Metadata_Array (1 .. Elmts);
+
+      begin
+         for J in 1 .. Elmts loop
+            Offsets (J) := Offset;
+            Sizes (J)   := C_Size;
+            TBAAs (J)   :=
+              Create_TBAA_Type (C_GT, Kind_From_Aliased (C_Aliased), C_TBAA);
+            Offset      := Offset + C_Size;
+         end loop;
+
+         return Create_TBAA_Struct_Type_Node
+           (Get_TBAA_Name (Kind, TE => TE, Suffix => "#AD"), Size, Parent,
+            Offsets, Sizes, TBAAs);
+      end;
+   end Create_TBAA_For_Array_Data;
 
    --------------------------
    --  Extract_Access_Type --
@@ -966,7 +1171,7 @@ package body GNATLLVM.Aliasing is
          else Related_Type (V));
       Size_In_Bytes : constant ULL     :=
         To_Bytes (Get_Type_Size (Type_Of (GT)));
-      Orig_Offset   : constant ULL     := TBAA_Offset  (V);
+      Orig_Offset   : ULL              := TBAA_Offset  (V);
       Base_Type     : Metadata_T       := TBAA_Type    (V);
       Offset        : ULL              := Orig_Offset;
       Access_Type   : Metadata_T;
@@ -982,8 +1187,9 @@ package body GNATLLVM.Aliasing is
       --  the TBAA information from the type.
 
       elsif No (Base_Type) then
-         Base_Type := Get_TBAA_Type (GT, Native);
-         Offset    := 0;
+         Base_Type   := Get_TBAA_Type (GT, Native);
+         Offset      := 0;
+         Orig_Offset := 0;
       end if;
 
       --  If we still couldn't find a tag or if our size is zero, don't do
@@ -997,4 +1203,8 @@ package body GNATLLVM.Aliasing is
       end if;
    end Add_Aliasing_To_Instruction;
 
+begin
+   --  Make a dummy entry so the "Empty" entry is never used.
+
+   TBAA_Array_Info_Table.Increment_Last;
 end GNATLLVM.Aliasing;

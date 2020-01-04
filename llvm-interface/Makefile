@@ -64,6 +64,7 @@ setup:
 	for f in $(LOCAL_RT_FILES); do \
 	  $(LN_S) $(GNAT_SRC)/libgnat/$$f obj; \
 	done
+	./check_for_LLVM_aliasing_bug.sh
 
 build: setup force
 	$(GPRBUILD) -Pgnat_llvm -j$(PROCS) \

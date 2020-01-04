@@ -25,15 +25,16 @@ with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Table;    use Table;
 
-with GNATLLVM.Arrays;        use GNATLLVM.Arrays;
-with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
-with GNATLLVM.Environment;   use GNATLLVM.Environment;
-with GNATLLVM.GLType;        use GNATLLVM.GLType;
-with GNATLLVM.Instructions;  use GNATLLVM.Instructions;
-with GNATLLVM.Records;       use GNATLLVM.Records;
-with GNATLLVM.Types;         use GNATLLVM.Types;
-with GNATLLVM.Utils;         use GNATLLVM.Utils;
-with GNATLLVM.Wrapper;       use GNATLLVM.Wrapper;
+with GNATLLVM.Aliasing.Params; use GNATLLVM.Aliasing.Params;
+with GNATLLVM.Arrays;          use GNATLLVM.Arrays;
+with GNATLLVM.Arrays.Create;   use GNATLLVM.Arrays.Create;
+with GNATLLVM.Environment;     use GNATLLVM.Environment;
+with GNATLLVM.GLType;          use GNATLLVM.GLType;
+with GNATLLVM.Instructions;    use GNATLLVM.Instructions;
+with GNATLLVM.Records;         use GNATLLVM.Records;
+with GNATLLVM.Types;           use GNATLLVM.Types;
+with GNATLLVM.Utils;           use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;         use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Aliasing is
 
@@ -1181,6 +1182,13 @@ package body GNATLLVM.Aliasing is
       --  anotations.
 
       if Aliases_All (V) then
+         return;
+
+      --  If the version of LLVM that we're linking with has a bug in the
+      --  handling of structure tags overlapping with scalars, don't put
+      --  an access tag on an instruction that references an aggregate type.
+
+      elsif LLVM_Struct_Tag_Bug and then Is_Aggregate_Type (V) then
          return;
 
       --  If we couldn't track V's TBAA information, we can try to just use

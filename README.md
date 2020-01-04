@@ -56,6 +56,11 @@ To build GNAT LLVM from sources, follow these steps:
 
       $ make llvm
 
+  Note that there's currently a bug in LLVM's aliasing handling.  We check
+  for it and generate slightly pessimized code in that case, but a patch
+  to be applied to LLVM's lib/Analyze directory is in the file
+  LLVMStructBAAPatch.diff.
+
 - Finally build GNAT LLVM:
 
       $ make

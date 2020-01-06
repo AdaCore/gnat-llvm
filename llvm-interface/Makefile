@@ -267,3 +267,6 @@ tracebak.o: tracebak.c tb-gcc.c
 g-debpoo.o: g-debpoo.adb g-debpoo.ads
 	$(ADAC) -c $(ALL_ADAFLAGS) $(NO_REORDER_ADAFLAGS) $<
 
+# Optionally include sub makefile
+
+-include Makefile.zfp

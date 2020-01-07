@@ -1,7 +1,5 @@
 #! /bin/bash
-CWD=`pwd`
-cd /tmp
-cat <<'EOF' >c43204h.ll
+cat << EOF > obj/c43204h.ll
 ; ModuleID = 'c43204h.adb'
 source_filename = "c43204h.adb"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -110,15 +108,14 @@ declare i32 @report__ident_int(i32)
 !24 = !{!10, !13, i64 4, i64 4}
 
 EOF
-opt -O2 c43204h.ll -o c43204h_o.bc
-llvm-dis c43204h_o.bc
-if [ "`wc -l c43204h_o.ll | awk '{print $1}'` " -gt "40" ]; then
+opt -O2 obj/c43204h.ll -o obj/c43204h_o.bc
+llvm-dis obj/c43204h_o.bc
+if [ "`wc -l obj/c43204h_o.ll | awk '{print $1}'` " -gt "40" ]; then
     BUG=False
 else
     BUG=True
 fi
-cd $CWD
-cat <<EOF >gnatllvm-aliasing-params.ads
+cat << EOF > obj/gnatllvm-aliasing-params.ads
 package GNATLLVM.Aliasing.Params is
    LLVM_Struct_Tag_Bug : constant Boolean := $BUG;
 end GNATLLVM.Aliasing.Params;

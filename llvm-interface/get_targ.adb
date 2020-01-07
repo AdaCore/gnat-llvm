@@ -6,7 +6,7 @@
 --                                                                          --
 --                                 B o d y                                  --
 --                                                                          --
---          Copyright (C) 1992-2019, Free Software Foundation, Inc.         --
+--          Copyright (C) 1992-2020, Free Software Foundation, Inc.         --
 --                                                                          --
 -- GNAT is free software;  you can  redistribute it  and/or modify it under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -30,6 +30,10 @@ with Targparm; use Targparm;
 
 with GNATLLVM;         use GNATLLVM;
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
+
+with System.OS_Lib; use System.OS_Lib;
+
+with GNAT.Directory_Operations; use GNAT.Directory_Operations;
 
 package body Get_Targ is
 
@@ -295,7 +299,57 @@ package body Get_Targ is
 
    First_Call : Boolean := True;
 
+   ------------------------------
+   -- Get_Back_End_Config_File --
+   ------------------------------
+
    function Get_Back_End_Config_File return String_Ptr is
+
+      function Exec_Name return String;
+      --  Return name of the current executable (from argv[0])
+
+      function Get_Target_File (Dir : String) return String_Ptr;
+      --  Return Dir & "target.atp" if found, null otherwise
+
+      ---------------
+      -- Exec_Name --
+      ---------------
+
+      function Exec_Name return String is
+         type Arg_Array is array (Nat) of Big_String_Ptr;
+         type Arg_Array_Ptr is access all Arg_Array;
+
+         gnat_argv : Arg_Array_Ptr;
+         pragma Import (C, gnat_argv);
+
+      begin
+         for J in 1 .. Natural'Last loop
+            if gnat_argv (0) (J) = ASCII.NUL then
+               return gnat_argv (0) (1 .. J - 1);
+            end if;
+         end loop;
+
+         raise Program_Error;
+      end Exec_Name;
+
+      ---------------------
+      -- Get_Target_File --
+      ---------------------
+
+      function Get_Target_File (Dir : String) return String_Ptr is
+         F : constant String := Dir & "target.atp";
+      begin
+         if Is_Regular_File (F) then
+            return new String'(F);
+         else
+            return null;
+         end if;
+      end Get_Target_File;
+
+      Exec : constant String := Exec_Name;
+
+   --  Start of processing for Get_Back_End_Config_File
+
    begin
       if First_Call then
          First_Call := False;
@@ -309,7 +363,11 @@ package body Get_Targ is
          Always_Compatible_Rep_On_Target := False;
       end if;
 
-      return null;
+      if Is_Absolute_Path (Exec) then
+         return Get_Target_File (Dir_Name (Exec));
+      else
+         return Get_Target_File (Dir_Name (Locate_Exec_On_Path (Exec).all));
+      end if;
    end Get_Back_End_Config_File;
 
 end Get_Targ;

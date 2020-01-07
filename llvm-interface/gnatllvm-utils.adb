@@ -40,8 +40,7 @@ package body GNATLLVM.Utils is
       function UC is new Ada.Unchecked_Conversion (Value_T, System.Address);
 
    begin
-      return Hash_Type ((To_Integer (UC (Val)) / (Val'Size / 8))
-                        rem Hash_Type'Modulus);
+      return Hash_Type'Mod (To_Integer (UC (Val)) / (Val'Size / 8));
    end Hash_Value_T;
 
    ------------------

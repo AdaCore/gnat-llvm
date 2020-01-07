@@ -27,14 +27,14 @@ package body GNATLLVM.Wrapper is
      (Ctx    : Context_T;
       MDBld  : MD_Builder_T;
       Name   : String;
-      Size   : Value_T;
+      Size   : ULL;
       Parent : Metadata_T) return Metadata_T
    is
       function Create_TBAA_Scalar_Type_Node_C
         (Ctx    : Context_T;
          MDBld  : MD_Builder_T;
          Name   : String;
-         Size   : Value_T;
+         Size   : ULL;
          Parent : Metadata_T) return Metadata_T
         with Import, Convention => C,
              External_Name => "Create_TBAA_Scalar_Type_Node";
@@ -52,7 +52,7 @@ package body GNATLLVM.Wrapper is
      (Ctx        : Context_T;
       MDBld      : MD_Builder_T;
       Name       : String;
-      Size       : Value_T;
+      Size       : ULL;
       Num_Fields : Nat;
       Parent     : Metadata_T;
       Fields     : System.Address;
@@ -63,7 +63,7 @@ package body GNATLLVM.Wrapper is
         (Ctx        : Context_T;
          MDBld      : MD_Builder_T;
          Name       : String;
-         Size       : Value_T;
+         Size       : ULL;
          Num_Fields : Nat;
          Parent     : Metadata_T;
          Fields     : System.Address;

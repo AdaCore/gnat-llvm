@@ -1359,27 +1359,27 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Inline;
 
    function Create_TBAA_Scalar_Type_Node
-     (Name : String; Size : GL_Value; Parent : Metadata_T) return Metadata_T
+     (Name : String; Size : ULL; Parent : Metadata_T) return Metadata_T
    is
-     (Create_TBAA_Scalar_Type_Node (Context, MD_Builder, Name,
-                                    LLVM_Value (Size), Parent))
-     with Pre  => Is_A_Const_Int (Size) and then Present (Parent),
+     (Create_TBAA_Scalar_Type_Node (Context, MD_Builder, Name, Size, Parent))
+     with Pre  => Present (Parent),
           Post => Present (Create_TBAA_Scalar_Type_Node'Result);
 
    function Create_TBAA_Struct_Type_Node
      (Name    : String;
-      Size    : GL_Value;
+      Size    : ULL;
       Parent  : Metadata_T;
-      Offsets : GL_Value_Array;
-      Sizes   : GL_Value_Array;
+      Offsets : ULL_Array;
+      Sizes   : ULL_Array;
       TBAAs   : Metadata_Array) return Metadata_T
-     with Pre  => Is_A_Const_Int (Size) and then Present (Parent)
-                  and then Sizes'First = Offsets'First
+   is
+      (Create_TBAA_Struct_Type_Node
+         (Context, MD_Builder, Name, Size, Offsets'Length,
+          Parent, TBAAs'Address, Offsets'Address, Sizes'Address))
+     with Pre  => Present (Parent) and then Sizes'First = Offsets'First
                   and then Sizes'Last  = Offsets'Last
                   and then TBAAs'First = Offsets'First
                   and then TBAAs'Last  = Offsets'Last
-                  and then (for all V of Offsets => Present (V))
-                  and then (for all V of Sizes   => Present (V))
                   and then (for all T of TBAAs   => Present (T)),
           Post => Present (Create_TBAA_Struct_Type_Node'Result);
 

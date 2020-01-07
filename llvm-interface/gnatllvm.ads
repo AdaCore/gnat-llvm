@@ -105,6 +105,7 @@ package GNATLLVM is
    type Basic_Block_Array  is array (Nat range <>) of Basic_Block_T;
    type Metadata_Array     is array (Nat range <>) of Metadata_T;
    type Index_Array        is array (Nat range <>) of unsigned;
+   type ULL_Array          is array (Nat range <>) of ULL;
    type Access_Value_Array is access all Value_Array;
 
    No_Value_T    : constant Value_T       := Value_T (System.Null_Address);

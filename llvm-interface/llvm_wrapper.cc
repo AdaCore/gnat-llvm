@@ -194,29 +194,33 @@ Add_Writeonly_Attribute (Function *fn, unsigned idx)
 extern "C"
 MDNode *
 Create_TBAA_Scalar_Type_Node (LLVMContext &ctx, MDBuilder *MDHelper,
-			      const char *name, Constant *size, MDNode *parent)
+			      const char *name, uint64_t size, MDNode *parent)
 {
+  Type *Int64 = Type::getInt64Ty (ctx);
   auto MDname = MDHelper->createString (name);
-  auto MDsize = MDHelper->createConstant (size);
+  auto MDsize = MDHelper->createConstant (ConstantInt::get (Int64, size));
   return MDNode::get(ctx, {parent, MDsize, MDname});
 }
 
 extern "C"
 MDNode *
 Create_TBAA_Struct_Type_Node (LLVMContext &ctx, MDBuilder *MDHelper,
-			      const char *name, Constant *size, int num_fields,
+			      const char *name, uint64_t size, int num_fields,
 			      MDNode *parent, MDNode *fields[],
-			      Constant *offsets[], Constant *sizes[])
+			      uint64_t offsets[], uint64_t sizes[])
 {
+  Type *Int64 = Type::getInt64Ty(ctx);
   SmallVector<Metadata *, 8> Ops (num_fields * 3 + 3);
   Ops [0] = parent;
-  Ops [1] = MDHelper->createConstant (size);
+  Ops [1] = MDHelper->createConstant (ConstantInt::get (Int64, size));
   Ops [2] = MDHelper->createString (name);
   for (unsigned i = 0; i < num_fields; i++)
     {
       Ops[3 + i * 3] = fields[i];
-      Ops[3 + i * 3 + 1] = MDHelper->createConstant (offsets[i]);
-      Ops[3 + i * 3 + 2] = MDHelper->createConstant (sizes[i]);
+      Ops[3 + i * 3 + 1]
+	  = MDHelper->createConstant (ConstantInt::get (Int64, offsets[i]));
+      Ops[3 + i * 3 + 2]
+	  = MDHelper->createConstant (ConstantInt::get (Int64, sizes[i]));
     }
 
   return MDNode:: get (ctx, Ops);
@@ -232,8 +236,7 @@ Get_Stack_Alignment (DataLayout *dl)
 extern "C"
 MDNode *
 Create_TBAA_Access_Tag (MDBuilder *MDHelper, MDNode *BaseType,
-			MDNode *AccessType, uint64_t offset,
-			uint64_t size) 
+			MDNode *AccessType, uint64_t offset, uint64_t size)
 {
   return MDHelper->createTBAAAccessTag (BaseType, AccessType, offset, size,
 					false);

@@ -33,7 +33,7 @@ package GNATLLVM.Wrapper is
      (Ctx    : Context_T;
       MDBld  : MD_Builder_T;
       Name   : String;
-      Size   : Value_T;
+      Size   : ULL;
       Parent : Metadata_T) return Metadata_T
      with Inline;
    --  Create a TBAA metadata node for a scalar type
@@ -42,7 +42,7 @@ package GNATLLVM.Wrapper is
      (Ctx        : Context_T;
       MDBld      : MD_Builder_T;
       Name       : String;
-      Size       : Value_T;
+      Size       : ULL;
       Num_Fields : Nat;
       Parent     : Metadata_T;
       Fields     : System.Address;

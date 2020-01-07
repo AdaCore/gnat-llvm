@@ -829,15 +829,14 @@ package body GNATLLVM.Aliasing is
       elsif Is_Padded_GL_Type (GT) then
          declare
             TBAAs   : constant Metadata_Array (1 .. 1) := (1 => Prim_TBAA);
-            Sizes   : constant GL_Value_Array (1 .. 1)    :=
+            Sizes   : constant ULL_Array (1 .. 1)      :=
               (1 => To_Bytes (Get_Type_Size (Type_Of (Prim_GT))));
-            Offsets : constant GL_Value_Array (1 .. 1)    :=
-              (1 => Size_Const_Null);
+            Offsets : constant ULL_Array (1 .. 1)      := (1 => 0);
 
          begin
             return Create_TBAA_Struct_Type_Node
               (Get_TBAA_Name (Kind, GT => GT, TE => TE),
-               To_Bytes (GT_Size (GT)), Our_Parent, Offsets, Sizes, TBAAs);
+               +To_Bytes (GT_Size (GT)), Our_Parent, Offsets, Sizes, TBAAs);
          end;
 
       --  If this is an alternate integer representation (including biased),
@@ -904,7 +903,7 @@ package body GNATLLVM.Aliasing is
      (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
    is
       GT   : constant GL_Type  := Primitive_GL_Type (TE);
-      Size : constant GL_Value := Get_Type_Size (Type_Of (GT));
+      Size : constant ULL      := Get_Type_Size (Type_Of (GT));
 
    begin
       --  ??? This is a fat pointer, we currently have no mechanism to make
@@ -932,8 +931,8 @@ package body GNATLLVM.Aliasing is
       Ridx          : constant Record_Info_Id     := Get_Record_Info (TE);
       Struct_Fields : constant Struct_Field_Array :=
         RI_To_Struct_Field_Array (Ridx);
-      Offsets       : GL_Value_Array (Struct_Fields'Range);
-      Sizes         : GL_Value_Array (Struct_Fields'Range);
+      Offsets       : ULL_Array (Struct_Fields'Range);
+      Sizes         : ULL_Array (Struct_Fields'Range);
       TBAAs         : Metadata_Array (Struct_Fields'Range);
 
    begin
@@ -952,7 +951,7 @@ package body GNATLLVM.Aliasing is
             SF : constant Struct_Field := Struct_Fields (J);
 
          begin
-            Offsets (J) := Size_Const_Int (SF.Offset);
+            Offsets (J) := SF.Offset;
             Sizes   (J) := To_Bytes (Get_Type_Size (SF.T));
 
             --  If there's no GT for the field, this is a field used to
@@ -979,7 +978,7 @@ package body GNATLLVM.Aliasing is
 
       return Create_TBAA_Struct_Type_Node
         (Get_TBAA_Name (Kind, TE => TE),
-         To_Bytes (Get_Type_Size (Primitive_GL_Type (TE))), Parent, Offsets,
+         +To_Bytes (Get_Type_Size (Primitive_GL_Type (TE))), Parent, Offsets,
          Sizes, TBAAs);
 
    end Create_TBAA_For_Record_Type;
@@ -991,8 +990,8 @@ package body GNATLLVM.Aliasing is
    function Create_TBAA_For_Fat_Pointer
      (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
    is
-      FP_T   : constant Type_T     := Create_Array_Fat_Pointer_Type (TE);
-      Size   : constant GL_Value   := To_Bytes (Get_Type_Size (FP_T));
+      FP_T   : constant Type_T := Create_Array_Fat_Pointer_Type (TE);
+      Size   : constant ULL    := To_Bytes (Get_Type_Size (FP_T));
 
    begin
       --  A fat pointer really isn't a scalar, but we're not going to be
@@ -1033,12 +1032,12 @@ package body GNATLLVM.Aliasing is
 
       declare
          Ndims   : constant Nat := Number_Dimensions (TE);
-         Offset  : GL_Value     := Size_Const_Null;
-         Offsets : GL_Value_Array (0 .. Ndims * 2 - 1);
-         Sizes   : GL_Value_Array (0 .. Ndims * 2 - 1);
+         Offset  : ULL := 0;
+         Offsets : ULL_Array (0 .. Ndims * 2 - 1);
+         Sizes   : ULL_Array (0 .. Ndims * 2 - 1);
          TBAAs   : Metadata_Array (0 .. Ndims * 2 - 1);
          Dim_GT  : GL_Type;
-         Size    : GL_Value;
+         Size    : ULL;
 
       begin
          for Dim in 0 .. Number_Dimensions (TE) - 1 loop
@@ -1082,7 +1081,7 @@ package body GNATLLVM.Aliasing is
      (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
    is
       C_GT   : constant GL_Type      := Full_Component_GL_Type (TE);
-      C_Size : constant GL_Value     := To_Bytes (Get_Type_Size (C_GT));
+      C_Size : constant ULL          := +To_Bytes (Get_Type_Size (C_GT));
       GT     : constant GL_Type      := Primitive_GL_Type (TE);
       BT     : constant Entity_Id    := Full_Base_Type (TE);
       Tidx   : constant TBAA_Info_Id := TBAA_Data_For_Array_Type (BT);
@@ -1104,12 +1103,12 @@ package body GNATLLVM.Aliasing is
       --  so set up to make a structure type tag for this array.
 
       declare
-         Size      : constant GL_Value     := To_Bytes (Get_Type_Size (GT));
-         C_Aliased : constant Boolean      := Has_Aliased_Components (TE);
-         Elmts     : constant Nat          := +(Size / C_Size);
-         Offset    : GL_Value              := Size_Const_Null;
-         Offsets   : GL_Value_Array (1 .. Elmts);
-         Sizes     : GL_Value_Array (1 .. Elmts);
+         Size      : constant ULL     := +To_Bytes (Get_Type_Size (GT));
+         C_Aliased : constant Boolean := Has_Aliased_Components (TE);
+         Elmts     : constant Nat     := Nat (Size / C_Size);
+         Offset    : ULL              := 0;
+         Offsets   : ULL_Array (1 .. Elmts);
+         Sizes     : ULL_Array (1 .. Elmts);
          TBAAs     : Metadata_Array (1 .. Elmts);
 
       begin

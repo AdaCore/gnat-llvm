@@ -112,8 +112,10 @@ opt -O2 obj/c43204h.ll -o obj/c43204h_o.bc
 llvm-dis obj/c43204h_o.bc
 if [ "`wc -l obj/c43204h_o.ll | awk '{print $1}'` " -gt "40" ]; then
     BUG=False
+    echo "OK: using LLVM without the aliasing bug"
 else
     BUG=True
+    echo "using LLVM with the aliasing bug, will pessimize slightly the optimized code"
 fi
 cat << EOF > obj/gnatllvm-aliasing-params.ads
 package GNATLLVM.Aliasing.Params is

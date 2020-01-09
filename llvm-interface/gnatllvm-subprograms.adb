@@ -21,6 +21,7 @@ with Get_Targ; use Get_Targ;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
 with Restrict; use Restrict;
+with Rident;   use Rident;
 with Sem_Mech; use Sem_Mech;
 with Sem_Util; use Sem_Util;
 with Sinput;   use Sinput;
@@ -2421,7 +2422,9 @@ package body GNATLLVM.Subprograms is
                   Add_Noalias_Attribute         (LLVM_Func, Param_Num);
                   Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
                   Add_Readonly_Attribute        (LLVM_Func, Param_Num);
-                  Add_Nest_Attribute            (LLVM_Func, Param_Num);
+                  if not Restriction_Active (No_Implicit_Dynamic_Code) then
+                     Add_Nest_Attribute         (LLVM_Func, Param_Num);
+                  end if;
 
                elsif PK_Is_Reference (PK)
                  and then (not Is_Unconstrained_Array (GT)

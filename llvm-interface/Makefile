@@ -52,7 +52,7 @@ LOCAL_RT_FILES=../link.c s-rident.ads gnat.ads g-dynhta.ads g-dynhta.adb \
   g-hesora.adb g-io_aux.ads g-io_aux.adb
 
 setup:
-	$(MKDIR) obj obj-tools bin
+	$(MKDIR) obj obj-tools bin gnat_src/vast
 	for f in `cd $(GNAT_SRC); ls xtreeprs.adb xnmake.adb xutil.ad? *-tmpl xsnamest.adb sinfo.ads treeprs.adt nmake.adt xoscons.adb xutil.ads xutil.adb`; \
 	do \
 	  cp -p $(GNAT_SRC)/$$f obj-tools; \

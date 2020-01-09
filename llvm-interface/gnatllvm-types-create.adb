@@ -186,7 +186,7 @@ package body GNATLLVM.Types.Create is
    begin
       Dummy := False;
 
-      --  If wre're just elaborating types, we may run into accesses to
+      --  If we're just elaborating types, we may run into accesses to
       --  protected subprograms.
 
       if Decls_Only and then Is_Access_Protected_Subprogram_Type (TE) then

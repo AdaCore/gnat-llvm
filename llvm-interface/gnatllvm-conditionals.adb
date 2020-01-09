@@ -372,7 +372,7 @@ package body GNATLLVM.Conditionals is
 
       --  If we're comparing two access types, first get the values as
       --  references to the designated types, then as a single-word
-      --  reference.  To be a valid comparion, they must be the same LLVM
+      --  reference.  To be a valid comparison, they must be the same LLVM
       --  type at that point.
 
       if Is_Access_Type (LHS) then

@@ -201,6 +201,7 @@ package GNATLLVM is
    --  GL_Types for builtin types
 
    Int_32_GL_Type    : GL_Type;
+   Int_32_T          : Type_T;
    --  Type for 32-bit integers (for GEP indexes)
 
    Int_64_GL_Type     : GL_Type   := No_GL_Type;

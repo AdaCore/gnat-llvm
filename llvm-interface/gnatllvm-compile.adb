@@ -136,6 +136,7 @@ package body GNATLLVM.Compile is
       --  possibility that we don't have a 64-bit type.
 
       Int_32_GL_Type := Primitive_GL_Type (Int_32_Type);
+      Int_32_T       := Type_Of (Int_32_GL_Type);
       if Present (Int_64_Type) then
          Int_64_GL_Type := Primitive_GL_Type (Int_64_Type);
          Int_64_T       := Type_Of (Int_64_GL_Type);

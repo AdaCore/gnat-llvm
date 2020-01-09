@@ -1011,8 +1011,7 @@ package body GNATLLVM.Instructions is
 
    begin
       for J in Indices'Range loop
-         Val_Idxs (J) :=
-           Const_Int (Int_Ty (Nat (32)), ULL (Indices (J)), False);
+         Val_Idxs (J) := Const_Int (Int_32_T, ULL (Indices (J)), False);
       end loop;
 
       Result := GM (In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr),

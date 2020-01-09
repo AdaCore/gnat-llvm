@@ -90,9 +90,9 @@ package body GNATLLVM.Compile is
          end if;
       end Stand_Type;
 
-      Size_Type   : constant Entity_Id := Stand_Type (Get_Pointer_Size);
-      Int_32_Type : constant Entity_Id := Stand_Type (32);
-      Int_64_Type : constant Entity_Id := Stand_Type (64);
+      Size_Type   : Entity_Id;
+      Int_32_Type : Entity_Id;
+      Int_64_Type : Entity_Id;
 
    begin
       --  If we read a target config file, we may not have called our
@@ -102,6 +102,13 @@ package body GNATLLVM.Compile is
          Scan_Command_Line;
          Initialize_LLVM_Target;
       end if;
+
+      --  We need to create our types after the above initialization since
+      --  Get_Pointer_Size requires it.
+
+      Size_Type   := Stand_Type (Get_Pointer_Size);
+      Int_32_Type := Stand_Type (32);
+      Int_64_Type := Stand_Type (64);
 
       --  We can't use a qualified expression here because that will cause
       --  a temporary to be placed in our stack and if the array is very

@@ -1142,7 +1142,7 @@ package body GNATLLVM.Variables is
                Alloc_Bytes : constant ULL := To_Bytes (T_Size * Num_Elts);
 
             begin
-               Add_Lifetime_Entry (Alloca, Size_Const_Int (Alloc_Bytes));
+               Add_Lifetime_Entry (Alloca, Const_Int_64 (Alloc_Bytes));
             end;
          end if;
       else

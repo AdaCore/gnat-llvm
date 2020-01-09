@@ -1225,7 +1225,7 @@ package body GNATLLVM.Builtins is
       if No (Lifetime_Start_Fn) then
          Lifetime_Start_Fn := Add_Function
            ("llvm.lifetime.start.p0i8",
-            Fn_Ty ((1 => LLVM_Size_Type, 2 => Void_Ptr_Type), Void_Type),
+            Fn_Ty ((1 => Int_64_T, 2 => Void_Ptr_Type), Void_Type),
             Void_GL_Type, Is_Builtin => True);
          Set_Does_Not_Throw      (Lifetime_Start_Fn);
          Add_Nocapture_Attribute (Lifetime_Start_Fn, 1);
@@ -1245,7 +1245,7 @@ package body GNATLLVM.Builtins is
       if No (Lifetime_End_Fn) then
          Lifetime_End_Fn := Add_Function
            ("llvm.lifetime.end.p0i8",
-            Fn_Ty ((1 => LLVM_Size_Type, 2 => Void_Ptr_Type), Void_Type),
+            Fn_Ty ((1 => Int_64_T, 2 => Void_Ptr_Type), Void_Type),
             Void_GL_Type, Is_Builtin => True);
          Set_Does_Not_Throw      (Lifetime_End_Fn);
          Add_Nocapture_Attribute (Lifetime_End_Fn, 1);
@@ -1265,7 +1265,7 @@ package body GNATLLVM.Builtins is
       if No (Invariant_Start_Fn) then
          Invariant_Start_Fn := Add_Function
            ("llvm.invariant.start.p0i8",
-            Fn_Ty ((1 => LLVM_Size_Type, 2 => Void_Ptr_Type),
+            Fn_Ty ((1 => Int_64_T, 2 => Void_Ptr_Type),
                    Pointer_Type
                      (Build_Struct_Type ((1 .. 0 => <>), False), 0)),
             A_Char_GL_Type, Is_Builtin => True);

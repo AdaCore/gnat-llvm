@@ -181,7 +181,6 @@ package GNATLLVM is
    Convert_Module     : Module_T;
    --  The module use by Convert_Nonsymbolic_Constant
 
-   Size_Type          : Entity_Id := Empty;
    Size_GL_Type       : GL_Type   := No_GL_Type;
    LLVM_Size_Type     : Type_T    := No_Type_T;
    --  Types to use for sizes
@@ -202,8 +201,13 @@ package GNATLLVM is
    --  GL_Types for builtin types
 
    Int_32_GL_Type    : GL_Type;
-   Int_32_Type       : Entity_Id;
    --  Type for 32-bit integers (for GEP indexes)
+
+   Int_64_GL_Type     : GL_Type   := No_GL_Type;
+   Int_64_T           : Type_T    := No_Type_T;
+   --  Type for 64-bit integers, used for lifetime functions.  This may
+   --  not be present, in which case we don't generate lifetime function
+   --  calls.
 
    BPU                : Nat;
    Bit_T              : Type_T;

@@ -69,6 +69,31 @@ package body GNATLLVM.Compile is
    ------------------
 
    procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
+      function Stand_Type (Size : Nat) return Entity_Id;
+      --  Find a standard integer type with the specified size.  If none,
+      --  return Empty.
+
+      function Stand_Type (Size : Nat) return Entity_Id is
+      begin
+         if Get_Long_Long_Size = Size then
+            return Standard_Long_Long_Integer;
+         elsif Get_Long_Size = Size then
+            return Standard_Long_Integer;
+         elsif Get_Int_Size = Size then
+            return Standard_Integer;
+         elsif Get_Short_Size = Size then
+            return Standard_Short_Integer;
+         elsif Get_Char_Size = Size then
+            return Standard_Short_Short_Integer;
+         else
+            return Empty;
+         end if;
+      end Stand_Type;
+
+      Size_Type   : constant Entity_Id := Stand_Type (Get_Pointer_Size);
+      Int_32_Type : constant Entity_Id := Stand_Type (32);
+      Int_64_Type : constant Entity_Id := Stand_Type (64);
+
    begin
       --  If we read a target config file, we may not have called our
       --  initialization yet, so do it here.
@@ -94,18 +119,6 @@ package body GNATLLVM.Compile is
       Byte_T    := Int_Ty (BPU);
       Max_Align := Get_Maximum_Alignment * BPU;
 
-      --  Find the integer type corresponding to the size of a pointer
-      --  and use that for our Size Type.  Do this before we create any
-      --  other type.
-
-      if Get_Pointer_Size = Get_Long_Long_Size then
-         Size_Type := Standard_Long_Long_Integer;
-      elsif Get_Pointer_Size = Get_Long_Size then
-         Size_Type := Standard_Long_Integer;
-      else
-         Size_Type := Standard_Integer;
-      end if;
-
       --  We have to initialize aliasing before we create any types
 
       GNATLLVM.Aliasing.Initialize;
@@ -119,17 +132,14 @@ package body GNATLLVM.Compile is
       Update_GL_Type (Size_GL_Type, LLVM_Size_Type, False);
       Update_GL_Type (Base_GL_Type (Size_Type), LLVM_Size_Type, False);
 
-      --  Likewise for the 32-bit integer type
-
-      if Get_Long_Long_Size = 32 then
-         Int_32_Type := Standard_Long_Long_Integer;
-      elsif Get_Long_Size = 32 then
-         Int_32_Type := Standard_Long_Integer;
-      else
-         Int_32_Type := Standard_Integer;
-      end if;
+      --  Now create the 32-bit and 64-bit integer types, allowing for the
+      --  possibility that we don't have a 64-bit type.
 
       Int_32_GL_Type := Primitive_GL_Type (Int_32_Type);
+      if Present (Int_64_Type) then
+         Int_64_GL_Type := Primitive_GL_Type (Int_64_Type);
+         Int_64_T       := Type_Of (Int_64_GL_Type);
+      end if;
 
       --  Create a "void" pointer, which is i8* in LLVM
 

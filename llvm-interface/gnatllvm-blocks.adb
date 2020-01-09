@@ -462,6 +462,13 @@ package body GNATLLVM.Blocks is
       Ptr    : GL_Value;
 
    begin
+      --  If we don't have a 64-bit type, we can't make lifetime calls, so
+      --  do nothing in that case.
+
+      if No (Int_64_GL_Type) then
+         return;
+      end if;
+
       --  We need to put the call to start the lifetime at the start of
       --  this block.  However, if the start of this block is the entry
       --  BB, we need to put this after the allocas.
@@ -485,6 +492,13 @@ package body GNATLLVM.Blocks is
       BI     : Block_Info renames Block_Stack.Table (Block_Stack.Last);
 
    begin
+      --  If we don't have a 64-bit type, we can't make invariant
+      --  lifetime calls, so do nothing in that case.
+
+      if No (Int_64_GL_Type) then
+         return;
+      end if;
+
       BI.Invariant_List := new Invariant_Data'(BI.Invariant_List, V, Size);
    end Add_Invariant_Entry;
 

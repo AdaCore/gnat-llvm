@@ -1573,8 +1573,8 @@ package body GNATLLVM.Records.Create is
          if Decls_Only and then Is_Tagged_Type (TE) and then No (Prev_Idx)
            and then Variant_Stack.Last = 0
          then
-            LLVM_Types.Append (Void_Ptr_Type);
-            Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (Void_Ptr_Type);
+            LLVM_Types.Append (Void_Ptr_T);
+            Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (Void_Ptr_T);
          end if;
 
          for J in 1 .. Added_Field_Table.Last loop

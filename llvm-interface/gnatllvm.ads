@@ -185,7 +185,7 @@ package GNATLLVM is
    Size_T             : Type_T    := No_Type_T;
    --  Types to use for sizes
 
-   Void_Ptr_Type      : Type_T;
+   Void_Ptr_T         : Type_T;
    --  Pointer to arbitrary memory (we use i8 *); equivalent of
    --  Standard_A_Char.
 

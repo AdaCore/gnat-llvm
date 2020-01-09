@@ -222,7 +222,7 @@ package body GNATLLVM.GLValue is
 
       if Is_Double_Reference (R) or else R = Reference_To_Activation_Record
       then
-         Align := Get_Type_Alignment (Void_Ptr_Type);
+         Align := Get_Type_Alignment (Void_Ptr_T);
 
       --  If this is a pointer to an object, we can use the alignment of
       --  the type of the object.
@@ -641,14 +641,14 @@ package body GNATLLVM.GLValue is
             return Create_Array_Bounds_And_Data_Type (TE, T);
 
          when Trampoline =>
-            return Void_Ptr_Type;
+            return Void_Ptr_T;
 
          when Fat_Reference_To_Subprogram =>
             return Create_Subprogram_Access_Type;
 
          when others =>
             pragma Assert (False);
-            return Void_Ptr_Type;
+            return Void_Ptr_T;
       end case;
    end Type_For_Relationship;
 
@@ -704,14 +704,14 @@ package body GNATLLVM.GLValue is
                                        2 => Type_Of (TE)));
 
          when Trampoline =>
-            return Void_Ptr_Type;
+            return Void_Ptr_T;
 
          when Fat_Reference_To_Subprogram =>
             return Create_Subprogram_Access_Type;
 
          when others =>
             pragma Assert (False);
-            return Void_Ptr_Type;
+            return Void_Ptr_T;
       end case;
    end Type_For_Relationship;
 

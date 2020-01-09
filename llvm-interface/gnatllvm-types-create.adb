@@ -241,18 +241,18 @@ package body GNATLLVM.Types.Create is
             --  could make an array bound type without actually fully
             --  elaborating the array type, but it's not worth the trouble).
 
-            return (if   R /= Fat_Pointer then Void_Ptr_Type
-                    else Build_Struct_Type ((1 => Void_Ptr_Type,
-                                             2 => Void_Ptr_Type)));
+            return (if   R /= Fat_Pointer then Void_Ptr_T
+                    else Build_Struct_Type ((1 => Void_Ptr_T,
+                                             2 => Void_Ptr_T)));
 
          elsif Ekind (DT) = E_Subprogram_Type then
-            return Void_Ptr_Type;
+            return Void_Ptr_T;
 
          else
             --  Access type is the only case left.  We use a void pointer.
 
             pragma Assert (Is_Access_Type (DT) and then R = Reference);
-            return Void_Ptr_Type;
+            return Void_Ptr_T;
          end if;
       end if;
    end Create_Access_Type;

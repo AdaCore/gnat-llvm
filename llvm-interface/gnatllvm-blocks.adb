@@ -476,7 +476,7 @@ package body GNATLLVM.Blocks is
       Set_Current_Position
         ((if   BI.At_Entry_Start then Entry_Block_Allocas
           else BI.Starting_Position));
-      Ptr := G (Pointer_Cast (IR_Builder, Inst, Void_Ptr_Type, ""),
+      Ptr := G (Pointer_Cast (IR_Builder, Inst, Void_Ptr_T, ""),
                 SSI_GL_Type, Reference);
       Call (Get_Lifetime_Start_Fn, (1 => Size, 2 => Ptr));
       Position_Builder_At_End (Our_BB);
@@ -705,25 +705,25 @@ package body GNATLLVM.Blocks is
 
       Begin_Handler_Fn :=
         Add_Global_Function ("__gnat_begin_handler_v1",
-                             Fn_Ty ((1 => Void_Ptr_Type), Void_Ptr_Type),
+                             Fn_Ty ((1 => Void_Ptr_T), Void_Ptr_T),
                              A_Char_GL_Type);
 
       End_Handler_Fn   :=
         Add_Global_Function ("__gnat_end_handler_v1",
-                             Fn_Ty ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
-                                     3 => Void_Ptr_Type),
+                             Fn_Ty ((1 => Void_Ptr_T, 2 => Void_Ptr_T,
+                                     3 => Void_Ptr_T),
                                     Void_Type),
                              Void_GL_Type);
 
       Reraise_Fn       :=
         Add_Global_Function ("__gnat_reraise_zcx",
-                             Fn_Ty ((1 => Void_Ptr_Type), Void_Type),
+                             Fn_Ty ((1 => Void_Ptr_T), Void_Type),
                              Void_GL_Type,
                              Can_Return => False, Can_Throw => True);
 
       EH_Slot_Id_Fn    :=
         Add_Function ("llvm.eh.typeid.for",
-                      Fn_Ty ((1 => Void_Ptr_Type), Int_Ty (Nat (32))),
+                      Fn_Ty ((1 => Void_Ptr_T), Int_Ty (Nat (32))),
                       Int_32_GL_Type, Is_Builtin => True);
       Set_Does_Not_Throw (EH_Slot_Id_Fn);
 
@@ -745,7 +745,7 @@ package body GNATLLVM.Blocks is
       if No (Set_Exception_Param_Fn) then
          Set_Exception_Param_Fn := Add_Global_Function
            ("__gnat_set_exception_parameter",
-            Fn_Ty ((1 => Create_Access_Type_To (Exc_GT), 2 => Void_Ptr_Type),
+            Fn_Ty ((1 => Create_Access_Type_To (Exc_GT), 2 => Void_Ptr_T),
                    Void_Type),
             Void_GL_Type);
       end if;
@@ -972,7 +972,7 @@ package body GNATLLVM.Blocks is
       LB_V  := Emit_Convert_Value (LB, Integer_GL_Type);
       HB_V  := Emit_Convert_Value (HB, Integer_GL_Type);
       Call (Get_Raise_Fn (Kind, Ext => True),
-            (1 => File, 2 => Line, 3 => Col,
+            (1 => File,  2 => Line, 3 => Col,
              4 => Index, 5 => LB_V, 6 => HB_V));
       return True;
 
@@ -985,7 +985,7 @@ package body GNATLLVM.Blocks is
    procedure Emit_Handlers (Block : Block_Stack_Level) is
       BI                : Block_Info renames Block_Stack.Table (Block);
       LP_Type           : constant Type_T        :=
-        Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Int_Ty (Nat (32))));
+        Build_Struct_Type ((1 => Void_Ptr_T, 2 => Int_Ty (Nat (32))));
       Have_Cleanup      : constant Boolean       :=
         (for some J in 1 .. Block =>
            Present (Block_Stack.Table (J).At_End_Proc)

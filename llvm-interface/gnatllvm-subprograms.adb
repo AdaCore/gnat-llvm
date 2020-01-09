@@ -372,7 +372,7 @@ package body GNATLLVM.Subprograms is
    ---------------------------
 
    function Get_Param_By_Ref_Mech (GT : GL_Type) return Param_By_Ref_Mech is
-      Ptr_Size : constant ULL := Get_Type_Size (Void_Ptr_Type);
+      Ptr_Size : constant ULL := Get_Type_Size (Void_Ptr_T);
 
    begin
       if Is_By_Reference_Type (GT) or else Is_Nonnative_Type (GT) then
@@ -546,7 +546,7 @@ package body GNATLLVM.Subprograms is
       GT       : constant GL_Type   := Full_GL_Type (Def_Ident);
       T        : constant Type_T    :=
         (if Ekind (GT) /= E_Void then Type_Of (GT) else No_Type_T);
-      Ptr_Size : constant ULL       := Get_Type_Size (Void_Ptr_Type);
+      Ptr_Size : constant ULL       := Get_Type_Size (Void_Ptr_T);
 
    begin
       --  If there's no return type, that's simple
@@ -752,7 +752,7 @@ package body GNATLLVM.Subprograms is
       --  Set the argument for the static link, if any
 
       if Adds_S_Link then
-         In_Arg_Types (J) := Void_Ptr_Type;
+         In_Arg_Types (J) := Void_Ptr_T;
       end if;
 
       --  Now deal with the result type.  We've already set if it it's
@@ -798,7 +798,7 @@ package body GNATLLVM.Subprograms is
       --  record while the actual subprogram might have one.  So we use a
       --  generic pointer for it and cast at the actual call.
 
-      return Build_Struct_Type ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type));
+      return Build_Struct_Type ((1 => Void_Ptr_T, 2 => Void_Ptr_T));
    end Create_Subprogram_Access_Type;
 
    -------------------------

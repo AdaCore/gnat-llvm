@@ -141,10 +141,6 @@ package body GNATLLVM.Compile is
          Int_64_T       := Type_Of (Int_64_GL_Type);
       end if;
 
-      --  Create a "void" pointer, which is i8* in LLVM
-
-      Void_Ptr_Type  := Type_Of (Standard_A_Char);
-
       --  Create GL_Types for builtin types
 
       A_Char_GL_Type    := Primitive_GL_Type (Standard_A_Char);
@@ -156,6 +152,10 @@ package body GNATLLVM.Compile is
       LLI_GL_Type       := Primitive_GL_Type (Standard_Long_Long_Integer);
       Void_GL_Type      := Primitive_GL_Type (Standard_Void_Type);
       Any_Array_GL_Type := Primitive_GL_Type (Any_Array);
+
+      --  Create a "void" pointer, which is i8* in LLVM
+
+      Void_Ptr_T        := Type_Of (A_Char_GL_Type);
 
       --  Initialize modules and handle duplicate globals
 

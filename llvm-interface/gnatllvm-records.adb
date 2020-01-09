@@ -1403,7 +1403,7 @@ package body GNATLLVM.Records is
          --  won't create one in this mode.
 
          if Decls_Only and then Is_Tagged_Type (TE) then
-            Largest_Align := Get_Type_Alignment (Void_Ptr_Type);
+            Largest_Align := Get_Type_Alignment (Void_Ptr_T);
          end if;
 
          --  Now go through each field looking for the highest effective

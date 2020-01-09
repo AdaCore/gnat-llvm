@@ -15,18 +15,17 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout;   use Errout;
-with Get_Targ; use Get_Targ;
-with Sinfo;    use Sinfo;
-with Snames;   use Snames;
+with Errout; use Errout;
+with Sinfo;  use Sinfo;
+with Snames; use Snames;
 
-with GNATLLVM.Arrays;    use GNATLLVM.Arrays;
-with GNATLLVM.Compile;   use GNATLLVM.Compile;
-with GNATLLVM.Exprs;     use GNATLLVM.Exprs;
+with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
+with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
-with GNATLLVM.Types;     use GNATLLVM.Types;
-with GNATLLVM.Utils;     use GNATLLVM.Utils;
-with GNATLLVM.Wrapper;   use GNATLLVM.Wrapper;
+with GNATLLVM.Types;        use GNATLLVM.Types;
+with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Conversions is
 
@@ -736,7 +735,7 @@ package body GNATLLVM.Conversions is
          if Is_Pointer (As_Ref) then
             Result := Insert_Value (Result, Ptr_To_Ref (As_Ref, DT), 0);
          elsif Is_Integer_Type (As_Ref)
-           and then Get_Type_Size (Type_Of (As_Ref)) = ULL (Get_Pointer_Size)
+           and then Get_Type_Size (Type_Of (As_Ref)) = ULL (Thin_Pointer_Size)
          then
             Result := Insert_Value (Result, Int_To_Ref (As_Ref, DT), 0);
          end if;

@@ -17,8 +17,6 @@
 
 with Ada.Unchecked_Conversion;
 
-with Get_Targ; use Get_Targ;
-
 with Output; use Output;
 with Sprint; use Sprint;
 
@@ -516,12 +514,12 @@ package body GNATLLVM.GLValue is
       --  If this would be a fat pointer, but the size of the GL_Type
       --  corresponds to that of a thin pointer, use it.
 
-      if R = Fat_Pointer and then Size = Get_Pointer_Size then
+      if R = Fat_Pointer and then Size = Thin_Pointer_Size then
          return Thin_Pointer;
 
       --  And vice versa
 
-      elsif R = Thin_Pointer and then Size = Get_Pointer_Size * 2 then
+      elsif R = Thin_Pointer and then Size = Fat_Pointer_Size then
          return Fat_Pointer;
       else
          return R;
@@ -545,7 +543,7 @@ package body GNATLLVM.GLValue is
       --  If we would use a fat pointer, but the access type is forced
       --  to a single word, use a thin pointer.
 
-      if R = Fat_Pointer and then RM_Size (TE) = Get_Pointer_Size then
+      if R = Fat_Pointer and then RM_Size (TE) = Thin_Pointer_Size then
          return Thin_Pointer;
 
       --  Similarly for foreign convention access to subprogram

@@ -799,7 +799,7 @@ package body GNATLLVM.Types.Create is
 
       if Is_Access_Type (GT)
         and then Is_Unconstrained_Array (Full_Designated_Type (GT))
-        and then (Size = Get_Pointer_Size or else Size = Get_Pointer_Size * 2)
+        and then (Size = Thin_Pointer_Size or else Size = Fat_Pointer_Size)
       then
          return Size;
 

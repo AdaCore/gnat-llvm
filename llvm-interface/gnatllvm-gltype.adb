@@ -15,7 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Get_Targ;   use Get_Targ;
 with Lib;        use Lib;
 with Output;     use Output;
 with Repinfo;    use Repinfo;
@@ -642,15 +641,15 @@ package body GNATLLVM.GLType is
 
          elsif Is_Access_Type (GT)
            and then Is_Unconstrained_Array (Full_Designated_GL_Type (GT))
-           and then (Size = Get_Pointer_Size
-                       or else Size = Get_Pointer_Size * 2)
+           and then (Size = Thin_Pointer_Size or else Size = Fat_Pointer_Size)
          then
             declare
                DT    : constant Entity_Id       := Full_Designated_Type (GT);
                R     : constant GL_Relationship :=
                  Relationship_For_Access_Type (GT);
                New_R : constant GL_Relationship :=
-                 (if R = Fat_Pointer then Thin_Pointer else Fat_Pointer);
+                 (if   Size = Thin_Pointer_Size then Thin_Pointer
+                  else Fat_Pointer);
 
             begin
                pragma Assert (R in Thin_Pointer | Fat_Pointer);

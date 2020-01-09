@@ -103,12 +103,15 @@ package body GNATLLVM.Compile is
          Initialize_LLVM_Target;
       end if;
 
-      --  We need to create our types after the above initialization since
+      --  Get the sizes of fat and thin pointers and make some types.  This
+      --  must be done after the above initialization since
       --  Get_Pointer_Size requires it.
 
-      Size_Type   := Stand_Type (Get_Pointer_Size);
-      Int_32_Type := Stand_Type (32);
-      Int_64_Type := Stand_Type (64);
+      Thin_Pointer_Size := Get_Pointer_Size;
+      Fat_Pointer_Size  := Thin_Pointer_Size * 2;
+      Size_Type         := Stand_Type (Thin_Pointer_Size);
+      Int_32_Type       := Stand_Type (32);
+      Int_64_Type       := Stand_Type (64);
 
       --  We can't use a qualified expression here because that will cause
       --  a temporary to be placed in our stack and if the array is very

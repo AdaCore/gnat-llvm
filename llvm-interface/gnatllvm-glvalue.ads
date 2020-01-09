@@ -1198,6 +1198,10 @@ package GNATLLVM.GLValue is
      (Const_Int (Int_64_GL_Type, N, Sign_Extend))
      with Post => Present (Const_Int_64'Result);
 
+   function Const_Null_64 return GL_Value is
+     (Const_Int_64 (ULL (0)))
+     with Post => Present (Const_Null_64'Result);
+
    function Const_Real
      (V : GL_Value; F : Interfaces.C.double) return GL_Value
    is

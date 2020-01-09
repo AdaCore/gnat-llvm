@@ -846,7 +846,7 @@ package body GNATLLVM.Variables is
               --  Operand must not need elaboration
 
               and then (not Is_Scalar_Type (GT)
-                          or else Type_Of (GT) = LLVM_Size_Type
+                          or else Type_Of (GT) = Size_T
                           or else Is_A_Const_Int (Emit_No_Error
                                                     (Expression (N)))
                           or else Is_A_Const_FP  (Emit_No_Error
@@ -1036,7 +1036,7 @@ package body GNATLLVM.Variables is
 
             if Is_Elementary_Type (In_GT) and then Is_Elementary_Type (GT) then
                if Is_Scalar_Type (GT)
-                 and then Type_Of (GT) /= LLVM_Size_Type
+                 and then Type_Of (GT) /= Size_T
                  and then Type_Of (GT) /= Type_Of (In_GT)
                then
                   Our_NS := True;

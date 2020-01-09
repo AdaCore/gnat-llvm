@@ -107,8 +107,7 @@ package GNATLLVM.Records is
    function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
      with Pre  => Is_Field (E),
           Post => No (Emit_Field_Position'Result)
-                  or else (Type_Of (Emit_Field_Position'Result) =
-                             LLVM_Size_Type);
+                  or else Type_Of (Emit_Field_Position'Result) = Size_T;
    --  Compute and return the position in bits of the field specified
    --  by E from the start of its type as a value of Size_Type.  If
    --  Present, V is a value of that type, which is used in the case

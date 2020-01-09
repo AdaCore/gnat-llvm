@@ -182,7 +182,7 @@ package GNATLLVM is
    --  The module use by Convert_Nonsymbolic_Constant
 
    Size_GL_Type       : GL_Type   := No_GL_Type;
-   LLVM_Size_Type     : Type_T    := No_Type_T;
+   Size_T             : Type_T    := No_Type_T;
    --  Types to use for sizes
 
    Void_Ptr_Type      : Type_T;

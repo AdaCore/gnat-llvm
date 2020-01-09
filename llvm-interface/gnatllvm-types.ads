@@ -367,7 +367,7 @@ package GNATLLVM.Types is
 
    function To_Size_Type (V : GL_Value) return GL_Value
      with Pre  => Present (V),
-          Post => Type_Of (To_Size_Type'Result) = LLVM_Size_Type;
+          Post => Type_Of (To_Size_Type'Result) = Size_T;
    --  Convert V to Size_Type.  This is always Size_Type's width, but may
    --  actually be a different GNAT type.
 

@@ -221,15 +221,14 @@ package body GNATLLVM.Builtins is
          when Memcpy =>
             Return_GT := Void_GL_Type;
             Fun_Ty    := Fn_Ty
-              ((1 => Void_Ptr_Type,  2 => Void_Ptr_Type,
-                3 => LLVM_Size_Type, 4 => Bit_T),
+              ((1 => Void_Ptr_Type,  2 => Void_Ptr_Type, 3 => Size_T,
+                4 => Bit_T),
                Void_Type);
 
          when Memset =>
             Return_GT := Void_GL_Type;
             Fun_Ty    := Fn_Ty
-              ((1 => Void_Ptr_Type,  2 => Byte_T,
-                3 => LLVM_Size_Type, 4 => Bit_T),
+              ((1 => Void_Ptr_Type,  2 => Byte_T, 3 => Size_T, 4 => Bit_T),
                Void_Type);
       end case;
 
@@ -1092,7 +1091,7 @@ package body GNATLLVM.Builtins is
       if No (Default_Alloc_Fn) then
          Default_Alloc_Fn :=
            Add_Global_Function ("__gnat_malloc",
-                                Fn_Ty ((1 => LLVM_Size_Type), Void_Ptr_Type),
+                                Fn_Ty ((1 => Size_T), Void_Ptr_Type),
                                 A_Char_GL_Type);
 
          if Is_A_Function (Default_Alloc_Fn) then
@@ -1128,8 +1127,7 @@ package body GNATLLVM.Builtins is
       if No (Memory_Compare_Fn) then
          Memory_Compare_Fn := Add_Global_Function
            ("memcmp",
-            Fn_Ty ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type,
-                    3 => LLVM_Size_Type),
+            Fn_Ty ((1 => Void_Ptr_Type, 2 => Void_Ptr_Type, 3 => Size_T),
                    Type_Of (Integer_GL_Type)),
             Integer_GL_Type);
 

@@ -1273,7 +1273,7 @@ package GNATLLVM.GLValue is
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return GL_Value
      with Pre  => Present (GT),
-          Post => Type_Of (Get_Type_Alignment'Result) = LLVM_Size_Type,
+          Post => Type_Of (Get_Type_Alignment'Result) = Size_T,
           Inline;
 
    function Add_Function

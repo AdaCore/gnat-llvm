@@ -27,6 +27,7 @@ with Sem_Util; use Sem_Util;
 with Sinput;   use Sinput;
 with Snames;   use Snames;
 with Table;    use Table;
+with Targparm; use Targparm;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -2417,7 +2418,8 @@ package body GNATLLVM.Subprograms is
                   Add_Noalias_Attribute         (LLVM_Func, Param_Num);
                   Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
                   Add_Readonly_Attribute        (LLVM_Func, Param_Num);
-                  if not Restriction_Active (No_Implicit_Dynamic_Code) then
+                  if not Restrictions_On_Target.Set (No_Implicit_Dynamic_Code)
+                  then
                      Add_Nest_Attribute         (LLVM_Func, Param_Num);
                   end if;
 

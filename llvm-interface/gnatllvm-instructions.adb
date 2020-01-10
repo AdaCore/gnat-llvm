@@ -17,6 +17,9 @@
 
 with Ada.Unchecked_Conversion;
 
+with Rident;   use Rident;
+with Targparm; use Targparm;
+
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
@@ -1236,7 +1239,9 @@ package body GNATLLVM.Instructions is
 
       --  If we found a parameter that was an activation record, mark it
 
-      if Act_Param >= 0 then
+      if Act_Param >= 0
+        and then not Restrictions_On_Target.Set (No_Implicit_Dynamic_Code)
+      then
          Add_Nest_Attribute (Call_Inst, unsigned (Act_Param));
       end if;
 

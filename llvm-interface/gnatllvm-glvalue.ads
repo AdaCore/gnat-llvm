@@ -429,9 +429,9 @@ package GNATLLVM.GLValue is
 
    --  Define basic accessors for components of GL_Value
 
-   function LLVM_Value (V : GL_Value)    return Value_T is
+   function "+" (V : GL_Value)    return Value_T is
      (V.Value)
-     with Pre => Present (V), Post => Present (LLVM_Value'Result);
+     with Pre => Present (V), Post => Present ("+"'Result);
    --  Return the LLVM value in the GL_Value
 
    function Related_Type (V : GL_Value)  return GL_Type is
@@ -570,20 +570,20 @@ package GNATLLVM.GLValue is
    --  any typing information, so we just copy it from an existing value.
 
    function G_Is (V : GL_Value; GT : GL_Type) return GL_Value is
-     (GM (LLVM_Value (V), GT, Relationship (V), V))
+     (GM (+V, GT, Relationship (V), V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is'Result);
    --  Constructor for case where we want to show that V has a different type
 
    function G_Is (V : GL_Value; T : GL_Value) return GL_Value is
-     (GM (LLVM_Value (V), Related_Type (T), Relationship (V), V))
+     (GM (+V, Related_Type (T), Relationship (V), V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is'Result);
 
    function G_Is_Relationship
      (V : GL_Value; GT : GL_Type; R : GL_Relationship) return GL_Value
    is
-     (GM (LLVM_Value (V), GT, R, V))
+     (GM (+V, GT, R, V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -592,7 +592,7 @@ package GNATLLVM.GLValue is
    function G_Is_Relationship
      (V : GL_Value; T : GL_Value; R : GL_Relationship) return GL_Value
    is
-     (GM (LLVM_Value (V), Related_Type (T), R, V))
+     (GM (+V, Related_Type (T), R, V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -601,13 +601,13 @@ package GNATLLVM.GLValue is
    function G_Is_Relationship
      (V : GL_Value; R : GL_Relationship) return GL_Value
    is
-     (GM (LLVM_Value (V), Related_Type (V), R, V))
+     (GM (+V, Related_Type (V), R, V))
      with Pre => Present (V), Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a
    --  different relationship.
 
    function G_Is_Relationship (V : GL_Value; T : GL_Value) return GL_Value is
-      (GM (LLVM_Value (V), Related_Type (T), Relationship (T), V))
+      (GM (+V, Related_Type (T), Relationship (T), V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -727,7 +727,7 @@ package GNATLLVM.GLValue is
    --  represent abstractions that will be used in later predicates.
 
    function Type_Of (V : GL_Value) return Type_T is
-     (Type_Of (LLVM_Value (V)))
+     (Type_Of (+V))
      with Pre => Present (V), Post => Present (Type_Of'Result);
 
    function Ekind (V : GL_Value) return Entity_Kind is
@@ -897,66 +897,66 @@ package GNATLLVM.GLValue is
    --  accept and/or return GL_Value.
 
    function Get_Value_Kind (V : GL_Value) return Value_Kind_T is
-     (Get_Value_Kind (LLVM_Value (V)))
+     (Get_Value_Kind (+V))
      with Pre => Present (V);
 
    function Is_A_Global_Variable (V : GL_Value) return Boolean is
-     (Present (Is_A_Global_Variable (LLVM_Value (V))))
+     (Present (Is_A_Global_Variable (+V)))
      with Pre => Present (V);
    --  Return True if V is a global variable
 
    function Is_Global_Constant (V : GL_Value) return Boolean is
-     (Is_Global_Constant (LLVM_Value (V)))
+     (Is_Global_Constant (+V))
      with Pre => Is_A_Global_Variable (V);
    --  Return True if V is a global constant
 
    function Is_A_Function (V : GL_Value) return Boolean is
-     (Present (Is_A_Function (LLVM_Value (V))))
+     (Present (Is_A_Function (+V)))
      with Pre => Present (V);
    --  Return True if V is a function
 
    function Is_Undef (V : GL_Value) return Boolean is
-     (Is_Undef (LLVM_Value (V)))
+     (Is_Undef (+V))
      with Pre => Present (V);
 
    function Is_Constant (V : GL_Value) return Boolean is
-     (Is_Constant (LLVM_Value (V)))
+     (Is_Constant (+V))
      with Pre => Present (V);
 
    function Is_Nonsymbolic_Constant (V : GL_Value) return Boolean
      with Pre => Present (V);
 
    function Is_A_Const_Int (V : GL_Value) return Boolean is
-     (Present (Is_A_Constant_Int (LLVM_Value (V))))
+     (Present (Is_A_Constant_Int (+V)))
      with Pre => Present (V);
    --  Return True if V is a constant integer
 
    function Is_A_Const_FP (V : GL_Value) return Boolean is
-     (Present (Is_A_Constant_FP (LLVM_Value (V))))
+     (Present (Is_A_Constant_FP (+V)))
      with Pre => Present (V);
    --  Return True if V is a constant floating point value
 
    function Is_A_Constant_Aggregate_Zero (V : GL_Value) return Boolean is
-     (Present (Is_A_Constant_Aggregate_Zero (LLVM_Value (V))))
+     (Present (Is_A_Constant_Aggregate_Zero (+V)))
      with Pre => Present (V);
    --  Return True if V is a constant integer
 
    function Is_A_Constant_Pointer_Null (V : GL_Value) return Boolean is
-     (Present (Is_A_Constant_Pointer_Null (LLVM_Value (V))))
+     (Present (Is_A_Constant_Pointer_Null (+V)))
      with Pre => Present (V);
    --  Return True if V is a null pointer
 
    function Get_Const_Int_Value (V : GL_Value) return LLI is
-     (Const_Int_Get_S_Ext_Value (LLVM_Value (V)))
+     (Const_Int_Get_S_Ext_Value (+V))
      with Pre => Is_A_Const_Int (V);
    --  V is a constant integer; get its value
 
    function Get_Const_Int_Value_ULL (V : GL_Value) return ULL is
-     (ULL (Const_Int_Get_S_Ext_Value (LLVM_Value (V))))
+     (ULL (Const_Int_Get_S_Ext_Value (+V)))
      with Pre => Is_A_Const_Int (V);
 
    function Get_Const_Int_Value_Nat (V : GL_Value) return Nat is
-     (Nat (Const_Int_Get_S_Ext_Value (LLVM_Value (V))))
+     (Nat (Const_Int_Get_S_Ext_Value (+V)))
      with Pre => Is_A_Const_Int (V);
 
    function "+" (V : GL_Value) return LLI is
@@ -971,15 +971,15 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Const_Int (V);
 
    function Get_Value_Name (V : GL_Value) return String is
-     (Get_Value_Name (LLVM_Value (V)))
+     (Get_Value_Name (+V))
      with Pre => Present (V);
 
    function Get_Num_Operands (V : GL_Value) return Nat is
-     (Int (Get_Num_Operands (LLVM_Value (V))))
+     (Int (Get_Num_Operands (+V)))
      with Pre => Present (V);
 
    function Get_Operand (V : GL_Value; Idx : Nat) return Value_T is
-     (Get_Operand (LLVM_Value (V), unsigned (Idx)))
+     (Get_Operand (+V, unsigned (Idx)))
      with Pre => Present (V);
 
    procedure Set_Value_Name (V : GL_Value; Name : String)
@@ -1257,7 +1257,7 @@ package GNATLLVM.GLValue is
    function Block_Address
      (Func : GL_Value; BB : Basic_Block_T) return GL_Value
    is
-      (G (Block_Address (LLVM_Value (Func), BB), SSI_GL_Type, Reference))
+      (G (Block_Address (+Func, BB), SSI_GL_Type, Reference))
      with Pre  => Present (Func) and then Present (BB),
           Post => Present (Block_Address'Result);
 
@@ -1306,7 +1306,7 @@ package GNATLLVM.GLValue is
       GT        : GL_Type;
       R         : GL_Relationship) return GL_Value
    is
-     (G (Get_Param (LLVM_Value (Func), unsigned (Param_Num)), GT, R))
+     (G (Get_Param (+Func, unsigned (Param_Num)), GT, R))
      with Pre  => Present (Func) and then Present (GT),
           Post => Present (Get_Param'Result);
 
@@ -1318,7 +1318,7 @@ package GNATLLVM.GLValue is
      with Post => Present (Get_Insert_Block'Result);
 
    function Does_Not_Throw (V : GL_Value) return Boolean is
-     (Does_Not_Throw (LLVM_Value (V)))
+     (Does_Not_Throw (+V))
      with Pre => Present (V);
    --  Return True if V is a function
 
@@ -1331,8 +1331,7 @@ package GNATLLVM.GLValue is
    --  Indicate that V does not return
 
    function Get_Initializer (V : GL_Value) return GL_Value is
-     (Initialize_Alignment (G (Get_Initializer (LLVM_Value (V)),
-                               Related_Type (V), Data)))
+     (Initialize_Alignment (G (Get_Initializer (+V), Related_Type (V), Data)))
      with Pre  => Is_A_Global_Variable (V) and then Is_Global_Constant (V),
           Post => Present (Get_Initializer'Result);
 
@@ -1341,7 +1340,7 @@ package GNATLLVM.GLValue is
    --  Set the initializer for a global variable
 
    function Get_Linkage (V : GL_Value) return Linkage_T is
-     (Get_Linkage (LLVM_Value (V)))
+     (Get_Linkage (+V))
      with Pre => Is_A_Global_Variable (V) or else Is_A_Function (V);
    --  Get the linkage type for a variable or function
 
@@ -1394,7 +1393,7 @@ package GNATLLVM.GLValue is
           Post => Present (Create_TBAA_Struct_Type_Node'Result);
 
    function Get_Subprogram (V : GL_Value) return Metadata_T is
-     (Get_Subprogram (LLVM_Value (V)))
+     (Get_Subprogram (+V))
      with Pre => Is_A_Function (V), Inline;
 
    procedure Set_Subprogram (V : GL_Value; M : Metadata_T)

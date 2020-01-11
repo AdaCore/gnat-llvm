@@ -147,7 +147,7 @@ package body GNATLLVM.Instructions is
       T         : constant Type_T        := Type_Of (GT);
       Promote   : constant Basic_Block_T := Maybe_Promote_Alloca (T, Num_Elts);
       Inst      : constant Value_T       :=
-        Array_Alloca (IR_Builder, Type_Of (GT), LLVM_Value (Num_Elts),
+        Array_Alloca (IR_Builder, Type_Of (GT), +Num_Elts,
                       Get_Alloca_Name (Def_Ident, Name));
       Our_Align : constant Nat           :=
         Set_Object_Align (Inst, GT, Def_Ident, Align);
@@ -168,8 +168,7 @@ package body GNATLLVM.Instructions is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM (Int_To_Ptr (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-            GV => V);
+        GM (Int_To_Ptr (IR_Builder, +V, Type_Of (GT), Name), GT, GV => V);
 
    begin
       Initialize_TBAA_If_Changed (Result, V);
@@ -183,8 +182,7 @@ package body GNATLLVM.Instructions is
    function Ptr_To_Int
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (GM (Ptr_To_Int (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-          GV => V));
+     (GM (Ptr_To_Int (IR_Builder, +V, Type_Of (GT), Name), GT, GV => V));
 
    ----------------
    -- Int_To_Ref --
@@ -194,7 +192,7 @@ package body GNATLLVM.Instructions is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM_Ref (Int_To_Ptr (IR_Builder, LLVM_Value (V),
+        GM_Ref (Int_To_Ptr (IR_Builder, +V,
                             Pointer_Type (Type_Of (GT), 0), Name),
                 GT, V);
 
@@ -214,8 +212,7 @@ package body GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM (Int_To_Ptr (IR_Builder, LLVM_Value (V),
-                        Type_For_Relationship (GT, R), Name),
+        GM (Int_To_Ptr (IR_Builder, +V, Type_For_Relationship (GT, R), Name),
             GT, R, GV => V);
 
    begin
@@ -230,8 +227,7 @@ package body GNATLLVM.Instructions is
    function Bit_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (GM (Bit_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-          GV => V));
+     (GM (Bit_Cast (IR_Builder, +V, Type_Of (GT), Name), GT, GV => V));
 
    ------------------
    -- Pointer_Cast --
@@ -241,8 +237,7 @@ package body GNATLLVM.Instructions is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
-            GV => V);
+        GM (Pointer_Cast (IR_Builder, +V, Type_Of (GT), Name), GT, GV => V);
    begin
       Initialize_TBAA_If_Changed (Result, V);
       return Result;
@@ -256,7 +251,7 @@ package body GNATLLVM.Instructions is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
+        GM_Ref (Pointer_Cast (IR_Builder, +V,
                               Pointer_Type (Type_Of (GT), 0), Name),
                 GT, V);
 
@@ -272,7 +267,7 @@ package body GNATLLVM.Instructions is
    function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM_Ref (Pointer_Cast (IR_Builder, LLVM_Value (V),
+        GM_Ref (Pointer_Cast (IR_Builder, +V,
                               Pointer_Type (Type_Of (T), 0), Name),
                 Full_Designated_GL_Type (T), V);
 
@@ -292,8 +287,7 @@ package body GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM (Pointer_Cast (IR_Builder, LLVM_Value (V),
-                          Type_For_Relationship (GT, R), Name),
+        GM (Pointer_Cast (IR_Builder, +V, Type_For_Relationship (GT, R), Name),
             GT, R, V);
 
    begin
@@ -311,7 +305,7 @@ package body GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM (Pointer_Cast (IR_Builder, LLVM_Value (V),
+        GM (Pointer_Cast (IR_Builder, +V,
                           Type_For_Relationship (Related_Type (T), R), Name),
             Related_Type (T), R, V);
 
@@ -344,8 +338,8 @@ package body GNATLLVM.Instructions is
       --  and indicate what it does to the alignment
 
       V := (if   Is_Add
-            then Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name)
-            else Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name));
+            then Add (IR_Builder, +LHS, +RHS, Name)
+            else Sub (IR_Builder, +LHS, +RHS, Name));
       Result := G_From (Set_Arith_Attrs (V, LHS), LHS);
       Mark_Overflowed (Result, Overflowed (LHS) or else Overflowed (RHS));
       Set_Alignment (Result, Nat'Min (Alignment (LHS), Alignment (RHS)));
@@ -448,8 +442,7 @@ package body GNATLLVM.Instructions is
       --  Otherwise, perform the operation, respect any overflow flags,
       --  and set the resulting alignment.
 
-      Result := G_From (Set_Arith_Attrs (Mul (IR_Builder, LLVM_Value (LHS),
-                                              LLVM_Value (RHS), Name),
+      Result := G_From (Set_Arith_Attrs (Mul (IR_Builder, +LHS, +RHS, Name),
                                          LHS),
                         LHS);
       Mark_Overflowed (Result, Overflowed (LHS) or else Overflowed (RHS));
@@ -500,10 +493,8 @@ package body GNATLLVM.Instructions is
       --  Otherwise, compute the value and check for overflow
 
       Result := G_From ((if Signed
-                         then S_Div (IR_Builder, LLVM_Value (LHS),
-                                     LLVM_Value (RHS), Name)
-                         else U_Div (IR_Builder, LLVM_Value (LHS),
-                                     LLVM_Value (RHS), Name)),
+                         then S_Div (IR_Builder, +LHS, +RHS, Name)
+                         else U_Div (IR_Builder, +LHS, +RHS, Name)),
                         LHS);
       Mark_Overflowed (Result,
                        Overflowed (LHS) or else Overflowed (RHS)
@@ -537,8 +528,8 @@ package body GNATLLVM.Instructions is
       Allow_Overflow : Boolean;
       Name           : String := "") return GL_Value
    is
-      VV     : constant Value_T := LLVM_Value (V);
-      CV     : constant Value_T := LLVM_Value (Count);
+      VV     : constant Value_T := +V;
+      CV     : constant Value_T := +Count;
       RV     : Value_T;
       Result : GL_Value;
 
@@ -652,7 +643,7 @@ package body GNATLLVM.Instructions is
    is
       T      : constant Type_T := Type_Of (GT);
       Result :  GL_Value       :=
-        GM (Trunc (IR_Builder, LLVM_Value (V), T, Name), GT, Data, V);
+        GM (Trunc (IR_Builder, +V, T, Name), GT, Data, V);
 
    begin
       Mark_Overflowed (Result,
@@ -671,8 +662,7 @@ package body GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM (Trunc (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V),
-            R, V);
+        GM (Trunc (IR_Builder, +V, T, Name), Related_Type (V), R, V);
 
    begin
       Mark_Overflowed (Result,
@@ -687,7 +677,7 @@ package body GNATLLVM.Instructions is
    function S_Ext
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (S_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+     (G (S_Ext (IR_Builder, +V, Type_Of (GT), Name), GT));
 
    -----------
    -- Z_Ext --
@@ -696,7 +686,7 @@ package body GNATLLVM.Instructions is
    function Z_Ext
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (Z_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+     (G (Z_Ext (IR_Builder, +V, Type_Of (GT), Name), GT,
          Alignment  => Alignment  (V),
          Overflowed => Overflowed (V)));
 
@@ -707,7 +697,7 @@ package body GNATLLVM.Instructions is
    function FP_Trunc
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (FP_Trunc (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+     (G (FP_Trunc (IR_Builder, +V, Type_Of (GT), Name), GT,
          Overflowed => Overflowed (V)));
 
    ------------
@@ -717,7 +707,7 @@ package body GNATLLVM.Instructions is
    function FP_Ext
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (FP_Ext (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+     (G (FP_Ext (IR_Builder, +V, Type_Of (GT), Name), GT,
          Overflowed => Overflowed (V)));
 
    --------------
@@ -727,7 +717,7 @@ package body GNATLLVM.Instructions is
    function FP_To_SI
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (FP_To_SI (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+     (G (FP_To_SI (IR_Builder, +V, Type_Of (GT), Name), GT,
          Overflowed => Overflowed (V)));
 
    --------------
@@ -737,7 +727,7 @@ package body GNATLLVM.Instructions is
    function FP_To_UI
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (FP_To_UI (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT));
+     (G (FP_To_UI (IR_Builder, +V, Type_Of (GT), Name), GT));
 
    --------------
    -- UI_To_FP --
@@ -746,7 +736,7 @@ package body GNATLLVM.Instructions is
    function UI_To_FP
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (UI_To_FP (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+     (G (UI_To_FP (IR_Builder, +V, Type_Of (GT), Name), GT,
         Overflowed => Overflowed (V)));
 
    --------------
@@ -756,7 +746,7 @@ package body GNATLLVM.Instructions is
    function SI_To_FP
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (SI_To_FP (IR_Builder, LLVM_Value (V), Type_Of (GT), Name), GT,
+     (G (SI_To_FP (IR_Builder, +V, Type_Of (GT), Name), GT,
          Overflowed => Overflowed (V)));
 
    ------------------
@@ -781,10 +771,11 @@ package body GNATLLVM.Instructions is
       --  if it's the same on both arms.
 
       else
-         Result := G_From (Build_Select (IR_Builder, C_If => LLVM_Value (C_If),
-                                         C_Then => LLVM_Value (C_Then),
-                                         C_Else => LLVM_Value (C_Else),
-                                         Name => Name),
+         Result := G_From (Build_Select (IR_Builder,
+                                         C_If   => +C_If,
+                                         C_Then => +C_Then,
+                                         C_Else => +C_Else,
+                                         Name   => Name),
                            C_Then);
          Set_Alignment (Result,
                         Nat'Min (Alignment (C_Then), Alignment (C_Else)));
@@ -805,7 +796,7 @@ package body GNATLLVM.Instructions is
 
    procedure Build_Cond_Br (C_If : GL_Value; C_Then, C_Else : Basic_Block_T) is
    begin
-      Discard (Build_Cond_Br (IR_Builder, LLVM_Value (C_If), C_Then, C_Else));
+      Discard (Build_Cond_Br (IR_Builder, +C_If, C_Then, C_Else));
    end Build_Cond_Br;
 
    --------------
@@ -848,7 +839,7 @@ package body GNATLLVM.Instructions is
 
    procedure Build_Ret (V : GL_Value) is
    begin
-      Discard (Build_Ret (IR_Builder, LLVM_Value (V)));
+      Discard (Build_Ret (IR_Builder, +V));
    end Build_Ret;
 
    --------------------
@@ -896,7 +887,7 @@ package body GNATLLVM.Instructions is
 
    begin
       for J in Values'Range loop
-         Values (J) := LLVM_Value (GL_Values (J));
+         Values (J) := +GL_Values (J);
          Align := Nat'Min (Align, Alignment (GL_Values (J)));
       end loop;
 
@@ -981,11 +972,11 @@ package body GNATLLVM.Instructions is
 
    begin
       for J in Indices'Range loop
-         Val_Idxs (J) := LLVM_Value (Indices (J));
+         Val_Idxs (J) := +Indices (J);
       end loop;
 
-      Result := GM (In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr),
-                                   Val_Idxs'Address, Val_Idxs'Length, Name),
+      Result := GM (In_Bounds_GEP (IR_Builder, +Ptr, Val_Idxs'Address,
+                                   Val_Idxs'Length, Name),
                     GT, R, Ptr);
 
       Set_Alignment (Result, Nat'Min (Alignment (Ptr),
@@ -1014,8 +1005,8 @@ package body GNATLLVM.Instructions is
          Val_Idxs (J) := Const_Int (Int_32_T, ULL (Indices (J)), False);
       end loop;
 
-      Result := GM (In_Bounds_GEP (IR_Builder, LLVM_Value (Ptr),
-                                   Val_Idxs'Address, Val_Idxs'Length, Name),
+      Result := GM (In_Bounds_GEP (IR_Builder, +Ptr, Val_Idxs'Address,
+                                   Val_Idxs'Length, Name),
                     GT, R, Ptr);
       Set_Alignment (Result, Nat'Min (Alignment (Ptr),
                                       Get_GEP_Offset_Alignment (Result)));
@@ -1058,9 +1049,8 @@ package body GNATLLVM.Instructions is
       --  Integer type with size matching that of the type to be loaded
 
       Ptr_Val        : constant Value_T        :=
-        (if   Special_Atomic
-         then Pointer_Cast (IR_Builder, LLVM_Value (Ptr), Equiv_T, "")
-         else LLVM_Value (Ptr));
+        (if   Special_Atomic then Pointer_Cast (IR_Builder, +Ptr, Equiv_T, "")
+         else +Ptr);
       --  Address of item to load
 
       Load_Inst : Value_T                      :=
@@ -1082,13 +1072,12 @@ package body GNATLLVM.Instructions is
             Memory     : constant GL_Value := Allocate_For_Type (Load_GT);
             Store_Inst : constant Value_T  :=
               Build_Store (IR_Builder, Load_Inst,
-                           Pointer_Cast (IR_Builder, LLVM_Value (Memory),
-                                         Equiv_T, ""));
+                           Pointer_Cast (IR_Builder, +Memory, Equiv_T, ""));
             Align      : constant unsigned :=
               unsigned (To_Bytes (Alignment (Ptr)));
 
          begin
-            Load_Inst := Load (IR_Builder, LLVM_Value (Memory), "");
+            Load_Inst := Load (IR_Builder, +Memory, "");
             Set_Alignment (Store_Inst, Align);
             Set_Alignment (Load_Inst, Align);
          end;
@@ -1118,10 +1107,9 @@ package body GNATLLVM.Instructions is
         (if   Special_Atomic then Pointer_Type (Int_Ty (Result_Bits), 0)
          else No_Type_T);
       Ptr_Val        : constant Value_T :=
-        (if   Special_Atomic
-         then Pointer_Cast (IR_Builder, LLVM_Value (Ptr), Equiv_T, "")
-         else LLVM_Value (Ptr));
-      Val_To_Store   : Value_T          := LLVM_Value (Expr);
+        (if   Special_Atomic then Pointer_Cast (IR_Builder, +Ptr, Equiv_T, "")
+         else +Ptr);
+      Val_To_Store   : Value_T          := +Expr;
       Store_Inst     : Value_T;
       Memory         : GL_Value;
 
@@ -1132,9 +1120,9 @@ package body GNATLLVM.Instructions is
 
       if Special_Atomic then
          Memory := Allocate_For_Type (GT);
-         Discard (Build_Store (IR_Builder, Val_To_Store, LLVM_Value (Memory)));
+         Discard (Build_Store (IR_Builder, Val_To_Store, +Memory));
          Val_To_Store := Load (IR_Builder,
-                               Pointer_Cast (IR_Builder, LLVM_Value (Memory),
+                               Pointer_Cast (IR_Builder, +Memory,
                                              Equiv_T, ""), "");
       end if;
 
@@ -1157,8 +1145,7 @@ package body GNATLLVM.Instructions is
       Single_Thread : Boolean := False) return GL_Value
    is
       Inst : constant Value_T :=
-        Atomic_RMW (IR_Builder, Op, LLVM_Value (Ptr), LLVM_Value (V), Order,
-                    Single_Thread);
+        Atomic_RMW (IR_Builder, Op, +Ptr, +V, Order, Single_Thread);
 
    begin
       Add_Aliasing_To_Instruction (Inst, Ptr);
@@ -1195,8 +1182,7 @@ package body GNATLLVM.Instructions is
       Weak             : Boolean           := False) return GL_Value
    is
       Inst : constant Value_T :=
-        Atomic_Cmp_Xchg (IR_Builder, LLVM_Value (Ptr), LLVM_Value (Cmp),
-                         LLVM_Value (C_New), Success_Ordering,
+        Atomic_Cmp_Xchg (IR_Builder, +Ptr, +Cmp, +C_New, Success_Ordering,
                          Failure_Ordering, Single_Thread);
    begin
       Add_Aliasing_To_Instruction (Inst, Ptr);
@@ -1216,7 +1202,7 @@ package body GNATLLVM.Instructions is
       Args        : GL_Value_Array;
       Name        : String := "") return Value_T
    is
-      LLVM_Func   : constant Value_T       := LLVM_Value (Func);
+      LLVM_Func   : constant Value_T       := +Func;
       No_Raise    : constant Boolean       :=
         Is_A_Function (Func) and then Does_Not_Throw (Func);
       Lpad        : constant Basic_Block_T :=
@@ -1228,7 +1214,7 @@ package body GNATLLVM.Instructions is
 
    begin
       for J in Args'Range loop
-         Arg_Values (J) := LLVM_Value (Args (J));
+         Arg_Values (J) := +Args (J);
          if Relationship (Args (J)) = Reference_To_Activation_Record then
             Act_Param := J - Args'First;
          end if;
@@ -1326,7 +1312,7 @@ package body GNATLLVM.Instructions is
 
    procedure Build_Resume (V : GL_Value) is
    begin
-      Discard (Build_Resume (IR_Builder, LLVM_Value (V)));
+      Discard (Build_Resume (IR_Builder, +V));
    end Build_Resume;
 
    ----------------

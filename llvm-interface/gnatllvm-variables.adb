@@ -1433,19 +1433,19 @@ package body GNATLLVM.Variables is
 
       --  If we haven't already seen this value, make a constant for it
 
-      if not Const_Map.Contains (LLVM_Value (In_V)) then
+      if not Const_Map.Contains (+In_V) then
          Out_Val := Add_Global  (Module, Type_Of (In_V), "for-ref");
-         Set_Initializer        (Out_Val, LLVM_Value (In_V));
+         Set_Initializer        (Out_Val, +In_V);
          Set_Linkage            (Out_Val, Private_Linkage);
          Set_Global_Constant    (Out_Val, True);
          Set_Unnamed_Addr       (Out_Val, True);
-         Const_Map.Insert       (LLVM_Value (In_V),  Out_Val);
+         Const_Map.Insert       (+In_V,  Out_Val);
       end if;
 
       --  Now make a GL_Value.  We do this here since different constant
       --  literals may have different types (i.e., bounds).
 
-      return G (Const_Map.Element (LLVM_Value (In_V)), GT, Ref (In_V),
+      return G (Const_Map.Element (+In_V), GT, Ref (In_V),
                 Alignment => Get_Type_Alignment (Default_GL_Type (GT)));
    end Make_Global_Constant;
 
@@ -1539,7 +1539,7 @@ package body GNATLLVM.Variables is
             else
                LLVM_Var := G (Add_Alias (Module,
                                          Create_Access_Type_To (GT),
-                                         LLVM_Value (Get_Value (E)),
+                                         +Get_Value (E),
                                          Get_Ext_Name (Def_Ident)),
                               GT, Reference);
                Initialize_TBAA (LLVM_Var, Kind_From_Decl (Def_Ident));

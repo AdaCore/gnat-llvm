@@ -1577,7 +1577,7 @@ package body GNATLLVM.Blocks is
       This_BB   : constant Basic_Block_T := Get_Insert_Block;
       Last_Inst : constant Value_T       := Get_Last_Instruction (This_BB);
       Entry_BB  : constant Basic_Block_T :=
-          Get_Entry_Basic_Block (LLVM_Value (Current_Func));
+          Get_Entry_Basic_Block (+Current_Func);
       L_Idx     : constant Label_Info_Id :=
           (if Present (E) then Get_Label_Info (E) else Empty_Label_Info_Id);
       BB        : constant Basic_Block_T :=

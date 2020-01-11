@@ -110,14 +110,14 @@ package GNATLLVM.Instructions is
           Post => Present (Bit_Cast'Result), Inline;
 
    function Bit_Cast (V, T : GL_Value; Name : String := "") return GL_Value is
-     (G_From (Bit_Cast (IR_Builder, LLVM_Value (V), Type_Of (T), Name), T))
+     (G_From (Bit_Cast (IR_Builder, +V, Type_Of (T), Name), T))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Bit_Cast'Result);
 
    function Bit_Cast
      (V : GL_Value; T : Type_T; Name : String := "") return GL_Value
    is
-     (G (Bit_Cast (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V),
+     (G (Bit_Cast (IR_Builder, +V, T, Name), Related_Type (V),
          Unknown, Alignment => Alignment (V)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Bit_Cast'Result);
@@ -129,7 +129,7 @@ package GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (G (Bit_Cast (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V),
+        (G (Bit_Cast (IR_Builder, +V, T, Name), Related_Type (V),
             R, Alignment => Alignment (V))))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Bit_Cast_To_Relationship'Result);
@@ -143,8 +143,7 @@ package GNATLLVM.Instructions is
      (V, T : GL_Value; Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (G_From (Pointer_Cast (IR_Builder, LLVM_Value (V), Type_Of (T), Name),
-                 T)))
+        (G_From (Pointer_Cast (IR_Builder, +V, Type_Of (T), Name), T)))
      with Pre  => Is_Pointer (V) and then Is_Pointer (T),
           Post => Is_Pointer (Pointer_Cast'Result);
 
@@ -155,7 +154,7 @@ package GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (G (Pointer_Cast (IR_Builder, LLVM_Value (V), T, Name),
+        (G (Pointer_Cast (IR_Builder, +V, T, Name),
             Related_Type (V), R, Alignment => Alignment (V))))
      with Pre  => Is_Pointer (V) and then Present (T),
           Post => Is_Pointer (Pointer_Cast_To_Relationship'Result);
@@ -184,8 +183,7 @@ package GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (GM (Pointer_Cast (IR_Builder, LLVM_Value (V), T, Name),
-             Related_Type (V), R, V)))
+        (GM (Pointer_Cast (IR_Builder, +V, T, Name), Related_Type (V), R, V)))
      with Pre  => Is_Pointer (V) and then Present (T)
                   and then R = Reference_To_Unknown,
           Post => Is_Pointer (Ptr_To_Relationship'Result), Inline;
@@ -226,7 +224,7 @@ package GNATLLVM.Instructions is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-     (G (Z_Ext (IR_Builder, LLVM_Value (V), T, Name), Related_Type (V), R,
+     (G (Z_Ext (IR_Builder, +V, T, Name), Related_Type (V), R,
          Alignment => Alignment (V)))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Z_Ext_To_Relationship'Result);
@@ -265,8 +263,7 @@ package GNATLLVM.Instructions is
      (V, T : GL_Value; Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (G_From (Int_To_Ptr (IR_Builder, LLVM_Value (V), Type_Of (T), Name),
-                 T)))
+        (G_From (Int_To_Ptr (IR_Builder, +V, Type_Of (T), Name), T)))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
                   and then Is_Pointer (T),
           Post => Is_Pointer (Int_To_Ptr'Result);
@@ -275,8 +272,7 @@ package GNATLLVM.Instructions is
      (V, T : GL_Value; Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (G_From (Ptr_To_Int (IR_Builder, LLVM_Value (V), Type_Of (T), Name),
-                 T)))
+        (G_From (Ptr_To_Int (IR_Builder, +V, Type_Of (T), Name), T)))
      with Pre  => Is_Pointer (V)
                   and then Is_Discrete_Or_Fixed_Point_Type (T),
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result);
@@ -348,8 +344,8 @@ package GNATLLVM.Instructions is
       LHS, RHS : GL_Value;
       Name     : String := "") return GL_Value
    is
-     (G (I_Cmp (IR_Builder, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Boolean_GL_Type, Boolean_Data))
+     (G (I_Cmp (IR_Builder, Op, +LHS, +RHS, Name), Boolean_GL_Type,
+         Boolean_Data))
      with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (I_Cmp'Result);
 
@@ -358,8 +354,8 @@ package GNATLLVM.Instructions is
       LHS, RHS : GL_Value;
       Name     : String := "") return GL_Value
    is
-     (G (F_Cmp (IR_Builder, Op, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-         Boolean_GL_Type, Boolean_Data))
+     (G (F_Cmp (IR_Builder, Op, +LHS, +RHS, Name), Boolean_GL_Type,
+         Boolean_Data))
      with Pre  => Is_Floating_Point_Type (LHS)
                   and then Is_Floating_Point_Type (RHS),
           Post => Present (F_Cmp'Result);
@@ -422,9 +418,7 @@ package GNATLLVM.Instructions is
      (Set_TBAA_Type
         (Set_Alignment
            (Mark_Overflowed
-              (G_From (S_Rem (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                              Name),
-                       LHS),
+              (G_From (S_Rem (IR_Builder, +LHS, +RHS, Name), LHS),
                Overflowed (LHS) or else Overflowed (RHS)),
             Nat'Min (Alignment (LHS), Alignment (RHS))),
          No_Metadata_T))
@@ -438,9 +432,7 @@ package GNATLLVM.Instructions is
      (Set_TBAA_Type
         (Set_Alignment
            (Mark_Overflowed
-              (G_From (U_Rem (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                              Name),
-                       LHS),
+              (G_From (U_Rem (IR_Builder, +LHS, +RHS, Name), LHS),
                Overflowed (LHS) or else Overflowed (RHS)),
             Nat'Min (Alignment (LHS), Alignment (RHS))),
          No_Metadata_T))
@@ -453,9 +445,7 @@ package GNATLLVM.Instructions is
    is
      (Set_Alignment
         (Mark_Overflowed
-           (G_From (Build_And (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS),
-                               Name),
-                    LHS),
+           (G_From (Build_And (IR_Builder, +LHS, +RHS, Name), LHS),
             Overflowed (LHS) or else Overflowed (RHS)),
          Nat'Max (Alignment (LHS), Alignment (RHS))))
       with Pre  => Present (LHS) and then Present (RHS),
@@ -467,9 +457,7 @@ package GNATLLVM.Instructions is
      (Set_TBAA_Type
         (Set_Alignment
            (Mark_Overflowed
-              (G_From (Build_Or (IR_Builder, LLVM_Value (LHS),
-                                 LLVM_Value (RHS), Name),
-                       LHS),
+              (G_From (Build_Or (IR_Builder, +LHS, +RHS, Name), LHS),
                Overflowed (LHS) or else Overflowed (RHS)),
             Nat'Min (Alignment (LHS), Alignment (RHS))),
          No_Metadata_T))
@@ -482,9 +470,7 @@ package GNATLLVM.Instructions is
      (Set_TBAA_Type
         (Set_Alignment
            (Mark_Overflowed
-              (G_From (Build_Xor (IR_Builder, LLVM_Value (LHS),
-                                  LLVM_Value (RHS), Name),
-                       LHS),
+              (G_From (Build_Xor (IR_Builder, +LHS, +RHS, Name), LHS),
                Overflowed (LHS) or else Overflowed (RHS)),
             Nat'Min (Alignment (LHS), Alignment (RHS))),
          No_Metadata_T))
@@ -495,8 +481,7 @@ package GNATLLVM.Instructions is
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (Mark_Overflowed
-        (G_From (F_Add (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-                 LHS),
+        (G_From (F_Add (IR_Builder, +LHS, +RHS, Name), LHS),
          Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Is_Floating_Point_Type (LHS)
                    and then Is_Floating_Point_Type (RHS),
@@ -506,8 +491,7 @@ package GNATLLVM.Instructions is
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (Mark_Overflowed
-        (G_From (F_Sub (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-                 LHS),
+        (G_From (F_Sub (IR_Builder, +LHS, +RHS, Name), LHS),
          Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Is_Floating_Point_Type (LHS)
                    and then Is_Floating_Point_Type (RHS),
@@ -517,8 +501,7 @@ package GNATLLVM.Instructions is
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (Mark_Overflowed
-        (G_From (F_Mul (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-                 LHS),
+        (G_From (F_Mul (IR_Builder, +LHS, +RHS, Name), LHS),
          Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Is_Floating_Point_Type (LHS)
                    and then Is_Floating_Point_Type (RHS),
@@ -528,8 +511,7 @@ package GNATLLVM.Instructions is
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (Mark_Overflowed
-        (G_From (F_Div (IR_Builder, LLVM_Value (LHS), LLVM_Value (RHS), Name),
-                 LHS),
+        (G_From (F_Div (IR_Builder, +LHS, +RHS, Name), LHS),
          Overflowed (LHS) or else Overflowed (RHS)))
       with Pre  => Is_Floating_Point_Type (LHS)
                    and then Is_Floating_Point_Type (RHS),
@@ -576,21 +558,21 @@ package GNATLLVM.Instructions is
      (V : GL_Value; Name : String := "") return GL_Value
    is
      (Clear_Alignment
-        (G_From (Build_Not (IR_Builder, LLVM_Value (V), Name), V)))
+        (G_From (Build_Not (IR_Builder, +V, Name), V)))
       with Pre  => Present (V),
            Post => Present (Build_Not'Result);
 
    function Neg
      (V : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (Set_Arith_Attrs (Neg (IR_Builder, LLVM_Value (V), Name), V), V))
+     (G_From (Set_Arith_Attrs (Neg (IR_Builder, +V, Name), V), V))
       with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
            Post => Is_Discrete_Or_Fixed_Point_Type (Neg'Result);
 
    function F_Neg
      (V : GL_Value; Name : String := "") return GL_Value
    is
-     (G_From (F_Neg (IR_Builder, LLVM_Value (V), Name), V))
+     (G_From (F_Neg (IR_Builder, +V, Name), V))
      with Pre  => Is_Floating_Point_Type (V),
           Post => Is_Floating_Point_Type (F_Neg'Result);
 
@@ -744,7 +726,7 @@ package GNATLLVM.Instructions is
       Name  : String := "") return GL_Value
    is
       (Initialize_Alignment
-         (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), GT)))
+         (G (Extract_Value (IR_Builder, +Arg, Index, Name), GT)))
      with  Pre  => Present (Arg) and then Present (GT),
            Post => Present (Extract_Value'Result);
 
@@ -755,8 +737,7 @@ package GNATLLVM.Instructions is
       Name  : String := "") return GL_Value
    is
      (Initialize_Alignment
-        (G_Ref (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name),
-                GT)))
+        (G_Ref (Extract_Value (IR_Builder, +Arg, Index, Name), GT)))
      with  Pre  => Present (Arg) and then Present (GT),
            Post => Is_Pointer (Extract_Value_To_Ref'Result);
 
@@ -769,8 +750,7 @@ package GNATLLVM.Instructions is
    is
      (Initialize_TBAA
         (Initialize_Alignment
-           (G (Extract_Value (IR_Builder, LLVM_Value (Arg), Index, Name), GT,
-               R))))
+           (G (Extract_Value (IR_Builder, +Arg, Index, Name), GT, R))))
      with  Pre  => Present (Arg) and then Present (GT),
            Post => Present (Extract_Value_To_Relationship'Result);
 
@@ -780,9 +760,7 @@ package GNATLLVM.Instructions is
       Name     : String := "") return GL_Value
    is
      (Clear_Alignment
-        (G_From (Insert_Value (IR_Builder, LLVM_Value (Arg), LLVM_Value (Elt),
-                               Index, Name),
-                 Arg)))
+        (G_From (Insert_Value (IR_Builder, +Arg, +Elt, Index, Name), Arg)))
      with  Pre  => Present (Arg) and then Present (Elt),
            Post => Present (Insert_Value'Result);
 
@@ -793,8 +771,8 @@ package GNATLLVM.Instructions is
       Name    : String := "") return GL_Value
    is
      (Initialize_Alignment
-        (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
-                                 Idx_Arr'Address, Idx_Arr'Length, Name),
+        (G (Build_Extract_Value (IR_Builder, +Arg, Idx_Arr'Address,
+                                 Idx_Arr'Length, Name),
             GT)))
      with  Pre  => Present (GT) and then Present (Arg),
            Post => Present (Extract_Value'Result);
@@ -806,8 +784,8 @@ package GNATLLVM.Instructions is
       Name    : String := "") return GL_Value
    is
      (Initialize_Alignment
-        (G_Ref (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
-                                     Idx_Arr'Address, Idx_Arr'Length, Name),
+        (G_Ref (Build_Extract_Value (IR_Builder, +Arg, Idx_Arr'Address,
+                                     Idx_Arr'Length, Name),
                 GT)))
      with  Pre  => Present (GT) and then Present (Arg),
            Post => Present (Extract_Value_To_Ref'Result);
@@ -821,8 +799,8 @@ package GNATLLVM.Instructions is
    is
      (Initialize_TBAA
         (Initialize_Alignment
-           (G (Build_Extract_Value (IR_Builder, LLVM_Value (Arg),
-                                    Idx_Arr'Address, Idx_Arr'Length, Name),
+           (G (Build_Extract_Value (IR_Builder, +Arg, Idx_Arr'Address,
+                                    Idx_Arr'Length, Name),
                GT, R))))
      with  Pre  => Present (GT) and then Present (Arg),
            Post => Present (Extract_Value_To_Relationship'Result);
@@ -832,9 +810,8 @@ package GNATLLVM.Instructions is
       Idx_Arr  : Index_Array;
       Name     : String := "") return GL_Value
    is
-     (G_From (Build_Insert_Value (IR_Builder, LLVM_Value (Arg),
-                                  LLVM_Value (Elt),
-                                  Idx_Arr'Address, Idx_Arr'Length, Name),
+     (G_From (Build_Insert_Value (IR_Builder, +Arg, +Elt, Idx_Arr'Address,
+                                  Idx_Arr'Length, Name),
               Arg))
      with  Pre  => Present (Arg) and then Present (Elt),
            Post => Present (Insert_Value'Result);
@@ -930,7 +907,7 @@ package GNATLLVM.Instructions is
       Num_Clauses      : Nat    := 5;
       Name             : String := "") return GL_Value
    is
-      (G (Landing_Pad (IR_Builder, T, LLVM_Value (Personality_Func),
+      (G (Landing_Pad (IR_Builder, T, +Personality_Func,
                        unsigned (Num_Clauses), Name),
          A_Char_GL_Type, Unknown))
      with Pre  => Present (T) and then Present (Personality_Func),
@@ -952,14 +929,14 @@ package GNATLLVM.Instructions is
    function Build_Switch
      (V : GL_Value; Default : Basic_Block_T; Blocks : Nat := 15) return Value_T
    is
-     (Build_Switch (IR_Builder, LLVM_Value (V), Default, unsigned (Blocks)))
+     (Build_Switch (IR_Builder, +V, Default, unsigned (Blocks)))
      with Pre  => Present (V) and then Present (Default),
           Post => Present (Build_Switch'Result);
 
    function Build_Indirect_Br
      (V : GL_Value; Dests : Nat := 2) return Value_T
    is
-     (Build_Indirect_Br (IR_Builder, LLVM_Value (V), unsigned (Dests)))
+     (Build_Indirect_Br (IR_Builder, +V, unsigned (Dests)))
      with Pre => Present (V), Post => Present (Build_Indirect_Br'Result);
 
 end GNATLLVM.Instructions;

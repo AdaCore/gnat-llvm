@@ -556,7 +556,7 @@ package body GNATLLVM.DebugInfo is
         and then not Is_Imported (Def_Ident)
       then
          Global_Set_Metadata
-           (LLVM_Value (V), 0,
+           (+V, 0,
             DI_Create_Global_Variable_Expression
               (DI_Builder, Debug_Compile_Unit, Name, Name'Length,
                (if Ext_Name = Name then "" else Ext_Name),
@@ -612,13 +612,13 @@ package body GNATLLVM.DebugInfo is
          if Is_Data (V) then
             if Get_Type_Size (V) /= Nat (0) then
                Discard (DI_Builder_Insert_Dbg_Value_At_End
-                          (DI_Builder, LLVM_Value (V), Var_Data, Empty_DI_Expr,
+                          (DI_Builder, +V, Var_Data, Empty_DI_Expr,
                            Create_Debug_Location (Def_Ident),
                            Get_Insert_Block));
             end if;
          else
             Discard (DI_Builder_Insert_Declare_At_End
-                       (DI_Builder, LLVM_Value (V), Var_Data, Empty_DI_Expr,
+                       (DI_Builder, +V, Var_Data, Empty_DI_Expr,
                         Create_Debug_Location (Def_Ident), Get_Insert_Block));
          end if;
       end if;

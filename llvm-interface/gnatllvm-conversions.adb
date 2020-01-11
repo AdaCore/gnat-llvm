@@ -927,8 +927,7 @@ package body GNATLLVM.Conversions is
       --  If the input is an actual pointer, convert it
 
       elsif Get_Type_Kind (T) = Pointer_Type_Kind then
-         return GM (Pointer_Cast (IR_Builder, LLVM_Value (V), T, ""),
-                    GT, R, V);
+         return GM (Pointer_Cast (IR_Builder, +V, T, ""), GT, R, V);
       end if;
 
       --  Otherwise, we have a composite pointer and must make a new
@@ -939,7 +938,7 @@ package body GNATLLVM.Conversions is
          declare
             Out_Type : constant Type_T   := Struct_Get_Type_At_Index (T, J);
             In_Value : constant Value_T  :=
-              Extract_Value (IR_Builder, LLVM_Value (V), J, "");
+              Extract_Value (IR_Builder, +V, J, "");
             Cvt_Value : constant Value_T :=
               Pointer_Cast (IR_Builder, In_Value, Out_Type, "");
 
@@ -1275,8 +1274,7 @@ package body GNATLLVM.Conversions is
       Out_GT : constant GL_Type  :=
         (if Is_Padded_GL_Type (GT) then Primitive_GL_Type (GT) else GT);
       Cvt_V  : constant GL_Value :=
-          G (Convert_Aggregate_Constant (LLVM_Value (In_V), Type_Of (Out_GT)),
-             Out_GT);
+          G (Convert_Aggregate_Constant (+In_V, Type_Of (Out_GT)), Out_GT);
 
    begin
       return (if Out_GT = GT then Cvt_V else From_Primitive (Cvt_V, GT));

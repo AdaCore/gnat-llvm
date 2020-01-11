@@ -1816,7 +1816,7 @@ package body GNATLLVM.Records is
       --  type of this piece (which has no corresponding GNAT type).
 
       if Is_Nonnative_Type (Rec_Type) then
-         Result := GM (Pointer_Cast (IR_Builder, LLVM_Value (Result),
+         Result := GM (Pointer_Cast (IR_Builder, +Result,
                                      Pointer_Type (RI.LLVM_Type, 0), ""),
                        Rec_GT, Reference_To_Unknown, Result);
       else
@@ -2007,8 +2007,7 @@ package body GNATLLVM.Records is
          if Is_Array_Bitfield (F) then
             if Relationship (Result) = Unknown then
                Result := G (Convert_Aggregate_Constant
-                              (LLVM_Value (Result),
-                               Int_Ty (Get_Type_Size (Result))),
+                              (+Result, Int_Ty (Get_Type_Size (Result))),
                             F_GT, Unknown);
             else
                declare
@@ -2084,7 +2083,7 @@ package body GNATLLVM.Records is
                        (if   Present (LHS) then LHS
                         else Allocate_For_Type (F_GT));
                      Mem_As_Int_Ptr : constant GL_Value :=
-                       GM (Bit_Cast (IR_Builder, LLVM_Value (Memory),
+                       GM (Bit_Cast (IR_Builder, +Memory,
                                      Pointer_Type (Type_Of (Result), 0), ""),
                            F_GT, Reference_To_Unknown, Memory);
 
@@ -2207,7 +2206,7 @@ package body GNATLLVM.Records is
             if Is_Data (LHS_For_Access) then
                Orig_Data_T := Type_Of (Rec_Data);
                Rec_Data    := G (Convert_Aggregate_Constant
-                                   (LLVM_Value (Rec_Data),
+                                   (+Rec_Data,
                                     Int_Ty (Get_Type_Size (Rec_Data))),
                                  F_GT, Unknown);
             else
@@ -2244,12 +2243,11 @@ package body GNATLLVM.Records is
                                                  New_RHS_T, Unknown);
          elsif Get_Type_Kind (RHS_T) /= Integer_Type_Kind then
             if Is_Nonsymbolic_Constant (RHS_Cvt) then
-               RHS_Cvt := G (Convert_Aggregate_Constant
-                               (LLVM_Value (RHS), New_RHS_T),
+               RHS_Cvt := G (Convert_Aggregate_Constant (+RHS, New_RHS_T),
                              Related_Type (RHS_Cvt), Unknown);
             else
                RHS_Cvt := Get (RHS_Cvt, Reference);
-               RHS_Cvt := Load (GM (Bit_Cast (IR_Builder, LLVM_Value (RHS_Cvt),
+               RHS_Cvt := Load (GM (Bit_Cast (IR_Builder, +RHS_Cvt,
                                               Pointer_Type (New_RHS_T, 0), ""),
                                     Related_Type (RHS_Cvt),
                                     Reference_To_Unknown, RHS_Cvt));
@@ -2306,7 +2304,7 @@ package body GNATLLVM.Records is
          if Is_Data (LHS_For_Access) then
             if Is_Array_Bitfield (F) then
                Rec_Data := G (Convert_Aggregate_Constant
-                                (LLVM_Value (Rec_Data), Orig_Data_T),
+                                (+Rec_Data, Orig_Data_T),
                               F_GT, Unknown);
             end if;
 

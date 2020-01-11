@@ -1905,7 +1905,7 @@ package body GNATLLVM.Types is
       if No (V) then
          Write_Line ("None");
       elsif Is_Const (V) then
-         Dump_LLVM_Value (LLVM_Value (V.C_Value));
+         Dump_LLVM_Value (+V.C_Value);
       else
          lgx (V.T_Value);
       end if;

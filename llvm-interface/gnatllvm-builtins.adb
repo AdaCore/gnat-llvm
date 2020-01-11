@@ -116,18 +116,15 @@ package body GNATLLVM.Builtins is
    --  No_GL_Value.
 
    function Emit_Atomic_Load
-     (Ptr_Val : GL_Value;
-      Order   : Atomic_Ordering_T;
-      GT      : GL_Type) return GL_Value
-     with Pre  => Present (Ptr_Val) and then Present (GT),
+     (Ptr : GL_Value; Order : Atomic_Ordering_T; GT : GL_Type) return GL_Value
+     with Pre  => Present (Ptr) and then Present (GT),
           Post => Present (Emit_Atomic_Load'Result);
-   --  Emit an atomic load from Ptr_Val with the specified memory order and
+   --  Emit an atomic load from Ptr with the specified memory order and
    --  result type.
 
    procedure Emit_Atomic_Store
-     (Ptr_Val, Val : GL_Value; Order : Atomic_Ordering_T; GT : GL_Type)
-     with Pre => Present (Ptr_Val) and then Present (Val)
-                 and then Present (GT);
+     (Ptr, Val : GL_Value; Order : Atomic_Ordering_T; GT : GL_Type)
+     with Pre => Present (Ptr) and then Present (Val) and then Present (GT);
    --  Emit an atomic Store of Val from to Ptr_Val with the specified
    --  memory order and data type.
 
@@ -546,12 +543,9 @@ package body GNATLLVM.Builtins is
    ----------------------
 
    function Emit_Atomic_Load
-     (Ptr_Val : GL_Value;
-      Order   : Atomic_Ordering_T;
-      GT      : GL_Type) return GL_Value
+     (Ptr : GL_Value; Order : Atomic_Ordering_T; GT : GL_Type) return GL_Value
    is
-      Inst       : constant Value_T :=
-        Load  (IR_Builder, LLVM_Value (Ptr_Val), "");
+      Inst : constant Value_T := Load (IR_Builder, +Ptr, "");
 
    begin
       Set_Ordering  (Inst, Order);
@@ -567,10 +561,9 @@ package body GNATLLVM.Builtins is
    -----------------------
 
    procedure Emit_Atomic_Store
-     (Ptr_Val, Val : GL_Value; Order : Atomic_Ordering_T; GT : GL_Type)
+     (Ptr, Val : GL_Value; Order : Atomic_Ordering_T; GT : GL_Type)
    is
-      Inst : constant Value_T :=
-        Build_Store (IR_Builder, LLVM_Value (Val), LLVM_Value (Ptr_Val));
+      Inst : constant Value_T := Build_Store (IR_Builder, +Val, +Ptr);
 
    begin
       Set_Ordering (Inst, Order);

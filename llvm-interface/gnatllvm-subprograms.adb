@@ -821,10 +821,7 @@ package body GNATLLVM.Subprograms is
       if Present (Func) then
          return G_From
            (Pointer_Cast
-             (IR_Builder,
-              LLVM_Value (Func),
-              Pointer_Type (Subp_Type, 0), S),
-            Func);
+              (IR_Builder, +Func, Pointer_Type (Subp_Type, 0), S), Func);
       else
          Func := Add_Function (S, Subp_Type, GT, Is_Builtin => True);
 
@@ -1003,7 +1000,7 @@ package body GNATLLVM.Subprograms is
          LLVM_Param := Get_Param (Func, Param_Num, Return_GT,
                                   (if Is_Unconstrained_Array (Return_GT)
                                    then Fat_Pointer else Reference));
-         Set_Value_Name (LLVM_Value (LLVM_Param), "_return");
+         Set_Value_Name (+LLVM_Param, "_return");
          Return_Address_Param := LLVM_Param;
          Param_Num := Param_Num + 1;
       end if;
@@ -2254,8 +2251,7 @@ package body GNATLLVM.Subprograms is
             Addr      : GL_Value                 := Get_Value (Addr_Expr);
 
             function Int_To_Subp (V : GL_Value) return GL_Value is
-              (GM (Int_To_Ptr (IR_Builder, LLVM_Value (Addr), Subp_T, ""),
-                   GT, R, V))
+              (GM (Int_To_Ptr (IR_Builder, +Addr, Subp_T, ""), GT, R, V))
               with Pre => Present (V), Post => Present (Int_To_Subp'Result);
 
          begin
@@ -2348,8 +2344,7 @@ package body GNATLLVM.Subprograms is
       if Present (LLVM_Func)
         and then Type_Of (LLVM_Func) /= Pointer_Type (Subp_Type, 0)
       then
-         LLVM_Func := G_From (Pointer_Cast (IR_Builder,
-                                            LLVM_Value (LLVM_Func),
+         LLVM_Func := G_From (Pointer_Cast (IR_Builder, +LLVM_Func,
                                             Pointer_Type (Subp_Type, 0),
                                             Subp_Name),
                               LLVM_Func);
@@ -2556,7 +2551,7 @@ package body GNATLLVM.Subprograms is
    function Create_Basic_Block (Name : String := "") return Basic_Block_T is
    begin
       return Append_Basic_Block_In_Context
-        (Context, LLVM_Value (Current_Func), Name);
+        (Context, +Current_Func, Name);
    end Create_Basic_Block;
 
    --------------------------------------------
@@ -2581,7 +2576,7 @@ package body GNATLLVM.Subprograms is
 
          Val := Const_Array  (Constructors, Any_Array_GL_Type);
          Var := Add_Global   (Module, Type_Of (Val), "llvm.global_ctors");
-         Set_Initializer     (Var, LLVM_Value (Val));
+         Set_Initializer     (Var, +Val);
          Set_Linkage         (Var, Appending_Linkage);
          Set_Global_Constant (Var, True);
       end if;
@@ -2597,7 +2592,7 @@ package body GNATLLVM.Subprograms is
 
          Val := Const_Array  (Destructors, Any_Array_GL_Type);
          Var := Add_Global   (Module, Type_Of (Val), "llvm.global_dtors");
-         Set_Initializer     (Var, LLVM_Value (Val));
+         Set_Initializer     (Var, +Val);
          Set_Linkage         (Var, Appending_Linkage);
          Set_Global_Constant (Var, True);
       end if;

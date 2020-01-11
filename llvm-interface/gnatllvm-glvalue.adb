@@ -434,7 +434,7 @@ package body GNATLLVM.GLValue is
    -----------------------------
 
    function Is_Nonsymbolic_Constant (V : GL_Value) return Boolean is
-     (Is_Nonsymbolic_Constant (LLVM_Value (V)));
+     (Is_Nonsymbolic_Constant (+V));
 
    -----------------------
    -- Is_Nonnative_Type --
@@ -1102,7 +1102,7 @@ package body GNATLLVM.GLValue is
    ---------------
 
    function To_Access (V : GL_Value; GT : GL_Type) return GL_Value is
-     (GM (LLVM_Value (V), GT, Data, V));
+     (GM (+V, GT, Data, V));
 
    -----------------
    -- From_Access --
@@ -1112,7 +1112,7 @@ package body GNATLLVM.GLValue is
       GT     : constant GL_Type         := Related_Type (V);
       Acc_GT : constant GL_Type         := Full_Designated_GL_Type (GT);
       R      : constant GL_Relationship := Relationship_For_Access_Type (GT);
-      Result : GL_Value                 := GM (LLVM_Value (V), Acc_GT, R, V);
+      Result : GL_Value                 := GM (+V, Acc_GT, R, V);
 
    begin
       Initialize_Alignment (Result);
@@ -1158,7 +1158,7 @@ package body GNATLLVM.GLValue is
       E     : Entity_Id := Empty;
       Align : Nat := 0) return Nat is
    begin
-      return Set_Object_Align (LLVM_Value (Obj), GT, E, Align);
+      return Set_Object_Align (+Obj, GT, E, Align);
    end Set_Object_Align;
 
    ---------------
@@ -1332,7 +1332,7 @@ package body GNATLLVM.GLValue is
                                                         Access_Value_Array);
    begin
       for J in Elmts'Range loop
-         Values (J) := LLVM_Value (Elmts (J));
+         Values (J) := +Elmts (J);
       end loop;
 
       --  We have a kludge here in the case of making a string literal
@@ -1360,7 +1360,7 @@ package body GNATLLVM.GLValue is
                                                         Access_Value_Array);
    begin
       for J in Elmts'Range loop
-         Values (J) := LLVM_Value (Elmts (J));
+         Values (J) := +Elmts (J);
       end loop;
 
       --  We have a kludge here in the case of making a struct that's
@@ -1394,8 +1394,7 @@ package body GNATLLVM.GLValue is
 
    function Pred_FP (V : GL_Value) return GL_Value is
    begin
-      return G (Pred_FP (Context, Type_Of (V), LLVM_Value (V)),
-                Related_Type (V));
+      return G (Pred_FP (Context, Type_Of (V), +V), Related_Type (V));
    end Pred_FP;
 
    ------------------------
@@ -1404,7 +1403,7 @@ package body GNATLLVM.GLValue is
 
    procedure Set_Does_Not_Throw (V : GL_Value) is
    begin
-      Set_Does_Not_Throw (LLVM_Value (V));
+      Set_Does_Not_Throw (+V);
    end Set_Does_Not_Throw;
 
    -------------------------
@@ -1413,7 +1412,7 @@ package body GNATLLVM.GLValue is
 
    procedure Set_Does_Not_Return (V : GL_Value) is
    begin
-      Set_Does_Not_Return (LLVM_Value (V));
+      Set_Does_Not_Return (+V);
    end Set_Does_Not_Return;
 
    --------------------------
@@ -1436,7 +1435,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Clause (V, Exc : GL_Value) is
    begin
-      Add_Clause (LLVM_Value (V), LLVM_Value (Exc));
+      Add_Clause (+V, +Exc);
    end Add_Clause;
 
    -----------------
@@ -1445,7 +1444,7 @@ package body GNATLLVM.GLValue is
 
    procedure Set_Cleanup (V : GL_Value) is
    begin
-      Set_Cleanup (LLVM_Value (V), True);
+      Set_Cleanup (+V, True);
    end Set_Cleanup;
 
    -------------------
@@ -1525,7 +1524,7 @@ package body GNATLLVM.GLValue is
 
    procedure Set_Value_Name (V : GL_Value; Name : String) is
    begin
-      Set_Value_Name (LLVM_Value (V), Name);
+      Set_Value_Name (+V, Name);
    end Set_Value_Name;
 
    ------------------------
@@ -1534,7 +1533,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Cold_Attribute (V : GL_Value) is
    begin
-      Add_Cold_Attribute (LLVM_Value (V));
+      Add_Cold_Attribute (+V);
    end Add_Cold_Attribute;
 
    -----------------------------------
@@ -1552,10 +1551,10 @@ package body GNATLLVM.GLValue is
       --  know the size.
 
       if Type_Is_Sized (T) then
-         Add_Dereferenceable_Attribute (LLVM_Value (V), unsigned (Idx),
+         Add_Dereferenceable_Attribute (+V, unsigned (Idx),
                                         To_Bytes (Get_Type_Size (T)));
       else
-         Add_Non_Null_Attribute (LLVM_Value (V), unsigned (Idx));
+         Add_Non_Null_Attribute (+V, unsigned (Idx));
       end if;
    end Add_Dereferenceable_Attribute;
 
@@ -1573,10 +1572,9 @@ package body GNATLLVM.GLValue is
       --  know the size.
 
       if Type_Is_Sized (T) then
-         Add_Dereferenceable_Attribute (LLVM_Value (V),
-                                        To_Bytes (Get_Type_Size (T)));
+         Add_Dereferenceable_Attribute (+V, To_Bytes (Get_Type_Size (T)));
       else
-         Add_Non_Null_Attribute (LLVM_Value (V));
+         Add_Non_Null_Attribute (+V);
       end if;
    end Add_Dereferenceable_Attribute;
 
@@ -1591,7 +1589,7 @@ package body GNATLLVM.GLValue is
 
    begin
       if Type_Is_Sized (T) then
-         Add_Dereferenceable_Or_Null_Attribute (LLVM_Value (V), unsigned (Idx),
+         Add_Dereferenceable_Or_Null_Attribute (+V, unsigned (Idx),
                                                 To_Bytes (Get_Type_Size (T)));
       end if;
    end Add_Dereferenceable_Or_Null_Attribute;
@@ -1606,8 +1604,8 @@ package body GNATLLVM.GLValue is
 
    begin
       if Type_Is_Sized (T) then
-         Add_Dereferenceable_Or_Null_Attribute (LLVM_Value (V),
-                                                To_Bytes (Get_Type_Size (T)));
+         Add_Dereferenceable_Or_Null_Attribute
+           (+V, To_Bytes (Get_Type_Size (T)));
       end if;
    end Add_Dereferenceable_Or_Null_Attribute;
 
@@ -1618,11 +1616,11 @@ package body GNATLLVM.GLValue is
    procedure Add_Inline_Attribute (V : GL_Value; Subp : Entity_Id) is
    begin
       if Is_Inlined (Subp) and then Has_Pragma_Inline_Always (Subp) then
-         Add_Inline_Always_Attribute (LLVM_Value (V));
+         Add_Inline_Always_Attribute (+V);
       elsif Is_Inlined (Subp) and then Has_Pragma_Inline (Subp) then
-         Add_Inline_Hint_Attribute (LLVM_Value (V));
+         Add_Inline_Hint_Attribute (+V);
       elsif Has_Pragma_No_Inline (Subp) then
-         Add_Inline_No_Attribute (LLVM_Value (V));
+         Add_Inline_No_Attribute (+V);
       end if;
    end Add_Inline_Attribute;
 
@@ -1632,7 +1630,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Named_Attribute (V : GL_Value; Name, Value : String) is
    begin
-      Add_Named_Attribute (LLVM_Value (V), Name, Value, Context);
+      Add_Named_Attribute (+V, Name, Value, Context);
    end Add_Named_Attribute;
 
    ------------------------
@@ -1641,7 +1639,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Nest_Attribute (V : GL_Value; Idx : Integer) is
    begin
-      Add_Nest_Attribute (LLVM_Value (V), unsigned (Idx));
+      Add_Nest_Attribute (+V, unsigned (Idx));
    end Add_Nest_Attribute;
 
    ---------------------------
@@ -1650,7 +1648,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Noalias_Attribute (V : GL_Value; Idx : Integer) is
    begin
-      Add_Noalias_Attribute (LLVM_Value (V), unsigned (Idx));
+      Add_Noalias_Attribute (+V, unsigned (Idx));
    end Add_Noalias_Attribute;
 
    ---------------------------
@@ -1659,7 +1657,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Noalias_Attribute (V : GL_Value) is
    begin
-      Add_Noalias_Attribute (LLVM_Value (V));
+      Add_Noalias_Attribute (+V);
    end Add_Noalias_Attribute;
 
    ---------------------------
@@ -1668,7 +1666,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Nocapture_Attribute (V : GL_Value; Idx : Integer) is
    begin
-      Add_Nocapture_Attribute (LLVM_Value (V), unsigned (Idx));
+      Add_Nocapture_Attribute (+V, unsigned (Idx));
    end Add_Nocapture_Attribute;
 
    ----------------------------
@@ -1677,7 +1675,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Non_Null_Attribute (V : GL_Value; Idx : Integer) is
    begin
-      Add_Non_Null_Attribute (LLVM_Value (V), unsigned (Idx));
+      Add_Non_Null_Attribute (+V, unsigned (Idx));
    end Add_Non_Null_Attribute;
 
    ----------------------------
@@ -1686,7 +1684,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Non_Null_Attribute (V : GL_Value) is
    begin
-      Add_Non_Null_Attribute (LLVM_Value (V));
+      Add_Non_Null_Attribute (+V);
    end Add_Non_Null_Attribute;
 
    ----------------------------
@@ -1695,7 +1693,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Readonly_Attribute (V : GL_Value; Idx : Integer) is
    begin
-      Add_Readonly_Attribute (LLVM_Value (V), unsigned (Idx));
+      Add_Readonly_Attribute (+V, unsigned (Idx));
    end Add_Readonly_Attribute;
 
    -----------------------------
@@ -1704,7 +1702,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Writeonly_Attribute (V : GL_Value; Idx : Integer) is
    begin
-      Add_Writeonly_Attribute (LLVM_Value (V), unsigned (Idx));
+      Add_Writeonly_Attribute (+V, unsigned (Idx));
    end Add_Writeonly_Attribute;
 
    -------------------
@@ -1713,7 +1711,7 @@ package body GNATLLVM.GLValue is
 
    procedure Set_DSO_Local (V : GL_Value) is
    begin
-      Set_DSO_Local (LLVM_Value (V));
+      Set_DSO_Local (+V);
    end Set_DSO_Local;
 
    ---------------------
@@ -1721,8 +1719,8 @@ package body GNATLLVM.GLValue is
    ---------------------
 
    procedure Set_Initializer (V, Expr : GL_Value) is
-      VV : Value_T := LLVM_Value (V);
-      VE : Value_T := LLVM_Value (Expr);
+      VV : Value_T := +V;
+      VE : Value_T := +Expr;
 
    begin
       --  If VV is a conversion, its operand is the actual value and we
@@ -1747,7 +1745,7 @@ package body GNATLLVM.GLValue is
 
    procedure Set_Linkage (V : GL_Value; Linkage : Linkage_T) is
    begin
-      Set_Linkage (LLVM_Value (V), Linkage);
+      Set_Linkage (+V, Linkage);
    end Set_Linkage;
 
    -------------------------
@@ -1755,7 +1753,7 @@ package body GNATLLVM.GLValue is
    -------------------------
 
    procedure Set_Global_Constant (V : GL_Value; B : Boolean := True) is
-      VV : Value_T := LLVM_Value (V);
+      VV : Value_T := +V;
    begin
 
       --  If VV is a conversion, its operand is the actual variable
@@ -1775,7 +1773,7 @@ package body GNATLLVM.GLValue is
 
    procedure Set_Thread_Local (V : GL_Value; Thread_Local : Boolean := True) is
    begin
-      Set_Thread_Local (LLVM_Value (V), Thread_Local);
+      Set_Thread_Local (+V, Thread_Local);
    end Set_Thread_Local;
 
    -----------------
@@ -1784,7 +1782,7 @@ package body GNATLLVM.GLValue is
 
    procedure Set_Section (V : GL_Value; S : String) is
    begin
-      Set_Section (LLVM_Value (V), S);
+      Set_Section (+V, S);
    end Set_Section;
 
    ----------------------
@@ -1794,7 +1792,7 @@ package body GNATLLVM.GLValue is
    procedure Set_Unnamed_Addr
      (V : GL_Value; Has_Unnamed_Addr : Boolean := True) is
    begin
-      Set_Unnamed_Addr (LLVM_Value (V), Has_Unnamed_Addr);
+      Set_Unnamed_Addr (+V, Has_Unnamed_Addr);
    end Set_Unnamed_Addr;
 
    -----------------------------
@@ -1803,7 +1801,7 @@ package body GNATLLVM.GLValue is
 
    procedure Set_Volatile_For_Atomic (V : GL_Value) is
    begin
-      Set_Volatile_For_Atomic (LLVM_Value (V));
+      Set_Volatile_For_Atomic (+V);
    end Set_Volatile_For_Atomic;
 
    ----------------------------
@@ -1812,7 +1810,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Function_To_Module (V : GL_Value) is
    begin
-      Add_Function_To_Module (LLVM_Value (V), Module);
+      Add_Function_To_Module (+V, Module);
    end Add_Function_To_Module;
 
    ---------------------
@@ -1844,7 +1842,7 @@ package body GNATLLVM.GLValue is
 
    procedure Set_Subprogram (V : GL_Value; M : Metadata_T) is
    begin
-      Set_Subprogram (LLVM_Value (V), M);
+      Set_Subprogram (+V, M);
    end Set_Subprogram;
 
    -------------------------
@@ -1869,7 +1867,7 @@ package body GNATLLVM.GLValue is
      (V : GL_Value; GT : GL_Type) return GL_Value
    is
       T   : constant Type_T  := Type_Of (GT);
-      Val : constant Value_T := LLVM_Value (V);
+      Val : constant Value_T := +V;
 
    begin
       return G ((if   Is_Null (Val) then Const_Null (T)
@@ -1946,8 +1944,7 @@ package body GNATLLVM.GLValue is
    function Get_GEP_Constant_Offset
      (GEP : GL_Value; Offset : out ULL) return Boolean is
    begin
-      return Get_GEP_Constant_Offset (LLVM_Value (GEP), Module_Data_Layout,
-                                      Offset);
+      return Get_GEP_Constant_Offset (+GEP, Module_Data_Layout, Offset);
    end Get_GEP_Constant_Offset;
 
    ------------------------------

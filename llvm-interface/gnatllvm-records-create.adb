@@ -1290,7 +1290,10 @@ package body GNATLLVM.Records.Create is
               Is_Dynamic_Size (Right_GT, Is_Unconstrained_Record (Right_GT));
             Pack_L    : constant Pack_Kind   := Field_Pack_Kind (Left_F);
             Pack_R    : constant Pack_Kind   := Field_Pack_Kind (Right_F);
-
+            Bit_L     : constant Boolean     :=
+              (Pack_L = Bit and then RM_Size (Left_GT)  mod BPU /= 0);
+            Bit_R     : constant Boolean     :=
+              (Pack_R = Bit and then RM_Size (Right_GT) mod BPU /= 0);
          begin
             --  This function must satisfy the conditions of A.18(5/3),
             --  specifically that it must define a "strict weak ordering",
@@ -1366,9 +1369,9 @@ package body GNATLLVM.Records.Create is
                return False;
             elsif Reorder and then not Dynamic_L and then Dynamic_R then
                return True;
-            elsif Reorder and then Pack_L /= None and then Pack_R =  None then
+            elsif Reorder and then Bit_L and then not Bit_R then
                return False;
-            elsif Reorder and then Pack_L =  None and then Pack_R /= None then
+            elsif Reorder and then not Bit_L and then Bit_R then
                return True;
 
             --  Otherwise, keep the original sequence intact

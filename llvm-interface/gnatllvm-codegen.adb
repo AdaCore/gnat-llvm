@@ -301,11 +301,11 @@ package body GNATLLVM.Codegen is
       Set_Module_Data_Layout (Module, Module_Data_Layout);
    end Initialize_LLVM_Target;
 
-   ------------------------
-   -- LLVM_Generate_Code --
-   ------------------------
+   -------------------
+   -- Generate_Code --
+   -------------------
 
-   procedure LLVM_Generate_Code (GNAT_Root : Node_Id) is
+   procedure Generate_Code (GNAT_Root : Node_Id) is
       Verified : Boolean := True;
       Err_Msg  : aliased Ptr_Err_Msg_Type;
 
@@ -419,7 +419,7 @@ package body GNATLLVM.Codegen is
       Dispose_Module (Module);
 
       pragma Assert (Verified);
-   end LLVM_Generate_Code;
+   end Generate_Code;
 
    ------------------------
    -- Is_Back_End_Switch --

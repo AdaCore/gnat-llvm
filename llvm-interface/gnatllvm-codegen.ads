@@ -85,7 +85,7 @@ package GNATLLVM.Codegen is
    --  Initialize all the data structures specific to the LLVM target code
    --  generation.
 
-   procedure LLVM_Generate_Code (GNAT_Root : Node_Id);
+   procedure Generate_Code (GNAT_Root : Node_Id);
    --  Generate LLVM code from what we've compiled with a node for error
    --  messages.
 

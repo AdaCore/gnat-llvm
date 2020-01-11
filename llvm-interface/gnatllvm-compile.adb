@@ -186,7 +186,7 @@ package body GNATLLVM.Compile is
       Output_Global_Constructors_Destructors;
       Add_Functions_To_Module;
       Finalize_Debugging;
-      LLVM_Generate_Code (GNAT_Root);
+      Generate_Code (GNAT_Root);
 
    end GNAT_To_LLVM;
 

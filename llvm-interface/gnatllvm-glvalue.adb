@@ -1538,7 +1538,7 @@ package body GNATLLVM.GLValue is
 
    -----------------------------------
    -- Add_Dereferenceable_Attribute --
-   ----------------------------------
+   -----------------------------------
 
    procedure Add_Dereferenceable_Attribute
      (V : GL_Value; Idx : Integer; GT : GL_Type)
@@ -1560,7 +1560,7 @@ package body GNATLLVM.GLValue is
 
    -----------------------------------
    -- Add_Dereferenceable_Attribute --
-   ----------------------------------
+   -----------------------------------
 
    procedure Add_Dereferenceable_Attribute (V : GL_Value; GT : GL_Type)
    is
@@ -1635,7 +1635,7 @@ package body GNATLLVM.GLValue is
 
    ------------------------
    -- Add_Nest_Attribute --
-   -----------------------
+   ------------------------
 
    procedure Add_Nest_Attribute (V : GL_Value; Idx : Integer) is
    begin
@@ -1660,9 +1660,9 @@ package body GNATLLVM.GLValue is
       Add_Noalias_Attribute (+V);
    end Add_Noalias_Attribute;
 
-   ---------------------------
+   -----------------------------
    -- Add_Nocapture_Attribute --
-   ---------------------------
+   -----------------------------
 
    procedure Add_Nocapture_Attribute (V : GL_Value; Idx : Integer) is
    begin

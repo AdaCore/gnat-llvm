@@ -35,11 +35,13 @@ with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
+with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Exprs is
 
@@ -48,6 +50,155 @@ package body GNATLLVM.Exprs is
    --  Helper for Emit_Attribute_Reference to recursively find the address
    --  of an object.  Returns a GL_Value that's a reference that points into
    --  an object and a number of bits that must be added to that value.
+
+   ------------------
+   -- Is_Safe_From --
+   ------------------
+
+   function Is_Safe_From (LHS : GL_Value; N : Node_Id) return Boolean is
+      Expr : Node_Id;
+
+   begin
+      --  If LHS is pristine, we know this must be safe
+
+      if Is_Pristine (LHS) then
+         return True;
+      end if;
+
+      --  Otherwise, do Nkind-specific processing
+
+      case Nkind (N) is
+         when N_Binary_Op | N_And_Then | N_Or_Else =>
+            return Is_Safe_From (LHS, Left_Opnd (N))
+              and then Is_Safe_From (LHS, Right_Opnd (N));
+
+         when N_Unary_Op | N_In =>
+            return Is_Safe_From (LHS, Right_Opnd (N));
+
+         when N_Character_Literal | N_Numeric_Or_String_Literal
+            | N_Reference | N_Null | N_Raise_xxx_Error =>
+            return True;
+
+         when N_Unchecked_Type_Conversion | N_Type_Conversion
+            | N_Qualified_Expression =>
+            return Is_Safe_From (LHS, Expression (N));
+
+         when N_Allocator =>
+            return Nkind (Expression (N)) /= N_Qualified_Expression
+              or else Is_Safe_From (LHS, Expression (N));
+
+         when N_Identifier | N_Expanded_Name | N_Operator_Symbol =>
+            return Is_Safe_From (LHS, Entity (N));
+
+         when N_Defining_Identifier | N_Defining_Operator_Symbol =>
+
+            declare
+               V : constant GL_Value := Get_Value (N);
+
+            begin
+               --  If we have a value for V and it's either data or V and LHS
+               --  represent two different variables, it's safe.
+
+               if not Present (V) or else LHS = V then
+                  return False;
+               elsif Is_Data (V) then
+                  return True;
+               else
+                  return (Is_A_Alloca_Inst (LHS)
+                            or else Is_A_Global_Variable (LHS))
+                    and then (Is_A_Alloca_Inst (V)
+                                or else Is_A_Global_Variable (V));
+               end if;
+            end;
+
+         when N_Selected_Component =>
+            return Is_Safe_From (LHS, Prefix (N));
+
+         when N_Indexed_Component =>
+            if not Is_Safe_From (LHS, Prefix (N)) then
+               return False;
+            end if;
+
+            --  Not only must the prefix not conflict with RHS, but the
+            --  bounds must not as well.
+
+            Expr := First (Expressions (N));
+            while Present (Expr) loop
+               if not Is_Safe_From (LHS, Expr) then
+                  return False;
+               end if;
+
+               Next (Expr);
+            end loop;
+
+            return True;
+
+         when N_Slice =>
+            return Is_Safe_From (LHS, Prefix (N))
+              and then Is_Safe_From (LHS, Low_Bound  (Discrete_Range (N)))
+              and then Is_Safe_From (LHS, High_Bound (Discrete_Range (N)));
+
+         when N_Aggregate | N_Extension_Aggregate =>
+
+            --  The way the components in the aggregate are presented by the
+            --  front end differs between records and arrays.
+
+            if Is_Record_Type (Full_Etype (N)) then
+               Expr := First (Component_Associations (N));
+               while Present (Expr) loop
+                  if Present (Expression (Expr))
+                    and then not Is_Safe_From (LHS, Expression (Expr))
+                  then
+                     return False;
+                  end if;
+
+                  Next (Expr);
+               end loop;
+            else
+               Expr := First (Expressions (N));
+               while Present (Expr) loop
+                  if not Is_Safe_From (LHS, Expr) then
+                     return False;
+                  end if;
+
+                  Next (Expr);
+               end loop;
+            end if;
+
+            return True;
+
+         when N_If_Expression =>
+            Expr := First (Expressions (N));
+            return Is_Safe_From (LHS, Expr)
+              and then Is_Safe_From (LHS, Next (Expr))
+              and then Is_Safe_From (LHS, Next (Next (Expr)));
+
+         when N_Attribute_Reference =>
+
+            --  Most are safe, so we just concern ourselves with the ones
+            --  that aren't.
+
+            Expr := First (Expressions (N));
+            case Get_Attribute_Id (Attribute_Name (N)) is
+               when Attribute_Deref =>
+                  return False;
+
+               when Attribute_Min | Attribute_Max =>
+                  return Is_Safe_From (LHS, Expr)
+                    and then Is_Safe_From (LHS, Next (Expr));
+
+               when Attribute_Pos | Attribute_Val | Attribute_Succ
+                  | Attribute_Pred | Attribute_Model =>
+                  return Is_Safe_From (LHS, Expr);
+
+               when  others =>
+                  return True;
+            end case;
+
+         when others =>
+            return False;
+      end case;
+   end Is_Safe_From;
 
    --------------------------------------
    -- LHS_And_Component_For_Assignment --
@@ -1242,6 +1393,7 @@ package body GNATLLVM.Exprs is
       if No (Src) then
          Src := Emit (E, LHS => (if VFA then No_GL_Value else Dest));
          if Src = Dest then
+            Maybe_Store_Bounds (Dest, Src, Src_GT, False);
             return;
          elsif not Is_Data (Src) and then Is_Loadable_Type (Src_GT) then
             Src := Get (Src, Object);

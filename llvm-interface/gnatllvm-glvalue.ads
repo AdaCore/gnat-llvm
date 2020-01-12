@@ -915,6 +915,11 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Return True if V is a function
 
+   function Is_A_Alloca_Inst (V : GL_Value) return Boolean is
+     (Present (Is_A_Alloca_Inst (+V)))
+     with Pre => Present (V);
+   --  Return True if V is a function
+
    function Is_Undef (V : GL_Value) return Boolean is
      (Is_Undef (+V))
      with Pre => Present (V);

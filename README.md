@@ -38,7 +38,15 @@ To build GNAT LLVM from sources, follow these steps:
 - Then obtain a check out of the latest GNAT sources from gcc.gnu.org under
   the llvm-interface directory:
 
-      $ svn co svn://gcc.gnu.org/svn/gcc/trunk/gcc/ada llvm-interface/gnat_src
+      $ git clone git://gcc.gnu.org/git/gcc.git llvm-interface/gcc
+
+  then under non Windows systems:
+
+      $ ln -s llvm-interface/gcc/gcc/ada llvm-interface/gnat_src
+
+  under Windows systems:
+
+      $ mv llvm-interface/gcc/gcc/ada llvm-interface/gnat_src
 
 - Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2019,
   GCC 8 or GCC 9.

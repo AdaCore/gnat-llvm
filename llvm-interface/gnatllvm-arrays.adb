@@ -21,7 +21,6 @@ with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM.Aliasing;      use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
-with GNATLLVM.Builtins;      use GNATLLVM.Builtins;
 with GNATLLVM.Compile;       use GNATLLVM.Compile;
 with GNATLLVM.Conversions;   use GNATLLVM.Conversions;
 with GNATLLVM.DebugInfo;     use GNATLLVM.DebugInfo;
@@ -961,14 +960,11 @@ package body GNATLLVM.Arrays is
          Value := Emit_Convert_Value (E, SSI_GL_Type);
       end if;
 
-      Call
-        (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_GL_Type),
-         (1 => Pointer_Cast (Get (To_Primitive (LValue, No_Copy => True),
-                                  Reference),
-                             A_Char_GL_Type),
-          2 => Value,
-          3 => To_Bytes (Get_Type_Size (GT)),
-          4 => (if Is_Volatile (LValue) then Const_True else Const_False)));
+      Build_MemSet (Pointer_Cast (Get (To_Primitive (LValue, No_Copy => True),
+                                       Reference),
+                                  A_Char_GL_Type),
+                    Value, To_Bytes (Get_Type_Size (GT)),
+                    To_Bytes (Get_Type_Alignment (GT)), Is_Volatile (LValue));
    end Emit_Others_Aggregate;
 
    -----------------------------

@@ -191,7 +191,6 @@ package body GNATLLVM.Builtins is
       Width     : constant ULL    := Get_Scalar_Bit_Size (T);
       W         : constant String := Int'Image (Int (Width));
       Full_Name : constant String := Name & W (W'First + 1 .. W'Last);
-      Return_GT : GL_Type         := GT;
       Fun_Ty    : Type_T;
       Result    : GL_Value;
 
@@ -215,37 +214,10 @@ package body GNATLLVM.Builtins is
             Fun_Ty := Fn_Ty ((1 => T, 2 => T),
                              Type_For_Relationship (GT, Boolean_And_Data));
 
-         when Memcpy =>
-            Return_GT := Void_GL_Type;
-            Fun_Ty    := Fn_Ty
-              ((1 => Void_Ptr_T,  2 => Void_Ptr_T, 3 => Size_T, 4 => Bit_T),
-               Void_Type);
-
-         when Memset =>
-            Return_GT := Void_GL_Type;
-            Fun_Ty    := Fn_Ty
-              ((1 => Void_Ptr_T,  2 => Byte_T, 3 => Size_T, 4 => Bit_T),
-               Void_Type);
       end case;
 
-      Result := Add_Function
-        (Full_Name, Fun_Ty, Return_GT, Is_Builtin => True);
+      Result := Add_Function (Full_Name, Fun_Ty, GT, Is_Builtin => True);
       Set_Does_Not_Throw (Result);
-
-      if Kind = Memcpy then
-         Add_Nocapture_Attribute (Result, 0);
-         Add_Nocapture_Attribute (Result, 1);
-         Add_Non_Null_Attribute  (Result, 0);
-         Add_Non_Null_Attribute  (Result, 1);
-         Add_Writeonly_Attribute (Result, 0);
-         Add_Readonly_Attribute  (Result, 1);
-
-      elsif Kind = Memset then
-         Add_Nocapture_Attribute (Result, 0);
-         Add_Non_Null_Attribute  (Result, 0);
-         Add_Writeonly_Attribute (Result, 0);
-      end if;
-
       Intrinsic_Functions_Table.Append ((new String'(Name), Width, Result));
       return Result;
    end Build_Intrinsic;

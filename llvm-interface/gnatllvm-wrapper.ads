@@ -149,6 +149,45 @@ package GNATLLVM.Wrapper is
       Name     : String) return Value_T
      with Inline;
 
+   function Build_MemCpy
+     (Bld         : Builder_T;
+      Dst         : Value_T;
+      Dst_Align   : unsigned;
+      Src         : Value_T;
+      Src_Align   : unsigned;
+      Size        : Value_T;
+      Is_Volatile : Boolean;
+      TBAA        : Metadata_T;
+      TBAA_Struct : Metadata_T;
+      Scope       : Metadata_T;
+      NoAlias     : Metadata_T) return Value_T
+     with Inline;
+
+   function Build_MemMove
+     (Bld         : Builder_T;
+      Dst         : Value_T;
+      Dst_Align   : unsigned;
+      Src         : Value_T;
+      Src_Align   : unsigned;
+      Size        : Value_T;
+      Is_Volatile : Boolean;
+      TBAA        : Metadata_T;
+      Scope       : Metadata_T;
+      NoAlias     : Metadata_T) return Value_T
+     with Inline;
+
+   function Build_MemSet
+     (Bld         : Builder_T;
+      Ptr         : Value_T;
+      Val         : Value_T;
+      Size        : Value_T;
+      Align       : unsigned;
+      Is_Volatile : Boolean;
+      TBAA        : Metadata_T;
+      Scope       : Metadata_T;
+      NoAlias     : Metadata_T) return Value_T
+     with Inline;
+
    function Does_Not_Throw (Fn : Value_T) return Boolean
      with Import, Convention => C, External_Name => "Does_Not_Throw",
           Warnings => Off;

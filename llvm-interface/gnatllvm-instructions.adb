@@ -901,6 +901,66 @@ package body GNATLLVM.Instructions is
       return Result;
    end Build_Phi;
 
+   ------------------
+   -- Build_MemCpy --
+   ------------------
+
+   procedure Build_MemCpy
+     (Dst         : GL_Value;
+      Dst_Align   : ULL;
+      Src         : GL_Value;
+      Src_Align   : ULL;
+      Size        : GL_Value;
+      Is_Volatile : Boolean;
+      TBAA        : Metadata_T := No_Metadata_T;
+      TBAA_Struct : Metadata_T := No_Metadata_T;
+      Scope       : Metadata_T := No_Metadata_T;
+      NoAlias     : Metadata_T := No_Metadata_T) is
+
+   begin
+      Discard (Build_MemCpy (IR_Builder, +Dst, unsigned (Dst_Align), +Src,
+                             unsigned (Src_Align), +Size, Is_Volatile, TBAA,
+                             TBAA_Struct, Scope, NoAlias));
+   end Build_MemCpy;
+
+   -------------------
+   -- Build_MemMove --
+   -------------------
+
+   procedure Build_MemMove
+     (Dst         : GL_Value;
+      Dst_Align   : ULL;
+      Src         : GL_Value;
+      Src_Align   : ULL;
+      Size        : GL_Value;
+      Is_Volatile : Boolean;
+      TBAA        : Metadata_T := No_Metadata_T;
+      Scope       : Metadata_T := No_Metadata_T;
+      NoAlias     : Metadata_T := No_Metadata_T) is
+   begin
+      Discard (Build_MemMove (IR_Builder, +Dst, unsigned (Dst_Align), +Src,
+                              unsigned (Src_Align), +Size, Is_Volatile, TBAA,
+                              Scope, NoAlias));
+   end Build_MemMove;
+
+   ------------------
+   -- Build_MemSet --
+   ------------------
+
+   procedure Build_MemSet
+     (Ptr         : GL_Value;
+      Val         : GL_Value;
+      Size        : GL_Value;
+      Align       : ULL;
+      Is_Volatile : Boolean;
+      TBAA        : Metadata_T := No_Metadata_T;
+      Scope       : Metadata_T := No_Metadata_T;
+      NoAlias     : Metadata_T := No_Metadata_T) is
+   begin
+      Discard (Build_MemSet (IR_Builder, +Ptr, +Val, +Size, unsigned (Align),
+                             Is_Volatile, TBAA, Scope, NoAlias));
+   end Build_MemSet;
+
    ---------------------------
    -- Update_Offset_For_GEP --
    ---------------------------

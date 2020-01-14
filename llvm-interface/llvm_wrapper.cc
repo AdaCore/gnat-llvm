@@ -299,6 +299,39 @@ Build_Insert_Value_C (IRBuilder<> *bld, Value *aggr, Value *elt,
 				 name);
 }
 
+/* The LLVM C interface only provides a subset of the arguments for building
+   memory copy/move/set, so we provide the full interface here.  */
+
+extern "C"
+Value *
+Build_MemCpy (IRBuilder<> *bld, Value *Dst, unsigned DstAlign, Value *Src,
+	      unsigned SrcAlign, Value *Size, bool isVolatile, MDNode *TBAATag,
+	      MDNode *TBAAStructTag, MDNode *ScopeTag, MDNode *NoAliasTag)
+{
+  return bld->CreateMemCpy (Dst, DstAlign, Src, SrcAlign, Size, isVolatile,
+			    TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
+}
+
+extern "C"
+Value *
+Build_MemMove (IRBuilder<> *bld, Value *Dst, unsigned DstAlign, Value *Src,
+	       unsigned SrcAlign, Value *Size, bool isVolatile,
+	       MDNode *TBAATag, MDNode *ScopeTag, MDNode *NoAliasTag)
+{
+  return bld->CreateMemMove (Dst, DstAlign, Src, SrcAlign, Size, isVolatile,
+			     TBAATag, ScopeTag, NoAliasTag);
+}
+
+extern "C"
+Value *
+Build_MemSet (IRBuilder<> *bld, Value *Ptr, Value *Val, Value *Size,
+	      unsigned align, bool isVolatile, MDNode *TBAATag,
+	      MDNode *ScopeTag, MDNode *NoAliasTag)
+{
+  return bld->CreateMemSet (Ptr, Val, Size, align, isVolatile, TBAATag,
+			    ScopeTag, NoAliasTag);
+}
+
 extern "C"
 unsigned char
 Does_Not_Throw (Function *fn)

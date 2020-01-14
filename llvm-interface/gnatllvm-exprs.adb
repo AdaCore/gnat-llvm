@@ -1463,13 +1463,13 @@ package body GNATLLVM.Exprs is
               Compute_Size (Dest_GT, Related_Type (Src), Dest, Src);
 
          begin
-            Call
-              (Build_Intrinsic (Memset, "llvm.memset.p0i8.i", Size_GL_Type),
-               (1 => Pointer_Cast (Get (Dest, Reference), A_Char_GL_Type),
-                2 => Const_Null (SSI_GL_Type),
-                3 => To_Bytes (Size),
-                4 => (if   Is_Volatile (Dest) then Const_True
-                      else Const_False)));
+            if Size /= 0 then
+               Build_MemSet (Pointer_Cast (Get (Dest, Reference),
+                                           A_Char_GL_Type),
+                             Const_Null (SSI_GL_Type), To_Bytes (Size),
+                             To_Bytes (Get_Type_Alignment (Dest_GT)),
+                             Is_Volatile (Dest));
+            end if;
          end;
 
       --  Now see if the source is of an LLVM value small enough to store, but
@@ -1495,10 +1495,7 @@ package body GNATLLVM.Exprs is
 
       else
          declare
-            Func_Name : constant String   :=
-              (if Forwards_OK and then Backwards_OK then "memcpy"
-               else "memmove");
-            Size      : GL_Value          :=
+            Size : GL_Value :=
               Compute_Size (Dest_GT, Related_Type (Src), Dest, Src);
 
          begin
@@ -1523,14 +1520,22 @@ package body GNATLLVM.Exprs is
                Size := Size + Get_Bound_Size (Related_Type (Src));
             end if;
 
-            Call
-              (Build_Intrinsic
-                 (Memcpy, "llvm." & Func_Name & ".p0i8.p0i8.i", Size_GL_Type),
-               (1 => Pointer_Cast (Get (Dest, Dest_R), A_Char_GL_Type),
-                2 => Pointer_Cast (Get (Src,  Src_R),  A_Char_GL_Type),
-                3 => To_Bytes (Size),
-                4 => (if   Is_Volatile (Dest) or else Is_Volatile (Src)
-                      then Const_True else Const_False)));
+            if Forwards_OK and then Backwards_OK then
+               Build_MemCpy (Pointer_Cast (Get (Dest, Dest_R), A_Char_GL_Type),
+                             To_Bytes (Get_Type_Alignment (Dest_GT)),
+                             Pointer_Cast (Get (Src, Src_R), A_Char_GL_Type),
+                             To_Bytes (Get_Type_Alignment (Src_GT)),
+                             To_Bytes (Size),
+                             Is_Volatile (Dest) or else Is_Volatile (Src));
+            else
+               Build_MemMove (Pointer_Cast (Get (Dest, Dest_R),
+                                            A_Char_GL_Type),
+                              To_Bytes (Get_Type_Alignment (Dest_GT)),
+                              Pointer_Cast (Get (Src, Src_R), A_Char_GL_Type),
+                              To_Bytes (Get_Type_Alignment (Src_GT)),
+                              To_Bytes (Size),
+                              Is_Volatile (Dest) or else Is_Volatile (Src));
+            end if;
          end;
       end if;
    end Emit_Assignment;

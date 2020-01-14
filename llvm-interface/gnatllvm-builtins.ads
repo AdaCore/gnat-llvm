@@ -26,8 +26,7 @@ package GNATLLVM.Builtins is
    --  what operand signature the intrinsic has.  The following are those
    --  that we currently support.
 
-   type Overloaded_Intrinsic_Kind is
-     (Unary, Binary, Boolean_And_Data, Memcpy, Memset);
+   type Overloaded_Intrinsic_Kind is (Unary, Binary, Boolean_And_Data);
 
    function Build_Intrinsic
      (Kind : Overloaded_Intrinsic_Kind;

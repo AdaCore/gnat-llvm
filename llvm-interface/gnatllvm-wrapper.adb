@@ -149,6 +149,109 @@ package body GNATLLVM.Wrapper is
       return Build_Insert_Value_C (Bld, Aggr, Elt, Idx_List, Num_Idx,
                                    Name & ASCII.NUL);
    end Build_Insert_Value;
+
+   ------------------
+   -- Build_MemCpy --
+   ------------------
+
+   function Build_MemCpy
+     (Bld         : Builder_T;
+      Dst         : Value_T;
+      Dst_Align   : unsigned;
+      Src         : Value_T;
+      Src_Align   : unsigned;
+      Size        : Value_T;
+      Is_Volatile : Boolean;
+      TBAA        : Metadata_T;
+      TBAA_Struct : Metadata_T;
+      Scope       : Metadata_T;
+      NoAlias     : Metadata_T) return Value_T
+   is
+      function Build_MemCpy_C
+        (Bld         : Builder_T;
+         Dst         : Value_T;
+         Dst_Align   : unsigned;
+         Src         : Value_T;
+         Src_Align   : unsigned;
+         Size        : Value_T;
+         Is_Volatile : Bool_T;
+         TBAA        : Metadata_T;
+         TBAA_Struct : Metadata_T;
+         Scope       : Metadata_T;
+         NoAlias     : Metadata_T) return Value_T
+        with Import, Convention => C, External_Name => "Build_MemCpy";
+   begin
+      return Build_MemCpy_C (Bld, Dst, Dst_Align, Src, Src_Align, Size,
+                             Boolean'Pos (Is_Volatile), TBAA, TBAA_Struct,
+                             Scope, NoAlias);
+   end Build_MemCpy;
+
+   -------------------
+   -- Build_MemMove --
+   -------------------
+
+   function Build_MemMove
+     (Bld         : Builder_T;
+      Dst         : Value_T;
+      Dst_Align   : unsigned;
+      Src         : Value_T;
+      Src_Align   : unsigned;
+      Size        : Value_T;
+      Is_Volatile : Boolean;
+      TBAA        : Metadata_T;
+      Scope       : Metadata_T;
+      NoAlias     : Metadata_T) return Value_T
+   is
+      function Build_MemMove_C
+        (Bld         : Builder_T;
+         Dst         : Value_T;
+         Dst_Align   : unsigned;
+         Src         : Value_T;
+         Src_Align   : unsigned;
+         Size        : Value_T;
+         Is_Volatile : Bool_T;
+         TBAA        : Metadata_T;
+         Scope       : Metadata_T;
+         NoAlias     : Metadata_T) return Value_T
+        with Import, Convention => C, External_Name => "Build_MemMove";
+
+   begin
+      return Build_MemMove_C (Bld, Dst, Dst_Align, Src, Src_Align, Size,
+                              Boolean'Pos (Is_Volatile), TBAA, Scope, NoAlias);
+   end Build_MemMove;
+
+   ------------------
+   -- Build_MemSet --
+   ------------------
+
+   function Build_MemSet
+     (Bld         : Builder_T;
+      Ptr         : Value_T;
+      Val         : Value_T;
+      Size        : Value_T;
+      Align       : unsigned;
+      Is_Volatile : Boolean;
+      TBAA        : Metadata_T;
+      Scope       : Metadata_T;
+      NoAlias     : Metadata_T) return Value_T
+   is
+      function Build_MemSet_C
+        (Bld         : Builder_T;
+         Ptr         : Value_T;
+         Val         : Value_T;
+         Size        : Value_T;
+         Align       : unsigned;
+         Is_Volatile : Bool_T;
+         TBAA        : Metadata_T;
+         Scope       : Metadata_T;
+         NoAlias     : Metadata_T) return Value_T
+        with Import, Convention => C, External_Name => "Build_MemSet";
+
+   begin
+      return Build_MemSet_C (Bld, Ptr, Val, Size, Align,
+                             Boolean'Pos (Is_Volatile), TBAA, Scope, NoAlias);
+   end Build_MemSet;
+
    -------------------------
    -- Add_Named_Attribute --
    -------------------------

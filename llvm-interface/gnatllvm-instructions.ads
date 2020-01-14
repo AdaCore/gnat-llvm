@@ -816,6 +816,42 @@ package GNATLLVM.Instructions is
      with  Pre  => Present (Arg) and then Present (Elt),
            Post => Present (Insert_Value'Result);
 
+   procedure Build_MemCpy
+     (Dst         : GL_Value;
+      Dst_Align   : ULL;
+      Src         : GL_Value;
+      Src_Align   : ULL;
+      Size        : GL_Value;
+      Is_Volatile : Boolean;
+      TBAA        : Metadata_T := No_Metadata_T;
+      TBAA_Struct : Metadata_T := No_Metadata_T;
+      Scope       : Metadata_T := No_Metadata_T;
+      NoAlias     : Metadata_T := No_Metadata_T)
+     with Pre => Present (Dst) and then Present (Src) and then Present (Size);
+
+   procedure Build_MemMove
+     (Dst         : GL_Value;
+      Dst_Align   : ULL;
+      Src         : GL_Value;
+      Src_Align   : ULL;
+      Size        : GL_Value;
+      Is_Volatile : Boolean;
+      TBAA        : Metadata_T := No_Metadata_T;
+      Scope       : Metadata_T := No_Metadata_T;
+      NoAlias     : Metadata_T := No_Metadata_T)
+     with Pre => Present (Dst) and then Present (Src) and then Present (Size);
+
+   procedure Build_MemSet
+     (Ptr         : GL_Value;
+      Val         : GL_Value;
+      Size        : GL_Value;
+      Align       : ULL;
+      Is_Volatile : Boolean;
+      TBAA        : Metadata_T := No_Metadata_T;
+      Scope       : Metadata_T := No_Metadata_T;
+      NoAlias     : Metadata_T := No_Metadata_T)
+     with Pre => Present (Ptr) and then Present (Val) and then Present (Size);
+
    function GEP
      (Bld     : Builder_T;
       Ptr     : Value_T;

@@ -42,7 +42,7 @@ To build GNAT LLVM from sources, follow these steps:
 
   then under non Windows systems:
 
-      $ ln -s llvm-interface/gcc/gcc/ada llvm-interface/gnat_src
+      $ ln -s gcc/gcc/ada llvm-interface/gnat_src
 
   under Windows systems:
 

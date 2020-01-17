@@ -1345,15 +1345,13 @@ package body GNATLLVM.Records.Create is
             elsif AF_Left.Var_Depth /= AF_Right.Var_Depth then
                return AF_Left.Var_Depth < AF_Right.Var_Depth;
 
-            --  A discriminant is in front of a non-discriminant
+            --  A discriminant is in front of a field that depends on it,
+            --  which we implement more generally as in front of any
+            --  variable-sized field.
 
-            elsif Ekind (Left_F) = E_Discriminant
-              and then Ekind (Right_F) = E_Component
-            then
+            elsif Ekind (Left_F) = E_Discriminant and then Dynamic_R then
                return True;
-            elsif Ekind (Right_F) = E_Discriminant
-              and then Ekind (Left_F) = E_Component
-            then
+            elsif Ekind (Right_F) = E_Discriminant and then Dynamic_L then
                return False;
 
                --  If we're to reorder fields, self-referential fields

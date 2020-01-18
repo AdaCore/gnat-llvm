@@ -88,19 +88,19 @@ LD_PATH=$(shell dirname $(shell gcc --print-prog-name=cc1))
 LIBSTDCXX_PATH=$(CXX_PREFIX)/lib64
 
 stage1: 
-	$(MAKE) GPRBUILD="gprbuild -v -gnatwns" build gnatlib-automated
+	$(MAKE) GPRBUILD="gprbuild -v -gnatwns" build-opt gnatlib-automated
 	$(RMDIR) stage1
 	$(MKDIR) stage1
 	$(MV) obj obj-tools bin lib stage1
 
 stage2: stage1
-	PATH=$(pwd)/stage1/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage1/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm -largs -L$(LIBSTDCXX_PATH) -margs" build gnatlib-automated
+	PATH=$(pwd)/stage1/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage1/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm -largs -L$(LIBSTDCXX_PATH) -margs" build-opt gnatlib-automated
 	$(RMDIR) stage2
 	$(MKDIR) stage2
 	$(MV) obj obj-tools bin lib stage2
 
 stage3: stage2
-	PATH=$(pwd)/stage2/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm -largs -L$(LIBSTDCXX_PATH) -margs" build gnatlib-automated
+	PATH=$(pwd)/stage2/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm -largs -L$(LIBSTDCXX_PATH) -margs" build-opt gnatlib-automated
 	@echo "Comparing stage2 and stage3 objects"
 	$(MAKE) bootstrap-compare
 
@@ -199,7 +199,7 @@ gnatlib: build
 	$(RMDIR) $(RTSLIB) $(RTSDIR) $(RTSOBJ)
 	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" quicklib
 
-gnatlib-automated: build
+gnatlib-automated: build-opt
 	$(RMDIR) $(RTSLIB) $(RTSDIR) $(RTSOBJ)
 	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
 	  LN_S="cp -p" quicklib

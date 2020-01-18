@@ -163,4 +163,8 @@ package GNATLLVM.Aliasing is
      with Pre => Present (Is_A_Instruction (Inst)) and then Present (V);
    --  Add aliasing information from V to Inst
 
+   function Common_TBAA (M1, M2 : Metadata_T) return Metadata_T;
+   --  If M1 and M2 are the same or have a common parent, return that.
+   --  Otherwise, return No_Metadata_T.
+
 end GNATLLVM.Aliasing;

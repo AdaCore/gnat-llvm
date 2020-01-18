@@ -883,10 +883,13 @@ package body GNATLLVM.Instructions is
       BBs       : Basic_Block_Array;
       Name      : String := "") return GL_Value
    is
-      Values  : aliased Value_Array (GL_Values'Range);
-      Align   : Nat := BPU;
+      First   : constant GL_Value := GL_Values (GL_Values'First);
+      Offset  : constant ULL      := TBAA_Offset (First);
+      TBAA    : Metadata_T        := TBAA_Type (First);
+      Align   : Nat               := BPU;
       Our_Phi : Value_T;
       Result  : GL_Value;
+      Values  : aliased Value_Array (GL_Values'Range);
 
    begin
       for J in Values'Range loop
@@ -894,10 +897,28 @@ package body GNATLLVM.Instructions is
          Align := Nat'Min (Align, Alignment (GL_Values (J)));
       end loop;
 
-      Our_Phi := Phi (IR_Builder, Type_Of (GL_Values (GL_Values'First)), Name);
+      Our_Phi := Phi (IR_Builder, Type_Of (First), Name);
       Add_Incoming (Our_Phi, Values'Address, BBs'Address, Values'Length);
-      Result := G_From (Our_Phi, GL_Values (GL_Values'First));
+      Result := G_From (Our_Phi, First);
       Set_Alignment (Result, Align);
+
+      --  If there's a TBAA type for the first operand and all the other
+      --  operands have the TBAA types with a common parent (and are the same)
+      --  and the offsets are the same, we can set the result to that type.
+      --  Otherwise, we have to reinitialize.
+
+      for V of GL_Values loop
+         TBAA := (if   TBAA_Offset (V) = Offset
+                  then Common_TBAA (TBAA, TBAA_Type (V))
+                  else No_Metadata_T);
+      end loop;
+
+      if Present (TBAA) then
+         Set_TBAA_Type (Result, TBAA);
+      else
+         Initialize_TBAA (Result);
+      end if;
+
       return Result;
    end Build_Phi;
 

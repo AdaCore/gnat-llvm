@@ -580,6 +580,33 @@ package body GNATLLVM.Aliasing is
       end if;
    end Maybe_Initialize_TBAA_For_Field;
 
+   -----------------
+   -- Common_TBAA --
+   -----------------
+
+   function Common_TBAA (M1, M2 : Metadata_T) return Metadata_T is
+   begin
+      if No (M1) or else No (M2) then
+         return No_Metadata_T;
+      elsif M1 = M2 then
+         return M1;
+
+      --  We only want to go up to a parent if the size doesn't change.
+      --  Otherwise, we'll mess up access tags.
+
+      elsif TBAA_Parent (M1) /= TBAA_Root
+        and then Size_In_Bytes (M1) = Size_In_Bytes (TBAA_Parent (M1))
+      then
+         return Common_TBAA (TBAA_Parent (M1), M2);
+      elsif TBAA_Parent (M2) /= TBAA_Root
+        and then Size_In_Bytes (M2) = Size_In_Bytes (TBAA_Parent (M2))
+      then
+         return Common_TBAA (M1, TBAA_Parent (M2));
+      else
+         return No_Metadata_T;
+      end if;
+   end Common_TBAA;
+
    --------------------
    -- Get_Field_TBAA --
    --------------------

@@ -105,7 +105,7 @@ package body GNATLLVM.Types.Create is
    --------------------------
 
    function Create_Discrete_Type (TE : Entity_Id) return Type_T is
-      Max_Size : constant Uint      := UI_From_Int (Get_Long_Long_Size);
+      Max_Size : constant Uint      := +Get_Long_Long_Size;
       Size_TE  : constant Entity_Id :=
         (if Has_Biased_Representation (TE) then Full_Base_Type (TE) else TE);
       --  Normally, we want to use an integer representation for a type
@@ -131,7 +131,7 @@ package body GNATLLVM.Types.Create is
       if Is_Modular_Integer_Type (Size_TE) and then RM_Size (Size_TE) /= 0 then
          Size := RM_Size (Size_TE);
       elsif Esize (Size_TE) = 0 then
-         Size := UI_From_Int (BPU);
+         Size := +BPU;
       end if;
 
       return
@@ -437,7 +437,7 @@ package body GNATLLVM.Types.Create is
                  and then (Size_GT = 16 or else Size_GT = 32
                              or else Size_GT = 64 or else Size_GT = 128)
                then
-                  Align := UI_From_GL_Value (Size_GT) / BPU;
+                  Align := +Size_GT / BPU;
                end if;
             end if;
 
@@ -508,7 +508,7 @@ package body GNATLLVM.Types.Create is
               Annotated_Value (Get_Type_Size (GT, No_Padding => True));
             BA_Align   : constant Uint              :=
               UI_From_Int (Get_Type_Alignment (GT, Use_Specified => False) /
-                             BPU);
+                           BPU);
             OAT        : constant Entity_Id       :=
               (if  (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
                    and then Present (Original_Array_Type (TE))
@@ -598,7 +598,7 @@ package body GNATLLVM.Types.Create is
       Set_Esize (Def_Ident, Annotated_Object_Size (GT, Want_Max => Want_Max));
       Set_Alignment
         (Def_Ident,
-         UI_From_Int (Get_Type_Alignment (GT, Use_Specified => False)) / BPU);
+         UI_From_Int (Get_Type_Alignment (GT, Use_Specified => False) / BPU));
    end Annotate_Object_Size_And_Alignment;
 
    ------------------------
@@ -660,7 +660,7 @@ package body GNATLLVM.Types.Create is
          return Max_Valid_Align;
 
       elsif Present (Align) and then Align /= 0 then
-         New_Align := UI_To_Int (Align) * BPU;
+         New_Align := +Align * BPU;
       end if;
 
       --  If the alignment is too small, stick with the old alignment and give
@@ -685,7 +685,7 @@ package body GNATLLVM.Types.Create is
          end if;
       end if;
 
-      return UI_From_Int (New_Align);
+      return +New_Align;
    end Validate_Alignment;
 
    -------------------
@@ -808,7 +808,7 @@ package body GNATLLVM.Types.Create is
       elsif Overflowed (In_Size) then
          Error_Msg_NE (Msg_Prefix & " for" & Error_Str & " too small",
                        Error_Node, E);
-         return UI_From_GL_Value (In_Size);
+         return +In_Size;
 
       --  If too small, we can't use it, but give a different error message
       --  for an aliased or atomic field.
@@ -820,7 +820,7 @@ package body GNATLLVM.Types.Create is
                               then " must be ^"
                               else " too small, minimum allowed is ^"),
                               Error_Node, E, In_Size);
-         return UI_From_GL_Value (In_Size);
+         return +In_Size;
       end if;
 
       --  Otherwise, we're good

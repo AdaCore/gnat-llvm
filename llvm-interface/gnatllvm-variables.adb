@@ -1379,7 +1379,7 @@ package body GNATLLVM.Variables is
             --  If this is larger than the previous alignment, use it
 
             if Our_Align > In_Align_Nat then
-               Align := UI_From_Int (Our_Align);
+               Align := +Our_Align;
             end if;
          end;
       end if;
@@ -1407,7 +1407,7 @@ package body GNATLLVM.Variables is
         and then not (Is_Constr_Subt_For_UN_Aliased (GT)
                         and then Is_Array_Type (GT))
       then
-         GT := Make_GT_Alternative (GT, Empty, UI_From_Int (BPU), No_Uint);
+         GT := Make_GT_Alternative (GT, Empty, +BPU, No_Uint);
       end if;
 
       return GT;

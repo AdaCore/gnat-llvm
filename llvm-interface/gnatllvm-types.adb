@@ -617,8 +617,7 @@ package body GNATLLVM.Types is
             declare
                Align_GT : constant GL_Type :=
                  (if   GT_Alignment (A_GT) >= Align then A_GT
-                  else Make_GT_Alternative (A_GT, Def_Ident,
-                                            Align => UI_From_Int (Align)));
+                  else Make_GT_Alternative (A_GT, Def_Ident, Align => +Align));
 
             begin
                return Move_Into_Memory (Alloca (Align_GT, Def_Ident, Align,
@@ -980,7 +979,7 @@ package body GNATLLVM.Types is
       --  use that value.
 
       elsif Known_Alignment (TE) and then Use_Specified then
-         return UI_To_Int (Alignment (TE)) * BPU;
+         return +Alignment (TE) * BPU;
 
       --  If we're only elaborating and back-annotating types, check if
       --  is void.
@@ -1192,7 +1191,7 @@ package body GNATLLVM.Types is
       GT_Align    : constant Nat     := Get_Type_Alignment (Align_GT);
       E_Align     : constant Nat     :=
         (if   Present (E) and then Known_Alignment (E)
-         then UI_To_Int (Alignment (E)) * BPU else BPU);
+         then +Alignment (E) * BPU else BPU);
       Bound_Align : constant Nat     :=
         (if   Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (Alloc_GT)
          then Get_Bound_Alignment (Full_Etype (GT)) else BPU);
@@ -1330,7 +1329,7 @@ package body GNATLLVM.Types is
             end if;
 
          when Attribute_Descriptor_Size =>
-            return UI_From_GL_Value (Get_Bound_Size (Default_GL_Type (TE)));
+            return +Get_Bound_Size (Default_GL_Type (TE));
 
          when Attribute_Component_Size =>
             if Known_Component_Size (TE) then
@@ -1552,7 +1551,7 @@ package body GNATLLVM.Types is
       --  Otherwise, we have a constant.  If negative, make a Negate_Expr.
 
       else
-         Ret := UI_From_GL_Value (V.C_Value);
+         Ret := +V.C_Value;
          return (if   Ret < 0 then Create_Node (Negate_Expr, UI_Negate (Ret))
                  else Ret);
       end if;
@@ -1874,13 +1873,13 @@ package body GNATLLVM.Types is
                   return (False, Emit_Expression (V), No_Uint);
                else
                   SO_Info :=
-                    Create_Node (Dynamic_Val, UI_From_Int (Var_Idx_For_BA));
+                    Create_Node (Dynamic_Val, +Var_Idx_For_BA);
                   Var_Idx_For_BA := Var_Idx_For_BA + 1;
                end if;
             end;
 
          else
-            SO_Info := Create_Node (Dynamic_Val, UI_From_Int (Var_Idx_For_BA));
+            SO_Info := Create_Node (Dynamic_Val, +Var_Idx_For_BA);
             Var_Idx_For_BA := Var_Idx_For_BA + 1;
          end if;
 

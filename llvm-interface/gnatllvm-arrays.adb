@@ -772,7 +772,7 @@ package body GNATLLVM.Arrays is
       --  specified, use it.
 
       elsif Known_Alignment (TE) then
-         return UI_To_Int (Alignment (TE)) * BPU;
+         return +Alignment (TE) * BPU;
 
       else
          if Comp_Size mod Comp_Align = 0 then
@@ -1325,8 +1325,7 @@ package body GNATLLVM.Arrays is
            Get_Type_Size (Comp_GT, Max_Size => Comp_Unc);
          Unit_Size : constant GL_Value :=
            (if   Has_Aliased_Components (GT)
-            then Build_Max (Comp_Size, Size_Const_Int (UI_From_Int (BPU)))
-            else Comp_Size);
+            then Build_Max (Comp_Size, Size_Const_Int (+BPU)) else Comp_Size);
          Unit_Mult : constant GL_Value :=
            (if   Use_Comp then Size_Const_Int (Uint_1)
             else To_Bytes (Unit_Size));

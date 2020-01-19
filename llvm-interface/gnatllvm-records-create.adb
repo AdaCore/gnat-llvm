@@ -144,7 +144,7 @@ package body GNATLLVM.Records.Create is
             if Ekind (F) = E_Discriminant
               and then Discriminant_Number (F) > Max
             then
-               Max := UI_To_Int (Discriminant_Number (F));
+               Max := +Discriminant_Number (F);
             end if;
 
             Next_Component_Or_Discriminant (F);
@@ -530,8 +530,7 @@ package body GNATLLVM.Records.Create is
             elsif Ekind (E) = E_Discriminant
               and then Is_Completely_Hidden (E)
             then
-               Discrim_FIs (UI_To_Int (Discriminant_Number (E))) :=
-                 Field_Info_Table.Last;
+               Discrim_FIs (+Discriminant_Number (E)) := Field_Info_Table.Last;
             end if;
          end if;
       end Add_FI;
@@ -1498,20 +1497,19 @@ package body GNATLLVM.Records.Create is
             --  Note that the comparisons and arithmetic below are done
             --  unsigned, so we have to write them to avoid wrapping.
 
-            Bitfield_Len := UI_To_ULL (Bitfield_End_Pos - Bitfield_Start_Pos);
+            Bitfield_Len := +(Bitfield_End_Pos - Bitfield_Start_Pos);
             case Bitfield_Len is
                when 8 | 16 | 32 | 64 =>
                   null;
 
                when 24 =>
-                  if Cur_RI_Pos + 8 < UI_To_ULL (Bitfield_Start_Pos) then
+                  if Cur_RI_Pos + 8 < +Bitfield_Start_Pos then
                      Bitfield_Start_Pos := Bitfield_Start_Pos - 8;
                      Bitfield_Len       := 32;
                   end if;
 
                when 40 | 48 | 56 =>
-                  if Cur_RI_Pos + (64 - Bitfield_Len) <
-                    UI_To_ULL (Bitfield_Start_Pos)
+                  if Cur_RI_Pos + (64 - Bitfield_Len) < +Bitfield_Start_Pos
                   then
                      Bitfield_Start_Pos :=
                        Bitfield_Start_Pos - Int (64 - Bitfield_Len);
@@ -1524,7 +1522,7 @@ package body GNATLLVM.Records.Create is
 
             --  Now we know what we have to do for the bitfield field
 
-            Force_To_Pos (UI_To_ULL (Bitfield_Start_Pos));
+            Force_To_Pos (+Bitfield_Start_Pos);
             if Bitfield_Len in 8 | 16 | 32 | 64 then
                Bitfield_Is_Array       := False;
                Bitfield_Is_Large_Array := False;
@@ -1538,7 +1536,7 @@ package body GNATLLVM.Records.Create is
                                      unsigned (To_Bytes (Bitfield_Len))));
             end if;
 
-            Cur_RI_Pos := UI_To_ULL (Bitfield_End_Pos);
+            Cur_RI_Pos := +Bitfield_End_Pos;
          end Create_Bitfield_Field;
 
          -----------------
@@ -1684,7 +1682,7 @@ package body GNATLLVM.Records.Create is
                --  and size of this field as well as following ones.
 
                elsif No (Packed_Field_Bitpos) and then Packed = Bit then
-                  Pos                 := UI_From_ULL (Cur_RI_Pos);
+                  Pos                 := +Cur_RI_Pos;
                   Size                := RM_Size (F_GT);
                   Packed_Field_Bitpos := Pos + Size;
                   AF.Pos              := Pos;
@@ -1725,8 +1723,7 @@ package body GNATLLVM.Records.Create is
 
                if No (Pos) and then Chars (F) /= Name_uTag then
                   if not In_Variant and then not Had_Non_Repped then
-                     Forced_Pos :=
-                       Align_Pos (UI_To_ULL (Max_Record_Rep (F)), Need_Align);
+                     Forced_Pos := Align_Pos (+Max_Record_Rep (F), Need_Align);
                   end if;
 
                   Had_Non_Repped := True;
@@ -1799,7 +1796,7 @@ package body GNATLLVM.Records.Create is
                      --  LLVM type to use
 
                      Needed_Pos  : constant ULL    :=
-                       (if    Present (Pos)   then UI_To_ULL (Pos)
+                       (if    Present (Pos)   then +Pos
                         elsif Forced_Pos /= 0 then Forced_Pos
                         else  Align_Pos (Cur_RI_Pos, Need_Align));
                      --  The position we need to be at, either by virtue of
@@ -1932,8 +1929,7 @@ package body GNATLLVM.Records.Create is
             declare
                ORC         : constant Entity_Id :=
                  Original_Record_Component (Field);
-               Discrim_Num : constant Nat       :=
-                 UI_To_Int (Discriminant_Number (ORC));
+               Discrim_Num : constant Nat       := +Discriminant_Number (ORC);
                Outer_Orig  : constant Entity_Id :=
                  Find_Field_In_Entity_List (ORC, TE, Cur_Field);
                Outer_Field : Entity_Id;

@@ -1787,7 +1787,7 @@ package body GNATLLVM.Blocks is
       if No (Label) then
          declare
             Kind : constant RT_Exception_Code :=
-              RT_Exception_Code'Val (UI_To_Int (Reason (N)));
+              RT_Exception_Code'Val (+Reason (N));
 
          begin
             if Present (BB_Then) then

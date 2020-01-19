@@ -693,8 +693,7 @@ package body GNATLLVM.Conditionals is
 
             for J in Alts'First .. Alts'Last - 1 loop
                for K in Alts (J).First_Choice .. Alts (J).Last_Choice loop
-                  for L in UI_To_Int (Choices (K).Low) ..
-                    UI_To_Int (Choices (K).High) loop
+                  for L in +Choices (K).Low .. +Choices (K).High loop
                      Add_Case (Switch,
                                Const_Int (Typ, ULL (L), Sign_Extend => True),
                                Alts (J).BB);

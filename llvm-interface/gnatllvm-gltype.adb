@@ -411,9 +411,9 @@ package body GNATLLVM.GLType is
       then
          declare
             Align_V1     : constant Nat      :=
-              (if    Present (Align_For_Msg) then UI_To_Int (Align_For_Msg)
+              (if    Present (Align_For_Msg) then +Align_For_Msg
                elsif Present (Align) and then Is_Composite_Type (GT)
-               then  UI_To_Int (Align) else BPU);
+               then  +Align else BPU);
             Align_V      : constant Nat      :=
               Nat'Max (Align_V1, Get_Type_Alignment (GT));
             Out_Sz       : constant GL_Value := Size_Const_Int (Size);
@@ -478,7 +478,7 @@ package body GNATLLVM.GLType is
       Needs_Bias  : constant Boolean      :=
         Is_Biased or else In_GTI.Kind = Biased;
       Needs_Max   : constant Boolean      := Max_Size or else In_GTI.Max_Size;
-      Max_Int_Sz  : constant Uint         := UI_From_Int (64);
+      Max_Int_Sz  : constant Uint         := Uint_64;
       TE          : constant Entity_Id    := Full_Etype (GT);
       Prim_GT     : constant GL_Type      := Primitive_GL_Type (GT);
       Prim_Native : constant Boolean      := not Is_Nonnative_Type (Prim_GT);
@@ -495,7 +495,7 @@ package body GNATLLVM.GLType is
               or else Is_Dynamic_SO_Ref (Size)
          then In_GTI.Size else Size_Const_Int (Size));
       Align_N     : constant Nat          :=
-        (if No (Align) then In_GTI.Alignment else UI_To_Int (Align));
+        (if No (Align) then In_GTI.Alignment else +Align);
       Found_GT    : GL_Type               := Get_GL_Type (TE);
 
       ----------------------
@@ -570,8 +570,8 @@ package body GNATLLVM.GLType is
                   and then not (Present (Size)
                                   and then (Get_Type_Kind (GTI.LLVM_Type) =
                                               Integer_Type_Kind)
-                                  and then (Get_Type_Size (GTI.LLVM_Type) /=
-                                              UI_To_ULL (Size))))
+                                  and then (ULL'(Get_Type_Size (GTI.LLVM_Type))
+                                              /= +Size)))
               --  If the size and alignment are the same, this must be the
               --  same type.  But this isn't the case if we need the
               --  maximim size and there's no size for the type or the

@@ -154,15 +154,15 @@ package body GNATLLVM.GLValue is
    ---------------
 
    function "<" (LHS : GL_Value; RHS : Int) return Boolean is
-     (LHS < Const_Int (LHS, UI_From_Int (RHS)));
+     (LHS < Const_Int (LHS, +RHS));
    function "<=" (LHS : GL_Value; RHS : Int) return Boolean is
-     (LHS <= Const_Int (LHS, UI_From_Int (RHS)));
+     (LHS <= Const_Int (LHS, +RHS));
    function ">" (LHS : GL_Value; RHS : Int) return Boolean is
-     (LHS > Const_Int (LHS, UI_From_Int (RHS)));
+     (LHS > Const_Int (LHS, +RHS));
    function ">=" (LHS : GL_Value; RHS : Int) return Boolean is
-     (LHS >= Const_Int (LHS, UI_From_Int (RHS)));
+     (LHS >= Const_Int (LHS, +RHS));
    function "=" (LHS : GL_Value; RHS : Int) return Boolean is
-     (LHS = Const_Int (LHS, UI_From_Int (RHS)));
+     (LHS = Const_Int (LHS, +RHS));
 
    -------------------
    -- Set_Alignment --
@@ -1139,7 +1139,7 @@ package body GNATLLVM.GLValue is
       GT_Align  : constant Nat := Get_Type_Alignment (Default_GL_Type (GT));
       E_Align   : constant Nat :=
         (if   Present (E) and then Known_Alignment (E)
-         then To_Bits (UI_To_Int (Alignment (E))) else BPU);
+         then To_Bits (+Alignment (E)) else BPU);
       Our_Align : constant Nat :=
         (if Align /= 0 then Align else Nat'Max (GT_Align, E_Align));
 
@@ -1258,7 +1258,7 @@ package body GNATLLVM.GLValue is
 
       --  We're OK if this is a modular type or if the value matches.
 
-      if Is_Modular_Integer_Type (GT) or else UI_From_LLI (Val) = N then
+      if Is_Modular_Integer_Type (GT) or else +Val = N then
          return Result;
 
       --  If it's not an unsigned type or this is the full width of ULL,
@@ -1276,7 +1276,7 @@ package body GNATLLVM.GLValue is
             Masked : constant ULL := +Result and Mask;
 
          begin
-            Mark_Overflowed (Result, UI_From_LLI (LLI (Masked)) /= N);
+            Mark_Overflowed (Result, +LLI (Masked) /= N);
          end;
       end if;
 

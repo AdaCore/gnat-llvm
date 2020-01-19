@@ -317,7 +317,7 @@ package body GNATLLVM.Exprs is
 
                      begin
                         V := Get_Float_From_Words_And_Exp
-                          (Prim_GT, -UI_To_Int (Denominator (Val)), Words);
+                          (Prim_GT, -(+Denominator (Val)), Words);
                         V := (if UR_Is_Negative (Val) then F_Neg (V) else V);
                      end;
                   end if;
@@ -1121,8 +1121,7 @@ package body GNATLLVM.Exprs is
                BT          : constant GL_Type := Base_GL_Type (P_GT);
                Dim         : constant Nat     :=
                  (if   Present (Expressions (N))
-                  then UI_To_Int (Intval (First (Expressions (N)))) - 1
-                  else 0);
+                  then +Intval (First (Expressions (N))) - 1 else 0);
                Array_Descr : GL_Value;
                Low, High   : GL_Value;
 
@@ -1215,7 +1214,7 @@ package body GNATLLVM.Exprs is
                      V := Position;
 
                   when Attribute_First_Bit | Attribute_Bit =>
-                     V := S_Rem (Position, Size_Const_Int (UI_From_Int (BPU)));
+                     V := S_Rem (Position, Size_Const_Int (+BPU));
 
                   when Attribute_Last_Bit =>
                      V := Position + Size_Const_Int (Esize (F) - 1);

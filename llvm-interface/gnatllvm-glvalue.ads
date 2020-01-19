@@ -974,6 +974,7 @@ package GNATLLVM.GLValue is
    function UI_From_GL_Value (V : GL_Value) return Uint is
      (UI_From_LLI (+V))
      with Pre => Is_A_Const_Int (V);
+   function "+" (V : GL_Value) return Uint renames UI_From_GL_Value;
 
    function Get_Value_Name (V : GL_Value) return String is
      (Get_Value_Name (+V))

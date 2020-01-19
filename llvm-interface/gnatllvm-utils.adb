@@ -102,7 +102,7 @@ package body GNATLLVM.Utils is
       elsif Length_M1 > Max_Length - 1 then
          return Max_Length;
       else
-         return UI_To_Int (Length_M1) + 1;
+         return +Length_M1 + 1;
       end if;
 
    end Range_Length;
@@ -523,7 +523,7 @@ package body GNATLLVM.Utils is
    procedure Error_Msg_NE_Num
      (Msg : String; N : Node_Id; E : Entity_Id; Num : Int) is
    begin
-      Error_Msg_Uint_1 := UI_From_Int (Num);
+      Error_Msg_Uint_1 := +Num;
       Error_Msg_NE (Msg, N, E);
    end Error_Msg_NE_Num;
 

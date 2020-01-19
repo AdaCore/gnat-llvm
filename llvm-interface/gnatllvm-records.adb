@@ -414,7 +414,7 @@ package body GNATLLVM.Records is
    begin
       --  Skip to the proper entry in the list and see if it's static
 
-      for J in 1 .. UI_To_Int (Discrim_Num) - 1 loop
+      for J in Nat (1) .. +Discrim_Num - 1 loop
          Next_Elmt (Elmt);
       end loop;
 
@@ -551,7 +551,7 @@ package body GNATLLVM.Records is
          if Return_Size then
             if Only_Overlap_RIs (RI.Next) and then No_Padding then
                This_Size :=
-                 This_Size - Size_Const_Int (UI_To_ULL (RI.Unused_Bits));
+                 This_Size - Size_Const_Int (+RI.Unused_Bits);
             end if;
 
             Total_Size
@@ -1323,11 +1323,10 @@ package body GNATLLVM.Records is
       Size    : constant Uint      := Esize (AF);
       TE      : constant Entity_Id := Full_Scope (AF);
       R_Align : constant Nat       :=
-        (if    Known_Alignment (TE) then UI_To_Int (Alignment (TE)) * BPU
+        (if    Known_Alignment (TE) then +Alignment (TE) * BPU
          elsif Known_RM_Size (TE) and then Strict_Alignment (TE)
-         then  ULL_Align (UI_To_ULL (RM_Size (TE)))
-         elsif Known_Esize (TE) then ULL_Align (UI_To_ULL (Esize (TE)))
-         else Max_Align);
+         then  ULL_Align (+RM_Size (TE))
+         elsif Known_Esize (TE) then ULL_Align (+Esize (TE)) else Max_Align);
       --  If an alignment is specified for the record, use it.  If not, but
       --  a size is specified for the record and we require strict
       --  alignment, derive the alignment from that.  Similarly if an
@@ -2032,8 +2031,8 @@ package body GNATLLVM.Records is
             Loaded    : constant GL_Value := Get (Result, Unknown);
             T         : constant Type_T   := Type_Of (Loaded);
             Result_T  : constant Type_T   := Type_Of (F_GT);
-            First_Bit : constant ULL      := UI_To_ULL (Field_Bit_Offset (F));
-            Num_Bits  : constant ULL      := UI_To_ULL (Esize (F));
+            First_Bit : constant ULL      := +Field_Bit_Offset (F);
+            Num_Bits  : constant ULL      := +Esize (F);
             Val_Width : constant ULL      := Get_Scalar_Bit_Size (T);
             Uns       : constant Boolean  :=
               Is_Unsigned_For_RM (F_GT)
@@ -2260,8 +2259,8 @@ package body GNATLLVM.Records is
          --  new value of the field.
 
          RHS_T     := Type_Of (RHS_Cvt);
-         First_Bit := UI_To_ULL (Field_Bit_Offset (F));
-         Num_Bits  := UI_To_ULL (Esize (F));
+         First_Bit := +Field_Bit_Offset (F);
+         Num_Bits  := +Esize (F);
 
          --  If this is narrower than the field size, mask off the high bits.
          --  One might think that we don't have to do this in the unsigned case
@@ -2418,9 +2417,9 @@ package body GNATLLVM.Records is
          Write_Int (FI.Field_Ordinal);
          if Present (FI.First_Bit) then
             Write_Str (", Bits = ");
-            Write_Int (UI_To_Int (FI.First_Bit));
+            Write_Int (+FI.First_Bit);
             Write_Str (" .. ");
-            Write_Int (UI_To_Int (FI.First_Bit + FI.Num_Bits - 1));
+            Write_Int (+(FI.First_Bit + FI.Num_Bits) - 1);
          end if;
 
          if FI.Array_Bitfield then
@@ -2480,7 +2479,7 @@ package body GNATLLVM.Records is
 
             if RI.Unused_Bits /= 0 then
                Write_Str (" unused bits ");
-               Write_Int (UI_To_Int (RI.Unused_Bits));
+               Write_Int (+RI.Unused_Bits);
             end if;
 
             Write_Eol;
@@ -2501,9 +2500,9 @@ package body GNATLLVM.Records is
                   Write_Int (FI.Field_Ordinal);
                   if Present (FI.First_Bit) then
                      Write_Str ("[");
-                     Write_Int (UI_To_Int (FI.First_Bit));
+                     Write_Int (+FI.First_Bit);
                      Write_Str (" .. ");
-                     Write_Int (UI_To_Int (FI.First_Bit + FI.Num_Bits - 1));
+                     Write_Int (+(FI.First_Bit + FI.Num_Bits) - 1);
                      Write_Str ("]");
                   end if;
                end if;

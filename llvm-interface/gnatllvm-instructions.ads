@@ -614,15 +614,15 @@ package GNATLLVM.Instructions is
              LHS, RHS) = Const_True);
 
    function "+" (LHS : GL_Value; RHS : Int)   return GL_Value is
-     (LHS + Const_Int (LHS, UI_From_Int (RHS)));
+     (LHS + Const_Int (LHS, +RHS));
    function "-" (LHS : GL_Value; RHS : Int)   return GL_Value is
-     (LHS - Const_Int (LHS, UI_From_Int (RHS)));
+     (LHS - Const_Int (LHS, +RHS));
    function "*" (LHS : GL_Value; RHS : Int)   return GL_Value is
-     (LHS * Const_Int (LHS, UI_From_Int (RHS)));
+     (LHS * Const_Int (LHS, +RHS));
    function "/" (LHS : GL_Value; RHS : Int)   return GL_Value is
-     (LHS / Const_Int (LHS, UI_From_Int (RHS)));
+     (LHS / Const_Int (LHS, +RHS));
    function "mod" (LHS : GL_Value; RHS : Int) return GL_Value is
-     (LHS mod Const_Int (LHS, UI_From_Int (RHS)));
+     (LHS mod Const_Int (LHS, +RHS));
 
    function To_Bytes (V : GL_Value) return GL_Value is
      (Set_Alignment ((V + (BPU - 1)) / BPU, Alignment (V) / BPU))

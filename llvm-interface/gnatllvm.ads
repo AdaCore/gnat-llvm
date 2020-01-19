@@ -95,7 +95,12 @@ package GNATLLVM is
    --  Define shorter alias name for easier reading
 
    function UI_From_LLI is new UI_From_Integral (LLI);
-   --  And conversion routine from it to UI
+   --  And conversion routine from LLI to Uint
+
+   function "+" (U : Uint) return Int  renames UI_To_Int;
+   function "+" (J : LLI)  return Uint  renames UI_From_LLI;
+   function "+" (J : Int)  return Uint renames UI_From_Int;
+   --  Add operators to easily convert to and from Uints.
 
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us

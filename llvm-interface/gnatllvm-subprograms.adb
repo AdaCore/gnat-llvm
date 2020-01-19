@@ -623,7 +623,7 @@ package body GNATLLVM.Subprograms is
          end if;
       end if;
 
-      P_Num := UI_To_Int (Intval (First (Exprs)));
+      P_Num := +Intval (First (Exprs));
       Param := First_Formal (E);
       for J in 2 .. P_Num loop
          Next_Formal (Param);

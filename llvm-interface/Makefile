@@ -86,18 +86,19 @@ build-opt: setup force
 CXX_PREFIX=$(shell dirname $(dir $(shell which gcc)))
 LD_PATH=$(shell dirname $(shell gcc --print-prog-name=cc1))
 LIBSTDCXX_PATH=$(CXX_PREFIX)/lib64
+BOOT_DIRS=obj obj-tools bin lib
 
 stage1: 
 	$(MAKE) GPRBUILD="gprbuild -v -gnatwns" build-opt gnatlib-automated
 	$(RMDIR) stage1
 	$(MKDIR) stage1
-	$(MV) obj obj-tools bin lib stage1
+	$(MV) $(BOOT_DIRS) stage1
 
 stage2: stage1
 	PATH=$(pwd)/stage1/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage1/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm -largs -L$(LIBSTDCXX_PATH) -margs" build-opt gnatlib-automated
 	$(RMDIR) stage2
 	$(MKDIR) stage2
-	$(MV) obj obj-tools bin lib stage2
+	$(MV) $(BOOT_DIRS) stage2
 
 stage3: stage2
 	PATH=$(pwd)/stage2/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="gprbuild -v --target=llvm -largs -L$(LIBSTDCXX_PATH) -margs" build-opt gnatlib-automated
@@ -105,6 +106,11 @@ stage3: stage2
 	$(MAKE) bootstrap-compare
 
 bootstrap: stage3
+
+unbootstrap:
+	rm -rf $(BOOT_DIRS)
+	mv stage1/* .
+	rm -rf stage[12]
 
 .PHONY: bootstrap-compare
 

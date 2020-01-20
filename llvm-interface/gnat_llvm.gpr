@@ -24,7 +24,9 @@ project Gnat_LLVM is
             for Switches ("Ada") use Common_Switches & ("-gnata", "-gnateE");
 
          when "Production" =>
-            for Switches ("Ada") use Common_Switches & ("-O2", "-gnatpn");
+            --  -gnatp is  problematic for bootstrap so disabled for now ???
+            --  for Switches ("Ada") use Common_Switches & ("-O2", "-gnatpn");
+            for Switches ("Ada") use Common_Switches & ("-O2");
       end case;
    end Compiler;
 

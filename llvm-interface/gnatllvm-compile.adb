@@ -1140,8 +1140,11 @@ package body GNATLLVM.Compile is
          when N_In =>
 
             declare
-               Rng  : Node_Id := Right_Opnd (N);
-               Left : constant GL_Value := Emit_Expression (Left_Opnd (N));
+               Left       : constant GL_Value :=
+                 Emit_Expression (Left_Opnd (N));
+               Rng        : Node_Id           := Right_Opnd (N);
+               Compare_LB : GL_Value;
+               Compare_HB : GL_Value;
 
             begin
                if Decls_Only then
@@ -1155,12 +1158,11 @@ package body GNATLLVM.Compile is
                   Rng := Scalar_Range (Full_Etype (Rng));
                end if;
 
-               return Build_And (Build_Elementary_Comparison
-                                   (N_Op_Ge, Left,
-                                    Emit_Expression (Low_Bound (Rng))),
-                                 Build_Elementary_Comparison
-                                   (N_Op_Le, Left,
-                                    Emit_Expression (High_Bound (Rng))));
+               Compare_LB := Build_Elementary_Comparison
+                 (N_Op_Ge, Left, Emit_Expression (Low_Bound (Rng)));
+               Compare_HB := Build_Elementary_Comparison
+                 (N_Op_Le, Left, Emit_Expression (High_Bound (Rng)));
+               return Build_And (Compare_LB, Compare_HB);
             end;
 
          when N_Raise_xxx_Error =>

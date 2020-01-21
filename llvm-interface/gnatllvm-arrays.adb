@@ -927,8 +927,9 @@ package body GNATLLVM.Arrays is
    ---------------------------
 
    procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id) is
-      GT    : constant GL_Type := Primitive_GL_Type (Full_GL_Type (N));
-      E     : Node_Id          :=
+      GT    : constant GL_Type  := Primitive_GL_Type (Full_GL_Type (N));
+      Size  : constant GL_Value := To_Bytes (Get_Type_Size (GT));
+      E     : Node_Id           :=
         Expression (First (Component_Associations (N)));
       Value : GL_Value;
 
@@ -963,8 +964,8 @@ package body GNATLLVM.Arrays is
       Build_MemSet (Pointer_Cast (Get (To_Primitive (LValue, No_Copy => True),
                                        Reference),
                                   A_Char_GL_Type),
-                    Value, To_Bytes (Get_Type_Size (GT)),
-                    To_Bytes (Get_Type_Alignment (GT)), Is_Volatile (LValue));
+                    Value, Size, To_Bytes (Get_Type_Alignment (GT)),
+                    Is_Volatile (LValue));
    end Emit_Others_Aggregate;
 
    -----------------------------

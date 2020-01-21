@@ -2293,8 +2293,8 @@ package body GNATLLVM.Records is
                                              False),
                                  F_GT, Unknown));
          Mask     := Build_Not (Shl (Mask, Count));
-         Rec_Data := Build_Or (Build_And (Rec_Data, Mask),
-                               Shl (RHS_Cvt, Count));
+         RHS_Cvt  := Shl (RHS_Cvt, Count);
+         Rec_Data := Build_Or (Build_And (Rec_Data, Mask), RHS_Cvt);
 
          --  If we're still working with data, then insert the new value into
          --  the field. Otherwise, store it where it belongs.  In the array

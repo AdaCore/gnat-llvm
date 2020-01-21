@@ -112,8 +112,13 @@ package body GNATLLVM.Conditionals is
          return I_Cmp (Operation.Unsigned, Subp_Ptr (LHS), Subp_Ptr (RHS));
 
       elsif Is_Elementary_Type (GT) then
-         return Build_Elementary_Comparison
-           (Kind, Emit_Convert_Value (LHS, BT), Emit_Convert_Value (RHS, BT));
+         declare
+            LHS_Val : constant GL_Value := Emit_Convert_Value (LHS, BT);
+            RHS_Val : constant GL_Value := Emit_Convert_Value (RHS, BT);
+
+         begin
+            return Build_Elementary_Comparison (Kind, LHS_Val, RHS_Val);
+         end;
 
       --  We'll see some simple record comparisons, typically if they're
       --  Equivalent_Types of, e.g., an E_Access_Protected_Subprogram_Type.

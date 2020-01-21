@@ -67,6 +67,11 @@ package GNATLLVM.Codegen is
    No_Tail_Calls           : Boolean := False;
    --  Switch options for optimization
 
+   Force_Activation_Record_Parameter : Boolean := False;
+   --  Indicates that we need to force all subprograms to have an activation
+   --  record parameter.  We need to do this for targets, such as WebAssembly,
+   --  that require strict parameter agreement between calls and declarations.
+
    Optimize_IR           : Boolean := False;
    --  True if we should optimize IR before writing it out
 

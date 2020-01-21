@@ -160,6 +160,11 @@ package GNATLLVM.Subprograms is
      with Pre => Nkind (N) = N_Simple_Return_Statement;
    --  Emit code for a return statement
 
+   function Add_Static_Link
+     (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value_Array
+     with Pre => No (Proc) or else Ekind_In (Proc, E_Procedure, E_Function);
+   --  If Proc needs a static link, add it to the end of Args
+
    function Subp_Ptr (N : Node_Id) return GL_Value
      with Pre  => Present (N), Post => Present (Subp_Ptr'Result), Inline;
    --  Return the subprogram pointer associated with Node

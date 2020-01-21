@@ -788,7 +788,7 @@ package body GNATLLVM.Types is
 
       if No (Proc) and then Align <= Get_System_Allocator_Alignment * BPU then
          Result := Call (Get_Default_Alloc_Fn, A_Char_GL_Type,
-                         (1 => To_Bytes (Size)));
+                         Add_Static_Link (Empty, (1 => To_Bytes (Size))));
 
       --  Otherwise, if we can use the default memory allocation
       --  function but have to overalign, increase the size by both
@@ -802,7 +802,7 @@ package body GNATLLVM.Types is
             Total_Size : constant GL_Value := Size + Align + Ptr_Size;
             Alloc      : constant GL_Value :=
               Call (Get_Default_Alloc_Fn, A_Char_GL_Type,
-                    (1 => To_Bytes (Total_Size)));
+                    Add_Static_Link (Empty, (1 => To_Bytes (Total_Size))));
             Alloc_Int  : constant GL_Value := Ptr_To_Int (Alloc, Size_GL_Type);
             Aligned    : constant GL_Value :=
               Align_To (Alloc_Int + To_Bytes (Ptr_Size),
@@ -905,7 +905,8 @@ package body GNATLLVM.Types is
          if No (Proc) and then Align <= Get_System_Allocator_Alignment * BPU
          then
             Call (Get_Default_Free_Fn,
-                  (1 => Pointer_Cast (Conv_V, A_Char_GL_Type)));
+                  Add_Static_Link
+                    (Empty, (1 => Pointer_Cast (Conv_V, A_Char_GL_Type))));
 
          --  If we have to use the normal deallocation procedure to
          --  deallocate an overaligned value, the actual address of the
@@ -923,7 +924,8 @@ package body GNATLLVM.Types is
                  Int_To_Ref (Ptr_Loc, A_Char_GL_Type);
 
             begin
-               Call (Get_Default_Free_Fn, (1 => Load (Ptr_Ref)));
+               Call (Get_Default_Free_Fn,
+                     Add_Static_Link (Empty, (1 => Load (Ptr_Ref))));
             end;
 
          --  If a procedure was specified (meaning that a pool must also

@@ -273,11 +273,6 @@ package body GNATLLVM.Subprograms is
    --  pointer passed to the current subprogram.  Return a pointer to the
    --  proper activation record, which is either V or an up-level pointer.
 
-   function Add_Static_Link
-     (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value_Array
-     with Pre => Ekind_In (Proc, E_Procedure, E_Function);
-   --  If Proc needs a static link, add it to the end of Args
-
    function Is_Binder_Elab_Proc (Name : String) return Boolean;
    --  Return True if Name is the name of the elab proc for Ada_Main
 
@@ -661,10 +656,14 @@ package body GNATLLVM.Subprograms is
       Return_GT       : constant GL_Type     := Full_GL_Type    (Def_Ident);
       RK              : constant Return_Kind := Get_Return_Kind (Def_Ident);
       LRK             : constant L_Ret_Kind  := Get_L_Ret_Kind  (Def_Ident);
+      Has_S_Link      : constant Boolean     :=
+        Has_Activation_Record (Def_Ident);
       Foreign         : constant Boolean     :=
         Has_Foreign_Convention (Def_Ident);
       Adds_S_Link     : constant Boolean     :=
-        Is_Type (Def_Ident) and then not Foreign;
+        (Is_Type (Def_Ident) and then not Foreign)
+        or else (not Has_S_Link and then Force_Activation_Record_Parameter
+                   and then not Foreign);
       LLVM_Ret_Typ    : Type_T               :=
         (if    RK in None | Return_By_Parameter then Void_Type
          elsif RK = RK_By_Reference then Create_Access_Type_To (Return_GT)
@@ -1274,7 +1273,9 @@ package body GNATLLVM.Subprograms is
          Present (Elaboration_Table.Table (J).N))
         or else Has_Non_Null_Statements (S_List);
       Elab_Type        : constant Type_T   :=
-        Fn_Ty ((1 .. 0 => <>), Void_Type);
+        Fn_Ty ((if   Force_Activation_Record_Parameter
+                then (1 => Void_Ptr_T) else (1 .. 0 => <>)),
+               Void_Type);
       LLVM_Func        : GL_Value;
 
    begin
@@ -1564,18 +1565,25 @@ package body GNATLLVM.Subprograms is
    function Add_Static_Link
      (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value_Array
    is
+      S_Link         : GL_Value := No_GL_Value;
       Args_With_Link : GL_Value_Array (Args'First .. Args'Last + 1);
-      S_Link         : GL_Value;
 
    begin
-      if Has_Activation_Record (Proc)
+      --  First see if we need an activation record parameter, either a real
+      --  one or a dummy one.
+
+      if Present (Proc) and then Has_Activation_Record (Proc)
         and then Present (Subps.Table (Subp_Index (Proc)).ARECnF)
       then
-         --  This needs a static link.  Get it, convert it to the precise
-         --  needed type, and then create the new argument list.
-
          S_Link := Pointer_Cast (Get_Static_Link (Proc),
                                  Full_GL_Type (Extra_Formals (Proc)));
+      elsif Force_Activation_Record_Parameter then
+         S_Link := Get_Undef (A_Char_GL_Type);
+      end if;
+
+      --  If we did, add it to the argument list
+
+      if Present (S_Link) then
          Args_With_Link (Args'Range) := Args;
          Args_With_Link (Args_With_Link'Last) := S_Link;
          return Args_With_Link;
@@ -1778,8 +1786,12 @@ package body GNATLLVM.Subprograms is
       Result           : GL_Value             := No_GL_Value;
       Foreign          : constant Boolean     :=
         Has_Foreign_Convention (Subp_Typ);
+      Has_S_Link       : constant Boolean     :=
+        Has_Activation_Record (Subp_Typ);
       This_Adds_S_Link : constant Boolean     :=
-        not Direct_Call and not Foreign;
+        (not Direct_Call and not Foreign)
+          or else (not Has_S_Link and then Force_Activation_Record_Parameter
+                     and then not Foreign);
       Arg_Count        : constant Nat         :=
         Orig_Arg_Count + (if This_Adds_S_Link then 1 else 0) +
           (if RK = Return_By_Parameter then 1 else 0);

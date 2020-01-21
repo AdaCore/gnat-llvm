@@ -170,6 +170,10 @@ package body GNATLLVM.Codegen is
          RerollLoops := False;
       elsif Switch = "-fno-optimize-sibling-calls" then
          No_Tail_Calls := True;
+      elsif Switch = "-fforce-activation-record-parameter" then
+         Force_Activation_Record_Parameter := True;
+      elsif Switch = "-fno-force-activation-record-parameter" then
+         Force_Activation_Record_Parameter := False;
       elsif Switch = "-mdso-preemptable" then
          DSO_Preemptable := True;
       elsif Switch = "-mdso-local" then
@@ -246,6 +250,7 @@ package body GNATLLVM.Codegen is
         (1 => Opt0'Address, 2 => Opt1'Address, 3 => Opt2'Address,
          others => <>);
       Ptr_Err_Msg : aliased Ptr_Err_Msg_Type;
+      TT_First    : constant Integer  := Target_Triple'First;
 
    begin
       --  Add any LLVM parameters to the list of switches
@@ -299,6 +304,10 @@ package body GNATLLVM.Codegen is
       Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
       Set_Target             (Module, Target_Triple.all);
       Set_Module_Data_Layout (Module, Module_Data_Layout);
+
+      if Target_Triple (TT_First .. TT_First + 3) = "wasm" then
+         Force_Activation_Record_Parameter := True;
+      end if;
    end Initialize_LLVM_Target;
 
    -------------------

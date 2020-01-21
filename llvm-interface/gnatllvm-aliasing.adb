@@ -234,12 +234,12 @@ package body GNATLLVM.Aliasing is
    procedure Initialize is
    begin
       if Opt.No_Strict_Aliasing or else Decls_Only then
-         Flag_No_Strict_Aliasing := True;
+         No_Strict_Aliasing_Flag := True;
       end if;
 
       TBAA_Root := Create_TBAA_Root (MD_Builder);
 
-      if not Flag_No_Strict_Aliasing then
+      if not No_Strict_Aliasing_Flag then
          Search_For_UCs;
       end if;
    end Initialize;
@@ -750,7 +750,7 @@ package body GNATLLVM.Aliasing is
       --  type-based aliasing, or this is a void type, don't create a
       --  TBAA tag.
 
-      if Flag_No_Strict_Aliasing or else Ekind (TE) = E_Void
+      if No_Strict_Aliasing_Flag or else Ekind (TE) = E_Void
         or else Universal_Aliasing_Including_Bases (TE)
       then
          return No_Metadata_T;

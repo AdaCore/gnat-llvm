@@ -128,8 +128,7 @@ package GNATLLVM.Aliasing is
      );
 
    function Kind_From_Aliased (Is_Aliased : Boolean) return TBAA_Kind is
-     ((if   Flag_C_Style_Aliasing or Is_Aliased
-       then Unique_Aliased else Unique));
+     ((if C_Style_Aliasing or Is_Aliased then Unique_Aliased else Unique));
    --  Given whether an item is aliased, return the TBAA_Kind to use
 
    function Kind_From_Decl (Def_Ident : Entity_Id) return TBAA_Kind is

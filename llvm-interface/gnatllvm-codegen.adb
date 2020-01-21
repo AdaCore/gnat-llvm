@@ -134,9 +134,9 @@ package body GNATLLVM.Codegen is
                null;
          end case;
       elsif Switch = "-fno-strict-aliasing" then
-         Flag_No_Strict_Aliasing := True;
+         No_Strict_Aliasing_Flag := True;
       elsif Switch = "-fc-style-aliasing" then
-         Flag_C_Style_Aliasing := True;
+         C_Style_Aliasing := True;
       elsif Switch = "-fno-unroll-loops" then
          No_Unroll_Loops := True;
       elsif Switch = "-funroll-loops" then

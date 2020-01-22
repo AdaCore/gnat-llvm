@@ -34,18 +34,66 @@ with LLVM.Types;          use LLVM.Types;
 
 package GNATLLVM is
 
-   --  Note: in order to find the right LLVM instruction to generate,
-   --  you can compare with what Clang generates on corresponding C or C++
-   --  code. This can be done online via http://ellcc.org/demo/index.cgi
-
-   --  See also DragonEgg sources for comparison on how GCC nodes are converted
+   --  This package and its children generate LLVM IR from the GNAT tree.
+   --  They represent a complete implemention of the Ada language.
+   --
+   --  We directly call subprograms from the front end and access the data
+   --  structures that it creates.  For the most part, our interface to
+   --  LLVM is via its C API, which we've converted into Ada specs so we
+   --  can call them directly.  However, there are some cases when we need
+   --  to call things available only in the LLVM C++ API.  In those cases,
+   --  we add functions to llvm_wrapper.cc, which are called from
+   --  GNATLLVM.Wrapper.
+   --
+   --  In order to completely understand these packages, you need to
+   --  understand both the structure of the Ada tree and the LLVM IR.
+   --
+   --  One way to find the right LLVM instruction to generate is to look at
+   --  what Clang generates from the corresponding C or C++ code. This can
+   --  be done online via http://ellcc.org/demo/index.cgi You can also look
+   --  at DragonEgg sources for comparison on how GCC nodes are converted
    --  to LLVM nodes: http://llvm.org/svn/llvm-project/dragonegg/trunk
+   --
+   --  Unlike gigi, where we build a tree from the GNAT tree, we directly
+   --  generate IR from the GNAT tree.  To do this effectively while tracking
+   --  where we are, we do three things:
+   --
+   --  (1) The package GNATLLVM.Environment creates a linkage between GNAT
+   --  objects and our objects (see below).
+   --
+   --  (2) The package GNATLLVM.GLType contains an abstraction that lets us
+   --  create variants of types, corresponding to different representations
+   --  of those types, such as when padding, biasing, or different
+   --  alignment is needed.  We define functions on these GLTypes that
+   --  correspond to the same accessors of the underlying GNAT type.
+   --
+   --  (3) The package GNATLLVM.GLValue defines the values that we pass
+   --  around and act on.  This consists of an LLVM Value_T, the GLType
+   --  that it's related to, and the nature of the relationship (data,
+   --  bounds, address, etc.)  This contains functions to access both
+   --  LLVM attributes of the Value_T, but also function to access attibutes
+   --  of the related type, including those of the underlying GNAT tree type.
+   --
+   --  In general, subprograms that start with the name Emit take a GNAT tree
+   --  node and generate LLVM IR from it and subprograms that start with
+   --  Build take a GL_Value.
+   --
+   --  We heavily use binary operators on these types, for example to
+   --  perform arithmetic operations on GLValues, and use unary + to
+   --  convert a value from one form to another, e.g., to extract an LLVM
+   --  Value_T or an integer constant from a GL_Value.
+   --
+   --  Note that it can be very easy to make the error of calling some
+   --  function with multiple operands, each of which cause code generation
+   --  (which can be something like X + Y if X and Y are non-constant
+   --  GLValues).  This will generate correct code, but the precise code
+   --  generated will depend on the parameter evaluation order, which is
+   --  undefined in Ada.  This unpredictability can cause bootstrap
+   --  failures.
 
-   --  This package contains very low-level types, objects, and functions,
-   --  mostly corresponding to LLVM objects and exists to avoid circular
-   --  dependencies between other specs.  The intent is that every child
-   --  package of LLVM with's this child, but that this with's no other
-   --  children.
+   --  This specific package contains very low-level types, objects, and
+   --  functions, mostly corresponding to LLVM objects and exists to avoid
+   --  circular dependencies between other specs.
 
    --  Define unsigned and unsigned_long_long here instead of use'ing
    --  Interfaces.C and Interfaces.C.Extensions because the latter brings

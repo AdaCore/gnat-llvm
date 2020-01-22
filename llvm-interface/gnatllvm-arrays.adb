@@ -242,14 +242,14 @@ package body GNATLLVM.Arrays is
          --  Otherwise, it's zero if this is flat or superflat and High -
          --  Low + 1 otherwise.
 
-         elsif Not_Superflat then
+         else
             Res := Comp_High - Comp_Low + Const_1;
 
-         else
-            Res := Build_Select
-              (C_If   => I_Cmp (Cmp_Kind, Comp_Low, Comp_High, "is-empty"),
-               C_Then => Const_0,
-               C_Else => Comp_High - Comp_Low + Const_1);
+            if not Not_Superflat then
+               Res := Build_Select
+                 (C_If   => I_Cmp (Cmp_Kind, Comp_Low, Comp_High, "is-empty"),
+                  C_Then => Const_0, C_Else => Res);
+            end if;
          end if;
 
          --  Finally convert result to output type

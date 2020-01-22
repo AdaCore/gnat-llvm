@@ -545,8 +545,13 @@ package body GNATLLVM.Types is
               or else (Is_Constr_Subt_For_UN_Aliased (GT) and then
                          not Is_Constr_Subt_For_UN_Aliased (Alloc_GT))
             then
-               Store (Get_Array_Bounds (GT, Alloc_GT, New_V),
-                      Get (Memory, Reference_To_Bounds));
+               declare
+                  Bounds : constant GL_Value :=
+                    Get_Array_Bounds (GT, Alloc_GT, New_V);
+
+               begin
+                  Store (Bounds, Get (Memory, Reference_To_Bounds));
+               end;
             end if;
          end if;
       end if;

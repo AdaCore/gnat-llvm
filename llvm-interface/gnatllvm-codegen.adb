@@ -305,6 +305,8 @@ package body GNATLLVM.Codegen is
       Set_Target             (Module, Target_Triple.all);
       Set_Module_Data_Layout (Module, Module_Data_Layout);
 
+      --  ??? Replace this by a parameter in system.ads or target.atp
+
       if Target_Triple (TT_First .. TT_First + 3) = "wasm" then
          Force_Activation_Record_Parameter := True;
       end if;

@@ -1272,10 +1272,6 @@ package body GNATLLVM.Subprograms is
         (for some J in First_Idx .. Last_Idx =>
          Present (Elaboration_Table.Table (J).N))
         or else Has_Non_Null_Statements (S_List);
-      Elab_Type        : constant Type_T   :=
-        Fn_Ty ((if   Force_Activation_Record_Parameter
-                then (1 => Void_Ptr_T) else (1 .. 0 => <>)),
-               Void_Type);
       LLVM_Func        : GL_Value;
 
    begin
@@ -1297,7 +1293,8 @@ package body GNATLLVM.Subprograms is
       then
          LLVM_Func := Ada_Main_Elabb;
       else
-         LLVM_Func := Add_Function (Name, Elab_Type, Void_GL_Type,
+         LLVM_Func := Add_Function (Name, Fn_Ty ((1 .. 0 => <>), Void_Type),
+                                    Void_GL_Type,
                                     Is_Builtin => True);
       end if;
 

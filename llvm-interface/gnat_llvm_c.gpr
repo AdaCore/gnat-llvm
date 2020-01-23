@@ -3,6 +3,9 @@ project GNAT_LLVM_C is
    for Source_Dirs use (".", "obj");
    for Object_Dir use "obj";
 
+   type Build_Type is ("Debug", "Production");
+   Build : Build_Type := External ("Build", "Debug");
+
    Target := project'Canonical_Target;
 
    package Compiler is
@@ -14,10 +17,19 @@ project GNAT_LLVM_C is
             null;
       end case;
 
-      for Switches ("C++") use ("-g");
+      case Build is
+         when "Debug" =>
+            for Switches ("C") use ("-g");
+            for Switches ("C++") use ("-g");
+
+         when "Production" =>
+            for Switches ("C") use ("-O2", "-g");
+            for Switches ("C++") use ("-O2", "-g");
+      end case;
    end Compiler;
 
    package Naming is
       for Body_Suffix ("C++") use ".cc";
    end Naming;
+
 end GNAT_LLVM_C;

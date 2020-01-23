@@ -126,7 +126,7 @@ package body GNATLLVM.GLValue is
             return Ekind (GT) in E_Subprogram_Type | E_Access_Subprogram_Type;
 
          when Reference_To_Activation_Record =>
-            return Ekind (GT) = E_Subprogram_Type
+            return (Ekind (GT) = E_Subprogram_Type or else Is_Undef (Val))
               and then Kind = Pointer_Type_Kind;
 
          when Reference_To_Subprogram | Reference_To_Ref_To_Subprogram

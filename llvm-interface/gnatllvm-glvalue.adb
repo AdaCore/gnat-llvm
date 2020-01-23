@@ -597,7 +597,6 @@ package body GNATLLVM.GLValue is
      (GT : GL_Type; R : GL_Relationship) return Type_T
    is
       T   : constant Type_T    := Type_Of (GT);
-      P_T : constant Type_T    := Pointer_Type (T, 0);
       TE  : constant Entity_Id := Full_Etype (GT);
 
    begin
@@ -621,10 +620,10 @@ package body GNATLLVM.GLValue is
             return Build_Struct_Type ((1 => T, 2 => Bit_T));
 
          when Object =>
-            return (if Is_Loadable_Type (GT) then T else P_T);
+            return (if Is_Loadable_Type (GT) then T else Pointer_Type (T, 0));
 
          when Thin_Pointer | Any_Reference =>
-            return P_T;
+            return Pointer_Type (T, 0);
 
          when Activation_Record =>
             return Byte_T;

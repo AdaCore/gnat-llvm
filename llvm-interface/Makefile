@@ -276,4 +276,4 @@ g-debpoo.o: g-debpoo.adb g-debpoo.ads
 
 # Optionally include sub makefile
 
--include Makefile.zfp
+-include Makefile.target

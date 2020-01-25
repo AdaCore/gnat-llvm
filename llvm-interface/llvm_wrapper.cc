@@ -465,10 +465,10 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM,
   Builder.OptLevel = Code_Opt_Level;
   Builder.SizeLevel = Size_Opt_Level;
 
-  if (! No_Inlining && Code_Opt_Level > 1)
+  if (! No_Inlining && Code_Opt_Level >= 1)
     Builder.Inliner
       = createFunctionInliningPass(Code_Opt_Level, Size_Opt_Level, false);
-  else if (! No_Inlining)
+  else
     Builder.Inliner = createAlwaysInlinerLegacyPass();
 
   Builder.DisableUnrollLoops = Code_Opt_Level == 0 || No_Unroll_Loops;

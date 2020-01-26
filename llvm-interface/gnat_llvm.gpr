@@ -24,7 +24,8 @@ project Gnat_LLVM is
             for Switches ("Ada") use Common_Switches & ("-gnata", "-gnateE");
 
          when "Production" =>
-            for Switches ("Ada") use Common_Switches & ("-O2", "-gnatpn");
+            for Switches ("Ada") use
+              Common_Switches & ("-gnata", "-O2", "-gnatpn");
       end case;
    end Compiler;
 

@@ -1,3 +1,8 @@
+# Note that this Makefile is optional and mainly used by core GNAT LLVM
+# developers: you can use an existing install of LLVM instead.
+# llvm-interface/Makefile will work as long as llvm-config is found in your
+# PATH.
+
 PWD:=$(shell pwd)
 TMP_GEN_DIR=gen
 OUT_DIR=out

@@ -227,6 +227,26 @@ Create_TBAA_Struct_Type_Node (LLVMContext &ctx, MDBuilder *MDHelper,
 }
 
 extern "C"
+MDNode *
+Create_TBAA_Struct_Node (LLVMContext &ctx, MDBuilder *MDHelper,
+			 int num_fields, MDNode *types[], uint64_t offsets[],
+			 uint64_t sizes[])
+{
+  Type *Int64 = Type::getInt64Ty(ctx);
+  SmallVector<Metadata *, 8> Ops (num_fields * 3);
+  for (unsigned i = 0; i < num_fields; i++)
+    {
+      Ops[i * 3]
+	  = MDHelper->createConstant (ConstantInt::get (Int64, offsets[i]));
+      Ops[i * 3 + 1]
+	  = MDHelper->createConstant (ConstantInt::get (Int64, sizes[i]));
+      Ops[i * 3 + 2] = types[i];
+    }
+
+  return MDNode:: get (ctx, Ops);
+}
+
+extern "C"
 unsigned
 Get_Stack_Alignment (DataLayout *dl)
 {

@@ -51,6 +51,15 @@ package GNATLLVM.Wrapper is
      with Inline;
    --  Create a TBAA metadata node for an aggregate type
 
+   function Create_TBAA_Struct_Node
+     (Ctx        : Context_T;
+      MDBld      : MD_Builder_T;
+      Num_Fields : Nat;
+      TBAAs      : System.Address;
+      Offsets    : System.Address;
+      Sizes      : System.Address) return Metadata_T
+     with Import, Convention => C, External_Name => "Create_TBAA_Struct_Node";
+
    function Create_TBAA_Access_Tag
      (MDBld                  : MD_Builder_T;
       Base_Type, Access_Type : Metadata_T;

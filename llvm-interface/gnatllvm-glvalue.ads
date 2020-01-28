@@ -1398,6 +1398,21 @@ package GNATLLVM.GLValue is
                   and then (for all T of TBAAs   => Present (T)),
           Post => Present (Create_TBAA_Struct_Type_Node'Result);
 
+   function Create_TBAA_Struct_Node
+     (TBAAs   : Metadata_Array;
+      Offsets : ULL_Array;
+      Sizes   : ULL_Array) return Metadata_T
+   is
+      (Create_TBAA_Struct_Node
+         (Context, MD_Builder, TBAAs'Length, TBAAs'Address, Offsets'Address,
+          Sizes'Address))
+     with Pre  => TBAAs'First = Offsets'First
+                  and then TBAAs'Last  = Offsets'Last
+                  and then TBAAs'First = Sizes'First
+                  and then TBAAs'Last  = Sizes'Last
+                  and then (for all T of TBAAs   => Present (T)),
+          Post => Present (Create_TBAA_Struct_Node'Result);
+
    function Get_Subprogram (V : GL_Value) return Metadata_T is
      (Get_Subprogram (+V))
      with Pre => Is_A_Function (V), Inline;

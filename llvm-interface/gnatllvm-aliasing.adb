@@ -66,6 +66,10 @@ package body GNATLLVM.Aliasing is
      (Get_Metadata_Operand_Constant_Value (MD, 3 + Idx * 3 + 1))
      with Pre => Is_Struct_Tag (MD);
 
+   function Field_Size (MD : Metadata_T; Idx : Nat) return ULL is
+     (Get_Metadata_Operand_Constant_Value (MD, 3 + Idx * 3 + 2))
+     with Pre => Is_Struct_Tag (MD);
+
    --  We need to record all types that are the designated types of access
    --  types that are unchecked-converted into each other.  All of those
    --  types need to have the same TBAA value.  Likewise for a UC where one
@@ -1495,6 +1499,101 @@ package body GNATLLVM.Aliasing is
                                           Offset, Size_In_Bytes));
       end if;
    end Add_Aliasing_To_Instruction;
+
+   -------------------------
+   -- Compute_TBAA_Access --
+   -------------------------
+
+   function Compute_TBAA_Access (LHS, RHS, Size : GL_Value) return Metadata_T
+   is
+      TBAA        : Metadata_T;
+      Orig_Offset : ULL;
+      Offset      : ULL;
+      Access_TBAA : Metadata_T;
+
+   begin
+      --  If size isn't a constant, we can't do anything or if either side
+      --  aliases everything or if we can't use access tags for struct
+      --  types due to an LLVM bug.  Otherwise, see if we can find a tag on
+      --  both sides that have a common tag if both sides are Present or
+      --  use the one for LHS if only it's Present.
+
+      if not Is_A_Const_Int (Size) or else Aliases_All (LHS) or else Size = 0
+        or else LLVM_Struct_Tag_Bug
+      then
+         return No_Metadata_T;
+      elsif No (RHS) then
+         TBAA := TBAA_Type (LHS);
+      elsif not Aliases_All (RHS) and then Present (TBAA_Type (RHS))
+        and then TBAA_Offset (LHS) /= TBAA_Offset (RHS)
+      then
+         TBAA := Common_TBAA (TBAA_Type (LHS), TBAA_Type (RHS));
+      else
+         TBAA := No_Metadata_T;
+      end if;
+
+      --  If we did, make an access tag
+
+      if Present (TBAA) then
+         Orig_Offset := TBAA_Offset (LHS);
+         Offset      := Orig_Offset;
+         Access_TBAA := Extract_Access_Type (TBAA, Offset, +Size);
+         return Create_TBAA_Access_Tag (MD_Builder, TBAA, Access_TBAA,
+                                        Orig_Offset, +Size);
+      else
+         return No_Metadata_T;
+      end if;
+
+   end Compute_TBAA_Access;
+
+   -------------------------
+   -- Compute_TBAA_Struct --
+   -------------------------
+
+   function Compute_TBAA_Struct (LHS, RHS, Size : GL_Value) return Metadata_T
+   is
+      TBAA : Metadata_T;
+
+      function Is_Our_Struct (TBAA : Metadata_T) return Boolean is
+        (Present (TBAA) and then Is_Struct_Tag (TBAA)
+         and then Size_In_Bytes (TBAA) = +Size);
+
+   begin
+      --  If size isn't a constant, we can't do anything or if either side
+      --  aliases everything.  Otherwise, see if we can find a struct type
+      --  tag on either side that corresponds to the specified size.
+
+      if not Is_A_Const_Int (Size) or else Aliases_All (LHS)
+        or else Aliases_All (RHS)
+      then
+         return No_Metadata_T;
+      elsif Is_Our_Struct (TBAA_Type (LHS)) and then TBAA_Offset (LHS) = 0 then
+         TBAA := TBAA_Type (LHS);
+      elsif Is_Our_Struct (TBAA_Type (RHS)) and then TBAA_Offset (RHS) = 0 then
+         TBAA := TBAA_Type (RHS);
+      else
+         return No_Metadata_T;
+      end if;
+
+      --  Make the arrays containing the values needed for the tbaa.struct
+
+      declare
+         Last_Field : constant Nat := Last_Field_Index (TBAA);
+         TBAAs      : Metadata_Array (0 .. Last_Field);
+         Offsets    : ULL_Array (0 .. Last_Field);
+         Sizes      : ULL_Array (0 .. Last_Field);
+
+      begin
+         for J in 0 .. Last_Field loop
+            TBAAs   (J) := Field_Type   (TBAA, J);
+            Offsets (J) := Field_Offset (TBAA, J);
+            Sizes   (J) := Field_Size   (TBAA, J);
+         end loop;
+
+         return Create_TBAA_Struct_Node (TBAAs, Offsets, Sizes);
+      end;
+
+   end Compute_TBAA_Struct;
 
 begin
    --  Make a dummy entry so the "Empty" entry is never used.

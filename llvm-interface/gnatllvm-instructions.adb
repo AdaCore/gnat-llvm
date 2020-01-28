@@ -942,6 +942,7 @@ package body GNATLLVM.Instructions is
       Discard (Build_MemCpy (IR_Builder, +Dst, unsigned (Dst_Align), +Src,
                              unsigned (Src_Align), +Size, Is_Volatile, TBAA,
                              TBAA_Struct, Scope, NoAlias));
+
    end Build_MemCpy;
 
    -------------------

@@ -29,6 +29,7 @@ with Uintp.LLVM; use Uintp.LLVM;
 with Urealp;     use Urealp;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
+with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
 with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
@@ -1467,7 +1468,9 @@ package body GNATLLVM.Exprs is
                                            A_Char_GL_Type),
                              Const_Null (SSI_GL_Type), Size,
                              To_Bytes (Get_Type_Alignment (Dest_GT)),
-                             Is_Volatile (Dest));
+                             Is_Volatile (Dest),
+                             TBAA =>
+                               Compute_TBAA_Access (Dest, No_GL_Value, Size));
             end if;
          end;
 
@@ -1494,10 +1497,11 @@ package body GNATLLVM.Exprs is
 
       else
          declare
-            Need_Volatile : constant Boolean :=
+            Need_Volatile    : constant Boolean :=
               Is_Volatile (Src) or else Is_Volatile (Dest);
-            Size          : GL_Value         :=
+            Size             : GL_Value         :=
               Compute_Size (Dest_GT, Related_Type (Src), Dest, Src);
+            Mem_Src, Mem_Dst : GL_Value;
 
          begin
             --  Get the proper relationship.  If we're copying both bounds
@@ -1525,18 +1529,25 @@ package body GNATLLVM.Exprs is
             --  outside of the call to create the memory operation to
             --  ensure a consistent ordering.
 
-            Size := To_Bytes (Size);
-            Src  := Pointer_Cast (Get (Src, Src_R), A_Char_GL_Type);
-            Dest := Pointer_Cast (Get (Dest, Dest_R), A_Char_GL_Type);
+            Size    := To_Bytes (Size);
+            Mem_Src := Pointer_Cast (Get (Src, Src_R), A_Char_GL_Type);
+            Mem_Dst := Pointer_Cast (Get (Dest, Dest_R), A_Char_GL_Type);
 
-            if Forwards_OK and then Backwards_OK then
-               Build_MemCpy (Dest, To_Bytes (Get_Type_Alignment (Dest_GT)),
-                             Src, To_Bytes (Get_Type_Alignment (Src_GT)),
-                             Size, Need_Volatile);
+            if (Forwards_OK and then Backwards_OK)
+              or else (Present (Expr) and then Is_Safe_From (Dest, Expr))
+            then
+               Build_MemCpy (Mem_Dst, To_Bytes (Get_Type_Alignment (Dest_GT)),
+                             Mem_Src, To_Bytes (Get_Type_Alignment (Src_GT)),
+                             Size, Need_Volatile,
+                             TBAA        =>
+                               Compute_TBAA_Access (Dest, Src, Size),
+                             TBAA_Struct =>
+                               Compute_TBAA_Struct (Dest, Src, Size));
             else
-               Build_MemMove (Dest, To_Bytes (Get_Type_Alignment (Dest_GT)),
-                              Src, To_Bytes (Get_Type_Alignment (Src_GT)),
-                              Size, Need_Volatile);
+               Build_MemMove (Mem_Dst, To_Bytes (Get_Type_Alignment (Dest_GT)),
+                              Mem_Src, To_Bytes (Get_Type_Alignment (Src_GT)),
+                              Size, Need_Volatile,
+                              TBAA => Compute_TBAA_Access (Dest, Src, Size));
             end if;
          end;
       end if;

@@ -965,7 +965,8 @@ package body GNATLLVM.Arrays is
                                        Reference),
                                   A_Char_GL_Type),
                     Value, Size, To_Bytes (Get_Type_Alignment (GT)),
-                    Is_Volatile (LValue));
+                    Is_Volatile (LValue),
+                    TBAA => Compute_TBAA_Access (LValue, No_GL_Value, Size));
    end Emit_Others_Aggregate;
 
    -----------------------------

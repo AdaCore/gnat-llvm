@@ -166,4 +166,14 @@ package GNATLLVM.Aliasing is
    --  If M1 and M2 are the same or have a common parent, return that.
    --  Otherwise, return No_Metadata_T.
 
+   function Compute_TBAA_Access (LHS, RHS, Size : GL_Value) return Metadata_T
+     with Pre => Present (LHS) and then Present (Size);
+   --  LHS, RHS, and Size are parameters of a memcpy instruction.
+   --  If we can compute a access tag from those, return it.
+
+   function Compute_TBAA_Struct (LHS, RHS, Size : GL_Value) return Metadata_T
+     with Pre => Present (LHS) and then Present (RHS) and then Present (Size);
+   --  LHS, RHS, and Size are parameters of a memcpy instruction.
+   --  If we can compute a tbaa.struct value from those, return it.
+
 end GNATLLVM.Aliasing;

@@ -1198,9 +1198,8 @@ package body GNATLLVM.Aliasing is
          else Related_Type (V));
       Size_In_Bytes : constant ULL     :=
         To_Bytes (Get_Type_Size (Type_Of (GT)));
-      Orig_Offset   : ULL              := TBAA_Offset  (V);
+      Offset        : ULL              := TBAA_Offset  (V);
       Base_Type     : Metadata_T       := TBAA_Type    (V);
-      Offset        : ULL              := Orig_Offset;
       Access_Type   : Metadata_T;
 
    begin
@@ -1223,7 +1222,6 @@ package body GNATLLVM.Aliasing is
       elsif No (Base_Type) then
          Base_Type   := Get_TBAA_Type (GT, Native);
          Offset      := 0;
-         Orig_Offset := 0;
       end if;
 
       --  If we still couldn't find a tag or if our size is zero, don't do
@@ -1232,8 +1230,8 @@ package body GNATLLVM.Aliasing is
       if Present (Base_Type) and then Size_In_Bytes /= 0 then
          Access_Type := Extract_Access_Type (Base_Type, Offset, Size_In_Bytes);
          Add_TBAA_Access
-           (Inst, Create_TBAA_Access_Tag (MD_Builder, Base_Type, Access_Type,
-                                          Orig_Offset, Size_In_Bytes));
+           (Inst, Create_TBAA_Access_Tag (MD_Builder, Access_Type, Access_Type,
+                                          Offset, Size_In_Bytes));
       end if;
    end Add_Aliasing_To_Instruction;
 

@@ -188,10 +188,10 @@ package GNATLLVM.Environment is
      with Pre => Is_Type_Or_Void (TE), Inline;
 
    function Get_TBAA_Info             (TE : Entity_Id) return TBAA_Info_Id
-     with Pre => Is_Array_Type (TE), Inline;
+     with Pre => Is_Type_Or_Void (TE), Inline;
 
    function Get_TBAA_Info_N           (TE : Entity_Id) return TBAA_Info_Id
-     with Pre => Is_Array_Type (TE), Inline;
+     with Pre => Is_Type_Or_Void (TE), Inline;
 
    function Get_Value                 (VE : Entity_Id) return GL_Value
      with Pre => Present (VE), Inline;
@@ -257,7 +257,7 @@ package GNATLLVM.Environment is
           Post => Get_TBAA_N (TE) = TBAA, Inline;
 
    procedure Set_TBAA_Info            (TE : Entity_Id; T : TBAA_Info_Id)
-     with Pre  => Is_Array_Type (TE) and then Present (T),
+     with Pre  => Is_Type_Or_Void (TE) and then Present (T),
           Post => Get_TBAA_Info_N (TE) = T, Inline;
 
    procedure Set_Value_R              (VE : Entity_Id; VL : GL_Value)

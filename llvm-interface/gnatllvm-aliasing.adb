@@ -15,12 +15,14 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Elists;   use Elists;
 with Errout;   use Errout;
 with Lib;      use Lib;
 with Opt;
 with Sem;      use Sem;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Ch13; use Sem_Ch13;
+with Sem_Eval; use Sem_Eval;
 with Sem_Util; use Sem_Util;
 with Sinfo;    use Sinfo;
 with Table;    use Table;
@@ -110,6 +112,38 @@ package body GNATLLVM.Aliasing is
    procedure Search_For_UCs;
    --  Look through all units for UC's between two access types
 
+   --  The front end often makes distinct subtypes that have the same
+   --  relationship to the base type.  For example, there may be
+   --  multiple array subtypes with bounds 1 .. 2 and there may be
+   --  multiple record subtypes with the same discriminant value.
+   --  The front end uses these subtypes interchangably, so we need
+   --  to be sure that we use the same TBAA type tag for each of them.
+   --  To do this, we maintain a list of subtypes of a base type for
+   --  which we've made a TBAA and see if a new subtype is the same as
+   --  any of those.  The chain is maintained via the following table
+   --  (where each entry points to another entry in the chain, ending in
+   --  zero) and the head of the chain in is the TBAA_Info record below.
+
+   type TBAA_Equiv is record
+      Next : Nat;
+      TE   : Entity_Id;
+   end record;
+
+   package TBAA_Equiv_Subtype_Table is new Table.Table
+     (Table_Component_Type => TBAA_Equiv,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 100,
+      Table_Increment      => 50,
+      Table_Name           => "TBAA_Equivalent_Subtype_Table");
+
+   function Find_Equiv_Subtype (TE : Entity_Id) return Entity_Id
+     with Pre  => Present (TE),
+          Post => Full_Base_Type (TE) =
+                  Full_Base_Type (Find_Equiv_Subtype'Result);
+   --  If TE is a subtype and there's another subtype of its base type
+   --  with an equivalent layout, return it.  Otherwise, return TE.
+
    --  There are various objects related to arrays that each need to have
    --  their own TBAAA type tags.  These basically correspond to different
    --  GL_Relationships.  In most cases, these are always aliased, but
@@ -122,21 +156,24 @@ package body GNATLLVM.Aliasing is
    --  all subtypes) and the data (which is unique to the subtype and defined
    --  only for that subtype).  Note that the TBAA type tag for the data
    --  isn't stored here, but rather as the TBAA data for the subtype.
+   --  For records, the only data used is for base types and contains
+   --  the subtype chain.
 
-   type TBAA_Array_Info is record
+   type TBAA_Info is record
       Fat_Pointer     : Metadata_T;
       Bounds          : Metadata_T;
       Bounds_And_Data : Metadata_T;
       Component       : Metadata_T;
+      Subtype_Chain   : Nat;
    end record;
 
-   package TBAA_Array_Info_Table is new Table.Table
-     (Table_Component_Type => TBAA_Array_Info,
+   package TBAA_Info_Table is new Table.Table
+     (Table_Component_Type => TBAA_Info,
       Table_Index_Type     => TBAA_Info_Id'Base,
       Table_Low_Bound      => TBAA_Info_Low_Bound,
       Table_Initial        => 100,
       Table_Increment      => 50,
-      Table_Name           => "TBAA_Array_Info_Table");
+      Table_Name           => "TBAA_Info_Table");
 
    TBAA_Root : Metadata_T;
    --  Root of tree for Type-Based alias Analysis (TBAA) metadata
@@ -191,7 +228,7 @@ package body GNATLLVM.Aliasing is
    function TBAA_Data_For_Array_Type (TE : Entity_Id) return TBAA_Info_Id
      with Pre  => Is_Array_Type (TE) and then Is_Base_Type (TE),
           Post => Present (TBAA_Data_For_Array_Type'Result);
-   --  If not already created, make a TBAA_Array_Info entity for TE
+   --  If not already created, make a TBAA_Info entity for TE
 
    function Create_TBAA_For_Array_Data
      (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
@@ -607,6 +644,189 @@ package body GNATLLVM.Aliasing is
       end if;
    end Common_TBAA;
 
+   ------------------------
+   -- Find_Equiv_Subtype --
+   ------------------------
+
+   function Find_Equiv_Subtype (TE : Entity_Id) return Entity_Id is
+      procedure Get_String_Bounds (TE : Entity_Id; LB, HB : out Uint)
+        with Pre => Is_Array_Type (TE);
+      --  Get the bounds of TE, which is known to be a subtype of String.
+      --  Handle both string literal and normal array case.  If a bound
+      --  isn't constant (which isn't the case for a string literal), set that
+      --  value to No_Uint.
+
+      BT   : constant Entity_Id    := Full_Base_Type (TE);
+      Tidx : constant TBAA_Info_Id := Get_TBAA_Info (BT);
+      Idx  : Nat;
+      E_TE : Entity_Id;
+
+      -----------------------
+      -- Get_String_Bounds --
+      -----------------------
+
+      procedure Get_String_Bounds (TE : Entity_Id; LB, HB : out Uint) is
+      begin
+         if Ekind (TE) = E_String_Literal_Subtype then
+            declare
+               First      : constant Uint :=
+                 Get_Uint_Value (String_Literal_Low_Bound (TE));
+               Length     : constant Uint := String_Literal_Length (TE);
+
+            begin
+               LB := First;
+               HB := First + Length - 1;
+            end;
+         else
+            declare
+               Index     : constant Node_Id := First_Index (TE);
+               Idx_Range : constant Node_Id := Get_Dim_Range (Index);
+               R_LB      : constant Node_Id := Low_Bound (Idx_Range);
+               R_HB      : constant Node_Id := High_Bound (Idx_Range);
+
+            begin
+               LB := (if   Compile_Time_Known_Value (R_LB)
+                      then Expr_Value (R_LB) else No_Uint);
+               HB := (if   Compile_Time_Known_Value (R_HB)
+                        then Expr_Value (R_HB) else No_Uint);
+            end;
+         end if;
+      end Get_String_Bounds;
+
+   begin
+      --  If we're a base type, not an aggregate, or nonnative, return
+      --  ourselves.  Likewise if no subtypes are chained yet.
+
+      if BT = TE or else Is_Elementary_Type (TE) or else Is_Nonnative_Type (TE)
+        or else No (Tidx)
+      then
+         return TE;
+      end if;
+
+      --  Now look through all the subtypes which we chained and see if any
+      --  are equivalent to our type.
+
+      Idx := TBAA_Info_Table.Table (Tidx).Subtype_Chain;
+      while Idx /= 0 loop
+         E_TE := TBAA_Equiv_Subtype_Table.Table (Idx).TE;
+         Idx  := TBAA_Equiv_Subtype_Table.Table (Idx).Next;
+
+         --  Only if the LLVM types and GNAT representations are the same
+         --  if the a chance that they can be equivalent.
+
+         if Is_Layout_Identical (Type_Of (TE), Type_Of (E_TE))
+           and then Same_Representation (TE, E_TE)
+         then
+            --  We have to check differently for arrays and records.  For
+            --  arrays, we need to have identical bounds.
+
+            if Is_Array_Type (TE) then
+
+               --  If either is a string literal subtype, we know we're
+               --  a subtype of String and one dimension.  So get the
+               --  bounds and compare.
+
+               if Ekind (TE) = E_String_Literal_Subtype
+                 or else Ekind (E_TE) = E_String_Literal_Subtype
+               then
+                  declare
+                     LB, HB, E_LB, E_HB : Uint;
+
+                  begin
+                     Get_String_Bounds (TE,   LB,   HB);
+                     Get_String_Bounds (E_TE, E_LB, E_HB);
+
+                     if LB = E_LB and then HB = E_HB then
+                        return E_TE;
+                     end if;
+                  end;
+               else
+                  declare
+                     Index   : Node_Id := First_Index (TE);
+                     E_Index : Node_Id := First_Index (E_TE);
+                     Matches : Boolean := True;
+
+                  begin
+                     while Present (Index) loop
+                        declare
+                           Rng   : constant Node_Id := Get_Dim_Range (Index);
+                           E_Rng : constant Node_Id := Get_Dim_Range (E_Index);
+                           LB    : constant Node_Id := Low_Bound (Rng);
+                           HB    : constant Node_Id := High_Bound (Rng);
+                           E_LB  : constant Node_Id := Low_Bound (E_Rng);
+                           E_HB  : constant Node_Id := High_Bound (E_Rng);
+
+                        begin
+                           Matches := Matches
+                             and then Compile_Time_Known_Value (LB)
+                             and then Compile_Time_Known_Value (HB)
+                             and then Compile_Time_Known_Value (E_LB)
+                             and then Compile_Time_Known_Value (E_HB)
+                             and then Expr_Value (LB) = Expr_Value (E_LB)
+                             and then Expr_Value (HB) = Expr_Value (E_HB);
+                        end;
+
+                        Next_Index (Index);
+                        Next_Index (E_Index);
+                     end loop;
+
+                     --  If all matches, we have an equivalent subtype
+
+                     if Matches then
+                        return E_TE;
+                     end if;
+                  end;
+               end if;
+
+            --  For records, all discriminant contraints, if any, must match
+
+            elsif Is_Record_Type (TE) then
+
+               --  We only have the potential of a match either if both have
+               --  constraints or neither do.  But if neither, we know we
+               --  have a match.
+
+               declare
+                  Constraint   : constant Elist_Id := Stored_Constraint (TE);
+                  E_Constraint : constant Elist_Id := Stored_Constraint (E_TE);
+                  Matches      : Boolean           := True;
+                  Elmt         : Elmt_Id;
+                  E_Elmt       : Elmt_Id;
+
+               begin
+                  if Present (Constraint) = Present (E_Constraint) then
+                     if No (Constraint) then
+                        return E_TE;
+                     end if;
+
+                     Elmt   := First_Elmt (Constraint);
+                     E_Elmt := First_Elmt (E_Constraint);
+                     while Present (Elmt) loop
+                        Matches := Matches
+                          and then Compile_Time_Known_Value (Node (Elmt))
+                          and then Compile_Time_Known_Value (Node (E_Elmt))
+                          and then Expr_Value (Node (Elmt)) =
+                                     Expr_Value (Node (E_Elmt));
+                        Next_Elmt (Elmt);
+                        Next_Elmt (E_Elmt);
+                     end loop;
+
+                     --  If all matches, we have an equivalent subtype
+
+                     if Matches then
+                        return E_TE;
+                     end if;
+                  end if;
+               end;
+            end if;
+         end if;
+      end loop;
+
+      --  If we didn't have an equivalent, return our input
+
+      return TE;
+   end Find_Equiv_Subtype;
+
    --------------------
    -- Get_Field_TBAA --
    --------------------
@@ -742,7 +962,8 @@ package body GNATLLVM.Aliasing is
      (TE : Entity_Id; Kind : TBAA_Kind) return Metadata_T
    is
       Grp         : constant UC_Group_Idx := Find_UC_Group (TE);
-      TBAA        : Metadata_T            := Get_TBAA (TE);
+      E_TE        : constant Entity_Id    := Find_Equiv_Subtype (TE);
+      TBAA        : Metadata_T            := Get_TBAA (E_TE);
       Native_TBAA : Metadata_T;
 
    begin
@@ -750,7 +971,7 @@ package body GNATLLVM.Aliasing is
       --  type-based aliasing, or this is a void type, don't create a
       --  TBAA tag.
 
-      if No_Strict_Aliasing_Flag or else Ekind (TE) = E_Void
+      if No_Strict_Aliasing_Flag or else Ekind (E_TE) = E_Void
         or else Universal_Aliasing_Including_Bases (TE)
       then
          return No_Metadata_T;
@@ -795,8 +1016,43 @@ package body GNATLLVM.Aliasing is
             return No_Metadata_T;
          end if;
 
-         TBAA := Create_TBAA_Type (TE, For_Aliased, Parent => Native_TBAA);
-         Set_TBAA (TE, TBAA);
+         TBAA := Create_TBAA_Type (E_TE, For_Aliased, Parent => Native_TBAA);
+         Set_TBAA (E_TE, TBAA);
+
+         --  If TE is a subtype of an aggregate, add it to the chain of
+         --  subtypes for which we made a TBAA type tag.
+
+         if Is_Aggregate_Type (E_TE)
+           and then Full_Base_Type (E_TE) /= E_TE
+         then
+            declare
+               BT  : constant Entity_Id    := Full_Base_Type (E_TE);
+               Idx : constant TBAA_Info_Id := Get_TBAA_Info (BT);
+
+            begin
+               --  If we already have a TBAA_Info entry for the base type,
+               --  chain us to that entry and update it to refer to us.
+               --  Otherwise, make a new entry indicating the end of list
+               --  and make a new entry that points to it.
+
+               if Present (Idx) then
+                  declare
+                     TI : TBAA_Info renames TBAA_Info_Table.Table (Idx);
+
+                  begin
+                     TBAA_Equiv_Subtype_Table.Append
+                       ((TI.Subtype_Chain, E_TE));
+                     TI.Subtype_Chain := TBAA_Equiv_Subtype_Table.Last;
+                  end;
+               else
+                  TBAA_Equiv_Subtype_Table.Append ((0, E_TE));
+                  TBAA_Info_Table.Append ((Subtype_Chain =>
+                                             TBAA_Equiv_Subtype_Table.Last,
+                                           others => No_Metadata_T));
+                  Set_TBAA_Info (BT, TBAA_Info_Table.Last);
+               end if;
+            end;
+         end if;
       end if;
 
       --  Finally, return the proper TBAA type tag for our usage
@@ -807,9 +1063,9 @@ package body GNATLLVM.Aliasing is
          when For_Aliased =>
             return TBAA;
          when Unique =>
-            return Create_TBAA_Type (TE, Unique, Parent => Native_TBAA);
+            return Create_TBAA_Type (E_TE, Unique, Parent => Native_TBAA);
          when Unique_Aliased =>
-            return Create_TBAA_Type (TE, Unique_Aliased, Parent => TBAA);
+            return Create_TBAA_Type (E_TE, Unique_Aliased, Parent => TBAA);
       end case;
 
    end Get_TBAA_Type;
@@ -851,9 +1107,14 @@ package body GNATLLVM.Aliasing is
          return Prim_TBAA;
 
       --  If this is a padded type, make a struct type with the primitive
-      --  tag as the only field since we don't care about padding.
+      --  tag as the only field since we don't care about padding.  But we
+      --  can't do this for subtypes of aggregates since two identical
+      --  GL_Types for equivalent types must have the same TBAA type tag and
+      --  it's not at all worth making that happen.
 
-      elsif Is_Padded_GL_Type (GT) then
+      elsif Is_Padded_GL_Type (GT)
+        and then (Is_Elementary_Type (TE) or else Full_Base_Type (TE) = TE)
+      then
          declare
             TBAAs   : constant Metadata_Array (1 .. 1) := (1 => Prim_TBAA);
             Sizes   : constant ULL_Array (1 .. 1)      :=
@@ -1033,9 +1294,10 @@ package body GNATLLVM.Aliasing is
    ------------------------------
 
    function TBAA_Data_For_Array_Type (TE : Entity_Id) return TBAA_Info_Id is
-      Comp_GT : constant GL_Type    := Full_Component_GL_Type (TE);
-      Tidx    : TBAA_Info_Id        := Get_TBAA_Info (TE);
-      TI      : TBAA_Array_Info     := (others => No_Metadata_T);
+      Comp_GT : constant GL_Type := Full_Component_GL_Type (TE);
+      Tidx    : TBAA_Info_Id     := Get_TBAA_Info (TE);
+      TI      : TBAA_Info        :=
+        (Subtype_Chain => 0, others => No_Metadata_T);
 
    begin
       --  If we already made one, return it
@@ -1094,8 +1356,8 @@ package body GNATLLVM.Aliasing is
          end if;
       end;
 
-      TBAA_Array_Info_Table.Append (TI);
-      Tidx := TBAA_Array_Info_Table.Last;
+      TBAA_Info_Table.Append (TI);
+      Tidx := TBAA_Info_Table.Last;
       Set_TBAA_Info (TE, Tidx);
       return Tidx;
    end TBAA_Data_For_Array_Type;
@@ -1112,8 +1374,7 @@ package body GNATLLVM.Aliasing is
       GT     : constant GL_Type      := Primitive_GL_Type (TE);
       BT     : constant Entity_Id    := Full_Base_Type (TE);
       Tidx   : constant TBAA_Info_Id := TBAA_Data_For_Array_Type (BT);
-      C_TBAA : constant Metadata_T   :=
-        TBAA_Array_Info_Table.Table (Tidx).Component;
+      C_TBAA : constant Metadata_T   := TBAA_Info_Table.Table (Tidx).Component;
 
    begin
       --  If this isn't a loadable type, we don't need to handle this and
@@ -1238,5 +1499,5 @@ package body GNATLLVM.Aliasing is
 begin
    --  Make a dummy entry so the "Empty" entry is never used.
 
-   TBAA_Array_Info_Table.Increment_Last;
+   TBAA_Info_Table.Increment_Last;
 end GNATLLVM.Aliasing;

@@ -522,7 +522,8 @@ package body GNATLLVM.Variables is
                           or else not Is_Nonnative_Type (Full_GL_Type (N)))
               and then (Library_Level or else In_Elab_Proc
                           or else Is_Statically_Allocated (N)
-                          or else not In_Extended_Main_Code_Unit (N));
+                          or else Enclosing_Dynamic_Scope (N) =
+                                    Standard_Standard);
 
          when N_Selected_Component =>
             return Is_Static_Location (Prefix (N))
@@ -2232,9 +2233,10 @@ package body GNATLLVM.Variables is
                                 GT);
 
             --  Otherwise, if we haven't seen this variable and it's
-            --  not in our code unit, make a global for it.
+            --  a top level, make a global for it.
 
-            elsif No (V) and then not In_Extended_Main_Code_Unit (Def_Ident)
+            elsif No (V)
+              and then Enclosing_Dynamic_Scope (Def_Ident) = Standard_Standard
             then
                V := Make_Global_Variable
                  (Def_Ident, Variable_GL_Type (Def_Ident, Empty), False);

@@ -158,6 +158,12 @@ package GNATLLVM.Aliasing is
      with Pre => Present (V) and then Is_Field (F);
    --  If V doesn't have a TBAA type tag, set it one corresponding to F
 
+   procedure Maybe_Initialize_TBAA_For_Array_Component
+     (V : in out GL_Value; GT : GL_Type)
+     with Pre => Present (V) and then Present (GT);
+   --  Similarly, for a component of array type GT.  We can't test for
+   --  Is_Array_Type here since it would produce a circular dependency.
+
    procedure Add_Aliasing_To_Instruction (Inst : Value_T; V : GL_Value)
      with Pre => Present (Is_A_Instruction (Inst)) and then Present (V);
    --  Add aliasing information from V to Inst

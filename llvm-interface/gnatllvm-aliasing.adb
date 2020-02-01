@@ -621,6 +621,23 @@ package body GNATLLVM.Aliasing is
       end if;
    end Maybe_Initialize_TBAA_For_Field;
 
+   ------------------------------------------------
+   --  Maybe_Initialize_TBAA_For_Array_Component --
+   ------------------------------------------------
+
+   procedure Maybe_Initialize_TBAA_For_Array_Component
+     (V : in out GL_Value; GT : GL_Type)
+   is
+      Tidx   : constant TBAA_Info_Id := Get_TBAA_Info (Full_Base_Type (GT));
+      C_TBAA : constant Metadata_T   := TBAA_Info_Table.Table (Tidx).Component;
+
+   begin
+      if No (TBAA_Type (V)) and then Present (C_TBAA) then
+         Set_TBAA_Type   (V, C_TBAA);
+         Set_TBAA_Offset (V, 0);
+      end if;
+   end Maybe_Initialize_TBAA_For_Array_Component;
+
    -----------------
    -- Common_TBAA --
    -----------------

@@ -1299,6 +1299,7 @@ package body GNATLLVM.Arrays is
          Mark_Atomic   (Result, Has_Atomic_Components (GT));
          Mark_Volatile (Result, Has_Volatile_Components (GT));
          Adjust_Array_Component_Alignment (Result, V, Comp_GT);
+         Maybe_Initialize_TBAA_For_Array_Component (Result, GT);
          return Result;
       end if;
 
@@ -1342,10 +1343,18 @@ package body GNATLLVM.Arrays is
          end loop;
 
          Result := GEP (Unit_GT, Data, (1 => Index * Unit_Mult), "arr-lvalue");
+         Result := Ptr_To_Ref (Result, Comp_GT);
+
+         --  Set the attributes of the result.  However, the above will have
+         --  set incorrect TBAA values, so clear them out first.
+         --  ??? Perhaps we should avoid those invalid values.  They occur
+         --  when we have a GEP whose input is a pointer to a scalar.
+
+         Set_TBAA_Type (Result, No_Metadata_T);
          Mark_Volatile (Result, Has_Volatile_Components (GT));
          Adjust_Array_Component_Alignment (Result, Data, Comp_GT);
-         Initialize_TBAA (Result);
-         return Ptr_To_Ref (Result, Comp_GT);
+         Maybe_Initialize_TBAA_For_Array_Component (Result, GT);
+         return Result;
       end;
 
    end Get_Indexed_LValue;

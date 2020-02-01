@@ -29,7 +29,6 @@ with Table;    use Table;
 
 with GNATLLVM.Aliasing.Params; use GNATLLVM.Aliasing.Params;
 with GNATLLVM.Arrays;          use GNATLLVM.Arrays;
-with GNATLLVM.Arrays.Create;   use GNATLLVM.Arrays.Create;
 with GNATLLVM.Environment;     use GNATLLVM.Environment;
 with GNATLLVM.GLType;          use GNATLLVM.GLType;
 with GNATLLVM.Instructions;    use GNATLLVM.Instructions;
@@ -150,21 +149,17 @@ package body GNATLLVM.Aliasing is
 
    --  There are various objects related to arrays that each need to have
    --  their own TBAAA type tags.  These basically correspond to different
-   --  GL_Relationships.  In most cases, these are always aliased, but
-   --  fat pointers usually aren't.  So in that case, we do the same as we
-   --  do for other TBAA type tags and store both a native and For_Aliased
-   --  values.  For most values here, the type data for both the base type
-   --  and subtypes are the same.  The exception is Bounds_And_Data, which
-   --  is only defined for constrained subtypes.  In that case, it represents
-   --  a structure consisting of both the bounds (which are the same for
-   --  all subtypes) and the data (which is unique to the subtype and defined
-   --  only for that subtype).  Note that the TBAA type tag for the data
-   --  isn't stored here, but rather as the TBAA data for the subtype.
-   --  For records, the only data used is for base types and contains
-   --  the subtype chain.
+   --  GL_Relationships.  For most values here, the type data for both the
+   --  base type and subtypes are the same.  The exception is
+   --  Bounds_And_Data, which is only defined for constrained subtypes.  In
+   --  that case, it represents a structure consisting of both the bounds
+   --  (which are the same for all subtypes) and the data (which is unique
+   --  to the subtype and defined only for that subtype).  Note that the
+   --  TBAA type tag for the data isn't stored here, but rather as the TBAA
+   --  data for the subtype.  For records, the only data used is for base
+   --  types and contains the subtype chain.
 
    type TBAA_Info is record
-      Fat_Pointer     : Metadata_T;
       Bounds          : Metadata_T;
       Bounds_And_Data : Metadata_T;
       Component       : Metadata_T;
@@ -222,12 +217,6 @@ package body GNATLLVM.Aliasing is
      (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
      with Pre => Is_Record_Type (TE) and then Present (Parent);
    --  Subprograms of above
-
-   function Create_TBAA_For_Fat_Pointer
-     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
-     with Pre  => Is_Array_Type (TE) and then Present (Parent),
-          Post => Present (Create_TBAA_For_Fat_Pointer'Result);
-   --  Create a TBAA type for a fat pointer
 
    function TBAA_Data_For_Array_Type (TE : Entity_Id) return TBAA_Info_Id
      with Pre  => Is_Array_Type (TE) and then Is_Base_Type (TE),
@@ -1215,13 +1204,10 @@ package body GNATLLVM.Aliasing is
       Size : constant ULL      := Get_Type_Size (Type_Of (GT));
 
    begin
-      --  ??? This is a fat pointer, we currently have no mechanism to make
-      --  a node for it (but it's not a scalar node in any event.
+      --  ??? We don't make a TBAA type tag for access subprogram types.
+      --  We treat fat pointers as scalars since we never address into them.
 
-      if (Is_Access_Type (TE)
-            and then Relationship_For_Access_Type (GT) = Fat_Pointer)
-        or else Is_Access_Subprogram_Type (TE)
-      then
+      if Is_Access_Subprogram_Type (TE) then
          return No_Metadata_T;
       else
          return Create_TBAA_Scalar_Type_Node
@@ -1292,24 +1278,6 @@ package body GNATLLVM.Aliasing is
 
    end Create_TBAA_For_Record_Type;
 
-   ---------------------------------
-   -- Create_TBAA_For_Fat_Pointer --
-   ---------------------------------
-
-   function Create_TBAA_For_Fat_Pointer
-     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
-   is
-      FP_T   : constant Type_T := Create_Array_Fat_Pointer_Type (TE);
-      Size   : constant ULL    := To_Bytes (Get_Type_Size (FP_T));
-
-   begin
-      --  A fat pointer really isn't a scalar, but we're not going to be
-      --  addressing into it and it's simpler if we treat it that way.
-
-      return Create_TBAA_Scalar_Type_Node
-        (Get_TBAA_Name (Kind, TE => TE, Suffix => "#FP"), Size, Parent);
-   end Create_TBAA_For_Fat_Pointer;
-
    ------------------------------
    -- TBAA_Data_For_Array_Type --
    ------------------------------
@@ -1327,15 +1295,11 @@ package body GNATLLVM.Aliasing is
          return Tidx;
       end if;
 
-      --  Start by setting the component type tag, if there is one, and the
-      --  fat pointer, which has both a Native and For_Aliased TBAA type.
+      --  Start by setting the component type tag, if there is one
 
       TI.Component   :=
         Get_TBAA_Type (Comp_GT,
                        Kind_From_Aliased (Has_Aliased_Components (TE)));
-      TI.Fat_Pointer :=
-        Create_TBAA_For_Fat_Pointer
-        (TE, For_Aliased, Create_TBAA_For_Fat_Pointer (TE, Native, TBAA_Root));
 
       --  Now compute the TBAA struct tag for bounds.  Since bounds can't
       --  be modified, use a non-aliased unique version of the bound type.

@@ -221,7 +221,12 @@ package body GNATLLVM.Aliasing is
    function TBAA_Data_For_Array_Type (TE : Entity_Id) return TBAA_Info_Id
      with Pre  => Is_Array_Type (TE) and then Is_Base_Type (TE),
           Post => Present (TBAA_Data_For_Array_Type'Result);
-   --  If not already created, make a TBAA_Info entity for TE
+   --  If not already created, make a TBAA_Info entity for TE, a base type
+
+   function TBAA_Data_For_Array_Subtype (TE : Entity_Id) return TBAA_Info_Id
+     with Pre  => Is_Array_Type (TE),
+          Post => Present (TBAA_Data_For_Array_Subtype'Result);
+   --  Likewise for either a base type or subtype
 
    function Create_TBAA_For_Array_Data
      (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
@@ -558,16 +563,53 @@ package body GNATLLVM.Aliasing is
    -- Initialize_TBAA --
    ---------------------
 
-   procedure Initialize_TBAA
-     (V : in out GL_Value; Kind : TBAA_Kind := Native)
+   procedure Initialize_TBAA (V : in out GL_Value; Kind : TBAA_Kind := Native)
    is
+      GT : constant GL_Type         := Related_Type (V);
+      R  : constant GL_Relationship := Relationship (V);
+
    begin
-      if Relationship (V) = Reference then
-         Set_TBAA_Type   (V, Get_TBAA_Type (Related_Type (V), Kind));
-         Set_TBAA_Offset (V, 0);
-      else
-         Set_TBAA_Type (V, No_Metadata_T);
+      --  Start by indicating we know nothing
+
+      Set_TBAA_Type   (V, No_Metadata_T);
+      Set_TBAA_Offset (V, 0);
+
+      --  If this isn't a reference, we don't have any TBAA data.
+
+      if not Is_Reference (V) then
+         return;
       end if;
+
+      --  If it's a double reference, this will be a unique scalar node
+
+      if Is_Double_Reference (V) then
+         Set_TBAA_Type (V, Create_TBAA_Scalar_Type_Node
+                          (Get_TBAA_Name (Unique, GT => GT, Suffix => "#DR"),
+                           To_Bytes (Get_Type_Size (Type_Of (V))), TBAA_Root));
+
+      --  If this is a Reference, we set it to GT's TBAA type tag
+
+      elsif R = Reference then
+         Set_TBAA_Type (V, Get_TBAA_Type (GT, Kind));
+
+      --  If this is an array type and we may have a reference to
+      --  various parts of the array.
+
+      elsif Is_Array_Type (GT) then
+         declare
+            TE   : constant Entity_Id    := Full_Etype (GT);
+            Tidx : constant TBAA_Info_Id := TBAA_Data_For_Array_Subtype (TE);
+            TI   : constant TBAA_Info    := TBAA_Info_Table.Table (Tidx);
+
+         begin
+            if R = Reference_To_Bounds then
+               Set_TBAA_Type (V, TI.Bounds);
+            elsif R = Reference_To_Bounds_And_Data then
+               Set_TBAA_Type (V, TI.Bounds_And_Data);
+            end if;
+         end;
+      end if;
+
    end Initialize_TBAA;
 
    ---------------------
@@ -1347,6 +1389,57 @@ package body GNATLLVM.Aliasing is
       return Tidx;
    end TBAA_Data_For_Array_Type;
 
+   ---------------------------------
+   -- TBAA_Data_For_Array_Subtype --
+   ---------------------------------
+
+   function TBAA_Data_For_Array_Subtype (TE : Entity_Id) return TBAA_Info_Id is
+      BT        : constant Entity_Id    := Full_Base_Type (TE);
+      BTidx     : constant TBAA_Info_Id := TBAA_Data_For_Array_Type (BT);
+      Tidx      : TBAA_Info_Id          := Get_TBAA_Info (TE);
+      TI        : TBAA_Info             := TBAA_Info_Table.Table (BTidx);
+      TBAA_Data : constant Metadata_T   := Get_TBAA_Type (TE, For_Aliased);
+
+   begin
+      --  If we already made one, return it
+
+      if Present (Tidx) then
+         return Tidx;
+      end if;
+
+      --  Most of the fields are the same as for the base type and were
+      --  initialized above.  However, if we have a type for the array data,
+      --  we have a type for the array bounds + data.
+
+      if Present (TBAA_Data) then
+         declare
+            Bound_Size  : constant ULL            := Size_In_Bytes (TI.Bounds);
+            Data_Size   : constant ULL            := Size_In_Bytes (TBAA_Data);
+            BD_T        : constant Type_T         :=
+              Type_For_Relationship (TE, Bounds_And_Data);
+            Size        : constant ULL            :=
+              To_Bytes (Get_Type_Size (BD_T));
+            Offsets     : constant ULL_Array      := (1 => 0, 2 => Bound_Size);
+            Sizes       : constant ULL_Array      :=
+              (1 => Bound_Size, 2 => Data_Size);
+            TBAAs       : constant Metadata_Array :=
+              (1 => TI.Bounds, 2 => TBAA_Data);
+
+         begin
+            TI.Bounds_And_Data := Create_TBAA_Struct_Type_Node
+              (Get_TBAA_Name (For_Aliased, TE => TE, Suffix => "#BD"), Size,
+               TBAA_Root, Offsets, Sizes, TBAAs);
+         end;
+      end if;
+
+      --  Now add the new entry to the table and record its location
+
+      TBAA_Info_Table.Append (TI);
+      Tidx := TBAA_Info_Table.Last;
+      Set_TBAA_Info (TE, Tidx);
+      return Tidx;
+   end TBAA_Data_For_Array_Subtype;
+
    --------------------------------
    -- Create_TBAA_For_Array_Data --
    --------------------------------
@@ -1439,11 +1532,14 @@ package body GNATLLVM.Aliasing is
    ---------------------------------
 
    procedure Add_Aliasing_To_Instruction (Inst : Value_T; V : GL_Value) is
-      GT            : constant GL_Type :=
+      GT            : constant GL_Type  :=
         (if   Is_Data (V) then Full_Designated_GL_Type (V)
          else Related_Type (V));
-      Size_In_Bytes : constant ULL     :=
-        To_Bytes (Get_Type_Size (Type_Of (GT)));
+      Ptr_Opnum     : constant unsigned :=
+        (if Present (Is_A_Store_Inst (Inst)) then 1 else 0);
+      Size_In_Bytes : constant ULL      :=
+        To_Bytes (Get_Type_Size (Get_Element_Type
+                                   (Type_Of (Get_Operand (Inst, Ptr_Opnum)))));
       Offset        : ULL              := TBAA_Offset  (V);
       Base_Type     : Metadata_T       := TBAA_Type    (V);
       Access_Type   : Metadata_T;
@@ -1463,9 +1559,9 @@ package body GNATLLVM.Aliasing is
          return;
 
       --  If we couldn't track V's TBAA information, we can try to just use
-      --  the TBAA information from the type.
+      --  the TBAA information from the type if we have data.
 
-      elsif No (Base_Type) then
+      elsif No (Base_Type) and then Is_Data (V) then
          Base_Type   := Get_TBAA_Type (GT, Native);
          Offset      := 0;
       end if;

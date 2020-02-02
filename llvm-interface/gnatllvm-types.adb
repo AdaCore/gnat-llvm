@@ -1395,9 +1395,11 @@ package body GNATLLVM.Types is
                     or else (Atomic_Kind (Get_Element_Type (Type_Of (V)))));
 
    begin
-      --  We always set the alignment, since that's correct for all references
+      --  We always set the alignment, since that's correct for all
+      --  references, and always add aliasing information.
 
       Set_Alignment (Inst, unsigned (To_Bytes (Align)));
+      Add_Aliasing_To_Instruction (Inst, V);
 
       --  But nothing else is
 
@@ -1416,7 +1418,6 @@ package body GNATLLVM.Types is
                       then Atomic_Ordering_Sequentially_Consistent
                       else Atomic_Ordering_Not_Atomic));
 
-      Add_Aliasing_To_Instruction (Inst, V);
    end Add_Flags_To_Instruction;
 
    ------------------------------

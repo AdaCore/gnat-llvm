@@ -38,8 +38,8 @@ package body GNATLLVM.GLValue is
    --  Internal version of GL_Value_Is_Valid
 
    function Object_Can_Be_Data (V : GL_Value_Base) return Boolean is
-     (not Is_Nonnative_Type (V.Typ)
-        and then (Is_Loadable_Type (V.Typ)
+     (not Is_Nonnative_Type (V.GT)
+        and then (Is_Loadable_Type (V.GT)
                     or else (Is_Data (V.Relationship)
                                and then (Is_Constant (V.Value)
                                            or else Is_Undef (V.Value)))));
@@ -68,7 +68,7 @@ package body GNATLLVM.GLValue is
 
    function GL_Value_Is_Valid_Int (V : GL_Value_Base) return Boolean is
       GT   : constant GL_Type     :=
-        (if V = No_GL_Value then No_GL_Type else V.Typ);
+        (if V = No_GL_Value then No_GL_Type else V.GT);
       Val  : constant Value_T     := V.Value;
       Kind : constant Type_Kind_T :=
         (if No (Val) then Void_Type_Kind else Get_Type_Kind (Type_Of (Val)));
@@ -2075,9 +2075,9 @@ package body GNATLLVM.GLValue is
          Write_Str (" ");
       end if;
       Write_Str (GL_Relationship'Image (V.Relationship) & "(");
-      Dump_GL_Type_Int (V.Typ, False);
+      Dump_GL_Type_Int (V.GT, False);
       Write_Str ("): ");
-      pg (Union_Id (Full_Etype (V.Typ)));
+      pg (Union_Id (Full_Etype (V.GT)));
    end Dump_GL_Value;
 
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");

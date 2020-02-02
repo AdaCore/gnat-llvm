@@ -324,7 +324,7 @@ package GNATLLVM.GLValue is
       Value                : Value_T;
       --  The LLVM value that was generated
 
-      Typ                  : GL_Type;
+      GT                   : GL_Type;
       --  The GL_Type of this value, which points to the GNAT type
 
       Relationship         : GL_Relationship;
@@ -384,7 +384,7 @@ package GNATLLVM.GLValue is
    --  a subtype for that purpose.
 
    function "=" (V1, V2 : GL_Value_Base) return Boolean is
-     (V1.Value = V2.Value and then V1.Typ = V2.Typ);
+     (V1.Value = V2.Value and then V1.GT = V2.GT);
    --  Two GL_Types are the same if their LLVM values and GL_types are
    --  the same.  We don't want to compare flags.
 
@@ -413,7 +413,7 @@ package GNATLLVM.GLValue is
 
    No_GL_Value : constant GL_Value :=
      (Value        => No_Value_T,
-      Typ          => No_GL_Type,
+      GT           => No_GL_Type,
       Relationship => Data,
       Alignment    => BPU,
       Is_Pristine  => False,
@@ -435,7 +435,7 @@ package GNATLLVM.GLValue is
    --  Return the LLVM value in the GL_Value
 
    function Related_Type (V : GL_Value)  return GL_Type is
-     (V.Typ)
+     (V.GT)
      with Pre => Present (V), Post => Present (Related_Type'Result);
    --  Return the GL_Type to which V is related, irrespective of the
    --  relationship.

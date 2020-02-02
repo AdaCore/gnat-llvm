@@ -1325,9 +1325,10 @@ package body GNATLLVM.Aliasing is
    ------------------------------
 
    function TBAA_Data_For_Array_Type (TE : Entity_Id) return TBAA_Info_Id is
-      Comp_GT : constant GL_Type := Full_Component_GL_Type (TE);
-      Tidx    : TBAA_Info_Id     := Get_TBAA_Info (TE);
-      TI      : TBAA_Info        :=
+      A_TE    : constant Entity_Id := Get_Fullest_View (TE);
+      Comp_GT : constant GL_Type   := Full_Component_GL_Type (A_TE);
+      Tidx    : TBAA_Info_Id       := Get_TBAA_Info (A_TE);
+      TI      : TBAA_Info          :=
         (Subtype_Chain => 0, others => No_Metadata_T);
 
    begin
@@ -1341,33 +1342,37 @@ package body GNATLLVM.Aliasing is
 
       TI.Component   :=
         Get_TBAA_Type (Comp_GT,
-                       Kind_From_Aliased (Has_Aliased_Components (TE)));
+                       Kind_From_Aliased (Has_Aliased_Components (A_TE)));
 
       --  Now compute the TBAA struct tag for bounds.  Since bounds can't
       --  be modified, use a non-aliased unique version of the bound type.
 
       declare
-         Ndims   : constant Nat := Number_Dimensions (TE);
-         Offset  : ULL := 0;
-         Offsets : ULL_Array (0 .. Ndims * 2 - 1);
-         Sizes   : ULL_Array (0 .. Ndims * 2 - 1);
-         TBAAs   : Metadata_Array (0 .. Ndims * 2 - 1);
-         Dim_GT  : GL_Type;
-         Size    : ULL;
+         Ndims    : constant Nat    := Number_Dimensions (A_TE);
+         Bound_T  : constant Type_T :=
+           Type_For_Relationship (A_TE, Bounds);
+         Offset   : ULL             := 0;
+         Offsets  : ULL_Array (0 .. Ndims * 2 - 1);
+         Sizes    : ULL_Array (0 .. Ndims * 2 - 1);
+         TBAAs    : Metadata_Array (0 .. Ndims * 2 - 1);
 
       begin
-         for Dim in 0 .. Number_Dimensions (TE) - 1 loop
-            Dim_GT := Array_Index_GT (TE, Dim);
-            Size   := To_Bytes (Get_Type_Size (Type_Of (Dim_GT)));
+         for Dim in 0 .. Ndims - 1 loop
+            declare
+               Dim_GT : constant GL_Type := Array_Index_GT (A_TE, Dim);
+               Dim_T  : constant Type_T  := Type_Of (Dim_GT);
+               Size   : constant ULL     := To_Bytes (Get_Type_Size (Dim_T));
 
-            Offsets (Dim * 2)     := Offset;
-            Offsets (Dim * 2 + 1) := Offset + Size;
-            Sizes   (Dim * 2)     := Size;
-            Sizes   (Dim * 2 + 1) := Size;
-            TBAAs   (Dim * 2)     := Get_TBAA_Type (Dim_GT, Unique);
-            TBAAs   (Dim * 2 + 1) := Get_TBAA_Type (Dim_GT, Unique);
+            begin
+               Offsets (Dim * 2)     := Offset;
+               Offsets (Dim * 2 + 1) := Offset + Size;
+               Sizes   (Dim * 2)     := Size;
+               Sizes   (Dim * 2 + 1) := Size;
+               TBAAs   (Dim * 2)     := Get_TBAA_Type (Dim_GT, Unique);
+               TBAAs   (Dim * 2 + 1) := Get_TBAA_Type (Dim_GT, Unique);
 
-            Offset := Offset + (Size * 2);
+               Offset := Offset + (Size * 2);
+            end;
          end loop;
 
          --  If one of the index types has Universal_Aliasing, we won't
@@ -1379,7 +1384,8 @@ package body GNATLLVM.Aliasing is
             TI.Bounds :=
               Create_TBAA_Struct_Type_Node
               (Get_TBAA_Name (Unique, TE => TE, Suffix => "#BND"),
-               Offset, TBAA_Root, Offsets, Sizes, TBAAs);
+               To_Bytes (Get_Type_Size (Bound_T)), TBAA_Root, Offsets, Sizes,
+               TBAAs);
          end if;
       end;
 
@@ -1394,7 +1400,10 @@ package body GNATLLVM.Aliasing is
    ---------------------------------
 
    function TBAA_Data_For_Array_Subtype (TE : Entity_Id) return TBAA_Info_Id is
-      BT        : constant Entity_Id    := Full_Base_Type (TE);
+      O_TE      : constant Entity_Id    :=
+        (if   Is_Packed_Array_Impl_Type (TE) then Original_Array_Type (TE)
+         else TE);
+      BT        : constant Entity_Id    := Full_Base_Type (O_TE, True);
       BTidx     : constant TBAA_Info_Id := TBAA_Data_For_Array_Type (BT);
       Tidx      : TBAA_Info_Id          := Get_TBAA_Info (TE);
       TI        : TBAA_Info             := TBAA_Info_Table.Table (BTidx);
@@ -1419,7 +1428,11 @@ package body GNATLLVM.Aliasing is
               Type_For_Relationship (TE, Bounds_And_Data);
             Size        : constant ULL            :=
               To_Bytes (Get_Type_Size (BD_T));
-            Offsets     : constant ULL_Array      := (1 => 0, 2 => Bound_Size);
+            Align       : constant ULL            :=
+              ULL (To_Bytes (Get_Array_Type_Alignment (TE)));
+            Align_BS    : constant ULL            :=
+              (Bound_Size + (Align - 1)) / Align * Align;
+            Offsets     : constant ULL_Array      := (1 => 0, 2 => Align_BS);
             Sizes       : constant ULL_Array      :=
               (1 => Bound_Size, 2 => Data_Size);
             TBAAs       : constant Metadata_Array :=

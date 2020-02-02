@@ -1399,6 +1399,9 @@ package body GNATLLVM.GLType is
          end if;
 
          pg (Union_Id (GTI.GNAT_Type));
+         if Present (GTI.TBAA) then
+            Dump_LLVM_Metadata (GTI.TBAA);
+         end if;
       end if;
    end Dump_GL_Type_Int;
 

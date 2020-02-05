@@ -1059,8 +1059,7 @@ package body GNATLLVM.Subprograms is
                      Def_Ident => Param,
                      Name      => Name.all);
 
-                  Store (V,
-                         Pointer_Cast_To_Relationship
+                  Store (V, Ptr_To_Relationship
                            (LLVM_Param, Pointer_Type (Int_Ty (Size), 0),
                             Reference_To_Unknown));
                end;
@@ -1660,8 +1659,7 @@ package body GNATLLVM.Subprograms is
          begin
             V := Emit_Identifier (Alias (Def_Ident));
             return (if   Type_Of (V) /= T
-                    then Pointer_Cast_To_Relationship (V, T,
-                                                       Reference_To_Subprogram)
+                    then Ptr_To_Relationship (V, T, Reference_To_Subprogram)
                     else V);
          end;
       end if;
@@ -2091,7 +2089,7 @@ package body GNATLLVM.Subprograms is
 
                      begin
                         Arg := Get (Arg, Reference);
-                        Arg := Load (Pointer_Cast_To_Relationship
+                        Arg := Load (Ptr_To_Relationship
                                        (Get (Arg, Reference),
                                         Pointer_Type (Int_Ty (Size), 0),
                                         Reference_To_Unknown));

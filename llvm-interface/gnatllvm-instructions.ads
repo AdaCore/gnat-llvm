@@ -147,18 +147,6 @@ package GNATLLVM.Instructions is
      with Pre  => Is_Pointer (V) and then Is_Pointer (T),
           Post => Is_Pointer (Pointer_Cast'Result);
 
-   function Pointer_Cast_To_Relationship
-     (V    : GL_Value;
-      T    : Type_T;
-      R    : GL_Relationship;
-      Name : String := "") return GL_Value
-   is
-     (Initialize_TBAA
-        (G (Pointer_Cast (IR_Builder, +V, T, Name),
-            Related_Type (V), R, Alignment => Alignment (V))))
-     with Pre  => Is_Pointer (V) and then Present (T),
-          Post => Is_Pointer (Pointer_Cast_To_Relationship'Result);
-
    function Ptr_To_Ref
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
      with Pre  => Is_Pointer (V) and then Present (GT),

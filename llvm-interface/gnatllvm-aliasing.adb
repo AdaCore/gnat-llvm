@@ -142,8 +142,8 @@ package body GNATLLVM.Aliasing is
 
    function Find_Equiv_Subtype (TE : Entity_Id) return Entity_Id
      with Pre  => Present (TE),
-          Post => Full_Base_Type (TE) =
-                  Full_Base_Type (Find_Equiv_Subtype'Result);
+          Post => Base_Type_For_Aliasing (TE) =
+                  Base_Type_For_Aliasing (Find_Equiv_Subtype'Result);
    --  If TE is a subtype and there's another subtype of its base type
    --  with an equivalent layout, return it.  Otherwise, return TE.
 
@@ -182,7 +182,8 @@ package body GNATLLVM.Aliasing is
    --  Given a type, return the GNAT type to be used to as the base type
    --  for aliasing purposes.
 
-   function Is_Subtype_For_Aliasing (TE1, TE2 : Entity_Id) return Boolean
+   function Is_Subtype_For_Aliasing (TE1, TE2 : Entity_Id) return Boolean is
+     (Base_Type_For_Aliasing (TE1) = Base_Type_For_Aliasing (TE2))
      with Pre => Is_Type (TE1) and then Is_Type (TE2);
    --  Return True iff TE1 is TE2 or a subtype of it using the above
    --  definition of base type.
@@ -285,20 +286,22 @@ package body GNATLLVM.Aliasing is
 
    function Base_Type_For_Aliasing (TE : Entity_Id) return Entity_Id is
    begin
-      --  If this isn't a base type, that's what we want
+      --  If this isn't a base type, start with that
 
       if not Is_Base_Type (TE) then
-         return Full_Base_Type (TE);
+         return Base_Type_For_Aliasing (Full_Base_Type (TE));
 
-      --  If this is a derived record type with the same
-      --  representation as its parent or a tagged type use the parent.
+      --  If this is a composite derived type with the same representation
+      --  as its parent, use the parent.
+      --  ??? Don't do this for tagged type since Same_Representation is
+      --  always true.  We need to understand what aliasing should be for
+      --  such types.
 
-      elsif Is_Record_Type (TE)
-        and then ((Is_Derived_Type (TE)
-                    and then Same_Representation (TE, Full_Etype (TE)))
-                  or else (Is_Tagged_Type (TE) and then Full_Etype (TE) /= TE))
+      elsif Is_Composite_Type (TE) and then Is_Derived_Type (TE)
+        and then Same_Representation (TE, Full_Etype (TE))
+        and then not Is_Tagged_Type (TE)
       then
-         return Full_Etype (TE);
+         return Base_Type_For_Aliasing (Full_Etype (TE));
 
       --  Otherwise, this is the type to use
 
@@ -307,18 +310,6 @@ package body GNATLLVM.Aliasing is
       end if;
 
    end Base_Type_For_Aliasing;
-
-   -----------------------------
-   -- Is_Subtype_For_Aliasing --
-   -----------------------------
-
-   function Is_Subtype_For_Aliasing (TE1, TE2 : Entity_Id) return Boolean is
-      BT : constant Entity_Id := Base_Type_For_Aliasing (TE2);
-
-   begin
-      return TE1 = TE2
-        or else (BT /= TE2 and then Is_Subtype_For_Aliasing (TE1, BT));
-   end Is_Subtype_For_Aliasing;
 
    ----------------------------------------
    -- Universal_Aliasing_Including_Bases --
@@ -487,9 +478,12 @@ package body GNATLLVM.Aliasing is
             --  have two access types to the same underlying type or in
             --  some subtype cases.  Likewise if the target has been marked
             --  for universal aliasing.
+            --  ??? We're not setting aliasing information for tagged types
+            --  now, so they can't cause errors.
 
             if Is_Subtype_For_Aliasing (TDT, SDT)
               or else Universal_Aliasing_Including_Bases (TDT)
+              or else Is_Tagged_Type (SDT) or else Is_Tagged_Type (TDT)
             then
                return OK;
 
@@ -659,7 +653,8 @@ package body GNATLLVM.Aliasing is
    procedure Maybe_Initialize_TBAA_For_Array_Component
      (V : in out GL_Value; GT : GL_Type)
    is
-      Tidx   : constant TBAA_Info_Id := Get_TBAA_Info (Full_Base_Type (GT));
+      Tidx   : constant TBAA_Info_Id :=
+        Get_TBAA_Info (Base_Type_For_Aliasing (Full_Etype (GT)));
       C_TBAA : constant Metadata_T   := TBAA_Info_Table.Table (Tidx).Component;
 
    begin
@@ -708,7 +703,7 @@ package body GNATLLVM.Aliasing is
       --  isn't constant (which isn't the case for a string literal), set that
       --  value to No_Uint.
 
-      BT   : constant Entity_Id    := Full_Base_Type (TE);
+      BT   : constant Entity_Id    := Base_Type_For_Aliasing (TE);
       Tidx : constant TBAA_Info_Id := Get_TBAA_Info (BT);
       Idx  : Nat;
       E_TE : Entity_Id;
@@ -749,8 +744,8 @@ package body GNATLLVM.Aliasing is
       --  If we're a base type, not an aggregate, or nonnative, return
       --  ourselves.  Likewise if no subtypes are chained yet.
 
-      if BT = TE or else Is_Elementary_Type (TE) or else Is_Nonnative_Type (TE)
-        or else No (Tidx)
+      if Is_Full_Base_Type (TE) or else Is_Elementary_Type (TE)
+        or else Is_Nonnative_Type (TE) or else No (Tidx)
       then
          return TE;
       end if;
@@ -1074,11 +1069,9 @@ package body GNATLLVM.Aliasing is
          --  If TE is a subtype of an aggregate, add it to the chain of
          --  subtypes for which we made a TBAA type tag.
 
-         if Is_Aggregate_Type (E_TE)
-           and then Full_Base_Type (E_TE) /= E_TE
-         then
+         if Is_Aggregate_Type (E_TE) and then not Is_Full_Base_Type (E_TE) then
             declare
-               BT  : constant Entity_Id    := Full_Base_Type (E_TE);
+               BT  : constant Entity_Id    := Base_Type_For_Aliasing (E_TE);
                Idx : constant TBAA_Info_Id := Get_TBAA_Info (BT);
 
             begin
@@ -1212,8 +1205,9 @@ package body GNATLLVM.Aliasing is
 
    begin
       --  If this isn't a native type, we can't make a TBAA type entry for it
+      --  ??? Likewise for tagged types for now.
 
-      if Is_Nonnative_Type (TE) then
+      if Is_Nonnative_Type (TE) or else Is_Tagged_Type (TE) then
          return No_Metadata_T;
 
       --  All other types are done by subprograms, if supported
@@ -1463,7 +1457,7 @@ package body GNATLLVM.Aliasing is
       C_GT   : constant GL_Type      := Full_Component_GL_Type (TE);
       C_Size : constant ULL          := +To_Bytes (Get_Type_Size (C_GT));
       GT     : constant GL_Type      := Primitive_GL_Type (TE);
-      BT     : constant Entity_Id    := Full_Base_Type (TE);
+      BT     : constant Entity_Id    := Base_Type_For_Aliasing (TE);
       Tidx   : constant TBAA_Info_Id := TBAA_Data_For_Array_Type (BT);
       C_TBAA : constant Metadata_T   := TBAA_Info_Table.Table (Tidx).Component;
 

@@ -1477,7 +1477,6 @@ package body GNATLLVM.Aliasing is
 
       declare
          Size      : constant ULL     := +To_Bytes (Get_Type_Size (GT));
-         C_Aliased : constant Boolean := Has_Aliased_Components (TE);
          Elmts     : constant Nat     := Nat (Size / C_Size);
          Offset    : ULL              := 0;
          Offsets   : ULL_Array (1 .. Elmts);
@@ -1485,11 +1484,18 @@ package body GNATLLVM.Aliasing is
          TBAAs     : Metadata_Array (1 .. Elmts);
 
       begin
+         --  We'd like to use a unique TBAA tag for each array element if
+         --  components aren't aliased, but we can't do that because we'd
+         --  then have two different chains, one per-component and one
+         --  per-object, and they won't conflict as they should.  It's more
+         --  important to detect that different objects don't conflict than
+         --  different elements don't because it's usually easier to detect
+         --  non-conflicting elements by seeing the different addresses.
+
          for J in 1 .. Elmts loop
             Offsets (J) := Offset;
             Sizes (J)   := C_Size;
-            TBAAs (J)   :=
-              Create_TBAA_Type (C_GT, Kind_From_Aliased (C_Aliased), C_TBAA);
+            TBAAs (J)   := C_TBAA;
             Offset      := Offset + C_Size;
          end loop;
 

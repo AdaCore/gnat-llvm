@@ -1815,10 +1815,8 @@ package body GNATLLVM.Records is
       --  type of this piece (which has no corresponding GNAT type).
 
       if Is_Nonnative_Type (Rec_Type) then
-         Result := GM (Pointer_Cast (IR_Builder, +Result,
-                                     Pointer_Type (RI.LLVM_Type, 0), ""),
-                       Rec_GT, Reference_To_Unknown, Result);
-         Initialize_TBAA (Result);
+         Result := Ptr_To_Relationship (Result, Pointer_Type (RI.LLVM_Type, 0),
+                                        Rec_GT, Reference_To_Unknown);
       else
          Result := Convert_Ref (Result, Rec_GT);
       end if;
@@ -2082,13 +2080,12 @@ package body GNATLLVM.Records is
                      Memory         : constant GL_Value :=
                        (if   Present (LHS) then LHS
                         else Allocate_For_Type (F_GT));
-                     Mem_As_Int_Ptr : GL_Value          :=
-                       GM (Bit_Cast (IR_Builder, +Memory,
-                                     Pointer_Type (Type_Of (Result), 0), ""),
-                           F_GT, Reference_To_Unknown, Memory);
+                     Mem_As_Int_Ptr : constant GL_Value :=
+                       Ptr_To_Relationship
+                         (Memory, Pointer_Type (Type_Of (Result), 0),
+                          F_GT, Reference_To_Unknown);
 
                   begin
-                     Initialize_TBAA (Mem_As_Int_Ptr);
                      Store (Result, Mem_As_Int_Ptr);
 
                      --  For aggregates, we need to queue up a write-back of
@@ -2248,11 +2245,9 @@ package body GNATLLVM.Records is
                              Related_Type (RHS_Cvt), Unknown);
             else
                RHS_Cvt := Get (RHS_Cvt, Reference);
-               RHS_Cvt := GM (Bit_Cast (IR_Builder, +RHS_Cvt,
-                                        Pointer_Type (New_RHS_T, 0), ""),
-                              Related_Type (RHS_Cvt),
-                              Reference_To_Unknown, RHS_Cvt);
-               Initialize_TBAA (RHS_Cvt);
+               RHS_Cvt :=
+                 Ptr_To_Relationship (RHS_Cvt, Pointer_Type (New_RHS_T, 0),
+                                      Reference_To_Unknown);
                RHS_Cvt := Load (RHS_Cvt);
             end if;
          else

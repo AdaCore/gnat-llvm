@@ -164,7 +164,7 @@ package GNATLLVM.Types is
           Post => Is_Type_Or_Void (Get_Fullest_View'Result);
    --  Get the fullest possible view of E, looking through private,
    --  limited, packed array and other implementation types.  If Include_PAT
-   --  is True, don't look inside packed array types.
+   --  is False, don't look inside packed array types.
 
    function Full_Base_Type
      (TE : Entity_Id; For_Orig : Boolean := False) return Entity_Id
@@ -337,7 +337,7 @@ package GNATLLVM.Types is
           Post => Is_Reference (Allocate_For_Type'Result);
    --  Allocate space on the stack for an object of type GT and return a
    --  pointer to the space.  Name is the name to use for the LLVM value.
-   --  V, if Present, is a value to be copyied to the temporary and can be
+   --  V, if Present, is a value to be copied to the temporary and can be
    --  used to size the allocated space.  Likewise For Expr, but both Expr
    --  and V can't be Present.  N is a node used for a Sloc if we have to
    --  raise an exception.

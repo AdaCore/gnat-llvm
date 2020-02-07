@@ -26,9 +26,9 @@ package GNATLLVM.GLValue is
 
    --  It's not sufficient to just pass around an LLVM Value_T when
    --  generating code because there's a lot of information lost about
-   --  the value and where it came from.  We contruct a record of type
-   --  GL_Value, which contains the LLVM Value_T (which, in turn
-   --  contains it's LLVM Type_T), a GNAT type to which it's related,
+   --  the value and where it came from.  We construct a record of type
+   --  GL_Value, which contains the LLVM Value_T (which in turn
+   --  contains its LLVM Type_T), a GNAT type to which it is related,
    --  and a field indicating the relationship between the value and
    --  the type.  For example, the value may contain bits of the type
    --  or the value may be the address of the bits of the type.
@@ -39,7 +39,7 @@ package GNATLLVM.GLValue is
       --  subprogram types or for types of variable size.  It can be set
       --  for non-first-class types in the LLVM sense as long as LLVM can
       --  represent a value of that object.  If Typ is an access type, this
-      --  is requivalent to a relationship of Reference to the
+      --  is equivalent to a relationship of Reference to the
       --  Designated_Type of Typ.
 
       Boolean_Data,
@@ -90,7 +90,7 @@ package GNATLLVM.GLValue is
       Thin_Pointer,
       --  Similar to Reference, except that the bounds are guaranteed to be
       --  in memory in front of the data (with the minimal padding between
-      --  then).  Also similar to Reference_To_Bounds_And_Data, except for
+      --  them).  Also similar to Reference_To_Bounds_And_Data, except for
       --  exactly where the pointer references.
 
       Reference_To_Thin_Pointer,

@@ -922,39 +922,53 @@ package body GNATLLVM.Blocks is
    function Emit_Raise_Call_With_Extra_Info
      (N : Node_Id; Kind : RT_Exception_Code; Cond : Node_Id) return Boolean
    is
-      S        : constant Source_Ptr := Sloc (N);
-      File     : constant GL_Value   :=
+      S     : constant Source_Ptr := Sloc (N);
+      File   : constant GL_Value   :=
         Get_File_Name_Address (Get_Source_File_Index (S));
-      Line     : constant GL_Value   :=
+      Line   : constant GL_Value   :=
         Const_Int (Integer_GL_Type,
                    ULL (if   Debug_Flag_NN
                              or else Exception_Locations_Suppressed
                         then 0 else Get_Logical_Line_Number (S)));
-      Col  : constant GL_Value   :=
+      Col    : constant GL_Value   :=
         Const_Int (Integer_GL_Type, ULL (Get_Column_Number (S)));
-      LB, HB   : Node_Id;
-      Rng      : Node_Id;
-      Index    : GL_Value;
-      LB_V     : GL_Value;
-      HB_V     : GL_Value;
+      LB, HB : Node_Id;
+      Rng    : Node_Id;
+      Index  : GL_Value;
+      LB_V   : GL_Value;
+      HB_V   : GL_Value;
 
    begin
-      --  If this isn't a NOT operation or an N_In, we can't handle it
+      --  If this isn't a NOT operation, we can't handle it.  If we're
+      --  only processing decls, don't try.
 
-      if Nkind (Cond) /= N_Op_Not or else Nkind (Right_Opnd (Cond)) /= N_In
-      then
+      if Nkind (Cond) /= N_Op_Not or else Decls_Only then
          return False;
       end if;
 
       --  Otherwise, get the range
 
-      Rng := Right_Opnd (Right_Opnd (Cond));
-      if Nkind (Rng) = N_Identifier then
-         Rng := Scalar_Range (Full_Etype (Rng));
-      end if;
+      case Nkind (Right_Opnd (Cond)) is
+         when N_In =>
+            Rng := Right_Opnd (Right_Opnd (Cond));
+            if Nkind (Rng) = N_Identifier then
+               Rng := Scalar_Range (Full_Etype (Rng));
+            end if;
 
-      LB := Low_Bound  (Rng);
-      HB := High_Bound (Rng);
+            LB := Low_Bound  (Rng);
+            HB := High_Bound (Rng);
+
+         when N_Op_Ge =>
+            LB := Right_Opnd (Right_Opnd (Cond));
+            HB := Type_High_Bound (Full_Etype (Left_Opnd (Right_Opnd (Cond))));
+
+         when N_Op_Le =>
+            LB := Type_Low_Bound (Full_Etype (Left_Opnd (Right_Opnd (Cond))));
+            HB := Right_Opnd (Right_Opnd (Cond));
+
+         when others =>
+            return False;
+      end case;
 
       --  If we don't know the size of the type or if it's wider than an
       --  Integer, we can't give the extended information.

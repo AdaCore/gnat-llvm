@@ -17,8 +17,8 @@ obj
 
 # Imported sources
 llvm/llvm-*.src
-acats/acats
-fixedbugs/bugs
+acats
+fixedbugs
 
 # Code editors artifacts
 .#*

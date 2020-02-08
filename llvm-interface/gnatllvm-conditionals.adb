@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Exp_Util; use Exp_Util;
+with Table;    use Table;
 
 with LLVM.Core;  use LLVM.Core;
 
@@ -998,31 +999,50 @@ package body GNATLLVM.Conditionals is
         with Pre  => Present (From_GT) and then Present (To_GT);
       --  Return True iff we need to use a reference to convert
 
-      function Convert_Side (V : GL_Value) return GL_Value
-        with Pre => Present (V), Post => Present (Convert_Side'Result);
-      --  Convert V, one side of this operation to the type and relationship
-      --  for the Phi.
+      --  There can be a nest if N_If_Expression nodes that correspond
+      --  to a single (if ... then ... elsif ... then ... else) statement.
+      --  We record information about each executable part, with the last
+      --  one being the final 'else'.
 
-      GT         : constant GL_Type       := Full_GL_Type (N);
-      Elementary : constant Boolean       := Is_Elementary_Type (GT);
-      Condition  : constant Node_Id       := First (Expressions (N));
-      Then_Expr  : constant Node_Id       := Next (Condition);
-      Else_Expr  : constant Node_Id       := Next (Then_Expr);
-      Next_BB    : constant Basic_Block_T := Create_Basic_Block ("if-next");
-      Then_BB    : Basic_Block_T          := Create_Basic_Block ("if-then");
-      Else_BB    : Basic_Block_T          := Create_Basic_Block ("if-else");
-      Then_Value : GL_Value;
-      Else_Value : GL_Value;
-      Then_GT    : GL_Type;
-      Else_GT    : GL_Type;
-      Phi_GT     : GL_Type;
-      Then_R     : GL_Relationship;
-      Else_R     : GL_Relationship;
-      Phi_R      : GL_Relationship;
-      Need_Ref   : Boolean;
-      Prefer_Ref : Boolean;
-      Use_Ref    : Boolean;
-      Result     : GL_Value;
+      type I_E_Part is record
+         Condition : Node_Id;
+         --  Condition to test, or Empty for the else part
+
+         Expr      : Node_Id;
+         --  Expression to evaluate for this part
+
+         BB        : Basic_Block_T;
+         --  Basic block containing the code so far for this part
+
+         Value     : GL_Value;
+         --  The latest representation of the value computed by this part
+      end record;
+
+      package Parts is new Table.Table
+        (Table_Component_Type => I_E_Part,
+         Table_Index_Type     => Nat,
+         Table_Low_Bound      => 1,
+         Table_Initial        => 3,
+         Table_Increment      => 1,
+         Table_Name           => "IE_Table");
+
+      Expr          : Node_Id                := N;
+      Expr_GT       : constant GL_Type       := Full_GL_Type (N);
+      Elementary    : constant Boolean       := Is_Elementary_Type (Expr_GT);
+      Phi_BB        : constant Basic_Block_T := Create_Basic_Block ("i-e-phi");
+      BB            : Basic_Block_T          := Get_Insert_Block;
+      Phi_GT        : GL_Type                := No_GL_Type;
+      All_Ref       : Boolean                := True;
+      Some_Ref      : Boolean                := False;
+      Need_Convert  : Boolean                := False;
+      Fat_R         : GL_Relationship        := Invalid;
+      All_R         : GL_Relationship        := Object;
+      All_As_Data_R : GL_Relationship        := Object;
+      Phi_R         : GL_Relationship;
+      Need_Ref      : Boolean;
+      Prefer_Ref    : Boolean;
+      Use_Ref       : Boolean;
+      Result        : GL_Value;
 
       -------------------------
       -- Need_Ref_To_Convert --
@@ -1051,110 +1071,111 @@ package body GNATLLVM.Conditionals is
          end if;
       end Need_Ref_To_Convert;
 
-      ------------------
-      -- Convert_Side --
-      ------------------
-
-      function Convert_Side (V : GL_Value) return GL_Value is
-         GT     : constant GL_Type := Related_Type (V);
-         Result : GL_Value         := V;
-
-      begin
-         --  If V is data and we need a reference, or vice versa, get it as
-         --  the corresponding data or reference (making the minimal
-         --  change).
-
-         if Is_Data (Result) and then Is_Reference (Phi_R) then
-            Result := Get (Result, Any_Reference);
-         elsif Is_Data (Phi_R) and then Is_Double_Reference (Result) then
-            Result := Get (Result, Deref (Deref (Relationship (Result))));
-         elsif Is_Data (Phi_R) and then Is_Reference (Result) then
-            Result := Get (Result, Deref (Relationship (Result)));
-         end if;
-
-         --  Now convert.  First see if this is being converted to the same
-         --  native LLVM type.  If so, just change the GT.
-
-         if not Is_Nonnative_Type (GT)
-           and then Type_Of (GT) = Type_Of (Phi_GT)
-         then
-            Result := G_Is (Result, Phi_GT);
-
-         --  Next see if this is a constant aggregate
-
-         elsif Can_Convert_Aggregate_Constant (Result, Phi_GT) then
-            Result := Convert_Aggregate_Constant (Result, Phi_GT);
-
-         --  If elementary type, do that the conversion
-
-         elsif Elementary then
-            Result := Convert (Result, Phi_GT);
-
-         --  Otherwise, we must have a reference.  So convert that.
-
-         else
-            Result := Convert_Ref (Result, Phi_GT);
-         end if;
-
-         --  Finally, get it with the desired relationship
-
-         return Get (Result, Phi_R);
-      end Convert_Side;
-
    begin  --  Start of processing for Emit_If_Expression
 
-      --  Start by generating the conditional branch and working on each
-      --  expression in its own BB.
+      --  Start by building the table of parts.  If we don't have any
+      --  nested N_If_Expression, there are two parts: one for 'then' and
+      --  one for 'else'.
 
-      Emit_If_Cond (Condition, Then_BB, Else_BB);
-      Position_Builder_At_End (Then_BB);
-      Then_Value := Emit (Then_Expr);
-      Then_GT    := Related_Type (Then_Value);
-      Then_R     := Relationship (Then_Value);
-      Then_BB    := Get_Insert_Block;
-      Position_Builder_At_End (Else_BB);
-      Else_Value := Emit (Else_Expr);
-      Else_GT    := Related_Type (Else_Value);
-      Else_R     := Relationship (Else_Value);
-      Else_BB    := Get_Insert_Block;
+      loop
+         Expr := First (Expressions (Expr));
+         Parts.Append ((Expr, Next (Expr), BB, No_GL_Value));
+         Expr := Next (Next (Expr));
+         BB   := Create_Basic_Block;
+         exit when Nkind (Expr) /= N_If_Expression;
+      end loop;
 
-      --  The front end guarantees that Then_GT, Else_GT, and GT are very
-      --  similar types.  However, they may not be identical and we need
-      --  identical types for the Phi.  If the types are the same, we can
-      --  use that one and later convert to GT.  Otherwise, we may as well
-      --  convert both to GT instead of finding some intermediate type,
-      --  especially because all three are usually the same.
+      Parts.Append ((Empty, Expr, BB, No_GL_Value));
 
-      Phi_GT := (if Then_GT = Else_GT then Then_GT else GT);
+      --  Now do initial processing for each part while computing what our
+      --  target type and relationship is.
 
-      --  We also need to have the Relationship be the same on both sides
+      for J in 1 .. Parts.Last loop
+         declare
+            IEP     : I_E_Part renames Parts.Table (J);
+            Next_BB : Basic_Block_T;
+            GT      : GL_Type;
+            R       : GL_Relationship;
+            Data_R  : GL_Relationship;
+
+         begin
+            --  Start by generating the conditional branch and working on each
+            --  expression in its own BB.
+
+            Position_Builder_At_End (IEP.BB);
+
+            if Present (IEP.Condition) then
+               Next_BB := Create_Basic_Block;
+               Emit_If_Cond (IEP.Condition, Next_BB, Parts.Table (J + 1).BB);
+               Position_Builder_At_End (Next_BB);
+            end if;
+
+            IEP.Value := Emit (IEP.Expr);
+            IEP.BB    := Get_Insert_Block;
+
+            --  Get the type and relationship of the result of the expression
+            --  and compute some things from them that we'll use below
+            --  to see what form each part should be left in.
+
+            GT            := Related_Type (IEP.Value);
+            R             := Relationship (IEP.Value);
+            Data_R        := (if Is_Reference (R) then Deref (R) else R);
+            Phi_GT        := (if No (Phi_GT) then GT
+                              elsif Phi_GT /= GT then Expr_GT else GT);
+            All_Ref       := All_Ref  and then Is_Reference (R);
+            Some_Ref      := Some_Ref or else  Is_Reference (R);
+            Need_Convert  := Need_Convert or else GT /= Expr_GT;
+
+            --  See if all relationships are the same.  We've initialized
+            --  to Object since that can't be an actual relationship.
+
+            All_R         := (if    All_R = Object then R
+                             elsif All_R = R then All_R else Invalid);
+            All_As_Data_R := (if    All_As_Data_R = Object then Data_R
+                              elsif All_As_Data_R = Data_R
+                              then All_As_Data_R else Invalid);
+            if R in Fat_Pointer | Fat_Reference_To_Subprogram then
+               Fat_R      := R;
+            end if;
+
+         end;
+      end loop;
+
+      --  The front end guarantees that the types of the parts and the
+      --  result are very similar types.  However, they may not be
+      --  identical and we need identical types for the Phi.  If the types
+      --  are the same, we can use that one and later convert to Expr_GT.
+      --  Otherwise, we may as well convert both to Expr_GT instead of
+      --  finding some intermediate type, especially because all three are
+      --  usually the same.  If the only conversion is after the Phi, we
+      --  can use data up to then if all are data, but would prefer
+      --  reference over data if we have one if each since we need
+      --  reference for that conversion.
+
+      --  We also need to have the Relationship be the same on all parts
       --  and that's more complex since there are a lot of cases.
       --
-      --  Normally, data is preferred.  But there are some cases where
-      --  we can't use data.  If we have to convert types, the types
-      --  are composite and either we can't statically convert to the type
-      --  or we need to convert a non-constant value, we can only do the
-      --  conversion by pointer punning, so we need a reference.  If the
-      --  only conversion is after the Phi, we can use data up to then if
-      --  both are data, but would prefer reference over data if we have
-      --  one if each since we need reference for that conversion.
+      --  Normally, data is preferred.  But there are some cases where we
+      --  can't use data.  If we have to convert types, the types are
+      --  composite and either we can't statically convert to the type or
+      --  we need to convert a non-constant value, we can only do the
+      --  conversion by pointer punning, so we need a reference.
 
-      Need_Ref   := Need_Ref_To_Convert (Then_GT, Phi_GT, Then_Value)
-        or else Need_Ref_To_Convert     (Else_GT, Phi_GT, Else_Value);
-      Prefer_Ref := Need_Ref_To_Convert (Phi_GT, GT, No_GL_Value);
+      Need_Ref   := (for some J in 1 .. Parts.Last =>
+                     Need_Ref_To_Convert (Related_Type (Parts.Table (J).Value),
+                                          Phi_GT, Parts.Table (J).Value));
+      Prefer_Ref := Need_Ref_To_Convert (Phi_GT, Expr_GT, No_GL_Value);
 
-      --  We use a reference if we need to use a reference, if both sides
+      --  We use a reference if we need to use a reference, if all parts
       --  are a reference, or if we prefer a reference and at least one
-      --  side is a reference.  However, we must use data if we have an
+      --  part is a reference.  However, we must use data if we have an
       --  elementary type and need to do a conversion.
 
-      if Elementary and then (Then_GT /= GT or else Else_GT /= GT) then
+      if Elementary and then Need_Convert then
          Use_Ref := False;
       else
-         Use_Ref := Need_Ref
-           or else (Is_Reference (Then_R) and then Is_Reference (Else_R))
-           or else (Prefer_Ref and then (Is_Reference (Then_R)
-                                           or else Is_Reference (Else_R)));
+         Use_Ref := Need_Ref or else All_Ref
+           or else (Prefer_Ref and then Some_Ref);
       end if;
 
       --  Next choose the exact relationship for both the data and
@@ -1163,22 +1184,20 @@ package body GNATLLVM.Conditionals is
       if Use_Ref then
 
          --  If GT is an unconstrained array, use a fat pointer since the
-         --  bounds may be different on both sides.
+         --  bounds may be different between the parts.
 
-         if Is_Unconstrained_Array (GT) then
+         if Is_Unconstrained_Array (Expr_GT) then
             Phi_R := Fat_Pointer;
 
-         --  If both are the same and a reference, that's what we use
+         --  If all are the same and a reference, that's what we use
 
-         elsif Then_R = Else_R and then Is_Reference (Then_R) then
-            Phi_R := Then_R;
+         elsif Is_Reference (All_R) then
+            Phi_R := All_R;
 
-         --  If either is a fat pointer of some type, that's our choice
+         --  If any is a fat pointer of some type, that's our choice
 
-         elsif Then_R in Fat_Pointer | Fat_Reference_To_Subprogram then
-            Phi_R := Then_R;
-         elsif Else_R in Fat_Pointer | Fat_Reference_To_Subprogram then
-            Phi_R := Else_R;
+         elsif Fat_R /= Invalid then
+            Phi_R := Fat_R;
 
          --  Otherwise use Reference
 
@@ -1189,43 +1208,89 @@ package body GNATLLVM.Conditionals is
       --  Otherwise, we have some type of data
 
       else
-         --  Start by considering each reference as the data that it
-         --  references.
+         --  If all data references are the same, use that one. Otherwise,
+         --  use Data.
 
-         Then_R := (if Is_Reference (Then_R) then Deref (Then_R) else Then_R);
-         Else_R := (if Is_Reference (Else_R) then Deref (Else_R) else Else_R);
-
-         --  If both are (now) the same, use that one. Otherwise, use Data.
-
-         Phi_R := (if Then_R = Else_R then Then_R else Data);
+         Phi_R := (if All_As_Data_R /= Invalid then All_As_Data_R else Data);
       end if;
 
-      --  Now we generate similar code for both sides, to obtain a result
+      --  Now we generate similar code for alll parts, to obtain a result
       --  with relationship Phi_R to Phi_GT.
 
-      Position_Builder_At_End (Then_BB);
-      Then_Value := Convert_Side (Then_Value);
-      Then_BB    := Get_Insert_Block;
-      Position_Builder_At_End (Else_BB);
-      Else_Value := Convert_Side (Else_Value);
-      Else_BB    := Get_Insert_Block;
+      for J in 1 .. Parts.Last loop
+         declare
+            IEP    : I_E_Part renames Parts.Table (J);
+            GT     : constant GL_Type := Related_Type (IEP.Value);
+            Result : GL_Value := IEP.Value;
 
-      --  Both sides then branch to the Phi block and we emit the Phi,
-      --  converting to either data or reference, depending on the type.
-      --  In the elementary case, convert to the result type, since we
-      --  may not already have done this.
+         begin
+            Position_Builder_At_End (IEP.BB);
 
-      Position_Builder_At_End (Then_BB);
-      Build_Br (Next_BB);
-      Position_Builder_At_End (Else_BB);
-      Move_To_BB (Next_BB);
+            --  If we have data and need a reference, or vice versa, get it
+            --  as the corresponding data or reference (making the minimal
+            --  change).
 
-      Result := Build_Phi ((1 => Then_Value, 2 => Else_Value),
-                           (1 => Then_BB,    2 => Else_BB));
-      return (if    Related_Type (Result) = GT then Result
-              elsif Is_Data (Result) then Convert (Result, GT)
-              else  Convert_Ref (Result, GT));
+            if Is_Data (Result) and then Is_Reference (Phi_R) then
+               Result := Get (Result, Any_Reference);
+            elsif Is_Data (Phi_R) and then Is_Double_Reference (Result) then
+               Result := Get (Result, Deref (Deref (Relationship (Result))));
+            elsif Is_Data (Phi_R) and then Is_Reference (Result) then
+               Result := Get (Result, Deref (Relationship (Result)));
+            end if;
 
+            --  Now convert.  First see if this is being converted to the same
+            --  native LLVM type.  If so, just change the GT.
+
+            if not Is_Nonnative_Type (GT)
+              and then Type_Of (GT) = Type_Of (Phi_GT)
+            then
+               Result := G_Is (Result, Phi_GT);
+
+               --  Next see if this is a constant aggregate
+
+            elsif Can_Convert_Aggregate_Constant (Result, Phi_GT) then
+               Result := Convert_Aggregate_Constant (Result, Phi_GT);
+
+               --  If elementary type, do that the conversion
+
+            elsif Elementary then
+               Result := Convert (Result, Phi_GT);
+
+               --  Otherwise, we must have a reference.  So convert that.
+
+            else
+               Result := Convert_Ref (Result, Phi_GT);
+            end if;
+
+            --  Finally, get it with the desired relationship and branch to
+            --  the Phi.
+
+            IEP.Value := Get (Result, Phi_R);
+            IEP.BB    := Get_Insert_Block;
+            Build_Br (Phi_BB);
+         end;
+      end loop;
+
+      declare
+         Values : GL_Value_Array (1 .. Parts.Last);
+         BBs    : Basic_Block_Array (1 .. Parts.Last);
+
+      begin
+         for J in 1 .. Parts.Last loop
+            Values (J) := Parts.Table (J).Value;
+            BBs    (J) := Parts.Table (J).BB;
+         end loop;
+
+         Position_Builder_At_End (Phi_BB);
+         Result := Build_Phi (Values, BBs);
+
+         --  In the elementary case, convert to the result type, since we
+         --  may not already have done this.
+
+         return (if    Related_Type (Result) = Expr_GT then Result
+                 elsif Is_Data (Result) then Convert (Result, Expr_GT)
+                 else  Convert_Ref (Result, Expr_GT));
+      end;
    end Emit_If_Expression;
 
    ------------------

@@ -183,10 +183,13 @@ package body GNATLLVM.Aliasing is
    --  for aliasing purposes.
 
    function Is_Subtype_For_Aliasing (TE1, TE2 : Entity_Id) return Boolean is
-     (Base_Type_For_Aliasing (TE1) = Base_Type_For_Aliasing (TE2))
+     (Base_Type_For_Aliasing (TE1) = Base_Type_For_Aliasing (TE2)
+        or else (Is_Tagged_Type (TE1) and then Is_Derived_Type (TE2)
+           and then Is_Subtype_For_Aliasing (TE1, Full_Etype (TE2))))
      with Pre => Is_Type (TE1) and then Is_Type (TE2);
    --  Return True iff TE1 is TE2 or a subtype of it using the above
-   --  definition of base type.
+   --  definition of base type or using a parent relationship among
+   --  tagged types.
 
    function Universal_Aliasing_Including_Bases (TE : Entity_Id) return Boolean
      with Pre => Is_Type (TE);
@@ -292,10 +295,8 @@ package body GNATLLVM.Aliasing is
          return Base_Type_For_Aliasing (Full_Base_Type (TE));
 
       --  If this is a composite derived type with the same representation
-      --  as its parent, use the parent.
-      --  ??? Don't do this for tagged type since Same_Representation is
-      --  always true.  We need to understand what aliasing should be for
-      --  such types.
+      --  as its parent, use the parent.  But don't do this for tagged types
+      --  since we can track those using a parent relationship.
 
       elsif Is_Composite_Type (TE) and then Is_Derived_Type (TE)
         and then Same_Representation (TE, Full_Etype (TE))
@@ -478,12 +479,9 @@ package body GNATLLVM.Aliasing is
             --  have two access types to the same underlying type or in
             --  some subtype cases.  Likewise if the target has been marked
             --  for universal aliasing.
-            --  ??? We're not setting aliasing information for tagged types
-            --  now, so they can't cause errors.
 
             if Is_Subtype_For_Aliasing (TDT, SDT)
               or else Universal_Aliasing_Including_Bases (TDT)
-              or else Is_Tagged_Type (SDT) or else Is_Tagged_Type (TDT)
             then
                return OK;
 
@@ -1199,15 +1197,16 @@ package body GNATLLVM.Aliasing is
       BT           : constant Entity_Id  := Base_Type_For_Aliasing (TE);
       Inner_Parent : constant Metadata_T :=
         (if    Present (Parent) then Parent
-         elsif BT /= TE then Get_TBAA_Type (BT, Native) else TBAA_Root);
+         elsif BT /= TE then Get_TBAA_Type (BT, Native)
+         elsif Is_Tagged_Type (TE) and then Is_Derived_Type (TE)
+         then  Get_TBAA_Type (Full_Etype (TE), Native) else TBAA_Root);
       Our_Parent   : constant Metadata_T :=
         (if Present (Inner_Parent) then Inner_Parent else TBAA_Root);
 
    begin
       --  If this isn't a native type, we can't make a TBAA type entry for it
-      --  ??? Likewise for tagged types for now.
 
-      if Is_Nonnative_Type (TE) or else Is_Tagged_Type (TE) then
+      if Is_Nonnative_Type (TE) then
          return No_Metadata_T;
 
       --  All other types are done by subprograms, if supported

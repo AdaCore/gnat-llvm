@@ -316,9 +316,9 @@ package body GNATLLVM.GLValue is
    -- Set_Aliases_All --
    ---------------------
 
-   procedure Set_Aliases_All (V : in out GL_Value) is
+   procedure Set_Aliases_All (V : in out GL_Value; AA : Boolean := True) is
    begin
-      V.Aliases_All := True;
+      V.Aliases_All := V.Aliases_All or else AA;
    end Set_Aliases_All;
 
    -------------------
@@ -1172,8 +1172,8 @@ package body GNATLLVM.GLValue is
    -------------------
 
    function Get_Undef_Ref (GT : GL_Type) return GL_Value is
-     (G_Ref (Get_Undef (Create_Access_Type_To (GT)),
-             GT, Is_Pristine => True));
+     (Initialize_Alignment (G_Ref (Get_Undef (Create_Access_Type_To (GT)),
+                                   GT, Is_Pristine => True)));
 
    ----------------
    -- Const_Ones --

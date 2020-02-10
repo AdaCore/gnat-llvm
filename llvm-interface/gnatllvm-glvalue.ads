@@ -705,8 +705,8 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Post => not Overflowed (V), Inline;
    --  Clear the overflow flag in V
 
-   procedure Set_Aliases_All (V : in out GL_Value)
-     with Pre => Present (V), Post => Aliases_All (V), Inline;
+   procedure Set_Aliases_All (V : in out GL_Value; AA : Boolean := True)
+     with Pre => Present (V), Post => not AA or else Aliases_All (V), Inline;
 
    procedure Set_TBAA_Type (V : in out GL_Value; MD : Metadata_T)
      with Pre => Present (V), Post => TBAA_Type (V) = MD, inline;
@@ -1086,8 +1086,9 @@ package GNATLLVM.GLValue is
    function Get_Undef_Relationship
      (GT : GL_Type; R : GL_Relationship) return GL_Value
    is
-     (G (Get_Undef (Type_For_Relationship (GT, R)), GT, R,
-         Is_Pristine => True))
+     (Initialize_Alignment
+        (G (Get_Undef (Type_For_Relationship (GT, R)), GT, R,
+            Is_Pristine => True)))
      with Pre  => Present (GT),
           Post => Present (Get_Undef_Relationship'Result);
 

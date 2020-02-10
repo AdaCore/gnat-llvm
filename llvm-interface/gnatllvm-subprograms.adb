@@ -928,9 +928,10 @@ package body GNATLLVM.Subprograms is
               Activation_Record_Component (E);
             Activation_Rec : constant GL_Value  :=
               Get_Activation_Record_Ptr (Activation_Rec_Param, Component);
-            Pointer       : constant GL_Value   :=
+            Pointer        : constant GL_Value  :=
               Get (Record_Field_Offset (Activation_Rec, Component), Reference);
-            Value         : constant GL_Value   := Load (Pointer);
+            V              : constant GL_Value  := Get_Value (E);
+            Result         : GL_Value   := Load (Pointer);
 
          begin
             --  If GT is unconstrained, we have an access type, which is a
@@ -939,11 +940,24 @@ package body GNATLLVM.Subprograms is
             --  be converted to a pointer.
 
             if Is_Unconstrained_Array (GT) then
-               return From_Access (Value);
+               Result := From_Access (Result);
             else
-               return Initialize_TBAA (Initialize_Alignment
-                                         (Int_To_Ref (Value, GT)));
+               Result := Int_To_Ref (Result, GT);
+               Set_Alignment (Result, Alignment (V));
             end if;
+
+            --  If we have the same relationship as that of the underlying
+            --  variable, the aliasing information for our reference is the
+            --  same as as if we were accessing it directly in the scope in
+            --  which it's defined.
+
+            if Relationship (Result) = Relationship (V) then
+               Set_TBAA_Type   (Result, TBAA_Type   (V));
+               Set_TBAA_Offset (Result, TBAA_Offset (V));
+               Set_Aliases_All (Result, Aliases_All (V));
+            end if;
+
+            return Result;
          end;
       else
          return No_GL_Value;

@@ -581,7 +581,7 @@ package body GNATLLVM.DebugInfo is
       Var_Data  : Metadata_T;
 
    begin
-      --  ??? We nly support the simple case of where we have data or a
+      --  ??? We only support the simple case of where we have data or a
       --  reference to data.
 
       if Emit_Debug_Info and then Present (Type_Data)

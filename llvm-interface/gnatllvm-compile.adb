@@ -1214,7 +1214,7 @@ package body GNATLLVM.Compile is
    --  in code, where we need to save a pointer to a branch we add to a new
    --  basic block that we made.  Note that in the latter case, we can't
    --  use Get_Current_Position / Set_Current_Position because those are
-   --  intended for adding invidual instructions within a basic block
+   --  intended for adding individual instructions within a basic block
    --  but here we need to insert large amounts of code, including basic
    --  blocks.
 

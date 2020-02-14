@@ -20,6 +20,6 @@ package GNATLLVM.Records.Create is
    function Create_Record_Type (TE : Entity_Id) return Type_T
      with Pre => Is_Record_Type (TE),
           Post => Present (Create_Record_Type'Result);
-   --  Create a type for the record denoted by Def_Ident
+   --  Create a type for the record denoted by TE
 
 end GNATLLVM.Records.Create;

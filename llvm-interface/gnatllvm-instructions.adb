@@ -118,25 +118,25 @@ package body GNATLLVM.Instructions is
    ------------
 
    function Alloca
-     (GT        : GL_Type;
-      Def_Ident : Entity_Id := Empty;
-      Align     : Nat       := 0;
-      Name      : String    := "") return GL_Value
+     (GT    : GL_Type;
+      E     : Entity_Id := Empty;
+      Align : Nat       := 0;
+      Name  : String    := "") return GL_Value
    is
       R         : constant GL_Relationship := Relationship_For_Alloc (GT);
       PT        : constant Type_T          := Type_For_Relationship (GT, R);
       T         : constant Type_T          := Get_Element_Type (PT);
       Promote   : constant Basic_Block_T   := Maybe_Promote_Alloca (T);
       Inst      : constant Value_T         :=
-        Alloca (IR_Builder, T, Get_Alloca_Name (Def_Ident, Name));
+        Alloca (IR_Builder, T, Get_Alloca_Name (E, Name));
       Our_Align : constant Nat             :=
-        Set_Object_Align (Inst, GT, Def_Ident, Align);
+        Set_Object_Align (Inst, GT, E, Align);
       Result    : GL_Value                 :=
         G (Inst, GT, R, Is_Pristine => True, Alignment => Our_Align);
 
    begin
       Done_Promoting_Alloca (Inst, Promote, T);
-      Initialize_TBAA (Result, Kind_From_Decl (Def_Ident));
+      Initialize_TBAA (Result, Kind_From_Decl (E));
       return Result;
    end Alloca;
 
@@ -145,25 +145,25 @@ package body GNATLLVM.Instructions is
    ------------------
 
    function Array_Alloca
-     (GT        : GL_Type;
-      Num_Elts  : GL_Value;
-      Def_Ident : Entity_Id := Empty;
-      Align     : Nat       := 0;
-      Name      : String    := "") return GL_Value
+     (GT       : GL_Type;
+      Num_Elts : GL_Value;
+      E        : Entity_Id := Empty;
+      Align    : Nat       := 0;
+      Name     : String    := "") return GL_Value
    is
       T         : constant Type_T        := Type_Of (GT);
       Promote   : constant Basic_Block_T := Maybe_Promote_Alloca (T, Num_Elts);
       Inst      : constant Value_T       :=
         Array_Alloca (IR_Builder, Type_Of (GT), +Num_Elts,
-                      Get_Alloca_Name (Def_Ident, Name));
+                      Get_Alloca_Name (E, Name));
       Our_Align : constant Nat           :=
-        Set_Object_Align (Inst, GT, Def_Ident, Align);
+        Set_Object_Align (Inst, GT, E, Align);
       Result    : GL_Value               :=
         G_Ref (Inst, GT, Is_Pristine => True, Alignment => Our_Align);
 
    begin
       Done_Promoting_Alloca (Inst, Promote, T, Num_Elts);
-      Initialize_TBAA (Result, Kind_From_Decl (Def_Ident));
+      Initialize_TBAA (Result, Kind_From_Decl (E));
       return Result;
    end Array_Alloca;
 

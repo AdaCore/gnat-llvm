@@ -2016,12 +2016,10 @@ package body GNATLLVM.GLValue is
    -- Get_Alloca_Name --
    ---------------------
 
-   function Get_Alloca_Name
-     (Def_Ident : Entity_Id; Name : String) return String
+   function Get_Alloca_Name (E : Entity_Id; Name : String) return String
    is
      (if    Name = "%%" then "" elsif Name /= "" then Name
-      elsif Present (Def_Ident)
-      then  Get_Ext_Name (Def_Ident) else "");
+      elsif Present (E) then  Get_Ext_Name (E) else "");
 
    ----------------------
    -- Error_Msg_NE_Num --

@@ -132,31 +132,30 @@ package body GNATLLVM.Variables is
      with Pre => Present (E) and then not Is_Type (E);
    --  Return True if E may have a global name that we need to check for dups
 
-   function Variable_GL_Type
-     (Def_Ident : Entity_Id; Expr : Node_Id) return GL_Type
-     with Pre  => Ekind_In (Def_Ident, E_Variable, E_Constant,
-                            E_Loop_Parameter, E_Exception),
+   function Variable_GL_Type (E : Entity_Id; Expr : Node_Id) return GL_Type
+     with Pre  => Ekind_In (E, E_Variable, E_Constant, E_Loop_Parameter,
+                            E_Exception),
           Post => Present (Variable_GL_Type'Result);
-   --  Determine the proper GL_Type to use for Def_Ident.  If Expr is Present,
-   --  it's an initializing expression for Def_Ident.
+   --  Determine the proper GL_Type to use for E.  If Expr is Present, it's
+   --  an initializing expression for E.
 
-   function Is_Volatile_Entity (Def_Ident : Entity_Id) return Boolean is
-     (Is_Volatile_Object (Def_Ident) or else Treat_As_Volatile (Def_Ident)
-        or else Address_Taken (Def_Ident))
-     with Pre => Ekind_In (Def_Ident, E_Variable, E_Constant, E_Exception,
+   function Is_Volatile_Entity (E : Entity_Id) return Boolean is
+     (Is_Volatile_Object (E) or else Treat_As_Volatile (E)
+        or else Address_Taken (E))
+     with Pre => Ekind_In (E, E_Variable, E_Constant, E_Exception,
                            E_Loop_Parameter);
-   --  True iff Def_Ident is an entity (a variable or constant) that we
+   --  True iff E is an entity (a variable or constant) that we
    --  need to treat as volatile for any reason.
 
    function Make_Global_Variable
-     (Def_Ident  : Entity_Id;
+     (E          : Entity_Id;
       GT         : GL_Type;
       Definition : Boolean) return GL_Value
-     with Pre  => Ekind_In (Def_Ident, E_Variable, E_Constant,
-                            E_Loop_Parameter, E_Exception)
+     with Pre  => Ekind_In (E, E_Variable, E_Constant, E_Loop_Parameter,
+                            E_Exception)
                   and then Present (GT),
           Post => Present (Make_Global_Variable'Result);
-   --  Create a global variable for Def_Ident.  Definition is true if we
+   --  Create a global variable for E.  Definition is true if we
    --  are doing this for a declaration.
 
    function Alloca_Smaller_Than
@@ -1163,9 +1162,9 @@ package body GNATLLVM.Variables is
       Pass2    : Boolean := True)
    is
       type List_Array is array (1 .. 2) of List_Id;
-      Lists     : constant List_Array := (1 => List1, 2 => List2);
-      Def_Ident : Entity_Id;
-      N         : Node_Id;
+      Lists : constant List_Array := (1 => List1, 2 => List2);
+      E     : Entity_Id;
+      N     : Node_Id;
 
    begin
       if Pass1 then
@@ -1218,11 +1217,11 @@ package body GNATLLVM.Variables is
 
                   elsif Nkind (N) = N_Subprogram_Body then
                      if Acts_As_Spec (N) then
-                        Def_Ident := Defining_Entity (N);
+                        E := Defining_Entity (N);
 
-                        if not Ekind_In (Def_Ident, E_Generic_Procedure,
+                        if not Ekind_In (E, E_Generic_Procedure,
                                          E_Generic_Function)
-                          and then not Is_Eliminated (Def_Ident)
+                          and then not Is_Eliminated (E)
                         then
                            Discard (Emit_Subprogram_Decl (N));
                         end if;
@@ -1233,11 +1232,11 @@ package body GNATLLVM.Variables is
                   --  because it may be used in other declarations.
 
                   elsif Nkind (N) = N_Subprogram_Body_Stub then
-                     Def_Ident := Defining_Entity (Specification (N));
+                     E := Defining_Entity (Specification (N));
 
-                     if not Ekind_In (Def_Ident, E_Subprogram_Body,
+                     if not Ekind_In (E, E_Subprogram_Body,
                                       E_Generic_Procedure, E_Generic_Function)
-                       and then not Is_Eliminated (Def_Ident)
+                       and then not Is_Eliminated (E)
                      then
                         Discard (Emit_Subprogram_Decl (Specification (N)));
                      end if;
@@ -1308,14 +1307,12 @@ package body GNATLLVM.Variables is
    --  Variable_GL_Type --
    -----------------------
 
-   function Variable_GL_Type
-     (Def_Ident : Entity_Id; Expr : Node_Id) return GL_Type
+   function Variable_GL_Type (E : Entity_Id; Expr : Node_Id) return GL_Type
    is
       TE          : constant Entity_Id :=
-        (if   Ekind (Etype (Def_Ident)) = E_Class_Wide_Type
-              and then Present (Expr)
+        (if   Ekind (Etype (E)) = E_Class_Wide_Type and then Present (Expr)
               and then Nkind (Expr) = N_Qualified_Expression
-         then Full_Etype (Expression (Expr)) else Full_Etype (Def_Ident));
+         then Full_Etype (Expression (Expr)) else Full_Etype (E));
       --  Type to use for allocation.  Normally, the type of the identifier
       --  unless we have a qualified expression initializing a class wide
       --  type.
@@ -1326,15 +1323,14 @@ package body GNATLLVM.Variables is
       In_Align     : constant GL_Value  := Get_Type_Alignment (GT);
       In_Align_Nat : constant Nat       := +In_Align;
       Size         : constant Uint      :=
-        (if   Unknown_Esize (Def_Ident) then No_Uint
-         else Validate_Size (Def_Ident, GT, Esize (Def_Ident),
-                             Zero_Allowed => Has_Size_Clause (Def_Ident)));
+        (if   Unknown_Esize (E) then No_Uint
+         else Validate_Size (E, GT, Esize (E),
+                             Zero_Allowed => Has_Size_Clause (E)));
       Align        : Uint               :=
-        (if   Unknown_Alignment (Def_Ident) then No_Uint
-         else Validate_Alignment (Def_Ident, Alignment (Def_Ident),
-                                  In_Align_Nat));
+        (if   Unknown_Alignment (E) then No_Uint
+         else Validate_Alignment (E, Alignment (E), In_Align_Nat));
       Max_Size : constant Boolean   := Is_Unconstrained_Record (GT);
-      Biased   : constant Boolean   := Has_Biased_Representation (Def_Ident);
+      Biased   : constant Boolean   := Has_Biased_Representation (E);
 
    begin
       --  If this is an object with no specified size and alignment, and if
@@ -1344,17 +1340,16 @@ package body GNATLLVM.Variables is
       --  constant, adjust the alignment.
 
       if No (Size) and then No (Align) and then Present (In_Size)
-        and then (Is_Atomic_Or_VFA_Object (Def_Ident)
-                    or else (not Ekind_In (Def_Ident, E_Exception,
-                                           E_Out_Parameter, E_Loop_Parameter)
+        and then (Is_Atomic_Or_VFA_Object (E)
+                    or else (not Ekind_In (E, E_Exception, E_Out_Parameter,
+                                           E_Loop_Parameter)
                                and then Is_Composite_Type (GT)
-                               and then not Optimize_Alignment_Space
-                                              (Def_Ident)
+                               and then not Optimize_Alignment_Space (E)
                                and then not Is_Constr_Subt_For_UN_Aliased (GT)
-                               and then not Is_Exported (Def_Ident)
-                               and then not Is_Imported (Def_Ident)
-                               and then No (Renamed_Object (Def_Ident))
-                               and then No (Address_Clause (Def_Ident))))
+                               and then not Is_Exported (E)
+                               and then not Is_Imported (E)
+                               and then No (Renamed_Object (E))
+                               and then No (Address_Clause (E))))
       then
          declare
             In_Size_ULL : constant ULL := +In_Size;
@@ -1389,7 +1384,7 @@ package body GNATLLVM.Variables is
       --  computations.  But don't use a size that overflows.
 
       GT := Make_GT_Alternative
-        (GT, Def_Ident,
+        (GT, E,
          Size          =>
            (if UI_Is_In_Int_Range (Size) then Size else No_Uint),
          Align         => Align,
@@ -1455,26 +1450,25 @@ package body GNATLLVM.Variables is
    --------------------------
 
    function Make_Global_Variable
-     (Def_Ident  : Entity_Id;
+     (E          : Entity_Id;
       GT         : GL_Type;
       Definition : Boolean) return GL_Value
    is
-      LLVM_Var        : GL_Value         := Get_Dup_Global_Value (Def_Ident);
-      Has_Addr        : constant Boolean :=
-        Present (Address_Clause (Def_Ident));
+      LLVM_Var        : GL_Value         := Get_Dup_Global_Value (E);
+      Has_Addr        : constant Boolean := Present (Address_Clause (E));
       Addr_Expr       : constant Node_Id :=
-        (if Has_Addr then Expression (Address_Clause (Def_Ident)) else Empty);
+        (if Has_Addr then Expression (Address_Clause (E)) else Empty);
       Has_Static_Addr : constant Boolean   :=
         Has_Addr and then Is_Static_Address (Addr_Expr);
       Nonnative       : constant Boolean := Is_Nonnative_Type (GT);
       Needs_Alloc     : constant Boolean := not Has_Addr and then Nonnative;
       Is_Ref          : constant Boolean :=
         (Has_Addr and then not Has_Static_Addr) or else Needs_Alloc
-          or else (Present (Renamed_Object (Def_Ident))
-                     and then Is_Name (Renamed_Object (Def_Ident)));
-      Is_Volatile     : constant Boolean := Is_Volatile_Entity (Def_Ident);
+          or else (Present (Renamed_Object (E))
+                     and then Is_Name (Renamed_Object (E)));
+      Is_Volatile     : constant Boolean := Is_Volatile_Entity (E);
       Linker_Alias    : constant Node_Id :=
-        Get_Pragma (Def_Ident, Pragma_Linker_Alias);
+        Get_Pragma (E, Pragma_Linker_Alias);
 
    begin
 
@@ -1491,8 +1485,7 @@ package body GNATLLVM.Variables is
            or else Type_Needs_Bounds (GT)
          then
             Error_Msg_N
-              ("All uses of same interface name must have static size",
-               Def_Ident);
+              ("All uses of same interface name must have static size", E);
             LLVM_Var := Get_Undef_Relationship
               (GT, (if Is_Ref then Reference_To_Reference else Reference));
          else
@@ -1501,13 +1494,13 @@ package body GNATLLVM.Variables is
 
       --  Otherwise, see if this is a simple renaming
 
-      elsif Present (Renamed_Object (Def_Ident))
-        and then Is_Static_Location (Renamed_Object (Def_Ident))
+      elsif Present (Renamed_Object (E))
+        and then Is_Static_Location (Renamed_Object (E))
       then
          --  ??? This may be wrong because it calls Emit_LValue on
          --  an N_Defining_Identifier.
 
-         LLVM_Var := Emit_LValue (Renamed_Object (Def_Ident));
+         LLVM_Var := Emit_LValue (Renamed_Object (E));
 
          --  Otherwise, if this is a linker alias and we're defining this
          --  variable, set that up if we find a matching entity.
@@ -1517,7 +1510,7 @@ package body GNATLLVM.Variables is
             Str_Id : constant String_Id :=
               Strval (Expression (Last (Pragma_Argument_Associations
                                           (Linker_Alias))));
-            E      : Entity_Id          := Empty;
+            Our_E  : Entity_Id          := Empty;
 
          begin
             --  Look for a variable in this compilation that has its
@@ -1529,21 +1522,20 @@ package body GNATLLVM.Variables is
                  and then Full_GL_Type (Interface_Names.Table (J).E) = GT
                  and then Present (Get_Value (Interface_Names.Table (J).E))
                then
-                  E := Interface_Names.Table (J).E;
+                  Our_E := Interface_Names.Table (J).E;
                end if;
             end loop;
 
-            if No (E) then
-               Error_Msg_NE ("No matching object found", Linker_Alias,
-                             Def_Ident);
+            if No (Our_E) then
+               Error_Msg_NE ("No matching object found", Linker_Alias, Our_E);
                LLVM_Var := Get_Undef (GT);
             else
                LLVM_Var := G (Add_Alias (Module,
                                          Create_Access_Type_To (GT),
-                                         +Get_Value (E),
-                                         Get_Ext_Name (Def_Ident)),
+                                         +Get_Value (Our_E),
+                                         Get_Ext_Name (E)),
                               GT, Reference);
-               Initialize_TBAA (LLVM_Var, Kind_From_Decl (Def_Ident));
+               Initialize_TBAA (LLVM_Var, Kind_From_Decl (E));
             end if;
          end;
 
@@ -1552,26 +1544,23 @@ package body GNATLLVM.Variables is
       --  that's the default if there's no initializer.
 
       else
-         LLVM_Var := Add_Global (GT, Get_Ext_Name (Def_Ident),
+         LLVM_Var := Add_Global (GT, Get_Ext_Name (E),
                                  Need_Reference => Is_Ref);
          Mark_Volatile    (LLVM_Var, Is_Volatile);
-         Mark_Atomic      (LLVM_Var,
-                           Is_Atomic (Def_Ident) or else Is_Atomic (GT));
-         Set_Thread_Local (LLVM_Var,
-                           Has_Pragma_Thread_Local_Storage (Def_Ident));
+         Mark_Atomic      (LLVM_Var, Is_Atomic (E) or else Is_Atomic (GT));
+         Set_Thread_Local (LLVM_Var, Has_Pragma_Thread_Local_Storage (E));
 
-         if not Is_Public (Def_Ident) and not Is_Imported (Def_Ident) then
+         if not Is_Public (E) and not Is_Imported (E) then
             Set_Linkage (LLVM_Var, Internal_Linkage);
          end if;
 
-         Set_Dup_Global_Value (Def_Ident, LLVM_Var);
-         Set_Linker_Section   (LLVM_Var, Def_Ident);
-         Process_Pragmas      (Def_Ident, LLVM_Var);
-         Initialize_TBAA      (LLVM_Var, Kind_From_Decl (Def_Ident));
+         Set_Dup_Global_Value (E, LLVM_Var);
+         Set_Linker_Section   (LLVM_Var, E);
+         Process_Pragmas      (E, LLVM_Var);
+         Initialize_TBAA      (LLVM_Var, Kind_From_Decl (E));
 
          if not Is_Ref then
-            Set_Alignment (LLVM_Var,
-                           Set_Object_Align (LLVM_Var, GT, Def_Ident));
+            Set_Alignment (LLVM_Var, Set_Object_Align (LLVM_Var, GT, E));
          else
             Set_Alignment (LLVM_Var, Get_Type_Alignment (Type_Of (LLVM_Var)));
          end if;
@@ -1583,7 +1572,7 @@ package body GNATLLVM.Variables is
 
       --  Now save the value we've made for this variable
 
-      Set_Value (Def_Ident, LLVM_Var);
+      Set_Value (E, LLVM_Var);
       return LLVM_Var;
 
    end Make_Global_Variable;
@@ -1595,13 +1584,12 @@ package body GNATLLVM.Variables is
    procedure Emit_Declaration
      (N : Node_Id; For_Freeze_Entity : Boolean := False)
    is
-      Def_Ident       : constant Node_Id   := Defining_Identifier (N);
+      E               : constant Node_Id   := Defining_Identifier (N);
       --  Identifier being defined
 
       Full_Ident      : constant Node_Id    :=
-        (if   Ekind (Def_Ident) = E_Constant
-              and then Present (Full_View (Def_Ident))
-         then Full_View (Def_Ident) else Def_Ident);
+        (if   Ekind (E) = E_Constant and then Present (Full_View (E))
+         then Full_View (E) else E);
       --  Identifier to use to find the initializing expression
 
       No_Init         : constant Boolean   :=
@@ -1612,9 +1600,8 @@ package body GNATLLVM.Variables is
         (if No_Init then Empty else Expression (N));
       --  Initializing expression, if Present and we are to use one
 
-      GT              : constant GL_Type   :=
-          Variable_GL_Type (Def_Ident, Expr);
-      --  Type to use for Def_Ident
+      GT              : constant GL_Type   := Variable_GL_Type (E, Expr);
+      --  Type to use for E
 
       Alloc_GT        : constant GL_Type   :=
         (if   not Is_Class_Wide_Equivalent_Type (GT)
@@ -1622,22 +1609,21 @@ package body GNATLLVM.Variables is
               and then Present (Expr)
               and then not Is_Unconstrained_Type (Full_Etype (Expr))
          then Full_Alloc_GL_Type (Expr) else GT);
-      --  Type to use for allocating Def_Ident, if different
+      --  Type to use for allocating E, if different
 
       Nonnative       : constant Boolean   := Is_Nonnative_Type (GT);
       --  True if the type to use for this variable isn't a native LLVM type
 
-      Has_Addr        : constant Boolean   :=
-        Present (Address_Clause (Def_Ident));
+      Has_Addr        : constant Boolean   := Present (Address_Clause (E));
       --  True if variable has an address clause
 
       Addr_Expr       : constant Node_Id   :=
-        (if Has_Addr then Expression (Address_Clause (Def_Ident)) else Empty);
+        (if Has_Addr then Expression (Address_Clause (E)) else Empty);
       --  Expression to use for the address, if Present
 
       Is_External     : constant Boolean   :=
-        Is_Imported (Def_Ident) and then not Has_Addr
-          and then not Get_Dup_Global_Is_Defined (Def_Ident);
+        Is_Imported (E) and then not Has_Addr
+          and then not Get_Dup_Global_Is_Defined (E);
       --  True if variable is not defined in this unit
 
       Has_Static_Addr : constant Boolean   :=
@@ -1651,8 +1637,8 @@ package body GNATLLVM.Variables is
         (Has_Addr and then not Has_Static_Addr) or else Needs_Alloc;
       --  True if we need to use an indirection for this variable
 
-      Is_Volatile     : constant Boolean   := Is_Volatile_Entity (Def_Ident);
-      --  True if we need to consider Def_Ident as volatile
+      Is_Volatile     : constant Boolean   := Is_Volatile_Entity (E);
+      --  True if we need to consider E as volatile
 
       Value           : GL_Value           :=
         (if Present (Expr) then Get_Value (Expr) else No_GL_Value);
@@ -1669,11 +1655,11 @@ package body GNATLLVM.Variables is
       --  True if we've made an initializer for a static variable that we're
       --  defining.
 
-      LLVM_Var        : GL_Value           := Get_Value (Def_Ident);
+      LLVM_Var        : GL_Value           := Get_Value (E);
       --  The LLVM value for the variable
 
    begin
-      Check_Convention (Def_Ident);
+      Check_Convention (E);
 
       --  Nothing to do if this is a debug renaming type
 
@@ -1686,9 +1672,9 @@ package body GNATLLVM.Variables is
       --  but let's not worry about that possibility).
 
       elsif Decls_Only then
-         if No (Get_Value (Def_Ident)) then
-            Set_Value (Def_Ident, Emit_Undef (GT));
-            Annotate_Object_Size_And_Alignment (Def_Ident, GT);
+         if No (Get_Value (E)) then
+            Set_Value (E, Emit_Undef (GT));
+            Annotate_Object_Size_And_Alignment (E, GT);
          end if;
 
          return;
@@ -1696,16 +1682,16 @@ package body GNATLLVM.Variables is
       --  If the object is to have atomic components, find the component
       --  type and validate it.
 
-      elsif Has_Atomic_Components (Def_Ident) then
+      elsif Has_Atomic_Components (E) then
          Check_OK_For_Atomic_Type ((if   Is_Array_Type (GT)
                                     then Full_Component_GL_Type (GT) else GT),
-                                   Def_Ident, True);
+                                   E, True);
       end if;
 
       --  Now check if the type of the object allows atomic access
 
-      if Is_Atomic_Or_VFA (Def_Ident) then
-         Check_OK_For_Atomic_Type (GT, Def_Ident);
+      if Is_Atomic_Or_VFA (E) then
+         Check_OK_For_Atomic_Type (GT, E);
       end if;
 
       --  Object declarations are variables either allocated on the
@@ -1724,8 +1710,8 @@ package body GNATLLVM.Variables is
       --  value is built manually.  And constants that are renamings are
       --  handled like variables.
 
-      if Full_Ident /= Def_Ident and then not Has_Addr and then not No_Init
-        and then No (Renamed_Object (Def_Ident))
+      if Full_Ident /= E and then not Has_Addr and then not No_Init
+        and then No (Renamed_Object (E))
       then
          return;
 
@@ -1742,14 +1728,14 @@ package body GNATLLVM.Variables is
       --  we can evaluate statically.  Otherwise, see if we've already
       --  evaluated that expression and get the value.
 
-      elsif Present (Freeze_Node (Def_Ident))
+      elsif Present (Freeze_Node (E))
         and then not For_Freeze_Entity and then not In_Elab_Proc
       then
          --  If we have a Full_View, we may see that declaration
          --  before our freeze node, so set a dummy value for it so we
          --  can detect that.
 
-         if Full_Ident /= Def_Ident then
+         if Full_Ident /= E then
             Set_Value (Full_Ident, Emit_Undef (GT));
          end if;
 
@@ -1784,11 +1770,9 @@ package body GNATLLVM.Variables is
               or else Get_Bound_Size (GT) /= Get_Bound_Size (Other_GT)
             then
                Error_Msg_NE ("aliased object& with unconstrained array " &
-                               "nominal subtype", Address_Clause (Def_Ident),
-                             Def_Ident);
+                               "nominal subtype", Address_Clause (E), E);
                Error_Msg_N ("\\can overlay only aliased object with " &
-                              "compatible subtype",
-                            Address_Clause (Def_Ident));
+                              "compatible subtype", Address_Clause (E));
             end if;
          end;
       end if;
@@ -1797,7 +1781,7 @@ package body GNATLLVM.Variables is
       --  that way unless if we've already made the item (e.g., if we're
       --  in the elab proc).
 
-      if (Library_Level or else Is_Statically_Allocated (Def_Ident)
+      if (Library_Level or else Is_Statically_Allocated (E)
             or else Is_External)
         and then No (LLVM_Var)
       then
@@ -1812,16 +1796,15 @@ package body GNATLLVM.Variables is
                            else Emit_Expression (Addr_Expr)),
                           GT);
             Mark_Volatile (LLVM_Var, Is_Volatile);
-            Mark_Atomic   (LLVM_Var,
-                           Is_Atomic (Def_Ident) or else Is_Atomic (GT));
+            Mark_Atomic   (LLVM_Var, Is_Atomic (E) or else Is_Atomic (GT));
             Set_Init := True;
-            Set_Value (Def_Ident, LLVM_Var);
+            Set_Value (E, LLVM_Var);
          else
             --  Otherwise, make a global variable.  If we have an address
             --  expression, we know it must be nonstatic, so add this to
             --  the elab proc if at library level.
 
-            LLVM_Var := Make_Global_Variable (Def_Ident, GT, True);
+            LLVM_Var := Make_Global_Variable (E, GT, True);
             if Library_Level and then Has_Addr then
                Add_To_Elab_Proc (N);
             end if;
@@ -1867,8 +1850,7 @@ package body GNATLLVM.Variables is
                --  this is not used via link name punning elsewhere, set it as
                --  a global constant.
 
-               if Is_True_Constant (Def_Ident)
-                 and then not Address_Taken (Def_Ident)
+               if Is_True_Constant (E) and then not Address_Taken (E)
                then
                   Set_Global_Constant (LLVM_Var);
                end if;
@@ -1886,8 +1868,8 @@ package body GNATLLVM.Variables is
            and then not Has_Addr
          then
             Set_Global_Constant
-              (LLVM_Var, (Is_True_Constant (Def_Ident)
-                            and then not Address_Taken (Def_Ident)));
+              (LLVM_Var, (Is_True_Constant (E)
+                            and then not Address_Taken (E)));
             Set_Initializer (LLVM_Var, Get (Get_Undef_Relationship (GT, Data),
                                             Bounds_And_Data));
             Set_Init := True;
@@ -1909,10 +1891,10 @@ package body GNATLLVM.Variables is
 
          --  Make debugging information for the globel variable
 
-         Create_Global_Variable_Debug_Data (Def_Ident, LLVM_Var);
+         Create_Global_Variable_Debug_Data (E, LLVM_Var);
       end if;
 
-      Annotate_Object_Size_And_Alignment (Def_Ident, GT);
+      Annotate_Object_Size_And_Alignment (E, GT);
 
       --  If we're at library level and not in an elab proc, we can't do
       --  anything else now.
@@ -1962,11 +1944,11 @@ package body GNATLLVM.Variables is
             Store (Addr, LLVM_Var);
          elsif Nonnative and then not Is_External then
             Store (Get (Heap_Allocate_For_Type (GT, Alloc_GT,
-                                                V         => Value,
-                                                Expr      => Expr,
-                                                N         => N,
-                                                Def_Ident => Def_Ident,
-                                                Max_Size  => Is_Max_Size (GT)),
+                                                V        => Value,
+                                                Expr     => Expr,
+                                                N        => N,
+                                                E        => E,
+                                                Max_Size => Is_Max_Size (GT)),
                         Any_Reference),
                    LLVM_Var);
             Copied := True;
@@ -1987,8 +1969,8 @@ package body GNATLLVM.Variables is
       --  into it.  We assume here if something is marked "constant" at
       --  source level, we can't modify it even if its address is taken.
 
-      elsif Is_True_Constant (Def_Ident)
-        and then (not Is_Volatile or else Ekind (Def_Ident) = E_Constant)
+      elsif Is_True_Constant (E)
+        and then (not Is_Volatile or else Ekind (E) = E_Constant)
         and then (Present (Expr) or else Present (Value))
       then
          --  Evaluate the expression if needed.  Normally, convert it to
@@ -2017,7 +1999,7 @@ package body GNATLLVM.Variables is
          --  variable to make the code easier to read.
 
          if Present (LLVM_Var) and then Get_Value_Name (LLVM_Var) = "" then
-            Set_Value_Name (LLVM_Var, Get_Name (Def_Ident));
+            Set_Value_Name (LLVM_Var, Get_Name (E));
          end if;
       end if;
 
@@ -2025,12 +2007,11 @@ package body GNATLLVM.Variables is
       --  on the stack, copying in any value.
 
       if No (LLVM_Var) then
-         LLVM_Var := Allocate_For_Type (GT, Alloc_GT, Def_Ident, Value, Expr,
-                                        Def_Ident => Def_Ident,
-                                        Max_Size  => Is_Max_Size (Alloc_GT));
+         LLVM_Var := Allocate_For_Type (GT, Alloc_GT, E, Value, Expr,
+                                        E        => E,
+                                        Max_Size => Is_Max_Size (Alloc_GT));
          Mark_Volatile (LLVM_Var, Is_Volatile);
-         Mark_Atomic   (LLVM_Var,
-                        Is_Atomic (Def_Ident) or else Is_Atomic (GT));
+         Mark_Atomic   (LLVM_Var, Is_Atomic (E) or else Is_Atomic (GT));
          Copied := True;
 
          --  If this is a constant, but we're not assigning it here, it'll
@@ -2039,7 +2020,7 @@ package body GNATLLVM.Variables is
          --  constant from that point on.  But only do this for fixed-size
          --  objects.
 
-         if Is_True_Constant (Def_Ident) and then No (Value) and then No (Expr)
+         if Is_True_Constant (E) and then No (Value) and then No (Expr)
            and then not Is_Dynamic_Size (Alloc_GT)
          then
             Add_Invariant_Entry (LLVM_Var,
@@ -2049,8 +2030,8 @@ package body GNATLLVM.Variables is
 
       --  If we haven't already set the value, set it now
 
-      if No (Get_Value (Def_Ident)) then
-         Set_Value (Def_Ident, LLVM_Var);
+      if No (Get_Value (E)) then
+         Set_Value (E, LLVM_Var);
       end if;
 
       --  If we haven't already copied in any initializing expression, do
@@ -2062,7 +2043,7 @@ package body GNATLLVM.Variables is
 
       --  Generate debug information
 
-      Create_Local_Variable_Debug_Data (Def_Ident, LLVM_Var);
+      Create_Local_Variable_Debug_Data (E, LLVM_Var);
 
    end Emit_Declaration;
 
@@ -2071,15 +2052,15 @@ package body GNATLLVM.Variables is
    -------------------------------
 
    procedure Emit_Renaming_Declaration (N : Node_Id) is
-      Def_Ident   : constant Entity_Id := Defining_Identifier (N);
-      GT          : constant GL_Type   := Full_GL_Type (Def_Ident);
-      Is_Volatile : constant Boolean   := Is_Volatile_Entity (Def_Ident);
+      E           : constant Entity_Id := Defining_Identifier (N);
+      GT          : constant GL_Type   := Full_GL_Type (E);
+      Is_Volatile : constant Boolean   := Is_Volatile_Entity (E);
       Use_LHS     : constant Boolean   :=
         Is_Name (Name (N))
         and then (Nkind (Name (N)) not in N_Has_Entity
                     or else (Ekind (Entity (Name (N))) /=
                                E_Enumeration_Literal));
-      LLVM_Var  : GL_Value           := Get_Value (Def_Ident);
+      LLVM_Var  : GL_Value             := Get_Value (E);
       V         : GL_Value;
 
    begin
@@ -2088,7 +2069,7 @@ package body GNATLLVM.Variables is
       --  for this object, but then again, maybe we can't (e.g. packed
       --  array slice case).
 
-      if Is_Renaming_Of_Object (Def_Ident) then
+      if Is_Renaming_Of_Object (E) then
          return;
 
       --  If we've already defined this object, it means that we must be
@@ -2113,42 +2094,40 @@ package body GNATLLVM.Variables is
       --  end will have verified that the renaming is an actual LValue.
       --  Don't do this at library level if it needs run-time computation.
 
-      elsif Is_True_Constant (Def_Ident) and then not Use_LHS
+      elsif Is_True_Constant (E) and then not Use_LHS
         and then not Is_Volatile
         and then (not Library_Level
                     or else Is_No_Elab_Needed (Name (N)))
       then
          V := Emit_Conversion (Name (N), GT, Empty, False, False);
-         Set_Value (Def_Ident, V);
+         Set_Value (E, V);
 
          --  If we're at library level, materialize this
 
          if Library_Level then
-            LLVM_Var := Add_Global (GT, Get_Ext_Name (Def_Ident));
+            LLVM_Var := Add_Global (GT, Get_Ext_Name (E));
             Set_Initializer     (LLVM_Var, V);
             Set_Global_Constant (LLVM_Var, True);
-            Set_Linker_Section  (LLVM_Var, Def_Ident);
+            Set_Linker_Section  (LLVM_Var, E);
          end if;
       elsif Is_Static_Location (Name (N)) or else not Library_Level then
-         Set_Value (Def_Ident, Convert_Ref (Emit_LValue (Name (N)), GT));
+         Set_Value (E, Convert_Ref (Emit_LValue (Name (N)), GT));
       else
          --  If this is a constant, we're going to put the actual value there;
          --  otherwise, we'll put the address of the expression.
 
-         LLVM_Var := Add_Global (GT, Get_Ext_Name (Def_Ident),
+         LLVM_Var := Add_Global (GT, Get_Ext_Name (E),
                                  Need_Reference => Use_LHS);
          Mark_Volatile (LLVM_Var, Is_Volatile);
-         Mark_Atomic   (LLVM_Var,
-                        Is_Atomic (Def_Ident) or else Is_Atomic (GT));
-         Set_Value (Def_Ident, LLVM_Var);
+         Mark_Atomic   (LLVM_Var, Is_Atomic (E) or else Is_Atomic (GT));
+         Set_Value     (E, LLVM_Var);
          Set_Initializer
            (LLVM_Var,
-            (if   Use_LHS then Const_Null_Ref (GT)
-             else Const_Null_Alloc (GT)));
+            (if Use_LHS then Const_Null_Ref (GT) else Const_Null_Alloc (GT)));
          Add_To_Elab_Proc (N);
       end if;
 
-      Annotate_Object_Size_And_Alignment (Def_Ident, GT);
+      Annotate_Object_Size_And_Alignment (E, GT);
 
    end Emit_Renaming_Declaration;
 
@@ -2160,14 +2139,16 @@ package body GNATLLVM.Variables is
      (N : Node_Id; Prefer_LHS : Boolean := False) return GL_Value
    is
       GT        : constant GL_Type   := Full_GL_Type (N);
-      E         : constant Entity_Id :=
+      Direct_E  : constant Entity_Id :=
         (if Nkind (N) in N_Entity then N else Entity (N));
-      Def_Ident : constant Entity_Id :=
-        (if Ekind (E) = E_Constant and then Present (Full_View (E))
-           and then No (Address_Clause (E)) then Full_View (E) else E);
-      Expr      : constant Node_Id   := Initialized_Value          (Def_Ident);
-      V_Act     : constant GL_Value  := Get_From_Activation_Record (Def_Ident);
-      V         : GL_Value           := Get_Value                  (Def_Ident);
+      E         : constant Entity_Id :=
+        (if Ekind (Direct_E) = E_Constant
+            and then Present (Full_View (Direct_E))
+            and then No (Address_Clause (Direct_E))
+         then Full_View (Direct_E) else Direct_E);
+      Expr      : constant Node_Id   := Initialized_Value          (E);
+      V_Act     : constant GL_Value  := Get_From_Activation_Record (E);
+      V         : GL_Value           := Get_Value                  (E);
 
    begin
       --  See if this is an entity that's present in our
@@ -2187,59 +2168,58 @@ package body GNATLLVM.Variables is
       --  but if it's part of Standard, we have to use it even then.
 
       elsif Present (Expr) and then Is_No_Elab_Needed (Expr)
-        and then (not Prefer_LHS or else Sloc (Def_Ident) <= Standard_Location)
+        and then (not Prefer_LHS or else Sloc (E) <= Standard_Location)
       then
          return Emit_Conversion (Expr, GT);
       end if;
 
       --  Otherwise, see if we have any special cases
 
-      case Ekind (Def_Ident) is
+      case Ekind (E) is
 
          when E_Enumeration_Literal =>
             --  N_Defining_Identifier nodes for enumeration literals are not
             --  stored in the environment. Handle them here.
 
             return From_Primitive (Const_Int (Primitive_GL_Type (GT),
-                                              Enumeration_Rep (Def_Ident)),
+                                              Enumeration_Rep (E)),
                                    GT);
 
          when E_Label =>
             return
               Block_Address (Current_Func,
-                             Get_Label_BB (Def_Ident, For_Address => True));
+                             Get_Label_BB (E, For_Address => True));
 
          when Subprogram_Kind =>
-            return Emit_Subprogram_Identifier (Def_Ident, N, GT);
+            return Emit_Subprogram_Identifier (E, N, GT);
 
          when E_Discriminant =>
 
             --  If this is a bare discriminant, it's a reference to the
             --  discriminant of some record.
 
-            return Use_Discriminant_For_Bound (Def_Ident);
+            return Use_Discriminant_For_Bound (E);
 
          when others =>
 
             --  If this has an address expression that's statically
             --  elaborable, dereference that.
 
-            if No (V) and then Present (Address_Clause (Def_Ident))
-              and then Is_No_Elab_Needed (Expression
-                                            (Address_Clause (Def_Ident)))
+            if No (V) and then Present (Address_Clause (E))
+              and then Is_No_Elab_Needed (Expression (Address_Clause (E)))
             then
                V := Int_To_Ref (Emit_Expression
-                                  (Expression (Address_Clause (Def_Ident))),
+                                  (Expression (Address_Clause (E))),
                                 GT);
 
             --  Otherwise, if we haven't seen this variable and it's
             --  a top level, make a global for it.
 
             elsif No (V)
-              and then Enclosing_Dynamic_Scope (Def_Ident) = Standard_Standard
+              and then Enclosing_Dynamic_Scope (E) = Standard_Standard
             then
-               V := Make_Global_Variable
-                 (Def_Ident, Variable_GL_Type (Def_Ident, Empty), False);
+               V := Make_Global_Variable (E, Variable_GL_Type (E, Empty),
+                                          False);
 
             --  If we still have nothing, but are just elaboration decls,
             --  make this an undef.

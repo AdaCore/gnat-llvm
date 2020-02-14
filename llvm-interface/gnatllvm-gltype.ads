@@ -53,7 +53,7 @@ package GNATLLVM.GLType is
 
    function Make_GT_Alternative
      (GT            : GL_Type;
-      Def_Ident     : Entity_Id;
+      E             : Entity_Id;
       Size          : Uint    := No_Uint;
       Align         : Uint    := No_Uint;
       For_Type      : Boolean := False;
@@ -64,15 +64,16 @@ package GNATLLVM.GLType is
      with Pre  => Present (GT),
           Post => Full_Etype (Make_GT_Alternative'Result) = Full_Etype (GT);
    --  Return a GL_Type (creating one if necessary) with the specified
-   --  parameters.  For_Type is True if we're doing this for a type; in that
-   --  case the size needs to be rounded to the alignment.  Max_Size is True
-   --  if we're computing the maximum size of an unconstrained record and
-   --  Biased is True if we're using a biased representation to store this
-   --  integral value.  Def_Ident is the identifier that we're doing this
-   --  for and is used for a warning message if we're padding.  For_Component
-   --  is true if we're changing the component size and is used for
-   --  any warning message.  If Align_For_Msg is specified, use that alignment,
-   --  instead of GT's alignment, in giving warnings about unused bits.
+   --  parameters.  For_Type is True if we're doing this for a type; in
+   --  that case the size needs to be rounded to the alignment.  Max_Size
+   --  is True if we're computing the maximum size of an unconstrained
+   --  record and Biased is True if we're using a biased representation to
+   --  store this integral value.  E is the identifier that we're doing
+   --  this for and is used for a warning message if we're padding.
+   --  For_Component is true if we're changing the component size and is
+   --  used for any warning message.  If Align_For_Msg is specified, use
+   --  that alignment, instead of GT's alignment, in giving warnings about
+   --  unused bits.
 
    procedure Update_GL_Type (GT : GL_Type; T : Type_T; Is_Dummy : Boolean)
      with Pre => Is_Empty_GL_Type (GT) or else Is_Dummy_Type (GT)

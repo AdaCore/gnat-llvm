@@ -1239,7 +1239,7 @@ package body GNATLLVM.Blocks is
                      Param   : constant Entity_Id  := Clauses.Table (J).Param;
                      GT      : constant GL_Type    := Full_GL_Type (Param);
                      V       : constant GL_Value   :=
-                       Allocate_For_Type (GT, N => Param, Def_Ident => Param);
+                       Allocate_For_Type (GT, N => Param, E => Param);
                      Cvt_Ptr : constant GL_Value   :=
                        Convert_To_Access (Exc_Ptr, A_Char_GL_Type);
 

@@ -325,14 +325,14 @@ package GNATLLVM.Types is
    --  also doesn't do well with large load/store instructions.
 
    function Allocate_For_Type
-     (GT        : GL_Type;
-      Alloc_GT  : GL_Type   := No_GL_Type;
-      N         : Node_Id   := Empty;
-      V         : GL_Value  := No_GL_Value;
-      Expr      : Node_Id   := Empty;
-      Def_Ident : Entity_Id := Empty;
-      Name      : String    := "";
-      Max_Size  : Boolean   := False) return GL_Value
+     (GT       : GL_Type;
+      Alloc_GT : GL_Type   := No_GL_Type;
+      N        : Node_Id   := Empty;
+      V        : GL_Value  := No_GL_Value;
+      Expr     : Node_Id   := Empty;
+      E        : Entity_Id := Empty;
+      Name     : String    := "";
+      Max_Size : Boolean   := False) return GL_Value
      with Pre  => Present (GT),
           Post => Is_Reference (Allocate_For_Type'Result);
    --  Allocate space on the stack for an object of type GT and return a
@@ -343,15 +343,15 @@ package GNATLLVM.Types is
    --  raise an exception.
 
    function Heap_Allocate_For_Type
-     (GT        : GL_Type;
-      Alloc_GT  : GL_Type   := No_GL_Type;
-      V         : GL_Value  := No_GL_Value;
-      N         : Node_Id   := Empty;
-      Expr      : Node_Id   := Empty;
-      Proc      : Entity_Id := Empty;
-      Pool      : Entity_Id := Empty;
-      Def_Ident : Entity_Id := Empty;
-      Max_Size  : Boolean   := False) return GL_Value
+     (GT       : GL_Type;
+      Alloc_GT : GL_Type   := No_GL_Type;
+      V        : GL_Value  := No_GL_Value;
+      N        : Node_Id   := Empty;
+      Expr     : Node_Id   := Empty;
+      Proc     : Entity_Id := Empty;
+      Pool     : Entity_Id := Empty;
+      E        : Entity_Id := Empty;
+      Max_Size : Boolean   := False) return GL_Value
      with Pre  => Present (GT) and then (No (Proc) or else Present (Pool)),
           Post => Is_Reference (Heap_Allocate_For_Type'Result);
    --  Similarly, but allocate storage on the heap.  This handles default

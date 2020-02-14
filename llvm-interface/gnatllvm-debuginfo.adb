@@ -198,17 +198,17 @@ package body GNATLLVM.DebugInfo is
    ----------------------------------
 
    function Create_Subprogram_Debug_Info
-     (Func      : GL_Value;
-      Def_Ident : Entity_Id;
-      N         : Node_Id;
-      Name      : String := "";
-      Ext_Name  : String := "") return Metadata_T
+     (Func     : GL_Value;
+      E        : Entity_Id;
+      N        : Node_Id;
+      Name     : String := "";
+      Ext_Name : String := "") return Metadata_T
    is
       Types      : constant Type_Array (1 .. 0) := (others => <>);
       S_Name     : constant String              :=
-        (if Name /= "" then Name else Get_Name (Def_Ident));
+        (if Name /= "" then Name else Get_Name (E));
       S_Ext_Name : constant String              :=
-        (if Ext_Name /= "" then Ext_Name else Get_Ext_Name (Def_Ident));
+        (if Ext_Name /= "" then Ext_Name else Get_Ext_Name (E));
 
    begin
       --  ??? We don't make the subprogram type from the types of the
@@ -218,7 +218,7 @@ package body GNATLLVM.DebugInfo is
       if Emit_Debug_Info then
          declare
             Dyn_Scope_E   : constant Entity_Id  :=
-              Enclosing_Subprogram_Scope (Def_Ident);
+              Enclosing_Subprogram_Scope (E);
             File_Node     : constant Metadata_T :=
               Get_Debug_File_Node (Get_Source_File_Index (Sloc (N)));
             Sub_Type_Node : constant Metadata_T :=
@@ -537,14 +537,13 @@ package body GNATLLVM.DebugInfo is
    -- Create_Global_Variable_Debug_Data --
    ---------------------------------------
 
-   procedure Create_Global_Variable_Debug_Data
-     (Def_Ident : Entity_Id; V : GL_Value)
+   procedure Create_Global_Variable_Debug_Data (E : Entity_Id; V : GL_Value)
    is
       GT        : constant GL_Type    := Related_Type (V);
       Type_Data : constant Metadata_T := Create_Debug_Type_Data (GT);
-      Name      : constant String     := Get_Name (Def_Ident);
-      Ext_Name  : constant String     := Get_Ext_Name (Def_Ident);
-      S         : constant Source_Ptr := Sloc (Def_Ident);
+      Name      : constant String     := Get_Name     (E);
+      Ext_Name  : constant String     := Get_Ext_Name (E);
+      S         : constant Source_Ptr := Sloc         (E);
 
    begin
       --  ??? For globals, we only do something now if this is a normal
@@ -552,8 +551,7 @@ package body GNATLLVM.DebugInfo is
 
       if Emit_Debug_Info and then Present (Type_Data)
         and then Relationship (V) = Reference
-        and then Is_A_Global_Variable (V)
-        and then not Is_Imported (Def_Ident)
+        and then Is_A_Global_Variable (V) and then not Is_Imported (E)
       then
          Global_Set_Metadata
            (+V, 0,
@@ -573,11 +571,11 @@ package body GNATLLVM.DebugInfo is
    --------------------------------------
 
    procedure Create_Local_Variable_Debug_Data
-     (Def_Ident : Entity_Id; V : GL_Value; Arg_Num : Nat := 0)
+     (E : Entity_Id; V : GL_Value; Arg_Num : Nat := 0)
    is
       GT        : constant GL_Type    := Related_Type (V);
       Type_Data : constant Metadata_T := Create_Debug_Type_Data (GT);
-      Name      : constant String     := Get_Name (Def_Ident);
+      Name      : constant String     := Get_Name (E);
       Var_Data  : Metadata_T;
 
    begin
@@ -591,8 +589,8 @@ package body GNATLLVM.DebugInfo is
             Var_Data :=
               DI_Create_Auto_Variable
               (DI_Builder, Current_Debug_Scope, Name, Name'Length,
-               Get_Debug_File_Node (Get_Source_File_Index (Sloc (Def_Ident))),
-               unsigned (Get_Logical_Line_Number (Sloc (Def_Ident))),
+               Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
+               unsigned (Get_Logical_Line_Number (Sloc (E))),
                Type_Data, False, DI_Flag_Zero,
                uint32_t (Nat'(Get_Type_Alignment (GT)) * BPU));
          else
@@ -600,8 +598,8 @@ package body GNATLLVM.DebugInfo is
               DI_Create_Parameter_Variable
               (DI_Builder, Current_Debug_Scope, Name, Name'Length,
                unsigned (Arg_Num),
-               Get_Debug_File_Node (Get_Source_File_Index (Sloc (Def_Ident))),
-               unsigned (Get_Logical_Line_Number (Sloc (Def_Ident))),
+               Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
+               unsigned (Get_Logical_Line_Number (Sloc (E))),
                Type_Data, False, DI_Flag_Zero);
          end if;
 
@@ -613,13 +611,13 @@ package body GNATLLVM.DebugInfo is
             if Get_Type_Size (V) /= Nat (0) then
                Discard (DI_Builder_Insert_Dbg_Value_At_End
                           (DI_Builder, +V, Var_Data, Empty_DI_Expr,
-                           Create_Debug_Location (Def_Ident),
+                           Create_Debug_Location (E),
                            Get_Insert_Block));
             end if;
          else
             Discard (DI_Builder_Insert_Declare_At_End
                        (DI_Builder, +V, Var_Data, Empty_DI_Expr,
-                        Create_Debug_Location (Def_Ident), Get_Insert_Block));
+                        Create_Debug_Location (E), Get_Insert_Block));
          end if;
       end if;
    end Create_Local_Variable_Debug_Data;

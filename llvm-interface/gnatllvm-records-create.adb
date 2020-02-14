@@ -392,10 +392,10 @@ package body GNATLLVM.Records.Create is
       procedure Process_Fields_To_Add;
       --  Create RI entries for the fields we've added above
 
-      procedure Add_Fields (Def_Ident : Entity_Id)
-        with Pre => Is_Record_Type (Def_Ident);
-      --  Add all fields of Def_Ident to the above data, either the component
-      --  or the extension components, but recursively add parent components.
+      procedure Add_Fields (E : Entity_Id)
+        with Pre => Is_Record_Type (E);
+      --  Add all fields of E to the above data, either the component or
+      --  the extension components, but recursively add parent components.
 
       procedure Flush_Current_Types;
       --  If there are any types in the Types array, create a record
@@ -564,12 +564,12 @@ package body GNATLLVM.Records.Create is
       -- Add_Fields --
       ----------------
 
-      procedure Add_Fields (Def_Ident : Entity_Id) is
-         Rec_Type     : constant Entity_Id := Full_Base_Type (Def_Ident);
+      procedure Add_Fields (E : Entity_Id) is
+         Rec_Type     : constant Entity_Id := Full_Base_Type (E);
          --  The base type, which we use to get the record order from
 
          Sub_Rec_Type : constant Entity_Id :=
-           (if Rec_Type = Def_Ident then Empty else Def_Ident);
+           (if Rec_Type = E then Empty else E);
          --  Present if we have to search the field list of a record subtype
 
          Rec_Field    : Entity_Id          := Empty;

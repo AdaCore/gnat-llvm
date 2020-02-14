@@ -1453,8 +1453,7 @@ package GNATLLVM.GLValue is
      with Pre => Present (GEP);
    --  Return the best known alignment of the cumulative offset of GEP
 
-   function Get_Alloca_Name
-     (Def_Ident : Entity_Id; Name : String) return String;
+   function Get_Alloca_Name (E : Entity_Id; Name : String) return String;
    --  Get name to be used for an alloc instruction
 
    procedure Error_Msg_NE_Num

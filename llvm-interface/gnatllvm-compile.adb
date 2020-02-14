@@ -1219,7 +1219,7 @@ package body GNATLLVM.Compile is
    --  blocks.
 
    type Code_Position (Library : Boolean := False) is record
-      Def_Ident : Entity_Id;
+      E : Entity_Id;
       case Library is
          when True =>
             Elab_Ptr : Nat;
@@ -1241,7 +1241,7 @@ package body GNATLLVM.Compile is
    -- Record_Code_Position --
    --------------------------
 
-   procedure Record_Code_Position (Def_Ident : Entity_Id) is
+   procedure Record_Code_Position (E : Entity_Id) is
    begin
       if Library_Level then
 
@@ -1250,7 +1250,7 @@ package body GNATLLVM.Compile is
          --  position in the list.
 
          Add_To_Elab_Proc (Empty);
-         Code_Positions.Append ((True, Def_Ident, Get_Elab_Position));
+         Code_Positions.Append ((True, E, Get_Elab_Position));
 
       else
          --  Create a new basic block and branch to it.  Later, we'll
@@ -1261,8 +1261,7 @@ package body GNATLLVM.Compile is
             BB : constant Basic_Block_T := Create_Basic_Block;
 
          begin
-            Code_Positions.Append ((False, Def_Ident,
-                                    Build_Br (IR_Builder, BB)));
+            Code_Positions.Append ((False, E, Build_Br (IR_Builder, BB)));
             Position_Builder_At_End (BB);
          end;
       end if;
@@ -1273,9 +1272,9 @@ package body GNATLLVM.Compile is
    -- Insert_Code_For --
    ---------------------
 
-   procedure Insert_Code_For (Def_Ident : Entity_Id) is
+   procedure Insert_Code_For (E : Entity_Id) is
       Code_To_Emit : constant Node_Id :=
-        Parent (Corresponding_Body (Parent (Declaration_Node (Def_Ident))));
+        Parent (Corresponding_Body (Parent (Declaration_Node (E))));
 
    begin
       for J in 1 .. Code_Positions.Last loop
@@ -1283,7 +1282,7 @@ package body GNATLLVM.Compile is
             RCP  : constant Code_Position := Code_Positions.Table (J);
 
          begin
-            if RCP.Def_Ident = Def_Ident then
+            if RCP.E = E then
                pragma Assert (Library_Level = RCP.Library);
                if RCP.Library then
 
@@ -1464,9 +1463,9 @@ package body GNATLLVM.Compile is
             declare
                Spec       : constant Node_Id   :=
                  Loop_Parameter_Specification (Iter_Scheme);
-               Def_Ident  : constant Node_Id   := Defining_Identifier (Spec);
+               E          : constant Node_Id   := Defining_Identifier (Spec);
                Reversed   : constant Boolean   := Reverse_Present (Spec);
-               Var_GT     : constant GL_Type   := Full_GL_Type (Def_Ident);
+               Var_GT     : constant GL_Type   := Full_GL_Type (E);
                Prim_GT    : constant GL_Type   := Primitive_GL_Type (Var_GT);
                Var_BT     : constant GL_Type   := Base_GL_Type (Var_GT);
                Uns_BT     : constant Boolean   := Is_Unsigned_Type (Var_BT);
@@ -1482,12 +1481,12 @@ package body GNATLLVM.Compile is
                Bounds_From_Type (Var_GT, Low, High);
                LLVM_Var := Allocate_For_Type
                  (Var_GT,
-                  N         => Def_Ident,
-                  V         => (if Reversed then High else Low),
-                  Def_Ident => Def_Ident);
+                  N => E,
+                  V => (if Reversed then High else Low),
+                  E => E);
 
-               Set_Value (Def_Ident, LLVM_Var);
-               Create_Local_Variable_Debug_Data (Def_Ident, LLVM_Var);
+               Set_Value (E, LLVM_Var);
+               Create_Local_Variable_Debug_Data (E, LLVM_Var);
 
                --  Then go to the condition block if the range isn't empty.
                --  Note that this comparison must be done in the base type.

@@ -95,10 +95,10 @@ package GNATLLVM.Compile is
      with Pre => Nkind (N) = N_Freeze_Entity;
    --  Process the actual freezing denoted by node N
 
-   procedure Record_Code_Position (Def_Ident : Entity_Id)
-     with Pre => Ekind (Def_Ident) = E_Package;
-   procedure Insert_Code_For (Def_Ident : Entity_Id)
-     with Pre => Ekind (Def_Ident) = E_Package;
+   procedure Record_Code_Position (E : Entity_Id)
+     with Pre => Ekind (E) = E_Package;
+   procedure Insert_Code_For (E : Entity_Id)
+     with Pre => Ekind (E) = E_Package;
    --  When we have a package body with a Freeze_Node, we need to record the
    --  position in the code to place that code for that package body and
    --  then insert it at the location of the Freeze_Node.

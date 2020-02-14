@@ -578,20 +578,19 @@ package body GNATLLVM.Types is
    -----------------------
 
    function Allocate_For_Type
-     (GT        : GL_Type;
-      Alloc_GT  : GL_Type   := No_GL_Type;
-      N         : Node_Id   := Empty;
-      V         : GL_Value  := No_GL_Value;
-      Expr      : Node_Id   := Empty;
-      Def_Ident : Entity_Id := Empty;
-      Name      : String    := "";
-      Max_Size  : Boolean   := False) return GL_Value
+     (GT       : GL_Type;
+      Alloc_GT : GL_Type   := No_GL_Type;
+      N        : Node_Id   := Empty;
+      V        : GL_Value  := No_GL_Value;
+      Expr     : Node_Id   := Empty;
+      E        : Entity_Id := Empty;
+      Name     : String    := "";
+      Max_Size : Boolean   := False) return GL_Value
    is
       Max_Alloc  : constant ULL     := 20_000_000;
       A_GT       : constant GL_Type :=
         (if Present (Alloc_GT) then Alloc_GT else GT);
-      Align      : constant Nat     :=
-        Get_Alloc_Alignment (GT, A_GT, Def_Ident);
+      Align      : constant Nat     := Get_Alloc_Alignment (GT, A_GT, E);
       Overalign  : constant Boolean := Align > (Get_Stack_Alignment * BPU);
       Value      : GL_Value         := V;
       Element_GT : GL_Type;
@@ -622,11 +621,10 @@ package body GNATLLVM.Types is
             declare
                Align_GT : constant GL_Type :=
                  (if   GT_Alignment (A_GT) >= Align then A_GT
-                  else Make_GT_Alternative (A_GT, Def_Ident, Align => +Align));
+                  else Make_GT_Alternative (A_GT, E, Align => +Align));
 
             begin
-               return Move_Into_Memory (Alloca (Align_GT, Def_Ident, Align,
-                                                Name),
+               return Move_Into_Memory (Alloca (Align_GT, E, Align, Name),
                                         Value, Expr, GT, A_GT);
             end;
          end if;
@@ -715,13 +713,13 @@ package body GNATLLVM.Types is
       --  Now allocate the object, align if necessary, and then move
       --  any data into it.
 
-      Result := Array_Alloca (Element_GT, Num_Elts, Def_Ident, Align,
+      Result := Array_Alloca (Element_GT, Num_Elts, E, Align,
                               (if Overalign then "%%" else Name));
       if Overalign then
          Result := Ptr_To_Int (Result, Size_GL_Type);
          Result := Align_To   (Result, Get_Stack_Alignment, To_Bytes (Align));
          Result := Int_To_Ptr (Result, A_Char_GL_Type);
-         Set_Value_Name (Result, Get_Alloca_Name (Def_Ident, Name));
+         Set_Value_Name (Result, Get_Alloca_Name (E, Name));
       end if;
 
       return Move_Into_Memory (Result, Value, Expr, GT, A_GT);
@@ -733,15 +731,15 @@ package body GNATLLVM.Types is
    ----------------------------
 
    function Heap_Allocate_For_Type
-     (GT        : GL_Type;
-      Alloc_GT  : GL_Type   := No_GL_Type;
-      V         : GL_Value  := No_GL_Value;
-      N         : Node_Id   := Empty;
-      Expr      : Node_Id   := Empty;
-      Proc      : Entity_Id := Empty;
-      Pool      : Entity_Id := Empty;
-      Def_Ident : Entity_Id := Empty;
-      Max_Size  : Boolean   := False) return GL_Value
+     (GT       : GL_Type;
+      Alloc_GT : GL_Type   := No_GL_Type;
+      V        : GL_Value  := No_GL_Value;
+      N        : Node_Id   := Empty;
+      Expr     : Node_Id   := Empty;
+      Proc     : Entity_Id := Empty;
+      Pool     : Entity_Id := Empty;
+      E        : Entity_Id := Empty;
+      Max_Size : Boolean   := False) return GL_Value
    is
       A_GT    : constant GL_Type   :=
         (if Present (Alloc_GT) then Alloc_GT else GT);
@@ -751,8 +749,7 @@ package body GNATLLVM.Types is
          then  Emit (Expr) else No_GL_Value);
       Size    : constant GL_Value :=
         Get_Alloc_Size (GT, A_GT, Value, Max_Size);
-      Align   : constant Nat      :=
-        Get_Alloc_Alignment (GT, A_GT, Def_Ident);
+      Align   : constant Nat      := Get_Alloc_Alignment (GT, A_GT, E);
       Align_V : constant GL_Value := Size_Const_Int (ULL (Align));
       Result  : GL_Value;
 

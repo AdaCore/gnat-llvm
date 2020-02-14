@@ -67,24 +67,24 @@ package GNATLLVM.Utils is
    --  Return True if N is an expression that represents a variable or
    --  something else that can be used in an LHS context.
 
-   procedure Set_Linker_Section (V : GL_Value; Def_Ident : Entity_Id)
-     with Pre => Present (V) and then Present (Def_Ident);
-   --  Add a linker section to V if one is specified for Def_Ident
+   procedure Set_Linker_Section (V : GL_Value; E : Entity_Id)
+     with Pre => Present (V) and then Present (E);
+   --  Add a linker section to V if one is specified for E
 
-   procedure Check_Convention (Def_Ident : Entity_Id)
-     with Pre => Present (Def_Ident);
-   --  Validate that we support the Convention on Def_Ident and give an error
-   --  if we don't.
+   procedure Check_Convention (E : Entity_Id)
+     with Pre => Present (E);
+   --  Validate that we support the Convention on E and give an error if we
+   --  don't.
 
-   procedure Process_Pragmas (Def_Ident : Entity_Id; V : GL_Value)
-     with Pre => not Is_Type (Def_Ident)
+   procedure Process_Pragmas (E : Entity_Id; V : GL_Value)
+     with Pre => not Is_Type (E)
                  and then (Is_A_Global_Variable (V)
                              or else Is_A_Function (V));
-   --  Process any pragmas for V, whose corresponding tree node is Def_Ident.
+   --  Process any pragmas for V, whose corresponding tree node is E
 
-   function Enclosing_Subprogram_Scope (Def_Ident : Entity_Id) return Entity_Id
-     with Pre => not Is_Type (Def_Ident);
-   --  Return any enclosing subprogram scope above Def_Ident
+   function Enclosing_Subprogram_Scope (E : Entity_Id) return Entity_Id
+     with Pre => not Is_Type (E);
+   --  Return any enclosing subprogram scope above E
 
    function Get_Uint_Value (N : Node_Id) return Uint
      with Pre => Present (N);

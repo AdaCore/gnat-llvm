@@ -380,7 +380,7 @@ package body GNATLLVM.GLType is
 
    function Make_GT_Alternative
      (GT            : GL_Type;
-      Def_Ident     : Entity_Id;
+      E             : Entity_Id;
       Size          : Uint    := No_Uint;
       Align         : Uint    := No_Uint;
       For_Type      : Boolean := False;
@@ -394,9 +394,8 @@ package body GNATLLVM.GLType is
         Make_GT_Alternative_Internal (GT, Size, Align, For_Type, Max_Size,
                                       Is_Biased);
       Err_Ident : constant Entity_Id :=
-        (if   Present (Def_Ident)
-              and then Is_Packed_Array_Impl_Type (Def_Ident)
-         then Original_Array_Type (Def_Ident) else Def_Ident);
+        (if   Present (E) and then Is_Packed_Array_Impl_Type (E)
+         then Original_Array_Type (E) else E);
 
    begin
       --  If this is an entity that comes from source, is in the unit being

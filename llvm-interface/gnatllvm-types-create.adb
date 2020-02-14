@@ -592,12 +592,12 @@ package body GNATLLVM.Types.Create is
    ------------------------------------------
 
    procedure Annotate_Object_Size_And_Alignment
-     (Def_Ident : Entity_Id; GT : GL_Type; Want_Max : Boolean := True) is
+     (E : Entity_Id; GT : GL_Type; Want_Max : Boolean := True) is
 
    begin
-      Set_Esize (Def_Ident, Annotated_Object_Size (GT, Want_Max => Want_Max));
+      Set_Esize (E, Annotated_Object_Size (GT, Want_Max => Want_Max));
       Set_Alignment
-        (Def_Ident,
+        (E,
          UI_From_Int (Get_Type_Alignment (GT, Use_Specified => False) / BPU));
    end Annotate_Object_Size_And_Alignment;
 

@@ -160,10 +160,10 @@ package body GNATLLVM.Utils is
    -- Check_Convention --
    ----------------------
 
-   procedure Check_Convention (Def_Ident : Entity_Id) is
+   procedure Check_Convention (E : Entity_Id) is
    begin
-      if Convention (Def_Ident) = Convention_CPP then
-         Error_Msg_NE ("Convention C++ not supported", Def_Ident, Def_Ident);
+      if Convention (E) = Convention_CPP then
+         Error_Msg_NE ("Convention C++ not supported", E, E);
       end if;
    end Check_Convention;
 
@@ -206,20 +206,20 @@ package body GNATLLVM.Utils is
    ------------------------------
 
    function Has_Volatile_Full_Access (N : Node_Id) return Boolean is
-      Def_Ident : Entity_Id;
+      E : Entity_Id;
 
    begin
       case Nkind (N) is
          when N_Identifier | N_Expanded_Name =>
-            Def_Ident := Entity (N);
-            return Is_Object (Def_Ident)
-              and then (Is_Atomic_Or_VFA (Def_Ident)
-                          or else Is_Atomic_Or_VFA (Full_Etype (Def_Ident)));
+            E := Entity (N);
+            return Is_Object (E)
+              and then (Is_Atomic_Or_VFA (E)
+                          or else Is_Atomic_Or_VFA (Full_Etype (E)));
 
          when N_Selected_Component =>
-            Def_Ident := Entity (Selector_Name (N));
-            return Is_Atomic_Or_VFA (Def_Ident)
-              or else Is_Atomic_Or_VFA (Full_Etype (Def_Ident));
+            E := Entity (Selector_Name (N));
+            return Is_Atomic_Or_VFA (E)
+              or else Is_Atomic_Or_VFA (Full_Etype (E));
 
          when N_Indexed_Component | N_Explicit_Dereference =>
             return Is_Atomic_Or_VFA (Full_Etype (N));
@@ -408,15 +408,14 @@ package body GNATLLVM.Utils is
    -- Set_Linker_Section --
    ------------------------
 
-   procedure Set_Linker_Section (V : GL_Value; Def_Ident : Entity_Id) is
+   procedure Set_Linker_Section (V : GL_Value; E : Entity_Id) is
    begin
       --  Exceptions don't support linker sections
 
-      if Ekind (Def_Ident) /= E_Exception
-        and then Present (Linker_Section_Pragma (Def_Ident))
+      if Ekind (E) /= E_Exception and then Present (Linker_Section_Pragma (E))
       then
          declare
-            P     : constant Node_Id   := Linker_Section_Pragma (Def_Ident);
+            P     : constant Node_Id   := Linker_Section_Pragma (E);
             List  : constant List_Id   := Pragma_Argument_Associations (P);
             Str   : constant Node_Id   := Expression (Last (List));
             S_Id  : constant String_Id := Strval (Expr_Value_S (Str));
@@ -436,13 +435,13 @@ package body GNATLLVM.Utils is
    -- Process_Pragmas --
    ---------------------
 
-   procedure Process_Pragmas (Def_Ident : Entity_Id; V : GL_Value) is
+   procedure Process_Pragmas (E : Entity_Id; V : GL_Value) is
    begin
       --  We call Get_Pragma to see if an interesting pragma is present
       --  instead of walking the loop.  This is quadratic, but the number
       --  of pragma is small and makes the code easier to read.
 
-      if Present (Get_Pragma (Def_Ident, Pragma_Weak_External)) then
+      if Present (Get_Pragma (E, Pragma_Weak_External)) then
          Set_Linkage (V, External_Weak_Linkage);
       end if;
 
@@ -452,10 +451,9 @@ package body GNATLLVM.Utils is
    -- Enclosing_Subprogram_Scope --
    --------------------------------
 
-   function Enclosing_Subprogram_Scope
-     (Def_Ident : Entity_Id) return Entity_Id is
+   function Enclosing_Subprogram_Scope (E : Entity_Id) return Entity_Id is
    begin
-      return S : Entity_Id := Scope (Def_Ident) do
+      return S : Entity_Id := Scope (E) do
          loop
             exit when S = Standard_Standard;
             exit when Ekind_In (S, E_Function, E_Procedure);

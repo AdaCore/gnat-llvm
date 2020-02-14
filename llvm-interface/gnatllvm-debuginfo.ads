@@ -41,16 +41,15 @@ package GNATLLVM.DebugInfo is
    --  Produce and return a DIFile entry for the specified source file index
 
    function Create_Subprogram_Debug_Info
-     (Func      : GL_Value;
-      Def_Ident : Entity_Id;
-      N         : Node_Id;
-      Name      : String := "";
-      Ext_Name  : String := "") return Metadata_T
-     with Pre  => Present (Func) and then Present (Def_Ident)
-                  and then Present (N),
+     (Func     : GL_Value;
+      E        : Entity_Id;
+      N        : Node_Id;
+      Name     : String := "";
+      Ext_Name : String := "") return Metadata_T
+     with Pre  => Present (Func) and then Present (E) and then Present (N),
           Post => not Emit_Debug_Info
                   or else Present (Create_Subprogram_Debug_Info'Result);
-   --  Create debugging information for Func with entity Def_Ident using
+   --  Create debugging information for Func with entity E using
    --  the line number information in N for the location.
 
    procedure Push_Lexical_Debug_Scope (N : Node_Id)
@@ -75,15 +74,14 @@ package GNATLLVM.DebugInfo is
    --  Create metadata corresponding to the type of GT.  Return
    --  No_Metadata_T if the type is too complex.
 
-   procedure Create_Global_Variable_Debug_Data
-     (Def_Ident : Entity_Id; V : GL_Value)
-     with Pre => not Is_Type (Def_Ident) and then Present (V);
-   --  Build debugging data for Def_Ident, a global variable, with V as its
+   procedure Create_Global_Variable_Debug_Data (E : Entity_Id; V : GL_Value)
+     with Pre => not Is_Type (E) and then Present (V);
+   --  Build debugging data for E, a global variable, with V as its
    --  location.
 
    procedure Create_Local_Variable_Debug_Data
-     (Def_Ident : Entity_Id; V : GL_Value; Arg_Num : Nat := 0)
-     with Pre => not Is_Type (Def_Ident) and then Present (V);
+     (E : Entity_Id; V : GL_Value; Arg_Num : Nat := 0)
+     with Pre => not Is_Type (E) and then Present (V);
    --  Likewise, for local variables.  Arg_Num is the argument number if
    --  this is for a parameter.
 

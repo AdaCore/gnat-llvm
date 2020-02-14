@@ -70,19 +70,19 @@ package GNATLLVM.Instructions is
      with Pre => Present (BB), Inline;
 
    function Alloca
-     (GT        : GL_Type;
-      Def_Ident : Entity_Id := Empty;
-      Align     : Nat       := 0;
-      Name      : String    := "") return GL_Value
+     (GT    : GL_Type;
+      E     : Entity_Id := Empty;
+      Align : Nat       := 0;
+      Name  : String    := "") return GL_Value
      with Pre  => Present (GT), Post => Is_Reference (Alloca'Result),
           Inline;
 
    function Array_Alloca
-     (GT        : GL_Type;
-      Num_Elts  : GL_Value;
-      Def_Ident : Entity_Id := Empty;
-      Align     : Nat       := 0;
-      Name      : String    := "") return GL_Value
+     (GT       : GL_Type;
+      Num_Elts : GL_Value;
+      E        : Entity_Id := Empty;
+      Align    : Nat       := 0;
+      Name     : String    := "") return GL_Value
      with Pre  => Present (GT) and then Present (Num_Elts),
           Post => Is_Reference (Array_Alloca'Result), Inline;
 

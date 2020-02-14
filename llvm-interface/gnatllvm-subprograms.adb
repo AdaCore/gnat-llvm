@@ -176,9 +176,9 @@ package body GNATLLVM.Subprograms is
       Return_By_Parameter);
       --  The result is returned via a pointer passed as an extra parameter
 
-   function Get_Return_Kind (Def_Ident : Entity_Id) return Return_Kind
-     with Pre => Ekind (Def_Ident) in Subprogram_Kind | E_Subprogram_Type;
-   --  Get the Return_Kind of Def_Ident, a subprogram or subprogram type
+   function Get_Return_Kind (E : Entity_Id) return Return_Kind
+     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   --  Get the Return_Kind of E, a subprogram or subprogram type
 
    --  Last, we have the actual LLVM return contents, which can be the
    --  subprogram return, one or more out parameters, or both.  This
@@ -206,8 +206,8 @@ package body GNATLLVM.Subprograms is
       --  return data of the function (either by value or reference) and
       --  one or more out parameters.
 
-   function Get_L_Ret_Kind (Def_Ident : Entity_Id) return L_Ret_Kind
-     with Pre => Ekind (Def_Ident) in Subprogram_Kind | E_Subprogram_Type;
+   function Get_L_Ret_Kind (E : Entity_Id) return L_Ret_Kind
+     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
 
    --  Elaboration entries can be either nodes to be emitted as statements
    --  or expressions to be saved.
@@ -561,8 +561,8 @@ package body GNATLLVM.Subprograms is
    -- Get_Return_Kind --
    ---------------------
 
-   function Get_Return_Kind (Def_Ident : Entity_Id) return Return_Kind is
-      GT       : constant GL_Type   := Full_GL_Type (Def_Ident);
+   function Get_Return_Kind (E : Entity_Id) return Return_Kind is
+      GT       : constant GL_Type   := Full_GL_Type (E);
       T        : constant Type_T    :=
         (if Ekind (GT) /= E_Void then Type_Of (GT) else No_Type_T);
       Ptr_Size : constant ULL       := Get_Type_Size (Void_Ptr_T);
@@ -575,7 +575,7 @@ package body GNATLLVM.Subprograms is
 
       --  Otherwise, we return by reference if we're required to
 
-      elsif Returns_By_Ref (Def_Ident) or else Is_By_Reference_Type (GT)
+      elsif Returns_By_Ref (E) or else Is_By_Reference_Type (GT)
         or else Requires_Transient_Scope (GT)
       then
          return RK_By_Reference;
@@ -586,7 +586,7 @@ package body GNATLLVM.Subprograms is
 
       elsif not Is_Unconstrained_Array (GT)
         and then (Is_Nonnative_Type (GT)
-                    or else (not Has_Foreign_Convention (Def_Ident)
+                    or else (not Has_Foreign_Convention (E)
                                and then not Decls_Only
                                and then Get_Type_Size (T) > 5 * Ptr_Size))
       then
@@ -604,9 +604,9 @@ package body GNATLLVM.Subprograms is
    -- Get_L_Ret_Kind --
    --------------------
 
-   function Get_L_Ret_Kind (Def_Ident : Entity_Id) return L_Ret_Kind is
-      RK      : constant Return_Kind := Get_Return_Kind (Def_Ident);
-      Num_Out : constant Nat         := Count_Out_Params (Def_Ident);
+   function Get_L_Ret_Kind (E : Entity_Id) return L_Ret_Kind is
+      RK      : constant Return_Kind := Get_Return_Kind  (E);
+      Num_Out : constant Nat         := Count_Out_Params (E);
       Has_Ret : constant Boolean     := RK not in None | Return_By_Parameter;
 
    begin
@@ -675,16 +675,14 @@ package body GNATLLVM.Subprograms is
    -- Create_Subprogram_Type --
    ----------------------------
 
-   function Create_Subprogram_Type (Def_Ident : Entity_Id) return Type_T is
-      Return_GT       : constant GL_Type     := Full_GL_Type    (Def_Ident);
-      RK              : constant Return_Kind := Get_Return_Kind (Def_Ident);
-      LRK             : constant L_Ret_Kind  := Get_L_Ret_Kind  (Def_Ident);
-      Has_S_Link      : constant Boolean     :=
-        Has_Activation_Record (Def_Ident);
-      Foreign         : constant Boolean     :=
-        Has_Foreign_Convention (Def_Ident);
+   function Create_Subprogram_Type (E : Entity_Id) return Type_T is
+      Return_GT       : constant GL_Type     := Full_GL_Type    (E);
+      RK              : constant Return_Kind := Get_Return_Kind (E);
+      LRK             : constant L_Ret_Kind  := Get_L_Ret_Kind  (E);
+      Has_S_Link      : constant Boolean     := Has_Activation_Record (E);
+      Foreign         : constant Boolean     := Has_Foreign_Convention (E);
       Adds_S_Link     : constant Boolean     :=
-        (Is_Type (Def_Ident) and then not Foreign)
+        (Is_Type (E) and then not Foreign)
         or else (not Has_S_Link and then Force_Activation_Record_Parameter
                    and then not Foreign);
       LLVM_Ret_Typ    : Type_T               :=
@@ -692,15 +690,14 @@ package body GNATLLVM.Subprograms is
          elsif RK = RK_By_Reference then Create_Access_Type_To (Return_GT)
          else  Type_Of (Return_GT));
       In_Args_Count   : constant Nat         :=
-        Count_In_Params (Def_Ident) + (if Adds_S_Link then 1 else 0) +
+        Count_In_Params (E) + (if Adds_S_Link then 1 else 0) +
           (if RK = Return_By_Parameter then 1 else 0);
       Out_Args_Count  : constant Nat         :=
-        Count_Out_Params (Def_Ident) +
+        Count_Out_Params (E) +
           (if LRK = Struct_Out_Subprog then 1 else 0);
       In_Arg_Types    : Type_Array (1 .. In_Args_Count);
       Out_Arg_Types   : Type_Array (1 .. Out_Args_Count);
-      Param_Ent       : Entity_Id            :=
-        First_Formal_With_Extras (Def_Ident);
+      Param_Ent       : Entity_Id            := First_Formal_With_Extras (E);
       J               : Nat                  := 1;
       LLVM_Result_Typ : Type_T               := LLVM_Ret_Typ;
 
@@ -716,9 +713,9 @@ package body GNATLLVM.Subprograms is
 
       --  Back-annotate the return mechanism
 
-      if Ekind (Def_Ident) = E_Function then
-         Set_Mechanism (Def_Ident, (if   RK =  Value_Return then By_Copy
-                                    else By_Reference));
+      if Ekind (E) = E_Function then
+         Set_Mechanism (E, (if   RK =  Value_Return then By_Copy
+                            else By_Reference));
       end if;
 
       --  Associate an LLVM type with each Ada subprogram parameter
@@ -786,8 +783,7 @@ package body GNATLLVM.Subprograms is
             null;
 
          when Out_Return =>
-            LLVM_Result_Typ :=
-              Type_Of (Full_Etype (First_Out_Param (Def_Ident)));
+            LLVM_Result_Typ := Type_Of (Full_Etype (First_Out_Param (E)));
 
          when Struct_Out | Struct_Out_Subprog =>
             J := 1;
@@ -796,7 +792,7 @@ package body GNATLLVM.Subprograms is
                J                 := J + 1;
             end if;
 
-            Param_Ent := First_Out_Param (Def_Ident);
+            Param_Ent := First_Out_Param (E);
             while Present (Param_Ent) loop
                Out_Arg_Types (J) := Type_Of (Full_Etype (Param_Ent));
                J                 := J + 1;
@@ -1014,15 +1010,15 @@ package body GNATLLVM.Subprograms is
    -------------------
 
    procedure Emit_One_Body (N : Node_Id; For_Inline : Boolean := False) is
-      Spec            : constant Node_Id     := Get_Acting_Spec (N);
-      Func            : constant GL_Value    := Emit_Subprogram_Decl (Spec);
-      Def_Ident       : constant Entity_Id   := Defining_Entity (Spec);
-      Return_GT       : constant GL_Type     := Full_GL_Type (Def_Ident);
-      RK              : constant Return_Kind := Get_Return_Kind (Def_Ident);
-      LRK             : constant L_Ret_Kind  := Get_L_Ret_Kind  (Def_Ident);
-      Param_Num       : Nat                  := 0;
-      LLVM_Param      : GL_Value;
-      Param           : Entity_Id;
+      Spec       : constant Node_Id     := Get_Acting_Spec (N);
+      Func       : constant GL_Value    := Emit_Subprogram_Decl (Spec);
+      E          : constant Entity_Id   := Defining_Entity (Spec);
+      Return_GT  : constant GL_Type     := Full_GL_Type    (E);
+      RK         : constant Return_Kind := Get_Return_Kind (E);
+      LRK        : constant L_Ret_Kind  := Get_L_Ret_Kind  (E);
+      Param_Num  : Nat                  := 0;
+      LLVM_Param : GL_Value;
+      Param      : Entity_Id;
 
    begin
       --  If we're compiling this for inline, set the proper linkage, which
@@ -1030,8 +1026,7 @@ package body GNATLLVM.Subprograms is
 
       if For_Inline then
          Set_Linkage (Func,
-                      (if   Is_Public (Def_Ident)
-                       then Available_Externally_Linkage
+                      (if   Is_Public (E) then Available_Externally_Linkage
                        else Internal_Linkage));
 
       --  If the linkage was weak external, change to weak
@@ -1042,13 +1037,13 @@ package body GNATLLVM.Subprograms is
 
       --  Now set up to process this subprogram
 
-      Current_Subp := Def_Ident;
+      Current_Subp := E;
       Add_Function_To_Module (Func);
-      Set_Added_To_Module (Def_Ident);
+      Set_Added_To_Module (E);
       Enter_Subp (Func);
       Push_Debug_Scope
         (Get_Source_File_Index (Sloc (N)),
-         Create_Subprogram_Debug_Info (Func, Def_Ident, N));
+         Create_Subprogram_Debug_Info (Func, E, N));
       Set_Debug_Pos_At_Node (N);
 
       --  If the return type has dynamic size, we've added a parameter
@@ -1066,7 +1061,7 @@ package body GNATLLVM.Subprograms is
 
       Entry_Block_Allocas := Get_Current_Position;
       Push_Block;
-      Param := First_Formal_With_Extras (Def_Ident);
+      Param := First_Formal_With_Extras (E);
       while Present (Param) loop
          declare
             type String_Access is access constant String;
@@ -1099,10 +1094,10 @@ package body GNATLLVM.Subprograms is
                P_Num      := 0;
                LLVM_Param := Allocate_For_Type
                  (GT,
-                  N         => Param,
-                  V         => V,
-                  Def_Ident => Param,
-                  Name      => Name.all);
+                  N    => Param,
+                  V    => V,
+                  E    => Param,
+                  Name => Name.all);
 
             --  Handle the case where we have to pun the object from
             --  integer to its actual type.
@@ -1114,9 +1109,9 @@ package body GNATLLVM.Subprograms is
                begin
                   LLVM_Param := Allocate_For_Type
                     (GT,
-                     N         => Param,
-                     Def_Ident => Param,
-                     Name      => Name.all);
+                     N    => Param,
+                     E    => Param,
+                     Name => Name.all);
 
                   Store (V, Ptr_To_Relationship
                            (LLVM_Param, Pointer_Type (Int_Ty (Size), 0),
@@ -1673,17 +1668,16 @@ package body GNATLLVM.Subprograms is
    -- Has_Activation_Record --
    ---------------------------
 
-   function Has_Activation_Record
-     (Def_Ident : Entity_Id) return Boolean
+   function Has_Activation_Record (E : Entity_Id) return Boolean
    is
-      Formal : Entity_Id := First_Formal_With_Extras (Def_Ident);
+      Formal : Entity_Id := First_Formal_With_Extras (E);
 
    begin
       --  In the type case, we don't consider it as having an activation
       --  record for foreign conventions because we will have had to make
       --  a trampoline directly at the 'Access or 'Address.
 
-      if Is_Type (Def_Ident) and then Has_Foreign_Convention (Def_Ident) then
+      if Is_Type (E) and then Has_Foreign_Convention (E) then
          return False;
       end if;
 
@@ -1703,22 +1697,22 @@ package body GNATLLVM.Subprograms is
    --------------------------------
 
    function Emit_Subprogram_Identifier
-     (Def_Ident : Entity_Id; N : Node_Id; GT : GL_Type) return GL_Value
+     (E : Entity_Id; N : Node_Id; GT : GL_Type) return GL_Value
    is
-      V  : GL_Value := Get_Value (Def_Ident);
+      V  : GL_Value := Get_Value (E);
 
    begin
       --  If this has an Alias, use that.  But make sure that it's the proper
       --  type since we may have extension records or slightly different
       --  subtypes for some parameters.
 
-      if Present (Alias (Def_Ident)) then
+      if Present (Alias (E)) then
          declare
             T : constant Type_T :=
-              Pointer_Type (Create_Subprogram_Type (Def_Ident), 0);
+              Pointer_Type (Create_Subprogram_Type (E), 0);
 
          begin
-            V := Emit_Identifier (Alias (Def_Ident));
+            V := Emit_Identifier (Alias (E));
             return (if   Type_Of (V) /= T
                     then Ptr_To_Relationship (V, T, Reference_To_Subprogram)
                     else V);
@@ -1729,7 +1723,7 @@ package body GNATLLVM.Subprograms is
       --  to dereference it.
 
       if No (V) then
-         V := Create_Subprogram (Def_Ident);
+         V := Create_Subprogram (E);
       elsif Is_Double_Reference (V) then
          V := Load (V);
       end if;
@@ -1746,8 +1740,7 @@ package body GNATLLVM.Subprograms is
             Ref    : constant Node_Id      := Parent (N);
             Ref_GT : constant GL_Type      := Full_GL_Type (Ref);
             S_Link : constant GL_Value     :=
-              (if   Has_Activation_Record (Def_Ident)
-               then Get_Static_Link (Def_Ident)
+              (if   Has_Activation_Record (E) then Get_Static_Link (E)
                else Get_Undef (A_Char_GL_Type));
             Attr   : constant Attribute_Id :=
               Get_Attribute_Id (Attribute_Name (Ref));
@@ -1761,7 +1754,7 @@ package body GNATLLVM.Subprograms is
                   if Has_Foreign_Convention (Ref_GT)
                     or else not Can_Use_Internal_Rep (Ref_GT)
                   then
-                     return (if   Has_Activation_Record (Def_Ident)
+                     return (if   Has_Activation_Record (E)
                              then Make_Trampoline (DT, V, S_Link, N)
                              else G_Is_Relationship (V, DT, Trampoline));
                   else
@@ -1773,7 +1766,7 @@ package body GNATLLVM.Subprograms is
                   end if;
                end;
             elsif Attr = Attribute_Address then
-               return (if   Has_Activation_Record (Def_Ident)
+               return (if   Has_Activation_Record (E)
                        then Make_Trampoline (GT, V, S_Link, N) else V);
             end if;
          end;
@@ -2292,16 +2285,16 @@ package body GNATLLVM.Subprograms is
    function Emit_Subprogram_Decl
      (N : Node_Id; Frozen : Boolean := True) return GL_Value
    is
-      Def_Ident   : constant Entity_Id := Defining_Entity (N);
-      V           : GL_Value           := Get_Value (Def_Ident);
-      Addr_Clause : constant Node_Id   := Address_Clause (Def_Ident);
+      E           : constant Entity_Id := Defining_Entity (N);
+      V           : GL_Value           := Get_Value      (E);
+      Addr_Clause : constant Node_Id   := Address_Clause (E);
 
    begin
       --  If we have a freeze node and we're not sure that it's already
       --  frozen, do nothing.
 
-      if Present (Freeze_Node (Def_Ident))
-        and then not Frozen and then not In_Elab_Proc
+      if Present (Freeze_Node (E)) and then not Frozen
+        and then not In_Elab_Proc
       then
          return No_GL_Value;
 
@@ -2313,8 +2306,8 @@ package body GNATLLVM.Subprograms is
       elsif Present (Addr_Clause) then
          declare
             Subp_T    : constant Type_T          :=
-              Pointer_Type (Create_Subprogram_Type (Def_Ident), 0);
-            GT        : constant GL_Type         := Full_GL_Type (Def_Ident);
+              Pointer_Type (Create_Subprogram_Type (E), 0);
+            GT        : constant GL_Type         := Full_GL_Type (E);
             Addr_Expr : constant Node_Id         := Expression (Addr_Clause);
             R         : constant GL_Relationship := Reference_To_Subprogram;
             Addr      : GL_Value                 := Get_Value (Addr_Expr);
@@ -2326,10 +2319,9 @@ package body GNATLLVM.Subprograms is
          begin
             if Library_Level or else In_Elab_Proc then
                if No (V) then
-                  V := G (Add_Global (Module, Subp_T,
-                                      Get_Ext_Name (Def_Ident)),
+                  V := G (Add_Global (Module, Subp_T, Get_Ext_Name (E)),
                           GT, Ref (R));
-                  Set_Value (Def_Ident, V);
+                  Set_Value (E, V);
                end if;
 
                --  If we have a static address, we can put it in the
@@ -2366,38 +2358,36 @@ package body GNATLLVM.Subprograms is
                end if;
 
                V := Int_To_Subp (Addr);
-               Set_Value_Name (V, Get_Ext_Name (Def_Ident));
-               Set_Value      (Def_Ident, V);
+               Set_Value_Name (V, Get_Ext_Name (E));
+               Set_Value      (E, V);
             end if;
          end;
 
       --  Otherwise, if we haven't already made this subprogram,
       --  make it.
 
-      elsif No (Get_Value (Def_Ident)) then
-         Discard (Create_Subprogram (Def_Ident));
+      elsif No (Get_Value (E)) then
+         Discard (Create_Subprogram (E));
       end if;
 
-      return Get_Value (Def_Ident);
+      return Get_Value (E);
    end Emit_Subprogram_Decl;
 
    ------------------------
    --  Create_Subprogram --
    ------------------------
 
-   function Create_Subprogram (Def_Ident : Entity_Id) return GL_Value is
-      Subp_Type   : constant Type_T      := Create_Subprogram_Type (Def_Ident);
-      Subp_Name   : constant String      := Get_Ext_Name (Def_Ident);
+   function Create_Subprogram (E : Entity_Id) return GL_Value is
+      Subp_Type   : constant Type_T      := Create_Subprogram_Type (E);
+      Subp_Name   : constant String      := Get_Ext_Name (E);
       Is_Imported : constant Boolean     :=
-        Present (Interface_Name (Def_Ident))
-        and then No (Address_Clause (Def_Ident));
+        Present (Interface_Name (E)) and then No (Address_Clause (E));
       Actual_Name : constant String      :=
-        (if   Is_Compilation_Unit (Def_Ident)
-              and then No (Interface_Name (Def_Ident))
+        (if   Is_Compilation_Unit (E) and then No (Interface_Name (E))
          then "_ada_" & Subp_Name else Subp_Name);
-      LLVM_Func   : GL_Value             := Get_Dup_Global_Value (Def_Ident);
-      RK          : constant Return_Kind := Get_Return_Kind (Def_Ident);
-      Return_GT   : constant GL_Type     := Full_GL_Type (Def_Ident);
+      LLVM_Func   : GL_Value             := Get_Dup_Global_Value (E);
+      RK          : constant Return_Kind := Get_Return_Kind      (E);
+      Return_GT   : constant GL_Type     := Full_GL_Type         (E);
       Return_DT   : constant GL_Type    :=
           (if   Is_Access_Type (Return_GT)
            then Full_Designated_GL_Type (Return_GT) else No_GL_Type);
@@ -2405,7 +2395,7 @@ package body GNATLLVM.Subprograms is
       Formal      : Entity_Id;
 
    begin
-      Check_Convention (Def_Ident);
+      Check_Convention (E);
 
       --  If we've already seen this function name before, verify that we
       --  have the same type.  Convert it to it if not.
@@ -2418,35 +2408,34 @@ package body GNATLLVM.Subprograms is
                                             Subp_Name),
                               LLVM_Func);
       elsif No (LLVM_Func) then
-         LLVM_Func := Add_Function (Actual_Name,
-                                    Subp_Type, Full_GL_Type (Def_Ident));
+         LLVM_Func := Add_Function (Actual_Name, Subp_Type, Full_GL_Type (E));
 
          --  Define the appropriate linkage
 
-         if not In_Extended_Main_Code_Unit (Def_Ident) then
+         if not In_Extended_Main_Code_Unit (E) then
             Set_Linkage (LLVM_Func, External_Linkage);
-         elsif not Is_Public (Def_Ident) and then not Is_Imported then
+         elsif not Is_Public (E) and then not Is_Imported then
             Set_Linkage (LLVM_Func, Internal_Linkage);
          end if;
 
-         Set_Linker_Section   (LLVM_Func, Def_Ident);
-         Process_Pragmas      (Def_Ident, LLVM_Func);
-         Set_Dup_Global_Value (Def_Ident, LLVM_Func);
+         Set_Linker_Section   (LLVM_Func, E);
+         Process_Pragmas      (E, LLVM_Func);
+         Set_Dup_Global_Value (E, LLVM_Func);
 
          --  Add function to the table of
          --  subprograms that we've created, so we can add it to the module.
 
-         Created_Subprograms.Append (Def_Ident);
+         Created_Subprograms.Append (E);
 
          --  Now deal with function and parameter attributes
          --  ??? We don't handle some return value attributes yet.
 
-         Add_Inline_Attribute (LLVM_Func, Def_Ident);
+         Add_Inline_Attribute (LLVM_Func, E);
          if No_Tail_Calls then
             Add_Named_Attribute (LLVM_Func, "disable-tail-calls", "true");
          end if;
 
-         if No_Return (Def_Ident) then
+         if No_Return (E) then
             Set_Does_Not_Return (LLVM_Func);
          end if;
 
@@ -2455,7 +2444,7 @@ package body GNATLLVM.Subprograms is
             Add_Noalias_Attribute         (LLVM_Func, Param_Num);
             Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
             Param_Num := Param_Num + 1;
-         elsif Get_L_Ret_Kind (Def_Ident) = Subprog_Return then
+         elsif Get_L_Ret_Kind (E) = Subprog_Return then
             if RK = Value_Return and then Is_Access_Type (Return_GT)
               and then not Is_Unconstrained_Array (Return_DT)
               and then Ekind (Return_DT) /= E_Subprogram_Type
@@ -2470,7 +2459,7 @@ package body GNATLLVM.Subprograms is
             end if;
          end if;
 
-         Formal := First_Formal_With_Extras (Def_Ident);
+         Formal := First_Formal_With_Extras (E);
          while Present (Formal) loop
             declare
                PK : constant Param_Kind := Get_Param_Kind (Formal);
@@ -2547,22 +2536,22 @@ package body GNATLLVM.Subprograms is
 
       --  Save the value for this subprogram
 
-      Set_Value (Def_Ident, LLVM_Func);
+      Set_Value (E, LLVM_Func);
 
       --  Deal with our subprogram name being that of an elab proc
 
       if No (Ada_Main_Elabb) and then Is_Binder_Elab_Proc (Subp_Name) then
          Ada_Main_Elabb       := LLVM_Func;
-         Ada_Main_Elabb_Ident := Def_Ident;
+         Ada_Main_Elabb_Ident := E;
       end if;
 
       --  See if we're to make a global constructor or destructor entry for
       --  this subprogram.
 
-      if Present (Get_Pragma (Def_Ident, Pragma_Linker_Constructor)) then
-         Global_Constructors.Append (Def_Ident);
-      elsif Present (Get_Pragma (Def_Ident, Pragma_Linker_Destructor)) then
-         Global_Destructors.Append (Def_Ident);
+      if Present (Get_Pragma (E, Pragma_Linker_Constructor)) then
+         Global_Constructors.Append (E);
+      elsif Present (Get_Pragma (E, Pragma_Linker_Destructor)) then
+         Global_Destructors.Append (E);
       end if;
 
       return LLVM_Func;

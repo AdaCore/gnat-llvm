@@ -131,9 +131,9 @@ package GNATLLVM.Aliasing is
      ((if C_Style_Aliasing or Is_Aliased then Unique_Aliased else Unique));
    --  Given whether an item is aliased, return the TBAA_Kind to use
 
-   function Kind_From_Decl (Def_Ident : Entity_Id) return TBAA_Kind is
-     (Kind_From_Aliased (Present (Def_Ident) and then Is_Aliased (Def_Ident)));
-   --  Given Def_Ident (which may be Empty), determine what TBAA_Kind is
+   function Kind_From_Decl (E : Entity_Id) return TBAA_Kind is
+     (Kind_From_Aliased (Present (E) and then Is_Aliased (E)));
+   --  Given E (which may be Empty), determine what TBAA_Kind is
    --  appropriate for something that points to that decl, if any.
 
    procedure Initialize;

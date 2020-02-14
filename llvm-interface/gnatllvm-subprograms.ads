@@ -36,10 +36,10 @@ package GNATLLVM.Subprograms is
    --  of the parameter number given by the first expression of Exprs.
    --  Return 2 is passed by reference, otherwise, return 1.
 
-   function Create_Subprogram_Type (Def_Ident  : Entity_Id) return Type_T
-     with Pre  => Present (Def_Ident),
+   function Create_Subprogram_Type (E  : Entity_Id) return Type_T
+     with Pre  => Present (E),
           Post => Present (Create_Subprogram_Type'Result);
-   --  Create subprogram type.  Def_Ident can either be a subprogram,
+   --  Create subprogram type.  E can either be a subprogram,
    --  in which case a subprogram type will be created from it or a
    --  subprogram type directly.
 
@@ -70,18 +70,18 @@ package GNATLLVM.Subprograms is
           Post => Present (Get_Static_Link'Result);
    --  Build and return the static link to pass to a call to Subp
 
-   function Has_Activation_Record (Def_Ident : Entity_Id) return Boolean
-     with Pre => Ekind (Def_Ident) in Subprogram_Kind | E_Subprogram_Type;
-   --  Return True if Def_Ident is a nested subprogram or a subprogram type
+   function Has_Activation_Record (E : Entity_Id) return Boolean
+     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   --  Return True if E is a nested subprogram or a subprogram type
    --  that needs an activation record.
 
    function Emit_Subprogram_Identifier
-     (Def_Ident : Entity_Id; N : Node_Id; GT : GL_Type) return GL_Value
-     with Pre  => not Is_Type (Def_Ident) and then Present (GT)
-                  and then (N = Def_Ident or else Nkind (N) in N_Has_Entity),
+     (E : Entity_Id; N : Node_Id; GT : GL_Type) return GL_Value
+     with Pre  => not Is_Type (E) and then Present (GT)
+                  and then (N = E or else Nkind (N) in N_Has_Entity),
           Post => Present (Emit_Subprogram_Identifier'Result);
    --  Emit the value (creating the subprogram if needed) of the N_Identifier
-   --  or similar at N.  The entity if Def_Ident and its type is TE.
+   --  or similar at N.  The entity if E and its type is TE.
 
    function Emit_Call
      (N : Node_Id; LHS : GL_Value := No_GL_Value) return GL_Value
@@ -141,9 +141,9 @@ package GNATLLVM.Subprograms is
    --  Generate code for one given subprogram body.  If For_Inline is
    --  True, we're compiling this just to possibly inline it.
 
-   function Create_Subprogram (Def_Ident : Entity_Id) return GL_Value
-     with Pre => Ekind (Def_Ident) in Subprogram_Kind;
-   --  Create and save an LLVM object for Def_Ident, a subprogram
+   function Create_Subprogram (E : Entity_Id) return GL_Value
+     with Pre => Ekind (E) in Subprogram_Kind;
+   --  Create and save an LLVM object for E, a subprogram
 
    function Emit_Subprogram_Decl (N : Node_Id;
       Frozen : Boolean := True) return GL_Value

@@ -360,6 +360,27 @@ Build_MemSet (IRBuilder<> *bld, Value *Ptr, Value *Val, Value *Size,
 }
 
 extern "C"
+CallInst *
+Create_Lifetime_Start (IRBuilder<> *bld, Value *Ptr, ConstantInt *Size)
+{
+  return bld->CreateLifetimeStart (Ptr, Size);
+}
+
+extern "C"
+CallInst *
+Create_Lifetime_End (IRBuilder<> *bld, Value *Ptr, ConstantInt *Size)
+{
+  return bld->CreateLifetimeEnd (Ptr, Size);
+}
+
+extern "C"
+CallInst *
+Create_Invariant_Start (IRBuilder<> *bld, Value *Ptr, ConstantInt *Size)
+{
+  return bld->CreateInvariantStart (Ptr, Size);
+}
+
+extern "C"
 unsigned char
 Does_Not_Throw (Function *fn)
 {

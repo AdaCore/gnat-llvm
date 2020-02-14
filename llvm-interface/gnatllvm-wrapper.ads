@@ -200,6 +200,24 @@ package GNATLLVM.Wrapper is
       NoAlias     : Metadata_T) return Value_T
      with Inline;
 
+   function Create_Lifetime_Start
+     (Bld  : Builder_T;
+      Ptr  : Value_T;
+      Size : Value_T) return Value_T
+     with Import, Convention => C, External_Name => "Create_Lifetime_Start";
+
+   function Create_Lifetime_End
+     (Bld  : Builder_T;
+      Ptr  : Value_T;
+      Size : Value_T) return Value_T
+     with Import, Convention => C, External_Name => "Create_Lifetime_End";
+
+   function Create_Invariant_Start
+     (Bld  : Builder_T;
+      Ptr  : Value_T;
+      Size : Value_T) return Value_T
+     with Import, Convention => C, External_Name => "Create_Invariant_Start";
+
    function Does_Not_Throw (Fn : Value_T) return Boolean
      with Import, Convention => C, External_Name => "Does_Not_Throw",
           Warnings => Off;

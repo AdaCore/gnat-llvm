@@ -851,6 +851,13 @@ package GNATLLVM.Instructions is
       NoAlias     : Metadata_T := No_Metadata_T)
      with Pre => Present (Ptr) and then Present (Val) and then Present (Size);
 
+   procedure Create_Lifetime_Start (Ptr, Size : GL_Value)
+     with Pre => Present (Ptr) and then Present (Size);
+   procedure Create_Lifetime_End (Ptr, Size : GL_Value)
+     with Pre => Present (Ptr) and then Present (Size);
+   procedure Create_Invariant_Start (Ptr, Size : GL_Value)
+     with Pre => Present (Ptr) and then Present (Size);
+
    function GEP
      (Bld     : Builder_T;
       Ptr     : Value_T;

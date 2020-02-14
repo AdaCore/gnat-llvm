@@ -478,7 +478,7 @@ package body GNATLLVM.Blocks is
           else BI.Starting_Position));
       Ptr := G (Pointer_Cast (IR_Builder, Inst, Void_Ptr_T, ""),
                 SSI_GL_Type, Reference);
-      Call (Get_Lifetime_Start_Fn, (1 => Size, 2 => Ptr));
+      Create_Lifetime_Start (Ptr, Size);
       Position_Builder_At_End (Our_BB);
       BI.Lifetime_List := new Lifetime_Data'(BI.Lifetime_List, Ptr, Size);
 
@@ -545,13 +545,10 @@ package body GNATLLVM.Blocks is
 
       while Invariants /= null loop
          declare
-            Ptr  : constant GL_Value         :=
-              Ptr_To_Ref (Invariants.Memory, SSI_GL_Type);
             Next : constant A_Invariant_Data := Invariants.Next;
 
          begin
-            Discard (Call (Get_Invariant_Start_Fn, A_Char_GL_Type,
-                           (1 => Invariants.Size, 2 => Ptr)));
+            Create_Invariant_Start (Invariants.Memory, Invariants.Size);
             Free (Invariants);
             Invariants := Next;
          end;
@@ -652,8 +649,7 @@ package body GNATLLVM.Blocks is
 
          begin
             while Lifetimes /= null loop
-               Call (Get_Lifetime_End_Fn,
-                     (1 => Lifetimes.Size, 2 => Lifetimes.Memory));
+               Create_Lifetime_End (Lifetimes.Memory, Lifetimes.Size);
                Lifetimes := Lifetimes.Next;
             end loop;
          end;

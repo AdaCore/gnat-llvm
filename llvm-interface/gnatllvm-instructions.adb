@@ -988,6 +988,33 @@ package body GNATLLVM.Instructions is
    end Build_MemSet;
 
    ---------------------------
+   -- Create_Lifetime_Start --
+   ---------------------------
+
+   procedure Create_Lifetime_Start (Ptr, Size : GL_Value) is
+   begin
+      Discard (Create_Lifetime_Start (IR_Builder, +Ptr, +Size));
+   end Create_Lifetime_Start;
+
+   -------------------------
+   -- Create_Lifetime_End --
+   -------------------------
+
+   procedure Create_Lifetime_End (Ptr, Size : GL_Value) is
+   begin
+      Discard (Create_Lifetime_End (IR_Builder, +Ptr, +Size));
+   end Create_Lifetime_End;
+
+   ----------------------------
+   -- Create_Invariant_Start --
+   ----------------------------
+
+   procedure Create_Invariant_Start (Ptr, Size : GL_Value) is
+   begin
+      Discard (Create_Invariant_Start (IR_Builder, +Ptr, +Size));
+   end Create_Invariant_Start;
+
+   ---------------------------
    -- Update_Offset_For_GEP --
    ---------------------------
 

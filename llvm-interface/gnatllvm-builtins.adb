@@ -169,12 +169,6 @@ package body GNATLLVM.Builtins is
    Tramp_Adjust_Fn    : GL_Value := No_GL_Value;
    --  Functions to initialize and adjust a trampoline
 
-   Lifetime_Start_Fn  : GL_Value := No_GL_Value;
-   Lifetime_End_Fn    : GL_Value := No_GL_Value;
-   Invariant_Start_Fn : GL_Value := No_GL_Value;
-   --  Functions to mark the start and end of the lifetime of a variable or
-   --  constant, and, for the latter, when it starts becoming constant.
-
    Expect_Fn          : GL_Value := No_GL_Value;
    --  Function to provide branch prediction information
 
@@ -1176,68 +1170,6 @@ package body GNATLLVM.Builtins is
 
       return Tramp_Adjust_Fn;
    end Get_Tramp_Adjust_Fn;
-
-   ---------------------------
-   -- Get_Lifetime_Start_Fn --
-   ---------------------------
-
-   function Get_Lifetime_Start_Fn return GL_Value is
-   begin
-      if No (Lifetime_Start_Fn) then
-         Lifetime_Start_Fn := Add_Function
-           ("llvm.lifetime.start.p0i8",
-            Fn_Ty ((1 => Int_64_T, 2 => Void_Ptr_T), Void_Type),
-            Void_GL_Type, Is_Builtin => True);
-         Set_Does_Not_Throw      (Lifetime_Start_Fn);
-         Add_Nocapture_Attribute (Lifetime_Start_Fn, 1);
-         Add_Readonly_Attribute  (Lifetime_Start_Fn, 1);
-         Add_Non_Null_Attribute  (Lifetime_Start_Fn, 1);
-      end if;
-
-      return Lifetime_Start_Fn;
-   end Get_Lifetime_Start_Fn;
-
-   -------------------------
-   -- Get_Lifetime_End_Fn --
-   -------------------------
-
-   function Get_Lifetime_End_Fn return GL_Value is
-   begin
-      if No (Lifetime_End_Fn) then
-         Lifetime_End_Fn := Add_Function
-           ("llvm.lifetime.end.p0i8",
-            Fn_Ty ((1 => Int_64_T, 2 => Void_Ptr_T), Void_Type),
-            Void_GL_Type, Is_Builtin => True);
-         Set_Does_Not_Throw      (Lifetime_End_Fn);
-         Add_Nocapture_Attribute (Lifetime_End_Fn, 1);
-         Add_Readonly_Attribute  (Lifetime_End_Fn, 1);
-         Add_Non_Null_Attribute  (Lifetime_End_Fn, 1);
-      end if;
-
-      return Lifetime_End_Fn;
-   end Get_Lifetime_End_Fn;
-
-   ----------------------------
-   -- Get_Invariant_Start_Fn --
-   ----------------------------
-
-   function Get_Invariant_Start_Fn return GL_Value is
-   begin
-      if No (Invariant_Start_Fn) then
-         Invariant_Start_Fn := Add_Function
-           ("llvm.invariant.start.p0i8",
-            Fn_Ty ((1 => Int_64_T, 2 => Void_Ptr_T),
-                   Pointer_Type
-                     (Build_Struct_Type ((1 .. 0 => <>), False), 0)),
-            A_Char_GL_Type, Is_Builtin => True);
-         Set_Does_Not_Throw      (Invariant_Start_Fn);
-         Add_Nocapture_Attribute (Invariant_Start_Fn, 1);
-         Add_Readonly_Attribute  (Invariant_Start_Fn, 1);
-         Add_Non_Null_Attribute  (Invariant_Start_Fn, 1);
-      end if;
-
-      return Invariant_Start_Fn;
-   end Get_Invariant_Start_Fn;
 
    -------------------
    -- Get_Expect_Fn --

@@ -49,10 +49,14 @@ package body GNATLLVM.Instructions is
    --------------------------
 
    function Get_Current_Position return Position_T is
-      BB : constant Basic_Block_T := Get_Insert_Block;
+      BB          : constant Basic_Block_T := Get_Insert_Block;
+      Last_Inst   : constant Value_T       := Get_Last_Instruction (BB);
+      Latest_Inst : constant Value_T       :=
+        (if   Present (Last_Inst) then Get_Latest_Instruction (IR_Builder)
+         else No_Value_T);
 
    begin
-      return (BB, Get_Last_Instruction (BB));
+      return (BB, Latest_Inst);
    end Get_Current_Position;
 
    --------------------------

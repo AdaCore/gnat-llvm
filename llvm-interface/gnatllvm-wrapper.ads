@@ -21,6 +21,9 @@ with stdint_h;
 
 package GNATLLVM.Wrapper is
 
+   function Get_Latest_Instruction (Bld : Builder_T) return Value_T
+     with Import, Convention => C, External_Name => "Get_Latest_Instruction";
+
    function Create_MDBuilder_In_Context (Ctx : Context_T) return MD_Builder_T
      with Import, Convention => C,
           External_Name => "Create_MDBuilder_In_Context";

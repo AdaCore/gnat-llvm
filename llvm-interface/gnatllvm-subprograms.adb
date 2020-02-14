@@ -15,6 +15,10 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Containers;             use Ada.Containers;
+with Ada.Containers.Hashed_Maps;
+with Ada.Unchecked_Conversion;
+
 with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Get_Targ; use Get_Targ;
@@ -261,6 +265,25 @@ package body GNATLLVM.Subprograms is
       Table_Initial        => 100,
       Table_Increment      => 50,
       Table_Name           => "Created_Subprograms");
+
+   --  We maintain a map within a subprogram for variables that need to be
+   --  extracted from the activation record.  The LLVM optimizer will do this
+   --  for us, so we don't have to do it, but lowering the amount of work the
+   --  optimizer has to do is worthwhile and this will also make the code
+   --  much easier to read.
+
+   function Hash_Entity_Id (E : Entity_Id) return Hash_Type is
+      (Hash_Type'Mod (E))
+      with Pre => not Is_Type (E);
+   --  Convert an Entity_Id to a hash
+
+   package Activation_Record_Map_P is new Ada.Containers.Hashed_Maps
+     (Key_Type        => Entity_Id,
+      Element_Type    => GL_Value,
+      Hash            => Hash_Entity_Id,
+      Equivalent_Keys => "=");
+
+   Activation_Var_Map : Activation_Record_Map_P.Map;
 
    function Get_Activation_Record_Ptr
      (V : GL_Value; E : Entity_Id) return GL_Value
@@ -906,6 +929,8 @@ package body GNATLLVM.Subprograms is
    --------------------------------
 
    function Get_From_Activation_Record (E : Entity_Id) return GL_Value is
+      BB : Basic_Block_T;
+
    begin
       --  See if this is a type of object that's passed in activation
       --  records, if this object is allocated space in an activation
@@ -922,6 +947,18 @@ package body GNATLLVM.Subprograms is
         and then Get_Value (Enclosing_Subprogram (E)) /= Current_Func
         and then not Is_No_Elab_Needed (E)
       then
+         --  If we've already recorded this in our map, return that
+
+         if Activation_Var_Map.Contains (E) then
+            return Activation_Var_Map.Element (E);
+         end if;
+
+         --  Otherwise, do the computations to fetch it.  We must do this
+         --  in the entry block so that it dominates every possible use.
+
+         BB := Get_Insert_Block;
+         Set_Current_Position (Entry_Block_Allocas);
+
          declare
             GT             : constant GL_Type   := Full_GL_Type (E);
             Component      : constant Entity_Id :=
@@ -956,6 +993,14 @@ package body GNATLLVM.Subprograms is
                Set_TBAA_Offset (Result, TBAA_Offset (V));
                Set_Aliases_All (Result, Aliases_All (V));
             end if;
+
+            --  Set the name, store this in our map, save the current
+            --  position, and restore the saved position.
+
+            Set_Value_Name (Result, Get_Name (E));
+            Activation_Var_Map.Insert (E, Result);
+            Entry_Block_Allocas := Get_Current_Position;
+            Position_Builder_At_End (BB);
 
             return Result;
          end;
@@ -1171,6 +1216,7 @@ package body GNATLLVM.Subprograms is
       Pop_Debug_Scope;
       Leave_Subp;
       Reset_Block_Tables;
+      Activation_Var_Map.Clear;
       Current_Subp := Empty;
    end Emit_One_Body;
 
@@ -1366,6 +1412,7 @@ package body GNATLLVM.Subprograms is
       In_Elab_Proc_Stmts := False;
       Pop_Debug_Scope;
       Leave_Subp;
+      Activation_Var_Map.Clear;
 
       --  Now elaborate any subprograms that were nested inside us
 

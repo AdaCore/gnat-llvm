@@ -32,6 +32,13 @@ using namespace llvm;
 using namespace llvm::sys;
 
 extern "C"
+Instruction *
+Get_Latest_Instruction (IRBuilder<> *bld)
+{
+  return dyn_cast<Instruction>(&*--bld->GetInsertPoint());
+}
+
+extern "C"
 void
 Add_Debug_Flags (Module *TheModule)
 {

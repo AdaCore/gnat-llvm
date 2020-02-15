@@ -1009,9 +1009,14 @@ package body GNATLLVM.Instructions is
    -- Create_Invariant_Start --
    ----------------------------
 
-   procedure Create_Invariant_Start (Ptr, Size : GL_Value) is
+   procedure Create_Invariant_Start
+     (Ptr : GL_Value; Size : GL_Value := No_GL_Value)
+   is
+      Size_L : constant Value_T :=
+        (if Present (Size) then +Size else No_Value_T);
+
    begin
-      Discard (Create_Invariant_Start (IR_Builder, +Ptr, +Size));
+      Discard (Create_Invariant_Start (IR_Builder, +Ptr, Size_L));
    end Create_Invariant_Start;
 
    ---------------------------

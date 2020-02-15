@@ -855,8 +855,9 @@ package GNATLLVM.Instructions is
      with Pre => Present (Ptr) and then Present (Size);
    procedure Create_Lifetime_End (Ptr, Size : GL_Value)
      with Pre => Present (Ptr) and then Present (Size);
-   procedure Create_Invariant_Start (Ptr, Size : GL_Value)
-     with Pre => Present (Ptr) and then Present (Size);
+   procedure Create_Invariant_Start
+     (Ptr : GL_Value; Size : GL_Value := No_GL_Value)
+     with Pre => Present (Ptr);
 
    function GEP
      (Bld     : Builder_T;

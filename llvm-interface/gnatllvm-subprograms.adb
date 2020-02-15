@@ -1162,13 +1162,26 @@ package body GNATLLVM.Subprograms is
                LLVM_Param := V;
             end if;
 
+            --  Save the location of an activation record parameter
+
             if PK = Activation_Record then
                Activation_Rec_Param := From_Access (LLVM_Param);
             end if;
 
-            if PK_Is_In_Or_Ref (PK) then
-               Param_Num := Param_Num + 1;
+            --  If we have a reference to an unconstrained array, mark that
+            --  the bounds can't change.  If the array is an In parameter
+            --  (but not if its an access type), the data can't as well.
+
+            if Relationship (LLVM_Param) in Fat_Pointer | Thin_Pointer then
+               Create_Invariant_Start (Get (LLVM_Param, Reference_To_Bounds),
+                                       To_Bytes (Get_Bound_Size (GT)));
+               if Ekind (Param) = E_In_Parameter then
+                  Create_Invariant_Start (Get (LLVM_Param, Reference));
+               end if;
             end if;
+
+            --  Finally, set up the resulting GL_Value, back-annotate,
+            --  create debug info, set the value, and move to the next param.
 
             Initialize_Alignment (LLVM_Param);
             Initialize_TBAA      (LLVM_Param);
@@ -1176,6 +1189,9 @@ package body GNATLLVM.Subprograms is
             Create_Local_Variable_Debug_Data (Param, LLVM_Param, P_Num);
             Set_Value (Param, LLVM_Param);
             Next_Formal_With_Extras (Param);
+            if PK_Is_In_Or_Ref (PK) then
+               Param_Num := Param_Num + 1;
+            end if;
          end;
       end loop;
 

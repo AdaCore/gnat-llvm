@@ -135,7 +135,7 @@ package body GNATLLVM.Instructions is
         G (Inst, GT, R, Is_Pristine => True, Alignment => Our_Align);
 
    begin
-      Done_Promoting_Alloca (Inst, Promote, T);
+      Done_Promoting_Alloca (Result, Promote, T);
       Initialize_TBAA (Result, Kind_From_Decl (E));
       return Result;
    end Alloca;
@@ -162,7 +162,7 @@ package body GNATLLVM.Instructions is
         G_Ref (Inst, GT, Is_Pristine => True, Alignment => Our_Align);
 
    begin
-      Done_Promoting_Alloca (Inst, Promote, T, Num_Elts);
+      Done_Promoting_Alloca (Result, Promote, T, Num_Elts);
       Initialize_TBAA (Result, Kind_From_Decl (E));
       return Result;
    end Array_Alloca;

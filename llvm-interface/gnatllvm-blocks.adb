@@ -456,10 +456,9 @@ package body GNATLLVM.Blocks is
    -- Add_Lifetime_Entry --
    ------------------------
 
-   procedure Add_Lifetime_Entry (Inst : Value_T; Size : GL_Value) is
+   procedure Add_Lifetime_Entry (Ptr, Size : GL_Value) is
       BI     : Block_Info renames Block_Stack.Table (Block_Stack.Last);
       Our_BB : constant Basic_Block_T := Get_Insert_Block;
-      Ptr    : GL_Value;
 
    begin
       --  If we don't have a 64-bit type, we can't make lifetime calls, so
@@ -476,8 +475,6 @@ package body GNATLLVM.Blocks is
       Set_Current_Position
         ((if   BI.At_Entry_Start then Entry_Block_Allocas
           else BI.Starting_Position));
-      Ptr := G (Pointer_Cast (IR_Builder, Inst, Void_Ptr_T, ""),
-                SSI_GL_Type, Reference);
       Create_Lifetime_Start (Ptr, Size);
       Position_Builder_At_End (Our_BB);
       BI.Lifetime_List := new Lifetime_Data'(BI.Lifetime_List, Ptr, Size);

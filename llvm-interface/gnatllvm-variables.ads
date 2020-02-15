@@ -95,7 +95,7 @@ package GNATLLVM.Variables is
    --  alloca or forcing a stack save/restore.  If Elts isn't specified,
    --  it's presumed to be 1.
    procedure Done_Promoting_Alloca
-     (Alloca : Value_T;
+     (Alloca : GL_Value;
       BB     : Basic_Block_T;
       T      : Type_T;
       Elts   : GL_Value := No_GL_Value)

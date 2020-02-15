@@ -825,8 +825,8 @@ package body GNATLLVM.GLValue is
                Align   : constant Nat           := Set_Object_Align (Inst, GT);
 
             begin
-               Done_Promoting_Alloca (Inst, Promote, T);
                Result := G (Inst, GT, Ref (Our_R));
+               Done_Promoting_Alloca (Result, Promote, T);
                Set_Alignment (Result, Align);
                Store (V, Result);
                return Result;

@@ -49,8 +49,8 @@ package GNATLLVM.Blocks is
    procedure Save_Stack_Pointer;
    --  Generate a stack save at the start of the current block
 
-   procedure Add_Lifetime_Entry (Inst : Value_T; Size : GL_Value)
-     with Pre => Present (Inst) and then Present (Size);
+   procedure Add_Lifetime_Entry (Ptr, Size : GL_Value)
+     with Pre => Present (Ptr) and then Present (Size);
    --  Add an entry for a variable lifetime that ends at the end of this block
 
    procedure Add_Invariant_Entry (V : GL_Value; Size : GL_Value)

@@ -1109,7 +1109,7 @@ package body GNATLLVM.Variables is
    ---------------------------
 
    procedure Done_Promoting_Alloca
-     (Alloca : Value_T;
+     (Alloca : GL_Value;
       BB     : Basic_Block_T;
       T      : Type_T;
       Elts   : GL_Value := No_GL_Value)
@@ -1125,7 +1125,7 @@ package body GNATLLVM.Variables is
       --  current block.
 
       if Present (BB) then
-         Entry_Block_Allocas.Instr := Alloca;
+         Entry_Block_Allocas.Instr := +Alloca;
          Position_Builder_At_End (BB);
 
          --  If this is a large enough object to be worthwhile, emit a

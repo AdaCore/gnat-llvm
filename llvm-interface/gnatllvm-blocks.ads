@@ -53,8 +53,8 @@ package GNATLLVM.Blocks is
      with Pre => Present (Ptr) and then Present (Size);
    --  Add an entry for a variable lifetime that ends at the end of this block
 
-   procedure Add_Invariant_Entry (V : GL_Value; Size : GL_Value)
-     with Pre => Present (V) and then Present (Size);
+   procedure Add_Invariant_Entry (V : GL_Value; Size : GL_Value := No_GL_Value)
+     with Pre => Present (V);
    --  Add an entry for a constant whose invariant point starts at the
    --  start of the code for this block.
 

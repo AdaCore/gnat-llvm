@@ -2017,15 +2017,22 @@ package body GNATLLVM.Variables is
          --  If this is a constant, but we're not assigning it here, it'll
          --  be assigned in the declarative part of the block and be constant
          --  in the code for the block, so add an entry indicating that it's
-         --  constant from that point on.  But only do this for fixed-size
-         --  objects.
+         --  constant from that point on.
 
-         if Is_True_Constant (E) and then No (Value) and then No (Expr)
-           and then not Is_Dynamic_Size (Alloc_GT)
-         then
+         if Is_True_Constant (E) and then No (Value) and then No (Expr) then
             Add_Invariant_Entry (LLVM_Var,
-                                 To_Bytes (Get_Type_Size (Alloc_GT)));
+                                 (if   Is_Dynamic_Size (Alloc_GT)
+                                  then No_GL_Value
+                                  else To_Bytes (Get_Type_Size (Alloc_GT))));
          end if;
+      end if;
+
+      --  If this is a thin pointer, but not an actual constant, show
+      --  that the bounds are constant.
+
+      if Relationship (LLVM_Var) = Thin_Pointer then
+         Add_Invariant_Entry (Get (LLVM_Var, Reference_To_Bounds),
+                              To_Bytes (Get_Bound_Size (GT)));
       end if;
 
       --  If we haven't already set the value, set it now

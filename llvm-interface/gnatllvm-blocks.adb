@@ -485,7 +485,8 @@ package body GNATLLVM.Blocks is
    -- Add_Invariant_Entry --
    -------------------------
 
-   procedure Add_Invariant_Entry (V : GL_Value; Size : GL_Value) is
+   procedure Add_Invariant_Entry (V : GL_Value; Size : GL_Value := No_GL_Value)
+   is
       BI     : Block_Info renames Block_Stack.Table (Block_Stack.Last);
 
    begin

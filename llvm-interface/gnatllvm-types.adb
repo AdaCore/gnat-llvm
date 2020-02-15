@@ -663,6 +663,16 @@ package body GNATLLVM.Types is
 
       if Overalign then
          Num_Elts := Num_Elts + To_Bytes (Align);
+
+      --  Otherwise, if this is an aliased array of nominal constrained type
+      --  and the number of elements isn't a constant, make sure that it's
+      --  at least one element.
+
+      elsif Present (E) and then Is_Array_Type (A_GT)
+        and then not Is_Constr_Subt_For_UN_Aliased (GT) and then Is_Aliased (E)
+        and then not Is_Constant (Num_Elts)
+      then
+         Num_Elts := Build_Max (Num_Elts, Size_Const_Int (Uint_1));
       end if;
 
       --  Check that we aren't trying to allocate too much memory.  Raise
@@ -747,10 +757,10 @@ package body GNATLLVM.Types is
         (if    Present (V) then V
          elsif Is_Self_Referential_Type (A_GT) and then Present (Expr)
          then  Emit (Expr) else No_GL_Value);
-      Size    : constant GL_Value :=
-        Get_Alloc_Size (GT, A_GT, Value, Max_Size);
       Align   : constant Nat      := Get_Alloc_Alignment (GT, A_GT, E);
       Align_V : constant GL_Value := Size_Const_Int (ULL (Align));
+      Size    : GL_Value          :=
+        Get_Alloc_Size (GT, A_GT, Value, Max_Size);
       Result  : GL_Value;
 
    begin
@@ -781,6 +791,16 @@ package body GNATLLVM.Types is
 
          Emit_Raise_Call (N, SE_Object_Too_Large);
          return Get_Undef_Ref (GT);
+
+      --  Otherwise, if this is an aliased array of nominal constrained
+      --  type and the number of elements isn't a constant, make sure that
+      --  it's at least one byte.
+
+      elsif Present (E) and then Is_Array_Type (A_GT)
+        and then not Is_Constr_Subt_For_UN_Aliased (GT) and then Is_Aliased (E)
+        and then not Is_Constant (Size)
+      then
+         Size := Build_Max (Size, Size_Const_Int (Uint_1));
       end if;
 
       --  If no procedure was specified, use the default memory allocation

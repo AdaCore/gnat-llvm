@@ -585,6 +585,10 @@ package GNATLLVM.GLType is
      (First_Component_Or_Discriminant (Full_Etype (GT)))
      with Pre => Is_Record_Type (GT);
 
+   function First_Stored_Discriminant (GT : GL_Type) return Entity_Id is
+     (First_Stored_Discriminant (Full_Etype (GT)))
+     with Pre => Is_Record_Type (GT);
+
    function Convention (GT : GL_Type) return Convention_Id is
      (Convention (Full_Etype (GT)))
      with Pre => Present (GT);

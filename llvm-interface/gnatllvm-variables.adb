@@ -2034,9 +2034,32 @@ package body GNATLLVM.Variables is
       --  If this is a thin pointer, but not an actual constant, show
       --  that the bounds are constant.
 
-      if Relationship (LLVM_Var) = Thin_Pointer then
+      if Relationship (LLVM_Var) = Thin_Pointer and then not Library_Level then
          Add_Invariant_Entry (Get (LLVM_Var, Reference_To_Bounds),
                               Get_Bound_Size (GT));
+
+      --  If this is a constrained record, the discriminant values are
+      --  invariant once we've set them.  If this is a constant, we'll
+      --  be marking the whole thing constant.
+
+      elsif Has_Discriminants (GT) and then Is_Constrained (GT)
+        and then not Is_Unchecked_Union (GT) and then not Library_Level
+        and then not Is_True_Constant (E)
+      then
+         declare
+            Disc : Entity_Id := First_Stored_Discriminant (GT);
+
+         begin
+            while Present (Disc) loop
+               if not Is_Bitfield (Ancestor_Field (Disc)) then
+                  Add_Invariant_Entry
+                    (Record_Field_Offset (LLVM_Var, Disc),
+                     Get_Type_Size (Field_Type (Ancestor_Field (Disc))));
+               end if;
+
+               Next_Stored_Discriminant (Disc);
+            end loop;
+         end;
       end if;
 
       --  If we haven't already set the value, set it now

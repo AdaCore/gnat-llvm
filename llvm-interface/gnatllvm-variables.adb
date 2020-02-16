@@ -994,10 +994,14 @@ package body GNATLLVM.Variables is
 
             return No (Expr);
 
+         when N_String_Literal =>
+
+            return True;
+
          when others =>
 
             --  An address that we can evaluate or other compile time
-            --  known valule, we don't need any elaboration.
+            --  known value, we don't need any elaboration.
 
             return Is_Static_Address (N, Not_Symbolic);
       end case;

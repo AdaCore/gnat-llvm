@@ -1174,7 +1174,7 @@ package body GNATLLVM.Subprograms is
 
             if Relationship (LLVM_Param) in Fat_Pointer | Thin_Pointer then
                Create_Invariant_Start (Get (LLVM_Param, Reference_To_Bounds),
-                                       To_Bytes (Get_Bound_Size (GT)));
+                                       Get_Bound_Size (GT));
                if Ekind (Param) = E_In_Parameter then
                   Create_Invariant_Start (Get (LLVM_Param, Reference));
                end if;

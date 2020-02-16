@@ -1140,13 +1140,13 @@ package body GNATLLVM.Variables is
 
          if not Alloca_Smaller_Than (T, Elts, Min_Lifetime_Size) then
             declare
-               T_Size      : constant ULL := Get_Type_Size (T);
-               Num_Elts    : constant ULL :=
+               T_Size     : constant ULL := Get_Type_Size (T);
+               Num_Elts   : constant ULL :=
                  (if Present (Elts) then +Elts else 1);
-               Alloc_Bytes : constant ULL := To_Bytes (T_Size * Num_Elts);
+               Alloc_Size : constant ULL := T_Size * Num_Elts;
 
             begin
-               Add_Lifetime_Entry (Alloca, Const_Int_64 (Alloc_Bytes));
+               Add_Lifetime_Entry (Alloca, Const_Int_64 (Alloc_Size));
             end;
          end if;
       else
@@ -2027,7 +2027,7 @@ package body GNATLLVM.Variables is
             Add_Invariant_Entry (LLVM_Var,
                                  (if   Is_Dynamic_Size (Alloc_GT)
                                   then No_GL_Value
-                                  else To_Bytes (Get_Type_Size (Alloc_GT))));
+                                  else Get_Type_Size (Alloc_GT)));
          end if;
       end if;
 
@@ -2036,7 +2036,7 @@ package body GNATLLVM.Variables is
 
       if Relationship (LLVM_Var) = Thin_Pointer then
          Add_Invariant_Entry (Get (LLVM_Var, Reference_To_Bounds),
-                              To_Bytes (Get_Bound_Size (GT)));
+                              Get_Bound_Size (GT));
       end if;
 
       --  If we haven't already set the value, set it now

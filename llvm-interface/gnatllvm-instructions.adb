@@ -993,7 +993,7 @@ package body GNATLLVM.Instructions is
 
    procedure Create_Lifetime_Start (Ptr, Size : GL_Value) is
    begin
-      Discard (Create_Lifetime_Start (IR_Builder, +Ptr, +Size));
+      Discard (Create_Lifetime_Start (IR_Builder, +Ptr, +To_Bytes (Size)));
    end Create_Lifetime_Start;
 
    -------------------------
@@ -1002,7 +1002,7 @@ package body GNATLLVM.Instructions is
 
    procedure Create_Lifetime_End (Ptr, Size : GL_Value) is
    begin
-      Discard (Create_Lifetime_End (IR_Builder, +Ptr, +Size));
+      Discard (Create_Lifetime_End (IR_Builder, +Ptr, +To_Bytes (Size)));
    end Create_Lifetime_End;
 
    ----------------------------
@@ -1013,7 +1013,7 @@ package body GNATLLVM.Instructions is
      (Ptr : GL_Value; Size : GL_Value := No_GL_Value)
    is
       Size_L : constant Value_T :=
-        (if Present (Size) then +Size else No_Value_T);
+        (if Present (Size) then +To_Bytes (Size) else No_Value_T);
 
    begin
       Discard (Create_Invariant_Start (IR_Builder, +Ptr, Size_L));

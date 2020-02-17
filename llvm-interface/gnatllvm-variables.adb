@@ -1789,7 +1789,7 @@ package body GNATLLVM.Variables is
             or else Is_External)
         and then No (LLVM_Var)
       then
-         pragma Assert (not In_Elab_Proc);
+         pragma Assert (not In_Elab_Proc or else Is_Statically_Allocated (E));
 
          --  If we have a static address clause, we can convert it to a
          --  pointer to us and use that as our variable.

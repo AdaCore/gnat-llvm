@@ -21,6 +21,7 @@ with Rident;   use Rident;
 with Targparm; use Targparm;
 
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
+with GNATLLVM.Conversions; use GNATLLVM.Conversions;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
@@ -992,8 +993,11 @@ package body GNATLLVM.Instructions is
    ---------------------------
 
    procedure Create_Lifetime_Start (Ptr, Size : GL_Value) is
+      Byte_Size : constant GL_Value :=
+        Convert (To_Bytes (Size), Int_64_GL_Type);
+
    begin
-      Discard (Create_Lifetime_Start (IR_Builder, +Ptr, +To_Bytes (Size)));
+      Discard (Create_Lifetime_Start (IR_Builder, +Ptr, +Byte_Size));
    end Create_Lifetime_Start;
 
    -------------------------
@@ -1001,8 +1005,11 @@ package body GNATLLVM.Instructions is
    -------------------------
 
    procedure Create_Lifetime_End (Ptr, Size : GL_Value) is
+      Byte_Size : constant GL_Value :=
+        Convert (To_Bytes (Size), Int_64_GL_Type);
+
    begin
-      Discard (Create_Lifetime_End (IR_Builder, +Ptr, +To_Bytes (Size)));
+      Discard (Create_Lifetime_End (IR_Builder, +Ptr, +Byte_Size));
    end Create_Lifetime_End;
 
    ----------------------------
@@ -1012,11 +1019,12 @@ package body GNATLLVM.Instructions is
    procedure Create_Invariant_Start
      (Ptr : GL_Value; Size : GL_Value := No_GL_Value)
    is
-      Size_L : constant Value_T :=
-        (if Present (Size) then +To_Bytes (Size) else No_Value_T);
+      Byte_Size : constant Value_T :=
+        (if   Present (Size) then +Convert (To_Bytes (Size), Int_64_GL_Type)
+         else No_Value_T);
 
    begin
-      Discard (Create_Invariant_Start (IR_Builder, +Ptr, Size_L));
+      Discard (Create_Invariant_Start (IR_Builder, +Ptr, Byte_Size));
    end Create_Invariant_Start;
 
    ---------------------------

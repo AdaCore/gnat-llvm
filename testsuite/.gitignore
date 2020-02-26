@@ -1,0 +1,4 @@
+# Build/test results directories
+out
+output
+srccov

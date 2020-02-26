@@ -1,0 +1,7 @@
+# Build/test results directories
+gen
+out
+llvm-obj
+
+# Imported sources
+llvm-*.src

@@ -1,22 +1,8 @@
-# External projects
-llvm-backend/gnat_src
-
 # Build/test results directories
-llvm-interface/bin
-llvm-interface/lib
-llvm-interface/obj-tools
-llvm-interface/gnat_src
-llvm/gen
-llvm/out
-llvm/llvm-obj
-testsuite/out
-testsuite/output
-testsuite/srccov
 alis.list
 obj
 
 # Imported sources
-llvm/llvm-*.src
 acats
 fixedbugs
 

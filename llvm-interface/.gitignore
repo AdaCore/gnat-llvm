@@ -1,0 +1,7 @@
+# Build/test results directories
+bin
+lib
+obj-tools
+
+# External projects
+gnat_src

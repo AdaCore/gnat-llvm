@@ -868,9 +868,14 @@ package body GNATLLVM.GLValue is
 
          when Boolean_Data =>
 
+            --  If this is a Reference, dereference it first
+
+            if Is_Reference (Our_R) then
+               return Get (Get (V, Deref (Our_R)), R);
+
             --  To get Boolean_Data from Data, truncate it
 
-            if Our_R = Data then
+            elsif Our_R = Data then
                return Trunc_To_Relationship (V, Bit_T, Boolean_Data);
 
             --  And from Boolean_And_Data, extract it

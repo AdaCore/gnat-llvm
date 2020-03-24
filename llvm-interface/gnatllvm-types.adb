@@ -805,7 +805,7 @@ package body GNATLLVM.Types is
 
       --  If no procedure was specified, use the default memory allocation
       --  function, where we just pass a size.  But we can only do this
-      --  directly if the requested alignment is a constand and no larger
+      --  directly if the requested alignment is a constant and no larger
       --  than the system allocator alignment.
 
       if No (Proc) and then Align <= Get_System_Allocator_Alignment * BPU then

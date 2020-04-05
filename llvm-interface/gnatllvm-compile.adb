@@ -1378,6 +1378,7 @@ package body GNATLLVM.Compile is
             if not Is_Intrinsic_Subprogram (E)
               and then Nkind (Parent (Decl)) = N_Subprogram_Declaration
               and then Convention (E) /= Convention_Protected
+              and then No (Protected_Body_Subprogram (E))
               and then not Is_Eliminated (E)
             then
                Discard (Emit_Subprogram_Decl (Decl));

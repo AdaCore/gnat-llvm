@@ -129,6 +129,15 @@ package body GNATLLVM.Compile is
       Byte_T    := Int_Ty (BPU);
       Max_Align := Get_Maximum_Alignment * BPU;
 
+      --  We want to be able to support overaligned values, but we still need
+      --  to have a maximum possible alignment to start with.  The maximum
+      --  alignment in bytes supported by LLVM is actually 2 ** 29, but if
+      --  we convert to an alignment in bits, which is the way we store
+      --  alignments, that will overflow, so we restrict it to a value
+      --  that won't overflow and then a further power of two to be safe.
+
+      Max_Valid_Align := Nat ((ULL (Nat'Last) + 1) / ULL (BPU) / 2);
+
       --  We have to initialize aliasing before we create any types
 
       GNATLLVM.Aliasing.Initialize;

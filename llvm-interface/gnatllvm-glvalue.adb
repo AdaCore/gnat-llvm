@@ -1192,7 +1192,7 @@ package body GNATLLVM.GLValue is
    ----------------
 
    function Const_Null (GT : GL_Type) return GL_Value is
-     (G (Const_Null (Type_Of (GT)), GT, Alignment => Max_Align * BPU));
+     (G (Const_Null (Type_Of (GT)), GT, Alignment => Max_Valid_Align));
 
    ----------------------
    -- Const_Null_Alloc --
@@ -1202,7 +1202,7 @@ package body GNATLLVM.GLValue is
      (G (Const_Null (Type_For_Relationship
                        (GT, Deref (Relationship_For_Alloc (GT)))),
          GT, Deref (Relationship_For_Alloc (GT)),
-         Alignment => Max_Align * BPU));
+         Alignment => Max_Valid_Align));
 
    --------------------
    -- Const_Null_Ref --
@@ -1210,7 +1210,7 @@ package body GNATLLVM.GLValue is
 
    function Const_Null_Ref (GT : GL_Type) return GL_Value is
      (G_Ref (Const_Null (Create_Access_Type_To (GT)), GT,
-             Alignment => Max_Align * BPU));
+             Alignment => Max_Valid_Align));
 
    ----------------
    -- Const_True --
@@ -1226,7 +1226,7 @@ package body GNATLLVM.GLValue is
 
    function Const_False return GL_Value is
      (G (Const_Int (Bit_T, ULL (0), False), Boolean_GL_Type,
-         Boolean_Data, Alignment => Max_Align * BPU));
+         Boolean_Data, Alignment => Max_Valid_Align));
 
    ---------------
    -- Const_Int --
@@ -1958,7 +1958,7 @@ package body GNATLLVM.GLValue is
    function Get_GEP_Offset_Alignment (GEP : GL_Value) return Nat is
       Num_Operands : constant Nat := Get_Num_Operands (GEP);
       Op_Num       : Nat          := 1;
-      Align        : Nat          := Max_Align;
+      Align        : Nat          := Max_Valid_Align;
       T            : Type_T;
       Offset       : ULL;
 
@@ -1971,7 +1971,7 @@ package body GNATLLVM.GLValue is
       --  If it's null, it's fully aligned
 
       elsif Is_A_Constant_Pointer_Null (GEP) then
-         return Max_Align * BPU;
+         return Max_Valid_Align;
 
       --  If this GEP is for a constant offset, we can deduce the alignment
       --  from that.
@@ -1982,8 +1982,7 @@ package body GNATLLVM.GLValue is
 
       --  Otherwise, loop through operands as long as we have operands left
       --  and T is a pointer or array.  For each, take the alignment of
-      --  what T points to and, if the operand is a constant, multiply that
-      --  alignment by the alignment of the constant.
+      --  what T points to.
 
       T := Type_Of (Get_Operand (GEP, 0));
       while Op_Num < Num_Operands
@@ -1996,9 +1995,14 @@ package body GNATLLVM.GLValue is
             Const_Val  : ULL;
 
          begin
+            --  If the operand is a non-zero constant, multiply that
+            --  alignment by the alignment of the constant.
+
             if Present (Is_A_Constant_Int (This_Op)) then
                Const_Val := ULL (Const_Int_Get_S_Ext_Value (This_Op));
-               This_Align := This_Align * ULL_Align_Bytes (Const_Val) / BPU;
+               if Const_Val /= 0 then
+                  This_Align := This_Align * ULL_Align_Bytes (Const_Val);
+               end if;
             end if;
 
             Align  := Nat'Min (Align, This_Align);

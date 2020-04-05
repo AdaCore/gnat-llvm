@@ -577,16 +577,23 @@ package body GNATLLVM.Instructions is
       --  about the alignment.
 
       if Is_A_Const_Int (Count) and then +Count > ULL (0) then
-         if +Count >= ULL (10) then
-            Set_Alignment (Result, (if Left then Max_Align else BPU));
+         if +Count >= ULL (20) then
+            Set_Alignment (Result, (if Left then Max_Valid_Align else BPU));
          else
             declare
+               L : constant Nat := Alignment (V);
                R : constant Nat := 2 ** Integer (Get_Const_Int_Value (Count));
 
             begin
+               --  For left shifts, ensure we aren't going to overflow and
+               --  for right shifts, never set an alignment less than BPU.
+
                Set_Alignment
                  (Result,
-                  (if Left then Alignment (V) * R else Alignment (V) / R));
+                  (if   Left
+                   then (if   Max_Valid_Align / R > L then L * R
+                         else Max_Valid_Align)
+                   else Nat'Max (BPU, L / R)));
             end;
          end if;
       else

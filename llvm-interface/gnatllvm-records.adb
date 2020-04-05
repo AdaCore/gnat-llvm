@@ -1326,7 +1326,8 @@ package body GNATLLVM.Records is
         (if    Known_Alignment (TE) then +Alignment (TE) * BPU
          elsif Known_RM_Size (TE) and then Strict_Alignment (TE)
          then  ULL_Align (+RM_Size (TE))
-         elsif Known_Esize (TE) then ULL_Align (+Esize (TE)) else Max_Align);
+         elsif Known_Esize (TE) then ULL_Align (+Esize (TE))
+         else  Nat'Max (Max_Align, F_Align));
       --  If an alignment is specified for the record, use it.  If not, but
       --  a size is specified for the record and we require strict
       --  alignment, derive the alignment from that.  Similarly if an

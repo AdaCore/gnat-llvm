@@ -101,41 +101,43 @@ package GNATLLVM is
    --  Int from the front end.
 
    subtype unsigned is Interfaces.C.unsigned;
-   function "+" (L, R : unsigned)  return unsigned renames Interfaces.C."+";
-   function "-" (L, R : unsigned)  return unsigned renames Interfaces.C."-";
-   function "*" (L, R : unsigned)  return unsigned renames Interfaces.C."*";
-   function "/" (L, R : unsigned)  return unsigned renames Interfaces.C."/";
-   function "=" (L, R : unsigned)  return Boolean  renames Interfaces.C."=";
-   function ">" (L, R : unsigned)  return Boolean  renames Interfaces.C.">";
-   function "<" (L, R : unsigned)  return Boolean  renames Interfaces.C."<";
-   function "<=" (L, R : unsigned) return Boolean  renames Interfaces.C."<=";
-   function ">=" (L, R : unsigned) return Boolean  renames Interfaces.C.">=";
+   function "+"   (L, R : unsigned)  return unsigned renames Interfaces.C."+";
+   function "-"   (L, R : unsigned)  return unsigned renames Interfaces.C."-";
+   function "*"   (L, R : unsigned)  return unsigned renames Interfaces.C."*";
+   function "/"   (L, R : unsigned)  return unsigned renames Interfaces.C."/";
+   function "="   (L, R : unsigned)  return Boolean  renames Interfaces.C."=";
+   function ">"   (L, R : unsigned)  return Boolean  renames Interfaces.C.">";
+   function "<"   (L, R : unsigned)  return Boolean  renames Interfaces.C."<";
+   function "<="  (L, R : unsigned)  return Boolean  renames Interfaces.C."<=";
+   function ">="  (L, R : unsigned)  return Boolean  renames Interfaces.C.">=";
 
    subtype unsigned_long_long is Interfaces.C.Extensions.unsigned_long_long;
    subtype ULL is unsigned_long_long;
    --  Define shorter alias name for easier reading
 
-   function "+"  (L, R : ULL)  return ULL renames Interfaces.C.Extensions."+";
-   function "-"  (L, R : ULL)  return ULL renames Interfaces.C.Extensions."-";
-   function "*"  (L, R : ULL)  return ULL renames Interfaces.C.Extensions."*";
-   function "/"  (L, R : ULL)  return ULL renames Interfaces.C.Extensions."/";
+   function "+"   (L, R : ULL)  return ULL renames Interfaces.C.Extensions."+";
+   function "-"   (L, R : ULL)  return ULL renames Interfaces.C.Extensions."-";
+   function "*"   (L, R : ULL)  return ULL renames Interfaces.C.Extensions."*";
+   function "/"   (L, R : ULL)  return ULL renames Interfaces.C.Extensions."/";
 
-   function "**" (L : ULL; R : Integer) return ULL
+   function "**"  (L : ULL; R : Integer) return ULL
      renames Interfaces.C.Extensions."**";
-   function "mod"  (L, R : ULL)  return ULL
+   function "mod" (L, R : ULL)  return ULL
      renames Interfaces.C.Extensions."mod";
-   function "and"  (L, R : ULL)  return ULL
+   function "and" (L, R : ULL)  return ULL
      renames Interfaces.C.Extensions."and";
+   function "not" (L : ULL)     return ULL
+     renames Interfaces.C.Extensions."not";
 
-   function "="  (L, R : ULL)  return Boolean
+   function "="   (L, R : ULL)  return Boolean
      renames Interfaces.C.Extensions."=";
-   function ">"  (L, R : ULL)  return Boolean
+   function ">"   (L, R : ULL)  return Boolean
      renames Interfaces.C.Extensions.">";
-   function "<"  (L, R : ULL)  return Boolean
+   function "<"   (L, R : ULL)  return Boolean
      renames Interfaces.C.Extensions."<";
-   function "<=" (L, R : ULL) return  Boolean
+   function "<="  (L, R : ULL)  return  Boolean
      renames Interfaces.C.Extensions."<=";
-   function ">=" (L, R : ULL) return  Boolean
+   function ">="  (L, R : ULL)  return  Boolean
      renames Interfaces.C.Extensions.">=";
 
    subtype long_long_integer is Interfaces.C.Extensions.long_long;
@@ -271,6 +273,7 @@ package GNATLLVM is
    Bit_T              : Type_T;
    Byte_T             : Type_T;
    Max_Align          : Nat;
+   Max_Valid_Align    : Nat;
 
    --  GNAT LLVM switches
 

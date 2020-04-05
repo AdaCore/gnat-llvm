@@ -309,10 +309,8 @@ package GNATLLVM.Types is
 
    function ULL_Align (C : ULL) return Nat;
    --  Return the maximum alignment that a constant C, representing a
-   --  position or offset, has.  This is the highest power of two that
-   --  divides C up to the maximum alignment times the number of bits per
-   --  unit.  We multiply by the bits per unit so that we correctly state
-   --  the alignment of an offset in bits that's been converted to bytes.
+   --  position or offset, in bits, has.  This is the highest power of two that
+   --  divides C.
 
    function ULL_Align_Bytes (C : ULL) return Nat is
      (ULL_Align (C * ULL (BPU)));

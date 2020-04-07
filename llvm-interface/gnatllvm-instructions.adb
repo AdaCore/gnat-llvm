@@ -447,15 +447,22 @@ package body GNATLLVM.Instructions is
          return Mark_Overflowed (RHS, Overflowed (LHS));
       end if;
 
-      --  Otherwise, perform the operation, respect any overflow flags,
-      --  and set the resulting alignment.
+      --  Otherwise, perform the operation, respect any overflow flags
 
       Result := G_From (Set_Arith_Attrs (Mul (IR_Builder, +LHS, +RHS, Name),
                                          LHS),
                         LHS);
       Mark_Overflowed (Result, Overflowed (LHS) or else Overflowed (RHS));
-      Set_Alignment   (Result, Alignment (LHS) * Alignment (RHS) / BPU);
       Set_TBAA_Type   (Result, No_Metadata_T);
+
+      --  Set the resulting alignment.  Be careful about overflow, but be
+      --  conservative on overflow with regard to BPU.
+
+      Set_Alignment
+        (Result,
+         (if   Max_Valid_Align / Alignment (LHS) > Alignment (RHS)
+          then Alignment (LHS) * Alignment (RHS) / BPU
+          else Max_Valid_Align / BPU));
 
       --  If either operand or the result isn't a constant integer, if this
       --  is a modular integer type, or if we already had an overflow, we

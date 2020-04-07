@@ -27,6 +27,7 @@ with Ada.Characters.Handling; use Ada.Characters.Handling;
 with GNAT.Strings;            use GNAT.Strings;
 
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types;        use GNATLLVM.Types;
@@ -416,12 +417,16 @@ package body GNATLLVM.Builtins is
    --------------------------
 
    function Emit_And_Maybe_Deref
-     (Ptr : Node_Id; GT : GL_Type) return GL_Value is
+     (Ptr : Node_Id; GT : GL_Type) return GL_Value
+   is
       Result : GL_Value := Emit_Expression (Ptr);
 
    begin
-      if Related_Type (Result) = GT then
-         return Result;
+      --  This is valid if the Ada types are the same, but we need to be sure
+      --  that we have the actual GT.
+
+      if Full_Etype (Result) = Full_Etype (GT) then
+         return Convert_GT (Result, GT);
       elsif Is_Descendant_Of_Address (Result) then
          return Get (Int_To_Ref (Result, GT), Data);
       elsif Is_Access_Type (Result) then

@@ -2140,7 +2140,7 @@ package body GNATLLVM.Variables is
 
          if Library_Level then
             LLVM_Var := Add_Global (GT, Get_Ext_Name (E));
-            Set_Initializer     (LLVM_Var, V);
+            Set_Initializer     (LLVM_Var, Get (V, Deref (LLVM_Var)));
             Set_Global_Constant (LLVM_Var, True);
             Set_Linker_Section  (LLVM_Var, E);
          end if;

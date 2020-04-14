@@ -1073,11 +1073,12 @@ package body GNATLLVM.Conversions is
          return True;
 
       --  The only other way is if we have a nonsymbolic constant (which
-      --  checks for the length of the input) and the length of the output
-      --  is small enough.
+      --  checks for the length of the input), the output doesn't contain
+      --  any restricted type, and the length of the output is small enough.
 
       else
          return Is_Nonsymbolic_Constant (V)
+           and then not Contains_Restricted_Type (Out_T)
            and then Get_Type_Size (Out_T) < 1024 * BPU;
       end if;
    end Can_Convert_Aggregate_Constant;

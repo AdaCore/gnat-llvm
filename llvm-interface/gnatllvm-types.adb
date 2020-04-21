@@ -1018,9 +1018,12 @@ package body GNATLLVM.Types is
          when Access_Subprogram_Kind =>
 
             --  These usually use a fat pointer, so force the alignment to
-            --  be its size.
+            --  be its size unless the alignment in the tree is smaller.
 
-            return Nat (ULL'(Get_Type_Size (T)));
+            return (if   Known_Alignment (TE)
+                    then Nat'Min (Nat (ULL'(Get_Type_Size (T))),
+                                  +Alignment (TE) * BPU)
+                    else Nat (ULL'(Get_Type_Size (T))));
 
          when E_Subprogram_Type =>
 

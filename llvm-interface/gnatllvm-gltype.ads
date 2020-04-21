@@ -366,7 +366,7 @@ package GNATLLVM.GLType is
 
    function Is_Access_Subprogram_Type (GT : GL_Type) return Boolean is
     (Is_Access_Type (GT)
-       and then Ekind (Full_Designated_GL_Type (GT)) = E_Subprogram_Type)
+       and then Ekind (Full_Designated_Type (GT)) = E_Subprogram_Type)
      with Pre => Present (GT);
 
    function Is_Tagged_Type (GT : GL_Type) return Boolean is

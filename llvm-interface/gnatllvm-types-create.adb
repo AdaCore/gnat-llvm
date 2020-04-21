@@ -794,11 +794,12 @@ package body GNATLLVM.Types.Create is
          In_Size := Align_To (In_Size, BPU, Get_Type_Alignment (GT));
       end if;
 
-      --  If this is an access to an unconstrained array, both the size of
-      --  a pointer and twice that size is valid.
+      --  If this is an access to an unconstrained array or access to a
+      --  subprogram, both the size of a pointer and twice that size is
+      --  valid.
 
-      if Is_Access_Type (GT)
-        and then Is_Unconstrained_Array (Full_Designated_Type (GT))
+      if (Is_Access_Unconstrained_Array (GT)
+            or else Is_Access_Subprogram_Type (GT))
         and then (Size = Thin_Pointer_Size or else Size = Fat_Pointer_Size)
       then
          return Size;

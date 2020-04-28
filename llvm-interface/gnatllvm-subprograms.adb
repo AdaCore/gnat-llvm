@@ -46,6 +46,7 @@ with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
+with GNATLLVM.Helper;       use GNATLLVM.Helper;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
@@ -2532,6 +2533,16 @@ package body GNATLLVM.Subprograms is
          Global_Constructors.Append (E);
       elsif Present (Get_Pragma (E, Pragma_Linker_Destructor)) then
          Global_Destructors.Append (E);
+      end if;
+
+      --  If this is a CUDA kernel, add the appropriate annotation.
+
+      if Is_CUDA_Kernel (E) then
+         Add_Named_Metadata_Operand
+           ("nvvm.annotations",
+            MD_Node ((1 => Value_As_Metadata (LLVM_Func),
+                      2 => MD_String ("kernel"),
+                      3 => Const_32_As_Metadata (Uint_1))));
       end if;
 
       return LLVM_Func;

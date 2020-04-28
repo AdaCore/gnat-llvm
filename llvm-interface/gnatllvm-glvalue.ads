@@ -1421,6 +1421,33 @@ package GNATLLVM.GLValue is
    procedure Set_Subprogram (V : GL_Value; M : Metadata_T)
      with Pre => Is_A_Function (V) and then Present (M), Inline;
 
+   function Value_As_Metadata (V : GL_Value) return Metadata_T is
+     (Value_As_Metadata (+V))
+     with Pre => Present (V), Post => Present (Value_As_Metadata'Result);
+
+   function Metadata_As_Value (M : Metadata_T) return Value_T is
+     (Metadata_As_Value (Context, M))
+     with Pre => Present (M), Post => Present (Metadata_As_Value'Result);
+
+   function Const_32_As_Metadata (U : Uint) return Metadata_T is
+     (Value_As_Metadata (+Const_Int_32 (U)))
+     with Pre => Present (U), Post => Present (Const_32_As_Metadata'Result);
+
+   function MD_String (S : String) return Metadata_T is
+     (MD_String_In_Context2 (Context, S, S'Length))
+     with Post => Present (MD_String'Result);
+
+   function MD_Node (MDs : Metadata_Array) return Metadata_T is
+     (MD_Node_In_Context2 (Context, MDs'Address, MDs'Length))
+     with Pre  => (for all M of MDs => Present (M)),
+          Post => Present (MD_Node'Result);
+
+   procedure Add_Named_Metadata_Operand (Name : String; V : Value_T)
+     with Pre => Present (V), Inline;
+
+   procedure Add_Named_Metadata_Operand (Name : String; M : Metadata_T)
+     with Pre => Present (M), Inline;
+
    function Is_Layout_Identical (V : GL_Value; GT : GL_Type) return Boolean
      with Pre => Present (V) and then Present (GT), Inline;
 

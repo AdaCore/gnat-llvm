@@ -257,7 +257,7 @@ extern "C"
 unsigned
 Get_Stack_Alignment (DataLayout *dl)
 {
-  return encode (dl->getStackAlignment ());
+  return dl->getStackAlignment ();
 }
 
 extern "C"
@@ -335,9 +335,8 @@ Build_MemCpy (IRBuilder<> *bld, Value *Dst, unsigned DstAlign, Value *Src,
 	      unsigned SrcAlign, Value *Size, bool isVolatile, MDNode *TBAATag,
 	      MDNode *TBAAStructTag, MDNode *ScopeTag, MDNode *NoAliasTag)
 {
-  return bld->CreateMemCpy (Dst, MaybeAlign (DstAlign), Src,
-			    MaybeAlign(SrcAlign), Size, isVolatile, TBAATag,
-			    TBAAStructTag, ScopeTag, NoAliasTag);
+  return bld->CreateMemCpy (Dst, DstAlign, Src, SrcAlign, Size, isVolatile,
+			    TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
 }
 
 extern "C"
@@ -346,9 +345,8 @@ Build_MemMove (IRBuilder<> *bld, Value *Dst, unsigned DstAlign, Value *Src,
 	       unsigned SrcAlign, Value *Size, bool isVolatile,
 	       MDNode *TBAATag, MDNode *ScopeTag, MDNode *NoAliasTag)
 {
-  return bld->CreateMemMove (Dst, MaybeAlign (DstAlign), Src,
-			     MaybeAlign (SrcAlign), Size, isVolatile, TBAATag,
-			     ScopeTag, NoAliasTag);
+  return bld->CreateMemMove (Dst, DstAlign, Src, SrcAlign, Size, isVolatile,
+			     TBAATag, ScopeTag, NoAliasTag);
 }
 
 extern "C"
@@ -357,8 +355,8 @@ Build_MemSet (IRBuilder<> *bld, Value *Ptr, Value *Val, Value *Size,
 	      unsigned align, bool isVolatile, MDNode *TBAATag,
 	      MDNode *ScopeTag, MDNode *NoAliasTag)
 {
-  return bld->CreateMemSet (Ptr, Val, Size, MaybeAlign (align), isVolatile,
-			    TBAATag, ScopeTag, NoAliasTag);
+  return bld->CreateMemSet (Ptr, Val, Size, align, isVolatile, TBAATag,
+			    ScopeTag, NoAliasTag);
 }
 
 extern "C"

@@ -22,7 +22,7 @@ feedback on successes, usages, limitations, pull requests, etc.
 - For more information on GNAT, see [adacore.com](https://www.adacore.com).
 
 GNAT LLVM has been built successfully on GNU/Linux and Mac OS Mojave x86_64
-native targets, using LLVM 10.0.0. Do not hesitate to report success
+native targets, using LLVM 9.0.1. Do not hesitate to report success
 on other configurations.
 
 Building
@@ -51,10 +51,10 @@ To build GNAT LLVM from sources, follow these steps:
 - Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2019,
   GCC 8 or GCC 9.
 
-- Install LLVM and Clang 10.0.0
+- Install LLVM and Clang 9.0.1
 
   The recommended way to build GNAT LLVM is to use an existing LLVM and clang
-  10.0.0 package install via e.g.  "brew install llvm" on Mac OS or
+  9.0.1 package install via e.g.  "brew install llvm" on Mac OS or
   "sudo apt-get install llvm-dev" on Ubuntu. You can also build llvm yourself
   with the options that suit your needs. After installing/building, make sure
   the llvm bin directory containing llvm-config and clang is in your PATH.

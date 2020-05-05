@@ -923,10 +923,10 @@ package body GNATLLVM.Arrays is
    end Is_Self_Referential_Type;
 
    ---------------------------
-   -- Emit_Others_Aggregate --
+   -- Emit_Single_Aggregate --
    ---------------------------
 
-   procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id) is
+   procedure Emit_Single_Aggregate (LValue : GL_Value; N : Node_Id) is
       GT    : constant GL_Type  := Primitive_GL_Type (Full_GL_Type (N));
       Size  : constant GL_Value := To_Bytes (Get_Type_Size (GT));
       E     : Node_Id           :=
@@ -947,7 +947,7 @@ package body GNATLLVM.Arrays is
 
       --  Find the innermost N_Aggregate and get the value to use
 
-      while Nkind (E) = N_Aggregate and then Is_Others_Aggregate (E) loop
+      while Nkind (E) = N_Aggregate and then Is_Single_Aggregate (E) loop
          E := Expression (First (Component_Associations (E)));
       end loop;
 
@@ -967,7 +967,7 @@ package body GNATLLVM.Arrays is
                     Value, Size, To_Bytes (Get_Type_Alignment (GT)),
                     Is_Volatile (LValue),
                     TBAA => Compute_TBAA_Access (LValue, No_GL_Value, Size));
-   end Emit_Others_Aggregate;
+   end Emit_Single_Aggregate;
 
    -----------------------------
    -- Emit_Constant_Aggregate --
@@ -1031,14 +1031,13 @@ package body GNATLLVM.Arrays is
    begin
       --  The back-end supports exactly two types of array aggregates.
       --  One, which we handle here, is for a fixed-size aggregate.  The
-      --  other are very special cases of Others that are tested for in
-      --  Aggr_Assignment_OK_For_Backend in Exp_Aggr.
+      --  other are very special cases of single-entry aggre that are
+      --  tested for in Aggr_Assignment_OK_For_Backend in Exp_Aggr.  This
+      --  may be such an aggregate if it's not directly on the RHS of an
+      --  assignment statement, for example if we're assigning such to a
+      --  bitfield.  So handle it here.
 
-      --  This may be an Others aggregate if it's not directly on the RHS
-      --  of an assignment statement, for example if we're assigning such
-      --  to a bitfield.  So handle it here.
-
-      if Is_Others_Aggregate (N) then
+      if Is_Single_Aggregate (N) then
 
          --  If we've already been passed in an LHS, use it.  Otherwise,
          --  allocate one.
@@ -1049,7 +1048,7 @@ package body GNATLLVM.Arrays is
                else Allocate_For_Type (GT, N => N));
 
          begin
-            Emit_Others_Aggregate (Result, N);
+            Emit_Single_Aggregate (Result, N);
             return Result;
          end;
 

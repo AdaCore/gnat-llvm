@@ -220,10 +220,10 @@ package GNATLLVM.Arrays is
           Post => Data_Index_In_BD_Type'Result in 1 | 2;
    --  Get the index of the data in a Bounds and Data value
 
-   procedure Emit_Others_Aggregate (LValue : GL_Value; N : Node_Id)
+   procedure Emit_Single_Aggregate (LValue : GL_Value; N : Node_Id)
      with Pre => Present (LValue)
                  and then Nkind_In (N, N_Aggregate, N_Extension_Aggregate)
-                 and then Is_Others_Aggregate (N);
+                 and then Is_Single_Aggregate (N);
    --  Use memset to do an aggregate assignment from N to LValue
 
    function Emit_Array_Aggregate

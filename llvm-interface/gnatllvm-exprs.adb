@@ -1371,18 +1371,18 @@ package body GNATLLVM.Exprs is
    begin
       --  The back-end supports exactly two types of array aggregates.
       --  One, handled in Emit_Array_Aggregate, is for a fixed-size
-      --  aggregate of fixed-size components.  The other type is special
-      --  cases of Others tested for in Aggr_Assignment_OK_For_Backend in
-      --  Exp_Aggr.  We have to handle them here because we want to store
-      --  directly into the LHS.  The front end guarantees that any Others
-      --  aggregate will always be the RHS of an assignment, so we'll see
-      --  it here.
+      --  aggregate of fixed-size components.  The other type is the
+      --  special case of a single entry that's tested for in
+      --  Aggr_Assignment_OK_For_Backend in Exp_Aggr.  We have to handle
+      --  them here because we want to store directly into the LHS.  The
+      --  front end guarantees that any single-entry aggregate will always
+      --  be the RHS of an assignment, so we'll see it here.
 
       if Is_Array_Type (Dest_GT) and then Present (E)
         and then Nkind_In (E, N_Aggregate, N_Extension_Aggregate)
-        and then Is_Others_Aggregate (E)
+        and then Is_Single_Aggregate (E)
       then
-         Emit_Others_Aggregate (Dest, E);
+         Emit_Single_Aggregate (Dest, E);
          return;
       end if;
 

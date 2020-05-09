@@ -634,6 +634,12 @@ package GNATLLVM.Instructions is
                   and then Is_Elementary_Type (C_Else),
           Post => Is_Elementary_Type (Build_Select'Result);
 
+   procedure Add_Clause (V, Exc : GL_Value)
+     with Pre => Present (V) and then Present (Exc), Inline;
+
+   procedure Set_Cleanup (V : GL_Value)
+     with Pre => Present (V), Inline;
+
    procedure Build_Cond_Br
      (C_If : GL_Value; C_Then, C_Else : Basic_Block_T)
      with Pre => Ekind (Full_Etype (C_If)) in Enumeration_Kind

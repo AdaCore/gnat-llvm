@@ -46,6 +46,7 @@ with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
+with GNATLLVM.Helper;       use GNATLLVM.Helper;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;

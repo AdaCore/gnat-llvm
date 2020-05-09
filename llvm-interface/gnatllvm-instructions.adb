@@ -855,6 +855,24 @@ package body GNATLLVM.Instructions is
       end if;
    end Move_To_BB;
 
+   ----------------
+   -- Add_Clause --
+   ----------------
+
+   procedure Add_Clause (V, Exc : GL_Value) is
+   begin
+      Add_Clause (+V, +Exc);
+   end Add_Clause;
+
+   -----------------
+   -- Set_Cleanup --
+   -----------------
+
+   procedure Set_Cleanup (V : GL_Value) is
+   begin
+      Set_Cleanup (+V, True);
+   end Set_Cleanup;
+
    ---------------
    -- Build_Ret --
    ---------------

@@ -31,6 +31,7 @@ with GNATLLVM.Aliasing.Params; use GNATLLVM.Aliasing.Params;
 with GNATLLVM.Arrays;          use GNATLLVM.Arrays;
 with GNATLLVM.Environment;     use GNATLLVM.Environment;
 with GNATLLVM.GLType;          use GNATLLVM.GLType;
+with GNATLLVM.Helper;          use GNATLLVM.Helper;
 with GNATLLVM.Instructions;    use GNATLLVM.Instructions;
 with GNATLLVM.Records;         use GNATLLVM.Records;
 with GNATLLVM.Types;           use GNATLLVM.Types;

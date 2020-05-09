@@ -1433,24 +1433,6 @@ package body GNATLLVM.GLValue is
    function Full_Base_Type (V : GL_Value) return Entity_Id is
      (Full_Base_Type (Full_Etype (V)));
 
-   ----------------
-   -- Add_Clause --
-   ----------------
-
-   procedure Add_Clause (V, Exc : GL_Value) is
-   begin
-      Add_Clause (+V, +Exc);
-   end Add_Clause;
-
-   -----------------
-   -- Set_Cleanup --
-   -----------------
-
-   procedure Set_Cleanup (V : GL_Value) is
-   begin
-      Set_Cleanup (+V, True);
-   end Set_Cleanup;
-
    -------------------
    -- Get_Type_Size --
    -------------------
@@ -1839,33 +1821,6 @@ package body GNATLLVM.GLValue is
 
       return Inst;
    end Set_Arith_Attrs;
-
-   --------------------
-   -- Set_Subprogram --
-   --------------------
-
-   procedure Set_Subprogram (V : GL_Value; M : Metadata_T) is
-   begin
-      Set_Subprogram (+V, M);
-   end Set_Subprogram;
-
-   --------------------------------
-   -- Add_Named_Metadata_Operand --
-   --------------------------------
-
-   procedure Add_Named_Metadata_Operand (Name : String; M : Metadata_T) is
-   begin
-      Add_Named_Metadata_Operand (Name, Metadata_As_Value (M));
-   end Add_Named_Metadata_Operand;
-
-   --------------------------------
-   -- Add_Named_Metadata_Operand --
-   --------------------------------
-
-   procedure Add_Named_Metadata_Operand (Name : String; V : Value_T) is
-   begin
-      Add_Named_Metadata_Operand (Module, Name, V);
-   end Add_Named_Metadata_Operand;
 
    -------------------------
    -- Is_Layout_Identical --

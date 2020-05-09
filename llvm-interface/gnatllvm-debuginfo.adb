@@ -26,6 +26,7 @@ with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
+with GNATLLVM.Helper;      use GNATLLVM.Helper;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
@@ -229,8 +230,9 @@ package body GNATLLVM.DebugInfo is
             Dyn_Scope     : constant Metadata_T :=
               (if   Present (Dyn_Scope_E)
                     and then Present (Get_Value (Dyn_Scope_E))
-                    and then Present (Get_Subprogram (Get_Value (Dyn_Scope_E)))
-               then Get_Subprogram (Get_Value (Dyn_Scope_E))
+                    and then Present (Get_Subprogram_Debug_Metadata
+                                        (Get_Value (Dyn_Scope_E)))
+               then Get_Subprogram_Debug_Metadata (Get_Value (Dyn_Scope_E))
                else File_Node);
             Function_Node : constant Metadata_T :=
               DI_Create_Function
@@ -242,7 +244,7 @@ package body GNATLLVM.DebugInfo is
                  Code_Gen_Level /= Code_Gen_Level_None);
 
          begin
-            Set_Subprogram (Func, Function_Node);
+            Set_Subprogram_Debug_Metadata (Func, Function_Node);
             return Function_Node;
          end;
       else

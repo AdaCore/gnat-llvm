@@ -17,8 +17,7 @@
 
 with Ada.Unchecked_Deallocation;
 
-with LLVM.Core;       use LLVM.Core;
-with LLVM.Debug_Info; use LLVM.Debug_Info;
+with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
@@ -991,12 +990,6 @@ package GNATLLVM.GLValue is
    procedure Set_Value_Name (V : GL_Value; Name : String)
      with Pre => Present (V), Inline;
 
-   procedure Add_Clause (V, Exc : GL_Value)
-     with Pre => Present (V) and then Present (Exc), Inline;
-
-   procedure Set_Cleanup (V : GL_Value)
-     with Pre => Present (V), Inline;
-
    procedure Add_Cold_Attribute (V : GL_Value)
      with Pre => Is_A_Function (V), Inline;
    --  Add the Cold attribute to function V
@@ -1373,80 +1366,6 @@ package GNATLLVM.GLValue is
 
    procedure Add_Function_To_Module (V : GL_Value)
      with Pre => Present (V), Inline;
-
-   function Create_TBAA_Scalar_Type_Node
-     (Name : String; Size : ULL; Parent : Metadata_T) return Metadata_T
-   is
-     (Create_TBAA_Scalar_Type_Node (Context, MD_Builder, Name, Size, Parent))
-     with Pre  => Present (Parent),
-          Post => Present (Create_TBAA_Scalar_Type_Node'Result);
-
-   function Create_TBAA_Struct_Type_Node
-     (Name    : String;
-      Size    : ULL;
-      Parent  : Metadata_T;
-      Offsets : ULL_Array;
-      Sizes   : ULL_Array;
-      TBAAs   : Metadata_Array) return Metadata_T
-   is
-      (Create_TBAA_Struct_Type_Node
-         (Context, MD_Builder, Name, Size, Offsets'Length,
-          Parent, TBAAs'Address, Offsets'Address, Sizes'Address))
-     with Pre  => Present (Parent) and then Sizes'First = Offsets'First
-                  and then Sizes'Last  = Offsets'Last
-                  and then TBAAs'First = Offsets'First
-                  and then TBAAs'Last  = Offsets'Last
-                  and then (for all T of TBAAs   => Present (T)),
-          Post => Present (Create_TBAA_Struct_Type_Node'Result);
-
-   function Create_TBAA_Struct_Node
-     (TBAAs   : Metadata_Array;
-      Offsets : ULL_Array;
-      Sizes   : ULL_Array) return Metadata_T
-   is
-      (Create_TBAA_Struct_Node
-         (Context, MD_Builder, TBAAs'Length, TBAAs'Address, Offsets'Address,
-          Sizes'Address))
-     with Pre  => TBAAs'First = Offsets'First
-                  and then TBAAs'Last  = Offsets'Last
-                  and then TBAAs'First = Sizes'First
-                  and then TBAAs'Last  = Sizes'Last
-                  and then (for all T of TBAAs   => Present (T)),
-          Post => Present (Create_TBAA_Struct_Node'Result);
-
-   function Get_Subprogram (V : GL_Value) return Metadata_T is
-     (Get_Subprogram (+V))
-     with Pre => Is_A_Function (V), Inline;
-
-   procedure Set_Subprogram (V : GL_Value; M : Metadata_T)
-     with Pre => Is_A_Function (V) and then Present (M), Inline;
-
-   function Value_As_Metadata (V : GL_Value) return Metadata_T is
-     (Value_As_Metadata (+V))
-     with Pre => Present (V), Post => Present (Value_As_Metadata'Result);
-
-   function Metadata_As_Value (M : Metadata_T) return Value_T is
-     (Metadata_As_Value (Context, M))
-     with Pre => Present (M), Post => Present (Metadata_As_Value'Result);
-
-   function Const_32_As_Metadata (U : Uint) return Metadata_T is
-     (Value_As_Metadata (+Const_Int_32 (U)))
-     with Pre => Present (U), Post => Present (Const_32_As_Metadata'Result);
-
-   function MD_String (S : String) return Metadata_T is
-     (MD_String_In_Context2 (Context, S, S'Length))
-     with Post => Present (MD_String'Result);
-
-   function MD_Node (MDs : Metadata_Array) return Metadata_T is
-     (MD_Node_In_Context2 (Context, MDs'Address, MDs'Length))
-     with Pre  => (for all M of MDs => Present (M)),
-          Post => Present (MD_Node'Result);
-
-   procedure Add_Named_Metadata_Operand (Name : String; V : Value_T)
-     with Pre => Present (V), Inline;
-
-   procedure Add_Named_Metadata_Operand (Name : String; M : Metadata_T)
-     with Pre => Present (M), Inline;
 
    function Is_Layout_Identical (V : GL_Value; GT : GL_Type) return Boolean
      with Pre => Present (V) and then Present (GT), Inline;

@@ -141,6 +141,63 @@ package GNATLLVM.Subprograms is
    --  Generate code for one given subprogram body.  If For_Inline is
    --  True, we're compiling this just to possibly inline it.
 
+   function Number_In_Params (E : Entity_Id) return Nat
+     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   --  Return a count of the number of parameters of E, that are
+   --  explict input parameters to E.  We may have to add a parameter for
+   --  an activation record and/or address to place the return.
+
+   function Number_Out_Params (E : Entity_Id) return Nat
+     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   --  Return a count of the number of parameters of E, that are
+   --  output parameters to E.
+
+   function First_In_Param (E : Entity_Id) return Entity_Id
+     with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type,
+          Post => No (First_In_Param'Result)
+                  or else Ekind (First_In_Param'Result) in Formal_Kind;
+   --  Return the first formal of E that's an input to the subprogram,
+   --  either because it's an input passed by copy or a reference.
+
+   function Next_In_Param (E : Entity_Id) return Entity_Id
+     with Pre  => Ekind (E) in Formal_Kind,
+          Post => No (Next_In_Param'Result)
+                  or else Ekind (Next_In_Param'Result) in Formal_Kind;
+   --  Given E, a formal of some subprogram, return the next In parameter,
+   --  as defined above, of that subprogram.
+
+   procedure Next_In_Param (E : in out Entity_Id)
+     with Pre  => Ekind (E) in Formal_Kind,
+          Post => No (E) or else Ekind (E) in Formal_Kind;
+   --  Given E, a formal of some subprogram, update it to be the next In
+   --  parameter, as defined above, of that subprogram.
+
+   function First_Out_Param (E : Entity_Id) return Entity_Id
+     with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type,
+          Post => No (First_Out_Param'Result)
+                  or else (Ekind_In (First_Out_Param'Result,
+                                     E_Out_Parameter, E_In_Out_Parameter));
+   --  Return the first formal of E that's an output from the subprogram
+
+   function Next_Out_Param (E : Entity_Id) return Entity_Id
+     with Pre  => Ekind_In (E, E_Out_Parameter, E_In_Out_Parameter),
+          Post => No (Next_Out_Param'Result)
+                  or else (Ekind_In (Next_Out_Param'Result,
+                                     E_Out_Parameter, E_In_Out_Parameter));
+   --  Given E, a formal of some subprogram, return the next Out parameter,
+   --  as defined above, of that subprogram.
+
+   procedure Next_Out_Param (E : in out Entity_Id)
+     with Pre  => Ekind_In (E, E_Out_Parameter, E_In_Out_Parameter),
+          Post => No (E) or else (Ekind_In (E, E_Out_Parameter,
+                                            E_In_Out_Parameter));
+   --  Given E, a formal of some subprogram, update it to be the next Out
+   --  parameter, as defined above, of that subprogram.
+
+   function Param_Is_Reference (E : Entity_Id) return Boolean
+     with Pre => Ekind (E) in Formal_Kind;
+   --  Return True iff E, a subprogram parameter, is passed by reference
+
    function Create_Subprogram (E : Entity_Id) return GL_Value
      with Pre => Ekind (E) in Subprogram_Kind;
    --  Create and save an LLVM object for E, a subprogram

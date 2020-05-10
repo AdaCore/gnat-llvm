@@ -113,42 +113,13 @@ package body GNATLLVM.Subprograms is
    --  True if this parameter kind is returned from the subprogram
 
    function Get_Param_Kind (Param : Entity_Id) return Param_Kind
-     with Pre => Ekind_In (Param, E_In_Parameter, E_In_Out_Parameter,
-                           E_Out_Parameter);
+     with Pre => Ekind (Param) in Formal_Kind;
    --  Return the parameter kind for Param
 
    function Relationship_For_PK
      (PK : Param_Kind; GT : GL_Type) return GL_Relationship
      with Pre => Present (GT);
    --  Return the Relationship for a parameter of type GT and kind PK
-
-   function Count_In_Params (E : Entity_Id) return Nat
-     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
-   --  Return a count of the number of parameters of E, that are
-   --  explict input parameters to E.  We may have to add a parameter for
-   --  an activation record and/or address to place the return.
-
-   function Count_Out_Params (E : Entity_Id) return Nat
-     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
-   --  Return a count of the number of parameters of E, that are
-   --  output parameters to E.
-
-   function First_Out_Param (E : Entity_Id) return Entity_Id
-     with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type,
-          Post => No (First_Out_Param'Result)
-                  or else (Ekind_In (First_Out_Param'Result,
-                                     E_Out_Parameter, E_In_Out_Parameter));
-
-   function Next_Out_Param (E : Entity_Id) return Entity_Id
-     with Pre  => Ekind_In (E, E_Out_Parameter, E_In_Out_Parameter),
-          Post => No (Next_Out_Param'Result)
-                  or else (Ekind_In (Next_Out_Param'Result,
-                                     E_Out_Parameter, E_In_Out_Parameter));
-
-   procedure Next_Out_Param (E : in out Entity_Id)
-     with Pre  => Ekind_In (E, E_Out_Parameter, E_In_Out_Parameter),
-          Post => No (E) or else (Ekind_In (E, E_Out_Parameter,
-                                            E_In_Out_Parameter));
 
    function Make_Trampoline
      (GT : GL_Type; Fn, Static_Link : GL_Value; N : Node_Id) return GL_Value
@@ -311,11 +282,11 @@ package body GNATLLVM.Subprograms is
    --  confusion with global names. So if we made it as part of the
    --  processing of a declaration, save it.
 
-   ---------------------
-   -- Count_In_Params --
-   ---------------------
+   ----------------------
+   -- Number_In_Params --
+   ----------------------
 
-   function Count_In_Params (E : Entity_Id) return Nat is
+   function Number_In_Params (E : Entity_Id) return Nat is
       Param : Entity_Id := First_Formal_With_Extras (E);
 
    begin
@@ -328,13 +299,13 @@ package body GNATLLVM.Subprograms is
             Next_Formal_With_Extras (Param);
          end loop;
       end return;
-   end Count_In_Params;
+   end Number_In_Params;
 
-   ----------------------
-   -- Count_Out_Params --
-   ----------------------
+   -----------------------
+   -- Number_Out_Params --
+   -----------------------
 
-   function Count_Out_Params (E : Entity_Id) return Nat is
+   function Number_Out_Params (E : Entity_Id) return Nat is
       Param : Entity_Id := First_Formal_With_Extras (E);
 
    begin
@@ -347,7 +318,45 @@ package body GNATLLVM.Subprograms is
             Next_Formal_With_Extras (Param);
          end loop;
       end return;
-   end Count_Out_Params;
+   end Number_Out_Params;
+
+   --------------------
+   -- First_In_Param --
+   --------------------
+
+   function First_In_Param (E : Entity_Id) return Entity_Id is
+   begin
+      return Param : Entity_Id := First_Formal_With_Extras (E) do
+         while Present (Param) loop
+            exit when PK_Is_In_Or_Ref (Get_Param_Kind (Param));
+            Next_Formal_With_Extras (Param);
+         end loop;
+      end return;
+   end First_In_Param;
+
+   -------------------
+   -- Next_In_Param --
+   -------------------
+
+   function Next_In_Param (E : Entity_Id) return Entity_Id is
+
+   begin
+      return Param : Entity_Id := Next_Formal_With_Extras (E) do
+         while Present (Param) loop
+            exit when PK_Is_In_Or_Ref (Get_Param_Kind (Param));
+            Next_Formal_With_Extras (Param);
+         end loop;
+      end return;
+   end Next_In_Param;
+
+   -------------------
+   -- Next_In_Param --
+   -------------------
+
+   procedure Next_In_Param (E : in out Entity_Id) is
+   begin
+      E := Next_In_Param (E);
+   end Next_In_Param;
 
    ---------------------
    -- First_Out_Param --
@@ -363,9 +372,9 @@ package body GNATLLVM.Subprograms is
       end return;
    end First_Out_Param;
 
-   ---------------------
+   --------------------
    -- Next_Out_Param --
-   ---------------------
+   --------------------
 
    function Next_Out_Param (E : Entity_Id) return Entity_Id is
 
@@ -378,14 +387,21 @@ package body GNATLLVM.Subprograms is
       end return;
    end Next_Out_Param;
 
-   ---------------------
+   --------------------
    -- Next_Out_Param --
-   ---------------------
+   --------------------
 
    procedure Next_Out_Param (E : in out Entity_Id) is
    begin
       E := Next_Out_Param (E);
    end Next_Out_Param;
+
+   -------------------------
+   --  Param_Is_Reference --
+   -------------------------
+
+   function Param_Is_Reference (E : Entity_Id) return Boolean is
+     (PK_Is_Reference (Get_Param_Kind (E)));
 
    ---------------------------
    -- Get_Param_By_Ref_Mech --
@@ -607,7 +623,7 @@ package body GNATLLVM.Subprograms is
 
    function Get_L_Ret_Kind (E : Entity_Id) return L_Ret_Kind is
       RK      : constant Return_Kind := Get_Return_Kind  (E);
-      Num_Out : constant Nat         := Count_Out_Params (E);
+      Num_Out : constant Nat         := Number_Out_Params (E);
       Has_Ret : constant Boolean     := RK not in None | Return_By_Parameter;
 
    begin
@@ -691,10 +707,10 @@ package body GNATLLVM.Subprograms is
          elsif RK = RK_By_Reference then Create_Access_Type_To (Return_GT)
          else  Type_Of (Return_GT));
       In_Args_Count   : constant Nat         :=
-        Count_In_Params (E) + (if Adds_S_Link then 1 else 0) +
+        Number_In_Params (E) + (if Adds_S_Link then 1 else 0) +
           (if RK = Return_By_Parameter then 1 else 0);
       Out_Args_Count  : constant Nat         :=
-        Count_Out_Params (E) +
+        Number_Out_Params (E) +
           (if LRK = Struct_Out_Subprog then 1 else 0);
       In_Arg_Types    : Type_Array (1 .. In_Args_Count);
       Out_Arg_Types   : Type_Array (1 .. Out_Args_Count);
@@ -1842,8 +1858,8 @@ package body GNATLLVM.Subprograms is
       RK               : constant Return_Kind := Get_Return_Kind  (Subp_Typ);
       LRK              : constant L_Ret_Kind  := Get_L_Ret_Kind   (Subp_Typ);
       Return_GT        : constant GL_Type     := Full_GL_Type     (Subp_Typ);
-      Orig_Arg_Count   : constant Nat         := Count_In_Params  (Subp_Typ);
-      Out_Arg_Count    : constant Nat         := Count_Out_Params (Subp_Typ);
+      Orig_Arg_Count   : constant Nat         := Number_In_Params  (Subp_Typ);
+      Out_Arg_Count    : constant Nat         := Number_Out_Params (Subp_Typ);
       Out_Param        : Entity_Id            := First_Out_Param  (Subp_Typ);
       No_Adjust_LV     : constant Boolean     := Contains_Discriminant (N);
       In_Idx           : Nat                  := 1;

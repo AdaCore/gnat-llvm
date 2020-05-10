@@ -42,11 +42,11 @@ package GNATLLVM.DebugInfo is
 
    function Create_Subprogram_Debug_Info
      (Func     : GL_Value;
-      E        : Entity_Id;
       N        : Node_Id;
-      Name     : String := "";
-      Ext_Name : String := "") return Metadata_T
-     with Pre  => Present (Func) and then Present (E) and then Present (N),
+      E        : Entity_Id := Empty;
+      Name     : String    := "";
+      Ext_Name : String    := "") return Metadata_T
+     with Pre  => Present (Func) and then Present (N),
           Post => not Emit_Debug_Info
                   or else Present (Create_Subprogram_Debug_Info'Result);
    --  Create debugging information for Func with entity E using

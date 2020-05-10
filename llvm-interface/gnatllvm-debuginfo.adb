@@ -198,28 +198,55 @@ package body GNATLLVM.DebugInfo is
 
    function Create_Subprogram_Debug_Info
      (Func     : GL_Value;
-      E        : Entity_Id;
       N        : Node_Id;
-      Name     : String := "";
-      Ext_Name : String := "") return Metadata_T
+      E        : Entity_Id := Empty;
+      Name     : String    := "";
+      Ext_Name : String    := "") return Metadata_T
    is
-      Types      : constant Metadata_Array (1 .. 0) := (others => <>);
+      Num_Params : constant Nat                 :=
+        (if Present (E) then Number_In_Params (E) else 0);
+      Types      : Metadata_Array (0 .. Num_Params);
       S_Name     : constant String              :=
         (if Name /= "" then Name else Get_Name (E));
       S_Ext_Name : constant String              :=
         (if Ext_Name /= "" then Ext_Name else Get_Ext_Name (E));
+      P          : Entity_Id                    :=
+        (if Present (E) then First_In_Param (E) else Empty);
+      Idx        : Nat                          := 1;
 
    begin
-      --  ??? We don't make the subprogram type from the types of the
-      --  arguments because they may not match the actual args and
-      --  it's tricky to get this right.
-
       if Emit_Debug_Info then
+
+         --  ??? For now, don't deal with the return type
+
+         Types (0) := No_Metadata_T;
+
+         --  Collect the types of all the parameters, handling types passed
+         --  by reference in a simplistic manner by just making a pointer
+         --  type.
+
+         while Present (P) loop
+            declare
+               Typ : Metadata_T := Create_Debug_Type_Data (Full_GL_Type (P));
+
+            begin
+               if Param_Is_Reference (P) then
+                  Typ := DI_Create_Pointer_Type (Typ, ULL (Thin_Pointer_Size),
+                                                 unsigned (Thin_Pointer_Size),
+                                                 0, Get_Name (P) & "#RF");
+               end if;
+
+               Types (Idx) := Typ;
+               Idx         := Idx + 1;
+               Next_In_Param (P);
+            end;
+         end loop;
+
          declare
             File_Node     : constant Metadata_T          :=
               Get_Debug_File_Node (Get_Source_File_Index (Sloc (N)));
             Dyn_Scope_E   : constant Entity_Id           :=
-              Enclosing_Subprogram_Scope (E);
+              (if Present (E) then Enclosing_Subprogram_Scope (E) else Empty);
             Dyn_Scope_Val : constant GL_Value            :=
               (if   Present (Dyn_Scope_E) then Get_Value (Dyn_Scope_E)
                else No_GL_Value);

@@ -1060,7 +1060,7 @@ package body GNATLLVM.Subprograms is
       Enter_Subp (Func);
       Push_Debug_Scope
         (Get_Source_File_Index (Sloc (N)),
-         Create_Subprogram_Debug_Info (Func, E, N));
+         Create_Subprogram_Debug_Info (Func, N, E));
       Set_Debug_Pos_At_Node (N);
 
       --  If the return type has dynamic size, we've added a parameter
@@ -1391,7 +1391,7 @@ package body GNATLLVM.Subprograms is
       Push_Debug_Scope
         (Get_Source_File_Index (Sloc (N)),
          Create_Subprogram_Debug_Info
-           (LLVM_Func, Unit, N,
+           (LLVM_Func, N,
             Name     => Get_Name_String (Chars (Unit)),
             Ext_Name => Name));
       Set_Debug_Pos_At_Node (N);

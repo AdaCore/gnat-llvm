@@ -43,4 +43,13 @@ package body GNATLLVM.Helper is
       Add_Named_Metadata_Operand (Module, Name, V);
    end Add_Named_Metadata_Operand;
 
+   --------------------------------
+   -- Set_Current_Debug_Location --
+   -------------------------------
+
+   procedure Set_Current_Debug_Location (MD : Metadata_T) is
+   begin
+      Set_Current_Debug_Location2 (IR_Builder, MD);
+   end Set_Current_Debug_Location;
+
 end GNATLLVM.Helper;

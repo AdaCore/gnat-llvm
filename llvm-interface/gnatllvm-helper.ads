@@ -105,4 +105,286 @@ package GNATLLVM.Helper is
    procedure Add_Named_Metadata_Operand (Name : String; M : Metadata_T)
      with Pre => Present (M), Inline;
 
+   procedure Set_Current_Debug_Location (MD : Metadata_T)
+     with Pre => Present (MD), Inline;
+
+   function DI_Create_Compile_Unit
+     (Lang                     : DWARF_Source_Language_T;
+      File_Ref                 : Metadata_T;
+      Producer                 : String;
+      Is_Optimized             : Boolean;
+      Flags                    : String;
+      Runtime_Ver              : Int;
+      Split_Name               : String;
+      Kind                     : DWARF_Emission_Kind_T;
+      DWO_Id                   : Int;
+      Split_Debug_Inlining     : Boolean;
+      Debug_Info_For_Profiling : Boolean) return Metadata_T
+   is
+     (DI_Create_Compile_Unit (DI_Builder, Lang, File_Ref, Producer,
+                              Producer'Length, Is_Optimized,
+                              Flags, Flags'Length,
+                              unsigned (Runtime_Ver),
+                              Split_Name, Split_Name'Length, Kind,
+                              unsigned (DWO_Id), Split_Debug_Inlining,
+                              Debug_Info_For_Profiling))
+     with Pre  => Present (File_Ref),
+          Post => Present (DI_Create_Compile_Unit'Result);
+
+   function DI_Create_File
+     (Filename : String; Directory : String) return Metadata_T
+   is
+     (DI_Create_File (DI_Builder, Filename, Filename'Length,
+                      Directory, Directory'Length))
+     with Post => Present (DI_Create_File'Result);
+
+   function DI_Builder_Create_Subroutine_Type
+     (File            : Metadata_T;
+      Parameter_Types : Metadata_Array;
+      Flags           : DI_Flags_T) return Metadata_T
+   is
+     (DI_Builder_Create_Subroutine_Type
+        (DI_Builder, File,
+         Parameter_Types'Address, unsigned (Parameter_Types'Length), Flags))
+     with Pre  => Present (File),
+          Post => Present (DI_Builder_Create_Subroutine_Type'Result);
+
+   function DI_Create_Function
+     (Scope            : Metadata_T;
+      Name             : String;
+      Linkage_Name     : String;
+      File             : Metadata_T;
+      Line_No          : Logical_Line_Number;
+      Ty               : Metadata_T;
+      Is_Local_To_Unit : Boolean;
+      Is_Definition    : Boolean;
+      Scope_Line       : Logical_Line_Number;
+      Flags            : DI_Flags_T;
+      Is_Optimized     : Boolean) return Metadata_T
+   is
+     (DI_Create_Function (DI_Builder, Scope, Name, Name'Length,
+                          Linkage_Name, Linkage_Name'Length, File,
+                          unsigned (Line_No), Ty, Is_Local_To_Unit,
+                          Is_Definition, unsigned (Scope_Line), Flags,
+                          Is_Optimized))
+     with Pre  => Present (Scope) and then Present (File),
+          Post => Present (DI_Create_Function'Result);
+
+   function DI_Builder_Create_Lexical_Block
+     (Scope  : Metadata_T;
+      File   : Metadata_T;
+      Line   : Logical_Line_Number;
+      Column : Column_Number) return Metadata_T
+   is
+     (DI_Builder_Create_Lexical_Block
+        (DI_Builder, Scope, File, unsigned (Line), unsigned (Column)))
+     with Pre  => Present (Scope) and then Present (File),
+          Post => Present (DI_Builder_Create_Lexical_Block'Result);
+
+   function DI_Builder_Create_Debug_Location
+     (Line       : Logical_Line_Number;
+      Column     : Column_Number;
+      Scope      : Metadata_T;
+      Inlined_At : Metadata_T) return Metadata_T
+   is
+     (DI_Builder_Create_Debug_Location
+        (Context, unsigned (Line), unsigned (Column), Scope, Inlined_At))
+     with Pre  => Present (Scope),
+          Post => Present (DI_Builder_Create_Debug_Location'Result);
+
+   function DI_Create_Unspecified_Type (Name : String) return Metadata_T is
+     (DI_Create_Unspecified_Type (DI_Builder, Name, Name'Length))
+     with Post => Present (DI_Create_Unspecified_Type'Result);
+
+   function DI_Create_Basic_Type
+     (Name         : String;
+      Size_In_Bits : ULL;
+      Encoding     : DWARF_Type_Encoding_T;
+      Flags        : DI_Flags_T) return Metadata_T
+   is
+     (DI_Create_Basic_Type
+        (DI_Builder, Name, Name'Length, uint64_t (Size_In_Bits), Encoding,
+         Flags))
+     with Post => Present (DI_Create_Basic_Type'Result);
+
+   function DI_Create_Pointer_Type
+     (Pointee_Ty    : Metadata_T;
+      Size_In_Bits  : ULL;
+      Align_In_Bits : unsigned;
+      Address_Space : unsigned;
+      Name          : String) return Metadata_T
+   is
+     (DI_Create_Pointer_Type
+        (DI_Builder, Pointee_Ty, uint64_t (Size_In_Bits),
+         uint32_t (Align_In_Bits), Address_Space, Name, Name'Length))
+     with Pre  => Present (Pointee_Ty),
+          Post => Present (DI_Create_Pointer_Type'Result);
+
+   function DI_Builder_Get_Or_Create_Subrange
+     (Lower_Bound, Count : LLI) return Metadata_T
+   is
+     (DI_Builder_Get_Or_Create_Subrange
+        (DI_Builder, int64_t (Lower_Bound), int64_t (Count)))
+     with Post => Present (DI_Builder_Get_Or_Create_Subrange'Result);
+
+   function DI_Builder_Create_Array_Type
+     (Size          : ULL;
+      Align_In_Bits : unsigned;
+      Ty            : Metadata_T;
+      Subscripts    : Metadata_Array) return Metadata_T
+   is
+     (DI_Builder_Create_Array_Type
+        (DI_Builder, uint64_t (Size), uint32_t (Align_In_Bits), Ty,
+         Subscripts'Address, unsigned (Subscripts'Length)))
+     with Pre  => Present (Ty),
+          Post => Present (DI_Builder_Create_Array_Type'Result);
+
+   function DI_Create_Struct_Type
+     (Scope          : Metadata_T;
+      Name           : String;
+      File           : Metadata_T;
+      Line_Number    : Logical_Line_Number;
+      Size_In_Bits   : ULL;
+      Align_In_Bits  : unsigned;
+      Flags          : DI_Flags_T;
+      Derived_From   : Metadata_T;
+      Elements       : Metadata_Array;
+      Run_Time_Lang  : unsigned;
+      V_Table_Holder : Metadata_T;
+      Unique_Id      : String) return Metadata_T
+   is
+     (DI_Create_Struct_Type (DI_Builder, Scope, Name, Name'Length, File,
+                             unsigned (Line_Number), uint64_t (Size_In_Bits),
+                             uint32_t (Align_In_Bits), Flags, Derived_From,
+                             Elements'Address, unsigned (Elements'Length),
+                             Run_Time_Lang, V_Table_Holder, Unique_Id,
+                             Unique_Id'Length))
+     with Pre =>  (for all MD of Elements => Present (MD)),
+          Post => Present (DI_Create_Struct_Type'Result);
+
+   function DI_Create_Enumeration_Type
+     (Scope         : Metadata_T;
+      Name          : String;
+      File          : Metadata_T;
+      Line_Number   : Logical_Line_Number;
+      Size_In_Bits  : ULL;
+      Align_In_Bits : unsigned;
+      Elements      : Metadata_Array;
+      Class_Ty      : Metadata_T) return Metadata_T
+   is
+     (DI_Create_Enumeration_Type
+        (DI_Builder, Scope, Name, Name'Length, File, unsigned (Line_Number),
+         uint64_t (Size_In_Bits), uint32_t (Align_In_Bits),
+         Elements'Address, Elements'Length, Class_Ty))
+     with Pre  => Present (File)
+                  and then (for all MD of Elements => Present (MD)),
+          Post => Present (DI_Create_Enumeration_Type'Result);
+
+   function DI_Create_Member_Type
+     (Scope          : Metadata_T;
+      Name           : String;
+      File           : Metadata_T;
+      Line_No        : Logical_Line_Number;
+      Size_In_Bits   : ULL;
+      Align_In_Bits  : unsigned;
+      Offset_In_Bits : ULL;
+      Flags          : DI_Flags_T;
+      Ty             : Metadata_T) return Metadata_T
+   is
+     (DI_Create_Member_Type
+        (DI_Builder, Scope, Name, Name'Length, File, unsigned (Line_No),
+         uint64_t (Size_In_Bits), uint32_t (Align_In_Bits),
+         uint64_t (Offset_In_Bits), Flags, Ty))
+     with Pre  => Present (File) and then Present (Ty),
+          Post => Present (DI_Create_Member_Type'Result);
+
+   function DI_Create_Enumerator
+     (Name : String; Value : LLI; Is_Unsigned : Boolean) return Metadata_T
+   is
+     (DI_Create_Enumerator (DI_Builder, Name, Name'Length, int64_t (Value),
+                            Is_Unsigned))
+     with Post => Present (DI_Create_Enumerator'Result);
+
+   function DI_Create_Global_Variable_Expression
+     (Scope         : Metadata_T;
+      Name          : String;
+      Linkage       : String;
+      File          : Metadata_T;
+      Line_No       : Logical_Line_Number;
+      Ty            : Metadata_T;
+      Local_To_Unit : Boolean;
+      Expr          : Metadata_T;
+      Decl          : Metadata_T;
+      Align_In_Bits : unsigned) return Metadata_T
+   is
+     (DI_Create_Global_Variable_Expression
+        (DI_Builder, Scope, Name, Name'Length, Linkage, Linkage'Length, File,
+         unsigned (Line_No), Ty, Local_To_Unit, Expr, Decl,
+         uint32_t (Align_In_Bits)))
+     with Pre  => Present (Scope) and then Present (File)
+                  and then Present (Expr),
+          Post => Present (DI_Create_Global_Variable_Expression'Result);
+
+   function DI_Create_Auto_Variable
+     (Scope           : Metadata_T;
+      Name            : String;
+      File            : Metadata_T;
+      Line_No         : Logical_Line_Number;
+      Ty              : Metadata_T;
+      Always_Preserve : Boolean;
+      Flags           : DI_Flags_T;
+      Align_In_Bits   : unsigned) return Metadata_T
+   is
+     (DI_Create_Auto_Variable
+        (DI_Builder, Scope, Name, Name'Length, File, unsigned (Line_No),
+         Ty, Always_Preserve, Flags, uint32_t (Align_In_Bits)))
+     with Pre  => Present (Scope) and then Present (File)
+                  and then Present (Ty),
+          Post => Present (DI_Create_Auto_Variable'Result);
+
+   function DI_Create_Parameter_Variable
+     (Scope           : Metadata_T;
+      Name            : String;
+      Arg_No          : Nat;
+      File            : Metadata_T;
+      Line_No         : Logical_Line_Number;
+      Ty              : Metadata_T;
+      Always_Preserve : Boolean;
+      Flags           : DI_Flags_T) return Metadata_T
+   is
+     (DI_Create_Parameter_Variable
+        (DI_Builder, Scope, Name, Name'Length, unsigned (Arg_No), File,
+         unsigned (Line_No), Ty, Always_Preserve, Flags))
+     with Pre  => Present (Scope) and then Present (File)
+                  and then Present (Ty),
+          Post => Present (DI_Create_Parameter_Variable'Result);
+
+   function DI_Builder_Insert_Dbg_Value_At_End
+     (V         : GL_Value;
+      Var_Info  : Metadata_T;
+      Expr      : Metadata_T;
+      Debug_Loc : Metadata_T;
+      Block     : Basic_Block_T) return Value_T
+   is
+     (DI_Builder_Insert_Dbg_Value_At_End
+        (DI_Builder, +V, Var_Info, Expr, Debug_Loc, Block))
+     with Pre  => Present (V) and then Present (Var_Info)
+                  and then Present (Expr) and then Present (Debug_Loc)
+                  and then Present (Block),
+          Post => Present (DI_Builder_Insert_Dbg_Value_At_End'Result);
+
+   function DI_Builder_Insert_Declare_At_End
+     (V         : GL_Value;
+      Var_Info  : Metadata_T;
+      Expr      : Metadata_T;
+      Debug_Loc : Metadata_T;
+      Block     : Basic_Block_T) return Value_T
+   is
+     (DI_Builder_Insert_Declare_At_End
+        (DI_Builder, +V, Var_Info, Expr, Debug_Loc, Block))
+     with Pre  => Present (V) and then Present (Var_Info)
+                  and then Present (Expr) and then Present (Debug_Loc)
+                  and then Present (Block),
+          Post => Present (DI_Builder_Insert_Declare_At_End'Result);
+
 end GNATLLVM.Helper;

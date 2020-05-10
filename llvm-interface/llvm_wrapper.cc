@@ -48,14 +48,6 @@ Add_Debug_Flags (Module *TheModule)
 }
 
 extern "C"
-DIEnumerator *
-Create_Enumerator (DIBuilder *di, char *name, unsigned long long value,
-		   bool isUnsigned)
-{
-  return di->createEnumerator (name, value, isUnsigned);
-}
-
-extern "C"
 MDBuilder *
 Create_MDBuilder_In_Context (LLVMContext &Ctx)
 {

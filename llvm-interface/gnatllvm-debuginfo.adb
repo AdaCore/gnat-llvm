@@ -33,8 +33,6 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
-with stddef_h; use stddef_h;
-
 package body GNATLLVM.DebugInfo is
 
    Debug_Compile_Unit  : Metadata_T;
@@ -135,12 +133,12 @@ package body GNATLLVM.DebugInfo is
          DI_Builder         := Create_DI_Builder (Module);
          Debug_Compile_Unit :=
            DI_Create_Compile_Unit
-           (DI_Builder,
-            (if   Ada_Version = Ada_83 then DWARF_Source_Language_Ada83
+           ((if   Ada_Version = Ada_83 then DWARF_Source_Language_Ada83
              else DWARF_Source_Language_Ada95),
-            Get_Debug_File_Node (Main_Source_File), "GNAT/LLVM", 9,
-            Code_Gen_Level /= Code_Gen_Level_None, "", 0, 0, "", 0,
+            Get_Debug_File_Node (Main_Source_File), "GNAT/LLVM",
+            Code_Gen_Level /= Code_Gen_Level_None, "", 0, "",
             DWARF_Emission_Full, 0, False, False);
+
          Empty_DI_Expr      :=
            DI_Builder_Create_Expression (DI_Builder, Exp'Access, 0);
       end if;
@@ -181,13 +179,13 @@ package body GNATLLVM.DebugInfo is
 
       declare
          Full_Name : constant String     :=
-           Get_Name_String (Full_Debug_Name (File));
-         Name      : constant String     :=
+           Get_Name_String (Full_Debug_Name   (File));
+         File_Name : constant String     :=
            Get_Name_String (Debug_Source_Name (File));
          DIFile    : constant Metadata_T :=
-           DI_Create_File (DI_Builder, Name, Name'Length,
-                           Full_Name (1 .. Full_Name'Length - Name'Length),
-                           Full_Name'Length - Name'Length);
+           DI_Create_File
+           (File_Name, Full_Name (1 .. Full_Name'Length - File_Name'Length));
+
       begin
          DI_Cache (File) := DIFile;
          return DIFile;
@@ -205,7 +203,7 @@ package body GNATLLVM.DebugInfo is
       Name     : String := "";
       Ext_Name : String := "") return Metadata_T
    is
-      Types      : constant Type_Array (1 .. 0) := (others => <>);
+      Types      : constant Metadata_Array (1 .. 0) := (others => <>);
       S_Name     : constant String              :=
         (if Name /= "" then Name else Get_Name (E));
       S_Ext_Name : constant String              :=
@@ -218,27 +216,26 @@ package body GNATLLVM.DebugInfo is
 
       if Emit_Debug_Info then
          declare
-            Dyn_Scope_E   : constant Entity_Id  :=
-              Enclosing_Subprogram_Scope (E);
-            File_Node     : constant Metadata_T :=
+            File_Node     : constant Metadata_T          :=
               Get_Debug_File_Node (Get_Source_File_Index (Sloc (N)));
-            Sub_Type_Node : constant Metadata_T :=
-              DI_Builder_Create_Subroutine_Type
-              (DI_Builder, File_Node, Types'Address, 0, DI_Flag_Zero);
-            Line_Number   : constant unsigned   :=
-              unsigned (Get_Logical_Line_Number (Sloc (N)));
-            Dyn_Scope     : constant Metadata_T :=
-              (if   Present (Dyn_Scope_E)
-                    and then Present (Get_Value (Dyn_Scope_E))
-                    and then Present (Get_Subprogram_Debug_Metadata
-                                        (Get_Value (Dyn_Scope_E)))
-               then Get_Subprogram_Debug_Metadata (Get_Value (Dyn_Scope_E))
+            Dyn_Scope_E   : constant Entity_Id           :=
+              Enclosing_Subprogram_Scope (E);
+            Dyn_Scope_Val : constant GL_Value            :=
+              (if   Present (Dyn_Scope_E) then Get_Value (Dyn_Scope_E)
+               else No_GL_Value);
+            Dyn_Scope     : constant Metadata_T          :=
+              (if   Present (Dyn_Scope_Val)
+               then Get_Subprogram_Debug_Metadata (Dyn_Scope_Val)
                else File_Node);
-            Function_Node : constant Metadata_T :=
+            Sub_Type_Node : constant Metadata_T          :=
+              DI_Builder_Create_Subroutine_Type
+              (File_Node, Types, DI_Flag_Zero);
+            Line_Number   : constant Logical_Line_Number :=
+              Get_Logical_Line_Number (Sloc (N));
+            Function_Node : constant Metadata_T          :=
               DI_Create_Function
-                (DI_Builder, Dyn_Scope, S_Name, S_Name'Length,
+                (Dyn_Scope, S_Name,
                  (if S_Ext_Name = S_Name then "" else S_Ext_Name),
-                 (if S_Ext_Name = S_Name then 0  else S_Ext_Name'Length),
                  File_Node, Line_Number, Sub_Type_Node, False, True,
                  Line_Number, DI_Flag_Zero,
                  Code_Gen_Level /= Code_Gen_Level_None);
@@ -263,9 +260,9 @@ package body GNATLLVM.DebugInfo is
       if Emit_Debug_Info and then not Library_Level then
          Push_Debug_Scope
            (SFI, DI_Builder_Create_Lexical_Block
-              (DI_Builder, Current_Debug_Scope, Get_Debug_File_Node (SFI),
-               unsigned (Get_Logical_Line_Number (Sloc (N))),
-               unsigned (Get_Column_Number (Sloc (N)))));
+              (Current_Debug_Scope, Get_Debug_File_Node (SFI),
+               Get_Logical_Line_Number (Sloc (N)),
+               Get_Column_Number (Sloc (N))));
       end if;
    end Push_Lexical_Debug_Scope;
 
@@ -307,8 +304,8 @@ package body GNATLLVM.DebugInfo is
       --  Otherwise, make a new one, set up our cache, and return it
 
       Result          := DI_Builder_Create_Debug_Location
-        (Context, unsigned (Get_Logical_Line_Number (S)),
-         unsigned (Get_Column_Number (S)), Current_Debug_Scope, No_Metadata_T);
+        (Get_Logical_Line_Number (S), Get_Column_Number (S),
+         Current_Debug_Scope, No_Metadata_T);
       Debug_Loc_Sloc  := S;
       Debug_Loc_Scope := Current_Debug_Scope;
       Debug_Loc       := Result;
@@ -328,9 +325,7 @@ package body GNATLLVM.DebugInfo is
         and then not Is_Entity_Name (N)
         and then Freeze_Pos_Level = 0 and then SFI = Current_Debug_SFI
       then
-         Set_Current_Debug_Location
-           (IR_Builder,
-            Metadata_As_Value (Context, Create_Debug_Location (N)));
+         Set_Current_Debug_Location (Create_Debug_Location (N));
       end if;
    end Set_Debug_Pos_At_Node;
 
@@ -342,10 +337,9 @@ package body GNATLLVM.DebugInfo is
       TE          : constant Entity_Id  := Full_Etype (GT);
       Name        : constant String     := Get_Name (TE);
       T           : constant Type_T     := Type_Of (GT);
-      Size        : constant uint64_t   :=
-        (if Type_Is_Sized (T) then uint64_t (ULL'(Get_Type_Size (T))) else 0);
-      Align       : constant uint32_t   :=
-        uint32_t (Nat'(Get_Type_Alignment (GT)));
+      Size        : constant ULL        :=
+        (if Type_Is_Sized (T) then Get_Type_Size (T) else 0);
+      Align       : constant unsigned   := Get_Type_Alignment (GT);
       S           : constant Source_Ptr := Sloc (TE);
       Result      : Metadata_T          := Get_Debug_Type (TE);
 
@@ -365,7 +359,7 @@ package body GNATLLVM.DebugInfo is
       --  is an "unspecified" type.
 
       elsif Is_Being_Elaborated (TE) or else Is_Nonnative_Type (TE) then
-         return DI_Create_Unspecified_Type (DI_Builder, Name, Name'Length);
+         return DI_Create_Unspecified_Type (Name);
       end if;
 
       --  Mark as being elaborated and create debug information based on
@@ -375,8 +369,8 @@ package body GNATLLVM.DebugInfo is
       case Ekind (TE) is
          when Integer_Kind | Fixed_Point_Kind =>
             Result := DI_Create_Basic_Type
-              (DI_Builder, Name, Name'Length, Size,
-               (if    Size = uint64_t (BPU)
+              (Name, Size,
+               (if    Size = ULL (BPU)
                 then  (if   Is_Unsigned_Type (TE) then DW_ATE_Unsigned_Char
                        else DW_ATE_Signed_Char)
                 elsif Is_Unsigned_Type (TE) then DW_ATE_Unsigned
@@ -384,17 +378,16 @@ package body GNATLLVM.DebugInfo is
                DI_Flag_Zero);
 
          when Float_Kind =>
-            Result := DI_Create_Basic_Type (DI_Builder, Name, Name'Length,
-                                            Size, DW_ATE_Float, DI_Flag_Zero);
+            Result := DI_Create_Basic_Type (Name, Size, DW_ATE_Float,
+                                            DI_Flag_Zero);
          when Access_Kind =>
 
             --  Get the type info for what this points to.  If we have
             --  something, make our type.
 
             Result := DI_Create_Pointer_Type
-              (DI_Builder,
-               Create_Debug_Type_Data (Full_Designated_GL_Type (GT)),
-               Size, Align, 0, Name, Name'Length);
+              (Create_Debug_Type_Data (Full_Designated_GL_Type (GT)),
+               Size, Align, 0, Name);
 
          when Array_Kind =>
 
@@ -403,13 +396,12 @@ package body GNATLLVM.DebugInfo is
             --  make a description of the type.
 
             declare
-               Num_Dims   : constant Nat        := Number_Dimensions (TE);
                Inner_Type : constant Metadata_T :=
                  Create_Debug_Type_Data (Full_Component_GL_Type (GT));
-               Ranges     : Metadata_Array (0 .. Num_Dims - 1);
+               Ranges     : Metadata_Array (0 .. Number_Dimensions (TE) - 1);
 
             begin
-               for J in 0 .. Num_Dims - 1 loop
+               for J in Ranges'Range loop
                   declare
                      Low_Bound  : constant GL_Value   :=
                        Get_Array_Bound (GT, J, True, No_GL_Value);
@@ -418,15 +410,12 @@ package body GNATLLVM.DebugInfo is
 
                   begin
                      Ranges (J) := DI_Builder_Get_Or_Create_Subrange
-                       (DI_Builder,
-                        int64_t (Get_Const_Int_Value (Low_Bound)),
-                        int64_t (Get_Const_Int_Value (Length)));
+                       (+Low_Bound, +Length);
                   end;
                end loop;
 
-               Result := DI_Builder_Create_Array_Type
-                 (DI_Builder, Size, Align, Inner_Type,
-                  Ranges'Address, unsigned (Num_Dims));
+               Result := DI_Builder_Create_Array_Type (Size, Align,
+                                                       Inner_Type, Ranges);
             end;
 
          when Record_Kind =>
@@ -467,13 +456,13 @@ package body GNATLLVM.DebugInfo is
 
                         Member_Table.Append
                           (DI_Create_Member_Type
-                             (DI_Builder, No_Metadata_T, Name, Name'Length,
+                             (No_Metadata_T, Name,
                               Get_Debug_File_Node
                                 (Get_Source_File_Index (F_S)),
-                              unsigned (Get_Logical_Line_Number (F_S)),
-                              uint64_t (UI_To_ULL (Esize (F))),
-                              uint32_t (Nat'(Get_Type_Alignment (F_GT))),
-                              uint64_t (UI_To_ULL (Component_Bit_Offset (F))),
+                              Get_Logical_Line_Number (F_S),
+                              UI_To_ULL (Esize (F)),
+                              Get_Type_Alignment (F_GT),
+                              UI_To_ULL (Component_Bit_Offset (F)),
                               (if   Is_Bitfield (F) then DI_Flag_Bit_Field
                                else DI_Flag_Zero),
                               Mem_Type));
@@ -483,13 +472,20 @@ package body GNATLLVM.DebugInfo is
                   Next_Component_Or_Discriminant (F);
                end loop;
 
-               Result := DI_Create_Struct_Type
-                 (DI_Builder, No_Metadata_T, Name, Name'Length,
-                  Get_Debug_File_Node (Get_Source_File_Index (S)),
-                  unsigned (Get_Logical_Line_Number (S)),
-                  Size, Align, DI_Flag_Zero, No_Metadata_T,
-                  Member_Table.Table (1)'Address, unsigned (Member_Table.Last),
-                  0, No_Metadata_T, "", 0);
+               declare
+                  Members : Metadata_Array (1 .. Member_Table.Last);
+
+               begin
+                  for J in Members'Range loop
+                     Members (J) := Member_Table.Table (J);
+                  end loop;
+
+                  Result := DI_Create_Struct_Type
+                    (No_Metadata_T, Name,
+                     Get_Debug_File_Node (Get_Source_File_Index (S)),
+                     Get_Logical_Line_Number (S), Size, Align, DI_Flag_Zero,
+                     No_Metadata_T, Members, 0, No_Metadata_T, "");
+               end;
             end;
 
          when Enumeration_Kind =>
@@ -508,24 +504,43 @@ package body GNATLLVM.DebugInfo is
             begin
                Member := First_Literal (TE);
                while Present (Member) loop
-                  Member_Table.Append (Create_Enumerator
-                                         (DI_Builder, Get_Name (Member),
-                                          UI_To_ULL (Enumeration_Rep (Member)),
-                                          Enumeration_Rep (Member) >= 0));
-                  Next_Literal (Member);
+
+                  --  Make an enumerator metadata for each entry.  The code
+                  --  below is a bit convoluted to avoid needing a UI_To_LLI
+                  --  function just for this purpose.
+
+                  declare
+                     UI  : constant Uint       := Enumeration_Rep (Member);
+                     Val : constant LLI        :=
+                       Const_Int_Get_S_Ext_Value (Const_Int (Int_Ty (Uint_64),
+                                                             UI));
+                     MD  : constant Metadata_T :=
+                       DI_Create_Enumerator (Get_Name (Member), Val, UI >= 0);
+
+                  begin
+                     Member_Table.Append (MD);
+                     Next_Literal (Member);
+                  end;
                end loop;
 
-               Result := DI_Create_Enumeration_Type
-                 (DI_Builder, Debug_Compile_Unit, Name, Name'Length,
-                  Get_Debug_File_Node (Get_Source_File_Index (S)),
-                  unsigned (Get_Logical_Line_Number (S)),
-                  Size, Align, Member_Table.Table (1)'Address,
-                  unsigned (Member_Table.Last), No_Metadata_T);
+               declare
+                  Members : Metadata_Array (1 .. Member_Table.Last);
+
+               begin
+                  for J in Members'Range loop
+                     Members (J) := Member_Table.Table (J);
+                  end loop;
+
+                  Result := DI_Create_Enumeration_Type
+                    (Debug_Compile_Unit, Name,
+                     Get_Debug_File_Node (Get_Source_File_Index (S)),
+                     Get_Logical_Line_Number (S), Size, Align, Members,
+                     No_Metadata_T);
+               end;
             end;
 
          when others =>
-            Result :=
-              DI_Create_Unspecified_Type (DI_Builder, Name, Name'Length);
+            Result := DI_Create_Unspecified_Type (Name);
       end case;
 
       --  Show no longer elaborating this type and save and return the result
@@ -558,13 +573,11 @@ package body GNATLLVM.DebugInfo is
          Global_Set_Metadata
            (+V, 0,
             DI_Create_Global_Variable_Expression
-              (DI_Builder, Debug_Compile_Unit, Name, Name'Length,
+              (Debug_Compile_Unit, Name,
                (if Ext_Name = Name then "" else Ext_Name),
-               (if Ext_Name = Name then 0  else Ext_Name'Length),
                Get_Debug_File_Node (Get_Source_File_Index (S)),
-               unsigned (Get_Logical_Line_Number (S)),
-               Type_Data, False, Empty_DI_Expr, No_Metadata_T,
-               uint32_t (Nat'(Get_Type_Alignment (GT)) * BPU)));
+               Get_Logical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
+               No_Metadata_T, Get_Type_Alignment (GT)));
       end if;
    end Create_Global_Variable_Debug_Data;
 
@@ -590,18 +603,16 @@ package body GNATLLVM.DebugInfo is
          if Arg_Num = 0 then
             Var_Data :=
               DI_Create_Auto_Variable
-              (DI_Builder, Current_Debug_Scope, Name, Name'Length,
+              (Current_Debug_Scope, Name,
                Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
-               unsigned (Get_Logical_Line_Number (Sloc (E))),
-               Type_Data, False, DI_Flag_Zero,
-               uint32_t (Nat'(Get_Type_Alignment (GT)) * BPU));
+               Get_Logical_Line_Number (Sloc (E)), Type_Data, False,
+               DI_Flag_Zero, Get_Type_Alignment (GT));
          else
             Var_Data :=
               DI_Create_Parameter_Variable
-              (DI_Builder, Current_Debug_Scope, Name, Name'Length,
-               unsigned (Arg_Num),
+              (Current_Debug_Scope, Name, Arg_Num,
                Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
-               unsigned (Get_Logical_Line_Number (Sloc (E))),
+               Get_Logical_Line_Number (Sloc (E)),
                Type_Data, False, DI_Flag_Zero);
          end if;
 
@@ -612,13 +623,12 @@ package body GNATLLVM.DebugInfo is
          if Is_Data (V) then
             if Get_Type_Size (V) /= Nat (0) then
                Discard (DI_Builder_Insert_Dbg_Value_At_End
-                          (DI_Builder, +V, Var_Data, Empty_DI_Expr,
-                           Create_Debug_Location (E),
-                           Get_Insert_Block));
+                          (V, Var_Data, Empty_DI_Expr,
+                           Create_Debug_Location (E), Get_Insert_Block));
             end if;
          else
             Discard (DI_Builder_Insert_Declare_At_End
-                       (DI_Builder, +V, Var_Data, Empty_DI_Expr,
+                       (V, Var_Data, Empty_DI_Expr,
                         Create_Debug_Location (E), Get_Insert_Block));
          end if;
       end if;

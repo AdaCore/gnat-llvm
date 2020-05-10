@@ -285,13 +285,6 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C,
           External_Name => "Inst_Add_Combine_Function";
 
-   function Create_Enumerator
-     (Builder     : DI_Builder_T;
-      Name        : String;
-      Value       : unsigned_long_long;
-      Is_Unsigned : Boolean) return Metadata_T
-     with Inline;
-
    function Get_Float_From_Words_And_Exp
      (Context   : Context_T;
       Typ       : Type_T;

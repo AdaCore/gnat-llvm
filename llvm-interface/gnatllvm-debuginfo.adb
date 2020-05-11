@@ -91,6 +91,17 @@ package body GNATLLVM.DebugInfo is
           Post => Present (Create_Debug_Location'Result);
    --  Return debug metadata for a location
 
+   function Create_Pointer_To
+     (MD : Metadata_T; E : Entity_Id) return Metadata_T
+   is
+     (DI_Create_Pointer_Type (MD, ULL (Thin_Pointer_Size),
+                              unsigned (Thin_Pointer_Size),
+                              0, Get_Name (E) & "#RF"))
+     with Pre  => Present (MD) and then Present (E),
+          Post => Present (Create_Pointer_To'Result);
+   --  Given MD, debug metadata for some type, create debug metadata for a
+   --  pointer to that type.  E is used for naming the type.
+
    Debug_Loc_Sloc  : Source_Ptr := No_Location;
    Debug_Loc_Scope : Metadata_T := No_Metadata_T;
    Debug_Loc       : Metadata_T := No_Metadata_T;
@@ -203,8 +214,17 @@ package body GNATLLVM.DebugInfo is
       Name     : String    := "";
       Ext_Name : String    := "") return Metadata_T
    is
+      RK         : constant Return_Kind         :=
+        (if Present (E) then Get_Return_Kind (E) else None);
+      LRK        : constant L_Ret_Kind          :=
+        (if Present (E) then Get_L_Ret_Kind (E)  else Void);
+      Ret_MD     : constant Metadata_T          :=
+        (if   RK = None then No_Metadata_T
+         else Create_Debug_Type_Data (Full_GL_Type (E)));
       Num_Params : constant Nat                 :=
-        (if Present (E) then Number_In_Params (E) else 0);
+        (if   Present (E) then (Number_In_Params (E) +
+                                (if RK = Return_By_Parameter then 1 else 0))
+         else 0);
       Types      : Metadata_Array (0 .. Num_Params);
       S_Name     : constant String              :=
         (if Name /= "" then Name else Get_Name (E));
@@ -217,30 +237,44 @@ package body GNATLLVM.DebugInfo is
    begin
       if Emit_Debug_Info then
 
-         --  ??? For now, don't deal with the return type
-
-         Types (0) := No_Metadata_T;
-
          --  Collect the types of all the parameters, handling types passed
          --  by reference in a simplistic manner by just making a pointer
          --  type.
 
          while Present (P) loop
             declare
-               Typ : Metadata_T := Create_Debug_Type_Data (Full_GL_Type (P));
+               MD : Metadata_T := Create_Debug_Type_Data (Full_GL_Type (P));
 
             begin
-               if Param_Is_Reference (P) then
-                  Typ := DI_Create_Pointer_Type (Typ, ULL (Thin_Pointer_Size),
-                                                 unsigned (Thin_Pointer_Size),
-                                                 0, Get_Name (P) & "#RF");
+               if Present (MD) and then Param_Is_Reference (P) then
+                  MD := Create_Pointer_To (MD, P);
                end if;
 
-               Types (Idx) := Typ;
+               Types (Idx) := MD;
                Idx         := Idx + 1;
                Next_In_Param (P);
             end;
          end loop;
+
+         --  Next deal with the return
+
+         if LRK = Out_Return then
+            Types (0) :=
+              Create_Debug_Type_Data (Full_GL_Type (First_Out_Param (E)));
+         elsif No (Ret_MD) then
+            Types (0) := No_Metadata_T;
+         elsif LRK = Subprog_Return and then RK = RK_By_Reference then
+            Types (0) := Create_Pointer_To (Ret_MD, E);
+         elsif LRK = Subprog_Return and then RK = Value_Return then
+            Types (0) := Ret_MD;
+         elsif RK = Return_By_Parameter then
+            Types (0) := No_Metadata_T;
+            Types (Idx) := Create_Pointer_To (Ret_MD, E);
+         else
+            Types (0) := No_Metadata_T;
+         end if;
+
+         --  Now create and return the metadata
 
          declare
             File_Node     : constant Metadata_T          :=

@@ -503,30 +503,34 @@ package body GNATLLVM.DebugInfo is
                     and then Known_Static_Esize (F)
                   then
                      declare
-                        F_GT     : constant GL_Type    := Field_Type (F);
-                        Mem_Type : constant Metadata_T :=
+                        F_GT           : constant GL_Type    := Field_Type (F);
+                        Mem_MD         : constant Metadata_T :=
                           Create_Debug_Type_Data (F_GT);
-                        Name     : constant String     := Get_Name (F);
-                        F_S      : constant Source_Ptr := Sloc (F);
+                        Name           : constant String     := Get_Name (F);
+                        F_S            : constant Source_Ptr := Sloc (F);
+                        File           : constant Metadata_T :=
+                          Get_Debug_File_Node (Get_Source_File_Index (F_S));
+                        Offset         : constant ULL        :=
+                          UI_To_ULL (Component_Bit_Offset (F));
+                        Storage_Offset : constant ULL        :=
+                          (Offset / ULL (BPU)) * ULL (BPU);
+                        MD             : constant Metadata_T :=
+                          (if   Is_Bitfield (F)
+                           then DI_Create_Bit_Field_Member_Type
+                                  (No_Metadata_T, Name, File,
+                                   Get_Logical_Line_Number (F_S),
+                                   UI_To_ULL (Esize (F)), Offset,
+                                   Storage_Offset, Mem_MD)
+                           else DI_Create_Member_Type
+                                  (No_Metadata_T, Name, File,
+                                   Get_Logical_Line_Number (F_S),
+                                   UI_To_ULL (Esize (F)),
+                                   Get_Type_Alignment (F_GT), Offset, Mem_MD));
 
                      begin
-                        --  Add the member type to the table.  ???  Maybe
-                        --  we should use
-                        --  DI_Builder_Create_Bit_Field_Member_type when
-                        --  appropriate.
+                        --  Add the member type to the table
 
-                        Member_Table.Append
-                          (DI_Create_Member_Type
-                             (No_Metadata_T, Name,
-                              Get_Debug_File_Node
-                                (Get_Source_File_Index (F_S)),
-                              Get_Logical_Line_Number (F_S),
-                              UI_To_ULL (Esize (F)),
-                              Get_Type_Alignment (F_GT),
-                              UI_To_ULL (Component_Bit_Offset (F)),
-                              (if   Is_Bitfield (F) then DI_Flag_Bit_Field
-                               else DI_Flag_Zero),
-                              Mem_Type));
+                        Member_Table.Append (MD);
                      end;
                   end if;
 

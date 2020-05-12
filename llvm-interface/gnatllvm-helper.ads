@@ -288,8 +288,8 @@ package GNATLLVM.Helper is
       Size_In_Bits   : ULL;
       Align_In_Bits  : unsigned;
       Offset_In_Bits : ULL;
-      Flags          : DI_Flags_T;
-      Ty             : Metadata_T) return Metadata_T
+      Ty             : Metadata_T;
+      Flags          : DI_Flags_T := DI_Flag_Zero) return Metadata_T
    is
      (DI_Create_Member_Type
         (DI_Builder, Scope, Name, Name'Length, File, unsigned (Line_No),
@@ -297,6 +297,25 @@ package GNATLLVM.Helper is
          uint64_t (Offset_In_Bits), Flags, Ty))
      with Pre  => Present (File) and then Present (Ty),
           Post => Present (DI_Create_Member_Type'Result);
+
+   function DI_Create_Bit_Field_Member_Type
+     (Scope                  : Metadata_T;
+      Name                   : String;
+      File                   : Metadata_T;
+      Line_Number            : Logical_Line_Number;
+      Size_In_Bits           : ULL;
+      Offset_In_Bits         : ULL;
+      Storage_Offset_In_Bits : ULL;
+      C_Type                 : Metadata_T;
+      Flags                  : DI_Flags_T := DI_Flag_Bit_Field)
+     return LLVM.Types.Metadata_T
+   is
+    (DI_Create_Bit_Field_Member_Type
+       (DI_Builder, Scope, Name, Name'Length, File, unsigned (Line_Number),
+        uint64_t (Size_In_Bits), uint64_t (Offset_In_Bits),
+        uint64_t (Storage_Offset_In_Bits), Flags, C_Type))
+    with Pre  => Present (File) and then Present (C_Type),
+         Post => Present (DI_Create_Bit_Field_Member_Type'Result);
 
    function DI_Create_Enumerator
      (Name : String; Value : LLI; Is_Unsigned : Boolean) return Metadata_T

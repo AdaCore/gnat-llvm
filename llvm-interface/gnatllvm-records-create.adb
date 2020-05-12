@@ -986,21 +986,23 @@ package body GNATLLVM.Records.Create is
             return;
 
          --  Ensure the position does not overlap with the parent subtype,
-         --  if there is one.  This test is omitted if the parent of the
-         --  tagged type has a full rep clause since, in this case,
-         --  component clauses are allowed to overlay the space allocated
-         --  for the parent type and the front-end has checked that there
-         --  are no overlapping components.
+         --  if there is one.  At one point, we omitted this test if the
+         --  parent of the tagged type has a full rep clause since, in this
+         --  case, component clauses are allowed to overlay the space
+         --  allocated for the parent type and the front-end has checked
+         --  that there are no overlapping components.  But there are
+         --  cases where this won't work.  We do allow it with -gnatd.K
+         --  for compatibility purposes.
 
          elsif Present (Clause) and then Present (Parent_TE)
-           and then not Is_Fully_Repped_Tagged_Type (Parent_TE)
+           and then not (Is_Fully_Repped_Tagged_Type (Parent_TE)
+                           and then Debug_Flag_Dot_KK)
            and then not Is_Dynamic_Size (Default_GL_Type (Parent_TE))
            and then Pos < Esize (Parent_TE)
          then
             Error_Msg_NE_Num
               ("position for & must be beyond parent, minimum allowed is ^",
                Position (Clause), E, Esize (Parent_TE) / BPU);
-            Pos := No_Uint;
 
           --  If the position is not a multiple of the storage unit, then
           --  give error.

@@ -210,7 +210,7 @@ package GNATLLVM.Helper is
    function DI_Create_Pointer_Type
      (Pointee_Ty    : Metadata_T;
       Size_In_Bits  : ULL;
-      Align_In_Bits : unsigned;
+      Align_In_Bits : Nat;
       Address_Space : unsigned;
       Name          : String) return Metadata_T
    is
@@ -229,7 +229,7 @@ package GNATLLVM.Helper is
 
    function DI_Builder_Create_Array_Type
      (Size          : ULL;
-      Align_In_Bits : unsigned;
+      Align_In_Bits : Nat;
       Ty            : Metadata_T;
       Subscripts    : Metadata_Array) return Metadata_T
    is
@@ -245,11 +245,11 @@ package GNATLLVM.Helper is
       File           : Metadata_T;
       Line_Number    : Logical_Line_Number;
       Size_In_Bits   : ULL;
-      Align_In_Bits  : unsigned;
+      Align_In_Bits  : Nat;
       Flags          : DI_Flags_T;
       Derived_From   : Metadata_T;
       Elements       : Metadata_Array;
-      Run_Time_Lang  : unsigned;
+      Run_Time_Lang  : Nat;
       V_Table_Holder : Metadata_T;
       Unique_Id      : String) return Metadata_T
    is
@@ -257,8 +257,8 @@ package GNATLLVM.Helper is
                              unsigned (Line_Number), uint64_t (Size_In_Bits),
                              uint32_t (Align_In_Bits), Flags, Derived_From,
                              Elements'Address, unsigned (Elements'Length),
-                             Run_Time_Lang, V_Table_Holder, Unique_Id,
-                             Unique_Id'Length))
+                             unsigned (Run_Time_Lang), V_Table_Holder,
+                             Unique_Id, Unique_Id'Length))
      with Pre =>  (for all MD of Elements => Present (MD)),
           Post => Present (DI_Create_Struct_Type'Result);
 
@@ -268,7 +268,7 @@ package GNATLLVM.Helper is
       File          : Metadata_T;
       Line_Number   : Logical_Line_Number;
       Size_In_Bits  : ULL;
-      Align_In_Bits : unsigned;
+      Align_In_Bits : Nat;
       Elements      : Metadata_Array;
       Class_Ty      : Metadata_T) return Metadata_T
    is
@@ -286,7 +286,7 @@ package GNATLLVM.Helper is
       File           : Metadata_T;
       Line_No        : Logical_Line_Number;
       Size_In_Bits   : ULL;
-      Align_In_Bits  : unsigned;
+      Align_In_Bits  : Nat;
       Offset_In_Bits : ULL;
       Ty             : Metadata_T;
       Flags          : DI_Flags_T := DI_Flag_Zero) return Metadata_T
@@ -334,7 +334,7 @@ package GNATLLVM.Helper is
       Local_To_Unit : Boolean;
       Expr          : Metadata_T;
       Decl          : Metadata_T;
-      Align_In_Bits : unsigned) return Metadata_T
+      Align_In_Bits : Nat) return Metadata_T
    is
      (DI_Create_Global_Variable_Expression
         (DI_Builder, Scope, Name, Name'Length, Linkage, Linkage'Length, File,
@@ -352,7 +352,7 @@ package GNATLLVM.Helper is
       Ty              : Metadata_T;
       Always_Preserve : Boolean;
       Flags           : DI_Flags_T;
-      Align_In_Bits   : unsigned) return Metadata_T
+      Align_In_Bits   : Nat) return Metadata_T
    is
      (DI_Create_Auto_Variable
         (DI_Builder, Scope, Name, Name'Length, File, unsigned (Line_No),

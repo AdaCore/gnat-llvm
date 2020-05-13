@@ -94,8 +94,7 @@ package body GNATLLVM.DebugInfo is
    function Create_Pointer_To
      (MD : Metadata_T; E : Entity_Id) return Metadata_T
    is
-     (DI_Create_Pointer_Type (MD, ULL (Thin_Pointer_Size),
-                              unsigned (Thin_Pointer_Size),
+     (DI_Create_Pointer_Type (MD, ULL (Thin_Pointer_Size), Thin_Pointer_Size,
                               0, Get_Name (E) & "#RF"))
      with Pre  => Present (MD) and then Present (E),
           Post => Present (Create_Pointer_To'Result);
@@ -214,6 +213,12 @@ package body GNATLLVM.DebugInfo is
       Name     : String    := "";
       Ext_Name : String    := "") return Metadata_T
    is
+      function Create_Return_Debug_Info return Metadata_T
+        with Pre => LRK in Struct_Out | Struct_Out_Subprog;
+      --  Return the debug information for the return of this subprogram
+      --  in the case where we return a structure consisting of the Out
+      --  parameters of the subprogram and possibly its return value.
+
       RK         : constant Return_Kind         :=
         (if Present (E) then Get_Return_Kind (E) else None);
       LRK        : constant L_Ret_Kind          :=
@@ -221,20 +226,122 @@ package body GNATLLVM.DebugInfo is
       Ret_MD     : constant Metadata_T          :=
         (if   RK = None then No_Metadata_T
          else Create_Debug_Type_Data (Full_GL_Type (E)));
-      Num_Params : constant Nat                 :=
+      Num_MDs     : constant Nat                 :=
         (if   Present (E) then (Number_In_Params (E) +
                                 (if RK = Return_By_Parameter then 1 else 0))
          else 0);
-      Types      : Metadata_Array (0 .. Num_Params);
+      Types      : Metadata_Array (0 .. Num_MDs);
       S_Name     : constant String              :=
         (if Name /= "" then Name else Get_Name (E));
       S_Ext_Name : constant String              :=
         (if Ext_Name /= "" then Ext_Name else Get_Ext_Name (E));
+      File_Node     : constant Metadata_T          :=
+        (if   Emit_Debug_Info
+         then Get_Debug_File_Node (Get_Source_File_Index (Sloc (N)))
+         else No_Metadata_T);
+      Line_Number   : constant Logical_Line_Number :=
+        Get_Logical_Line_Number (Sloc (N));
       P          : Entity_Id                    :=
         (if Present (E) then First_In_Param (E) else Empty);
       Idx        : Nat                          := 1;
 
-   begin
+      ------------------------------
+      -- Create_Return_Debug_Info --
+      ------------------------------
+
+      function Create_Return_Debug_Info return Metadata_T is
+
+         procedure Add_Field (Name : String; GT : GL_Type; S : Source_Ptr)
+           with Pre => Present (GT);
+         --  Add one field with Name, GT, and S to the data below
+
+         Num_Fields : constant Nat :=
+           Number_Out_Params (E) + (if LRK = Struct_Out_Subprog then 1 else 0);
+         Rec_Align  : Nat          := BPU;
+         Offset     : ULL          := 0;
+         Field_MDs  : Metadata_Array (1 .. Num_Fields);
+         Idx        : Nat          := Field_MDs'First;
+         Formal     : Entity_Id    := First_Out_Param (E);
+         No_More    : Boolean      := False;
+
+         ---------------
+         -- Add_Field --
+         ---------------
+
+         procedure Add_Field (Name : String; GT : GL_Type; S : Source_Ptr) is
+            MD     : constant Metadata_T := Create_Debug_Type_Data (GT);
+            Align  : constant Nat        := Get_Type_Alignment (GT);
+            Size_V : constant GL_Value   :=
+              (if   Is_Dynamic_Size (GT) then No_GL_Value
+               else Get_Type_Size (GT));
+            Size   : ULL;
+
+         begin
+            --  If we don't the size of this type isn't a constant, we
+            --  can't do anything and can't continue since we don't know
+            --  where things will be.
+
+            if No (Size_V) or else not Is_A_Const_Int (Size_V) then
+               No_More := True;
+               return;
+            end if;
+
+            --  Otherwise get the size of the type, round the offset to
+            --  the alignment of this type, and update the type alignment.
+
+            Size      := +Size_V;
+            Rec_Align := Nat'Max (Rec_Align, Align);
+            Offset    :=
+              ((Offset + ULL (Align) - 1) / ULL (Align)) * ULL (Align);
+
+            --  If we have debug info for this type, add the member type to
+            --  the above fields.
+
+            if Present (MD) then
+               Field_MDs (Idx) := DI_Create_Member_Type
+                 (No_Metadata_T, Name,
+                  Get_Debug_File_Node (Get_Source_File_Index (S)),
+                  Get_Logical_Line_Number (S), Size, Align, Offset, MD);
+               Idx := Idx + 1;
+            end if;
+
+            --  Allow for the size of this entry
+
+            Offset := Offset + Size;
+         end Add_Field;
+
+      begin -- Start of processing for Create_Return_Debug_Info
+
+         --  If the subprogram has a return value, add it to the list of fields
+
+         if LRK = Struct_Out_Subprog then
+            Add_Field ("return_", Full_GL_Type (E), Sloc (E));
+         end if;
+
+         --  Now add each Out parameter
+
+         while not No_More and then Present (Formal) loop
+            Add_Field (Get_Name (Formal), Full_GL_Type (Formal),
+                       Sloc (Formal));
+            Next_Out_Param (Formal);
+         end loop;
+
+         --  Lastly, round the offset to the alignment to obtain the size,
+         --  and return the debug info.
+
+         Offset :=
+           ((Offset + ULL (Rec_Align) - 1) / ULL (Rec_Align)) *
+           ULL (Rec_Align);
+
+         return DI_Create_Struct_Type
+           (No_Metadata_T, S_Name & "_RET", File_Node, Line_Number, Offset,
+            Rec_Align, DI_Flag_Zero, No_Metadata_T,
+            Field_MDs (1 .. Idx - 1), 0, No_Metadata_T, "");
+
+      end Create_Return_Debug_Info;
+
+   begin -- Start of processing for Create_Subprogram_Debug_Info
+
       if Emit_Debug_Info then
 
          --  Collect the types of all the parameters, handling types passed
@@ -261,6 +368,8 @@ package body GNATLLVM.DebugInfo is
          if LRK = Out_Return then
             Types (0) :=
               Create_Debug_Type_Data (Full_GL_Type (First_Out_Param (E)));
+         elsif LRK in Struct_Out | Struct_Out_Subprog then
+            Types (0) := Create_Return_Debug_Info;
          elsif No (Ret_MD) then
             Types (0) := No_Metadata_T;
          elsif LRK = Subprog_Return and then RK = RK_By_Reference then
@@ -277,8 +386,6 @@ package body GNATLLVM.DebugInfo is
          --  Now create and return the metadata
 
          declare
-            File_Node     : constant Metadata_T          :=
-              Get_Debug_File_Node (Get_Source_File_Index (Sloc (N)));
             Dyn_Scope_E   : constant Entity_Id           :=
               (if Present (E) then Enclosing_Subprogram_Scope (E) else Empty);
             Dyn_Scope_Val : constant GL_Value            :=
@@ -291,8 +398,6 @@ package body GNATLLVM.DebugInfo is
             Sub_Type_Node : constant Metadata_T          :=
               DI_Builder_Create_Subroutine_Type
               (File_Node, Types, DI_Flag_Zero);
-            Line_Number   : constant Logical_Line_Number :=
-              Get_Logical_Line_Number (Sloc (N));
             Function_Node : constant Metadata_T          :=
               DI_Create_Function
                 (Dyn_Scope, S_Name,
@@ -400,7 +505,7 @@ package body GNATLLVM.DebugInfo is
       T           : constant Type_T     := Type_Of (GT);
       Size        : constant ULL        :=
         (if Type_Is_Sized (T) then Get_Type_Size (T) else 0);
-      Align       : constant unsigned   := Get_Type_Alignment (GT);
+      Align       : constant Nat        := Get_Type_Alignment (GT);
       S           : constant Source_Ptr := Sloc (TE);
       Result      : Metadata_T          := Get_Debug_Type (TE);
 

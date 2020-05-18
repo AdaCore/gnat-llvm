@@ -151,9 +151,10 @@ soext=.so
 AR_FOR_TARGET=ar
 AR_FLAGS=q
 RANLIB_FOR_TARGET=ranlib
-RTSDIR=$(pwd)/lib/rts-native/adainclude
-RTSLIB=$(pwd)/lib/rts-native/adalib
-RTSOBJ=$(pwd)/lib/rts-native/obj
+RTS=$(pwd)/lib/rts-native
+RTSDIR=$(RTS)/adainclude
+RTSLIB=$(RTS)/adalib
+RTSOBJ=$(RTS)/obj
 ADAFLAGS=-gnatpg
 ADA_INCLUDES=-nostdinc -I../adainclude
 CFLAGS=-O2 -g
@@ -202,11 +203,11 @@ include $(GNAT_SRC)/Makefile.rtl
 	$(ADAC) -c $(ALL_ADAFLAGS) $<
 
 gnatlib: build
-	$(RMDIR) $(RTSLIB) $(RTSDIR) $(RTSOBJ)
+	$(RMDIR) $(RTS)
 	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" quicklib
 
 gnatlib-automated: build-opt
-	$(RMDIR) $(RTSLIB) $(RTSDIR) $(RTSOBJ)
+	$(RMDIR) $(RTS)
 	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
 	  LN_S="cp -p" quicklib
 	$(RMDIR) $(RTSOBJ)
@@ -251,10 +252,10 @@ quicklib: $(RTSDIR)
 	cd $(RTSLIB) && $(CHMOD) a-wx *.ali && $(MV) *.o $(RTSOBJ)
 
 $(RTSDIR): bin/llvm-gnat1
-	$(RMDIR) $(RTSLIB) $(RTSOBJ)
+	$(RMDIR) $(RTS)
 	$(MKDIR) $(RTSLIB)
 	$(MAKE) setup-rts
-	cp -pr include $(RTSLIB)/..
+	cp -pr include $(RTS)
 	cd $(RTSLIB) && $(OSCONS_CPP) && $(OSCONS_EXTRACT) && \
 	  $(pwd)/obj-tools/xoscons s-oscons && \
 	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR) && \
@@ -264,15 +265,9 @@ $(RTSDIR): bin/llvm-gnat1
 	  $(RTSDIR)/a-numaux.adb.orig > $(RTSDIR)/a-numaux.adb
 	$(RM) a-numaux.adb.orig
 
-tracebak.o: tracebak.c tb-gcc.c
+tracebak.o: tracebak.c
 	$(CC) -c $(CFLAGS) $(GNATLIBCFLAGS) \
 	  $(ALL_CPPFLAGS) $(INCLUDES) $(NO_OMIT_ADAFLAGS) $<
-
-# Need to keep functions ordered on g-debpoo.o since labels are used to
-# exclude subprograms from traceback computation.
-
-g-debpoo.o: g-debpoo.adb g-debpoo.ads
-	$(ADAC) -c $(ALL_ADAFLAGS) $(NO_REORDER_ADAFLAGS) $<
 
 # Optionally include sub makefile
 

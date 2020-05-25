@@ -1,4 +1,4 @@
-GPRBUILD=gprbuild -v
+GPRBUILD=gprbuild -v -n
 
 # number of processors
 PROCS=0
@@ -145,62 +145,25 @@ else
   target_os=$(word 3,$(target_list))
 endif
 
-objext=.o
-arext=.a
-soext=.so
-AR_FOR_TARGET=ar
-AR_FLAGS=q
-RANLIB_FOR_TARGET=ranlib
 RTS=$(pwd)/lib/rts-native
 RTSDIR=$(RTS)/adainclude
 RTSLIB=$(RTS)/adalib
 RTSOBJ=$(RTS)/obj
+
 ADAFLAGS=-gnatpg
-ADA_INCLUDES=-nostdinc -I../adainclude
 CFLAGS=-O2 -g
 EXTRALIBFLAGS=
-GNATLIBCFLAGS=-DIN_RTS=1 -fexceptions -gdwarf-aranges -DSTANDALONE \
-  $(EXTRALIBFLAGS)
-ALL_ADAFLAGS=$(CFLAGS) $(ADAFLAGS) $(ADA_INCLUDES) $(EXTRALIBFLAGS)
-INCLUDES=-I../adainclude -I../include
+LIBRARY_KIND=static
 
 ADAC=$(pwd)/bin/llvm-gcc
-CROSSC=clang
 CROSSGCC=gcc
-COMPILE=$(ADAC) -c -gnatpg -nostdinc -I../adainclude
-
-FORCE_DEBUG_ADAFLAGS = -g
-NO_INLINE_ADAFLAGS = -fno-inline
-NO_OMIT_ADAFLAGS = -fno-omit-frame-pointer
-NO_SIBLING_ADAFLAGS=-fno-optimize-sibling-calls
-
-# -fno-toplevel-reorder is actually ignored by LLVM, keep it for reference
-# purposes. Achieve instead an equivalent effect by disabling all
-# optimizations.
-NO_REORDER_ADAFLAGS=-fno-toplevel-reorder -O0
 
 OSCONS_CC=$(CROSSGCC)
 OSCONS_CPP=$(OSCONS_CC) -E -C -DTARGET=\"$(target)\" -iquote $(GNAT_SRC) \
   $(GNAT_SRC)/s-oscons-tmplt.c > s-oscons-tmplt.i
 OSCONS_EXTRACT=$(OSCONS_CC) -S s-oscons-tmplt.i
 
-vpath %.adb ../adainclude
-vpath %.ads ../adainclude
-vpath %.c   ../adainclude
-vpath %.h   ../adainclude
-
 include $(GNAT_SRC)/Makefile.rtl
-
-.SUFFIXES: .adb .ads
-
-.c.o:
-	$(CC) -c $(CFLAGS) $(GNATLIBCFLAGS) $(INCLUDES) $<
-
-.adb.o:
-	$(ADAC) -c $(ALL_ADAFLAGS) $<
-
-.ads.o:
-	$(ADAC) -c $(ALL_ADAFLAGS) $<
 
 gnatlib: build
 	$(RMDIR) $(RTS)
@@ -213,18 +176,12 @@ gnatlib-automated: build-opt
 	$(RMDIR) $(RTSOBJ)
 
 gnatlib-shared:
-	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
-	  ADAC=$(ADAC) CC=$(CROSSC) EXTRALIBFLAGS="-fPIC $(EXTRALIBFLAGS)" \
-	  $(GNATRTL_OBJS) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
-	@cd $(RTSLIB) && $(CROSSC) -shared $(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS) -o libgnat$(soext)
-	@cd $(RTSLIB) && $(CROSSC) -shared $(GNATRTL_TASKING_OBJS) -o libgnarl$(soext)
-	@cd $(RTSLIB) && $(CHMOD) a-wx *.ali && $(RM) *.o
+	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
+	  LIBRARY_KIND=dynamic gnatlib
 
 gnatlib-bc:
-	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
-	  ADAC=$(ADAC) CC=$(CROSSC) \
-	  EXTRALIBFLAGS="-emit-llvm $(EXTRALIBFLAGS)" \
-	  $(GNATRTL_OBJS) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
+	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="-emit-llvm $(EXTRALIBFLAGS)" \
+	  gnatlib
 	@echo "creating libgnat.bc"
 	@cd $(RTSLIB) && llvm-link $(subst .o,.bc,$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS)) -o=libgnat.bc-tmp
 	@echo "creating libgnarl.bc"
@@ -232,24 +189,12 @@ gnatlib-bc:
 	@cd $(RTSLIB) && $(RM) *.bc && $(MV) libgnat.bc-tmp libgnat.bc && $(MV) libgnarl.bc-tmp libgnarl.bc
 
 quicklib: $(RTSDIR)
-	if [ -d $(RTSOBJ) ]; then \
-	  $(MV) $(RTSOBJ)/*.o $(RTSLIB); \
-	fi
-	$(MAKE) GNAT_SRC=$(GNAT_SRC) -C $(RTSLIB) -f $(pwd)/Makefile \
-	  ADAC=$(ADAC) CC=$(CROSSC) \
-	  CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
-	  $(GNATRTL_OBJS) $(LIBGNAT_OBJS) $(EXTRA_ADALIB_OBJS)
-# Create libgnat/libgnarl.a
-	$(RM) $(RTSLIB)/libgnat$(arext) $(RTSLIB)/libgnarl$(arext)
-	@cd $(RTSLIB) && $(AR_FOR_TARGET) $(AR_FLAGS) libgnat$(arext) \
-	  $(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS)
-	$(RANLIB_FOR_TARGET) $(RTSLIB)/libgnat$(arext)
-	@cd $(RTSLIB) && $(AR_FOR_TARGET) $(AR_FLAGS) libgnarl$(arext) \
-	  $(GNATRTL_TASKING_OBJS)
-	$(RANLIB_FOR_TARGET) $(RTSLIB)/libgnarl$(arext)
-	$(RMDIR) $(RTSOBJ)
-	$(MKDIR) $(RTSOBJ)
-	cd $(RTSLIB) && $(CHMOD) a-wx *.ali && $(MV) *.o $(RTSOBJ)
+	PATH=$(pwd)/bin:$(LD_PATH):$$PATH \
+	$(GPRBUILD) -p --target=llvm -j$(PROCS) -P$(RTSDIR)/libada \
+	  -XCFLAGS="$(CFLAGS)" \
+	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS) -gdwarf-aranges" \
+	  -XLIBRARY_KIND=$(LIBRARY_KIND)
+	cd $(RTSLIB) && $(CHMOD) a-wx *.ali
 
 $(RTSDIR): bin/llvm-gnat1
 	$(RMDIR) $(RTS)
@@ -264,10 +209,6 @@ $(RTSDIR): bin/llvm-gnat1
 	sed -e's/%%/%/g' -e's/"=t"/"={st}"/' -e's/"u"/"{st(1)}"/' \
 	  $(RTSDIR)/a-numaux.adb.orig > $(RTSDIR)/a-numaux.adb
 	$(RM) a-numaux.adb.orig
-
-tracebak.o: tracebak.c
-	$(CC) -c $(CFLAGS) $(GNATLIBCFLAGS) \
-	  $(ALL_CPPFLAGS) $(INCLUDES) $(NO_OMIT_ADAFLAGS) $<
 
 # Optionally include sub makefile
 

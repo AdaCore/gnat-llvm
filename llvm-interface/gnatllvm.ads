@@ -20,7 +20,6 @@ with System;
 with stdint_h; use stdint_h;
 
 with Interfaces.C;
-with Interfaces.C.Extensions;
 
 with Atree;    use Atree;
 with Einfo;    use Einfo;
@@ -96,52 +95,15 @@ package GNATLLVM is
    --  circular dependencies between other specs.
 
    --  Define unsigned and unsigned_long_long here instead of use'ing
-   --  Interfaces.C and Interfaces.C.Extensions because the latter brings
-   --  in a lot of junk that gets in the way and the former conflicts with
-   --  Int from the front end.
+   --  Interfaces.C because Int conflicts with the definition in the front end.
 
    subtype unsigned is Interfaces.C.unsigned;
-   function "+"   (L, R : unsigned)  return unsigned renames Interfaces.C."+";
-   function "-"   (L, R : unsigned)  return unsigned renames Interfaces.C."-";
-   function "*"   (L, R : unsigned)  return unsigned renames Interfaces.C."*";
-   function "/"   (L, R : unsigned)  return unsigned renames Interfaces.C."/";
-   function "="   (L, R : unsigned)  return Boolean  renames Interfaces.C."=";
-   function ">"   (L, R : unsigned)  return Boolean  renames Interfaces.C.">";
-   function "<"   (L, R : unsigned)  return Boolean  renames Interfaces.C."<";
-   function "<="  (L, R : unsigned)  return Boolean  renames Interfaces.C."<=";
-   function ">="  (L, R : unsigned)  return Boolean  renames Interfaces.C.">=";
 
-   subtype unsigned_long_long is Interfaces.C.Extensions.unsigned_long_long;
+   subtype unsigned_long_long is Interfaces.C.unsigned_long_long;
    subtype ULL is unsigned_long_long;
    --  Define shorter alias name for easier reading
 
-   function "+"   (L, R : ULL)  return ULL renames Interfaces.C.Extensions."+";
-   function "-"   (L, R : ULL)  return ULL renames Interfaces.C.Extensions."-";
-   function "*"   (L, R : ULL)  return ULL renames Interfaces.C.Extensions."*";
-   function "/"   (L, R : ULL)  return ULL renames Interfaces.C.Extensions."/";
-
-   function "**"  (L : ULL; R : Integer) return ULL
-     renames Interfaces.C.Extensions."**";
-   function "mod" (L, R : ULL)  return ULL
-     renames Interfaces.C.Extensions."mod";
-   function "and" (L, R : ULL)  return ULL
-     renames Interfaces.C.Extensions."and";
-   function "not" (L : ULL)     return ULL
-     renames Interfaces.C.Extensions."not";
-
-   function "="   (L, R : ULL)  return Boolean
-     renames Interfaces.C.Extensions."=";
-   function ">"   (L, R : ULL)  return Boolean
-     renames Interfaces.C.Extensions.">";
-   function "<"   (L, R : ULL)  return Boolean
-     renames Interfaces.C.Extensions."<";
-   function "<="  (L, R : ULL)  return  Boolean
-     renames Interfaces.C.Extensions."<=";
-   function ">="  (L, R : ULL)  return  Boolean
-     renames Interfaces.C.Extensions.">=";
-
-   subtype long_long_integer is Interfaces.C.Extensions.long_long;
-   subtype LLI is long_long_integer;
+   subtype LLI is Long_Long_Integer;
    --  Define shorter alias name for easier reading
 
    function UI_From_LLI is new UI_From_Integral (LLI);
@@ -303,5 +265,11 @@ package GNATLLVM is
      (Ekind_In (E, E_Component, E_Discriminant))
      with Pre => Present (E);
    --  Return True if E is a field in a record
+
+   --  For use in child packages:
+   pragma Warnings (Off);
+   use type Interfaces.C.unsigned_long_long;
+   use type Interfaces.C.unsigned;
+   pragma Warnings (On);
 
 end GNATLLVM;

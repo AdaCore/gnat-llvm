@@ -951,7 +951,7 @@ package GNATLLVM.GLValue is
    --  Return True if V is a null pointer
 
    function Get_Const_Int_Value (V : GL_Value) return LLI is
-     (Const_Int_Get_S_Ext_Value (+V))
+     (LLI (Const_Int_Get_S_Ext_Value (+V)))
      with Pre => Is_A_Const_Int (V);
    --  V is a constant integer; get its value
 

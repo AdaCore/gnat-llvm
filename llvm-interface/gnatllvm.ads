@@ -20,6 +20,7 @@ with System;
 with stdint_h; use stdint_h;
 
 with Interfaces.C;
+with Interfaces.C.Extensions;
 
 with Atree;    use Atree;
 with Einfo;    use Einfo;
@@ -99,7 +100,7 @@ package GNATLLVM is
 
    subtype unsigned is Interfaces.C.unsigned;
 
-   subtype unsigned_long_long is Interfaces.C.unsigned_long_long;
+   subtype unsigned_long_long is Interfaces.C.Extensions.unsigned_long_long;
    subtype ULL is unsigned_long_long;
    --  Define shorter alias name for easier reading
 
@@ -268,7 +269,7 @@ package GNATLLVM is
 
    --  For use in child packages:
    pragma Warnings (Off);
-   use type Interfaces.C.unsigned_long_long;
+   use type Interfaces.C.Extensions.unsigned_long_long;
    use type Interfaces.C.unsigned;
    pragma Warnings (On);
 

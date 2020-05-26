@@ -163,6 +163,8 @@ OSCONS_CPP=$(OSCONS_CC) -E -C -DTARGET=\"$(target)\" -iquote $(GNAT_SRC) \
   $(GNAT_SRC)/s-oscons-tmplt.c > s-oscons-tmplt.i
 OSCONS_EXTRACT=$(OSCONS_CC) -S s-oscons-tmplt.i
 
+objext=.o
+
 include $(GNAT_SRC)/Makefile.rtl
 
 gnatlib: build

@@ -246,6 +246,9 @@ package GNATLLVM is
    Output_Assembly : Boolean := False;
    --  True if -S was specified
 
+   Emit_C          : Boolean := False;
+   --  True if -emit-c was specified
+
    Emit_LLVM       : Boolean := False;
    --  True if -emit-llvm was specified
 

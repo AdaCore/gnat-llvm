@@ -77,6 +77,8 @@ package body GNATLLVM.Codegen is
          Code_Generation := Dump_IR;
       elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
          Code_Generation := Write_BC;
+      elsif Switch = "-emit-c" then
+         Emit_C := True;
       elsif Switch = "-emit-llvm" then
          Emit_LLVM := True;
       elsif Switch = "-S" then
@@ -449,11 +451,14 @@ package body GNATLLVM.Codegen is
       if not Is_Switch (Switch) then
          return False;
       elsif Switch = "--dump-ir"
-        or else Switch = "--dump-bc" or else Switch = "--write-bc"
-        or else Switch = "-emit-llvm" or else Switch = "-S"
+        or else Switch = "--dump-bc"
+        or else Switch = "--write-bc"
+        or else Switch = "-S"
         or else Switch = "-g"
         or else (Starts_With ("-g") and then not Starts_With ("-gnat"))
-        or else Starts_With ("--target=") or else Starts_With ("-llvm-")
+        or else Starts_With ("--target=")
+        or else Starts_With ("-llvm-")
+        or else Starts_With ("-emit-")
       then
          return True;
       end if;

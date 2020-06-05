@@ -148,7 +148,7 @@ endif
 RTS=$(pwd)/lib/rts-native
 RTSDIR=$(RTS)/adainclude
 RTSLIB=$(RTS)/adalib
-RTSOBJ=$(RTS)/obj
+RTSOBJ=$(RTS)/obj-static
 
 ADAFLAGS=-gnatpg
 CFLAGS=-O2 -g
@@ -182,16 +182,18 @@ gnatlib-shared:
 	  LIBRARY_KIND=dynamic gnatlib
 
 gnatlib-bc:
-	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="-emit-llvm $(EXTRALIBFLAGS)" \
-	  gnatlib
+	PATH=$(pwd)/bin:$$PATH \
+	$(GPRBUILD) -c --subdirs=bc --target=llvm -j$(PROCS) \
+	  -P$(RTSDIR)/libada \
+	  -XCFLAGS="$(CFLAGS) -I../../adainclude -I../../include -emit-llvm"
 	@echo "creating libgnat.bc"
-	@cd $(RTSLIB) && llvm-link $(subst .o,.bc,$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS)) -o=libgnat.bc-tmp
-	@echo "creating libgnarl.bc"
-	@cd $(RTSLIB) && llvm-link $(subst .o,.bc,$(GNATRTL_TASKING_OBJS)) -o=libgnarl.bc-tmp
-	@cd $(RTSLIB) && $(RM) *.bc && $(MV) libgnat.bc-tmp libgnat.bc && $(MV) libgnarl.bc-tmp libgnarl.bc
+	@cd $(RTSOBJ)/bc && llvm-link $(subst .o,.bc,$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS)) -o=libgnat.bc-tmp
+	@echo "creating libgnarl.bc under $(RTSOBJ)/bc"
+	@cd $(RTSOBJ)/bc && llvm-link $(subst .o,.bc,$(GNATRTL_TASKING_OBJS)) -o=libgnarl.bc-tmp
+	@cd $(RTSOBJ)/bc && $(RM) *.bc && $(MV) libgnat.bc-tmp libgnat.bc && $(MV) libgnarl.bc-tmp libgnarl.bc
 
 quicklib: $(RTSDIR)
-	PATH=$(pwd)/bin:$(LD_PATH):$$PATH \
+	PATH=$(pwd)/bin:$$PATH \
 	$(GPRBUILD) -p --target=llvm -j$(PROCS) -P$(RTSDIR)/libada \
 	  -XCFLAGS="$(CFLAGS)" \
 	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS) -gdwarf-aranges" \

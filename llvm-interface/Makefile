@@ -44,7 +44,8 @@ compare=cmp --ignore-initial=16
 all: setup build
 	$(MAKE) quicklib
 
-LOCAL_RT_FILES=../link.c s-rident.ads gnat.ads g-dynhta.ads g-dynhta.adb \
+LOCAL_RT_FILES=../link.c s-casuti.ads s-casuti.adb s-rident.ads gnat.ads \
+  g-dynhta.ads g-dynhta.adb \
   g-sets.ads g-sets.adb g-lists.ads g-lists.adb \
   g-graphs.ads g-graphs.adb g-htable.adb g-byorma.adb g-speche.adb \
   g-spchge.adb g-u3spch.adb g-comlin.ads g-comlin.adb g-dirope.adb \

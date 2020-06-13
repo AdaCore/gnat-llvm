@@ -1185,8 +1185,7 @@ package body GNATLLVM.Exprs is
                --  if any.
 
                if Nkind (Pref) = N_Identifier
-                 and then Ekind_In (Entity (Pref), E_Discriminant,
-                                    E_Component)
+                 and then Ekind (Entity (Pref)) in E_Discriminant | E_Component
                then
                   F   := Entity (Pref);
                   Val := No_GL_Value;
@@ -1379,7 +1378,7 @@ package body GNATLLVM.Exprs is
       --  be the RHS of an assignment, so we'll see it here.
 
       if Is_Array_Type (Dest_GT) and then Present (E)
-        and then Nkind_In (E, N_Aggregate, N_Extension_Aggregate)
+        and then Nkind (E) in N_Aggregate | N_Extension_Aggregate
         and then Is_Single_Aggregate (E)
       then
          Emit_Single_Aggregate (Dest, E);

@@ -489,17 +489,14 @@ package body GNATLLVM.Types is
    -- Bounds_From_Type --
    ----------------------
 
-   procedure Bounds_From_Type (GT : GL_Type; Low, High : out GL_Value)
-   is
+   procedure Bounds_From_Type (GT : GL_Type; Low, High : out GL_Value) is
       SRange : constant Node_Id := Scalar_Range (GT);
-
    begin
-      pragma Assert (Nkind_In (SRange, N_Range,
-                               N_Signed_Integer_Type_Definition));
+      pragma Assert
+        (Nkind (SRange) in N_Range | N_Signed_Integer_Type_Definition);
 
       Low  := Emit_Convert_Value (Low_Bound (SRange), GT);
       High := Emit_Convert_Value (High_Bound (SRange), GT);
-
    end Bounds_From_Type;
 
    ----------------------
@@ -1373,7 +1370,7 @@ package body GNATLLVM.Types is
             end if;
 
          when Attribute_First_Bit | Attribute_Bit =>
-            if Ekind_In (Our_E, E_Discriminant, E_Component)
+            if Ekind (Our_E) in E_Discriminant | E_Component
               and then Known_Normalized_Position (Our_E)
             then
                Ret := Normalized_First_Bit (Our_E);
@@ -1518,7 +1515,7 @@ package body GNATLLVM.Types is
          elsif Only_Special            then "" else "&");
 
    begin
-      if Ekind_In (E, E_Component, E_Discriminant) then
+      if Ekind (E) in E_Component | E_Discriminant then
          return Error_Str;
       else
          return "&";

@@ -704,7 +704,7 @@ package body GNATLLVM.Types.Create is
       Val_Clause : constant Node_Id :=
         Get_Attribute_Definition_Clause (E, Attribute_Value_Size);
       Is_Field   : constant Boolean  :=
-        Ekind_In (E, E_Component, E_Discriminant);
+        Ekind (E) in E_Component | E_Discriminant;
       Is_Var     : constant Boolean  :=
         not For_Type and then not For_Component and then not Is_Field;
       Error_Node : constant Node_Id  :=
@@ -816,7 +816,7 @@ package body GNATLLVM.Types.Create is
 
       elsif Size_Const_Int (Size) < In_Size then
          Error_Msg_NE_Num (Msg_Prefix & " for" & Error_Str &
-                             (if   Ekind_In (E, E_Component, E_Discriminant)
+                             (if Ekind (E) in E_Component | E_Discriminant
                                    and then (Is_Aliased (E) or else Atomic)
                               then " must be ^"
                               else " too small, minimum allowed is ^"),

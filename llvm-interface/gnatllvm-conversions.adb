@@ -1289,13 +1289,16 @@ package body GNATLLVM.Conversions is
    begin
       return E : Node_Id := N do
          while Present (E) loop
-            exit when not Nkind_In (E, N_Type_Conversion,
-                                    N_Unchecked_Type_Conversion,
-                                    N_Qualified_Expression);
-            exit when Is_Elementary_Type (Full_Etype (E));
-            exit when Is_Elementary_Type (Full_Etype (Expression (E)));
-            exit when Get_Type_Size_Complexity (Full_GL_Type (E))
-              <= Get_Type_Size_Complexity (Full_GL_Type (Expression (E)));
+            exit when
+              Nkind (E) not in N_Type_Conversion
+                             | N_Unchecked_Type_Conversion
+                             | N_Qualified_Expression
+              or else Is_Elementary_Type (Full_Etype (E))
+              or else Is_Elementary_Type (Full_Etype (Expression (E)))
+              or else
+                Get_Type_Size_Complexity (Full_GL_Type (E))
+                  <= Get_Type_Size_Complexity (Full_GL_Type (Expression (E)));
+
             E := Expression (E);
          end loop;
       end return;
@@ -1309,9 +1312,9 @@ package body GNATLLVM.Conversions is
    begin
       return E : Node_Id := N do
          while Present (E) loop
-            exit when not Nkind_In (E, N_Type_Conversion,
-                                    N_Unchecked_Type_Conversion,
-                                    N_Qualified_Expression);
+            exit when Nkind (E) not in N_Type_Conversion
+                                     | N_Unchecked_Type_Conversion
+                                     | N_Qualified_Expression;
             E := Expression (E);
          end loop;
       end return;

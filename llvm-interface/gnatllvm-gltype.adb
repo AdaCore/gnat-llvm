@@ -431,7 +431,7 @@ package body GNATLLVM.GLType is
             --  by how much we pad.
 
             if Present (Pad_Sz_Align) and then Pad_Sz_Align > 0 then
-               if Ekind_In (Err_Ident, E_Component, E_Discriminant)
+               if Ekind (Err_Ident) in E_Component | E_Discriminant
                  and then Present (Component_Clause (Err_Ident))
                then
                   Err_Node := Last_Bit (Component_Clause (Err_Ident));
@@ -1212,7 +1212,7 @@ package body GNATLLVM.GLType is
 
    begin
       if Is_Entity_Name (N)
-        and then (Ekind_In (Entity (N), E_Constant, E_Variable)
+        and then (Ekind (Entity (N)) in E_Constant | E_Variable
                     or else Is_Formal (Entity (N)))
         and then Present (Actual_Subtype (Entity (N)))
       then

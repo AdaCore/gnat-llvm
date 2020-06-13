@@ -57,8 +57,8 @@ package body GNATLLVM.Arrays is
 
    function Emit_Constant_Aggregate
      (N : Node_Id; Comp_Type, GT : GL_Type; Dims_Left : Nat) return GL_Value
-     with Pre  => Nkind_In (N, N_Aggregate, N_Extension_Aggregate)
-                  and then Is_Array_Type (GT) and then Present (Comp_Type),
+     with Pre  => Nkind (N) in N_Aggregate | N_Extension_Aggregate
+                    and then Is_Array_Type (GT) and then Present (Comp_Type),
           Post => Is_Constant (Emit_Constant_Aggregate'Result);
    --  N is a constant aggregate.  GT is either the array type (at the
    --  outer level) or Any_Array (if not).  Comp_Type is the underlying
@@ -1103,7 +1103,7 @@ package body GNATLLVM.Arrays is
                --  left in the outer array, use recursion to fill in the
                --  aggregate.
 
-               elsif Nkind_In (Expr, N_Aggregate, N_Extension_Aggregate)
+               elsif Nkind (Expr) in N_Aggregate | N_Extension_Aggregate
                  and then Dims_Left > 1
                then
                   Cur_Value := Emit_Array_Aggregate (Expr, Dims_Left - 1, Idxs,

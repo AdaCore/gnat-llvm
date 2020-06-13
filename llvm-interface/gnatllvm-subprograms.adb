@@ -901,8 +901,7 @@ package body GNATLLVM.Subprograms is
       --  from the activation record.  We return the address from the
       --  record so we can either give an LValue or an expression.
 
-      if Ekind_In (E, E_Constant, E_Variable, E_In_Parameter, E_Out_Parameter,
-                   E_In_Out_Parameter, E_Loop_Parameter)
+      if Ekind (E) in E_Constant | E_Variable | Formal_Kind | E_Loop_Parameter
         and then Present (Activation_Record_Component (E))
         and then Present (Activation_Rec_Param)
         and then Get_Value (Enclosing_Subprogram (E)) /= Current_Func

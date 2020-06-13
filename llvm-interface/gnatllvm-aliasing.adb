@@ -497,8 +497,8 @@ package body GNATLLVM.Aliasing is
             --  can't do that if this UC is in a body and one of the types
             --  isn't in the same compilation unit.
 
-            elsif Nkind_In (Unit (Enclosing_Comp_Unit_Node (N)),
-                                 N_Package_Body, N_Subprogram_Body)
+            elsif Nkind (Unit (Enclosing_Comp_Unit_Node (N)))
+                    in N_Package_Body | N_Subprogram_Body
               and then (not OK_Unit (N, SDT) or else not OK_Unit (N, TDT))
             then
                --  If the target type is in the same unit (meaning that the

@@ -159,7 +159,7 @@ package body GNATLLVM.Records is
    function Record_Type_For_Field
      (GT : GL_Type; F : Entity_Id) return Entity_Id
      with Pre  => Present (GT)
-                  and then Ekind_In (F, E_Component, E_Discriminant),
+                  and then Ekind (F) in E_Component | E_Discriminant,
           Post => Is_Record_Type (Record_Type_For_Field'Result);
    --  We have an object of type GT and want to reference field F.  Return
    --  the record type that we have to use for the reference.
@@ -268,7 +268,7 @@ package body GNATLLVM.Records is
       --  Like Get_Type_Size, but only for record types
 
       function Emit_Field_Position (E : Entity_Id; V : GL_Value) return Result
-        with Pre  => Ekind_In (E, E_Discriminant, E_Component);
+        with Pre  => Ekind (E) in E_Discriminant | E_Component;
       --  Compute and return the position in bytes of the field specified by E
       --  from the start of its type as a value of Size_Type.  If Present, V
       --  is a value of that type, which is used in the case of a
@@ -1897,11 +1897,12 @@ package body GNATLLVM.Records is
                   --  If this is "_parent", its fields are our fields too.
                   --  Assume Expression is also an N_Aggregate.
 
-                  pragma Assert (Nkind_In (Expression (Expr),
-                                           N_Aggregate,
-                                           N_Extension_Aggregate));
+                  pragma Assert
+                    (Nkind (Expression (Expr))
+                       in N_Aggregate | N_Extension_Aggregate);
 
                   Result := Emit_Record_Aggregate (Val, Result);
+
                else
                   --  We are to actually insert the field.  However, if we
                   --  haven't set any information for this field, it may be
@@ -1909,9 +1910,11 @@ package body GNATLLVM.Records is
                   --  If so, just don't do anything with it.
 
                   F := Find_Matching_Field (Full_Etype (GT), In_F);
+
                   if Present (Get_Field_Info (F)) then
                      V := Emit_Convert_Value (Val, Field_Type (F));
                      V := Build_Field_Store (Result, F, V);
+
                      if Present (V) then
                         Result := V;
                      end if;

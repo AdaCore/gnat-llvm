@@ -455,8 +455,9 @@ package body GNATLLVM.Utils is
    begin
       return S : Entity_Id := Scope (E) do
          loop
-            exit when S = Standard_Standard;
-            exit when Ekind_In (S, E_Function, E_Procedure);
+            exit when S = Standard_Standard
+              or else Ekind (S) in E_Function | E_Procedure;
+
             if Is_Private_Type (S) then
                S := Full_View (S);
             else

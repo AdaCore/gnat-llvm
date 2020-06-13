@@ -254,8 +254,8 @@ package body GNATLLVM.Compile is
       --  created by the front-end for package bodies in some cases.
 
       if (In_Elab_Proc or else In_Elab_Proc_Stmts)
-        and then not Nkind_In (N, N_Handled_Sequence_Of_Statements,
-                               N_Implicit_Label_Declaration)
+        and then Nkind (N) in N_Handled_Sequence_Of_Statements |
+                              N_Implicit_Label_Declaration
       then
          Check_Elaboration_Code_Allowed (N);
       end if;
@@ -761,8 +761,8 @@ package body GNATLLVM.Compile is
       --  memory.  But don't do this for subprograms since they may need
       --  static links and avoid variables that are in activation records.
 
-      if Nkind_In (N, N_Identifier, N_Expanded_Name)
-        and then not Ekind_In (Entity (N), E_Function, E_Procedure)
+      if Nkind (N) in N_Identifier | N_Expanded_Name
+        and then Ekind (Entity (N)) not in E_Function | E_Procedure
         and then No (Get_From_Activation_Record (Entity (N)))
         and then Present (Get_Value (Entity (N)))
         and then Is_Single_Reference (Get_Value (Entity (N)))
@@ -807,9 +807,9 @@ package body GNATLLVM.Compile is
            and then Is_Volatile_Reference (N));
       Is_Atomic   : constant Boolean :=
         Is_Atomic_Object (N)
-        or else (Nkind_In (N, N_Expanded_Name, N_Explicit_Dereference,
-                           N_Identifier, N_Indexed_Component,
-                           N_Selected_Component)
+        or else (Nkind (N) in N_Expanded_Name | N_Explicit_Dereference |
+                              N_Identifier    | N_Indexed_Component    |
+                              N_Selected_Component
                    and then Atomic_Sync_Required (N));
       Result      : GL_Value         :=
         Emit_Internal (N, LHS, For_LHS => For_LHS, Prefer_LHS => Prefer_LHS);
@@ -862,7 +862,7 @@ package body GNATLLVM.Compile is
                                        Right_Opnd (N));
             elsif Nkind (N) in N_Op_Shift then
                return Emit_Shift (Nkind (N), Left_Opnd (N), Right_Opnd (N));
-            elsif Nkind_In (N, N_Op_And, N_Op_Or, N_Op_Xor)
+            elsif Nkind (N) in N_Op_And | N_Op_Or | N_Op_Xor
               and then Is_Boolean_Type (GT)
             then
                return

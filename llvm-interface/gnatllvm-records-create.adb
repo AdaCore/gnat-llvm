@@ -48,8 +48,8 @@ package body GNATLLVM.Records.Create is
      (F         : Entity_Id;
       TE        : Entity_Id;
       Cur_Field : in out Entity_Id) return Entity_Id
-     with Pre  => Ekind_In (F, E_Discriminant, E_Component)
-     and then Is_Record_Type (TE);
+     with Pre  => Ekind (F) in E_Discriminant | E_Component
+       and then Is_Record_Type (TE);
    --  Find a field in the entity list of TE that has the same
    --  Original_Record_Component as F and return it if so.  Cur_Field
    --  is used to cache the last field tested to avoid quadratic behavior
@@ -86,8 +86,8 @@ package body GNATLLVM.Records.Create is
    is
 
       function ORC (F : Entity_Id) return Entity_Id
-        with Pre  => Ekind_In (F, E_Discriminant, E_Component),
-        Post => Ekind_In (ORC'Result, E_Discriminant, E_Component);
+        with Pre  => Ekind (F) in E_Discriminant | E_Component,
+             Post => Ekind (ORC'Result) in E_Discriminant | E_Component;
       --  Get the Original_Record_Component, but also check
       --  Corresponding_Discriminant first;
 
@@ -376,7 +376,7 @@ package body GNATLLVM.Records.Create is
          Num_Bits             : Uint    := No_Uint;
          Array_Bitfield       : Boolean := False;
          Large_Array_Bitfield : Boolean := False)
-        with Pre => Ekind_In (E, E_Discriminant, E_Component);
+        with Pre => Ekind (E) in E_Discriminant | E_Component;
       --  Add a Field_Info info the table, if appropriate, and set
       --  the field to point to it.  Update F_GT if we used a matching field.
 
@@ -386,7 +386,7 @@ package body GNATLLVM.Records.Create is
       --  a parent record.
 
       procedure Add_Field (E : Entity_Id)
-        with Pre => Ekind_In (E, E_Discriminant, E_Component);
+        with Pre => Ekind (E) in E_Discriminant | E_Component;
       --  Add one field to the above data
 
       procedure Process_Fields_To_Add;
@@ -1180,7 +1180,7 @@ package body GNATLLVM.Records.Create is
          --  Returns True if one of GT's bounds references a discriminant
 
          function Max_Record_Rep (E : Entity_Id) return Uint
-           with Pre => Ekind_In (E, E_Component, E_Discriminant);
+           with Pre => Ekind (E) in E_Component | E_Discriminant;
          --  Return the next byte after the highest repped position of
          --  the base type of E.
 

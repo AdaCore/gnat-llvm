@@ -64,11 +64,15 @@ package body GNATLLVM.Arrays.Create is
       loop
          exit when Nkind (LB) = N_Integer_Literal;
          TE := Full_Etype (LB);
-         exit when not Ekind_In (TE, E_Signed_Integer_Subtype,
-                               E_Modular_Integer_Subtype);
+
+         exit when Ekind (TE)
+           not in E_Signed_Integer_Subtype | E_Modular_Integer_Subtype;
+
          Rng := Scalar_Range (TE);
-         exit when not Nkind_In (Rng, N_Signed_Integer_Type_Definition,
-                                 N_Range);
+
+         exit when Nkind (Rng)
+           not in N_Signed_Integer_Type_Definition | N_Range;
+
          LB := High_Bound (Rng);
       end loop;
 
@@ -77,11 +81,15 @@ package body GNATLLVM.Arrays.Create is
       loop
          exit when Nkind (HB) = N_Integer_Literal;
          TE := Full_Etype (HB);
-         exit when not Ekind_In (TE, E_Signed_Integer_Subtype,
-                               E_Modular_Integer_Subtype);
+
+         exit when Ekind (TE)
+           not in E_Signed_Integer_Subtype | E_Modular_Integer_Subtype;
+
          Rng := Scalar_Range (TE);
-         exit when not Nkind_In (Rng, N_Signed_Integer_Type_Definition,
-                                 N_Range);
+
+         exit when
+           Nkind (Rng) not in N_Signed_Integer_Type_Definition | N_Range;
+
          HB := Low_Bound (Rng);
       end loop;
 

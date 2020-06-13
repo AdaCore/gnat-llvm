@@ -133,8 +133,8 @@ package body GNATLLVM.Variables is
    --  Return True if E may have a global name that we need to check for dups
 
    function Variable_GL_Type (E : Entity_Id; Expr : Node_Id) return GL_Type
-     with Pre  => Ekind_In (E, E_Variable, E_Constant, E_Loop_Parameter,
-                            E_Exception),
+     with Pre  => Ekind (E) in E_Variable | E_Constant | E_Loop_Parameter |
+                               E_Exception,
           Post => Present (Variable_GL_Type'Result);
    --  Determine the proper GL_Type to use for E.  If Expr is Present, it's
    --  an initializing expression for E.
@@ -142,8 +142,8 @@ package body GNATLLVM.Variables is
    function Is_Volatile_Entity (E : Entity_Id) return Boolean is
      (Is_Volatile_Object (E) or else Treat_As_Volatile (E)
         or else Address_Taken (E))
-     with Pre => Ekind_In (E, E_Variable, E_Constant, E_Exception,
-                           E_Loop_Parameter);
+     with Pre => Ekind (E) in E_Variable | E_Constant | E_Exception |
+                              E_Loop_Parameter;
    --  True iff E is an entity (a variable or constant) that we
    --  need to treat as volatile for any reason.
 
@@ -151,8 +151,8 @@ package body GNATLLVM.Variables is
      (E          : Entity_Id;
       GT         : GL_Type;
       Definition : Boolean) return GL_Value
-     with Pre  => Ekind_In (E, E_Variable, E_Constant, E_Loop_Parameter,
-                            E_Exception)
+     with Pre  => Ekind (E) in E_Variable | E_Constant | E_Loop_Parameter |
+                               E_Exception
                   and then Present (GT),
           Post => Present (Make_Global_Variable'Result);
    --  Create a global variable for E.  Definition is true if we
@@ -411,8 +411,8 @@ package body GNATLLVM.Variables is
          --  and process each of them to check for duplicates.
 
          elsif Nkind (N) = N_Defining_Identifier
-           and then Ekind_In (N, E_Constant, E_Variable, E_Exception,
-                              E_Function, E_Procedure, E_Package)
+           and then Ekind (N) in E_Constant | E_Variable  | E_Exception |
+                                 E_Function | E_Procedure | E_Package
            and then Has_Global_Name (N)
          then
             --  See if this name is already in our table.  If it
@@ -1223,8 +1223,8 @@ package body GNATLLVM.Variables is
                      if Acts_As_Spec (N) then
                         E := Defining_Entity (N);
 
-                        if not Ekind_In (E, E_Generic_Procedure,
-                                         E_Generic_Function)
+                        if Ekind (E) not in E_Generic_Procedure |
+                                            E_Generic_Function
                           and then not Is_Eliminated (E)
                         then
                            Discard (Emit_Subprogram_Decl (N));
@@ -1238,8 +1238,9 @@ package body GNATLLVM.Variables is
                   elsif Nkind (N) = N_Subprogram_Body_Stub then
                      E := Defining_Entity (Specification (N));
 
-                     if not Ekind_In (E, E_Subprogram_Body,
-                                      E_Generic_Procedure, E_Generic_Function)
+                     if Ekind (E) not in E_Subprogram_Body   |
+                                         E_Generic_Procedure |
+                                         E_Generic_Function
                        and then not Is_Eliminated (E)
                      then
                         Discard (Emit_Subprogram_Decl (Specification (N)));
@@ -1249,7 +1250,7 @@ package body GNATLLVM.Variables is
                   --  subprogram bodies, which are deferred like other
                   --  bodies.
 
-                  elsif Nkind_In (N, N_Task_Body_Stub, N_Protected_Body_Stub)
+                  elsif Nkind (N) in N_Task_Body_Stub | N_Protected_Body_Stub
                   then
                      null;
 
@@ -1280,8 +1281,8 @@ package body GNATLLVM.Variables is
             if Present (Lists (J)) then
                N := First (Lists (J));
                while Present (N) and then N /= End_List loop
-                  if Nkind_In (N, N_Subprogram_Body, N_Subprogram_Body_Stub,
-                               N_Task_Body_Stub, N_Protected_Body_Stub)
+                  if Nkind (N) in N_Subprogram_Body | N_Subprogram_Body_Stub |
+                                  N_Task_Body_Stub  | N_Protected_Body_Stub
                   then
                      Emit (N);
 
@@ -1345,8 +1346,9 @@ package body GNATLLVM.Variables is
 
       if No (Size) and then No (Align) and then Present (In_Size)
         and then (Is_Atomic_Or_VFA_Object (E)
-                    or else (not Ekind_In (E, E_Exception, E_Out_Parameter,
-                                           E_Loop_Parameter)
+                    or else (Ekind (E) not in E_Exception     |
+                                              E_Out_Parameter |
+                                              E_Loop_Parameter
                                and then Is_Composite_Type (GT)
                                and then not Optimize_Alignment_Space (E)
                                and then not Is_Constr_Subt_For_UN_Aliased (GT)

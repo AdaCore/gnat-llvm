@@ -855,7 +855,7 @@ package body GNATLLVM.Conditionals is
 
    procedure Emit_If_Cond (N : Node_Id; BB_True, BB_False : Basic_Block_T)
    is
-      And_Op : constant Boolean := Nkind_In (N, N_And_Then, N_Op_And);
+      And_Op : constant Boolean := Nkind (N) in N_And_Then | N_Op_And;
       BB_New : Basic_Block_T;
       Result : GL_Value;
 
@@ -879,7 +879,7 @@ package body GNATLLVM.Conditionals is
             --  If this is not a short-circuit form, we can only do this
             --  as a short-circuit if there are no side-effects.
 
-            if Nkind_In (N, N_And_Then, N_Or_Else)
+            if Nkind (N) in N_And_Then | N_Or_Else
               or else (Safe_For_Short_Circuit (Left_Opnd (N))
                          and then Safe_For_Short_Circuit (Right_Opnd (N)))
             then
@@ -1334,9 +1334,14 @@ package body GNATLLVM.Conditionals is
 
       function Process (N : Node_Id) return Traverse_Result is
       begin
-         return (if   Nkind_In (N, N_Op_Divide, N_Explicit_Dereference,
-                                N_Indexed_Component)
-                 then Abandon else OK);
+         if Nkind (N) in N_Op_Divide            |
+                         N_Explicit_Dereference |
+                         N_Indexed_Component
+         then
+            return Abandon;
+         else
+            return OK;
+         end if;
       end Process;
 
       function Search_For_Exception is new Traverse_Func (Process);

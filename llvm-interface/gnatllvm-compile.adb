@@ -254,14 +254,15 @@ package body GNATLLVM.Compile is
       --  created by the front-end for package bodies in some cases.
 
       if (In_Elab_Proc or else In_Elab_Proc_Stmts)
-        and then Nkind (N) in N_Handled_Sequence_Of_Statements |
-                              N_Implicit_Label_Declaration
+        and then Nkind (N) not in N_Handled_Sequence_Of_Statements |
+                                  N_Implicit_Label_Declaration
       then
          Check_Elaboration_Code_Allowed (N);
       end if;
 
       Set_Debug_Pos_At_Node (N);
       Clear_LValue_List;
+
       case Nkind (N) is
          when N_Compilation_Unit =>
             declare

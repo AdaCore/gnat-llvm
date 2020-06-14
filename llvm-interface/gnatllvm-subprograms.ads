@@ -31,7 +31,7 @@ package GNATLLVM.Subprograms is
      with Pre => Present (GT);
 
    function Get_Mechanism_Code (E : Entity_Id; Exprs : List_Id) return Uint
-     with Pre => Ekind_In (E, E_Function, E_Procedure);
+     with Pre => Ekind (E) in E_Function | E_Procedure;
    --  This is inquiring about either the return of E (if No (Exprs)) or
    --  of the parameter number given by the first expression of Exprs.
    --  Return 2 is passed by reference, otherwise, return 1.
@@ -66,7 +66,7 @@ package GNATLLVM.Subprograms is
    --  returns an LValue pointing to the value of the object if so.
 
    function Get_Static_Link (Subp : Entity_Id) return GL_Value
-     with Pre  => Ekind_In (Subp, E_Procedure, E_Function),
+     with Pre  => Ekind (Subp) in E_Procedure | E_Function,
           Post => Present (Get_Static_Link'Result);
    --  Build and return the static link to pass to a call to Subp
 
@@ -119,7 +119,7 @@ package GNATLLVM.Subprograms is
    procedure Emit_Elab_Proc
      (N : Node_Id; Stmts : Node_Id; CU : Node_Id; For_Body : Boolean := False)
      with Pre => Library_Level
-                 and then Nkind_In (N, N_Package_Specification, N_Package_Body)
+                 and then Nkind (N) in N_Package_Specification | N_Package_Body
                  and then Nkind (CU) = N_Compilation_Unit;
    --  Emit code for the elaboration procedure for N.  For_Body says
    --  whether this is the elab proc for the body or the spec of a package.
@@ -226,22 +226,22 @@ package GNATLLVM.Subprograms is
    function First_Out_Param (E : Entity_Id) return Entity_Id
      with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type,
           Post => No (First_Out_Param'Result)
-                  or else (Ekind_In (First_Out_Param'Result,
-                                     E_Out_Parameter, E_In_Out_Parameter));
+                  or else (Ekind (First_Out_Param'Result)
+                             in E_Out_Parameter | E_In_Out_Parameter);
    --  Return the first formal of E that's an output from the subprogram
 
    function Next_Out_Param (E : Entity_Id) return Entity_Id
-     with Pre  => Ekind_In (E, E_Out_Parameter, E_In_Out_Parameter),
+     with Pre  => Ekind (E) in E_Out_Parameter | E_In_Out_Parameter,
           Post => No (Next_Out_Param'Result)
-                  or else (Ekind_In (Next_Out_Param'Result,
-                                     E_Out_Parameter, E_In_Out_Parameter));
+                  or else (Ekind (Next_Out_Param'Result)
+                             in E_Out_Parameter | E_In_Out_Parameter);
    --  Given E, a formal of some subprogram, return the next Out parameter,
    --  as defined above, of that subprogram.
 
    procedure Next_Out_Param (E : in out Entity_Id)
-     with Pre  => Ekind_In (E, E_Out_Parameter, E_In_Out_Parameter),
-          Post => No (E) or else (Ekind_In (E, E_Out_Parameter,
-                                            E_In_Out_Parameter));
+     with Pre  => Ekind (E) in E_Out_Parameter | E_In_Out_Parameter,
+          Post => No (E)
+                  or else Ekind (E) in E_Out_Parameter | E_In_Out_Parameter;
    --  Given E, a formal of some subprogram, update it to be the next Out
    --  parameter, as defined above, of that subprogram.
 
@@ -270,7 +270,7 @@ package GNATLLVM.Subprograms is
 
    function Add_Static_Link
      (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value_Array
-     with Pre => No (Proc) or else Ekind_In (Proc, E_Procedure, E_Function);
+     with Pre => No (Proc) or else Ekind (Proc) in E_Procedure | E_Function;
    --  If Proc needs a static link, add it to the end of Args
 
    function Subp_Ptr (N : Node_Id) return GL_Value

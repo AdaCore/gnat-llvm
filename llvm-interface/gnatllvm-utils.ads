@@ -108,7 +108,7 @@ package GNATLLVM.Utils is
    --  Return True if N is a node which needs Volatile_Full_Access
 
    function Is_VFA_Ref (N : Node_Id) return Boolean is
-     (Nkind_In (N, N_Indexed_Component, N_Selected_Component)
+     (Nkind (N) in N_Indexed_Component | N_Selected_Component
         and then Has_Volatile_Full_Access (Prefix (N)))
      with Pre => Present (N);
    --  Return True if N is an expression that has a Volatile_Full_Access
@@ -142,26 +142,26 @@ package GNATLLVM.Utils is
 
    function Get_Orig_By_Ref_Mech (E : Entity_Id) return Boolean is
      (Get_Flag1 (E))
-     with Pre => Ekind_In (E, E_In_Parameter, E_Out_Parameter,
-                           E_In_Out_Parameter);
+     with Pre => Ekind (E)
+                 in E_In_Parameter | E_Out_Parameter | E_In_Out_Parameter;
    procedure Set_Orig_By_Ref_Mech (E : Entity_Id; F : Boolean)
-     with Pre => Ekind_In (E, E_In_Parameter, E_Out_Parameter,
-                           E_In_Out_Parameter);
+     with Pre => Ekind (E)
+                 in E_In_Parameter | E_Out_Parameter | E_In_Out_Parameter;
    --  Set and get a flag indicating that this parameter was originally
    --  specified with a Mechanism of By_Ref.
 
    function Get_Added_To_Module (E : Entity_Id) return Boolean is
      (Get_Flag1 (E))
-     with Pre => Ekind_In (E, E_Function, E_Procedure);
+     with Pre => Ekind (E) in E_Function | E_Procedure;
    procedure Set_Added_To_Module (E : Entity_Id; F : Boolean := True)
-     with Pre => Ekind_In (E, E_Function, E_Procedure);
+     with Pre => Ekind (E) in E_Function | E_Procedure;
    --  Set and get a flag indicating that this subprogram was already added
    --  to the module.
 
    function Is_Generic_Item (N : Node_Id) return Boolean is
-     (Nkind_In (N, N_Subprogram_Body, N_Function_Specification,
-                   N_Procedure_Specification, N_Package_Specification,
-                   N_Package_Body)
+     (Nkind (N) in N_Subprogram_Body | N_Function_Specification |
+                     N_Procedure_Specification | N_Package_Specification |
+                     N_Package_Body
         and then Ekind (Unique_Defining_Entity (N)) in Generic_Unit_Kind)
      with Pre => Present (N);
    --  Return True iff N is a node representing a generic package or

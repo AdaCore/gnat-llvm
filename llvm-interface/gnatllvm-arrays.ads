@@ -222,7 +222,7 @@ package GNATLLVM.Arrays is
 
    procedure Emit_Single_Aggregate (LValue : GL_Value; N : Node_Id)
      with Pre => Present (LValue)
-                 and then Nkind_In (N, N_Aggregate, N_Extension_Aggregate)
+                 and then Nkind (N) in N_Aggregate | N_Extension_Aggregate
                  and then Is_Single_Aggregate (N);
    --  Use memset to do an aggregate assignment from N to LValue
 
@@ -231,7 +231,7 @@ package GNATLLVM.Arrays is
       Dims_Left      : Pos;
       Indices_So_Far : GL_Value_Array;
       Value_So_Far   : GL_Value) return GL_Value
-     with Pre  => Nkind_In (N, N_Aggregate, N_Extension_Aggregate)
+     with Pre  => Nkind (N) in N_Aggregate | N_Extension_Aggregate
                   and then Is_Array_Type (Full_Etype (N)),
                Post => Present (Emit_Array_Aggregate'Result);
    --  Emit an N_Aggregate which is an array, returning the GL_Value that

@@ -1466,11 +1466,11 @@ package body GNATLLVM.Records is
 
    begin
       if Present (ORC) and then ORC /= F
-        and then Same_Representation (R_TE, Full_Scope (ORC))
+        and then Has_Compatible_Representation (R_TE, Full_Scope (ORC))
       then
          return ORC;
       elsif Present (CRC) and then CRC /= F
-        and then Same_Representation (R_TE, Full_Scope (CRC))
+        and then Has_Compatible_Representation (R_TE, Full_Scope (CRC))
       then
          return CRC;
       else

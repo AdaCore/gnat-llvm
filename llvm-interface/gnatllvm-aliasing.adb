@@ -300,7 +300,7 @@ package body GNATLLVM.Aliasing is
       --  since we can track those using a parent relationship.
 
       elsif Is_Composite_Type (TE) and then Is_Derived_Type (TE)
-        and then Same_Representation (TE, Full_Etype (TE))
+        and then Has_Compatible_Representation (TE, Full_Etype (TE))
         and then not Is_Tagged_Type (TE)
       then
          return Base_Type_For_Aliasing (Full_Etype (TE));
@@ -761,7 +761,7 @@ package body GNATLLVM.Aliasing is
          --  if the a chance that they can be equivalent.
 
          if Is_Layout_Identical (Type_Of (TE), Type_Of (E_TE))
-           and then Same_Representation (TE, E_TE)
+           and then Has_Compatible_Representation (TE, E_TE)
          then
             --  We have to check differently for arrays and records.  For
             --  arrays, we need to have identical bounds.

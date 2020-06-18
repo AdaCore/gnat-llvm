@@ -413,7 +413,6 @@ package body GNATLLVM.Conversions is
          --  However, we always have to do something if there's a biased
          --  type involved.
 
-         Result := Get (Result, Data);
          if Is_Discrete_Or_Fixed_Point_Type (GT)
            and then Type_Of (GT) = Type_Of (Result)
            and then not Is_Biased_GL_Type (GT)
@@ -421,8 +420,17 @@ package body GNATLLVM.Conversions is
            and then not Is_Unchecked
          then
             Result := G_Is (Result, GT);
+
+         --  If we have a reference to an access type and we're converting
+         --  to another access type, we can just convert the reference.
+         --  This avoids loading the data, including in cases where we
+         --  can't load the data, such as at library level.
+
+         elsif Is_Reference (Result) and then Is_Access_Type (Result) then
+            Result := Convert_Ref (Result, GT);
+
          else
-            Result := Convert (Result, GT,
+            Result := Convert (Get (Result, Data), GT,
                                Float_Truncate => Float_Truncate,
                                Is_Unchecked   => Is_Unchecked,
                                No_Truncation  => No_Truncation);

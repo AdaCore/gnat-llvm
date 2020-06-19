@@ -101,6 +101,22 @@ package body GNATLLVM.DebugInfo is
    --  Given MD, debug metadata for some type, create debug metadata for a
    --  pointer to that type.  E is used for naming the type.
 
+   function Add_Field
+     (Name      : String;
+      GT        : GL_Type;
+      S         : Source_Ptr;
+      Field_MDs : in out Metadata_Array;
+      Idx       : in out Nat;
+      Offset    : in out ULL;
+      Rec_Align : in out Nat) return Boolean
+   with Pre => Present (GT);
+   --  Add debug information for one field with Name, GT, and S to the
+   --  Field_MDs, starting at Idx, which we update.  Update Offset to point
+   --  to the byte past this field and Rec_Align to reflect what alignment
+   --  is required past this point.  Return False if we aren't able to
+   --  properly update Offset, for example because we have a variable-sized
+   --  object.
+
    Debug_Loc_Sloc  : Source_Ptr := No_Location;
    Debug_Loc_Scope : Metadata_T := No_Metadata_T;
    Debug_Loc       : Metadata_T := No_Metadata_T;
@@ -202,6 +218,58 @@ package body GNATLLVM.DebugInfo is
       end;
    end Get_Debug_File_Node;
 
+   ---------------
+   -- Add_Field --
+   ---------------
+
+   function Add_Field
+     (Name      : String;
+      GT        : GL_Type;
+      S         : Source_Ptr;
+      Field_MDs : in out Metadata_Array;
+      Idx       : in out Nat;
+      Offset    : in out ULL;
+      Rec_Align : in out Nat) return Boolean
+   is
+      MD     : constant Metadata_T := Create_Debug_Type_Data (GT);
+      Align  : constant Nat        := Get_Type_Alignment (GT);
+      Size_V : constant GL_Value   :=
+        (if Is_Dynamic_Size (GT) then No_GL_Value else Get_Type_Size (GT));
+      Size   : ULL;
+
+   begin
+      --  If the size of this type isn't a constant, we can't do anything
+      --  and can't continue since we don't know where things will be.
+
+      if No (Size_V) or else not Is_A_Const_Int (Size_V) then
+         return False;
+      end if;
+
+      --  Otherwise get the size of the type, round the offset to the
+      --  alignment of this type, and update the type alignment.
+
+      Size      := +Size_V;
+      Rec_Align := Nat'Max (Rec_Align, Align);
+      Offset    :=
+        ((Offset + ULL (Align) - 1) / ULL (Align)) * ULL (Align);
+
+      --  If we have debug info for this type, add the member type to
+      --  the above fields.
+
+      if Present (MD) then
+         Field_MDs (Idx) := DI_Create_Member_Type
+           (No_Metadata_T, Name,
+            Get_Debug_File_Node (Get_Source_File_Index (S)),
+            Get_Logical_Line_Number (S), Size, Align, Offset, MD);
+         Idx := Idx + 1;
+      end if;
+
+      --  Allow for the size of this entry
+
+      Offset := Offset + Size;
+      return True;
+   end Add_Field;
+
    ----------------------------------
    -- Create_Subprogram_Debug_Info --
    ----------------------------------
@@ -251,10 +319,6 @@ package body GNATLLVM.DebugInfo is
 
       function Create_Return_Debug_Info return Metadata_T is
 
-         procedure Add_Field (Name : String; GT : GL_Type; S : Source_Ptr)
-           with Pre => Present (GT);
-         --  Add one field with Name, GT, and S to the data below
-
          Num_Fields : constant Nat :=
            Number_Out_Params (E) + (if LRK = Struct_Out_Subprog then 1 else 0);
          Rec_Align  : Nat          := BPU;
@@ -262,67 +326,22 @@ package body GNATLLVM.DebugInfo is
          Field_MDs  : Metadata_Array (1 .. Num_Fields);
          Idx        : Nat          := Field_MDs'First;
          Formal     : Entity_Id    := First_Out_Param (E);
-         No_More    : Boolean      := False;
-
-         ---------------
-         -- Add_Field --
-         ---------------
-
-         procedure Add_Field (Name : String; GT : GL_Type; S : Source_Ptr) is
-            MD     : constant Metadata_T := Create_Debug_Type_Data (GT);
-            Align  : constant Nat        := Get_Type_Alignment (GT);
-            Size_V : constant GL_Value   :=
-              (if   Is_Dynamic_Size (GT) then No_GL_Value
-               else Get_Type_Size (GT));
-            Size   : ULL;
-
-         begin
-            --  If we don't the size of this type isn't a constant, we
-            --  can't do anything and can't continue since we don't know
-            --  where things will be.
-
-            if No (Size_V) or else not Is_A_Const_Int (Size_V) then
-               No_More := True;
-               return;
-            end if;
-
-            --  Otherwise get the size of the type, round the offset to
-            --  the alignment of this type, and update the type alignment.
-
-            Size      := +Size_V;
-            Rec_Align := Nat'Max (Rec_Align, Align);
-            Offset    :=
-              ((Offset + ULL (Align) - 1) / ULL (Align)) * ULL (Align);
-
-            --  If we have debug info for this type, add the member type to
-            --  the above fields.
-
-            if Present (MD) then
-               Field_MDs (Idx) := DI_Create_Member_Type
-                 (No_Metadata_T, Name,
-                  Get_Debug_File_Node (Get_Source_File_Index (S)),
-                  Get_Logical_Line_Number (S), Size, Align, Offset, MD);
-               Idx := Idx + 1;
-            end if;
-
-            --  Allow for the size of this entry
-
-            Offset := Offset + Size;
-         end Add_Field;
+         OK         : Boolean      := True;
 
       begin -- Start of processing for Create_Return_Debug_Info
 
          --  If the subprogram has a return value, add it to the list of fields
 
          if LRK = Struct_Out_Subprog then
-            Add_Field ("return_", Full_GL_Type (E), Sloc (E));
+            OK := Add_Field ("return_", Full_GL_Type (E), Sloc (E),
+                             Field_MDs, Idx, Offset, Rec_Align);
          end if;
 
          --  Now add each Out parameter
 
-         while not No_More and then Present (Formal) loop
-            Add_Field (Get_Name (Formal), Full_GL_Type (Formal),
-                       Sloc (Formal));
+         while OK and then Present (Formal) loop
+            OK := Add_Field (Get_Name (Formal), Full_GL_Type (Formal),
+                             Sloc (Formal), Field_MDs, Idx, Offset, Rec_Align);
             Next_Out_Param (Formal);
          end loop;
 

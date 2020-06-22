@@ -503,20 +503,22 @@ package body GNATLLVM.Variables is
 
             if Ekind (N) = E_Constant and then Present (Full_View (N)) then
                return Is_Static_Location (Full_View (N));
+
+            --  Likewise for a renamed object
+
+            elsif Present (Renamed_Object (N)) then
+               return Is_Static_Location (Renamed_Object (N));
+
+            --  If we have an address clause, see if the address is static
+
+            elsif Present (Address_Clause (N)) then
+               return Is_Static_Address (Expression (Address_Clause (N)));
             end if;
 
-            --  If this is at top level and has an address clause, we'll
-            --  still allocate the variable, but set the initial value to
-            --  be the address, so we can't consider this a static location
-            --  in that case.  If we're not at top level and we do that, we
-            --  could, but it's not worth the trouble because the
-            --  distinction between static and non-static isn't that
-            --  important then.
+            --  Otherwise, this is at a static location if it's a
+            --  fixed-length object allocated statically.
 
-            return No (Address_Clause (N))
-              and then (No (Renamed_Object (N))
-                          or else Is_Static_Location (Renamed_Object (N)))
-              and then Ekind (N) /= E_Enumeration_Literal
+            return Ekind (N) /= E_Enumeration_Literal
               and then (Ekind (Full_Etype (N)) = E_Void
                           or else not Is_Nonnative_Type (Full_GL_Type (N)))
               and then (Library_Level or else In_Elab_Proc

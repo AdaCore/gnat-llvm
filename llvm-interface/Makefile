@@ -210,10 +210,6 @@ $(RTSDIR): bin/llvm-gnat1
 	  $(pwd)/obj-tools/xoscons s-oscons && \
 	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR) && \
 	  $(RM) s-oscons-tmplt.*
-	$(MV) $(RTSDIR)/a-numaux.adb $(RTSDIR)/a-numaux.adb.orig
-	sed -e's/%%/%/g' -e's/"=t"/"={st}"/' -e's/"u"/"{st(1)}"/' \
-	  $(RTSDIR)/a-numaux.adb.orig > $(RTSDIR)/a-numaux.adb
-	$(RM) a-numaux.adb.orig
 
 # Optionally include sub makefile
 

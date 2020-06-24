@@ -123,6 +123,10 @@ package GNATLLVM.Utils is
      with Pre => Present (E);
    --  Returns a string corresponding to the external name of E
 
+   function To_String (J : Nat) return String;
+   --  Returns a string corresponding to the image of J with no leading
+   --  blanks.
+
    procedure Error_Msg_NE_Num
      (Msg : String; N : Node_Id; E : Entity_Id; Num : Int)
      with Pre => Msg'Length > 0 and then Present (N) and then Present (E);

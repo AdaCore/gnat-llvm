@@ -95,7 +95,7 @@ package body GNATLLVM.DebugInfo is
      (MD : Metadata_T; E : Entity_Id) return Metadata_T
    is
      (DI_Create_Pointer_Type (MD, ULL (Thin_Pointer_Size), Thin_Pointer_Size,
-                              0, Get_Name (E) & "#RF"))
+                              0, Get_Name (E, "#RF")))
      with Pre  => Present (MD) and then Present (E),
           Post => Present (Create_Pointer_To'Result);
    --  Given MD, debug metadata for some type, create debug metadata for a
@@ -112,20 +112,37 @@ package body GNATLLVM.DebugInfo is
    --  anything if we don't know how to create the metadata.
 
    function Add_Field
-     (Name      : String;
-      GT        : GL_Type;
-      S         : Source_Ptr;
-      Field_MDs : in out Metadata_Array;
+     (Field_MDs : in out Metadata_Array;
       Idx       : in out Nat;
       Offset    : in out ULL;
-      Rec_Align : in out Nat) return Boolean
-   with Pre => Present (GT);
-   --  Add debug information for one field with Name, GT, and S to the
-   --  Field_MDs, starting at Idx, which we update.  Update Offset to point
-   --  to the byte past this field and Rec_Align to reflect what alignment
-   --  is required past this point.  Return False if we aren't able to
-   --  properly update Offset, for example because we have a variable-sized
-   --  object.
+      Rec_Align : in out Nat;
+      Name      : String;
+      S         : Source_Ptr;
+      Align     : Nat;
+      Size      : ULL;
+      GT        : GL_Type    := No_GL_Type;
+      MD        : Metadata_T := No_Metadata_T) return Boolean
+   with Pre => Present (GT) or else Present (MD);
+   --  Add debug information for one field with Name, S, Align, and either
+   --  GT or MD to the Field_MDs, starting at Idx, which we update.  Update
+   --  Offset to point to the byte past this field and Rec_Align to reflect
+   --  what alignment is required past this point.  Return False if we
+   --  aren't able to properly update Offset, for example because we have a
+   --  variable-sized object.
+
+   function Create_Bounds_Type_Data
+     (GT : GL_Type; Size : out ULL) return Metadata_T
+     with Pre  => Present (GT)
+                  and then Is_Unconstrained_Array (Full_Base_Type (GT)),
+          Post => Present (Create_Bounds_Type_Data'Result);
+   --  Create debug information for the bounds of type GT and return the
+   --  size of the resulting structure.
+
+   function Create_Bounds_And_Data_Type_Data (GT : GL_Type) return Metadata_T
+     with Pre  => Present (GT)
+                  and then Is_Unconstrained_Array (Full_Base_Type (GT));
+   --  Create debug information for the bounds and data of type GT if
+   --  possible.
 
    Debug_Loc_Sloc  : Source_Ptr := No_Location;
    Debug_Loc_Scope : Metadata_T := No_Metadata_T;
@@ -233,32 +250,39 @@ package body GNATLLVM.DebugInfo is
    ---------------
 
    function Add_Field
-     (Name      : String;
-      GT        : GL_Type;
-      S         : Source_Ptr;
-      Field_MDs : in out Metadata_Array;
+     (Field_MDs : in out Metadata_Array;
       Idx       : in out Nat;
       Offset    : in out ULL;
-      Rec_Align : in out Nat) return Boolean
+      Rec_Align : in out Nat;
+      Name      : String;
+      S         : Source_Ptr;
+      Align     : Nat;
+      Size      : ULL;
+      GT        : GL_Type    := No_GL_Type;
+      MD        : Metadata_T := No_Metadata_T) return Boolean
    is
-      MD     : constant Metadata_T := Create_Type_Data (GT);
-      Align  : constant Nat        := Get_Type_Alignment (GT);
+      Our_MD    : constant Metadata_T :=
+        (if Present (GT) then Create_Type_Data (GT) else MD);
       Size_V : constant GL_Value   :=
-        (if Is_Dynamic_Size (GT) then No_GL_Value else Get_Type_Size (GT));
-      Size   : ULL;
+        (if   No (GT) or else Is_Dynamic_Size (GT) then No_GL_Value
+         else Get_Type_Size (GT));
+      Our_Size  : constant ULL     :=
+        (if   Present (Size_V) and then Is_A_Const_Int (Size_V) then +Size_V
+         else Size);
 
    begin
       --  If the size of this type isn't a constant, we can't do anything
       --  and can't continue since we don't know where things will be.
 
-      if No (Size_V) or else not Is_A_Const_Int (Size_V) then
+      if Present (GT)
+        and then (No (Size_V) or else not Is_A_Const_Int (Size_V))
+      then
          return False;
       end if;
 
       --  Otherwise get the size of the type, round the offset to the
       --  alignment of this type, and update the type alignment.
 
-      Size      := +Size_V;
       Rec_Align := Nat'Max (Rec_Align, Align);
       Offset    :=
         ((Offset + ULL (Align) - 1) / ULL (Align)) * ULL (Align);
@@ -266,17 +290,17 @@ package body GNATLLVM.DebugInfo is
       --  If we have debug info for this type, add the member type to
       --  the above fields.
 
-      if Present (MD) then
+      if Present (Our_MD) then
          Field_MDs (Idx) := DI_Create_Member_Type
            (No_Metadata_T, Name,
             Get_Debug_File_Node (Get_Source_File_Index (S)),
-            Get_Logical_Line_Number (S), Size, Align, Offset, MD);
+            Get_Logical_Line_Number (S), Size, Align, Offset, Our_MD);
          Idx := Idx + 1;
       end if;
 
       --  Allow for the size of this entry
 
-      Offset := Offset + Size;
+      Offset := Offset + Our_Size;
       return True;
    end Add_Field;
 
@@ -343,15 +367,18 @@ package body GNATLLVM.DebugInfo is
          --  If the subprogram has a return value, add it to the list of fields
 
          if LRK = Struct_Out_Subprog then
-            OK := Add_Field ("return_", Full_GL_Type (E), Sloc (E),
-                             Field_MDs, Idx, Offset, Rec_Align);
+            OK := Add_Field (Field_MDs, Idx, Offset, Rec_Align, "return_",
+                             Sloc (E), Get_Type_Alignment (Full_GL_Type (E)),
+                             0, GT => Full_GL_Type (E));
          end if;
 
          --  Now add each Out parameter
 
          while OK and then Present (Formal) loop
-            OK := Add_Field (Get_Name (Formal), Full_GL_Type (Formal),
-                             Sloc (Formal), Field_MDs, Idx, Offset, Rec_Align);
+            OK := Add_Field (Field_MDs, Idx, Offset, Rec_Align,
+                             Get_Name (Formal), Sloc (Formal),
+                             Get_Type_Alignment (Full_GL_Type (Formal)), 0,
+                             GT => Full_GL_Type (Formal));
             Next_Out_Param (Formal);
          end loop;
 
@@ -522,6 +549,97 @@ package body GNATLLVM.DebugInfo is
          Set_Current_Debug_Location (Create_Location (N));
       end if;
    end Set_Debug_Pos_At_Node;
+
+   -----------------------------
+   -- Create_Bounds_Type_Data --
+   -----------------------------
+
+   function Create_Bounds_Type_Data
+     (GT : GL_Type; Size : out ULL) return Metadata_T
+   is
+      Ndim      : constant Nat        := Number_Dimensions (GT);
+      S         : constant Source_Ptr := Sloc (GT);
+      Rec_Align : Nat                 := Get_Bound_Alignment (Full_Etype (GT));
+      Offset    : ULL                 := 0;
+      Field_MDs : Metadata_Array (1 .. Ndim * 2);
+      Idx       : Nat                 := Field_MDs'First;
+
+   begin
+      for J in 0 .. Ndim - 1 loop
+         declare
+            B_GT  : constant GL_Type := Array_Index_GT (GT, J);
+            Align : constant Nat     := Get_Type_Alignment (B_GT);
+
+         begin
+            pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align,
+                                      "LB" & To_String (J), Sloc (GT), Align,
+                                      0, GT => B_GT));
+            pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align,
+                                      "HB" & To_String (J), Sloc (GT), Align,
+                                      0, GT => B_GT));
+         end;
+      end loop;
+
+      --  Compute the size taking into account the record alignment
+
+      Size    :=
+        ((Offset + ULL (Rec_Align) - 1) / ULL (Rec_Align)) * ULL (Rec_Align);
+
+      return DI_Create_Struct_Type
+        (No_Metadata_T, Get_Name (Full_Etype (GT), "_B"),
+         Get_Debug_File_Node (Get_Source_File_Index (S)),
+         Get_Logical_Line_Number (S), Size,
+         Rec_Align, DI_Flag_Zero, No_Metadata_T,
+         Field_MDs (1 .. Idx - 1), 0, No_Metadata_T, "");
+
+   end Create_Bounds_Type_Data;
+
+   --------------------------------------
+   -- Create_Bounds_And_Data_Type_Data --
+   --------------------------------------
+
+   function Create_Bounds_And_Data_Type_Data
+     (GT : GL_Type) return Metadata_T
+   is
+      S           : constant Source_Ptr := Sloc (GT);
+      TE          : constant Entity_Id  := Full_Etype (GT);
+      Size_V      : constant GL_Value   :=
+        (if Is_Dynamic_Size (GT) then No_GL_Value else Get_Type_Size (GT));
+      Bound_Align : constant Nat        := Get_Bound_Alignment (TE);
+      Data_Align  : constant Nat        := Get_Type_Alignment (GT);
+      Align       : Nat                 := Nat'Max (Bound_Align, Data_Align);
+      Offset      : ULL                 := 0;
+      Idx         : Nat                 := 1;
+      Data_MD     : constant Metadata_T := Create_Type_Data (GT);
+      Bounds_Size : ULL;
+      Bound_MD    : constant Metadata_T :=
+          Create_Bounds_Type_Data (GT, Bounds_Size);
+      Field_MDs   : Metadata_Array (1 .. 2);
+
+   begin
+      --  If GT is of variable size, we can't return debug info for it
+      --  or if we have no debug info for GT (which will usually be because
+      --  the size isn't constant.
+
+      if No (Size_V) or else not Is_A_Const_Int (Size_V) or else No (Data_MD)
+      then
+         return No_Metadata_T;
+      end if;
+
+      --  Bounds and data are two fields, the bounds and the data
+
+      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Align, "BOUNDS", S,
+                                Bound_Align, Bounds_Size, MD => Bound_MD));
+      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Align, "DATA", S,
+                                Data_Align, +Size_V, MD => Data_MD));
+
+      return DI_Create_Struct_Type
+        (No_Metadata_T, Get_Name (Full_Etype (GT), "_BD"),
+         Get_Debug_File_Node (Get_Source_File_Index (S)),
+         Get_Logical_Line_Number (S), Offset, Align, DI_Flag_Zero,
+         No_Metadata_T, Field_MDs, 0, No_Metadata_T, "");
+
+   end Create_Bounds_And_Data_Type_Data;
 
    ----------------------
    -- Create_Type_Data --
@@ -758,6 +876,8 @@ package body GNATLLVM.DebugInfo is
       Base_R : constant GL_Relationship :=
         (if Is_Reference (R) then Deref (R) else R);
       MD     : constant Metadata_T      := Create_Type_Data (GT);
+      Size   : ULL;
+      pragma Unreferenced (Size);
 
    begin
       --  If we weren't able to get debug info for the underlying type
@@ -771,6 +891,13 @@ package body GNATLLVM.DebugInfo is
 
       elsif R = Thin_Pointer then
          return MD;
+
+      --  Handle bounds and bounds and data relationships
+
+      elsif Base_R = Bounds then
+         return Create_Bounds_Type_Data (GT, Size);
+      elsif Base_R = Bounds_And_Data then
+         return Create_Bounds_And_Data_Type_Data (GT);
 
       --  Otherwise, we don't (yet) support this.
 
@@ -792,11 +919,9 @@ package body GNATLLVM.DebugInfo is
       S         : constant Source_Ptr := Sloc         (E);
 
    begin
-      --  ??? For globals, we only do something now if this is a normal
-      --  reference to the data and if it's not imported.
+      --  For globals, we only do something if it's not imported
 
       if Emit_Debug_Info and then Present (Type_Data)
-        and then Relationship (V) = Reference
         and then Is_A_Global_Variable (V) and then not Is_Imported (E)
       then
          Global_Set_Metadata

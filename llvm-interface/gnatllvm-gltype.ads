@@ -288,6 +288,10 @@ package GNATLLVM.GLType is
      (Ekind (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Sloc (GT : GL_Type) return Source_Ptr is
+     (Sloc (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Is_Access_Type (GT : GL_Type) return Boolean is
      (Is_Access_Type (Full_Etype (GT)))
      with Pre => Present (GT);

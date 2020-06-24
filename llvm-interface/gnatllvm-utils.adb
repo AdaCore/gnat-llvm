@@ -321,6 +321,20 @@ package body GNATLLVM.Utils is
       end if;
    end Get_Ext_Name;
 
+   ---------------
+   -- To_String --
+   ---------------
+
+   function To_String (J : Nat) return String is
+      Str : constant String := Nat'Image (J);
+
+   begin
+      --  The standard guarantees that we'll have at most one blank and,
+      --  since we know that the value is non-negative, exactly one blank.
+
+      return Str (Str'First + 1 .. Str'Last);
+   end To_String;
+
    -------------
    -- Is_Name --
    -------------

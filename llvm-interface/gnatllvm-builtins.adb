@@ -184,8 +184,7 @@ package body GNATLLVM.Builtins is
    is
       T         : constant Type_T := Type_Of (GT);
       Width     : constant ULL    := Get_Scalar_Bit_Size (T);
-      W         : constant String := Int'Image (Int (Width));
-      Full_Name : constant String := Name & W (W'First + 1 .. W'Last);
+      Full_Name : constant String := Name & To_String (Nat (Width));
       Fun_Ty    : Type_T;
       Result    : GL_Value;
 

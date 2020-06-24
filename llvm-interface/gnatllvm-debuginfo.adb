@@ -86,9 +86,9 @@ package body GNATLLVM.DebugInfo is
    Freeze_Pos_Level : Natural := 0;
    --  Current level of pushes of requests to freeze debug position
 
-   function Create_Debug_Location (N : Node_Id) return Metadata_T
+   function Create_Location (N : Node_Id) return Metadata_T
      with Pre  => Present (N),
-          Post => Present (Create_Debug_Location'Result);
+          Post => Present (Create_Location'Result);
    --  Return debug metadata for a location
 
    function Create_Pointer_To
@@ -125,7 +125,7 @@ package body GNATLLVM.DebugInfo is
    Debug_Loc_Sloc  : Source_Ptr := No_Location;
    Debug_Loc_Scope : Metadata_T := No_Metadata_T;
    Debug_Loc       : Metadata_T := No_Metadata_T;
-   --  One-entry cache for Create_Debug_Location
+   --  One-entry cache for Create_Location
 
    ----------------------
    -- Push_Debug_Scope --
@@ -474,10 +474,10 @@ package body GNATLLVM.DebugInfo is
    end Pop_Debug_Freeze_Pos;
 
    ---------------------------
-   -- Create_Debug_Location --
+   -- Create_Location --
    ---------------------------
 
-   function Create_Debug_Location (N : Node_Id) return Metadata_T is
+   function Create_Location (N : Node_Id) return Metadata_T is
       S      : constant Source_Ptr := Sloc (N);
       Result : Metadata_T;
 
@@ -500,7 +500,7 @@ package body GNATLLVM.DebugInfo is
       Debug_Loc       := Result;
       return Result;
 
-   end Create_Debug_Location;
+   end Create_Location;
 
    ---------------------------
    -- Set_Debug_Pos_At_Node --
@@ -514,7 +514,7 @@ package body GNATLLVM.DebugInfo is
         and then not Is_Entity_Name (N)
         and then Freeze_Pos_Level = 0 and then SFI = Current_Debug_SFI
       then
-         Set_Current_Debug_Location (Create_Debug_Location (N));
+         Set_Current_Debug_Location (Create_Location (N));
       end if;
    end Set_Debug_Pos_At_Node;
 
@@ -817,12 +817,12 @@ package body GNATLLVM.DebugInfo is
             if Get_Type_Size (V) /= Nat (0) then
                Discard (DI_Builder_Insert_Dbg_Value_At_End
                           (V, Var_Data, Empty_DI_Expr,
-                           Create_Debug_Location (E), Get_Insert_Block));
+                           Create_Location (E), Get_Insert_Block));
             end if;
          else
             Discard (DI_Builder_Insert_Declare_At_End
                        (V, Var_Data, Empty_DI_Expr,
-                        Create_Debug_Location (E), Get_Insert_Block));
+                        Create_Location (E), Get_Insert_Block));
          end if;
       end if;
    end Create_Local_Variable_Debug_Data;

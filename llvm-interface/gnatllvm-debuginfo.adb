@@ -101,6 +101,11 @@ package body GNATLLVM.DebugInfo is
    --  Given MD, debug metadata for some type, create debug metadata for a
    --  pointer to that type.  E is used for naming the type.
 
+   function Create_Type_Data (GT : GL_Type) return Metadata_T
+     with Pre => Present (GT);
+   --  Create metadata corresponding to the type of GT.  Return
+   --  No_Metadata_T if the type is too complex.
+
    function Add_Field
      (Name      : String;
       GT        : GL_Type;
@@ -231,7 +236,7 @@ package body GNATLLVM.DebugInfo is
       Offset    : in out ULL;
       Rec_Align : in out Nat) return Boolean
    is
-      MD     : constant Metadata_T := Create_Debug_Type_Data (GT);
+      MD     : constant Metadata_T := Create_Type_Data (GT);
       Align  : constant Nat        := Get_Type_Alignment (GT);
       Size_V : constant GL_Value   :=
         (if Is_Dynamic_Size (GT) then No_GL_Value else Get_Type_Size (GT));
@@ -293,7 +298,7 @@ package body GNATLLVM.DebugInfo is
         (if Present (E) then Get_L_Ret_Kind (E)  else Void);
       Ret_MD     : constant Metadata_T          :=
         (if   RK = None then No_Metadata_T
-         else Create_Debug_Type_Data (Full_GL_Type (E)));
+         else Create_Type_Data (Full_GL_Type (E)));
       Num_MDs     : constant Nat                 :=
         (if   Present (E) then (Number_In_Params (E) +
                                 (if RK = Return_By_Parameter then 1 else 0))
@@ -369,7 +374,7 @@ package body GNATLLVM.DebugInfo is
 
          while Present (P) loop
             declare
-               MD : Metadata_T := Create_Debug_Type_Data (Full_GL_Type (P));
+               MD : Metadata_T := Create_Type_Data (Full_GL_Type (P));
 
             begin
                if Present (MD) and then Param_Is_Reference (P) then
@@ -385,8 +390,7 @@ package body GNATLLVM.DebugInfo is
          --  Next deal with the return
 
          if LRK = Out_Return then
-            Types (0) :=
-              Create_Debug_Type_Data (Full_GL_Type (First_Out_Param (E)));
+            Types (0) := Create_Type_Data (Full_GL_Type (First_Out_Param (E)));
          elsif LRK in Struct_Out | Struct_Out_Subprog then
             Types (0) := Create_Return_Debug_Info;
          elsif No (Ret_MD) then
@@ -514,11 +518,11 @@ package body GNATLLVM.DebugInfo is
       end if;
    end Set_Debug_Pos_At_Node;
 
-   ----------------------------
-   -- Create_Debug_Type_Data --
-   ----------------------------
+   ----------------------
+   -- Create_Type_Data --
+   ----------------------
 
-   function Create_Debug_Type_Data (GT : GL_Type) return Metadata_T is
+   function Create_Type_Data (GT : GL_Type) return Metadata_T is
       TE          : constant Entity_Id  := Full_Etype (GT);
       Name        : constant String     := Get_Name (TE);
       T           : constant Type_T     := Type_Of (GT);
@@ -571,7 +575,7 @@ package body GNATLLVM.DebugInfo is
             --  something, make our type.
 
             Result := DI_Create_Pointer_Type
-              (Create_Debug_Type_Data (Full_Designated_GL_Type (GT)),
+              (Create_Type_Data (Full_Designated_GL_Type (GT)),
                Size, Align, 0, Name);
 
          when Array_Kind =>
@@ -582,7 +586,7 @@ package body GNATLLVM.DebugInfo is
 
             declare
                Inner_Type : constant Metadata_T :=
-                 Create_Debug_Type_Data (Full_Component_GL_Type (GT));
+                 Create_Type_Data (Full_Component_GL_Type (GT));
                Ranges     : Metadata_Array (0 .. Number_Dimensions (TE) - 1);
 
             begin
@@ -629,7 +633,7 @@ package body GNATLLVM.DebugInfo is
                      declare
                         F_GT           : constant GL_Type    := Field_Type (F);
                         Mem_MD         : constant Metadata_T :=
-                          Create_Debug_Type_Data (F_GT);
+                          Create_Type_Data (F_GT);
                         Name           : constant String     := Get_Name (F);
                         F_S            : constant Source_Ptr := Sloc (F);
                         File           : constant Metadata_T :=
@@ -737,7 +741,7 @@ package body GNATLLVM.DebugInfo is
       Set_Is_Being_Elaborated (TE, False);
       Set_Debug_Type (TE, Result);
       return Result;
-   end Create_Debug_Type_Data;
+   end Create_Type_Data;
 
    ---------------------------------------
    -- Create_Global_Variable_Debug_Data --
@@ -746,7 +750,7 @@ package body GNATLLVM.DebugInfo is
    procedure Create_Global_Variable_Debug_Data (E : Entity_Id; V : GL_Value)
    is
       GT        : constant GL_Type    := Related_Type (V);
-      Type_Data : constant Metadata_T := Create_Debug_Type_Data (GT);
+      Type_Data : constant Metadata_T := Create_Type_Data (GT);
       Name      : constant String     := Get_Name     (E);
       Ext_Name  : constant String     := Get_Ext_Name (E);
       S         : constant Source_Ptr := Sloc         (E);
@@ -778,7 +782,7 @@ package body GNATLLVM.DebugInfo is
      (E : Entity_Id; V : GL_Value; Arg_Num : Nat := 0)
    is
       GT        : constant GL_Type    := Related_Type (V);
-      Type_Data : constant Metadata_T := Create_Debug_Type_Data (GT);
+      Type_Data : constant Metadata_T := Create_Type_Data (GT);
       Name      : constant String     := Get_Name (E);
       Var_Data  : Metadata_T;
 

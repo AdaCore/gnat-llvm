@@ -69,11 +69,6 @@ package GNATLLVM.DebugInfo is
    --  cancelled with a "pop" and the position will be frozen until the
    --  all pushes have been popped.
 
-   function Create_Debug_Type_Data (GT : GL_Type) return Metadata_T
-     with Pre => Present (GT);
-   --  Create metadata corresponding to the type of GT.  Return
-   --  No_Metadata_T if the type is too complex.
-
    procedure Create_Global_Variable_Debug_Data (E : Entity_Id; V : GL_Value)
      with Pre => not Is_Type (E) and then Present (V);
    --  Build debugging data for E, a global variable, with V as its

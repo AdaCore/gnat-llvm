@@ -106,6 +106,11 @@ package body GNATLLVM.DebugInfo is
    --  Create metadata corresponding to the type of GT.  Return
    --  No_Metadata_T if the type is too complex.
 
+   function Create_Type_Data (V : GL_Value) return Metadata_T
+     with Pre => Present (V);
+   --  Create metadata for the type and relationship of R.  Don't return
+   --  anything if we don't know how to create the metadata.
+
    function Add_Field
      (Name      : String;
       GT        : GL_Type;
@@ -743,6 +748,37 @@ package body GNATLLVM.DebugInfo is
       return Result;
    end Create_Type_Data;
 
+   ----------------------
+   -- Create_Type_Data --
+   ----------------------
+
+   function Create_Type_Data (V : GL_Value) return Metadata_T is
+      GT     : constant GL_Type         := Related_Type (V);
+      R      : constant GL_Relationship := Relationship (V);
+      Base_R : constant GL_Relationship :=
+        (if Is_Reference (R) then Deref (R) else R);
+      MD     : constant Metadata_T      := Create_Type_Data (GT);
+
+   begin
+      --  If we weren't able to get debug info for the underlying type
+      --  or if this was normal data, return what we have.
+
+      if No (MD) or else Base_R in Data | Boolean_Data then
+         return MD;
+
+      --  If what we started with was a thin pointer, treat it as a
+      --  normal pointer since we can't access negative offsets.
+
+      elsif R = Thin_Pointer then
+         return MD;
+
+      --  Otherwise, we don't (yet) support this.
+
+      else
+         return No_Metadata_T;
+      end if;
+   end Create_Type_Data;
+
    ---------------------------------------
    -- Create_Global_Variable_Debug_Data --
    ---------------------------------------
@@ -750,7 +786,7 @@ package body GNATLLVM.DebugInfo is
    procedure Create_Global_Variable_Debug_Data (E : Entity_Id; V : GL_Value)
    is
       GT        : constant GL_Type    := Related_Type (V);
-      Type_Data : constant Metadata_T := Create_Type_Data (GT);
+      Type_Data : constant Metadata_T := Create_Type_Data (V);
       Name      : constant String     := Get_Name     (E);
       Ext_Name  : constant String     := Get_Ext_Name (E);
       S         : constant Source_Ptr := Sloc         (E);
@@ -782,17 +818,12 @@ package body GNATLLVM.DebugInfo is
      (E : Entity_Id; V : GL_Value; Arg_Num : Nat := 0)
    is
       GT        : constant GL_Type    := Related_Type (V);
-      Type_Data : constant Metadata_T := Create_Type_Data (GT);
+      Type_Data : constant Metadata_T := Create_Type_Data (V);
       Name      : constant String     := Get_Name (E);
       Var_Data  : Metadata_T;
 
    begin
-      --  ??? We only support the simple case of where we have data or a
-      --  reference to data.
-
-      if Emit_Debug_Info and then Present (Type_Data)
-        and then Relationship (V) in Reference | Data
-      then
+      if Emit_Debug_Info and then Present (Type_Data) then
          if Arg_Num = 0 then
             Var_Data :=
               DI_Create_Auto_Variable

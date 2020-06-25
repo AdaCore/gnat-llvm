@@ -717,6 +717,12 @@ package GNATLLVM.Types is
       LHS, RHS : BA_Data;
       Name     : String := "") return BA_Data;
 
+   --  These are the arithmetic operations for back-annotation.  We want to
+   --  do simple constant-folding to make the expression simpler, but we
+   --  can't do 0 * X => 0 because that could cause us to consider an
+   --  array of size zero with a variable-sized component as being zero
+   --  (fixed) size, which can cause us to generate code at library level.
+
    function Add (LHS, RHS : BA_Data; Name : String := "") return BA_Data is
      ((if    Is_Const_0 (LHS) then RHS
        elsif Is_Const_0 (RHS) then LHS
@@ -730,7 +736,6 @@ package GNATLLVM.Types is
    function Mul (LHS, RHS : BA_Data; Name : String := "") return BA_Data is
      ((if    Is_Const_1 (LHS) then RHS
        elsif Is_Const_1 (RHS) then LHS
-       elsif Is_Const_0 (LHS) or else Is_Const_0 (RHS) then Const (0)
        else  Binop (LHS, RHS, Mul'Access, Mult_Expr, Name)));
 
    function U_Div (LHS, RHS : BA_Data; Name : String := "") return BA_Data is

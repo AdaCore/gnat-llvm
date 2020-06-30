@@ -15,7 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Core;       use LLVM.Core;
+with LLVM.Core; use LLVM.Core;
 
 with Opt;        use Opt;
 with Sinput;     use Sinput;
@@ -70,12 +70,12 @@ package body GNATLLVM.DebugInfo is
 
    function Has_Local_Debug_Scope return Boolean is
      (Debug_Scope_Table.Last >= Debug_Scope_Low_Bound);
-   --  Says whether we do or don't currently have a local scope.
+   --  Says whether we do or don't currently have a local scope
 
    function Current_Debug_Scope return Metadata_T is
      ((if   Has_Local_Debug_Scope
-      then Debug_Scope_Table.Table (Debug_Scope_Table.Last).Scope
-      else Debug_Compile_Unit))
+       then Debug_Scope_Table.Table (Debug_Scope_Table.Last).Scope
+       else Debug_Compile_Unit))
      with Post => Present (Current_Debug_Scope'Result);
    --  Current debug info scop, either global or local
 
@@ -92,14 +92,14 @@ package body GNATLLVM.DebugInfo is
    --  Return debug metadata for a location
 
    function Create_Pointer_To
-     (MD : Metadata_T; E : Entity_Id) return Metadata_T
+     (MD : Metadata_T; E : Entity_Id; Suffix : String := "") return Metadata_T
    is
      (DI_Create_Pointer_Type (MD, ULL (Thin_Pointer_Size), Thin_Pointer_Size,
-                              0, Get_Name (E, "#RF")))
+                              0, Get_Name (E, Suffix & "_RF")))
      with Pre  => Present (MD) and then Present (E),
           Post => Present (Create_Pointer_To'Result);
    --  Given MD, debug metadata for some type, create debug metadata for a
-   --  pointer to that type.  E is used for naming the type.
+   --  pointer to that type.  E and Suffix is used for naming the type.
 
    function Create_Type_Data (GT : GL_Type) return Metadata_T
      with Pre => Present (GT);
@@ -131,11 +131,11 @@ package body GNATLLVM.DebugInfo is
    --  variable-sized object.
 
    function Create_Bounds_Type_Data
-     (GT : GL_Type; Size : out ULL) return Metadata_T
-     with Pre  => Present (GT)
-                  and then Is_Unconstrained_Array (Full_Base_Type (GT)),
+     (TE : Entity_Id; Size : out ULL) return Metadata_T
+     with Pre  => Is_Type (TE)
+                  and then Is_Unconstrained_Array (Full_Base_Type (TE)),
           Post => Present (Create_Bounds_Type_Data'Result);
-   --  Create debug information for the bounds of type GT and return the
+   --  Create debug information for the bounds of type TE and return the
    --  size of the resulting structure.
 
    function Create_Bounds_And_Data_Type_Data (GT : GL_Type) return Metadata_T
@@ -143,6 +143,13 @@ package body GNATLLVM.DebugInfo is
                   and then Is_Unconstrained_Array (Full_Base_Type (GT));
    --  Create debug information for the bounds and data of type GT if
    --  possible.
+
+   function Create_Fat_Pointer_Type_Data (TE : Entity_Id) return Metadata_T
+     with Pre => Is_Access_Type (TE)
+                 and then Is_Unconstrained_Array (Full_Designated_Type (TE));
+   --  Create debug information for a fat pointer to TE.  We cant't
+   --  do this if we can't make debug information for the component type
+   --  of the array type.
 
    Debug_Loc_Sloc  : Source_Ptr := No_Location;
    Debug_Loc_Scope : Metadata_T := No_Metadata_T;
@@ -555,11 +562,11 @@ package body GNATLLVM.DebugInfo is
    -----------------------------
 
    function Create_Bounds_Type_Data
-     (GT : GL_Type; Size : out ULL) return Metadata_T
+     (TE : Entity_Id; Size : out ULL) return Metadata_T
    is
-      Ndim      : constant Nat        := Number_Dimensions (GT);
-      S         : constant Source_Ptr := Sloc (GT);
-      Rec_Align : Nat                 := Get_Bound_Alignment (Full_Etype (GT));
+      Ndim      : constant Nat        := Number_Dimensions (TE);
+      S         : constant Source_Ptr := Sloc (TE);
+      Rec_Align : Nat                 := Get_Bound_Alignment (TE);
       Offset    : ULL                 := 0;
       Field_MDs : Metadata_Array (1 .. Ndim * 2);
       Idx       : Nat                 := Field_MDs'First;
@@ -567,16 +574,16 @@ package body GNATLLVM.DebugInfo is
    begin
       for J in 0 .. Ndim - 1 loop
          declare
-            B_GT  : constant GL_Type := Array_Index_GT (GT, J);
+            B_GT  : constant GL_Type := Array_Index_GT (TE, J);
             Align : constant Nat     := Get_Type_Alignment (B_GT);
 
          begin
             pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align,
-                                      "LB" & To_String (J), Sloc (GT), Align,
-                                      0, GT => B_GT));
+                                      "LB" & To_String (J), S, Align, 0,
+                                      GT => B_GT));
             pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align,
-                                      "HB" & To_String (J), Sloc (GT), Align,
-                                      0, GT => B_GT));
+                                      "UB" & To_String (J), S, Align, 0,
+                                      GT => B_GT));
          end;
       end loop;
 
@@ -586,11 +593,10 @@ package body GNATLLVM.DebugInfo is
         ((Offset + ULL (Rec_Align) - 1) / ULL (Rec_Align)) * ULL (Rec_Align);
 
       return DI_Create_Struct_Type
-        (No_Metadata_T, Get_Name (Full_Etype (GT), "_B"),
+        (No_Metadata_T, Get_Name (TE, "__XUB"),
          Get_Debug_File_Node (Get_Source_File_Index (S)),
-         Get_Logical_Line_Number (S), Size,
-         Rec_Align, DI_Flag_Zero, No_Metadata_T,
-         Field_MDs (1 .. Idx - 1), 0, No_Metadata_T, "");
+         Get_Logical_Line_Number (S), Size, Rec_Align, DI_Flag_Zero,
+         No_Metadata_T, Field_MDs (1 .. Idx - 1), 0, No_Metadata_T, "");
 
    end Create_Bounds_Type_Data;
 
@@ -613,7 +619,7 @@ package body GNATLLVM.DebugInfo is
       Data_MD     : constant Metadata_T := Create_Type_Data (GT);
       Bounds_Size : ULL;
       Bound_MD    : constant Metadata_T :=
-          Create_Bounds_Type_Data (GT, Bounds_Size);
+          Create_Bounds_Type_Data (TE, Bounds_Size);
       Field_MDs   : Metadata_Array (1 .. 2);
 
    begin
@@ -630,16 +636,63 @@ package body GNATLLVM.DebugInfo is
 
       pragma Assert (Add_Field (Field_MDs, Idx, Offset, Align, "BOUNDS", S,
                                 Bound_Align, Bounds_Size, MD => Bound_MD));
-      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Align, "DATA", S,
+      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Align, "ARRAY", S,
                                 Data_Align, +Size_V, MD => Data_MD));
 
       return DI_Create_Struct_Type
-        (No_Metadata_T, Get_Name (Full_Etype (GT), "_BD"),
+        (No_Metadata_T, Get_Name (Full_Etype (GT), "__XUT"),
          Get_Debug_File_Node (Get_Source_File_Index (S)),
          Get_Logical_Line_Number (S), Offset, Align, DI_Flag_Zero,
          No_Metadata_T, Field_MDs, 0, No_Metadata_T, "");
 
    end Create_Bounds_And_Data_Type_Data;
+
+   ----------------------------------
+   -- Create_Fat_Pointer_Type_Data --
+   ----------------------------------
+
+   function Create_Fat_Pointer_Type_Data (TE : Entity_Id) return Metadata_T is
+      S           : constant Source_Ptr := Sloc (TE);
+      DT          : constant Entity_Id  := Full_Designated_Type (TE);
+      CT          : constant GL_Type    := Full_Component_GL_Type (DT);
+      Size        : constant ULL        := ULL (Thin_Pointer_Size);
+      Align       : constant Nat        := Thin_Pointer_Size;
+      Bounds_Size : ULL with Unreferenced;
+      Bounds_MD   : constant Metadata_T :=
+        Create_Bounds_Type_Data (DT, Bounds_Size);
+      P_Bounds_MD : constant Metadata_T :=
+        Create_Pointer_To (Bounds_MD, TE, "_B");
+      Comp_MD     : constant Metadata_T := Create_Type_Data (CT);
+      P_Comp_MD   : Metadata_T;
+      Field_MDs   : Metadata_Array (1 .. 2);
+      Rec_Align   : Nat                 := Thin_Pointer_Size;
+      Offset      : ULL                 := 0;
+      Idx         : Nat                 := 1;
+
+   begin
+      --  If we can't make data for the component type, we can't make
+      --  data for the fat pointer.
+
+      if No (Comp_MD) then
+         return No_Metadata_T;
+      end if;
+
+      --  Add fields for pointers to bounds and component and create debug
+      --  data for that structure.
+
+      P_Comp_MD := Create_Pointer_To (Comp_MD, Full_Component_Type (DT));
+      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align, "p_array",
+                                S, Align, Size, MD => P_Comp_MD));
+      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align, "p_bounds",
+                                S, Align, Size, MD => P_Bounds_MD));
+
+      return DI_Create_Struct_Type
+        (No_Metadata_T, Get_Name (TE),
+         Get_Debug_File_Node (Get_Source_File_Index (S)),
+         Get_Logical_Line_Number (S), Offset, Align, DI_Flag_Zero,
+         No_Metadata_T, Field_MDs, 0, No_Metadata_T, "");
+
+   end Create_Fat_Pointer_Type_Data;
 
    ----------------------
    -- Create_Type_Data --
@@ -679,6 +732,10 @@ package body GNATLLVM.DebugInfo is
 
       Set_Is_Being_Elaborated (TE, True);
       case Ekind (TE) is
+
+         --  For scalar, non-enumeration types, we create the corresponding
+         --  debug type.
+
          when Integer_Kind | Fixed_Point_Kind =>
             Result := DI_Create_Basic_Type
               (Name, Size,
@@ -692,20 +749,30 @@ package body GNATLLVM.DebugInfo is
          when Float_Kind =>
             Result := DI_Create_Basic_Type (Name, Size, DW_ATE_Float,
                                             DI_Flag_Zero);
+
+         --  For access types, handle fat pointer specially.  Otherwise,
+         --  get the type info for what this points to.  If we have
+         --  something, make our type.
+
          when Access_Kind =>
 
-            --  Get the type info for what this points to.  If we have
-            --  something, make our type.
+            if Is_Unconstrained_Array (Full_Designated_Type (TE))
+              and then Esize (TE) = Fat_Pointer_Size
+            then
+               Result := Create_Fat_Pointer_Type_Data (TE);
+            else
+               Result := Create_Type_Data (Full_Designated_GL_Type (GT));
+               if Present (Result) then
+                  Result :=
+                    DI_Create_Pointer_Type (Result, Size, Align, 0, Name);
+               end if;
+            end if;
 
-            Result := DI_Create_Pointer_Type
-              (Create_Type_Data (Full_Designated_GL_Type (GT)),
-               Size, Align, 0, Name);
+         --  For arrays, get the component type's data.  If it exists and
+         --  this is of fixed size, get info for each of the bounds and
+         --  make a description of the type.
 
          when Array_Kind =>
-
-            --  Get the component type's data.  If it exists and this
-            --  is of fixed size, get info for each of the bounds and
-            --  make a description of the type.
 
             declare
                Inner_Type : constant Metadata_T :=
@@ -730,6 +797,10 @@ package body GNATLLVM.DebugInfo is
                                                        Inner_Type, Ranges);
             end;
 
+         --  For records, go through each field.  If we can make debug info
+         --  for the type and the position and size are known and static,
+         --  add that field as a member.
+
          when Record_Kind =>
 
             declare
@@ -744,10 +815,6 @@ package body GNATLLVM.DebugInfo is
                F : Entity_Id;
 
             begin
-               --  Go through each field.  If we can make debug info for the
-               --  type and the position and size are known and static,
-               --  add that field as a member.
-
                F := First_Component_Or_Discriminant (TE);
                while Present (F) loop
                   if Known_Static_Component_Bit_Offset (F)
@@ -804,6 +871,10 @@ package body GNATLLVM.DebugInfo is
                end;
             end;
 
+         --  For an enumeration type, make an enumerator metadata for each
+         --  entry.  The code below is a bit convoluted to avoid needing a
+         --  UI_To_LLI function just for this purpose.
+
          when Enumeration_Kind =>
 
             declare
@@ -820,10 +891,6 @@ package body GNATLLVM.DebugInfo is
             begin
                Member := First_Literal (TE);
                while Present (Member) loop
-
-                  --  Make an enumerator metadata for each entry.  The code
-                  --  below is a bit convoluted to avoid needing a UI_To_LLI
-                  --  function just for this purpose.
 
                   declare
                      UI  : constant Uint       := Enumeration_Rep (Member);
@@ -855,6 +922,8 @@ package body GNATLLVM.DebugInfo is
                end;
             end;
 
+         --  Use "unspecified" for every other kind
+
          when others =>
             Result := DI_Create_Unspecified_Type (Name);
       end case;
@@ -876,8 +945,7 @@ package body GNATLLVM.DebugInfo is
       Base_R : constant GL_Relationship :=
         (if Is_Reference (R) then Deref (R) else R);
       MD     : constant Metadata_T      := Create_Type_Data (GT);
-      Size   : ULL;
-      pragma Unreferenced (Size);
+      Size   : ULL with Unreferenced;
 
    begin
       --  If we weren't able to get debug info for the underlying type
@@ -895,7 +963,7 @@ package body GNATLLVM.DebugInfo is
       --  Handle bounds and bounds and data relationships
 
       elsif Base_R = Bounds then
-         return Create_Bounds_Type_Data (GT, Size);
+         return Create_Bounds_Type_Data (Full_Etype (GT), Size);
       elsif Base_R = Bounds_And_Data then
          return Create_Bounds_And_Data_Type_Data (GT);
 

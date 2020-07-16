@@ -1326,7 +1326,7 @@ package body GNATLLVM.GLValue is
      (Elmts : GL_Value_Array; GT : GL_Type) return GL_Value
    is
       T      : constant Type_T            :=
-        (if   Elmts'Length = 0 then Type_Of (Component_Type (GT))
+        (if   Elmts'Length = 0 then Type_Of (Full_Component_Type (GT))
          else Type_Of (Elmts (Elmts'First)));
       --  Take the element type from what was passed, but if no elements
       --  were passed, the only choice is from the component type of the array.

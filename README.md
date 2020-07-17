@@ -48,8 +48,8 @@ To build GNAT LLVM from sources, follow these steps:
 
       $ mv llvm-interface/gcc/gcc/ada llvm-interface/gnat_src
 
-- Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2019,
-  GCC 8 or GCC 9.
+- Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2020
+  or GCC 9.
 
 - Install LLVM and Clang 10.0.0
 
@@ -59,13 +59,13 @@ To build GNAT LLVM from sources, follow these steps:
   with the options that suit your needs. After installing/building, make sure
   the llvm bin directory containing llvm-config and clang is in your PATH.
 
-  As alternative only suitable for core GNAT LLVM development on x86 native
-  configurations only is to use the following command, assuming you have cmake
+  An alternative only suitable for core GNAT LLVM development on x86 native
+  configurations is to use the following command, assuming you have cmake
   version >= 3.7.2 in your path:
 
       $ make llvm
 
-  Note that there's currently a bug in LLVM's aliasing handling.  We check
+  Note that there's currently a bug in LLVM's aliasing handling. We check
   for it and generate slightly pessimized code in that case, but a patch
   to be applied to LLVM's lib/Analyze directory is in the file
   llvm/patches/LLVMStructTBAAPatch.diff.

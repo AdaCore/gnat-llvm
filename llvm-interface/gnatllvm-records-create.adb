@@ -22,7 +22,6 @@ with Errout;     use Errout;
 with Exp_Util;   use Exp_Util;
 with Get_Targ;   use Get_Targ;
 with Nlists;     use Nlists;
-with Output;     use Output;
 with Repinfo;    use Repinfo;
 with Sem_Aux;    use Sem_Aux;
 with Sem_Eval;   use Sem_Eval;
@@ -2004,8 +2003,7 @@ package body GNATLLVM.Records.Create is
 
       if Debug_Flag_Underscore_RR then
          pg (Union_Id (TE));
-         Print_Record_Info (TE);
-         Write_Eol;
+         Print_Record_Info (TE, Eol => True);
       end if;
 
       return LLVM_Type;

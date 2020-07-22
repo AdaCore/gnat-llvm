@@ -264,7 +264,7 @@ package GNATLLVM.Records is
 
    procedure Print_Field_Info (E : Entity_Id)
      with Export, External_Name => "dfi";
-   procedure Print_Record_Info (TE : Entity_Id)
+   procedure Print_Record_Info (TE : Entity_Id; Eol : Boolean := False)
      with Export, External_Name => "dri";
 
 private

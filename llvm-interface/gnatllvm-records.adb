@@ -2405,6 +2405,8 @@ package body GNATLLVM.Records is
       FI    : Field_Info;
 
    begin
+      Push_Output;
+      Set_Standard_Error;
       Write_Str ("Field ");
       Write_Int (Nat (E));
       Write_Str (": ");
@@ -2434,13 +2436,15 @@ package body GNATLLVM.Records is
          Write_Eol;
          Print_RI_Briefly (FI.Rec_Info_Idx);
       end if;
+
+      Pop_Output;
    end Print_Field_Info;
 
    -----------------------
    -- Print_Record_Info --
    -----------------------
 
-   procedure Print_Record_Info (TE : Entity_Id) is
+   procedure Print_Record_Info (TE : Entity_Id; Eol : Boolean := False) is
 
    begin
       declare
@@ -2567,7 +2571,14 @@ package body GNATLLVM.Records is
          end Print_RI_Chain;
 
       begin
+         Push_Output;
+         Set_Standard_Error;
          Print_RI_Chain (Get_Record_Info (TE));
+         if Eol then
+            Write_Eol;
+         end if;
+
+         Pop_Output;
       end;
 
    end Print_Record_Info;

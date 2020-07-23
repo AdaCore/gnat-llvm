@@ -37,6 +37,15 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Codegen is
 
+   Output_Assembly : Boolean := False;
+   --  True if -S was specified
+
+   Emit_C          : Boolean := False;
+   --  True if -emit-c was specified
+
+   Emit_LLVM       : Boolean := False;
+   --  True if -emit-llvm was specified
+
    function Output_File_Name (Extension : String) return String;
    --  Return the name of the output file, using the given Extension
 
@@ -270,6 +279,8 @@ package body GNATLLVM.Codegen is
          Code_Generation := (if Output_Assembly then Write_IR else Write_BC);
       elsif Output_Assembly then
          Code_Generation := Write_Assembly;
+      elsif Emit_C then
+         Code_Generation := Write_C;
       end if;
 
       --  Initialize the translation environment
@@ -417,6 +428,12 @@ package body GNATLLVM.Codegen is
                        Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
                end if;
             end;
+
+         when Write_C =>
+
+            --  ??? Do nothing for now
+
+            null;
 
          when None =>
             null;

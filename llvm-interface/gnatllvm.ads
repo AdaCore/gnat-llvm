@@ -243,15 +243,6 @@ package GNATLLVM is
    Decls_Only      : Boolean        := False;
    --  True if just compiling to process and back-annotate decls
 
-   Output_Assembly : Boolean := False;
-   --  True if -S was specified
-
-   Emit_C          : Boolean := False;
-   --  True if -emit-c was specified
-
-   Emit_LLVM       : Boolean := False;
-   --  True if -emit-llvm was specified
-
    Emit_Debug_Info : Boolean := False;
    --  Whether or not to emit debugging information (-g)
 

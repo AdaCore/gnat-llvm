@@ -26,7 +26,8 @@ package GNATLLVM.Codegen is
    --  Filename to compile.
 
    type Code_Generation_Kind is
-     (Dump_IR, Write_IR, Write_BC, Write_Assembly, Write_Object, None);
+     (Dump_IR, Write_IR, Write_BC, Write_Assembly, Write_Object, Write_C,
+      None);
 
    Code_Generation : Code_Generation_Kind := Write_Object;
    --  Type of code generation we're doing

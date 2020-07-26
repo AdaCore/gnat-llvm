@@ -26,6 +26,8 @@ with LLVM.Core;       use LLVM.Core;
 with LLVM.Debug_Info; use LLVM.Debug_Info;
 with LLVM.Support;    use LLVM.Support;
 
+with CCG; use CCG;
+
 with Errout;  use Errout;
 with Lib;     use Lib;
 with Opt;     use Opt;
@@ -431,9 +433,7 @@ package body GNATLLVM.Codegen is
 
          when Write_C =>
 
-            --  ??? Do nothing for now
-
-            null;
+            Write_C_Code;
 
          when None =>
             null;

@@ -17,8 +17,9 @@
 
 with Ada.Unchecked_Conversion;
 
-with Repinfo; use Repinfo;
-with Sinfo;   use Sinfo;
+with Repinfo;  use Repinfo;
+with Sem_Util; use Sem_Util;
+with Sinfo;    use Sinfo;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -157,14 +158,6 @@ package GNATLLVM.Types is
      (Types : Type_Array; Packed : Boolean := False) return Type_T
      with Post => Present (Build_Struct_Type'Result), Inline;
    --  Build an LLVM struct type containing the specified types
-
-   function Get_Fullest_View
-     (TE : Entity_Id; Include_PAT : Boolean := True) return Entity_Id
-     with Pre => Is_Type_Or_Void (TE),
-          Post => Is_Type_Or_Void (Get_Fullest_View'Result);
-   --  Get the fullest possible view of E, looking through private,
-   --  limited, packed array and other implementation types.  If Include_PAT
-   --  is False, don't look inside packed array types.
 
    function Full_Base_Type
      (TE : Entity_Id; For_Orig : Boolean := False) return Entity_Id

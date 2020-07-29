@@ -15,12 +15,71 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with LLVM.Types; use LLVM.Types;
+
 package CCG.Tables is
 
    --  This package contains the tables used by CCG to record data about
    --  LLVM values and the subprograms used to access and set such data.
 
+   --  We use an internal representation of strings, discussed below.
+   type Str is private;
+
    procedure Initialize_Tables;
    --  Perform any needed initialization on tables.
+
+   function To_Str (S : String) return Str;
+   --  Return an internal representation of S
+
+private
+
+   --  Most strings that we have are a combination of operators and
+   --  keywords and a string denoting a value (which may be either the
+   --  value's name, if it has one, or an expression denoting that value)
+   --  or a type.  We record each string we use as a concatenation of
+   --  actual strings, values, and types and create a hash table so that we
+   --  only keep one copy of each string.  For the purpose of minimizing
+   --  memory, we assume that each LLVM value and type has a distinct
+   --  string representation.  This isn't necessarily true (e.g., the same
+   --  local variable in multiple programs), but is a good compromise
+   --  between time and space usage.  Most of the strings are small, so
+   --  rather than creating a mechanism for variable-sized strings, each
+   --  component of the concatenation is limited to a small size.  In the
+   --  rare case where we need a larger string, we break it into segments.
+
+   Str_Max : constant := 6;
+   subtype Str_Length is Integer range 1 .. Str_Max;
+   --  The longest string we'll use often is "struct "
+
+   type Str_Component_Kind is (Value, Typ, Var_String);
+
+   type Str_Component
+        (Kind : Str_Component_Kind := Var_String; Length : Str_Length := 3)
+      is record
+
+      case Kind is
+         when Value =>
+            Val : Value_T;
+
+         when Typ =>
+            T   :  Type_T;
+
+         when Var_String =>
+            Str : String (1 .. Length);
+
+      end case;
+   end record;
+
+   type Str_Component_Array is array (Integer range <>) of Str_Component;
+   type Str_Record (Length : Integer) is record
+      Comps : Str_Component_Array (1 .. Length);
+   end record;
+
+   type Str is access constant Str_Record;
+   --  This is what we pass around for strings
+
+   function "=" (SL, SR : Str_Record) return Boolean;
+   function "=" (SL, SR : Str) return Boolean is
+      (SL.all = SR.all);
 
 end CCG.Tables;

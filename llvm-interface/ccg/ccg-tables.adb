@@ -15,7 +15,263 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Unchecked_Conversion;
+with Ada.Containers; use Ada.Containers;
+with Ada.Containers.Hashed_Sets;
+
+with System; use System;
+with System.Storage_Elements; use System.Storage_Elements;
+
 package body CCG.Tables is
+
+   --  We want to compute a hash code for a Str_Component_Array that will be
+   --  the same no matter how we break up a concatentation of strings
+   --  that do not involve a Value_T, so we don't want to use Ada.Strings.Hash
+   --  but instead accumulate the hash value piece by piece.
+
+   procedure Update_Hash (H : in out Hash_Type; Key : Hash_Type) with Inline;
+   --  Update H by including the value of Key
+
+   procedure Update_Hash (H : in out Hash_Type; S : String)      with Inline;
+   --  Update H taking into account the characters in S
+
+   procedure Update_Hash (H : in out Hash_Type; V : Value_T)     with Inline;
+   --  Update H taking into account the value V
+
+   procedure Update_Hash (H : in out Hash_Type; T : Type_T)     with Inline;
+   --  Update H taking into account the type T
+
+   function Hash_Str (S : Str_Record) return Hash_Type;
+   function Hash_Str (S : Str)        return Hash_Type is
+      (Hash_Str (S.all));
+   --  Given an array of string components or an access to it (how we denote
+   --  strings, return its hash value.
+
+   package Str_Sets is new Ada.Containers.Hashed_Sets
+     (Element_Type => Str,
+      Hash         => Hash_Str,
+      Equivalent_Elements => "=");
+   Str_Set : Str_Sets.Set;
+   --  The set of all strings that we've made so far
+
+   function Undup_Str (S : aliased Str_Record) return Str;
+   --  Get a unique Str corresponding to S
+
+   -----------------
+   -- Update_Hash --
+   ----------------
+
+   procedure Update_Hash (H : in out Hash_Type; Key : Hash_Type) is
+      function Shift_Left
+        (Value  : Hash_Type;
+         Amount : Natural) return Hash_Type;
+      pragma Import (Intrinsic, Shift_Left);
+   begin
+      H := Key + Shift_Left (H, 6) + Shift_Left (H, 16) - H;
+   end Update_Hash;
+
+   -----------------
+   -- Update_Hash --
+   ----------------
+
+   procedure Update_Hash (H : in out Hash_Type; S : String) is
+   begin
+      for C of S loop
+         Update_Hash (H, Character'Pos (C));
+      end loop;
+   end Update_Hash;
+
+   -----------------
+   -- Update_Hash --
+   -----------------
+
+   procedure Update_Hash (H : in out Hash_Type; V : Value_T) is
+      function UC is new Ada.Unchecked_Conversion (Value_T, System.Address);
+
+   begin
+      Update_Hash (H, Hash_Type'Mod (To_Integer (UC (V)) / (V'Size / 8)));
+   end Update_Hash;
+
+   -----------------
+   -- Update_Hash --
+   -----------------
+
+   procedure Update_Hash (H : in out Hash_Type; T : Type_T) is
+      function UC is new Ada.Unchecked_Conversion (Type_T, System.Address);
+
+   begin
+      Update_Hash (H, Hash_Type'Mod (To_Integer (UC (T)) / (T'Size / 8)));
+   end Update_Hash;
+
+   --------------
+   -- Hash_Str --
+   --------------
+
+   function Hash_Str (S : Str_Record) return Hash_Type is
+   begin
+      return H : Hash_Type := 0 do
+         for J in 1 .. S.Length loop
+
+            declare
+               Comp : constant Str_Component := S.Comps (J);
+
+            begin
+               if Comp.Kind = Value then
+                  Update_Hash (H, Comp.Val);
+               elsif Comp.Kind = Typ then
+                  Update_Hash (H, Comp.T);
+               else
+                  Update_Hash (H, Comp.Str);
+               end if;
+            end;
+         end loop;
+      end return;
+   end Hash_Str;
+
+   -------
+   -- = --
+   -------
+
+   function "=" (SL, SR : Str_Record) return Boolean is
+      LenL  : constant Integer := SL.Length;
+      LenR  : constant Integer := SR.Length;
+      PosL  : Integer := 1;
+      PosR  : Integer := 1;
+      CharL : Integer := 1;
+      CharR : Integer := 1;
+
+   begin
+      --  Two representations of strings are the same if all the
+      --  characters, values, and types are the same.  However, we may not
+      --  be dividing the strings into components the same way so we step
+      --  along each component and exit if there's any difference.
+
+      loop
+         --  If we've reached the end of both strings, they're the same.
+         --  Otherwise, if we've reached the end of one of them, they're
+         --  different.
+
+         if PosL > LenL and then PosR > LenR then
+            return True;
+         elsif PosL > LenL or else PosR > LenR then
+            return False;
+
+         --  If the types of a component differ, they're not equal
+
+         elsif SL.Comps (PosL).Kind /= SR.Comps (PosR).Kind then
+            return False;
+
+         --  For LLVM values, if they're not the same, we treat the strings
+         --  as different.  Otherwise, step to the next position.
+
+         elsif SL.Comps (PosL).Kind = Value then
+            if SL.Comps (PosL).Val /= SR.Comps (PosR).Val then
+               return False;
+            else
+               PosL := PosL + 1;
+               PosR := PosR + 1;
+            end if;
+
+         --  Similarly for types
+
+         elsif SL.Comps (PosL).Kind = Typ then
+            if SL.Comps (PosL).T /= SR.Comps (PosR).T then
+               return False;
+            else
+               PosL := PosL + 1;
+               PosR := PosR + 1;
+            end if;
+
+         --  For strings, we operate one character at a time.  If the
+         --  current character differs, the strings are different.
+         --  Otherwise, advance to the next character, stepping to the
+         --  next component if necessary.
+
+         elsif SL.Comps (PosL).Str (CharL) /= SR.Comps (PosR).Str (CharR) then
+            return False;
+         else
+            CharL := CharL + 1;
+            CharR := CharR + 1;
+            if CharL > SL.Comps (PosL).Length then
+               PosL  := PosL + 1;
+               CharL := 1;
+            end if;
+
+            if CharR > SL.Comps (PosR).Length then
+               PosR  := PosR + 1;
+               CharR := 1;
+            end if;
+         end if;
+      end loop;
+
+   end "=";
+
+   ---------------
+   -- Undup_Str --
+   ---------------
+
+   function Undup_Str (S : aliased Str_Record) return Str is
+      Position : constant Str_Sets.Cursor := Str_Sets.Find (Str_Set, S'Access);
+      New_S    : Str;
+
+   begin
+      --  See if we already have this string in the set.  If so, return the
+      --  element.  If not, make a copy in the heap and add that to the set.
+      if Str_Sets.Has_Element (Position) then
+         return Str_Sets.Element (Position);
+      else
+         New_S := new Str_Record'(S);
+         Str_Sets.Insert (Str_Set, New_S);
+         return New_S;
+      end if;
+   end Undup_Str;
+
+   ------------
+   -- To_Str --
+   ------------
+
+   function To_Str (S : String) return Str is
+   begin
+      --  We have two cases.  In the most common case, S is small enough that
+      --  we only need one component.
+
+      if S'Length <= Str_Max then
+         declare
+            S_Rec : aliased constant Str_Record (1) :=
+              (1, (1 => (Var_String, S'Length, S)));
+
+         begin
+            return Undup_Str (S_Rec);
+         end;
+      else
+         declare
+            To_Do : Integer := S'Length;
+            I_Pos : Integer := S'First;
+            O_Pos : Integer := 1;
+            S_Rec : aliased Str_Record ((S'Length + (Str_Max - 1)) / Str_Max);
+
+         begin
+            while To_Do > 0 loop
+               declare
+                  Count : constant Integer := Integer'Min (To_Do, Str_Max);
+
+               begin
+                  S_Rec.Comps (O_Pos) := (Var_String, Count,
+                                          S (I_Pos .. I_Pos + Count - 1));
+                  I_Pos := I_Pos + Count;
+                  To_Do := To_Do - Count;
+                  O_Pos := O_Pos + 1;
+               end;
+            end loop;
+
+            return Undup_Str (S_Rec);
+         end;
+      end if;
+   end To_Str;
+
+   ------------------------
+   --  Initialize_Tables --
+   ------------------------
 
    procedure Initialize_Tables is
    begin

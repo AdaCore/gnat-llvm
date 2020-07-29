@@ -24,6 +24,15 @@ with System.Storage_Elements; use System.Storage_Elements;
 
 package body CCG.Tables is
 
+   function UC_V is new Ada.Unchecked_Conversion (Value_T, System.Address);
+   function UC_T is new Ada.Unchecked_Conversion (Type_T, System.Address);
+
+   function Hash (V : Value_T) return Hash_Type is
+     (Hash_Type'Mod (To_Integer (UC_V (V)) / (V'Size / 8)));
+   function Hash (T : Type_T) return Hash_Type is
+     (Hash_Type'Mod (To_Integer (UC_T (T)) / (T'Size / 8)));
+   --  Hash functions for LLVM values and types
+
    --  We want to compute a hash code for a Str_Component_Array that will be
    --  the same no matter how we break up a concatentation of strings
    --  that do not involve a Value_T, so we don't want to use Ada.Strings.Hash
@@ -41,15 +50,15 @@ package body CCG.Tables is
    procedure Update_Hash (H : in out Hash_Type; T : Type_T)     with Inline;
    --  Update H taking into account the type T
 
-   function Hash_Str (S : Str_Record) return Hash_Type;
-   function Hash_Str (S : Str)        return Hash_Type is
-      (Hash_Str (S.all));
+   function Hash (S : Str_Record) return Hash_Type;
+   function Hash (S : Str)        return Hash_Type is
+      (Hash (S.all));
    --  Given an array of string components or an access to it (how we denote
    --  strings, return its hash value.
 
    package Str_Sets is new Ada.Containers.Hashed_Sets
      (Element_Type => Str,
-      Hash         => Hash_Str,
+      Hash         => Hash,
       Equivalent_Elements => "=");
    Str_Set : Str_Sets.Set;
    --  The set of all strings that we've made so far
@@ -86,10 +95,8 @@ package body CCG.Tables is
    -----------------
 
    procedure Update_Hash (H : in out Hash_Type; V : Value_T) is
-      function UC is new Ada.Unchecked_Conversion (Value_T, System.Address);
-
    begin
-      Update_Hash (H, Hash_Type'Mod (To_Integer (UC (V)) / (V'Size / 8)));
+      Update_Hash (H, Hash (V));
    end Update_Hash;
 
    -----------------
@@ -97,17 +104,15 @@ package body CCG.Tables is
    -----------------
 
    procedure Update_Hash (H : in out Hash_Type; T : Type_T) is
-      function UC is new Ada.Unchecked_Conversion (Type_T, System.Address);
-
    begin
-      Update_Hash (H, Hash_Type'Mod (To_Integer (UC (T)) / (T'Size / 8)));
+      Update_Hash (H, Hash (T));
    end Update_Hash;
 
    --------------
    -- Hash_Str --
    --------------
 
-   function Hash_Str (S : Str_Record) return Hash_Type is
+   function Hash (S : Str_Record) return Hash_Type is
    begin
       return H : Hash_Type := 0 do
          for J in 1 .. S.Length loop
@@ -126,7 +131,7 @@ package body CCG.Tables is
             end;
          end loop;
       end return;
-   end Hash_Str;
+   end Hash;
 
    -------
    -- = --

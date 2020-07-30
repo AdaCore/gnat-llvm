@@ -22,18 +22,20 @@ with Ada.Containers.Hashed_Sets;
 with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
 
-with GNATLLVM; use GNATLLVM;
-
 package body CCG.Tables is
 
    function UC_V is new Ada.Unchecked_Conversion (Value_T, System.Address);
    function UC_T is new Ada.Unchecked_Conversion (Type_T, System.Address);
+   function UC_B is new Ada.Unchecked_Conversion (Basic_Block_T,
+                                                  System.Address);
 
-   function Hash (V : Value_T) return Hash_Type is
+   function Hash (V : Value_T)       return Hash_Type is
      (Hash_Type'Mod (To_Integer (UC_V (V)) / (V'Size / 8)));
-   function Hash (T : Type_T) return Hash_Type is
+   function Hash (T : Type_T)        return Hash_Type is
      (Hash_Type'Mod (To_Integer (UC_T (T)) / (T'Size / 8)));
-   --  Hash functions for LLVM values and types
+   function Hash (B : Basic_Block_T) return Hash_Type is
+     (Hash_Type'Mod (To_Integer (UC_B (B)) / (B'Size / 8)));
+   --  Hash functions for LLVM values, types, and basic blocks
 
    --  We want to compute a hash code for a Str_Component_Array that will be
    --  the same no matter how we break up a concatentation of strings
@@ -50,6 +52,9 @@ package body CCG.Tables is
    --  Update H taking into account the value V
 
    procedure Update_Hash (H : in out Hash_Type; T : Type_T)     with Inline;
+   --  Update H taking into account the type T
+
+   procedure Update_Hash (H : in out Hash_Type; B : Basic_Block_T) with Inline;
    --  Update H taking into account the type T
 
    function Hash (S : Str_Record) return Hash_Type;
@@ -110,9 +115,18 @@ package body CCG.Tables is
       Update_Hash (H, Hash (T));
    end Update_Hash;
 
-   --------------
-   -- Hash_Str --
-   --------------
+   -----------------
+   -- Update_Hash --
+   -----------------
+
+   procedure Update_Hash (H : in out Hash_Type; B : Basic_Block_T) is
+   begin
+      Update_Hash (H, Hash (B));
+   end Update_Hash;
+
+   ----------
+   -- Hash --
+   ----------
 
    function Hash (S : Str_Record) return Hash_Type is
    begin
@@ -123,13 +137,16 @@ package body CCG.Tables is
                Comp : constant Str_Component := S.Comps (J);
 
             begin
-               if Comp.Kind = Value then
-                  Update_Hash (H, Comp.Val);
-               elsif Comp.Kind = Typ then
-                  Update_Hash (H, Comp.T);
-               else
-                  Update_Hash (H, Comp.Str);
-               end if;
+               case Comp.Kind is
+                  when Var_String =>
+                     Update_Hash (H, Comp.Str);
+                  when Value =>
+                     Update_Hash (H, Comp.Val);
+                  when Typ =>
+                     Update_Hash (H, Comp.T);
+                  when BB =>
+                     Update_Hash (H, Comp.B);
+               end case;
             end;
          end loop;
       end return;
@@ -168,8 +185,30 @@ package body CCG.Tables is
          elsif SL.Comps (PosL).Kind /= SR.Comps (PosR).Kind then
             return False;
 
-         --  For LLVM values, if they're not the same, we treat the strings
-         --  as different.  Otherwise, step to the next position.
+         --  For strings, we operate one character at a time.  If the
+         --  current character differs, the strings are different.
+         --  Otherwise, advance to the next character, stepping to the
+         --  next component if necessary.
+
+         elsif SL.Comps (PosL).Kind = Var_String then
+            if SL.Comps (PosL).Str (CharL) /= SR.Comps (PosR).Str (CharR) then
+               return False;
+            else
+               CharL := CharL + 1;
+               CharR := CharR + 1;
+               if CharL > SL.Comps (PosL).Length then
+                  PosL  := PosL + 1;
+                  CharL := 1;
+               end if;
+
+               if CharR > SR.Comps (PosR).Length then
+                  PosR  := PosR + 1;
+                  CharR := 1;
+               end if;
+            end if;
+
+         --  Otherwise, they're different if the LLVM objects are different
+         --  and we advance to the next position if not.
 
          elsif SL.Comps (PosL).Kind = Value then
             if SL.Comps (PosL).Val /= SR.Comps (PosR).Val then
@@ -179,8 +218,6 @@ package body CCG.Tables is
                PosR := PosR + 1;
             end if;
 
-         --  Similarly for types
-
          elsif SL.Comps (PosL).Kind = Typ then
             if SL.Comps (PosL).T /= SR.Comps (PosR).T then
                return False;
@@ -189,24 +226,12 @@ package body CCG.Tables is
                PosR := PosR + 1;
             end if;
 
-         --  For strings, we operate one character at a time.  If the
-         --  current character differs, the strings are different.
-         --  Otherwise, advance to the next character, stepping to the
-         --  next component if necessary.
-
-         elsif SL.Comps (PosL).Str (CharL) /= SR.Comps (PosR).Str (CharR) then
-            return False;
-         else
-            CharL := CharL + 1;
-            CharR := CharR + 1;
-            if CharL > SL.Comps (PosL).Length then
-               PosL  := PosL + 1;
-               CharL := 1;
-            end if;
-
-            if CharR > SR.Comps (PosR).Length then
-               PosR  := PosR + 1;
-               CharR := 1;
+         elsif SL.Comps (PosL).Kind = BB then
+            if SL.Comps (PosL).B /= SR.Comps (PosR).B then
+               return False;
+            else
+               PosL := PosL + 1;
+               PosR := PosR + 1;
             end if;
          end if;
       end loop;
@@ -296,6 +321,16 @@ package body CCG.Tables is
       return Undup_Str (S_Rec);
    end To_Str;
 
+   ------------
+   -- To_Str --
+   ------------
+
+   function To_Str (B : Basic_Block_T) return Str is
+      S_Rec : aliased constant Str_Record (1) := (1, (1 => (BB, 1, B)));
+   begin
+      return Undup_Str (S_Rec);
+   end To_Str;
+
    ---------
    -- "&" --
    ---------
@@ -331,6 +366,25 @@ package body CCG.Tables is
          declare
             S_Rec : aliased constant Str_Record (2) :=
               (2, (1 => (Var_String, L'Length, L), 2 => (Typ, 1, R)));
+
+         begin
+            return Undup_Str (S_Rec);
+         end;
+      else
+         return To_Str (L) & To_Str (R);
+      end if;
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : String; R : Basic_Block_T) return Str is
+   begin
+      if L'Length <= Str_Max then
+         declare
+            S_Rec : aliased constant Str_Record (2) :=
+              (2, (1 => (Var_String, L'Length, L), 2 => (BB, 1, R)));
 
          begin
             return Undup_Str (S_Rec);
@@ -402,6 +456,25 @@ package body CCG.Tables is
    -- "&" --
    ---------
 
+   function "&" (L : Basic_Block_T; R : String) return Str is
+   begin
+      if R'Length <= Str_Max then
+         declare
+            S_Rec : aliased constant Str_Record (2) :=
+              (2, (1 => (BB, 1, L), 2 => (Var_String, R'Length, R)));
+
+         begin
+            return Undup_Str (S_Rec);
+         end;
+      else
+         return To_Str (L) & To_Str (R);
+      end if;
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
    function "&" (L : Str; R : String) return Str is
    begin
       if R'Length <= Str_Max then
@@ -446,6 +519,18 @@ package body CCG.Tables is
    -- "&" --
    ---------
 
+   function "&" (L : Basic_Block_T; R : Basic_Block_T) return Str is
+      S_Rec : aliased constant Str_Record (2) :=
+        (2, (1 => (BB, 1, L), 2 => (BB, 1, R)));
+
+   begin
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
    function "&" (L : Value_T; R : Type_T) return Str is
       S_Rec : aliased constant Str_Record (2) :=
         (2, (1 => (Value, 1, L), 2 => (Typ, 1, R)));
@@ -458,9 +543,57 @@ package body CCG.Tables is
    -- "&" --
    ---------
 
+   function "&" (L : Value_T; R : Basic_Block_T) return Str is
+      S_Rec : aliased constant Str_Record (2) :=
+        (2, (1 => (Value, 1, L), 2 => (BB, 1, R)));
+
+   begin
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
    function "&" (L : Type_T; R : Value_T) return Str is
       S_Rec : aliased constant Str_Record (2) :=
         (2, (1 => (Typ, 1, L), 2 => (Value, 1, R)));
+
+   begin
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Type_T; R : Basic_Block_T) return Str is
+      S_Rec : aliased constant Str_Record (2) :=
+        (2, (1 => (Typ, 1, L), 2 => (BB, 1, R)));
+
+   begin
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Basic_Block_T; R : Value_T) return Str is
+      S_Rec : aliased constant Str_Record (2) :=
+        (2, (1 => (BB, 1, L), 2 => (Value, 1, R)));
+
+   begin
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Basic_Block_T; R : Type_T) return Str is
+      S_Rec : aliased constant Str_Record (2) :=
+        (2, (1 => (BB, 1, L), 2 => (Typ, 1, R)));
 
    begin
       return Undup_Str (S_Rec);
@@ -496,6 +629,19 @@ package body CCG.Tables is
    -- "&" --
    ---------
 
+   function "&" (L : Basic_Block_T; R : Str) return Str is
+      S_Rec : aliased Str_Record (R.Length + 1);
+
+   begin
+      S_Rec.Comps (1) := (BB, 1, L);
+      S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
    function "&" (L : Str; R : Value_T) return Str is
       S_Rec : aliased Str_Record (L.Length + 1);
 
@@ -515,6 +661,19 @@ package body CCG.Tables is
    begin
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1) := (Typ, 1, R);
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Str; R : Basic_Block_T) return Str is
+      S_Rec : aliased Str_Record (L.Length + 1);
+
+   begin
+      S_Rec.Comps (1 .. L.Length) := L.Comps;
+      S_Rec.Comps (L.Length + 1) := (BB, 1, R);
       return Undup_Str (S_Rec);
    end "&";
 

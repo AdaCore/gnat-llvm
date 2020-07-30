@@ -22,6 +22,8 @@ with Ada.Containers.Hashed_Sets;
 with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
 
+with GNATLLVM; use GNATLLVM;
+
 package body CCG.Tables is
 
    function UC_V is new Ada.Unchecked_Conversion (Value_T, System.Address);
@@ -202,7 +204,7 @@ package body CCG.Tables is
                CharL := 1;
             end if;
 
-            if CharR > SL.Comps (PosR).Length then
+            if CharR > SR.Comps (PosR).Length then
                PosR  := PosR + 1;
                CharR := 1;
             end if;
@@ -273,6 +275,261 @@ package body CCG.Tables is
          end;
       end if;
    end To_Str;
+
+   ------------
+   -- To_Str --
+   ------------
+
+   function To_Str (V : Value_T) return Str is
+      S_Rec : aliased constant Str_Record (1) := (1, (1 => (Value, 1, V)));
+   begin
+      return Undup_Str (S_Rec);
+   end To_Str;
+
+   ------------
+   -- To_Str --
+   ------------
+
+   function To_Str (T : Type_T) return Str is
+      S_Rec : aliased constant Str_Record (1) := (1, (1 => (Typ, 1, T)));
+   begin
+      return Undup_Str (S_Rec);
+   end To_Str;
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : String; R : Value_T) return Str is
+   begin
+      --  If the string is small enough, we just construct a two-component
+      --  object.  Otherwise (a rare case), we construct a Str for both and
+      --  concatenate.  We could check for the case where we could make a
+      --  new component that concatenated the strings from both sides, but
+      --  the number of times that would happen isn't worth the trouble.
+
+      if L'Length <= Str_Max then
+         declare
+            S_Rec : aliased constant Str_Record (2) :=
+              (2, (1 => (Var_String, L'Length, L), 2 => (Value, 1, R)));
+
+         begin
+            return Undup_Str (S_Rec);
+         end;
+      else
+         return To_Str (L) & To_Str (R);
+      end if;
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : String; R : Type_T) return Str is
+   begin
+      if L'Length <= Str_Max then
+         declare
+            S_Rec : aliased constant Str_Record (2) :=
+              (2, (1 => (Var_String, L'Length, L), 2 => (Typ, 1, R)));
+
+         begin
+            return Undup_Str (S_Rec);
+         end;
+      else
+         return To_Str (L) & To_Str (R);
+      end if;
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : String; R : Str) return Str is
+   begin
+      if L'Length <= Str_Max then
+         declare
+            S_Rec : aliased Str_Record (R.Length + 1);
+
+         begin
+            S_Rec.Comps (1) := (Var_String, L'Length, L);
+            S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
+            return Undup_Str (S_Rec);
+         end;
+      else
+         return To_Str (L) & R;
+      end if;
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Value_T; R : String) return Str is
+   begin
+      if R'Length <= Str_Max then
+         declare
+            S_Rec : aliased constant Str_Record (2) :=
+              (2, (1 => (Value, 1, L), 2 => (Var_String, R'Length, R)));
+
+         begin
+            return Undup_Str (S_Rec);
+         end;
+      else
+         return To_Str (L) & To_Str (R);
+      end if;
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Type_T; R : String) return Str is
+   begin
+      if R'Length <= Str_Max then
+         declare
+            S_Rec : aliased constant Str_Record (2) :=
+              (2, (1 => (Typ, 1, L), 2 => (Var_String, R'Length, R)));
+
+         begin
+            return Undup_Str (S_Rec);
+         end;
+      else
+         return To_Str (L) & To_Str (R);
+      end if;
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Str; R : String) return Str is
+   begin
+      if R'Length <= Str_Max then
+         declare
+            S_Rec : aliased Str_Record (L.Length + 1);
+
+         begin
+            S_Rec.Comps (1 .. L.Length) := L.Comps;
+            S_Rec.Comps (L.Length + 1) := (Var_String, R'Length, R);
+            return Undup_Str (S_Rec);
+         end;
+      else
+         return L & To_Str (R);
+      end if;
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Value_T; R : Value_T) return Str is
+      S_Rec : aliased constant Str_Record (2) :=
+        (2, (1 => (Value, 1, L), 2 => (Value, 1, R)));
+
+   begin
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Type_T; R : Type_T) return Str is
+      S_Rec : aliased constant Str_Record (2) :=
+        (2, (1 => (Typ, 1, L), 2 => (Typ, 1, R)));
+
+   begin
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Value_T; R : Type_T) return Str is
+      S_Rec : aliased constant Str_Record (2) :=
+        (2, (1 => (Value, 1, L), 2 => (Typ, 1, R)));
+
+   begin
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Type_T; R : Value_T) return Str is
+      S_Rec : aliased constant Str_Record (2) :=
+        (2, (1 => (Typ, 1, L), 2 => (Value, 1, R)));
+
+   begin
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Value_T; R : Str) return Str is
+      S_Rec : aliased Str_Record (R.Length + 1);
+
+   begin
+      S_Rec.Comps (1) := (Value, 1, L);
+      S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Type_T; R : Str) return Str is
+      S_Rec : aliased Str_Record (R.Length + 1);
+
+   begin
+      S_Rec.Comps (1) := (Typ, 1, L);
+      S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Str; R : Value_T) return Str is
+      S_Rec : aliased Str_Record (L.Length + 1);
+
+   begin
+      S_Rec.Comps (1 .. L.Length) := L.Comps;
+      S_Rec.Comps (L.Length + 1) := (Value, 1, R);
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Str; R : Type_T) return Str is
+      S_Rec : aliased Str_Record (L.Length + 1);
+
+   begin
+      S_Rec.Comps (1 .. L.Length) := L.Comps;
+      S_Rec.Comps (L.Length + 1) := (Typ, 1, R);
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Str; R : Str) return Str is
+      S_Rec : aliased Str_Record (L.Length + R.Length);
+
+   begin
+      S_Rec.Comps (1 .. L.Length) := L.Comps;
+      S_Rec.Comps (L.Length + 1 .. L.Length + R.Length) := R.Comps;
+      return Undup_Str (S_Rec);
+   end "&";
 
    ------------------------
    --  Initialize_Tables --

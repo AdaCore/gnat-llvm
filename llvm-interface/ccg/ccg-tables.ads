@@ -28,8 +28,26 @@ package CCG.Tables is
    procedure Initialize_Tables;
    --  Perform any needed initialization on tables.
 
-   function To_Str (S : String) return Str;
-   --  Return an internal representation of S
+   function To_Str (S : String)  return Str;
+   function To_Str (V : Value_T) return Str;
+   function To_Str (T : Type_T)  return Str;
+   --  Return an internal representation of S, V, or T
+
+   function "&" (L : String;  R : Value_T) return Str;
+   function "&" (L : String;  R : Type_T)  return Str;
+   function "&" (L : String;  R : Str)     return Str;
+   function "&" (L : Value_T; R : String)  return Str;
+   function "&" (L : Value_T; R : Value_T) return Str;
+   function "&" (L : Value_T; R : Type_T)  return Str;
+   function "&" (L : Value_T; R : Str)     return Str;
+   function "&" (L : Type_T;  R : String)  return Str;
+   function "&" (L : Type_T;  R : Value_T) return Str;
+   function "&" (L : Type_T;  R : Type_T)  return Str;
+   function "&" (L : Type_T;  R : Str)     return Str;
+   function "&" (L : Str;     R : String)  return Str;
+   function "&" (L : Str;     R : Value_T) return Str;
+   function "&" (L : Str;     R : Type_T)  return Str;
+   function "&" (L : Str;     R : Str)     return Str;
 
 private
 

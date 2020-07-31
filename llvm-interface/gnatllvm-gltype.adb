@@ -400,7 +400,8 @@ package body GNATLLVM.GLType is
    begin
       --  If this is an entity that comes from source, is in the unit being
       --  compiled, a size was specified, and we've made a padded type, set
-      --  a warning saying how many bits are unused.
+      --  a warning saying how many bits are unused.  Consider the alignment
+      --  of the type when doing that.
 
       if Present (Err_Ident) and then Comes_From_Source (Err_Ident)
         and then In_Extended_Main_Code_Unit (Err_Ident)
@@ -409,28 +410,22 @@ package body GNATLLVM.GLType is
         and then Present (In_Sz) and then Present (Size)
       then
          declare
-            Align_V1     : constant Nat      :=
+            Align_V1   : constant Nat      :=
               (if    Present (Align_For_Msg) then +Align_For_Msg
                elsif Present (Align) and then Is_Composite_Type (GT)
                then  +Align else BPU);
-            Align_V      : constant Nat      :=
+            Align_V     : constant Nat      :=
               Nat'Max (Align_V1, Get_Type_Alignment (GT));
-            Out_Sz       : constant GL_Value := Size_Const_Int (Size);
-            In_Sz_Align  : constant GL_Value :=
+            Out_Sz      : constant GL_Value := Size_Const_Int (Size);
+            In_Sz_Align : constant GL_Value :=
               Align_To (GT_Size (GT), 1, Align_V);
-            Pad_Sz       : constant GL_Value :=
-              (if Present (In_Sz) then Out_Sz - In_Sz else No_GL_Value);
-            Pad_Sz_Align : constant GL_Value :=
+            Pad_Sz      : constant GL_Value :=
               (if   Present (In_Sz_Align) then Out_Sz - In_Sz_Align
                else No_GL_Value);
-            Err_Node  : Entity_Id            := Empty;
+            Err_Node    : Entity_Id            := Empty;
 
          begin
-            --  If we'd only give a message due to alignment of the type,
-            --  skip.  But take the alignment padding into account when saying
-            --  by how much we pad.
-
-            if Present (Pad_Sz_Align) and then Pad_Sz_Align > 0 then
+            if Present (Pad_Sz) and then Pad_Sz > 0 then
                if Ekind (Err_Ident) in E_Component | E_Discriminant
                  and then Present (Component_Clause (Err_Ident))
                then

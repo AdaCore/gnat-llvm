@@ -243,7 +243,8 @@ package body CCG.Tables is
    ---------------
 
    function Undup_Str (S : aliased Str_Record) return Str is
-      Position : constant Str_Sets.Cursor := Str_Sets.Find (Str_Set, S'Access);
+      Position : constant Str_Sets.Cursor :=
+        Str_Sets.Find (Str_Set, S'Unchecked_Access);
       New_S    : Str;
 
    begin

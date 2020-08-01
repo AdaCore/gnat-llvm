@@ -17,10 +17,14 @@
 
 with Ada.Unchecked_Conversion;
 with Ada.Containers; use Ada.Containers;
+with Ada.Containers.Hashed_Maps;
 with Ada.Containers.Hashed_Sets;
 
 with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
+
+with Table; use Table;
+with Types; use Types;
 
 package body CCG.Tables is
 
@@ -72,6 +76,98 @@ package body CCG.Tables is
 
    function Undup_Str (S : aliased Str_Record) return Str;
    --  Get a unique Str corresponding to S
+
+   --  We maintain tables that give information we need about LLVM values,
+   --  types, and basic blocks.  We use a hashed map from the LLVM address
+   --  to an index in our Table.  That index can also be used to provide a
+   --  unique identifier for the value or basic block (we don't need it for
+   --  types) when outputting a string representing the value or block.
+   --  We first create the structures that contain the data for each object,
+   --  then the tables, then the maps.
+
+   type Value_Data is record
+      C_Value : Str;
+      --  If Present, a string that represents the value of the Value_T
+
+      No_Name : Boolean;
+      --  True is there's no LLVM name for this value; we use the ordinal
+
+   end record;
+
+   type Type_Data is record
+      Long_Form_Output : Boolean;
+      --  True if this is a struct and we've written the long form (with
+      --  components) of the type.
+   end record;
+
+   type BB_Data is record
+      Is_Entry : Boolean;
+      --  True if this is the entry basic block for some function
+   end record;
+
+   type Value_Idx is new Nat;
+   type Type_Idx  is new Nat;
+   type BB_Idx    is new Nat;
+
+   No_Value_Idx : constant Value_Idx := 0;
+   No_Type_Idx  : constant Type_Idx  := 0;
+   No_BB_Idx    : constant BB_Idx    := 0;
+
+   function Present (X : Value_Idx) return Boolean is (X /= No_Value_Idx);
+   function Present (X : Type_Idx)  return Boolean is (X /= No_Type_Idx);
+   function Present (X : BB_Idx)    return Boolean is (X /= No_BB_Idx);
+
+   package Value_Data_Table is new Table.Table
+     (Table_Component_Type => Value_Data,
+      Table_Index_Type     => Value_Idx,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 500,
+      Table_Increment      => 100,
+      Table_Name           => "Value_Data_Table");
+
+   package Type_Data_Table is new Table.Table
+     (Table_Component_Type => Type_Data,
+      Table_Index_Type     => Type_Idx,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 200,
+      Table_Increment      => 50,
+      Table_Name           => "Type_Data_Table");
+
+   package BB_Data_Table is new Table.Table
+     (Table_Component_Type => BB_Data,
+      Table_Index_Type     => BB_Idx,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 200,
+      Table_Increment      => 50,
+      Table_Name           => "BB_Data_Table");
+
+   package Value_Data_Maps is new Ada.Containers.Hashed_Maps
+     (Key_Type        => Value_T,
+      Element_Type    => Value_Idx,
+      Hash            => Hash,
+      Equivalent_Keys => "=");
+   Value_Data_Map : Value_Data_Maps.Map;
+
+   package Type_Data_Maps is new Ada.Containers.Hashed_Maps
+     (Key_Type        => Type_T,
+      Element_Type    => Type_Idx,
+      Hash            => Hash,
+      Equivalent_Keys => "=");
+   Type_Data_Map : Type_Data_Maps.Map;
+
+   package BB_Data_Maps is new Ada.Containers.Hashed_Maps
+     (Key_Type        => Basic_Block_T,
+      Element_Type    => BB_Idx,
+      Hash            => Hash,
+      Equivalent_Keys => "=");
+   BB_Data_Map : BB_Data_Maps.Map;
+
+   --  Functions to return the corresponding index for a value, type, or
+   --  basic block and whether to create one if one isn't present.
+
+   function Value_Data_Idx (V : Value_T; Create : Boolean) return Value_Idx;
+   function Type_Data_Idx  (T : Type_T; Create : Boolean) return Type_Idx;
+   function BB_Data_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx;
 
    -----------------
    -- Update_Hash --
@@ -243,18 +339,18 @@ package body CCG.Tables is
    ---------------
 
    function Undup_Str (S : aliased Str_Record) return Str is
-      Position : constant Str_Sets.Cursor :=
-        Str_Sets.Find (Str_Set, S'Unchecked_Access);
+      use Str_Sets;
+      Position : constant Cursor := Find (Str_Set, S'Unchecked_Access);
       New_S    : Str;
 
    begin
       --  See if we already have this string in the set.  If so, return the
       --  element.  If not, make a copy in the heap and add that to the set.
-      if Str_Sets.Has_Element (Position) then
-         return Str_Sets.Element (Position);
+      if Has_Element (Position) then
+         return Element (Position);
       else
          New_S := new Str_Record'(S);
-         Str_Sets.Insert (Str_Set, New_S);
+         Insert (Str_Set, New_S);
          return New_S;
       end if;
    end Undup_Str;
@@ -690,6 +786,159 @@ package body CCG.Tables is
       S_Rec.Comps (L.Length + 1 .. L.Length + R.Length) := R.Comps;
       return Undup_Str (S_Rec);
    end "&";
+
+   --------------------
+   -- Value_Data_Idx --
+   --------------------
+
+   function Value_Data_Idx (V : Value_T; Create : Boolean) return Value_Idx
+   is
+      use Value_Data_Maps;
+      Position : constant Cursor := Find (Value_Data_Map, V);
+
+   begin
+      if Has_Element (Position) then
+         return Element (Position);
+      elsif not Create then
+         return No_Value_Idx;
+      else
+         Value_Data_Table.Append ((C_Value => null, No_Name => False));
+         Insert (Value_Data_Map, V, Value_Data_Table.Last);
+         return Value_Data_Table.Last;
+      end if;
+   end Value_Data_Idx;
+
+   -------------------
+   -- Type_Data_Idx --
+   -------------------
+
+   function Type_Data_Idx (T : Type_T; Create : Boolean) return Type_Idx
+   is
+      use Type_Data_Maps;
+      Position : constant Cursor := Find (Type_Data_Map, T);
+
+   begin
+      if Has_Element (Position) then
+         return Element (Position);
+      elsif not Create then
+         return No_Type_Idx;
+      else
+         Type_Data_Table.Append ((Long_Form_Output => False));
+         Insert (Type_Data_Map, T, Type_Data_Table.Last);
+         return Type_Data_Table.Last;
+      end if;
+   end Type_Data_Idx;
+
+   -----------------
+   -- BB_Data_Idx --
+   -----------------
+
+   function BB_Data_Idx (B : Basic_Block_T; Create : Boolean) return BB_Idx
+   is
+      use BB_Data_Maps;
+      Position : constant Cursor := Find (BB_Data_Map, B);
+
+   begin
+      if Has_Element (Position) then
+         return Element (Position);
+      elsif not Create then
+         return No_BB_Idx;
+      else
+         BB_Data_Table.Append ((Is_Entry => False));
+         Insert (BB_Data_Map, B, BB_Data_Table.Last);
+         return BB_Data_Table.Last;
+      end if;
+   end BB_Data_Idx;
+
+   -----------------
+   -- Get_C_Value --
+   -----------------
+
+   function Get_C_Value (V : Value_T) return Str is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+
+   begin
+      return (if   Present (Idx) then Value_Data_Table.Table (Idx).C_Value
+              else null);
+   end Get_C_Value;
+
+   -----------------
+   -- Get_No_Name --
+   -----------------
+
+   function Get_No_Name (V : Value_T) return Boolean is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+
+   begin
+      return Present (Idx) and then Value_Data_Table.Table (Idx).No_Name;
+   end Get_No_Name;
+
+   -----------------
+   -- Set_C_Value --
+   -----------------
+
+   procedure Set_C_Value (V : Value_T; S : Str) is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+
+   begin
+      Value_Data_Table.Table (Idx).C_Value := S;
+   end Set_C_Value;
+
+   -----------------
+   -- Set_No_Name --
+   -----------------
+
+   procedure Set_No_Name (V : Value_T; B : Boolean) is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+
+   begin
+      Value_Data_Table.Table (Idx).No_Name := B;
+   end Set_No_Name;
+
+   --------------------------
+   -- Get_Long_Form_Output --
+   --------------------------
+
+   function Get_Long_Form_Output (T : Type_T) return Boolean is
+      Idx : constant Type_Idx := Type_Data_Idx (T, Create => False);
+
+   begin
+      return Present (Idx)
+        and then Type_Data_Table.Table (Idx).Long_Form_Output;
+   end Get_Long_Form_Output;
+
+   --------------------------
+   -- Set_Long_Form_Output --
+   --------------------------
+
+   procedure Set_Long_Form_Output (T : Type_T; B : Boolean) is
+      Idx : constant Type_Idx := Type_Data_Idx (T, Create => True);
+
+   begin
+      Type_Data_Table.Table (Idx).Long_Form_Output := B;
+   end Set_Long_Form_Output;
+
+   ------------------
+   -- Get_Is_Entry --
+   ------------------
+
+   function Get_Is_Entry (BB : Basic_Block_T) return Boolean is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => False);
+
+   begin
+      return Present (Idx) and then BB_Data_Table.Table (Idx).Is_Entry;
+   end Get_Is_Entry;
+
+   ------------------
+   -- Set_Is_Entry --
+   ------------------
+
+   procedure Set_Is_Entry (BB : Basic_Block_T; B : Boolean) is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
+
+   begin
+      BB_Data_Table.Table (Idx).Is_Entry := B;
+   end Set_Is_Entry;
 
    ------------------------
    --  Initialize_Tables --

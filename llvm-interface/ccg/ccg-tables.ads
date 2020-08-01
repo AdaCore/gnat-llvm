@@ -17,13 +17,19 @@
 
 with LLVM.Types; use LLVM.Types;
 
+with GNATLLVM; use GNATLLVM;
+
 package CCG.Tables is
 
    --  This package contains the tables used by CCG to record data about
    --  LLVM values and the subprograms used to access and set such data.
 
    --  We use an internal representation of strings, discussed below.
+
    type Str is private;
+
+   function Present (S : Str) return Boolean;
+   function No      (S : Str) return Boolean;
 
    procedure Initialize_Tables;
    --  Perform any needed initialization on tables.
@@ -58,6 +64,32 @@ package CCG.Tables is
    function "&" (L : Str;            R : Type_T)        return Str;
    function "&" (L : Str;            R : Basic_Block_T) return Str;
    function "&" (L : Str;            R : Str)           return Str;
+
+   --  Get and set attributes we record of LLVM values, types, and
+   --  basic blocks.
+
+   function Get_C_Value (V : Value_T) return Str
+     with Pre => Present (V);
+   function Get_No_Name (V : Value_T) return Boolean
+     with Pre => Present (V);
+   procedure Set_C_Value (V : Value_T; S : Str)
+     with Pre  => Present (V) and then Present (S),
+          Post => Get_C_Value (V) = S;
+   procedure Set_No_Name (V : Value_T; B : Boolean)
+     with Pre  => Present (V),
+          Post => Get_No_Name (V) = B;
+
+   function Get_Long_Form_Output (T : Type_T) return Boolean
+     with Pre => Present (T);
+   procedure Set_Long_Form_Output (T : Type_T; B : Boolean)
+     with Pre  => Present (T),
+          Post => Get_Long_Form_Output (T) = B;
+
+   function Get_Is_Entry (BB : Basic_Block_T) return Boolean
+     with Pre => Present (BB);
+   procedure Set_Is_Entry (BB : Basic_Block_T; B : Boolean)
+     with Pre  => Present (BB),
+          Post => Get_Is_Entry (BB) = B;
 
 private
 
@@ -109,8 +141,11 @@ private
    type Str is access constant Str_Record;
    --  This is what we pass around for strings
 
+   function Present (S : Str) return Boolean is (S /= null);
+   function No      (S : Str) return Boolean is (S = null);
+
    function "=" (SL, SR : Str_Record) return Boolean;
-   function "=" (SL, SR : Str) return Boolean is
+   function "=" (SL, SR : Str)        return Boolean is
       (SL.all = SR.all);
 
 end CCG.Tables;

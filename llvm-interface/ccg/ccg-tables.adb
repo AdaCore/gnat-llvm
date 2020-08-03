@@ -95,9 +95,9 @@ package body CCG.Tables is
    end record;
 
    type Type_Data is record
-      Long_Form_Output : Boolean;
-      --  True if this is a struct and we've written the long form (with
-      --  components) of the type.
+      Is_Typedef_Output : Boolean;
+      --  True if this is a type for which we write a typedef and we've written
+      --  that typedef already.
    end record;
 
    type BB_Data is record
@@ -823,7 +823,7 @@ package body CCG.Tables is
       elsif not Create then
          return No_Type_Idx;
       else
-         Type_Data_Table.Append ((Long_Form_Output => False));
+         Type_Data_Table.Append ((Is_Typedef_Output => False));
          Insert (Type_Data_Map, T, Type_Data_Table.Last);
          return Type_Data_Table.Last;
       end if;
@@ -895,28 +895,28 @@ package body CCG.Tables is
       Value_Data_Table.Table (Idx).No_Name := B;
    end Set_No_Name;
 
-   --------------------------
-   -- Get_Long_Form_Output --
-   --------------------------
+   ---------------------------
+   -- Get_Is_Typedef_Output --
+   ---------------------------
 
-   function Get_Long_Form_Output (T : Type_T) return Boolean is
+   function Get_Is_Typedef_Output (T : Type_T) return Boolean is
       Idx : constant Type_Idx := Type_Data_Idx (T, Create => False);
 
    begin
       return Present (Idx)
-        and then Type_Data_Table.Table (Idx).Long_Form_Output;
-   end Get_Long_Form_Output;
+        and then Type_Data_Table.Table (Idx).Is_Typedef_Output;
+   end Get_Is_Typedef_Output;
 
    --------------------------
-   -- Set_Long_Form_Output --
+   -- Set_Is_Typedef_Output --
    --------------------------
 
-   procedure Set_Long_Form_Output (T : Type_T; B : Boolean) is
+   procedure Set_Is_Typedef_Output (T : Type_T; B : Boolean) is
       Idx : constant Type_Idx := Type_Data_Idx (T, Create => True);
 
    begin
-      Type_Data_Table.Table (Idx).Long_Form_Output := B;
-   end Set_Long_Form_Output;
+      Type_Data_Table.Table (Idx).Is_Typedef_Output := B;
+   end Set_Is_Typedef_Output;
 
    ------------------
    -- Get_Is_Entry --

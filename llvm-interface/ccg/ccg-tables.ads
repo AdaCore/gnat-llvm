@@ -79,11 +79,11 @@ package CCG.Tables is
      with Pre  => Present (V),
           Post => Get_No_Name (V) = B;
 
-   function Get_Long_Form_Output (T : Type_T) return Boolean
+   function Get_Is_Typedef_Output (T : Type_T) return Boolean
      with Pre => Present (T);
-   procedure Set_Long_Form_Output (T : Type_T; B : Boolean)
+   procedure Set_Is_Typedef_Output (T : Type_T; B : Boolean)
      with Pre  => Present (T),
-          Post => Get_Long_Form_Output (T) = B;
+          Post => Get_Is_Typedef_Output (T) = B;
 
    function Get_Is_Entry (BB : Basic_Block_T) return Boolean
      with Pre => Present (BB);

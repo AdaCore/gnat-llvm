@@ -37,11 +37,14 @@ package body CCG.Tables is
                                                   System.Address);
 
    function Hash (V : Value_T)       return Hash_Type is
-     (Hash_Type'Mod (To_Integer (UC_V (V)) / (V'Size / 8)));
+     (Hash_Type'Mod (To_Integer (UC_V (V)) / (V'Size / 8)))
+     with Pre => Present (V);
    function Hash (T : Type_T)        return Hash_Type is
-     (Hash_Type'Mod (To_Integer (UC_T (T)) / (T'Size / 8)));
+     (Hash_Type'Mod (To_Integer (UC_T (T)) / (T'Size / 8)))
+     with Pre => Present (T);
    function Hash (B : Basic_Block_T) return Hash_Type is
-     (Hash_Type'Mod (To_Integer (UC_B (B)) / (B'Size / 8)));
+     (Hash_Type'Mod (To_Integer (UC_B (B)) / (B'Size / 8)))
+     with Pre => Present (B);
    --  Hash functions for LLVM values, types, and basic blocks
 
    --  We want to compute a hash code for a Str_Component_Array that will be
@@ -55,18 +58,22 @@ package body CCG.Tables is
    procedure Update_Hash (H : in out Hash_Type; S : String)      with Inline;
    --  Update H taking into account the characters in S
 
-   procedure Update_Hash (H : in out Hash_Type; V : Value_T)     with Inline;
+   procedure Update_Hash (H : in out Hash_Type; V : Value_T)
+     with Pre => Present (V), Inline;
    --  Update H taking into account the value V
 
-   procedure Update_Hash (H : in out Hash_Type; T : Type_T)     with Inline;
+   procedure Update_Hash (H : in out Hash_Type; T : Type_T)
+     with Pre => Present (T), Inline;
    --  Update H taking into account the type T
 
-   procedure Update_Hash (H : in out Hash_Type; B : Basic_Block_T) with Inline;
+   procedure Update_Hash (H : in out Hash_Type; B : Basic_Block_T)
+     with Pre => Present (B), Inline;
    --  Update H taking into account the type T
 
    function Hash (S : Str_Record) return Hash_Type;
    function Hash (S : Str)        return Hash_Type is
-      (Hash (S.all));
+     (Hash (S.all))
+     with Pre => Present (S);
    --  Given an array of string components or an access to it (how we denote
    --  strings, return its hash value.
 
@@ -77,7 +84,8 @@ package body CCG.Tables is
    Str_Set : Str_Sets.Set;
    --  The set of all strings that we've made so far
 
-   function Undup_Str (S : aliased Str_Record) return Str;
+   function Undup_Str (S : aliased Str_Record) return Str
+     with Post => Present (Undup_Str'Result);
    --  Get a unique Str corresponding to S
 
    --  We maintain tables that give information we need about LLVM values,
@@ -168,9 +176,16 @@ package body CCG.Tables is
    --  Functions to return the corresponding index for a value, type, or
    --  basic block and whether to create one if one isn't present.
 
-   function Value_Data_Idx (V : Value_T; Create : Boolean) return Value_Idx;
-   function Type_Data_Idx  (T : Type_T; Create : Boolean) return Type_Idx;
-   function BB_Data_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx;
+   function Value_Data_Idx (V : Value_T; Create : Boolean) return Value_Idx
+     with Pre => Present (V);
+   function Type_Data_Idx  (T : Type_T; Create : Boolean) return Type_Idx
+     with Pre => Present (T);
+   function BB_Data_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx
+     with Pre => Present (B);
+
+   procedure Maybe_Write_Typedef (T : Type_T)
+     with Pre => Present (T), Post => Get_Is_Typedef_Output (T);
+   --  See if we need to write a typedef for T and write one if so
 
    -----------------
    -- Update_Hash --
@@ -418,6 +433,7 @@ package body CCG.Tables is
    function To_Str (T : Type_T) return Str is
       S_Rec : aliased constant Str_Record (1) := (1, (1 => (Typ, 1, T)));
    begin
+      Maybe_Write_Typedef (T);
       return Undup_Str (S_Rec);
    end To_Str;
 
@@ -492,6 +508,7 @@ package body CCG.Tables is
               (2, (1 => (Var_String, L'Length, L), 2 => (Typ, 1, R)));
 
          begin
+            Maybe_Write_Typedef (R);
             return Undup_Str (S_Rec);
          end;
       else
@@ -569,6 +586,7 @@ package body CCG.Tables is
               (2, (1 => (Typ, 1, L), 2 => (Var_String, R'Length, R)));
 
          begin
+            Maybe_Write_Typedef (L);
             return Undup_Str (S_Rec);
          end;
       else
@@ -636,6 +654,8 @@ package body CCG.Tables is
         (2, (1 => (Typ, 1, L), 2 => (Typ, 1, R)));
 
    begin
+      Maybe_Write_Typedef (L);
+      Maybe_Write_Typedef (R);
       return Undup_Str (S_Rec);
    end "&";
 
@@ -660,6 +680,7 @@ package body CCG.Tables is
         (2, (1 => (Value, 1, L), 2 => (Typ, 1, R)));
 
    begin
+      Maybe_Write_Typedef (R);
       return Undup_Str (S_Rec);
    end "&";
 
@@ -684,6 +705,7 @@ package body CCG.Tables is
         (2, (1 => (Typ, 1, L), 2 => (Value, 1, R)));
 
    begin
+      Maybe_Write_Typedef (L);
       return Undup_Str (S_Rec);
    end "&";
 
@@ -696,6 +718,7 @@ package body CCG.Tables is
         (2, (1 => (Typ, 1, L), 2 => (BB, 1, R)));
 
    begin
+      Maybe_Write_Typedef (L);
       return Undup_Str (S_Rec);
    end "&";
 
@@ -720,6 +743,7 @@ package body CCG.Tables is
         (2, (1 => (BB, 1, L), 2 => (Typ, 1, R)));
 
    begin
+      Maybe_Write_Typedef (R);
       return Undup_Str (S_Rec);
    end "&";
 
@@ -744,6 +768,7 @@ package body CCG.Tables is
       S_Rec : aliased Str_Record (R.Length + 1);
 
    begin
+      Maybe_Write_Typedef (L);
       S_Rec.Comps (1) := (Typ, 1, L);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
       return Undup_Str (S_Rec);
@@ -783,6 +808,7 @@ package body CCG.Tables is
       S_Rec : aliased Str_Record (L.Length + 1);
 
    begin
+      Maybe_Write_Typedef (R);
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1) := (Typ, 1, R);
       return Undup_Str (S_Rec);
@@ -966,6 +992,17 @@ package body CCG.Tables is
    begin
       BB_Data_Table.Table (Idx).Is_Entry := B;
    end Set_Is_Entry;
+
+   -------------------------
+   -- Maybe_Write_Typedef --
+   -------------------------
+
+   procedure Maybe_Write_Typedef (T : Type_T) is
+   begin
+      if not Get_Is_Typedef_Output (T) then
+         Write_Typedef (T);
+      end if;
+   end Maybe_Write_Typedef;
 
    ------------------------
    --  Initialize_Tables --

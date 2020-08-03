@@ -19,6 +19,8 @@ with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM; use GNATLLVM;
 
+with CCG.Tables; use CCG.Tables;
+
 package CCG.Output is
 
    --  This package contains subprograms used to output segments of C
@@ -33,7 +35,7 @@ package CCG.Output is
    --  Write the name of a value, type, or basic block
 
    procedure Write_Typedef (T : Type_T)
-     with Pre => Present (T);
+     with Pre => Present (T), Post => Get_Is_Typedef_Output (T);
    --  Write the typedef for T, if any
 
 end CCG.Output;

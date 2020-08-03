@@ -23,8 +23,11 @@ with Ada.Containers.Hashed_Sets;
 with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
 
-with Table; use Table;
-with Types; use Types;
+with Output; use Output;
+with Table;  use Table;
+with Types;  use Types;
+
+with CCG.Output; use CCG.Output;
 
 package body CCG.Tables is
 
@@ -96,8 +99,8 @@ package body CCG.Tables is
 
    type Type_Data is record
       Is_Typedef_Output : Boolean;
-      --  True if this is a type for which we write a typedef and we've written
-      --  that typedef already.
+      --  True if this is a type either for which we don't write a typedef
+      --  or if it is and we've written that typedef previously.
    end record;
 
    type BB_Data is record
@@ -248,9 +251,9 @@ package body CCG.Tables is
       end return;
    end Hash;
 
-   -------
-   -- = --
-   -------
+   ---------
+   -- "=" --
+   ---------
 
    function "=" (SL, SR : Str_Record) return Boolean is
       LenL  : constant Integer := SL.Length;
@@ -427,6 +430,30 @@ package body CCG.Tables is
    begin
       return Undup_Str (S_Rec);
    end To_Str;
+
+   ---------------
+   -- Write_Str --
+   ---------------
+
+   procedure Write_Str (S : Str) is
+   begin
+      for Comp of S.Comps loop
+         case Comp.Kind is
+
+            when Var_String =>
+               Write_Str (Comp.Str);
+
+            when Value =>
+               Write_Value (Comp.Val);
+
+            when Typ =>
+               Write_Type (Comp.T);
+
+            when BB =>
+               Write_BB (Comp.B);
+         end case;
+      end loop;
+   end Write_Str;
 
    ---------
    -- "&" --

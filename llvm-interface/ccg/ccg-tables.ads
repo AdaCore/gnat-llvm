@@ -34,36 +34,83 @@ package CCG.Tables is
    procedure Initialize_Tables;
    --  Perform any needed initialization on tables.
 
-   function To_Str (S : String)        return Str;
-   function To_Str (V : Value_T)       return Str;
-   function To_Str (T : Type_T)        return Str;
-   function To_Str (B : Basic_Block_T) return Str;
+   function To_Str (S : String)        return Str
+     with Post => Present (To_Str'Result);
+   function To_Str (V : Value_T)       return Str
+     with Pre => Present (V), Post => Present (To_Str'Result);
+   function To_Str (T : Type_T)        return Str
+     with Pre => Present (T), Post => Present (To_Str'Result);
+   function To_Str (B : Basic_Block_T) return Str
+     with Pre => Present (B), Post => Present (To_Str'Result);
    --  Return an internal representation of S, V, T, or B
 
-   function "&" (L : String;         R : Value_T)       return Str;
-   function "&" (L : String;         R : Type_T)        return Str;
-   function "&" (L : String;         R : Basic_Block_T) return Str;
-   function "&" (L : String;         R : Str)           return Str;
-   function "&" (L : Value_T;        R : String)        return Str;
-   function "&" (L : Value_T;        R : Value_T)       return Str;
-   function "&" (L : Value_T;        R : Type_T)        return Str;
-   function "&" (L : Value_T;        R : Basic_Block_T) return Str;
-   function "&" (L : Value_T;        R : Str)           return Str;
+   procedure Write_Str (S : Str)
+     with Pre => Present (S);
+   --  Write the contents of S to the current output target
+
+   function "&" (L : String;         R : Value_T)       return Str
+     with Post => Present ("&"'Result);
+   function "&" (L : String;         R : Type_T)        return Str
+     with Pre => Present (R), Post => Present ("&"'Result);
+   function "&" (L : String;         R : Basic_Block_T) return Str
+     with Pre => Present (R), Post => Present ("&"'Result);
+   function "&" (L : String;         R : Str)           return Str
+     with Pre => Present (R), Post => Present ("&"'Result);
+   function "&" (L : Value_T;        R : String)        return Str
+     with Pre => Present (L), Post => Present ("&"'Result);
+   function "&" (L : Value_T;        R : Value_T)       return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Value_T;        R : Type_T)        return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Value_T;        R : Basic_Block_T) return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Value_T;        R : Str)           return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
    function "&" (L : Type_T;         R : String)        return Str;
-   function "&" (L : Type_T;         R : Value_T)       return Str;
-   function "&" (L : Type_T;         R : Type_T)        return Str;
-   function "&" (L : Type_T;         R : Basic_Block_T) return Str;
-   function "&" (L : Type_T;         R : Str)           return Str;
-   function "&" (L : Basic_Block_T;  R : String)        return Str;
-   function "&" (L : Basic_Block_T;  R : Value_T)       return Str;
-   function "&" (L : Basic_Block_T;  R : Type_T)        return Str;
-   function "&" (L : Basic_Block_T;  R : Basic_Block_T) return Str;
-   function "&" (L : Basic_Block_T;  R : Str)           return Str;
-   function "&" (L : Str;            R : String)        return Str;
-   function "&" (L : Str;            R : Value_T)       return Str;
-   function "&" (L : Str;            R : Type_T)        return Str;
-   function "&" (L : Str;            R : Basic_Block_T) return Str;
-   function "&" (L : Str;            R : Str)           return Str;
+   function "&" (L : Type_T;         R : Value_T)       return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Type_T;         R : Type_T)        return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Type_T;         R : Basic_Block_T) return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Type_T;         R : Str)           return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Basic_Block_T;  R : String)        return Str
+     with Pre => Present (L), Post => Present ("&"'Result);
+   function "&" (L : Basic_Block_T;  R : Value_T)       return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Basic_Block_T;  R : Type_T)        return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Basic_Block_T;  R : Basic_Block_T) return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Basic_Block_T;  R : Str)           return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Str;            R : String)        return Str
+     with Pre => Present (L), Post => Present ("&"'Result);
+   function "&" (L : Str;            R : Value_T)       return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Str;            R : Type_T)        return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Str;            R : Basic_Block_T) return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
+   function "&" (L : Str;            R : Str)           return Str
+     with Pre  => Present (L) and then Present (R),
+          Post => Present ("&"'Result);
 
    --  Get and set attributes we record of LLVM values, types, and
    --  basic blocks.

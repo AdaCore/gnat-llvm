@@ -25,7 +25,6 @@ with System.Storage_Elements; use System.Storage_Elements;
 
 with Output; use Output;
 with Table;  use Table;
-with Types;  use Types;
 
 with CCG.Output; use CCG.Output;
 
@@ -97,11 +96,15 @@ package body CCG.Tables is
    --  then the tables, then the maps.
 
    type Value_Data is record
-      C_Value : Str;
+      C_Value    : Str;
       --  If Present, a string that represents the value of the Value_T
 
-      No_Name : Boolean;
+      No_Name    : Boolean;
       --  True is there's no LLVM name for this value; we use the ordinal
+
+      Output_Idx : Nat;
+      --  A positive number if we've assigned an ordinal to use as
+      --  part of the name for this anonymous value.
 
    end record;
 
@@ -109,11 +112,21 @@ package body CCG.Tables is
       Is_Typedef_Output : Boolean;
       --  True if this is a type either for which we don't write a typedef
       --  or if it is and we've written that typedef previously.
+
+      Output_Idx        : Nat;
+      --  A positive number if we've assigned an ordinal to use as
+      --  part of the name for this anonymous type.
+
    end record;
 
    type BB_Data is record
-      Is_Entry : Boolean;
+      Is_Entry   : Boolean;
       --  True if this is the entry basic block for some function
+
+      Output_Idx : Nat;
+      --  A positive number if we've assigned an ordinal to use as
+      --  part of the name for this block.
+
    end record;
 
    type Value_Idx is new Nat;
@@ -172,6 +185,9 @@ package body CCG.Tables is
       Hash            => Hash,
       Equivalent_Keys => "=");
    BB_Data_Map : BB_Data_Maps.Map;
+
+   Output_Idx : Nat := 1;
+   --  The next output index to use for values, types, and basic blocks
 
    --  Functions to return the corresponding index for a value, type, or
    --  basic block and whether to create one if one isn't present.
@@ -855,7 +871,9 @@ package body CCG.Tables is
       elsif not Create then
          return No_Value_Idx;
       else
-         Value_Data_Table.Append ((C_Value => null, No_Name => False));
+         Value_Data_Table.Append ((C_Value    => null,
+                                   No_Name    => False,
+                                   Output_Idx => 0));
          Insert (Value_Data_Map, V, Value_Data_Table.Last);
          return Value_Data_Table.Last;
       end if;
@@ -876,7 +894,8 @@ package body CCG.Tables is
       elsif not Create then
          return No_Type_Idx;
       else
-         Type_Data_Table.Append ((Is_Typedef_Output => False));
+         Type_Data_Table.Append ((Is_Typedef_Output => False,
+                                  Output_Idx        => 0));
          Insert (Type_Data_Map, T, Type_Data_Table.Last);
          return Type_Data_Table.Last;
       end if;
@@ -897,7 +916,7 @@ package body CCG.Tables is
       elsif not Create then
          return No_BB_Idx;
       else
-         BB_Data_Table.Append ((Is_Entry => False));
+         BB_Data_Table.Append ((Is_Entry => False, Output_Idx => 0));
          Insert (BB_Data_Map, B, BB_Data_Table.Last);
          return BB_Data_Table.Last;
       end if;
@@ -931,7 +950,7 @@ package body CCG.Tables is
    -----------------
 
    procedure Set_C_Value (V : Value_T; S : Str) is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
 
    begin
       Value_Data_Table.Table (Idx).C_Value := S;
@@ -942,7 +961,7 @@ package body CCG.Tables is
    -----------------
 
    procedure Set_No_Name (V : Value_T; B : Boolean) is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
 
    begin
       Value_Data_Table.Table (Idx).No_Name := B;
@@ -1003,6 +1022,57 @@ package body CCG.Tables is
          Write_Typedef (T);
       end if;
    end Maybe_Write_Typedef;
+
+   --------------------
+   -- Get_Output_Idx --
+   --------------------
+
+   function Get_Output_Idx (V : Value_T) return Nat is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+      VD  : Value_Data renames Value_Data_Table.Table (Idx);
+
+   begin
+      if VD.Output_Idx = 0 then
+         VD.Output_Idx := Output_Idx;
+         Output_Idx    := Output_Idx + 1;
+      end if;
+
+      return VD.Output_Idx;
+   end Get_Output_Idx;
+
+   --------------------
+   -- Get_Output_Idx --
+   --------------------
+
+   function Get_Output_Idx (T : Type_T) return Nat is
+      Idx : constant Type_Idx := Type_Data_Idx (T, Create => True);
+      TD  : Type_Data renames Type_Data_Table.Table (Idx);
+
+   begin
+      if TD.Output_Idx = 0 then
+         TD.Output_Idx := Output_Idx;
+         Output_Idx    := Output_Idx + 1;
+      end if;
+
+      return TD.Output_Idx;
+   end Get_Output_Idx;
+
+   --------------------
+   -- Get_Output_Idx --
+   --------------------
+
+   function Get_Output_Idx (BB : Basic_Block_T) return Nat is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
+      BBD : BB_Data renames BB_Data_Table.Table (Idx);
+
+   begin
+      if BBD.Output_Idx = 0 then
+         BBD.Output_Idx := Output_Idx;
+         Output_Idx     := Output_Idx + 1;
+      end if;
+
+      return BBD.Output_Idx;
+   end Get_Output_Idx;
 
    ------------------------
    --  Initialize_Tables --

@@ -15,6 +15,11 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Output; use Output;
+with Types;  use Types;
+
+with LLVM.Core; use LLVM.Core;
+
 package body CCG.Output is
 
    -----------------
@@ -22,9 +27,54 @@ package body CCG.Output is
    -----------------
 
    procedure Write_Value (V : Value_T) is
-      pragma Unreferenced (V);
+      subtype LLI is Long_Long_Integer;
    begin
-      null;
+      --  If this is a constant, we have to output the value of the
+      --  constant.
+
+      if Present (Is_A_Constant (V)) then
+
+         --  ??? Start with just integer constants and just small ones
+
+         if Present (Is_A_Constant_Int (V)) then
+            declare
+               Val : constant LLI := Const_Int_Get_S_Ext_Value (V);
+
+            begin
+               if Val in LLI (Int'First) .. LLI (Int'Last) then
+                  Write_Int (Int (Val));
+               else
+                  Write_Str ("<overflow>");
+               end if;
+            end;
+         else
+            Write_Str ("<unknown constant>");
+         end if;
+      else
+         --  Otherwise, it's either a global or a computed value.
+         --  If it has a name, write that name and we're done.  Otherwise,
+         --  mark it as not having a name if we haven't already.
+
+         if not Get_No_Name (V) then
+            declare
+               S : constant String := Get_Value_Name (V);
+
+            begin
+               if S'Length > 0 then
+                  Write_Str (S);
+                  return;
+               end if;
+
+               Set_No_Name (V, True);
+            end;
+         end if;
+
+         --  Print (and make if necessary) an internal name for this value
+
+         Write_Str ("ccg_v");
+         Write_Int (Get_Output_Idx (V));
+      end if;
+
    end Write_Value;
 
    -----------------

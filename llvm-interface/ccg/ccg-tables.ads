@@ -19,6 +19,8 @@ with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM; use GNATLLVM;
 
+with Types; use Types;
+
 package CCG.Tables is
 
    --  This package contains the tables used by CCG to record data about
@@ -137,6 +139,16 @@ package CCG.Tables is
    procedure Set_Is_Entry (BB : Basic_Block_T; B : Boolean)
      with Pre  => Present (BB),
           Post => Get_Is_Entry (BB) = B;
+
+   --  Define functions to return (and possibly create) an ordinal to use
+   --  as part of the name for a value, type, or basic block.
+
+   function Get_Output_Idx (V : Value_T) return Nat
+     with Pre => Present (V), Post => Get_Output_Idx'Result /= 0;
+   function Get_Output_Idx (T : Type_T) return Nat
+     with Pre => Present (T), Post => Get_Output_Idx'Result /= 0;
+   function Get_Output_Idx (BB : Basic_Block_T) return Nat
+     with Pre => Present (BB), Post => Get_Output_Idx'Result /= 0;
 
 private
 

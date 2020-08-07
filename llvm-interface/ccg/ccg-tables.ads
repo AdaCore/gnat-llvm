@@ -121,22 +121,27 @@ package CCG.Tables is
      with Pre => Present (V);
    function Get_No_Name (V : Value_T) return Boolean
      with Pre => Present (V);
+   function Get_Is_Decl_Output (V : Value_T) return Boolean
+     with Pre => Present (V);
    procedure Set_C_Value (V : Value_T; S : Str)
      with Pre  => Present (V) and then Present (S),
           Post => Get_C_Value (V) = S;
-   procedure Set_No_Name (V : Value_T; B : Boolean)
+   procedure Set_No_Name (V : Value_T; B : Boolean := True)
      with Pre  => Present (V),
           Post => Get_No_Name (V) = B;
+   procedure Set_Is_Decl_Output (V : Value_T; B : Boolean := True)
+     with Pre  => Present (V),
+          Post => Get_Is_Decl_Output (V) = B;
 
    function Get_Is_Typedef_Output (T : Type_T) return Boolean
      with Pre => Present (T);
-   procedure Set_Is_Typedef_Output (T : Type_T; B : Boolean)
+   procedure Set_Is_Typedef_Output (T : Type_T; B : Boolean := True)
      with Pre  => Present (T),
           Post => Get_Is_Typedef_Output (T) = B;
 
    function Get_Is_Entry (BB : Basic_Block_T) return Boolean
      with Pre => Present (BB);
-   procedure Set_Is_Entry (BB : Basic_Block_T; B : Boolean)
+   procedure Set_Is_Entry (BB : Basic_Block_T; B : Boolean := True)
      with Pre  => Present (BB),
           Post => Get_Is_Entry (BB) = B;
 

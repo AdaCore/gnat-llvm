@@ -96,11 +96,14 @@ package body CCG.Tables is
    --  then the tables, then the maps.
 
    type Value_Data is record
-      C_Value    : Str;
+      C_Value        : Str;
       --  If Present, a string that represents the value of the Value_T
 
-      No_Name    : Boolean;
+      No_Name        : Boolean;
       --  True is there's no LLVM name for this value; we use the ordinal
+
+      Is_Decl_Output : Boolean;
+      --  True if we wrote any needed decl for this value
 
       Output_Idx : Nat;
       --  A positive number if we've assigned an ordinal to use as
@@ -198,6 +201,10 @@ package body CCG.Tables is
      with Pre => Present (T);
    function BB_Data_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx
      with Pre => Present (B);
+
+   procedure Maybe_Write_Decl (V : Value_T)
+     with Pre => Present (V), Post => Get_Is_Decl_Output (V);
+   --  See if we need to write a declaration for V and write one if so
 
    procedure Maybe_Write_Typedef (T : Type_T)
      with Pre => Present (T), Post => Get_Is_Typedef_Output (T);
@@ -439,6 +446,7 @@ package body CCG.Tables is
    function To_Str (V : Value_T) return Str is
       S_Rec : aliased constant Str_Record (1) := (1, (1 => (Value, 1, V)));
    begin
+      Maybe_Write_Decl (V);
       return Undup_Str (S_Rec);
    end To_Str;
 
@@ -505,6 +513,7 @@ package body CCG.Tables is
               (2, (1 => (Var_String, L'Length, L), 2 => (Value, 1, R)));
 
          begin
+            Maybe_Write_Decl (R);
             return Undup_Str (S_Rec);
          end;
       else
@@ -583,6 +592,7 @@ package body CCG.Tables is
               (2, (1 => (Value, 1, L), 2 => (Var_String, R'Length, R)));
 
          begin
+            Maybe_Write_Decl (L);
             return Undup_Str (S_Rec);
          end;
       else
@@ -658,6 +668,8 @@ package body CCG.Tables is
         (2, (1 => (Value, 1, L), 2 => (Value, 1, R)));
 
    begin
+      Maybe_Write_Decl (L);
+      Maybe_Write_Decl (R);
       return Undup_Str (S_Rec);
    end "&";
 
@@ -696,6 +708,7 @@ package body CCG.Tables is
         (2, (1 => (Value, 1, L), 2 => (Typ, 1, R)));
 
    begin
+      Maybe_Write_Decl (L);
       Maybe_Write_Typedef (R);
       return Undup_Str (S_Rec);
    end "&";
@@ -709,6 +722,7 @@ package body CCG.Tables is
         (2, (1 => (Value, 1, L), 2 => (BB, 1, R)));
 
    begin
+      Maybe_Write_Decl (L);
       return Undup_Str (S_Rec);
    end "&";
 
@@ -721,6 +735,7 @@ package body CCG.Tables is
         (2, (1 => (Typ, 1, L), 2 => (Value, 1, R)));
 
    begin
+      Maybe_Write_Decl (R);
       Maybe_Write_Typedef (L);
       return Undup_Str (S_Rec);
    end "&";
@@ -747,6 +762,7 @@ package body CCG.Tables is
         (2, (1 => (BB, 1, L), 2 => (Value, 1, R)));
 
    begin
+      Maybe_Write_Decl (R);
       return Undup_Str (S_Rec);
    end "&";
 
@@ -771,6 +787,7 @@ package body CCG.Tables is
       S_Rec : aliased Str_Record (R.Length + 1);
 
    begin
+      Maybe_Write_Decl (L);
       S_Rec.Comps (1) := (Value, 1, L);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
       return Undup_Str (S_Rec);
@@ -811,6 +828,7 @@ package body CCG.Tables is
       S_Rec : aliased Str_Record (L.Length + 1);
 
    begin
+      Maybe_Write_Decl (R);
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1) := (Value, 1, R);
       return Undup_Str (S_Rec);
@@ -871,9 +889,10 @@ package body CCG.Tables is
       elsif not Create then
          return No_Value_Idx;
       else
-         Value_Data_Table.Append ((C_Value    => null,
-                                   No_Name    => False,
-                                   Output_Idx => 0));
+         Value_Data_Table.Append ((C_Value        => null,
+                                   No_Name        => False,
+                                   Is_Decl_Output => False,
+                                   Output_Idx     => 0));
          Insert (Value_Data_Map, V, Value_Data_Table.Last);
          return Value_Data_Table.Last;
       end if;
@@ -945,6 +964,19 @@ package body CCG.Tables is
       return Present (Idx) and then Value_Data_Table.Table (Idx).No_Name;
    end Get_No_Name;
 
+   ------------------------
+   -- Get_Is_Decl_Output --
+   ------------------------
+
+   function Get_Is_Decl_Output (V : Value_T) return Boolean is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+
+   begin
+      return Present (Idx)
+        and then Value_Data_Table.Table (Idx).Is_Decl_Output;
+
+   end Get_Is_Decl_Output;
+
    -----------------
    -- Set_C_Value --
    -----------------
@@ -960,12 +992,23 @@ package body CCG.Tables is
    -- Set_No_Name --
    -----------------
 
-   procedure Set_No_Name (V : Value_T; B : Boolean) is
+   procedure Set_No_Name (V : Value_T; B : Boolean := True) is
       Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
 
    begin
       Value_Data_Table.Table (Idx).No_Name := B;
    end Set_No_Name;
+
+   ------------------------
+   -- Set_Is_Decl_Output --
+   ------------------------
+
+   procedure Set_Is_Decl_Output (V : Value_T; B : Boolean := True) is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+
+   begin
+      Value_Data_Table.Table (Idx).Is_Decl_Output := B;
+   end Set_Is_Decl_Output;
 
    ---------------------------
    -- Get_Is_Typedef_Output --
@@ -983,7 +1026,7 @@ package body CCG.Tables is
    -- Set_Is_Typedef_Output --
    --------------------------
 
-   procedure Set_Is_Typedef_Output (T : Type_T; B : Boolean) is
+   procedure Set_Is_Typedef_Output (T : Type_T; B : Boolean := True) is
       Idx : constant Type_Idx := Type_Data_Idx (T, Create => True);
 
    begin
@@ -1005,12 +1048,23 @@ package body CCG.Tables is
    -- Set_Is_Entry --
    ------------------
 
-   procedure Set_Is_Entry (BB : Basic_Block_T; B : Boolean) is
+   procedure Set_Is_Entry (BB : Basic_Block_T; B : Boolean := True) is
       Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
 
    begin
       BB_Data_Table.Table (Idx).Is_Entry := B;
    end Set_Is_Entry;
+
+   ----------------------
+   -- Maybe_Write_Decl --
+   ----------------------
+
+   procedure Maybe_Write_Decl (V : Value_T) is
+   begin
+      if not Get_Is_Decl_Output (V) then
+         Write_Decl (V);
+      end if;
+   end Maybe_Write_Decl;
 
    -------------------------
    -- Maybe_Write_Typedef --

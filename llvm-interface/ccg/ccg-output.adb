@@ -65,7 +65,7 @@ package body CCG.Output is
                   return;
                end if;
 
-               Set_No_Name (V, True);
+               Set_No_Name (V);
             end;
          end if;
 
@@ -77,6 +77,15 @@ package body CCG.Output is
 
    end Write_Value;
 
+   ----------------
+   -- Write_Decl --
+   ----------------
+
+   procedure Write_Decl (V : Value_T) is
+   begin
+      Set_Is_Decl_Output (V);
+   end Write_Decl;
+
    -----------------
    -- Write_Type --
    -----------------
@@ -87,24 +96,23 @@ package body CCG.Output is
       null;
    end Write_Type;
 
-   --------------
-   -- Write_BB --
-   --------------
-
-   procedure Write_BB (B : Basic_Block_T) is
-      pragma Unreferenced (B);
-   begin
-      null;
-   end Write_BB;
-
    -------------------
    -- Write_Typedef --
    --------------------
 
    procedure Write_Typedef (T : Type_T) is
-      pragma Unreferenced (T);
    begin
-      null;
+      Set_Is_Typedef_Output (T);
    end Write_Typedef;
+
+   --------------
+   -- Write_BB --
+   --------------
+
+   procedure Write_BB (B : Basic_Block_T) is
+   begin
+      Write_Str ("ccg_l");
+      Write_Int (Get_Output_Idx (B));
+   end Write_BB;
 
 end CCG.Output;

@@ -34,6 +34,10 @@ package CCG.Output is
      with Pre => Present (B);
    --  Write the name of a value, type, or basic block
 
+   procedure Write_Decl (V : Value_T)
+     with Pre => Present (V), Post => Get_Is_Decl_Output (V);
+   --  Write the typedef for T, if any
+
    procedure Write_Typedef (T : Type_T)
      with Pre => Present (T), Post => Get_Is_Typedef_Output (T);
    --  Write the typedef for T, if any

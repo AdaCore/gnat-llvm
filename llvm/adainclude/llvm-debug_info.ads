@@ -33,7 +33,7 @@ package LLVM.Debug_Info is
    DI_Flag_Public : constant DI_Flags_T := 3;
    DI_Flag_Fwd_Decl : constant DI_Flags_T := 4;
    DI_Flag_Apple_Block : constant DI_Flags_T := 8;
-   DI_Flag_Block_Byref_Struct : constant DI_Flags_T := 16;
+   DI_Flag_Reserved_Bit4 : constant DI_Flags_T := 16;
    DI_Flag_Virtual : constant DI_Flags_T := 32;
    DI_Flag_Artificial : constant DI_Flags_T := 64;
    DI_Flag_Explicit : constant DI_Flags_T := 128;
@@ -61,7 +61,7 @@ package LLVM.Debug_Info is
    DI_Flag_Little_Endian : constant DI_Flags_T := 268435456;
    DI_Flag_Indirect_Virtual_Base : constant DI_Flags_T := 36;
    DI_Flag_Accessibility : constant DI_Flags_T := 3;
-   DI_Flag_Ptr_To_Member_Rep : constant DI_Flags_T := 196608;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:67
+   DI_Flag_Ptr_To_Member_Rep : constant DI_Flags_T := 196608;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:66
 
   --*
   -- * Source languages known by DWARF.
@@ -112,7 +112,7 @@ package LLVM.Debug_Info is
       Dwarfsourcelanguagemips_Assembler,
       Dwarfsourcelanguagegoogle_Renderscript,
       Dwarfsourcelanguageborland_Delphi);
-   pragma Convention (C, DWARF_Source_Language_T);  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:117
+   pragma Convention (C, DWARF_Source_Language_T);  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:116
 
   --*
   -- * The amount of debug information to emit.
@@ -122,32 +122,45 @@ package LLVM.Debug_Info is
      (DWARF_Emission_None,
       DWARF_Emission_Full,
       DWARF_Emission_Line_Tables_Only);
-   pragma Convention (C, DWARF_Emission_Kind_T);  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:126
+   pragma Convention (C, DWARF_Emission_Kind_T);  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:125
 
   --*
   -- * The kind of metadata nodes.
   --  
 
-   subtype Metadata_Kind_T is unsigned;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:165
+   subtype Metadata_Kind_T is unsigned;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:164
 
   --*
   -- * An LLVM DWARF type encoding.
   --  
 
-   subtype DWARF_Type_Encoding_T is unsigned;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:170
+   subtype DWARF_Type_Encoding_T is unsigned;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:169
+
+  --*
+  -- * Describes the kind of macro declaration used for LLVMDIBuilderCreateMacro.
+  -- * @see llvm::dwarf::MacinfoRecordType
+  -- * @note Values are from DW_MACINFO_* constants in the DWARF specification.
+  --  
+
+   subtype DWARF_Macinfo_Record_Type_T is unsigned;
+   DWARF_Macinfo_Record_Type_Define : constant DWARF_Macinfo_Record_Type_T := 1;
+   DWARF_Macinfo_Record_Type_Macro : constant DWARF_Macinfo_Record_Type_T := 2;
+   DWARF_Macinfo_Record_Type_Start_File : constant DWARF_Macinfo_Record_Type_T := 3;
+   DWARF_Macinfo_Record_Type_End_File : constant DWARF_Macinfo_Record_Type_T := 4;
+   DWARF_Macinfo_Record_Type_Vendor_Ext : constant DWARF_Macinfo_Record_Type_T := 255;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:182
 
   --*
   -- * The current debug metadata version number.
   --  
 
-   function Debug_Metadata_Version return unsigned;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:175
+   function Debug_Metadata_Version return unsigned;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:187
    pragma Import (C, Debug_Metadata_Version, "LLVMDebugMetadataVersion");
 
   --*
   -- * The version of debug metadata that's present in the provided \c Module.
   --  
 
-   function Get_Module_Debug_Metadata_Version (Module : LLVM.Types.Module_T) return unsigned;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:180
+   function Get_Module_Debug_Metadata_Version (Module : LLVM.Types.Module_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:192
    pragma Import (C, Get_Module_Debug_Metadata_Version, "LLVMGetModuleDebugMetadataVersion");
 
   --*
@@ -162,7 +175,7 @@ package LLVM.Debug_Info is
       return Boolean;
    function Strip_Module_Debug_Info_C
      (Module : LLVM.Types.Module_T)
-      return LLVM.Types.Bool_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:188
+      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:200
    pragma Import (C, Strip_Module_Debug_Info_C, "LLVMStripModuleDebugInfo");
 
   --*
@@ -170,7 +183,7 @@ package LLVM.Debug_Info is
   -- * attached to the module.
   --  
 
-   function Create_DI_Builder_Disallow_Unresolved (M : LLVM.Types.Module_T) return LLVM.Types.DI_Builder_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:194
+   function Create_DI_Builder_Disallow_Unresolved (M : LLVM.Types.Module_T) return LLVM.Types.DI_Builder_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:206
    pragma Import (C, Create_DI_Builder_Disallow_Unresolved, "LLVMCreateDIBuilderDisallowUnresolved");
 
   --*
@@ -179,7 +192,7 @@ package LLVM.Debug_Info is
   -- * \c LLVMDIBuilderFinalize.
   --  
 
-   function Create_DI_Builder (M : LLVM.Types.Module_T) return LLVM.Types.DI_Builder_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:201
+   function Create_DI_Builder (M : LLVM.Types.Module_T) return LLVM.Types.DI_Builder_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:213
    pragma Import (C, Create_DI_Builder, "LLVMCreateDIBuilder");
 
   --*
@@ -187,14 +200,14 @@ package LLVM.Debug_Info is
   -- * @note You must call \c LLVMDIBuilderFinalize before this
   --  
 
-   procedure Dispose_DI_Builder (Builder : LLVM.Types.DI_Builder_T);  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:207
+   procedure Dispose_DI_Builder (Builder : LLVM.Types.DI_Builder_T);  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:219
    pragma Import (C, Dispose_DI_Builder, "LLVMDisposeDIBuilder");
 
   --*
   -- * Construct any deferred debug info descriptors.
   --  
 
-   procedure DI_Builder_Finalize (Builder : LLVM.Types.DI_Builder_T);  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:212
+   procedure DI_Builder_Finalize (Builder : LLVM.Types.DI_Builder_T);  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:224
    pragma Import (C, DI_Builder_Finalize, "LLVMDIBuilderFinalize");
 
   --*
@@ -298,8 +311,8 @@ function DI_Create_File
   -- * \param ConfigMacrosLen The length of the C string passed to \c ConfigMacros.
   -- * \param IncludePath     The path to the module map file.
   -- * \param IncludePathLen  The length of the C string passed to \c IncludePath.
-  -- * \param ISysRoot        The Clang system root (value of -isysroot).
-  -- * \param ISysRootLen     The length of the C string passed to \c ISysRoot.
+  -- * \param SysRoot         The Clang system root (value of -isysroot).
+  -- * \param SysRootLen      The length of the C string passed to \c SysRoot.
   --  
 
 function DI_Create_Module
@@ -311,8 +324,8 @@ function DI_Create_Module
       Config_Macros_Len : stddef_h.size_t;
       Include_Path      : String;
       Include_Path_Len  : stddef_h.size_t;
-      I_Sys_Root        : String;
-      I_Sys_Root_Len    : stddef_h.size_t)
+      Sys_Root          : String;
+      Sys_Root_Len      : stddef_h.size_t)
       return LLVM.Types.Metadata_T;
    function DI_Builder_Create_Module_C
      (Builder           : LLVM.Types.DI_Builder_T;
@@ -323,8 +336,8 @@ function DI_Create_Module
       Config_Macros_Len : stddef_h.size_t;
       Include_Path      : Interfaces.C.Strings.chars_ptr;
       Include_Path_Len  : stddef_h.size_t;
-      I_Sys_Root        : Interfaces.C.Strings.chars_ptr;
-      I_Sys_Root_Len    : stddef_h.size_t)
+      Sys_Root          : Interfaces.C.Strings.chars_ptr;
+      Sys_Root_Len      : stddef_h.size_t)
       return LLVM.Types.Metadata_T;
    pragma Import (C, DI_Builder_Create_Module_C, "LLVMDIBuilderCreateModule");
 
@@ -421,7 +434,7 @@ function DI_Create_Function
       Scope : LLVM.Types.Metadata_T;
       File : LLVM.Types.Metadata_T;
       Line : unsigned;
-      Column : unsigned) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:332
+      Column : unsigned) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:344
    pragma Import (C, DI_Builder_Create_Lexical_Block, "LLVMDIBuilderCreateLexicalBlock");
 
   --*
@@ -436,7 +449,7 @@ function DI_Create_Function
      (Builder : LLVM.Types.DI_Builder_T;
       Scope : LLVM.Types.Metadata_T;
       File : LLVM.Types.Metadata_T;
-      Discriminator : unsigned) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:344
+      Discriminator : unsigned) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:356
    pragma Import (C, DI_Builder_Create_Lexical_Block_File, "LLVMDIBuilderCreateLexicalBlockFile");
 
   --*
@@ -453,7 +466,7 @@ function DI_Create_Function
       Scope : LLVM.Types.Metadata_T;
       NS : LLVM.Types.Metadata_T;
       File : LLVM.Types.Metadata_T;
-      Line : unsigned) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:358
+      Line : unsigned) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:370
    pragma Import (C, DI_Builder_Create_Imported_Module_From_Namespace, "LLVMDIBuilderCreateImportedModuleFromNamespace");
 
   --*
@@ -471,7 +484,7 @@ function DI_Create_Function
       Scope : LLVM.Types.Metadata_T;
       Imported_Entity : LLVM.Types.Metadata_T;
       File : LLVM.Types.Metadata_T;
-      Line : unsigned) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:374
+      Line : unsigned) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:386
    pragma Import (C, DI_Builder_Create_Imported_Module_From_Alias, "LLVMDIBuilderCreateImportedModuleFromAlias");
 
   --*
@@ -488,7 +501,7 @@ function DI_Create_Function
       Scope : LLVM.Types.Metadata_T;
       M : LLVM.Types.Metadata_T;
       File : LLVM.Types.Metadata_T;
-      Line : unsigned) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:389
+      Line : unsigned) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:401
    pragma Import (C, DI_Builder_Create_Imported_Module_From_Module, "LLVMDIBuilderCreateImportedModuleFromModule");
 
   --*
@@ -540,7 +553,7 @@ function DI_Create_Imported_Declaration
       Line : unsigned;
       Column : unsigned;
       Scope : LLVM.Types.Metadata_T;
-      Inlined_At : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:426
+      Inlined_At : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:438
    pragma Import (C, DI_Builder_Create_Debug_Location, "LLVMDIBuilderCreateDebugLocation");
 
   --*
@@ -550,7 +563,7 @@ function DI_Create_Imported_Declaration
   -- * @see DILocation::getLine()
   --  
 
-   function DI_Location_Get_Line (Location : LLVM.Types.Metadata_T) return unsigned;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:436
+   function DI_Location_Get_Line (Location : LLVM.Types.Metadata_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:448
    pragma Import (C, DI_Location_Get_Line, "LLVMDILocationGetLine");
 
   --*
@@ -560,7 +573,7 @@ function DI_Create_Imported_Declaration
   -- * @see DILocation::getColumn()
   --  
 
-   function DI_Location_Get_Column (Location : LLVM.Types.Metadata_T) return unsigned;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:444
+   function DI_Location_Get_Column (Location : LLVM.Types.Metadata_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:456
    pragma Import (C, DI_Location_Get_Column, "LLVMDILocationGetColumn");
 
   --*
@@ -570,7 +583,7 @@ function DI_Create_Imported_Declaration
   -- * @see DILocation::getScope()
   --  
 
-   function DI_Location_Get_Scope (Location : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:452
+   function DI_Location_Get_Scope (Location : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:464
    pragma Import (C, DI_Location_Get_Scope, "LLVMDILocationGetScope");
 
   --*
@@ -580,7 +593,7 @@ function DI_Create_Imported_Declaration
   -- * @see DILocation::getInlinedAt()
   --  
 
-   function DI_Location_Get_Inlined_At (Location : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:460
+   function DI_Location_Get_Inlined_At (Location : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:472
    pragma Import (C, DI_Location_Get_Inlined_At, "LLVMDILocationGetInlinedAt");
 
   --*
@@ -590,7 +603,7 @@ function DI_Create_Imported_Declaration
   -- * @see DIScope::getFile()
   --  
 
-   function DI_Scope_Get_File (Scope : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:468
+   function DI_Scope_Get_File (Scope : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:480
    pragma Import (C, DI_Scope_Get_File, "LLVMDIScopeGetFile");
 
   --*
@@ -608,7 +621,7 @@ function DI_Create_Imported_Declaration
    function DI_File_Get_Directory_C
      (File : LLVM.Types.Metadata_T;
       Len  : unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:477
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:489
    pragma Import (C, DI_File_Get_Directory_C, "LLVMDIFileGetDirectory");
 
   --*
@@ -626,7 +639,7 @@ function DI_Create_Imported_Declaration
    function DI_File_Get_Filename_C
      (File : LLVM.Types.Metadata_T;
       Len  : unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:486
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:498
    pragma Import (C, DI_File_Get_Filename_C, "LLVMDIFileGetFilename");
 
   --*
@@ -644,7 +657,7 @@ function DI_Create_Imported_Declaration
    function DI_File_Get_Source_C
      (File : LLVM.Types.Metadata_T;
       Len  : unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:495
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:507
    pragma Import (C, DI_File_Get_Source_C, "LLVMDIFileGetSource");
 
   --*
@@ -657,7 +670,7 @@ function DI_Create_Imported_Declaration
    function DI_Builder_Get_Or_Create_Type_Array
      (Builder : LLVM.Types.DI_Builder_T;
       Data : System.Address;
-      Num_Elements : stddef_h.size_t) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:503
+      Num_Elements : stddef_h.size_t) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:515
    pragma Import (C, DI_Builder_Get_Or_Create_Type_Array, "LLVMDIBuilderGetOrCreateTypeArray");
 
   --*
@@ -676,8 +689,59 @@ function DI_Create_Imported_Declaration
       File : LLVM.Types.Metadata_T;
       Parameter_Types : System.Address;
       Num_Parameter_Types : unsigned;
-      Flags : DI_Flags_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:518
+      Flags : DI_Flags_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:530
    pragma Import (C, DI_Builder_Create_Subroutine_Type, "LLVMDIBuilderCreateSubroutineType");
+
+  --*
+  -- * Create debugging information entry for a macro.
+  -- * @param Builder         The DIBuilder.
+  -- * @param ParentMacroFile Macro parent (could be NULL).
+  -- * @param Line            Source line number where the macro is defined.
+  -- * @param RecordType      DW_MACINFO_define or DW_MACINFO_undef.
+  -- * @param Name            Macro name.
+  -- * @param NameLen         Macro name length.
+  -- * @param Value           Macro value.
+  -- * @param ValueLen        Macro value length.
+  --  
+
+function DI_Create_Macro
+     (Builder           : LLVM.Types.DI_Builder_T;
+      Parent_Macro_File : LLVM.Types.Metadata_T;
+      Line              : unsigned;
+      Record_Type       : DWARF_Macinfo_Record_Type_T;
+      Name              : String;
+      Name_Len          : stddef_h.size_t;
+      Value             : String;
+      Value_Len         : stddef_h.size_t)
+      return LLVM.Types.Metadata_T;
+   function DI_Builder_Create_Macro_C
+     (Builder           : LLVM.Types.DI_Builder_T;
+      Parent_Macro_File : LLVM.Types.Metadata_T;
+      Line              : unsigned;
+      Record_Type       : DWARF_Macinfo_Record_Type_T;
+      Name              : Interfaces.C.Strings.chars_ptr;
+      Name_Len          : stddef_h.size_t;
+      Value             : Interfaces.C.Strings.chars_ptr;
+      Value_Len         : stddef_h.size_t)
+      return LLVM.Types.Metadata_T;
+   pragma Import (C, DI_Builder_Create_Macro_C, "LLVMDIBuilderCreateMacro");
+
+  --*
+  -- * Create debugging information temporary entry for a macro file.
+  -- * List of macro node direct children will be calculated by DIBuilder,
+  -- * using the \p ParentMacroFile relationship.
+  -- * @param Builder         The DIBuilder.
+  -- * @param ParentMacroFile Macro parent (could be NULL).
+  -- * @param Line            Source line number where the macro file is included.
+  -- * @param File            File descriptor containing the name of the macro file.
+  --  
+
+   function DI_Builder_Create_Temp_Macro_File
+     (Builder : LLVM.Types.DI_Builder_T;
+      Parent_Macro_File : LLVM.Types.Metadata_T;
+      Line : unsigned;
+      File : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:564
+   pragma Import (C, DI_Builder_Create_Temp_Macro_File, "LLVMDIBuilderCreateTempMacroFile");
 
   --*
   -- * Create debugging information entry for an enumerator.
@@ -815,7 +879,7 @@ function DI_Create_Union_Type
       Align_In_Bits : stdint_h.uint32_t;
       Ty : LLVM.Types.Metadata_T;
       Subscripts : System.Address;
-      Num_Subscripts : unsigned) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:592
+      Num_Subscripts : unsigned) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:636
    pragma Import (C, DI_Builder_Create_Array_Type, "LLVMDIBuilderCreateArrayType");
 
   --*
@@ -834,7 +898,7 @@ function DI_Create_Union_Type
       Align_In_Bits : stdint_h.uint32_t;
       Ty : LLVM.Types.Metadata_T;
       Subscripts : System.Address;
-      Num_Subscripts : unsigned) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:607
+      Num_Subscripts : unsigned) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:651
    pragma Import (C, DI_Builder_Create_Vector_Type, "LLVMDIBuilderCreateVectorType");
 
   --*
@@ -1073,7 +1137,7 @@ function DI_Create_Static_Member_Type
       Class_Type : LLVM.Types.Metadata_T;
       Size_In_Bits : stdint_h.uint64_t;
       Align_In_Bits : stdint_h.uint32_t;
-      Flags : DI_Flags_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:730
+      Flags : DI_Flags_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:774
    pragma Import (C, DI_Builder_Create_Member_Pointer_Type, "LLVMDIBuilderCreateMemberPointerType");
 
   --*
@@ -1168,7 +1232,7 @@ function DI_Create_Obj_C_Property
   -- * \param Type      The underlying type to which this pointer points.
   --  
 
-   function DI_Builder_Create_Object_Pointer_Type (Builder : LLVM.Types.DI_Builder_T; C_Type : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:787
+   function DI_Builder_Create_Object_Pointer_Type (Builder : LLVM.Types.DI_Builder_T; C_Type : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:831
    pragma Import (C, DI_Builder_Create_Object_Pointer_Type, "LLVMDIBuilderCreateObjectPointerType");
 
   --*
@@ -1183,7 +1247,7 @@ function DI_Create_Obj_C_Property
    function DI_Builder_Create_Qualified_Type
      (Builder : LLVM.Types.DI_Builder_T;
       Tag : unsigned;
-      C_Type : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:799
+      C_Type : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:843
    pragma Import (C, DI_Builder_Create_Qualified_Type, "LLVMDIBuilderCreateQualifiedType");
 
   --*
@@ -1197,7 +1261,7 @@ function DI_Create_Obj_C_Property
    function DI_Builder_Create_Reference_Type
      (Builder : LLVM.Types.DI_Builder_T;
       Tag : unsigned;
-      C_Type : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:810
+      C_Type : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:854
    pragma Import (C, DI_Builder_Create_Reference_Type, "LLVMDIBuilderCreateReferenceType");
 
   --*
@@ -1205,7 +1269,7 @@ function DI_Create_Obj_C_Property
   -- * \param Builder   The DIBuilder.
   --  
 
-   function DI_Builder_Create_Null_Ptr_Type (Builder : LLVM.Types.DI_Builder_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:818
+   function DI_Builder_Create_Null_Ptr_Type (Builder : LLVM.Types.DI_Builder_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:862
    pragma Import (C, DI_Builder_Create_Null_Ptr_Type, "LLVMDIBuilderCreateNullPtrType");
 
   --*
@@ -1219,22 +1283,24 @@ function DI_Create_Obj_C_Property
   --  
 
 function DI_Create_Typedef
-     (Builder  : LLVM.Types.DI_Builder_T;
-      C_Type   : LLVM.Types.Metadata_T;
-      Name     : String;
-      Name_Len : stddef_h.size_t;
-      File     : LLVM.Types.Metadata_T;
-      Line_No  : unsigned;
-      Scope    : LLVM.Types.Metadata_T)
+     (Builder       : LLVM.Types.DI_Builder_T;
+      C_Type        : LLVM.Types.Metadata_T;
+      Name          : String;
+      Name_Len      : stddef_h.size_t;
+      File          : LLVM.Types.Metadata_T;
+      Line_No       : unsigned;
+      Scope         : LLVM.Types.Metadata_T;
+      Align_In_Bits : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T;
    function DI_Builder_Create_Typedef_C
-     (Builder  : LLVM.Types.DI_Builder_T;
-      C_Type   : LLVM.Types.Metadata_T;
-      Name     : Interfaces.C.Strings.chars_ptr;
-      Name_Len : stddef_h.size_t;
-      File     : LLVM.Types.Metadata_T;
-      Line_No  : unsigned;
-      Scope    : LLVM.Types.Metadata_T)
+     (Builder       : LLVM.Types.DI_Builder_T;
+      C_Type        : LLVM.Types.Metadata_T;
+      Name          : Interfaces.C.Strings.chars_ptr;
+      Name_Len      : stddef_h.size_t;
+      File          : LLVM.Types.Metadata_T;
+      Line_No       : unsigned;
+      Scope         : LLVM.Types.Metadata_T;
+      Align_In_Bits : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T;
    pragma Import (C, DI_Builder_Create_Typedef_C, "LLVMDIBuilderCreateTypedef");
 
@@ -1255,7 +1321,7 @@ function DI_Create_Typedef
       Base_Ty : LLVM.Types.Metadata_T;
       Base_Offset : stdint_h.uint64_t;
       VB_Ptr_Offset : stdint_h.uint32_t;
-      Flags : DI_Flags_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:846
+      Flags : DI_Flags_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:890
    pragma Import (C, DI_Builder_Create_Inheritance, "LLVMDIBuilderCreateInheritance");
 
   --*
@@ -1467,7 +1533,7 @@ function DI_Create_Class_Type
   -- * \param Type        The underlying type.
   --  
 
-   function DI_Builder_Create_Artificial_Type (Builder : LLVM.Types.DI_Builder_T; C_Type : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:959
+   function DI_Builder_Create_Artificial_Type (Builder : LLVM.Types.DI_Builder_T; C_Type : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1003
    pragma Import (C, DI_Builder_Create_Artificial_Type, "LLVMDIBuilderCreateArtificialType");
 
   --*
@@ -1485,7 +1551,7 @@ function DI_Create_Class_Type
    function DI_Type_Get_Name_C
      (D_Type : LLVM.Types.Metadata_T;
       Length : stddef_h.size_t)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:969
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1013
    pragma Import (C, DI_Type_Get_Name_C, "LLVMDITypeGetName");
 
   --*
@@ -1495,7 +1561,7 @@ function DI_Create_Class_Type
   -- * @see DIType::getSizeInBits()
   --  
 
-   function DI_Type_Get_Size_In_Bits (D_Type : LLVM.Types.Metadata_T) return stdint_h.uint64_t;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:977
+   function DI_Type_Get_Size_In_Bits (D_Type : LLVM.Types.Metadata_T) return stdint_h.uint64_t;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1021
    pragma Import (C, DI_Type_Get_Size_In_Bits, "LLVMDITypeGetSizeInBits");
 
   --*
@@ -1505,7 +1571,7 @@ function DI_Create_Class_Type
   -- * @see DIType::getOffsetInBits()
   --  
 
-   function DI_Type_Get_Offset_In_Bits (D_Type : LLVM.Types.Metadata_T) return stdint_h.uint64_t;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:985
+   function DI_Type_Get_Offset_In_Bits (D_Type : LLVM.Types.Metadata_T) return stdint_h.uint64_t;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1029
    pragma Import (C, DI_Type_Get_Offset_In_Bits, "LLVMDITypeGetOffsetInBits");
 
   --*
@@ -1515,7 +1581,7 @@ function DI_Create_Class_Type
   -- * @see DIType::getAlignInBits()
   --  
 
-   function DI_Type_Get_Align_In_Bits (D_Type : LLVM.Types.Metadata_T) return stdint_h.uint32_t;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:993
+   function DI_Type_Get_Align_In_Bits (D_Type : LLVM.Types.Metadata_T) return stdint_h.uint32_t;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1037
    pragma Import (C, DI_Type_Get_Align_In_Bits, "LLVMDITypeGetAlignInBits");
 
   --*
@@ -1525,7 +1591,7 @@ function DI_Create_Class_Type
   -- * @see DIType::getLine()
   --  
 
-   function DI_Type_Get_Line (D_Type : LLVM.Types.Metadata_T) return unsigned;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1001
+   function DI_Type_Get_Line (D_Type : LLVM.Types.Metadata_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1045
    pragma Import (C, DI_Type_Get_Line, "LLVMDITypeGetLine");
 
   --*
@@ -1535,7 +1601,7 @@ function DI_Create_Class_Type
   -- * @see DIType::getFlags()
   --  
 
-   function DI_Type_Get_Flags (D_Type : LLVM.Types.Metadata_T) return DI_Flags_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1009
+   function DI_Type_Get_Flags (D_Type : LLVM.Types.Metadata_T) return DI_Flags_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1053
    pragma Import (C, DI_Type_Get_Flags, "LLVMDITypeGetFlags");
 
   --*
@@ -1548,7 +1614,7 @@ function DI_Create_Class_Type
    function DI_Builder_Get_Or_Create_Subrange
      (Builder : LLVM.Types.DI_Builder_T;
       Lower_Bound : stdint_h.int64_t;
-      Count : stdint_h.int64_t) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1017
+      Count : stdint_h.int64_t) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1061
    pragma Import (C, DI_Builder_Get_Or_Create_Subrange, "LLVMDIBuilderGetOrCreateSubrange");
 
   --*
@@ -1561,7 +1627,7 @@ function DI_Create_Class_Type
    function DI_Builder_Get_Or_Create_Array
      (Builder : LLVM.Types.DI_Builder_T;
       Data : System.Address;
-      Num_Elements : stddef_h.size_t) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1027
+      Num_Elements : stddef_h.size_t) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1071
    pragma Import (C, DI_Builder_Get_Or_Create_Array, "LLVMDIBuilderGetOrCreateArray");
 
   --*
@@ -1575,7 +1641,7 @@ function DI_Create_Class_Type
    function DI_Builder_Create_Expression
      (Builder : LLVM.Types.DI_Builder_T;
       Addr : access stdint_h.int64_t;
-      Length : stddef_h.size_t) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1038
+      Length : stddef_h.size_t) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1082
    pragma Import (C, DI_Builder_Create_Expression, "LLVMDIBuilderCreateExpression");
 
   --*
@@ -1585,7 +1651,7 @@ function DI_Create_Class_Type
   -- * \param Value       The constant value.
   --  
 
-   function DI_Builder_Create_Constant_Value_Expression (Builder : LLVM.Types.DI_Builder_T; Value : stdint_h.int64_t) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1048
+   function DI_Builder_Create_Constant_Value_Expression (Builder : LLVM.Types.DI_Builder_T; Value : stdint_h.int64_t) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1092
    pragma Import (C, DI_Builder_Create_Constant_Value_Expression, "LLVMDIBuilderCreateConstantValueExpression");
 
   --*
@@ -1647,7 +1713,7 @@ function DI_Create_Global_Variable_Expression
   -- * @see llvm::DIGlobalVariableExpression::getVariable()
   --  
 
-   function DI_Global_Variable_Expression_Get_Variable (GVE : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1082
+   function DI_Global_Variable_Expression_Get_Variable (GVE : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1126
    pragma Import (C, DI_Global_Variable_Expression_Get_Variable, "LLVMDIGlobalVariableExpressionGetVariable");
 
   --*
@@ -1657,7 +1723,7 @@ function DI_Create_Global_Variable_Expression
   -- * @see llvm::DIGlobalVariableExpression::getExpression()
   --  
 
-   function DI_Global_Variable_Expression_Get_Expression (GVE : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1090
+   function DI_Global_Variable_Expression_Get_Expression (GVE : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1134
    pragma Import (C, DI_Global_Variable_Expression_Get_Expression, "LLVMDIGlobalVariableExpressionGetExpression");
 
   --*
@@ -1667,7 +1733,7 @@ function DI_Create_Global_Variable_Expression
   -- * @see DIVariable::getFile()
   --  
 
-   function DI_Variable_Get_File (Var : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1099
+   function DI_Variable_Get_File (Var : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1143
    pragma Import (C, DI_Variable_Get_File, "LLVMDIVariableGetFile");
 
   --*
@@ -1677,7 +1743,7 @@ function DI_Create_Global_Variable_Expression
   -- * @see DIVariable::getScope()
   --  
 
-   function DI_Variable_Get_Scope (Var : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1107
+   function DI_Variable_Get_Scope (Var : LLVM.Types.Metadata_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1151
    pragma Import (C, DI_Variable_Get_Scope, "LLVMDIVariableGetScope");
 
   --*
@@ -1687,7 +1753,7 @@ function DI_Create_Global_Variable_Expression
   -- * @see DIVariable::getLine()
   --  
 
-   function DI_Variable_Get_Line (Var : LLVM.Types.Metadata_T) return unsigned;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1115
+   function DI_Variable_Get_Line (Var : LLVM.Types.Metadata_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1159
    pragma Import (C, DI_Variable_Get_Line, "LLVMDIVariableGetLine");
 
   --*
@@ -1702,7 +1768,7 @@ function DI_Create_Global_Variable_Expression
    function Temporary_MD_Node
      (Ctx : LLVM.Types.Context_T;
       Data : System.Address;
-      Num_Elements : stddef_h.size_t) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1125
+      Num_Elements : stddef_h.size_t) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1169
    pragma Import (C, Temporary_MD_Node, "LLVMTemporaryMDNode");
 
   --*
@@ -1713,7 +1779,7 @@ function DI_Create_Global_Variable_Expression
   -- * \param TempNode    The temporary metadata node.
   --  
 
-   procedure Dispose_Temporary_MD_Node (Temp_Node : LLVM.Types.Metadata_T);  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1135
+   procedure Dispose_Temporary_MD_Node (Temp_Node : LLVM.Types.Metadata_T);  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1179
    pragma Import (C, Dispose_Temporary_MD_Node, "LLVMDisposeTemporaryMDNode");
 
   --*
@@ -1722,7 +1788,7 @@ function DI_Create_Global_Variable_Expression
   -- * \param Replacement           The replacement metadata node.
   --  
 
-   procedure Metadata_Replace_All_Uses_With (Temp_Target_Metadata : LLVM.Types.Metadata_T; Replacement : LLVM.Types.Metadata_T);  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1142
+   procedure Metadata_Replace_All_Uses_With (Temp_Target_Metadata : LLVM.Types.Metadata_T; Replacement : LLVM.Types.Metadata_T);  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1186
    pragma Import (C, Metadata_Replace_All_Uses_With, "LLVMMetadataReplaceAllUsesWith");
 
   --*
@@ -1789,7 +1855,7 @@ function DI_Create_Temp_Global_Variable_Fwd_Decl
       Var_Info : LLVM.Types.Metadata_T;
       Expr : LLVM.Types.Metadata_T;
       Debug_Loc : LLVM.Types.Metadata_T;
-      Instr : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1177
+      Instr : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1221
    pragma Import (C, DI_Builder_Insert_Declare_Before, "LLVMDIBuilderInsertDeclareBefore");
 
   --*
@@ -1810,7 +1876,7 @@ function DI_Create_Temp_Global_Variable_Fwd_Decl
       Var_Info : LLVM.Types.Metadata_T;
       Expr : LLVM.Types.Metadata_T;
       Debug_Loc : LLVM.Types.Metadata_T;
-      Block : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1192
+      Block : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1236
    pragma Import (C, DI_Builder_Insert_Declare_At_End, "LLVMDIBuilderInsertDeclareAtEnd");
 
   --*
@@ -1829,7 +1895,7 @@ function DI_Create_Temp_Global_Variable_Fwd_Decl
       Var_Info : LLVM.Types.Metadata_T;
       Expr : LLVM.Types.Metadata_T;
       Debug_Loc : LLVM.Types.Metadata_T;
-      Instr : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1205
+      Instr : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1249
    pragma Import (C, DI_Builder_Insert_Dbg_Value_Before, "LLVMDIBuilderInsertDbgValueBefore");
 
   --*
@@ -1850,7 +1916,7 @@ function DI_Create_Temp_Global_Variable_Fwd_Decl
       Var_Info : LLVM.Types.Metadata_T;
       Expr : LLVM.Types.Metadata_T;
       Debug_Loc : LLVM.Types.Metadata_T;
-      Block : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1223
+      Block : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1267
    pragma Import (C, DI_Builder_Insert_Dbg_Value_At_End, "LLVMDIBuilderInsertDbgValueAtEnd");
 
   --*
@@ -1939,7 +2005,7 @@ function DI_Create_Parameter_Variable
   -- * @see llvm::Function::getSubprogram()
   --  
 
-   function Get_Subprogram (Func : LLVM.Types.Value_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1271
+   function Get_Subprogram (Func : LLVM.Types.Value_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1315
    pragma Import (C, Get_Subprogram, "LLVMGetSubprogram");
 
   --*
@@ -1948,7 +2014,7 @@ function DI_Create_Parameter_Variable
   -- * @see llvm::Function::setSubprogram()
   --  
 
-   procedure Set_Subprogram (Func : LLVM.Types.Value_T; SP : LLVM.Types.Metadata_T);  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1278
+   procedure Set_Subprogram (Func : LLVM.Types.Value_T; SP : LLVM.Types.Metadata_T);  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1322
    pragma Import (C, Set_Subprogram, "LLVMSetSubprogram");
 
   --*
@@ -1958,7 +2024,7 @@ function DI_Create_Parameter_Variable
   -- * @see DISubprogram::getLine()
   --  
 
-   function DI_Subprogram_Get_Line (Subprogram : LLVM.Types.Metadata_T) return unsigned;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1286
+   function DI_Subprogram_Get_Line (Subprogram : LLVM.Types.Metadata_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1330
    pragma Import (C, DI_Subprogram_Get_Line, "LLVMDISubprogramGetLine");
 
   --*
@@ -1967,7 +2033,7 @@ function DI_Create_Parameter_Variable
   -- * @see llvm::Instruction::getDebugLoc()
   --  
 
-   function Instruction_Get_Debug_Loc (Inst : LLVM.Types.Value_T) return LLVM.Types.Metadata_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1293
+   function Instruction_Get_Debug_Loc (Inst : LLVM.Types.Value_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1337
    pragma Import (C, Instruction_Get_Debug_Loc, "LLVMInstructionGetDebugLoc");
 
   --*
@@ -1978,7 +2044,7 @@ function DI_Create_Parameter_Variable
   -- * @see llvm::Instruction::setDebugLoc()
   --  
 
-   procedure Instruction_Set_Debug_Loc (Inst : LLVM.Types.Value_T; Loc : LLVM.Types.Metadata_T);  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1302
+   procedure Instruction_Set_Debug_Loc (Inst : LLVM.Types.Value_T; Loc : LLVM.Types.Metadata_T);  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1346
    pragma Import (C, Instruction_Set_Debug_Loc, "LLVMInstructionSetDebugLoc");
 
   --*
@@ -1987,9 +2053,8 @@ function DI_Create_Parameter_Variable
   -- * @see llvm::Metadata::getMetadataID()
   --  
 
-   function Get_Metadata_Kind (Metadata : LLVM.Types.Metadata_T) return Metadata_Kind_T;  -- llvm-9.0.1.src/include/llvm-c/DebugInfo.h:1309
+   function Get_Metadata_Kind (Metadata : LLVM.Types.Metadata_T) return Metadata_Kind_T;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1353
    pragma Import (C, Get_Metadata_Kind, "LLVMGetMetadataKind");
 
-  -- end extern "C"  
 end LLVM.Debug_Info;
 

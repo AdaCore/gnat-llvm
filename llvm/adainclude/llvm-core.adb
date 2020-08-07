@@ -1728,6 +1728,14 @@ package body LLVM.Core is
       return Get_Volatile_C (Memory_Access_Inst) /= 0;
    end Get_Volatile;
 
+   function Get_Weak
+     (Cmp_Xchg_Inst : LLVM.Types.Value_T)
+      return Boolean
+   is
+   begin
+      return Get_Weak_C (Cmp_Xchg_Inst) /= 0;
+   end Get_Weak;
+
    function Trunc
      (arg1    : LLVM.Types.Builder_T;
       Val     : LLVM.Types.Value_T;
@@ -2167,6 +2175,18 @@ package body LLVM.Core is
    begin
       return Build_Insert_Value_C (arg1, Agg_Val, Elt_Val, Index, Name_String);
    end Insert_Value;
+
+   function Freeze
+     (arg1 : LLVM.Types.Builder_T;
+      Val  : LLVM.Types.Value_T;
+      Name : String)
+      return LLVM.Types.Value_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Build_Freeze_C (arg1, Val, Name_String);
+   end Freeze;
 
    function Is_Null
      (arg1 : LLVM.Types.Builder_T;
@@ -2661,6 +2681,15 @@ package body LLVM.Core is
    begin
       Set_Volatile_C (Memory_Access_Inst, Is_Volatile_Bool);
    end Set_Volatile;
+
+   procedure Set_Weak
+     (Cmp_Xchg_Inst : LLVM.Types.Value_T;
+      Is_Weak       : Boolean)
+   is
+      Is_Weak_Bool : constant LLVM.Types.Bool_T := Boolean'Pos (Is_Weak);
+   begin
+      Set_Weak_C (Cmp_Xchg_Inst, Is_Weak_Bool);
+   end Set_Weak;
 
    procedure Set_Atomic_Single_Thread
      (Atomic_Inst   : LLVM.Types.Value_T;

@@ -485,6 +485,12 @@ package body GNATLLVM.Builtins is
          when Atomic_RMW_Bin_Op_Add =>
             return Result + Val;
 
+         when Atomic_RMW_Bin_Op_F_Add =>
+            return F_Add (Result, Val);
+
+         when Atomic_RMW_Bin_Op_F_Sub =>
+            return F_Sub (Result, Val);
+
          when Atomic_RMW_Bin_Op_Sub =>
             return Result - Val;
 

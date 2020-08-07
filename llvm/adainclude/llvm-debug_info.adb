@@ -72,8 +72,8 @@ package body LLVM.Debug_Info is
       Config_Macros_Len : stddef_h.size_t;
       Include_Path      : String;
       Include_Path_Len  : stddef_h.size_t;
-      I_Sys_Root        : String;
-      I_Sys_Root_Len    : stddef_h.size_t)
+      Sys_Root          : String;
+      Sys_Root_Len      : stddef_h.size_t)
       return LLVM.Types.Metadata_T
    is
       Name_Array           : aliased char_array := To_C (Name);
@@ -82,10 +82,10 @@ package body LLVM.Debug_Info is
       Config_Macros_String : constant chars_ptr := To_Chars_Ptr (Config_Macros_Array'Unchecked_Access);
       Include_Path_Array   : aliased char_array := To_C (Include_Path);
       Include_Path_String  : constant chars_ptr := To_Chars_Ptr (Include_Path_Array'Unchecked_Access);
-      I_Sys_Root_Array     : aliased char_array := To_C (I_Sys_Root);
-      I_Sys_Root_String    : constant chars_ptr := To_Chars_Ptr (I_Sys_Root_Array'Unchecked_Access);
+      Sys_Root_Array       : aliased char_array := To_C (Sys_Root);
+      Sys_Root_String      : constant chars_ptr := To_Chars_Ptr (Sys_Root_Array'Unchecked_Access);
    begin
-      return DI_Builder_Create_Module_C (Builder, Parent_Scope, Name_String, Name_Len, Config_Macros_String, Config_Macros_Len, Include_Path_String, Include_Path_Len, I_Sys_Root_String, I_Sys_Root_Len);
+      return DI_Builder_Create_Module_C (Builder, Parent_Scope, Name_String, Name_Len, Config_Macros_String, Config_Macros_Len, Include_Path_String, Include_Path_Len, Sys_Root_String, Sys_Root_Len);
    end DI_Create_Module;
 
    function DI_Create_Name_Space
@@ -173,6 +173,25 @@ package body LLVM.Debug_Info is
    begin
       return Value (DI_File_Get_Source_C (File, Len));
    end DI_File_Get_Source;
+
+   function DI_Create_Macro
+     (Builder           : LLVM.Types.DI_Builder_T;
+      Parent_Macro_File : LLVM.Types.Metadata_T;
+      Line              : unsigned;
+      Record_Type       : DWARF_Macinfo_Record_Type_T;
+      Name              : String;
+      Name_Len          : stddef_h.size_t;
+      Value             : String;
+      Value_Len         : stddef_h.size_t)
+      return LLVM.Types.Metadata_T
+   is
+      Name_Array   : aliased char_array := To_C (Name);
+      Name_String  : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+      Value_Array  : aliased char_array := To_C (Value);
+      Value_String : constant chars_ptr := To_Chars_Ptr (Value_Array'Unchecked_Access);
+   begin
+      return DI_Builder_Create_Macro_C (Builder, Parent_Macro_File, Line, Record_Type, Name_String, Name_Len, Value_String, Value_Len);
+   end DI_Create_Macro;
 
    function DI_Create_Enumerator
      (Builder     : LLVM.Types.DI_Builder_T;
@@ -388,19 +407,20 @@ package body LLVM.Debug_Info is
    end DI_Create_Obj_C_Property;
 
    function DI_Create_Typedef
-     (Builder  : LLVM.Types.DI_Builder_T;
-      C_Type   : LLVM.Types.Metadata_T;
-      Name     : String;
-      Name_Len : stddef_h.size_t;
-      File     : LLVM.Types.Metadata_T;
-      Line_No  : unsigned;
-      Scope    : LLVM.Types.Metadata_T)
+     (Builder       : LLVM.Types.DI_Builder_T;
+      C_Type        : LLVM.Types.Metadata_T;
+      Name          : String;
+      Name_Len      : stddef_h.size_t;
+      File          : LLVM.Types.Metadata_T;
+      Line_No       : unsigned;
+      Scope         : LLVM.Types.Metadata_T;
+      Align_In_Bits : stdint_h.uint32_t)
       return LLVM.Types.Metadata_T
    is
       Name_Array  : aliased char_array := To_C (Name);
       Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
    begin
-      return DI_Builder_Create_Typedef_C (Builder, C_Type, Name_String, Name_Len, File, Line_No, Scope);
+      return DI_Builder_Create_Typedef_C (Builder, C_Type, Name_String, Name_Len, File, Line_No, Scope, Align_In_Bits);
    end DI_Create_Typedef;
 
    function DI_Create_Forward_Decl

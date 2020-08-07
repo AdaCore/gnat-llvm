@@ -166,15 +166,6 @@ package body LLVM.lto is
       return Codegen_Write_Merged_Modules_C (cg, path_String);
    end Codegen_Write_Merged_Modules;
 
-   function thinlto_module_get_object_file
-     (cg    : thinlto_code_gen_t;
-      index : unsigned)
-      return String
-   is
-   begin
-      return Value (thinlto_module_get_object_file_C (cg, index));
-   end thinlto_module_get_object_file;
-
    function Input_Create
      (buffer      : System.Address;
       Buffer_Size : stddef_h.size_t;
@@ -196,6 +187,15 @@ package body LLVM.lto is
    begin
       return Value (Input_Get_Dependent_Library_C (input, index, size));
    end Input_Get_Dependent_Library;
+
+   function thinlto_module_get_object_file
+     (cg    : thinlto_code_gen_t;
+      index : unsigned)
+      return String
+   is
+   begin
+      return Value (thinlto_module_get_object_file_C (cg, index));
+   end thinlto_module_get_object_file;
 
    procedure Module_Set_Target_Triple
      (C_Mod  : Module_T_T;

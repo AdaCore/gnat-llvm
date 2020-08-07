@@ -42,7 +42,7 @@ package body LLVM.Orc_Bindings is
 
    function Orc_Get_Symbol_Address
      (JIT_Stack   : Orc_JIT_Stack_T;
-      Ret_Addr    : Orc_Target_Address_T;
+      Ret_Addr    : access Orc_Target_Address_T;
       Symbol_Name : String)
       return LLVM.Error.Error_T
    is
@@ -54,7 +54,7 @@ package body LLVM.Orc_Bindings is
 
    function Orc_Get_Symbol_Address_In
      (JIT_Stack   : Orc_JIT_Stack_T;
-      Ret_Addr    : Orc_Target_Address_T;
+      Ret_Addr    : access Orc_Target_Address_T;
       H           : Orc_Module_Handle_T;
       Symbol_Name : String)
       return LLVM.Error.Error_T

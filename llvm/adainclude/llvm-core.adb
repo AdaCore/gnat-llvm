@@ -86,7 +86,7 @@ package body LLVM.Core is
 
    function Get_String_Attribute_Kind
      (A      : LLVM.Types.Attribute_T;
-      Length : unsigned)
+      Length : access unsigned)
       return String
    is
    begin
@@ -95,7 +95,7 @@ package body LLVM.Core is
 
    function Get_String_Attribute_Value
      (A      : LLVM.Types.Attribute_T;
-      Length : unsigned)
+      Length : access unsigned)
       return String
    is
    begin
@@ -141,7 +141,7 @@ package body LLVM.Core is
 
    function Get_Module_Identifier
      (M   : LLVM.Types.Module_T;
-      Len : stddef_h.size_t)
+      Len : access stddef_h.size_t)
       return String
    is
    begin
@@ -150,7 +150,7 @@ package body LLVM.Core is
 
    function Get_Source_File_Name
      (M   : LLVM.Types.Module_T;
-      Len : stddef_h.size_t)
+      Len : access stddef_h.size_t)
       return String
    is
    begin
@@ -184,7 +184,7 @@ package body LLVM.Core is
    function Module_Flag_Entries_Get_Key
      (Entries : System.Address;
       Index   : unsigned;
-      Len     : stddef_h.size_t)
+      Len     : access stddef_h.size_t)
       return String
    is
    begin
@@ -225,7 +225,7 @@ package body LLVM.Core is
 
    function Get_Module_Inline_Asm
      (M   : LLVM.Types.Module_T;
-      Len : stddef_h.size_t)
+      Len : access stddef_h.size_t)
       return String
    is
    begin
@@ -290,7 +290,7 @@ package body LLVM.Core is
 
    function Get_Named_Metadata_Name
      (Named_MD : LLVM.Types.Named_MD_Node_T;
-      Name_Len : stddef_h.size_t)
+      Name_Len : access stddef_h.size_t)
       return String
    is
    begin
@@ -310,7 +310,7 @@ package body LLVM.Core is
 
    function Get_Debug_Loc_Directory
      (Val    : LLVM.Types.Value_T;
-      Length : unsigned)
+      Length : access unsigned)
       return String
    is
    begin
@@ -319,7 +319,7 @@ package body LLVM.Core is
 
    function Get_Debug_Loc_Filename
      (Val    : LLVM.Types.Value_T;
-      Length : unsigned)
+      Length : access unsigned)
       return String
    is
    begin
@@ -453,7 +453,7 @@ package body LLVM.Core is
 
    function Get_Value_Name2
      (Val    : LLVM.Types.Value_T;
-      Length : stddef_h.size_t)
+      Length : access stddef_h.size_t)
       return String
    is
    begin
@@ -559,16 +559,6 @@ package body LLVM.Core is
       return Const_Real_Of_String_And_Size_C (Real_Ty, Text_String, S_Len);
    end Const_Real_Of_String_And_Size;
 
-   function Const_Real_Get_Double
-     (Constant_Val : LLVM.Types.Value_T;
-      loses_Info   : Boolean)
-      return double
-   is
-      loses_Info_Bool : constant LLVM.Types.Bool_T := Boolean'Pos (loses_Info);
-   begin
-      return Const_Real_Get_Double_C (Constant_Val, loses_Info_Bool);
-   end Const_Real_Get_Double;
-
    function Const_String_In_Context
      (C                   : LLVM.Types.Context_T;
       Str                 : String;
@@ -606,7 +596,7 @@ package body LLVM.Core is
 
    function Get_As_String
      (c      : LLVM.Types.Value_T;
-      Length : stddef_h.size_t)
+      Length : access stddef_h.size_t)
       return String
    is
    begin
@@ -795,7 +785,7 @@ package body LLVM.Core is
 
    function Intrinsic_Get_Name
      (ID          : unsigned;
-      Name_Length : stddef_h.size_t)
+      Name_Length : access stddef_h.size_t)
       return String
    is
    begin
@@ -806,7 +796,7 @@ package body LLVM.Core is
      (ID          : unsigned;
       Param_Types : System.Address;
       Param_Count : stddef_h.size_t;
-      Name_Length : stddef_h.size_t)
+      Name_Length : access stddef_h.size_t)
       return String
    is
    begin
@@ -883,7 +873,7 @@ package body LLVM.Core is
 
    function Get_MD_String
      (V      : LLVM.Types.Value_T;
-      Length : unsigned)
+      Length : access unsigned)
       return String
    is
    begin

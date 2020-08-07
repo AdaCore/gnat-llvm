@@ -797,12 +797,12 @@ function Input_Create
 function Input_Get_Dependent_Library
      (input : Input_T_T;
       index : stddef_h.size_t;
-      size  : stddef_h.size_t)
+      size  : access stddef_h.size_t)
       return String;
    function Input_Get_Dependent_Library_C
      (input : Input_T_T;
       index : stddef_h.size_t;
-      size  : stddef_h.size_t)
+      size  : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr;
    pragma Import (C, Input_Get_Dependent_Library_C, "lto_input_get_dependent_library");
 

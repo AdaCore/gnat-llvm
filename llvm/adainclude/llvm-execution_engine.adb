@@ -63,7 +63,7 @@ package body LLVM.Execution_Engine is
    function Create_MCJIT_Compiler_For_Module
      (Out_JIT         : System.Address;
       M               : LLVM.Types.Module_T;
-      Options         : MCJIT_Compiler_Options_T;
+      Options         : access MCJIT_Compiler_Options_T;
       Size_Of_Options : stddef_h.size_t;
       Out_Error       : System.Address)
       return Boolean

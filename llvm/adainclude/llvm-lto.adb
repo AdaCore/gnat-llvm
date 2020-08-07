@@ -181,7 +181,7 @@ package body LLVM.lto is
    function Input_Get_Dependent_Library
      (input : Input_T_T;
       index : stddef_h.size_t;
-      size  : stddef_h.size_t)
+      size  : access stddef_h.size_t)
       return String
    is
    begin

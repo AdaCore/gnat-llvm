@@ -815,11 +815,11 @@ function Create_String_Attribute
 
    function Get_String_Attribute_Kind
      (A      : LLVM.Types.Attribute_T;
-      Length : unsigned)
+      Length : access unsigned)
       return String;
    function Get_String_Attribute_Kind_C
      (A      : LLVM.Types.Attribute_T;
-      Length : unsigned)
+      Length : access unsigned)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:613
    pragma Import (C, Get_String_Attribute_Kind_C, "LLVMGetStringAttributeKind");
 
@@ -829,11 +829,11 @@ function Create_String_Attribute
 
    function Get_String_Attribute_Value
      (A      : LLVM.Types.Attribute_T;
-      Length : unsigned)
+      Length : access unsigned)
       return String;
    function Get_String_Attribute_Value_C
      (A      : LLVM.Types.Attribute_T;
-      Length : unsigned)
+      Length : access unsigned)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:618
    pragma Import (C, Get_String_Attribute_Value_C, "LLVMGetStringAttributeValue");
 
@@ -934,11 +934,11 @@ function Create_String_Attribute
 
    function Get_Module_Identifier
      (M   : LLVM.Types.Module_T;
-      Len : stddef_h.size_t)
+      Len : access stddef_h.size_t)
       return String;
    function Get_Module_Identifier_C
      (M   : LLVM.Types.Module_T;
-      Len : stddef_h.size_t)
+      Len : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:680
    pragma Import (C, Get_Module_Identifier_C, "LLVMGetModuleIdentifier");
 
@@ -972,11 +972,11 @@ procedure Set_Module_Identifier
 
    function Get_Source_File_Name
      (M   : LLVM.Types.Module_T;
-      Len : stddef_h.size_t)
+      Len : access stddef_h.size_t)
       return String;
    function Get_Source_File_Name_C
      (M   : LLVM.Types.Module_T;
-      Len : stddef_h.size_t)
+      Len : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:700
    pragma Import (C, Get_Source_File_Name_C, "LLVMGetSourceFileName");
 
@@ -1104,12 +1104,12 @@ procedure Set_Source_File_Name
 function Module_Flag_Entries_Get_Key
      (Entries : System.Address;
       Index   : unsigned;
-      Len     : stddef_h.size_t)
+      Len     : access stddef_h.size_t)
       return String;
    function Module_Flag_Entries_Get_Key_C
      (Entries : System.Address;
       Index   : unsigned;
-      Len     : stddef_h.size_t)
+      Len     : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr;
    pragma Import (C, Module_Flag_Entries_Get_Key_C, "LLVMModuleFlagEntriesGetKey");
 
@@ -1213,11 +1213,11 @@ function Print_Module_To_File
 
    function Get_Module_Inline_Asm
      (M   : LLVM.Types.Module_T;
-      Len : stddef_h.size_t)
+      Len : access stddef_h.size_t)
       return String;
    function Get_Module_Inline_Asm_C
      (M   : LLVM.Types.Module_T;
-      Len : stddef_h.size_t)
+      Len : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:833
    pragma Import (C, Get_Module_Inline_Asm_C, "LLVMGetModuleInlineAsm");
 
@@ -1388,11 +1388,11 @@ function Get_Or_Insert_Named_Metadata
 
    function Get_Named_Metadata_Name
      (Named_MD : LLVM.Types.Named_MD_Node_T;
-      Name_Len : stddef_h.size_t)
+      Name_Len : access stddef_h.size_t)
       return String;
    function Get_Named_Metadata_Name_C
      (Named_MD : LLVM.Types.Named_MD_Node_T;
-      Name_Len : stddef_h.size_t)
+      Name_Len : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:926
    pragma Import (C, Get_Named_Metadata_Name_C, "LLVMGetNamedMetadataName");
 
@@ -1462,11 +1462,11 @@ procedure Add_Named_Metadata_Operand
 
    function Get_Debug_Loc_Directory
      (Val    : LLVM.Types.Value_T;
-      Length : unsigned)
+      Length : access unsigned)
       return String;
    function Get_Debug_Loc_Directory_C
      (Val    : LLVM.Types.Value_T;
-      Length : unsigned)
+      Length : access unsigned)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:967
    pragma Import (C, Get_Debug_Loc_Directory_C, "LLVMGetDebugLocDirectory");
 
@@ -1481,11 +1481,11 @@ procedure Add_Named_Metadata_Operand
 
    function Get_Debug_Loc_Filename
      (Val    : LLVM.Types.Value_T;
-      Length : unsigned)
+      Length : access unsigned)
       return String;
    function Get_Debug_Loc_Filename_C
      (Val    : LLVM.Types.Value_T;
-      Length : unsigned)
+      Length : access unsigned)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:977
    pragma Import (C, Get_Debug_Loc_Filename_C, "LLVMGetDebugLocFilename");
 
@@ -2309,11 +2309,11 @@ procedure Struct_Set_Body
 
    function Get_Value_Name2
      (Val    : LLVM.Types.Value_T;
-      Length : stddef_h.size_t)
+      Length : access stddef_h.size_t)
       return String;
    function Get_Value_Name2_C
      (Val    : LLVM.Types.Value_T;
-      Length : stddef_h.size_t)
+      Length : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1637
    pragma Import (C, Get_Value_Name2_C, "LLVMGetValueName2");
 
@@ -3030,15 +3030,8 @@ function Const_Real_Of_String_And_Size
   -- * @see llvm::ConstantFP::getDoubleValue
   --  
 
-   function Const_Real_Get_Double
-     (Constant_Val : LLVM.Types.Value_T;
-      loses_Info   : Boolean)
-      return double;
-   function Const_Real_Get_Double_C
-     (Constant_Val : LLVM.Types.Value_T;
-      loses_Info   : LLVM.Types.Bool_T)
-      return double;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1948
-   pragma Import (C, Const_Real_Get_Double_C, "LLVMConstRealGetDouble");
+   function Const_Real_Get_Double (Constant_Val : LLVM.Types.Value_T; loses_Info : access LLVM.Types.Bool_T) return double;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1948
+   pragma Import (C, Const_Real_Get_Double, "LLVMConstRealGetDouble");
 
   --*
   -- * @}
@@ -3116,11 +3109,11 @@ function Const_String
 
    function Get_As_String
      (c      : LLVM.Types.Value_T;
-      Length : stddef_h.size_t)
+      Length : access stddef_h.size_t)
       return String;
    function Get_As_String_C
      (c      : LLVM.Types.Value_T;
-      Length : stddef_h.size_t)
+      Length : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1994
    pragma Import (C, Get_As_String_C, "LLVMGetAsString");
 
@@ -4010,11 +4003,11 @@ function Get_Named_Global_Alias
 
    function Intrinsic_Get_Name
      (ID          : unsigned;
-      Name_Length : stddef_h.size_t)
+      Name_Length : access stddef_h.size_t)
       return String;
    function Intrinsic_Get_Name_C
      (ID          : unsigned;
-      Name_Length : stddef_h.size_t)
+      Name_Length : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2455
    pragma Import (C, Intrinsic_Get_Name_C, "LLVMIntrinsicGetName");
 
@@ -4032,13 +4025,13 @@ function Intrinsic_Copy_Overloaded_Name
      (ID          : unsigned;
       Param_Types : System.Address;
       Param_Count : stddef_h.size_t;
-      Name_Length : stddef_h.size_t)
+      Name_Length : access stddef_h.size_t)
       return String;
    function Intrinsic_Copy_Overloaded_Name_C
      (ID          : unsigned;
       Param_Types : System.Address;
       Param_Count : stddef_h.size_t;
-      Name_Length : stddef_h.size_t)
+      Name_Length : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr;
    pragma Import (C, Intrinsic_Copy_Overloaded_Name_C, "LLVMIntrinsicCopyOverloadedName");
 
@@ -4505,11 +4498,11 @@ function MD_String_In_Context2
 
    function Get_MD_String
      (V      : LLVM.Types.Value_T;
-      Length : unsigned)
+      Length : access unsigned)
       return String;
    function Get_MD_String_C
      (V      : LLVM.Types.Value_T;
-      Length : unsigned)
+      Length : access unsigned)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2784
    pragma Import (C, Get_MD_String_C, "LLVMGetMDString");
 

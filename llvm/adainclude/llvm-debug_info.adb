@@ -149,7 +149,7 @@ package body LLVM.Debug_Info is
 
    function DI_File_Get_Directory
      (File : LLVM.Types.Metadata_T;
-      Len  : unsigned)
+      Len  : access unsigned)
       return String
    is
    begin
@@ -158,7 +158,7 @@ package body LLVM.Debug_Info is
 
    function DI_File_Get_Filename
      (File : LLVM.Types.Metadata_T;
-      Len  : unsigned)
+      Len  : access unsigned)
       return String
    is
    begin
@@ -167,7 +167,7 @@ package body LLVM.Debug_Info is
 
    function DI_File_Get_Source
      (File : LLVM.Types.Metadata_T;
-      Len  : unsigned)
+      Len  : access unsigned)
       return String
    is
    begin
@@ -520,7 +520,7 @@ package body LLVM.Debug_Info is
 
    function DI_Type_Get_Name
      (D_Type : LLVM.Types.Metadata_T;
-      Length : stddef_h.size_t)
+      Length : access stddef_h.size_t)
       return String
    is
    begin

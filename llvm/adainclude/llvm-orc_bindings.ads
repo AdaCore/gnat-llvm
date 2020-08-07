@@ -198,12 +198,12 @@ function Orc_Set_Indirect_Stub_Pointer
 
 function Orc_Get_Symbol_Address
      (JIT_Stack   : Orc_JIT_Stack_T;
-      Ret_Addr    : Orc_Target_Address_T;
+      Ret_Addr    : access Orc_Target_Address_T;
       Symbol_Name : String)
       return LLVM.Error.Error_T;
    function Orc_Get_Symbol_Address_C
      (JIT_Stack   : Orc_JIT_Stack_T;
-      Ret_Addr    : Orc_Target_Address_T;
+      Ret_Addr    : access Orc_Target_Address_T;
       Symbol_Name : Interfaces.C.Strings.chars_ptr)
       return LLVM.Error.Error_T;
    pragma Import (C, Orc_Get_Symbol_Address_C, "LLVMOrcGetSymbolAddress");
@@ -215,13 +215,13 @@ function Orc_Get_Symbol_Address
 
 function Orc_Get_Symbol_Address_In
      (JIT_Stack   : Orc_JIT_Stack_T;
-      Ret_Addr    : Orc_Target_Address_T;
+      Ret_Addr    : access Orc_Target_Address_T;
       H           : Orc_Module_Handle_T;
       Symbol_Name : String)
       return LLVM.Error.Error_T;
    function Orc_Get_Symbol_Address_In_C
      (JIT_Stack   : Orc_JIT_Stack_T;
-      Ret_Addr    : Orc_Target_Address_T;
+      Ret_Addr    : access Orc_Target_Address_T;
       H           : Orc_Module_Handle_T;
       Symbol_Name : Interfaces.C.Strings.chars_ptr)
       return LLVM.Error.Error_T;

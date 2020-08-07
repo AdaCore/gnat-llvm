@@ -616,11 +616,11 @@ function DI_Create_Imported_Declaration
 
    function DI_File_Get_Directory
      (File : LLVM.Types.Metadata_T;
-      Len  : unsigned)
+      Len  : access unsigned)
       return String;
    function DI_File_Get_Directory_C
      (File : LLVM.Types.Metadata_T;
-      Len  : unsigned)
+      Len  : access unsigned)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:489
    pragma Import (C, DI_File_Get_Directory_C, "LLVMDIFileGetDirectory");
 
@@ -634,11 +634,11 @@ function DI_Create_Imported_Declaration
 
    function DI_File_Get_Filename
      (File : LLVM.Types.Metadata_T;
-      Len  : unsigned)
+      Len  : access unsigned)
       return String;
    function DI_File_Get_Filename_C
      (File : LLVM.Types.Metadata_T;
-      Len  : unsigned)
+      Len  : access unsigned)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:498
    pragma Import (C, DI_File_Get_Filename_C, "LLVMDIFileGetFilename");
 
@@ -652,11 +652,11 @@ function DI_Create_Imported_Declaration
 
    function DI_File_Get_Source
      (File : LLVM.Types.Metadata_T;
-      Len  : unsigned)
+      Len  : access unsigned)
       return String;
    function DI_File_Get_Source_C
      (File : LLVM.Types.Metadata_T;
-      Len  : unsigned)
+      Len  : access unsigned)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:507
    pragma Import (C, DI_File_Get_Source_C, "LLVMDIFileGetSource");
 
@@ -1546,11 +1546,11 @@ function DI_Create_Class_Type
 
    function DI_Type_Get_Name
      (D_Type : LLVM.Types.Metadata_T;
-      Length : stddef_h.size_t)
+      Length : access stddef_h.size_t)
       return String;
    function DI_Type_Get_Name_C
      (D_Type : LLVM.Types.Metadata_T;
-      Length : stddef_h.size_t)
+      Length : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/DebugInfo.h:1013
    pragma Import (C, DI_Type_Get_Name_C, "LLVMDITypeGetName");
 

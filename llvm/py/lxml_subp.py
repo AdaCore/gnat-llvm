@@ -1,5 +1,4 @@
-from collections import namedtuple
-from wrapper import Argument, Function, Procedure, Package
+from wrapper import Argument, Function, Procedure
 
 
 def subprogram_defs(lxml_tree):
@@ -8,8 +7,10 @@ def subprogram_defs(lxml_tree):
 
 
 def str_type(objdecl):
+    access = objdecl.find("anonymous_access_to_variable")
+    prefix = "access " if access is not None else ""
     idd = objdecl.findall(".//identifier")
-    return ".".join((i.attrib["ref_name"] for i in idd))
+    return prefix + ".".join((i.attrib["ref_name"] for i in idd))
 
 
 def arguments_array(subp_def):

@@ -20,6 +20,8 @@ with Types;  use Types;
 
 with LLVM.Core; use LLVM.Core;
 
+with CCG.Helper; use CCG.Helper;
+
 package body CCG.Output is
 
    -----------------
@@ -34,7 +36,7 @@ package body CCG.Output is
 
       if Present (Is_A_Constant (V)) then
 
-         --  ??? Start with just integer constants and just small ones
+         --  ??? Start with just small integer constants and FP constants
 
          if Present (Is_A_Constant_Int (V)) then
             declare
@@ -47,6 +49,16 @@ package body CCG.Output is
                   Write_Str ("<overflow>");
                end if;
             end;
+
+         elsif Present (Is_A_Constant_FP (V)) then
+            declare
+               Loses_Info : Boolean with Unreferenced;
+
+            begin
+               Write_Str
+                 (Double'Image (Const_Real_Get_Double (V, Loses_Info)));
+            end;
+
          else
             Write_Str ("<unknown constant>");
          end if;

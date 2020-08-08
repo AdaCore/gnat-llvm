@@ -24,67 +24,114 @@ with CCG.Helper; use CCG.Helper;
 
 package body CCG.Output is
 
+   function Is_Simple_Constant (V : Value_T) return Boolean is
+     (Get_Value_Kind (V) in Constant_Int_Value_Kind | Constant_FP_Value_Kind)
+     with Pre => Present (V);
+   --  True if this is a simple enough constant that we output it in C
+   --  source as a constant.
+
+   procedure Write_Value_Name (V : Value_T)
+     with Pre => Present (V);
+   --  Write the value name of V, which is either the LLVM name or a name
+   --  we generate from a serial number.
+
+   procedure Write_Constant_Value (V : Value_T)
+     with Pre => Present (Is_A_Constant (V));
+   --  Write the constant value of V
+
+   ----------------------
+   -- Write_Value_Name --
+   ----------------------
+
+   procedure Write_Value_Name (V : Value_T) is
+   begin
+     --  If it has a name, write that name and we're done.  Otherwise,
+     --  mark it as not having a name if we haven't already.
+
+      if not Get_No_Name (V) then
+         declare
+            S : constant String := Get_Value_Name (V);
+
+         begin
+            if S'Length > 0 then
+               Write_Str (S);
+               return;
+            end if;
+
+            Set_No_Name (V);
+         end;
+      end if;
+
+      --  Print (and make if necessary) an internal name for this value
+
+      Write_Str ("ccg_v");
+      Write_Int (Get_Output_Idx (V));
+
+   end Write_Value_Name;
+
+   --------------------------
+   -- Write_Constant_Value --
+   --------------------------
+
+   procedure Write_Constant_Value (V : Value_T) is
+      subtype LLI is Long_Long_Integer;
+   begin
+      --  ??? Start with just small integer constants and FP constants
+
+      if Present (Is_A_Constant_Int (V)) then
+         declare
+            Val : constant LLI := Const_Int_Get_S_Ext_Value (V);
+
+         begin
+            if Val in LLI (Int'First) .. LLI (Int'Last) then
+               Write_Int (Int (Val));
+            else
+               Write_Str ("<overflow>");
+            end if;
+         end;
+
+      elsif Present (Is_A_Constant_FP (V)) then
+
+         declare
+            Loses_Info : Boolean;
+
+         begin
+            --  ??? It's not clear that 'Image will always do the right thing
+            --  in terms of writing the proper format for a C constant,
+            --  but it's at least good enough to start with and there's no
+            --  obvious other mechanism.
+
+            Write_Str
+              (Double'Image (Const_Real_Get_Double (V, Loses_Info)));
+         end;
+
+      else
+         Write_Str ("<unknown constant>");
+      end if;
+   end Write_Constant_Value;
+
    -----------------
    -- Write_Value --
    -----------------
 
    procedure Write_Value (V : Value_T) is
-      subtype LLI is Long_Long_Integer;
+      C_Value : constant Str := Get_C_Value (V);
+
    begin
-      --  If this is a constant, we have to output the value of the
-      --  constant.
+      --  If we've set an expression as the value of V, write it
 
-      if Present (Is_A_Constant (V)) then
+      if Present (C_Value) then
+         Write_Str (C_Value);
 
-         --  ??? Start with just small integer constants and FP constants
+      --  If this is a simple constant, write the constant
 
-         if Present (Is_A_Constant_Int (V)) then
-            declare
-               Val : constant LLI := Const_Int_Get_S_Ext_Value (V);
+      elsif Is_Simple_Constant (V) then
+         Write_Constant_Value (V);
 
-            begin
-               if Val in LLI (Int'First) .. LLI (Int'Last) then
-                  Write_Int (Int (Val));
-               else
-                  Write_Str ("<overflow>");
-               end if;
-            end;
+      --  Otherwise, write the name
 
-         elsif Present (Is_A_Constant_FP (V)) then
-            declare
-               Loses_Info : Boolean with Unreferenced;
-
-            begin
-               Write_Str
-                 (Double'Image (Const_Real_Get_Double (V, Loses_Info)));
-            end;
-
-         else
-            Write_Str ("<unknown constant>");
-         end if;
       else
-         --  Otherwise, it's either a global or a computed value.
-         --  If it has a name, write that name and we're done.  Otherwise,
-         --  mark it as not having a name if we haven't already.
-
-         if not Get_No_Name (V) then
-            declare
-               S : constant String := Get_Value_Name (V);
-
-            begin
-               if S'Length > 0 then
-                  Write_Str (S);
-                  return;
-               end if;
-
-               Set_No_Name (V);
-            end;
-         end if;
-
-         --  Print (and make if necessary) an internal name for this value
-
-         Write_Str ("ccg_v");
-         Write_Int (Get_Output_Idx (V));
+         Write_Value_Name (V);
       end if;
 
    end Write_Value;

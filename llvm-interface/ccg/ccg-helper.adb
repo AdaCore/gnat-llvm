@@ -15,7 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Core;  use LLVM.Core;
+with Interfaces.C; use Interfaces.C;
 
 package body CCG.Helper is
 

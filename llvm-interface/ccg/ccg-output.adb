@@ -153,17 +153,17 @@ package body CCG.Output is
       case Get_Type_Kind (T) is
 
          when Void_Type_Kind =>
-            Write_Str ("void ");
+            Write_Str ("void");
 
          --  ??? For FP types, we'd ideally want to compare the number of bits
          --  and use that, but there's no simple way to do that.  So let's
          --  start with just "float" and "double".
 
          when Float_Type_Kind =>
-            Write_Str ("float ");
+            Write_Str ("float");
 
          when Double_Type_Kind =>
-            Write_Str ("float ");
+            Write_Str ("float");
 
          when Integer_Type_Kind =>
             declare
@@ -173,22 +173,22 @@ package body CCG.Output is
                if Bits > Long_Size and then Bits > Int_Size
                  and then Bits <= Long_Long_Size
                then
-                  Write_Str ("long long ");
+                  Write_Str ("long long");
                elsif Bits > Int_Size and then Bits <= Long_Size then
-                  Write_Str ("long ");
+                  Write_Str ("long");
                elsif Bits > Short_Size and then Bits <= Int_Size then
-                  Write_Str ("int ");
+                  Write_Str ("int");
                elsif Bits > Char_Size and then Bits <= Short_Size then
-                  Write_Str ("short ");
+                  Write_Str ("short");
                elsif Bits <= Char_Size then
-                  Write_Str ("char ");
+                  Write_Str ("char");
                else
                   Write_Str ("<unknown int type>");
                end if;
             end;
 
          when Pointer_Type_Kind =>
-            Write_Str (To_Str (Get_Element_Type (T)));
+            Write_Str (" " & Get_Element_Type (T));
 
          when others =>
             Write_Str ("<unsupported type>");

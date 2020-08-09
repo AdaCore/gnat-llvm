@@ -19,8 +19,6 @@ with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM; use GNATLLVM;
 
-with Types; use Types;
-
 package CCG.Tables is
 
    --  This package contains the tables used by CCG to record data about

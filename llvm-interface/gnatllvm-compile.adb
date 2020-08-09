@@ -47,6 +47,8 @@ with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
+with CCG; use CCG;
+
 package body GNATLLVM.Compile is
 
    procedure Emit_Loop_Statement (N : Node_Id)
@@ -101,6 +103,12 @@ package body GNATLLVM.Compile is
       if Context = Context_T (System.Null_Address) then
          Scan_Command_Line;
          Initialize_LLVM_Target;
+      end if;
+
+      --  If we're going to generate C code, initialize that subsystem
+
+      if Code_Generation = Write_C then
+         Initialize_C_Writing;
       end if;
 
       --  Get the sizes of fat and thin pointers and make some types.  This

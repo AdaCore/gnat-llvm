@@ -561,8 +561,11 @@ package body CCG.Tables is
       --  concatenate.  We could check for the case where we could make a
       --  new component that concatenated the strings from both sides, but
       --  the number of times that would happen isn't worth the trouble.
+      --  It is worth checking for a null string.
 
-      if L'Length <= Str_Max then
+      if L'Length = 0 then
+         return To_Str (R);
+      elsif L'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (2) :=
               (2, (1 => (Var_String, L'Length, L), 2 => (Value, 1, R)));
@@ -582,7 +585,9 @@ package body CCG.Tables is
 
    function "&" (L : String; R : Type_T) return Str is
    begin
-      if L'Length <= Str_Max then
+      if L'Length = 0 then
+         return To_Str (R);
+      elsif L'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (2) :=
               (2, (1 => (Var_String, L'Length, L), 2 => (Typ, 1, R)));
@@ -602,7 +607,9 @@ package body CCG.Tables is
 
    function "&" (L : String; R : Basic_Block_T) return Str is
    begin
-      if L'Length <= Str_Max then
+      if L'Length = 0 then
+         return To_Str (R);
+      elsif L'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (2) :=
               (2, (1 => (Var_String, L'Length, L), 2 => (BB, 1, R)));
@@ -621,7 +628,9 @@ package body CCG.Tables is
 
    function "&" (L : String; R : Str) return Str is
    begin
-      if L'Length <= Str_Max then
+      if L'Length = 0 then
+         return R;
+      elsif L'Length <= Str_Max then
          declare
             S_Rec : aliased Str_Record (R.Length + 1);
 
@@ -641,7 +650,9 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : String) return Str is
    begin
-      if R'Length <= Str_Max then
+      if R'Length = 0 then
+         return To_Str (L);
+      elsif R'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (2) :=
               (2, (1 => (Value, 1, L), 2 => (Var_String, R'Length, R)));
@@ -661,7 +672,9 @@ package body CCG.Tables is
 
    function "&" (L : Type_T; R : String) return Str is
    begin
-      if R'Length <= Str_Max then
+      if R'Length = 0 then
+         return To_Str (L);
+      elsif R'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (2) :=
               (2, (1 => (Typ, 1, L), 2 => (Var_String, R'Length, R)));
@@ -681,7 +694,9 @@ package body CCG.Tables is
 
    function "&" (L : Basic_Block_T; R : String) return Str is
    begin
-      if R'Length <= Str_Max then
+      if R'Length = 0 then
+         return To_Str (L);
+      elsif R'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (2) :=
               (2, (1 => (BB, 1, L), 2 => (Var_String, R'Length, R)));
@@ -700,7 +715,9 @@ package body CCG.Tables is
 
    function "&" (L : Str; R : String) return Str is
    begin
-      if R'Length <= Str_Max then
+      if R'Length = 0 then
+         return L;
+      elsif R'Length <= Str_Max then
          declare
             S_Rec : aliased Str_Record (L.Length + 1);
 

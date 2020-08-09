@@ -186,8 +186,10 @@ private
    --  rare case where we need a larger string, we break it into segments.
 
    Str_Max : constant := 6;
-   subtype Str_Length is Integer range 1 .. Str_Max;
-   --  The longest string we'll use often is "struct "
+   subtype Str_Length is Integer range 0 .. Str_Max;
+   --  The longest string we'll use often is "struct ".  We allow empty
+   --  strings, but optimize operations to not create them except when
+   --  necessary.
 
    type Str_Component_Kind is (Var_String, Value, Typ, BB);
 

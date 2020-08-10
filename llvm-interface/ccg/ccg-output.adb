@@ -170,6 +170,12 @@ package body CCG.Output is
                Bits : constant Pos := Pos (Get_Int_Type_Width (T));
 
             begin
+               --  ??? There are a number of issues here: Ada supports a
+               --  "long long long" type, which could correspond to C's
+               --  int128_t.  We also may want to generate intXX_t types
+               --  instead of the standard types based on a switch.  But for
+               --  now we'll keep it simple.
+
                if Bits > Long_Size and then Bits > Int_Size
                  and then Bits <= Long_Long_Size
                then

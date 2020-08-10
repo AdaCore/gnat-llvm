@@ -42,6 +42,8 @@ package CCG.Tables is
      with Pre => Present (T), Post => Present (To_Str'Result);
    function To_Str (B : Basic_Block_T) return Str
      with Pre => Present (B), Post => Present (To_Str'Result);
+   function To_Str_As_Data (V : Value_T)       return Str
+     with Pre => Present (V), Post => Present (To_Str_As_Data'Result);
    --  Return an internal representation of S, V, T, or B
 
    procedure Write_Str (S : Str)
@@ -115,20 +117,25 @@ package CCG.Tables is
    --  Get and set attributes we record of LLVM values, types, and
    --  basic blocks.
 
-   function Get_C_Value (V : Value_T) return Str
+   function Get_C_Value         (V : Value_T) return Str
      with Pre => Present (V), Inline;
-   function Get_No_Name (V : Value_T) return Boolean
+   function Get_No_Name         (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
-   function Get_Is_Decl_Output (V : Value_T) return Boolean
+   function Get_Is_Decl_Output  (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
-   procedure Set_C_Value (V : Value_T; S : Str)
+   function Get_Is_Entry_Alloca (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+
+   procedure Set_C_Value         (V : Value_T; S : Str)
      with Pre  => Present (V) and then Present (S),
           Post => Get_C_Value (V) = S, Inline;
-   procedure Set_No_Name (V : Value_T; B : Boolean := True)
+   procedure Set_No_Name         (V : Value_T; B : Boolean := True)
      with Pre  => Present (V),
           Post => Get_No_Name (V) = B, Inline;
-   procedure Set_Is_Decl_Output (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Decl_Output  (V : Value_T; B : Boolean := True)
      with Pre  => Present (V), Post => Get_Is_Decl_Output (V) = B, Inline;
+   procedure Set_Is_Entry_Alloca (V : Value_T; B : Boolean := True)
+     with Pre  => Present (V), Post => Get_Is_Entry_Alloca (V) = B, Inline;
 
    function Get_Is_Typedef_Output (T : Type_T) return Boolean
      with Pre => Present (T), Inline;
@@ -188,7 +195,25 @@ private
    --  strings, but optimize operations to not create them except when
    --  necessary.
 
-   type Str_Component_Kind is (Var_String, Value, Typ, BB);
+   --  Define the types of string components we support
+
+   type Str_Component_Kind is
+     (Var_String,
+      --  A short literal string
+
+      Value,
+      --  An LLVM value
+
+      Data_Value,
+      --  Like Value, but represents the data for that value in the case
+      --  where the value itself represents an address (i.e., an alloca in
+      --  the entry block.
+
+      Typ,
+      --  An LLVM type
+
+      BB);
+      --  An LLVM basic block
 
    type Str_Component
         (Kind : Str_Component_Kind := Var_String; Length : Str_Length := 3)
@@ -196,16 +221,16 @@ private
 
       case Kind is
          when Var_String =>
-            Str : String (1 .. Length);
+            Str   : String (1 .. Length);
 
-         when Value =>
-            Val : Value_T;
+         when Value | Data_Value =>
+            Val   : Value_T;
 
          when Typ =>
-            T   :  Type_T;
+            T     :  Type_T;
 
          when BB =>
-            B   : Basic_Block_T;
+            B     : Basic_Block_T;
 
       end case;
    end record;

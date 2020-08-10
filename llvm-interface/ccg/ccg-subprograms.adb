@@ -18,8 +18,6 @@
 with Output; use Output;
 with Table;
 
-with CCG.Helper; use CCG.Helper;
-
 package body CCG.Subprograms is
 
    type Decl_Idx is new Nat;

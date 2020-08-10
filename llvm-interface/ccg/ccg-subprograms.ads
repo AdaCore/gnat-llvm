@@ -19,6 +19,7 @@ with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM; use GNATLLVM;
 
+with CCG.Helper; use CCG.Helper;
 with CCG.Tables; use CCG.Tables;
 
 package CCG.Subprograms is
@@ -46,11 +47,11 @@ package CCG.Subprograms is
    --  Write all the decls and statements for all subprograms
 
    procedure Generate_C_For_Subprogram (V : Value_T)
-     with Pre => Present (Is_A_Function (V));
+     with Pre => Is_A_Function (V);
    --  Generate the C statements and decls for V, a function
 
    function Function_Proto (V : Value_T) return Str
-     with Pre  => Present (Is_A_Function (V)),
+     with Pre  => Is_A_Function (V),
           Post => Present (Function_Proto'Result);
    --  Return the prototype for function V
 

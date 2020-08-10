@@ -46,4 +46,20 @@ package CCG.Helper is
      (Get_Param (V, unsigned (P_Num)))
      with Pre => Present (V), Post => Present (Get_Param'Result);
 
+   function Is_A_Constant (V : Value_T) return Boolean is
+     (Present (Is_A_Constant (V)))
+     with Pre => Present (V);
+
+   function Is_A_Constant_Int (V : Value_T) return Boolean is
+     (Present (Is_A_Constant_Int (V)))
+     with Pre => Present (V);
+
+   function Is_A_Constant_FP (V : Value_T) return Boolean is
+     (Present (Is_A_Constant_FP (V)))
+     with Pre => Present (V);
+
+   function Is_A_Function (V : Value_T) return Boolean is
+     (Present (Is_A_Function (V)))
+     with Pre => Present (V);
+
 end CCG.Helper;

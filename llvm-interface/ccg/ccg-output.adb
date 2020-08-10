@@ -36,7 +36,7 @@ package body CCG.Output is
    --  we generate from a serial number.
 
    procedure Write_Constant_Value (V : Value_T)
-     with Pre => Present (Is_A_Constant (V));
+     with Pre => Is_A_Constant (V);
    --  Write the constant value of V
 
    ----------------------
@@ -78,7 +78,7 @@ package body CCG.Output is
    begin
       --  ??? Start with just small integer constants and FP constants
 
-      if Present (Is_A_Constant_Int (V)) then
+      if Is_A_Constant_Int (V) then
          declare
             Val : constant LLI := Const_Int_Get_S_Ext_Value (V);
 
@@ -90,7 +90,7 @@ package body CCG.Output is
             end if;
          end;
 
-      elsif Present (Is_A_Constant_FP (V)) then
+      elsif Is_A_Constant_FP (V) then
 
          declare
             Loses_Info : Boolean;
@@ -146,7 +146,7 @@ package body CCG.Output is
       --  constant, not a function, and we haven't already written one.
 
       if not Get_Is_Decl_Output (V) and then not Is_Simple_Constant (V)
-        and then not Present (Is_A_Function (V))
+        and then not Is_A_Function (V)
       then
 
          --  The relevant type is the type of V unless V is an alloca in the

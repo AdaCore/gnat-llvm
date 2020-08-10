@@ -26,6 +26,22 @@ package CCG.Subprograms is
 
    --  This package contains subprograms used in the handling of subprograms
 
+   --  We write any typedefs at the time we decide that we need it and
+   --  also write decls for any global variables at a similar time.  However,
+   --  we keep lists of subprograms and decls and statements for each and
+   --  only write those after we've finished processing the module so that
+   --  all typedefs and globals are written first.  These procedures manage
+   --  those lists.
+
+   procedure Output_Decl (S : Str);
+   --  Save S as a decl for the current subprogram
+
+   procedure Output_Stmt (S : Str);
+   --  Save S as a statement for the current subprogram
+
+   procedure New_Subprogram;
+   --  Switch to a new subprogram
+
    function Function_Proto (V : Value_T) return Str
      with Pre  => Present (Is_A_Function (V)),
           Post => Present (Function_Proto'Result);

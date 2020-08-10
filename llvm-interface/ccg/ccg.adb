@@ -15,7 +15,11 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with LLVM.Core; use LLVM.Core;
+
 with Get_Targ; use Get_Targ;
+
+with GNATLLVM; use GNATLLVM;
 
 with CCG.Tables;      use CCG.Tables;
 with CCG.Subprograms; use CCG.Subprograms;
@@ -47,8 +51,14 @@ package body CCG is
    ------------------
 
    procedure Write_C_Code (Module : Module_T) is
-      pragma Unreferenced (Module);
+      Func : Value_T := Get_First_Function (Module);
+
    begin
+      while Present (Func) loop
+         Generate_C_For_Subprogram (Func);
+         Func := Get_Next_Function (Func);
+      end loop;
+
       Write_Subprograms;
    end Write_C_Code;
 

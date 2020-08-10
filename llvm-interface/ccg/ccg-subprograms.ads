@@ -42,6 +42,13 @@ package CCG.Subprograms is
      with Pre => Present (Is_A_Function (V));
    --  Switch to a new subprogram V
 
+   procedure Write_Subprograms;
+   --  Write all the decls and statements for all subprograms
+
+   procedure Generate_C_For_Subprogram (V : Value_T)
+     with Pre => Present (Is_A_Function (V));
+   --  Generate the C statements and decls for V, a function
+
    function Function_Proto (V : Value_T) return Str
      with Pre  => Present (Is_A_Function (V)),
           Post => Present (Function_Proto'Result);
@@ -53,8 +60,5 @@ package CCG.Subprograms is
           Post => Present (Function_Proto'Result);
    --  Return the prototype for function type T, using S for where the name
    --  of the function would be.
-
-   procedure Write_Subprograms;
-   --  Write all the decls and statements for all subprograms
 
 end CCG.Subprograms;

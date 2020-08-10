@@ -170,6 +170,16 @@ package body CCG.Subprograms is
 
    end Function_Proto;
 
+   -------------------------------
+   -- Generate_C_For_Subprogram --
+   -------------------------------
+
+   procedure Generate_C_For_Subprogram (V : Value_T) is
+      pragma Unreferenced (V);
+   begin
+      null;
+   end Generate_C_For_Subprogram;
+
    -----------------------
    -- Write_Subprograms --
    -----------------------

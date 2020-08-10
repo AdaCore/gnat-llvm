@@ -19,7 +19,8 @@ with Output; use Output;
 
 with LLVM.Core; use LLVM.Core;
 
-with CCG.Helper; use CCG.Helper;
+with CCG.Helper;      use CCG.Helper;
+with CCG.Subprograms; use CCG.Subprograms;
 
 package body CCG.Output is
 
@@ -141,6 +142,28 @@ package body CCG.Output is
 
    procedure Write_Decl (V : Value_T) is
    begin
+      --  We need to write a declaration for this if it's not a simple
+      --  constant, not a function, and we haven't already written one.
+
+      if not Get_Is_Decl_Output (V) and then not Is_Simple_Constant (V)
+        and then not Present (Is_A_Function (V))
+      then
+
+         --  The relevant type is the type of V unless V is an alloca in the
+         --  entry block, in which case the type of V is a pointer and we
+         --  want what it points to.
+
+         declare
+            Typ : constant Type_T :=
+              (if   Get_Is_Entry_Alloca (V) then Type_Of (V)
+               else Get_Element_Type (Type_Of (V)));
+
+         begin
+            Set_Is_Decl_Output (V);
+            Output_Decl (Typ & " " & V & ";");
+         end;
+      end if;
+
       Set_Is_Decl_Output (V);
    end Write_Decl;
 

@@ -17,7 +17,8 @@
 
 with Get_Targ; use Get_Targ;
 
-with CCG.Tables; use CCG.Tables;
+with CCG.Tables;      use CCG.Tables;
+with CCG.Subprograms; use CCG.Subprograms;
 
 package body CCG is
 
@@ -45,9 +46,10 @@ package body CCG is
    -- Write_C_Code --
    ------------------
 
-   procedure Write_C_Code is
+   procedure Write_C_Code (Module : Module_T) is
+      pragma Unreferenced (Module);
    begin
-      null;
+      Write_Subprograms;
    end Write_C_Code;
 
 end CCG;

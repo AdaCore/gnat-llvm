@@ -15,6 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Output; use Output;
+with Table;
+
 with CCG.Helper; use CCG.Helper;
 
 package body CCG.Subprograms is
@@ -27,14 +30,6 @@ package body CCG.Subprograms is
 
    function No (J : Decl_Idx) return Boolean is (J = No_Decl_Idx);
    function No (J : Stmt_Idx) return Boolean is (J = No_Stmt_Idx);
-
-   --  Current (last) and first indices for decls and statement in the
-   --  current subprogram.
-
-   First_Decl : Decl_Idx := No_Decl_Idx;
-   Last_Decl  : Decl_Idx := No_Decl_Idx;
-   First_Stmt : Stmt_Idx := No_Stmt_Idx;
-   Last_Stmt  : Stmt_Idx := No_Stmt_Idx;
 
    --  Tables for decls and statements
 
@@ -58,6 +53,7 @@ package body CCG.Subprograms is
    --  belonging to that subprogram.
 
    type Subprogram_Data is record
+      Func       : Value_T;
       First_Decl : Decl_Idx;
       Last_Decl  : Decl_Idx;
       First_Stmt : Stmt_Idx;
@@ -79,11 +75,14 @@ package body CCG.Subprograms is
    ----------------
 
    procedure Output_Decl (S : Str) is
+      SD : Subprogram_Data renames
+        Subprogram_Table.Table (Subprogram_Table.Last);
+
    begin
       Decl_Table.Append (S);
-      Last_Decl := Decl_Table.Last;
-      if No (First_Decl) then
-         First_Decl := Decl_Table.Last;
+      SD.Last_Decl := Decl_Table.Last;
+      if No (SD.First_Decl) then
+         SD.First_Decl := Decl_Table.Last;
       end if;
    end Output_Decl;
 
@@ -92,11 +91,13 @@ package body CCG.Subprograms is
    ----------------
 
    procedure Output_Stmt (S : Str) is
+      SD : Subprogram_Data renames
+        Subprogram_Table.Table (Subprogram_Table.Last);
    begin
       Stmt_Table.Append (S);
-      Last_Stmt := Stmt_Table.Last;
-      if No (First_Stmt) then
-         First_Stmt := Stmt_Table.Last;
+      SD.Last_Stmt := Stmt_Table.Last;
+      if No (SD.First_Stmt) then
+         SD.First_Stmt := Stmt_Table.Last;
       end if;
    end Output_Stmt;
 
@@ -104,12 +105,13 @@ package body CCG.Subprograms is
    -- New_Subprogram --
    --------------------
 
-   procedure New_Subprogram is
+   procedure New_Subprogram (V : Value_T) is
    begin
-      Subprogram_Table.Append ((First_Decl => First_Decl,
-                                Last_Decl  => Last_Decl,
-                                First_Stmt => First_Stmt,
-                                Last_Stmt  => Last_Stmt));
+      Subprogram_Table.Append ((Func       => V,
+                                First_Decl => No_Decl_Idx,
+                                Last_Decl  => No_Decl_Idx,
+                                First_Stmt => No_Stmt_Idx,
+                                Last_Stmt  => No_Stmt_Idx));
    end New_Subprogram;
 
    --------------------
@@ -167,5 +169,34 @@ package body CCG.Subprograms is
       return Result & ")";
 
    end Function_Proto;
+
+   -----------------------
+   -- Write_Subprograms --
+   -----------------------
+
+   procedure Write_Subprograms is
+   begin
+      for Sidx in 1 .. Subprogram_Table.Last loop
+         declare
+            SD : constant Subprogram_Data := Subprogram_Table.Table (Sidx);
+
+         begin
+            Write_Str (Function_Proto (SD.Func), Eol => True);
+            Write_Str ("{");
+            Write_Eol;
+            for Didx in SD.First_Decl .. SD.Last_Decl loop
+               Write_Str ("    " & Decl_Table.Table (Didx), Eol => True);
+            end loop;
+
+            Write_Eol;
+            for Sidx in SD.First_Stmt .. SD.Last_Stmt loop
+               Write_Str ("    " & Stmt_Table.Table (Sidx), Eol => True);
+            end loop;
+
+            Write_Str ("}");
+            Write_Eol;
+         end;
+      end loop;
+   end Write_Subprograms;
 
 end CCG.Subprograms;

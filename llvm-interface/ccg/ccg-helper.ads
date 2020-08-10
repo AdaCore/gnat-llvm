@@ -18,7 +18,6 @@
 with Interfaces.C;
 
 with LLVM.Core;  use LLVM.Core;
-with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM; use GNATLLVM;
 

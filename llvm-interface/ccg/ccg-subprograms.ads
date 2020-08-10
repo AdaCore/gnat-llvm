@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with LLVM.Core;  use LLVM.Core;
-with LLVM.Types; use LLVM.Types;
 
 with GNATLLVM; use GNATLLVM;
 
@@ -39,8 +38,9 @@ package CCG.Subprograms is
    procedure Output_Stmt (S : Str);
    --  Save S as a statement for the current subprogram
 
-   procedure New_Subprogram;
-   --  Switch to a new subprogram
+   procedure New_Subprogram (V : Value_T)
+     with Pre => Present (Is_A_Function (V));
+   --  Switch to a new subprogram V
 
    function Function_Proto (V : Value_T) return Str
      with Pre  => Present (Is_A_Function (V)),
@@ -53,5 +53,8 @@ package CCG.Subprograms is
           Post => Present (Function_Proto'Result);
    --  Return the prototype for function type T, using S for where the name
    --  of the function would be.
+
+   procedure Write_Subprograms;
+   --  Write all the decls and statements for all subprograms
 
 end CCG.Subprograms;

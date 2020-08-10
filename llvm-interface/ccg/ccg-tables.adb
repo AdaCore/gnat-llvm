@@ -493,7 +493,7 @@ package body CCG.Tables is
    -- Write_Str --
    ---------------
 
-   procedure Write_Str (S : Str) is
+   procedure Write_Str (S : Str; Eol : Boolean := False) is
    begin
       for Comp of S.Comps loop
          case Comp.Kind is
@@ -518,6 +518,11 @@ package body CCG.Tables is
                Write_BB (Comp.B);
          end case;
       end loop;
+
+      if Eol then
+         Write_Eol;
+      end if;
+
    end Write_Str;
 
    ---------

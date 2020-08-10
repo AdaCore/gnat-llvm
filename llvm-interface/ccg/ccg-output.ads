@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Types; use LLVM.Types;
-
 with GNATLLVM; use GNATLLVM;
 
 with CCG.Tables; use CCG.Tables;

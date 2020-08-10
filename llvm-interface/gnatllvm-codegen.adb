@@ -433,7 +433,7 @@ package body GNATLLVM.Codegen is
 
          when Write_C =>
 
-            Write_C_Code;
+            Write_C_Code (Module);
 
          when None =>
             null;

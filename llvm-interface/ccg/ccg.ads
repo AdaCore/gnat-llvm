@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with LLVM.Types; use LLVM.Types;
+
 with Types; use Types;
 
 package CCG is
@@ -26,7 +28,7 @@ package CCG is
    --  Do any initialization needed to write C.  This is always called after
    --  we've obtained target parameters.
 
-   procedure Write_C_Code;
+   procedure Write_C_Code (Module : Module_T);
    --  The main procedure, which generates C code from the LLVM IR
 
    --  Define the sizes of all the basic C types.

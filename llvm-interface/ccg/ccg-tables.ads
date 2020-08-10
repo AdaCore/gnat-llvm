@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Types; use LLVM.Types;
-
 with GNATLLVM; use GNATLLVM;
 
 package CCG.Tables is
@@ -46,7 +44,7 @@ package CCG.Tables is
      with Pre => Present (V), Post => Present (To_Str_As_Data'Result);
    --  Return an internal representation of S, V, T, or B
 
-   procedure Write_Str (S : Str)
+   procedure Write_Str (S : Str; Eol : Boolean := False)
      with Pre => Present (S);
    --  Write the contents of S to the current output target
 

@@ -84,7 +84,7 @@ package body CCG.Tables is
    --  The set of all strings that we've made so far
 
    function Undup_Str (S : aliased Str_Record) return Str
-     with Post => Present (Undup_Str'Result);
+     with Post => Present (Undup_Str'Result), Pure_Function;
    --  Get a unique Str corresponding to S
 
    --  We maintain tables that give information we need about LLVM values,
@@ -196,11 +196,11 @@ package body CCG.Tables is
    --  basic block and whether to create one if one isn't present.
 
    function Value_Data_Idx (V : Value_T; Create : Boolean) return Value_Idx
-     with Pre => Present (V);
+     with Pre => Present (V), Pure_Function;
    function Type_Data_Idx  (T : Type_T; Create : Boolean) return Type_Idx
-     with Pre => Present (T);
+     with Pre => Present (T), Pure_Function;
    function BB_Data_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx
-     with Pre => Present (B);
+     with Pre => Present (B), Pure_Function;
 
    procedure Maybe_Write_Decl (V : Value_T)
      with Pre => Present (V), Post => Get_Is_Decl_Output (V);

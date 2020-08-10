@@ -116,42 +116,39 @@ package CCG.Tables is
    --  basic blocks.
 
    function Get_C_Value (V : Value_T) return Str
-     with Pre => Present (V);
+     with Pre => Present (V), Inline;
    function Get_No_Name (V : Value_T) return Boolean
-     with Pre => Present (V);
+     with Pre => Present (V), Inline;
    function Get_Is_Decl_Output (V : Value_T) return Boolean
-     with Pre => Present (V);
+     with Pre => Present (V), Inline;
    procedure Set_C_Value (V : Value_T; S : Str)
      with Pre  => Present (V) and then Present (S),
-          Post => Get_C_Value (V) = S;
+          Post => Get_C_Value (V) = S, Inline;
    procedure Set_No_Name (V : Value_T; B : Boolean := True)
      with Pre  => Present (V),
-          Post => Get_No_Name (V) = B;
+          Post => Get_No_Name (V) = B, Inline;
    procedure Set_Is_Decl_Output (V : Value_T; B : Boolean := True)
-     with Pre  => Present (V),
-          Post => Get_Is_Decl_Output (V) = B;
+     with Pre  => Present (V), Post => Get_Is_Decl_Output (V) = B, Inline;
 
    function Get_Is_Typedef_Output (T : Type_T) return Boolean
-     with Pre => Present (T);
+     with Pre => Present (T), Inline;
    procedure Set_Is_Typedef_Output (T : Type_T; B : Boolean := True)
-     with Pre  => Present (T),
-          Post => Get_Is_Typedef_Output (T) = B;
+     with Pre  => Present (T), Post => Get_Is_Typedef_Output (T) = B, Inline;
 
    function Get_Is_Entry (BB : Basic_Block_T) return Boolean
-     with Pre => Present (BB);
+     with Pre => Present (BB), Inline;
    procedure Set_Is_Entry (BB : Basic_Block_T; B : Boolean := True)
-     with Pre  => Present (BB),
-          Post => Get_Is_Entry (BB) = B;
+     with Pre  => Present (BB), Post => Get_Is_Entry (BB) = B, Inline;
 
    --  Define functions to return (and possibly create) an ordinal to use
    --  as part of the name for a value, type, or basic block.
 
    function Get_Output_Idx (V : Value_T) return Nat
-     with Pre => Present (V), Post => Get_Output_Idx'Result /= 0;
+     with Pre => Present (V), Post => Get_Output_Idx'Result /= 0, Inline;
    function Get_Output_Idx (T : Type_T) return Nat
-     with Pre => Present (T), Post => Get_Output_Idx'Result /= 0;
+     with Pre => Present (T), Post => Get_Output_Idx'Result /= 0, Inline;
    function Get_Output_Idx (BB : Basic_Block_T) return Nat
-     with Pre => Present (BB), Post => Get_Output_Idx'Result /= 0;
+     with Pre => Present (BB), Post => Get_Output_Idx'Result /= 0, Inline;
 
    --  We write any typedefs at the time we decide that we need it and
    --  also write decls for any global variables at a similar time.  However,

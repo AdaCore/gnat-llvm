@@ -330,56 +330,60 @@ package body CCG.Tables is
 
          elsif SL.Comps (PosL).Kind /= SR.Comps (PosR).Kind then
             return False;
-
-         --  For strings, we operate one character at a time.  If the
-         --  current character differs, the strings are different.
-         --  Otherwise, advance to the next character, stepping to the
-         --  next component if necessary.
-
-         elsif SL.Comps (PosL).Kind = Var_String then
-            if SL.Comps (PosL).Str (CharL) /= SR.Comps (PosR).Str (CharR) then
-               return False;
-            else
-               CharL := CharL + 1;
-               CharR := CharR + 1;
-               if CharL > SL.Comps (PosL).Length then
-                  PosL  := PosL + 1;
-                  CharL := 1;
-               end if;
-
-               if CharR > SR.Comps (PosR).Length then
-                  PosR  := PosR + 1;
-                  CharR := 1;
-               end if;
-            end if;
-
-         --  Otherwise, they're different if the LLVM objects are different
-         --  and we advance to the next position if not.
-
-         elsif SL.Comps (PosL).Kind = Value then
-            if SL.Comps (PosL).Val /= SR.Comps (PosR).Val then
-               return False;
-            else
-               PosL := PosL + 1;
-               PosR := PosR + 1;
-            end if;
-
-         elsif SL.Comps (PosL).Kind = Typ then
-            if SL.Comps (PosL).T /= SR.Comps (PosR).T then
-               return False;
-            else
-               PosL := PosL + 1;
-               PosR := PosR + 1;
-            end if;
-
-         elsif SL.Comps (PosL).Kind = BB then
-            if SL.Comps (PosL).B /= SR.Comps (PosR).B then
-               return False;
-            else
-               PosL := PosL + 1;
-               PosR := PosR + 1;
-            end if;
          end if;
+
+         --  Otherwise, we compare each type differently.  For strings, we
+         --  operate one character at a time.  If the current character
+         --  differs, the strings are different.  Otherwise, advance to the
+         --  next character, stepping to the next component if necessary.
+
+         case SL.Comps (PosL).Kind is
+            when Var_String =>
+               if SL.Comps (PosL).Str (CharL) /=
+                 SR.Comps (PosR).Str (CharR)
+               then
+                  return False;
+               else
+                  CharL := CharL + 1;
+                  CharR := CharR + 1;
+                  if CharL > SL.Comps (PosL).Length then
+                     PosL  := PosL + 1;
+                     CharL := 1;
+                  end if;
+
+                  if CharR > SR.Comps (PosR).Length then
+                     PosR  := PosR + 1;
+                     CharR := 1;
+                  end if;
+               end if;
+
+            --  Otherwise, they're different if the LLVM objects are different
+            --  and we advance to the next position if not.
+
+               when Value | Data_Value =>
+                  if SL.Comps (PosL).Val /= SR.Comps (PosR).Val then
+                     return False;
+                  else
+                     PosL := PosL + 1;
+                     PosR := PosR + 1;
+                  end if;
+
+            when Typ =>
+               if SL.Comps (PosL).T /= SR.Comps (PosR).T then
+                  return False;
+               else
+                  PosL := PosL + 1;
+                  PosR := PosR + 1;
+               end if;
+
+            when BB =>
+               if SL.Comps (PosL).B /= SR.Comps (PosR).B then
+                  return False;
+               else
+                  PosL := PosL + 1;
+                  PosR := PosR + 1;
+               end if;
+         end case;
       end loop;
 
    end "=";

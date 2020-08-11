@@ -41,6 +41,27 @@ package body CCG.Instructions is
                Output_Stmt ("return");
             end if;
 
+         when Op_Alloca =>
+            if Get_Is_Entry (Get_Instruction_Parent (V)) then
+               Set_Is_Entry_Alloca (V);
+            else
+               Output_Stmt ("<unsupported instruction>");
+            end if;
+
+         when Op_Load =>
+            if Get_Is_Entry_Alloca (Op1) then
+               Output_Stmt (V & " = " & To_Str_As_Data (Op1));
+            else
+               Output_Stmt (V & " = *" & Op1);
+            end if;
+
+         when Op_Store =>
+            if Get_Is_Entry_Alloca (Op2) then
+               Output_Stmt (To_Str_As_Data (Op2) & " = " & Op1);
+            else
+               Output_Stmt ("*" & Op2 & " = *" & Op1);
+            end if;
+
          when Op_Add =>
             Output_Stmt (V & " = " & Op1 & " + " & Op2);
 

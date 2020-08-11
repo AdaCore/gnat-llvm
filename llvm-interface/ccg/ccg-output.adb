@@ -161,7 +161,7 @@ package body CCG.Output is
 
          begin
             Set_Is_Decl_Output (V);
-            Output_Decl (Typ & " " & V);
+            Output_Decl (Typ & " " & To_Str_As_Data (V));
          end;
       end if;
 
@@ -218,7 +218,7 @@ package body CCG.Output is
             end;
 
          when Pointer_Type_Kind =>
-            Write_Str (" " & Get_Element_Type (T));
+            Write_Str (Get_Element_Type (T) & " *");
 
          when others =>
             Write_Str ("<unsupported type>");

@@ -22,6 +22,47 @@ with CCG.Subprograms; use CCG.Subprograms;
 
 package body CCG.Instructions is
 
+   function Num_Uses (V : Value_T) return Nat
+     with Pre => Present (V), Post => Num_Uses'Result >= 1;
+   --  Returns the number of uses of V
+
+   procedure Assignment (LHS : Value_T; RHS : Str)
+     with Pre => Present (LHS) and then Present (RHS);
+   --  Take action to assign LHS the value RHS
+
+   --------------
+   -- Num_Uses --
+   --------------
+
+   function Num_Uses (V : Value_T) return Nat is
+      V_Use : Use_T := Get_First_Use (V);
+
+   begin
+      return J : Nat := 0 do
+         while Present (V_Use) loop
+            J := J + 1;
+            V_Use := Get_Next_Use (V_Use);
+         end loop;
+      end return;
+   end Num_Uses;
+
+   ----------------
+   -- Assignment --
+   ----------------
+
+   procedure Assignment (LHS : Value_T; RHS : Str) is
+   begin
+      --  If LHS is an entry alloca or has more than one use in the IR,
+      --  generate an assignment statement into LHS. Otherwise, mark LHS
+      --  as having value RHS.
+
+      if Get_Is_Entry_Alloca (LHS) or else Num_Uses (LHS) > 1 then
+         Output_Stmt (LHS & " = " & RHS);
+      else
+         Set_C_Value (LHS, RHS);
+      end if;
+   end Assignment;
+
    -------------------------
    --  Output_Instruction --
    -------------------------
@@ -50,7 +91,7 @@ package body CCG.Instructions is
 
          when Op_Load =>
             if Get_Is_Entry_Alloca (Op1) then
-               Output_Stmt (V & " = " & To_Str_As_Data (Op1));
+               Assignment (V, To_Str_As_Data (Op1));
             else
                Output_Stmt (V & " = *" & Op1);
             end if;
@@ -63,34 +104,34 @@ package body CCG.Instructions is
             end if;
 
          when Op_Add =>
-            Output_Stmt (V & " = " & Op1 & " + " & Op2);
+            Assignment (V, Op1 & " + " & Op2);
 
          when Op_Sub =>
-            Output_Stmt (V & " = " & Op1 & " - " & Op2);
+            Assignment (V, Op1 & " - " & Op2);
 
          when Op_Mul =>
-            Output_Stmt (V & " = " & Op1 & " * " & Op2);
+            Assignment (V, Op1 & " * " & Op2);
 
          when Op_F_Add =>
-            Output_Stmt (V & " = " & Op1 & " + " & Op2);
+            Assignment (V, Op1 & " + " & Op2);
 
          when Op_F_Sub =>
-            Output_Stmt (V & " = " & Op1 & " - " & Op2);
+            Assignment (V, Op1 & " - " & Op2);
 
          when Op_F_Mul =>
-            Output_Stmt (V & " = " & Op1 & " * " & Op2);
+            Assignment (V, Op1 & " * " & Op2);
 
          when Op_F_Div =>
-            Output_Stmt (V & " = " & Op1 & " / " & Op2);
+            Assignment (V, Op1 & " / " & Op2);
 
          when Op_And =>
-            Output_Stmt (V & " = " & Op1 & " & " & Op2);
+            Assignment (V, Op1 & " & " & Op2);
 
          when Op_Or =>
-            Output_Stmt (V & " = " & Op1 & " | " & Op2);
+            Assignment (V, Op1 & " | " & Op2);
 
          when Op_F_Neg =>
-            Output_Stmt (V & " = -" & Op1);
+            Assignment (V, " -" & Op1);
 
          when others =>
             Output_Stmt ("<unsupported instruction>");

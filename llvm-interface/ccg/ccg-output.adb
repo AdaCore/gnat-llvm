@@ -121,7 +121,7 @@ package body CCG.Output is
       --  If we've set an expression as the value of V, write it
 
       if Present (C_Value) then
-         Write_Str (C_Value);
+         Write_Str ("(" & C_Value & ")");
 
       --  If this is a simple constant, write the constant
 
@@ -144,10 +144,11 @@ package body CCG.Output is
    begin
       --  We need to write a declaration for this if it's not a simple
       --  constant, not a function, not an argument, and we haven't
-      --  already written one.
+      --  already written one or assigned a value to it.
 
       if not Get_Is_Decl_Output (V) and then not Is_Simple_Constant (V)
         and then not Is_A_Function (V) and then not Is_A_Argument (V)
+        and then not Present (Get_C_Value (V))
       then
 
          --  The relevant type is the type of V unless V is an alloca in the

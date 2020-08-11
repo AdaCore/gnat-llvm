@@ -133,6 +133,7 @@ package GNATLLVM is
    No_Metadata_T : constant Metadata_T    := Metadata_T (System.Null_Address);
    No_Builder_T  : constant Builder_T     := Builder_T (System.Null_Address);
    No_Module_T   : constant Module_T      := Module_T (System.Null_Address);
+   No_Use_T      : constant Use_T         := Use_T (System.Null_Address);
    --  Constant for null objects of various types
 
    function No (V : Value_T)            return Boolean is (V = No_Value_T);
@@ -148,6 +149,7 @@ package GNATLLVM is
    function Present (M : Metadata_T)    return Boolean is (M /= No_Metadata_T);
    function Present (M : Builder_T)     return Boolean is (M /= No_Builder_T);
    function Present (N : Name_Id)       return Boolean is (N /= No_Name);
+   function Present (U : Use_T)         return Boolean is (U /= No_Use_T);
    --  Test for presence and absence of fields of LLVM types
 
    function No      (U : Uint) return Boolean is (U = No_Uint);

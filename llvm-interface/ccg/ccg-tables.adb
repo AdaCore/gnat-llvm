@@ -132,6 +132,9 @@ package body CCG.Tables is
       Is_Entry   : Boolean;
       --  True if this is the entry basic block for some function
 
+      Was_Output : Boolean;
+      --  True if this basic block has already been output
+
       Output_Idx : Nat;
       --  A positive number if we've assigned an ordinal to use as
       --  part of the name for this block.
@@ -983,7 +986,9 @@ package body CCG.Tables is
       elsif not Create then
          return No_BB_Idx;
       else
-         BB_Data_Table.Append ((Is_Entry => False, Output_Idx => 0));
+         BB_Data_Table.Append ((Is_Entry   => False,
+                                Was_Output => False,
+                                Output_Idx => 0));
          Insert (BB_Data_Map, B, BB_Data_Table.Last);
          return BB_Data_Table.Last;
       end if;
@@ -1116,6 +1121,17 @@ package body CCG.Tables is
       return Present (Idx) and then BB_Data_Table.Table (Idx).Is_Entry;
    end Get_Is_Entry;
 
+   --------------------
+   -- Get_Was_Output --
+   --------------------
+
+   function Get_Was_Output (BB : Basic_Block_T) return Boolean is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => False);
+
+   begin
+      return Present (Idx) and then BB_Data_Table.Table (Idx).Was_Output;
+   end Get_Was_Output;
+
    ------------------
    -- Set_Is_Entry --
    ------------------
@@ -1126,6 +1142,17 @@ package body CCG.Tables is
    begin
       BB_Data_Table.Table (Idx).Is_Entry := B;
    end Set_Is_Entry;
+
+   ------------------
+   -- Set_Is_Entry --
+   ------------------
+
+   procedure Set_Was_Output (BB : Basic_Block_T; B : Boolean := True) is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
+
+   begin
+      BB_Data_Table.Table (Idx).Was_Output := B;
+   end Set_Was_Output;
 
    ----------------------
    -- Maybe_Write_Decl --

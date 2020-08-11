@@ -46,6 +46,14 @@ package CCG.Helper is
      (Get_Param (V, unsigned (P_Num)))
      with Pre => Present (V), Post => Present (Get_Param'Result);
 
+   function Get_Num_Operands (V : Value_T) return Int is
+      (Int (Interfaces.C.int'(Get_Num_Operands (V))))
+      with Pre => Present (V);
+
+   function Get_Operand (V : Value_T; N : Int) return Value_T is
+      (Get_Operand (V, unsigned (N)))
+      with Pre => Present (V), Post => Present (Get_Operand'Result);
+
    function Is_A_Constant (V : Value_T) return Boolean is
      (Present (Is_A_Constant (V)))
      with Pre => Present (V);
@@ -60,6 +68,10 @@ package CCG.Helper is
 
    function Is_A_Function (V : Value_T) return Boolean is
      (Present (Is_A_Function (V)))
+     with Pre => Present (V);
+
+   function Is_A_Argument (V : Value_T) return Boolean is
+     (Present (Is_A_Argument (V)))
      with Pre => Present (V);
 
 end CCG.Helper;

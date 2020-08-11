@@ -143,10 +143,11 @@ package body CCG.Output is
    procedure Write_Decl (V : Value_T) is
    begin
       --  We need to write a declaration for this if it's not a simple
-      --  constant, not a function, and we haven't already written one.
+      --  constant, not a function, not an argument, and we haven't
+      --  already written one.
 
       if not Get_Is_Decl_Output (V) and then not Is_Simple_Constant (V)
-        and then not Is_A_Function (V)
+        and then not Is_A_Function (V) and then not Is_A_Argument (V)
       then
 
          --  The relevant type is the type of V unless V is an alloca in the
@@ -155,12 +156,12 @@ package body CCG.Output is
 
          declare
             Typ : constant Type_T :=
-              (if   Get_Is_Entry_Alloca (V) then Type_Of (V)
-               else Get_Element_Type (Type_Of (V)));
+              (if   Get_Is_Entry_Alloca (V) then Get_Element_Type (Type_Of (V))
+               else Type_Of (V));
 
          begin
             Set_Is_Decl_Output (V);
-            Output_Decl (Typ & " " & V & ";");
+            Output_Decl (Typ & " " & V);
          end;
       end if;
 

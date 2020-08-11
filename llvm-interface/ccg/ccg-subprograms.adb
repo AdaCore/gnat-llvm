@@ -18,6 +18,8 @@
 with Output; use Output;
 with Table;
 
+with CCG.Instructions; use CCG.Instructions;
+
 package body CCG.Subprograms is
 
    type Decl_Idx is new Nat;
@@ -26,8 +28,10 @@ package body CCG.Subprograms is
    No_Decl_Idx : constant Decl_Idx := 0;
    No_Stmt_Idx : constant Stmt_Idx := 0;
 
-   function No (J : Decl_Idx) return Boolean is (J = No_Decl_Idx);
-   function No (J : Stmt_Idx) return Boolean is (J = No_Stmt_Idx);
+   function Present (J : Decl_Idx) return Boolean is (J /= No_Decl_Idx);
+   function Present (J : Stmt_Idx) return Boolean is (J /= No_Stmt_Idx);
+   function No      (J : Decl_Idx) return Boolean is (J = No_Decl_Idx);
+   function No      (J : Stmt_Idx) return Boolean is (J = No_Stmt_Idx);
 
    --  Tables for decls and statements
 
@@ -68,6 +72,10 @@ package body CCG.Subprograms is
       Table_Increment      => 50,
       Table_Name           => "Subprogram_Table");
 
+   procedure Output_BB (BB : Basic_Block_T)
+     with Pre => Present (BB);
+   --  Generate the code for basic block BB unless already output
+
    -----------------
    -- Output_Decl --
    ----------------
@@ -85,6 +93,15 @@ package body CCG.Subprograms is
    end Output_Decl;
 
    -----------------
+   -- Output_Decl --
+   ----------------
+
+   procedure Output_Decl (S : String) is
+   begin
+      Output_Decl (To_Str (S));
+   end Output_Decl;
+
+   -----------------
    -- Output_Stmt --
    ----------------
 
@@ -97,6 +114,15 @@ package body CCG.Subprograms is
       if No (SD.First_Stmt) then
          SD.First_Stmt := Stmt_Table.Last;
       end if;
+   end Output_Stmt;
+
+   -----------------
+   -- Output_Stmt --
+   ----------------
+
+   procedure Output_Stmt (S : String) is
+   begin
+      Output_Stmt (To_Str (S));
    end Output_Stmt;
 
    --------------------
@@ -168,14 +194,56 @@ package body CCG.Subprograms is
 
    end Function_Proto;
 
+   ---------------
+   -- Output_BB --
+   ---------------
+
+   procedure Output_BB (BB : Basic_Block_T) is
+      Instruction : Value_T          := Get_First_Instruction (BB);
+
+   begin
+      --  If we already processed this basic block, mark that we did
+
+      if Get_Was_Output (BB) then
+         return;
+      end if;
+
+      --  Otherwise, mark that we're outputing it and process each
+      --  instruction in the block.
+
+      Set_Was_Output (BB);
+      while Present (Instruction) loop
+         declare
+            N_Ops : constant Int := Get_Num_Operands (Instruction);
+            Ops   : Value_Array (1 .. N_Ops);
+
+         begin
+            for J in Ops'Range loop
+               Ops (J) := Get_Operand (Instruction, J - 1);
+            end loop;
+
+            Output_Instruction (Instruction, Ops);
+         end;
+
+         Instruction := Get_Next_Instruction (Instruction);
+      end loop;
+
+      --  ?? Eventually, process basic blocks referenced by terminator
+
+   end Output_BB;
+
    -------------------------------
    -- Generate_C_For_Subprogram --
    -------------------------------
 
    procedure Generate_C_For_Subprogram (V : Value_T) is
-      pragma Unreferenced (V);
+      Entry_BB : constant Basic_Block_T := Get_Entry_Basic_Block (V);
+
    begin
-      null;
+      New_Subprogram (V);
+      Set_Is_Entry (Entry_BB);
+      Output_BB (Entry_BB);
+
    end Generate_C_For_Subprogram;
 
    -----------------------
@@ -189,17 +257,31 @@ package body CCG.Subprograms is
             SD : constant Subprogram_Data := Subprogram_Table.Table (Sidx);
 
          begin
+            --  First write the prototype
+
             Write_Str (Function_Proto (SD.Func), Eol => True);
             Write_Str ("{");
             Write_Eol;
-            for Didx in SD.First_Decl .. SD.Last_Decl loop
-               Write_Str ("    " & Decl_Table.Table (Didx), Eol => True);
-            end loop;
 
-            Write_Eol;
-            for Sidx in SD.First_Stmt .. SD.Last_Stmt loop
-               Write_Str ("    " & Stmt_Table.Table (Sidx), Eol => True);
-            end loop;
+            --  Next write the decls, if any
+
+            if Present (SD.First_Decl) then
+               for Didx in SD.First_Decl .. SD.Last_Decl loop
+                  Write_Str ("    " & Decl_Table.Table (Didx) & ";",
+                             Eol => True);
+               end loop;
+
+               Write_Eol;
+            end if;
+
+            --  Then write the statements, if any
+
+            if Present (SD.First_Stmt) then
+               for Sidx in SD.First_Stmt .. SD.Last_Stmt loop
+                  Write_Str ("    " & Stmt_Table.Table (Sidx) & ";",
+                             Eol => True);
+               end loop;
+            end if;
 
             Write_Str ("}");
             Write_Eol;

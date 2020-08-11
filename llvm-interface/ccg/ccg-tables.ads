@@ -140,10 +140,15 @@ package CCG.Tables is
    procedure Set_Is_Typedef_Output (T : Type_T; B : Boolean := True)
      with Pre  => Present (T), Post => Get_Is_Typedef_Output (T) = B, Inline;
 
-   function Get_Is_Entry (BB : Basic_Block_T) return Boolean
+   function Get_Is_Entry   (BB : Basic_Block_T) return Boolean
      with Pre => Present (BB), Inline;
-   procedure Set_Is_Entry (BB : Basic_Block_T; B : Boolean := True)
+   function Get_Was_Output (BB : Basic_Block_T) return Boolean
+     with Pre => Present (BB), Inline;
+
+   procedure Set_Is_Entry   (BB : Basic_Block_T; B : Boolean := True)
      with Pre  => Present (BB), Post => Get_Is_Entry (BB) = B, Inline;
+   procedure Set_Was_Output (BB : Basic_Block_T; B : Boolean := True)
+     with Pre  => Present (BB), Post => Get_Was_Output (BB) = B, Inline;
 
    --  Define functions to return (and possibly create) an ordinal to use
    --  as part of the name for a value, type, or basic block.

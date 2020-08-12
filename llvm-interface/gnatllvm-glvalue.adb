@@ -1251,18 +1251,21 @@ package body GNATLLVM.GLValue is
 
    function Const_Int (GT : GL_Type; N : Uint) return GL_Value is
       Result  : GL_Value          := G (Const_Int (Type_Of (GT), N), GT);
-      Val     : constant LLI      := +Result;
       Bitsize : constant Integer  :=
         Integer (Get_Scalar_Bit_Size (Type_Of (Result)));
 
    begin
       --  Set the alignment from the value
 
-      Set_Alignment (Result, ULL_Align_Bytes (ULL (Val)));
+      Set_Alignment (Result, Uint_Align_Bytes (N));
 
       --  We're OK if this is a modular type or if the value matches.
+      --  ??? If this is wider than ULL, we can't check if the value matches,
+      --  so assume that no overflow is possible.
 
-      if Is_Modular_Integer_Type (GT) or else +Val = N then
+      if Is_Modular_Integer_Type (GT) or else Bitsize >= ULL'Size
+        or else UI_From_LLI (+Result) = N
+      then
          return Result;
 
       --  If it's not an unsigned type or this is the full width of ULL,

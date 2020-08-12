@@ -309,6 +309,13 @@ package GNATLLVM.Types is
      (ULL_Align (C * ULL (BPU)));
    --  Likewise, but ULL represents a number of bytes, not bits
 
+   function Uint_Align (U : Uint) return Nat;
+   --  Likewise but for a Uint
+
+   function Uint_Align_Bytes (U : Uint) return Nat is
+     (Uint_Align (U * BPU));
+   --  Likewise, but ULL represents a number of bytes, not bits
+
    function Is_Loadable_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
    --  Returns True if we should use a load/store instruction to copy values

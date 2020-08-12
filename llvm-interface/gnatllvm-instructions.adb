@@ -629,7 +629,7 @@ package body GNATLLVM.Instructions is
         --  If the values of the old and new constants are the same, there's
         --  no overflow.
 
-        or else Get_Const_Int_Value (V) = +Result
+        or else Is_Const_Int_Values_Equal (V, Result)
       then
          return False;
 

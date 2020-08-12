@@ -305,4 +305,9 @@ package GNATLLVM.Wrapper is
    function Get_Element_Offset (T : Type_T; Idx : unsigned) return ULL
      with Inline;
 
+   function Equals_Int (V : Value_T; Val : ULL) return Boolean
+     with Inline;
+
+   function Equal_Constants (V1, V2 : Value_T) return Boolean
+     with Inline;
 end GNATLLVM.Wrapper;

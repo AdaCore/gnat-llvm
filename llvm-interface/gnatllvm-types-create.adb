@@ -105,7 +105,6 @@ package body GNATLLVM.Types.Create is
    --------------------------
 
    function Create_Discrete_Type (TE : Entity_Id) return Type_T is
-      Max_Size : constant Uint      := +Get_Long_Long_Size;
       Size_TE  : constant Entity_Id :=
         (if Has_Biased_Representation (TE) then Full_Base_Type (TE) else TE);
       --  Normally, we want to use an integer representation for a type
@@ -135,7 +134,7 @@ package body GNATLLVM.Types.Create is
       end if;
 
       return
-        Int_Ty (if Size <= Max_Size then Size else Max_Size);
+        Int_Ty (if Size <= Max_Int_Size then Size else Max_Int_Size);
 
    end Create_Discrete_Type;
 

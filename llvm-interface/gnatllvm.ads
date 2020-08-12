@@ -239,6 +239,7 @@ package GNATLLVM is
    Byte_T             : Type_T;
    Max_Align          : Nat;
    Max_Valid_Align    : Nat;
+   Max_Int_Size       : Uint;
 
    --  GNAT LLVM switches
 

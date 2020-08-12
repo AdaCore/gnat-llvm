@@ -77,7 +77,9 @@ package body GNATLLVM.Compile is
 
       function Stand_Type (Size : Nat) return Entity_Id is
       begin
-         if Get_Long_Long_Size = Size then
+         if Get_Long_Long_Long_Size = Size then
+            return Standard_Long_Long_Long_Integer;
+         elsif Get_Long_Long_Size = Size then
             return Standard_Long_Long_Integer;
          elsif Get_Long_Size = Size then
             return Standard_Long_Integer;
@@ -130,12 +132,15 @@ package body GNATLLVM.Compile is
          LLVM_Info_Map (J) := Empty_LLVM_Info_Id;
       end loop;
 
-      --  Get single bit and single byte values and types and max alignment
+      --  Get single bit and single byte values and types, max alignmen
+      --  and maximum integer size.
 
-      BPU       := Get_Bits_Per_Unit;
-      Bit_T     := Int_Ty (Nat (1));
-      Byte_T    := Int_Ty (BPU);
-      Max_Align := Get_Maximum_Alignment * BPU;
+      BPU          := Get_Bits_Per_Unit;
+      Bit_T        := Int_Ty (Nat (1));
+      Byte_T       := Int_Ty (BPU);
+      Max_Align    := Get_Maximum_Alignment * BPU;
+      Max_Int_Size := (if   Enable_128bit_Types then +Get_Long_Long_Long_Size
+                       else +Get_Long_Long_Size);
 
       --  We want to be able to support overaligned values, but we still need
       --  to have a maximum possible alignment to start with.  The maximum

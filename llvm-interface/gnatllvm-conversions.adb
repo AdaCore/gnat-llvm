@@ -387,7 +387,8 @@ package body GNATLLVM.Conversions is
 
       --  We can unchecked convert floating point of the same width
       --  (the only way that UC is formally defined) with a "bitcast"
-      --  instruction.
+      --  instruction.  But we can't do this if either type is X86_Fp80
+      --  because the sizes aren't well-defined there.
 
       elsif Is_Unchecked
         and then ((Is_Floating_Point_Type (GT)
@@ -396,6 +397,8 @@ package body GNATLLVM.Conversions is
                              and then Is_Floating_Point_Type (In_GT)))
         and then (ULL'(Get_Type_Size (Type_Of (GT))) =
                     ULL'(Get_Type_Size (Type_Of (In_GT))))
+        and then Get_Type_Kind (GT) /= X86_Fp80typekind
+        and then Get_Type_Kind (In_GT) /= X86_Fp80typekind
       then
          Result := Bit_Cast (Get (Result, Data), GT);
 

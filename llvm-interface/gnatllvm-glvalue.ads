@@ -1058,10 +1058,17 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V) or else Is_A_Global_Variable (V), Inline;
    --  Add the DSOlocal attribute to a global (variable or function)
 
-   function Is_Const_Int_Value (V : GL_Value; Val : LLI) return Boolean is
-     (Is_A_Const_Int (V) and then not Overflowed (V) and then +V = Val)
+   function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
+     (Is_A_Const_Int (V) and then not Overflowed (V)
+        and then Equals_Int (+V, Val))
      with Pre => Present (V);
    --  Return True if V is a constant integer of value Val
+
+   function Is_Const_Int_Values_Equal (V1, V2 : GL_Value) return Boolean is
+     (Is_A_Const_Int (V1) and then Is_A_Const_Int (V2)
+        and then not Overflowed (V1) and then not Overflowed (V2)
+        and then Equal_Constants (+V1, +V2))
+     with Pre => Present (V1) and then Present (V2);
 
    function Set_Arith_Attrs (Inst : Value_T; V : GL_Value) return Value_T
      with Pre  => Present (Inst) and then Present (V),

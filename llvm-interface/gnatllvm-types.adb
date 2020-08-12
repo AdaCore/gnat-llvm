@@ -261,6 +261,26 @@ package body GNATLLVM.Types is
                    else ULL'Min (ULL (Max_Valid_Align), C and (not (C - 1)))));
    end ULL_Align;
 
+   ----------------
+   -- Uint_Align --
+   ----------------
+
+   function Uint_Align (U : Uint) return Nat is
+   begin
+      --  If this is a small positive integer, use the above function.
+      --  Otherwise, use the slow approach.
+
+      if UI_Is_In_Int_Range (U) and then U >= 0 then
+         return ULL_Align (ULL (+U));
+      else
+         return Align : Nat := Max_Valid_Align do
+            while U mod Align /= 0 loop
+               Align := Align / 2;
+            end loop;
+         end return;
+      end if;
+   end Uint_Align;
+
    ----------------------
    -- Is_Loadable_Type --
    ----------------------

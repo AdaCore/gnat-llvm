@@ -568,6 +568,30 @@ Pred_FP (LLVMContext *Context, Type *T, Value *Val)
 
 extern "C"
 bool
+Equals_Int (ConstantInt *v, uint64_t val)
+{
+  return v->equalsInt (val);
+}
+
+/* Return whether V1 and V2 have the same constant values, interpreted as
+   signed integers. If the sizes differ, we have to convert to the
+   widest size.  */
+
+extern "C"
+bool
+Equal_Constants (ConstantInt *v1, ConstantInt *v2)
+{
+  APInt i1 = v1->getValue (), i2 = v2->getValue ();
+
+  if (i1.getBitWidth () > i2.getBitWidth ())
+    i2 = i2.sext (i1.getBitWidth ());
+  else if (i2.getBitWidth () > i1.getBitWidth ())
+    i1 = i1.sext (i2.getBitWidth ());
+  return i1 == i2;
+}
+
+extern "C"
+bool
 Get_GEP_Constant_Offset (Value *GEP, DataLayout &dl, uint64_t *result)
 {
   auto Offset = APInt (dl.getTypeAllocSize(GEP->getType()) * 8, 0);

@@ -472,7 +472,6 @@ package body GNATLLVM.GLType is
       Needs_Bias  : constant Boolean      :=
         Is_Biased or else In_GTI.Kind = Biased;
       Needs_Max   : constant Boolean      := Max_Size or else In_GTI.Max_Size;
-      Max_Int_Sz  : constant Uint         := Uint_64;
       TE          : constant Entity_Id    := Full_Etype (GT);
       Prim_GT     : constant GL_Type      := Primitive_GL_Type (GT);
       Prim_Native : constant Boolean      := not Is_Nonnative_Type (Prim_GT);
@@ -624,7 +623,7 @@ package body GNATLLVM.GLType is
          --  make an alternate integer type.
 
          elsif Is_Discrete_Or_Fixed_Point_Type (GT)
-           and then Present (Size) and then Size <= Max_Int_Sz
+           and then Present (Size) and then Size <= Max_Int_Size
          then
             GTI.LLVM_Type := Int_Ty (Int_Sz);
             GTI.Kind      := Int_Alt;

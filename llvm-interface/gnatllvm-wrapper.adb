@@ -343,4 +343,26 @@ package body GNATLLVM.Wrapper is
       return ULL (Get_Element_Offset_C (Module_Data_Layout, T, Idx));
    end Get_Element_Offset;
 
+   ----------------
+   -- Equals_Int --
+   ----------------
+
+   function Equals_Int (V : Value_T; Val : ULL) return Boolean is
+      function Equals_Int_C (V : Value_T; Val : ULL) return Bool_T
+        with Import, Convention => C, External_Name => "Equals_Int";
+   begin
+      return (if Equals_Int_C (V, Val) = 0 then False else True);
+   end Equals_Int;
+
+   ----------------------
+   -- Equals_Constants --
+   ----------------------
+
+   function Equal_Constants (V1, V2 : Value_T) return Boolean is
+      function Equal_Constants_C (V1, V2 : Value_T) return Bool_T
+        with Import, Convention => C, External_Name => "Equal_Constants";
+   begin
+      return (if Equal_Constants_C (V1, V2) = 0 then False else True);
+   end Equal_Constants;
+
 end GNATLLVM.Wrapper;

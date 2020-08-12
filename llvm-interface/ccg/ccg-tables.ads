@@ -32,16 +32,16 @@ package CCG.Tables is
    procedure Initialize_Tables;
    --  Perform any needed initialization on tables.
 
-   function To_Str (S : String)        return Str
-     with Post => Present (To_Str'Result);
-   function To_Str (V : Value_T)       return Str
-     with Pre => Present (V), Post => Present (To_Str'Result);
-   function To_Str (T : Type_T)        return Str
-     with Pre => Present (T), Post => Present (To_Str'Result);
-   function To_Str (B : Basic_Block_T) return Str
-     with Pre => Present (B), Post => Present (To_Str'Result);
-   function To_Str_As_Data (V : Value_T)       return Str
-     with Pre => Present (V), Post => Present (To_Str_As_Data'Result);
+   function "+" (S : String)        return Str
+     with Post => Present ("+"'Result);
+   function "+" (V : Value_T)       return Str
+     with Pre => Present (V), Post => Present ("+"'Result);
+   function "+" (T : Type_T)        return Str
+     with Pre => Present (T), Post => Present ("+"'Result);
+   function "+" (B : Basic_Block_T) return Str
+     with Pre => Present (B), Post => Present ("+"'Result);
+   function To_Data (V : Value_T)       return Str
+     with Pre => Present (V), Post => Present (To_Data'Result);
    --  Return an internal representation of S, V, T, or B
 
    procedure Write_Str (S : Str; Eol : Boolean := False)

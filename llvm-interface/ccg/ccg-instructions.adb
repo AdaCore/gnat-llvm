@@ -91,14 +91,14 @@ package body CCG.Instructions is
 
          when Op_Load =>
             if Get_Is_Entry_Alloca (Op1) then
-               Assignment (V, To_Str_As_Data (Op1));
+               Assignment (V, To_Data (Op1));
             else
                Output_Stmt (V & " = *" & Op1);
             end if;
 
          when Op_Store =>
             if Get_Is_Entry_Alloca (Op2) then
-               Output_Stmt (To_Str_As_Data (Op2) & " = " & Op1);
+               Output_Stmt (To_Data (Op2) & " = " & Op1);
             else
                Output_Stmt ("*" & Op2 & " = *" & Op1);
             end if;

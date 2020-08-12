@@ -409,11 +409,11 @@ package body CCG.Tables is
       end if;
    end Undup_Str;
 
-   ------------
-   -- To_Str --
-   ------------
+   ---------
+   -- "+" --
+   ---------
 
-   function To_Str (S : String) return Str is
+   function "+" (S : String) return Str is
    begin
       --  We have two cases.  In the most common case, S is small enough that
       --  we only need one component.
@@ -450,51 +450,51 @@ package body CCG.Tables is
             return Undup_Str (S_Rec);
          end;
       end if;
-   end To_Str;
+   end "+";
 
-   ------------
-   -- To_Str --
-   ------------
+   ---------
+   -- "+" --
+   ---------
 
-   function To_Str (V : Value_T) return Str is
+   function "+" (V : Value_T) return Str is
       S_Rec : aliased constant Str_Record (1) := (1, (1 => (Value, 1, V)));
    begin
       Maybe_Write_Decl (V);
       return Undup_Str (S_Rec);
-   end To_Str;
+   end "+";
 
-   --------------------
-   -- To_Str_As_Data --
-   --------------------
+   -------------
+   -- To_Data --
+   -------------
 
-   function To_Str_As_Data (V : Value_T) return Str is
+   function To_Data (V : Value_T) return Str is
       S_Rec : aliased constant Str_Record (1) :=
         (1, (1 => (Data_Value, 1, V)));
    begin
       Maybe_Write_Decl (V);
       return Undup_Str (S_Rec);
-   end To_Str_As_Data;
+   end To_Data;
 
-   ------------
-   -- To_Str --
-   ------------
+   ---------
+   -- "+" --
+   ---------
 
-   function To_Str (T : Type_T) return Str is
+   function "+" (T : Type_T) return Str is
       S_Rec : aliased constant Str_Record (1) := (1, (1 => (Typ, 1, T)));
    begin
       Maybe_Write_Typedef (T);
       return Undup_Str (S_Rec);
-   end To_Str;
+   end "+";
 
-   ------------
-   -- To_Str --
-   ------------
+   ---------
+   -- "+" --
+   ---------
 
-   function To_Str (B : Basic_Block_T) return Str is
+   function "+" (B : Basic_Block_T) return Str is
       S_Rec : aliased constant Str_Record (1) := (1, (1 => (BB, 1, B)));
    begin
       return Undup_Str (S_Rec);
-   end To_Str;
+   end "+";
 
    ---------------
    -- Write_Str --
@@ -546,7 +546,7 @@ package body CCG.Tables is
       --  It is worth checking for a null string.
 
       if L'Length = 0 then
-         return To_Str (R);
+         return +R;
       elsif L'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (2) :=
@@ -557,7 +557,7 @@ package body CCG.Tables is
             return Undup_Str (S_Rec);
          end;
       else
-         return To_Str (L) & To_Str (R);
+         return +L & (+R);
       end if;
    end "&";
 
@@ -568,7 +568,7 @@ package body CCG.Tables is
    function "&" (L : String; R : Type_T) return Str is
    begin
       if L'Length = 0 then
-         return To_Str (R);
+         return +R;
       elsif L'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (2) :=
@@ -579,7 +579,7 @@ package body CCG.Tables is
             return Undup_Str (S_Rec);
          end;
       else
-         return To_Str (L) & To_Str (R);
+         return +L & (+R);
       end if;
    end "&";
 
@@ -590,7 +590,7 @@ package body CCG.Tables is
    function "&" (L : String; R : Basic_Block_T) return Str is
    begin
       if L'Length = 0 then
-         return To_Str (R);
+         return +R;
       elsif L'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (2) :=
@@ -600,7 +600,7 @@ package body CCG.Tables is
             return Undup_Str (S_Rec);
          end;
       else
-         return To_Str (L) & To_Str (R);
+         return +L & (+R);
       end if;
    end "&";
 
@@ -622,7 +622,7 @@ package body CCG.Tables is
             return Undup_Str (S_Rec);
          end;
       else
-         return To_Str (L) & R;
+         return +L & R;
       end if;
    end "&";
 
@@ -633,7 +633,7 @@ package body CCG.Tables is
    function "&" (L : Value_T; R : String) return Str is
    begin
       if R'Length = 0 then
-         return To_Str (L);
+         return +L;
       elsif R'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (2) :=
@@ -644,7 +644,7 @@ package body CCG.Tables is
             return Undup_Str (S_Rec);
          end;
       else
-         return To_Str (L) & To_Str (R);
+         return +L & (+R);
       end if;
    end "&";
 
@@ -655,7 +655,7 @@ package body CCG.Tables is
    function "&" (L : Type_T; R : String) return Str is
    begin
       if R'Length = 0 then
-         return To_Str (L);
+         return +L;
       elsif R'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (2) :=
@@ -666,7 +666,7 @@ package body CCG.Tables is
             return Undup_Str (S_Rec);
          end;
       else
-         return To_Str (L) & To_Str (R);
+         return +L & (+R);
       end if;
    end "&";
 
@@ -677,7 +677,7 @@ package body CCG.Tables is
    function "&" (L : Basic_Block_T; R : String) return Str is
    begin
       if R'Length = 0 then
-         return To_Str (L);
+         return +L;
       elsif R'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (2) :=
@@ -687,7 +687,7 @@ package body CCG.Tables is
             return Undup_Str (S_Rec);
          end;
       else
-         return To_Str (L) & To_Str (R);
+         return +L & (+R);
       end if;
    end "&";
 
@@ -709,7 +709,7 @@ package body CCG.Tables is
             return Undup_Str (S_Rec);
          end;
       else
-         return L & To_Str (R);
+         return L & (+R);
       end if;
    end "&";
 

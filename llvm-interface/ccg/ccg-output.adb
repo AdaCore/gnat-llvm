@@ -162,7 +162,7 @@ package body CCG.Output is
 
          begin
             Set_Is_Decl_Output (V);
-            Output_Decl (Typ & " " & To_Str_As_Data (V));
+            Output_Decl (Typ & " " & To_Data (V));
          end;
       end if;
 

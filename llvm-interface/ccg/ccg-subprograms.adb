@@ -98,7 +98,7 @@ package body CCG.Subprograms is
 
    procedure Output_Decl (S : String) is
    begin
-      Output_Decl (To_Str (S));
+      Output_Decl (+S);
    end Output_Decl;
 
    -----------------
@@ -122,7 +122,7 @@ package body CCG.Subprograms is
 
    procedure Output_Stmt (S : String) is
    begin
-      Output_Stmt (To_Str (S));
+      Output_Stmt (+S);
    end Output_Stmt;
 
    --------------------

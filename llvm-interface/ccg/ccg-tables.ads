@@ -176,9 +176,9 @@ private
    --  component of the concatenation is limited to a small size.  In the
    --  rare case where we need a larger string, we break it into segments.
 
-   Str_Max : constant := 6;
+   Str_Max : constant := 10;
    subtype Str_Length is Integer range 0 .. Str_Max;
-   --  The longest string we'll use often is "struct ".  We allow empty
+   --  The longest string we'll use often is " (unsigned) ".  We allow empty
    --  strings, but optimize operations to not create them except when
    --  necessary.
 

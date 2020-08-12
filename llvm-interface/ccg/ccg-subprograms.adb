@@ -80,12 +80,12 @@ package body CCG.Subprograms is
    -- Output_Decl --
    ----------------
 
-   procedure Output_Decl (S : Str) is
+   procedure Output_Decl (S : Str; Semicolon : Boolean := True) is
       SD : Subprogram_Data renames
         Subprogram_Table.Table (Subprogram_Table.Last);
 
    begin
-      Decl_Table.Append (S);
+      Decl_Table.Append ((if Semicolon then S & ";" else S));
       SD.Last_Decl := Decl_Table.Last;
       if No (SD.First_Decl) then
          SD.First_Decl := Decl_Table.Last;
@@ -96,20 +96,20 @@ package body CCG.Subprograms is
    -- Output_Decl --
    ----------------
 
-   procedure Output_Decl (S : String) is
+   procedure Output_Decl (S : String; Semicolon : Boolean := True) is
    begin
-      Output_Decl (+S);
+      Output_Decl (+S, Semicolon);
    end Output_Decl;
 
    -----------------
    -- Output_Stmt --
    ----------------
 
-   procedure Output_Stmt (S : Str) is
+   procedure Output_Stmt (S : Str; Semicolon : Boolean := True) is
       SD : Subprogram_Data renames
         Subprogram_Table.Table (Subprogram_Table.Last);
    begin
-      Stmt_Table.Append (S);
+      Stmt_Table.Append ((if Semicolon then S & ";" else S));
       SD.Last_Stmt := Stmt_Table.Last;
       if No (SD.First_Stmt) then
          SD.First_Stmt := Stmt_Table.Last;
@@ -120,9 +120,9 @@ package body CCG.Subprograms is
    -- Output_Stmt --
    ----------------
 
-   procedure Output_Stmt (S : String) is
+   procedure Output_Stmt (S : String; Semicolon : Boolean := True) is
    begin
-      Output_Stmt (+S);
+      Output_Stmt (+S, Semicolon);
    end Output_Stmt;
 
    --------------------
@@ -200,6 +200,7 @@ package body CCG.Subprograms is
 
    procedure Output_BB (BB : Basic_Block_T) is
       Instruction : Value_T          := Get_First_Instruction (BB);
+      Terminator  : constant Value_T := Get_Basic_Block_Terminator (BB);
 
    begin
       --  If we already processed this basic block, mark that we did
@@ -208,8 +209,14 @@ package body CCG.Subprograms is
          return;
       end if;
 
-      --  Otherwise, mark that we're outputing it and process each
-      --  instruction in the block.
+      --  Otherwise, if this isn't the entry block, output a label for it
+
+      if not Get_Is_Entry (BB) then
+         Output_Stmt (BB & ":", Semicolon => False);
+      end if;
+
+      --  Mark that we're outputing this block and process each
+      --  instruction it.
 
       Set_Was_Output (BB);
       while Present (Instruction) loop
@@ -219,7 +226,7 @@ package body CCG.Subprograms is
 
          begin
             for J in Ops'Range loop
-               Ops (J) := Get_Operand (Instruction, J - 1);
+               Ops (J) := Get_Operand (Instruction, unsigned (J - 1));
             end loop;
 
             Output_Instruction (Instruction, Ops);
@@ -228,7 +235,24 @@ package body CCG.Subprograms is
          Instruction := Get_Next_Instruction (Instruction);
       end loop;
 
-      --  ?? Eventually, process basic blocks referenced by terminator
+      --  Now process any block referenced by the terminator
+
+      case Get_Instruction_Opcode (Terminator) is
+
+         when Op_Ret =>
+            null;
+
+         when Op_Br =>
+            if Get_Num_Operands (Terminator) = 1 then
+               Output_BB (Value_As_Basic_Block (Get_Operand (Terminator, 0)));
+            else
+               Output_BB (Value_As_Basic_Block (Get_Operand (Terminator, 2)));
+               Output_BB (Value_As_Basic_Block (Get_Operand (Terminator, 1)));
+            end if;
+
+         when others =>
+            Output_Stmt (+"<unsupported terminator>");
+      end case;
 
    end Output_BB;
 
@@ -278,8 +302,7 @@ package body CCG.Subprograms is
 
             if Present (SD.First_Stmt) then
                for Sidx in SD.First_Stmt .. SD.Last_Stmt loop
-                  Write_Str ("    " & Stmt_Table.Table (Sidx) & ";",
-                             Eol => True);
+                  Write_Str ("    " & Stmt_Table.Table (Sidx), Eol => True);
                end loop;
             end if;
 

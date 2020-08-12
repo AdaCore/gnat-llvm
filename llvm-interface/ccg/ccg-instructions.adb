@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Interfaces.C; use Interfaces.C;
+
 with LLVM.Core; use LLVM.Core;
 
 with CCG.Tables;      use CCG.Tables;
@@ -29,6 +31,12 @@ package body CCG.Instructions is
    procedure Assignment (LHS : Value_T; RHS : Str)
      with Pre => Present (LHS) and then Present (RHS);
    --  Take action to assign LHS the value RHS
+
+   function Cmp_Instruction (V, Op1, Op2 : Value_T) return Str
+     with Pre  => Get_Instruction_Opcode (V) in Op_I_Cmp | Op_F_Cmp
+                  and then Present (Op1) and then Present (Op2),
+          Post => Present (Cmp_Instruction'Result);
+   --  Return the value corresponding to a comparison instruction
 
    --------------
    -- Num_Uses --
@@ -45,6 +53,69 @@ package body CCG.Instructions is
          end loop;
       end return;
    end Num_Uses;
+
+   ---------------------
+   -- Cmp_Instruction --
+   ---------------------
+
+   function Cmp_Instruction (V, Op1, Op2 : Value_T) return Str is
+
+   begin
+      if Get_Instruction_Opcode (V) = Op_I_Cmp then
+         declare
+            type I_Info is record
+               Is_Unsigned : Boolean;
+               Length      : Integer;
+               Op          : String (1 .. 2);
+            end record;
+            type I_Info_Array is array (Int_Predicate_T range <>) of I_Info;
+            Int_Info : constant I_Info_Array :=
+              (Int_EQ  => (False, 2, "=="),
+               Int_NE  => (False, 2, "!="),
+               Int_UGT => (True,  1, "> "),
+               Int_UGE => (True,  2, ">="),
+               Int_ULT => (True,  1, "< "),
+               Int_ULE => (True,  2, "<="),
+               Int_SGT => (False, 1, "> "),
+               Int_SGE => (False, 2, ">="),
+               Int_SLT => (False, 1, "< "),
+               Int_SLE => (False, 2, "<="));
+            LHS      : Str := +Op1;
+            RHS      : Str := +Op2;
+            Info     : constant I_Info := Int_Info (Get_I_Cmp_Predicate (V));
+
+         begin
+            if Info.Is_Unsigned then
+               LHS := " (unsigned) " & LHS;
+               RHS := " (unsigned) " & RHS;
+            end if;
+
+            return LHS & " " & Info.Op (1 .. Info.Length) & " " & RHS;
+         end;
+
+      elsif Get_Instruction_Opcode (V) = Op_F_Cmp then
+
+         case Get_F_Cmp_Predicate (V) is
+            when Real_OEQ | Real_UEQ =>
+               return Op1 & " == " & Op2;
+            when Real_OGT | Real_UGT =>
+               return Op1 & " > " & Op2;
+            when Real_OGE | Real_UGE =>
+               return Op1 & " >= " & Op2;
+            when Real_OLT | Real_ULT =>
+               return Op1 & " < " & Op2;
+            when Real_OLE | Real_ULE =>
+               return Op1 & " > " & Op2;
+            when Real_ONE | Real_UNE =>
+               return Op1 & " != " & Op2;
+            when others =>
+               null;
+         end case;
+      end if;
+
+      return +"<unsupported comparison>";
+
+   end Cmp_Instruction;
 
    ----------------
    -- Assignment --
@@ -72,6 +143,8 @@ package body CCG.Instructions is
         (if Ops'Length >= 1 then Ops (1) else No_Value_T);
       Op2 : constant Value_T :=
         (if Ops'Length >= 2 then Ops (2) else No_Value_T);
+      Op3 : constant Value_T :=
+        (if Ops'Length >= 3 then Ops (3) else No_Value_T);
    begin
       case Get_Instruction_Opcode (V) is
 
@@ -101,6 +174,18 @@ package body CCG.Instructions is
                Output_Stmt (To_Data (Op2) & " = " & Op1);
             else
                Output_Stmt ("*" & Op2 & " = *" & Op1);
+            end if;
+
+         when Op_I_Cmp | Op_F_Cmp =>
+            Assignment (V, Cmp_Instruction (V, Op1, Op2));
+
+         when Op_Br =>
+            if Ops'Length = 1 then
+               Output_Stmt ("goto " & Value_As_Basic_Block (Op1));
+            else
+               Output_Stmt ("if (" & Op1 & " goto " &
+                              Value_As_Basic_Block (Op3) &
+                              "; else goto " & Value_As_Basic_Block (Op2));
             end if;
 
          when Op_Add =>

@@ -33,14 +33,14 @@ package CCG.Subprograms is
    --  all typedefs and globals are written first.  These procedures manage
    --  those lists.
 
-   procedure Output_Decl (S : Str)
+   procedure Output_Decl (S : Str; Semicolon : Boolean := True)
      with Pre => Present (S);
-   procedure Output_Decl (S : String);
+   procedure Output_Decl (S : String; Semicolon : Boolean := True);
    --  Save S as a decl for the current subprogram
 
-   procedure Output_Stmt (S : Str)
+   procedure Output_Stmt (S : Str; Semicolon : Boolean := True)
      with Pre => Present (S);
-   procedure Output_Stmt (S : String);
+   procedure Output_Stmt (S : String; Semicolon : Boolean := True);
    --  Save S as a statement for the current subprogram
 
    procedure New_Subprogram (V : Value_T)

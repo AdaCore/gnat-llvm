@@ -37,6 +37,13 @@ package body CCG.Instructions is
           Post => Present (Cmp_Instruction'Result);
    --  Return the value corresponding to a comparison instruction
 
+   function Maybe_Unsigned (V : Value_T; Is_Unsigned : Boolean) return Str is
+     ((if Is_Unsigned then TP (" (unsigned) %1", V) else +V))
+     with Pre => Present (V), Post => Present (Maybe_Unsigned'Result);
+   --  Return V if it's not unsigned and return a cast to unsigned if it is.
+   --  ??? Note that we assume here that "unsigned" is the right type, but
+   --  what we actually want is the unsigned version of Type_Of (V).
+
    --------
    -- TP --
    --------
@@ -154,16 +161,13 @@ package body CCG.Instructions is
                Int_SGE => (False, 2, ">="),
                Int_SLT => (False, 1, "< "),
                Int_SLE => (False, 2, "<="));
-            LHS      : Str := +Op1;
-            RHS      : Str := +Op2;
             Info     : constant I_Info := Int_Info (Get_I_Cmp_Predicate (V));
+            LHS      : constant Str    :=
+              Maybe_Unsigned (Op1, Info.Is_Unsigned);
+            RHS      : constant Str    :=
+              Maybe_Unsigned (Op2, Info.Is_Unsigned);
 
          begin
-            if Info.Is_Unsigned then
-               LHS := " (unsigned) " & LHS;
-               RHS := " (unsigned) " & RHS;
-            end if;
-
             return LHS & " " & Info.Op (1 .. Info.Length) & " " & RHS;
          end;
 
@@ -213,14 +217,15 @@ package body CCG.Instructions is
    -------------------------
 
    procedure Output_Instruction (V : Value_T; Ops : Value_Array) is
-      Op1 : constant Value_T :=
+      Op1 : constant Value_T  :=
         (if Ops'Length >= 1 then Ops (1) else No_Value_T);
-      Op2 : constant Value_T :=
+      Op2 : constant Value_T  :=
         (if Ops'Length >= 2 then Ops (2) else No_Value_T);
-      Op3 : constant Value_T :=
+      Op3 : constant Value_T  :=
         (if Ops'Length >= 3 then Ops (3) else No_Value_T);
+      Opc : constant Opcode_T := Get_Instruction_Opcode (V);
    begin
-      case Get_Instruction_Opcode (V) is
+      case Opc is
 
          when Op_Ret =>
             if Present (Op1) then
@@ -265,6 +270,10 @@ package body CCG.Instructions is
 
          when Op_Mul =>
             Assignment (V, TP ("#1 * #2", Op1, Op2));
+
+         when Op_S_Div | Op_U_Div =>
+            Assignment (V, Maybe_Unsigned (Op1, Opc = Op_U_Div) & " / " &
+                          Maybe_Unsigned (Op2, Opc = Op_U_Div));
 
          when Op_F_Add =>
             Assignment (V, TP ("#1 + #2", Op1, Op2));

@@ -934,7 +934,8 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Str; R : Str) return Str is
-      S_Rec : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
+      S_Rec : aliased Str_Record ((if   Present (L) then L.Length + R.Length
+                                   else 0));
 
    begin
       if No (L) then

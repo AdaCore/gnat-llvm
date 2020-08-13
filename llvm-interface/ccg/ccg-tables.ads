@@ -25,6 +25,7 @@ package CCG.Tables is
    --  We use an internal representation of strings, discussed below.
 
    type Str is private;
+   No_Str : constant Str;
 
    function Present (S : Str) return Boolean;
    function No      (S : Str) return Boolean;
@@ -98,18 +99,18 @@ package CCG.Tables is
      with Pre  => Present (L) and then Present (R),
           Post => Present ("&"'Result);
    function "&" (L : Str;            R : String)        return Str
-     with Pre => Present (L), Post => Present ("&"'Result);
+     with Post => Present ("&"'Result);
    function "&" (L : Str;            R : Value_T)       return Str
-     with Pre  => Present (L) and then Present (R),
+     with Pre  => Present (R),
           Post => Present ("&"'Result);
    function "&" (L : Str;            R : Type_T)        return Str
-     with Pre  => Present (L) and then Present (R),
+     with Pre  => Present (R),
           Post => Present ("&"'Result);
    function "&" (L : Str;            R : Basic_Block_T) return Str
-     with Pre  => Present (L) and then Present (R),
+     with Pre  => Present (R),
           Post => Present ("&"'Result);
    function "&" (L : Str;            R : Str)           return Str
-     with Pre  => Present (L) and then Present (R),
+     with Pre  => Present (R),
           Post => Present ("&"'Result);
 
    --  Get and set attributes we record of LLVM values, types, and
@@ -230,8 +231,10 @@ private
    type Str is access constant Str_Record;
    --  This is what we pass around for strings
 
-   function Present (S : Str) return Boolean is (S /= null);
-   function No      (S : Str) return Boolean is (S = null);
+   No_Str : constant Str := null;
+
+   function Present (S : Str) return Boolean is (S /= No_Str);
+   function No      (S : Str) return Boolean is (S =  No_Str);
 
    function "=" (SL, SR : Str_Record) return Boolean;
    function "=" (SL, SR : Str)        return Boolean is

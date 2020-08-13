@@ -291,8 +291,7 @@ package body CCG.Subprograms is
 
             if Present (SD.First_Decl) then
                for Didx in SD.First_Decl .. SD.Last_Decl loop
-                  Write_Str ("    " & Decl_Table.Table (Didx) & ";",
-                             Eol => True);
+                  Write_Str ("    " & Decl_Table.Table (Didx), Eol => True);
                end loop;
 
                Write_Eol;

@@ -19,7 +19,6 @@ with Interfaces.C; use Interfaces.C;
 
 with LLVM.Core; use LLVM.Core;
 
-with CCG.Tables;      use CCG.Tables;
 with CCG.Subprograms; use CCG.Subprograms;
 
 package body CCG.Instructions is
@@ -37,6 +36,81 @@ package body CCG.Instructions is
                   and then Present (Op1) and then Present (Op2),
           Post => Present (Cmp_Instruction'Result);
    --  Return the value corresponding to a comparison instruction
+
+   --------
+   -- TP --
+   --------
+
+   function TP
+     (S : String;
+      Op1 : Value_T;
+      Op2 : Value_T := No_Value_T;
+      Op3 : Value_T := No_Value_T) return Str
+   is
+      Start     : Integer := S'First;
+      Result    : Str     := No_Str;
+      Mark_Seen : Boolean := False;
+      B_Seen    : Boolean := False;
+      D_Seen    : Boolean := False;
+      Op        : Value_T;
+      Last      : Integer;
+
+   begin
+      for J in S'Range loop
+
+         --  If we've seen '#', look for 'B' or 'D'
+
+         if Mark_Seen then
+            if S (J) = 'B' then
+               B_Seen := True;
+            elsif S (J) = 'D' then
+               D_Seen := True;
+
+            --  If neither, then this is a number, representing which operand
+            --  to output, possibly as modified by 'B' or 'D'.
+
+            else
+               Op := (case S (J) is when '1' => Op1, when '2' => Op2,
+                                    when others => Op3);
+
+               --  The end of any string to output is before our mark, which
+               --  may be, e.g., #1 or #B2.
+
+               Last := J - 2 - (if B_Seen or D_Seen then 1 else 0);
+               if Start < Last then
+                  Result := Result & S (Start .. Last);
+               end if;
+
+               --  Output the (possibly modified) operand and reset for the
+               --  next string and/or mark.
+
+               if B_Seen then
+                  Result := Result & Value_As_Basic_Block (Op);
+               elsif D_Seen then
+                  Result := Result & To_Data (Op);
+               else
+                  Result := Result & Op;
+               end if;
+
+               B_Seen    := False;
+               D_Seen    := False;
+               Mark_Seen := False;
+               Start     := J + 1;
+            end if;
+
+         elsif S (J) = '#' then
+            Mark_Seen := True;
+         end if;
+      end loop;
+
+      --  See if we have a final string to output and output it if so
+
+      if Start < S'Last then
+         Result := Result & S (Start .. S'Last);
+      end if;
+
+      return Result;
+   end TP;
 
    --------------
    -- Num_Uses --
@@ -97,17 +171,17 @@ package body CCG.Instructions is
 
          case Get_F_Cmp_Predicate (V) is
             when Real_OEQ | Real_UEQ =>
-               return Op1 & " == " & Op2;
+               return TP ("#1 == #2", Op1, Op2);
             when Real_OGT | Real_UGT =>
-               return Op1 & " > " & Op2;
+               return TP ("#1 > #2", Op1, Op2);
             when Real_OGE | Real_UGE =>
-               return Op1 & " >= " & Op2;
+               return TP ("#1 >= #2", Op1, Op2);
             when Real_OLT | Real_ULT =>
-               return Op1 & " < " & Op2;
+               return TP ("#1 < #2", Op1, Op2);
             when Real_OLE | Real_ULE =>
-               return Op1 & " > " & Op2;
+               return TP ("#1 <= #2", Op1, Op2);
             when Real_ONE | Real_UNE =>
-               return Op1 & " != " & Op2;
+               return TP ("#1 != #2", Op1, Op2);
             when others =>
                null;
          end case;
@@ -163,60 +237,55 @@ package body CCG.Instructions is
             end if;
 
          when Op_Load =>
-            if Get_Is_Entry_Alloca (Op1) then
-               Assignment (V, To_Data (Op1));
-            else
-               Output_Stmt (V & " = *" & Op1);
-            end if;
+            Assignment
+              (V,
+               TP ((if Get_Is_Entry_Alloca (Op1) then "#D1" else "*#1"), Op1));
 
          when Op_Store =>
-            if Get_Is_Entry_Alloca (Op2) then
-               Output_Stmt (To_Data (Op2) & " = " & Op1);
-            else
-               Output_Stmt ("*" & Op2 & " = *" & Op1);
-            end if;
+            Output_Stmt (TP ((if   Get_Is_Entry_Alloca (Op2) then "#D2 = #1"
+                             else "*#2 = #1"),
+                             Op1, Op2));
 
          when Op_I_Cmp | Op_F_Cmp =>
             Assignment (V, Cmp_Instruction (V, Op1, Op2));
 
          when Op_Br =>
             if Ops'Length = 1 then
-               Output_Stmt ("goto " & Value_As_Basic_Block (Op1));
+               Output_Stmt (TP ("goto #B1", Op1));
             else
-               Output_Stmt ("if (" & Op1 & " goto " &
-                              Value_As_Basic_Block (Op3) &
-                              "; else goto " & Value_As_Basic_Block (Op2));
+               Output_Stmt (TP ("if (#1) goto #B3; else goto #B2",
+                               Op1, Op2, Op3));
             end if;
 
          when Op_Add =>
-            Assignment (V, Op1 & " + " & Op2);
+            Assignment (V, TP ("#1 + #2", Op1, Op2));
 
          when Op_Sub =>
-            Assignment (V, Op1 & " - " & Op2);
+            Assignment (V, TP ("#1 - #2", Op1, Op2));
 
          when Op_Mul =>
-            Assignment (V, Op1 & " * " & Op2);
+            Assignment (V, TP ("#1 * #2", Op1, Op2));
 
          when Op_F_Add =>
-            Assignment (V, Op1 & " + " & Op2);
+            Assignment (V, TP ("#1 + #2", Op1, Op2));
 
          when Op_F_Sub =>
-            Assignment (V, Op1 & " - " & Op2);
+            Assignment (V, TP ("#1 - #2", Op1, Op2));
 
          when Op_F_Mul =>
-            Assignment (V, Op1 & " * " & Op2);
+            Assignment (V, TP ("#1 * #2", Op1, Op2));
 
          when Op_F_Div =>
-            Assignment (V, Op1 & " / " & Op2);
+            Assignment (V, TP ("#1 / #2", Op1, Op2));
 
          when Op_And =>
-            Assignment (V, Op1 & " & " & Op2);
+            Assignment (V, TP ("#1 & #2", Op1, Op2));
 
          when Op_Or =>
-            Assignment (V, Op1 & " | " & Op2);
+            Assignment (V, TP ("#1 | #2", Op1, Op2));
 
          when Op_F_Neg =>
-            Assignment (V, " -" & Op1);
+            Assignment (V, TP (" -#1", Op1));
 
          when others =>
             Output_Stmt ("<unsupported instruction>");

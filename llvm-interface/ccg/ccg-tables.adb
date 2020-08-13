@@ -697,7 +697,9 @@ package body CCG.Tables is
 
    function "&" (L : Str; R : String) return Str is
    begin
-      if R'Length = 0 then
+      if No (L) then
+         return +R;
+      elsif R'Length = 0 then
          return L;
       elsif R'Length <= Str_Max then
          declare
@@ -879,9 +881,13 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Str; R : Value_T) return Str is
-      S_Rec : aliased Str_Record (L.Length + 1);
+      S_Rec : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
 
    begin
+      if No (L) then
+         return +R;
+      end if;
+
       Maybe_Write_Decl (R);
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1) := (Value, 1, R);
@@ -893,9 +899,13 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Str; R : Type_T) return Str is
-      S_Rec : aliased Str_Record (L.Length + 1);
+      S_Rec : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
 
    begin
+      if No (L) then
+         return +R;
+      end if;
+
       Maybe_Write_Typedef (R);
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1) := (Typ, 1, R);
@@ -907,9 +917,13 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Str; R : Basic_Block_T) return Str is
-      S_Rec : aliased Str_Record (L.Length + 1);
+      S_Rec : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
 
    begin
+      if No (L) then
+         return +R;
+      end if;
+
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1) := (BB, 1, R);
       return Undup_Str (S_Rec);
@@ -920,9 +934,13 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Str; R : Str) return Str is
-      S_Rec : aliased Str_Record (L.Length + R.Length);
+      S_Rec : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
 
    begin
+      if No (L) then
+         return R;
+      end if;
+
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1 .. L.Length + R.Length) := R.Comps;
       return Undup_Str (S_Rec);

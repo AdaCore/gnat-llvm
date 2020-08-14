@@ -142,7 +142,9 @@ package body CCG.Subprograms is
    -- Function_Proto --
    --------------------
 
-   function Function_Proto (V : Value_T) return Str is
+   function Function_Proto
+     (V : Value_T; Extern : Boolean := False) return Str
+   is
       Num_Params : constant Nat    := Count_Params (V);
       Fn_Typ     : constant Type_T := Get_Element_Type (Type_Of (V));
       Ret_Typ    : constant Type_T := Get_Return_Type (Fn_Typ);
@@ -157,8 +159,12 @@ package body CCG.Subprograms is
                Param : constant Value_T := Get_Param (V, J);
 
             begin
-               Result := Result & (if J = 0 then "" else ", ") &
-                 Type_Of (Param) & " " & Param;
+               Result :=
+                 Result & (if J = 0 then "" else ", ") & Type_Of (Param);
+
+               if not Extern then
+                  Result := Result & " " & Param;
+               end if;
             end;
          end loop;
       end if;
@@ -261,12 +267,27 @@ package body CCG.Subprograms is
    -------------------------------
 
    procedure Generate_C_For_Subprogram (V : Value_T) is
-      Entry_BB : constant Basic_Block_T := Get_Entry_Basic_Block (V);
-
    begin
-      New_Subprogram (V);
-      Set_Is_Entry (Entry_BB);
-      Output_BB (Entry_BB);
+      --  If this fucntion has no basic blocks, it must be an extern, so
+      --  write out the declaration.
+
+      if No (Get_First_Basic_Block (V)) then
+         Write_Str ("extern " & Function_Proto (V, Extern => True) & ";",
+                    Eol => True);
+      else
+         --  Otherwise, convert blocks starting with the entry block.
+         --  The entry block is the first one, but we don't want to rely
+         --  on that here.
+
+         declare
+            Entry_BB : constant Basic_Block_T := Get_Entry_Basic_Block (V);
+
+         begin
+            New_Subprogram (V);
+            Set_Is_Entry (Entry_BB);
+            Output_BB (Entry_BB);
+         end;
+      end if;
 
    end Generate_C_For_Subprogram;
 

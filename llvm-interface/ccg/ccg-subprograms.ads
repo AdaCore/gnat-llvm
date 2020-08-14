@@ -54,10 +54,11 @@ package CCG.Subprograms is
      with Pre => Is_A_Function (V);
    --  Generate the C statements and decls for V, a function
 
-   function Function_Proto (V : Value_T) return Str
+   function Function_Proto (V : Value_T; Extern : Boolean := False) return Str
      with Pre  => Is_A_Function (V),
           Post => Present (Function_Proto'Result);
-   --  Return the prototype for function V
+   --  Return the prototype for function V. Extern is True if we're writing
+   --  a declaration of the function (meaning we don't have parameter names).
 
    function Function_Proto (T : Type_T; S : Str) return Str
      with Pre  => Get_Type_Kind (T) = Function_Type_Kind

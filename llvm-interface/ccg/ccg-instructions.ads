@@ -26,12 +26,14 @@ package CCG.Instructions is
      (S : String;
       Op1 : Value_T;
       Op2 : Value_T := No_Value_T;
-      Op3 : Value_T := No_Value_T) return Str
+      Op3 : Value_T := No_Value_T;
+      T   : Type_T  := No_Type_T) return Str
      with Pre => Present (Op1), Post => Present (TP'Result);
    --  This provides a simple template facility for insertion of operands.
    --  Every character up to '#' in S is placed in Str.  '#' is followed
-   --  optionally by an 'B' or 'D' and then by a number.  The operand of
-   --  that number is placed in Str.  If 'B' is present, the operand is
+   --  optionally by an 'B' or 'D' and then by a number or 'T'.  The
+   --  operand of that number (or the value of T, if 'T' was given) is
+   --  inserted into Str at that point.  If 'B' is present, the operand is
    --  interpreted as a basic block.  If 'D' is present, then we want the
    --  data form of the operand.
 

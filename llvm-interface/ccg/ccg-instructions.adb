@@ -37,12 +37,13 @@ package body CCG.Instructions is
           Post => Present (Cmp_Instruction'Result);
    --  Return the value corresponding to a comparison instruction
 
-   function Maybe_Unsigned (V : Value_T; Is_Unsigned : Boolean) return Str is
-     ((if Is_Unsigned then TP (" (unsigned) %1", V) else +V))
+   function Maybe_Unsigned
+     (V : Value_T; Is_Unsigned : Boolean := True) return Str
+   is
+     ((if   Is_Unsigned then TP (" (unsigned #T) #1", V, T => Type_Of (V))
+       else +V))
      with Pre => Present (V), Post => Present (Maybe_Unsigned'Result);
    --  Return V if it's not unsigned and return a cast to unsigned if it is.
-   --  ??? Note that we assume here that "unsigned" is the right type, but
-   --  what we actually want is the unsigned version of Type_Of (V).
 
    --------
    -- TP --
@@ -52,7 +53,8 @@ package body CCG.Instructions is
      (S : String;
       Op1 : Value_T;
       Op2 : Value_T := No_Value_T;
-      Op3 : Value_T := No_Value_T) return Str
+      Op3 : Value_T := No_Value_T;
+      T   : Type_T  := No_Type_T) return Str
    is
       Start     : Integer := S'First;
       Result    : Str     := No_Str;
@@ -84,7 +86,7 @@ package body CCG.Instructions is
                --  may be, e.g., #1 or #B2.
 
                Last := J - 2 - (if B_Seen or D_Seen then 1 else 0);
-               if Start < Last then
+               if Start <= Last then
                   Result := Result & S (Start .. Last);
                end if;
 
@@ -95,6 +97,8 @@ package body CCG.Instructions is
                   Result := Result & Value_As_Basic_Block (Op);
                elsif D_Seen then
                   Result := Result & To_Data (Op);
+               elsif S (J) = 'T' then
+                  Result := Result & T;
                else
                   Result := Result & Op;
                end if;
@@ -248,7 +252,7 @@ package body CCG.Instructions is
 
          when Op_Store =>
             Output_Stmt (TP ((if   Get_Is_Entry_Alloca (Op2) then "#D2 = #1"
-                             else "*#2 = #1"),
+                              else "*#2 = #1"),
                              Op1, Op2));
 
          when Op_I_Cmp | Op_F_Cmp =>
@@ -275,6 +279,17 @@ package body CCG.Instructions is
             Assignment (V, Maybe_Unsigned (Op1, Opc = Op_U_Div) & " / " &
                           Maybe_Unsigned (Op2, Opc = Op_U_Div));
 
+         when Op_S_Rem | Op_U_Rem =>
+            Assignment (V, Maybe_Unsigned (Op1, Opc = Op_U_Rem) & " % " &
+                          Maybe_Unsigned (Op2, Opc = Op_U_Rem));
+
+         when Op_Shl =>
+            Assignment (V, TP ("#1 << #2", Op1, Op2));
+
+         when Op_L_Shr | Op_A_Shr =>
+            Assignment
+              (V, Maybe_Unsigned (Op1, Opc = Op_L_Shr) & " >> " & Op2);
+
          when Op_F_Add =>
             Assignment (V, TP ("#1 + #2", Op1, Op2));
 
@@ -293,8 +308,17 @@ package body CCG.Instructions is
          when Op_Or =>
             Assignment (V, TP ("#1 | #2", Op1, Op2));
 
+         when Op_Xor =>
+            Assignment (V, TP ("#1 ^ #2", Op1, Op2));
+
          when Op_F_Neg =>
             Assignment (V, TP (" -#1", Op1));
+
+         when Op_Trunc | Op_SI_To_FP | Op_FP_Trunc | Op_FP_Ext | Op_S_Ext =>
+            Assignment (V, TP ("(#T) #1", Op1, T => Type_Of (V)));
+
+         when Op_UI_To_FP | Op_Z_Ext =>
+            Assignment (V, "(" & Type_Of (V) & ") " & Maybe_Unsigned (Op1));
 
          when others =>
             Output_Stmt ("<unsupported instruction>");

@@ -37,6 +37,10 @@ package body CCG.Instructions is
           Post => Present (Cmp_Instruction'Result);
    --  Return the value corresponding to a comparison instruction
 
+   procedure Call_Instruction (V : Value_T; Ops : Value_Array)
+     with Pre => Present (V);
+   --  Process a call instruction
+
    function Maybe_Unsigned
      (V : Value_T; Is_Unsigned : Boolean := True) return Str
    is
@@ -199,6 +203,38 @@ package body CCG.Instructions is
 
    end Cmp_Instruction;
 
+   ----------------------
+   -- Call_Instruction --
+   ----------------------
+
+   procedure Call_Instruction (V : Value_T; Ops : Value_Array) is
+      Func  : constant Value_T := Ops (Ops'Last);
+      Call  : Str              := Func & " (";
+      First : Boolean          := True;
+
+   begin
+      --  Generate the argument list for the call
+
+      for Op of Ops (Ops'First .. Ops'Last - 1) loop
+         if First then
+            Call  := Call & Op;
+            First := False;
+         else
+            Call := Call & ", " & Op;
+         end if;
+      end loop;
+
+      --  Add the final close paren. If this is a procedure call,
+      --  output it. Otherwise, set this as the value of V.
+
+      Call := Call & ")";
+      if Get_Type_Kind (Type_Of (V)) = Void_Type_Kind then
+         Output_Stmt (Call);
+      else
+         Assignment (V, Call);
+      end if;
+   end Call_Instruction;
+
    ----------------
    -- Assignment --
    ----------------
@@ -237,6 +273,9 @@ package body CCG.Instructions is
             else
                Output_Stmt ("return");
             end if;
+
+         when Op_Call =>
+            Call_Instruction (V, Ops);
 
          when Op_Alloca =>
             if Get_Is_Entry (Get_Instruction_Parent (V)) then

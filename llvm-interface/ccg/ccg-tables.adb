@@ -96,20 +96,21 @@ package body CCG.Tables is
    --  then the tables, then the maps.
 
    type Value_Data is record
-      C_Value         : Str;
+      C_Value        : Str;
       --  If Present, a string that represents the value of the Value_T
 
-      No_Name         : Boolean;
-      --  True is there's no LLVM name for this value; we use the ordinal
+      No_Name        : Boolean;
+      --  True if there's no LLVM name for this value; we use the ordinal
 
-      Is_Decl_Output  : Boolean;
+      Is_Decl_Output : Boolean;
       --  True if we wrote any needed decl for this value
 
-      Is_Entry_Alloca : Boolean;
-      --  True if this value represents and alloca in the entry block.
-      --  In that case, from a C perspective, a use of a value in LLVM IR
-      --  represents the address of the value; only "load" or "store"
-      --  instruction actually accesses the value.
+      Is_Variable    : Boolean;
+      --  True if this value represents a variable. This can either be a
+      --  global variable or an alloca in the entry block. In that case,
+      --  from a C perspective, a use of a value in LLVM IR represents the
+      --  address of the value; only "load" or "store" instruction actually
+      --  accesses the value.
 
       Output_Idx      : Nat;
       --  A positive number if we've assigned an ordinal to use as
@@ -210,10 +211,6 @@ package body CCG.Tables is
      with Pre => Present (T), Pure_Function;
    function BB_Data_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx
      with Pre => Present (B), Pure_Function;
-
-   procedure Maybe_Write_Decl (V : Value_T)
-     with Pre => Present (V), Post => Get_Is_Decl_Output (V);
-   --  See if we need to write a declaration for V and write one if so
 
    procedure Maybe_Write_Typedef (T : Type_T)
      with Pre => Present (T), Post => Get_Is_Typedef_Output (T);
@@ -459,7 +456,6 @@ package body CCG.Tables is
    function "+" (V : Value_T) return Str is
       S_Rec : aliased constant Str_Record (1) := (1, (1 => (Value, 1, V)));
    begin
-      Maybe_Write_Decl (V);
       return Undup_Str (S_Rec);
    end "+";
 
@@ -471,7 +467,6 @@ package body CCG.Tables is
       S_Rec : aliased constant Str_Record (1) :=
         (1, (1 => (Data_Value, 1, V)));
    begin
-      Maybe_Write_Decl (V);
       return Undup_Str (S_Rec);
    end To_Data;
 
@@ -509,7 +504,7 @@ package body CCG.Tables is
                Write_Str (Comp.Str);
 
             when Value =>
-               if Get_Is_Entry_Alloca (Comp.Val) then
+               if Get_Is_Variable (Comp.Val) then
                   Write_Str ("&");
                end if;
 
@@ -553,7 +548,6 @@ package body CCG.Tables is
               (2, (1 => (Var_String, L'Length, L), 2 => (Value, 1, R)));
 
          begin
-            Maybe_Write_Decl (R);
             return Undup_Str (S_Rec);
          end;
       else
@@ -640,7 +634,6 @@ package body CCG.Tables is
               (2, (1 => (Value, 1, L), 2 => (Var_String, R'Length, R)));
 
          begin
-            Maybe_Write_Decl (L);
             return Undup_Str (S_Rec);
          end;
       else
@@ -724,8 +717,6 @@ package body CCG.Tables is
         (2, (1 => (Value, 1, L), 2 => (Value, 1, R)));
 
    begin
-      Maybe_Write_Decl (L);
-      Maybe_Write_Decl (R);
       return Undup_Str (S_Rec);
    end "&";
 
@@ -764,7 +755,6 @@ package body CCG.Tables is
         (2, (1 => (Value, 1, L), 2 => (Typ, 1, R)));
 
    begin
-      Maybe_Write_Decl (L);
       Maybe_Write_Typedef (R);
       return Undup_Str (S_Rec);
    end "&";
@@ -778,7 +768,6 @@ package body CCG.Tables is
         (2, (1 => (Value, 1, L), 2 => (BB, 1, R)));
 
    begin
-      Maybe_Write_Decl (L);
       return Undup_Str (S_Rec);
    end "&";
 
@@ -791,7 +780,6 @@ package body CCG.Tables is
         (2, (1 => (Typ, 1, L), 2 => (Value, 1, R)));
 
    begin
-      Maybe_Write_Decl (R);
       Maybe_Write_Typedef (L);
       return Undup_Str (S_Rec);
    end "&";
@@ -818,7 +806,6 @@ package body CCG.Tables is
         (2, (1 => (BB, 1, L), 2 => (Value, 1, R)));
 
    begin
-      Maybe_Write_Decl (R);
       return Undup_Str (S_Rec);
    end "&";
 
@@ -843,7 +830,6 @@ package body CCG.Tables is
       S_Rec : aliased Str_Record (R.Length + 1);
 
    begin
-      Maybe_Write_Decl (L);
       S_Rec.Comps (1) := (Value, 1, L);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
       return Undup_Str (S_Rec);
@@ -888,7 +874,6 @@ package body CCG.Tables is
          return +R;
       end if;
 
-      Maybe_Write_Decl (R);
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1) := (Value, 1, R);
       return Undup_Str (S_Rec);
@@ -962,11 +947,11 @@ package body CCG.Tables is
       elsif not Create then
          return No_Value_Idx;
       else
-         Value_Data_Table.Append ((C_Value         => null,
-                                   No_Name         => False,
-                                   Is_Decl_Output  => False,
-                                   Is_Entry_Alloca => False,
-                                   Output_Idx      => 0));
+         Value_Data_Table.Append ((C_Value        => null,
+                                   No_Name        => False,
+                                   Is_Decl_Output => False,
+                                   Is_Variable    => False,
+                                   Output_Idx     => 0));
          Insert (Value_Data_Map, V, Value_Data_Table.Last);
          return Value_Data_Table.Last;
       end if;
@@ -1053,18 +1038,18 @@ package body CCG.Tables is
 
    end Get_Is_Decl_Output;
 
-   -------------------------
-   -- Get_Is_Entry_Alloca --
-   -------------------------
+   ---------------------
+   -- Get_Is_Variable --
+   ---------------------
 
-   function Get_Is_Entry_Alloca (V : Value_T) return Boolean is
+   function Get_Is_Variable (V : Value_T) return Boolean is
       Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
 
    begin
       return Present (Idx)
-        and then Value_Data_Table.Table (Idx).Is_Entry_Alloca;
+        and then Value_Data_Table.Table (Idx).Is_Variable;
 
-   end Get_Is_Entry_Alloca;
+   end Get_Is_Variable;
 
    -----------------
    -- Set_C_Value --
@@ -1099,16 +1084,16 @@ package body CCG.Tables is
       Value_Data_Table.Table (Idx).Is_Decl_Output := B;
    end Set_Is_Decl_Output;
 
-   -------------------------
-   -- Set_Is_Entry_Alloca --
-   -------------------------
+   ---------------------
+   -- Set_Is_Variable --
+   ---------------------
 
-   procedure Set_Is_Entry_Alloca (V : Value_T; B : Boolean := True) is
+   procedure Set_Is_Variable (V : Value_T; B : Boolean := True) is
       Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
 
    begin
-      Value_Data_Table.Table (Idx).Is_Entry_Alloca := B;
-   end Set_Is_Entry_Alloca;
+      Value_Data_Table.Table (Idx).Is_Variable := B;
+   end Set_Is_Variable;
 
    ---------------------------
    -- Get_Is_Typedef_Output --
@@ -1176,17 +1161,6 @@ package body CCG.Tables is
    begin
       BB_Data_Table.Table (Idx).Was_Output := B;
    end Set_Was_Output;
-
-   ----------------------
-   -- Maybe_Write_Decl --
-   ----------------------
-
-   procedure Maybe_Write_Decl (V : Value_T) is
-   begin
-      if not Get_Is_Decl_Output (V) then
-         Write_Decl (V);
-      end if;
-   end Maybe_Write_Decl;
 
    -------------------------
    -- Maybe_Write_Typedef --

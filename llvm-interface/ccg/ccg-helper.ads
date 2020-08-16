@@ -74,4 +74,8 @@ package CCG.Helper is
      (Present (Is_A_Instruction (V)))
      with Pre => Present (V);
 
+   function Is_A_Global_Variable (V : Value_T) return Boolean is
+     (Present (Is_A_Global_Variable (V)))
+     with Pre => Present (V);
+
 end CCG.Helper;

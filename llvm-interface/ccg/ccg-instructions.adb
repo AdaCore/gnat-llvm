@@ -19,6 +19,7 @@ with Interfaces.C; use Interfaces.C;
 
 with LLVM.Core; use LLVM.Core;
 
+with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
 
 package body CCG.Instructions is
@@ -40,6 +41,10 @@ package body CCG.Instructions is
    procedure Call_Instruction (V : Value_T; Ops : Value_Array)
      with Pre => Present (V);
    --  Process a call instruction
+
+   procedure Maybe_Decl (V : Value_T)
+     with Pre => Present (V), Post => Get_Is_Decl_Output (V);
+   --  See if we need to write a declaration for V and write one if so
 
    function Maybe_Unsigned
      (V : Value_T; Is_Unsigned : Boolean := True) return Str
@@ -126,6 +131,17 @@ package body CCG.Instructions is
 
       return Result;
    end TP;
+
+   ----------------
+   -- Maybe_Decl --
+   ----------------
+
+   procedure Maybe_Decl (V : Value_T) is
+   begin
+      if not Get_Is_Decl_Output (V) then
+         Write_Decl (V);
+      end if;
+   end Maybe_Decl;
 
    --------------
    -- Num_Uses --
@@ -245,7 +261,7 @@ package body CCG.Instructions is
       --  generate an assignment statement into LHS. Otherwise, mark LHS
       --  as having value RHS.
 
-      if Get_Is_Entry_Alloca (LHS) or else Num_Uses (LHS) > 1 then
+      if Get_Is_Variable (LHS) or else Num_Uses (LHS) > 1 then
          Output_Stmt (LHS & " = " & RHS);
       else
          Set_C_Value (LHS, RHS);
@@ -265,6 +281,14 @@ package body CCG.Instructions is
         (if Ops'Length >= 3 then Ops (3) else No_Value_T);
       Opc : constant Opcode_T := Get_Instruction_Opcode (V);
    begin
+      --  See if we need to write a declaration for an operand
+
+      for Op of Ops loop
+         Maybe_Decl (Op);
+      end loop;
+
+      --  Handle the instruction according to its opcode
+
       case Opc is
 
          when Op_Ret =>
@@ -279,18 +303,18 @@ package body CCG.Instructions is
 
          when Op_Alloca =>
             if Get_Is_Entry (Get_Instruction_Parent (V)) then
-               Set_Is_Entry_Alloca (V);
+               Set_Is_Variable (V);
+               Write_Decl (V);
             else
                Output_Stmt ("<unsupported instruction>");
             end if;
 
          when Op_Load =>
             Assignment
-              (V,
-               TP ((if Get_Is_Entry_Alloca (Op1) then "#D1" else "*#1"), Op1));
+              (V, TP ((if Get_Is_Variable (Op1) then "#D1" else "*#1"), Op1));
 
          when Op_Store =>
-            Output_Stmt (TP ((if   Get_Is_Entry_Alloca (Op2) then "#D2 = #1"
+            Output_Stmt (TP ((if   Get_Is_Variable (Op2) then "#D2 = #1"
                               else "*#2 = #1"),
                              Op1, Op2));
 

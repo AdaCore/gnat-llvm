@@ -116,25 +116,36 @@ package CCG.Tables is
    --  Get and set attributes we record of LLVM values, types, and
    --  basic blocks.
 
-   function Get_C_Value         (V : Value_T) return Str
+   function Get_C_Value        (V : Value_T) return Str
      with Pre => Present (V), Inline;
-   function Get_No_Name         (V : Value_T) return Boolean
-     with Pre => Present (V), Inline;
-   function Get_Is_Decl_Output  (V : Value_T) return Boolean
-     with Pre => Present (V), Inline;
-   function Get_Is_Entry_Alloca (V : Value_T) return Boolean
-     with Pre => Present (V), Inline;
+   --  If Present, a string that represents the value of the Value_T
 
-   procedure Set_C_Value         (V : Value_T; S : Str)
+   function Get_No_Name        (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if there's no LLVM name for this value; we use the ordinal
+
+   function Get_Is_Decl_Output (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if we wrote any needed decl for this value
+
+   function Get_Is_Variable    (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if this value represents a variable. This can either be a
+   --  global variable or an alloca in the entry block. In that case,
+   --  from a C perspective, a use of a value in LLVM IR represents
+   --  the address of the value; only "load" or "store" instruction
+   --  actually accesses the value.
+
+   procedure Set_C_Value       (V : Value_T; S : Str)
      with Pre  => Present (V) and then Present (S),
           Post => Get_C_Value (V) = S, Inline;
-   procedure Set_No_Name         (V : Value_T; B : Boolean := True)
+   procedure Set_No_Name       (V : Value_T; B : Boolean := True)
      with Pre  => Present (V),
           Post => Get_No_Name (V) = B, Inline;
-   procedure Set_Is_Decl_Output  (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Decl_Output (V : Value_T; B : Boolean := True)
      with Pre  => Present (V), Post => Get_Is_Decl_Output (V) = B, Inline;
-   procedure Set_Is_Entry_Alloca (V : Value_T; B : Boolean := True)
-     with Pre  => Present (V), Post => Get_Is_Entry_Alloca (V) = B, Inline;
+   procedure Set_Is_Variable    (V : Value_T; B : Boolean := True)
+     with Pre  => Present (V), Post => Get_Is_Variable (V) = B, Inline;
 
    function Get_Is_Typedef_Output (T : Type_T) return Boolean
      with Pre => Present (T), Inline;

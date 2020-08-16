@@ -141,6 +141,8 @@ package body CCG.Output is
    ----------------
 
    procedure Write_Decl (V : Value_T) is
+      Global : constant Boolean := Is_A_Global_Variable (V);
+
    begin
       --  We need to write a declaration for this if it's not a simple
       --  constant, not a function, not an argument, and we haven't
@@ -150,19 +152,53 @@ package body CCG.Output is
         and then not Is_A_Function (V) and then not Is_A_Argument (V)
         and then not Present (Get_C_Value (V))
       then
+         Set_Is_Decl_Output (V);
 
-         --  The relevant type is the type of V unless V is an alloca in the
-         --  entry block, in which case the type of V is a pointer and we
+         --  If this is a global, mark it as a variable
+
+         if Global then
+            Set_Is_Variable (V);
+         end if;
+
+         --  The relevant type is the type of V unless V is a
+         --  variable, in which case the type of V is a pointer and we
          --  want what it points to.
 
          declare
-            Typ : constant Type_T :=
-              (if   Get_Is_Entry_Alloca (V) then Get_Element_Type (Type_Of (V))
+            Typ  : constant Type_T :=
+              (if   Get_Is_Variable (V) then Get_Element_Type (Type_Of (V))
                else Type_Of (V));
+            Decl : Str             := Typ & " " & To_Data (V);
 
          begin
-            Set_Is_Decl_Output (V);
-            Output_Decl (Typ & " " & To_Data (V));
+            --  For globals, we write the decl immediately. Otherwise,
+            --  it's part of the decls for the subprogram.  Figure out
+            --  whether this is static or extern.  It's extern if there's
+            --  no initializer.
+
+            if Global then
+               declare
+                  Init : constant Value_T := Get_Initializer (V);
+
+               begin
+                  if No (Init) then
+                     Decl := "extern " & Decl;
+                  elsif Get_Linkage (V) = Internal_Linkage then
+                     Decl := "static " & Decl;
+                  end if;
+
+                  --  Don't write an initializer if it's undef, which is
+                  --  just used to indicate that it's not extern.
+
+                  if Present (Init) and then not Is_Undef (Init) then
+                     Decl := Decl & " = " & Init;
+                  end if;
+
+                  Write_Str (Decl & ";", Eol => True);
+               end;
+            else
+               Output_Decl (Decl);
+            end if;
          end;
       end if;
 

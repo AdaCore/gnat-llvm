@@ -289,6 +289,8 @@ package body CCG.Tables is
                      Update_Hash (H, Comp.T);
                   when BB =>
                      Update_Hash (H, Comp.B);
+                  when Number =>
+                     Update_Hash (H, Hash_Type (Comp.N));
                end case;
             end;
          end loop;
@@ -334,53 +336,57 @@ package body CCG.Tables is
          --  differs, the strings are different.  Otherwise, advance to the
          --  next character, stepping to the next component if necessary.
 
-         case SL.Comps (PosL).Kind is
-            when Var_String =>
-               if SL.Comps (PosL).Str (CharL) /=
-                 SR.Comps (PosR).Str (CharR)
-               then
-                  return False;
-               else
-                  CharL := CharL + 1;
-                  CharR := CharR + 1;
-                  if CharL > SL.Comps (PosL).Length then
-                     PosL  := PosL + 1;
-                     CharL := 1;
-                  end if;
-
-                  if CharR > SR.Comps (PosR).Length then
-                     PosR  := PosR + 1;
-                     CharR := 1;
-                  end if;
+         if SL.Comps (PosL).Kind = Var_String then
+            if SL.Comps (PosL).Str (CharL) /=
+              SR.Comps (PosR).Str (CharR)
+            then
+               return False;
+            else
+               CharL := CharL + 1;
+               CharR := CharR + 1;
+               if CharL > SL.Comps (PosL).Length then
+                  PosL  := PosL + 1;
+                  CharL := 1;
                end if;
 
+               if CharR > SR.Comps (PosR).Length then
+                  PosR  := PosR + 1;
+                  CharR := 1;
+               end if;
+            end if;
+
+         else
             --  Otherwise, they're different if the LLVM objects are different
             --  and we advance to the next position if not.
+
+            case SL.Comps (PosL).Kind is
+               when Var_String =>
+                  pragma Assert (False);
 
                when Value | Data_Value =>
                   if SL.Comps (PosL).Val /= SR.Comps (PosR).Val then
                      return False;
-                  else
-                     PosL := PosL + 1;
-                     PosR := PosR + 1;
                   end if;
 
-            when Typ =>
-               if SL.Comps (PosL).T /= SR.Comps (PosR).T then
-                  return False;
-               else
-                  PosL := PosL + 1;
-                  PosR := PosR + 1;
-               end if;
+               when Typ =>
+                  if SL.Comps (PosL).T /= SR.Comps (PosR).T then
+                     return False;
+                  end if;
 
-            when BB =>
-               if SL.Comps (PosL).B /= SR.Comps (PosR).B then
-                  return False;
-               else
-                  PosL := PosL + 1;
-                  PosR := PosR + 1;
-               end if;
-         end case;
+               when BB =>
+                  if SL.Comps (PosL).B /= SR.Comps (PosR).B then
+                     return False;
+                  end if;
+
+               when Number =>
+                  if SL.Comps (PosL).N /= SR.Comps (PosR).N then
+                     return False;
+                  end if;
+            end case;
+
+            PosL := PosL + 1;
+            PosR := PosR + 1;
+         end if;
       end loop;
 
    end "=";
@@ -491,6 +497,16 @@ package body CCG.Tables is
       return Undup_Str (S_Rec);
    end "+";
 
+   ---------
+   -- "+" --
+   ---------
+
+   function "+" (N : Nat) return Str is
+      S_Rec : aliased constant Str_Record (1) := (1, (1 => (Number, 1, N)));
+   begin
+      return Undup_Str (S_Rec);
+   end "+";
+
    ---------------
    -- Write_Str --
    ---------------
@@ -518,6 +534,9 @@ package body CCG.Tables is
 
             when BB =>
                Write_BB (Comp.B);
+
+            when Number =>
+               Write_Int (Comp.N);
          end case;
       end loop;
 
@@ -595,6 +614,27 @@ package body CCG.Tables is
          end;
       else
          return +L & (+R);
+      end if;
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : String; R : Nat) return Str is
+   begin
+      if L'Length = 0 then
+         return +R;
+      elsif L'Length <= Str_Max then
+         declare
+            S_Rec : aliased constant Str_Record (2) :=
+              (2, (1 => (Var_String, L'Length, L), 2 => (Number, 1, R)));
+
+         begin
+            return Undup_Str (S_Rec);
+         end;
+      else
+         return +L & (Str'(+R));
       end if;
    end "&";
 
@@ -775,6 +815,18 @@ package body CCG.Tables is
    -- "&" --
    ---------
 
+   function "&" (L : Value_T; R : Nat) return Str is
+      S_Rec : aliased constant Str_Record (2) :=
+        (2, (1 => (Value, 1, L), 2 => (Number, 1, R)));
+
+   begin
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
    function "&" (L : Type_T; R : Value_T) return Str is
       S_Rec : aliased constant Str_Record (2) :=
         (2, (1 => (Typ, 1, L), 2 => (Value, 1, R)));
@@ -791,6 +843,19 @@ package body CCG.Tables is
    function "&" (L : Type_T; R : Basic_Block_T) return Str is
       S_Rec : aliased constant Str_Record (2) :=
         (2, (1 => (Typ, 1, L), 2 => (BB, 1, R)));
+
+   begin
+      Maybe_Write_Typedef (L);
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Type_T; R : Nat) return Str is
+      S_Rec : aliased constant Str_Record (2) :=
+        (2, (1 => (Typ, 1, L), 2 => (Number, 1, R)));
 
    begin
       Maybe_Write_Typedef (L);
@@ -819,6 +884,18 @@ package body CCG.Tables is
 
    begin
       Maybe_Write_Typedef (R);
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Basic_Block_T; R : Nat) return Str is
+      S_Rec : aliased constant Str_Record (2) :=
+        (2, (1 => (BB, 1, L), 2 => (Number, 1, R)));
+
+   begin
       return Undup_Str (S_Rec);
    end "&";
 
@@ -911,6 +988,23 @@ package body CCG.Tables is
 
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1) := (BB, 1, R);
+      return Undup_Str (S_Rec);
+   end "&";
+
+   ---------
+   -- "&" --
+   ---------
+
+   function "&" (L : Str; R : Nat) return Str is
+      S_Rec : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
+
+   begin
+      if No (L) then
+         return +R;
+      end if;
+
+      S_Rec.Comps (1 .. L.Length) := L.Comps;
+      S_Rec.Comps (L.Length + 1) := (Number, 1, R);
       return Undup_Str (S_Rec);
    end "&";
 

@@ -41,6 +41,8 @@ package CCG.Tables is
      with Pre => Present (T), Post => Present ("+"'Result);
    function "+" (B : Basic_Block_T) return Str
      with Pre => Present (B), Post => Present ("+"'Result);
+   function "+" (N : Nat)           return Str
+     with Post => Present ("+"'Result);
    function To_Data (V : Value_T)       return Str
      with Pre => Present (V), Post => Present (To_Data'Result);
    --  Return an internal representation of S, V, T, or B
@@ -55,6 +57,8 @@ package CCG.Tables is
      with Pre => Present (R), Post => Present ("&"'Result);
    function "&" (L : String;         R : Basic_Block_T) return Str
      with Pre => Present (R), Post => Present ("&"'Result);
+   function "&" (L : String;         R : Nat)           return Str
+     with Post => Present ("&"'Result);
    function "&" (L : String;         R : Str)           return Str
      with Pre => Present (R), Post => Present ("&"'Result);
    function "&" (L : Value_T;        R : String)        return Str
@@ -68,6 +72,8 @@ package CCG.Tables is
    function "&" (L : Value_T;        R : Basic_Block_T) return Str
      with Pre  => Present (L) and then Present (R),
           Post => Present ("&"'Result);
+   function "&" (L : Value_T;        R : Nat)           return Str
+     with Pre => Present (L), Post => Present ("&"'Result);
    function "&" (L : Value_T;        R : Str)           return Str
      with Pre  => Present (L) and then Present (R),
           Post => Present ("&"'Result);
@@ -81,6 +87,8 @@ package CCG.Tables is
    function "&" (L : Type_T;         R : Basic_Block_T) return Str
      with Pre  => Present (L) and then Present (R),
           Post => Present ("&"'Result);
+   function "&" (L : Type_T;         R : Nat)           return Str
+     with Pre => Present (L), Post => Present ("&"'Result);
    function "&" (L : Type_T;         R : Str)           return Str
      with Pre  => Present (L) and then Present (R),
           Post => Present ("&"'Result);
@@ -95,6 +103,8 @@ package CCG.Tables is
    function "&" (L : Basic_Block_T;  R : Basic_Block_T) return Str
      with Pre  => Present (L) and then Present (R),
           Post => Present ("&"'Result);
+   function "&" (L : Basic_Block_T;  R : Nat)           return Str
+     with Pre => Present (L), Post => Present ("&"'Result);
    function "&" (L : Basic_Block_T;  R : Str)           return Str
      with Pre  => Present (L) and then Present (R),
           Post => Present ("&"'Result);
@@ -109,6 +119,8 @@ package CCG.Tables is
    function "&" (L : Str;            R : Basic_Block_T) return Str
      with Pre  => Present (R),
           Post => Present ("&"'Result);
+   function "&" (L : Str;            R : Nat)           return Str
+     with Pre => Present (L), Post => Present ("&"'Result);
    function "&" (L : Str;            R : Str)           return Str
      with Pre  => Present (R),
           Post => Present ("&"'Result);
@@ -211,8 +223,11 @@ private
       Typ,
       --  An LLVM type
 
-      BB);
+      BB,
       --  An LLVM basic block
+
+      Number);
+      --  An integer
 
    type Str_Component
         (Kind : Str_Component_Kind := Var_String; Length : Str_Length := 3)
@@ -230,6 +245,9 @@ private
 
          when BB =>
             B     : Basic_Block_T;
+
+         when Number =>
+            N     : Nat;
 
       end case;
    end record;

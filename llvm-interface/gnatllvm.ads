@@ -148,7 +148,6 @@ package GNATLLVM is
    function Present (B : Basic_Block_T) return Boolean is (B /= No_BB_T);
    function Present (M : Metadata_T)    return Boolean is (M /= No_Metadata_T);
    function Present (M : Builder_T)     return Boolean is (M /= No_Builder_T);
-   function Present (N : Name_Id)       return Boolean is (N /= No_Name);
    function Present (U : Use_T)         return Boolean is (U /= No_Use_T);
    --  Test for presence and absence of fields of LLVM types
 

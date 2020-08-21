@@ -46,9 +46,20 @@ package CCG.Helper is
      (Get_Param (V, unsigned (P_Num)))
      with Pre => Present (V), Post => Present (Get_Param'Result);
 
+   function Has_Name (T : Type_T) return Boolean
+     with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
+
+   function Count_Struct_Element_Types (T : Type_T) return Nat is
+      (Nat (unsigned'(Count_Struct_Element_Types (T))))
+      with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
+
+   function Struct_Get_Type_At_Index (T : Type_T; Idx : Nat) return Type_T is
+      (Struct_Get_Type_At_Index (T, unsigned (Idx)))
+     with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
+
    function Get_Num_Operands (V : Value_T) return Int is
       (Int (Interfaces.C.int'(Get_Num_Operands (V))))
-      with Pre => Present (V);
+      with Pre => Is_A_Instruction (V);
 
    function Is_A_Constant (V : Value_T) return Boolean is
      (Present (Is_A_Constant (V)))

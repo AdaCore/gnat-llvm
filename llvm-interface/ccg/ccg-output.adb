@@ -19,6 +19,7 @@ with Output; use Output;
 
 with LLVM.Core; use LLVM.Core;
 
+with CCG.Aggregates;  use CCG.Aggregates;
 with CCG.Helper;      use CCG.Helper;
 with CCG.Subprograms; use CCG.Subprograms;
 
@@ -224,7 +225,7 @@ package body CCG.Output is
             Write_Str ("float");
 
          when Double_Type_Kind =>
-            Write_Str ("float");
+            Write_Str ("double");
 
          when Integer_Type_Kind =>
             declare
@@ -257,6 +258,14 @@ package body CCG.Output is
          when Pointer_Type_Kind =>
             Write_Str (Get_Element_Type (T) & " *");
 
+         when Struct_Type_Kind =>
+            if Has_Name (T) then
+               Write_Str (Get_Struct_Name (T));
+            else
+               Write_Str ("ccg_s");
+               Write_Int (Get_Output_Idx (T));
+            end if;
+
          when others =>
             Write_Str ("<unsupported type>");
       end case;
@@ -270,6 +279,10 @@ package body CCG.Output is
    procedure Write_Typedef (T : Type_T) is
    begin
       Set_Is_Typedef_Output (T);
+      if Get_Type_Kind (T) = Struct_Type_Kind then
+         Write_Struct_Typedef (T);
+      end if;
+
    end Write_Typedef;
 
    --------------

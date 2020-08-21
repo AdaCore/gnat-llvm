@@ -298,6 +298,15 @@ Is_Constant_Data (Value *v)
   return dyn_cast<ConstantData> (v);
 }
 
+/* Say whether this struct type has a name.  */
+
+extern "C"
+bool
+Has_Name (StructType *t)
+{
+  return t->hasName ();
+}
+
 /* The LLVM C interface only provide single-index forms of extractvalue
    and insertvalue, so provide the multi-index forms here.  */
 

@@ -249,7 +249,7 @@ extern "C"
 unsigned
 Get_Stack_Alignment (DataLayout *dl)
 {
-  return encode (dl->getStackAlignment ());
+  return dl->getStackAlignment ().value ();
 }
 
 extern "C"

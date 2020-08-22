@@ -1401,7 +1401,9 @@ package body GNATLLVM.Exprs is
          --  If we have the proper GNAT type, but a different alternative,
          --  make sure it's the right alternative.
 
-         if Full_Etype (Src_GT) = Full_Etype (Related_Type (Src)) then
+         if Full_Etype (Src_GT) = Full_Etype (Related_Type (Src))
+           and then Related_Type (Src) /= Src_GT
+         then
             Src := From_Primitive (To_Primitive (Src), Src_GT);
          end if;
       end if;

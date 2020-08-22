@@ -830,7 +830,7 @@ package body GNATLLVM.Conversions is
       V_GT       : constant GL_Type := Related_Type (V);
       Has_Bounds : constant Boolean := Contains_Bounds (V);
       Unc_Dest   : constant Boolean := Is_Unconstrained_Array (GT);
-      In_V       : GL_Value         := Remove_Padding (V);
+      In_V       : GL_Value;
 
    begin
       --  V is some type of reference to some type.  We want to
@@ -867,7 +867,7 @@ package body GNATLLVM.Conversions is
       --  it to an actual subprogram access type.
 
       if Is_Subprogram_Reference (V) then
-         return Ptr_To_Relationship (In_V, GT, Reference);
+         return Ptr_To_Relationship (V, GT, Reference);
 
       --  If the types are the same, we're done except that we know
       --  nothing about Reference_To_Unknown
@@ -889,6 +889,7 @@ package body GNATLLVM.Conversions is
          --  bounds for an unconstrained destination and discard them for a
          --  constrained destination.
 
+         In_V := Remove_Padding (V);
          if Unc_Dest
            and then not Are_Arrays_With_Different_Index_Types (GT, V_GT)
          then
@@ -918,7 +919,7 @@ package body GNATLLVM.Conversions is
       --  to a reference.
 
       else
-         return Ptr_To_Ref (In_V, GT);
+         return Ptr_To_Ref (Remove_Padding (V), GT);
       end if;
    end Convert_Ref;
 

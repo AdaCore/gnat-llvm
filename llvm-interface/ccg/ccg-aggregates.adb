@@ -199,7 +199,7 @@ package body CCG.Aggregates is
       use FNI_Maps;
       Position : constant Cursor := Find (FNI_Map, (T, Idx));
       FNI      : Field_Name_Info :=
-        (T, Idx, No_Name, Empty, No_Field_Name_Idx, False, False);
+        (T, Idx, No_Name, Types.Empty, No_Field_Name_Idx, False, False);
 
    begin
       --  If we have information for this field in our table (we should),

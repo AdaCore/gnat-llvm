@@ -1020,6 +1020,8 @@ package body GNATLLVM.Subprograms is
                                   (if Is_Unconstrained_Array (Return_GT)
                                    then Fat_Pointer else Reference),
                                   Is_Pristine => True);
+         Initialize_Alignment (LLVM_Param);
+         Initialize_TBAA      (LLVM_Param);
          Set_Value_Name (+LLVM_Param, "_return");
          Return_Address_Param := LLVM_Param;
          Param_Num := Param_Num + 1;

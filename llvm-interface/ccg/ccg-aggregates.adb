@@ -154,22 +154,26 @@ package body CCG.Aggregates is
    procedure Set_Struct (TE : Entity_Id; T : Type_T) is
       package EFM renames Entity_To_FNI_Maps;
       package TFM renames FNI_Maps;
-      F_Idx    : Field_Name_Idx :=
-        EFM.Element (EFM.Find (Entity_To_FNI_Map, TE));
+      Position : constant EFM.Cursor := EFM.Find (Entity_To_FNI_Map, TE);
+      F_Idx    : Field_Name_Idx;
 
    begin
-      --  If we're not generating C code, don't do anything
+      --  If we didn't make any entry in the Field Name Info table for
+      --  this type, we don't have anything to do. This could have happened
+      --  either if we weren't generating C or if TE is a null record.
 
-      if Code_Generation /= Write_C then
+      if not EFM.Has_Element (Position) then
          return;
       end if;
 
-      --  Loop over all Field_Name_Info entries for TE, looking for
-      --  entries where the LLVM type hasn't yet been set. For each,
-      --  set the type and add the (type, field index) pair to the hash table,
-      --  but if the type has no name, don't insert it into the table since
-      --  it'll be a shared struct.
+      --  Otherwise get the first entry we made and loop over all
+      --  Field_Name_Info entries for TE, looking for entries where the
+      --  LLVM type hasn't yet been set. For each, set the type and add the
+      --  (type, field index) pair to the hash table, but if the type has
+      --  no name, don't insert it into the table since it'll be a shared
+      --  struct.
 
+      F_Idx := EFM.Element (Position);
       while Present (F_Idx) loop
          declare
             FNI : Field_Name_Info renames Field_Name_Info_Table.Table (F_Idx);

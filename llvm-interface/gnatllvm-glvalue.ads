@@ -1308,12 +1308,14 @@ package GNATLLVM.GLValue is
      --  itself represents the address of TE.
 
    function Get_Param
-     (Func      : GL_Value;
-      Param_Num : Nat;
-      GT        : GL_Type;
-      R         : GL_Relationship) return GL_Value
+     (Func        : GL_Value;
+      Param_Num   : Nat;
+      GT          : GL_Type;
+      R           : GL_Relationship;
+      Is_Pristine : Boolean := False) return GL_Value
    is
-     (G (Get_Param (+Func, unsigned (Param_Num)), GT, R))
+     (G (Get_Param (+Func, unsigned (Param_Num)), GT, R,
+         Is_Pristine => Is_Pristine))
      with Pre  => Present (Func) and then Present (GT),
           Post => Present (Get_Param'Result);
 

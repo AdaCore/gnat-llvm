@@ -1018,7 +1018,8 @@ package body GNATLLVM.Subprograms is
       if RK = Return_By_Parameter then
          LLVM_Param := Get_Param (Func, Param_Num, Return_GT,
                                   (if Is_Unconstrained_Array (Return_GT)
-                                   then Fat_Pointer else Reference));
+                                   then Fat_Pointer else Reference),
+                                  Is_Pristine => True);
          Set_Value_Name (+LLVM_Param, "_return");
          Return_Address_Param := LLVM_Param;
          Param_Num := Param_Num + 1;
@@ -1764,7 +1765,6 @@ package body GNATLLVM.Subprograms is
    function Emit_Call
      (N : Node_Id; LHS : GL_Value := No_GL_Value) return GL_Value
    is
-      pragma Unreferenced (LHS);
       procedure Write_Back
         (In_LHS  : GL_Value;
          F       : Entity_Id;
@@ -2000,12 +2000,15 @@ package body GNATLLVM.Subprograms is
 
       if RK = Return_By_Parameter then
          Args (In_Idx) :=
-           Get (Allocate_For_Type (Return_GT,
-                                   N        => Subp,
-                                   Name     => "return",
-                                   Max_Size =>
-                                     Is_Unconstrained_Record (Return_GT)),
-                Relationship_For_Ref (Return_GT));
+           (if   Present (LHS) and then Is_Safe_From (LHS, N)
+            then Convert_Ref (LHS, Return_GT)
+            else Get (Allocate_For_Type (Return_GT,
+                                         N        => Subp,
+                                         Name     => "return",
+                                         Max_Size =>
+                                           Is_Unconstrained_Record
+                                           (Return_GT)),
+                      Relationship_For_Ref (Return_GT)));
          In_Idx        := In_Idx + 1;
       end if;
 

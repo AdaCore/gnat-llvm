@@ -17,7 +17,12 @@
 
 with LLVM.Core; use LLVM.Core;
 
+with Debug;    use Debug;
 with Get_Targ; use Get_Targ;
+with Namet;
+with Osint;    use Osint;
+with Osint.C;  use Osint.C;
+with Output;   use Output;
 
 with GNATLLVM; use GNATLLVM;
 
@@ -54,12 +59,24 @@ package body CCG is
       Func : Value_T := Get_First_Function (Module);
 
    begin
+      if not Debug_Flag_Dot_YY then
+         Namet.Unlock;
+         Create_C_File;
+         Set_Output (Output_FD);
+         Namet.Lock;
+      end if;
+
       while Present (Func) loop
          Generate_C_For_Subprogram (Func);
          Func := Get_Next_Function (Func);
       end loop;
 
       Write_Subprograms;
+
+      if not Debug_Flag_Dot_YY then
+         Close_C_File;
+         Set_Standard_Output;
+      end if;
    end Write_C_Code;
 
 end CCG;

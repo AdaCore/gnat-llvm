@@ -21,6 +21,8 @@ with LLVM.Core; use LLVM.Core;
 
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
+with CCG.Tables;      use CCG.Tables;
+with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Instructions is
 
@@ -53,84 +55,6 @@ package body CCG.Instructions is
        else +V))
      with Pre => Present (V), Post => Present (Maybe_Unsigned'Result);
    --  Return V if it's not unsigned and return a cast to unsigned if it is.
-
-   --------
-   -- TP --
-   --------
-
-   function TP
-     (S : String;
-      Op1 : Value_T;
-      Op2 : Value_T := No_Value_T;
-      Op3 : Value_T := No_Value_T;
-      T   : Type_T  := No_Type_T) return Str
-   is
-      Start     : Integer := S'First;
-      Result    : Str     := No_Str;
-      Mark_Seen : Boolean := False;
-      B_Seen    : Boolean := False;
-      D_Seen    : Boolean := False;
-      Op        : Value_T;
-      Last      : Integer;
-
-   begin
-      for J in S'Range loop
-
-         --  If we've seen '#', look for 'B' or 'D'
-
-         if Mark_Seen then
-            if S (J) = 'B' then
-               B_Seen := True;
-            elsif S (J) = 'D' then
-               D_Seen := True;
-
-            --  If neither, then this is a number, representing which operand
-            --  to output, possibly as modified by 'B' or 'D'.
-
-            else
-               Op := (case S (J) is when '1' => Op1, when '2' => Op2,
-                                    when others => Op3);
-
-               --  The end of any string to output is before our mark, which
-               --  may be, e.g., #1 or #B2.
-
-               Last := J - 2 - (if B_Seen or D_Seen then 1 else 0);
-               if Start <= Last then
-                  Result := Result & S (Start .. Last);
-               end if;
-
-               --  Output the (possibly modified) operand and reset for the
-               --  next string and/or mark.
-
-               if B_Seen then
-                  Result := Result & Value_As_Basic_Block (Op);
-               elsif D_Seen then
-                  Result := Result & To_Data (Op);
-               elsif S (J) = 'T' then
-                  Result := Result & T;
-               else
-                  Result := Result & Op;
-               end if;
-
-               B_Seen    := False;
-               D_Seen    := False;
-               Mark_Seen := False;
-               Start     := J + 1;
-            end if;
-
-         elsif S (J) = '#' then
-            Mark_Seen := True;
-         end if;
-      end loop;
-
-      --  See if we have a final string to output and output it if so
-
-      if Start < S'Last then
-         Result := Result & S (Start .. S'Last);
-      end if;
-
-      return Result;
-   end TP;
 
    ----------------
    -- Maybe_Decl --

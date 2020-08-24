@@ -27,7 +27,7 @@ with CCG.Utils;       use CCG.Utils;
 package body CCG.Instructions is
 
    function Num_Uses (V : Value_T) return Nat
-     with Pre => Present (V), Post => Num_Uses'Result >= 1;
+     with Pre => Present (V);
    --  Returns the number of uses of V
 
    procedure Assignment (LHS : Value_T; RHS : Str)

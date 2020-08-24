@@ -24,11 +24,12 @@ package body CCG.Utils is
    --------
 
    function TP
-     (S : String;
-      Op1 : Value_T;
-      Op2 : Value_T := No_Value_T;
-      Op3 : Value_T := No_Value_T;
-      T   : Type_T  := No_Type_T) return Str
+     (S           : String;
+      Op1         : Value_T;
+      Op2         : Value_T := No_Value_T;
+      Op3         : Value_T := No_Value_T;
+      T           : Type_T  := No_Type_T;
+      Is_Unsigned : Boolean := False) return Str
    is
       Start     : Integer := S'First;
       Result    : Str     := No_Str;
@@ -72,6 +73,10 @@ package body CCG.Utils is
                elsif D_Seen then
                   Result := Result & To_Data (Op);
                elsif S (J) = 'T' then
+                  if Is_Unsigned then
+                     Result := Result & "unsigned ";
+                  end if;
+
                   Result := Result & T;
                else
                   Result := Result & Op;

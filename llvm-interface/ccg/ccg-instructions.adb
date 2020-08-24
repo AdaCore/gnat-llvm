@@ -62,7 +62,8 @@ package body CCG.Instructions is
    function Maybe_Unsigned
      (V : Value_T; Is_Unsigned : Boolean := True) return Str
    is
-     ((if   Is_Unsigned then TP (" (unsigned #T) #1", V, T => Type_Of (V))
+     ((if   Is_Unsigned then TP ("(#T) #1", V, T => Type_Of (V),
+                                 Is_Unsigned => True)
        else +V))
      with Pre => Present (V), Post => Present (Maybe_Unsigned'Result);
    --  Return V if it's not unsigned and return a cast to unsigned if it is.

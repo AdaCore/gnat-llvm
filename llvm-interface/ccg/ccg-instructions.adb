@@ -40,8 +40,8 @@ package body CCG.Instructions is
           Post => Present (Binary_Instruction'Result);
    --  Return the value corresponding to a binary instruction
 
-   function Cast_Instruction (V, Op1 : Value_T) return Str
-     with Pre  => Is_A_Instruction (V) and then Present (Op1),
+   function Cast_Instruction (V, Op : Value_T) return Str
+     with Pre  => Is_A_Instruction (V) and then Present (Op),
           Post => Present (Cast_Instruction'Result);
    --  Return the value corresponding to a cast instruction
 
@@ -159,22 +159,25 @@ package body CCG.Instructions is
    -- Cast_Instruction --
    ----------------------
 
-   function Cast_Instruction (V, Op1 : Value_T) return Str is
-      Opc : constant Opcode_T := Get_Instruction_Opcode (V);
+   function Cast_Instruction (V, Op : Value_T) return Str is
+      Opc    : constant Opcode_T := Get_Instruction_Opcode (V);
+      Src_T  : constant Type_T   := Type_Of (Op);
+      Dest_T : constant Type_T   := Type_Of (V);
+      Our_Op : constant Str      :=
+        Maybe_Unsigned (Op, Opc in Op_UI_To_FP | Op_Z_Ext);
 
    begin
-      case Opc is
-         when Op_Trunc | Op_SI_To_FP | Op_FP_Trunc | Op_FP_Ext | Op_S_Ext =>
-            return TP ("(#T) #1", Op1, T => Type_Of (V));
+      --  If we're doing a bitcast and the input and output types aren't
+      --  both pointers, we need to do this by pointer-punning.
 
-         when Op_UI_To_FP | Op_Z_Ext =>
-            return "(" & Type_Of (V) & ") " & Maybe_Unsigned (Op1);
-
-         when others =>
-            pragma Assert (False);
-            return No_Str;
-
-      end case;
+      if Opc = Op_Bit_Cast
+        and then (Get_Type_Kind (Src_T) /= Pointer_Type_Kind
+                    or else Get_Type_Kind (Dest_T) /= Pointer_Type_Kind)
+      then
+         return TP ("*((#) &#1", Op, T => Pointer_Type (Dest_T, 0));
+      else
+         return "(" & Dest_T & ") " & Our_Op;
+      end if;
 
    end Cast_Instruction;
 
@@ -357,7 +360,7 @@ package body CCG.Instructions is
             Assignment (V, TP (" -#1", Op1));
 
          when Op_Trunc | Op_SI_To_FP | Op_FP_Trunc | Op_FP_Ext | Op_S_Ext
-            | Op_UI_To_FP | Op_Z_Ext =>
+            | Op_UI_To_FP | Op_Z_Ext | Op_Bit_Cast =>
             Assignment (V, Cast_Instruction (V, Op1));
 
          when others =>

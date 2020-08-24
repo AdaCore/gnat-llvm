@@ -20,6 +20,8 @@ with Ada.Containers; use Ada.Containers;
 with Ada.Containers.Hashed_Maps;
 with Ada.Containers.Hashed_Sets;
 
+with LLVM.Core; use LLVM.Core;
+
 with Output; use Output;
 with Table;  use Table;
 
@@ -1170,6 +1172,15 @@ package body CCG.Tables is
 
    procedure Maybe_Write_Typedef (T : Type_T) is
    begin
+      --  If this is a pointer type, we need to see if we have to write
+      --  a typedef for what it points to.
+
+      if Get_Type_Kind (T) = Pointer_Type_Kind then
+         Maybe_Write_Typedef (Get_Element_Type (T));
+      end if;
+
+      --  Then see if we have to write one for this type
+
       if not Get_Is_Typedef_Output (T) then
          Write_Typedef (T);
       end if;

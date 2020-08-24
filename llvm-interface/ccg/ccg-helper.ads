@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Unchecked_Conversion;
+
 with Interfaces.C;
 
 with LLVM.Core;  use LLVM.Core;
@@ -88,5 +90,25 @@ package CCG.Helper is
    function Is_A_Global_Variable (V : Value_T) return Boolean is
      (Present (Is_A_Global_Variable (V)))
      with Pre => Present (V);
+
+   --  extractvalue and insertvalue instructions have a list of indices.
+   --  The C API returns a pointer to the first of a list of unsigned
+   --  values representing the list. We have to do some kludging to actually
+   --  access a value in a clean way, so we bury that here.
+
+   type A_unsigned    is access all unsigned;
+   type A_Index_Array is access all Index_Array (0 .. 100);
+   function Cvt_A is new Ada.Unchecked_Conversion (A_unsigned, A_Index_Array);
+
+   function Get_Num_Indices (V : Value_T) return Nat is
+     (Nat (unsigned'(Get_Num_Indices (V))))
+     with Pre => Get_Instruction_Opcode (V)
+                   in Op_Extract_Value | Op_Insert_Value;
+
+   function Get_Index (V : Value_T; Idx : Nat) return Nat is
+     (Nat (Cvt_A (Get_Indices (V)) (Idx)))
+     with Pre => Get_Instruction_Opcode (V)
+                   in Op_Extract_Value | Op_Insert_Value
+                 and then Idx < Get_Num_Indices (V);
 
 end CCG.Helper;

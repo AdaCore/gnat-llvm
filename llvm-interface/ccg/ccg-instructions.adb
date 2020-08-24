@@ -19,6 +19,7 @@ with Interfaces.C; use Interfaces.C;
 
 with LLVM.Core; use LLVM.Core;
 
+with CCG.Aggregates;  use CCG.Aggregates;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
 with CCG.Tables;      use CCG.Tables;
@@ -362,6 +363,9 @@ package body CCG.Instructions is
          when Op_Trunc | Op_SI_To_FP | Op_FP_Trunc | Op_FP_Ext | Op_S_Ext
             | Op_UI_To_FP | Op_Z_Ext | Op_Bit_Cast =>
             Assignment (V, Cast_Instruction (V, Op1));
+
+         when Op_Extract_Value =>
+            Assignment (V, Extract_Value_Instruction (V, Op1));
 
          when others =>
             Output_Stmt ("<unsupported instruction>");

@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Interfaces.C; use Interfaces.C;
+
 with Einfo; use Einfo;
 with Namet; use Namet;
 
@@ -58,5 +60,11 @@ package CCG.Aggregates is
    procedure Write_Struct_Typedef (T : Type_T)
      with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
    --  Write a typedef for T, a struct
+
+   function Extract_Value_Instruction (V : Value_T; Op : Value_T) return Str
+     with Pre  => Get_Instruction_Opcode (V) = Op_Extract_Value
+                  and then Present (Op),
+          Post => Present (Extract_Value_Instruction'Result);
+   --  Return the result of an extractvalue instruction
 
 end CCG.Aggregates;

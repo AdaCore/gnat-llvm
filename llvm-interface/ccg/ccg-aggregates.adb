@@ -243,4 +243,36 @@ package body CCG.Aggregates is
       Write_Str ("} __attribute__ ((packed)) " & T & ";", Eol => True);
    end Write_Struct_Typedef;
 
+   -------------------------------
+   -- Extract_Value_Instruction --
+   -------------------------------
+
+   function Extract_Value_Instruction (V : Value_T; Op : Value_T) return Str is
+      Idxs : constant Nat := Get_Num_Indices (V);
+      T    : Type_T       := Type_Of (Op);
+
+   begin
+      return Result : Str := +Op do
+
+         --  We process each index in turn, stripping off the reference.
+
+         for J in 0 .. Idxs - 1 loop
+
+            --  T must be either a struct or array type and we handle each
+            --  differently.
+
+            if Get_Type_Kind (T) = Struct_Type_Kind then
+               Result := Result & "." & Get_Field_Name (T, Get_Index (V, J));
+               T      := Struct_Get_Type_At_Index (T, J);
+            elsif Get_Type_Kind (T) = Array_Type_Kind then
+               Result := Result & " [" & J & "]";
+               T      := Get_Element_Type (T);
+            else
+               Result := +"<unsupported extractvalue>";
+            end if;
+         end loop;
+      end return;
+
+   end Extract_Value_Instruction;
+
 end CCG.Aggregates;

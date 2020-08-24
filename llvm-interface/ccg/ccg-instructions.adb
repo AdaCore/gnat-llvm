@@ -34,6 +34,17 @@ package body CCG.Instructions is
      with Pre => Present (LHS) and then Present (RHS);
    --  Take action to assign LHS the value RHS
 
+   function Binary_Instruction (V, Op1, Op2 : Value_T) return Str
+     with Pre  => Is_A_Instruction (V) and then Present (Op1)
+                  and then Present (Op2),
+          Post => Present (Binary_Instruction'Result);
+   --  Return the value corresponding to a binary instruction
+
+   function Cast_Instruction (V, Op1 : Value_T) return Str
+     with Pre  => Is_A_Instruction (V) and then Present (Op1),
+          Post => Present (Cast_Instruction'Result);
+   --  Return the value corresponding to a cast instruction
+
    function Cmp_Instruction (V, Op1, Op2 : Value_T) return Str
      with Pre  => Get_Instruction_Opcode (V) in Op_I_Cmp | Op_F_Cmp
                   and then Present (Op1) and then Present (Op2),
@@ -82,6 +93,89 @@ package body CCG.Instructions is
          end loop;
       end return;
    end Num_Uses;
+
+   ------------------------
+   -- Binary_Instruction --
+   ------------------------
+
+   function Binary_Instruction (V, Op1, Op2 : Value_T) return Str is
+      Opc : constant Opcode_T := Get_Instruction_Opcode (V);
+
+   begin
+      case Opc is
+         when Op_Add =>
+            return TP ("#1 + #2", Op1, Op2);
+
+         when Op_Sub =>
+            return TP ("#1 - #2", Op1, Op2);
+
+         when Op_Mul =>
+            return TP ("#1 * #2", Op1, Op2);
+
+         when Op_S_Div | Op_U_Div =>
+            return Maybe_Unsigned (Op1, Opc = Op_U_Div) & " / " &
+              Maybe_Unsigned (Op2, Opc = Op_U_Div);
+
+         when Op_S_Rem | Op_U_Rem =>
+            return Maybe_Unsigned (Op1, Opc = Op_U_Rem) & " % " &
+              Maybe_Unsigned (Op2, Opc = Op_U_Rem);
+
+         when Op_Shl =>
+            return TP ("#1 << #2", Op1, Op2);
+
+         when Op_L_Shr | Op_A_Shr =>
+            return Maybe_Unsigned (Op1, Opc = Op_L_Shr) & " >> " & Op2;
+
+         when Op_F_Add =>
+            return TP ("#1 + #2", Op1, Op2);
+
+         when Op_F_Sub =>
+            return TP ("#1 - #2", Op1, Op2);
+
+         when Op_F_Mul =>
+            return TP ("#1 * #2", Op1, Op2);
+
+         when Op_F_Div =>
+            return TP ("#1 / #2", Op1, Op2);
+
+         when Op_And =>
+            return TP ("#1 & #2", Op1, Op2);
+
+         when Op_Or =>
+            return TP ("#1 | #2", Op1, Op2);
+
+         when Op_Xor =>
+            return TP ("#1 ^ #2", Op1, Op2);
+
+         when others =>
+            pragma Assert (False);
+            return No_Str;
+
+      end case;
+   end Binary_Instruction;
+
+   ----------------------
+   -- Cast_Instruction --
+   ----------------------
+
+   function Cast_Instruction (V, Op1 : Value_T) return Str is
+      Opc : constant Opcode_T := Get_Instruction_Opcode (V);
+
+   begin
+      case Opc is
+         when Op_Trunc | Op_SI_To_FP | Op_FP_Trunc | Op_FP_Ext | Op_S_Ext =>
+            return TP ("(#T) #1", Op1, T => Type_Of (V));
+
+         when Op_UI_To_FP | Op_Z_Ext =>
+            return "(" & Type_Of (V) & ") " & Maybe_Unsigned (Op1);
+
+         when others =>
+            pragma Assert (False);
+            return No_Str;
+
+      end case;
+
+   end Cast_Instruction;
 
    ---------------------
    -- Cmp_Instruction --
@@ -253,59 +347,17 @@ package body CCG.Instructions is
                                Op1, Op2, Op3));
             end if;
 
-         when Op_Add =>
-            Assignment (V, TP ("#1 + #2", Op1, Op2));
-
-         when Op_Sub =>
-            Assignment (V, TP ("#1 - #2", Op1, Op2));
-
-         when Op_Mul =>
-            Assignment (V, TP ("#1 * #2", Op1, Op2));
-
-         when Op_S_Div | Op_U_Div =>
-            Assignment (V, Maybe_Unsigned (Op1, Opc = Op_U_Div) & " / " &
-                          Maybe_Unsigned (Op2, Opc = Op_U_Div));
-
-         when Op_S_Rem | Op_U_Rem =>
-            Assignment (V, Maybe_Unsigned (Op1, Opc = Op_U_Rem) & " % " &
-                          Maybe_Unsigned (Op2, Opc = Op_U_Rem));
-
-         when Op_Shl =>
-            Assignment (V, TP ("#1 << #2", Op1, Op2));
-
-         when Op_L_Shr | Op_A_Shr =>
-            Assignment
-              (V, Maybe_Unsigned (Op1, Opc = Op_L_Shr) & " >> " & Op2);
-
-         when Op_F_Add =>
-            Assignment (V, TP ("#1 + #2", Op1, Op2));
-
-         when Op_F_Sub =>
-            Assignment (V, TP ("#1 - #2", Op1, Op2));
-
-         when Op_F_Mul =>
-            Assignment (V, TP ("#1 * #2", Op1, Op2));
-
-         when Op_F_Div =>
-            Assignment (V, TP ("#1 / #2", Op1, Op2));
-
-         when Op_And =>
-            Assignment (V, TP ("#1 & #2", Op1, Op2));
-
-         when Op_Or =>
-            Assignment (V, TP ("#1 | #2", Op1, Op2));
-
-         when Op_Xor =>
-            Assignment (V, TP ("#1 ^ #2", Op1, Op2));
+         when Op_Add | Op_Sub | Op_Mul | Op_S_Div | Op_U_Div | Op_S_Rem
+            | Op_U_Rem | Op_Shl | Op_L_Shr | Op_A_Shr | Op_F_Add | Op_F_Sub
+            | Op_F_Mul | Op_F_Div | Op_And | Op_Or | Op_Xor =>
+            Assignment (V, Binary_Instruction (V, Op1, Op2));
 
          when Op_F_Neg =>
             Assignment (V, TP (" -#1", Op1));
 
-         when Op_Trunc | Op_SI_To_FP | Op_FP_Trunc | Op_FP_Ext | Op_S_Ext =>
-            Assignment (V, TP ("(#T) #1", Op1, T => Type_Of (V)));
-
-         when Op_UI_To_FP | Op_Z_Ext =>
-            Assignment (V, "(" & Type_Of (V) & ") " & Maybe_Unsigned (Op1));
+         when Op_Trunc | Op_SI_To_FP | Op_FP_Trunc | Op_FP_Ext | Op_S_Ext
+            | Op_UI_To_FP | Op_Z_Ext =>
+            Assignment (V, Cast_Instruction (V, Op1));
 
          when others =>
             Output_Stmt ("<unsupported instruction>");

@@ -455,6 +455,8 @@ package body GNATLLVM.Codegen is
    -- Is_Back_End_Switch --
    ------------------------
 
+   First_Call : Boolean := True;
+
    function Is_Back_End_Switch (Switch : String) return Boolean is
       First : constant Integer := Switch'First;
       Last  : constant Integer  := Switch_Last (Switch);
@@ -465,6 +467,19 @@ package body GNATLLVM.Codegen is
       --  Return True if Switch starts with S
 
    begin
+      if First_Call then
+         First_Call := False;
+
+         if Emit_C then
+            --  ??? Disable overflow checks by default for now when generating
+            --  C.
+
+            Suppress_Options.Suppress (Overflow_Check) := True;
+            Suppress_Options.Overflow_Mode_General     := Strict;
+            Suppress_Options.Overflow_Mode_Assertions  := Strict;
+         end if;
+      end if;
+
       if not Is_Switch (Switch) then
          return False;
       elsif Switch = "--dump-ir"

@@ -65,6 +65,12 @@ package CCG.Aggregates is
      with Pre  => Get_Instruction_Opcode (V) = Op_Extract_Value
                   and then Present (Op),
           Post => Present (Extract_Value_Instruction'Result);
-   --  Return the result of an extractvalue instruction
+   --  Return the result of an extractvalue instruction V
+
+   procedure Insert_Value_Instruction (V, Aggr, Op : Value_T)
+     with Pre => Get_Instruction_Opcode (V) = Op_Insert_Value
+                 and then Present (Aggr) and then Present (Op);
+   --  Process an insertvalue instruction V with an initial value of Aggr
+   --  and assigning Op to the component.
 
 end CCG.Aggregates;

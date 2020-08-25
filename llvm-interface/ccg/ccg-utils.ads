@@ -44,6 +44,10 @@ package CCG.Utils is
    --  data form of the operand. If Is_Unsigned is True, put "unsigned "
    --  before the type.
 
+   function Num_Uses (V : Value_T) return Nat
+     with Pre => Present (V);
+   --  Returns the number of uses of V
+
    function UC_V is new Ada.Unchecked_Conversion (Value_T, System.Address);
    function UC_T is new Ada.Unchecked_Conversion (Type_T, System.Address);
    function UC_B is new Ada.Unchecked_Conversion (Basic_Block_T,

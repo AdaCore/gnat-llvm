@@ -27,10 +27,6 @@ with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Instructions is
 
-   function Num_Uses (V : Value_T) return Nat
-     with Pre => Present (V);
-   --  Returns the number of uses of V
-
    procedure Assignment (LHS : Value_T; RHS : Str)
      with Pre => Present (LHS) and then Present (RHS);
    --  Take action to assign LHS the value RHS
@@ -79,22 +75,6 @@ package body CCG.Instructions is
          Write_Decl (V);
       end if;
    end Maybe_Decl;
-
-   --------------
-   -- Num_Uses --
-   --------------
-
-   function Num_Uses (V : Value_T) return Nat is
-      V_Use : Use_T := Get_First_Use (V);
-
-   begin
-      return J : Nat := 0 do
-         while Present (V_Use) loop
-            J := J + 1;
-            V_Use := Get_Next_Use (V_Use);
-         end loop;
-      end return;
-   end Num_Uses;
 
    ------------------------
    -- Binary_Instruction --
@@ -366,6 +346,9 @@ package body CCG.Instructions is
 
          when Op_Extract_Value =>
             Assignment (V, Extract_Value_Instruction (V, Op1));
+
+         when Op_Insert_Value =>
+            Insert_Value_Instruction (V, Op1, Op2);
 
          when others =>
             Output_Stmt ("<unsupported instruction>");

@@ -102,6 +102,22 @@ package body CCG.Utils is
       return Result;
    end TP;
 
+   --------------
+   -- Num_Uses --
+   --------------
+
+   function Num_Uses (V : Value_T) return Nat is
+      V_Use : Use_T := Get_First_Use (V);
+
+   begin
+      return J : Nat := 0 do
+         while Present (V_Use) loop
+            J := J + 1;
+            V_Use := Get_Next_Use (V_Use);
+         end loop;
+      end return;
+   end Num_Uses;
+
    -----------------
    -- Update_Hash --
    ----------------

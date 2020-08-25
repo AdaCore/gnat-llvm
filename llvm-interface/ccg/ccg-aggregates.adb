@@ -22,8 +22,9 @@ with Table;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 
-with CCG.Helper; use CCG.Helper;
-with CCG.Utils;  use CCG.Utils;
+with CCG.Helper;      use CCG.Helper;
+with CCG.Subprograms; use CCG.Subprograms;
+with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Aggregates is
 
@@ -103,6 +104,16 @@ package body CCG.Aggregates is
       Hash            => Hash,
       Equivalent_Keys => "=");
    FNI_Map : FNI_Maps.Map;
+
+   function Value_Piece (V : Value_T; T : in out Type_T; Idx : Nat) return Str
+     with Pre  => Get_Instruction_Opcode (V)
+                    in Op_Extract_Value | Op_Insert_Value
+                  and then Get_Type_Kind (T)
+                    in Struct_Type_Kind | Array_Type_Kind,
+          Post => Present (Value_Piece'Result) and then T /= T'Old;
+   --  T is the type of a component of the aggregate in an extractvalue or
+   --  insertvalue instruction V. Return an Str saying how to access that
+   --  component and update T to be the type of that component.
 
    -------------------------
    -- Set_Field_Name_Info --
@@ -243,6 +254,27 @@ package body CCG.Aggregates is
       Write_Str ("} __attribute__ ((packed)) " & T & ";", Eol => True);
    end Write_Struct_Typedef;
 
+   -----------------
+   -- Value_Piece --
+   -----------------
+
+   function Value_Piece (V : Value_T; T : in out Type_T; Idx : Nat) return Str
+   is
+   begin
+      return Result : Str do
+
+         --  We know this is either a struct or an array
+
+         if Get_Type_Kind (T) = Struct_Type_Kind then
+            Result := "." & Get_Field_Name (T, Get_Index (V, Idx));
+            T      := Struct_Get_Type_At_Index (T, Idx);
+         else
+            Result := " [" & Idx & "]";
+            T      := Get_Element_Type (T);
+         end if;
+      end return;
+   end Value_Piece;
+
    -------------------------------
    -- Extract_Value_Instruction --
    -------------------------------
@@ -257,22 +289,46 @@ package body CCG.Aggregates is
          --  We process each index in turn, stripping off the reference.
 
          for J in 0 .. Idxs - 1 loop
-
-            --  T must be either a struct or array type and we handle each
-            --  differently.
-
-            if Get_Type_Kind (T) = Struct_Type_Kind then
-               Result := Result & "." & Get_Field_Name (T, Get_Index (V, J));
-               T      := Struct_Get_Type_At_Index (T, J);
-            elsif Get_Type_Kind (T) = Array_Type_Kind then
-               Result := Result & " [" & J & "]";
-               T      := Get_Element_Type (T);
-            else
-               Result := +"<unsupported extractvalue>";
-            end if;
+            Result := Result & Value_Piece (V, T, J);
          end loop;
       end return;
 
    end Extract_Value_Instruction;
+
+   ------------------------------
+   -- Insert_Value_Instruction --
+   ------------------------------
+
+   procedure Insert_Value_Instruction (V, Aggr, Op : Value_T) is
+      Idxs : constant Nat := Get_Num_Indices (V);
+      T    : Type_T       := Type_Of (Aggr);
+      Acc  : Str          := +V;
+
+   begin
+      --  If Aggr is undef, we don't need to do any copy. If this is Aggr's
+      --  only use, we can set our value to it. Otherwise, we first copy it
+      --  to the result variable.
+
+      if Is_Undef (Aggr) then
+         null;
+      elsif Num_Uses (Aggr) = 1 then
+         Set_C_Value (V, +Aggr);
+      else
+         Output_Stmt (TP ("#1 = #2", V, Aggr));
+      end if;
+
+      --  Next we generate the string that represents the access of this
+      --  instruction.
+
+      for J in 0 .. Idxs - 1 loop
+         Acc := Acc & Value_Piece (V, T, J);
+      end loop;
+
+      --  The resulting type must be that of Op and we emit the assignment
+
+      pragma Assert (T = Type_Of (Op));
+      Output_Stmt (Acc & TP (" = #1", Op));
+
+   end Insert_Value_Instruction;
 
 end CCG.Aggregates;

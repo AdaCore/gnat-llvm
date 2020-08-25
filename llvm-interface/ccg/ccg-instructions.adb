@@ -291,11 +291,11 @@ package body CCG.Instructions is
       end if;
    end Assignment;
 
-   -------------------------
-   --  Output_Instruction --
-   -------------------------
+   ------------------
+   --  Instruction --
+   ------------------
 
-   procedure Output_Instruction (V : Value_T; Ops : Value_Array) is
+   procedure Instruction (V : Value_T; Ops : Value_Array) is
       Op1 : constant Value_T  :=
         (if Ops'Length >= 1 then Ops (1) else No_Value_T);
       Op2 : constant Value_T  :=
@@ -371,6 +371,6 @@ package body CCG.Instructions is
             Output_Stmt ("<unsupported instruction>");
 
       end case;
-   end Output_Instruction;
+   end Instruction;
 
 end CCG.Instructions;

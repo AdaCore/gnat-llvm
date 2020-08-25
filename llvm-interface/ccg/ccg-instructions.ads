@@ -21,7 +21,7 @@ with CCG.Helper; use CCG.Helper;
 
 package CCG.Instructions is
 
-   procedure Output_Instruction (V : Value_T; Ops : Value_Array)
+   procedure Instruction (V : Value_T; Ops : Value_Array)
      with Pre => Is_A_Instruction (V);
    --  Output the instruction V with operands Ops
 

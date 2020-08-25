@@ -205,8 +205,8 @@ package body CCG.Subprograms is
    ---------------
 
    procedure Output_BB (BB : Basic_Block_T) is
-      Instruction : Value_T          := Get_First_Instruction (BB);
-      Terminator  : constant Value_T := Get_Basic_Block_Terminator (BB);
+      V          : Value_T          := Get_First_Instruction (BB);
+      Terminator : constant Value_T := Get_Basic_Block_Terminator (BB);
 
    begin
       --  If we already processed this basic block, mark that we did
@@ -225,20 +225,20 @@ package body CCG.Subprograms is
       --  instruction it.
 
       Set_Was_Output (BB);
-      while Present (Instruction) loop
+      while Present (V) loop
          declare
-            N_Ops : constant Int := Get_Num_Operands (Instruction);
+            N_Ops : constant Int := Get_Num_Operands (V);
             Ops   : Value_Array (1 .. N_Ops);
 
          begin
             for J in Ops'Range loop
-               Ops (J) := Get_Operand (Instruction, unsigned (J - 1));
+               Ops (J) := Get_Operand (V, unsigned (J - 1));
             end loop;
 
-            Output_Instruction (Instruction, Ops);
+            Instruction (V, Ops);
          end;
 
-         Instruction := Get_Next_Instruction (Instruction);
+         V := Get_Next_Instruction (V);
       end loop;
 
       --  Now process any block referenced by the terminator

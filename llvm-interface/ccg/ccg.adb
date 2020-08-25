@@ -26,7 +26,6 @@ with Output;   use Output;
 
 with GNATLLVM; use GNATLLVM;
 
-with CCG.Tables;      use CCG.Tables;
 with CCG.Subprograms; use CCG.Subprograms;
 
 package body CCG is
@@ -47,8 +46,6 @@ package body CCG is
       Int_Size       := Get_Int_Size;
       Long_Size      := Get_Long_Size;
       Long_Long_Size := Get_Long_Long_Size;
-
-      Initialize_Tables;
    end Initialize_C_Writing;
 
    ------------------

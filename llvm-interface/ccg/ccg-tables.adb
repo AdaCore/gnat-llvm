@@ -1237,13 +1237,4 @@ package body CCG.Tables is
       return BBD.Output_Idx;
    end Get_Output_Idx;
 
-   ------------------------
-   --  Initialize_Tables --
-   ------------------------
-
-   procedure Initialize_Tables is
-   begin
-      null;
-   end Initialize_Tables;
-
 end CCG.Tables;

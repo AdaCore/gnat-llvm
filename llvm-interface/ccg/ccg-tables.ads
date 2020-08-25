@@ -30,9 +30,6 @@ package CCG.Tables is
    function Present (S : Str) return Boolean;
    function No      (S : Str) return Boolean;
 
-   procedure Initialize_Tables;
-   --  Perform any needed initialization on tables.
-
    function "+" (S : String)        return Str
      with Post => Present ("+"'Result);
    function "+" (V : Value_T)       return Str

@@ -30,6 +30,39 @@ package CCG.Tables is
    function Present (S : Str) return Boolean;
    function No      (S : Str) return Boolean;
 
+   procedure Write_Str (S : Str; Eol : Boolean := False)
+     with Pre => Present (S);
+   --  Write the contents of S to the current output target
+
+   --  In order to eliminate most parentheses, we record the operator
+   --  precedence, if known, of a string. This is used when we substitute
+   --  a value for a variable: if that value is of higher precedence than
+   --  the string we're substituting it into, we don't need parentheses.
+   --  For simplicity, we only use a subset of all of the C precedence levels.
+   --  Levels are listed from lowest to highest precedence.
+
+   type Precedence is (Unknown, Assign, Logic, Relation, Shift, Add, Mult,
+                       Unary, Component, Primary);
+
+   --  When we concatenate strings that have precedence information, the
+   --  resulting string has the lowest precedence. The precedence of a
+   --  value or basic block is Primary. We add a precedence to a string
+   --  using the binary "+" operator.
+
+   function "+" (S : String; P : Precedence) return Str
+     with Post => Get_Precedence ("+"'Result) = P;
+   function "+" (S : Str; P : Precedence) return Str
+     with Pre  => Present (S),
+          Post => Get_Precedence ("+"'Result) = P;
+
+   function Has_Precedence (S : Str) return Boolean
+     with Pre => Present (S);
+   --  Return True if the precedence of S isn't known
+
+   function Get_Precedence (S : Str) return Precedence
+     with Pre => Has_Precedence (S);
+   --  Return the precedence assigned to S
+
    function "+" (S : String)        return Str
      with Post => Present ("+"'Result);
    function "+" (V : Value_T)       return Str
@@ -43,10 +76,6 @@ package CCG.Tables is
    function To_Data (V : Value_T)       return Str
      with Pre => Present (V), Post => Present (To_Data'Result);
    --  Return an internal representation of S, V, T, or B
-
-   procedure Write_Str (S : Str; Eol : Boolean := False)
-     with Pre => Present (S);
-   --  Write the contents of S to the current output target
 
    function "&" (L : String;         R : Value_T)       return Str
      with Post => Present ("&"'Result);
@@ -227,9 +256,8 @@ private
       --  An integer
 
    type Str_Component
-        (Kind : Str_Component_Kind := Var_String; Length : Str_Length := 3)
-      is record
-
+     (Kind : Str_Component_Kind := Var_String; Length : Str_Length := 3)
+   is record
       case Kind is
          when Var_String =>
             Str   : String (1 .. Length);
@@ -251,6 +279,7 @@ private
 
    type Str_Component_Array is array (Integer range <>) of Str_Component;
    type Str_Record (Length : Integer) is record
+      P     : Precedence;
       Comps : Str_Component_Array (1 .. Length);
    end record;
 
@@ -264,6 +293,12 @@ private
 
    function "=" (SL, SR : Str_Record) return Boolean;
    function "=" (SL, SR : Str)        return Boolean is
-      (SL.all = SR.all);
+     (SL.all = SR.all);
+
+   function Has_Precedence (S : Str) return Boolean is
+     (S.P /= Unknown);
+
+   function Get_Precedence (S : Str) return Precedence is
+     (S.P);
 
 end CCG.Tables;

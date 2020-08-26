@@ -115,14 +115,21 @@ package body CCG.Output is
    -- Write_Value --
    -----------------
 
-   procedure Write_Value (V : Value_T) is
+   procedure Write_Value (V : Value_T; For_Precedence : Precedence) is
       C_Value : constant Str := Get_C_Value (V);
 
    begin
-      --  If we've set an expression as the value of V, write it
+      --  If we've set an expression as the value of V, write it, putting
+      --  in parentheses unless we know that it's of higher precedence
 
       if Present (C_Value) then
-         Write_Str ("(" & C_Value & ")");
+         if For_Precedence /= Unknown and then Has_Precedence (C_Value)
+           and then Get_Precedence (C_Value) > For_Precedence
+         then
+            Write_Str (C_Value);
+         else
+            Write_Str ("(" & C_Value & ")");
+         end if;
 
       --  If this is a simple constant, write the constant
 

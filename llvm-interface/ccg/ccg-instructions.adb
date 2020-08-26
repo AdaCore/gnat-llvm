@@ -86,48 +86,48 @@ package body CCG.Instructions is
    begin
       case Opc is
          when Op_Add =>
-            return TP ("#1 + #2", Op1, Op2);
+            return TP ("#1 + #2", Op1, Op2) + Add;
 
          when Op_Sub =>
-            return TP ("#1 - #2", Op1, Op2);
+            return TP ("#1 - #2", Op1, Op2) + Add;
 
          when Op_Mul =>
-            return TP ("#1 * #2", Op1, Op2);
+            return TP ("#1 * #2", Op1, Op2) + Mult;
 
          when Op_S_Div | Op_U_Div =>
             return Maybe_Unsigned (Op1, Opc = Op_U_Div) & " / " &
-              Maybe_Unsigned (Op2, Opc = Op_U_Div);
+              Maybe_Unsigned (Op2, Opc = Op_U_Div) + Mult;
 
          when Op_S_Rem | Op_U_Rem =>
             return Maybe_Unsigned (Op1, Opc = Op_U_Rem) & " % " &
-              Maybe_Unsigned (Op2, Opc = Op_U_Rem);
+              Maybe_Unsigned (Op2, Opc = Op_U_Rem) + Mult;
 
          when Op_Shl =>
-            return TP ("#1 << #2", Op1, Op2);
+            return TP ("#1 << #2", Op1, Op2) + Shift;
 
          when Op_L_Shr | Op_A_Shr =>
-            return Maybe_Unsigned (Op1, Opc = Op_L_Shr) & " >> " & Op2;
+            return Maybe_Unsigned (Op1, Opc = Op_L_Shr) & " >> " & Op2 + Shift;
 
          when Op_F_Add =>
-            return TP ("#1 + #2", Op1, Op2);
+            return TP ("#1 + #2", Op1, Op2) + Add;
 
          when Op_F_Sub =>
-            return TP ("#1 - #2", Op1, Op2);
+            return TP ("#1 - #2", Op1, Op2) + Add;
 
          when Op_F_Mul =>
-            return TP ("#1 * #2", Op1, Op2);
+            return TP ("#1 * #2", Op1, Op2) + Mult;
 
          when Op_F_Div =>
-            return TP ("#1 / #2", Op1, Op2);
+            return TP ("#1 / #2", Op1, Op2) + Mult;
 
          when Op_And =>
-            return TP ("#1 & #2", Op1, Op2);
+            return TP ("#1 & #2", Op1, Op2) + Logic;
 
          when Op_Or =>
-            return TP ("#1 | #2", Op1, Op2);
+            return TP ("#1 | #2", Op1, Op2) + Logic;
 
          when Op_Xor =>
-            return TP ("#1 ^ #2", Op1, Op2);
+            return TP ("#1 ^ #2", Op1, Op2) + Logic;
 
          when others =>
             pragma Assert (False);
@@ -155,9 +155,9 @@ package body CCG.Instructions is
         and then (Get_Type_Kind (Src_T) /= Pointer_Type_Kind
                     or else Get_Type_Kind (Dest_T) /= Pointer_Type_Kind)
       then
-         return TP ("*((#) &#1", Op, T => Pointer_Type (Dest_T, 0));
+         return TP ("*((#) &#1", Op, T => Pointer_Type (Dest_T, 0)) + Unary;
       else
-         return "(" & Dest_T & ") " & Our_Op;
+         return ("(" & Dest_T & ") " & Our_Op) + Unary;
       end if;
 
    end Cast_Instruction;
@@ -195,24 +195,25 @@ package body CCG.Instructions is
               Maybe_Unsigned (Op2, Info.Is_Unsigned);
 
          begin
-            return LHS & " " & Info.Op (1 .. Info.Length) & " " & RHS;
+            return (LHS & " " & Info.Op (1 .. Info.Length) & " " & RHS) +
+              Relation;
          end;
 
       elsif Get_Instruction_Opcode (V) = Op_F_Cmp then
 
          case Get_F_Cmp_Predicate (V) is
             when Real_OEQ | Real_UEQ =>
-               return TP ("#1 == #2", Op1, Op2);
+               return TP ("#1 == #2", Op1, Op2) + Relation;
             when Real_OGT | Real_UGT =>
-               return TP ("#1 > #2", Op1, Op2);
+               return TP ("#1 > #2", Op1, Op2) + Relation;
             when Real_OGE | Real_UGE =>
-               return TP ("#1 >= #2", Op1, Op2);
+               return TP ("#1 >= #2", Op1, Op2) + Relation;
             when Real_OLT | Real_ULT =>
-               return TP ("#1 < #2", Op1, Op2);
+               return TP ("#1 < #2", Op1, Op2) + Relation;
             when Real_OLE | Real_ULE =>
-               return TP ("#1 <= #2", Op1, Op2);
+               return TP ("#1 <= #2", Op1, Op2) + Relation;
             when Real_ONE | Real_UNE =>
-               return TP ("#1 != #2", Op1, Op2);
+               return TP ("#1 != #2", Op1, Op2) + Relation;
             when others =>
                null;
          end case;
@@ -246,7 +247,7 @@ package body CCG.Instructions is
       --  Add the final close paren. If this is a procedure call,
       --  output it. Otherwise, set this as the value of V.
 
-      Call := Call & ")";
+      Call := (Call & ")") + Assign;
       if Get_Type_Kind (Type_Of (V)) = Void_Type_Kind then
          Output_Stmt (Call);
       else
@@ -296,7 +297,7 @@ package body CCG.Instructions is
 
          when Op_Ret =>
             if Present (Op1) then
-               Output_Stmt ("return " & Op1);
+               Output_Stmt ("return " + Assign & Op1);
             else
                Output_Stmt ("return");
             end if;
@@ -314,12 +315,14 @@ package body CCG.Instructions is
 
          when Op_Load =>
             Assignment
-              (V, TP ((if Get_Is_Variable (Op1) then "#D1" else "*#1"), Op1));
+              (V, TP ((if Get_Is_Variable (Op1) then "#D1" else "*#1"), Op1) +
+                  Unary);
 
          when Op_Store =>
             Output_Stmt (TP ((if   Get_Is_Variable (Op2) then "#D2 = #1"
                               else "*#2 = #1"),
-                             Op1, Op2));
+                                Op1, Op2) +
+                         Assign);
 
          when Op_I_Cmp | Op_F_Cmp =>
             Assignment (V, Cmp_Instruction (V, Op1, Op2));
@@ -338,7 +341,7 @@ package body CCG.Instructions is
             Assignment (V, Binary_Instruction (V, Op1, Op2));
 
          when Op_F_Neg =>
-            Assignment (V, TP (" -#1", Op1));
+            Assignment (V, TP (" -#1", Op1) + Unary);
 
          when Op_Trunc | Op_SI_To_FP | Op_FP_Trunc | Op_FP_Ext | Op_S_Ext
             | Op_UI_To_FP | Op_Z_Ext | Op_Bit_Cast =>

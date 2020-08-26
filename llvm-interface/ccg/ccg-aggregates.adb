@@ -266,10 +266,10 @@ package body CCG.Aggregates is
          --  We know this is either a struct or an array
 
          if Get_Type_Kind (T) = Struct_Type_Kind then
-            Result := "." & Get_Field_Name (T, Get_Index (V, Idx));
+            Result := "." + Component & Get_Field_Name (T, Get_Index (V, Idx));
             T      := Struct_Get_Type_At_Index (T, Idx);
          else
-            Result := " [" & Idx & "]";
+            Result := " [" & Idx & "]" + Component;
             T      := Get_Element_Type (T);
          end if;
       end return;
@@ -327,7 +327,7 @@ package body CCG.Aggregates is
       --  The resulting type must be that of Op and we emit the assignment
 
       pragma Assert (T = Type_Of (Op));
-      Output_Stmt (Acc & TP (" = #1", Op));
+      Output_Stmt (Acc & TP (" = #1", Op) + Assign);
 
    end Insert_Value_Instruction;
 

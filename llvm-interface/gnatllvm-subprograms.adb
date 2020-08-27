@@ -1041,7 +1041,7 @@ package body GNATLLVM.Subprograms is
               (if   PK_Is_In_Or_Ref (PK)
                then Get_Param (Func, Param_Num, GT, R) else No_GL_Value);
             P_Name : aliased constant String  := Get_Name (Param);
-            A_Name : aliased constant String  := Get_Name (Param, ".addr");
+            A_Name : aliased constant String  := Get_Name (Param, ".out");
             P_Num  : Nat                      := Param_Num + 1;
             Name   : String_Access            := P_Name'Access;
 

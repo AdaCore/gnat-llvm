@@ -639,14 +639,17 @@ package GNATLLVM.Types is
      (+V.C_Value)
      with Pre => Is_Const (V);
 
-   function Is_Const_0 (V : BA_Data) return Boolean is
-     (Is_Const (V) and then Const_Int (V) = 0);
-   function Is_Const_1 (V : BA_Data) return Boolean is
-     (Is_Const (V) and then Const_Int (V) = 1);
-
    function Overflowed (V : BA_Data) return Boolean is
      (Present (V) and then not V.Is_None and then Present (V.C_Value)
         and then Overflowed (V.C_Value));
+
+   function Is_Const_0 (V : BA_Data) return Boolean is
+     (Is_Const (V) and then not Overflowed (V)
+        and then Is_Const_Int_Value (V.C_Value, 0));
+
+   function Is_Const_1 (V : BA_Data) return Boolean is
+     (Is_Const (V) and then not Overflowed (V)
+        and then Is_Const_Int_Value (V.C_Value, 1));
 
    function Related_Type (V : BA_Data) return GL_Type is
      (Related_Type (V.C_Value))

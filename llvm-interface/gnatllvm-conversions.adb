@@ -57,18 +57,14 @@ package body GNATLLVM.Conversions is
      (V : Value_T; T : Type_T) return Value_T
      with Pre  => Present (V) and then Present (T)
                   and then Is_Nonsymbolic_Constant (V),
-          Post => Type_Of (Convert_Nonsymbolic_Constant'Result) = T
-                  and then Is_Nonsymbolic_Constant
-                             (Convert_Nonsymbolic_Constant'Result);
+          Post => Type_Of (Convert_Nonsymbolic_Constant'Result) = T;
    --  Convert V, a constant, to T
 
    function Convert_Nonsymbolic_Constant_Internal
      (V : Value_T; T : Type_T) return Value_T
      with Pre  => Present (V) and then Present (T)
                   and then Is_Nonsymbolic_Constant (V),
-          Post => Type_Of (Convert_Nonsymbolic_Constant_Internal'Result) = T
-                  and then Is_Nonsymbolic_Constant
-                             (Convert_Nonsymbolic_Constant_Internal'Result);
+          Post => Type_Of (Convert_Nonsymbolic_Constant_Internal'Result) = T;
    --  Convert V, a constant, to T.  This version only works if one side
    --  is an array of bytes.
 
@@ -1002,10 +998,15 @@ package body GNATLLVM.Conversions is
    begin
       --  If this isn't a constant, it isn't a nonsymbolic constant.
       --  If it's a ConstantData, it is.
+      --  ??? The LLVM optimizer also has issues with larger than 64 bit
+      --  integers, so don't consider them as convertable this way.
 
       if not Is_Constant (V) then
          return False;
-      elsif Present (Is_Constant_Data (V)) then
+      elsif Present (Is_Constant_Data (V))
+        and then not (Get_Type_Kind (T) = Integer_Type_Kind
+                        and then Get_Int_Type_Width (T) > 64)
+      then
          return True;
 
       --  Otherwise, this is some other type of constant.  We're only concerned

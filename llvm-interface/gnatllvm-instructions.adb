@@ -383,10 +383,12 @@ package body GNATLLVM.Instructions is
       --  If either operand or the result isn't a constant integer, if this
       --  is a modular integer type, or if we already had an overflow, we
       --  don't have to test for overflow.
+      --  ???  We can't currently test for overflow if wider than ULL.
 
       if not Is_A_Const_Int (LHS) or else not Is_A_Const_Int (RHS)
         or else not Is_A_Const_Int (Result) or else Overflowed (Result)
         or else Is_Modular_Integer_Type (Result)
+        or else Esize (Result) > ULL'Size
       then
          return Result;
 
@@ -467,10 +469,12 @@ package body GNATLLVM.Instructions is
       --  If either operand or the result isn't a constant integer, if this
       --  is a modular integer type, or if we already had an overflow, we
       --  don't have to test for overflow.
+      --  ???  We can't currently test for overflow if wider than ULL.
 
       if not Is_A_Const_Int (LHS) or else not Is_A_Const_Int (RHS)
         or else not Is_A_Const_Int (Result) or else Overflowed (Result)
         or else Is_Modular_Integer_Type (Result)
+        or else Esize (Result) > ULL'Size
       then
          return Result;
 

@@ -357,7 +357,7 @@ package body GNATLLVM.Codegen is
       --  If we're generating code or being asked to optimize IR before
       --  writing it, perform optimization.
 
-      if Code_Generation in Write_Assembly | Write_Object
+      if Code_Generation in Write_Assembly | Write_Object | Write_C
         or else Optimize_IR
       then
          LLVM_Optimize_Module

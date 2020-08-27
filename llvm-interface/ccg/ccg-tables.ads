@@ -194,11 +194,16 @@ package CCG.Tables is
      with Pre => Present (BB), Inline;
    function Get_Was_Output (BB : Basic_Block_T) return Boolean
      with Pre => Present (BB), Inline;
+   function Get_No_Name    (BB : Basic_Block_T) return Boolean
+     with Pre => Present (BB), Inline;
 
    procedure Set_Is_Entry   (BB : Basic_Block_T; B : Boolean := True)
      with Pre  => Present (BB), Post => Get_Is_Entry (BB) = B, Inline;
    procedure Set_Was_Output (BB : Basic_Block_T; B : Boolean := True)
      with Pre  => Present (BB), Post => Get_Was_Output (BB) = B, Inline;
+   procedure Set_No_Name    (BB : Basic_Block_T; B : Boolean := True)
+     with Pre  => Present (BB),
+          Post => Get_No_Name (BB) = B, Inline;
 
    --  Define functions to return (and possibly create) an ordinal to use
    --  as part of the name for a value, type, or basic block.

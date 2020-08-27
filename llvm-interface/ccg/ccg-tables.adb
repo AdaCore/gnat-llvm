@@ -97,6 +97,9 @@ package body CCG.Tables is
       Was_Output : Boolean;
       --  True if this basic block has already been output
 
+      No_Name           : Boolean;
+      --  True if there's no LLVM name for this block; we use the ordinal
+
       Output_Idx : Nat;
       --  A positive number if we've assigned an ordinal to use as
       --  part of the name for this block.
@@ -1058,6 +1061,7 @@ package body CCG.Tables is
       else
          BB_Data_Table.Append ((Is_Entry   => False,
                                 Was_Output => False,
+                                No_Name    => False,
                                 Output_Idx => 0));
          Insert (BB_Data_Map, B, BB_Data_Table.Last);
          return BB_Data_Table.Last;
@@ -1202,6 +1206,17 @@ package body CCG.Tables is
       return Present (Idx) and then BB_Data_Table.Table (Idx).Was_Output;
    end Get_Was_Output;
 
+   -----------------
+   -- Get_No_Name --
+   -----------------
+
+   function Get_No_Name (BB : Basic_Block_T) return Boolean is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => False);
+
+   begin
+      return Present (Idx) and then BB_Data_Table.Table (Idx).No_Name;
+   end Get_No_Name;
+
    ------------------
    -- Set_Is_Entry --
    ------------------
@@ -1213,9 +1228,21 @@ package body CCG.Tables is
       BB_Data_Table.Table (Idx).Is_Entry := B;
    end Set_Is_Entry;
 
-   ------------------
-   -- Set_Is_Entry --
-   ------------------
+   -----------------
+   -- Set_No_Name --
+   -----------------
+
+   procedure Set_No_Name
+     (BB : Basic_Block_T; B : Boolean := True) is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
+
+   begin
+      BB_Data_Table.Table (Idx).No_Name := B;
+   end Set_No_Name;
+
+   --------------------
+   -- Set_Was_Output --
+   --------------------
 
    procedure Set_Was_Output (BB : Basic_Block_T; B : Boolean := True) is
       Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);

@@ -298,10 +298,27 @@ package body CCG.Output is
    -- Write_BB --
    --------------
 
-   procedure Write_BB (B : Basic_Block_T) is
+   procedure Write_BB (BB : Basic_Block_T) is
    begin
+     --  If it has a name, write that name and we're done.  Otherwise,
+     --  mark it as not having a name if we haven't already.
+
+      if not Get_No_Name (BB) then
+         declare
+            S : constant String := Get_Value_Name (Basic_Block_As_Value (BB));
+
+         begin
+            if S'Length > 0 then
+               Write_Str (S);
+               return;
+            end if;
+
+            Set_No_Name (BB);
+         end;
+      end if;
+
       Write_Str ("ccg_l");
-      Write_Int (Get_Output_Idx (B));
+      Write_Int (Get_Output_Idx (BB));
    end Write_BB;
 
 end CCG.Output;

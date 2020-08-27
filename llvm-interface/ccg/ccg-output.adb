@@ -153,12 +153,14 @@ package body CCG.Output is
 
    begin
       --  We need to write a declaration for this if it's not a simple
-      --  constant, not a function, not an argument, not undef, and we haven't
-      --  already written one or assigned a value to it.
+      --  constant, not a function, an argument, a basic block or
+      --  undef, and we haven't already written one or assigned a value
+      --  to it.
 
       if not Get_Is_Decl_Output (V) and then not Is_Simple_Constant (V)
         and then not Is_A_Function (V) and then not Is_A_Argument (V)
-        and then not Is_Undef (V) and then No (Get_C_Value (V))
+        and then not Is_A_Basic_Block (V) and then not Is_Undef (V)
+        and then No (Get_C_Value (V))
       then
          Set_Is_Decl_Output (V);
 

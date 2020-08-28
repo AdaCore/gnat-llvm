@@ -31,6 +31,10 @@ package body CCG.Output is
    --  True if this is a simple enough constant that we output it in C
    --  source as a constant.
 
+   procedure Write_C_Name (S : String)
+     with Pre => S'Length > 0;
+   --  Write S as a valid name in C
+
    procedure Write_Value_Name (V : Value_T)
      with Pre => Present (V);
    --  Write the value name of V, which is either the LLVM name or a name
@@ -39,6 +43,24 @@ package body CCG.Output is
    procedure Write_Constant_Value (V : Value_T)
      with Pre => Is_A_Constant (V);
    --  Write the constant value of V
+
+   ------------------
+   -- Write_C_Name --
+   ------------------
+
+   procedure Write_C_Name (S : String) is
+   begin
+      --  We assume here that the only characters we have to be concerned
+      --  about are "." and "-", both of which we remap to "___".
+
+      for C of S loop
+         if C in '.' | '-' then
+            Write_Str ("___");
+         else
+            Write_Char (C);
+         end if;
+      end loop;
+   end Write_C_Name;
 
    ----------------------
    -- Write_Value_Name --
@@ -55,7 +77,7 @@ package body CCG.Output is
 
          begin
             if S'Length > 0 then
-               Write_Str (S);
+               Write_C_Name (S);
                return;
             end if;
 
@@ -269,7 +291,7 @@ package body CCG.Output is
 
          when Struct_Type_Kind =>
             if Has_Name (T) then
-               Write_Str (Get_Struct_Name (T));
+               Write_C_Name (Get_Struct_Name (T));
             else
                Write_Str ("ccg_s");
                Write_Int (Get_Output_Idx (T));
@@ -309,7 +331,7 @@ package body CCG.Output is
 
          begin
             if S'Length > 0 then
-               Write_Str (S);
+               Write_C_Name (S);
                return;
             end if;
 

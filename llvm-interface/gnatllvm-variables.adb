@@ -1592,6 +1592,13 @@ package body GNATLLVM.Variables is
    procedure Emit_Declaration
      (N : Node_Id; For_Freeze_Entity : Boolean := False)
    is
+      function Is_Matching_Unc_Array
+        (GT : GL_Type; Addr : Node_Id) return Boolean
+        with Pre => Present (GT) and then Present (Addr);
+      --  Return True iff Addr is an expression that represents the address
+      --  of an object that's an unconstrained array wih the same bounds
+      --  size as GT.
+
       E               : constant Node_Id   := Defining_Identifier (N);
       --  Identifier being defined
 
@@ -1666,7 +1673,38 @@ package body GNATLLVM.Variables is
       LLVM_Var        : GL_Value           := Get_Value (E);
       --  The LLVM value for the variable
 
-   begin
+      ---------------------------
+      -- Is_Matching_Unc_Array --
+      ---------------------------
+
+      function Is_Matching_Unc_Array
+        (GT : GL_Type; Addr : Node_Id) return Boolean is
+      begin
+         --  If the address isn't a 'Address, this isn't a match
+
+         if Nkind (Addr_Expr) /= N_Attribute_Reference
+           or else (Get_Attribute_Id (Attribute_Name (Addr_Expr))
+                      /= Attribute_Address)
+         then
+            return False;
+         end if;
+
+         --  Otherwise, get the info for the entity whose address is being
+         --  taken and see if it matches.
+
+         declare
+            Other_Id : constant Entity_Id := Entity (Prefix (Addr_Expr));
+            Other_GT : constant GL_Type   := Full_GL_Type (Other_Id);
+
+         begin
+            return Is_Array_Type (Other_GT)
+              and then Is_Constr_Subt_For_UN_Aliased (Other_GT)
+              and then Get_Bound_Size (GT) = Get_Bound_Size (Other_GT);
+         end;
+      end Is_Matching_Unc_Array;
+
+   begin --  Start of processing for Emit_Declaration
+
       Check_Convention (E);
 
       --  Nothing to do if this is a debug renaming type
@@ -1762,27 +1800,23 @@ package body GNATLLVM.Variables is
       --  subtype, then it can overlay only another aliased object with an
       --  unconstrained array nominal subtype and compatible template.
 
-      if Has_Addr and then Is_Constr_Subt_For_UN_Aliased (GT)
-        and then Is_Array_Type (GT)
-        and then Nkind (Addr_Expr) = N_Attribute_Reference
-        and then (Get_Attribute_Id (Attribute_Name (Addr_Expr))
-                    = Attribute_Address)
+      if Has_Addr and then Is_Array_Type (GT)
+        and then Is_Constr_Subt_For_UN_Aliased (GT)
       then
-         declare
-            Other_Id : constant Entity_Id := Entity (Prefix (Addr_Expr));
-            Other_GT : constant GL_Type   := Full_GL_Type (Other_Id);
+         --  We make an exception for an absolute address but we warn
+         --  that there's a descriptor at the start of the object.
 
-         begin
-            if not Is_Constr_Subt_For_UN_Aliased (Other_GT)
-              or else not Is_Array_Type (Other_GT)
-              or else Get_Bound_Size (GT) /= Get_Bound_Size (Other_GT)
-            then
-               Error_Msg_NE ("aliased object& with unconstrained array " &
-                               "nominal subtype", Address_Clause (E), E);
-               Error_Msg_N ("\\can overlay only aliased object with " &
+         if Nkind (Strip_Conversions (Addr_Expr)) = N_Integer_Literal then
+            Error_Msg_NE ("??aliased object& with unconstrained array " &
+                            "nominal subtype", Address_Clause (E), E);
+            Error_Msg_N ("\\starts with a descriptor whose size is " &
+                           "given by ''Descriptor_Size", Address_Clause (E));
+         elsif not Is_Matching_Unc_Array (GT, Addr_Expr) then
+            Error_Msg_NE ("aliased object& with unconstrained array " &
+                            "nominal subtype", Address_Clause (E), E);
+            Error_Msg_N ("\\can overlay only aliased object with " &
                               "compatible subtype", Address_Clause (E));
-            end if;
-         end;
+         end if;
       end if;
 
       --  Handle top-level declarations or ones that need to be treated

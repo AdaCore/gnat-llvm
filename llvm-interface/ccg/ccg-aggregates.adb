@@ -262,16 +262,20 @@ package body CCG.Aggregates is
    is
    begin
       return Result : Str do
+         declare
+            Ins_Idx : constant Nat := Get_Index (V, Idx);
 
-         --  We know this is either a struct or an array
+         begin
+            --  We know this is either a struct or an array
 
-         if Get_Type_Kind (T) = Struct_Type_Kind then
-            Result := "." + Component & Get_Field_Name (T, Get_Index (V, Idx));
-            T      := Struct_Get_Type_At_Index (T, Idx);
-         else
-            Result := " [" & Idx & "]" + Component;
-            T      := Get_Element_Type (T);
-         end if;
+            if Get_Type_Kind (T) = Struct_Type_Kind then
+               Result := "." + Component & Get_Field_Name (T, Ins_Idx);
+               T      := Struct_Get_Type_At_Index (T, Ins_Idx);
+            else
+               Result := " [" & Ins_Idx & "]" + Component;
+               T      := Get_Element_Type (T);
+            end if;
+         end;
       end return;
    end Value_Piece;
 

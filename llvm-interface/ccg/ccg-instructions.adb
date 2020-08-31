@@ -155,7 +155,7 @@ package body CCG.Instructions is
         and then (Get_Type_Kind (Src_T) /= Pointer_Type_Kind
                     or else Get_Type_Kind (Dest_T) /= Pointer_Type_Kind)
       then
-         return TP ("*((#) &#1", Op, T => Pointer_Type (Dest_T, 0)) + Unary;
+         return TP ("*((#T) &#1)", Op, T => Pointer_Type (Dest_T, 0)) + Unary;
       else
          return ("(" & Dest_T & ") " & Our_Op) + Unary;
       end if;

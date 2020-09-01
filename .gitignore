@@ -5,6 +5,7 @@ obj
 # Imported sources
 acats
 fixedbugs
+ccg-tests
 
 # Code editors artifacts
 .#*

@@ -40,7 +40,7 @@ package body CCG.Helper is
    --------------
 
    function Has_Name (T : Type_T) return Boolean is
-      function Has_Name (T : Type_T) return Bool_T
+      function Has_Name (T : Type_T) return Bool
         with Import, Convention => C, External_Name => "Has_Name";
    begin
       return (if Has_Name (T) /= 0 then True else False);

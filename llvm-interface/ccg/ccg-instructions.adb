@@ -219,7 +219,7 @@ package body CCG.Instructions is
          end case;
       end if;
 
-      return +"<unsupported comparison>";
+      return +("<unsupported comparison: " & Get_Opcode_Name (V) & ">");
 
    end Cmp_Instruction;
 
@@ -294,7 +294,6 @@ package body CCG.Instructions is
       --  Handle the instruction according to its opcode
 
       case Opc is
-
          when Op_Ret =>
             if Present (Op1) then
                Output_Stmt ("return " + Assign & Op1);
@@ -310,7 +309,7 @@ package body CCG.Instructions is
                Set_Is_Variable (V);
                Write_Decl (V);
             else
-               Output_Stmt ("<unsupported instruction>");
+               Output_Stmt ("<unsupported alloca instruction>");
             end if;
 
          when Op_Load =>
@@ -354,7 +353,8 @@ package body CCG.Instructions is
             Insert_Value_Instruction (V, Op1, Op2);
 
          when others =>
-            Output_Stmt ("<unsupported instruction>");
+            Output_Stmt
+              ("<unsupported instruction: " & Get_Opcode_Name (Opc) & ">");
 
       end case;
    end Instruction;

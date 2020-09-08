@@ -244,7 +244,6 @@ package body CCG.Subprograms is
       --  Now process any block referenced by the terminator
 
       case Get_Instruction_Opcode (Terminator) is
-
          when Op_Ret =>
             null;
 
@@ -257,7 +256,10 @@ package body CCG.Subprograms is
             end if;
 
          when others =>
-            Output_Stmt (+"<unsupported terminator>");
+            Output_Stmt
+              (+("<unsupported terminator: " &
+                   Get_Opcode_Name (Terminator) & ">"));
+
       end case;
 
    end Output_BB;

@@ -115,4 +115,10 @@ package CCG.Helper is
                    in Op_Extract_Value | Op_Insert_Value
                  and then Idx < Get_Num_Indices (V);
 
+   function Get_Opcode_Name (Opc : Opcode_T) return String with Inline;
+
+   function Get_Opcode_Name (V : Value_T) return String is
+     (Get_Opcode_Name (Get_Instruction_Opcode (V)))
+     with Pre => Is_A_Instruction (V);
+
 end CCG.Helper;

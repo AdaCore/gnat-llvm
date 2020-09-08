@@ -11,6 +11,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/InlineAsm.h"
+#include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Metadata.h"
@@ -27,6 +28,7 @@
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm-c/Core.h"
 
 using namespace llvm;
 using namespace llvm::sys;
@@ -618,6 +620,29 @@ extern "C"
 int64_t
 Get_Element_Offset (DataLayout &DL, StructType *ST, unsigned idx)
 {
-    const StructLayout *SL = DL.getStructLayout (ST);
-    return SL->getElementOffset (idx);
+  const StructLayout *SL = DL.getStructLayout (ST);
+  return SL->getElementOffset (idx);
+}
+
+/* There are two LLVM "opcodes": the real LLVM opcode, which is used
+   throughout the LLVM C++ interface, and a "stable" version of the
+   opcodes, that's used in the C interface.  We need to map between them,
+   but the only function to do so in LLVM is static (in Core.cpp), so we
+   duplicate that small function here.  */
+
+static int map_from_llvmopcode(LLVMOpcode code)
+{
+  switch (code) {
+#define HANDLE_INST(num, opc, clas) case LLVM##opc: return num;
+#include "llvm/IR/Instruction.def"
+#undef HANDLE_INST
+  }
+  llvm_unreachable("Unhandled Opcode.");
+}
+
+extern "C"
+const char *
+Get_Opcode_Name (LLVMOpcode opc)
+{
+  return Instruction::getOpcodeName (map_from_llvmopcode (opc));
 }

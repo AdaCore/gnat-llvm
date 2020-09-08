@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C; use Interfaces.C;
+with Interfaces.C.Strings; use Interfaces.C.Strings;
 
 package body CCG.Helper is
 
@@ -45,5 +46,16 @@ package body CCG.Helper is
    begin
       return (if Has_Name (T) /= 0 then True else False);
    end Has_Name;
+
+   ---------------------
+   -- Get_Opcode_Name --
+   ---------------------
+
+   function Get_Opcode_Name (Opc : Opcode_T) return String is
+      function Get_Opcode_Name_C (Opc : Opcode_T) return chars_ptr
+        with Import, Convention => C, External_Name => "Get_Opcode_Name";
+   begin
+      return Value (Get_Opcode_Name_C (Opc));
+   end Get_Opcode_Name;
 
 end CCG.Helper;

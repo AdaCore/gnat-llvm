@@ -481,8 +481,8 @@ package GNATLLVM.GLType is
      (Is_Volatile (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   function Is_Atomic_Or_VFA (GT : GL_Type) return Boolean is
-     (Is_Atomic_Or_VFA (Full_Etype (GT)))
+   function Is_Full_Access (GT : GL_Type) return Boolean is
+     (Is_Full_Access (Full_Etype (GT)))
      with Pre => Present (GT);
 
    function Is_Independent (GT : GL_Type) return Boolean is

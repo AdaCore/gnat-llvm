@@ -963,7 +963,7 @@ package body GNATLLVM.Records.Create is
            (if   Present (Parent_Subtype (R_TE))
             then Full_Parent_Subtype (R_TE) else Empty);
          Atomic      : constant Boolean   :=
-           Is_Atomic_Or_VFA (E) or else Is_Atomic_Or_VFA (F_GT);
+           Is_Full_Access (E) or else Is_Full_Access (F_GT);
          Error_Str   : constant String    := Field_Error_Msg (E, F_GT, True);
          Pos         : Uint               :=
            (if Present (Clause) then Component_Bit_Offset (E) else No_Uint);
@@ -1039,7 +1039,7 @@ package body GNATLLVM.Records.Create is
 
          --  If this is to be an atomic field, verify that we can make it one
 
-         if Is_Atomic_Or_VFA (E) then
+         if Is_Full_Access (E) then
             Check_OK_For_Atomic_Type (F_GT, E);
          end if;
 

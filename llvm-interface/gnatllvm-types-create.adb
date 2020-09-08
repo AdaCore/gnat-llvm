@@ -426,7 +426,7 @@ package body GNATLLVM.Types.Create is
             --  If this is an atomic or VFA type with no alignment specified,
             --  maybe pick an alignment based on the size.
 
-            if Is_Atomic_Or_VFA (TE) and then No (Align) then
+            if Is_Full_Access (TE) and then No (Align) then
                if Present (Size)
                  and then (Size = 16 or else Size = 32 or else Size = 64
                              or else Size = 128)
@@ -472,7 +472,7 @@ package body GNATLLVM.Types.Create is
 
       --  If this is to be atomic, see if legal
 
-      if Is_Atomic_Or_VFA (TE) then
+      if Is_Full_Access (TE) then
          Check_OK_For_Atomic_Type (GT, TE);
       end if;
 
@@ -717,7 +717,7 @@ package body GNATLLVM.Types.Create is
          then  "Value_Size" else "size");
       Error_Str  : constant String   := Field_Error_Msg (E, GT, False);
       Atomic      : constant Boolean :=
-        Is_Atomic_Or_VFA (E) or else Is_Atomic_Or_VFA (GT);
+        Is_Full_Access (E) or else Is_Full_Access (GT);
       Size_GT    : GL_Type           := Primitive_GL_Type (GT);
       Is_Dynamic : Boolean           :=
          Is_Dynamic_Size (Size_GT,

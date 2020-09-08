@@ -1449,7 +1449,7 @@ package body GNATLLVM.Types is
      (E : Entity_Id; GT : GL_Type; Only_Special : Boolean) return String
    is
       Atomic      : constant Boolean   :=
-        Is_Atomic_Or_VFA (E) or else Is_Atomic_Or_VFA (GT);
+        Is_Full_Access (E) or else Is_Full_Access (GT);
       Independent : constant Boolean   :=
         Is_Independent (E) or else Is_Independent (GT);
       By_Ref_Type : constant Boolean   := Is_By_Reference_Type (GT);

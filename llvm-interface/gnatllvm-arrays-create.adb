@@ -260,7 +260,7 @@ package body GNATLLVM.Arrays.Create is
 
       --  Check for an array that requires atomic components
 
-      if  Has_Atomic_Components (A_TE) or else Is_Atomic_Or_VFA (Comp_GT) then
+      if  Has_Atomic_Components (A_TE) or else Is_Full_Access (Comp_GT) then
          Check_OK_For_Atomic_Type (Comp_GT, A_TE, True);
       end if;
 

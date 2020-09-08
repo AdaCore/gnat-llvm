@@ -103,13 +103,13 @@ package GNATLLVM.Utils is
    --  If Subp_Body acts as a spec, return it. Return the corresponding
    --  subprogram declaration otherwise.
 
-   function Has_Volatile_Full_Access (N : Node_Id) return Boolean
+   function Has_Full_Access (N : Node_Id) return Boolean
      with Pre => Present (N);
-   --  Return True if N is a node which needs Volatile_Full_Access
+   --  Return True if N is a node which needs Full_Access
 
    function Is_VFA_Ref (N : Node_Id) return Boolean is
      (Nkind (N) in N_Indexed_Component | N_Selected_Component
-        and then Has_Volatile_Full_Access (Prefix (N)))
+        and then Has_Full_Access (Prefix (N)))
      with Pre => Present (N);
    --  Return True if N is an expression that has a Volatile_Full_Access
    --  prefix.

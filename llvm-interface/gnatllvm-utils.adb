@@ -201,11 +201,11 @@ package body GNATLLVM.Utils is
 
    end Num_Actuals;
 
-   ------------------------------
-   -- Has_Volatile_Full_Access --
-   ------------------------------
+   ---------------------
+   -- Has_Full_Access --
+   ---------------------
 
-   function Has_Volatile_Full_Access (N : Node_Id) return Boolean is
+   function Has_Full_Access (N : Node_Id) return Boolean is
       E : Entity_Id;
 
    begin
@@ -213,21 +213,21 @@ package body GNATLLVM.Utils is
          when N_Identifier | N_Expanded_Name =>
             E := Entity (N);
             return Is_Object (E)
-              and then (Is_Atomic_Or_VFA (E)
-                          or else Is_Atomic_Or_VFA (Full_Etype (E)));
+              and then (Is_Full_Access (E)
+                          or else Is_Full_Access (Full_Etype (E)));
 
          when N_Selected_Component =>
             E := Entity (Selector_Name (N));
-            return Is_Atomic_Or_VFA (E)
-              or else Is_Atomic_Or_VFA (Full_Etype (E));
+            return Is_Full_Access (E)
+              or else Is_Full_Access (Full_Etype (E));
 
          when N_Indexed_Component | N_Explicit_Dereference =>
-            return Is_Atomic_Or_VFA (Full_Etype (N));
+            return Is_Full_Access (Full_Etype (N));
 
          when others =>
             return False;
       end case;
-   end Has_Volatile_Full_Access;
+   end Has_Full_Access;
 
    -------------
    -- Discard --

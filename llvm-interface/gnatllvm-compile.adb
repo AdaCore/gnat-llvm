@@ -562,8 +562,7 @@ package body GNATLLVM.Compile is
                                    Expr         => Expression (N),
                                    Forwards_OK  => Forwards_OK (N),
                                    Backwards_OK => Backwards_OK (N),
-                                   VFA          =>
-                                     Has_Volatile_Full_Access (Name (N)));
+                                   VFA          => Has_Full_Access (Name (N)));
                end if;
             end;
 
@@ -1074,7 +1073,7 @@ package body GNATLLVM.Compile is
                                     For_LHS    => For_LHS,
                                     Prefer_LHS => Prefer_LHS,
                                     VFA        =>
-                                      Has_Volatile_Full_Access (Prefix (N))),
+                                      Has_Full_Access (Prefix (N))),
                   GT);
             end if;
 
@@ -1118,7 +1117,7 @@ package body GNATLLVM.Compile is
                                       For_LHS    => For_LHS,
                                       Prefer_LHS => Prefer_LHS,
                                       VFA        =>
-                                        Has_Volatile_Full_Access (Prefix (N))),
+                                        Has_Full_Access (Prefix (N))),
                   GT);
             else
                return Get_Slice_LValue (GT, Get (Result, Any_Reference));

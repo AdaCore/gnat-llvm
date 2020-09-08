@@ -1347,7 +1347,7 @@ package body GNATLLVM.Variables is
       --  constant, adjust the alignment.
 
       if No (Size) and then No (Align) and then Present (In_Size)
-        and then (Is_Atomic_Or_VFA_Object (E)
+        and then (Is_Full_Access (E)
                     or else (Ekind (E) not in E_Exception     |
                                               E_Out_Parameter |
                                               E_Loop_Parameter
@@ -1736,7 +1736,7 @@ package body GNATLLVM.Variables is
 
       --  Now check if the type of the object allows atomic access
 
-      if Is_Atomic_Or_VFA (E) then
+      if Is_Full_Access (E) then
          Check_OK_For_Atomic_Type (GT, E);
       end if;
 

@@ -345,16 +345,18 @@ package body CCG.Tables is
          declare
             S_Rec : aliased constant Str_Record (1) :=
               (1, Unknown, (1 => (Var_String, S'Length, S)));
+            Result : constant Str := Undup_Str (S_Rec);
 
          begin
-            return Undup_Str (S_Rec);
+            return Result;
          end;
       else
          declare
-            To_Do : Integer := S'Length;
-            I_Pos : Integer := S'First;
-            O_Pos : Integer := 1;
-            S_Rec : aliased Str_Record ((S'Length + (Str_Max - 1)) / Str_Max);
+            To_Do  : Integer := S'Length;
+            I_Pos  : Integer := S'First;
+            O_Pos  : Integer := 1;
+            S_Rec  : aliased Str_Record ((S'Length + (Str_Max - 1)) / Str_Max);
+            Result : Str;
 
          begin
             while To_Do > 0 loop
@@ -370,7 +372,8 @@ package body CCG.Tables is
                end;
             end loop;
 
-            return Undup_Str (S_Rec);
+            Result := Undup_Str (S_Rec);
+            return Result;
          end;
       end if;
    end "+";
@@ -380,10 +383,12 @@ package body CCG.Tables is
    ---------
 
    function "+" (V : Value_T) return Str is
-      S_Rec : aliased constant Str_Record (1) :=
+      S_Rec  : aliased constant Str_Record (1) :=
         (1, Primary, (1 => (Value, 1, V)));
+      Result : constant Str := Undup_Str (S_Rec);
+
    begin
-      return Undup_Str (S_Rec);
+      return Result;
    end "+";
 
    -------------
@@ -391,10 +396,12 @@ package body CCG.Tables is
    -------------
 
    function To_Data (V : Value_T) return Str is
-      S_Rec : aliased constant Str_Record (1) :=
+      S_Rec  : aliased constant Str_Record (1) :=
         (1, Unary, (1 => (Data_Value, 1, V)));
+      Result : constant Str := Undup_Str (S_Rec);
+
    begin
-      return Undup_Str (S_Rec);
+      return Result;
    end To_Data;
 
    ---------
@@ -405,11 +412,12 @@ package body CCG.Tables is
    begin
       if S'Length <= Str_Max then
          declare
-            S_Rec : aliased constant Str_Record (1) :=
+            S_Rec  : aliased constant Str_Record (1) :=
               (1, P, (1 => (Var_String, S'Length, S)));
+            Result : constant Str := Undup_Str (S_Rec);
 
          begin
-            return Undup_Str (S_Rec);
+            return Result;
          end;
       else
          return +S + P;
@@ -421,10 +429,12 @@ package body CCG.Tables is
    ---------
 
    function "+" (S : Str; P : Precedence) return Str is
-      S_Rec : aliased constant Str_Record (S.Length) := (S.Length, P, S.Comps);
+      S_Rec  : aliased constant Str_Record (S.Length) :=
+                 (S.Length, P, S.Comps);
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      return Undup_Str (S_Rec);
+      return Result;
    end "+";
 
    ---------
@@ -432,11 +442,12 @@ package body CCG.Tables is
    ---------
 
    function "+" (T : Type_T) return Str is
-      S_Rec : aliased constant Str_Record (1) :=
+      S_Rec  : aliased constant Str_Record (1) :=
         (1, Unknown, (1 => (Typ, 1, T)));
+      Result : constant Str := Undup_Str (S_Rec);
    begin
       Maybe_Write_Typedef (T);
-      return Undup_Str (S_Rec);
+      return Result;
    end "+";
 
    ---------
@@ -444,10 +455,12 @@ package body CCG.Tables is
    ---------
 
    function "+" (B : Basic_Block_T) return Str is
-      S_Rec : aliased constant Str_Record (1) :=
+      S_Rec  : aliased constant Str_Record (1) :=
         (1, Primary, (1 => (BB, 1, B)));
+      Result : constant Str := Undup_Str (S_Rec);
+
    begin
-      return Undup_Str (S_Rec);
+      return Result;
    end "+";
 
    ---------
@@ -455,10 +468,12 @@ package body CCG.Tables is
    ---------
 
    function "+" (N : Nat) return Str is
-      S_Rec : aliased constant Str_Record (1) :=
+      S_Rec  : aliased constant Str_Record (1) :=
         (1, Unknown, (1 => (Number, 1, N)));
+      Result : constant Str := Undup_Str (S_Rec);
+
    begin
-      return Undup_Str (S_Rec);
+      return Result;
    end "+";
 
    ---------------
@@ -517,12 +532,13 @@ package body CCG.Tables is
          return +R;
       elsif L'Length <= Str_Max then
          declare
-            S_Rec : aliased constant Str_Record (2) :=
+            S_Rec  : aliased constant Str_Record (2) :=
               (2, Primary,
                (1 => (Var_String, L'Length, L), 2 => (Value, 1, R)));
+            Result : constant Str := Undup_Str (S_Rec);
 
          begin
-            return Undup_Str (S_Rec);
+            return Result;
          end;
       else
          return +L & (+R);
@@ -539,13 +555,14 @@ package body CCG.Tables is
          return +R;
       elsif L'Length <= Str_Max then
          declare
-            S_Rec : aliased constant Str_Record (2) :=
+            S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown,
                (1 => (Var_String, L'Length, L), 2 => (Typ, 1, R)));
+            Result : constant Str := Undup_Str (S_Rec);
 
          begin
             Maybe_Write_Typedef (R);
-            return Undup_Str (S_Rec);
+            return Result;
          end;
       else
          return +L & (+R);
@@ -562,12 +579,13 @@ package body CCG.Tables is
          return +R;
       elsif L'Length <= Str_Max then
          declare
-            S_Rec : aliased constant Str_Record (2) :=
+            S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown,
                (1 => (Var_String, L'Length, L), 2 => (BB, 1, R)));
+            Result : constant Str := Undup_Str (S_Rec);
 
          begin
-            return Undup_Str (S_Rec);
+            return Result;
          end;
       else
          return +L & (+R);
@@ -584,12 +602,13 @@ package body CCG.Tables is
          return +R;
       elsif L'Length <= Str_Max then
          declare
-            S_Rec : aliased constant Str_Record (2) :=
+            S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown,
                (1 => (Var_String, L'Length, L), 2 => (Number, 1, R)));
+            Result : constant Str := Undup_Str (S_Rec);
 
          begin
-            return Undup_Str (S_Rec);
+            return Result;
          end;
       else
          return +L & (Str'(+R));
@@ -606,13 +625,15 @@ package body CCG.Tables is
          return R;
       elsif L'Length <= Str_Max then
          declare
-            S_Rec : aliased Str_Record (R.Length + 1);
+            S_Rec  : aliased Str_Record (R.Length + 1);
+            Result : Str;
 
          begin
             S_Rec.P                         := R.P;
             S_Rec.Comps (1)                 := (Var_String, L'Length, L);
             S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
-            return Undup_Str (S_Rec);
+            Result := Undup_Str (S_Rec);
+            return Result;
          end;
       else
          return +L & R;
@@ -629,12 +650,13 @@ package body CCG.Tables is
          return +L;
       elsif R'Length <= Str_Max then
          declare
-            S_Rec : aliased constant Str_Record (2) :=
+            S_Rec  : aliased constant Str_Record (2) :=
               (2, Primary,
                (1 => (Value, 1, L), 2 => (Var_String, R'Length, R)));
+            Result : constant Str := Undup_Str (S_Rec);
 
          begin
-            return Undup_Str (S_Rec);
+            return Result;
          end;
       else
          return +L & (+R);
@@ -651,12 +673,13 @@ package body CCG.Tables is
          return +L;
       elsif R'Length <= Str_Max then
          declare
-            S_Rec : aliased constant Str_Record (2) :=
+            S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown, (1 => (Typ, 1, L), 2 => (Var_String, R'Length, R)));
+            Result : constant Str := Undup_Str (S_Rec);
 
          begin
             Maybe_Write_Typedef (L);
-            return Undup_Str (S_Rec);
+            return Result;
          end;
       else
          return +L & (+R);
@@ -673,11 +696,12 @@ package body CCG.Tables is
          return +L;
       elsif R'Length <= Str_Max then
          declare
-            S_Rec : aliased constant Str_Record (2) :=
+            S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown, (1 => (BB, 1, L), 2 => (Var_String, R'Length, R)));
+            Result : constant Str := Undup_Str (S_Rec);
 
          begin
-            return Undup_Str (S_Rec);
+            return Result;
          end;
       else
          return +L & (+R);
@@ -696,13 +720,14 @@ package body CCG.Tables is
          return L;
       elsif R'Length <= Str_Max then
          declare
-            S_Rec : aliased Str_Record (L.Length + 1);
-
+            S_Rec  : aliased Str_Record (L.Length + 1);
+            Result : Str;
          begin
             S_Rec.P                     := L.P;
             S_Rec.Comps (1 .. L.Length) := L.Comps;
             S_Rec.Comps (L.Length + 1)  := (Var_String, R'Length, R);
-            return Undup_Str (S_Rec);
+            Result := Undup_Str (S_Rec);
+            return Result;
          end;
       else
          return L & (+R);
@@ -714,11 +739,12 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Value_T; R : Value_T) return Str is
-      S_Rec : aliased constant Str_Record (2) :=
+      S_Rec  : aliased constant Str_Record (2) :=
         (2, Primary, (1 => (Value, 1, L), 2 => (Value, 1, R)));
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      return Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -726,13 +752,14 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Type_T; R : Type_T) return Str is
-      S_Rec : aliased constant Str_Record (2) :=
+      S_Rec  : aliased constant Str_Record (2) :=
         (2, Unknown, (1 => (Typ, 1, L), 2 => (Typ, 1, R)));
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
       Maybe_Write_Typedef (L);
       Maybe_Write_Typedef (R);
-      return Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -740,11 +767,12 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Basic_Block_T; R : Basic_Block_T) return Str is
-      S_Rec : aliased constant Str_Record (2) :=
+      S_Rec  : aliased constant Str_Record (2) :=
         (2, Unknown, (1 => (BB, 1, L), 2 => (BB, 1, R)));
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      return Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -752,12 +780,13 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Value_T; R : Type_T) return Str is
-      S_Rec : aliased constant Str_Record (2) :=
+      S_Rec  : aliased constant Str_Record (2) :=
         (2, Primary, (1 => (Value, 1, L), 2 => (Typ, 1, R)));
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
       Maybe_Write_Typedef (R);
-      return Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -765,11 +794,12 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Value_T; R : Basic_Block_T) return Str is
-      S_Rec : aliased constant Str_Record (2) :=
+      S_Rec  : aliased constant Str_Record (2) :=
         (2, Primary, (1 => (Value, 1, L), 2 => (BB, 1, R)));
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      return Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -777,11 +807,12 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Value_T; R : Nat) return Str is
-      S_Rec : aliased constant Str_Record (2) :=
+      S_Rec  : aliased constant Str_Record (2) :=
         (2, Primary, (1 => (Value, 1, L), 2 => (Number, 1, R)));
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      return Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -789,12 +820,13 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Type_T; R : Value_T) return Str is
-      S_Rec : aliased constant Str_Record (2) :=
+      S_Rec  : aliased constant Str_Record (2) :=
         (2, Primary, (1 => (Typ, 1, L), 2 => (Value, 1, R)));
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
       Maybe_Write_Typedef (L);
-      return Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -802,12 +834,13 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Type_T; R : Basic_Block_T) return Str is
-      S_Rec : aliased constant Str_Record (2) :=
+      S_Rec  : aliased constant Str_Record (2) :=
         (2, Unknown, (1 => (Typ, 1, L), 2 => (BB, 1, R)));
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
       Maybe_Write_Typedef (L);
-      return Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -815,12 +848,13 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Type_T; R : Nat) return Str is
-      S_Rec : aliased constant Str_Record (2) :=
+      S_Rec  : aliased constant Str_Record (2) :=
         (2, Unknown, (1 => (Typ, 1, L), 2 => (Number, 1, R)));
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
       Maybe_Write_Typedef (L);
-      return Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -828,11 +862,12 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Basic_Block_T; R : Value_T) return Str is
-      S_Rec : aliased constant Str_Record (2) :=
+      S_Rec  : aliased constant Str_Record (2) :=
         (2, Primary, (1 => (BB, 1, L), 2 => (Value, 1, R)));
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      return Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -840,12 +875,13 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Basic_Block_T; R : Type_T) return Str is
-      S_Rec : aliased constant Str_Record (2) :=
+      S_Rec  : aliased constant Str_Record (2) :=
         (2, Unknown, (1 => (BB, 1, L), 2 => (Typ, 1, R)));
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
       Maybe_Write_Typedef (R);
-      return Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -853,11 +889,12 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Basic_Block_T; R : Nat) return Str is
-      S_Rec : aliased constant Str_Record (2) :=
+      S_Rec  : aliased constant Str_Record (2) :=
         (2, Unknown, (1 => (BB, 1, L), 2 => (Number, 1, R)));
+      Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      return Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -865,13 +902,15 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Value_T; R : Str) return Str is
-      S_Rec : aliased Str_Record (R.Length + 1);
+      S_Rec  : aliased Str_Record (R.Length + 1);
+      Result : Str;
 
    begin
       S_Rec.P                         := R.P;
       S_Rec.Comps (1)                 := (Value, 1, L);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
-      return Undup_Str (S_Rec);
+      Result := Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -879,14 +918,16 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Type_T; R : Str) return Str is
-      S_Rec : aliased Str_Record (R.Length + 1);
+      S_Rec  : aliased Str_Record (R.Length + 1);
+      Result : Str;
 
    begin
       Maybe_Write_Typedef (L);
       S_Rec.P                         := R.P;
       S_Rec.Comps (1)                 := (Typ, 1, L);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
-      return Undup_Str (S_Rec);
+      Result := Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -894,13 +935,15 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Basic_Block_T; R : Str) return Str is
-      S_Rec : aliased Str_Record (R.Length + 1);
+      S_Rec  : aliased Str_Record (R.Length + 1);
+      Result : Str;
 
    begin
       S_Rec.P                         := R.P;
       S_Rec.Comps (1)                 := (BB, 1, L);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
-      return Undup_Str (S_Rec);
+      Result := Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -908,7 +951,8 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Str; R : Value_T) return Str is
-      S_Rec : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
+      S_Rec  : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
+      Result : Str;
 
    begin
       if No (L) then
@@ -918,7 +962,8 @@ package body CCG.Tables is
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1)  := (Value, 1, R);
-      return Undup_Str (S_Rec);
+      Result := Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -926,7 +971,8 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Str; R : Type_T) return Str is
-      S_Rec : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
+      S_Rec  : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
+      Result : Str;
 
    begin
       if No (L) then
@@ -937,7 +983,8 @@ package body CCG.Tables is
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1)  := (Typ, 1, R);
-      return Undup_Str (S_Rec);
+      Result := Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -945,7 +992,8 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Str; R : Basic_Block_T) return Str is
-      S_Rec : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
+      S_Rec  : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
+      Result : Str;
 
    begin
       if No (L) then
@@ -955,7 +1003,8 @@ package body CCG.Tables is
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1)  := (BB, 1, R);
-      return Undup_Str (S_Rec);
+      Result := Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -963,7 +1012,8 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Str; R : Nat) return Str is
-      S_Rec : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
+      S_Rec  : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
+      Result : Str;
 
    begin
       if No (L) then
@@ -973,7 +1023,8 @@ package body CCG.Tables is
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1)  := (Number, 1, R);
-      return Undup_Str (S_Rec);
+      Result := Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    ---------
@@ -981,8 +1032,9 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Str; R : Str) return Str is
-      S_Rec : aliased Str_Record ((if   Present (L) then L.Length + R.Length
-                                   else 0));
+      S_Rec  : aliased Str_Record ((if   Present (L) then L.Length + R.Length
+                                    else 0));
+      Result : Str;
 
    begin
       if No (L) then
@@ -994,7 +1046,8 @@ package body CCG.Tables is
          elsif L.P < R.P     then L.P else R.P);
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1 .. L.Length + R.Length) := R.Comps;
-      return Undup_Str (S_Rec);
+      Result := Undup_Str (S_Rec);
+      return Result;
    end "&";
 
    --------------------

@@ -76,6 +76,28 @@ package body GNATLLVM.Records.Create is
    --  Given a position and an alignment (usually BPU), truncate that
    --  position to a multiple of the alignment.
 
+   function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id
+     with Pre => Is_Static_Expression (N) and then Present (Alts);
+   --  N is a static expression and Alts is a list of alternatives. Return
+   --  which alternate has a Choice that covers N.
+
+   function Choices_To_SO_Ref
+     (Variant : Node_Id; Discrim : Entity_Id) return SO_Ref
+     with Pre => Present (Variant);
+   --  Given an alternative for a variant record, return an SO_Ref
+   --  corresponding to an expression that's True when that variant is
+   --  present. This is a function of the discriminant (Discrim) and
+   --  constants.
+
+   function Uses_Discriminant (GT : GL_Type) return Boolean
+     with Pre => Present (GT);
+   --  Returns True if one of GT's bounds references a discriminant
+
+   function Max_Record_Rep (E : Entity_Id) return Uint
+     with Pre => Ekind (E) in E_Component | E_Discriminant;
+   --  Return the next byte after the highest repped position of the base
+   --  type of E.
+
    -------------------------------
    -- Find_Field_In_Entity_List --
    -------------------------------
@@ -187,6 +209,145 @@ package body GNATLLVM.Records.Create is
          end loop;
       end return;
    end Variant_Alignment;
+
+   -----------------
+   -- Find_Choice --
+   -----------------
+
+   function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id is
+      Value       : constant Uint := Expr_Rep_Value (N);
+      Alt, Choice : Node_Id;
+      Low, High   : Uint;
+
+   begin
+      Alt := First_Non_Pragma (Alts);
+      while Present (Alt) loop
+         Choice := First (Discrete_Choices (Alt));
+         if Nkind (Choice) = N_Others_Choice then
+            Choice := First (Others_Discrete_Choices (Choice));
+         end if;
+
+         while Present (Choice) loop
+            Decode_Range (Choice, Low, High);
+            if Value >= Low and then Value <= High then
+               return Alt;
+            end if;
+
+            Next (Choice);
+         end loop;
+
+         Next_Non_Pragma (Alt);
+      end loop;
+
+      return Empty;
+   end Find_Choice;
+
+   -----------------------
+   -- Choices_To_SO_Ref --
+   -----------------------
+
+   function Choices_To_SO_Ref
+     (Variant : Node_Id; Discrim : Entity_Id) return SO_Ref
+   is
+      Discrim_SO : constant SO_Ref := Annotated_Value (Emit_Expr (Discrim));
+      Choice     : Node_Id;
+      Expr       : SO_Ref;
+      This_Expr  : SO_Ref;
+      Low, High  : Uint;
+
+      function Protect_Neg (U : Uint) return SO_Ref is
+         (if U < 0 then Create_Node (Negate_Expr, -U) else U);
+         --  A negative value means an expression, so we have to make a
+         --  Negate_Expr of the positive value.
+
+   begin
+      Choice := First (Discrete_Choices (Variant));
+
+      --  For "others", this is always True
+
+      if Nkind (Choice) = N_Others_Choice then
+         return Uint_1;
+      end if;
+
+      --  Otherwise, start with an expression of False, then fill in
+      --  each choice.
+
+      Expr := Uint_0;
+      while Present (Choice) loop
+         Decode_Range (Choice, Low, High);
+         Low  := Protect_Neg (Low);
+         High := Protect_Neg (High);
+         if Low = High then
+            This_Expr := Create_Node (Eq_Expr, Discrim_SO, Low);
+         elsif High > Low then
+            This_Expr := Create_Node (Truth_And_Expr,
+                                      Create_Node (Ge_Expr, Discrim_SO, Low),
+                                      Create_Node (Le_Expr, Discrim_SO, High));
+         else
+            This_Expr := Uint_0;
+         end if;
+
+         Expr := (if    Expr = 0 then This_Expr
+                  elsif This_Expr = 0 then Expr
+                  else  Create_Node (Truth_Or_Expr, Expr, This_Expr));
+         Next (Choice);
+      end loop;
+
+      return Expr;
+   end Choices_To_SO_Ref;
+
+   -----------------------
+   -- Uses_Discriminant --
+   -----------------------
+
+   function Uses_Discriminant (GT : GL_Type) return Boolean is
+      Index : Entity_Id;
+
+   begin
+      --  Constrained array types are all we're concerned with here
+
+      if not Is_Array_Type (GT) or else Is_Unconstrained_Array (GT) then
+         return False;
+      end if;
+
+      Index := First_Index (GT);
+      while Present (Index) loop
+         declare
+            Idx_Range : constant Node_Id := Get_Dim_Range (Index);
+            LB        : constant Node_Id := Low_Bound (Idx_Range);
+            HB        : constant Node_Id := High_Bound (Idx_Range);
+
+         begin
+            exit when Contains_Discriminant (LB);
+            exit when Contains_Discriminant (HB);
+            Next_Index (Index);
+         end;
+      end loop;
+
+      return Present (Index);
+   end Uses_Discriminant;
+
+   --------------------
+   -- Max_Record_Rep --
+   --------------------
+
+   function Max_Record_Rep (E : Entity_Id) return Uint is
+      TE      : constant Entity_Id := Full_Base_Type (Full_Scope (E));
+      F       : Entity_Id          := First_Component_Or_Discriminant (TE);
+
+   begin
+      return End_Pos : Uint := Uint_0 do
+         while Present (F) loop
+            if Present (Component_Clause (F))
+              and then Component_Bit_Offset (F) + Esize (F) > End_Pos
+            then
+               End_Pos := Component_Bit_Offset (F) + Esize (F);
+            end if;
+
+            Next_Component_Or_Discriminant (F);
+         end loop;
+      end return;
+   end Max_Record_Rep;
 
    ------------------------
    -- Create_Record_Type --
@@ -576,11 +737,6 @@ package body GNATLLVM.Records.Create is
          Rec_Field    : Entity_Id          := Empty;
          --  Cache used to limit quadratic behavior
 
-         function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id
-           with Pre => Is_Static_Expression (N) and then Present (Alts);
-         --  N is a static expression and Alts is a list of alternatives.
-         --  Return which alternate has a Choice that covers N.
-
          procedure Add_Component_List
            (List : Node_Id; From_Rec : Entity_Id; Parent : Boolean := False)
            with Pre => (No (List) or else Nkind (List) = N_Component_List)
@@ -590,46 +746,6 @@ package body GNATLLVM.Records.Create is
          --  of adding the actual field, add the field of the same
          --  name from From_Rec.  If Parent is true, only add the
          --  parent record, otherwise, add all records except the parent.
-
-         function Choices_To_SO_Ref
-           (Variant : Node_Id; Discrim : Entity_Id) return SO_Ref
-           with Pre => Present (Variant);
-         --  Given an alternative for a variant record, return an SO_Ref
-         --  corresponding to an expression that's True when that variant
-         --  is present.  This is a function of the discriminant (Discrim)
-         --  and constants.
-
-         -----------------
-         -- Find_Choice --
-         -----------------
-
-         function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id is
-            Value       : constant Uint := Expr_Rep_Value (N);
-            Alt, Choice : Node_Id;
-            Low, High   : Uint;
-
-         begin
-            Alt := First_Non_Pragma (Alts);
-            while Present (Alt) loop
-               Choice := First (Discrete_Choices (Alt));
-               if Nkind (Choice) = N_Others_Choice then
-                  Choice := First (Others_Discrete_Choices (Choice));
-               end if;
-
-               while Present (Choice) loop
-                  Decode_Range (Choice, Low, High);
-                  if Value >= Low and then Value <= High then
-                     return Alt;
-                  end if;
-
-                  Next (Choice);
-               end loop;
-
-               Next_Non_Pragma (Alt);
-            end loop;
-
-            return Empty;
-         end Find_Choice;
 
          ------------------------
          -- Add_Component_List --
@@ -773,62 +889,6 @@ package body GNATLLVM.Records.Create is
                     Variant_Expr     => Variant_Expr,
                     Align            => Variant_Align);
          end Add_Component_List;
-
-         -----------------------
-         -- Choices_To_SO_Ref --
-         -----------------------
-
-         function Choices_To_SO_Ref
-           (Variant : Node_Id; Discrim : Entity_Id) return SO_Ref
-         is
-            Discrim_SO : constant SO_Ref :=
-              Annotated_Value (Emit_Expr (Discrim));
-            Choice     : Node_Id;
-            Expr       : SO_Ref;
-            This_Expr  : SO_Ref;
-            Low, High  : Uint;
-
-            function Protect_Neg (U : Uint) return SO_Ref is
-              (if U < 0 then Create_Node (Negate_Expr, -U) else U);
-              --  A negative value means an expression, so we have to make a
-              --  Negate_Expr of the positive value.
-
-         begin
-            Choice := First (Discrete_Choices (Variant));
-
-            --  For "others", this is always True
-
-            if Nkind (Choice) = N_Others_Choice then
-               return Uint_1;
-            end if;
-
-            --  Otherwise, start with an expression of False, then fill in
-            --  each choice.
-
-            Expr := Uint_0;
-            while Present (Choice) loop
-               Decode_Range (Choice, Low, High);
-               Low  := Protect_Neg (Low);
-               High := Protect_Neg (High);
-               if Low = High then
-                  This_Expr := Create_Node (Eq_Expr, Discrim_SO, Low);
-               elsif High > Low then
-                  This_Expr :=
-                    Create_Node (Truth_And_Expr,
-                                 Create_Node (Ge_Expr, Discrim_SO, Low),
-                                 Create_Node (Le_Expr, Discrim_SO, High));
-               else
-                  This_Expr := Uint_0;
-               end if;
-
-               Expr := (if    Expr = 0 then This_Expr
-                        elsif This_Expr = 0 then Expr
-                        else  Create_Node (Truth_Or_Expr, Expr, This_Expr));
-               Next (Choice);
-            end loop;
-
-            return Expr;
-         end Choices_To_SO_Ref;
 
          Is_Derived        : Boolean   := False;
          Field             : Entity_Id;
@@ -1183,15 +1243,6 @@ package body GNATLLVM.Records.Create is
          procedure Sort is new Ada.Containers.Generic_Sort
            (Index_Type => Int, Before => Field_Before, Swap => Swap_Fields);
 
-         function Uses_Discriminant (GT : GL_Type) return Boolean
-           with Pre => Present (GT);
-         --  Returns True if one of GT's bounds references a discriminant
-
-         function Max_Record_Rep (E : Entity_Id) return Uint
-           with Pre => Ekind (E) in E_Component | E_Discriminant;
-         --  Return the next byte after the highest repped position of
-         --  the base type of E.
-
          procedure Create_Bitfield_Field (J : Int);
          --  We're processing the component at table index J, which is known
          --  to be a bitfield.  Create an LLVM field to hold contents of
@@ -1388,37 +1439,6 @@ package body GNATLLVM.Records.Create is
             end if;
          end Field_Before;
 
-         -----------------------
-         -- Uses_Discriminant --
-         -----------------------
-
-         function Uses_Discriminant (GT : GL_Type) return Boolean is
-            Index : Entity_Id;
-
-         begin
-            --  Constrained array types are all we're concerned with here
-
-            if not Is_Array_Type (GT) or else Is_Unconstrained_Array (GT) then
-               return False;
-            end if;
-
-            Index := First_Index (GT);
-            while Present (Index) loop
-               declare
-                  Idx_Range : constant Node_Id := Get_Dim_Range (Index);
-                  LB        : constant Node_Id := Low_Bound (Idx_Range);
-                  HB        : constant Node_Id := High_Bound (Idx_Range);
-
-               begin
-                  exit when Contains_Discriminant (LB);
-                  exit when Contains_Discriminant (HB);
-                  Next_Index (Index);
-               end;
-            end loop;
-
-            return Present (Index);
-         end Uses_Discriminant;
-
          -----------------
          -- Swap_Fields --
          -----------------
@@ -1430,29 +1450,6 @@ package body GNATLLVM.Records.Create is
             Added_Field_Table.Table (L) := Added_Field_Table.Table (R);
             Added_Field_Table.Table (R) := Temp;
          end Swap_Fields;
-
-         --------------------
-         -- Max_Record_Rep --
-         --------------------
-
-         function Max_Record_Rep (E : Entity_Id) return Uint is
-            TE      : constant Entity_Id := Full_Base_Type (Full_Scope (E));
-            F       : Entity_Id          :=
-              First_Component_Or_Discriminant (TE);
-
-         begin
-            return End_Pos : Uint := Uint_0 do
-               while Present (F) loop
-                  if Present (Component_Clause (F))
-                    and then Component_Bit_Offset (F) + Esize (F) > End_Pos
-                  then
-                     End_Pos := Component_Bit_Offset (F) + Esize (F);
-                  end if;
-
-                  Next_Component_Or_Discriminant (F);
-               end loop;
-            end return;
-         end Max_Record_Rep;
 
          ---------------------------
          -- Create_Bitfield_Field --

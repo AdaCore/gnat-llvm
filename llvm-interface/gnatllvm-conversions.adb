@@ -1184,7 +1184,7 @@ package body GNATLLVM.Conversions is
       Cvt_T     : constant Type_T  :=
         (if   Get_Type_Kind (In_T) /= Integer_Type_Kind
               or else Get_Scalar_Bit_Size (In_T) = In_Size
-         then In_T else Int_Ty (In_Bytes * ULL (BPU)));
+         then In_T else Int_Ty (In_Bytes * UBPU));
       --  If we have a non-byte-width input type, make one that rounds up the
       --  size.  We do the same for the output type below.
 
@@ -1193,7 +1193,7 @@ package body GNATLLVM.Conversions is
       Out_T     : constant Type_T  :=
         (if   Get_Type_Kind (T) /= Integer_Type_Kind
               or else Get_Scalar_Bit_Size (T) = Out_Size
-         then T else Int_Ty (Out_Bytes * ULL (BPU)));
+         then T else Int_Ty (Out_Bytes * UBPU));
       In_V      : constant Value_T :=
         (if Cvt_T = In_T then V else Z_Ext (IR_Builder, V, Cvt_T, ""));
       --  Zero extension is always correct because this can only happen

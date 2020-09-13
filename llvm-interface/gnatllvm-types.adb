@@ -553,7 +553,7 @@ package body GNATLLVM.Types is
 
       elsif not Is_Nonnative_Type (A_GT) and then not Overalign then
          if Do_Stack_Check
-           and then Get_Type_Size (Type_Of (A_GT)) > Max_Alloc * ULL (BPU)
+           and then Get_Type_Size (Type_Of (A_GT)) > Max_Alloc * UBPU
          then
             Emit_Raise_Call (N, SE_Object_Too_Large);
             Error_Msg_N ("??`Storage_Error` will be raised at run time!", N);
@@ -629,7 +629,7 @@ package body GNATLLVM.Types is
 
          if not Is_Dynamic_Size (A_GT, Allow_Overflow => True) then
             if Overflowed (GL_Value'(Get_Type_Size (A_GT)))
-              or else +Get_Type_Size (A_GT) > Max_Alloc * ULL (BPU)
+              or else +Get_Type_Size (A_GT) > Max_Alloc * UBPU
             then
                Emit_Raise_Call (N, SE_Object_Too_Large);
                Error_Msg_N
@@ -1540,7 +1540,7 @@ package body GNATLLVM.Types is
       Align : constant BA_Data :=
         Const (if   Do_Align
                then Get_Type_Alignment (GT, Use_Specified => False)
-               else ULL (BPU));
+               else UBPU);
 
    begin
       --  We need to return a size that's a muliple of the alignment or at

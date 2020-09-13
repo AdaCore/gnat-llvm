@@ -1975,11 +1975,11 @@ package body GNATLLVM.Records.Create is
          then
             declare
                Byte_Position  : constant BA_Data         :=
-                 Field_Position (Cur_Field, No_GL_Value) / ULL (BPU);
+                 Field_Position (Cur_Field, No_GL_Value) / UBPU;
                Bit_Offset     : constant Uint            :=
                  Field_Bit_Offset (Cur_Field);
                Bit_Position   : constant BA_Data         :=
-                 Byte_Position * ULL (BPU) + Bit_Offset;
+                 To_Bits (Byte_Position) + Bit_Offset;
                Bit_Position_T : constant Node_Ref_Or_Val :=
                  Annotated_Value (Bit_Position);
 

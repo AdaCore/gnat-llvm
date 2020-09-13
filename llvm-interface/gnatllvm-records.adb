@@ -845,7 +845,7 @@ package body GNATLLVM.Records is
                  Offset_Of_Element (Module_Data_Layout, RI.LLVM_Type, Ordinal);
 
             begin
-               return Offset + Size_Const_Int (This_Offset * ULL (BPU));
+               return Offset + Size_Const_Int (This_Offset * UBPU);
             end;
          end if;
       end Emit_Field_Position;

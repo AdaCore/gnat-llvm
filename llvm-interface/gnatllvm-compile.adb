@@ -136,6 +136,7 @@ package body GNATLLVM.Compile is
       --  and maximum integer size.
 
       BPU          := Get_Bits_Per_Unit;
+      UBPU         := ULL (BPU);
       Bit_T        := Int_Ty (Nat (1));
       Byte_T       := Int_Ty (BPU);
       Max_Align    := Get_Maximum_Alignment * BPU;
@@ -149,7 +150,7 @@ package body GNATLLVM.Compile is
       --  alignments, that will overflow, so we restrict it to a value
       --  that won't overflow and then a further power of two to be safe.
 
-      Max_Valid_Align := Nat ((ULL (Nat'Last) + 1) / ULL (BPU) / 2);
+      Max_Valid_Align := Nat ((ULL (Nat'Last) + 1) / UBPU / 2);
 
       --  We have to initialize aliasing before we create any types
 

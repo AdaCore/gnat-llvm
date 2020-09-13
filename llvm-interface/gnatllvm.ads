@@ -241,6 +241,7 @@ package GNATLLVM is
    --  calls.
 
    BPU                : Nat;
+   UBPU               : ULL;
    Bit_T              : Type_T;
    Byte_T             : Type_T;
    Max_Align          : Nat;

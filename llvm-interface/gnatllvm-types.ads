@@ -137,7 +137,7 @@ package GNATLLVM.Types is
      ((Size + (BPU - 1)) / BPU);
 
    function To_Bytes (Size : ULL)     return ULL is
-     ((Size + (ULL (BPU) - 1)) / ULL (BPU));
+     ((Size + (UBPU - 1)) / UBPU);
 
    function To_Bytes (Size : LLI)     return LLI is
      ((Size + (LLI (BPU) - 1)) / LLI (BPU));
@@ -152,7 +152,7 @@ package GNATLLVM.Types is
      (Size * BPU);
 
    function To_Bits (Size : ULL)       return ULL is
-     (Size * ULL (BPU));
+     (Size * UBPU);
 
    function To_Bits (Size : LLI)       return LLI is
      (Size * LLI (BPU));
@@ -318,7 +318,7 @@ package GNATLLVM.Types is
    --  divides C.
 
    function ULL_Align_Bytes (C : ULL) return Nat is
-     (ULL_Align (C * ULL (BPU)));
+     (ULL_Align (C * UBPU));
    --  Likewise, but ULL represents a number of bytes, not bits
 
    function Uint_Align (U : Uint) return Nat;
@@ -792,7 +792,10 @@ package GNATLLVM.Types is
      (U_Div (LHS, Const (RHS)));
 
    function To_Bytes (Size : BA_Data) return BA_Data is
-     ((Size + (Const (ULL (BPU)) - Const (1))) / Const (ULL (BPU)));
+     ((Size + UBPU - 1) / UBPU);
+
+   function To_Bits (Size : BA_Data) return BA_Data is
+     (Size * Const (UBPU));
 
    function Build_Min (V1, V2 : BA_Data; Name : String := "") return BA_Data
      with Inline;

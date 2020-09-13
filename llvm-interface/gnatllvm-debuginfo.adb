@@ -739,7 +739,7 @@ package body GNATLLVM.DebugInfo is
          when Integer_Kind | Fixed_Point_Kind =>
             Result := DI_Create_Basic_Type
               (Name, Size,
-               (if    Size = ULL (BPU)
+               (if    Size = UBPU
                 then  (if   Is_Unsigned_Type (TE) then DW_ATE_Unsigned_Char
                        else DW_ATE_Signed_Char)
                 elsif Is_Unsigned_Type (TE) then DW_ATE_Unsigned
@@ -831,7 +831,7 @@ package body GNATLLVM.DebugInfo is
                         Offset         : constant ULL        :=
                           UI_To_ULL (Component_Bit_Offset (F));
                         Storage_Offset : constant ULL        :=
-                          (Offset / ULL (BPU)) * ULL (BPU);
+                          (Offset / UBPU) * UBPU;
                         MD             : constant Metadata_T :=
                           (if   Is_Bitfield (F)
                            then DI_Create_Bit_Field_Member_Type

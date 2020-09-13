@@ -133,6 +133,36 @@ package GNATLLVM.Types is
    --  Find a value that's being computed by the current Emit_LValue
    --  recursion that has the same base type as T.
 
+   function To_Bytes (Size : Nat)     return Nat is
+     ((Size + (BPU - 1)) / BPU);
+
+   function To_Bytes (Size : ULL)     return ULL is
+     ((Size + (ULL (BPU) - 1)) / ULL (BPU));
+
+   function To_Bytes (Size : LLI)     return LLI is
+     ((Size + (LLI (BPU) - 1)) / LLI (BPU));
+
+   function To_Bytes (Size : Uint)    return Uint is
+     ((Size + (BPU - 1)) / BPU);
+
+   function To_Bytes (Size : unsigned) return unsigned is
+     ((Size + (unsigned (BPU) - 1)) / unsigned (BPU));
+
+   function To_Bits (Size : Nat)       return Nat is
+     (Size * BPU);
+
+   function To_Bits (Size : ULL)       return ULL is
+     (Size * ULL (BPU));
+
+   function To_Bits (Size : LLI)       return LLI is
+     (Size * LLI (BPU));
+
+   function To_Bits (Size : Uint)      return Uint is
+     (Size * BPU);
+
+   function To_Bits (Size : unsigned)  return unsigned is
+     (Size * unsigned (BPU));
+
    function Int_Ty (Num_Bits : Nat) return Type_T is
      (Int_Type (unsigned (Num_Bits)))
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
@@ -246,31 +276,13 @@ package GNATLLVM.Types is
 
    function Get_Type_Size (T : Type_T) return ULL is
      (if   Get_Type_Kind (T) = Struct_Type_Kind
-      then Store_Size_Of_Type (Module_Data_Layout, T) * ULL (BPU)
-      else ABI_Size_Of_Type (Module_Data_Layout, T) * ULL (BPU))
+      then To_Bits (Store_Size_Of_Type (Module_Data_Layout, T))
+      else To_Bits (ABI_Size_Of_Type (Module_Data_Layout, T)))
      with Pre => Present (T);
      --  Return the size of an LLVM type, in bits.  For structures, we want
      --  to return the actual size, not including padding, but for other types
      --  we need the size, including padding.  This is important for some
      --  of the FP types.
-
-   function To_Bytes (Size : Nat) return Nat is
-     ((Size + (BPU - 1)) / BPU);
-
-   function To_Bytes (Size : ULL) return ULL is
-     ((Size + (ULL (BPU) - 1)) / ULL (BPU));
-
-   function To_Bytes (Size : LLI) return LLI is
-     ((Size + (LLI (BPU) - 1)) / LLI (BPU));
-
-   function To_Bits (Size : Nat) return Nat is
-     (Size * BPU);
-
-   function To_Bits (Size : ULL) return ULL is
-     (Size * ULL (BPU));
-
-   function To_Bits (Size : LLI) return LLI is
-     (Size * LLI (BPU));
 
    function Get_Type_Size (T : Type_T) return GL_Value is
      (Size_Const_Int (Get_Type_Size (T)))
@@ -282,7 +294,7 @@ package GNATLLVM.Types is
      with Pre => Present (T);
 
    function Get_Type_Alignment (T : Type_T) return Nat is
-     (Nat (ABI_Alignment_Of_Type (Module_Data_Layout, T)) * BPU)
+     (To_Bits (Nat (ABI_Alignment_Of_Type (Module_Data_Layout, T))))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 
@@ -292,7 +304,7 @@ package GNATLLVM.Types is
    --  Return the size of an LLVM type, in bits
 
    function Get_Type_Alignment (T : Type_T) return unsigned is
-     (ABI_Alignment_Of_Type (Module_Data_Layout, T) * unsigned (BPU))
+     (To_Bits (ABI_Alignment_Of_Type (Module_Data_Layout, T)))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 

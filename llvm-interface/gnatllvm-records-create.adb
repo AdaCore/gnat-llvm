@@ -1069,7 +1069,7 @@ package body GNATLLVM.Records.Create is
          then
             Error_Msg_NE_Num
               ("position for & must be beyond parent, minimum allowed is ^",
-               Position (Clause), E, Esize (Parent_TE) / BPU);
+               Position (Clause), E, To_Bytes (Esize (Parent_TE)));
 
           --  If the position is not a multiple of the storage unit, then
           --  give error.
@@ -1090,10 +1090,10 @@ package body GNATLLVM.Records.Create is
          then
             Error_Msg_NE_Num
               ("position for" & Error_Str & " must be multiple of ^",
-                  First_Bit (Clause), E, Align / BPU);
+                  First_Bit (Clause), E, To_Bytes (Align));
             Error_Msg_NE_Num
               ("\\because alignment of its type& is ^",
-                  First_Bit (Clause), Full_Etype (E), Align / BPU);
+                  First_Bit (Clause), Full_Etype (E), To_Bytes (Align));
             Pos := No_Uint;
          end if;
 

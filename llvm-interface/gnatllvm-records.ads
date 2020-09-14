@@ -334,8 +334,34 @@ private
    --  than the alignment of the corresponding LLVM type, so we need to record
    --  the requested alignment in the Record_Info object.
    --
-   --  For packed records, we use a packed LLVM struct type and also
-   --  manually lay out fields that become bitfields.
+   --  We always use a packed LLVM struct type and add explicit fields for
+   --  any needed padding. We also manually lay out fields that become
+   --  bitfields. It's tempting to only use a packed struct for records
+   --  that have a nonstandard representation and only add padding fields
+   --  when a rep clause leaves space, but that causes issues with the size
+   --  of the struct. For example, if we have { i32, i8 }, LLVM aligns the
+   --  length and sets it to eight bytes, but there are many cases where we
+   --  need it to be five bytes. One case is if this is a complete record
+   --  with a Size clause of 80 bytes.  But we'd also have issues with a
+   --  record like:
+   --
+   --      type R (D : Integer) is record
+   --         C : Character;
+   --         S : String (1 .. D);
+   --      end record;
+   --
+   --  The first RI for this is { i32, i8} and the second is the array. But
+   --  if you then have:
+   --
+   --      subtype R5 is R(5);
+   --
+   --  This is { i32, i8, [5 x i8] } and now the size of { i32, i8} is
+   --  relevant because that's how the offset to S is computed in the base
+   --  type. We could record the length of the first RI as five bytes, but
+   --  here's the risk of the LLVM optimizer creating a store through that
+   --  type and clobbering what was beyond when it stores the padding.
+   --  To avoid this issue, we always use a packed struct type, at least
+   --  for now.
    --
    --  For a variant part, we record the following in the corresponding
    --  Record_Info item:

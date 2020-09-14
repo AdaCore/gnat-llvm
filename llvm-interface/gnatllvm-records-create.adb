@@ -1151,6 +1151,31 @@ package body GNATLLVM.Records.Create is
       ------------------
 
       procedure Force_To_Pos (Needed_Pos : ULL) is
+         procedure Append_Padding (Size : Nat; Count : ULL)
+           with Pre => Size in 8 | 16 | 32 | 64;
+         --  Append padding to the record using Count objects of Size bits
+         --  each.
+
+         Left_To_Pad : ULL := Needed_Pos - Cur_RI_Pos;
+
+         --------------------
+         -- Append_Padding --
+         --------------------
+         procedure Append_Padding (Size : Nat; Count : ULL) is
+            Base_T : constant Type_T := Int_Ty (Size);
+            Use_T  : constant Type_T :=
+              (if   Count > 1 then Array_Type (Base_T, unsigned (Count))
+               else Base_T);
+
+         begin
+            if Count /= 0 then
+               LLVM_Types.Append (Use_T);
+               Set_Field_Name_Info (TE, LLVM_Types.Last, Is_Padding => True);
+               Cur_RI_Pos  := Cur_RI_Pos + Count * ULL (Size);
+               Left_To_Pad := Left_To_Pad - Count * ULL (Size);
+            end if;
+         end Append_Padding;
+
       begin
          if Needed_Pos /= 0 and then LLVM_Types.Last = -1
            and then Present (Prev_Idx)
@@ -1159,11 +1184,39 @@ package body GNATLLVM.Records.Create is
             RI_Align    := BPU;
             Cur_RI_Pos  := Needed_Pos;
          elsif Needed_Pos > Cur_RI_Pos then
-            LLVM_Types.Append
-              (Array_Type (Byte_T,
-                           unsigned (To_Bytes (Needed_Pos - Cur_RI_Pos))));
-            Set_Field_Name_Info (TE, LLVM_Types.Last, Is_Padding => True);
-            Cur_RI_Pos := Needed_Pos;
+
+            --  ??? LLVM's scalar optimization will try to break the record
+            --  up into pieces. It's unfortunate that it will do this for
+            --  padding fields, and maybe we can fix this someday, but for
+            --  now, create as few components as possible, with each properly
+            --  aligned, so as to be the most efficient. Normally, we're
+            --  padding to align or make space, so first pad with increasing
+            --  size pieces, then large pieces, then decreasing size pieces.
+
+            if Left_To_Pad >= UBPU and then Cur_RI_Pos mod (2 * UBPU) /= 0 then
+               Append_Padding (BPU, 1);
+            end if;
+            if Left_To_Pad >= UBPU * 2
+              and then Cur_RI_Pos mod (4 * UBPU) /= 0
+            then
+               Append_Padding (BPU * 2, 1);
+            end if;
+            if Left_To_Pad >= UBPU * 4
+              and then Cur_RI_Pos mod (8 * UBPU) /= 0
+            then
+               Append_Padding (BPU * 4, 1);
+            end if;
+
+            Append_Padding (BPU * 8, Left_To_Pad / (UBPU * 8));
+            if Left_To_Pad >= UBPU * 4 then
+               Append_Padding (BPU * 4, Left_To_Pad / (UBPU * 4));
+            end if;
+            if Left_To_Pad >= UBPU * 2 then
+               Append_Padding (BPU * 2, Left_To_Pad / (UBPU * 2));
+            end if;
+            if Left_To_Pad >= UBPU then
+               Append_Padding (BPU, Left_To_Pad / UBPU);
+            end if;
          end if;
 
       end Force_To_Pos;

@@ -59,7 +59,11 @@ package CCG.Aggregates is
 
    procedure Write_Struct_Typedef (T : Type_T)
      with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
-   --  Write a typedef for T, a struct
+   --  Write a typedef for T, a struct type
+
+   procedure Write_Array_Typedef (T : Type_T)
+     with Pre => Get_Type_Kind (T) = Array_Type_Kind;
+   --  Write a typedef for T, an array type
 
    function Extract_Value_Instruction (V : Value_T; Op : Value_T) return Str
      with Pre  => Get_Instruction_Opcode (V) = Op_Extract_Value

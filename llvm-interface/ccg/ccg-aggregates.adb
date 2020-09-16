@@ -254,6 +254,16 @@ package body CCG.Aggregates is
       Write_Str ("} __attribute__ ((packed)) " & T & ";", Eol => True);
    end Write_Struct_Typedef;
 
+   -------------------------
+   -- Write_Array_Typedef --
+   -------------------------
+
+   procedure Write_Array_Typedef (T : Type_T) is
+   begin
+      Write_Str ("typedef " & Get_Element_Type (T) & " " & T & "[" &
+                   Get_Array_Length (T) & "];", Eol => True);
+   end Write_Array_Typedef;
+
    -----------------
    -- Value_Piece --
    -----------------

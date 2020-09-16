@@ -59,6 +59,10 @@ package CCG.Helper is
       (Struct_Get_Type_At_Index (T, unsigned (Idx)))
      with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
 
+   function Get_Array_Length (T : Type_T) return Nat is
+      (Nat (unsigned'(Get_Array_Length (T))))
+      with Pre => Get_Type_Kind (T) = Array_Type_Kind;
+
    function Get_Num_Operands (V : Value_T) return Int is
       (Int (Interfaces.C.int'(Get_Num_Operands (V))))
       with Pre => Is_A_Instruction (V);

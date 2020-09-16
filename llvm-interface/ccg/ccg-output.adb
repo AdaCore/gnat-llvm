@@ -297,6 +297,10 @@ package body CCG.Output is
                Write_Int (Get_Output_Idx (T));
             end if;
 
+         when Array_Type_Kind =>
+            Write_Str ("ccg_a");
+            Write_Int (Get_Output_Idx (T));
+
          when others =>
             Write_Str ("<unsupported type>");
       end case;
@@ -312,6 +316,8 @@ package body CCG.Output is
       Set_Is_Typedef_Output (T);
       if Get_Type_Kind (T) = Struct_Type_Kind then
          Write_Struct_Typedef (T);
+      elsif Get_Type_Kind (T) = Array_Type_Kind then
+         Write_Array_Typedef (T);
       end if;
 
    end Write_Typedef;

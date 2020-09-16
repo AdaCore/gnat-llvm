@@ -219,10 +219,14 @@ package body CCG.Output is
                      Decl := "static " & Decl;
                   end if;
 
-                  --  Don't write an initializer if it's undef, which is
-                  --  just used to indicate that it's not extern.
+                  --  Don't write an initializer if it's undef or a
+                  --  zeroinitializer. In the latter case, it means to apply
+                  --  the default initialization, which is defined by the
+                  --  C standard as being all zeros (hence the name).
 
-                  if Present (Init) and then not Is_Undef (Init) then
+                  if Present (Init) and then not Is_Undef (Init)
+                    and then not Is_A_Constant_Aggregate_Zero (Init)
+                  then
                      Decl := Decl & " = " & Init;
                   end if;
 

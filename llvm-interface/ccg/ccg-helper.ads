@@ -79,6 +79,10 @@ package CCG.Helper is
      (Present (Is_A_Constant_FP (V)))
      with Pre => Present (V);
 
+   function Is_A_Constant_Aggregate_Zero (V : Value_T) return Boolean is
+     (Present (Is_A_Constant_Aggregate_Zero (V)))
+     with Pre => Present (V);
+
    function Is_A_Function (V : Value_T) return Boolean is
      (Present (Is_A_Function (V)))
      with Pre => Present (V);

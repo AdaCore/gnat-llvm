@@ -26,6 +26,7 @@ with Output;   use Output;
 
 with GNATLLVM; use GNATLLVM;
 
+with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
 
 package body CCG is
@@ -54,8 +55,11 @@ package body CCG is
 
    procedure Write_C_Code (Module : Module_T) is
       Func : Value_T := Get_First_Function (Module);
+      Glob : Value_T := Get_First_Global (Module);
 
    begin
+      --  If we're not writing to standard output, open the .c file
+
       if not Debug_Flag_Dot_YY then
          Namet.Unlock;
          Create_C_File;
@@ -63,13 +67,28 @@ package body CCG is
          Namet.Lock;
       end if;
 
+      --  Write out declarations for all globals with initializers
+
+      while Present (Glob) loop
+         if Present (Get_Initializer (Glob)) then
+            Write_Decl (Glob);
+         end if;
+
+         Glob := Get_Next_Global (Glob);
+      end loop;
+
+      --  Process all functions, writing globals and typedefs on the fly
+      --  and queueing the rest for later output.
+
       while Present (Func) loop
          Generate_C_For_Subprogram (Func);
          Func := Get_Next_Function (Func);
       end loop;
 
-      Write_Subprograms;
+      --  Finally, write all the code we generated and close the .c file
+      --  if we made one.
 
+      Write_Subprograms;
       if not Debug_Flag_Dot_YY then
          Close_C_File;
          Set_Standard_Output;

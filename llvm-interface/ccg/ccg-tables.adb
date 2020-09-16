@@ -486,7 +486,11 @@ package body CCG.Tables is
          case Comp.Kind is
 
             when Var_String =>
-               Write_Str (Comp.Str);
+               if Comp.Str = Eol_Str then
+                  Write_Eol;
+               else
+                  Write_Str (Comp.Str);
+               end if;
 
             when Value =>
                if Get_Is_Variable (Comp.Val) then

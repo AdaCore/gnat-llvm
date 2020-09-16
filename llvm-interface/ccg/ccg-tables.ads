@@ -25,7 +25,8 @@ package CCG.Tables is
    --  We use an internal representation of strings, discussed below.
 
    type Str is private;
-   No_Str : constant Str;
+   No_Str  : constant Str;
+   Eol_Str : constant String;
 
    function Present (S : Str) return Boolean;
    function No      (S : Str) return Boolean;
@@ -291,7 +292,8 @@ private
    type Str is access constant Str_Record;
    --  This is what we pass around for strings
 
-   No_Str : constant Str := null;
+   No_Str  : constant Str    := null;
+   Eol_Str : constant String := "@@";
 
    function Present (S : Str) return Boolean is (S /= No_Str);
    function No      (S : Str) return Boolean is (S =  No_Str);

@@ -241,17 +241,22 @@ package body CCG.Aggregates is
    --------------------------
 
    procedure Write_Struct_Typedef (T : Type_T) is
+      S : Str;
+
    begin
-      Write_Str ("typedef struct " & T & " {", Eol => True);
+      --  Build an Str corresponding to the typedef and output it. Doing it
+      --  that way ensure that any inner typedefs get written first.
+
+      S := "typedef struct " & T & " {" & Eol_Str;
       for J in Nat range 0 .. Count_Struct_Element_Types (T) - 1 loop
-         Write_Str ("    " & Struct_Get_Type_At_Index (T, J) & " " &
-                      Get_Field_Name (T, J) & ";", Eol => True);
+         S := (S & "    " & Struct_Get_Type_At_Index (T, J) & " " &
+                 Get_Field_Name (T, J) & ";" & Eol_Str);
       end loop;
 
       --  ??? We have many ways of handling packed, but don't worry about that
       --  in the initial support.
 
-      Write_Str ("} __attribute__ ((packed)) " & T & ";", Eol => True);
+      Write_Str (S & "} __attribute__ ((packed)) " & T & ";", Eol => True);
    end Write_Struct_Typedef;
 
    -------------------------

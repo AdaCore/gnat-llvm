@@ -1139,8 +1139,11 @@ package body GNATLLVM.Subprograms is
             --  If we have a reference to an unconstrained array, mark that
             --  the bounds can't change.  If the array is an In parameter
             --  (but not if its an access type), the data can't as well.
+            --  Don't do this when generating C.
 
-            if Relationship (LLVM_Param) in Fat_Pointer | Thin_Pointer then
+            if not Emit_C
+              and then Relationship (LLVM_Param) in Fat_Pointer | Thin_Pointer
+            then
                Create_Invariant_Start (Get (LLVM_Param, Reference_To_Bounds),
                                        Get_Bound_Size (GT));
                if Ekind (Param) = E_In_Parameter then

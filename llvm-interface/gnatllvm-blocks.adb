@@ -462,9 +462,9 @@ package body GNATLLVM.Blocks is
 
    begin
       --  If we don't have a 64-bit type, we can't make lifetime calls, so
-      --  do nothing in that case.
+      --  do nothing in that case. Likewise if we're generating C.
 
-      if No (Int_64_GL_Type) then
+      if No (Int_64_GL_Type) or else Emit_C then
          return;
       end if;
 
@@ -490,10 +490,10 @@ package body GNATLLVM.Blocks is
       BI     : Block_Info renames Block_Stack.Table (Block_Stack.Last);
 
    begin
-      --  If we don't have a 64-bit type, we can't make invariant
-      --  lifetime calls, so do nothing in that case.
+      --  If we don't have a 64-bit type, we can't make invariant lifetime
+      --  calls, so do nothing in that case. Likewise if we're generating C.
 
-      if No (Int_64_GL_Type) then
+      if No (Int_64_GL_Type) or else Emit_C then
          return;
       end if;
 

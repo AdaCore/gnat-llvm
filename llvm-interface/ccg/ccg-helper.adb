@@ -18,6 +18,8 @@
 with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings; use Interfaces.C.Strings;
 
+with stddef_h; use stddef_h;
+
 package body CCG.Helper is
 
    ---------------------------
@@ -57,5 +59,16 @@ package body CCG.Helper is
    begin
       return Value (Get_Opcode_Name_C (Opc));
    end Get_Opcode_Name;
+
+   -------------------
+   -- Get_As_String --
+   -------------------
+
+   function Get_As_String (V : Value_T) return String is
+      Length : aliased stddef_h.size_t;
+      S      : constant String := Get_As_String (V, Length'Access);
+   begin
+      return S;
+   end Get_As_String;
 
 end CCG.Helper;

@@ -157,4 +157,6 @@ package CCG.Helper is
                    and then Idx < Get_Num_CDA_Elements (V),
            Post => Present (Get_Element_As_Constant'Result);
 
+   function Get_As_String (V : Value_T) return String
+     with Pre => Is_A_Constant_Data_Array (V) and then Is_Constant_String (V);
 end CCG.Helper;

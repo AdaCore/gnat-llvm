@@ -47,6 +47,12 @@ package body CCG.Output is
      with Pre => Is_Actual_Constant (V);
    --  Write the constant value of V
 
+   procedure Write_C_Char_Code (CC : Character);
+   --  Write the appropriate C code for character CC
+
+   Hex : constant array (Integer range 0 .. 15) of Character :=
+     "0123456789abcdef";
+
    ------------------
    -- Write_C_Name --
    ------------------
@@ -94,6 +100,48 @@ package body CCG.Output is
       Write_Int (Get_Output_Idx (V));
 
    end Write_Value_Name;
+
+   -----------------------
+   -- Write_C_Char_Code --
+   -----------------------
+
+   procedure Write_C_Char_Code (CC : Character) is
+   begin
+      --  Remaining characters in range 0 .. 255, output with most appropriate
+      --  C (escape) sequence.
+
+      case CC is
+         when ASCII.BS =>
+            Write_Str ("\b");
+
+         when ASCII.FF =>
+            Write_Str ("\f");
+
+         when ASCII.LF =>
+            Write_Str ("\n");
+
+         when ASCII.CR =>
+            Write_Str ("\r");
+
+         when ASCII.HT =>
+            Write_Str ("\t");
+
+         when ASCII.VT =>
+            Write_Str ("\v");
+
+         when ' ' .. '~' =>
+            if CC in '\' | '"' | ''' then
+               Write_Char ('\');
+            end if;
+
+            Write_Char (CC);
+
+         when others =>
+            Write_Str ("\x");
+            Write_Char (Hex ((Character'Pos (CC) / 16) mod 16));
+            Write_Char (Hex (Character'Pos (CC) mod 16));
+      end case;
+   end Write_C_Char_Code;
 
    --------------------------
    -- Write_Constant_Value --
@@ -147,18 +195,27 @@ package body CCG.Output is
 
       elsif Is_A_Constant_Data_Array (V) then
 
-         --  We don't handle strings yet
+         --  We handle strings and non-strings differently
 
-         Write_Str ("{");
-         for J in 0 .. Nat'(Get_Num_CDA_Elements (V)) - 1 loop
-            if J /= 0 then
-               Write_Str (", ");
-            end if;
+         if Is_Constant_String (V) then
+            Write_Str ("""");
+            for C of Get_As_String (V) loop
+               Write_C_Char_Code (C);
+            end loop;
 
-            Write_Constant_Value (Get_Element_As_Constant (V, J));
-         end loop;
+            Write_Str ("""");
+         else
+            Write_Str ("{");
+            for J in 0 .. Nat'(Get_Num_CDA_Elements (V)) - 1 loop
+               if J /= 0 then
+                  Write_Str (", ");
+               end if;
 
-         Write_Str ("}");
+               Write_Constant_Value (Get_Element_As_Constant (V, J));
+            end loop;
+
+            Write_Str ("}");
+         end if;
 
       else
          Write_Str ("<unknown constant>");

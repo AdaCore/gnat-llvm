@@ -196,8 +196,9 @@ package body CCG.Tables is
                case Comp.Kind is
                   when Var_String =>
                      Update_Hash (H, Comp.Str);
-                  when Value | Data_Value =>
+                  when Value =>
                      Update_Hash (H, Comp.Val);
+                     Update_Hash (H, Hash_Type (Value_Kind'Pos (Comp.V_Kind)));
                   when Typ =>
                      Update_Hash (H, Comp.T);
                   when BB =>
@@ -283,8 +284,10 @@ package body CCG.Tables is
                when Var_String =>
                   pragma Assert (False);
 
-               when Value | Data_Value =>
-                  if SL.Comps (PosL).Val /= SR.Comps (PosR).Val then
+               when Value =>
+                  if SL.Comps (PosL).Val /= SR.Comps (PosR).Val
+                    or else SL.Comps (PosL).V_Kind /= SR.Comps (PosR).V_Kind
+                  then
                      return False;
                   end if;
 
@@ -384,25 +387,25 @@ package body CCG.Tables is
 
    function "+" (V : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Primary, (1 => (Value, 1, V)));
+        (1, Primary, (1 => (Value, 1, V, Normal)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
       return Result;
    end "+";
 
-   -------------
-   -- To_Data --
-   -------------
+   ---------
+   -- "+" --
+   ---------
 
-   function To_Data (V : Value_T) return Str is
+   function "+" (V : Value_T; K : Value_Kind) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unary, (1 => (Data_Value, 1, V)));
+        (1, Primary, (1 => (Value, 1, V, K)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
       return Result;
-   end To_Data;
+   end "+";
 
    ---------
    -- "+" --
@@ -493,14 +496,8 @@ package body CCG.Tables is
                end if;
 
             when Value =>
-               if Get_Is_Variable (Comp.Val) then
-                  Write_Str ("&");
-               end if;
-
-               Write_Value (Comp.Val, For_Precedence => S.P);
-
-            when Data_Value =>
-               Write_Value (Comp.Val, For_Precedence => S.P);
+               Write_Value (Comp.Val, Kind => Comp.V_Kind,
+                            For_Precedence => S.P);
 
             when Typ =>
                Write_Type (Comp.T);
@@ -538,7 +535,7 @@ package body CCG.Tables is
          declare
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Primary,
-               (1 => (Var_String, L'Length, L), 2 => (Value, 1, R)));
+               (1 => (Var_String, L'Length, L), 2 => (Value, 1, R, Normal)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -656,7 +653,7 @@ package body CCG.Tables is
          declare
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Primary,
-               (1 => (Value, 1, L), 2 => (Var_String, R'Length, R)));
+               (1 => (Value, 1, L, Normal), 2 => (Var_String, R'Length, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -744,7 +741,7 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L), 2 => (Value, 1, R)));
+        (2, Primary, (1 => (Value, 1, L, Normal), 2 => (Value, 1, R, Normal)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -785,7 +782,7 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : Type_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L), 2 => (Typ, 1, R)));
+        (2, Primary, (1 => (Value, 1, L, Normal), 2 => (Typ, 1, R)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -799,7 +796,7 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : Basic_Block_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L), 2 => (BB, 1, R)));
+        (2, Primary, (1 => (Value, 1, L, Normal), 2 => (BB, 1, R)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -812,7 +809,7 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : Nat) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L), 2 => (Number, 1, R)));
+        (2, Primary, (1 => (Value, 1, L, Normal), 2 => (Number, 1, R)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -825,7 +822,7 @@ package body CCG.Tables is
 
    function "&" (L : Type_T; R : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Typ, 1, L), 2 => (Value, 1, R)));
+        (2, Primary, (1 => (Typ, 1, L), 2 => (Value, 1, R, Normal)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -867,7 +864,7 @@ package body CCG.Tables is
 
    function "&" (L : Basic_Block_T; R : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (BB, 1, L), 2 => (Value, 1, R)));
+        (2, Primary, (1 => (BB, 1, L), 2 => (Value, 1, R, Normal)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -911,7 +908,7 @@ package body CCG.Tables is
 
    begin
       S_Rec.P                         := R.P;
-      S_Rec.Comps (1)                 := (Value, 1, L);
+      S_Rec.Comps (1)                 := (Value, 1, L, Normal);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
       Result := Undup_Str (S_Rec);
       return Result;
@@ -965,7 +962,7 @@ package body CCG.Tables is
 
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
-      S_Rec.Comps (L.Length + 1)  := (Value, 1, R);
+      S_Rec.Comps (L.Length + 1)  := (Value, 1, R, Normal);
       Result := Undup_Str (S_Rec);
       return Result;
    end "&";
@@ -1307,6 +1304,19 @@ package body CCG.Tables is
    begin
       BB_Data_Table.Table (Idx).Was_Output := B;
    end Set_Was_Output;
+
+   ----------------
+   -- Maybe_Decl --
+   ----------------
+
+   procedure Maybe_Decl (V : Value_T) is
+   begin
+      if Is_Actual_Constant (V) then
+         Set_Is_Decl_Output (V);
+      elsif not Get_Is_Decl_Output (V) then
+         Write_Decl (V);
+      end if;
+   end Maybe_Decl;
 
    -------------------------
    -- Maybe_Write_Typedef --

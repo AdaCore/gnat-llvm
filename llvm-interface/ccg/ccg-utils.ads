@@ -23,6 +23,7 @@ with System.Storage_Elements; use System.Storage_Elements;
 
 with GNATLLVM; use GNATLLVM;
 
+with CCG.Helper; use CCG.Helper;
 with CCG.Tables; use CCG.Tables;
 
 package CCG.Utils is
@@ -37,11 +38,12 @@ package CCG.Utils is
      with Pre => Present (Op1), Post => Present (TP'Result);
    --  This provides a simple template facility for insertion of operands.
    --  Every character up to '#' in S is placed in Str. '#' is followed
-   --  optionally by an 'B' or 'D' and then by a number or 'T'. The
+   --  optionally by an 'B', 'N', or 'I' and then by a number or 'T'. The
    --  operand of that number (or the value of T, if 'T' was given) is
    --  inserted into Str at that point. If 'B' is present, the operand is
-   --  interpreted as a basic block. If 'D' is present, then we want the
-   --  data form of the operand. If Is_Unsigned is True, put "unsigned "
+   --  interpreted as a basic block. If 'N' is present, then we want the
+   --  operand always written as a name. If 'I' is present, this is for the
+   --  context of an initializer. If Is_Unsigned is True, put "unsigned "
    --  before the type.
 
    function Num_Uses (V : Value_T) return Nat
@@ -86,5 +88,11 @@ package CCG.Utils is
    procedure Update_Hash (H : in out Hash_Type; B : Basic_Block_T)
      with Pre => Present (B), Inline;
    --  Update H taking into account the type T
+
+   function Is_Actual_Constant (V : Value_T) return Boolean is
+     (Is_A_Constant (V) and then not Is_A_Global_Variable (V))
+     with Pre => Present (V);
+     --  A global variable is a "constant" in the sense of the LLVM IR, but
+     --  we often want to know when something is a constant in the C sense.
 
 end CCG.Utils;

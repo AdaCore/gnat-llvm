@@ -22,6 +22,7 @@ with LLVM.Core; use LLVM.Core;
 with CCG.Aggregates;  use CCG.Aggregates;
 with CCG.Helper;      use CCG.Helper;
 with CCG.Subprograms; use CCG.Subprograms;
+with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Output is
 
@@ -30,6 +31,8 @@ package body CCG.Output is
      with Pre => Present (V);
    --  True if this is a simple enough constant that we output it in C
    --  source as a constant.
+   --  ??? Strings are also simple constants, but we don't support them just
+   --  yet.
 
    procedure Write_C_Name (S : String)
      with Pre => S'Length > 0;
@@ -41,7 +44,7 @@ package body CCG.Output is
    --  we generate from a serial number.
 
    procedure Write_Constant_Value (V : Value_T)
-     with Pre => Is_A_Constant (V);
+     with Pre => Is_Actual_Constant (V);
    --  Write the constant value of V
 
    ------------------
@@ -128,6 +131,35 @@ package body CCG.Output is
               (Double'Image (Const_Real_Get_Double (V, Loses_Info)));
          end;
 
+      --  For a struct or array, write the values individually
+
+      elsif Is_A_Constant_Array (V) or else Is_A_Constant_Struct (V) then
+         Write_Str ("{");
+         for J in 0 .. Nat'(Get_Num_Operands (V)) - 1 loop
+            if J /= 0 then
+               Write_Str (", ");
+            end if;
+
+            Write_Constant_Value (Get_Operand (V, J));
+         end loop;
+
+         Write_Str ("}");
+
+      elsif Is_A_Constant_Data_Array (V) then
+
+         --  We don't handle strings yet
+
+         Write_Str ("{");
+         for J in 0 .. Nat'(Get_Num_CDA_Elements (V)) - 1 loop
+            if J /= 0 then
+               Write_Str (", ");
+            end if;
+
+            Write_Constant_Value (Get_Element_As_Constant (V, J));
+         end loop;
+
+         Write_Str ("}");
+
       else
          Write_Str ("<unknown constant>");
       end if;
@@ -137,10 +169,19 @@ package body CCG.Output is
    -- Write_Value --
    -----------------
 
-   procedure Write_Value (V : Value_T; For_Precedence : Precedence) is
+   procedure Write_Value
+     (V : Value_T; Kind : Value_Kind; For_Precedence : Precedence)
+     is
       C_Value : constant Str := Get_C_Value (V);
 
    begin
+      --  If this is a variable that we're writing normally, we need to take
+      --  its address.
+
+      if Kind = Normal and then Get_Is_Variable (V) then
+         Write_Str ("&");
+      end if;
+
       --  If we've set an expression as the value of V, write it, putting
       --  in parentheses unless we know that it's of higher precedence
 
@@ -153,9 +194,12 @@ package body CCG.Output is
             Write_Str ("(" & C_Value & ")");
          end if;
 
-      --  If this is a simple constant, write the constant
+      --  If this is either a simple constant or any constant for an
+      --  initializer, write the constant.
 
-      elsif Is_Simple_Constant (V) then
+      elsif Is_Simple_Constant (V)
+        or else (Kind = Initializer and then Is_Actual_Constant (V))
+      then
          Write_Constant_Value (V);
 
       --  Otherwise, write the name
@@ -200,7 +244,7 @@ package body CCG.Output is
             Typ  : constant Type_T :=
               (if   Get_Is_Variable (V) then Get_Element_Type (Type_Of (V))
                else Type_Of (V));
-            Decl : Str             := Typ & " " & To_Data (V);
+            Decl : Str             := Typ & " " & (V + Value_Name);
 
          begin
             --  For globals, we write the decl immediately. Otherwise,
@@ -227,7 +271,8 @@ package body CCG.Output is
                   if Present (Init) and then not Is_Undef (Init)
                     and then not Is_A_Constant_Aggregate_Zero (Init)
                   then
-                     Decl := Decl & " = " & Init;
+                     Decl := Decl & " = " & (Init + Initializer);
+                     Maybe_Decl (Init);
                   end if;
 
                   Write_Str (Decl & ";", Eol => True);

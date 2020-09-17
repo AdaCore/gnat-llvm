@@ -310,4 +310,8 @@ package GNATLLVM.Wrapper is
 
    function Equal_Constants (V1, V2 : Value_T) return Boolean
      with Inline;
+
+   function Get_Num_CDA_Elements (V : Value_T) return unsigned
+     with Import, Convention => C, External_Name => "Get_Num_CDA_Elements";
+
 end GNATLLVM.Wrapper;

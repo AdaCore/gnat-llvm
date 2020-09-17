@@ -64,6 +64,33 @@ package CCG.Tables is
      with Pre => Has_Precedence (S);
    --  Return the precedence assigned to S
 
+   --  Normally, a use of a variable name in the LLVM IR is the same as the
+   --  use of that name in C. However, there are cases where a reference in
+   --  LLVM IR is to the address of what's a variable in C and vice
+   --  versa. We also have to know when an LLVM value is used as the
+   --  initializer of a variable because if it's an aggregate constant,
+   --  that's the only case where we can (and must) use the value of that
+   --  constant. We define a Value_Kind to distinguish between these case
+   --  and use the "+" operator to assign a non-default kind to a value.
+
+   type Value_Kind is
+     (Normal,
+      --  The default, which indicates that the value is to be interpreted
+      --  as it would be in the LLVM IR, whether that's an address or the
+      --  value data.
+
+      Value_Name,
+      --  Always represent this value as a name. This is the case for the
+      --  address operand of a load or store instruction and when we use
+      --  the name in a declaration.
+
+      Initializer);
+      --  If this is a constant, always output the value of the constant,
+      --  even if it's an aggregate constant.
+
+   function "+" (V : Value_T; K : Value_Kind) return Str
+     with Pre => Present (V);
+
    function "+" (S : String)        return Str
      with Post => Present ("+"'Result);
    function "+" (V : Value_T)       return Str
@@ -74,8 +101,6 @@ package CCG.Tables is
      with Pre => Present (B), Post => Present ("+"'Result);
    function "+" (N : Nat)           return Str
      with Post => Present ("+"'Result);
-   function To_Data (V : Value_T)       return Str
-     with Pre => Present (V), Post => Present (To_Data'Result);
    --  Return an internal representation of S, V, T, or B
 
    function "&" (L : String;         R : Value_T)       return Str
@@ -175,6 +200,10 @@ package CCG.Tables is
    --  the address of the value; only "load" or "store" instruction
    --  actually accesses the value.
 
+   procedure Maybe_Decl (V : Value_T)
+     with Pre => Present (V), Post => Get_Is_Decl_Output (V);
+   --  See if we need to write a declaration for V and write one if so
+
    procedure Set_C_Value       (V : Value_T; S : Str)
      with Pre  => Present (V) and then Present (S),
           Post => Get_C_Value (V) = S, Inline;
@@ -247,11 +276,6 @@ private
       Value,
       --  An LLVM value
 
-      Data_Value,
-      --  Like Value, but represents the data for that value in the case
-      --  where the value itself represents an address (i.e., an alloca in
-      --  the entry block.
-
       Typ,
       --  An LLVM type
 
@@ -266,16 +290,17 @@ private
    is record
       case Kind is
          when Var_String =>
-            Str   : String (1 .. Length);
+            Str    : String (1 .. Length);
 
-         when Value | Data_Value =>
-            Val   : Value_T;
+         when Value =>
+            Val    : Value_T;
+            V_Kind : Value_Kind;
 
          when Typ =>
-            T     :  Type_T;
+            T      :  Type_T;
 
          when BB =>
-            B     : Basic_Block_T;
+            B      : Basic_Block_T;
 
          when Number =>
             N     : Nat;

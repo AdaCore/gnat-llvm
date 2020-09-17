@@ -624,6 +624,13 @@ Get_Element_Offset (DataLayout &DL, StructType *ST, unsigned idx)
   return SL->getElementOffset (idx);
 }
 
+extern "C"
+unsigned
+Get_Num_CDA_Elements (ConstantDataArray *CA)
+{
+  return CA->getNumElements ();
+}
+
 /* There are two LLVM "opcodes": the real LLVM opcode, which is used
    throughout the LLVM C++ interface, and a "stable" version of the
    opcodes, that's used in the C interface.  We need to map between them,

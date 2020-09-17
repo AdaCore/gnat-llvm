@@ -21,7 +21,8 @@ with Interfaces.C;
 
 with LLVM.Core;  use LLVM.Core;
 
-with GNATLLVM; use GNATLLVM;
+with GNATLLVM;         use GNATLLVM;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package CCG.Helper is
 
@@ -65,7 +66,12 @@ package CCG.Helper is
 
    function Get_Num_Operands (V : Value_T) return Int is
       (Int (Interfaces.C.int'(Get_Num_Operands (V))))
-      with Pre => Is_A_Instruction (V);
+      with Pre => Present (V);
+
+   function Get_Operand (V : Value_T; Idx : Nat) return Value_T is
+      (Get_Operand (V, unsigned (Idx)))
+      with Pre  => Present (V) and then Idx < Get_Num_Operands (V),
+           Post => Present (Get_Operand'Result);
 
    function Is_A_Constant (V : Value_T) return Boolean is
      (Present (Is_A_Constant (V)))
@@ -77,6 +83,18 @@ package CCG.Helper is
 
    function Is_A_Constant_FP (V : Value_T) return Boolean is
      (Present (Is_A_Constant_FP (V)))
+     with Pre => Present (V);
+
+   function Is_A_Constant_Array (V : Value_T) return Boolean is
+     (Present (Is_A_Constant_Array (V)))
+     with Pre => Present (V);
+
+   function Is_A_Constant_Data_Array (V : Value_T) return Boolean is
+     (Present (Is_A_Constant_Data_Array (V)))
+     with Pre => Present (V);
+
+   function Is_A_Constant_Struct (V : Value_T) return Boolean is
+     (Present (Is_A_Constant_Struct (V)))
      with Pre => Present (V);
 
    function Is_A_Constant_Aggregate_Zero (V : Value_T) return Boolean is
@@ -128,5 +146,15 @@ package CCG.Helper is
    function Get_Opcode_Name (V : Value_T) return String is
      (Get_Opcode_Name (Get_Instruction_Opcode (V)))
      with Pre => Is_A_Instruction (V);
+
+   function Get_Num_CDA_Elements (V : Value_T) return Nat is
+     (Nat (unsigned'(Get_Num_CDA_Elements (V))))
+     with Pre => Is_A_Constant_Data_Array (V);
+
+   function Get_Element_As_Constant (V : Value_T; Idx : Nat) return Value_T is
+     (Get_Element_As_Constant (V, unsigned (Idx)))
+      with Pre  => Is_A_Constant_Data_Array (V)
+                   and then Idx < Get_Num_CDA_Elements (V),
+           Post => Present (Get_Element_As_Constant'Result);
 
 end CCG.Helper;

@@ -52,10 +52,6 @@ package body CCG.Instructions is
      with Pre => Present (V);
    --  Process a call instruction
 
-   procedure Maybe_Decl (V : Value_T)
-     with Pre => Present (V), Post => Get_Is_Decl_Output (V);
-   --  See if we need to write a declaration for V and write one if so
-
    function Maybe_Unsigned
      (V : Value_T; Is_Unsigned : Boolean := True) return Str
    is
@@ -64,17 +60,6 @@ package body CCG.Instructions is
        else +V))
      with Pre => Present (V), Post => Present (Maybe_Unsigned'Result);
    --  Return V if it's not unsigned and return a cast to unsigned if it is.
-
-   ----------------
-   -- Maybe_Decl --
-   ----------------
-
-   procedure Maybe_Decl (V : Value_T) is
-   begin
-      if not Get_Is_Decl_Output (V) then
-         Write_Decl (V);
-      end if;
-   end Maybe_Decl;
 
    ------------------------
    -- Binary_Instruction --
@@ -314,11 +299,11 @@ package body CCG.Instructions is
 
          when Op_Load =>
             Assignment
-              (V, TP ((if Get_Is_Variable (Op1) then "#D1" else "*#1"), Op1) +
+              (V, TP ((if Get_Is_Variable (Op1) then "#N1" else "*#1"), Op1) +
                   Unary);
 
          when Op_Store =>
-            Output_Stmt (TP ((if   Get_Is_Variable (Op2) then "#D2 = #1"
+            Output_Stmt (TP ((if   Get_Is_Variable (Op2) then "#N2 = #1"
                               else "*#2 = #1"),
                                 Op1, Op2) +
                          Assign);

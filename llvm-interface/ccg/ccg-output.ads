@@ -24,7 +24,8 @@ package CCG.Output is
    --  This package contains subprograms used to output segments of C
    --  code.
 
-   procedure Write_Value (V : Value_T; For_Precedence : Precedence)
+   procedure Write_Value
+     (V : Value_T; Kind : Value_Kind; For_Precedence : Precedence)
      with Pre => Present (V);
    procedure Write_Type  (T : Type_T)
      with Pre => Present (T);

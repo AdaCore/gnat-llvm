@@ -74,7 +74,9 @@ package body CCG.Subprograms is
 
    procedure Output_BB (BB : Basic_Block_T)
      with Pre => Present (BB);
-   --  Generate the code for basic block BB unless already output
+   procedure Output_BB (V : Value_T)
+     with Pre => Is_A_Basic_Block (V), Inline;
+   --  Generate the code for basic block unless already output
 
    -----------------
    -- Output_Decl --
@@ -204,6 +206,15 @@ package body CCG.Subprograms is
    -- Output_BB --
    ---------------
 
+   procedure Output_BB (V : Value_T) is
+   begin
+      Output_BB (Value_As_Basic_Block (V));
+   end Output_BB;
+
+   ---------------
+   -- Output_BB --
+   ---------------
+
    procedure Output_BB (BB : Basic_Block_T) is
       V          : Value_T          := Get_First_Instruction (BB);
       Terminator : constant Value_T := Get_Basic_Block_Terminator (BB);
@@ -232,7 +243,7 @@ package body CCG.Subprograms is
 
          begin
             for J in Ops'Range loop
-               Ops (J) := Get_Operand (V, unsigned (J - 1));
+               Ops (J) := Get_Operand (V, J - 1);
             end loop;
 
             Instruction (V, Ops);
@@ -249,10 +260,10 @@ package body CCG.Subprograms is
 
          when Op_Br =>
             if Get_Num_Operands (Terminator) = 1 then
-               Output_BB (Value_As_Basic_Block (Get_Operand (Terminator, 0)));
+               Output_BB (Get_Operand (Terminator, Nat (0)));
             else
-               Output_BB (Value_As_Basic_Block (Get_Operand (Terminator, 2)));
-               Output_BB (Value_As_Basic_Block (Get_Operand (Terminator, 1)));
+               Output_BB (Get_Operand (Terminator, Nat (2)));
+               Output_BB (Get_Operand (Terminator, Nat (1)));
             end if;
 
          when others =>

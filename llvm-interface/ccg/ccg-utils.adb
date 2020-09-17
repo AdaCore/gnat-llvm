@@ -35,20 +35,23 @@ package body CCG.Utils is
       Result    : Str     := No_Str;
       Mark_Seen : Boolean := False;
       B_Seen    : Boolean := False;
-      D_Seen    : Boolean := False;
+      N_Seen    : Boolean := False;
+      I_Seen    : Boolean := False;
       Op        : Value_T;
       Last      : Integer;
 
    begin
       for J in S'Range loop
 
-         --  If we've seen '#', look for 'B' or 'D'
+         --  If we've seen '#', look for 'B', 'N', or 'I'
 
          if Mark_Seen then
             if S (J) = 'B' then
                B_Seen := True;
-            elsif S (J) = 'D' then
-               D_Seen := True;
+            elsif S (J) = 'N' then
+               N_Seen := True;
+            elsif S (J) = 'I' then
+               I_Seen := True;
 
             --  If neither, then this is a number, representing which operand
             --  to output, possibly as modified by 'B' or 'D'.
@@ -60,7 +63,7 @@ package body CCG.Utils is
                --  The end of any string to output is before our mark, which
                --  may be, e.g., #1 or #B2.
 
-               Last := J - 2 - (if B_Seen or D_Seen then 1 else 0);
+               Last := J - 2 - (if B_Seen or N_Seen or I_Seen then 1 else 0);
                if Start <= Last then
                   Result := Result & S (Start .. Last);
                end if;
@@ -70,8 +73,10 @@ package body CCG.Utils is
 
                if B_Seen then
                   Result := Result & Value_As_Basic_Block (Op);
-               elsif D_Seen then
-                  Result := Result & To_Data (Op);
+               elsif N_Seen then
+                  Result := Result & (Op + Value_Name);
+               elsif I_Seen then
+                  Result := Result & (Op + Initializer);
                elsif S (J) = 'T' then
                   if Is_Unsigned then
                      Result := Result & "unsigned ";
@@ -83,7 +88,8 @@ package body CCG.Utils is
                end if;
 
                B_Seen    := False;
-               D_Seen    := False;
+               N_Seen    := False;
+               I_Seen    := False;
                Mark_Seen := False;
                Start     := J + 1;
             end if;

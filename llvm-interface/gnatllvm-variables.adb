@@ -1347,7 +1347,7 @@ package body GNATLLVM.Variables is
       --  constant, adjust the alignment.
 
       if No (Size) and then No (Align) and then Present (In_Size)
-        and then (Is_Full_Access (E)
+        and then (Is_Full_Access_Object (E)
                     or else (Ekind (E) not in E_Exception     |
                                               E_Out_Parameter |
                                               E_Loop_Parameter

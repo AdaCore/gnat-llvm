@@ -23,9 +23,8 @@ with Table;
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
-with CCG.Helper;       use CCG.Helper;
-with CCG.Subprograms;  use CCG.Subprograms;
-with CCG.Utils;        use CCG.Utils;
+with CCG.Subprograms; use CCG.Subprograms;
+with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Aggregates is
 
@@ -107,8 +106,7 @@ package body CCG.Aggregates is
    FNI_Map : FNI_Maps.Map;
 
    function Value_Piece (V : Value_T; T : in out Type_T; Idx : Nat) return Str
-     with Pre  => Get_Instruction_Opcode (V)
-                    in Op_Extract_Value | Op_Insert_Value
+     with Pre  => Get_Opcode (V) in Op_Extract_Value | Op_Insert_Value
                   and then Get_Type_Kind (T)
                     in Struct_Type_Kind | Array_Type_Kind,
           Post => Present (Value_Piece'Result) and then T /= T'Old;

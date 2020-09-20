@@ -32,24 +32,24 @@ package body CCG.Instructions is
    --  Take action to assign LHS the value RHS
 
    function Binary_Instruction (V, Op1, Op2 : Value_T) return Str
-     with Pre  => Is_A_Instruction (V) and then Present (Op1)
+     with Pre  => Acts_As_Instruction (V) and then Present (Op1)
                   and then Present (Op2),
           Post => Present (Binary_Instruction'Result);
    --  Return the value corresponding to a binary instruction
 
    function Cast_Instruction (V, Op : Value_T) return Str
-     with Pre  => Is_A_Instruction (V) and then Present (Op),
+     with Pre  => Acts_As_Instruction (V) and then Present (Op),
           Post => Present (Cast_Instruction'Result);
    --  Return the value corresponding to a cast instruction
 
    function Cmp_Instruction (V, Op1, Op2 : Value_T) return Str
-     with Pre  => Get_Instruction_Opcode (V) in Op_I_Cmp | Op_F_Cmp
+     with Pre  => Get_Opcode (V) in Op_I_Cmp | Op_F_Cmp
                   and then Present (Op1) and then Present (Op2),
           Post => Present (Cmp_Instruction'Result);
    --  Return the value corresponding to a comparison instruction
 
    procedure Call_Instruction (V : Value_T; Ops : Value_Array)
-     with Pre => Present (V);
+     with Pre => Get_Opcode (V) = Op_Call;
    --  Process a call instruction
 
    function Maybe_Unsigned
@@ -66,7 +66,7 @@ package body CCG.Instructions is
    ------------------------
 
    function Binary_Instruction (V, Op1, Op2 : Value_T) return Str is
-      Opc : constant Opcode_T := Get_Instruction_Opcode (V);
+      Opc : constant Opcode_T := Get_Opcode (V);
 
    begin
       case Opc is
@@ -126,7 +126,7 @@ package body CCG.Instructions is
    ----------------------
 
    function Cast_Instruction (V, Op : Value_T) return Str is
-      Opc    : constant Opcode_T := Get_Instruction_Opcode (V);
+      Opc    : constant Opcode_T := Get_Opcode (V);
       Src_T  : constant Type_T   := Type_Of (Op);
       Dest_T : constant Type_T   := Type_Of (V);
       Our_Op : constant Str      :=
@@ -154,7 +154,7 @@ package body CCG.Instructions is
    function Cmp_Instruction (V, Op1, Op2 : Value_T) return Str is
 
    begin
-      if Get_Instruction_Opcode (V) = Op_I_Cmp then
+      if Get_Opcode (V) = Op_I_Cmp then
          declare
             type I_Info is record
                Is_Unsigned : Boolean;
@@ -184,7 +184,7 @@ package body CCG.Instructions is
               Relation;
          end;
 
-      elsif Get_Instruction_Opcode (V) = Op_F_Cmp then
+      elsif Get_Opcode (V) = Op_F_Cmp then
 
          case Get_F_Cmp_Predicate (V) is
             when Real_OEQ | Real_UEQ =>
@@ -268,7 +268,7 @@ package body CCG.Instructions is
         (if Ops'Length >= 2 then Ops (Ops'First + 1) else No_Value_T);
       Op3 : constant Value_T  :=
         (if Ops'Length >= 3 then Ops (Ops'First + 2) else No_Value_T);
-      Opc : constant Opcode_T := Get_Instruction_Opcode (V);
+      Opc : constant Opcode_T := Get_Opcode (V);
    begin
       --  See if we need to write a declaration for an operand
 
@@ -346,5 +346,21 @@ package body CCG.Instructions is
 
       end case;
    end Instruction;
+
+   -------------------------
+   -- Process_Instruction --
+   -------------------------
+
+   procedure Process_Instruction (V : Value_T) is
+      N_Ops : constant Nat := Get_Num_Operands (V);
+      Ops   : Value_Array (1 .. N_Ops);
+
+   begin
+      for J in Ops'Range loop
+         Ops (J) := Get_Operand (V, J - 1);
+      end loop;
+
+      Instruction (V, Ops);
+   end Process_Instruction;
 
 end CCG.Instructions;

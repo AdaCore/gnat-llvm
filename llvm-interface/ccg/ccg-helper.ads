@@ -101,6 +101,10 @@ package CCG.Helper is
      (Present (Is_A_Constant_Aggregate_Zero (V)))
      with Pre => Present (V);
 
+   function Is_A_Constant_Expr (V : Value_T) return Boolean is
+     (Present (Is_A_Constant_Expr (V)))
+     with Pre => Present (V);
+
    function Is_A_Function (V : Value_T) return Boolean is
      (Present (Is_A_Function (V)))
      with Pre => Present (V);
@@ -120,6 +124,10 @@ package CCG.Helper is
    function Is_A_Global_Variable (V : Value_T) return Boolean is
      (Present (Is_A_Global_Variable (V)))
      with Pre => Present (V);
+
+   function Acts_As_Instruction (V : Value_T) return Boolean is
+     (Is_A_Instruction (V) or else Is_A_Constant_Expr (V))
+   with Pre => Present (V);
 
    --  extractvalue and insertvalue instructions have a list of indices.
    --  The C API returns a pointer to the first of a list of unsigned
@@ -141,11 +149,16 @@ package CCG.Helper is
                    in Op_Extract_Value | Op_Insert_Value
                  and then Idx < Get_Num_Indices (V);
 
+   function Get_Opcode (V : Value_T) return Opcode_T is
+     (if   Is_A_Instruction (V) then Get_Instruction_Opcode (V)
+      else Get_Const_Opcode (V))
+     with Pre => Acts_As_Instruction (V);
+
    function Get_Opcode_Name (Opc : Opcode_T) return String with Inline;
 
    function Get_Opcode_Name (V : Value_T) return String is
-     (Get_Opcode_Name (Get_Instruction_Opcode (V)))
-     with Pre => Is_A_Instruction (V);
+     (Get_Opcode_Name (Get_Opcode (V)))
+     with Pre => Is_A_Instruction (V) or else Is_A_Constant_Expr (V);
 
    function Get_Num_CDA_Elements (V : Value_T) return Nat is
      (Nat (unsigned'(Get_Num_CDA_Elements (V))))

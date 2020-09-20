@@ -22,7 +22,11 @@ with CCG.Helper; use CCG.Helper;
 package CCG.Instructions is
 
    procedure Instruction (V : Value_T; Ops : Value_Array)
-     with Pre => Is_A_Instruction (V);
+     with Pre => Acts_As_Instruction (V);
    --  Output the instruction V with operands Ops
+
+   procedure Process_Instruction (V : Value_T)
+     with Pre => Acts_As_Instruction (V);
+   --  Process instruction V
 
 end CCG.Instructions;

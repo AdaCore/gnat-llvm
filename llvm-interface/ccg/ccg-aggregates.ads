@@ -24,6 +24,7 @@ with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM; use GNATLLVM;
 
+with CCG.Helper; use CCG.Helper;
 with CCG.Tables; use CCG.Tables;
 
 package CCG.Aggregates is
@@ -66,14 +67,13 @@ package CCG.Aggregates is
    --  Write a typedef for T, an array type
 
    function Extract_Value_Instruction (V : Value_T; Op : Value_T) return Str
-     with Pre  => Get_Instruction_Opcode (V) = Op_Extract_Value
-                  and then Present (Op),
+     with Pre  => Get_Opcode (V) = Op_Extract_Value and then Present (Op),
           Post => Present (Extract_Value_Instruction'Result);
    --  Return the result of an extractvalue instruction V
 
    procedure Insert_Value_Instruction (V, Aggr, Op : Value_T)
-     with Pre => Get_Instruction_Opcode (V) = Op_Insert_Value
-                 and then Present (Aggr) and then Present (Op);
+     with Pre => Get_Opcode (V) = Op_Insert_Value and then Present (Aggr)
+                 and then Present (Op);
    --  Process an insertvalue instruction V with an initial value of Aggr
    --  and assigning Op to the component.
 

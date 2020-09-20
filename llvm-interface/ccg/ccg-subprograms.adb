@@ -237,18 +237,7 @@ package body CCG.Subprograms is
 
       Set_Was_Output (BB);
       while Present (V) loop
-         declare
-            N_Ops : constant Int := Get_Num_Operands (V);
-            Ops   : Value_Array (1 .. N_Ops);
-
-         begin
-            for J in Ops'Range loop
-               Ops (J) := Get_Operand (V, J - 1);
-            end loop;
-
-            Instruction (V, Ops);
-         end;
-
+         Process_Instruction (V);
          V := Get_Next_Instruction (V);
       end loop;
 

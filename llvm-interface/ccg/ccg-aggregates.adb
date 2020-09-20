@@ -21,10 +21,11 @@ with Ada.Containers.Hashed_Maps;
 with Table;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
-with CCG.Helper;      use CCG.Helper;
-with CCG.Subprograms; use CCG.Subprograms;
-with CCG.Utils;       use CCG.Utils;
+with CCG.Helper;       use CCG.Helper;
+with CCG.Subprograms;  use CCG.Subprograms;
+with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Aggregates is
 
@@ -349,5 +350,75 @@ package body CCG.Aggregates is
       Output_Stmt (Acc & TP (" = #1", Op) + Assign);
 
    end Insert_Value_Instruction;
+
+   ---------------------
+   -- GEP_Instruction --
+   ---------------------
+
+   function GEP_Instruction (Ops : Value_Array) return Str is
+      Aggr   : constant Value_T := Ops (Ops'First);
+      --  The pointer to aggregate that we're dereferencing
+
+      Aggr_T : Type_T           := Get_Element_Type (Type_Of (Aggr));
+      --  The type that Aggr, which is always a pointer, points to
+
+      Is_LHS : Boolean          :=
+        Get_Is_Variable (Aggr)
+        and then Get_Type_Kind (Aggr_T) = Struct_Type_Kind;
+      --  Whether our result so far is an LHS as opposed to a pointer.
+      --  If it is, then we can use normal derefrence operations and we must
+      --  take the address at the end of the instruction processing.
+
+      Result : Str;
+      --  The resulting operation so far
+
+   begin
+      --  The first operand is special in that it represents a value to
+      --  be multiplied by the size of the type pointed to and added to
+      --  the value of the pointer input. Normally, we have a GEP that either
+      --  has a nonzero value for this operand and no others or that has a
+      --  zero for this value, those aren't requirements. However, it's
+      --  very worth special-casing the zero case here because we have
+      --  nothing to do in that case.
+
+      if Equals_Int (Ops (Ops'First + 1), 0) then
+         Result := Aggr + Value_Name;
+      else
+         Result := TP ("#1 + #2", Aggr, Ops (Ops'First + 1)) + Add;
+      end if;
+
+      --  Now process any other operands, which must always dereference into
+      --  an array or struct.
+
+      for Op of Ops (Ops'First + 2 .. Ops'Last) loop
+
+         --  For arrays, we don't use a different C syntax depending on
+         --  whether the aggregate so far is an LHS or pointer.
+         if Get_Type_Kind (Aggr_T) = Array_Type_Kind then
+            Result := Result & TP ("[#1]", Op) + Component;
+            Aggr_T := Get_Element_Type (Aggr_T);
+            Is_LHS := True;
+         else
+            pragma Assert (Get_Type_Kind (Aggr_T) = Struct_Type_Kind);
+            declare
+               Idx : constant Nat := Nat (Const_Int_Get_S_Ext_Value (Op));
+
+            begin
+               Result := Result & (if Is_LHS then "." else "->") + Component &
+                 Get_Field_Name (Aggr_T, Idx);
+               Aggr_T := Struct_Get_Type_At_Index (Aggr_T, Idx);
+               Is_LHS := True;
+            end;
+         end if;
+      end loop;
+
+      --  If we ended up with a LHS, we have to take the address
+
+      if Is_LHS then
+         Result := "&" & Result + Unary;
+      end if;
+
+      return Result;
+   end GEP_Instruction;
 
 end CCG.Aggregates;

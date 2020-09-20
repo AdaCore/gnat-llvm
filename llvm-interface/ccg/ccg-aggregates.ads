@@ -77,4 +77,9 @@ package CCG.Aggregates is
    --  Process an insertvalue instruction V with an initial value of Aggr
    --  and assigning Op to the component.
 
+   function GEP_Instruction (Ops : Value_Array) return Str
+     with Pre  => Ops'Length > 1,
+          Post => Present (GEP_Instruction'Result);
+   --  Process a GEP instruction
+
 end CCG.Aggregates;

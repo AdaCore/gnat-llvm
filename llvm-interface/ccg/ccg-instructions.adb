@@ -263,11 +263,11 @@ package body CCG.Instructions is
 
    procedure Instruction (V : Value_T; Ops : Value_Array) is
       Op1 : constant Value_T  :=
-        (if Ops'Length >= 1 then Ops (1) else No_Value_T);
+        (if Ops'Length >= 1 then Ops (Ops'First) else No_Value_T);
       Op2 : constant Value_T  :=
-        (if Ops'Length >= 2 then Ops (2) else No_Value_T);
+        (if Ops'Length >= 2 then Ops (Ops'First + 1) else No_Value_T);
       Op3 : constant Value_T  :=
-        (if Ops'Length >= 3 then Ops (3) else No_Value_T);
+        (if Ops'Length >= 3 then Ops (Ops'First + 2) else No_Value_T);
       Opc : constant Opcode_T := Get_Instruction_Opcode (V);
    begin
       --  See if we need to write a declaration for an operand
@@ -336,6 +336,9 @@ package body CCG.Instructions is
 
          when Op_Insert_Value =>
             Insert_Value_Instruction (V, Op1, Op2);
+
+         when Op_Get_Element_Ptr =>
+            Assignment (V, GEP_Instruction (Ops));
 
          when others =>
             Output_Stmt

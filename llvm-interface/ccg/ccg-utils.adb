@@ -101,7 +101,7 @@ package body CCG.Utils is
 
       --  See if we have a final string to output and output it if so
 
-      if Start < S'Last then
+      if Start <= S'Last then
          Result := Result & S (Start .. S'Last);
       end if;
 

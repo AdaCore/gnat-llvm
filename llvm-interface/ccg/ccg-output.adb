@@ -27,8 +27,15 @@ with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Output is
 
+   function Is_Simple_Type (T : Type_T) return Boolean is
+     (Get_Type_Kind (T) in Half_Type_Kind .. Integer_Type_Kind
+        or else Get_Type_Kind (T) = Pointer_Type_Kind)
+     with Pre => Present (T);
+   --  True if this is a type that's simple (elementary)
+
    function Is_Simple_Constant (V : Value_T) return Boolean is
-     (Get_Value_Kind (V) in Constant_Int_Value_Kind | Constant_FP_Value_Kind)
+     ((Get_Value_Kind (V) in Constant_Int_Value_Kind | Constant_FP_Value_Kind)
+      or else (Is_Undef (V) and then Is_Simple_Type (Type_Of (V))))
      with Pre => Present (V);
    --  True if this is a simple enough constant that we output it in C
    --  source as a constant.
@@ -48,11 +55,29 @@ package body CCG.Output is
      with Pre => Is_Actual_Constant (V);
    --  Write the constant value of V
 
+   procedure Write_Undef (T : Type_T)
+     with Pre => Present (T);
+   --  Write an undef of type T
+
+   procedure Maybe_Write_Comma (J : Nat) with Inline;
+   --  If J is nonzero, write a comma
+
    procedure Write_C_Char_Code (CC : Character);
    --  Write the appropriate C code for character CC
 
    Hex : constant array (Integer range 0 .. 15) of Character :=
      "0123456789abcdef";
+
+   -----------------------
+   -- Maybe_Write_Comma --
+   -----------------------
+
+   procedure Maybe_Write_Comma (J : Nat) is
+   begin
+      if J /= 0 then
+         Write_Str (", ");
+      end if;
+   end Maybe_Write_Comma;
 
    ------------------
    -- Write_C_Name --
@@ -144,6 +169,45 @@ package body CCG.Output is
       end case;
    end Write_C_Char_Code;
 
+   -----------------
+   -- Write_Undef --
+   -----------------
+
+   procedure Write_Undef (T : Type_T) is
+   begin
+      --  We can write anything for undef, so we might as well write zero
+
+      case Get_Type_Kind (T) is
+         when Half_Type_Kind | Float_Type_Kind | Double_Type_Kind
+            | X86_Fp80typekind | F_P128_Type_Kind | Ppc_Fp128typekind =>
+            Write_Str ("0.0");
+
+         when Integer_Type_Kind | Pointer_Type_Kind =>
+            Write_Str ("0");
+
+         when Struct_Type_Kind =>
+            Write_Str ("{");
+            for J in 0 .. Nat'(Count_Struct_Element_Types (T)) - 1 loop
+               Maybe_Write_Comma (J);
+               Write_Undef (Struct_Get_Type_At_Index (T, J));
+            end loop;
+
+            Write_Str ("}");
+
+         when Array_Type_Kind =>
+            Write_Str ("{");
+            for J in 1 .. Nat'(Get_Array_Length (T)) loop
+               Maybe_Write_Comma (J);
+               Write_Undef (Get_Element_Type (T));
+            end loop;
+
+            Write_Str ("}");
+
+         when others =>
+            Write_Str ("<unsupported undef type>");
+      end case;
+   end Write_Undef;
+
    --------------------------
    -- Write_Constant_Value --
    --------------------------
@@ -185,10 +249,7 @@ package body CCG.Output is
       elsif Is_A_Constant_Array (V) or else Is_A_Constant_Struct (V) then
          Write_Str ("{");
          for J in 0 .. Nat'(Get_Num_Operands (V)) - 1 loop
-            if J /= 0 then
-               Write_Str (", ");
-            end if;
-
+            Maybe_Write_Comma (J);
             Write_Constant_Value (Get_Operand (V, J));
          end loop;
 
@@ -208,15 +269,15 @@ package body CCG.Output is
          else
             Write_Str ("{");
             for J in 0 .. Nat'(Get_Num_CDA_Elements (V)) - 1 loop
-               if J /= 0 then
-                  Write_Str (", ");
-               end if;
-
+               Maybe_Write_Comma (J);
                Write_Constant_Value (Get_Element_As_Constant (V, J));
             end loop;
 
             Write_Str ("}");
          end if;
+
+      elsif Is_Undef (V) then
+         Write_Undef (Type_Of (V));
 
       else
          Write_Str ("<unknown constant>");

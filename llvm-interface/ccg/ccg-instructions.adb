@@ -248,9 +248,15 @@ package body CCG.Instructions is
    begin
       --  If LHS is an entry alloca or has more than one use in the IR,
       --  generate an assignment statement into LHS. Otherwise, mark LHS
-      --  as having value RHS.
+      --  as having value RHS. If LHS is a constant expression or of array
+      --  types, never generate an assignment statement, the former because
+      --  we may be at top level and the latter because C doesn't allow
+      --  assignments of objects of aggregate type.
 
-      if Get_Is_Variable (LHS) or else Num_Uses (LHS) > 1 then
+      if (Get_Is_Variable (LHS) or else Num_Uses (LHS) > 1)
+        and then not Is_A_Constant_Expr (LHS)
+        and then Get_Type_Kind (Type_Of (LHS)) /= Array_Type_Kind
+      then
          Output_Stmt (LHS & " = " & RHS);
       else
          Set_C_Value (LHS, RHS);

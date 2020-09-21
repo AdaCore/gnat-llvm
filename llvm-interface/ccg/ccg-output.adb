@@ -333,7 +333,7 @@ package body CCG.Output is
    -- Maybe_Decl --
    ----------------
 
-   procedure Maybe_Decl (V : Value_T) is
+   procedure Maybe_Decl (V : Value_T; For_Initializer : Boolean := False) is
    begin
       --  If we already processed this, we're done
 
@@ -346,9 +346,12 @@ package body CCG.Output is
          Process_Instruction (V);
          Set_Is_Decl_Output (V);
 
-      --  If it's a simple constant, we just mark us as having processed it
+      --  If it's a simple constant (actual constant if this is for an
+      --  initializer), we just mark us as having processed it.
 
-      elsif Is_Simple_Constant (V) then
+      elsif Is_Simple_Constant (V)
+        or else (For_Initializer and then Is_Actual_Constant (V))
+      then
          Set_Is_Decl_Output (V);
 
       --  Otherwise, write the decl (which will mark it as done)
@@ -368,9 +371,8 @@ package body CCG.Output is
 
    begin
       --  We need to write a declaration for this if it's not a simple
-      --  constant, not a function, an argument, a basic block or
-      --  undef, and we haven't already written one or assigned a value
-      --  to it.
+      --  constant, not a function, an argument, a basic block or undef,
+      --  and we haven't already written one or assigned a value to it.
 
       if not Get_Is_Decl_Output (V) and then not Is_Simple_Constant (V)
         and then not Is_A_Function (V) and then not Is_A_Argument (V)
@@ -421,7 +423,7 @@ package body CCG.Output is
                     and then not Is_A_Constant_Aggregate_Zero (Init)
                   then
                      Decl := Decl & " = " & (Init + Initializer);
-                     Maybe_Decl (Init);
+                     Maybe_Decl (Init, For_Initializer => True);
                   end if;
 
                   Write_Str (Decl & ";", Eol => True);

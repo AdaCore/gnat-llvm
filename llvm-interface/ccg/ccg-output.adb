@@ -285,9 +285,9 @@ package body CCG.Output is
          Process_Instruction (V);
          Set_Is_Decl_Output (V);
 
-      --  If it's an actual constant, we just mark us as having processed it
+      --  If it's a simple constant, we just mark us as having processed it
 
-      elsif Is_Actual_Constant (V) then
+      elsif Is_Simple_Constant (V) then
          Set_Is_Decl_Output (V);
 
       --  Otherwise, write the decl (which will mark it as done)
@@ -366,6 +366,14 @@ package body CCG.Output is
                   Write_Str (Decl & ";", Eol => True);
                end;
             else
+               --  If this is a constant (we know that it can't be a simple
+               --  constant), we need to initialize the value to that of the
+               --  constant.
+
+               if Is_Actual_Constant (V) then
+                  Decl := Decl & " = " & (V + Initializer);
+               end if;
+
                Output_Decl (Decl);
             end if;
          end;

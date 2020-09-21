@@ -19,10 +19,11 @@ with Output; use Output;
 
 with LLVM.Core; use LLVM.Core;
 
-with CCG.Aggregates;  use CCG.Aggregates;
-with CCG.Helper;      use CCG.Helper;
-with CCG.Subprograms; use CCG.Subprograms;
-with CCG.Utils;       use CCG.Utils;
+with CCG.Aggregates;   use CCG.Aggregates;
+with CCG.Helper;       use CCG.Helper;
+with CCG.Instructions; use CCG.Instructions;
+with CCG.Subprograms;  use CCG.Subprograms;
+with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Output is
 
@@ -266,6 +267,36 @@ package body CCG.Output is
       end if;
 
    end Write_Value;
+
+   ----------------
+   -- Maybe_Decl --
+   ----------------
+
+   procedure Maybe_Decl (V : Value_T) is
+   begin
+      --  If we already processed this, we're done
+
+      if Get_Is_Decl_Output (V) then
+         return;
+
+      --  If it's a constant expression, treat it as an instruction
+
+      elsif Is_A_Constant_Expr (V) then
+         Process_Instruction (V);
+         Set_Is_Decl_Output (V);
+
+      --  If it's an actual constant, we just mark us as having processed it
+
+      elsif Is_Actual_Constant (V) then
+         Set_Is_Decl_Output (V);
+
+      --  Otherwise, write the decl (which will mark it as done)
+
+      else
+         Write_Decl (V);
+      end if;
+
+   end Maybe_Decl;
 
    ----------------
    -- Write_Decl --

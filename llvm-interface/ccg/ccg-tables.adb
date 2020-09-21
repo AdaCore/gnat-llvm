@@ -25,10 +25,8 @@ with LLVM.Core; use LLVM.Core;
 with Output; use Output;
 with Table;  use Table;
 
-with CCG.Helper;       use CCG.Helper;
-with CCG.Instructions; use CCG.Instructions;
-with CCG.Output;       use CCG.Output;
-with CCG.Utils;        use CCG.Utils;
+with CCG.Output; use CCG.Output;
+with CCG.Utils;  use CCG.Utils;
 
 package body CCG.Tables is
 
@@ -1306,36 +1304,6 @@ package body CCG.Tables is
    begin
       BB_Data_Table.Table (Idx).Was_Output := B;
    end Set_Was_Output;
-
-   ----------------
-   -- Maybe_Decl --
-   ----------------
-
-   procedure Maybe_Decl (V : Value_T) is
-   begin
-      --  If we already processed this, we're done
-
-      if Get_Is_Decl_Output (V) then
-         return;
-
-      --  If it's a constant expression, treat it as an instruction
-
-      elsif Is_A_Constant_Expr (V) then
-         Process_Instruction (V);
-         Set_Is_Decl_Output (V);
-
-      --  If it's an actual constant, we just mark us as having processed it
-
-      elsif Is_Actual_Constant (V) then
-         Set_Is_Decl_Output (V);
-
-      --  Otherwise, write the decl (which will mark it as done)
-
-      else
-         Write_Decl (V);
-      end if;
-
-   end Maybe_Decl;
 
    -------------------------
    -- Maybe_Write_Typedef --

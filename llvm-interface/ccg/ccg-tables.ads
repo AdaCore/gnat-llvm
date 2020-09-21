@@ -199,11 +199,6 @@ package CCG.Tables is
    --  from a C perspective, a use of a value in LLVM IR represents
    --  the address of the value; only "load" or "store" instruction
    --  actually accesses the value.
-
-   procedure Maybe_Decl (V : Value_T)
-     with Pre => Present (V), Post => Get_Is_Decl_Output (V);
-   --  See if we need to write a declaration for V and write one if so
-
    procedure Set_C_Value       (V : Value_T; S : Str)
      with Pre  => Present (V) and then Present (S),
           Post => Get_C_Value (V) = S, Inline;

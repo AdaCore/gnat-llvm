@@ -276,6 +276,12 @@ package body CCG.Output is
             Write_Str ("}");
          end if;
 
+      --  If it's a constant expression, treat it as an instruction
+
+      elsif Is_A_Constant_Expr (V) then
+         Process_Instruction (V);
+         Write_Str (Get_C_Value (V));
+
       elsif Is_Undef (V) then
          Write_Undef (Type_Of (V));
 
@@ -339,12 +345,6 @@ package body CCG.Output is
 
       if Get_Is_Decl_Output (V) then
          return;
-
-      --  If it's a constant expression, treat it as an instruction
-
-      elsif Is_A_Constant_Expr (V) then
-         Process_Instruction (V);
-         Set_Is_Decl_Output (V);
 
       --  If it's a simple constant (actual constant if this is for an
       --  initializer), we just mark us as having processed it.

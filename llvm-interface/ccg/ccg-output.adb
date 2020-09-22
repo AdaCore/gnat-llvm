@@ -34,7 +34,8 @@ package body CCG.Output is
    --  True if this is a type that's simple (elementary)
 
    function Is_Simple_Constant (V : Value_T) return Boolean is
-     ((Get_Value_Kind (V) in Constant_Int_Value_Kind | Constant_FP_Value_Kind)
+     ((Get_Value_Kind (V)
+         in Constant_Int_Value_Kind | Constant_Pointer_Null_Value_Kind)
       or else (Is_Undef (V) and then Is_Simple_Type (Type_Of (V))))
      with Pre => Present (V);
    --  True if this is a simple enough constant that we output it in C
@@ -281,6 +282,9 @@ package body CCG.Output is
       elsif Is_A_Constant_Expr (V) then
          Process_Instruction (V);
          Write_Str (Get_C_Value (V));
+
+      elsif Is_A_Constant_Pointer_Null (V) then
+         Write_Str ("0");
 
       elsif Is_Undef (V) then
          Write_Undef (Type_Of (V));

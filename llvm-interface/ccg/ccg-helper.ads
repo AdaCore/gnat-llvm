@@ -101,6 +101,10 @@ package CCG.Helper is
      (Present (Is_A_Constant_Aggregate_Zero (V)))
      with Pre => Present (V);
 
+   function Is_A_Constant_Pointer_Null (V : Value_T) return Boolean is
+     (Present (Is_A_Constant_Pointer_Null (V)))
+     with Pre => Present (V);
+
    function Is_A_Constant_Expr (V : Value_T) return Boolean is
      (Present (Is_A_Constant_Expr (V)))
      with Pre => Present (V);

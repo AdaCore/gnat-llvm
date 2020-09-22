@@ -387,7 +387,9 @@ package body CCG.Aggregates is
       --  very worth special-casing the zero case here because we have
       --  nothing to do in that case.
 
-      if Equals_Int (Ops (Ops'First + 1), 0) then
+      if Is_A_Constant_Int (Ops (Ops'First + 1))
+        and then Equals_Int (Ops (Ops'First + 1), 0)
+      then
          Result := Aggr + Value_Name;
       else
          Result := TP ("#1 + #2", Aggr, Ops (Ops'First + 1)) + Add;

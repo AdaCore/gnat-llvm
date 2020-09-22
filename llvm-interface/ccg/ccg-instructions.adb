@@ -350,6 +350,9 @@ package body CCG.Instructions is
          when Op_Get_Element_Ptr =>
             Assignment (V, GEP_Instruction (Ops));
 
+         when Op_Unreachable =>
+            null;
+
          when others =>
             Output_Stmt
               ("<unsupported instruction: " & Get_Opcode_Name (Opc) & ">");

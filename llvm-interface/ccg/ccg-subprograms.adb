@@ -244,7 +244,7 @@ package body CCG.Subprograms is
       --  Now process any block referenced by the terminator
 
       case Get_Instruction_Opcode (Terminator) is
-         when Op_Ret =>
+         when Op_Ret | Op_Unreachable =>
             null;
 
          when Op_Br =>

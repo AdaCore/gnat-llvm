@@ -87,6 +87,7 @@ package body GNATLLVM.Codegen is
          Code_Generation := Write_BC;
       elsif Switch = "-emit-c" then
          Emit_C := True;
+         Transform_Function_Array := True;
       elsif Switch = "-emit-llvm" then
          Emit_LLVM := True;
       elsif Switch = "-S" then

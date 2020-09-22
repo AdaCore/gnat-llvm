@@ -317,6 +317,9 @@ package body CCG.Instructions is
          when Op_I_Cmp | Op_F_Cmp =>
             Assignment (V, Cmp_Instruction (V, Op1, Op2));
 
+         when Op_Select =>
+            Assignment (V, TP ("#1 ? #2 : #3", Op1, Op2, Op3) + Logic);
+
          when Op_Br =>
             if Ops'Length = 1 then
                Output_Stmt (TP ("goto #B1", Op1));

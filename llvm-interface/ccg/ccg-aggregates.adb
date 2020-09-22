@@ -243,10 +243,18 @@ package body CCG.Aggregates is
       S : Str;
 
    begin
-      --  Build an Str corresponding to the typedef and output it. Doing it
-      --  that way ensure that any inner typedefs get written first.
+      --  Because this struct may contain a pointer to itself, we always have
+      --  to write an incomplete struct. So we write, e.g.,
+      --
+      --       typedef struct foo foo;
+      --       struct foo { ... full definition ..}
+      --
+      --  Write the typedef first, then build an Str corresponding to the
+      --  full definition and output it. Doing it that way ensure that any
+      --  inner typedefs get written first.
 
-      S := "typedef struct " & T & " {" & Eol_Str;
+      Write_Str ("typedef struct " & T & " " & T & ";" & Eol_Str);
+      S := "struct " & T & " {" & Eol_Str;
       for J in Nat range 0 .. Count_Struct_Element_Types (T) - 1 loop
          S := (S & "    " & Struct_Get_Type_At_Index (T, J) & " " &
                  Get_Field_Name (T, J) & ";" & Eol_Str);
@@ -255,7 +263,7 @@ package body CCG.Aggregates is
       --  ??? We have many ways of handling packed, but don't worry about that
       --  in the initial support.
 
-      Write_Str (S & "} __attribute__ ((packed)) " & T & ";", Eol => True);
+      Write_Str (S & "} __attribute__ ((packed)) " & ";", Eol => True);
    end Write_Struct_Typedef;
 
    -------------------------

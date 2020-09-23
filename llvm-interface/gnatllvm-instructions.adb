@@ -522,12 +522,16 @@ package body GNATLLVM.Instructions is
 
       --  If RHS is a constant power of two, we can compute the alignment
       --  of the result from the input, but only check for small powers of
-      --  two.  Otherwise we don't know anything about the alignment.
+      --  two. Otherwise we don't know anything about the alignment. To
+      --  avoid issues relating to negative-looking values, we handle each
+      --  case specifically as a constant.
 
-      if Is_Const_Int_Value (RHS, 2) or else Is_Const_Int_Value (RHS, 4)
-        or else Is_Const_Int_Value (RHS, 8)
-      then
-         Set_Alignment (Result, Alignment (LHS) / (+RHS));
+      if Is_Const_Int_Value (RHS, 2) then
+         Set_Alignment (Result, Alignment (LHS) / 2);
+      elsif Is_Const_Int_Value (RHS, 4) then
+         Set_Alignment (Result, Alignment (LHS) / 4);
+      elsif Is_Const_Int_Value (RHS, 8) then
+         Set_Alignment (Result, Alignment (LHS) / 8);
       else
          Clear_Alignment (Result);
       end if;

@@ -496,7 +496,7 @@ package body CCG.Output is
                elsif Bits <= Char_Size then
                   Write_Str ("char");
                else
-                  Write_Str ("<unknown int type>");
+                  Write_Str ("<unknown int type:" & Bits'Image & ">");
                end if;
             end;
 

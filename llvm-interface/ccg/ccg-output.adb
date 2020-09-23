@@ -216,17 +216,17 @@ package body CCG.Output is
    procedure Write_Constant_Value (V : Value_T) is
       subtype LLI is Long_Long_Integer;
    begin
-      --  ??? Start with just small integer constants and FP constants
-
       if Is_A_Constant_Int (V) then
          declare
             Val : constant LLI := Const_Int_Get_S_Ext_Value (V);
 
          begin
+            --  ??? Also need to emit proper U/L/LL markers
+
             if Val in LLI (Int'First) .. LLI (Int'Last) then
                Write_Int (Int (Val));
             else
-               Write_Str ("<overflow>");
+               Write_Str (Val'Image);
             end if;
          end;
 
@@ -240,6 +240,8 @@ package body CCG.Output is
             --  in terms of writing the proper format for a C constant,
             --  but it's at least good enough to start with and there's no
             --  obvious other mechanism.
+            --  See Cprint.Write_Real_Number_Col_Check for inspiration on what
+            --  we can do.
 
             Write_Str
               (Double'Image (Const_Real_Get_Double (V, Loses_Info)));
@@ -286,7 +288,7 @@ package body CCG.Output is
       elsif Is_A_Constant_Pointer_Null (V) then
          Write_Str ("0");
 
-      elsif Is_Undef (V) then
+      elsif Is_Undef (V) or else Is_A_Constant_Aggregate_Zero (V) then
          Write_Undef (Type_Of (V));
 
       else

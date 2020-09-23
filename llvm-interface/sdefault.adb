@@ -26,6 +26,7 @@
 --  that locate the Ada library source and object directories.
 
 with Osint; use Osint;
+with System.OS_Lib; use System.OS_Lib;
 
 package body Sdefault is
    pragma Style_Checks (Off);
@@ -35,6 +36,7 @@ package body Sdefault is
    ----------------
 
    Target : constant String := "llvm/";
+   CCG    : constant Boolean := Getenv ("CCG").all /= "";
 
    ------------------------------
    -- Include_Dir_Default_Name --
@@ -42,7 +44,9 @@ package body Sdefault is
 
    function Include_Dir_Default_Name return String_Ptr is
    begin
-      return Relocate_Path ("/PREFIX", "/PREFIX/lib/rts-native/adainclude");
+      return Relocate_Path ("/PREFIX",
+                            (if CCG then "/PREFIX/lib/rts-ccg/adainclude"
+                             else "/PREFIX/lib/rts-native/adainclude"));
    end Include_Dir_Default_Name;
 
    -----------------------------
@@ -51,7 +55,9 @@ package body Sdefault is
 
    function Object_Dir_Default_Name return String_Ptr is
    begin
-      return Relocate_Path ("/PREFIX", "/PREFIX/lib/rts-native/adalib");
+      return Relocate_Path ("/PREFIX",
+                            (if CCG then "/PREFIX/lib/rts-ccg/adalib"
+                             else "/PREFIX/lib/rts-native/adalib"));
    end Object_Dir_Default_Name;
 
    -----------------------

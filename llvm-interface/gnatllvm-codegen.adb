@@ -88,6 +88,12 @@ package body GNATLLVM.Codegen is
       elsif Switch = "-emit-c" then
          Emit_C := True;
          Transform_Function_Array := True;
+
+         --  Use a 32bits target by default for C code generation
+
+         Free (Target_Triple);
+         Target_Triple := new String'("i686-linux");
+
       elsif Switch = "-emit-llvm" then
          Emit_LLVM := True;
       elsif Switch = "-S" then

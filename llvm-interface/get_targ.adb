@@ -97,7 +97,8 @@ package body Get_Targ is
 
    function Get_Long_Size return Pos is
    begin
-      return 64;
+      --  Not true on all ABIs but good enough for now ???
+      return Get_Pointer_Size;
    end Get_Long_Size;
 
    ------------------------
@@ -115,7 +116,7 @@ package body Get_Targ is
 
    function Get_Long_Long_Long_Size return Pos is
    begin
-      return 128;
+      return Get_Pointer_Size * 2;
    end Get_Long_Long_Long_Size;
 
    ----------------------

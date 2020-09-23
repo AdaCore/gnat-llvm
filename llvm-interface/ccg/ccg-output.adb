@@ -253,7 +253,7 @@ package body CCG.Output is
          Write_Str ("{");
          for J in 0 .. Nat'(Get_Num_Operands (V)) - 1 loop
             Maybe_Write_Comma (J);
-            Write_Constant_Value (Get_Operand (V, J));
+            Write_Value (Get_Operand (V, J));
          end loop;
 
          Write_Str ("}");
@@ -301,7 +301,9 @@ package body CCG.Output is
    -----------------
 
    procedure Write_Value
-     (V : Value_T; Kind : Value_Kind; For_Precedence : Precedence)
+     (V              : Value_T;
+      Kind           : Value_Kind := Normal;
+      For_Precedence : Precedence := Primary)
      is
       C_Value : constant Str := Get_C_Value (V);
 

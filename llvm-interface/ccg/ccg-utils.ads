@@ -23,7 +23,6 @@ with System.Storage_Elements; use System.Storage_Elements;
 
 with GNATLLVM; use GNATLLVM;
 
-with CCG.Helper; use CCG.Helper;
 with CCG.Tables; use CCG.Tables;
 
 package CCG.Utils is
@@ -88,11 +87,5 @@ package CCG.Utils is
    procedure Update_Hash (H : in out Hash_Type; B : Basic_Block_T)
      with Pre => Present (B), Inline;
    --  Update H taking into account the type T
-
-   function Is_Actual_Constant (V : Value_T) return Boolean is
-     (Is_A_Constant (V) and then not Is_A_Global_Variable (V))
-     with Pre => Present (V);
-     --  A global variable is a "constant" in the sense of the LLVM IR, but
-     --  we often want to know when something is a constant in the C sense.
 
 end CCG.Utils;

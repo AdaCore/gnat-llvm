@@ -23,7 +23,6 @@ with CCG.Aggregates;   use CCG.Aggregates;
 with CCG.Helper;       use CCG.Helper;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Subprograms;  use CCG.Subprograms;
-with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Output is
 
@@ -35,7 +34,8 @@ package body CCG.Output is
 
    function Is_Simple_Constant (V : Value_T) return Boolean is
      ((Get_Value_Kind (V)
-         in Constant_Int_Value_Kind | Constant_Pointer_Null_Value_Kind)
+         in Constant_Int_Value_Kind | Constant_Pointer_Null_Value_Kind
+            | Constant_FP_Value_Kind | Constant_Expr_Value_Kind)
       or else (Is_Undef (V) and then Is_Simple_Type (Type_Of (V))))
      with Pre => Present (V);
    --  True if this is a simple enough constant that we output it in C
@@ -53,7 +53,7 @@ package body CCG.Output is
    --  we generate from a serial number.
 
    procedure Write_Constant_Value (V : Value_T)
-     with Pre => Is_Actual_Constant (V);
+     with Pre => Is_A_Constant (V);
    --  Write the constant value of V
 
    procedure Write_Undef (T : Type_T)
@@ -331,7 +331,7 @@ package body CCG.Output is
       --  initializer, write the constant.
 
       elsif Is_Simple_Constant (V)
-        or else (Kind = Initializer and then Is_Actual_Constant (V))
+        or else (Kind = Initializer and then Is_A_Constant (V))
       then
          Write_Constant_Value (V);
 
@@ -358,7 +358,7 @@ package body CCG.Output is
       --  initializer), we just mark us as having processed it.
 
       elsif Is_Simple_Constant (V)
-        or else (For_Initializer and then Is_Actual_Constant (V))
+        or else (For_Initializer and then Is_A_Constant (V))
       then
          Set_Is_Decl_Output (V);
 
@@ -379,13 +379,14 @@ package body CCG.Output is
 
    begin
       --  We need to write a declaration for this if it's not a simple
-      --  constant, not a function, an argument, a basic block or undef,
-      --  and we haven't already written one or assigned a value to it.
+      --  constant or constant expression, not a function, an argument, a
+      --  basic block or undef, and we haven't already written one or
+      --  assigned a value to it.
 
       if not Get_Is_Decl_Output (V) and then not Is_Simple_Constant (V)
         and then not Is_A_Function (V) and then not Is_A_Argument (V)
         and then not Is_A_Basic_Block (V) and then not Is_Undef (V)
-        and then No (Get_C_Value (V))
+        and then not Is_A_Constant_Expr (V) and then No (Get_C_Value (V))
       then
          Set_Is_Decl_Output (V);
 
@@ -441,7 +442,7 @@ package body CCG.Output is
                --  constant), we need to initialize the value to that of the
                --  constant.
 
-               if Is_Actual_Constant (V) then
+               if Is_A_Constant (V) then
                   Decl := Decl & " = " & (V + Initializer);
                end if;
 

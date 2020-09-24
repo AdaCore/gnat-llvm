@@ -28,6 +28,7 @@ with LLVM.Support;    use LLVM.Support;
 
 with CCG; use CCG;
 
+with Debug;   use Debug;
 with Errout;  use Errout;
 with Lib;     use Lib;
 with Opt;     use Opt;
@@ -89,10 +90,9 @@ package body GNATLLVM.Codegen is
          Emit_C := True;
          Transform_Function_Array := True;
 
-         --  Use a 32bits target by default for C code generation
+         --  Disable 128bits support for C code generation for now
 
-         Free (Target_Triple);
-         Target_Triple := new String'("i686-linux");
+         Debug_Flag_Dot_HH := True;
 
       elsif Switch = "-emit-llvm" then
          Emit_LLVM := True;

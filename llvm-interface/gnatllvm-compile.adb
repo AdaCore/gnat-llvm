@@ -439,7 +439,14 @@ package body GNATLLVM.Compile is
 
          when N_Subprogram_Declaration =>
 
-            Emit (Specification (N));
+            --  Do not process functions that return arrays because they have
+            --  been rewritten as procedures.
+
+            if Ekind (Unique_Defining_Entity (N)) /= E_Function
+              or else not Rewritten_For_C (Unique_Defining_Entity (N))
+            then
+               Emit (Specification (N));
+            end if;
 
          when N_Function_Specification | N_Procedure_Specification =>
 

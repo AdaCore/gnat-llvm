@@ -197,7 +197,7 @@ package body CCG.Output is
 
          when Array_Type_Kind =>
             Write_Str ("{");
-            for J in 1 .. Nat'(Get_Array_Length (T)) loop
+            for J in 0 .. Nat'(Get_Array_Length (T)) - 1 loop
                Maybe_Write_Comma (J);
                Write_Undef (Get_Element_Type (T));
             end loop;

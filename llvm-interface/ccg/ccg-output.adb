@@ -461,7 +461,6 @@ package body CCG.Output is
    procedure Write_Type (T : Type_T) is
    begin
       case Get_Type_Kind (T) is
-
          when Void_Type_Kind =>
             Write_Str ("void");
 
@@ -519,9 +518,8 @@ package body CCG.Output is
             Write_Int (Get_Output_Idx (T));
 
          when others =>
-            Write_Str ("<unsupported type>");
+            Write_Str ("<unsupported type: " & Get_Type_Kind (T)'Image & ">");
       end case;
-
    end Write_Type;
 
    -------------------

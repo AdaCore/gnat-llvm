@@ -277,15 +277,28 @@ package body Get_Targ is
 
       Long_Double_Str (Long_Double_Str'First .. Long_Double_Str'First + 10) :=
         "long double";
-      Call_Back
-        (C_Name    => Long_Double_Str,
-         Digs      => 18,
-         Complex   => False,
-         Count     => 0,
-         Float_Rep => IEEE_Binary,
-         Precision => 80,
-         Size      => 128,
-         Alignment => 128);
+
+      if Emit_C then
+         Call_Back
+           (C_Name    => Long_Double_Str,
+            Digs      => 15,
+            Complex   => False,
+            Count     => 0,
+            Float_Rep => IEEE_Binary,
+            Precision => 64,
+            Size      => 64,
+            Alignment => 64);
+      else
+         Call_Back
+           (C_Name    => Long_Double_Str,
+            Digs      => 18,
+            Complex   => False,
+            Count     => 0,
+            Float_Rep => IEEE_Binary,
+            Precision => 80,
+            Size      => 128,
+            Alignment => 128);
+      end if;
    end Register_Back_End_Types;
 
    ---------------------

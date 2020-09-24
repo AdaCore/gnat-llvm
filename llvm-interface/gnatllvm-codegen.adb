@@ -287,6 +287,12 @@ package body GNATLLVM.Codegen is
          Code_Generation := Write_Assembly;
       elsif Emit_C then
          Code_Generation := Write_C;
+
+         --  -g when emitting C means to write #line directives, not to
+         --  write LLVM debug information.
+         --  ??? So for now, just turn it off.
+
+         Emit_Debug_Info := False;
       end if;
 
       --  Initialize the translation environment

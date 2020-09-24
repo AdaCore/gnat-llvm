@@ -253,7 +253,7 @@ package body CCG.Output is
          Write_Str ("{");
          for J in 0 .. Nat'(Get_Num_Operands (V)) - 1 loop
             Maybe_Write_Comma (J);
-            Write_Value (Get_Operand (V, J));
+            Write_Value (Get_Operand (V, J), Kind => Initializer);
          end loop;
 
          Write_Str ("}");

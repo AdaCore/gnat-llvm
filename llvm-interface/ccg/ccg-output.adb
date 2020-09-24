@@ -311,14 +311,14 @@ package body CCG.Output is
       --  If this is a variable that we're writing normally, we need to take
       --  its address.
 
-      if Kind = Normal and then Get_Is_Variable (V) then
+      if Kind in Normal | Initializer and then Get_Is_Variable (V) then
          Write_Str ("&");
-      end if;
+         Write_Value_Name (V);
 
       --  If we've set an expression as the value of V, write it, putting
       --  in parentheses unless we know that it's of higher precedence
 
-      if Present (C_Value) then
+      elsif Present (C_Value) then
          if For_Precedence /= Unknown and then Has_Precedence (C_Value)
            and then Get_Precedence (C_Value) > For_Precedence
          then

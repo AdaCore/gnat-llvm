@@ -23,6 +23,7 @@ with CCG.Aggregates;   use CCG.Aggregates;
 with CCG.Helper;       use CCG.Helper;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Subprograms;  use CCG.Subprograms;
+with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Output is
 
@@ -211,7 +212,7 @@ package body CCG.Output is
 
          when Array_Type_Kind =>
             Write_Str ("{");
-            for J in 0 .. Nat'(Get_Array_Length (T)) - 1 loop
+            for J in 0 .. Effective_Array_Length (T) loop
                Maybe_Write_Comma (J);
                Write_Undef (Get_Element_Type (T));
             end loop;
@@ -272,6 +273,12 @@ package body CCG.Output is
             Write_Value (Get_Operand (V, J), Kind => Initializer);
          end loop;
 
+         --  If this is a zero-length array, add an extra item
+
+         if Nat'(Get_Num_Operands (V)) = 0 then
+            Write_Undef (Get_Element_Type (Type_Of (V)));
+         end if;
+
          Write_Str ("}");
 
       elsif Is_A_Constant_Data_Array (V) then
@@ -291,6 +298,10 @@ package body CCG.Output is
                Maybe_Write_Comma (J);
                Write_Constant_Value (Get_Element_As_Constant (V, J));
             end loop;
+
+            if Nat'(Get_Num_CDA_Elements (V)) = 0 then
+               Write_Undef (Get_Element_Type (Type_Of (V)));
+            end if;
 
             Write_Str ("}");
          end if;

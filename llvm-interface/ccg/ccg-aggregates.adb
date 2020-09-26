@@ -273,7 +273,7 @@ package body CCG.Aggregates is
    procedure Write_Array_Typedef (T : Type_T) is
    begin
       Write_Str ("typedef " & Get_Element_Type (T) & " " & T & "[" &
-                   Get_Array_Length (T) & "];", Eol => True);
+                   Effective_Array_Length (T) & "];", Eol => True);
    end Write_Array_Typedef;
 
    -----------------

@@ -23,6 +23,7 @@ with System.Storage_Elements; use System.Storage_Elements;
 
 with GNATLLVM; use GNATLLVM;
 
+with CCG.Helper; use CCG.Helper;
 with CCG.Tables; use CCG.Tables;
 
 package CCG.Utils is
@@ -48,6 +49,19 @@ package CCG.Utils is
    function Num_Uses (V : Value_T) return Nat
      with Pre => Present (V);
    --  Returns the number of uses of V
+
+   --  LLVM uses a zero-length array to indicate a variable-length
+   --  array.  C doesn't permit zero-element arrays. It's tempting to
+   --  use a pointer to the element type instead of a pointer to the
+   --  array. In this LLVM usage, we never have any objects of that
+   --  array type. However, Ada can have arrays of zero length and can
+   --  have objects of that length and doing the above conversion will cause
+   --  confusion there.  So we instead interpret an array of length zero as
+   --  an array of length one.
+
+   function Effective_Array_Length (T : Type_T) return Nat is
+     (if Get_Array_Length (T) = 0 then 1 else Get_Array_Length (T))
+      with Pre => Present (T);
 
    function UC_V is new Ada.Unchecked_Conversion (Value_T, System.Address);
    function UC_T is new Ada.Unchecked_Conversion (Type_T, System.Address);

@@ -52,9 +52,16 @@ package body CCG.Output is
    --  Write the value name of V, which is either the LLVM name or a name
    --  we generate from a serial number.
 
-   procedure Write_Constant_Value (V : Value_T)
+   procedure Write_Str_With_Precedence (S : Str; P : Precedence)
+     with Pre => Present (S);
+   --  Write S, but add parentheses unless we know that it's of higher
+   --  precedence than P.
+
+   procedure Write_Constant_Value
+     (V : Value_T; For_Precedence : Precedence := Primary)
      with Pre => Is_A_Constant (V);
-   --  Write the constant value of V
+   --  Write the constant value of V, optionally specifying a preference of
+   --  the expression that it's part of.
 
    procedure Write_Undef (T : Type_T)
      with Pre => Present (T);
@@ -220,7 +227,9 @@ package body CCG.Output is
    -- Write_Constant_Value --
    --------------------------
 
-   procedure Write_Constant_Value (V : Value_T) is
+   procedure Write_Constant_Value
+     (V : Value_T; For_Precedence : Precedence := Primary)
+   is
       subtype LLI is Long_Long_Integer;
    begin
       if Is_A_Constant_Int (V) then
@@ -290,7 +299,7 @@ package body CCG.Output is
 
       elsif Is_A_Constant_Expr (V) then
          Process_Instruction (V);
-         Write_Str (Get_C_Value (V));
+         Write_Str_With_Precedence (Get_C_Value (V), For_Precedence);
 
       elsif Is_A_Constant_Pointer_Null (V) then
          Write_Str ("0");
@@ -322,17 +331,10 @@ package body CCG.Output is
          Write_Str ("&");
          Write_Value_Name (V);
 
-      --  If we've set an expression as the value of V, write it, putting
-      --  in parentheses unless we know that it's of higher precedence
+      --  If we've set an expression as the value of V, write it
 
       elsif Present (C_Value) then
-         if For_Precedence /= Unknown and then Has_Precedence (C_Value)
-           and then Get_Precedence (C_Value) > For_Precedence
-         then
-            Write_Str (C_Value);
-         else
-            Write_Str ("(" & C_Value & ")");
-         end if;
+         Write_Str_With_Precedence (C_Value, For_Precedence);
 
       --  If this is either a simple constant or any constant for an
       --  initializer, write the constant.
@@ -340,7 +342,7 @@ package body CCG.Output is
       elsif Is_Simple_Constant (V)
         or else (Kind = Initializer and then Is_A_Constant (V))
       then
-         Write_Constant_Value (V);
+         Write_Constant_Value (V, For_Precedence => For_Precedence);
 
       --  Otherwise, write the name
 
@@ -349,6 +351,21 @@ package body CCG.Output is
       end if;
 
    end Write_Value;
+
+   -------------------------------
+   -- Write_Str_With_Precedence --
+   -------------------------------
+
+   procedure Write_Str_With_Precedence (S : Str; P : Precedence) is
+   begin
+      if P /= Unknown and then Has_Precedence (S)
+           and then Get_Precedence (S) > P
+      then
+         Write_Str (S);
+      else
+         Write_Str ("(" & S & ")");
+      end if;
+   end Write_Str_With_Precedence;
 
    ----------------
    -- Maybe_Decl --

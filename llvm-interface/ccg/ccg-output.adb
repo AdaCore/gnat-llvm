@@ -85,17 +85,24 @@ package body CCG.Output is
    ------------------
 
    procedure Write_C_Name (S : String) is
+      Append_Suffix : Boolean := False;
    begin
       --  We assume here that the only characters we have to be concerned
-      --  about are "." and "-", both of which we remap to "___".
+      --  about are "." and "-", both of which we remap to "_" and append a
+      --  unique suffix "C".
 
       for C of S loop
          if C in '.' | '-' then
-            Write_Str ("___");
+            Append_Suffix := True;
+            Write_Char ('_');
          else
             Write_Char (C);
          end if;
       end loop;
+
+      if Append_Suffix then
+         Write_Char ('C');
+      end if;
    end Write_C_Name;
 
    ----------------------

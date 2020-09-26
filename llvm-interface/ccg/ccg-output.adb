@@ -208,6 +208,12 @@ package body CCG.Output is
                Write_Undef (Struct_Get_Type_At_Index (T, J));
             end loop;
 
+            --  For an empty struct, write out a value for the dummy field
+
+            if Count_Struct_Element_Types (T) = 0 then
+               Write_Str ("0");
+            end if;
+
             Write_Str ("}");
 
          when Array_Type_Kind =>
@@ -273,7 +279,7 @@ package body CCG.Output is
             Write_Value (Get_Operand (V, J), Kind => Initializer);
          end loop;
 
-         --  If this is a zero-length array, add an extra item
+         --  If this is a zero-length array or struct, add an extra item
 
          if Nat'(Get_Num_Operands (V)) = 0 then
             Write_Undef (Get_Element_Type (Type_Of (V)));

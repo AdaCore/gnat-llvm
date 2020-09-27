@@ -248,7 +248,7 @@ package body CCG.Subprograms is
             null;
 
          when Op_Br =>
-            if Get_Num_Operands (Terminator) = 1 then
+            if Get_Num_Operands (Terminator) = Nat (1) then
                Output_BB (Get_Operand (Terminator, Nat (0)));
             else
                Output_BB (Get_Operand (Terminator, Nat (2)));
@@ -297,6 +297,38 @@ package body CCG.Subprograms is
       end if;
 
    end Generate_C_For_Subprogram;
+
+   ----------------------
+   -- Call_Instruction --
+   ----------------------
+
+   procedure Call_Instruction (V : Value_T; Ops : Value_Array) is
+      Func  : constant Value_T := Ops (Ops'Last);
+      Call  : Str              := Func & " (";
+      First : Boolean          := True;
+
+   begin
+      --  Generate the argument list for the call
+
+      for Op of Ops (Ops'First .. Ops'Last - 1) loop
+         if First then
+            Call  := Call & Op;
+            First := False;
+         else
+            Call := Call & ", " & Op;
+         end if;
+      end loop;
+
+      --  Add the final close paren. If this is a procedure call,
+      --  output it. Otherwise, set this as the value of V.
+
+      Call := (Call & ")") + Assign;
+      if Get_Type_Kind (Type_Of (V)) = Void_Type_Kind then
+         Output_Stmt (Call);
+      else
+         Assignment (V, Call);
+      end if;
+   end Call_Instruction;
 
    -----------------------
    -- Write_Subprograms --

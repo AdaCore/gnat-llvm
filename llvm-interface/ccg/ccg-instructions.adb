@@ -22,14 +22,9 @@ with LLVM.Core; use LLVM.Core;
 with CCG.Aggregates;  use CCG.Aggregates;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
-with CCG.Tables;      use CCG.Tables;
 with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Instructions is
-
-   procedure Assignment (LHS : Value_T; RHS : Str)
-     with Pre => Present (LHS) and then Present (RHS);
-   --  Take action to assign LHS the value RHS
 
    function Binary_Instruction (V, Op1, Op2 : Value_T) return Str
      with Pre  => Acts_As_Instruction (V) and then Present (Op1)
@@ -47,10 +42,6 @@ package body CCG.Instructions is
                   and then Present (Op1) and then Present (Op2),
           Post => Present (Cmp_Instruction'Result);
    --  Return the value corresponding to a comparison instruction
-
-   procedure Call_Instruction (V : Value_T; Ops : Value_Array)
-     with Pre => Get_Opcode (V) = Op_Call;
-   --  Process a call instruction
 
    function Maybe_Unsigned
      (V : Value_T; Is_Unsigned : Boolean := True) return Str
@@ -207,38 +198,6 @@ package body CCG.Instructions is
       return +("<unsupported comparison: " & Get_Opcode_Name (V) & ">");
 
    end Cmp_Instruction;
-
-   ----------------------
-   -- Call_Instruction --
-   ----------------------
-
-   procedure Call_Instruction (V : Value_T; Ops : Value_Array) is
-      Func  : constant Value_T := Ops (Ops'Last);
-      Call  : Str              := Func & " (";
-      First : Boolean          := True;
-
-   begin
-      --  Generate the argument list for the call
-
-      for Op of Ops (Ops'First .. Ops'Last - 1) loop
-         if First then
-            Call  := Call & Op;
-            First := False;
-         else
-            Call := Call & ", " & Op;
-         end if;
-      end loop;
-
-      --  Add the final close paren. If this is a procedure call,
-      --  output it. Otherwise, set this as the value of V.
-
-      Call := (Call & ")") + Assign;
-      if Get_Type_Kind (Type_Of (V)) = Void_Type_Kind then
-         Output_Stmt (Call);
-      else
-         Assignment (V, Call);
-      end if;
-   end Call_Instruction;
 
    ----------------
    -- Assignment --

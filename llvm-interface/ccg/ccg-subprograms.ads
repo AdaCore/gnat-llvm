@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Interfaces.C; use Interfaces.C;
+
 with LLVM.Core;  use LLVM.Core;
 
 with GNATLLVM; use GNATLLVM;
@@ -46,6 +48,10 @@ package CCG.Subprograms is
    procedure New_Subprogram (V : Value_T)
      with Pre => Present (Is_A_Function (V));
    --  Switch to a new subprogram V
+
+   procedure Call_Instruction (V : Value_T; Ops : Value_Array)
+     with Pre => Get_Opcode (V) = Op_Call;
+   --  Process a call instruction
 
    procedure Write_Subprograms;
    --  Write all the decls and statements for all subprograms

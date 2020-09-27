@@ -18,8 +18,13 @@
 with GNATLLVM; use GNATLLVM;
 
 with CCG.Helper; use CCG.Helper;
+with CCG.Tables; use CCG.Tables;
 
 package CCG.Instructions is
+
+   procedure Assignment (LHS : Value_T; RHS : Str)
+     with Pre => Present (LHS) and then Present (RHS);
+   --  Take action to assign LHS the value RHS
 
    procedure Instruction (V : Value_T; Ops : Value_Array)
      with Pre => Acts_As_Instruction (V);

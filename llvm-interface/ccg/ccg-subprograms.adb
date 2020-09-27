@@ -270,10 +270,19 @@ package body CCG.Subprograms is
 
    procedure Generate_C_For_Subprogram (V : Value_T) is
       First_BB : constant Basic_Block_T := Get_First_Basic_Block (V);
+      S        : constant String        := Get_Value_Name (V);
 
    begin
-      --  Write the definition of this function. If it has no basic
-      --  blocks, it must be an extern.
+      --  Ignore LLVM builtin functions. The most we can have is a declaration
+      --  but we don't want them to be emitted: we either handle or don't
+      --  handle the builtin, but will never actually call it.
+
+      if S'Length > 5 and then S (S'First .. S'First + 4) = "llvm." then
+         return;
+      end if;
+
+      --  Otherwise, write the definition of this function. If it has no
+      --  basic blocks, it must be an extern.
 
       Write_Str ((if No (First_BB) then "extern " else "") &
         Function_Proto (V, Extern => True) & ";" & Eol_Str);

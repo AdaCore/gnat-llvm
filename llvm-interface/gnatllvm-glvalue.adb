@@ -364,6 +364,13 @@ package body GNATLLVM.GLValue is
    function Is_Unconstrained_Array (V : GL_Value) return Boolean is
      (Is_Unconstrained_Array (Related_Type (V)));
 
+   ----------------------------
+   -- Is_Constrained_Array --
+   ----------------------------
+
+   function Is_Constrained_Array (V : GL_Value) return Boolean is
+     (Is_Constrained_Array (Related_Type (V)));
+
    -----------------------------------
    -- Is_Access_Unconstrained_Array --
    -----------------------------------

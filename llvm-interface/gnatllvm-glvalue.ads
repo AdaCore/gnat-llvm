@@ -832,6 +832,9 @@ package GNATLLVM.GLValue is
    function Is_Unconstrained_Array (V : GL_Value) return Boolean
      with Pre => Present (V), Inline;
 
+   function Is_Constrained_Array (V : GL_Value) return Boolean
+     with Pre => Present (V), Inline;
+
    function Is_Unconstrained_Type (V : GL_Value) return Boolean
      with Pre => Present (V), Inline;
 

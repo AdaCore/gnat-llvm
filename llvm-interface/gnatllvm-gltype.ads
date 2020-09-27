@@ -445,6 +445,10 @@ package GNATLLVM.GLType is
      (Is_Unconstrained_Array (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Is_Constrained_Array (GT : GL_Type) return Boolean is
+     (Is_Constrained_Array (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Is_Unconstrained_Type (GT : GL_Type) return Boolean is
      (Is_Unconstrained_Type (Full_Etype (GT)))
      with Pre => Present (GT);

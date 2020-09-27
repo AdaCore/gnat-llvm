@@ -571,9 +571,10 @@ package body GNATLLVM.Subprograms is
    --------------------
 
    function Get_L_Ret_Kind (E : Entity_Id) return L_Ret_Kind is
-      RK      : constant Return_Kind := Get_Return_Kind  (E);
-      Num_Out : constant Nat         := Number_Out_Params (E);
-      Has_Ret : constant Boolean     := RK not in None | Return_By_Parameter;
+      RK        : constant Return_Kind := Get_Return_Kind  (E);
+      Num_Out   : constant Nat         := Number_Out_Params (E);
+      Out_Param : constant Entity_Id   := First_Out_Param (E);
+      Has_Ret   : constant Boolean     := RK not in None | Return_By_Parameter;
 
    begin
       if not Has_Ret and then Num_Out = 0 then
@@ -581,7 +582,16 @@ package body GNATLLVM.Subprograms is
       elsif Num_Out = 0 then
          return Subprog_Return;
       elsif not Has_Ret then
-         return (if Num_Out = 1 then Out_Return else Struct_Out);
+
+         --  If this has no return has one or more out parameters, we return
+         --  then. If more than one or if emitting C, exactly one, and that
+         --  has an array type, use a struct form.
+
+         return (if   Num_Out = 1
+                   and then not (Emit_C
+                                   and then Is_Constrained_Array
+                                   (Full_Etype (Out_Param)))
+                 then Out_Return else Struct_Out);
       else
          return Struct_Out_Subprog;
       end if;

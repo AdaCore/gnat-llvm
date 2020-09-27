@@ -249,6 +249,10 @@ package GNATLLVM.Types is
      (Is_Array_Type (TE) and then not Is_Constrained (TE))
      with Pre => Is_Type_Or_Void (TE);
 
+   function Is_Constrained_Array (TE : Entity_Id) return Boolean is
+     (Is_Array_Type (TE) and then Is_Constrained (TE))
+     with Pre => Is_Type_Or_Void (TE);
+
    function Is_Access_Unconstrained_Array (TE : Entity_Id) return Boolean is
      (Is_Access_Type (TE)
         and then Is_Unconstrained_Array (Full_Designated_Type (TE)))

@@ -78,6 +78,14 @@ package body CCG.Subprograms is
      with Pre => Is_A_Basic_Block (V), Inline;
    --  Generate the code for basic block unless already output
 
+   function Is_Builtin_Name (S : String) return Boolean is
+     (S'Length > 5 and then S (S'First .. S'First + 4) = "llvm.");
+
+   procedure Call_Builtin (V : Value_T; S : String; Ops : Value_Array)
+     with Pre => Get_Opcode (V) = Op_Call;
+   --  Call V, a call to a builtin function whose name is S, with operands
+   --  of Ops.
+
    -----------------
    -- Output_Decl --
    ----------------
@@ -277,7 +285,7 @@ package body CCG.Subprograms is
       --  but we don't want them to be emitted: we either handle or don't
       --  handle the builtin, but will never actually call it.
 
-      if S'Length > 5 and then S (S'First .. S'First + 4) = "llvm." then
+      if Is_Builtin_Name (S) then
          return;
       end if;
 
@@ -298,17 +306,44 @@ package body CCG.Subprograms is
 
    end Generate_C_For_Subprogram;
 
+   ------------------
+   -- Call_Builtin --
+   ------------------
+
+   procedure Call_Builtin (V : Value_T; S : String; Ops : Value_Array) is
+      pragma Unreferenced (Ops);
+
+   begin
+      --  We ignore lifetime start/end calls
+
+      if S (S'First + 5 .. S'First + 12) = "lifetime" then
+         return;
+      end if;
+
+      --  And we don't process the rest
+
+      Output_Stmt ("<unsupported builtin: " & S & ">");
+   end Call_Builtin;
+
    ----------------------
    -- Call_Instruction --
    ----------------------
 
    procedure Call_Instruction (V : Value_T; Ops : Value_Array) is
       Func  : constant Value_T := Ops (Ops'Last);
+      S     : constant String  := Get_Value_Name (Func);
       Call  : Str              := Func & " (";
       First : Boolean          := True;
 
    begin
-      --  Generate the argument list for the call
+      --  If this is a builtin, handle that
+
+      if Is_Builtin_Name (S) then
+         Call_Builtin (V, S, Ops);
+         return;
+      end if;
+
+      --  Otherwise generate the argument list for the call
 
       for Op of Ops (Ops'First .. Ops'Last - 1) loop
          if First then

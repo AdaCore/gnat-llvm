@@ -271,7 +271,7 @@ package body CCG.Aggregates is
       --  ??? We have many ways of handling packed, but don't worry about that
       --  in the initial support.
 
-      Write_Str (S & "} __attribute__ ((packed)) " & ";", Eol => True);
+      Write_Str (S & "} __attribute__ ((packed));", Eol => True);
    end Write_Struct_Typedef;
 
    -------------------------

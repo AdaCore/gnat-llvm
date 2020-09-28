@@ -67,6 +67,10 @@ package body CCG is
          Namet.Lock;
       end if;
 
+      Write_Str ("#include <string.h>");
+      Write_Eol;
+      Write_Eol;
+
       --  Write out declarations for all globals with initializers
 
       while Present (Glob) loop

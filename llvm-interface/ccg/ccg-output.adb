@@ -198,8 +198,11 @@ package body CCG.Output is
             | X86_Fp80typekind | F_P128_Type_Kind | Ppc_Fp128typekind =>
             Write_Str ("0.0");
 
-         when Integer_Type_Kind | Pointer_Type_Kind =>
+         when Integer_Type_Kind =>
             Write_Str ("0");
+
+         when Pointer_Type_Kind =>
+            Write_Str ("NULL");
 
          when Struct_Type_Kind =>
             Write_Str ("{");
@@ -319,7 +322,7 @@ package body CCG.Output is
          Write_Str_With_Precedence (Get_C_Value (V), For_Precedence);
 
       elsif Is_A_Constant_Pointer_Null (V) then
-         Write_Str ("0");
+         Write_Str ("NULL");
 
       elsif Is_Undef (V) or else Is_A_Constant_Aggregate_Zero (V) then
          Write_Undef (Type_Of (V));

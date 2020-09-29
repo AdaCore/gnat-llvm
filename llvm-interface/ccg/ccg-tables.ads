@@ -54,7 +54,7 @@ package CCG.Tables is
      with Post => Get_Precedence ("+"'Result) = P;
    function "+" (S : Str; P : Precedence) return Str
      with Pre  => Present (S),
-          Post => Get_Precedence ("+"'Result) = P;
+          Post => Get_Precedence ("+"'Result) >= P;
 
    function Has_Precedence (S : Str) return Boolean
      with Pre => Present (S);
@@ -176,6 +176,24 @@ package CCG.Tables is
    function "&" (L : Str;            R : Str)           return Str
      with Pre  => Present (R),
           Post => Present ("&"'Result);
+
+   function Addr_Of (S : Str) return Str
+     with Pre => Present (S), Post => Present (Addr_Of'Result);
+   function Addr_Of (V : Value_T) return Str is
+     (Addr_Of (+V))
+     with Pre => Present (V), Post => Present (Addr_Of'Result);
+   --  Make an Str that represents taking the address of S or V. This usually
+   --  means prepending "&", but we can also do that by removing a leading
+   --  "*" or changing the value kind.
+
+   function Deref (S : Str) return Str
+     with Pre => Present (S), Post => Present (Deref'Result);
+   function Deref (V : Value_T) return Str is
+     (Deref (+V))
+     with Pre => Present (V), Post => Present (Deref'Result);
+   --  Make an Str that represents rerefencing S or V. This usually means
+   --  prepending "*", but we can also do that by removing a leading "&" or
+   --  changing the value kind.
 
    --  Get and set attributes we record of LLVM values, types, and
    --  basic blocks.

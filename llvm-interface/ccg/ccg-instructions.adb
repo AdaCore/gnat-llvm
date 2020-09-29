@@ -131,7 +131,7 @@ package body CCG.Instructions is
         and then (Get_Type_Kind (Src_T) /= Pointer_Type_Kind
                     or else Get_Type_Kind (Dest_T) /= Pointer_Type_Kind)
       then
-         return TP ("*((#T) &#1)", Op, T => Pointer_Type (Dest_T, 0)) + Unary;
+         return TP ("*((#T) #A1)", Op, T => Pointer_Type (Dest_T, 0)) + Unary;
       else
          return ("(" & Dest_T & ") " & Our_Op) + Unary;
       end if;
@@ -266,15 +266,10 @@ package body CCG.Instructions is
             end if;
 
          when Op_Load =>
-            Assignment
-              (V, TP ((if Get_Is_Variable (Op1) then "#N1" else "*#1"), Op1) +
-                  Unary);
+            Assignment (V, TP ("#D1", Op1) + Unary);
 
          when Op_Store =>
-            Output_Stmt (TP ((if   Get_Is_Variable (Op2) then "#N2 = #1"
-                              else "*#2 = #1"),
-                                Op1, Op2) +
-                         Assign);
+            Output_Stmt (TP ("#D2 = #1", Op1, Op2) + Assign);
 
          when Op_I_Cmp | Op_F_Cmp =>
             Assignment (V, Cmp_Instruction (V, Op1, Op2));

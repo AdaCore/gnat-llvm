@@ -376,9 +376,7 @@ package body CCG.Aggregates is
       Aggr_T : Type_T           := Get_Element_Type (Type_Of (Aggr));
       --  The type that Aggr, which is always a pointer, points to
 
-      Is_LHS : Boolean          :=
-        Get_Is_Variable (Aggr)
-        and then Get_Type_Kind (Aggr_T) = Struct_Type_Kind;
+      Is_LHS : Boolean          := Get_Is_Variable (Aggr);
       --  Whether our result so far is an LHS as opposed to a pointer.
       --  If it is, then we can use normal derefrence operations and we must
       --  take the address at the end of the instruction processing.
@@ -398,9 +396,10 @@ package body CCG.Aggregates is
       if Is_A_Constant_Int (Ops (Ops'First + 1))
         and then Equals_Int (Ops (Ops'First + 1), 0)
       then
-         Result := Aggr + Value_Name;
+         Result := Aggr + Value_Name + Component;
       else
-         Result := TP ("#1 + #2", Aggr, Ops (Ops'First + 1)) + Add;
+         Result := TP ("#1[#2]", Aggr, Ops (Ops'First + 1)) + Component;
+         Is_LHS := True;
       end if;
 
       --  Now process any other operands, which must always dereference into
@@ -431,7 +430,7 @@ package body CCG.Aggregates is
       --  If we ended up with a LHS, we have to take the address
 
       if Is_LHS then
-         Result := "&" & Result + Unary;
+         Result := Addr_Of (Result);
       end if;
 
       return Result;

@@ -387,7 +387,7 @@ package body CCG.Tables is
 
    function "+" (V : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Primary, (1 => (Value, 1, V, Normal)));
+        (1, Unknown, (1 => (Value, 1, V, Normal)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -400,7 +400,7 @@ package body CCG.Tables is
 
    function "+" (V : Value_T; K : Value_Kind) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Primary, (1 => (Value, 1, V, K)));
+        (1, Unknown, (1 => (Value, 1, V, K)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -433,7 +433,7 @@ package body CCG.Tables is
 
    function "+" (S : Str; P : Precedence) return Str is
       S_Rec  : aliased constant Str_Record (S.Length) :=
-                 (S.Length, P, S.Comps);
+                 (S.Length, Precedence'Max (P, S.P), S.Comps);
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -459,7 +459,7 @@ package body CCG.Tables is
 
    function "+" (B : Basic_Block_T) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Primary, (1 => (BB, 1, B)));
+        (1, Unknown, (1 => (BB, 1, B)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -534,7 +534,7 @@ package body CCG.Tables is
       elsif L'Length <= Str_Max then
          declare
             S_Rec  : aliased constant Str_Record (2) :=
-              (2, Primary,
+              (2, Unknown,
                (1 => (Var_String, L'Length, L), 2 => (Value, 1, R, Normal)));
             Result : constant Str := Undup_Str (S_Rec);
 
@@ -1042,14 +1042,116 @@ package body CCG.Tables is
          return R;
       end if;
 
-      S_Rec.P :=
-        (if    L.P = Unknown then R.P elsif R.P = Unknown then L.P
-         elsif L.P < R.P     then L.P else R.P);
+      S_Rec.P := Precedence'Max (L.P, R.P);
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1 .. L.Length + R.Length) := R.Comps;
       Result := Undup_Str (S_Rec);
       return Result;
    end "&";
+
+   -------------
+   -- Addr_Of --
+   -------------
+
+   function Addr_Of (S : Str) return Str is
+   begin
+      --  If this is a single value handled normally that has a C expression,
+      --  compute the address of that expression.
+
+      if S.Length = 1 and then S.Comps (1).Kind = Value
+        and then Present (Get_C_Value (S.Comps (1).Val))
+        and then S.Comps (1).V_Kind = Normal
+      then
+         return Addr_Of (Get_C_Value (S.Comps (1).Val));
+
+      --  If this is "*" concatenated with some string, return the result
+      --  of removing it.
+
+      elsif S.Length > 1 and then S.Comps (1).Kind = Var_String
+        and then S.Comps (1).Str = "*"
+      then
+         declare
+            S_Rec  : aliased constant Str_Record :=
+              (S.Length - 1, S.P, S.Comps (2 .. S.Length));
+            Result : constant Str                := Undup_Str (S_Rec);
+
+         begin
+            return Result;
+         end;
+
+      --  If this is a variable referenced by name, convert it into a
+      --  normal reference.
+
+      elsif S.Length = 1 and then S.Comps (1).Kind = Value
+        and then Get_Is_Variable (S.Comps (1).Val)
+        and then S.Comps (1).V_Kind = Value_Name
+      then
+         declare
+            S_Rec  : aliased constant Str_Record :=
+              (1, S.P, (1 => (Value, 0, S.Comps (1).Val, Normal)));
+            Result : constant Str                := Undup_Str (S_Rec);
+         begin
+            return Result;
+         end;
+
+      --  Otherwise, add the operator to take the address
+
+      else
+         return "&" & S + Unary;
+      end if;
+   end Addr_Of;
+
+   -----------
+   -- Deref --
+   -----------
+
+   function Deref (S : Str) return Str is
+   begin
+      --  If this is a single value handled normally that has a C expression,
+      --  compute the dereference of that expression.
+
+      if S.Length = 1 and then S.Comps (1).Kind = Value
+        and then Present (Get_C_Value (S.Comps (1).Val))
+        and then S.Comps (1).V_Kind = Normal
+      then
+         return Deref (Get_C_Value (S.Comps (1).Val));
+
+      --  If this is "&" concatenated with some string, return the result
+      --  of removing it.
+
+      elsif S.Length > 1 and then S.Comps (1).Kind = Var_String
+        and then S.Comps (1).Str = "&"
+      then
+         declare
+            S_Rec  : aliased constant Str_Record :=
+              (S.Length - 1, S.P, S.Comps (2 .. S.Length));
+            Result : constant Str                := Undup_Str (S_Rec);
+
+         begin
+            return Result;
+         end;
+
+      --  If this is a variable referenced normally, convert it into a
+      --  reference to the name.
+
+      elsif S.Length = 1 and then S.Comps (1).Kind = Value
+        and then Get_Is_Variable (S.Comps (1).Val)
+        and then S.Comps (1).V_Kind = Normal
+      then
+         declare
+            S_Rec  : aliased constant Str_Record :=
+              (1, S.P, (1 => (Value, 0, S.Comps (1).Val, Value_Name)));
+            Result : constant Str                := Undup_Str (S_Rec);
+         begin
+            return Result;
+         end;
+
+      --  Otherwise, add the operator to dereference
+
+      else
+         return "*" & S + Unary;
+      end if;
+   end Deref;
 
    --------------------
    -- Value_Data_Idx --

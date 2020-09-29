@@ -31,30 +31,25 @@ package body CCG.Utils is
       T           : Type_T  := No_Type_T;
       Is_Unsigned : Boolean := False) return Str
    is
-      Start     : Integer := S'First;
-      Result    : Str     := No_Str;
-      Mark_Seen : Boolean := False;
-      B_Seen    : Boolean := False;
-      N_Seen    : Boolean := False;
-      I_Seen    : Boolean := False;
+      Start     : Integer   := S'First;
+      Result    : Str       := No_Str;
+      Mark_Seen : Boolean   := False;
+      Modifier  : Character := ' ';
       Op        : Value_T;
       Last      : Integer;
 
    begin
       for J in S'Range loop
 
-         --  If we've seen '#', look for 'B', 'N', or 'I'
+         --  If we've seen '#', look for a modifier
 
          if Mark_Seen then
-            if S (J) = 'B' then
-               B_Seen := True;
-            elsif S (J) = 'N' then
-               N_Seen := True;
-            elsif S (J) = 'I' then
-               I_Seen := True;
+            if S (J) in 'B' | 'N' | 'I' | 'A' | 'D' then
+               Modifier := S (J);
 
-            --  If neither, then this is a number, representing which operand
-            --  to output, possibly as modified by 'B' or 'D'.
+            --  If not, then this is a number, representing which operand
+            --  to output, possibly as modified by a modifier, or 'T'
+            --  indicating that we're to output a type.
 
             else
                Op := (case S (J) is when '1' => Op1, when '2' => Op2,
@@ -63,34 +58,43 @@ package body CCG.Utils is
                --  The end of any string to output is before our mark, which
                --  may be, e.g., #1 or #B2.
 
-               Last := J - 2 - (if B_Seen or N_Seen or I_Seen then 1 else 0);
+               Last := J - 2 - (if Modifier = ' ' then 0 else 1);
                if Start <= Last then
                   Result := Result & S (Start .. Last);
                end if;
 
-               --  Output the (possibly modified) operand and reset for the
-               --  next string and/or mark.
+               --  First handle the type case
 
-               if B_Seen then
-                  Result := Result & Value_As_Basic_Block (Op);
-               elsif N_Seen then
-                  Result := Result & (Op + Value_Name);
-               elsif I_Seen then
-                  Result := Result & (Op + Initializer);
-               elsif S (J) = 'T' then
+               if S (J) = 'T' then
                   if Is_Unsigned then
                      Result := Result & "unsigned ";
                   end if;
 
                   Result := Result & T;
+
+               --  Otherwise, output the (possibly modified) operand
+
                else
-                  Result := Result & Op;
+                  case Modifier is
+                     when 'B' =>
+                        Result := Result & Value_As_Basic_Block (Op);
+                     when 'N' =>
+                        Result := Result & (Op + Value_Name);
+                     when 'I' =>
+                        Result := Result & (Op + Initializer);
+                     when 'A' =>
+                        Result := Result & Addr_Of (Op);
+                     when 'D' =>
+                        Result := Result & Deref (Op);
+                     when others =>
+                        Result := Result & Op;
+                  end case;
                end if;
 
-               B_Seen    := False;
-               N_Seen    := False;
-               I_Seen    := False;
+               --  Reset for the next string and/or mark
+
                Mark_Seen := False;
+               Modifier  := ' ';
                Start     := J + 1;
             end if;
 

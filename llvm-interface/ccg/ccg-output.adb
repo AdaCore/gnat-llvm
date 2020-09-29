@@ -340,15 +340,19 @@ package body CCG.Output is
      (V              : Value_T;
       Kind           : Value_Kind := Normal;
       For_Precedence : Precedence := Primary)
-     is
+   is
       C_Value : constant Str := Get_C_Value (V);
 
    begin
       --  If this is a variable that we're writing normally, we need to take
-      --  its address.
+      --  its address. However, in C the name of an array is its address,
+      --  so we can omit it in that case.
 
       if Kind in Normal | Initializer and then Get_Is_Variable (V) then
-         Write_Str ("&");
+         if Get_Type_Kind (Type_Of (V)) /= Array_Type_Kind then
+            Write_Str ("&");
+         end if;
+
          Write_Value_Name (V);
 
       --  If we've set an expression as the value of V, write it

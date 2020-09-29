@@ -38,13 +38,14 @@ package CCG.Utils is
      with Pre => Present (Op1), Post => Present (TP'Result);
    --  This provides a simple template facility for insertion of operands.
    --  Every character up to '#' in S is placed in Str. '#' is followed
-   --  optionally by an 'B', 'N', or 'I' and then by a number or 'T'. The
-   --  operand of that number (or the value of T, if 'T' was given) is
-   --  inserted into Str at that point. If 'B' is present, the operand is
-   --  interpreted as a basic block. If 'N' is present, then we want the
-   --  operand always written as a name. If 'I' is present, this is for the
-   --  context of an initializer. If Is_Unsigned is True, put "unsigned "
-   --  before the type.
+   --  optionally by an 'B', 'N', 'I', 'A', or 'D' and then by a number or
+   --  'T'. The operand of that number (or the value of T, if 'T' was
+   --  given) is inserted into Str at that point. If 'B' is present, the
+   --  operand is interpreted as a basic block. If 'N' is present, then we
+   --  want the operand always written as a name. If 'I' is present, this
+   --  is for the context of an initializer. If 'A' is present, we take the
+   --  address of the operand and deference it if 'D' is present. If
+   --  Is_Unsigned is True, put "unsigned " before the type.
 
    function Num_Uses (V : Value_T) return Nat
      with Pre => Present (V);

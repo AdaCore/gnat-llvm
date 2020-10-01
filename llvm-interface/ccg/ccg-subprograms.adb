@@ -287,6 +287,16 @@ package body CCG.Subprograms is
 
       if Is_Builtin_Name (S) then
          return;
+
+      --  We also don't emit declarations for C functions that are
+      --  defined in string.h.
+      --  ??? Exactly how to get that list is far from clear, but let's
+      --  approximate for now.
+
+      elsif S = "memcpy" or else S = "memmove" or else S = "memset"
+        or else S = "memcmp"
+      then
+         return;
       end if;
 
       --  Otherwise, write the definition of this function. If it has no

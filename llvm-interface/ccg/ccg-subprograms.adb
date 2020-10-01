@@ -321,6 +321,12 @@ package body CCG.Subprograms is
    ------------------
 
    procedure Call_Builtin (V : Value_T; S : String; Ops : Value_Array) is
+      Op1 : constant Value_T  :=
+        (if Ops'Length >= 1 then Ops (Ops'First) else No_Value_T);
+      Op2 : constant Value_T  :=
+        (if Ops'Length >= 2 then Ops (Ops'First + 1) else No_Value_T);
+      Op3 : constant Value_T  :=
+        (if Ops'Length >= 3 then Ops (Ops'First + 2) else No_Value_T);
       pragma Unreferenced (Ops);
 
    begin
@@ -328,11 +334,22 @@ package body CCG.Subprograms is
 
       if S (S'First + 5 .. S'First + 12) = "lifetime" then
          return;
-      end if;
+
+      --  We process memcpy, memmove, and memset by calling the corresponding
+      --  C library function.
+
+      elsif S (S'First + 5 .. S'First + 10) = "memcpy" then
+         Output_Stmt ("memcpy (" & Op1 & ", " & Op2 & ", " & Op3 & ")");
+      elsif S (S'First + 5 .. S'First + 11) = "memmove" then
+         Output_Stmt ("memmove (" & Op1 & ", " & Op2 & ", " & Op3 & ")");
+      elsif S (S'First + 5 .. S'First + 10) = "memset" then
+         Output_Stmt ("memset (" & Op1 & ", " & Op2 & ", " & Op3 & ")");
 
       --  And we don't process the rest
 
-      Output_Stmt ("<unsupported builtin: " & S & ">");
+      else
+         Output_Stmt ("<unsupported builtin: " & S & ">");
+      end if;
    end Call_Builtin;
 
    ----------------------
@@ -353,7 +370,7 @@ package body CCG.Subprograms is
          return;
       end if;
 
-      --  Otherwise generate the argument list for the call
+      --  Otherwise, generate the argument list for the call
 
       for Op of Ops (Ops'First .. Ops'Last - 1) loop
          if First then

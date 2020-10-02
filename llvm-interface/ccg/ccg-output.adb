@@ -415,8 +415,6 @@ package body CCG.Output is
    ----------------
 
    procedure Write_Decl (V : Value_T) is
-      Global : constant Boolean := Is_A_Global_Variable (V);
-
    begin
       --  We need to write a declaration for this if it's not a simple
       --  constant or constant expression, not a function, an argument, a
@@ -432,7 +430,7 @@ package body CCG.Output is
 
          --  If this is a global, mark it as a variable
 
-         if Global then
+         if Is_A_Global_Variable (V) then
             Set_Is_Variable (V);
          end if;
 
@@ -447,12 +445,12 @@ package body CCG.Output is
             Decl : Str             := Typ & " " & (V + Value_Name);
 
          begin
-            --  For globals, we write the decl immediately. Otherwise,
-            --  it's part of the decls for the subprogram.  Figure out
-            --  whether this is static or extern.  It's extern if there's
-            --  no initializer.
+            --  For globals, we write the decl immediately. Otherwise, it's
+            --  part of the decls for the subprogram.  Figure out whether
+            --  this is static or extern.  It's extern if there's no
+            --  initializer.
 
-            if Global then
+            if Is_A_Global_Variable (V) then
                declare
                   Init : constant Value_T := Get_Initializer (V);
 
@@ -480,13 +478,14 @@ package body CCG.Output is
             else
                --  If this is a constant (we know that it can't be a simple
                --  constant), we need to initialize the value to that of the
-               --  constant.
+               --  constant and put it at the top level.
 
                if Is_A_Constant (V) then
-                  Decl := Decl & " = " & (V + Initializer);
+                  Write_Str ("static " & Decl & " = " & (V + Initializer) &
+                               ";", Eol => True);
+               else
+                  Output_Decl (Decl);
                end if;
-
-               Output_Decl (Decl);
             end if;
          end;
       end if;

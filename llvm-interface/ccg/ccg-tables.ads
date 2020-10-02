@@ -53,8 +53,7 @@ package CCG.Tables is
    function "+" (S : String; P : Precedence) return Str
      with Post => Get_Precedence ("+"'Result) = P;
    function "+" (S : Str; P : Precedence) return Str
-     with Pre  => Present (S),
-          Post => Get_Precedence ("+"'Result) >= P;
+     with Pre => Present (S), Post => Get_Precedence ("+"'Result) >= P;
 
    function Has_Precedence (S : Str) return Boolean
      with Pre => Present (S);
@@ -102,6 +101,10 @@ package CCG.Tables is
    function "+" (N : Nat)           return Str
      with Post => Present ("+"'Result);
    --  Return an internal representation of S, V, T, or B
+
+   function "+" (V : Value_T; P : Precedence) return Str is
+     (+V + P)
+     with Pre => Present (V), Post => Get_Precedence ("+"'Result) = P;
 
    function "&" (L : String;         R : Value_T)       return Str
      with Post => Present ("&"'Result);
@@ -189,7 +192,7 @@ package CCG.Tables is
    function Deref (S : Str) return Str
      with Pre => Present (S), Post => Present (Deref'Result);
    function Deref (V : Value_T) return Str is
-     (Deref (+V))
+     (Deref (V + Unary))
      with Pre => Present (V), Post => Present (Deref'Result);
    --  Make an Str that represents rerefencing S or V. This usually means
    --  prepending "*", but we can also do that by removing a leading "&" or

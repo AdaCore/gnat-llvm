@@ -52,6 +52,10 @@ package body CCG.Instructions is
      with Pre => Present (V), Post => Present (Maybe_Unsigned'Result);
    --  Return V if it's not unsigned and return a cast to unsigned if it is.
 
+   procedure Write_Copy (LHS, RHS : Str; T : Type_T)
+     with Pre => Present (LHS) and then Present (RHS) and then Present (T);
+   --  Write a statement to copy RHS, of type T, to LHS
+
    ------------------------
    -- Binary_Instruction --
    ------------------------
@@ -200,6 +204,25 @@ package body CCG.Instructions is
    end Cmp_Instruction;
 
    ----------------
+   -- Write_Copy --
+   ----------------
+
+   procedure Write_Copy (LHS, RHS : Str; T : Type_T) is
+   begin
+      --  If this isn't an array type, write a normal assignment. Otherwise,
+      --  use memmove.
+      --  ??? We can usually use memcpy, but it's not clear what test to
+      --  do here at the moment.
+
+      if Get_Type_Kind (T) /= Array_Type_Kind then
+         Output_Stmt (LHS & " = " & RHS + Assign);
+      else
+         Output_Stmt ("memmove ((void *) " & LHS & ", (void *) " & RHS &
+                        ", sizeof (" & T & "))");
+      end if;
+   end Write_Copy;
+
+   ----------------
    -- Assignment --
    ----------------
 
@@ -219,7 +242,7 @@ package body CCG.Instructions is
         and then not Is_A_Constant_Expr (LHS)
         and then Get_Type_Kind (Type_Of (LHS)) /= Array_Type_Kind
       then
-         Output_Stmt (LHS & " = " & RHS);
+         Write_Copy (+LHS, RHS, Type_Of (LHS));
       else
          Set_C_Value (LHS, RHS);
       end if;
@@ -266,10 +289,10 @@ package body CCG.Instructions is
             end if;
 
          when Op_Load =>
-            Assignment (V, TP ("#D1", Op1) + Unary);
+            Assignment (V, Deref (Op1));
 
          when Op_Store =>
-            Output_Stmt (TP ("#D2 = #1", Op1, Op2) + Assign);
+            Write_Copy (Deref (Op2), Op1 + Assign, Type_Of (Op1));
 
          when Op_I_Cmp | Op_F_Cmp =>
             Assignment (V, Cmp_Instruction (V, Op1, Op2));

@@ -74,8 +74,7 @@ package body CCG.Output is
    procedure Write_C_Char_Code (CC : Character);
    --  Write the appropriate C code for character CC
 
-   Hex : constant array (Integer range 0 .. 15) of Character :=
-     "0123456789abcdef";
+   Octal : constant array (Integer range 0 .. 7) of Character := "01234567";
 
    -----------------------
    -- Maybe_Write_Comma --
@@ -140,7 +139,6 @@ package body CCG.Output is
 
       Write_Str ("ccg_v");
       Write_Int (Get_Output_Idx (V));
-
    end Write_Value_Name;
 
    -----------------------
@@ -179,9 +177,10 @@ package body CCG.Output is
             Write_Char (CC);
 
          when others =>
-            Write_Str ("\x");
-            Write_Char (Hex ((Character'Pos (CC) / 16) mod 16));
-            Write_Char (Hex (Character'Pos (CC) mod 16));
+            Write_Char ('\');
+            Write_Char (Octal ((Character'Pos (CC) / 64)));
+            Write_Char (Octal ((Character'Pos (CC) / 8) mod 8));
+            Write_Char (Octal (Character'Pos (CC) mod 8));
       end case;
    end Write_C_Char_Code;
 
@@ -373,7 +372,6 @@ package body CCG.Output is
       else
          Write_Value_Name (V);
       end if;
-
    end Write_Value;
 
    -------------------------------

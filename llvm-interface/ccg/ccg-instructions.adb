@@ -52,10 +52,6 @@ package body CCG.Instructions is
      with Pre => Present (V), Post => Present (Maybe_Unsigned'Result);
    --  Return V if it's not unsigned and return a cast to unsigned if it is.
 
-   procedure Write_Copy (LHS, RHS : Str; T : Type_T)
-     with Pre => Present (LHS) and then Present (RHS) and then Present (T);
-   --  Write a statement to copy RHS, of type T, to LHS
-
    ------------------------
    -- Binary_Instruction --
    ------------------------
@@ -217,8 +213,8 @@ package body CCG.Instructions is
       if Get_Type_Kind (T) /= Array_Type_Kind then
          Output_Stmt (LHS & " = " & RHS + Assign);
       else
-         Output_Stmt ("memmove ((void *) " & LHS & ", (void *) " & RHS &
-                        ", sizeof (" & T & "))");
+         Output_Stmt ("memmove ((void *) " & Addr_Of (LHS) & ", (void *) " &
+                        Addr_Of (RHS) & ", sizeof (" & T & "))");
       end if;
    end Write_Copy;
 

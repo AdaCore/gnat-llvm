@@ -34,4 +34,8 @@ package CCG.Instructions is
      with Pre => Acts_As_Instruction (V);
    --  Process instruction V
 
+   procedure Write_Copy (LHS, RHS : Str; T : Type_T)
+     with Pre => Present (LHS) and then Present (RHS) and then Present (T);
+   --  Write a statement to copy RHS, of type T, to LHS
+
 end CCG.Instructions;

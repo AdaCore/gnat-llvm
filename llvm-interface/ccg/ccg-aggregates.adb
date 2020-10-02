@@ -23,8 +23,9 @@ with Table;
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
-with CCG.Subprograms; use CCG.Subprograms;
-with CCG.Utils;       use CCG.Utils;
+with CCG.Instructions; use CCG.Instructions;
+with CCG.Subprograms;  use CCG.Subprograms;
+with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Aggregates is
 
@@ -361,7 +362,7 @@ package body CCG.Aggregates is
       --  The resulting type must be that of Op and we emit the assignment
 
       pragma Assert (T = Type_Of (Op));
-      Output_Stmt (Acc & TP (" = #1", Op) + Assign);
+      Write_Copy (Acc, Op + Assign, T);
 
    end Insert_Value_Instruction;
 

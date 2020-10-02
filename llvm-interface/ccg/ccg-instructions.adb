@@ -317,8 +317,8 @@ package body CCG.Instructions is
             Assignment (V, TP (" -#1", Op1) + Unary);
 
          when Op_Trunc | Op_SI_To_FP | Op_FP_Trunc | Op_FP_Ext | Op_S_Ext
-            | Op_UI_To_FP | Op_Z_Ext | Op_Bit_Cast | Op_Ptr_To_Int
-            | Op_Int_To_Ptr =>
+            | Op_UI_To_FP | Op_FP_To_SI | Op_Z_Ext | Op_Bit_Cast
+            | Op_Ptr_To_Int | Op_Int_To_Ptr =>
             Assignment (V, Cast_Instruction (V, Op1));
 
          when Op_Extract_Value =>

@@ -457,7 +457,8 @@ package body CCG.Output is
                begin
                   if No (Init) then
                      Decl := "extern " & Decl;
-                  elsif Get_Linkage (V) = Internal_Linkage then
+                  elsif Get_Linkage (V) in Internal_Linkage | Private_Linkage
+                  then
                      Decl := "static " & Decl;
                   end if;
 

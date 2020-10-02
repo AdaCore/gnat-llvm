@@ -24,6 +24,7 @@ with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Instructions; use CCG.Instructions;
+with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Utils;        use CCG.Utils;
 
@@ -349,6 +350,7 @@ package body CCG.Aggregates is
       elsif Num_Uses (Aggr) = 1 then
          Set_C_Value (V, +Aggr);
       else
+         Maybe_Decl (V);
          Output_Stmt (TP ("#1 = #2", V, Aggr));
       end if;
 

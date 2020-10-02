@@ -408,9 +408,14 @@ package body CCG.Aggregates is
 
       for Op of Ops (Ops'First + 2 .. Ops'Last) loop
 
-         --  For arrays, we don't use a different C syntax depending on
-         --  whether the aggregate so far is an LHS or pointer.
          if Get_Type_Kind (Aggr_T) = Array_Type_Kind then
+
+            --  If this isn't an LHS, we have to make it one
+
+            if not Is_LHS then
+               Result := Deref (Result);
+            end if;
+
             Result := Result & TP ("[#1]", Op) + Component;
             Aggr_T := Get_Element_Type (Aggr_T);
             Is_LHS := True;

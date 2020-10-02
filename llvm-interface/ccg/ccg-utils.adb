@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Core; use LLVM.Core;
-
 package body CCG.Utils is
 
    --------

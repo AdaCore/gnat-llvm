@@ -21,6 +21,8 @@ with Ada.Containers; use Ada.Containers;
 with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
 
+with LLVM.Core; use LLVM.Core;
+
 with GNATLLVM; use GNATLLVM;
 
 with CCG.Helper; use CCG.Helper;
@@ -50,6 +52,15 @@ package CCG.Utils is
    function Num_Uses (V : Value_T) return Nat
      with Pre => Present (V);
    --  Returns the number of uses of V
+
+   function Is_Simple_Type (T : Type_T) return Boolean is
+     (Get_Type_Kind (T) in Half_Type_Kind .. Integer_Type_Kind
+        or else Get_Type_Kind (T) = Pointer_Type_Kind)
+     with Pre => Present (T);
+   function Is_Simple_Type (V : Value_T) return Boolean is
+     (Is_Simple_Type (Type_Of (V)))
+     with Pre => Present (V);
+   --  True if this is or has a type that's simple (elementary)
 
    --  LLVM uses a zero-length array to indicate a variable-length
    --  array.  C doesn't permit zero-element arrays. It's tempting to

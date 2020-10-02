@@ -27,12 +27,6 @@ with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Output is
 
-   function Is_Simple_Type (T : Type_T) return Boolean is
-     (Get_Type_Kind (T) in Half_Type_Kind .. Integer_Type_Kind
-        or else Get_Type_Kind (T) = Pointer_Type_Kind)
-     with Pre => Present (T);
-   --  True if this is a type that's simple (elementary)
-
    function Is_Simple_Constant (V : Value_T) return Boolean is
      ((Get_Value_Kind (V)
          in Constant_Int_Value_Kind | Constant_Pointer_Null_Value_Kind

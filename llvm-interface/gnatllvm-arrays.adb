@@ -461,7 +461,7 @@ package body GNATLLVM.Arrays is
             Res := Extract_Value
               (Dim_Info.Bound_GT, Get (V, Bounds),
                (1 => unsigned (Bound_Idx)),
-               (if Is_Low then "low-bound" else "high-bound"));
+               (if Is_Low then "low.bound" else "high.bound"));
          end if;
 
          Pop_Debug_Freeze_Pos;
@@ -1341,7 +1341,7 @@ package body GNATLLVM.Arrays is
             Dim   := (if Fortran then Dim - 1 else Dim + 1);
          end loop;
 
-         Result := GEP (Unit_GT, Data, (1 => Index * Unit_Mult), "arr-lvalue");
+         Result := GEP (Unit_GT, Data, (1 => Index * Unit_Mult), "arr.lvalue");
          Result := Ptr_To_Ref (Result, Comp_GT);
 
          --  Set the attributes of the result.  However, the above will have
@@ -1390,7 +1390,7 @@ package body GNATLLVM.Arrays is
       if not Is_Nonnative_Type (Arr_GT) then
          Result := Ptr_To_Ref (GEP (GT, Array_Data,
                                     (1 => Size_Const_Null, 2 => Index_Shift),
-                                    "arr-lvalue"),
+                                    "arr.lvalue"),
                                GT);
          Adjust_Array_Component_Alignment (Result, V, Comp_GT);
          Initialize_TBAA (Result);
@@ -1412,7 +1412,7 @@ package body GNATLLVM.Arrays is
 
       begin
          Result := Ptr_To_Ref (GEP (Arr_GT, Data,
-                                    (1 => Index), "arr-lvalue"), GT);
+                                    (1 => Index), "arr.lvalue"), GT);
          Adjust_Array_Component_Alignment (Result, Data, Comp_GT);
          Initialize_TBAA (Result);
          return Result;

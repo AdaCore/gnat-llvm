@@ -513,11 +513,11 @@ package body GNATLLVM.Exprs is
          declare
             Add_Back      : constant GL_Value := Result + RVal;
             RHS_Neg       : constant GL_Value :=
-              I_Cmp (Int_SLT, RVal, Const_Null (RVal), "RHS-neg");
+              I_Cmp (Int_SLT, RVal, Const_Null (RVal), "RHS.neg");
             Result_Nonpos : constant GL_Value :=
-              I_Cmp (Int_SLE, Result, Const_Null (Result), "result-nonpos");
+              I_Cmp (Int_SLE, Result, Const_Null (Result), "result.nonpos");
             Result_Nonneg : constant GL_Value :=
-              I_Cmp (Int_SGE, Result, Const_Null (Result), "result-nonneg");
+              I_Cmp (Int_SGE, Result, Const_Null (Result), "result.nonneg");
             Signs_Same    : constant GL_Value :=
               Build_Select (RHS_Neg, Result_Nonpos, Result_Nonneg, "signsame");
 
@@ -824,7 +824,7 @@ package body GNATLLVM.Exprs is
 
          when N_Op_Rotate_Left =>
             To_Left := True;
-            Rotate := True;
+            Rotate  := True;
 
          when N_Op_Rotate_Right =>
             Rotate := True;
@@ -854,14 +854,14 @@ package body GNATLLVM.Exprs is
             Lower_Shift : constant GL_Value := LHS_Bits - Reduced_N;
             Reduced_Low : constant GL_Value := U_Rem (Lower_Shift, LHS_Bits);
             Upper       : constant GL_Value :=
-              (if   To_Left then Shl   (LHS, Reduced_N,   "rotate-upper")
-               else L_Shr (LHS, Reduced_N,   "rotate-upper"));
+              (if   To_Left then Shl   (LHS, Reduced_N,   "rotate.upper")
+               else L_Shr (LHS, Reduced_N,   "rotate.upper"));
             Lower       : constant GL_Value :=
-              (if   To_Left then L_Shr (LHS, Reduced_Low, "rotate-lower")
-               else Shl   (LHS, Reduced_Low, "rotate-lower"));
+              (if   To_Left then L_Shr (LHS, Reduced_Low, "rotate.lower")
+               else Shl   (LHS, Reduced_Low, "rotate.lower"));
 
          begin
-            return Build_Or (Upper, Lower, "rotate-result");
+            return Build_Or (Upper, Lower, "rotate.result");
          end;
 
       else
@@ -892,7 +892,7 @@ package body GNATLLVM.Exprs is
 
             then Build_Select
               (C_If   => I_Cmp
-                 (Int_SLT, LHS, Const_Null (LHS), "is-lhs-negative"),
+                 (Int_SLT, LHS, Const_Null (LHS), "is.lhs.negative"),
                C_Then => Const_Ones (LHS),
                C_Else => Const_Null (LHS),
                Name   => "saturated")
@@ -904,10 +904,10 @@ package body GNATLLVM.Exprs is
          --  the saturated value.
 
          return Build_Select
-           (C_If   => I_Cmp (Int_UGE, N, LHS_Bits, "is-saturated"),
+           (C_If   => I_Cmp (Int_UGE, N, LHS_Bits, "is.saturated"),
             C_Then => Saturated,
             C_Else => Result,
-            Name   => "sr-result");
+            Name   => "sr.result");
       end if;
    end Emit_Shift;
 
@@ -1081,7 +1081,7 @@ package body GNATLLVM.Exprs is
             --  desired integral type.
 
             V := Ptr_To_Int (Get (V, Reference_For_Integer), GT,
-                             "attr-address");
+                             "attr.address");
 
             --  Now add in any bit offset
 
@@ -1104,7 +1104,7 @@ package body GNATLLVM.Exprs is
 
             V := Get (V, (if   Is_Unconstrained_Array (V)
                           then Reference_To_Bounds_And_Data else Reference));
-            return Ptr_To_Int (V, GT, "pool-address");
+            return Ptr_To_Int (V, GT, "pool.address");
 
          when Attribute_Deref =>
             declare
@@ -1112,7 +1112,7 @@ package body GNATLLVM.Exprs is
                pragma Assert (Is_Descendant_Of_Address (Full_Etype (Expr)));
 
             begin
-               return Int_To_Ref (Emit_Expression (Expr), GT, "attr-deref");
+               return Int_To_Ref (Emit_Expression (Expr), GT, "attr.deref");
             end;
 
          when Attribute_First  | Attribute_Last
@@ -1243,8 +1243,8 @@ package body GNATLLVM.Exprs is
             begin
                pragma Assert (List_Length (Exprs) = 1);
                V := (if   Attr = Attribute_Succ
-                     then Add (Base, One, "attr-succ")
-                     else Sub (Base, One, "attr-pred"));
+                     then Add (Base, One, "attr.succ")
+                     else Sub (Base, One, "attr.pred"));
 
                --  If this is a modular type, we have to check for wrap
                --  and adjust if so.

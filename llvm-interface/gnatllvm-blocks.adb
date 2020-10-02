@@ -1526,7 +1526,7 @@ package body GNATLLVM.Blocks is
          elsif LI.Block_Depth >= 0 then
             if LI.From_Block /= Depth then
                LI.From_Block := Depth;
-               LI.Fixup_BB   := Create_Basic_Block (Get_Name (E, "-f"));
+               LI.Fixup_BB   := Create_Basic_Block (Get_Name (E, ".f"));
                Position_Builder_At_End (LI.Fixup_BB);
                Build_Fixups_From_To (Depth, LI.Block_Depth);
                Build_Br (Orig_BB);
@@ -1551,7 +1551,7 @@ package body GNATLLVM.Blocks is
                   if  OB.Orig_BB = Orig_BB and then OB.From_Block = Depth then
                      if Present (Get_Last_Instruction (OB.Made_BB)) then
                         Position_Builder_At_End (OB.Made_BB);
-                        Move_To_BB (Create_Basic_Block (Get_Name (E, "-mm")));
+                        Move_To_BB (Create_Basic_Block (Get_Name (E, ".mm")));
                         OB.Made_BB := Get_Insert_Block;
                         Position_Builder_At_End (Current_BB);
                      end if;
@@ -1563,7 +1563,7 @@ package body GNATLLVM.Blocks is
 
             Open_Branches.Append ((Orig_BB    => LI.Orig_BB,
                                    Made_BB    =>
-                                     Create_Basic_Block (Get_Name (E, "-m")),
+                                     Create_Basic_Block (Get_Name (E, ".m")),
                                    From_Block => Depth));
             LI.Has_Open_Branch := True;
             return Open_Branches.Table (Open_Branches.Last).Made_BB;

@@ -51,12 +51,12 @@ package body GNATLLVM.Conditionals is
       --  expression of the operator and its end.
 
       Block_Right_Expr     : constant Basic_Block_T :=
-        Create_Basic_Block ("scl-right-expr");
+        Create_Basic_Block ("scl.right.expr");
       Block_Right_Expr_End : Basic_Block_T;
       --  Block containing the exit code (the phi that selects that value)
 
       Block_Exit           : constant Basic_Block_T :=
-        Create_Basic_Block ("scl-exit");
+        Create_Basic_Block ("scl.exit");
 
    begin
       --  In the case of And, evaluate the right expression when Left is
@@ -269,9 +269,9 @@ package body GNATLLVM.Conditionals is
 
                declare
                   BB_RHS_Has_Zero_Dim : constant Basic_Block_T :=
-                    Create_Basic_Block ("rhs-has-0-dim");
+                    Create_Basic_Block ("rhs.has.0.dim");
                   BB_Continue         : constant Basic_Block_T :=
-                    Create_Basic_Block ("normal-tests");
+                    Create_Basic_Block ("normal.tests");
                begin
                   for Dim in 0 .. Last_Dim loop
                      BB_Next :=
@@ -463,7 +463,7 @@ package body GNATLLVM.Conditionals is
 
       Alts        : constant List_Id       := Alternatives (N);
       Start_BB    : constant Basic_Block_T := Get_Insert_Block;
-      BB_End      : constant Basic_Block_T := Create_Basic_Block ("case-end");
+      BB_End      : constant Basic_Block_T := Create_Basic_Block ("case.end");
       Alt         : Node_Id                := First_Non_Pragma (Alts);
       Current_Alt : Nat                    := 1;
       BBs         : Basic_Block_Array (1 .. List_Length_Non_Pragma (Alts));
@@ -472,7 +472,7 @@ package body GNATLLVM.Conditionals is
       --  First emit the code for each alternative and add its BB
 
       while Present (Alt) loop
-         BBs (Current_Alt) := Create_Basic_Block ("case-alt");
+         BBs (Current_Alt) := Create_Basic_Block ("case.alt");
          Position_Builder_At_End (BBs (Current_Alt));
          Emit (Statements (Alt));
          Build_Br (BB_End);
@@ -729,7 +729,7 @@ package body GNATLLVM.Conditionals is
                   if J = Alts'Last - 1 and then K = Alts (J).Last_Choice then
                      BB := Alts (Alts'Last).BB;
                   else
-                     BB := Create_Basic_Block ("case-when");
+                     BB := Create_Basic_Block ("case.when");
                   end if;
 
                   Build_If_Range (LHS, Choices (K).Low, Choices (K).High,
@@ -887,7 +887,7 @@ package body GNATLLVM.Conditionals is
                --  we either go to a final basic block or to a new
                --  intermediate one where we test the right operand.
 
-               BB_New := Create_Basic_Block ("short-circuit");
+               BB_New := Create_Basic_Block ("short.circuit");
                Emit_If_Cond (Left_Opnd (N),
                              (if And_Op then BB_New else BB_True),
                              (if And_Op then BB_False else BB_New));
@@ -976,7 +976,7 @@ package body GNATLLVM.Conditionals is
            (N_Op_Eq, LHS, Const_Int (LHS, Low));
          Build_Cond_Br (Cond, BB_True, BB_False);
       else
-         Inner_BB := Create_Basic_Block ("range-test");
+         Inner_BB := Create_Basic_Block ("range.test");
          LHS_Base := Convert (LHS, LHS_BT);
          Cond     := Build_Elementary_Comparison (N_Op_Ge, LHS_Base,
                                                   Const_Int (LHS_BT, Low));
@@ -1029,7 +1029,7 @@ package body GNATLLVM.Conditionals is
       Expr          : Node_Id                := N;
       Expr_GT       : constant GL_Type       := Full_GL_Type (N);
       Elementary    : constant Boolean       := Is_Elementary_Type (Expr_GT);
-      Phi_BB        : constant Basic_Block_T := Create_Basic_Block ("i-e-phi");
+      Phi_BB        : constant Basic_Block_T := Create_Basic_Block ("i.e.phi");
       BB            : Basic_Block_T          := Get_Insert_Block;
       Phi_GT        : GL_Type                := No_GL_Type;
       All_Ref       : Boolean                := True;

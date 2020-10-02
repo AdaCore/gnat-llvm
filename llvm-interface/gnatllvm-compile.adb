@@ -256,7 +256,7 @@ package body GNATLLVM.Compile is
       --  for any code we emit.
 
       elsif not Library_Level and then Are_In_Dead_Code then
-         Position_Builder_At_End (Create_Basic_Block ("dead-code"));
+         Position_Builder_At_End (Create_Basic_Block ("dead.code"));
       end if;
 
       --  If we're in the elaboration procedure, check if we're violating a
@@ -610,7 +610,7 @@ package body GNATLLVM.Compile is
 
             begin
                if Present (Condition (N)) then
-                  Next_BB := Create_Basic_Block ("loop-after-exit");
+                  Next_BB := Create_Basic_Block ("loop.after.exit");
                   Emit_If_Cond (Condition (N), Exit_BB, Next_BB);
                   Position_Builder_At_End (Next_BB);
                else
@@ -1452,23 +1452,23 @@ package body GNATLLVM.Compile is
 
       BB_Cond : Basic_Block_T              :=
         (if   not Is_For_Loop then Enter_Block_With_Node (Empty)
-         else Create_Basic_Block ("loop-cond"));
+         else Create_Basic_Block ("loop.cond"));
       --  If this is not a FOR loop, there is no initialization: alias
       --  it with the COND block.
 
       BB_Stmts : constant Basic_Block_T    :=
         (if   Is_Mere_Loop or else Is_For_Loop
-         then BB_Cond else Create_Basic_Block ("loop-stmts"));
+         then BB_Cond else Create_Basic_Block ("loop.stmts"));
       --  If this is a mere loop or a For loop, there is no condition
       --  block: alias it with the STMTS block.
 
       BB_Iter : Basic_Block_T              :=
-        (if Is_For_Loop then Create_Basic_Block ("loop-iter") else BB_Cond);
+        (if Is_For_Loop then Create_Basic_Block ("loop.iter") else BB_Cond);
       --  If this is not a FOR loop, there is no iteration: alias it with
       --  the COND block, so that at the end of every STMTS, jump on ITER
       --  or COND.
 
-      BB_Next : constant Basic_Block_T     := Create_Basic_Block ("loop-exit");
+      BB_Next : constant Basic_Block_T     := Create_Basic_Block ("loop.exit");
       --  The NEXT step contains no statement that comes from the loop: it
       --  is the exit point.
 
@@ -1525,13 +1525,13 @@ package body GNATLLVM.Compile is
                Build_Cond_Br
                  (I_Cmp ((if Uns_BT then Int_ULE else Int_SLE),
                          Convert (Low, Var_BT), Convert (High, Var_BT),
-                         "loop-entry-cond"),
+                         "loop.entry.cond"),
                   BB_Cond, BB_Next);
 
                --  Stop if the loop variable was equal to the "exit"
                --  bound. Increment/decrement it otherwise.
 
-               BB_Cond := Create_Basic_Block ("loop-cond-iter");
+               BB_Cond := Create_Basic_Block ("loop.cond.iter");
                Position_Builder_At_End (BB_Cond);
                Prev := To_Primitive (Get (LLVM_Var, Data));
                Build_Cond_Br
@@ -1541,8 +1541,8 @@ package body GNATLLVM.Compile is
                  BB_Next, BB_Iter);
 
                Position_Builder_At_End (BB_Iter);
-               Next :=  (if   Reversed then Sub (Prev, One, "next-loop-var")
-                         else Add (Prev, One, "next-loop-var"));
+               Next :=  (if   Reversed then Sub (Prev, One, "next.loop.var")
+                         else Add (Prev, One, "next.loop.var"));
                Store (From_Primitive (Next, Var_GT), LLVM_Var);
                Build_Br (BB_Stmts);
 

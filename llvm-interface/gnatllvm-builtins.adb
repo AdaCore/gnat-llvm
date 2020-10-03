@@ -26,6 +26,7 @@ with LLVM.Core; use LLVM.Core;
 with Ada.Characters.Handling; use Ada.Characters.Handling;
 with GNAT.Strings;            use GNAT.Strings;
 
+with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
@@ -1058,7 +1059,7 @@ package body GNATLLVM.Builtins is
    begin
       if No (Default_Alloc_Fn) then
          Default_Alloc_Fn :=
-           Add_Global_Function ("__gnat_malloc",
+           Add_Global_Function ((if Emit_C then "malloc" else "__gnat_malloc"),
                                 Fn_Ty ((1 => Size_T), Void_Ptr_T),
                                 A_Char_GL_Type);
 
@@ -1078,7 +1079,7 @@ package body GNATLLVM.Builtins is
    begin
       if No (Default_Free_Fn) then
          Default_Free_Fn :=
-           Add_Global_Function ("__gnat_free",
+           Add_Global_Function ((if Emit_C then "free" else "__gnat_free"),
                                 Fn_Ty ((1 => Void_Ptr_T), Void_Type),
                                 Void_GL_Type);
       end if;

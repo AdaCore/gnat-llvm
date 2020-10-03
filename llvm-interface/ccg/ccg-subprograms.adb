@@ -161,6 +161,15 @@ package body CCG.Subprograms is
       Result     : Str             := Ret_Typ & " " & V & " (";
 
    begin
+      --  If this is an internal subprogram, mark it as static
+
+      if Get_Linkage (V) = Internal_Linkage then
+         Result := "static " & Result;
+      end if;
+
+      --  Then output the list of parameter types, if any.  If this isn't
+      --  for an extern definition, include the parameter names.
+
       if Num_Params = 0 then
          Result := Result & "void";
       else

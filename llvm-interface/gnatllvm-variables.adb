@@ -1082,7 +1082,11 @@ package body GNATLLVM.Variables is
         (if Present (Elts) and then not Var_Size then +Elts else 1);
 
    begin
-      return not Var_Size and then T_Size * Elts_ULL < Max;
+      --  We can't promote to the entry block unless this is of fixed size.
+      --  If we're not generating C and it's larger than Max, also don't
+      --  say we can promote.
+
+      return not Var_Size and then (Emit_C or else T_Size * Elts_ULL < Max);
    end Alloca_Smaller_Than;
 
    --------------------------
@@ -1096,7 +1100,7 @@ package body GNATLLVM.Variables is
       Current_BB       : constant Basic_Block_T := Get_Insert_Block;
 
    begin
-      --  If this is of fixed size, but not too huge, promote it to the
+      --  If this is of a size that allows promotion, promote it to the
       --  entry block by setting our position into that block and returning
       --  our current position.  Otherwise, nothing to do here.
 

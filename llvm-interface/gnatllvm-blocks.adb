@@ -441,10 +441,12 @@ package body GNATLLVM.Blocks is
       Our_BB : constant Basic_Block_T := Get_Insert_Block;
 
    begin
-      --  If we're not in the top-level block and we haven't already saved
-      --  the stack, produce a stack save at the start of the block.
+      --  If we're not in the top-level block, we haven't already saved the
+      --  stack, and we're not generating C, produce a stack save at the
+      --  start of the block.
 
-      if No (BI.Stack_Save) and then Block_Stack.Last > 1 then
+      if No (BI.Stack_Save) and then Block_Stack.Last > 1 and then not Emit_C
+      then
          Set_Current_Position (BI.Starting_Position);
          BI.Stack_Save := Call (Get_Stack_Save_Fn, A_Char_GL_Type,
                                 (1 .. 0 => <>));

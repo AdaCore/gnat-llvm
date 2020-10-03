@@ -19,6 +19,8 @@ with Interfaces.C; use Interfaces.C;
 
 with LLVM.Core; use LLVM.Core;
 
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+
 with CCG.Aggregates;  use CCG.Aggregates;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
@@ -279,11 +281,14 @@ package body CCG.Instructions is
             Call_Instruction (V, Ops);
 
          when Op_Alloca =>
-            if Get_Is_Entry (Get_Instruction_Parent (V)) then
+            if Get_Is_Entry (Get_Instruction_Parent (V))
+              and then Is_A_Constant_Int (Op1) and then Equals_Int (Op1, 1)
+            then
                Set_Is_Variable (V);
                Write_Decl (V);
             else
-               Output_Stmt ("<unsupported alloca instruction>");
+               Assignment (V, TP ("alloca (sizeof (#T) * #1)", Op1,
+                                  T => Get_Element_Type (Type_Of (V))));
             end if;
 
          when Op_Load =>

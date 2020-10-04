@@ -247,7 +247,7 @@ package body GNATLLVM.Arrays is
 
             if not Not_Superflat then
                Res := Build_Select
-                 (C_If   => I_Cmp (Cmp_Kind, Comp_Low, Comp_High, "is-empty"),
+                 (C_If   => I_Cmp (Cmp_Kind, Comp_Low, Comp_High, "is.empty"),
                   C_Then => Const_0, C_Else => Res);
             end if;
          end if;

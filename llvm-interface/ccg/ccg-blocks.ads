@@ -29,11 +29,13 @@ package CCG.Blocks is
      with Pre => Is_A_Basic_Block (V), Inline;
    --  Generate the code for basic block unless already output
 
-   procedure Output_Branch (From : Value_T; To : Basic_Block_T)
+   procedure Output_Branch (From, To : Value_T; Need_Block : Boolean)
      with Pre => Present (From) and then Present (To);
-   procedure Output_Branch (From, To : Value_T)
+   procedure Output_Branch
+     (From : Value_T; To : Basic_Block_T; Need_Block : Boolean)
      with Pre => Present (From) and then Present (To);
    --  Generate code to jump from instruction From to instruction or basic
    --  block To, taking care of any phi instructions at the target.
+   --  Need_Block says whether we need to generate a "{ ... }" construct.
 
 end CCG.Blocks;

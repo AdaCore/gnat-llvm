@@ -15,9 +15,12 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Interfaces.C; use Interfaces.C;
+
 with LLVM.Core;  use LLVM.Core;
 
 with CCG.Instructions; use CCG.Instructions;
+with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Tables;       use CCG.Tables;
 
@@ -89,19 +92,57 @@ package body CCG.Blocks is
    -- Output_Branch --
    -------------------
 
-   procedure Output_Branch (From, To : Value_T) is
+   procedure Output_Branch (From, To : Value_T; Need_Block : Boolean) is
    begin
-      Output_Branch (From, Value_As_Basic_Block (To));
+      Output_Branch (From, Value_As_Basic_Block (To), Need_Block);
    end Output_Branch;
 
    -------------------
    -- Output_Branch --
    -------------------
 
-   procedure Output_Branch (From : Value_T; To : Basic_Block_T) is
-      pragma Unreferenced (From);
+   procedure Output_Branch
+     (From : Value_T; To : Basic_Block_T; Need_Block : Boolean)
+   is
+      Our_BB   : constant Basic_Block_T := Get_Instruction_Parent (From);
+      Had_Phi  : Boolean                := False;
+      Target_I : Value_T                := Get_First_Instruction (To);
+
    begin
+      --  Scan the start of the target block looking for Phi instructions
+
+      while Present (Target_I) and then Get_Opcode (Target_I) = Op_PHI loop
+         declare
+            Phi_Val : Value_T := No_Value_T;
+
+         begin
+            --  If we find a phi, we must ensure we have a declaration of its
+            --  type and then copy the appropriate data into it.
+
+            Maybe_Decl (Target_I);
+            for J in 0 .. Count_Incoming (Target_I) loop
+               if Get_Incoming_Block (Target_I, J) = Our_BB then
+                  Phi_Val := Get_Operand (Target_I, J);
+               end if;
+            end loop;
+
+            if not Had_Phi and then Need_Block then
+               Output_Stmt ("{", Semicolon => False);
+            end if;
+
+            Write_Copy (+Target_I, +Phi_Val, Type_Of (Phi_Val));
+            Had_Phi  := True;
+            Target_I := Get_Next_Instruction (Target_I);
+         end;
+      end loop;
+
+      --  Write the goto and, if we had a phi, close the block we opened
+
       Output_Stmt ("goto " & To);
+      if Had_Phi and then Need_Block then
+         Output_Stmt ("}", Semicolon => False);
+      end if;
+
    end Output_Branch;
 
 end CCG.Blocks;

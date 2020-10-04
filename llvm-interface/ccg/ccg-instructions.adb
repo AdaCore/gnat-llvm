@@ -313,13 +313,20 @@ package body CCG.Instructions is
 
          when Op_Br =>
             if Ops'Length = 1 then
-               Output_Branch (V, Op1);
+               Output_Branch (V, Op1, False);
             else
                Output_Stmt (TP ("if (#1)", Op1) + Assign, Semicolon => False);
-               Output_Branch (V, Op3);
+               Output_Branch (V, Op3, True);
                Output_Stmt ("else", Semicolon => False);
-               Output_Branch (V, Op2);
+               Output_Branch (V, Op2, True);
             end if;
+
+         when Op_PHI =>
+
+            --  PHI is processed on a branch to this block, so we need
+            --  do nothing with it here.
+
+            null;
 
          when Op_Add | Op_Sub | Op_Mul | Op_S_Div | Op_U_Div | Op_S_Rem
             | Op_U_Rem | Op_Shl | Op_L_Shr | Op_A_Shr | Op_F_Add | Op_F_Sub

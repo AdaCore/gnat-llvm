@@ -18,6 +18,7 @@
 with Output; use Output;
 with Table;
 
+with CCG.Blocks;       use CCG.Blocks;
 with CCG.Instructions; use CCG.Instructions;
 
 package body CCG.Subprograms is
@@ -71,12 +72,6 @@ package body CCG.Subprograms is
       Table_Initial        => 50,
       Table_Increment      => 50,
       Table_Name           => "Subprogram_Table");
-
-   procedure Output_BB (BB : Basic_Block_T)
-     with Pre => Present (BB);
-   procedure Output_BB (V : Value_T)
-     with Pre => Is_A_Basic_Block (V), Inline;
-   --  Generate the code for basic block unless already output
 
    function Is_Builtin_Name (S : String) return Boolean is
      (S'Length > 5 and then S (S'First .. S'First + 4) = "llvm.");
@@ -218,68 +213,6 @@ package body CCG.Subprograms is
       return Result & ")";
 
    end Function_Proto;
-
-   ---------------
-   -- Output_BB --
-   ---------------
-
-   procedure Output_BB (V : Value_T) is
-   begin
-      Output_BB (Value_As_Basic_Block (V));
-   end Output_BB;
-
-   ---------------
-   -- Output_BB --
-   ---------------
-
-   procedure Output_BB (BB : Basic_Block_T) is
-      V          : Value_T          := Get_First_Instruction (BB);
-      Terminator : constant Value_T := Get_Basic_Block_Terminator (BB);
-
-   begin
-      --  If we already processed this basic block, mark that we did
-
-      if Get_Was_Output (BB) then
-         return;
-      end if;
-
-      --  Otherwise, if this isn't the entry block, output a label for it
-
-      if not Get_Is_Entry (BB) then
-         Output_Stmt (BB & ":", Semicolon => False);
-      end if;
-
-      --  Mark that we're outputing this block and process each
-      --  instruction it.
-
-      Set_Was_Output (BB);
-      while Present (V) loop
-         Process_Instruction (V);
-         V := Get_Next_Instruction (V);
-      end loop;
-
-      --  Now process any block referenced by the terminator
-
-      case Get_Instruction_Opcode (Terminator) is
-         when Op_Ret | Op_Unreachable =>
-            null;
-
-         when Op_Br =>
-            if Get_Num_Operands (Terminator) = Nat (1) then
-               Output_BB (Get_Operand (Terminator, Nat (0)));
-            else
-               Output_BB (Get_Operand (Terminator, Nat (2)));
-               Output_BB (Get_Operand (Terminator, Nat (1)));
-            end if;
-
-         when others =>
-            Output_Stmt
-              (+("<unsupported terminator: " &
-                   Get_Opcode_Name (Terminator) & ">"));
-
-      end case;
-
-   end Output_BB;
 
    -------------------------------
    -- Generate_C_For_Subprogram --

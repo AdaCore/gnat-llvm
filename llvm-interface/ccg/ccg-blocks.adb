@@ -85,4 +85,23 @@ package body CCG.Blocks is
 
    end Output_BB;
 
+   -------------------
+   -- Output_Branch --
+   -------------------
+
+   procedure Output_Branch (From, To : Value_T) is
+   begin
+      Output_Branch (From, Value_As_Basic_Block (To));
+   end Output_Branch;
+
+   -------------------
+   -- Output_Branch --
+   -------------------
+
+   procedure Output_Branch (From : Value_T; To : Basic_Block_T) is
+      pragma Unreferenced (From);
+   begin
+      Output_Stmt ("goto " & To);
+   end Output_Branch;
+
 end CCG.Blocks;

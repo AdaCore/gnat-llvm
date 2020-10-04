@@ -22,6 +22,7 @@ with LLVM.Core; use LLVM.Core;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;  use CCG.Aggregates;
+with CCG.Blocks;      use CCG.Blocks;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
 with CCG.Utils;       use CCG.Utils;
@@ -312,10 +313,12 @@ package body CCG.Instructions is
 
          when Op_Br =>
             if Ops'Length = 1 then
-               Output_Stmt (TP ("goto #B1", Op1));
+               Output_Branch (V, Op1);
             else
-               Output_Stmt (TP ("if (#1) goto #B3; else goto #B2",
-                               Op1, Op2, Op3));
+               Output_Stmt (TP ("if (#1)", Op1) + Assign, Semicolon => False);
+               Output_Branch (V, Op3);
+               Output_Stmt ("else", Semicolon => False);
+               Output_Branch (V, Op2);
             end if;
 
          when Op_Add | Op_Sub | Op_Mul | Op_S_Div | Op_U_Div | Op_S_Rem

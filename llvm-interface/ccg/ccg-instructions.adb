@@ -260,6 +260,7 @@ package body CCG.Instructions is
       Op3 : constant Value_T  :=
         (if Ops'Length >= 3 then Ops (Ops'First + 2) else No_Value_T);
       Opc : constant Opcode_T := Get_Opcode (V);
+
    begin
       --  See if we need to write a declaration for an operand
 
@@ -287,8 +288,14 @@ package body CCG.Instructions is
                Set_Is_Variable (V);
                Write_Decl (V);
             else
-               Assignment (V, TP ("alloca (sizeof (#T) * #1)", Op1,
-                                  T => Get_Element_Type (Type_Of (V))));
+               declare
+                  Call : constant Str :=
+                    TP ("alloca (sizeof (#T) * #1)", Op1,
+                        T => Get_Allocated_Type (V)) + Mult;
+
+               begin
+                  Assignment (V, "(" & Type_Of (V) & ") " & Call);
+               end;
             end if;
 
          when Op_Load =>

@@ -350,6 +350,9 @@ package body CCG.Instructions is
          when Op_Get_Element_Ptr =>
             Assignment (V, GEP_Instruction (Ops));
 
+         when Op_Switch =>
+            Switch_Instruction (V, Ops);
+
          when Op_Unreachable =>
             null;
 

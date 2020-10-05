@@ -15,12 +15,11 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C; use Interfaces.C;
-
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Tables;       use CCG.Tables;
+with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Blocks is
 
@@ -107,6 +106,16 @@ package body CCG.Blocks is
                Output_BB (Get_Operand (Terminator, Nat (1)));
             end if;
 
+         when Op_Switch =>
+
+            --  We have pairs of operands. The first pair is the value to
+            --  test and the default destination followed by pairs of values
+            --  and destinations. All odd numbered operands are destinations.
+
+            for J in Nat range 0 .. Get_Num_Operands (Terminator) / 2 - 1 loop
+               Output_BB (Get_Operand (Terminator, J * 2 + 1));
+            end loop;
+
          when others =>
             Output_Stmt
               (+("<unsupported terminator: " &
@@ -188,5 +197,34 @@ package body CCG.Blocks is
          end if;
       end if;
    end Output_Branch;
+
+   ------------------------
+   -- Switch_Instruction --
+   ------------------------
+
+   procedure Switch_Instruction (V : Value_T; Ops : Value_Array) is
+      Val     : constant Value_T := Ops (Ops'First);
+      Default : constant Basic_Block_T :=
+        Value_As_Basic_Block (Ops (Ops'First + 1));
+
+   begin
+      --  Write out the initial part of the switch, which is the switch
+      --  statement and the default option.
+
+      Output_Stmt (TP ("switch (#1) {", Val) + Assign, Semicolon => False);
+      Output_Stmt ("default:", Semicolon => False);
+      Output_Branch (V, Default);
+
+      --  Now handle each case. They start after the first two operands and
+      --  alternate between value and branch target.
+
+      for J in 1 .. Nat ((Ops'Length / 2) - 1) loop
+         Output_Stmt (TP ("case #1:", Ops (Ops'First + J * 2)),
+                      Semicolon => False);
+         Output_Branch (V, Ops (Ops'First + J * 2 + 1));
+      end loop;
+
+      Output_Stmt ("}", Semicolon => False);
+   end Switch_Instruction;
 
 end CCG.Blocks;

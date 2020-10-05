@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Interfaces.C; use Interfaces.C;
+
 with GNATLLVM; use GNATLLVM;
 
 with LLVM.Core; use LLVM.Core;
@@ -40,6 +42,10 @@ package CCG.Blocks is
    procedure Output_BB (V : Value_T)
      with Pre => Is_A_Basic_Block (V), Inline;
    --  Generate the code for basic block unless already output
+
+   procedure Switch_Instruction (V : Value_T; Ops : Value_Array)
+     with Pre => Get_Opcode (V) = Op_Switch;
+   --  Process V, a switch instruction
 
    procedure Output_Branch
      (From       : Value_T;

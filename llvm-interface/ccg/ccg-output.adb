@@ -250,10 +250,8 @@ package body CCG.Output is
          end;
 
       elsif Is_A_Constant_FP (V) then
-
          declare
             Loses_Info : Boolean;
-
          begin
             --  ??? It's not clear that 'Image will always do the right thing
             --  in terms of writing the proper format for a C constant,
@@ -261,6 +259,7 @@ package body CCG.Output is
             --  obvious other mechanism.
             --  See Cprint.Write_Real_Number_Col_Check for inspiration on what
             --  we can do.
+            --  ??? Also need to emit F/L markers
 
             Write_Str
               (Double'Image (Const_Real_Get_Double (V, Loses_Info)));

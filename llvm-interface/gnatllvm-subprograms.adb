@@ -851,7 +851,7 @@ package body GNATLLVM.Subprograms is
    is
       Tramp  : constant GL_Value :=
         Array_Alloca (SSI_GL_Type, Size_Const_Int (ULL (72)),
-                      Name => "tramp");
+                      Name => "TRAMP");
       Cvt_Fn : constant GL_Value := Pointer_Cast (Fn, A_Char_GL_Type);
 
    begin
@@ -1601,7 +1601,7 @@ package body GNATLLVM.Subprograms is
             end loop;
          end if;
 
-         return Pointer_Cast (Result, A_Char_GL_Type, "static-link");
+         return Pointer_Cast (Result, A_Char_GL_Type, "static.link");
       else
          return Get_Undef (A_Char_GL_Type);
       end if;
@@ -2019,7 +2019,7 @@ package body GNATLLVM.Subprograms is
             then Convert_Ref (LHS, Return_GT)
             else Get (Allocate_For_Type (Return_GT,
                                          N        => Subp,
-                                         Name     => "return",
+                                         Name     => "RETURN",
                                          Max_Size =>
                                            Is_Unconstrained_Record
                                            (Return_GT)),

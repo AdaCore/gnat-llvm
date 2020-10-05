@@ -519,7 +519,8 @@ package body GNATLLVM.Exprs is
             Result_Nonneg : constant GL_Value :=
               I_Cmp (Int_SGE, Result, Const_Null (Result), "result.nonneg");
             Signs_Same    : constant GL_Value :=
-              Build_Select (RHS_Neg, Result_Nonpos, Result_Nonneg, "signsame");
+              Build_Select (RHS_Neg, Result_Nonpos, Result_Nonneg,
+                            "sign.same");
 
          begin
             Result := Build_Select (Signs_Same, Result, Add_Back);
@@ -576,7 +577,7 @@ package body GNATLLVM.Exprs is
             Need_Adjust  : constant GL_Value  :=
               I_Cmp (Int_UGE, Shl (Abs_Rem, One), Abs_RHS);
             Signs_Same    : constant GL_Value :=
-              Build_Select (RHS_Neg, Rem_Neg, Rem_Nonneg, "signsame");
+              Build_Select (RHS_Neg, Rem_Neg, Rem_Nonneg, "sign.same");
             Plus_One     : constant GL_Value  := Result + One;
             Minus_One    : constant GL_Value  := Result - One;
             Which_Adjust : constant GL_Value  :=
@@ -631,7 +632,7 @@ package body GNATLLVM.Exprs is
                if Is_Unsigned_Type (Result) then
                   return Result;
                else
-                  return Build_Select (Compare, Result, Neg_Expr, "abs");
+                  return Build_Select (Compare, Result, Neg_Expr, "ABS");
                end if;
             end;
 
@@ -895,7 +896,7 @@ package body GNATLLVM.Exprs is
                  (Int_SLT, LHS, Const_Null (LHS), "is.lhs.negative"),
                C_Then => Const_Ones (LHS),
                C_Else => Const_Null (LHS),
-               Name   => "saturated")
+               Name   => "SATURATED")
 
             else Const_Null (LHS));
 

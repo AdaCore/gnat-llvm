@@ -654,8 +654,8 @@ package body GNATLLVM.Conversions is
                  Pred_FP (Const_Real (In_V, 0.5));
                Val_Is_Neg : constant GL_Value :=
                  F_Cmp (Real_OLT, In_V, Const_Null (In_V));
-               Add_Amt    : constant GL_Value := F_Add (In_V, Half, "round");
-               Sub_Amt    : constant GL_Value := F_Sub (In_V, Half, "round");
+               Add_Amt    : constant GL_Value := F_Add (In_V, Half, "ROUND");
+               Sub_Amt    : constant GL_Value := F_Sub (In_V, Half, "ROUND");
 
             begin
                Value := Build_Select (Val_Is_Neg, Sub_Amt, Add_Amt);

@@ -162,7 +162,7 @@ package body GNATLLVM.Conditionals is
             BB_True      : constant Basic_Block_T := Create_Basic_Block;
             BB_False     : constant Basic_Block_T := Create_Basic_Block;
             BB_Merge     : constant Basic_Block_T :=
-              Create_Basic_Block ("merge");
+              Create_Basic_Block ("MERGE");
             Results      : constant GL_Value_Array (1 .. 2)    :=
               (1 => (if Kind = N_Op_Eq then True_Val  else False_Val),
                2 => (if Kind = N_Op_Eq then False_Val else True_Val));

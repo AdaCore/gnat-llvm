@@ -1515,7 +1515,7 @@ package body GNATLLVM.Compile is
                Build_Cond_Br
                  (I_Cmp (Int_EQ, Prev,
                          To_Primitive ((if Reversed then Low else High)),
-                         "loop-iter-cond"),
+                         "loop.iter.cond"),
                  BB_Next, BB_Iter);
 
                Position_Builder_At_End (BB_Iter);

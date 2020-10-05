@@ -574,7 +574,7 @@ package body GNATLLVM.Blocks is
          then
             if No (BI.Landing_Pad) then
                Block_Stack.Table (J).Landing_Pad :=
-                 Create_Basic_Block ("Lpad");
+                 Create_Basic_Block ("LPAD");
             end if;
 
             return Block_Stack.Table (J).Landing_Pad;
@@ -820,7 +820,7 @@ package body GNATLLVM.Blocks is
       N    : Node_Id;
       Kind : RT_Exception_Code := CE_Overflow_Check_Failed)
    is
-      BB_Then  : constant Basic_Block_T := Create_Basic_Block ("raise");
+      BB_Then  : constant Basic_Block_T := Create_Basic_Block ("RAISE");
       BB_Next  : constant Basic_Block_T := Create_Basic_Block;
 
    begin
@@ -870,7 +870,7 @@ package body GNATLLVM.Blocks is
 
             Elements (Elements'Last) := Const_Null (SSI_GL_Type);
             Str := Const_Array (Elements, Any_Array_GL_Type);
-            V   := G_Ref (Add_Global (Module, Type_Of (Str), "fname"),
+            V   := G_Ref (Add_Global (Module, Type_Of (Str), "FNAME"),
                           Any_Array_GL_Type);
             Set_Initializer     (V, Str);
             Set_Linkage         (V, Private_Linkage);
@@ -1293,7 +1293,7 @@ package body GNATLLVM.Blocks is
               and then not BI.Unprotected
             then
                if No (BI.Dispatch_BB) then
-                  BI.Dispatch_BB := Create_Basic_Block ("dispatch");
+                  BI.Dispatch_BB := Create_Basic_Block ("DISPATCH");
                end if;
 
                Build_Fixups_From_To (Block - 1, J);
@@ -1776,7 +1776,7 @@ package body GNATLLVM.Blocks is
       Cond    : constant Node_Id       := Condition (N);
       BB_Then : constant Basic_Block_T :=
         (if    Present (Label) then Get_Label_BB (Label)
-         elsif No (Cond) then No_BB_T else Create_Basic_Block ("raise"));
+         elsif No (Cond) then No_BB_T else Create_Basic_Block ("RAISE"));
       BB_Next : constant Basic_Block_T :=
         (if   Present (Cond) or else Present (Label) then Create_Basic_Block
          else No_BB_T);

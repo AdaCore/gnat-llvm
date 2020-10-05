@@ -94,6 +94,11 @@ package body GNATLLVM.Codegen is
 
          Debug_Flag_Dot_HH := True;
 
+         --  Use a simple 32bits target by default for C code generation
+
+         Free (Target_Triple);
+         Target_Triple := new String'("i386-linux");
+
       elsif Switch = "-emit-llvm" then
          Emit_LLVM := True;
       elsif Switch = "-S" then

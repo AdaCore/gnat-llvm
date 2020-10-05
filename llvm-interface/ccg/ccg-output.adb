@@ -427,22 +427,14 @@ package body CCG.Output is
 
    procedure Maybe_Decl (V : Value_T; For_Initializer : Boolean := False) is
    begin
-      --  If we already processed this, we're done
+      --  Write the decl if we haven't already processed this and it's
+      --  not it's a simple constant (any constant if this is for an
+      --  initializer).
 
-      if Get_Is_Decl_Output (V) then
-         return;
-
-      --  If it's a simple constant (actual constant if this is for an
-      --  initializer), we just mark us as having processed it.
-
-      elsif Is_Simple_Constant (V)
-        or else (For_Initializer and then Is_A_Constant (V))
+      if not Get_Is_Decl_Output (V)
+        and then not Is_Simple_Constant (V)
+        and then not (For_Initializer and then Is_A_Constant (V))
       then
-         Set_Is_Decl_Output (V);
-
-      --  Otherwise, write the decl (which will mark it as done)
-
-      else
          Write_Decl (V);
       end if;
 

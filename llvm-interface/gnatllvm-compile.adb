@@ -668,7 +668,6 @@ package body GNATLLVM.Compile is
             end;
 
          when N_Freeze_Entity =>
-
             Process_Freeze_Entity (N);
             Emit_Decl_Lists (Actions (N));
 
@@ -1402,14 +1401,18 @@ package body GNATLLVM.Compile is
             --  subprograms that aren't intrinsic, so we not only test for
             --  intrinsic but for an N_Subprogram_Declaration, as opposed
             --  to, for example an N_Abstract_Subprogram_Declaration, which
-            --  we don't process.  We also have to test for protected
-            --  subprograms.
+            --  we don't process. We also have to test for protected
+            --  subprograms and finally ignore functions that return arrays
+            --  because they have been rewritten as procedures.
 
             if not Is_Intrinsic_Subprogram (E)
               and then Nkind (Parent (Decl)) = N_Subprogram_Declaration
               and then Convention (E) /= Convention_Protected
               and then No (Protected_Body_Subprogram (E))
               and then not Is_Eliminated (E)
+              and then not
+                (Ekind (Defining_Unit_Name (Decl)) = E_Function
+                  and then Rewritten_For_C (Defining_Unit_Name (Decl)))
             then
                Discard (Emit_Subprogram_Decl (Decl));
             end if;

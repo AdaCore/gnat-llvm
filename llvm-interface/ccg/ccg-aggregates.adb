@@ -189,10 +189,10 @@ package body CCG.Aggregates is
       while Present (F_Idx) loop
          declare
             FNI : Field_Name_Info renames Field_Name_Info_Table.Table (F_Idx);
-
          begin
             if No (FNI.T) then
                FNI.T := T;
+
                if Has_Name (T) then
                   TFM.Insert (FNI_Map, (T, FNI.F_Number), F_Idx);
                end if;
@@ -234,7 +234,6 @@ package body CCG.Aggregates is
       else
          return "ccg_field_" & Idx;
       end if;
-
    end Get_Field_Name;
 
    --------------------------
@@ -244,7 +243,6 @@ package body CCG.Aggregates is
    procedure Write_Struct_Typedef (T : Type_T) is
       Types : constant Nat := Count_Struct_Element_Types (T);
       S     : Str;
-
    begin
       --  Because this struct may contain a pointer to itself, we always have
       --  to write an incomplete struct. So we write, e.g.,
@@ -258,13 +256,14 @@ package body CCG.Aggregates is
 
       Write_Str ("typedef struct " & T & " " & T & ";" & Eol_Str);
       S := "struct " & T & " {" & Eol_Str;
+
       for J in 0 .. Types - 1 loop
          S := (S & "    " & Struct_Get_Type_At_Index (T, J) & " " &
                  Get_Field_Name (T, J) & ";" & Eol_Str);
       end loop;
 
       --  If this is an empty struct, we need to add a dummy field since
-      --  ISO C doesn't allow an empty struct.
+      --  ISO C89 doesn't allow an empty struct.
 
       if Types = 0 then
          S := S & "    char dummy_for_null_recordC; " & Eol_Str;
@@ -290,13 +289,12 @@ package body CCG.Aggregates is
    -- Value_Piece --
    -----------------
 
-   function Value_Piece (V : Value_T; T : in out Type_T; Idx : Nat) return Str
-   is
+   function Value_Piece
+     (V : Value_T; T : in out Type_T; Idx : Nat) return Str is
    begin
       return Result : Str do
          declare
             Ins_Idx : constant Nat := Get_Index (V, Idx);
-
          begin
             --  We know this is either a struct or an array
 
@@ -318,7 +316,6 @@ package body CCG.Aggregates is
    function Extract_Value_Instruction (V : Value_T; Op : Value_T) return Str is
       Idxs : constant Nat := Get_Num_Indices (V);
       T    : Type_T       := Type_Of (Op);
-
    begin
       return Result : Str := +Op do
 
@@ -328,7 +325,6 @@ package body CCG.Aggregates is
             Result := Result & Value_Piece (V, T, J);
          end loop;
       end return;
-
    end Extract_Value_Instruction;
 
    ------------------------------
@@ -365,7 +361,6 @@ package body CCG.Aggregates is
 
       pragma Assert (T = Type_Of (Op));
       Write_Copy (Acc, Op + Assign, T);
-
    end Insert_Value_Instruction;
 
    ---------------------
@@ -409,7 +404,6 @@ package body CCG.Aggregates is
       --  an array or struct.
 
       for Op of Ops (Ops'First + 2 .. Ops'Last) loop
-
          if Get_Type_Kind (Aggr_T) = Array_Type_Kind then
 
             --  If this isn't an LHS, we have to make it one
@@ -421,11 +415,12 @@ package body CCG.Aggregates is
             Result := Result & TP ("[#1]", Op) + Component;
             Aggr_T := Get_Element_Type (Aggr_T);
             Is_LHS := True;
+
          else
             pragma Assert (Get_Type_Kind (Aggr_T) = Struct_Type_Kind);
+
             declare
                Idx : constant Nat := Nat (Const_Int_Get_S_Ext_Value (Op));
-
             begin
                Result := Result & (if Is_LHS then "." else "->") + Component &
                  Get_Field_Name (Aggr_T, Idx);

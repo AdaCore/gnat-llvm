@@ -26,6 +26,30 @@ with CCG.Tables;       use CCG.Tables;
 
 package body CCG.Blocks is
 
+   function Is_Stub_Block (BB : Basic_Block_T) return Boolean
+     with Pre => Present (BB);
+   --  Return True iff BB is a block containing just an unconditional branch
+   --  possibly proceeded by one or more phi instructions. We'll never branch
+   --  to such a block.
+
+   -------------------
+   -- Is_Stub_Block --
+   -------------------
+
+   function Is_Stub_Block (BB : Basic_Block_T) return Boolean is
+      Inst : Value_T := Get_First_Instruction (BB);
+   begin
+      while Present (Inst)
+        and then (Get_Opcode (Inst) = Op_PHI
+                    or else (Get_Opcode (Inst) = Op_Br
+                               and then Nat'(Get_Num_Operands (Inst)) = 1))
+      loop
+         Inst := Get_Next_Instruction (Inst);
+      end loop;
+
+      return No (Inst);
+   end Is_Stub_Block;
+
    ---------------
    -- Output_BB --
    ---------------
@@ -44,15 +68,21 @@ package body CCG.Blocks is
       Terminator : constant Value_T := Get_Basic_Block_Terminator (BB);
 
    begin
-      --  If we already processed this basic block, mark that we did
+      --  If we already processed this basic block, do nothing
 
       if Get_Was_Output (BB) then
          return;
-      end if;
+
+      --  If this is a stub block and not the entry block, we don't
+      --  need to process it, but do need to process what it jumps to.
+
+      elsif Is_Stub_Block (BB) and then not Get_Is_Entry (BB) then
+         Output_BB (Get_Operand (Terminator, Nat (0)));
+         return;
 
       --  Otherwise, if this isn't the entry block, output a label for it
 
-      if not Get_Is_Entry (BB) then
+      elsif not Get_Is_Entry (BB) then
          Output_Stmt (BB & ":", Semicolon => False);
       end if;
 
@@ -92,9 +122,13 @@ package body CCG.Blocks is
    -- Output_Branch --
    -------------------
 
-   procedure Output_Branch (From, To : Value_T; Need_Block : Boolean) is
+   procedure Output_Branch
+     (From       : Value_T;
+      To         : Value_T;
+      Need_Block : Boolean := False;
+      Had_Phi    : Boolean := False) is
    begin
-      Output_Branch (From, Value_As_Basic_Block (To), Need_Block);
+      Output_Branch (From, Value_As_Basic_Block (To), Need_Block, Had_Phi);
    end Output_Branch;
 
    -------------------
@@ -102,11 +136,14 @@ package body CCG.Blocks is
    -------------------
 
    procedure Output_Branch
-     (From : Value_T; To : Basic_Block_T; Need_Block : Boolean)
+     (From       : Value_T;
+      To         : Basic_Block_T;
+      Need_Block : Boolean := False;
+      Had_Phi    : Boolean := False)
    is
-      Our_BB   : constant Basic_Block_T := Get_Instruction_Parent (From);
-      Had_Phi  : Boolean                := False;
-      Target_I : Value_T                := Get_First_Instruction (To);
+      Our_BB       : constant Basic_Block_T := Get_Instruction_Parent (From);
+      Our_Had_Phi  : Boolean                := Had_Phi;
+      Target_I     : Value_T                := Get_First_Instruction (To);
 
    begin
       --  Scan the start of the target block looking for Phi instructions
@@ -126,23 +163,32 @@ package body CCG.Blocks is
                end if;
             end loop;
 
-            if not Had_Phi and then Need_Block then
+            if not Our_Had_Phi and then Need_Block then
                Output_Stmt ("{", Semicolon => False);
             end if;
 
             Write_Copy (+Target_I, +Phi_Val, Type_Of (Phi_Val));
-            Had_Phi  := True;
-            Target_I := Get_Next_Instruction (Target_I);
+            Our_Had_Phi := True;
+            Target_I    := Get_Next_Instruction (Target_I);
          end;
       end loop;
 
-      --  Write the goto and, if we had a phi, close the block we opened
+      --  If we've hit an unconditional branch instruction, branch there
 
-      Output_Stmt ("goto " & To);
-      if Had_Phi and then Need_Block then
-         Output_Stmt ("}", Semicolon => False);
+      if Present (Target_I) and then Get_Opcode (Target_I) = Op_Br
+        and then Nat'(Get_Num_Operands (Target_I)) = 1
+      then
+         Output_Branch (Target_I, Get_Operand (Target_I, Nat (0)), Need_Block,
+                        Our_Had_Phi);
+      else
+         --  Otherwise, write the goto and, if we had a phi, close the
+         --  block we opened.
+
+         Output_Stmt ("goto " & To);
+         if Our_Had_Phi and then Need_Block then
+            Output_Stmt ("}", Semicolon => False);
+         end if;
       end if;
-
    end Output_Branch;
 
 end CCG.Blocks;

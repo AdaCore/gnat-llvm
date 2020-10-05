@@ -313,12 +313,12 @@ package body CCG.Instructions is
 
          when Op_Br =>
             if Ops'Length = 1 then
-               Output_Branch (V, Op1, False);
+               Output_Branch (V, Op1);
             else
                Output_Stmt (TP ("if (#1)", Op1) + Assign, Semicolon => False);
-               Output_Branch (V, Op3, True);
+               Output_Branch (V, Op3, Need_Block => True);
                Output_Stmt ("else", Semicolon => False);
-               Output_Branch (V, Op2, True);
+               Output_Branch (V, Op2, Need_Block => True);
             end if;
 
          when Op_PHI =>

@@ -88,21 +88,60 @@ package body CCG.Output is
    procedure Write_C_Name (S : String) is
       Append_Suffix : Boolean := False;
    begin
-      --  We assume here that the only character we have to be concerned
-      --  about is ".", which we remap to "_" and append a unique suffix,
-      --  "C".
+      --  First check for C predefined types and keywords. Note that we do not
+      --  need to check C keywords which are also Ada reserved words since
+      --  (if present) they were rejected by the Ada front end.
+      --  Those keywords are: case do else for goto if return while.
+      --  In this case, append an _ at the end of the name.
 
-      for C of S loop
-         if C = '.' then
-            Append_Suffix := True;
-            Write_Char ('_');
-         else
-            Write_Char (C);
-         end if;
-      end loop;
+      if S = "auto"
+        or else S = "bool"
+        or else S = "break"
+        or else S = "char"
+        or else S = "const"
+        or else S = "continue"
+        or else S = "default"
+        or else S = "double"
+        or else S = "enum"
+        or else S = "extern"
+        or else S = "float"
+        or else S = "int"
+        or else S = "long"
+        or else S = "register"
+        or else S = "short"
+        or else S = "signed"
+        or else S = "sizeof"
+        or else S = "static"
+        or else S = "struct"
+        or else S = "switch"
+        or else S = "typedef"
+        or else S = "union"
+        or else S = "unsigned"
+        or else S = "void"
+        or else S = "volatile"
+      then
+         Write_Str (S);
+         Append_Suffix := True;
+      else
+
+         --  We assume here that the only character we have to be concerned
+         --  about is ".", which we remap to "_".
+
+         for C of S loop
+            if C = '.' then
+               Append_Suffix := True;
+               Write_Char ('_');
+            else
+               Write_Char (C);
+            end if;
+         end loop;
+      end if;
+
+      --  If needed, append also an "_" to make a name unique wrt Ada
+      --  identifiers.
 
       if Append_Suffix then
-         Write_Char ('C');
+         Write_Char ('_');
       end if;
    end Write_C_Name;
 

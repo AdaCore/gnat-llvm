@@ -25,7 +25,6 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
-with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Aggregates is
@@ -337,17 +336,14 @@ package body CCG.Aggregates is
       Acc  : Str          := +V;
 
    begin
-      --  If Aggr is undef, we don't need to do any copy. If this is Aggr's
-      --  only use, we can set our value to it. Otherwise, we first copy it
-      --  to the result variable.
+      --  If Aggr is undef, we don't need to do any copy. Otherwise, we
+      --  first copy it to the result variable.
 
+      Maybe_Decl (V);
       if Is_Undef (Aggr) then
          null;
-      elsif Num_Uses (Aggr) = 1 then
-         Set_C_Value (V, +Aggr);
       else
-         Maybe_Decl (V);
-         Output_Stmt (TP ("#1 = #2", V, Aggr));
+         Write_Copy (+V, +Aggr, T);
       end if;
 
       --  Next we generate the string that represents the access of this

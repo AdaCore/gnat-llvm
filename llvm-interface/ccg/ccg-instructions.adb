@@ -283,8 +283,8 @@ package body CCG.Instructions is
             Call_Instruction (V, Ops);
 
          when Op_Alloca =>
-            if Get_Is_Entry (Get_Instruction_Parent (V))
-              and then Is_A_Constant_Int (Op1) and then Equals_Int (Op1, 1)
+            if Is_Entry_Block (V) and then Is_A_Constant_Int (Op1)
+              and then Equals_Int (Op1, 1)
             then
                Set_Is_Variable (V);
                Write_Decl (V);

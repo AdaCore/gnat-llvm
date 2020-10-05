@@ -248,11 +248,10 @@ package body CCG.Subprograms is
         Function_Proto (V, Extern => True) & ";" & Eol_Str);
 
       --  If there is an entry basic block, start a new function and
-      --  output, starting from that block.
+      --  output it, starting from that block.
 
       if Present (First_BB) then
          New_Subprogram (V);
-         Set_Is_Entry (Get_Entry_Basic_Block (V));
          Output_BB (Get_Entry_Basic_Block (V));
       end if;
 

@@ -17,8 +17,6 @@
 
 with Interfaces.C; use Interfaces.C;
 
-with LLVM.Core;  use LLVM.Core;
-
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;
@@ -76,13 +74,13 @@ package body CCG.Blocks is
       --  If this is a stub block and not the entry block, we don't
       --  need to process it, but do need to process what it jumps to.
 
-      elsif Is_Stub_Block (BB) and then not Get_Is_Entry (BB) then
+      elsif Is_Stub_Block (BB) and then not Is_Entry_Block (BB) then
          Output_BB (Get_Operand (Terminator, Nat (0)));
          return;
 
       --  Otherwise, if this isn't the entry block, output a label for it
 
-      elsif not Get_Is_Entry (BB) then
+      elsif not Is_Entry_Block (BB) then
          Output_Stmt (BB & ":", Semicolon => False);
       end if;
 

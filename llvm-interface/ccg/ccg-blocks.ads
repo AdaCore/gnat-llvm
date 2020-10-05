@@ -17,11 +17,23 @@
 
 with GNATLLVM; use GNATLLVM;
 
+with LLVM.Core; use LLVM.Core;
+
 with CCG.Helper; use CCG.Helper;
 
 package CCG.Blocks is
 
    --  This package contains subprograms used in the handling of blocks
+
+   function Is_Entry_Block (BB : Basic_Block_T) return Boolean is
+     (Get_Entry_Basic_Block (Get_Basic_Block_Parent (BB)) = BB)
+     with Pre => Present (BB);
+   function Is_Entry_Block (V : Value_T) return Boolean is
+     ((if   Is_A_Basic_Block (V) then Is_Entry_Block (Value_As_Basic_Block (V))
+       else Is_Entry_Block (Get_Instruction_Parent (V))))
+     with Pre => Is_A_Basic_Block (V) or else Is_A_Instruction (V);
+   --  Determine whether something is the entry block or an instruction
+   --  within the entry block
 
    procedure Output_BB (BB : Basic_Block_T)
      with Pre => Present (BB);

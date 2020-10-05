@@ -91,9 +91,6 @@ package body CCG.Tables is
    end record;
 
    type BB_Data is record
-      Is_Entry   : Boolean;
-      --  True if this is the entry basic block for some function
-
       Was_Output : Boolean;
       --  True if this basic block has already been output
 
@@ -1215,8 +1212,7 @@ package body CCG.Tables is
       elsif not Create then
          return No_BB_Idx;
       else
-         BB_Data_Table.Append ((Is_Entry   => False,
-                                Was_Output => False,
+         BB_Data_Table.Append ((Was_Output => False,
                                 No_Name    => False,
                                 Output_Idx => 0));
          Insert (BB_Data_Map, B, BB_Data_Table.Last);
@@ -1340,17 +1336,6 @@ package body CCG.Tables is
       Type_Data_Table.Table (Idx).Is_Typedef_Output := B;
    end Set_Is_Typedef_Output;
 
-   ------------------
-   -- Get_Is_Entry --
-   ------------------
-
-   function Get_Is_Entry (BB : Basic_Block_T) return Boolean is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => False);
-
-   begin
-      return Present (Idx) and then BB_Data_Table.Table (Idx).Is_Entry;
-   end Get_Is_Entry;
-
    --------------------
    -- Get_Was_Output --
    --------------------
@@ -1372,17 +1357,6 @@ package body CCG.Tables is
    begin
       return Present (Idx) and then BB_Data_Table.Table (Idx).No_Name;
    end Get_No_Name;
-
-   ------------------
-   -- Set_Is_Entry --
-   ------------------
-
-   procedure Set_Is_Entry (BB : Basic_Block_T; B : Boolean := True) is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
-
-   begin
-      BB_Data_Table.Table (Idx).Is_Entry := B;
-   end Set_Is_Entry;
 
    -----------------
    -- Set_No_Name --

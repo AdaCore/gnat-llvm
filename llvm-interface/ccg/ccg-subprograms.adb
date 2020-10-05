@@ -231,12 +231,12 @@ package body CCG.Subprograms is
          return;
 
       --  We also don't emit declarations for C functions that are
-      --  defined in string.h.
+      --  defined in string.h or stdlib.h
       --  ??? Exactly how to get that list is far from clear, but let's
       --  approximate for now.
 
       elsif S = "memcpy" or else S = "memmove" or else S = "memset"
-        or else S = "memcmp"
+        or else S = "memcmp" or else S = "malloc" or else S = "free"
       then
          return;
       end if;

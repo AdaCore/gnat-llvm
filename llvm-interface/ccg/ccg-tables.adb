@@ -249,14 +249,16 @@ package body CCG.Tables is
             return False;
          end if;
 
-         --  Otherwise, we compare each type differently.  For strings, we
-         --  operate one character at a time.  If the current character
-         --  differs, the strings are different.  Otherwise, advance to the
+         --  Otherwise, we compare each type differently. For strings, we
+         --  operate one character at a time. If the current character
+         --  differs, the strings are different. Otherwise, advance to the
          --  next character, stepping to the next component if necessary.
+         --  The string kind also must agree (and we unnecessarily check it
+         --  every character for simplicity).
 
          if SL.Comps (PosL).Kind = Var_String then
-            if SL.Comps (PosL).Str (CharL) /=
-              SR.Comps (PosR).Str (CharR)
+            if SL.Comps (PosL).Str (CharL) /= SR.Comps (PosR).Str (CharR)
+              or else SL.Comps (PosL).S_Kind /= SR.Comps (PosR).S_Kind
             then
                return False;
             else
@@ -344,7 +346,7 @@ package body CCG.Tables is
       if S'Length <= Str_Max then
          declare
             S_Rec : aliased constant Str_Record (1) :=
-              (1, Unknown, (1 => (Var_String, S'Length, S)));
+              (1, Unknown, (1 => (Var_String, S'Length, Normal, S)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -364,7 +366,7 @@ package body CCG.Tables is
                   Count : constant Integer := Integer'Min (To_Do, Str_Max);
 
                begin
-                  S_Rec.Comps (O_Pos) := (Var_String, Count,
+                  S_Rec.Comps (O_Pos) := (Var_String, Count, Normal,
                                           S (I_Pos .. I_Pos + Count - 1));
                   I_Pos := I_Pos + Count;
                   To_Do := To_Do - Count;
@@ -408,12 +410,27 @@ package body CCG.Tables is
    -- "+" --
    ---------
 
+   function "+" (S : String; K : String_Kind) return Str is
+      Orig   : constant Str := +S;
+      S_Rec  : aliased Str_Record := Orig.all;
+      Result : Str;
+
+   begin
+      S_Rec.Comps (1).S_Kind := K;
+      Result := Undup_Str (S_Rec);
+      return Result;
+   end "+";
+
+   ---------
+   -- "+" --
+   ---------
+
    function "+" (S : String; P : Precedence) return Str is
    begin
       if S'Length <= Str_Max then
          declare
             S_Rec  : aliased constant Str_Record (1) :=
-              (1, P, (1 => (Var_String, S'Length, S)));
+              (1, P, (1 => (Var_String, S'Length, Normal, S)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -488,6 +505,8 @@ package body CCG.Tables is
             when Var_String =>
                if Comp.Str = Eol_Str then
                   Write_Eol;
+               elsif Comp.S_Kind = Name then
+                  Write_C_Name (Comp.Str);
                else
                   Write_Str (Comp.Str);
                end if;
@@ -532,7 +551,8 @@ package body CCG.Tables is
          declare
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown,
-               (1 => (Var_String, L'Length, L), 2 => (Value, 1, R, Normal)));
+               (1 => (Var_String, L'Length, Normal, L),
+                2 => (Value, 1, R, Normal)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -555,7 +575,7 @@ package body CCG.Tables is
          declare
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown,
-               (1 => (Var_String, L'Length, L), 2 => (Typ, 1, R)));
+               (1 => (Var_String, L'Length, Normal, L), 2 => (Typ, 1, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -579,7 +599,7 @@ package body CCG.Tables is
          declare
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown,
-               (1 => (Var_String, L'Length, L), 2 => (BB, 1, R)));
+               (1 => (Var_String, L'Length, Normal, L), 2 => (BB, 1, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -602,7 +622,7 @@ package body CCG.Tables is
          declare
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown,
-               (1 => (Var_String, L'Length, L), 2 => (Number, 1, R)));
+               (1 => (Var_String, L'Length, Normal, L), 2 => (Number, 1, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -627,8 +647,8 @@ package body CCG.Tables is
             Result : Str;
 
          begin
-            S_Rec.P                         := R.P;
-            S_Rec.Comps (1)                 := (Var_String, L'Length, L);
+            S_Rec.P         := R.P;
+            S_Rec.Comps (1) := (Var_String, L'Length, Normal, L);
             S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
             Result := Undup_Str (S_Rec);
             return Result;
@@ -650,7 +670,8 @@ package body CCG.Tables is
          declare
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Primary,
-               (1 => (Value, 1, L, Normal), 2 => (Var_String, R'Length, R)));
+               (1 => (Value, 1, L, Normal),
+                2 => (Var_String, R'Length, Normal, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -672,7 +693,8 @@ package body CCG.Tables is
       elsif R'Length <= Str_Max then
          declare
             S_Rec  : aliased constant Str_Record (2) :=
-              (2, Unknown, (1 => (Typ, 1, L), 2 => (Var_String, R'Length, R)));
+              (2, Unknown, (1 => (Typ, 1, L),
+                            2 => (Var_String, R'Length, Normal, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -695,7 +717,8 @@ package body CCG.Tables is
       elsif R'Length <= Str_Max then
          declare
             S_Rec  : aliased constant Str_Record (2) :=
-              (2, Unknown, (1 => (BB, 1, L), 2 => (Var_String, R'Length, R)));
+              (2, Unknown, (1 => (BB, 1, L),
+                            2 => (Var_String, R'Length, Normal, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -723,7 +746,7 @@ package body CCG.Tables is
          begin
             S_Rec.P                     := L.P;
             S_Rec.Comps (1 .. L.Length) := L.Comps;
-            S_Rec.Comps (L.Length + 1)  := (Var_String, R'Length, R);
+            S_Rec.Comps (L.Length + 1)  := (Var_String, R'Length, Normal, R);
             Result := Undup_Str (S_Rec);
             return Result;
          end;

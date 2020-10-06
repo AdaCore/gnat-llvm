@@ -35,6 +35,10 @@ package CCG.Output is
      with Pre => Present (BB);
    --  Write the name of a value, type, or basic block
 
+   procedure Write_C_Name (S : String)
+     with Pre => S'Length > 0;
+   --  Write S as a valid name in C
+
    procedure Maybe_Decl (V : Value_T; For_Initializer : Boolean := False)
      with Pre => Present (V);
    --  See if we need to write a declaration for V and write one if so.

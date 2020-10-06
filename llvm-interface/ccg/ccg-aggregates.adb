@@ -225,7 +225,7 @@ package body CCG.Aggregates is
       --  anyway.
 
       if Present (FNI.Name) then
-         return +Get_Name_String (FNI.Name);
+         return Get_Name_String (FNI.Name) + Name;
       elsif FNI.Is_Padding then
          return "ccg_pad_" & Idx;
       elsif FNI.Is_Bitfield then

@@ -38,10 +38,6 @@ package body CCG.Output is
    --  ??? Strings are also simple constants, but we don't support them just
    --  yet.
 
-   procedure Write_C_Name (S : String)
-     with Pre => S'Length > 0;
-   --  Write S as a valid name in C
-
    procedure Write_Value_Name (V : Value_T)
      with Pre => Present (V);
    --  Write the value name of V, which is either the LLVM name or a name

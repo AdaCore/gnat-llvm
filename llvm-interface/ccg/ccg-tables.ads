@@ -90,6 +90,13 @@ package CCG.Tables is
    function "+" (V : Value_T; K : Value_Kind) return Str
      with Pre => Present (V);
 
+   type String_Kind is (Normal, Name);
+   --  A string can either be a literal string or a name, in which case we
+   --  have to ensure that it's valid for C.
+
+   function "+" (S : String; K : String_Kind) return Str
+     with Post => Present ("+"'Result);
+
    function "+" (S : String)        return Str
      with Post => Present ("+"'Result);
    function "+" (V : Value_T)       return Str
@@ -302,6 +309,7 @@ private
    is record
       case Kind is
          when Var_String =>
+            S_Kind : String_Kind;
             Str    : String (1 .. Length);
 
          when Value =>

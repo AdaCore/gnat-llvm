@@ -314,4 +314,8 @@ package GNATLLVM.Wrapper is
    function Get_Num_CDA_Elements (V : Value_T) return unsigned
      with Import, Convention => C, External_Name => "Get_Num_CDA_Elements";
 
+   function Convert_FP_To_String
+     (V : Value_T; Buffer : out String) return Integer
+     with Import, Convention => C, External_Name => "Convert_FP_To_String";
+
 end GNATLLVM.Wrapper;

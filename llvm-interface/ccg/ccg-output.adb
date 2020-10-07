@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Get_Targ; use Get_Targ;
+
 with Output; use Output;
 
 with LLVM.Core; use LLVM.Core;
@@ -272,14 +274,19 @@ package body CCG.Output is
    begin
       if Is_A_Constant_Int (V) then
          declare
-            Val : constant LLI := Const_Int_Get_S_Ext_Value (V);
-         begin
-            --  ??? Also need to emit proper U/L/LL markers
+            Width : constant Int := Int (Get_Int_Type_Width (Type_Of (V)));
+            Val   : constant LLI := Const_Int_Get_S_Ext_Value (V);
+            Image : constant String := Val'Image;
 
-            if Val in LLI (Int'First) .. LLI (Int'Last) then
-               Write_Int (Int (Val));
-            else
-               Write_Str (Val'Image);
+         begin
+            --  ??? Should we emit some numbers as unsigned (U)
+
+            Write_Str (Image ((if Val < 0 then 1 else 2) .. Image'Last));
+
+            if Width = Get_Long_Long_Size then
+               Write_Str ("LL");
+            elsif Width > Get_Int_Size then
+               Write_Str ("L");
             end if;
          end;
 

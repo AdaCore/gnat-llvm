@@ -273,7 +273,6 @@ package body CCG.Output is
       if Is_A_Constant_Int (V) then
          declare
             Val : constant LLI := Const_Int_Get_S_Ext_Value (V);
-
          begin
             --  ??? Also need to emit proper U/L/LL markers
 
@@ -286,18 +285,18 @@ package body CCG.Output is
 
       elsif Is_A_Constant_FP (V) then
          declare
-            Loses_Info : Boolean;
-         begin
-            --  ??? It's not clear that 'Image will always do the right thing
-            --  in terms of writing the proper format for a C constant,
-            --  but it's at least good enough to start with and there's no
-            --  obvious other mechanism.
-            --  See Cprint.Write_Real_Number_Col_Check for inspiration on what
-            --  we can do.
-            --  ??? Also need to emit F/L markers
+            function Convert_FP_To_String
+              (V : Value_T; Buffer : out String) return Integer
+            with Import,
+                 Convention => C,
+                 External_Name => "Convert_FP_To_String";
 
-            Write_Str
-              (Double'Image (Const_Real_Get_Double (V, Loses_Info)));
+            Buffer       : String (1 .. 128);
+            Len          : Natural;
+
+         begin
+            Len := Convert_FP_To_String (V, Buffer);
+            Write_Str (Buffer (1 .. Len));
          end;
 
       --  For a struct or array, write the values individually

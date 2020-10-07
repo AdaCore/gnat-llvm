@@ -578,6 +578,33 @@ Pred_FP (LLVMContext *Context, Type *T, Value *Val)
 }
 
 extern "C"
+int
+Convert_FP_To_String (Value *V, char *Buf)
+{
+  const APFloat &APF = dyn_cast<ConstantFP>(V)->getValueAPF();
+  if (&APF.getSemantics() == &APFloat::IEEEsingle() ||
+      &APF.getSemantics() == &APFloat::IEEEdouble()) {
+    if (!APF.isInfinity() && !APF.isNaN()) {
+      SmallString<128> StrVal;
+      APF.toString(StrVal, 0, 0, false);
+
+      if (&APF.getSemantics() == &APFloat::IEEEsingle())
+        StrVal += "f";
+
+      strcpy (Buf, StrVal.c_str());
+      return strlen (Buf);
+    }
+    // Output special values in hexadecimal format
+    std::string S =
+      "0x" + utohexstr(APF.bitcastToAPInt().getZExtValue(), /*Lower=*/true) +
+      "p0";
+    std::strcpy (Buf, S.c_str());
+    return S.length();
+  }
+  return strlen (strcpy (Buf, "<unsupported floating point type>"));
+}
+
+extern "C"
 bool
 Equals_Int (ConstantInt *v, uint64_t val)
 {

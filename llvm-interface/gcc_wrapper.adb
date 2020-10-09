@@ -163,12 +163,13 @@ begin
          Arg  : constant String := Argument (J);
       begin
          if Arg'Length > 0 and then Arg (1) /= '-' then
-            if (Arg'Length > 2
-                and then Arg (Arg'Last - 1 .. Arg'Last) = ".c")
-              or else (Arg'Length > 3
-                       and then Arg (Arg'Last - 2 .. Arg'Last) = ".cc")
-              or else (Arg'Length > 4
-                       and then Arg (Arg'Last - 3 .. Arg'Last) = ".cpp")
+            if ((Arg'Length > 2
+                  and then Arg (Arg'Last - 1 .. Arg'Last) = ".c")
+                or else (Arg'Length > 3
+                          and then Arg (Arg'Last - 2 .. Arg'Last) = ".cc")
+                or else (Arg'Length > 4
+                          and then Arg (Arg'Last - 3 .. Arg'Last) = ".cpp"))
+              and then (J = Args'First or else Argument (J - 1) /= "-o")
             then
                Compile_With_Clang := True;
                Compile_Ada := False;

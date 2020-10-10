@@ -572,7 +572,16 @@ package body CCG.Output is
             end;
 
          when Pointer_Type_Kind =>
-            Write_Str (Get_Element_Type (T) & " *");
+
+            --  There's no such thing in C as a function type, only a pointer
+            --  to function type.  So we special-case that.
+
+            if Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind then
+               Write_Str ("ccg_f");
+               Write_Int (Get_Output_Idx (T));
+            else
+               Write_Str (Get_Element_Type (T) & " *");
+            end if;
 
          when Struct_Type_Kind =>
             if Has_Name (T) then
@@ -602,6 +611,10 @@ package body CCG.Output is
          Write_Struct_Typedef (T);
       elsif Get_Type_Kind (T) = Array_Type_Kind then
          Write_Array_Typedef (T);
+      elsif Get_Type_Kind (T) = Pointer_Type_Kind
+        and then Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind
+      then
+         Write_Function_Type_Typedef (T);
       end if;
 
    end Write_Typedef;

@@ -143,6 +143,18 @@ package body CCG.Subprograms is
                                 Last_Stmt  => No_Stmt_Idx));
    end New_Subprogram;
 
+   ---------------------------------
+   -- Write_Function_Type_Typedef --
+   ---------------------------------
+
+   procedure Write_Function_Type_Typedef (T : Type_T) is
+      Fn_T : constant Type_T := Get_Element_Type (T);
+
+   begin
+      Write_Str ("typedef " & Function_Proto (Fn_T, "(*" & T & ")") & ";",
+                 Eol => True);
+   end Write_Function_Type_Typedef;
+
    --------------------
    -- Function_Proto --
    --------------------

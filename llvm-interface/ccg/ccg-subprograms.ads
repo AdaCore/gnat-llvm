@@ -56,6 +56,10 @@ package CCG.Subprograms is
    procedure Write_Subprograms;
    --  Write all the decls and statements for all subprograms
 
+   procedure Declare_Subprogram (V : Value_T)
+     with Pre => Is_A_Function (V);
+   --  Write a declaration for subprogram V
+
    procedure Generate_C_For_Subprogram (V : Value_T)
      with Pre => Is_A_Function (V);
    --  Generate the C statements and decls for V, a function

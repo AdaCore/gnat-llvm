@@ -54,8 +54,8 @@ package body CCG is
    ------------------
 
    procedure Write_C_Code (Module : Module_T) is
-      Func : Value_T := Get_First_Function (Module);
-      Glob : Value_T := Get_First_Global (Module);
+      Func : Value_T;
+      Glob : Value_T;
 
    begin
       --  If we're not writing to standard output, open the .c file
@@ -75,8 +75,18 @@ package body CCG is
       Write_Eol;
       Write_Eol;
 
+      --  Declare all functions first, since they may be referenced in
+      --  globals.
+
+      Func := Get_First_Function (Module);
+      while Present (Func) loop
+         Declare_Subprogram (Func);
+         Func := Get_Next_Function (Func);
+      end loop;
+
       --  Write out declarations for all globals with initializers
 
+      Glob := Get_First_Global (Module);
       while Present (Glob) loop
          if Present (Get_Initializer (Glob)) then
             Write_Decl (Glob);
@@ -88,6 +98,7 @@ package body CCG is
       --  Process all functions, writing globals and typedefs on the fly
       --  and queueing the rest for later output.
 
+      Func := Get_First_Function (Module);
       while Present (Func) loop
          Generate_C_For_Subprogram (Func);
          Func := Get_Next_Function (Func);

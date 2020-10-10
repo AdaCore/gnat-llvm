@@ -226,28 +226,24 @@ package body CCG.Subprograms is
 
    end Function_Proto;
 
-   -------------------------------
-   -- Generate_C_For_Subprogram --
-   -------------------------------
+   ------------------------
+   -- Declare_Subprogram --
+   ------------------------
 
-   procedure Generate_C_For_Subprogram (V : Value_T) is
-      First_BB : constant Basic_Block_T := Get_First_Basic_Block (V);
+   procedure Declare_Subprogram (V : Value_T) is
       S        : constant String        := Get_Value_Name (V);
 
    begin
       --  Ignore LLVM builtin functions. The most we can have is a declaration
       --  but we don't want them to be emitted: we either handle or don't
-      --  handle the builtin, but will never actually call it.
-
-      if Is_Builtin_Name (S) then
-         return;
-
-      --  We also don't emit declarations for C functions that are
-      --  defined in string.h or stdlib.h
+      --  handle the builtin, but will never actually call it. We also don't
+      --  emit declarations for C functions that are defined in string.h or
+      --  stdlib.h.
       --  ??? Exactly how to get that list is far from clear, but let's
       --  approximate for now.
 
-      elsif S = "memcpy" or else S = "memmove" or else S = "memset"
+      if Is_Builtin_Name (S)
+        or else S = "memcpy" or else S = "memmove" or else S = "memset"
         or else S = "memcmp" or else S = "malloc" or else S = "free"
       then
          return;
@@ -256,13 +252,21 @@ package body CCG.Subprograms is
       --  Otherwise, write the definition of this function. If it has no
       --  basic blocks, it must be an extern.
 
-      Write_Str ((if No (First_BB) then "extern " else "") &
+      Write_Str ((if No (Get_First_Basic_Block (V)) then "extern " else "") &
         Function_Proto (V, Extern => True) & ";" & Eol_Str);
 
+   end Declare_Subprogram;
+
+   -------------------------------
+   -- Generate_C_For_Subprogram --
+   -------------------------------
+
+   procedure Generate_C_For_Subprogram (V : Value_T) is
+   begin
       --  If there is an entry basic block, start a new function and
       --  output it, starting from that block.
 
-      if Present (First_BB) then
+      if Present (Get_First_Basic_Block (V)) then
          New_Subprogram (V);
          Output_BB (Get_Entry_Basic_Block (V));
       end if;

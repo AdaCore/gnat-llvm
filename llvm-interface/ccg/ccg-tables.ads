@@ -69,26 +69,42 @@ package CCG.Tables is
    --  versa. We also have to know when an LLVM value is used as the
    --  initializer of a variable because if it's an aggregate constant,
    --  that's the only case where we can (and must) use the value of that
-   --  constant. We define a Value_Kind to distinguish between these case
-   --  and use the "+" operator to assign a non-default kind to a value.
+   --  constant.
+   --
+   --  We define Value_Flag values to denote an attribute of a use of
+   --  a value and use the "+" operator to add that attribute to the use of a
+   --  value. This is stored in a Value_Flags record in the Str that we
+   --  create. We need to provide a default value for the record and map
+   --  a single flag ito a record with that flag set.
 
-   type Value_Kind is
-     (Normal,
-      --  The default, which indicates that the value is to be interpreted
-      --  as it would be in the LLVM IR, whether that's an address or the
-      --  value data.
-
-      Value_Name,
-      --  Always represent this value as a name. This is the case for the
-      --  address operand of a load or store instruction and when we use
-      --  the name in a declaration.
+   type Value_Flag is
+     (LHS,
+      --  We can accept an LHS in the context where an address would normally
+      --  be provided. If this flag is not present in the reference, we'll
+      --  take the address of the value.
 
       Initializer);
       --  If this is a constant, always output the value of the constant,
-      --  even if it's an aggregate constant.
+      --  instead of its name, even if it's an aggregate constant.
 
-   function "+" (V : Value_T; K : Value_Kind) return Str
+   type Value_Flags is record
+      LHS         : Boolean;
+      Initializer : Boolean;
+   end record;
+
+   function "or" (X, Y : Value_Flags) return Value_Flags is
+     (LHS => X.LHS or Y.LHS, Initializer => X.Initializer or Y.Initializer);
+
+   type Flag_Array is array (Value_Flag) of Value_Flags;
+
+   Default_Flags : constant Value_Flags := (False, False);
+   Flag_To_Flags : constant Flag_Array :=
+     (LHS => (True, False), Initializer => (False, True));
+
+   function "+" (V : Value_T; VF : Value_Flag) return Str
      with Pre => Present (V);
+   function "+" (S : Str; VF : Value_Flag) return Str
+     with Pre => Present (S);
 
    type String_Kind is (Normal, Name);
    --  A string can either be a literal string or a name, in which case we
@@ -314,7 +330,7 @@ private
 
          when Value =>
             Val    : Value_T;
-            V_Kind : Value_Kind;
+            Flags  : Value_Flags;
 
          when Typ =>
             T      :  Type_T;

@@ -53,7 +53,9 @@ package body CCG.Output is
    --  precedence than P.
 
    procedure Write_Constant_Value
-     (V : Value_T; For_Precedence : Precedence := Primary)
+     (V              : Value_T;
+      Flags          : Value_Flags := Default_Flags;
+      For_Precedence : Precedence  := Primary)
      with Pre => Is_A_Constant (V);
    --  Write the constant value of V, optionally specifying a preference of
    --  the expression that it's part of.
@@ -270,14 +272,16 @@ package body CCG.Output is
    --------------------------
 
    procedure Write_Constant_Value
-     (V : Value_T; For_Precedence : Precedence := Primary)
+     (V              : Value_T;
+      Flags          : Value_Flags := Default_Flags;
+      For_Precedence : Precedence  := Primary)
    is
       subtype LLI is Long_Long_Integer;
    begin
       if Is_A_Constant_Int (V) then
          declare
-            Width : constant Int := Int (Get_Int_Type_Width (Type_Of (V)));
-            Val   : constant LLI := Const_Int_Get_S_Ext_Value (V);
+            Width : constant Int    := Int (Get_Int_Type_Width (Type_Of (V)));
+            Val   : constant LLI    := Const_Int_Get_S_Ext_Value (V);
             Image : constant String := Val'Image;
 
          begin
@@ -308,7 +312,7 @@ package body CCG.Output is
          Write_Str ("{");
          for J in 0 .. Nat'(Get_Num_Operands (V)) - 1 loop
             Maybe_Write_Comma (J);
-            Write_Value (Get_Operand (V, J), Kind => Initializer);
+            Write_Value (Get_Operand (V, J), Flags => Flags);
          end loop;
 
          --  If this is a zero-length array or struct, add an extra item
@@ -367,8 +371,8 @@ package body CCG.Output is
 
    procedure Write_Value
      (V              : Value_T;
-      Kind           : Value_Kind := Normal;
-      For_Precedence : Precedence := Primary)
+      Flags          : Value_Flags := Default_Flags;
+      For_Precedence : Precedence  := Primary)
    is
       C_Value : constant Str := Get_C_Value (V);
 
@@ -377,7 +381,7 @@ package body CCG.Output is
       --  its address. However, in C the name of an array is its address,
       --  so we can omit it in that case.
 
-      if Kind in Normal | Initializer and then Get_Is_Variable (V) then
+      if not Flags.LHS and then Get_Is_Variable (V) then
          if Get_Type_Kind (Type_Of (V)) /= Array_Type_Kind then
             Write_Str ("&");
          end if;
@@ -393,9 +397,10 @@ package body CCG.Output is
       --  initializer, write the constant.
 
       elsif Is_Simple_Constant (V)
-        or else (Kind = Initializer and then Is_A_Constant (V))
+        or else (Flags.Initializer and then Is_A_Constant (V))
       then
-         Write_Constant_Value (V, For_Precedence => For_Precedence);
+         Write_Constant_Value (V, Flags => Flags,
+                               For_Precedence => For_Precedence);
 
       --  Otherwise, write the name
 
@@ -471,7 +476,7 @@ package body CCG.Output is
             Typ  : constant Type_T :=
               (if   Get_Is_Variable (V) then Get_Element_Type (Type_Of (V))
                else Type_Of (V));
-            Decl : Str             := Typ & " " & (V + Value_Name);
+            Decl : Str             := Typ & " " & (V + LHS);
 
          begin
             --  For globals, we write the decl immediately. Otherwise, it's

@@ -390,7 +390,7 @@ package body CCG.Aggregates is
       if Is_A_Constant_Int (Ops (Ops'First + 1))
         and then Equals_Int (Ops (Ops'First + 1), 0)
       then
-         Result := Aggr + Value_Name + Component;
+         Result := Aggr + LHS + Component;
       else
          Result := TP ("#1[#2]", Aggr, Ops (Ops'First + 1)) + Component;
          Is_LHS := True;

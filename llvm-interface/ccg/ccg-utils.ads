@@ -40,11 +40,11 @@ package CCG.Utils is
      with Pre => Present (Op1), Post => Present (TP'Result);
    --  This provides a simple template facility for insertion of operands.
    --  Every character up to '#' in S is placed in Str. '#' is followed
-   --  optionally by an 'B', 'N', 'I', 'A', or 'D' and then by a number or
+   --  optionally by an 'B', 'L', 'I', 'A', or 'D' and then by a number or
    --  'T'. The operand of that number (or the value of T, if 'T' was
    --  given) is inserted into Str at that point. If 'B' is present, the
-   --  operand is interpreted as a basic block. If 'N' is present, then we
-   --  want the operand always written as a name. If 'I' is present, this
+   --  operand is interpreted as a basic block. If 'L' is present, then we
+   --  want the operand always written as a LHS. If 'I' is present, this
    --  is for the context of an initializer. If 'A' is present, we take the
    --  address of the operand and deference it if 'D' is present. If
    --  Is_Unsigned is True, put "unsigned " before the type.
@@ -101,6 +101,9 @@ package CCG.Utils is
 
    procedure Update_Hash (H : in out Hash_Type; S : String)      with Inline;
    --  Update H taking into account the characters in S
+
+   procedure Update_Hash (H : in out Hash_Type; B : Boolean)      with Inline;
+   --  Update H taking into account the value of B
 
    procedure Update_Hash (H : in out Hash_Type; V : Value_T)
      with Pre => Present (V), Inline;

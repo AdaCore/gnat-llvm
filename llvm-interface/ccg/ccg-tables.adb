@@ -37,6 +37,10 @@ package body CCG.Tables is
    --  Given an array of string components or an access to it (how we denote
    --  strings, return its hash value.
 
+   procedure Update_Hash (H : in out Hash_Type; Flags : Value_Flags)
+     with Inline;
+   --  Update the hash key from Flags
+
    package Str_Sets is new Ada.Containers.Hashed_Sets
      (Element_Type => Str,
       Hash         => Hash,
@@ -177,6 +181,16 @@ package body CCG.Tables is
      with Pre => Present (T), Post => Get_Is_Typedef_Output (T);
    --  See if we need to write a typedef for T and write one if so
 
+   -----------------
+   -- Update_Hash --
+   -----------------
+
+   procedure Update_Hash (H : in out Hash_Type; Flags : Value_Flags) is
+   begin
+      Update_Hash (H, Flags.LHS);
+      Update_Hash (H, Flags.Initializer);
+   end Update_Hash;
+
    ----------
    -- Hash --
    ----------
@@ -195,7 +209,7 @@ package body CCG.Tables is
                      Update_Hash (H, Comp.Str);
                   when Value =>
                      Update_Hash (H, Comp.Val);
-                     Update_Hash (H, Hash_Type (Value_Kind'Pos (Comp.V_Kind)));
+                     Update_Hash (H, Comp.Flags);
                   when Typ =>
                      Update_Hash (H, Comp.T);
                   when BB =>
@@ -285,7 +299,7 @@ package body CCG.Tables is
 
                when Value =>
                   if SL.Comps (PosL).Val /= SR.Comps (PosR).Val
-                    or else SL.Comps (PosL).V_Kind /= SR.Comps (PosR).V_Kind
+                    or else SL.Comps (PosL).Flags /= SR.Comps (PosR).Flags
                   then
                      return False;
                   end if;
@@ -386,7 +400,7 @@ package body CCG.Tables is
 
    function "+" (V : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Value, 1, V, Normal)));
+        (1, Unknown, (1 => (Value, 1, V, Default_Flags)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -397,12 +411,27 @@ package body CCG.Tables is
    -- "+" --
    ---------
 
-   function "+" (V : Value_T; K : Value_Kind) return Str is
+   function "+" (V : Value_T; VF : Value_Flag) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Value, 1, V, K)));
+        (1, Unknown, (1 => (Value, 1, V, Flag_To_Flags (VF))));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
+      return Result;
+   end "+";
+
+   ---------
+   -- "+" --
+   ---------
+
+   function "+" (S : Str; VF : Value_Flag) return Str is
+      S_Rec  : aliased constant Str_Record (1) :=
+        (1, Unknown, (1 => (Value, 1, S.Comps (1).Val,
+                            S.Comps (1).Flags or Flag_To_Flags (VF))));
+      Result : constant Str := Undup_Str (S_Rec);
+
+   begin
+      pragma Assert (S.Length = 1);
       return Result;
    end "+";
 
@@ -512,7 +541,7 @@ package body CCG.Tables is
                end if;
 
             when Value =>
-               Write_Value (Comp.Val, Kind => Comp.V_Kind,
+               Write_Value (Comp.Val, Flags => Comp.Flags,
                             For_Precedence => S.P);
 
             when Typ =>
@@ -552,7 +581,7 @@ package body CCG.Tables is
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown,
                (1 => (Var_String, L'Length, Normal, L),
-                2 => (Value, 1, R, Normal)));
+                2 => (Value, 1, R, Default_Flags)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -670,7 +699,7 @@ package body CCG.Tables is
          declare
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Primary,
-               (1 => (Value, 1, L, Normal),
+               (1 => (Value, 1, L, Default_Flags),
                 2 => (Var_String, R'Length, Normal, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
@@ -761,7 +790,8 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Normal), 2 => (Value, 1, R, Normal)));
+        (2, Primary, (1 => (Value, 1, L, Default_Flags),
+                      2 => (Value, 1, R, Default_Flags)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -802,7 +832,7 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : Type_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Normal), 2 => (Typ, 1, R)));
+        (2, Primary, (1 => (Value, 1, L, Default_Flags), 2 => (Typ, 1, R)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -816,7 +846,7 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : Basic_Block_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Normal), 2 => (BB, 1, R)));
+        (2, Primary, (1 => (Value, 1, L, Default_Flags), 2 => (BB, 1, R)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -829,7 +859,7 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : Nat) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Normal), 2 => (Number, 1, R)));
+        (2, Primary, (1 => (Value, 1, L, Default_Flags), 2 => (Number, 1, R)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -842,7 +872,7 @@ package body CCG.Tables is
 
    function "&" (L : Type_T; R : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Typ, 1, L), 2 => (Value, 1, R, Normal)));
+        (2, Primary, (1 => (Typ, 1, L), 2 => (Value, 1, R, Default_Flags)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -884,7 +914,7 @@ package body CCG.Tables is
 
    function "&" (L : Basic_Block_T; R : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (BB, 1, L), 2 => (Value, 1, R, Normal)));
+        (2, Primary, (1 => (BB, 1, L), 2 => (Value, 1, R, Default_Flags)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -928,7 +958,7 @@ package body CCG.Tables is
 
    begin
       S_Rec.P                         := R.P;
-      S_Rec.Comps (1)                 := (Value, 1, L, Normal);
+      S_Rec.Comps (1)                 := (Value, 1, L, Default_Flags);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
       Result := Undup_Str (S_Rec);
       return Result;
@@ -982,7 +1012,7 @@ package body CCG.Tables is
 
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
-      S_Rec.Comps (L.Length + 1)  := (Value, 1, R, Normal);
+      S_Rec.Comps (L.Length + 1)  := (Value, 1, R, Default_Flags);
       Result := Undup_Str (S_Rec);
       return Result;
    end "&";
@@ -1080,7 +1110,7 @@ package body CCG.Tables is
 
       if S.Length = 1 and then S.Comps (1).Kind = Value
         and then Present (Get_C_Value (S.Comps (1).Val))
-        and then S.Comps (1).V_Kind = Normal
+        and then not S.Comps (1).Flags.LHS
       then
          return Addr_Of (Get_C_Value (S.Comps (1).Val));
 
@@ -1099,16 +1129,16 @@ package body CCG.Tables is
             return Result;
          end;
 
-      --  If this is a variable referenced by name, convert it into a
+      --  If this is a variable referenced by LHS, convert it into a
       --  normal reference.
 
       elsif S.Length = 1 and then S.Comps (1).Kind = Value
         and then Get_Is_Variable (S.Comps (1).Val)
-        and then S.Comps (1).V_Kind = Value_Name
+        and then S.Comps (1).Flags.LHS
       then
          declare
             S_Rec  : aliased constant Str_Record :=
-              (1, S.P, (1 => (Value, 0, S.Comps (1).Val, Normal)));
+              (1, S.P, (1 => (Value, 0, S.Comps (1).Val, Default_Flags)));
             Result : constant Str                := Undup_Str (S_Rec);
          begin
             return Result;
@@ -1132,7 +1162,7 @@ package body CCG.Tables is
 
       if S.Length = 1 and then S.Comps (1).Kind = Value
         and then Present (Get_C_Value (S.Comps (1).Val))
-        and then S.Comps (1).V_Kind = Normal
+        and then not S.Comps (1).Flags.LHS
       then
          return Deref (Get_C_Value (S.Comps (1).Val));
 
@@ -1156,11 +1186,12 @@ package body CCG.Tables is
 
       elsif S.Length = 1 and then S.Comps (1).Kind = Value
         and then Get_Is_Variable (S.Comps (1).Val)
-        and then S.Comps (1).V_Kind = Normal
+        and then not S.Comps (1).Flags.LHS
       then
          declare
             S_Rec  : aliased constant Str_Record :=
-              (1, S.P, (1 => (Value, 0, S.Comps (1).Val, Value_Name)));
+              (1, S.P, (1 => (Value, 0, S.Comps (1).Val,
+                              S.Comps (1).Flags or Flag_To_Flags (LHS))));
             Result : constant Str                := Undup_Str (S_Rec);
          begin
             return Result;

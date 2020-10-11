@@ -26,8 +26,8 @@ package CCG.Output is
 
    procedure Write_Value
      (V              : Value_T;
-      Kind           : Value_Kind := Normal;
-      For_Precedence : Precedence := Primary)
+      Flags          : Value_Flags := Default_Flags;
+      For_Precedence : Precedence  := Primary)
      with Pre => Present (V);
    procedure Write_Type  (T : Type_T)
      with Pre => Present (T);

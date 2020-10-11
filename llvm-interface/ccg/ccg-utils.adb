@@ -76,8 +76,8 @@ package body CCG.Utils is
                   case Modifier is
                      when 'B' =>
                         Result := Result & Value_As_Basic_Block (Op);
-                     when 'N' =>
-                        Result := Result & (Op + Value_Name);
+                     when 'L' =>
+                        Result := Result & (Op + LHS);
                      when 'I' =>
                         Result := Result & (Op + Initializer);
                      when 'A' =>
@@ -148,6 +148,15 @@ package body CCG.Utils is
       for C of S loop
          Update_Hash (H, Character'Pos (C));
       end loop;
+   end Update_Hash;
+
+   -----------------
+   -- Update_Hash --
+   -----------------
+
+   procedure Update_Hash (H : in out Hash_Type; B : Boolean) is
+   begin
+      Update_Hash (H, Boolean'Pos (B));
    end Update_Hash;
 
    -----------------

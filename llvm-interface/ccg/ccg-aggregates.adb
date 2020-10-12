@@ -20,7 +20,6 @@ with Ada.Containers.Hashed_Maps;
 
 with Table;
 
-with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Instructions; use CCG.Instructions;
@@ -133,14 +132,8 @@ package body CCG.Aggregates is
          else No_Field_Name_Idx);
 
    begin
-      --  If we're not generating C code, don't do anything
-
-      if Code_Generation /= Write_C then
-         return;
-      end if;
-
-      --  Otherwise, start by adding an entry to our table. Then either
-      --  update the head of the chain or set a new head.
+      --  Start by adding an entry to our table. Then either update the
+      --  head of the chain or set a new head.
 
       Field_Name_Info_Table.Append ((T           => No_Type_T,
                                      F_Number    => Idx,

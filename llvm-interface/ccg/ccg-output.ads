@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with GNATLLVM; use GNATLLVM;
-
 with CCG.Tables; use CCG.Tables;
 
 package CCG.Output is

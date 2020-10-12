@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with GNATLLVM; use GNATLLVM;
-
 with CCG.Helper; use CCG.Helper;
 with CCG.Tables; use CCG.Tables;
 

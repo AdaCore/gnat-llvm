@@ -19,13 +19,13 @@ with LLVM.Core; use LLVM.Core;
 
 with Debug;    use Debug;
 with Get_Targ; use Get_Targ;
-with Namet;
 with Osint;    use Osint;
 with Osint.C;  use Osint.C;
 with Output;   use Output;
 
-with GNATLLVM; use GNATLLVM;
+with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 
+with CCG.Aggregates;  use CCG.Aggregates;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
 
@@ -114,4 +114,38 @@ package body CCG is
       end if;
    end Write_C_Code;
 
+   ---------------------------
+   -- C_Set_Field_Name_Info --
+   ---------------------------
+
+   procedure C_Set_Field_Name_Info
+     (TE          : Entity_Id;
+      Idx         : Nat;
+      Name        : Name_Id := No_Name;
+      Is_Padding  : Boolean := False;
+      Is_Bitfield : Boolean := False) is
+   begin
+      --  If we're not generating C code, don't do anything
+
+      if Code_Generation /= Write_C then
+         return;
+      end if;
+
+      Set_Field_Name_Info (TE, Idx, Name, Is_Padding, Is_Bitfield);
+
+   end C_Set_Field_Name_Info;
+
+   ------------------
+   -- C_Set_Struct --
+   ------------------
+
+   procedure C_Set_Struct (TE : Entity_Id; T : Type_T) is
+   begin
+      if Code_Generation /= Write_C then
+         return;
+      end if;
+
+      Set_Struct (TE, T);
+
+   end C_Set_Struct;
 end CCG;

@@ -19,7 +19,11 @@ with Interfaces.C;
 
 with LLVM.Types; use LLVM.Types;
 
+with Einfo; use Einfo;
+with Namet; use Namet;
 with Types; use Types;
+
+with GNATLLVM;         use GNATLLVM;
 
 package CCG is
 
@@ -35,6 +39,20 @@ package CCG is
    procedure Write_C_Code (Module : Module_T);
    --  The main procedure, which generates C code from the LLVM IR
 
+   procedure C_Set_Field_Name_Info
+     (TE          : Entity_Id;
+      Idx         : Nat;
+      Name        : Name_Id := No_Name;
+      Is_Padding  : Boolean := False;
+      Is_Bitfield : Boolean := False)
+     with Pre => Is_Type (TE);
+   --  Say what field Idx in the next struct is used for.  This is in
+   --  the processing of TE.
+
+   procedure C_Set_Struct (TE : Entity_Id; T : Type_T)
+     with Pre => Is_Type (TE) and then Present (T);
+   --  Indicate that the previous calls to Set_Field_Name_Info for TE
+   --  were for LLVM struct type T.
    --  Define the sizes of all the basic C types.
 
    Char_Size      : Pos;

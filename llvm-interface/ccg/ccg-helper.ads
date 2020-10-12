@@ -21,7 +21,6 @@ with Interfaces.C;
 
 with LLVM.Core;  use LLVM.Core;
 
-with GNATLLVM;         use GNATLLVM;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package CCG.Helper is

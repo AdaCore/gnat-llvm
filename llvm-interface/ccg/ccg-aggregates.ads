@@ -17,12 +17,7 @@
 
 with Interfaces.C; use Interfaces.C;
 
-with Einfo; use Einfo;
-with Namet; use Namet;
-
 with LLVM.Core; use LLVM.Core;
-
-with GNATLLVM; use GNATLLVM;
 
 with CCG.Helper; use CCG.Helper;
 with CCG.Tables; use CCG.Tables;

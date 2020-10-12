@@ -37,7 +37,7 @@ with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
-with CCG.Aggregates; use CCG.Aggregates;
+with CCG; use CCG;
 
 package body GNATLLVM.Records.Create is
 
@@ -994,7 +994,7 @@ package body GNATLLVM.Records.Create is
                   Packed => True);
 
             begin
-               Set_Struct (TE, T);
+               C_Set_Struct (TE, T);
                Add_RI (T           => T,
                        Align       => RI_Align,
                        Position    => RI_Position,
@@ -1170,7 +1170,7 @@ package body GNATLLVM.Records.Create is
          begin
             if Count /= 0 then
                LLVM_Types.Append (Use_T);
-               Set_Field_Name_Info (TE, LLVM_Types.Last, Is_Padding => True);
+               C_Set_Field_Name_Info (TE, LLVM_Types.Last, Is_Padding => True);
                Cur_RI_Pos  := Cur_RI_Pos + Count * ULL (Size);
                Left_To_Pad := Left_To_Pad - Count * ULL (Size);
             end if;
@@ -1596,7 +1596,7 @@ package body GNATLLVM.Records.Create is
                                      unsigned (To_Bytes (Bitfield_Len))));
             end if;
 
-            Set_Field_Name_Info (TE, LLVM_Types.Last, Is_Bitfield => True);
+            C_Set_Field_Name_Info (TE, LLVM_Types.Last, Is_Bitfield => True);
             Cur_RI_Pos := +Bitfield_End_Pos;
          end Create_Bitfield_Field;
 
@@ -1894,7 +1894,7 @@ package body GNATLLVM.Records.Create is
                      else
                         Force_To_Pos (Needed_Pos);
                         LLVM_Types.Append (T);
-                        Set_Field_Name_Info (TE, LLVM_Types.Last, Chars (F));
+                        C_Set_Field_Name_Info (TE, LLVM_Types.Last, Chars (F));
                         Cur_RI_Pos :=
                           Align_Pos (Cur_RI_Pos + Get_Type_Size (T), BPU);
                         Add_FI (F, Cur_Idx, F_GT, Ordinal => LLVM_Types.Last);
@@ -1970,7 +1970,7 @@ package body GNATLLVM.Records.Create is
          Add_RI (T           => LLVM_Type,
                  Align       => RI_Align,
                  Unused_Bits => RI_Unused_Bits);
-         Set_Struct (TE, LLVM_Type);
+         C_Set_Struct (TE, LLVM_Type);
       else
          --  Otherwise, close out the last record info if we have any
          --  fields.  Note that if we don't have any fields, the entry we

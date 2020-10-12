@@ -17,8 +17,6 @@
 
 with Interfaces.C; use Interfaces.C;
 
-with GNATLLVM; use GNATLLVM;
-
 with LLVM.Core; use LLVM.Core;
 
 with CCG.Helper; use CCG.Helper;

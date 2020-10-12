@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with GNATLLVM; use GNATLLVM;
-
 package CCG.Tables is
 
    --  This package contains the tables used by CCG to record data about

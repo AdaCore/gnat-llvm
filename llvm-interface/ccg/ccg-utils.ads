@@ -23,8 +23,6 @@ with System.Storage_Elements; use System.Storage_Elements;
 
 with LLVM.Core; use LLVM.Core;
 
-with GNATLLVM; use GNATLLVM;
-
 with CCG.Helper; use CCG.Helper;
 with CCG.Tables; use CCG.Tables;
 

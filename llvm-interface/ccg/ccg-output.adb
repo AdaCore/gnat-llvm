@@ -382,6 +382,14 @@ package body CCG.Output is
       --  so we can omit it in that case.
 
       if not Flags.LHS and then Get_Is_Variable (V) then
+
+         --  If this is a constant, we need to convert the address into a
+         --  non-constant pointer type.
+
+         if Get_Is_Constant (V) then
+            Write_Str ("(" & Type_Of (V) & ") ");
+         end if;
+
          if Get_Type_Kind (Type_Of (V)) /= Array_Type_Kind then
             Write_Str ("&");
          end if;
@@ -496,6 +504,13 @@ package body CCG.Output is
                      Decl := "static " & Decl;
                   end if;
 
+                  --  If this is a constant, denote that
+
+                  if Is_Global_Constant (V) then
+                     Decl := "const " & Decl;
+                     Set_Is_Constant (V);
+                  end if;
+
                   --  Don't write an initializer if it's undef or a
                   --  zeroinitializer. In the latter case, it means to apply
                   --  the default initialization, which is defined by the
@@ -516,8 +531,9 @@ package body CCG.Output is
                --  constant and put it at the top level.
 
                if Is_A_Constant (V) then
-                  Write_Str ("static " & Decl & " = " & (V + Initializer) &
-                               ";", Eol => True);
+                  Write_Str ("static const " & Decl & " = " &
+                               (V + Initializer) & ";", Eol => True);
+                  Set_Is_Constant (V);
                else
                   Output_Decl (Decl);
                end if;

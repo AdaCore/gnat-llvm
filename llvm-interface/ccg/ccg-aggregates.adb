@@ -422,7 +422,7 @@ package body CCG.Aggregates is
       --  If we ended up with a LHS, we have to take the address
 
       if Is_LHS then
-         Result := Addr_Of (Result);
+         Result := Addr_Of (Result, T => Aggr_T);
       end if;
 
       return Result;

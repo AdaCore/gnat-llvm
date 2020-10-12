@@ -20,8 +20,6 @@ with Ada.Containers; use Ada.Containers;
 with Ada.Containers.Hashed_Maps;
 with Ada.Containers.Hashed_Sets;
 
-with LLVM.Core; use LLVM.Core;
-
 with Output; use Output;
 with Table;  use Table;
 
@@ -76,6 +74,11 @@ package body CCG.Tables is
       --  from a C perspective, a use of a value in LLVM IR represents the
       --  address of the value; only "load" or "store" instruction actually
       --  accesses the value.
+
+      Is_Constant     : Boolean;
+      --  True if this value is a constant and was declared that way
+      --  in C. We use this to indicate that we have to cast the type
+      --  to the non-constant pointer to take the address of the value.
 
       Output_Idx      : Nat;
       --  A positive number if we've assigned an ordinal to use as
@@ -1099,20 +1102,41 @@ package body CCG.Tables is
       return Result;
    end "&";
 
+   ------------------
+   -- Single_Value --
+   ------------------
+
+   function Single_Value (S : Str) return Value_T is
+   begin
+      return Result : Value_T := No_Value_T do
+         for Comp of S.Comps loop
+            if Comp.Kind = Value then
+               if Result /= No_Value_T then
+                  Result := No_Value_T;
+                  exit;
+               else
+                  Result := Comp.Val;
+               end if;
+            end if;
+         end loop;
+      end return;
+   end Single_Value;
+
    -------------
    -- Addr_Of --
    -------------
 
-   function Addr_Of (S : Str) return Str is
+   function Addr_Of (S : Str; T : Type_T := No_Type_T) return Str is
+      Result : Str := No_Str;
+
    begin
       --  If this is a single value handled normally that has a C expression,
       --  compute the address of that expression.
 
-      if S.Length = 1 and then S.Comps (1).Kind = Value
-        and then Present (Get_C_Value (S.Comps (1).Val))
+      if Is_Value (S) and then Present (Get_C_Value (S))
         and then not S.Comps (1).Flags.LHS
       then
-         return Addr_Of (Get_C_Value (S.Comps (1).Val));
+         return Addr_Of (Get_C_Value (S), T);
 
       --  If this is "*" concatenated with some string, return the result
       --  of removing it.
@@ -1132,8 +1156,7 @@ package body CCG.Tables is
       --  If this is a variable referenced by LHS, convert it into a
       --  normal reference.
 
-      elsif S.Length = 1 and then S.Comps (1).Kind = Value
-        and then Get_Is_Variable (S.Comps (1).Val)
+      elsif Is_Value (S) and then Get_Is_Variable (S)
         and then S.Comps (1).Flags.LHS
       then
          declare
@@ -1144,10 +1167,18 @@ package body CCG.Tables is
             return Result;
          end;
 
-      --  Otherwise, add the operator to take the address
+         --  Otherwise, add the operator to take the address. If this is a
+         --  value that's constant, we have to cast to the non-constant
+         --  pointer type.
 
       else
-         return "&" & S + Unary;
+         Result := "&" & S + Unary;
+         if Contains_One_Value (S) and then Get_Is_Constant (S) then
+            Result :=
+              "(" & (if Present (T) then T else Type_Of (S)) & "*) " & Result;
+         end if;
+
+         return Result;
       end if;
    end Addr_Of;
 
@@ -1223,6 +1254,7 @@ package body CCG.Tables is
                                    No_Name        => False,
                                    Is_Decl_Output => False,
                                    Is_Variable    => False,
+                                   Is_Constant    => False,
                                    Output_Idx     => 0));
          Insert (Value_Data_Map, V, Value_Data_Table.Last);
          return Value_Data_Table.Last;
@@ -1323,6 +1355,19 @@ package body CCG.Tables is
 
    end Get_Is_Variable;
 
+   ---------------------
+   -- Get_Is_Constant --
+   ---------------------
+
+   function Get_Is_Constant (V : Value_T) return Boolean is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+
+   begin
+      return Present (Idx)
+        and then Value_Data_Table.Table (Idx).Is_Constant;
+
+   end Get_Is_Constant;
+
    -----------------
    -- Set_C_Value --
    -----------------
@@ -1366,6 +1411,17 @@ package body CCG.Tables is
    begin
       Value_Data_Table.Table (Idx).Is_Variable := B;
    end Set_Is_Variable;
+
+   ---------------------
+   -- Set_Is_Variable --
+   ---------------------
+
+   procedure Set_Is_Constant (V : Value_T; B : Boolean := True) is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+
+   begin
+      Value_Data_Table.Table (Idx).Is_Constant := B;
+   end Set_Is_Constant;
 
    ---------------------------
    -- Get_Is_Typedef_Output --

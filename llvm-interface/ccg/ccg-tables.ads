@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with LLVM.Core; use LLVM.Core;
+
 package CCG.Tables is
 
    --  This package contains the tables used by CCG to record data about
@@ -201,14 +203,16 @@ package CCG.Tables is
      with Pre  => Present (R),
           Post => Present ("&"'Result);
 
-   function Addr_Of (S : Str) return Str
+   function Addr_Of (S : Str; T : Type_T := No_Type_T) return Str
      with Pre => Present (S), Post => Present (Addr_Of'Result);
-   function Addr_Of (V : Value_T) return Str is
-     (Addr_Of (+V))
+   function Addr_Of (V : Value_T; T : Type_T := No_Type_T) return Str is
+     (Addr_Of (+V, T))
      with Pre => Present (V), Post => Present (Addr_Of'Result);
    --  Make an Str that represents taking the address of S or V. This usually
    --  means prepending "&", but we can also do that by removing a leading
-   --  "*" or changing the value kind.
+   --  "*" or changing the value kind. If T is Present, use that type instead
+   --  of the type of the value for the dereference (this is used if the
+   --  expression is a component reference).
 
    function Deref (S : Str) return Str
      with Pre => Present (S), Post => Present (Deref'Result);
@@ -241,6 +245,12 @@ package CCG.Tables is
    --  from a C perspective, a use of a value in LLVM IR represents
    --  the address of the value; only "load" or "store" instruction
    --  actually accesses the value.
+
+   function Get_Is_Constant    (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if this value is a constant and was declared that way
+   --  in C.
+
    procedure Set_C_Value       (V : Value_T; S : Str)
      with Pre  => Present (V) and then Present (S),
           Post => Get_C_Value (V) = S, Inline;
@@ -248,9 +258,11 @@ package CCG.Tables is
      with Pre  => Present (V),
           Post => Get_No_Name (V) = B, Inline;
    procedure Set_Is_Decl_Output (V : Value_T; B : Boolean := True)
-     with Pre  => Present (V), Post => Get_Is_Decl_Output (V) = B, Inline;
+     with Pre => Present (V), Post => Get_Is_Decl_Output (V) = B, Inline;
    procedure Set_Is_Variable    (V : Value_T; B : Boolean := True)
-     with Pre  => Present (V), Post => Get_Is_Variable (V) = B, Inline;
+     with Pre => Present (V), Post => Get_Is_Variable (V) = B, Inline;
+   procedure Set_Is_Constant    (V : Value_T; B : Boolean := True)
+     with Pre => Present (V), Post => Get_Is_Constant (V) = B, Inline;
 
    function Get_Is_Typedef_Output (T : Type_T) return Boolean
      with Pre => Present (T), Inline;
@@ -267,6 +279,32 @@ package CCG.Tables is
    procedure Set_No_Name    (BB : Basic_Block_T; B : Boolean := True)
      with Pre  => Present (BB),
           Post => Get_No_Name (BB) = B, Inline;
+
+   --  Provide a set of functions to reference an Str that contains just
+   --  a value or contains exactly one value.
+
+   function Is_Value (S : Str) return Boolean
+     with Pre => Present (S), Inline;
+   function Single_Value (S : Str) return Value_T
+     with Pre => Present (S);
+   function Contains_One_Value (S : Str) return Boolean is
+     (Present (Single_Value (S)))
+     with Pre => Present (S);
+   function "+" (S : Str) return Value_T is
+     (Single_Value (S))
+     with Pre => Contains_One_Value (S), Inline;
+   function Get_Is_Variable (S : Str) return Boolean is
+     (Get_Is_Variable (+S))
+     with Pre => Contains_One_Value (S);
+   function Get_Is_Constant (S : Str) return Boolean is
+     (Get_Is_Constant (+S))
+     with Pre => Contains_One_Value (S);
+   function Get_C_Value (S : Str) return Str is
+     (Get_C_Value (+S))
+     with Pre => Contains_One_Value (S);
+   function Type_Of (S : Str) return Type_T is
+     (Type_Of (+S))
+     with Pre => Contains_One_Value (S);
 
    --  Define functions to return (and possibly create) an ordinal to use
    --  as part of the name for a value, type, or basic block.
@@ -366,5 +404,8 @@ private
 
    function Get_Precedence (S : Str) return Precedence is
      (S.P);
+
+   function Is_Value (S : Str) return Boolean is
+     (S.Length = 1 and then S.Comps (1).Kind = Value);
 
 end CCG.Tables;

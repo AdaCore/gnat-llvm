@@ -164,7 +164,7 @@ package body CCG.Blocks is
             --  type and then copy the appropriate data into it.
 
             Maybe_Decl (Target_I);
-            for J in 0 .. Count_Incoming (Target_I) loop
+            for J in 0 .. Count_Incoming (Target_I) - 1 loop
                if Get_Incoming_Block (Target_I, J) = Our_BB then
                   Phi_Val := Get_Operand (Target_I, J);
                end if;

@@ -383,6 +383,7 @@ package body CCG.Tables is
                   Count : constant Integer := Integer'Min (To_Do, Str_Max);
 
                begin
+                  S_Rec.P             := Unknown;
                   S_Rec.Comps (O_Pos) := (Var_String, Count, Normal,
                                           S (I_Pos .. I_Pos + Count - 1));
                   I_Pos := I_Pos + Count;

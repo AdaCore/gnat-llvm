@@ -113,6 +113,8 @@ package body GNATLLVM.Codegen is
          Short_Enums := True;
       elsif Switch = "-foptimize-ir" then
          Optimize_IR := True;
+      elsif Switch = "-fno-optimize-ir" then
+         Optimize_IR := False;
       elsif Starts_With ("--target=") then
          Free (Target_Triple);
          Target_Triple := new String'(Switch_Value ("--target="));

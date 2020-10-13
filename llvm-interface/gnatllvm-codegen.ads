@@ -76,8 +76,9 @@ package GNATLLVM.Codegen is
    --  record parameter.  We need to do this for targets, such as WebAssembly,
    --  that require strict parameter agreement between calls and declarations.
 
-   Optimize_IR           : Boolean := False;
-   --  True if we should optimize IR before writing it out
+   Optimize_IR           : Boolean := True;
+   --  True if we should optimize IR before writing it out when optimization
+   --  is enabled.
 
    package Switch_Table is new Table.Table
      (Table_Component_Type => String_Access,

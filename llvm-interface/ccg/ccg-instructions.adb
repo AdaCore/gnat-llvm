@@ -60,6 +60,7 @@ package body CCG.Instructions is
 
    function Binary_Instruction (V, Op1, Op2 : Value_T) return Str is
       Opc : constant Opcode_T := Get_Opcode (V);
+      T   : constant Type_T   := Type_Of (V);
 
    begin
       case Opc is
@@ -99,10 +100,12 @@ package body CCG.Instructions is
             return TP ("#1 / #2", Op1, Op2) + Mult;
 
          when Op_And =>
-            return TP ("#1 & #2", Op1, Op2) + Logic;
+            return TP ((if T = Bit_T then "#1 && #2" else "#1 & #2"),
+                       Op1, Op2) + Logic;
 
          when Op_Or =>
-            return TP ("#1 | #2", Op1, Op2) + Logic;
+            return TP ((if T = Bit_T then "#1 || #2" else "#1 | #2"),
+                       Op1, Op2) + Logic;
 
          when Op_Xor =>
             return TP ("#1 ^ #2", Op1, Op2) + Logic;

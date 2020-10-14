@@ -1142,7 +1142,7 @@ package body CCG.Tables is
          if Comp.Kind = Value
            and then (Comp.Flags.Is_Unsigned
                        or else (not Comp.Flags.Is_Signed
-                                  and then May_Be_Unsigned (Comp.Val)))
+                                  and then Might_Be_Unsigned (Comp.Val)))
          then
             return True;
          end if;

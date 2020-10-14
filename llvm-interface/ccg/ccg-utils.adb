@@ -121,16 +121,16 @@ package body CCG.Utils is
       end return;
    end Num_Uses;
 
-   ---------------------
-   -- May_Be_Unsigned --
-   ---------------------
+   -----------------------
+   -- Might_Be_Unsigned --
+   -----------------------
 
-   function May_Be_Unsigned (V : Value_T) return Boolean is
+   function Might_Be_Unsigned (V : Value_T) return Boolean is
    begin
       return Get_Is_Unsigned (V)
         or else (Present (Get_C_Value (V))
                    and then Has_Unsigned (Get_C_Value (V)));
-   end May_Be_Unsigned;
+   end Might_Be_Unsigned;
 
    -----------------
    -- Update_Hash --

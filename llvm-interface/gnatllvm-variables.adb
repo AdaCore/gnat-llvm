@@ -47,6 +47,8 @@ with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
+with CCG; use CCG;
+
 package body GNATLLVM.Variables is
 
    --  We sometime have a case where we have a pragma Export on one entity
@@ -1585,6 +1587,13 @@ package body GNATLLVM.Variables is
       --  Now save the value we've made for this variable
 
       Set_Value (E, LLVM_Var);
+
+      --  If this is of unsigned type, mark the value as unsigned
+
+      if Is_Unsigned_Type (GT) then
+         C_Set_Is_Unsigned (+LLVM_Var);
+      end if;
+
       return LLVM_Var;
 
    end Make_Global_Variable;
@@ -2108,6 +2117,12 @@ package body GNATLLVM.Variables is
 
       if No (Get_Value (E)) then
          Set_Value (E, LLVM_Var);
+      end if;
+
+      --  If this is of unsigned type, mark the value as unsigned
+
+      if Is_Unsigned_Type (GT) then
+         C_Set_Is_Unsigned (+LLVM_Var);
       end if;
 
       --  If we haven't already copied in any initializing expression, do

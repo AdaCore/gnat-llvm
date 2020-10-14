@@ -395,23 +395,23 @@ package body CCG.Output is
             Write_Str ("0");
             return;
 
-         --  Otherwise, if its a constant, we can write the unsigned version
-         --  of that constant.
+         --  If its a constant, we can write the unsigned version of that
+         --  constant.
 
          elsif Is_A_Constant_Int (V) then
             Write_Constant_Value (V, Is_Unsigned => True);
             return;
 
-         --  Otherwise, write a cast and then the value
+         --  If it's not known to be unsigned, write a cast and then the value
 
-         else
+         elsif not Get_Is_Unsigned (V) then
             Write_Str (TP ("(unsigned #T) ", T => Type_Of (V)));
          end if;
 
          --  Otherwise, if this is an object that must be interpreted as
-         --  signed but may be unsigned, write a cast to the signed type.
+         --  signed but might be unsigned, write a cast to the signed type.
 
-      elsif Flags.Is_Signed and then May_Be_Unsigned (V) then
+      elsif Flags.Is_Signed and then Might_Be_Unsigned (V) then
          Write_Str (TP ("(#T) ", T => Type_Of (V)));
       end if;
 
@@ -422,9 +422,11 @@ package body CCG.Output is
       if not Flags.LHS and then Get_Is_Variable (V) then
 
          --  If this is a constant, we need to convert the address into a
-         --  non-constant pointer type.
+         --  non-constant pointer type. Likewise if it's declared as unsigned,
+         --  except that in that case, the relevant aspect of the type is
+         --  that it's not unsigned.
 
-         if Get_Is_Constant (V) then
+         if Get_Is_Constant (V) or else Get_Is_Unsigned (V) then
             Write_Str ("(" & Type_Of (V) & ") ");
          end if;
 
@@ -525,6 +527,12 @@ package body CCG.Output is
             Decl : Str             := Typ & " " & (V + LHS);
 
          begin
+            --  If this is known to be unsigned, indicate that
+
+            if Get_Is_Unsigned (V) then
+               Decl := "unsigned " & Decl;
+            end if;
+
             --  For globals, we write the decl immediately. Otherwise, it's
             --  part of the decls for the subprogram.  Figure out whether
             --  this is static or extern.  It's extern if there's no

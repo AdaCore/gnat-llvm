@@ -55,6 +55,10 @@ package CCG is
    --  were for LLVM struct type T.
    --  Define the sizes of all the basic C types.
 
+   procedure C_Set_Is_Unsigned (V : Value_T)
+     with Pre => Present (V);
+   --  Indicate that V has an unsigned type.
+
    Char_Size      : Pos;
    Short_Size     : Pos;
    Int_Size       : Pos;

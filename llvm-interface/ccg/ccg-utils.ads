@@ -58,7 +58,7 @@ package CCG.Utils is
      with Pre => Present (V);
    --  True if this is or has a type that's simple (elementary)
 
-   function May_Be_Unsigned (V : Value_T) return Boolean
+   function Might_Be_Unsigned (V : Value_T) return Boolean
      with Pre => Present (V);
    --  True if it's possible that V is unsigned
 

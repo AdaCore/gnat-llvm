@@ -26,6 +26,7 @@ with Output;   use Output;
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 
 with CCG.Aggregates;  use CCG.Aggregates;
+with CCG.Tables;      use CCG.Tables;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
 
@@ -148,4 +149,18 @@ package body CCG is
       Set_Struct (TE, T);
 
    end C_Set_Struct;
+
+   -----------------------
+   -- C_Set_Is_Unsigned --
+   -----------------------
+
+   procedure C_Set_Is_Unsigned (V : Value_T) is
+   begin
+      if Code_Generation /= Write_C then
+         return;
+      end if;
+
+      Set_Is_Unsigned (V);
+
+   end C_Set_Is_Unsigned;
 end CCG;

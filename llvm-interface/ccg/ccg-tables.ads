@@ -87,29 +87,36 @@ package CCG.Tables is
       --  If this is a constant, always output the value of the constant,
       --  instead of its name, even if it's an aggregate constant.
 
-      Is_Unsigned);
+      Is_Unsigned,
       --  We need an unsigned form of this value. If the value isn't unsigned
       --  or can't be made unsigned (e.g. an integer constant), we emit a
       --  cast to unsigned.
+
+      Is_Signed);
+      --  We need a signed form of this value. This is ignored if the
+      --  value isn't of an integral type.
 
    type Value_Flags is record
       LHS         : Boolean;
       Initializer : Boolean;
       Is_Unsigned : Boolean;
+      Is_Signed   : Boolean;
    end record;
 
    function "or" (X, Y : Value_Flags) return Value_Flags is
-     (LHS            => X.LHS or Y.LHS,
+     (LHS            => X.LHS         or Y.LHS,
       Initializer    => X.Initializer or Y.Initializer,
-      Is_Unsigned    => X.Is_Unsigned or Y.Is_Unsigned);
+      Is_Unsigned    => X.Is_Unsigned or Y.Is_Unsigned,
+      Is_Signed      => X.Is_Signed   or Y.Is_Signed);
 
    type Flag_Array is array (Value_Flag) of Value_Flags;
 
-   Default_Flags : constant Value_Flags := (False, False, False);
+   Default_Flags : constant Value_Flags := (False, False, False, False);
    Flag_To_Flags : constant Flag_Array :=
-     (LHS            => (True, False, False),
-      Initializer    => (False, True, False),
-      Is_Unsigned    => (False, False, True));
+     (LHS            => (True,  False, False, False),
+      Initializer    => (False, True,  False, False),
+      Is_Unsigned    => (False, False, True,  False),
+      Is_Signed      => (False, False, False, True));
 
    function "+" (V : Value_T; VF : Value_Flag) return Str
      with Pre => Present (V);
@@ -261,6 +268,10 @@ package CCG.Tables is
    --  True if this value is a constant and was declared that way
    --  in C.
 
+   function Get_Is_Unsigned   (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if this value represents a variable that's unsigned
+
    procedure Set_C_Value       (V : Value_T; S : Str)
      with Pre  => Present (V) and then Present (S),
           Post => Get_C_Value (V) = S, Inline;
@@ -273,6 +284,8 @@ package CCG.Tables is
      with Pre => Present (V), Post => Get_Is_Variable (V) = B, Inline;
    procedure Set_Is_Constant    (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Constant (V) = B, Inline;
+   procedure Set_Is_Unsigned    (V : Value_T; B : Boolean := True)
+     with Pre => Present (V), Post => Get_Is_Unsigned (V) = B, Inline;
 
    function Get_Is_Typedef_Output (T : Type_T) return Boolean
      with Pre => Present (T), Inline;
@@ -315,6 +328,13 @@ package CCG.Tables is
    function Type_Of (S : Str) return Type_T is
      (Type_Of (+S))
      with Pre => Contains_One_Value (S);
+
+   function Has_Unsigned (S : Str) return Boolean
+      with Pre => Present (S);
+   --  True if there is a reference within S to a value that's unsigned.
+   --  This is purposely conservative in that it returns true if *anything*
+   --  in S is unsigned, even though the expression that S represents
+   --  may no longer be unsigned.
 
    --  Define functions to return (and possibly create) an ordinal to use
    --  as part of the name for a value, type, or basic block.

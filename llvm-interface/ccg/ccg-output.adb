@@ -405,8 +405,14 @@ package body CCG.Output is
          --  Otherwise, write a cast and then the value
 
          else
-            Write_Str ("(unsigned " & Type_Of (V) & ") ");
+            Write_Str (TP ("(unsigned #T) ", T => Type_Of (V)));
          end if;
+
+         --  Otherwise, if this is an object that must be interpreted as
+         --  signed but may be unsigned, write a cast to the signed type.
+
+      elsif Flags.Is_Signed and then May_Be_Unsigned (V) then
+         Write_Str (TP ("(#T) ", T => Type_Of (V)));
       end if;
 
       --  If this is a variable that we're writing normally, we need to take

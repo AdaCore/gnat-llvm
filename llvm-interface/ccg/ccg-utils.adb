@@ -23,7 +23,7 @@ package body CCG.Utils is
 
    function TP
      (S           : String;
-      Op1         : Value_T;
+      Op1         : Value_T := No_Value_T;
       Op2         : Value_T := No_Value_T;
       Op3         : Value_T := No_Value_T;
       T           : Type_T  := No_Type_T) return Str
@@ -120,6 +120,17 @@ package body CCG.Utils is
          end loop;
       end return;
    end Num_Uses;
+
+   ---------------------
+   -- May_Be_Unsigned --
+   ---------------------
+
+   function May_Be_Unsigned (V : Value_T) return Boolean is
+   begin
+      return Get_Is_Unsigned (V)
+        or else (Present (Get_C_Value (V))
+                   and then Has_Unsigned (Get_C_Value (V)));
+   end May_Be_Unsigned;
 
    -----------------
    -- Update_Hash --

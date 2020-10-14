@@ -30,11 +30,11 @@ package CCG.Utils is
 
    function TP
      (S           : String;
-      Op1         : Value_T;
+      Op1         : Value_T := No_Value_T;
       Op2         : Value_T := No_Value_T;
       Op3         : Value_T := No_Value_T;
       T           : Type_T  := No_Type_T) return Str
-     with Pre => Present (Op1), Post => Present (TP'Result);
+     with Post => Present (TP'Result);
    --  This provides a simple template facility for insertion of operands.
    --  Every character up to '#' in S is placed in Str. '#' is followed
    --  optionally by an 'B', 'L', 'I', 'A', or 'D' and then by a number or
@@ -57,6 +57,10 @@ package CCG.Utils is
      (Is_Simple_Type (Type_Of (V)))
      with Pre => Present (V);
    --  True if this is or has a type that's simple (elementary)
+
+   function May_Be_Unsigned (V : Value_T) return Boolean
+     with Pre => Present (V);
+   --  True if it's possible that V is unsigned
 
    --  LLVM uses a zero-length array to indicate a variable-length
    --  array.  C doesn't permit zero-element arrays. It's tempting to

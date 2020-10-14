@@ -49,9 +49,10 @@ package body CCG.Instructions is
    function Maybe_Unsigned
      (V : Value_T; Op_Unsigned : Boolean := True) return Str
    is
-     ((if Op_Unsigned then V + Is_Unsigned else +V))
+     ((if Op_Unsigned then V + Is_Unsigned else V + Is_Signed))
      with Pre => Present (V), Post => Present (Maybe_Unsigned'Result);
-   --  Return V if it's not unsigned and return a cast to unsigned if it is.
+     --  If Op_Unsigned is True, V must be treated as unsigned. Otherwise
+     --  it must be treated as signed.
 
    ------------------------
    -- Binary_Instruction --
@@ -154,6 +155,7 @@ package body CCG.Instructions is
                Op          : String (1 .. 2);
             end record;
             type I_Info_Array is array (Int_Predicate_T range <>) of I_Info;
+            Pred     : constant Int_Predicate_T := Get_I_Cmp_Predicate (V);
             Int_Info : constant I_Info_Array :=
               (Int_EQ  => (False, 2, "=="),
                Int_NE  => (False, 2, "!="),
@@ -165,11 +167,13 @@ package body CCG.Instructions is
                Int_SGE => (False, 2, ">="),
                Int_SLT => (False, 1, "< "),
                Int_SLE => (False, 2, "<="));
-            Info     : constant I_Info := Int_Info (Get_I_Cmp_Predicate (V));
+            Info     : constant I_Info := Int_Info (Pred);
             LHS      : constant Str    :=
-              Maybe_Unsigned (Op1, Info.Is_Unsigned);
+              (if   Pred in Int_EQ | Int_NE then +Op1
+               else Maybe_Unsigned (Op1, Info.Is_Unsigned));
             RHS      : constant Str    :=
-              Maybe_Unsigned (Op2, Info.Is_Unsigned);
+              (if   Pred in Int_EQ | Int_NE then +Op2
+               else Maybe_Unsigned (Op2, Info.Is_Unsigned));
 
          begin
             return (LHS & " " & Info.Op (1 .. Info.Length) & " " & RHS) +

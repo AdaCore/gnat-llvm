@@ -80,6 +80,10 @@ package body CCG.Tables is
       --  in C. We use this to indicate that we have to cast the type
       --  to the non-constant pointer to take the address of the value.
 
+      Is_Unsigned     : Boolean;
+      --  True if this value was marked as unsigned and will be declared
+      --  that way.
+
       Output_Idx      : Nat;
       --  A positive number if we've assigned an ordinal to use as
       --  part of the name for this anonymous value.
@@ -1123,6 +1127,30 @@ package body CCG.Tables is
       end return;
    end Single_Value;
 
+   ------------------
+   -- Has_Unsigned --
+   ------------------
+
+   function Has_Unsigned (S : Str) return Boolean is
+   begin
+      for Comp of S.Comps loop
+
+         --  It's unsigned if this is an unsigned reference to a value or
+         --  the value may be unsigned (unless we've forced to signed
+         --  already).
+
+         if Comp.Kind = Value
+           and then (Comp.Flags.Is_Unsigned
+                       or else (not Comp.Flags.Is_Signed
+                                  and then May_Be_Unsigned (Comp.Val)))
+         then
+            return True;
+         end if;
+      end loop;
+
+      return False;
+   end Has_Unsigned;
+
    -------------
    -- Addr_Of --
    -------------
@@ -1256,6 +1284,7 @@ package body CCG.Tables is
                                    Is_Decl_Output => False,
                                    Is_Variable    => False,
                                    Is_Constant    => False,
+                                   Is_Unsigned    => False,
                                    Output_Idx     => 0));
          Insert (Value_Data_Map, V, Value_Data_Table.Last);
          return Value_Data_Table.Last;
@@ -1369,6 +1398,19 @@ package body CCG.Tables is
 
    end Get_Is_Constant;
 
+   ---------------------
+   -- Get_Is_Unsigned --
+   ---------------------
+
+   function Get_Is_Unsigned (V : Value_T) return Boolean is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+
+   begin
+      return Present (Idx)
+        and then Value_Data_Table.Table (Idx).Is_Unsigned;
+
+   end Get_Is_Unsigned;
+
    -----------------
    -- Set_C_Value --
    -----------------
@@ -1414,7 +1456,7 @@ package body CCG.Tables is
    end Set_Is_Variable;
 
    ---------------------
-   -- Set_Is_Variable --
+   -- Set_Is_Constant --
    ---------------------
 
    procedure Set_Is_Constant (V : Value_T; B : Boolean := True) is
@@ -1423,6 +1465,17 @@ package body CCG.Tables is
    begin
       Value_Data_Table.Table (Idx).Is_Constant := B;
    end Set_Is_Constant;
+
+   ---------------------
+   -- Set_Is_Unsigned --
+   ---------------------
+
+   procedure Set_Is_Unsigned (V : Value_T; B : Boolean := True) is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+
+   begin
+      Value_Data_Table.Table (Idx).Is_Unsigned := B;
+   end Set_Is_Unsigned;
 
    ---------------------------
    -- Get_Is_Typedef_Output --

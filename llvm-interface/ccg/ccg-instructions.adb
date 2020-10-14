@@ -47,11 +47,9 @@ package body CCG.Instructions is
    --  Return the value corresponding to a comparison instruction
 
    function Maybe_Unsigned
-     (V : Value_T; Is_Unsigned : Boolean := True) return Str
+     (V : Value_T; Op_Unsigned : Boolean := True) return Str
    is
-     ((if   Is_Unsigned then TP ("(#T) #1", V, T => Type_Of (V),
-                                 Is_Unsigned => True)
-       else +V))
+     ((if Op_Unsigned then V + Is_Unsigned else +V))
      with Pre => Present (V), Post => Present (Maybe_Unsigned'Result);
    --  Return V if it's not unsigned and return a cast to unsigned if it is.
 

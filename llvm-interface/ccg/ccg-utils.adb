@@ -26,8 +26,7 @@ package body CCG.Utils is
       Op1         : Value_T;
       Op2         : Value_T := No_Value_T;
       Op3         : Value_T := No_Value_T;
-      T           : Type_T  := No_Type_T;
-      Is_Unsigned : Boolean := False) return Str
+      T           : Type_T  := No_Type_T) return Str
    is
       Start     : Integer   := S'First;
       Result    : Str       := No_Str;
@@ -64,10 +63,6 @@ package body CCG.Utils is
                --  First handle the type case
 
                if S (J) = 'T' then
-                  if Is_Unsigned then
-                     Result := Result & "unsigned ";
-                  end if;
-
                   Result := Result & T;
 
                --  Otherwise, output the (possibly modified) operand

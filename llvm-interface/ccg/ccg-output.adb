@@ -55,7 +55,8 @@ package body CCG.Output is
    procedure Write_Constant_Value
      (V              : Value_T;
       Flags          : Value_Flags := Default_Flags;
-      For_Precedence : Precedence  := Primary)
+      For_Precedence : Precedence  := Primary;
+      Is_Unsigned    : Boolean     := False)
      with Pre => Is_A_Constant (V);
    --  Write the constant value of V, optionally specifying a preference of
    --  the expression that it's part of.
@@ -274,20 +275,25 @@ package body CCG.Output is
    procedure Write_Constant_Value
      (V              : Value_T;
       Flags          : Value_Flags := Default_Flags;
-      For_Precedence : Precedence  := Primary)
+      For_Precedence : Precedence  := Primary;
+      Is_Unsigned    : Boolean     := False)
    is
       subtype LLI is Long_Long_Integer;
    begin
       if Is_A_Constant_Int (V) then
          declare
-            Width : constant Int    := Int (Get_Int_Type_Width (Type_Of (V)));
+            Width : constant Int    := Get_Int_Type_Width (V);
             Val   : constant LLI    := Const_Int_Get_S_Ext_Value (V);
+            U_Val : constant ULL    := Const_Int_Get_Z_Ext_Value (V);
             Image : constant String := Val'Image;
 
          begin
-            --  ??? Should we emit some numbers as unsigned (U)
-
-            Write_Str (Image ((if Val < 0 then 1 else 2) .. Image'Last));
+            if Is_Unsigned then
+               Write_Str (U_Val'Image);
+               Write_Str ("U");
+            else
+               Write_Str (Image ((if Val < 0 then 1 else 2) .. Image'Last));
+            end if;
 
             if Width = Get_Long_Long_Size then
                Write_Str ("LL");
@@ -377,6 +383,32 @@ package body CCG.Output is
       C_Value : constant Str := Get_C_Value (V);
 
    begin
+      --  See if we want an unsigned version of V (unless this is a
+      --  pointer, which is always treated as unsigned).
+
+      if Flags.Is_Unsigned and then Get_Type_Kind (V) /= Pointer_Type_Kind then
+
+         --  If this is an undef, all we need to do is write a zero because
+         --  that's both signed and unsigned.
+
+         if Is_Undef (V) then
+            Write_Str ("0");
+            return;
+
+         --  Otherwise, if its a constant, we can write the unsigned version
+         --  of that constant.
+
+         elsif Is_A_Constant_Int (V) then
+            Write_Constant_Value (V, Is_Unsigned => True);
+            return;
+
+         --  Otherwise, write a cast and then the value
+
+         else
+            Write_Str ("(unsigned " & Type_Of (V) & ") ");
+         end if;
+      end if;
+
       --  If this is a variable that we're writing normally, we need to take
       --  its address. However, in C the name of an array is its address,
       --  so we can omit it in that case.

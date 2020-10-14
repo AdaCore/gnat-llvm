@@ -83,23 +83,32 @@ package CCG.Tables is
       --  be provided. If this flag is not present in the reference, we'll
       --  take the address of the value.
 
-      Initializer);
+      Initializer,
       --  If this is a constant, always output the value of the constant,
       --  instead of its name, even if it's an aggregate constant.
+
+      Is_Unsigned);
+     --  We need an unsigned form of this value. If the value isn't unsigned
+     --  or can't be made unsigned (e.g.
 
    type Value_Flags is record
       LHS         : Boolean;
       Initializer : Boolean;
+      Is_Unsigned : Boolean;
    end record;
 
    function "or" (X, Y : Value_Flags) return Value_Flags is
-     (LHS => X.LHS or Y.LHS, Initializer => X.Initializer or Y.Initializer);
+     (LHS            => X.LHS or Y.LHS,
+      Initializer    => X.Initializer or Y.Initializer,
+      Is_Unsigned    => X.Is_Unsigned or Y.Is_Unsigned);
 
    type Flag_Array is array (Value_Flag) of Value_Flags;
 
-   Default_Flags : constant Value_Flags := (False, False);
+   Default_Flags : constant Value_Flags := (False, False, False);
    Flag_To_Flags : constant Flag_Array :=
-     (LHS => (True, False), Initializer => (False, True));
+     (LHS            => (True, False, False),
+      Initializer    => (False, True, False),
+      Is_Unsigned    => (False, False, True));
 
    function "+" (V : Value_T; VF : Value_Flag) return Str
      with Pre => Present (V);
@@ -332,9 +341,9 @@ private
    --  component of the concatenation is limited to a small size.  In the
    --  rare case where we need a larger string, we break it into segments.
 
-   Str_Max : constant := 10;
+   Str_Max : constant := 9;
    subtype Str_Length is Integer range 0 .. Str_Max;
-   --  The longest string we'll use often is " (unsigned) ".  We allow empty
+   --  The longest string we'll use often is "unsigned ".  We allow empty
    --  strings, but optimize operations to not create them except when
    --  necessary.
 

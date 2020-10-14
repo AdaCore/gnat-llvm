@@ -33,8 +33,7 @@ package CCG.Utils is
       Op1         : Value_T;
       Op2         : Value_T := No_Value_T;
       Op3         : Value_T := No_Value_T;
-      T           : Type_T  := No_Type_T;
-      Is_Unsigned : Boolean := False) return Str
+      T           : Type_T  := No_Type_T) return Str
      with Pre => Present (Op1), Post => Present (TP'Result);
    --  This provides a simple template facility for insertion of operands.
    --  Every character up to '#' in S is placed in Str. '#' is followed
@@ -44,8 +43,7 @@ package CCG.Utils is
    --  operand is interpreted as a basic block. If 'L' is present, then we
    --  want the operand always written as a LHS. If 'I' is present, this
    --  is for the context of an initializer. If 'A' is present, we take the
-   --  address of the operand and deference it if 'D' is present. If
-   --  Is_Unsigned is True, put "unsigned " before the type.
+   --  address of the operand and deference it if 'D' is present.
 
    function Num_Uses (V : Value_T) return Nat
      with Pre => Present (V);

@@ -144,6 +144,10 @@ package CCG.Helper is
      (Get_Element_Type (Type_Of (V)))
      with Pre => Present (V), Post => Present (Get_Element_Type'Result);
 
+   function Get_Int_Type_Width (V : Value_T) return Int is
+     (Int (Get_Int_Type_Width (Type_Of (V))))
+     with Pre => Present (V);
+
    --  extractvalue and insertvalue instructions have a list of indices.
    --  The C API returns a pointer to the first of a list of unsigned
    --  values representing the list. We have to do some kludging to actually

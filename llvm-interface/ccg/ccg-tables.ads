@@ -88,8 +88,9 @@ package CCG.Tables is
       --  instead of its name, even if it's an aggregate constant.
 
       Is_Unsigned);
-     --  We need an unsigned form of this value. If the value isn't unsigned
-     --  or can't be made unsigned (e.g.
+      --  We need an unsigned form of this value. If the value isn't unsigned
+      --  or can't be made unsigned (e.g. an integer constant), we emit a
+      --  cast to unsigned.
 
    type Value_Flags is record
       LHS         : Boolean;

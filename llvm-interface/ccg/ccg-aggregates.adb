@@ -360,7 +360,7 @@ package body CCG.Aggregates is
       Aggr   : constant Value_T := Ops (Ops'First);
       --  The pointer to aggregate that we're dereferencing
 
-      Aggr_T : Type_T           := Get_Element_Type (Type_Of (Aggr));
+      Aggr_T : Type_T           := Get_Element_Type (Aggr);
       --  The type that Aggr, which is always a pointer, points to
 
       Is_LHS : Boolean          := Get_Is_Variable (Aggr);

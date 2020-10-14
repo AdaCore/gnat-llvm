@@ -318,7 +318,7 @@ package body CCG.Output is
          --  If this is a zero-length array or struct, add an extra item
 
          if Nat'(Get_Num_Operands (V)) = 0 then
-            Write_Undef (Get_Element_Type (Type_Of (V)));
+            Write_Undef (Get_Element_Type (V));
          end if;
 
          Write_Str ("}");
@@ -342,7 +342,7 @@ package body CCG.Output is
             end loop;
 
             if Nat'(Get_Num_CDA_Elements (V)) = 0 then
-               Write_Undef (Get_Element_Type (Type_Of (V)));
+               Write_Undef (Get_Element_Type (V));
             end if;
 
             Write_Str ("}");
@@ -482,7 +482,7 @@ package body CCG.Output is
 
          declare
             Typ  : constant Type_T :=
-              (if   Get_Is_Variable (V) then Get_Element_Type (Type_Of (V))
+              (if   Get_Is_Variable (V) then Get_Element_Type (V)
                else Type_Of (V));
             Decl : Str             := Typ & " " & (V + LHS);
 

@@ -163,7 +163,7 @@ package body CCG.Subprograms is
      (V : Value_T; Extern : Boolean := False) return Str
    is
       Num_Params : constant Nat    := Count_Params (V);
-      Fn_Typ     : constant Type_T := Get_Element_Type (Type_Of (V));
+      Fn_Typ     : constant Type_T := Get_Element_Type (V);
       Ret_Typ    : constant Type_T := Get_Return_Type (Fn_Typ);
       Result     : Str             := Ret_Typ & " " & V & " (";
 
@@ -330,12 +330,21 @@ package body CCG.Subprograms is
       --  Otherwise, generate the argument list for the call
 
       for Op of Ops (Ops'First .. Ops'Last - 1) loop
-         if First then
-            Call  := Call & Op;
-            First := False;
-         else
-            Call := Call & ", " & Op;
+         if not First then
+            Call := Call & ", ";
          end if;
+
+         --  If Op is a constant array, we have to cast it to the non-constant
+         --  type which is a pointer to the element type.
+
+         if Get_Type_Kind (Op) = Array_Type_Kind and then Get_Is_Constant (Op)
+         then
+            Call := Call & "(" & Get_Element_Type (Op) & " *) " & Op;
+         else
+            Call := Call & Op;
+         end if;
+
+         First := False;
       end loop;
 
       --  Add the final close paren. If this is a procedure call,

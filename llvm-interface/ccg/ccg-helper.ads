@@ -134,7 +134,15 @@ package CCG.Helper is
 
    function Acts_As_Instruction (V : Value_T) return Boolean is
      (Is_A_Instruction (V) or else Is_A_Constant_Expr (V))
-   with Pre => Present (V);
+     with Pre => Present (V);
+
+   function Get_Type_Kind (V : Value_T) return Type_Kind_T is
+     (Get_Type_Kind (Type_Of (V)))
+     with Pre => Present (V);
+
+   function Get_Element_Type (V : Value_T) return Type_T is
+     (Get_Element_Type (Type_Of (V)))
+     with Pre => Present (V), Post => Present (Get_Element_Type'Result);
 
    --  extractvalue and insertvalue instructions have a list of indices.
    --  The C API returns a pointer to the first of a list of unsigned

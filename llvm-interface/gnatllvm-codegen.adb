@@ -372,10 +372,12 @@ package body GNATLLVM.Codegen is
       end if;
 
       --  If we're generating code or being asked to optimize IR before
-      --  writing it, perform optimization.
+      --  writing it, perform optimization. But don't do this if just
+      --  generating decls.
 
-      if Code_Generation in Write_Assembly | Write_Object | Write_C
-        or else Optimize_IR
+      if not Decls_Only
+        and then (Code_Generation in Write_Assembly | Write_Object | Write_C
+                    or else Optimize_IR)
       then
          LLVM_Optimize_Module
            (Module, Target_Machine,

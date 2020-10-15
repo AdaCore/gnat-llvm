@@ -196,6 +196,8 @@ package body CCG.Tables is
    begin
       Update_Hash (H, Flags.LHS);
       Update_Hash (H, Flags.Initializer);
+      Update_Hash (H, Flags.Is_Unsigned);
+      Update_Hash (H, Flags.Is_Signed);
    end Update_Hash;
 
    ----------

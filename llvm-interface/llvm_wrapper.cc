@@ -400,6 +400,13 @@ Set_Does_Not_Throw (Function *fn)
 }
 
 extern "C"
+unsigned char
+Does_Not_Return (Function *fn)
+{
+  return fn->doesNotReturn () ? 1 : 0;
+}
+
+extern "C"
 void
 Set_Does_Not_Return (Function *fn)
 {

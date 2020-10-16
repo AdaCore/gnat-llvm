@@ -222,6 +222,10 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C, External_Name => "Does_Not_Throw",
           Warnings => Off;
 
+   function Does_Not_Return (Fn : Value_T) return Boolean
+     with Import, Convention => C, External_Name => "Does_Not_Return",
+          Warnings => Off;
+
    procedure Set_Does_Not_Throw (Fn : Value_T)
      with Import, Convention => C, External_Name => "Set_Does_Not_Throw";
 

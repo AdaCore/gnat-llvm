@@ -18,6 +18,8 @@
 with Output; use Output;
 with Table;
 
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+
 with CCG.Blocks;       use CCG.Blocks;
 with CCG.Instructions; use CCG.Instructions;
 
@@ -143,6 +145,13 @@ package body CCG.Subprograms is
                                 Last_Stmt  => No_Stmt_Idx));
    end New_Subprogram;
 
+   ------------------
+   -- Current_Func --
+   ------------------
+
+   function Current_Func return Value_T is
+     (Subprogram_Table.Table (Subprogram_Table.Last).Func);
+
    ---------------------------------
    -- Write_Function_Type_Typedef --
    ---------------------------------
@@ -174,6 +183,12 @@ package body CCG.Subprograms is
          Result := "static " & Result;
       end if;
 
+      --  If this doesn't return mark that
+
+      if Does_Not_Return (V) then
+         Result := "__attribute__((noreturn)) " & Result;
+      end if;
+
       --  Then output the list of parameter types, if any.  If this isn't
       --  for an extern definition, include the parameter names.
 
@@ -196,7 +211,6 @@ package body CCG.Subprograms is
       end if;
 
       return Result & ")";
-
    end Function_Proto;
 
    --------------------

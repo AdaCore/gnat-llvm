@@ -279,7 +279,14 @@ package body CCG.Instructions is
 
       case Opc is
          when Op_Ret =>
-            if Present (Op1) then
+
+            --  If our function is marked no-return, we don't do anything.
+            --  Otherwise, handle the cases with and without a value to
+            --  return.
+
+            if Does_Not_Return (Current_Func) then
+               null;
+            elsif Present (Op1) then
                Output_Stmt ("return " + Assign & Op1);
             else
                Output_Stmt ("return");

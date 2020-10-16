@@ -47,6 +47,10 @@ package CCG.Subprograms is
      with Pre => Present (Is_A_Function (V));
    --  Switch to a new subprogram V
 
+   function Current_Func return Value_T
+     with Post => Present (Current_Func'Result);
+   --  Return the decl for the function being converted to C
+
    procedure Call_Instruction (V : Value_T; Ops : Value_Array)
      with Pre => Get_Opcode (V) = Op_Call;
    --  Process a call instruction

@@ -41,7 +41,7 @@ package body CCG.Utils is
          --  If we've seen '#', look for a modifier
 
          if Mark_Seen then
-            if S (J) in 'B' | 'N' | 'I' | 'A' | 'D' then
+            if S (J) in 'B' | 'L' | 'I' | 'A' | 'D' then
                Modifier := S (J);
 
             --  If not, then this is a number, representing which operand

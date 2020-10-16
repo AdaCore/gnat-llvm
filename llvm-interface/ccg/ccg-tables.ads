@@ -255,13 +255,13 @@ package CCG.Tables is
      with Pre => Present (V), Inline;
    --  True if we wrote any needed decl for this value
 
-   function Get_Is_Variable    (V : Value_T) return Boolean
+   function Get_Is_LHS         (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
-   --  True if this value represents a variable. This can either be a
-   --  global variable or an alloca in the entry block. In that case,
-   --  from a C perspective, a use of a value in LLVM IR represents
-   --  the address of the value; only "load" or "store" instruction
-   --  actually accesses the value.
+   --  True if this value represents an LHS. This is usually either a
+   --  global variable or an alloca in the entry block. In that case, from
+   --  a C perspective, a use of a value in LLVM IR represents the address
+   --  of the value; only "load" or "store" instruction actually accesses
+   --  the value. It can also be the result of a GEP instruction.
 
    function Get_Is_Constant    (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
@@ -280,8 +280,8 @@ package CCG.Tables is
           Post => Get_No_Name (V) = B, Inline;
    procedure Set_Is_Decl_Output (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Decl_Output (V) = B, Inline;
-   procedure Set_Is_Variable    (V : Value_T; B : Boolean := True)
-     with Pre => Present (V), Post => Get_Is_Variable (V) = B, Inline;
+   procedure Set_Is_LHS         (V : Value_T; B : Boolean := True)
+     with Pre => Present (V), Post => Get_Is_LHS (V) = B, Inline;
    procedure Set_Is_Constant    (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Constant (V) = B, Inline;
    procedure Set_Is_Unsigned    (V : Value_T; B : Boolean := True)
@@ -316,8 +316,8 @@ package CCG.Tables is
    function "+" (S : Str) return Value_T is
      (Single_Value (S))
      with Pre => Contains_One_Value (S), Inline;
-   function Get_Is_Variable (S : Str) return Boolean is
-     (Get_Is_Variable (+S))
+   function Get_Is_LHS (S : Str) return Boolean is
+     (Get_Is_LHS (+S))
      with Pre => Contains_One_Value (S);
    function Get_Is_Constant (S : Str) return Boolean is
      (Get_Is_Constant (+S))

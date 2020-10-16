@@ -68,23 +68,24 @@ package body CCG.Tables is
       Is_Decl_Output : Boolean;
       --  True if we wrote any needed decl for this value
 
-      Is_Variable    : Boolean;
-      --  True if this value represents a variable. This can either be a
+      Is_LHS         : Boolean;
+      --  True if this value represents an LHS. This is usually either a
       --  global variable or an alloca in the entry block. In that case,
       --  from a C perspective, a use of a value in LLVM IR represents the
       --  address of the value; only "load" or "store" instruction actually
-      --  accesses the value.
+      --  accesses the value. It can also be the result of a GEP
+      --  instruction.
 
-      Is_Constant     : Boolean;
+      Is_Constant    : Boolean;
       --  True if this value is a constant and was declared that way
       --  in C. We use this to indicate that we have to cast the type
       --  to the non-constant pointer to take the address of the value.
 
-      Is_Unsigned     : Boolean;
+      Is_Unsigned    : Boolean;
       --  True if this value was marked as unsigned and will be declared
       --  that way.
 
-      Output_Idx      : Nat;
+      Output_Idx     : Nat;
       --  A positive number if we've assigned an ordinal to use as
       --  part of the name for this anonymous value.
 
@@ -1184,10 +1185,9 @@ package body CCG.Tables is
             return Result;
          end;
 
-      --  If this is a variable referenced by LHS, convert it into a
-      --  normal reference.
+      --  If this is an LHS, convert it into a normal reference
 
-      elsif Is_Value (S) and then Get_Is_Variable (S)
+      elsif Is_Value (S) and then Get_Is_LHS (S)
         and then S.Comps (1).Flags.LHS
       then
          declare
@@ -1219,11 +1219,25 @@ package body CCG.Tables is
 
    function Deref (S : Str) return Str is
    begin
+      --  If this is an LHS referenced normally, convert it into a
+      --  reference to the name.
+
+      if Is_Value (S) and then Get_Is_LHS (S)
+        and then not S.Comps (1).Flags.LHS
+      then
+         declare
+            S_Rec  : aliased constant Str_Record :=
+              (1, S.P, (1 => (Value, 0, S.Comps (1).Val,
+                              S.Comps (1).Flags or Flag_To_Flags (LHS))));
+            Result : constant Str                := Undup_Str (S_Rec);
+         begin
+            return Result;
+         end;
+
       --  If this is a single value handled normally that has a C expression,
       --  compute the dereference of that expression.
 
-      if S.Length = 1 and then S.Comps (1).Kind = Value
-        and then Present (Get_C_Value (S.Comps (1).Val))
+      elsif Is_Value (S) and then Present (Get_C_Value (S))
         and then not S.Comps (1).Flags.LHS
       then
          return Deref (Get_C_Value (S.Comps (1).Val));
@@ -1239,22 +1253,6 @@ package body CCG.Tables is
               (S.Length - 1, S.P, S.Comps (2 .. S.Length));
             Result : constant Str                := Undup_Str (S_Rec);
 
-         begin
-            return Result;
-         end;
-
-      --  If this is a variable referenced normally, convert it into a
-      --  reference to the name.
-
-      elsif S.Length = 1 and then S.Comps (1).Kind = Value
-        and then Get_Is_Variable (S.Comps (1).Val)
-        and then not S.Comps (1).Flags.LHS
-      then
-         declare
-            S_Rec  : aliased constant Str_Record :=
-              (1, S.P, (1 => (Value, 0, S.Comps (1).Val,
-                              S.Comps (1).Flags or Flag_To_Flags (LHS))));
-            Result : constant Str                := Undup_Str (S_Rec);
          begin
             return Result;
          end;
@@ -1284,7 +1282,7 @@ package body CCG.Tables is
          Value_Data_Table.Append ((C_Value        => null,
                                    No_Name        => False,
                                    Is_Decl_Output => False,
-                                   Is_Variable    => False,
+                                   Is_LHS         => False,
                                    Is_Constant    => False,
                                    Is_Unsigned    => False,
                                    Output_Idx     => 0));
@@ -1374,18 +1372,18 @@ package body CCG.Tables is
 
    end Get_Is_Decl_Output;
 
-   ---------------------
-   -- Get_Is_Variable --
-   ---------------------
+   ----------------
+   -- Get_Is_LHS --
+   ----------------
 
-   function Get_Is_Variable (V : Value_T) return Boolean is
+   function Get_Is_LHS (V : Value_T) return Boolean is
       Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
 
    begin
       return Present (Idx)
-        and then Value_Data_Table.Table (Idx).Is_Variable;
+        and then Value_Data_Table.Table (Idx).Is_LHS;
 
-   end Get_Is_Variable;
+   end Get_Is_LHS;
 
    ---------------------
    -- Get_Is_Constant --
@@ -1446,16 +1444,16 @@ package body CCG.Tables is
       Value_Data_Table.Table (Idx).Is_Decl_Output := B;
    end Set_Is_Decl_Output;
 
-   ---------------------
-   -- Set_Is_Variable --
-   ---------------------
+   ----------------
+   -- Set_Is_LHS --
+   ----------------
 
-   procedure Set_Is_Variable (V : Value_T; B : Boolean := True) is
+   procedure Set_Is_LHS (V : Value_T; B : Boolean := True) is
       Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
 
    begin
-      Value_Data_Table.Table (Idx).Is_Variable := B;
-   end Set_Is_Variable;
+      Value_Data_Table.Table (Idx).Is_LHS := B;
+   end Set_Is_LHS;
 
    ---------------------
    -- Set_Is_Constant --

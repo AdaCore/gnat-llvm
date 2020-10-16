@@ -233,17 +233,17 @@ package body CCG.Instructions is
 
    procedure Assignment (LHS : Value_T; RHS : Str) is
    begin
-      --  If LHS is an entry alloca, has more than one use in the IR, if
-      --  we've already emitted a decl for it (e.g., it was defined in a
-      --  block we haven't processed yet), or if it's a function call
-      --  returning an aggregate (because those aren't first-class objects
-      --  in C), generate an assignment statement into LHS. Otherwise, mark
-      --  LHS as having value RHS. If LHS is a constant expression or of
-      --  array types, never generate an assignment statement, the former
-      --  because we may be at top level and the latter because C doesn't
-      --  allow assignments of objects of aggregate type.
+      --  If LHS is a LHS, has more than one use in the IR, if we've
+      --  already emitted a decl for it (e.g., it was defined in a block we
+      --  haven't processed yet), or if it's a function call returning an
+      --  aggregate (because those aren't first-class objects in C),
+      --  generate an assignment statement into LHS. Otherwise, mark LHS as
+      --  having value RHS. If LHS is a constant expression or of array
+      --  types, never generate an assignment statement, the former because
+      --  we may be at top level and the latter because C doesn't allow
+      --  assignments of objects of aggregate type.
 
-      if (Get_Is_Variable (LHS) or else Num_Uses (LHS) > 1
+      if (Get_Is_LHS (LHS) or else Num_Uses (LHS) > 1
             or else Get_Is_Decl_Output (LHS)
             or else (Is_A_Call_Inst (LHS) and then not Is_Simple_Type (LHS)))
         and then not Is_A_Constant_Expr (LHS)
@@ -292,7 +292,7 @@ package body CCG.Instructions is
             if Is_Entry_Block (V) and then Is_A_Constant_Int (Op1)
               and then Equals_Int (Op1, 1)
             then
-               Set_Is_Variable (V);
+               Set_Is_LHS (V);
                Write_Decl (V);
             else
                declare
@@ -354,7 +354,7 @@ package body CCG.Instructions is
             Insert_Value_Instruction (V, Op1, Op2);
 
          when Op_Get_Element_Ptr =>
-            Assignment (V, GEP_Instruction (Ops));
+            GEP_Instruction (V, Ops);
 
          when Op_Switch =>
             Switch_Instruction (V, Ops);

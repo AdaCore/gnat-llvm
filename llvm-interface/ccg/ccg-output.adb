@@ -55,7 +55,6 @@ package body CCG.Output is
    procedure Write_Constant_Value
      (V              : Value_T;
       Flags          : Value_Flags := Default_Flags;
-      For_Precedence : Precedence  := Primary;
       Is_Unsigned    : Boolean     := False)
      with Pre => Is_A_Constant (V);
    --  Write the constant value of V, optionally specifying a preference of
@@ -275,7 +274,6 @@ package body CCG.Output is
    procedure Write_Constant_Value
      (V              : Value_T;
       Flags          : Value_Flags := Default_Flags;
-      For_Precedence : Precedence  := Primary;
       Is_Unsigned    : Boolean     := False)
    is
       subtype LLI is Long_Long_Integer;
@@ -318,6 +316,7 @@ package body CCG.Output is
          Write_Str ("{");
          for J in 0 .. Nat'(Get_Num_Operands (V)) - 1 loop
             Maybe_Write_Comma (J);
+            Maybe_Decl (Get_Operand (V, J), For_Initializer => True);
             Write_Value (Get_Operand (V, J), Flags => Flags);
          end loop;
 
@@ -354,12 +353,6 @@ package body CCG.Output is
             Write_Str ("}");
          end if;
 
-      --  If it's a constant expression, treat it as an instruction
-
-      elsif Is_A_Constant_Expr (V) then
-         Process_Instruction (V);
-         Write_Str_With_Precedence (Get_C_Value (V), For_Precedence);
-
       elsif Is_A_Constant_Pointer_Null (V) then
          Write_Str ("NULL");
 
@@ -380,7 +373,8 @@ package body CCG.Output is
       Flags          : Value_Flags := Default_Flags;
       For_Precedence : Precedence  := Primary)
    is
-      C_Value : constant Str := Get_C_Value (V);
+      C_Value   : constant Str := Get_C_Value (V);
+      Took_Addr : Boolean      := False;
 
    begin
       --  See if we want an unsigned version of V (unless this is a
@@ -415,11 +409,18 @@ package body CCG.Output is
          Write_Str (TP ("(#T) ", T => Type_Of (V)));
       end if;
 
-      --  If this is a variable that we're writing normally, we need to take
+      --  If this is an LHS that we're writing normally, we need to take
       --  its address. However, in C the name of an array is its address,
       --  so we can omit it in that case.
 
-      if not Flags.LHS and then Get_Is_Variable (V) then
+      if not Flags.LHS and then Get_Is_LHS (V) then
+
+         --  If we take the address of V, put parens around our expression.
+         --  ??? When we get precedence working better, we can do this better.
+
+         if Get_Type_Kind (V) /= Array_Type_Kind then
+            Write_Str ("(");
+         end if;
 
          --  If this is a constant, we need to convert the address into a
          --  non-constant pointer type. Likewise if it's declared as unsigned,
@@ -430,30 +431,35 @@ package body CCG.Output is
             Write_Str ("(" & Type_Of (V) & ") ");
          end if;
 
-         if Get_Type_Kind (Type_Of (V)) /= Array_Type_Kind then
+         if Get_Type_Kind (V) /= Array_Type_Kind then
             Write_Str ("&");
+            Took_Addr := True;
          end if;
-
-         Write_Value_Name (V);
+      end if;
 
       --  If we've set an expression as the value of V, write it
 
-      elsif Present (C_Value) then
+      if Present (C_Value) then
          Write_Str_With_Precedence (C_Value, For_Precedence);
 
       --  If this is either a simple constant or any constant for an
-      --  initializer, write the constant.
+      --  initializer, write the constant. If this is an LHS, it means
+      --  that we have its address and so we want to write the name.
 
-      elsif Is_Simple_Constant (V)
-        or else (Flags.Initializer and then Is_A_Constant (V))
+      elsif not Get_Is_LHS (V)
+        and then (Is_Simple_Constant (V)
+                    or else (Flags.Initializer and then Is_A_Constant (V)))
       then
-         Write_Constant_Value (V, Flags => Flags,
-                               For_Precedence => For_Precedence);
+         Write_Constant_Value (V, Flags => Flags);
 
       --  Otherwise, write the name
 
       else
          Write_Value_Name (V);
+      end if;
+
+      if Took_Addr then
+         Write_Str (")");
       end if;
    end Write_Value;
 
@@ -478,6 +484,13 @@ package body CCG.Output is
 
    procedure Maybe_Decl (V : Value_T; For_Initializer : Boolean := False) is
    begin
+      --  If this is an unprocessed constant expression, process it as an
+      --  instruction
+
+      if Is_A_Constant_Expr (V) and then No (Get_C_Value (V)) then
+         Process_Instruction (V);
+      end if;
+
       --  Write the decl if we haven't already processed this and it's
       --  not it's a simple constant (any constant if this is for an
       --  initializer).
@@ -497,33 +510,32 @@ package body CCG.Output is
 
    procedure Write_Decl (V : Value_T) is
    begin
-      --  We need to write a declaration for this if it's not a simple
-      --  constant or constant expression, not a function, an argument, a
-      --  basic block or simple undef, and we haven't already written one or
-      --  assigned a value to it.
+      --  We need to write a declaration for this if we haven't already
+      --  written one or assigned a value to it, it's not a simple
+      --  constant, not a function, an argument, a basic block or simple
+      --  undef.
 
       if not Get_Is_Decl_Output (V) and then not Is_Simple_Constant (V)
+        and then No (Get_C_Value (V))
         and then not Is_A_Function (V) and then not Is_A_Argument (V)
         and then not Is_A_Basic_Block (V)
         and then not (Is_Undef (V) and then Is_Simple_Type (V))
-        and then not Is_A_Constant_Expr (V) and then No (Get_C_Value (V))
       then
          Set_Is_Decl_Output (V);
 
-         --  If this is a global, mark it as a variable
+         --  If this is a global, mark it as an LHS
 
          if Is_A_Global_Variable (V) then
-            Set_Is_Variable (V);
+            Set_Is_LHS (V);
          end if;
 
-         --  The relevant type is the type of V unless V is a
-         --  variable, in which case the type of V is a pointer and we
-         --  want what it points to.
+         --  The relevant type is the type of V unless V is an LHS, in
+         --  which case the type of V is a pointer and we want what it
+         --  points to.
 
          declare
             Typ  : constant Type_T :=
-              (if   Get_Is_Variable (V) then Get_Element_Type (V)
-               else Type_Of (V));
+              (if Get_Is_LHS (V) then Get_Element_Type (V) else Type_Of (V));
             Decl : Str             := Typ & " " & (V + LHS);
 
          begin

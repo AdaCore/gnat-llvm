@@ -356,14 +356,14 @@ package body CCG.Aggregates is
    -- GEP_Instruction --
    ---------------------
 
-   function GEP_Instruction (Ops : Value_Array) return Str is
+   procedure GEP_Instruction (V : Value_T; Ops : Value_Array) is
       Aggr   : constant Value_T := Ops (Ops'First);
       --  The pointer to aggregate that we're dereferencing
 
       Aggr_T : Type_T           := Get_Element_Type (Aggr);
       --  The type that Aggr, which is always a pointer, points to
 
-      Is_LHS : Boolean          := Get_Is_Variable (Aggr);
+      Is_LHS : Boolean          := Get_Is_LHS (Aggr);
       --  Whether our result so far is an LHS as opposed to a pointer.
       --  If it is, then we can use normal derefrence operations and we must
       --  take the address at the end of the instruction processing.
@@ -419,13 +419,27 @@ package body CCG.Aggregates is
          end if;
       end loop;
 
-      --  If we ended up with a LHS, we have to take the address
+      --  If we ended up with a LHS, we always set this as the value of
+      --  V but mark it as an LHS. This is to avoid taking an address and
+      --  then doing a dereference for nested GEP's. Otherwise, process
+      --  this as a normal assignment.
 
       if Is_LHS then
-         Result := Addr_Of (Result, T => Aggr_T);
+         Set_Is_LHS (V);
       end if;
 
-      return Result;
+      --  Likewise if the input is a constant
+
+      if Get_Is_Constant (Aggr) then
+         Set_Is_Constant (V);
+      end if;
+
+      if Is_LHS or else Get_Is_Constant (Aggr) then
+         Set_C_Value (V, Result);
+      else
+         Assignment (V, Result);
+      end if;
+
    end GEP_Instruction;
 
 end CCG.Aggregates;

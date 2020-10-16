@@ -1590,7 +1590,7 @@ package body GNATLLVM.Variables is
 
       --  If this is of unsigned type, mark the value as unsigned
 
-      if Is_Unsigned_Type (GT) then
+      if Is_Unsigned_Type (GT) and then not Is_Ref then
          C_Set_Is_Unsigned (+LLVM_Var);
       end if;
 
@@ -2121,7 +2121,7 @@ package body GNATLLVM.Variables is
 
       --  If this is of unsigned type, mark the value as unsigned
 
-      if Is_Unsigned_Type (GT) then
+      if Is_Unsigned_Type (GT) and then not Is_Ref then
          C_Set_Is_Unsigned (+LLVM_Var);
       end if;
 

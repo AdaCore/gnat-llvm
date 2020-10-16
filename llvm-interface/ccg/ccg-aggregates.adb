@@ -261,10 +261,16 @@ package body CCG.Aggregates is
          S := S & "    char dummy_for_null_recordC; " & Eol_Str;
       end if;
 
+      S := S & "}";
+
       --  ??? We have many ways of handling packed, but don't worry about that
       --  in the initial support.
 
-      Write_Str (S & "} __attribute__ ((packed));", Eol => True);
+      if Is_Packed_Struct (T) then
+         S := S & " __attribute__ ((packed))";
+      end if;
+
+      Write_Str (S & ";", Eol => True);
    end Write_Struct_Typedef;
 
    -------------------------

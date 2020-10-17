@@ -1291,6 +1291,16 @@ package body CCG.Tables is
       end if;
    end Value_Data_Idx;
 
+   -----------------------
+   -- Delete_Value_Info --
+   -----------------------
+
+   procedure Delete_Value_Info (V : Value_T) is
+      use Value_Data_Maps;
+   begin
+      Exclude (Value_Data_Map, V);
+   end Delete_Value_Info;
+
    -------------------
    -- Type_Data_Idx --
    -------------------

@@ -23,7 +23,7 @@ with Einfo; use Einfo;
 with Namet; use Namet;
 with Types; use Types;
 
-with GNATLLVM;         use GNATLLVM;
+with GNATLLVM; use GNATLLVM;
 
 package CCG is
 

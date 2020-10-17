@@ -687,3 +687,38 @@ Get_Opcode_Name (LLVMOpcode opc)
 {
   return Instruction::getOpcodeName (map_from_llvmopcode (opc));
 }
+
+/* If we call into CCG from GNAT LLVM during the compilation process to
+   record some information about a Value (for example, its signedness),
+   there's a chance that that value will be deleted during the optimization
+   process and that same address used for some other value. So we need to
+   set a callback on that value to notify us that this happened so we can
+   delete the value from our table. The below class and function is used
+   for that purpose.  */
+
+class GNATCallbackVH final : public CallbackVH {
+  Value *val;
+  void (*fn) (Value *);
+  void deleted () override;
+
+ public:
+  GNATCallbackVH (Value *V, void (*Fn) (Value *));
+};
+
+void
+GNATCallbackVH::deleted() {
+  delete this;
+  (this->fn) (this->val);
+}
+
+GNATCallbackVH::GNATCallbackVH (Value *V, void (*Fn) (Value *))
+  : CallbackVH (V), val (V), fn (Fn)
+{
+}
+
+extern "C"
+void
+Notify_On_Value_Delete (Value *V, void (*Fn) (Value *))
+{
+  GNATCallbackVH *CB= new GNATCallbackVH (V, Fn);
+}

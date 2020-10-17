@@ -322,4 +322,7 @@ package GNATLLVM.Wrapper is
      (V : Value_T; Buffer : out String) return Integer
      with Import, Convention => C, External_Name => "Convert_FP_To_String";
 
+   type N_O_D_Fn is access procedure (V : Value_T) with Convention => C;
+   procedure Notify_On_Value_Delete (V : Value_T; Fn : N_O_D_Fn)
+     with Import, Convention => C, External_Name => "Notify_On_Value_Delete";
 end GNATLLVM.Wrapper;

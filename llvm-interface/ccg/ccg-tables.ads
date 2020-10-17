@@ -303,6 +303,9 @@ package CCG.Tables is
      with Pre  => Present (BB),
           Post => Get_No_Name (BB) = B, Inline;
 
+   procedure Delete_Value_Info (V : Value_T) with Convention => C;
+   --  Delete all information previously stored for V
+
    --  Provide a set of functions to reference an Str that contains just
    --  a value or contains exactly one value.
 

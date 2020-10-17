@@ -24,6 +24,7 @@ with Osint.C;  use Osint.C;
 with Output;   use Output;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;  use CCG.Aggregates;
 with CCG.Tables;      use CCG.Tables;
@@ -161,6 +162,6 @@ package body CCG is
       end if;
 
       Set_Is_Unsigned (V);
-
+      Notify_On_Value_Delete (V, Delete_Value_Info'Access);
    end C_Set_Is_Unsigned;
 end CCG;

@@ -185,10 +185,6 @@ package body CCG.Tables is
    function BB_Data_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx
      with Pre => Present (B), Pure_Function;
 
-   procedure Maybe_Write_Typedef (T : Type_T)
-     with Pre => Present (T), Post => Get_Is_Typedef_Output (T);
-   --  See if we need to write a typedef for T and write one if so
-
    -----------------
    -- Update_Hash --
    -----------------

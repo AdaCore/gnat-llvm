@@ -31,6 +31,11 @@ with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Output is
 
+   procedure Maybe_Write_Typedef_And_Decl (V : Value_T)
+     with Pre => Is_A_Constant (V);
+   --  Ensure that we're written typedefs for any types within V and
+   --  declarations for anything in V that needs it
+
    function Is_Simple_Constant (V : Value_T) return Boolean is
      ((Get_Value_Kind (V)
          in Constant_Int_Value_Kind | Constant_Pointer_Null_Value_Kind
@@ -577,8 +582,8 @@ package body CCG.Output is
                   if Present (Init) and then not Is_Undef (Init)
                     and then not Is_A_Constant_Aggregate_Zero (Init)
                   then
+                     Maybe_Write_Typedef_And_Decl (Init);
                      Decl := Decl & " = " & (Init + Initializer);
-                     Maybe_Decl (Init, For_Initializer => True);
                   end if;
 
                   Write_Str (Decl & ";", Eol => True);
@@ -589,6 +594,7 @@ package body CCG.Output is
                --  constant and put it at the top level.
 
                if Is_A_Constant (V) then
+                  Maybe_Write_Typedef_And_Decl (V);
                   Write_Str ("static const " & Decl & " = " &
                                (V + Initializer) & ";", Eol => True);
                   Set_Is_Constant (V);
@@ -601,6 +607,37 @@ package body CCG.Output is
 
       Set_Is_Decl_Output (V);
    end Write_Decl;
+
+   -------------------------
+   -- Maybe_Write_Typedef --
+   -------------------------
+
+   procedure Maybe_Write_Typedef_And_Decl (V : Value_T) is
+   begin
+      --  First, ensure that V has been declared
+
+      Maybe_Decl (V, For_Initializer => True);
+
+      --  Next, we'll take care of typedefs for V's type and for types
+      --  recursively within it, but we also have to be concerned about
+      --  constant expressions, which may reference objects that could be
+      --  of types for which we haven't yet written a typedef.
+
+      Maybe_Write_Typedef (Type_Of (V));
+      if Is_A_Constant_Array (V) or else Is_A_Constant_Struct (V)
+        or else Is_A_Constant_Expr (V)
+      then
+         for J in 0 .. Nat'(Get_Num_Operands (V)) - 1 loop
+            Maybe_Write_Typedef_And_Decl (Get_Operand (V, J));
+         end loop;
+
+      elsif Is_A_Constant_Data_Array (V) then
+         for J in 0 .. Nat'(Get_Num_CDA_Elements (V)) - 1 loop
+            Maybe_Write_Typedef_And_Decl (Get_Element_As_Constant (V, J));
+         end loop;
+      end if;
+
+   end Maybe_Write_Typedef_And_Decl;
 
    -----------------
    -- Write_Type --
@@ -690,10 +727,17 @@ package body CCG.Output is
          Write_Struct_Typedef (T);
       elsif Get_Type_Kind (T) = Array_Type_Kind then
          Write_Array_Typedef (T);
-      elsif Get_Type_Kind (T) = Pointer_Type_Kind
-        and then Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind
-      then
-         Write_Function_Type_Typedef (T);
+      elsif Get_Type_Kind (T) = Pointer_Type_Kind then
+
+         --  We don't have typedefs for function types, just pointer to
+         --  function types. But for normal pointer types, make sure we've
+         --  written the typedef for the pointed-to type.
+
+         if Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind then
+            Write_Function_Type_Typedef (T);
+         else
+            Maybe_Write_Typedef (Get_Element_Type (T));
+         end if;
       end if;
 
    end Write_Typedef;

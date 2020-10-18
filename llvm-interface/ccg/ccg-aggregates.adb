@@ -18,6 +18,7 @@
 with Ada.Containers; use Ada.Containers;
 with Ada.Containers.Hashed_Maps;
 
+with Output; use Output;
 with Table;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -234,43 +235,50 @@ package body CCG.Aggregates is
 
    procedure Write_Struct_Typedef (T : Type_T) is
       Types : constant Nat := Count_Struct_Element_Types (T);
-      S     : Str;
+
    begin
       --  Because this struct may contain a pointer to itself, we always have
       --  to write an incomplete struct. So we write, e.g.,
       --
       --       typedef struct foo foo;
       --       struct foo { ... full definition ..}
-      --
-      --  Write the typedef first, then build an Str corresponding to the
-      --  full definition and output it. Doing it that way ensure that any
-      --  inner typedefs get written first.
 
       Write_Str ("typedef struct " & T & " " & T & ";" & Eol_Str);
-      S := "struct " & T & " {" & Eol_Str;
+
+      --  Before we write the typedef for this struct, make sure we've
+      --  written any inner typedefs.
 
       for J in 0 .. Types - 1 loop
-         S := (S & "    " & Struct_Get_Type_At_Index (T, J) & " " &
-                 Get_Field_Name (T, J) & ";" & Eol_Str);
+         Maybe_Write_Typedef (Struct_Get_Type_At_Index (T, J));
+      end loop;
+
+      --  Now that we know that all inner typedefs have been witten,
+      --  we write out the struct definition.
+
+      Write_Str ("struct " & T & " {", Eol => True);
+
+      for J in 0 .. Types - 1 loop
+         Write_Str ("    " & Struct_Get_Type_At_Index (T, J) & " " &
+                      Get_Field_Name (T, J) & ";", Eol => True);
       end loop;
 
       --  If this is an empty struct, we need to add a dummy field since
       --  ISO C89 doesn't allow an empty struct.
 
       if Types = 0 then
-         S := S & "    char dummy_for_null_recordC; " & Eol_Str;
+         Write_Str (+"    char dummy_for_null_recordC;", Eol => True);
       end if;
 
-      S := S & "}";
+      Write_Str ("}");
 
       --  ??? We have many ways of handling packed, but don't worry about that
       --  in the initial support.
 
       if Is_Packed_Struct (T) then
-         S := S & " __attribute__ ((packed))";
+         Write_Str (" __attribute__ ((packed))");
       end if;
 
-      Write_Str (S & ";", Eol => True);
+      Write_Str (+";", Eol => True);
    end Write_Struct_Typedef;
 
    -------------------------
@@ -278,8 +286,11 @@ package body CCG.Aggregates is
    -------------------------
 
    procedure Write_Array_Typedef (T : Type_T) is
+      Elem_T : constant Type_T := Get_Element_Type (T);
+
    begin
-      Write_Str ("typedef " & Get_Element_Type (T) & " " & T & "[" &
+      Maybe_Write_Typedef (Elem_T);
+      Write_Str ("typedef " & Elem_T & " " & T & "[" &
                    Effective_Array_Length (T) & "];", Eol => True);
    end Write_Array_Typedef;
 

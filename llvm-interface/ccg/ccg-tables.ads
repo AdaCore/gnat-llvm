@@ -349,6 +349,10 @@ package CCG.Tables is
    function Get_Output_Idx (BB : Basic_Block_T) return Nat
      with Pre => Present (BB), Post => Get_Output_Idx'Result /= 0, Inline;
 
+   procedure Maybe_Write_Typedef (T : Type_T)
+     with Pre => Present (T), Post => Get_Is_Typedef_Output (T);
+   --  See if we need to write a typedef for T and write one if so
+
 private
 
    --  Most strings that we have are a combination of operators and

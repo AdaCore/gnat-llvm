@@ -88,7 +88,15 @@ package body GNATLLVM.Codegen is
          Code_Generation := Write_BC;
       elsif Switch = "-emit-c" then
          Emit_C := True;
+
+         --  We want the front end to deal with functions that return arrays
+
          Transform_Function_Array := True;
+
+         --  Building static dispatch tables causes circular references
+         --  in initializers, which there's no way to handle in C.
+
+         Building_Static_Dispatch_Tables := False;
 
          --  Disable 128bits support for C code generation for now
 

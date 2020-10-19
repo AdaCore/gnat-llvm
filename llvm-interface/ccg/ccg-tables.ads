@@ -42,8 +42,41 @@ package CCG.Tables is
    --  For simplicity, we only use a subset of all of the C precedence levels.
    --  Levels are listed from lowest to highest precedence.
 
-   type Precedence is (Unknown, Assign, Logic, Relation, Shift, Add, Mult,
-                       Unary, Component, Primary);
+   type Precedence is
+     (Unknown,
+      --  Used to record that we don't (yet) know the precedence of an
+      --  expression.
+
+      Assign,
+      --  Assignment operation and comma operator (e.g., function arguments)
+
+      Logic,
+      --  Logical AND and OR operations
+
+      Bit,
+      --  Bitwise binary operations
+
+      Relation,
+      --  Comparison operations
+
+      Shift,
+      --  Left and right shit operations
+
+      Add,
+      --  Addition and subtraction
+
+      Mult,
+      --  Multiplication, division, and remainder
+
+      Unary,
+      --  All unary operations (cast, address of, dereference, and
+      --  unary bitwise and arithmetic operations.
+
+      Component,
+      --  Reference to struct fields and array components and function calls
+
+      Primary);
+      --   A name
 
    --  When we concatenate strings that have precedence information, the
    --  resulting string has the lowest precedence. The precedence of a

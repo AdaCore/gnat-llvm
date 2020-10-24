@@ -216,6 +216,7 @@ package body CCG.Tables is
                   when Value =>
                      Update_Hash (H, Comp.Val);
                      Update_Hash (H, Comp.Flags);
+                     Update_Hash (H, Precedence'Pos (Comp.For_P));
                   when Typ =>
                      Update_Hash (H, Comp.T);
                   when BB =>
@@ -306,6 +307,7 @@ package body CCG.Tables is
                when Value =>
                   if SL.Comps (PosL).Val /= SR.Comps (PosR).Val
                     or else SL.Comps (PosL).Flags /= SR.Comps (PosR).Flags
+                    or else SL.Comps (PosL).For_P /= SL.Comps (PosL).For_P
                   then
                      return False;
                   end if;
@@ -407,7 +409,7 @@ package body CCG.Tables is
 
    function "+" (V : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Value, 1, V, Default_Flags)));
+        (1, Unknown, (1 => (Value, 1, V, Default_Flags, Unknown)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -420,7 +422,7 @@ package body CCG.Tables is
 
    function "+" (V : Value_T; VF : Value_Flag) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Value, 1, V, Flag_To_Flags (VF))));
+        (1, Unknown, (1 => (Value, 1, V, Flag_To_Flags (VF), Unknown)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -434,7 +436,8 @@ package body CCG.Tables is
    function "+" (S : Str; VF : Value_Flag) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
         (1, Unknown, (1 => (Value, 1, S.Comps (1).Val,
-                            S.Comps (1).Flags or Flag_To_Flags (VF))));
+                            S.Comps (1).Flags or Flag_To_Flags (VF),
+                            Unknown)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -481,12 +484,69 @@ package body CCG.Tables is
    -- "+" --
    ---------
 
-   function "+" (S : Str; P : Precedence) return Str is
-      S_Rec  : aliased constant Str_Record (S.Length) :=
-                 (S.Length, Precedence'Max (P, S.P), S.Comps);
+   function "+" (V : Value_T; P : Precedence) return Str is
+      S_Rec  : aliased constant Str_Record (1) :=
+              (1, P, (1 => (Value, 1, V, Default_Flags, P)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
+      return Result;
+   end "+";
+
+   ---------
+   -- "+" --
+   ---------
+
+   function "+" (S : Str; P : Precedence) return Str is
+
+      procedure Update_Prec (Comps : in out Str_Component_Array);
+      --  Update the precedence of any values of unknown precedence
+      --  contained in Comps.
+
+      S_Rec  : aliased Str_Record (S.Length) := (S.Length, P, S.Comps);
+      Result : Str;
+
+      -----------------
+      -- Update_Prec --
+      ----------------
+
+      procedure Update_Prec (Comps : in out Str_Component_Array) is
+      begin
+         for Comp of Comps loop
+            if Comp.Kind = Value and then Comp.For_P = Unknown then
+               Comp.For_P := P;
+            end if;
+         end loop;
+      end Update_Prec;
+
+   begin
+      --  If S is already of the desired precedence, return it
+
+      if S.P = P then
+         return S;
+
+      --  Otherwise add parentheses if necessary.
+
+      elsif Needs_Parens (S, P) then
+         declare
+            S_Rec_1 : aliased Str_Record (S.Length + 2);
+
+         begin
+            S_Rec_1.P                         := P;
+            S_Rec_1.Comps (1)                 := (Var_String, 1, Normal, "(");
+            S_Rec_1.Comps (2 .. S.Length + 1) := S.Comps;
+            S_Rec_1.Comps (S.Length + 2)      := (Var_String, 1, Normal, ")");
+            Update_Prec (S_Rec_1.Comps);
+            Result := Undup_Str (S_Rec_1);
+            return Result;
+         end;
+      end if;
+
+      --  Otherwise, we set the precedence of the result (above) to the
+      --  specified value. So we only have to update the values.
+
+      Update_Prec (S_Rec.Comps);
+      Result := Undup_Str (S_Rec);
       return Result;
    end "+";
 
@@ -549,7 +609,7 @@ package body CCG.Tables is
 
             when Value =>
                Write_Value (Comp.Val, Flags => Comp.Flags,
-                            For_Precedence => S.P);
+                            For_Precedence => Comp.For_P);
 
             when Typ =>
                Write_Type (Comp.T);
@@ -588,7 +648,7 @@ package body CCG.Tables is
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown,
                (1 => (Var_String, L'Length, Normal, L),
-                2 => (Value, 1, R, Default_Flags)));
+                2 => (Value, 1, R, Default_Flags, Unknown)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -706,7 +766,7 @@ package body CCG.Tables is
          declare
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Primary,
-               (1 => (Value, 1, L, Default_Flags),
+               (1 => (Value, 1, L, Default_Flags, Unknown),
                 2 => (Var_String, R'Length, Normal, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
@@ -797,8 +857,8 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Default_Flags),
-                      2 => (Value, 1, R, Default_Flags)));
+        (2, Primary, (1 => (Value, 1, L, Default_Flags, Unknown),
+                      2 => (Value, 1, R, Default_Flags, Unknown)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -839,7 +899,8 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : Type_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Default_Flags), 2 => (Typ, 1, R)));
+        (2, Primary, (1 => (Value, 1, L, Default_Flags, Unknown),
+                      2 => (Typ, 1, R)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -853,7 +914,8 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : Basic_Block_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Default_Flags), 2 => (BB, 1, R)));
+        (2, Primary, (1 => (Value, 1, L, Default_Flags, Unknown),
+                      2 => (BB, 1, R)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -866,7 +928,8 @@ package body CCG.Tables is
 
    function "&" (L : Value_T; R : Nat) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Default_Flags), 2 => (Number, 1, R)));
+        (2, Primary, (1 => (Value, 1, L, Default_Flags, Unknown),
+                      2 => (Number, 1, R)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -879,7 +942,8 @@ package body CCG.Tables is
 
    function "&" (L : Type_T; R : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Typ, 1, L), 2 => (Value, 1, R, Default_Flags)));
+        (2, Primary, (1 => (Typ, 1, L),
+                      2 => (Value, 1, R, Default_Flags, Unknown)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -921,7 +985,8 @@ package body CCG.Tables is
 
    function "&" (L : Basic_Block_T; R : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (BB, 1, L), 2 => (Value, 1, R, Default_Flags)));
+        (2, Primary, (1 => (BB, 1, L),
+                      2 => (Value, 1, R, Default_Flags, Unknown)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -965,7 +1030,7 @@ package body CCG.Tables is
 
    begin
       S_Rec.P                         := R.P;
-      S_Rec.Comps (1)                 := (Value, 1, L, Default_Flags);
+      S_Rec.Comps (1)                 := (Value, 1, L, Default_Flags, Unknown);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
       Result := Undup_Str (S_Rec);
       return Result;
@@ -1019,7 +1084,7 @@ package body CCG.Tables is
 
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
-      S_Rec.Comps (L.Length + 1)  := (Value, 1, R, Default_Flags);
+      S_Rec.Comps (L.Length + 1)  := (Value, 1, R, Default_Flags, Unknown);
       Result := Undup_Str (S_Rec);
       return Result;
    end "&";
@@ -1168,6 +1233,7 @@ package body CCG.Tables is
 
       --  If this is "*" concatenated with some string, return the result
       --  of removing it.
+      --  ??? What if this is "(* ... )"?
 
       elsif S.Length > 1 and then S.Comps (1).Kind = Var_String
         and then S.Comps (1).Str = "*"
@@ -1188,7 +1254,8 @@ package body CCG.Tables is
       then
          declare
             S_Rec  : aliased constant Str_Record :=
-              (1, S.P, (1 => (Value, 0, S.Comps (1).Val, Default_Flags)));
+              (1, S.P, (1 => (Value, 0, S.Comps (1).Val, Default_Flags,
+                              S.Comps (1).For_P)));
             Result : constant Str                := Undup_Str (S_Rec);
          begin
             return Result;
@@ -1199,7 +1266,7 @@ package body CCG.Tables is
          --  pointer type.
 
       else
-         Result := "&" & S + Unary;
+         Result := "&" & (S + Unary);
          if Contains_One_Value (S) and then Get_Is_Constant (S) then
             Result :=
               "(" & (if Present (T) then T else Type_Of (S)) & "*) " & Result;
@@ -1224,7 +1291,8 @@ package body CCG.Tables is
          declare
             S_Rec  : aliased constant Str_Record :=
               (1, S.P, (1 => (Value, 0, S.Comps (1).Val,
-                              S.Comps (1).Flags or Flag_To_Flags (LHS))));
+                              S.Comps (1).Flags or Flag_To_Flags (LHS),
+                              S.Comps (1).For_P)));
             Result : constant Str                := Undup_Str (S_Rec);
          begin
             return Result;

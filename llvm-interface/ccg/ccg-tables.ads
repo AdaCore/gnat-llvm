@@ -39,19 +39,27 @@ package CCG.Tables is
    --  precedence, if known, of a string. This is used when we substitute
    --  a value for a variable: if that value is of higher precedence than
    --  the string we're substituting it into, we don't need parentheses.
-   --  For simplicity, we only use a subset of all of the C precedence levels.
    --  Levels are listed from lowest to highest precedence.
 
    type Precedence is
      (Unknown,
       --  Used to record that we don't (yet) know the precedence of an
-      --  expression.
+      --  expression or where a value will be used.
+
+      Comma,
+      --  The comma operator, usually within a function call
 
       Assign,
       --  Assignment operation and comma operator (e.g., function arguments)
 
-      Logic,
-      --  Logical AND and OR operations
+      Conditional,
+      --  Ternary conditional operator:  a ? b : c
+
+      Logical_OR,
+      --  Logical OR operation
+
+      Logical_AND,
+      --  Logical AND operation
 
       Bit,
       --  Bitwise binary operations
@@ -86,15 +94,24 @@ package CCG.Tables is
    function "+" (S : String; P : Precedence) return Str
      with Post => Get_Precedence ("+"'Result) = P;
    function "+" (S : Str; P : Precedence) return Str
-     with Pre => Present (S), Post => Get_Precedence ("+"'Result) >= P;
-
-   function Has_Precedence (S : Str) return Boolean
-     with Pre => Present (S);
-   --  Return True if the precedence of S isn't known
+     with Pre => Present (S), Post => Get_Precedence ("+"'Result) = P;
 
    function Get_Precedence (S : Str) return Precedence
-     with Pre => Has_Precedence (S);
+     with Pre => Present (S);
    --  Return the precedence assigned to S
+
+   function Needs_Parens (Is_P, For_P : Precedence) return Boolean is
+      (Is_P /= Unknown and then For_P /= Unknown
+         and then (Is_P < For_P
+                     or else (Is_P = For_P
+                                and then For_P not in Unary | Component)));
+   function Needs_Parens (S : Str; For_P : Precedence) return Boolean is
+     (Needs_Parens (Get_Precedence (S), For_P));
+   --  Indicates whether we need to enclose S (or an expression of precedence
+   --  Is_P) in parentheses if it's being inserted into an expression of
+   --  precedence For_P. If the precedence is the same, we want to add
+   --  parens in most cases, but we needn't in the case of unary and
+   --  component operators due to the syntax.
 
    --  Normally, a use of a variable name in the LLVM IR is the same as the
    --  use of that name in C. However, there are cases where a reference in
@@ -175,8 +192,7 @@ package CCG.Tables is
      with Post => Present ("+"'Result);
    --  Return an internal representation of S, V, T, or B
 
-   function "+" (V : Value_T; P : Precedence) return Str is
-     (+V + P)
+   function "+" (V : Value_T; P : Precedence) return Str
      with Pre => Present (V), Post => Get_Precedence ("+"'Result) = P;
 
    function "&" (L : String;         R : Value_T)       return Str
@@ -437,6 +453,7 @@ private
          when Value =>
             Val    : Value_T;
             Flags  : Value_Flags;
+            For_P  : Precedence;
 
          when Typ =>
             T      :  Type_T;
@@ -468,9 +485,6 @@ private
    function "=" (SL, SR : Str_Record) return Boolean;
    function "=" (SL, SR : Str)        return Boolean is
      (SL.all = SR.all);
-
-   function Has_Precedence (S : Str) return Boolean is
-     (S.P /= Unknown);
 
    function Get_Precedence (S : Str) return Precedence is
      (S.P);

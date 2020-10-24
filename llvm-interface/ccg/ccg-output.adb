@@ -474,12 +474,10 @@ package body CCG.Output is
 
    procedure Write_Str_With_Precedence (S : Str; P : Precedence) is
    begin
-      if P /= Unknown and then Has_Precedence (S)
-           and then Get_Precedence (S) > P
-      then
-         Write_Str (S);
-      else
+      if Needs_Parens (S, P) then
          Write_Str ("(" & S & ")");
+      else
+         Write_Str (S);
       end if;
    end Write_Str_With_Precedence;
 

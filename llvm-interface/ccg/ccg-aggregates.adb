@@ -308,7 +308,7 @@ package body CCG.Aggregates is
             --  We know this is either a struct or an array
 
             if Get_Type_Kind (T) = Struct_Type_Kind then
-               Result := "." + Component & Get_Field_Name (T, Ins_Idx);
+               Result := "." & Get_Field_Name (T, Ins_Idx);
                T      := Struct_Get_Type_At_Index (T, Ins_Idx);
             else
                Result := " [" & Ins_Idx & "]" + Component;
@@ -326,7 +326,7 @@ package body CCG.Aggregates is
       Idxs : constant Nat := Get_Num_Indices (V);
       T    : Type_T       := Type_Of (Op);
    begin
-      return Result : Str := +Op do
+      return Result : Str := Op + Component do
 
          --  We process each index in turn, stripping off the reference.
 
@@ -415,7 +415,7 @@ package body CCG.Aggregates is
             --  If this isn't an LHS, we have to make it one
 
             if not Is_LHS then
-               Result := Deref (Result);
+               Result := Deref (Result) + Component;
             end if;
 
             Result := Result & TP ("[#1]", Op) + Component;

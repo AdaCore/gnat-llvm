@@ -330,7 +330,7 @@ package body CCG.Subprograms is
    procedure Call_Instruction (V : Value_T; Ops : Value_Array) is
       Func  : constant Value_T := Ops (Ops'Last);
       S     : constant String  := Get_Value_Name (Func);
-      Call  : Str              := Func & " (";
+      Call  : Str              := Func + Component & " (";
       First : Boolean          := True;
 
    begin
@@ -353,9 +353,10 @@ package body CCG.Subprograms is
 
          if Get_Type_Kind (Op) = Array_Type_Kind and then Get_Is_Constant (Op)
          then
-            Call := Call & "(" & Get_Element_Type (Op) & " *) " & Op;
+            Call :=
+              Call & "(" & Get_Element_Type (Op) & " *) " & (Op + Comma);
          else
-            Call := Call & Op;
+            Call := Call & (Op + Comma);
          end if;
 
          First := False;
@@ -364,7 +365,7 @@ package body CCG.Subprograms is
       --  Add the final close paren. If this is a procedure call,
       --  output it. Otherwise, set this as the value of V.
 
-      Call := (Call & ")") + Assign;
+      Call := (Call & ")") + Component;
       if Get_Type_Kind (Type_Of (V)) = Void_Type_Kind then
          Output_Stmt (Call);
       else

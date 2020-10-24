@@ -100,15 +100,21 @@ package body CCG.Instructions is
             return TP ("#1 / #2", Op1, Op2) + Mult;
 
          when Op_And =>
-            return TP ((if T = Bit_T then "#1 && #2" else "#1 & #2"),
-                       Op1, Op2) + Logic;
+            if T = Bit_T then
+               return TP ("#1 && #2", Op1, Op2) + Logical_AND;
+            else
+               return TP ("#1 & #2", Op1, Op2) + Bit;
+            end if;
 
          when Op_Or =>
-            return TP ((if T = Bit_T then "#1 || #2" else "#1 | #2"),
-                       Op1, Op2) + Logic;
+            if T = Bit_T then
+               return TP ("#1 || #2", Op1, Op2) + Logical_OR;
+            else
+               return TP ("#1 | #2", Op1, Op2) + Bit;
+            end if;
 
          when Op_Xor =>
-            return TP ("#1 ^ #2", Op1, Op2) + Logic;
+            return TP ("#1 ^ #2", Op1, Op2) + Bit;
 
          when others =>
             pragma Assert (False);
@@ -223,7 +229,7 @@ package body CCG.Instructions is
          Output_Stmt (LHS & " = " & RHS + Assign);
       else
          Output_Stmt ("memmove ((void *) " & Addr_Of (LHS) & ", (void *) " &
-                        Addr_Of (RHS) & ", sizeof (" & T & "))");
+                        Addr_Of (RHS) & ", sizeof (" & T & "))" + Assign);
       end if;
    end Write_Copy;
 
@@ -287,7 +293,7 @@ package body CCG.Instructions is
             if Does_Not_Return (Current_Func) then
                null;
             elsif Present (Op1) then
-               Output_Stmt ("return " + Assign & Op1);
+               Output_Stmt ("return " & Op1 + Assign);
             else
                Output_Stmt ("return");
             end if;
@@ -322,7 +328,7 @@ package body CCG.Instructions is
             Assignment (V, Cmp_Instruction (V, Op1, Op2));
 
          when Op_Select =>
-            Assignment (V, TP ("#1 ? #2 : #3", Op1, Op2, Op3) + Logic);
+            Assignment (V, TP ("#1 ? #2 : #3", Op1, Op2, Op3) + Conditional);
 
          when Op_Br =>
             if Ops'Length = 1 then

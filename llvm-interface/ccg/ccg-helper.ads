@@ -124,6 +124,22 @@ package CCG.Helper is
      (Present (Is_A_Call_Inst (V)))
      with Pre => Present (V);
 
+   function Is_A_Load_Inst (V : Value_T) return Boolean is
+     (Present (Is_A_Load_Inst (V)))
+     with Pre => Present (V);
+
+   function Is_A_Switch_Inst (V : Value_T) return Boolean is
+     (Present (Is_A_Switch_Inst (V)))
+     with Pre => Present (V);
+
+   function Is_A_Extract_Value_Inst (V : Value_T) return Boolean is
+     (Present (Is_A_Extract_Value_Inst (V)))
+     with Pre => Present (V);
+
+   function Is_A_Insert_Value_Inst (V : Value_T) return Boolean is
+     (Present (Is_A_Insert_Value_Inst (V)))
+     with Pre => Present (V);
+
    function Is_A_Basic_Block (V : Value_T) return Boolean is
      (Present (Is_A_Basic_Block (V)))
      with Pre => Present (V);
@@ -159,13 +175,13 @@ package CCG.Helper is
 
    function Get_Num_Indices (V : Value_T) return Nat is
      (Nat (unsigned'(Get_Num_Indices (V))))
-     with Pre => Get_Instruction_Opcode (V)
-                   in Op_Extract_Value | Op_Insert_Value;
+     with Pre => Is_A_Extract_Value_Inst (V)
+                 or else Is_A_Insert_Value_Inst (V);
 
    function Get_Index (V : Value_T; Idx : Nat) return Nat is
      (Nat (Cvt_A (Get_Indices (V)) (Idx)))
-     with Pre => Get_Instruction_Opcode (V)
-                   in Op_Extract_Value | Op_Insert_Value
+     with Pre => (Is_A_Extract_Value_Inst (V)
+                    or else Is_A_Insert_Value_Inst (V))
                  and then Idx < Get_Num_Indices (V);
 
    function Get_Opcode (V : Value_T) return Opcode_T is

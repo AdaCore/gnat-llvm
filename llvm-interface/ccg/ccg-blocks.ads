@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C; use Interfaces.C;
-
 with LLVM.Core; use LLVM.Core;
 
 with CCG.Helper; use CCG.Helper;
@@ -42,7 +40,7 @@ package CCG.Blocks is
    --  Generate the code for basic block unless already output
 
    procedure Switch_Instruction (V : Value_T; Ops : Value_Array)
-     with Pre => Get_Opcode (V) = Op_Switch;
+     with Pre => Is_A_Switch_Inst (V);
    --  Process V, a switch instruction
 
    procedure Output_Branch

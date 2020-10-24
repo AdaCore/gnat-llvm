@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C; use Interfaces.C;
-
 with LLVM.Core;  use LLVM.Core;
 
 with CCG.Helper; use CCG.Helper;
@@ -52,7 +50,7 @@ package CCG.Subprograms is
    --  Return the decl for the function being converted to C
 
    procedure Call_Instruction (V : Value_T; Ops : Value_Array)
-     with Pre => Get_Opcode (V) = Op_Call;
+     with Pre => Is_A_Call_Inst (V);
    --  Process a call instruction
 
    procedure Write_Subprograms;

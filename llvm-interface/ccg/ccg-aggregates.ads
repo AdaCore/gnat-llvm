@@ -62,19 +62,18 @@ package CCG.Aggregates is
    --  Write a typedef for T, an array type
 
    function Extract_Value_Instruction (V : Value_T; Op : Value_T) return Str
-     with Pre  => Get_Opcode (V) = Op_Extract_Value and then Present (Op),
+     with Pre  => Is_A_Extract_Value_Inst (V) and then Present (Op),
           Post => Present (Extract_Value_Instruction'Result);
    --  Return the result of an extractvalue instruction V
 
    procedure Insert_Value_Instruction (V, Aggr, Op : Value_T)
-     with Pre => Get_Opcode (V) = Op_Insert_Value and then Present (Aggr)
+     with Pre => Is_A_Insert_Value_Inst (V) and then Present (Aggr)
                  and then Present (Op);
    --  Process an insertvalue instruction V with an initial value of Aggr
    --  and assigning Op to the component.
 
    procedure GEP_Instruction (V : Value_T; Ops : Value_Array)
-     with Pre  => Get_Opcode (V) = Op_Get_Element_Ptr
-                  and then Ops'Length > 1;
-   --  Process a GEP instruction
+     with Pre  => Get_Opcode (V) = Op_Get_Element_Ptr and then Ops'Length > 1;
+   --  Process a GEP instruction or a GEP constant expression
 
 end CCG.Aggregates;

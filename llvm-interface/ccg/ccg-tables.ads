@@ -207,30 +207,13 @@ package CCG.Tables is
      with Pre => Present (R), Post => Present ("&"'Result);
    function "&" (L : Value_T;        R : String)        return Str
      with Pre => Present (L), Post => Present ("&"'Result);
-   function "&" (L : Value_T;        R : Value_T)       return Str
-     with Pre  => Present (L) and then Present (R),
-          Post => Present ("&"'Result);
-   function "&" (L : Value_T;        R : Type_T)        return Str
-     with Pre  => Present (L) and then Present (R),
-          Post => Present ("&"'Result);
-   function "&" (L : Value_T;        R : Basic_Block_T) return Str
-     with Pre  => Present (L) and then Present (R),
-          Post => Present ("&"'Result);
    function "&" (L : Value_T;        R : Nat)           return Str
      with Pre => Present (L), Post => Present ("&"'Result);
    function "&" (L : Value_T;        R : Str)           return Str
      with Pre  => Present (L) and then Present (R),
           Post => Present ("&"'Result);
-   function "&" (L : Type_T;         R : String)        return Str;
-   function "&" (L : Type_T;         R : Value_T)       return Str
-     with Pre  => Present (L) and then Present (R),
-          Post => Present ("&"'Result);
-   function "&" (L : Type_T;         R : Type_T)        return Str
-     with Pre  => Present (L) and then Present (R),
-          Post => Present ("&"'Result);
-   function "&" (L : Type_T;         R : Basic_Block_T) return Str
-     with Pre  => Present (L) and then Present (R),
-          Post => Present ("&"'Result);
+   function "&" (L : Type_T;         R : String)        return Str
+     with Pre => Present (L), Post => Present ("&"'Result);
    function "&" (L : Type_T;         R : Nat)           return Str
      with Pre => Present (L), Post => Present ("&"'Result);
    function "&" (L : Type_T;         R : Str)           return Str
@@ -238,15 +221,6 @@ package CCG.Tables is
           Post => Present ("&"'Result);
    function "&" (L : Basic_Block_T;  R : String)        return Str
      with Pre => Present (L), Post => Present ("&"'Result);
-   function "&" (L : Basic_Block_T;  R : Value_T)       return Str
-     with Pre  => Present (L) and then Present (R),
-          Post => Present ("&"'Result);
-   function "&" (L : Basic_Block_T;  R : Type_T)        return Str
-     with Pre  => Present (L) and then Present (R),
-          Post => Present ("&"'Result);
-   function "&" (L : Basic_Block_T;  R : Basic_Block_T) return Str
-     with Pre  => Present (L) and then Present (R),
-          Post => Present ("&"'Result);
    function "&" (L : Basic_Block_T;  R : Nat)           return Str
      with Pre => Present (L), Post => Present ("&"'Result);
    function "&" (L : Basic_Block_T;  R : Str)           return Str

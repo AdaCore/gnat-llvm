@@ -855,77 +855,6 @@ package body CCG.Tables is
    -- "&" --
    ---------
 
-   function "&" (L : Value_T; R : Value_T) return Str is
-      S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Default_Flags, Unknown),
-                      2 => (Value, 1, R, Default_Flags, Unknown)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      return Result;
-   end "&";
-
-   ---------
-   -- "&" --
-   ---------
-
-   function "&" (L : Type_T; R : Type_T) return Str is
-      S_Rec  : aliased constant Str_Record (2) :=
-        (2, Unknown, (1 => (Typ, 1, L), 2 => (Typ, 1, R)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      Maybe_Write_Typedef (L);
-      Maybe_Write_Typedef (R);
-      return Result;
-   end "&";
-
-   ---------
-   -- "&" --
-   ---------
-
-   function "&" (L : Basic_Block_T; R : Basic_Block_T) return Str is
-      S_Rec  : aliased constant Str_Record (2) :=
-        (2, Unknown, (1 => (BB, 1, L), 2 => (BB, 1, R)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      return Result;
-   end "&";
-
-   ---------
-   -- "&" --
-   ---------
-
-   function "&" (L : Value_T; R : Type_T) return Str is
-      S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Default_Flags, Unknown),
-                      2 => (Typ, 1, R)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      Maybe_Write_Typedef (R);
-      return Result;
-   end "&";
-
-   ---------
-   -- "&" --
-   ---------
-
-   function "&" (L : Value_T; R : Basic_Block_T) return Str is
-      S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Default_Flags, Unknown),
-                      2 => (BB, 1, R)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      return Result;
-   end "&";
-
-   ---------
-   -- "&" --
-   ---------
-
    function "&" (L : Value_T; R : Nat) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
         (2, Primary, (1 => (Value, 1, L, Default_Flags, Unknown),
@@ -940,35 +869,6 @@ package body CCG.Tables is
    -- "&" --
    ---------
 
-   function "&" (L : Type_T; R : Value_T) return Str is
-      S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Typ, 1, L),
-                      2 => (Value, 1, R, Default_Flags, Unknown)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      Maybe_Write_Typedef (L);
-      return Result;
-   end "&";
-
-   ---------
-   -- "&" --
-   ---------
-
-   function "&" (L : Type_T; R : Basic_Block_T) return Str is
-      S_Rec  : aliased constant Str_Record (2) :=
-        (2, Unknown, (1 => (Typ, 1, L), 2 => (BB, 1, R)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      Maybe_Write_Typedef (L);
-      return Result;
-   end "&";
-
-   ---------
-   -- "&" --
-   ---------
-
    function "&" (L : Type_T; R : Nat) return Str is
       S_Rec  : aliased constant Str_Record (2) :=
         (2, Unknown, (1 => (Typ, 1, L), 2 => (Number, 1, R)));
@@ -976,34 +876,6 @@ package body CCG.Tables is
 
    begin
       Maybe_Write_Typedef (L);
-      return Result;
-   end "&";
-
-   ---------
-   -- "&" --
-   ---------
-
-   function "&" (L : Basic_Block_T; R : Value_T) return Str is
-      S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (BB, 1, L),
-                      2 => (Value, 1, R, Default_Flags, Unknown)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      return Result;
-   end "&";
-
-   ---------
-   -- "&" --
-   ---------
-
-   function "&" (L : Basic_Block_T; R : Type_T) return Str is
-      S_Rec  : aliased constant Str_Record (2) :=
-        (2, Unknown, (1 => (BB, 1, L), 2 => (Typ, 1, R)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      Maybe_Write_Typedef (R);
       return Result;
    end "&";
 

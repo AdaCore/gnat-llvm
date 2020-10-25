@@ -1374,8 +1374,8 @@ package body GNATLLVM.Instructions is
    is
       LLVM_Func   : constant Value_T       := +Func;
       No_Raise    : constant Boolean       :=
-        Is_A_Function (Func) and then
-          (Does_Not_Throw (Func) or else No_Exception_Propagation_Active);
+        No_Exception_Propagation_Active
+          or else (Is_A_Function (Func) and then Does_Not_Throw (Func));
       Lpad        : constant Basic_Block_T :=
         (if No_Raise then No_BB_T else Get_Landing_Pad);
       Act_Param   : Int                    := -1;

@@ -279,23 +279,30 @@ package body CCG.Output is
    procedure Write_Constant_Value
      (V              : Value_T;
       Flags          : Value_Flags := Default_Flags;
-      Is_Unsigned    : Boolean     := False)
-   is
-      subtype LLI is Long_Long_Integer;
+      Is_Unsigned    : Boolean     := False) is
    begin
       if Is_A_Constant_Int (V) then
          declare
-            Width : constant Int    := Get_Int_Type_Width (V);
-            Val   : constant LLI    := Const_Int_Get_S_Ext_Value (V);
-            U_Val : constant ULL    := Const_Int_Get_Z_Ext_Value (V);
-            Image : constant String := Val'Image;
-
+            Width : constant Int := Get_Int_Type_Width (V);
          begin
-            if Is_Unsigned then
-               Write_Str (U_Val'Image);
-               Write_Str ("U");
+            if Width = 1 then
+               Write_Str
+                 (if Const_Int_Get_S_Ext_Value (V) = 0 then "0" else "1");
+            elsif Is_Unsigned then
+               declare
+                  U_Img : constant String :=
+                    Const_Int_Get_Z_Ext_Value (V)'Image;
+               begin
+                  Write_Str (U_Img (2 .. U_Img'Last));
+                  Write_Str ("U");
+               end;
             else
-               Write_Str (Image ((if Val < 0 then 1 else 2) .. Image'Last));
+               declare
+                  Img : constant String := Const_Int_Get_S_Ext_Value (V)'Image;
+               begin
+                  Write_Str
+                    (Img ((if Img (1) = '-' then 1 else 2) .. Img'Last));
+               end;
             end if;
 
             if Width = Get_Long_Long_Size then
@@ -307,9 +314,8 @@ package body CCG.Output is
 
       elsif Is_A_Constant_FP (V) then
          declare
-            Buffer       : String (1 .. 128);
-            Len          : Natural;
-
+            Buffer : String (1 .. 128);
+            Len    : Natural;
          begin
             Len := Convert_FP_To_String (V, Buffer);
             Write_Str (Buffer (1 .. Len));

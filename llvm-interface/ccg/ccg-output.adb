@@ -130,12 +130,15 @@ package body CCG.Output is
          Write_Str (S);
          Append_Suffix := True;
       else
-
-         --  We assume here that the only character we have to be concerned
-         --  about is ".", which we remap to "_".
+         --  We assume here that the only characters we have to be concerned
+         --  about are "." and "-", which we remap to "_".
+         --  GNAT LLVM itself only generates '.' but the LLVM optimizer may
+         --  generate e.g. .pre-phixxx variables, see
+         --  lib/Transforms/Scalar/GVN.cpp or xxxthread-pre-split, see
+         --  lib/Transforms/Scalar/JumpThreading.cpp.
 
          for C of S loop
-            if C = '.' then
+            if C in '.' | '-' then
                Append_Suffix := True;
                Write_Char ('_');
             else

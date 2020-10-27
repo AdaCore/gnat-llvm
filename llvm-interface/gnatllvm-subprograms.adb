@@ -2429,6 +2429,13 @@ package body GNATLLVM.Subprograms is
          --  Now deal with function and parameter attributes
          --  ??? We don't handle some return value attributes yet.
 
+         if CPU.all /= "generic" then
+            Add_Named_Attribute (LLVM_Func, "target-cpu", CPU.all);
+         end if;
+         if Features.all /= "" then
+            Add_Named_Attribute (LLVM_Func, "target-features", Features.all);
+         end if;
+
          Add_Inline_Attribute (LLVM_Func, E);
          if No_Tail_Calls then
             Add_Named_Attribute (LLVM_Func, "disable-tail-calls", "true");

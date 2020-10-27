@@ -60,9 +60,10 @@ package body GNATLLVM.Codegen is
    --------------------
 
    procedure Process_Switch (Switch : String) is
-      First : constant Integer := Switch'First;
-      Last  : constant Integer := Switch_Last (Switch);
-      Len   : constant Integer := Last - First + 1;
+      First   : constant Integer := Switch'First;
+      Last    : constant Integer := Switch_Last (Switch);
+      Len     : constant Integer := Last - First + 1;
+      To_Free : String_Access    := null;
 
       function Starts_With (S : String) return Boolean is
         (Len > S'Length and then Switch (First .. First + S'Length - 1) = S);
@@ -71,6 +72,10 @@ package body GNATLLVM.Codegen is
       function Switch_Value (S : String) return String is
         (Switch (S'Length + First .. Last));
       --  Returns the value of a switch known to start with S
+
+      function Add_Maybe_With_Comma (S1, S2 : String) return String is
+        ((if S1 = "" then S1 else S1 & ",") & S2);
+      --  Concatenate S1 and S2, putting a comma in between if S1 is empty
 
    begin
       --  ??? At some point, this and Is_Back_End_Switch need to have
@@ -124,14 +129,40 @@ package body GNATLLVM.Codegen is
       elsif Switch = "-fno-optimize-ir" then
          Optimize_IR := False;
       elsif Starts_With ("--target=") then
-         Free (Target_Triple);
+         To_Free       := Target_Triple;
          Target_Triple := new String'(Switch_Value ("--target="));
       elsif Starts_With ("-mtriple=") then
-         Free (Target_Triple);
+         To_Free       := Target_Triple;
          Target_Triple := new String'(Switch_Value ("-mtriple="));
+
+      --  -march= and -mcpu= set the CPU to be used. -mtune= does likewise,
+      --  but only if we haven't already seen one of the previous two switches
+
+      elsif Starts_With ("-march=") then
+         To_Free       := CPU;
+         CPU           := new String'(Switch_Value ("-march="));
       elsif Starts_With ("-mcpu=") then
-         Free (CPU);
-         CPU := new String'(Switch_Value ("-mcpu="));
+         To_Free       := CPU;
+         CPU           := new String'(Switch_Value ("-mcpu="));
+      elsif Starts_With ("-mtune=") then
+         if CPU.all = "generic" then
+            To_Free    := CPU;
+            CPU        := new String'(Switch_Value ("-march="));
+         end if;
+
+      --  We support -mXXX and -mno-XXX by adding +XXX or -XXX, respectively,
+      --  to the list of features.
+
+      elsif Starts_With ("-mno-") then
+         To_Free       := Features;
+         Features      :=
+           new String'(Add_Maybe_With_Comma (Features.all,
+                                       "-" & Switch_Value ("-mno-")));
+      elsif Starts_With ("-m") then
+         To_Free       := Features;
+         Features      :=
+           new String'(Add_Maybe_With_Comma (Features.all,
+                                             "+" & Switch_Value ("-m")));
       elsif Switch = "-O" then
             Code_Opt_Level := 1;
             Code_Gen_Level := Code_Gen_Level_Less;
@@ -231,6 +262,11 @@ package body GNATLLVM.Codegen is
       elsif Starts_With ("-llvm-") then
          Switch_Table.Append (new String'(Switch_Value ("-llvm")));
       end if;
+
+      --  Free string that we replaced above, if any
+
+      Free (To_Free);
+
    end Process_Switch;
 
    -----------------------
@@ -336,7 +372,7 @@ package body GNATLLVM.Codegen is
           (T          => LLVM_Target,
            Triple     => Target_Triple.all,
            CPU        => CPU.all,
-           Features   => "",
+           Features   => Features.all,
            Level      => Code_Gen_Level,
            Reloc      => Reloc_Mode,
            Code_Model => Code_Model);

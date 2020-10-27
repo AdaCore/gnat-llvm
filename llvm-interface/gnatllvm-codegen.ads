@@ -32,11 +32,14 @@ package GNATLLVM.Codegen is
    Code_Generation : Code_Generation_Kind := Write_Object;
    --  Type of code generation we're doing
 
-   Emit_C          : Boolean := False;
+   Emit_C          : Boolean        := False;
    --  True if -emit-c was specified
 
-   CPU             :  String_Access := new String'("generic");
+   CPU             : String_Access  := new String'("generic");
    --  Name of the specific CPU for this compilation.
+
+   Features        : String_Access  := new String'("");
+   --  Features to enable or disable for this target
 
    Target_Triple   : String_Access  := new String'(Get_Default_Target_Triple);
    --  Name of the target for this compilation

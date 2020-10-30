@@ -233,7 +233,8 @@ package body CCG.Aggregates is
    -- Write_Struct_Typedef --
    --------------------------
 
-   procedure Write_Struct_Typedef (T : Type_T) is
+   procedure Write_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
+   is
       Types : constant Nat := Count_Struct_Element_Types (T);
 
    begin
@@ -243,7 +244,17 @@ package body CCG.Aggregates is
       --       typedef struct foo foo;
       --       struct foo { ... full definition ..}
 
-      Write_Str ("typedef struct " & T & " " & T & ";" & Eol_Str);
+      if not Get_Is_Incomplete_Output (T) then
+         Write_Str ("typedef struct " & T & " " & T & ";" & Eol_Str);
+         Set_Is_Incomplete_Output (T);
+      end if;
+
+      --  If all we're to do is to to write the incomplete definition,
+      --  we're done.
+
+      if Incomplete then
+         return;
+      end if;
 
       --  Before we write the typedef for this struct, make sure we've
       --  written any inner typedefs.
@@ -407,9 +418,13 @@ package body CCG.Aggregates is
       end if;
 
       --  Now process any other operands, which must always dereference into
-      --  an array or struct.
+      --  an array or struct. When we make a component reference of an object,
+      --  we must ensure that the actual type of the object, not just a pointer
+      --  to that object, will have been fully defined and isn't an incomplete
+      --  type.
 
       for Op of Ops (Ops'First + 2 .. Ops'Last) loop
+         Maybe_Write_Typedef (Aggr_T);
          if Get_Type_Kind (Aggr_T) = Array_Type_Kind then
 
             --  If this isn't an LHS, we have to make it one

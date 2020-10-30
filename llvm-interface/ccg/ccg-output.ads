@@ -46,8 +46,11 @@ package CCG.Output is
      with Pre => Present (V), Post => Get_Is_Decl_Output (V);
    --  Write the decl for T, if any and if needed
 
-   procedure Write_Typedef (T : Type_T)
-     with Pre => Present (T), Post => Get_Is_Typedef_Output (T);
-   --  Write the typedef for T, if any
+   procedure Write_Typedef (T : Type_T; Incomplete : Boolean := False)
+     with Pre =>  Present (T),
+          Post => Get_Is_Typedef_Output (T)
+                  or else (Incomplete and then Get_Is_Incomplete_Output (T));
+   --  Write the typedef for T, if any. If Incomplete an T is a struct type,
+   --  just write the initial definition of the struct, with no fields.
 
 end CCG.Output;

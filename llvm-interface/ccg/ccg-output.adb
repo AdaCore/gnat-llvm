@@ -496,6 +496,10 @@ package body CCG.Output is
 
    procedure Maybe_Decl (V : Value_T; For_Initializer : Boolean := False) is
    begin
+      --  Be sure that we've written a typedef for V's type
+
+      Maybe_Write_Typedef (Type_Of (V));
+
       --  If this is an unprocessed constant expression, process it as an
       --  instruction
 
@@ -697,13 +701,17 @@ package body CCG.Output is
          when Pointer_Type_Kind =>
 
             --  There's no such thing in C as a function type, only a pointer
-            --  to function type.  So we special-case that.
+            --  to function type. So we special-case that. For normal
+            --  pointers, we don't want to use a concatenation operator
+            --  because that might cause us to try to write out the type
+            --  which will then be at the wrong place.
 
             if Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind then
                Write_Str ("ccg_f");
                Write_Int (Get_Output_Idx (T));
             else
-               Write_Str (Get_Element_Type (T) & " *");
+               Write_Type (Get_Element_Type (T));
+               Write_Str (" *");
             end if;
 
          when Struct_Type_Kind =>
@@ -727,26 +735,40 @@ package body CCG.Output is
    -- Write_Typedef --
    --------------------
 
-   procedure Write_Typedef (T : Type_T) is
+   procedure Write_Typedef (T : Type_T; Incomplete : Boolean := False) is
    begin
-      Set_Is_Typedef_Output (T);
+      --  Show we're writing the typedef (so we know not to do it
+      --  recursively).
+
+      Set_Are_Writing_Typedef (T);
+
+      --  See what type of type this is
+
       if Get_Type_Kind (T) = Struct_Type_Kind then
-         Write_Struct_Typedef (T);
+         Write_Struct_Typedef (T, Incomplete => Incomplete);
       elsif Get_Type_Kind (T) = Array_Type_Kind then
          Write_Array_Typedef (T);
       elsif Get_Type_Kind (T) = Pointer_Type_Kind then
 
          --  We don't have typedefs for function types, just pointer to
          --  function types. But for normal pointer types, make sure we've
-         --  written the typedef for the pointed-to type.
+         --  written at least an incomplete version of the typedef for the
+         --  pointed-to type.
 
          if Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind then
             Write_Function_Type_Typedef (T);
          else
-            Maybe_Write_Typedef (Get_Element_Type (T));
+            Maybe_Write_Typedef (Get_Element_Type (T), Incomplete => True);
          end if;
       end if;
 
+      --  Show we've written the typedef unless this is a struct type and
+      --  we're only writing an incomplete definition.
+
+      Set_Are_Writing_Typedef (T, False);
+      if not Incomplete or else Get_Type_Kind (T) /= Struct_Type_Kind then
+         Set_Is_Typedef_Output   (T);
+      end if;
    end Write_Typedef;
 
    --------------

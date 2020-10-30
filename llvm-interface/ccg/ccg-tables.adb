@@ -92,11 +92,18 @@ package body CCG.Tables is
    end record;
 
    type Type_Data is record
-      Is_Typedef_Output : Boolean;
+      Is_Typedef_Output    : Boolean;
       --  True if this is a type either for which we don't write a typedef
       --  or if it is and we've written that typedef previously.
 
-      Output_Idx        : Nat;
+      Is_Incomplete_Output : Boolean;
+      --  True if this is a struct type and we've just written the struct
+      --  definition without fields (an incomplete type).
+
+      Are_Writing_Typedef  : Boolean;
+      --  True if we're in the process of writing a typedef
+
+      Output_Idx           : Nat;
       --  A positive number if we've assigned an ordinal to use as
       --  part of the name for this anonymous type.
 
@@ -1252,8 +1259,10 @@ package body CCG.Tables is
       elsif not Create then
          return No_Type_Idx;
       else
-         Type_Data_Table.Append ((Is_Typedef_Output => False,
-                                  Output_Idx        => 0));
+         Type_Data_Table.Append ((Is_Typedef_Output    => False,
+                                  Is_Incomplete_Output => False,
+                                  Are_Writing_Typedef  => False,
+                                  Output_Idx           => 0));
          Insert (Type_Data_Map, T, Type_Data_Table.Last);
          return Type_Data_Table.Last;
       end if;
@@ -1435,6 +1444,30 @@ package body CCG.Tables is
         and then Type_Data_Table.Table (Idx).Is_Typedef_Output;
    end Get_Is_Typedef_Output;
 
+   ------------------------------
+   -- Get_Is_Incomplete_Output --
+   ------------------------------
+
+   function Get_Is_Incomplete_Output (T : Type_T) return Boolean is
+      Idx : constant Type_Idx := Type_Data_Idx (T, Create => False);
+
+   begin
+      return Present (Idx)
+        and then Type_Data_Table.Table (Idx).Is_Incomplete_Output;
+   end Get_Is_Incomplete_Output;
+
+   -----------------------------
+   -- Get_Are_Writing_Typedef --
+   -----------------------------
+
+   function Get_Are_Writing_Typedef (T : Type_T) return Boolean is
+      Idx : constant Type_Idx := Type_Data_Idx (T, Create => False);
+
+   begin
+      return Present (Idx)
+        and then Type_Data_Table.Table (Idx).Are_Writing_Typedef;
+   end Get_Are_Writing_Typedef;
+
    --------------------------
    -- Set_Is_Typedef_Output --
    --------------------------
@@ -1445,6 +1478,28 @@ package body CCG.Tables is
    begin
       Type_Data_Table.Table (Idx).Is_Typedef_Output := B;
    end Set_Is_Typedef_Output;
+
+   ------------------------------
+   -- Set_Is_Incomplete_Output --
+   ------------------------------
+
+   procedure Set_Is_Incomplete_Output (T : Type_T; B : Boolean := True) is
+      Idx : constant Type_Idx := Type_Data_Idx (T, Create => True);
+
+   begin
+      Type_Data_Table.Table (Idx).Is_Incomplete_Output := B;
+   end Set_Is_Incomplete_Output;
+
+   -----------------------------
+   -- Set_Are_Writing_Typedef --
+   -----------------------------
+
+   procedure Set_Are_Writing_Typedef (T : Type_T; B : Boolean := True) is
+      Idx : constant Type_Idx := Type_Data_Idx (T, Create => True);
+
+   begin
+      Type_Data_Table.Table (Idx).Are_Writing_Typedef := B;
+   end Set_Are_Writing_Typedef;
 
    --------------------
    -- Get_Was_Output --
@@ -1495,19 +1550,18 @@ package body CCG.Tables is
    -- Maybe_Write_Typedef --
    -------------------------
 
-   procedure Maybe_Write_Typedef (T : Type_T) is
+   procedure Maybe_Write_Typedef (T : Type_T; Incomplete : Boolean := False) is
    begin
-      --  If this is a pointer type, we need to see if we have to write
-      --  a typedef for what it points to.
-
-      if Get_Type_Kind (T) = Pointer_Type_Kind then
-         Maybe_Write_Typedef (Get_Element_Type (T));
-      end if;
-
-      --  Then see if we have to write one for this type
-
-      if not Get_Is_Typedef_Output (T) then
-         Write_Typedef (T);
+      --  If we're writing this, have written it, or are just looking for
+      --  an incomplete definition and have already written one, we don't
+      --  need to do anything. Otherwise, write the typedef.
+      if Get_Are_Writing_Typedef (T)
+        or else Get_Is_Typedef_Output (T)
+        or else (Incomplete and then Get_Is_Incomplete_Output (T))
+      then
+         null;
+      else
+         Write_Typedef (T, Incomplete => Incomplete);
       end if;
    end Maybe_Write_Typedef;
 

@@ -53,9 +53,10 @@ package CCG.Aggregates is
           Post => Present (Get_Field_Name'Result);
    --  Return a name to use for field Idx of LLVM struct T
 
-   procedure Write_Struct_Typedef (T : Type_T)
+   procedure Write_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
      with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
-   --  Write a typedef for T, a struct type
+   --  Write a typedef for T, a struct type. If Incomplete, only write the
+   --  initial struct definition, not the fields.
 
    procedure Write_Array_Typedef (T : Type_T)
      with Pre => Get_Type_Kind (T) = Array_Type_Kind;

@@ -310,10 +310,27 @@ package CCG.Tables is
    procedure Set_Is_Unsigned    (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Unsigned (V) = B, Inline;
 
-   function Get_Is_Typedef_Output (T : Type_T) return Boolean
+   function Get_Is_Typedef_Output     (T : Type_T) return Boolean
      with Pre => Present (T), Inline;
-   procedure Set_Is_Typedef_Output (T : Type_T; B : Boolean := True)
+      --  True if this is a type either for which we don't write a typedef
+      --  or if it is and we've written that typedef previously.
+
+   function Get_Is_Incomplete_Output  (T : Type_T) return Boolean
+     with Pre => Present (T), Inline;
+   --  True if this is a struct type and we've just written the struct
+   --  definition without fields (an incomplete type).
+
+   function Get_Are_Writing_Typedef   (T : Type_T) return Boolean
+     with Pre => Present (T), Inline;
+   --  True if we're in the process of writing a typedef
+
+   procedure Set_Is_Typedef_Output    (T : Type_T; B : Boolean := True)
      with Pre  => Present (T), Post => Get_Is_Typedef_Output (T) = B, Inline;
+   procedure Set_Is_Incomplete_Output (T : Type_T; B : Boolean := True)
+     with Pre  => Present (T), Post => Get_Is_Incomplete_Output (T) = B,
+          Inline;
+   procedure Set_Are_Writing_Typedef  (T : Type_T; B : Boolean := True)
+     with Pre  => Present (T), Post => Get_Are_Writing_Typedef (T) = B, Inline;
 
    function Get_Was_Output (BB : Basic_Block_T) return Boolean
      with Pre => Present (BB), Inline;
@@ -372,9 +389,13 @@ package CCG.Tables is
    function Get_Output_Idx (BB : Basic_Block_T) return Nat
      with Pre => Present (BB), Post => Get_Output_Idx'Result /= 0, Inline;
 
-   procedure Maybe_Write_Typedef (T : Type_T)
-     with Pre => Present (T), Post => Get_Is_Typedef_Output (T);
-   --  See if we need to write a typedef for T and write one if so
+   procedure Maybe_Write_Typedef (T : Type_T; Incomplete : Boolean := False)
+     with Pre  => Present (T),
+          Post => Get_Is_Typedef_Output (T) or else Get_Are_Writing_Typedef (T)
+                  or else (Incomplete and then Get_Is_Incomplete_Output (T));
+   --  See if we need to write a typedef for T and write one if so. If
+   --  Incomplete is True, all we need is the initial portion of a struct
+   --  definition.
 
 private
 

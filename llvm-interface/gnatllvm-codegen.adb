@@ -109,7 +109,7 @@ package body GNATLLVM.Codegen is
 
          --  Use a simple 32bits target by default for C code generation
 
-         Free (Target_Triple);
+         To_Free       := Target_Triple;
          Target_Triple := new String'("i386-linux");
 
       elsif Switch = "-emit-llvm" then

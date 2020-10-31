@@ -296,8 +296,7 @@ package CCG.Tables is
    --  True if this value represents a variable that's unsigned
 
    procedure Set_C_Value       (V : Value_T; S : Str)
-     with Pre  => Present (V) and then Present (S),
-          Post => Get_C_Value (V) = S, Inline;
+     with Pre => Present (V), Post => Get_C_Value (V) = S, Inline;
    procedure Set_No_Name       (V : Value_T; B : Boolean := True)
      with Pre  => Present (V),
           Post => Get_No_Name (V) = B, Inline;

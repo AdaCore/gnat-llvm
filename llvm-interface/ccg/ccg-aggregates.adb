@@ -364,7 +364,7 @@ package body CCG.Aggregates is
       if Is_Undef (Aggr) then
          null;
       else
-         Write_Copy (+V, +Aggr, T);
+         Write_Copy (V, +Aggr, T);
       end if;
 
       --  Next we generate the string that represents the access of this

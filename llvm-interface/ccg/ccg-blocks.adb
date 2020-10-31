@@ -176,7 +176,7 @@ package body CCG.Blocks is
                Output_Stmt ("{", Semicolon => False);
             end if;
 
-            Write_Copy (+Target_I, +Phi_Val, Type_Of (Phi_Val));
+            Write_Copy (Target_I, +Phi_Val, Type_Of (Phi_Val));
             Our_Had_Phi := True;
             Target_I    := Get_Next_Instruction (Target_I);
          end;

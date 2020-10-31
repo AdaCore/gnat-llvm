@@ -142,6 +142,27 @@ package body CCG.Instructions is
         and then (Get_Type_Kind (Src_T) /= Pointer_Type_Kind
                     or else Get_Type_Kind (Dest_T) /= Pointer_Type_Kind)
       then
+         --  If or operand is an expression, we probably can't validly take
+         --  its address, so be sure that we make an actual variable that
+         --  we can take the address of.
+
+         if Present (Get_C_Value (Op)) then
+            declare
+               C_Val : constant Str := Get_C_Value (Op);
+
+            begin
+               --  We have to undo what was done to show that we don't need
+               --  a variable for Op. Specifically, we have to clear its
+               --  value, mark that it hasn't been declared, declare it,
+               --  and copy the value to it.
+
+               Set_C_Value        (Op, No_Str);
+               Set_Is_Decl_Output (Op, False);
+               Write_Decl         (Op);
+               Write_Copy         (Op, C_Val, Type_Of (Op));
+            end;
+         end if;
+
          return TP ("*((#T) #A1)", Op, T => Pointer_Type (Dest_T, 0)) + Unary;
       else
          return ("(" & Dest_T & ") " & Our_Op) + Unary;
@@ -218,6 +239,15 @@ package body CCG.Instructions is
    -- Write_Copy --
    ----------------
 
+   procedure Write_Copy (LHS : Value_T; RHS : Str; T : Type_T) is
+   begin
+      Write_Copy (+LHS, RHS, T);
+   end Write_Copy;
+
+   ----------------
+   -- Write_Copy --
+   ----------------
+
    procedure Write_Copy (LHS, RHS : Str; T : Type_T) is
    begin
       --  If this isn't an array type, write a normal assignment. Otherwise,
@@ -255,7 +285,7 @@ package body CCG.Instructions is
         and then Get_Type_Kind (Type_Of (LHS)) /= Array_Type_Kind
       then
          Maybe_Decl (LHS);
-         Write_Copy (+LHS, RHS, Type_Of (LHS));
+         Write_Copy (LHS, RHS, Type_Of (LHS));
       else
          Set_C_Value (LHS, RHS);
       end if;

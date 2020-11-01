@@ -8,7 +8,10 @@ sanity-check:
           echo "error: directory llvm-interface/gnat_src not found"; exit 1; \
 	fi
 
-build build-opt clean gnatlib gnatlib%: sanity-check
+build build-opt clean gnatlib: sanity-check
+	$(MAKE) -C llvm-interface $@
+
+gnatlib%: sanity-check
 	$(MAKE) -C llvm-interface $@
 
 automated:

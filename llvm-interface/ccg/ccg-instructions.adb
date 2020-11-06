@@ -349,6 +349,9 @@ package body CCG.Instructions is
             end if;
 
          when Op_Load =>
+
+            --  ??? Need to deal with both unaligned load and unaligned store
+
             Assignment (V, Deref (Op1));
 
          when Op_Store =>

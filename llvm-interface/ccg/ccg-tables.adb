@@ -415,8 +415,10 @@ package body CCG.Tables is
    ---------
 
    function "+" (V : Value_T) return Str is
+      P      : constant Precedence             :=
+        (if Get_Is_Decl_Output (V) then Primary else Unknown);
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Value, 1, V, Default_Flags, Unknown)));
+        (1, P, (1 => (Value, 1, V, Default_Flags, P)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -428,8 +430,10 @@ package body CCG.Tables is
    ---------
 
    function "+" (V : Value_T; VF : Value_Flag) return Str is
+      P      : constant Precedence             :=
+        (if Get_Is_Decl_Output (V) then Primary else Unknown);
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Value, 1, V, Flag_To_Flags (VF), Unknown)));
+        (1, P, (1 => (Value, 1, V, Flag_To_Flags (VF), P)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -652,10 +656,11 @@ package body CCG.Tables is
          return +R;
       elsif L'Length <= Str_Max then
          declare
+            P      : constant Precedence             :=
+              (if Get_Is_Decl_Output (R) then Primary else Unknown);
             S_Rec  : aliased constant Str_Record (2) :=
-              (2, Unknown,
-               (1 => (Var_String, L'Length, Normal, L),
-                2 => (Value, 1, R, Default_Flags, Unknown)));
+              (2, P, (1 => (Var_String, L'Length, Normal, L),
+                      2 => (Value, 1, R, Default_Flags, P)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -771,10 +776,11 @@ package body CCG.Tables is
          return +L;
       elsif R'Length <= Str_Max then
          declare
+            P      : constant Precedence             :=
+              (if Get_Is_Decl_Output (L) then Primary else Unknown);
             S_Rec  : aliased constant Str_Record (2) :=
-              (2, Primary,
-               (1 => (Value, 1, L, Default_Flags, Unknown),
-                2 => (Var_String, R'Length, Normal, R)));
+              (2, P, (1 => (Value, 1, L, Default_Flags, P),
+                      2 => (Var_String, R'Length, Normal, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -863,9 +869,10 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Value_T; R : Nat) return Str is
+      P      : constant Precedence             :=
+        (if Get_Is_Decl_Output (L) then Primary else Unknown);
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Default_Flags, Unknown),
-                      2 => (Number, 1, R)));
+        (2, P, (1 => (Value, 1, L, Default_Flags, P), 2 => (Number, 1, R)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -904,12 +911,14 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Value_T; R : Str) return Str is
+      P      : constant Precedence :=
+        (if Get_Is_Decl_Output (L) then Primary else Unknown);
       S_Rec  : aliased Str_Record (R.Length + 1);
       Result : Str;
 
    begin
       S_Rec.P                         := R.P;
-      S_Rec.Comps (1)                 := (Value, 1, L, Default_Flags, Unknown);
+      S_Rec.Comps (1)                 := (Value, 1, L, Default_Flags, P);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
       Result := Undup_Str (S_Rec);
       return Result;
@@ -953,6 +962,8 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Str; R : Value_T) return Str is
+      P      : constant Precedence :=
+        (if Get_Is_Decl_Output (R) then Primary else Unknown);
       S_Rec  : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
       Result : Str;
 
@@ -963,7 +974,7 @@ package body CCG.Tables is
 
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
-      S_Rec.Comps (L.Length + 1)  := (Value, 1, R, Default_Flags, Unknown);
+      S_Rec.Comps (L.Length + 1)  := (Value, 1, R, Default_Flags, P);
       Result := Undup_Str (S_Rec);
       return Result;
    end "&";

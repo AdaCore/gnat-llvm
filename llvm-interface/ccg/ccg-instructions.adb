@@ -153,13 +153,11 @@ package body CCG.Instructions is
             begin
                --  We have to undo what was done to show that we don't need
                --  a variable for Op. Specifically, we have to clear its
-               --  value, mark that it hasn't been declared, declare it,
-               --  and copy the value to it.
+               --  value, declare it, and copy the value to it.
 
-               Set_C_Value        (Op, No_Str);
-               Set_Is_Decl_Output (Op, False);
-               Write_Decl         (Op);
-               Write_Copy         (Op, C_Val, Type_Of (Op));
+               Set_C_Value (Op, No_Str);
+               Maybe_Decl  (Op);
+               Write_Copy  (Op, C_Val, Type_Of (Op));
             end;
          end if;
 
@@ -336,7 +334,7 @@ package body CCG.Instructions is
               and then Equals_Int (Op1, 1)
             then
                Set_Is_LHS (V);
-               Write_Decl (V);
+               Maybe_Decl (V);
             else
                declare
                   Call : constant Str :=

@@ -507,34 +507,23 @@ package body CCG.Output is
          Process_Instruction (V);
       end if;
 
-      --  Write the decl if we haven't already processed this and it's
-      --  not it's a simple constant (any constant if this is for an
-      --  initializer).
+      --  If we've already processed this or if it's a simple constant
+      --  (any constant if this is for an initializer), we don't need
+      --  to do anything.
 
-      if not Get_Is_Decl_Output (V)
-        and then not Is_Simple_Constant (V)
-        and then not (For_Initializer and then Is_A_Constant (V))
+      if Get_Is_Decl_Output (V)
+        or else Is_Simple_Constant (V)
+        or else (For_Initializer and then Is_A_Constant (V))
       then
-         Write_Decl (V);
+         return;
       end if;
 
-   end Maybe_Decl;
-
-   ----------------
-   -- Write_Decl --
-   ----------------
-
-   procedure Write_Decl (V : Value_T) is
-   begin
       --  We need to write a declaration for this if we haven't already
-      --  written one or assigned a value to it, it's not a simple
-      --  constant, not a function, an argument, a basic block or simple
-      --  undef.
+      --  assigned a value to it, it's not a function, an argument, a basic
+      --  block or simple undef.
 
-      if not Get_Is_Decl_Output (V) and then not Is_Simple_Constant (V)
-        and then No (Get_C_Value (V))
-        and then not Is_A_Function (V) and then not Is_A_Argument (V)
-        and then not Is_A_Basic_Block (V)
+      if No (Get_C_Value (V)) and then not Is_A_Function (V)
+        and then not Is_A_Argument (V) and then not Is_A_Basic_Block (V)
         and then not (Is_Undef (V) and then Is_Simple_Type (V))
       then
          Set_Is_Decl_Output (V);
@@ -615,9 +604,7 @@ package body CCG.Output is
             end if;
          end;
       end if;
-
-      Set_Is_Decl_Output (V);
-   end Write_Decl;
+   end Maybe_Decl;
 
    -------------------------
    -- Maybe_Write_Typedef --

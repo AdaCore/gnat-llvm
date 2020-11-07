@@ -91,7 +91,7 @@ package body CCG is
       Glob := Get_First_Global (Module);
       while Present (Glob) loop
          if Present (Get_Initializer (Glob)) then
-            Write_Decl (Glob);
+            Maybe_Decl (Glob);
          end if;
 
          Glob := Get_Next_Global (Glob);

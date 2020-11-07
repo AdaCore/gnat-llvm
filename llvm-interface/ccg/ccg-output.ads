@@ -42,10 +42,6 @@ package CCG.Output is
    --  See if we need to write a declaration for V and write one if so.
    --  If For_Initializer, we can allow any constants, not just simple ones.
 
-   procedure Write_Decl (V : Value_T)
-     with Pre => Present (V), Post => Get_Is_Decl_Output (V);
-   --  Write the decl for T, if any and if needed
-
    procedure Write_Typedef (T : Type_T; Incomplete : Boolean := False)
      with Pre =>  Present (T),
           Post => Get_Is_Typedef_Output (T)

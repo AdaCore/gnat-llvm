@@ -24,8 +24,14 @@ llvm:
 acats:
 	$(MAKE) -C acats
 
+ccg-acats:
+	$(MAKE) -C acats ccg
+
 fixed-bugs:
 	$(MAKE) -C fixedbugs
+
+ccg:
+	$(MAKE) -C ccg-tests/tests
 
 distclean: clean
 	$(MAKE) -C llvm clean

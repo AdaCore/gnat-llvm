@@ -1,7 +1,7 @@
 all: sanity-check
 	$(MAKE) -C llvm-interface build gnatlib-automated
 
-.PHONY: acats llvm clean distclean
+.PHONY: acats ccg-acats fixed-bugs ccg-tests llvm clean distclean
 
 sanity-check:
 	@if ! [ -d llvm-interface/gnat_src ]; then \
@@ -30,7 +30,7 @@ ccg-acats:
 fixed-bugs:
 	$(MAKE) -C fixedbugs
 
-ccg:
+ccg-tests:
 	$(MAKE) -C ccg-tests/tests
 
 distclean: clean

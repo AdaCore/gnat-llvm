@@ -58,6 +58,17 @@ package CCG.Utils is
      with Pre => Present (V);
    --  True if this is or has a type that's simple (elementary)
 
+   function Is_Simple_Constant (V : Value_T) return Boolean is
+     ((Get_Value_Kind (V)
+         in Constant_Int_Value_Kind | Constant_Pointer_Null_Value_Kind
+            | Constant_FP_Value_Kind | Constant_Expr_Value_Kind)
+      or else (Is_Undef (V) and then Is_Simple_Type (Type_Of (V))))
+     with Pre => Present (V);
+   --  True if this is a simple enough constant that we output it in C
+   --  source as a constant.
+   --  ??? Strings are also simple constants, but we don't support them just
+   --  yet.
+
    function Might_Be_Unsigned (V : Value_T) return Boolean
      with Pre => Present (V);
    --  True if it's possible that V is unsigned

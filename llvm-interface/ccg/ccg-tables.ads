@@ -36,10 +36,44 @@ package CCG.Tables is
    --  Write the contents of S to the current output target
 
    --  In order to eliminate most parentheses, we record the operator
-   --  precedence, if known, of a string. This is used when we substitute
-   --  a value for a variable: if that value is of higher precedence than
-   --  the string we're substituting it into, we don't need parentheses.
-   --  Levels are listed from lowest to highest precedence.
+   --  precedence, if known, of a string, and the precedence of how a value
+   --  is to be used. This information is used when we substitute a value
+   --  for a variable: if that value is of higher precedence than the
+   --  string we're substituting it into, we don't need parentheses.
+
+   --  We track what precedence an expression "is" and what precedence an
+   --  expression is "for". If we have a simple expression, like A + B,
+   --  both are the same: this is an expression whose precedence is of
+   --  addition and we're using the values A and A in an expression of that
+   --  precedence. However, consider an expression "(int) A + B".  The
+   --  precedence of that expression (which says when parens would be
+   --  needed when that's put into an outer expression) is for an addition.
+   --  The value B is being used in an expression of that precedence, but
+   --  the value A is being used in an expression whose precedence is that
+   --  of a cast. So we record precedence in two ways: when a Str contains
+   --  a value, we record the precedence of the expression that that value
+   --  is "for" and we also record, in the Str, what precedence the Str "is".
+   --
+   --  The Needs_Parens function is used to determine whether we need to
+   --  enclose a value of one precedence inside parentheses when it's being
+   --  inserted into an expression of another precedence.
+   --
+   --  We assign a precedence to a value by using the binary "+" operator,
+   --  which produces a Str that is both of the specified precedence and
+   --  where the value is marked as being for an expression of that
+   --  precedence. In the default case of a value being used to construct
+   --  a Str, the precedence is set to a primary, if we know that's what the
+   --  value is or to "unknown".
+   --
+   --  We also assign a precedence to a Str using the binary "+" operator.
+   --  That does two things: first, it sets the precedence that any values
+   --  in the expression have to the assigned precedence if the precedence
+   --  of that value is unknown. Second, it sets that as the precedence of
+   --  the new Str, enclosing it in parens if that would be required when
+   --  putting an expression of the old precedence into an expression of
+   --  the new precedence.
+
+   --  Define the precedence levels, listed from lowest to highest
 
    type Precedence is
      (Unknown,

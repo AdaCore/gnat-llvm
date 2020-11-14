@@ -36,6 +36,17 @@ package body CCG.Output is
    --  Ensure that we're written typedefs for any types within V and
    --  declarations for anything in V that needs it
 
+   function Is_Simple_Constant (V : Value_T) return Boolean is
+     ((Get_Value_Kind (V)
+         in Constant_Int_Value_Kind | Constant_Pointer_Null_Value_Kind
+            | Constant_FP_Value_Kind | Constant_Expr_Value_Kind)
+      or else (Is_Undef (V) and then Is_Simple_Type (Type_Of (V))))
+     with Pre => Present (V);
+   --  True if this is a simple enough constant that we output it in C
+   --  source as a constant.
+   --  ??? Strings are also simple constants, but we don't support them just
+   --  yet.
+
    procedure Write_Value_Name (V : Value_T)
      with Pre => Present (V);
    --  Write the value name of V, which is either the LLVM name or a name

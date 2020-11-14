@@ -50,17 +50,6 @@ package body CCG.Tables is
      with Post => Present (Undup_Str'Result), Pure_Function;
    --  Get a unique Str corresponding to S
 
-   function Is_Primary (V : Value_T) return Boolean is
-     (Get_Is_Decl_Output (V) or else Is_Simple_Constant (V))
-     with Pre => Present (V);
-   --  True if V is known to be an expression that will be a "primary" in
-   --  C for precedence purposes.
-
-   function Default_Precedence (V : Value_T) return Precedence is
-     ((if Is_Primary (V) then Primary else Unknown))
-     with Pre => Present (V);
-   --  The default precedence to use for a value V
-
    --  We maintain tables that give information we need about LLVM values,
    --  types, and basic blocks.  We use a hashed map from the LLVM address
    --  to an index in our Table.  That index can also be used to provide a
@@ -426,9 +415,8 @@ package body CCG.Tables is
    ---------
 
    function "+" (V : Value_T) return Str is
-      P      : constant Precedence             := Default_Precedence (V);
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, P, (1 => (Value, 1, V, Default_Flags, P)));
+        (1, Unknown, (1 => (Value, 1, V, Default_Flags, Unknown)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -440,9 +428,8 @@ package body CCG.Tables is
    ---------
 
    function "+" (V : Value_T; VF : Value_Flag) return Str is
-      P      : constant Precedence             := Default_Precedence (V);
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, P, (1 => (Value, 1, V, Flag_To_Flags (VF), P)));
+        (1, Unknown, (1 => (Value, 1, V, Flag_To_Flags (VF), Unknown)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -665,10 +652,10 @@ package body CCG.Tables is
          return +R;
       elsif L'Length <= Str_Max then
          declare
-            P      : constant Precedence             := Default_Precedence (R);
             S_Rec  : aliased constant Str_Record (2) :=
-              (2, P, (1 => (Var_String, L'Length, Normal, L),
-                      2 => (Value, 1, R, Default_Flags, P)));
+              (2, Unknown,
+               (1 => (Var_String, L'Length, Normal, L),
+                2 => (Value, 1, R, Default_Flags, Unknown)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -784,10 +771,10 @@ package body CCG.Tables is
          return +L;
       elsif R'Length <= Str_Max then
          declare
-            P      : constant Precedence             := Default_Precedence (L);
             S_Rec  : aliased constant Str_Record (2) :=
-              (2, P, (1 => (Value, 1, L, Default_Flags, P),
-                      2 => (Var_String, R'Length, Normal, R)));
+              (2, Primary,
+               (1 => (Value, 1, L, Default_Flags, Unknown),
+                2 => (Var_String, R'Length, Normal, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -876,9 +863,9 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Value_T; R : Nat) return Str is
-      P      : constant Precedence             := Default_Precedence (L);
       S_Rec  : aliased constant Str_Record (2) :=
-        (2, P, (1 => (Value, 1, L, Default_Flags, P), 2 => (Number, 1, R)));
+        (2, Primary, (1 => (Value, 1, L, Default_Flags, Unknown),
+                      2 => (Number, 1, R)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -917,13 +904,12 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Value_T; R : Str) return Str is
-      P      : constant Precedence := Default_Precedence (L);
       S_Rec  : aliased Str_Record (R.Length + 1);
       Result : Str;
 
    begin
       S_Rec.P                         := R.P;
-      S_Rec.Comps (1)                 := (Value, 1, L, Default_Flags, P);
+      S_Rec.Comps (1)                 := (Value, 1, L, Default_Flags, Unknown);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
       Result := Undup_Str (S_Rec);
       return Result;
@@ -967,7 +953,6 @@ package body CCG.Tables is
    ---------
 
    function "&" (L : Str; R : Value_T) return Str is
-      P      : constant Precedence := Default_Precedence (R);
       S_Rec  : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
       Result : Str;
 
@@ -978,7 +963,7 @@ package body CCG.Tables is
 
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
-      S_Rec.Comps (L.Length + 1)  := (Value, 1, R, Default_Flags, P);
+      S_Rec.Comps (L.Length + 1)  := (Value, 1, R, Default_Flags, Unknown);
       Result := Undup_Str (S_Rec);
       return Result;
    end "&";

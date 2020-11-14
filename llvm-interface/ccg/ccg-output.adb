@@ -387,10 +387,43 @@ package body CCG.Output is
       Flags          : Value_Flags := Default_Flags;
       For_Precedence : Precedence  := Primary)
    is
-      C_Value   : constant Str := Get_C_Value (V);
-      Took_Addr : Boolean      := False;
+      --  We're either writing V alone or V prefixed by one or more unary
+      --  operations, such as casts and ampersand. In the former case,
+      --  we may have to parenthesize V depending the relationship between
+      --  its precedence and For_Precedence. In the latter case, we may need
+      --  to do that and/or parenthesize our entire expression. Anything we
+      --  add will have precedence Unary.
+
+      procedure Maybe_Write_Parens;
+      --  We call this when we're going to be prefixing V with some unary
+      --  operation. If that means we need to parenthesize the entire
+      --  expression, set that up. Also mark how V will be used.
+
+      C_Value     : constant Str := Get_C_Value (V);
+      Inner_For_P : Precedence   := For_Precedence;
+      Wrote_Paren : Boolean      := False;
+
+      ------------------------
+      -- Maybe_Write_Parens --
+      ------------------------
+
+      procedure Maybe_Write_Parens is
+      begin
+         --  Always mark the context in which V will be used as a unary
+         --  expression. If we've already decided we need to write parens
+         --  or if an expression of precedence Unary doesn't need parens in
+         --  our context, that's all we have to do. Otherwise, write an open
+         --  paren and show that we've done so.
+
+         Inner_For_P := Unary;
+         if not Wrote_Paren and then Needs_Parens (Unary, For_Precedence) then
+            Write_Str ("(");
+            Wrote_Paren := True;
+         end if;
+      end Maybe_Write_Parens;
 
    begin
+
       --  See if we want an unsigned version of V (unless this is a
       --  pointer, which is always treated as unsigned).
 
@@ -413,6 +446,7 @@ package body CCG.Output is
          --  If it's not known to be unsigned, write a cast and then the value
 
          elsif not Get_Is_Unsigned (V) then
+            Maybe_Write_Parens;
             Write_Str (TP ("(unsigned #T) ", T => Type_Of (V)));
          end if;
 
@@ -429,32 +463,26 @@ package body CCG.Output is
 
       if not Flags.LHS and then Get_Is_LHS (V) then
 
-         --  If we take the address of V, put parens around our expression.
-         --  ??? When we get precedence working better, we can do this better.
-
-         if Get_Type_Kind (V) /= Array_Type_Kind then
-            Write_Str ("(");
-         end if;
-
          --  If this is a constant, we need to convert the address into a
          --  non-constant pointer type. Likewise if it's declared as unsigned,
          --  except that in that case, the relevant aspect of the type is
          --  that it's not unsigned.
 
          if Get_Is_Constant (V) or else Get_Is_Unsigned (V) then
+            Maybe_Write_Parens;
             Write_Str ("(" & Type_Of (V) & ") ");
          end if;
 
          if Get_Type_Kind (V) /= Array_Type_Kind then
+            Maybe_Write_Parens;
             Write_Str ("&");
-            Took_Addr := True;
          end if;
       end if;
 
       --  If we've set an expression as the value of V, write it
 
       if Present (C_Value) then
-         Write_Str_With_Precedence (C_Value, For_Precedence);
+         Write_Str_With_Precedence (C_Value, Inner_For_P);
 
       --  If this is either a simple constant or any constant for an
       --  initializer, write the constant. If this is an LHS, it means
@@ -472,7 +500,9 @@ package body CCG.Output is
          Write_Value_Name (V);
       end if;
 
-      if Took_Addr then
+      --  If we wrote an open paren before this expression, we need to close it
+
+      if Wrote_Paren then
          Write_Str (")");
       end if;
    end Write_Value;

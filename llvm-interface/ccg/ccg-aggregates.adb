@@ -319,7 +319,7 @@ package body CCG.Aggregates is
             --  We know this is either a struct or an array
 
             if Get_Type_Kind (T) = Struct_Type_Kind then
-               Result := "." & Get_Field_Name (T, Ins_Idx);
+               Result := "." & Get_Field_Name (T, Ins_Idx) + Component;
                T      := Struct_Get_Type_At_Index (T, Ins_Idx);
             else
                Result := " [" & Ins_Idx & "]" + Component;

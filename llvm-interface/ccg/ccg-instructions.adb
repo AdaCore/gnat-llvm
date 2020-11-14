@@ -256,8 +256,9 @@ package body CCG.Instructions is
       if Get_Type_Kind (T) /= Array_Type_Kind then
          Output_Stmt (LHS & " = " & RHS + Assign);
       else
-         Output_Stmt ("memmove ((void *) " & Addr_Of (LHS) & ", (void *) " &
-                        Addr_Of (RHS) & ", sizeof (" & T & "))" + Assign);
+         Output_Stmt ("memmove ((void *) " & (Addr_Of (LHS) + Comma) &
+                        ", (void *) " & (Addr_Of (RHS) + Comma) &
+                        ", sizeof (" & T & "))" + Assign);
       end if;
    end Write_Copy;
 
@@ -337,12 +338,13 @@ package body CCG.Instructions is
                Maybe_Decl (V);
             else
                declare
-                  Call : constant Str :=
-                    TP ("alloca (sizeof (#T) * #1)", Op1,
-                        T => Get_Allocated_Type (V)) + Mult;
+                  Size : constant Str :=
+                    TP ("sizeof (#T) * #1", Op1, T => Get_Allocated_Type (V)) +
+                    Mult;
+                  Call : constant Str := "alloca (" & Size & ")" + Component;
 
                begin
-                  Assignment (V, "(" & Type_Of (V) & ") " & Call);
+                  Assignment (V, "(" & Type_Of (V) & ") " & Call + Unary);
                end;
             end if;
 

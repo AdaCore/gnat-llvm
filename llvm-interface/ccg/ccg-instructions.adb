@@ -15,7 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Interfaces.C; use Interfaces.C;
+with Interfaces.C;            use Interfaces.C;
+with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -28,6 +29,13 @@ with CCG.Subprograms; use CCG.Subprograms;
 with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Instructions is
+
+   function Get_Extra_Bits (J : ULL) return ULL;
+   function Get_Extra_Bits (T : Type_T) return ULL is
+     (Get_Extra_Bits (Get_Scalar_Bit_Size (T)))
+     with Pre => Get_Type_Kind (T) = Integer_Type_Kind, Unreferenced;
+   --  Return the number of bits needed to go from J or the bit width of T to
+   --  the next power-of-two size in bits that's at least a byte wide.
 
    function Binary_Instruction (V, Op1, Op2 : Value_T) return Str
      with Pre  => Acts_As_Instruction (V) and then Present (Op1)
@@ -53,6 +61,26 @@ package body CCG.Instructions is
      with Pre => Present (V), Post => Present (Maybe_Unsigned'Result);
      --  If Op_Unsigned is True, V must be treated as unsigned. Otherwise
      --  it must be treated as signed.
+
+   --------------------
+   -- Get_Extra_Bits --
+   --------------------
+
+   function Get_Extra_Bits (J : ULL) return ULL is
+      type M is mod 2**16;
+      Pow2_M_1 : M := M (J) - 1;
+
+   begin
+      --  We do this with bit-twiddling that turns on all bits that are
+      --  one within Width - 1, use at least a value of 7 so that we go
+      --  to at least a byte, and then add the one back.
+
+      Pow2_M_1 := Pow2_M_1 or Pow2_M_1 / 2;
+      Pow2_M_1 := Pow2_M_1 or Pow2_M_1 / 4;
+      Pow2_M_1 := M'Max (Pow2_M_1 or Pow2_M_1 / 16, 7);
+
+      return ULL (Pow2_M_1 - M (J) + 1);
+   end Get_Extra_Bits;
 
    ------------------------
    -- Binary_Instruction --
@@ -162,6 +190,68 @@ package body CCG.Instructions is
          end if;
 
          return TP ("*((#T) #A1)", Op, T => Pointer_Type (Dest_T, 0)) + Unary;
+
+      --  For integral types, we have the possibility that we're starting
+      --  with a size that's smaller than a storage unit or not a power of
+      --  two bits. For those, we have to do the sign- or zero-extension
+      --  to the next-higher power of two with two shifts (for zero-extension,
+      --  this can be done with an AND of a constant, but all compilers wil
+      --  convert the shifts to that and it's simpler to use shifts). Since
+      --  C will promote a shift of a width narrower than int to int, we
+      --  need to adjust the shift amount to compensate. Note that an
+      --  arithmetic shift of a negative number is implementation-defined,
+      --  but all known implementations sign extend.
+
+      elsif Get_Type_Kind (Src_T) = Integer_Type_Kind
+        and then Get_Type_Kind (Dest_T) = Integer_Type_Kind
+      then
+         declare
+            Dest_Size     : constant ULL    := Get_Scalar_Bit_Size (Dest_T);
+            Src_Size      : constant ULL    := Get_Scalar_Bit_Size (Src_T);
+            Src_Extras    : constant ULL    := Get_Extra_Bits (Src_Size);
+            Dest_Extras   : constant ULL    := Get_Extra_Bits (Dest_Size);
+            Src_Int_Size  : constant ULL    := Src_Size  + Src_Extras;
+            Dest_Int_Size : constant ULL    := Dest_Size + Dest_Extras;
+            Compute_Size  : constant ULL    :=
+              (if   Src_Extras /= 0 and then Src_Int_Size < ULL (Int_Size)
+               then ULL (Int_Size) else Src_Int_Size);
+            Compute_T     : constant Type_T := Int_Ty (Compute_Size);
+            Cnt           : constant Nat    := Nat (Compute_Size - Src_Size);
+            Result        : Str             := Our_Op;
+
+         begin
+            --  If we have extra bits to bring this to normal integer type,
+            --  do the shifts to sign/zero extend.
+
+            if Src_Extras /= 0 then
+
+               --  If we're doing a zext and integer promotion will occur
+               --  for the shift, it'll be to int, not unsigned int, because
+               --  of the way the integer promotion rules work. So handle that
+               --  case specially.
+
+               if Opc = Op_Z_Ext and then Compute_Size /= Src_Int_Size then
+                  Result := "(unsigned " & Compute_T & ") " & Op + Unary;
+               end if;
+
+               Result := "(" & Result & " << " & Cnt & ") >> " & Cnt + Shift;
+            end if;
+
+            --  If we have to change sizes beyond (possibly) doing the shifts,
+            --  emit that cast.
+
+            if Dest_Int_Size /= Compute_Size then
+               Result := ("(" & Dest_T & ") " & (Result + Unary)) + Unary;
+            end if;
+
+            --  The operation is usually a shift and/or a cast, but in the
+            --  case of a trunc from, say, i16 to i12, we have nothing to do.
+
+            return Result;
+         end;
+
+      --  Otherwise, just do a cast
+
       else
          return ("(" & Dest_T & ") " & Our_Op) + Unary;
       end if;

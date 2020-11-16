@@ -21,7 +21,8 @@ with Ada.Containers; use Ada.Containers;
 with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
 
-with LLVM.Core; use LLVM.Core;
+with LLVM.Core;   use LLVM.Core;
+with LLVM.Target; use LLVM.Target;
 
 with CCG.Helper; use CCG.Helper;
 with CCG.Tables; use CCG.Tables;
@@ -116,5 +117,13 @@ package CCG.Utils is
    procedure Update_Hash (H : in out Hash_Type; B : Basic_Block_T)
      with Pre => Present (B), Inline;
    --  Update H taking into account the type T
+
+   function Get_Scalar_Bit_Size (T : Type_T) return ULL is
+     (Size_Of_Type_In_Bits (Module_Data_Layout, T))
+     with Pre => Present (T);
+
+   function Int_Ty (Num_Bits : ULL) return Type_T is
+     (Int_Type (unsigned (Num_Bits)))
+     with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
 
 end CCG.Utils;

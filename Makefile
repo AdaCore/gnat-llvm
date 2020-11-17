@@ -22,7 +22,7 @@ llvm:
 	$(MAKE) -C llvm llvm
 
 acats:
-	$(MAKE) -C acats
+	$(MAKE) -C acats tests
 
 ccg-acats:
 	$(MAKE) -C acats ccg

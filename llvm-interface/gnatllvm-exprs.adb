@@ -597,9 +597,10 @@ package body GNATLLVM.Exprs is
    --------------------------
 
    function Emit_Unary_Operation (N : Node_Id) return GL_Value is
-      Result : constant GL_Value := Emit_Expression (Right_Opnd (N));
-      GT     : constant GL_Type  := Related_Type (Result);
+      Op     : constant GL_Value := To_Primitive (Emit (Right_Opnd (N)));
+      GT     : constant GL_Type  := Related_Type (Op);
       BT     : constant GL_Type  := Base_GL_Type (GT);
+      Result : GL_Value;
 
    begin
       --  If we're just doing compiling to back-annotate things, don't try
@@ -612,11 +613,22 @@ package body GNATLLVM.Exprs is
       case Nkind (N) is
 
          when N_Op_Not =>
-            return (if   Is_Boolean_Type (Result)
-                    then Build_Xor (Result, Const_Int (Result, ULL (1)))
-                    else Build_Not (Result));
+
+            --  If this is Boolean_Data, we can compute the result that way.
+            --  Otherwise, force to Data.
+
+            if Relationship (Op) = Boolean_Data then
+               return Build_Xor (Op, Const_True);
+            else
+               Result := Get (Op, Data);
+               return (if   Is_Boolean_Type (Result)
+                         then Build_Xor (Result, Const_Int (Result, ULL (1)))
+                         else Build_Not (Result));
+            end if;
 
          when N_Op_Abs =>
+
+            Result := Get (Op, Data);
 
             --  Emit: X >= 0 ? X : -X;
 
@@ -637,11 +649,11 @@ package body GNATLLVM.Exprs is
             end;
 
          when N_Op_Plus =>
-            return Result;
+            return Get (Op, Data);
 
          when N_Op_Minus =>
             declare
-               V : constant GL_Value  := Convert (Result, BT);
+               V : constant GL_Value  := Convert (Get (Op, Data), BT);
 
             begin
                if Is_Floating_Point_Type (BT) then

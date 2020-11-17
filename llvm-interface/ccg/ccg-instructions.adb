@@ -37,6 +37,11 @@ package body CCG.Instructions is
    --  Return the number of bits needed to go from J or the bit width of T to
    --  the next power-of-two size in bits that's at least a byte wide.
 
+   function Is_Comparison (V : Value_T) return Boolean
+     with Pre => Present (V);
+   --  Return True if V is known to be the result of a comparison or a
+   --  logical operation on comparisons.
+
    function Binary_Instruction (V, Op1, Op2 : Value_T) return Str
      with Pre  => Acts_As_Instruction (V) and then Present (Op1)
                   and then Present (Op2),
@@ -81,6 +86,47 @@ package body CCG.Instructions is
 
       return ULL (Pow2_M_1 - M (J) + 1);
    end Get_Extra_Bits;
+
+   -------------------
+   -- Is_Comparison --
+   -------------------
+
+   function Is_Comparison (V : Value_T) return Boolean is
+   begin
+      --  If this isn't a bit type, we know it isn't a comparison. If it's
+      --  a simple constant, we know that it is.  If this isn't an
+      --  instruction, we don't know that it's a comparison.
+
+      if Type_Of (V) /= Bit_T then
+         return False;
+      elsif Is_Simple_Constant (V) then
+         return True;
+      elsif not Is_A_Instruction (V) then
+         return False;
+      end if;
+
+      --  Otherwise our test is opcode-specific
+
+      case Get_Opcode (V) is
+         when Op_I_Cmp | Op_F_Cmp =>
+            return True;
+
+         when Op_And | Op_Or =>
+            return Is_Comparison (Get_Operand (V, Nat (0)))
+              and then Is_Comparison (Get_Operand (V, Nat (1)));
+
+         when Op_PHI =>
+            return (for all J in Nat range 0 .. Get_Num_Operands (V) - 1 =>
+                     Is_Comparison (Get_Operand (V, J)));
+
+         when Op_Select =>
+            return Is_Comparison (Get_Operand (V, Nat (1)))
+              and then Is_Comparison (Get_Operand (V, Nat (2)));
+
+         when others =>
+            return False;
+      end case;
+   end Is_Comparison;
 
    ------------------------
    -- Binary_Instruction --
@@ -190,6 +236,15 @@ package body CCG.Instructions is
          end if;
 
          return TP ("*((#T) #A1)", Op, T => Pointer_Type (Dest_T, 0)) + Unary;
+
+      --  If we're zero-extending a value that's known to be a comparison
+      --  result to an i8, we do nothing since we know that the value is
+      --  already either a zero or one.
+
+      elsif Opc = Op_Z_Ext and then Is_Comparison (Op)
+        and then Dest_T = Byte_T
+      then
+         return +Op;
 
       --  For integral types, we have the possibility that we're starting
       --  with a size that's smaller than a storage unit or not a power of

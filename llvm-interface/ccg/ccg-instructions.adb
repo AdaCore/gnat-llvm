@@ -115,6 +115,11 @@ package body CCG.Instructions is
             return Is_Comparison (Get_Operand (V, Nat (0)))
               and then Is_Comparison (Get_Operand (V, Nat (1)));
 
+         when Op_Xor =>
+            return Is_Comparison (Get_Operand (V, Nat (0)))
+              and then Is_A_Constant_Int (Get_Operand (V, Nat (1)))
+              and then Equals_Int (Get_Operand (V, Nat (1)), 1);
+
          when Op_PHI =>
             return (for all J in Nat range 0 .. Get_Num_Operands (V) - 1 =>
                      Is_Comparison (Get_Operand (V, J)));
@@ -188,7 +193,13 @@ package body CCG.Instructions is
             end if;
 
          when Op_Xor =>
-            return TP ("#1 ^ #2", Op1, Op2) + Bit;
+            if T = Bit_T and then Is_A_Constant_Int (Op2)
+              and then Equals_Int (Op2, 1)
+            then
+               return TP ("! #1", Op1) + Unary;
+            else
+               return TP ("#1 ^ #2", Op1, Op2) + Bit;
+            end if;
 
          when others =>
             pragma Assert (False);

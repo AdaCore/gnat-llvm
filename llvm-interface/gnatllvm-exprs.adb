@@ -400,12 +400,15 @@ package body GNATLLVM.Exprs is
       LVal       : constant GL_Value := Emit_Convert_Value (LHS_Node, LHS_BT);
       RVal       : constant GL_Value := Emit_Convert_Value (RHS_Node, RHS_BT);
       FP         : constant Boolean  := Is_Floating_Point_Type (LHS_BT);
-      Ovfl_Check : constant Boolean  :=
-        Do_Overflow_Check (N)
+      Ovfl_Check : constant Boolean  := Do_Overflow_Check (N)
+        and then not Emit_C
         and then not (Is_A_Const_Int (LVal) and then Is_A_Const_Int (RVal));
       --  If both are constant, we don't need to do an explicit overflow
       --  check since we always check the results of constant operations
       --  for overflow.
+      --  ??? Testing Emit_C shouldn't be needed but the frontend apparently
+      --  doesn't clear the Do_Overflow_Check flag when handling overflow
+      --  checking in the frontend.
 
       Unsign     : constant Boolean  := Is_Unsigned_Type (LHS_BT);
       Subp       : Opf               := null;
@@ -658,7 +661,13 @@ package body GNATLLVM.Exprs is
             begin
                if Is_Floating_Point_Type (BT) then
                   return F_Neg (V);
+
+               --  ??? Testing Emit_C shouldn't be needed but the frontend
+               --  apparently doesn't clear the Do_Overflow_Check flag when
+               --  handling overflow checking in the frontend.
+
                elsif Do_Overflow_Check (N)
+                 and then not Emit_C
                  and then not Is_Unsigned_Type (BT)
                then
                   declare

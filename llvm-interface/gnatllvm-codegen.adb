@@ -532,15 +532,6 @@ package body GNATLLVM.Codegen is
    begin
       if First_Call then
          First_Call := False;
-
-         if Emit_C then
-            --  ??? Disable overflow checks by default for now when generating
-            --  C.
-
-            Suppress_Options.Suppress (Overflow_Check) := True;
-            Suppress_Options.Overflow_Mode_General     := Strict;
-            Suppress_Options.Overflow_Mode_Assertions  := Strict;
-         end if;
       end if;
 
       if not Is_Switch (Switch) then

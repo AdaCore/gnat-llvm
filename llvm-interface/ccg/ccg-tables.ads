@@ -404,6 +404,9 @@ package CCG.Tables is
    function Type_Of (S : Str) return Type_T is
      (Type_Of (+S))
      with Pre => Contains_One_Value (S);
+   function Get_Type_Kind (S : Str) return Type_Kind_T is
+     (Get_Type_Kind (Type_Of (S)))
+     with Pre => Contains_One_Value (S);
 
    function Has_Unsigned (S : Str) return Boolean
       with Pre => Present (S);

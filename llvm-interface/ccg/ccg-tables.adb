@@ -1140,9 +1140,16 @@ package body CCG.Tables is
             return Result;
          end;
 
-         --  Otherwise, add the operator to take the address. If this is a
-         --  value that's constant, we have to cast to the non-constant
-         --  pointer type.
+      --  If we're taking the address of a value that's of array type, we
+      --  do nothing since a value of an array type represents the address
+      --  of the array.
+
+      elsif Is_Value (S) and then Get_Type_Kind (S) = Array_Type_Kind then
+         return S;
+
+      --  Otherwise, add the operator to take the address. If this is a
+      --  value that's constant, we have to cast to the non-constant
+      --  pointer type.
 
       else
          Result := "&" & (S + Unary);

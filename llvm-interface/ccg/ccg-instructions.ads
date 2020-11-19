@@ -34,6 +34,10 @@ package CCG.Instructions is
 
    procedure Write_Copy (LHS, RHS : Str; T : Type_T)
      with Pre => Present (LHS) and then Present (RHS) and then Present (T);
+   procedure Write_Copy (LHS : Str; RHS : Value_T; T : Type_T)
+     with Pre => Present (LHS) and then Present (RHS) and then Present (T);
+   procedure Write_Copy (LHS, RHS : Value_T; T : Type_T)
+     with Pre => Present (LHS) and then Present (RHS) and then Present (T);
    procedure Write_Copy (LHS : Value_T; RHS : Str; T : Type_T)
      with Pre => Present (LHS) and then Present (RHS) and then Present (T);
    --  Write a statement to copy RHS, of type T, to LHS

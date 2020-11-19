@@ -402,6 +402,24 @@ package body CCG.Instructions is
    -- Write_Copy --
    ----------------
 
+   procedure Write_Copy (LHS : Str; RHS : Value_T; T : Type_T) is
+   begin
+      Write_Copy (LHS, +RHS, T);
+   end Write_Copy;
+
+   ----------------
+   -- Write_Copy --
+   ----------------
+
+   procedure Write_Copy (LHS, RHS : Value_T; T : Type_T) is
+   begin
+      Write_Copy (+LHS, +RHS, T);
+   end Write_Copy;
+
+   ----------------
+   -- Write_Copy --
+   ----------------
+
    procedure Write_Copy (LHS, RHS : Str; T : Type_T) is
    begin
       --  If this isn't an array type, write a normal assignment. Otherwise,
@@ -414,7 +432,7 @@ package body CCG.Instructions is
       else
          Output_Stmt ("memmove ((void *) " & (Addr_Of (LHS) + Comma) &
                         ", (void *) " & (Addr_Of (RHS) + Comma) &
-                        ", sizeof (" & T & "))" + Assign);
+                        ", sizeof (" & T & "))");
       end if;
    end Write_Copy;
 
@@ -511,7 +529,7 @@ package body CCG.Instructions is
             Assignment (V, Deref (Op1));
 
          when Op_Store =>
-            Write_Copy (Deref (Op2), Op1 + Assign, Type_Of (Op1));
+            Write_Copy (Deref (Op2), Op1, Type_Of (Op1));
 
          when Op_I_Cmp | Op_F_Cmp =>
             Assignment (V, Cmp_Instruction (V, Op1, Op2));

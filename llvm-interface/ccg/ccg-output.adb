@@ -502,7 +502,12 @@ package body CCG.Output is
 
    procedure Write_Str_With_Precedence (S : Str; P : Precedence) is
    begin
-      if Needs_Parens (S, P) then
+      --  If S is just a single value and that value has a saved expression,
+      --  write that one. This preserves precedence.
+
+      if Is_Value (S) and then Present (Get_C_Value (Single_Value (S))) then
+         Write_Str_With_Precedence (Get_C_Value (Single_Value (S)), P);
+      elsif Needs_Parens (S, P) then
          Write_Str ("(" & S & ")");
       else
          Write_Str (S);

@@ -16,7 +16,11 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C;            use Interfaces.C;
+
+--  This clause is only needed with old versions of GNAT
+pragma Warnings (Off);
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
+pragma Warnings (On);
 
 with LLVM.Core; use LLVM.Core;
 

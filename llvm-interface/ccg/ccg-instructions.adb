@@ -432,9 +432,15 @@ package body CCG.Instructions is
       if Get_Type_Kind (T) /= Array_Type_Kind then
          Output_Stmt (LHS & " = " & RHS + Assign);
       else
-         Output_Stmt ("memmove ((void *) " & (Addr_Of (LHS) + Comma) &
-                        ", (void *) " & (Addr_Of (RHS) + Comma) &
-                        ", sizeof (" & T & "))");
+         --  If T is a zero-sized array, it means that we're not to move
+         --  anything, but we make a one-element array for zero-length
+         --  arrays, so taking sizeof the type is wrong.
+
+         if Get_Array_Length (T) /= Nat (0) then
+            Output_Stmt ("memmove ((void *) " & (Addr_Of (LHS) + Comma) &
+                           ", (void *) " & (Addr_Of (RHS) + Comma) &
+                           ", sizeof (" & T & "))");
+         end if;
       end if;
    end Write_Copy;
 

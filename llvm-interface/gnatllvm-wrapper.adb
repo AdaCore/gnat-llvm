@@ -329,6 +329,17 @@ package body GNATLLVM.Wrapper is
       return (if Result = 0 then False else True);
    end Get_GEP_Constant_Offset;
 
+   -----------------
+   -- Is_C_String --
+   -----------------
+
+   function Is_C_String (V : Value_T) return Boolean is
+      function Is_C_String_C (V : Value_T) return Bool
+        with Import, Convention => C, External_Name => "Is_C_String";
+   begin
+      return (if Is_C_String_C (V) = 0 then False else True);
+   end Is_C_String;
+
    ------------------------
    -- Get_Element_Offset --
    ------------------------

@@ -665,6 +665,13 @@ Get_Num_CDA_Elements (ConstantDataArray *CA)
   return CA->getNumElements ();
 }
 
+extern "C"
+bool
+Is_C_String (ConstantDataSequential *CDS)
+{
+  return CDS->isCString ();
+}
+
 /* There are two LLVM "opcodes": the real LLVM opcode, which is used
    throughout the LLVM C++ interface, and a "stable" version of the
    opcodes, that's used in the C interface.  We need to map between them,

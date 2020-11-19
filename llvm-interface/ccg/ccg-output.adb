@@ -335,7 +335,7 @@ package body CCG.Output is
 
          --  We handle strings and non-strings differently
 
-         if Is_Constant_String (V) then
+         if Is_C_String (V) then
             Write_Str ("""");
             for C of Get_As_String (V) loop
                Write_C_Char_Code (C);

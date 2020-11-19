@@ -306,6 +306,8 @@ package GNATLLVM.Wrapper is
      (GEP : Value_T; Layout : Target_Data_T; Offset : out ULL) return Boolean
      with Inline;
 
+   function Is_C_String (V : Value_T) return Boolean with Inline;
+
    function Get_Element_Offset (T : Type_T; Idx : unsigned) return ULL
      with Inline;
 

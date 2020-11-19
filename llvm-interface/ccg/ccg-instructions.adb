@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C;            use Interfaces.C;
-with Interfaces.C.Extensions; use Interfaces.C.Extensions;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -202,9 +201,7 @@ package body CCG.Instructions is
             end if;
 
          when others =>
-            pragma Assert (False);
-            return No_Str;
-
+            return raise Program_Error;
       end case;
    end Binary_Instruction;
 

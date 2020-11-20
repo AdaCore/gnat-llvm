@@ -329,6 +329,11 @@ package CCG.Tables is
      with Pre => Present (V), Inline;
    --  True if this value represents a variable that's unsigned
 
+   function Get_Is_Used       (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if this value represents a variable that has been used in an
+   --  expression.
+
    procedure Set_C_Value       (V : Value_T; S : Str)
      with Pre => Present (V), Post => Get_C_Value (V) = S, Inline;
    procedure Set_No_Name       (V : Value_T; B : Boolean := True)
@@ -342,6 +347,8 @@ package CCG.Tables is
      with Pre => Present (V), Post => Get_Is_Constant (V) = B, Inline;
    procedure Set_Is_Unsigned    (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Unsigned (V) = B, Inline;
+   procedure Set_Is_Used        (V : Value_T; B : Boolean := True)
+     with Pre => Present (V), Post => Get_Is_Used (V) = B, Inline;
 
    function Get_Is_Typedef_Output     (T : Type_T) return Boolean
      with Pre => Present (T), Inline;

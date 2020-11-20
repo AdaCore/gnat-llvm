@@ -412,7 +412,6 @@ package body CCG.Output is
       end Maybe_Write_Parens;
 
    begin
-
       --  See if we want an unsigned version of V (unless this is a
       --  pointer, which is always treated as unsigned).
 

@@ -24,6 +24,8 @@ pragma Warnings (On);
 
 with LLVM.Core; use LLVM.Core;
 
+with Table;
+
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;  use CCG.Aggregates;
@@ -70,6 +72,22 @@ package body CCG.Instructions is
      with Pre => Present (V), Post => Present (Maybe_Unsigned'Result);
      --  If Op_Unsigned is True, V must be treated as unsigned. Otherwise
      --  it must be treated as signed.
+
+   --  We need to record those values where we've made them equivalent to
+   --  a C value but haven't written them yet because if we encounter a
+   --  store or procedure call, we need to write them out since a variable
+   --  may be changed by that store or procedure call. Here we store each
+   --  such value when we make the assignment, but don't delete it when
+   --  we've written it; we assume that the caller will check if it's been
+   --  written.
+
+   package Pending_Value_Table is new Table.Table
+     (Table_Component_Type => Value_T,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 50,
+      Table_Increment      => 50,
+      Table_Name           => "Pending_Value_Table");
 
    --------------------
    -- Get_Extra_Bits --
@@ -136,6 +154,38 @@ package body CCG.Instructions is
             return False;
       end case;
    end Is_Comparison;
+
+   --------------------------
+   -- Clear_Pending_Values --
+   --------------------------
+
+   procedure Clear_Pending_Values is
+   begin
+      Pending_Value_Table.Set_Last (0);
+   end Clear_Pending_Values;
+
+   ----------------------------
+   -- Process_Pending_Values --
+   ----------------------------
+
+   procedure Process_Pending_Values is
+   begin
+      for J in reverse 1 .. Pending_Value_Table.Last loop
+         declare
+            V   : constant Value_T := Pending_Value_Table.Table (J);
+            RHS : constant Str     := Get_C_Value (V);
+
+         begin
+            if not Get_Is_Used (V) then
+               Set_C_Value (V, No_Str);
+               Maybe_Decl  (V);
+               Write_Copy  (V, RHS, Type_Of (V));
+            end if;
+         end;
+      end loop;
+
+      Pending_Value_Table.Set_Last (0);
+   end Process_Pending_Values;
 
    ------------------------
    -- Binary_Instruction --
@@ -468,7 +518,14 @@ package body CCG.Instructions is
          Maybe_Decl (LHS);
          Write_Copy (LHS, RHS, Type_Of (LHS));
       else
+         --  Make a note of the value of V. If V is an instruction, make a
+         --  note of this pending assignment in case we get a store or
+         --  call.
+
          Set_C_Value (LHS, RHS);
+         if Is_A_Instruction (LHS) then
+            Pending_Value_Table.Append (LHS);
+         end if;
       end if;
    end Assignment;
 
@@ -510,6 +567,7 @@ package body CCG.Instructions is
             end if;
 
          when Op_Call =>
+            Process_Pending_Values;
             Call_Instruction (V, Ops);
 
          when Op_Alloca =>
@@ -537,6 +595,7 @@ package body CCG.Instructions is
             Assignment (V, Deref (Op1));
 
          when Op_Store =>
+            Process_Pending_Values;
             Write_Copy (Deref (Op2), Op1, Type_Of (Op1));
 
          when Op_I_Cmp | Op_F_Cmp =>

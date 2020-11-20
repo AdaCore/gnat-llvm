@@ -85,6 +85,10 @@ package body CCG.Tables is
       --  True if this value was marked as unsigned and will be declared
       --  that way.
 
+      Is_Used        : Boolean;
+      --  True if this value represents a variable that has been used in an
+      --  expression.
+
       Output_Idx     : Nat;
       --  A positive number if we've assigned an ordinal to use as
       --  part of the name for this anonymous value.
@@ -420,6 +424,7 @@ package body CCG.Tables is
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
+      Set_Is_Used (V);
       return Result;
    end "+";
 
@@ -433,6 +438,7 @@ package body CCG.Tables is
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
+      Set_Is_Used (V);
       return Result;
    end "+";
 
@@ -497,6 +503,7 @@ package body CCG.Tables is
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
+      Set_Is_Used (V);
       return Result;
    end "+";
 
@@ -659,6 +666,7 @@ package body CCG.Tables is
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
+            Set_Is_Used (R);
             return Result;
          end;
       else
@@ -778,6 +786,7 @@ package body CCG.Tables is
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
+            Set_Is_Used (L);
             return Result;
          end;
       else
@@ -869,6 +878,7 @@ package body CCG.Tables is
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
+      Set_Is_Used (L);
       return Result;
    end "&";
 
@@ -908,6 +918,7 @@ package body CCG.Tables is
       Result : Str;
 
    begin
+      Set_Is_Used (L);
       S_Rec.P                         := R.P;
       S_Rec.Comps (1)                 := (Value, 1, L, Default_Flags, Unknown);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
@@ -961,6 +972,7 @@ package body CCG.Tables is
          return +R;
       end if;
 
+      Set_Is_Used (R);
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1)  := (Value, 1, R, Default_Flags, Unknown);
@@ -1235,6 +1247,7 @@ package body CCG.Tables is
                                    Is_LHS         => False,
                                    Is_Constant    => False,
                                    Is_Unsigned    => False,
+                                   Is_Used        => False,
                                    Output_Idx     => 0));
          Insert (Value_Data_Map, V, Value_Data_Table.Last);
          return Value_Data_Table.Last;
@@ -1373,6 +1386,19 @@ package body CCG.Tables is
 
    end Get_Is_Unsigned;
 
+   ------------------
+   -- Get_Is_Used --
+   ------------------
+
+   function Get_Is_Used (V : Value_T) return Boolean is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+
+   begin
+      return Present (Idx)
+        and then Value_Data_Table.Table (Idx).Is_Used;
+
+   end Get_Is_Used;
+
    -----------------
    -- Set_C_Value --
    -----------------
@@ -1438,6 +1464,17 @@ package body CCG.Tables is
    begin
       Value_Data_Table.Table (Idx).Is_Unsigned := B;
    end Set_Is_Unsigned;
+
+   -----------------
+   -- Set_Is_Used --
+   -----------------
+
+   procedure Set_Is_Used (V : Value_T; B : Boolean := True) is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+
+   begin
+      Value_Data_Table.Table (Idx).Is_Used := B;
+   end Set_Is_Used;
 
    ---------------------------
    -- Get_Is_Typedef_Output --

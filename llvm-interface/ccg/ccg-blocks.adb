@@ -94,6 +94,10 @@ package body CCG.Blocks is
          V := Get_Next_Instruction (V);
       end loop;
 
+      --  Clear our pending value list
+
+      Clear_Pending_Values;
+
       --  Now process any block referenced by the terminator
 
       case Get_Instruction_Opcode (Terminator) is

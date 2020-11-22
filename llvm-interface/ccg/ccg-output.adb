@@ -271,7 +271,24 @@ package body CCG.Output is
    procedure Write_Constant_Value
      (V              : Value_T;
       Flags          : Value_Flags := Default_Flags;
-      Is_Unsigned    : Boolean     := False) is
+      Is_Unsigned    : Boolean     := False)
+   is
+      procedure Write_Int_Qualifier (Width : Int);
+      --  Write the relevant L/LL signed int qualifier
+
+      -------------------------
+      -- Write_Int_Qualifier --
+      -------------------------
+
+      procedure Write_Int_Qualifier (Width : Int) is
+      begin
+         if Width = Get_Long_Long_Size then
+            Write_Str ("LL");
+         elsif Width > Get_Int_Size then
+            Write_Str ("L");
+         end if;
+      end Write_Int_Qualifier;
+
    begin
       if Is_A_Constant_Int (V) then
          declare
@@ -290,18 +307,32 @@ package body CCG.Output is
                end;
             else
                declare
-                  Img : constant String := Const_Int_Get_S_Ext_Value (V)'Image;
+                  Value : constant Long_Long_Integer :=
+                    Const_Int_Get_S_Ext_Value (V);
                begin
-                  Write_Str
-                    (Img ((if Img (1) = '-' then 1 else 2) .. Img'Last));
+                  --  Special case MIN_INT which cannot be expressed directly
+                  --  without causing an overflow.
+
+                  if Value = -2 ** Natural (Width - 1) then
+                     Write_Str ("(" & Long_Long_Integer'Image (Value + 1));
+                     Write_Int_Qualifier (Width);
+                     Write_Str ("-1");
+                     Write_Int_Qualifier (Width);
+                     Write_Str (")");
+                     return;
+
+                  else
+                     declare
+                        Img : constant String := Value'Image;
+                     begin
+                        Write_Str
+                          (Img ((if Img (1) = '-' then 1 else 2) .. Img'Last));
+                     end;
+                  end if;
                end;
             end if;
 
-            if Width = Get_Long_Long_Size then
-               Write_Str ("LL");
-            elsif Width > Get_Int_Size then
-               Write_Str ("L");
-            end if;
+            Write_Int_Qualifier (Width);
          end;
 
       elsif Is_A_Constant_FP (V) then

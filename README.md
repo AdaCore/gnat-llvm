@@ -1,19 +1,17 @@
 GNAT LLVM
 =========
 
-This is an experimental Ada compiler based on LLVM, connecting the GNAT
-front-end to the LLVM code generator.
+This is an Ada compiler based on LLVM, connecting the GNAT front-end to the
+LLVM code generator.
 
 This is a work-in-progress research project that's not meant for and
 shouldn't be used for industrial purposes. It's meant to show the
 feasibility of generating LLVM bitcode for Ada and to open the LLVM
-ecosystem to Ada, including tools such as [KLEE](https://klee.github.io).
+ecosystem to Ada.
 
 Note that we are not planning on replacing any existing GNAT port that's
 based on GCC: this project is meant to provide additional, not replacement,
 GNAT ports.
-
-There are known bugs and limitations in this version.
 
 Early users are welcome to experiment with this technology and provide
 feedback on successes, usages, limitations, pull requests, etc.

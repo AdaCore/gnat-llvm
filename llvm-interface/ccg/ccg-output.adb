@@ -260,7 +260,9 @@ package body CCG.Output is
             Write_Str ("}");
 
          when others =>
-            Write_Str ("<unsupported undef type>");
+            Error_Msg ("unsupported undef type: " & Get_Type_Kind (T)'Image);
+            Write_Str ("<unsupported undef type: " & Get_Type_Kind (T)'Image
+                       & ">");
       end case;
    end Write_Undef;
 
@@ -660,9 +662,9 @@ package body CCG.Output is
       end if;
    end Maybe_Decl;
 
-   -------------------------
-   -- Maybe_Write_Typedef --
-   -------------------------
+   ----------------------------------
+   -- Maybe_Write_Typedef_And_Decl --
+   ----------------------------------
 
    procedure Maybe_Write_Typedef_And_Decl (V : Value_T) is
    begin
@@ -688,8 +690,36 @@ package body CCG.Output is
             Maybe_Write_Typedef_And_Decl (Get_Element_As_Constant (V, J));
          end loop;
       end if;
-
    end Maybe_Write_Typedef_And_Decl;
+
+   ----------------
+   -- Int_String --
+   ----------------
+
+   function Int_String (Size : Pos) return String is
+   begin
+      --  ??? There are a number of issues here: Ada supports a
+      --  "long long long" type, which could correspond to C's
+      --  int128_t.  We also may want to generate intXX_t types
+      --  instead of the standard types based on a switch.  But for
+      --  now we'll keep it simple.
+
+      if Size > Long_Size and then Size > Int_Size
+        and then Size <= Long_Long_Size
+      then
+         return "long long";
+      elsif Size > Int_Size and then Size <= Long_Size then
+         return "long";
+      elsif Size > Short_Size and then Size <= Int_Size then
+         return "int";
+      elsif Size > Char_Size and then Size <= Short_Size then
+         return "short";
+      elsif Size <= Char_Size then
+         return "char";
+      else
+         return "<unknown int type:" & Size'Image & ">";
+      end if;
+   end Int_String;
 
    -----------------
    -- Write_Type --
@@ -712,32 +742,7 @@ package body CCG.Output is
             Write_Str ("double");
 
          when Integer_Type_Kind =>
-            declare
-               Bits : constant Pos := Pos (Get_Int_Type_Width (T));
-
-            begin
-               --  ??? There are a number of issues here: Ada supports a
-               --  "long long long" type, which could correspond to C's
-               --  int128_t.  We also may want to generate intXX_t types
-               --  instead of the standard types based on a switch.  But for
-               --  now we'll keep it simple.
-
-               if Bits > Long_Size and then Bits > Int_Size
-                 and then Bits <= Long_Long_Size
-               then
-                  Write_Str ("long long");
-               elsif Bits > Int_Size and then Bits <= Long_Size then
-                  Write_Str ("long");
-               elsif Bits > Short_Size and then Bits <= Int_Size then
-                  Write_Str ("int");
-               elsif Bits > Char_Size and then Bits <= Short_Size then
-                  Write_Str ("short");
-               elsif Bits <= Char_Size then
-                  Write_Str ("char");
-               else
-                  Write_Str ("<unknown int type:" & Bits'Image & ">");
-               end if;
-            end;
+            Write_Str (Int_String (Pos (Get_Int_Type_Width (T))));
 
          when Pointer_Type_Kind =>
 
@@ -768,6 +773,7 @@ package body CCG.Output is
             Write_Int (Get_Output_Idx (T));
 
          when others =>
+            Error_Msg ("unsupported type: " & Get_Type_Kind (T)'Image);
             Write_Str ("<unsupported type: " & Get_Type_Kind (T)'Image & ">");
       end case;
    end Write_Type;

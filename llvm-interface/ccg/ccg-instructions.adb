@@ -381,7 +381,6 @@ package body CCG.Instructions is
    ---------------------
 
    function Cmp_Instruction (V, Op1, Op2 : Value_T) return Str is
-
    begin
       if Get_Opcode (V) = Op_I_Cmp then
          declare
@@ -418,7 +417,6 @@ package body CCG.Instructions is
          end;
 
       elsif Get_Opcode (V) = Op_F_Cmp then
-
          case Get_F_Cmp_Predicate (V) is
             when Real_OEQ | Real_UEQ =>
                return TP ("#1 == #2", Op1, Op2) + Relation;
@@ -437,8 +435,8 @@ package body CCG.Instructions is
          end case;
       end if;
 
+      Error_Msg ("unsupported comparison: " & Get_Opcode_Name (V));
       return +("<unsupported comparison: " & Get_Opcode_Name (V) & ">");
-
    end Cmp_Instruction;
 
    ----------------
@@ -650,6 +648,7 @@ package body CCG.Instructions is
             null;
 
          when others =>
+            Error_Msg ("unsupported instruction: " & Get_Opcode_Name (Opc));
             Output_Stmt
               ("<unsupported instruction: " & Get_Opcode_Name (Opc) & ">");
       end case;

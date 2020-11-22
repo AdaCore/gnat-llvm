@@ -59,6 +59,12 @@ package CCG is
      with Pre => Present (V);
    --  Indicate that V has an unsigned type.
 
+   procedure Error_Msg (Msg : String);
+   --  Post an error message via the GNAT errout mechanism.
+   --  ??? For now, default to the First_Source_Ptr sloc. Will hopefully use a
+   --  better source location in the future when we keep track of them for e.g.
+   --  generating #line information.
+
    Char_Size      : Pos;
    Short_Size     : Pos;
    Int_Size       : Pos;

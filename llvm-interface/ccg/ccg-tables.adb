@@ -611,7 +611,6 @@ package body CCG.Tables is
    begin
       for Comp of S.Comps loop
          case Comp.Kind is
-
             when Var_String =>
                if Comp.Str = Eol_Str then
                   Write_Eol;
@@ -639,7 +638,6 @@ package body CCG.Tables is
       if Eol then
          Write_Eol;
       end if;
-
    end Write_Str;
 
    ---------

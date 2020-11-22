@@ -22,6 +22,9 @@ package CCG.Output is
    --  This package contains subprograms used to output segments of C
    --  code.
 
+   function Int_String (Size : Pos) return String;
+   --  Return the string corresponding to an integer type of Size bits
+
    procedure Write_Value
      (V              : Value_T;
       Flags          : Value_Flags := Default_Flags;

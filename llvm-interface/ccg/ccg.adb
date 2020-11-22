@@ -18,6 +18,7 @@
 with LLVM.Core; use LLVM.Core;
 
 with Debug;    use Debug;
+with Errout;   use Errout;
 with Get_Targ; use Get_Targ;
 with Osint;    use Osint;
 with Osint.C;  use Osint.C;
@@ -164,4 +165,14 @@ package body CCG is
       Set_Is_Unsigned (V);
       Notify_On_Value_Delete (V, Delete_Value_Info'Access);
    end C_Set_Is_Unsigned;
+
+   ---------------
+   -- Error_Msg --
+   ---------------
+
+   procedure Error_Msg (Msg : String) is
+   begin
+      Error_Msg (Msg, First_Source_Ptr);
+   end Error_Msg;
+
 end CCG;

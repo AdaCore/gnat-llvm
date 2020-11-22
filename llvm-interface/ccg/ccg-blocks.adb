@@ -123,10 +123,11 @@ package body CCG.Blocks is
             end loop;
 
          when others =>
+            Error_Msg
+              ("unsupported terminator: " & Get_Opcode_Name (Terminator));
             Output_Stmt
               (+("<unsupported terminator: " &
                    Get_Opcode_Name (Terminator) & ">"));
-
       end case;
 
    end Output_BB;

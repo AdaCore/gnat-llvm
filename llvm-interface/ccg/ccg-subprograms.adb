@@ -345,6 +345,12 @@ package body CCG.Subprograms is
          --  If the Arith_64 routine succeeds (does not raise an exception),
          --  it means that no overflow occurred so always clear the second
          --  field.
+         --  ??? The front end is able to convert some overflow operations
+         --  to direct comparison. We ought to do the same here. And if
+         --  we do that, then we can emit the builtins in all cases and
+         --  allow the LLVM optimizer to see the builtins, which should allow
+         --  it to do a better job. But this is for later work; we need to
+         --  get a better idea of the tradeoffs here.
 
          Write_Copy
            (+V & ".ccg_field_0",

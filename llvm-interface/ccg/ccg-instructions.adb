@@ -382,6 +382,8 @@ package body CCG.Instructions is
 
    function Cmp_Instruction (V, Op1, Op2 : Value_T) return Str is
    begin
+      --  This is either an integer or an FP comparison
+
       if Get_Opcode (V) = Op_I_Cmp then
          declare
             type I_Info is record
@@ -416,7 +418,9 @@ package body CCG.Instructions is
               Relation;
          end;
 
-      elsif Get_Opcode (V) = Op_F_Cmp then
+      --  If not integer comparison, it must be FP
+
+      else
          case Get_F_Cmp_Predicate (V) is
             when Real_OEQ | Real_UEQ =>
                return TP ("#1 == #2", Op1, Op2) + Relation;
@@ -431,12 +435,20 @@ package body CCG.Instructions is
             when Real_ONE | Real_UNE =>
                return TP ("#1 != #2", Op1, Op2) + Relation;
             when others =>
-               null;
+               declare
+                  Name : constant String :=
+                    Real_Predicate_T'Image (Get_F_Cmp_Predicate (V));
+                  Msg  : constant String :=
+                    "unsupported FP predicate: " &
+                    Name (Name'First + 5 .. Name'Last);
+
+               begin
+                  Error_Msg (Msg);
+                  return +("<" & Msg & ">");
+               end;
          end case;
       end if;
 
-      Error_Msg ("unsupported comparison: " & Get_Opcode_Name (V));
-      return +("<unsupported comparison: " & Get_Opcode_Name (V) & ">");
    end Cmp_Instruction;
 
    ----------------

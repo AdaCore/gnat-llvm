@@ -381,6 +381,8 @@ package body CCG.Instructions is
    ---------------------
 
    function Cmp_Instruction (V, Op1, Op2 : Value_T) return Str is
+      Result : Str;
+
    begin
       --  This is either an integer or an FP comparison
 
@@ -422,6 +424,10 @@ package body CCG.Instructions is
 
       else
          case Get_F_Cmp_Predicate (V) is
+            when Real_Predicate_True =>
+               return +"1";
+            when Real_Predicate_False =>
+               return +"0";
             when Real_OEQ | Real_UEQ =>
                return TP ("#1 == #2", Op1, Op2) + Relation;
             when Real_OGT | Real_UGT =>
@@ -434,21 +440,36 @@ package body CCG.Instructions is
                return TP ("#1 <= #2", Op1, Op2) + Relation;
             when Real_ONE | Real_UNE =>
                return TP ("#1 != #2", Op1, Op2) + Relation;
-            when others =>
-               declare
-                  Name : constant String :=
-                    Real_Predicate_T'Image (Get_F_Cmp_Predicate (V));
-                  Msg  : constant String :=
-                    "unsupported FP predicate: " &
-                    Name (Name'First + 5 .. Name'Last);
 
-               begin
-                  Error_Msg (Msg);
-                  return +("<" & Msg & ">");
-               end;
+            when Real_ORD =>
+
+               --  This tests that neither input is a Nan, which means that
+               --  both inputs are equal to themselves in C. We check if
+               --  Op2 is a constant since it often is.
+
+               Result := TP ("#1 == #1", Op1) + Relation;
+               if not Is_A_Constant (Op2) then
+                  Result :=
+                    (Result & " && " & (TP ("#1 == #1", Op2) + Relation))
+                    + Logical_AND;
+               end if;
+
+               return Result;
+
+            when Real_UNO =>
+
+               --  This is the opposite of ORD
+
+               Result := TP ("#1 != #1", Op1) + Relation;
+               if not Is_A_Constant (Op2) then
+                  Result :=
+                    (Result & " || " & (TP ("#1 != #1", Op2) + Relation))
+                    + Logical_OR;
+               end if;
+
+               return Result;
          end case;
       end if;
-
    end Cmp_Instruction;
 
    ----------------

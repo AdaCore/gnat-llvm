@@ -76,14 +76,6 @@ package body CCG.Instructions is
    --  operand and possibly about signedness. We return the way to
    --  reference V. If nothing is special, this is just +V.
 
-   function Maybe_Unsigned
-     (V : Value_T; Op_Unsigned : Boolean := True) return Str
-   is
-     ((if Op_Unsigned then V + Is_Unsigned else V + Is_Signed))
-     with Pre => Present (V), Post => Present (Maybe_Unsigned'Result);
-     --  If Op_Unsigned is True, V must be treated as unsigned. Otherwise
-     --  it must be treated as signed.
-
    --  We need to record those values where we've made them equivalent to
    --  a C value but haven't written them yet because if we encounter a
    --  store or procedure call, we need to write them out since a variable
@@ -248,7 +240,10 @@ package body CCG.Instructions is
    function Binary_Instruction (V, Op1, Op2 : Value_T) return Str is
       Opc : constant Opcode_T := Get_Opcode (V);
       T   : constant Type_T   := Type_Of (V);
-
+      POO : constant Process_Operand_Option :=
+        (case Opc is when Op_U_Div | Op_U_Rem | Op_L_Shr => Unsigned,
+                     when Op_S_Div | Op_S_Rem | Op_A_Shr => Signed,
+                     when others => X);
    begin
       case Opc is
          when Op_Add =>
@@ -261,18 +256,18 @@ package body CCG.Instructions is
             return TP ("#1 * #2", Op1, Op2) + Mult;
 
          when Op_S_Div | Op_U_Div =>
-            return Maybe_Unsigned (Op1, Opc = Op_U_Div) & " / " &
-              Maybe_Unsigned (Op2, Opc = Op_U_Div) + Mult;
+            return Process_Operand (Op1, POO) & " / " &
+              Process_Operand (Op2, POO) + Mult;
 
          when Op_S_Rem | Op_U_Rem =>
-            return Maybe_Unsigned (Op1, Opc = Op_U_Rem) & " % " &
-              Maybe_Unsigned (Op2, Opc = Op_U_Rem) + Mult;
+            return Process_Operand (Op1, POO) & " % " &
+              Process_Operand (Op2, POO) + Mult;
 
          when Op_Shl =>
             return TP ("#1 << #2", Op1, Op2) + Shift;
 
          when Op_L_Shr | Op_A_Shr =>
-            return Maybe_Unsigned (Op1, Opc = Op_L_Shr) & " >> " & Op2 + Shift;
+            return Process_Operand (Op1, POO) & " >> " & Op2 + Shift;
 
          when Op_F_Add =>
             return TP ("#1 + #2", Op1, Op2) + Add;

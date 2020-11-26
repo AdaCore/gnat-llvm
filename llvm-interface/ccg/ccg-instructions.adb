@@ -410,8 +410,10 @@ package body CCG.Instructions is
             Do_Unsigned : constant Boolean :=
               (if   Pred in Int_EQ | Int_NE then Maybe_Uns
                else Info.Is_Unsigned);
-            LHS         : constant Str    := Maybe_Unsigned (Op1, Do_Unsigned);
-            RHS         : constant Str    := Maybe_Unsigned (Op2, Do_Unsigned);
+            POO         : constant Process_Operand_Option :=
+              (if Do_Unsigned then Unsigned else Signed);
+            LHS         : constant Str    := Process_Operand (Op1, POO);
+            RHS         : constant Str    := Process_Operand (Op2, POO);
 
          begin
             return (LHS & " " & Info.Op (1 .. Info.Length) & " " & RHS) +

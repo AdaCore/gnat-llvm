@@ -65,6 +65,17 @@ package body CCG.Instructions is
           Post => Present (Cmp_Instruction'Result);
    --  Return the value corresponding to a comparison instruction
 
+   type Process_Operand_Option is (Signed, Unsigned, X);
+   --  An operand to Process_Operand that says whether we care which
+   --  signedless the operand is and, if so, which one.
+
+   function Process_Operand
+     (V : Value_T; POO : Process_Operand_Option) return Str
+     with Pre => Present (V), Post => Present (Process_Operand'Result);
+   --  Called when we care about any high bits in a possible partial-word
+   --  operand and possibly about signedness. We return the way to
+   --  reference V. If nothing is special, this is just +V.
+
    function Maybe_Unsigned
      (V : Value_T; Op_Unsigned : Boolean := True) return Str
    is
@@ -99,15 +110,58 @@ package body CCG.Instructions is
 
    begin
       --  We do this with bit-twiddling that turns on all bits that are
-      --  one within Width - 1, use at least a value of 7 so that we go
+      --  one within Width - 1, use at least a value of BPU-1 so that we go
       --  to at least a byte, and then add the one back.
 
       Pow2_M_1 := Pow2_M_1 or Pow2_M_1 / 2;
       Pow2_M_1 := Pow2_M_1 or Pow2_M_1 / 4;
-      Pow2_M_1 := M'Max (Pow2_M_1 or Pow2_M_1 / 16, 7);
+      Pow2_M_1 := M'Max (Pow2_M_1 or Pow2_M_1 / 16, M (BPU) - 1);
 
       return ULL (Pow2_M_1 - M (J) + 1);
    end Get_Extra_Bits;
+
+   ---------------------
+   -- Process_Operand --
+   ---------------------
+
+   function Process_Operand
+     (V : Value_T; POO : Process_Operand_Option) return Str
+   is
+      T      : constant Type_T := Type_Of (V);
+      Size   : constant ULL    :=
+        (if   Get_Type_Kind (T) = Integer_Type_Kind
+         then Get_Scalar_Bit_Size (T) else UBPU);
+      Extras : constant ULL    := Get_Extra_Bits (Size);
+      Result : Str             :=
+        (case POO is when X => +V, when Signed => V + Is_Signed,
+                     when Unsigned => V + Is_Unsigned);
+
+   begin
+      --  If all we have to do is deal with signedness, we're done
+
+      if Extras = 0 then
+         return Result;
+      end if;
+
+      --  Otherwise, we have to do a pair of shifts. Because of the C's
+      --  integer promotion rules, we have to cast back to our type after
+      --  each shift. We use the unsigned or signed version of the type of
+      --  V depending on which we want or which we think it is if we don't
+      --  care.
+
+      declare
+         Use_Signed : constant Boolean :=
+           (case POO is when X => Might_Be_Unsigned (V), when Signed => True,
+                        when Unsigned => False);
+         Cast       : constant Str     :=
+           (if Use_Signed then "(" else "(unsigned ") & T & ") ";
+         Cnt        : constant Nat     := Nat (Extras);
+
+      begin
+         Result := Cast & "(" & (Result + Shift) & " << " & Cnt & ")";
+         return Cast & "(" & Result & " >> " & Cnt & ")";
+      end;
+   end Process_Operand;
 
    -------------------
    -- Is_Comparison --
@@ -269,7 +323,10 @@ package body CCG.Instructions is
       Src_T  : constant Type_T   := Type_Of (Op);
       Dest_T : constant Type_T   := Type_Of (V);
       Our_Op : constant Str      :=
-        Maybe_Unsigned (Op, Opc in Op_UI_To_FP | Op_Z_Ext);
+        Process_Operand (Op,
+                         (case Opc is when Op_UI_To_FP | Op_Z_Ext => Unsigned,
+                                      when Op_SI_To_FP | Op_S_Ext => Signed,
+                                      when others => X));
 
    begin
       --  If we're doing a bitcast and the input and output types aren't
@@ -308,65 +365,6 @@ package body CCG.Instructions is
         and then Dest_T = Byte_T
       then
          return +Op;
-
-      --  For integral types, we have the possibility that we're starting
-      --  with a size that's smaller than a storage unit or not a power of
-      --  two bits. For those, we have to do the sign- or zero-extension
-      --  to the next-higher power of two with two shifts (for zero-extension,
-      --  this can be done with an AND of a constant, but all compilers wil
-      --  convert the shifts to that and it's simpler to use shifts). Since
-      --  C will promote a shift of a width narrower than int to int, we
-      --  need to adjust the shift amount to compensate. Note that an
-      --  arithmetic shift of a negative number is implementation-defined,
-      --  but all known implementations sign extend.
-
-      elsif Get_Type_Kind (Src_T) = Integer_Type_Kind
-        and then Get_Type_Kind (Dest_T) = Integer_Type_Kind
-      then
-         declare
-            Dest_Size     : constant ULL    := Get_Scalar_Bit_Size (Dest_T);
-            Src_Size      : constant ULL    := Get_Scalar_Bit_Size (Src_T);
-            Src_Extras    : constant ULL    := Get_Extra_Bits (Src_Size);
-            Dest_Extras   : constant ULL    := Get_Extra_Bits (Dest_Size);
-            Src_Int_Size  : constant ULL    := Src_Size  + Src_Extras;
-            Dest_Int_Size : constant ULL    := Dest_Size + Dest_Extras;
-            Compute_Size  : constant ULL    :=
-              (if   Src_Extras /= 0 and then Src_Int_Size < ULL (Int_Size)
-               then ULL (Int_Size) else Src_Int_Size);
-            Compute_T     : constant Type_T := Int_Ty (Compute_Size);
-            Cnt           : constant Nat    := Nat (Compute_Size - Src_Size);
-            Result        : Str             := Our_Op;
-
-         begin
-            --  If we have extra bits to bring this to normal integer type,
-            --  do the shifts to sign/zero extend.
-
-            if Src_Extras /= 0 then
-
-               --  If we're doing a zext and integer promotion will occur
-               --  for the shift, it'll be to int, not unsigned int, because
-               --  of the way the integer promotion rules work. So handle that
-               --  case specially.
-
-               if Opc = Op_Z_Ext and then Compute_Size /= Src_Int_Size then
-                  Result := "(unsigned " & Compute_T & ") " & Op + Unary;
-               end if;
-
-               Result := "(" & Result & " << " & Cnt & ") >> " & Cnt + Shift;
-            end if;
-
-            --  If we have to change sizes beyond (possibly) doing the shifts,
-            --  emit that cast.
-
-            if Dest_Int_Size /= Compute_Size then
-               Result := ("(" & Dest_T & ") " & (Result + Unary)) + Unary;
-            end if;
-
-            --  The operation is usually a shift and/or a cast, but in the
-            --  case of a trunc from, say, i16 to i12, we have nothing to do.
-
-            return Result;
-         end;
 
       --  Otherwise, just do a cast
 

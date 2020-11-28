@@ -421,6 +421,16 @@ package body CCG.Output is
       --  operation. If that means we need to parenthesize the entire
       --  expression, set that up. Also mark how V will be used.
 
+      function Must_Write_Cast return Boolean is
+         (Get_Type_Kind (V) = Integer_Type_Kind
+            and then Nat (Get_Scalar_Bit_Size (Type_Of (V))) < Get_Int_Size
+            and then Is_A_Instruction (V)
+            and then Get_Opcode (V) not in Op_Alloca | Op_Load | Op_Select |
+                                           Op_Extract_Value | Op_Insert_Value);
+      --  Because of C's integer promotion rules, we must insert a cast if
+      --  V is an integer narrower than int and the output of an
+      --  arithmetic, shift, or logical instruction.
+
       C_Value     : constant Str := Get_C_Value (V);
       Inner_For_P : Precedence   := For_Precedence;
       Wrote_Paren : Boolean      := False;
@@ -445,6 +455,7 @@ package body CCG.Output is
       end Maybe_Write_Parens;
 
    begin
+
       --  See if we want an unsigned version of V (unless this is a
       --  pointer, which is always treated as unsigned).
 
@@ -464,17 +475,21 @@ package body CCG.Output is
             Write_Constant_Value (V, Is_Unsigned => True);
             return;
 
-         --  If it's not known to be unsigned, write a cast and then the value
+            --  If it's not known to be unsigned or we need to be concerned
+            --  about integer promotion, write a cast and then the value.
 
-         elsif not Get_Is_Unsigned (V) then
+         elsif not Get_Is_Unsigned (V) or else Must_Write_Cast then
             Maybe_Write_Parens;
             Write_Str (TP ("(unsigned #T) ", T => Type_Of (V)));
          end if;
 
          --  Otherwise, if this is an object that must be interpreted as
-         --  signed but might be unsigned, write a cast to the signed type.
+         --  signed but might be unsigned or we need to be concerned about
+         --  integer promotion, write a cast to the signed type.
 
-      elsif Flags.Is_Signed and then Might_Be_Unsigned (V) then
+      elsif Flags.Is_Signed
+        and then (Might_Be_Unsigned (V) or else Must_Write_Cast)
+      then
          Write_Str (TP ("(#T) ", T => Type_Of (V)));
       end if;
 

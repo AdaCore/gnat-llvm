@@ -593,11 +593,6 @@ package body CCG.Instructions is
             end if;
 
          when Op_Call =>
-
-            --  ??? We should exclude pending values that are used in the
-            --  operands. It's not clear what the best way to do that is.
-
-            Process_Pending_Values;
             Call_Instruction (V, Ops);
 
          when Op_Alloca =>

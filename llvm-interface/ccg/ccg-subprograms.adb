@@ -305,12 +305,13 @@ package body CCG.Subprograms is
    function Call_Builtin
      (V : Value_T; S : String; Ops : Value_Array) return Boolean
    is
-      Op1 : constant Value_T  :=
+      Op1    : constant Value_T  :=
         (if Ops'Length >= 1 then Ops (Ops'First) else No_Value_T);
-      Op2 : constant Value_T  :=
+      Op2    : constant Value_T  :=
         (if Ops'Length >= 2 then Ops (Ops'First + 1) else No_Value_T);
-      Op3 : constant Value_T  :=
+      Op3    : constant Value_T  :=
         (if Ops'Length >= 3 then Ops (Ops'First + 2) else No_Value_T);
+      Result : Str;
 
       procedure Op_With_Overflow (Arit : Arithmetic_Operation);
       --  Handle an arithmetic operation with overflow
@@ -396,11 +397,17 @@ package body CCG.Subprograms is
       --  C library function.
 
       elsif S (S'First + 5 .. S'First + 10) = "memcpy" then
-         Output_Stmt ("memcpy (" & Op1 & ", " & Op2 & ", " & Op3 & ")");
+         Result := "memcpy (" & Op1 & ", " & Op2 & ", " & Op3 & ")";
+         Process_Pending_Values;
+         Output_Stmt (Result);
       elsif S (S'First + 5 .. S'First + 11) = "memmove" then
-         Output_Stmt ("memmove (" & Op1 & ", " & Op2 & ", " & Op3 & ")");
+         Result := "memmove (" & Op1 & ", " & Op2 & ", " & Op3 & ")";
+         Process_Pending_Values;
+         Output_Stmt (Result);
       elsif S (S'First + 5 .. S'First + 10) = "memset" then
-         Output_Stmt ("memset (" & Op1 & ", " & Op2 & ", " & Op3 & ")");
+         Result := "memset (" & Op1 & ", " & Op2 & ", " & Op3 & ")";
+         Process_Pending_Values;
+         Output_Stmt (Result);
 
       --  And we don't process the rest
 
@@ -466,10 +473,13 @@ package body CCG.Subprograms is
          First := False;
       end loop;
 
-      --  Add the final close paren. If this is a procedure call,
+      --  Add the final close paren, then write any pending values (we
+      --  do it here to avoid writing out things only used as part of
+      --  the parameter calculation. If this is a procedure call,
       --  output it. Otherwise, set this as the value of V.
 
       Call := (Call & ")") + Component;
+      Process_Pending_Values;
       if Get_Type_Kind (Type_Of (V)) = Void_Type_Kind then
          Output_Stmt (Call);
       else

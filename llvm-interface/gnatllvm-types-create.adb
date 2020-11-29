@@ -811,9 +811,12 @@ package body GNATLLVM.Types.Create is
          return +In_Size;
 
       --  If too small, we can't use it, but give a different error message
-      --  for an aliased or atomic field.
+      --  for an aliased or atomic field. We can't do the comparison below
+      --  if we haven't set up the boolean type yet.
 
-      elsif Size_Const_Int (Size) < In_Size then
+      elsif Present (Boolean_GL_Type)
+        and then Size_Const_Int (Size) < In_Size
+      then
          Error_Msg_NE_Num (Msg_Prefix & " for" & Error_Str &
                              (if Ekind (E) in E_Component | E_Discriminant
                                    and then (Is_Aliased (E) or else Atomic)

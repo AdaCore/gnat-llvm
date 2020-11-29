@@ -215,42 +215,42 @@ package GNATLLVM is
    Thin_Pointer_Size  : Nat;
    --  Sizes of fat and thin pointers
 
-   Void_Ptr_T         : Type_T;
+   Void_Ptr_T         : Type_T := No_Type_T;
    --  Pointer to arbitrary memory (we use i8 *); equivalent of
    --  Standard_A_Char.
 
-   A_Char_GL_Type    : GL_Type;
-   Boolean_GL_Type   : GL_Type;
-   SSI_GL_Type       : GL_Type;
-   SI_GL_Type        : GL_Type;
-   Integer_GL_Type   : GL_Type;
-   LI_GL_Type        : GL_Type;
-   LLI_GL_Type       : GL_Type;
-   Void_GL_Type      : GL_Type;
-   Any_Array_GL_Type : GL_Type;
+   A_Char_GL_Type    : GL_Type := No_GL_Type;
+   Boolean_GL_Type   : GL_Type := No_GL_Type;
+   SSI_GL_Type       : GL_Type := No_GL_Type;
+   SI_GL_Type        : GL_Type := No_GL_Type;
+   Integer_GL_Type   : GL_Type := No_GL_Type;
+   LI_GL_Type        : GL_Type := No_GL_Type;
+   LLI_GL_Type       : GL_Type := No_GL_Type;
+   Void_GL_Type      : GL_Type := No_GL_Type;
+   Any_Array_GL_Type : GL_Type := No_GL_Type;
    --  GL_Types for builtin types
 
-   Int_32_GL_Type    : GL_Type;
-   Int_32_T          : Type_T;
+   Int_32_GL_Type    : GL_Type := No_GL_Type;
+   Int_32_T          : Type_T  := No_Type_T;
    --  Type for 32-bit integers (for GEP indexes)
 
-   Int_64_GL_Type     : GL_Type   := No_GL_Type;
-   Int_64_T           : Type_T    := No_Type_T;
+   Int_64_GL_Type    : GL_Type := No_GL_Type;
+   Int_64_T          : Type_T  := No_Type_T;
    --  Type for 64-bit integers, used for lifetime functions.  This may
    --  not be present, in which case we don't generate lifetime function
    --  calls.
 
    BPU                : Nat;
    UBPU               : ULL;
-   Bit_T              : Type_T;
-   Byte_T             : Type_T;
+   Bit_T              : Type_T := No_Type_T;
+   Byte_T             : Type_T := No_Type_T;
    Max_Align          : Nat;
    Max_Valid_Align    : Nat;
    Max_Int_Size       : Uint;
 
    --  GNAT LLVM switches
 
-   Decls_Only      : Boolean        := False;
+   Decls_Only      : Boolean := False;
    --  True if just compiling to process and back-annotate decls
 
    Emit_Debug_Info : Boolean := False;

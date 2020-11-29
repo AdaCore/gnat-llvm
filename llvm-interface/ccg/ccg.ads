@@ -50,13 +50,13 @@ package CCG is
    --  the processing of TE.
 
    procedure C_Set_Struct (TE : Entity_Id; T : Type_T)
-     with Pre => Is_Type (TE) and then Present (T);
+     with Pre => Is_Type (TE) and then Present (T), Inline;
    --  Indicate that the previous calls to Set_Field_Name_Info for TE
    --  were for LLVM struct type T.
    --  Define the sizes of all the basic C types.
 
    procedure C_Set_Is_Unsigned (V : Value_T)
-     with Pre => Present (V);
+     with Pre => Present (V), Inline;
    --  Indicate that V has an unsigned type.
 
    procedure Error_Msg (Msg : String);

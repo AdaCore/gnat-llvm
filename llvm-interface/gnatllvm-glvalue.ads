@@ -537,10 +537,8 @@ package GNATLLVM.GLValue is
       Overflowed  : Boolean         := False;
       Aliases_All : Boolean         := False;
       TBAA_Type   : Metadata_T      := No_Metadata_T;
-      TBAA_Offset : ULL             := 0) return GL_Value is
-      ((V, GT, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic, Overflowed,
-        Aliases_All, TBAA_Type, TBAA_Offset))
-     with Pre => Present (V) and then Present (GT);
+      TBAA_Offset : ULL             := 0) return GL_Value
+     with Pre => Present (V) and then Present (GT), Inline;
    --  Raw constructor that allows full specification of all fields
 
    function GM

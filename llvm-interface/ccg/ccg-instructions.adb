@@ -617,7 +617,15 @@ package body CCG.Instructions is
 
             --  ??? Need to deal with both unaligned load and unaligned store
 
-            Assignment (V, Deref (Op1));
+            --  If V is unsigned but Op1 isn't (meaning that it's not a
+            --  variable that's marked unsigned, so it may be an array or
+            --  record reference), add a cast to the unsigned form.
+
+            if Get_Is_Unsigned (V) and then not Get_Is_Unsigned (Op1) then
+               Assignment (V, "(unsigned " & Type_Of (V) & ") " & Deref (Op1));
+            else
+               Assignment (V, Deref (Op1));
+            end if;
 
          when Op_Store =>
             Process_Pending_Values;

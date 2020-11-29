@@ -32,6 +32,8 @@ with GNATLLVM.Types;         use GNATLLVM.Types;
 with GNATLLVM.Utils;         use GNATLLVM.Utils;
 with GNATLLVM.Variables;     use GNATLLVM.Variables;
 
+with CCG; use CCG;
+
 package body GNATLLVM.GLValue is
 
    function GL_Value_Is_Valid_Int (V : GL_Value_Base) return Boolean;
@@ -47,6 +49,37 @@ package body GNATLLVM.GLValue is
    --  a GL_Relationship of Object.  Since this is called from
    --  GL_Value_Is_Valid, we have to be careful not to call any function
    --  that takes a GL_Value as an operand.
+
+   -------
+   -- G --
+   -------
+
+   function G
+     (V           : Value_T;
+      GT          : GL_Type;
+      R           : GL_Relationship := Data;
+      Alignment   : Nat             := BPU;
+      Is_Pristine : Boolean         := False;
+      Is_Volatile : Boolean         := False;
+      Is_Atomic   : Boolean         := False;
+      Overflowed  : Boolean         := False;
+      Aliases_All : Boolean         := False;
+      TBAA_Type   : Metadata_T      := No_Metadata_T;
+      TBAA_Offset : ULL             := 0) return GL_Value
+   is
+   begin
+      --  If this is of unsigned type, mark the value as unsigned. We have to
+      --  check for Void here since void is not a type.
+
+      if Ekind (GT) /= E_Void and then Is_Unsigned_Type (GT)
+        and then not Is_Reference (R)
+      then
+         C_Set_Is_Unsigned (V);
+      end if;
+
+      return (V, GT, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic,
+              Overflowed, Aliases_All, TBAA_Type, TBAA_Offset);
+   end G;
 
    -----------------------
    -- GL_Value_Is_Valid --

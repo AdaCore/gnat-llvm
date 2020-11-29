@@ -425,7 +425,7 @@ package body CCG.Output is
          (Get_Type_Kind (V) = Integer_Type_Kind
             and then Nat (Get_Scalar_Bit_Size (Type_Of (V))) < Get_Int_Size
             and then Is_A_Instruction (V)
-            and then Get_Opcode (V) not in Op_Alloca | Op_Load | Op_Select |
+            and then Get_Opcode (V) not in Op_Alloca | Op_Load |
                                            Op_Extract_Value | Op_Insert_Value);
       --  Because of C's integer promotion rules, we must insert a cast if
       --  V is an integer narrower than int and the output of an

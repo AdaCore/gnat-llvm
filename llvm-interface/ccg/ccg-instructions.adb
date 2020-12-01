@@ -125,8 +125,9 @@ package body CCG.Instructions is
          then Get_Scalar_Bit_Size (T) else UBPU);
       Extras : constant ULL    := Get_Extra_Bits (Size);
       Result : Str             :=
-        (case POO is when X => +V, when Signed => V + Is_Signed,
-                     when Unsigned => V + Is_Unsigned);
+        (case POO is when X        => +V,
+                     when Signed   => V + Need_Signed,
+                     when Unsigned => V + Need_Unsigned);
 
    begin
       --  If all we have to do is deal with signedness, we're done
@@ -328,8 +329,8 @@ package body CCG.Instructions is
       --  both pointers, we need to do this by pointer-punning.
 
       if Opc = Op_Bit_Cast
-        and then (Get_Type_Kind (Src_T) /= Pointer_Type_Kind
-                    or else Get_Type_Kind (Dest_T) /= Pointer_Type_Kind)
+        and then (not Is_Pointer_Type (Src_T)
+                    or else not Is_Pointer_Type (Dest_T))
       then
          --  If or operand is an expression, we probably can't validly take
          --  its address, so be sure that we make an actual variable that

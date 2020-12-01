@@ -171,36 +171,46 @@ package CCG.Tables is
       --  If this is a constant, always output the value of the constant,
       --  instead of its name, even if it's an aggregate constant.
 
-      Is_Unsigned,
+      Need_Unsigned,
       --  We need an unsigned form of this value. If the value isn't unsigned
       --  or can't be made unsigned (e.g. an integer constant), we emit a
       --  cast to unsigned.
 
-      Is_Signed);
+      Need_Signed,
       --  We need a signed form of this value. This is ignored if the
       --  value isn't of an integral type.
 
+      Write_Type);
+      --  We want to write out the type of the value (including its
+      --  signedness) and not the value itself.
+
    type Value_Flags is record
-      LHS         : Boolean;
-      Initializer : Boolean;
-      Is_Unsigned : Boolean;
-      Is_Signed   : Boolean;
+      LHS           : Boolean;
+      Initializer   : Boolean;
+      Need_Unsigned : Boolean;
+      Need_Signed   : Boolean;
+      Write_Type    : Boolean;
    end record;
 
    function "or" (X, Y : Value_Flags) return Value_Flags is
-     (LHS            => X.LHS         or Y.LHS,
-      Initializer    => X.Initializer or Y.Initializer,
-      Is_Unsigned    => X.Is_Unsigned or Y.Is_Unsigned,
-      Is_Signed      => X.Is_Signed   or Y.Is_Signed);
+     (LHS            => X.LHS           or Y.LHS,
+      Initializer    => X.Initializer   or Y.Initializer,
+      Need_Unsigned  => X.Need_Unsigned or Y.Need_Unsigned,
+      Need_Signed    => X.Need_Signed   or Y.Need_Signed,
+      Write_Type     => X.Write_Type    or Y.Write_Type);
 
    type Flag_Array is array (Value_Flag) of Value_Flags;
 
-   Default_Flags : constant Value_Flags := (False, False, False, False);
+   Default_Flags : constant Value_Flags := (False, False, False, False, False);
    Flag_To_Flags : constant Flag_Array :=
-     (LHS            => (True,  False, False, False),
-      Initializer    => (False, True,  False, False),
-      Is_Unsigned    => (False, False, True,  False),
-      Is_Signed      => (False, False, False, True));
+     (LHS           => (True,  False, False, False, False),
+      Initializer   => (False, True,  False, False, False),
+      Need_Unsigned => (False, False, True,  False, False),
+      Need_Signed   => (False, False, False, True,  False),
+      Write_Type    => (False, False, False, False, True));
+
+   function "+" (F : Value_Flag) return Value_Flags is
+     (Flag_To_Flags (F));
 
    function "+" (V : Value_T; VF : Value_Flag) return Str
      with Pre => Present (V);

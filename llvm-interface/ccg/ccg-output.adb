@@ -47,9 +47,9 @@ package body CCG.Output is
    --  precedence than P.
 
    procedure Write_Constant_Value
-     (V              : Value_T;
-      Flags          : Value_Flags := Default_Flags;
-      Is_Unsigned    : Boolean     := False)
+     (V             : Value_T;
+      Flags         : Value_Flags := Default_Flags;
+      Need_Unsigned : Boolean     := False)
      with Pre => Is_A_Constant (V);
    --  Write the constant value of V, optionally specifying a preference of
    --  the expression that it's part of.
@@ -271,9 +271,9 @@ package body CCG.Output is
    --------------------------
 
    procedure Write_Constant_Value
-     (V              : Value_T;
-      Flags          : Value_Flags := Default_Flags;
-      Is_Unsigned    : Boolean     := False)
+     (V             : Value_T;
+      Flags         : Value_Flags := Default_Flags;
+      Need_Unsigned : Boolean     := False)
    is
       procedure Write_Int_Qualifier (Width : Int);
       --  Write the relevant L/LL signed int qualifier
@@ -299,7 +299,7 @@ package body CCG.Output is
             if Width = 1 then
                Write_Str
                  (if Const_Int_Get_S_Ext_Value (V) = 0 then "0" else "1");
-            elsif Is_Unsigned then
+            elsif Need_Unsigned then
                declare
                   U_Img : constant String :=
                     Const_Int_Get_Z_Ext_Value (V)'Image;
@@ -455,11 +455,21 @@ package body CCG.Output is
       end Maybe_Write_Parens;
 
    begin
+      --  If we're to write the type of V instead of the value of V, do so
 
-      --  See if we want an unsigned version of V (unless this is a
-      --  pointer, which is always treated as unsigned).
+      if Flags.Write_Type then
+         if Get_Is_Unsigned (V) then
+            Write_Str ("unsigned ");
+         end if;
 
-      if Flags.Is_Unsigned and then Get_Type_Kind (V) /= Pointer_Type_Kind then
+         Write_Type (Type_Of (V));
+         return;
+      end if;
+
+      --  Otherwise, see if we want an unsigned version of V (unless this
+      --  is a pointer, which is always treated as unsigned).
+
+      if Flags.Need_Unsigned and then not Is_Pointer_Type (V) then
 
          --  If this is an undef, all we need to do is write a zero because
          --  that's both signed and unsigned.
@@ -472,7 +482,7 @@ package body CCG.Output is
          --  constant.
 
          elsif Is_A_Constant_Int (V) then
-            Write_Constant_Value (V, Is_Unsigned => True);
+            Write_Constant_Value (V, Need_Unsigned => True);
             return;
 
             --  If it's not known to be unsigned or we need to be concerned
@@ -487,7 +497,7 @@ package body CCG.Output is
          --  signed but might be unsigned or we need to be concerned about
          --  integer promotion, write a cast to the signed type.
 
-      elsif Flags.Is_Signed
+      elsif Flags.Need_Signed
         and then (Might_Be_Unsigned (V) or else Must_Write_Cast)
       then
          Write_Str (TP ("(#T) ", T => Type_Of (V)));

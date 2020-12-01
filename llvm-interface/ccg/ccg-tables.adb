@@ -204,8 +204,9 @@ package body CCG.Tables is
    begin
       Update_Hash (H, Flags.LHS);
       Update_Hash (H, Flags.Initializer);
-      Update_Hash (H, Flags.Is_Unsigned);
-      Update_Hash (H, Flags.Is_Signed);
+      Update_Hash (H, Flags.Need_Unsigned);
+      Update_Hash (H, Flags.Need_Signed);
+      Update_Hash (H, Flags.Write_Type);
    end Update_Hash;
 
    ----------
@@ -434,7 +435,7 @@ package body CCG.Tables is
 
    function "+" (V : Value_T; VF : Value_Flag) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Value, 1, V, Flag_To_Flags (VF), Unknown)));
+        (1, Unknown, (1 => (Value, 1, V, +VF, Unknown)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -449,8 +450,7 @@ package body CCG.Tables is
    function "+" (S : Str; VF : Value_Flag) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
         (1, Unknown, (1 => (Value, 1, S.Comps (1).Val,
-                            S.Comps (1).Flags or Flag_To_Flags (VF),
-                            Unknown)));
+                            S.Comps (1).Flags or +VF, Unknown)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -1093,8 +1093,8 @@ package body CCG.Tables is
          --  already).
 
          if Comp.Kind = Value
-           and then (Comp.Flags.Is_Unsigned
-                       or else (not Comp.Flags.Is_Signed
+           and then (Comp.Flags.Need_Unsigned
+                       or else (not Comp.Flags.Need_Signed
                                   and then Might_Be_Unsigned (Comp.Val)))
          then
             return True;
@@ -1187,8 +1187,7 @@ package body CCG.Tables is
          declare
             S_Rec  : aliased constant Str_Record :=
               (1, S.P, (1 => (Value, 0, S.Comps (1).Val,
-                              S.Comps (1).Flags or Flag_To_Flags (LHS),
-                              S.Comps (1).For_P)));
+                              S.Comps (1).Flags or +LHS, S.Comps (1).For_P)));
             Result : constant Str                := Undup_Str (S_Rec);
          begin
             return Result;

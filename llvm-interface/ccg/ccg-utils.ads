@@ -50,6 +50,12 @@ package CCG.Utils is
      with Pre => Present (V);
    --  Returns the number of uses of V
 
+   function Is_Pointer_Type (T : Type_T) return Boolean is
+     (Get_Type_Kind (T) = Pointer_Type_Kind)
+     with Pre => Present (T);
+   function Is_Pointer_Type (V : Value_T) return Boolean is
+     (Get_Type_Kind (V) = Pointer_Type_Kind)
+     with Pre => Present (V);
    function Is_Simple_Type (T : Type_T) return Boolean is
      (Get_Type_Kind (T) in Half_Type_Kind .. Integer_Type_Kind
         or else Get_Type_Kind (T) = Pointer_Type_Kind)

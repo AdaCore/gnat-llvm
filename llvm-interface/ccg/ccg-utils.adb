@@ -25,8 +25,7 @@ package body CCG.Utils is
      (S           : String;
       Op1         : Value_T := No_Value_T;
       Op2         : Value_T := No_Value_T;
-      Op3         : Value_T := No_Value_T;
-      T           : Type_T  := No_Type_T) return Str
+      Op3         : Value_T := No_Value_T) return Str
    is
       Start     : Integer   := S'First;
       Result    : Str       := No_Str;
@@ -41,12 +40,11 @@ package body CCG.Utils is
          --  If we've seen '#', look for a modifier
 
          if Mark_Seen then
-            if S (J) in 'B' | 'L' | 'I' | 'A' | 'D' then
+            if S (J) in 'A' | 'B' | 'D' | 'I' | 'L' | 'T' then
                Modifier := S (J);
 
             --  If not, then this is a number, representing which operand
-            --  to output, possibly as modified by a modifier, or 'T'
-            --  indicating that we're to output a type.
+            --  to output, possibly as modified by a modifier.
 
             else
                Op := (case S (J) is when '1' => Op1, when '2' => Op2,
@@ -60,29 +58,24 @@ package body CCG.Utils is
                   Result := Result & S (Start .. Last);
                end if;
 
-               --  First handle the type case
+               --  Output the (possibly modified) operand
 
-               if S (J) = 'T' then
-                  Result := Result & T;
-
-               --  Otherwise, output the (possibly modified) operand
-
-               else
-                  case Modifier is
-                     when 'B' =>
-                        Result := Result & Value_As_Basic_Block (Op);
-                     when 'L' =>
-                        Result := Result & (Op + LHS);
-                     when 'I' =>
-                        Result := Result & (Op + Initializer);
-                     when 'A' =>
-                        Result := Result & Addr_Of (Op);
-                     when 'D' =>
-                        Result := Result & Deref (Op);
+               case Modifier is
+                  when 'A' =>
+                     Result := Result & Addr_Of (Op);
+                  when 'B' =>
+                     Result := Result & Value_As_Basic_Block (Op);
+                  when 'D' =>
+                     Result := Result & Deref (Op);
+                  when 'I' =>
+                     Result := Result & (Op + Initializer);
+                  when 'L' =>
+                     Result := Result & (Op + LHS);
+                  when 'T' =>
+                     Result := Result & (Op + Write_Type);
                      when others =>
                         Result := Result & Op;
-                  end case;
-               end if;
+               end case;
 
                --  Reset for the next string and/or mark
 

@@ -351,7 +351,7 @@ package body CCG.Instructions is
             end;
          end if;
 
-         return TP ("*((#T) #A1)", Op, T => Pointer_Type (Dest_T, 0)) + Unary;
+         return TP ("*((#T2 *) #A1)", Op, V) + Unary;
 
       --  If we're zero-extending a value that's known to be a comparison
       --  result to an i8, we do nothing since we know that the value is
@@ -605,8 +605,8 @@ package body CCG.Instructions is
             else
                declare
                   Size : constant Str :=
-                    TP ("sizeof (#T) * #1", Op1, T => Get_Allocated_Type (V)) +
-                    Mult;
+                    "sizeof (" & Get_Allocated_Type (V) & ") * " &
+                    (Op1 + Mult);
                   Call : constant Str := "alloca (" & Size & ")" + Component;
 
                begin

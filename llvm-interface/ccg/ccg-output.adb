@@ -485,12 +485,14 @@ package body CCG.Output is
             Write_Constant_Value (V, Need_Unsigned => True);
             return;
 
-            --  If it's not known to be unsigned or we need to be concerned
-            --  about integer promotion, write a cast and then the value.
+         --  If it's not known to be unsigned or we need to be concerned
+         --  about integer promotion, write a cast and then the value. Note
+         --  that we can't use #T or Write_Type here because we often want
+         --  to write a different signedness than V. Likewise below.
 
          elsif not Get_Is_Unsigned (V) or else Must_Write_Cast then
             Maybe_Write_Parens;
-            Write_Str (TP ("(unsigned #T) ", T => Type_Of (V)));
+            Write_Str ("(unsigned " & Type_Of (V) & ") ");
          end if;
 
          --  Otherwise, if this is an object that must be interpreted as
@@ -500,7 +502,7 @@ package body CCG.Output is
       elsif Flags.Need_Signed
         and then (Might_Be_Unsigned (V) or else Must_Write_Cast)
       then
-         Write_Str (TP ("(#T) ", T => Type_Of (V)));
+         Write_Str ("(" & Type_Of (V) & ") ");
       end if;
 
       --  If this is an LHS that we're writing normally, we need to take

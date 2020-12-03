@@ -72,7 +72,7 @@ package body GNATLLVM.GLValue is
       --  check for Void here since void is not a type.
 
       if Ekind (GT) /= E_Void and then Is_Unsigned_Type (GT)
-        and then not Is_Reference (R)
+        and then (not Is_Reference (R) or else R = Reference_To_Subprogram)
       then
          C_Set_Is_Unsigned (V);
       end if;

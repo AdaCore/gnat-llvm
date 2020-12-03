@@ -195,6 +195,12 @@ package body CCG.Subprograms is
          Result := "__attribute__((noreturn)) " & Result;
       end if;
 
+      --  Indicate if this returns unsigned
+
+      if Get_Is_Unsigned (V) then
+         Result := "unsigned " & Result;
+      end if;
+
       --  Then output the list of parameter types, if any.  If this isn't
       --  for an extern definition, include the parameter names.
 
@@ -207,7 +213,7 @@ package body CCG.Subprograms is
 
             begin
                Result :=
-                 Result & (if J = 0 then "" else ", ") & Type_Of (Param);
+                 Result & (if J = 0 then "" else ", ") & (Param + Write_Type);
 
                if not Extern then
                   Result := Result & " " & Param;

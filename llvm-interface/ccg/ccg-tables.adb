@@ -440,6 +440,10 @@ package body CCG.Tables is
 
    begin
       Set_Is_Used (V);
+      if VF = Write_Type then
+         Maybe_Write_Typedef (Type_Of (V));
+      end if;
+
       return Result;
    end "+";
 
@@ -454,7 +458,10 @@ package body CCG.Tables is
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      pragma Assert (S.Length = 1);
+      if VF = Write_Type then
+         Maybe_Write_Typedef (Type_Of (S.Comps (1).Val));
+      end if;
+
       return Result;
    end "+";
 
@@ -1095,6 +1102,7 @@ package body CCG.Tables is
          if Comp.Kind = Value
            and then (Comp.Flags.Need_Unsigned
                        or else (not Comp.Flags.Need_Signed
+                                  and then not Comp.Flags.Write_Type
                                   and then Might_Be_Unsigned (Comp.Val)))
          then
             return True;

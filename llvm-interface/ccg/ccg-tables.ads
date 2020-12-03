@@ -215,7 +215,7 @@ package CCG.Tables is
    function "+" (V : Value_T; VF : Value_Flag) return Str
      with Pre => Present (V);
    function "+" (S : Str; VF : Value_Flag) return Str
-     with Pre => Present (S);
+     with Pre => Is_Value (S);
 
    type String_Kind is (Normal, Name);
    --  A string can either be a literal string or a name, in which case we

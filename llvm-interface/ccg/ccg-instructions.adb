@@ -365,7 +365,7 @@ package body CCG.Instructions is
       --  Otherwise, just do a cast
 
       else
-         return ("(" & Dest_T & ") " & Our_Op) + Unary;
+         return ("(" & (V + Write_Type) & ") " & Our_Op) + Unary;
       end if;
 
    end Cast_Instruction;

@@ -77,7 +77,12 @@ package CCG.Utils is
 
    function Might_Be_Unsigned (V : Value_T) return Boolean
      with Pre => Present (V);
-   --  True if it's possible that V is unsigned
+   --  True if it's possible that V is unsigned.
+   --  ??? GNAT LLVM marks which values are unsigned. Unfortunately, that's
+   --  not good enough in the presence of optimization since the LLVM
+   --  optimizer will create new values whose signedness we don't know.
+   --  It's not completely clear what we can or should do about this, but
+   --  let's see if it's an issue in practice.
 
    --  LLVM uses a zero-length array to indicate a variable-length
    --  array.  C doesn't permit zero-element arrays. It's tempting to

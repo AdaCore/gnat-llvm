@@ -32,6 +32,17 @@ package CCG.Instructions is
      with Pre => Acts_As_Instruction (V);
    --  Process instruction V
 
+   type Process_Operand_Option is (POO_Signed, POO_Unsigned, X);
+   --  An operand to Process_Operand that says whether we care which
+   --  signedless the operand is and, if so, which one.
+
+   function Process_Operand
+     (V : Value_T; POO : Process_Operand_Option) return Str
+     with Pre => Present (V), Post => Present (Process_Operand'Result);
+   --  Called when we care about any high bits in a possible partial-word
+   --  operand and possibly about signedness. We return the way to
+   --  reference V. If nothing is special, this is just +V.
+
    procedure Write_Copy (LHS, RHS : Str; T : Type_T)
      with Pre => Present (LHS) and then Present (RHS) and then Present (T);
    procedure Write_Copy (LHS : Str; RHS : Value_T; T : Type_T)

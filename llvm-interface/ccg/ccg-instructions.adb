@@ -65,17 +65,6 @@ package body CCG.Instructions is
           Post => Present (Cmp_Instruction'Result);
    --  Return the value corresponding to a comparison instruction
 
-   type Process_Operand_Option is (Signed, Unsigned, X);
-   --  An operand to Process_Operand that says whether we care which
-   --  signedless the operand is and, if so, which one.
-
-   function Process_Operand
-     (V : Value_T; POO : Process_Operand_Option) return Str
-     with Pre => Present (V), Post => Present (Process_Operand'Result);
-   --  Called when we care about any high bits in a possible partial-word
-   --  operand and possibly about signedness. We return the way to
-   --  reference V. If nothing is special, this is just +V.
-
    --  We need to record those values where we've made them equivalent to
    --  a C value but haven't written them yet because if we encounter a
    --  store or procedure call, we need to write them out since a variable
@@ -125,9 +114,9 @@ package body CCG.Instructions is
          then Get_Scalar_Bit_Size (T) else UBPU);
       Extras : constant ULL    := Get_Extra_Bits (Size);
       Result : Str             :=
-        (case POO is when X        => +V,
-                     when Signed   => V + Need_Signed,
-                     when Unsigned => V + Need_Unsigned);
+        (case POO is when X            => +V,
+                     when POO_Signed   => V + Need_Signed,
+                     when POO_Unsigned => V + Need_Unsigned);
 
    begin
       --  If all we have to do is deal with signedness, we're done
@@ -144,8 +133,9 @@ package body CCG.Instructions is
 
       declare
          Use_Signed : constant Boolean :=
-           (case POO is when X => Might_Be_Unsigned (V), when Signed => True,
-                        when Unsigned => False);
+           (case POO is when X            => Might_Be_Unsigned (V),
+                        when POO_Signed   => True,
+                        when POO_Unsigned => False);
          Cast       : constant Str     :=
            (if Use_Signed then "(" else "(unsigned ") & T & ") ";
          Cnt        : constant Nat     := Nat (Extras);
@@ -242,8 +232,8 @@ package body CCG.Instructions is
       Opc : constant Opcode_T := Get_Opcode (V);
       T   : constant Type_T   := Type_Of (V);
       POO : constant Process_Operand_Option :=
-        (case Opc is when Op_U_Div | Op_U_Rem | Op_L_Shr => Unsigned,
-                     when Op_S_Div | Op_S_Rem | Op_A_Shr => Signed,
+        (case Opc is when Op_U_Div | Op_U_Rem | Op_L_Shr => POO_Unsigned,
+                     when Op_S_Div | Op_S_Rem | Op_A_Shr => POO_Signed,
                      when others => X);
    begin
       case Opc is
@@ -319,10 +309,10 @@ package body CCG.Instructions is
       Src_T  : constant Type_T   := Type_Of (Op);
       Dest_T : constant Type_T   := Type_Of (V);
       Our_Op : constant Str      :=
-        Process_Operand (Op,
-                         (case Opc is when Op_UI_To_FP | Op_Z_Ext => Unsigned,
-                                      when Op_SI_To_FP | Op_S_Ext => Signed,
-                                      when others => X));
+        Process_Operand
+        (Op, (case Opc is when Op_UI_To_FP | Op_Z_Ext => POO_Unsigned,
+                          when Op_SI_To_FP | Op_S_Ext => POO_Signed,
+                          when others                 => X));
 
    begin
       --  If we're doing a bitcast and the input and output types aren't
@@ -407,7 +397,7 @@ package body CCG.Instructions is
               (if   Pred in Int_EQ | Int_NE then Maybe_Uns
                else Info.Is_Unsigned);
             POO         : constant Process_Operand_Option :=
-              (if Do_Unsigned then Unsigned else Signed);
+              (if Do_Unsigned then POO_Unsigned else POO_Signed);
             LHS         : constant Str    := Process_Operand (Op1, POO);
             RHS         : constant Str    := Process_Operand (Op2, POO);
 

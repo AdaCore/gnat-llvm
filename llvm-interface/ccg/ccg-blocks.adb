@@ -21,7 +21,6 @@ with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Tables;       use CCG.Tables;
-with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Blocks is
 
@@ -210,15 +209,18 @@ package body CCG.Blocks is
    ------------------------
 
    procedure Switch_Instruction (V : Value_T; Ops : Value_Array) is
-      Val     : constant Value_T := Ops (Ops'First);
-      Default : constant Basic_Block_T :=
+      Val     : constant Value_T                := Ops (Ops'First);
+      Default : constant Basic_Block_T          :=
         Value_As_Basic_Block (Ops (Ops'First + 1));
+      POO     : constant Process_Operand_Option :=
+        (if Get_Is_Unsigned (Val) then POO_Unsigned else POO_Signed);
 
    begin
       --  Write out the initial part of the switch, which is the switch
       --  statement and the default option.
 
-      Output_Stmt (TP ("switch (#1) {", Val) + Assign, Semicolon => False);
+      Output_Stmt ("switch (" & Process_Operand (Val, POO) & ") {" +  Assign,
+        Semicolon => False);
       Output_Stmt ("default:", Semicolon => False);
       Output_Branch (V, Default);
 
@@ -226,7 +228,9 @@ package body CCG.Blocks is
       --  alternate between value and branch target.
 
       for J in 1 .. Nat ((Ops'Length / 2) - 1) loop
-         Output_Stmt (TP ("case #1:", Ops (Ops'First + J * 2)),
+         Output_Stmt ("case " &
+                        Process_Operand (Ops (Ops'First + J * 2), POO) &
+                        ":",
                       Semicolon => False);
          Output_Branch (V, Ops (Ops'First + J * 2 + 1));
       end loop;

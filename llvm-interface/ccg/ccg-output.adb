@@ -485,12 +485,14 @@ package body CCG.Output is
             Write_Constant_Value (V, Need_Unsigned => True);
             return;
 
-         --  If it's not known to be unsigned or we need to be concerned
+         --  If it's not declared to be unsigned or we need to be concerned
          --  about integer promotion, write a cast and then the value. Note
          --  that we can't use #T or Write_Type here because we often want
          --  to write a different signedness than V. Likewise below.
 
-         elsif not Get_Is_Unsigned (V) or else Must_Write_Cast then
+         elsif not (Get_Is_Unsigned (V) and then Get_Is_Decl_Output (V))
+           or else Must_Write_Cast
+         then
             Maybe_Write_Parens;
             Write_Str ("(unsigned " & Type_Of (V) & ") ");
          end if;

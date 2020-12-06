@@ -100,10 +100,6 @@ package GNATLLVM.Records is
    --  Find a field in the entity list of TE that has the same name as
    --  F and has Field_Info.
 
-   function Contains_Unconstrained_Record (GT : GL_Type) return Boolean
-     with Pre => Is_Record_Type (GT);
-   --  True if TE has a field whose type if an unconstrained record.
-
    function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
      with Pre  => Is_Field (E),
           Post => No (Emit_Field_Position'Result)

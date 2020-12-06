@@ -1708,22 +1708,6 @@ package body GNATLLVM.Records is
       end return;
    end Get_Record_Size_Complexity;
 
-   -----------------------------------
-   -- Contains_Unconstrained_Record --
-   -----------------------------------
-
-   function Contains_Unconstrained_Record (GT : GL_Type) return Boolean is
-      F : Entity_Id := First_Component_Or_Discriminant (GT);
-
-   begin
-      while Present (F) loop
-         exit when Is_Unconstrained_Record (Full_Etype (F));
-         Next_Component_Or_Discriminant (F);
-      end loop;
-
-      return Present (F);
-   end Contains_Unconstrained_Record;
-
    -------------------------
    -- Record_Field_Offset --
    -------------------------

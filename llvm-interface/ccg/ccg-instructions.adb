@@ -560,7 +560,14 @@ package body CCG.Instructions is
       Opc : constant Opcode_T := Get_Opcode (V);
 
    begin
-      --  See if we need to write a declaration for an operand
+      --  PHI is processed on a branch to this block, so we need do nothing
+      --  with it here and we don't even want to look at their operands.
+
+      if Opc = Op_PHI then
+         return;
+      end if;
+
+      --  Otherwise, make sure we've declared all operands
 
       for Op of Ops loop
          Maybe_Decl (Op);
@@ -637,13 +644,6 @@ package body CCG.Instructions is
                Output_Stmt ("else", Semicolon => False);
                Output_Branch (V, Op2, Need_Block => True);
             end if;
-
-         when Op_PHI =>
-
-            --  PHI is processed on a branch to this block, so we need
-            --  do nothing with it here.
-
-            null;
 
          when Op_Add | Op_Sub | Op_Mul | Op_S_Div | Op_U_Div | Op_S_Rem
             | Op_U_Rem | Op_Shl | Op_L_Shr | Op_A_Shr | Op_F_Add | Op_F_Sub

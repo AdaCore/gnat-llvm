@@ -1,5 +1,7 @@
 .PHONEY: save-result save-ccg-results tests ccg
 
+O=O0
+
 all: ccg tests
 
 save-results:
@@ -14,4 +16,4 @@ tests:
 	./run_acats_test.py --target=llvm -t tmp -o output/new --old-output-dir=output/old --acats-version=4 --disable-cleanup --jobs=48
 
 ccg:
-	CCG=1 OPTIMIZE=O0 ./run_acats_test.py --target=ccg -t tmp-ccg -o output-ccg/new --old-output-dir=output-ccg/old --acats-version=4 --disable-cleanup --jobs=48
+	CCG=1 OPTIMIZE=$(O) ./run_acats_test.py --target=ccg -t tmp-ccg -o output-ccg/new --old-output-dir=output-ccg/old --acats-version=4 --disable-cleanup --jobs=48

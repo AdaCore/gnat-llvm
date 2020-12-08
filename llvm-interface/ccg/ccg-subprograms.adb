@@ -23,9 +23,11 @@ with Table;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
+with CCG.Aggregates;   use CCG.Aggregates;
 with CCG.Blocks;       use CCG.Blocks;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
+with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Subprograms is
 
@@ -88,6 +90,12 @@ package body CCG.Subprograms is
    --  Call V, a call to a builtin function whose name is S, with operands
    --  of Ops.
    --  Return True if the builtin is handled and supported, False otherwise.
+
+   function Effective_Return_Type (T : Type_T) return Str
+     with Pre  => Get_Type_Kind (T) = Function_Type_Kind,
+          Post => Present (Effective_Return_Type'Result);
+   --  Return a string corresponding to the return type of T, adjusting the
+   --  type in the case where it's an array.
 
    -----------------
    -- Output_Decl --
@@ -170,6 +178,25 @@ package body CCG.Subprograms is
                  Eol => True);
    end Write_Function_Type_Typedef;
 
+   ---------------------------
+   -- Effective_Return_Type --
+   ---------------------------
+
+   function Effective_Return_Type (T : Type_T) return Str is
+      Ret_Typ : constant Type_T := Get_Return_Type (T);
+
+   begin
+      --  If this function returns an array, change it to return a
+      --  struct containing that array.
+
+      if Get_Type_Kind (Ret_Typ) = Array_Type_Kind then
+         Maybe_Write_Array_Return_Typedef (Ret_Typ);
+         return Ret_Typ & "_R";
+      else
+         return +Ret_Typ;
+      end if;
+   end Effective_Return_Type;
+
    --------------------
    -- Function_Proto --
    --------------------
@@ -179,8 +206,8 @@ package body CCG.Subprograms is
    is
       Num_Params : constant Nat    := Count_Params (V);
       Fn_Typ     : constant Type_T := Get_Element_Type (V);
-      Ret_Typ    : constant Type_T := Get_Return_Type (Fn_Typ);
-      Result     : Str             := Ret_Typ & " " & V & " (";
+      Result     : Str             :=
+        Effective_Return_Type (Fn_Typ) & " " & V & " (";
 
    begin
       --  If this is an internal subprogram, mark it as static
@@ -232,8 +259,9 @@ package body CCG.Subprograms is
    function Function_Proto (T : Type_T; S : Str) return Str is
       Num_Params : constant Nat    := Count_Param_Types (T);
       P_Types    : Type_Array (1 .. Num_Params);
-      Result     : Str             := Get_Return_Type (T) & " " & S & " (";
       First      : Boolean         := True;
+      Result     : Str             :=
+        Effective_Return_Type (T) & " " & S & " (";
 
    begin
       if Num_Params = 0 then
@@ -486,12 +514,65 @@ package body CCG.Subprograms is
 
       Call := (Call & ")") + Component;
       Process_Pending_Values;
-      if Get_Type_Kind (Type_Of (V)) = Void_Type_Kind then
+      if Get_Type_Kind (V) = Void_Type_Kind then
          Output_Stmt (Call);
       else
+         --  If this returns an array, we've changed it to returning a
+         --  struct whose field is that array, so we need to do the
+         --  dereference.  However, we can't simply return the function
+         --  call followed by the dereference because if we're going to be
+         --  using the entire array, we'll do a memmove and we can't take
+         --  the address of the function result.  So we have to make a
+         --  variable, assign the function result to it, and dereference
+         --  that.  We don't have a value to use as the variable, so we
+         --  have to use a bit of a kludge. Note that we can't call
+         --  Write_Copy here since it'll think that this is an array copy
+         --  and use memmove.
+
+         if Get_Type_Kind (V) = Array_Type_Kind then
+            declare
+               Our_Var : constant Str := "ccg_v" & Get_Output_Idx;
+
+            begin
+               Output_Decl (TP ("#T1_R ", V) & Our_Var);
+               Output_Stmt (Our_Var & " = " & Call + Assign);
+               Call := Our_Var & ".F" + Component;
+            end;
+         end if;
+
          Assignment (V, Call);
       end if;
    end Call_Instruction;
+
+   ------------------------
+   -- Return_Instruction --
+   ------------------------
+
+   procedure Return_Instruction (V : Value_T; Op : Value_T) is
+   begin
+      --  If our function is marked no-return, we don't do anything.
+      --  Otherwise, handle the cases with and without a value to return.
+
+      if Does_Not_Return (Current_Func) then
+         null;
+      elsif Present (Op) then
+
+         --  If we're returning an array, declare a value (we can use V even
+         --  though its LLVM type is void) of the struct type corresponding
+         --  to Op's type, assign Op into its only field (which will be done
+         --  with a memmove), and return that value.
+
+         if Get_Type_Kind (Op) = Array_Type_Kind then
+            Output_Decl (TP ("#T1_R #2", Op, V));
+            Write_Copy (V & ".F", Op, Type_Of (Op));
+            Output_Stmt (TP ("return #1", V));
+         else
+            Output_Stmt ("return " & Op + Assign);
+         end if;
+      else
+         Output_Stmt ("return");
+      end if;
+   end Return_Instruction;
 
    -----------------------
    -- Write_Subprograms --

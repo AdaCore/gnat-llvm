@@ -65,6 +65,11 @@ package body CCG.Instructions is
           Post => Present (Cmp_Instruction'Result);
    --  Return the value corresponding to a comparison instruction
 
+   procedure Force_To_Variable (V : Value_T)
+     with Pre  => Present (V), Post => No (Get_C_Value (V));
+   --  If V has an expression for it, declare V as a variable and copy the
+   --  expression into it.
+
    --  We need to record those values where we've made them equivalent to
    --  a C value but haven't written them yet because if we encounter a
    --  store or procedure call, we need to write them out since a variable
@@ -208,17 +213,9 @@ package body CCG.Instructions is
    procedure Process_Pending_Values is
    begin
       for J in reverse 1 .. Pending_Value_Table.Last loop
-         declare
-            V   : constant Value_T := Pending_Value_Table.Table (J);
-            RHS : constant Str     := Get_C_Value (V);
-
-         begin
-            if not Get_Is_Used (V) then
-               Set_C_Value (V, No_Str);
-               Maybe_Decl  (V);
-               Write_Copy  (V, RHS, Type_Of (V));
-            end if;
-         end;
+         if not Get_Is_Used (Pending_Value_Table.Table (J)) then
+            Force_To_Variable (Pending_Value_Table.Table (J));
+         end if;
       end loop;
 
       Pending_Value_Table.Set_Last (0);
@@ -322,25 +319,11 @@ package body CCG.Instructions is
         and then (not Is_Pointer_Type (Src_T)
                     or else not Is_Pointer_Type (Dest_T))
       then
-         --  If or operand is an expression, we probably can't validly take
+         --  If our operand is an expression, we probably can't validly take
          --  its address, so be sure that we make an actual variable that
          --  we can take the address of.
 
-         if Present (Get_C_Value (Op)) then
-            declare
-               C_Val : constant Str := Get_C_Value (Op);
-
-            begin
-               --  We have to undo what was done to show that we don't need
-               --  a variable for Op. Specifically, we have to clear its
-               --  value, declare it, and copy the value to it.
-
-               Set_C_Value (Op, No_Str);
-               Maybe_Decl  (Op);
-               Write_Copy  (Op, C_Val, Type_Of (Op));
-            end;
-         end if;
-
+         Force_To_Variable (Op);
          return TP ("*((#T2 *) #A1)", Op, V) + Unary;
 
       --  If we're zero-extending a value that's known to be a comparison
@@ -511,6 +494,26 @@ package body CCG.Instructions is
       end if;
    end Write_Copy;
 
+   -----------------------
+   -- Force_To_Variable --
+   -----------------------
+
+   procedure Force_To_Variable (V : Value_T) is
+      C_Val : constant Str := Get_C_Value (V);
+
+   begin
+      if Present (C_Val) then
+
+         --  We have to undo what was done to show that we don't need a
+         --  variable for Op. Specifically, we have to clear its value,
+         --  declare it, and copy the value to it.
+
+         Set_C_Value (V, No_Str);
+         Maybe_Decl  (V);
+         Write_Copy  (V, C_Val, Type_Of (V));
+      end if;
+   end Force_To_Variable;
+
    ----------------
    -- Assignment --
    ----------------
@@ -577,18 +580,7 @@ package body CCG.Instructions is
 
       case Opc is
          when Op_Ret =>
-
-            --  If our function is marked no-return, we don't do anything.
-            --  Otherwise, handle the cases with and without a value to
-            --  return.
-
-            if Does_Not_Return (Current_Func) then
-               null;
-            elsif Present (Op1) then
-               Output_Stmt ("return " & Op1 + Assign);
-            else
-               Output_Stmt ("return");
-            end if;
+            Return_Instruction (V, Op1);
 
          when Op_Call =>
             Call_Instruction (V, Ops);
@@ -626,8 +618,15 @@ package body CCG.Instructions is
             end if;
 
          when Op_Store =>
-            Process_Pending_Values;
-            Write_Copy (Deref (Op2), Op1, Type_Of (Op1));
+
+            declare
+               LHS : constant Str := Deref (Op2);
+               RHS : constant Str := +Op1;
+
+            begin
+               Process_Pending_Values;
+               Write_Copy (LHS, RHS, Type_Of (Op1));
+            end;
 
          when Op_I_Cmp | Op_F_Cmp =>
             Assignment (V, Cmp_Instruction (V, Op1, Op2));

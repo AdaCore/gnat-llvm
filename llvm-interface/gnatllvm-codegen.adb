@@ -94,10 +94,6 @@ package body GNATLLVM.Codegen is
       elsif Switch = "-emit-c" then
          Emit_C := True;
 
-         --  We want the front end to deal with functions that return arrays
-
-         Transform_Function_Array := True;
-
          --  Building static dispatch tables causes circular references
          --  in initializers, which there's no way to handle in C.
 

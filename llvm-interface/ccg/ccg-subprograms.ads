@@ -53,6 +53,10 @@ package CCG.Subprograms is
      with Pre => Is_A_Call_Inst (V);
    --  Process a call instruction
 
+   procedure Return_Instruction (V : Value_T; Op : Value_T)
+     with Pre => Is_A_Return_Inst (V);
+   --  Process a call instruction
+
    procedure Write_Subprograms;
    --  Write all the decls and statements for all subprograms
 

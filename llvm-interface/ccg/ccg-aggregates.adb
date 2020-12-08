@@ -305,6 +305,24 @@ package body CCG.Aggregates is
                    Effective_Array_Length (T) & "];", Eol => True);
    end Write_Array_Typedef;
 
+   --------------------------------------
+   -- Maybe_Write_Array_Return_Typedef --
+   --------------------------------------
+
+   procedure Maybe_Write_Array_Return_Typedef (T : Type_T) is
+   begin
+      --  If we haven't written this yet, first ensure that we've written
+      --  the typedef for T since we reference it, then write the actual
+      --  typedef, and mark it as written.
+
+      if not Get_Is_Return_Typedef_Output (T) then
+         Maybe_Write_Typedef (T);
+         Write_Str ("typedef struct " & T & "_R {" & T & " F;} " & T & "_R;",
+                    Eol => True);
+         Set_Is_Return_Typedef_Output (T);
+      end if;
+   end Maybe_Write_Array_Return_Typedef;
+
    -----------------
    -- Value_Piece --
    -----------------

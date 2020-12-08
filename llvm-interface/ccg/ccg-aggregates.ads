@@ -62,6 +62,12 @@ package CCG.Aggregates is
      with Pre => Get_Type_Kind (T) = Array_Type_Kind;
    --  Write a typedef for T, an array type
 
+   procedure Maybe_Write_Array_Return_Typedef (T : Type_T)
+     with Pre => Get_Type_Kind (T) = Array_Type_Kind;
+   --  If we haven't done so already, write the typedef for the struct that
+   --  will be used as the actual return type if T were the return type of
+   --  a function. This is known to be the name of T with a suffixed "_R".
+
    function Extract_Value_Instruction (V : Value_T; Op : Value_T) return Str
      with Pre  => Is_A_Extract_Value_Inst (V) and then Present (Op),
           Post => Present (Extract_Value_Instruction'Result);

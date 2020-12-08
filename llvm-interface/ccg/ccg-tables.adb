@@ -96,18 +96,22 @@ package body CCG.Tables is
    end record;
 
    type Type_Data is record
-      Is_Typedef_Output    : Boolean;
+      Is_Typedef_Output        : Boolean;
       --  True if this is a type either for which we don't write a typedef
       --  or if it is and we've written that typedef previously.
 
-      Is_Incomplete_Output : Boolean;
+      Is_Return_Typedef_Output : Boolean;
+      --  True if this is an array type and we've written the struct type
+      --  that we use for the return type of a function returning this type.
+
+      Is_Incomplete_Output     : Boolean;
       --  True if this is a struct type and we've just written the struct
       --  definition without fields (an incomplete type).
 
-      Are_Writing_Typedef  : Boolean;
+      Are_Writing_Typedef      : Boolean;
       --  True if we're in the process of writing a typedef
 
-      Output_Idx           : Nat;
+      Output_Idx               : Nat;
       --  A positive number if we've assigned an ordinal to use as
       --  part of the name for this anonymous type.
 
@@ -1284,10 +1288,11 @@ package body CCG.Tables is
       elsif not Create then
          return No_Type_Idx;
       else
-         Type_Data_Table.Append ((Is_Typedef_Output    => False,
-                                  Is_Incomplete_Output => False,
-                                  Are_Writing_Typedef  => False,
-                                  Output_Idx           => 0));
+         Type_Data_Table.Append ((Is_Typedef_Output        => False,
+                                  Is_Return_Typedef_Output => False,
+                                  Is_Incomplete_Output     => False,
+                                  Are_Writing_Typedef      => False,
+                                  Output_Idx               => 0));
          Insert (Type_Data_Map, T, Type_Data_Table.Last);
          return Type_Data_Table.Last;
       end if;
@@ -1493,6 +1498,18 @@ package body CCG.Tables is
         and then Type_Data_Table.Table (Idx).Is_Typedef_Output;
    end Get_Is_Typedef_Output;
 
+   ----------------------------------
+   -- Get_Is_Return_Typedef_Output --
+   ----------------------------------
+
+   function Get_Is_Return_Typedef_Output (T : Type_T) return Boolean is
+      Idx : constant Type_Idx := Type_Data_Idx (T, Create => False);
+
+   begin
+      return Present (Idx)
+        and then Type_Data_Table.Table (Idx).Is_Return_Typedef_Output;
+   end Get_Is_Return_Typedef_Output;
+
    ------------------------------
    -- Get_Is_Incomplete_Output --
    ------------------------------
@@ -1527,6 +1544,17 @@ package body CCG.Tables is
    begin
       Type_Data_Table.Table (Idx).Is_Typedef_Output := B;
    end Set_Is_Typedef_Output;
+
+   ----------------------------------
+   -- Set_Is_Return_Typedef_Output --
+   ----------------------------------
+
+   procedure Set_Is_Return_Typedef_Output (T : Type_T; B : Boolean := True) is
+      Idx : constant Type_Idx := Type_Data_Idx (T, Create => True);
+
+   begin
+      Type_Data_Table.Table (Idx).Is_Return_Typedef_Output := B;
+   end Set_Is_Return_Typedef_Output;
 
    ------------------------------
    -- Set_Is_Incomplete_Output --
@@ -1663,6 +1691,18 @@ package body CCG.Tables is
       end if;
 
       return BBD.Output_Idx;
+   end Get_Output_Idx;
+
+   --------------------
+   -- Get_Output_Idx --
+   --------------------
+
+   function Get_Output_Idx return Nat is
+      Result : constant Nat := Output_Idx;
+
+   begin
+      Output_Idx := Output_Idx + 1;
+      return Result;
    end Get_Output_Idx;
 
 end CCG.Tables;

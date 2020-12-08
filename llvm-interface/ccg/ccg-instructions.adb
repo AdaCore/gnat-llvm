@@ -48,6 +48,19 @@ package body CCG.Instructions is
    --  Return True if V is known to be the result of a comparison or a
    --  logical operation on comparisons.
 
+   procedure Alloca_Instruction (V, Op : Value_T)
+     with Pre  => Is_A_Alloca_Inst (V) and then Present (Op);
+   --  Return the value corresponding to a cast instruction
+
+   procedure Load_Instruction (V, Op : Value_T)
+     with Pre  => Is_A_Load_Inst (V) and then Present (Op);
+   --  Process a load instruction
+
+   procedure Store_Instruction (V, Op1, Op2 : Value_T)
+     with Pre  => Is_A_Store_Inst (V) and then Present (Op1)
+                  and then Present (Op2);
+   --  Process a store instruction
+
    function Binary_Instruction (V, Op1, Op2 : Value_T) return Str
      with Pre  => Acts_As_Instruction (V) and then Present (Op1)
                   and then Present (Op2),
@@ -220,6 +233,69 @@ package body CCG.Instructions is
 
       Pending_Value_Table.Set_Last (0);
    end Process_Pending_Values;
+
+   ------------------------
+   -- Alloca_Instruction --
+   ------------------------
+
+   procedure Alloca_Instruction (V, Op : Value_T) is
+   begin
+      --  If this is in the entry block and we're allocating one of an
+      --  object, this is a simple variable.
+
+      if Is_Entry_Block (V) and then Is_A_Constant_Int (Op)
+        and then Equals_Int (Op, 1)
+      then
+         Set_Is_LHS (V);
+         Maybe_Decl (V);
+
+      --  Otherwise, it's of variable size and we have to call alloca and
+      --  set V to our result.
+
+      else
+         declare
+            Size : constant Str :=
+              "sizeof (" & Get_Allocated_Type (V) & ") * " & (Op + Mult);
+            Call : constant Str := "alloca (" & Size & ")" + Component;
+
+         begin
+            Assignment (V, "(" & Type_Of (V) & ") " & Call + Unary);
+         end;
+      end if;
+   end Alloca_Instruction;
+
+   ----------------------
+   -- Load_Instruction --
+   ----------------------
+
+   procedure Load_Instruction (V, Op : Value_T) is
+   begin
+      --  ??? Need to deal with both unaligned load and unaligned store
+
+      --  If V is unsigned but Op1 isn't (meaning that it's not a variable
+      --  that's marked unsigned, so it may be an array or record
+      --  reference), add a cast to the unsigned form.
+
+      if Get_Is_Unsigned (V) and then not Get_Is_Unsigned (Op) then
+         Assignment (V, "(unsigned " & Type_Of (V) & ") " & Deref (Op));
+      else
+         Assignment (V, Deref (Op));
+      end if;
+   end Load_Instruction;
+
+   -----------------------
+   -- Store_Instruction --
+   -----------------------
+
+   procedure Store_Instruction (V, Op1, Op2 : Value_T) is
+      pragma Unreferenced (V);
+      LHS : constant Str := Deref (Op2);
+      RHS : constant Str := +Op1;
+
+   begin
+      Process_Pending_Values;
+      Write_Copy (LHS, RHS, Type_Of (Op1));
+   end Store_Instruction;
 
    ------------------------
    -- Binary_Instruction --
@@ -586,47 +662,13 @@ package body CCG.Instructions is
             Call_Instruction (V, Ops);
 
          when Op_Alloca =>
-            if Is_Entry_Block (V) and then Is_A_Constant_Int (Op1)
-              and then Equals_Int (Op1, 1)
-            then
-               Set_Is_LHS (V);
-               Maybe_Decl (V);
-            else
-               declare
-                  Size : constant Str :=
-                    "sizeof (" & Get_Allocated_Type (V) & ") * " &
-                    (Op1 + Mult);
-                  Call : constant Str := "alloca (" & Size & ")" + Component;
-
-               begin
-                  Assignment (V, "(" & Type_Of (V) & ") " & Call + Unary);
-               end;
-            end if;
+            Alloca_Instruction (V, Op1);
 
          when Op_Load =>
-
-            --  ??? Need to deal with both unaligned load and unaligned store
-
-            --  If V is unsigned but Op1 isn't (meaning that it's not a
-            --  variable that's marked unsigned, so it may be an array or
-            --  record reference), add a cast to the unsigned form.
-
-            if Get_Is_Unsigned (V) and then not Get_Is_Unsigned (Op1) then
-               Assignment (V, "(unsigned " & Type_Of (V) & ") " & Deref (Op1));
-            else
-               Assignment (V, Deref (Op1));
-            end if;
+            Load_Instruction (V, Op1);
 
          when Op_Store =>
-
-            declare
-               LHS : constant Str := Deref (Op2);
-               RHS : constant Str := +Op1;
-
-            begin
-               Process_Pending_Values;
-               Write_Copy (LHS, RHS, Type_Of (Op1));
-            end;
+            Store_Instruction (V, Op1, Op2);
 
          when Op_I_Cmp | Op_F_Cmp =>
             Assignment (V, Cmp_Instruction (V, Op1, Op2));
@@ -635,14 +677,7 @@ package body CCG.Instructions is
             Assignment (V, TP ("#1 ? #2 : #3", Op1, Op2, Op3) + Conditional);
 
          when Op_Br =>
-            if Ops'Length = 1 then
-               Output_Branch (V, Op1);
-            else
-               Output_Stmt (TP ("if (#1)", Op1) + Assign, Semicolon => False);
-               Output_Branch (V, Op3, Need_Block => True);
-               Output_Stmt ("else", Semicolon => False);
-               Output_Branch (V, Op2, Need_Block => True);
-            end if;
+            Branch_Instruction (V, Ops);
 
          when Op_Add | Op_Sub | Op_Mul | Op_S_Div | Op_U_Div | Op_S_Rem
             | Op_U_Rem | Op_Shl | Op_L_Shr | Op_A_Shr | Op_F_Add | Op_F_Sub

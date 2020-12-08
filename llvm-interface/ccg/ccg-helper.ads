@@ -128,12 +128,24 @@ package CCG.Helper is
      (Present (Is_A_Return_Inst (V)))
      with Pre => Present (V);
 
+   function Is_A_Alloca_Inst (V : Value_T) return Boolean is
+     (Present (Is_A_Alloca_Inst (V)))
+     with Pre => Present (V);
+
    function Is_A_Load_Inst (V : Value_T) return Boolean is
      (Present (Is_A_Load_Inst (V)))
      with Pre => Present (V);
 
+   function Is_A_Store_Inst (V : Value_T) return Boolean is
+     (Present (Is_A_Store_Inst (V)))
+     with Pre => Present (V);
+
    function Is_A_Switch_Inst (V : Value_T) return Boolean is
      (Present (Is_A_Switch_Inst (V)))
+     with Pre => Present (V);
+
+   function Is_A_Branch_Inst (V : Value_T) return Boolean is
+     (Present (Is_A_Branch_Inst (V)))
      with Pre => Present (V);
 
    function Is_A_Extract_Value_Inst (V : Value_T) return Boolean is

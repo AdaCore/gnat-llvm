@@ -39,6 +39,10 @@ package CCG.Blocks is
      with Pre => Is_A_Basic_Block (V), Inline;
    --  Generate the code for basic block unless already output
 
+   procedure Branch_Instruction (V : Value_T; Ops : Value_Array)
+     with Pre => Is_A_Branch_Inst (V);
+   --  Process V, a branch instruction
+
    procedure Switch_Instruction (V : Value_T; Ops : Value_Array)
      with Pre => Is_A_Switch_Inst (V);
    --  Process V, a switch instruction

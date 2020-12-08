@@ -21,6 +21,7 @@ with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Tables;       use CCG.Tables;
+with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Blocks is
 
@@ -204,6 +205,23 @@ package body CCG.Blocks is
          end if;
       end if;
    end Output_Branch;
+
+   ------------------------
+   -- Branch_Instruction --
+   ------------------------
+
+   procedure Branch_Instruction (V : Value_T; Ops : Value_Array) is
+      Op1 : constant Value_T := Ops (Ops'First);
+   begin
+      if Ops'Length = 1 then
+         Output_Branch (V, Op1);
+      else
+         Output_Stmt (TP ("if (#1)", Op1) + Assign, Semicolon => False);
+         Output_Branch (V, Ops (Ops'First + 2), Need_Block => True);
+         Output_Stmt ("else", Semicolon => False);
+         Output_Branch (V, Ops (Ops'First + 1), Need_Block => True);
+      end if;
+   end Branch_Instruction;
 
    ------------------------
    -- Switch_Instruction --

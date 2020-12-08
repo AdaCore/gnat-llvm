@@ -82,6 +82,29 @@ build-opt: setup force
 	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
 	$(GPRBUILD) $(GPROPT) -Ptools -j$(PROCS)
 
+# Target for building with coverage instrumentation.
+build-cov: setup force
+	$(RMDIR) obj/cov bin/cov
+	gnatcov instrument -Pgnat_llvm --subdirs=cov --level=stmt --dump-trigger=atexit
+	gnatcov instrument -Ptools --subdirs=cov --level=stmt --dump-trigger=atexit
+	$(GPRBUILD) -Pgnat_llvm -j$(PROCS) -O \
+	  --subdirs=cov --src-subdirs=gnatcov-instr \
+	  --implicit-with=$(pwd)/../gnatcov_rts-build/install/share/gpr/gnatcov_rts_full.gpr \
+	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
+	$(GPRBUILD) -Ptools -j$(PROCS) -O \
+	  --subdirs=cov --src-subdirs=gnatcov-instr \
+	  --implicit-with=$(pwd)/../gnatcov_rts-build/install/share/gpr/gnatcov_rts_full.gpr
+
+cov-info:
+	gnatcov coverage -Pgnat_llvm --level=stmt --save-checkpoint=acats.ckpt \
+	  --subdirs=cov @$(pwd)/../acats/acats/gnat.traces
+	gnatcov coverage -Pgnat_llvm --level=stmt \
+	  --save-checkpoint=fixedbugs.ckpt \
+	  --subdirs=cov @$(pwd)/../fixedbugs/gnat.traces
+	gnatcov coverage --level=stmt --annotate=dhtml \
+	  --checkpoint=acats.ckpt --checkpoint=fixedbugs.ckpt \
+	  --output-dir=dhtml-report
+
 # Bootstrap targets
 
 CXX_PREFIX=$(shell dirname $(dir $(shell which gcc)))

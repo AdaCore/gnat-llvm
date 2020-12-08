@@ -37,4 +37,26 @@ project Gnat_LLVM is
       for Excluded_Source_Dirs use ("gnat_src", "obj");
    end CodePeer;
 
+   package Coverage is
+      for Ignored_Source_Files use
+        ("ada_get_targ.adb",   --  used by CodePeer/SPARK
+         "bindo-validators*",  --  debug code
+         "ccg*",               --  LLVM-based CCG back-end
+         "cprint*",            --  old CCG back-end
+         "*_dist.adb",         --  annex E
+         "g-*",                --  runtime files, only partly used by GNAT
+         "llvm*",              --  llvm bindings
+         "c?info.adb",         --  preprocessing tools
+         "x[elnostu]*",        --  preprocessing tools
+         "get_scos.adb",
+         "indepsw-*",
+         "*dll*",              --  old gnatdll tool
+         "pprint.adb",         --  used by CodePeer/SPARK
+         "sa_message*",        --  used by CodePeer
+         "*scil*",             --  used by CodePEer
+         "sco*",               --  used by GNATcov
+         "*spark*",            --  used by SPARK
+         "vast.adb");          --  empty file for now
+   end Coverage;
+
 end Gnat_LLVM;

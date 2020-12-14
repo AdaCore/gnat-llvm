@@ -763,8 +763,11 @@ package body GNATLLVM.Conditionals is
          --  Basic block to branch for false
       end record;
 
-      If_Parts_Pos : Nat := 1;
-      If_Parts     : array (0 .. List_Length (Elsif_Parts (N))) of If_Ent;
+      Elseif_Count : constant Nat :=
+        (if   Present (Elsif_Parts (N)) then List_Length (Elsif_Parts (N))
+         else 0);
+      If_Parts_Pos : Nat          := 1;
+      If_Parts     : array (0 .. Elseif_Count) of If_Ent;
       BB_End       : Basic_Block_T;
       Elsif_Part   : Node_Id;
 

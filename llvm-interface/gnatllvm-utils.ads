@@ -45,6 +45,10 @@ package GNATLLVM.Utils is
      with Pre => Present (List);
    --  Like List_Length, but return only those items considered "non-pragma"
 
+   function Safe_List_Length (List : List_Id) return Nat is
+     ((if No (List) then 0 else List_Length (List)));
+   --  Like List_Length, but return Empty if List is not Present
+
    function Num_Actuals (N : Node_Id) return Nat
      with Pre => Nkind (N) in N_Subprogram_Call;
    --  The number of actual arguments in N, a subprogram call

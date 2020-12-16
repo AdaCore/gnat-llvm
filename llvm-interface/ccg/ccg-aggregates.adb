@@ -274,11 +274,13 @@ package body CCG.Aggregates is
             ST : constant Type_T := Struct_Get_Type_At_Index (T, J);
 
          begin
-            --  If the type of the last field is a zero-length array,
-            --  this indicates a variable-sized array. If we write it as
-            --  an array of length one, the size of the struct will be
-            --  different than expected, but C doesn't support 0-sized
-            --  arrays.
+            --  If the type of the last field is a zero-length array, this
+            --  indicates a variable-sized array. If we write it as an
+            --  array of length one, the size of the struct will be
+            --  different than expected, but not all versions of C support
+            --  0-sized arrays.
+            --  ??? We may want to adjust what we do here as we add
+            --  functionality to support various different C compiler options.
 
             if Get_Type_Kind (ST) /= Array_Type_Kind
               or else Get_Array_Length (ST) /= Nat (0) or else J /= Types - 1

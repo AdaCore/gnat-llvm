@@ -775,15 +775,28 @@ package body CCG.Output is
 
          when Pointer_Type_Kind =>
 
-            --  There's no such thing in C as a function type, only a pointer
-            --  to function type. So we special-case that. For normal
-            --  pointers, we don't want to use a concatenation operator
-            --  because that might cause us to try to write out the type
-            --  which will then be at the wrong place.
+            --  There's no such thing in C as a function type, only a
+            --  pointer to function type. So we special-case that.
 
             if Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind then
                Write_Str ("ccg_f");
                Write_Int (Get_Output_Idx (T));
+
+            --  An array of zero size represents a variable-sized array,
+            --  which C doesn't support, so consider this a pointer to the
+            --  element type of the array.
+
+            elsif Get_Type_Kind (Get_Element_Type (T)) = Array_Type_Kind
+              and then Get_Array_Length (Get_Element_Type (T)) = 0
+            then
+               Write_Type (Get_Element_Type (Get_Element_Type (T)));
+               Write_Str (" *");
+
+            --  Otherwise, this is handled normally. We don't want to use a
+            --  concatenation operator because that might cause us to try
+            --  to write out the typedef for the pointed-to type, which
+            --  will then be at the wrong place.
+
             else
                Write_Type (Get_Element_Type (T));
                Write_Str (" *");

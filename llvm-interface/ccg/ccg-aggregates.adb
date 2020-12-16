@@ -269,8 +269,24 @@ package body CCG.Aggregates is
       Write_Str ("struct " & T & " {", Eol => True);
 
       for J in 0 .. Types - 1 loop
-         Write_Str ("    " & Struct_Get_Type_At_Index (T, J) & " " &
-                      Get_Field_Name (T, J) & ";", Eol => True);
+
+         declare
+            ST : constant Type_T := Struct_Get_Type_At_Index (T, J);
+
+         begin
+            --  If the type of the last field is a zero-length array,
+            --  this indicates a variable-sized array. If we write it as
+            --  an array of length one, the size of the struct will be
+            --  different than expected, but C doesn't support 0-sized
+            --  arrays.
+
+            if Get_Type_Kind (ST) /= Array_Type_Kind
+              or else Get_Array_Length (ST) /= Nat (0) or else J /= Types - 1
+            then
+               Write_Str ("    " & ST & " " & Get_Field_Name (T, J) & ";",
+                          Eol => True);
+            end if;
+         end;
       end loop;
 
       --  If this is an empty struct, we need to add a dummy field since
@@ -445,9 +461,11 @@ package body CCG.Aggregates is
          Maybe_Write_Typedef (Aggr_T);
          if Get_Type_Kind (Aggr_T) = Array_Type_Kind then
 
-            --  If this isn't an LHS, we have to make it one
+            --  If this isn't an LHS, we have to make it one, but not if
+            --  this is a zero-size array, since we've written the pointer
+            --  type as a pointer to the element.
 
-            if not Is_LHS then
+            if not Is_LHS and then Get_Array_Length (Aggr_T) /= Nat (0) then
                Result := Deref (Result) + Component;
             end if;
 
@@ -459,12 +477,33 @@ package body CCG.Aggregates is
             pragma Assert (Get_Type_Kind (Aggr_T) = Struct_Type_Kind);
 
             declare
-               Idx : constant Nat := Nat (Const_Int_Get_S_Ext_Value (Op));
+               Idx : constant Nat    := Nat (Const_Int_Get_S_Ext_Value (Op));
+               ST  : constant Type_T := Struct_Get_Type_At_Index (Aggr_T, Idx);
+
             begin
-               Result := Result & (if Is_LHS then "." else "->") + Component &
-                 Get_Field_Name (Aggr_T, Idx);
-               Aggr_T := Struct_Get_Type_At_Index (Aggr_T, Idx);
-               Is_LHS := True;
+               --  If this is a zero-length array in the last component
+               --  of the struct, it doesn't actually exist, so convert this
+               --  into a cast to char *, point past the end of the struct,
+               --  and then cast to a pointer to the array's element type.
+
+               if Get_Type_Kind (ST) = Array_Type_Kind
+                 and then Get_Array_Length (ST) = Nat (0)
+                 and then Idx = Count_Struct_Element_Types (Aggr_T) - 1
+               then
+                  Result := "(char *) " &
+                    (if Is_LHS then Addr_Of (Result) else Result) &
+                    " + sizeof (" & Aggr_T & ")";
+                  Result :=
+                    "((" & Get_Element_Type (ST) & " *) (" & Result & "))";
+                  Is_LHS := False;
+               else
+                  Result :=
+                    Result & (if Is_LHS then "." else "->") + Component &
+                      Get_Field_Name (Aggr_T, Idx);
+                  Is_LHS := True;
+               end if;
+
+               Aggr_T := ST;
             end;
          end if;
       end loop;

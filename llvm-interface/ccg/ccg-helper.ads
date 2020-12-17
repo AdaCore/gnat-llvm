@@ -156,6 +156,10 @@ package CCG.Helper is
      (Present (Is_A_Insert_Value_Inst (V)))
      with Pre => Present (V);
 
+   function Is_APHI_Node (V : Value_T) return Boolean is
+     (Present (Is_APHI_Node (V)))
+     with Pre => Present (V);
+
    function Is_A_Basic_Block (V : Value_T) return Boolean is
      (Present (Is_A_Basic_Block (V)))
      with Pre => Present (V);

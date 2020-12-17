@@ -639,10 +639,14 @@ package body CCG.Instructions is
       Opc : constant Opcode_T := Get_Opcode (V);
 
    begin
-      --  PHI is processed on a branch to this block, so we need do nothing
-      --  with it here and we don't even want to look at their operands.
+      --  When we branch to a block, we set a temporary to contain the value
+      --  to be used for each PHI instruction (see Output_Branch for why).
+      --  Here, we have to copy that value in. We handle it specially here
+      --  since we don't want to declare any operands at this point this
+      --  we may not have evaluated them yet.
 
       if Opc = Op_PHI then
+         Assignment (V, V + Phi_Temp);
          return;
       end if;
 

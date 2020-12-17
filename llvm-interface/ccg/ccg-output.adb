@@ -531,7 +531,7 @@ package body CCG.Output is
 
       --  If we've set an expression as the value of V, write it
 
-      if Present (C_Value) then
+      if Present (C_Value) and then not Flags.Phi_Temp then
          Write_Str_With_Precedence (C_Value, Inner_For_P);
 
       --  If this is either a simple constant or any constant for an
@@ -544,10 +544,14 @@ package body CCG.Output is
       then
          Write_Constant_Value (V, Flags => Flags);
 
-      --  Otherwise, write the name
+      --  Otherwise, write the name and possibly the suffix for a Phi
+      --  temporary.
 
       else
          Write_Value_Name (V);
+         if Flags.Phi_Temp then
+            Write_Str ("_t_");
+         end if;
       end if;
 
       --  If we wrote an open paren before this expression, we need to close it

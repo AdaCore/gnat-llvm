@@ -40,7 +40,7 @@ package body CCG.Utils is
          --  If we've seen '#', look for a modifier
 
          if Mark_Seen then
-            if S (J) in 'A' | 'B' | 'D' | 'I' | 'L' | 'T' then
+            if S (J) in 'A' | 'B' | 'D' | 'I' | 'L' | 'P' | 'T' then
                Modifier := S (J);
 
             --  If not, then this is a number, representing which operand
@@ -71,9 +71,12 @@ package body CCG.Utils is
                      Result := Result & (Op + Initializer);
                   when 'L' =>
                      Result := Result & (Op + LHS);
+                  when 'P' =>
+                     Result := Result & (Op + Phi_Temp);
+                     pragma Assert (Is_APHI_Node (Op));
                   when 'T' =>
                      Result := Result & (Op + Write_Type);
-                     when others =>
+                  when others =>
                         Result := Result & Op;
                end case;
 

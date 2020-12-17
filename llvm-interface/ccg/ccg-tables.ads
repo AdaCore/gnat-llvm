@@ -17,6 +17,8 @@
 
 with LLVM.Core; use LLVM.Core;
 
+with CCG.Helper; use CCG.Helper;
+
 package CCG.Tables is
 
    --  This package contains the tables used by CCG to record data about
@@ -171,6 +173,11 @@ package CCG.Tables is
       --  If this is a constant, always output the value of the constant,
       --  instead of its name, even if it's an aggregate constant.
 
+      Phi_Temp,
+      --  This must be a Phi node, in which case we output the temporary
+      --  name and not the actual value name. We don't use the C_Value since
+      --  that refers to that of the actual value, not the temporary.
+
       Need_Unsigned,
       --  We need an unsigned form of this value. If the value isn't unsigned
       --  or can't be made unsigned (e.g. an integer constant), we emit a
@@ -187,6 +194,7 @@ package CCG.Tables is
    type Value_Flags is record
       LHS           : Boolean;
       Initializer   : Boolean;
+      Phi_Temp      : Boolean;
       Need_Unsigned : Boolean;
       Need_Signed   : Boolean;
       Write_Type    : Boolean;
@@ -195,19 +203,22 @@ package CCG.Tables is
    function "or" (X, Y : Value_Flags) return Value_Flags is
      (LHS            => X.LHS           or Y.LHS,
       Initializer    => X.Initializer   or Y.Initializer,
+      Phi_Temp       => X.Phi_Temp      or Y.Phi_Temp,
       Need_Unsigned  => X.Need_Unsigned or Y.Need_Unsigned,
       Need_Signed    => X.Need_Signed   or Y.Need_Signed,
       Write_Type     => X.Write_Type    or Y.Write_Type);
 
    type Flag_Array is array (Value_Flag) of Value_Flags;
 
-   Default_Flags : constant Value_Flags := (False, False, False, False, False);
+   Default_Flags : constant Value_Flags :=
+     (False, False, False, False, False, False);
    Flag_To_Flags : constant Flag_Array :=
-     (LHS           => (True,  False, False, False, False),
-      Initializer   => (False, True,  False, False, False),
-      Need_Unsigned => (False, False, True,  False, False),
-      Need_Signed   => (False, False, False, True,  False),
-      Write_Type    => (False, False, False, False, True));
+     (LHS           => (True,  False, False, False, False, False),
+      Initializer   => (False, True,  False, False, False, False),
+      Phi_Temp      => (False, False, True,  False, False, False),
+      Need_Unsigned => (False, False, False, True,  False, False),
+      Need_Signed   => (False, False, False, False, True,  False),
+      Write_Type    => (False, False, False, False, False, True));
 
    function "+" (F : Value_Flag) return Value_Flags is
      (Flag_To_Flags (F));
@@ -310,19 +321,23 @@ package CCG.Tables is
    --  Get and set attributes we record of LLVM values, types, and
    --  basic blocks.
 
-   function Get_C_Value        (V : Value_T) return Str
+   function Get_C_Value             (V : Value_T) return Str
      with Pre => Present (V), Inline;
    --  If Present, a string that represents the value of the Value_T
 
-   function Get_No_Name        (V : Value_T) return Boolean
+   function Get_No_Name             (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if there's no LLVM name for this value; we use the ordinal
 
-   function Get_Is_Decl_Output (V : Value_T) return Boolean
+   function Get_Is_Decl_Output      (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if we wrote any needed decl for this value
 
-   function Get_Is_LHS         (V : Value_T) return Boolean
+   function Get_Is_Temp_Decl_Output (V : Value_T) return Boolean
+     with Pre => Is_APHI_Node (V), Inline;
+   --  Likewise, but applies to the temporary needed for a PHI instruction
+
+   function Get_Is_LHS              (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if this value represents an LHS. This is usually either a
    --  global variable or an alloca in the entry block. In that case, from
@@ -330,34 +345,37 @@ package CCG.Tables is
    --  of the value; only "load" or "store" instruction actually accesses
    --  the value. It can also be the result of a GEP instruction.
 
-   function Get_Is_Constant    (V : Value_T) return Boolean
+   function Get_Is_Constant         (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if this value is a constant and was declared that way
    --  in C.
 
-   function Get_Is_Unsigned   (V : Value_T) return Boolean
+   function Get_Is_Unsigned         (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if this value represents a variable that's unsigned
 
-   function Get_Is_Used       (V : Value_T) return Boolean
+   function Get_Is_Used             (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if this value represents a variable that has been used in an
    --  expression.
 
-   procedure Set_C_Value       (V : Value_T; S : Str)
+   procedure Set_C_Value            (V : Value_T; S : Str)
      with Pre => Present (V), Post => Get_C_Value (V) = S, Inline;
-   procedure Set_No_Name       (V : Value_T; B : Boolean := True)
+   procedure Set_No_Name            (V : Value_T; B : Boolean := True)
      with Pre  => Present (V),
           Post => Get_No_Name (V) = B, Inline;
-   procedure Set_Is_Decl_Output (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Decl_Output      (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Decl_Output (V) = B, Inline;
-   procedure Set_Is_LHS         (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Temp_Decl_Output (V : Value_T; B : Boolean := True)
+     with Pre => Is_APHI_Node (V), Post => Get_Is_Temp_Decl_Output (V) = B,
+          Inline;
+   procedure Set_Is_LHS              (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_LHS (V) = B, Inline;
-   procedure Set_Is_Constant    (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Constant         (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Constant (V) = B, Inline;
-   procedure Set_Is_Unsigned    (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Unsigned        (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Unsigned (V) = B, Inline;
-   procedure Set_Is_Used        (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Used             (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Used (V) = B, Inline;
 
    function Get_Is_Typedef_Output        (T : Type_T) return Boolean
@@ -548,6 +566,7 @@ private
      (S.P);
 
    function Is_Value (S : Str) return Boolean is
-     (S.Length = 1 and then S.Comps (1).Kind = Value);
+     (S.Length = 1 and then S.Comps (1).Kind = Value
+        and then not S.Comps (1).Flags.Phi_Temp);
 
 end CCG.Tables;

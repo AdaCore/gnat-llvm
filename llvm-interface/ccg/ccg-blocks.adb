@@ -25,30 +25,6 @@ with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Blocks is
 
-   function Is_Stub_Block (BB : Basic_Block_T) return Boolean
-     with Pre => Present (BB);
-   --  Return True iff BB is a block containing just an unconditional branch
-   --  possibly proceeded by one or more phi instructions. We'll never branch
-   --  to such a block.
-
-   -------------------
-   -- Is_Stub_Block --
-   -------------------
-
-   function Is_Stub_Block (BB : Basic_Block_T) return Boolean is
-      Inst : Value_T := Get_First_Instruction (BB);
-   begin
-      while Present (Inst)
-        and then (Get_Opcode (Inst) = Op_PHI
-                    or else (Get_Opcode (Inst) = Op_Br
-                               and then Nat'(Get_Num_Operands (Inst)) = 1))
-      loop
-         Inst := Get_Next_Instruction (Inst);
-      end loop;
-
-      return No (Inst);
-   end Is_Stub_Block;
-
    ---------------
    -- Output_BB --
    ---------------
@@ -70,13 +46,6 @@ package body CCG.Blocks is
       --  If we already processed this basic block, do nothing
 
       if Get_Was_Output (BB) then
-         return;
-
-      --  If this is a stub block and not the entry block, we don't
-      --  need to process it, but do need to process what it jumps to.
-
-      elsif Is_Stub_Block (BB) and then not Is_Entry_Block (BB) then
-         Output_BB (Get_Operand (Terminator, Nat (0)));
          return;
 
       --  Otherwise, if this isn't the entry block, output a label for it
@@ -167,10 +136,23 @@ package body CCG.Blocks is
             Phi_Val : Value_T := No_Value_T;
 
          begin
-            --  If we find a phi, we must ensure we have a declaration of its
-            --  type and then copy the appropriate data into it.
+            --  If we find a phi, we must ensure we've declared its type
+            --  and then copy the appropriate data into a temporary
+            --  associated with it.  We need to use the temporary because
+            --  if we have something like
+            --
+            --     %foo = phi i32 [ 7, %0 ], [ 0, %entry ]
+            --     %1 = phi i32 [ %foo, %0 ], [ 3, %entry ]
+            --
+            --  we're supposed to set %1 to the value of %foo before the
+            --  assignment to it. Declare the temporary here too.
 
-            Maybe_Decl (Target_I);
+            if not Get_Is_Temp_Decl_Output (Target_I) then
+               Maybe_Write_Typedef (Type_Of (Target_I));
+               Output_Decl (TP ("#T1 #P1", Target_I));
+               Set_Is_Temp_Decl_Output (Target_I);
+            end if;
+
             for J in 0 .. Count_Incoming (Target_I) - 1 loop
                if Get_Incoming_Block (Target_I, J) = Our_BB then
                   Phi_Val := Get_Operand (Target_I, J);
@@ -182,27 +164,18 @@ package body CCG.Blocks is
             end if;
 
             Maybe_Decl (Phi_Val);
-            Write_Copy (Target_I, +Phi_Val, Type_Of (Phi_Val));
+            Write_Copy (Target_I + Phi_Temp, Phi_Val, Type_Of (Phi_Val));
             Our_Had_Phi := True;
             Target_I    := Get_Next_Instruction (Target_I);
          end;
       end loop;
 
-      --  If we've hit an unconditional branch instruction, branch there
+      --  Now write the goto and, if we had a phi, close the block
+      --  we opened.
 
-      if Present (Target_I) and then Get_Opcode (Target_I) = Op_Br
-        and then Nat'(Get_Num_Operands (Target_I)) = 1
-      then
-         Output_Branch (Target_I, Get_Operand (Target_I, Nat (0)), Need_Block,
-                        Our_Had_Phi);
-      else
-         --  Otherwise, write the goto and, if we had a phi, close the
-         --  block we opened.
-
-         Output_Stmt ("goto " & To);
-         if Our_Had_Phi and then Need_Block then
-            Output_Stmt ("}", Semicolon => False);
-         end if;
+      Output_Stmt ("goto " & To);
+      if Our_Had_Phi and then Need_Block then
+         Output_Stmt ("}", Semicolon => False);
       end if;
    end Output_Branch;
 

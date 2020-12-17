@@ -37,13 +37,14 @@ package CCG.Utils is
      with Post => Present (TP'Result);
    --  This provides a simple template facility for insertion of operands.
    --  Every character up to '#' in S is placed in Str. '#' is followed
-   --  optionally by an 'A', 'B', 'I', 'L', or 'T' and then a number.  The
+   --  optionally by an 'A', 'B', 'I', 'L', 'P', or 'T' and then a number.  The
    --  operand of that number is inserted into Str at that point. If 'B' is
    --  present, the operand is interpreted as a basic block. If 'L' is
    --  present, then we want the operand always written as a LHS. If 'I' is
    --  present, this is for the context of an initializer. If 'A' is
    --  present, we take the address of the operand and deference it if 'D'
    --  is present. If 'T' is present, we output the type of that operand.
+   --  If 'P' is present, we use the value of the Phi temporary.
 
    function Num_Uses (V : Value_T) return Nat
      with Pre => Present (V);

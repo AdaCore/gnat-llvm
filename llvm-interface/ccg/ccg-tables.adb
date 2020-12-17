@@ -59,16 +59,19 @@ package body CCG.Tables is
    --  then the tables, then the maps.
 
    type Value_Data is record
-      C_Value        : Str;
+      C_Value             : Str;
       --  If Present, a string that represents the value of the Value_T
 
-      No_Name        : Boolean;
+      No_Name             : Boolean;
       --  True if there's no LLVM name for this value; we use the ordinal
 
-      Is_Decl_Output : Boolean;
+      Is_Decl_Output      : Boolean;
       --  True if we wrote any needed decl for this value
 
-      Is_LHS         : Boolean;
+      Is_Temp_Decl_Output : Boolean;
+      --  Likewise, but applies to the temporary needed for a PHI instruction
+
+      Is_LHS              : Boolean;
       --  True if this value represents an LHS. This is usually either a
       --  global variable or an alloca in the entry block. In that case,
       --  from a C perspective, a use of a value in LLVM IR represents the
@@ -76,20 +79,20 @@ package body CCG.Tables is
       --  accesses the value. It can also be the result of a GEP
       --  instruction.
 
-      Is_Constant    : Boolean;
+      Is_Constant         : Boolean;
       --  True if this value is a constant and was declared that way
       --  in C. We use this to indicate that we have to cast the type
       --  to the non-constant pointer to take the address of the value.
 
-      Is_Unsigned    : Boolean;
+      Is_Unsigned         : Boolean;
       --  True if this value was marked as unsigned and will be declared
       --  that way.
 
-      Is_Used        : Boolean;
+      Is_Used             : Boolean;
       --  True if this value represents a variable that has been used in an
       --  expression.
 
-      Output_Idx     : Nat;
+      Output_Idx          : Nat;
       --  A positive number if we've assigned an ordinal to use as
       --  part of the name for this anonymous value.
 
@@ -1079,7 +1082,11 @@ package body CCG.Tables is
    begin
       return Result : Value_T := No_Value_T do
          for Comp of S.Comps loop
-            if Comp.Kind = Value then
+
+            --  We want to ignore a reference with Phi_Temp because that's
+            --  not a normal reference and shouldn't be treated as one.
+
+            if Comp.Kind = Value and then not Comp.Flags.Phi_Temp then
                if Result /= No_Value_T then
                   Result := No_Value_T;
                   exit;
@@ -1107,6 +1114,7 @@ package body CCG.Tables is
            and then (Comp.Flags.Need_Unsigned
                        or else (not Comp.Flags.Need_Signed
                                   and then not Comp.Flags.Write_Type
+                                  and then not Comp.Flags.Phi_Temp
                                   and then Might_Be_Unsigned (Comp.Val)))
          then
             return True;
@@ -1250,14 +1258,15 @@ package body CCG.Tables is
       elsif not Create then
          return No_Value_Idx;
       else
-         Value_Data_Table.Append ((C_Value        => null,
-                                   No_Name        => False,
-                                   Is_Decl_Output => False,
-                                   Is_LHS         => False,
-                                   Is_Constant    => False,
-                                   Is_Unsigned    => False,
-                                   Is_Used        => False,
-                                   Output_Idx     => 0));
+         Value_Data_Table.Append ((C_Value             => null,
+                                   No_Name             => False,
+                                   Is_Decl_Output      => False,
+                                   Is_Temp_Decl_Output => False,
+                                   Is_LHS              => False,
+                                   Is_Constant         => False,
+                                   Is_Unsigned         => False,
+                                   Is_Used             => False,
+                                   Output_Idx          => 0));
          Insert (Value_Data_Map, V, Value_Data_Table.Last);
          return Value_Data_Table.Last;
       end if;
@@ -1357,6 +1366,19 @@ package body CCG.Tables is
 
    end Get_Is_Decl_Output;
 
+   -----------------------------
+   -- Get_Is_Temp_Decl_Output --
+   -----------------------------
+
+   function Get_Is_Temp_Decl_Output (V : Value_T) return Boolean is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+
+   begin
+      return Present (Idx)
+        and then Value_Data_Table.Table (Idx).Is_Temp_Decl_Output;
+
+   end Get_Is_Temp_Decl_Output;
+
    ----------------
    -- Get_Is_LHS --
    ----------------
@@ -1441,6 +1463,17 @@ package body CCG.Tables is
    begin
       Value_Data_Table.Table (Idx).Is_Decl_Output := B;
    end Set_Is_Decl_Output;
+
+   -----------------------------
+   -- Set_Is_Temp_Decl_Output --
+   -----------------------------
+
+   procedure Set_Is_Temp_Decl_Output (V : Value_T; B : Boolean := True) is
+      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+
+   begin
+      Value_Data_Table.Table (Idx).Is_Temp_Decl_Output := B;
+   end Set_Is_Temp_Decl_Output;
 
    ----------------
    -- Set_Is_LHS --

@@ -510,22 +510,31 @@ package body CCG.Aggregates is
          end if;
       end loop;
 
-      --  If we ended up with a LHS, we always set this as the value of
-      --  V but mark it as an LHS. This is to avoid taking an address and
-      --  then doing a dereference for nested GEP's. Otherwise, process
-      --  this as a normal assignment.
-
-      if Is_LHS then
-         Set_Is_LHS (V);
-      end if;
-
-      --  Likewise if the input is a constant
+      --  If the input is a constant, mark the output as constant and
+      --  as the value of V, mark as LHS if it is,a and we're done.
 
       if Get_Is_Constant (Aggr) then
          Set_Is_Constant (V);
+         Set_Is_LHS (V, Is_LHS);
+         Set_C_Value (V, Result);
+         return;
       end if;
 
-      if Is_LHS or else Get_Is_Constant (Aggr) then
+      --  If we ended up with a LHS, we usually set this as the value of
+      --  V but mark it as an LHS. This is to avoid taking an address and
+      --  then doing a dereference for nested GEP's. However, we can't do
+      --  it this way if V has more than one use since there's no clean
+      --  way of recording all the needed information. In that case, we have
+      --  to explicitly take the address of Result. We rely here on the
+      --  optimizer to not share the value if we can chain GEPs.
+
+      if Is_LHS and then Num_Uses (V) > 1 then
+         Result := Addr_Of (Result);
+         Is_LHS := False;
+      end if;
+
+      Set_Is_LHS (V, Is_LHS);
+      if Is_LHS then
          Set_C_Value (V, Result);
       else
          Assignment (V, Result);

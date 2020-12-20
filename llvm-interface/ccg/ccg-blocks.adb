@@ -63,10 +63,6 @@ package body CCG.Blocks is
          V := Get_Next_Instruction (V);
       end loop;
 
-      --  Clear our pending value list
-
-      Clear_Pending_Values;
-
       --  Now process any block referenced by the terminator
 
       case Get_Instruction_Opcode (Terminator) is
@@ -184,12 +180,23 @@ package body CCG.Blocks is
    ------------------------
 
    procedure Branch_Instruction (V : Value_T; Ops : Value_Array) is
-      Op1 : constant Value_T := Ops (Ops'First);
+      Op1    : constant Value_T := Ops (Ops'First);
+      Result : Str;
    begin
+      --  See if this is an unconditional or conditional branch. We need
+      --  to process all pending values before taking the branch, but
+      --  want to do that after elaborating the condition to avoid needing
+      --  to force elaboration of the condition.
+      --  ??? We'd also prefer not to force elaboration of values needed in
+      --  the phi computation, but that's hard and may not be possible.
+
       if Ops'Length = 1 then
+         Process_Pending_Values;
          Output_Branch (V, Op1);
       else
-         Output_Stmt (TP ("if (#1)", Op1) + Assign, Semicolon => False);
+         Result := TP ("if (#1)", Op1) + Assign;
+         Process_Pending_Values;
+         Output_Stmt (Result, Semicolon => False);
          Output_Branch (V, Ops (Ops'First + 2), Need_Block => True);
          Output_Stmt ("else", Semicolon => False);
          Output_Branch (V, Ops (Ops'First + 1), Need_Block => True);
@@ -206,13 +213,13 @@ package body CCG.Blocks is
         Value_As_Basic_Block (Ops (Ops'First + 1));
       POO     : constant Process_Operand_Option :=
         (if Get_Is_Unsigned (Val) then POO_Unsigned else POO_Signed);
-
+      Result  : constant Str                    := Process_Operand (Val, POO);
    begin
       --  Write out the initial part of the switch, which is the switch
       --  statement and the default option.
 
-      Output_Stmt ("switch (" & Process_Operand (Val, POO) & ") {" +  Assign,
-        Semicolon => False);
+      Process_Pending_Values;
+      Output_Stmt ("switch (" & Result & ") {" +  Assign, Semicolon => False);
       Output_Stmt ("default:", Semicolon => False);
       Output_Branch (V, Default);
 

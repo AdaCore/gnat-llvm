@@ -53,10 +53,10 @@ package CCG.Instructions is
      with Pre => Present (LHS) and then Present (RHS) and then Present (T);
    --  Write a statement to copy RHS, of type T, to LHS
 
-   procedure Clear_Pending_Values;
-   --  Called when switching to a new basic block to the pending unwritten
-   --  value table (thre shouldn't be any active entries in it unless
-   --  there are unused values in the block).
+   procedure Add_Pending_Value (V : Value_T)
+     with Pre => Present (V);
+   --  Called when set manually set a C Value to add the value to the
+   --  table of values waiting to be evaluated.
 
    procedure Process_Pending_Values;
    --  Walk the set of pending values in reverse order and generate

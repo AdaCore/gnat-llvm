@@ -210,14 +210,14 @@ package body CCG.Instructions is
       end case;
    end Is_Comparison;
 
-   --------------------------
-   -- Clear_Pending_Values --
-   --------------------------
+   -----------------------
+   -- Add_Pending_Value --
+   -----------------------
 
-   procedure Clear_Pending_Values is
+   procedure Add_Pending_Value (V : Value_T) is
    begin
-      Pending_Value_Table.Set_Last (0);
-   end Clear_Pending_Values;
+      Pending_Value_Table.Append (V);
+   end Add_Pending_Value;
 
    ----------------------------
    -- Process_Pending_Values --
@@ -225,10 +225,32 @@ package body CCG.Instructions is
 
    procedure Process_Pending_Values is
    begin
+      --  We have a list of pending values, which repesent LLVM values that
+      --  are being stored as C expressions and not copied into declared
+      --  variables. We want to do the stores for any "final" values. The
+      --  only values that have been saved to this list are those that are
+      --  used exactly once. That usage is either by a later entry in the
+      --  list or by an instruction we haven't encountered yet. In the
+      --  former case, we want to use it in the elaboration of that later
+      --  list entry.
+      --
+      --  We work from the end of the list towards the front since we don't
+      --  need to produce variables for expressions only used later.  But
+      --  because the only entries in the list are used exactly once, we
+      --  know that we don't see the reference to the value as a variable
+      --  in elaborating any other list entry. So we know that the values
+      --  written out here are independant and thus the fact that we're
+      --  writing them out "backwards" is fine.
+
       for J in reverse 1 .. Pending_Value_Table.Last loop
-         if not Get_Is_Used (Pending_Value_Table.Table (J)) then
-            Force_To_Variable (Pending_Value_Table.Table (J));
-         end if;
+         declare
+            V : constant Value_T := Pending_Value_Table.Table (J);
+
+         begin
+            if not Get_Is_Used (V) and then not Get_Is_Constant (V) then
+               Force_To_Variable (V);
+            end if;
+         end;
       end loop;
 
       Pending_Value_Table.Set_Last (0);
@@ -575,7 +597,7 @@ package body CCG.Instructions is
    -----------------------
 
    procedure Force_To_Variable (V : Value_T) is
-      C_Val : constant Str := Get_C_Value (V);
+      C_Val : Str := Get_C_Value (V);
 
    begin
       if Present (C_Val) then
@@ -585,6 +607,17 @@ package body CCG.Instructions is
          --  declare it, and copy the value to it.
 
          Set_C_Value (V, No_Str);
+
+         --  If V is a LHS, it means that we're presenting the value as if it
+         --  was the address. So take the address and clear the flag.
+
+         if Get_Is_LHS (V) then
+            C_Val := Addr_Of (C_Val);
+            Set_Is_LHS (V, False);
+         end if;
+
+         --  Declare the variable and write the copy into it
+
          Maybe_Decl  (V);
          Write_Copy  (V, C_Val, Type_Of (V));
       end if;

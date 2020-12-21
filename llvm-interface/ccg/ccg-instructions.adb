@@ -225,7 +225,7 @@ package body CCG.Instructions is
 
    procedure Process_Pending_Values is
    begin
-      --  We have a list of pending values, which repesent LLVM values that
+      --  We have a list of pending values, which represent LLVM values that
       --  are being stored as C expressions and not copied into declared
       --  variables. We want to do the stores for any "final" values. The
       --  only values that have been saved to this list are those that are

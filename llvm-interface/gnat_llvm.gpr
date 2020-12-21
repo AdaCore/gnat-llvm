@@ -41,7 +41,7 @@ project Gnat_LLVM is
       for Ignored_Source_Files use
         ("ada_get_targ.adb",   --  used by CodePeer/SPARK
          "bindo-validators*",  --  debug code
-         "ccg*",               --  LLVM-based CCG back-end
+         "*ccg*",              --  LLVM-based CCG back-end
          "cprint*",            --  old CCG back-end
          "*_dist.adb",         --  annex E
          "g-*",                --  runtime files, only partly used by GNAT

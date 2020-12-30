@@ -324,6 +324,12 @@ package body CCG.Subprograms is
          New_Subprogram (V);
          Output_BB (Get_Entry_Basic_Block (V));
       end if;
+
+      --  There shouldn't be anything still pending now, but if there is,
+      --  output it now since if we hold it to the next subprogram, it'll
+      --  reference variables in this one.
+
+      Process_Pending_Values;
    end Generate_C_For_Subprogram;
 
    ------------------

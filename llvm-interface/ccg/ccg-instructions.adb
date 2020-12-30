@@ -216,7 +216,11 @@ package body CCG.Instructions is
 
    procedure Add_Pending_Value (V : Value_T) is
    begin
-      Pending_Value_Table.Append (V);
+      --  If this value isn't used, we don't ever need to output it
+
+      if Num_Uses (V) > 0 then
+         Pending_Value_Table.Append (V);
+      end if;
    end Add_Pending_Value;
 
    ----------------------------
@@ -653,7 +657,7 @@ package body CCG.Instructions is
 
          Set_C_Value (LHS, RHS);
          if Is_A_Instruction (LHS) then
-            Pending_Value_Table.Append (LHS);
+            Add_Pending_Value (LHS);
          end if;
       end if;
    end Assignment;

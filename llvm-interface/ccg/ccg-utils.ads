@@ -65,6 +65,11 @@ package CCG.Utils is
      with Pre => Present (V);
    --  True if this is or has a type that's simple (elementary)
 
+   function Is_Zero_Length_Array (T : Type_T) return Boolean is
+     (Get_Type_Kind (T) = Array_Type_Kind
+        and then Get_Array_Length (T) = Nat (0))
+     with Pre => Present (T);
+
    function Is_Simple_Constant (V : Value_T) return Boolean is
      ((Get_Value_Kind (V)
          in Constant_Int_Value_Kind | Constant_Pointer_Null_Value_Kind

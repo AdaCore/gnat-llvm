@@ -274,17 +274,17 @@ package body CCG.Aggregates is
             ST : constant Type_T := Struct_Get_Type_At_Index (T, J);
 
          begin
-            --  If the type of the last field is a zero-length array, this
-            --  indicates a variable-sized array. If we write it as an
-            --  array of length one, the size of the struct will be
-            --  different than expected, but not all versions of C support
-            --  0-sized arrays.
+            --  If the type of a field is a zero-length array, this can
+            --  indicate either a variable-sized array (usually for the last
+            --  field) or an instance of a variable-sized array where the
+            --  size is zero.  In either case, if we write it as an array of
+            --  length one, the size of the struct will be different than
+            --  expected, but not all versions of C support 0-sized arrays.
             --  ??? We may want to adjust what we do here as we add
-            --  functionality to support various different C compiler options.
+            --  functionality to support various different C compiler
+            --  options.
 
-            if Get_Type_Kind (ST) /= Array_Type_Kind
-              or else Get_Array_Length (ST) /= Nat (0) or else J /= Types - 1
-            then
+            if not Is_Zero_Length_Array (ST) then
                Write_Str ("    " & ST & " " & Get_Field_Name (T, J) & ";",
                           Eol => True);
             end if;
@@ -479,25 +479,56 @@ package body CCG.Aggregates is
             pragma Assert (Get_Type_Kind (Aggr_T) = Struct_Type_Kind);
 
             declare
-               Idx : constant Nat    := Nat (Const_Int_Get_S_Ext_Value (Op));
-               ST  : constant Type_T := Struct_Get_Type_At_Index (Aggr_T, Idx);
+               Idx   : constant Nat    := Nat (Const_Int_Get_S_Ext_Value (Op));
+               ST    : constant Type_T :=
+                 Struct_Get_Type_At_Index (Aggr_T, Idx);
+               Found : Boolean         := False;
 
             begin
-               --  If this is a zero-length array in the last component
-               --  of the struct, it doesn't actually exist, so convert this
-               --  into a cast to char *, point past the end of the struct,
-               --  and then cast to a pointer to the array's element type.
+               --  If this is a zero-length array, it doesn't actually
+               --  exist, so convert this into a cast to char *, point past
+               --  the end of a previous non-zero-length-array field (or at
+               --  the start of the struct if none) and then cast to a
+               --  pointer to the array's element type.
 
-               if Get_Type_Kind (ST) = Array_Type_Kind
-                 and then Get_Array_Length (ST) = Nat (0)
-                 and then Idx = Count_Struct_Element_Types (Aggr_T) - 1
-               then
-                  Result := "(char *) " &
-                    (if Is_LHS then Addr_Of (Result) else Result) &
-                    " + sizeof (" & Aggr_T & ")";
+               if Is_Zero_Length_Array (ST) then
+                  for Prev_Idx in reverse 0 .. Idx - 1 loop
+                     declare
+                        Prev_ST : constant Type_T :=
+                          Struct_Get_Type_At_Index (Aggr_T, Prev_Idx);
+                        Ref     : constant Str    :=
+                          Result & (if Is_LHS then "." else "->") +
+                            Component & Get_Field_Name (Aggr_T, Prev_Idx);
+
+                     begin
+                        --  If we found a previous non-zero-length array
+                        --  field, point to the end of it.
+
+                        if not Is_Zero_Length_Array (Prev_ST) then
+                           Result := ("(char *) " & Addr_Of (Ref) &
+                                        " + sizeof (" & Ref & ")");
+                           Found  := True;
+                           exit;
+                        end if;
+                     end;
+                  end loop;
+
+                  --  If we haven't found such a field, point to the beginning
+                  --  of the object.
+
+                  if not Found then
+                     Result := "(char *) " &
+                       (if Is_LHS then Addr_Of (Result) else Result);
+                  end if;
+
+                  --  Now cast to the desired type
+
                   Result :=
                     "((" & Get_Element_Type (ST) & " *) (" & Result & "))";
                   Is_LHS := False;
+
+               --  Otherwise, just do a normal field reference
+
                else
                   Result :=
                     Result & (if Is_LHS then "." else "->") + Component &

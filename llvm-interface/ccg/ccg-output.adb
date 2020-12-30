@@ -58,8 +58,9 @@ package body CCG.Output is
      with Pre => Present (T);
    --  Write an undef of type T
 
-   procedure Maybe_Write_Comma (J : Nat) with Inline;
-   --  If J is nonzero, write a comma
+   procedure Maybe_Write_Comma (First : in out Boolean)
+     with Post => not First, Inline;
+   --  If First isn't set, write a comma.  Then clear First
 
    procedure Write_C_Char_Code (CC : Character);
    --  Write the appropriate C code for character CC
@@ -70,11 +71,13 @@ package body CCG.Output is
    -- Maybe_Write_Comma --
    -----------------------
 
-   procedure Maybe_Write_Comma (J : Nat) is
+   procedure Maybe_Write_Comma (First : in out Boolean) is
    begin
-      if J /= 0 then
+      if not First then
          Write_Str (", ");
       end if;
+
+      First := False;
    end Maybe_Write_Comma;
 
    ------------------
@@ -221,6 +224,8 @@ package body CCG.Output is
    -----------------
 
    procedure Write_Undef (T : Type_T) is
+      First : Boolean := True;
+
    begin
       --  We can write anything for undef, so we might as well write zero
 
@@ -238,7 +243,7 @@ package body CCG.Output is
          when Struct_Type_Kind =>
             Write_Str ("{");
             for J in 0 .. Nat'(Count_Struct_Element_Types (T)) - 1 loop
-               Maybe_Write_Comma (J);
+               Maybe_Write_Comma (First);
                Write_Undef (Struct_Get_Type_At_Index (T, J));
             end loop;
 
@@ -253,7 +258,7 @@ package body CCG.Output is
          when Array_Type_Kind =>
             Write_Str ("{");
             for J in 0 .. Effective_Array_Length (T) - 1 loop
-               Maybe_Write_Comma (J);
+               Maybe_Write_Comma (First);
                Write_Undef (Get_Element_Type (T));
             end loop;
 
@@ -290,6 +295,8 @@ package body CCG.Output is
             Write_Str ("L");
          end if;
       end Write_Int_Qualifier;
+
+      First : Boolean := True;
 
    begin
       if Is_A_Constant_Int (V) then
@@ -351,9 +358,18 @@ package body CCG.Output is
       elsif Is_A_Constant_Array (V) or else Is_A_Constant_Struct (V) then
          Write_Str ("{");
          for J in 0 .. Nat'(Get_Num_Operands (V)) - 1 loop
-            Maybe_Write_Comma (J);
-            Maybe_Decl (Get_Operand (V, J), For_Initializer => True);
-            Write_Value (Get_Operand (V, J), Flags => Flags);
+
+            --  If this is a zero-length array in a struct, omit the
+            --  initializer, since we don't have that field.
+
+            if not Is_A_Constant_Struct (V)
+              or else not Is_Zero_Length_Array (Struct_Get_Type_At_Index
+                                                  (Type_Of (V), J))
+            then
+               Maybe_Write_Comma (First);
+               Maybe_Decl (Get_Operand (V, J), For_Initializer => True);
+               Write_Value (Get_Operand (V, J), Flags => Flags);
+            end if;
          end loop;
 
          --  If this is a zero-length array or struct, add an extra item
@@ -378,7 +394,7 @@ package body CCG.Output is
          else
             Write_Str ("{");
             for J in 0 .. Nat'(Get_Num_CDA_Elements (V)) - 1 loop
-               Maybe_Write_Comma (J);
+               Maybe_Write_Comma (First);
                Write_Constant_Value (Get_Element_As_Constant (V, J));
             end loop;
 

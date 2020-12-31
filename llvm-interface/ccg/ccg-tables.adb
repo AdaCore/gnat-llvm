@@ -1239,7 +1239,7 @@ package body CCG.Tables is
       --  Otherwise, add the operator to dereference
 
       else
-         return "*" & S + Unary;
+         return "*" & (S + Unary);
       end if;
    end Deref;
 

@@ -28,6 +28,7 @@ with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;  use CCG.Aggregates;
+with CCG.Helper;      use CCG.Helper;
 with CCG.Tables;      use CCG.Tables;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
@@ -128,14 +129,9 @@ package body CCG is
       Is_Padding  : Boolean := False;
       Is_Bitfield : Boolean := False) is
    begin
-      --  If we're not generating C code, don't do anything
-
-      if Code_Generation /= Write_C then
-         return;
+      if Emit_C then
+         Set_Field_Name_Info (TE, Idx, Name, Is_Padding, Is_Bitfield);
       end if;
-
-      Set_Field_Name_Info (TE, Idx, Name, Is_Padding, Is_Bitfield);
-
    end C_Set_Field_Name_Info;
 
    ------------------
@@ -144,12 +140,9 @@ package body CCG is
 
    procedure C_Set_Struct (TE : Entity_Id; T : Type_T) is
    begin
-      if Code_Generation /= Write_C then
-         return;
+      if Emit_C then
+         Set_Struct (TE, T);
       end if;
-
-      Set_Struct (TE, T);
-
    end C_Set_Struct;
 
    -----------------------
@@ -158,13 +151,26 @@ package body CCG is
 
    procedure C_Set_Is_Unsigned (V : Value_T) is
    begin
-      if Code_Generation /= Write_C then
-         return;
+      if Emit_C then
+         Set_Is_Unsigned (V);
+         Notify_On_Value_Delete (V, Delete_Value_Info'Access);
       end if;
-
-      Set_Is_Unsigned (V);
-      Notify_On_Value_Delete (V, Delete_Value_Info'Access);
    end C_Set_Is_Unsigned;
+
+   -----------------------
+   -- C_Set_Is_Variable --
+   -----------------------
+
+   procedure C_Set_Is_Variable (V : Value_T) is
+   begin
+      --  If we're generating LLVM to generate C and this has a name,
+      --  show that it's a variable.
+
+      if Emit_C and then Has_Name (V) then
+         Set_Is_Variable (V);
+         Notify_On_Value_Delete (V, Delete_Value_Info'Access);
+      end if;
+   end C_Set_Is_Variable;
 
    ---------------
    -- Error_Msg --

@@ -62,8 +62,8 @@ package body CCG.Tables is
       C_Value             : Str;
       --  If Present, a string that represents the value of the Value_T
 
-      No_Name             : Boolean;
-      --  True if there's no LLVM name for this value; we use the ordinal
+      Is_Variable         : Boolean;
+      --  True if a variable declared at source level
 
       Is_Decl_Output      : Boolean;
       --  True if we wrote any needed decl for this value
@@ -123,9 +123,6 @@ package body CCG.Tables is
    type BB_Data is record
       Was_Output : Boolean;
       --  True if this basic block has already been output
-
-      No_Name           : Boolean;
-      --  True if there's no LLVM name for this block; we use the ordinal
 
       Output_Idx : Nat;
       --  A positive number if we've assigned an ordinal to use as
@@ -1259,7 +1256,7 @@ package body CCG.Tables is
          return No_Value_Idx;
       else
          Value_Data_Table.Append ((C_Value             => null,
-                                   No_Name             => False,
+                                   Is_Variable         => False,
                                    Is_Decl_Output      => False,
                                    Is_Temp_Decl_Output => False,
                                    Is_LHS              => False,
@@ -1323,7 +1320,6 @@ package body CCG.Tables is
          return No_BB_Idx;
       else
          BB_Data_Table.Append ((Was_Output => False,
-                                No_Name    => False,
                                 Output_Idx => 0));
          Insert (BB_Data_Map, B, BB_Data_Table.Last);
          return BB_Data_Table.Last;
@@ -1342,16 +1338,16 @@ package body CCG.Tables is
               else null);
    end Get_C_Value;
 
-   -----------------
-   -- Get_No_Name --
-   -----------------
+   ---------------------
+   -- Get_Is_Variable --
+   ---------------------
 
-   function Get_No_Name (V : Value_T) return Boolean is
+   function Get_Is_Variable (V : Value_T) return Boolean is
       Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
 
    begin
-      return Present (Idx) and then Value_Data_Table.Table (Idx).No_Name;
-   end Get_No_Name;
+      return Present (Idx) and then Value_Data_Table.Table (Idx).Is_Variable;
+   end Get_Is_Variable;
 
    ------------------------
    -- Get_Is_Decl_Output --
@@ -1442,16 +1438,16 @@ package body CCG.Tables is
       Value_Data_Table.Table (Idx).C_Value := S;
    end Set_C_Value;
 
-   -----------------
-   -- Set_No_Name --
-   -----------------
+   ---------------------
+   -- Set_Is_Variable --
+   ---------------------
 
-   procedure Set_No_Name (V : Value_T; B : Boolean := True) is
+   procedure Set_Is_Variable (V : Value_T; B : Boolean := True) is
       Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
 
    begin
-      Value_Data_Table.Table (Idx).No_Name := B;
-   end Set_No_Name;
+      Value_Data_Table.Table (Idx).Is_Variable := B;
+   end Set_Is_Variable;
 
    ------------------------
    -- Set_Is_Decl_Output --
@@ -1621,29 +1617,6 @@ package body CCG.Tables is
    begin
       return Present (Idx) and then BB_Data_Table.Table (Idx).Was_Output;
    end Get_Was_Output;
-
-   -----------------
-   -- Get_No_Name --
-   -----------------
-
-   function Get_No_Name (BB : Basic_Block_T) return Boolean is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => False);
-
-   begin
-      return Present (Idx) and then BB_Data_Table.Table (Idx).No_Name;
-   end Get_No_Name;
-
-   -----------------
-   -- Set_No_Name --
-   -----------------
-
-   procedure Set_No_Name
-     (BB : Basic_Block_T; B : Boolean := True) is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
-
-   begin
-      BB_Data_Table.Table (Idx).No_Name := B;
-   end Set_No_Name;
 
    --------------------
    -- Set_Was_Output --

@@ -38,16 +38,27 @@ package body CCG.Helper is
       return Result;
    end Const_Real_Get_Double;
 
-   --------------
-   -- Has_Name --
-   --------------
+   ---------------------
+   -- Struct_Has_Name --
+   ---------------------
 
-   function Has_Name (T : Type_T) return Boolean is
-      function Has_Name (T : Type_T) return Bool
-        with Import, Convention => C, External_Name => "Has_Name";
+   function Struct_Has_Name (T : Type_T) return Boolean is
+      function Struct_Has_Name (T : Type_T) return Bool
+        with Import, Convention => C, External_Name => "Struct_Has_Name";
    begin
-      return (if Has_Name (T) /= 0 then True else False);
-   end Has_Name;
+      return (if Struct_Has_Name (T) /= 0 then True else False);
+   end Struct_Has_Name;
+
+   --------------------
+   -- Value_Has_Name --
+   --------------------
+
+   function Value_Has_Name (V : Value_T) return Boolean is
+      function Value_Has_Name (V : Value_T) return Bool
+        with Import, Convention => C, External_Name => "Value_Has_Name";
+   begin
+      return (if Value_Has_Name (V) /= 0 then True else False);
+   end Value_Has_Name;
 
    ---------------------
    -- Get_Opcode_Name --

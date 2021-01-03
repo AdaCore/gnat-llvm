@@ -1594,6 +1594,12 @@ package body GNATLLVM.Variables is
          C_Set_Is_Unsigned (+LLVM_Var);
       end if;
 
+      --  If this is a variable that comes from source, mark it as such
+
+      if Comes_From_Source (E) then
+         C_Set_Is_Variable (+LLVM_Var);
+      end if;
+
       return LLVM_Var;
 
    end Make_Global_Variable;
@@ -2123,6 +2129,12 @@ package body GNATLLVM.Variables is
 
       if Is_Unsigned_Type (GT) and then not Is_Ref then
          C_Set_Is_Unsigned (+LLVM_Var);
+      end if;
+
+      --  If this is a variable that comes from source, mark it as such
+
+      if Comes_From_Source (E) then
+         C_Set_Is_Variable (+LLVM_Var);
       end if;
 
       --  If we haven't already copied in any initializing expression, do

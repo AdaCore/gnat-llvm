@@ -48,8 +48,27 @@ package CCG.Helper is
      (Get_Param (V, unsigned (P_Num)))
      with Pre => Present (V), Post => Present (Get_Param'Result);
 
-   function Has_Name (T : Type_T) return Boolean
+   function Struct_Has_Name (T : Type_T) return Boolean
      with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
+
+   function Value_Has_Name (V : Value_T) return Boolean
+     with Pre => Present (V);
+
+   function Has_Name (T : Type_T) return Boolean is
+     (Struct_Has_Name (T))
+     with Pre => Present (T);
+
+   function Has_Name (V : Value_T) return Boolean is
+     (Value_Has_Name (V))
+     with Pre => Present (V);
+
+   function Has_Name (BB : Basic_Block_T) return Boolean is
+     (Value_Has_Name (Basic_Block_As_Value (BB)))
+     with Pre => Present (BB);
+
+   function Get_Value_Name (BB : Basic_Block_T) return String is
+     (Get_Value_Name (Basic_Block_As_Value (BB)))
+     with Pre => Present (BB);
 
    function Count_Struct_Element_Types (T : Type_T) return Nat is
       (Nat (unsigned'(Count_Struct_Element_Types (T))))

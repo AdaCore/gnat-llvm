@@ -304,9 +304,18 @@ Is_Constant_Data (Value *v)
 
 extern "C"
 bool
-Has_Name (StructType *t)
+Struct_Has_Name (StructType *t)
 {
   return t->hasName ();
+}
+
+/*  Say whether this value has a name */
+
+extern "C"
+bool
+Value_Has_Name (Value *v)
+{
+    return v->getName ().size () != 0;
 }
 
 /* The LLVM C interface only provide single-index forms of extractvalue

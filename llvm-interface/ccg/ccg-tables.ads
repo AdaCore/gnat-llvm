@@ -325,9 +325,9 @@ package CCG.Tables is
      with Pre => Present (V), Inline;
    --  If Present, a string that represents the value of the Value_T
 
-   function Get_No_Name             (V : Value_T) return Boolean
+   function Get_Is_Variable         (V : Value_T) return Boolean
+   --  True if V represents a variable declared at source level
      with Pre => Present (V), Inline;
-   --  True if there's no LLVM name for this value; we use the ordinal
 
    function Get_Is_Decl_Output      (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
@@ -361,9 +361,8 @@ package CCG.Tables is
 
    procedure Set_C_Value            (V : Value_T; S : Str)
      with Pre => Present (V), Post => Get_C_Value (V) = S, Inline;
-   procedure Set_No_Name            (V : Value_T; B : Boolean := True)
-     with Pre  => Present (V),
-          Post => Get_No_Name (V) = B, Inline;
+   procedure Set_Is_Variable        (V : Value_T; B : Boolean := True)
+     with Pre  => Present (V), Post => Get_Is_Variable (V) = B, Inline;
    procedure Set_Is_Decl_Output      (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Decl_Output (V) = B, Inline;
    procedure Set_Is_Temp_Decl_Output (V : Value_T; B : Boolean := True)
@@ -410,14 +409,8 @@ package CCG.Tables is
 
    function Get_Was_Output (BB : Basic_Block_T) return Boolean
      with Pre => Present (BB), Inline;
-   function Get_No_Name    (BB : Basic_Block_T) return Boolean
-     with Pre => Present (BB), Inline;
-
    procedure Set_Was_Output (BB : Basic_Block_T; B : Boolean := True)
      with Pre  => Present (BB), Post => Get_Was_Output (BB) = B, Inline;
-   procedure Set_No_Name    (BB : Basic_Block_T; B : Boolean := True)
-     with Pre  => Present (BB),
-          Post => Get_No_Name (BB) = B, Inline;
 
    procedure Delete_Value_Info (V : Value_T) with Convention => C;
    --  Delete all information previously stored for V

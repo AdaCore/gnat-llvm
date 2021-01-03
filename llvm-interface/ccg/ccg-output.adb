@@ -153,27 +153,18 @@ package body CCG.Output is
 
    procedure Write_Value_Name (V : Value_T) is
    begin
-     --  If it has a name, write that name and we're done.  Otherwise,
-     --  mark it as not having a name if we haven't already.
+      --  If it has a name, write that name and we're done
 
-      if not Get_No_Name (V) then
-         declare
-            S : constant String := Get_Value_Name (V);
+      if Has_Name (V) then
+         Write_C_Name (Get_Value_Name (V));
 
-         begin
-            if S'Length > 0 then
-               Write_C_Name (S);
-               return;
-            end if;
+      --  Otherwise print (and make if necessary) an internal name for this
+      --  value.
 
-            Set_No_Name (V);
-         end;
+      else
+         Write_Str ("ccg_v");
+         Write_Int (Get_Output_Idx (V));
       end if;
-
-      --  Print (and make if necessary) an internal name for this value
-
-      Write_Str ("ccg_v");
-      Write_Int (Get_Output_Idx (V));
    end Write_Value_Name;
 
    -----------------------
@@ -823,7 +814,7 @@ package body CCG.Output is
             end if;
 
          when Struct_Type_Kind =>
-            if Has_Name (T) then
+            if Struct_Has_Name (T) then
                Write_C_Name (Get_Struct_Name (T));
             else
                Write_Str ("ccg_s");
@@ -886,25 +877,15 @@ package body CCG.Output is
 
    procedure Write_BB (BB : Basic_Block_T) is
    begin
-     --  If it has a name, write that name and we're done.  Otherwise,
-     --  mark it as not having a name if we haven't already.
+      --  If it has a name, write that name. Otherwise, print (and possibly
+      --  make) an internal name.
 
-      if not Get_No_Name (BB) then
-         declare
-            S : constant String := Get_Value_Name (Basic_Block_As_Value (BB));
-
-         begin
-            if S'Length > 0 then
-               Write_C_Name (S);
-               return;
-            end if;
-
-            Set_No_Name (BB);
-         end;
+      if Has_Name (BB) then
+         Write_C_Name (Get_Value_Name (BB));
+      else
+         Write_Str ("ccg_l");
+         Write_Int (Get_Output_Idx (BB));
       end if;
-
-      Write_Str ("ccg_l");
-      Write_Int (Get_Output_Idx (BB));
    end Write_BB;
 
 end CCG.Output;

@@ -19,7 +19,6 @@ with Interfaces.C;
 
 with LLVM.Types; use LLVM.Types;
 
-with Einfo; use Einfo;
 with Namet; use Namet;
 with Types; use Types;
 
@@ -40,20 +39,17 @@ package CCG is
    --  The main procedure, which generates C code from the LLVM IR
 
    procedure C_Set_Field_Name_Info
-     (TE          : Entity_Id;
+     (SID         : Struct_Id;
       Idx         : Nat;
       Name        : Name_Id := No_Name;
       Is_Padding  : Boolean := False;
-      Is_Bitfield : Boolean := False)
-     with Pre => Is_Type (TE);
-   --  Say what field Idx in the next struct is used for.  This is in
-   --  the processing of TE.
+      Is_Bitfield : Boolean := False);
+   --  Say what field Idx in the struct temporarily denoted by SID is used for
 
-   procedure C_Set_Struct (TE : Entity_Id; T : Type_T)
-     with Pre => Is_Type (TE) and then Present (T), Inline;
-   --  Indicate that the previous calls to Set_Field_Name_Info for TE
+   procedure C_Set_Struct (SID : Struct_Id; T : Type_T)
+     with Pre => Present (T), Inline;
+   --  Indicate that the previous calls to Set_Field_Name_Info for SID
    --  were for LLVM struct type T.
-   --  Define the sizes of all the basic C types.
 
    procedure C_Set_Is_Unsigned (V : Value_T)
      with Pre => Present (V), Inline;
@@ -68,6 +64,8 @@ package CCG is
    --  ??? For now, default to the First_Source_Ptr sloc. Will hopefully use a
    --  better source location in the future when we keep track of them for e.g.
    --  generating #line information.
+
+   --  Define the sizes of all the basic C types.
 
    Char_Size      : Pos;
    Short_Size     : Pos;

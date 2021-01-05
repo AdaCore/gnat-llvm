@@ -31,6 +31,7 @@ package body CCG.Aggregates is
 
    --  This package contains routines used to process aggregate data,
    --  which are arrays and structs.
+
    --  We want to record information about each field in an LLVM struct
    --  type corresponding to an Ada record or part thereof so we can use
    --  those names in the generated code. The following record is used
@@ -52,8 +53,8 @@ package body CCG.Aggregates is
       Name        : Name_Id;
       --  If Present, the name of the field
 
-      TE          : Entity_Id;
-      --  The GNAT type for the field; used only when initializing field info
+      SID         : Struct_Id;
+      --  The Struct_Id for the field; used only when initializing field info
 
       Next        : Field_Name_Idx;
       --  Index of next field entry for this type
@@ -77,15 +78,15 @@ package body CCG.Aggregates is
       Table_Increment      => 100,
       Table_Name           => "Field_Name_Info_Table");
 
-   --  We need two maps into the above table. One maps a GNAT type into
+   --  We need two maps into the above table. One maps a Struct_Id into
    --  a table entry. This is used to track the initial setting of field info
    --  and is used when we set the struct type.  The second maps a
    --  (struct type, field index) pair into the name info for that field.
 
-   function Hash (TE : Entity_Id) return Hash_Type is (Hash_Type (TE));
+   function Hash (SID : Struct_Id) return Hash_Type is (Hash_Type (SID));
 
    package Entity_To_FNI_Maps is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Entity_Id,
+     (Key_Type        => Struct_Id,
       Element_Type    => Field_Name_Idx,
       Hash            => Hash,
       Equivalent_Keys => "=");
@@ -120,14 +121,14 @@ package body CCG.Aggregates is
    -------------------------
 
    procedure Set_Field_Name_Info
-     (TE          : Entity_Id;
+     (SID         : Struct_Id;
       Idx         : Nat;
       Name        : Name_Id := No_Name;
       Is_Padding  : Boolean := False;
       Is_Bitfield : Boolean := False)
    is
       use Entity_To_FNI_Maps;
-      Position : constant Cursor         := Find (Entity_To_FNI_Map, TE);
+      Position : constant Cursor         := Find (Entity_To_FNI_Map, SID);
       F_Idx    : constant Field_Name_Idx :=
         (if   Has_Element (Position) then Element (Position)
          else No_Field_Name_Idx);
@@ -139,7 +140,7 @@ package body CCG.Aggregates is
       Field_Name_Info_Table.Append ((T           => No_Type_T,
                                      F_Number    => Idx,
                                      Name        => Name,
-                                     TE          => TE,
+                                     SID         => SID,
                                      Next        => F_Idx,
                                      Is_Padding  => Is_Padding,
                                      Is_Bitfield => Is_Bitfield));
@@ -147,7 +148,7 @@ package body CCG.Aggregates is
          Replace_Element (Entity_To_FNI_Map, Position,
                           Field_Name_Info_Table.Last);
       else
-         Insert (Entity_To_FNI_Map, TE, Field_Name_Info_Table.Last);
+         Insert (Entity_To_FNI_Map, SID, Field_Name_Info_Table.Last);
       end if;
 
    end Set_Field_Name_Info;
@@ -156,25 +157,25 @@ package body CCG.Aggregates is
    -- Set_Struct --
    ----------------
 
-   procedure Set_Struct (TE : Entity_Id; T : Type_T) is
+   procedure Set_Struct (SID : Struct_Id; T : Type_T) is
       package EFM renames Entity_To_FNI_Maps;
       package TFM renames FNI_Maps;
-      Position : constant EFM.Cursor := EFM.Find (Entity_To_FNI_Map, TE);
+      Position : constant EFM.Cursor := EFM.Find (Entity_To_FNI_Map, SID);
       F_Idx    : Field_Name_Idx;
 
    begin
       --  If we didn't make any entry in the Field Name Info table for
       --  this type, we don't have anything to do. This could have happened
-      --  either if we weren't generating C or if TE is a null record.
+      --  either if we weren't generating C or if SID denotes a null record.
 
       if not EFM.Has_Element (Position) then
          return;
       end if;
 
       --  Otherwise get the first entry we made and loop over all
-      --  Field_Name_Info entries for TE, looking for entries where the
+      --  Field_Name_Info entries for SID, looking for entries where the
       --  LLVM type hasn't yet been set. For each, set the type and add the
-      --  (type, field index) pair to the hash table, but if the type has
+      --  (LLVM type, field index) pair to the hash table, but if the type has
       --  no name, don't insert it into the table since it'll be a shared
       --  struct.
 
@@ -204,7 +205,7 @@ package body CCG.Aggregates is
       use FNI_Maps;
       Position : constant Cursor := Find (FNI_Map, (T, Idx));
       FNI      : Field_Name_Info :=
-        (T, Idx, No_Name, Types.Empty, No_Field_Name_Idx, False, False);
+        (T, Idx, No_Name, No_Struct_Id, No_Field_Name_Idx, False, False);
 
    begin
       --  If we have information for this field in our table (we should),

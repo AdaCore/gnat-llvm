@@ -41,6 +41,9 @@ package GNATLLVM.Utils is
       Hash            => Hash_Value_T,
       Equivalent_Keys => "=");
 
+   function New_Struct_Id return Struct_Id;
+   --  Return a new, unique, Struct_Id
+
    function List_Length_Non_Pragma (List : List_Id) return Nat
      with Pre => Present (List);
    --  Like List_Length, but return only those items considered "non-pragma"

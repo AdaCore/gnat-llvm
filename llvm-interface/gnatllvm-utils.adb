@@ -32,6 +32,18 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
 
+   Last_Struct_Id : Struct_Id := Struct_Id_Low_Bound;
+
+   -------------------
+   -- New_Struct_Id --
+   -------------------
+
+   function New_Struct_Id return Struct_Id is
+   begin
+      Last_Struct_Id := Last_Struct_Id + 1;
+      return Last_Struct_Id;
+   end New_Struct_Id;
+
    ------------------
    -- Hash_Value_T --
    ------------------

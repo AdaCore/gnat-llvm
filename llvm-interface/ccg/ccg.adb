@@ -123,14 +123,14 @@ package body CCG is
    ---------------------------
 
    procedure C_Set_Field_Name_Info
-     (TE          : Entity_Id;
+     (SID         : Struct_Id;
       Idx         : Nat;
       Name        : Name_Id := No_Name;
       Is_Padding  : Boolean := False;
       Is_Bitfield : Boolean := False) is
    begin
       if Emit_C then
-         Set_Field_Name_Info (TE, Idx, Name, Is_Padding, Is_Bitfield);
+         Set_Field_Name_Info (SID, Idx, Name, Is_Padding, Is_Bitfield);
       end if;
    end C_Set_Field_Name_Info;
 
@@ -138,10 +138,10 @@ package body CCG is
    -- C_Set_Struct --
    ------------------
 
-   procedure C_Set_Struct (TE : Entity_Id; T : Type_T) is
+   procedure C_Set_Struct (SID : Struct_Id; T : Type_T) is
    begin
       if Emit_C then
-         Set_Struct (TE, T);
+         Set_Struct (SID, T);
       end if;
    end C_Set_Struct;
 

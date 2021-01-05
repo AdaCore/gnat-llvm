@@ -34,18 +34,16 @@ package CCG.Aggregates is
    --  simpler for us, but complicate the record creation process.
 
    procedure Set_Field_Name_Info
-     (TE          : Entity_Id;
+     (SID         : Struct_Id;
       Idx         : Nat;
       Name        : Name_Id := No_Name;
       Is_Padding  : Boolean := False;
-      Is_Bitfield : Boolean := False)
-     with Pre => Is_Type (TE);
-   --  Say what field Idx in the next struct is used for.  This is in
-   --  the processing of TE.
+      Is_Bitfield : Boolean := False);
+   --  Say what field Idx in the struct temporarily denoted by SID is used for
 
-   procedure Set_Struct (TE : Entity_Id; T : Type_T)
-     with Pre => Is_Type (TE) and then Present (T);
-   --  Indicate that the previous calls to Set_Field_Name_Info for TE
+   procedure Set_Struct (SID : Struct_Id; T : Type_T)
+     with Pre => Present (T);
+   --  Indicate that the previous calls to Set_Field_Name_Info for SID
    --  were for LLVM struct type T.
 
    function Get_Field_Name (T : Type_T; Idx : Nat) return Str

@@ -1932,7 +1932,7 @@ package body GNATLLVM.Records.Create is
       LLVM_Type := Type_Of (GT);
       if No (LLVM_Type) then
          pragma Assert (Is_Empty_GL_Type (GT));
-         LLVM_Type := Struct_Create_Named (Context, Get_Name (TE));
+         LLVM_Type := Struct_Create_Named (Context, Get_Ext_Name (TE));
       end if;
 
       Update_GL_Type (GT, LLVM_Type, True);

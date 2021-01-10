@@ -457,6 +457,15 @@ package body GNATLLVM.Types is
       GT       : GL_Type;
       Alloc_GT : GL_Type) return GL_Value
    is
+      function Same_Memory (V1, V2 : Value_T) return Boolean is
+        ((if    Present (Is_A_Bit_Cast_Inst (V1))
+          then  Same_Memory (Get_Operand (V1, 0), V2)
+          elsif Present (Is_A_Bit_Cast_Inst (V1))
+          then  Same_Memory (Get_Operand (V2, 0), V1)
+          else  V1 = V2))
+        with Pre => Present (V1) and then Present (V2);
+      --  Return True iff V1 and V2 are exactly the same memory location
+
       R        : constant GL_Relationship := Relationship_For_Alloc (GT);
       New_Expr : constant Node_Id         := Strip_Complex_Conversions (Expr);
       Mem_GT   : constant GL_Type         := GT_To_Use (GT, Alloc_GT);
@@ -499,7 +508,8 @@ package body GNATLLVM.Types is
 
       --  If we have a value to move into memory, move it
 
-      if Present (New_V) and then New_V /= Memory and then not Is_Undef (New_V)
+      if Present (New_V) and then not Same_Memory (+New_V, +Memory)
+        and then not Is_Undef (New_V)
       then
          Emit_Assignment (Memory, Value => New_V);
       end if;

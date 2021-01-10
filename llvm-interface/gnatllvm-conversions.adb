@@ -477,8 +477,9 @@ package body GNATLLVM.Conversions is
          else
             Result :=
               Convert_Ref (Get (Result, Any_Reference),
-                           (if   Is_Modular_Integer_Type (GT)
-                                 and then Is_Packed_Array_Impl_Type (GT)
+                           (if   (Is_Modular_Integer_Type (GT)
+                                  and then Is_Packed_Array_Impl_Type (GT))
+                                 or else Is_Unchecked
                             then GT else Prim_GT));
          end if;
 

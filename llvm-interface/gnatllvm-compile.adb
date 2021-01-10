@@ -51,6 +51,11 @@ with CCG; use CCG;
 
 package body GNATLLVM.Compile is
 
+   function Simple_Value_Action (N : Node_Id) return Node_Id
+     with Pre => Nkind (N) = N_Expression_With_Actions;
+   --  If N just declares the value it returns, return the initializer
+   --  of that value; otherwise return Empty.
+
    procedure Emit_Loop_Statement (N : Node_Id)
      with Pre => Nkind (N) = N_Loop_Statement;
    --  Generate code for a loop
@@ -837,6 +842,31 @@ package body GNATLLVM.Compile is
       return Add_To_LValue_List (Result);
    end Emit;
 
+   -------------------------
+   -- Simple_Value_Action --
+   -------------------------
+
+   function Simple_Value_Action (N : Node_Id) return Node_Id is
+      Action : Node_Id := First (Actions (N));
+
+   begin
+      --  Skip any N_Call_Marker nodes
+
+      while Nkind (Action) = N_Call_Marker loop
+         Next (Action);
+      end loop;
+
+      --  If the next action is the last and is a declaration of the
+      --  identifier in Expression, return the value it's initialize to.
+
+      return (if   Nkind (Action) = N_Object_Declaration
+                   and then No (Next (Action))
+                   and then Nkind (Expression (N)) = N_Identifier
+                   and then Defining_Identifier (Action) =
+                              Entity (Expression (N))
+               then Expression (Action) else Empty);
+   end Simple_Value_Action;
+
    --------------------
    --  Emit_Internal --
    --------------------
@@ -878,6 +908,20 @@ package body GNATLLVM.Compile is
             return Emit_Unary_Operation (N);
 
          when N_Expression_With_Actions =>
+
+            --  If this is just defining the value that is to be its result,
+            --  just expand the initializer.
+
+            Expr := Simple_Value_Action (N);
+            if Present (Expr) then
+               return Emit (Expr,
+                            LHS        => LHS,
+                            For_LHS    => For_LHS,
+                            Prefer_LHS => Prefer_LHS);
+            end if;
+
+            --  Otherwise do each action and evaluate our expression
+
             Push_LValue_List;
             Emit (Actions (N));
             Pop_LValue_List;

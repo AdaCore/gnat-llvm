@@ -62,17 +62,17 @@ package body GNATLLVM.Conditionals is
       --  In the case of And, evaluate the right expression when Left is
       --  true. In the case of Or, evaluate it when Left is false.
 
-      LHS := Emit_Expression (Left);
+      LHS := Get (Emit (Left), Boolean_Data);
       Block_Left_Expr_End := Get_Insert_Block;
 
-      Build_Cond_Br (I_Cmp (Int_NE, LHS, Const_Null (LHS)),
+      Build_Cond_Br (LHS,
                      (if And_Op then Block_Right_Expr else Block_Exit),
                      (if And_Op then Block_Exit       else Block_Right_Expr));
 
       --  Emit code for the evaluation of the right part expression
 
       Position_Builder_At_End (Block_Right_Expr);
-      RHS := Emit_Expression (Right);
+      RHS := Get (Emit (Right), Boolean_Data);
 
       Block_Right_Expr_End := Get_Insert_Block;
       Move_To_BB (Block_Exit);
@@ -81,7 +81,7 @@ package body GNATLLVM.Conditionals is
       --  is false and for OR, it's true.  Otherwise, the result is the right.
 
       return Build_Phi
-        ((1 => Const_Int (RHS, (if And_Op then Uint_0 else Uint_1)), 2 => RHS),
+        ((1 => (if And_Op then Const_False else Const_True), 2 => RHS),
          (1 => Block_Left_Expr_End, 2 => Block_Right_Expr_End));
    end Build_Short_Circuit_Op;
 

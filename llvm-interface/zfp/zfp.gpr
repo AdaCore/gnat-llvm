@@ -1,0 +1,17 @@
+project ZFP is
+
+   Common_Flags := Split (External ("CFLAGS", "-O2"), " ") &
+                   External_As_List ("EXTRALIBFLAGS", " ");
+   Ada_Flags    := Common_Flags & ("-nostdinc", "-I../adainclude")
+                   & Split (External ("ADAFLAGS", "-gnatpg"), " ");
+
+   for Object_Dir use "../obj";
+   for Library_Name use "gnat";
+   for Library_Dir use "../adalib";
+   for Library_Kind use External ("LIBRARY_KIND", "static");
+
+   package Compiler is
+      for Switches ("Ada") use Ada_Flags;
+   end Compiler;
+
+end ZFP;

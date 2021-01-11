@@ -239,6 +239,30 @@ $(RTSDIR): bin/llvm-gnat1
 	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR) && \
 	  $(RM) s-oscons-tmplt.*
 
+# ZFP runtime
+
+COMMON_ZFP_SRCS= \
+ada.ads a-assert.adb a-assert.ads a-unccon.ads a-uncdea.ads \
+interfac.ads s-stoele.adb s-stoele.ads s-unstyp.ads
+
+ZFPINCLUDE=lib/rts-zfp/adainclude
+ZFPLIB=lib/rts-zfp/adalib
+
+zfp: build
+	$(RMDIR) $(ZFPINCLUDE) $(ZFPLIB)
+	$(MKDIR) $(ZFPINCLUDE) $(ZFPLIB)
+	for f in $(COMMON_ZFP_SRCS); do \
+	  cp -p $(GNAT_SRC)/libgnat/$$f $(ZFPINCLUDE); \
+	done
+	cp -p zfp/*.* $(ZFPINCLUDE)
+	PATH=$(pwd)/bin:$$PATH \
+	$(GPRBUILD) -p --target=llvm -j$(PROCS) -P$(ZFPINCLUDE)/zfp \
+	  -XCFLAGS="$(CFLAGS)" \
+	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
+	  -XLIBRARY_KIND=$(LIBRARY_KIND) \
+	  -XADAFLAGS=$(ADAFLAGS)
+	cd $(ZFPLIB) && $(CHMOD) a-wx *.ali
+
 # Optionally include sub makefile
 
 -include Makefile.target

@@ -14,6 +14,9 @@ build build-opt clean gnatlib: sanity-check
 gnatlib%: sanity-check
 	$(MAKE) -C llvm-interface $@
 
+zfp: sanity-check
+	$(MAKE) -C llvm-interface $@
+
 automated:
 	$(MAKE) -C llvm-interface bootstrap
 

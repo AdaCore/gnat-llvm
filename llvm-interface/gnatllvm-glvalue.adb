@@ -138,7 +138,7 @@ package body GNATLLVM.GLValue is
               and then not Is_Nonnative_Type (GT);
 
          when Boolean_Data =>
-            return GT = Boolean_GL_Type;
+            return Is_Boolean_Type (GT);
 
          when Reference =>
             return (Kind = Pointer_Type_Kind
@@ -1233,6 +1233,13 @@ package body GNATLLVM.GLValue is
 
    function Const_Null (GT : GL_Type) return GL_Value is
      (G (Const_Null (Type_Of (GT)), GT, Alignment => Max_Valid_Align));
+
+   --------------------
+   -- Const_Infinity --
+   --------------------
+
+   function Const_Infinity (GT : GL_Type) return GL_Value is
+     (G (Get_Infinity (Type_Of (GT)), GT));
 
    ----------------------
    -- Const_Null_Alloc --

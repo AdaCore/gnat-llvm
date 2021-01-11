@@ -28,6 +28,7 @@ with GNAT.Strings;            use GNAT.Strings;
 
 with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
@@ -137,6 +138,10 @@ package body GNATLLVM.Builtins is
    function Emit_FP_Builtin_Call (N : Node_Id; S : String) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
    --  If N is a valid call to a floating point builtin, generate it
+
+   function Emit_FP_Isinf_Call (N : Node_Id; S : String) return GL_Value
+     with Pre  => Nkind (N) in N_Subprogram_Call;
+   --  If N is a valid call to a test for infinity builtin, generate it
 
    function Emit_Sync_Call (N : Node_Id; S : String) return GL_Value
      with Pre  => Nkind (N) in N_Subprogram_Call;
@@ -1005,6 +1010,43 @@ package body GNATLLVM.Builtins is
       return No_GL_Value;
    end Emit_FP_Builtin_Call;
 
+   ------------------------
+   -- Emit_FP_Isinf_Call --
+   ------------------------
+
+   function Emit_FP_Isinf_Call (N : Node_Id; S : String) return GL_Value is
+   begin
+      if Num_Actuals (N) = 1
+        and then S'Length >= 15
+           and then S (S'First .. S'First + 14) = "__builtin_isinf"
+           and then (S'Length = 15
+                       or else (S'Length = 16
+                                  and then (S (S'First + 15) in 'f' | 'l')))
+      then
+         --  Compute the absolute value of the operand and compare that
+         --  against infinity.
+
+         declare
+            Op       : constant GL_Value := Emit_Expression (First_Actual (N));
+            Zero     : constant GL_Value := Const_Null (Op);
+            Nonzero  : constant GL_Value :=
+              Build_Elementary_Comparison (N_Op_Ge, Op, Zero);
+            Abs_Expr : constant GL_Value :=
+              Build_Select (Nonzero, Op, F_Neg (Op));
+            Inf      : constant GL_Value := Const_Infinity (Op);
+
+         begin
+            return Build_Elementary_Comparison (N_Op_Eq, Abs_Expr, Inf);
+         end;
+
+      --  Otherwise, show this isn't a test for infinity
+
+      else
+         return No_GL_Value;
+      end if;
+
+   end Emit_FP_Isinf_Call;
+
    -------------------------
    -- Emit_Intrinsic_Call --
    -------------------------
@@ -1041,6 +1083,10 @@ package body GNATLLVM.Builtins is
 
       elsif Nkind (N) = N_Function_Call then
          Result := Emit_FP_Builtin_Call (N, S);
+         if No (Result) then
+            Result := Emit_FP_Isinf_Call (N, S);
+         end if;
+
          if Present (Result) then
             return Result;
          end if;

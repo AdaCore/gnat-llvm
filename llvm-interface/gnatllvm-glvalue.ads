@@ -1141,6 +1141,13 @@ package GNATLLVM.GLValue is
    function Const_Null_Ref (GT : GL_Type) return GL_Value
      with Pre  => Present (GT), Post => Is_Reference (Const_Null_Ref'Result);
 
+   function Const_Infinity (GT : GL_Type) return GL_Value
+     with Pre => Present (GT);
+
+   function Const_Infinity (V : GL_Value) return GL_Value is
+     (Const_Infinity (Related_Type (V)))
+     with Pre  => Present (V), Post => Present (Const_Infinity'Result);
+
    function Const_Int (V : GL_Value; N : Uint) return GL_Value
      with Pre  => Present (V) and then Present (N),
           Post => Present (Const_Int'Result), Inline;

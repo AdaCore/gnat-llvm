@@ -621,6 +621,13 @@ Convert_FP_To_String (Value *V, char *Buf)
 }
 
 extern "C"
+Value *
+Get_Infinity (Type *T)
+{
+  return ConstantFP::getInfinity (T, false);
+}
+
+extern "C"
 bool
 Equals_Int (ConstantInt *v, uint64_t val)
 {

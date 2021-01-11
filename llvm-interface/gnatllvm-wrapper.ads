@@ -302,6 +302,9 @@ package GNATLLVM.Wrapper is
      (Context : Context_T; T : Type_T; V : Value_T) return Value_T
      with Import, Convention => C, External_Name => "Pred_FP";
 
+   function Get_Infinity (T : Type_T) return Value_T
+     with Import, Convention => C, External_Name => "Get_Infinity";
+
    function Get_GEP_Constant_Offset
      (GEP : Value_T; Layout : Target_Data_T; Offset : out ULL) return Boolean
      with Inline;

@@ -625,8 +625,8 @@ package body GNATLLVM.Exprs is
             else
                Result := Get (Op, Data);
                return (if   Is_Boolean_Type (Result)
-                         then Build_Xor (Result, Const_Int (Result, ULL (1)))
-                         else Build_Not (Result));
+                       then Build_Xor (Result, Const_Int (Result, ULL (1)))
+                       else Build_Not (Result));
             end if;
 
          when N_Op_Abs =>

@@ -55,7 +55,7 @@ package GNATLLVM.Instructions is
    function Get_Preds (Kind : Node_Kind) return Pred_Mapping is
      (case Kind is
         when N_Op_Eq => (Int_EQ, Int_EQ, Real_OEQ),
-        when N_Op_Ne => (Int_NE, Int_NE, Real_ONE),
+        when N_Op_Ne => (Int_NE, Int_NE, Real_UNE),
         when N_Op_Lt => (Int_SLT, Int_ULT, Real_OLT),
         when N_Op_Le => (Int_SLE, Int_ULE, Real_OLE),
         when N_Op_Gt => (Int_SGT, Int_UGT, Real_OGT),

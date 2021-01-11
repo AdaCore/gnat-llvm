@@ -44,13 +44,13 @@ compare=cmp --ignore-initial=16
 all: setup build
 	$(MAKE) quicklib
 
-LOCAL_RT_FILES=../link.c s-rident.ads s-utf_32.ads s-utf_32.adb \
-  gnat.ads g-dynhta.ads g-dynhta.adb \
-  g-sets.ads g-sets.adb g-lists.ads g-lists.adb \
-  g-graphs.ads g-graphs.adb g-htable.adb g-byorma.adb g-speche.adb \
-  g-spchge.adb g-u3spch.adb g-comlin.ads g-comlin.adb g-dirope.adb \
-  g-os_lib.ads g-os_lib.adb g-regexp.ads g-string.ads g-io.adb g-casuti.adb \
-  g-casuti.ads g-hesora.adb g-io_aux.ads g-io_aux.adb
+LOCAL_RT_FILES=../link.c s-pehage.adb s-pehage.ads s-rident.ads s-utf_32.adb \
+  s-utf_32.ads \
+  gnat.ads g-byorma.adb g-casuti.adb g-casuti.ads g-comlin.adb g-comlin.ads \
+  g-dirope.adb g-dynhta.adb g-dynhta.ads g-graphs.adb g-graphs.ads \
+  g-hesora.adb g-htable.adb g-io.adb g-io_aux.adb g-io_aux.ads g-lists.adb \
+  g-lists.ads g-os_lib.adb g-os_lib.ads g-regexp.ads g-sets.adb g-sets.ads \
+  g-spchge.adb g-speche.adb g-string.ads g-u3spch.adb
 
 setup:
 	$(MKDIR) obj obj-tools bin gnat_src/vast

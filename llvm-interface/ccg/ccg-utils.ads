@@ -25,7 +25,7 @@ with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
 
 with CCG.Helper; use CCG.Helper;
-with CCG.Tables; use CCG.Tables;
+with CCG.Strs;   use CCG.Strs;
 
 package CCG.Utils is
 

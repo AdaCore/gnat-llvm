@@ -20,6 +20,7 @@ with Interfaces.C; use Interfaces.C;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;
+with CCG.Strs;         use CCG.Strs;
 with CCG.Tables;       use CCG.Tables;
 with CCG.Utils;        use CCG.Utils;
 

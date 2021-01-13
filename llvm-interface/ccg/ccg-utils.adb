@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with CCG.Tables; use CCG.Tables;
+
 package body CCG.Utils is
 
    --------

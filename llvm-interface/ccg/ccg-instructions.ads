@@ -16,7 +16,7 @@
 ------------------------------------------------------------------------------
 
 with CCG.Helper; use CCG.Helper;
-with CCG.Tables; use CCG.Tables;
+with CCG.Strs;   use CCG.Strs;
 
 package CCG.Instructions is
 

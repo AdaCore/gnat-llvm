@@ -25,6 +25,7 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
+with CCG.Tables;       use CCG.Tables;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Aggregates is

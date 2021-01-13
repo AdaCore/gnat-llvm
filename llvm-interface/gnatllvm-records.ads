@@ -207,6 +207,9 @@ package GNATLLVM.Records is
      with Pre => Present (V), Post => Present (Align_To'Result);
    --  V is a value aligned to Cur_Align.  Ensure that it's aligned to
    --  Align_To.
+   --  ??? We might be better off getting the current alignment from
+   --  V but then we have to properly handle the alignment in the BA_Data
+   --  case and that's a lot of work.
 
    function Build_Field_Load
      (In_V       : GL_Value;

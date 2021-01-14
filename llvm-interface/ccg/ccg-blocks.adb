@@ -214,8 +214,14 @@ package body CCG.Blocks is
         Value_As_Basic_Block (Ops (Ops'First + 1));
       POO     : constant Process_Operand_Option :=
         (if Get_Is_Unsigned (Val) then POO_Unsigned else POO_Signed);
-      Result  : constant Str                    := Process_Operand (Val, POO);
+      Result  : Str                             := Process_Operand (Val, POO);
    begin
+      --  If Val is narrower than int, we must force it to its size
+
+      if Nat (Get_Scalar_Bit_Size (Val)) < Int_Size then
+         Result := TP ("(#T1) ", Val) & (Result + Unary);
+      end if;
+
       --  Write out the initial part of the switch, which is the switch
       --  statement and the default option.
 

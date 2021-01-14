@@ -149,6 +149,10 @@ package CCG.Utils is
      (Size_Of_Type_In_Bits (Module_Data_Layout, T))
      with Pre => Present (T);
 
+   function Get_Scalar_Bit_Size (V : Value_T) return ULL is
+     (Get_Scalar_Bit_Size (Type_Of (V)))
+     with Pre => Present (V);
+
    function Int_Ty (Num_Bits : ULL) return Type_T is
      (Int_Type (unsigned (Num_Bits)))
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;

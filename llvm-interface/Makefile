@@ -47,10 +47,11 @@ all: setup build
 LOCAL_RT_FILES=../link.c s-pehage.adb s-pehage.ads s-rident.ads s-utf_32.adb \
   s-utf_32.ads \
   gnat.ads g-byorma.adb g-casuti.adb g-casuti.ads g-comlin.adb g-comlin.ads \
-  g-dirope.adb g-dynhta.adb g-dynhta.ads g-graphs.adb g-graphs.ads \
-  g-hesora.adb g-htable.adb g-io.adb g-io_aux.adb g-io_aux.ads g-lists.adb \
-  g-lists.ads g-os_lib.adb g-os_lib.ads g-regexp.ads g-sets.adb g-sets.ads \
-  g-spchge.adb g-speche.adb g-string.ads g-u3spch.adb
+  g-ctrl_c.adb g-ctrl_c.ads g-dirope.adb g-dynhta.adb g-dynhta.ads \
+  g-graphs.adb g-graphs.ads g-hesora.adb g-htable.adb g-io.adb g-io_aux.adb \
+  g-io_aux.ads g-lists.adb g-lists.ads g-os_lib.adb g-os_lib.ads \
+  g-regexp.ads g-sets.adb g-sets.ads g-spchge.adb g-speche.adb g-string.ads \
+  g-u3spch.adb
 
 setup:
 	$(MKDIR) obj obj-tools bin gnat_src/vast

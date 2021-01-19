@@ -277,7 +277,7 @@ package body GNATLLVM.Aliasing is
          No_Strict_Aliasing_Flag := True;
       end if;
 
-      TBAA_Root := Create_TBAA_Root (MD_Builder);
+      TBAA_Root := Create_TBAA_Root;
 
       if not No_Strict_Aliasing_Flag then
          Search_For_UCs;
@@ -1585,8 +1585,8 @@ package body GNATLLVM.Aliasing is
       if Present (Base_Type) and then Size_In_Bytes /= 0 then
          Access_Type := Extract_Access_Type (Base_Type, Offset, Size_In_Bytes);
          Add_TBAA_Access
-           (Inst, Create_TBAA_Access_Tag (MD_Builder, Access_Type, Access_Type,
-                                          Offset, Size_In_Bytes));
+           (Inst, Create_TBAA_Access_Tag (Access_Type, Access_Type, Offset,
+                                          Size_In_Bytes));
       end if;
    end Add_Aliasing_To_Instruction;
 
@@ -1628,8 +1628,7 @@ package body GNATLLVM.Aliasing is
          Orig_Offset := TBAA_Offset (LHS);
          Offset      := Orig_Offset;
          Access_TBAA := Extract_Access_Type (TBAA, Offset, +Size);
-         return Create_TBAA_Access_Tag (MD_Builder, TBAA, Access_TBAA,
-                                        Orig_Offset, +Size);
+         return Create_TBAA_Access_Tag (TBAA, Access_TBAA, Orig_Offset, +Size);
       else
          return No_Metadata_T;
       end if;
@@ -1675,9 +1674,17 @@ package body GNATLLVM.Aliasing is
 
       begin
          for J in 0 .. Last_Field loop
-            TBAAs   (J) := Field_Type   (TBAA, J);
-            Offsets (J) := Field_Offset (TBAA, J);
-            Sizes   (J) := Field_Size   (TBAA, J);
+            declare
+               F_Size : constant ULL        := Field_Size (TBAA, J);
+               F_TBAA : constant Metadata_T := Field_Type (TBAA, J);
+               Tag    : constant Metadata_T :=
+                 Create_TBAA_Access_Tag (F_TBAA, F_TBAA, 0, F_Size);
+
+            begin
+               TBAAs   (J) := Tag;
+               Offsets (J) := Field_Offset (TBAA, J);
+               Sizes   (J) := Field_Size   (TBAA, J);
+            end;
          end loop;
 
          return Create_TBAA_Struct_Node (TBAAs, Offsets, Sizes);

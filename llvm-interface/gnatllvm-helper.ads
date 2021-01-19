@@ -71,6 +71,19 @@ package GNATLLVM.Helper is
                   and then (for all T of TBAAs   => Present (T)),
           Post => Present (Create_TBAA_Struct_Node'Result);
 
+   function Create_TBAA_Access_Tag
+     (Base_Type, Access_Type : Metadata_T;
+      Offset, Size           : ULL) return Metadata_T
+   is
+     (Create_TBAA_Access_Tag (MD_Builder, Base_Type, Access_Type,
+                              Offset, Size))
+     with Pre  => Present (Base_Type) and then Present (Access_Type),
+          Post => Present (Create_TBAA_Access_Tag'Result);
+
+   function Create_TBAA_Root return Metadata_T is
+     (Create_TBAA_Root (MD_Builder))
+     with Post => Present (Create_TBAA_Root'Result);
+
    function Get_Subprogram_Debug_Metadata (V : GL_Value) return Metadata_T is
      (Get_Subprogram (+V))
      with Pre => Is_A_Function (V), Inline;

@@ -27,7 +27,6 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm-c/Core.h"
 
 using namespace llvm;
@@ -446,22 +445,6 @@ void
 Add_Function_To_Module (Function *f, Module *m)
 {
   m->getFunctionList().push_back(f);
-}
-
-extern "C"
-void
-Inst_Add_Combine_Function (legacy::PassManager *PM, TargetMachine *TM)
-{
-  /* Create the minimum we need to run the InstructionCombining pass.
-     We don't seem to be able to cache or delete any of these things without
-     getting a SIGSEGV, so perhaps everything is already deleted for us.  */
-
-  FunctionPass *CI = createInstructionCombiningPass (false);
-  TargetLibraryInfoImpl TLII (TM->getTargetTriple ());
-  TargetLibraryInfoWrapperPass *TLIP = new TargetLibraryInfoWrapperPass (TLII);
-
-  PM->add (TLIP);
-  PM->add (CI);
 }
 
 extern "C"

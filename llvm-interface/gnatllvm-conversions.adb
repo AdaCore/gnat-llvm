@@ -19,6 +19,8 @@ with Errout; use Errout;
 with Sinfo;  use Sinfo;
 with Snames; use Snames;
 
+with LLVM.Transforms_Instcombine; use LLVM.Transforms_Instcombine;
+
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
@@ -1149,7 +1151,7 @@ package body GNATLLVM.Conversions is
                           Load (IR_Builder,
                                 Pointer_Cast (IR_Builder, G_C, Ptr_Ty, ""),
                                 "")));
-      Inst_Add_Combine_Function (Our_PM, Target_Machine);
+      Add_Instruction_Combining_Pass (Our_PM);
       Changed := Run_Pass_Manager (Our_PM, Convert_Module);
       New_Ret := Get_First_Instruction (Our_BB);
       pragma Assert (Changed and then Get_Last_Instruction (Our_BB) = New_Ret

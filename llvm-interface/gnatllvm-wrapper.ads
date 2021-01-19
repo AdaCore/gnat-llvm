@@ -284,11 +284,6 @@ package GNATLLVM.Wrapper is
    procedure Add_Debug_Flags (Module : Module_T)
      with Import, Convention => C, External_Name => "Add_Debug_Flags";
 
-   procedure Inst_Add_Combine_Function
-     (PM : Pass_Manager_T; Target_Machine : Target_Machine_T)
-     with Import, Convention => C,
-          External_Name => "Inst_Add_Combine_Function";
-
    function Get_Float_From_Words_And_Exp
      (Context   : Context_T;
       Typ       : Type_T;

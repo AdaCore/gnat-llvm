@@ -132,7 +132,9 @@ package GNATLLVM.Helper is
       Kind                     : DWARF_Emission_Kind_T;
       DWO_Id                   : Int;
       Split_Debug_Inlining     : Boolean;
-      Debug_Info_For_Profiling : Boolean) return Metadata_T
+      Debug_Info_For_Profiling : Boolean;
+      Sys_Root                 : String;
+      SDK                      : String) return Metadata_T
    is
      (DI_Create_Compile_Unit (DI_Builder, Lang, File_Ref, Producer,
                               Producer'Length, Is_Optimized,
@@ -140,7 +142,8 @@ package GNATLLVM.Helper is
                               unsigned (Runtime_Ver),
                               Split_Name, Split_Name'Length, Kind,
                               unsigned (DWO_Id), Split_Debug_Inlining,
-                              Debug_Info_For_Profiling))
+                              Debug_Info_For_Profiling,
+                              Sys_Root, Sys_Root'Length, SDK, SDK'Length))
      with Pre  => Present (File_Ref),
           Post => Present (DI_Create_Compile_Unit'Result);
 

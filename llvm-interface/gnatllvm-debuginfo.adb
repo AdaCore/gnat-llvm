@@ -197,7 +197,7 @@ package body GNATLLVM.DebugInfo is
              else DWARF_Source_Language_Ada95),
             Get_Debug_File_Node (Main_Source_File), "GNAT/LLVM",
             Code_Gen_Level /= Code_Gen_Level_None, "", 0, "",
-            DWARF_Emission_Full, 0, False, False);
+            DWARF_Emission_Full, 0, False, False, "", "");
 
          Empty_DI_Expr      :=
            DI_Builder_Create_Expression (DI_Builder, Exp'Access, 0);

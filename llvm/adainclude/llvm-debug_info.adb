@@ -31,7 +31,11 @@ package body LLVM.Debug_Info is
       Kind                     : DWARF_Emission_Kind_T;
       DWO_Id                   : unsigned;
       Split_Debug_Inlining     : Boolean;
-      Debug_Info_For_Profiling : Boolean)
+      Debug_Info_For_Profiling : Boolean;
+      Sys_Root                 : String;
+      Sys_Root_Len             : stddef_h.size_t;
+      SDK                      : String;
+      SDK_Len                  : stddef_h.size_t)
       return LLVM.Types.Metadata_T
    is
       Producer_Array                : aliased char_array := To_C (Producer);
@@ -43,8 +47,12 @@ package body LLVM.Debug_Info is
       Split_Name_String             : constant chars_ptr := To_Chars_Ptr (Split_Name_Array'Unchecked_Access);
       Split_Debug_Inlining_Bool     : constant LLVM.Types.Bool_T := Boolean'Pos (Split_Debug_Inlining);
       Debug_Info_For_Profiling_Bool : constant LLVM.Types.Bool_T := Boolean'Pos (Debug_Info_For_Profiling);
+      Sys_Root_Array                : aliased char_array := To_C (Sys_Root);
+      Sys_Root_String               : constant chars_ptr := To_Chars_Ptr (Sys_Root_Array'Unchecked_Access);
+      SDK_Array                     : aliased char_array := To_C (SDK);
+      SDK_String                    : constant chars_ptr := To_Chars_Ptr (SDK_Array'Unchecked_Access);
    begin
-      return DI_Builder_Create_Compile_Unit_C (Builder, Lang, File_Ref, Producer_String, Producer_Len, is_Optimized_Bool, Flags_String, Flags_Len, Runtime_Ver, Split_Name_String, Split_Name_Len, Kind, DWO_Id, Split_Debug_Inlining_Bool, Debug_Info_For_Profiling_Bool);
+      return DI_Builder_Create_Compile_Unit_C (Builder, Lang, File_Ref, Producer_String, Producer_Len, is_Optimized_Bool, Flags_String, Flags_Len, Runtime_Ver, Split_Name_String, Split_Name_Len, Kind, DWO_Id, Split_Debug_Inlining_Bool, Debug_Info_For_Profiling_Bool, Sys_Root_String, Sys_Root_Len, SDK_String, SDK_Len);
    end DI_Create_Compile_Unit;
 
    function DI_Create_File
@@ -64,28 +72,28 @@ package body LLVM.Debug_Info is
    end DI_Create_File;
 
    function DI_Create_Module
-     (Builder           : LLVM.Types.DI_Builder_T;
-      Parent_Scope      : LLVM.Types.Metadata_T;
-      Name              : String;
-      Name_Len          : stddef_h.size_t;
-      Config_Macros     : String;
-      Config_Macros_Len : stddef_h.size_t;
-      Include_Path      : String;
-      Include_Path_Len  : stddef_h.size_t;
-      Sys_Root          : String;
-      Sys_Root_Len      : stddef_h.size_t)
+     (Builder            : LLVM.Types.DI_Builder_T;
+      Parent_Scope       : LLVM.Types.Metadata_T;
+      Name               : String;
+      Name_Len           : stddef_h.size_t;
+      Config_Macros      : String;
+      Config_Macros_Len  : stddef_h.size_t;
+      Include_Path       : String;
+      Include_Path_Len   : stddef_h.size_t;
+      API_Notes_File     : String;
+      API_Notes_File_Len : stddef_h.size_t)
       return LLVM.Types.Metadata_T
    is
-      Name_Array           : aliased char_array := To_C (Name);
-      Name_String          : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
-      Config_Macros_Array  : aliased char_array := To_C (Config_Macros);
-      Config_Macros_String : constant chars_ptr := To_Chars_Ptr (Config_Macros_Array'Unchecked_Access);
-      Include_Path_Array   : aliased char_array := To_C (Include_Path);
-      Include_Path_String  : constant chars_ptr := To_Chars_Ptr (Include_Path_Array'Unchecked_Access);
-      Sys_Root_Array       : aliased char_array := To_C (Sys_Root);
-      Sys_Root_String      : constant chars_ptr := To_Chars_Ptr (Sys_Root_Array'Unchecked_Access);
+      Name_Array            : aliased char_array := To_C (Name);
+      Name_String           : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+      Config_Macros_Array   : aliased char_array := To_C (Config_Macros);
+      Config_Macros_String  : constant chars_ptr := To_Chars_Ptr (Config_Macros_Array'Unchecked_Access);
+      Include_Path_Array    : aliased char_array := To_C (Include_Path);
+      Include_Path_String   : constant chars_ptr := To_Chars_Ptr (Include_Path_Array'Unchecked_Access);
+      API_Notes_File_Array  : aliased char_array := To_C (API_Notes_File);
+      API_Notes_File_String : constant chars_ptr := To_Chars_Ptr (API_Notes_File_Array'Unchecked_Access);
    begin
-      return DI_Builder_Create_Module_C (Builder, Parent_Scope, Name_String, Name_Len, Config_Macros_String, Config_Macros_Len, Include_Path_String, Include_Path_Len, Sys_Root_String, Sys_Root_Len);
+      return DI_Builder_Create_Module_C (Builder, Parent_Scope, Name_String, Name_Len, Config_Macros_String, Config_Macros_Len, Include_Path_String, Include_Path_Len, API_Notes_File_String, API_Notes_File_Len);
    end DI_Create_Module;
 
    function DI_Create_Name_Space

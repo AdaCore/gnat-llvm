@@ -58,7 +58,7 @@ function Parse_Bitcode
    function Parse_Bitcode2_C
      (Mem_Buf    : LLVM.Types.Memory_Buffer_T;
       Out_Module : System.Address)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/BitReader.h:44
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/BitReader.h:44
    pragma Import (C, Parse_Bitcode2_C, "LLVMParseBitcode2");
 
   -- This is deprecated. Use LLVMParseBitcodeInContext2.  
@@ -142,7 +142,7 @@ function Get_Bitcode_Module
    function Get_Bitcode_Module2_C
      (Mem_Buf : LLVM.Types.Memory_Buffer_T;
       Out_M   : System.Address)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/BitReader.h:74
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/BitReader.h:74
    pragma Import (C, Get_Bitcode_Module2_C, "LLVMGetBitcodeModule2");
 
   --*

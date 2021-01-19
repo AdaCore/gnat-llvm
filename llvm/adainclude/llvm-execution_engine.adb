@@ -117,4 +117,13 @@ package body LLVM.Execution_Engine is
       return Get_Function_Address_C (EE, Name_String);
    end Get_Function_Address;
 
+   function Execution_Engine_Get_Err_Msg
+     (EE        : Execution_Engine_T;
+      Out_Error : System.Address)
+      return Boolean
+   is
+   begin
+      return Execution_Engine_Get_Err_Msg_C (EE, Out_Error) /= 0;
+   end Execution_Engine_Get_Err_Msg;
+
 end LLVM.Execution_Engine;

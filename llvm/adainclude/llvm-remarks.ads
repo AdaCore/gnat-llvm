@@ -8,7 +8,7 @@ with LLVM.Types;
 
 package LLVM.Remarks is
 
-   REMARKS_API_VERSION : constant := 1;  --  llvm-10.0.0.src/include/llvm-c/Remarks.h:36
+   REMARKS_API_VERSION : constant := 1;  --  llvm-11.0.1.src/include/llvm-c/Remarks.h:36
 
   --===-- llvm-c/Remarks.h - Remarks Public C Interface -------------*- C -*-===*|*                                                                            *|
   --|
@@ -44,7 +44,7 @@ package LLVM.Remarks is
       Remark_Type_Analysis_FP_Commute,
       Remark_Type_Analysis_Aliasing,
       Remark_Type_Failure);
-   pragma Convention (C, Remark_Type_T);  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:41
+   pragma Convention (C, Remark_Type_T);  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:41
 
   --*
   -- * String containing a buffer and a length. The buffer is not guaranteed to be
@@ -55,7 +55,7 @@ package LLVM.Remarks is
 
    --  skipped empty struct LLVMRemarkOpaqueString
 
-   type Remark_String_T is new System.Address;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:57
+   type Remark_String_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:57
 
   --*
   -- * Returns the buffer holding the string.
@@ -68,7 +68,7 @@ package LLVM.Remarks is
       return String;
    function Remark_String_Get_Data_C
      (String : Remark_String_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:64
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:64
    pragma Import (C, Remark_String_Get_Data_C, "LLVMRemarkStringGetData");
 
   --*
@@ -77,7 +77,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_String_Get_Len (String : Remark_String_T) return stdint_h.uint32_t;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:71
+   function Remark_String_Get_Len (String : Remark_String_T) return stdint_h.uint32_t;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:71
    pragma Import (C, Remark_String_Get_Len, "LLVMRemarkStringGetLen");
 
   --*
@@ -88,7 +88,7 @@ package LLVM.Remarks is
 
    --  skipped empty struct LLVMRemarkOpaqueDebugLoc
 
-   type Remark_Debug_Loc_T is new System.Address;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:78
+   type Remark_Debug_Loc_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:78
 
   --*
   -- * Return the path to the source file for a debug location.
@@ -96,7 +96,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Debug_Loc_Get_Source_File_Path (DL : Remark_Debug_Loc_T) return Remark_String_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:86
+   function Remark_Debug_Loc_Get_Source_File_Path (DL : Remark_Debug_Loc_T) return Remark_String_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:86
    pragma Import (C, Remark_Debug_Loc_Get_Source_File_Path, "LLVMRemarkDebugLocGetSourceFilePath");
 
   --*
@@ -105,7 +105,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Debug_Loc_Get_Source_Line (DL : Remark_Debug_Loc_T) return stdint_h.uint32_t;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:93
+   function Remark_Debug_Loc_Get_Source_Line (DL : Remark_Debug_Loc_T) return stdint_h.uint32_t;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:93
    pragma Import (C, Remark_Debug_Loc_Get_Source_Line, "LLVMRemarkDebugLocGetSourceLine");
 
   --*
@@ -114,7 +114,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Debug_Loc_Get_Source_Column (DL : Remark_Debug_Loc_T) return stdint_h.uint32_t;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:100
+   function Remark_Debug_Loc_Get_Source_Column (DL : Remark_Debug_Loc_T) return stdint_h.uint32_t;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:100
    pragma Import (C, Remark_Debug_Loc_Get_Source_Column, "LLVMRemarkDebugLocGetSourceColumn");
 
   --*
@@ -127,7 +127,7 @@ package LLVM.Remarks is
 
    --  skipped empty struct LLVMRemarkOpaqueArg
 
-   type Remark_Arg_T is new System.Address;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:109
+   type Remark_Arg_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:109
 
   --*
   -- * Returns the key of an argument. The key defines what the value is, and the
@@ -136,7 +136,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Arg_Get_Key (Arg : Remark_Arg_T) return Remark_String_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:117
+   function Remark_Arg_Get_Key (Arg : Remark_Arg_T) return Remark_String_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:117
    pragma Import (C, Remark_Arg_Get_Key, "LLVMRemarkArgGetKey");
 
   --*
@@ -145,7 +145,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Arg_Get_Value (Arg : Remark_Arg_T) return Remark_String_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:124
+   function Remark_Arg_Get_Value (Arg : Remark_Arg_T) return Remark_String_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:124
    pragma Import (C, Remark_Arg_Get_Value, "LLVMRemarkArgGetValue");
 
   --*
@@ -156,7 +156,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Arg_Get_Debug_Loc (Arg : Remark_Arg_T) return Remark_Debug_Loc_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:133
+   function Remark_Arg_Get_Debug_Loc (Arg : Remark_Arg_T) return Remark_Debug_Loc_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:133
    pragma Import (C, Remark_Arg_Get_Debug_Loc, "LLVMRemarkArgGetDebugLoc");
 
   --*
@@ -167,7 +167,7 @@ package LLVM.Remarks is
 
    --  skipped empty struct LLVMRemarkOpaqueEntry
 
-   type Remark_Entry_T is new System.Address;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:140
+   type Remark_Entry_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:140
 
   --*
   -- * Free the resources used by the remark entry.
@@ -175,7 +175,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   procedure Remark_Entry_Dispose (Remark : Remark_Entry_T);  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:147
+   procedure Remark_Entry_Dispose (Remark : Remark_Entry_T);  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:147
    pragma Import (C, Remark_Entry_Dispose, "LLVMRemarkEntryDispose");
 
   --*
@@ -185,7 +185,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Entry_Get_Type (Remark : Remark_Entry_T) return Remark_Type_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:155
+   function Remark_Entry_Get_Type (Remark : Remark_Entry_T) return Remark_Type_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:155
    pragma Import (C, Remark_Entry_Get_Type, "LLVMRemarkEntryGetType");
 
   --*
@@ -194,7 +194,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Entry_Get_Pass_Name (Remark : Remark_Entry_T) return Remark_String_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:163
+   function Remark_Entry_Get_Pass_Name (Remark : Remark_Entry_T) return Remark_String_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:163
    pragma Import (C, Remark_Entry_Get_Pass_Name, "LLVMRemarkEntryGetPassName");
 
   --*
@@ -203,7 +203,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Entry_Get_Remark_Name (Remark : Remark_Entry_T) return Remark_String_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:171
+   function Remark_Entry_Get_Remark_Name (Remark : Remark_Entry_T) return Remark_String_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:171
    pragma Import (C, Remark_Entry_Get_Remark_Name, "LLVMRemarkEntryGetRemarkName");
 
   --*
@@ -212,7 +212,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Entry_Get_Function_Name (Remark : Remark_Entry_T) return Remark_String_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:179
+   function Remark_Entry_Get_Function_Name (Remark : Remark_Entry_T) return Remark_String_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:179
    pragma Import (C, Remark_Entry_Get_Function_Name, "LLVMRemarkEntryGetFunctionName");
 
   --*
@@ -223,7 +223,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Entry_Get_Debug_Loc (Remark : Remark_Entry_T) return Remark_Debug_Loc_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:189
+   function Remark_Entry_Get_Debug_Loc (Remark : Remark_Entry_T) return Remark_Debug_Loc_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:189
    pragma Import (C, Remark_Entry_Get_Debug_Loc, "LLVMRemarkEntryGetDebugLoc");
 
   --*
@@ -234,7 +234,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Entry_Get_Hotness (Remark : Remark_Entry_T) return stdint_h.uint64_t;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:198
+   function Remark_Entry_Get_Hotness (Remark : Remark_Entry_T) return stdint_h.uint64_t;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:198
    pragma Import (C, Remark_Entry_Get_Hotness, "LLVMRemarkEntryGetHotness");
 
   --*
@@ -243,7 +243,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Entry_Get_Num_Args (Remark : Remark_Entry_T) return stdint_h.uint32_t;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:205
+   function Remark_Entry_Get_Num_Args (Remark : Remark_Entry_T) return stdint_h.uint32_t;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:205
    pragma Import (C, Remark_Entry_Get_Num_Args, "LLVMRemarkEntryGetNumArgs");
 
   --*
@@ -256,7 +256,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Entry_Get_First_Arg (Remark : Remark_Entry_T) return Remark_Arg_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:216
+   function Remark_Entry_Get_First_Arg (Remark : Remark_Entry_T) return Remark_Arg_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:216
    pragma Import (C, Remark_Entry_Get_First_Arg, "LLVMRemarkEntryGetFirstArg");
 
   --*
@@ -269,12 +269,12 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Entry_Get_Next_Arg (It : Remark_Arg_T; Remark : Remark_Entry_T) return Remark_Arg_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:227
+   function Remark_Entry_Get_Next_Arg (It : Remark_Arg_T; Remark : Remark_Entry_T) return Remark_Arg_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:227
    pragma Import (C, Remark_Entry_Get_Next_Arg, "LLVMRemarkEntryGetNextArg");
 
    --  skipped empty struct LLVMRemarkOpaqueParser
 
-   type Remark_Parser_T is new System.Address;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:230
+   type Remark_Parser_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:230
 
   --*
   -- * Creates a remark parser that can be used to parse the buffer located in \p
@@ -288,7 +288,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Parser_Create_YAML (Buf : System.Address; Size : stdint_h.uint64_t) return Remark_Parser_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:243
+   function Remark_Parser_Create_YAML (Buf : System.Address; Size : stdint_h.uint64_t) return Remark_Parser_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:243
    pragma Import (C, Remark_Parser_Create_YAML, "LLVMRemarkParserCreateYAML");
 
   --*
@@ -303,7 +303,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=1
   --  
 
-   function Remark_Parser_Create_Bitstream (Buf : System.Address; Size : stdint_h.uint64_t) return Remark_Parser_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:257
+   function Remark_Parser_Create_Bitstream (Buf : System.Address; Size : stdint_h.uint64_t) return Remark_Parser_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:257
    pragma Import (C, Remark_Parser_Create_Bitstream, "LLVMRemarkParserCreateBitstream");
 
   --*
@@ -349,7 +349,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Parser_Get_Next (Parser : Remark_Parser_T) return Remark_Entry_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:302
+   function Remark_Parser_Get_Next (Parser : Remark_Parser_T) return Remark_Entry_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:302
    pragma Import (C, Remark_Parser_Get_Next, "LLVMRemarkParserGetNext");
 
   --*
@@ -363,7 +363,7 @@ package LLVM.Remarks is
       return Boolean;
    function Remark_Parser_Has_Error_C
      (Parser : Remark_Parser_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:309
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:309
    pragma Import (C, Remark_Parser_Has_Error_C, "LLVMRemarkParserHasError");
 
   --*
@@ -383,7 +383,7 @@ package LLVM.Remarks is
       return String;
    function Remark_Parser_Get_Error_Message_C
      (Parser : Remark_Parser_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:322
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:322
    pragma Import (C, Remark_Parser_Get_Error_Message_C, "LLVMRemarkParserGetErrorMessage");
 
   --*
@@ -392,7 +392,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   procedure Remark_Parser_Dispose (Parser : Remark_Parser_T);  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:329
+   procedure Remark_Parser_Dispose (Parser : Remark_Parser_T);  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:329
    pragma Import (C, Remark_Parser_Dispose, "LLVMRemarkParserDispose");
 
   --*
@@ -401,7 +401,7 @@ package LLVM.Remarks is
   -- * \since REMARKS_API_VERSION=0
   --  
 
-   function Remark_Version return stdint_h.uint32_t;  -- llvm-10.0.0.src/include/llvm-c/Remarks.h:336
+   function Remark_Version return stdint_h.uint32_t;  -- llvm-11.0.1.src/include/llvm-c/Remarks.h:336
    pragma Import (C, Remark_Version, "LLVMRemarkVersion");
 
   --*

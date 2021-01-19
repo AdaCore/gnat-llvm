@@ -36,15 +36,15 @@ package LLVM.Object is
   -- Opaque type wrappers
    --  skipped empty struct LLVMOpaqueSectionIterator
 
-   type Section_Iterator_T is new System.Address;  -- llvm-10.0.0.src/include/llvm-c/Object.h:36
+   type Section_Iterator_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Object.h:36
 
    --  skipped empty struct LLVMOpaqueSymbolIterator
 
-   type Symbol_Iterator_T is new System.Address;  -- llvm-10.0.0.src/include/llvm-c/Object.h:37
+   type Symbol_Iterator_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Object.h:37
 
    --  skipped empty struct LLVMOpaqueRelocationIterator
 
-   type Relocation_Iterator_T is new System.Address;  -- llvm-10.0.0.src/include/llvm-c/Object.h:38
+   type Relocation_Iterator_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Object.h:38
 
   --*< Archive file.  
   --*< Mach-O Universal Binary file.  
@@ -77,7 +77,7 @@ package LLVM.Object is
       Binary_Type_Mach_O64_L,
       Binary_Type_Mach_O64_B,
       Binary_Type_Wasm);
-   pragma Convention (C, Binary_Type_T);  -- llvm-10.0.0.src/include/llvm-c/Object.h:56
+   pragma Convention (C, Binary_Type_T);  -- llvm-11.0.1.src/include/llvm-c/Object.h:56
 
   --*
   -- * Create a binary file from the given memory buffer.
@@ -99,7 +99,7 @@ package LLVM.Object is
    function Create_Binary
      (Mem_Buf : LLVM.Types.Memory_Buffer_T;
       Context : LLVM.Types.Context_T;
-      Error_Message : System.Address) return LLVM.Types.Binary_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:74
+      Error_Message : System.Address) return LLVM.Types.Binary_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:74
    pragma Import (C, Create_Binary, "LLVMCreateBinary");
 
   --*
@@ -109,7 +109,7 @@ package LLVM.Object is
   -- * of the caller to free it with \c LLVMDisposeMemoryBuffer.
   --  
 
-   procedure Dispose_Binary (BR : LLVM.Types.Binary_T);  -- llvm-10.0.0.src/include/llvm-c/Object.h:84
+   procedure Dispose_Binary (BR : LLVM.Types.Binary_T);  -- llvm-11.0.1.src/include/llvm-c/Object.h:84
    pragma Import (C, Dispose_Binary, "LLVMDisposeBinary");
 
   --*
@@ -122,7 +122,7 @@ package LLVM.Object is
   -- * @see llvm::object::getMemoryBufferRef
   --  
 
-   function Binary_Copy_Memory_Buffer (BR : LLVM.Types.Binary_T) return LLVM.Types.Memory_Buffer_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:95
+   function Binary_Copy_Memory_Buffer (BR : LLVM.Types.Binary_T) return LLVM.Types.Memory_Buffer_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:95
    pragma Import (C, Binary_Copy_Memory_Buffer, "LLVMBinaryCopyMemoryBuffer");
 
   --*
@@ -131,7 +131,7 @@ package LLVM.Object is
   -- * @see llvm::object::Binary::getType
   --  
 
-   function Binary_Get_Type (BR : LLVM.Types.Binary_T) return Binary_Type_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:102
+   function Binary_Get_Type (BR : LLVM.Types.Binary_T) return Binary_Type_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:102
    pragma Import (C, Binary_Get_Type, "LLVMBinaryGetType");
 
   -- * For a Mach-O universal binary file, retrieves the object file corresponding
@@ -171,7 +171,7 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
   -- * @see llvm::object::sections()
   --  
 
-   function Object_File_Copy_Section_Iterator (BR : LLVM.Types.Binary_T) return Section_Iterator_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:131
+   function Object_File_Copy_Section_Iterator (BR : LLVM.Types.Binary_T) return Section_Iterator_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:131
    pragma Import (C, Object_File_Copy_Section_Iterator, "LLVMObjectFileCopySectionIterator");
 
   --*
@@ -187,7 +187,7 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
    function Object_File_Is_Section_Iterator_At_End_C
      (BR : LLVM.Types.Binary_T;
       SI : Section_Iterator_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:138
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:138
    pragma Import (C, Object_File_Is_Section_Iterator_At_End_C, "LLVMObjectFileIsSectionIteratorAtEnd");
 
   --*
@@ -202,7 +202,7 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
   -- * @see llvm::object::symbols()
   --  
 
-   function Object_File_Copy_Symbol_Iterator (BR : LLVM.Types.Binary_T) return Symbol_Iterator_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:152
+   function Object_File_Copy_Symbol_Iterator (BR : LLVM.Types.Binary_T) return Symbol_Iterator_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:152
    pragma Import (C, Object_File_Copy_Symbol_Iterator, "LLVMObjectFileCopySymbolIterator");
 
   --*
@@ -218,23 +218,23 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
    function Object_File_Is_Symbol_Iterator_At_End_C
      (BR : LLVM.Types.Binary_T;
       SI : Symbol_Iterator_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:159
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:159
    pragma Import (C, Object_File_Is_Symbol_Iterator_At_End_C, "LLVMObjectFileIsSymbolIteratorAtEnd");
 
-   procedure Dispose_Section_Iterator (SI : Section_Iterator_T);  -- llvm-10.0.0.src/include/llvm-c/Object.h:162
+   procedure Dispose_Section_Iterator (SI : Section_Iterator_T);  -- llvm-11.0.1.src/include/llvm-c/Object.h:162
    pragma Import (C, Dispose_Section_Iterator, "LLVMDisposeSectionIterator");
 
-   procedure Move_To_Next_Section (SI : Section_Iterator_T);  -- llvm-10.0.0.src/include/llvm-c/Object.h:164
+   procedure Move_To_Next_Section (SI : Section_Iterator_T);  -- llvm-11.0.1.src/include/llvm-c/Object.h:164
    pragma Import (C, Move_To_Next_Section, "LLVMMoveToNextSection");
 
-   procedure Move_To_Containing_Section (Sect : Section_Iterator_T; Sym : Symbol_Iterator_T);  -- llvm-10.0.0.src/include/llvm-c/Object.h:165
+   procedure Move_To_Containing_Section (Sect : Section_Iterator_T; Sym : Symbol_Iterator_T);  -- llvm-11.0.1.src/include/llvm-c/Object.h:165
    pragma Import (C, Move_To_Containing_Section, "LLVMMoveToContainingSection");
 
   -- ObjectFile Symbol iterators
-   procedure Dispose_Symbol_Iterator (SI : Symbol_Iterator_T);  -- llvm-10.0.0.src/include/llvm-c/Object.h:169
+   procedure Dispose_Symbol_Iterator (SI : Symbol_Iterator_T);  -- llvm-11.0.1.src/include/llvm-c/Object.h:169
    pragma Import (C, Dispose_Symbol_Iterator, "LLVMDisposeSymbolIterator");
 
-   procedure Move_To_Next_Symbol (SI : Symbol_Iterator_T);  -- llvm-10.0.0.src/include/llvm-c/Object.h:170
+   procedure Move_To_Next_Symbol (SI : Symbol_Iterator_T);  -- llvm-11.0.1.src/include/llvm-c/Object.h:170
    pragma Import (C, Move_To_Next_Symbol, "LLVMMoveToNextSymbol");
 
   -- SectionRef accessors
@@ -243,10 +243,10 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
       return String;
    function Get_Section_Name_C
      (SI : Section_Iterator_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Object.h:173
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Object.h:173
    pragma Import (C, Get_Section_Name_C, "LLVMGetSectionName");
 
-   function Get_Section_Size (SI : Section_Iterator_T) return stdint_h.uint64_t;  -- llvm-10.0.0.src/include/llvm-c/Object.h:174
+   function Get_Section_Size (SI : Section_Iterator_T) return stdint_h.uint64_t;  -- llvm-11.0.1.src/include/llvm-c/Object.h:174
    pragma Import (C, Get_Section_Size, "LLVMGetSectionSize");
 
    function Get_Section_Contents
@@ -254,10 +254,10 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
       return String;
    function Get_Section_Contents_C
      (SI : Section_Iterator_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Object.h:175
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Object.h:175
    pragma Import (C, Get_Section_Contents_C, "LLVMGetSectionContents");
 
-   function Get_Section_Address (SI : Section_Iterator_T) return stdint_h.uint64_t;  -- llvm-10.0.0.src/include/llvm-c/Object.h:176
+   function Get_Section_Address (SI : Section_Iterator_T) return stdint_h.uint64_t;  -- llvm-11.0.1.src/include/llvm-c/Object.h:176
    pragma Import (C, Get_Section_Address, "LLVMGetSectionAddress");
 
    function Get_Section_Contains_Symbol
@@ -267,14 +267,14 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
    function Get_Section_Contains_Symbol_C
      (SI  : Section_Iterator_T;
       Sym : Symbol_Iterator_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:177
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:177
    pragma Import (C, Get_Section_Contains_Symbol_C, "LLVMGetSectionContainsSymbol");
 
   -- Section Relocation iterators
-   function Get_Relocations (Section : Section_Iterator_T) return Relocation_Iterator_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:181
+   function Get_Relocations (Section : Section_Iterator_T) return Relocation_Iterator_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:181
    pragma Import (C, Get_Relocations, "LLVMGetRelocations");
 
-   procedure Dispose_Relocation_Iterator (RI : Relocation_Iterator_T);  -- llvm-10.0.0.src/include/llvm-c/Object.h:182
+   procedure Dispose_Relocation_Iterator (RI : Relocation_Iterator_T);  -- llvm-11.0.1.src/include/llvm-c/Object.h:182
    pragma Import (C, Dispose_Relocation_Iterator, "LLVMDisposeRelocationIterator");
 
    function Is_Relocation_Iterator_At_End
@@ -284,10 +284,10 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
    function Is_Relocation_Iterator_At_End_C
      (Section : Section_Iterator_T;
       RI      : Relocation_Iterator_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:183
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:183
    pragma Import (C, Is_Relocation_Iterator_At_End_C, "LLVMIsRelocationIteratorAtEnd");
 
-   procedure Move_To_Next_Relocation (RI : Relocation_Iterator_T);  -- llvm-10.0.0.src/include/llvm-c/Object.h:185
+   procedure Move_To_Next_Relocation (RI : Relocation_Iterator_T);  -- llvm-11.0.1.src/include/llvm-c/Object.h:185
    pragma Import (C, Move_To_Next_Relocation, "LLVMMoveToNextRelocation");
 
   -- SymbolRef accessors
@@ -296,23 +296,23 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
       return String;
    function Get_Symbol_Name_C
      (SI : Symbol_Iterator_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Object.h:189
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Object.h:189
    pragma Import (C, Get_Symbol_Name_C, "LLVMGetSymbolName");
 
-   function Get_Symbol_Address (SI : Symbol_Iterator_T) return stdint_h.uint64_t;  -- llvm-10.0.0.src/include/llvm-c/Object.h:190
+   function Get_Symbol_Address (SI : Symbol_Iterator_T) return stdint_h.uint64_t;  -- llvm-11.0.1.src/include/llvm-c/Object.h:190
    pragma Import (C, Get_Symbol_Address, "LLVMGetSymbolAddress");
 
-   function Get_Symbol_Size (SI : Symbol_Iterator_T) return stdint_h.uint64_t;  -- llvm-10.0.0.src/include/llvm-c/Object.h:191
+   function Get_Symbol_Size (SI : Symbol_Iterator_T) return stdint_h.uint64_t;  -- llvm-11.0.1.src/include/llvm-c/Object.h:191
    pragma Import (C, Get_Symbol_Size, "LLVMGetSymbolSize");
 
   -- RelocationRef accessors
-   function Get_Relocation_Offset (RI : Relocation_Iterator_T) return stdint_h.uint64_t;  -- llvm-10.0.0.src/include/llvm-c/Object.h:194
+   function Get_Relocation_Offset (RI : Relocation_Iterator_T) return stdint_h.uint64_t;  -- llvm-11.0.1.src/include/llvm-c/Object.h:194
    pragma Import (C, Get_Relocation_Offset, "LLVMGetRelocationOffset");
 
-   function Get_Relocation_Symbol (RI : Relocation_Iterator_T) return Symbol_Iterator_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:195
+   function Get_Relocation_Symbol (RI : Relocation_Iterator_T) return Symbol_Iterator_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:195
    pragma Import (C, Get_Relocation_Symbol, "LLVMGetRelocationSymbol");
 
-   function Get_Relocation_Type (RI : Relocation_Iterator_T) return stdint_h.uint64_t;  -- llvm-10.0.0.src/include/llvm-c/Object.h:196
+   function Get_Relocation_Type (RI : Relocation_Iterator_T) return stdint_h.uint64_t;  -- llvm-11.0.1.src/include/llvm-c/Object.h:196
    pragma Import (C, Get_Relocation_Type, "LLVMGetRelocationType");
 
   -- NOTE: Caller takes ownership of returned string of the two
@@ -322,7 +322,7 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
       return String;
    function Get_Relocation_Type_Name_C
      (RI : Relocation_Iterator_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Object.h:199
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Object.h:199
    pragma Import (C, Get_Relocation_Type_Name_C, "LLVMGetRelocationTypeName");
 
    function Get_Relocation_Value_String
@@ -330,24 +330,24 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
       return String;
    function Get_Relocation_Value_String_C
      (RI : Relocation_Iterator_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Object.h:200
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Object.h:200
    pragma Import (C, Get_Relocation_Value_String_C, "LLVMGetRelocationValueString");
 
   --* Deprecated: Use LLVMBinaryRef instead.  
    --  skipped empty struct LLVMOpaqueObjectFile
 
-   type Object_File_T is new System.Address;  -- llvm-10.0.0.src/include/llvm-c/Object.h:203
+   type Object_File_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Object.h:203
 
   --* Deprecated: Use LLVMCreateBinary instead.  
-   function Create_Object_File (Mem_Buf : LLVM.Types.Memory_Buffer_T) return Object_File_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:206
+   function Create_Object_File (Mem_Buf : LLVM.Types.Memory_Buffer_T) return Object_File_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:206
    pragma Import (C, Create_Object_File, "LLVMCreateObjectFile");
 
   --* Deprecated: Use LLVMDisposeBinary instead.  
-   procedure Dispose_Object_File (Object_File : Object_File_T);  -- llvm-10.0.0.src/include/llvm-c/Object.h:209
+   procedure Dispose_Object_File (Object_File : Object_File_T);  -- llvm-11.0.1.src/include/llvm-c/Object.h:209
    pragma Import (C, Dispose_Object_File, "LLVMDisposeObjectFile");
 
   --* Deprecated: Use LLVMObjectFileCopySectionIterator instead.  
-   function Get_Sections (Object_File : Object_File_T) return Section_Iterator_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:212
+   function Get_Sections (Object_File : Object_File_T) return Section_Iterator_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:212
    pragma Import (C, Get_Sections, "LLVMGetSections");
 
   --* Deprecated: Use LLVMObjectFileIsSectionIteratorAtEnd instead.  
@@ -358,11 +358,11 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
    function Is_Section_Iterator_At_End_C
      (Object_File : Object_File_T;
       SI          : Section_Iterator_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:215
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:215
    pragma Import (C, Is_Section_Iterator_At_End_C, "LLVMIsSectionIteratorAtEnd");
 
   --* Deprecated: Use LLVMObjectFileCopySymbolIterator instead.  
-   function Get_Symbols (Object_File : Object_File_T) return Symbol_Iterator_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:219
+   function Get_Symbols (Object_File : Object_File_T) return Symbol_Iterator_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:219
    pragma Import (C, Get_Symbols, "LLVMGetSymbols");
 
   --* Deprecated: Use LLVMObjectFileIsSymbolIteratorAtEnd instead.  
@@ -373,7 +373,7 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
    function Is_Symbol_Iterator_At_End_C
      (Object_File : Object_File_T;
       SI          : Symbol_Iterator_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Object.h:222
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Object.h:222
    pragma Import (C, Is_Symbol_Iterator_At_End_C, "LLVMIsSymbolIteratorAtEnd");
 
   --*

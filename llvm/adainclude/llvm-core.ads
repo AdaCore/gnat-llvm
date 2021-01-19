@@ -138,7 +138,7 @@ package LLVM.Core is
    Op_Catch_Ret : constant Opcode_T := 62;
    Op_Catch_Pad : constant Opcode_T := 63;
    Op_Cleanup_Pad : constant Opcode_T := 64;
-   Op_Catch_Switch : constant Opcode_T := 65;  -- llvm-10.0.0.src/include/llvm-c/Core.h:144
+   Op_Catch_Switch : constant Opcode_T := 65;  -- llvm-11.0.1.src/include/llvm-c/Core.h:144
 
   --*< type with no size  
   --*< 16 bit floating point type  
@@ -153,10 +153,12 @@ package LLVM.Core is
   --*< Structures  
   --*< Arrays  
   --*< Pointers  
-  --*< SIMD 'packed' format, or other vector type  
+  --*< Fixed width SIMD vector type  
   --*< Metadata  
   --*< X86 MMX  
   --*< Tokens  
+  --*< Scalable SIMD vector type  
+  --*< 16 bit brain floating point type  
    type Type_Kind_T is 
      (Void_Type_Kind,
       Half_Type_Kind,
@@ -174,8 +176,10 @@ package LLVM.Core is
       Vector_Type_Kind,
       Metadata_Type_Kind,
       X86_Mmxtypekind,
-      Token_Type_Kind);
-   pragma Convention (C, Type_Kind_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:164
+      Token_Type_Kind,
+      Scalable_Vector_Type_Kind,
+      B_Float_Type_Kind);
+   pragma Convention (C, Type_Kind_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:166
 
   --*< Externally visible function  
   --*< Keep one copy of function when linking (inline) 
@@ -217,7 +221,7 @@ package LLVM.Core is
       Common_Linkage,
       Linker_Private_Linkage,
       Linker_Private_Weak_Linkage);
-   pragma Convention (C, Linkage_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:187
+   pragma Convention (C, Linkage_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:189
 
   --*< The GV is visible  
   --*< The GV is hidden  
@@ -226,7 +230,7 @@ package LLVM.Core is
      (Default_Visibility,
       Hidden_Visibility,
       Protected_Visibility);
-   pragma Convention (C, Visibility_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:193
+   pragma Convention (C, Visibility_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:195
 
   --*< Address of the GV is significant.  
   --*< Address of the GV is locally insignificant.  
@@ -235,7 +239,7 @@ package LLVM.Core is
      (No_Unnamed_Addr,
       Local_Unnamed_Addr,
       Global_Unnamed_Addr);
-   pragma Convention (C, Unnamed_Addr_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:199
+   pragma Convention (C, Unnamed_Addr_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:201
 
   --*< Function to be imported from DLL.  
   --*< Function to be accessible from DLL.  
@@ -243,7 +247,7 @@ package LLVM.Core is
      (Default_Storage_Class,
       DLL_Import_Storage_Class,
       DLL_Export_Storage_Class);
-   pragma Convention (C, DLL_Storage_Class_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:205
+   pragma Convention (C, DLL_Storage_Class_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:207
 
    subtype Call_Conv_T is unsigned;
    C_Call_Conv : constant Call_Conv_T := 0;
@@ -287,7 +291,7 @@ package LLVM.Core is
    AMDGPUHS_Call_Conv : constant Call_Conv_T := 93;
    MS_P430_BUILTIN_Call_Conv : constant Call_Conv_T := 94;
    AMDGPULS_Call_Conv : constant Call_Conv_T := 95;
-   AMDGPUES_Call_Conv : constant Call_Conv_T := 96;  -- llvm-10.0.0.src/include/llvm-c/Core.h:250
+   AMDGPUES_Call_Conv : constant Call_Conv_T := 96;  -- llvm-11.0.1.src/include/llvm-c/Core.h:252
 
    type Value_Kind_T is 
      (Argument_Value_Kind,
@@ -315,7 +319,7 @@ package LLVM.Core is
       Metadata_As_Value_Value_Kind,
       Inline_Asm_Value_Kind,
       Instruction_Value_Kind);
-   pragma Convention (C, Value_Kind_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:282
+   pragma Convention (C, Value_Kind_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:284
 
   --*< equal  
   --*< not equal  
@@ -337,7 +341,7 @@ package LLVM.Core is
    Int_SGT : constant Int_Predicate_T := 38;
    Int_SGE : constant Int_Predicate_T := 39;
    Int_SLT : constant Int_Predicate_T := 40;
-   Int_SLE : constant Int_Predicate_T := 41;  -- llvm-10.0.0.src/include/llvm-c/Core.h:295
+   Int_SLE : constant Int_Predicate_T := 41;  -- llvm-11.0.1.src/include/llvm-c/Core.h:297
 
   --*< Always false (always folded)  
   --*< True if ordered and equal  
@@ -372,14 +376,14 @@ package LLVM.Core is
       Real_ULE,
       Real_UNE,
       Real_Predicate_True);
-   pragma Convention (C, Real_Predicate_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:314
+   pragma Convention (C, Real_Predicate_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:316
 
   --*< A catch clause    
   --*< A filter clause   
    type Landing_Pad_Clause_Ty_T is 
      (Landing_Pad_Catch,
       Landing_Pad_Filter);
-   pragma Convention (C, Landing_Pad_Clause_Ty_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:319
+   pragma Convention (C, Landing_Pad_Clause_Ty_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:321
 
    type Thread_Local_Mode_T is 
      (Not_Thread_Local,
@@ -387,7 +391,7 @@ package LLVM.Core is
       Local_Dynamic_TLS_Model,
       Initial_Exec_TLS_Model,
       Local_Exec_TLS_Model);
-   pragma Convention (C, Thread_Local_Mode_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:327
+   pragma Convention (C, Thread_Local_Mode_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:329
 
   --*< A load or store which is not atomic  
   --*< Lowest level of atomicity, guarantees
@@ -426,7 +430,7 @@ package LLVM.Core is
    Atomic_Ordering_Acquire : constant Atomic_Ordering_T := 4;
    Atomic_Ordering_Release : constant Atomic_Ordering_T := 5;
    Atomic_Ordering_Acquire_Release : constant Atomic_Ordering_T := 6;
-   Atomic_Ordering_Sequentially_Consistent : constant Atomic_Ordering_T := 7;  -- llvm-10.0.0.src/include/llvm-c/Core.h:354
+   Atomic_Ordering_Sequentially_Consistent : constant Atomic_Ordering_T := 7;  -- llvm-11.0.1.src/include/llvm-c/Core.h:356
 
   --*< Set the new value and return the one old  
   --*< Add a value and return the old one  
@@ -471,19 +475,19 @@ package LLVM.Core is
       Atomic_RMW_Bin_Op_U_Min,
       Atomic_RMW_Bin_Op_F_Add,
       Atomic_RMW_Bin_Op_F_Sub);
-   pragma Convention (C, Atomic_RMW_Bin_Op_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:380
+   pragma Convention (C, Atomic_RMW_Bin_Op_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:382
 
    type Diagnostic_Severity_T is 
      (DS_Error,
       DS_Warning,
       DS_Remark,
       DS_Note);
-   pragma Convention (C, Diagnostic_Severity_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:387
+   pragma Convention (C, Diagnostic_Severity_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:389
 
    type Inline_Asm_Dialect_T is 
      (Inline_Asm_Dialect_ATT,
       Inline_Asm_Dialect_Intel);
-   pragma Convention (C, Inline_Asm_Dialect_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:392
+   pragma Convention (C, Inline_Asm_Dialect_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:394
 
   --*
   --   * Emits an error if two values disagree, otherwise the resulting value is
@@ -540,7 +544,7 @@ package LLVM.Core is
       Module_Flag_Behavior_Override,
       Module_Flag_Behavior_Append,
       Module_Flag_Behavior_Append_Unique);
-   pragma Convention (C, Module_Flag_Behavior_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:443
+   pragma Convention (C, Module_Flag_Behavior_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:445
 
   --*
   -- * Attribute index are either LLVMAttributeReturnIndex,
@@ -550,20 +554,20 @@ package LLVM.Core is
   -- ISO C restricts enumerator values to range of 'int'
   -- (4294967295 is too large)
   -- LLVMAttributeFunctionIndex = ~0U,
-   subtype Attribute_Index_T is unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:457
+   subtype Attribute_Index_T is unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:459
 
   --*
   -- * @}
   --  
 
-   procedure Initialize_Core (R : LLVM.Types.Pass_Registry_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:463
+   procedure Initialize_Core (R : LLVM.Types.Pass_Registry_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:465
    pragma Import (C, Initialize_Core, "LLVMInitializeCore");
 
   --* Deallocate and destroy all ManagedStatic variables.
   --    @see llvm::llvm_shutdown
   --    @see ManagedStatic  
 
-   procedure Shutdown;  -- llvm-10.0.0.src/include/llvm-c/Core.h:468
+   procedure Shutdown;  -- llvm-11.0.1.src/include/llvm-c/Core.h:470
    pragma Import (C, Shutdown, "LLVMShutdown");
 
   --===-- Error handling ----------------------------------------------------=== 
@@ -572,13 +576,13 @@ package LLVM.Core is
       return String;
    function Create_Message_C
      (Message : Interfaces.C.Strings.chars_ptr)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:472
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:474
    pragma Import (C, Create_Message_C, "LLVMCreateMessage");
 
    procedure Dispose_Message
      (Message : String);
    procedure Dispose_Message_C
-     (Message : Interfaces.C.Strings.chars_ptr);  -- llvm-10.0.0.src/include/llvm-c/Core.h:473
+     (Message : Interfaces.C.Strings.chars_ptr);  -- llvm-11.0.1.src/include/llvm-c/Core.h:475
    pragma Import (C, Dispose_Message_C, "LLVMDisposeMessage");
 
   --*
@@ -594,10 +598,10 @@ package LLVM.Core is
   --  
 
    type Diagnostic_Handler_T is access procedure  (arg1 : LLVM.Types.Diagnostic_Info_T; arg2 : System.Address);
-   pragma Convention (C, Diagnostic_Handler_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:487
+   pragma Convention (C, Diagnostic_Handler_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:489
 
    type Yield_Callback_T is access procedure  (arg1 : LLVM.Types.Context_T; arg2 : System.Address);
-   pragma Convention (C, Yield_Callback_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:488
+   pragma Convention (C, Yield_Callback_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:490
 
   --*
   -- * Create a new context.
@@ -606,14 +610,14 @@ package LLVM.Core is
   -- * LLVMContextDispose() or the context will leak memory.
   --  
 
-   function Context_Create return LLVM.Types.Context_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:496
+   function Context_Create return LLVM.Types.Context_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:498
    pragma Import (C, Context_Create, "LLVMContextCreate");
 
   --*
   -- * Obtain the global context instance.
   --  
 
-   function Get_Global_Context return LLVM.Types.Context_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:501
+   function Get_Global_Context return LLVM.Types.Context_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:503
    pragma Import (C, Get_Global_Context, "LLVMGetGlobalContext");
 
   --*
@@ -623,21 +627,21 @@ package LLVM.Core is
    procedure Context_Set_Diagnostic_Handler
      (C : LLVM.Types.Context_T;
       Handler : Diagnostic_Handler_T;
-      Diagnostic_Context : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:506
+      Diagnostic_Context : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:508
    pragma Import (C, Context_Set_Diagnostic_Handler, "LLVMContextSetDiagnosticHandler");
 
   --*
   -- * Get the diagnostic handler of this context.
   --  
 
-   function Context_Get_Diagnostic_Handler (C : LLVM.Types.Context_T) return Diagnostic_Handler_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:513
+   function Context_Get_Diagnostic_Handler (C : LLVM.Types.Context_T) return Diagnostic_Handler_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:515
    pragma Import (C, Context_Get_Diagnostic_Handler, "LLVMContextGetDiagnosticHandler");
 
   --*
   -- * Get the diagnostic context of this context.
   --  
 
-   function Context_Get_Diagnostic_Context (C : LLVM.Types.Context_T) return System.Address;  -- llvm-10.0.0.src/include/llvm-c/Core.h:518
+   function Context_Get_Diagnostic_Context (C : LLVM.Types.Context_T) return System.Address;  -- llvm-11.0.1.src/include/llvm-c/Core.h:520
    pragma Import (C, Context_Get_Diagnostic_Context, "LLVMContextGetDiagnosticContext");
 
   --*
@@ -649,7 +653,7 @@ package LLVM.Core is
    procedure Context_Set_Yield_Callback
      (C : LLVM.Types.Context_T;
       Callback : Yield_Callback_T;
-      Opaque_Handle : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:525
+      Opaque_Handle : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:527
    pragma Import (C, Context_Set_Yield_Callback, "LLVMContextSetYieldCallback");
 
   --*
@@ -663,7 +667,7 @@ package LLVM.Core is
       return Boolean;
    function Context_Should_Discard_Value_Names_C
      (C : LLVM.Types.Context_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:533
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:535
    pragma Import (C, Context_Should_Discard_Value_Names_C, "LLVMContextShouldDiscardValueNames");
 
   --*
@@ -680,7 +684,7 @@ package LLVM.Core is
       Discard : Boolean);
    procedure Context_Set_Discard_Value_Names_C
      (C       : LLVM.Types.Context_T;
-      Discard : LLVM.Types.Bool_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:543
+      Discard : LLVM.Types.Bool_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:545
    pragma Import (C, Context_Set_Discard_Value_Names_C, "LLVMContextSetDiscardValueNames");
 
   --*
@@ -690,7 +694,7 @@ package LLVM.Core is
   -- * will be leaked.
   --  
 
-   procedure Context_Dispose (C : LLVM.Types.Context_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:551
+   procedure Context_Dispose (C : LLVM.Types.Context_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:553
    pragma Import (C, Context_Dispose, "LLVMContextDispose");
 
   --*
@@ -705,7 +709,7 @@ package LLVM.Core is
       return String;
    function Get_Diag_Info_Description_C
      (DI : LLVM.Types.Diagnostic_Info_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:559
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:561
    pragma Import (C, Get_Diag_Info_Description_C, "LLVMGetDiagInfoDescription");
 
   --*
@@ -714,7 +718,7 @@ package LLVM.Core is
   -- * @see DiagnosticInfo::getSeverity()
   --  
 
-   function Get_Diag_Info_Severity (DI : LLVM.Types.Diagnostic_Info_T) return Diagnostic_Severity_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:566
+   function Get_Diag_Info_Severity (DI : LLVM.Types.Diagnostic_Info_T) return Diagnostic_Severity_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:568
    pragma Import (C, Get_Diag_Info_Severity, "LLVMGetDiagInfoSeverity");
 
 function Get_MD_Kind_ID_In_Context
@@ -736,7 +740,7 @@ function Get_MD_Kind_ID_In_Context
    function Get_MD_Kind_ID_C
      (Name  : Interfaces.C.Strings.chars_ptr;
       S_Len : unsigned)
-      return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:570
+      return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:572
    pragma Import (C, Get_MD_Kind_ID_C, "LLVMGetMDKindID");
 
   --*
@@ -758,10 +762,10 @@ function Get_MD_Kind_ID_In_Context
    function Get_Enum_Attribute_Kind_For_Name_C
      (Name  : Interfaces.C.Strings.chars_ptr;
       S_Len : stddef_h.size_t)
-      return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:583
+      return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:585
    pragma Import (C, Get_Enum_Attribute_Kind_For_Name_C, "LLVMGetEnumAttributeKindForName");
 
-   function Get_Last_Enum_Attribute_Kind return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:584
+   function Get_Last_Enum_Attribute_Kind return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:586
    pragma Import (C, Get_Last_Enum_Attribute_Kind, "LLVMGetLastEnumAttributeKind");
 
   --*
@@ -771,7 +775,7 @@ function Get_MD_Kind_ID_In_Context
    function Create_Enum_Attribute
      (C : LLVM.Types.Context_T;
       Kind_ID : unsigned;
-      Val : stdint_h.uint64_t) return LLVM.Types.Attribute_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:589
+      Val : stdint_h.uint64_t) return LLVM.Types.Attribute_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:591
    pragma Import (C, Create_Enum_Attribute, "LLVMCreateEnumAttribute");
 
   --*
@@ -779,14 +783,14 @@ function Get_MD_Kind_ID_In_Context
   -- * passed as argument.
   --  
 
-   function Get_Enum_Attribute_Kind (A : LLVM.Types.Attribute_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:596
+   function Get_Enum_Attribute_Kind (A : LLVM.Types.Attribute_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:598
    pragma Import (C, Get_Enum_Attribute_Kind, "LLVMGetEnumAttributeKind");
 
   --*
   -- * Get the enum attribute's value. 0 is returned if none exists.
   --  
 
-   function Get_Enum_Attribute_Value (A : LLVM.Types.Attribute_T) return stdint_h.uint64_t;  -- llvm-10.0.0.src/include/llvm-c/Core.h:601
+   function Get_Enum_Attribute_Value (A : LLVM.Types.Attribute_T) return stdint_h.uint64_t;  -- llvm-11.0.1.src/include/llvm-c/Core.h:603
    pragma Import (C, Get_Enum_Attribute_Value, "LLVMGetEnumAttributeValue");
 
   --*
@@ -820,7 +824,7 @@ function Create_String_Attribute
    function Get_String_Attribute_Kind_C
      (A      : LLVM.Types.Attribute_T;
       Length : access unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:613
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:615
    pragma Import (C, Get_String_Attribute_Kind_C, "LLVMGetStringAttributeKind");
 
   --*
@@ -834,7 +838,7 @@ function Create_String_Attribute
    function Get_String_Attribute_Value_C
      (A      : LLVM.Types.Attribute_T;
       Length : access unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:618
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:620
    pragma Import (C, Get_String_Attribute_Value_C, "LLVMGetStringAttributeValue");
 
   --*
@@ -846,7 +850,7 @@ function Create_String_Attribute
       return Boolean;
    function Is_Enum_Attribute_C
      (A : LLVM.Types.Attribute_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:623
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:625
    pragma Import (C, Is_Enum_Attribute_C, "LLVMIsEnumAttribute");
 
    function Is_String_Attribute
@@ -854,7 +858,7 @@ function Create_String_Attribute
       return Boolean;
    function Is_String_Attribute_C
      (A : LLVM.Types.Attribute_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:624
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:626
    pragma Import (C, Is_String_Attribute_C, "LLVMIsStringAttribute");
 
   --*
@@ -886,7 +890,7 @@ function Create_String_Attribute
       return LLVM.Types.Module_T;
    function Module_Create_With_Name_C
      (Module_ID : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Module_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:649
+      return LLVM.Types.Module_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:651
    pragma Import (C, Module_Create_With_Name_C, "LLVMModuleCreateWithName");
 
   --*
@@ -903,14 +907,14 @@ function Create_String_Attribute
    function Module_Create_With_Name_In_Context_C
      (Module_ID : Interfaces.C.Strings.chars_ptr;
       C         : LLVM.Types.Context_T)
-      return LLVM.Types.Module_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:657
+      return LLVM.Types.Module_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:659
    pragma Import (C, Module_Create_With_Name_In_Context_C, "LLVMModuleCreateWithNameInContext");
 
   --*
   -- * Return an exact copy of the specified module.
   --  
 
-   function Clone_Module (M : LLVM.Types.Module_T) return LLVM.Types.Module_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:662
+   function Clone_Module (M : LLVM.Types.Module_T) return LLVM.Types.Module_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:664
    pragma Import (C, Clone_Module, "LLVMCloneModule");
 
   --*
@@ -920,7 +924,7 @@ function Create_String_Attribute
   -- * leaked.
   --  
 
-   procedure Dispose_Module (M : LLVM.Types.Module_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:670
+   procedure Dispose_Module (M : LLVM.Types.Module_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:672
    pragma Import (C, Dispose_Module, "LLVMDisposeModule");
 
   --*
@@ -939,7 +943,7 @@ function Create_String_Attribute
    function Get_Module_Identifier_C
      (M   : LLVM.Types.Module_T;
       Len : access stddef_h.size_t)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:680
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:682
    pragma Import (C, Get_Module_Identifier_C, "LLVMGetModuleIdentifier");
 
   --*
@@ -977,7 +981,7 @@ procedure Set_Module_Identifier
    function Get_Source_File_Name_C
      (M   : LLVM.Types.Module_T;
       Len : access stddef_h.size_t)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:700
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:702
    pragma Import (C, Get_Source_File_Name_C, "LLVMGetSourceFileName");
 
   --*
@@ -1015,7 +1019,7 @@ procedure Set_Source_File_Name
       return String;
    function Get_Data_Layout_Str_C
      (M : LLVM.Types.Module_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:722
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:724
    pragma Import (C, Get_Data_Layout_Str_C, "LLVMGetDataLayoutStr");
 
    function Get_Data_Layout
@@ -1023,7 +1027,7 @@ procedure Set_Source_File_Name
       return String;
    function Get_Data_Layout_C
      (M : LLVM.Types.Module_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:723
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:725
    pragma Import (C, Get_Data_Layout_C, "LLVMGetDataLayout");
 
   --*
@@ -1037,7 +1041,7 @@ procedure Set_Source_File_Name
       Data_Layout_Str : String);
    procedure Set_Data_Layout_C
      (M               : LLVM.Types.Module_T;
-      Data_Layout_Str : Interfaces.C.Strings.chars_ptr);  -- llvm-10.0.0.src/include/llvm-c/Core.h:730
+      Data_Layout_Str : Interfaces.C.Strings.chars_ptr);  -- llvm-11.0.1.src/include/llvm-c/Core.h:732
    pragma Import (C, Set_Data_Layout_C, "LLVMSetDataLayout");
 
   --*
@@ -1051,7 +1055,7 @@ procedure Set_Source_File_Name
       return String;
    function Get_Target_C
      (M : LLVM.Types.Module_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:737
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:739
    pragma Import (C, Get_Target_C, "LLVMGetTarget");
 
   --*
@@ -1065,7 +1069,7 @@ procedure Set_Source_File_Name
       Triple : String);
    procedure Set_Target_C
      (M      : LLVM.Types.Module_T;
-      Triple : Interfaces.C.Strings.chars_ptr);  -- llvm-10.0.0.src/include/llvm-c/Core.h:744
+      Triple : Interfaces.C.Strings.chars_ptr);  -- llvm-11.0.1.src/include/llvm-c/Core.h:746
    pragma Import (C, Set_Target_C, "LLVMSetTarget");
 
   --*
@@ -1076,14 +1080,14 @@ procedure Set_Source_File_Name
   -- * @see Module::getModuleFlagsMetadata()
   --  
 
-   function Copy_Module_Flags_Metadata (M : LLVM.Types.Module_T; Len : access stddef_h.size_t) return System.Address;  -- llvm-10.0.0.src/include/llvm-c/Core.h:753
+   function Copy_Module_Flags_Metadata (M : LLVM.Types.Module_T; Len : access stddef_h.size_t) return System.Address;  -- llvm-11.0.1.src/include/llvm-c/Core.h:755
    pragma Import (C, Copy_Module_Flags_Metadata, "LLVMCopyModuleFlagsMetadata");
 
   --*
   -- * Destroys module flags metadata entries.
   --  
 
-   procedure Dispose_Module_Flags_Metadata (Entries : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:758
+   procedure Dispose_Module_Flags_Metadata (Entries : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:760
    pragma Import (C, Dispose_Module_Flags_Metadata, "LLVMDisposeModuleFlagsMetadata");
 
   --*
@@ -1092,7 +1096,7 @@ procedure Set_Source_File_Name
   -- * @see Module::ModuleFlagEntry::Behavior
   --  
 
-   function Module_Flag_Entries_Get_Flag_Behavior (Entries : System.Address; Index : unsigned) return Module_Flag_Behavior_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:766
+   function Module_Flag_Entries_Get_Flag_Behavior (Entries : System.Address; Index : unsigned) return Module_Flag_Behavior_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:768
    pragma Import (C, Module_Flag_Entries_Get_Flag_Behavior, "LLVMModuleFlagEntriesGetFlagBehavior");
 
   --*
@@ -1119,7 +1123,7 @@ function Module_Flag_Entries_Get_Key
   -- * @see Module::ModuleFlagEntry::Val
   --  
 
-   function Module_Flag_Entries_Get_Metadata (Entries : System.Address; Index : unsigned) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:782
+   function Module_Flag_Entries_Get_Metadata (Entries : System.Address; Index : unsigned) return LLVM.Types.Metadata_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:784
    pragma Import (C, Module_Flag_Entries_Get_Metadata, "LLVMModuleFlagEntriesGetMetadata");
 
   --*
@@ -1168,7 +1172,7 @@ procedure Add_Module_Flag
   -- * @see Module::dump()
   --  
 
-   procedure Dump_Module (M : LLVM.Types.Module_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:809
+   procedure Dump_Module (M : LLVM.Types.Module_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:811
    pragma Import (C, Dump_Module, "LLVMDumpModule");
 
   --*
@@ -1202,7 +1206,7 @@ function Print_Module_To_File
       return String;
    function Print_Module_To_String_C
      (M : LLVM.Types.Module_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:826
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:828
    pragma Import (C, Print_Module_To_String_C, "LLVMPrintModuleToString");
 
   --*
@@ -1218,7 +1222,7 @@ function Print_Module_To_File
    function Get_Module_Inline_Asm_C
      (M   : LLVM.Types.Module_T;
       Len : access stddef_h.size_t)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:833
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:835
    pragma Import (C, Get_Module_Inline_Asm_C, "LLVMGetModuleInlineAsm");
 
   --*
@@ -1287,7 +1291,7 @@ function Get_Inline_Asm
   -- * @see Module::getContext()
   --  
 
-   function Get_Module_Context (M : LLVM.Types.Module_T) return LLVM.Types.Context_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:865
+   function Get_Module_Context (M : LLVM.Types.Module_T) return LLVM.Types.Context_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:867
    pragma Import (C, Get_Module_Context, "LLVMGetModuleContext");
 
   --*
@@ -1301,7 +1305,7 @@ function Get_Inline_Asm
    function Get_Type_By_Name_C
      (M    : LLVM.Types.Module_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:870
+      return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:872
    pragma Import (C, Get_Type_By_Name_C, "LLVMGetTypeByName");
 
   --*
@@ -1310,7 +1314,7 @@ function Get_Inline_Asm
   -- * @see llvm::Module::named_metadata_begin()
   --  
 
-   function Get_First_Named_Metadata (M : LLVM.Types.Module_T) return LLVM.Types.Named_MD_Node_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:877
+   function Get_First_Named_Metadata (M : LLVM.Types.Module_T) return LLVM.Types.Named_MD_Node_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:879
    pragma Import (C, Get_First_Named_Metadata, "LLVMGetFirstNamedMetadata");
 
   --*
@@ -1319,7 +1323,7 @@ function Get_Inline_Asm
   -- * @see llvm::Module::named_metadata_end()
   --  
 
-   function Get_Last_Named_Metadata (M : LLVM.Types.Module_T) return LLVM.Types.Named_MD_Node_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:884
+   function Get_Last_Named_Metadata (M : LLVM.Types.Module_T) return LLVM.Types.Named_MD_Node_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:886
    pragma Import (C, Get_Last_Named_Metadata, "LLVMGetLastNamedMetadata");
 
   --*
@@ -1329,7 +1333,7 @@ function Get_Inline_Asm
   -- * named metadata nodes.
   --  
 
-   function Get_Next_Named_Metadata (Named_MD_Node : LLVM.Types.Named_MD_Node_T) return LLVM.Types.Named_MD_Node_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:892
+   function Get_Next_Named_Metadata (Named_MD_Node : LLVM.Types.Named_MD_Node_T) return LLVM.Types.Named_MD_Node_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:894
    pragma Import (C, Get_Next_Named_Metadata, "LLVMGetNextNamedMetadata");
 
   --*
@@ -1339,7 +1343,7 @@ function Get_Inline_Asm
   -- * no previous named metadata nodes.
   --  
 
-   function Get_Previous_Named_Metadata (Named_MD_Node : LLVM.Types.Named_MD_Node_T) return LLVM.Types.Named_MD_Node_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:900
+   function Get_Previous_Named_Metadata (Named_MD_Node : LLVM.Types.Named_MD_Node_T) return LLVM.Types.Named_MD_Node_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:902
    pragma Import (C, Get_Previous_Named_Metadata, "LLVMGetPreviousNamedMetadata");
 
   --*
@@ -1393,7 +1397,7 @@ function Get_Or_Insert_Named_Metadata
    function Get_Named_Metadata_Name_C
      (Named_MD : LLVM.Types.Named_MD_Node_T;
       Name_Len : access stddef_h.size_t)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:926
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:928
    pragma Import (C, Get_Named_Metadata_Name_C, "LLVMGetNamedMetadataName");
 
   --*
@@ -1409,7 +1413,7 @@ function Get_Or_Insert_Named_Metadata
    function Get_Named_Metadata_Num_Operands_C
      (M    : LLVM.Types.Module_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:934
+      return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:936
    pragma Import (C, Get_Named_Metadata_Num_Operands_C, "LLVMGetNamedMetadataNumOperands");
 
   --*
@@ -1467,7 +1471,7 @@ procedure Add_Named_Metadata_Operand
    function Get_Debug_Loc_Directory_C
      (Val    : LLVM.Types.Value_T;
       Length : access unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:967
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:969
    pragma Import (C, Get_Debug_Loc_Directory_C, "LLVMGetDebugLocDirectory");
 
   --*
@@ -1486,7 +1490,7 @@ procedure Add_Named_Metadata_Operand
    function Get_Debug_Loc_Filename_C
      (Val    : LLVM.Types.Value_T;
       Length : access unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:977
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:979
    pragma Import (C, Get_Debug_Loc_Filename_C, "LLVMGetDebugLocFilename");
 
   --*
@@ -1498,7 +1502,7 @@ procedure Add_Named_Metadata_Operand
   -- * @see llvm::Function::getSubprogram()
   --  
 
-   function Get_Debug_Loc_Line (Val : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:987
+   function Get_Debug_Loc_Line (Val : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:989
    pragma Import (C, Get_Debug_Loc_Line, "LLVMGetDebugLocLine");
 
   --*
@@ -1508,7 +1512,7 @@ procedure Add_Named_Metadata_Operand
   -- * @see llvm::Instruction::getDebugLoc()
   --  
 
-   function Get_Debug_Loc_Column (Val : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:995
+   function Get_Debug_Loc_Column (Val : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:997
    pragma Import (C, Get_Debug_Loc_Column, "LLVMGetDebugLocColumn");
 
   --*
@@ -1544,7 +1548,7 @@ function Add_Function
    function Get_Named_Function_C
      (M    : LLVM.Types.Module_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1012
+      return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1014
    pragma Import (C, Get_Named_Function_C, "LLVMGetNamedFunction");
 
   --*
@@ -1553,7 +1557,7 @@ function Add_Function
   -- * @see llvm::Module::begin()
   --  
 
-   function Get_First_Function (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1019
+   function Get_First_Function (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1021
    pragma Import (C, Get_First_Function, "LLVMGetFirstFunction");
 
   --*
@@ -1562,7 +1566,7 @@ function Add_Function
   -- * @see llvm::Module::end()
   --  
 
-   function Get_Last_Function (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1026
+   function Get_Last_Function (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1028
    pragma Import (C, Get_Last_Function, "LLVMGetLastFunction");
 
   --*
@@ -1572,7 +1576,7 @@ function Add_Function
   -- * functions.
   --  
 
-   function Get_Next_Function (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1034
+   function Get_Next_Function (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1036
    pragma Import (C, Get_Next_Function, "LLVMGetNextFunction");
 
   --*
@@ -1582,7 +1586,7 @@ function Add_Function
   -- * no previous functions.
   --  
 
-   function Get_Previous_Function (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1042
+   function Get_Previous_Function (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1044
    pragma Import (C, Get_Previous_Function, "LLVMGetPreviousFunction");
 
   --* Deprecated: Use LLVMSetModuleInlineAsm2 instead.  
@@ -1591,7 +1595,7 @@ function Add_Function
       Asm : String);
    procedure Set_Module_Inline_Asm_C
      (M   : LLVM.Types.Module_T;
-      Asm : Interfaces.C.Strings.chars_ptr);  -- llvm-10.0.0.src/include/llvm-c/Core.h:1045
+      Asm : Interfaces.C.Strings.chars_ptr);  -- llvm-11.0.1.src/include/llvm-c/Core.h:1047
    pragma Import (C, Set_Module_Inline_Asm_C, "LLVMSetModuleInlineAsm");
 
   --*
@@ -1633,7 +1637,7 @@ function Add_Function
   -- * @see llvm::Type:getTypeID()
   --  
 
-   function Get_Type_Kind (Ty : LLVM.Types.Type_T) return Type_Kind_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1085
+   function Get_Type_Kind (Ty : LLVM.Types.Type_T) return Type_Kind_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1087
    pragma Import (C, Get_Type_Kind, "LLVMGetTypeKind");
 
   --*
@@ -1649,7 +1653,7 @@ function Add_Function
       return Boolean;
    function Type_Is_Sized_C
      (Ty : LLVM.Types.Type_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1094
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1096
    pragma Import (C, Type_Is_Sized_C, "LLVMTypeIsSized");
 
   --*
@@ -1658,7 +1662,7 @@ function Add_Function
   -- * @see llvm::Type::getContext()
   --  
 
-   function Get_Type_Context (Ty : LLVM.Types.Type_T) return LLVM.Types.Context_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1101
+   function Get_Type_Context (Ty : LLVM.Types.Type_T) return LLVM.Types.Context_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1103
    pragma Import (C, Get_Type_Context, "LLVMGetTypeContext");
 
   --*
@@ -1667,7 +1671,7 @@ function Add_Function
   -- * @see llvm::Type::dump()
   --  
 
-   procedure Dump_Type (Val : LLVM.Types.Type_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:1108
+   procedure Dump_Type (Val : LLVM.Types.Type_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:1110
    pragma Import (C, Dump_Type, "LLVMDumpType");
 
   --*
@@ -1682,7 +1686,7 @@ function Add_Function
       return String;
    function Print_Type_To_String_C
      (Val : LLVM.Types.Type_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1116
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1118
    pragma Import (C, Print_Type_To_String_C, "LLVMPrintTypeToString");
 
   --*
@@ -1697,25 +1701,25 @@ function Add_Function
   -- * Obtain an integer type from a context with specified bit width.
   --  
 
-   function Int1_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1129
+   function Int1_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1131
    pragma Import (C, Int1_Type_In_Context, "LLVMInt1TypeInContext");
 
-   function Int8_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1130
+   function Int8_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1132
    pragma Import (C, Int8_Type_In_Context, "LLVMInt8TypeInContext");
 
-   function Int16_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1131
+   function Int16_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1133
    pragma Import (C, Int16_Type_In_Context, "LLVMInt16TypeInContext");
 
-   function Int32_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1132
+   function Int32_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1134
    pragma Import (C, Int32_Type_In_Context, "LLVMInt32TypeInContext");
 
-   function Int64_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1133
+   function Int64_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1135
    pragma Import (C, Int64_Type_In_Context, "LLVMInt64TypeInContext");
 
-   function Int128_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1134
+   function Int128_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1136
    pragma Import (C, Int128_Type_In_Context, "LLVMInt128TypeInContext");
 
-   function Int_Type_In_Context (C : LLVM.Types.Context_T; Num_Bits : unsigned) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1135
+   function Int_Type_In_Context (C : LLVM.Types.Context_T; Num_Bits : unsigned) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1137
    pragma Import (C, Int_Type_In_Context, "LLVMIntTypeInContext");
 
   --*
@@ -1723,28 +1727,28 @@ function Add_Function
   -- * width.
   --  
 
-   function Int1_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1141
+   function Int1_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1143
    pragma Import (C, Int1_Type, "LLVMInt1Type");
 
-   function Int8_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1142
+   function Int8_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1144
    pragma Import (C, Int8_Type, "LLVMInt8Type");
 
-   function Int16_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1143
+   function Int16_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1145
    pragma Import (C, Int16_Type, "LLVMInt16Type");
 
-   function Int32_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1144
+   function Int32_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1146
    pragma Import (C, Int32_Type, "LLVMInt32Type");
 
-   function Int64_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1145
+   function Int64_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1147
    pragma Import (C, Int64_Type, "LLVMInt64Type");
 
-   function Int128_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1146
+   function Int128_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1148
    pragma Import (C, Int128_Type, "LLVMInt128Type");
 
-   function Int_Type (Num_Bits : unsigned) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1147
+   function Int_Type (Num_Bits : unsigned) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1149
    pragma Import (C, Int_Type, "LLVMIntType");
 
-   function Get_Int_Type_Width (Integer_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1148
+   function Get_Int_Type_Width (Integer_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1150
    pragma Import (C, Get_Int_Type_Width, "LLVMGetIntTypeWidth");
 
   --*
@@ -1761,28 +1765,35 @@ function Add_Function
   -- * Obtain a 16-bit floating point type from a context.
   --  
 
-   function Half_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1163
+   function Half_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1165
    pragma Import (C, Half_Type_In_Context, "LLVMHalfTypeInContext");
+
+  --*
+  -- * Obtain a 16-bit brain floating point type from a context.
+  --  
+
+   function B_Float_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1170
+   pragma Import (C, B_Float_Type_In_Context, "LLVMBFloatTypeInContext");
 
   --*
   -- * Obtain a 32-bit floating point type from a context.
   --  
 
-   function Float_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1168
+   function Float_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1175
    pragma Import (C, Float_Type_In_Context, "LLVMFloatTypeInContext");
 
   --*
   -- * Obtain a 64-bit floating point type from a context.
   --  
 
-   function Double_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1173
+   function Double_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1180
    pragma Import (C, Double_Type_In_Context, "LLVMDoubleTypeInContext");
 
   --*
   -- * Obtain a 80-bit floating point type (X87) from a context.
   --  
 
-   function X86_F_P80_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1178
+   function X86_F_P80_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1185
    pragma Import (C, X86_F_P80_Type_In_Context, "LLVMX86FP80TypeInContext");
 
   --*
@@ -1790,14 +1801,14 @@ function Add_Function
   -- * context.
   --  
 
-   function F_P128_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1184
+   function F_P128_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1191
    pragma Import (C, F_P128_Type_In_Context, "LLVMFP128TypeInContext");
 
   --*
   -- * Obtain a 128-bit floating point type (two 64-bits) from a context.
   --  
 
-   function PPCF_P128_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1189
+   function PPCF_P128_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1196
    pragma Import (C, PPCF_P128_Type_In_Context, "LLVMPPCFP128TypeInContext");
 
   --*
@@ -1806,22 +1817,25 @@ function Add_Function
   -- * These map to the functions in this group of the same name.
   --  
 
-   function Half_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1196
+   function Half_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1203
    pragma Import (C, Half_Type, "LLVMHalfType");
 
-   function Float_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1197
+   function B_Float_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1204
+   pragma Import (C, B_Float_Type, "LLVMBFloatType");
+
+   function Float_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1205
    pragma Import (C, Float_Type, "LLVMFloatType");
 
-   function Double_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1198
+   function Double_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1206
    pragma Import (C, Double_Type, "LLVMDoubleType");
 
-   function X86_F_P80_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1199
+   function X86_F_P80_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1207
    pragma Import (C, X86_F_P80_Type, "LLVMX86FP80Type");
 
-   function F_P128_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1200
+   function F_P128_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1208
    pragma Import (C, F_P128_Type, "LLVMFP128Type");
 
-   function PPCF_P128_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1201
+   function PPCF_P128_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1209
    pragma Import (C, PPCF_P128_Type, "LLVMPPCFP128Type");
 
   --*
@@ -1864,21 +1878,21 @@ function Function_Type
       return Boolean;
    function Is_Function_Var_Arg_C
      (Function_Ty : LLVM.Types.Type_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1226
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1234
    pragma Import (C, Is_Function_Var_Arg_C, "LLVMIsFunctionVarArg");
 
   --*
   -- * Obtain the Type this function Type returns.
   --  
 
-   function Get_Return_Type (Function_Ty : LLVM.Types.Type_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1231
+   function Get_Return_Type (Function_Ty : LLVM.Types.Type_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1239
    pragma Import (C, Get_Return_Type, "LLVMGetReturnType");
 
   --*
   -- * Obtain the number of parameters this function accepts.
   --  
 
-   function Count_Param_Types (Function_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1236
+   function Count_Param_Types (Function_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1244
    pragma Import (C, Count_Param_Types, "LLVMCountParamTypes");
 
   --*
@@ -1893,7 +1907,7 @@ function Function_Type
   -- * @param Dest Memory address of an array to be filled with result.
   --  
 
-   procedure Get_Param_Types (Function_Ty : LLVM.Types.Type_T; Dest : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:1249
+   procedure Get_Param_Types (Function_Ty : LLVM.Types.Type_T; Dest : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:1257
    pragma Import (C, Get_Param_Types, "LLVMGetParamTypes");
 
   --*
@@ -1964,7 +1978,7 @@ function Struct_Type
    function Struct_Create_Named_C
      (C    : LLVM.Types.Context_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1289
+      return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1297
    pragma Import (C, Struct_Create_Named_C, "LLVMStructCreateNamed");
 
   --*
@@ -1978,7 +1992,7 @@ function Struct_Type
       return String;
    function Get_Struct_Name_C
      (Ty : LLVM.Types.Type_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1296
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1304
    pragma Import (C, Get_Struct_Name_C, "LLVMGetStructName");
 
   --*
@@ -2005,7 +2019,7 @@ procedure Struct_Set_Body
   -- * @see llvm::StructType::getNumElements()
   --  
 
-   function Count_Struct_Element_Types (Struct_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1311
+   function Count_Struct_Element_Types (Struct_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1319
    pragma Import (C, Count_Struct_Element_Types, "LLVMCountStructElementTypes");
 
   --*
@@ -2019,7 +2033,7 @@ procedure Struct_Set_Body
   -- * is contained in.
   --  
 
-   procedure Get_Struct_Element_Types (Struct_Ty : LLVM.Types.Type_T; Dest : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:1323
+   procedure Get_Struct_Element_Types (Struct_Ty : LLVM.Types.Type_T; Dest : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:1331
    pragma Import (C, Get_Struct_Element_Types, "LLVMGetStructElementTypes");
 
   --*
@@ -2028,7 +2042,7 @@ procedure Struct_Set_Body
   -- * @see llvm::StructType::getTypeAtIndex()
   --  
 
-   function Struct_Get_Type_At_Index (Struct_Ty : LLVM.Types.Type_T; i : unsigned) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1330
+   function Struct_Get_Type_At_Index (Struct_Ty : LLVM.Types.Type_T; i : unsigned) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1338
    pragma Import (C, Struct_Get_Type_At_Index, "LLVMStructGetTypeAtIndex");
 
   --*
@@ -2042,7 +2056,7 @@ procedure Struct_Set_Body
       return Boolean;
    function Is_Packed_Struct_C
      (Struct_Ty : LLVM.Types.Type_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1337
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1345
    pragma Import (C, Is_Packed_Struct_C, "LLVMIsPackedStruct");
 
   --*
@@ -2056,7 +2070,7 @@ procedure Struct_Set_Body
       return Boolean;
    function Is_Opaque_Struct_C
      (Struct_Ty : LLVM.Types.Type_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1344
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1352
    pragma Import (C, Is_Opaque_Struct_C, "LLVMIsOpaqueStruct");
 
   --*
@@ -2070,7 +2084,7 @@ procedure Struct_Set_Body
       return Boolean;
    function Is_Literal_Struct_C
      (Struct_Ty : LLVM.Types.Type_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1351
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1359
    pragma Import (C, Is_Literal_Struct_C, "LLVMIsLiteralStruct");
 
   --*
@@ -2094,7 +2108,7 @@ procedure Struct_Set_Body
   -- * @see llvm::SequentialType::getElementType()
   --  
 
-   function Get_Element_Type (Ty : LLVM.Types.Type_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1373
+   function Get_Element_Type (Ty : LLVM.Types.Type_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1381
    pragma Import (C, Get_Element_Type, "LLVMGetElementType");
 
   --*
@@ -2103,7 +2117,7 @@ procedure Struct_Set_Body
   -- * @see llvm::Type::subtypes()
   --  
 
-   procedure Get_Subtypes (Tp : LLVM.Types.Type_T; Arr : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:1380
+   procedure Get_Subtypes (Tp : LLVM.Types.Type_T; Arr : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:1388
    pragma Import (C, Get_Subtypes, "LLVMGetSubtypes");
 
   --*
@@ -2112,7 +2126,7 @@ procedure Struct_Set_Body
   -- * @see llvm::Type::getNumContainedTypes()
   --  
 
-   function Get_Num_Contained_Types (Tp : LLVM.Types.Type_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1387
+   function Get_Num_Contained_Types (Tp : LLVM.Types.Type_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1395
    pragma Import (C, Get_Num_Contained_Types, "LLVMGetNumContainedTypes");
 
   --*
@@ -2124,7 +2138,7 @@ procedure Struct_Set_Body
   -- * @see llvm::ArrayType::get()
   --  
 
-   function Array_Type (Element_Type : LLVM.Types.Type_T; Element_Count : unsigned) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1397
+   function Array_Type (Element_Type : LLVM.Types.Type_T; Element_Count : unsigned) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1405
    pragma Import (C, Array_Type, "LLVMArrayType");
 
   --*
@@ -2135,7 +2149,7 @@ procedure Struct_Set_Body
   -- * @see llvm::ArrayType::getNumElements()
   --  
 
-   function Get_Array_Length (Array_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1406
+   function Get_Array_Length (Array_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1414
    pragma Import (C, Get_Array_Length, "LLVMGetArrayLength");
 
   --*
@@ -2147,7 +2161,7 @@ procedure Struct_Set_Body
   -- * @see llvm::PointerType::get()
   --  
 
-   function Pointer_Type (Element_Type : LLVM.Types.Type_T; Address_Space : unsigned) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1416
+   function Pointer_Type (Element_Type : LLVM.Types.Type_T; Address_Space : unsigned) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1424
    pragma Import (C, Pointer_Type, "LLVMPointerType");
 
   --*
@@ -2158,7 +2172,7 @@ procedure Struct_Set_Body
   -- * @see llvm::PointerType::getAddressSpace()
   --  
 
-   function Get_Pointer_Address_Space (Pointer_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1425
+   function Get_Pointer_Address_Space (Pointer_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1433
    pragma Import (C, Get_Pointer_Address_Space, "LLVMGetPointerAddressSpace");
 
   --*
@@ -2171,7 +2185,7 @@ procedure Struct_Set_Body
   -- * @see llvm::VectorType::get()
   --  
 
-   function Vector_Type (Element_Type : LLVM.Types.Type_T; Element_Count : unsigned) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1436
+   function Vector_Type (Element_Type : LLVM.Types.Type_T; Element_Count : unsigned) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1444
    pragma Import (C, Vector_Type, "LLVMVectorType");
 
   --*
@@ -2182,7 +2196,7 @@ procedure Struct_Set_Body
   -- * @see llvm::VectorType::getNumElements()
   --  
 
-   function Get_Vector_Size (Vector_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1445
+   function Get_Vector_Size (Vector_Ty : LLVM.Types.Type_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1453
    pragma Import (C, Get_Vector_Size, "LLVMGetVectorSize");
 
   --*
@@ -2199,35 +2213,35 @@ procedure Struct_Set_Body
   -- * Create a void type in a context.
   --  
 
-   function Void_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1460
+   function Void_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1468
    pragma Import (C, Void_Type_In_Context, "LLVMVoidTypeInContext");
 
   --*
   -- * Create a label type in a context.
   --  
 
-   function Label_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1465
+   function Label_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1473
    pragma Import (C, Label_Type_In_Context, "LLVMLabelTypeInContext");
 
   --*
   -- * Create a X86 MMX type in a context.
   --  
 
-   function X86_MMX_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1470
+   function X86_MMX_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1478
    pragma Import (C, X86_MMX_Type_In_Context, "LLVMX86MMXTypeInContext");
 
   --*
   -- * Create a token type in a context.
   --  
 
-   function Token_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1475
+   function Token_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1483
    pragma Import (C, Token_Type_In_Context, "LLVMTokenTypeInContext");
 
   --*
   -- * Create a metadata type in a context.
   --  
 
-   function Metadata_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1480
+   function Metadata_Type_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1488
    pragma Import (C, Metadata_Type_In_Context, "LLVMMetadataTypeInContext");
 
   --*
@@ -2235,13 +2249,13 @@ procedure Struct_Set_Body
   -- * global context.
   --  
 
-   function Void_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1486
+   function Void_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1494
    pragma Import (C, Void_Type, "LLVMVoidType");
 
-   function Label_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1487
+   function Label_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1495
    pragma Import (C, Label_Type, "LLVMLabelType");
 
-   function X86_MMX_Type return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1488
+   function X86_MMX_Type return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1496
    pragma Import (C, X86_MMX_Type, "LLVMX86MMXType");
 
   --*
@@ -2289,7 +2303,7 @@ procedure Struct_Set_Body
   -- * @see llvm::Value::getType()
   --  
 
-   function Type_Of (Val : LLVM.Types.Value_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1623
+   function Type_Of (Val : LLVM.Types.Value_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1631
    pragma Import (C, Type_Of, "LLVMTypeOf");
 
   --*
@@ -2298,7 +2312,7 @@ procedure Struct_Set_Body
   -- * @see llvm::Value::getValueID()
   --  
 
-   function Get_Value_Kind (Val : LLVM.Types.Value_T) return Value_Kind_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1630
+   function Get_Value_Kind (Val : LLVM.Types.Value_T) return Value_Kind_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1638
    pragma Import (C, Get_Value_Kind, "LLVMGetValueKind");
 
   --*
@@ -2314,7 +2328,7 @@ procedure Struct_Set_Body
    function Get_Value_Name2_C
      (Val    : LLVM.Types.Value_T;
       Length : access stddef_h.size_t)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1637
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1645
    pragma Import (C, Get_Value_Name2_C, "LLVMGetValueName2");
 
   --*
@@ -2339,7 +2353,7 @@ procedure Set_Value_Name2
   -- * @see llvm::Value::dump()
   --  
 
-   procedure Dump_Value (Val : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:1651
+   procedure Dump_Value (Val : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:1659
    pragma Import (C, Dump_Value, "LLVMDumpValue");
 
   --*
@@ -2354,7 +2368,7 @@ procedure Set_Value_Name2
       return String;
    function Print_Value_To_String_C
      (Val : LLVM.Types.Value_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1659
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1667
    pragma Import (C, Print_Value_To_String_C, "LLVMPrintValueToString");
 
   --*
@@ -2363,7 +2377,7 @@ procedure Set_Value_Name2
   -- * @see llvm::Value::replaceAllUsesWith()
   --  
 
-   procedure Replace_All_Uses_With (Old_Val : LLVM.Types.Value_T; New_Val : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:1666
+   procedure Replace_All_Uses_With (Old_Val : LLVM.Types.Value_T; New_Val : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:1674
    pragma Import (C, Replace_All_Uses_With, "LLVMReplaceAllUsesWith");
 
   --*
@@ -2375,7 +2389,7 @@ procedure Set_Value_Name2
       return Boolean;
    function Is_Constant_C
      (Val : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1671
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1679
    pragma Import (C, Is_Constant_C, "LLVMIsConstant");
 
   --*
@@ -2387,7 +2401,7 @@ procedure Set_Value_Name2
       return Boolean;
    function Is_Undef_C
      (Val : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1676
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1684
    pragma Import (C, Is_Undef_C, "LLVMIsUndef");
 
   --*
@@ -2402,271 +2416,271 @@ procedure Set_Value_Name2
   -- * @see llvm::dyn_cast_or_null<>
   --  
 
-   function Is_A_Fence_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Fence_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Fence_Inst, "LLVMIsAFenceInst");
 
-   function Is_A_Atomic_RMW_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Atomic_RMW_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Atomic_RMW_Inst, "LLVMIsAAtomicRMWInst");
 
-   function Is_A_Atomic_Cmp_Xchg_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Atomic_Cmp_Xchg_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Atomic_Cmp_Xchg_Inst, "LLVMIsAAtomicCmpXchgInst");
 
-   function Is_A_Freeze_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Freeze_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Freeze_Inst, "LLVMIsAFreezeInst");
 
-   function Is_AVA_Arg_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_AVA_Arg_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_AVA_Arg_Inst, "LLVMIsAVAArgInst");
 
-   function Is_A_Load_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Load_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Load_Inst, "LLVMIsALoadInst");
 
-   function Is_A_Extract_Value_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Extract_Value_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Extract_Value_Inst, "LLVMIsAExtractValueInst");
 
-   function Is_AZ_Ext_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_AZ_Ext_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_AZ_Ext_Inst, "LLVMIsAZExtInst");
 
-   function Is_AUI_To_FP_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_AUI_To_FP_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_AUI_To_FP_Inst, "LLVMIsAUIToFPInst");
 
-   function Is_A_Trunc_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Trunc_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Trunc_Inst, "LLVMIsATruncInst");
 
-   function Is_ASI_To_FP_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_ASI_To_FP_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_ASI_To_FP_Inst, "LLVMIsASIToFPInst");
 
-   function Is_AS_Ext_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_AS_Ext_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_AS_Ext_Inst, "LLVMIsASExtInst");
 
-   function Is_A_Ptr_To_Int_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Ptr_To_Int_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Ptr_To_Int_Inst, "LLVMIsAPtrToIntInst");
 
-   function Is_A_Int_To_Ptr_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Int_To_Ptr_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Int_To_Ptr_Inst, "LLVMIsAIntToPtrInst");
 
-   function Is_AFP_Trunc_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_AFP_Trunc_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_AFP_Trunc_Inst, "LLVMIsAFPTruncInst");
 
-   function Is_AFP_To_UI_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_AFP_To_UI_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_AFP_To_UI_Inst, "LLVMIsAFPToUIInst");
 
-   function Is_AFP_To_SI_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_AFP_To_SI_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_AFP_To_SI_Inst, "LLVMIsAFPToSIInst");
 
-   function Is_AFP_Ext_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_AFP_Ext_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_AFP_Ext_Inst, "LLVMIsAFPExtInst");
 
-   function Is_A_Bit_Cast_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Bit_Cast_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Bit_Cast_Inst, "LLVMIsABitCastInst");
 
-   function Is_A_Addr_Space_Cast_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Addr_Space_Cast_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Addr_Space_Cast_Inst, "LLVMIsAAddrSpaceCastInst");
 
-   function Is_A_Cast_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Cast_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Cast_Inst, "LLVMIsACastInst");
 
-   function Is_A_Alloca_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Alloca_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Alloca_Inst, "LLVMIsAAllocaInst");
 
-   function Is_A_Unary_Instruction (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Unary_Instruction (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Unary_Instruction, "LLVMIsAUnaryInstruction");
 
-   function Is_A_Cleanup_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Cleanup_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Cleanup_Pad_Inst, "LLVMIsACleanupPadInst");
 
-   function Is_A_Catch_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Catch_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Catch_Pad_Inst, "LLVMIsACatchPadInst");
 
-   function Is_A_Funclet_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Funclet_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Funclet_Pad_Inst, "LLVMIsAFuncletPadInst");
 
-   function Is_A_Call_Br_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Call_Br_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Call_Br_Inst, "LLVMIsACallBrInst");
 
-   function Is_A_Catch_Switch_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Catch_Switch_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Catch_Switch_Inst, "LLVMIsACatchSwitchInst");
 
-   function Is_A_Catch_Return_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Catch_Return_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Catch_Return_Inst, "LLVMIsACatchReturnInst");
 
-   function Is_A_Cleanup_Return_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Cleanup_Return_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Cleanup_Return_Inst, "LLVMIsACleanupReturnInst");
 
-   function Is_A_Resume_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Resume_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Resume_Inst, "LLVMIsAResumeInst");
 
-   function Is_A_Unreachable_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Unreachable_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Unreachable_Inst, "LLVMIsAUnreachableInst");
 
-   function Is_A_Switch_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Switch_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Switch_Inst, "LLVMIsASwitchInst");
 
-   function Is_A_Return_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Return_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Return_Inst, "LLVMIsAReturnInst");
 
-   function Is_A_Invoke_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Invoke_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Invoke_Inst, "LLVMIsAInvokeInst");
 
-   function Is_A_Indirect_Br_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Indirect_Br_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Indirect_Br_Inst, "LLVMIsAIndirectBrInst");
 
-   function Is_A_Branch_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Branch_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Branch_Inst, "LLVMIsABranchInst");
 
-   function Is_A_Store_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Store_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Store_Inst, "LLVMIsAStoreInst");
 
-   function Is_A_Shuffle_Vector_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Shuffle_Vector_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Shuffle_Vector_Inst, "LLVMIsAShuffleVectorInst");
 
-   function Is_A_Select_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Select_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Select_Inst, "LLVMIsASelectInst");
 
-   function Is_APHI_Node (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_APHI_Node (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_APHI_Node, "LLVMIsAPHINode");
 
-   function Is_A_Landing_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Landing_Pad_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Landing_Pad_Inst, "LLVMIsALandingPadInst");
 
-   function Is_A_Insert_Value_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Insert_Value_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Insert_Value_Inst, "LLVMIsAInsertValueInst");
 
-   function Is_A_Insert_Element_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Insert_Element_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Insert_Element_Inst, "LLVMIsAInsertElementInst");
 
-   function Is_A_Get_Element_Ptr_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Get_Element_Ptr_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Get_Element_Ptr_Inst, "LLVMIsAGetElementPtrInst");
 
-   function Is_A_Extract_Element_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Extract_Element_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Extract_Element_Inst, "LLVMIsAExtractElementInst");
 
-   function Is_AI_Cmp_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_AI_Cmp_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_AI_Cmp_Inst, "LLVMIsAICmpInst");
 
-   function Is_AF_Cmp_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_AF_Cmp_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_AF_Cmp_Inst, "LLVMIsAFCmpInst");
 
-   function Is_A_Cmp_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Cmp_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Cmp_Inst, "LLVMIsACmpInst");
 
-   function Is_A_Mem_Set_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Mem_Set_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Mem_Set_Inst, "LLVMIsAMemSetInst");
 
-   function Is_A_Mem_Move_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Mem_Move_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Mem_Move_Inst, "LLVMIsAMemMoveInst");
 
-   function Is_A_Mem_Cpy_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Mem_Cpy_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Mem_Cpy_Inst, "LLVMIsAMemCpyInst");
 
-   function Is_A_Mem_Intrinsic (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Mem_Intrinsic (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Mem_Intrinsic, "LLVMIsAMemIntrinsic");
 
-   function Is_A_Dbg_Label_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Dbg_Label_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Dbg_Label_Inst, "LLVMIsADbgLabelInst");
 
-   function Is_A_Dbg_Declare_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Dbg_Declare_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Dbg_Declare_Inst, "LLVMIsADbgDeclareInst");
 
-   function Is_A_Dbg_Variable_Intrinsic (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Dbg_Variable_Intrinsic (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Dbg_Variable_Intrinsic, "LLVMIsADbgVariableIntrinsic");
 
-   function Is_A_Dbg_Info_Intrinsic (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Dbg_Info_Intrinsic (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Dbg_Info_Intrinsic, "LLVMIsADbgInfoIntrinsic");
 
-   function Is_A_Intrinsic_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Intrinsic_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Intrinsic_Inst, "LLVMIsAIntrinsicInst");
 
-   function Is_A_Call_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Call_Inst (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Call_Inst, "LLVMIsACallInst");
 
-   function Is_A_Binary_Operator (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Binary_Operator (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Binary_Operator, "LLVMIsABinaryOperator");
 
-   function Is_A_Unary_Operator (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Unary_Operator (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Unary_Operator, "LLVMIsAUnaryOperator");
 
-   function Is_A_Instruction (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Instruction (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Instruction, "LLVMIsAInstruction");
 
-   function Is_A_Undef_Value (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Undef_Value (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Undef_Value, "LLVMIsAUndefValue");
 
-   function Is_A_Global_Variable (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Global_Variable (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Global_Variable, "LLVMIsAGlobalVariable");
 
-   function Is_A_Function (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Function (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Function, "LLVMIsAFunction");
 
-   function Is_A_Global_Object (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Global_Object (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Global_Object, "LLVMIsAGlobalObject");
 
-   function Is_A_Global_I_Func (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Global_I_Func (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Global_I_Func, "LLVMIsAGlobalIFunc");
 
-   function Is_A_Global_Alias (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Global_Alias (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Global_Alias, "LLVMIsAGlobalAlias");
 
-   function Is_A_Global_Value (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Global_Value (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Global_Value, "LLVMIsAGlobalValue");
 
-   function Is_A_Constant_Vector (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant_Vector (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant_Vector, "LLVMIsAConstantVector");
 
-   function Is_A_Constant_Token_None (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant_Token_None (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant_Token_None, "LLVMIsAConstantTokenNone");
 
-   function Is_A_Constant_Struct (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant_Struct (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant_Struct, "LLVMIsAConstantStruct");
 
-   function Is_A_Constant_Pointer_Null (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant_Pointer_Null (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant_Pointer_Null, "LLVMIsAConstantPointerNull");
 
-   function Is_A_Constant_Int (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant_Int (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant_Int, "LLVMIsAConstantInt");
 
-   function Is_A_Constant_FP (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant_FP (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant_FP, "LLVMIsAConstantFP");
 
-   function Is_A_Constant_Expr (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant_Expr (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant_Expr, "LLVMIsAConstantExpr");
 
-   function Is_A_Constant_Data_Vector (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant_Data_Vector (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant_Data_Vector, "LLVMIsAConstantDataVector");
 
-   function Is_A_Constant_Data_Array (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant_Data_Array (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant_Data_Array, "LLVMIsAConstantDataArray");
 
-   function Is_A_Constant_Data_Sequential (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant_Data_Sequential (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant_Data_Sequential, "LLVMIsAConstantDataSequential");
 
-   function Is_A_Constant_Array (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant_Array (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant_Array, "LLVMIsAConstantArray");
 
-   function Is_A_Constant_Aggregate_Zero (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant_Aggregate_Zero (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant_Aggregate_Zero, "LLVMIsAConstantAggregateZero");
 
-   function Is_A_Block_Address (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Block_Address (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Block_Address, "LLVMIsABlockAddress");
 
-   function Is_A_Constant (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Constant (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Constant, "LLVMIsAConstant");
 
-   function Is_A_User (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_User (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_User, "LLVMIsAUser");
 
-   function Is_A_Inline_Asm (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Inline_Asm (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Inline_Asm, "LLVMIsAInlineAsm");
 
-   function Is_A_Basic_Block (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Basic_Block (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Basic_Block, "LLVMIsABasicBlock");
 
-   function Is_A_Argument (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1691
+   function Is_A_Argument (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1699
    pragma Import (C, Is_A_Argument, "LLVMIsAArgument");
 
-   function Is_AMD_Node (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1693
+   function Is_AMD_Node (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1701
    pragma Import (C, Is_AMD_Node, "LLVMIsAMDNode");
 
-   function Is_AMD_String (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1694
+   function Is_AMD_String (Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1702
    pragma Import (C, Is_AMD_String, "LLVMIsAMDString");
 
   --* Deprecated: Use LLVMGetValueName2 instead.  
@@ -2675,7 +2689,7 @@ procedure Set_Value_Name2
       return String;
    function Get_Value_Name_C
      (Val : LLVM.Types.Value_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1697
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1705
    pragma Import (C, Get_Value_Name_C, "LLVMGetValueName");
 
   --* Deprecated: Use LLVMSetValueName2 instead.  
@@ -2684,7 +2698,7 @@ procedure Set_Value_Name2
       Name : String);
    procedure Set_Value_Name_C
      (Val  : LLVM.Types.Value_T;
-      Name : Interfaces.C.Strings.chars_ptr);  -- llvm-10.0.0.src/include/llvm-c/Core.h:1699
+      Name : Interfaces.C.Strings.chars_ptr);  -- llvm-11.0.1.src/include/llvm-c/Core.h:1707
    pragma Import (C, Set_Value_Name_C, "LLVMSetValueName");
 
   --*
@@ -2715,7 +2729,7 @@ procedure Set_Value_Name2
   -- * @see llvm::Value::use_begin()
   --  
 
-   function Get_First_Use (Val : LLVM.Types.Value_T) return LLVM.Types.Use_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1728
+   function Get_First_Use (Val : LLVM.Types.Value_T) return LLVM.Types.Use_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1736
    pragma Import (C, Get_First_Use, "LLVMGetFirstUse");
 
   --*
@@ -2725,7 +2739,7 @@ procedure Set_Value_Name2
   -- * the final use and no more are available.
   --  
 
-   function Get_Next_Use (U : LLVM.Types.Use_T) return LLVM.Types.Use_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1736
+   function Get_Next_Use (U : LLVM.Types.Use_T) return LLVM.Types.Use_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1744
    pragma Import (C, Get_Next_Use, "LLVMGetNextUse");
 
   --*
@@ -2736,7 +2750,7 @@ procedure Set_Value_Name2
   -- * @see llvm::Use::getUser()
   --  
 
-   function Get_User (U : LLVM.Types.Use_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1745
+   function Get_User (U : LLVM.Types.Use_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1753
    pragma Import (C, Get_User, "LLVMGetUser");
 
   --*
@@ -2745,7 +2759,7 @@ procedure Set_Value_Name2
   -- * @see llvm::Use::get().
   --  
 
-   function Get_Used_Value (U : LLVM.Types.Use_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1752
+   function Get_Used_Value (U : LLVM.Types.Use_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1760
    pragma Import (C, Get_Used_Value, "LLVMGetUsedValue");
 
   --*
@@ -2768,7 +2782,7 @@ procedure Set_Value_Name2
   -- * @see llvm::User::getOperand()
   --  
 
-   function Get_Operand (Val : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1773
+   function Get_Operand (Val : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1781
    pragma Import (C, Get_Operand, "LLVMGetOperand");
 
   --*
@@ -2777,7 +2791,7 @@ procedure Set_Value_Name2
   -- * @see llvm::User::getOperandUse()
   --  
 
-   function Get_Operand_Use (Val : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Use_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1780
+   function Get_Operand_Use (Val : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Use_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1788
    pragma Import (C, Get_Operand_Use, "LLVMGetOperandUse");
 
   --*
@@ -2789,7 +2803,7 @@ procedure Set_Value_Name2
    procedure Set_Operand
      (User : LLVM.Types.Value_T;
       Index : unsigned;
-      Val : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:1787
+      Val : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:1795
    pragma Import (C, Set_Operand, "LLVMSetOperand");
 
   --*
@@ -2798,7 +2812,7 @@ procedure Set_Value_Name2
   -- * @see llvm::User::getNumOperands()
   --  
 
-   function Get_Num_Operands (Val : LLVM.Types.Value_T) return int;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1794
+   function Get_Num_Operands (Val : LLVM.Types.Value_T) return int;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1802
    pragma Import (C, Get_Num_Operands, "LLVMGetNumOperands");
 
   --*
@@ -2824,7 +2838,7 @@ procedure Set_Value_Name2
   --  
 
   -- all zeroes  
-   function Const_Null (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1817
+   function Const_Null (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1825
    pragma Import (C, Const_Null, "LLVMConstNull");
 
   --*
@@ -2836,7 +2850,7 @@ procedure Set_Value_Name2
   -- * @see llvm::Constant::getAllOnesValue()
   --  
 
-   function Const_All_Ones (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1827
+   function Const_All_Ones (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1835
    pragma Import (C, Const_All_Ones, "LLVMConstAllOnes");
 
   --*
@@ -2845,7 +2859,7 @@ procedure Set_Value_Name2
   -- * @see llvm::UndefValue::get()
   --  
 
-   function Get_Undef (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1834
+   function Get_Undef (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1842
    pragma Import (C, Get_Undef, "LLVMGetUndef");
 
   --*
@@ -2859,7 +2873,7 @@ procedure Set_Value_Name2
       return Boolean;
    function Is_Null_C
      (Val : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1841
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1849
    pragma Import (C, Is_Null_C, "LLVMIsNull");
 
   --*
@@ -2867,7 +2881,7 @@ procedure Set_Value_Name2
   -- * specified type.
   --  
 
-   function Const_Pointer_Null (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1847
+   function Const_Pointer_Null (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1855
    pragma Import (C, Const_Pointer_Null, "LLVMConstPointerNull");
 
   --*
@@ -2919,7 +2933,7 @@ function Const_Int
    function Const_Int_Of_Arbitrary_Precision
      (Int_Ty : LLVM.Types.Type_T;
       Num_Words : unsigned;
-      Words : access stdint_h.uint64_t) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1884
+      Words : access stdint_h.uint64_t) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1892
    pragma Import (C, Const_Int_Of_Arbitrary_Precision, "LLVMConstIntOfArbitraryPrecision");
 
   --*
@@ -2969,7 +2983,7 @@ function Const_Int_Of_String_And_Size
   -- * Obtain a constant value referring to a double floating point value.
   --  
 
-   function Const_Real (Real_Ty : LLVM.Types.Type_T; N : double) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1912
+   function Const_Real (Real_Ty : LLVM.Types.Type_T; N : double) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1920
    pragma Import (C, Const_Real, "LLVMConstReal");
 
   --*
@@ -2986,7 +3000,7 @@ function Const_Int_Of_String_And_Size
    function Const_Real_Of_String_C
      (Real_Ty : LLVM.Types.Type_T;
       Text    : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1920
+      return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1928
    pragma Import (C, Const_Real_Of_String_C, "LLVMConstRealOfString");
 
   --*
@@ -3011,7 +3025,7 @@ function Const_Real_Of_String_And_Size
   -- * @see llvm::ConstantInt::getZExtValue()
   --  
 
-   function Const_Int_Get_Z_Ext_Value (Constant_Val : LLVM.Types.Value_T) return Extensions.unsigned_long_long;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1933
+   function Const_Int_Get_Z_Ext_Value (Constant_Val : LLVM.Types.Value_T) return Extensions.unsigned_long_long;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1941
    pragma Import (C, Const_Int_Get_Z_Ext_Value, "LLVMConstIntGetZExtValue");
 
   --*
@@ -3020,7 +3034,7 @@ function Const_Real_Of_String_And_Size
   -- * @see llvm::ConstantInt::getSExtValue()
   --  
 
-   function Const_Int_Get_S_Ext_Value (Constant_Val : LLVM.Types.Value_T) return Long_Long_Integer;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1940
+   function Const_Int_Get_S_Ext_Value (Constant_Val : LLVM.Types.Value_T) return Long_Long_Integer;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1948
    pragma Import (C, Const_Int_Get_S_Ext_Value, "LLVMConstIntGetSExtValue");
 
   --*
@@ -3030,7 +3044,7 @@ function Const_Real_Of_String_And_Size
   -- * @see llvm::ConstantFP::getDoubleValue
   --  
 
-   function Const_Real_Get_Double (Constant_Val : LLVM.Types.Value_T; loses_Info : access LLVM.Types.Bool_T) return double;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1948
+   function Const_Real_Get_Double (Constant_Val : LLVM.Types.Value_T; loses_Info : access LLVM.Types.Bool_T) return double;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1956
    pragma Import (C, Const_Real_Get_Double, "LLVMConstRealGetDouble");
 
   --*
@@ -3098,7 +3112,7 @@ function Const_String
       return Boolean;
    function Is_Constant_String_C
      (c : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1987
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:1995
    pragma Import (C, Is_Constant_String_C, "LLVMIsConstantString");
 
   --*
@@ -3114,7 +3128,7 @@ function Const_String
    function Get_As_String_C
      (c      : LLVM.Types.Value_T;
       Length : access stddef_h.size_t)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:1994
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2002
    pragma Import (C, Get_As_String_C, "LLVMGetAsString");
 
   --*
@@ -3167,7 +3181,7 @@ function Const_Struct
    function Const_Array
      (Element_Ty : LLVM.Types.Type_T;
       Constant_Vals : System.Address;
-      Length : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2021
+      Length : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2029
    pragma Import (C, Const_Array, "LLVMConstArray");
 
   --*
@@ -3179,7 +3193,7 @@ function Const_Struct
    function Const_Named_Struct
      (Struct_Ty : LLVM.Types.Type_T;
       Constant_Vals : System.Address;
-      Count : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2029
+      Count : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2037
    pragma Import (C, Const_Named_Struct, "LLVMConstNamedStruct");
 
   --*
@@ -3188,7 +3202,7 @@ function Const_Struct
   -- * @see ConstantDataSequential::getElementAsConstant()
   --  
 
-   function Get_Element_As_Constant (C : LLVM.Types.Value_T; idx : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2038
+   function Get_Element_As_Constant (C : LLVM.Types.Value_T; idx : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2046
    pragma Import (C, Get_Element_As_Constant, "LLVMGetElementAsConstant");
 
   --*
@@ -3197,7 +3211,7 @@ function Const_Struct
   -- * @see llvm::ConstantVector::get()
   --  
 
-   function Const_Vector (Scalar_Constant_Vals : System.Address; Size : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2045
+   function Const_Vector (Scalar_Constant_Vals : System.Address; Size : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2053
    pragma Import (C, Const_Vector, "LLVMConstVector");
 
   --*
@@ -3214,195 +3228,195 @@ function Const_Struct
   -- * @{
   --  
 
-   function Get_Const_Opcode (Constant_Val : LLVM.Types.Value_T) return Opcode_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2060
+   function Get_Const_Opcode (Constant_Val : LLVM.Types.Value_T) return Opcode_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2068
    pragma Import (C, Get_Const_Opcode, "LLVMGetConstOpcode");
 
-   function Align_Of (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2061
+   function Align_Of (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2069
    pragma Import (C, Align_Of, "LLVMAlignOf");
 
-   function Size_Of (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2062
+   function Size_Of (Ty : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2070
    pragma Import (C, Size_Of, "LLVMSizeOf");
 
-   function Const_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2063
+   function Const_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2071
    pragma Import (C, Const_Neg, "LLVMConstNeg");
 
-   function Const_NSW_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2064
+   function Const_NSW_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2072
    pragma Import (C, Const_NSW_Neg, "LLVMConstNSWNeg");
 
-   function Const_NUW_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2065
+   function Const_NUW_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2073
    pragma Import (C, Const_NUW_Neg, "LLVMConstNUWNeg");
 
-   function Const_F_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2066
+   function Const_F_Neg (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2074
    pragma Import (C, Const_F_Neg, "LLVMConstFNeg");
 
-   function Const_Not (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2067
+   function Const_Not (Constant_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2075
    pragma Import (C, Const_Not, "LLVMConstNot");
 
-   function Const_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2068
+   function Const_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2076
    pragma Import (C, Const_Add, "LLVMConstAdd");
 
-   function Const_NSW_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2069
+   function Const_NSW_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2077
    pragma Import (C, Const_NSW_Add, "LLVMConstNSWAdd");
 
-   function Const_NUW_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2070
+   function Const_NUW_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2078
    pragma Import (C, Const_NUW_Add, "LLVMConstNUWAdd");
 
-   function Const_F_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2071
+   function Const_F_Add (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2079
    pragma Import (C, Const_F_Add, "LLVMConstFAdd");
 
-   function Const_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2072
+   function Const_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2080
    pragma Import (C, Const_Sub, "LLVMConstSub");
 
-   function Const_NSW_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2073
+   function Const_NSW_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2081
    pragma Import (C, Const_NSW_Sub, "LLVMConstNSWSub");
 
-   function Const_NUW_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2074
+   function Const_NUW_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2082
    pragma Import (C, Const_NUW_Sub, "LLVMConstNUWSub");
 
-   function Const_F_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2075
+   function Const_F_Sub (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2083
    pragma Import (C, Const_F_Sub, "LLVMConstFSub");
 
-   function Const_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2076
+   function Const_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2084
    pragma Import (C, Const_Mul, "LLVMConstMul");
 
-   function Const_NSW_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2077
+   function Const_NSW_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2085
    pragma Import (C, Const_NSW_Mul, "LLVMConstNSWMul");
 
-   function Const_NUW_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2078
+   function Const_NUW_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2086
    pragma Import (C, Const_NUW_Mul, "LLVMConstNUWMul");
 
-   function Const_F_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2079
+   function Const_F_Mul (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2087
    pragma Import (C, Const_F_Mul, "LLVMConstFMul");
 
-   function Const_U_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2080
+   function Const_U_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2088
    pragma Import (C, Const_U_Div, "LLVMConstUDiv");
 
-   function Const_Exact_U_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2081
+   function Const_Exact_U_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2089
    pragma Import (C, Const_Exact_U_Div, "LLVMConstExactUDiv");
 
-   function Const_S_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2082
+   function Const_S_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2090
    pragma Import (C, Const_S_Div, "LLVMConstSDiv");
 
-   function Const_Exact_S_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2083
+   function Const_Exact_S_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2091
    pragma Import (C, Const_Exact_S_Div, "LLVMConstExactSDiv");
 
-   function Const_F_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2084
+   function Const_F_Div (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2092
    pragma Import (C, Const_F_Div, "LLVMConstFDiv");
 
-   function Const_U_Rem (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2085
+   function Const_U_Rem (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2093
    pragma Import (C, Const_U_Rem, "LLVMConstURem");
 
-   function Const_S_Rem (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2086
+   function Const_S_Rem (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2094
    pragma Import (C, Const_S_Rem, "LLVMConstSRem");
 
-   function Const_F_Rem (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2087
+   function Const_F_Rem (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2095
    pragma Import (C, Const_F_Rem, "LLVMConstFRem");
 
-   function Const_And (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2088
+   function Const_And (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2096
    pragma Import (C, Const_And, "LLVMConstAnd");
 
-   function Const_Or (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2089
+   function Const_Or (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2097
    pragma Import (C, Const_Or, "LLVMConstOr");
 
-   function Const_Xor (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2090
+   function Const_Xor (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2098
    pragma Import (C, Const_Xor, "LLVMConstXor");
 
    function Const_I_Cmp
      (Predicate : Int_Predicate_T;
       LHS_Constant : LLVM.Types.Value_T;
-      RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2091
+      RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2099
    pragma Import (C, Const_I_Cmp, "LLVMConstICmp");
 
    function Const_F_Cmp
      (Predicate : Real_Predicate_T;
       LHS_Constant : LLVM.Types.Value_T;
-      RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2093
+      RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2101
    pragma Import (C, Const_F_Cmp, "LLVMConstFCmp");
 
-   function Const_Shl (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2095
+   function Const_Shl (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2103
    pragma Import (C, Const_Shl, "LLVMConstShl");
 
-   function Const_L_Shr (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2096
+   function Const_L_Shr (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2104
    pragma Import (C, Const_L_Shr, "LLVMConstLShr");
 
-   function Const_A_Shr (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2097
+   function Const_A_Shr (LHS_Constant : LLVM.Types.Value_T; RHS_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2105
    pragma Import (C, Const_A_Shr, "LLVMConstAShr");
 
    function Const_GEP
      (Constant_Val : LLVM.Types.Value_T;
       Constant_Indices : System.Address;
-      Num_Indices : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2098
+      Num_Indices : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2106
    pragma Import (C, Const_GEP, "LLVMConstGEP");
 
    function Const_GE_P2
      (Ty : LLVM.Types.Type_T;
       Constant_Val : LLVM.Types.Value_T;
       Constant_Indices : System.Address;
-      Num_Indices : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2100
+      Num_Indices : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2108
    pragma Import (C, Const_GE_P2, "LLVMConstGEP2");
 
    function Const_In_Bounds_GEP
      (Constant_Val : LLVM.Types.Value_T;
       Constant_Indices : System.Address;
-      Num_Indices : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2102
+      Num_Indices : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2110
    pragma Import (C, Const_In_Bounds_GEP, "LLVMConstInBoundsGEP");
 
    function Const_In_Bounds_GE_P2
      (Ty : LLVM.Types.Type_T;
       Constant_Val : LLVM.Types.Value_T;
       Constant_Indices : System.Address;
-      Num_Indices : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2105
+      Num_Indices : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2113
    pragma Import (C, Const_In_Bounds_GE_P2, "LLVMConstInBoundsGEP2");
 
-   function Const_Trunc (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2108
+   function Const_Trunc (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2116
    pragma Import (C, Const_Trunc, "LLVMConstTrunc");
 
-   function Const_S_Ext (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2109
+   function Const_S_Ext (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2117
    pragma Import (C, Const_S_Ext, "LLVMConstSExt");
 
-   function Const_Z_Ext (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2110
+   function Const_Z_Ext (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2118
    pragma Import (C, Const_Z_Ext, "LLVMConstZExt");
 
-   function Const_FP_Trunc (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2111
+   function Const_FP_Trunc (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2119
    pragma Import (C, Const_FP_Trunc, "LLVMConstFPTrunc");
 
-   function Const_FP_Ext (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2112
+   function Const_FP_Ext (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2120
    pragma Import (C, Const_FP_Ext, "LLVMConstFPExt");
 
-   function Const_UI_To_FP (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2113
+   function Const_UI_To_FP (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2121
    pragma Import (C, Const_UI_To_FP, "LLVMConstUIToFP");
 
-   function Const_SI_To_FP (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2114
+   function Const_SI_To_FP (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2122
    pragma Import (C, Const_SI_To_FP, "LLVMConstSIToFP");
 
-   function Const_FP_To_UI (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2115
+   function Const_FP_To_UI (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2123
    pragma Import (C, Const_FP_To_UI, "LLVMConstFPToUI");
 
-   function Const_FP_To_SI (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2116
+   function Const_FP_To_SI (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2124
    pragma Import (C, Const_FP_To_SI, "LLVMConstFPToSI");
 
-   function Const_Ptr_To_Int (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2117
+   function Const_Ptr_To_Int (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2125
    pragma Import (C, Const_Ptr_To_Int, "LLVMConstPtrToInt");
 
-   function Const_Int_To_Ptr (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2118
+   function Const_Int_To_Ptr (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2126
    pragma Import (C, Const_Int_To_Ptr, "LLVMConstIntToPtr");
 
-   function Const_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2119
+   function Const_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2127
    pragma Import (C, Const_Bit_Cast, "LLVMConstBitCast");
 
-   function Const_Addr_Space_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2120
+   function Const_Addr_Space_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2128
    pragma Import (C, Const_Addr_Space_Cast, "LLVMConstAddrSpaceCast");
 
-   function Const_Z_Ext_Or_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2121
+   function Const_Z_Ext_Or_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2129
    pragma Import (C, Const_Z_Ext_Or_Bit_Cast, "LLVMConstZExtOrBitCast");
 
-   function Const_S_Ext_Or_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2123
+   function Const_S_Ext_Or_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2131
    pragma Import (C, Const_S_Ext_Or_Bit_Cast, "LLVMConstSExtOrBitCast");
 
-   function Const_Trunc_Or_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2125
+   function Const_Trunc_Or_Bit_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2133
    pragma Import (C, Const_Trunc_Or_Bit_Cast, "LLVMConstTruncOrBitCast");
 
-   function Const_Pointer_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2127
+   function Const_Pointer_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2135
    pragma Import (C, Const_Pointer_Cast, "LLVMConstPointerCast");
 
 function Const_Int_Cast
@@ -3417,44 +3431,44 @@ function Const_Int_Cast
       return LLVM.Types.Value_T;
    pragma Import (C, Const_Int_Cast_C, "LLVMConstIntCast");
 
-   function Const_FP_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2131
+   function Const_FP_Cast (Constant_Val : LLVM.Types.Value_T; To_Type : LLVM.Types.Type_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2139
    pragma Import (C, Const_FP_Cast, "LLVMConstFPCast");
 
    function Const_Select
      (Constant_Condition : LLVM.Types.Value_T;
       Constant_If_True : LLVM.Types.Value_T;
-      Constant_If_False : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2132
+      Constant_If_False : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2140
    pragma Import (C, Const_Select, "LLVMConstSelect");
 
-   function Const_Extract_Element (Vector_Constant : LLVM.Types.Value_T; Index_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2135
+   function Const_Extract_Element (Vector_Constant : LLVM.Types.Value_T; Index_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2143
    pragma Import (C, Const_Extract_Element, "LLVMConstExtractElement");
 
    function Const_Insert_Element
      (Vector_Constant : LLVM.Types.Value_T;
       Element_Value_Constant : LLVM.Types.Value_T;
-      Index_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2137
+      Index_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2145
    pragma Import (C, Const_Insert_Element, "LLVMConstInsertElement");
 
    function Const_Shuffle_Vector
      (Vector_A_Constant : LLVM.Types.Value_T;
       Vector_B_Constant : LLVM.Types.Value_T;
-      Mask_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2140
+      Mask_Constant : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2148
    pragma Import (C, Const_Shuffle_Vector, "LLVMConstShuffleVector");
 
    function Const_Extract_Value
      (Agg_Constant : LLVM.Types.Value_T;
       Idx_List : access unsigned;
-      Num_Idx : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2143
+      Num_Idx : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2151
    pragma Import (C, Const_Extract_Value, "LLVMConstExtractValue");
 
    function Const_Insert_Value
      (Agg_Constant : LLVM.Types.Value_T;
       Element_Value_Constant : LLVM.Types.Value_T;
       Idx_List : access unsigned;
-      Num_Idx : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2145
+      Num_Idx : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2153
    pragma Import (C, Const_Insert_Value, "LLVMConstInsertValue");
 
-   function Block_Address (F : LLVM.Types.Value_T; BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2148
+   function Block_Address (F : LLVM.Types.Value_T; BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2156
    pragma Import (C, Block_Address, "LLVMBlockAddress");
 
   --* Deprecated: Use LLVMGetInlineAsm instead.  
@@ -3489,7 +3503,7 @@ function Const_Inline_Asm
   -- * @{
   --  
 
-   function Get_Global_Parent (Global : LLVM.Types.Value_T) return LLVM.Types.Module_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2170
+   function Get_Global_Parent (Global : LLVM.Types.Value_T) return LLVM.Types.Module_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2178
    pragma Import (C, Get_Global_Parent, "LLVMGetGlobalParent");
 
    function Is_Declaration
@@ -3497,13 +3511,13 @@ function Const_Inline_Asm
       return Boolean;
    function Is_Declaration_C
      (Global : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2171
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2179
    pragma Import (C, Is_Declaration_C, "LLVMIsDeclaration");
 
-   function Get_Linkage (Global : LLVM.Types.Value_T) return Linkage_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2172
+   function Get_Linkage (Global : LLVM.Types.Value_T) return Linkage_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2180
    pragma Import (C, Get_Linkage, "LLVMGetLinkage");
 
-   procedure Set_Linkage (Global : LLVM.Types.Value_T; Linkage : Linkage_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2173
+   procedure Set_Linkage (Global : LLVM.Types.Value_T; Linkage : Linkage_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2181
    pragma Import (C, Set_Linkage, "LLVMSetLinkage");
 
    function Get_Section
@@ -3511,7 +3525,7 @@ function Const_Inline_Asm
       return String;
    function Get_Section_C
      (Global : LLVM.Types.Value_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2174
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2182
    pragma Import (C, Get_Section_C, "LLVMGetSection");
 
    procedure Set_Section
@@ -3519,25 +3533,25 @@ function Const_Inline_Asm
       Section : String);
    procedure Set_Section_C
      (Global  : LLVM.Types.Value_T;
-      Section : Interfaces.C.Strings.chars_ptr);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2175
+      Section : Interfaces.C.Strings.chars_ptr);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2183
    pragma Import (C, Set_Section_C, "LLVMSetSection");
 
-   function Get_Visibility (Global : LLVM.Types.Value_T) return Visibility_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2176
+   function Get_Visibility (Global : LLVM.Types.Value_T) return Visibility_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2184
    pragma Import (C, Get_Visibility, "LLVMGetVisibility");
 
-   procedure Set_Visibility (Global : LLVM.Types.Value_T; Viz : Visibility_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2177
+   procedure Set_Visibility (Global : LLVM.Types.Value_T; Viz : Visibility_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2185
    pragma Import (C, Set_Visibility, "LLVMSetVisibility");
 
-   function Get_DLL_Storage_Class (Global : LLVM.Types.Value_T) return DLL_Storage_Class_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2178
+   function Get_DLL_Storage_Class (Global : LLVM.Types.Value_T) return DLL_Storage_Class_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2186
    pragma Import (C, Get_DLL_Storage_Class, "LLVMGetDLLStorageClass");
 
-   procedure Set_DLL_Storage_Class (Global : LLVM.Types.Value_T; Class : DLL_Storage_Class_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2179
+   procedure Set_DLL_Storage_Class (Global : LLVM.Types.Value_T; Class : DLL_Storage_Class_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2187
    pragma Import (C, Set_DLL_Storage_Class, "LLVMSetDLLStorageClass");
 
-   function Get_Unnamed_Address (Global : LLVM.Types.Value_T) return Unnamed_Addr_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2180
+   function Get_Unnamed_Address (Global : LLVM.Types.Value_T) return Unnamed_Addr_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2188
    pragma Import (C, Get_Unnamed_Address, "LLVMGetUnnamedAddress");
 
-   procedure Set_Unnamed_Address (Global : LLVM.Types.Value_T; Unnamed_Addr : Unnamed_Addr_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2181
+   procedure Set_Unnamed_Address (Global : LLVM.Types.Value_T; Unnamed_Addr : Unnamed_Addr_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2189
    pragma Import (C, Set_Unnamed_Address, "LLVMSetUnnamedAddress");
 
   --*
@@ -3547,7 +3561,7 @@ function Const_Inline_Asm
   -- * @see llvm::GlobalValue::getValueType()
   --  
 
-   function Global_Get_Value_Type (Global : LLVM.Types.Value_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2189
+   function Global_Get_Value_Type (Global : LLVM.Types.Value_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2197
    pragma Import (C, Global_Get_Value_Type, "LLVMGlobalGetValueType");
 
   --* Deprecated: Use LLVMGetUnnamedAddress instead.  
@@ -3556,7 +3570,7 @@ function Const_Inline_Asm
       return Boolean;
    function Has_Unnamed_Addr_C
      (Global : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2192
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2200
    pragma Import (C, Has_Unnamed_Addr_C, "LLVMHasUnnamedAddr");
 
   --* Deprecated: Use LLVMSetUnnamedAddress instead.  
@@ -3565,7 +3579,7 @@ function Const_Inline_Asm
       Has_Unnamed_Addr : Boolean);
    procedure Set_Unnamed_Addr_C
      (Global           : LLVM.Types.Value_T;
-      Has_Unnamed_Addr : LLVM.Types.Bool_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2194
+      Has_Unnamed_Addr : LLVM.Types.Bool_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2202
    pragma Import (C, Set_Unnamed_Addr_C, "LLVMSetUnnamedAddr");
 
   --*
@@ -3583,7 +3597,7 @@ function Const_Inline_Asm
   -- * @see llvm::GlobalValue::getAlignment()
   --  
 
-   function Get_Alignment (V : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2210
+   function Get_Alignment (V : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2218
    pragma Import (C, Get_Alignment, "LLVMGetAlignment");
 
   --*
@@ -3594,7 +3608,7 @@ function Const_Inline_Asm
   -- * @see llvm::GlobalValue::setAlignment()
   --  
 
-   procedure Set_Alignment (V : LLVM.Types.Value_T; Bytes : unsigned);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2219
+   procedure Set_Alignment (V : LLVM.Types.Value_T; Bytes : unsigned);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2227
    pragma Import (C, Set_Alignment, "LLVMSetAlignment");
 
   --*
@@ -3607,7 +3621,7 @@ function Const_Inline_Asm
    procedure Global_Set_Metadata
      (Global : LLVM.Types.Value_T;
       Kind : unsigned;
-      MD : LLVM.Types.Metadata_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2227
+      MD : LLVM.Types.Metadata_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2235
    pragma Import (C, Global_Set_Metadata, "LLVMGlobalSetMetadata");
 
   --*
@@ -3616,7 +3630,7 @@ function Const_Inline_Asm
   -- * @see llvm::GlobalObject::eraseMetadata()
   --  
 
-   procedure Global_Erase_Metadata (Global : LLVM.Types.Value_T; Kind : unsigned);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2235
+   procedure Global_Erase_Metadata (Global : LLVM.Types.Value_T; Kind : unsigned);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2243
    pragma Import (C, Global_Erase_Metadata, "LLVMGlobalEraseMetadata");
 
   --*
@@ -3625,7 +3639,7 @@ function Const_Inline_Asm
   -- * @see llvm::GlobalObject::clearMetadata()
   --  
 
-   procedure Global_Clear_Metadata (Global : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2242
+   procedure Global_Clear_Metadata (Global : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2250
    pragma Import (C, Global_Clear_Metadata, "LLVMGlobalClearMetadata");
 
   --*
@@ -3636,21 +3650,21 @@ function Const_Inline_Asm
   -- * @see llvm::GlobalObject::getAllMetadata()
   --  
 
-   function Global_Copy_All_Metadata (Value : LLVM.Types.Value_T; Num_Entries : access stddef_h.size_t) return System.Address;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2251
+   function Global_Copy_All_Metadata (Value : LLVM.Types.Value_T; Num_Entries : access stddef_h.size_t) return System.Address;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2259
    pragma Import (C, Global_Copy_All_Metadata, "LLVMGlobalCopyAllMetadata");
 
   --*
   -- * Destroys value metadata entries.
   --  
 
-   procedure Dispose_Value_Metadata_Entries (Entries : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2257
+   procedure Dispose_Value_Metadata_Entries (Entries : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2265
    pragma Import (C, Dispose_Value_Metadata_Entries, "LLVMDisposeValueMetadataEntries");
 
   --*
   -- * Returns the kind of a value metadata entry at a specific index.
   --  
 
-   function Value_Metadata_Entries_Get_Kind (Entries : System.Address; Index : unsigned) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2262
+   function Value_Metadata_Entries_Get_Kind (Entries : System.Address; Index : unsigned) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2270
    pragma Import (C, Value_Metadata_Entries_Get_Kind, "LLVMValueMetadataEntriesGetKind");
 
   --*
@@ -3658,7 +3672,7 @@ function Const_Inline_Asm
   -- * specific index.
   --  
 
-   function Value_Metadata_Entries_Get_Metadata (Entries : System.Address; Index : unsigned) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2270
+   function Value_Metadata_Entries_Get_Metadata (Entries : System.Address; Index : unsigned) return LLVM.Types.Metadata_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2278
    pragma Import (C, Value_Metadata_Entries_Get_Metadata, "LLVMValueMetadataEntriesGetMetadata");
 
   --*
@@ -3708,28 +3722,28 @@ function Add_Global_In_Address_Space
    function Get_Named_Global_C
      (M    : LLVM.Types.Module_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2290
+      return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2298
    pragma Import (C, Get_Named_Global_C, "LLVMGetNamedGlobal");
 
-   function Get_First_Global (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2291
+   function Get_First_Global (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2299
    pragma Import (C, Get_First_Global, "LLVMGetFirstGlobal");
 
-   function Get_Last_Global (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2292
+   function Get_Last_Global (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2300
    pragma Import (C, Get_Last_Global, "LLVMGetLastGlobal");
 
-   function Get_Next_Global (Global_Var : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2293
+   function Get_Next_Global (Global_Var : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2301
    pragma Import (C, Get_Next_Global, "LLVMGetNextGlobal");
 
-   function Get_Previous_Global (Global_Var : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2294
+   function Get_Previous_Global (Global_Var : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2302
    pragma Import (C, Get_Previous_Global, "LLVMGetPreviousGlobal");
 
-   procedure Delete_Global (Global_Var : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2295
+   procedure Delete_Global (Global_Var : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2303
    pragma Import (C, Delete_Global, "LLVMDeleteGlobal");
 
-   function Get_Initializer (Global_Var : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2296
+   function Get_Initializer (Global_Var : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2304
    pragma Import (C, Get_Initializer, "LLVMGetInitializer");
 
-   procedure Set_Initializer (Global_Var : LLVM.Types.Value_T; Constant_Val : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2297
+   procedure Set_Initializer (Global_Var : LLVM.Types.Value_T; Constant_Val : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2305
    pragma Import (C, Set_Initializer, "LLVMSetInitializer");
 
    function Is_Thread_Local
@@ -3737,7 +3751,7 @@ function Add_Global_In_Address_Space
       return Boolean;
    function Is_Thread_Local_C
      (Global_Var : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2298
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2306
    pragma Import (C, Is_Thread_Local_C, "LLVMIsThreadLocal");
 
    procedure Set_Thread_Local
@@ -3745,7 +3759,7 @@ function Add_Global_In_Address_Space
       Is_Thread_Local : Boolean);
    procedure Set_Thread_Local_C
      (Global_Var      : LLVM.Types.Value_T;
-      Is_Thread_Local : LLVM.Types.Bool_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2299
+      Is_Thread_Local : LLVM.Types.Bool_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2307
    pragma Import (C, Set_Thread_Local_C, "LLVMSetThreadLocal");
 
    function Is_Global_Constant
@@ -3753,7 +3767,7 @@ function Add_Global_In_Address_Space
       return Boolean;
    function Is_Global_Constant_C
      (Global_Var : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2300
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2308
    pragma Import (C, Is_Global_Constant_C, "LLVMIsGlobalConstant");
 
    procedure Set_Global_Constant
@@ -3761,13 +3775,13 @@ function Add_Global_In_Address_Space
       Is_Constant : Boolean);
    procedure Set_Global_Constant_C
      (Global_Var  : LLVM.Types.Value_T;
-      Is_Constant : LLVM.Types.Bool_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2301
+      Is_Constant : LLVM.Types.Bool_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2309
    pragma Import (C, Set_Global_Constant_C, "LLVMSetGlobalConstant");
 
-   function Get_Thread_Local_Mode (Global_Var : LLVM.Types.Value_T) return Thread_Local_Mode_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2302
+   function Get_Thread_Local_Mode (Global_Var : LLVM.Types.Value_T) return Thread_Local_Mode_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2310
    pragma Import (C, Get_Thread_Local_Mode, "LLVMGetThreadLocalMode");
 
-   procedure Set_Thread_Local_Mode (Global_Var : LLVM.Types.Value_T; Mode : Thread_Local_Mode_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2303
+   procedure Set_Thread_Local_Mode (Global_Var : LLVM.Types.Value_T; Mode : Thread_Local_Mode_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2311
    pragma Import (C, Set_Thread_Local_Mode, "LLVMSetThreadLocalMode");
 
    function Is_Externally_Initialized
@@ -3775,7 +3789,7 @@ function Add_Global_In_Address_Space
       return Boolean;
    function Is_Externally_Initialized_C
      (Global_Var : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2304
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2312
    pragma Import (C, Is_Externally_Initialized_C, "LLVMIsExternallyInitialized");
 
    procedure Set_Externally_Initialized
@@ -3783,7 +3797,7 @@ function Add_Global_In_Address_Space
       Is_Ext_Init : Boolean);
    procedure Set_Externally_Initialized_C
      (Global_Var  : LLVM.Types.Value_T;
-      Is_Ext_Init : LLVM.Types.Bool_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2305
+      Is_Ext_Init : LLVM.Types.Bool_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2313
    pragma Import (C, Set_Externally_Initialized_C, "LLVMSetExternallyInitialized");
 
   --*
@@ -3840,7 +3854,7 @@ function Get_Named_Global_Alias
   -- * @see llvm::Module::alias_begin()
   --  
 
-   function Get_First_Global_Alias (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2338
+   function Get_First_Global_Alias (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2346
    pragma Import (C, Get_First_Global_Alias, "LLVMGetFirstGlobalAlias");
 
   --*
@@ -3849,7 +3863,7 @@ function Get_Named_Global_Alias
   -- * @see llvm::Module::alias_end()
   --  
 
-   function Get_Last_Global_Alias (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2345
+   function Get_Last_Global_Alias (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2353
    pragma Import (C, Get_Last_Global_Alias, "LLVMGetLastGlobalAlias");
 
   --*
@@ -3859,7 +3873,7 @@ function Get_Named_Global_Alias
   -- * global aliases.
   --  
 
-   function Get_Next_Global_Alias (GA : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2353
+   function Get_Next_Global_Alias (GA : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2361
    pragma Import (C, Get_Next_Global_Alias, "LLVMGetNextGlobalAlias");
 
   --*
@@ -3869,21 +3883,21 @@ function Get_Named_Global_Alias
   -- * no previous global aliases.
   --  
 
-   function Get_Previous_Global_Alias (GA : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2361
+   function Get_Previous_Global_Alias (GA : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2369
    pragma Import (C, Get_Previous_Global_Alias, "LLVMGetPreviousGlobalAlias");
 
   --*
   -- * Retrieve the target value of an alias.
   --  
 
-   function Alias_Get_Aliasee (Alias : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2366
+   function Alias_Get_Aliasee (Alias : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2374
    pragma Import (C, Alias_Get_Aliasee, "LLVMAliasGetAliasee");
 
   --*
   -- * Set the target value of an alias.
   --  
 
-   procedure Alias_Set_Aliasee (Alias : LLVM.Types.Value_T; Aliasee : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2371
+   procedure Alias_Set_Aliasee (Alias : LLVM.Types.Value_T; Aliasee : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2379
    pragma Import (C, Alias_Set_Aliasee, "LLVMAliasSetAliasee");
 
   --*
@@ -3907,7 +3921,7 @@ function Get_Named_Global_Alias
   -- * @see llvm::Function::eraseFromParent()
   --  
 
-   procedure Delete_Function (Fn : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2393
+   procedure Delete_Function (Fn : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2401
    pragma Import (C, Delete_Function, "LLVMDeleteFunction");
 
   --*
@@ -3921,7 +3935,7 @@ function Get_Named_Global_Alias
       return Boolean;
    function Has_Personality_Fn_C
      (Fn : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2400
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2408
    pragma Import (C, Has_Personality_Fn_C, "LLVMHasPersonalityFn");
 
   --*
@@ -3930,7 +3944,7 @@ function Get_Named_Global_Alias
   -- * @see llvm::Function::getPersonalityFn()
   --  
 
-   function Get_Personality_Fn (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2407
+   function Get_Personality_Fn (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2415
    pragma Import (C, Get_Personality_Fn, "LLVMGetPersonalityFn");
 
   --*
@@ -3939,7 +3953,7 @@ function Get_Named_Global_Alias
   -- * @see llvm::Function::setPersonalityFn()
   --  
 
-   procedure Set_Personality_Fn (Fn : LLVM.Types.Value_T; Personality_Fn : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2414
+   procedure Set_Personality_Fn (Fn : LLVM.Types.Value_T; Personality_Fn : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2422
    pragma Import (C, Set_Personality_Fn, "LLVMSetPersonalityFn");
 
   --*
@@ -3955,7 +3969,7 @@ function Get_Named_Global_Alias
    function Lookup_Intrinsic_ID_C
      (Name     : Interfaces.C.Strings.chars_ptr;
       Name_Len : stddef_h.size_t)
-      return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2421
+      return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2429
    pragma Import (C, Lookup_Intrinsic_ID_C, "LLVMLookupIntrinsicID");
 
   --*
@@ -3964,7 +3978,7 @@ function Get_Named_Global_Alias
   -- * @see llvm::Function::getIntrinsicID()
   --  
 
-   function Get_Intrinsic_ID (Fn : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2428
+   function Get_Intrinsic_ID (Fn : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2436
    pragma Import (C, Get_Intrinsic_ID, "LLVMGetIntrinsicID");
 
   --*
@@ -3978,7 +3992,7 @@ function Get_Named_Global_Alias
      (C_Mod : LLVM.Types.Module_T;
       ID : unsigned;
       Param_Types : System.Address;
-      Param_Count : stddef_h.size_t) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2436
+      Param_Count : stddef_h.size_t) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2444
    pragma Import (C, Get_Intrinsic_Declaration, "LLVMGetIntrinsicDeclaration");
 
   --*
@@ -3992,7 +4006,7 @@ function Get_Named_Global_Alias
      (Ctx : LLVM.Types.Context_T;
       ID : unsigned;
       Param_Types : System.Address;
-      Param_Count : stddef_h.size_t) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2447
+      Param_Count : stddef_h.size_t) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2455
    pragma Import (C, Intrinsic_Get_Type, "LLVMIntrinsicGetType");
 
   --*
@@ -4008,7 +4022,7 @@ function Get_Named_Global_Alias
    function Intrinsic_Get_Name_C
      (ID          : unsigned;
       Name_Length : access stddef_h.size_t)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2455
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2463
    pragma Import (C, Intrinsic_Get_Name_C, "LLVMIntrinsicGetName");
 
   --*
@@ -4046,7 +4060,7 @@ function Intrinsic_Copy_Overloaded_Name
       return Boolean;
    function Intrinsic_Is_Overloaded_C
      (ID : unsigned)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2476
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2484
    pragma Import (C, Intrinsic_Is_Overloaded_C, "LLVMIntrinsicIsOverloaded");
 
   --*
@@ -4057,7 +4071,7 @@ function Intrinsic_Copy_Overloaded_Name
   -- * @see llvm::Function::getCallingConv()
   --  
 
-   function Get_Function_Call_Conv (Fn : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2485
+   function Get_Function_Call_Conv (Fn : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2493
    pragma Import (C, Get_Function_Call_Conv, "LLVMGetFunctionCallConv");
 
   --*
@@ -4069,7 +4083,7 @@ function Intrinsic_Copy_Overloaded_Name
   -- * @param CC LLVMCallConv to set calling convention to
   --  
 
-   procedure Set_Function_Call_Conv (Fn : LLVM.Types.Value_T; CC : unsigned);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2495
+   procedure Set_Function_Call_Conv (Fn : LLVM.Types.Value_T; CC : unsigned);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2503
    pragma Import (C, Set_Function_Call_Conv, "LLVMSetFunctionCallConv");
 
   --*
@@ -4084,7 +4098,7 @@ function Intrinsic_Copy_Overloaded_Name
       return String;
    function Get_GC_C
      (Fn : LLVM.Types.Value_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2503
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2511
    pragma Import (C, Get_GC_C, "LLVMGetGC");
 
   --*
@@ -4098,7 +4112,7 @@ function Intrinsic_Copy_Overloaded_Name
       Name : String);
    procedure Set_GC_C
      (Fn   : LLVM.Types.Value_T;
-      Name : Interfaces.C.Strings.chars_ptr);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2510
+      Name : Interfaces.C.Strings.chars_ptr);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2518
    pragma Import (C, Set_GC_C, "LLVMSetGC");
 
   --*
@@ -4110,22 +4124,22 @@ function Intrinsic_Copy_Overloaded_Name
    procedure Add_Attribute_At_Index
      (F : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      A : LLVM.Types.Attribute_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2517
+      A : LLVM.Types.Attribute_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2525
    pragma Import (C, Add_Attribute_At_Index, "LLVMAddAttributeAtIndex");
 
-   function Get_Attribute_Count_At_Index (F : LLVM.Types.Value_T; Idx : Attribute_Index_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2519
+   function Get_Attribute_Count_At_Index (F : LLVM.Types.Value_T; Idx : Attribute_Index_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2527
    pragma Import (C, Get_Attribute_Count_At_Index, "LLVMGetAttributeCountAtIndex");
 
    procedure Get_Attributes_At_Index
      (F : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      Attrs : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2520
+      Attrs : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2528
    pragma Import (C, Get_Attributes_At_Index, "LLVMGetAttributesAtIndex");
 
    function Get_Enum_Attribute_At_Index
      (F : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      Kind_ID : unsigned) return LLVM.Types.Attribute_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2522
+      Kind_ID : unsigned) return LLVM.Types.Attribute_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2530
    pragma Import (C, Get_Enum_Attribute_At_Index, "LLVMGetEnumAttributeAtIndex");
 
 function Get_String_Attribute_At_Index
@@ -4145,7 +4159,7 @@ function Get_String_Attribute_At_Index
    procedure Remove_Enum_Attribute_At_Index
      (F : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      Kind_ID : unsigned);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2528
+      Kind_ID : unsigned);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2536
    pragma Import (C, Remove_Enum_Attribute_At_Index, "LLVMRemoveEnumAttributeAtIndex");
 
 procedure Remove_String_Attribute_At_Index
@@ -4192,7 +4206,7 @@ procedure Add_Target_Dependent_Function_Attr
   -- * @see llvm::Function::arg_size()
   --  
 
-   function Count_Params (Fn : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2556
+   function Count_Params (Fn : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2564
    pragma Import (C, Count_Params, "LLVMCountParams");
 
   --*
@@ -4207,7 +4221,7 @@ procedure Add_Target_Dependent_Function_Attr
   -- * @see llvm::Function::arg_begin()
   --  
 
-   procedure Get_Params (Fn : LLVM.Types.Value_T; Params : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2569
+   procedure Get_Params (Fn : LLVM.Types.Value_T; Params : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2577
    pragma Import (C, Get_Params, "LLVMGetParams");
 
   --*
@@ -4218,7 +4232,7 @@ procedure Add_Target_Dependent_Function_Attr
   -- * @see llvm::Function::arg_begin()
   --  
 
-   function Get_Param (Fn : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2578
+   function Get_Param (Fn : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2586
    pragma Import (C, Get_Param, "LLVMGetParam");
 
   --*
@@ -4231,7 +4245,7 @@ procedure Add_Target_Dependent_Function_Attr
   -- * argument belongs.
   --  
 
-   function Get_Param_Parent (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2589
+   function Get_Param_Parent (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2597
    pragma Import (C, Get_Param_Parent, "LLVMGetParamParent");
 
   --*
@@ -4240,7 +4254,7 @@ procedure Add_Target_Dependent_Function_Attr
   -- * @see llvm::Function::arg_begin()
   --  
 
-   function Get_First_Param (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2596
+   function Get_First_Param (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2604
    pragma Import (C, Get_First_Param, "LLVMGetFirstParam");
 
   --*
@@ -4249,7 +4263,7 @@ procedure Add_Target_Dependent_Function_Attr
   -- * @see llvm::Function::arg_end()
   --  
 
-   function Get_Last_Param (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2603
+   function Get_Last_Param (Fn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2611
    pragma Import (C, Get_Last_Param, "LLVMGetLastParam");
 
   --*
@@ -4260,7 +4274,7 @@ procedure Add_Target_Dependent_Function_Attr
   -- * underlying iterator.
   --  
 
-   function Get_Next_Param (Arg : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2612
+   function Get_Next_Param (Arg : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2620
    pragma Import (C, Get_Next_Param, "LLVMGetNextParam");
 
   --*
@@ -4269,7 +4283,7 @@ procedure Add_Target_Dependent_Function_Attr
   -- * This is the opposite of LLVMGetNextParam().
   --  
 
-   function Get_Previous_Param (Arg : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2619
+   function Get_Previous_Param (Arg : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2627
    pragma Import (C, Get_Previous_Param, "LLVMGetPreviousParam");
 
   --*
@@ -4279,7 +4293,7 @@ procedure Add_Target_Dependent_Function_Attr
   -- * @see llvm::AttrBuilder::addAlignmentAttr()
   --  
 
-   procedure Set_Param_Alignment (Arg : LLVM.Types.Value_T; Align : unsigned);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2627
+   procedure Set_Param_Alignment (Arg : LLVM.Types.Value_T; Align : unsigned);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2635
    pragma Import (C, Set_Param_Alignment, "LLVMSetParamAlignment");
 
   --*
@@ -4347,7 +4361,7 @@ function Get_Named_Global_I_Func
   -- * @see llvm::Module::ifunc_begin()
   --  
 
-   function Get_First_Global_I_Func (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2669
+   function Get_First_Global_I_Func (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2677
    pragma Import (C, Get_First_Global_I_Func, "LLVMGetFirstGlobalIFunc");
 
   --*
@@ -4356,7 +4370,7 @@ function Get_Named_Global_I_Func
   -- * @see llvm::Module::ifunc_end()
   --  
 
-   function Get_Last_Global_I_Func (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2676
+   function Get_Last_Global_I_Func (M : LLVM.Types.Module_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2684
    pragma Import (C, Get_Last_Global_I_Func, "LLVMGetLastGlobalIFunc");
 
   --*
@@ -4366,7 +4380,7 @@ function Get_Named_Global_I_Func
   -- * global aliases.
   --  
 
-   function Get_Next_Global_I_Func (I_Func : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2684
+   function Get_Next_Global_I_Func (I_Func : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2692
    pragma Import (C, Get_Next_Global_I_Func, "LLVMGetNextGlobalIFunc");
 
   --*
@@ -4376,7 +4390,7 @@ function Get_Named_Global_I_Func
   -- * no previous global aliases.
   --  
 
-   function Get_Previous_Global_I_Func (I_Func : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2692
+   function Get_Previous_Global_I_Func (I_Func : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2700
    pragma Import (C, Get_Previous_Global_I_Func, "LLVMGetPreviousGlobalIFunc");
 
   --*
@@ -4386,7 +4400,7 @@ function Get_Named_Global_I_Func
   -- * @see llvm::GlobalIFunc::getResolver()
   --  
 
-   function Get_Global_I_Func_Resolver (I_Func : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2700
+   function Get_Global_I_Func_Resolver (I_Func : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2708
    pragma Import (C, Get_Global_I_Func_Resolver, "LLVMGetGlobalIFuncResolver");
 
   --*
@@ -4395,7 +4409,7 @@ function Get_Named_Global_I_Func
   -- * @see llvm::GlobalIFunc::setResolver()
   --  
 
-   procedure Set_Global_I_Func_Resolver (I_Func : LLVM.Types.Value_T; Resolver : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2707
+   procedure Set_Global_I_Func_Resolver (I_Func : LLVM.Types.Value_T; Resolver : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2715
    pragma Import (C, Set_Global_I_Func_Resolver, "LLVMSetGlobalIFuncResolver");
 
   --*
@@ -4404,7 +4418,7 @@ function Get_Named_Global_I_Func
   -- * @see llvm::GlobalIFunc::eraseFromParent()
   --  
 
-   procedure Erase_Global_I_Func (I_Func : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2714
+   procedure Erase_Global_I_Func (I_Func : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2722
    pragma Import (C, Erase_Global_I_Func, "LLVMEraseGlobalIFunc");
 
   --*
@@ -4416,7 +4430,7 @@ function Get_Named_Global_I_Func
   -- * @see llvm::GlobalIFunc::removeFromParent()
   --  
 
-   procedure Remove_Global_I_Func (I_Func : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2724
+   procedure Remove_Global_I_Func (I_Func : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2732
    pragma Import (C, Remove_Global_I_Func, "LLVMRemoveGlobalIFunc");
 
   --*
@@ -4471,21 +4485,21 @@ function MD_String_In_Context2
    function MD_Node_In_Context2
      (C : LLVM.Types.Context_T;
       M_Ds : System.Address;
-      Count : stddef_h.size_t) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2764
+      Count : stddef_h.size_t) return LLVM.Types.Metadata_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2772
    pragma Import (C, MD_Node_In_Context2, "LLVMMDNodeInContext2");
 
   --*
   -- * Obtain a Metadata as a Value.
   --  
 
-   function Metadata_As_Value (C : LLVM.Types.Context_T; MD : LLVM.Types.Metadata_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2770
+   function Metadata_As_Value (C : LLVM.Types.Context_T; MD : LLVM.Types.Metadata_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2778
    pragma Import (C, Metadata_As_Value, "LLVMMetadataAsValue");
 
   --*
   -- * Obtain a Value as a Metadata.
   --  
 
-   function Value_As_Metadata (Val : LLVM.Types.Value_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2775
+   function Value_As_Metadata (Val : LLVM.Types.Value_T) return LLVM.Types.Metadata_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2783
    pragma Import (C, Value_As_Metadata, "LLVMValueAsMetadata");
 
   --*
@@ -4503,7 +4517,7 @@ function MD_String_In_Context2
    function Get_MD_String_C
      (V      : LLVM.Types.Value_T;
       Length : access unsigned)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2784
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2792
    pragma Import (C, Get_MD_String_C, "LLVMGetMDString");
 
   --*
@@ -4513,7 +4527,7 @@ function MD_String_In_Context2
   -- * @return Number of operands of the MDNode.
   --  
 
-   function Get_MD_Node_Num_Operands (V : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2792
+   function Get_MD_Node_Num_Operands (V : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2800
    pragma Import (C, Get_MD_Node_Num_Operands, "LLVMGetMDNodeNumOperands");
 
   --*
@@ -4528,7 +4542,7 @@ function MD_String_In_Context2
   -- * @param Dest Destination array for operands.
   --  
 
-   procedure Get_MD_Node_Operands (V : LLVM.Types.Value_T; Dest : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2805
+   procedure Get_MD_Node_Operands (V : LLVM.Types.Value_T; Dest : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2813
    pragma Import (C, Get_MD_Node_Operands, "LLVMGetMDNodeOperands");
 
   --* Deprecated: Use LLVMMDStringInContext2 instead.  
@@ -4552,18 +4566,18 @@ function MD_String_In_Context
    function MD_String_C
      (Str   : Interfaces.C.Strings.chars_ptr;
       S_Len : unsigned)
-      return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2811
+      return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2819
    pragma Import (C, MD_String_C, "LLVMMDString");
 
   --* Deprecated: Use LLVMMDNodeInContext2 instead.  
    function MD_Node_In_Context
      (C : LLVM.Types.Context_T;
       Vals : System.Address;
-      Count : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2813
+      Count : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2821
    pragma Import (C, MD_Node_In_Context, "LLVMMDNodeInContext");
 
   --* Deprecated: Use LLVMMDNodeInContext2 instead.  
-   function MD_Node (Vals : System.Address; Count : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2816
+   function MD_Node (Vals : System.Address; Count : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2824
    pragma Import (C, MD_Node, "LLVMMDNode");
 
   --*
@@ -4591,7 +4605,7 @@ function MD_String_In_Context
   -- * Convert a basic block instance to a value type.
   --  
 
-   function Basic_Block_As_Value (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2842
+   function Basic_Block_As_Value (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2850
    pragma Import (C, Basic_Block_As_Value, "LLVMBasicBlockAsValue");
 
   --*
@@ -4603,14 +4617,14 @@ function MD_String_In_Context
       return Boolean;
    function Value_Is_Basic_Block_C
      (Val : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2847
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2855
    pragma Import (C, Value_Is_Basic_Block_C, "LLVMValueIsBasicBlock");
 
   --*
   -- * Convert an LLVMValueRef to an LLVMBasicBlockRef instance.
   --  
 
-   function Value_As_Basic_Block (Val : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2852
+   function Value_As_Basic_Block (Val : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2860
    pragma Import (C, Value_As_Basic_Block, "LLVMValueAsBasicBlock");
 
   --*
@@ -4622,7 +4636,7 @@ function MD_String_In_Context
       return String;
    function Get_Basic_Block_Name_C
      (BB : LLVM.Types.Basic_Block_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2857
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2865
    pragma Import (C, Get_Basic_Block_Name_C, "LLVMGetBasicBlockName");
 
   --*
@@ -4631,7 +4645,7 @@ function MD_String_In_Context
   -- * @see llvm::BasicBlock::getParent()
   --  
 
-   function Get_Basic_Block_Parent (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2864
+   function Get_Basic_Block_Parent (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2872
    pragma Import (C, Get_Basic_Block_Parent, "LLVMGetBasicBlockParent");
 
   --*
@@ -4645,7 +4659,7 @@ function MD_String_In_Context
   -- * @see llvm::BasicBlock::getTerminator()
   --  
 
-   function Get_Basic_Block_Terminator (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2876
+   function Get_Basic_Block_Terminator (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2884
    pragma Import (C, Get_Basic_Block_Terminator, "LLVMGetBasicBlockTerminator");
 
   --*
@@ -4654,7 +4668,7 @@ function MD_String_In_Context
   -- * @param Fn Function value to operate on.
   --  
 
-   function Count_Basic_Blocks (Fn : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2883
+   function Count_Basic_Blocks (Fn : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2891
    pragma Import (C, Count_Basic_Blocks, "LLVMCountBasicBlocks");
 
   --*
@@ -4666,7 +4680,7 @@ function MD_String_In_Context
   -- * LLVMBasicBlockRef instances.
   --  
 
-   procedure Get_Basic_Blocks (Fn : LLVM.Types.Value_T; Basic_Blocks : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2893
+   procedure Get_Basic_Blocks (Fn : LLVM.Types.Value_T; Basic_Blocks : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2901
    pragma Import (C, Get_Basic_Blocks, "LLVMGetBasicBlocks");
 
   --*
@@ -4678,7 +4692,7 @@ function MD_String_In_Context
   -- * @see llvm::Function::begin()
   --  
 
-   function Get_First_Basic_Block (Fn : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2903
+   function Get_First_Basic_Block (Fn : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2911
    pragma Import (C, Get_First_Basic_Block, "LLVMGetFirstBasicBlock");
 
   --*
@@ -4687,21 +4701,21 @@ function MD_String_In_Context
   -- * @see llvm::Function::end()
   --  
 
-   function Get_Last_Basic_Block (Fn : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2910
+   function Get_Last_Basic_Block (Fn : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2918
    pragma Import (C, Get_Last_Basic_Block, "LLVMGetLastBasicBlock");
 
   --*
   -- * Advance a basic block iterator.
   --  
 
-   function Get_Next_Basic_Block (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2915
+   function Get_Next_Basic_Block (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2923
    pragma Import (C, Get_Next_Basic_Block, "LLVMGetNextBasicBlock");
 
   --*
   -- * Go backwards in a basic block iterator.
   --  
 
-   function Get_Previous_Basic_Block (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2920
+   function Get_Previous_Basic_Block (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2928
    pragma Import (C, Get_Previous_Basic_Block, "LLVMGetPreviousBasicBlock");
 
   --*
@@ -4711,7 +4725,7 @@ function MD_String_In_Context
   -- * @see llvm::Function::getEntryBlock()
   --  
 
-   function Get_Entry_Basic_Block (Fn : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2928
+   function Get_Entry_Basic_Block (Fn : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2936
    pragma Import (C, Get_Entry_Basic_Block, "LLVMGetEntryBasicBlock");
 
   --*
@@ -4722,7 +4736,7 @@ function MD_String_In_Context
   -- * @see llvm::Function::BasicBlockListType::insertAfter()
   --  
 
-   procedure Insert_Existing_Basic_Block_After_Insert_Block (Builder : LLVM.Types.Builder_T; BB : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2937
+   procedure Insert_Existing_Basic_Block_After_Insert_Block (Builder : LLVM.Types.Builder_T; BB : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2945
    pragma Import (C, Insert_Existing_Basic_Block_After_Insert_Block, "LLVMInsertExistingBasicBlockAfterInsertBlock");
 
   --*
@@ -4731,7 +4745,7 @@ function MD_String_In_Context
   -- * @see llvm::Function::BasicBlockListType::push_back()
   --  
 
-   procedure Append_Existing_Basic_Block (Fn : LLVM.Types.Value_T; BB : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:2945
+   procedure Append_Existing_Basic_Block (Fn : LLVM.Types.Value_T; BB : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:2953
    pragma Import (C, Append_Existing_Basic_Block, "LLVMAppendExistingBasicBlock");
 
   --*
@@ -4747,7 +4761,7 @@ function MD_String_In_Context
    function Create_Basic_Block_In_Context_C
      (C    : LLVM.Types.Context_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2953
+      return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2961
    pragma Import (C, Create_Basic_Block_In_Context_C, "LLVMCreateBasicBlockInContext");
 
   --*
@@ -4782,7 +4796,7 @@ function Append_Basic_Block_In_Context
    function Append_Basic_Block_C
      (Fn   : LLVM.Types.Value_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2971
+      return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2979
    pragma Import (C, Append_Basic_Block_C, "LLVMAppendBasicBlock");
 
   --*
@@ -4819,7 +4833,7 @@ function Insert_Basic_Block_In_Context
    function Insert_Basic_Block_C
      (Insert_Before_BB : LLVM.Types.Basic_Block_T;
       Name             : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:2990
+      return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:2998
    pragma Import (C, Insert_Basic_Block_C, "LLVMInsertBasicBlock");
 
   --*
@@ -4831,7 +4845,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::BasicBlock::eraseFromParent()
   --  
 
-   procedure Delete_Basic_Block (BB : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3001
+   procedure Delete_Basic_Block (BB : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3009
    pragma Import (C, Delete_Basic_Block, "LLVMDeleteBasicBlock");
 
   --*
@@ -4843,7 +4857,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::BasicBlock::removeFromParent()
   --  
 
-   procedure Remove_Basic_Block_From_Parent (BB : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3011
+   procedure Remove_Basic_Block_From_Parent (BB : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3019
    pragma Import (C, Remove_Basic_Block_From_Parent, "LLVMRemoveBasicBlockFromParent");
 
   --*
@@ -4852,7 +4866,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::BasicBlock::moveBefore()
   --  
 
-   procedure Move_Basic_Block_Before (BB : LLVM.Types.Basic_Block_T; Move_Pos : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3018
+   procedure Move_Basic_Block_Before (BB : LLVM.Types.Basic_Block_T; Move_Pos : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3026
    pragma Import (C, Move_Basic_Block_Before, "LLVMMoveBasicBlockBefore");
 
   --*
@@ -4861,7 +4875,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::BasicBlock::moveAfter()
   --  
 
-   procedure Move_Basic_Block_After (BB : LLVM.Types.Basic_Block_T; Move_Pos : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3025
+   procedure Move_Basic_Block_After (BB : LLVM.Types.Basic_Block_T; Move_Pos : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3033
    pragma Import (C, Move_Basic_Block_After, "LLVMMoveBasicBlockAfter");
 
   --*
@@ -4871,7 +4885,7 @@ function Insert_Basic_Block_In_Context
   -- * instance.
   --  
 
-   function Get_First_Instruction (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3033
+   function Get_First_Instruction (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3041
    pragma Import (C, Get_First_Instruction, "LLVMGetFirstInstruction");
 
   --*
@@ -4880,7 +4894,7 @@ function Insert_Basic_Block_In_Context
   -- * The returned LLVMValueRef corresponds to an LLVM:Instruction.
   --  
 
-   function Get_Last_Instruction (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3040
+   function Get_Last_Instruction (BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3048
    pragma Import (C, Get_Last_Instruction, "LLVMGetLastInstruction");
 
   --*
@@ -4908,14 +4922,14 @@ function Insert_Basic_Block_In_Context
   -- * Determine whether an instruction has any metadata attached.
   --  
 
-   function Has_Metadata (Val : LLVM.Types.Value_T) return int;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3066
+   function Has_Metadata (Val : LLVM.Types.Value_T) return int;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3074
    pragma Import (C, Has_Metadata, "LLVMHasMetadata");
 
   --*
   -- * Return metadata associated with an instruction value.
   --  
 
-   function Get_Metadata (Val : LLVM.Types.Value_T; Kind_ID : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3071
+   function Get_Metadata (Val : LLVM.Types.Value_T; Kind_ID : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3079
    pragma Import (C, Get_Metadata, "LLVMGetMetadata");
 
   --*
@@ -4925,7 +4939,7 @@ function Insert_Basic_Block_In_Context
    procedure Set_Metadata
      (Val : LLVM.Types.Value_T;
       Kind_ID : unsigned;
-      Node : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3076
+      Node : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3084
    pragma Import (C, Set_Metadata, "LLVMSetMetadata");
 
   --*
@@ -4935,7 +4949,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::Instruction::getAllMetadataOtherThanDebugLoc()
   --  
 
-   function Instruction_Get_All_Metadata_Other_Than_Debug_Loc (Instr : LLVM.Types.Value_T; Num_Entries : access stddef_h.size_t) return System.Address;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3085
+   function Instruction_Get_All_Metadata_Other_Than_Debug_Loc (Instr : LLVM.Types.Value_T; Num_Entries : access stddef_h.size_t) return System.Address;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3093
    pragma Import (C, Instruction_Get_All_Metadata_Other_Than_Debug_Loc, "LLVMInstructionGetAllMetadataOtherThanDebugLoc");
 
   --*
@@ -4944,7 +4958,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::Instruction::getParent()
   --  
 
-   function Get_Instruction_Parent (Inst : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3093
+   function Get_Instruction_Parent (Inst : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3101
    pragma Import (C, Get_Instruction_Parent, "LLVMGetInstructionParent");
 
   --*
@@ -4956,7 +4970,7 @@ function Insert_Basic_Block_In_Context
   -- * returned.
   --  
 
-   function Get_Next_Instruction (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3103
+   function Get_Next_Instruction (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3111
    pragma Import (C, Get_Next_Instruction, "LLVMGetNextInstruction");
 
   --*
@@ -4966,7 +4980,7 @@ function Insert_Basic_Block_In_Context
   -- * will be returned.
   --  
 
-   function Get_Previous_Instruction (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3111
+   function Get_Previous_Instruction (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3119
    pragma Import (C, Get_Previous_Instruction, "LLVMGetPreviousInstruction");
 
   --*
@@ -4978,7 +4992,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::Instruction::removeFromParent()
   --  
 
-   procedure Instruction_Remove_From_Parent (Inst : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3121
+   procedure Instruction_Remove_From_Parent (Inst : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3129
    pragma Import (C, Instruction_Remove_From_Parent, "LLVMInstructionRemoveFromParent");
 
   --*
@@ -4990,7 +5004,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::Instruction::eraseFromParent()
   --  
 
-   procedure Instruction_Erase_From_Parent (Inst : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3131
+   procedure Instruction_Erase_From_Parent (Inst : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3139
    pragma Import (C, Instruction_Erase_From_Parent, "LLVMInstructionEraseFromParent");
 
   --*
@@ -4999,7 +5013,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::Instruction::getOpCode()
   --  
 
-   function Get_Instruction_Opcode (Inst : LLVM.Types.Value_T) return Opcode_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3138
+   function Get_Instruction_Opcode (Inst : LLVM.Types.Value_T) return Opcode_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3146
    pragma Import (C, Get_Instruction_Opcode, "LLVMGetInstructionOpcode");
 
   --*
@@ -5011,7 +5025,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::ICmpInst::getPredicate()
   --  
 
-   function Get_I_Cmp_Predicate (Inst : LLVM.Types.Value_T) return Int_Predicate_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3148
+   function Get_I_Cmp_Predicate (Inst : LLVM.Types.Value_T) return Int_Predicate_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3156
    pragma Import (C, Get_I_Cmp_Predicate, "LLVMGetICmpPredicate");
 
   --*
@@ -5023,7 +5037,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::FCmpInst::getPredicate()
   --  
 
-   function Get_F_Cmp_Predicate (Inst : LLVM.Types.Value_T) return Real_Predicate_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3158
+   function Get_F_Cmp_Predicate (Inst : LLVM.Types.Value_T) return Real_Predicate_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3166
    pragma Import (C, Get_F_Cmp_Predicate, "LLVMGetFCmpPredicate");
 
   --*
@@ -5035,7 +5049,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::Instruction::clone()
   --  
 
-   function Instruction_Clone (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3168
+   function Instruction_Clone (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3176
    pragma Import (C, Instruction_Clone, "LLVMInstructionClone");
 
   --*
@@ -5046,7 +5060,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::Instruction::isTerminator()
   --  
 
-   function Is_A_Terminator_Inst (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3177
+   function Is_A_Terminator_Inst (Inst : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3185
    pragma Import (C, Is_A_Terminator_Inst, "LLVMIsATerminatorInst");
 
   --*
@@ -5070,7 +5084,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::FuncletPadInst::getNumArgOperands()
   --  
 
-   function Get_Num_Arg_Operands (Instr : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3199
+   function Get_Num_Arg_Operands (Instr : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3207
    pragma Import (C, Get_Num_Arg_Operands, "LLVMGetNumArgOperands");
 
   --*
@@ -5083,7 +5097,7 @@ function Insert_Basic_Block_In_Context
   -- * @see llvm::InvokeInst::setCallingConv()
   --  
 
-   procedure Set_Instruction_Call_Conv (Instr : LLVM.Types.Value_T; CC : unsigned);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3210
+   procedure Set_Instruction_Call_Conv (Instr : LLVM.Types.Value_T; CC : unsigned);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3218
    pragma Import (C, Set_Instruction_Call_Conv, "LLVMSetInstructionCallConv");
 
   --*
@@ -5095,34 +5109,34 @@ function Insert_Basic_Block_In_Context
   -- * @see LLVMSetInstructionCallConv()
   --  
 
-   function Get_Instruction_Call_Conv (Instr : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3220
+   function Get_Instruction_Call_Conv (Instr : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3228
    pragma Import (C, Get_Instruction_Call_Conv, "LLVMGetInstructionCallConv");
 
    procedure Set_Instr_Param_Alignment
      (Instr : LLVM.Types.Value_T;
       index : unsigned;
-      Align : unsigned);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3222
+      Align : unsigned);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3230
    pragma Import (C, Set_Instr_Param_Alignment, "LLVMSetInstrParamAlignment");
 
    procedure Add_Call_Site_Attribute
      (C : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      A : LLVM.Types.Attribute_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3225
+      A : LLVM.Types.Attribute_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3233
    pragma Import (C, Add_Call_Site_Attribute, "LLVMAddCallSiteAttribute");
 
-   function Get_Call_Site_Attribute_Count (C : LLVM.Types.Value_T; Idx : Attribute_Index_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3227
+   function Get_Call_Site_Attribute_Count (C : LLVM.Types.Value_T; Idx : Attribute_Index_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3235
    pragma Import (C, Get_Call_Site_Attribute_Count, "LLVMGetCallSiteAttributeCount");
 
    procedure Get_Call_Site_Attributes
      (C : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      Attrs : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3228
+      Attrs : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3236
    pragma Import (C, Get_Call_Site_Attributes, "LLVMGetCallSiteAttributes");
 
    function Get_Call_Site_Enum_Attribute
      (C : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      Kind_ID : unsigned) return LLVM.Types.Attribute_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3230
+      Kind_ID : unsigned) return LLVM.Types.Attribute_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3238
    pragma Import (C, Get_Call_Site_Enum_Attribute, "LLVMGetCallSiteEnumAttribute");
 
 function Get_Call_Site_String_Attribute
@@ -5142,7 +5156,7 @@ function Get_Call_Site_String_Attribute
    procedure Remove_Call_Site_Enum_Attribute
      (C : LLVM.Types.Value_T;
       Idx : Attribute_Index_T;
-      Kind_ID : unsigned);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3236
+      Kind_ID : unsigned);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3244
    pragma Import (C, Remove_Call_Site_Enum_Attribute, "LLVMRemoveCallSiteEnumAttribute");
 
 procedure Remove_Call_Site_String_Attribute
@@ -5163,7 +5177,7 @@ procedure Remove_Call_Site_String_Attribute
   -- * @see llvm::CallBase::getFunctionType()
   --  
 
-   function Get_Called_Function_Type (C : LLVM.Types.Value_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3246
+   function Get_Called_Function_Type (C : LLVM.Types.Value_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3254
    pragma Import (C, Get_Called_Function_Type, "LLVMGetCalledFunctionType");
 
   --*
@@ -5172,11 +5186,11 @@ procedure Remove_Call_Site_String_Attribute
   -- * This expects an LLVMValueRef that corresponds to a llvm::CallInst or
   -- * llvm::InvokeInst.
   -- *
-  -- * @see llvm::CallInst::getCalledValue()
-  -- * @see llvm::InvokeInst::getCalledValue()
+  -- * @see llvm::CallInst::getCalledOperand()
+  -- * @see llvm::InvokeInst::getCalledOperand()
   --  
 
-   function Get_Called_Value (Instr : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3257
+   function Get_Called_Value (Instr : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3265
    pragma Import (C, Get_Called_Value, "LLVMGetCalledValue");
 
   --*
@@ -5192,7 +5206,7 @@ procedure Remove_Call_Site_String_Attribute
       return Boolean;
    function Is_Tail_Call_C
      (Call_Inst : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3266
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3274
    pragma Import (C, Is_Tail_Call_C, "LLVMIsTailCall");
 
   --*
@@ -5208,7 +5222,7 @@ procedure Remove_Call_Site_String_Attribute
       Is_Tail_Call : Boolean);
    procedure Set_Tail_Call_C
      (Call_Inst    : LLVM.Types.Value_T;
-      Is_Tail_Call : LLVM.Types.Bool_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3275
+      Is_Tail_Call : LLVM.Types.Bool_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3283
    pragma Import (C, Set_Tail_Call_C, "LLVMSetTailCall");
 
   --*
@@ -5219,7 +5233,7 @@ procedure Remove_Call_Site_String_Attribute
   -- * @see llvm::InvokeInst::getNormalDest()
   --  
 
-   function Get_Normal_Dest (Invoke_Inst : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3284
+   function Get_Normal_Dest (Invoke_Inst : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3292
    pragma Import (C, Get_Normal_Dest, "LLVMGetNormalDest");
 
   --*
@@ -5233,7 +5247,7 @@ procedure Remove_Call_Site_String_Attribute
   -- * @see llvm::CatchSwitchInst::getUnwindDest()
   --  
 
-   function Get_Unwind_Dest (Invoke_Inst : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3296
+   function Get_Unwind_Dest (Invoke_Inst : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3304
    pragma Import (C, Get_Unwind_Dest, "LLVMGetUnwindDest");
 
   --*
@@ -5244,7 +5258,7 @@ procedure Remove_Call_Site_String_Attribute
   -- * @see llvm::InvokeInst::setNormalDest()
   --  
 
-   procedure Set_Normal_Dest (Invoke_Inst : LLVM.Types.Value_T; B : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3305
+   procedure Set_Normal_Dest (Invoke_Inst : LLVM.Types.Value_T; B : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3313
    pragma Import (C, Set_Normal_Dest, "LLVMSetNormalDest");
 
   --*
@@ -5258,7 +5272,7 @@ procedure Remove_Call_Site_String_Attribute
   -- * @see llvm::CatchSwitchInst::setUnwindDest()
   --  
 
-   procedure Set_Unwind_Dest (Invoke_Inst : LLVM.Types.Value_T; B : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3317
+   procedure Set_Unwind_Dest (Invoke_Inst : LLVM.Types.Value_T; B : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3325
    pragma Import (C, Set_Unwind_Dest, "LLVMSetUnwindDest");
 
   --*
@@ -5280,7 +5294,7 @@ procedure Remove_Call_Site_String_Attribute
   -- * @see llvm::Instruction::getNumSuccessors
   --  
 
-   function Get_Num_Successors (Term : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3337
+   function Get_Num_Successors (Term : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3345
    pragma Import (C, Get_Num_Successors, "LLVMGetNumSuccessors");
 
   --*
@@ -5289,7 +5303,7 @@ procedure Remove_Call_Site_String_Attribute
   -- * @see llvm::Instruction::getSuccessor
   --  
 
-   function Get_Successor (Term : LLVM.Types.Value_T; i : unsigned) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3344
+   function Get_Successor (Term : LLVM.Types.Value_T; i : unsigned) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3352
    pragma Import (C, Get_Successor, "LLVMGetSuccessor");
 
   --*
@@ -5301,7 +5315,7 @@ procedure Remove_Call_Site_String_Attribute
    procedure Set_Successor
      (Term : LLVM.Types.Value_T;
       i : unsigned;
-      block : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3351
+      block : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3359
    pragma Import (C, Set_Successor, "LLVMSetSuccessor");
 
   --*
@@ -5317,7 +5331,7 @@ procedure Remove_Call_Site_String_Attribute
       return Boolean;
    function Is_Conditional_C
      (Branch : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3360
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3368
    pragma Import (C, Is_Conditional_C, "LLVMIsConditional");
 
   --*
@@ -5328,7 +5342,7 @@ procedure Remove_Call_Site_String_Attribute
   -- * @see llvm::BranchInst::getCondition
   --  
 
-   function Get_Condition (Branch : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3369
+   function Get_Condition (Branch : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3377
    pragma Import (C, Get_Condition, "LLVMGetCondition");
 
   --*
@@ -5339,7 +5353,7 @@ procedure Remove_Call_Site_String_Attribute
   -- * @see llvm::BranchInst::setCondition
   --  
 
-   procedure Set_Condition (Branch : LLVM.Types.Value_T; Cond : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3378
+   procedure Set_Condition (Branch : LLVM.Types.Value_T; Cond : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3386
    pragma Import (C, Set_Condition, "LLVMSetCondition");
 
   --*
@@ -5350,7 +5364,7 @@ procedure Remove_Call_Site_String_Attribute
   -- * @see llvm::SwitchInst::getDefaultDest()
   --  
 
-   function Get_Switch_Default_Dest (Switch_Instr : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3387
+   function Get_Switch_Default_Dest (Switch_Instr : LLVM.Types.Value_T) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3395
    pragma Import (C, Get_Switch_Default_Dest, "LLVMGetSwitchDefaultDest");
 
   --*
@@ -5370,7 +5384,7 @@ procedure Remove_Call_Site_String_Attribute
   -- * Obtain the type that is being allocated by the alloca instruction.
   --  
 
-   function Get_Allocated_Type (Alloca : LLVM.Types.Value_T) return LLVM.Types.Type_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3405
+   function Get_Allocated_Type (Alloca : LLVM.Types.Value_T) return LLVM.Types.Type_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3413
    pragma Import (C, Get_Allocated_Type, "LLVMGetAllocatedType");
 
   --*
@@ -5395,7 +5409,7 @@ procedure Remove_Call_Site_String_Attribute
       return Boolean;
    function Is_In_Bounds_C
      (GEP : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3423
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3431
    pragma Import (C, Is_In_Bounds_C, "LLVMIsInBounds");
 
   --*
@@ -5407,7 +5421,7 @@ procedure Remove_Call_Site_String_Attribute
       In_Bounds : Boolean);
    procedure Set_Is_In_Bounds_C
      (GEP       : LLVM.Types.Value_T;
-      In_Bounds : LLVM.Types.Bool_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3428
+      In_Bounds : LLVM.Types.Bool_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3436
    pragma Import (C, Set_Is_In_Bounds_C, "LLVMSetIsInBounds");
 
   --*
@@ -5431,28 +5445,28 @@ procedure Remove_Call_Site_String_Attribute
      (Phi_Node : LLVM.Types.Value_T;
       Incoming_Values : System.Address;
       Incoming_Blocks : System.Address;
-      Count : unsigned);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3446
+      Count : unsigned);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3454
    pragma Import (C, Add_Incoming, "LLVMAddIncoming");
 
   --*
   -- * Obtain the number of incoming basic blocks to a PHI node.
   --  
 
-   function Count_Incoming (Phi_Node : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3452
+   function Count_Incoming (Phi_Node : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3460
    pragma Import (C, Count_Incoming, "LLVMCountIncoming");
 
   --*
   -- * Obtain an incoming value to a PHI node as an LLVMValueRef.
   --  
 
-   function Get_Incoming_Value (Phi_Node : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3457
+   function Get_Incoming_Value (Phi_Node : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3465
    pragma Import (C, Get_Incoming_Value, "LLVMGetIncomingValue");
 
   --*
   -- * Obtain an incoming value to a PHI node as an LLVMBasicBlockRef.
   --  
 
-   function Get_Incoming_Block (Phi_Node : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3462
+   function Get_Incoming_Block (Phi_Node : LLVM.Types.Value_T; Index : unsigned) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3470
    pragma Import (C, Get_Incoming_Block, "LLVMGetIncomingBlock");
 
   --*
@@ -5474,14 +5488,14 @@ procedure Remove_Call_Site_String_Attribute
   -- * NB: This also works on GEP.
   --  
 
-   function Get_Num_Indices (Inst : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3482
+   function Get_Num_Indices (Inst : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3490
    pragma Import (C, Get_Num_Indices, "LLVMGetNumIndices");
 
   --*
   -- * Obtain the indices as an array.
   --  
 
-   function Get_Indices (Inst : LLVM.Types.Value_T) return access unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3487
+   function Get_Indices (Inst : LLVM.Types.Value_T) return access unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3495
    pragma Import (C, Get_Indices, "LLVMGetIndices");
 
   --*
@@ -5505,31 +5519,31 @@ procedure Remove_Call_Site_String_Attribute
   -- * @{
   --  
 
-   function Create_Builder_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Builder_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3510
+   function Create_Builder_In_Context (C : LLVM.Types.Context_T) return LLVM.Types.Builder_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3518
    pragma Import (C, Create_Builder_In_Context, "LLVMCreateBuilderInContext");
 
-   function Create_Builder return LLVM.Types.Builder_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3511
+   function Create_Builder return LLVM.Types.Builder_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3519
    pragma Import (C, Create_Builder, "LLVMCreateBuilder");
 
    procedure Position_Builder
      (Builder : LLVM.Types.Builder_T;
       Block : LLVM.Types.Basic_Block_T;
-      Instr : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3512
+      Instr : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3520
    pragma Import (C, Position_Builder, "LLVMPositionBuilder");
 
-   procedure Position_Builder_Before (Builder : LLVM.Types.Builder_T; Instr : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3514
+   procedure Position_Builder_Before (Builder : LLVM.Types.Builder_T; Instr : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3522
    pragma Import (C, Position_Builder_Before, "LLVMPositionBuilderBefore");
 
-   procedure Position_Builder_At_End (Builder : LLVM.Types.Builder_T; Block : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3515
+   procedure Position_Builder_At_End (Builder : LLVM.Types.Builder_T; Block : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3523
    pragma Import (C, Position_Builder_At_End, "LLVMPositionBuilderAtEnd");
 
-   function Get_Insert_Block (Builder : LLVM.Types.Builder_T) return LLVM.Types.Basic_Block_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3516
+   function Get_Insert_Block (Builder : LLVM.Types.Builder_T) return LLVM.Types.Basic_Block_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3524
    pragma Import (C, Get_Insert_Block, "LLVMGetInsertBlock");
 
-   procedure Clear_Insertion_Position (Builder : LLVM.Types.Builder_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3517
+   procedure Clear_Insertion_Position (Builder : LLVM.Types.Builder_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3525
    pragma Import (C, Clear_Insertion_Position, "LLVMClearInsertionPosition");
 
-   procedure Insert_Into_Builder (Builder : LLVM.Types.Builder_T; Instr : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3518
+   procedure Insert_Into_Builder (Builder : LLVM.Types.Builder_T; Instr : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3526
    pragma Import (C, Insert_Into_Builder, "LLVMInsertIntoBuilder");
 
 procedure Insert_Into_With_Name
@@ -5542,7 +5556,7 @@ procedure Insert_Into_With_Name
       Name    : Interfaces.C.Strings.chars_ptr);
    pragma Import (C, Insert_Into_Builder_With_Name_C, "LLVMInsertIntoBuilderWithName");
 
-   procedure Dispose_Builder (Builder : LLVM.Types.Builder_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3521
+   procedure Dispose_Builder (Builder : LLVM.Types.Builder_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3529
    pragma Import (C, Dispose_Builder, "LLVMDisposeBuilder");
 
   -- Metadata  
@@ -5552,7 +5566,7 @@ procedure Insert_Into_With_Name
   -- * @see llvm::IRBuilder::getCurrentDebugLocation()
   --  
 
-   function Get_Current_Debug_Location2 (Builder : LLVM.Types.Builder_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3530
+   function Get_Current_Debug_Location2 (Builder : LLVM.Types.Builder_T) return LLVM.Types.Metadata_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3538
    pragma Import (C, Get_Current_Debug_Location2, "LLVMGetCurrentDebugLocation2");
 
   --*
@@ -5563,7 +5577,7 @@ procedure Insert_Into_With_Name
   -- * @see llvm::IRBuilder::SetCurrentDebugLocation()
   --  
 
-   procedure Set_Current_Debug_Location2 (Builder : LLVM.Types.Builder_T; Loc : LLVM.Types.Metadata_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3539
+   procedure Set_Current_Debug_Location2 (Builder : LLVM.Types.Builder_T; Loc : LLVM.Types.Metadata_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3547
    pragma Import (C, Set_Current_Debug_Location2, "LLVMSetCurrentDebugLocation2");
 
   --*
@@ -5574,7 +5588,7 @@ procedure Insert_Into_With_Name
   -- * @see llvm::IRBuilder::SetInstDebugLocation()
   --  
 
-   procedure Set_Inst_Debug_Location (Builder : LLVM.Types.Builder_T; Inst : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3548
+   procedure Set_Inst_Debug_Location (Builder : LLVM.Types.Builder_T; Inst : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3556
    pragma Import (C, Set_Inst_Debug_Location, "LLVMSetInstDebugLocation");
 
   --*
@@ -5583,7 +5597,7 @@ procedure Insert_Into_With_Name
   -- * @see llvm::IRBuilder::getDefaultFPMathTag()
   --  
 
-   function Builder_Get_Default_FP_Math_Tag (Builder : LLVM.Types.Builder_T) return LLVM.Types.Metadata_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3555
+   function Builder_Get_Default_FP_Math_Tag (Builder : LLVM.Types.Builder_T) return LLVM.Types.Metadata_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3563
    pragma Import (C, Builder_Get_Default_FP_Math_Tag, "LLVMBuilderGetDefaultFPMathTag");
 
   --*
@@ -5594,7 +5608,7 @@ procedure Insert_Into_With_Name
   -- * @see llvm::IRBuilder::setDefaultFPMathTag()
   --  
 
-   procedure Builder_Set_Default_FP_Math_Tag (Builder : LLVM.Types.Builder_T; FP_Math_Tag : LLVM.Types.Metadata_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3564
+   procedure Builder_Set_Default_FP_Math_Tag (Builder : LLVM.Types.Builder_T; FP_Math_Tag : LLVM.Types.Metadata_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3572
    pragma Import (C, Builder_Set_Default_FP_Math_Tag, "LLVMBuilderSetDefaultFPMathTag");
 
   --*
@@ -5602,7 +5616,7 @@ procedure Insert_Into_With_Name
   -- * Use LLVMGetCurrentDebugLocation2 instead.
   --  
 
-   procedure Set_Current_Debug_Location (Builder : LLVM.Types.Builder_T; L : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3571
+   procedure Set_Current_Debug_Location (Builder : LLVM.Types.Builder_T; L : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3579
    pragma Import (C, Set_Current_Debug_Location, "LLVMSetCurrentDebugLocation");
 
   --*
@@ -5610,43 +5624,43 @@ procedure Insert_Into_With_Name
   -- * Use LLVMGetCurrentDebugLocation2 instead.
   --  
 
-   function Get_Current_Debug_Location (Builder : LLVM.Types.Builder_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3576
+   function Get_Current_Debug_Location (Builder : LLVM.Types.Builder_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3584
    pragma Import (C, Get_Current_Debug_Location, "LLVMGetCurrentDebugLocation");
 
   -- Terminators  
-   function Build_Ret_Void (arg1 : LLVM.Types.Builder_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3579
+   function Build_Ret_Void (arg1 : LLVM.Types.Builder_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3587
    pragma Import (C, Build_Ret_Void, "LLVMBuildRetVoid");
 
-   function Build_Ret (arg1 : LLVM.Types.Builder_T; V : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3580
+   function Build_Ret (arg1 : LLVM.Types.Builder_T; V : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3588
    pragma Import (C, Build_Ret, "LLVMBuildRet");
 
    function Build_Aggregate_Ret
      (arg1 : LLVM.Types.Builder_T;
       Ret_Vals : System.Address;
-      N : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3581
+      N : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3589
    pragma Import (C, Build_Aggregate_Ret, "LLVMBuildAggregateRet");
 
-   function Build_Br (arg1 : LLVM.Types.Builder_T; Dest : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3583
+   function Build_Br (arg1 : LLVM.Types.Builder_T; Dest : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3591
    pragma Import (C, Build_Br, "LLVMBuildBr");
 
    function Build_Cond_Br
      (arg1 : LLVM.Types.Builder_T;
       C_If : LLVM.Types.Value_T;
       C_Then : LLVM.Types.Basic_Block_T;
-      C_Else : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3584
+      C_Else : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3592
    pragma Import (C, Build_Cond_Br, "LLVMBuildCondBr");
 
    function Build_Switch
      (arg1 : LLVM.Types.Builder_T;
       V : LLVM.Types.Value_T;
       C_Else : LLVM.Types.Basic_Block_T;
-      Num_Cases : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3586
+      Num_Cases : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3594
    pragma Import (C, Build_Switch, "LLVMBuildSwitch");
 
    function Build_Indirect_Br
      (B : LLVM.Types.Builder_T;
       Addr : LLVM.Types.Value_T;
-      Num_Dests : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3588
+      Num_Dests : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3596
    pragma Import (C, Build_Indirect_Br, "LLVMBuildIndirectBr");
 
   -- LLVMBuildInvoke is deprecated in favor of LLVMBuildInvoke2, in preparation
@@ -5693,11 +5707,11 @@ function Invoke2
       return LLVM.Types.Value_T;
    pragma Import (C, Build_Invoke2_C, "LLVMBuildInvoke2");
 
-   function Build_Unreachable (arg1 : LLVM.Types.Builder_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3600
+   function Build_Unreachable (arg1 : LLVM.Types.Builder_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3608
    pragma Import (C, Build_Unreachable, "LLVMBuildUnreachable");
 
   -- Exception Handling  
-   function Build_Resume (B : LLVM.Types.Builder_T; Exn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3603
+   function Build_Resume (B : LLVM.Types.Builder_T; Exn : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3611
    pragma Import (C, Build_Resume, "LLVMBuildResume");
 
 function Landing_Pad
@@ -5719,13 +5733,13 @@ function Landing_Pad
    function Build_Cleanup_Ret
      (B : LLVM.Types.Builder_T;
       Catch_Pad : LLVM.Types.Value_T;
-      BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3607
+      BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3615
    pragma Import (C, Build_Cleanup_Ret, "LLVMBuildCleanupRet");
 
    function Build_Catch_Ret
      (B : LLVM.Types.Builder_T;
       Catch_Pad : LLVM.Types.Value_T;
-      BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3609
+      BB : LLVM.Types.Basic_Block_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3617
    pragma Import (C, Build_Catch_Ret, "LLVMBuildCatchRet");
 
 function Catch_Pad
@@ -5780,23 +5794,23 @@ function Catch_Switch
    procedure Add_Case
      (Switch : LLVM.Types.Value_T;
       On_Val : LLVM.Types.Value_T;
-      Dest : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3622
+      Dest : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3630
    pragma Import (C, Add_Case, "LLVMAddCase");
 
   -- Add a destination to the indirectbr instruction  
-   procedure Add_Destination (Indirect_Br : LLVM.Types.Value_T; Dest : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3626
+   procedure Add_Destination (Indirect_Br : LLVM.Types.Value_T; Dest : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3634
    pragma Import (C, Add_Destination, "LLVMAddDestination");
 
   -- Get the number of clauses on the landingpad instruction  
-   function Get_Num_Clauses (Landing_Pad : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3629
+   function Get_Num_Clauses (Landing_Pad : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3637
    pragma Import (C, Get_Num_Clauses, "LLVMGetNumClauses");
 
-  -- Get the value of the clause at idnex Idx on the landingpad instruction  
-   function Get_Clause (Landing_Pad : LLVM.Types.Value_T; Idx : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3632
+  -- Get the value of the clause at index Idx on the landingpad instruction  
+   function Get_Clause (Landing_Pad : LLVM.Types.Value_T; Idx : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3640
    pragma Import (C, Get_Clause, "LLVMGetClause");
 
   -- Add a catch or filter clause to the landingpad instruction  
-   procedure Add_Clause (Landing_Pad : LLVM.Types.Value_T; Clause_Val : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3635
+   procedure Add_Clause (Landing_Pad : LLVM.Types.Value_T; Clause_Val : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3643
    pragma Import (C, Add_Clause, "LLVMAddClause");
 
   -- Get the 'cleanup' flag in the landingpad instruction  
@@ -5805,7 +5819,7 @@ function Catch_Switch
       return Boolean;
    function Is_Cleanup_C
      (Landing_Pad : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3638
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3646
    pragma Import (C, Is_Cleanup_C, "LLVMIsCleanup");
 
   -- Set the 'cleanup' flag in the landingpad instruction  
@@ -5814,15 +5828,15 @@ function Catch_Switch
       Val         : Boolean);
    procedure Set_Cleanup_C
      (Landing_Pad : LLVM.Types.Value_T;
-      Val         : LLVM.Types.Bool_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3641
+      Val         : LLVM.Types.Bool_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3649
    pragma Import (C, Set_Cleanup_C, "LLVMSetCleanup");
 
   -- Add a destination to the catchswitch instruction  
-   procedure Add_Handler (Catch_Switch : LLVM.Types.Value_T; Dest : LLVM.Types.Basic_Block_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3644
+   procedure Add_Handler (Catch_Switch : LLVM.Types.Value_T; Dest : LLVM.Types.Basic_Block_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3652
    pragma Import (C, Add_Handler, "LLVMAddHandler");
 
   -- Get the number of handlers on the catchswitch instruction  
-   function Get_Num_Handlers (Catch_Switch : LLVM.Types.Value_T) return unsigned;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3647
+   function Get_Num_Handlers (Catch_Switch : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3655
    pragma Import (C, Get_Num_Handlers, "LLVMGetNumHandlers");
 
   --*
@@ -5837,19 +5851,19 @@ function Catch_Switch
   -- * @param Handlers Memory address of an array to be filled with basic blocks.
   --  
 
-   procedure Get_Handlers (Catch_Switch : LLVM.Types.Value_T; Handlers : System.Address);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3660
+   procedure Get_Handlers (Catch_Switch : LLVM.Types.Value_T; Handlers : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3668
    pragma Import (C, Get_Handlers, "LLVMGetHandlers");
 
   -- Funclets  
   -- Get the number of funcletpad arguments.  
-   function Get_Arg_Operand (Funclet : LLVM.Types.Value_T; i : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3665
+   function Get_Arg_Operand (Funclet : LLVM.Types.Value_T; i : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3673
    pragma Import (C, Get_Arg_Operand, "LLVMGetArgOperand");
 
   -- Set a funcletpad argument at the given index.  
    procedure Set_Arg_Operand
      (Funclet : LLVM.Types.Value_T;
       i : unsigned;
-      value : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3668
+      value : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3676
    pragma Import (C, Set_Arg_Operand, "LLVMSetArgOperand");
 
   --*
@@ -5860,7 +5874,7 @@ function Catch_Switch
   -- * @see llvm::CatchPadInst::getCatchSwitch()
   --  
 
-   function Get_Parent_Catch_Switch (Catch_Pad : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3677
+   function Get_Parent_Catch_Switch (Catch_Pad : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3685
    pragma Import (C, Get_Parent_Catch_Switch, "LLVMGetParentCatchSwitch");
 
   --*
@@ -5871,7 +5885,7 @@ function Catch_Switch
   -- * @see llvm::CatchPadInst::setCatchSwitch()
   --  
 
-   procedure Set_Parent_Catch_Switch (Catch_Pad : LLVM.Types.Value_T; Catch_Switch : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3686
+   procedure Set_Parent_Catch_Switch (Catch_Pad : LLVM.Types.Value_T; Catch_Switch : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3694
    pragma Import (C, Set_Parent_Catch_Switch, "LLVMSetParentCatchSwitch");
 
   -- Arithmetic  
@@ -6343,7 +6357,7 @@ function Array_Malloc
    pragma Import (C, Build_Array_Malloc_C, "LLVMBuildArrayMalloc");
 
   --*
-  -- * Creates and inserts a memset to the specified pointer and the 
+  -- * Creates and inserts a memset to the specified pointer and the
   -- * specified value.
   -- *
   -- * @see llvm::IRRBuilder::CreateMemSet()
@@ -6354,7 +6368,7 @@ function Array_Malloc
       Ptr : LLVM.Types.Value_T;
       Val : LLVM.Types.Value_T;
       Len : LLVM.Types.Value_T;
-      Align : unsigned) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3763
+      Align : unsigned) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3771
    pragma Import (C, Build_Mem_Set, "LLVMBuildMemSet");
 
   --*
@@ -6369,7 +6383,7 @@ function Array_Malloc
       Dst_Align : unsigned;
       Src : LLVM.Types.Value_T;
       Src_Align : unsigned;
-      Size : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3771
+      Size : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3779
    pragma Import (C, Build_Mem_Cpy, "LLVMBuildMemCpy");
 
   --*
@@ -6384,7 +6398,7 @@ function Array_Malloc
       Dst_Align : unsigned;
       Src : LLVM.Types.Value_T;
       Src_Align : unsigned;
-      Size : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3780
+      Size : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3788
    pragma Import (C, Build_Mem_Move, "LLVMBuildMemMove");
 
 function Alloca
@@ -6413,7 +6427,7 @@ function Array_Alloca
       return LLVM.Types.Value_T;
    pragma Import (C, Build_Array_Alloca_C, "LLVMBuildArrayAlloca");
 
-   function Build_Free (arg1 : LLVM.Types.Builder_T; Pointer_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3788
+   function Build_Free (arg1 : LLVM.Types.Builder_T; Pointer_Val : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3796
    pragma Import (C, Build_Free, "LLVMBuildFree");
 
   -- LLVMBuildLoad is deprecated in favor of LLVMBuildLoad2, in preparation for
@@ -6447,7 +6461,7 @@ function Load2
    function Build_Store
      (arg1 : LLVM.Types.Builder_T;
       Val : LLVM.Types.Value_T;
-      Ptr : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3795
+      Ptr : LLVM.Types.Value_T) return LLVM.Types.Value_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3803
    pragma Import (C, Build_Store, "LLVMBuildStore");
 
   -- LLVMBuildGEP, LLVMBuildInBoundsGEP, and LLVMBuildStructGEP are deprecated in
@@ -6579,7 +6593,7 @@ function Global_String_Ptr
       return Boolean;
    function Get_Volatile_C
      (Memory_Access_Inst : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3819
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3827
    pragma Import (C, Get_Volatile_C, "LLVMGetVolatile");
 
    procedure Set_Volatile
@@ -6587,7 +6601,7 @@ function Global_String_Ptr
       Is_Volatile        : Boolean);
    procedure Set_Volatile_C
      (Memory_Access_Inst : LLVM.Types.Value_T;
-      Is_Volatile        : LLVM.Types.Bool_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3820
+      Is_Volatile        : LLVM.Types.Bool_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3828
    pragma Import (C, Set_Volatile_C, "LLVMSetVolatile");
 
    function Get_Weak
@@ -6595,7 +6609,7 @@ function Global_String_Ptr
       return Boolean;
    function Get_Weak_C
      (Cmp_Xchg_Inst : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3821
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3829
    pragma Import (C, Get_Weak_C, "LLVMGetWeak");
 
    procedure Set_Weak
@@ -6603,19 +6617,19 @@ function Global_String_Ptr
       Is_Weak       : Boolean);
    procedure Set_Weak_C
      (Cmp_Xchg_Inst : LLVM.Types.Value_T;
-      Is_Weak       : LLVM.Types.Bool_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3822
+      Is_Weak       : LLVM.Types.Bool_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3830
    pragma Import (C, Set_Weak_C, "LLVMSetWeak");
 
-   function Get_Ordering (Memory_Access_Inst : LLVM.Types.Value_T) return Atomic_Ordering_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3823
+   function Get_Ordering (Memory_Access_Inst : LLVM.Types.Value_T) return Atomic_Ordering_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3831
    pragma Import (C, Get_Ordering, "LLVMGetOrdering");
 
-   procedure Set_Ordering (Memory_Access_Inst : LLVM.Types.Value_T; Ordering : Atomic_Ordering_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3824
+   procedure Set_Ordering (Memory_Access_Inst : LLVM.Types.Value_T; Ordering : Atomic_Ordering_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3832
    pragma Import (C, Set_Ordering, "LLVMSetOrdering");
 
-   function Get_Atomic_RMW_Bin_Op (Atomic_RMW_Inst : LLVM.Types.Value_T) return Atomic_RMW_Bin_Op_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3825
+   function Get_Atomic_RMW_Bin_Op (Atomic_RMW_Inst : LLVM.Types.Value_T) return Atomic_RMW_Bin_Op_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3833
    pragma Import (C, Get_Atomic_RMW_Bin_Op, "LLVMGetAtomicRMWBinOp");
 
-   procedure Set_Atomic_RMW_Bin_Op (Atomic_RMW_Inst : LLVM.Types.Value_T; Bin_Op : Atomic_RMW_Bin_Op_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3826
+   procedure Set_Atomic_RMW_Bin_Op (Atomic_RMW_Inst : LLVM.Types.Value_T; Bin_Op : Atomic_RMW_Bin_Op_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3834
    pragma Import (C, Set_Atomic_RMW_Bin_Op, "LLVMSetAtomicRMWBinOp");
 
   -- Casts  
@@ -7209,12 +7223,38 @@ function Atomic_Cmp_Xchg
       return LLVM.Types.Value_T;
    pragma Import (C, Build_Atomic_Cmp_Xchg_C, "LLVMBuildAtomicCmpXchg");
 
+  --*
+  -- * Get the number of elements in the mask of a ShuffleVector instruction.
+  --  
+
+   function Get_Num_Mask_Elements (Shuffle_Vector_Inst : LLVM.Types.Value_T) return unsigned;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3943
+   pragma Import (C, Get_Num_Mask_Elements, "LLVMGetNumMaskElements");
+
+  --*
+  -- * \returns a constant that specifies that the result of a \c ShuffleVectorInst
+  -- * is undefined.
+  --  
+
+   function Get_Undef_Mask_Elem return int;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3949
+   pragma Import (C, Get_Undef_Mask_Elem, "LLVMGetUndefMaskElem");
+
+  --*
+  -- * Get the mask value at position Elt in the mask of a ShuffleVector
+  -- * instruction.
+  -- *
+  -- * \Returns the result of \c LLVMGetUndefMaskElem() if the mask value is undef
+  -- * at that position.
+  --  
+
+   function Get_Mask_Value (Shuffle_Vector_Inst : LLVM.Types.Value_T; Elt : unsigned) return int;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3958
+   pragma Import (C, Get_Mask_Value, "LLVMGetMaskValue");
+
    function Is_Atomic_Single_Thread
      (Atomic_Inst : LLVM.Types.Value_T)
       return Boolean;
    function Is_Atomic_Single_Thread_C
      (Atomic_Inst : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3932
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3960
    pragma Import (C, Is_Atomic_Single_Thread_C, "LLVMIsAtomicSingleThread");
 
    procedure Set_Atomic_Single_Thread
@@ -7222,19 +7262,19 @@ function Atomic_Cmp_Xchg
       Single_Thread : Boolean);
    procedure Set_Atomic_Single_Thread_C
      (Atomic_Inst   : LLVM.Types.Value_T;
-      Single_Thread : LLVM.Types.Bool_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3933
+      Single_Thread : LLVM.Types.Bool_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3961
    pragma Import (C, Set_Atomic_Single_Thread_C, "LLVMSetAtomicSingleThread");
 
-   function Get_Cmp_Xchg_Success_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T) return Atomic_Ordering_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3935
+   function Get_Cmp_Xchg_Success_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T) return Atomic_Ordering_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3963
    pragma Import (C, Get_Cmp_Xchg_Success_Ordering, "LLVMGetCmpXchgSuccessOrdering");
 
-   procedure Set_Cmp_Xchg_Success_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T; Ordering : Atomic_Ordering_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3936
+   procedure Set_Cmp_Xchg_Success_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T; Ordering : Atomic_Ordering_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3964
    pragma Import (C, Set_Cmp_Xchg_Success_Ordering, "LLVMSetCmpXchgSuccessOrdering");
 
-   function Get_Cmp_Xchg_Failure_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T) return Atomic_Ordering_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3938
+   function Get_Cmp_Xchg_Failure_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T) return Atomic_Ordering_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3966
    pragma Import (C, Get_Cmp_Xchg_Failure_Ordering, "LLVMGetCmpXchgFailureOrdering");
 
-   procedure Set_Cmp_Xchg_Failure_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T; Ordering : Atomic_Ordering_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3939
+   procedure Set_Cmp_Xchg_Failure_Ordering (Cmp_Xchg_Inst : LLVM.Types.Value_T; Ordering : Atomic_Ordering_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3967
    pragma Import (C, Set_Cmp_Xchg_Failure_Ordering, "LLVMSetCmpXchgFailureOrdering");
 
   --*
@@ -7252,14 +7292,14 @@ function Atomic_Cmp_Xchg
   -- * JIT.  They take ModuleProviders for historical reasons.
   --  
 
-   function Create_Module_Provider_For_Existing_Module (M : LLVM.Types.Module_T) return LLVM.Types.Module_Provider_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3957
+   function Create_Module_Provider_For_Existing_Module (M : LLVM.Types.Module_T) return LLVM.Types.Module_Provider_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:3985
    pragma Import (C, Create_Module_Provider_For_Existing_Module, "LLVMCreateModuleProviderForExistingModule");
 
   --*
   -- * Destroys the module M.
   --  
 
-   procedure Dispose_Module_Provider (M : LLVM.Types.Module_Provider_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3962
+   procedure Dispose_Module_Provider (M : LLVM.Types.Module_Provider_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:3990
    pragma Import (C, Dispose_Module_Provider, "LLVMDisposeModuleProvider");
 
   --*
@@ -7291,7 +7331,7 @@ function Create_Memory_Buffer_With_Contents_Of_File
    function Create_Memory_Buffer_With_STDIN_C
      (Out_Mem_Buf : System.Address;
       Out_Message : System.Address)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3977
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4005
    pragma Import (C, Create_Memory_Buffer_With_STDIN_C, "LLVMCreateMemoryBufferWithSTDIN");
 
 function Create_Memory_Buffer_With_Memory_Range
@@ -7325,13 +7365,13 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
       return String;
    function Get_Buffer_Start_C
      (Mem_Buf : LLVM.Types.Memory_Buffer_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3986
+      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4014
    pragma Import (C, Get_Buffer_Start_C, "LLVMGetBufferStart");
 
-   function Get_Buffer_Size (Mem_Buf : LLVM.Types.Memory_Buffer_T) return stddef_h.size_t;  -- llvm-10.0.0.src/include/llvm-c/Core.h:3987
+   function Get_Buffer_Size (Mem_Buf : LLVM.Types.Memory_Buffer_T) return stddef_h.size_t;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4015
    pragma Import (C, Get_Buffer_Size, "LLVMGetBufferSize");
 
-   procedure Dispose_Memory_Buffer (Mem_Buf : LLVM.Types.Memory_Buffer_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:3988
+   procedure Dispose_Memory_Buffer (Mem_Buf : LLVM.Types.Memory_Buffer_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:4016
    pragma Import (C, Dispose_Memory_Buffer, "LLVMDisposeMemoryBuffer");
 
   --*
@@ -7347,7 +7387,7 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
   --* Return the global pass registry, for use with initialization functions.
   --    @see llvm::PassRegistry::getPassRegistry  
 
-   function Get_Global_Pass_Registry return LLVM.Types.Pass_Registry_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:4002
+   function Get_Global_Pass_Registry return LLVM.Types.Pass_Registry_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4030
    pragma Import (C, Get_Global_Pass_Registry, "LLVMGetGlobalPassRegistry");
 
   --*
@@ -7364,7 +7404,7 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
   --    suitable for link-time optimization and whole-module transformations.
   --    @see llvm::PassManager::PassManager  
 
-   function Create_Pass_Manager return LLVM.Types.Pass_Manager_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:4017
+   function Create_Pass_Manager return LLVM.Types.Pass_Manager_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4045
    pragma Import (C, Create_Pass_Manager, "LLVMCreatePassManager");
 
   --* Constructs a new function-by-function pass pipeline over the module
@@ -7372,11 +7412,11 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
   --    pipeline is suitable for code generation and JIT compilation tasks.
   --    @see llvm::FunctionPassManager::FunctionPassManager  
 
-   function Create_Function_Pass_Manager_For_Module (M : LLVM.Types.Module_T) return LLVM.Types.Pass_Manager_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:4023
+   function Create_Function_Pass_Manager_For_Module (M : LLVM.Types.Module_T) return LLVM.Types.Pass_Manager_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4051
    pragma Import (C, Create_Function_Pass_Manager_For_Module, "LLVMCreateFunctionPassManagerForModule");
 
   --* Deprecated: Use LLVMCreateFunctionPassManagerForModule instead.  
-   function Create_Function_Pass_Manager (MP : LLVM.Types.Module_Provider_T) return LLVM.Types.Pass_Manager_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:4026
+   function Create_Function_Pass_Manager (MP : LLVM.Types.Module_Provider_T) return LLVM.Types.Pass_Manager_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4054
    pragma Import (C, Create_Function_Pass_Manager, "LLVMCreateFunctionPassManager");
 
   --* Initializes, executes on the provided module, and finalizes all of the
@@ -7391,7 +7431,7 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
    function Run_Pass_Manager_C
      (PM : LLVM.Types.Pass_Manager_T;
       M  : LLVM.Types.Module_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:4032
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4060
    pragma Import (C, Run_Pass_Manager_C, "LLVMRunPassManager");
 
   --* Initializes all of the function passes scheduled in the function pass
@@ -7403,7 +7443,7 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
       return Boolean;
    function Initialize_Function_Pass_Manager_C
      (FPM : LLVM.Types.Pass_Manager_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:4037
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4065
    pragma Import (C, Initialize_Function_Pass_Manager_C, "LLVMInitializeFunctionPassManager");
 
   --* Executes all of the function passes scheduled in the function pass manager
@@ -7418,7 +7458,7 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
    function Run_Function_Pass_Manager_C
      (FPM : LLVM.Types.Pass_Manager_T;
       F   : LLVM.Types.Value_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:4043
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4071
    pragma Import (C, Run_Function_Pass_Manager_C, "LLVMRunFunctionPassManager");
 
   --* Finalizes all of the function passes scheduled in the function pass
@@ -7430,14 +7470,14 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
       return Boolean;
    function Finalize_Function_Pass_Manager_C
      (FPM : LLVM.Types.Pass_Manager_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:4048
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4076
    pragma Import (C, Finalize_Function_Pass_Manager_C, "LLVMFinalizeFunctionPassManager");
 
   --* Frees the memory of a pass pipeline. For function pipelines, does not free
   --    the module provider.
   --    @see llvm::PassManagerBase::~PassManagerBase.  
 
-   procedure Dispose_Pass_Manager (PM : LLVM.Types.Pass_Manager_T);  -- llvm-10.0.0.src/include/llvm-c/Core.h:4053
+   procedure Dispose_Pass_Manager (PM : LLVM.Types.Pass_Manager_T);  -- llvm-11.0.1.src/include/llvm-c/Core.h:4081
    pragma Import (C, Dispose_Pass_Manager, "LLVMDisposePassManager");
 
   --*
@@ -7459,13 +7499,13 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
    function Start_Multithreaded
       return Boolean;
    function Start_Multithreaded_C
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:4070
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4098
    pragma Import (C, Start_Multithreaded_C, "LLVMStartMultithreaded");
 
   --* Deprecated: Multi-threading can only be enabled/disabled with the compile
   --    time define LLVM_ENABLE_THREADS.  
 
-   procedure Stop_Multithreaded;  -- llvm-10.0.0.src/include/llvm-c/Core.h:4074
+   procedure Stop_Multithreaded;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4102
    pragma Import (C, Stop_Multithreaded, "LLVMStopMultithreaded");
 
   --* Check whether LLVM is executing in thread-safe mode or not.
@@ -7474,7 +7514,7 @@ function Create_Memory_Buffer_With_Memory_Range_Copy
    function Is_Multithreaded
       return Boolean;
    function Is_Multithreaded_C
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Core.h:4078
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Core.h:4106
    pragma Import (C, Is_Multithreaded_C, "LLVMIsMultithreaded");
 
   --*

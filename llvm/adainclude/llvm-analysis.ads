@@ -38,7 +38,7 @@ package LLVM.Analysis is
      (Abort_Process_Action,
       Print_Message_Action,
       Return_Status_Action);
-   pragma Convention (C, Verifier_Failure_Action_T);  -- llvm-10.0.0.src/include/llvm-c/Analysis.h:38
+   pragma Convention (C, Verifier_Failure_Action_T);  -- llvm-11.0.1.src/include/llvm-c/Analysis.h:38
 
   -- Verifies that a module is valid, taking the specified action if not.
   --   Optionally returns a human-readable description of any invalid constructs.
@@ -66,16 +66,16 @@ function Verify_Module
    function Verify_Function_C
      (Fn     : LLVM.Types.Value_T;
       Action : Verifier_Failure_Action_T)
-      return LLVM.Types.Bool_T;  -- llvm-10.0.0.src/include/llvm-c/Analysis.h:49
+      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Analysis.h:49
    pragma Import (C, Verify_Function_C, "LLVMVerifyFunction");
 
   -- Open up a ghostview window that displays the CFG of the current function.
   --   Useful for debugging.  
 
-   procedure View_Function_CFG (Fn : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Analysis.h:53
+   procedure View_Function_CFG (Fn : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Analysis.h:53
    pragma Import (C, View_Function_CFG, "LLVMViewFunctionCFG");
 
-   procedure View_Function_CFG_Only (Fn : LLVM.Types.Value_T);  -- llvm-10.0.0.src/include/llvm-c/Analysis.h:54
+   procedure View_Function_CFG_Only (Fn : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Analysis.h:54
    pragma Import (C, View_Function_CFG_Only, "LLVMViewFunctionCFGOnly");
 
   --*

@@ -74,6 +74,11 @@ is
 
    type size_t is mod 2 ** Standard'Address_Size;
 
+   --  Boolean type
+
+   type bool is new Boolean;
+   pragma Convention (C, bool);
+
    --  Floating-Point
 
    type C_float     is new Float;

@@ -151,7 +151,7 @@ package body GNATLLVM.Wrapper is
          Src         : Value_T;
          Src_Align   : unsigned;
          Size        : Value_T;
-         Is_Volatile : Bool;
+         Is_Volatile : LLVM_Bool;
          TBAA        : Metadata_T;
          TBAA_Struct : Metadata_T;
          Scope       : Metadata_T;
@@ -186,7 +186,7 @@ package body GNATLLVM.Wrapper is
          Src         : Value_T;
          Src_Align   : unsigned;
          Size        : Value_T;
-         Is_Volatile : Bool;
+         Is_Volatile : LLVM_Bool;
          TBAA        : Metadata_T;
          Scope       : Metadata_T;
          NoAlias     : Metadata_T) return Value_T
@@ -218,7 +218,7 @@ package body GNATLLVM.Wrapper is
          Val         : Value_T;
          Size        : Value_T;
          Align       : unsigned;
-         Is_Volatile : Bool;
+         Is_Volatile : LLVM_Bool;
          TBAA        : Metadata_T;
          Scope       : Metadata_T;
          NoAlias     : Metadata_T) return Value_T
@@ -281,23 +281,25 @@ package body GNATLLVM.Wrapper is
          Target_Machine        : Target_Machine_T;
          Code_Opt_Level        : Nat;
          Size_Opt_Level        : Nat;
-         No_Inlining           : Bool;
-         No_Unroll_Loops       : Bool;
-         No_Loop_Vectorization : Bool;
-         No_SLP_Vectorization  : Bool;
-         Merge_Functions       : Bool;
-         PrepareForThinLTO     : Bool;
-         PrepareForLTO         : Bool;
-         RerollLoopS           : Bool)
+         No_Inlining           : LLVM_Bool;
+         No_Unroll_Loops       : LLVM_Bool;
+         No_Loop_Vectorization : LLVM_Bool;
+         No_SLP_Vectorization  : LLVM_Bool;
+         Merge_Functions       : LLVM_Bool;
+         PrepareForThinLTO     : LLVM_Bool;
+         PrepareForLTO         : LLVM_Bool;
+         RerollLoopS           : LLVM_Bool)
         with Import, Convention => C, External_Name => "LLVM_Optimize_Module";
-      No_Inlining_B  : constant Bool := Boolean'Pos (No_Inlining);
-      No_Unroll_B    : constant Bool := Boolean'Pos (No_Unroll_Loops);
-      No_Loop_Vect_B : constant Bool := Boolean'Pos (No_Loop_Vectorization);
-      No_SLP_Vect_B  : constant Bool := Boolean'Pos (No_SLP_Vectorization);
-      Merge_B        : constant Bool := Boolean'Pos (Merge_Functions);
-      Thin_LTO_B     : constant Bool := Boolean'Pos (PrepareForThinLTO);
-      LTO_B          : constant Bool := Boolean'Pos (PrepareForLTO);
-      Reroll_B       : constant Bool := Boolean'Pos (RerollLoops);
+      No_Inlining_B  : constant LLVM_Bool := Boolean'Pos (No_Inlining);
+      No_Unroll_B    : constant LLVM_Bool := Boolean'Pos (No_Unroll_Loops);
+      No_Loop_Vect_B : constant LLVM_Bool :=
+        Boolean'Pos (No_Loop_Vectorization);
+      No_SLP_Vect_B  : constant LLVM_Bool :=
+        Boolean'Pos (No_SLP_Vectorization);
+      Merge_B        : constant LLVM_Bool := Boolean'Pos (Merge_Functions);
+      Thin_LTO_B     : constant LLVM_Bool := Boolean'Pos (PrepareForThinLTO);
+      LTO_B          : constant LLVM_Bool := Boolean'Pos (PrepareForLTO);
+      Reroll_B       : constant LLVM_Bool := Boolean'Pos (RerollLoops);
 
    begin
       LLVM_Optimize_Module_C (Module, Target_Machine,
@@ -316,12 +318,12 @@ package body GNATLLVM.Wrapper is
       function Get_GEP_Constant_Offset_C
         (GEP    : Value_T;
          Layout : Target_Data_T;
-         Offset : access ULL) return Bool
+         Offset : access ULL) return LLVM_Bool
         with Import, Convention => C,
              External_Name => "Get_GEP_Constant_Offset";
 
       Result_Offset : aliased ULL;
-      Result        : constant Bool :=
+      Result        : constant LLVM_Bool :=
         Get_GEP_Constant_Offset_C (GEP, Layout, Result_Offset'Access);
 
    begin
@@ -334,7 +336,7 @@ package body GNATLLVM.Wrapper is
    -----------------
 
    function Is_C_String (V : Value_T) return Boolean is
-      function Is_C_String_C (V : Value_T) return Bool
+      function Is_C_String_C (V : Value_T) return LLVM_Bool
         with Import, Convention => C, External_Name => "Is_C_String";
    begin
       return (if Is_C_String_C (V) = 0 then False else True);
@@ -357,7 +359,7 @@ package body GNATLLVM.Wrapper is
    ----------------
 
    function Equals_Int (V : Value_T; Val : ULL) return Boolean is
-      function Equals_Int_C (V : Value_T; Val : ULL) return Bool
+      function Equals_Int_C (V : Value_T; Val : ULL) return LLVM_Bool
         with Import, Convention => C, External_Name => "Equals_Int";
    begin
       return (if Equals_Int_C (V, Val) = 0 then False else True);
@@ -368,7 +370,7 @@ package body GNATLLVM.Wrapper is
    ----------------------
 
    function Equal_Constants (V1, V2 : Value_T) return Boolean is
-      function Equal_Constants_C (V1, V2 : Value_T) return Bool
+      function Equal_Constants_C (V1, V2 : Value_T) return LLVM_Bool
         with Import, Convention => C, External_Name => "Equal_Constants";
    begin
       return (if Equal_Constants_C (V1, V2) = 0 then False else True);

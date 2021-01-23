@@ -43,7 +43,7 @@ package body CCG.Helper is
    ---------------------
 
    function Struct_Has_Name (T : Type_T) return Boolean is
-      function Struct_Has_Name (T : Type_T) return GNATLLVM.Bool
+      function Struct_Has_Name (T : Type_T) return LLVM_Bool
         with Import, Convention => C, External_Name => "Struct_Has_Name";
    begin
       return (if Struct_Has_Name (T) /= 0 then True else False);
@@ -54,7 +54,7 @@ package body CCG.Helper is
    --------------------
 
    function Value_Has_Name (V : Value_T) return Boolean is
-      function Value_Has_Name (V : Value_T) return GNATLLVM.Bool
+      function Value_Has_Name (V : Value_T) return LLVM_Bool
         with Import, Convention => C, External_Name => "Value_Has_Name";
    begin
       return (if Value_Has_Name (V) /= 0 then True else False);

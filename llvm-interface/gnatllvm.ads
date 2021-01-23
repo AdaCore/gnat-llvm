@@ -120,7 +120,7 @@ package GNATLLVM is
    --  So define that here as what it would be in C, a char, and use that,
    --  not Bool_T when calling the wrapper routines that we wrote.
 
-   type Bool is range -128 .. 127 with Convention => C;
+   type LLVM_Bool is range -128 .. 127 with Convention => C;
 
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us

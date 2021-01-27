@@ -486,8 +486,10 @@ package body GNATLLVM.Types is
       --  nominal type for alias to unconstrained case.
 
       if R = Reference_To_Bounds_And_Data then
-         if Present (New_V) and then Is_Data (New_V) then
-            New_V  := Get (New_V, Bounds_And_Data);
+         if Present (New_V) and then Is_Data (New_V)
+           and then not Is_Nonnative_Type (Alloc_GT)
+         then
+            New_V  := Get (G_Is (New_V, Alloc_GT), Bounds_And_Data);
             Memory := Ptr_To_Relationship (Memory, New_V, R);
          else
             if not Is_Constrained (GT) or else No (New_V)

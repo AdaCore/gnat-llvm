@@ -1468,53 +1468,46 @@ package body GNATLLVM.Subprograms is
       --  Start by handling our expression, if any
 
       if Present (Expression (N)) then
-         declare
-            Expr : constant Node_Id :=
-              Strip_Complex_Conversions (Expression (N));
+         pragma Assert (RK /= None);
 
-         begin
-            pragma Assert (RK /= None);
+         --  If there's a parameter for the address to which to copy the
+         --  return value, do the copy instead of returning the value.
 
-            --  If there's a parameter for the address to which to copy the
-            --  return value, do the copy instead of returning the value.
+         if RK = Return_By_Parameter then
+            Emit_Assignment (Return_Address_Param, Expression (N));
 
-            if RK = Return_By_Parameter then
-               Emit_Assignment (Return_Address_Param, Expr);
+         --  If we return by reference do just that. We don't do this if a
+         --  Storage_Pool is specified
 
-            --  If we return by reference do just that.  We don't do this
-            --  if a Storage_Pool is specified
+         elsif By_Ref (N)
+           or else (RK = RK_By_Reference and then No (Storage_Pool (N)))
+         then
+            V := Convert_Ref (Emit_LValue (Expression (N)), GT);
 
-            elsif By_Ref (N)
-              or else (RK = RK_By_Reference and then No (Storage_Pool (N)))
-            then
-               V := Convert_Ref (Emit_LValue (Expr), GT);
+         --  If this function returns unconstrained, allocate memory for
+         --  the return value, copy the data to be returned to there, and
+         --  return an access (fat pointer) to the value. If this is a
+         --  return-by-reference function, return a reference to this
+         --  value. However, if a return-by-reference function has a
+         --  Storage_Pool, that means we must allocate memory in that pool,
+         --  copy the return value to it, and return that address.
 
-            --  If this function returns unconstrained, allocate memory for
-            --  the return value, copy the data to be returned to there,
-            --  and return an access (fat pointer) to the value.  If this
-            --  is a return-by-reference function, return a reference to
-            --  this value.  However, if a return-by-reference function has
-            --  a Storage_Pool, that means we must allocate memory in that
-            --  pool, copy the return value to it, and return that address.
+         elsif Is_Unconstrained_Array (GT)
+           or else (RK = RK_By_Reference and then Present (Storage_Pool (N)))
+         then
+            V := Get (Heap_Allocate_For_Type
+                        (GT, Full_Alloc_GL_Type (Expression (N)),
+                         Expr => Expression (N),
+                         N    => N,
+                         Proc => Procedure_To_Call (N),
+                         Pool => Storage_Pool (N)),
+                      Relationship_For_Ref (GT));
 
-            elsif Is_Unconstrained_Array (GT)
-              or else (RK = RK_By_Reference
-                         and then Present (Storage_Pool (N)))
-            then
-               V := Get (Heap_Allocate_For_Type
-                           (GT, Full_Alloc_GL_Type (Expr),
-                            Expr => Expr,
-                            N    => N,
-                            Proc => Procedure_To_Call (N),
-                            Pool => Storage_Pool (N)),
-                         Relationship_For_Ref (GT));
+         --  Otherwise, we just return data
 
-            --  Otherwise, we just return data
-
-            else
-               V := Get (Emit_Conversion (Expr, GT), Data);
-            end if;
-         end;
+         else
+            V := Get (Emit_Conversion (Expression (N), GT), Data);
+         end if;
       else
          pragma Assert (RK = None);
       end if;

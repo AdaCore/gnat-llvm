@@ -1256,8 +1256,8 @@ package body GNATLLVM.Records is
 
          --  Now iterate over the list of values until we've removed all of
          --  them.  This is a quadratic algorithm, but even in records with
-         --  large numbers of variants, the number of different sizes and
-         --  alignments should be small, so that shouldn't be an issue.
+         --  large numbers of variants, the number of different sizes
+         --  should be small, so that shouldn't be an issue.
 
          while (for some V of Values => Present (V)) loop
             declare

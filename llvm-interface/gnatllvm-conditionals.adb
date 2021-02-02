@@ -1234,6 +1234,19 @@ package body GNATLLVM.Conditionals is
             --  change).
 
             if Is_Data (Result) and then Is_Reference (Phi_R) then
+
+               --  If we're going to be converting to a wider GT, do the
+               --  conversion as data and then take a reference.  Although
+               --  this may cause us to store more data than we need, the
+               --  alternative will generate invalid LLVM IR since we may
+               --  end up reading outside of allocated memory.
+
+               if not Is_Nonnative_Type (Phi_GT)
+                 and then GT_Size (Phi_GT) > GT_Size (GT)
+               then
+                  Result := Convert_GT (Result, Phi_GT);
+               end if;
+
                Result := Get (Result, Any_Reference);
             elsif Is_Data (Phi_R) and then Is_Double_Reference (Result) then
                Result := Get (Result, Deref (Deref (Relationship (Result))));

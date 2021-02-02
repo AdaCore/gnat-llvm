@@ -160,11 +160,11 @@ package body CCG.Subprograms is
                                 Last_Stmt  => No_Stmt_Idx));
    end New_Subprogram;
 
-   ------------------
-   -- Current_Func --
-   ------------------
+   ---------------
+   -- Curr_Func --
+   ---------------
 
-   function Current_Func return Value_T is
+   function Curr_Func return Value_T is
      (Subprogram_Table.Table (Subprogram_Table.Last).Func);
 
    ---------------------------------
@@ -560,7 +560,7 @@ package body CCG.Subprograms is
       --  If our function is marked no-return, we don't do anything.
       --  Otherwise, handle the cases with and without a value to return.
 
-      if Does_Not_Return (Current_Func) then
+      if Does_Not_Return (Curr_Func) then
          null;
       elsif Present (Op) then
 

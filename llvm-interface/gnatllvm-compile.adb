@@ -51,10 +51,12 @@ with CCG; use CCG;
 
 package body GNATLLVM.Compile is
 
-   function Simple_Value_Action (N : Node_Id) return Node_Id
+   function Simple_Value_Action
+     (N : Node_Id; Has_All : out Boolean) return Node_Id
      with Pre => Nkind (N) = N_Expression_With_Actions;
    --  If N just declares the value it returns, return the initializer
-   --  of that value; otherwise return Empty.
+   --  of that value; otherwise return Empty.  Has_All is True if we
+   --  have an N_Explicit_Dereference of the expression.
 
    procedure Emit_Loop_Statement (N : Node_Id)
      with Pre => Nkind (N) = N_Loop_Statement;
@@ -846,25 +848,51 @@ package body GNATLLVM.Compile is
    -- Simple_Value_Action --
    -------------------------
 
-   function Simple_Value_Action (N : Node_Id) return Node_Id is
+   function Simple_Value_Action
+     (N : Node_Id; Has_All : out Boolean) return Node_Id
+   is
       Action : Node_Id := First (Actions (N));
+      Expr   : Node_Id := Expression (N);
 
    begin
-      --  Skip any N_Call_Marker nodes
+      --  Skip any non-executable nodes
 
-      while Nkind (Action) = N_Call_Marker loop
+      while Nkind (Action) in N_Call_Marker | N_Null_Statement |
+                              N_Full_Type_Declaration | N_Subtype_Declaration |
+                              N_Freeze_Entity
+      loop
          Next (Action);
       end loop;
 
-      --  If the next action is the last and is a declaration of the
-      --  identifier in Expression, return the value it's initialize to.
+      --  If the expression of this node is an N_Explicit_Dereference, note
+      --  it and get the inner expression.
 
-      return (if   Nkind (Action) = N_Object_Declaration
-                   and then No (Next (Action))
-                   and then Nkind (Expression (N)) = N_Identifier
-                   and then Defining_Identifier (Action) =
-                              Entity (Expression (N))
-               then Expression (Action) else Empty);
+      Has_All := Nkind (Expr) = N_Explicit_Dereference;
+      if Has_All then
+         Expr := Prefix (Expr);
+      end if;
+
+      --  If the next action isn't the last or isn't a declaration of the
+      --  identifier in Expression, this is not a case we handle.
+
+      if Nkind (Action) /= N_Object_Declaration
+        or else Present (Next (Action))
+        or else Nkind (Expr) /= N_Identifier
+        or else Defining_Identifier (Action) /= Entity (Expr)
+      then
+         return Empty;
+      end if;
+
+      --  If we have an N_Explicit_Dereference and Action's expression is
+      --  an N_Reference, use the inner expression.
+
+      return Init : Node_Id := Expression (Action) do
+         if  Has_All and then Nkind (Init) = N_Reference then
+            Has_All := False;
+            Init    := Prefix (Init);
+         end if;
+      end return;
+
    end Simple_Value_Action;
 
    --------------------
@@ -909,26 +937,36 @@ package body GNATLLVM.Compile is
 
          when N_Expression_With_Actions =>
 
-            --  If this is just defining the value that is to be its result,
-            --  just expand the initializer.
+            declare
+               Has_All : Boolean;
+               Expr    : constant Node_Id  := Simple_Value_Action (N, Has_All);
 
-            Expr := Simple_Value_Action (N);
-            if Present (Expr) then
-               return Emit (Expr,
+            begin
+               --  If this is just defining the value that is to be its result,
+               --  just expand the initializer.
+
+               if Present (Expr) then
+                  Result := Emit (Expr,
+                                  LHS        => LHS,
+                                  For_LHS    => For_LHS,
+                                  Prefer_LHS => Prefer_LHS);
+                  if Has_All then
+                     Result := From_Access (Result);
+                  end if;
+
+                  return Result;
+               end if;
+
+               --  Otherwise do each action and evaluate our expression
+
+               Push_LValue_List;
+               Emit (Actions (N));
+               Pop_LValue_List;
+               return Emit (Expression (N),
                             LHS        => LHS,
                             For_LHS    => For_LHS,
                             Prefer_LHS => Prefer_LHS);
-            end if;
-
-            --  Otherwise do each action and evaluate our expression
-
-            Push_LValue_List;
-            Emit (Actions (N));
-            Pop_LValue_List;
-            return Emit (Expression (N),
-                         LHS        => LHS,
-                         For_LHS    => For_LHS,
-                         Prefer_LHS => Prefer_LHS);
+            end;
 
          when N_Character_Literal | N_Numeric_Or_String_Literal =>
             pragma Assert (not For_LHS);

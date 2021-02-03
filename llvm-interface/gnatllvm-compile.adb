@@ -853,13 +853,15 @@ package body GNATLLVM.Compile is
    is
       Action : Node_Id := First (Actions (N));
       Expr   : Node_Id := Expression (N);
+      Freeze : Node_Id := First (Actions (N));
 
    begin
       --  Skip any non-executable nodes
 
       while Nkind (Action) in N_Call_Marker | N_Null_Statement |
-                              N_Full_Type_Declaration | N_Subtype_Declaration |
-                              N_Freeze_Entity
+                              N_Full_Type_Declaration | N_Subtype_Declaration
+        or else (Nkind (Action) = N_Freeze_Entity
+                   and then No (Actions (Action)))
       loop
          Next (Action);
       end loop;
@@ -882,6 +884,16 @@ package body GNATLLVM.Compile is
       then
          return Empty;
       end if;
+
+      --  Process any freeze nodes we may have skipped
+
+      while Present (Freeze) loop
+         if Nkind (Freeze) = N_Freeze_Entity then
+            Process_Freeze_Entity (Freeze);
+         end if;
+
+         Next (Freeze);
+      end loop;
 
       --  If we have an N_Explicit_Dereference and Action's expression is
       --  an N_Reference, use the inner expression.
@@ -1043,9 +1055,19 @@ package body GNATLLVM.Compile is
 
          when N_Explicit_Dereference =>
 
-            --  Get a reference to our prefix
+            --  If we have a .all of a 'Reference, we can just evaluate
+            --  the inner expression. This allows us to pass our LHS info.
 
-            Result := From_Access (Emit_Expression (Prefix (N)));
+            if Nkind (Prefix (N)) = N_Reference then
+               return Emit (Prefix (Prefix (N)),
+                            LHS        => LHS,
+                            For_LHS    => For_LHS,
+                            Prefer_LHS => Prefer_LHS);
+            else
+               --  Get a reference to our prefix
+
+               Result := From_Access (Emit_Expression (Prefix (N)));
+            end if;
 
             --  If we have a reference to a global constant, we can
             --  use the value instead.
@@ -1112,11 +1134,22 @@ package body GNATLLVM.Compile is
 
          when N_Reference =>
 
-            --  It's tempting to mark the call below as For_LHS, but we
-            --  do allow taking 'Reference of something that's not an LValue
-            --  (though an assignment to it will fail in that case).
+            --  If we have a 'Reference of a .all, we can just evaluate
+            --  the inner expression. This allows us to pass our LHS info.
 
-            return Convert_To_Access (Emit_LValue (Prefix (N)), GT);
+            if Nkind (Prefix (N)) = N_Explicit_Dereference then
+               return Emit (Prefix (Prefix (N)),
+                            LHS        => LHS,
+                            For_LHS    => For_LHS,
+                            Prefer_LHS => Prefer_LHS);
+            else
+               --  It's tempting to mark the call below as For_LHS, but we
+               --  do allow taking 'Reference of something that's not an
+               --  LValue (though an assignment to it will fail in that
+               --  case).
+
+               return Convert_To_Access (Emit_LValue (Prefix (N)), GT);
+            end if;
 
          when N_Attribute_Reference =>
             return Emit_Attribute_Reference (N);

@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Sinfo; use Sinfo;
-
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 

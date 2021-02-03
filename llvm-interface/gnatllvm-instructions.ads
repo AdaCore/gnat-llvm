@@ -15,9 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Sinfo; use Sinfo;
-
-with LLVM.Core;       use LLVM.Core;
+with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Aliasing; use GNATLLVM.Aliasing;
 with GNATLLVM.GLValue;  use GNATLLVM.GLValue;

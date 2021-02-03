@@ -53,16 +53,20 @@ LOCAL_RT_FILES=../link.c s-pehage.adb s-pehage.ads s-rident.ads s-utf_32.adb \
   g-regexp.ads g-sets.adb g-sets.ads g-spchge.adb g-speche.adb g-string.ads \
   g-u3spch.adb
 
+GEN_IL_FILES = nmake.adb nmake.ads \
+  seinfo.ads sinfo-nodes.ads sinfo-nodes.adb \
+  einfo-entities.ads einfo-entities.adb
+
 setup:
 	$(MKDIR) obj obj-tools bin gnat_src/vast
-	for f in `cd $(GNAT_SRC); ls xtreeprs.adb xnmake.adb xutil.ad? *-tmpl xsnamest.adb sinfo.ads treeprs.adt nmake.adt xoscons.adb xutil.ads xutil.adb`; \
+	for f in `cd $(GNAT_SRC); ls gen_il*.ad? xutil.ad? *-tmpl xoscons.adb xsnamest.adb`; \
 	do \
 	  cp -p $(GNAT_SRC)/$$f obj-tools; \
 	done
-	cd obj-tools && $(GNATMAKE) -q -j0 xtreeprs xnmake xsnamest xoscons && \
-	./xtreeprs && ./xnmake && ./xsnamest && \
-	$(MV) nmake.ads nmake.adb treeprs.ads ../obj && \
-	$(MV) snames.ns ../obj/snames.ads && $(MV) snames.nb ../obj/snames.adb
+	cd obj-tools && $(GNATMAKE) -q -j0 xoscons xsnamest && ./xsnamest && \
+	$(MV) snames.ns ../obj/snames.ads && $(MV) snames.nb ../obj/snames.adb && \
+	$(GNATMAKE) -q -j0 gen_il-main.adb -I../obj && ./gen_il-main && \
+	$(MV) $(GEN_IL_FILES) ../obj
 	for f in $(LOCAL_RT_FILES); do \
 	  $(LN_S) $(GNAT_SRC)/libgnat/$$f obj; \
 	done

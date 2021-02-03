@@ -19,7 +19,6 @@ with Errout;     use Errout;
 with Get_Targ;   use Get_Targ;
 with Opt;        use Opt;
 with Sem_Aux;    use Sem_Aux;
-with Sinfo;      use Sinfo;
 with Snames;     use Snames;
 with Uintp.LLVM; use Uintp.LLVM;
 

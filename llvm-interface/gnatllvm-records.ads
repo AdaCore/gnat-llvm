@@ -15,8 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Sinfo;  use Sinfo;
-with Table;  use Table;
+with Table; use Table;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;

@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Sem_Eval; use Sem_Eval;
-with Sinfo;    use Sinfo;
 with Snames;   use Snames;
 
 with LLVM.Core; use LLVM.Core;

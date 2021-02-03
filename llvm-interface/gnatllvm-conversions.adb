@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Errout; use Errout;
-with Sinfo;  use Sinfo;
 with Snames; use Snames;
 
 with LLVM.Transforms_Instcombine; use LLVM.Transforms_Instcombine;

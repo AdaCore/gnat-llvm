@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Nlists; use Nlists;
-with Sinfo;  use Sinfo;
 
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;

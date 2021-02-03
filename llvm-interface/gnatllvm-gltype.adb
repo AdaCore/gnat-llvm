@@ -18,7 +18,6 @@
 with Lib;        use Lib;
 with Output;     use Output;
 with Repinfo;    use Repinfo;
-with Sinfo;      use Sinfo;
 with Sprint;     use Sprint;
 with Table;
 with Uintp.LLVM; use Uintp.LLVM;

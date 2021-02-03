@@ -24,7 +24,6 @@ with Sem_Aux;  use Sem_Aux;
 with Sem_Ch13; use Sem_Ch13;
 with Sem_Eval; use Sem_Eval;
 with Sem_Util; use Sem_Util;
-with Sinfo;    use Sinfo;
 with Table;    use Table;
 
 with GNATLLVM.Aliasing.Params; use GNATLLVM.Aliasing.Params;

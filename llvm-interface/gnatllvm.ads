@@ -22,11 +22,19 @@ with stdint_h; use stdint_h;
 with Interfaces.C;
 with Interfaces.C.Extensions;
 
-with Atree;    use Atree;
-with Einfo;    use Einfo;
-with Namet;    use Namet;
-with Types;    use Types;
-with Uintp;    use Uintp;
+with Atree;          use Atree;
+with Einfo;          use Einfo;
+with Einfo.Entities; use Einfo.Entities;
+with Einfo.Utils;    use Einfo.Utils;
+with Namet;          use Namet;
+with Types;          use Types;
+with Uintp;          use Uintp;
+
+--  Used by most child packages
+pragma Warnings (Off);
+with Sinfo.Nodes; use Sinfo.Nodes;
+with Sinfo.Utils; use Sinfo.Utils;
+pragma Warnings (On);
 
 with LLVM.Target;         use LLVM.Target;
 with LLVM.Target_Machine; use LLVM.Target_Machine;

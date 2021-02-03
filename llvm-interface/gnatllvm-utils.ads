@@ -21,7 +21,6 @@ with Ada.Unchecked_Conversion;
 
 with Nlists;     use Nlists;
 with Sem_Util;   use Sem_Util;
-with Sinfo;      use Sinfo;
 with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;

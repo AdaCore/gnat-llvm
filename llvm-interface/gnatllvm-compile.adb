@@ -1179,7 +1179,7 @@ package body GNATLLVM.Compile is
          when N_If_Expression =>
             pragma Assert (not For_LHS);
 
-            return Emit_If_Expression (N);
+            return Emit_If_Expression (N, LHS => LHS);
 
          when N_Null =>
             pragma Assert (not For_LHS);

@@ -81,7 +81,7 @@ package GNATLLVM.Conditionals is
    --  Helper for Emit_If to generate branch to BB_True or BB_False
    --  depending on whether Node is true or false.
 
-   function Emit_If_Expression (N : Node_Id) return GL_Value
+   function Emit_If_Expression (N : Node_Id; LHS : GL_Value) return GL_Value
      with Pre  => Nkind (N) = N_If_Expression,
           Post => Present (Emit_If_Expression'Result);
    --  Helper for Emit_Expression: handle if expressions

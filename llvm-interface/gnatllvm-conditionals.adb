@@ -995,7 +995,7 @@ package body GNATLLVM.Conditionals is
    -- Emit_If_Expression --
    ------------------------
 
-   function Emit_If_Expression (N : Node_Id) return GL_Value
+   function Emit_If_Expression (N : Node_Id; LHS : GL_Value) return GL_Value
    is
       function Need_Ref_To_Convert
         (From_GT, To_GT : GL_Type; V : GL_Value) return Boolean
@@ -1113,7 +1113,7 @@ package body GNATLLVM.Conditionals is
                Position_Builder_At_End (Next_BB);
             end if;
 
-            IEP.Value := Emit (IEP.Expr);
+            IEP.Value := Emit (IEP.Expr, LHS => LHS);
             IEP.BB    := Get_Insert_Block;
 
             --  Get the type and relationship of the result of the expression

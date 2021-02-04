@@ -58,14 +58,16 @@ GEN_IL_FILES = nmake.adb nmake.ads \
   einfo-entities.ads einfo-entities.adb
 
 setup:
-	$(MKDIR) obj obj-tools bin gnat_src/vast
+	$(MKDIR) obj obj-tools/libgnat bin gnat_src/vast
 	for f in `cd $(GNAT_SRC); ls gen_il*.ad? xutil.ad? *-tmpl xoscons.adb xsnamest.adb`; \
 	do \
 	  cp -p $(GNAT_SRC)/$$f obj-tools; \
 	done
+	cp -p $(GNAT_SRC)/libgnat/a-sto*.ad? obj-tools/libgnat; \
+	cp -p $(GNAT_SRC)/libgnat/a-stteou__bootstrap.ads obj-tools/libgnat/a-stteou.ads; \
 	cd obj-tools && $(GNATMAKE) -q -j0 xoscons xsnamest && ./xsnamest && \
 	$(MV) snames.ns ../obj/snames.ads && $(MV) snames.nb ../obj/snames.adb && \
-	$(GNATMAKE) -q -j0 gen_il-main.adb -I../obj && ./gen_il-main && \
+	$(GNATMAKE) -a -q -j0 gen_il-main.adb -I../obj -Ilibgnat && ./gen_il-main && \
 	$(MV) $(GEN_IL_FILES) ../obj
 	for f in $(LOCAL_RT_FILES); do \
 	  $(LN_S) $(GNAT_SRC)/libgnat/$$f obj; \

@@ -489,7 +489,17 @@ package body GNATLLVM.Types is
          if Present (New_V) and then Is_Data (New_V)
            and then not Is_Nonnative_Type (Alloc_GT)
          then
-            New_V  := Get (G_Is (New_V, Alloc_GT), Bounds_And_Data);
+            --  If Alloc_GT is an array type and has a different Etype than
+            --  New_V, show that New_V is of that type so that we choose
+            --  the proper bounds.
+
+            if Is_Array_Type (Alloc_GT)
+              and then Full_Etype (New_V) /= Full_Etype (Alloc_GT)
+            then
+               New_V := G_Is (New_V, Alloc_GT);
+            end if;
+
+            New_V  := Get (New_V, Bounds_And_Data);
             Memory := Ptr_To_Relationship (Memory, New_V, R);
          else
             if not Is_Constrained (GT) or else No (New_V)

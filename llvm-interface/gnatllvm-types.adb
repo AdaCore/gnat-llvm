@@ -1325,7 +1325,9 @@ package body GNATLLVM.Types is
             end if;
 
          when Attribute_Alignment =>
-            if Known_Alignment (Our_E) then
+            if Ekind (Our_E) not in E_Component | E_Discriminant
+              and then Known_Alignment (Our_E)
+            then
                return Alignment (Our_E);
             end if;
 

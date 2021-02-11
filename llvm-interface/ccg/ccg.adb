@@ -65,10 +65,8 @@ package body CCG is
       --  If we're not writing to standard output, open the .c file
 
       if not Debug_Flag_Dot_YY then
-         Namet.Unlock;
          Create_C_File;
          Set_Output (Output_FD);
-         Namet.Lock;
       end if;
 
       Write_Str ("#include <string.h>");

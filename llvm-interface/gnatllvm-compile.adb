@@ -207,6 +207,10 @@ package body GNATLLVM.Compile is
       Detect_Duplicate_Global_Names;
       Stringt.Lock;
 
+      --  We can create a Name_Id from an Interface_Name
+
+      Namet.Unlock;
+
       --  Actually translate
 
       Emit (GNAT_Root);
@@ -217,6 +221,7 @@ package body GNATLLVM.Compile is
       Add_Functions_To_Module;
       Finalize_Debugging;
       Generate_Code (GNAT_Root);
+      Namet.Lock;
 
    end GNAT_To_LLVM;
 

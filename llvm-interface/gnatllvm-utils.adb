@@ -319,10 +319,7 @@ package body GNATLLVM.Utils is
       Buf : Bounded_String;
 
    begin
-      if Ekind (E) /= E_Loop_Parameter
-        and then Present (Interface_Name (E))
-        and then No (Address_Clause (E))
-      then
+      if Present (Interface_Name (E)) and then No (Address_Clause (E)) then
          Append (Buf, Strval (Interface_Name (E)));
 
          declare

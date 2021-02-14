@@ -1625,14 +1625,15 @@ package body GNATLLVM.Types is
 
    begin
       --  If both are constants, do the operation as a constant and return
-      --  that value unless it overflows.
-      --  ???  We could switch to computing as a Uint for overflow, but it's
-      --  not worth it.
+      --  that value unless it overflows. If it overflows, return a Uint.
 
       if Is_Const (LHS) and then Is_Const (RHS) then
          Result := F (LHS.C_Value, RHS.C_Value, Name);
-         return (if   Overflowed (Result) or else Is_Undef (Result)
-                 then No_BA else (False, Result, No_Uint));
+         return (if    Overflowed (Result)
+                 then  (False, No_GL_Value,
+                        Uint'(+LHS.C_Value) * Uint'(+RHS.C_Value))
+                 elsif Is_Undef (Result)
+                 then  No_BA else (False, Result, No_Uint));
       end if;
 
       --  Otherwise, get our two operands as a node reference or Uint

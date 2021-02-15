@@ -120,6 +120,12 @@ package body GNATLLVM.Types is
    --  Alloc_GT, but an exception is if it's constrained and GT isn't
    --  unless this is a tagged type.
 
+   function GL_Value_To_Node_Ref_Or_Val (V : GL_Value) return Node_Ref_Or_Val
+     with Pre  => Is_A_Const_Int (V),
+          Post => Present (GL_Value_To_Node_Ref_Or_Val'Result);
+   --  Make a Node_Ref_Or_Val from V. Normally this is just the integer
+   --  value of V, but if it's negative, we need to build a negation node.
+
    --  We put the function used to compute sizes into a generic so that we
    --  can instantiate it using various types of sizing.  The most common
    --  case is an actual size computation, where we produce a GL_Value.
@@ -1521,13 +1527,24 @@ package body GNATLLVM.Types is
               then From_Const (Emit_Expression (V)) else Var_IDS);
    end Emit_Expr;
 
+   ---------------------------------
+   -- GL_Value_To_Node_Ref_Or_Val --
+   ---------------------------------
+
+   function GL_Value_To_Node_Ref_Or_Val (V : GL_Value) return Node_Ref_Or_Val
+   is
+      Ret : constant Uint := +V;
+
+   begin
+      return (if   Ret < 0 then Create_Node (Negate_Expr, UI_Negate (Ret))
+              else Ret);
+   end GL_Value_To_Node_Ref_Or_Val;
+
    ---------------------
    -- Annotated_Value --
    ---------------------
 
    function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val is
-      Ret : Uint;
-
    begin
       --  If this isn't valid, return an invalid value
 
@@ -1542,9 +1559,7 @@ package body GNATLLVM.Types is
       --  Otherwise, we have a constant.  If negative, make a Negate_Expr.
 
       else
-         Ret := +V.C_Value;
-         return (if   Ret < 0 then Create_Node (Negate_Expr, UI_Negate (Ret))
-                 else Ret);
+         return GL_Value_To_Node_Ref_Or_Val (V.C_Value);
       end if;
    end Annotated_Value;
 
@@ -1631,7 +1646,9 @@ package body GNATLLVM.Types is
          Result := F (LHS.C_Value, RHS.C_Value, Name);
          return (if    Overflowed (Result)
                  then  (False, No_GL_Value,
-                        Uint'(+LHS.C_Value) * Uint'(+RHS.C_Value))
+                        GL_Value_To_Node_Ref_Or_Val (LHS.C_Value)) *
+                       (False, No_GL_Value,
+                        GL_Value_To_Node_Ref_Or_Val (RHS.C_Value))
                  elsif Is_Undef (Result)
                  then  No_BA else (False, Result, No_Uint));
       end if;

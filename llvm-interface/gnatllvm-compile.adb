@@ -1622,9 +1622,8 @@ package body GNATLLVM.Compile is
 
                Build_Cond_Br
                  (I_Cmp ((if Uns_BT then Int_ULE else Int_SLE),
-                         Convert (Low, Var_BT), Convert (High, Var_BT),
-                         "loop.entry.cond"),
-                  BB_Cond, BB_Next);
+                   Convert (Low, Var_BT), Convert (High, Var_BT)),
+                   BB_Cond, BB_Next);
 
                --  Stop if the loop variable was equal to the "exit"
                --  bound. Increment/decrement it otherwise.
@@ -1634,13 +1633,12 @@ package body GNATLLVM.Compile is
                Prev := To_Primitive (Get (LLVM_Var, Data));
                Build_Cond_Br
                  (I_Cmp (Int_EQ, Prev,
-                         To_Primitive ((if Reversed then Low else High)),
-                         "loop.iter.cond"),
-                 BB_Next, BB_Iter);
+                         To_Primitive ((if Reversed then Low else High))),
+                  BB_Next, BB_Iter);
 
                Position_Builder_At_End (BB_Iter);
-               Next :=  (if   Reversed then Sub (Prev, One, "next.loop.var")
-                         else Add (Prev, One, "next.loop.var"));
+               Next :=  (if   Reversed then Sub (Prev, One)
+                         else Add (Prev, One));
                Store (From_Primitive (Next, Var_GT), LLVM_Var);
                Build_Br (BB_Stmts);
 

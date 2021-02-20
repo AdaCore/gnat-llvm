@@ -535,7 +535,13 @@ package body GNATLLVM.Variables is
          when N_Unchecked_Type_Conversion
             | N_Type_Conversion
             | N_Qualified_Expression =>
-            return Is_Static_Location (Expression (N));
+
+            --  Conversions between scalar types may actually need to be
+            --  done (even if UC), but conversions involving composite
+            --  types are always pointer-punning in this context.
+
+            return Is_Composite_Type (Etype (N))
+              and then Is_Static_Location (Expression (N));
 
          when N_Indexed_Component =>
 

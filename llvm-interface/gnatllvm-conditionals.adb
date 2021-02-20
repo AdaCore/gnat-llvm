@@ -260,7 +260,7 @@ package body GNATLLVM.Conditionals is
                  Get_Array_Length (Full_Etype (Our_RHS), Dim, RHS_Val);
             end loop;
 
-            if Last_Dim /= 1 then
+            if Last_Dim /= 0 then
 
                --  RHS is the least complex.  So check its dimensions.
                --  If any are zero, we need to check LHS.  If none are zero

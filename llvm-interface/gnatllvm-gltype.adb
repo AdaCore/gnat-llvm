@@ -590,6 +590,8 @@ package body GNATLLVM.GLType is
 
       --  Otherwise, we have to create a new GL_Type.  We know that the
       --  size, alignment, or both differ from that of the primitive type.
+      --  Once we set GTI below, be sure that we don't do any operations
+      --  that could create a new GL_Type since that will invalidate it.
 
       declare
          Ret_GT : constant GL_Type := New_GT (TE);
@@ -632,7 +634,7 @@ package body GNATLLVM.GLType is
          --  and alternate access type.
 
          elsif Is_Access_Type (GT)
-           and then Is_Unconstrained_Array (Full_Designated_GL_Type (GT))
+           and then Is_Unconstrained_Array (Full_Designated_Type (GT))
            and then (Size = Thin_Pointer_Size or else Size = Fat_Pointer_Size)
          then
             declare

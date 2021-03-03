@@ -76,8 +76,8 @@ is
 
    --  Boolean type
 
-   type bool is new Boolean;
-   pragma Convention (C, bool);
+   type C_bool is new Boolean;
+   pragma Convention (C, C_bool);
 
    --  Floating-Point
 

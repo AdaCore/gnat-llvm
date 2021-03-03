@@ -67,7 +67,7 @@ setup:
 	cp -p $(GNAT_SRC)/libgnat/a-stteou__bootstrap.ads obj-tools/libgnat/a-stteou.ads; \
 	cd obj-tools && $(GNATMAKE) -q -j0 xoscons xsnamest && ./xsnamest && \
 	$(MV) snames.ns ../obj/snames.ads && $(MV) snames.nb ../obj/snames.adb && \
-	$(GNATMAKE) -a -q -j0 gen_il-main.adb -I../obj -Ilibgnat && ./gen_il-main && \
+	$(GNATMAKE) -g -a -q -j0 gen_il-main.adb -I../obj -Ilibgnat && ./gen_il-main && \
 	$(MV) $(GEN_IL_FILES) ../obj
 	for f in $(LOCAL_RT_FILES); do \
 	  $(LN_S) $(GNAT_SRC)/libgnat/$$f obj; \

@@ -1316,9 +1316,13 @@ package body GNATLLVM.Exprs is
             begin
                --  If this is a value we want to use that value to help
                --  find the size of the type and also to get the actual
-               --  GL_Type.
+               --  GL_Type. This is only useful for aggregate types and
+               --  could cause us to needlessly make a Reference in other
+               --  cases.
 
-               if not Is_A_Type then
+               if not Is_A_Type
+                 and then Is_Aggregate_Type (Full_Etype (Prefix (N)))
+               then
                   V    := Emit_LValue (Prefix (N));
                   P_GT := Related_Type (V);
                end if;

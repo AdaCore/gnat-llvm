@@ -791,10 +791,11 @@ package body GNATLLVM.GLValue is
    -- Get --
    ---------
 
-   function Get (V : GL_Value; Rel : GL_Relationship) return GL_Value is
-      GT     : constant GL_Type         := Related_Type (V);
-      Our_R  : constant GL_Relationship := Relationship (V);
-      R      : GL_Relationship          := Rel;
+   function Get (In_V : GL_Value; Rel : GL_Relationship) return GL_Value is
+      GT     : constant GL_Type := Related_Type (In_V);
+      Our_R  : GL_Relationship  := Relationship (In_V);
+      V      : GL_Value         := In_V;
+      R      : GL_Relationship  := Rel;
       Result : GL_Value;
 
    begin
@@ -813,6 +814,14 @@ package body GNATLLVM.GLValue is
       if R = Reference_For_Integer then
          R := (if   Relationship (V) in Reference_To_Subprogram | Trampoline
                then Relationship (V) else Reference);
+      end if;
+
+      --  If we're trying to get a Reference for Boolean_Data, convert it
+      --  to normal data, first.
+
+      if Is_Reference (R) and then Our_R = Boolean_Data then
+         V     := Get (V, Data);
+         Our_R := Relationship (V);
       end if;
 
       --  If it's already the desired relationship, done

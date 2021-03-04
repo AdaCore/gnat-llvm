@@ -869,9 +869,9 @@ package GNATLLVM.GLValue is
 
    --  Next are useful functions to manipulate GL_Values
 
-   function Get (V : GL_Value; Rel : GL_Relationship) return GL_Value
-     with Pre => Present (V), Post => Equiv_Relationship (Get'Result, Rel);
-   --  Produce a GL_Value from V whose relationship to its type is given
+   function Get (In_V : GL_Value; Rel : GL_Relationship) return GL_Value
+     with Pre => Present (In_V), Post => Equiv_Relationship (Get'Result, Rel);
+   --  Produce a GL_Value from In_V whose relationship to its type is given
    --  by Rel.
 
    function To_Access (V : GL_Value; GT : GL_Type) return GL_Value

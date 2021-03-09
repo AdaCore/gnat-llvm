@@ -1058,7 +1058,7 @@ package body GNATLLVM.Exprs is
       Pref : constant Node_Id      := Prefix (N);
       GT   : constant GL_Type      := Full_GL_Type (N);
       V    : GL_Value              := No_GL_Value;
-      P_GT : GL_Type               := Full_GL_Type (Prefix (N));
+      P_GT : GL_Type               := Full_GL_Type (Pref);
       Bits : Uint;
       Ret  : Uint;
 
@@ -1305,8 +1305,7 @@ package body GNATLLVM.Exprs is
 
             declare
                Is_A_Type   : constant Boolean :=
-                 (Is_Entity_Name (Prefix (N))
-                    and then Is_Type (Entity (Prefix (N))));
+                 (Is_Entity_Name (Pref)) and then Is_Type (Entity (Pref));
                Max_Size    : constant Boolean :=
                  Is_A_Type and then not Is_Constrained (P_GT);
                No_Padding  : constant Boolean :=
@@ -1316,14 +1315,15 @@ package body GNATLLVM.Exprs is
             begin
                --  If this is a value we want to use that value to help
                --  find the size of the type and also to get the actual
-               --  GL_Type. This is only useful for aggregate types and
-               --  could cause us to needlessly make a Reference in other
-               --  cases.
+               --  GL_Type. This is only useful for aggregate types or
+               --  N_Selected_Component and could cause us to needlessly
+               --  make a Reference in other cases.
 
                if not Is_A_Type
-                 and then Is_Aggregate_Type (Full_Etype (Prefix (N)))
+                 and then (Is_Aggregate_Type (Full_Etype (Pref))
+                             or else Nkind (Pref) = N_Selected_Component)
                then
-                  V    := Emit_LValue (Prefix (N));
+                  V    := Emit_LValue (Pref);
                   P_GT := Related_Type (V);
                end if;
 
@@ -1361,7 +1361,7 @@ package body GNATLLVM.Exprs is
 
          when Attribute_Mechanism_Code =>
             return Const_Int
-              (GT, Get_Mechanism_Code (Entity (Prefix (N)), Expressions (N)));
+              (GT, Get_Mechanism_Code (Entity (Pref), Expressions (N)));
 
          when Attribute_Null_Parameter =>
             return Load (Const_Null_Ref (P_GT));

@@ -23,6 +23,8 @@ with LLVM.Core; use LLVM.Core;
 
 package body Uintp.LLVM is
 
+   subtype Unsigned_64 is Interfaces.Unsigned_64;
+
    function Big_UI_To_Words (U : Uint) return Word_Array;
    --  Convert a Uint into an array of words representing the value
 

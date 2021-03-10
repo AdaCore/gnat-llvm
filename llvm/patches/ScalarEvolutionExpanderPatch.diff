@@ -1,0 +1,20 @@
+*** lib/Transforms/Utils/ScalarEvolutionExpander.cpp.old	2020-12-18 14:57:38.000000000 -0500
+--- lib/Transforms/Utils/ScalarEvolutionExpander.cpp	2021-02-22 19:45:20.988741704 -0500
+***************
+*** 1416,1419 ****
+--- 1416,1430 ----
+      Result = PN->getIncomingValueForBlock(LatchBlock);
+  
++     // We might be introducing a new use of the post-inc IV that is not poison
++     // safe, in which case we should drop poison generating flags. Only keep
++     // those flags for which SCEV has proven that they always hold.
++     if (isa<OverflowingBinaryOperator>(Result)) {
++       auto *I = cast<Instruction>(Result);
++       if (!S->hasNoUnsignedWrap())
++ 	I->setHasNoUnsignedWrap(false);
++       if (!S->hasNoSignedWrap())
++ 	I->setHasNoSignedWrap(false);
++     }
++ 
+      // For an expansion to use the postinc form, the client must call
+      // expandCodeFor with an InsertPoint that is either outside the PostIncLoop

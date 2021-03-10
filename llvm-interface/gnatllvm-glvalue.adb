@@ -636,8 +636,8 @@ package body GNATLLVM.GLValue is
    function Type_For_Relationship
      (GT : GL_Type; R : GL_Relationship) return Type_T
    is
-      T   : constant Type_T    := Type_Of (GT);
-      TE  : constant Entity_Id := Full_Etype (GT);
+      T   : constant Type_T    :=
+        (if Present (GT) then Type_Of (GT) else No_Type_T);
 
    begin
       --  If this is a reference to some other relationship, get the type for
@@ -672,73 +672,10 @@ package body GNATLLVM.GLValue is
             return Create_Array_Fat_Pointer_Type (GT);
 
          when Bounds =>
-            return Create_Array_Bounds_Type (TE);
+            return Create_Array_Bounds_Type (GT);
 
          when Bounds_And_Data =>
-            return Create_Array_Bounds_And_Data_Type (TE, T);
-
-         when Trampoline =>
-            return Void_Ptr_T;
-
-         when Fat_Reference_To_Subprogram =>
-            return Create_Subprogram_Access_Type;
-
-         when others =>
-            pragma Assert (False);
-            return Void_Ptr_T;
-      end case;
-   end Type_For_Relationship;
-
-   ---------------------------
-   -- Type_For_Relationship --
-   ---------------------------
-
-   function Type_For_Relationship
-     (TE : Entity_Id; R : GL_Relationship) return Type_T is
-   begin
-      --  Normally, we'd factor out the calls to Type_Of and Pointer_Type,
-      --  but since we're called when creating an access type and that
-      --  function knows when we actually need to elaborate the designated
-      --  type, only call those functions when we know we need to.
-
-      --  If this is a reference to some other relationship, get the type for
-      --  that relationship and make a pointer to it.
-
-      if Deref (R) /= Invalid then
-         return Pointer_Type (Type_For_Relationship (TE, Deref (R)), 0);
-      end if;
-
-      --  Handle all other relationships here
-
-      case R is
-         when Data =>
-            return Type_Of (TE);
-
-         when Boolean_Data =>
-            return Bit_T;
-
-         when Boolean_And_Data =>
-            return Build_Struct_Type ((1 => Type_Of (TE), 2 => Bit_T));
-
-         when Object =>
-            return (if   Is_Loadable_Type (Default_GL_Type (TE))
-                    then Type_Of (TE) else Pointer_Type (Type_Of (TE), 0));
-
-         when Thin_Pointer | Any_Reference =>
-            return Pointer_Type (Type_Of (TE), 0);
-
-         when Activation_Record =>
-            return Byte_T;
-
-         when Fat_Pointer =>
-            return Create_Array_Fat_Pointer_Type (TE);
-
-         when Bounds =>
-            return Create_Array_Bounds_Type (TE);
-
-         when Bounds_And_Data =>
-            return Create_Array_Bounds_And_Data_Type
-              (TE, Type_Of (Primitive_GL_Type (TE)));
+            return Create_Array_Bounds_And_Data_Type (GT);
 
          when Trampoline =>
             return Void_Ptr_T;

@@ -311,13 +311,10 @@ package GNATLLVM.GLValue is
 
    function Type_For_Relationship
      (GT : GL_Type; R : GL_Relationship) return Type_T
-     with Pre => Present (GT), Post => Present (Type_For_Relationship'Result);
-   --  Return the LLVM type corresponding to a value of relationship R to GT
-
-   function Type_For_Relationship
-     (TE : Entity_Id; R : GL_Relationship) return Type_T
-     with Pre => Is_Type (TE), Post => Present (Type_For_Relationship'Result);
-   --  Return the LLVM type corresponding to a value of relationship R to TE
+     with Post => Present (Type_For_Relationship'Result);
+   --  Return the LLVM type corresponding to a value of relationship R to GT.
+   --  If this is a kind of relationship where we don't need a GT, it may
+   --  be omitted. This applies to subprogram types.
 
    type GL_Value_Base is record
       Value                : Value_T;

@@ -24,6 +24,7 @@ with LLVM.Core; use LLVM.Core;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 package GNATLLVM.GLType is
 
@@ -290,6 +291,10 @@ package GNATLLVM.GLType is
 
    function Sloc (GT : GL_Type) return Source_Ptr is
      (Sloc (Full_Etype (GT)))
+     with Pre => Present (GT);
+
+   function Get_Name (GT : GL_Type; Suffix : String := "") return String is
+     (Get_Name (Full_Etype (GT), Suffix))
      with Pre => Present (GT);
 
    function Is_Access_Type (GT : GL_Type) return Boolean is

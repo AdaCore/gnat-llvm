@@ -58,9 +58,9 @@ package GNATLLVM.Arrays is
    --  two types be identical, but that's too strict (for example, one
    --  may be Integer and the other Integer'Base), so just check the width.
 
-   function Get_Bound_Alignment (TE : Entity_Id) return Nat
-     with Pre  => Is_Array_Or_Packed_Array_Type (TE);
-   --  Get the alignment of the Bounds part of array and data of TE
+   function Get_Bound_Alignment (GT : GL_Type) return Nat
+     with Pre  => Is_Array_Or_Packed_Array_Type (GT);
+   --  Get the alignment of the Bounds part of array and data of GT
 
    function Get_Dim_Range (N : Node_Id) return Node_Id
      with Pre  => Present (N), Post => Present (Get_Dim_Range'Result);
@@ -196,8 +196,7 @@ package GNATLLVM.Arrays is
 
    function Get_Array_Type_Alignment (TE : Entity_Id) return Nat
      with Pre => Is_Array_Type (TE);
-   --  Like Get_Type_Alignment, but only for arrays and is called with
-   --  the GNAT type.
+   --  Like Get_Type_Alignment, but only for arrays and passed the GNAT type
 
    function Is_Native_Component_GT (GT : GL_Type) return Boolean is
      (not Is_Nonnative_Type (GT) and then not Is_Truncated_GL_Type (GT)

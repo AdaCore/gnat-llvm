@@ -26,7 +26,6 @@ with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Records;      use GNATLLVM.Records;
-with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
 package body GNATLLVM.GLType is
 
@@ -638,7 +637,8 @@ package body GNATLLVM.GLType is
            and then (Size = Thin_Pointer_Size or else Size = Fat_Pointer_Size)
          then
             declare
-               DT    : constant Entity_Id       := Full_Designated_Type (GT);
+               DT    : constant GL_Type         :=
+                 Full_Designated_GL_Type (GT);
                R     : constant GL_Relationship :=
                  Relationship_For_Access_Type (GT);
                New_R : constant GL_Relationship :=

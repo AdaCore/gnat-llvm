@@ -1319,6 +1319,7 @@ package body GNATLLVM.Aliasing is
 
    function TBAA_Data_For_Array_Type (TE : Entity_Id) return TBAA_Info_Id is
       A_TE    : constant Entity_Id := Get_Fullest_View (TE);
+      A_GT    : constant GL_Type   := Default_GL_Type (A_TE);
       Comp_GT : constant GL_Type   := Full_Component_GL_Type (A_TE);
       Tidx    : TBAA_Info_Id       := Get_TBAA_Info (A_TE);
       TI      : TBAA_Info          :=
@@ -1342,8 +1343,7 @@ package body GNATLLVM.Aliasing is
 
       declare
          Ndims    : constant Nat    := Number_Dimensions (A_TE);
-         Bound_T  : constant Type_T :=
-           Type_For_Relationship (A_TE, Bounds);
+         Bound_T  : constant Type_T := Type_For_Relationship (A_GT, Bounds);
          Offset   : ULL             := 0;
          Offsets  : ULL_Array (0 .. Ndims * 2 - 1);
          Sizes    : ULL_Array (0 .. Ndims * 2 - 1);
@@ -1401,6 +1401,7 @@ package body GNATLLVM.Aliasing is
       Tidx      : TBAA_Info_Id          := Get_TBAA_Info (TE);
       TI        : TBAA_Info             := TBAA_Info_Table.Table (BTidx);
       TBAA_Data : constant Metadata_T   := Get_TBAA_Type (TE, For_Aliased);
+      GT        : constant GL_Type      := Primitive_GL_Type (TE);
 
    begin
       --  If we already made one, return it
@@ -1418,7 +1419,7 @@ package body GNATLLVM.Aliasing is
             Bound_Size  : constant ULL            := Size_In_Bytes (TI.Bounds);
             Data_Size   : constant ULL            := Size_In_Bytes (TBAA_Data);
             BD_T        : constant Type_T         :=
-              Type_For_Relationship (TE, Bounds_And_Data);
+              Type_For_Relationship (GT, Bounds_And_Data);
             Size        : constant ULL            :=
               To_Bytes (Get_Type_Size (BD_T));
             Align       : constant ULL            :=

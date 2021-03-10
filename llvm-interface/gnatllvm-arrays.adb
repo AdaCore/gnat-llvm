@@ -733,7 +733,7 @@ package body GNATLLVM.Arrays is
    --------------------
 
    function Get_Bound_Size (GT : GL_Type) return GL_Value is
-      T : constant Type_T := Create_Array_Bounds_Type (Full_Etype (GT));
+      T : constant Type_T := Create_Array_Bounds_Type (GT);
    begin
       return Align_To (Get_Type_Size (T), Get_Type_Alignment (T),
                        Get_Type_Alignment (GT));
@@ -743,16 +743,16 @@ package body GNATLLVM.Arrays is
    -- Get_Bound_Alignment --
    -------------------------
 
-   function Get_Bound_Alignment (TE : Entity_Id) return Nat is
-      (Get_Type_Alignment (Create_Array_Bounds_Type (TE)));
+   function Get_Bound_Alignment (GT : GL_Type) return Nat is
+      (Get_Type_Alignment (Create_Array_Bounds_Type (GT)));
 
    ------------------------------
    -- Get_Array_Type_Alignment --
    ------------------------------
 
    function Get_Array_Type_Alignment (TE : Entity_Id) return Nat is
-      Comp_GT    : constant GL_Type := Full_Component_GL_Type (TE);
-      Comp_Align : constant Nat     := Get_Type_Alignment (Comp_GT);
+      Comp_GT    : constant GL_Type   := Full_Component_GL_Type (TE);
+      Comp_Align : constant Nat       := Get_Type_Alignment (Comp_GT);
       Comp_Size  : constant GL_Value :=
         (if   Is_Dynamic_Size (Comp_GT) then No_GL_Value
          else Get_Type_Size (Comp_GT, No_Padding => Is_Packed (TE)));

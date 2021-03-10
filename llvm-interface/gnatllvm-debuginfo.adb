@@ -131,11 +131,11 @@ package body GNATLLVM.DebugInfo is
    --  variable-sized object.
 
    function Create_Bounds_Type_Data
-     (TE : Entity_Id; Size : out ULL) return Metadata_T
-     with Pre  => Is_Type (TE)
-                  and then Is_Unconstrained_Array (Full_Base_Type (TE)),
+     (GT : GL_Type; Size : out ULL) return Metadata_T
+     with Pre  => Present (GT)
+                  and then Is_Unconstrained_Array (Full_Base_Type (GT)),
           Post => Present (Create_Bounds_Type_Data'Result);
-   --  Create debug information for the bounds of type TE and return the
+   --  Create debug information for the bounds of type GT and return the
    --  size of the resulting structure.
 
    function Create_Bounds_And_Data_Type_Data (GT : GL_Type) return Metadata_T
@@ -144,10 +144,10 @@ package body GNATLLVM.DebugInfo is
    --  Create debug information for the bounds and data of type GT if
    --  possible.
 
-   function Create_Fat_Pointer_Type_Data (TE : Entity_Id) return Metadata_T
-     with Pre => Is_Access_Type (TE)
-                 and then Is_Unconstrained_Array (Full_Designated_Type (TE));
-   --  Create debug information for a fat pointer to TE.  We cant't
+   function Create_Fat_Pointer_Type_Data (GT : GL_Type) return Metadata_T
+     with Pre => Present (GT)
+                 and then Is_Unconstrained_Array (Full_Designated_Type (GT));
+   --  Create debug information for a fat pointer to GT.  We cant't
    --  do this if we can't make debug information for the component type
    --  of the array type.
 
@@ -562,11 +562,11 @@ package body GNATLLVM.DebugInfo is
    -----------------------------
 
    function Create_Bounds_Type_Data
-     (TE : Entity_Id; Size : out ULL) return Metadata_T
+     (GT : GL_Type; Size : out ULL) return Metadata_T
    is
-      Ndim      : constant Nat        := Number_Dimensions (TE);
-      S         : constant Source_Ptr := Sloc (TE);
-      Rec_Align : Nat                 := Get_Bound_Alignment (TE);
+      Ndim      : constant Nat        := Number_Dimensions (GT);
+      S         : constant Source_Ptr := Sloc (GT);
+      Rec_Align : Nat                 := Get_Bound_Alignment (GT);
       Offset    : ULL                 := 0;
       Field_MDs : Metadata_Array (1 .. Ndim * 2);
       Idx       : Nat                 := Field_MDs'First;
@@ -574,7 +574,7 @@ package body GNATLLVM.DebugInfo is
    begin
       for J in 0 .. Ndim - 1 loop
          declare
-            B_GT  : constant GL_Type := Array_Index_GT (TE, J);
+            B_GT  : constant GL_Type := Array_Index_GT (GT, J);
             Align : constant Nat     := Get_Type_Alignment (B_GT);
 
          begin
@@ -593,7 +593,7 @@ package body GNATLLVM.DebugInfo is
         ((Offset + ULL (Rec_Align) - 1) / ULL (Rec_Align)) * ULL (Rec_Align);
 
       return DI_Create_Struct_Type
-        (No_Metadata_T, Get_Name (TE, "__XUB"),
+        (No_Metadata_T, Get_Name (GT, "__XUB"),
          Get_Debug_File_Node (Get_Source_File_Index (S)),
          Get_Logical_Line_Number (S), Size, Rec_Align, DI_Flag_Zero,
          No_Metadata_T, Field_MDs (1 .. Idx - 1), 0, No_Metadata_T, "");
@@ -608,10 +608,9 @@ package body GNATLLVM.DebugInfo is
      (GT : GL_Type) return Metadata_T
    is
       S           : constant Source_Ptr := Sloc (GT);
-      TE          : constant Entity_Id  := Full_Etype (GT);
       Size_V      : constant GL_Value   :=
         (if Is_Dynamic_Size (GT) then No_GL_Value else Get_Type_Size (GT));
-      Bound_Align : constant Nat        := Get_Bound_Alignment (TE);
+      Bound_Align : constant Nat        := Get_Bound_Alignment (GT);
       Data_Align  : constant Nat        := Get_Type_Alignment (GT);
       Align       : Nat                 := Nat'Max (Bound_Align, Data_Align);
       Offset      : ULL                 := 0;
@@ -619,7 +618,7 @@ package body GNATLLVM.DebugInfo is
       Data_MD     : constant Metadata_T := Create_Type_Data (GT);
       Bounds_Size : ULL;
       Bound_MD    : constant Metadata_T :=
-          Create_Bounds_Type_Data (TE, Bounds_Size);
+          Create_Bounds_Type_Data (GT, Bounds_Size);
       Field_MDs   : Metadata_Array (1 .. 2);
 
    begin
@@ -640,7 +639,7 @@ package body GNATLLVM.DebugInfo is
                                 Data_Align, +Size_V, MD => Data_MD));
 
       return DI_Create_Struct_Type
-        (No_Metadata_T, Get_Name (Full_Etype (GT), "__XUT"),
+        (No_Metadata_T, Get_Name (GT, "__XUT"),
          Get_Debug_File_Node (Get_Source_File_Index (S)),
          Get_Logical_Line_Number (S), Offset, Align, DI_Flag_Zero,
          No_Metadata_T, Field_MDs, 0, No_Metadata_T, "");
@@ -651,9 +650,9 @@ package body GNATLLVM.DebugInfo is
    -- Create_Fat_Pointer_Type_Data --
    ----------------------------------
 
-   function Create_Fat_Pointer_Type_Data (TE : Entity_Id) return Metadata_T is
-      S           : constant Source_Ptr := Sloc (TE);
-      DT          : constant Entity_Id  := Full_Designated_Type (TE);
+   function Create_Fat_Pointer_Type_Data (GT : GL_Type) return Metadata_T is
+      S           : constant Source_Ptr := Sloc (GT);
+      DT          : constant GL_Type    := Full_Designated_GL_Type (GT);
       CT          : constant GL_Type    := Full_Component_GL_Type (DT);
       Size        : constant ULL        := ULL (Thin_Pointer_Size);
       Align       : constant Nat        := Thin_Pointer_Size;
@@ -661,7 +660,7 @@ package body GNATLLVM.DebugInfo is
       Bounds_MD   : constant Metadata_T :=
         Create_Bounds_Type_Data (DT, Bounds_Size);
       P_Bounds_MD : constant Metadata_T :=
-        Create_Pointer_To (Bounds_MD, TE, "_B");
+        Create_Pointer_To (Bounds_MD, Full_Etype (GT), "_B");
       Comp_MD     : constant Metadata_T := Create_Type_Data (CT);
       P_Comp_MD   : Metadata_T;
       Field_MDs   : Metadata_Array (1 .. 2);
@@ -687,7 +686,7 @@ package body GNATLLVM.DebugInfo is
                                 S, Align, Size, MD => P_Bounds_MD));
 
       return DI_Create_Struct_Type
-        (No_Metadata_T, Get_Name (TE),
+        (No_Metadata_T, Get_Name (GT),
          Get_Debug_File_Node (Get_Source_File_Index (S)),
          Get_Logical_Line_Number (S), Offset, Align, DI_Flag_Zero,
          No_Metadata_T, Field_MDs, 0, No_Metadata_T, "");
@@ -759,7 +758,7 @@ package body GNATLLVM.DebugInfo is
             if Is_Unconstrained_Array (Full_Designated_Type (TE))
               and then Esize (TE) = Fat_Pointer_Size
             then
-               Result := Create_Fat_Pointer_Type_Data (TE);
+               Result := Create_Fat_Pointer_Type_Data (GT);
             else
                Result := Create_Type_Data (Full_Designated_GL_Type (GT));
                if Present (Result) then
@@ -963,7 +962,7 @@ package body GNATLLVM.DebugInfo is
       --  Handle bounds and bounds and data relationships
 
       elsif Base_R = Bounds then
-         return Create_Bounds_Type_Data (Full_Etype (GT), Size);
+         return Create_Bounds_Type_Data (GT, Size);
       elsif Base_R = Bounds_And_Data then
          return Create_Bounds_And_Data_Type_Data (GT);
 

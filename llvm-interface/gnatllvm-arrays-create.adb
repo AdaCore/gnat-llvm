@@ -402,14 +402,16 @@ package body GNATLLVM.Arrays.Create is
    -- Create_Array_Bounds_Type --
    ------------------------------
 
-   function Create_Array_Bounds_Type (TE : Entity_Id) return Type_T is
+   function Create_Array_Bounds_Type (GT : GL_Type) return Type_T is
       Dims       : constant Nat           :=
-        Number_Dimensions (if   Is_Packed_Array_Impl_Type (TE)
-                           then Full_Original_Array_Type (TE) else TE);
+        Number_Dimensions (if   Is_Packed_Array_Impl_Type (GT)
+                           then Full_Original_Array_Type (GT)
+                           else Full_Etype (GT));
       Fields     : aliased Type_Array (Nat range 0 .. 2 * Dims - 1);
       First_Info : constant Array_Info_Id :=
-        (if   Is_Packed_Array_Impl_Type (TE) then Get_Orig_Array_Info (TE)
-         else Get_Array_Info (TE));
+        (if   Is_Packed_Array_Impl_Type (GT)
+         then Get_Orig_Array_Info (Full_Etype (GT))
+         else Get_Array_Info (Full_Etype (GT)));
       J          : Nat                    := 0;
 
    begin
@@ -426,11 +428,10 @@ package body GNATLLVM.Arrays.Create is
    -- Create_Array_Bounds_And_Data_Type --
    ---------------------------------------
 
-   function Create_Array_Bounds_And_Data_Type
-     (TE : Entity_Id; T : Type_T) return Type_T
+   function Create_Array_Bounds_And_Data_Type (GT : GL_Type) return Type_T
    is
-      Align  : constant Nat    := Get_Type_Alignment (Default_GL_Type (TE));
-      B_T    : constant Type_T := Create_Array_Bounds_Type (TE);
+      Align  : constant Nat    := Get_Type_Alignment (Primitive_GL_Type (GT));
+      B_T    : constant Type_T := Create_Array_Bounds_Type (GT);
       B_T_Sz : constant Nat    := Nat (ULL'(Get_Type_Size (B_T)));
 
    begin
@@ -438,7 +439,7 @@ package body GNATLLVM.Arrays.Create is
       --  we have the normal case of two types.
 
       if B_T_Sz mod Align = 0 then
-         return Build_Struct_Type ((1 => B_T, 2 => T));
+         return Build_Struct_Type ((1 => B_T, 2 => Type_Of (GT)));
 
       --  Otherwise, generate some padding
 
@@ -451,7 +452,7 @@ package body GNATLLVM.Arrays.Create is
             return
               Build_Struct_Type ((1 => B_T,
                                   2 => Array_Type (Byte_T, unsigned (Pad)),
-                                  3 => T));
+                                  3 => Type_Of (GT)));
          end;
       end if;
    end Create_Array_Bounds_And_Data_Type;
@@ -463,14 +464,7 @@ package body GNATLLVM.Arrays.Create is
    function Create_Array_Fat_Pointer_Type (GT : GL_Type) return Type_T is
      (Build_Struct_Type
         ((1 => Pointer_Type (Type_Of (GT), 0),
-          2 => Pointer_Type (Create_Array_Bounds_Type (Full_Etype (GT)), 0))));
-
-   -----------------------------------
-   -- Create_Array_Fat_Pointer_Type --
-   -----------------------------------
-
-   function Create_Array_Fat_Pointer_Type (TE : Entity_Id) return Type_T is
-     (Create_Array_Fat_Pointer_Type (Primitive_GL_Type (TE)));
+          2 => Pointer_Type (Create_Array_Bounds_Type (GT), 0))));
 
 begin
    --  Make a dummy entry in the array info table, so the "Empty"

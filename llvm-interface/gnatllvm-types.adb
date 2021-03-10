@@ -1165,8 +1165,7 @@ package body GNATLLVM.Types is
 
       if Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (GT) then
          Size := Align_To (Size + Get_Bound_Size (GT),
-                           Get_Type_Alignment (GT),
-                           Get_Bound_Alignment (Full_Etype (GT)));
+                           Get_Type_Alignment (GT), Get_Bound_Alignment (GT));
       end if;
 
       return Size;
@@ -1188,7 +1187,7 @@ package body GNATLLVM.Types is
          then +Alignment (E) * BPU else BPU);
       Bound_Align : constant Nat     :=
         (if   Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (Alloc_GT)
-         then Get_Bound_Alignment (Full_Etype (GT)) else BPU);
+         then Get_Bound_Alignment (GT) else BPU);
 
    begin
       return Nat'Max (Nat'Max (GT_Align, Bound_Align), E_Align);

@@ -209,7 +209,8 @@ package body GNATLLVM.Types.Create is
       --  associated type.
 
       elsif Ekind (DT) = E_Subprogram_Type then
-         return Type_For_Relationship (DT, R);
+         return
+           Type_For_Relationship (No_GL_Type, R);
 
       --  If DT doesn't depend on something that's being
       --  elaborated, handle this normally.
@@ -220,7 +221,7 @@ package body GNATLLVM.Types.Create is
          end if;
 
          Set_Associated_GL_Type (TE, GT);
-         return Type_For_Relationship (DT, R);
+         return Type_For_Relationship (GT, R);
 
       --  Otherwise, if DT is currently being elaborated, we have to make a
       --  dummy type that we know will be the same width of an access to

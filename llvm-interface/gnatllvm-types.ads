@@ -184,9 +184,18 @@ package GNATLLVM.Types is
           Post => Get_Type_Kind (Fn_Ty'Result) = Function_Type_Kind;
 
    function Build_Struct_Type
-     (Types : Type_Array; Packed : Boolean := False) return Type_T
+     (Types  : Type_Array;
+      Packed : Boolean := False;
+      Name   : String  := "") return Type_T
      with Post => Present (Build_Struct_Type'Result), Inline;
-   --  Build an LLVM struct type containing the specified types
+   --  Build an LLVM struct type containing the specified types. If Name
+   --  if specified, this is a named LLVM struct type, otherwise it's
+   --  an anonymous type.
+
+   procedure Struct_Set_Body
+     (T : Type_T; Types : Type_Array; Packed : Boolean := False)
+     with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
+   --  Set the fields of LLVM struct T to those in Types
 
    function Full_Base_Type
      (TE : Entity_Id; For_Orig : Boolean := False) return Entity_Id

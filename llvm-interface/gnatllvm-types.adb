@@ -309,9 +309,34 @@ package body GNATLLVM.Types is
    -----------------------
 
    function Build_Struct_Type
-     (Types : Type_Array; Packed : Boolean := False) return Type_T
+     (Types  : Type_Array;
+      Packed : Boolean := False;
+      Name   : String  := "") return Type_T
    is
-      (Struct_Type_In_Context (Context, Types'Address, Types'Length, Packed));
+      T : Type_T;
+
+   begin
+      if Name'Length = 0 then
+         return Struct_Type_In_Context (Context, Types'Address,
+                                        Types'Length, Packed);
+
+      else
+         T := Struct_Create_Named (Context, Name);
+         Struct_Set_Body (T, Types, Packed);
+         return T;
+      end if;
+   end Build_Struct_Type;
+
+   ---------------------
+   -- Struct_Set_Body --
+   ---------------------
+
+   procedure Struct_Set_Body
+     (T : Type_T; Types : Type_Array; Packed : Boolean := False)
+   is
+   begin
+      Struct_Set_Body (T, Types'Address, Types'Length, Packed);
+   end Struct_Set_Body;
 
    ----------------------
    -- Push_LValue_List --

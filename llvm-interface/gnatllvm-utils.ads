@@ -121,7 +121,7 @@ package GNATLLVM.Utils is
    procedure Discard (BB : Basic_Block_T)  with Pre => Present (BB);
    procedure Discard (B  : Boolean);
 
-   function Get_Ext_Name (E : Entity_Id) return String
+   function Get_Ext_Name (E : Entity_Id; Suffix : String := "") return String
      with Pre => Present (E);
    --  Returns a string corresponding to the external name of E
 

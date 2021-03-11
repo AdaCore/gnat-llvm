@@ -315,12 +315,15 @@ package body GNATLLVM.Utils is
    -- Get_Ext_Name --
    ------------------
 
-   function Get_Ext_Name (E : Entity_Id) return String is
+   function Get_Ext_Name
+     (E : Entity_Id; Suffix : String := "") return String
+   is
       Buf : Bounded_String;
 
    begin
       if Present (Interface_Name (E)) and then No (Address_Clause (E)) then
          Append (Buf, Strval (Interface_Name (E)));
+         Append (Buf, Suffix);
 
          declare
             Str : constant String := +Buf;
@@ -329,7 +332,7 @@ package body GNATLLVM.Utils is
                     then Str (Str'First + 1 .. Str'Last) else Str);
          end;
       else
-         return Get_Name_String (Chars (E));
+         return Get_Name (E, Suffix);
       end if;
    end Get_Ext_Name;
 

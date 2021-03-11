@@ -995,9 +995,11 @@ package body GNATLLVM.Records.Create is
       begin
          if Last_Type >= 0 then
             declare
-               T : constant Type_T := Build_Struct_Type
+               T : constant Type_T :=
+                 Build_Struct_Type
                  (Type_Array (LLVM_Types.Table (0 .. Last_Type)),
-                  Packed => True);
+                  Packed => True,
+                  Name   => Get_Ext_Name (TE, "_I"));
 
             begin
                C_Set_Struct (SID, T);
@@ -1978,8 +1980,9 @@ package body GNATLLVM.Records.Create is
                                      Get_Record_Type_Alignment (TE)));
          end if;
 
-         Struct_Set_Body (LLVM_Type, LLVM_Types.Table (0)'Address,
-                          unsigned (LLVM_Types.Last + 1), Packed => True);
+         Struct_Set_Body (LLVM_Type,
+                          Type_Array (LLVM_Types.Table (0 .. LLVM_Types.Last)),
+                          Packed => True);
          C_Set_Struct (SID, LLVM_Type);
          Add_RI (T           => LLVM_Type,
                  Align       => RI_Align,

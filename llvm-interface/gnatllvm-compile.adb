@@ -950,7 +950,25 @@ package body GNATLLVM.Compile is
          when N_Unary_Op =>
             pragma Assert (not For_LHS);
 
-            return Emit_Unary_Operation (N);
+            --  Check for the special case of taking the NOT of a comparison,
+            --  in which case we can just emit a different comparison.
+
+            if Nkind (N) = N_Op_Not
+              and then Nkind (Right_Opnd (N)) in N_Op_Compare
+            then
+               return Emit_Comparison ((case Nkind (Right_Opnd (N)) is
+                                          when N_Op_Eq => N_Op_Ne,
+                                          when N_Op_Ne => N_Op_Eq,
+                                          when N_Op_Lt => N_Op_Ge,
+                                          when N_Op_Le => N_Op_Gt,
+                                          when N_Op_Gt => N_Op_Le,
+                                          when N_Op_Ge => N_Op_Lt,
+                                          when others  => N_Op_Not),
+                                        Left_Opnd  (Right_Opnd (N)),
+                                        Right_Opnd (Right_Opnd (N)));
+            else
+               return Emit_Unary_Operation (N);
+            end if;
 
          when N_Expression_With_Actions =>
 

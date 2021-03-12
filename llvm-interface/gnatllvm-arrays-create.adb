@@ -430,7 +430,7 @@ package body GNATLLVM.Arrays.Create is
 
    function Create_Array_Bounds_And_Data_Type (GT : GL_Type) return Type_T
    is
-      Align  : constant Nat    := Get_Type_Alignment (Primitive_GL_Type (GT));
+      Align  : constant Nat    := Get_Type_Alignment (GT);
       B_T    : constant Type_T := Create_Array_Bounds_Type (GT);
       B_T_Sz : constant Nat    := Nat (ULL'(Get_Type_Size (B_T)));
 

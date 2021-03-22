@@ -161,10 +161,6 @@ package body GNATLLVM.Types.Create is
                   pragma Assert (Decls_Only);
                   T := Byte_T;
             end case;
-
-         when AAMP =>
-            pragma Assert (Decls_Only);
-            T := Byte_T;
       end case;
 
       return T;

@@ -100,35 +100,40 @@ package body GNATLLVM.GLType is
    --  Define the fields in the table for GL_Type's
 
    type GL_Type_Info_Base is record
-      GNAT_Type : Entity_Id;
+      GNAT_Type   : Entity_Id;
       --  GNAT type
 
-      LLVM_Type : Type_T;
+      LLVM_Type   : Type_T;
       --  LLVM type used for this alternative
 
-      TBAA      : Metadata_T;
+      TBAA        : Metadata_T;
       --  If Present, the TBAA tag to use
 
-      Next      : GL_Type;
+      Next        : GL_Type;
       --  If Present, link to next alternative
 
-      Size      : GL_Value;
+      Size        : GL_Value;
       --  If Present, size of this alternative in bits
 
-      Alignment : Nat;
+      Alignment   : Nat;
       --  If nonzero, the alignment of this alternative in bits
 
-      Bias      : GL_Value;
+      Bias        : GL_Value;
       --  If Present, the amount of bias for integral types
 
-      Max_Size  : Boolean;
+      Array_Types : Array_Types_Id;
+      --  If this is an array type and Present, gives the table index at
+      --  which the types used for parts of arrays, such as bounds, can
+      --  be found.
+
+      Max_Size    : Boolean;
       --  If True, this corresponds to the maxumum size of an unconstrained
       --  variant record with default discriminant values;
 
-      Kind      : GT_Kind_Type;
+      Kind        : GT_Kind_Type;
       --  Says what type of alternative type this is
 
-      Default   : Boolean;
+      Default     : Boolean;
       --  Marks the default GL_Type
 
    end record;
@@ -333,6 +338,22 @@ package body GNATLLVM.GLType is
       GL_Type_Table.Table (GT).TBAA := MD;
    end Set_TBAA_Type;
 
+   -----------------
+   -- Array_Types --
+   -----------------
+
+   function Array_Types    (GT : GL_Type) return Array_Types_Id is
+     (GL_Type_Table.Table (GT).Array_Types);
+
+   ---------------------
+   -- Set_Array_Types --
+   ---------------------
+
+   procedure Set_Array_Types (GT : GL_Type; ATs : Array_Types_Id) is
+   begin
+      GL_Type_Table.Table (GT).Array_Types := ATs;
+   end Set_Array_Types;
+
    ---------------------------
    -- Get_Or_Create_GL_Type --
    ---------------------------
@@ -356,16 +377,17 @@ package body GNATLLVM.GLType is
       GT : GL_Type;
 
    begin
-      GL_Type_Table.Append ((GNAT_Type => TE,
-                             LLVM_Type => No_Type_T,
-                             TBAA      => No_Metadata_T,
-                             Next      => Get_GL_Type (TE),
-                             Size      => No_GL_Value,
-                             Alignment => 0,
-                             Bias      => No_GL_Value,
-                             Max_Size  => False,
-                             Kind      => None,
-                             Default   => False));
+      GL_Type_Table.Append ((GNAT_Type   => TE,
+                             LLVM_Type   => No_Type_T,
+                             TBAA        => No_Metadata_T,
+                             Next        => Get_GL_Type (TE),
+                             Size        => No_GL_Value,
+                             Alignment   => 0,
+                             Bias        => No_GL_Value,
+                             Array_Types => Empty_Array_Types_Id,
+                             Max_Size    => False,
+                             Kind        => None,
+                             Default     => False));
 
       GT := GL_Type_Table.Last;
       Set_GL_Type (TE, GT);

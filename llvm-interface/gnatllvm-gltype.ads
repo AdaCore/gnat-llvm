@@ -187,12 +187,19 @@ package GNATLLVM.GLType is
    function GT_Alignment (GT : GL_Type)          return Nat
      with Pre => Present (GT), Inline;
 
-   function TBAA_Type (GT : GL_Type) return Metadata_T
+   function TBAA_Type (GT : GL_Type)             return Metadata_T
      with Pre => Present (GT), Inline;
 
    procedure Set_TBAA_Type (GT : GL_Type; MD : Metadata_T)
      with Pre  => Present (GT) and then Present (MD),
           Post => TBAA_Type (GT) = MD, Inline;
+
+   function Array_Types    (GT : GL_Type)        return Array_Types_Id
+     with Pre => Is_Array_Type (GT), Inline;
+
+   procedure Set_Array_Types (GT : GL_Type; ATs : Array_Types_Id)
+     with Pre  => Is_Array_Type (GT) and then Present (ATs),
+          Post => Array_Types (GT) = ATs, Inline;
 
    function Is_Dummy_Type (GT : GL_Type)         return Boolean
      with Pre => Present (GT), Inline;
@@ -211,10 +218,10 @@ package GNATLLVM.GLType is
      (Is_Biased_GL_Type (Related_Type (V)))
      with Pre => Present (V);
 
-   function Is_Int_Alt_GL_Type (GT : GL_Type)     return Boolean
+   function Is_Int_Alt_GL_Type (GT : GL_Type)    return Boolean
      with Pre => Present (GT), Inline;
 
-   function Is_Int_Alt_GL_Type (V : GL_Value)     return Boolean is
+   function Is_Int_Alt_GL_Type (V : GL_Value)    return Boolean is
      (Is_Int_Alt_GL_Type (Related_Type (V)))
      with Pre => Present (V);
 
@@ -225,10 +232,10 @@ package GNATLLVM.GLType is
      (Is_Padded_GL_Type (Related_Type (V)))
      with Pre => Present (V);
 
-   function Is_Truncated_GL_Type (GT : GL_Type)     return Boolean
+   function Is_Truncated_GL_Type (GT : GL_Type)  return Boolean
      with Pre => Present (GT), Inline;
 
-   function Is_Truncated_GL_Type (V : GL_Value)     return Boolean is
+   function Is_Truncated_GL_Type (V : GL_Value)  return Boolean is
      (Is_Truncated_GL_Type (Related_Type (V)))
      with Pre => Present (V);
 
@@ -251,7 +258,7 @@ package GNATLLVM.GLType is
      with Pre => Present (GT), Inline;
 
    function To_Primitive
-     (V : GL_Value; No_Copy : Boolean := False) return GL_Value
+     (V : GL_Value; No_Copy : Boolean := False)  return GL_Value
      with Pre  => Present (V),
           Post => Is_Primitive_GL_Type (Related_Type (To_Primitive'Result));
    --  Convert V to its primitive GL_Type.  If No_Copy is True, the caller

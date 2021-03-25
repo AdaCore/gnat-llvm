@@ -17,6 +17,7 @@
 
 with Sem_Eval; use Sem_Eval;
 with Snames;   use Snames;
+with Table;    use Table;
 
 with LLVM.Core; use LLVM.Core;
 
@@ -46,6 +47,47 @@ package body GNATLLVM.Arrays.Create is
           Post => (Get_Type_Kind (Create_String_Literal_Type'Result) =
                      Array_Type_Kind);
    --  Helper function to create type for string literals
+
+   --  For each array type, we record the types built for the bounds, bounds
+   --  and data, and fat pointer. We have a table of these and an GL_Type
+   --  can optionally point to that.
+
+   type Array_Types_Data is record
+     Bounds          : Type_T;
+     Bounds_And_Data : Type_T;
+     Fat_Pointer     : Type_T;
+   end record;
+
+   package Array_Types_Table is new Table.Table
+     (Table_Component_Type => Array_Types_Data,
+      Table_Index_Type     => Array_Types_Id,
+      Table_Low_Bound      => Array_Types_Low_Bound,
+      Table_Initial        => 100,
+      Table_Increment      => 50,
+      Table_Name           => "Array_Types_Table");
+
+   --  Define setter and getter subprograms for the above table, but starting
+   --  with a GT in all cases.
+
+   function Get_Or_Create_Array_Types (GT : GL_Type) return Array_Types_Id
+     with Pre  => Present (GT),
+          Post => Present (Get_Or_Create_Array_Types'Result);
+   --  If we've already made an Array_Types entry for GT, return it.
+   --  Otherwise, make a new one.
+
+   function Get_Bounds_Type           (GT : GL_Type) return Type_T
+     with Pre => Present (GT), Inline, Unreferenced;
+   function Get_Bounds_And_Data_Type  (GT : GL_Type) return Type_T
+     with Pre => Present (GT), Inline, Unreferenced;
+   function Get_Fat_Pointer_Type      (GT : GL_Type) return Type_T
+     with Pre => Present (GT), Inline, Unreferenced;
+
+   procedure Set_Bounds_Type          (GT : GL_Type; T : Type_T)
+     with Pre => Present (GT) and then Present (T), Inline, Unreferenced;
+   procedure Set_Bounds_And_Data_Type (GT : GL_Type; T : Type_T)
+     with Pre => Present (GT) and then Present (T), Inline, Unreferenced;
+   procedure Set_Fat_Pointer_Type     (GT : GL_Type; T : Type_T)
+     with Pre => Present (GT) and then Present (T), Inline, Unreferenced;
 
    -------------------------
    -- Cannot_Be_Superflat --
@@ -398,6 +440,88 @@ package body GNATLLVM.Arrays.Create is
       return Typ;
    end Create_Array_Type;
 
+   -------------------------------
+   -- Get_Or_Create_Array_Types --
+   -------------------------------
+
+   function Get_Or_Create_Array_Types (GT : GL_Type) return Array_Types_Id is
+      ATs : Array_Types_Id := Array_Types (GT);
+
+   begin
+      --  If we didn't previously make an entry, make an empty one now
+
+      if No (ATs) then
+         Array_Types_Table.Append ((No_Type_T, No_Type_T, No_Type_T));
+         ATs := Array_Types_Table.Last;
+      end if;
+
+      return ATs;
+   end Get_Or_Create_Array_Types;
+
+   ---------------------
+   -- Get_Bounds_Type --
+   ---------------------
+
+   function Get_Bounds_Type (GT : GL_Type) return Type_T is
+      ATs : constant Array_Types_Id := Array_Types (GT);
+   begin
+      return (if   Present (ATs) then Array_Types_Table.Table (ATs).Bounds
+              else No_Type_T);
+   end Get_Bounds_Type;
+
+   ------------------------------
+   -- Get_Bounds_And_Data_Type --
+   ------------------------------
+
+   function Get_Bounds_And_Data_Type (GT : GL_Type) return Type_T is
+      ATs : constant Array_Types_Id := Array_Types (GT);
+   begin
+      return (if   Present (ATs)
+              then Array_Types_Table.Table (ATs).Bounds_And_Data
+              else No_Type_T);
+   end Get_Bounds_And_Data_Type;
+
+   --------------------------
+   -- Get_Fat_Pointer_Type --
+   --------------------------
+
+   function Get_Fat_Pointer_Type (GT : GL_Type) return Type_T is
+      ATs : constant Array_Types_Id := Array_Types (GT);
+   begin
+      return (if   Present (ATs) then Array_Types_Table.Table (ATs).Fat_Pointer
+              else No_Type_T);
+   end Get_Fat_Pointer_Type;
+
+   ---------------------
+   -- Set_Bounds_Type --
+   ---------------------
+
+   procedure Set_Bounds_Type (GT : GL_Type; T : Type_T) is
+      ATs : constant Array_Types_Id := Get_Or_Create_Array_Types (GT);
+   begin
+      Array_Types_Table.Table (ATs).Bounds := T;
+   end Set_Bounds_Type;
+
+   ------------------------------
+   -- Set_Bounds_And_Data_Type --
+   ------------------------------
+
+   procedure Set_Bounds_And_Data_Type (GT : GL_Type; T : Type_T) is
+      ATs : constant Array_Types_Id := Get_Or_Create_Array_Types (GT);
+   begin
+      Array_Types_Table.Table (ATs).Bounds_And_Data := T;
+   end Set_Bounds_And_Data_Type;
+
+   --------------------------
+   -- Set_Fat_Pointer_Type --
+   --------------------------
+
+   procedure Set_Fat_Pointer_Type (GT : GL_Type; T : Type_T) is
+      ATs : constant Array_Types_Id := Get_Or_Create_Array_Types (GT);
+   begin
+      Array_Types_Table.Table (ATs).Fat_Pointer := T;
+   end Set_Fat_Pointer_Type;
+
    ------------------------------
    -- Create_Array_Bounds_Type --
    ------------------------------
@@ -467,9 +591,10 @@ package body GNATLLVM.Arrays.Create is
           2 => Pointer_Type (Create_Array_Bounds_Type (GT), 0))));
 
 begin
-   --  Make a dummy entry in the array info table, so the "Empty"
+   --  Make a dummy entry in the array info tables, so the "Empty"
    --  entry is never used.
 
    Array_Info.Increment_Last;
+   Array_Types_Table.Increment_Last;
 
 end GNATLLVM.Arrays.Create;

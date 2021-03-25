@@ -151,7 +151,7 @@ package GNATLLVM.Environment is
 
    package LLVM_Info_Table is new Table.Table
      (Table_Component_Type => LLVM_Info,
-      Table_Index_Type     => LLVM_Info_Id'Base,
+      Table_Index_Type     => LLVM_Info_Id,
       Table_Low_Bound      => LLVM_Info_Low_Bound,
       Table_Initial        => 1024,
       Table_Increment      => 100,

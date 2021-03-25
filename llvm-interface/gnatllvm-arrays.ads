@@ -315,7 +315,7 @@ private
 
    package Array_Info is new Table.Table
      (Table_Component_Type => Index_Bounds,
-      Table_Index_Type     => Array_Info_Id'Base,
+      Table_Index_Type     => Array_Info_Id,
       Table_Low_Bound      => Array_Info_Low_Bound,
       Table_Initial        => 1024,
       Table_Increment      => 100,

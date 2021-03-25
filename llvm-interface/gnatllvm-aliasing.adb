@@ -168,7 +168,7 @@ package body GNATLLVM.Aliasing is
 
    package TBAA_Info_Table is new Table.Table
      (Table_Component_Type => TBAA_Info,
-      Table_Index_Type     => TBAA_Info_Id'Base,
+      Table_Index_Type     => TBAA_Info_Id,
       Table_Low_Bound      => TBAA_Info_Low_Bound,
       Table_Initial        => 100,
       Table_Increment      => 50,

@@ -430,7 +430,7 @@ private
 
    package Record_Info_Table is new Table.Table
      (Table_Component_Type => Record_Info,
-      Table_Index_Type     => Record_Info_Id'Base,
+      Table_Index_Type     => Record_Info_Id,
       Table_Low_Bound      => Record_Info_Low_Bound,
       Table_Initial        => 100,
       Table_Increment      => 50,
@@ -484,7 +484,7 @@ private
 
    package Field_Info_Table is new Table.Table
      (Table_Component_Type => Field_Info,
-      Table_Index_Type     => Field_Info_Id'Base,
+      Table_Index_Type     => Field_Info_Id,
       Table_Low_Bound      => Field_Info_Low_Bound,
       Table_Initial        => 1000,
       Table_Increment      => 100,

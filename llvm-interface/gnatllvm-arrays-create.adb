@@ -76,18 +76,35 @@ package body GNATLLVM.Arrays.Create is
    --  Otherwise, make a new one.
 
    function Get_Bounds_Type           (GT : GL_Type) return Type_T
-     with Pre => Present (GT), Inline, Unreferenced;
+     with Pre => Present (GT), Inline;
    function Get_Bounds_And_Data_Type  (GT : GL_Type) return Type_T
-     with Pre => Present (GT), Inline, Unreferenced;
+     with Pre => Present (GT), Inline;
    function Get_Fat_Pointer_Type      (GT : GL_Type) return Type_T
-     with Pre => Present (GT), Inline, Unreferenced;
+     with Pre => Present (GT), Inline;
 
    procedure Set_Bounds_Type          (GT : GL_Type; T : Type_T)
-     with Pre => Present (GT) and then Present (T), Inline, Unreferenced;
+     with Pre => Present (GT) and then Present (T), Inline;
    procedure Set_Bounds_And_Data_Type (GT : GL_Type; T : Type_T)
-     with Pre => Present (GT) and then Present (T), Inline, Unreferenced;
+     with Pre => Present (GT) and then Present (T), Inline;
    procedure Set_Fat_Pointer_Type     (GT : GL_Type; T : Type_T)
-     with Pre => Present (GT) and then Present (T), Inline, Unreferenced;
+     with Pre => Present (GT) and then Present (T), Inline;
+
+   function Create_Array_Fat_Pointer_Type_Internal (GT : GL_Type) return Type_T
+     with Pre  => Is_Array_Or_Packed_Array_Type (GT),
+          Post => Present (Create_Array_Fat_Pointer_Type_Internal'Result);
+   --  Return the type used for fat pointers to the array type GT
+
+   function Create_Array_Bounds_Type_Internal (GT : GL_Type) return Type_T
+     with Pre  => Is_Array_Or_Packed_Array_Type (GT),
+          Post => Present (Create_Array_Bounds_Type_Internal'Result);
+   --  Return the type used to store array bounds. This is a structure
+   --  that that follows the following pattern: { LB0, UB0, LB1, UB1, ... }
+
+   function Create_Array_Bounds_And_Data_Type_Internal
+     (GT : GL_Type) return Type_T
+     with Pre  => Is_Array_Or_Packed_Array_Type (GT),
+     Post => Present (Create_Array_Bounds_And_Data_Type_Internal'Result);
+   --  Return the type used to store the bounds and data of an array
 
    -------------------------
    -- Cannot_Be_Superflat --
@@ -206,9 +223,11 @@ package body GNATLLVM.Arrays.Create is
       Last       : constant Uint         := First + Length - 1;
       Low_Bound  : constant One_Bound    := (Cnst => First, Value => Empty);
       High_Bound : constant One_Bound    := (Cnst => Last, Value => Empty);
+      Index_TE   : constant Entity_Id    :=
+        Full_Etype (First_Index (Full_Base_Type (TE)));
       Dim_Info   : constant Index_Bounds :=
-        (Bound_GT      => Integer_GL_Type,
-         Bound_Sub_GT  => Integer_GL_Type,
+        (Bound_GT      => Base_GL_Type (Index_TE),
+         Bound_Sub_GT  => Primitive_GL_Type (Index_TE),
          Low           => Low_Bound,
          High          => High_Bound,
          Bound_Range   => Size_Const_Int (Length),
@@ -285,7 +304,7 @@ package body GNATLLVM.Arrays.Create is
       Base_Index        : Entity_Id;
 
    begin
-      --  String literal subtypes are simple, so handle then here
+      --  String literal subtypes are simple, so handle them separately
 
       if Ekind (A_TE) = E_String_Literal_Subtype then
          Set_Associated_GL_Type (A_TE, Comp_GT);
@@ -522,11 +541,11 @@ package body GNATLLVM.Arrays.Create is
       Array_Types_Table.Table (ATs).Fat_Pointer := T;
    end Set_Fat_Pointer_Type;
 
-   ------------------------------
-   -- Create_Array_Bounds_Type --
-   ------------------------------
+   ---------------------------------------
+   -- Create_Array_Bounds_Type_Internal --
+   ---------------------------------------
 
-   function Create_Array_Bounds_Type (GT : GL_Type) return Type_T is
+   function Create_Array_Bounds_Type_Internal (GT : GL_Type) return Type_T is
       Dims       : constant Nat           :=
         Number_Dimensions (if   Is_Packed_Array_Impl_Type (GT)
                            then Full_Original_Array_Type (GT)
@@ -540,19 +559,21 @@ package body GNATLLVM.Arrays.Create is
 
    begin
       for K in Nat range 0 .. Dims - 1 loop
-         Fields (J) := Type_Of (Array_Info.Table (First_Info + K).Bound_GT);
+         Fields (J)     :=
+           Type_Of (Array_Info.Table (First_Info + K).Bound_Sub_GT);
          Fields (J + 1) := Fields (J);
          J := J + 2;
       end loop;
 
       return Build_Struct_Type (Fields);
-   end Create_Array_Bounds_Type;
+   end Create_Array_Bounds_Type_Internal;
 
-   ---------------------------------------
-   -- Create_Array_Bounds_And_Data_Type --
-   ---------------------------------------
+   ------------------------------------------------
+   -- Create_Array_Bounds_And_Data_Type_Internal --
+   ------------------------------------------------
 
-   function Create_Array_Bounds_And_Data_Type (GT : GL_Type) return Type_T
+   function Create_Array_Bounds_And_Data_Type_Internal
+     (GT : GL_Type) return Type_T
    is
       Align  : constant Nat    := Get_Type_Alignment (GT);
       B_T    : constant Type_T := Create_Array_Bounds_Type (GT);
@@ -579,16 +600,106 @@ package body GNATLLVM.Arrays.Create is
                                   3 => Type_Of (GT)));
          end;
       end if;
-   end Create_Array_Bounds_And_Data_Type;
+   end Create_Array_Bounds_And_Data_Type_Internal;
 
-   -----------------------------------
-   -- Create_Array_Fat_Pointer_Type --
-   -----------------------------------
+   --------------------------------------------
+   -- Create_Array_Fat_Pointer_Type_Internal --
+   --------------------------------------------
 
-   function Create_Array_Fat_Pointer_Type (GT : GL_Type) return Type_T is
+   function Create_Array_Fat_Pointer_Type_Internal
+     (GT : GL_Type) return Type_T
+   is
      (Build_Struct_Type
         ((1 => Pointer_Type (Type_Of (GT), 0),
           2 => Pointer_Type (Create_Array_Bounds_Type (GT), 0))));
+
+   ------------------------------
+   -- Create_Array_Bounds_Type --
+   ------------------------------
+
+   function Create_Array_Bounds_Type (GT : GL_Type) return Type_T is
+      BT      : constant GL_Type := Array_Base_GL_Type (GT);
+      Result  : Type_T           := Get_Bounds_Type (GT);
+      To_Save : Boolean          := True;
+
+   begin
+      --  If we already made one, nothing to do
+
+      if Present (Result) then
+         To_Save := False;
+
+      --  Otherwise, see if this isn't the base type. If so, get the type
+      --  for it
+
+      elsif BT /= GT then
+         Result := Create_Array_Bounds_Type (BT);
+
+      --  Otherwise, build one
+
+      else
+         Result := Create_Array_Bounds_Type_Internal (GT);
+      end if;
+
+      --  Set the type if it wasn't already and then return it
+      if To_Save then
+         Set_Bounds_Type (GT, Result);
+      end if;
+
+      return Result;
+   end Create_Array_Bounds_Type;
+
+   ---------------------------------------
+   -- Create_Array_Bounds_And_Data_Type --
+   ---------------------------------------
+
+   function Create_Array_Bounds_And_Data_Type (GT : GL_Type) return Type_T is
+      Result  : Type_T := Get_Bounds_And_Data_Type (GT);
+
+   begin
+      --  If we haven't made one, build it and save it
+
+      if No (Result) then
+         Result := Create_Array_Bounds_And_Data_Type_Internal (GT);
+         Set_Bounds_And_Data_Type (GT, Result);
+      end if;
+
+      return Result;
+   end Create_Array_Bounds_And_Data_Type;
+
+   ------------------------------
+   -- Create_Array_Fat__Pointer_Type --
+   ------------------------------
+
+   function Create_Array_Fat_Pointer_Type (GT : GL_Type) return Type_T is
+      BT      : constant GL_Type := Array_Base_GL_Type (GT);
+      Result  : Type_T           := Get_Fat_Pointer_Type (GT);
+      To_Save : Boolean          := True;
+
+   begin
+      --  If we already made one, nothing to do
+
+      if Present (Result) then
+         To_Save := False;
+
+      --  Otherwise, see if this isn't the base type. If so, get the type
+      --  for it
+
+      elsif BT /= GT then
+         Result := Create_Array_Fat_Pointer_Type (BT);
+
+      --  Otherwise, build one
+
+      else
+         Result := Create_Array_Fat_Pointer_Type_Internal (GT);
+      end if;
+
+      --  Set the type if it wasn't already and then return it
+      if To_Save then
+         Set_Fat_Pointer_Type (GT, Result);
+      end if;
+
+      return Result;
+   end Create_Array_Fat_Pointer_Type;
 
 begin
    --  Make a dummy entry in the array info tables, so the "Empty"

@@ -459,7 +459,7 @@ package body GNATLLVM.Arrays is
                              and then Relationship (V) /= Reference);
 
             Res := Extract_Value
-              (Dim_Info.Bound_GT, Get (V, Bounds),
+              (Dim_Info.Bound_Sub_GT, Get (V, Bounds),
                (1 => unsigned (Bound_Idx)),
                (if Is_Low then "low.bound" else "high.bound"));
          end if;
@@ -1154,7 +1154,7 @@ package body GNATLLVM.Arrays is
                --  (C46042A).
 
                Bound_GT             : constant GL_Type :=
-                 Array_Info.Table (Info_Idx + Dim).Bound_GT;
+                 Array_Info.Table (Info_Idx + Dim).Bound_Sub_GT;
                Low_Bound            : constant GL_Value  :=
                  Get_Array_Bound (V_GT, Dim, True, V,
                                   For_Orig =>

@@ -969,7 +969,9 @@ package body GNATLLVM.GLValue is
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
             elsif Our_R = Fat_Pointer then
-               return Extract_Value_To_Relationship (GT, V, 0, R);
+               return
+                 Convert_Pointer (Extract_Value_To_Relationship (GT, V, 0, R),
+                                  GT);
             elsif Our_R = Fat_Reference_To_Subprogram then
                return
                  Ptr_To_Relationship (Extract_Value_To_Ref (GT, V, 0), GT, R);
@@ -1022,9 +1024,11 @@ package body GNATLLVM.GLValue is
 
                Data_P  : constant GL_Value := Remove_Padding (Val);
                N_GT    : constant GL_Type  := Related_Type (Data_P);
+               BT      : constant GL_Type  := Array_Base_GL_Type (N_GT);
                Fat_Ptr : constant GL_Value := Get_Undef_Relationship (N_GT, R);
                Bounds  : constant GL_Value := Get (Val, Reference_To_Bounds);
-               Data    : constant GL_Value := Get (Data_P, Reference);
+               Data    : constant GL_Value :=
+                   Convert_Pointer (Get (Data_P, Reference), BT);
 
             begin
                return Insert_Value (Insert_Value (Fat_Ptr, Data, 0),

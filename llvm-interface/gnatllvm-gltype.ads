@@ -162,6 +162,10 @@ package GNATLLVM.GLType is
    --  primitive GL_Type of the base type of a type.  This is used to perform
    --  computation on a type.
 
+   function Array_Base_GL_Type (GT : GL_Type) return GL_Type
+     with Pre => Present (GT), Post => Present (Array_Base_GL_Type'Result);
+   --  Like Base_GL_Type, but looks at Original_Array_Type when needed
+
    function Get_Unused_Bits (GT : GL_Type) return Uint
      with Pre => Present (GT), Inline;
    --  Return the number of unused bits that are at the end of objects
@@ -195,10 +199,10 @@ package GNATLLVM.GLType is
           Post => TBAA_Type (GT) = MD, Inline;
 
    function Array_Types    (GT : GL_Type)        return Array_Types_Id
-     with Pre => Is_Array_Type (GT), Inline;
+     with Pre => Is_Array_Or_Packed_Array_Type (GT), Inline;
 
    procedure Set_Array_Types (GT : GL_Type; ATs : Array_Types_Id)
-     with Pre  => Is_Array_Type (GT) and then Present (ATs),
+     with Pre  => Is_Array_Or_Packed_Array_Type (GT) and then Present (ATs),
           Post => Array_Types (GT) = ATs, Inline;
 
    function Is_Dummy_Type (GT : GL_Type)         return Boolean

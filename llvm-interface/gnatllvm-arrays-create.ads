@@ -29,6 +29,7 @@ package GNATLLVM.Arrays.Create is
    function Create_Array_Fat_Pointer_Type (GT : GL_Type) return Type_T
      with Pre  => Is_Array_Or_Packed_Array_Type (GT),
           Post => Present (Create_Array_Fat_Pointer_Type'Result);
+   --  Return the type used for fat pointers to the array type GT
 
    function Create_Array_Bounds_Type (GT : GL_Type) return Type_T
      with Pre  => Is_Array_Or_Packed_Array_Type (GT),

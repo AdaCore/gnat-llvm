@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Unchecked_Deallocation;
+
 with Snames;   use Snames;
 
 with LLVM.Core;  use LLVM.Core;
@@ -976,10 +978,14 @@ package body GNATLLVM.Arrays is
    function Emit_Constant_Aggregate
      (N : Node_Id; Comp_Type, GT : GL_Type; Dims_Left : Nat) return GL_Value
    is
-      Prim_GT : constant GL_Type := Primitive_GL_Type (GT);
-      Idx     : Int              := 1;
-      Vals    : GL_Value_Array (1 .. List_Length (Expressions (N)));
+      Prim_GT : constant GL_Type      := Primitive_GL_Type (GT);
+      Idx     : Int                   := 1;
+      Vals    : Access_GL_Value_Array :=
+        new GL_Value_Array (1 .. List_Length (Expressions (N)));
       Expr    : Node_Id;
+      Result  : GL_Value;
+      procedure Free is new Ada.Unchecked_Deallocation (GL_Value_Array,
+                                                        Access_GL_Value_Array);
 
    begin
       Expr := First (Expressions (N));
@@ -992,7 +998,10 @@ package body GNATLLVM.Arrays is
          Next (Expr);
       end loop;
 
-      return From_Primitive (Const_Array (Vals, Prim_GT), GT);
+      Result := From_Primitive (Const_Array (Vals.all, Prim_GT), GT);
+      Free (Vals);
+      return Result;
+
    end Emit_Constant_Aggregate;
 
    ------------------

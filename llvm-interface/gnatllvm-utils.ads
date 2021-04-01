@@ -164,6 +164,15 @@ package GNATLLVM.Utils is
    --  Set and get a flag indicating that this subprogram was already added
    --  to the module.
 
+   function Get_Allocated_For_Return (E : Entity_Id) return Boolean is
+     (Get_Flag1 (E))
+     with Pre => Ekind (E) in E_Constant | E_Variable;
+   procedure Set_Allocated_For_Return (E : Entity_Id; F : Boolean := True)
+     with Pre => Ekind (E) in E_Constant | E_Variable;
+   --  Set and get a flag indicating that this entity was allocated
+   --  specially for Is_Return_Object so the return statement need not
+   --  do further allocation.
+
    function Is_Generic_Item (N : Node_Id) return Boolean is
      (Nkind (N) in N_Subprogram_Body | N_Function_Specification |
                      N_Procedure_Specification | N_Package_Specification |

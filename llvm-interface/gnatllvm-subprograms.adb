@@ -1459,10 +1459,14 @@ package body GNATLLVM.Subprograms is
    ---------------------------
 
    procedure Emit_Return_Statement (N : Node_Id) is
-      GT  : constant GL_Type     := Full_GL_Type (Current_Subp);
-      RK  : constant Return_Kind := Get_Return_Kind (Current_Subp);
-      LRK : constant L_Ret_Kind  := Get_L_Ret_Kind (Current_Subp);
-      V   : GL_Value             := No_GL_Value;
+      GT   : constant GL_Type     := Full_GL_Type (Current_Subp);
+      RK   : constant Return_Kind := Get_Return_Kind (Current_Subp);
+      LRK  : constant L_Ret_Kind  := Get_L_Ret_Kind (Current_Subp);
+      Expr : constant Node_Id     := Expression (N);
+      E    : constant Entity_Id   :=
+        (if   Present (Expr) and then Nkind (Expr) = N_Identifier
+         then Entity (Expr) else Empty);
+      V    : GL_Value             := No_GL_Value;
 
    begin
       --  Start by handling our expression, if any
@@ -1474,15 +1478,22 @@ package body GNATLLVM.Subprograms is
          --  return value, do the copy instead of returning the value.
 
          if RK = Return_By_Parameter then
-            Emit_Assignment (Return_Address_Param, Expression (N));
+            Emit_Assignment (Return_Address_Param, Expr);
 
          --  If we return by reference do just that. We don't do this if a
-         --  Storage_Pool is specified
+         --  Storage_Pool is specified unless this is the variable from
+         --  an extended return statement, in which case we've already
+         --  done the allocation.
 
          elsif By_Ref (N)
-           or else (RK = RK_By_Reference and then No (Storage_Pool (N)))
+           or else (RK = RK_By_Reference
+                      and then (No (Storage_Pool (N))
+                                  or else (Present (E)
+                                             and then Is_Return_Object (E)
+                                             and then Get_Allocated_For_Return
+                                                        (E))))
          then
-            V := Convert_Ref (Emit_LValue (Expression (N)), GT);
+            V := Convert_Ref (Emit_LValue (Expr), GT);
 
          --  If this function returns unconstrained, allocate memory for
          --  the return value, copy the data to be returned to there, and
@@ -1496,7 +1507,7 @@ package body GNATLLVM.Subprograms is
            or else (RK = RK_By_Reference and then Present (Storage_Pool (N)))
          then
             V := Get (Heap_Allocate_For_Type
-                        (GT, Full_Alloc_GL_Type (Expression (N)),
+                        (GT, Full_Alloc_GL_Type (Expr),
                          Expr => Expression (N),
                          N    => N,
                          Proc => Procedure_To_Call (N),

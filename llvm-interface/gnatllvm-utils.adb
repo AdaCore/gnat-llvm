@@ -518,6 +518,15 @@ package body GNATLLVM.Utils is
       Set_Flag1 (E, F);
    end Set_Added_To_Module;
 
+   ------------------------------
+   -- Set_Allocated_For_Return --
+   ------------------------------
+
+   procedure Set_Allocated_For_Return (E : Entity_Id; F : Boolean := True) is
+   begin
+      Set_Flag1 (E, F);
+   end Set_Allocated_For_Return;
+
    -----------------------
    -- Scan_Library_Item --
    -----------------------

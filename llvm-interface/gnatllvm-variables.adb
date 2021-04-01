@@ -2070,10 +2070,32 @@ package body GNATLLVM.Variables is
          end if;
       end if;
 
+      --  If this is the object from an extended return and we have a
+      --  return address, we can use that value for this variable.
+
+      if Is_Return_Object (E) and then Present (Return_Address_Param) then
+         LLVM_Var := Return_Address_Param;
+         Set_Allocated_For_Return (E);
+
+         --  If it's the object from an extended return, we don't have a return
+         --  address but it's a variable-sized object and we know where
+         --  the N_Simple_Return_Statement is, we can allocate the object
+         --  here in the manner that the return statement otherwise would.
+
+      elsif Is_Return_Object (E) and then Is_Nonnative_Type (GT)
+        and then Present (Return_Statement (E))
+      then
+         LLVM_Var := Heap_Allocate_For_Type
+           (Full_GL_Type (Current_Subp), Alloc_GT,
+            Expr => Expr,
+            N    => N,
+            Proc => Procedure_To_Call (Return_Statement (E)),
+            Pool => Storage_Pool (Return_Statement (E)));
+
       --  Otherwise, if we still haven't made a variable, allocate it
       --  on the stack, copying in any value.
 
-      if No (LLVM_Var) then
+      elsif No (LLVM_Var) then
          LLVM_Var := Allocate_For_Type (GT, Alloc_GT, E, Value, Expr,
                                         E        => E,
                                         Max_Size => Is_Max_Size (Alloc_GT));

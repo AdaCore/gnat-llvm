@@ -472,6 +472,7 @@ package body GNATLLVM.Arrays.Create is
       if No (ATs) then
          Array_Types_Table.Append ((No_Type_T, No_Type_T, No_Type_T));
          ATs := Array_Types_Table.Last;
+         Set_Array_Types (GT, ATs);
       end if;
 
       return ATs;

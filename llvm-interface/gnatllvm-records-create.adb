@@ -27,7 +27,6 @@ with Sem_Aux;    use Sem_Aux;
 with Sem_Eval;   use Sem_Eval;
 with Snames;     use Snames;
 with Sprint;     use Sprint;
-with Stringt;    use Stringt;
 with Table;      use Table;
 with Uintp.LLVM; use Uintp.LLVM;
 
@@ -1904,11 +1903,8 @@ package body GNATLLVM.Records.Create is
                      else
                         Force_To_Pos (Needed_Pos);
                         LLVM_Types.Append (T);
-                        C_Set_Field_Name_Info
-                          (SID, LLVM_Types.Last,
-                           (if   Present (Interface_Name (F))
-                            then String_To_Name (Strval (Interface_Name (F)))
-                            else Chars (F)));
+                        C_Set_Field_Name_Info (SID, LLVM_Types.Last,
+                                               Get_Ext_Name (F));
 
                         Cur_RI_Pos :=
                           Align_Pos (Cur_RI_Pos + Get_Type_Size (T), BPU);
@@ -1939,7 +1935,7 @@ package body GNATLLVM.Records.Create is
       LLVM_Type := Type_Of (GT);
       if No (LLVM_Type) then
          pragma Assert (Is_Empty_GL_Type (GT));
-         LLVM_Type := Struct_Create_Named (Context, Get_Ext_Name (TE));
+         LLVM_Type := Struct_Create_Named (Get_Ext_Name (TE));
       end if;
 
       Update_GL_Type (GT, LLVM_Type, True);

@@ -311,17 +311,17 @@ package body GNATLLVM.Types is
    function Build_Struct_Type
      (Types  : Type_Array;
       Packed : Boolean := False;
-      Name   : String  := "") return Type_T
+      Name   : Name_Id := No_Name) return Type_T
    is
       T : Type_T;
 
    begin
-      if Name'Length = 0 then
+      if No (Name) then
          return Struct_Type_In_Context (Context, Types'Address,
                                         Types'Length, Packed);
 
       else
-         T := Struct_Create_Named (Context, Name);
+         T := Struct_Create_Named (Name);
          Struct_Set_Body (T, Types, Packed);
          return T;
       end if;

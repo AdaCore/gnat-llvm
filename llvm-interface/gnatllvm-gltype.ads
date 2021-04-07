@@ -308,6 +308,18 @@ package GNATLLVM.GLType is
      (Get_Name (Full_Etype (GT), Suffix))
      with Pre => Present (GT);
 
+   function Get_Ext_Name (GT : GL_Type; Suffix : String := "") return Name_Id
+   is
+     (Get_Ext_Name (Full_Etype (GT), Suffix))
+     with Pre => Present (GT), Post => Present (Get_Ext_Name'Result);
+   --  Returns a Name_Id corresponding to the external name of E
+
+   function Get_Ext_Name (GT : GL_Type; Suffix : String := "") return String
+   is
+     (Get_Name_String (Get_Ext_Name (GT)))
+     with Pre => Present (GT);
+   --  Returns a string corresponding to the external name of E
+
    function Is_Access_Type (GT : GL_Type) return Boolean is
      (Is_Access_Type (Full_Etype (GT)))
      with Pre => Present (GT);

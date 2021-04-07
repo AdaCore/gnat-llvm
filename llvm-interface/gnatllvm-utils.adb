@@ -316,24 +316,42 @@ package body GNATLLVM.Utils is
    ------------------
 
    function Get_Ext_Name
-     (E : Entity_Id; Suffix : String := "") return String
+     (E : Entity_Id; Suffix : String := "") return Name_Id
    is
       Buf : Bounded_String;
 
    begin
-      if Present (Interface_Name (E)) and then No (Address_Clause (E)) then
-         Append (Buf, Strval (Interface_Name (E)));
-         Append (Buf, Suffix);
+      --  If we have an interface name, copy either the entire name or
+      --  all but the first character of the name, depending on whether
+      --  the first character is a "*".
 
+      if Present (Interface_Name (E)) and then No (Address_Clause (E)) then
          declare
-            Str : constant String := +Buf;
+            Str : constant String_Id := Strval (Interface_Name (E));
+
          begin
-            return (if   Str (Str'First) = '*'
-                    then Str (Str'First + 1 .. Str'Last) else Str);
+            if Get_Character (Get_String_Char (Str, 1)) = '*' then
+               for J in 2 .. String_Length (Str) loop
+                  Append (Buf, Get_Character (Get_String_Char (Str, J)));
+               end loop;
+            else
+               Append (Buf, Str);
+            end if;
          end;
+
+      --  If we don't have a suffix, just use the name of E. Otherwise,
+      --  set the name of E into the buffer.
+
+      elsif Suffix = "" then
+         return Chars (E);
       else
-         return Get_Name (E, Suffix);
+         Append (Buf, Chars (E));
       end if;
+
+      --  Finally, append the suffix and make a name
+
+      Append (Buf, Suffix);
+      return Name_Find (Buf);
    end Get_Ext_Name;
 
    ---------------

@@ -193,8 +193,7 @@ package body GNATLLVM.Types.Create is
       elsif Is_Record_Type (DT) then
          if No (GT) then
             GT := New_GT (DT);
-            Update_GL_Type (GT, Struct_Create_Named (Context, Get_Name (DT)),
-                            True);
+            Update_GL_Type (GT, Struct_Create_Named (Get_Ext_Name (DT)), True);
          end if;
 
          Set_Associated_GL_Type (TE, GT);

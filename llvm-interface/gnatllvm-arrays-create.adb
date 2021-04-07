@@ -642,6 +642,7 @@ package body GNATLLVM.Arrays.Create is
       end if;
 
       --  Set the type if it wasn't already and then return it
+
       if To_Save then
          Set_Bounds_Type (GT, Result);
       end if;

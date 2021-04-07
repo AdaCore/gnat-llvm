@@ -566,7 +566,7 @@ package body GNATLLVM.Arrays.Create is
          J := J + 2;
       end loop;
 
-      return Build_Struct_Type (Fields);
+      return Build_Struct_Type (Fields, Name => Get_Ext_Name (GT, "_BOUNDS"));
    end Create_Array_Bounds_Type_Internal;
 
    ------------------------------------------------
@@ -585,7 +585,8 @@ package body GNATLLVM.Arrays.Create is
       --  we have the normal case of two types.
 
       if B_T_Sz mod Align = 0 then
-         return Build_Struct_Type ((1 => B_T, 2 => Type_Of (GT)));
+         return Build_Struct_Type ((1 => B_T, 2 => Type_Of (GT)),
+                                   Name => Get_Ext_Name (GT, "_BD"));
 
       --  Otherwise, generate some padding
 
@@ -598,7 +599,8 @@ package body GNATLLVM.Arrays.Create is
             return
               Build_Struct_Type ((1 => B_T,
                                   2 => Array_Type (Byte_T, unsigned (Pad)),
-                                  3 => Type_Of (GT)));
+                                  3 => Type_Of (GT)),
+                                 Name => Get_Ext_Name (GT, "_BD"));
          end;
       end if;
    end Create_Array_Bounds_And_Data_Type_Internal;
@@ -612,7 +614,8 @@ package body GNATLLVM.Arrays.Create is
    is
      (Build_Struct_Type
         ((1 => Pointer_Type (Type_Of (GT), 0),
-          2 => Pointer_Type (Create_Array_Bounds_Type (GT), 0))));
+          2 => Pointer_Type (Create_Array_Bounds_Type (GT), 0)),
+         Name => Get_Ext_Name (GT, "_FP")));
 
    ------------------------------
    -- Create_Array_Bounds_Type --

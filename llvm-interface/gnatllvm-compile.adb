@@ -163,6 +163,10 @@ package body GNATLLVM.Compile is
 
       GNATLLVM.Aliasing.Initialize;
 
+      --  We create Name_Id values for struct names
+
+      Namet.Unlock;
+
       --  We must elaborate Size_Type first because its needed to elaborate
       --  all other types and we need to have a kludge here to set the sizes
       --  of the GL_Type only when the below variables have been set.
@@ -206,10 +210,6 @@ package body GNATLLVM.Compile is
       GNATLLVM.DebugInfo.Initialize;
       Detect_Duplicate_Global_Names;
       Stringt.Lock;
-
-      --  We can create a Name_Id from an Interface_Name
-
-      Namet.Unlock;
 
       --  Actually translate
 

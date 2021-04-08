@@ -1,4 +1,6 @@
+pragma Ada_2012;
 pragma Style_Checks (Off);
+pragma Warnings ("U");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with LLVM.Types;
@@ -37,8 +39,8 @@ package LLVM.Analysis is
    type Verifier_Failure_Action_T is 
      (Abort_Process_Action,
       Print_Message_Action,
-      Return_Status_Action);
-   pragma Convention (C, Verifier_Failure_Action_T);  -- llvm-11.0.1.src/include/llvm-c/Analysis.h:38
+      Return_Status_Action)
+   with Convention => C;  -- llvm-11.0.1.src/include/llvm-c/Analysis.h:38
 
   -- Verifies that a module is valid, taking the specified action if not.
   --   Optionally returns a human-readable description of any invalid constructs.
@@ -53,30 +55,38 @@ function Verify_Module
      (M           : LLVM.Types.Module_T;
       Action      : Verifier_Failure_Action_T;
       Out_Message : System.Address)
-      return LLVM.Types.Bool_T;
-   pragma Import (C, Verify_Module_C, "LLVMVerifyModule");
+      return LLVM.Types.Bool_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMVerifyModule";
 
   -- Verifies that a single function is valid, taking the specified action. Useful
   --   for debugging.  
 
-   function Verify_Function
+function Verify_Function
      (Fn     : LLVM.Types.Value_T;
       Action : Verifier_Failure_Action_T)
       return Boolean;
    function Verify_Function_C
      (Fn     : LLVM.Types.Value_T;
       Action : Verifier_Failure_Action_T)
-      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Analysis.h:49
-   pragma Import (C, Verify_Function_C, "LLVMVerifyFunction");
+      return LLVM.Types.Bool_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMVerifyFunction";
 
   -- Open up a ghostview window that displays the CFG of the current function.
   --   Useful for debugging.  
 
-   procedure View_Function_CFG (Fn : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Analysis.h:53
-   pragma Import (C, View_Function_CFG, "LLVMViewFunctionCFG");
+   procedure View_Function_CFG (Fn : LLVM.Types.Value_T)  -- llvm-11.0.1.src/include/llvm-c/Analysis.h:53
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMViewFunctionCFG";
 
-   procedure View_Function_CFG_Only (Fn : LLVM.Types.Value_T);  -- llvm-11.0.1.src/include/llvm-c/Analysis.h:54
-   pragma Import (C, View_Function_CFG_Only, "LLVMViewFunctionCFGOnly");
+   procedure View_Function_CFG_Only (Fn : LLVM.Types.Value_T)  -- llvm-11.0.1.src/include/llvm-c/Analysis.h:54
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMViewFunctionCFGOnly";
 
   --*
   -- * @}

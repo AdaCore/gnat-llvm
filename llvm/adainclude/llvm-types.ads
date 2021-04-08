@@ -1,7 +1,8 @@
+pragma Ada_2012;
 pragma Style_Checks (Off);
+pragma Warnings ("U");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
-with System;
 
 package LLVM.Types is
 
@@ -44,17 +45,17 @@ package LLVM.Types is
   -- * @see llvm::MemoryBuffer
   --  
 
-   --  skipped empty struct LLVMOpaqueMemoryBuffer
+   type Opaque_Memory_Buffer_Impl_T is null record;   -- incomplete struct
 
-   type Memory_Buffer_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:48
+   type Memory_Buffer_T is access all Opaque_Memory_Buffer_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:48
 
   --*
   -- * The top-level container for all LLVM global data. See the LLVMContext class.
   --  
 
-   --  skipped empty struct LLVMOpaqueContext
+   type Opaque_Context_Impl_T is null record;   -- incomplete struct
 
-   type Context_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:53
+   type Context_T is access all Opaque_Context_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:53
 
   --*
   -- * The top-level container for all other LLVM Intermediate Representation (IR)
@@ -63,9 +64,9 @@ package LLVM.Types is
   -- * @see llvm::Module
   --  
 
-   --  skipped empty struct LLVMOpaqueModule
+   type Opaque_Module_Impl_T is null record;   -- incomplete struct
 
-   type Module_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:61
+   type Module_T is access all Opaque_Module_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:61
 
   --*
   -- * Each value in the LLVM IR has a type, an LLVMTypeRef.
@@ -73,9 +74,9 @@ package LLVM.Types is
   -- * @see llvm::Type
   --  
 
-   --  skipped empty struct LLVMOpaqueType
+   type Opaque_Type_Impl_T is null record;   -- incomplete struct
 
-   type Type_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:68
+   type Type_T is access all Opaque_Type_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:68
 
   --*
   -- * Represents an individual value in LLVM IR.
@@ -83,9 +84,9 @@ package LLVM.Types is
   -- * This models llvm::Value.
   --  
 
-   --  skipped empty struct LLVMOpaqueValue
+   type Opaque_Value_Impl_T is null record;   -- incomplete struct
 
-   type Value_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:75
+   type Value_T is access all Opaque_Value_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:75
 
   --*
   -- * Represents a basic block of instructions in LLVM IR.
@@ -93,9 +94,9 @@ package LLVM.Types is
   -- * This models llvm::BasicBlock.
   --  
 
-   --  skipped empty struct LLVMOpaqueBasicBlock
+   type Opaque_Basic_Block_Impl_T is null record;   -- incomplete struct
 
-   type Basic_Block_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:82
+   type Basic_Block_T is access all Opaque_Basic_Block_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:82
 
   --*
   -- * Represents an LLVM Metadata.
@@ -103,9 +104,9 @@ package LLVM.Types is
   -- * This models llvm::Metadata.
   --  
 
-   --  skipped empty struct LLVMOpaqueMetadata
+   type Opaque_Metadata_Impl_T is null record;   -- incomplete struct
 
-   type Metadata_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:89
+   type Metadata_T is access all Opaque_Metadata_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:89
 
   --*
   -- * Represents an LLVM Named Metadata Node.
@@ -113,9 +114,9 @@ package LLVM.Types is
   -- * This models llvm::NamedMDNode.
   --  
 
-   --  skipped empty struct LLVMOpaqueNamedMDNode
+   type Opaque_Named_MD_Node_Impl_T is null record;   -- incomplete struct
 
-   type Named_MD_Node_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:96
+   type Named_MD_Node_T is access all Opaque_Named_MD_Node_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:96
 
   --*
   -- * Represents an entry in a Global Object's metadata attachments.
@@ -123,9 +124,9 @@ package LLVM.Types is
   -- * This models std::pair<unsigned, MDNode *>
   --  
 
-   --  skipped empty struct LLVMOpaqueValueMetadataEntry
+   type Opaque_Value_Metadata_Entry_Impl_T is null record;   -- incomplete struct
 
-   --  skipped empty struct LLVMValueMetadataEntry
+   subtype Value_Metadata_Entry_T is Opaque_Value_Metadata_Entry_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:103
 
   --*
   -- * Represents an LLVM basic block builder.
@@ -133,9 +134,9 @@ package LLVM.Types is
   -- * This models llvm::IRBuilder.
   --  
 
-   --  skipped empty struct LLVMOpaqueBuilder
+   type Opaque_Builder_Impl_T is null record;   -- incomplete struct
 
-   type Builder_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:110
+   type Builder_T is access all Opaque_Builder_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:110
 
   --*
   -- * Represents an LLVM debug info builder.
@@ -143,9 +144,9 @@ package LLVM.Types is
   -- * This models llvm::DIBuilder.
   --  
 
-   --  skipped empty struct LLVMOpaqueDIBuilder
+   type Opaque_DI_Builder_Impl_T is null record;   -- incomplete struct
 
-   type DI_Builder_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:117
+   type DI_Builder_T is access all Opaque_DI_Builder_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:117
 
   --*
   -- * Interface used to provide a module to JIT or interpreter.
@@ -153,28 +154,28 @@ package LLVM.Types is
   -- * different type to keep binary compatibility.
   --  
 
-   --  skipped empty struct LLVMOpaqueModuleProvider
+   type Opaque_Module_Provider_Impl_T is null record;   -- incomplete struct
 
-   type Module_Provider_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:124
+   type Module_Provider_T is access all Opaque_Module_Provider_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:124
 
   --* @see llvm::PassManagerBase  
-   --  skipped empty struct LLVMOpaquePassManager
+   type Opaque_Pass_Manager_Impl_T is null record;   -- incomplete struct
 
-   type Pass_Manager_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:127
+   type Pass_Manager_T is access all Opaque_Pass_Manager_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:127
 
   --* @see llvm::PassRegistry  
-   --  skipped empty struct LLVMOpaquePassRegistry
+   type Opaque_Pass_Registry_Impl_T is null record;   -- incomplete struct
 
-   type Pass_Registry_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:130
+   type Pass_Registry_T is access all Opaque_Pass_Registry_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:130
 
   --*
   -- * Used to get the users and usees of a Value.
   -- *
   -- * @see llvm::Use  
 
-   --  skipped empty struct LLVMOpaqueUse
+   type Opaque_Use_Impl_T is null record;   -- incomplete struct
 
-   type Use_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:136
+   type Use_T is access all Opaque_Use_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:136
 
   --*
   -- * Used to represent an attributes.
@@ -182,49 +183,49 @@ package LLVM.Types is
   -- * @see llvm::Attribute
   --  
 
-   --  skipped empty struct LLVMOpaqueAttributeRef
+   type Opaque_Attribute_Ref_Impl_T is null record;   -- incomplete struct
 
-   type Attribute_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:143
+   type Attribute_T is access all Opaque_Attribute_Ref_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:143
 
   --*
   -- * @see llvm::DiagnosticInfo
   --  
 
-   --  skipped empty struct LLVMOpaqueDiagnosticInfo
+   type Opaque_Diagnostic_Info_Impl_T is null record;   -- incomplete struct
 
-   type Diagnostic_Info_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:148
+   type Diagnostic_Info_T is access all Opaque_Diagnostic_Info_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:148
 
   --*
   -- * @see llvm::Comdat
   --  
 
-   --  skipped empty struct LLVMComdat
+   type Comdat_Impl_T is null record;   -- incomplete struct
 
-   type Comdat_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:153
+   type Comdat_T is access all Comdat_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:153
 
   --*
   -- * @see llvm::Module::ModuleFlagEntry
   --  
 
-   --  skipped empty struct LLVMOpaqueModuleFlagEntry
+   type Opaque_Module_Flag_Entry_Impl_T is null record;   -- incomplete struct
 
-   --  skipped empty struct LLVMModuleFlagEntry
+   subtype Module_Flag_Entry_T is Opaque_Module_Flag_Entry_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:158
 
   --*
   -- * @see llvm::JITEventListener
   --  
 
-   --  skipped empty struct LLVMOpaqueJITEventListener
+   type Opaque_JIT_Event_Listener_Impl_T is null record;   -- incomplete struct
 
-   type JIT_Event_Listener_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:163
+   type JIT_Event_Listener_T is access all Opaque_JIT_Event_Listener_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:163
 
   --*
   -- * @see llvm::object::Binary
   --  
 
-   --  skipped empty struct LLVMOpaqueBinary
+   type Opaque_Binary_Impl_T is null record;   -- incomplete struct
 
-   type Binary_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Types.h:168
+   type Binary_T is access all Opaque_Binary_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:168
 
   --*
   -- * @}

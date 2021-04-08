@@ -8,13 +8,13 @@ with Interfaces.C.Strings; use Interfaces.C.Strings;pragma Unreferenced (Interfa
 
 package body LLVM.Linker is
 
-   function Link_Modules2
+   function Link_Modules_2
      (Dest : LLVM.Types.Module_T;
       Src  : LLVM.Types.Module_T)
       return Boolean
    is
    begin
-      return Link_Modules2_C (Dest, Src) /= 0;
-   end Link_Modules2;
+      return Link_Modules_2_C (Dest, Src) /= 0;
+   end Link_Modules_2;
 
 end LLVM.Linker;

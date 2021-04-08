@@ -109,7 +109,7 @@ package body GNATLLVM.Compile is
       --  If we read a target config file, we may not have called our
       --  initialization yet, so do it here.
 
-      if Context = Context_T (System.Null_Address) then
+      if Context = null then
          Scan_Command_Line;
          Initialize_LLVM_Target;
       end if;
@@ -1476,7 +1476,7 @@ package body GNATLLVM.Compile is
                      Old_BB  : constant Basic_Block_T :=
                        Get_Instruction_Parent (Inst);
                      Targ_BB : constant Basic_Block_T :=
-                       Basic_Block_T (Get_Operand (Inst, 0));
+                       Value_As_Basic_Block (Get_Operand (Inst, 0));
 
                   begin
                      Instruction_Erase_From_Parent (Inst);

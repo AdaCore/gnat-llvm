@@ -1,4 +1,6 @@
+pragma Ada_2012;
 pragma Style_Checks (Off);
+pragma Warnings ("U");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with Interfaces.C.Strings;
@@ -27,13 +29,15 @@ package LLVM.Support is
   -- * @see sys::DynamicLibrary::LoadLibraryPermanently()
   --   
 
-   function Load_Library_Permanently
+function Load_Library_Permanently
      (Filename : String)
       return Boolean;
    function Load_Library_Permanently_C
      (Filename : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Support.h:29
-   pragma Import (C, Load_Library_Permanently_C, "LLVMLoadLibraryPermanently");
+      return LLVM.Types.Bool_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMLoadLibraryPermanently";
 
   --*
   -- * This function parses the given arguments using the LLVM command line parser.
@@ -45,14 +49,16 @@ package LLVM.Support is
   --  
 
 procedure Parse_Command_Line_Options
-     (argc     : int;
-      argv     : System.Address;
+     (Argc     : int;
+      Argv     : System.Address;
       Overview : String);
    procedure Parse_Command_Line_Options_C
-     (argc     : int;
-      argv     : System.Address;
-      Overview : Interfaces.C.Strings.chars_ptr);
-   pragma Import (C, Parse_Command_Line_Options_C, "LLVMParseCommandLineOptions");
+     (Argc     : int;
+      Argv     : System.Address;
+      Overview : Interfaces.C.Strings.chars_ptr)
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMParseCommandLineOptions";
 
   --*
   -- * This function will search through all previously loaded dynamic
@@ -62,13 +68,15 @@ procedure Parse_Command_Line_Options
   -- * @see sys::DynamicLibrary::SearchForAddressOfSymbol()
   --  
 
-   function Search_For_Address_Of_Symbol
-     (symbol_Name : String)
+function Search_For_Address_Of_Symbol
+     (Symbol_Name : String)
       return System.Address;
    function Search_For_Address_Of_Symbol_C
-     (symbol_Name : Interfaces.C.Strings.chars_ptr)
-      return System.Address;  -- llvm-11.0.1.src/include/llvm-c/Support.h:49
-   pragma Import (C, Search_For_Address_Of_Symbol_C, "LLVMSearchForAddressOfSymbol");
+     (Symbol_Name : Interfaces.C.Strings.chars_ptr)
+      return System.Address
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMSearchForAddressOfSymbol";
 
   --*
   -- * This functions permanently adds the symbol \p symbolName with the
@@ -78,13 +86,15 @@ procedure Parse_Command_Line_Options
   -- * @see sys::DynamicLibrary::AddSymbol()
   --  
 
-   procedure Add_Symbol
-     (symbol_Name  : String;
-      symbol_Value : System.Address);
+procedure Add_Symbol
+     (Symbol_Name  : String;
+      Symbol_Value : System.Address);
    procedure Add_Symbol_C
-     (symbol_Name  : Interfaces.C.Strings.chars_ptr;
-      symbol_Value : System.Address);  -- llvm-11.0.1.src/include/llvm-c/Support.h:58
-   pragma Import (C, Add_Symbol_C, "LLVMAddSymbol");
+     (Symbol_Name  : Interfaces.C.Strings.chars_ptr;
+      Symbol_Value : System.Address)
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMAddSymbol";
 
 end LLVM.Support;
 

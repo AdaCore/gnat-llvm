@@ -1,4 +1,6 @@
+pragma Ada_2012;
 pragma Style_Checks (Off);
+pragma Warnings ("U");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -37,8 +39,8 @@ package LLVM.Link_Time_Optimizer is
       LTO_NO_WORK,
       LTO_MODULE_MERGE_FAILURE,
       LTO_ASM_FAILURE,
-      LTO_NULL_OBJECT);
-   pragma Convention (C, Lto_Status_T);  -- llvm-11.0.1.src/include/llvm-c/LinkTimeOptimizer.h:34
+      LTO_NULL_OBJECT)
+   with Convention => C;  -- llvm-11.0.1.src/include/llvm-c/LinkTimeOptimizer.h:34
 
   --  Added C-specific error codes
    subtype Lto_Status_T_T is Lto_Status_T;  -- llvm-11.0.1.src/include/llvm-c/LinkTimeOptimizer.h:47
@@ -46,31 +48,39 @@ package LLVM.Link_Time_Optimizer is
   --/ This provides C interface to initialize link time optimizer. This allows
   --/ linker to use dlopen() interface to dynamically load LinkTimeOptimizer.
   --/ extern "C" helps, because dlopen() interface uses name to find the symbol.
-   function Create_Optimizer return Lto_T_T;  -- llvm-11.0.1.src/include/llvm-c/LinkTimeOptimizer.h:52
-   pragma Import (C, Create_Optimizer, "llvm_create_optimizer");
+   function Create_Optimizer return Lto_T_T  -- llvm-11.0.1.src/include/llvm-c/LinkTimeOptimizer.h:52
+   with Import => True, 
+        Convention => C, 
+        External_Name => "llvm_create_optimizer";
 
-   procedure Destroy_Optimizer (lto : Lto_T_T);  -- llvm-11.0.1.src/include/llvm-c/LinkTimeOptimizer.h:53
-   pragma Import (C, Destroy_Optimizer, "llvm_destroy_optimizer");
+   procedure Destroy_Optimizer (Lto : Lto_T_T)  -- llvm-11.0.1.src/include/llvm-c/LinkTimeOptimizer.h:53
+   with Import => True, 
+        Convention => C, 
+        External_Name => "llvm_destroy_optimizer";
 
-   function Read_Object_File
-     (lto            : Lto_T_T;
+function Read_Object_File
+     (Lto            : Lto_T_T;
       Input_Filename : String)
       return Lto_Status_T_T;
    function Read_Object_File_C
-     (lto            : Lto_T_T;
+     (Lto            : Lto_T_T;
       Input_Filename : Interfaces.C.Strings.chars_ptr)
-      return Lto_Status_T_T;  -- llvm-11.0.1.src/include/llvm-c/LinkTimeOptimizer.h:55
-   pragma Import (C, Read_Object_File_C, "llvm_read_object_file");
+      return Lto_Status_T_T
+   with Import => True,
+        Convention => C,
+        External_Name => "llvm_read_object_file";
 
-   function Optimize_Modules
-     (lto             : Lto_T_T;
+function Optimize_Modules
+     (Lto             : Lto_T_T;
       Output_Filename : String)
       return Lto_Status_T_T;
    function Optimize_Modules_C
-     (lto             : Lto_T_T;
+     (Lto             : Lto_T_T;
       Output_Filename : Interfaces.C.Strings.chars_ptr)
-      return Lto_Status_T_T;  -- llvm-11.0.1.src/include/llvm-c/LinkTimeOptimizer.h:57
-   pragma Import (C, Optimize_Modules_C, "llvm_optimize_modules");
+      return Lto_Status_T_T
+   with Import => True,
+        Convention => C,
+        External_Name => "llvm_optimize_modules";
 
   --*
   -- * @}

@@ -1,4 +1,6 @@
+pragma Ada_2012;
 pragma Style_Checks (Off);
+pragma Warnings ("U");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with stdint_h;
@@ -46,80 +48,80 @@ package LLVM.Orc is
   -- * A reference to an orc::ExecutionSession instance.
   --  
 
-   --  skipped empty struct LLVMOrcOpaqueExecutionSession
+   type Orc_Opaque_Execution_Session_Impl_T is null record;   -- incomplete struct
 
-   type Orc_Execution_Session_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:44
+   type Orc_Execution_Session_T is access all Orc_Opaque_Execution_Session_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:44
 
   --*
   -- * A reference to an orc::SymbolStringPool table entry.
   --  
 
-   --  skipped empty struct LLVMOrcQuaqueSymbolStringPoolEntryPtr
+   type Orc_Quaque_Symbol_String_Pool_Entry_Ptr_Impl_T is null record;   -- incomplete struct
 
-   type Orc_Symbol_String_Pool_Entry_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:50
+   type Orc_Symbol_String_Pool_Entry_T is access all Orc_Quaque_Symbol_String_Pool_Entry_Ptr_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:50
 
   --*
   -- * A reference to an orc::JITDylib instance.
   --  
 
-   --  skipped empty struct LLVMOrcOpaqueJITDylib
+   type Orc_Opaque_JIT_Dylib_Impl_T is null record;   -- incomplete struct
 
-   type Orc_JIT_Dylib_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:55
+   type Orc_JIT_Dylib_T is access all Orc_Opaque_JIT_Dylib_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:55
 
   --*
   -- * A reference to an orc::JITDylib::DefinitionGenerator.
   --  
 
-   --  skipped empty struct LLVMOrcOpaqueJITDylibDefinitionGenerator
+   type Orc_Opaque_JIT_Dylib_Definition_Generator_Impl_T is null record;   -- incomplete struct
 
-   type Orc_JIT_Dylib_Definition_Generator_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:61
+   type Orc_JIT_Dylib_Definition_Generator_T is access all Orc_Opaque_JIT_Dylib_Definition_Generator_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:61
 
   --*
   -- * Predicate function for SymbolStringPoolEntries.
   --  
 
-   type Orc_Symbol_Predicate_T is access function  (arg1 : Orc_Symbol_String_Pool_Entry_T; arg2 : System.Address) return int;
-   pragma Convention (C, Orc_Symbol_Predicate_T);  -- llvm-11.0.1.src/include/llvm-c/Orc.h:66
+   type Orc_Symbol_Predicate_T is access function (Arg_1 : Orc_Symbol_String_Pool_Entry_T; Arg_2 : System.Address) return int
+   with Convention => C;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:66
 
   --*
   -- * A reference to an orc::ThreadSafeContext instance.
   --  
 
-   --  skipped empty struct LLVMOrcOpaqueThreadSafeContext
+   type Orc_Opaque_Thread_Safe_Context_Impl_T is null record;   -- incomplete struct
 
-   type Orc_Thread_Safe_Context_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:72
+   type Orc_Thread_Safe_Context_T is access all Orc_Opaque_Thread_Safe_Context_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:72
 
   --*
   -- * A reference to an orc::ThreadSafeModule instance.
   --  
 
-   --  skipped empty struct LLVMOrcOpaqueThreadSafeModule
+   type Orc_Opaque_Thread_Safe_Module_Impl_T is null record;   -- incomplete struct
 
-   type Orc_Thread_Safe_Module_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:77
+   type Orc_Thread_Safe_Module_T is access all Orc_Opaque_Thread_Safe_Module_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:77
 
   --*
   -- * A reference to an orc::JITTargetMachineBuilder instance.
   --  
 
-   --  skipped empty struct LLVMOrcOpaqueJITTargetMachineBuilder
+   type Orc_Opaque_JIT_Target_Machine_Builder_Impl_T is null record;   -- incomplete struct
 
-   type Orc_JIT_Target_Machine_Builder_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:83
+   type Orc_JIT_Target_Machine_Builder_T is access all Orc_Opaque_JIT_Target_Machine_Builder_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:83
 
   --*
   -- * A reference to an orc::LLJITBuilder instance.
   --  
 
-   --  skipped empty struct LLVMOrcOpaqueLLJITBuilder
+   type Orc_Opaque_LLJIT_Builder_Impl_T is null record;   -- incomplete struct
 
-   type Orc_LLJIT_Builder_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:88
+   type Orc_LLJIT_Builder_T is access all Orc_Opaque_LLJIT_Builder_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:88
 
   --*
   -- * A reference to an orc::LLJIT instance.
   --  
 
-   --  skipped empty struct LLVMOrcOpaqueLLJIT
+   type Orc_Opaque_LLJIT_Impl_T is null record;   -- incomplete struct
 
-   type Orc_LLJIT_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:93
+   type Orc_LLJIT_T is access all Orc_Opaque_LLJIT_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:93
 
   --*
   -- * Intern a string in the ExecutionSession's SymbolStringPool and return a
@@ -134,22 +136,26 @@ package LLVM.Orc is
   -- * Note that this function does not perform linker-mangling on the string.
   --  
 
-   function Orc_Execution_Session_Intern
+function Orc_Execution_Session_Intern
      (ES   : Orc_Execution_Session_T;
       Name : String)
       return Orc_Symbol_String_Pool_Entry_T;
    function Orc_Execution_Session_Intern_C
      (ES   : Orc_Execution_Session_T;
       Name : Interfaces.C.Strings.chars_ptr)
-      return Orc_Symbol_String_Pool_Entry_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:108
-   pragma Import (C, Orc_Execution_Session_Intern_C, "LLVMOrcExecutionSessionIntern");
+      return Orc_Symbol_String_Pool_Entry_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMOrcExecutionSessionIntern";
 
   --*
   -- * Reduces the ref-count for of a SymbolStringPool entry.
   --  
 
-   procedure Orc_Release_Symbol_String_Pool_Entry (S : Orc_Symbol_String_Pool_Entry_T);  -- llvm-11.0.1.src/include/llvm-c/Orc.h:113
-   pragma Import (C, Orc_Release_Symbol_String_Pool_Entry, "LLVMOrcReleaseSymbolStringPoolEntry");
+   procedure Orc_Release_Symbol_String_Pool_Entry (S : Orc_Symbol_String_Pool_Entry_T)  -- llvm-11.0.1.src/include/llvm-c/Orc.h:113
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcReleaseSymbolStringPoolEntry";
 
   --*
   -- * Dispose of a JITDylib::DefinitionGenerator. This should only be called if
@@ -157,8 +163,10 @@ package LLVM.Orc is
   -- * prevented the client from calling LLVMOrcJITDylibAddGenerator).
   --  
 
-   procedure Orc_Dispose_JIT_Dylib_Definition_Generator (DG : Orc_JIT_Dylib_Definition_Generator_T);  -- llvm-11.0.1.src/include/llvm-c/Orc.h:120
-   pragma Import (C, Orc_Dispose_JIT_Dylib_Definition_Generator, "LLVMOrcDisposeJITDylibDefinitionGenerator");
+   procedure Orc_Dispose_JIT_Dylib_Definition_Generator (DG : Orc_JIT_Dylib_Definition_Generator_T)  -- llvm-11.0.1.src/include/llvm-c/Orc.h:120
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcDisposeJITDylibDefinitionGenerator";
 
   --*
   -- * Add a JITDylib::DefinitionGenerator to the given JITDylib.
@@ -167,8 +175,10 @@ package LLVM.Orc is
   -- * longer responsible for managing its memory.
   --  
 
-   procedure Orc_JIT_Dylib_Add_Generator (JD : Orc_JIT_Dylib_T; DG : Orc_JIT_Dylib_Definition_Generator_T);  -- llvm-11.0.1.src/include/llvm-c/Orc.h:129
-   pragma Import (C, Orc_JIT_Dylib_Add_Generator, "LLVMOrcJITDylibAddGenerator");
+   procedure Orc_JIT_Dylib_Add_Generator (JD : Orc_JIT_Dylib_T; DG : Orc_JIT_Dylib_Definition_Generator_T)  -- llvm-11.0.1.src/include/llvm-c/Orc.h:129
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcJITDylibAddGenerator";
 
   --*
   -- * Get a DynamicLibrarySearchGenerator that will reflect process symbols into
@@ -193,8 +203,10 @@ package LLVM.Orc is
      (Result : System.Address;
       Global_Prefx : char;
       Filter : Orc_Symbol_Predicate_T;
-      Filter_Ctx : System.Address) return LLVM.Error.Error_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:150
-   pragma Import (C, Orc_Create_Dynamic_Library_Search_Generator_For_Process, "LLVMOrcCreateDynamicLibrarySearchGeneratorForProcess");
+      Filter_Ctx : System.Address) return LLVM.Error.Error_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:150
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcCreateDynamicLibrarySearchGeneratorForProcess";
 
   --*
   -- * Create a ThreadSafeContext containing a new LLVMContext.
@@ -205,22 +217,28 @@ package LLVM.Orc is
   -- * will keep the data alive as long as it is needed.
   --  
 
-   function Orc_Create_New_Thread_Safe_Context return Orc_Thread_Safe_Context_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:162
-   pragma Import (C, Orc_Create_New_Thread_Safe_Context, "LLVMOrcCreateNewThreadSafeContext");
+   function Orc_Create_New_Thread_Safe_Context return Orc_Thread_Safe_Context_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:162
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcCreateNewThreadSafeContext";
 
   --*
   -- * Get a reference to the wrapped LLVMContext.
   --  
 
-   function Orc_Thread_Safe_Context_Get_Context (TS_Ctx : Orc_Thread_Safe_Context_T) return LLVM.Types.Context_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:168
-   pragma Import (C, Orc_Thread_Safe_Context_Get_Context, "LLVMOrcThreadSafeContextGetContext");
+   function Orc_Thread_Safe_Context_Get_Context (TS_Ctx : Orc_Thread_Safe_Context_T) return LLVM.Types.Context_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:168
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcThreadSafeContextGetContext";
 
   --*
   -- * Dispose of a ThreadSafeContext.
   --  
 
-   procedure Orc_Dispose_Thread_Safe_Context (TS_Ctx : Orc_Thread_Safe_Context_T);  -- llvm-11.0.1.src/include/llvm-c/Orc.h:173
-   pragma Import (C, Orc_Dispose_Thread_Safe_Context, "LLVMOrcDisposeThreadSafeContext");
+   procedure Orc_Dispose_Thread_Safe_Context (TS_Ctx : Orc_Thread_Safe_Context_T)  -- llvm-11.0.1.src/include/llvm-c/Orc.h:173
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcDisposeThreadSafeContext";
 
   --*
   -- * Create a ThreadSafeModule wrapper around the given LLVM module. This takes
@@ -233,8 +251,10 @@ package LLVM.Orc is
   -- * should call LLVMOrcDisposeThreadSafeModule to dispose of it.
   --  
 
-   function Orc_Create_New_Thread_Safe_Module (M : LLVM.Types.Module_T; TS_Ctx : Orc_Thread_Safe_Context_T) return Orc_Thread_Safe_Module_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:186
-   pragma Import (C, Orc_Create_New_Thread_Safe_Module, "LLVMOrcCreateNewThreadSafeModule");
+   function Orc_Create_New_Thread_Safe_Module (M : LLVM.Types.Module_T; TS_Ctx : Orc_Thread_Safe_Context_T) return Orc_Thread_Safe_Module_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:186
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcCreateNewThreadSafeModule";
 
   --*
   -- * Dispose of a ThreadSafeModule. This should only be called if ownership has
@@ -242,8 +262,10 @@ package LLVM.Orc is
   -- * adding this to the JIT).
   --  
 
-   procedure Orc_Dispose_Thread_Safe_Module (TSM : Orc_Thread_Safe_Module_T);  -- llvm-11.0.1.src/include/llvm-c/Orc.h:194
-   pragma Import (C, Orc_Dispose_Thread_Safe_Module, "LLVMOrcDisposeThreadSafeModule");
+   procedure Orc_Dispose_Thread_Safe_Module (TSM : Orc_Thread_Safe_Module_T)  -- llvm-11.0.1.src/include/llvm-c/Orc.h:194
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcDisposeThreadSafeModule";
 
   --*
   -- * Create a JITTargetMachineBuilder by detecting the host.
@@ -253,8 +275,10 @@ package LLVM.Orc is
   -- * of by calling LLVMOrcDisposeJITTargetMachineBuilder.
   --  
 
-   function Orc_JIT_Target_Machine_Builder_Detect_Host (Result : System.Address) return LLVM.Error.Error_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:203
-   pragma Import (C, Orc_JIT_Target_Machine_Builder_Detect_Host, "LLVMOrcJITTargetMachineBuilderDetectHost");
+   function Orc_JIT_Target_Machine_Builder_Detect_Host (Result : System.Address) return LLVM.Error.Error_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:203
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcJITTargetMachineBuilderDetectHost";
 
   --*
   -- * Create a JITTargetMachineBuilder from the given TargetMachine template.
@@ -265,15 +289,19 @@ package LLVM.Orc is
   -- * or disposed of by calling LLVMOrcDisposeJITTargetMachineBuilder.
   --  
 
-   function Orc_JIT_Target_Machine_Builder_Create_From_Target_Machine (TM : LLVM.Target_Machine.Target_Machine_T) return Orc_JIT_Target_Machine_Builder_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:215
-   pragma Import (C, Orc_JIT_Target_Machine_Builder_Create_From_Target_Machine, "LLVMOrcJITTargetMachineBuilderCreateFromTargetMachine");
+   function Orc_JIT_Target_Machine_Builder_Create_From_Target_Machine (TM : LLVM.Target_Machine.Target_Machine_T) return Orc_JIT_Target_Machine_Builder_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:215
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcJITTargetMachineBuilderCreateFromTargetMachine";
 
   --*
   -- * Dispose of a JITTargetMachineBuilder.
   --  
 
-   procedure Orc_Dispose_JIT_Target_Machine_Builder (JTMB : Orc_JIT_Target_Machine_Builder_T);  -- llvm-11.0.1.src/include/llvm-c/Orc.h:220
-   pragma Import (C, Orc_Dispose_JIT_Target_Machine_Builder, "LLVMOrcDisposeJITTargetMachineBuilder");
+   procedure Orc_Dispose_JIT_Target_Machine_Builder (JTMB : Orc_JIT_Target_Machine_Builder_T)  -- llvm-11.0.1.src/include/llvm-c/Orc.h:220
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcDisposeJITTargetMachineBuilder";
 
   --*
   -- * Create an LLJITTargetMachineBuilder.
@@ -282,8 +310,10 @@ package LLVM.Orc is
   -- * LLVMOrcDisposeLLJITBuilder once they are done with it.
   --  
 
-   function Orc_Create_LLJIT_Builder return Orc_LLJIT_Builder_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:229
-   pragma Import (C, Orc_Create_LLJIT_Builder, "LLVMOrcCreateLLJITBuilder");
+   function Orc_Create_LLJIT_Builder return Orc_LLJIT_Builder_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:229
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcCreateLLJITBuilder";
 
   --*
   -- * Dispose of an LLVMOrcLLJITBuilderRef. This should only be called if ownership
@@ -291,8 +321,10 @@ package LLVM.Orc is
   -- * that function from being called).
   --  
 
-   procedure Orc_Dispose_LLJIT_Builder (Builder : Orc_LLJIT_Builder_T);  -- llvm-11.0.1.src/include/llvm-c/Orc.h:236
-   pragma Import (C, Orc_Dispose_LLJIT_Builder, "LLVMOrcDisposeLLJITBuilder");
+   procedure Orc_Dispose_LLJIT_Builder (Builder : Orc_LLJIT_Builder_T)  -- llvm-11.0.1.src/include/llvm-c/Orc.h:236
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcDisposeLLJITBuilder";
 
   --*
   -- * Set the JITTargetMachineBuilder to be used when constructing the LLJIT
@@ -301,8 +333,10 @@ package LLVM.Orc is
   -- * JITTargetMachineBuilder.
   --  
 
-   procedure Orc_LLJIT_Builder_Set_JIT_Target_Machine_Builder (Builder : Orc_LLJIT_Builder_T; JTMB : Orc_JIT_Target_Machine_Builder_T);  -- llvm-11.0.1.src/include/llvm-c/Orc.h:244
-   pragma Import (C, Orc_LLJIT_Builder_Set_JIT_Target_Machine_Builder, "LLVMOrcLLJITBuilderSetJITTargetMachineBuilder");
+   procedure Orc_LLJIT_Builder_Set_JIT_Target_Machine_Builder (Builder : Orc_LLJIT_Builder_T; JTMB : Orc_JIT_Target_Machine_Builder_T)  -- llvm-11.0.1.src/include/llvm-c/Orc.h:244
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcLLJITBuilderSetJITTargetMachineBuilder";
 
   --*
   -- * Create an LLJIT instance from an LLJITBuilder.
@@ -319,15 +353,19 @@ package LLVM.Orc is
   -- * and not-yet compiled modules.
   --  
 
-   function Orc_Create_LLJIT (Result : System.Address; Builder : Orc_LLJIT_Builder_T) return LLVM.Error.Error_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:261
-   pragma Import (C, Orc_Create_LLJIT, "LLVMOrcCreateLLJIT");
+   function Orc_Create_LLJIT (Result : System.Address; Builder : Orc_LLJIT_Builder_T) return LLVM.Error.Error_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:261
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcCreateLLJIT";
 
   --*
   -- * Dispose of an LLJIT instance.
   --  
 
-   function Orc_Dispose_LLJIT (J : Orc_LLJIT_T) return LLVM.Error.Error_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:267
-   pragma Import (C, Orc_Dispose_LLJIT, "LLVMOrcDisposeLLJIT");
+   function Orc_Dispose_LLJIT (J : Orc_LLJIT_T) return LLVM.Error.Error_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:267
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcDisposeLLJIT";
 
   --*
   -- * Get a reference to the ExecutionSession for this LLJIT instance.
@@ -336,8 +374,10 @@ package LLVM.Orc is
   -- * responsible for managing its memory.
   --  
 
-   function Orc_LLJIT_Get_Execution_Session (J : Orc_LLJIT_T) return Orc_Execution_Session_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:275
-   pragma Import (C, Orc_LLJIT_Get_Execution_Session, "LLVMOrcLLJITGetExecutionSession");
+   function Orc_LLJIT_Get_Execution_Session (J : Orc_LLJIT_T) return Orc_Execution_Session_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:275
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcLLJITGetExecutionSession";
 
   --*
   -- * Return a reference to the Main JITDylib.
@@ -346,28 +386,34 @@ package LLVM.Orc is
   -- * for managing its memory.
   --  
 
-   function Orc_LLJIT_Get_Main_JIT_Dylib (J : Orc_LLJIT_T) return Orc_JIT_Dylib_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:283
-   pragma Import (C, Orc_LLJIT_Get_Main_JIT_Dylib, "LLVMOrcLLJITGetMainJITDylib");
+   function Orc_LLJIT_Get_Main_JIT_Dylib (J : Orc_LLJIT_T) return Orc_JIT_Dylib_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:283
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcLLJITGetMainJITDylib";
 
   --*
   -- * Return the target triple for this LLJIT instance. This string is owned by
   -- * the LLJIT instance and should not be freed by the client.
   --  
 
-   function Orc_LLJIT_Get_Triple_String
+function Orc_LLJIT_Get_Triple_String
      (J : Orc_LLJIT_T)
       return String;
    function Orc_LLJIT_Get_Triple_String_C
      (J : Orc_LLJIT_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:289
-   pragma Import (C, Orc_LLJIT_Get_Triple_String_C, "LLVMOrcLLJITGetTripleString");
+      return Interfaces.C.Strings.chars_ptr
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMOrcLLJITGetTripleString";
 
   --*
   -- * Returns the global prefix character according to the LLJIT's DataLayout.
   --  
 
-   function Orc_LLJIT_Get_Global_Prefix (J : Orc_LLJIT_T) return char;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:294
-   pragma Import (C, Orc_LLJIT_Get_Global_Prefix, "LLVMOrcLLJITGetGlobalPrefix");
+   function Orc_LLJIT_Get_Global_Prefix (J : Orc_LLJIT_T) return char  -- llvm-11.0.1.src/include/llvm-c/Orc.h:294
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcLLJITGetGlobalPrefix";
 
   --*
   -- * Mangles the given string according to the LLJIT instance's DataLayout, then
@@ -377,15 +423,17 @@ package LLVM.Orc is
   -- * value.
   --  
 
-   function Orc_LLJIT_Mangle_And_Intern
+function Orc_LLJIT_Mangle_And_Intern
      (J              : Orc_LLJIT_T;
       Unmangled_Name : String)
       return Orc_Symbol_String_Pool_Entry_T;
    function Orc_LLJIT_Mangle_And_Intern_C
      (J              : Orc_LLJIT_T;
       Unmangled_Name : Interfaces.C.Strings.chars_ptr)
-      return Orc_Symbol_String_Pool_Entry_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:304
-   pragma Import (C, Orc_LLJIT_Mangle_And_Intern_C, "LLVMOrcLLJITMangleAndIntern");
+      return Orc_Symbol_String_Pool_Entry_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMOrcLLJITMangleAndIntern";
 
   --*
   -- * Add a buffer representing an object file to the given JITDylib in the given
@@ -397,8 +445,10 @@ package LLVM.Orc is
    function Orc_LLJIT_Add_Object_File
      (J : Orc_LLJIT_T;
       JD : Orc_JIT_Dylib_T;
-      Obj_Buffer : LLVM.Types.Memory_Buffer_T) return LLVM.Error.Error_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:312
-   pragma Import (C, Orc_LLJIT_Add_Object_File, "LLVMOrcLLJITAddObjectFile");
+      Obj_Buffer : LLVM.Types.Memory_Buffer_T) return LLVM.Error.Error_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:312
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcLLJITAddObjectFile";
 
   --*
   -- * Add an IR module to the given JITDylib of the given LLJIT instance. This
@@ -410,8 +460,10 @@ package LLVM.Orc is
    function Orc_LLJIT_Add_LLVMIR_Module
      (J : Orc_LLJIT_T;
       JD : Orc_JIT_Dylib_T;
-      TSM : Orc_Thread_Safe_Module_T) return LLVM.Error.Error_T;  -- llvm-11.0.1.src/include/llvm-c/Orc.h:321
-   pragma Import (C, Orc_LLJIT_Add_LLVMIR_Module, "LLVMOrcLLJITAddLLVMIRModule");
+      TSM : Orc_Thread_Safe_Module_T) return LLVM.Error.Error_T  -- llvm-11.0.1.src/include/llvm-c/Orc.h:321
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMOrcLLJITAddLLVMIRModule";
 
   --*
   -- * Look up the given symbol in the main JITDylib of the given LLJIT instance.
@@ -428,8 +480,10 @@ function Orc_LLJIT_Lookup
      (J      : Orc_LLJIT_T;
       Result : access Orc_JIT_Target_Address_T;
       Name   : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Error.Error_T;
-   pragma Import (C, Orc_LLJIT_Lookup_C, "LLVMOrcLLJITLookup");
+      return LLVM.Error.Error_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMOrcLLJITLookup";
 
 end LLVM.Orc;
 

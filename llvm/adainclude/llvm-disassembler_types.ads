@@ -1,4 +1,6 @@
+pragma Ada_2012;
 pragma Style_Checks (Off);
+pragma Warnings ("U");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -86,14 +88,14 @@ package LLVM.Disassembler_Types is
   -- * returns 1, otherwise it returns 0.
   --  
 
-   type Op_Info_Callback_T is access function 
-        (arg1 : System.Address;
-         arg2 : stdint_h.uint64_t;
-         arg3 : stdint_h.uint64_t;
-         arg4 : stdint_h.uint64_t;
-         arg5 : int;
-         arg6 : System.Address) return int;
-   pragma Convention (C, Op_Info_Callback_T);  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:42
+   type Op_Info_Callback_T is access function
+        (Arg_1 : System.Address;
+         Arg_2 : stdint_h.uint64_t;
+         Arg_3 : stdint_h.uint64_t;
+         Arg_4 : stdint_h.uint64_t;
+         Arg_5 : int;
+         Arg_6 : System.Address) return int
+   with Convention => C;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:42
 
   --*
   -- * The initial support in LLVM MC for the most general form of a relocatable
@@ -117,22 +119,22 @@ package LLVM.Disassembler_Types is
   --  
 
   -- 1 if this symbol is present  
-   type Op_Info_Symbol1_T is record
+   type Op_Info_Symbol_1_T is record
       Present : aliased stdint_h.uint64_t;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:67
       Name : Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:68
       Value : aliased stdint_h.uint64_t;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:69
-   end record;
-   pragma Convention (C_Pass_By_Copy, Op_Info_Symbol1_T);  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:66
+   end record
+   with Convention => C_Pass_By_Copy;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:66
 
   -- symbol name if not NULL  
   -- symbol value if name is NULL  
-   type Op_Info1_T is record
-      AddSymbol : aliased Op_Info_Symbol1_T;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:73
-      SubtractSymbol : aliased Op_Info_Symbol1_T;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:74
+   type Op_Info_1_T is record
+      AddSymbol : aliased Op_Info_Symbol_1_T;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:73
+      SubtractSymbol : aliased Op_Info_Symbol_1_T;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:74
       Value : aliased stdint_h.uint64_t;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:75
       VariantKind : aliased stdint_h.uint64_t;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:76
-   end record;
-   pragma Convention (C_Pass_By_Copy, Op_Info1_T);  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:72
+   end record
+   with Convention => C_Pass_By_Copy;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:72
 
   --*
   -- * The operand VariantKinds for symbolic disassembly.
@@ -159,13 +161,13 @@ package LLVM.Disassembler_Types is
   -- * to NULL.
   --  
 
-   type Symbol_Lookup_Callback_T is access function 
-        (arg1 : System.Address;
-         arg2 : stdint_h.uint64_t;
-         arg3 : access stdint_h.uint64_t;
-         arg4 : stdint_h.uint64_t;
-         arg5 : System.Address) return Interfaces.C.Strings.chars_ptr;
-   pragma Convention (C, Symbol_Lookup_Callback_T);  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:112
+   type Symbol_Lookup_Callback_T is access function
+        (Arg_1 : System.Address;
+         Arg_2 : stdint_h.uint64_t;
+         Arg_3 : access stdint_h.uint64_t;
+         Arg_4 : stdint_h.uint64_t;
+         Arg_5 : System.Address) return Interfaces.C.Strings.chars_ptr
+   with Convention => C;  -- llvm-11.0.1.src/include/llvm-c/DisassemblerTypes.h:112
 
   --*
   -- * The reference types on input and output.

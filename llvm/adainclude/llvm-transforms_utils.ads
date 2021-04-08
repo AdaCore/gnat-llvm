@@ -1,4 +1,6 @@
+pragma Ada_2012;
 pragma Style_Checks (Off);
+pragma Warnings ("U");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with LLVM.Types;
@@ -31,16 +33,22 @@ package LLVM.Transforms_Utils is
   --  
 
   --* See llvm::createLowerSwitchPass function.  
-   procedure Add_Lower_Switch_Pass (PM : LLVM.Types.Pass_Manager_T);  -- llvm-11.0.1.src/include/llvm-c/Transforms/Utils.h:35
-   pragma Import (C, Add_Lower_Switch_Pass, "LLVMAddLowerSwitchPass");
+   procedure Add_Lower_Switch_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-11.0.1.src/include/llvm-c/Transforms/Utils.h:35
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMAddLowerSwitchPass";
 
   --* See llvm::createPromoteMemoryToRegisterPass function.  
-   procedure Add_Promote_Memory_To_Register_Pass (PM : LLVM.Types.Pass_Manager_T);  -- llvm-11.0.1.src/include/llvm-c/Transforms/Utils.h:38
-   pragma Import (C, Add_Promote_Memory_To_Register_Pass, "LLVMAddPromoteMemoryToRegisterPass");
+   procedure Add_Promote_Memory_To_Register_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-11.0.1.src/include/llvm-c/Transforms/Utils.h:38
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMAddPromoteMemoryToRegisterPass";
 
   --* See llvm::createAddDiscriminatorsPass function.  
-   procedure Add_Add_Discriminators_Pass (PM : LLVM.Types.Pass_Manager_T);  -- llvm-11.0.1.src/include/llvm-c/Transforms/Utils.h:41
-   pragma Import (C, Add_Add_Discriminators_Pass, "LLVMAddAddDiscriminatorsPass");
+   procedure Add_Add_Discriminators_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-11.0.1.src/include/llvm-c/Transforms/Utils.h:41
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMAddAddDiscriminatorsPass";
 
   --*
   -- * @}

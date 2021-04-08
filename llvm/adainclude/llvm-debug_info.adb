@@ -22,7 +22,7 @@ package body LLVM.Debug_Info is
       File_Ref                 : LLVM.Types.Metadata_T;
       Producer                 : String;
       Producer_Len             : stddef_h.size_t;
-      is_Optimized             : Boolean;
+      Is_Optimized             : Boolean;
       Flags                    : String;
       Flags_Len                : stddef_h.size_t;
       Runtime_Ver              : unsigned;
@@ -40,7 +40,7 @@ package body LLVM.Debug_Info is
    is
       Producer_Array                : aliased char_array := To_C (Producer);
       Producer_String               : constant chars_ptr := To_Chars_Ptr (Producer_Array'Unchecked_Access);
-      is_Optimized_Bool             : constant LLVM.Types.Bool_T := Boolean'Pos (is_Optimized);
+      Is_Optimized_Bool             : constant LLVM.Types.Bool_T := Boolean'Pos (Is_Optimized);
       Flags_Array                   : aliased char_array := To_C (Flags);
       Flags_String                  : constant chars_ptr := To_Chars_Ptr (Flags_Array'Unchecked_Access);
       Split_Name_Array              : aliased char_array := To_C (Split_Name);
@@ -52,7 +52,7 @@ package body LLVM.Debug_Info is
       SDK_Array                     : aliased char_array := To_C (SDK);
       SDK_String                    : constant chars_ptr := To_Chars_Ptr (SDK_Array'Unchecked_Access);
    begin
-      return DI_Builder_Create_Compile_Unit_C (Builder, Lang, File_Ref, Producer_String, Producer_Len, is_Optimized_Bool, Flags_String, Flags_Len, Runtime_Ver, Split_Name_String, Split_Name_Len, Kind, DWO_Id, Split_Debug_Inlining_Bool, Debug_Info_For_Profiling_Bool, Sys_Root_String, Sys_Root_Len, SDK_String, SDK_Len);
+      return DI_Builder_Create_Compile_Unit_C (Builder, Lang, File_Ref, Producer_String, Producer_Len, Is_Optimized_Bool, Flags_String, Flags_Len, Runtime_Ver, Split_Name_String, Split_Name_Len, Kind, DWO_Id, Split_Debug_Inlining_Bool, Debug_Info_For_Profiling_Bool, Sys_Root_String, Sys_Root_Len, SDK_String, SDK_Len);
    end DI_Create_Compile_Unit;
 
    function DI_Create_File

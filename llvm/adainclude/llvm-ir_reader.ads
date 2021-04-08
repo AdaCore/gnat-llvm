@@ -1,4 +1,6 @@
+pragma Ada_2012;
 pragma Style_Checks (Off);
+pragma Warnings ("U");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with LLVM.Types;
@@ -40,8 +42,10 @@ function Parse_IR_In_Context
       Mem_Buf     : LLVM.Types.Memory_Buffer_T;
       Out_M       : System.Address;
       Out_Message : System.Address)
-      return LLVM.Types.Bool_T;
-   pragma Import (C, Parse_IR_In_Context_C, "LLVMParseIRInContext");
+      return LLVM.Types.Bool_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMParseIRInContext";
 
 end LLVM.IR_Reader;
 

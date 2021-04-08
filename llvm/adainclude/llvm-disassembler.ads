@@ -1,4 +1,6 @@
+pragma Ada_2012;
 pragma Style_Checks (Off);
+pragma Warnings ("U");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with Interfaces.C.Strings;
@@ -62,8 +64,10 @@ function Create_Disasm
       Tag_Type       : int;
       Get_Op_Info    : LLVM.Disassembler_Types.Op_Info_Callback_T;
       Symbol_Look_Up : LLVM.Disassembler_Types.Symbol_Lookup_Callback_T)
-      return LLVM.Disassembler_Types.Disasm_Context_T;
-   pragma Import (C, Create_Disasm_C, "LLVMCreateDisasm");
+      return LLVM.Disassembler_Types.Disasm_Context_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMCreateDisasm";
 
   --*
   -- * Create a disassembler for the TripleName and a specific CPU.  Symbolic
@@ -89,8 +93,10 @@ function Create_Disasm_CPU
       Tag_Type       : int;
       Get_Op_Info    : LLVM.Disassembler_Types.Op_Info_Callback_T;
       Symbol_Look_Up : LLVM.Disassembler_Types.Symbol_Lookup_Callback_T)
-      return LLVM.Disassembler_Types.Disasm_Context_T;
-   pragma Import (C, Create_Disasm_CPU_C, "LLVMCreateDisasmCPU");
+      return LLVM.Disassembler_Types.Disasm_Context_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMCreateDisasmCPU";
 
   --*
   -- * Create a disassembler for the TripleName, a specific CPU and specific feature
@@ -117,16 +123,20 @@ function Create_Disasm_CPU_Features
       Tag_Type       : int;
       Get_Op_Info    : LLVM.Disassembler_Types.Op_Info_Callback_T;
       Symbol_Look_Up : LLVM.Disassembler_Types.Symbol_Lookup_Callback_T)
-      return LLVM.Disassembler_Types.Disasm_Context_T;
-   pragma Import (C, Create_Disasm_CPU_Features_C, "LLVMCreateDisasmCPUFeatures");
+      return LLVM.Disassembler_Types.Disasm_Context_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMCreateDisasmCPUFeatures";
 
   --*
   -- * Set the disassembler's options.  Returns 1 if it can set the Options and 0
   -- * otherwise.
   --  
 
-   function Set_Disasm_Options (DC : LLVM.Disassembler_Types.Disasm_Context_T; Options : stdint_h.uint64_t) return int;  -- llvm-11.0.1.src/include/llvm-c/Disassembler.h:72
-   pragma Import (C, Set_Disasm_Options, "LLVMSetDisasmOptions");
+   function Set_Disasm_Options (DC : LLVM.Disassembler_Types.Disasm_Context_T; Options : stdint_h.uint64_t) return int  -- llvm-11.0.1.src/include/llvm-c/Disassembler.h:72
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMSetDisasmOptions";
 
   -- The option to produce marked up assembly.  
   -- The option to print immediates as hex.  
@@ -137,8 +147,10 @@ function Create_Disasm_CPU_Features
   -- * Dispose of a disassembler context.
   --  
 
-   procedure Disasm_Dispose (DC : LLVM.Disassembler_Types.Disasm_Context_T);  -- llvm-11.0.1.src/include/llvm-c/Disassembler.h:88
-   pragma Import (C, Disasm_Dispose, "LLVMDisasmDispose");
+   procedure Disasm_Dispose (DC : LLVM.Disassembler_Types.Disasm_Context_T)  -- llvm-11.0.1.src/include/llvm-c/Disassembler.h:88
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMDisasmDispose";
 
   --*
   -- * Disassemble a single instruction using the disassembler context specified in
@@ -166,8 +178,10 @@ function Disasm_Instruction
       PC              : stdint_h.uint64_t;
       Out_String      : Interfaces.C.Strings.chars_ptr;
       Out_String_Size : stddef_h.size_t)
-      return stddef_h.size_t;
-   pragma Import (C, Disasm_Instruction_C, "LLVMDisasmInstruction");
+      return stddef_h.size_t
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMDisasmInstruction";
 
   --*
   -- * @}

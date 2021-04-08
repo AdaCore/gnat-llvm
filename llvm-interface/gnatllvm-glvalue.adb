@@ -1510,7 +1510,7 @@ package body GNATLLVM.GLValue is
 
    procedure Set_Value_Name (V : GL_Value; Name : String) is
    begin
-      Set_Value_Name2 (+V, Name, Name'Length);
+      Set_Value_Name_2 (+V, Name, Name'Length);
    end Set_Value_Name;
 
    ------------------------

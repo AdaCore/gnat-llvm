@@ -222,7 +222,7 @@ package body CCG.Output is
 
       case Get_Type_Kind (T) is
          when Half_Type_Kind | Float_Type_Kind | Double_Type_Kind
-            | X86_Fp80typekind | F_P128_Type_Kind | Ppc_Fp128typekind =>
+            | X86_FP80_Type_Kind | FP128_Type_Kind | PPC_FP128_Type_Kind =>
             Write_Str ("0.0");
 
          when Integer_Type_Kind =>

@@ -141,14 +141,13 @@ package GNATLLVM is
    type ULL_Array          is array (Nat range <>) of ULL;
    type Access_Value_Array is access all Value_Array;
 
-   No_Value_T    : constant Value_T       := Value_T (System.Null_Address);
-   No_Type_T     : constant Type_T        := Type_T (System.Null_Address);
-   No_BB_T       : constant Basic_Block_T :=
-     Basic_Block_T (System.Null_Address);
-   No_Metadata_T : constant Metadata_T    := Metadata_T (System.Null_Address);
-   No_Builder_T  : constant Builder_T     := Builder_T (System.Null_Address);
-   No_Module_T   : constant Module_T      := Module_T (System.Null_Address);
-   No_Use_T      : constant Use_T         := Use_T (System.Null_Address);
+   No_Value_T    : constant Value_T       := null;
+   No_Type_T     : constant Type_T        := null;
+   No_BB_T       : constant Basic_Block_T := null;
+   No_Metadata_T : constant Metadata_T    := null;
+   No_Builder_T  : constant Builder_T     := null;
+   No_Module_T   : constant Module_T      := null;
+   No_Use_T      : constant Use_T         := null;
    --  Constant for null objects of various types
 
    function No (V : Value_T)            return Boolean is (V = No_Value_T);

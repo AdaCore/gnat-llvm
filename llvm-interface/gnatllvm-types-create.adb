@@ -156,7 +156,7 @@ package body GNATLLVM.Types.Create is
                   T := Double_Type_In_Context (Context);
                when 80 | 96 | 128 =>
                   --  Extended precision; not IEEE_128
-                  T := X86_F_P80_Type_In_Context (Context);
+                  T := X86FP80_Type_In_Context (Context);
                when others =>
                   pragma Assert (Decls_Only);
                   T := Byte_T;

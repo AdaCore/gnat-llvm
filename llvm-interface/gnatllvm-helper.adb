@@ -49,7 +49,7 @@ package body GNATLLVM.Helper is
 
    procedure Set_Current_Debug_Location (MD : Metadata_T) is
    begin
-      Set_Current_Debug_Location2 (IR_Builder, MD);
+      Set_Current_Debug_Location_2 (IR_Builder, MD);
    end Set_Current_Debug_Location;
 
 end GNATLLVM.Helper;

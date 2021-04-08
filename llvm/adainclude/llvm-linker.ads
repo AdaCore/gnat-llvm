@@ -1,4 +1,6 @@
+pragma Ada_2012;
 pragma Style_Checks (Off);
+pragma Warnings ("U");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with LLVM.Types;
@@ -25,8 +27,8 @@ package LLVM.Linker is
 
    type Linker_Mode_T is 
      (Linker_Destroy_Source,
-      Linkerpreservesource_Removed);
-   pragma Convention (C, Linker_Mode_T);  -- llvm-11.0.1.src/include/llvm-c/Linker.h:27
+      Linker_Preserve_Source_Removed)
+   with Convention => C;  -- llvm-11.0.1.src/include/llvm-c/Linker.h:27
 
   -- Links the source module into the destination module. The source module is
   -- * destroyed.
@@ -34,15 +36,17 @@ package LLVM.Linker is
   -- * Use the diagnostic handler to get any diagnostic message.
   -- 
 
-   function Link_Modules2
+function Link_Modules_2
      (Dest : LLVM.Types.Module_T;
       Src  : LLVM.Types.Module_T)
       return Boolean;
-   function Link_Modules2_C
+   function Link_Modules_2_C
      (Dest : LLVM.Types.Module_T;
       Src  : LLVM.Types.Module_T)
-      return LLVM.Types.Bool_T;  -- llvm-11.0.1.src/include/llvm-c/Linker.h:34
-   pragma Import (C, Link_Modules2_C, "LLVMLinkModules2");
+      return LLVM.Types.Bool_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMLinkModules2";
 
 end LLVM.Linker;
 

@@ -18,14 +18,14 @@ package body LLVM.Bit_Reader is
       return Parse_Bitcode_C (Mem_Buf, Out_Module, Out_Message) /= 0;
    end Parse_Bitcode;
 
-   function Parse_Bitcode2
+   function Parse_Bitcode_2
      (Mem_Buf    : LLVM.Types.Memory_Buffer_T;
       Out_Module : System.Address)
       return Boolean
    is
    begin
-      return Parse_Bitcode2_C (Mem_Buf, Out_Module) /= 0;
-   end Parse_Bitcode2;
+      return Parse_Bitcode_2_C (Mem_Buf, Out_Module) /= 0;
+   end Parse_Bitcode_2;
 
    function Parse_Bitcode_In_Context
      (Context_Ref : LLVM.Types.Context_T;
@@ -38,15 +38,15 @@ package body LLVM.Bit_Reader is
       return Parse_Bitcode_In_Context_C (Context_Ref, Mem_Buf, Out_Module, Out_Message) /= 0;
    end Parse_Bitcode_In_Context;
 
-   function Parse_Bitcode_In_Context2
+   function Parse_Bitcode_In_Context_2
      (Context_Ref : LLVM.Types.Context_T;
       Mem_Buf     : LLVM.Types.Memory_Buffer_T;
       Out_Module  : System.Address)
       return Boolean
    is
    begin
-      return Parse_Bitcode_In_Context2_C (Context_Ref, Mem_Buf, Out_Module) /= 0;
-   end Parse_Bitcode_In_Context2;
+      return Parse_Bitcode_In_Context_2_C (Context_Ref, Mem_Buf, Out_Module) /= 0;
+   end Parse_Bitcode_In_Context_2;
 
    function Get_Bitcode_Module_In_Context
      (Context_Ref : LLVM.Types.Context_T;
@@ -59,15 +59,15 @@ package body LLVM.Bit_Reader is
       return Get_Bitcode_Module_In_Context_C (Context_Ref, Mem_Buf, Out_M, Out_Message) /= 0;
    end Get_Bitcode_Module_In_Context;
 
-   function Get_Bitcode_Module_In_Context2
+   function Get_Bitcode_Module_In_Context_2
      (Context_Ref : LLVM.Types.Context_T;
       Mem_Buf     : LLVM.Types.Memory_Buffer_T;
       Out_M       : System.Address)
       return Boolean
    is
    begin
-      return Get_Bitcode_Module_In_Context2_C (Context_Ref, Mem_Buf, Out_M) /= 0;
-   end Get_Bitcode_Module_In_Context2;
+      return Get_Bitcode_Module_In_Context_2_C (Context_Ref, Mem_Buf, Out_M) /= 0;
+   end Get_Bitcode_Module_In_Context_2;
 
    function Get_Bitcode_Module
      (Mem_Buf     : LLVM.Types.Memory_Buffer_T;
@@ -79,13 +79,13 @@ package body LLVM.Bit_Reader is
       return Get_Bitcode_Module_C (Mem_Buf, Out_M, Out_Message) /= 0;
    end Get_Bitcode_Module;
 
-   function Get_Bitcode_Module2
+   function Get_Bitcode_Module_2
      (Mem_Buf : LLVM.Types.Memory_Buffer_T;
       Out_M   : System.Address)
       return Boolean
    is
    begin
-      return Get_Bitcode_Module2_C (Mem_Buf, Out_M) /= 0;
-   end Get_Bitcode_Module2;
+      return Get_Bitcode_Module_2_C (Mem_Buf, Out_M) /= 0;
+   end Get_Bitcode_Module_2;
 
 end LLVM.Bit_Reader;

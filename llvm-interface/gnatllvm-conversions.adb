@@ -18,7 +18,7 @@
 with Errout; use Errout;
 with Snames; use Snames;
 
-with LLVM.Transforms_Instcombine; use LLVM.Transforms_Instcombine;
+with LLVM.Transforms_Inst_Combine; use LLVM.Transforms_Inst_Combine;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
@@ -394,8 +394,8 @@ package body GNATLLVM.Conversions is
                              and then Is_Floating_Point_Type (In_GT)))
         and then (ULL'(Get_Type_Size (Type_Of (GT))) =
                     ULL'(Get_Type_Size (Type_Of (In_GT))))
-        and then Get_Type_Kind (GT) /= X86_Fp80typekind
-        and then Get_Type_Kind (In_GT) /= X86_Fp80typekind
+        and then Get_Type_Kind (GT) /= X86_FP80_Type_Kind
+        and then Get_Type_Kind (In_GT) /= X86_FP80_Type_Kind
       then
          Result := Bit_Cast (Get (Result, Data), GT);
 
@@ -967,8 +967,8 @@ package body GNATLLVM.Conversions is
    function Contains_Restricted_Type (T : Type_T) return Boolean is
    begin
       case Get_Type_Kind (T) is
-         when Pointer_Type_Kind | X86_Fp80typekind | F_P128_Type_Kind
-            | Ppc_Fp128typekind =>
+         when Pointer_Type_Kind | X86_FP80_Type_Kind | FP128_Type_Kind
+            | PPC_FP128_Type_Kind =>
             return True;
 
          when Array_Type_Kind =>

@@ -16,6 +16,26 @@ package body LLVM.Orc_Bindings is
       return Value (Orc_Get_Error_Msg_C (JIT_Stack));
    end Orc_Get_Error_Msg;
 
+   procedure Orc_Get_Mangled_Symbol
+     (JIT_Stack      : Orc_JIT_Stack_T;
+      Mangled_Symbol : System.Address;
+      Symbol         : String)
+   is
+      Symbol_Array  : aliased char_array := To_C (Symbol);
+      Symbol_String : constant chars_ptr := To_Chars_Ptr (Symbol_Array'Unchecked_Access);
+   begin
+      Orc_Get_Mangled_Symbol_C (JIT_Stack, Mangled_Symbol, Symbol_String);
+   end Orc_Get_Mangled_Symbol;
+
+   procedure Orc_Dispose_Mangled_Symbol
+     (Mangled_Symbol : String)
+   is
+      Mangled_Symbol_Array  : aliased char_array := To_C (Mangled_Symbol);
+      Mangled_Symbol_String : constant chars_ptr := To_Chars_Ptr (Mangled_Symbol_Array'Unchecked_Access);
+   begin
+      Orc_Dispose_Mangled_Symbol_C (Mangled_Symbol_String);
+   end Orc_Dispose_Mangled_Symbol;
+
    function Orc_Create_Indirect_Stub
      (JIT_Stack : Orc_JIT_Stack_T;
       Stub_Name : String;
@@ -64,25 +84,5 @@ package body LLVM.Orc_Bindings is
    begin
       return Orc_Get_Symbol_Address_In_C (JIT_Stack, Ret_Addr, H, Symbol_Name_String);
    end Orc_Get_Symbol_Address_In;
-
-   procedure Orc_Get_Mangled_Symbol
-     (JIT_Stack      : Orc_JIT_Stack_T;
-      Mangled_Symbol : System.Address;
-      Symbol         : String)
-   is
-      Symbol_Array  : aliased char_array := To_C (Symbol);
-      Symbol_String : constant chars_ptr := To_Chars_Ptr (Symbol_Array'Unchecked_Access);
-   begin
-      Orc_Get_Mangled_Symbol_C (JIT_Stack, Mangled_Symbol, Symbol_String);
-   end Orc_Get_Mangled_Symbol;
-
-   procedure Orc_Dispose_Mangled_Symbol
-     (Mangled_Symbol : String)
-   is
-      Mangled_Symbol_Array  : aliased char_array := To_C (Mangled_Symbol);
-      Mangled_Symbol_String : constant chars_ptr := To_Chars_Ptr (Mangled_Symbol_Array'Unchecked_Access);
-   begin
-      Orc_Dispose_Mangled_Symbol_C (Mangled_Symbol_String);
-   end Orc_Dispose_Mangled_Symbol;
 
 end LLVM.Orc_Bindings;

@@ -6,7 +6,7 @@ with Interfaces.C;         use Interfaces.C;
 pragma Unreferenced (Interfaces.C);
 with Interfaces.C.Strings; use Interfaces.C.Strings;pragma Unreferenced (Interfaces.C.Strings);
 
-package body LLVM.Transforms_Passmanagerbuilder is
+package body LLVM.Transforms_Pass_Manager_Builder is
 
    procedure Pass_Manager_Set_Disable_Unit_At_A_Time
      (PMB   : Pass_Manager_Builder_T;
@@ -47,4 +47,4 @@ package body LLVM.Transforms_Passmanagerbuilder is
       Pass_Manager_Builder_Populate_LTO_Pass_Manager_C (PMB, PM, Internalize_Bool, Run_Inliner_Bool);
    end Pass_Manager_Populate_LTO_Pass_Manager;
 
-end LLVM.Transforms_Passmanagerbuilder;
+end LLVM.Transforms_Pass_Manager_Builder;

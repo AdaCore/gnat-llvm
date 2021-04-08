@@ -9,11 +9,11 @@ with Interfaces.C.Strings; use Interfaces.C.Strings;pragma Unreferenced (Interfa
 package body LLVM.Remarks is
 
    function Remark_String_Get_Data
-     (String : Remark_String_T)
+     (Str : Remark_String_T)
       return String
    is
    begin
-      return Value (Remark_String_Get_Data_C (String));
+      return Value (Remark_String_Get_Data_C (Str));
    end Remark_String_Get_Data;
 
    function Remark_Parser_Has_Error

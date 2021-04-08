@@ -18,35 +18,35 @@ package body LLVM.Support is
       return Load_Library_Permanently_C (Filename_String) /= 0;
    end Load_Library_Permanently;
 
-   function Search_For_Address_Of_Symbol
-     (symbol_Name : String)
-      return System.Address
-   is
-      symbol_Name_Array  : aliased char_array := To_C (symbol_Name);
-      symbol_Name_String : constant chars_ptr := To_Chars_Ptr (symbol_Name_Array'Unchecked_Access);
-   begin
-      return Search_For_Address_Of_Symbol_C (symbol_Name_String);
-   end Search_For_Address_Of_Symbol;
-
    procedure Parse_Command_Line_Options
-     (argc     : int;
-      argv     : System.Address;
+     (Argc     : int;
+      Argv     : System.Address;
       Overview : String)
    is
       Overview_Array  : aliased char_array := To_C (Overview);
       Overview_String : constant chars_ptr := To_Chars_Ptr (Overview_Array'Unchecked_Access);
    begin
-      Parse_Command_Line_Options_C (argc, argv, Overview_String);
+      Parse_Command_Line_Options_C (Argc, Argv, Overview_String);
    end Parse_Command_Line_Options;
 
-   procedure Add_Symbol
-     (symbol_Name  : String;
-      symbol_Value : System.Address)
+   function Search_For_Address_Of_Symbol
+     (Symbol_Name : String)
+      return System.Address
    is
-      symbol_Name_Array  : aliased char_array := To_C (symbol_Name);
-      symbol_Name_String : constant chars_ptr := To_Chars_Ptr (symbol_Name_Array'Unchecked_Access);
+      Symbol_Name_Array  : aliased char_array := To_C (Symbol_Name);
+      Symbol_Name_String : constant chars_ptr := To_Chars_Ptr (Symbol_Name_Array'Unchecked_Access);
    begin
-      Add_Symbol_C (symbol_Name_String, symbol_Value);
+      return Search_For_Address_Of_Symbol_C (Symbol_Name_String);
+   end Search_For_Address_Of_Symbol;
+
+   procedure Add_Symbol
+     (Symbol_Name  : String;
+      Symbol_Value : System.Address)
+   is
+      Symbol_Name_Array  : aliased char_array := To_C (Symbol_Name);
+      Symbol_Name_String : constant chars_ptr := To_Chars_Ptr (Symbol_Name_Array'Unchecked_Access);
+   begin
+      Add_Symbol_C (Symbol_Name_String, Symbol_Value);
    end Add_Symbol;
 
 end LLVM.Support;

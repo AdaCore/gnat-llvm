@@ -193,8 +193,8 @@ package body GNATLLVM.DebugInfo is
          DI_Builder         := Create_DI_Builder (Module);
          Debug_Compile_Unit :=
            DI_Create_Compile_Unit
-           ((if   Ada_Version = Ada_83 then DWARF_Source_Language_Ada83
-             else DWARF_Source_Language_Ada95),
+           ((if   Ada_Version = Ada_83 then DWARF_Source_Language_Ada_83
+             else DWARF_Source_Language_Ada_95),
             Get_Debug_File_Node (Main_Source_File), "GNAT/LLVM",
             Code_Gen_Level /= Code_Gen_Level_None, "", 0, "",
             DWARF_Emission_Full, 0, False, False, "", "");

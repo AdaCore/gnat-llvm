@@ -1,0 +1,128 @@
+pragma Ada_2012;
+pragma Style_Checks (Off);
+pragma Warnings ("U");
+
+pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
+with LLVM.Types;
+
+package LLVM.Transforms_Pass_Manager_Builder is
+
+  --===-- llvm-c/Transform/PassManagerBuilder.h - PMB C Interface ---*- C -*-===*|*                                                                            *|
+  --|
+  --|* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|
+  --|* Exceptions.                                                                *|
+  --|* See https://llvm.org/LICENSE.txt for license information.                  *|
+  --|* SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception                    *|
+  --|*                                                                            *|
+  --|*===----------------------------------------------------------------------===*|
+  --|*                                                                            *|
+  --|* This header declares the C interface to the PassManagerBuilder class.      *|
+  --|*                                                                            *|
+  --\*===----------------------------------------------------------------------=== 
+
+   type Opaque_Pass_Manager_Builder_Impl_T is null record;   -- incomplete struct
+
+   type Pass_Manager_Builder_T is access all Opaque_Pass_Manager_Builder_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Transforms/PassManagerBuilder.h:20
+
+  --*
+  -- * @defgroup LLVMCTransformsPassManagerBuilder Pass manager builder
+  -- * @ingroup LLVMCTransforms
+  -- *
+  -- * @{
+  --  
+
+  --* See llvm::PassManagerBuilder.  
+   function Pass_Manager_Builder_Create return Pass_Manager_Builder_T  -- llvm-11.0.1.src/include/llvm-c/Transforms/PassManagerBuilder.h:32
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMPassManagerBuilderCreate";
+
+   procedure Pass_Manager_Builder_Dispose (PMB : Pass_Manager_Builder_T)  -- llvm-11.0.1.src/include/llvm-c/Transforms/PassManagerBuilder.h:33
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMPassManagerBuilderDispose";
+
+  --* See llvm::PassManagerBuilder::OptLevel.  
+   procedure Pass_Manager_Builder_Set_Opt_Level (PMB : Pass_Manager_Builder_T; Opt_Level : unsigned)  -- llvm-11.0.1.src/include/llvm-c/Transforms/PassManagerBuilder.h:37
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMPassManagerBuilderSetOptLevel";
+
+  --* See llvm::PassManagerBuilder::SizeLevel.  
+   procedure Pass_Manager_Builder_Set_Size_Level (PMB : Pass_Manager_Builder_T; Size_Level : unsigned)  -- llvm-11.0.1.src/include/llvm-c/Transforms/PassManagerBuilder.h:42
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMPassManagerBuilderSetSizeLevel";
+
+  --* See llvm::PassManagerBuilder::DisableUnitAtATime.  
+procedure Pass_Manager_Set_Disable_Unit_At_A_Time
+     (PMB   : Pass_Manager_Builder_T;
+      Value : Boolean);
+   procedure Pass_Manager_Builder_Set_Disable_Unit_At_A_Time_C
+     (PMB   : Pass_Manager_Builder_T;
+      Value : LLVM.Types.Bool_T)
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMPassManagerBuilderSetDisableUnitAtATime";
+
+  --* See llvm::PassManagerBuilder::DisableUnrollLoops.  
+procedure Pass_Manager_Set_Disable_Unroll_Loops
+     (PMB   : Pass_Manager_Builder_T;
+      Value : Boolean);
+   procedure Pass_Manager_Builder_Set_Disable_Unroll_Loops_C
+     (PMB   : Pass_Manager_Builder_T;
+      Value : LLVM.Types.Bool_T)
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMPassManagerBuilderSetDisableUnrollLoops";
+
+  --* See llvm::PassManagerBuilder::DisableSimplifyLibCalls  
+procedure Pass_Manager_Set_Disable_Simplify_Lib_Calls
+     (PMB   : Pass_Manager_Builder_T;
+      Value : Boolean);
+   procedure Pass_Manager_Builder_Set_Disable_Simplify_Lib_Calls_C
+     (PMB   : Pass_Manager_Builder_T;
+      Value : LLVM.Types.Bool_T)
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMPassManagerBuilderSetDisableSimplifyLibCalls";
+
+  --* See llvm::PassManagerBuilder::Inliner.  
+   procedure Pass_Manager_Builder_Use_Inliner_With_Threshold (PMB : Pass_Manager_Builder_T; Threshold : unsigned)  -- llvm-11.0.1.src/include/llvm-c/Transforms/PassManagerBuilder.h:62
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMPassManagerBuilderUseInlinerWithThreshold";
+
+  --* See llvm::PassManagerBuilder::populateFunctionPassManager.  
+   procedure Pass_Manager_Builder_Populate_Function_Pass_Manager (PMB : Pass_Manager_Builder_T; PM : LLVM.Types.Pass_Manager_T)  -- llvm-11.0.1.src/include/llvm-c/Transforms/PassManagerBuilder.h:67
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMPassManagerBuilderPopulateFunctionPassManager";
+
+  --* See llvm::PassManagerBuilder::populateModulePassManager.  
+   procedure Pass_Manager_Builder_Populate_Module_Pass_Manager (PMB : Pass_Manager_Builder_T; PM : LLVM.Types.Pass_Manager_T)  -- llvm-11.0.1.src/include/llvm-c/Transforms/PassManagerBuilder.h:72
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMPassManagerBuilderPopulateModulePassManager";
+
+  --* See llvm::PassManagerBuilder::populateLTOPassManager.  
+procedure Pass_Manager_Populate_LTO_Pass_Manager
+     (PMB         : Pass_Manager_Builder_T;
+      PM          : LLVM.Types.Pass_Manager_T;
+      Internalize : Boolean;
+      Run_Inliner : Boolean);
+   procedure Pass_Manager_Builder_Populate_LTO_Pass_Manager_C
+     (PMB         : Pass_Manager_Builder_T;
+      PM          : LLVM.Types.Pass_Manager_T;
+      Internalize : LLVM.Types.Bool_T;
+      Run_Inliner : LLVM.Types.Bool_T)
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMPassManagerBuilderPopulateLTOPassManager";
+
+  --*
+  -- * @}
+  --  
+
+end LLVM.Transforms_Pass_Manager_Builder;
+

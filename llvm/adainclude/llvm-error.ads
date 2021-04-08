@@ -1,4 +1,6 @@
+pragma Ada_2012;
 pragma Style_Checks (Off);
+pragma Warnings ("U");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -25,9 +27,9 @@ package LLVM.Error is
   -- * Opaque reference to an error instance. Null serves as the 'success' value.
   --  
 
-   --  skipped empty struct LLVMOpaqueError
+   type Opaque_Error_Impl_T is null record;   -- incomplete struct
 
-   type Error_T is new System.Address;  -- llvm-11.0.1.src/include/llvm-c/Error.h:26
+   type Error_T is access all Opaque_Error_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Error.h:26
 
   --*
   -- * Error type identifier.
@@ -40,8 +42,10 @@ package LLVM.Error is
   -- * value (i.e. non-null).
   --  
 
-   function Get_Error_Type_Id (Err : Error_T) return Error_Type_Id_T;  -- llvm-11.0.1.src/include/llvm-c/Error.h:37
-   pragma Import (C, Get_Error_Type_Id, "LLVMGetErrorTypeId");
+   function Get_Error_Type_Id (Err : Error_T) return Error_Type_Id_T  -- llvm-11.0.1.src/include/llvm-c/Error.h:37
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMGetErrorTypeId";
 
   --*
   -- * Dispose of the given error without handling it. This operation consumes the
@@ -50,8 +54,10 @@ package LLVM.Error is
   -- * to some other consuming operation, e.g. LLVMGetErrorMessage.
   --  
 
-   procedure Consume_Error (Err : Error_T);  -- llvm-11.0.1.src/include/llvm-c/Error.h:45
-   pragma Import (C, Consume_Error, "LLVMConsumeError");
+   procedure Consume_Error (Err : Error_T)  -- llvm-11.0.1.src/include/llvm-c/Error.h:45
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMConsumeError";
 
   --*
   -- * Returns the given string's error message. This operation consumes the error,
@@ -60,30 +66,36 @@ package LLVM.Error is
   -- * LLVMDisposeErrorMessage.
   --  
 
-   function Get_Error_Message
+function Get_Error_Message
      (Err : Error_T)
       return String;
    function Get_Error_Message_C
      (Err : Error_T)
-      return Interfaces.C.Strings.chars_ptr;  -- llvm-11.0.1.src/include/llvm-c/Error.h:53
-   pragma Import (C, Get_Error_Message_C, "LLVMGetErrorMessage");
+      return Interfaces.C.Strings.chars_ptr
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMGetErrorMessage";
 
   --*
   -- * Dispose of the given error message.
   --  
 
-   procedure Dispose_Error_Message
+procedure Dispose_Error_Message
      (Err_Msg : String);
    procedure Dispose_Error_Message_C
-     (Err_Msg : Interfaces.C.Strings.chars_ptr);  -- llvm-11.0.1.src/include/llvm-c/Error.h:58
-   pragma Import (C, Dispose_Error_Message_C, "LLVMDisposeErrorMessage");
+     (Err_Msg : Interfaces.C.Strings.chars_ptr)
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMDisposeErrorMessage";
 
   --*
   -- * Returns the type id for llvm StringError.
   --  
 
-   function Get_String_Error_Type_Id return Error_Type_Id_T;  -- llvm-11.0.1.src/include/llvm-c/Error.h:63
-   pragma Import (C, Get_String_Error_Type_Id, "LLVMGetStringErrorTypeId");
+   function Get_String_Error_Type_Id return Error_Type_Id_T  -- llvm-11.0.1.src/include/llvm-c/Error.h:63
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMGetStringErrorTypeId";
 
 end LLVM.Error;
 

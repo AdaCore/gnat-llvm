@@ -104,11 +104,11 @@ package GNATLLVM.Helper is
      with Pre => Present (U), Post => Present (Const_32_As_Metadata'Result);
 
    function MD_String (S : String) return Metadata_T is
-     (MD_String_In_Context2 (Context, S, S'Length))
+     (MD_String_In_Context_2 (Context, S, S'Length))
      with Post => Present (MD_String'Result);
 
    function MD_Node (MDs : Metadata_Array) return Metadata_T is
-     (MD_Node_In_Context2 (Context, MDs'Address, MDs'Length))
+     (MD_Node_In_Context_2 (Context, MDs'Address, MDs'Length))
      with Pre  => (for all M of MDs => Present (M)),
           Post => Present (MD_Node'Result);
 

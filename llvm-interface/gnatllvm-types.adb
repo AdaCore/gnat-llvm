@@ -540,7 +540,7 @@ package body GNATLLVM.Types is
             then
                declare
                   Bounds : constant GL_Value :=
-                    Get_Array_Bounds (GT, Alloc_GT, New_V);
+                    Get_Array_Bounds (Alloc_GT, Alloc_GT, New_V);
 
                begin
                   Store (Bounds, Get (Memory, Reference_To_Bounds));

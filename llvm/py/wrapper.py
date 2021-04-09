@@ -13,14 +13,14 @@ for functions so that the conversions between C and Ada strings/booleans/...
 are hidden.
 """
 
-ADA_KEYWORDS = set('''and or xor not select'''.split())
-
 from collections import namedtuple
+
+ADA_KEYWORDS = set('''and or xor not select'''.split())
 
 # Types used to describe a fragment of API to wrap.
 Package = namedtuple('Package', 'name elements')
-Function = namedtuple('Function', 'name return_type args')
-Procedure = namedtuple('Procedure', 'name args')
+Function = namedtuple('Function', 'name return_type args aspects')
+Procedure = namedtuple('Procedure', 'name args aspects')
 Argument = namedtuple('Argument', 'name type')
 
 INDENT = ' ' * 3
@@ -67,6 +67,16 @@ def is_wrapper_needed(element):
         if arg.type in TYPES_TRANSLATION_TABLE:
             return True
 
+    # Specific to clang-c headers: as C doesn't have a boolean standard type,
+    # and the clang-c headers do not define a boolean type like LLVM does, we
+    # will assume that every function containing Is_ that returns an unsigned
+    # or an integer actually returns a boolean (encoded in the resulting
+    # unsigned / integer).
+
+    if (isinstance(element, Function) and "Is_" in element.name
+            and element.return_type in ('unsigned', 'int')):
+        return True
+
     return (
         isinstance(element, Function) and
         element.return_type in TYPES_TRANSLATION_TABLE
@@ -95,10 +105,15 @@ def get_wrapper(element):
         wrapper_fn = wrapper_fn._replace(
             return_type=translate_type(wrapper_fn.return_type)
         )
+        # For clang, we will assume that every function that contains Is_ and
+        # returns an unsigned / integer is a boolean check.
+        if ("Is" in wrapper_fn.name and
+                element.return_type in ('unsigned', 'int')):
+            wrapper_fn = wrapper_fn._replace(return_type='Boolean')
 
     new_name = wrapper_fn.name
 
-    # Special case for instruction builder primivites: strip the "Build_"
+    # Special case for instruction builder primitives: strip the "Build_"
     # prefix, unless the result is an Ada keyword.
     if new_name.startswith('Build_'):
         n = new_name[6:]
@@ -108,6 +123,8 @@ def get_wrapper(element):
     new_name = new_name.replace('_Builder', '')
 
     wrapper_fn = wrapper_fn._replace(name=new_name)
+
+    wrapper_fn = wrapper_fn._replace(aspects=[])
 
     return wrapper_fn
 
@@ -135,6 +152,12 @@ def get_prototype(function, decl=False):
     if is_fnct:
         result.append('{}return {}'.format(INDENT, function.return_type))
     if decl:
+        for i, aspect in enumerate(function.aspects):
+            prefix = "with " if i == 0 else ' ' * 5
+            suffix = "" if i + 1 == len(function.aspects) else ","
+            result.append('{}{} => {}{}'.format(
+                prefix, aspect.f_id.text, aspect.f_expr.text, suffix
+            ))
         result[-1] += ';'
     return result
 
@@ -223,13 +246,20 @@ def generate_body(package):
             call = '{} ({})'.format(call, ', '.join(
                 call_args[arg.name] for arg in elt.args
             ))
-
         # Make some type conversion for the result if needed.
         if is_fnct:
             if elt.return_type == C_STRING:
                 call = 'Value ({})'.format(call)
+
+            # Specific to LLVM
             elif elt.return_type in (LLVM_BOOL, LLVM_TYPES_BOOL):
                 call = "{} /= 0".format(call)
+
+            # Specific to clang
+            elif ('Is_' in elt.name and elt.return_type in
+                  ('unsigned', 'int')):
+                call = "(if {} = 0 then False else True)".format(call)
+
             stmt = 'return {}'.format(call)
         else:
             stmt = call
@@ -262,21 +292,21 @@ if __name__ == '__main__':
         p = Package(name('LLVM.Core'), [
             Function('Module_Create_With_Name', 'Module', [
                 Argument('ModuleID', 'Interfaces.C.Strings.chars_ptr'),
-            ]),
+            ], []),
             Function('Get_Data_Layout', 'Interfaces.C.Strings.chars_ptr', [
                 Argument('M', 'Module'),
-            ]),
+            ], []),
             Procedure('Set_Data_Layout', [
                 Argument('M', 'Module'),
                 Argument('Triple', 'Interfaces.C.Strings.chars_ptr'),
-            ]),
+            ], []),
             Procedure('Set_Some_Flag', [
                 Argument('M', 'Module'),
                 Argument('Flag', 'Bool_T'),
-            ]),
+            ], []),
             Function('Get_Some_Flag', 'Bool_T', [
                 Argument('M', 'Module'),
-            ]),
+            ], []),
         ])
 
         print('--  Specification')

@@ -1,40 +1,40 @@
 #! /usr/bin/python
 
-from lxml import etree
-import os
-from os import path
+import libadalang as lal
 import shutil
-from sys import argv
-import subprocess
+
+from os import path
 from functools import partial
-from lxml_subp import *
-from wrapper import *
-import wrapper
+from sys import argv
+from wrapper import (Argument, Function, Package, Procedure,
+                     generate_body, generate_decl, is_wrapper_needed)
 
 
-def sed(filename, script):
-    """Execute a sed script on a file, in place."""
-    subprocess.check_call(['sed', '-e', script, '-i', filename])
+# Remove the first prefix in prefixes string starts with. If string does not
+# start with any of the given prefix, return it unchanged.
+def remove_prefix(string, prefixes):
+    for prefix in prefixes:
+        if string.lower().startswith(prefix.lower()):
+            return string[len(prefix):]
+    return string
 
 
-def gnat2xml(filename):
-    os.chdir("./gen")
-    subprocess.check_call(["gnat2xml", "-mxml", filename])
-    os.chdir("../")
+# Same as above for suffixes
+def remove_suffix(string, suffixes):
+    for suffix in suffixes:
+        if string.lower().endswith(suffix.lower()):
+            return string[:-len(suffix)]
+    return string
 
 
-def remove_prefix(string, prefix):
-    return string[len(prefix):] if string.startswith(prefix) else string
+# Return the name under the Ada convention naming scheme, e.g.
+# clang_getNullCursor => Get_Null_Cursor (after stripping the clang prefix)
+# LLVMAddLICMPass => Add_LICM_Pass (after stripping the LLVM prefix)
+def ada_name(name, strips=None, prefix="", suffix=""):
 
+    strips = list(strips or [])
 
-def remove_suffix(string, suffix):
-    return string[:-len(suffix)] if string.endswith(suffix) else string
-
-
-def ada_name(name, strip="llvm", prefix="", suffix=""):
-
-    if name.lower().startswith(strip):
-        name = name[4:]
+    name = remove_prefix(name, strips)
 
     if name.startswith("_"):
         name = name[1:]
@@ -43,21 +43,34 @@ def ada_name(name, strip="llvm", prefix="", suffix=""):
         return name
 
     if "_" in name:
-        name = name.capitalize()
-        new_name = "".join([name[i].upper() if name[i - 1] == "_" else name[i]
-                            for i in range(len(name))])
+        names = name.split('_')
+        res = []
+        for name in names:
+            res.append(ada_name_from_camelcase(name))
+        new_name = '_'.join(res)
     else:
         new_name = ada_name_from_camelcase(name)
 
-    return prefix + new_name + suffix
+    res = prefix + new_name + suffix
+
+    # HACK: if the resulting name is an Ada reserved keyword, modify it to
+    # not end up with a keyword (occurrence encountered for a parameter name).
+    reserved_keywords = {'String': 'Str'}
+
+    if str(res) in reserved_keywords:
+        res = reserved_keywords[res]
+
+    return res
 
 
-def ada_name_from_camelcase(cpp_name, prefix="", suffix=""):
+def ada_name_from_camelcase(cpp_name_p, prefix="", suffix=""):
     out = ""
     upper_group = ""
 
+    cpp_name = list(cpp_name_p)
+    cpp_name[0] = cpp_name[0].upper()
     for c in cpp_name:
-        if c.isupper():
+        if c.isupper() or c.isdigit():
             upper_group += c
         else:
             if upper_group:
@@ -70,47 +83,29 @@ def ada_name_from_camelcase(cpp_name, prefix="", suffix=""):
             out += c
 
     if upper_group:
-        out += "_"
+        if out:
+            out += "_"
         out += upper_group
 
     return out
 
 
-def sanitize_unit_name(name):
-    for prefix in ('llvm_c_', 'llvm_'):
-        name = remove_prefix(name, prefix)
-    for suffix in ('_h', '_def'):
-        name = remove_suffix(name, suffix)
+def sanitize_unit_name_llvm(name):
+    name = remove_prefix(name, ['llvm_c'])
+    name = remove_suffix(name, ['_h', '_def'])
     sub_name = ada_name(name)
     package_name = 'LLVM.{}'.format(sub_name)
     filename = '{}.ads'.format(package_name.lower().replace('.', '-'))
     return package_name, filename
 
 
-def di_name(defining_identifier):
-    return defining_identifier.attrib['def_name']
-
-
-def i_name(defining_identifier):
-    return defining_identifier.attrib['ref_name']
-
-
-class PackageTree(object):
-
-    def xpath(self, xpath):
-        return self.lxml_tree.xpath(xpath)
-
-    def __init__(self, filename):
-        with open(filename) as f:
-            self.lxml_tree = etree.parse(f)
-
-    def package_di(self):
-        return self.lxml_tree.xpath(
-            "//package_declaration/names_ql/defining_identifier"
-        )[0]
-
-    def package_name(self):
-        return di_name(self.package_di())
+def sanitize_unit_name_clang(name):
+    name = remove_prefix(name, ['clang_c'])
+    name = remove_suffix(name, ['_h', '_def'])
+    sub_name = ada_name(name)
+    package_name = 'Clang.{}'.format(sub_name)
+    filename = '{}.ads'.format(package_name.lower().replace('.', '-'))
+    return package_name, filename
 
 
 class FileAlteration(object):
@@ -123,10 +118,11 @@ class FileAlteration(object):
 
     def apply(self, file_array):
         if self.line == self.end_line:
-            file_array[self.line - 1][self.start_col - 1:self.end_col] = \
-                self.string
+            file_array[self.line - 1][self.start_col - 1:self.end_col - 1] = \
+                self.string.encode('utf-8')
         else:
-            strn_splt = self.string.split("\n")
+            strn_splt = map(lambda string: string.encode('utf-8'),
+                            self.string.split("\n"))
             # Disregard columns in multi-line mode because it is really simpler
             file_array[self.line - 1:self.end_line] = strn_splt
 
@@ -137,22 +133,17 @@ class FileAlteration(object):
 
 
 def create_alteration(node, new_name):
-    sloc = node.getchildren()[0]
+    sloc = node.sloc_range
     return FileAlteration(
-        int(sloc.attrib['line']),
-        int(sloc.attrib['col']),
-        int(sloc.attrib['endline']),
-        int(sloc.attrib['endcol']),
-        new_name
-    )
+        sloc.start.line,
+        sloc.start.column,
+        sloc.end.line,
+        sloc.end.column,
+        new_name)
 
 
 def get_ref_type(ref_node):
     return ref_node.attrib['ref'].split("/")[2]
-
-
-def get_xml_path(filename):
-    return "{0}.xml".format(path.join("gen/xml", filename))
 
 
 def get_ads_path(filename):
@@ -166,23 +157,6 @@ def get_out_path(filename):
 def get_adb_path(filename):
     return path.join("out/", filename.replace(".ads", ".adb"))
 
-simple_subst_nodes = [
-    "procedure_declaration",
-    "function_declaration",
-    "constant_declaration"
-]
-
-type_nodes = [
-    "ordinary_type_declaration",
-    "subtype_declaration"
-]
-
-
-def xp_startswith(attr_name, prefix):
-    return "starts-with({0}, '{1}') or starts-with({0}, '{2}')".format(
-        attr_name, prefix.lower(), prefix.upper()
-    )
-
 
 def apply_alterations(alterations, file_lines):
     for a in sorted(alterations,
@@ -191,136 +165,271 @@ def apply_alterations(alterations, file_lines):
         a.apply(file_lines)
 
 
-def process_names_for(filename, prefix):
-    get_name = partial(ada_name, strip=prefix)
+# Case insensitive version of the standard fun startswith
+def startswith(n, prefixes):
+    if not prefixes:
+        return True
+    for prefix in prefixes:
+        if n.lower().startswith(prefix.lower()):
+            return True
+    return False
 
-    enum_lit_xpath = "//defining_enumeration_literal[{0}]".format(
-        xp_startswith("@def_name", prefix)
-    )
-    tree = PackageTree(get_xml_path(filename))
-    package_di = tree.package_di()
-    old_package_name = di_name(package_di)
-    new_package_name, new_file_name = sanitize_unit_name(old_package_name)
 
-    # First, fix symbol mangling.
-    sed(
-        get_ads_path(filename),
-        r's/pragma Import (CPP, \(.*\), ".*");/pragma Import (C, \1, "\1");/g'
-    )
+def get_decls(unit, prefixes):
+    return unit.root.finditer(lambda n: n.is_a(lal.BasicDecl)
+                              and n.p_defining_name
+                              and startswith(n.p_defining_name.text, prefixes))
 
-    # Fix the name of the package to LLVM.*
-    sed(get_ads_path(filename), 's/^package {} is$/package {} is/g'.format(
-        old_package_name, new_package_name
-    ))
 
-    sed(get_ads_path(filename), 's/^end {};$/end {};/g'.format(
-        old_package_name, new_package_name
-    ))
+def get_idents(unit):
+    return unit.root.finditer(lambda n: n.is_a(lal.Identifier))
 
-    def get_type_name(tn):
-        return get_name(remove_suffix(tn, "Ref"), suffix="_T")
 
-    with open(get_out_path(new_file_name), "w") as out_file:
-        file_lines = [bytearray(line)
-                      for line
-                      in open(get_ads_path(filename)).read().split("\n")]
-        alterations = []
+def get_enum_literal_decls(unit, prefixes):
+    return unit.root.finditer(lambda n: n.is_a(lal.EnumLiteralDecl)
+                              and startswith(n.text, prefixes))
+
+
+def get_params(unit):
+    return unit.root.finditer(lambda n: n.is_a(lal.ParamSpec))
+
+
+def get_subp_decl(unit):
+    return unit.root.finditer(lambda n: n.is_a(lal.SubpDecl))
+
+
+# Return the decl that stores the aspects
+def get_aspects(subp_decl):
+    aspects = (subp_decl.f_aspects.f_aspect_assocs
+               if subp_decl.f_aspects else [])
+    subp_spec = subp_decl.f_subp_spec
+    # Work around a LAL bug where the function aspects are attached to the
+    # declaration of the returned AnonymousType. TODO: Remove it when the LAL
+    # bug is fixed. Also remove the function below.
+    if (not aspects and subp_spec.f_subp_kind.is_a(lal.SubpKindFunction) and
+            subp_spec.f_subp_returns.is_a(lal.AnonymousType)):
+        return subp_spec.f_subp_returns.f_type_decl
+    return subp_decl
+
+
+# Get the actual text of a return; work around the bug described above.
+# If we rely on f_subp_returns.text, we will also get the aspects text.
+# TODO: use fun_spec.f_subp_returns.text instead of this when LAL bug is
+# fixed.
+def get_return_str(fun_spec):
+    if (fun_spec.f_subp_returns.is_a(lal.AnonymousType)):
+        return fun_spec.f_subp_returns.f_type_decl.f_type_def.text
+    return fun_spec.f_subp_returns.text
+
+
+def arguments_array(subp_spec):
+    args = []
+    if subp_spec.f_subp_params:
+        params = subp_spec.f_subp_params.f_params
+        for param in params:
+            arg_name = param.f_ids.text
+            arg_type = param.f_type_expr.text
+            args.append(Argument(arg_name, arg_type))
+    return args
+
+
+def subp_tuple(subp_decl):
+    sloc = subp_decl.sloc_range
+    loc = ((sloc.start.line, sloc.start.column),
+           (sloc.end.line, sloc.end.column))
+    subp_spec = subp_decl.f_subp_spec
+    aspect_decl = get_aspects(subp_decl)
+    aspects = (aspect_decl.f_aspects.f_aspect_assocs if aspect_decl.f_aspects
+               else [])
+    if subp_spec.f_subp_kind.is_a(lal.SubpKindProcedure):
+        subp_tuple = Procedure(subp_spec.f_subp_name.text,
+                               arguments_array(subp_spec),
+                               aspects)
+    else:
+        subp_tuple = Function(
+            subp_spec.f_subp_name.text, get_return_str(subp_spec),
+            arguments_array(subp_spec), aspects)
+
+    return subp_decl, subp_tuple, loc
+
+
+def process_names_for(filenames, prefixes_for_filename, sanitize_unit_name):
+    # This map will track all alterations on a specific file
+    alterations = {}
+
+    # This map will track all identifier modifications (such as changing
+    # the name of a package, of a subprocedure, or of a type).
+    ident_modif = {}
+
+    for filename in filenames:
+        prefixes = prefixes_for_filename(filename)
+
+        get_name = partial(ada_name, strips=prefixes)
+
+        unit = context.get_from_file(filename)
+
+        # Record all alterations for this file
+        alterations[filename] = []
+
+        old_package_name = unit.root.p_decl.f_package_name.text
+        new_package_name, _ = sanitize_unit_name(old_package_name)
+
+        # The code generator does not generate pragmas, but aspects, so we
+        # will only consider those.
+        cpp_decls = get_subp_decl(unit)
+        for d in cpp_decls:
+            aspect_decl = get_aspects(d)
+            conv = aspect_decl.p_get_aspect("Convention").value
+            ext_name = aspect_decl.p_get_aspect("External_Name").value
+            alterations[filename].append(create_alteration(conv, "C"))
+            alterations[filename].append(
+                create_alteration(
+                    ext_name, '"{}"'.format(d.p_defining_name.text))
+            )
+
+        # Fix the name of the package
+        package_decl = unit.root.p_decl
+        ident_modif[package_decl.p_defining_name.text] = new_package_name
+
+        def get_type_name(tn):
+            return get_name(remove_suffix(tn, ["Ref"]), suffix="_T")
+
         # Process file
-        xpath = "//defining_identifier[{0}]".format(
-            xp_startswith("@def_name", prefix))
-        for di in tree.xpath(xpath):
-            if di.getparent().getparent().tag in simple_subst_nodes:
-                new_name = get_name(di_name(di))
-                if "LLVMOpcode" in di.attrib.get("type", ""):
+        for decl in get_decls(unit, prefixes):
+            def_name = decl.p_defining_name
+            # Anonymous TypeDecl
+            if not def_name:
+                continue
+            str_def_name = decl.p_defining_name.text
+
+            # Ideally, instead of having to keep track of DefiningName
+            # modifications, we would call p_find_all_references for all
+            # units on the DefiningName being modified.
+            # But this crashes so we work around it by tracking DefiningName
+            # modifications and propagating them afterwards. It is probably
+            # more efficient anyway.
+
+            if decl.is_a(lal.ObjectDecl, lal.SubpDecl):
+                new_name = get_name(str_def_name)
+                if (decl.is_a(lal.ObjectDecl) and
+                        decl.f_type_expr.text == "LLVMOpcode"):
                     new_name = "Op_" + new_name
-                alterations.append(
-                    create_alteration(di, new_name)
+                ident_modif[decl.p_defining_name.text] = new_name
+
+            elif decl.is_a(lal.BaseTypeDecl):
+
+                # Special case for null records. These represent underlying
+                # uncomplete C structure not defined in the C headers.
+                # We will suffix them with Impl if not already done.
+                #
+                # The previous GNAT Ada spec generator was skipping these type
+                # definitions, but do not anymore, so if we do not suffix them
+                # with _Impl, we face name clashing issues.
+                #
+                # An example in the LLVM bindings is the following:
+                #
+                #   type ComdatRef is null record;
+                #
+                #   type Comdat is access all ComdatRef;
+                #
+                # As the suffix Ref is removed (see what the function
+                # get_type_name above does), we would get:
+                #
+                #   type Comdat_T is null record;
+                #
+                #   type Comdat_T is access all Comdat_T;
+                #
+                # Prefixing beforehand the uncomplete type ensures we do not
+                # run into these:
+                #
+                #   type Comdat_Impl_T is null record;
+                #   type Comdat_T is access all Comdat_Impl_T
+
+                if (decl.is_a(lal.TypeDecl) and
+                    decl.f_type_def.is_a(lal.RecordTypeDef) and
+                    decl.f_type_def.f_record_def.is_a(lal.NullRecordDef) and
+                        not str_def_name.endswith("Impl")):
+                    str_def_name = str_def_name + "Impl"
+
+                new_name = get_type_name(str_def_name)
+                ident_modif[decl.p_defining_name.text] = new_name
+
+        for de in get_enum_literal_decls(unit, prefixes):
+            alterations[filename].append(
+                create_alteration(de.f_name, get_name(de.f_name.text))
+            )
+
+        for p in get_params(unit):
+            alterations[filename].append(
+                create_alteration(p.f_ids, get_name(p.f_ids.text))
+            )
+
+    # Propagate DefiningName modifications (types, subprocedures, packages)
+    # then apply all alterations, which results in generating the altered file
+    # in the `out` directory
+
+    for filename in filenames:
+
+        unit = context.get_from_file(filename)
+        old_package_name = unit.root.p_decl.f_package_name.text
+        _, new_file_name = sanitize_unit_name(old_package_name)
+
+        for i in get_idents(unit):
+            if (i.text in ident_modif):
+                alterations[filename].append(
+                    create_alteration(i, ident_modif[i.text])
                 )
-            elif di.getparent().getparent().tag in type_nodes:
-                name = di_name(di)
-                new_name = get_type_name(name)
-                alterations.append(
-                    create_alteration(di, new_name)
-                )
 
-        xpath = "//identifier[{0}]".format(xp_startswith("@ref_name", prefix))
-        for i in tree.xpath(xpath):
-            name = i_name(i)
+        with open(get_out_path(new_file_name), "w") as out_file:
+            file_lines = [bytearray(line, encoding='utf-8')
+                          for line
+                          in open(filename).read().split("\n")]
 
-            if get_ref_type(i) in ["function", "procedure"]:
-                new_name = get_name(name)
-            elif get_ref_type(i) in ["ordinary_type", "subtype"]:
-                new_name = get_type_name(name)
-            elif get_ref_type(i) == "package":
-                new_name, _ = sanitize_unit_name(name)
+            apply_alterations(alterations[filename], file_lines)
 
-            alterations.append(
-                create_alteration(i, new_name)
-            )
-
-        for de in tree.xpath(enum_lit_xpath):
-            alterations.append(
-                create_alteration(de, get_name(di_name(de)))
-            )
-
-        for di in tree.xpath("//parameter_profile_ql//defining_identifier"):
-            alterations.append(
-                create_alteration(di, get_name(di_name(di)))
-            )
-
-        apply_alterations(alterations, file_lines)
-
-        out_file.write("\n".join(map(str, file_lines)))
+            out_file.write("\n".join(map(lambda line: line.decode('utf-8'),
+                                         file_lines)))
 
 
-def handle_dependencies(file_name):
-    xml_path = get_xml_path(file_name)
-    tree = None
-    with open(xml_path) as f:
-        tree = etree.parse(f)
+def get_with(unit):
+    return unit.root.finditer(lambda n: n.is_a(lal.WithClause))
 
-    for i in tree.xpath("//with_clause//identifier"):
-        n = i_name(i)
-        if n.endswith("_h") and not n.startswith("llvm"):
-            dep_name = "{0}.ads".format(n)
-            gnat2xml(dep_name)
-            shutil.copy(get_ads_path(dep_name), get_out_path(dep_name))
-            handle_dependencies(dep_name)
+
+def handle_dependencies(filename):
+    unit = context.get_from_file("gen/" + filename)
+
+    for w in get_with(unit):
+        for name in w.f_packages:
+            n = name.text
+            if (n.endswith("_h") and not n.startswith("llvm") and
+                    not n.startswith("clang")):
+                dep_name = "{0}.ads".format(n)
+                shutil.copy(get_ads_path(dep_name), get_out_path(dep_name))
+                handle_dependencies(dep_name)
+
+
+def subprogram_defs(unit):
+    return unit.root.finditer(lambda n: n.is_a(lal.SubpDecl))
 
 
 def generate_wrappers_for_file(file_name):
-    tree = etree.parse(get_xml_path(file_name))
-    package_name = tree.getroot().attrib["unit_full_name"].split(".")
-    subp_defs = [subp_tuple(subp_def) for subp_def in subprogram_defs(tree)]
+    unit = context.get_from_file(get_ads_path(file_name))
+    package_name = unit.root.p_decl.f_package_name.text
+
+    subp_defs = [subp_tuple(subp_def) for subp_def in subprogram_defs(unit)]
 
     with open(get_ads_path(file_name)) as in_file:
-        file_lines = [bytearray(line)
+        file_lines = [bytearray(line, encoding='utf-8')
                       for line
                       in in_file.read().split("\n")]
 
     alterations = []
     is_adb_needed = False
 
-    # if fmt_name(package.name) == 'LLVM.Core':
-    #     result += [
-    #     ]
-
-    for subp_def, subp_tpl, ((sl, sc), (el, ec)) in subp_defs:
+    for subp_decl, subp_tpl, ((sl, sc), (el, ec)) in subp_defs:
         if is_wrapper_needed(subp_tpl):
             is_adb_needed = True
 
-            import_pragma = subp_def.getnext()
-            pragma_arg = import_pragma.findall(
-                ".//pragma_argument_association")[1]
-
-            sloc = pragma_arg.find("sloc")
-
-            al, ac = int(sloc.attrib["line"]), int(sloc.attrib["col"])
-            ael, aec = int(sloc.attrib["endline"]), int(sloc.attrib["endcol"])
-
-            alterations.append(
-                FileAlteration(al, ac, ael, aec, subp_tpl.name + "_C")
-            )
             alterations.append(
                 FileAlteration(
                     sl, sc, el, ec, "\n   ".join(generate_decl(subp_tpl)))
@@ -329,26 +438,44 @@ def generate_wrappers_for_file(file_name):
     apply_alterations(alterations, file_lines)
 
     with open(get_out_path(file_name), "w") as out_file:
-        for l in file_lines:
-            out_file.write(l + "\n")
+        for line in file_lines:
+            out_file.write(line.decode('utf-8') + "\n")
 
     if is_adb_needed:
-        package = Package(package_name, [t for _, t, _ in subp_defs])
+        package = Package([package_name], [t for _, t, _ in subp_defs])
         with open(get_adb_path(file_name), "w") as out_file:
             for line in generate_body(package):
                 out_file.write(line + "\n")
 
 
+def llvm_prefixes(filename):
+    if filename.find("lto") != -1:
+        return ["lto"]
+    else:
+        return ["llvm"]
+
+
+def clang_prefixes(filename):
+    return ["clang", "CX"]
+
+
 if __name__ == "__main__":
-    if argv[1] == "process_names":
+    context = lal.AnalysisContext(
+        unit_provider=lal.UnitProvider.auto(argv[2:])
+    )
+    if argv[1] == "process_names_llvm":
+        process_names_for(argv[2:], llvm_prefixes, sanitize_unit_name_llvm)
         for arg in argv[2:]:
             file_name = path.basename(arg)
-            if arg.find("lto") != -1:
-                process_names_for(file_name, "lto")
-            else:
-                process_names_for(file_name, "llvm")
+            handle_dependencies(file_name)
+    elif argv[1] == "process_names_clang":
+        process_names_for(argv[2:], clang_prefixes, sanitize_unit_name_clang)
+        for arg in argv[2:]:
+            file_name = path.basename(arg)
             handle_dependencies(file_name)
     elif argv[1] == "generate_wrappers":
         for arg in argv[2:]:
             file_name = path.basename(arg)
             generate_wrappers_for_file(file_name)
+    else:
+        print("unexpected arguments")

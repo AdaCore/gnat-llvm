@@ -126,8 +126,7 @@ package GNATLLVM.Utils is
    --  Returns a Name_Id corresponding to the external name of E
 
    function Get_Ext_Name (E : Entity_Id; Suffix : String := "") return String
-   is
-     (Get_Name_String (Get_Ext_Name (E)))
+   is (Get_Name_String (Get_Ext_Name (E, Suffix)))
      with Pre => Present (E);
    --  Returns a string corresponding to the external name of E
 

@@ -2375,6 +2375,10 @@ package body GNATLLVM.Variables is
             --  we have an internal error).  But avoid returning a double
             --  reference.
 
+            if No (V) then
+               raise Program_Error;
+            end if;
+
             return (if   Is_Double_Reference (V) then Get (V, Any_Reference)
                     else V);
       end case;

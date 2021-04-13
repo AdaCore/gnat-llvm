@@ -1455,7 +1455,8 @@ package body GNATLLVM.Exprs is
       if Type_Needs_Bounds (Dest_GT) and then Src_R /= Bounds_And_Data then
          if Is_Data (Src) and then Is_Loadable_Type (Dest_GT) then
             Store (Get (Src, Bounds_And_Data),
-                   Get (LValue, Reference_To_Bounds_And_Data));
+                   Get (Convert_Pointer (LValue, Src_GT),
+                        Reference_To_Bounds_And_Data));
             return;
          end if;
 

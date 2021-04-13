@@ -516,11 +516,11 @@ package body GNATLLVM.Aliasing is
                  and then not Is_Unconstrained_Array (TDT)
                then
                   Error_Msg_NE
-                    ("?possible aliasing problem for type&", N, TTE);
+                    ("??possible aliasing problem for type&", N, TTE);
                   Error_Msg_N
-                    ("\\?use -fno-strict-aliasing switch for references", N);
+                    ("\\??use -fno-strict-aliasing switch for references", N);
                   Error_Msg_NE
-                    ("\\?or use `pragma No_Strict_Aliasing (&);`", N, TTE);
+                    ("\\??or use `pragma No_Strict_Aliasing (&);`", N, TTE);
                end if;
             end if;
 

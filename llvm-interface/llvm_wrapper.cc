@@ -123,6 +123,13 @@ Add_Inline_No_Attribute (Function *fn)
 
 extern "C"
 void
+Add_Fn_Readonly_Attribute (Function *fn)
+{
+  fn->addFnAttr(Attribute::ReadOnly);
+}
+
+extern "C"
+void
 Add_Named_Attribute (Function *fn, const char *name, const char *val,
 		     LLVMContext &Ctx)
 {

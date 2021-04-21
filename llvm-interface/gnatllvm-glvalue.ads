@@ -1048,6 +1048,10 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V), Inline;
    --  Add the Readonly attribute to parameter with index Idx
 
+   procedure Add_Readonly_Attribute (V : GL_Value)
+     with Pre => Is_A_Function (V), Inline;
+   --  Add the Readonly attribute to V
+
    procedure Add_Writeonly_Attribute (V : GL_Value; Idx : Integer)
      with Pre => Is_A_Function (V), Inline;
    --  Add the Writeonly attribute to parameter with index Idx

@@ -1682,6 +1682,15 @@ package body GNATLLVM.GLValue is
       Add_Readonly_Attribute (+V, unsigned (Idx));
    end Add_Readonly_Attribute;
 
+   ----------------------------
+   -- Add_Readonly_Attribute --
+   ----------------------------
+
+   procedure Add_Readonly_Attribute (V : GL_Value) is
+   begin
+      Add_Readonly_Attribute (+V);
+   end Add_Readonly_Attribute;
+
    -----------------------------
    -- Add_Writeonly_Attribute --
    -----------------------------

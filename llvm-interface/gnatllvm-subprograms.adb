@@ -2395,6 +2395,7 @@ package body GNATLLVM.Subprograms is
           (if   Is_Access_Type (Return_GT)
            then Full_Designated_GL_Type (Return_GT) else No_GL_Type);
       Param_Num   : Natural              := 0;
+      Readonly    : Boolean              := Is_Pure (E);
       Formal      : Entity_Id;
 
    begin
@@ -2453,6 +2454,7 @@ package body GNATLLVM.Subprograms is
             Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, Return_GT);
             Add_Noalias_Attribute         (LLVM_Func, Param_Num);
             Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
+            Readonly  := False;
             Param_Num := Param_Num + 1;
          elsif Get_L_Ret_Kind (E) = Subprog_Return then
             if RK = Value_Return and then Is_Access_Type (Return_GT)
@@ -2479,6 +2481,21 @@ package body GNATLLVM.Subprograms is
                   else No_GL_Type);
 
             begin
+               --  If we can write a reference parameter, the function is not
+               --  Readonly. Likewise if this is an In parameter of type
+               --  Address since we may use it to write through. But allow
+               --  Address if we also have Pure_Function.
+
+               if (PK_Is_Reference (PK) and then PK /= PK_By_Ref_In)
+                 or else (PK = In_Value and then Is_Descendant_Of_Address (GT)
+                            and then not Has_Pragma_Pure_Function (E))
+               then
+                  Readonly := False;
+               end if;
+
+               --  Verify that the convention is valid and compute
+               --  any parameter attributes.
+
                Check_Convention (Formal);
                if PK = Activation_Record then
                   Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, DT);
@@ -2522,6 +2539,7 @@ package body GNATLLVM.Subprograms is
                  and then not Is_Unconstrained_Array (DT)
                  and then Ekind (DT) /= E_Subprogram_Type
                then
+                  Readonly := False;
                   if Can_Never_Be_Null (GT) then
                      Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, DT);
                   else
@@ -2544,9 +2562,12 @@ package body GNATLLVM.Subprograms is
 
       end if;
 
-      --  Save the value for this subprogram
+      --  Save the value for this subprogram and possibly set it readonly
 
       Set_Value (E, LLVM_Func);
+      if Readonly then
+         Add_Readonly_Attribute (LLVM_Func);
+      end if;
 
       --  Deal with our subprogram name being that of an elab proc
 

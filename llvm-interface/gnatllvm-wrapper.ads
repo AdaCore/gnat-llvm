@@ -132,6 +132,10 @@ package GNATLLVM.Wrapper is
    procedure Add_Readonly_Attribute (Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name => "Add_Readonly_Attribute";
 
+   procedure Add_Readonly_Attribute (Func : Value_T)
+     with Import, Convention => C,
+          External_Name => "Add_Fn_Readonly_Attribute";
+
    procedure Add_Writeonly_Attribute (Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name => "Add_Writeonly_Attribute";
 

@@ -2448,6 +2448,7 @@ package body GNATLLVM.Subprograms is
 
          if No_Return (E) then
             Set_Does_Not_Return (LLVM_Func);
+            Readonly := False;
          end if;
 
          if RK = Return_By_Parameter then

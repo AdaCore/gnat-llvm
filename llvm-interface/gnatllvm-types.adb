@@ -38,6 +38,8 @@ with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
+with CCG; use CCG;
+
 package body GNATLLVM.Types is
 
    --  We save pairs of GNAT types and LLVM Value_T for each level of
@@ -310,10 +312,12 @@ package body GNATLLVM.Types is
 
    function Build_Struct_Type
      (Types  : Type_Array;
-      Packed : Boolean := False;
-      Name   : Name_Id := No_Name) return Type_T
+      Packed : Boolean       := False;
+      Name   : Name_Id       := No_Name;
+      Fields : Name_Id_Array := (1 .. 0 => <>)) return Type_T
    is
-      T : Type_T;
+      T   : Type_T;
+      SID : Struct_Id;
 
    begin
       if No (Name) then
@@ -323,6 +327,16 @@ package body GNATLLVM.Types is
       else
          T := Struct_Create_Named (Name);
          Struct_Set_Body (T, Types, Packed);
+         if Fields'Length > 0 then
+            SID := New_Struct_Id;
+            for J in Fields'Range loop
+               C_Set_Field_Name_Info (SID, J - Fields'First, Fields (J),
+                                      Is_Padding => No (Fields (J)));
+            end loop;
+
+            C_Set_Struct (SID, T);
+         end if;
+
          return T;
       end if;
    end Build_Struct_Type;

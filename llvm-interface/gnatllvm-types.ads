@@ -67,6 +67,8 @@ package GNATLLVM.Types is
    --  constant is in number of loads or stores, meaning the maximum value
    --  of the size divided by the alignment.
 
+   type Name_Id_Array is array (Nat range <>) of Name_Id;
+
    function Is_Dynamic_Size
      (GT             : GL_Type;
       Max_Size       : Boolean := False;
@@ -185,8 +187,9 @@ package GNATLLVM.Types is
 
    function Build_Struct_Type
      (Types  : Type_Array;
-      Packed : Boolean := False;
-      Name   : Name_Id := No_Name) return Type_T
+      Packed : Boolean       := False;
+      Name   : Name_Id       := No_Name;
+      Fields : Name_Id_Array := (1 .. 0 => <>)) return Type_T
      with Post => Present (Build_Struct_Type'Result);
    --  Build an LLVM struct type containing the specified types. If Name
    --  if specified, this is a named LLVM struct type, otherwise it's

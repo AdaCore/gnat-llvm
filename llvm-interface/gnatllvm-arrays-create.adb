@@ -648,7 +648,8 @@ package body GNATLLVM.Arrays.Create is
      (Build_Struct_Type
         ((1 => Pointer_Type (Type_Of (GT), 0),
           2 => Pointer_Type (Create_Array_Bounds_Type (GT), 0)),
-         Name => Get_Ext_Name (GT, "_FP")));
+         Name => Get_Ext_Name (GT, "_FP"),
+         Fields => (0 => Name_Find ("P_DATA"), 1 => Name_Find ("P_BOUNDS"))));
 
    ------------------------------
    -- Create_Array_Bounds_Type --

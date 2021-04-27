@@ -308,6 +308,13 @@ package body GNATLLVM.Blocks is
       Table_Name           => "Open_Branches");
    --  Information needed to fixup branches to labels we haven't defined yet
 
+   Global_LP_Type : Type_T := No_Type_T;
+   --  Type for the "landing pad" used in exception handling
+
+   function Get_LP_Type return Type_T
+     with Post => Get_Type_Kind (Get_LP_Type'Result) = Struct_Type_Kind;
+   --  Get (and create, if necessary, the type for an EH Landing Pad
+
    function Find_Exit_Point (N : Node_Id) return Exit_Point_Level;
    --  Find the index into the exit point table for node N, if Present
 
@@ -729,6 +736,23 @@ package body GNATLLVM.Blocks is
 
    end Initialize_Predefines;
 
+   -----------------
+   -- Get_LP_Type --
+   -----------------
+
+   function Get_LP_Type return Type_T is
+   begin
+      if No (Global_LP_Type) then
+         Global_LP_Type := Build_Struct_Type
+           ((1 => Void_Ptr_T, 2 => Int_32_T),
+            Name        => Name_Find ("LANDING_PAD"),
+            Field_Names => (1 => Name_Find ("EH_PTR"),
+                            2 => Name_Find ("EH_SELECT")));
+      end if;
+
+      return Global_LP_Type;
+   end Get_LP_Type;
+
    --------------------------
    -- Get_Set_EH_Param_Fn --
    --------------------------
@@ -994,8 +1018,7 @@ package body GNATLLVM.Blocks is
 
    procedure Emit_Handlers (Block : Block_Stack_Level) is
       BI                : Block_Info renames Block_Stack.Table (Block);
-      LP_Type           : constant Type_T        :=
-        Build_Struct_Type ((1 => Void_Ptr_T, 2 => Int_32_T));
+      LP_Type           : constant Type_T        := Get_LP_Type;
       Have_Cleanup      : constant Boolean       :=
         (for some J in 1 .. Block =>
            Present (Block_Stack.Table (J).At_End_Proc)

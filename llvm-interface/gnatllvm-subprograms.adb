@@ -220,16 +220,19 @@ package body GNATLLVM.Subprograms is
    function Is_Binder_Elab_Proc (Name : String) return Boolean;
    --  Return True if Name is the name of the elab proc for Ada_Main
 
-   First_Body_Elab_Idx  : Nat       := 0;
+   First_Body_Elab_Idx    : Nat       := 0;
    --  Indicates the first entry in Elaboration_Table that represents
    --  an elab entry for the body of a package.  If zero, then all entries
    --  are for the spec.
 
-   Ada_Main_Elabb       : GL_Value  := No_GL_Value;
-   Ada_Main_Elabb_Ident : Entity_Id := Empty;
+   Ada_Main_Elabb         : GL_Value  := No_GL_Value;
+   Ada_Main_Elabb_Ident   : Entity_Id := Empty;
    --  We sometimes need an elab proc for Ada_Main and this can cause
    --  confusion with global names. So if we made it as part of the
    --  processing of a declaration, save it.
+
+   Subprogram_Access_Type : Type_T    := No_Type_T;
+   --  A type used for a subprogram access
 
    ----------------------
    -- Number_In_Params --
@@ -671,8 +674,9 @@ package body GNATLLVM.Subprograms is
       Out_Args_Count  : constant Nat         :=
         Number_Out_Params (E) +
           (if LRK = Struct_Out_Subprog then 1 else 0);
-      In_Arg_Types    : Type_Array (1 .. In_Args_Count);
-      Out_Arg_Types   : Type_Array (1 .. Out_Args_Count);
+      In_Arg_Types    : Type_Array    (1 .. In_Args_Count);
+      Out_Arg_Types   : Type_Array    (1 .. Out_Args_Count);
+      Out_Arg_Names   : Name_Id_Array (1 .. Out_Args_Count);
       Param_Ent       : Entity_Id            := First_Formal_With_Extras (E);
       J               : Nat                  := 1;
       LLVM_Result_Typ : Type_T               := LLVM_Ret_Typ;
@@ -765,17 +769,22 @@ package body GNATLLVM.Subprograms is
             J := 1;
             if LRK = Struct_Out_Subprog then
                Out_Arg_Types (J) := LLVM_Ret_Typ;
+               Out_Arg_Names (J) := Name_Find ("RESULT");
                J                 := J + 1;
             end if;
 
             Param_Ent := First_Out_Param (E);
             while Present (Param_Ent) loop
                Out_Arg_Types (J) := Type_Of (Full_Etype (Param_Ent));
+               Out_Arg_Names (J) := Get_Ext_Name (Param_Ent);
                J                 := J + 1;
                Next_Out_Param (Param_Ent);
             end loop;
 
-            LLVM_Result_Typ := Build_Struct_Type (Out_Arg_Types);
+            LLVM_Result_Typ :=
+              Build_Struct_Type (Out_Arg_Types,
+                                 Name        => Get_Ext_Name (E, "_RET"),
+                                 Field_Names => Out_Arg_Names);
       end case;
 
       return Fn_Ty (In_Arg_Types, LLVM_Result_Typ);
@@ -793,7 +802,15 @@ package body GNATLLVM.Subprograms is
       --  record while the actual subprogram might have one.  So we use a
       --  generic pointer for it and cast at the actual call.
 
-      return Build_Struct_Type ((1 => Void_Ptr_T, 2 => Void_Ptr_T));
+      if No (Subprogram_Access_Type) then
+         Subprogram_Access_Type :=
+           Build_Struct_Type ((1 => Void_Ptr_T, 2 => Void_Ptr_T),
+                              Name => Name_Find ("SUBPROGRAM_FP"),
+                              Field_Names => (1 => Name_Find ("SUBP"),
+                                              2 => Name_Find ("STATIC_LINK")));
+      end if;
+
+      return Subprogram_Access_Type;
    end Create_Subprogram_Access_Type;
 
    -------------------------

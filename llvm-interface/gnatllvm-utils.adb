@@ -325,7 +325,9 @@ package body GNATLLVM.Utils is
       --  all but the first character of the name, depending on whether
       --  the first character is a "*".
 
-      if Present (Interface_Name (E)) and then No (Address_Clause (E)) then
+      if E not in Formal_Kind_Id and then No (Address_Clause (E))
+        and then Present (Interface_Name (E))
+      then
          declare
             Str : constant String_Id := Strval (Interface_Name (E));
 

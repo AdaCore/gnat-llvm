@@ -29,9 +29,14 @@ with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Arrays.Create is
 
-   function Cannot_Be_Superflat (N : Node_Id) return Boolean;
+   function Cannot_Be_Superflat (N : Node_Id) return Boolean
+     with Pre => Present (N);
    --  Return True if the range described by N is known not to be
    --  able to be superflat.
+
+   function FLB_Cannot_Be_Superflat (N : Node_Id) return Boolean
+     with Pre => Present (N);
+   --  Likewise, but for an array with a fixed lower bound
 
    function Build_One_Bound
      (N             : Node_Id;
@@ -158,6 +163,30 @@ package body GNATLLVM.Arrays.Create is
         and then Intval (HB) >= Intval (LB) - 1;
    end Cannot_Be_Superflat;
 
+   -----------------------------
+   -- FLB_Cannot_Be_Superflat --
+   -----------------------------
+
+   function FLB_Cannot_Be_Superflat (N : Node_Id) return Boolean is
+      Our_Rng    : constant Node_Id := Get_Dim_Range (N);
+      Parent_Rng : Node_Id;
+      Parent_LB  : Node_Id;
+
+   begin
+      --  If this is forming a subtype where our parent subtype's lower
+      --  bound is also an integer and our lower bound minus one is no
+      --  greater than that bound, we can't form superflat objects.
+
+      if Nkind (N) = N_Subtype_Indication then
+         Parent_Rng := Get_Dim_Range (Entity (Subtype_Mark (N)));
+         Parent_LB  := Low_Bound (Parent_Rng);
+         return Nkind (Parent_LB) = N_Integer_Literal
+           and then Intval (Low_Bound (Our_Rng)) - 1 <= Intval (Parent_LB);
+      else
+         return False;
+      end if;
+   end FLB_Cannot_Be_Superflat;
+
    ---------------------
    -- Build_One_Bound --
    ---------------------
@@ -254,6 +283,8 @@ package body GNATLLVM.Arrays.Create is
       A_TE              : constant Entity_Id :=
         (if For_Orig then Full_Original_Array_Type (TE) else TE);
       Unconstrained     : constant Boolean   := not Is_Constrained (A_TE);
+      FLB               : constant Boolean   :=
+          Is_Fixed_Lower_Bound_Array_Subtype (TE);
       CT                : constant Entity_Id := Full_Component_Type (A_TE);
       Comp_Def_GT       : constant GL_Type   := Default_GL_Type (CT);
       Comp_Size_To_Use  : constant Uint      :=
@@ -356,7 +387,8 @@ package body GNATLLVM.Arrays.Create is
             Dim_Info  : Index_Bounds     :=
               (Bound_GT      => Index_BT,
                Bound_Sub_GT  => Full_GL_Type (Base_Index),
-               Low           => Build_One_Bound (LB, Unconstrained, For_Orig),
+               Low           =>
+                 Build_One_Bound (LB, Unconstrained and not FLB, For_Orig),
                High          => Build_One_Bound (HB, Unconstrained, For_Orig),
                Bound_Range   => No_GL_Value,
                Not_Superflat =>
@@ -364,7 +396,8 @@ package body GNATLLVM.Arrays.Create is
                     and then Cannot_Be_Superflat (Idx_Range))
                  or else (not For_Orig and then Is_Packed_Array_Impl_Type (TE)
                             and then Is_Bit_Packed_Array
-                                       (Original_Array_Type (TE))));
+                                       (Original_Array_Type (TE)))
+                 or else (FLB and then FLB_Cannot_Be_Superflat (Index)));
 
             --  We have to be careful here and flag the type of the index
             --  from that of the base type since we can have index ranges

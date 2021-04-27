@@ -585,21 +585,24 @@ package body GNATLLVM.Arrays.Create is
                            then Full_Original_Array_Type (GT)
                            else Full_Etype (GT));
       Fields     : aliased Type_Array (Nat range 0 .. 2 * Dims - 1);
+      F_Names    : Name_Id_Array (0 .. Dims * 2 - 1);
       First_Info : constant Array_Info_Id :=
         (if   Is_Packed_Array_Impl_Type (GT)
          then Get_Orig_Array_Info (Full_Etype (GT))
          else Get_Array_Info (Full_Etype (GT)));
-      J          : Nat                    := 0;
 
    begin
-      for K in Nat range 0 .. Dims - 1 loop
-         Fields (J)     :=
-           Type_Of (Array_Info.Table (First_Info + K).Bound_Sub_GT);
-         Fields (J + 1) := Fields (J);
-         J := J + 2;
+      for J in Nat range 0 .. Dims - 1 loop
+         Fields  (J * 2)     :=
+           Type_Of (Array_Info.Table (First_Info + J).Bound_Sub_GT);
+         Fields  (J * 2 + 1) := Fields (J * 2);
+         F_Names (J * 2)     := Name_Find ("LB" & To_String (J));
+         F_Names (J * 2 + 1) := Name_Find ("UB" & To_String (J));
       end loop;
 
-      return Build_Struct_Type (Fields, Name => Get_Ext_Name (GT, "_BOUNDS"));
+      return Build_Struct_Type (Fields,
+                                Name        => Get_Ext_Name (GT, "_BOUNDS"),
+                                Field_Names => F_Names);
    end Create_Array_Bounds_Type_Internal;
 
    ------------------------------------------------
@@ -619,7 +622,9 @@ package body GNATLLVM.Arrays.Create is
 
       if B_T_Sz mod Align = 0 then
          return Build_Struct_Type ((1 => B_T, 2 => Type_Of (GT)),
-                                   Name => Get_Ext_Name (GT, "_BD"));
+                                   Name        => Get_Ext_Name (GT, "_BD"),
+                                   Field_Names => (1 => Name_Find ("BOUNDS"),
+                                                   2 => Name_Find ("DATA")));
 
       --  Otherwise, generate some padding
 
@@ -633,7 +638,11 @@ package body GNATLLVM.Arrays.Create is
               Build_Struct_Type ((1 => B_T,
                                   2 => Array_Type (Byte_T, unsigned (Pad)),
                                   3 => Type_Of (GT)),
-                                 Name => Get_Ext_Name (GT, "_BD"));
+                                 Name => Get_Ext_Name (GT, "_BD"),
+                                 Field_Names => (1 => Name_Find ("BOUNDS"),
+                                                 2 => No_Name,
+                                                 3 => Name_Find ("DATA")));
+
          end;
       end if;
    end Create_Array_Bounds_And_Data_Type_Internal;
@@ -648,8 +657,9 @@ package body GNATLLVM.Arrays.Create is
      (Build_Struct_Type
         ((1 => Pointer_Type (Type_Of (GT), 0),
           2 => Pointer_Type (Create_Array_Bounds_Type (GT), 0)),
-         Name => Get_Ext_Name (GT, "_FP"),
-         Fields => (0 => Name_Find ("P_DATA"), 1 => Name_Find ("P_BOUNDS"))));
+         Name        => Get_Ext_Name (GT, "_FP"),
+         Field_Names => (0 => Name_Find ("P_DATA"),
+                         1 => Name_Find ("P_BOUNDS"))));
 
    ------------------------------
    -- Create_Array_Bounds_Type --

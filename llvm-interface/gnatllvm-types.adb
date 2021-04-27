@@ -311,10 +311,10 @@ package body GNATLLVM.Types is
    -----------------------
 
    function Build_Struct_Type
-     (Types  : Type_Array;
-      Packed : Boolean       := False;
-      Name   : Name_Id       := No_Name;
-      Fields : Name_Id_Array := (1 .. 0 => <>)) return Type_T
+     (Types       : Type_Array;
+      Packed      : Boolean       := False;
+      Name        : Name_Id       := No_Name;
+      Field_Names : Name_Id_Array := (1 .. 0 => <>)) return Type_T
    is
       T   : Type_T;
       SID : Struct_Id;
@@ -327,11 +327,12 @@ package body GNATLLVM.Types is
       else
          T := Struct_Create_Named (Name);
          Struct_Set_Body (T, Types, Packed);
-         if Fields'Length > 0 then
+         if Field_Names'Length > 0 then
             SID := New_Struct_Id;
-            for J in Fields'Range loop
-               C_Set_Field_Name_Info (SID, J - Fields'First, Fields (J),
-                                      Is_Padding => No (Fields (J)));
+            for J in Field_Names'Range loop
+               C_Set_Field_Name_Info (SID, J - Field_Names'First,
+                                      Field_Names (J),
+                                      Is_Padding => No (Field_Names (J)));
             end loop;
 
             C_Set_Struct (SID, T);

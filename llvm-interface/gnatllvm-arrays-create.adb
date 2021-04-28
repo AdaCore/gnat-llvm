@@ -283,8 +283,6 @@ package body GNATLLVM.Arrays.Create is
       A_TE              : constant Entity_Id :=
         (if For_Orig then Full_Original_Array_Type (TE) else TE);
       Unconstrained     : constant Boolean   := not Is_Constrained (A_TE);
-      FLB               : constant Boolean   :=
-          Is_Fixed_Lower_Bound_Array_Subtype (TE);
       CT                : constant Entity_Id := Full_Component_Type (A_TE);
       Comp_Def_GT       : constant GL_Type   := Default_GL_Type (CT);
       Comp_Size_To_Use  : constant Uint      :=
@@ -380,6 +378,9 @@ package body GNATLLVM.Arrays.Create is
             --  Sometimes, the frontend leaves an identifier that
             --  references an integer subtype instead of a range.
 
+            FLB               : constant Boolean   :=
+              Nkind (Index) = N_Subtype_Indication
+              and then Is_Fixed_Lower_Bound_Index_Subtype (Etype (Index));
             Index_GT  : constant GL_Type := Full_GL_Type (Index);
             Index_BT  : constant GL_Type := Base_GL_Type (Index_GT);
             LB        : constant Node_Id := Low_Bound (Idx_Range);

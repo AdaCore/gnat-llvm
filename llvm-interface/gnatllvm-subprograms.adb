@@ -2405,14 +2405,16 @@ package body GNATLLVM.Subprograms is
       Actual_Name : constant String      :=
         (if   Is_Compilation_Unit (E) and then No (Interface_Name (E))
          then "_ada_" & Subp_Name else Subp_Name);
-      LLVM_Func   : GL_Value             := Get_Dup_Global_Value (E);
       RK          : constant Return_Kind := Get_Return_Kind      (E);
       Return_GT   : constant GL_Type     := Full_GL_Type         (E);
-      Return_DT   : constant GL_Type    :=
+      Return_DT   : constant GL_Type     :=
           (if   Is_Access_Type (Return_GT)
            then Full_Designated_GL_Type (Return_GT) else No_GL_Type);
+      Pure_Func   : constant Boolean     := Has_Pragma_Pure_Function (E);
+      LLVM_Func   : GL_Value             := Get_Dup_Global_Value (E);
       Param_Num   : Natural              := 0;
-      Readonly    : Boolean              := Is_Pure (E);
+      Readonly    : Boolean              :=
+          Pure_Func or else (Is_Pure (E) and then not Is_Imported);
       Formal      : Entity_Id;
 
    begin
@@ -2506,7 +2508,7 @@ package body GNATLLVM.Subprograms is
 
                if (PK_Is_Reference (PK) and then PK /= PK_By_Ref_In)
                  or else (PK = In_Value and then Is_Descendant_Of_Address (GT)
-                            and then not Has_Pragma_Pure_Function (E))
+                            and then not Pure_Func)
                then
                   Readonly := False;
                end if;

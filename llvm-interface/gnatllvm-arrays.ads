@@ -103,6 +103,10 @@ package GNATLLVM.Arrays is
           Post => Present (Array_Index_GT'Result);
    --  Get the type of the Dim'th index of a type
 
+   function Array_Index_Has_FLB (TE : Entity_Id; Dim : Nat) return Boolean
+     with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE);
+   --  See if Dim of TE has a fixed lower bound
+
    function Get_Array_Size_Complexity
      (TE : Entity_Id; Max_Size : Boolean := False) return Nat
      with Pre => Is_Array_Type (TE);
@@ -303,15 +307,25 @@ private
      with Predicate => ((if No (Cnst)  then 0 else 1) +
                         (if No (Value) then 0 else 1)) <= 1;
 
+   function Is_Unconstrained (OB : One_Bound) return Boolean is
+      (No (OB.Cnst) and then No (OB.Value));
+   --  True if the specified bound indicates to get the value from the bounds
+   --  of an unconstrained array.
+
    type Index_Bounds is record
       Bound_GT      : GL_Type;
       Bound_Sub_GT  : GL_Type;
       Low, High     : One_Bound;
       Bound_Range   : GL_Value;
+      First_Field   : Nat;
       Not_Superflat : Boolean;
    end record
      with Predicate => Is_Discrete_Type (Bound_GT)
                        and then Is_Discrete_Type (Bound_Sub_GT);
+
+   function Is_FLB (IB : Index_Bounds) return Boolean is
+      (not Is_Unconstrained (IB.Low));
+   --  True if the specified index has a fixed lower bound
 
    package Array_Info is new Table.Table
      (Table_Component_Type => Index_Bounds,

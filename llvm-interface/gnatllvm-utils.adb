@@ -119,6 +119,31 @@ package body GNATLLVM.Utils is
 
    end Range_Length;
 
+   -------------------
+   -- Number_Bounds --
+   -------------------
+
+   function Number_Bounds (TE : Entity_Id) return Nat is
+      N : Node_Id;
+
+   begin
+      if Ekind (TE) = E_String_Literal_Subtype then
+         return 1;
+
+      else
+         return Num : Nat := 0 do
+            N := First_Index (TE);
+            while Present (N) loop
+               Num := Num +
+                 (if   Nkind (N) = N_Subtype_Indication
+                       and then Is_Fixed_Lower_Bound_Index_Subtype (Etype (N))
+                  then 1 else 2);
+               Next_Index (N);
+            end loop;
+         end return;
+      end if;
+   end Number_Bounds;
+
    --------------------
    -- Get_Uint_Value --
    --------------------

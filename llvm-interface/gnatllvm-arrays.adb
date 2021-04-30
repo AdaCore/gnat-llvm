@@ -396,9 +396,6 @@ package body GNATLLVM.Arrays is
            Array_Info.Table (Info_Idx + Dim);
          Bound_Info : constant One_Bound     :=
            (if Is_Low then Dim_Info.Low else Dim_Info.High);
-         Bound_Idx  : constant Nat := Dim  * 2 + (if Is_Low then 0 else 1);
-         --  In the array fat pointer bounds structure, bounds are stored as a
-         --  sequence of (lower bound, upper bound) pairs.
          Expr       : constant Node_Id       := Bound_Info.Value;
          Res        : Result;
 
@@ -456,14 +453,25 @@ package body GNATLLVM.Arrays is
             end;
 
          else
-            --  We now should have the unconstrained case.  Make sure we do.
-            pragma Assert (Is_Unconstrained_Array (GT)
-                             and then Relationship (V) /= Reference);
+            declare
+               --  In the array fat pointer bounds structure, bounds are
+               --  stored as a sequence of (lower bound, upper bound)
+               --  pairs with the lower bound omitted if it's fixed.
 
-            Res := Extract_Value
-              (Dim_Info.Bound_Sub_GT, Get (V, Bounds),
-               (1 => unsigned (Bound_Idx)),
-               (if Is_Low then "low.bound" else "high.bound"));
+               Bound_Idx  : constant Nat :=
+                 Dim_Info.First_Field + (if   Is_Low or else Is_FLB (Dim_Info)
+                                         then 0 else 1);
+
+            begin
+               --  We now should have the unconstrained case.  Make sure we do.
+               pragma Assert (Is_Unconstrained_Array (GT)
+                                and then Relationship (V) /= Reference);
+
+               Res := Extract_Value
+                 (Dim_Info.Bound_Sub_GT, Get (V, Bounds),
+                  (1 => unsigned (Bound_Idx)),
+                  (if Is_Low then "low.bound" else "high.bound"));
+            end;
          end if;
 
          Pop_Debug_Freeze_Pos;
@@ -703,6 +711,17 @@ package body GNATLLVM.Arrays is
    begin
       return Array_Info.Table (Info_Id + Dim).Bound_GT;
    end Array_Index_GT;
+
+   -------------------------
+   -- Array_Index_Has_FLB --
+   -------------------------
+
+   function Array_Index_Has_FLB (TE : Entity_Id; Dim : Nat) return Boolean is
+      Info_Id : constant Array_Info_Id := Get_Array_Info (TE);
+
+   begin
+      return Is_FLB (Array_Info.Table (Info_Id + Dim));
+   end Array_Index_Has_FLB;
 
    -------------------------------
    -- Get_Array_Size_Complexity --
@@ -1144,11 +1163,16 @@ package body GNATLLVM.Arrays is
    function Get_Array_Bounds
      (GT, V_GT : GL_Type; V : GL_Value) return GL_Value
    is
-      Info_Idx : constant Array_Info_Id :=
+      Base_GT       : constant GL_Type       := Array_Base_GL_Type (GT);
+      Info_Idx      : constant Array_Info_Id :=
         (if   Is_Packed_Array_Impl_Type (GT)
          then Get_Orig_Array_Info (Full_Etype (GT))
          else Get_Array_Info (Full_Etype (GT)));
-      N_Dim    : constant Nat           :=
+      Base_Info_Idx : constant Array_Info_Id :=
+        (if   Is_Packed_Array_Impl_Type (Base_GT)
+         then Get_Orig_Array_Info (Full_Etype (Base_GT))
+         else Get_Array_Info (Full_Etype (Base_GT)));
+      N_Dim         : constant Nat           :=
         (Number_Dimensions (if   Is_Packed_Array_Impl_Type (GT)
                             then Full_Original_Array_Type (GT)
                             else Full_Etype (GT)));
@@ -1162,28 +1186,37 @@ package body GNATLLVM.Arrays is
                --  the unconstrained array, so be sure to convert
                --  (C46042A).
 
-               Bound_GT             : constant GL_Type :=
-                 Array_Info.Table (Info_Idx + Dim).Bound_Sub_GT;
-               Low_Bound            : constant GL_Value  :=
+               IB                   : constant Index_Bounds :=
+                 Array_Info.Table (Info_Idx + Dim);
+               Base_IB              : constant Index_Bounds :=
+                 Array_Info.Table (Base_Info_Idx + Dim);
+               Bound_GT             : constant GL_Type      := IB.Bound_Sub_GT;
+               Low_Bound            : constant GL_Value     :=
                  Get_Array_Bound (V_GT, Dim, True, V,
                                   For_Orig =>
                                     Is_Packed_Array_Impl_Type (V_GT));
-               High_Bound           : constant GL_Value  :=
+               High_Bound           : constant GL_Value     :=
                  Get_Array_Bound (V_GT, Dim, False, V,
                                   For_Orig =>
                                     Is_Packed_Array_Impl_Type (V_GT));
-               Converted_Low_Bound  : constant GL_Value  :=
+               Converted_Low_Bound  : constant GL_Value     :=
                  Convert (Low_Bound, Bound_GT);
-               Converted_High_Bound : constant GL_Value  :=
+               Converted_High_Bound : constant GL_Value     :=
                  Convert (High_Bound, Bound_GT);
+               Idx                  : Nat                   := IB.First_Field;
 
             begin
-               Bound_Val := Insert_Value
-                 (Bound_Val, Converted_Low_Bound, (1 => unsigned (Dim * 2)));
+               --  Unless the lower bound is fixed, insert it. Always insert
+               --  the upper bound.
+
+               if not Is_FLB (Base_IB) then
+                  Bound_Val := Insert_Value
+                    (Bound_Val, Converted_Low_Bound, (1 => unsigned (Idx)));
+                  Idx       := Idx + 1;
+               end if;
 
                Bound_Val := Insert_Value
-                 (Bound_Val, Converted_High_Bound,
-                  (1 => unsigned (Dim * 2 + 1)));
+                 (Bound_Val, Converted_High_Bound, (1 => unsigned (Idx)));
             end;
          end loop;
       end return;

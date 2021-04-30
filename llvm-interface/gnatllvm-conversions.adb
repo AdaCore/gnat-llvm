@@ -76,6 +76,10 @@ package body GNATLLVM.Conversions is
    function Are_Arrays_With_Different_Index_Types
      (GT1, GT2 : GL_Type) return Boolean
    is
+      FLB1       : constant Boolean :=
+        Is_Fixed_Lower_Bound_Array_Subtype (Full_Base_Type (GT1));
+      FLB2       : constant Boolean :=
+        Is_Fixed_Lower_Bound_Array_Subtype (Full_Base_Type (GT2));
       Idx1, Idx2 : Entity_Id;
 
    begin
@@ -95,6 +99,17 @@ package body GNATLLVM.Conversions is
       --  of dimensions differ.
 
       pragma Assert (Number_Dimensions (GT1) = Number_Dimensions (GT2));
+
+      --  We need to reconstruct the bounds if one type is a fixed lower bound
+      --  type and the other isn't or if both are and is more than one
+      --  dimension (since which dimension is has a fixed lower bound may
+      --  differ.
+
+      if FLB1 /= FLB2
+        or else (FLB1 and then FLB2 and then Number_Dimensions (GT1) /= 1)
+      then
+         return True;
+      end if;
 
       --  We don't need to do anything if the index types differ unless the
       --  corresponding LLVM types differ, so that's all we check.

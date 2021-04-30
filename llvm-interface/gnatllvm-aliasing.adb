@@ -1342,12 +1342,14 @@ package body GNATLLVM.Aliasing is
       --  be modified, use a non-aliased unique version of the bound type.
 
       declare
+         Nbounds  : constant Nat    := Number_Bounds (A_TE);
          Ndims    : constant Nat    := Number_Dimensions (A_TE);
          Bound_T  : constant Type_T := Type_For_Relationship (A_GT, Bounds);
+         Idx      : Nat             := 0;
          Offset   : ULL             := 0;
-         Offsets  : ULL_Array (0 .. Ndims * 2 - 1);
-         Sizes    : ULL_Array (0 .. Ndims * 2 - 1);
-         TBAAs    : Metadata_Array (0 .. Ndims * 2 - 1);
+         Offsets  : ULL_Array (0 .. Nbounds - 1);
+         Sizes    : ULL_Array (0 .. Nbounds - 1);
+         TBAAs    : Metadata_Array (0 .. Nbounds - 1);
 
       begin
          for Dim in 0 .. Ndims - 1 loop
@@ -1355,16 +1357,22 @@ package body GNATLLVM.Aliasing is
                Dim_GT : constant GL_Type := Array_Index_GT (A_TE, Dim);
                Dim_T  : constant Type_T  := Type_Of (Dim_GT);
                Size   : constant ULL     := To_Bytes (Get_Type_Size (Dim_T));
+               FLB    : constant Boolean := Array_Index_Has_FLB (A_TE, Dim);
 
             begin
-               Offsets (Dim * 2)     := Offset;
-               Offsets (Dim * 2 + 1) := Offset + Size;
-               Sizes   (Dim * 2)     := Size;
-               Sizes   (Dim * 2 + 1) := Size;
-               TBAAs   (Dim * 2)     := Get_TBAA_Type (Dim_GT, Unique);
-               TBAAs   (Dim * 2 + 1) := Get_TBAA_Type (Dim_GT, Unique);
+               if not FLB then
+                  Offsets (Idx) := Offset;
+                  Sizes   (Idx) := Size;
+                  TBAAs   (Idx) := Get_TBAA_Type (Dim_GT, Unique);
+                  Offset        := Offset + Size;
+                  Idx           := Idx + 1;
+               end if;
 
-               Offset := Offset + (Size * 2);
+               Offsets (Idx) := Offset;
+               Sizes   (Idx) := Size;
+               TBAAs   (Idx) := Get_TBAA_Type (Dim_GT, Unique);
+               Offset        := Offset + Size;
+               Idx           := Idx + 1;
             end;
          end loop;
 

@@ -1229,7 +1229,7 @@ package body GNATLLVM.GLType is
    function Array_Base_GL_Type (GT : GL_Type) return GL_Type is
      ((if   Is_Packed_Array_Impl_Type (GT)
        then Primitive_GL_Type (Packed_Array_Impl_Type
-                                 (Full_Original_Array_Type (GT)))
+                                 (Base_Type (Full_Original_Array_Type (GT))))
        else Base_GL_Type (GT)));
 
    ------------------------

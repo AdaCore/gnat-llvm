@@ -639,6 +639,10 @@ package GNATLLVM.GLType is
      (Number_Dimensions (Full_Etype (GT)))
      with Pre => Is_Array_Type (GT);
 
+   function Number_Bounds (GT : GL_Type) return Pos is
+     (Number_Bounds (Full_Etype (GT)))
+     with Pre => Is_Array_Type (GT);
+
    function Has_Volatile_Components (GT : GL_Type) return Boolean is
      (Has_Volatile_Components (Full_Etype (GT)))
      with Pre => Is_Array_Type (GT);

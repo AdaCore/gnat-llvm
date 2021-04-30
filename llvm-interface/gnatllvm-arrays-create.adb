@@ -260,6 +260,7 @@ package body GNATLLVM.Arrays.Create is
          Low           => Low_Bound,
          High          => High_Bound,
          Bound_Range   => Size_Const_Int (Length),
+         First_Field   => 0,
          Not_Superflat => True);
       Result_Typ : constant Type_T       :=
         Array_Type (Comp_Typ, unsigned (+Length));
@@ -327,6 +328,7 @@ package body GNATLLVM.Arrays.Create is
          then 1 else Number_Dimensions (A_TE) - 1);
       Total_Size        : GL_Value           :=
         (if This_Nonnative then Size_Const_Null else Get_Type_Size (Comp_GT));
+      Field_Index       : Nat                := 0;
       Dim_Infos         : Dim_Info_Array (0 .. Last_Dim);
       First_Info        : Array_Info_Id;
       Index             : Entity_Id;
@@ -392,6 +394,7 @@ package body GNATLLVM.Arrays.Create is
                  Build_One_Bound (LB, Unconstrained and not FLB, For_Orig),
                High          => Build_One_Bound (HB, Unconstrained, For_Orig),
                Bound_Range   => No_GL_Value,
+               First_Field   => Field_Index,
                Not_Superflat =>
                  (Ekind (TE) = E_Array_Subtype and then Nkind (Index) = N_Range
                     and then Cannot_Be_Superflat (Idx_Range))
@@ -431,9 +434,10 @@ package body GNATLLVM.Arrays.Create is
             end if;
 
             Dim_Infos (Dim) := Dim_Info;
+            Dim             := Dim + 1;
+            Field_Index     := Field_Index + (if FLB then 1 else 2);
             Next_Index (Index);
             Next_Index (Base_Index);
-            Dim := Dim + 1;
          end;
       end loop;
 
@@ -581,24 +585,39 @@ package body GNATLLVM.Arrays.Create is
    ---------------------------------------
 
    function Create_Array_Bounds_Type_Internal (GT : GL_Type) return Type_T is
-      Dims       : constant Nat           :=
-        Number_Dimensions (if   Is_Packed_Array_Impl_Type (GT)
-                           then Full_Original_Array_Type (GT)
-                           else Full_Etype (GT));
-      Fields     : aliased Type_Array (Nat range 0 .. 2 * Dims - 1);
-      F_Names    : Name_Id_Array (0 .. Dims * 2 - 1);
+      A_GT       : constant Entity_Id     :=
+        (if   Is_Packed_Array_Impl_Type (GT) then Full_Original_Array_Type (GT)
+         else Full_Etype (GT));
+      Dims       : constant Nat           := Number_Dimensions (A_GT);
+      Bounds     : constant Nat           := Number_Bounds (A_GT);
+      Fields     : aliased Type_Array (Nat range 0 .. Bounds - 1);
+      F_Names    : Name_Id_Array (0 .. Bounds - 1);
       First_Info : constant Array_Info_Id :=
         (if   Is_Packed_Array_Impl_Type (GT)
          then Get_Orig_Array_Info (Full_Etype (GT))
          else Get_Array_Info (Full_Etype (GT)));
+      Bound_Idx  : Nat                    := 0;
 
    begin
       for J in Nat range 0 .. Dims - 1 loop
-         Fields  (J * 2)     :=
-           Type_Of (Array_Info.Table (First_Info + J).Bound_Sub_GT);
-         Fields  (J * 2 + 1) := Fields (J * 2);
-         F_Names (J * 2)     := Name_Find ("LB" & To_String (J));
-         F_Names (J * 2 + 1) := Name_Find ("UB" & To_String (J));
+         declare
+            IB : constant Index_Bounds := Array_Info.Table (First_Info + J);
+
+         begin
+            --  Add the type and name of the fields representing the bounds.
+            --  We always have an upper bound, but don't have a lower bound
+            --  if it's fixed.
+
+            if not Is_FLB (IB) then
+               Fields  (Bound_Idx) := Type_Of (IB.Bound_Sub_GT);
+               F_Names (Bound_Idx) := Name_Find ("LB" & To_String (J));
+               Bound_Idx           := Bound_Idx + 1;
+            end if;
+
+            Fields  (Bound_Idx)    := Type_Of (IB.Bound_Sub_GT);
+            F_Names (Bound_Idx)    := Name_Find ("UB" & To_String (J));
+            Bound_Idx              := Bound_Idx + 1;
+         end;
       end loop;
 
       return Build_Struct_Type (Fields,

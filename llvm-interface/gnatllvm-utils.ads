@@ -51,6 +51,11 @@ package GNATLLVM.Utils is
      with Pre => Nkind (N) in N_Subprogram_Call;
    --  The number of actual arguments in N, a subprogram call
 
+   function Number_Bounds (TE : Entity_Id) return Nat
+     with Pre => Is_Array_Type (TE);
+   --  Usually Number_Dimensions * 2, but may be lower if one or more index
+   --  has a fixed lower bound.
+
    procedure Decode_Range (N : Node_Id; Low, High : out Uint)
      with Pre => Present (N);
    --  Decode the right operand of an N_In or N_Not_In or of a Choice in a

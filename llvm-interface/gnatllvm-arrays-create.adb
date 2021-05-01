@@ -599,6 +599,15 @@ package body GNATLLVM.Arrays.Create is
       Bound_Idx  : Nat                    := 0;
 
    begin
+      --  If we just have one bound (which is a single-dimensioned array
+      --  with a fixed lower bound, we can use the type of that bound.
+
+      if Bounds = 1 then
+         return Type_Of (Array_Info.Table (First_Info).Bound_Sub_GT);
+      end if;
+
+      --  Otherwise, create a struct with all of the bounds
+
       for J in Nat range 0 .. Dims - 1 loop
          declare
             IB : constant Index_Bounds := Array_Info.Table (First_Info + J);

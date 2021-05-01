@@ -84,6 +84,10 @@ package body GNATLLVM.Arrays is
    --  use the value computed by GEP since it takes into account any
    --  alignment of the indices, which we don't want to bother doing here.
 
+   function To_Result (V : GL_Value) return GL_Value is (V);
+   function To_Result (V : GL_Value) return IDS      is ((False, V));
+   function To_Result (V : GL_Value) return BA_Data  is ((False, V, No_Uint));
+
    --  We put the routines used to compute sizes into a generic so that we
    --  can instantiate them using various types of sizing.  The most common
    --  case is an actual size computation, where we produce a GL_Value.
@@ -137,6 +141,7 @@ package body GNATLLVM.Arrays is
       with function  Undef             (GT : GL_Type) return Result;
       with function  Overflowed        (V : Result)   return Boolean;
       with function  Related_Type      (V : Result)   return GL_Type;
+      with function  To_Result         (V : GL_Value) return Result;
    package Size is
 
       function No      (V : Result) return Boolean is (V =  No_Result);
@@ -458,19 +463,34 @@ package body GNATLLVM.Arrays is
                --  stored as a sequence of (lower bound, upper bound)
                --  pairs with the lower bound omitted if it's fixed.
 
-               Bound_Idx  : constant Nat :=
+               Bound_Idx : constant Nat      :=
                  Dim_Info.First_Field + (if   Is_Low or else Is_FLB (Dim_Info)
                                          then 0 else 1);
+               Bound     : constant GL_Value := Get (V, Bounds);
+               Bound_GT  : constant GL_Type  := Dim_Info.Bound_Sub_GT;
 
             begin
-               --  We now should have the unconstrained case.  Make sure we do.
+               --  We now should have the unconstrained case. Make sure we do.
+               --  Then get the bounds.
+
                pragma Assert (Is_Unconstrained_Array (GT)
                                 and then Relationship (V) /= Reference);
 
-               Res := Extract_Value
-                 (Dim_Info.Bound_Sub_GT, Get (V, Bounds),
-                  (1 => unsigned (Bound_Idx)),
-                  (if Is_Low then "low.bound" else "high.bound"));
+               --  If we just have one bound, that's our result, but if we
+               --  have a struct, we need to extract the desired bound.
+
+               if Get_Type_Kind (Bound) = Struct_Type_Kind then
+                  Res := Extract_Value
+                    (Bound_GT, Bound, (1 => unsigned (Bound_Idx)),
+                     (if Is_Low then "low.bound" else "high.bound"));
+
+               else
+                  --  Bound has a Related_Type which is the array and a
+                  --  Relationship of Bounds. We need it to be Data of the
+                  --  bound type.
+
+                  Res := To_Result (G_Is_Relationship (Bound, Bound_GT, Data));
+               end if;
             end;
          end if;
 
@@ -570,7 +590,8 @@ package body GNATLLVM.Arrays is
                 Emit_Convert_Value => Emit_Convert_Value,
                 Overflowed         => Overflowed,
                 Related_Type       => Related_Type,
-                Undef              => Get_Undef);
+                Undef              => Get_Undef,
+                To_Result          => To_Result);
 
    function Bounds_To_Length
      (In_Low, In_High : GL_Value;
@@ -635,7 +656,8 @@ package body GNATLLVM.Arrays is
                 Emit_Convert_Value => Emit_Convert,
                 Overflowed         => Overflowed,
                 Related_Type       => Related_Type,
-                Undef              => Undef);
+                Undef              => Undef,
+                To_Result          => To_Result);
 
    function Get_Array_Type_Size
      (TE       : Entity_Id;
@@ -668,7 +690,8 @@ package body GNATLLVM.Arrays is
                 Emit_Convert_Value => Emit_Convert,
                 Overflowed         => Overflowed,
                 Related_Type       => Related_Type,
-                Undef              => Undef);
+                Undef              => Undef,
+                To_Result          => To_Result);
 
    function Get_Array_Type_Size
      (TE       : Entity_Id;
@@ -1178,6 +1201,21 @@ package body GNATLLVM.Arrays is
                             else Full_Etype (GT)));
 
    begin
+      --  If we just have one bound (a single-dimension array with a fixed
+      --  lower bound), just return that bound, but as a Bounds relation
+      --  to the array type.
+
+      if Number_Bounds (Base_GT) = 1 then
+         return G_Is_Relationship (Get_Array_Bound
+                                     (V_GT, 0, False, V,
+                                      For_Orig =>
+                                        Is_Packed_Array_Impl_Type (V_GT)),
+                                   GT, Bounds);
+
+      end if;
+
+      --  Otherwise, build an aggregate for the bounds
+
       return Bound_Val : GL_Value := Get_Undef_Relationship (GT, Bounds) do
          for Dim in Nat range 0 .. N_Dim - 1 loop
             declare

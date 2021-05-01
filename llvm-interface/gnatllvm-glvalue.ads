@@ -724,6 +724,10 @@ package GNATLLVM.GLValue is
      (Type_Of (+V))
      with Pre => Present (V), Post => Present (Type_Of'Result);
 
+   function Get_Type_Kind (V : GL_Value) return Type_Kind_T is
+     (Get_Type_Kind (Type_Of (V)))
+     with Pre => Present (V);
+
    function Ekind (V : GL_Value) return Entity_Kind is
      (Ekind (Full_Etype (V)))
      with Pre => Present (V);

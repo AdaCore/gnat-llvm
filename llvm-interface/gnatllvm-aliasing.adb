@@ -1352,41 +1352,49 @@ package body GNATLLVM.Aliasing is
          TBAAs    : Metadata_Array (0 .. Nbounds - 1);
 
       begin
-         for Dim in 0 .. Ndims - 1 loop
-            declare
-               Dim_GT : constant GL_Type := Array_Index_GT (A_TE, Dim);
-               Dim_T  : constant Type_T  := Type_Of (Dim_GT);
-               Size   : constant ULL     := To_Bytes (Get_Type_Size (Dim_T));
-               FLB    : constant Boolean := Array_Index_Has_FLB (A_TE, Dim);
+         --  If we have just one bound (a single-dimension array with a
+         --  fixed lower bound, this is just the TBAA type of the bound.
 
-            begin
-               if not FLB then
+         if Nbounds = 1 then
+            TI.Bounds := Get_TBAA_Type (Array_Index_GT (A_TE, 0), Unique);
+         else
+            for Dim in 0 .. Ndims - 1 loop
+               declare
+                  Dim_GT : constant GL_Type := Array_Index_GT (A_TE, Dim);
+                  Dim_T  : constant Type_T  := Type_Of (Dim_GT);
+                  Size   : constant ULL     :=
+                    To_Bytes (Get_Type_Size (Dim_T));
+                  FLB    : constant Boolean := Array_Index_Has_FLB (A_TE, Dim);
+
+               begin
+                  if not FLB then
+                     Offsets (Idx) := Offset;
+                     Sizes   (Idx) := Size;
+                     TBAAs   (Idx) := Get_TBAA_Type (Dim_GT, Unique);
+                     Offset        := Offset + Size;
+                     Idx           := Idx + 1;
+                  end if;
+
                   Offsets (Idx) := Offset;
                   Sizes   (Idx) := Size;
                   TBAAs   (Idx) := Get_TBAA_Type (Dim_GT, Unique);
                   Offset        := Offset + Size;
                   Idx           := Idx + 1;
-               end if;
+               end;
+            end loop;
 
-               Offsets (Idx) := Offset;
-               Sizes   (Idx) := Size;
-               TBAAs   (Idx) := Get_TBAA_Type (Dim_GT, Unique);
-               Offset        := Offset + Size;
-               Idx           := Idx + 1;
-            end;
-         end loop;
+            --  If one of the index types has Universal_Aliasing, we won't
+            --  have a TBAA type for it above.  So we can't form a TBAA type
+            --  for our bounds either.
+            --  ??? Should we do something about this?
 
-         --  If one of the index types has Universal_Aliasing, we won't
-         --  have a TBAA type for it above.  So we can't form a TBAA type
-         --  for our bounds either.
-         --  ??? Should we do something about this?
-
-         if (for all T of TBAAs => Present (T)) then
-            TI.Bounds :=
-              Create_TBAA_Struct_Type_Node
-              (Get_TBAA_Name (Unique, TE => TE, Suffix => "#BND"),
-               To_Bytes (Get_Type_Size (Bound_T)), TBAA_Root, Offsets, Sizes,
-               TBAAs);
+            if (for all T of TBAAs => Present (T)) then
+               TI.Bounds :=
+                 Create_TBAA_Struct_Type_Node
+                 (Get_TBAA_Name (Unique, TE => TE, Suffix => "#BND"),
+                  To_Bytes (Get_Type_Size (Bound_T)), TBAA_Root, Offsets,
+                  Sizes, TBAAs);
+            end if;
          end if;
       end;
 

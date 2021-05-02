@@ -872,10 +872,17 @@ package body GNATLLVM.GLValue is
 
          when Bounds =>
 
+            --  If this is an array with one bound (a single-dimension array
+            --  with a fixed lower bound), the bound is in the fat pointer
+            --  itself.
+
+            if Our_R = Fat_Pointer and then Number_Bounds (GT) = 1 then
+               return Extract_Value_To_Relationship (GT, V, 1, R);
+
             --  If we have something that we can use to get the address of
             --  bounds, convert to that and then dereference.
 
-            if Our_R in Fat_Pointer | Thin_Pointer |
+            elsif Our_R in Fat_Pointer | Thin_Pointer |
               Reference_To_Thin_Pointer | Reference_To_Bounds_And_Data
             then
                return Load (Get (V, Reference_To_Bounds));
@@ -1014,7 +1021,9 @@ package body GNATLLVM.GLValue is
          when Fat_Pointer =>
 
             --  To make a fat pointer, we make the address of the bounds
-            --  and the address of the data and put them together.
+            --  and the address of the data and put them together. In the
+            --  case of an array with one bound (a single-dimension array
+            --  with a fixed low bound), the fat pointer has the bound itself.
 
             declare
                Val     : constant GL_Value :=
@@ -1026,13 +1035,14 @@ package body GNATLLVM.GLValue is
                N_GT    : constant GL_Type  := Related_Type (Data_P);
                BT      : constant GL_Type  := Array_Base_GL_Type (N_GT);
                Fat_Ptr : constant GL_Value := Get_Undef_Relationship (N_GT, R);
-               Bounds  : constant GL_Value := Get (Val, Reference_To_Bounds);
+               Bnd     : constant GL_Value :=
+                   Get (Val, (if   Number_Bounds (BT) = 1 then Bounds
+                              else Reference_To_Bounds));
                Data    : constant GL_Value :=
                    Convert_Pointer (Get (Data_P, Reference), BT);
 
             begin
-               return Insert_Value (Insert_Value (Fat_Ptr, Data, 0),
-                                    Bounds,  1);
+               return Insert_Value (Insert_Value (Fat_Ptr, Data, 0), Bnd,  1);
             end;
 
          when Reference_To_Activation_Record =>

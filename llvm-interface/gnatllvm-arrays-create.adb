@@ -680,15 +680,31 @@ package body GNATLLVM.Arrays.Create is
    -- Create_Array_Fat_Pointer_Type_Internal --
    --------------------------------------------
 
-   function Create_Array_Fat_Pointer_Type_Internal
-     (GT : GL_Type) return Type_T
+   function Create_Array_Fat_Pointer_Type_Internal (GT : GL_Type) return Type_T
    is
-     (Build_Struct_Type
-        ((1 => Pointer_Type (Type_Of (GT), 0),
-          2 => Pointer_Type (Create_Array_Bounds_Type (GT), 0)),
-         Name        => Get_Ext_Name (GT, "_FP"),
-         Field_Names => (0 => Name_Find ("P_DATA"),
-                         1 => Name_Find ("P_BOUNDS"))));
+      Name      : constant Name_Id := Get_Ext_Name (GT, "_FP");
+      P_Data_T  : constant Type_T  := Pointer_Type (Type_Of (GT), 0);
+      Data_Name : constant Name_Id := Name_Find ("P_DATA");
+
+   begin
+      --  A fat pointer is normally a pointer to the data and a pointer
+      --  to the bounds, but if it has only one bound (a single-dimension
+      --  array with a fixed lower bound), the fat pointer contains the
+      --  bound itself.
+
+      if Number_Bounds (GT) = 1 then
+         return Build_Struct_Type
+           ((1 => P_Data_T, 2 => Create_Array_Bounds_Type (GT)),
+            Name        => Name,
+            Field_Names => (0 => Data_Name, 1 => Name_Find ("UB")));
+      else
+         return Build_Struct_Type
+           ((1 => P_Data_T,
+             2 => Pointer_Type (Create_Array_Bounds_Type (GT), 0)),
+            Name        => Name,
+            Field_Names => (0 => Data_Name, 1 => Name_Find ("P_BOUNDS")));
+      end if;
+   end Create_Array_Fat_Pointer_Type_Internal;
 
    ------------------------------
    -- Create_Array_Bounds_Type --

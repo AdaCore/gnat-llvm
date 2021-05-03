@@ -87,8 +87,8 @@ package GNATLLVM.Types is
    --  to this access type, which makes this different than calling
    --  Type_Of on an access to GT.
 
-   function Type_Of (TE : Entity_Id) return Type_T
-     with Pre  => Present (TE) and then TE = Get_Fullest_View (TE),
+   function Type_Of (TE : Void_Or_Type_Kind_Id) return Type_T
+     with Pre  => TE = Get_Fullest_View (TE),
           Post => Present (Type_Of'Result), Inline;
    --  Given a GNAT type TE, return the corresponding LLVM type, building
    --  it and a GL_Type first if necessary.
@@ -96,9 +96,9 @@ package GNATLLVM.Types is
    procedure Check_OK_For_Atomic_Type
      (GT : GL_Type; E : Entity_Id; Is_Component : Boolean := False)
      with Pre => Present (GT) and then Present (E);
-   --  GT is a type proposed for entity E, which is either an atomic object
-   --  or an atomic component.  Produce an error message if we can't make
-   --  it atomic.
+   --  GT is a type proposed for entity E, which is either an atomic
+   --  object, atomic component, or atomic type. Produce an error message
+   --  if we can't make it atomic.
 
    function Field_Error_Msg
      (E : Entity_Id; GT : GL_Type; Only_Special : Boolean) return String
@@ -205,15 +205,14 @@ package GNATLLVM.Types is
    --  Set the fields of LLVM struct T to those in Types
 
    function Full_Base_Type
-     (TE : Entity_Id; For_Orig : Boolean := False) return Entity_Id
+     (TE       : Void_Or_Type_Kind_Id;
+      For_Orig : Boolean := False) return Void_Or_Type_Kind_Id
    is
      (Get_Fullest_View (Implementation_Base_Type (TE), not For_Orig))
-     with Pre  => Is_Type_Or_Void (TE),
-          Post => Present (Full_Base_Type'Result);
+     with Post => Present (Full_Base_Type'Result);
 
-   function Is_Full_Base_Type (TE : Entity_Id) return Boolean is
-     (Full_Base_Type (TE) = TE)
-     with Pre => Is_Type_Or_Void (TE);
+   function Is_Full_Base_Type (TE : Void_Or_Type_Kind_Id) return Boolean is
+     (Full_Base_Type (TE) = TE);
    --  True when TE is its own base type.  Similar, but not identical to
    --  the front-end function Is_Base_Type, which just tests the Ekind.
 
@@ -222,27 +221,30 @@ package GNATLLVM.Types is
    --  Go up TE's Etype chain until it points to itself, which will
    --  go up both base and parent types.
 
-   function Full_Etype (N : Node_Id) return Entity_Id is
+   function Full_Etype (N : Node_Id) return Void_Or_Type_Kind_Id is
      (if   Ekind (Etype (N)) = E_Void then Etype (N)
       else Get_Fullest_View (Etype (N)))
-     with Pre => Present (N), Post => Is_Type_Or_Void (Full_Etype'Result);
+     with Pre => Present (N);
 
    function Full_Entity (N : Node_Id) return Type_Kind_Id is
      (Get_Fullest_View (Entity (N)))
      with Pre => Present (N);
 
-   function Full_Component_Type (TE : Array_Kind_Id) return Entity_Id is
-     (Get_Fullest_View (Component_Type (TE)))
-     with Post => Present (Full_Component_Type'Result);
+   function Full_Component_Type
+     (TE : Array_Kind_Id) return Void_Or_Type_Kind_Id
+   is
+     (Get_Fullest_View (Component_Type (TE)));
 
-   function Full_Original_Array_Type (TE : Entity_Id) return Array_Kind_Id is
+   function Full_Original_Array_Type
+     (TE : Void_Or_Type_Kind_Id) return Array_Kind_Id
+   is
      (Get_Fullest_View (Original_Array_Type (TE), Include_PAT => False))
-     with Pre  => Is_Packed_Array_Impl_Type (TE),
-          Post => Present (Full_Original_Array_Type'Result);
+     with Pre  => Is_Packed_Array_Impl_Type (TE);
 
-   function Full_Designated_Type (TE : Access_Kind_Id) return Entity_Id is
-     (Get_Fullest_View (Designated_Type (TE)))
-     with Post => Present (Full_Designated_Type'Result);
+   function Full_Designated_Type
+     (TE : Access_Kind_Id) return Void_Or_Type_Kind_Id
+   is
+     (Get_Fullest_View (Designated_Type (TE)));
 
    function Full_Scope (E : Entity_Id) return Entity_Id is
      (Get_Fullest_View (Scope (E)))
@@ -252,34 +254,32 @@ package GNATLLVM.Types is
      (Get_Fullest_View (Parent_Subtype (TE)))
      with Post => Present (Full_Parent_Subtype'Result);
 
-   function Is_Unconstrained_Record (TE : Entity_Id) return Boolean is
-     (Ekind (TE) = E_Record_Type and then Has_Discriminants (TE))
-     with Pre => Is_Type_Or_Void (TE);
+   function Is_Unconstrained_Record
+     (TE : Void_Or_Type_Kind_Id) return Boolean
+   is
+     (Ekind (TE) = E_Record_Type and then Has_Discriminants (TE));
 
-   function Is_Unconstrained_Array (TE : Entity_Id) return Boolean is
-     (Is_Array_Type (TE) and then not Is_Constrained (TE))
-     with Pre => Is_Type_Or_Void (TE);
+   function Is_Unconstrained_Array
+     (TE : Void_Or_Type_Kind_Id) return Boolean
+   is
+     (Is_Array_Type (TE) and then not Is_Constrained (TE));
 
-   function Is_Constrained_Array (TE : Entity_Id) return Boolean is
-     (Is_Array_Type (TE) and then Is_Constrained (TE))
-     with Pre => Is_Type_Or_Void (TE);
+   function Is_Constrained_Array (TE : Void_Or_Type_Kind_Id) return Boolean is
+     (Is_Array_Type (TE) and then Is_Constrained (TE));
 
    function Is_Access_Unconstrained_Array (TE : Type_Kind_Id) return Boolean is
      (Is_Access_Type (TE)
         and then Is_Unconstrained_Array (Full_Designated_Type (TE)));
 
-   function Is_Unconstrained_Type (TE : Entity_Id) return Boolean is
-     (Is_Unconstrained_Array (TE) or else Is_Unconstrained_Record (TE))
-     with Pre => Is_Type_Or_Void (TE);
+   function Is_Unconstrained_Type (TE : Void_Or_Type_Kind_Id) return Boolean is
+     (Is_Unconstrained_Array (TE) or else Is_Unconstrained_Record (TE));
 
-   function Is_Bit_Packed_Array_Impl_Type (TE : Entity_Id) return Boolean is
+   function Is_Bit_Packed_Array_Impl_Type (TE : Type_Kind_Id) return Boolean is
      (Is_Packed_Array_Impl_Type (TE)
-        and then Is_Bit_Packed_Array (Original_Array_Type (TE)))
-     with Pre => Is_Type (TE);
+        and then Is_Bit_Packed_Array (Original_Array_Type (TE)));
 
-   function Is_Array_Or_Packed_Array_Type (TE : Entity_Id) return Boolean is
-     (Is_Array_Type (TE) or else Is_Packed_Array_Impl_Type (TE))
-     with Pre => Is_Type (TE);
+   function Is_Array_Or_Packed_Array_Type (TE : Type_Kind_Id) return Boolean is
+     (Is_Array_Type (TE) or else Is_Packed_Array_Impl_Type (TE));
 
    function Type_Needs_Bounds (TE : Type_Kind_Id) return Boolean is
      ((Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE))

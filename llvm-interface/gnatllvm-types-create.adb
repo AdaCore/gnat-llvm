@@ -35,8 +35,8 @@ with GNATLLVM.Utils;          use GNATLLVM.Utils;
 
 package body GNATLLVM.Types.Create is
 
-   function Depends_On_Being_Elaborated (TE : Entity_Id) return Boolean
-     with Pre => Is_Type_Or_Void (TE);
+   function Depends_On_Being_Elaborated
+     (TE : Void_Or_Type_Kind_Id) return Boolean;
    --  Return True if TE or any type it depends on is being elaborated
 
    function Create_Discrete_Type
@@ -53,8 +53,10 @@ package body GNATLLVM.Types.Create is
    -- Depends_On_Being_Elaborated --
    ---------------------------------
 
-   function Depends_On_Being_Elaborated (TE : Entity_Id) return Boolean is
-      BT : constant Entity_Id := Full_Base_Type (TE);
+   function Depends_On_Being_Elaborated
+     (TE : Void_Or_Type_Kind_Id) return Boolean
+   is
+      BT : constant Void_Or_Type_Kind_Id := Full_Base_Type (TE);
       F  : Entity_Id;
 
    begin
@@ -256,7 +258,7 @@ package body GNATLLVM.Types.Create is
    -- Create_Type --
    -----------------
 
-   function Create_Type (TE : Entity_Id) return Type_T is
+   function Create_Type (TE : Void_Or_Type_Kind_Id) return Type_T is
       Dummy : Boolean := False;
       Align : Uint    := No_Uint;
       GT    : GL_Type;
@@ -587,7 +589,9 @@ package body GNATLLVM.Types.Create is
    ------------------------------------------
 
    procedure Annotate_Object_Size_And_Alignment
-     (E : Entity_Id; GT : GL_Type; Want_Max : Boolean := True) is
+     (E        : Exception_Or_Object_Kind_Id;
+      GT       : GL_Type;
+      Want_Max : Boolean := True) is
 
    begin
       Set_Esize (E, Annotated_Object_Size (GT, Want_Max => Want_Max));
@@ -603,24 +607,24 @@ package body GNATLLVM.Types.Create is
    function Validate_Alignment
      (E : Entity_Id; Align : Uint; Current_Align : Nat) return Uint
    is
-      TE              : constant Entity_Id :=
+      TE              : constant Void_Or_Type_Kind_Id :=
         (if Is_Type (E) then E else Full_Etype (E));
-      Max_Valid_Align : constant Uint      := UI_From_Int (2 ** 29);
+      Max_Valid_Align : constant Uint                 := UI_From_Int (2 ** 29);
       --  This is the maximum permitted alignment, not the maximum default
       --  alignment that's assigned to a type (which is
       --  Get_Maximum_Alignment).
 
-      No_Error  : constant Boolean   :=
+      No_Error  : constant Boolean                    :=
         Error_Posted (E) and then not Has_Alignment_Clause (E);
       --  If there's no user-specified alignment clause and we've already
       --  posted an error, don't post another one.
 
-      Clause    : Node_Id            := Alignment_Clause (E);
-      N         : Node_Id            := E;
+      Clause    : Node_Id                             := Alignment_Clause (E);
+      N         : Node_Id                             := E;
       --  The initial location for an error message is the entity,
       --  but we may override it below if we find a better one.
 
-      New_Align : Nat                := Current_Align;
+      New_Align : Nat                                 := Current_Align;
       --  By default, the new alignment is the same as the old one
 
    begin

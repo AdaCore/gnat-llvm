@@ -458,7 +458,7 @@ package body GNATLLVM.Types is
    -- Type_Of --
    -------------
 
-   function Type_Of (TE : Entity_Id) return Type_T is
+   function Type_Of (TE : Void_Or_Type_Kind_Id) return Type_T is
       GT    : GL_Type;
 
    begin
@@ -1319,15 +1319,17 @@ package body GNATLLVM.Types is
    -----------------------------------
 
    function Get_Attribute_From_Annotation (N : Node_Id) return Uint is
-      Attr   : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
-      TE     : constant Entity_Id    := Full_Etype (Prefix (N));
-      E      : constant Entity_Id    :=
+      Attr   : constant Attribute_Id         :=
+        Get_Attribute_Id (Attribute_Name (N));
+      TE     : constant Void_Or_Type_Kind_Id := Full_Etype (Prefix (N));
+      E      : constant Entity_Id            :=
         (if    Is_Entity_Name (Prefix (N)) then Entity (Prefix (N))
          elsif Nkind (Prefix (N)) = N_Selected_Component
          then  Entity (Selector_Name (Prefix (N)))
          else  Empty);
-      Our_E  : constant Entity_Id    := (if Present (E) then E else TE);
-      Ret    : Uint                  := No_Uint;
+      Our_E  : constant Entity_Id            :=
+         (if Present (E) then E else TE);
+      Ret    : Uint                          := No_Uint;
 
    begin
       --  We have to be careful here because even though we don't

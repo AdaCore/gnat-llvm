@@ -20,22 +20,21 @@ with Ada.Unchecked_Conversion;
 package GNATLLVM.Types.Create is
 
    function Create_Type (TE : Entity_Id) return Type_T
-     with Pre  => Present (TE) and then TE = Get_Fullest_View (TE),
+     with Pre  => Is_Type_Or_Void (TE) and then TE = Get_Fullest_View (TE),
           Post => Present (Create_Type'Result);
    --  Given a GNAT type TE, build the corresponding LLVM type, building
    --  a GL_Type first if necessary.
 
-   procedure Copy_Annotations (In_TE, Out_TE : Entity_Id)
-     with Pre => Is_Type (In_TE) and then Is_Type (Out_TE)
-                 and then In_TE = Get_Fullest_View (Out_TE);
+   procedure Copy_Annotations (In_TE, Out_TE : Type_Kind_Id)
+     with Pre => In_TE = Get_Fullest_View (Out_TE);
    --  Copy any annotations we made from In_TE to Out_TE
 
    procedure Annotate_Object_Size_And_Alignment
      (E : Entity_Id; GT : GL_Type; Want_Max : Boolean := True)
      with Pre => not Is_Type (E);
-     --  Peform back-annotation of size and alignment of E.  If
-     --  Want_Max is True, we want the maximum size of GT, in case
-     --  its an unconstrained record type.
+   --  Peform back-annotation of size and alignment of E.En  If Want_Max is
+   --  True, we want the maximum size of GT, in case its an unconstrained
+   --  record type.En
 
    function Validate_Alignment
      (E : Entity_Id; Align : Uint; Current_Align : Nat) return Uint

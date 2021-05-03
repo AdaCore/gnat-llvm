@@ -128,9 +128,8 @@ package GNATLLVM.Types is
      with Pre => Present (V), Post => Add_To_LValue_List'Result = V, Inline;
    --  Likewise, but return V
 
-   function Get_Matching_Value (TE : Entity_Id) return GL_Value
-     with Pre  => Is_Type (TE),
-          Post => Present (Get_Matching_Value'Result);
+   function Get_Matching_Value (TE : Type_Kind_Id) return GL_Value
+     with Post => Present (Get_Matching_Value'Result);
    --  Find a value that's being computed by the current Emit_LValue
    --  recursion that has the same base type as T.
 
@@ -218,9 +217,8 @@ package GNATLLVM.Types is
    --  True when TE is its own base type.  Similar, but not identical to
    --  the front-end function Is_Base_Type, which just tests the Ekind.
 
-   function Ultimate_Base_Type (TE : Entity_Id) return Entity_Id
-     with Pre => Is_Type (TE), Post => Is_Type (Ultimate_Base_Type'Result),
-          Inline;
+   function Ultimate_Base_Type (TE : Type_Kind_Id) return Type_Kind_Id
+     with Post => Is_Type (Ultimate_Base_Type'Result), Inline;
    --  Go up TE's Etype chain until it points to itself, which will
    --  go up both base and parent types.
 
@@ -229,33 +227,30 @@ package GNATLLVM.Types is
       else Get_Fullest_View (Etype (N)))
      with Pre => Present (N), Post => Is_Type_Or_Void (Full_Etype'Result);
 
-   function Full_Entity (N : Node_Id) return Entity_Id is
+   function Full_Entity (N : Node_Id) return Type_Kind_Id is
      (Get_Fullest_View (Entity (N)))
-     with Pre => Present (N), Post => Is_Type (Full_Entity'Result);
+     with Pre => Present (N);
 
-   function Full_Component_Type (TE : Entity_Id) return Entity_Id is
+   function Full_Component_Type (TE : Array_Kind_Id) return Entity_Id is
      (Get_Fullest_View (Component_Type (TE)))
-     with Pre  => Is_Array_Type (TE),
-          Post => Present (Full_Component_Type'Result);
+     with Post => Present (Full_Component_Type'Result);
 
-   function Full_Original_Array_Type (TE : Entity_Id) return Entity_Id is
+   function Full_Original_Array_Type (TE : Entity_Id) return Array_Kind_Id is
      (Get_Fullest_View (Original_Array_Type (TE), Include_PAT => False))
      with Pre  => Is_Packed_Array_Impl_Type (TE),
-          Post => Is_Array_Type (Full_Original_Array_Type'Result);
+          Post => Present (Full_Original_Array_Type'Result);
 
-   function Full_Designated_Type (TE : Entity_Id) return Entity_Id is
+   function Full_Designated_Type (TE : Access_Kind_Id) return Entity_Id is
      (Get_Fullest_View (Designated_Type (TE)))
-     with Pre  => Is_Access_Type (TE),
-          Post => Present (Full_Designated_Type'Result);
+     with Post => Present (Full_Designated_Type'Result);
 
    function Full_Scope (E : Entity_Id) return Entity_Id is
      (Get_Fullest_View (Scope (E)))
      with Pre => Present (E), Post => Present (Full_Scope'Result);
 
-   function Full_Parent_Subtype (TE : Entity_Id) return Entity_Id is
+   function Full_Parent_Subtype (TE : Record_Kind_Id) return Record_Kind_Id is
      (Get_Fullest_View (Parent_Subtype (TE)))
-     with Pre  => Is_Record_Type (TE),
-          Post => Is_Record_Type (Full_Parent_Subtype'Result);
+     with Post => Present (Full_Parent_Subtype'Result);
 
    function Is_Unconstrained_Record (TE : Entity_Id) return Boolean is
      (Ekind (TE) = E_Record_Type and then Has_Discriminants (TE))
@@ -269,10 +264,9 @@ package GNATLLVM.Types is
      (Is_Array_Type (TE) and then Is_Constrained (TE))
      with Pre => Is_Type_Or_Void (TE);
 
-   function Is_Access_Unconstrained_Array (TE : Entity_Id) return Boolean is
+   function Is_Access_Unconstrained_Array (TE : Type_Kind_Id) return Boolean is
      (Is_Access_Type (TE)
-        and then Is_Unconstrained_Array (Full_Designated_Type (TE)))
-     with Pre => Is_Type (TE);
+        and then Is_Unconstrained_Array (Full_Designated_Type (TE)));
 
    function Is_Unconstrained_Type (TE : Entity_Id) return Boolean is
      (Is_Unconstrained_Array (TE) or else Is_Unconstrained_Record (TE))
@@ -287,11 +281,10 @@ package GNATLLVM.Types is
      (Is_Array_Type (TE) or else Is_Packed_Array_Impl_Type (TE))
      with Pre => Is_Type (TE);
 
-   function Type_Needs_Bounds (TE : Entity_Id) return Boolean is
+   function Type_Needs_Bounds (TE : Type_Kind_Id) return Boolean is
      ((Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE))
       or else (Is_Packed_Array_Impl_Type (TE)
-                 and then Type_Needs_Bounds (Original_Array_Type (TE))))
-     with Pre => Is_Type (TE);
+                 and then Type_Needs_Bounds (Original_Array_Type (TE))));
    --  True is TE is a type that needs bounds stored with data
 
    function Get_Type_Size (T : Type_T) return ULL is
@@ -612,8 +605,8 @@ package GNATLLVM.Types is
       No_Truncation  : Boolean := False) return IDS
      with Pre => Present (V) and then Present (GT);
 
-   function Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS
-     with Pre => Present (V), Post => Present (Emit_Expr'Result), Inline;
+   function Emit_Expr (N : Node_Id; LHS : IDS := No_IDS) return IDS
+     with Pre => Present (N), Post => Present (Emit_Expr'Result), Inline;
 
    function Emit_Convert (N : Node_Id; GT : GL_Type) return IDS is
      (Convert (Emit_Expr (N), GT))
@@ -852,8 +845,8 @@ package GNATLLVM.Types is
       No_Truncation  : Boolean := False) return BA_Data
      with Pre => Present (GT), Inline;
 
-   function Emit_Expr (V : Node_Id; LHS : BA_Data := No_BA) return BA_Data
-     with Pre => Present (V), Inline;
+   function Emit_Expr (N : Node_Id; LHS : BA_Data := No_BA) return BA_Data
+     with Pre => Present (N), Inline;
 
    function Emit_Convert (N : Node_Id; GT : GL_Type) return BA_Data is
      (Convert (Emit_Expr (N), GT))

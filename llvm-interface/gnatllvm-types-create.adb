@@ -39,16 +39,14 @@ package body GNATLLVM.Types.Create is
      with Pre => Is_Type_Or_Void (TE);
    --  Return True if TE or any type it depends on is being elaborated
 
-   function Create_Discrete_Type (TE : Entity_Id) return Type_T
-     with Pre  => Is_Discrete_Or_Fixed_Point_Type (TE),
-          Post => Present (Create_Discrete_Type'Result);
-   function Create_Floating_Point_Type (TE : Entity_Id) return Type_T
-     with Pre  => Is_Floating_Point_Type (TE),
-          Post => Present (Create_Floating_Point_Type'Result);
+   function Create_Discrete_Type
+     (TE : Discrete_Or_Fixed_Point_Kind_Id) return Type_T
+     with Post => Present (Create_Discrete_Type'Result);
+   function Create_Floating_Point_Type (TE : Float_Kind_Id) return Type_T
+     with Post => Present (Create_Floating_Point_Type'Result);
    function Create_Access_Type
-     (TE : Entity_Id; Dummy : out Boolean) return Type_T
-     with Pre  => Is_Access_Type (TE),
-          Post => Present (Create_Access_Type'Result);
+     (TE : Access_Kind_Id; Dummy : out Boolean) return Type_T
+     with Post => Present (Create_Access_Type'Result);
    --  Create an LLVM type for various GNAT types
 
    ---------------------------------
@@ -103,8 +101,10 @@ package body GNATLLVM.Types.Create is
    -- Create_Discrete_Type --
    --------------------------
 
-   function Create_Discrete_Type (TE : Entity_Id) return Type_T is
-      Size_TE  : constant Entity_Id :=
+   function Create_Discrete_Type
+     (TE : Discrete_Or_Fixed_Point_Kind_Id) return Type_T
+   is
+      Size_TE : constant Discrete_Or_Fixed_Point_Kind_Id :=
         (if Has_Biased_Representation (TE) then Full_Base_Type (TE) else TE);
       --  Normally, we want to use an integer representation for a type
       --  that's a different (usually larger) size than it's base type, but
@@ -112,7 +112,7 @@ package body GNATLLVM.Types.Create is
       --  type and we'll use a biased representation as the default
       --  representation of the type.
 
-      Size     : Uint               := Esize (Size_TE);
+      Size    : Uint               := Esize (Size_TE);
 
    begin
       --  It's tempting to use i1 for boolean types, but that causes issues.
@@ -141,7 +141,8 @@ package body GNATLLVM.Types.Create is
    -- Create_Floating_Point_Type --
    --------------------------------
 
-   function Create_Floating_Point_Type (TE : Entity_Id) return Type_T is
+   function Create_Floating_Point_Type (TE : Float_Kind_Id) return Type_T
+   is
       Size : constant Uint := Esize (Full_Base_Type (TE));
       T    : Type_T;
       pragma Assert (UI_Is_In_Int_Range (Size));
@@ -171,9 +172,9 @@ package body GNATLLVM.Types.Create is
    ------------------------
 
    function Create_Access_Type
-     (TE : Entity_Id; Dummy : out Boolean) return Type_T
+     (TE : Access_Kind_Id; Dummy : out Boolean) return Type_T
    is
-      DT : constant Entity_Id       := Full_Designated_Type (TE);
+      DT : constant Type_Kind_Id    := Full_Designated_Type (TE);
       R  : constant GL_Relationship := Relationship_For_Access_Type (TE);
       GT : GL_Type                  := Default_GL_Type (DT, Create => False);
 
@@ -281,7 +282,7 @@ package body GNATLLVM.Types.Create is
 
       if not Is_Full_Base_Type (TE) then
          declare
-            BT : constant Entity_Id := Full_Base_Type (TE);
+            BT : constant Type_Kind_Id := Full_Base_Type (TE);
 
          begin
             Discard (Type_Of (BT));
@@ -396,21 +397,21 @@ package body GNATLLVM.Types.Create is
          end if;
 
          declare
-            Size_TE    : constant Entity_Id :=
+            Size_TE    : constant Type_Kind_Id :=
               (if   Is_Packed_Array_Impl_Type (TE)
                then Original_Array_Type (TE) else TE);
-            Size_GT    : constant GL_Value  :=
+            Size_GT    : constant GL_Value     :=
               (if   Is_Dynamic_Size (GT) then No_GL_Value
                else Get_Type_Size (GT));
-            Value_Size : constant Uint      :=
+            Value_Size : constant Uint         :=
               (if   Unknown_RM_Size (Size_TE) then No_Uint
                else Validate_Size (TE, GT, RM_Size (Size_TE),
                                    For_Type   => True,
                                    Is_RM_Size => True));
-            Obj_Size   : constant Uint      :=
+            Obj_Size   : constant Uint         :=
               (if   Known_Esize (Size_TE) then Esize (Size_TE)
                else RM_Size (Size_TE));
-            Size       : constant Uint      :=
+            Size       : constant Uint         :=
               (if   No (Obj_Size) then No_Uint
                else Validate_Size (Size_TE, GT, Obj_Size,
                                    For_Type     => True,
@@ -500,7 +501,7 @@ package body GNATLLVM.Types.Create is
               Annotated_Object_Size (GT, Do_Align => True);
             BA_RM_Size : constant Node_Ref_Or_Val :=
               Annotated_Value (Get_Type_Size (GT, No_Padding => True));
-            BA_Align   : constant Uint              :=
+            BA_Align   : constant Uint            :=
               UI_From_Int (Get_Type_Alignment (GT, Use_Specified => False) /
                            BPU);
             OAT        : constant Entity_Id       :=
@@ -554,7 +555,7 @@ package body GNATLLVM.Types.Create is
    -- Copy_Annotations --
    ----------------------
 
-   procedure Copy_Annotations (In_TE, Out_TE : Entity_Id) is
+   procedure Copy_Annotations (In_TE, Out_TE : Type_Kind_Id) is
    begin
       --  Copy the annotations we made above (and elsewhere)
 

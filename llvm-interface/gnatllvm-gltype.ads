@@ -326,7 +326,7 @@ package GNATLLVM.GLType is
      (Is_Access_Constant (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   function Full_Original_Array_Type (GT : GL_Type) return Entity_Id is
+   function Full_Original_Array_Type (GT : GL_Type) return Array_Kind_Id is
      (Full_Original_Array_Type (Full_Etype (GT)))
      with Pre  => Is_Array_Or_Packed_Array_Type (GT),
           Post => Is_Type (Full_Original_Array_Type'Result);

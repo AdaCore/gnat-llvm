@@ -139,16 +139,16 @@ package body GNATLLVM.Types is
       Empty_Result : Result;
       with function From_Const (V : GL_Value) return Result;
       with function Get_Record_Type_Size
-        (TE         : Entity_Id;
+        (TE         : Type_Kind_Id;
          V          : GL_Value;
          Max_Size   : Boolean := False;
          No_Padding : Boolean := False) return Result;
       with function Get_Unc_Array_Type_Size
-        (TE         : Entity_Id;
+        (TE         : Type_Kind_Id;
          V          : GL_Value;
          Max_Size   : Boolean := False) return Result;
       with function Get_Array_Type_Size
-        (TE         : Entity_Id;
+        (TE         : Type_Kind_Id;
          V          : GL_Value;
          Max_Size   : Boolean := False) return Result;
       with function  "-" (V1, V2 : Result) return Result;
@@ -413,7 +413,7 @@ package body GNATLLVM.Types is
    -- Get_Matching_Value --
    ------------------------
 
-   function Get_Matching_Value (TE : Entity_Id) return GL_Value is
+   function Get_Matching_Value (TE : Type_Kind_Id) return GL_Value is
    begin
       --  Check in the opposite order of what we push.  We may, for example
       --  be finding the size of an object of that size, in which case the
@@ -445,9 +445,9 @@ package body GNATLLVM.Types is
    -- Ultimate_Base_Type --
    ------------------------
 
-   function Ultimate_Base_Type (TE : Entity_Id) return Entity_Id is
+   function Ultimate_Base_Type (TE : Type_Kind_Id) return Type_Kind_Id is
    begin
-      return Typ : Entity_Id := TE do
+      return Typ : Type_Kind_Id := TE do
          while Full_Etype (Typ) /= Typ loop
             Typ := Full_Etype (Typ);
          end loop;
@@ -996,9 +996,9 @@ package body GNATLLVM.Types is
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return Nat
    is
-      TE    : constant Entity_Id := Full_Etype (GT);
-      Align : constant Nat       := GT_Alignment (GT);
-      T     : constant Type_T    := Type_Of (GT);
+      TE    : constant Type_Kind_Id := Full_Etype (GT);
+      Align : constant Nat          := GT_Alignment (GT);
+      T     : constant Type_T       := Type_Of (GT);
 
    begin
       --  If there's a known alignment in this GL_Type, use it
@@ -1559,11 +1559,11 @@ package body GNATLLVM.Types is
    -- Emit_Expr --
    ---------------
 
-   function Emit_Expr (V : Node_Id; LHS : IDS := No_IDS) return IDS is
+   function Emit_Expr (N : Node_Id; LHS : IDS := No_IDS) return IDS is
       pragma Unreferenced (LHS);
    begin
-      return (if   Is_No_Elab_Needed (V)
-              then From_Const (Emit_Expression (V)) else Var_IDS);
+      return (if   Is_No_Elab_Needed (N)
+              then From_Const (Emit_Expression (N)) else Var_IDS);
    end Emit_Expr;
 
    ---------------------------------
@@ -1813,10 +1813,10 @@ package body GNATLLVM.Types is
    ----------------
 
    function Emit_Expr
-     (V : Node_Id; LHS : BA_Data := No_BA) return BA_Data
+     (N : Node_Id; LHS : BA_Data := No_BA) return BA_Data
    is
       pragma Unreferenced (LHS);
-      SO_Info : Dynamic_SO_Ref := Get_SO_Ref (V);
+      SO_Info : Dynamic_SO_Ref := Get_SO_Ref (N);
 
    begin
       --  If we didn't already get an SO_Ref for this expression, get one
@@ -1826,18 +1826,18 @@ package body GNATLLVM.Types is
          --  corresponding to that discriminant.  If we have an unsupported
          --  node, return no value.
 
-         if Contains_Discriminant (V) then
+         if Contains_Discriminant (N) then
             declare
                Result   : BA_Data := No_BA;
                Attr     : Attribute_Id;
                RHS, LHS : BA_Data;
 
             begin
-               case Nkind (V) is
+               case Nkind (N) is
                   when N_Identifier =>
 
-                     if  Ekind (Entity (V)) = E_Discriminant then
-                        SO_Info := Create_Discrim_Ref (Entity (V));
+                     if  Ekind (Entity (N)) = E_Discriminant then
+                        SO_Info := Create_Discrim_Ref (Entity (N));
                      end if;
 
                   when N_Attribute_Reference =>
@@ -1845,61 +1845,62 @@ package body GNATLLVM.Types is
                      --  The only ones we support are 'Range_Length,
                      --  'Min, and 'Max
 
-                     Attr := Get_Attribute_Id (Attribute_Name (V));
+                     Attr := Get_Attribute_Id (Attribute_Name (N));
                      if Attr = Attribute_Range_Length
-                       and then Is_Scalar_Type (Full_Etype (Prefix (V)))
+                       and then Is_Scalar_Type (Full_Etype (Prefix (N)))
                      then
                         declare
-                           PT : constant Entity_Id := Full_Etype (Prefix (V));
-                           LB : constant Node_Id   := Type_Low_Bound  (PT);
-                           HB : constant Node_Id   := Type_High_Bound (PT);
+                           PT : constant Type_Kind_Id :=
+                             Full_Etype (Prefix (N));
+                           LB : constant Node_Id      := Type_Low_Bound  (PT);
+                           HB : constant Node_Id      := Type_High_Bound (PT);
 
                         begin
 
                            LHS    := Emit_Expr (LB);
                            RHS    := Emit_Expr (HB);
                            Result := Bounds_To_Length (LHS, RHS,
-                                                       Full_GL_Type (V));
+                                                       Full_GL_Type (N));
                         end;
 
                      elsif Attr in Attribute_Min | Attribute_Max then
-                        LHS    := Emit_Expr (First (Expressions (V)));
-                        RHS    := Emit_Expr (Last  (Expressions (V)));
+                        LHS    := Emit_Expr (First (Expressions (N)));
+                        RHS    := Emit_Expr (Last  (Expressions (N)));
                         Result := (if   Attr = Attribute_Min
                                    then Build_Min (LHS, RHS)
                                    else Build_Max (LHS, RHS));
                      end if;
 
                   when N_Op_Minus =>
-                     Result := Neg (Emit_Expr (Right_Opnd (V)));
+                     Result := Neg (Emit_Expr (Right_Opnd (N)));
 
                   when N_Op_Plus =>
-                     Result := Emit_Expr (Right_Opnd (V));
+                     Result := Emit_Expr (Right_Opnd (N));
 
                   when N_Op_Add =>
-                     LHS    := Emit_Expr (Left_Opnd  (V));
-                     RHS    := Emit_Expr (Right_Opnd (V));
+                     LHS    := Emit_Expr (Left_Opnd  (N));
+                     RHS    := Emit_Expr (Right_Opnd (N));
                      Result := LHS + RHS;
 
                   when N_Op_Subtract =>
-                     LHS    := Emit_Expr (Left_Opnd  (V));
-                     RHS    := Emit_Expr (Right_Opnd (V));
+                     LHS    := Emit_Expr (Left_Opnd  (N));
+                     RHS    := Emit_Expr (Right_Opnd (N));
                      Result := LHS - RHS;
 
                   when N_Op_Multiply =>
-                     LHS    := Emit_Expr (Left_Opnd  (V));
-                     RHS    := Emit_Expr (Right_Opnd (V));
+                     LHS    := Emit_Expr (Left_Opnd  (N));
+                     RHS    := Emit_Expr (Right_Opnd (N));
                      Result := LHS * RHS;
 
                   when N_Op_Divide =>
-                     LHS    := Emit_Expr (Left_Opnd  (V));
-                     RHS    := Emit_Expr (Right_Opnd (V));
-                     Result := (if   Is_Unsigned_Type (Full_Etype (V))
+                     LHS    := Emit_Expr (Left_Opnd  (N));
+                     RHS    := Emit_Expr (Right_Opnd (N));
+                     Result := (if   Is_Unsigned_Type (Full_Etype (N))
                                 then U_Div (LHS, RHS)
                                 else LHS / RHS);
 
                   when N_Type_Conversion | N_Unchecked_Type_Conversion =>
-                     Result := Emit_Convert (Expression (V), Full_GL_Type (V));
+                     Result := Emit_Convert (Expression (N), Full_GL_Type (N));
 
                   when others =>
                      null;
@@ -1912,13 +1913,13 @@ package body GNATLLVM.Types is
 
          --  Otherwise, see if this is a constant
 
-         elsif Is_No_Elab_Needed (V) then
+         elsif Is_No_Elab_Needed (N) then
             declare
-               Result : constant GL_Value := Emit_Expression (V);
+               Result : constant GL_Value := Emit_Expression (N);
 
             begin
                if not Overflowed (Result) and then not Is_Undef (Result) then
-                  return (False, Emit_Expression (V), No_Uint);
+                  return (False, Emit_Expression (N), No_Uint);
                else
                   SO_Info :=
                     Create_Node (Dynamic_Val, +Var_Idx_For_BA);
@@ -1934,7 +1935,7 @@ package body GNATLLVM.Types is
          --  Save the computed value, if any
 
          if Present (SO_Info) then
-            Set_SO_Ref (V, SO_Info);
+            Set_SO_Ref (N, SO_Info);
          end if;
       end if;
 

@@ -32,9 +32,9 @@ package GNATLLVM.Types.Create is
    procedure Annotate_Object_Size_And_Alignment
      (E : Entity_Id; GT : GL_Type; Want_Max : Boolean := True)
      with Pre => not Is_Type (E);
-   --  Peform back-annotation of size and alignment of E.En  If Want_Max is
-   --  True, we want the maximum size of GT, in case its an unconstrained
-   --  record type.En
+   --  Perform back-annotation of size and alignment of E. If Want_Max is
+   --  True, we want the maximum size of GT, in case it's an unconstrained
+   --  record type.
 
    function Validate_Alignment
      (E : Entity_Id; Align : Uint; Current_Align : Nat) return Uint

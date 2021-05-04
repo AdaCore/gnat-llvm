@@ -28,13 +28,13 @@ package GNATLLVM.Subprograms is
    function Get_Param_By_Ref_Mech (GT : GL_Type) return Param_By_Ref_Mech
      with Pre => Present (GT);
 
-   function Get_Mechanism_Code (E : Entity_Id; Exprs : List_Id) return Uint
-     with Pre => Ekind (E) in E_Function | E_Procedure;
+   function Get_Mechanism_Code
+     (E : Subprogram_Kind_Id; Exprs : List_Id) return Uint;
    --  This is inquiring about either the return of E (if No (Exprs)) or
    --  of the parameter number given by the first expression of Exprs.
    --  Return 2 is passed by reference, otherwise, return 1.
 
-   function Create_Subprogram_Type (E  : Entity_Id) return Type_T
+   function Create_Subprogram_Type (E : Entity_Id) return Type_T
      with Pre  => Present (E),
           Post => Present (Create_Subprogram_Type'Result);
    --  Create subprogram type.  E can either be a subprogram,
@@ -63,9 +63,8 @@ package GNATLLVM.Subprograms is
    --  Checks whether E is present in the current activation record and
    --  returns an LValue pointing to the value of the object if so.
 
-   function Get_Static_Link (Subp : Entity_Id) return GL_Value
-     with Pre  => Ekind (Subp) in E_Procedure | E_Function,
-          Post => Present (Get_Static_Link'Result);
+   function Get_Static_Link (Subp : Subprogram_Kind_Id) return GL_Value
+     with Post => Present (Get_Static_Link'Result);
    --  Build and return the static link to pass to a call to Subp
 
    function Has_Activation_Record (E : Entity_Id) return Boolean
@@ -74,8 +73,8 @@ package GNATLLVM.Subprograms is
    --  that needs an activation record.
 
    function Emit_Subprogram_Identifier
-     (E : Entity_Id; N : Node_Id; GT : GL_Type) return GL_Value
-     with Pre  => not Is_Type (E) and then Present (GT)
+     (E : Subprogram_Kind_Id; N : Node_Id; GT : GL_Type) return GL_Value
+     with Pre  => Present (GT)
                   and then (N = E or else Nkind (N) in N_Has_Entity),
           Post => Present (Emit_Subprogram_Identifier'Result);
    --  Emit the value (creating the subprogram if needed) of the N_Identifier
@@ -90,15 +89,13 @@ package GNATLLVM.Subprograms is
    --  the function in case that turns out to be useful.
 
    function Call_Alloc
-     (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value
-     with Pre => Ekind (Proc) = E_Procedure;
+     (Proc : E_Procedure_Id; Args : GL_Value_Array) return GL_Value;
    --  Proc is a Procedure_To_Call for an allocation and Args are its
    --  arguments.  See if Proc needs a static link and pass one, if
    --  so.  This procedure has one out parameter, so the low-level
    --  call is as a function returning the memory that was allocated.
 
-   procedure Call_Dealloc (Proc : Entity_Id; Args : GL_Value_Array)
-     with Pre => Ekind (Proc) = E_Procedure;
+   procedure Call_Dealloc (Proc : E_Procedure_Id; Args : GL_Value_Array);
    --  Proc is a Procedure_To_Call for a deallocation and Args are its
    --  arguments.  See if Proc needs a static link and pass one, if so.
 
@@ -208,9 +205,8 @@ package GNATLLVM.Subprograms is
    --  Return the first formal of E that's an input to the subprogram,
    --  either because it's an input passed by copy or a reference.
 
-   function Next_In_Param (E : Entity_Id) return Entity_Id
-     with Pre  => Ekind (E) in Formal_Kind,
-          Post => No (Next_In_Param'Result)
+   function Next_In_Param (E : Formal_Kind_Id) return Entity_Id
+     with Post => No (Next_In_Param'Result)
                   or else Ekind (Next_In_Param'Result) in Formal_Kind;
    --  Given E, a formal of some subprogram, return the next In parameter,
    --  as defined above, of that subprogram.
@@ -228,27 +224,24 @@ package GNATLLVM.Subprograms is
                              in E_Out_Parameter | E_In_Out_Parameter);
    --  Return the first formal of E that's an output from the subprogram
 
-   function Next_Out_Param (E : Entity_Id) return Entity_Id
-     with Pre  => Ekind (E) in E_Out_Parameter | E_In_Out_Parameter,
-          Post => No (Next_Out_Param'Result)
+   function Next_Out_Param (E : Formal_Kind_Id) return Entity_Id
+     with Post => No (Next_Out_Param'Result)
                   or else (Ekind (Next_Out_Param'Result)
                              in E_Out_Parameter | E_In_Out_Parameter);
    --  Given E, a formal of some subprogram, return the next Out parameter,
    --  as defined above, of that subprogram.
 
    procedure Next_Out_Param (E : in out Entity_Id)
-     with Pre  => Ekind (E) in E_Out_Parameter | E_In_Out_Parameter,
+     with Pre  => Ekind (E) in Formal_Kind,
           Post => No (E)
                   or else Ekind (E) in E_Out_Parameter | E_In_Out_Parameter;
    --  Given E, a formal of some subprogram, update it to be the next Out
    --  parameter, as defined above, of that subprogram.
 
-   function Param_Is_Reference (E : Entity_Id) return Boolean
-     with Pre => Ekind (E) in Formal_Kind;
+   function Param_Is_Reference (E : Formal_Kind_Id) return Boolean;
    --  Return True iff E, a subprogram parameter, is passed by reference
 
-   function Create_Subprogram (E : Entity_Id) return GL_Value
-     with Pre => Ekind (E) in Subprogram_Kind;
+   function Create_Subprogram (E : Subprogram_Kind_Id) return GL_Value;
    --  Create and save an LLVM object for E, a subprogram
 
    function Emit_Subprogram_Decl (N : Node_Id;

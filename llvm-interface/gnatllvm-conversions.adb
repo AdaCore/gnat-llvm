@@ -255,9 +255,9 @@ package body GNATLLVM.Conversions is
    -- Is_Parent_Of --
    ------------------
 
-   function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean is
-      BT_Need : constant Entity_Id := Full_Base_Type (T_Need);
-      BT_Have : constant Entity_Id := Full_Base_Type (T_Have);
+   function Is_Parent_Of (T_Need, T_Have : Record_Kind_Id) return Boolean is
+      BT_Need : constant Record_Kind_Id := Full_Base_Type (T_Need);
+      BT_Have : constant Record_Kind_Id := Full_Base_Type (T_Have);
 
    begin
       --  If the two types are the same return True.  Likewise if

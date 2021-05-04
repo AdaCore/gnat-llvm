@@ -168,7 +168,7 @@ package body GNATLLVM.Blocks is
    --  associated with the actions for that exception.
 
    package Constraint_Error_Stack is new Table.Table
-     (Table_Component_Type => Entity_Id,
+     (Table_Component_Type => E_Label_Id,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 5,
@@ -177,7 +177,7 @@ package body GNATLLVM.Blocks is
    --  Stack of labels for constraint error
 
    package Storage_Error_Stack is new Table.Table
-     (Table_Component_Type => Entity_Id,
+     (Table_Component_Type => E_Label_Id,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 5,
@@ -186,7 +186,7 @@ package body GNATLLVM.Blocks is
    --  Stack of labels for storage error
 
    package Program_Error_Stack is new Table.Table
-     (Table_Component_Type => Entity_Id,
+     (Table_Component_Type => E_Label_Id,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 5,
@@ -195,7 +195,7 @@ package body GNATLLVM.Blocks is
    --  Stack of labels for program error
 
    type Exit_Point is record
-      Label_Entity : Entity_Id;
+      Label_Entity : E_Loop_Id;
       --  The Identifier of the block, used to find which block to exit
 
       Orig_BB      : Basic_Block_T;
@@ -518,7 +518,7 @@ package body GNATLLVM.Blocks is
    is
       BI         : Block_Info renames Block_Stack.Table (Block_Stack.Last);
       Invariants : A_Invariant_Data := BI.Invariant_List;
-      Subp       : Entity_Id;
+      Subp       : Subprogram_Kind_Id;
 
       procedure Free is new Ada.Unchecked_Deallocation (Invariant_Data,
                                                         A_Invariant_Data);
@@ -1451,14 +1451,14 @@ package body GNATLLVM.Blocks is
    --------------------------------------
 
    procedure Process_Push_Pop_xxx_Error_Label (N : Node_Id) is
-      procedure Maybe_Warn (E : Entity_Id);
+      procedure Maybe_Warn (E : E_Label_Id);
       --  Warn if we haven't generated a branch to E
 
       ----------------
       -- Maybe_Warn --
       ----------------
 
-      procedure Maybe_Warn (E : Entity_Id) is
+      procedure Maybe_Warn (E : E_Label_Id) is
       begin
          if No (Get_Label_Info (E)) then
             Warn_If_No_Local_Raise (E);
@@ -1532,7 +1532,7 @@ package body GNATLLVM.Blocks is
    ------------------
 
    function Get_Label_BB
-     (E : Entity_Id; For_Address : Boolean := False) return Basic_Block_T
+     (E : E_Label_Id; For_Address : Boolean := False) return Basic_Block_T
    is
       Depth : constant Block_Stack_Level := Block_Stack.Last;
       L_Idx : Label_Info_Id              := Get_Label_Info (E);
@@ -1729,7 +1729,7 @@ package body GNATLLVM.Blocks is
    -- Push_Loop --
    ---------------
 
-   procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T) is
+   procedure Push_Loop (LE : E_Loop_Id; Exit_Point : Basic_Block_T) is
    begin
       Exit_Point_Table.Append ((Label_Entity => LE,
                                 Block_Depth  => Block_Stack.Last,

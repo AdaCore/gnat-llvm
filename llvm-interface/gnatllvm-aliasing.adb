@@ -92,7 +92,7 @@ package body GNATLLVM.Aliasing is
      (Idx /= Empty_UC_Group_Idx);
 
    type UC_Entry is record
-      TE    : Entity_Id;
+      TE    : Type_Kind_Id;
       Group : UC_Group_Idx;
       Valid : Boolean;
    end record;
@@ -108,8 +108,7 @@ package body GNATLLVM.Aliasing is
    Last_UC_Group : UC_Group_Idx := 0;
    --  Last UC group number used when we need a new one
 
-   function Find_UC_Group (TE : Entity_Id) return UC_Group_Idx
-     with Pre => Is_Type (TE);
+   function Find_UC_Group (TE : Type_Kind_Id) return UC_Group_Idx;
    --  Return the UC_Group_Idx corresponding to TE, if any
 
    procedure Search_For_UCs;
@@ -129,7 +128,7 @@ package body GNATLLVM.Aliasing is
 
    type TBAA_Equiv is record
       Next : Nat;
-      TE   : Entity_Id;
+      TE   : Type_Kind_Id;
    end record;
 
    package TBAA_Equiv_Subtype_Table is new Table.Table
@@ -140,9 +139,8 @@ package body GNATLLVM.Aliasing is
       Table_Increment      => 50,
       Table_Name           => "TBAA_Equivalent_Subtype_Table");
 
-   function Find_Equiv_Subtype (TE : Entity_Id) return Entity_Id
-     with Pre  => Present (TE),
-          Post => Base_Type_For_Aliasing (TE) =
+   function Find_Equiv_Subtype (TE : Type_Kind_Id) return Type_Kind_Id
+     with Post => Base_Type_For_Aliasing (TE) =
                   Base_Type_For_Aliasing (Find_Equiv_Subtype'Result);
    --  If TE is a subtype and there's another subtype of its base type
    --  with an equivalent layout, return it.  Otherwise, return TE.
@@ -177,28 +175,25 @@ package body GNATLLVM.Aliasing is
    TBAA_Root : Metadata_T;
    --  Root of tree for Type-Based alias Analysis (TBAA) metadata
 
-   function Base_Type_For_Aliasing (TE : Entity_Id) return Entity_Id
-     with Pre => Is_Type (TE), Post => Is_Type (Base_Type_For_Aliasing'Result);
+   function Base_Type_For_Aliasing (TE : Type_Kind_Id) return Type_Kind_Id;
    --  Given a type, return the GNAT type to be used to as the base type
    --  for aliasing purposes.
 
-   function Is_Subtype_For_Aliasing (TE1, TE2 : Entity_Id) return Boolean is
+   function Is_Subtype_For_Aliasing (TE1, TE2 : Type_Kind_Id) return Boolean is
      (Base_Type_For_Aliasing (TE1) = Base_Type_For_Aliasing (TE2)
         or else (Is_Tagged_Type (TE1) and then Is_Derived_Type (TE2)
-           and then Is_Subtype_For_Aliasing (TE1, Full_Etype (TE2))))
-     with Pre => Is_Type (TE1) and then Is_Type (TE2);
+           and then Is_Subtype_For_Aliasing (TE1, Full_Etype (TE2))));
    --  Return True iff TE1 is TE2 or a subtype of it using the above
    --  definition of base type or using a parent relationship among
    --  tagged types.
 
-   function Universal_Aliasing_Including_Bases (TE : Entity_Id) return Boolean
-     with Pre => Is_Type (TE);
+   function Universal_Aliasing_Including_Bases
+     (TE : Type_Kind_Id) return Boolean;
    --  Return True iff TE or any base type for aliasing has Universal_Aliasing
    --  set.
 
    function Get_TBAA_Type
-     (TE : Entity_Id; Kind : TBAA_Kind) return Metadata_T
-     with Pre => Is_Type_Or_Void (TE);
+     (TE : Void_Or_Type_Kind_Id; Kind : TBAA_Kind) return Metadata_T;
    function Get_TBAA_Type (GT : GL_Type; Kind : TBAA_Kind) return Metadata_T
      with Pre => Present (GT);
    --  Get a TBAA type entry for the specified type and kind
@@ -209,32 +204,35 @@ package body GNATLLVM.Aliasing is
       Parent : Metadata_T := No_Metadata_T) return Metadata_T
      with Pre => Present (GT);
    function Create_TBAA_Type
-     (TE     : Entity_Id;
+     (TE     : Type_Kind_Id;
       Kind   : TBAA_Kind;
-      Parent : Metadata_T := No_Metadata_T) return Metadata_T
-     with Pre => Is_Type (TE);
+      Parent : Metadata_T := No_Metadata_T) return Metadata_T;
 
    function Create_TBAA_For_Elementary_Type
-     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
-     with Pre => Is_Elementary_Type (TE) and then Present (Parent);
+     (TE     : Elementary_Kind_Id;
+      Kind   : TBAA_Kind;
+      Parent : Metadata_T) return Metadata_T
+     with Pre => Present (Parent);
    function Create_TBAA_For_Record_Type
-     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
-     with Pre => Is_Record_Type (TE) and then Present (Parent);
+     (TE     : Record_Kind_Id;
+      Kind   : TBAA_Kind;
+      Parent : Metadata_T) return Metadata_T
+     with Pre => Present (Parent);
    --  Subprograms of above
 
-   function TBAA_Data_For_Array_Type (TE : Entity_Id) return TBAA_Info_Id
-     with Pre  => Is_Array_Type (TE) and then Is_Base_Type (TE),
-          Post => Present (TBAA_Data_For_Array_Type'Result);
+   function TBAA_Data_For_Array_Type (TE : E_Array_Type_Id) return TBAA_Info_Id
+     with Post => Present (TBAA_Data_For_Array_Type'Result);
    --  If not already created, make a TBAA_Info entity for TE, a base type
 
-   function TBAA_Data_For_Array_Subtype (TE : Entity_Id) return TBAA_Info_Id
-     with Pre  => Is_Array_Type (TE),
-          Post => Present (TBAA_Data_For_Array_Subtype'Result);
+   function TBAA_Data_For_Array_Subtype
+     (TE : Array_Kind_Id) return TBAA_Info_Id
+     with Post => Present (TBAA_Data_For_Array_Subtype'Result);
    --  Likewise for either a base type or subtype
 
    function Create_TBAA_For_Array_Data
-     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
-     with Pre => Is_Array_Type (TE);
+     (TE     : Array_Kind_Id;
+      Kind   : TBAA_Kind;
+      Parent : Metadata_T) return Metadata_T;
    --  If TE is a small, constrained array, create metadata for it
 
    function Get_TBAA_Name
@@ -262,8 +260,8 @@ package body GNATLLVM.Aliasing is
    --  tag and new offset.  If MD is not a struct tag or if we're accessing
    --  the entire structure, we keep Offset unchanged and return MD.
 
-   function Get_Field_TBAA (F : Entity_Id; GT : GL_Type) return Metadata_T
-     with Pre => Is_Field (F);
+   function Get_Field_TBAA
+     (F : Record_Field_Kind_Id; GT : GL_Type) return Metadata_T;
    --  Get (and maybe create) a TBAA tag for field F of type GT
 
    -----------------
@@ -287,7 +285,7 @@ package body GNATLLVM.Aliasing is
    -- Base_Type_For_Aliasing --
    ----------------------------
 
-   function Base_Type_For_Aliasing (TE : Entity_Id) return Entity_Id is
+   function Base_Type_For_Aliasing (TE : Type_Kind_Id) return Type_Kind_Id is
    begin
       --  If this isn't a base type, start with that
 
@@ -316,9 +314,10 @@ package body GNATLLVM.Aliasing is
    -- Universal_Aliasing_Including_Bases --
    ----------------------------------------
 
-   function Universal_Aliasing_Including_Bases (TE : Entity_Id) return Boolean
+   function Universal_Aliasing_Including_Bases
+     (TE : Type_Kind_Id) return Boolean
    is
-      BT : constant Entity_Id := Base_Type_For_Aliasing (TE);
+      BT : constant Type_Kind_Id := Base_Type_For_Aliasing (TE);
 
    begin
       return Universal_Aliasing (TE)
@@ -331,8 +330,8 @@ package body GNATLLVM.Aliasing is
 
    procedure Search_For_UCs is
 
-      procedure Add_To_UC_Table (STE, TTE : Entity_Id; Valid : in out Boolean)
-        with Pre => Is_Type (STE) and then Is_Type (TTE);
+      procedure Add_To_UC_Table
+        (STE, TTE : Type_Kind_Id; Valid : in out Boolean);
       --  Make an entry in the UC table showing that STE and TTE are to
       --  be treated identically.  If we can't do that, clear Valid.
 
@@ -350,10 +349,11 @@ package body GNATLLVM.Aliasing is
       -- Add_To_UC_Table --
       ---------------------
 
-      procedure Add_To_UC_Table (STE, TTE : Entity_Id; Valid : in out Boolean)
+      procedure Add_To_UC_Table
+        (STE, TTE : Type_Kind_Id; Valid : in out Boolean)
       is
-         SBT       : constant Entity_Id    := Base_Type_For_Aliasing (STE);
-         TBT       : constant Entity_Id    := Base_Type_For_Aliasing (TTE);
+         SBT       : constant Type_Kind_Id := Base_Type_For_Aliasing (STE);
+         TBT       : constant Type_Kind_Id := Base_Type_For_Aliasing (TTE);
          S_Is_Base : constant Boolean      := SBT = STE;
          T_Is_Base : constant Boolean      := TBT = TTE;
          S_Grp     : constant UC_Group_Idx := Find_UC_Group (STE);
@@ -416,20 +416,19 @@ package body GNATLLVM.Aliasing is
       ------------------
 
       function Check_For_UC (N : Node_Id) return Traverse_Result is
-         STE : Entity_Id;
-         TTE : Entity_Id;
+         STE : Type_Kind_Id;
+         TTE : Type_Kind_Id;
 
-         function OK_Unit (N : Node_Id; TE : Entity_Id) return Boolean is
+         function OK_Unit (N : Node_Id; TE : Type_Kind_Id) return Boolean is
            (In_Same_Extended_Unit (N, TE)
               or else In_Extended_Main_Code_Unit (TE))
-           with Pre => Present (N) and then Is_Type (TE);
+           with Pre => Present (N);
          --  We can do something with TE if it's either in the code unit
          --  that we're compiling or in the same (extended) unit as the UC.
 
-         function Is_Data_Access_Type (TE : Entity_Id) return Boolean is
+         function Is_Data_Access_Type (TE : Type_Kind_Id) return Boolean is
            (Is_Access_Type (TE)
-              and then Ekind (TE) /= E_Access_Subprogram_Type)
-           with Pre => Is_Type (TE);
+              and then Ekind (TE) /= E_Access_Subprogram_Type);
          --  We don't want to treat access to subprogram as an access type
          --  since we never load a subprogram as data.
 
@@ -469,8 +468,8 @@ package body GNATLLVM.Aliasing is
          --  further and possibly take some action.
 
          declare
-            SDT   : constant Entity_Id    := Full_Designated_Type (STE);
-            TDT   : constant Entity_Id    := Full_Designated_Type (TTE);
+            SDT   : constant Type_Kind_Id := Full_Designated_Type (STE);
+            TDT   : constant Type_Kind_Id := Full_Designated_Type (TTE);
             Valid : Boolean               := True;
 
          begin
@@ -540,7 +539,7 @@ package body GNATLLVM.Aliasing is
    -- Find_UC_Group --
    -------------------
 
-   function Find_UC_Group (TE : Entity_Id) return UC_Group_Idx is
+   function Find_UC_Group (TE : Type_Kind_Id) return UC_Group_Idx is
    begin
       for J in 1 .. UC_Table.Last loop
          if UC_Table.Table (J).TE = TE then
@@ -589,7 +588,7 @@ package body GNATLLVM.Aliasing is
 
       elsif Is_Array_Type (GT) then
          declare
-            TE   : constant Entity_Id    := Full_Etype (GT);
+            TE   : constant Type_Kind_Id := Full_Etype (GT);
             Tidx : constant TBAA_Info_Id := TBAA_Data_For_Array_Subtype (TE);
             TI   : constant TBAA_Info    := TBAA_Info_Table.Table (Tidx);
 
@@ -636,7 +635,7 @@ package body GNATLLVM.Aliasing is
    --------------------------------------
 
    procedure Maybe_Initialize_TBAA_For_Field
-     (V : in out GL_Value; F : Entity_Id; F_GT : GL_Type) is
+     (V : in out GL_Value; F : Record_Field_Kind_Id; F_GT : GL_Type) is
    begin
       if No (TBAA_Type (V)) and then not Is_Bitfield (F) then
          Set_TBAA_Type   (V, Get_Field_TBAA (F, F_GT));
@@ -693,24 +692,23 @@ package body GNATLLVM.Aliasing is
    -- Find_Equiv_Subtype --
    ------------------------
 
-   function Find_Equiv_Subtype (TE : Entity_Id) return Entity_Id is
-      procedure Get_String_Bounds (TE : Entity_Id; LB, HB : out Uint)
-        with Pre => Is_Array_Type (TE);
+   function Find_Equiv_Subtype (TE : Type_Kind_Id) return Type_Kind_Id is
+      procedure Get_String_Bounds (TE : Array_Kind_Id; LB, HB : out Uint);
       --  Get the bounds of TE, which is known to be a subtype of String.
       --  Handle both string literal and normal array case.  If a bound
       --  isn't constant (which isn't the case for a string literal), set that
       --  value to No_Uint.
 
-      BT   : constant Entity_Id    := Base_Type_For_Aliasing (TE);
+      BT   : constant Type_Kind_Id := Base_Type_For_Aliasing (TE);
       Tidx : constant TBAA_Info_Id := Get_TBAA_Info (BT);
       Idx  : Nat;
-      E_TE : Entity_Id;
+      E_TE : Type_Kind_Id;
 
       -----------------------
       -- Get_String_Bounds --
       -----------------------
 
-      procedure Get_String_Bounds (TE : Entity_Id; LB, HB : out Uint) is
+      procedure Get_String_Bounds (TE : Array_Kind_Id; LB, HB : out Uint) is
       begin
          if Ekind (TE) = E_String_Literal_Subtype then
             declare
@@ -876,7 +874,9 @@ package body GNATLLVM.Aliasing is
    -- Get_Field_TBAA --
    --------------------
 
-   function Get_Field_TBAA (F : Entity_Id; GT : GL_Type) return Metadata_T is
+   function Get_Field_TBAA
+     (F : Record_Field_Kind_Id; GT : GL_Type) return Metadata_T
+   is
       Fidx   : constant Field_Info_Id := Get_Field_Info (F);
       Kind   : constant TBAA_Kind     := Kind_From_Aliased (Is_Aliased (F));
       TBAA   : Metadata_T             := TBAA_Type (Fidx);
@@ -919,7 +919,7 @@ package body GNATLLVM.Aliasing is
       GT     : GL_Type   := No_GL_Type;
       Suffix : String    := "") return String
    is
-      Our_TE : constant Entity_Id :=
+      Our_TE : constant Type_Kind_Id :=
         (if Present (TE) then TE else Full_Etype (GT));
       Buf : Bounded_String;
 
@@ -1004,11 +1004,11 @@ package body GNATLLVM.Aliasing is
    -------------------
 
    function Get_TBAA_Type
-     (TE : Entity_Id; Kind : TBAA_Kind) return Metadata_T
+     (TE : Void_Or_Type_Kind_Id; Kind : TBAA_Kind) return Metadata_T
    is
-      Grp         : constant UC_Group_Idx := Find_UC_Group (TE);
-      E_TE        : constant Entity_Id    := Find_Equiv_Subtype (TE);
-      TBAA        : Metadata_T            := Get_TBAA (E_TE);
+      Grp         : constant UC_Group_Idx          := Find_UC_Group (TE);
+      E_TE        : constant Void_Or_Type_Kind_Id  := Find_Equiv_Subtype (TE);
+      TBAA        : Metadata_T                     := Get_TBAA (E_TE);
       Native_TBAA : Metadata_T;
 
    begin
@@ -1069,7 +1069,7 @@ package body GNATLLVM.Aliasing is
 
          if Is_Aggregate_Type (E_TE) and then not Is_Full_Base_Type (E_TE) then
             declare
-               BT  : constant Entity_Id    := Base_Type_For_Aliasing (E_TE);
+               BT  : constant Type_Kind_Id := Base_Type_For_Aliasing (E_TE);
                Idx : constant TBAA_Info_Id := Get_TBAA_Info (BT);
 
             begin
@@ -1122,12 +1122,13 @@ package body GNATLLVM.Aliasing is
       Kind   : TBAA_Kind;
       Parent : Metadata_T := No_Metadata_T) return Metadata_T
    is
-      TE         : constant Entity_Id  := Full_Etype (GT);
-      TBAA       : constant Metadata_T := Get_TBAA_Type (TE, For_Aliased);
-      Our_Parent : constant Metadata_T :=
+      TE         : constant Void_Or_Type_Kind_Id  := Full_Etype (GT);
+      TBAA       : constant Metadata_T            :=
+        Get_TBAA_Type (TE, For_Aliased);
+      Our_Parent : constant Metadata_T            :=
         (if Present (Parent) then Parent else TBAA_Root);
-      Prim_GT    : constant GL_Type    := Primitive_GL_Type (GT);
-      Prim_TBAA  : constant Metadata_T :=
+      Prim_GT    : constant GL_Type               := Primitive_GL_Type (GT);
+      Prim_TBAA  : constant Metadata_T            :=
         (if   No (TBAA) then No_Metadata_T
          else (case Kind is
                  when For_Aliased => TBAA,
@@ -1190,17 +1191,17 @@ package body GNATLLVM.Aliasing is
    ----------------------
 
    function Create_TBAA_Type
-     (TE     : Entity_Id;
+     (TE     : Type_Kind_Id;
       Kind   : TBAA_Kind;
       Parent : Metadata_T := No_Metadata_T) return Metadata_T
    is
-      BT           : constant Entity_Id  := Base_Type_For_Aliasing (TE);
-      Inner_Parent : constant Metadata_T :=
+      BT           : constant Type_Kind_Id  := Base_Type_For_Aliasing (TE);
+      Inner_Parent : constant Metadata_T    :=
         (if    Present (Parent) then Parent
          elsif BT /= TE then Get_TBAA_Type (BT, Native)
          elsif Is_Tagged_Type (TE) and then Is_Derived_Type (TE)
          then  Get_TBAA_Type (Full_Etype (TE), Native) else TBAA_Root);
-      Our_Parent   : constant Metadata_T :=
+      Our_Parent   : constant Metadata_T    :=
         (if Present (Inner_Parent) then Inner_Parent else TBAA_Root);
 
    begin
@@ -1233,7 +1234,9 @@ package body GNATLLVM.Aliasing is
    -------------------------------------
 
    function Create_TBAA_For_Elementary_Type
-     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
+     (TE     : Elementary_Kind_Id;
+      Kind   : TBAA_Kind;
+      Parent : Metadata_T) return Metadata_T
    is
       GT   : constant GL_Type  := Primitive_GL_Type (TE);
       Size : constant ULL      := Get_Type_Size (Type_Of (GT));
@@ -1256,7 +1259,9 @@ package body GNATLLVM.Aliasing is
    ---------------------------------
 
    function Create_TBAA_For_Record_Type
-     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
+     (TE     : Record_Kind_Id;
+      Kind   : TBAA_Kind;
+      Parent : Metadata_T) return Metadata_T
    is
       Ridx          : constant Record_Info_Id     := Get_Record_Info (TE);
       Struct_Fields : constant Struct_Field_Array :=
@@ -1317,12 +1322,13 @@ package body GNATLLVM.Aliasing is
    -- TBAA_Data_For_Array_Type --
    ------------------------------
 
-   function TBAA_Data_For_Array_Type (TE : Entity_Id) return TBAA_Info_Id is
-      A_TE    : constant Entity_Id := Get_Fullest_View (TE);
-      A_GT    : constant GL_Type   := Default_GL_Type (A_TE);
-      Comp_GT : constant GL_Type   := Full_Component_GL_Type (A_TE);
-      Tidx    : TBAA_Info_Id       := Get_TBAA_Info (A_TE);
-      TI      : TBAA_Info          :=
+   function TBAA_Data_For_Array_Type (TE : E_Array_Type_Id) return TBAA_Info_Id
+   is
+      A_TE    : constant Array_Kind_Id   := Get_Fullest_View (TE);
+      A_GT    : constant GL_Type         := Default_GL_Type (A_TE);
+      Comp_GT : constant GL_Type         := Full_Component_GL_Type (A_TE);
+      Tidx    : TBAA_Info_Id             := Get_TBAA_Info (A_TE);
+      TI      : TBAA_Info                :=
         (Subtype_Chain => 0, others => No_Metadata_T);
 
    begin
@@ -1408,16 +1414,18 @@ package body GNATLLVM.Aliasing is
    -- TBAA_Data_For_Array_Subtype --
    ---------------------------------
 
-   function TBAA_Data_For_Array_Subtype (TE : Entity_Id) return TBAA_Info_Id is
-      O_TE      : constant Entity_Id    :=
+   function TBAA_Data_For_Array_Subtype
+     (TE : Array_Kind_Id) return TBAA_Info_Id
+   is
+      O_TE      : constant Array_Kind_Id   :=
         (if   Is_Packed_Array_Impl_Type (TE) then Original_Array_Type (TE)
          else TE);
-      BT        : constant Entity_Id    := Full_Base_Type (O_TE, True);
-      BTidx     : constant TBAA_Info_Id := TBAA_Data_For_Array_Type (BT);
-      Tidx      : TBAA_Info_Id          := Get_TBAA_Info (TE);
-      TI        : TBAA_Info             := TBAA_Info_Table.Table (BTidx);
-      TBAA_Data : constant Metadata_T   := Get_TBAA_Type (TE, For_Aliased);
-      GT        : constant GL_Type      := Primitive_GL_Type (TE);
+      BT        : constant E_Array_Type_Id := Full_Base_Type (O_TE, True);
+      BTidx     : constant TBAA_Info_Id    := TBAA_Data_For_Array_Type (BT);
+      Tidx      : TBAA_Info_Id             := Get_TBAA_Info (TE);
+      TI        : TBAA_Info                := TBAA_Info_Table.Table (BTidx);
+      TBAA_Data : constant Metadata_T      := Get_TBAA_Type (TE, For_Aliased);
+      GT        : constant GL_Type         := Primitive_GL_Type (TE);
 
    begin
       --  If we already made one, return it
@@ -1468,14 +1476,17 @@ package body GNATLLVM.Aliasing is
    --------------------------------
 
    function Create_TBAA_For_Array_Data
-     (TE : Entity_Id; Kind : TBAA_Kind; Parent : Metadata_T) return Metadata_T
+     (TE     : Array_Kind_Id;
+      Kind   : TBAA_Kind;
+      Parent : Metadata_T) return Metadata_T
    is
-      C_GT   : constant GL_Type      := Full_Component_GL_Type (TE);
-      C_Size : constant ULL          := +To_Bytes (Get_Type_Size (C_GT));
-      GT     : constant GL_Type      := Primitive_GL_Type (TE);
-      BT     : constant Entity_Id    := Base_Type_For_Aliasing (TE);
-      Tidx   : constant TBAA_Info_Id := TBAA_Data_For_Array_Type (BT);
-      C_TBAA : constant Metadata_T   := TBAA_Info_Table.Table (Tidx).Component;
+      C_GT   : constant GL_Type         := Full_Component_GL_Type (TE);
+      C_Size : constant ULL             := +To_Bytes (Get_Type_Size (C_GT));
+      GT     : constant GL_Type         := Primitive_GL_Type (TE);
+      BT     : constant E_Array_Type_Id := Base_Type_For_Aliasing (TE);
+      Tidx   : constant TBAA_Info_Id    := TBAA_Data_For_Array_Type (BT);
+      C_TBAA : constant Metadata_T      :=
+        TBAA_Info_Table.Table (Tidx).Component;
 
    begin
       --  If this isn't a loadable type, we don't need to handle this and

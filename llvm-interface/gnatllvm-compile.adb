@@ -412,8 +412,9 @@ package body GNATLLVM.Compile is
                if Nkind (Parent (N)) = N_Compilation_Unit then
                   if Present (Corresponding_Spec (N)) then
                      declare
-                        Spec : constant Entity_Id := Corresponding_Spec (N);
-                        Decl : constant Node_Id   := Declaration_Node (Spec);
+                        Spec : constant E_Package_Id := Corresponding_Spec (N);
+                        Decl : constant Node_Id      :=
+                          Declaration_Node (Spec);
 
                      begin
                         Emit_Elab_Proc (Decl, Empty, Parent (Parent (Decl)));
@@ -651,7 +652,7 @@ package body GNATLLVM.Compile is
             | N_Task_Type_Declaration
            =>
             declare
-               TE : constant Entity_Id :=
+               TE : constant Type_Kind_Id :=
                  Get_Fullest_View (Defining_Identifier (N));
 
             begin
@@ -1025,8 +1026,8 @@ package body GNATLLVM.Compile is
 
          when N_Unchecked_Type_Conversion =>
             declare
-               Expr   : constant Node_Id   := Expression (N);
-               BT     : constant Entity_Id := Full_Base_Type (GT);
+               Expr   : constant Node_Id      := Expression (N);
+               BT     : constant Type_Kind_Id := Full_Base_Type (GT);
 
             begin
                --  The result can't have overflowed (this is unchecked),
@@ -1363,7 +1364,7 @@ package body GNATLLVM.Compile is
    --  blocks.
 
    type Code_Position (Library : Boolean := False) is record
-      E : Entity_Id;
+      E : E_Package_Id;
       case Library is
          when True =>
             Elab_Ptr : Nat;
@@ -1385,7 +1386,7 @@ package body GNATLLVM.Compile is
    -- Record_Code_Position --
    --------------------------
 
-   procedure Record_Code_Position (E : Entity_Id) is
+   procedure Record_Code_Position (E : E_Package_Id) is
    begin
       if Library_Level then
 
@@ -1416,7 +1417,7 @@ package body GNATLLVM.Compile is
    -- Insert_Code_For --
    ---------------------
 
-   procedure Insert_Code_For (E : Entity_Id) is
+   procedure Insert_Code_For (E : E_Package_Id) is
       Code_To_Emit : constant Node_Id :=
         Parent (Corresponding_Body (Parent (Declaration_Node (E))));
 

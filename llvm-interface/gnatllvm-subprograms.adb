@@ -112,8 +112,7 @@ package body GNATLLVM.Subprograms is
      (PK in Out_Value | In_Out_Value);
    --  True if this parameter kind is returned from the subprogram
 
-   function Get_Param_Kind (Param : Entity_Id) return Param_Kind
-     with Pre => Ekind (Param) in Formal_Kind;
+   function Get_Param_Kind (Param : Formal_Kind_Id) return Param_Kind;
    --  Return the parameter kind for Param
 
    function Relationship_For_PK
@@ -164,7 +163,7 @@ package body GNATLLVM.Subprograms is
    --  Tables for recording global constructors and global destructors
 
    package Global_Constructors is new Table.Table
-     (Table_Component_Type => Entity_Id,
+     (Table_Component_Type => Subprogram_Kind_Id,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 20,
@@ -172,7 +171,7 @@ package body GNATLLVM.Subprograms is
       Table_Name           => "Global_Constructors");
 
    package Global_Destructors is new Table.Table
-     (Table_Component_Type => Entity_Id,
+     (Table_Component_Type => Subprogram_Kind_Id,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 20,
@@ -180,7 +179,7 @@ package body GNATLLVM.Subprograms is
       Table_Name           => "Global_Destructors");
 
    package Created_Subprograms is new Table.Table
-     (Table_Component_Type => Entity_Id,
+     (Table_Component_Type => Subprogram_Kind_Id,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 100,
@@ -199,7 +198,7 @@ package body GNATLLVM.Subprograms is
    --  Convert an Entity_Id to a hash
 
    package Activation_Record_Map_P is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Entity_Id,
+     (Key_Type        => Exception_Or_Object_Kind_Id,
       Element_Type    => GL_Value,
       Hash            => Hash_Entity_Id,
       Equivalent_Keys => "=");
@@ -207,9 +206,8 @@ package body GNATLLVM.Subprograms is
    Activation_Var_Map : Activation_Record_Map_P.Map;
 
    function Get_Activation_Record_Ptr
-     (V : GL_Value; E : Entity_Id) return GL_Value
-     with Pre  => Is_Reference (V) and then Is_Record_Type (Related_Type (V))
-                  and then Ekind (E) = E_Component,
+     (V : GL_Value; E : E_Component_Id) return GL_Value
+     with Pre  => Is_Reference (V) and then Is_Record_Type (Related_Type (V)),
           Post => Is_Reference (Get_Activation_Record_Ptr'Result)
                   and then Is_Record_Type (Related_Type
                                         (Get_Activation_Record_Ptr'Result));
@@ -290,7 +288,7 @@ package body GNATLLVM.Subprograms is
    -- Next_In_Param --
    -------------------
 
-   function Next_In_Param (E : Entity_Id) return Entity_Id is
+   function Next_In_Param (E : Formal_Kind_Id) return Entity_Id is
 
    begin
       return Param : Entity_Id := Next_Formal_With_Extras (E) do
@@ -328,7 +326,7 @@ package body GNATLLVM.Subprograms is
    -- Next_Out_Param --
    --------------------
 
-   function Next_Out_Param (E : Entity_Id) return Entity_Id is
+   function Next_Out_Param (E : Formal_Kind_Id) return Entity_Id is
 
    begin
       return Param : Entity_Id := Next_Formal_With_Extras (E) do
@@ -352,7 +350,7 @@ package body GNATLLVM.Subprograms is
    --  Param_Is_Reference --
    -------------------------
 
-   function Param_Is_Reference (E : Entity_Id) return Boolean is
+   function Param_Is_Reference (E : Formal_Kind_Id) return Boolean is
      (PK_Is_Reference (Get_Param_Kind (E)));
 
    ---------------------------
@@ -377,7 +375,7 @@ package body GNATLLVM.Subprograms is
    -- Get_Param_Kind --
    --------------------
 
-   function Get_Param_Kind (Param : Entity_Id) return Param_Kind is
+   function Get_Param_Kind (Param : Formal_Kind_Id) return Param_Kind is
       GT           : constant GL_Type           := Full_GL_Type (Param);
       T            : constant Type_T            := Type_Of (GT);
       Size         : constant ULL               :=
@@ -604,7 +602,9 @@ package body GNATLLVM.Subprograms is
    -- Get_Mechanism_Code --
    ------------------------
 
-   function Get_Mechanism_Code (E : Entity_Id; Exprs : List_Id) return Uint is
+   function Get_Mechanism_Code
+     (E : Formal_Kind_Id; Exprs : List_Id) return Uint
+   is
       P_Num : Int;
       Param : Entity_Id;
 
@@ -654,7 +654,8 @@ package body GNATLLVM.Subprograms is
    -- Create_Subprogram_Type --
    ----------------------------
 
-   function Create_Subprogram_Type (E : Entity_Id) return Type_T is
+   function Create_Subprogram_Type (E : Entity_Id) return Type_T
+   is
       Return_GT       : constant GL_Type     := Full_GL_Type    (E);
       RK              : constant Return_Kind := Get_Return_Kind (E);
       LRK             : constant L_Ret_Kind  := Get_L_Ret_Kind  (E);
@@ -889,11 +890,11 @@ package body GNATLLVM.Subprograms is
    -------------------------------
 
    function Get_Activation_Record_Ptr
-     (V : GL_Value; E : Entity_Id) return GL_Value
+     (V : GL_Value; E : E_Component_Id) return GL_Value
    is
-      Need_Type   : constant Entity_Id := Full_Scope (E);
-      Have_Type   : constant Entity_Id := Full_Etype (V);
-      First_Field : constant Entity_Id :=
+      Need_Type   : constant Record_Kind_Id := Full_Scope (E);
+      Have_Type   : constant Record_Kind_Id := Full_Etype (V);
+      First_Field : constant Entity_Id      :=
         First_Component_Or_Discriminant (Have_Type);
 
    begin
@@ -948,15 +949,15 @@ package body GNATLLVM.Subprograms is
          Set_Current_Position (Entry_Block_Allocas);
 
          declare
-            GT             : constant GL_Type   := Full_GL_Type (E);
-            Component      : constant Entity_Id :=
+            GT             : constant GL_Type        := Full_GL_Type (E);
+            Component      : constant E_Component_Id :=
               Activation_Record_Component (E);
-            Activation_Rec : constant GL_Value  :=
+            Activation_Rec : constant GL_Value       :=
               Get_Activation_Record_Ptr (Activation_Rec_Param, Component);
-            Pointer        : constant GL_Value  :=
+            Pointer        : constant GL_Value       :=
               Get (Record_Field_Offset (Activation_Rec, Component), Reference);
-            V              : constant GL_Value  := Get_Value (E);
-            Result         : GL_Value   := Load (Pointer);
+            V              : constant GL_Value       := Get_Value (E);
+            Result         : GL_Value                := Load (Pointer);
 
          begin
             --  If GT is unconstrained, we have an access type, which is a
@@ -1002,13 +1003,13 @@ package body GNATLLVM.Subprograms is
    -------------------
 
    procedure Emit_One_Body (N : Node_Id; For_Inline : Boolean := False) is
-      Spec       : constant Node_Id     := Get_Acting_Spec (N);
-      Func       : constant GL_Value    := Emit_Subprogram_Decl (Spec);
-      E          : constant Entity_Id   := Defining_Entity (Spec);
-      Return_GT  : constant GL_Type     := Full_GL_Type    (E);
-      RK         : constant Return_Kind := Get_Return_Kind (E);
-      LRK        : constant L_Ret_Kind  := Get_L_Ret_Kind  (E);
-      Param_Num  : Nat                  := 0;
+      Spec       : constant Node_Id            := Get_Acting_Spec (N);
+      Func       : constant GL_Value           := Emit_Subprogram_Decl (Spec);
+      E          : constant Subprogram_Kind_Id := Defining_Entity (Spec);
+      Return_GT  : constant GL_Type            := Full_GL_Type    (E);
+      RK         : constant Return_Kind        := Get_Return_Kind (E);
+      LRK        : constant L_Ret_Kind         := Get_L_Ret_Kind  (E);
+      Param_Num  : Nat                         := 0;
       LLVM_Param : GL_Value;
       Param      : Entity_Id;
 
@@ -1595,8 +1596,8 @@ package body GNATLLVM.Subprograms is
    -- Get_Static_Link --
    ---------------------
 
-   function Get_Static_Link (Subp : Entity_Id) return GL_Value is
-      Parent      : constant Entity_Id := Enclosing_Subprogram (Subp);
+   function Get_Static_Link (Subp : Subprogram_Kind_Id) return GL_Value is
+      Parent      : constant Subprogram_Kind_Id := Enclosing_Subprogram (Subp);
       Ent_Caller  : Subp_Entry;
       Ent         : Subp_Entry;
       Result      : GL_Value;
@@ -1674,7 +1675,7 @@ package body GNATLLVM.Subprograms is
    ----------------
 
    function Call_Alloc
-     (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value is
+     (Proc : E_Procedure_Id; Args : GL_Value_Array) return GL_Value is
    begin
       return Call (Emit_Identifier (Proc), Size_GL_Type,
                    Add_Static_Link (Proc, Args));
@@ -1684,7 +1685,7 @@ package body GNATLLVM.Subprograms is
    -- Call_Dealloc --
    ------------------
 
-   procedure Call_Dealloc (Proc : Entity_Id; Args : GL_Value_Array) is
+   procedure Call_Dealloc (Proc : E_Procedure_Id; Args : GL_Value_Array) is
    begin
       Call (Emit_Identifier (Proc), Add_Static_Link (Proc, Args));
    end Call_Dealloc;
@@ -1722,7 +1723,7 @@ package body GNATLLVM.Subprograms is
    --------------------------------
 
    function Emit_Subprogram_Identifier
-     (E : Entity_Id; N : Node_Id; GT : GL_Type) return GL_Value
+     (E : Subprogram_Kind_Id; N : Node_Id; GT : GL_Type) return GL_Value
    is
       V  : GL_Value := Get_Value (E);
 
@@ -1822,7 +1823,7 @@ package body GNATLLVM.Subprograms is
       function Misaligned_Copy_Required
         (V        : GL_Value;
          Actual   : Node_Id;
-         Formal   : Entity_Id;
+         Formal   : Formal_Kind_Id;
          Bitfield : Boolean) return Boolean
         with Pre => Present (V) and then Present (Param);
       --  Return whether V, when passed to a by-reference Formal, must be
@@ -1846,12 +1847,12 @@ package body GNATLLVM.Subprograms is
       Direct_Call      : constant Boolean     := Is_Entity_Name (Subp);
       Subp_Typ         : constant Entity_Id   :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
-      RK               : constant Return_Kind := Get_Return_Kind  (Subp_Typ);
-      LRK              : constant L_Ret_Kind  := Get_L_Ret_Kind   (Subp_Typ);
-      Return_GT        : constant GL_Type     := Full_GL_Type     (Subp_Typ);
+      RK               : constant Return_Kind := Get_Return_Kind   (Subp_Typ);
+      LRK              : constant L_Ret_Kind  := Get_L_Ret_Kind    (Subp_Typ);
+      Return_GT        : constant GL_Type     := Full_GL_Type      (Subp_Typ);
       Orig_Arg_Count   : constant Nat         := Number_In_Params  (Subp_Typ);
       Out_Arg_Count    : constant Nat         := Number_Out_Params (Subp_Typ);
-      Out_Param        : Entity_Id            := First_Out_Param  (Subp_Typ);
+      Out_Param        : Entity_Id            := First_Out_Param   (Subp_Typ);
       No_Adjust_LV     : constant Boolean     := Contains_Discriminant (N);
       In_Idx           : Nat                  := 1;
       Out_Idx          : Nat                  := 1;
@@ -1951,7 +1952,7 @@ package body GNATLLVM.Subprograms is
       function Misaligned_Copy_Required
         (V        : GL_Value;
          Actual   : Node_Id;
-         Formal   : Entity_Id;
+         Formal   : Formal_Kind_Id;
          Bitfield : Boolean) return Boolean
       is
          GT           : constant GL_Type := Full_GL_Type (Formal);
@@ -2404,7 +2405,7 @@ package body GNATLLVM.Subprograms is
    --  Create_Subprogram --
    ------------------------
 
-   function Create_Subprogram (E : Entity_Id) return GL_Value is
+   function Create_Subprogram (E : Subprogram_Kind_Id) return GL_Value is
       Subp_Type   : constant Type_T      := Create_Subprogram_Type (E);
       Subp_Name   : constant String      := Get_Ext_Name (E);
       Is_Imported : constant Boolean     :=

@@ -278,8 +278,8 @@ package GNATLLVM.GLValue is
      with Pre => Present (GT), Inline;
    --  Return the relationship to use for a reference to GT
 
-   function Relationship_For_Ref (TE : Entity_Id) return GL_Relationship
-     with Pre => Is_Type (TE), Inline;
+   function Relationship_For_Ref (TE : Type_Kind_Id) return GL_Relationship
+     with Inline;
    --  Return the relationship to use for a reference to TE
 
    function Relationship_For_Access_Type (GT : GL_Type) return GL_Relationship
@@ -290,15 +290,14 @@ package GNATLLVM.GLValue is
    --  account anything special about TE, such as its size.
 
    function Relationship_For_Access_Type
-     (TE : Entity_Id) return GL_Relationship
-     with Pre => Is_Access_Type (TE), Inline;
+     (TE : Access_Kind_Id) return GL_Relationship with Inline;
    --  Given an access type, return the Relationship that a value of this
    --  type would have with its Designated_Type.  Similar to
    --  Relationship_For_Ref on the Designated_Type of TE, but takes into
    --  account anything special about TE, such as its size.
 
-   function Relationship_For_Alloc (TE : Entity_Id) return GL_Relationship
-     with Pre => Is_Type (TE), Inline;
+   function Relationship_For_Alloc (TE : Type_Kind_Id) return GL_Relationship
+     with Inline;
    --  Return the relationship to TE that allocating memory for TE produces.
    --  Similar to Relationship_For_Ref, but take into account the need to
    --  also allocate space for bounds in some situations.
@@ -506,10 +505,8 @@ package GNATLLVM.GLValue is
      (Is_Data (Relationship (V)))
      with Pre => Present (V);
 
-   function Full_Etype (V : GL_Value)              return Entity_Id
-     with Pre  => Present (V),
-          Post => Is_Type_Or_Void (Full_Etype'Result),
-          Inline;
+   function Full_Etype (V : GL_Value)              return Void_Or_Type_Kind_Id
+     with Pre  => Present (V), Inline;
 
    function Atomic_Kind (T : Type_T) return Boolean is
      (Get_Type_Kind (T)
@@ -711,9 +708,10 @@ package GNATLLVM.GLValue is
           Inline;
    --  Set the TBAA type and offset of V
 
-   procedure Set_Value (VE : Entity_Id; VL : GL_Value)
-     with Inline;
-   --  Set a value for an entity.  This turns off the Is_Pristine flag.
+   procedure Set_Value (VE : Node_Id; VL : GL_Value)
+     with Pre => Present (VE), Inline;
+   --  Set a value for a node (usually an entity). This turns off the
+   --  Is_Pristine flag.
 
    --  Now define predicates on the GL_Value type to easily access
    --  properties of the LLVM value and the effective type.  These have the
@@ -741,12 +739,11 @@ package GNATLLVM.GLValue is
       or else (not Is_Reference (V) and then Is_Access_Type ((V))))
      with Pre => Present (V);
 
-   function Full_Designated_Type (V : GL_Value) return Entity_Id
-     with Pre  => Is_Access_Type (V) and then not Is_Subprogram_Reference (V),
-          Post => Is_Type_Or_Void (Full_Designated_Type'Result);
+   function Full_Designated_Type (V : GL_Value) return Void_Or_Type_Kind_Id
+     with Pre  => Is_Access_Type (V) and then not Is_Subprogram_Reference (V);
 
-   function Full_Base_Type (V : GL_Value) return Entity_Id
-     with Pre => Present (V), Post => Is_Type (Full_Base_Type'Result), Inline;
+   function Full_Base_Type (V : GL_Value) return Type_Kind_Id
+     with Pre => Present (V), Inline;
 
    function Is_Dynamic_Size (V : GL_Value) return Boolean
      with Pre => Present (V), Inline;
@@ -860,9 +857,9 @@ package GNATLLVM.GLValue is
      (Esize (Full_Etype (V)))
      with Pre => Present (V);
 
-   function Component_Type (V : GL_Value) return Entity_Id is
+   function Component_Type (V : GL_Value) return Type_Kind_Id is
      (Component_Type (Full_Etype (V)))
-     with Pre => Is_Array_Type (V), Post => Present (Component_Type'Result);
+     with Pre => Is_Array_Type (V);
 
    function Number_Dimensions (V : GL_Value) return Pos is
      (Number_Dimensions (Full_Etype (V)))
@@ -1016,7 +1013,7 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V) and then Present (GT), Inline;
    --  Add the Dereferenceableornull attribute to return value
 
-   procedure Add_Inline_Attribute (V : GL_Value; Subp : Entity_Id)
+   procedure Add_Inline_Attribute (V : GL_Value; Subp : Subprogram_Kind_Id)
      with Pre => Is_A_Function (V), Inline;
    --  Add the appropropriate Inline attributes, if any, to the LLVM
    --  function V based on the flags in Subp.

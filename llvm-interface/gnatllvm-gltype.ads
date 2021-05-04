@@ -47,9 +47,8 @@ package GNATLLVM.GLType is
    procedure Discard (GT : GL_Type)
      with Pre => Present (GT), Inline;
 
-   function New_GT (TE : Entity_Id) return GL_Type
-     with Pre  => Is_Type_Or_Void (TE),
-          Post => Present (New_GT'Result);
+   function New_GT (TE : Void_Or_Type_Kind_Id) return GL_Type
+     with Post => Present (New_GT'Result);
    --  Create a new GL_Type with None kind for type TE
 
    function Make_GT_Alternative
@@ -81,9 +80,8 @@ package GNATLLVM.GLType is
                  or else T = Type_Of (GT);
    --  Update GT with a new type and dummy status
 
-   function Primitive_GL_Type (TE : Entity_Id) return GL_Type
-     with Pre  => Is_Type_Or_Void (TE),
-          Post => (Is_Primitive_GL_Type (Primitive_GL_Type'Result)
+   function Primitive_GL_Type (TE : Void_Or_Type_Kind_Id) return GL_Type
+     with Post => (Is_Primitive_GL_Type (Primitive_GL_Type'Result)
                      or else Is_Dummy_Type (Primitive_GL_Type'Result))
                   and then TE = Full_Etype (Primitive_GL_Type'Result);
    --  Return the GT_Type for TE that corresponds to its basic computational
@@ -107,15 +105,13 @@ package GNATLLVM.GLType is
                              (Primitive_GL_Type'Result),
           Inline;
 
-   function Dummy_GL_Type (TE : Entity_Id) return GL_Type
-     with Pre  => Is_Type_Or_Void (TE),
-          Post => Present (Dummy_GL_Type'Result), Inline;
+   function Dummy_GL_Type (TE : Void_Or_Type_Kind_Id) return GL_Type
+     with Post => Present (Dummy_GL_Type'Result), Inline;
    --  Return the GT_Type for TE that corresponds to a dummy form
 
    function Default_GL_Type
-     (TE : Entity_Id; Create : Boolean := True) return GL_Type
-     with Pre  => Is_Type_Or_Void (TE),
-          Post => not Create or else Present (Default_GL_Type'Result), Inline;
+     (TE : Void_Or_Type_Kind_Id; Create : Boolean := True) return GL_Type
+     with Post => not Create or else Present (Default_GL_Type'Result), Inline;
    --  Return the GT_Type for TE that's to be used as the default for
    --  objects or components of the type.  If Create is True, make one if
    --  it doesn't already exist.  This may or may not be the same as what
@@ -148,9 +144,8 @@ package GNATLLVM.GLType is
    --  Likewise, but use the type for an allocation, which may be an
    --  Actual_Subtype.
 
-   function Base_GL_Type (TE : Entity_Id) return GL_Type
-     with Pre  => Is_Type (TE),
-          Post => Is_Primitive_GL_Type (Base_GL_Type'Result), Inline;
+   function Base_GL_Type (TE : Type_Kind_Id) return GL_Type
+     with Post => Is_Primitive_GL_Type (Base_GL_Type'Result), Inline;
    function Base_GL_Type (GT : GL_Type) return GL_Type
      with Pre  => Present (GT),
           Post => Is_Primitive_GL_Type (Base_GL_Type'Result), Inline;
@@ -175,9 +170,8 @@ package GNATLLVM.GLType is
    --  Many are overloaded from the functions that obtain these fields from
    --  a GNAT type.
 
-   function Full_Etype (GT : GL_Type)            return Entity_Id
-     with Pre => Present (GT), Post => Is_Type_Or_Void (Full_Etype'Result),
-          Inline;
+   function Full_Etype (GT : GL_Type)            return Void_Or_Type_Kind_Id
+     with Pre => Present (GT), Inline;
 
    function Type_Of (GT : GL_Type)               return Type_T
      with Pre => Present (GT), Inline;
@@ -331,28 +325,25 @@ package GNATLLVM.GLType is
      with Pre  => Is_Array_Or_Packed_Array_Type (GT),
           Post => Is_Type (Full_Original_Array_Type'Result);
 
-   function Full_Designated_Type (GT : GL_Type) return Entity_Id is
+   function Full_Designated_Type (GT : GL_Type) return Type_Kind_Id is
      (Full_Designated_Type (Full_Etype (GT)))
-     with Pre  => Is_Access_Type (GT),
-          Post => Is_Type (Full_Designated_Type'Result);
+     with Pre  => Is_Access_Type (GT);
 
    function Full_Designated_GL_Type (GT : GL_Type) return GL_Type
      with Pre  => Is_Access_Type (GT),
           Post => Present (Full_Designated_GL_Type'Result), Inline;
 
-   function Full_Designated_GL_Type (TE : Entity_Id) return GL_Type is
+   function Full_Designated_GL_Type (TE : Access_Kind_Id) return GL_Type is
      (Get_Associated_GL_Type (TE))
-     with Pre  => Is_Access_Type (TE),
-          Post => Present (Full_Designated_GL_Type'Result);
+     with Post => Present (Full_Designated_GL_Type'Result);
 
    function Full_Designated_GL_Type (V : GL_Value) return GL_Type
      with Pre  => Is_Access_Type (V),
           Post => Present (Full_Designated_GL_Type'Result), Inline;
 
-   function Full_Component_Type (GT : GL_Type) return Entity_Id is
+   function Full_Component_Type (GT : GL_Type) return Type_Kind_Id is
      (Full_Component_Type (Full_Etype (GT)))
-     with Pre  => Is_Array_Type (GT),
-          Post => Is_Type (Full_Component_Type'Result);
+     with Pre  => Is_Array_Type (GT);
 
    function Full_Component_GL_Type (GT : GL_Type) return GL_Type is
      (Get_Associated_GL_Type (Full_Etype (GT)))
@@ -364,20 +355,17 @@ package GNATLLVM.GLType is
      with Pre  => Is_Array_Type (Related_Type (V)),
           Post => Present (Full_Component_GL_Type'Result);
 
-   function Full_Component_GL_Type (TE : Entity_Id) return GL_Type is
+   function Full_Component_GL_Type (TE : Array_Kind_Id) return GL_Type is
      (Get_Associated_GL_Type (TE))
-     with Pre  => Is_Array_Type (TE),
-          Post => Present (Full_Component_GL_Type'Result);
+     with Post => Present (Full_Component_GL_Type'Result);
 
-   function Full_Base_Type (GT : GL_Type) return Entity_Id is
+   function Full_Base_Type (GT : GL_Type) return Type_Kind_Id is
      (Full_Base_Type (Full_Etype (GT)))
-     with Pre  => Present (GT), Post => Is_Type (Full_Base_Type'Result),
-          Inline;
+     with Pre  => Present (GT), Inline;
 
-   function Ultimate_Base_Type (GT : GL_Type) return Entity_Id is
+   function Ultimate_Base_Type (GT : GL_Type) return Type_Kind_Id is
      (Ultimate_Base_Type (Full_Etype (GT)))
-     with Pre  => Present (GT), Post => Is_Type (Ultimate_Base_Type'Result),
-          Inline;
+     with Pre  => Present (GT), Inline;
 
    function Is_Nonnative_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT), Inline;
@@ -627,9 +615,9 @@ package GNATLLVM.GLType is
      (Convention (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   function Component_Type (GT : GL_Type) return Entity_Id is
+   function Component_Type (GT : GL_Type) return Type_Kind_Id is
      (Component_Type (Full_Etype (GT)))
-     with Pre => Is_Array_Type (GT), Post => Present (Component_Type'Result);
+     with Pre => Is_Array_Type (GT);
 
    function Default_Aspect_Value (GT : GL_Type) return Node_Id is
      (Default_Aspect_Value (Full_Etype (GT)))

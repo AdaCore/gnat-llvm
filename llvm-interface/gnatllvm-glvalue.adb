@@ -387,7 +387,7 @@ package body GNATLLVM.GLValue is
    -- Full_Etype --
    ----------------
 
-   function Full_Etype (V : GL_Value) return Entity_Id is
+   function Full_Etype (V : GL_Value) return Void_Or_Type_Kind_Id is
      (Full_Etype (Related_Type (V)));
 
    ----------------------------
@@ -511,7 +511,7 @@ package body GNATLLVM.GLValue is
    --  Relationship_For_Ref --
    ---------------------------
 
-   function Relationship_For_Ref (TE : Entity_Id) return GL_Relationship is
+   function Relationship_For_Ref (TE : Type_Kind_Id) return GL_Relationship is
    begin
       --  If this is an unconstrained array, this is a fat pointer
 
@@ -546,7 +546,7 @@ package body GNATLLVM.GLValue is
 
    function Relationship_For_Access_Type (GT : GL_Type) return GL_Relationship
    is
-      TE   : constant Entity_Id        := Full_Etype (GT);
+      TE   : constant Access_Kind_Id   := Full_Etype (GT);
       R    : constant GL_Relationship  := Relationship_For_Access_Type (TE);
       Size : constant GL_Value         := Get_Type_Size (GT);
 
@@ -571,10 +571,10 @@ package body GNATLLVM.GLValue is
    ----------------------------------
 
    function Relationship_For_Access_Type
-     (TE : Entity_Id) return GL_Relationship
+     (TE : Access_Kind_Id) return GL_Relationship
    is
-      BT : constant Entity_Id       := Full_Base_Type (TE);
-      DT : constant Entity_Id       := Full_Designated_Type (BT);
+      BT : constant Access_Kind_Id  := Full_Base_Type (TE);
+      DT : constant Type_Kind_Id    := Full_Designated_Type (BT);
       R  : constant GL_Relationship := Relationship_For_Ref (DT);
       --  A subtype always has the same representation as its base type.
       --  This is true for access types as well.
@@ -610,7 +610,9 @@ package body GNATLLVM.GLValue is
    -- Relationship_For_Alloc --
    ----------------------------
 
-   function Relationship_For_Alloc (TE : Entity_Id) return GL_Relationship is
+   function Relationship_For_Alloc
+     (TE : Type_Kind_Id) return GL_Relationship
+   is
       R  : constant GL_Relationship := Relationship_For_Ref (TE);
       GT : constant GL_Type         := Default_GL_Type (TE);
    begin
@@ -716,7 +718,7 @@ package body GNATLLVM.GLValue is
    -- Set_Value --
    ---------------
 
-   procedure Set_Value (VE : Entity_Id; VL : GL_Value) is
+   procedure Set_Value (VE : Node_Id; VL : GL_Value) is
       New_VL : GL_Value := VL;
 
    begin
@@ -1433,14 +1435,14 @@ package body GNATLLVM.GLValue is
    -- Full_Designated_Type --
    --------------------------
 
-   function Full_Designated_Type (V : GL_Value) return Entity_Id is
+   function Full_Designated_Type (V : GL_Value) return Void_Or_Type_Kind_Id is
      (Full_Designated_Type (Full_Etype (V)));
 
    --------------------
    -- Full_Base_Type --
    --------------------
 
-   function Full_Base_Type (V : GL_Value) return Entity_Id is
+   function Full_Base_Type (V : GL_Value) return Type_Kind_Id is
      (Full_Base_Type (Full_Etype (V)));
 
    -------------------
@@ -1609,7 +1611,7 @@ package body GNATLLVM.GLValue is
    -- Add_Inline_Attribute --
    --------------------------
 
-   procedure Add_Inline_Attribute (V : GL_Value; Subp : Entity_Id) is
+   procedure Add_Inline_Attribute (V : GL_Value; Subp : Subprogram_Kind_Id) is
    begin
       if Is_Inlined (Subp) and then Has_Pragma_Inline_Always (Subp) then
          Add_Inline_Always_Attribute (+V);
@@ -2017,8 +2019,7 @@ package body GNATLLVM.GLValue is
    -- Get_Alloca_Name --
    ---------------------
 
-   function Get_Alloca_Name (E : Entity_Id; Name : String) return String
-   is
+   function Get_Alloca_Name (E : Entity_Id; Name : String) return String is
      (if    Name = "%%" then "" elsif Name /= "" then Name
       elsif Present (E) then  Get_Ext_Name (E) else "");
 

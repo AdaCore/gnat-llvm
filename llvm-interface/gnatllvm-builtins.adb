@@ -1052,7 +1052,7 @@ package body GNATLLVM.Builtins is
    -------------------------
 
    function Emit_Intrinsic_Call
-     (N : Node_Id; Subp : Entity_Id) return GL_Value
+     (N : Node_Id; Subp : Subprogram_Kind_Id) return GL_Value
    is
       S      : constant String  := Get_Ext_Name (Subp);
       First  : constant Integer := S'First;

@@ -225,7 +225,7 @@ package body GNATLLVM.Exprs is
 
       elsif Nkind (N) = N_Selected_Component then
          declare
-            Fld  : constant Entity_Id := Entity (Selector_Name (N));
+            Fld  : constant Record_Field_Kind_Id := Entity (Selector_Name (N));
 
          begin
             --  If we want field processing for all fields or if this is a
@@ -953,10 +953,12 @@ package body GNATLLVM.Exprs is
 
          when N_Selected_Component =>
             declare
-               In_F  : constant Entity_Id := Entity (Selector_Name (N));
-               R_TE  : constant Entity_Id := Full_Scope (In_F);
-               Rec_T : constant Type_T    := Type_Of (R_TE);
-               F     : constant Entity_Id := Find_Matching_Field (R_TE, In_F);
+               In_F  : constant Record_Field_Kind_Id :=
+                 Entity (Selector_Name (N));
+               R_TE  : constant Record_Kind_Id       := Full_Scope (In_F);
+               Rec_T : constant Type_T               := Type_Of (R_TE);
+               F     : constant Record_Field_Kind_Id :=
+                 Find_Matching_Field (R_TE, In_F);
                pragma Unreferenced (Rec_T);
 
             begin
@@ -1198,7 +1200,7 @@ package body GNATLLVM.Exprs is
             | Attribute_First_Bit | Attribute_Bit | Attribute_Last_Bit =>
 
             declare
-               F            : Entity_Id;
+               F            : Record_Field_Kind_Id;
                Val          : GL_Value;
                Position     : GL_Value;
 

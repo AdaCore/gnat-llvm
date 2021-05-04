@@ -164,18 +164,18 @@ package body GNATLLVM.Arrays is
          For_Orig : Boolean := False) return Result;
 
       function Get_Array_Length
-        (TE       : Entity_Id;
+        (TE       : Array_Kind_Id;
          Dim      : Nat;
          V        : GL_Value;
          Max_Size : Boolean := False) return Result;
 
       function Get_Array_Elements
         (V        : GL_Value;
-         TE       : Entity_Id;
+         TE       : Array_Kind_Id;
          Max_Size : Boolean := False) return Result;
 
       function Get_Array_Type_Size
-        (TE       : Entity_Id;
+        (TE       : Array_Kind_Id;
          V        : GL_Value;
          Max_Size : Boolean := False) return Result;
 
@@ -503,7 +503,7 @@ package body GNATLLVM.Arrays is
       ----------------------
 
       function Get_Array_Length
-        (TE       : Entity_Id;
+        (TE       : Array_Kind_Id;
          Dim      : Nat;
          V        : GL_Value;
          Max_Size : Boolean := False) return Result
@@ -529,7 +529,7 @@ package body GNATLLVM.Arrays is
 
       function Get_Array_Elements
         (V        : GL_Value;
-         TE       : Entity_Id;
+         TE       : Array_Kind_Id;
          Max_Size : Boolean := False) return Result is
       begin
          return Size : Result := Size_Const_Int (1) do
@@ -548,7 +548,7 @@ package body GNATLLVM.Arrays is
       -------------------------
 
       function Get_Array_Type_Size
-        (TE       : Entity_Id;
+        (TE       : Array_Kind_Id;
          V        : GL_Value;
          Max_Size : Boolean := False) return Result
       is
@@ -613,7 +613,7 @@ package body GNATLLVM.Arrays is
      renames LLVM_Size.Get_Array_Bound;
 
    function Get_Array_Length
-     (TE       : Entity_Id;
+     (TE       : Array_Kind_Id;
       Dim      : Nat;
       V        : GL_Value;
       Max_Size : Boolean := False) return GL_Value
@@ -621,12 +621,12 @@ package body GNATLLVM.Arrays is
 
    function Get_Array_Elements
      (V        : GL_Value;
-      TE       : Entity_Id;
+      TE       : Array_Kind_Id;
       Max_Size : Boolean := False) return GL_Value
      renames LLVM_Size.Get_Array_Elements;
 
    function Get_Array_Type_Size
-     (TE       : Entity_Id;
+     (TE       : Array_Kind_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return GL_Value
      renames LLVM_Size.Get_Array_Type_Size;
@@ -660,7 +660,7 @@ package body GNATLLVM.Arrays is
                 To_Result          => To_Result);
 
    function Get_Array_Type_Size
-     (TE       : Entity_Id;
+     (TE       : Array_Kind_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return IDS
      renames IDS_Size.Get_Array_Type_Size;
@@ -694,7 +694,7 @@ package body GNATLLVM.Arrays is
                 To_Result          => To_Result);
 
    function Get_Array_Type_Size
-     (TE       : Entity_Id;
+     (TE       : Array_Kind_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return BA_Data
      renames BA_Size.Get_Array_Type_Size;
@@ -709,7 +709,8 @@ package body GNATLLVM.Arrays is
    -- Array_Not_Superflat --
    -------------------------
 
-   function Array_Not_Superflat (TE : Entity_Id; Dim : Nat) return Boolean is
+   function Array_Not_Superflat (TE : Array_Kind_Id; Dim : Nat) return Boolean
+   is
      (Array_Info.Table (Get_Array_Info (TE) + Dim).Not_Superflat);
 
    --------------------
@@ -717,7 +718,7 @@ package body GNATLLVM.Arrays is
    --------------------
 
    function Array_Index_GT (GT : GL_Type; Dim : Nat) return GL_Type is
-      TE      : constant Entity_Id     := Full_Etype (GT);
+      TE      : constant Array_Kind_Id := Full_Etype (GT);
       Info_Id : constant Array_Info_Id := Get_Array_Info (TE);
 
    begin
@@ -728,7 +729,7 @@ package body GNATLLVM.Arrays is
    -- Array_Index_GT --
    --------------------
 
-   function Array_Index_GT (TE : Entity_Id; Dim : Nat) return GL_Type is
+   function Array_Index_GT (TE : Array_Kind_Id; Dim : Nat) return GL_Type is
       Info_Id : constant Array_Info_Id := Get_Array_Info (TE);
 
    begin
@@ -739,7 +740,8 @@ package body GNATLLVM.Arrays is
    -- Array_Index_Has_FLB --
    -------------------------
 
-   function Array_Index_Has_FLB (TE : Entity_Id; Dim : Nat) return Boolean is
+   function Array_Index_Has_FLB (TE : Array_Kind_Id; Dim : Nat) return Boolean
+   is
       Info_Id : constant Array_Info_Id := Get_Array_Info (TE);
 
    begin
@@ -751,7 +753,7 @@ package body GNATLLVM.Arrays is
    -------------------------------
 
    function Get_Array_Size_Complexity
-     (TE : Entity_Id; Max_Size : Boolean := False) return Nat
+     (TE : Array_Kind_Id; Max_Size : Boolean := False) return Nat
    is
       Info_Idx : constant Array_Info_Id := Get_Array_Info (TE);
 
@@ -794,7 +796,7 @@ package body GNATLLVM.Arrays is
    -- Get_Array_Type_Alignment --
    ------------------------------
 
-   function Get_Array_Type_Alignment (TE : Entity_Id) return Nat is
+   function Get_Array_Type_Alignment (TE : Array_Kind_Id) return Nat is
       Comp_GT    : constant GL_Type   := Full_Component_GL_Type (TE);
       Comp_Align : constant Nat       := Get_Type_Alignment (Comp_GT);
       Comp_Size  : constant GL_Value :=

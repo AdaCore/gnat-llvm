@@ -80,36 +80,35 @@ package GNATLLVM.Arrays is
    --  If For_Orig is True, get the information from Original_Array_Type of GT.
 
    function Get_Array_Length
-     (TE       : Entity_Id;
+     (TE       : Array_Kind_Id;
       Dim      : Nat;
       V        : GL_Value;
       Max_Size : Boolean := False) return GL_Value
-     with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE)
+     with Pre  => Dim < Number_Dimensions (TE)
                   and then (Present (V) or else Is_Constrained (TE)
                               or else Max_Size),
           Post => Type_Of (Get_Array_Length'Result) = Size_T;
    --  Similar, but get the length of that dimension of the array.  This is
    --  always Size_Type's width, but may actually be a different GNAT type.
 
-   function Array_Not_Superflat (TE : Entity_Id; Dim : Nat) return Boolean
-     with Pre => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE);
+   function Array_Not_Superflat (TE : Array_Kind_Id; Dim : Nat) return Boolean
+     with Pre => Dim < Number_Dimensions (TE);
    --  Return True if TE is known to not be superflat in dimension Dim
 
    function Array_Index_GT (GT : GL_Type; Dim : Nat) return GL_Type
      with Pre  => Is_Array_Type (GT) and then Dim < Number_Dimensions (GT),
           Post => Present (Array_Index_GT'Result);
-   function Array_Index_GT (TE : Entity_Id; Dim : Nat) return GL_Type
-     with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE),
+   function Array_Index_GT (TE : Array_Kind_Id; Dim : Nat) return GL_Type
+     with Pre  => Dim < Number_Dimensions (TE),
           Post => Present (Array_Index_GT'Result);
    --  Get the type of the Dim'th index of a type
 
-   function Array_Index_Has_FLB (TE : Entity_Id; Dim : Nat) return Boolean
-     with Pre  => Is_Array_Type (TE) and then Dim < Number_Dimensions (TE);
+   function Array_Index_Has_FLB (TE : Array_Kind_Id; Dim : Nat) return Boolean
+     with Pre  => Dim < Number_Dimensions (TE);
    --  See if Dim of TE has a fixed lower bound
 
    function Get_Array_Size_Complexity
-     (TE : Entity_Id; Max_Size : Boolean := False) return Nat
-     with Pre => Is_Array_Type (TE);
+     (TE : Array_Kind_Id; Max_Size : Boolean := False) return Nat;
    --  Return the complexity of computing the size of an array.  This roughly
    --  gives the number of "things" needed to access to compute the size.
    --  This returns zero iff the array type is of a constant size.
@@ -144,11 +143,9 @@ package GNATLLVM.Arrays is
 
    function Get_Array_Elements
      (V        : GL_Value;
-      TE       : Entity_Id;
+      TE       : Array_Kind_Id;
       Max_Size : Boolean := False) return GL_Value
-     with Pre  => Is_Array_Type (TE)
-                  and then (Present (V) or else Is_Constrained (TE)
-                              or else Max_Size),
+     with Pre  => Present (V) or else Is_Constrained (TE) or else Max_Size,
           Post => Present (Get_Array_Elements'Result);
    --  Return the number of elements contained in an Array_Type object as an
    --  integer as large as a pointer for the target architecture. If it is an
@@ -156,50 +153,46 @@ package GNATLLVM.Arrays is
    --  to the array.
 
    function Get_Array_Type_Size
-     (TE       : Entity_Id;
+     (TE       : Array_Kind_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return GL_Value
-     with Pre  => Is_Array_Type (TE),
-          Post => Present (Get_Array_Type_Size'Result);
+     with Post => Present (Get_Array_Type_Size'Result);
 
    function Get_Array_Type_Size
-     (TE       : Entity_Id;
+     (TE       : Array_Kind_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return IDS
-     with Pre  => Is_Array_Type (TE),
-          Post => Present (Get_Array_Type_Size'Result);
+     with Post => Present (Get_Array_Type_Size'Result);
 
    function Get_Array_Type_Size
-     (TE       : Entity_Id;
+     (TE       : Array_Kind_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return BA_Data;
+
+   function Get_Unc_Array_Type_Size
+     (TE       : Array_Kind_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return GL_Value
+   is
+     (Get_Array_Type_Size (TE, V, Max_Size))
+     with Post => Present (Get_Unc_Array_Type_Size'Result);
+
+   function Get_Unc_Array_Type_Size
+     (TE       : Array_Kind_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return IDS
+   is
+     (Var_IDS)
+     with Post => Present (Get_Unc_Array_Type_Size'Result);
+
+   function Get_Unc_Array_Type_Size
+     (TE       : Array_Kind_Id;
       V        : GL_Value;
       Max_Size : Boolean := False) return BA_Data
-     with Pre  => Is_Array_Type (TE);
+   is
+     (No_BA);
 
-   function Get_Unc_Array_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return GL_Value is
-     (Get_Array_Type_Size (TE, V, Max_Size))
-     with Pre  => Is_Array_Type (TE),
-          Post => Present (Get_Unc_Array_Type_Size'Result);
-
-   function Get_Unc_Array_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return IDS is
-     (Var_IDS)
-     with Pre  => Is_Array_Type (TE),
-          Post => Present (Get_Unc_Array_Type_Size'Result);
-
-   function Get_Unc_Array_Type_Size
-     (TE       : Entity_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return BA_Data is
-     (No_BA)
-     with Pre  => Is_Array_Type (TE);
-
-   function Get_Array_Type_Alignment (TE : Entity_Id) return Nat
-     with Pre => Is_Array_Type (TE);
+   function Get_Array_Type_Alignment (TE : Array_Kind_Id) return Nat;
    --  Like Get_Type_Alignment, but only for arrays and passed the GNAT type
 
    function Is_Native_Component_GT (GT : GL_Type) return Boolean is

@@ -164,8 +164,7 @@ package GNATLLVM.Conversions is
    --  used when the representation of types whose precision is not equal
    --  to their size is manipulated based on the RM size.
 
-   function Is_Parent_Of (T_Need, T_Have : Entity_Id) return Boolean
-     with Pre => Is_Record_Type (T_Need) and then Is_Record_Type (T_Have);
+   function Is_Parent_Of (T_Need, T_Have : Record_Kind_Id) return Boolean;
    --  True if T_Have is a parent type of T_Need
 
 end GNATLLVM.Conversions;

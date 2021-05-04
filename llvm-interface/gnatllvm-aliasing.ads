@@ -154,8 +154,8 @@ package GNATLLVM.Aliasing is
    --  have different types or relationships.
 
    procedure Maybe_Initialize_TBAA_For_Field
-     (V : in out GL_Value; F : Entity_Id; F_GT : GL_Type)
-     with Pre => Present (V) and then Is_Field (F);
+     (V : in out GL_Value; F : Record_Field_Kind_Id; F_GT : GL_Type)
+     with Pre => Present (V);
    --  If V doesn't have a TBAA type tag, set it one corresponding to F
 
    procedure Maybe_Initialize_TBAA_For_Array_Component

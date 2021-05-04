@@ -81,9 +81,8 @@ package GNATLLVM.Blocks is
    --  Get the last entry in the exception goto stack for Kind, if any
 
    function Get_Label_BB
-     (E : Entity_Id; For_Address : Boolean := False) return Basic_Block_T
-     with Pre  => Ekind (E) = E_Label,
-          Post => Present (Get_Label_BB'Result);
+     (E : E_Label_Id; For_Address : Boolean := False) return Basic_Block_T
+     with Post => Present (Get_Label_BB'Result);
    --  Lazily get the basic block associated with label E, creating it
    --  if we don't have it already.  If For_Address is True, we're getting
    --  this label to take its address, so we ignore any fixups.
@@ -97,7 +96,7 @@ package GNATLLVM.Blocks is
    --  that one.  If Present, but it doesn't point to a basic block,
    --  set it to the one we made.
 
-   procedure Push_Loop (LE : Entity_Id; Exit_Point : Basic_Block_T)
+   procedure Push_Loop (LE : E_Loop_Id; Exit_Point : Basic_Block_T)
      with Pre => Present (Exit_Point);
    procedure Pop_Loop;
 

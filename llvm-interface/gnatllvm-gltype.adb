@@ -100,7 +100,7 @@ package body GNATLLVM.GLType is
    --  Define the fields in the table for GL_Type's
 
    type GL_Type_Info_Base is record
-      GNAT_Type   : Entity_Id;
+      GNAT_Type   : Void_Or_Type_Kind_Id;
       --  GNAT type
 
       LLVM_Type   : Type_T;
@@ -165,9 +165,8 @@ package body GNATLLVM.GLType is
      with Pre => Present (GT), Inline;
 
    function Get_Or_Create_GL_Type
-     (TE : Entity_Id; Create : Boolean) return GL_Type
-     with Pre  => Is_Type_Or_Void (TE),
-          Post => not Create or else Present (Get_Or_Create_GL_Type'Result);
+     (TE : Void_Or_Type_Kind_Id; Create : Boolean) return GL_Type
+     with Post => not Create or else Present (Get_Or_Create_GL_Type'Result);
 
    function Convert_Int (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Is_Data (V) and then Is_Discrete_Or_Fixed_Point_Type (V)
@@ -226,8 +225,8 @@ package body GNATLLVM.GLType is
    function GL_Type_Info_Is_Valid_Int
      (GTI : GL_Type_Info_Base) return Boolean
    is
-      TE : constant Entity_Id := GTI.GNAT_Type;
-      T  : constant Type_T    := GTI.LLVM_Type;
+      TE : constant Void_Or_Type_Kind_Id := GTI.GNAT_Type;
+      T  : constant Type_T               := GTI.LLVM_Type;
 
    begin
       --  We have to be careful below and not call anything that will cause
@@ -359,7 +358,7 @@ package body GNATLLVM.GLType is
    ---------------------------
 
    function Get_Or_Create_GL_Type
-     (TE : Entity_Id; Create : Boolean) return GL_Type is
+     (TE : Void_Or_Type_Kind_Id; Create : Boolean) return GL_Type is
    begin
       return GT : GL_Type := Get_GL_Type (TE) do
          if No (GT) and then Create then
@@ -373,7 +372,7 @@ package body GNATLLVM.GLType is
    -- New_GT --
    ------------
 
-   function New_GT (TE : Entity_Id) return GL_Type is
+   function New_GT (TE : Void_Or_Type_Kind_Id) return GL_Type is
       GT : GL_Type;
 
    begin
@@ -492,7 +491,7 @@ package body GNATLLVM.GLType is
       Needs_Bias  : constant Boolean      :=
         Is_Biased or else In_GTI.Kind = Biased;
       Needs_Max   : constant Boolean      := Max_Size or else In_GTI.Max_Size;
-      TE          : constant Entity_Id    := Full_Etype (GT);
+      TE          : constant Type_Kind_Id := Full_Etype (GT);
       Prim_GT     : constant GL_Type      := Primitive_GL_Type (GT);
       Prim_Native : constant Boolean      := not Is_Nonnative_Type (Prim_GT);
       Prim_T      : constant Type_T       := Type_Of (Prim_GT);
@@ -788,7 +787,7 @@ package body GNATLLVM.GLType is
    -- Primitive_GL_Type --
    -----------------------
 
-   function Primitive_GL_Type (TE : Entity_Id) return GL_Type is
+   function Primitive_GL_Type (TE : Void_Or_Type_Kind_Id) return GL_Type is
       GT : GL_Type := Get_Or_Create_GL_Type (TE, True);
 
    begin
@@ -850,7 +849,7 @@ package body GNATLLVM.GLType is
    -- Dummy_GL_Type --
    -------------------
 
-   function Dummy_GL_Type (TE : Entity_Id) return GL_Type is
+   function Dummy_GL_Type (TE : Void_Or_Type_Kind_Id) return GL_Type is
    begin
       return GT : GL_Type := Get_Or_Create_GL_Type (TE, False) do
          while Present (GT) loop
@@ -865,7 +864,7 @@ package body GNATLLVM.GLType is
    ---------------------
 
    function Default_GL_Type
-     (TE : Entity_Id; Create : Boolean := True) return GL_Type is
+     (TE : Void_Or_Type_Kind_Id; Create : Boolean := True) return GL_Type is
    begin
       return GT : GL_Type := Get_Or_Create_GL_Type (TE, Create) do
          while Present (GT) loop
@@ -1198,7 +1197,7 @@ package body GNATLLVM.GLType is
    -- Full_Etype --
    ----------------
 
-   function Full_Etype (GT : GL_Type) return Entity_Id is
+   function Full_Etype (GT : GL_Type) return Void_Or_Type_Kind_Id is
      (GL_Type_Table.Table (GT).GNAT_Type);
 
    -------------
@@ -1212,7 +1211,7 @@ package body GNATLLVM.GLType is
    -- Base_GL_Type --
    -----------------
 
-   function Base_GL_Type (TE : Entity_Id) return GL_Type is
+   function Base_GL_Type (TE : Void_Or_Type_Kind_Id) return GL_Type is
      (Primitive_GL_Type (Full_Base_Type (TE)));
 
    ------------------
@@ -1237,7 +1236,7 @@ package body GNATLLVM.GLType is
    ------------------------
 
    function Full_Alloc_GL_Type (N : Node_Id) return GL_Type is
-      TE : Entity_Id := Full_Etype (N);
+      TE : Type_Kind_Id := Full_Etype (N);
 
    begin
       if Is_Entity_Name (N)
@@ -1328,8 +1327,8 @@ package body GNATLLVM.GLType is
    -----------------------------
 
    function Full_Designated_GL_Type (GT : GL_Type) return GL_Type is
-      TE : constant Entity_Id := Full_Etype (GT);
-      DT : constant GL_Type   := Get_Associated_GL_Type (TE);
+      TE : constant Type_Kind_Id := Full_Etype (GT);
+      DT : constant GL_Type      := Get_Associated_GL_Type (TE);
 
    begin
       --  Normally, we've saved the associated GL_Type.  But we don't do
@@ -1345,7 +1344,7 @@ package body GNATLLVM.GLType is
    -----------------------------
 
    function Full_Designated_GL_Type (V : GL_Value) return GL_Type is
-      TE : constant Entity_Id := Full_Etype (Related_Type (V));
+      TE : constant Type_Kind_Id := Full_Etype (Related_Type (V));
 
    begin
       --  If this isn't an actual access type, but a reference to

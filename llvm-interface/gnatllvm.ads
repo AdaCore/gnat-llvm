@@ -299,7 +299,7 @@ package GNATLLVM is
    --  Used for LLVM error handling
 
    function Is_Field (E : Entity_Id) return Boolean is
-     (Ekind (E) in E_Component | E_Discriminant)
+     (Ekind (E) in Record_Field_Kind)
      with Pre => Present (E);
    --  Return True if E is a field in a record
 

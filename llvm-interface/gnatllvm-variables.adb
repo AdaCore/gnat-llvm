@@ -134,29 +134,25 @@ package body GNATLLVM.Variables is
      with Pre => Present (E) and then not Is_Type (E);
    --  Return True if E may have a global name that we need to check for dups
 
-   function Variable_GL_Type (E : Entity_Id; Expr : Node_Id) return GL_Type
-     with Pre  => Ekind (E) in E_Variable | E_Constant | E_Loop_Parameter |
-                               E_Exception,
-          Post => Present (Variable_GL_Type'Result);
+   function Variable_GL_Type
+     (E : Exception_Or_Object_Kind_Id; Expr : Node_Id) return GL_Type
+     with Post => Present (Variable_GL_Type'Result);
    --  Determine the proper GL_Type to use for E.  If Expr is Present, it's
    --  an initializing expression for E.
 
-   function Is_Volatile_Entity (E : Entity_Id) return Boolean is
+   function Is_Volatile_Entity
+     (E : Exception_Or_Object_Kind_Id) return Boolean
+   is
      (Is_Volatile_Object (E) or else Treat_As_Volatile (E)
-        or else Address_Taken (E))
-     with Pre => Ekind (E) in E_Variable | E_Constant | E_Exception |
-                              E_Loop_Parameter;
+        or else Address_Taken (E));
    --  True iff E is an entity (a variable or constant) that we
    --  need to treat as volatile for any reason.
 
    function Make_Global_Variable
-     (E          : Entity_Id;
+     (E          : Exception_Or_Object_Kind_Id;
       GT         : GL_Type;
       Definition : Boolean) return GL_Value
-     with Pre  => Ekind (E) in E_Variable | E_Constant | E_Loop_Parameter |
-                               E_Exception
-                  and then Present (GT),
-          Post => Present (Make_Global_Variable'Result);
+     with Pre => Present (GT), Post => Present (Make_Global_Variable'Result);
    --  Create a global variable for E.  Definition is true if we
    --  are doing this for a declaration.
 
@@ -199,8 +195,7 @@ package body GNATLLVM.Variables is
      with Pre => Present (N);
    --  Return True if N represent an object with constant address
 
-   function Initialized_Value (E : Entity_Id) return Node_Id
-     with Pre => Present (E);
+   function Initialized_Value (E : Entity_Id) return Node_Id;
    --  If E is an E_Constant that has an initializing expression, return it
 
    Const_Map : Value_Value_Map_P.Map;
@@ -723,7 +718,7 @@ package body GNATLLVM.Variables is
    is
       GT   : constant GL_Type := Full_GL_Type (N);
       Expr : Node_Id;
-      F    : Entity_Id;
+      F    : Record_Field_Kind_Id;
 
    begin
       --  If this is an aggregate type, we don't want to worry about
@@ -1326,9 +1321,10 @@ package body GNATLLVM.Variables is
    --  Variable_GL_Type --
    -----------------------
 
-   function Variable_GL_Type (E : Entity_Id; Expr : Node_Id) return GL_Type
+   function Variable_GL_Type
+     (E : Exception_Or_Object_Kind_Id; Expr : Node_Id) return GL_Type
    is
-      TE          : constant Entity_Id :=
+      TE          : constant Void_Or_Type_Kind_Id :=
         (if   Ekind (Etype (E)) = E_Class_Wide_Type and then Present (Expr)
               and then Nkind (Expr) = N_Qualified_Expression
          then Full_Etype (Expression (Expr)) else Full_Etype (E));
@@ -1336,20 +1332,22 @@ package body GNATLLVM.Variables is
       --  unless we have a qualified expression initializing a class wide
       --  type.
 
-      GT           : GL_Type            := Default_GL_Type (TE);
-      In_Size      : constant GL_Value  :=
+      GT           : GL_Type                       := Default_GL_Type (TE);
+      In_Size      : constant GL_Value             :=
         (if Is_Dynamic_Size (GT) then No_GL_Value else Get_Type_Size (GT));
-      In_Align     : constant GL_Value  := Get_Type_Alignment (GT);
-      In_Align_Nat : constant Nat       := +In_Align;
-      Size         : constant Uint      :=
+      In_Align     : constant GL_Value             := Get_Type_Alignment (GT);
+      In_Align_Nat : constant Nat                  := +In_Align;
+      Size         : constant Uint                 :=
         (if   Unknown_Esize (E) then No_Uint
          else Validate_Size (E, GT, Esize (E),
                              Zero_Allowed => Has_Size_Clause (E)));
-      Align        : Uint               :=
+      Align        : Uint                          :=
         (if   Unknown_Alignment (E) then No_Uint
          else Validate_Alignment (E, Alignment (E), In_Align_Nat));
-      Max_Size : constant Boolean   := Is_Unconstrained_Record (GT);
-      Biased   : constant Boolean   := Has_Biased_Representation (E);
+      Max_Size : constant Boolean                  :=
+        Is_Unconstrained_Record (GT);
+      Biased   : constant Boolean                  :=
+        Has_Biased_Representation (E);
 
    begin
       --  If this is an object with no specified size and alignment, and if
@@ -1470,7 +1468,7 @@ package body GNATLLVM.Variables is
    --------------------------
 
    function Make_Global_Variable
-     (E          : Entity_Id;
+     (E          : Exception_Or_Object_Kind_Id;
       GT         : GL_Type;
       Definition : Boolean) return GL_Value
    is
@@ -2183,15 +2181,18 @@ package body GNATLLVM.Variables is
    -------------------------------
 
    procedure Emit_Renaming_Declaration (N : Node_Id) is
-      E           : constant Entity_Id := Defining_Identifier (N);
-      GT          : constant GL_Type   := Full_GL_Type (E);
-      Is_Volatile : constant Boolean   := Is_Volatile_Entity (E);
-      Use_LHS     : constant Boolean   :=
+      E           : constant Exception_Or_Object_Kind_Id :=
+        Defining_Identifier (N);
+      GT          : constant GL_Type                     :=
+        Full_GL_Type (E);
+      Is_Volatile : constant Boolean                     :=
+        Is_Volatile_Entity (E);
+      Use_LHS     : constant Boolean                     :=
         Is_Name (Name (N))
         and then (Nkind (Name (N)) not in N_Has_Entity
                     or else (Ekind (Entity (Name (N))) /=
                                E_Enumeration_Literal));
-      LLVM_Var  : GL_Value             := Get_Value (E);
+      LLVM_Var  : GL_Value                               := Get_Value (E);
       V         : GL_Value;
 
    begin

@@ -123,7 +123,7 @@ package body GNATLLVM.Utils is
    -- Number_Bounds --
    -------------------
 
-   function Number_Bounds (TE : Entity_Id) return Nat is
+   function Number_Bounds (TE : Array_Kind_Id) return Nat is
       N : Node_Id;
 
    begin
@@ -549,7 +549,7 @@ package body GNATLLVM.Utils is
    -- Set_Orig_By_Ref_Mech --
    --------------------------
 
-   procedure Set_Orig_By_Ref_Mech (E : Entity_Id; F : Boolean) is
+   procedure Set_Orig_By_Ref_Mech (E : Formal_Kind_Id; F : Boolean) is
    begin
       Set_Flag1 (E, F);
    end Set_Orig_By_Ref_Mech;
@@ -558,7 +558,7 @@ package body GNATLLVM.Utils is
    -- Set_Added_To_Module --
    -------------------------
 
-   procedure Set_Added_To_Module (E : Entity_Id; F : Boolean := True) is
+   procedure Set_Added_To_Module (E : Formal_Kind_Id; F : Boolean := True) is
    begin
       Set_Flag1 (E, F);
    end Set_Added_To_Module;
@@ -567,7 +567,9 @@ package body GNATLLVM.Utils is
    -- Set_Allocated_For_Return --
    ------------------------------
 
-   procedure Set_Allocated_For_Return (E : Entity_Id; F : Boolean := True) is
+   procedure Set_Allocated_For_Return
+     (E : Constant_Or_Variable_Kind_Id; F : Boolean := True)
+   is
    begin
       Set_Flag1 (E, F);
    end Set_Allocated_For_Return;

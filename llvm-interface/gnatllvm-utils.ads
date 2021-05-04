@@ -51,8 +51,7 @@ package GNATLLVM.Utils is
      with Pre => Nkind (N) in N_Subprogram_Call;
    --  The number of actual arguments in N, a subprogram call
 
-   function Number_Bounds (TE : Entity_Id) return Nat
-     with Pre => Is_Array_Type (TE);
+   function Number_Bounds (TE : Array_Kind_Id) return Nat;
    --  Usually Number_Dimensions * 2, but may be lower if one or more index
    --  has a fixed lower bound.
 
@@ -156,29 +155,24 @@ package GNATLLVM.Utils is
    --  layout are enough for the fields to be considered the same layout:
    --  we don't actually need identical types.
 
-   function Get_Orig_By_Ref_Mech (E : Entity_Id) return Boolean is
-     (Get_Flag1 (E))
-     with Pre => Ekind (E)
-                 in E_In_Parameter | E_Out_Parameter | E_In_Out_Parameter;
-   procedure Set_Orig_By_Ref_Mech (E : Entity_Id; F : Boolean)
-     with Pre => Ekind (E)
-                 in E_In_Parameter | E_Out_Parameter | E_In_Out_Parameter;
+   function Get_Orig_By_Ref_Mech (E : Formal_Kind_Id) return Boolean is
+     (Get_Flag1 (E));
+   procedure Set_Orig_By_Ref_Mech (E : Formal_Kind_Id; F : Boolean);
    --  Set and get a flag indicating that this parameter was originally
    --  specified with a Mechanism of By_Ref.
 
-   function Get_Added_To_Module (E : Entity_Id) return Boolean is
-     (Get_Flag1 (E))
-     with Pre => Ekind (E) in E_Function | E_Procedure;
-   procedure Set_Added_To_Module (E : Entity_Id; F : Boolean := True)
-     with Pre => Ekind (E) in E_Function | E_Procedure;
+   function Get_Added_To_Module (E : Subprogram_Kind_Id) return Boolean is
+     (Get_Flag1 (E));
+   procedure Set_Added_To_Module (E : Subprogram_Kind_Id; F : Boolean := True);
    --  Set and get a flag indicating that this subprogram was already added
    --  to the module.
 
-   function Get_Allocated_For_Return (E : Entity_Id) return Boolean is
-     (Get_Flag1 (E))
-     with Pre => Ekind (E) in E_Constant | E_Variable;
-   procedure Set_Allocated_For_Return (E : Entity_Id; F : Boolean := True)
-     with Pre => Ekind (E) in E_Constant | E_Variable;
+   function Get_Allocated_For_Return
+     (E : Constant_Or_Variable_Kind_Id) return Boolean
+   is
+     (Get_Flag1 (E));
+   procedure Set_Allocated_For_Return
+     (E : Constant_Or_Variable_Kind_Id; F : Boolean := True);
    --  Set and get a flag indicating that this entity was allocated
    --  specially for Is_Return_Object so the return statement need not
    --  do further allocation.

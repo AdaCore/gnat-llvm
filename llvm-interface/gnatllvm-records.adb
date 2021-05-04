@@ -48,7 +48,7 @@ package body GNATLLVM.Records is
    --  the same entry more than once since this could cause infinite recursion.
 
    type SS_Entry is record
-      TE   : Entity_Id;
+      TE   : E_Record_Subtype_Id;
       Used : Boolean;
    end record;
 
@@ -157,10 +157,8 @@ package body GNATLLVM.Records is
    --  Version for computing back-annotation
 
    function Record_Type_For_Field
-     (GT : GL_Type; F : Entity_Id) return Entity_Id
-     with Pre  => Present (GT)
-                  and then Ekind (F) in E_Component | E_Discriminant,
-          Post => Is_Record_Type (Record_Type_For_Field'Result);
+     (GT : GL_Type; F : Record_Field_Kind_Id) return Record_Kind_Id
+     with Pre  => Present (GT);
    --  We have an object of type GT and want to reference field F.  Return
    --  the record type that we have to use for the reference.
 
@@ -255,20 +253,20 @@ package body GNATLLVM.Records is
          Max_Size    : Boolean        := False;
          No_Padding  : Boolean        := False) return Result;
       --  Similar to Get_Record_Type_Size, but stop at record info segment Idx
-      --  or the last segment, whichever comes first.  If TE is Present, it
+      --  or the last segment, whichever comes first.d  If TE is Present, it
       --  provides the default for Start_Idx and also requests alignment to
       --  TE's alignment if we're looking for the size.  Total_Size is the
 
       function Get_Record_Type_Size
-        (TE         : Entity_Id;
+        (TE         : Record_Kind_Id;
          V          : GL_Value;
          Max_Size   : Boolean := False;
          No_Padding : Boolean := False) return Result
         with Pre  => Is_Record_Type (TE);
       --  Like Get_Type_Size, but only for record types
 
-      function Emit_Field_Position (E : Entity_Id; V : GL_Value) return Result
-        with Pre  => Ekind (E) in E_Discriminant | E_Component;
+      function Emit_Field_Position
+        (E : Record_Field_Kind_Id; V : GL_Value) return Result;
       --  Compute and return the position in bytes of the field specified by E
       --  from the start of its type as a value of Size_Type.  If Present, V
       --  is a value of that type, which is used in the case of a
@@ -319,9 +317,10 @@ package body GNATLLVM.Records is
    --  Use_Discriminant_For_Bound --
    ---------------------------------
 
-   function Use_Discriminant_For_Bound (E : Entity_Id) return GL_Value is
-      Rec_Type   : constant Entity_Id := Full_Scope (E);
-      TE         : constant Entity_Id := Full_Etype (E);
+   function Use_Discriminant_For_Bound (E : E_Discriminant_Id) return GL_Value
+   is
+      Rec_Type   : constant Record_Kind_Id := Full_Scope (E);
+      TE         : constant Type_Kind_Id   := Full_Etype (E);
 
    begin
       --  If we're just elaborating decls, return undef
@@ -360,10 +359,10 @@ package body GNATLLVM.Records is
    ---------------------------
 
    function Record_Type_For_Field
-     (GT : GL_Type; F : Entity_Id) return Entity_Id
+     (GT : GL_Type; F : Record_Field_Kind_Id) return Record_Kind_Id
    is
-      TE    : constant Entity_Id := Full_Etype (GT);
-      New_F : constant Entity_Id := Find_Matching_Field (TE, F);
+      TE    : constant Record_Kind_Id := Full_Etype (GT);
+      New_F : constant Entity_Id      := Find_Matching_Field (TE, F);
 
    begin
       --  We'd prefer to use GT's type, but only if we can find a match for
@@ -378,7 +377,8 @@ package body GNATLLVM.Records is
    -------------------------
 
    function Find_Matching_Field
-     (TE : Entity_Id; Field : Entity_Id) return Entity_Id
+     (TE    : Record_Kind_Id;
+      Field : Record_Field_Kind_Id) return Record_Field_Kind_Id
    is
       Ent : Entity_Id := First_Component_Or_Discriminant (TE);
 
@@ -405,7 +405,7 @@ package body GNATLLVM.Records is
    ---------------------------------
 
    function Get_Discriminant_Constraint
-     (TE : Entity_Id; E : Entity_Id) return Node_Id
+     (TE : Record_Kind_Id; E : E_Discriminant_Id) return Node_Id
    is
       Discrim_Num : constant Uint      := Discriminant_Number (E);
       Constraint  : constant Elist_Id  := Stored_Constraint (TE);
@@ -789,7 +789,7 @@ package body GNATLLVM.Records is
       --------------------------
 
       function Get_Record_Type_Size
-        (TE         : Entity_Id;
+        (TE         : Record_Kind_Id;
          V          : GL_Value;
          Max_Size   : Boolean := False;
          No_Padding : Boolean := False) return Result is
@@ -806,9 +806,9 @@ package body GNATLLVM.Records is
       -------------------------
 
       function Emit_Field_Position
-        (E : Entity_Id; V : GL_Value) return Result
+        (E : Record_Field_Kind_Id; V : GL_Value) return Result
       is
-         TE     : constant Entity_Id      := Full_Scope (E);
+         TE     : constant Record_Kind_Id := Full_Scope (E);
          R_Idx  : constant Record_Info_Id := Get_Record_Info (TE);
          F_Idx  : constant Field_Info_Id  := Get_Field_Info (E);
          FI     : Field_Info;
@@ -956,13 +956,14 @@ package body GNATLLVM.Records is
      renames LLVM_Size.Get_Record_Size_So_Far;
 
    function Get_Record_Type_Size
-     (TE         : Entity_Id;
+     (TE         : Record_Kind_Id;
       V          : GL_Value;
       Max_Size   : Boolean := False;
       No_Padding : Boolean := False) return GL_Value
      renames LLVM_Size.Get_Record_Type_Size;
 
-   function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
+   function Emit_Field_Position
+     (E : Record_Field_Kind_Id; V : GL_Value) return GL_Value
      renames LLVM_Size.Emit_Field_Position;
 
    function Align_To
@@ -998,7 +999,7 @@ package body GNATLLVM.Records is
                 Replace_Val             => Replace_Val);
 
    function Get_Record_Type_Size
-     (TE         : Entity_Id;
+     (TE         : Record_Kind_Id;
       V          : GL_Value;
       Max_Size   : Boolean := False;
       No_Padding : Boolean := False) return IDS
@@ -1047,13 +1048,14 @@ package body GNATLLVM.Records is
                 Replace_Val             => Replace_Val);
 
    function Get_Record_Type_Size
-     (TE         : Entity_Id;
+     (TE         : Record_Kind_Id;
       V          : GL_Value;
       Max_Size   : Boolean := False;
       No_Padding : Boolean := False) return BA_Data
      renames BA_Size.Get_Record_Type_Size;
 
-   function Field_Position (E : Entity_Id; V : GL_Value) return BA_Data
+   function Field_Position
+     (E : Record_Field_Kind_Id; V : GL_Value) return BA_Data
      renames BA_Size.Emit_Field_Position;
 
    function Align_To (V : BA_Data; Cur_Align, Must_Align : Nat) return BA_Data
@@ -1315,14 +1317,14 @@ package body GNATLLVM.Records is
    -- Effective_Field_Alignment --
    -------------------------------
 
-   function Effective_Field_Alignment (F : Entity_Id) return Nat is
-      AF      : constant Entity_Id := Original_Record_Component (F);
-      GT      : constant GL_Type   := Full_GL_Type (AF);
-      F_Align : constant Nat       := Get_Type_Alignment (GT);
-      Pos     : constant Uint      := Component_Bit_Offset (AF);
-      Size    : constant Uint      := Esize (AF);
-      TE      : constant Entity_Id := Full_Scope (AF);
-      R_Align : constant Nat       :=
+   function Effective_Field_Alignment (F : Record_Field_Kind_Id) return Nat is
+      AF      : constant Record_Field_Kind_Id := Original_Record_Component (F);
+      GT      : constant GL_Type              := Full_GL_Type (AF);
+      F_Align : constant Nat                  := Get_Type_Alignment (GT);
+      Pos     : constant Uint                 := Component_Bit_Offset (AF);
+      Size    : constant Uint                 := Esize (AF);
+      TE      : constant Record_Kind_Id       := Full_Scope (AF);
+      R_Align : constant Nat                  :=
         (if    Known_Alignment (TE) then +Alignment (TE) * BPU
          elsif Known_RM_Size (TE) and then Strict_Alignment (TE)
          then  ULL_Align (+RM_Size (TE))
@@ -1372,7 +1374,9 @@ package body GNATLLVM.Records is
    -- Record_Has_Aliased_Components --
    -----------------------------------
 
-   function Record_Has_Aliased_Components (TE : Entity_Id) return Boolean is
+   function Record_Has_Aliased_Components
+     (TE : Record_Kind_Id) return Boolean
+   is
       F : Entity_Id := First_Component_Or_Discriminant (TE);
 
    begin
@@ -1390,7 +1394,7 @@ package body GNATLLVM.Records is
    -- Get_Record_Type_Alignment --
    -------------------------------
 
-   function Get_Record_Type_Alignment (TE : Entity_Id) return Nat is
+   function Get_Record_Type_Alignment (TE : Record_Kind_Id) return Nat is
       Field : Entity_Id;
 
    begin
@@ -1423,14 +1427,14 @@ package body GNATLLVM.Records is
    -- Field_Ordinal --
    -------------------
 
-   function Field_Ordinal (F : Entity_Id) return unsigned is
+   function Field_Ordinal (F : Record_Field_Kind_Id) return unsigned is
      (unsigned (Field_Info_Table.Table (Get_Field_Info (F)).Field_Ordinal));
 
    ----------------
    -- Field_Type --
    ----------------
 
-   function Field_Type (F : Entity_Id) return GL_Type is
+   function Field_Type (F : Record_Field_Kind_Id) return GL_Type is
       GT : constant GL_Type := Field_Info_Table.Table (Get_Field_Info (F)).GT;
    begin
       --  GT may be a dummy type.  In that case, we need to get the
@@ -1459,8 +1463,8 @@ package body GNATLLVM.Records is
    -- Parent_Field --
    ------------------
 
-   function Parent_Field (F : Entity_Id) return Entity_Id is
-      R_TE : constant Entity_Id := Full_Scope (F);
+   function Parent_Field (F : Record_Field_Kind_Id) return Entity_Id is
+      R_TE : constant Record_Kind_Id := Full_Scope (F);
       ORC  : constant Entity_Id := Original_Record_Component (F);
       CRC  : constant Entity_Id := Corresponding_Record_Component (F);
 
@@ -1483,11 +1487,13 @@ package body GNATLLVM.Records is
    -- Ancestor_Field --
    --------------------
 
-   function Ancestor_Field (F : Entity_Id) return Entity_Id is
+   function Ancestor_Field
+     (F : Record_Field_Kind_Id) return Record_Field_Kind_Id
+   is
       PF : Entity_Id;
 
    begin
-      return AF : Entity_Id := F do
+      return AF : Record_Field_Kind_Id := F do
          loop
             PF := Parent_Field (AF);
             if Present (PF) then
@@ -1569,14 +1575,14 @@ package body GNATLLVM.Records is
    ---------------------
 
    function Field_Pack_Kind
-     (F           : Entity_Id;
+     (F           : Record_Field_Kind_Id;
       Force       : Boolean := False;
       Ignore_Size : Boolean := False) return Pack_Kind
    is
-      AF : constant Entity_Id := Ancestor_Field (F);
-      GT : constant GL_Type   := Full_GL_Type (AF);
-      TE : constant Entity_Id := Full_Scope (AF);
-      T  : constant Type_T    := Type_Of (GT);
+      AF : constant Record_Field_Kind_Id := Ancestor_Field (F);
+      GT : constant GL_Type              := Full_GL_Type (AF);
+      TE : constant Record_Kind_Id       := Full_Scope (AF);
+      T  : constant Type_T               := Type_Of (GT);
       pragma Unreferenced (T);
       --  We need to be sure that the type of the field is elaborated
 
@@ -1617,17 +1623,17 @@ package body GNATLLVM.Records is
    ------------------------
 
    function Is_Bitfield_By_Rep
-     (F            : Entity_Id;
-      Pos          : Uint := No_Uint;
-      Size         : Uint := No_Uint;
+     (F            : Record_Field_Kind_Id;
+      Pos          : Uint    := No_Uint;
+      Size         : Uint    := No_Uint;
       Use_Pos_Size : Boolean := False) return Boolean
    is
-      TE       : constant Entity_Id := Full_Etype (F);
-      Our_Pos  : constant Uint      :=
+      TE       : constant Type_Kind_Id := Full_Etype (F);
+      Our_Pos  : constant Uint         :=
         (if    Use_Pos_Size then Pos
          elsif Known_Static_Component_Bit_Offset (F)
          then  Component_Bit_Offset (F) else No_Uint);
-      Our_Size : constant Uint      :=
+      Our_Size : constant Uint         :=
         (if    Use_Pos_Size then Size
          elsif Known_Static_Esize (F)    then Esize (F)
          elsif Field_Pack_Kind (F) = Bit then RM_Size (TE) else No_Uint);
@@ -1659,28 +1665,30 @@ package body GNATLLVM.Records is
    -- Is_Bitfield --
    -----------------
 
-   function Is_Bitfield (F : Entity_Id) return Boolean is
+   function Is_Bitfield (F : Record_Field_Kind_Id) return Boolean is
      (Present (Field_Info_Table.Table (Get_Field_Info (F)).First_Bit));
 
    -----------------------
    -- Is_Array_Bitfield --
    -----------------------
 
-   function Is_Array_Bitfield (F : Entity_Id) return Boolean is
+   function Is_Array_Bitfield (F : Record_Field_Kind_Id) return Boolean is
      (Field_Info_Table.Table (Get_Field_Info (F)).Array_Bitfield);
 
    -----------------------------
    -- Is_Large_Array_Bitfield --
    -----------------------------
 
-   function Is_Large_Array_Bitfield (F : Entity_Id) return Boolean is
+   function Is_Large_Array_Bitfield
+     (F : Record_Field_Kind_Id) return Boolean
+   is
      (Field_Info_Table.Table (Get_Field_Info (F)).Large_Array_Bitfield);
 
    ----------------------
    -- Field_Bit_Offset --
    ----------------------
 
-   function Field_Bit_Offset (F : Entity_Id) return Uint is
+   function Field_Bit_Offset (F : Record_Field_Kind_Id) return Uint is
      (if   not Is_Bitfield (F) then Uint_0
       else Field_Info_Table.Table (Get_Field_Info (F)).First_Bit);
 
@@ -1689,7 +1697,7 @@ package body GNATLLVM.Records is
    --------------------------------
 
    function Get_Record_Size_Complexity
-     (TE : Entity_Id; Max_Size : Boolean := False) return Nat
+     (TE : Record_Kind_Id; Max_Size : Boolean := False) return Nat
    is
       Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
       RI         : Record_Info;
@@ -1713,19 +1721,20 @@ package body GNATLLVM.Records is
    -------------------------
 
    function Record_Field_Offset
-     (V : GL_Value; Field : Entity_Id) return GL_Value
+     (V : GL_Value; Field : Record_Field_Kind_Id) return GL_Value
    is
-      F_GT       : GL_Type                 := Full_GL_Type (Field);
-      CRC        : constant Entity_Id      :=
+      F_GT       : GL_Type                       := Full_GL_Type (Field);
+      CRC        : constant Entity_Id            :=
         Corresponding_Record_Component (Field);
-      Our_Field  : constant Entity_Id      :=
+      Our_Field  : constant Record_Field_Kind_Id :=
         (if   No (Get_Field_Info (Field)) and then Present (CRC)
               and then Full_Etype (CRC) = Full_Etype (F_GT)
          then CRC else Field);
-      Rec_Type   : constant Entity_Id      := Full_Scope (Our_Field);
-      Rec_GT     : constant GL_Type        := Primitive_GL_Type (Rec_Type);
-      First_Idx  : constant Record_Info_Id := Get_Record_Info (Rec_Type);
-      F_Idx      : Field_Info_Id           := Get_Field_Info (Our_Field);
+      Rec_Type   : constant Record_Kind_Id       := Full_Scope (Our_Field);
+      Rec_GT     : constant GL_Type              :=
+          Primitive_GL_Type (Rec_Type);
+      First_Idx  : constant Record_Info_Id       := Get_Record_Info (Rec_Type);
+      F_Idx      : Field_Info_Id                 := Get_Field_Info (Our_Field);
       FI         : Field_Info;
       Our_Idx    : Record_Info_Id;
       Offset     : GL_Value;
@@ -1862,10 +1871,11 @@ package body GNATLLVM.Records is
 
          while Present (Expr) loop
             declare
-               In_F : constant Entity_Id := Entity (First (Choices (Expr)));
-               Val  : constant Node_Id   := Expression (Expr);
+               In_F : constant Record_Field_Kind_Id :=
+                 Entity (First (Choices (Expr)));
+               Val  : constant Node_Id              := Expression (Expr);
                V    : GL_Value;
-               F    : Entity_Id;
+               F    : Record_Field_Kind_Id;
 
             begin
                if (Ekind (In_F) = E_Discriminant
@@ -1894,7 +1904,6 @@ package body GNATLLVM.Records is
                   --  If so, just don't do anything with it.
 
                   F := Find_Matching_Field (Full_Etype (GT), In_F);
-
                   if Present (Get_Field_Info (F)) then
                      V := Emit_Convert_Value (Val, Field_Type (F));
                      V := Build_Field_Store (Result, F, V);
@@ -1923,17 +1932,19 @@ package body GNATLLVM.Records is
 
    function Build_Field_Load
      (In_V       : GL_Value;
-      In_F       : Entity_Id;
+      In_F       : Record_Field_Kind_Id;
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False;
       Prefer_LHS : Boolean  := False;
       VFA        : Boolean  := False) return GL_Value
    is
-      R_GT   : constant GL_Type   := Related_Type (In_V);
-      R_TE   : constant Entity_Id := Record_Type_For_Field (R_GT, In_F);
-      F      : constant Entity_Id := Find_Matching_Field (R_TE, In_F);
-      F_GT   : constant GL_Type   := Field_Type (F);
-      V      : GL_Value           := To_Primitive (In_V);
+      R_GT   : constant GL_Type              := Related_Type (In_V);
+      R_TE   : constant Record_Kind_Id       :=
+        Record_Type_For_Field (R_GT, In_F);
+      F      : constant Record_Field_Kind_Id :=
+        Find_Matching_Field (R_TE, In_F);
+      F_GT   : constant GL_Type              := Field_Type (F);
+      V      : GL_Value                      := To_Primitive (In_V);
       Result : GL_Value;
 
    begin
@@ -2099,20 +2110,23 @@ package body GNATLLVM.Records is
 
    function Build_Field_Store
      (In_LHS : GL_Value;
-      In_F   : Entity_Id;
+      In_F   : Record_Field_Kind_Id;
       RHS    : GL_Value;
       VFA    : Boolean := False) return GL_Value
    is
-      R_GT      : constant GL_Type       := Related_Type (In_LHS);
-      R_TE      : constant Entity_Id     := Record_Type_For_Field (R_GT, In_F);
-      F         : constant Entity_Id     := Find_Matching_Field (R_TE, In_F);
-      F_Idx     : constant Field_Info_Id := Get_Field_Info (F);
-      FI        : constant Field_Info    := Field_Info_Table.Table (F_Idx);
-      F_GT      : constant GL_Type       := FI.GT;
-      Idx       : constant Nat           := FI.Field_Ordinal;
-      LHS       : GL_Value               := In_LHS;
-      RHS_Cvt   : GL_Value               := Convert_GT (RHS, F_GT);
-      Result    : GL_Value               := No_GL_Value;
+      R_GT      : constant GL_Type              := Related_Type (In_LHS);
+      R_TE      : constant Record_Kind_Id       :=
+        Record_Type_For_Field (R_GT, In_F);
+      F         : constant Record_Field_Kind_Id :=
+        Find_Matching_Field (R_TE, In_F);
+      F_Idx     : constant Field_Info_Id        := Get_Field_Info (F);
+      FI        : constant Field_Info           :=
+        Field_Info_Table.Table (F_Idx);
+      F_GT      : constant GL_Type              := FI.GT;
+      Idx       : constant Nat                  := FI.Field_Ordinal;
+      LHS       : GL_Value                      := In_LHS;
+      RHS_Cvt   : GL_Value                      := Convert_GT (RHS, F_GT);
+      Result    : GL_Value                      := No_GL_Value;
       First_Bit : ULL;
       Num_Bits  : ULL;
 
@@ -2317,7 +2331,10 @@ package body GNATLLVM.Records is
    -----------------------
 
    procedure Build_Field_Store
-     (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value; VFA : Boolean := False)
+     (LHS  : GL_Value;
+      In_F : Record_Field_Kind_Id;
+      RHS  : GL_Value;
+      VFA  : Boolean := False)
    is
       Result : constant GL_Value := Build_Field_Store (LHS, In_F, RHS, VFA);
 
@@ -2384,7 +2401,7 @@ package body GNATLLVM.Records is
    -- Print_Field_Info --
    ----------------------
 
-   procedure Print_Field_Info (E : Entity_Id) is
+   procedure Print_Field_Info (E : Record_Field_Kind_Id) is
       F_Idx : constant Field_Info_Id  := Get_Field_Info (E);
       FI    : Field_Info;
 
@@ -2428,7 +2445,7 @@ package body GNATLLVM.Records is
    -- Print_Record_Info --
    -----------------------
 
-   procedure Print_Record_Info (TE : Entity_Id; Eol : Boolean := False) is
+   procedure Print_Record_Info (TE : Record_Kind_Id; Eol : Boolean := False) is
 
    begin
       declare

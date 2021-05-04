@@ -41,16 +41,13 @@ with CCG; use CCG;
 
 package body GNATLLVM.Records.Create is
 
-   function Max_Discriminant (TE : Entity_Id) return Int
-     with Pre => Is_Record_Type (TE);
+   function Max_Discriminant (TE : Record_Kind_Id) return Int;
    --  Return the highest value of Discriminant_Number
 
    function Find_Field_In_Entity_List
-     (F         : Entity_Id;
-      TE        : Entity_Id;
-      Cur_Field : in out Entity_Id) return Entity_Id
-     with Pre  => Ekind (F) in E_Discriminant | E_Component
-       and then Is_Record_Type (TE);
+     (F         : Record_Field_Kind_Id;
+      TE        : Record_Kind_Id;
+      Cur_Field : in out Entity_Id) return Entity_Id;
    --  Find a field in the entity list of TE that has the same
    --  Original_Record_Component as F and return it if so.  Cur_Field
    --  is used to cache the last field tested to avoid quadratic behavior
@@ -82,8 +79,8 @@ package body GNATLLVM.Records.Create is
    --  which alternate has a Choice that covers N.
 
    function Choices_To_SO_Ref
-     (Variant : Node_Id; Discrim : Entity_Id) return SO_Ref
-     with Pre => Present (Variant);
+     (Variant : Node_Id; Discrim : Node_Id) return SO_Ref
+     with Pre => Present (Variant) and then Present (Discrim);
    --  Given an alternative for a variant record, return an SO_Ref
    --  corresponding to an expression that's True when that variant is
    --  present. This is a function of the discriminant (Discrim) and
@@ -93,8 +90,7 @@ package body GNATLLVM.Records.Create is
      with Pre => Present (GT);
    --  Returns True if one of GT's bounds references a discriminant
 
-   function Max_Record_Rep (E : Entity_Id) return Uint
-     with Pre => Ekind (E) in E_Component | E_Discriminant;
+   function Max_Record_Rep (E : Record_Field_Kind_Id) return Uint;
    --  Return the next byte after the highest repped position of the base
    --  type of E.
 
@@ -103,14 +99,12 @@ package body GNATLLVM.Records.Create is
    -------------------------------
 
    function Find_Field_In_Entity_List
-     (F         : Entity_Id;
-      TE        : Entity_Id;
+     (F         : Record_Field_Kind_Id;
+      TE        : Record_Kind_Id;
       Cur_Field : in out Entity_Id) return Entity_Id
    is
 
-      function ORC (F : Entity_Id) return Entity_Id
-        with Pre  => Ekind (F) in E_Discriminant | E_Component,
-             Post => Ekind (ORC'Result) in E_Discriminant | E_Component;
+      function ORC (F : Record_Field_Kind_Id) return Record_Field_Kind_Id;
       --  Get the Original_Record_Component, but also check
       --  Corresponding_Discriminant first;
 
@@ -118,8 +112,8 @@ package body GNATLLVM.Records.Create is
       -- ORC --
       ---------
 
-      function ORC (F : Entity_Id) return Entity_Id is
-         Field : Entity_Id := F;
+      function ORC (F : Record_Field_Kind_Id) return Record_Field_Kind_Id is
+         Field : Record_Field_Kind_Id := F;
 
       begin
          while Ekind (Field) = E_Discriminant loop
@@ -158,7 +152,7 @@ package body GNATLLVM.Records.Create is
    --  Max_Discriminant --
    -----------------------
 
-   function Max_Discriminant (TE : Entity_Id) return Int is
+   function Max_Discriminant (TE : Record_Kind_Id) return Int is
       F     : Entity_Id := First_Component_Or_Discriminant (TE);
 
    begin
@@ -247,7 +241,7 @@ package body GNATLLVM.Records.Create is
    -----------------------
 
    function Choices_To_SO_Ref
-     (Variant : Node_Id; Discrim : Entity_Id) return SO_Ref
+     (Variant : Node_Id; Discrim : Node_Id) return SO_Ref
    is
       Discrim_SO : constant SO_Ref := Annotated_Value (Emit_Expr (Discrim));
       Choice     : Node_Id;
@@ -331,9 +325,10 @@ package body GNATLLVM.Records.Create is
    -- Max_Record_Rep --
    --------------------
 
-   function Max_Record_Rep (E : Entity_Id) return Uint is
-      TE      : constant Entity_Id := Full_Base_Type (Full_Scope (E));
-      F       : Entity_Id          := First_Component_Or_Discriminant (TE);
+   function Max_Record_Rep (E : Record_Field_Kind_Id) return Uint is
+      TE      : constant Record_Kind_Id := Full_Base_Type (Full_Scope (E));
+      F       : Entity_Id               :=
+        First_Component_Or_Discriminant (TE);
 
    begin
       return End_Pos : Uint := Uint_0 do
@@ -353,7 +348,7 @@ package body GNATLLVM.Records.Create is
    -- Create_Record_Type --
    ------------------------
 
-   function Create_Record_Type (TE : Entity_Id) return Type_T is
+   function Create_Record_Type (TE : Record_Kind_Id) return Type_T is
 
       type Field_Info_Id_Array is array (Nat range <>) of Field_Info_Id;
 
@@ -374,10 +369,10 @@ package body GNATLLVM.Records.Create is
       --  within the record.
 
       type Added_Field is record
-         F            : Entity_Id;
+         F            : Record_Field_Kind_Id;
          --  Entity of the field that we're adding
 
-         AF           : Entity_Id;
+         AF           : Record_Field_Kind_Id;
          --  Ancestor of the field that we're adding
 
          Seq          : Nat;
@@ -443,70 +438,70 @@ package body GNATLLVM.Records.Create is
          Table_Increment      => 1,
          Table_Name           => "Variant_Stack");
 
-      BT             : constant Entity_Id  := Full_Base_Type (TE);
+      BT             : constant Record_Kind_Id := Full_Base_Type (TE);
       --  Base type of our record type
 
-      Aliased_Fields : constant Boolean    :=
+      Aliased_Fields : constant Boolean        :=
         Record_Has_Aliased_Components (BT);
       --  Indicates that at least one field is aliased
 
-      Has_NP_Fixed   : Boolean             := False;
+      Has_NP_Fixed   : Boolean                 := False;
       --  Indicates that at least one field of fixed size isn't packable
 
-      Prev_Idx       : Record_Info_Id      := Empty_Record_Info_Id;
+      Prev_Idx       : Record_Info_Id          := Empty_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
-      First_Idx      : Record_Info_Id      := Empty_Record_Info_Id;
+      First_Idx      : Record_Info_Id          := Empty_Record_Info_Id;
       --  The first index used by the current record fragment construction
 
-      Overlap_Idx    : Record_Info_Id      := Empty_Record_Info_Id;
+      Overlap_Idx    : Record_Info_Id          := Empty_Record_Info_Id;
       --  The index of the overlap component of this variant part, if any
 
-      Cur_Idx        : Record_Info_Id;
-      --  The index of the record table entry we're building
-
-      Cur_RI_Pos     : ULL                 := 0;
+      Cur_RI_Pos     : ULL                     := 0;
       --  Current position into this RI
 
-      Par_Depth      : Int                 := 0;
+      Par_Depth      : Int                     := 0;
       --  Nesting depth into parent records
 
-      RI_Align       : Nat                 := 0;
+      RI_Align       : Nat                     := 0;
       --  If nonzero, an alignment to assign to the next RI built for an
       --  LLVM type.
 
-      RI_Position    : ULL                 := 0;
+      RI_Position    : ULL                     := 0;
       --  If nonzero, a position to assign to the next RI built for an
       --  LLVM type.
 
-      RI_Is_Overlap  : Boolean             := False;
+      RI_Is_Overlap  : Boolean                 := False;
       --  If True, the next RI built is an overlap RI for a variant
 
-      RI_Unused_Bits : Uint                := Uint_0;
+      RI_Unused_Bits : Uint                    := Uint_0;
       --  Number of unused bits at the end of this RI
 
-      Cur_Field      : Entity_Id           := Empty;
+      Cur_Field      : Entity_Id               := Empty;
       --  Used for a cache in Find_Field_In_Entity_List to avoid quadratic
       --  behavior.
 
-      Split_Align    : Nat                 := Max_Valid_Align;
+      Split_Align    : Nat                     := Max_Valid_Align;
       --  We need to split an LLVM fragment type if the alignment of the
       --  next field is greater than both this and Last_Align.  This occurs
       --  for variant records; see details there.  It also occurs for the
       --  same reason after a variable-size field.
 
-      First_Field_Id : Field_Info_Id       := Empty_Field_Info_Id;
+      First_Field_Id : Field_Info_Id           := Empty_Field_Info_Id;
       --  First Field_Info_Id in this RI
 
-      Last_Field_Id  : Field_Info_Id       := Empty_Field_Info_Id;
+      Last_Field_Id  : Field_Info_Id          := Empty_Field_Info_Id;
       --  Last Field_Info_Id created, if any
 
-      SID            : Struct_Id           := New_Struct_Id;
+      SID            : Struct_Id               := New_Struct_Id;
       --  The Struct_Id for the struct that we're building
 
-      GT             :  GL_Type            :=
+      GT             :  GL_Type                :=
         Default_GL_Type (TE, Create => False);
       --  The GL_Type for this record type
+
+      Cur_Idx        : Record_Info_Id;
+      --  The index of the record table entry we're building
 
       LLVM_Type      : Type_T;
       --  The LLVM type for this record type
@@ -533,32 +528,29 @@ package body GNATLLVM.Records.Create is
       --  Add a Record_Info into the table, chaining it as appropriate
 
       procedure Add_FI
-        (E                    : Entity_Id;
+        (E                    : Record_Field_Kind_Id;
          RI_Idx               : Record_Info_Id;
          F_GT                 : in out GL_Type;
          Ordinal              : Nat     := 0;
          First_Bit            : Uint    := No_Uint;
          Num_Bits             : Uint    := No_Uint;
          Array_Bitfield       : Boolean := False;
-         Large_Array_Bitfield : Boolean := False)
-        with Pre => Ekind (E) in E_Discriminant | E_Component;
+         Large_Array_Bitfield : Boolean := False);
       --  Add a Field_Info info the table, if appropriate, and set
       --  the field to point to it.  Update F_GT if we used a matching field.
 
       procedure Push_Parent_Depth;
-      procedure Pop_Parent_Depth (Par_TE : Entity_Id);
+      procedure Pop_Parent_Depth (Par_TE : Record_Kind_Id);
       --  Indicate that we're starting/stopping (respectively) to process
       --  a parent record.
 
-      procedure Add_Field (E : Entity_Id)
-        with Pre => Ekind (E) in E_Discriminant | E_Component;
+      procedure Add_Field (E : Record_Field_Kind_Id);
       --  Add one field to the above data
 
       procedure Process_Fields_To_Add;
       --  Create RI entries for the fields we've added above
 
-      procedure Add_Fields (E : Entity_Id)
-        with Pre => Is_Record_Type (E);
+      procedure Add_Fields (E : Record_Kind_Id);
       --  Add all fields of E to the above data, either the component or
       --  the extension components, but recursively add parent components.
 
@@ -636,7 +628,7 @@ package body GNATLLVM.Records.Create is
       ------------
 
       procedure Add_FI
-        (E                    : Entity_Id;
+        (E                    : Record_Field_Kind_Id;
          RI_Idx               : Record_Info_Id;
          F_GT                 : in out GL_Type;
          Ordinal              : Nat     := 0;
@@ -715,7 +707,7 @@ package body GNATLLVM.Records.Create is
       -- Pop_Parent_Depth --
       ----------------------
 
-      procedure Pop_Parent_Depth (Par_TE : Entity_Id) is
+      procedure Pop_Parent_Depth (Par_TE : Record_Kind_Id) is
       begin
          Par_Depth := Par_Depth - 1;
 
@@ -731,15 +723,15 @@ package body GNATLLVM.Records.Create is
       -- Add_Fields --
       ----------------
 
-      procedure Add_Fields (E : Entity_Id) is
-         Rec_Type     : constant Entity_Id := Full_Base_Type (E);
+      procedure Add_Fields (E : Record_Kind_Id) is
+         Rec_Type     : constant Record_Kind_Id := Full_Base_Type (E);
          --  The base type, which we use to get the record order from
 
-         Sub_Rec_Type : constant Entity_Id :=
+         Sub_Rec_Type : constant Entity_Id      :=
            (if Rec_Type = E then Empty else E);
          --  Present if we have to search the field list of a record subtype
 
-         Rec_Field    : Entity_Id          := Empty;
+         Rec_Field    : Entity_Id               := Empty;
          --  Cache used to limit quadratic behavior
 
          procedure Add_Component_List
@@ -782,7 +774,7 @@ package body GNATLLVM.Records.Create is
             Saved_First_Idx    : Record_Info_Id;
             Saved_Overlap_Idx  : Record_Info_Id;
             Component_Def      : Node_Id;
-            Field              : Entity_Id;
+            Field              : Record_Field_Kind_Id;
             Field_To_Add       : Entity_Id;
             Variant            : Node_Id;
             J                  : Nat;
@@ -897,7 +889,7 @@ package body GNATLLVM.Records.Create is
 
          Is_Derived        : Boolean   := False;
          Field             : Entity_Id;
-         Field_To_Add      : Entity_Id;
+         Field_To_Add      : Record_Field_Kind_Id;
          Outer_Field       : Entity_Id;
          Record_Definition : Node_Id;
          Components        : Node_Id;
@@ -1020,26 +1012,28 @@ package body GNATLLVM.Records.Create is
       -- Add_Field --
       ---------------
 
-      procedure Add_Field (E : Entity_Id) is
-         Clause      : constant Node_Id   := Component_Clause (E);
-         R_TE        : constant Entity_Id := Full_Scope (E);
-         Def_GT      : constant GL_Type   := Default_GL_Type (Full_Etype (E));
-         F_GT        : GL_Type            := Full_GL_Type (E);
-         Align       : constant Nat       := Get_Type_Alignment (F_GT);
-         Parent_TE   : constant Entity_Id :=
+      procedure Add_Field (E : Record_Field_Kind_Id) is
+         Clause      : constant Node_Id        := Component_Clause (E);
+         R_TE        : constant Record_Kind_Id := Full_Scope (E);
+         Def_GT      : constant GL_Type        :=
+           Default_GL_Type (Full_Etype (E));
+         F_GT        : GL_Type                 := Full_GL_Type (E);
+         Align       : constant Nat            := Get_Type_Alignment (F_GT);
+         Parent_TE   : constant Entity_Id      :=
            (if   Present (Parent_Subtype (R_TE))
             then Full_Parent_Subtype (R_TE) else Empty);
-         Atomic      : constant Boolean   :=
+         Atomic      : constant Boolean        :=
            Is_Full_Access (E) or else Is_Full_Access (F_GT);
-         Error_Str   : constant String    := Field_Error_Msg (E, F_GT, True);
-         Pos         : Uint               :=
+         Error_Str   : constant String         :=
+           Field_Error_Msg (E, F_GT, True);
+         Pos         : Uint                    :=
            (if Present (Clause) then Component_Bit_Offset (E) else No_Uint);
-         Size        : Uint               :=
+         Size        : Uint                    :=
            (if   Unknown_Esize (E) then No_Uint
             else Validate_Size (E, Def_GT, Esize (E),
                                 Zero_Allowed => Present (Clause)));
-         Var_Depth   : Int                := 0;
-         Var_Align   : Nat                := 0;
+         Var_Depth   : Int                     := 0;
+         Var_Align   : Nat                     := 0;
 
       begin
          --  If we've pushed the variant stack and the top entry is static,
@@ -1392,30 +1386,40 @@ package body GNATLLVM.Records.Create is
             --  look at them on the field of the base type to be sure that
             --  we sort fields the same way for base types and its subtypes.
 
-            AF_Left   : constant Added_Field := Added_Field_Table.Table (L);
-            AF_Right  : constant Added_Field := Added_Field_Table.Table (R);
-            Left_F    : constant Entity_Id   := AF_Left.AF;
-            Right_F   : constant Entity_Id   := AF_Right.AF;
-            Left_GT   : constant GL_Type     := Full_GL_Type (Left_F);
-            Right_GT  : constant GL_Type     := Full_GL_Type (Right_F);
-            Left_BO   : constant Uint        := Component_Bit_Offset (Left_F);
-            Right_BO  : constant Uint        := Component_Bit_Offset (Right_F);
-            Is_Pos_L  : constant Boolean     :=
+            AF_Left   : constant Added_Field          :=
+              Added_Field_Table.Table (L);
+            AF_Right  : constant Added_Field          :=
+              Added_Field_Table.Table (R);
+            Left_F    : constant Record_Field_Kind_Id := AF_Left.AF;
+            Right_F   : constant Record_Field_Kind_Id := AF_Right.AF;
+            Left_GT   : constant GL_Type              := Full_GL_Type (Left_F);
+            Right_GT  : constant GL_Type              :=
+              Full_GL_Type (Right_F);
+            Left_BO   : constant Uint                 :=
+              Component_Bit_Offset (Left_F);
+            Right_BO  : constant Uint                 :=
+              Component_Bit_Offset (Right_F);
+            Is_Pos_L  : constant Boolean              :=
               Present (Component_Clause (Left_F));
-            Is_Pos_R  : constant Boolean     :=
+            Is_Pos_R  : constant Boolean              :=
               Present (Component_Clause (Right_F));
-            Self_L    : constant Boolean     := Uses_Discriminant (Left_GT);
-            Self_R    : constant Boolean     := Uses_Discriminant (Right_GT);
-            Dynamic_L : constant Boolean     :=
+            Self_L    : constant Boolean              :=
+              Uses_Discriminant (Left_GT);
+            Self_R    : constant Boolean              :=
+              Uses_Discriminant (Right_GT);
+            Dynamic_L : constant Boolean              :=
               Is_Dynamic_Size (Left_GT,  Is_Unconstrained_Record (Left_GT));
-            Dynamic_R : constant Boolean     :=
+            Dynamic_R : constant Boolean              :=
               Is_Dynamic_Size (Right_GT, Is_Unconstrained_Record (Right_GT));
-            Pack_L    : constant Pack_Kind   := Field_Pack_Kind (Left_F);
-            Pack_R    : constant Pack_Kind   := Field_Pack_Kind (Right_F);
-            Bit_L     : constant Boolean     :=
+            Pack_L    : constant Pack_Kind            :=
+              Field_Pack_Kind (Left_F);
+            Pack_R    : constant Pack_Kind            :=
+              Field_Pack_Kind (Right_F);
+            Bit_L     : constant Boolean              :=
               (Pack_L = Bit and then RM_Size (Left_GT)  mod BPU /= 0);
-            Bit_R     : constant Boolean     :=
+            Bit_R     : constant Boolean              :=
               (Pack_R = Bit and then RM_Size (Right_GT) mod BPU /= 0);
+
          begin
             --  This function must satisfy the conditions of A.18(5/3),
             --  specifically that it must define a "strict weak ordering",
@@ -1545,8 +1549,9 @@ package body GNATLLVM.Records.Create is
 
             for K in J + 1 .. Added_Field_Table.Last loop
                declare
-                  AF_K : constant Added_Field := Added_Field_Table.Table (K);
-                  F    : constant Entity_Id   := AF_K.F;
+                  AF_K : constant Added_Field          :=
+                    Added_Field_Table.Table (K);
+                  F    : constant Record_Field_Kind_Id := AF_K.F;
 
                begin
                   exit when No (AF_K.Pos) or else No (AF_K.Size)
@@ -1649,29 +1654,30 @@ package body GNATLLVM.Records.Create is
          for J in 1 .. Added_Field_Table.Last loop
             declare
                AF        : Added_Field renames Added_Field_Table.Table (J);
-               F         : constant Entity_Id   := AF.F;
+               F         : constant Record_Field_Kind_Id := AF.F;
                --  The field to add
 
-               Def_GT    : constant GL_Type     :=
+               Def_GT    : constant GL_Type              :=
                  Default_GL_Type (Full_Etype (F));
                --  The default GL_Type for that field
 
-               Size      : Uint                 := AF.Size;
+               Size      : Uint                           := AF.Size;
                --  An optional size to force the field to
 
-               Max_Sz    : constant Boolean     :=
+               Max_Sz    : constant Boolean               :=
                  Is_Unconstrained_Record (Def_GT);
                --  True if this is an object for which we have to use
                --  the maximum possible size.
 
-               Biased    : constant Boolean     :=
+               Biased    : constant Boolean               :=
                  Has_Biased_Representation (F);
                --  True if we need a biased representation for this field
 
-               Packed    : constant Pack_Kind   := Field_Pack_Kind (AF.AF);
+               Packed    : constant Pack_Kind             :=
+                 Field_Pack_Kind (AF.AF);
                --  The kind of packing we need to do for this field
 
-               F_GT      : GL_Type              :=
+               F_GT      : GL_Type                        :=
                    Make_GT_Alternative (Def_GT, F,
                                         Size          => Size,
                                         Align         => No_Uint,
@@ -1683,10 +1689,10 @@ package body GNATLLVM.Records.Create is
                --  into account any specified size and if we have to
                --  use the max size.
 
-               Pos     : Uint                    := AF.Pos;
+               Pos     : Uint                             := AF.Pos;
                --  Specified bit position of field, if any.
 
-               Need_Align  :  Nat                :=
+               Need_Align  :  Nat                         :=
                  (if   Present (Pos)
                   then BPU else Effective_Field_Alignment (F));
                --  The alignment we need this field to have
@@ -2002,10 +2008,11 @@ package body GNATLLVM.Records.Create is
          Field := First_Discriminant (BT);
          while Present (Field) loop
             declare
-               ORC         : constant Entity_Id :=
+               ORC         : constant Record_Field_Kind_Id :=
                  Original_Record_Component (Field);
-               Discrim_Num : constant Nat       := +Discriminant_Number (ORC);
-               Outer_Orig  : constant Entity_Id :=
+               Discrim_Num : constant Nat                  :=
+                 +Discriminant_Number (ORC);
+               Outer_Orig  : constant Entity_Id            :=
                  Find_Field_In_Entity_List (ORC, TE, Cur_Field);
                Outer_Field : Entity_Id;
 

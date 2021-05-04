@@ -33,55 +33,49 @@ package GNATLLVM.Records is
 
    type Pack_Kind is (None, Byte, Bit);
 
-   function Use_Discriminant_For_Bound (E : Entity_Id) return GL_Value
-     with Pre  => Ekind (E) = E_Discriminant,
-          Post => Present (Use_Discriminant_For_Bound'Result);
+   function Use_Discriminant_For_Bound (E : E_Discriminant_Id) return GL_Value
+     with Post => Present (Use_Discriminant_For_Bound'Result);
    --  E is an E_Discriminant that we've run into while emitting an expression.
    --  If we are expecting one as a possible bound, evaluate this discriminant
    --  as required to compute that bound.
 
    function Record_Field_Offset
-     (V : GL_Value; Field : Entity_Id) return GL_Value
+     (V : GL_Value; Field : Record_Field_Kind_Id) return GL_Value
      with Pre  => not Is_Data (V) and then Is_Field (Field),
           Post => Present (Record_Field_Offset'Result);
    --  Return a GL_Value that represents the offset of a given record field
 
    function Get_Record_Size_Complexity
-     (TE : Entity_Id; Max_Size : Boolean := False) return Nat
-     with Pre => Is_Record_Type (TE);
+     (TE : Record_Kind_Id; Max_Size : Boolean := False) return Nat;
    --  Return the complexity of computing the size of a record.  This roughly
    --  gives the number of "things" needed to access to compute the size.
    --  This returns zero iff the record type is of a constant size.
 
    function Get_Record_Type_Size
-     (TE         : Entity_Id;
+     (TE         : Record_Kind_Id;
       V          : GL_Value;
       Max_Size   : Boolean := False;
       No_Padding : Boolean := False) return GL_Value
-     with Pre  => Is_Record_Type (TE),
-          Post => Present (Get_Record_Type_Size'Result);
+     with Post => Present (Get_Record_Type_Size'Result);
    --  Like Get_Type_Size, but only for record types
 
    function Get_Record_Type_Size
-     (TE         : Entity_Id;
+     (TE         : Record_Kind_Id;
       V          : GL_Value;
       Max_Size   : Boolean := False;
       No_Padding : Boolean := False) return IDS
-     with Pre  => Is_Record_Type (TE),
-          Post => Present (Get_Record_Type_Size'Result);
+     with Post => Present (Get_Record_Type_Size'Result);
 
    function Get_Record_Type_Size
-     (TE         : Entity_Id;
+     (TE         : Record_Kind_Id;
       V          : GL_Value;
       Max_Size   : Boolean := False;
-      No_Padding : Boolean := False) return BA_Data
-     with Pre  => Is_Record_Type (TE);
+      No_Padding : Boolean := False) return BA_Data;
 
-   function Effective_Field_Alignment (F : Entity_Id) return Nat
-     with Pre => Is_Field (F), Post => Effective_Field_Alignment'Result > 0;
+   function Effective_Field_Alignment (F : Record_Field_Kind_Id) return Nat
+     with Post => Effective_Field_Alignment'Result > 0;
 
-   function Get_Record_Type_Alignment (TE : Entity_Id) return Nat
-     with Pre => Is_Record_Type (TE);
+   function Get_Record_Type_Alignment (TE : Record_Kind_Id) return Nat;
    --  Like Get_Type_Alignment, but only for records and is called with
    --  the GNAT type.
 
@@ -94,14 +88,14 @@ package GNATLLVM.Records is
    --  Present, contain any fields already filled in for the record.
 
    function Find_Matching_Field
-     (TE : Entity_Id; Field : Entity_Id) return Entity_Id
-     with Pre  => Is_Record_Type (TE) and then Is_Field (Field);
+     (TE    : Record_Kind_Id;
+      Field : Record_Field_Kind_Id) return Record_Field_Kind_Id;
    --  Find a field in the entity list of TE that has the same name as
    --  F and has Field_Info.
 
-   function Emit_Field_Position (E : Entity_Id; V : GL_Value) return GL_Value
-     with Pre  => Is_Field (E),
-          Post => No (Emit_Field_Position'Result)
+   function Emit_Field_Position
+     (E : Record_Field_Kind_Id; V : GL_Value) return GL_Value
+     with Post => No (Emit_Field_Position'Result)
                   or else Type_Of (Emit_Field_Position'Result) = Size_T;
    --  Compute and return the position in bits of the field specified
    --  by E from the start of its type as a value of Size_Type.  If
@@ -113,7 +107,7 @@ package GNATLLVM.Records is
    --  here to collect and return information about fields in an RI.
 
    type Struct_Field is record
-      Field      : Entity_Id;
+      Field      : Record_Field_Kind_Id;
       Offset     : ULL;
       T          : Type_T;
       GT         : GL_Type;
@@ -126,50 +120,49 @@ package GNATLLVM.Records is
      with Pre => Present (Ridx);
    --  Return an array of struct field entries for the fields in the RI
 
-   function Field_Ordinal (F : Entity_Id) return unsigned
-     with Pre => Is_Field (F);
+   function Field_Ordinal (F : Record_Field_Kind_Id) return unsigned;
    --  Return the index of the field denoted by F. We assume here, but
    --  don't check, that the F is in a record with just a single RI.
 
-   function Parent_Field (F : Entity_Id) return Entity_Id
-     with Pre  => Is_Field (F);
-   function Ancestor_Field (F : Entity_Id) return Entity_Id
-     with Pre  => Is_Field (F),
-          Post => Ekind (F) = Ekind (Ancestor_Field'Result);
+   function Parent_Field (F : Record_Field_Kind_Id) return Entity_Id;
+   function Ancestor_Field
+     (F : Record_Field_Kind_Id) return Record_Field_Kind_Id
+     with Post => Ekind (F) = Ekind (Ancestor_Field'Result);
    --  Find the parent or ancestor field by walking up both the
    --  Original_Record_Component chain and the
    --  Corresponding_Record_Component chains.  Only look at records whose
    --  base types have the same representation as our base type.  Only return
    --  a parent if there is one, but the ancestor can be the original field.
 
-   function Field_Type (F : Entity_Id) return GL_Type
-     with Pre  => Is_Field (F) and then Present (Get_Field_Info (F)),
+   function Field_Type (F : Record_Field_Kind_Id) return GL_Type
+     with Pre  => Present (Get_Field_Info (F)),
           Post => Present (Field_Type'Result);
    --  Return the GL_Type of the field denoted by F
 
-   function Field_Bit_Offset (F : Entity_Id) return Uint
-     with Pre  => Is_Field (F) and then Present (Get_Field_Info (F)),
+   function Field_Bit_Offset (F : Record_Field_Kind_Id) return Uint
+     with Pre  => Present (Get_Field_Info (F)),
           Post => Present (Field_Bit_Offset'Result);
    --  Return the bitfield offset of F or zero if it's not a bitfield
 
-   function Is_Bitfield (F : Entity_Id) return Boolean
-     with Pre => Is_Field (F) and then Present (Get_Field_Info (F));
+   function Is_Bitfield (F : Record_Field_Kind_Id) return Boolean
+     with Pre => Present (Get_Field_Info (F));
    --  Indicate whether F is a bitfield, meaning that shift/mask operations
    --  are required to access it.
 
-   function Cant_Misalign_Field (F : Entity_Id; GT : GL_Type) return Boolean is
+   function Cant_Misalign_Field
+     (F : Record_Field_Kind_Id; GT : GL_Type) return Boolean
+   is
      (Strict_Alignment (GT) or else Is_Aliased (F)
         or else Is_Independent (F) or else Is_Independent (GT)
         or else Is_Full_Access (F) or else Is_Full_Access (GT))
-     with Pre => Is_Field (F) and then Present (GT);
+     with Pre => Present (GT);
    --  Return True iff a field F, whose type is GT, is not permitted to be
    --  misaligned.
 
    function Field_Pack_Kind
-     (F           : Entity_Id;
+     (F           : Record_Field_Kind_Id;
       Force       : Boolean := False;
-      Ignore_Size : Boolean := False) return Pack_Kind
-     with Pre  => Is_Field (F);
+      Ignore_Size : Boolean := False) return Pack_Kind;
    --  Returns how tightly we can pack F.  If Force is True, we want to
    --  pack the field if it's valid to do so, not only when we does
    --  something from the perspective of this field (e.g., because we have
@@ -177,22 +170,21 @@ package GNATLLVM.Records is
    --  may be too large to pack.
 
    function Is_Bitfield_By_Rep
-     (F            : Entity_Id;
+     (F            : Record_Field_Kind_Id;
       Pos          : Uint := No_Uint;
       Size         : Uint := No_Uint;
-      Use_Pos_Size : Boolean := False) return Boolean
-     with Pre => Is_Field (F);
+      Use_Pos_Size : Boolean := False) return Boolean;
    --  True if we need bitfield processing for this field based on its
    --  rep clause.  If Use_Pos_Size is specified, Pos and Size
    --  override that from F.
 
-   function Is_Array_Bitfield (F : Entity_Id) return Boolean
-     with Pre  => Is_Field (F) and then Present (Get_Field_Info (F));
+   function Is_Array_Bitfield (F : Record_Field_Kind_Id) return Boolean
+     with Pre => Present (Get_Field_Info (F));
    --  If True, this is a bitfield and the underlying LLVM field is an
    --  array.
 
-   function Is_Large_Array_Bitfield (F : Entity_Id) return Boolean
-     with Pre  => Is_Field (F) and then Present (Get_Field_Info (F));
+   function Is_Large_Array_Bitfield (F : Record_Field_Kind_Id) return Boolean
+     with Pre => Present (Get_Field_Info (F));
    --  Likewise, but it's also a large array
 
    function TBAA_Type (Fidx : Field_Info_Id) return Metadata_T
@@ -212,13 +204,12 @@ package GNATLLVM.Records is
 
    function Build_Field_Load
      (In_V       : GL_Value;
-      In_F       : Entity_Id;
+      In_F       : Record_Field_Kind_Id;
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False;
       Prefer_LHS : Boolean  := False;
       VFA        : Boolean  := False) return GL_Value
-     with  Pre  => Is_Record_Type (Related_Type (In_V))
-                   and then Is_Field (In_F),
+     with  Pre  => Is_Record_Type (Related_Type (In_V)),
            Post => Present (Build_Field_Load'Result);
    --  V represents a record.  Return a value representing loading field
    --  In_F from that record.  If For_LHS is True, this must be a reference
@@ -227,19 +218,22 @@ package GNATLLVM.Records is
 
    function Build_Field_Store
      (In_LHS : GL_Value;
-      In_F   : Entity_Id;
+      In_F   : Record_Field_Kind_Id;
       RHS    : GL_Value;
       VFA    : Boolean := False) return GL_Value
      with Pre => Is_Record_Type (Related_Type (In_LHS))
-                 and then Present (RHS) and then Is_Field (In_F);
+                 and then Present (RHS);
    --  Likewise, but perform a store of RHS into the F component of In_LHS.
    --  If we return a value, that's the record that needs to be stored into
    --  the actual LHS.  If no value if returned, all our work is done.
 
    procedure Build_Field_Store
-     (LHS : GL_Value; In_F : Entity_Id; RHS : GL_Value; VFA : Boolean := False)
+     (LHS  : GL_Value;
+      In_F : Record_Field_Kind_Id;
+      RHS  : GL_Value;
+      VFA  : Boolean := False)
      with  Pre => Is_Record_Type (Related_Type (LHS))
-                  and then Present (RHS) and then Is_Field (In_F);
+                  and then Present (RHS);
    --  Similar to the function version, but we always update LHS.
 
    procedure Add_Write_Back (LHS : GL_Value; F : Entity_Id; RHS : GL_Value)
@@ -253,16 +247,15 @@ package GNATLLVM.Records is
    --  Perform any writebacks put onto the stack by the Add_Write_Back
    --  procedure.
 
-   function Record_Has_Aliased_Components (TE : Entity_Id) return Boolean
-     with Pre => Is_Record_Type (TE);
+   function Record_Has_Aliased_Components (TE : Record_Kind_Id) return Boolean;
    --  Return True if any component of TE other than the tag is aliased
 
    --  The following are debug procedures to print information about records
    --  and fields.
 
-   procedure Print_Field_Info (E : Entity_Id)
+   procedure Print_Field_Info (E : Record_Field_Kind_Id)
      with Export, External_Name => "dfi";
-   procedure Print_Record_Info (TE : Entity_Id; Eol : Boolean := False)
+   procedure Print_Record_Info (TE : Record_Kind_Id; Eol : Boolean := False)
      with Export, External_Name => "dri";
 
 private
@@ -442,7 +435,7 @@ private
    --  used to represent the field and bit positions if this is a bitfield.
 
    type Field_Info is record
-      Field                : Entity_Id;
+      Field                : Record_Field_Kind_Id;
       --  Field for this which this is the information
 
       Rec_Info_Idx         : Record_Info_Id;
@@ -491,13 +484,12 @@ private
       Table_Name           => "Record_Info_Table");
 
    function Get_Discriminant_Constraint
-     (TE : Entity_Id; E : Entity_Id) return Node_Id
-     with Pre  => Ekind (TE) = E_Record_Subtype,
-          Post => Present (Get_Discriminant_Constraint'Result);
+     (TE : E_Record_Subtype_Id; E : E_Discriminant_Id) return Node_Id
+     with Post => Present (Get_Discriminant_Constraint'Result);
    --  Get the expression that constrains the discriminant E of type TE
 
-   function Field_Position (E : Entity_Id; V : GL_Value) return BA_Data
-     with Pre => Is_Field (E);
+   function Field_Position
+     (E : Record_Field_Kind_Id; V : GL_Value) return BA_Data;
    --  Back-annotation version of Emit_Field_Position
 
 end GNATLLVM.Records;

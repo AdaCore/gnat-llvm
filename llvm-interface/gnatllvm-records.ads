@@ -209,7 +209,7 @@ package GNATLLVM.Records is
       For_LHS    : Boolean  := False;
       Prefer_LHS : Boolean  := False;
       VFA        : Boolean  := False) return GL_Value
-     with  Pre  => Is_Record_Type (Related_Type (In_V)),
+     with  Pre  => Is_Record_Type (In_V),
            Post => Present (Build_Field_Load'Result);
    --  V represents a record.  Return a value representing loading field
    --  In_F from that record.  If For_LHS is True, this must be a reference
@@ -221,8 +221,7 @@ package GNATLLVM.Records is
       In_F   : Record_Field_Kind_Id;
       RHS    : GL_Value;
       VFA    : Boolean := False) return GL_Value
-     with Pre => Is_Record_Type (Related_Type (In_LHS))
-                 and then Present (RHS);
+     with Pre => Is_Record_Type (In_LHS) and then Present (RHS);
    --  Likewise, but perform a store of RHS into the F component of In_LHS.
    --  If we return a value, that's the record that needs to be stored into
    --  the actual LHS.  If no value if returned, all our work is done.
@@ -232,12 +231,11 @@ package GNATLLVM.Records is
       In_F : Record_Field_Kind_Id;
       RHS  : GL_Value;
       VFA  : Boolean := False)
-     with  Pre => Is_Record_Type (Related_Type (LHS))
-                  and then Present (RHS);
+     with  Pre => Is_Record_Type (LHS) and then Present (RHS);
    --  Similar to the function version, but we always update LHS.
 
    procedure Add_Write_Back (LHS : GL_Value; F : Entity_Id; RHS : GL_Value)
-     with  Pre  => (No (F) or else Is_Record_Type (Related_Type (LHS)))
+     with  Pre  => (No (F) or else Is_Record_Type (LHS))
                    and then Present (RHS)
                    and then (No (F) or else Is_Field (F));
    --  Like Build_Field_Store, but stack the operation to be performed

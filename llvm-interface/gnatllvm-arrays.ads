@@ -38,8 +38,8 @@ package GNATLLVM.Arrays is
    --  requires an instance of the type.  This is true for an unconstrained
    --  type or an array subtype that has a discriminant as a bound.
 
-   function Get_Bound_Size (GT : GL_Type) return GL_Value
-     with Pre => Present (GT), Post => Present (Get_Bound_Size'Result);
+   function Get_Bound_Size (GT : Array_Or_PAT_GL_Type) return GL_Value
+     with Post => Present (Get_Bound_Size'Result);
    --  Get the size of the Bounds part of array and data of GT, taking into
    --  account both the size of the bounds and the alignment of the bounds
    --  and GT.
@@ -58,8 +58,7 @@ package GNATLLVM.Arrays is
    --  two types be identical, but that's too strict (for example, one
    --  may be Integer and the other Integer'Base), so just check the width.
 
-   function Get_Bound_Alignment (GT : GL_Type) return Nat
-     with Pre  => Is_Array_Or_Packed_Array_Type (GT);
+   function Get_Bound_Alignment (GT : Array_Or_PAT_GL_Type) return Nat;
    --  Get the alignment of the Bounds part of array and data of GT
 
    function Get_Dim_Range (N : Node_Id) return Node_Id
@@ -67,14 +66,13 @@ package GNATLLVM.Arrays is
    --  Return the N_Range for an array type
 
    function Get_Array_Bound
-     (GT       : GL_Type;
+     (GT       : Array_Or_PAT_GL_Type;
       Dim      : Nat;
       Is_Low   : Boolean;
       V        : GL_Value;
       Max_Size : Boolean := False;
       For_Orig : Boolean := False) return GL_Value
-     with Pre  => Present (GT),
-          Post => Present (Get_Array_Bound'Result);
+     with Post => Present (Get_Array_Bound'Result);
    --  Get the bound (lower if Is_Low, else upper) for dimension number Dim
    --  (0-origin) of an array whose LValue is Value and is of type Arr_Typ.
    --  If For_Orig is True, get the information from Original_Array_Type of GT.
@@ -95,8 +93,8 @@ package GNATLLVM.Arrays is
      with Pre => Dim < Number_Dimensions (TE);
    --  Return True if TE is known to not be superflat in dimension Dim
 
-   function Array_Index_GT (GT : GL_Type; Dim : Nat) return GL_Type
-     with Pre  => Is_Array_Type (GT) and then Dim < Number_Dimensions (GT),
+   function Array_Index_GT (GT : Array_GL_Type; Dim : Nat) return GL_Type
+     with Pre  => Dim < Number_Dimensions (GT),
           Post => Present (Array_Index_GT'Result);
    function Array_Index_GT (TE : Array_Kind_Id; Dim : Nat) return GL_Type
      with Pre  => Dim < Number_Dimensions (TE),
@@ -133,10 +131,9 @@ package GNATLLVM.Arrays is
    --  in Idxs.  This list is the constant zero followed by the actual indices
    --  (i.e., with the lower bound already subtracted).
 
-   function Get_Slice_LValue (GT : GL_Type; V : GL_Value) return GL_Value
+   function Get_Slice_LValue (GT : Array_GL_Type; V : GL_Value) return GL_Value
      with Pre  => Is_Reference (V) and then Is_Array_Type (Related_Type (V))
                   and then Number_Dimensions (Related_Type (V)) = 1
-                  and then Is_Array_Type (GT)
                   and then Number_Dimensions (GT) = 1,
           Post => Present (Get_Slice_LValue'Result);
    --  Similar, but we get the position from the First_Index of GT
@@ -244,9 +241,9 @@ package GNATLLVM.Arrays is
    --  Dest is an unconstrained array, store bounds into Dest, taking them
    --  from Src_GT and Src, if the latter is Present.
 
-   function Get_Array_Bounds (GT, V_GT : GL_Type; V : GL_Value) return GL_Value
-     with Pre  => Present (GT) and then Present (V_GT),
-          Post => Present (Get_Array_Bounds'Result);
+   function Get_Array_Bounds
+     (GT, V_GT : Array_Or_PAT_GL_Type; V : GL_Value) return GL_Value
+     with Post => Present (Get_Array_Bounds'Result);
    --  Get the bounds of the array type V_GT using V if necessary.  GT
    --  is the type of the array we're getting the bounds for, in case they're
    --  different.

@@ -33,9 +33,8 @@ with GNATLLVM.Variables;     use GNATLLVM.Variables;
 
 package body GNATLLVM.Arrays is
 
-   function Type_For_Get_Bound (GT : GL_Type; V : GL_Value) return GL_Type
-     with Pre  => Is_Array_Or_Packed_Array_Type (GT),
-          Post => Is_Array_Or_Packed_Array_Type (Type_For_Get_Bound'Result);
+   function Type_For_Get_Bound
+     (GT : Array_Or_PAT_GL_Type; V : GL_Value) return Array_Or_PAT_GL_Type;
    --  Get the best type to use to search for a bound of an arrray
 
    function Emit_Expr_For_Minmax
@@ -58,9 +57,12 @@ package body GNATLLVM.Arrays is
    --  a pointer and is unsigned, we must return a wider type.
 
    function Emit_Constant_Aggregate
-     (N : Node_Id; Comp_Type, GT : GL_Type; Dims_Left : Nat) return GL_Value
+     (N         : Node_Id;
+      Comp_Type : GL_Type;
+      GT        : Array_GL_Type;
+      Dims_Left : Nat) return GL_Value
      with Pre  => Nkind (N) in N_Aggregate | N_Extension_Aggregate
-                    and then Is_Array_Type (GT) and then Present (Comp_Type),
+                  and then Present (Comp_Type),
           Post => Is_Constant (Emit_Constant_Aggregate'Result);
    --  N is a constant aggregate.  GT is either the array type (at the
    --  outer level) or Any_Array (if not).  Comp_Type is the underlying
@@ -156,7 +158,7 @@ package body GNATLLVM.Arrays is
         (N : Node_Id; Is_Low : Boolean) return Result;
 
       function Get_Array_Bound
-        (GT       : GL_Type;
+        (GT       : Array_Or_PAT_GL_Type;
          Dim      : Nat;
          Is_Low   : Boolean;
          V        : GL_Value;
@@ -186,7 +188,7 @@ package body GNATLLVM.Arrays is
    ------------------------
 
    function Type_For_Get_Bound
-     (GT : GL_Type; V : GL_Value) return GL_Type
+     (GT : Array_Or_PAT_GL_Type; V : GL_Value) return Array_Or_PAT_GL_Type
    is
       V_GT : constant GL_Type :=
         (if No (V) then No_GL_Type else Related_Type (V));
@@ -386,22 +388,23 @@ package body GNATLLVM.Arrays is
       ---------------------
 
       function Get_Array_Bound
-        (GT       : GL_Type;
+        (GT       : Array_Or_PAT_GL_Type;
          Dim      : Nat;
          Is_Low   : Boolean;
          V        : GL_Value;
          Max_Size : Boolean := False;
          For_Orig : Boolean := False) return Result
       is
-         Our_GT     : constant GL_Type       := Type_For_Get_Bound (GT, V);
-         Info_Idx   : constant Array_Info_Id :=
+         Our_GT     : constant Array_Or_PAT_GL_Type :=
+           Type_For_Get_Bound (GT, V);
+         Info_Idx   : constant Array_Info_Id        :=
            (if   For_Orig then Get_Orig_Array_Info (Full_Etype (Our_GT))
             else Get_Array_Info (Full_Etype (Our_GT)));
-         Dim_Info   : constant Index_Bounds  :=
+         Dim_Info   : constant Index_Bounds         :=
            Array_Info.Table (Info_Idx + Dim);
-         Bound_Info : constant One_Bound     :=
+         Bound_Info : constant One_Bound            :=
            (if Is_Low then Dim_Info.Low else Dim_Info.High);
-         Expr       : constant Node_Id       := Bound_Info.Value;
+         Expr       : constant Node_Id              := Bound_Info.Value;
          Res        : Result;
 
       begin
@@ -604,7 +607,7 @@ package body GNATLLVM.Arrays is
      renames LLVM_Size.Emit_Expr_For_Minmax;
 
    function Get_Array_Bound
-     (GT       : GL_Type;
+     (GT       : Array_Or_PAT_GL_Type;
       Dim      : Nat;
       Is_Low   : Boolean;
       V        : GL_Value;
@@ -717,7 +720,7 @@ package body GNATLLVM.Arrays is
    -- Array_Index_GT --
    --------------------
 
-   function Array_Index_GT (GT : GL_Type; Dim : Nat) return GL_Type is
+   function Array_Index_GT (GT : Array_GL_Type; Dim : Nat) return GL_Type is
       TE      : constant Array_Kind_Id := Full_Etype (GT);
       Info_Id : constant Array_Info_Id := Get_Array_Info (TE);
 
@@ -778,7 +781,7 @@ package body GNATLLVM.Arrays is
    -- Get_Bound_Size --
    --------------------
 
-   function Get_Bound_Size (GT : GL_Type) return GL_Value is
+   function Get_Bound_Size (GT : Array_Or_PAT_GL_Type) return GL_Value is
       T : constant Type_T := Create_Array_Bounds_Type (GT);
    begin
       return Align_To (Get_Type_Size (T), Get_Type_Alignment (T),
@@ -789,7 +792,7 @@ package body GNATLLVM.Arrays is
    -- Get_Bound_Alignment --
    -------------------------
 
-   function Get_Bound_Alignment (GT : GL_Type) return Nat is
+   function Get_Bound_Alignment (GT : Array_Or_PAT_GL_Type) return Nat is
       (Get_Type_Alignment (Create_Array_Bounds_Type (GT)));
 
    ------------------------------
@@ -973,9 +976,9 @@ package body GNATLLVM.Arrays is
    ---------------------------
 
    procedure Emit_Single_Aggregate (LValue : GL_Value; N : Node_Id) is
-      GT    : constant GL_Type  := Primitive_GL_Type (Full_GL_Type (N));
-      Size  : constant GL_Value := To_Bytes (Get_Type_Size (GT));
-      E     : Node_Id           :=
+      GT    : constant Array_GL_Type := Primitive_GL_Type (Full_GL_Type (N));
+      Size  : constant GL_Value      := To_Bytes (Get_Type_Size (GT));
+      E     : Node_Id                :=
         Expression (First (Component_Associations (N)));
       Value : GL_Value;
 
@@ -1020,11 +1023,14 @@ package body GNATLLVM.Arrays is
    -----------------------------
 
    function Emit_Constant_Aggregate
-     (N : Node_Id; Comp_Type, GT : GL_Type; Dims_Left : Nat) return GL_Value
+     (N          : Node_Id;
+      Comp_Type : GL_Type;
+      GT        : Array_GL_Type;
+      Dims_Left : Nat) return GL_Value
    is
-      Prim_GT : constant GL_Type      := Primitive_GL_Type (GT);
-      Idx     : Int                   := 1;
-      Vals    : Access_GL_Value_Array :=
+      Prim_GT : constant Array_GL_Type := Primitive_GL_Type (GT);
+      Idx     : Int                    := 1;
+      Vals    : Access_GL_Value_Array  :=
         new GL_Value_Array (1 .. List_Length (Expressions (N)));
       Expr    : Node_Id;
       Result  : GL_Value;
@@ -1076,9 +1082,10 @@ package body GNATLLVM.Arrays is
       Indices_So_Far : GL_Value_Array;
       Value_So_Far   : GL_Value) return GL_Value
    is
-      GT        : constant GL_Type := Primitive_GL_Type (Full_GL_Type (N));
-      Comp_GT   : constant GL_Type := Full_Component_GL_Type (GT);
-      Cur_Index : GL_Value         := Size_Const_Null;
+      GT        : constant Array_GL_Type :=
+        Primitive_GL_Type (Full_GL_Type (N));
+      Comp_GT   : constant GL_Type       := Full_Component_GL_Type (GT);
+      Cur_Index : GL_Value               := Size_Const_Null;
       Expr      : Node_Id;
 
    begin
@@ -1186,18 +1193,18 @@ package body GNATLLVM.Arrays is
    ----------------------
 
    function Get_Array_Bounds
-     (GT, V_GT : GL_Type; V : GL_Value) return GL_Value
+     (GT, V_GT : Array_Or_PAT_GL_Type; V : GL_Value) return GL_Value
    is
-      Base_GT       : constant GL_Type       := Array_Base_GL_Type (GT);
-      Info_Idx      : constant Array_Info_Id :=
+      Base_GT       : constant Array_Or_PAT_GL_Type := Array_Base_GL_Type (GT);
+      Info_Idx      : constant Array_Info_Id        :=
         (if   Is_Packed_Array_Impl_Type (GT)
          then Get_Orig_Array_Info (Full_Etype (GT))
          else Get_Array_Info (Full_Etype (GT)));
-      Base_Info_Idx : constant Array_Info_Id :=
+      Base_Info_Idx : constant Array_Info_Id        :=
         (if   Is_Packed_Array_Impl_Type (Base_GT)
          then Get_Orig_Array_Info (Full_Etype (Base_GT))
          else Get_Array_Info (Full_Etype (Base_GT)));
-      N_Dim         : constant Nat           :=
+      N_Dim         : constant Nat                  :=
         (Number_Dimensions (if   Is_Packed_Array_Impl_Type (GT)
                             then Full_Original_Array_Type (GT)
                             else Full_Etype (GT)));
@@ -1297,11 +1304,13 @@ package body GNATLLVM.Arrays is
    function Get_Indices
      (Indices : List_Id; V : GL_Value) return GL_Value_Array
    is
-      GT         : constant GL_Type := Related_Type (V);
-      N_Dim      : constant Int     := Number_Dimensions (GT);
-      Fortran    : constant Boolean := Convention (GT) = Convention_Fortran;
-      Idx        : Nat              := (if Fortran then N_Dim else 1);
-      Dim        : Nat              := 0;
+      GT         : constant Array_Or_PAT_GL_Type := Related_Type (V);
+      N_Dim      : constant Int                  := Number_Dimensions (GT);
+      Fortran    : constant Boolean              :=
+        Convention (GT) = Convention_Fortran;
+      Idx        : Nat                           :=
+        (if Fortran then N_Dim else 1);
+      Dim        : Nat                           := 0;
       Idxs       : GL_Value_Array (1 .. N_Dim);
       N          : Node_Id;
 
@@ -1365,12 +1374,14 @@ package body GNATLLVM.Arrays is
    function Get_Indexed_LValue
      (Idxs : GL_Value_Array; V : GL_Value) return GL_Value
    is
-      GT         : constant GL_Type  := Related_Type (V);
-      N_Dim      : constant Int      := Number_Dimensions (GT);
-      Comp_GT    : constant GL_Type  := Full_Component_GL_Type (GT);
-      Array_Data : constant GL_Value :=
+      GT         : constant Array_Or_PAT_GL_Type := Related_Type (V);
+      N_Dim      : constant Int                  := Number_Dimensions (GT);
+      Comp_GT    : constant GL_Type              :=
+        Full_Component_GL_Type (GT);
+      Array_Data : constant GL_Value             :=
         Get (To_Primitive (V, No_Copy => True), Reference);
-      Fortran    : constant Boolean  := Convention (GT) = Convention_Fortran;
+      Fortran    : constant Boolean              :=
+        Convention (GT) = Convention_Fortran;
       Result     : GL_Value;
 
    begin
@@ -1444,21 +1455,24 @@ package body GNATLLVM.Arrays is
    -- Get_Slice_LValue --
    ----------------------
 
-   function Get_Slice_LValue (GT : GL_Type; V : GL_Value) return GL_Value
+   function Get_Slice_LValue (GT : Array_GL_Type; V : GL_Value) return GL_Value
    is
-      Rng         : constant Node_Id  := Get_Dim_Range (First_Index (GT));
-      Array_Data  : constant GL_Value :=
+      Rng         : constant Node_Id        :=
+        Get_Dim_Range (First_Index (GT));
+      Array_Data  : constant GL_Value       :=
         Get (To_Primitive (V, No_Copy => True), Reference);
-      Arr_GT      : constant GL_Type  := Related_Type (V);
-      Idx_LB      : constant GL_Value := Get_Array_Bound (Arr_GT, 0, True, V);
-      Index_Val   : constant GL_Value := Emit_Safe_Expr (Low_Bound (Rng));
-      Dim_Op_GT   : constant GL_Type  := Get_GEP_Safe_Type (Idx_LB);
-      Cvt_Index   : constant GL_Value := Convert (Index_Val, Dim_Op_GT);
-      Cvt_LB      : constant GL_Value := Convert (Idx_LB, Dim_Op_GT);
-      Index_Shift : constant GL_Value := Cvt_Index - Cvt_LB;
+      Arr_GT      : constant Array_GL_Type  := Related_Type (V);
+      Idx_LB      : constant GL_Value       :=
+        Get_Array_Bound (Arr_GT, 0, True, V);
+      Index_Val   : constant GL_Value       :=
+        Emit_Safe_Expr (Low_Bound (Rng));
+      Dim_Op_GT   : constant GL_Type        := Get_GEP_Safe_Type (Idx_LB);
+      Cvt_Index   : constant GL_Value       := Convert (Index_Val, Dim_Op_GT);
+      Cvt_LB      : constant GL_Value       := Convert (Idx_LB, Dim_Op_GT);
+      Index_Shift : constant GL_Value       := Cvt_Index - Cvt_LB;
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
-      Comp_GT     : constant GL_Type  := Full_Component_GL_Type (Arr_GT);
+      Comp_GT     : constant GL_Type        := Full_Component_GL_Type (Arr_GT);
       Result      : GL_Value;
 
    begin

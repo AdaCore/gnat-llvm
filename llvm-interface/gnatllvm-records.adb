@@ -261,8 +261,7 @@ package body GNATLLVM.Records is
         (TE         : Record_Kind_Id;
          V          : GL_Value;
          Max_Size   : Boolean := False;
-         No_Padding : Boolean := False) return Result
-        with Pre  => Is_Record_Type (TE);
+         No_Padding : Boolean := False) return Result;
       --  Like Get_Type_Size, but only for record types
 
       function Emit_Field_Position

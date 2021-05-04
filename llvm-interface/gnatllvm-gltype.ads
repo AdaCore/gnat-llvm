@@ -51,6 +51,18 @@ package GNATLLVM.GLType is
      with Post => Present (New_GT'Result);
    --  Create a new GL_Type with None kind for type TE
 
+   --  Define subtypes of GL_Type with predicates that we can use to
+   --  indicate subcategories of GL_Type's.
+
+   subtype Access_GL_Type is GL_Type
+     with Predicate => Is_Access_Type (Access_GL_Type);
+   subtype Record_GL_Type is GL_Type
+     with Predicate => Is_Record_Type (Record_GL_Type);
+   subtype Array_GL_Type is GL_Type
+     with Predicate => Is_Array_Type  (Array_GL_Type);
+   subtype Array_Or_PAT_GL_Type is GL_Type
+     with Predicate => Is_Array_Or_Packed_Array_Type (Array_Or_PAT_GL_Type);
+
    function Make_GT_Alternative
      (GT            : GL_Type;
       E             : Entity_Id;
@@ -192,12 +204,11 @@ package GNATLLVM.GLType is
      with Pre  => Present (GT) and then Present (MD),
           Post => TBAA_Type (GT) = MD, Inline;
 
-   function Array_Types    (GT : GL_Type)        return Array_Types_Id
-     with Pre => Is_Array_Or_Packed_Array_Type (GT), Inline;
+   function Array_Types    (GT : Array_Or_PAT_GL_Type) return Array_Types_Id
+     with Inline;
 
-   procedure Set_Array_Types (GT : GL_Type; ATs : Array_Types_Id)
-     with Pre  => Is_Array_Or_Packed_Array_Type (GT) and then Present (ATs),
-          Post => Array_Types (GT) = ATs, Inline;
+   procedure Set_Array_Types (GT : Array_Or_PAT_GL_Type; ATs : Array_Types_Id)
+     with Pre => Present (ATs), Post => Array_Types (GT) = ATs, Inline;
 
    function Is_Dummy_Type (GT : GL_Type)         return Boolean
      with Pre => Present (GT), Inline;
@@ -320,18 +331,16 @@ package GNATLLVM.GLType is
      (Is_Access_Constant (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   function Full_Original_Array_Type (GT : GL_Type) return Array_Kind_Id is
-     (Full_Original_Array_Type (Full_Etype (GT)))
-     with Pre  => Is_Array_Or_Packed_Array_Type (GT),
-          Post => Is_Type (Full_Original_Array_Type'Result);
+   function Full_Original_Array_Type
+     (GT : Array_Or_PAT_GL_Type) return Array_Kind_Id
+   is
+     (Full_Original_Array_Type (Full_Etype (GT)));
 
-   function Full_Designated_Type (GT : GL_Type) return Type_Kind_Id is
-     (Full_Designated_Type (Full_Etype (GT)))
-     with Pre  => Is_Access_Type (GT);
+   function Full_Designated_Type (GT : Access_GL_Type) return Type_Kind_Id is
+     (Full_Designated_Type (Full_Etype (GT)));
 
-   function Full_Designated_GL_Type (GT : GL_Type) return GL_Type
-     with Pre  => Is_Access_Type (GT),
-          Post => Present (Full_Designated_GL_Type'Result), Inline;
+   function Full_Designated_GL_Type (GT : Access_GL_Type) return GL_Type
+     with Post => Present (Full_Designated_GL_Type'Result), Inline;
 
    function Full_Designated_GL_Type (TE : Access_Kind_Id) return GL_Type is
      (Get_Associated_GL_Type (TE))
@@ -341,14 +350,12 @@ package GNATLLVM.GLType is
      with Pre  => Is_Access_Type (V),
           Post => Present (Full_Designated_GL_Type'Result), Inline;
 
-   function Full_Component_Type (GT : GL_Type) return Type_Kind_Id is
-     (Full_Component_Type (Full_Etype (GT)))
-     with Pre  => Is_Array_Type (GT);
+   function Full_Component_Type (GT : Array_GL_Type) return Type_Kind_Id is
+     (Full_Component_Type (Full_Etype (GT)));
 
-   function Full_Component_GL_Type (GT : GL_Type) return GL_Type is
+   function Full_Component_GL_Type (GT : Array_GL_Type) return GL_Type is
      (Get_Associated_GL_Type (Full_Etype (GT)))
-     with Pre  => Is_Array_Type (GT),
-          Post => Present (Full_Component_GL_Type'Result);
+     with Post => Present (Full_Component_GL_Type'Result);
 
    function Full_Component_GL_Type (V : GL_Value) return GL_Type is
      (Get_Associated_GL_Type (Full_Etype (Related_Type (V))))
@@ -595,53 +602,46 @@ package GNATLLVM.GLType is
      (Type_High_Bound (Full_Etype (GT)))
      with Pre => not Is_Access_Type (GT);
 
-   function First_Index (GT : GL_Type) return Entity_Id is
-     (First_Index (Full_Etype (GT)))
-     with Pre => Is_Array_Type (GT);
+   function First_Index (GT : Array_GL_Type) return Entity_Id is
+     (First_Index (Full_Etype (GT)));
 
    function Strict_Alignment (GT : GL_Type) return Boolean is
      (Strict_Alignment (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   function First_Component_Or_Discriminant (GT : GL_Type) return Entity_Id is
-     (First_Component_Or_Discriminant (Full_Etype (GT)))
-     with Pre => Is_Record_Type (GT);
+   function First_Component_Or_Discriminant
+     (GT : Record_GL_Type) return Entity_Id
+   is
+     (First_Component_Or_Discriminant (Full_Etype (GT)));
 
-   function First_Stored_Discriminant (GT : GL_Type) return Entity_Id is
-     (First_Stored_Discriminant (Full_Etype (GT)))
-     with Pre => Is_Record_Type (GT);
+   function First_Stored_Discriminant (GT : Record_GL_Type) return Entity_Id is
+     (First_Stored_Discriminant (Full_Etype (GT)));
 
    function Convention (GT : GL_Type) return Convention_Id is
      (Convention (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   function Component_Type (GT : GL_Type) return Type_Kind_Id is
-     (Component_Type (Full_Etype (GT)))
-     with Pre => Is_Array_Type (GT);
+   function Component_Type (GT : Array_GL_Type) return Type_Kind_Id is
+     (Component_Type (Full_Etype (GT)));
 
    function Default_Aspect_Value (GT : GL_Type) return Node_Id is
      (Default_Aspect_Value (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   function Number_Dimensions (GT : GL_Type) return Pos is
-     (Number_Dimensions (Full_Etype (GT)))
-     with Pre => Is_Array_Type (GT);
+   function Number_Dimensions (GT : Array_GL_Type) return Pos is
+     (Number_Dimensions (Full_Etype (GT)));
 
-   function Number_Bounds (GT : GL_Type) return Pos is
-     (Number_Bounds (Full_Etype (GT)))
-     with Pre => Is_Array_Type (GT);
+   function Number_Bounds (GT : Array_GL_Type) return Pos is
+     (Number_Bounds (Full_Etype (GT)));
 
-   function Has_Volatile_Components (GT : GL_Type) return Boolean is
-     (Has_Volatile_Components (Full_Etype (GT)))
-     with Pre => Is_Array_Type (GT);
+   function Has_Volatile_Components (GT : Array_GL_Type) return Boolean is
+     (Has_Volatile_Components (Full_Etype (GT)));
 
-   function Has_Atomic_Components (GT : GL_Type) return Boolean is
-     (Has_Atomic_Components (Full_Etype (GT)))
-     with Pre => Is_Array_Type (GT);
+   function Has_Atomic_Components (GT : Array_GL_Type) return Boolean is
+     (Has_Atomic_Components (Full_Etype (GT)));
 
-   function Has_Aliased_Components (GT : GL_Type) return Boolean is
-     (Has_Aliased_Components (Full_Etype (GT)))
-     with Pre => Is_Array_Type (GT);
+   function Has_Aliased_Components (GT : Array_GL_Type) return Boolean is
+     (Has_Aliased_Components (Full_Etype (GT)));
 
    function Is_Atomic (GT : GL_Type) return Boolean is
      (Is_Atomic (Full_Etype (GT)))

@@ -26,21 +26,19 @@ package GNATLLVM.Arrays.Create is
    --  an opaque type if LLVM can't represent it directly.  If For_Orig
    --  is True, set the array info for the Original_Record_Type of TE.
 
-   function Create_Array_Fat_Pointer_Type (GT : GL_Type) return Type_T
-     with Pre  => Is_Array_Or_Packed_Array_Type (GT),
-          Post => Present (Create_Array_Fat_Pointer_Type'Result);
+   function Create_Array_Fat_Pointer_Type
+     (GT : Array_Or_PAT_GL_Type) return Type_T
+     with Post => Present (Create_Array_Fat_Pointer_Type'Result);
    --  Return the type used for fat pointers to the array type GT
 
-   function Create_Array_Bounds_Type (GT : GL_Type) return Type_T
-     with Pre  => Is_Array_Or_Packed_Array_Type (GT),
-          Post => Present (Create_Array_Bounds_Type'Result);
+   function Create_Array_Bounds_Type (GT : Array_Or_PAT_GL_Type) return Type_T
+     with Post => Present (Create_Array_Bounds_Type'Result);
    --  Return the type used to store array bounds. This is a structure
    --  that that follows the following pattern: { LB0, UB0, LB1, UB1, ... }
 
    function Create_Array_Bounds_And_Data_Type
-     (GT : GL_Type) return Type_T
-     with Pre  => Is_Array_Or_Packed_Array_Type (GT),
-     Post => Present (Create_Array_Bounds_And_Data_Type'Result);
+     (GT : Array_Or_PAT_GL_Type) return Type_T
+     with Post => Present (Create_Array_Bounds_And_Data_Type'Result);
    --  Return the type used to store the bounds and data of an array
 
 end GNATLLVM.Arrays.Create;

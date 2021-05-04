@@ -341,14 +341,15 @@ package body GNATLLVM.GLType is
    -- Array_Types --
    -----------------
 
-   function Array_Types    (GT : GL_Type) return Array_Types_Id is
+   function Array_Types    (GT : Array_Or_PAT_GL_Type) return Array_Types_Id is
      (GL_Type_Table.Table (GT).Array_Types);
 
    ---------------------
    -- Set_Array_Types --
    ---------------------
 
-   procedure Set_Array_Types (GT : GL_Type; ATs : Array_Types_Id) is
+   procedure Set_Array_Types (GT : Array_Or_PAT_GL_Type; ATs : Array_Types_Id)
+   is
    begin
       GL_Type_Table.Table (GT).Array_Types := ATs;
    end Set_Array_Types;
@@ -1326,7 +1327,7 @@ package body GNATLLVM.GLType is
    -- Full_Designated_GL_Type --
    -----------------------------
 
-   function Full_Designated_GL_Type (GT : GL_Type) return GL_Type is
+   function Full_Designated_GL_Type (GT : Access_GL_Type) return GL_Type is
       TE : constant Type_Kind_Id := Full_Etype (GT);
       DT : constant GL_Type      := Get_Associated_GL_Type (TE);
 

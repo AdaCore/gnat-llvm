@@ -1002,7 +1002,9 @@ package body GNATLLVM.Subprograms is
    -- Emit_One_Body --
    -------------------
 
-   procedure Emit_One_Body (N : Node_Id; For_Inline : Boolean := False) is
+   procedure Emit_One_Body
+     (N : N_Subprogram_Body_Id; For_Inline : Boolean := False)
+   is
       Spec       : constant Node_Id            := Get_Acting_Spec (N);
       Func       : constant GL_Value           := Emit_Subprogram_Decl (Spec);
       E          : constant Subprogram_Kind_Id := Defining_Entity (Spec);
@@ -1445,7 +1447,7 @@ package body GNATLLVM.Subprograms is
    --------------------------
 
    procedure Emit_Subprogram_Body
-     (N : Node_Id; For_Inline : Boolean := False)
+     (N : N_Subprogram_Body_Id; For_Inline : Boolean := False)
    is
       Nest_Table_First : constant Nat     := Nested_Functions_Table.Last + 1;
       Spec             : constant Node_Id := Get_Acting_Spec (N);
@@ -1483,7 +1485,7 @@ package body GNATLLVM.Subprograms is
    -- Emit_Return_Statement --
    ---------------------------
 
-   procedure Emit_Return_Statement (N : Node_Id) is
+   procedure Emit_Return_Statement (N : N_Simple_Return_Statement_Id) is
       GT   : constant GL_Type     := Full_GL_Type (Current_Subp);
       RK   : constant Return_Kind := Get_Return_Kind (Current_Subp);
       LRK  : constant L_Ret_Kind  := Get_L_Ret_Kind (Current_Subp);
@@ -1807,7 +1809,7 @@ package body GNATLLVM.Subprograms is
    ---------------
 
    function Emit_Call
-     (N : Node_Id; LHS : GL_Value := No_GL_Value) return GL_Value
+     (N : N_Subprogram_Call_Id; LHS : GL_Value := No_GL_Value) return GL_Value
    is
       procedure Write_Back
         (In_LHS  : GL_Value;

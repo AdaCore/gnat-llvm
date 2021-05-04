@@ -459,7 +459,7 @@ package body GNATLLVM.Conditionals is
    -- Emit_Case_Statement --
    -------------------------
 
-   procedure Emit_Case_Statement (N : Node_Id) is
+   procedure Emit_Case_Statement (N : N_Case_Statement_Id) is
 
       Alts        : constant List_Id       := Alternatives (N);
       Start_BB    : constant Basic_Block_T := Get_Insert_Block;
@@ -745,7 +745,7 @@ package body GNATLLVM.Conditionals is
    -- Emit_If --
    -------------
 
-   procedure Emit_If (N : Node_Id) is
+   procedure Emit_If (N : N_If_Statement_Id) is
 
       --  Record information about each part of an "if" statement
 
@@ -995,7 +995,8 @@ package body GNATLLVM.Conditionals is
    -- Emit_If_Expression --
    ------------------------
 
-   function Emit_If_Expression (N : Node_Id; LHS : GL_Value) return GL_Value
+   function Emit_If_Expression
+     (N : N_If_Expression_Id; LHS : GL_Value) return GL_Value
    is
       function Need_Ref_To_Convert
         (From_GT, To_GT : GL_Type; V : GL_Value) return Boolean

@@ -225,7 +225,7 @@ package body GNATLLVM.Utils is
    -- Num_Actuals --
    -----------------
 
-   function Num_Actuals (N : Node_Id) return Nat is
+   function Num_Actuals (N : N_Subprogram_Call_Id) return Nat is
       Actual : Node_Id := First_Actual (N);
 
    begin

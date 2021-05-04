@@ -81,8 +81,7 @@ package GNATLLVM.Subprograms is
    --  or similar at N.  The entity if E and its type is TE.
 
    function Emit_Call
-     (N : Node_Id; LHS : GL_Value := No_GL_Value) return GL_Value
-     with Pre  => Nkind (N) in N_Subprogram_Call;
+     (N : N_Subprogram_Call_Id; LHS : GL_Value := No_GL_Value) return GL_Value;
    --  Compile a call statement/expression and return its result
    --  value.  If this is calling a procedure, there will be no return value.
    --  If LHS is Present, it's a place that we'll be storing the result of
@@ -131,8 +130,8 @@ package GNATLLVM.Subprograms is
    --  Reorder the elab table so it contains, in order, entries before
    --  Old_Pos, entries from New_Start to the end, and entries after Old_Pos.
 
-   procedure Emit_One_Body (N : Node_Id; For_Inline : Boolean := False)
-     with Pre => Present (N);
+   procedure Emit_One_Body
+     (N : N_Subprogram_Body_Id; For_Inline : Boolean := False);
    --  Generate code for one given subprogram body.  If For_Inline is
    --  True, we're compiling this just to possibly inline it.
 
@@ -250,12 +249,12 @@ package GNATLLVM.Subprograms is
    --  Compile a subprogram declaration, creating the subprogram if not
    --  already done.  Return the subprogram value.
 
-   procedure Emit_Subprogram_Body (N : Node_Id; For_Inline : Boolean := False)
-     with Pre => Present (N);
+   procedure Emit_Subprogram_Body
+     (N : N_Subprogram_Body_Id; For_Inline : Boolean := False);
    --  Compile a subprogram body and save it in the environment.  If For_Inline
    --  is True, we're compiling this just to possibly inline it.
 
-   procedure Emit_Return_Statement (N : Node_Id)
+   procedure Emit_Return_Statement (N : N_Simple_Return_Statement_Id)
      with Pre => Nkind (N) = N_Simple_Return_Statement;
    --  Emit code for a return statement
 

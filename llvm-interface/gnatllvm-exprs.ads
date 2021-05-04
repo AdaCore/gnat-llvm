@@ -46,9 +46,8 @@ package GNATLLVM.Exprs is
    --  N is an indexed reference, Idxs is a pointer to the list of indices.
    --  Otherwise, F is Empty, Idxs is null, and LHS is the LValue form of N.
 
-   procedure Emit_Overflow_Check (V : GL_Value; N : Node_Id)
-     with Pre => Nkind (N) = N_Type_Conversion and then Present (V)
-                 and then Is_Elementary_Type (V);
+   procedure Emit_Overflow_Check (V : GL_Value; N : N_Type_Conversion_Id)
+     with Pre => Present (V) and then Is_Elementary_Type (V);
    --  Check that V is within the bounds of N's type.
 
    function Emit_Shift
@@ -59,14 +58,12 @@ package GNATLLVM.Exprs is
           Post => Present (Emit_Shift'Result);
    --  Handle shift and rotate operations
 
-   function Emit_Binary_Operation (N : Node_Id) return GL_Value
-     with Pre  => Nkind (N) in N_Binary_Op,
-          Post => Present (Emit_Binary_Operation'Result);
+   function Emit_Binary_Operation (N : N_Binary_Op_Id) return GL_Value
+     with Post => Present (Emit_Binary_Operation'Result);
    --  Handle other binary operations
 
-   function Emit_Unary_Operation (N : Node_Id) return GL_Value
-     with Pre  => Nkind (N) in N_Unary_Op,
-          Post => Present (Emit_Unary_Operation'Result);
+   function Emit_Unary_Operation (N : N_Unary_Op_Id) return GL_Value
+     with Post => Present (Emit_Unary_Operation'Result);
    --  Handle unary operations
 
    function Emit_Literal (N : Node_Id) return GL_Value
@@ -77,13 +74,12 @@ package GNATLLVM.Exprs is
      with Pre => Present (GT), Post => Present (Emit_Undef'Result);
    --  Emit an undef appropriate for a return value of type TE
 
-   procedure Emit_Pragma (N : Node_Id)
-     with Pre => Nkind (N) = N_Pragma;
+   procedure Emit_Pragma (N : N_Pragma_Id);
    --  Handle N_Pragma nodes
 
-   function Emit_Attribute_Reference (N : Node_Id) return GL_Value
-     with Pre  => Nkind (N) = N_Attribute_Reference,
-          Post => Present (Emit_Attribute_Reference'Result);
+   function Emit_Attribute_Reference
+     (N : N_Attribute_Reference_Id) return GL_Value
+     with Post => Present (Emit_Attribute_Reference'Result);
    --  Handle N_Attribute_Reference nodes
 
    procedure Emit_Assignment
@@ -97,8 +93,7 @@ package GNATLLVM.Exprs is
                  and then (Present (Expr) or else Present (Value));
    --  Copy the value of the expression Expr or Value to LValue
 
-   procedure Emit_Code_Statement (N : Node_Id)
-     with Pre => Nkind (N) = N_Code_Statement;
+   procedure Emit_Code_Statement (N : N_Code_Statement_Id);
    --  Generate code for inline asm
 
    function Build_Max

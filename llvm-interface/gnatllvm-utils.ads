@@ -47,8 +47,7 @@ package GNATLLVM.Utils is
      with Pre => Present (List);
    --  Like List_Length, but return only those items considered "non-pragma"
 
-   function Num_Actuals (N : Node_Id) return Nat
-     with Pre => Nkind (N) in N_Subprogram_Call;
+   function Num_Actuals (N : N_Subprogram_Call_Id) return Nat;
    --  The number of actual arguments in N, a subprogram call
 
    function Number_Bounds (TE : Array_Kind_Id) return Nat;

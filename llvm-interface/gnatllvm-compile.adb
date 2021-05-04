@@ -52,14 +52,12 @@ with CCG; use CCG;
 package body GNATLLVM.Compile is
 
    function Simple_Value_Action
-     (N : Node_Id; Has_All : out Boolean) return Node_Id
-     with Pre => Nkind (N) = N_Expression_With_Actions;
+     (N : N_Expression_With_Actions_Id; Has_All : out Boolean) return Node_Id;
    --  If N just declares the value it returns, return the initializer
    --  of that value; otherwise return Empty.  Has_All is True if we
    --  have an N_Explicit_Dereference of the expression.
 
-   procedure Emit_Loop_Statement (N : Node_Id)
-     with Pre => Nkind (N) = N_Loop_Statement;
+   procedure Emit_Loop_Statement (N : N_Loop_Statement_Id);
    --  Generate code for a loop
 
    function Emit_Internal
@@ -77,7 +75,7 @@ package body GNATLLVM.Compile is
    -- GNAT_To_LLVM --
    ------------------
 
-   procedure GNAT_To_LLVM (GNAT_Root : Node_Id) is
+   procedure GNAT_To_LLVM (GNAT_Root : N_Compilation_Unit_Id) is
       function Stand_Type (Size : Nat) return Entity_Id;
       --  Find a standard integer type with the specified size.  If none,
       --  return Empty.
@@ -855,7 +853,7 @@ package body GNATLLVM.Compile is
    -------------------------
 
    function Simple_Value_Action
-     (N : Node_Id; Has_All : out Boolean) return Node_Id
+     (N : N_Expression_With_Actions_Id; Has_All : out Boolean) return Node_Id
    is
       Action : Node_Id := First (Actions (N));
       Expr   : Node_Id := Expression (N);
@@ -1497,10 +1495,20 @@ package body GNATLLVM.Compile is
    -- Process_Freeze_Entity --
    ---------------------------
 
-   procedure Process_Freeze_Entity (N : Node_Id) is
+   procedure Process_Freeze_Entity (N : N_Freeze_Entity_Id) is
       E    : constant Entity_Id := Entity (N);
       Decl : constant Node_Id   := Declaration_Node (E);
    begin
+      --  We don't do anything for types
+
+      if Is_Type (E) then
+         return;
+      end if;
+
+      --  Otherwise, see what type of declaration this is. Since this isn't
+      --  a type, we know there is one.
+
+      pragma Assert (Present (Decl));
       case Nkind (Decl) is
          when N_Object_Declaration | N_Exception_Declaration =>
 
@@ -1547,7 +1555,7 @@ package body GNATLLVM.Compile is
    -- Emit_Loop_Statement --
    -------------------------
 
-   procedure Emit_Loop_Statement (N : Node_Id) is
+   procedure Emit_Loop_Statement (N : N_Loop_Statement_Id) is
       Loop_Identifier : constant Entity_Id :=
         (if Present (Identifier (N)) then Entity (Identifier (N)) else Empty);
       Iter_Scheme     : constant Node_Id   := Iteration_Scheme (N);
@@ -1609,9 +1617,10 @@ package body GNATLLVM.Compile is
             --  This is a FOR loop
 
             declare
-               Spec       : constant Node_Id   :=
+               Spec       : constant N_Loop_Parameter_Specification_Id :=
                  Loop_Parameter_Specification (Iter_Scheme);
-               E          : constant Node_Id   := Defining_Identifier (Spec);
+               E          : constant E_Loop_Parameter_Id  :=
+                 Defining_Identifier (Spec);
                Reversed   : constant Boolean   := Reverse_Present (Spec);
                Var_GT     : constant GL_Type   := Full_GL_Type (E);
                Prim_GT    : constant GL_Type   := Primitive_GL_Type (Var_GT);

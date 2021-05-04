@@ -131,32 +131,31 @@ package body GNATLLVM.Builtins is
    --  Emit an atomic Store of Val from to Ptr_Val with the specified
    --  memory order and data type.
 
-   function Emit_Bswap_Call (N : Node_Id; S : String) return GL_Value
-     with Pre  => Nkind (N) in N_Subprogram_Call;
+   function Emit_Bswap_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value;
    --  If N is a valid call to builtin_bswap, generate it
 
-   function Emit_FP_Builtin_Call (N : Node_Id; S : String) return GL_Value
-     with Pre  => Nkind (N) in N_Subprogram_Call;
+   function Emit_FP_Builtin_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value;
    --  If N is a valid call to a floating point builtin, generate it
 
-   function Emit_FP_Isinf_Call (N : Node_Id; S : String) return GL_Value
-     with Pre  => Nkind (N) in N_Subprogram_Call;
+   function Emit_FP_Isinf_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value;
    --  If N is a valid call to a test for infinity builtin, generate it
 
-   function Emit_Sync_Call (N : Node_Id; S : String) return GL_Value
-     with Pre  => Nkind (N) in N_Subprogram_Call;
+   function Emit_Sync_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value;
    --  If S is a valid __sync name for an instrinsic subprogram and
    --  the operands are value, emit it. Otherwise, return
    --  No_GL_Value.
 
    function Emit_Branch_Prediction_Call
-     (N : Node_Id; S : String) return GL_Value
-     with Pre  => Nkind (N) in N_Subprogram_Call;
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value;
    --  Generate a call to the branch prediction function if the operands
    --  are the right type.
 
-   function Emit_Atomic_Call (N : Node_Id; S : String) return GL_Value
-     with Pre  => Nkind (N) in N_Subprogram_Call;
+   function Emit_Atomic_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value;
    --  Generate a call to the an __atomic builtin if valid
 
    Default_Alloc_Fn   : GL_Value := No_GL_Value;
@@ -558,7 +557,9 @@ package body GNATLLVM.Builtins is
    -- Emit_Sync_Call --
    --------------------
 
-   function Emit_Sync_Call (N : Node_Id; S : String) return GL_Value is
+   function Emit_Sync_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value
+   is
       Ptr       : constant Node_Id  := First_Actual (N);
       N_Args    : constant Nat      := Num_Actuals (N);
       Val       : constant Node_Id  :=
@@ -658,7 +659,9 @@ package body GNATLLVM.Builtins is
    -- Emit_Bswap_Call --
    ---------------------
 
-   function Emit_Bswap_Call (N : Node_Id; S : String) return GL_Value is
+   function Emit_Bswap_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value
+   is
       Val       : constant Node_Id := First_Actual (N);
       GT        : GL_Type;
 
@@ -688,7 +691,7 @@ package body GNATLLVM.Builtins is
    ------------------------------
 
    function Emit_Branch_Prediction_Call
-     (N : Node_Id; S : String) return GL_Value
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value
    is
       Val      : constant Node_Id := First_Actual (N);
       Two_Arg  : constant Boolean := S = "__builtin_expect";
@@ -729,7 +732,9 @@ package body GNATLLVM.Builtins is
    -- Emit_Atomic_Call --
    ----------------------
 
-   function Emit_Atomic_Call (N : Node_Id; S : String) return GL_Value is
+   function Emit_Atomic_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value
+   is
       Ptr       : constant Node_Id  := First_Actual (N);
       N_Args    : constant Nat      := Num_Actuals (N);
       Is_Proc   : constant Boolean  := Nkind (N) = N_Procedure_Call_Statement;
@@ -953,7 +958,9 @@ package body GNATLLVM.Builtins is
    -- Emit_FP_Builtin_Call --
    --------------------------
 
-   function Emit_FP_Builtin_Call (N : Node_Id; S : String) return GL_Value is
+   function Emit_FP_Builtin_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value
+   is
       type FP_Builtin is record
          Length : Integer;
          Name   : String (1 .. 5);
@@ -1014,7 +1021,9 @@ package body GNATLLVM.Builtins is
    -- Emit_FP_Isinf_Call --
    ------------------------
 
-   function Emit_FP_Isinf_Call (N : Node_Id; S : String) return GL_Value is
+   function Emit_FP_Isinf_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value
+   is
    begin
       if Num_Actuals (N) = 1
         and then S'Length >= 15
@@ -1052,7 +1061,7 @@ package body GNATLLVM.Builtins is
    -------------------------
 
    function Emit_Intrinsic_Call
-     (N : Node_Id; Subp : Subprogram_Kind_Id) return GL_Value
+     (N : N_Subprogram_Call_Id; Subp : Subprogram_Kind_Id) return GL_Value
    is
       S      : constant String  := Get_Ext_Name (Subp);
       First  : constant Integer := S'First;

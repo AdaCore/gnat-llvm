@@ -71,9 +71,7 @@ package GNATLLVM.Blocks is
    --  End the current block, generating code for any handlers, and
    --  pop the block stack.
 
-   procedure Process_Push_Pop_xxx_Error_Label (N : Node_Id)
-     with Pre => Nkind (N) in N_Push_Constraint_Error_Label ..
-                              N_Pop_Storage_Error_Label;
+   procedure Process_Push_Pop_xxx_Error_Label (N : N_Push_Pop_xxx_Label_Id);
    --  Process the above nodes by pushing and popping entries in our tables
 
    function Get_Exception_Goto_Entry (Kind : Node_Kind) return Entity_Id
@@ -123,8 +121,7 @@ package GNATLLVM.Blocks is
    --  call to and "extended" raise subprogram that accept column
    --  information.
 
-   procedure Emit_Raise (N : Node_Id)
-     with Pre => Nkind (N) in N_Raise_xxx_Error;
+   procedure Emit_Raise (N : N_Raise_xxx_Error_Id);
    --  Process an N_Raise_xxx_Error node
 
    procedure Emit_Reraise;

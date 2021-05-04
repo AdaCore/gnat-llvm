@@ -1450,7 +1450,7 @@ package body GNATLLVM.Blocks is
    -- Process_Push_Pop_xxx_Error_Label --
    --------------------------------------
 
-   procedure Process_Push_Pop_xxx_Error_Label (N : Node_Id) is
+   procedure Process_Push_Pop_xxx_Error_Label (N : N_Push_Pop_xxx_Label_Id) is
       procedure Maybe_Warn (E : E_Label_Id);
       --  Warn if we haven't generated a branch to E
 
@@ -1815,7 +1815,7 @@ package body GNATLLVM.Blocks is
    -- Emit_Raise --
    ----------------
 
-   procedure Emit_Raise (N : Node_Id) is
+   procedure Emit_Raise (N : N_Raise_xxx_Error_Id) is
       Label   : constant Entity_Id     := Get_Exception_Goto_Entry (Nkind (N));
       Cond    : constant Node_Id       := Condition (N);
       BB_Then : constant Basic_Block_T :=

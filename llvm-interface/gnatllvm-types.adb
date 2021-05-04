@@ -1318,7 +1318,9 @@ package body GNATLLVM.Types is
    -- Get_Attribute_From_Annotation --
    -----------------------------------
 
-   function Get_Attribute_From_Annotation (N : Node_Id) return Uint is
+   function Get_Attribute_From_Annotation
+     (N : N_Attribute_Reference_Id) return Uint
+   is
       Attr   : constant Attribute_Id         :=
         Get_Attribute_Id (Attribute_Name (N));
       TE     : constant Void_Or_Type_Kind_Id := Full_Etype (Prefix (N));

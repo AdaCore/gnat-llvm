@@ -1613,7 +1613,7 @@ package body GNATLLVM.Variables is
    ----------------------
 
    procedure Emit_Declaration
-     (N : Node_Id; For_Freeze_Entity : Boolean := False)
+     (N : N_Declaration_Id; For_Freeze_Entity : Boolean := False)
    is
       function Is_Matching_Unc_Array
         (GT : GL_Type; Addr : Node_Id) return Boolean
@@ -1622,10 +1622,11 @@ package body GNATLLVM.Variables is
       --  of an object that's an unconstrained array wih the same bounds
       --  size as GT.
 
-      E               : constant Node_Id   := Defining_Identifier (N);
+      E               : constant Exception_Or_Object_Kind_Id :=
+        Defining_Identifier (N);
       --  Identifier being defined
 
-      Full_Ident      : constant Node_Id    :=
+      Full_Ident      : constant Exception_Or_Object_Kind_Id :=
         (if   Ekind (E) = E_Constant and then Present (Full_View (E))
          then Full_View (E) else E);
       --  Identifier to use to find the initializing expression
@@ -2180,7 +2181,7 @@ package body GNATLLVM.Variables is
    -- Emit_Renaming_Declaration --
    -------------------------------
 
-   procedure Emit_Renaming_Declaration (N : Node_Id) is
+   procedure Emit_Renaming_Declaration (N : N_Renaming_Declaration_Id) is
       E           : constant Exception_Or_Object_Kind_Id :=
         Defining_Identifier (N);
       GT          : constant GL_Type                     :=

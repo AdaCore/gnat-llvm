@@ -65,8 +65,7 @@ package GNATLLVM.Conditionals is
    --  elementary types.  The second form only supports discrete or pointer
    --  types.
 
-   procedure Emit_If (N : Node_Id)
-     with Pre => Nkind (N) = N_If_Statement;
+   procedure Emit_If (N : N_If_Statement_Id);
    --  Helper for Emit: handle if statements
 
    function Is_Simple_Conditional (N : Node_Id) return Boolean
@@ -80,9 +79,9 @@ package GNATLLVM.Conditionals is
    --  Helper for Emit_If to generate branch to BB_True or BB_False
    --  depending on whether Node is true or false.
 
-   function Emit_If_Expression (N : Node_Id; LHS : GL_Value) return GL_Value
-     with Pre  => Nkind (N) = N_If_Expression,
-          Post => Present (Emit_If_Expression'Result);
+   function Emit_If_Expression
+     (N : N_If_Expression_Id; LHS : GL_Value) return GL_Value
+     with Post => Present (Emit_If_Expression'Result);
    --  Helper for Emit_Expression: handle if expressions
 
    procedure Build_If_Range
@@ -94,8 +93,7 @@ package GNATLLVM.Conditionals is
    --  Emit code to branch to BB_True or BB_False depending on whether LHS,
    --  which is of type Operand_Type, is in the range from Low to High.
 
-   procedure Emit_Case_Statement (N : Node_Id)
-     with Pre => Nkind (N) = N_Case_Statement;
+   procedure Emit_Case_Statement (N : N_Case_Statement_Id);
    --  Handle a case statement
 
    procedure Emit_Case_Code

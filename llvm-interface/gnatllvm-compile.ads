@@ -20,8 +20,7 @@ with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.Compile is
 
-   procedure GNAT_To_LLVM (GNAT_Root : Node_Id)
-     with Pre => Nkind (GNAT_Root) = N_Compilation_Unit;
+   procedure GNAT_To_LLVM (GNAT_Root : N_Compilation_Unit_Id);
    --  Generate LLVM from GNAT_Root and then compile it
 
    procedure Emit (N : Node_Id)
@@ -89,8 +88,7 @@ package GNATLLVM.Compile is
    --  so we compute this as a safe subexpression.  LHS is like for
    --  Emit.
 
-   procedure Process_Freeze_Entity (N : Node_Id)
-     with Pre => Nkind (N) = N_Freeze_Entity;
+   procedure Process_Freeze_Entity (N : N_Freeze_Entity_Id);
    --  Process the actual freezing denoted by node N
 
    procedure Record_Code_Position (E : E_Package_Id);

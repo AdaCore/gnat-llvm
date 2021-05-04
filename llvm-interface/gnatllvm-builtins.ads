@@ -35,8 +35,7 @@ package GNATLLVM.Builtins is
    --  Build an intrinsic function of the specified type, name, and kind
 
    function Emit_Intrinsic_Call
-     (N : Node_Id; Subp : Subprogram_Kind_Id) return GL_Value
-     with Pre  => Nkind (N) in N_Subprogram_Call;
+     (N : N_Subprogram_Call_Id; Subp : Subprogram_Kind_Id) return GL_Value;
    --  If Subp is an intrinsic that we know how to handle, emit the LLVM
    --  for it and return the result.  Otherwise, No_GL_Value.
 

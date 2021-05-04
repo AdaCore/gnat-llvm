@@ -387,7 +387,7 @@ package body GNATLLVM.Exprs is
    -- Emit_Binary_Operation --
    ---------------------------
 
-   function Emit_Binary_Operation (N : Node_Id) return GL_Value is
+   function Emit_Binary_Operation (N : N_Binary_Op_Id) return GL_Value is
       type Opf is access function
         (LHS, RHS : GL_Value; Name : String := "") return GL_Value;
 
@@ -599,7 +599,7 @@ package body GNATLLVM.Exprs is
    -- Emit_Unary_Operation --
    --------------------------
 
-   function Emit_Unary_Operation (N : Node_Id) return GL_Value is
+   function Emit_Unary_Operation (N : N_Unary_Op_Id) return GL_Value is
       Op     : constant GL_Value := To_Primitive (Emit (Right_Opnd (N)));
       GT     : constant GL_Type  := Related_Type (Op);
       BT     : constant GL_Type  := Base_GL_Type (GT);
@@ -711,7 +711,7 @@ package body GNATLLVM.Exprs is
    -- Emit_Overflow_Check --
    -------------------------
 
-   procedure Emit_Overflow_Check (V : GL_Value; N : Node_Id) is
+   procedure Emit_Overflow_Check (V : GL_Value; N : N_Type_Conversion_Id) is
       In_GT      : constant GL_Type   := Related_Type (V);
       Out_GT     : constant GL_Type   := Full_GL_Type (N);
       In_BT      : constant GL_Type   := Base_GL_Type (In_GT);
@@ -991,7 +991,7 @@ package body GNATLLVM.Exprs is
    -- Emit_Pragma --
    -----------------
 
-   procedure Emit_Pragma (N : Node_Id) is
+   procedure Emit_Pragma (N : N_Pragma_Id) is
       PAAs : constant List_Id := Pragma_Argument_Associations (N);
       Expr : Node_Id;
 
@@ -1055,7 +1055,9 @@ package body GNATLLVM.Exprs is
    -- Emit_Attribute_Reference --
    ------------------------------
 
-   function Emit_Attribute_Reference (N : Node_Id) return GL_Value is
+   function Emit_Attribute_Reference
+     (N : N_Attribute_Reference_Id) return GL_Value
+   is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
       Pref : constant Node_Id      := Prefix (N);
       GT   : constant GL_Type      := Full_GL_Type (N);
@@ -1587,7 +1589,7 @@ package body GNATLLVM.Exprs is
    -- Emit_Code_Statement --
    ------------------------
 
-   procedure Emit_Code_Statement (N : Node_Id) is
+   procedure Emit_Code_Statement (N : N_Code_Statement_Id) is
       Template_Strval   : constant String_Id := Strval (Asm_Template (N));
       Num_Inputs        : Nat                := 0;
       Constraint_Length : Nat                := 0;
@@ -1656,8 +1658,7 @@ package body GNATLLVM.Exprs is
          Asm            : GL_Value;
 
          procedure Add_Char (C : Character);
-         procedure Add_Constraint (N : Node_Id)
-           with Pre => Nkind (N) = N_String_Literal;
+         procedure Add_Constraint (N : N_String_Literal_Id);
 
          --------------
          -- Add_Char --
@@ -1674,7 +1675,7 @@ package body GNATLLVM.Exprs is
          -- Add_Constraint --
          --------------------
 
-         procedure Add_Constraint (N : Node_Id) is
+         procedure Add_Constraint (N : N_String_Literal_Id) is
          begin
             if Need_Comma then
                Add_Char (',');

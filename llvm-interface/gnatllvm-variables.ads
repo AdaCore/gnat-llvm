@@ -123,14 +123,11 @@ package GNATLLVM.Variables is
    --  Create a global constant that contains the value of V
 
    procedure Emit_Declaration
-     (N : Node_Id; For_Freeze_Entity : Boolean := False)
-     with Pre => Nkind (N) in N_Object_Declaration | N_Exception_Declaration;
+     (N : N_Declaration_Id; For_Freeze_Entity : Boolean := False);
    --  Emit a declaration.  For_Freeze_Entity is True if we're processing
    --  a Freeze_Entity.
 
-   procedure Emit_Renaming_Declaration (N : Node_Id)
-     with Pre => Nkind (N) in N_Object_Renaming_Declaration |
-                              N_Exception_Renaming_Declaration;
+   procedure Emit_Renaming_Declaration (N : N_Renaming_Declaration_Id);
    --  Emit an object or exception renaming declaration
 
    function Emit_Identifier

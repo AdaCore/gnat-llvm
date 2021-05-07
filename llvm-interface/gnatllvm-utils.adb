@@ -558,7 +558,8 @@ package body GNATLLVM.Utils is
    -- Set_Added_To_Module --
    -------------------------
 
-   procedure Set_Added_To_Module (E : Formal_Kind_Id; F : Boolean := True) is
+   procedure Set_Added_To_Module (E : Subprogram_Kind_Id; F : Boolean := True)
+   is
    begin
       Set_Flag1 (E, F);
    end Set_Added_To_Module;

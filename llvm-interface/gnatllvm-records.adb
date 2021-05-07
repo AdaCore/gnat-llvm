@@ -404,7 +404,7 @@ package body GNATLLVM.Records is
    ---------------------------------
 
    function Get_Discriminant_Constraint
-     (TE : Record_Kind_Id; E : E_Discriminant_Id) return Node_Id
+     (TE : E_Record_Subtype_Id; E : E_Discriminant_Id) return Node_Id
    is
       Discrim_Num : constant Uint      := Discriminant_Number (E);
       Constraint  : constant Elist_Id  := Stored_Constraint (TE);

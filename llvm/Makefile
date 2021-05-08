@@ -19,6 +19,11 @@ LLVM_CLANG_SRC_FNAME=$(LLVM_CLANG_EXP_NAME).tar.xz
 LLVM_RELEASE_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-$(LLVM_RELEASE)
 LLVM_SRC_LINK=$(LLVM_RELEASE_URL)/$(LLVM_SRC_FNAME)
 LLVM_CLANG_SRC_LINK=$(LLVM_RELEASE_URL)/$(LLVM_CLANG_SRC_FNAME)
+LLVM_TARGETS=X86
+CMAKE_FLAGS=-DLLVM_TARGETS_TO_BUILD="$(LLVM_TARGETS)" \
+  -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++" 
+CMAKE_FLAGS_NO_DEBUG=-DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON
+CMAKE_FLAGS_PROD=-DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 .PHONY: configure
 
@@ -37,8 +42,7 @@ clang-bindings: $(OUT_DIR)/clang-index.adb
 
 CONFIGURE=cd llvm-obj && CXX=g++ CC=gcc CXXC=g++ \
   cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$(PWD)/install \
-  -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++" \
-  -DLLVM_TARGETS_TO_BUILD="X86" ../$(LLVM_SRC_DIR)
+  $(CMAKE_FLAGS) ../$(LLVM_SRC_DIR)
 
 setup: $(LLVM_SRC_DIR) llvm-obj
 
@@ -61,11 +65,11 @@ configure:
 
 configure-no-debug:
 	mkdir -p llvm-obj
-	$(CONFIGURE) -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON
+	$(CONFIGURE) $(CMAKE_FLAGS_NO_DEBUG)
 
 configure-prod:
 	mkdir -p llvm-obj
-	$(CONFIGURE) -DCMAKE_BUILD_TYPE=RelWithDebInfo
+	$(CONFIGURE) $(CMAKE_FLAGS_PROD)
 
 llvm:
 	$(MAKE) -s -C llvm-obj

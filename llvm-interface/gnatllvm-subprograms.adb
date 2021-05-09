@@ -603,7 +603,7 @@ package body GNATLLVM.Subprograms is
    ------------------------
 
    function Get_Mechanism_Code
-     (E : Formal_Kind_Id; Exprs : List_Id) return Uint
+     (E : Subprogram_Kind_Id; Exprs : List_Id) return Uint
    is
       P_Num : Int;
       Param : Entity_Id;

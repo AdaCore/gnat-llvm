@@ -1212,7 +1212,7 @@ package body GNATLLVM.GLType is
    -- Base_GL_Type --
    -----------------
 
-   function Base_GL_Type (TE : Void_Or_Type_Kind_Id) return GL_Type is
+   function Base_GL_Type (TE : Type_Kind_Id) return GL_Type is
      (Primitive_GL_Type (Full_Base_Type (TE)));
 
    ------------------

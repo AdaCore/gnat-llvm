@@ -305,6 +305,10 @@ package body GNATLLVM.Codegen is
 
       type    Addr_Arr     is array (Interfaces.C.int range <>) of Address;
       subtype Switch_Addrs is Addr_Arr (1 .. Switch_Table.Last + Num_Builtin);
+      procedure Early_Error (S : String);
+      --  This is called too early to call Error_Msg (because we haven't
+      --  initialized the source input structure), so we have to use a
+      --  low-level mechanism to emit errors here.
 
       Opt0        : constant String   := "filename" & ASCII.NUL;
       Opt1        : constant String   := "-enable-shrink-wrap=0" & ASCII.NUL;
@@ -315,6 +319,18 @@ package body GNATLLVM.Codegen is
          others => <>);
       Ptr_Err_Msg : aliased Ptr_Err_Msg_Type;
       TT_First    : constant Integer  := Target_Triple'First;
+
+      -----------------
+      -- Early_Error --
+      -----------------
+
+      procedure Early_Error (S : String) is
+      begin
+         Write_Str ("error: ");
+         Write_Str (S);
+         Write_Eol;
+         OS_Exit (4);
+      end Early_Error;
 
    begin
       --  Add any LLVM parameters to the list of switches
@@ -330,10 +346,15 @@ package body GNATLLVM.Codegen is
 
       if Emit_LLVM then
          Code_Generation := (if Output_Assembly then Write_IR else Write_BC);
-      elsif Output_Assembly then
-         Code_Generation := Write_Assembly;
+
       elsif Emit_C then
          Code_Generation := Write_C;
+         if Output_Assembly then
+            Early_Error ("cannot specify both -emit-c and -S flags");
+         end if;
+
+      elsif Output_Assembly then
+         Code_Generation := Write_Assembly;
 
          --  -g when emitting C means to write #line directives, not to
          --  write LLVM debug information.
@@ -356,11 +377,8 @@ package body GNATLLVM.Codegen is
       if Get_Target_From_Triple
         (Target_Triple.all, LLVM_Target'Address, Ptr_Err_Msg'Address)
       then
-         Write_Str
-           ("cannot set target to " & Target_Triple.all & ": " &
-            Get_LLVM_Error_Msg (Ptr_Err_Msg));
-         Write_Eol;
-         OS_Exit (4);
+         Early_Error ("cannot set target to " & Target_Triple.all & ": " &
+                        Get_LLVM_Error_Msg (Ptr_Err_Msg));
       end if;
 
       Target_Machine    :=

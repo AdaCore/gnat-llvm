@@ -874,11 +874,9 @@ package body GNATLLVM.GLValue is
 
          when Bounds =>
 
-            --  If this is an array with one bound (a single-dimension array
-            --  with a fixed lower bound), the bound is in the fat pointer
-            --  itself.
+            --  In some cases, the bound is in the fat pointer itself
 
-            if Our_R = Fat_Pointer and then Number_Bounds (GT) = 1 then
+            if Our_R = Fat_Pointer and then Has_Bounds_In_Fat_Pointer (GT) then
                return Extract_Value_To_Relationship (GT, V, 1, R);
 
             --  If we have something that we can use to get the address of

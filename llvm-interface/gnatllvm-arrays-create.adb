@@ -693,12 +693,10 @@ package body GNATLLVM.Arrays.Create is
       Data_Name : constant Name_Id := Name_Find ("P_DATA");
 
    begin
-      --  A fat pointer is normally a pointer to the data and a pointer
-      --  to the bounds, but if it has only one bound (a single-dimension
-      --  array with a fixed lower bound), the fat pointer contains the
-      --  bound itself.
+      --  A fat pointer is normally a pointer to the data and a pointer to
+      --  the bounds, but in some cases contains the bound itself.
 
-      if Number_Bounds (GT) = 1 then
+      if Has_Bounds_In_Fat_Pointer (GT) then
          return Build_Struct_Type
            ((1 => P_Data_T, 2 => Create_Array_Bounds_Type (GT)),
             Name        => Name,

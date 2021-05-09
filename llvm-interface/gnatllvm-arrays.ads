@@ -44,6 +44,18 @@ package GNATLLVM.Arrays is
    --  account both the size of the bounds and the alignment of the bounds
    --  and GT.
 
+   function Has_Bounds_In_Fat_Pointer
+     (GT : Array_Or_PAT_GL_Type) return Boolean
+   is
+     (Number_Bounds (GT) = 1
+      and then Get_Bound_Size (GT) <= Thin_Pointer_Size);
+   --  True if the fat pointer for GT contains the bounds themselves instead
+   --  of a pointer to the bounds. We do this iff it has a single bound
+   --  (meaning a single-dimensional array with a fixed lower bound) but
+   --  not if the bound is wider than the size of a pointer (which is rare)
+   --  since we have lots of code that assumes it knows the size of a fat
+   --  pointer.
+
    function Bounds_To_Length
      (In_Low, In_High : GL_Value;
       GT              : GL_Type;
@@ -314,7 +326,7 @@ private
                        and then Is_Discrete_Type (Bound_Sub_GT);
 
    function Is_FLB (IB : Index_Bounds) return Boolean is
-      (not Is_Unconstrained (IB.Low));
+     (not Is_Unconstrained (IB.Low));
    --  True if the specified index has a fixed lower bound
 
    package Array_Info is new Table.Table

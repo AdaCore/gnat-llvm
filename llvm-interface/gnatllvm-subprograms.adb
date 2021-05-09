@@ -1167,17 +1167,15 @@ package body GNATLLVM.Subprograms is
             end if;
 
             --  If we have a reference to an unconstrained array, mark that
-            --  the bounds can't change unless the array has only one bound
-            --  (a single-dimension array with a fixed lower bound) since
-            --  the bound itself is in the fat pointer in that case.  If
-            --  the array is an In parameter (but not if its an access
-            --  type), the data can't change as well. Don't do any of this
-            --  when generating C.
+            --  the bounds can't change unless the bound itself is in the
+            --  fat pointer.  If the array is an In parameter (but not if
+            --  its an access type), the data can't change as well. Don't
+            --  do any of this when generating C.
 
             if not Emit_C
               and then Relationship (LLVM_Param) in Fat_Pointer | Thin_Pointer
             then
-               if Number_Bounds (GT) > 1 then
+               if not Has_Bounds_In_Fat_Pointer (GT) then
                   Create_Invariant_Start
                     (Get (LLVM_Param, Reference_To_Bounds),
                      Get_Bound_Size (GT));

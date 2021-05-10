@@ -282,16 +282,19 @@ package GNATLLVM is
 
    --  GNAT LLVM switches
 
-   Decls_Only      : Boolean := False;
+   Decls_Only           : Boolean := False;
    --  True if just compiling to process and back-annotate decls
 
-   Emit_Debug_Info : Boolean := False;
+   Emit_Debug_Info      : Boolean := False;
    --  Whether or not to emit debugging information (-g)
 
-   Do_Stack_Check  : Boolean := False;
+   Emit_Line_Debug_Info : Boolean := False;
+   --  Likewise, but just for line number information
+
+   Do_Stack_Check       : Boolean := False;
    --  If set, check for too-large allocation
 
-   Short_Enums     : Boolean := False;
+   Short_Enums          : Boolean := False;
    --  True if we should use the RM_Size, not Esize, for enums
 
    subtype Err_Msg_Type is String (1 .. 10000);

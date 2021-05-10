@@ -115,7 +115,8 @@ package body GNATLLVM.Codegen is
       elsif Switch = "-g"
         or else (Starts_With ("-g") and then not Starts_With ("-gnat"))
       then
-         Emit_Debug_Info := True;
+         Emit_Debug_Info      := True;
+         Emit_Line_Debug_Info := True;
       elsif Switch = "-fstack-check" then
          Do_Stack_Check := True;
       elsif Switch = "-fshort-enums" then
@@ -348,7 +349,12 @@ package body GNATLLVM.Codegen is
          Code_Generation := (if Output_Assembly then Write_IR else Write_BC);
 
       elsif Emit_C then
-         Code_Generation := Write_C;
+
+         --  When emitting C, we don't want to write variable-specific
+         --  debug info, just line number information.
+
+         Code_Generation      := Write_C;
+         Emit_Debug_Info      := False;
          if Output_Assembly then
             Early_Error ("cannot specify both -emit-c and -S flags");
          end if;

@@ -592,9 +592,13 @@ package body CCG.Output is
 
    procedure Maybe_Decl (V : Value_T; For_Initializer : Boolean := False) is
    begin
-      --  Be sure that we've written a typedef for V's type
+      --  Be sure that we've written a typedef for V's type. But don't do this
+      --  for a function since the reference to the function doesn't require
+      --  us to declare its type separately.
 
-      Maybe_Write_Typedef (Type_Of (V));
+      if not Is_A_Function (V) then
+         Maybe_Write_Typedef (Type_Of (V));
+      end if;
 
       --  If this is an unprocessed constant expression, process it as an
       --  instruction

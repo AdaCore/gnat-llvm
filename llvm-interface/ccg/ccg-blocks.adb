@@ -218,7 +218,7 @@ package body CCG.Blocks is
    begin
       --  If Val is narrower than int, we must force it to its size
 
-      if Nat (Get_Scalar_Bit_Size (Val)) < Int_Size then
+      if Get_Scalar_Bit_Size (Val) < Int_Size then
          Result := TP ("(#T1) ", Val) & (Result + Unary);
       end if;
 

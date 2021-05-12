@@ -430,7 +430,7 @@ package body CCG.Output is
 
       function Must_Write_Cast return Boolean is
          (Get_Type_Kind (V) = Integer_Type_Kind
-            and then Nat (Get_Scalar_Bit_Size (Type_Of (V))) < Get_Int_Size
+            and then Get_Scalar_Bit_Size (Type_Of (V)) < Get_Int_Size
             and then Is_A_Instruction (V)
             and then Get_Opcode (V) not in Op_Alloca | Op_Load |
                                            Op_Extract_Value | Op_Insert_Value);

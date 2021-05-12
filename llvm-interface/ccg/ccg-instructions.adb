@@ -37,8 +37,8 @@ with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Instructions is
 
-   function Get_Extra_Bits (J : ULL) return ULL;
-   function Get_Extra_Bits (T : Type_T) return ULL is
+   function Get_Extra_Bits (J : Nat)    return Nat;
+   function Get_Extra_Bits (T : Type_T) return Nat is
      (Get_Extra_Bits (Get_Scalar_Bit_Size (T)))
      with Pre => Get_Type_Kind (T) = Integer_Type_Kind, Unreferenced;
    --  Return the number of bits needed to go from J or the bit width of T to
@@ -104,7 +104,7 @@ package body CCG.Instructions is
    -- Get_Extra_Bits --
    --------------------
 
-   function Get_Extra_Bits (J : ULL) return ULL is
+   function Get_Extra_Bits (J : Nat) return Nat is
       type M is mod 2**16;
       Pow2_M_1 : M := M (J) - 1;
 
@@ -117,7 +117,7 @@ package body CCG.Instructions is
       Pow2_M_1 := Pow2_M_1 or Pow2_M_1 / 4;
       Pow2_M_1 := M'Max (Pow2_M_1 or Pow2_M_1 / 16, M (BPU) - 1);
 
-      return ULL (Pow2_M_1 - M (J) + 1);
+      return Nat (Pow2_M_1 - M (J) + 1);
    end Get_Extra_Bits;
 
    ---------------------
@@ -128,10 +128,10 @@ package body CCG.Instructions is
      (V : Value_T; POO : Process_Operand_Option) return Str
    is
       T      : constant Type_T := Type_Of (V);
-      Size   : constant ULL    :=
+      Size   : constant Nat    :=
         (if   Get_Type_Kind (T) = Integer_Type_Kind
-         then Get_Scalar_Bit_Size (T) else UBPU);
-      Extras : constant ULL    := Get_Extra_Bits (Size);
+         then Get_Scalar_Bit_Size (T) else BPU);
+      Extras : constant Nat    := Get_Extra_Bits (Size);
       Result : Str             :=
         (case POO is when X            => +V,
                      when POO_Signed   => V + Need_Signed,
@@ -157,11 +157,10 @@ package body CCG.Instructions is
                         when POO_Unsigned => False);
          Cast       : constant Str     :=
            (if Use_Signed then "(" else "(unsigned ") & T & ") ";
-         Cnt        : constant Nat     := Nat (Extras);
 
       begin
-         Result := Cast & "(" & (Result + Shift) & " << " & Cnt & ")";
-         return Cast & "(" & Result & " >> " & Cnt & ")";
+         Result := Cast & "(" & (Result + Shift) & " << " & Extras & ")";
+         return Cast & "(" & Result & " >> " & Extras & ")";
       end;
    end Process_Operand;
 

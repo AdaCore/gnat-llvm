@@ -20,9 +20,12 @@ with CCG.Strs;   use CCG.Strs;
 
 package CCG.Instructions is
 
-   procedure Assignment (LHS : Value_T; RHS : Str)
+   procedure Assignment
+     (LHS : Value_T; RHS : Str; Is_Opencode_Builtin : Boolean := False)
      with Pre => Present (LHS) and then Present (RHS);
-   --  Take action to assign LHS the value RHS
+   --  Take action to assign LHS the value RHS. If Is_Builtin is True,
+   --  this is a call instruction that we've rewritten as code, so
+   --  no call is involved.
 
    procedure Instruction (V : Value_T; Ops : Value_Array)
      with Pre => Acts_As_Instruction (V);

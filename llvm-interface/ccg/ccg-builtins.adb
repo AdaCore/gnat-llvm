@@ -147,7 +147,7 @@ package body CCG.Builtins is
       Cnt := Nat (Const_Int_Get_Z_Ext_Value (Op3));
       Sh1 := (Op1 + Shift) & (if Left then " << " else " >> ") & Cnt;
       Sh2 := (Op2 + Shift) & (if Left then " >> " else " << ") & (Size - Cnt);
-      Assignment (V, (Sh1 & " | " & Sh2) + Bit);
+      Assignment (V, (Sh1 & " | " & Sh2) + Bit, Is_Opencode_Builtin => True);
       return True;
 
    end Funnel_Shift;

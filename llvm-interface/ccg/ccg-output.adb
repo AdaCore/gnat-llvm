@@ -592,11 +592,17 @@ package body CCG.Output is
 
    procedure Maybe_Decl (V : Value_T; For_Initializer : Boolean := False) is
    begin
+      --  If this is metadata, we do nothing. This can occur for some
+      --  builtins, but we don't process those.
+
+      if Is_Metadata (V) then
+         return;
+
       --  Be sure that we've written a typedef for V's type. But don't do this
       --  for a function since the reference to the function doesn't require
       --  us to declare its type separately.
 
-      if not Is_A_Function (V) then
+      elsif not Is_A_Function (V) then
          Maybe_Write_Typedef (Type_Of (V));
       end if;
 

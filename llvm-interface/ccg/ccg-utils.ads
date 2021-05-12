@@ -64,6 +64,9 @@ package CCG.Utils is
      (Is_Simple_Type (Type_Of (V)))
      with Pre => Present (V);
    --  True if this is or has a type that's simple (elementary)
+   function Is_Metadata (V : Value_T) return Boolean is
+     (Get_Type_Kind (V) = Metadata_Type_Kind)
+     with Pre => Present (V);
 
    function Is_Zero_Length_Array (T : Type_T) return Boolean is
      (Get_Type_Kind (T) = Array_Type_Kind

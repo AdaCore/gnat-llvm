@@ -1478,7 +1478,6 @@ package body GNATLLVM.Exprs is
       --  it to the LHS type if so.
 
       if Is_Elementary_Type (Dest_GT) and then Src_R /= Bounds_And_Data then
-
          if Is_Packed_Array_Impl_Type (Dest_GT)
            and then not Is_Elementary_Type (Src_GT)
          then
@@ -1513,8 +1512,8 @@ package body GNATLLVM.Exprs is
       --  fixed-size, and do the store.  If Dest is pointer to an array
       --  type, we need to get the actual array data.
 
-      elsif ((Present (E) and then Is_Loadable_Type (Full_GL_Type (E)))
-             or else (Present (Value) and then Is_Loadable_Type (Value)))
+      elsif (No (E) or else Is_Loadable_Type (Full_GL_Type (E)))
+        and then (No (Value) or else Is_Loadable_Type (Value))
         and then not Is_Class_Wide_Equivalent_Type (Dest_GT)
       then
          Src := Get (Src, (if Src_R = Bounds_And_Data then Src_R else Data));

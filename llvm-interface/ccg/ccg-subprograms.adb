@@ -353,6 +353,7 @@ package body CCG.Subprograms is
                Builtin (J) := (if S (J) = '.' then '_' else S (J));
             end loop;
 
+            Error_Msg ("unsupported builtin: " & Builtin);
             Call :=
               "/* unsupported builtin */ " & (Builtin + Component) & " (";
          end;

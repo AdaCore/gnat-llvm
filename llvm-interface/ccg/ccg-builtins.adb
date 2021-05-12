@@ -45,35 +45,43 @@ package body CCG.Builtins is
    type Arithmetic_Operation is (Add, Subtract);
    --  For now only support Add/Sub for overflow builtin
 
-   procedure Op_With_Overflow
+   function Op_With_Overflow
      (V    : Value_T;
       Ops  : Value_Array;
       S    : String;
-      Arit : Arithmetic_Operation)
-     with Pre => Present (V);
-   --  Handle an arithmetic operation with overflow
+      Arit : Arithmetic_Operation) return Boolean
+     with Pre => Present (V) and then Ops'Length >= 2;
+   --  Handle an arithmetic operation with overflow. Return True if we're able
+   --  to process this builtin.
 
    Overflow_Declared : array (Arithmetic_Operation) of Boolean :=
      (others => False);
 
-   procedure Process_Memory_Operation
-     (V : Value_T; Ops : Value_Array; S : String)
-     with Pre => Present (V);
-   --  Process memcpy, memmove, and memset
+   function Memory_Operation
+     (V : Value_T; Ops : Value_Array; S : String) return Boolean
+     with Pre => Present (V) and then Ops'Length >= 3;
+   --  Process memcpy, memmove, and memset. Return True if we're able to
+   --  process this builtin.
+
+   function Funnel_Shift
+     (V : Value_T; Ops : Value_Array; Left : Boolean) return Boolean
+     with Pre => Present (V) and then Ops'Length >= 3;
+   --  Process a left or right funnel shift builtin. Return True if we're
+   --  able to process this builtin
 
    ----------------------
    -- Op_With_Overflow --
    ----------------------
 
-   procedure Op_With_Overflow
+   function Op_With_Overflow
      (V    : Value_T;
       Ops  : Value_Array;
       S    : String;
-      Arit : Arithmetic_Operation)
+      Arit : Arithmetic_Operation) return Boolean
    is
-      Op1    : constant Value_T  := Ops (Ops'First);
-      Op2    : constant Value_T  := Ops (Ops'First + 1);
-      Subp : constant String :=
+      Op1  : constant Value_T  := Ops (Ops'First);
+      Op2  : constant Value_T  := Ops (Ops'First + 1);
+      Subp : constant String   :=
         "system__arith_64__" & To_Lower (Arit'Image) & "_with_ovflo_check64";
       Bits : constant unsigned := unsigned'Value (S (S'First + 25 .. S'Last));
 
@@ -106,26 +114,62 @@ package body CCG.Builtins is
                     " ((long long) " & Op1 & ", (long long) " & Op2 & ")",
                   Int_Type (Bits));
       Write_Copy (+V & ".ccg_field_1", +"0", Int_Type (1));
-
+      return True;
    end Op_With_Overflow;
 
-   ------------------------------
-   -- Process_Memory_Operation --
-   ------------------------------
+   ------------------
+   -- Funnel_Shift --
+   ------------------
 
-   procedure Process_Memory_Operation
-     (V : Value_T; Ops : Value_Array; S : String)
+   function Funnel_Shift
+     (V : Value_T; Ops : Value_Array; Left : Boolean) return Boolean
    is
-      Op1    : constant Value_T  := Ops (Ops'First);
-      Op2    : constant Value_T  := Ops (Ops'First + 1);
-      Op3    : constant Value_T  := Ops (Ops'First + 2);
+      Op1      : constant Value_T := Ops (Ops'First);
+      Op2      : constant Value_T := Ops (Ops'First + 1);
+      Op3      : constant Value_T := Ops (Ops'First + 2);
+      Size     : constant Nat     := Get_Scalar_Bit_Size (Op1);
+      Cnt      : Nat;
+      Sh1, Sh2 : Str;
+
+   begin
+      --  There are two cases here, where Op3 is an integer and where
+      --  it isn't. The second is more complex.
+      --  ??? We're not going to support the non-variable case until we
+      --  see an occurence of it since it'll be hard to debug.
+
+      if not Is_A_Constant_Int (Op3) then
+         return False;
+      end if;
+
+      --  Otherwise, get the constant shift count and generate the OR of
+      --  the two shifts.
+
+      Cnt := Nat (Const_Int_Get_Z_Ext_Value (Op3));
+      Sh1 := (Op1 + Shift) & (if Left then " << " else " >> ") & Cnt;
+      Sh2 := (Op2 + Shift) & (if Left then " >> " else " << ") & (Size - Cnt);
+      Assignment (V, (Sh1 & " | " & Sh2) + Bit);
+      return True;
+
+   end Funnel_Shift;
+
+   -----------------------
+   --  Memory_Operation --
+   -----------------------
+
+   function Memory_Operation
+     (V : Value_T; Ops : Value_Array; S : String) return Boolean
+   is
+      Op1    : constant Value_T := Ops (Ops'First);
+      Op2    : constant Value_T := Ops (Ops'First + 1);
+      Op3    : constant Value_T := Ops (Ops'First + 2);
       Result : Str;
 
    begin
       Result := S & " (" & Op1 & ", " & Op2 & ", " & Op3 & ")";
       Process_Pending_Values;
       Output_Stmt (Result);
-   end Process_Memory_Operation;
+      return True;
+   end Memory_Operation;
 
    ------------------
    -- Call_Builtin --
@@ -147,25 +191,32 @@ package body CCG.Builtins is
         or else Matches (S, "stackrestore", True)
         or else Matches (S, "stacksave", True)
       then
-         null;
+         return True;
 
       --  Handle some overflow intrinsics
 
       elsif Matches (S, "sadd.with.overflow") then
-         Op_With_Overflow (V, Ops, S, Add);
+         return Op_With_Overflow (V, Ops, S, Add);
 
       elsif Matches (S, "ssub.with.overflow") then
-         Op_With_Overflow (V, Ops, S, Subtract);
+         return Op_With_Overflow (V, Ops, S, Subtract);
+
+      --  Handle funnel shifts
+
+      elsif Matches (S, "fshl") then
+         return Funnel_Shift (V, Ops, Left => True);
+      elsif Matches (S, "fshr") then
+         return Funnel_Shift (V, Ops, Left => False);
 
       --  We process memcpy, memmove, and memset by calling the corresponding
       --  C library function.
 
       elsif Matches (S, "memcpy") then
-         Process_Memory_Operation (V, Ops, "memcpy");
+         return Memory_Operation (V, Ops, "memcpy");
       elsif Matches (S, "memmove") then
-         Process_Memory_Operation (V, Ops, "memmove");
+         return Memory_Operation (V, Ops, "memmove");
       elsif Matches (S, "memset") then
-         Process_Memory_Operation (V, Ops, "memset");
+         return Memory_Operation (V, Ops, "memset");
 
       --  And we don't process the rest
 
@@ -173,7 +224,6 @@ package body CCG.Builtins is
          return False;
       end if;
 
-      return True;
    end Call_Builtin;
 
 end CCG.Builtins;

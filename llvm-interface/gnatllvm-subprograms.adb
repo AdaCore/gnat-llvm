@@ -112,8 +112,20 @@ package body GNATLLVM.Subprograms is
      (PK in Out_Value | In_Out_Value);
    --  True if this parameter kind is returned from the subprogram
 
+   function Is_Initialized
+     (GT : GL_Type; Recurse : Boolean := True) return Boolean
+     with Pre => Present (GT);
+   --  Returns True if GT's type has a subcomponent with an implicit
+   --  initial value. See RM 6.4.1(14) and RM 3.1.1. If Recurse is true,
+   --  check component types as above, but otherwise just check GT itself.
+
    function Get_Param_Kind (Param : Formal_Kind_Id) return Param_Kind;
    --  Return the parameter kind for Param
+
+   function Get_Param_GL_Type (Param : Formal_Kind_Id) return GL_Type
+     with Post => Present (Get_Param_GL_Type'Result);
+   --  Return the GL_Type to use for a parameter, taking into account
+   --  any initialized types used as an Out parameter.
 
    function Relationship_For_PK
      (PK : Param_Kind; GT : GL_Type) return GL_Relationship
@@ -372,11 +384,71 @@ package body GNATLLVM.Subprograms is
    end Get_Param_By_Ref_Mech;
 
    --------------------
+   -- Is_Initialized --
+   --------------------
+
+   function Is_Initialized
+     (GT : GL_Type; Recurse : Boolean := True) return Boolean
+   is
+      F : Entity_Id;
+   begin
+      if Is_Access_Type (GT)
+        or else (Is_Scalar_Type (GT)
+                   and then Present (Default_Aspect_Value (GT)))
+        or else (Has_Discriminants (GT)
+                   and not Is_Unchecked_Union (GT))
+      then
+         return True;
+
+      --  We have to be careful in how we test for array types.  This could
+      --  be a normal array type or it could be a packed array
+      --  implementation type.  Check for both separately since both are
+      --  arrays;
+
+      elsif Is_Array_Type (GT) then
+         return Recurse and then Is_Initialized (Full_Component_GL_Type (GT));
+
+      elsif Recurse and then Is_Packed_Array_Impl_Type (GT) then
+         return Is_Initialized (Default_GL_Type (Full_Component_Type
+                                                   (Full_Original_Array_Type
+                                                      (Full_Etype (GT)))));
+
+      elsif Is_Record_Type (GT) then
+         F := First_Component_Or_Discriminant (Full_Base_Type (GT));
+         while Present (F) loop
+            exit when Present (Parent (F))
+              and then Present (Expression (Parent (F)));
+            exit when Recurse and then Is_Initialized (Default_GL_Type
+                                                         (Full_Base_Type
+                                                            (Full_Etype (F))));
+            Next_Component_Or_Discriminant (F);
+         end loop;
+
+         return Present (F);
+      else
+         return False;
+      end if;
+   end Is_Initialized;
+
+   -----------------------
+   -- Get_Param_GL_Type --
+   -----------------------
+
+   function Get_Param_GL_Type (Param : Formal_Kind_Id) return GL_Type is
+      GT : constant GL_Type := Full_GL_Type (Param);
+
+   begin
+      return (if   Ekind (Param) = E_Out_Parameter
+                   and then Is_Initialized (GT, Recurse => False)
+              then Base_GL_Type (GT) else GT);
+   end Get_Param_GL_Type;
+
+   --------------------
    -- Get_Param_Kind --
    --------------------
 
    function Get_Param_Kind (Param : Formal_Kind_Id) return Param_Kind is
-      GT           : constant GL_Type           := Full_GL_Type (Param);
+      GT           : constant GL_Type           := Get_Param_GL_Type (Param);
       T            : constant Type_T            := Type_Of (GT);
       Size         : constant ULL               :=
         (if   Decls_Only or else Is_Nonnative_Type (GT)
@@ -389,55 +461,6 @@ package body GNATLLVM.Subprograms is
       Mech         : Int                        := Mechanism (Param);
       By_Copy_Kind : Param_Kind;
       By_Ref_Kind  : Param_Kind;
-
-      function Is_Initialized (GT : GL_Type) return Boolean
-        with Pre => Present (GT);
-      --  Returns True if GT's type has a subcomponent with an implicit
-      --  initial value.  See RM 6.4.1(14) and RM 3.1.1.
-
-      --------------------
-      -- Is_Initialized --
-      --------------------
-
-      function Is_Initialized (GT : GL_Type) return Boolean is
-         F : Entity_Id;
-      begin
-         if Is_Access_Type (GT)
-           or else (Is_Scalar_Type (GT)
-                      and then Present (Default_Aspect_Value (GT)))
-           or else (Has_Discriminants (GT)
-                      and not Is_Unchecked_Union (GT))
-         then
-            return True;
-
-         --  We have to be careful in how we test for array types.  This
-         --  could be a normal array type or it could be a packed array
-         --  implementation type.  Check for both separately since both
-         --  are arrays;
-
-         elsif Is_Array_Type (GT) then
-            return Is_Initialized (Full_Component_GL_Type (GT));
-
-         elsif Is_Packed_Array_Impl_Type (GT) then
-            return Is_Initialized (Default_GL_Type (Full_Component_Type
-                                                      (Full_Original_Array_Type
-                                                         (Full_Etype (GT)))));
-
-         elsif Is_Record_Type (GT) then
-            F := First_Component_Or_Discriminant (Full_Base_Type (GT));
-            while Present (F) loop
-               exit when Present (Parent (F))
-                 and then Present (Expression (Parent (F)));
-               exit when Is_Initialized (Default_GL_Type
-                                           (Full_Base_Type (Full_Etype (F))));
-               Next_Component_Or_Discriminant (F);
-            end loop;
-
-            return Present (F);
-         else
-            return False;
-         end if;
-      end Is_Initialized;
 
    begin
       --  If this is the first parameter of a Valued Procedure, it needs to be
@@ -703,7 +726,7 @@ package body GNATLLVM.Subprograms is
 
       while Present (Param_Ent) loop
          declare
-            GT        : constant GL_Type    := Full_GL_Type (Param_Ent);
+            GT        : constant GL_Type    := Get_Param_GL_Type (Param_Ent);
             T         : constant Type_T     := Type_Of (GT);
             PK        : constant Param_Kind := Get_Param_Kind (Param_Ent);
             PK_By_Ref : constant Boolean    := PK_Is_Reference (PK);
@@ -764,7 +787,8 @@ package body GNATLLVM.Subprograms is
             null;
 
          when Out_Return =>
-            LLVM_Result_Typ := Type_Of (Full_Etype (First_Out_Param (E)));
+            LLVM_Result_Typ :=
+              Type_Of (Get_Param_GL_Type (First_Out_Param (E)));
 
          when Struct_Out | Struct_Out_Subprog =>
             J := 1;
@@ -776,7 +800,7 @@ package body GNATLLVM.Subprograms is
 
             Param_Ent := First_Out_Param (E);
             while Present (Param_Ent) loop
-               Out_Arg_Types (J) := Type_Of (Full_Etype (Param_Ent));
+               Out_Arg_Types (J) := Type_Of (Get_Param_GL_Type (Param_Ent));
                Out_Arg_Names (J) := Get_Ext_Name (Param_Ent);
                J                 := J + 1;
                Next_Out_Param (Param_Ent);
@@ -1064,8 +1088,8 @@ package body GNATLLVM.Subprograms is
          declare
             type String_Access is access constant String;
 
-            PK     : constant Param_Kind      := Get_Param_Kind (Param);
-            GT     : constant GL_Type         := Full_GL_Type (Param);
+            PK     : constant Param_Kind      := Get_Param_Kind    (Param);
+            GT     : constant GL_Type         := Get_Param_GL_Type (Param);
             R      : constant GL_Relationship := Relationship_For_PK (PK, GT);
             V      : constant GL_Value        :=
               (if   PK_Is_In_Or_Ref (PK)
@@ -1220,7 +1244,7 @@ package body GNATLLVM.Subprograms is
                end if;
 
             when Out_Return =>
-               Build_Ret (Get_Undef (Full_GL_Type
+               Build_Ret (Get_Undef (Get_Param_GL_Type
                                        (First_Out_Param (Current_Subp))));
 
             when Struct_Out | Struct_Out_Subprog =>
@@ -2069,8 +2093,8 @@ package body GNATLLVM.Subprograms is
       while Present (Actual) loop
 
          declare
-            GT   : constant GL_Type         := Full_GL_Type (Param);
-            PK   : constant Param_Kind      := Get_Param_Kind (Param);
+            GT   : constant GL_Type         := Get_Param_GL_Type (Param);
+            PK   : constant Param_Kind      := Get_Param_Kind    (Param);
             R    : constant GL_Relationship := Relationship_For_PK (PK, GT);
             F    : Entity_Id                := Empty;
             Idxs : Access_GL_Value_Array    := null;
@@ -2202,7 +2226,13 @@ package body GNATLLVM.Subprograms is
                                                     For_LHS => True);
                end if;
 
-               Out_LHSs (Out_Idx) := LHS;
+               --  If LHS represents the full parameter (i.e., no field
+               --  reference or index), ensure it's of the same type as the
+               --  returned value.
+
+               Out_LHSs (Out_Idx) :=
+                 (if   No (F) and then Idxs = null then Convert_Ref (LHS, GT)
+                  else LHS);
                Out_Flds (Out_Idx) := F;
                Out_Idxs (Out_Idx) := Idxs;
                Out_VFAs (Out_Idx) := Is_VFA_Ref (Actual);
@@ -2249,7 +2279,7 @@ package body GNATLLVM.Subprograms is
 
             Write_Back
               (Out_LHSs (1), Out_Flds (1), Out_Idxs (1),
-               Call (LLVM_Func, Full_GL_Type (Out_Param), Args),
+               Call (LLVM_Func, Get_Param_GL_Type (Out_Param), Args),
                VFA => Out_VFAs (1));
 
          when Struct_Out | Struct_Out_Subprog =>
@@ -2276,7 +2306,7 @@ package body GNATLLVM.Subprograms is
             while Present (Out_Param) loop
                Write_Back (Out_LHSs (Out_Idx), Out_Flds (Out_Idx),
                            Out_Idxs (Out_Idx),
-                           Extract_Value (Full_GL_Type (Out_Param),
+                           Extract_Value (Get_Param_GL_Type (Out_Param),
                                           Actual_Return, unsigned (Ret_Idx)),
                            VFA => Out_VFAs (Out_Idx));
                Ret_Idx := Ret_Idx + 1;
@@ -2502,8 +2532,8 @@ package body GNATLLVM.Subprograms is
          Formal := First_Formal_With_Extras (E);
          while Present (Formal) loop
             declare
-               PK : constant Param_Kind := Get_Param_Kind (Formal);
-               GT : constant GL_Type    := Full_GL_Type (Formal);
+               PK : constant Param_Kind := Get_Param_Kind    (Formal);
+               GT : constant GL_Type    := Get_Param_GL_Type (Formal);
                DT : constant GL_Type    :=
                  (if   Is_Access_Type (GT) then Full_Designated_GL_Type (GT)
                   else No_GL_Type);

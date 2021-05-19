@@ -21,9 +21,11 @@ with Interfaces;
 with Interfaces.C;     use Interfaces.C;
 
 with LLVM.Analysis;   use LLVM.Analysis;
+with LLVM.Bit_Reader; use LLVM.Bit_Reader;
 with LLVM.Bit_Writer; use LLVM.Bit_Writer;
 with LLVM.Core;       use LLVM.Core;
 with LLVM.Debug_Info; use LLVM.Debug_Info;
+with LLVM.Linker;     use LLVM.Linker;
 with LLVM.Support;    use LLVM.Support;
 
 with CCG; use CCG;
@@ -32,6 +34,7 @@ with Debug;   use Debug;
 with Errout;  use Errout;
 with Lib;     use Lib;
 with Opt;     use Opt;
+with Osint;   use Osint;
 with Osint.C; use Osint.C;
 with Output;  use Output;
 with Switch;  use Switch;
@@ -413,7 +416,8 @@ package body GNATLLVM.Codegen is
    -------------------
 
    procedure Generate_Code (GNAT_Root : Node_Id) is
-      Verified : Boolean := True;
+      TT_First : constant Integer  := Target_Triple'First;
+      Verified : Boolean           := True;
       Err_Msg  : aliased Ptr_Err_Msg_Type;
 
    begin
@@ -443,6 +447,56 @@ package body GNATLLVM.Codegen is
         and then (Code_Generation in Write_Assembly | Write_Object | Write_C
                     or else Optimize_IR)
       then
+         --  For nvptx, include the math library in a form where we can
+         --  inline from it.
+
+         if Target_Triple'Length >= 7
+           and then Target_Triple (TT_First .. TT_First + 6) = "nvptx64"
+         then
+            declare
+               BC_Directory  : constant String :=
+                 Relocate_Path ("/PREFIX", "/PREFIX/nvptx/").all;
+               BC_Filename   : constant String :=
+                 BC_Directory & "libdevice.10.bc";
+               Mem_Buffer    : aliased Memory_Buffer_T;
+               Libdev_Module : aliased Module_T;
+               Func          : Value_T;
+
+            begin
+               --  Read the file into a new module
+
+               if Create_Memory_Buffer_With_Contents_Of_File
+                 (BC_Filename, Mem_Buffer'Address, Err_Msg'Address)
+               then
+                  Error_Msg_N ("could not read `" & BC_Filename & "`: " &
+                                 Get_LLVM_Error_Msg (Err_Msg),
+                               GNAT_Root);
+               elsif Parse_Bitcode_2 (Mem_Buffer, Libdev_Module'Address) then
+                  Error_Msg_N ("could not parse `" & BC_Filename & "`",
+                               GNAT_Root);
+               else
+                  --  Set the data layout and target triple of the math
+                  --  library to agree with us and set the linkage of all
+                  --  functions so that we won't retain unused ones.
+
+                  Set_Data_Layout (Libdev_Module, Get_Data_Layout (Module));
+                  Set_Target      (Libdev_Module, Get_Target (Module));
+                  Func := Get_First_Function (Libdev_Module);
+                  while Present (Func) loop
+                     Set_Linkage (Func, Available_Externally_Linkage);
+                     Func := Get_Next_Function (Func);
+                  end loop;
+
+                  --  Finally, put all of the math library into our module
+
+                  if Link_Modules_2 (Module, Libdev_Module) then
+                     Error_Msg_N ("could not merge `" & BC_Filename & "`",
+                                  GNAT_Root);
+                  end if;
+               end if;
+            end;
+         end if;
+
          LLVM_Optimize_Module
            (Module, Target_Machine,
             Code_Opt_Level        => Code_Opt_Level,

@@ -1816,36 +1816,54 @@ package body GNATLLVM.Blocks is
    ----------------
 
    procedure Emit_Raise (N : N_Raise_xxx_Error_Id) is
-      Label   : constant Entity_Id     := Get_Exception_Goto_Entry (Nkind (N));
-      Cond    : constant Node_Id       := Condition (N);
-      BB_Then : constant Basic_Block_T :=
+      Label        : constant Entity_Id     :=
+        Get_Exception_Goto_Entry (Nkind (N));
+      Cond         : constant Node_Id       := Condition (N);
+      BB_Raise     : constant Basic_Block_T :=
         (if    Present (Label) then Get_Label_BB (Label)
          elsif No (Cond) then No_BB_T else Create_Basic_Block ("RAISE"));
-      BB_Next : constant Basic_Block_T :=
+      BB_Next      : constant Basic_Block_T :=
         (if   Present (Cond) or else Present (Label) then Create_Basic_Block
          else No_BB_T);
+      Pos          : constant Position_T    := Get_Current_Position;
+      Cannot_Raise : Boolean := False;
 
    begin
       --  If there's a condition, test it.  If we have the label case,
       --  that's all we have to do since it's one of two branches.
 
       if Present (Cond) then
-         Emit_If_Cond (Cond, BB_Then, BB_Next);
+         Emit_If_Cond (Cond, BB_Raise, BB_Next);
       elsif Present (Label) then
-         Build_Br (BB_Then);
+         Build_Br (BB_Raise);
       end if;
 
-      --  If this isn't the branch case, we have to raise the exception,
-      --  possibly only if the condition above failed.
+      --  If all we've done is an unconditional branch to BB_Next, we know
+      --  there can't be an exception. Test by positioning there and seeing
+      --  if it's equivalent to our starting position. We've arranged
+      --  things so that this change of position will be undone below if
+      --  needed as long as this isn't a label case.
 
-      if No (Label) then
+      if Present (Cond) and then not Present (Label) then
+         Position_Builder_At_End (BB_Next);
+         if Is_Equivalent_Position (Pos, Get_Current_Position) then
+            Cannot_Raise := True;
+            Delete_Basic_Block (BB_Raise);
+         end if;
+      end if;
+
+      --  If this isn't the branch case and we haven't proved that no raise
+      --  can occur, we have to emit code to raise the exception, possibly
+      --  only if the condition above failed.
+
+      if No (Label)  and then not Cannot_Raise then
          declare
             Kind : constant RT_Exception_Code :=
               RT_Exception_Code'Val (+Reason (N));
 
          begin
-            if Present (BB_Then) then
-               Position_Builder_At_End (BB_Then);
+            if Present (BB_Raise) then
+               Position_Builder_At_End (BB_Raise);
             end if;
 
             --  See if we're asked to provide extended exception information.
@@ -1875,7 +1893,8 @@ package body GNATLLVM.Blocks is
          Maybe_Build_Br (BB_Next);
       end if;
 
-      --  If we've needed to make one, now define the label past the condition
+      --  If we've needed to make one, now switch to the block past
+      --  the condition.
 
       if Present (BB_Next) then
          Position_Builder_At_End (BB_Next);

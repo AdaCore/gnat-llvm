@@ -61,13 +61,15 @@ package body GNATLLVM.Conditionals is
    begin
       --  In the case of And, evaluate the right expression when Left is
       --  true. In the case of Or, evaluate it when Left is false.
+      --  Supress constant folding here because we need to be sure we have
+      --  the expected predecessors to the block with the Phi.
 
       LHS := Get (Emit (Left), Boolean_Data);
       Block_Left_Expr_End := Get_Insert_Block;
-
       Build_Cond_Br (LHS,
                      (if And_Op then Block_Right_Expr else Block_Exit),
-                     (if And_Op then Block_Exit       else Block_Right_Expr));
+                     (if And_Op then Block_Exit       else Block_Right_Expr),
+                     Optimize => False);
 
       --  Emit code for the evaluation of the right part expression
 

@@ -92,6 +92,24 @@ package body GNATLLVM.Instructions is
       end if;
    end Set_Current_Position;
 
+   ----------------------------
+   -- Is_Equivalent_Position --
+   ----------------------------
+
+   function Is_Equivalent_Position (P1, P2 : Position_T) return Boolean is
+      function Is_Branch_To
+        (Inst : Value_T; BB : Basic_Block_T) return Boolean
+      is
+        (Present (Inst) and then Present (Is_A_Branch_Inst (Inst))
+         and then not Is_Conditional (Inst)
+         and then Value_As_Basic_Block (Get_Operand (Inst, 0)) = BB);
+
+   begin
+      return P1 = P2
+        or else Is_Branch_To (Get_Next_Instruction_After (P1), P2.BB)
+        or else Is_Branch_To (Get_Next_Instruction_After (P2), P1.BB);
+   end Is_Equivalent_Position;
+
    ----------------------
    -- Are_In_Dead_Code --
    ----------------------
@@ -825,9 +843,18 @@ package body GNATLLVM.Instructions is
    -- Build_Cond_Br --
    -------------------
 
-   procedure Build_Cond_Br (C_If : GL_Value; C_Then, C_Else : Basic_Block_T) is
+   procedure Build_Cond_Br
+     (C_If           : GL_Value;
+      C_Then, C_Else : Basic_Block_T;
+      Optimize       : Boolean := True) is
    begin
-      Discard (Build_Cond_Br (IR_Builder, +C_If, C_Then, C_Else));
+      if Optimize and then C_If = Const_True then
+         Build_Br (C_Then);
+      elsif Optimize and then C_If = Const_False then
+         Build_Br (C_Else);
+      else
+         Discard (Build_Cond_Br (IR_Builder, +C_If, C_Then, C_Else));
+      end if;
    end Build_Cond_Br;
 
    --------------

@@ -1372,18 +1372,17 @@ package body GNATLLVM.Subprograms is
         (for some J in First_Idx .. Last_Idx =>
          Present (Elaboration_Table.Table (J).N))
         or else Has_Non_Null_Statements (S_List);
+      Contains_Work    : Boolean           := False;
+      BB               : Basic_Block_T;
+      Last_Instr       : Value_T;
       LLVM_Func        : GL_Value;
 
    begin
-      --  If nothing to elaborate, do nothing
+      --  If we already know that we have nothing to elaborate, do nothing
 
       if not Work_To_Do then
          return;
       end if;
-
-      --  Otherwise, show there will be elaboration code
-
-      Set_Has_No_Elaboration_Code (CU, False);
 
       --  If this is the elaboration for the body of the main unit that was
       --  already generated, use it.  Otherwise make a new function.
@@ -1455,13 +1454,40 @@ package body GNATLLVM.Subprograms is
       Leave_Subp;
       Activation_Var_Map.Clear;
 
-      --  Now elaborate any subprograms that were nested inside us
+      --  Check if the function that we made actually does something. It
+      --  does if any basic block has an instruction other than a branch or
+      --  return.
 
-      for J in Nest_Table_First .. Nested_Functions_Table.Last loop
-         Emit_Subprogram_Body (Nested_Functions_Table.Table (J));
+      BB := Get_First_Basic_Block (+LLVM_Func);
+      while Present (BB) loop
+         Last_Instr := Get_Last_Instruction (BB);
+         if Last_Instr /= Get_First_Instruction (BB)
+           or else (not Present (Is_A_Return_Inst (Last_Instr))
+                      and then not Present (Is_A_Branch_Inst (Last_Instr)))
+         then
+            Contains_Work := True;
+            exit;
+         end if;
+
+         BB := Get_Next_Basic_Block (BB);
       end loop;
 
-      Nested_Functions_Table.Set_Last (Nest_Table_First);
+      --  If the function we made has no work to do delete, it.  Otherwise,
+      --  show there will be elaboration code
+
+      if not Contains_Work then
+         Delete_Function (+LLVM_Func);
+      else
+         Set_Has_No_Elaboration_Code (CU, False);
+
+         --  Now elaborate any subprograms that were nested inside us
+
+         for J in Nest_Table_First .. Nested_Functions_Table.Last loop
+            Emit_Subprogram_Body (Nested_Functions_Table.Table (J));
+         end loop;
+
+         Nested_Functions_Table.Set_Last (Nest_Table_First);
+      end if;
    end Emit_Elab_Proc;
 
    --------------------------

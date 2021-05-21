@@ -246,6 +246,8 @@ package body GNATLLVM.Compile is
    ----------
 
    procedure Emit (N : Node_Id) is
+      Start_Position : Position_T;
+
    begin
       --  If we're at library level and this node type generates code,
       --  append it to the elab proc.
@@ -269,24 +271,18 @@ package body GNATLLVM.Compile is
          Position_Builder_At_End (Create_Basic_Block ("dead.code"));
       end if;
 
-      --  If we're in the elaboration procedure, check if we're violating a
-      --  No_Elaboration_Code restriction by having a statement there.
-      --  Don't check for a possible No_Elaboration_Code restriction
-      --  violation on N_Handled_Sequence_Of_Statements, as we want to
-      --  signal an error on every nested real statement instead.  This
-      --  also avoids triggering spurious errors on dummy (empty) sequences
-      --  created by the front-end for package bodies in some cases.
+      --  If we're in an elab proc, save our current position to see if we've
+      --  generated any code.
 
-      if (In_Elab_Proc or else In_Elab_Proc_Stmts)
-        and then Nkind (N) not in N_Handled_Sequence_Of_Statements |
-                                  N_Implicit_Label_Declaration
-      then
-         Check_Elaboration_Code_Allowed (N);
+      if In_Elab_Proc or else In_Elab_Proc_Stmts then
+         Start_Position := Get_Current_Position;
       end if;
+
+      --  Set our location for debuging, clear any pending LValues, and
+      --  then generate code for this node.
 
       Set_Debug_Pos_At_Node (N);
       Clear_LValue_List;
-
       case Nkind (N) is
          when N_Compilation_Unit =>
             declare
@@ -740,6 +736,17 @@ package body GNATLLVM.Compile is
          when others =>
             pragma Assert (Decls_Only);
       end case;
+
+      --  If we're in the elaboration procedure, check if we're violating a
+      --  No_Elaboration_Code restriction by having generated code.
+
+      if (In_Elab_Proc or else In_Elab_Proc_Stmts)
+        and then not Is_Equivalent_Position (Start_Position,
+                                             Get_Current_Position)
+      then
+         Check_Elaboration_Code_Allowed (N);
+      end if;
+
    end Emit;
 
    --------------------

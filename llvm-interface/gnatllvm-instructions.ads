@@ -44,6 +44,16 @@ package GNATLLVM.Instructions is
    --  this is meant to only insert small sequences of instructions, which
    --  cannot include a terminator.
 
+   function Get_Next_Instruction_After (P : Position_T) return Value_T is
+     ((if   Present (P.Instr) then Get_Next_Instruction (P.Instr)
+       else Get_Last_Instruction (P.BB)));
+   --  Get the next instruction following P
+
+   function Is_Equivalent_Position (P1, P2 : Position_T) return Boolean;
+   --  Return if P1 and P2 are equivalent positions, meaning they're either
+   --  the same position or one is an unconditional branch instruction to
+   --  the other.
+
    type Pred_Mapping is record
       Signed   : Int_Predicate_T;
       Unsigned : Int_Predicate_T;
@@ -639,7 +649,9 @@ package GNATLLVM.Instructions is
      with Pre => Present (V), Inline;
 
    procedure Build_Cond_Br
-     (C_If : GL_Value; C_Then, C_Else : Basic_Block_T)
+     (C_If           : GL_Value;
+      C_Then, C_Else : Basic_Block_T;
+      Optimize       : Boolean := True)
      with Pre => Ekind (Full_Etype (C_If)) in Enumeration_Kind
                  and then Present (C_Then) and then Present (C_Else),
           Inline;

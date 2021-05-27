@@ -157,7 +157,7 @@ package body CCG.Blocks is
             end loop;
 
             if not Our_Had_Phi and then Need_Block then
-               Output_Stmt ("{", Semicolon => False);
+               Output_Stmt ("{", Semicolon => False, Indent_After => 4);
             end if;
 
             Maybe_Decl (Phi_Val);
@@ -172,7 +172,7 @@ package body CCG.Blocks is
 
       Output_Stmt ("goto " & To);
       if Our_Had_Phi and then Need_Block then
-         Output_Stmt ("}", Semicolon => False);
+         Output_Stmt ("}", Semicolon => False, Indent_Before => -4);
       end if;
    end Output_Branch;
 
@@ -226,7 +226,8 @@ package body CCG.Blocks is
       --  statement and the default option.
 
       Process_Pending_Values;
-      Output_Stmt ("switch (" & Result & ") {" +  Assign, Semicolon => False);
+      Output_Stmt ("switch (" & Result & ") {" +  Assign, Semicolon => False,
+                   Indent_After => 4);
       Output_Stmt ("default:", Semicolon => False);
       Output_Branch (V, Default);
 
@@ -241,7 +242,7 @@ package body CCG.Blocks is
          Output_Branch (V, Ops (Ops'First + J * 2 + 1));
       end loop;
 
-      Output_Stmt ("}", Semicolon => False);
+      Output_Stmt ("}", Semicolon => False, Indent_Before => -4);
    end Switch_Instruction;
 
 end CCG.Blocks;

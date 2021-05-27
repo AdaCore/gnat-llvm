@@ -34,14 +34,16 @@ package CCG.Subprograms is
    procedure Output_Decl
      (S              : Str;
       Semicolon      : Boolean := True;
-      Indent_Delta   : Integer := 0;
+      Indent_Before  : Integer := 0;
+      Indent_After   : Integer := 0;
       Debug_Filename : Str     := No_Str;
       Debug_Lineno   : Nat     := 0)
      with Pre => Present (S);
    procedure Output_Decl
      (S              : String;
       Semicolon      : Boolean := True;
-      Indent_Delta   : Integer := 0;
+      Indent_Before  : Integer := 0;
+      Indent_After   : Integer := 0;
       Debug_Filename : Str     := No_Str;
       Debug_Lineno   : Nat     := 0);
    --  Save S as a decl for the current subprogram
@@ -49,14 +51,16 @@ package CCG.Subprograms is
    procedure Output_Stmt
      (S              : Str;
       Semicolon      : Boolean := True;
-      Indent_Delta   : Integer := 0;
+      Indent_Before  : Integer := 0;
+      Indent_After   : Integer := 0;
       Debug_Filename : Str     := No_Str;
       Debug_Lineno   : Nat     := 0)
      with Pre => Present (S);
    procedure Output_Stmt
      (S              : String;
       Semicolon      : Boolean := True;
-      Indent_Delta   : Integer := 0;
+      Indent_Before  : Integer := 0;
+      Indent_After   : Integer := 0;
       Debug_Filename : Str     := No_Str;
       Debug_Lineno   : Nat     := 0);
    --  Save S as a statement for the current subprogram

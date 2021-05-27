@@ -86,7 +86,7 @@ package GNATLLVM.DebugInfo is
 private
 
    --  Define the various Dwarf type attributes.  This is encoded in
-   --  lvm/BinaryFormat/Dwarf.def, but it's simpler to just repeat them
+   --  llvm/BinaryFormat/Dwarf.def, but it's simpler to just repeat them
    --  here since they are part of the standard and won't change.
 
    DW_ATE_Address         : constant DWARF_Type_Encoding_T := 16#01#;

@@ -16,6 +16,8 @@
 ------------------------------------------------------------------------------
 
 with Ada.Characters.Handling; use Ada.Characters.Handling;
+with Ada.Strings.Fixed;       use Ada.Strings.Fixed;
+
 with Interfaces.C; use Interfaces.C;
 
 with Output; use Output;
@@ -44,10 +46,21 @@ package body CCG.Subprograms is
    function No      (J : Decl_Idx) return Boolean is (J = No_Decl_Idx);
    function No      (J : Stmt_Idx) return Boolean is (J = No_Stmt_Idx);
 
+   --  We represent each line being output as an Str, but also record an
+   --  indent delta from the previous line and a possible debug filename
+   --  and line number.
+
+   type Out_Line is record
+      Line_Text      : Str;
+      Indent_Delta   : Integer;
+      Debug_Filename : Str;
+      Debug_Lineno   : Nat;
+   end record;
+
    --  Tables for decls and statements
 
    package Decl_Table is new Table.Table
-     (Table_Component_Type => Str,
+     (Table_Component_Type => Out_Line,
       Table_Index_Type     => Decl_Idx,
       Table_Low_Bound      => 1,
       Table_Initial        => 500,
@@ -55,7 +68,7 @@ package body CCG.Subprograms is
       Table_Name           => "Decl_Table");
 
    package Stmt_Table is new Table.Table
-     (Table_Component_Type => Str,
+     (Table_Component_Type => Out_Line,
       Table_Index_Type     => Stmt_Idx,
       Table_Low_Bound      => 1,
       Table_Initial        => 1000,
@@ -93,12 +106,21 @@ package body CCG.Subprograms is
    -- Output_Decl --
    ----------------
 
-   procedure Output_Decl (S : Str; Semicolon : Boolean := True) is
+   procedure Output_Decl
+     (S              : Str;
+      Semicolon      : Boolean := True;
+      Indent_Delta   : Integer := 0;
+      Debug_Filename : Str     := No_Str;
+      Debug_Lineno   : Nat     := 0)
+   is
       SD : Subprogram_Data renames
         Subprogram_Table.Table (Subprogram_Table.Last);
 
    begin
-      Decl_Table.Append ((if Semicolon then S & ";" else S));
+      Decl_Table.Append ((Line_Text      => (if Semicolon then S & ";" else S),
+                          Indent_Delta   => Indent_Delta,
+                          Debug_Filename => Debug_Filename,
+                          Debug_Lineno   => Debug_Lineno));
       SD.Last_Decl := Decl_Table.Last;
       if No (SD.First_Decl) then
          SD.First_Decl := Decl_Table.Last;
@@ -109,20 +131,35 @@ package body CCG.Subprograms is
    -- Output_Decl --
    ----------------
 
-   procedure Output_Decl (S : String; Semicolon : Boolean := True) is
+   procedure Output_Decl
+     (S              : String;
+      Semicolon      : Boolean := True;
+      Indent_Delta   : Integer := 0;
+      Debug_Filename : Str     := No_Str;
+      Debug_Lineno   : Nat     := 0)
+   is
    begin
-      Output_Decl (+S, Semicolon);
+      Output_Decl (+S, Semicolon, Indent_Delta, Debug_Filename, Debug_Lineno);
    end Output_Decl;
 
    -----------------
    -- Output_Stmt --
    ----------------
 
-   procedure Output_Stmt (S : Str; Semicolon : Boolean := True) is
+   procedure Output_Stmt
+     (S              : Str;
+      Semicolon      : Boolean := True;
+      Indent_Delta   : Integer := 0;
+      Debug_Filename : Str     := No_Str;
+      Debug_Lineno   : Nat     := 0)
+   is
       SD : Subprogram_Data renames
         Subprogram_Table.Table (Subprogram_Table.Last);
    begin
-      Stmt_Table.Append ((if Semicolon then S & ";" else S));
+      Stmt_Table.Append ((Line_Text      => (if Semicolon then S & ";" else S),
+                          Indent_Delta   => Indent_Delta,
+                          Debug_Filename => Debug_Filename,
+                          Debug_Lineno   => Debug_Lineno));
       SD.Last_Stmt := Stmt_Table.Last;
       if No (SD.First_Stmt) then
          SD.First_Stmt := Stmt_Table.Last;
@@ -133,9 +170,15 @@ package body CCG.Subprograms is
    -- Output_Stmt --
    ----------------
 
-   procedure Output_Stmt (S : String; Semicolon : Boolean := True) is
+   procedure Output_Stmt
+     (S              : String;
+      Semicolon      : Boolean := True;
+      Indent_Delta   : Integer := 0;
+      Debug_Filename : Str     := No_Str;
+      Debug_Lineno   : Nat     := 0)
+   is
    begin
-      Output_Stmt (+S, Semicolon);
+      Output_Stmt (+S, Semicolon, Indent_Delta, Debug_Filename, Debug_Lineno);
    end Output_Stmt;
 
    --------------------
@@ -452,6 +495,20 @@ package body CCG.Subprograms is
    -----------------------
 
    procedure Write_Subprograms is
+      procedure Write_Line (Line : Out_Line);
+
+      Indent : Integer := 0;
+
+      ----------------
+      -- Write_Line --
+      ----------------
+
+      procedure Write_Line (Line : Out_Line) is
+      begin
+         Indent := Indent + Line.Indent_Delta;
+         Write_Str ((Indent * " ") & Line.Line_Text, Eol => True);
+      end Write_Line;
+
    begin
       for Sidx in 1 .. Subprogram_Table.Last loop
          declare
@@ -466,9 +523,10 @@ package body CCG.Subprograms is
 
             --  Next write the decls, if any
 
+            Indent := Indent + 4;
             if Present (SD.First_Decl) then
                for Didx in SD.First_Decl .. SD.Last_Decl loop
-                  Write_Str ("    " & Decl_Table.Table (Didx), Eol => True);
+                  Write_Line (Decl_Table.Table (Didx));
                end loop;
 
                Write_Eol;
@@ -478,10 +536,13 @@ package body CCG.Subprograms is
 
             if Present (SD.First_Stmt) then
                for Sidx in SD.First_Stmt .. SD.Last_Stmt loop
-                  Write_Str ("    " & Stmt_Table.Table (Sidx), Eol => True);
+                  Write_Line (Stmt_Table.Table (Sidx));
                end loop;
             end if;
 
+            --  Finally, end the function
+
+            Indent := Indent - 4;
             Write_Str ("}");
             Write_Eol;
          end;

@@ -366,7 +366,10 @@ package body CCG.Subprograms is
 
       if Present (Get_First_Basic_Block (V)) then
          New_Subprogram (V);
+         Output_Decl (Function_Proto (V), Semicolon => False);
+         Output_Decl ("{", Semicolon => False, Indent_After => 4);
          Output_BB (Get_Entry_Basic_Block (V));
+         Output_Stmt ("}", Semicolon => False, Indent_Before => -4);
       end if;
 
       --  There shouldn't be anything still pending now, but if there is,
@@ -525,36 +528,24 @@ package body CCG.Subprograms is
             SD : constant Subprogram_Data := Subprogram_Table.Table (Sidx);
 
          begin
-            --  First write the prototype
+            --  First write the decls. We at least have the function prototype
 
-            Write_Str (Function_Proto (SD.Func), Eol => True);
-            Write_Str ("{");
-            Write_Eol;
-            Indent := Indent + 4;
+            for Didx in SD.First_Decl .. SD.Last_Decl loop
+               Write_Line (Decl_Table.Table (Didx));
+            end loop;
 
-            --  Next write the decls, if any
+            --  If we're written more than just the prototype and the "{",
+            --  add a blank line between the decls and statements.
 
-            if Present (SD.First_Decl) then
-               for Didx in SD.First_Decl .. SD.Last_Decl loop
-                  Write_Line (Decl_Table.Table (Didx));
-               end loop;
-
+            if SD.Last_Decl > SD.First_Decl + 1 then
                Write_Eol;
             end if;
 
-            --  Then write the statements, if any
+            --  Then write the statements. We at least have the closing brace.
 
-            if Present (SD.First_Stmt) then
-               for Sidx in SD.First_Stmt .. SD.Last_Stmt loop
-                  Write_Line (Stmt_Table.Table (Sidx));
-               end loop;
-            end if;
-
-            --  Finally, end the function
-
-            Indent := Indent - 4;
-            Write_Str ("}");
-            Write_Eol;
+            for Sidx in SD.First_Stmt .. SD.Last_Stmt loop
+               Write_Line (Stmt_Table.Table (Sidx));
+            end loop;
          end;
       end loop;
    end Write_Subprograms;

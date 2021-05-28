@@ -52,6 +52,7 @@ package body CCG.Subprograms is
 
    type Out_Line is record
       Line_Text      : Str;
+      No_Indent      : Boolean;
       Indent_Before  : Integer;
       Indent_After   : Integer;
       Debug_Filename : Str;
@@ -110,6 +111,7 @@ package body CCG.Subprograms is
    procedure Output_Decl
      (S              : Str;
       Semicolon      : Boolean := True;
+      No_Indent      : Boolean := False;
       Indent_Before  : Integer := 0;
       Indent_After   : Integer := 0;
       Debug_Filename : Str     := No_Str;
@@ -120,6 +122,7 @@ package body CCG.Subprograms is
 
    begin
       Decl_Table.Append ((Line_Text      => (if Semicolon then S & ";" else S),
+                          No_Indent      => No_Indent,
                           Indent_Before  => Indent_Before,
                           Indent_After   => Indent_After,
                           Debug_Filename => Debug_Filename,
@@ -137,13 +140,14 @@ package body CCG.Subprograms is
    procedure Output_Decl
      (S              : String;
       Semicolon      : Boolean := True;
+      No_Indent      : Boolean := False;
       Indent_Before  : Integer := 0;
       Indent_After   : Integer := 0;
       Debug_Filename : Str     := No_Str;
       Debug_Lineno   : Nat     := 0)
    is
    begin
-      Output_Decl (+S, Semicolon, Indent_Before, Indent_After,
+      Output_Decl (+S, Semicolon, No_Indent, Indent_Before, Indent_After,
                    Debug_Filename, Debug_Lineno);
    end Output_Decl;
 
@@ -154,6 +158,7 @@ package body CCG.Subprograms is
    procedure Output_Stmt
      (S              : Str;
       Semicolon      : Boolean := True;
+      No_Indent      : Boolean := False;
       Indent_Before  : Integer := 0;
       Indent_After   : Integer := 0;
       Debug_Filename : Str     := No_Str;
@@ -163,6 +168,7 @@ package body CCG.Subprograms is
         Subprogram_Table.Table (Subprogram_Table.Last);
    begin
       Stmt_Table.Append ((Line_Text      => (if Semicolon then S & ";" else S),
+                          No_Indent      => No_Indent,
                           Indent_Before  => Indent_Before,
                           Indent_After   => Indent_After,
                           Debug_Filename => Debug_Filename,
@@ -180,13 +186,14 @@ package body CCG.Subprograms is
    procedure Output_Stmt
      (S              : String;
       Semicolon      : Boolean := True;
+      No_Indent      : Boolean := False;
       Indent_Before  : Integer := 0;
       Indent_After   : Integer := 0;
       Debug_Filename : Str     := No_Str;
       Debug_Lineno   : Nat     := 0)
    is
    begin
-      Output_Stmt (+S, Semicolon, Indent_Before, Indent_After,
+      Output_Stmt (+S, Semicolon, No_Indent, Indent_Before, Indent_After,
                    Debug_Filename, Debug_Lineno);
    end Output_Stmt;
 
@@ -516,9 +523,14 @@ package body CCG.Subprograms is
       ----------------
 
       procedure Write_Line (Line : Out_Line) is
+         S : Str := Line.Line_Text;
       begin
          Indent := Indent + Line.Indent_Before;
-         Write_Str ((Indent * " ") & Line.Line_Text, Eol => True);
+         if not Line.No_Indent then
+            S := (Indent * " ") & S;
+         end if;
+
+         Write_Str (S, Eol => True);
          Indent := Indent + Line.Indent_After;
       end Write_Line;
 

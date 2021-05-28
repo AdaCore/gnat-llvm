@@ -229,14 +229,24 @@ package body CCG.Strs is
 
    function "+" (S : String) return Str is
    begin
-      --  We have two cases.  In the most common case, S is small enough that
-      --  we only need one component.
+      --  We have three cases. In the most common case, S is small enough that
+      --  we only need one component. Also handle the null string case where
+      --  we have no components.
 
-      if S'Length <= Str_Max then
+      if S'Length = 0 then
          declare
-            S_Rec : aliased constant Str_Record (1) :=
+            S_Rec  : aliased constant Str_Record (0) :=
+              (0, Unknown, (1 .. 0 => <>));
+            Result : constant Str                    := Undup_Str (S_Rec);
+
+         begin
+            return Result;
+         end;
+      elsif S'Length <= Str_Max then
+         declare
+            S_Rec  : aliased constant Str_Record (1) :=
               (1, Unknown, (1 => (Var_String, S'Length, Normal, S)));
-            Result : constant Str := Undup_Str (S_Rec);
+            Result : constant Str                    := Undup_Str (S_Rec);
 
          begin
             return Result;

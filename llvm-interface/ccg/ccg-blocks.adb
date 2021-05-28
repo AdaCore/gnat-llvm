@@ -52,7 +52,8 @@ package body CCG.Blocks is
       --  Otherwise, if this isn't the entry block, output a label for it
 
       elsif not Is_Entry_Block (BB) then
-         Output_Stmt (BB & ":", Semicolon => False);
+         Output_Stmt ("", Semicolon => False);
+         Output_Stmt (BB & ":", Semicolon => False, No_Indent => True);
       end if;
 
       --  Mark that we're outputing this block and process each

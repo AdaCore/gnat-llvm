@@ -34,6 +34,7 @@ package CCG.Subprograms is
    procedure Output_Decl
      (S              : Str;
       Semicolon      : Boolean := True;
+      No_Indent      : Boolean := False;
       Indent_Before  : Integer := 0;
       Indent_After   : Integer := 0;
       Debug_Filename : Str     := No_Str;
@@ -42,6 +43,7 @@ package CCG.Subprograms is
    procedure Output_Decl
      (S              : String;
       Semicolon      : Boolean := True;
+      No_Indent      : Boolean := False;
       Indent_Before  : Integer := 0;
       Indent_After   : Integer := 0;
       Debug_Filename : Str     := No_Str;
@@ -51,6 +53,7 @@ package CCG.Subprograms is
    procedure Output_Stmt
      (S              : Str;
       Semicolon      : Boolean := True;
+      No_Indent      : Boolean := False;
       Indent_Before  : Integer := 0;
       Indent_After   : Integer := 0;
       Debug_Filename : Str     := No_Str;
@@ -59,6 +62,7 @@ package CCG.Subprograms is
    procedure Output_Stmt
      (S              : String;
       Semicolon      : Boolean := True;
+      No_Indent      : Boolean := False;
       Indent_Before  : Integer := 0;
       Indent_After   : Integer := 0;
       Debug_Filename : Str     := No_Str;

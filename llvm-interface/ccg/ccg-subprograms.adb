@@ -59,15 +59,23 @@ package body CCG.Subprograms is
       V              : Value_T;
    end record;
 
-   --  Tables for decls and statements
+   --  Tables for global and local decls and statements
 
-   package Decl_Table is new Table.Table
+   package Global_Decl_Table is new Table.Table
      (Table_Component_Type => Out_Line,
       Table_Index_Type     => Decl_Idx,
       Table_Low_Bound      => 1,
       Table_Initial        => 500,
       Table_Increment      => 100,
-      Table_Name           => "Decl_Table");
+      Table_Name           => "Global_Decl_Table");
+
+   package Local_Decl_Table is new Table.Table
+     (Table_Component_Type => Out_Line,
+      Table_Index_Type     => Decl_Idx,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 500,
+      Table_Increment      => 100,
+      Table_Name           => "Local_Decl_Table");
 
    package Stmt_Table is new Table.Table
      (Table_Component_Type => Out_Line,
@@ -109,25 +117,35 @@ package body CCG.Subprograms is
    ----------------
 
    procedure Output_Decl
-     (S              : Str;
-      Semicolon      : Boolean := True;
-      No_Indent      : Boolean := False;
-      Indent_Before  : Integer := 0;
-      Indent_After   : Integer := 0;
-      V              : Value_T := No_Value_T)
+     (S             : Str;
+      Semicolon     : Boolean := True;
+      Is_Global     : Boolean := False;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T)
    is
-      SD : Subprogram_Data renames
-        Subprogram_Table.Table (Subprogram_Table.Last);
-
+      OL : constant Out_Line :=
+        (Line_Text      => (if Semicolon then S & ";" else S),
+         No_Indent      => No_Indent,
+         Indent_Before  => Indent_Before,
+         Indent_After   => Indent_After,
+         V              => V);
    begin
-      Decl_Table.Append ((Line_Text      => (if Semicolon then S & ";" else S),
-                          No_Indent      => No_Indent,
-                          Indent_Before  => Indent_Before,
-                          Indent_After   => Indent_After,
-                          V              => V));
-      SD.Last_Decl := Decl_Table.Last;
-      if No (SD.First_Decl) then
-         SD.First_Decl := Decl_Table.Last;
+      if Is_Global then
+         Global_Decl_Table.Append (OL);
+      else
+         declare
+            SD : Subprogram_Data renames
+              Subprogram_Table.Table (Subprogram_Table.Last);
+
+         begin
+            Local_Decl_Table.Append (OL);
+            SD.Last_Decl := Local_Decl_Table.Last;
+            if No (SD.First_Decl) then
+               SD.First_Decl := Local_Decl_Table.Last;
+            end if;
+         end;
       end if;
    end Output_Decl;
 
@@ -136,15 +154,17 @@ package body CCG.Subprograms is
    ----------------
 
    procedure Output_Decl
-     (S              : String;
-      Semicolon      : Boolean := True;
-      No_Indent      : Boolean := False;
-      Indent_Before  : Integer := 0;
-      Indent_After   : Integer := 0;
-      V              : Value_T := No_Value_T)
+     (S             : String;
+      Semicolon     : Boolean := True;
+      Is_Global     : Boolean := False;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T)
    is
    begin
-      Output_Decl (+S, Semicolon, No_Indent, Indent_Before, Indent_After, V);
+      Output_Decl (+S, Semicolon, Is_Global, No_Indent, Indent_Before,
+                   Indent_After, V);
    end Output_Decl;
 
    -----------------
@@ -152,12 +172,12 @@ package body CCG.Subprograms is
    ----------------
 
    procedure Output_Stmt
-     (S              : Str;
-      Semicolon      : Boolean := True;
-      No_Indent      : Boolean := False;
-      Indent_Before  : Integer := 0;
-      Indent_After   : Integer := 0;
-      V              : Value_T := No_Value_T)
+     (S             : Str;
+      Semicolon     : Boolean := True;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T)
    is
       SD : Subprogram_Data renames
         Subprogram_Table.Table (Subprogram_Table.Last);
@@ -178,12 +198,12 @@ package body CCG.Subprograms is
    ----------------
 
    procedure Output_Stmt
-     (S              : String;
-      Semicolon      : Boolean := True;
-      No_Indent      : Boolean := False;
-      Indent_Before  : Integer := 0;
-      Indent_After   : Integer := 0;
-      V              : Value_T := No_Value_T)
+     (S             : String;
+      Semicolon     : Boolean := True;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T)
 
    is
    begin
@@ -554,6 +574,14 @@ package body CCG.Subprograms is
       end Write_Line;
 
    begin
+      --  Start by writing out the global decls
+
+      for Gidx in 1 .. Global_Decl_Table.Last loop
+         Write_Line (Global_Decl_Table.Table (Gidx));
+      end loop;
+
+      --  Now write out each subprogram
+
       for Sidx in 1 .. Subprogram_Table.Last loop
          declare
             SD : constant Subprogram_Data := Subprogram_Table.Table (Sidx);
@@ -562,7 +590,7 @@ package body CCG.Subprograms is
             --  First write the decls. We at least have the function prototype
 
             for Didx in SD.First_Decl .. SD.Last_Decl loop
-               Write_Line (Decl_Table.Table (Didx));
+               Write_Line (Local_Decl_Table.Table (Didx));
             end loop;
 
             --  If we're written more than just the prototype and the "{",

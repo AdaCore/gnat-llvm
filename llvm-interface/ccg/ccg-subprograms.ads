@@ -32,40 +32,44 @@ package CCG.Subprograms is
    --  those lists.
 
    procedure Output_Decl
-     (S              : Str;
-      Semicolon      : Boolean := True;
-      No_Indent      : Boolean := False;
-      Indent_Before  : Integer := 0;
-      Indent_After   : Integer := 0;
-      V              : Value_T := No_Value_T)
+     (S             : Str;
+      Semicolon     : Boolean := True;
+      Is_Global     : Boolean := False;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T)
      with Pre => Present (S);
    procedure Output_Decl
-     (S              : String;
-      Semicolon      : Boolean := True;
-      No_Indent      : Boolean := False;
-      Indent_Before  : Integer := 0;
-      Indent_After   : Integer := 0;
-      V              : Value_T := No_Value_T);
+     (S             : String;
+      Semicolon     : Boolean := True;
+      Is_Global     : Boolean := False;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T);
    --  Save S as a decl for the current subprogram. Append a semicolon to
    --  the string if requested (the default) and specify indentation
    --  parameters. V, if Present, is a value that we may be able to get
-   --  debug information from.
+   --  debug information from. If Is_Global is True, this is for the global
+   --  section, in front of all subprograms; otherwise it's local to the
+   --  current subprogram.
 
    procedure Output_Stmt
-     (S              : Str;
-      Semicolon      : Boolean := True;
-      No_Indent      : Boolean := False;
-      Indent_Before  : Integer := 0;
-      Indent_After   : Integer := 0;
-      V              : Value_T := No_Value_T)
+     (S             : Str;
+      Semicolon     : Boolean := True;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T)
      with Pre => Present (S);
    procedure Output_Stmt
-     (S              : String;
-      Semicolon      : Boolean := True;
-      No_Indent      : Boolean := False;
-      Indent_Before  : Integer := 0;
-      Indent_After   : Integer := 0;
-      V              : Value_T := No_Value_T);
+     (S             : String;
+      Semicolon     : Boolean := True;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T);
    --  Like Output_Decl, but for the statement part of the current subprogram
 
    procedure New_Subprogram (V : Value_T)

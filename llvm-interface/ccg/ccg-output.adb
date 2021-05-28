@@ -692,7 +692,7 @@ package body CCG.Output is
                      Decl := Decl & " = " & (Init + Initializer);
                   end if;
 
-                  Write_Str (Decl & ";", Eol => True);
+                  Output_Decl (Decl, Is_Global => True, V => V);
                end;
             else
                --  If this is a constant (we know that it can't be a simple
@@ -701,8 +701,9 @@ package body CCG.Output is
 
                if Is_A_Constant (V) then
                   Maybe_Write_Typedef_And_Decl (V);
-                  Write_Str ("static const " & Decl & " = " &
-                               (V + Initializer) & ";", Eol => True);
+                  Output_Decl ("static const " & Decl & " = " &
+                                 (V + Initializer),
+                               Is_Global => True, V => V);
                   Set_Is_Constant (V);
                else
                   Output_Decl (Decl);

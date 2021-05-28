@@ -715,7 +715,7 @@ package body GNATLLVM.DebugInfo is
 
       --  Do nothing if not emitting debug info
 
-      elsif not Emit_Debug_Info then
+      elsif not Emit_Line_Debug_Info then
          return No_Metadata_T;
 
       --  If we've seen this type as part of elaboration (e.g., an access

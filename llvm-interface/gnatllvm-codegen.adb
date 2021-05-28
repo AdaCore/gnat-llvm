@@ -578,7 +578,7 @@ package body GNATLLVM.Codegen is
 
       --  Release the environment
 
-      if Emit_Debug_Info then
+      if Emit_Line_Debug_Info then
          Dispose_DI_Builder (DI_Builder);
       end if;
 

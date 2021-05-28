@@ -82,4 +82,21 @@ package body CCG.Helper is
       return S;
    end Get_As_String;
 
+   ----------------------------
+   -- Get_Debug_Loc_Filename --
+   ----------------------------
+
+   function Get_Debug_Loc_Filename (V : Value_T) return String is
+      Length : aliased unsigned;
+   begin
+      return Get_Debug_Loc_Filename (V, Length'Access);
+   exception
+      when Dereference_Error =>
+
+         --  We get this if LLVM returns a null pointer, which we want
+         --  to treat as an empty string.
+
+         return "";
+   end Get_Debug_Loc_Filename;
+
 end CCG.Helper;

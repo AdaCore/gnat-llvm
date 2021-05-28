@@ -47,16 +47,16 @@ package body CCG.Subprograms is
    function No      (J : Stmt_Idx) return Boolean is (J = No_Stmt_Idx);
 
    --  We represent each line being output as an Str, but also record
-   --  deltas to the indentation before and after we output the line
-   --  and also a possible debug filename and line number.
+   --  whether this line is to be unindented, deltas to the indentation
+   --  before and after we output the line and also a possible value from
+   --  which to obtain a possible debug filename and line number.
 
    type Out_Line is record
       Line_Text      : Str;
       No_Indent      : Boolean;
       Indent_Before  : Integer;
       Indent_After   : Integer;
-      Debug_Filename : Str;
-      Debug_Lineno   : Nat;
+      V              : Value_T;
    end record;
 
    --  Tables for decls and statements
@@ -114,8 +114,7 @@ package body CCG.Subprograms is
       No_Indent      : Boolean := False;
       Indent_Before  : Integer := 0;
       Indent_After   : Integer := 0;
-      Debug_Filename : Str     := No_Str;
-      Debug_Lineno   : Nat     := 0)
+      V              : Value_T := No_Value_T)
    is
       SD : Subprogram_Data renames
         Subprogram_Table.Table (Subprogram_Table.Last);
@@ -125,8 +124,7 @@ package body CCG.Subprograms is
                           No_Indent      => No_Indent,
                           Indent_Before  => Indent_Before,
                           Indent_After   => Indent_After,
-                          Debug_Filename => Debug_Filename,
-                          Debug_Lineno   => Debug_Lineno));
+                          V              => V));
       SD.Last_Decl := Decl_Table.Last;
       if No (SD.First_Decl) then
          SD.First_Decl := Decl_Table.Last;
@@ -143,12 +141,10 @@ package body CCG.Subprograms is
       No_Indent      : Boolean := False;
       Indent_Before  : Integer := 0;
       Indent_After   : Integer := 0;
-      Debug_Filename : Str     := No_Str;
-      Debug_Lineno   : Nat     := 0)
+      V              : Value_T := No_Value_T)
    is
    begin
-      Output_Decl (+S, Semicolon, No_Indent, Indent_Before, Indent_After,
-                   Debug_Filename, Debug_Lineno);
+      Output_Decl (+S, Semicolon, No_Indent, Indent_Before, Indent_After, V);
    end Output_Decl;
 
    -----------------
@@ -161,8 +157,7 @@ package body CCG.Subprograms is
       No_Indent      : Boolean := False;
       Indent_Before  : Integer := 0;
       Indent_After   : Integer := 0;
-      Debug_Filename : Str     := No_Str;
-      Debug_Lineno   : Nat     := 0)
+      V              : Value_T := No_Value_T)
    is
       SD : Subprogram_Data renames
         Subprogram_Table.Table (Subprogram_Table.Last);
@@ -171,8 +166,7 @@ package body CCG.Subprograms is
                           No_Indent      => No_Indent,
                           Indent_Before  => Indent_Before,
                           Indent_After   => Indent_After,
-                          Debug_Filename => Debug_Filename,
-                          Debug_Lineno   => Debug_Lineno));
+                          V              => V));
       SD.Last_Stmt := Stmt_Table.Last;
       if No (SD.First_Stmt) then
          SD.First_Stmt := Stmt_Table.Last;
@@ -189,12 +183,11 @@ package body CCG.Subprograms is
       No_Indent      : Boolean := False;
       Indent_Before  : Integer := 0;
       Indent_After   : Integer := 0;
-      Debug_Filename : Str     := No_Str;
-      Debug_Lineno   : Nat     := 0)
+      V              : Value_T := No_Value_T)
+
    is
    begin
-      Output_Stmt (+S, Semicolon, No_Indent, Indent_Before, Indent_After,
-                   Debug_Filename, Debug_Lineno);
+      Output_Stmt (+S, Semicolon, No_Indent, Indent_Before, Indent_After, V);
    end Output_Stmt;
 
    --------------------
@@ -373,7 +366,7 @@ package body CCG.Subprograms is
 
       if Present (Get_First_Basic_Block (V)) then
          New_Subprogram (V);
-         Output_Decl (Function_Proto (V), Semicolon => False);
+         Output_Decl (Function_Proto (V), Semicolon => False, V => V);
          Output_Decl ("{", Semicolon => False, Indent_After => 4);
          Output_BB (Get_Entry_Basic_Block (V));
          Output_Stmt ("}", Semicolon => False, Indent_Before => -4);
@@ -516,15 +509,41 @@ package body CCG.Subprograms is
    procedure Write_Subprograms is
       procedure Write_Line (Line : Out_Line);
 
-      Indent : Integer := 0;
+      Indent    : Integer := 0;
+      Last_File : Str := No_Str;
+      Last_Line : Nat;
 
       ----------------
       -- Write_Line --
       ----------------
 
       procedure Write_Line (Line : Out_Line) is
+         Our_V : constant Value_T :=
+           (if   No (Line.V)
+                 or else Is_A_Instruction (Line.V)
+                 or else Is_A_Function (Line.V)
+                 or else Is_A_Global_Variable (Line.V)
+            then Line.V else No_Value_T);
+         Our_File : constant Str :=
+           (if   Present (Our_V) then +Get_Debug_Loc_Filename (Our_V)
+            else No_Str);
+         Our_Line : constant Nat :=
+           (if Present (Our_V) then +Get_Debug_Loc_Line (Our_V) else 0);
          S : Str := Line.Line_Text;
+
       begin
+         --  If we have debug info and it differs from the last we have,
+         --  write a new #line and update the debug info.
+
+         if Present (Our_File) and then not Is_Null_String (Our_File)
+           and then (Our_File /= Last_File or else Our_Line /= Last_Line)
+         then
+            Write_Str ("#line " & Our_Line & " """ & Our_File & """",
+                       Eol => True);
+            Last_File := Our_File;
+            Last_Line := Our_Line;
+         end if;
+
          Indent := Indent + Line.Indent_Before;
          if not Line.No_Indent then
             S := (Indent * " ") & S;

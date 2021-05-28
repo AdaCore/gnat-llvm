@@ -319,6 +319,9 @@ package CCG.Strs is
    function Single_Value (S : Str) return Value_T
      with Pre => Present (S);
 
+   function Is_Null_String (S : Str) return Boolean
+     with Pre => Present (S);
+
    function Has_Unsigned (S : Str) return Boolean
       with Pre => Present (S);
    --  True if there is a reference within S to a value that's unsigned.
@@ -417,4 +420,6 @@ private
      (S.Length = 1 and then S.Comps (1).Kind = Value
         and then not S.Comps (1).Flags.Phi_Temp);
 
+   function Is_Null_String (S : Str) return Boolean is
+     (S.Length = 0);
 end CCG.Strs;

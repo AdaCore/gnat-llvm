@@ -162,7 +162,7 @@ package body CCG.Builtins is
    begin
       Result := S & " (" & Op1 & ", " & Op2 & ", " & Op3 & ")";
       Process_Pending_Values;
-      Output_Stmt (Result);
+      Output_Stmt (Result, V => V);
       return True;
    end Memory_Operation;
 

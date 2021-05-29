@@ -53,7 +53,7 @@ package body CCG.Blocks is
 
       elsif not Is_Entry_Block (BB) then
          Output_Stmt ("", Semicolon => False);
-         Output_Stmt (BB & ":", Semicolon => False, No_Indent => True);
+         Output_Stmt (BB & ":", Semicolon => False, No_Indent => True, V => V);
       end if;
 
       --  Mark that we're outputing this block and process each
@@ -171,7 +171,7 @@ package body CCG.Blocks is
       --  Now write the goto and, if we had a phi, close the block
       --  we opened.
 
-      Output_Stmt ("goto " & To);
+      Output_Stmt ("goto " & To, V => From);
       if Our_Had_Phi and then Need_Block then
          Output_Stmt ("}", Semicolon => False, Indent_Before => -4);
       end if;
@@ -198,9 +198,9 @@ package body CCG.Blocks is
       else
          Result := TP ("if (#1)", Op1) + Assign;
          Process_Pending_Values;
-         Output_Stmt (Result, Semicolon => False);
+         Output_Stmt (Result, Semicolon => False, V => V);
          Output_Branch (V, Ops (Ops'First + 2), Need_Block => True);
-         Output_Stmt ("else", Semicolon => False);
+         Output_Stmt ("else", Semicolon => False, V => V);
          Output_Branch (V, Ops (Ops'First + 1), Need_Block => True);
       end if;
    end Branch_Instruction;
@@ -228,8 +228,10 @@ package body CCG.Blocks is
 
       Process_Pending_Values;
       Output_Stmt ("switch (" & Result & ") {" +  Assign, Semicolon => False,
-                   Indent_After => 4);
-      Output_Stmt ("default:", Semicolon => False);
+                   Indent_After => 4, V => V);
+      Output_Stmt ("default:",
+                   Semicolon => False,
+                   V => Get_First_Instruction (Default));
       Output_Branch (V, Default);
 
       --  Now handle each case. They start after the first two operands and

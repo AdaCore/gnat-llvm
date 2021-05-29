@@ -531,24 +531,24 @@ package body CCG.Subprograms is
 
       Indent    : Integer := 0;
       Last_File : Str := No_Str;
-      Last_Line : Nat;
+      Last_Line : Physical_Line_Number;
 
       ----------------
       -- Write_Line --
       ----------------
 
       procedure Write_Line (Line : Out_Line) is
-         Our_V : constant Value_T :=
+         Our_V : constant Value_T                 :=
            (if   No (Line.V)
                  or else Is_A_Instruction (Line.V)
                  or else Is_A_Function (Line.V)
                  or else Is_A_Global_Variable (Line.V)
             then Line.V else No_Value_T);
-         Our_File : constant Str :=
+         Our_File : constant Str                  :=
            (if   Present (Our_V) and then Emit_Debug_Info
             then +Get_Debug_Loc_Filename (Our_V) else No_Str);
-         Our_Line : constant Nat :=
-           (if Present (Our_V) then +Get_Debug_Loc_Line (Our_V) else 0);
+         Our_Line : constant Physical_Line_Number :=
+           (if Present (Our_V) then +Get_Debug_Loc_Line (Our_V) else 1);
          S : Str := Line.Line_Text;
 
       begin
@@ -558,7 +558,7 @@ package body CCG.Subprograms is
          if Present (Our_File) and then not Is_Null_String (Our_File)
            and then (Our_File /= Last_File or else Our_Line /= Last_Line)
          then
-            Write_Str ("#line " & Our_Line & " """ & Our_File & """",
+            Write_Str ("#line " & Nat (Our_Line) & " """ & Our_File & """",
                        Eol => True);
             Last_File := Our_File;
             Last_Line := Our_Line;

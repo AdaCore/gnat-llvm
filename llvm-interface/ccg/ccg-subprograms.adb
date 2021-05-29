@@ -463,7 +463,7 @@ package body CCG.Subprograms is
       Call := (Call & ")") + Component;
       Process_Pending_Values;
       if Get_Type_Kind (V) = Void_Type_Kind then
-         Output_Stmt (Call);
+         Output_Stmt (Call, V => V);
       else
          --  If this returns an array, we've changed it to returning a
          --  struct whose field is that array, so we need to do the
@@ -482,8 +482,8 @@ package body CCG.Subprograms is
                Our_Var : constant Str := "ccg_v" & Get_Output_Idx;
 
             begin
-               Output_Decl (TP ("#T1_R ", V) & Our_Var);
-               Output_Stmt (Our_Var & " = " & Call + Assign);
+               Output_Decl (TP ("#T1_R ", V) & Our_Var, V => V);
+               Output_Stmt (Our_Var & " = " & Call + Assign, V => V);
                Call := Our_Var & ".F" + Component;
             end;
          end if;
@@ -511,14 +511,14 @@ package body CCG.Subprograms is
          --  with a memmove), and return that value.
 
          if Get_Type_Kind (Op) = Array_Type_Kind then
-            Output_Decl (TP ("#T1_R #2", Op, V));
+            Output_Decl (TP ("#T1_R #2", Op, V), V => V);
             Write_Copy (V & ".F", Op, Type_Of (Op));
-            Output_Stmt (TP ("return #1", V));
+            Output_Stmt (TP ("return #1", V), V => V);
          else
-            Output_Stmt ("return " & Op + Assign);
+            Output_Stmt ("return " & Op + Assign, V => V);
          end if;
       else
-         Output_Stmt ("return");
+         Output_Stmt ("return", V => V);
       end if;
    end Return_Instruction;
 

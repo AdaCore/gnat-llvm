@@ -545,8 +545,8 @@ package body CCG.Subprograms is
                  or else Is_A_Global_Variable (Line.V)
             then Line.V else No_Value_T);
          Our_File : constant Str :=
-           (if   Present (Our_V) then +Get_Debug_Loc_Filename (Our_V)
-            else No_Str);
+           (if   Present (Our_V) and then Emit_Debug_Info
+            then +Get_Debug_Loc_Filename (Our_V) else No_Str);
          Our_Line : constant Nat :=
            (if Present (Our_V) then +Get_Debug_Loc_Line (Our_V) else 0);
          S : Str := Line.Line_Text;

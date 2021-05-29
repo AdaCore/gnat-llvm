@@ -99,4 +99,21 @@ package body CCG.Helper is
       end if;
    end Get_Debug_Loc_Filename;
 
+   -----------------------------
+   -- Get_Debug_Loc_Directory --
+   -----------------------------
+
+   function Get_Debug_Loc_Directory (V : Value_T) return String is
+      Length : aliased unsigned;
+      Str    : constant chars_ptr :=
+        Get_Debug_Loc_Directory_C (V, Length'Access);
+
+   begin
+      if Str = Null_Ptr then
+         return "";
+      else
+         return Value (Str);
+      end if;
+   end Get_Debug_Loc_Directory;
+
 end CCG.Helper;

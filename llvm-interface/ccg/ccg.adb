@@ -20,6 +20,7 @@ with LLVM.Core; use LLVM.Core;
 with Debug;    use Debug;
 with Errout;   use Errout;
 with Get_Targ; use Get_Targ;
+with Opt;      use Opt;
 with Osint;    use Osint;
 with Osint.C;  use Osint.C;
 with Output;   use Output;
@@ -51,6 +52,15 @@ package body CCG is
       Int_Size       := Get_Int_Size;
       Long_Size      := Get_Long_Size;
       Long_Long_Size := Get_Long_Long_Size;
+
+      --  When emitting C, we don't want to write variable-specific debug
+      --  info, just line number information. But we do want to write #line
+      --  info if -g was specified and need to turn on minimal debugging if
+      --  -gnatL was specified.
+
+      Emit_Full_Debug_Info := False;
+      Emit_C_Line          := Emit_Debug_Info;
+      Emit_Debug_Info      := Emit_Debug_Info or Dump_Source_Text;
    end Initialize_C_Writing;
 
    ------------------

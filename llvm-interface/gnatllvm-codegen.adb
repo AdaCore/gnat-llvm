@@ -352,12 +352,8 @@ package body GNATLLVM.Codegen is
          Code_Generation := (if Output_Assembly then Write_IR else Write_BC);
 
       elsif Emit_C then
-
-         --  When emitting C, we don't want to write variable-specific
-         --  debug info, just line number information.
-
          Code_Generation      := Write_C;
-         Emit_Full_Debug_Info := False;
+
          if Output_Assembly then
             Early_Error ("cannot specify both -emit-c and -S flags");
          end if;

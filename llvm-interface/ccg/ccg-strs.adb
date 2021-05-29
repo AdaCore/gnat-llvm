@@ -921,8 +921,10 @@ package body CCG.Strs is
       Result : Str;
 
    begin
-      if No (L) then
+      if No (L) or else L.Length = 0 then
          return R;
+      elsif R.Length = 0 then
+         return L;
       end if;
 
       S_Rec.P := Precedence'Max (L.P, R.P);

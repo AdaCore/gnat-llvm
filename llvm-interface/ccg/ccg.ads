@@ -73,4 +73,8 @@ package CCG is
    Long_Size      : Pos;
    Long_Long_Size : Pos;
 
+   Emit_C_Line    : Boolean := False;
+   --  When generating C code, indicates that we want to generate #line
+   --  directives. This corresponds to -g.
+
 end CCG;

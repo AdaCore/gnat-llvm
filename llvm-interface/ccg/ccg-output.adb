@@ -706,7 +706,7 @@ package body CCG.Output is
                                Is_Global => True, V => V);
                   Set_Is_Constant (V);
                else
-                  Output_Decl (Decl);
+                  Output_Decl (Decl, V => V);
                end if;
             end if;
          end;

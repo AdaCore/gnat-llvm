@@ -119,7 +119,7 @@ package body GNATLLVM.Codegen is
         or else (Starts_With ("-g") and then not Starts_With ("-gnat"))
       then
          Emit_Debug_Info      := True;
-         Emit_Line_Debug_Info := True;
+         Emit_Full_Debug_Info := True;
       elsif Switch = "-fstack-check" then
          Do_Stack_Check := True;
       elsif Switch = "-fshort-enums" then
@@ -357,7 +357,7 @@ package body GNATLLVM.Codegen is
          --  debug info, just line number information.
 
          Code_Generation      := Write_C;
-         Emit_Debug_Info      := False;
+         Emit_Full_Debug_Info := False;
          if Output_Assembly then
             Early_Error ("cannot specify both -emit-c and -S flags");
          end if;
@@ -369,7 +369,7 @@ package body GNATLLVM.Codegen is
          --  write LLVM debug information.
          --  ??? So for now, just turn it off.
 
-         Emit_Debug_Info := False;
+         Emit_Full_Debug_Info := False;
       end if;
 
       --  Initialize the translation environment
@@ -578,7 +578,7 @@ package body GNATLLVM.Codegen is
 
       --  Release the environment
 
-      if Emit_Line_Debug_Info then
+      if Emit_Debug_Info then
          Dispose_DI_Builder (DI_Builder);
       end if;
 

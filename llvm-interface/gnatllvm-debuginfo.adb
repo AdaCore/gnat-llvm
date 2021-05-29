@@ -162,7 +162,7 @@ package body GNATLLVM.DebugInfo is
 
    procedure Push_Debug_Scope (SFI : Source_File_Index; Scope : Metadata_T) is
    begin
-      if Emit_Line_Debug_Info then
+      if Emit_Debug_Info then
          Debug_Scope_Table.Append ((SFI, Scope));
       end if;
    end Push_Debug_Scope;
@@ -173,7 +173,7 @@ package body GNATLLVM.DebugInfo is
 
    procedure Pop_Debug_Scope is
    begin
-      if Emit_Line_Debug_Info and then not Library_Level then
+      if Emit_Debug_Info and then not Library_Level then
          Debug_Scope_Table.Decrement_Last;
       end if;
    end Pop_Debug_Scope;
@@ -188,7 +188,7 @@ package body GNATLLVM.DebugInfo is
    begin
       --  If we're emitting debug info, set up everything we need to do  so.
 
-      if Emit_Line_Debug_Info then
+      if Emit_Debug_Info then
          Add_Debug_Flags (Module);
          DI_Builder         := Create_DI_Builder (Module);
          Debug_Compile_Unit :=
@@ -210,7 +210,7 @@ package body GNATLLVM.DebugInfo is
 
    procedure Finalize_Debugging is
    begin
-      if Emit_Line_Debug_Info then
+      if Emit_Debug_Info then
          DI_Builder_Finalize (DI_Builder);
       end if;
    end Finalize_Debugging;
@@ -345,7 +345,7 @@ package body GNATLLVM.DebugInfo is
       S_Ext_Name : constant String              :=
         (if Ext_Name /= "" then Ext_Name else Get_Ext_Name (E));
       File_Node     : constant Metadata_T          :=
-        (if   Emit_Line_Debug_Info
+        (if   Emit_Debug_Info
          then Get_Debug_File_Node (Get_Source_File_Index (Sloc (N)))
          else No_Metadata_T);
       Line_Number   : constant Logical_Line_Number :=
@@ -405,7 +405,7 @@ package body GNATLLVM.DebugInfo is
 
    begin -- Start of processing for Create_Subprogram_Debug_Info
 
-      if Emit_Line_Debug_Info then
+      if Emit_Debug_Info then
 
          --  Collect the types of all the parameters, handling types passed
          --  by reference in a simplistic manner by just making a pointer
@@ -485,7 +485,7 @@ package body GNATLLVM.DebugInfo is
       SFI : constant Source_File_Index := Get_Source_File_Index (Sloc (N));
 
    begin
-      if Emit_Line_Debug_Info and then not Library_Level then
+      if Emit_Debug_Info and then not Library_Level then
          Push_Debug_Scope
            (SFI, DI_Builder_Create_Lexical_Block
               (Current_Debug_Scope, Get_Debug_File_Node (SFI),
@@ -549,7 +549,7 @@ package body GNATLLVM.DebugInfo is
       SFI : constant Source_File_Index := Get_Source_File_Index (Sloc (N));
 
    begin
-      if Emit_Line_Debug_Info and then Has_Local_Debug_Scope
+      if Emit_Debug_Info and then Has_Local_Debug_Scope
         and then not Is_Entity_Name (N)
         and then Freeze_Pos_Level = 0 and then SFI = Current_Debug_SFI
       then
@@ -715,7 +715,7 @@ package body GNATLLVM.DebugInfo is
 
       --  Do nothing if not emitting debug info
 
-      elsif not Emit_Line_Debug_Info then
+      elsif not Emit_Debug_Info then
          return No_Metadata_T;
 
       --  If we've seen this type as part of elaboration (e.g., an access
@@ -988,7 +988,7 @@ package body GNATLLVM.DebugInfo is
    begin
       --  For globals, we only do something if it's not imported
 
-      if Emit_Line_Debug_Info and then Present (Type_Data)
+      if Emit_Debug_Info and then Present (Type_Data)
         and then Is_A_Global_Variable (V) and then not Is_Imported (E)
       then
          Global_Set_Metadata
@@ -1015,7 +1015,7 @@ package body GNATLLVM.DebugInfo is
       Var_Data  : Metadata_T;
 
    begin
-      if Emit_Debug_Info and then Present (Type_Data) then
+      if Emit_Full_Debug_Info and then Present (Type_Data) then
          if Arg_Num = 0 then
             Var_Data :=
               DI_Create_Auto_Variable

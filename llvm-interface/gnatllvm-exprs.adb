@@ -999,7 +999,7 @@ package body GNATLLVM.Exprs is
       case Get_Pragma_Id (N) is
 
          when Pragma_Reviewable =>
-            if not Emit_Debug_Info then
+            if not Emit_Full_Debug_Info then
                Error_Msg_N ("??must specify -g", N);
             end if;
 

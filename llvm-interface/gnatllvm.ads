@@ -286,10 +286,10 @@ package GNATLLVM is
    --  True if just compiling to process and back-annotate decls
 
    Emit_Debug_Info      : Boolean := False;
-   --  Whether or not to emit debugging information (-g)
-
-   Emit_Line_Debug_Info : Boolean := False;
-   --  Likewise, but just for line number information
+   Emit_Full_Debug_Info : Boolean := False;
+   --  Whether or not to emit any debugging info, which at a minimum
+   --  means line number information and whether or not to emit full debug
+   --  info, which includes information for local variables.
 
    Do_Stack_Check       : Boolean := False;
    --  If set, check for too-large allocation

@@ -314,13 +314,12 @@ package body CCG.Instructions is
    -----------------------
 
    procedure Store_Instruction (V, Op1, Op2 : Value_T) is
-      pragma Unreferenced (V);
       LHS : constant Str := Deref (Op2);
       RHS : constant Str := +Op1;
 
    begin
       Process_Pending_Values;
-      Write_Copy (LHS, RHS, Type_Of (Op1));
+      Write_Copy (LHS, RHS, Type_Of (Op1), V => V);
    end Store_Instruction;
 
    ------------------------
@@ -549,7 +548,7 @@ package body CCG.Instructions is
 
    procedure Write_Copy (LHS : Value_T; RHS : Str; T : Type_T) is
    begin
-      Write_Copy (+LHS, RHS, T);
+      Write_Copy (+LHS, RHS, T, V => LHS);
    end Write_Copy;
 
    ----------------
@@ -558,7 +557,7 @@ package body CCG.Instructions is
 
    procedure Write_Copy (LHS : Str; RHS : Value_T; T : Type_T) is
    begin
-      Write_Copy (LHS, +RHS, T);
+      Write_Copy (LHS, +RHS, T, V => RHS);
    end Write_Copy;
 
    ----------------
@@ -567,14 +566,15 @@ package body CCG.Instructions is
 
    procedure Write_Copy (LHS, RHS : Value_T; T : Type_T) is
    begin
-      Write_Copy (+LHS, +RHS, T);
+      Write_Copy (+LHS, +RHS, T, V => LHS);
    end Write_Copy;
 
    ----------------
    -- Write_Copy --
    ----------------
 
-   procedure Write_Copy (LHS, RHS : Str; T : Type_T) is
+   procedure Write_Copy (LHS, RHS : Str; T : Type_T; V : Value_T := No_Value_T)
+   is
    begin
       --  If this isn't an array type, write a normal assignment. Otherwise,
       --  use memmove.
@@ -582,7 +582,7 @@ package body CCG.Instructions is
       --  do here at the moment.
 
       if Get_Type_Kind (T) /= Array_Type_Kind then
-         Output_Stmt (LHS & " = " & RHS + Assign);
+         Output_Stmt (LHS & " = " & RHS + Assign, V => V);
       else
          --  If T is a zero-sized array, it means that we're not to move
          --  anything, but we make a one-element array for zero-length
@@ -591,7 +591,7 @@ package body CCG.Instructions is
          if Get_Array_Length (T) /= Nat (0) then
             Output_Stmt ("memmove ((void *) " & (Addr_Of (LHS) + Comma) &
                            ", (void *) " & (Addr_Of (RHS) + Comma) &
-                           ", sizeof (" & T & "))");
+                           ", sizeof (" & T & "))", V => V);
          end if;
       end if;
    end Write_Copy;

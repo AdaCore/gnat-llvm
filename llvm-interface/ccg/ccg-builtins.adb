@@ -106,8 +106,9 @@ package body CCG.Builtins is
       Write_Copy (+V & ".ccg_field_0",
                   "(" & Int_String (Pos (Bits)) & ") " & Subp &
                     " ((long long) " & Op1 & ", (long long) " & Op2 & ")",
-                  Int_Type (Bits));
-      Write_Copy (+V & ".ccg_field_1", +"0", Int_Type (1));
+                  Int_Type (Bits),
+                  V => V);
+      Write_Copy (+V & ".ccg_field_1", +"0", Int_Type (1), V => V);
       return True;
    end Op_With_Overflow;
 

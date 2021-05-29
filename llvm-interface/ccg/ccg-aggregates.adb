@@ -415,7 +415,7 @@ package body CCG.Aggregates is
       --  The resulting type must be that of Op and we emit the assignment
 
       pragma Assert (T = Type_Of (Op));
-      Write_Copy (Acc, Op + Assign, T);
+      Write_Copy (Acc, Op + Assign, T, V);
    end Insert_Value_Instruction;
 
    ---------------------

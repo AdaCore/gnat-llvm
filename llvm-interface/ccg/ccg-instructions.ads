@@ -46,7 +46,7 @@ package CCG.Instructions is
    --  operand and possibly about signedness. We return the way to
    --  reference V. If nothing is special, this is just +V.
 
-   procedure Write_Copy (LHS, RHS : Str; T : Type_T)
+   procedure Write_Copy (LHS, RHS : Str; T : Type_T; V : Value_T := No_Value_T)
      with Pre => Present (LHS) and then Present (RHS) and then Present (T);
    procedure Write_Copy (LHS : Str; RHS : Value_T; T : Type_T)
      with Pre => Present (LHS) and then Present (RHS) and then Present (T);
@@ -54,7 +54,8 @@ package CCG.Instructions is
      with Pre => Present (LHS) and then Present (RHS) and then Present (T);
    procedure Write_Copy (LHS : Value_T; RHS : Str; T : Type_T)
      with Pre => Present (LHS) and then Present (RHS) and then Present (T);
-   --  Write a statement to copy RHS, of type T, to LHS
+   --  Write a statement to copy RHS, of type T, to LHS. If V is Present,
+   --  it represents something that may give line/file information.
 
    procedure Add_Pending_Value (V : Value_T)
      with Pre => Present (V);

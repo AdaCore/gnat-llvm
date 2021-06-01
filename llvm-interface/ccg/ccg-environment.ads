@@ -20,7 +20,7 @@ with LLVM.Core; use LLVM.Core;
 with CCG.Helper; use CCG.Helper;
 with CCG.Strs;   use CCG.Strs;
 
-package CCG.Tables is
+package CCG.Environment is
 
    --  This package contains the tables used by CCG to record data about
    --  LLVM values and the subprograms used to access and set such data.
@@ -167,4 +167,4 @@ package CCG.Tables is
      (Get_Type_Kind (Type_Of (S)))
      with Pre => Contains_One_Value (S);
 
-end CCG.Tables;
+end CCG.Environment;

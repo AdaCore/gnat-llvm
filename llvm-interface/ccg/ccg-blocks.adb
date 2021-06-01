@@ -17,10 +17,10 @@
 
 with Interfaces.C; use Interfaces.C;
 
+with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;
-with CCG.Tables;       use CCG.Tables;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Blocks is

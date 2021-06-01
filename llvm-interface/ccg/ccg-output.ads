@@ -15,8 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with CCG.Strs;   use CCG.Strs;
-with CCG.Tables; use CCG.Tables;
+with CCG.Environment; use CCG.Environment;
+with CCG.Strs;        use CCG.Strs;
 
 package CCG.Output is
 

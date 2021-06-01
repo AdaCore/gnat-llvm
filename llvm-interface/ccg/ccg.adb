@@ -29,8 +29,8 @@ with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;  use CCG.Aggregates;
+with CCG.Environment; use CCG.Environment;
 with CCG.Helper;      use CCG.Helper;
-with CCG.Tables;      use CCG.Tables;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
 

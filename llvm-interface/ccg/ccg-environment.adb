@@ -24,7 +24,7 @@ with Table; use Table;
 with CCG.Output; use CCG.Output;
 with CCG.Utils;  use CCG.Utils;
 
-package body CCG.Tables is
+package body CCG.Environment is
 
    type Value_Data is record
       C_Value             : Str;
@@ -639,4 +639,4 @@ package body CCG.Tables is
       return Result;
    end Get_Output_Idx;
 
-end CCG.Tables;
+end CCG.Environment;

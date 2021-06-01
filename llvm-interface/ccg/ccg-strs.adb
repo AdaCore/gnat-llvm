@@ -23,9 +23,9 @@ with LLVM.Core; use LLVM.Core;
 
 with Output; use Output;
 
-with CCG.Output; use CCG.Output;
-with CCG.Tables; use CCG.Tables;
-with CCG.Utils;  use CCG.Utils;
+with CCG.Environment; use CCG.Environment;
+with CCG.Output;      use CCG.Output;
+with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Strs is
 

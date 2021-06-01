@@ -15,15 +15,22 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Strings.Fixed; use Ada.Strings.Fixed;
+
 with Get_Targ; use Get_Targ;
 
+with Lib;    use Lib;
+with Opt;    use Opt;
 with Output; use Output;
+with Sinput; use Sinput;
+with Table;
 
 with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
+with CCG.Blocks;       use CCG.Blocks;
 with CCG.Helper;       use CCG.Helper;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Subprograms;  use CCG.Subprograms;
@@ -898,5 +905,178 @@ package body CCG.Output is
          Write_Int (Get_Output_Idx (BB));
       end if;
    end Write_BB;
+
+   -----------------------
+   -- Write_Subprograms --
+   -----------------------
+
+   procedure Write_Subprograms is
+      function  Is_Comment_Line (L : Physical_Line_Number) return Boolean;
+      procedure Write_Source_Line (L : Physical_Line_Number);
+      procedure Write_Line (Line : Out_Line);
+
+      Main_Source_File    : constant Source_File_Index :=
+        Source_Index (Main_Unit);
+      Main_Source_Name    : constant Str               :=
+        +Get_Name_String (Full_Debug_Name (Main_Source_File));
+      Src                 : constant Source_Buffer_Ptr :=
+        Source_Text (Main_Source_File);
+      Indent              : Integer                    := 0;
+      Next_Line_To_Dump   : Physical_Line_Number       := 1;
+      Previous_Debug_File : Str                        := No_Str;
+      Previous_Debug_Line : Physical_Line_Number;
+
+      ---------------------
+      -- Is_Comment_Line --
+      ---------------------
+
+      function Is_Comment_Line (L : Physical_Line_Number) return Boolean is
+         Scn : Source_Ptr;
+
+      begin
+         Scn := Line_Start (L, Main_Source_File);
+         while Src (Scn) = ' ' or else Src (Scn) = ASCII.HT loop
+            Scn := Scn + 1;
+         end loop;
+
+         return Src (Scn) in Line_Terminator
+           or else Src (Scn .. Scn + 1) = "--";
+      end Is_Comment_Line;
+
+      -----------------------
+      -- Write_Source_Line --
+      -----------------------
+
+      procedure Write_Source_Line (L : Physical_Line_Number) is
+         Scn : Source_Ptr;
+
+      begin
+         if Is_Comment_Line (L) then
+            return;
+         end if;
+
+         Write_Str ("/* ");
+         Write_Int (Nat (L));
+         Write_Str (": ");
+
+         Scn := Line_Start (L, Main_Source_File);
+         while Scn <= Src'Last and then Src (Scn) not in Line_Terminator loop
+            Write_Char (Src (Scn));
+            Scn := Scn + 1;
+         end loop;
+
+         Write_Str (" */");
+         Write_Eol;
+      end Write_Source_Line;
+
+      ----------------
+      -- Write_Line --
+      ----------------
+
+      procedure Write_Line (Line : Out_Line) is
+         Our_V     : constant Value_T              :=
+           (if   No (Line.V)
+                 or else Is_A_Instruction (Line.V)
+                 or else Is_A_Function (Line.V)
+                 or else Is_A_Global_Variable (Line.V)
+            then Line.V else No_Value_T);
+         Our_File  : constant Str                  :=
+           (if   Present (Our_V) and then Emit_Debug_Info
+            then +Get_Debug_Loc_Filename (Our_V) else No_Str);
+         Our_Dir   : constant Str                  :=
+           (if   Present (Our_V) and then Emit_Debug_Info
+            then +Get_Debug_Loc_Directory (Our_V) else No_Str);
+         In_Main   : constant Boolean              :=
+           Present (Our_Dir) and then Our_Dir & Our_File = Main_Source_Name;
+         Have_File : constant Boolean              :=
+           Present (Our_File) and then not Is_Null_String (Our_File);
+         Our_Line  : constant Physical_Line_Number :=
+           (if Have_File then +Get_Debug_Loc_Line (Our_V) else 1);
+         S         : Str                           := Line.Line_Text;
+
+      begin
+         --  If we have debug info and it differs from the last we have,
+         --  and we are to write a #line, write it and update our last
+         --  line written.
+
+         if Have_File and then Emit_C_Line
+           and then (Our_File /= Previous_Debug_File
+                       or else Our_Line /= Previous_Debug_Line)
+         then
+            Write_Str ("#line " & Nat (Our_Line) & " """ & Our_File & """",
+                       Eol => True);
+            Previous_Debug_File := Our_File;
+            Previous_Debug_Line := Our_Line;
+         end if;
+
+         --  If we're to write source lines, we're in the main file and
+         --  this position is higher than all the source lines we've written
+         --  so far, write out all lines up to ours.
+
+         if Dump_Source_Text and then In_Main
+           and then Our_Line >= Next_Line_To_Dump
+         then
+            for J in Next_Line_To_Dump .. Our_Line loop
+               Write_Source_Line (J);
+            end loop;
+
+            Next_Line_To_Dump := Our_Line + 1;
+         end if;
+
+         --  Now handle indentation and output some code
+
+         Indent := Indent + Line.Indent_Before;
+         if not Line.No_Indent then
+            S := (Indent * " ") & S;
+         end if;
+
+         Write_Str (S, Eol => True);
+         Indent := Indent + Line.Indent_After;
+      end Write_Line;
+
+   begin -- Start of processing for Write_Subprograms
+
+      --  Start by writing out the global decls
+
+      for Gidx in 1 .. Global_Decl_Table.Last loop
+         Write_Line (Global_Decl_Table.Table (Gidx));
+      end loop;
+
+      --  Now write out each subprogram
+
+      for Sidx in 1 .. Subprogram_Table.Last loop
+         declare
+            SD : constant Subprogram_Data := Subprogram_Table.Table (Sidx);
+
+         begin
+            --  First write the decls. We at least have the function prototype
+
+            for Didx in SD.First_Decl .. SD.Last_Decl loop
+               Write_Line (Local_Decl_Table.Table (Didx));
+            end loop;
+
+            --  If we're written more than just the prototype and the "{",
+            --  add a blank line between the decls and statements.
+
+            if SD.Last_Decl > SD.First_Decl + 1 then
+               Write_Eol;
+            end if;
+
+            --  Then write the statements. We at least have the closing brace.
+
+            for Sidx in SD.First_Stmt .. SD.Last_Stmt loop
+               Write_Line (Stmt_Table.Table (Sidx));
+            end loop;
+         end;
+      end loop;
+
+      --  If we're dumping source lines, dump any that remain
+
+      if Dump_Source_Text then
+         for J in Next_Line_To_Dump .. Last_Source_Line (Main_Source_File) loop
+            Write_Source_Line (J);
+         end loop;
+      end if;
+   end Write_Subprograms;
 
 end CCG.Output;

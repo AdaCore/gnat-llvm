@@ -20,11 +20,108 @@ with Interfaces.C; use Interfaces.C;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;
-with CCG.Strs;         use CCG.Strs;
 with CCG.Tables;       use CCG.Tables;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Blocks is
+
+   -----------------
+   -- Output_Decl --
+   ----------------
+
+   procedure Output_Decl
+     (S             : Str;
+      Semicolon     : Boolean := True;
+      Is_Global     : Boolean := False;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T)
+   is
+      OL : constant Out_Line :=
+        (Line_Text      => (if Semicolon then S & ";" else S),
+         No_Indent      => No_Indent,
+         Indent_Before  => Indent_Before,
+         Indent_After   => Indent_After,
+         V              => V);
+   begin
+      if Is_Global then
+         Global_Decl_Table.Append (OL);
+      else
+         declare
+            SD : Subprogram_Data renames
+              Subprogram_Table.Table (Subprogram_Table.Last);
+
+         begin
+            Local_Decl_Table.Append (OL);
+            SD.Last_Decl := Local_Decl_Table.Last;
+            if No (SD.First_Decl) then
+               SD.First_Decl := Local_Decl_Table.Last;
+            end if;
+         end;
+      end if;
+   end Output_Decl;
+
+   -----------------
+   -- Output_Decl --
+   ----------------
+
+   procedure Output_Decl
+     (S             : String;
+      Semicolon     : Boolean := True;
+      Is_Global     : Boolean := False;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T)
+   is
+   begin
+      Output_Decl (+S, Semicolon, Is_Global, No_Indent, Indent_Before,
+                   Indent_After, V);
+   end Output_Decl;
+
+   -----------------
+   -- Output_Stmt --
+   ----------------
+
+   procedure Output_Stmt
+     (S             : Str;
+      Semicolon     : Boolean := True;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T)
+   is
+      SD : Subprogram_Data renames
+        Subprogram_Table.Table (Subprogram_Table.Last);
+   begin
+      Stmt_Table.Append ((Line_Text      => (if Semicolon then S & ";" else S),
+                          No_Indent      => No_Indent,
+                          Indent_Before  => Indent_Before,
+                          Indent_After   => Indent_After,
+                          V              => V));
+      SD.Last_Stmt := Stmt_Table.Last;
+      if No (SD.First_Stmt) then
+         SD.First_Stmt := Stmt_Table.Last;
+      end if;
+   end Output_Stmt;
+
+   -----------------
+   -- Output_Stmt --
+   ----------------
+
+   procedure Output_Stmt
+     (S             : String;
+      Semicolon     : Boolean := True;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T)
+
+   is
+   begin
+      Output_Stmt (+S, Semicolon, No_Indent, Indent_Before, Indent_After, V);
+   end Output_Stmt;
 
    ---------------
    -- Output_BB --

@@ -19,6 +19,7 @@ with Ada.Characters.Handling; use Ada.Characters.Handling;
 
 with Output; use Output;
 
+with CCG.Blocks;       use CCG.Blocks;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;

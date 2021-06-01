@@ -53,4 +53,7 @@ package CCG.Output is
    --  Write the typedef for T, if any. If Incomplete an T is a struct type,
    --  just write the initial definition of the struct, with no fields.
 
+   procedure Write_Subprograms;
+   --  Write all the decls and statements for all subprograms
+
 end CCG.Output;

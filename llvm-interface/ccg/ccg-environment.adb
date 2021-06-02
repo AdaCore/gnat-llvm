@@ -21,7 +21,6 @@ with Ada.Containers.Hashed_Maps;
 
 with Table; use Table;
 
-with CCG.Blocks; use CCG.Blocks;
 with CCG.Output; use CCG.Output;
 with CCG.Utils;  use CCG.Utils;
 
@@ -90,8 +89,15 @@ package body CCG.Environment is
    end record;
 
    type BB_Data is record
-      Was_Output : Boolean;
+      Was_Output  : Boolean;
       --  True if this basic block has already been output
+
+      Was_Written : Boolean;
+      --  True if this basic block has already been written
+
+      First_Stmt  : Stmt_Idx;
+      Last_Stmt   : Stmt_Idx;
+      --  Index of first and last statements for this basic block
 
       Output_Idx : Nat;
       --  A positive number if we've assigned an ordinal to use as
@@ -248,7 +254,10 @@ package body CCG.Environment is
       elsif not Create then
          return No_BB_Idx;
       else
-         BB_Data_Table.Append ((Was_Output => False,
+         BB_Data_Table.Append ((Was_Output  => False,
+                                Was_Written => False,
+                                First_Stmt  => Empty_Stmt_Idx,
+                                Last_Stmt   => Empty_Stmt_Idx,
                                 Output_Idx => 0));
          Insert (BB_Data_Map, B, BB_Data_Table.Last);
          return BB_Data_Table.Last;
@@ -547,6 +556,41 @@ package body CCG.Environment is
       return Present (Idx) and then BB_Data_Table.Table (Idx).Was_Output;
    end Get_Was_Output;
 
+   ---------------------
+   -- Get_Was_Written --
+   ---------------------
+
+   function Get_Was_Written (BB : Basic_Block_T) return Boolean is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => False);
+
+   begin
+      return Present (Idx) and then BB_Data_Table.Table (Idx).Was_Written;
+   end Get_Was_Written;
+
+   --------------------
+   -- Get_First_Stmt --
+   --------------------
+
+   function Get_First_Stmt (BB : Basic_Block_T) return Stmt_Idx is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => False);
+
+   begin
+      return (if   Present (Idx) then BB_Data_Table.Table (Idx).First_Stmt
+              else Empty_Stmt_Idx);
+   end Get_First_Stmt;
+
+   -------------------
+   -- Get_Last_Stmt --
+   -------------------
+
+   function Get_Last_Stmt (BB : Basic_Block_T) return Stmt_Idx is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => False);
+
+   begin
+      return (if   Present (Idx) then BB_Data_Table.Table (Idx).Last_Stmt
+              else Empty_Stmt_Idx);
+   end Get_Last_Stmt;
+
    --------------------
    -- Set_Was_Output --
    --------------------
@@ -557,6 +601,39 @@ package body CCG.Environment is
    begin
       BB_Data_Table.Table (Idx).Was_Output := B;
    end Set_Was_Output;
+
+   ---------------------
+   -- Set_Was_Written --
+   ---------------------
+
+   procedure Set_Was_Written (BB : Basic_Block_T; B : Boolean := True) is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
+
+   begin
+      BB_Data_Table.Table (Idx).Was_Written := B;
+   end Set_Was_Written;
+
+   --------------------
+   -- Set_First_Stmt --
+   --------------------
+
+   procedure Set_First_Stmt (BB : Basic_Block_T; Sidx : Stmt_Idx) is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
+
+   begin
+      BB_Data_Table.Table (Idx).First_Stmt := Sidx;
+   end Set_First_Stmt;
+
+   -------------------
+   -- Set_Last_Stmt --
+   -------------------
+
+   procedure Set_Last_Stmt (BB : Basic_Block_T; Sidx : Stmt_Idx) is
+      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
+
+   begin
+      BB_Data_Table.Table (Idx).Last_Stmt := Sidx;
+   end Set_Last_Stmt;
 
    -------------------------
    -- Maybe_Write_Typedef --

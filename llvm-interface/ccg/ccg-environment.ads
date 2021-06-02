@@ -17,6 +17,7 @@
 
 with LLVM.Core; use LLVM.Core;
 
+with CCG.Blocks; use CCG.Blocks;
 with CCG.Helper; use CCG.Helper;
 with CCG.Strs;   use CCG.Strs;
 
@@ -116,8 +117,20 @@ package CCG.Environment is
 
    function Get_Was_Output (BB : Basic_Block_T) return Boolean
      with Pre => Present (BB), Inline;
+   function Get_Was_Written (BB : Basic_Block_T) return Boolean
+     with Pre => Present (BB), Inline;
+   function Get_First_Stmt (BB : Basic_Block_T) return Stmt_Idx
+     with Pre => Present (BB), Inline;
+   function Get_Last_Stmt (BB : Basic_Block_T) return Stmt_Idx
+     with Pre => Present (BB), Inline;
    procedure Set_Was_Output (BB : Basic_Block_T; B : Boolean := True)
      with Pre  => Present (BB), Post => Get_Was_Output (BB) = B, Inline;
+   procedure Set_Was_Written (BB : Basic_Block_T; B : Boolean := True)
+     with Pre  => Present (BB), Post => Get_Was_Written (BB) = B, Inline;
+   procedure Set_First_Stmt (BB : Basic_Block_T; Sidx : Stmt_Idx)
+     with Pre  => Present (BB), Post => Get_First_Stmt (BB) = Sidx, Inline;
+   procedure Set_Last_Stmt (BB : Basic_Block_T; Sidx : Stmt_Idx)
+     with Pre  => Present (BB), Post => Get_Last_Stmt (BB) = Sidx, Inline;
 
    procedure Delete_Value_Info (V : Value_T) with Convention => C;
    --  Delete all information previously stored for V

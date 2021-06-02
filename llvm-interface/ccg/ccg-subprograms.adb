@@ -217,29 +217,34 @@ package body CCG.Subprograms is
 
    end Declare_Subprogram;
 
-   -------------------------------
-   -- Generate_C_For_Subprogram --
-   -------------------------------
+   -----------------------
+   -- Output_Subprogram --
+   -----------------------
 
-   procedure Generate_C_For_Subprogram (V : Value_T) is
+   procedure Output_Subprogram (V : Value_T) is
    begin
-      --  If there is an entry basic block, start a new function and
-      --  output it, starting from that block.
+      --  If there are no blocks, we have nothing to do
 
-      if Present (Get_First_Basic_Block (V)) then
-         New_Subprogram (V);
-         Output_Decl (Function_Proto (V), Semicolon => False, V => V);
-         Output_Decl ("{", Semicolon => False, Indent_After => 4);
-         Output_BB (Get_Entry_Basic_Block (V));
-         Output_Stmt ("}", Semicolon => False, Indent_Before => -4);
+      if No (Get_First_Basic_Block (V)) then
+         return;
       end if;
+
+      --  Otherwise, start a new function and output it, starting from
+      --  the entry block.
+
+      New_Subprogram (V);
+      Output_Decl (Function_Proto (V), Semicolon => False, V => V);
+      Output_Decl ("{", Semicolon => False, Indent_After => 4);
+      Output_BB (Get_Entry_Basic_Block (V));
 
       --  There shouldn't be anything still pending now, but if there is,
       --  output it now since if we hold it to the next subprogram, it'll
       --  reference variables in this one.
 
       Process_Pending_Values;
-   end Generate_C_For_Subprogram;
+      Output_Stmt ("}", Semicolon => False, Indent_Before => -4);
+
+   end Output_Subprogram;
 
    ----------------------
    -- Call_Instruction --

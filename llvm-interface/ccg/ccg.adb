@@ -96,7 +96,7 @@ package body CCG is
 
       Func := Get_First_Function (Module);
       while Present (Func) loop
-         Generate_C_For_Subprogram (Func);
+         Output_Subprogram (Func);
          Func := Get_Next_Function (Func);
       end loop;
 

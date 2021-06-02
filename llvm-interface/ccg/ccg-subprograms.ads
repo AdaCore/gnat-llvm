@@ -74,9 +74,9 @@ package CCG.Subprograms is
      with Pre => Is_A_Function (V);
    --  Write a declaration for subprogram V
 
-   procedure Generate_C_For_Subprogram (V : Value_T)
+   procedure Output_Subprogram (V : Value_T)
      with Pre => Is_A_Function (V);
-   --  Generate the C statements and decls for V, a function
+   --  Generate the C statements and decls for V, a subprogram
 
    procedure Write_Function_Type_Typedef (T : Type_T)
      with Pre => Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind;

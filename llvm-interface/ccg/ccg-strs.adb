@@ -500,7 +500,7 @@ package body CCG.Strs is
                Write_Type (Comp.T);
 
             when BB =>
-               Write_BB (Comp.B);
+               Write_BB_Value (Comp.B);
 
             when Number =>
                Write_Int (Comp.N);

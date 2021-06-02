@@ -35,6 +35,30 @@ with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Subprograms is
 
+   Subprogram_Idx_Low_Bound  : constant := 300_000_000;
+   Subprogram_Idx_High_Bound : constant := 399_999_999;
+   type Subprogram_Idx is
+     range Subprogram_Idx_Low_Bound .. Subprogram_Idx_High_Bound;
+   Subprogram_Idx_Start      : constant Subprogram_Idx :=
+     Subprogram_Idx_Low_Bound + 1;
+
+   --  For each subprogram, we record the first and last decl and statement
+   --  belonging to that subprogram.
+
+   type Subprogram_Data is record
+      Func       : Value_T;
+      First_Decl : Local_Decl_Idx;
+      Last_Decl  : Local_Decl_Idx;
+   end record;
+
+   package Subprogram_Table is new Table.Table
+     (Table_Component_Type => Subprogram_Data,
+      Table_Index_Type     => Subprogram_Idx,
+      Table_Low_Bound      => Subprogram_Idx_Start,
+      Table_Initial        => 50,
+      Table_Increment      => 50,
+      Table_Name           => "Subprogram_Table");
+
    function Is_Builtin_Name (S : String) return Boolean is
      (S'Length > 5 and then S (S'First .. S'First + 4) = "llvm.");
    --  Return True if S denotes an LLVM builtin function
@@ -60,9 +84,7 @@ package body CCG.Subprograms is
    begin
       Subprogram_Table.Append ((Func       => V,
                                 First_Decl => Empty_Local_Decl_Idx,
-                                Last_Decl  => Empty_Local_Decl_Idx,
-                                First_Stmt => Empty_Stmt_Idx,
-                                Last_Stmt  => Empty_Stmt_Idx));
+                                Last_Decl  => Empty_Local_Decl_Idx));
    end New_Subprogram;
 
    ---------------
@@ -236,13 +258,7 @@ package body CCG.Subprograms is
       Output_Decl (Function_Proto (V), Semicolon => False, V => V);
       Output_Decl ("{", Semicolon => False, Indent_After => 4);
       Output_BB (Get_Entry_Basic_Block (V));
-
-      --  There shouldn't be anything still pending now, but if there is,
-      --  output it now since if we hold it to the next subprogram, it'll
-      --  reference variables in this one.
-
-      Process_Pending_Values;
-      Output_Stmt ("}", Semicolon => False, Indent_Before => -4);
+      Clear_Pending_Values;
 
    end Output_Subprogram;
 
@@ -563,6 +579,21 @@ package body CCG.Subprograms is
       end if;
    end Return_Instruction;
 
+   -------------------
+   -- Add_Decl_Line --
+   -------------------
+
+   procedure Add_Decl_Line (Idx : Local_Decl_Idx) is
+      SD : Subprogram_Data renames
+        Subprogram_Table.Table (Subprogram_Table.Last);
+
+   begin
+      SD.Last_Decl := Idx;
+      if No (SD.First_Decl) then
+         SD.First_Decl := Idx;
+      end if;
+   end Add_Decl_Line;
+
    -----------------------
    -- Write_Subprograms --
    -----------------------
@@ -581,6 +612,7 @@ package body CCG.Subprograms is
       for Sidx in Subprogram_Idx_Start .. Subprogram_Table.Last loop
          declare
             SD : constant Subprogram_Data := Subprogram_Table.Table (Sidx);
+            BB : Basic_Block_T            := Get_First_Basic_Block (SD.Func);
 
          begin
             --  First write the decls. We at least have the function prototype
@@ -596,12 +628,31 @@ package body CCG.Subprograms is
                Write_Eol;
             end if;
 
-            --  Then write the statements. We at least have the closing brace.
+            --  Write the entry block for the function
 
-            for Sidx in SD.First_Stmt .. SD.Last_Stmt loop
-               Write_Line (Get_Stmt_Line (Sidx));
+            if Present (Get_Entry_Basic_Block (SD.Func)) then
+               Write_BB (Get_Entry_Basic_Block (SD.Func));
+            end if;
+
+            --  Now write all other blocks that we output and that we haven't
+            --  already written.
+
+            while Present (BB) loop
+               if Get_Was_Output (BB) and then not Get_Was_Written (BB) then
+                  Write_BB (BB);
+               end if;
+
+               BB := Get_Next_Basic_Block (BB);
             end loop;
          end;
+
+         --  Finally, write the closing brace
+
+         Write_Line (Out_Line'(Line_Text     => +"}",
+                               No_Indent     => False,
+                               Indent_Before => -4,
+                               Indent_After  => 0,
+                               V             => No_Value_T));
       end loop;
    end Write_Subprograms;
 end CCG.Subprograms;

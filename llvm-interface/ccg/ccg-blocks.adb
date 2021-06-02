@@ -51,6 +51,9 @@ package body CCG.Blocks is
       Table_Increment      => 1000,
       Table_Name           => "Stmt_Table");
 
+   Current_BB : Basic_Block_T := No_BB_T;
+   --  The basic block for which we're outputting statements
+
    -----------------
    -- Output_Decl --
    ----------------
@@ -74,17 +77,8 @@ package body CCG.Blocks is
       if Is_Global then
          Global_Decl_Table.Append (OL);
       else
-         declare
-            SD : Subprogram_Data renames
-              Subprogram_Table.Table (Subprogram_Table.Last);
-
-         begin
-            Local_Decl_Table.Append (OL);
-            SD.Last_Decl := Local_Decl_Table.Last;
-            if No (SD.First_Decl) then
-               SD.First_Decl := Local_Decl_Table.Last;
-            end if;
-         end;
+         Local_Decl_Table.Append (OL);
+         Add_Decl_Line (Local_Decl_Table.Last);
       end if;
    end Output_Decl;
 
@@ -118,17 +112,15 @@ package body CCG.Blocks is
       Indent_After  : Integer := 0;
       V             : Value_T := No_Value_T)
    is
-      SD : Subprogram_Data renames
-        Subprogram_Table.Table (Subprogram_Table.Last);
    begin
       Stmt_Table.Append ((Line_Text      => (if Semicolon then S & ";" else S),
                           No_Indent      => No_Indent,
                           Indent_Before  => Indent_Before,
                           Indent_After   => Indent_After,
                           V              => V));
-      SD.Last_Stmt := Stmt_Table.Last;
-      if No (SD.First_Stmt) then
-         SD.First_Stmt := Stmt_Table.Last;
+      Set_Last_Stmt (Current_BB, Stmt_Table.Last);
+      if No (Get_First_Stmt (Current_BB)) then
+         Set_First_Stmt (Current_BB, Stmt_Table.Last);
       end if;
    end Output_Stmt;
 
@@ -195,6 +187,10 @@ package body CCG.Blocks is
       Terminator : constant Value_T := Get_Basic_Block_Terminator (BB);
 
    begin
+      --  Set which block we're dealing with
+
+      Current_BB := BB;
+
       --  If we already processed this basic block, do nothing
 
       if Get_Was_Output (BB) then
@@ -248,6 +244,7 @@ package body CCG.Blocks is
                    Get_Opcode_Name (Terminator) & ">"));
       end case;
 
+      Current_BB := No_BB_T;
    end Output_BB;
 
    -------------------
@@ -398,6 +395,19 @@ package body CCG.Blocks is
 
       Output_Stmt ("}", Semicolon => False, Indent_Before => -4);
    end Switch_Instruction;
+
+   --------------
+   -- Write_BB --
+   --------------
+
+   procedure Write_BB (BB : Basic_Block_T) is
+   begin
+      for Idx in Get_First_Stmt (BB) .. Get_Last_Stmt (BB) loop
+         Write_Line (Get_Stmt_Line (Idx));
+      end loop;
+
+      Set_Was_Written (BB);
+   end Write_BB;
 
 begin
    --  Ensure we have an empty entry in the tables that support empty

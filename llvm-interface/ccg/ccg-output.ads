@@ -34,7 +34,7 @@ package CCG.Output is
      with Pre => Present (V);
    procedure Write_Type  (T : Type_T)
      with Pre => Present (T);
-   procedure Write_BB    (BB : Basic_Block_T)
+   procedure Write_BB_Value  (BB : Basic_Block_T)
      with Pre => Present (BB);
    --  Write the name of a value, type, or basic block
 

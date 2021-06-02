@@ -260,6 +260,15 @@ package body CCG.Instructions is
       Pending_Value_Table.Set_Last (0);
    end Process_Pending_Values;
 
+   --------------------------
+   -- Clear_Pending_Values --
+   --------------------------
+
+   procedure Clear_Pending_Values is
+   begin
+      Pending_Value_Table.Set_Last (0);
+   end Clear_Pending_Values;
+
    ------------------------
    -- Alloca_Instruction --
    ------------------------

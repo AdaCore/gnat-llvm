@@ -66,4 +66,9 @@ package CCG.Instructions is
    --  Walk the set of pending values in reverse order and generate
    --  assignments for any that haven't been written yet.
 
+   procedure Clear_Pending_Values;
+   --  Clear any pending values that remain at the end of a subprogram.
+   --  They're dead, but we don't want them to be output as part of another
+   --  subprogram.
+
 end CCG.Instructions;

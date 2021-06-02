@@ -914,11 +914,11 @@ package body CCG.Output is
       end if;
    end Write_Typedef;
 
-   --------------
-   -- Write_BB --
-   --------------
+   --------------------
+   -- Write_BB_Value --
+   --------------------
 
-   procedure Write_BB (BB : Basic_Block_T) is
+   procedure Write_BB_Value (BB : Basic_Block_T) is
    begin
       --  If it has a name, write that name. Otherwise, print (and possibly
       --  make) an internal name.
@@ -929,7 +929,7 @@ package body CCG.Output is
          Write_Str ("ccg_l");
          Write_Int (Get_Output_Idx (BB));
       end if;
-   end Write_BB;
+   end Write_BB_Value;
 
    ------------------------
    -- Initialize_Writing --

@@ -167,4 +167,8 @@ package CCG.Blocks is
    --  block To, taking care of any phi instructions at the target.
    --  Need_Block says whether we need to generate a "{ ... }" construct.
 
+   procedure Write_BB (BB : Basic_Block_T)
+     with Pre => Present (BB);
+   --  Write the statements in BB
+
 end CCG.Blocks;

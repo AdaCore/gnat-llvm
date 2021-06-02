@@ -24,12 +24,10 @@ with Lib;    use Lib;
 with Opt;    use Opt;
 with Output; use Output;
 with Sinput; use Sinput;
-with Table;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
-with CCG.Blocks;       use CCG.Blocks;
 with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
@@ -61,10 +59,10 @@ package body CCG.Subprograms is
    procedure New_Subprogram (V : Value_T) is
    begin
       Subprogram_Table.Append ((Func       => V,
-                                First_Decl => No_Decl_Idx,
-                                Last_Decl  => No_Decl_Idx,
-                                First_Stmt => No_Stmt_Idx,
-                                Last_Stmt  => No_Stmt_Idx));
+                                First_Decl => Empty_Local_Decl_Idx,
+                                Last_Decl  => Empty_Local_Decl_Idx,
+                                First_Stmt => Empty_Stmt_Idx,
+                                Last_Stmt  => Empty_Stmt_Idx));
    end New_Subprogram;
 
    ---------------
@@ -560,4 +558,45 @@ package body CCG.Subprograms is
       end if;
    end Return_Instruction;
 
+   -----------------------
+   -- Write_Subprograms --
+   -----------------------
+
+   procedure Write_Subprograms is
+   begin
+
+      --  Start by writing out the global decls
+
+      for Gidx in Global_Decl_Idx_Start .. Get_Last_Global_Decl loop
+         Write_Line (Get_Global_Decl_Line (Gidx));
+      end loop;
+
+      --  Now write out each subprogram
+
+      for Sidx in Subprogram_Idx_Start .. Subprogram_Table.Last loop
+         declare
+            SD : constant Subprogram_Data := Subprogram_Table.Table (Sidx);
+
+         begin
+            --  First write the decls. We at least have the function prototype
+
+            for Didx in SD.First_Decl .. SD.Last_Decl loop
+               Write_Line (Get_Local_Decl_Line (Didx));
+            end loop;
+
+            --  If we're written more than just the prototype and the "{",
+            --  add a blank line between the decls and statements.
+
+            if SD.Last_Decl > SD.First_Decl + 1 then
+               Write_Eol;
+            end if;
+
+            --  Then write the statements. We at least have the closing brace.
+
+            for Sidx in SD.First_Stmt .. SD.Last_Stmt loop
+               Write_Line (Get_Stmt_Line (Sidx));
+            end loop;
+         end;
+      end loop;
+   end Write_Subprograms;
 end CCG.Subprograms;

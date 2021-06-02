@@ -115,7 +115,7 @@ package body GNATLLVM.Compile is
       --  If we're going to generate C code, initialize that subsystem
 
       if Code_Generation = Write_C then
-         Initialize_C_Writing;
+         Initialize_C_Output;
       end if;
 
       --  Get the sizes of fat and thin pointers and make some types.  This

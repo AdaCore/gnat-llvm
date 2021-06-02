@@ -17,12 +17,42 @@
 
 with LLVM.Core;  use LLVM.Core;
 
+with CCG.Blocks; use CCG.Blocks;
 with CCG.Helper; use CCG.Helper;
 with CCG.Strs;   use CCG.Strs;
 
+with Table;
+
 package CCG.Subprograms is
 
-   --  This package contains subprograms used in the handling of subprograms
+   --  This package contains subprograms and data used in the handling of
+   --  subprograms.
+
+   Subprogram_Idx_Low_Bound  : constant := 300_000_000;
+   Subprogram_Idx_High_Bound : constant := 399_999_999;
+   type Subprogram_Idx is
+     range Subprogram_Idx_Low_Bound .. Subprogram_Idx_High_Bound;
+   Subprogram_Idx_Start      : constant Subprogram_Idx :=
+     Subprogram_Idx_Low_Bound + 1;
+
+   --  For each subprogram, we record the first and last decl and statement
+   --  belonging to that subprogram.
+
+   type Subprogram_Data is record
+      Func       : Value_T;
+      First_Decl : Local_Decl_Idx;
+      Last_Decl  : Local_Decl_Idx;
+      First_Stmt : Stmt_Idx;
+      Last_Stmt  : Stmt_Idx;
+   end record;
+
+   package Subprogram_Table is new Table.Table
+     (Table_Component_Type => Subprogram_Data,
+      Table_Index_Type     => Subprogram_Idx,
+      Table_Low_Bound      => Subprogram_Idx_Start,
+      Table_Initial        => 50,
+      Table_Increment      => 50,
+      Table_Name           => "Subprogram_Table");
 
    procedure New_Subprogram (V : Value_T)
      with Pre => Present (Is_A_Function (V));
@@ -64,5 +94,8 @@ package CCG.Subprograms is
           Post => Present (Function_Proto'Result);
    --  Return the prototype for function type T, using S for where the name
    --  of the function would be.
+
+   procedure Write_Subprograms;
+   --  Write all the decls and statements for all subprograms
 
 end CCG.Subprograms;

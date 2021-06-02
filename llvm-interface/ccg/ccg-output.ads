@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with CCG.Blocks;      use CCG.Blocks;
 with CCG.Environment; use CCG.Environment;
 with CCG.Strs;        use CCG.Strs;
 
@@ -53,7 +54,12 @@ package CCG.Output is
    --  Write the typedef for T, if any. If Incomplete an T is a struct type,
    --  just write the initial definition of the struct, with no fields.
 
-   procedure Write_Subprograms;
-   --  Write all the decls and statements for all subprograms
+   procedure Initialize_Writing;
+   procedure Finalize_Writing;
+   --  Set up for writing lines of C and finalize writing them
+
+   procedure Write_Line (Line : Out_Line);
+   --  Write one line to our output file, taking care of any required
+   --  debug data, source line writing, and #line directives.
 
 end CCG.Output;

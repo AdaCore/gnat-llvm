@@ -25,6 +25,32 @@ with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Blocks is
 
+   --  Tables for global and local decls and statements
+
+   package Global_Decl_Table is new Table.Table
+     (Table_Component_Type => Out_Line,
+      Table_Index_Type     => Global_Decl_Idx,
+      Table_Low_Bound      => Global_Decl_Idx_Start,
+      Table_Initial        => 500,
+      Table_Increment      => 100,
+      Table_Name           => "Global_Decl_Table");
+
+   package Local_Decl_Table is new Table.Table
+     (Table_Component_Type => Out_Line,
+      Table_Index_Type     => Local_Decl_Idx,
+      Table_Low_Bound      => Local_Decl_Idx_Low_Bound,
+      Table_Initial        => 500,
+      Table_Increment      => 100,
+      Table_Name           => "Local_Decl_Table");
+
+   package Stmt_Table is new Table.Table
+     (Table_Component_Type => Out_Line,
+      Table_Index_Type     => Stmt_Idx,
+      Table_Low_Bound      => Stmt_Idx_Low_Bound,
+      Table_Initial        => 1000,
+      Table_Increment      => 1000,
+      Table_Name           => "Stmt_Table");
+
    -----------------
    -- Output_Decl --
    ----------------
@@ -122,6 +148,34 @@ package body CCG.Blocks is
    begin
       Output_Stmt (+S, Semicolon, No_Indent, Indent_Before, Indent_After, V);
    end Output_Stmt;
+
+   --------------------------
+   -- Get_Global_Decl_Line --
+   --------------------------
+
+   function Get_Global_Decl_Line (Idx : Global_Decl_Idx) return Out_Line is
+     (Global_Decl_Table.Table (Idx));
+
+   -------------------------
+   -- Get_Local_Decl_Line --
+   -------------------------
+
+   function Get_Local_Decl_Line (Idx : Local_Decl_Idx) return Out_Line is
+     (Local_Decl_Table.Table (Idx));
+
+   -------------------
+   -- Get_Stmt_Line --
+   -------------------
+
+   function Get_Stmt_Line (Idx : Stmt_Idx) return Out_Line is
+     (Stmt_Table.Table (Idx));
+
+   --------------------------
+   -- Get_Last_Global_Decl --
+   --------------------------
+
+   function Get_Last_Global_Decl return Global_Decl_Idx is
+     (Global_Decl_Table.Last);
 
    ---------------
    -- Output_BB --
@@ -344,5 +398,12 @@ package body CCG.Blocks is
 
       Output_Stmt ("}", Semicolon => False, Indent_Before => -4);
    end Switch_Instruction;
+
+begin
+   --  Ensure we have an empty entry in the tables that support empty
+   --  entries.
+
+   Local_Decl_Table.Increment_Last;
+   Stmt_Table.Increment_Last;
 
 end CCG.Blocks;

@@ -21,6 +21,7 @@ with Ada.Containers.Hashed_Maps;
 
 with Table; use Table;
 
+with CCG.Blocks; use CCG.Blocks;
 with CCG.Output; use CCG.Output;
 with CCG.Utils;  use CCG.Utils;
 

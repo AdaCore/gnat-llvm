@@ -993,7 +993,7 @@ package body GNATLLVM.Blocks is
       --  If we don't know the size of the type or if it's wider than an
       --  Integer, we can't give the extended information.
 
-      if Unknown_RM_Size (Full_Etype (LB))
+      if not Known_RM_Size (Full_Etype (LB))
         or else RM_Size (Full_Etype (LB)) > RM_Size (Standard_Integer)
       then
          return False;

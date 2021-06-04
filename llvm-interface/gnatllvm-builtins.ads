@@ -30,7 +30,7 @@ package GNATLLVM.Builtins is
      (Kind : Overloaded_Intrinsic_Kind;
       Name : String;
       GT   : GL_Type) return GL_Value
-     with Pre  => Is_Primitive_GL_Type (GT) and then not Unknown_RM_Size (GT),
+     with Pre  => Is_Primitive_GL_Type (GT) and then Known_RM_Size (GT),
           Post => Present (Build_Intrinsic'Result);
    --  Build an intrinsic function of the specified type, name, and kind
 

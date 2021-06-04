@@ -1029,8 +1029,8 @@ package body GNATLLVM.Records.Create is
          Pos         : Uint                    :=
            (if Present (Clause) then Component_Bit_Offset (E) else No_Uint);
          Size        : Uint                    :=
-           (if   Unknown_Esize (E) then No_Uint
-            else Validate_Size (E, Def_GT, Esize (E),
+           (if not Known_Esize (E) then No_Uint
+            else   Validate_Size (E, Def_GT, Esize (E),
                                 Zero_Allowed => Present (Clause)));
          Var_Depth   : Int                     := 0;
          Var_Align   : Nat                     := 0;
@@ -2056,7 +2056,7 @@ package body GNATLLVM.Records.Create is
                  Annotated_Value (Bit_Position);
 
             begin
-               if Unknown_Esize (Cur_Field) then
+               if not Known_Esize (Cur_Field) then
                   Set_Esize (Cur_Field, Annotated_Value (Get_Type_Size
                                                            (Field_Type
                                                               (Cur_Field))));

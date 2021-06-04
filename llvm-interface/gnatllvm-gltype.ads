@@ -566,20 +566,12 @@ package GNATLLVM.GLType is
      (Esize (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   function Unknown_Esize (GT : GL_Type) return Boolean is
-     (Unknown_Esize (Full_Etype (GT)))
-     with Pre => Present (GT);
-
    function Known_Esize (GT : GL_Type) return Boolean is
      (Known_Esize (Full_Etype (GT)))
      with Pre => Present (GT);
 
    function Known_Static_Esize (GT : GL_Type) return Boolean is
      (Known_Static_Esize (Full_Etype (GT)))
-     with Pre => Present (GT);
-
-   function Unknown_RM_Size (GT : GL_Type) return Boolean is
-     (Unknown_RM_Size (Full_Etype (GT)))
      with Pre => Present (GT);
 
    function Known_RM_Size (GT : GL_Type) return Boolean is

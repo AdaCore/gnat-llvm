@@ -289,11 +289,11 @@ package body GNATLLVM.Types.Create is
          begin
             Discard (Type_Of (BT));
 
-            if Has_Size_Clause (BT) and then Unknown_RM_Size (TE) then
+            if Has_Size_Clause (BT) and then not Known_RM_Size (TE) then
                Set_RM_Size (TE, RM_Size (BT));
             end if;
 
-            if Has_Object_Size_Clause (BT) and then Unknown_Esize (TE) then
+            if Has_Object_Size_Clause (BT) and then not Known_Esize (TE) then
                Set_Esize (TE, Esize (BT));
             end if;
          end;
@@ -390,10 +390,10 @@ package body GNATLLVM.Types.Create is
          --  If there's no alignment specified for this type and it's not a
          --  base type, use the alignment of the base type, if any.
 
-         if not Unknown_Alignment (TE) then
+         if Known_Alignment (TE) then
             Align := Alignment (TE);
          elsif not Is_Full_Base_Type (TE)
-           and then not Unknown_Alignment (Full_Base_Type (TE))
+           and then Known_Alignment (Full_Base_Type (TE))
          then
             Align := Alignment (Full_Base_Type (TE));
          end if;
@@ -406,8 +406,8 @@ package body GNATLLVM.Types.Create is
               (if   Is_Dynamic_Size (GT) then No_GL_Value
                else Get_Type_Size (GT));
             Value_Size : constant Uint         :=
-              (if   Unknown_RM_Size (Size_TE) then No_Uint
-               else Validate_Size (TE, GT, RM_Size (Size_TE),
+              (if not Known_RM_Size (Size_TE) then No_Uint
+               else   Validate_Size (TE, GT, RM_Size (Size_TE),
                                    For_Type   => True,
                                    Is_RM_Size => True));
             Obj_Size   : constant Uint         :=
@@ -512,27 +512,27 @@ package body GNATLLVM.Types.Create is
                then Original_Array_Type (TE) else Empty);
 
          begin
-            if Unknown_Esize (TE) then
+            if not Known_Esize (TE) then
                Set_Esize (TE, BA_Esize);
             end if;
 
-            if Present (OAT) and then Unknown_Esize (OAT) then
+            if Present (OAT) and then not Known_Esize (OAT) then
                Set_Esize (OAT, BA_Esize);
             end if;
 
-            if Unknown_RM_Size (TE) then
+            if not Known_RM_Size (TE) then
                Set_RM_Size (TE, BA_RM_Size);
             end if;
 
-            if Present (OAT) and then Unknown_RM_Size (OAT) then
+            if Present (OAT) and then not Known_RM_Size (OAT) then
                Set_RM_Size (OAT, BA_RM_Size);
             end if;
 
-            if Unknown_Alignment (TE) then
+            if not Known_Alignment (TE) then
                Set_Alignment (TE, BA_Align);
             end if;
 
-            if Present (OAT) and then Unknown_Alignment (OAT) then
+            if Present (OAT) and then not Known_Alignment (OAT) then
                Set_Alignment (OAT, BA_Align);
             end if;
          end;
@@ -564,21 +564,21 @@ package body GNATLLVM.Types.Create is
       if not Is_Access_Subprogram_Type (Out_TE)
         and then not Is_Scalar_Type (Out_TE)
       then
-         if Unknown_Esize (Out_TE) then
+         if not Known_Esize (Out_TE) then
             Set_Esize   (Out_TE, Esize (In_TE));
          end if;
-         if Unknown_RM_Size (Out_TE) then
+         if not Known_RM_Size (Out_TE) then
             Set_RM_Size (Out_TE, RM_Size (In_TE));
 
          end if;
       end if;
 
-      if Unknown_Alignment (Out_TE) then
+      if not Known_Alignment (Out_TE) then
          Set_Alignment (Out_TE, Alignment (In_TE));
       end if;
 
       if Is_Array_Type (Out_TE) and then Is_Base_Type (Out_TE)
-        and then Unknown_Component_Size (Out_TE)
+        and then not Known_Component_Size (Out_TE)
       then
          Set_Component_Size (Out_TE, Component_Size (In_TE));
       end if;

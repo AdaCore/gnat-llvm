@@ -1338,12 +1338,12 @@ package body GNATLLVM.Variables is
       In_Align     : constant GL_Value             := Get_Type_Alignment (GT);
       In_Align_Nat : constant Nat                  := +In_Align;
       Size         : constant Uint                 :=
-        (if   Unknown_Esize (E) then No_Uint
-         else Validate_Size (E, GT, Esize (E),
+        (if not Known_Esize (E) then No_Uint
+         else   Validate_Size (E, GT, Esize (E),
                              Zero_Allowed => Has_Size_Clause (E)));
       Align        : Uint                          :=
-        (if   Unknown_Alignment (E) then No_Uint
-         else Validate_Alignment (E, Alignment (E), In_Align_Nat));
+        (if not Known_Alignment (E) then No_Uint
+         else   Validate_Alignment (E, Alignment (E), In_Align_Nat));
       Max_Size : constant Boolean                  :=
         Is_Unconstrained_Record (GT);
       Biased   : constant Boolean                  :=

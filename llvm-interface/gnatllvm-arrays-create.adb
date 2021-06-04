@@ -356,7 +356,7 @@ package body GNATLLVM.Arrays.Create is
 
       --  If this is a base type, back-annotate the component size
 
-      if Is_Base_Type (A_TE) and then Unknown_Component_Size (A_TE) then
+      if Is_Base_Type (A_TE) and then not Known_Component_Size (A_TE) then
          Set_Component_Size (A_TE, Annotated_Object_Size (Comp_GT));
       end if;
 

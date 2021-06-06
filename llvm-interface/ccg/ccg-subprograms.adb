@@ -608,7 +608,6 @@ package body CCG.Subprograms is
 
    procedure Write_Subprograms is
    begin
-
       --  Start by writing out the global decls
 
       for Gidx in Global_Decl_Idx_Start .. Get_Last_Global_Decl loop
@@ -625,6 +624,7 @@ package body CCG.Subprograms is
          begin
             --  First write the decls. We at least have the function prototype
 
+            Write_Eol;
             for Didx in SD.First_Decl .. SD.Last_Decl loop
                Write_Line (Didx);
             end loop;

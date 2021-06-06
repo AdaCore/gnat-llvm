@@ -17,6 +17,8 @@
 
 with Interfaces.C; use Interfaces.C;
 
+with Output; use Output;
+
 with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
@@ -204,12 +206,6 @@ package body CCG.Blocks is
 
       if Get_Was_Output (BB) then
          return;
-
-      --  Otherwise, if this isn't the entry block, output a label for it
-
-      elsif not Is_Entry_Block (BB) then
-         Output_Stmt ("", Semicolon => False);
-         Output_Stmt (BB & ":", Semicolon => False, No_Indent => True, V => V);
       end if;
 
       --  Mark that we're outputing this block and process each
@@ -413,8 +409,20 @@ package body CCG.Blocks is
    -- Write_BB --
    --------------
 
-   procedure Write_BB (BB : Basic_Block_T) is
+   procedure Write_BB (BB : Basic_Block_T; Omit_Label : Boolean := False) is
    begin
+      --  Unless this is the entry block or we've been asked to omit the
+      --  label, write the label for the block, preceeded by a blank line.
+
+      if not Omit_Label and then not Is_Entry_Block (BB) then
+         Write_Eol;
+         Write_Line (BB & ":",
+                     No_Indent => True,
+                     V => Get_First_Instruction (BB));
+      end if;
+
+      --  Now write each statement that we output for this block
+
       for Idx in Get_First_Stmt (BB) .. Get_Last_Stmt (BB) loop
          Write_Line (Idx);
       end loop;

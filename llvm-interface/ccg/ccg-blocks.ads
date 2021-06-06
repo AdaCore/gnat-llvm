@@ -188,8 +188,8 @@ package CCG.Blocks is
    --  block To, taking care of any phi instructions at the target.
    --  Need_Brace says whether we need to generate a "{ ... }" construct.
 
-   procedure Write_BB (BB : Basic_Block_T)
+   procedure Write_BB (BB : Basic_Block_T; Omit_Label : Boolean := False)
      with Pre => Present (BB);
-   --  Write the statements in BB
+   --  Write the statements in BB, possibly omitting the initial label
 
 end CCG.Blocks;

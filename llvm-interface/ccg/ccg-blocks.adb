@@ -21,6 +21,7 @@ with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;
+with CCG.Target;       use CCG.Target;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Blocks is
@@ -306,7 +307,7 @@ package body CCG.Blocks is
             end loop;
 
             if not Our_Had_Phi and then Need_Block then
-               Output_Stmt ("{", Semicolon => False, Indent_After => 4);
+               Output_Stmt ("{", Semicolon => False, Indent_After => C_Indent);
             end if;
 
             Maybe_Decl (Phi_Val);
@@ -321,7 +322,7 @@ package body CCG.Blocks is
 
       Output_Stmt ("goto " & To, V => From);
       if Our_Had_Phi and then Need_Block then
-         Output_Stmt ("}", Semicolon => False, Indent_Before => -4);
+         Output_Stmt ("}", Semicolon => False, Indent_Before => -C_Indent);
       end if;
    end Output_Branch;
 
@@ -376,7 +377,7 @@ package body CCG.Blocks is
 
       Process_Pending_Values;
       Output_Stmt ("switch (" & Result & ") {" +  Assign, Semicolon => False,
-                   Indent_After => 4, V => V);
+                   Indent_After => C_Indent, V => V);
       Output_Stmt ("default:",
                    Semicolon => False,
                    V => Get_First_Instruction (Default));
@@ -393,7 +394,7 @@ package body CCG.Blocks is
          Output_Branch (V, Ops (Ops'First + J * 2 + 1));
       end loop;
 
-      Output_Stmt ("}", Semicolon => False, Indent_Before => -4);
+      Output_Stmt ("}", Semicolon => False, Indent_Before => -C_Indent);
    end Switch_Instruction;
 
    --------------

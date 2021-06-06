@@ -31,6 +31,7 @@ with CCG.Aggregates;   use CCG.Aggregates;
 with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
+with CCG.Target;       use CCG.Target;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Subprograms is
@@ -256,7 +257,7 @@ package body CCG.Subprograms is
 
       New_Subprogram (V);
       Output_Decl (Function_Proto (V), Semicolon => False, V => V);
-      Output_Decl ("{", Semicolon => False, Indent_After => 4);
+      Output_Decl ("{", Semicolon => False, Indent_After => C_Indent);
       Output_BB (Get_Entry_Basic_Block (V));
       Clear_Pending_Values;
 
@@ -650,7 +651,7 @@ package body CCG.Subprograms is
 
          Write_Line (Out_Line'(Line_Text     => +"}",
                                No_Indent     => False,
-                               Indent_Before => -4,
+                               Indent_Before => -C_Indent,
                                Indent_After  => 0,
                                V             => No_Value_T));
       end loop;

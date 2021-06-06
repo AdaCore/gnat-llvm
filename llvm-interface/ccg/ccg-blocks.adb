@@ -404,7 +404,7 @@ package body CCG.Blocks is
    procedure Write_BB (BB : Basic_Block_T) is
    begin
       for Idx in Get_First_Stmt (BB) .. Get_Last_Stmt (BB) loop
-         Write_Line (Get_Stmt_Line (Idx));
+         Write_Line (Idx);
       end loop;
 
       Set_Was_Written (BB);

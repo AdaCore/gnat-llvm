@@ -1036,6 +1036,52 @@ package body CCG.Output is
    -- Write_Line --
    ----------------
 
+   procedure Write_Line (Idx : Stmt_Idx) is
+   begin
+      Write_Line (Get_Stmt_Line (Idx));
+   end Write_Line;
+
+   ----------------
+   -- Write_Line --
+   ----------------
+
+   procedure Write_Line (Idx : Global_Decl_Idx) is
+   begin
+      Write_Line (Get_Global_Decl_Line (Idx));
+   end Write_Line;
+
+   ----------------
+   -- Write_Line --
+   ----------------
+
+   procedure Write_Line (Idx : Local_Decl_Idx) is
+   begin
+      Write_Line (Get_Local_Decl_Line (Idx));
+   end Write_Line;
+
+   ----------------
+   -- Write_Line --
+   ----------------
+
+   procedure Write_Line
+     (S             : Str;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T)
+   is
+   begin
+      Write_Line (Out_Line'(Line_Text     => S,
+                            No_Indent     => No_Indent,
+                            Indent_Before => Indent_Before,
+                            Indent_After  => Indent_After,
+                            V             => V));
+   end Write_Line;
+
+   ----------------
+   -- Write_Line --
+   ----------------
+
    procedure Write_Line (Line : Out_Line) is
       Our_V     : constant Value_T              :=
         (if   No (Line.V)

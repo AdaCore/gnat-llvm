@@ -605,7 +605,7 @@ package body CCG.Subprograms is
       --  Start by writing out the global decls
 
       for Gidx in Global_Decl_Idx_Start .. Get_Last_Global_Decl loop
-         Write_Line (Get_Global_Decl_Line (Gidx));
+         Write_Line (Gidx);
       end loop;
 
       --  Now write out each subprogram
@@ -619,7 +619,7 @@ package body CCG.Subprograms is
             --  First write the decls. We at least have the function prototype
 
             for Didx in SD.First_Decl .. SD.Last_Decl loop
-               Write_Line (Get_Local_Decl_Line (Didx));
+               Write_Line (Didx);
             end loop;
 
             --  If we're written more than just the prototype and the "{",
@@ -649,11 +649,7 @@ package body CCG.Subprograms is
 
          --  Finally, write the closing brace
 
-         Write_Line (Out_Line'(Line_Text     => +"}",
-                               No_Indent     => False,
-                               Indent_Before => -C_Indent,
-                               Indent_After  => 0,
-                               V             => No_Value_T));
+         Write_Line (+"}", Indent_Before => -C_Indent);
       end loop;
    end Write_Subprograms;
 end CCG.Subprograms;

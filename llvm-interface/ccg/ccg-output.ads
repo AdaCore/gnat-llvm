@@ -59,6 +59,18 @@ package CCG.Output is
    --  Set up for writing lines of C and finalize writing them
 
    procedure Write_Line (Line : Out_Line);
+   procedure Write_Line (Idx : Stmt_Idx)
+     with Pre => Present (Idx);
+   procedure Write_Line (Idx : Global_Decl_Idx);
+   procedure Write_Line (Idx : Local_Decl_Idx)
+     with Pre => Present (Idx);
+   procedure Write_Line
+     (S             : Str;
+      No_Indent     : Boolean := False;
+      Indent_Before : Integer := 0;
+      Indent_After  : Integer := 0;
+      V             : Value_T := No_Value_T)
+     with Pre => Present (S);
    --  Write one line to our output file, taking care of any required
    --  debug data, source line writing, and #line directives.
 

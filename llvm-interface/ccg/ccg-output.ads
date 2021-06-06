@@ -66,10 +66,12 @@ package CCG.Output is
      with Pre => Present (Idx);
    procedure Write_Line
      (S             : Str;
-      No_Indent     : Boolean := False;
-      Indent_Before : Integer := 0;
-      Indent_After  : Integer := 0;
-      V             : Value_T := No_Value_T)
+      No_Indent     : Boolean       := False;
+      Indent_Before : Integer       := 0;
+      Indent_After  : Integer       := 0;
+      V             : Value_T       := No_Value_T;
+      BB            : Basic_Block_T := No_BB_T;
+      Need_Brace    : Boolean       := False)
      with Pre => Present (S);
    --  Write one line to our output file, taking care of any required
    --  debug data, source line writing, and #line directives.

@@ -73,7 +73,9 @@ package body CCG.Blocks is
          No_Indent      => No_Indent,
          Indent_Before  => Indent_Before,
          Indent_After   => Indent_After,
-         V              => V);
+         V              => V,
+         BB             => No_BB_T,
+         Need_Brace     => False);
    begin
       if Is_Global then
          Global_Decl_Table.Append (OL);
@@ -107,18 +109,22 @@ package body CCG.Blocks is
 
    procedure Output_Stmt
      (S             : Str;
-      Semicolon     : Boolean := True;
-      No_Indent     : Boolean := False;
-      Indent_Before : Integer := 0;
-      Indent_After  : Integer := 0;
-      V             : Value_T := No_Value_T)
+      Semicolon     : Boolean       := True;
+      No_Indent     : Boolean       := False;
+      Indent_Before : Integer       := 0;
+      Indent_After  : Integer       := 0;
+      V             : Value_T       := No_Value_T;
+      BB            : Basic_Block_T := No_BB_T;
+      Need_Brace    : Boolean       := False)
    is
    begin
       Stmt_Table.Append ((Line_Text      => (if Semicolon then S & ";" else S),
                           No_Indent      => No_Indent,
                           Indent_Before  => Indent_Before,
                           Indent_After   => Indent_After,
-                          V              => V));
+                          V              => V,
+                          BB             => BB,
+                          Need_Brace     => Need_Brace));
       Set_Last_Stmt (Current_BB, Stmt_Table.Last);
       if No (Get_First_Stmt (Current_BB)) then
          Set_First_Stmt (Current_BB, Stmt_Table.Last);
@@ -131,15 +137,17 @@ package body CCG.Blocks is
 
    procedure Output_Stmt
      (S             : String;
-      Semicolon     : Boolean := True;
-      No_Indent     : Boolean := False;
-      Indent_Before : Integer := 0;
-      Indent_After  : Integer := 0;
-      V             : Value_T := No_Value_T)
-
+      Semicolon     : Boolean       := True;
+      No_Indent     : Boolean       := False;
+      Indent_Before : Integer       := 0;
+      Indent_After  : Integer       := 0;
+      V             : Value_T       := No_Value_T;
+      BB            : Basic_Block_T := No_BB_T;
+      Need_Brace    : Boolean       := False)
    is
    begin
-      Output_Stmt (+S, Semicolon, No_Indent, Indent_Before, Indent_After, V);
+      Output_Stmt (+S, Semicolon, No_Indent, Indent_Before, Indent_After, V,
+                   BB, Need_Brace);
    end Output_Stmt;
 
    --------------------------
@@ -255,10 +263,10 @@ package body CCG.Blocks is
    procedure Output_Branch
      (From       : Value_T;
       To         : Value_T;
-      Need_Block : Boolean := False;
+      Need_Brace : Boolean := False;
       Had_Phi    : Boolean := False) is
    begin
-      Output_Branch (From, Value_As_Basic_Block (To), Need_Block, Had_Phi);
+      Output_Branch (From, Value_As_Basic_Block (To), Need_Brace, Had_Phi);
    end Output_Branch;
 
    -------------------
@@ -268,7 +276,7 @@ package body CCG.Blocks is
    procedure Output_Branch
      (From       : Value_T;
       To         : Basic_Block_T;
-      Need_Block : Boolean := False;
+      Need_Brace : Boolean := False;
       Had_Phi    : Boolean := False)
    is
       Our_BB       : constant Basic_Block_T := Get_Instruction_Parent (From);
@@ -306,7 +314,7 @@ package body CCG.Blocks is
                end if;
             end loop;
 
-            if not Our_Had_Phi and then Need_Block then
+            if not Our_Had_Phi and then Need_Brace then
                Output_Stmt ("{", Semicolon => False, Indent_After => C_Indent);
             end if;
 
@@ -317,11 +325,15 @@ package body CCG.Blocks is
          end;
       end loop;
 
-      --  Now write the goto and, if we had a phi, close the block
+      --  Now write the goto and, if we had a Phi, close the block
       --  we opened.
 
-      Output_Stmt ("goto " & To, V => From);
-      if Our_Had_Phi and then Need_Block then
+      Output_Stmt ("goto " & To,
+                   V          => From,
+                   BB         => To,
+                   Need_Brace => Need_Brace and then not Our_Had_Phi);
+
+      if Our_Had_Phi and then Need_Brace then
          Output_Stmt ("}", Semicolon => False, Indent_Before => -C_Indent);
       end if;
    end Output_Branch;
@@ -348,9 +360,9 @@ package body CCG.Blocks is
          Result := TP ("if (#1)", Op1) + Assign;
          Process_Pending_Values;
          Output_Stmt (Result, Semicolon => False, V => V);
-         Output_Branch (V, Ops (Ops'First + 2), Need_Block => True);
+         Output_Branch (V, Ops (Ops'First + 2), Need_Brace => True);
          Output_Stmt ("else", Semicolon => False, V => V);
-         Output_Branch (V, Ops (Ops'First + 1), Need_Block => True);
+         Output_Branch (V, Ops (Ops'First + 1), Need_Brace => True);
       end if;
    end Branch_Instruction;
 

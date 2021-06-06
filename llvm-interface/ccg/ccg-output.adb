@@ -1065,17 +1065,21 @@ package body CCG.Output is
 
    procedure Write_Line
      (S             : Str;
-      No_Indent     : Boolean := False;
-      Indent_Before : Integer := 0;
-      Indent_After  : Integer := 0;
-      V             : Value_T := No_Value_T)
+      No_Indent     : Boolean       := False;
+      Indent_Before : Integer       := 0;
+      Indent_After  : Integer       := 0;
+      V             : Value_T       := No_Value_T;
+      BB            : Basic_Block_T := No_BB_T;
+      Need_Brace    : Boolean       := False)
    is
    begin
       Write_Line (Out_Line'(Line_Text     => S,
                             No_Indent     => No_Indent,
                             Indent_Before => Indent_Before,
                             Indent_After  => Indent_After,
-                            V             => V));
+                            V             => V,
+                            BB            => BB,
+                            Need_Brace    => Need_Brace));
    end Write_Line;
 
    ----------------

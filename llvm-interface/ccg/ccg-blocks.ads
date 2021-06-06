@@ -27,16 +27,33 @@ package CCG.Blocks is
    --  This package contains subprograms used in the handling of blocks
 
    --  We represent each line being output as an Str, but also record
-   --  whether this line is to be unindented, deltas to the indentation
-   --  before and after we output the line and also a possible value from
-   --  which to obtain a possible debug filename and line number.
+   --  other information that helps us output the line.
 
    type Out_Line is record
       Line_Text      : Str;
+      --  The actual string to output
+
       No_Indent      : Boolean;
+      --  If True, don't indent this to the current indentation level
+
       Indent_Before  : Integer;
+      --  Number of spaces to increase indent before outputting this line.
+      --  This line is indented by the new count.
+
       Indent_After   : Integer;
+      --  Number of spaces to increase indent after outputting this line.
+      --  This line is indented by the old count.
+
       V              : Value_T;
+      --  An LLVM value that may contain debug information denoting the
+      --  position of this line in the source.
+
+      BB             : Basic_Block_T;
+      --  If line is "goto <label>;", the block this is branching to
+
+      Need_Brace     : Boolean;
+      --  In the goto case, True if we'll need to write a brace if we're
+      --  replacing this by more than one statement.
    end record;
 
    Global_Decl_Idx_Low_Bound  : constant := 100_000_000;
@@ -101,19 +118,23 @@ package CCG.Blocks is
 
    procedure Output_Stmt
      (S             : Str;
-      Semicolon     : Boolean := True;
-      No_Indent     : Boolean := False;
-      Indent_Before : Integer := 0;
-      Indent_After  : Integer := 0;
-      V             : Value_T := No_Value_T)
+      Semicolon     : Boolean       := True;
+      No_Indent     : Boolean       := False;
+      Indent_Before : Integer       := 0;
+      Indent_After  : Integer       := 0;
+      V             : Value_T       := No_Value_T;
+      BB            : Basic_Block_T := No_BB_T;
+      Need_Brace    : Boolean       := False)
      with Pre => Present (S);
    procedure Output_Stmt
      (S             : String;
-      Semicolon     : Boolean := True;
-      No_Indent     : Boolean := False;
-      Indent_Before : Integer := 0;
-      Indent_After  : Integer := 0;
-      V             : Value_T := No_Value_T);
+      Semicolon     : Boolean       := True;
+      No_Indent     : Boolean       := False;
+      Indent_Before : Integer       := 0;
+      Indent_After  : Integer       := 0;
+      V             : Value_T       := No_Value_T;
+      BB            : Basic_Block_T := No_BB_T;
+      Need_Brace    : Boolean       := False);
    --  Like Output_Decl, but for the statement part of the current subprogram
 
    function Get_Global_Decl_Line (Idx : Global_Decl_Idx) return Out_Line
@@ -154,18 +175,18 @@ package CCG.Blocks is
    procedure Output_Branch
      (From       : Value_T;
       To         : Value_T;
-      Need_Block : Boolean := False;
+      Need_Brace : Boolean := False;
       Had_Phi    : Boolean := False)
      with Pre => Present (From) and then Present (To);
    procedure Output_Branch
      (From       : Value_T;
       To         : Basic_Block_T;
-      Need_Block : Boolean := False;
+      Need_Brace : Boolean := False;
       Had_Phi    : Boolean := False)
      with Pre => Present (From) and then Present (To);
    --  Generate code to jump from instruction From to instruction or basic
    --  block To, taking care of any phi instructions at the target.
-   --  Need_Block says whether we need to generate a "{ ... }" construct.
+   --  Need_Brace says whether we need to generate a "{ ... }" construct.
 
    procedure Write_BB (BB : Basic_Block_T)
      with Pre => Present (BB);

@@ -589,10 +589,17 @@ package body CCG.Subprograms is
         Subprogram_Table.Table (Subprogram_Table.Last);
 
    begin
-      SD.Last_Decl := Idx;
+      --  If this is the first we've written, set it as the first and last
+      --  for the current subprogram. Otherwise, verify that it's consecutive
+      --  to the last decl we added to this subprogram.
+
       if No (SD.First_Decl) then
          SD.First_Decl := Idx;
+      else
+         pragma Assert (Idx = SD.Last_Decl + 1);
       end if;
+
+      SD.Last_Decl := Idx;
    end Add_Decl_Line;
 
    -----------------------

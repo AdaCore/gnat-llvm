@@ -128,9 +128,13 @@ package CCG.Environment is
    procedure Set_Was_Written (BB : Basic_Block_T; B : Boolean := True)
      with Pre  => Present (BB), Post => Get_Was_Written (BB) = B, Inline;
    procedure Set_First_Stmt (BB : Basic_Block_T; Sidx : Stmt_Idx)
-     with Pre  => Present (BB), Post => Get_First_Stmt (BB) = Sidx, Inline;
+     with Pre  => Present (BB) and then No (Get_First_Stmt (BB)),
+          Post => Get_First_Stmt (BB) = Sidx, Inline;
    procedure Set_Last_Stmt (BB : Basic_Block_T; Sidx : Stmt_Idx)
-     with Pre  => Present (BB), Post => Get_Last_Stmt (BB) = Sidx, Inline;
+     with Pre  => Present (BB)
+                  and then (No (Get_Last_Stmt (BB))
+                            or else Sidx = Get_Last_Stmt (BB) + 1),
+          Post => Get_Last_Stmt (BB) = Sidx, Inline;
 
    procedure Delete_Value_Info (V : Value_T) with Convention => C;
    --  Delete all information previously stored for V

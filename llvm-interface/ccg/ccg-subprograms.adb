@@ -252,10 +252,11 @@ package body CCG.Subprograms is
          return;
       end if;
 
-      --  Otherwise, start a new function and output it, starting from
-      --  the entry block.
+      --  Otherwise, start a new function, do any transformation to help
+      --  our output, and output it, starting from the entry block.
 
       New_Subprogram (V);
+      Transform_Blocks (V);
       Output_Decl (Function_Proto (V), Semicolon => False, V => V);
       Output_Decl ("{", Semicolon => False, Indent_After => C_Indent);
       Output_BB (Get_Entry_Basic_Block (V));

@@ -12,6 +12,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/InlineAsm.h"
+#include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
@@ -28,6 +29,7 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm-c/Core.h"
 
 using namespace llvm;
@@ -706,6 +708,39 @@ extern "C"
 BasicBlock *Get_Single_Predecessor (BasicBlock *bb)
 {
   return bb->getSinglePredecessor ();
+}
+
+extern "C"
+void
+Invert_Predicate (CmpInst *c)
+{
+  c->setPredicate (c->getInversePredicate ());
+}
+
+extern "C"
+void
+Swap_Successors (BranchInst *c)
+{
+  c->swapSuccessors ();
+}
+
+extern "C"
+void
+Replace_Inst_With_Inst (Instruction *from, Instruction *to)
+{
+  ReplaceInstWithInst (from, to);
+}
+
+extern "C"
+BinaryOperator *Create_And (Value *Op1, Value *Op2)
+{
+  return BinaryOperator::CreateAnd (Op1, Op2);
+}
+
+extern "C"
+BinaryOperator *Create_Or (Value *Op1, Value *Op2)
+{
+  return BinaryOperator::CreateOr (Op1, Op2);
 }
 
 /* If we call into CCG from GNAT LLVM during the compilation process to

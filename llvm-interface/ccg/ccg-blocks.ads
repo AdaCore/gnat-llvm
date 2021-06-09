@@ -192,4 +192,8 @@ package CCG.Blocks is
      with Pre => Present (BB);
    --  Write the statements in BB, possibly omitting the initial label
 
+   procedure Transform_Blocks (V : Value_T)
+     with Pre => Is_A_Function (V);
+   --  Transform the basic blocks in V so that we can generate cleaner code
+
 end CCG.Blocks;

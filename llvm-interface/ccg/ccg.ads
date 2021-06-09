@@ -65,6 +65,8 @@ package CCG is
    --  better source location in the future when we keep track of them for e.g.
    --  generating #line information.
 
+   procedure Discard (B  : Boolean);
+
    --  Define the sizes of all the basic C types.
 
    Char_Size      : Pos;

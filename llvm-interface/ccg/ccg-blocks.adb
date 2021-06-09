@@ -19,6 +19,8 @@ with Interfaces.C; use Interfaces.C;
 
 with Output; use Output;
 
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+
 with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
@@ -56,6 +58,109 @@ package body CCG.Blocks is
 
    Current_BB : Basic_Block_T := No_BB_T;
    --  The basic block for which we're outputting statements
+
+   function Negate_Condition
+     (V : Value_T; Do_Nothing : Boolean := False) return Boolean
+     with Pre => Present (V);
+   --  If V is only used once, replace it with a value that represents the
+   --  negative of that condition and return True. Otherwise, return False.
+   --  If Do_Nothing is True, don't actually make any change, just indicate
+   --  whether such a change can be made.
+
+   ----------------------
+   -- Negate_Condition --
+   ----------------------
+
+   function Negate_Condition
+     (V : Value_T; Do_Nothing : Boolean := False) return Boolean
+   is
+   begin
+      --  If V is used more than once, it's too complicated to do anything
+
+      if Num_Uses (V) > 1 then
+         return False;
+
+      --  If it's a NOT instruction (XOR with 1), we can replace V
+      --  with the operand of the XOR.
+
+      elsif Is_A_Instruction (V) and then Get_Opcode (V) = Op_Xor
+        and then Is_A_Constant_Int (Get_Operand (V, Nat (1)))
+        and then Equals_Int (Get_Operand (V, Nat (1)), 1)
+      then
+         if not Do_Nothing then
+            Replace_All_Uses_With (V, Get_Operand (V, Nat (0)));
+         end if;
+
+         return True;
+
+      --  If it's an AND or OR instruction, negate both operand and
+      --  replace AND with OR and vice versa.
+
+      elsif Is_A_Instruction (V) and then Get_Opcode (V) in Op_And | Op_Or
+        and then Negate_Condition (Get_Operand (V, Nat (0)), True)
+        and then Negate_Condition (Get_Operand (V, Nat (1)), Do_Nothing)
+      then
+         if not Do_Nothing then
+            Discard (Negate_Condition (Get_Operand (V, Nat (0))));
+            Replace_Inst_With_Inst
+              (V, (if   Get_Opcode (V) = Op_And
+                   then Create_Or  (Get_Operand (V, Nat (0)),
+                                    Get_Operand (V, Nat (1)))
+                   else Create_And (Get_Operand (V, Nat (0)),
+                                    Get_Operand (V, Nat (1)))));
+         end if;
+
+         return True;
+
+      --  If it's a comparison instruction, we can invert the comparison
+
+      elsif Is_A_Instruction (V)
+        and then Get_Opcode (V) in Op_I_Cmp | Op_F_Cmp
+      then
+         if not Do_Nothing then
+            Invert_Predicate (V);
+         end if;
+
+         return True;
+
+      --  Otherwise, we can't do anything. We could add an XOR
+      --  instruction here, but that case isn't worth dealing with.
+
+      else
+         return False;
+      end if;
+
+   end Negate_Condition;
+
+   ----------------------
+   -- Transform_Blocks --
+   ----------------------
+
+   procedure Transform_Blocks (V : Value_T) is
+      BB : Basic_Block_T := Get_First_Basic_Block (V);
+      T  : Value_T;
+
+   begin
+      --  For each basic block, we start by looking at the terminator
+      --  to see if it's a conditional branch where the "true" block has
+      --  more than one predecessor but the "false" block doesn't. In that
+      --  case, we'll generate cleaner code by swapping the two operands and
+      --  negating the condition.
+
+      while Present (BB) loop
+         T := Get_Basic_Block_Terminator (BB);
+         if Is_A_Branch_Inst (T) and then Is_Conditional (T)
+           and then not Has_Single_Predecessor (Get_Operand (T, Nat (2)))
+           and then Has_Single_Predecessor (Get_Operand (T, Nat (1)))
+           and then Negate_Condition (Get_Operand (T, Nat (0)))
+         then
+            Swap_Successors (T);
+         end if;
+
+         BB := Get_Next_Basic_Block (BB);
+      end loop;
+
+   end Transform_Blocks;
 
    -----------------
    -- Output_Decl --

@@ -322,6 +322,21 @@ package GNATLLVM.Wrapper is
    function Get_Single_Predecessor (BB : Basic_Block_T) return Basic_Block_T
      with Import, Convention => C, External_Name => "Get_Single_Predecessor";
 
+   procedure Invert_Predicate (V : Value_T)
+     with Import, Convention => C, External_Name => "Invert_Predicate";
+
+   procedure Swap_Successors (V : Value_T)
+     with Import, Convention => C, External_Name => "Swap_Successors";
+
+   procedure Replace_Inst_With_Inst (From, To : Value_T)
+     with Import, Convention => C, External_Name => "Replace_Inst_With_Inst";
+
+   function Create_And (Op1, Op2 : Value_T) return Value_T
+     with Import, Convention => C, External_Name => "Create_And";
+
+   function Create_Or  (Op1, Op2 : Value_T) return Value_T
+     with Import, Convention => C, External_Name => "Create_Or";
+
    function Get_Num_CDA_Elements (V : Value_T) return unsigned
      with Import, Convention => C, External_Name => "Get_Num_CDA_Elements";
 

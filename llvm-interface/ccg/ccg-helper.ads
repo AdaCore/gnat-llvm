@@ -248,6 +248,10 @@ package CCG.Helper is
      (Present (Get_Single_Predecessor (BB)))
      with Pre => Present (BB);
 
+   function Has_Single_Predecessor (V : Value_T) return Boolean is
+     (Has_Single_Predecessor (Value_As_Basic_Block (V)))
+     with Pre => Value_Is_Basic_Block (V);
+
    function Get_As_String (V : Value_T) return String
      with Pre => Is_A_Constant_Data_Array (V) and then Is_Constant_String (V);
 

@@ -656,7 +656,7 @@ package body CCG.Subprograms is
 
          --  Finally, write the closing brace
 
-         Write_Line (+"}", Indent_Before => -C_Indent);
+         Write_Line ("}", Indent_Before => -C_Indent);
       end loop;
    end Write_Subprograms;
 end CCG.Subprograms;

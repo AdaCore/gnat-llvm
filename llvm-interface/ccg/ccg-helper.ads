@@ -244,6 +244,10 @@ package CCG.Helper is
                    and then Idx < Get_Num_CDA_Elements (V),
            Post => Present (Get_Element_As_Constant'Result);
 
+   function Has_Single_Predecessor (BB : Basic_Block_T) return Boolean is
+     (Present (Get_Single_Predecessor (BB)))
+     with Pre => Present (BB);
+
    function Get_As_String (V : Value_T) return String
      with Pre => Is_A_Constant_Data_Array (V) and then Is_Constant_String (V);
 

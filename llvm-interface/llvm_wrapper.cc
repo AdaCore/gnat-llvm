@@ -4,6 +4,7 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/Attributes.h"
+#include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/DIBuilder.h"
@@ -699,6 +700,12 @@ const char *
 Get_Opcode_Name (LLVMOpcode opc)
 {
   return Instruction::getOpcodeName (map_from_llvmopcode (opc));
+}
+
+extern "C"
+BasicBlock *Get_Single_Predecessor (BasicBlock *bb)
+{
+  return bb->getSinglePredecessor ();
 }
 
 /* If we call into CCG from GNAT LLVM during the compilation process to

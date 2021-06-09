@@ -36,6 +36,7 @@ with CCG.Aggregates;   use CCG.Aggregates;
 with CCG.Helper;       use CCG.Helper;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Subprograms;  use CCG.Subprograms;
+with CCG.Target;       use CCG.Target;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Output is
@@ -1086,26 +1087,51 @@ package body CCG.Output is
    -- Write_Line --
    ----------------
 
+   procedure Write_Line
+     (S             : String;
+      No_Indent     : Boolean       := False;
+      Indent_Before : Integer       := 0;
+      Indent_After  : Integer       := 0;
+      V             : Value_T       := No_Value_T;
+      BB            : Basic_Block_T := No_BB_T;
+      Need_Brace    : Boolean       := False)
+   is
+   begin
+      Write_Line (Out_Line'(Line_Text     => +S,
+                            No_Indent     => No_Indent,
+                            Indent_Before => Indent_Before,
+                            Indent_After  => Indent_After,
+                            V             => V,
+                            BB            => BB,
+                            Need_Brace    => Need_Brace));
+   end Write_Line;
+
+   ----------------
+   -- Write_Line --
+   ----------------
+
    procedure Write_Line (Line : Out_Line) is
-      Our_V     : constant Value_T              :=
+      Our_V         : constant Value_T              :=
         (if   No (Line.V)
            or else Is_A_Instruction (Line.V)
            or else Is_A_Function (Line.V)
            or else Is_A_Global_Variable (Line.V)
            then Line.V else No_Value_T);
-      Our_File  : constant Str                  :=
+      Our_File      : constant Str                  :=
         (if   Present (Our_V) and then Emit_Debug_Info
          then +Get_Debug_Loc_Filename (Our_V) else No_Str);
-      Our_Dir   : constant Str                  :=
+      Our_Dir       : constant Str                  :=
         (if   Present (Our_V) and then Dump_Source_Text
          then +Get_Debug_Loc_Directory (Our_V) else No_Str);
-      In_Main   : constant Boolean              :=
+      In_Main       : constant Boolean              :=
         Present (Our_Dir) and then Our_Dir & Our_File = Main_Source_Name;
-      Have_File : constant Boolean              :=
+      Have_File     : constant Boolean              :=
         Present (Our_File) and then not Is_Null_String (Our_File);
-      Our_Line  : constant Physical_Line_Number :=
+      Our_Line      : constant Physical_Line_Number :=
         (if Have_File then +Get_Debug_Loc_Line (Our_V) else 1);
-      S         : Str                           := Line.Line_Text;
+      S             : Str                           := Line.Line_Text;
+      Indent_Before : Integer                       := Line.Indent_Before;
+      Indent_After  : Integer                       := Line.Indent_After;
 
    begin
       --  If we have debug info and it differs from the last we have, and
@@ -1136,15 +1162,40 @@ package body CCG.Output is
          Next_Line_To_Dump := Our_Line + 1;
       end if;
 
+      --  Process a goto. If the block has only one predecessor, we inline
+      --  the block here.
+
+      if Present (Line.BB) then
+         if Has_Single_Predecessor (Line.BB) then
+            if Line.Need_Brace then
+               Write_Line ("{", Indent_After => C_Indent);
+            end if;
+
+            Write_BB (Line.BB, Omit_Label => True);
+            if Line.Need_Brace then
+               Write_Line ("}", Indent_Before => -C_Indent);
+            end if;
+
+            return;
+
+         --  Otherwise, if we need braces, set up the indent before and
+         --  after this line.
+
+         elsif Line.Need_Brace then
+            Indent_Before := Indent_Before + C_Indent;
+            Indent_After  := Indent_After  - C_Indent;
+         end if;
+      end if;
+
       --  Now handle indentation and output our code
 
-      Indent := Indent + Line.Indent_Before;
+      Indent := Indent + Indent_Before;
       if not Line.No_Indent then
          S := (Indent * " ") & S;
       end if;
 
       Write_Str (S, Eol => True);
-      Indent := Indent + Line.Indent_After;
+      Indent := Indent + Indent_After;
 
    end Write_Line;
 

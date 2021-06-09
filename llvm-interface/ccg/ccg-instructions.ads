@@ -57,11 +57,6 @@ package CCG.Instructions is
    --  Write a statement to copy RHS, of type T, to LHS. If V is Present,
    --  it represents something that may give line/file information.
 
-   procedure Add_Pending_Value (V : Value_T)
-     with Pre => Present (V);
-   --  Called when set manually set a C Value to add the value to the
-   --  table of values waiting to be evaluated.
-
    procedure Process_Pending_Values;
    --  Walk the set of pending values in reverse order and generate
    --  assignments for any that haven't been written yet.

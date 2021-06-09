@@ -110,8 +110,7 @@ package body CCG.Aggregates is
 
    function Value_Piece (V : Value_T; T : in out Type_T; Idx : Nat) return Str
      with Pre  => Get_Opcode (V) in Op_Extract_Value | Op_Insert_Value
-                  and then Get_Type_Kind (T)
-                    in Struct_Type_Kind | Array_Type_Kind,
+                  and then Is_Aggregate_Type (T),
           Post => Present (Value_Piece'Result) and then T /= T'Old;
    --  T is the type of a component of the aggregate in an extractvalue or
    --  insertvalue instruction V. Return an Str saying how to access that

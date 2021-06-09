@@ -64,6 +64,14 @@ package CCG.Utils is
      (Is_Simple_Type (Type_Of (V)))
      with Pre => Present (V);
    --  True if this is or has a type that's simple (elementary)
+
+   function Is_Aggregate_Type (T : Type_T) return Boolean is
+     (Get_Type_Kind (T) in Struct_Type_Kind | Array_Type_Kind)
+     with Pre => Present (T);
+   function Is_Aggregate_Type (V : Value_T) return Boolean is
+     (Is_Aggregate_Type (Type_Of (V)))
+     with Pre => Present (V);
+
    function Is_Metadata (V : Value_T) return Boolean is
      (Get_Type_Kind (V) = Metadata_Type_Kind)
      with Pre => Present (V);

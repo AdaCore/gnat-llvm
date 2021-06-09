@@ -210,19 +210,6 @@ package body CCG.Instructions is
       end case;
    end Is_Comparison;
 
-   -----------------------
-   -- Add_Pending_Value --
-   -----------------------
-
-   procedure Add_Pending_Value (V : Value_T) is
-   begin
-      --  If this value isn't used, we don't ever need to output it
-
-      if Num_Uses (V) > 0 then
-         Pending_Value_Table.Append (V);
-      end if;
-   end Add_Pending_Value;
-
    ----------------------------
    -- Process_Pending_Values --
    ----------------------------
@@ -311,6 +298,7 @@ package body CCG.Instructions is
       --  that's marked unsigned, so it may be an array or record
       --  reference), add a cast to the unsigned form.
 
+      Process_Pending_Values;
       if Get_Is_Unsigned (V) and then not Get_Is_Unsigned (Op) then
          Assignment (V, "(unsigned " & Type_Of (V) & ") " & Deref (Op));
       else
@@ -647,7 +635,8 @@ package body CCG.Instructions is
       --  If LHS is a LHS, has more than one use in the IR, if we've
       --  already emitted a decl for it (e.g., it was defined in a block we
       --  haven't processed yet), if it's a source-level variable, or if
-      --  it's a function call or volatile load, generate an assignment
+      --  it's a function call that returns an aggregate type (because we
+      --  may try to take the address of it), generate an assignment
       --  statement into LHS. Otherwise, mark LHS as having value RHS. If
       --  LHS is a constant expression or of array types, never generate an
       --  assignment statement, the former because we may be at top level
@@ -656,21 +645,25 @@ package body CCG.Instructions is
 
       if (Get_Is_LHS (LHS) or else Num_Uses (LHS) > 1
             or else Get_Is_Variable (LHS) or else Get_Is_Decl_Output (LHS)
-            or else (Is_A_Call_Inst (LHS) and not Is_Opencode_Builtin)
-            or else (Is_A_Load_Inst (LHS) and then Get_Volatile (LHS)))
+            or else (Is_A_Call_Inst (LHS) and then Is_Aggregate_Type (LHS)))
         and then not Is_A_Constant_Expr (LHS)
         and then Get_Type_Kind (Type_Of (LHS)) /= Array_Type_Kind
       then
          Maybe_Decl (LHS);
          Write_Copy (LHS, RHS, Type_Of (LHS));
       else
-         --  Make a note of the value of V. If V is an instruction, make a
+         --  Make a note of the value of V. If V is an instruction, that
+         --  has a potential side effect-such as call or load, make a
          --  note of this pending assignment in case we get a store or
          --  call.
 
          Set_C_Value (LHS, RHS);
-         if Is_A_Instruction (LHS) then
-            Add_Pending_Value (LHS);
+         if Is_A_Instruction (LHS)
+           and then (Num_Uses (LHS) > 0
+                     or else (Is_A_Call_Inst (LHS) and not Is_Opencode_Builtin)
+                     or else Is_A_Load_Inst (LHS))
+         then
+            Pending_Value_Table.Append (LHS);
          end if;
       end if;
    end Assignment;

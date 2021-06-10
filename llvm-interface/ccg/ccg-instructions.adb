@@ -368,18 +368,10 @@ package body CCG.Instructions is
             return TP ("#1 / #2", Op1, Op2) + Mult;
 
          when Op_And =>
-            if T = Bit_T then
-               return TP ("#1 && #2", Op1, Op2) + Logical_AND;
-            else
-               return TP ("#1 & #2", Op1, Op2) + Bit;
-            end if;
+            return TP ("#1 & #2", Op1, Op2) + Bit;
 
          when Op_Or =>
-            if T = Bit_T then
-               return TP ("#1 || #2", Op1, Op2) + Logical_OR;
-            else
-               return TP ("#1 | #2", Op1, Op2) + Bit;
-            end if;
+            return TP ("#1 | #2", Op1, Op2) + Bit;
 
          when Op_Xor =>
             if T = Bit_T and then Is_A_Constant_Int (Op2)

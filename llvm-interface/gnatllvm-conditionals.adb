@@ -871,8 +871,24 @@ package body GNATLLVM.Conditionals is
          --  mechanisms, such as short-circuit operators.
 
          when N_Expression_With_Actions =>
-            Emit (Actions (N));
-            Emit_If_Cond (Expression (N), BB_True, BB_False);
+
+            declare
+               Has_All : Boolean;
+               Expr    : constant Node_Id  := Simple_Value_Action (N, Has_All);
+
+            begin
+               --  If this is just defining the value that is to be its
+               --  result with no reference, just use that as the condition
+               --  that we test. Otherwise, emit the actions and then test.
+
+               if Present (Expr) and then not Has_All then
+                  Emit_If_Cond (Expr, BB_True, BB_False);
+               else
+                  Emit (Actions (N));
+                  Emit_If_Cond (Expression (N), BB_True, BB_False);
+               end if;
+            end;
+
             return;
 
          when N_Op_Not =>

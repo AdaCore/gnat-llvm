@@ -88,6 +88,12 @@ package GNATLLVM.Compile is
    --  so we compute this as a safe subexpression.  LHS is like for
    --  Emit.
 
+   function Simple_Value_Action
+     (N : N_Expression_With_Actions_Id; Has_All : out Boolean) return Node_Id;
+   --  If N just declares the value it returns, return the initializer
+   --  of that value; otherwise return Empty.  Has_All is True if we
+   --  have an N_Explicit_Dereference of the expression.
+
    procedure Process_Freeze_Entity (N : N_Freeze_Entity_Id);
    --  Process the actual freezing denoted by node N
 

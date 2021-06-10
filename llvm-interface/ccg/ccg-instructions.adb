@@ -333,6 +333,7 @@ package body CCG.Instructions is
    begin
       case Opc is
          when Op_Add =>
+            --  ??? J + -6 should be J - 6 and likewise for Op_Sub
             return TP ("#1 + #2", Op1, Op2) + Add;
 
          when Op_Sub =>

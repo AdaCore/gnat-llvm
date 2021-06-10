@@ -65,7 +65,8 @@ package CCG is
    --  better source location in the future when we keep track of them for e.g.
    --  generating #line information.
 
-   procedure Discard (B  : Boolean);
+   procedure Discard (B : Boolean) is null;
+   --  Used to discard Boolean function results
 
    --  Define the sizes of all the basic C types.
 

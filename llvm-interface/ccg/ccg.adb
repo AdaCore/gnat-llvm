@@ -170,15 +170,4 @@ package body CCG is
       Error_Msg (Msg, First_Source_Ptr);
    end Error_Msg;
 
-   -------------
-   -- Discard --
-   -------------
-
-   procedure Discard (B : Boolean) is
-      pragma Unreferenced (B);
-
-   begin
-      null;
-   end Discard;
-
 end CCG;

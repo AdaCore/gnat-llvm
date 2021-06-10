@@ -119,10 +119,10 @@ package GNATLLVM.Utils is
    --  Return True if N is an expression that has a Volatile_Full_Access
    --  prefix.
 
-   procedure Discard (V  : Value_T)        with Pre => Present (V);
-   procedure Discard (T  : Type_T)         with Pre => Present (T);
-   procedure Discard (BB : Basic_Block_T)  with Pre => Present (BB);
-   procedure Discard (B  : Boolean);
+   procedure Discard (V  : Value_T)       is null;
+   procedure Discard (T  : Type_T)        is null;
+   procedure Discard (BB : Basic_Block_T) is null;
+   procedure Discard (B  : Boolean)       is null;
 
    function Get_Ext_Name (E : Entity_Id; Suffix : String := "") return Name_Id
      with Pre => Present (E), Post => Present (Get_Ext_Name'Result);

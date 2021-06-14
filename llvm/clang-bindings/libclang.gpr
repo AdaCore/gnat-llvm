@@ -1,0 +1,9 @@
+library project libclang is
+   type Any_Library_Type is ("static", "relocatable", "static-pic");
+   Library_Type : Any_Library_Type := external ("LIBRARY_TYPE", "static");
+   for Library_Name use "libclang";
+   for Library_Kind use Library_Type;
+   for Library_Dir use "libclang." & Library_Type;
+   for Object_Dir use "obj-libclang." & Library_Type;
+   for Source_Dirs use (".");
+end libclang;

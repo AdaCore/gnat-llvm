@@ -25,7 +25,7 @@ CMAKE_FLAGS=-DLLVM_TARGETS_TO_BUILD="$(LLVM_TARGETS)" \
 CMAKE_FLAGS_NO_DEBUG=-DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON
 CMAKE_FLAGS_PROD=-DCMAKE_BUILD_TYPE=RelWithDebInfo
 
-.PHONY: configure
+.PHONY: configure clang-bindings
 
 all: setup llvm
 
@@ -37,8 +37,7 @@ llvm-bindings: $(OUT_DIR)/llvm-core.adb
 	mv $(OUT_DIR) llvm-bindings
 
 clang-bindings: $(OUT_DIR)/clang-index.adb
-	rm -rf clang-bindings
-	mv $(OUT_DIR) clang-bindings
+	mv $(OUT_DIR)/* clang-bindings
 
 CONFIGURE=cd llvm-obj && CXX=g++ CC=gcc CXXC=g++ \
   cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$(PWD)/install \
@@ -103,10 +102,15 @@ $(OUT_DIR)/clang-index.adb: $(CLANG_INCLUDE_DIR_C)/Index.h py/common.py py/wrapp
 	rm -rf $(TMP_GEN_DIR) $(OUT_DIR)
 	mkdir -p $(TMP_GEN_DIR) $(OUT_DIR)
 	cd $(TMP_GEN_DIR) && g++ -I$(LLVM_INCLUDE_DIR) -I$(PWD)/llvm-obj/include -DNDEBUG -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -U__cplusplus -c -D_Bool=bool -Dlto_api_version=lto_api_version_fun -fdump-ada-spec -C $(CLANG_INCLUDE_DIR_C)/*.h
+	sed -e "s^$(PWD)/^^g" -i $(TMP_GEN_DIR)/clang_c_*_h.ads
 	sed -e 's/\(with Interfaces.C; use Interfaces.C;\)/pragma Warnings (Off); \1 pragma Warnings (On);/g' -i $(TMP_GEN_DIR)/clang_c_*_h.ads
 	echo -n "pragma Style_Checks (Off); package Clang is end Clang;" > $(OUT_DIR)/clang.ads
 	./py/common.py process_names_clang gen/clang_c_*_h.ads
+	cd $(OUT_DIR) && rm x86_64_linux*.ads
+	sed -e 's/x86_64_linux_gnu_bits_types_time_t_h/time_h/g' -i $(OUT_DIR)/clang-*.ads
 	./py/undupwiths.py out/clang*.ads
+	cp py/stddef_h.ads.proto $(OUT_DIR)/stddef_h.ads
+	cp py/time_h.ads.proto $(OUT_DIR)/time_h.ads
 	rm -rf gen
 	mv out gen
 	mkdir out

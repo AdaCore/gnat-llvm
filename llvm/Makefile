@@ -30,7 +30,7 @@ CMAKE_FLAGS_PROD=-DCMAKE_BUILD_TYPE=RelWithDebInfo
 all: setup llvm
 
 # Bindings generation works with GNAT versions starting from 22.0
-# (in terms of date > 2021-04-07)
+# (in terms of date > 2021-06-16)
 
 llvm-bindings: $(OUT_DIR)/llvm-core.adb
 	rm -rf llvm-bindings

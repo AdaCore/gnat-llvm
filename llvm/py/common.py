@@ -310,6 +310,15 @@ def process_names_for(filenames, prefixes_for_filename, sanitize_unit_name):
             # more efficient anyway.
 
             if decl.is_a(lal.ObjectDecl, lal.SubpDecl):
+
+                # Yet another kludge. The -fdump-ada-spec now prefixes the enum
+                # constants with the enum name. We don't want that for LLVM /
+                # clang bindings so we will simply remove this prefix.
+
+                if decl.is_a(lal.ObjectDecl):
+                    str_def_name = remove_prefix(str_def_name,
+                                                 [decl.f_type_expr.text + "_"])
+
                 new_name = get_name(str_def_name)
                 if (decl.is_a(lal.ObjectDecl) and
                         decl.f_type_expr.text == "LLVMOpcode"):

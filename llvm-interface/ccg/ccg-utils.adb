@@ -130,6 +130,30 @@ package body CCG.Utils is
                    and then Has_Unsigned (Get_C_Value (V)));
    end Might_Be_Unsigned;
 
+   ----------------------
+   -- Has_Side_Effects --
+   ----------------------
+
+   function Has_Side_Effects (V : Value_T) return Boolean is
+   begin
+      --  If this isn't an instruction, it doesn't have a side effect. If
+      --  it's a call instruction or a load that's either volatile or not
+      --  from a variable, it does have side effects.  Otherwise, it has a
+      --  side effect iff any operand does. We treat a Phi node as volatile
+      --  since we can have infinite recursion if we try to walk its operands.
+
+      return (if    not Is_A_Instruction (V) then False
+              elsif Is_A_Call_Inst (V) or else Is_APHI_Node (V)
+                    or else (Is_A_Load_Inst (V)
+                             and then (Get_Volatile (V)
+                                       or else not Get_Is_Variable
+                                                     (Get_Operand0 (V))))
+              then True
+              else (for some J in Nat range 0 .. Get_Num_Operands (V) - 1 =>
+                Has_Side_Effects (Get_Operand (V, J))));
+
+   end Has_Side_Effects;
+
    -----------------
    -- Update_Hash --
    ----------------

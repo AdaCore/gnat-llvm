@@ -101,6 +101,10 @@ package CCG.Utils is
    --  It's not completely clear what we can or should do about this, but
    --  let's see if it's an issue in practice.
 
+   function Has_Side_Effects (V : Value_T) return Boolean
+     with Pre => Present (V);
+   --  True if V may have side effects. We take a very conservative view
+
    --  LLVM uses a zero-length array to indicate a variable-length
    --  array.  C doesn't permit zero-element arrays. It's tempting to
    --  use a pointer to the element type instead of a pointer to the

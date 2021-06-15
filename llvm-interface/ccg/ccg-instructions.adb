@@ -369,10 +369,26 @@ package body CCG.Instructions is
             return TP ("#1 / #2", Op1, Op2) + Mult;
 
          when Op_And =>
-            return TP ("#1 & #2", Op1, Op2) + Bit;
+
+            --  If this is a bit operation and neither has side-effects, use
+            --  && because this is clearer and more efficient in C.
+
+            if T = Bit_T and then not Has_Side_Effects (Op1)
+              and then not Has_Side_Effects (Op2)
+            then
+               return TP ("#1 && #2", Op1, Op2) + Logical_AND;
+            else
+               return TP ("#1 & #2", Op1, Op2) + Bit;
+            end if;
 
          when Op_Or =>
-            return TP ("#1 | #2", Op1, Op2) + Bit;
+            if T = Bit_T and then not Has_Side_Effects (Op1)
+              and then not Has_Side_Effects (Op2)
+            then
+               return TP ("#1 || #2", Op1, Op2) + Logical_OR;
+            else
+               return TP ("#1 | #2", Op1, Op2) + Bit;
+            end if;
 
          when Op_Xor =>
             if T = Bit_T and then Is_A_Constant_Int (Op2)

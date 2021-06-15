@@ -20,8 +20,6 @@ with LLVM.Core; use LLVM.Core;
 with CCG.Helper; use CCG.Helper;
 with CCG.Strs;   use CCG.Strs;
 
-with Table;
-
 package CCG.Blocks is
 
    --  This package contains subprograms used in the handling of blocks
@@ -158,10 +156,7 @@ package CCG.Blocks is
    --  Determine whether something is the entry block or an instruction
    --  within the entry block
 
-   procedure Output_BB (BB : Basic_Block_T)
-     with Pre => Present (BB);
-   procedure Output_BB (V : Value_T)
-     with Pre => Is_A_Basic_Block (V), Inline;
+   procedure Output_BB (BB : Basic_Block_T);
    --  Generate the code for basic block unless already output
 
    procedure Branch_Instruction (V : Value_T; Ops : Value_Array)
@@ -175,18 +170,32 @@ package CCG.Blocks is
    procedure Output_Branch
      (From       : Value_T;
       To         : Value_T;
+      Orig_From  : Value_T := No_Value_T;
       Need_Brace : Boolean := False;
       Had_Phi    : Boolean := False)
      with Pre => Present (From) and then Present (To);
    procedure Output_Branch
      (From       : Value_T;
       To         : Basic_Block_T;
+      Orig_From  : Value_T := No_Value_T;
       Need_Brace : Boolean := False;
       Had_Phi    : Boolean := False)
      with Pre => Present (From) and then Present (To);
    --  Generate code to jump from instruction From to instruction or basic
    --  block To, taking care of any phi instructions at the target.
    --  Need_Brace says whether we need to generate a "{ ... }" construct.
+   --  Orig_From is used in recursive calls to track the original instruction
+   --  leading to this branch.
+
+   function Has_Single_Predecessor (BB : Basic_Block_T) return Boolean
+     with Pre => Present (BB);
+   function Has_Single_Predecessor (V : Value_T) return Boolean is
+     (Has_Single_Predecessor (Value_As_Basic_Block (V)))
+     with Pre => Value_Is_Basic_Block (V);
+   --  Return True iff BB has only one effective predeccessor. By "effective"
+   --  we mean that if the it does have a single predecessor but that block
+   --  is just an unconditional branch plus optionally Phi nodes, that
+   --  predecessor also must only have a single predecessor.
 
    procedure Write_BB (BB : Basic_Block_T; Omit_Label : Boolean := False)
      with Pre => Present (BB);

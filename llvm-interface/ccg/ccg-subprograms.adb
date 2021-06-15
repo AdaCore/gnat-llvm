@@ -77,6 +77,14 @@ package body CCG.Subprograms is
    --  Return a string corresponding to the return type of T, adjusting the
    --  type in the case where it's an array.
 
+   package Blocks_To_Write_Table is new Table.Table
+     (Table_Component_Type => Basic_Block_T,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 10,
+      Table_Increment      => 10,
+      Table_Name           => "Blocks_To_Write_Table");
+
    --------------------
    -- New_Subprogram --
    --------------------
@@ -603,6 +611,15 @@ package body CCG.Subprograms is
       SD.Last_Decl := Idx;
    end Add_Decl_Line;
 
+   ------------------------
+   -- Add_Block_To_Write --
+   ------------------------
+
+   procedure Add_Block_To_Write (BB : Basic_Block_T) is
+   begin
+      Blocks_To_Write_Table.Append (BB);
+   end Add_Block_To_Write;
+
    -----------------------
    -- Write_Subprograms --
    -----------------------
@@ -619,8 +636,8 @@ package body CCG.Subprograms is
 
       for Sidx in Subprogram_Idx_Start .. Subprogram_Table.Last loop
          declare
-            SD : constant Subprogram_Data := Subprogram_Table.Table (Sidx);
-            BB : Basic_Block_T            := Get_First_Basic_Block (SD.Func);
+            SD   : constant Subprogram_Data := Subprogram_Table.Table (Sidx);
+            BB_J : Nat                      := 1;
 
          begin
             --  First write the decls. We at least have the function prototype
@@ -643,15 +660,21 @@ package body CCG.Subprograms is
                Write_BB (Get_Entry_Basic_Block (SD.Func));
             end if;
 
-            --  Now write all other blocks that we output and that we haven't
-            --  already written.
+            --  Now write all other blocks that we branch to and that we
+            --  haven't already written.
 
-            while Present (BB) loop
-               if Get_Was_Output (BB) and then not Get_Was_Written (BB) then
-                  Write_BB (BB);
-               end if;
+            while BB_J <= Blocks_To_Write_Table.Last loop
+               declare
+                  BB : constant Basic_Block_T :=
+                    Blocks_To_Write_Table.Table (BB_J);
 
-               BB := Get_Next_Basic_Block (BB);
+               begin
+                  if Get_Was_Output (BB) and then not Get_Was_Written (BB) then
+                     Write_BB (BB);
+                  end if;
+
+                  BB_J := BB_J + 1;
+               end;
             end loop;
          end;
 

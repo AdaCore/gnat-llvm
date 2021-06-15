@@ -19,6 +19,8 @@ with System;
 
 with stdint_h;
 
+with LLVM.Core; use LLVM.Core;
+
 package GNATLLVM.Wrapper is
 
    function Get_Latest_Instruction (Bld : Builder_T) return Value_T
@@ -319,6 +321,12 @@ package GNATLLVM.Wrapper is
    function Equal_Constants (V1, V2 : Value_T) return Boolean
      with Inline;
 
+   function Struct_Has_Name (T : Type_T) return Boolean
+     with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
+
+   function Value_Has_Name (V : Value_T) return Boolean
+     with Pre => Present (V);
+
    function Get_Single_Predecessor (BB : Basic_Block_T) return Basic_Block_T
      with Import, Convention => C, External_Name => "Get_Single_Predecessor";
 
@@ -336,6 +344,12 @@ package GNATLLVM.Wrapper is
 
    function Create_Or  (Op1, Op2 : Value_T) return Value_T
      with Import, Convention => C, External_Name => "Create_Or";
+
+   function Get_First_Non_Phi_Or_Dbg (BB : Basic_Block_T) return Value_T
+     with Import, Convention => C, External_Name => "Get_First_Non_Phi_Or_Dbg";
+
+   function Is_Debug_Intrinsic (V : Value_T) return Boolean
+     with Pre => Present (Is_A_Instruction (V));
 
    function Get_Num_CDA_Elements (V : Value_T) return unsigned
      with Import, Convention => C, External_Name => "Get_Num_CDA_Elements";

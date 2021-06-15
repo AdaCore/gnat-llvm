@@ -328,7 +328,7 @@ package body GNATLLVM.Wrapper is
 
    begin
       Offset := Result_Offset;
-      return (if Result = 0 then False else True);
+      return Result /= 0;
    end Get_GEP_Constant_Offset;
 
    -----------------
@@ -339,7 +339,7 @@ package body GNATLLVM.Wrapper is
       function Is_C_String_C (V : Value_T) return LLVM_Bool
         with Import, Convention => C, External_Name => "Is_C_String";
    begin
-      return (if Is_C_String_C (V) = 0 then False else True);
+      return Is_C_String_C (V) /= 0;
    end Is_C_String;
 
    ------------------------
@@ -362,7 +362,7 @@ package body GNATLLVM.Wrapper is
       function Equals_Int_C (V : Value_T; Val : ULL) return LLVM_Bool
         with Import, Convention => C, External_Name => "Equals_Int";
    begin
-      return (if Equals_Int_C (V, Val) = 0 then False else True);
+      return Equals_Int_C (V, Val) /= 0;
    end Equals_Int;
 
    ----------------------
@@ -373,7 +373,40 @@ package body GNATLLVM.Wrapper is
       function Equal_Constants_C (V1, V2 : Value_T) return LLVM_Bool
         with Import, Convention => C, External_Name => "Equal_Constants";
    begin
-      return (if Equal_Constants_C (V1, V2) = 0 then False else True);
+      return Equal_Constants_C (V1, V2) /= 0;
    end Equal_Constants;
+
+   ---------------------
+   -- Struct_Has_Name --
+   ---------------------
+
+   function Struct_Has_Name (T : Type_T) return Boolean is
+      function Struct_Has_Name (T : Type_T) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Struct_Has_Name";
+   begin
+      return Struct_Has_Name (T) /= 0;
+   end Struct_Has_Name;
+
+   --------------------
+   -- Value_Has_Name --
+   --------------------
+
+   function Value_Has_Name (V : Value_T) return Boolean is
+      function Value_Has_Name (V : Value_T) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Value_Has_Name";
+   begin
+      return Value_Has_Name (V) /= 0;
+   end Value_Has_Name;
+
+   ------------------------
+   -- Is_Debug_Intrinsic --
+   ------------------------
+
+   function Is_Debug_Intrinsic (V : Value_T) return Boolean is
+      function Is_Debug_Intrinsic (V : Value_T) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Is_Debug_Intrinsic";
+   begin
+      return Is_Debug_Intrinsic (V) /= 0;
+   end Is_Debug_Intrinsic;
 
 end GNATLLVM.Wrapper;

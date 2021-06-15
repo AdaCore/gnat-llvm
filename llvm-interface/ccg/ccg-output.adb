@@ -1185,6 +1185,11 @@ package body CCG.Output is
             Indent_Before := Indent_Before + C_Indent;
             Indent_After  := Indent_After  - C_Indent;
          end if;
+
+         --  Since we're going to write the goto, indicate that that block
+         --  needs to be written.
+
+         Add_Block_To_Write (Line.BB);
       end if;
 
       --  Now handle indentation and output our code

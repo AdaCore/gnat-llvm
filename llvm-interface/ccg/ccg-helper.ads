@@ -48,12 +48,6 @@ package CCG.Helper is
      (Get_Param (V, unsigned (P_Num)))
      with Pre => Present (V), Post => Present (Get_Param'Result);
 
-   function Struct_Has_Name (T : Type_T) return Boolean
-     with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
-
-   function Value_Has_Name (V : Value_T) return Boolean
-     with Pre => Present (V);
-
    function Has_Name (T : Type_T) return Boolean is
      (Struct_Has_Name (T))
      with Pre => Present (T);
@@ -243,14 +237,6 @@ package CCG.Helper is
       with Pre  => Is_A_Constant_Data_Array (V)
                    and then Idx < Get_Num_CDA_Elements (V),
            Post => Present (Get_Element_As_Constant'Result);
-
-   function Has_Single_Predecessor (BB : Basic_Block_T) return Boolean is
-     (Present (Get_Single_Predecessor (BB)))
-     with Pre => Present (BB);
-
-   function Has_Single_Predecessor (V : Value_T) return Boolean is
-     (Has_Single_Predecessor (Value_As_Basic_Block (V)))
-     with Pre => Value_Is_Basic_Block (V);
 
    function Get_As_String (V : Value_T) return String
      with Pre => Is_A_Constant_Data_Array (V) and then Is_Constant_String (V);

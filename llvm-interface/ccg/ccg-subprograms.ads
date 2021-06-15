@@ -72,6 +72,10 @@ package CCG.Subprograms is
    procedure Add_Decl_Line (Idx : Local_Decl_Idx);
    --  Add a declaration line to the current subprogram
 
+   procedure Add_Block_To_Write (BB : Basic_Block_T)
+     with Pre => Present (BB);
+   --  Add BB to the list of blocks that we have to write
+
    procedure Write_Subprograms;
    --  Write all the decls and statements for all subprograms
 

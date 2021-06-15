@@ -168,4 +168,8 @@ package CCG.Utils is
      (Int_Type (unsigned (Num_Bits)))
      with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
 
+   function Get_Single_User (V : Value_T) return Value_T is
+     ((if Num_Uses (V) = 1 then Get_User (Get_First_Use (V)) else No_Value_T))
+     with Pre => Present (V);
+
 end CCG.Utils;

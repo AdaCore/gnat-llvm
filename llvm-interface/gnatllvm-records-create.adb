@@ -400,13 +400,13 @@ package body GNATLLVM.Records.Create is
          --  records), or No_Uint if none.
       end record;
 
-      package Added_Field_Table is new Table.Table
+      package Added_Fields is new Table.Table
         (Table_Component_Type => Added_Field,
          Table_Index_Type     => Int,
          Table_Low_Bound      => 1,
          Table_Initial        => 20,
          Table_Increment      => 5,
-         Table_Name           => "Added_Field_Table");
+         Table_Name           => "Added_Fields");
 
       --  We maintain a table of all the LLVM types that will be put in a
       --  LLVM struct type in an RI.  These are both for actual and padding
@@ -1142,9 +1142,8 @@ package body GNATLLVM.Records.Create is
 
          --  Now add field to table
 
-         Added_Field_Table.Append ((E, Ancestor_Field (E),
-                                    Added_Field_Table.Last + 1, Par_Depth,
-                                    Var_Depth, Var_Align, Pos, Size));
+         Added_Fields.Append ((E, Ancestor_Field (E), Added_Fields.Last + 1,
+                               Par_Depth, Var_Depth, Var_Align, Pos, Size));
       end Add_Field;
 
       ------------------
@@ -1291,10 +1290,10 @@ package body GNATLLVM.Records.Create is
          --  weak ordering in that case), so we have to do it manually.
 
          function Field_Before (L, R : Int) return Boolean;
-         --  Determine the sort order of two fields in Added_Field_Table
+         --  Determine the sort order of two fields in Added_Fields
 
          procedure Swap_Fields (L, R : Int);
-         --  Swap the fields in Added_Field_Table with the above indices
+         --  Swap the fields in Added_Fields with the above indices
 
          procedure Sort is new Ada.Containers.Generic_Sort
            (Index_Type => Int, Before => Field_Before, Swap => Swap_Fields);
@@ -1314,7 +1313,7 @@ package body GNATLLVM.Records.Create is
          procedure Move_Aliased_Fields is
             type AF_Array is array (Nat range <>) of Added_Field;
 
-            AFs               : AF_Array (1 .. Added_Field_Table.Last);
+            AFs               : AF_Array (1 .. Added_Fields.Last);
             Seq               : Nat := 0;
             First_Discrim_Use : Nat := 0;
             Has_Late_Aliased  : Boolean := False;
@@ -1322,9 +1321,9 @@ package body GNATLLVM.Records.Create is
             --  Populate AFs and check if we have an aliased field after
             --  something that uses a discriminant.
 
-            for J in 1 .. Added_Field_Table.Last loop
+            for J in 1 .. Added_Fields.Last loop
                declare
-                  AF : constant Added_Field := Added_Field_Table.Table (J);
+                  AF : constant Added_Field := Added_Fields.Table (J);
 
                begin
                   AFs (J) := AF;
@@ -1351,18 +1350,18 @@ package body GNATLLVM.Records.Create is
             --  then those after that are aliased, then those after that
             --  aren't aliasd.
 
-            Added_Field_Table.Set_Last (0);
+            Added_Fields.Set_Last (0);
             for J in 1 .. First_Discrim_Use - 1 loop
                AFs (J).Seq := Seq;
                Seq         := Seq + 1;
-               Added_Field_Table.Append (AFs (J));
+               Added_Fields.Append (AFs (J));
             end loop;
 
             for J in First_Discrim_Use .. AFs'Last loop
                if Is_Aliased (AFs (J).AF) then
                   AFs (J).Seq := Seq;
                   Seq         := Seq + 1;
-                  Added_Field_Table.Append (AFs (J));
+                  Added_Fields.Append (AFs (J));
                end if;
             end loop;
 
@@ -1370,7 +1369,7 @@ package body GNATLLVM.Records.Create is
                if not Is_Aliased (AFs (J).AF) then
                   AFs (J).Seq := Seq;
                   Seq         := Seq + 1;
-                  Added_Field_Table.Append (AFs (J));
+                  Added_Fields.Append (AFs (J));
                end if;
             end loop;
 
@@ -1387,9 +1386,9 @@ package body GNATLLVM.Records.Create is
             --  we sort fields the same way for base types and its subtypes.
 
             AF_Left   : constant Added_Field          :=
-              Added_Field_Table.Table (L);
+              Added_Fields.Table (L);
             AF_Right  : constant Added_Field          :=
-              Added_Field_Table.Table (R);
+              Added_Fields.Table (R);
             Left_F    : constant Record_Field_Kind_Id := AF_Left.AF;
             Right_F   : constant Record_Field_Kind_Id := AF_Right.AF;
             Left_GT   : constant GL_Type              := Full_GL_Type (Left_F);
@@ -1510,11 +1509,11 @@ package body GNATLLVM.Records.Create is
          -----------------
 
          procedure Swap_Fields (L, R : Int) is
-            Temp : constant Added_Field := Added_Field_Table.Table (L);
+            Temp : constant Added_Field := Added_Fields.Table (L);
 
          begin
-            Added_Field_Table.Table (L) := Added_Field_Table.Table (R);
-            Added_Field_Table.Table (R) := Temp;
+            Added_Fields.Table (L) := Added_Fields.Table (R);
+            Added_Fields.Table (R) := Temp;
          end Swap_Fields;
 
          ---------------------------
@@ -1522,7 +1521,7 @@ package body GNATLLVM.Records.Create is
          ---------------------------
 
          procedure Create_Bitfield_Field (J : Int) is
-            AF           : constant Added_Field := Added_Field_Table.Table (J);
+            AF           : constant Added_Field := Added_Fields.Table (J);
             Bitfield_Len : ULL;
 
             function Start_Position (Pos : Uint) return Uint is
@@ -1533,11 +1532,10 @@ package body GNATLLVM.Records.Create is
 
          begin
             --  We need to create an LLVM field to use to represent one or
-            --  more bitfields starting at location J in the
-            --  Added_Field_Table.  We need to continue widening the field
-            --  until we run into a component that no longer overlaps any
-            --  of the bits in the field or we've reached the end of the
-            --  field list.
+            --  more bitfields starting at location J in the Added_Fields
+            --  table.  We need to continue widening the field until we run
+            --  into a component that no longer overlaps any of the bits in
+            --  the field or we've reached the end of the field list.
             --
             --  Start by making a field just wide enough for this component.
 
@@ -1547,10 +1545,10 @@ package body GNATLLVM.Records.Create is
             --  Now go through all the remaining components that start within
             --  the field we made and widen the bitfield field to include it.
 
-            for K in J + 1 .. Added_Field_Table.Last loop
+            for K in J + 1 .. Added_Fields.Last loop
                declare
                   AF_K : constant Added_Field          :=
-                    Added_Field_Table.Table (K);
+                    Added_Fields.Table (K);
                   F    : constant Record_Field_Kind_Id := AF_K.F;
 
                begin
@@ -1638,7 +1636,7 @@ package body GNATLLVM.Records.Create is
 
          --  Then do any other required sorting
 
-         Sort (1, Added_Field_Table.Last);
+         Sort (1, Added_Fields.Last);
 
          --  If we're just elaborating types and this is a tagged record,
          --  we have to allow for the tag field because the front end
@@ -1651,9 +1649,9 @@ package body GNATLLVM.Records.Create is
             Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (Void_Ptr_T);
          end if;
 
-         for J in 1 .. Added_Field_Table.Last loop
+         for J in 1 .. Added_Fields.Last loop
             declare
-               AF        : Added_Field renames Added_Field_Table.Table (J);
+               AF        : Added_Field renames Added_Fields.Table (J);
                F         : constant Record_Field_Kind_Id := AF.F;
                --  The field to add
 
@@ -1774,9 +1772,9 @@ package body GNATLLVM.Records.Create is
 
                   Set_Esize (F, Size);
 
-                  for K in J + 1 .. Added_Field_Table.Last loop
+                  for K in J + 1 .. Added_Fields.Last loop
                      declare
-                        AF_K : Added_Field renames Added_Field_Table.Table (K);
+                        AF_K : Added_Field renames Added_Fields.Table (K);
 
                      begin
                         exit when Bit /= Field_Pack_Kind
@@ -1890,7 +1888,7 @@ package body GNATLLVM.Records.Create is
 
                      if Is_Bitfield_By_Rep (F, Pos, Size, Use_Pos_Size => True)
                        or else (Is_Truncated_GL_Type (F_GT)
-                                  and then J /= Added_Field_Table.Last)
+                                  and then J /= Added_Fields.Last)
                      then
                         if No (Bitfield_Start_Pos)
                           or else AF.Pos >= Bitfield_End_Pos
@@ -1923,7 +1921,7 @@ package body GNATLLVM.Records.Create is
             end;
          end loop;
 
-         Added_Field_Table.Set_Last (0);
+         Added_Fields.Set_Last (0);
       end Process_Fields_To_Add;
 
    --  Start of processing for Create_Record_Type

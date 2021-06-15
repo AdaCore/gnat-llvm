@@ -92,13 +92,13 @@ package body CCG.Instructions is
    --  we've written it; we assume that the caller will check if it's been
    --  written.
 
-   package Pending_Value_Table is new Table.Table
+   package Pending_Values is new Table.Table
      (Table_Component_Type => Value_T,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 50,
       Table_Increment      => 50,
-      Table_Name           => "Pending_Value_Table");
+      Table_Name           => "Pending_Values");
 
    --------------------
    -- Get_Extra_Bits --
@@ -233,9 +233,9 @@ package body CCG.Instructions is
       --  written out here are independant and thus the fact that we're
       --  writing them out "backwards" is fine.
 
-      for J in reverse 1 .. Pending_Value_Table.Last loop
+      for J in reverse 1 .. Pending_Values.Last loop
          declare
-            V : constant Value_T := Pending_Value_Table.Table (J);
+            V : constant Value_T := Pending_Values.Table (J);
 
          begin
             if not Get_Is_Used (V) and then not Get_Is_Constant (V) then
@@ -244,7 +244,7 @@ package body CCG.Instructions is
          end;
       end loop;
 
-      Pending_Value_Table.Set_Last (0);
+      Pending_Values.Set_Last (0);
    end Process_Pending_Values;
 
    --------------------------
@@ -253,7 +253,7 @@ package body CCG.Instructions is
 
    procedure Clear_Pending_Values is
    begin
-      Pending_Value_Table.Set_Last (0);
+      Pending_Values.Set_Last (0);
    end Clear_Pending_Values;
 
    ------------------------
@@ -656,7 +656,7 @@ package body CCG.Instructions is
                      or else (Is_A_Call_Inst (LHS) and not Is_Opencode_Builtin)
                      or else Is_A_Load_Inst (LHS))
          then
-            Pending_Value_Table.Append (LHS);
+            Pending_Values.Append (LHS);
          end if;
       end if;
    end Assignment;

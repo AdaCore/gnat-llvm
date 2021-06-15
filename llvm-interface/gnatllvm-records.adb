@@ -1512,13 +1512,13 @@ package body GNATLLVM.Records is
    function RI_To_Struct_Field_Array
      (Ridx : Record_Info_Id) return Struct_Field_Array
    is
-      package Field_Table is new Table.Table
+      package Fields is new Table.Table
         (Table_Component_Type => Struct_Field,
          Table_Index_Type     => Nat,
          Table_Low_Bound      => 1,
          Table_Initial        => 20,
          Table_Increment      => 5,
-         Table_Name           => "Field_Table");
+         Table_Name           => "Fields");
 
       Last_Ord : Int               := -1;
       RI       : constant Record_Info := Record_Info_Table.Table (Ridx);
@@ -1550,7 +1550,7 @@ package body GNATLLVM.Records is
                  (if Is_Bitfield_By_Rep (FI.Field) then No_GL_Type else FI.GT);
 
             begin
-               Field_Table.Append ((FI.Field, Offset, F_Type, GT));
+               Fields.Append ((FI.Field, Offset, F_Type, GT));
             end;
          end if;
 
@@ -1558,11 +1558,11 @@ package body GNATLLVM.Records is
       end loop;
 
       declare
-         Result : Struct_Field_Array (1 .. Field_Table.Last);
+         Result : Struct_Field_Array (1 .. Fields.Last);
 
       begin
          for J in Result'Range loop
-            Result (J) := Field_Table.Table (J);
+            Result (J) := Fields.Table (J);
          end loop;
 
          return Result;

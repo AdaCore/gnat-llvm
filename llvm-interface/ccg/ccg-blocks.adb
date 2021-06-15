@@ -33,29 +33,29 @@ package body CCG.Blocks is
 
    --  Tables for global and local decls and statements
 
-   package Global_Decl_Table is new Table.Table
+   package Global_Decls is new Table.Table
      (Table_Component_Type => Out_Line,
       Table_Index_Type     => Global_Decl_Idx,
       Table_Low_Bound      => Global_Decl_Idx_Start,
       Table_Initial        => 500,
       Table_Increment      => 100,
-      Table_Name           => "Global_Decl_Table");
+      Table_Name           => "Global_Decls");
 
-   package Local_Decl_Table is new Table.Table
+   package Local_Decls is new Table.Table
      (Table_Component_Type => Out_Line,
       Table_Index_Type     => Local_Decl_Idx,
       Table_Low_Bound      => Local_Decl_Idx_Low_Bound,
       Table_Initial        => 500,
       Table_Increment      => 100,
-      Table_Name           => "Local_Decl_Table");
+      Table_Name           => "Local_Decls");
 
-   package Stmt_Table is new Table.Table
+   package Stmts is new Table.Table
      (Table_Component_Type => Out_Line,
       Table_Index_Type     => Stmt_Idx,
       Table_Low_Bound      => Stmt_Idx_Low_Bound,
       Table_Initial        => 1000,
       Table_Increment      => 1000,
-      Table_Name           => "Stmt_Table");
+      Table_Name           => "Stmts");
 
    Current_BB : Basic_Block_T := No_BB_T;
    --  The basic block for which we're outputting statements
@@ -271,10 +271,10 @@ package body CCG.Blocks is
          Need_Brace     => False);
    begin
       if Is_Global then
-         Global_Decl_Table.Append (OL);
+         Global_Decls.Append (OL);
       else
-         Local_Decl_Table.Append (OL);
-         Add_Decl_Line (Local_Decl_Table.Last);
+         Local_Decls.Append (OL);
+         Add_Decl_Line (Local_Decls.Last);
       end if;
    end Output_Decl;
 
@@ -311,16 +311,16 @@ package body CCG.Blocks is
       Need_Brace    : Boolean       := False)
    is
    begin
-      Stmt_Table.Append ((Line_Text      => (if Semicolon then S & ";" else S),
-                          No_Indent      => No_Indent,
-                          Indent_Before  => Indent_Before,
-                          Indent_After   => Indent_After,
-                          V              => V,
-                          BB             => BB,
-                          Need_Brace     => Need_Brace));
-      Set_Last_Stmt (Current_BB, Stmt_Table.Last);
+      Stmts.Append ((Line_Text      => (if Semicolon then S & ";" else S),
+                     No_Indent      => No_Indent,
+                     Indent_Before  => Indent_Before,
+                     Indent_After   => Indent_After,
+                     V              => V,
+                     BB             => BB,
+                     Need_Brace     => Need_Brace));
+      Set_Last_Stmt (Current_BB, Stmts.Last);
       if No (Get_First_Stmt (Current_BB)) then
-         Set_First_Stmt (Current_BB, Stmt_Table.Last);
+         Set_First_Stmt (Current_BB, Stmts.Last);
       end if;
    end Output_Stmt;
 
@@ -348,28 +348,28 @@ package body CCG.Blocks is
    --------------------------
 
    function Get_Global_Decl_Line (Idx : Global_Decl_Idx) return Out_Line is
-     (Global_Decl_Table.Table (Idx));
+     (Global_Decls.Table (Idx));
 
    -------------------------
    -- Get_Local_Decl_Line --
    -------------------------
 
    function Get_Local_Decl_Line (Idx : Local_Decl_Idx) return Out_Line is
-     (Local_Decl_Table.Table (Idx));
+     (Local_Decls.Table (Idx));
 
    -------------------
    -- Get_Stmt_Line --
    -------------------
 
    function Get_Stmt_Line (Idx : Stmt_Idx) return Out_Line is
-     (Stmt_Table.Table (Idx));
+     (Stmts.Table (Idx));
 
    --------------------------
    -- Get_Last_Global_Decl --
    --------------------------
 
    function Get_Last_Global_Decl return Global_Decl_Idx is
-     (Global_Decl_Table.Last);
+     (Global_Decls.Last);
 
    ---------------
    -- Output_BB --
@@ -678,7 +678,7 @@ begin
    --  Ensure we have an empty entry in the tables that support empty
    --  entries.
 
-   Local_Decl_Table.Increment_Last;
-   Stmt_Table.Increment_Last;
+   Local_Decls.Increment_Last;
+   Stmts.Increment_Last;
 
 end CCG.Blocks;

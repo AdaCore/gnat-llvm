@@ -83,14 +83,6 @@ package GNATLLVM.Codegen is
    --  True if we should optimize IR before writing it out when optimization
    --  is enabled.
 
-   package Switch_Table is new Table.Table
-     (Table_Component_Type => String_Access,
-      Table_Index_Type     => Interfaces.C.int,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 5,
-      Table_Increment      => 1,
-      Table_Name           => "Switch_Table");
-
    procedure Scan_Command_Line;
    --  Scan operands relevant to code generation
 

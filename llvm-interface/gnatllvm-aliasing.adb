@@ -97,13 +97,13 @@ package body GNATLLVM.Aliasing is
       Valid : Boolean;
    end record;
 
-   package UC_Table is new Table.Table
+   package UC is new Table.Table
      (Table_Component_Type => UC_Entry,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 3,
       Table_Increment      => 1,
-      Table_Name           => "UC_Table");
+      Table_Name           => "UC");
 
    Last_UC_Group : UC_Group_Idx := 0;
    --  Last UC group number used when we need a new one
@@ -124,20 +124,20 @@ package body GNATLLVM.Aliasing is
    --  which we've made a TBAA and see if a new subtype is the same as
    --  any of those.  The chain is maintained via the following table
    --  (where each entry points to another entry in the chain, ending in
-   --  zero) and the head of the chain in is the TBAA_Info record below.
+   --  zero) and the head of the chain in is the TBAA_Data record below.
 
    type TBAA_Equiv is record
       Next : Nat;
       TE   : Type_Kind_Id;
    end record;
 
-   package TBAA_Equiv_Subtype_Table is new Table.Table
+   package TBAA_Equiv_Subtype is new Table.Table
      (Table_Component_Type => TBAA_Equiv,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 100,
       Table_Increment      => 50,
-      Table_Name           => "TBAA_Equivalent_Subtype_Table");
+      Table_Name           => "TBAA_Equivalent_Subtype");
 
    function Find_Equiv_Subtype (TE : Type_Kind_Id) return Type_Kind_Id
      with Post => Base_Type_For_Aliasing (TE) =
@@ -157,20 +157,20 @@ package body GNATLLVM.Aliasing is
    --  data for the subtype.  For records, the only data used is for base
    --  types and contains the subtype chain.
 
-   type TBAA_Info is record
+   type TBAA_Data is record
       Bounds          : Metadata_T;
       Bounds_And_Data : Metadata_T;
       Component       : Metadata_T;
       Subtype_Chain   : Nat;
    end record;
 
-   package TBAA_Info_Table is new Table.Table
-     (Table_Component_Type => TBAA_Info,
+   package TBAA_Info is new Table.Table
+     (Table_Component_Type => TBAA_Data,
       Table_Index_Type     => TBAA_Info_Id,
       Table_Low_Bound      => TBAA_Info_Low_Bound,
       Table_Initial        => 100,
       Table_Increment      => 50,
-      Table_Name           => "TBAA_Info_Table");
+      Table_Name           => "TBAA_Info");
 
    TBAA_Root : Metadata_T;
    --  Root of tree for Type-Based alias Analysis (TBAA) metadata
@@ -330,7 +330,7 @@ package body GNATLLVM.Aliasing is
 
    procedure Search_For_UCs is
 
-      procedure Add_To_UC_Table
+      procedure Add_To_UC
         (STE, TTE : Type_Kind_Id; Valid : in out Boolean);
       --  Make an entry in the UC table showing that STE and TTE are to
       --  be treated identically.  If we can't do that, clear Valid.
@@ -345,11 +345,11 @@ package body GNATLLVM.Aliasing is
       procedure Scan_All_Units is
          new Sem.Walk_Library_Items (Action => Scan_Unit);
 
-      ---------------------
-      -- Add_To_UC_Table --
-      ---------------------
+      ---------------
+      -- Add_To_UC --
+      ---------------
 
-      procedure Add_To_UC_Table
+      procedure Add_To_UC
         (STE, TTE : Type_Kind_Id; Valid : in out Boolean)
       is
          SBT       : constant Type_Kind_Id := Base_Type_For_Aliasing (STE);
@@ -370,7 +370,7 @@ package body GNATLLVM.Aliasing is
          --  aren't valid, then the below call will make the subtypes invalid.
 
          if not S_Is_Base and then not T_Is_Base then
-            Add_To_UC_Table (SBT, TBT, Our_Valid);
+            Add_To_UC (SBT, TBT, Our_Valid);
          end if;
 
          --  If neither was seen before, allocate a new group and put them
@@ -378,28 +378,28 @@ package body GNATLLVM.Aliasing is
 
          if No (S_Grp) and then No (T_Grp) then
             Last_UC_Group := Last_UC_Group + 1;
-            UC_Table.Append ((STE, Last_UC_Group, Our_Valid));
-            UC_Table.Append ((TTE, Last_UC_Group, Our_Valid));
+            UC.Append ((STE, Last_UC_Group, Our_Valid));
+            UC.Append ((TTE, Last_UC_Group, Our_Valid));
 
          --  If one has a group and the other doesn't, add the other pointing
          --  to that group.
 
          elsif No (S_Grp) and then Present (T_Grp) then
-            UC_Table.Append ((STE, T_Grp, Our_Valid));
+            UC.Append ((STE, T_Grp, Our_Valid));
          elsif Present (S_Grp) and then No (T_Grp) then
-            UC_Table.Append ((TTE, S_Grp, Our_Valid));
+            UC.Append ((TTE, S_Grp, Our_Valid));
 
          --  If both were assigned groups, move everything in the target's
          --  group to the group of the source.
 
          else
-            for J in 1 .. UC_Table.Last loop
-               if UC_Table.Table (J).Group = T_Grp then
-                  UC_Table.Table (J).Group := S_Grp;
-                  UC_Table.Table (J).Valid :=
-                    UC_Table.Table (J).Valid and Our_Valid;
+            for J in 1 .. UC.Last loop
+               if UC.Table (J).Group = T_Grp then
+                  UC.Table (J).Group := S_Grp;
+                  UC.Table (J).Valid :=
+                    UC.Table (J).Valid and Our_Valid;
 
-                  if not UC_Table.Table (J).Valid then
+                  if not UC.Table (J).Valid then
                      Our_Valid := False;
                   end if;
                end if;
@@ -409,7 +409,7 @@ package body GNATLLVM.Aliasing is
          --  Update our input validity flag to correspond with what we found
 
          Valid := Valid and Our_Valid;
-      end Add_To_UC_Table;
+      end Add_To_UC;
 
       ------------------
       -- Check_For_UC --
@@ -523,7 +523,7 @@ package body GNATLLVM.Aliasing is
                end if;
             end if;
 
-            Add_To_UC_Table (SDT, TDT, Valid);
+            Add_To_UC (SDT, TDT, Valid);
          end;
 
          return OK;
@@ -541,9 +541,9 @@ package body GNATLLVM.Aliasing is
 
    function Find_UC_Group (TE : Type_Kind_Id) return UC_Group_Idx is
    begin
-      for J in 1 .. UC_Table.Last loop
-         if UC_Table.Table (J).TE = TE then
-            return UC_Table.Table (J).Group;
+      for J in 1 .. UC.Last loop
+         if UC.Table (J).TE = TE then
+            return UC.Table (J).Group;
          end if;
       end loop;
 
@@ -590,7 +590,7 @@ package body GNATLLVM.Aliasing is
          declare
             TE   : constant Type_Kind_Id := Full_Etype (GT);
             Tidx : constant TBAA_Info_Id := TBAA_Data_For_Array_Subtype (TE);
-            TI   : constant TBAA_Info    := TBAA_Info_Table.Table (Tidx);
+            TI   : constant TBAA_Data    := TBAA_Info.Table (Tidx);
 
          begin
             if R = Reference_To_Bounds then
@@ -652,7 +652,7 @@ package body GNATLLVM.Aliasing is
    is
       Tidx   : constant TBAA_Info_Id :=
         Get_TBAA_Info (Base_Type_For_Aliasing (Full_Etype (GT)));
-      C_TBAA : constant Metadata_T   := TBAA_Info_Table.Table (Tidx).Component;
+      C_TBAA : constant Metadata_T   := TBAA_Info.Table (Tidx).Component;
 
    begin
       if No (TBAA_Type (V)) and then Present (C_TBAA) then
@@ -749,10 +749,10 @@ package body GNATLLVM.Aliasing is
       --  Now look through all the subtypes which we chained and see if any
       --  are equivalent to our type.
 
-      Idx := TBAA_Info_Table.Table (Tidx).Subtype_Chain;
+      Idx := TBAA_Info.Table (Tidx).Subtype_Chain;
       while Idx /= 0 loop
-         E_TE := TBAA_Equiv_Subtype_Table.Table (Idx).TE;
-         Idx  := TBAA_Equiv_Subtype_Table.Table (Idx).Next;
+         E_TE := TBAA_Equiv_Subtype.Table (Idx).TE;
+         Idx  := TBAA_Equiv_Subtype.Table (Idx).Next;
 
          --  Only if the LLVM types and GNAT representations are the same
          --  if the a chance that they can be equivalent.
@@ -1026,9 +1026,9 @@ package body GNATLLVM.Aliasing is
       --  we've already made for a type in that group.
 
       elsif No (TBAA) and then Present (Grp) then
-         for J in 1 .. UC_Table.Last loop
+         for J in 1 .. UC.Last loop
             declare
-               UCE : constant UC_Entry := UC_Table.Table (J);
+               UCE : constant UC_Entry := UC.Table (J);
 
             begin
                if UCE.Group = Grp and then Present (Get_TBAA_N (UCE.TE))
@@ -1080,19 +1080,17 @@ package body GNATLLVM.Aliasing is
 
                if Present (Idx) then
                   declare
-                     TI : TBAA_Info renames TBAA_Info_Table.Table (Idx);
+                     TI : TBAA_Data renames TBAA_Info.Table (Idx);
 
                   begin
-                     TBAA_Equiv_Subtype_Table.Append
-                       ((TI.Subtype_Chain, E_TE));
-                     TI.Subtype_Chain := TBAA_Equiv_Subtype_Table.Last;
+                     TBAA_Equiv_Subtype.Append ((TI.Subtype_Chain, E_TE));
+                     TI.Subtype_Chain := TBAA_Equiv_Subtype.Last;
                   end;
                else
-                  TBAA_Equiv_Subtype_Table.Append ((0, E_TE));
-                  TBAA_Info_Table.Append ((Subtype_Chain =>
-                                             TBAA_Equiv_Subtype_Table.Last,
-                                           others => No_Metadata_T));
-                  Set_TBAA_Info (BT, TBAA_Info_Table.Last);
+                  TBAA_Equiv_Subtype.Append ((0, E_TE));
+                  TBAA_Info.Append ((Subtype_Chain => TBAA_Equiv_Subtype.Last,
+                                     others => No_Metadata_T));
+                  Set_TBAA_Info (BT, TBAA_Info.Last);
                end if;
             end;
          end if;
@@ -1328,7 +1326,7 @@ package body GNATLLVM.Aliasing is
       A_GT    : constant GL_Type         := Default_GL_Type (A_TE);
       Comp_GT : constant GL_Type         := Full_Component_GL_Type (A_TE);
       Tidx    : TBAA_Info_Id             := Get_TBAA_Info (A_TE);
-      TI      : TBAA_Info                :=
+      TI      : TBAA_Data                :=
         (Subtype_Chain => 0, others => No_Metadata_T);
 
    begin
@@ -1404,8 +1402,8 @@ package body GNATLLVM.Aliasing is
          end if;
       end;
 
-      TBAA_Info_Table.Append (TI);
-      Tidx := TBAA_Info_Table.Last;
+      TBAA_Info.Append (TI);
+      Tidx := TBAA_Info.Last;
       Set_TBAA_Info (TE, Tidx);
       return Tidx;
    end TBAA_Data_For_Array_Type;
@@ -1423,7 +1421,7 @@ package body GNATLLVM.Aliasing is
       BT        : constant E_Array_Type_Id := Full_Base_Type (O_TE, True);
       BTidx     : constant TBAA_Info_Id    := TBAA_Data_For_Array_Type (BT);
       Tidx      : TBAA_Info_Id             := Get_TBAA_Info (TE);
-      TI        : TBAA_Info                := TBAA_Info_Table.Table (BTidx);
+      TI        : TBAA_Data                := TBAA_Info.Table (BTidx);
       TBAA_Data : constant Metadata_T      := Get_TBAA_Type (TE, For_Aliased);
       GT        : constant GL_Type         := Primitive_GL_Type (TE);
 
@@ -1465,8 +1463,8 @@ package body GNATLLVM.Aliasing is
 
       --  Now add the new entry to the table and record its location
 
-      TBAA_Info_Table.Append (TI);
-      Tidx := TBAA_Info_Table.Last;
+      TBAA_Info.Append (TI);
+      Tidx := TBAA_Info.Last;
       Set_TBAA_Info (TE, Tidx);
       return Tidx;
    end TBAA_Data_For_Array_Subtype;
@@ -1485,8 +1483,7 @@ package body GNATLLVM.Aliasing is
       GT     : constant GL_Type         := Primitive_GL_Type (TE);
       BT     : constant E_Array_Type_Id := Base_Type_For_Aliasing (TE);
       Tidx   : constant TBAA_Info_Id    := TBAA_Data_For_Array_Type (BT);
-      C_TBAA : constant Metadata_T      :=
-        TBAA_Info_Table.Table (Tidx).Component;
+      C_TBAA : constant Metadata_T      := TBAA_Info.Table (Tidx).Component;
 
    begin
       --  If this isn't a loadable type, we don't need to handle this and
@@ -1722,5 +1719,5 @@ package body GNATLLVM.Aliasing is
 begin
    --  Make a dummy entry so the "Empty" entry is never used.
 
-   TBAA_Info_Table.Increment_Last;
+   TBAA_Info.Increment_Last;
 end GNATLLVM.Aliasing;

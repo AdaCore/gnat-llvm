@@ -43,6 +43,14 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Codegen is
 
+   package Switches is new Table.Table
+     (Table_Component_Type => String_Access,
+      Table_Index_Type     => Interfaces.C.int,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 1,
+      Table_Name           => "Switches");
+
    Output_Assembly : Boolean := False;
    --  True if -S was specified
 
@@ -260,7 +268,7 @@ package body GNATLLVM.Codegen is
       elsif Switch = "-mrelocation-model=default" then
          Reloc_Mode := Reloc_Default;
       elsif Starts_With ("-llvm-") then
-         Switch_Table.Append (new String'(Switch_Value ("-llvm")));
+         Switches.Append (new String'(Switch_Value ("-llvm")));
       end if;
 
       --  Free string that we replaced above, if any
@@ -308,7 +316,7 @@ package body GNATLLVM.Codegen is
       Num_Builtin : constant := 3;
 
       type    Addr_Arr     is array (Interfaces.C.int range <>) of Address;
-      subtype Switch_Addrs is Addr_Arr (1 .. Switch_Table.Last + Num_Builtin);
+      subtype Switch_Addrs is Addr_Arr (1 .. Switches.Last + Num_Builtin);
       procedure Early_Error (S : String);
       --  This is called too early to call Error_Msg (because we haven't
       --  initialized the source input structure), so we have to use a
@@ -339,11 +347,11 @@ package body GNATLLVM.Codegen is
    begin
       --  Add any LLVM parameters to the list of switches
 
-      for J in 1 .. Switch_Table.Last loop
-         Addrs (J + Num_Builtin) := Switch_Table.Table (J).all'Address;
+      for J in 1 .. Switches.Last loop
+         Addrs (J + Num_Builtin) := Switches.Table (J).all'Address;
       end loop;
 
-      Parse_Command_Line_Options (Switch_Table.Last + Num_Builtin,
+      Parse_Command_Line_Options (Switches.Last + Num_Builtin,
                                   Addrs'Address, "");
 
       --  Finalize our compilation mode now that all switches are parsed

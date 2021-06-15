@@ -44,7 +44,7 @@ package body CCG.Aggregates is
    function Present (F : Field_Name_Idx) return Boolean is
      (F /= No_Field_Name_Idx);
 
-   type Field_Name_Info is record
+   type Field_Name_Data is record
       T           : Type_T;
       --  LLVM "struct" type containing this field
 
@@ -71,13 +71,13 @@ package body CCG.Aggregates is
 
    --  Define the table that records all of the field name info
 
-   package Field_Name_Info_Table is new Table.Table
-     (Table_Component_Type => Field_Name_Info,
+   package Field_Name_Info is new Table.Table
+     (Table_Component_Type => Field_Name_Data,
       Table_Index_Type     => Field_Name_Idx,
       Table_Low_Bound      => 1,
       Table_Initial        => 500,
       Table_Increment      => 100,
-      Table_Name           => "Field_Name_Info_Table");
+      Table_Name           => "Field_Name_Info");
 
    --  We need two maps into the above table. One maps a Struct_Id into
    --  a table entry. This is used to track the initial setting of field info
@@ -137,18 +137,18 @@ package body CCG.Aggregates is
       --  Start by adding an entry to our table. Then either update the
       --  head of the chain or set a new head.
 
-      Field_Name_Info_Table.Append ((T           => No_Type_T,
-                                     F_Number    => Idx,
-                                     Name        => Name,
-                                     SID         => SID,
-                                     Next        => F_Idx,
-                                     Is_Padding  => Is_Padding,
-                                     Is_Bitfield => Is_Bitfield));
+      Field_Name_Info.Append ((T           => No_Type_T,
+                               F_Number    => Idx,
+                               Name        => Name,
+                               SID         => SID,
+                               Next        => F_Idx,
+                               Is_Padding  => Is_Padding,
+                               Is_Bitfield => Is_Bitfield));
       if Has_Element (Position) then
          Replace_Element (Entity_To_FNI_Map, Position,
-                          Field_Name_Info_Table.Last);
+                          Field_Name_Info.Last);
       else
-         Insert (Entity_To_FNI_Map, SID, Field_Name_Info_Table.Last);
+         Insert (Entity_To_FNI_Map, SID, Field_Name_Info.Last);
       end if;
 
    end Set_Field_Name_Info;
@@ -182,7 +182,7 @@ package body CCG.Aggregates is
       F_Idx := EFM.Element (Position);
       while Present (F_Idx) loop
          declare
-            FNI : Field_Name_Info renames Field_Name_Info_Table.Table (F_Idx);
+            FNI : Field_Name_Data renames Field_Name_Info.Table (F_Idx);
          begin
             if No (FNI.T) then
                FNI.T := T;
@@ -204,7 +204,7 @@ package body CCG.Aggregates is
    function Get_Field_Name (T : Type_T; Idx : Nat) return Str is
       use FNI_Maps;
       Position : constant Cursor := Find (FNI_Map, (T, Idx));
-      FNI      : Field_Name_Info :=
+      FNI      : Field_Name_Data :=
         (T, Idx, No_Name, No_Struct_Id, No_Field_Name_Idx, False, False);
 
    begin
@@ -212,7 +212,7 @@ package body CCG.Aggregates is
       --  replace the default above with that information.
 
       if Has_Element (Position) then
-         FNI := Field_Name_Info_Table.Table (Element (Position));
+         FNI := Field_Name_Info.Table (Element (Position));
       end if;
 
       --  Now create a name for the field, based on the saved information.

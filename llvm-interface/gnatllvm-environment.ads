@@ -82,7 +82,7 @@ package GNATLLVM.Environment is
    --  For each GNAT entity, we store various information.  Not all of this
    --  information is used for each Ekind.
 
-   type LLVM_Info is record
+   type LLVM_Data is record
       Value                 : GL_Value;
       --  The GL_Value corresponding to this entity, if a value
 
@@ -149,13 +149,13 @@ package GNATLLVM.Environment is
    First_LLVM_Info_Id   : constant LLVM_Info_Id := LLVM_Info_Low_Bound;
    Empty_LLVM_Info_Id   : constant LLVM_Info_Id := First_LLVM_Info_Id;
 
-   package LLVM_Info_Table is new Table.Table
-     (Table_Component_Type => LLVM_Info,
+   package LLVM_Info is new Table.Table
+     (Table_Component_Type => LLVM_Data,
       Table_Index_Type     => LLVM_Info_Id,
       Table_Low_Bound      => LLVM_Info_Low_Bound,
       Table_Initial        => 1024,
       Table_Increment      => 100,
-      Table_Name           => "LLVM_Info_Table");
+      Table_Name           => "LLVM_Info");
 
    type LLVM_Info_Array is array (Node_Id range <>) of aliased LLVM_Info_Id;
    type Ptr_LLVM_Info_Array is access all LLVM_Info_Array;

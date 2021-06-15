@@ -154,22 +154,22 @@ package body GNATLLVM.Subprograms is
    end record;
    type Elaboration_Entry_Array is array (Nat range <>) of Elaboration_Entry;
 
-   package Elaboration_Table is new Table.Table
+   package Elaborations is new Table.Table
      (Table_Component_Type => Elaboration_Entry,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 1024,
       Table_Increment      => 100,
-      Table_Name           => "Elaboration_Table");
+      Table_Name           => "Elaborations");
    --  Table of statements part of the current elaboration procedure
 
-   package Nested_Functions_Table is new Table.Table
+   package Nested_Functions is new Table.Table
      (Table_Component_Type => Node_Id,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 10,
       Table_Increment      => 5,
-      Table_Name           => "Nested_Function_Table");
+      Table_Name           => "Nested_Functions");
    --  Table of nested functions to elaborate
 
    --  Tables for recording global constructors and global destructors
@@ -231,7 +231,7 @@ package body GNATLLVM.Subprograms is
    --  Return True if Name is the name of the elab proc for Ada_Main
 
    First_Body_Elab_Idx    : Nat       := 0;
-   --  Indicates the first entry in Elaboration_Table that represents
+   --  Indicates the first entry in Elaborations that represents
    --  an elab entry for the body of a package.  If zero, then all entries
    --  are for the spec.
 
@@ -1267,10 +1267,10 @@ package body GNATLLVM.Subprograms is
 
    procedure Add_To_Elab_Proc (N : Node_Id; For_GT : GL_Type := No_GL_Type) is
    begin
-      if Elaboration_Table.Last = 0 or else No (N)
-        or else Elaboration_Table.Table (Elaboration_Table.Last).N /= N
+      if Elaborations.Last = 0 or else No (N)
+        or else Elaborations.Table (Elaborations.Last).N /= N
       then
-         Elaboration_Table.Append ((N => N, For_GT => For_GT));
+         Elaborations.Append ((N => N, For_GT => For_GT));
       end if;
    end Add_To_Elab_Proc;
 
@@ -1280,7 +1280,7 @@ package body GNATLLVM.Subprograms is
 
    procedure Mark_Body_Elab is
    begin
-      First_Body_Elab_Idx := Elaboration_Table.Last + 1;
+      First_Body_Elab_Idx := Elaborations.Last + 1;
    end Mark_Body_Elab;
 
    -------------------------
@@ -1300,14 +1300,14 @@ package body GNATLLVM.Subprograms is
    -----------------------
 
    function Get_Elab_Position return Nat is
-     (Elaboration_Table.Last);
+     (Elaborations.Last);
 
    ------------------------
    -- Reorder_Elab_Table --
    ------------------------
 
    procedure Reorder_Elab_Table (Old_Pos, New_Start : Nat) is
-      Elabs : Elaboration_Entry_Array (1 .. Elaboration_Table.Last);
+      Elabs : Elaboration_Entry_Array (1 .. Elaborations.Last);
 
       procedure Append_Range (Start, Last : Nat) with Inline;
       --  Append the range Start .. Last from Elabs above into the
@@ -1320,7 +1320,7 @@ package body GNATLLVM.Subprograms is
       procedure Append_Range (Start, Last : Nat) is
       begin
          for J in Start .. Last loop
-            Elaboration_Table.Append (Elabs (J));
+            Elaborations.Append (Elabs (J));
          end loop;
       end Append_Range;
 
@@ -1329,10 +1329,10 @@ package body GNATLLVM.Subprograms is
       --  then back in the desired order.
 
       for J in Elabs'Range loop
-         Elabs (J) := Elaboration_Table.Table (J);
+         Elabs (J) := Elaborations.Table (J);
       end loop;
 
-      Elaboration_Table.Set_Last (0);
+      Elaborations.Set_Last (0);
       Append_Range (1, Old_Pos);
       Append_Range (New_Start + 1, Elabs'Last);
       Append_Range (Old_Pos + 1, New_Start);
@@ -1342,7 +1342,7 @@ package body GNATLLVM.Subprograms is
 
       if First_Body_Elab_Idx /= 0 and then First_Body_Elab_Idx > Old_Pos then
          First_Body_Elab_Idx :=
-           First_Body_Elab_Idx + Elaboration_Table.Last - New_Start;
+           First_Body_Elab_Idx + Elaborations.Last - New_Start;
       end if;
    end Reorder_Elab_Table;
 
@@ -1353,7 +1353,7 @@ package body GNATLLVM.Subprograms is
    procedure Emit_Elab_Proc
      (N : Node_Id; Stmts : Node_Id; CU : Node_Id; For_Body : Boolean := False)
    is
-      Nest_Table_First : constant Nat      := Nested_Functions_Table.Last + 1;
+      Nest_Table_First : constant Nat      := Nested_Functions.Last + 1;
       U                : constant Node_Id  := Defining_Unit_Name (N);
       Unit             : constant Node_Id  :=
         (if   Nkind (U) = N_Defining_Program_Unit_Name
@@ -1367,10 +1367,10 @@ package body GNATLLVM.Subprograms is
         (if For_Body then First_Body_Elab_Idx else 1);
       Last_Idx         : constant Nat      :=
         (if   For_Body or else First_Body_Elab_Idx = 0
-         then Elaboration_Table.Last else First_Body_Elab_Idx - 1);
+         then Elaborations.Last else First_Body_Elab_Idx - 1);
       Work_To_Do       : constant Boolean  :=
         (for some J in First_Idx .. Last_Idx =>
-         Present (Elaboration_Table.Table (J).N))
+         Present (Elaborations.Table (J).N))
         or else Has_Non_Null_Statements (S_List);
       Contains_Work    : Boolean           := False;
       BB               : Basic_Block_T;
@@ -1415,8 +1415,8 @@ package body GNATLLVM.Subprograms is
 
       for J in First_Idx .. Last_Idx loop
          declare
-            Stmt : constant Node_Id := Elaboration_Table.Table (J).N;
-            GT   : constant GL_Type := Elaboration_Table.Table (J).For_GT;
+            Stmt : constant Node_Id := Elaborations.Table (J).N;
+            GT   : constant GL_Type := Elaborations.Table (J).For_GT;
 
          begin
             if Present (GT) then
@@ -1482,11 +1482,11 @@ package body GNATLLVM.Subprograms is
 
          --  Now elaborate any subprograms that were nested inside us
 
-         for J in Nest_Table_First .. Nested_Functions_Table.Last loop
-            Emit_Subprogram_Body (Nested_Functions_Table.Table (J));
+         for J in Nest_Table_First .. Nested_Functions.Last loop
+            Emit_Subprogram_Body (Nested_Functions.Table (J));
          end loop;
 
-         Nested_Functions_Table.Set_Last (Nest_Table_First);
+         Nested_Functions.Set_Last (Nest_Table_First);
       end if;
    end Emit_Elab_Proc;
 
@@ -1497,7 +1497,7 @@ package body GNATLLVM.Subprograms is
    procedure Emit_Subprogram_Body
      (N : N_Subprogram_Body_Id; For_Inline : Boolean := False)
    is
-      Nest_Table_First : constant Nat     := Nested_Functions_Table.Last + 1;
+      Nest_Table_First : constant Nat     := Nested_Functions.Last + 1;
       Spec             : constant Node_Id := Get_Acting_Spec (N);
 
    begin
@@ -1512,7 +1512,7 @@ package body GNATLLVM.Subprograms is
 
       elsif not Library_Level then
          Discard (Emit_Subprogram_Decl (Get_Acting_Spec (N)));
-         Nested_Functions_Table.Append (N);
+         Nested_Functions.Append (N);
          return;
       end if;
 
@@ -1521,12 +1521,12 @@ package body GNATLLVM.Subprograms is
 
       Emit_One_Body (N, For_Inline => For_Inline);
 
-      for J in Nest_Table_First .. Nested_Functions_Table.Last loop
-         Emit_Subprogram_Body (Nested_Functions_Table.Table (J),
+      for J in Nest_Table_First .. Nested_Functions.Last loop
+         Emit_Subprogram_Body (Nested_Functions.Table (J),
                                For_Inline => For_Inline);
       end loop;
 
-      Nested_Functions_Table.Set_Last (Nest_Table_First);
+      Nested_Functions.Set_Last (Nest_Table_First);
    end Emit_Subprogram_Body;
 
    ---------------------------

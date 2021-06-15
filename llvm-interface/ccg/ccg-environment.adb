@@ -117,50 +117,50 @@ package body CCG.Environment is
    function Present (X : Type_Idx)  return Boolean is (X /= No_Type_Idx);
    function Present (X : BB_Idx)    return Boolean is (X /= No_BB_Idx);
 
-   package Value_Data_Table is new Table.Table
+   package Value_Info is new Table.Table
      (Table_Component_Type => Value_Data,
       Table_Index_Type     => Value_Idx,
       Table_Low_Bound      => 1,
       Table_Initial        => 500,
       Table_Increment      => 100,
-      Table_Name           => "Value_Data_Table");
+      Table_Name           => "Value_Info");
 
-   package Type_Data_Table is new Table.Table
+   package Type_Info is new Table.Table
      (Table_Component_Type => Type_Data,
       Table_Index_Type     => Type_Idx,
       Table_Low_Bound      => 1,
       Table_Initial        => 200,
       Table_Increment      => 50,
-      Table_Name           => "Type_Data_Table");
+      Table_Name           => "Type_Info");
 
-   package BB_Data_Table is new Table.Table
+   package BB_Info is new Table.Table
      (Table_Component_Type => BB_Data,
       Table_Index_Type     => BB_Idx,
       Table_Low_Bound      => 1,
       Table_Initial        => 200,
       Table_Increment      => 50,
-      Table_Name           => "BB_Data_Table");
+      Table_Name           => "BB_Info");
 
-   package Value_Data_Maps is new Ada.Containers.Hashed_Maps
+   package Value_Info_Maps is new Ada.Containers.Hashed_Maps
      (Key_Type        => Value_T,
       Element_Type    => Value_Idx,
       Hash            => Hash,
       Equivalent_Keys => "=");
-   Value_Data_Map : Value_Data_Maps.Map;
+   Value_Info_Map : Value_Info_Maps.Map;
 
-   package Type_Data_Maps is new Ada.Containers.Hashed_Maps
+   package Type_Info_Maps is new Ada.Containers.Hashed_Maps
      (Key_Type        => Type_T,
       Element_Type    => Type_Idx,
       Hash            => Hash,
       Equivalent_Keys => "=");
-   Type_Data_Map : Type_Data_Maps.Map;
+   Type_Info_Map : Type_Info_Maps.Map;
 
-   package BB_Data_Maps is new Ada.Containers.Hashed_Maps
+   package BB_Info_Maps is new Ada.Containers.Hashed_Maps
      (Key_Type        => Basic_Block_T,
       Element_Type    => BB_Idx,
       Hash            => Hash,
       Equivalent_Keys => "=");
-   BB_Data_Map : BB_Data_Maps.Map;
+   BB_Info_Map : BB_Info_Maps.Map;
 
    Output_Idx : Nat := 1;
    --  The next output index to use for values, types, and basic blocks
@@ -168,21 +168,21 @@ package body CCG.Environment is
    --  Functions to return the corresponding index for a value, type, or
    --  basic block and whether to create one if one isn't present.
 
-   function Value_Data_Idx (V : Value_T; Create : Boolean) return Value_Idx
+   function Value_Info_Idx (V : Value_T; Create : Boolean) return Value_Idx
      with Pre => Present (V), Pure_Function;
-   function Type_Data_Idx  (T : Type_T; Create : Boolean) return Type_Idx
+   function Type_Info_Idx  (T : Type_T; Create : Boolean) return Type_Idx
      with Pre => Present (T), Pure_Function;
-   function BB_Data_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx
+   function BB_Info_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx
      with Pre => Present (B), Pure_Function;
 
    --------------------
-   -- Value_Data_Idx --
+   -- Value_Info_Idx --
    --------------------
 
-   function Value_Data_Idx (V : Value_T; Create : Boolean) return Value_Idx
+   function Value_Info_Idx (V : Value_T; Create : Boolean) return Value_Idx
    is
-      use Value_Data_Maps;
-      Position : constant Cursor := Find (Value_Data_Map, V);
+      use Value_Info_Maps;
+      Position : constant Cursor := Find (Value_Info_Map, V);
 
    begin
       if Has_Element (Position) then
@@ -190,38 +190,38 @@ package body CCG.Environment is
       elsif not Create then
          return No_Value_Idx;
       else
-         Value_Data_Table.Append ((C_Value             => No_Str,
-                                   Is_Variable         => False,
-                                   Is_Decl_Output      => False,
-                                   Is_Temp_Decl_Output => False,
-                                   Is_LHS              => False,
-                                   Is_Constant         => False,
-                                   Is_Unsigned         => False,
-                                   Is_Used             => False,
-                                   Output_Idx          => 0));
-         Insert (Value_Data_Map, V, Value_Data_Table.Last);
-         return Value_Data_Table.Last;
+         Value_Info.Append ((C_Value             => No_Str,
+                             Is_Variable         => False,
+                             Is_Decl_Output      => False,
+                             Is_Temp_Decl_Output => False,
+                             Is_LHS              => False,
+                             Is_Constant         => False,
+                             Is_Unsigned         => False,
+                             Is_Used             => False,
+                             Output_Idx          => 0));
+         Insert (Value_Info_Map, V, Value_Info.Last);
+         return Value_Info.Last;
       end if;
-   end Value_Data_Idx;
+   end Value_Info_Idx;
 
    -----------------------
    -- Delete_Value_Info --
    -----------------------
 
    procedure Delete_Value_Info (V : Value_T) is
-      use Value_Data_Maps;
+      use Value_Info_Maps;
    begin
-      Exclude (Value_Data_Map, V);
+      Exclude (Value_Info_Map, V);
    end Delete_Value_Info;
 
    -------------------
-   -- Type_Data_Idx --
+   -- Type_Info_Idx --
    -------------------
 
-   function Type_Data_Idx (T : Type_T; Create : Boolean) return Type_Idx
+   function Type_Info_Idx (T : Type_T; Create : Boolean) return Type_Idx
    is
-      use Type_Data_Maps;
-      Position : constant Cursor := Find (Type_Data_Map, T);
+      use Type_Info_Maps;
+      Position : constant Cursor := Find (Type_Info_Map, T);
 
    begin
       if Has_Element (Position) then
@@ -229,24 +229,24 @@ package body CCG.Environment is
       elsif not Create then
          return No_Type_Idx;
       else
-         Type_Data_Table.Append ((Is_Typedef_Output        => False,
-                                  Is_Return_Typedef_Output => False,
-                                  Is_Incomplete_Output     => False,
-                                  Are_Writing_Typedef      => False,
-                                  Output_Idx               => 0));
-         Insert (Type_Data_Map, T, Type_Data_Table.Last);
-         return Type_Data_Table.Last;
+         Type_Info.Append ((Is_Typedef_Output        => False,
+                            Is_Return_Typedef_Output => False,
+                            Is_Incomplete_Output     => False,
+                            Are_Writing_Typedef      => False,
+                            Output_Idx               => 0));
+         Insert (Type_Info_Map, T, Type_Info.Last);
+         return Type_Info.Last;
       end if;
-   end Type_Data_Idx;
+   end Type_Info_Idx;
 
    -----------------
-   -- BB_Data_Idx --
+   -- BB_Info_Idx --
    -----------------
 
-   function BB_Data_Idx (B : Basic_Block_T; Create : Boolean) return BB_Idx
+   function BB_Info_Idx (B : Basic_Block_T; Create : Boolean) return BB_Idx
    is
-      use BB_Data_Maps;
-      Position : constant Cursor := Find (BB_Data_Map, B);
+      use BB_Info_Maps;
+      Position : constant Cursor := Find (BB_Info_Map, B);
 
    begin
       if Has_Element (Position) then
@@ -254,25 +254,25 @@ package body CCG.Environment is
       elsif not Create then
          return No_BB_Idx;
       else
-         BB_Data_Table.Append ((Was_Output  => False,
-                                Was_Written => False,
-                                First_Stmt  => Empty_Stmt_Idx,
-                                Last_Stmt   => Empty_Stmt_Idx,
-                                Output_Idx => 0));
-         Insert (BB_Data_Map, B, BB_Data_Table.Last);
-         return BB_Data_Table.Last;
+         BB_Info.Append ((Was_Output  => False,
+                          Was_Written => False,
+                          First_Stmt  => Empty_Stmt_Idx,
+                          Last_Stmt   => Empty_Stmt_Idx,
+                          Output_Idx => 0));
+         Insert (BB_Info_Map, B, BB_Info.Last);
+         return BB_Info.Last;
       end if;
-   end BB_Data_Idx;
+   end BB_Info_Idx;
 
    -----------------
    -- Get_C_Value --
    -----------------
 
    function Get_C_Value (V : Value_T) return Str is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
 
    begin
-      return (if   Present (Idx) then Value_Data_Table.Table (Idx).C_Value
+      return (if   Present (Idx) then Value_Info.Table (Idx).C_Value
               else No_Str);
    end Get_C_Value;
 
@@ -281,10 +281,10 @@ package body CCG.Environment is
    ---------------------
 
    function Get_Is_Variable (V : Value_T) return Boolean is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
 
    begin
-      return Present (Idx) and then Value_Data_Table.Table (Idx).Is_Variable;
+      return Present (Idx) and then Value_Info.Table (Idx).Is_Variable;
    end Get_Is_Variable;
 
    ------------------------
@@ -292,11 +292,11 @@ package body CCG.Environment is
    ------------------------
 
    function Get_Is_Decl_Output (V : Value_T) return Boolean is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
 
    begin
       return Present (Idx)
-        and then Value_Data_Table.Table (Idx).Is_Decl_Output;
+        and then Value_Info.Table (Idx).Is_Decl_Output;
 
    end Get_Is_Decl_Output;
 
@@ -305,11 +305,11 @@ package body CCG.Environment is
    -----------------------------
 
    function Get_Is_Temp_Decl_Output (V : Value_T) return Boolean is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
 
    begin
       return Present (Idx)
-        and then Value_Data_Table.Table (Idx).Is_Temp_Decl_Output;
+        and then Value_Info.Table (Idx).Is_Temp_Decl_Output;
 
    end Get_Is_Temp_Decl_Output;
 
@@ -318,11 +318,10 @@ package body CCG.Environment is
    ----------------
 
    function Get_Is_LHS (V : Value_T) return Boolean is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
 
    begin
-      return Present (Idx)
-        and then Value_Data_Table.Table (Idx).Is_LHS;
+      return Present (Idx) and then Value_Info.Table (Idx).Is_LHS;
 
    end Get_Is_LHS;
 
@@ -331,11 +330,10 @@ package body CCG.Environment is
    ---------------------
 
    function Get_Is_Constant (V : Value_T) return Boolean is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
 
    begin
-      return Present (Idx)
-        and then Value_Data_Table.Table (Idx).Is_Constant;
+      return Present (Idx) and then Value_Info.Table (Idx).Is_Constant;
 
    end Get_Is_Constant;
 
@@ -344,11 +342,10 @@ package body CCG.Environment is
    ---------------------
 
    function Get_Is_Unsigned (V : Value_T) return Boolean is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
 
    begin
-      return Present (Idx)
-        and then Value_Data_Table.Table (Idx).Is_Unsigned;
+      return Present (Idx) and then Value_Info.Table (Idx).Is_Unsigned;
 
    end Get_Is_Unsigned;
 
@@ -357,11 +354,10 @@ package body CCG.Environment is
    ------------------
 
    function Get_Is_Used (V : Value_T) return Boolean is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => False);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
 
    begin
-      return Present (Idx)
-        and then Value_Data_Table.Table (Idx).Is_Used;
+      return Present (Idx) and then Value_Info.Table (Idx).Is_Used;
 
    end Get_Is_Used;
 
@@ -370,10 +366,10 @@ package body CCG.Environment is
    -----------------
 
    procedure Set_C_Value (V : Value_T; S : Str) is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
 
    begin
-      Value_Data_Table.Table (Idx).C_Value := S;
+      Value_Info.Table (Idx).C_Value := S;
    end Set_C_Value;
 
    ---------------------
@@ -381,10 +377,10 @@ package body CCG.Environment is
    ---------------------
 
    procedure Set_Is_Variable (V : Value_T; B : Boolean := True) is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
 
    begin
-      Value_Data_Table.Table (Idx).Is_Variable := B;
+      Value_Info.Table (Idx).Is_Variable := B;
    end Set_Is_Variable;
 
    ------------------------
@@ -392,10 +388,10 @@ package body CCG.Environment is
    ------------------------
 
    procedure Set_Is_Decl_Output (V : Value_T; B : Boolean := True) is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
 
    begin
-      Value_Data_Table.Table (Idx).Is_Decl_Output := B;
+      Value_Info.Table (Idx).Is_Decl_Output := B;
    end Set_Is_Decl_Output;
 
    -----------------------------
@@ -403,10 +399,10 @@ package body CCG.Environment is
    -----------------------------
 
    procedure Set_Is_Temp_Decl_Output (V : Value_T; B : Boolean := True) is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
 
    begin
-      Value_Data_Table.Table (Idx).Is_Temp_Decl_Output := B;
+      Value_Info.Table (Idx).Is_Temp_Decl_Output := B;
    end Set_Is_Temp_Decl_Output;
 
    ----------------
@@ -414,10 +410,10 @@ package body CCG.Environment is
    ----------------
 
    procedure Set_Is_LHS (V : Value_T; B : Boolean := True) is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
 
    begin
-      Value_Data_Table.Table (Idx).Is_LHS := B;
+      Value_Info.Table (Idx).Is_LHS := B;
    end Set_Is_LHS;
 
    ---------------------
@@ -425,10 +421,10 @@ package body CCG.Environment is
    ---------------------
 
    procedure Set_Is_Constant (V : Value_T; B : Boolean := True) is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
 
    begin
-      Value_Data_Table.Table (Idx).Is_Constant := B;
+      Value_Info.Table (Idx).Is_Constant := B;
    end Set_Is_Constant;
 
    ---------------------
@@ -436,10 +432,10 @@ package body CCG.Environment is
    ---------------------
 
    procedure Set_Is_Unsigned (V : Value_T; B : Boolean := True) is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
 
    begin
-      Value_Data_Table.Table (Idx).Is_Unsigned := B;
+      Value_Info.Table (Idx).Is_Unsigned := B;
    end Set_Is_Unsigned;
 
    -----------------
@@ -447,10 +443,10 @@ package body CCG.Environment is
    -----------------
 
    procedure Set_Is_Used (V : Value_T; B : Boolean := True) is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
 
    begin
-      Value_Data_Table.Table (Idx).Is_Used := B;
+      Value_Info.Table (Idx).Is_Used := B;
    end Set_Is_Used;
 
    ---------------------------
@@ -458,11 +454,10 @@ package body CCG.Environment is
    ---------------------------
 
    function Get_Is_Typedef_Output (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Data_Idx (T, Create => False);
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
 
    begin
-      return Present (Idx)
-        and then Type_Data_Table.Table (Idx).Is_Typedef_Output;
+      return Present (Idx) and then Type_Info.Table (Idx).Is_Typedef_Output;
    end Get_Is_Typedef_Output;
 
    ----------------------------------
@@ -470,11 +465,11 @@ package body CCG.Environment is
    ----------------------------------
 
    function Get_Is_Return_Typedef_Output (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Data_Idx (T, Create => False);
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
 
    begin
       return Present (Idx)
-        and then Type_Data_Table.Table (Idx).Is_Return_Typedef_Output;
+        and then Type_Info.Table (Idx).Is_Return_Typedef_Output;
    end Get_Is_Return_Typedef_Output;
 
    ------------------------------
@@ -482,11 +477,10 @@ package body CCG.Environment is
    ------------------------------
 
    function Get_Is_Incomplete_Output (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Data_Idx (T, Create => False);
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
 
    begin
-      return Present (Idx)
-        and then Type_Data_Table.Table (Idx).Is_Incomplete_Output;
+      return Present (Idx) and then Type_Info.Table (Idx).Is_Incomplete_Output;
    end Get_Is_Incomplete_Output;
 
    -----------------------------
@@ -494,11 +488,10 @@ package body CCG.Environment is
    -----------------------------
 
    function Get_Are_Writing_Typedef (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Data_Idx (T, Create => False);
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
 
    begin
-      return Present (Idx)
-        and then Type_Data_Table.Table (Idx).Are_Writing_Typedef;
+      return Present (Idx) and then Type_Info.Table (Idx).Are_Writing_Typedef;
    end Get_Are_Writing_Typedef;
 
    --------------------------
@@ -506,10 +499,10 @@ package body CCG.Environment is
    --------------------------
 
    procedure Set_Is_Typedef_Output (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Data_Idx (T, Create => True);
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
 
    begin
-      Type_Data_Table.Table (Idx).Is_Typedef_Output := B;
+      Type_Info.Table (Idx).Is_Typedef_Output := B;
    end Set_Is_Typedef_Output;
 
    ----------------------------------
@@ -517,10 +510,10 @@ package body CCG.Environment is
    ----------------------------------
 
    procedure Set_Is_Return_Typedef_Output (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Data_Idx (T, Create => True);
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
 
    begin
-      Type_Data_Table.Table (Idx).Is_Return_Typedef_Output := B;
+      Type_Info.Table (Idx).Is_Return_Typedef_Output := B;
    end Set_Is_Return_Typedef_Output;
 
    ------------------------------
@@ -528,10 +521,10 @@ package body CCG.Environment is
    ------------------------------
 
    procedure Set_Is_Incomplete_Output (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Data_Idx (T, Create => True);
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
 
    begin
-      Type_Data_Table.Table (Idx).Is_Incomplete_Output := B;
+      Type_Info.Table (Idx).Is_Incomplete_Output := B;
    end Set_Is_Incomplete_Output;
 
    -----------------------------
@@ -539,10 +532,10 @@ package body CCG.Environment is
    -----------------------------
 
    procedure Set_Are_Writing_Typedef (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Data_Idx (T, Create => True);
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
 
    begin
-      Type_Data_Table.Table (Idx).Are_Writing_Typedef := B;
+      Type_Info.Table (Idx).Are_Writing_Typedef := B;
    end Set_Are_Writing_Typedef;
 
    --------------------
@@ -550,10 +543,10 @@ package body CCG.Environment is
    --------------------
 
    function Get_Was_Output (BB : Basic_Block_T) return Boolean is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => False);
+      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => False);
 
    begin
-      return Present (Idx) and then BB_Data_Table.Table (Idx).Was_Output;
+      return Present (Idx) and then BB_Info.Table (Idx).Was_Output;
    end Get_Was_Output;
 
    ---------------------
@@ -561,10 +554,10 @@ package body CCG.Environment is
    ---------------------
 
    function Get_Was_Written (BB : Basic_Block_T) return Boolean is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => False);
+      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => False);
 
    begin
-      return Present (Idx) and then BB_Data_Table.Table (Idx).Was_Written;
+      return Present (Idx) and then BB_Info.Table (Idx).Was_Written;
    end Get_Was_Written;
 
    --------------------
@@ -572,10 +565,10 @@ package body CCG.Environment is
    --------------------
 
    function Get_First_Stmt (BB : Basic_Block_T) return Stmt_Idx is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => False);
+      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => False);
 
    begin
-      return (if   Present (Idx) then BB_Data_Table.Table (Idx).First_Stmt
+      return (if   Present (Idx) then BB_Info.Table (Idx).First_Stmt
               else Empty_Stmt_Idx);
    end Get_First_Stmt;
 
@@ -584,10 +577,10 @@ package body CCG.Environment is
    -------------------
 
    function Get_Last_Stmt (BB : Basic_Block_T) return Stmt_Idx is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => False);
+      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => False);
 
    begin
-      return (if   Present (Idx) then BB_Data_Table.Table (Idx).Last_Stmt
+      return (if   Present (Idx) then BB_Info.Table (Idx).Last_Stmt
               else Empty_Stmt_Idx);
    end Get_Last_Stmt;
 
@@ -596,10 +589,10 @@ package body CCG.Environment is
    --------------------
 
    procedure Set_Was_Output (BB : Basic_Block_T; B : Boolean := True) is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
+      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => True);
 
    begin
-      BB_Data_Table.Table (Idx).Was_Output := B;
+      BB_Info.Table (Idx).Was_Output := B;
    end Set_Was_Output;
 
    ---------------------
@@ -607,10 +600,10 @@ package body CCG.Environment is
    ---------------------
 
    procedure Set_Was_Written (BB : Basic_Block_T; B : Boolean := True) is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
+      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => True);
 
    begin
-      BB_Data_Table.Table (Idx).Was_Written := B;
+      BB_Info.Table (Idx).Was_Written := B;
    end Set_Was_Written;
 
    --------------------
@@ -618,10 +611,10 @@ package body CCG.Environment is
    --------------------
 
    procedure Set_First_Stmt (BB : Basic_Block_T; Sidx : Stmt_Idx) is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
+      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => True);
 
    begin
-      BB_Data_Table.Table (Idx).First_Stmt := Sidx;
+      BB_Info.Table (Idx).First_Stmt := Sidx;
    end Set_First_Stmt;
 
    -------------------
@@ -629,10 +622,10 @@ package body CCG.Environment is
    -------------------
 
    procedure Set_Last_Stmt (BB : Basic_Block_T; Sidx : Stmt_Idx) is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
+      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => True);
 
    begin
-      BB_Data_Table.Table (Idx).Last_Stmt := Sidx;
+      BB_Info.Table (Idx).Last_Stmt := Sidx;
    end Set_Last_Stmt;
 
    -------------------------
@@ -659,8 +652,8 @@ package body CCG.Environment is
    --------------------
 
    function Get_Output_Idx (V : Value_T) return Nat is
-      Idx : constant Value_Idx := Value_Data_Idx (V, Create => True);
-      VD  : Value_Data renames Value_Data_Table.Table (Idx);
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
+      VD  : Value_Data renames Value_Info.Table (Idx);
 
    begin
       if VD.Output_Idx = 0 then
@@ -676,8 +669,8 @@ package body CCG.Environment is
    --------------------
 
    function Get_Output_Idx (T : Type_T) return Nat is
-      Idx : constant Type_Idx := Type_Data_Idx (T, Create => True);
-      TD  : Type_Data renames Type_Data_Table.Table (Idx);
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
+      TD  : Type_Data renames Type_Info.Table (Idx);
 
    begin
       if TD.Output_Idx = 0 then
@@ -693,8 +686,8 @@ package body CCG.Environment is
    --------------------
 
    function Get_Output_Idx (BB : Basic_Block_T) return Nat is
-      Idx : constant BB_Idx := BB_Data_Idx (BB, Create => True);
-      BBD : BB_Data renames BB_Data_Table.Table (Idx);
+      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => True);
+      BBD : BB_Data renames BB_Info.Table (Idx);
 
    begin
       if BBD.Output_Idx = 0 then

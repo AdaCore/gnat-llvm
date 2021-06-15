@@ -150,13 +150,13 @@ package body GNATLLVM.GLType is
    function GL_Type_Info_Is_Valid_Int (GTI : GL_Type_Info_Base) return Boolean;
    --  Internal version of GL_Value_Is_Valid
 
-   package GL_Type_Table is new Table.Table
+   package GL_Types is new Table.Table
      (Table_Component_Type => GL_Type_Info,
       Table_Index_Type     => GL_Type'Base,
       Table_Low_Bound      => GL_Type_Low_Bound,
       Table_Initial        => 2000,
       Table_Increment      => 200,
-      Table_Name           => "GL_Type_Table");
+      Table_Name           => "GL_Types");
 
    procedure Next (GT : in out GL_Type)
      with Pre => Present (GT), Inline;
@@ -201,7 +201,7 @@ package body GNATLLVM.GLType is
    --  Internal version of Make_GT_Alternative to actually make the GL_Type
 
    function GT_Kind (GT : GL_Type) return GT_Kind_Type is
-     (GL_Type_Table.Table (GT).Kind)
+     (GL_Types.Table (GT).Kind)
      with Pre => Present (GT);
 
    ---------------------------
@@ -290,7 +290,7 @@ package body GNATLLVM.GLType is
 
    procedure Next (GT : in out GL_Type) is
    begin
-      GT := GL_Type_Table.Table (GT).Next;
+      GT := GL_Types.Table (GT).Next;
    end Next;
 
    -------------
@@ -298,35 +298,35 @@ package body GNATLLVM.GLType is
    -------------
 
    function GT_Size (GT : GL_Type) return GL_Value is
-     (GL_Type_Table.Table (GT).Size);
+     (GL_Types.Table (GT).Size);
 
    -----------------
    -- Is_Max_Size --
    -----------------
 
    function Is_Max_Size (GT : GL_Type) return Boolean is
-     (GL_Type_Table.Table (GT).Max_Size);
+     (GL_Types.Table (GT).Max_Size);
 
    ----------------
    -- Is_Default --
    ----------------
 
    function Is_Default (GT : GL_Type) return Boolean is
-     (GL_Type_Table.Table (GT).Default);
+     (GL_Types.Table (GT).Default);
 
    ------------------
    -- GT_Alignment --
    ------------------
 
    function GT_Alignment (GT : GL_Type) return Nat is
-     (GL_Type_Table.Table (GT).Alignment);
+     (GL_Types.Table (GT).Alignment);
 
    ---------------
    -- TBAA_Type --
    ---------------
 
    function TBAA_Type (GT : GL_Type) return Metadata_T is
-     (GL_Type_Table.Table (GT).TBAA);
+     (GL_Types.Table (GT).TBAA);
 
    -------------------
    -- Set_TBAA_Type --
@@ -334,15 +334,17 @@ package body GNATLLVM.GLType is
 
    procedure Set_TBAA_Type (GT : GL_Type; MD : Metadata_T) is
    begin
-      GL_Type_Table.Table (GT).TBAA := MD;
+      GL_Types.Table (GT).TBAA := MD;
    end Set_TBAA_Type;
 
-   -----------------
-   -- Array_Types --
-   -----------------
+   ---------------------
+   -- Get_Array_Types --
+   ---------------------
 
-   function Array_Types    (GT : Array_Or_PAT_GL_Type) return Array_Types_Id is
-     (GL_Type_Table.Table (GT).Array_Types);
+   function Get_Array_Types
+     (GT : Array_Or_PAT_GL_Type) return Array_Types_Id
+   is
+     (GL_Types.Table (GT).Array_Types);
 
    ---------------------
    -- Set_Array_Types --
@@ -351,7 +353,7 @@ package body GNATLLVM.GLType is
    procedure Set_Array_Types (GT : Array_Or_PAT_GL_Type; ATs : Array_Types_Id)
    is
    begin
-      GL_Type_Table.Table (GT).Array_Types := ATs;
+      GL_Types.Table (GT).Array_Types := ATs;
    end Set_Array_Types;
 
    ---------------------------
@@ -377,19 +379,19 @@ package body GNATLLVM.GLType is
       GT : GL_Type;
 
    begin
-      GL_Type_Table.Append ((GNAT_Type   => TE,
-                             LLVM_Type   => No_Type_T,
-                             TBAA        => No_Metadata_T,
-                             Next        => Get_GL_Type (TE),
-                             Size        => No_GL_Value,
-                             Alignment   => 0,
-                             Bias        => No_GL_Value,
-                             Array_Types => Empty_Array_Types_Id,
-                             Max_Size    => False,
-                             Kind        => None,
-                             Default     => False));
+      GL_Types.Append ((GNAT_Type   => TE,
+                        LLVM_Type   => No_Type_T,
+                        TBAA        => No_Metadata_T,
+                        Next        => Get_GL_Type (TE),
+                        Size        => No_GL_Value,
+                        Alignment   => 0,
+                        Bias        => No_GL_Value,
+                        Array_Types => Empty_Array_Types_Id,
+                        Max_Size    => False,
+                        Kind        => None,
+                        Default     => False));
 
-      GT := GL_Type_Table.Last;
+      GT := GL_Types.Last;
       Set_GL_Type (TE, GT);
       return GT;
    end New_GT;
@@ -488,7 +490,7 @@ package body GNATLLVM.GLType is
         with Post => Get_Type_Kind (Make_Large_Array'Result) = Array_Type_Kind;
       --  Build an array (possibly a nested array) of Count entries
 
-      In_GTI      : constant GL_Type_Info := GL_Type_Table.Table (GT);
+      In_GTI      : constant GL_Type_Info := GL_Types.Table (GT);
       Needs_Bias  : constant Boolean      :=
         Is_Biased or else In_GTI.Kind = Biased;
       Needs_Max   : constant Boolean      := Max_Size or else In_GTI.Max_Size;
@@ -573,7 +575,7 @@ package body GNATLLVM.GLType is
 
       while Present (Found_GT) loop
          declare
-            GTI : constant GL_Type_Info := GL_Type_Table.Table (Found_GT);
+            GTI : constant GL_Type_Info := GL_Types.Table (Found_GT);
          begin
             if (Size_V = GTI.Size and then Align_N = GTI.Alignment
                   and then Needs_Bias = (GTI.Kind = Biased)
@@ -616,7 +618,7 @@ package body GNATLLVM.GLType is
 
       declare
          Ret_GT : constant GL_Type := New_GT (TE);
-         GTI    : GL_Type_Info renames GL_Type_Table.Table (Ret_GT);
+         GTI    : GL_Type_Info renames GL_Types.Table (Ret_GT);
 
       begin
          --  Record the basic parameters of what we're making
@@ -747,7 +749,7 @@ package body GNATLLVM.GLType is
    --------------------
 
    procedure Update_GL_Type (GT : GL_Type; T : Type_T; Is_Dummy : Boolean) is
-      GTI : GL_Type_Info renames GL_Type_Table.Table (GT);
+      GTI : GL_Type_Info renames GL_Types.Table (GT);
 
    begin
       GTI.LLVM_Type := T;
@@ -869,7 +871,7 @@ package body GNATLLVM.GLType is
    begin
       return GT : GL_Type := Get_Or_Create_GL_Type (TE, Create) do
          while Present (GT) loop
-            exit when GL_Type_Table.Table (GT).Default;
+            exit when GL_Types.Table (GT).Default;
             Next (GT);
          end loop;
 
@@ -882,7 +884,7 @@ package body GNATLLVM.GLType is
             GT := Get_GL_Type (TE);
 
             while Present (GT) loop
-               exit when GL_Type_Table.Table (GT).Default;
+               exit when GL_Types.Table (GT).Default;
                Next (GT);
             end loop;
          end if;
@@ -914,7 +916,7 @@ package body GNATLLVM.GLType is
       --  Mark each GT as default or not, depending on whether it's ours
 
       while Present (All_GT) loop
-         GL_Type_Table.Table (All_GT).Default := All_GT = GT;
+         GL_Types.Table (All_GT).Default := All_GT = GT;
          Next (All_GT);
       end loop;
    end Mark_Default;
@@ -1024,7 +1026,7 @@ package body GNATLLVM.GLType is
    is
       In_GT  : constant GL_Type         := Related_Type (V);
       In_R   : constant GL_Relationship := Relationship (V);
-      In_GTI : constant GL_Type_Info    := GL_Type_Table.Table (In_GT);
+      In_GTI : constant GL_Type_Info    := GL_Types.Table (In_GT);
       Out_GT : constant GL_Type         := Primitive_GL_Type (In_GT);
       Result : GL_Value                 := V;
 
@@ -1115,7 +1117,7 @@ package body GNATLLVM.GLType is
       GT      : GL_Type;
       No_Copy : Boolean := False) return GL_Value
    is
-      GTI    : constant GL_Type_Info := GL_Type_Table.Table (GT);
+      GTI    : constant GL_Type_Info := GL_Types.Table (GT);
       Result : GL_Value              := V;
 
    begin
@@ -1199,14 +1201,14 @@ package body GNATLLVM.GLType is
    ----------------
 
    function Full_Etype (GT : GL_Type) return Void_Or_Type_Kind_Id is
-     (GL_Type_Table.Table (GT).GNAT_Type);
+     (GL_Types.Table (GT).GNAT_Type);
 
    -------------
    -- Type_Of --
    -------------
 
    function Type_Of (GT : GL_Type) return Type_T is
-     (GL_Type_Table.Table (GT).LLVM_Type);
+     (GL_Types.Table (GT).LLVM_Type);
 
    ------------------
    -- Base_GL_Type --
@@ -1312,7 +1314,7 @@ package body GNATLLVM.GLType is
    -----------------------
 
    function Is_Nonnative_Type (GT : GL_Type) return Boolean is
-      GTI  : constant GL_Type_Info := GL_Type_Table.Table (GT);
+      GTI  : constant GL_Type_Info := GL_Types.Table (GT);
 
    begin
       --  If we've built an LLVM type to do padding, then that's a native
@@ -1383,7 +1385,7 @@ package body GNATLLVM.GLType is
    ----------------------
 
    procedure Dump_GL_Type_Int (GT : GL_Type; Full_Dump : Boolean) is
-      GTI  : constant GL_Type_Info := GL_Type_Table.Table (GT);
+      GTI  : constant GL_Type_Info := GL_Types.Table (GT);
 
       procedure Write_Int_From_LLI (J : LLI);
 
@@ -1436,5 +1438,5 @@ package body GNATLLVM.GLType is
 begin
    --  Make a dummy entry in the table, so the "No" entry is never used.
 
-   GL_Type_Table.Increment_Last;
+   GL_Types.Increment_Last;
 end GNATLLVM.GLType;

@@ -479,7 +479,7 @@ private
       Table_Low_Bound      => Field_Info_Low_Bound,
       Table_Initial        => 1000,
       Table_Increment      => 100,
-      Table_Name           => "Record_Info_Table");
+      Table_Name           => "Field_Info_Table");
 
    function Get_Discriminant_Constraint
      (TE : E_Record_Subtype_Id; E : E_Discriminant_Id) return Node_Id

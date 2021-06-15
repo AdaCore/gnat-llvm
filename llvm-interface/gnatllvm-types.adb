@@ -46,13 +46,13 @@ package body GNATLLVM.Types is
    --  processing of an Emit_LValue so we can find it if we have a
    --  self-referential item (a discriminated record).
 
-   package LValue_Pair_Table is new Table.Table
+   package LValue_Pairs is new Table.Table
      (Table_Component_Type => GL_Value,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 10,
       Table_Increment      => 5,
-      Table_Name           => "LValue_Pair_Table");
+      Table_Name           => "LValue_Pairs");
    --  Table of intermediate results for Emit_LValue
 
    LValue_Pair_First : Nat := 1;
@@ -360,7 +360,7 @@ package body GNATLLVM.Types is
    procedure Push_LValue_List is
    begin
       LValue_Stack.Append (LValue_Pair_First);
-      LValue_Pair_First := LValue_Pair_Table.Last + 1;
+      LValue_Pair_First := LValue_Pairs.Last + 1;
    end Push_LValue_List;
 
    ---------------------
@@ -369,7 +369,7 @@ package body GNATLLVM.Types is
 
    procedure Pop_LValue_List is
    begin
-      LValue_Pair_Table.Set_Last (LValue_Pair_First - 1);
+      LValue_Pairs.Set_Last (LValue_Pair_First - 1);
       LValue_Pair_First := LValue_Stack.Table (LValue_Stack.Last);
       LValue_Stack.Decrement_Last;
    end Pop_LValue_List;
@@ -380,7 +380,7 @@ package body GNATLLVM.Types is
 
    procedure Clear_LValue_List is
    begin
-      LValue_Pair_Table.Set_Last (LValue_Pair_First - 1);
+      LValue_Pairs.Set_Last (LValue_Pair_First - 1);
    end Clear_LValue_List;
 
    -------------------------
@@ -395,7 +395,7 @@ package body GNATLLVM.Types is
       --  checking.
 
       if Is_Record_Type (Related_Type (V)) and then Disable_LV_Append = 0 then
-         LValue_Pair_Table.Append (V);
+         LValue_Pairs.Append (V);
       end if;
    end Add_To_LValue_List;
 
@@ -419,19 +419,17 @@ package body GNATLLVM.Types is
       --  be finding the size of an object of that size, in which case the
       --  object will have been added last.
 
-      for J in reverse LValue_Pair_First .. LValue_Pair_Table.Last loop
+      for J in reverse LValue_Pair_First .. LValue_Pairs.Last loop
          if Is_Parent_Of (TE,
-                          Full_Etype (Related_Type
-                                        (LValue_Pair_Table.Table (J))))
+                          Full_Etype (Related_Type (LValue_Pairs.Table (J))))
            or else Is_Parent_Of (Full_Etype (Related_Type
-                                               (LValue_Pair_Table.Table (J))),
+                                               (LValue_Pairs.Table (J))),
                                  TE)
          then
             --  ?? It would be more efficient to not convert to a reference
             --  here, but that might be quite a lot of work (see 8802-007).
 
-            return Convert_Ref (Get (LValue_Pair_Table.Table (J),
-                                     Any_Reference),
+            return Convert_Ref (Get (LValue_Pairs.Table (J), Any_Reference),
                                 Default_GL_Type (TE));
          end if;
       end loop;

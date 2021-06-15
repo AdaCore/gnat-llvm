@@ -215,13 +215,13 @@ package body GNATLLVM.Blocks is
 
    Exit_Point_Low_Bound : constant Exit_Point_Level := 1;
 
-   package Exit_Point_Table is new Table.Table
+   package Exit_Points is new Table.Table
      (Table_Component_Type => Exit_Point,
       Table_Index_Type     => Exit_Point_Level,
       Table_Low_Bound      => Exit_Point_Low_Bound,
       Table_Initial        => 10,
       Table_Increment      => 5,
-      Table_Name           => "Exit_Point_Table");
+      Table_Name           => "Exit_Points");
    --  Table of scoped loop exit points. Last inserted exit point correspond
    --  to the innermost loop.
 
@@ -261,7 +261,7 @@ package body GNATLLVM.Blocks is
    --  from more levels and avoid searching the entire list for open
    --  branches.
 
-   type Label_Info is record
+   type Label_Data is record
       Orig_BB         : Basic_Block_T;
       --  The basic block directly corresponding to the label
 
@@ -278,13 +278,13 @@ package body GNATLLVM.Blocks is
       --  True if we've made an entry in the Open_Branches table for this
    end record;
 
-   package Label_Info_Table is new Table.Table
-     (Table_Component_Type => Label_Info,
+   package Label_Info is new Table.Table
+     (Table_Component_Type => Label_Data,
       Table_Index_Type     => Label_Info_Id,
       Table_Low_Bound      => Label_Info_Low_Bound,
       Table_Initial        => 100,
       Table_Increment      => 10,
-      Table_Name           => "Label_Info_Table");
+      Table_Name           => "Label_Info");
    --  Information about labels we encounter
 
    type Open_Branch is record
@@ -1394,17 +1394,17 @@ package body GNATLLVM.Blocks is
          end;
       end loop;
 
-      --  Go through the Exit_Point_Table and Label_Info_Table and clear
-      --  out any From_Block that corresponds to our depth since those
-      --  are no longer valid: if we push again to that depth, we'll have
-      --  a different fixup.
+      --  Go through the Exit_Points and Label_Info and clear out any
+      --  From_Block that corresponds to our depth since those are no
+      --  longer valid: if we push again to that depth, we'll have a
+      --  different fixup.
 
-      for J in Exit_Point_Low_Bound .. Exit_Point_Table.Last loop
-         Exit_Point_Table.Table (J).From_Block := -1;
+      for J in Exit_Point_Low_Bound .. Exit_Points.Last loop
+         Exit_Points.Table (J).From_Block := -1;
       end loop;
 
-      for J in Label_Info_Low_Bound .. Label_Info_Table.Last loop
-         Label_Info_Table.Table (J).From_Block := -1;
+      for J in Label_Info_Low_Bound .. Label_Info.Last loop
+         Label_Info.Table (J).From_Block := -1;
       end loop;
 
       --  If we made a label for end-of-block actions, move to it now.
@@ -1542,18 +1542,18 @@ package body GNATLLVM.Blocks is
       --  before, build a new Label_Info entry with just the label.
 
       if No (L_Idx) then
-         Label_Info_Table.Append ((Orig_BB         =>
-                                     Create_Basic_Block (Get_Name (E)),
-                                   Fixup_BB        => No_BB_T,
-                                   Block_Depth     => -1,
-                                   From_Block      => -1,
-                                   Has_Open_Branch => False));
-         L_Idx := Label_Info_Table.Last;
+         Label_Info.Append ((Orig_BB         =>
+                               Create_Basic_Block (Get_Name (E)),
+                             Fixup_BB        => No_BB_T,
+                             Block_Depth     => -1,
+                             From_Block      => -1,
+                             Has_Open_Branch => False));
+         L_Idx := Label_Info.Last;
          Set_Label_Info (E, L_Idx);
       end if;
 
       declare
-         LI         : Label_Info renames Label_Info_Table.Table (L_Idx);
+         LI         : Label_Data renames Label_Info.Table (L_Idx);
          Current_BB : constant Basic_Block_T := Get_Insert_Block;
          Orig_BB    : constant Basic_Block_T := LI.Orig_BB;
 
@@ -1635,7 +1635,7 @@ package body GNATLLVM.Blocks is
       L_Idx     : constant Label_Info_Id :=
           (if Present (E) then Get_Label_Info (E) else Empty_Label_Info_Id);
       BB        : constant Basic_Block_T :=
-          (if    Present (L_Idx) then Label_Info_Table.Table (L_Idx).Orig_BB
+          (if    Present (L_Idx) then Label_Info.Table (L_Idx).Orig_BB
            elsif No (Last_Inst) and then This_BB /= Entry_BB
            then  This_BB else Create_Basic_Block (Name));
       --  If we have an identifier and it has a basic block already set,
@@ -1681,17 +1681,17 @@ package body GNATLLVM.Blocks is
       --  If we didn't previously have an entry, make one and we're done
 
       if No (L_Idx) then
-         Label_Info_Table.Append ((Orig_BB         => BB,
-                                   Fixup_BB        => No_BB_T,
-                                   Block_Depth     => Block_Stack.Last,
-                                   From_Block      => -1,
-                                   Has_Open_Branch => False));
-         Set_Label_Info (E, Label_Info_Table.Last);
+         Label_Info.Append ((Orig_BB         => BB,
+                             Fixup_BB        => No_BB_T,
+                             Block_Depth     => Block_Stack.Last,
+                             From_Block      => -1,
+                             Has_Open_Branch => False));
+         Set_Label_Info (E, Label_Info.Last);
          return BB;
       end if;
 
       declare
-         LI : Label_Info renames Label_Info_Table.Table (L_Idx);
+         LI : Label_Data renames Label_Info.Table (L_Idx);
 
       begin
          LI.Block_Depth := Block_Stack.Last;
@@ -1731,11 +1731,11 @@ package body GNATLLVM.Blocks is
 
    procedure Push_Loop (LE : E_Loop_Id; Exit_Point : Basic_Block_T) is
    begin
-      Exit_Point_Table.Append ((Label_Entity => LE,
-                                Block_Depth  => Block_Stack.Last,
-                                Orig_BB      => Exit_Point,
-                                Exit_BB      => No_BB_T,
-                                From_Block   => -1));
+      Exit_Points.Append ((Label_Entity => LE,
+                           Block_Depth  => Block_Stack.Last,
+                           Orig_BB      => Exit_Point,
+                           Exit_BB      => No_BB_T,
+                           From_Block   => -1));
    end Push_Loop;
 
    --------------
@@ -1744,7 +1744,7 @@ package body GNATLLVM.Blocks is
 
    procedure Pop_Loop is
    begin
-      Exit_Point_Table.Decrement_Last;
+      Exit_Points.Decrement_Last;
    end Pop_Loop;
 
    ---------------------
@@ -1756,13 +1756,13 @@ package body GNATLLVM.Blocks is
       --  If no exit label was specified, use the last one
 
       if No (N) then
-         return Exit_Point_Table.Last;
+         return Exit_Points.Last;
       end if;
 
       --  Otherwise search for a match
 
-      for I in Exit_Point_Low_Bound .. Exit_Point_Table.Last loop
-         if Exit_Point_Table.Table (I).Label_Entity = Entity (N) then
+      for I in Exit_Point_Low_Bound .. Exit_Points.Last loop
+         if Exit_Points.Table (I).Label_Entity = Entity (N) then
             return I;
          end if;
       end loop;
@@ -1771,7 +1771,7 @@ package body GNATLLVM.Blocks is
       --  statement with no corresponding loop: should not happen.
 
       pragma Assert (Decls_Only);
-      return Exit_Point_Table.Last;
+      return Exit_Points.Last;
    end Find_Exit_Point;
 
    --------------------
@@ -1781,7 +1781,7 @@ package body GNATLLVM.Blocks is
    function Get_Exit_Point (N : Node_Id) return Basic_Block_T is
       Current_BB : constant Basic_Block_T    := Get_Insert_Block;
       EPT_Index  : constant Exit_Point_Level := Find_Exit_Point (N);
-      EPT        : Exit_Point renames Exit_Point_Table.Table (EPT_Index);
+      EPT        : Exit_Point renames Exit_Points.Table (EPT_Index);
 
    begin
       --  If this entry doesn't correspond to a fixup from the current block,
@@ -1805,10 +1805,10 @@ package body GNATLLVM.Blocks is
 
    procedure Reset_Block_Tables is
    begin
-      Label_Info_Table.Set_Last (Label_Info_Low_Bound);
-      Block_Stack.Set_Last      (0);
-      Dispatch_Info.Set_Last    (0);
-      Open_Branches.Set_Last    (0);
+      Label_Info.Set_Last    (Label_Info_Low_Bound);
+      Block_Stack.Set_Last   (0);
+      Dispatch_Info.Set_Last (0);
+      Open_Branches.Set_Last (0);
    end Reset_Block_Tables;
 
    ----------------
@@ -1937,6 +1937,6 @@ begin
    --  Make a dummy entry in the label info table, so the "Empty"
    --  entry is never used.
 
-   Label_Info_Table.Increment_Last;
+   Label_Info.Increment_Last;
 
 end GNATLLVM.Blocks;

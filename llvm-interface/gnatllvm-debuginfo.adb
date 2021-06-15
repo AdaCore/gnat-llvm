@@ -58,29 +58,29 @@ package body GNATLLVM.DebugInfo is
       --  LLVM debugging metadata for this scope
    end record;
 
-   package Debug_Scope_Table is new Table.Table
+   package Debug_Scopes is new Table.Table
      (Table_Component_Type => Debug_Scope,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => Debug_Scope_Low_Bound,
       Table_Initial        => 10,
       Table_Increment      => 5,
-      Table_Name           => "Debug_Scope_Table");
+      Table_Name           => "Debug_Scopes");
    --  Table of debugging scopes. The last inserted scope point corresponds
    --  to the current scope.
 
    function Has_Local_Debug_Scope return Boolean is
-     (Debug_Scope_Table.Last >= Debug_Scope_Low_Bound);
+     (Debug_Scopes.Last >= Debug_Scope_Low_Bound);
    --  Says whether we do or don't currently have a local scope
 
    function Current_Debug_Scope return Metadata_T is
      ((if   Has_Local_Debug_Scope
-       then Debug_Scope_Table.Table (Debug_Scope_Table.Last).Scope
+       then Debug_Scopes.Table (Debug_Scopes.Last).Scope
        else Debug_Compile_Unit))
      with Post => Present (Current_Debug_Scope'Result);
    --  Current debug info scop, either global or local
 
    function Current_Debug_SFI return Source_File_Index is
-     (Debug_Scope_Table.Table (Debug_Scope_Table.Last).SFI);
+     (Debug_Scopes.Table (Debug_Scopes.Last).SFI);
    --  Current debug info source file index
 
    Freeze_Pos_Level : Natural := 0;
@@ -163,7 +163,7 @@ package body GNATLLVM.DebugInfo is
    procedure Push_Debug_Scope (SFI : Source_File_Index; Scope : Metadata_T) is
    begin
       if Emit_Debug_Info then
-         Debug_Scope_Table.Append ((SFI, Scope));
+         Debug_Scopes.Append ((SFI, Scope));
       end if;
    end Push_Debug_Scope;
 
@@ -174,7 +174,7 @@ package body GNATLLVM.DebugInfo is
    procedure Pop_Debug_Scope is
    begin
       if Emit_Debug_Info and then not Library_Level then
-         Debug_Scope_Table.Decrement_Last;
+         Debug_Scopes.Decrement_Last;
       end if;
    end Pop_Debug_Scope;
 

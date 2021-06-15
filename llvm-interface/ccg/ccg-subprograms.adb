@@ -52,13 +52,13 @@ package body CCG.Subprograms is
       Last_Decl  : Local_Decl_Idx;
    end record;
 
-   package Subprogram_Table is new Table.Table
+   package Subprograms is new Table.Table
      (Table_Component_Type => Subprogram_Data,
       Table_Index_Type     => Subprogram_Idx,
       Table_Low_Bound      => Subprogram_Idx_Start,
       Table_Initial        => 50,
       Table_Increment      => 50,
-      Table_Name           => "Subprogram_Table");
+      Table_Name           => "Subprograms");
 
    function Is_Builtin_Name (S : String) return Boolean is
      (S'Length > 5 and then S (S'First .. S'First + 4) = "llvm.");
@@ -77,13 +77,13 @@ package body CCG.Subprograms is
    --  Return a string corresponding to the return type of T, adjusting the
    --  type in the case where it's an array.
 
-   package Blocks_To_Write_Table is new Table.Table
+   package Blocks_To_Write is new Table.Table
      (Table_Component_Type => Basic_Block_T,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 10,
       Table_Increment      => 10,
-      Table_Name           => "Blocks_To_Write_Table");
+      Table_Name           => "Blocks_To_Write");
 
    --------------------
    -- New_Subprogram --
@@ -91,9 +91,9 @@ package body CCG.Subprograms is
 
    procedure New_Subprogram (V : Value_T) is
    begin
-      Subprogram_Table.Append ((Func       => V,
-                                First_Decl => Empty_Local_Decl_Idx,
-                                Last_Decl  => Empty_Local_Decl_Idx));
+      Subprograms.Append ((Func       => V,
+                           First_Decl => Empty_Local_Decl_Idx,
+                           Last_Decl  => Empty_Local_Decl_Idx));
    end New_Subprogram;
 
    ---------------
@@ -101,7 +101,7 @@ package body CCG.Subprograms is
    ---------------
 
    function Curr_Func return Value_T is
-     (Subprogram_Table.Table (Subprogram_Table.Last).Func);
+     (Subprograms.Table (Subprograms.Last).Func);
 
    ---------------------------------
    -- Write_Function_Type_Typedef --
@@ -594,8 +594,7 @@ package body CCG.Subprograms is
    -------------------
 
    procedure Add_Decl_Line (Idx : Local_Decl_Idx) is
-      SD : Subprogram_Data renames
-        Subprogram_Table.Table (Subprogram_Table.Last);
+      SD : Subprogram_Data renames Subprograms.Table (Subprograms.Last);
 
    begin
       --  If this is the first we've written, set it as the first and last
@@ -617,7 +616,7 @@ package body CCG.Subprograms is
 
    procedure Add_Block_To_Write (BB : Basic_Block_T) is
    begin
-      Blocks_To_Write_Table.Append (BB);
+      Blocks_To_Write.Append (BB);
    end Add_Block_To_Write;
 
    -----------------------
@@ -634,9 +633,9 @@ package body CCG.Subprograms is
 
       --  Now write out each subprogram
 
-      for Sidx in Subprogram_Idx_Start .. Subprogram_Table.Last loop
+      for Sidx in Subprogram_Idx_Start .. Subprograms.Last loop
          declare
-            SD   : constant Subprogram_Data := Subprogram_Table.Table (Sidx);
+            SD   : constant Subprogram_Data := Subprograms.Table (Sidx);
             BB_J : Nat                      := 1;
 
          begin
@@ -663,10 +662,10 @@ package body CCG.Subprograms is
             --  Now write all other blocks that we branch to and that we
             --  haven't already written.
 
-            while BB_J <= Blocks_To_Write_Table.Last loop
+            while BB_J <= Blocks_To_Write.Last loop
                declare
                   BB : constant Basic_Block_T :=
-                    Blocks_To_Write_Table.Table (BB_J);
+                    Blocks_To_Write.Table (BB_J);
 
                begin
                   if Get_Was_Output (BB) and then not Get_Was_Written (BB) then

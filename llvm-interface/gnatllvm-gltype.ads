@@ -204,11 +204,11 @@ package GNATLLVM.GLType is
      with Pre  => Present (GT) and then Present (MD),
           Post => TBAA_Type (GT) = MD, Inline;
 
-   function Array_Types    (GT : Array_Or_PAT_GL_Type) return Array_Types_Id
+   function Get_Array_Types  (GT : Array_Or_PAT_GL_Type) return Array_Types_Id
      with Inline;
 
    procedure Set_Array_Types (GT : Array_Or_PAT_GL_Type; ATs : Array_Types_Id)
-     with Pre => Present (ATs), Post => Array_Types (GT) = ATs, Inline;
+     with Pre => Present (ATs), Post => Get_Array_Types (GT) = ATs, Inline;
 
    function Is_Dummy_Type (GT : GL_Type)         return Boolean
      with Pre => Present (GT), Inline;

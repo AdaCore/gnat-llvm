@@ -21,6 +21,90 @@ with GNATLLVM.Utils;   use GNATLLVM.Utils;
 
 package body GNATLLVM.Environment is
 
+   --  For each GNAT entity, we store various information.  Not all of this
+   --  information is used for each Ekind.
+
+   type LLVM_Data is record
+      Value                 : GL_Value;
+      --  The GL_Value corresponding to this entity, if a value
+
+      GLType                : GL_Type;
+      --  The head of the GL_Type chain for this entity, if a type
+
+      Associated_GL_Type    : GL_Type;
+      --  For arrays, the GL_Type for the component of the array.  For
+      --  access types, the GL_Type of the Designated type.  In both cases,
+      --  this takes into account any Component_Size clause.
+
+      TBAA                  : Metadata_T;
+      --  An LLVM TBAA Metadata node corresponding to the type.  Set only
+      --  For types that are sufficiently primitive.
+
+      Is_Nonnative_Type     : Boolean;
+      --  True if this GNAT type can't be fully represented as a single
+      --  LLVM type. This is always the case if the saved type is an opaque
+      --  type, but if we have an array type with zero size, we need to use
+      --  this flag to disambiguate the cases of a zero-length array and a
+      --  variable-sized array.  This usually, but not always, means that
+      --  the type's size is not known at compile time.
+
+      Is_Being_Elaborated   : Boolean;
+      --  True if we're in the process of elaborating this type.
+
+      Debug_Type            : Metadata_T;
+      --  Cache for debug information for this entity, if it's a type.
+      --  LLVM will also cache this, but it'll save us the time of
+      --  recomputing debug info, especially for complex types.
+
+      Array_Info            : Array_Info_Id;
+      --  For arrays, an index into bounds information maintained by
+      --  GNATLLVM.Arrays.
+
+      Record_Info           : Record_Info_Id;
+      --  For records, gives the first index of the descriptor of the record
+
+      Field_Info            : Field_Info_Id;
+      --  For fields, gives the index of the descriptor of the field
+
+      Label_Info            : Label_Info_Id;
+      --  For labels, points to information about that label
+
+      TBAA_Array_Info       : TBAA_Info_Id;
+      --  For arrays, points to various TBAA information related to the array
+
+      Orig_Array_Info       : Array_Info_Id;
+      --  For a packed array implementation type, the bound information for
+      --  the original array type.
+
+      SO_Info               : Dynamic_SO_Ref;
+      --  For an expression, the value returned by Create_Dynamic_SO_Ref,
+      --  used for back-annotation purposes.
+
+      Flag1                 : Boolean;
+      --  Used for multiple purposes, depending on Ekind
+
+   end record;
+
+   LLVM_Info_Low_Bound  : constant := 200_000_000;
+   LLVM_Info_High_Bound : constant := 299_999_999;
+   type LLVM_Info_Id is range LLVM_Info_Low_Bound .. LLVM_Info_High_Bound;
+   First_LLVM_Info_Id   : constant LLVM_Info_Id := LLVM_Info_Low_Bound;
+   Empty_LLVM_Info_Id   : constant LLVM_Info_Id := First_LLVM_Info_Id;
+
+   package LLVM_Info is new Table.Table
+     (Table_Component_Type => LLVM_Data,
+      Table_Index_Type     => LLVM_Info_Id,
+      Table_Low_Bound      => LLVM_Info_Low_Bound,
+      Table_Initial        => 1024,
+      Table_Increment      => 100,
+      Table_Name           => "LLVM_Info");
+
+   type LLVM_Info_Array is array (Node_Id range <>) of aliased LLVM_Info_Id;
+   type Ptr_LLVM_Info_Array is access all LLVM_Info_Array;
+
+   LLVM_Info_Map             : Ptr_LLVM_Info_Array;
+   --  The mapping between a GNAT tree object and the corresponding LLVM data
+
    type Access_LLVM_Data is access all LLVM_Data;
 
    function Get_LLVM_Info         (TE : Entity_Id) return Access_LLVM_Data
@@ -142,6 +226,22 @@ package body GNATLLVM.Environment is
 
    procedure Raw_Set_Flag1  (LI : Access_LLVM_Data; Val : Boolean) is
    begin LI.Flag1 := Val; end Raw_Set_Flag1;
+
+   ----------------------------
+   -- Initialize_Environment --
+   ----------------------------
+
+   procedure Initialize_Environment is
+   begin
+      --  We can't use a qualified expression here because that will
+      --  cause a temporary to be placed in our stack and if the array
+      --  is very large, it will blow our stack.
+
+      LLVM_Info_Map := new LLVM_Info_Array (First_Node_Id .. Last_Node_Id);
+      for J in LLVM_Info_Map'Range loop
+         LLVM_Info_Map (J) := Empty_LLVM_Info_Id;
+      end loop;
+   end Initialize_Environment;
 
    -------------------
    -- Get_LLVM_Info --

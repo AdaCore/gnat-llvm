@@ -112,24 +112,16 @@ package body GNATLLVM.Compile is
          Initialize_C_Output;
       end if;
 
-      --  Get the sizes of fat and thin pointers and make some types.  This
-      --  must be done after the above initialization since
-      --  Get_Pointer_Size requires it.
+      --  Initialize the environment and get the sizes of fat and thin
+      --  pointers and make some types.  We must do this after initializing
+      --  the target info since Get_Pointer_Size requires it.
 
+      Initialize_Environment;
       Thin_Pointer_Size := Get_Pointer_Size;
       Fat_Pointer_Size  := Thin_Pointer_Size * 2;
       Size_Type         := Stand_Type (Thin_Pointer_Size);
       Int_32_Type       := Stand_Type (32);
       Int_64_Type       := Stand_Type (64);
-
-      --  We can't use a qualified expression here because that will cause
-      --  a temporary to be placed in our stack and if the array is very
-      --  large, it will blow our stack.
-
-      LLVM_Info_Map := new LLVM_Info_Array (First_Node_Id .. Last_Node_Id);
-      for J in LLVM_Info_Map'Range loop
-         LLVM_Info_Map (J) := Empty_LLVM_Info_Id;
-      end loop;
 
       --  Get single bit and single byte values and types, max alignmen
       --  and maximum integer size.

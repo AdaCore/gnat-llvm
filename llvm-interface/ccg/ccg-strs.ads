@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with CCG.Target; use CCG.Target;
+
 package CCG.Strs is
 
    --  This package contains the tables used by CCG to record data about
@@ -136,7 +138,9 @@ package CCG.Strs is
       (Is_P /= Unknown and then For_P /= Unknown
          and then (Is_P < For_P
                      or else (Is_P = For_P
-                                and then For_P not in Unary | Component)));
+                                and then For_P not in Unary | Component)
+                     or else (Warns_Parens and then Is_P = Relation
+                                and then For_P = Bit)));
    function Needs_Parens (S : Str; For_P : Precedence) return Boolean is
      (Needs_Parens (Get_Precedence (S), For_P));
    --  Indicates whether we need to enclose S (or an expression of precedence

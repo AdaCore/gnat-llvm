@@ -189,21 +189,21 @@ package body CCG.Instructions is
             return True;
 
          when Op_And | Op_Or =>
-            return Is_Comparison (Get_Operand (V, Nat (0)))
-              and then Is_Comparison (Get_Operand (V, Nat (1)));
+            return Is_Comparison (Get_Operand0 (V))
+              and then Is_Comparison (Get_Operand1 (V));
 
          when Op_Xor =>
-            return Is_Comparison (Get_Operand (V, Nat (0)))
-              and then Is_A_Constant_Int (Get_Operand (V, Nat (1)))
-              and then Equals_Int (Get_Operand (V, Nat (1)), 1);
+            return Is_Comparison (Get_Operand0 (V))
+              and then Is_A_Constant_Int (Get_Operand1 (V))
+              and then Equals_Int (Get_Operand1 (V), 1);
 
          when Op_PHI =>
             return (for all J in Nat range 0 .. Get_Num_Operands (V) - 1 =>
                      Is_Comparison (Get_Operand (V, J)));
 
          when Op_Select =>
-            return Is_Comparison (Get_Operand (V, Nat (1)))
-              and then Is_Comparison (Get_Operand (V, Nat (2)));
+            return Is_Comparison (Get_Operand1 (V))
+              and then Is_Comparison (Get_Operand2 (V));
 
          when others =>
             return False;

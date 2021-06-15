@@ -98,11 +98,11 @@ package body CCG.Blocks is
       --  with the operand of the XOR.
 
       elsif Is_A_Instruction (V) and then Get_Opcode (V) = Op_Xor
-        and then Is_A_Constant_Int (Get_Operand (V, Nat (1)))
-        and then Equals_Int (Get_Operand (V, Nat (1)), 1)
+        and then Is_A_Constant_Int (Get_Operand1 (V))
+        and then Equals_Int (Get_Operand1 (V), 1)
       then
          if not Do_Nothing then
-            Replace_All_Uses_With (V, Get_Operand (V, Nat (0)));
+            Replace_All_Uses_With (V, Get_Operand0 (V));
          end if;
 
          return True;
@@ -111,17 +111,15 @@ package body CCG.Blocks is
       --  replace AND with OR and vice versa.
 
       elsif Is_A_Instruction (V) and then Get_Opcode (V) in Op_And | Op_Or
-        and then Negate_Condition (Get_Operand (V, Nat (0)), True)
-        and then Negate_Condition (Get_Operand (V, Nat (1)), Do_Nothing)
+        and then Negate_Condition (Get_Operand0 (V), True)
+        and then Negate_Condition (Get_Operand1 (V), Do_Nothing)
       then
          if not Do_Nothing then
-            Discard (Negate_Condition (Get_Operand (V, Nat (0))));
+            Discard (Negate_Condition (Get_Operand0 (V)));
             Replace_Inst_With_Inst
               (V, (if   Get_Opcode (V) = Op_And
-                   then Create_Or  (Get_Operand (V, Nat (0)),
-                                    Get_Operand (V, Nat (1)))
-                   else Create_And (Get_Operand (V, Nat (0)),
-                                    Get_Operand (V, Nat (1)))));
+                   then Create_Or  (Get_Operand0 (V), Get_Operand1 (V))
+                   else Create_And (Get_Operand0 (V), Get_Operand1 (V))));
          end if;
 
          return True;
@@ -192,7 +190,7 @@ package body CCG.Blocks is
 
       Inst := Get_First_Non_Phi_Or_Dbg (BB);
       return (if   Is_A_Branch_Inst (Inst) and then not Is_Conditional (Inst)
-              then Effective_Dest (Get_Operand (Inst, Nat (0))) else BB);
+              then Effective_Dest (Get_Operand0 (Inst)) else BB);
 
    end Effective_Dest;
 
@@ -236,9 +234,9 @@ package body CCG.Blocks is
       while Present (BB) loop
          T := Get_Basic_Block_Terminator (BB);
          if Is_A_Branch_Inst (T) and then Is_Conditional (T)
-           and then not Has_Single_Predecessor (Get_Operand (T, Nat (2)))
-           and then Has_Single_Predecessor (Get_Operand (T, Nat (1)))
-           and then Negate_Condition (Get_Operand (T, Nat (0)))
+           and then not Has_Single_Predecessor (Get_Operand2 (T))
+           and then Has_Single_Predecessor (Get_Operand1 (T))
+           and then Negate_Condition (Get_Operand0 (T))
          then
             Swap_Successors (T);
          end if;
@@ -410,10 +408,10 @@ package body CCG.Blocks is
 
          when Op_Br =>
             if Get_Num_Operands (Terminator) = Nat (1) then
-               Output_BB (Effective_Dest (Get_Operand (Terminator, Nat (0))));
+               Output_BB (Effective_Dest (Get_Operand0 (Terminator)));
             else
-               Output_BB (Effective_Dest (Get_Operand (Terminator, Nat (2))));
-               Output_BB (Effective_Dest (Get_Operand (Terminator, Nat (1))));
+               Output_BB (Effective_Dest (Get_Operand2 (Terminator)));
+               Output_BB (Effective_Dest (Get_Operand1 (Terminator)));
             end if;
 
          when Op_Switch =>
@@ -554,7 +552,7 @@ package body CCG.Blocks is
 
          --  Now branch to where this block would branch
 
-         Output_Branch (Target_I, Get_Operand (Target_I, Nat (0)),
+         Output_Branch (Target_I, Get_Operand0 (Target_I),
                         Orig_From  => Our_From,
                         Need_Brace => Need_Brace and then not Our_Had_Phi);
       else

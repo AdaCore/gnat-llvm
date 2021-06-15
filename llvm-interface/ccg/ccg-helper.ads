@@ -85,6 +85,21 @@ package CCG.Helper is
       with Pre  => Present (V) and then Idx < Get_Num_Operands (V),
            Post => Present (Get_Operand'Result);
 
+   function Get_Operand0 (V : Value_T) return Value_T is
+      (Get_Operand (V, unsigned (0)))
+      with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (0),
+           Post => Present (Get_Operand0'Result);
+
+   function Get_Operand1 (V : Value_T) return Value_T is
+      (Get_Operand (V, unsigned (1)))
+      with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (1),
+           Post => Present (Get_Operand1'Result);
+
+   function Get_Operand2 (V : Value_T) return Value_T is
+      (Get_Operand (V, unsigned (2)))
+      with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (2),
+           Post => Present (Get_Operand2'Result);
+
    function Is_A_Constant (V : Value_T) return Boolean is
      (Present (Is_A_Constant (V)))
      with Pre => Present (V);

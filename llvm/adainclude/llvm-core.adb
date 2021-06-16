@@ -136,6 +136,17 @@ package body LLVM.Core is
       return Is_String_Attribute_C (A) /= 0;
    end Is_String_Attribute;
 
+   function Get_Type_By_Name_2
+     (C    : LLVM.Types.Context_T;
+      Name : String)
+      return LLVM.Types.Type_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Get_Type_By_Name_2_C (C, Name_String);
+   end Get_Type_By_Name_2;
+
    function Module_Create_With_Name
      (Module_ID : String)
       return LLVM.Types.Module_T
@@ -242,7 +253,7 @@ package body LLVM.Core is
    end Set_Target;
 
    function Module_Flag_Entries_Get_Key
-     (Entries : access LLVM.Types.Module_Flag_Entry_T;
+     (Entries : access LLVM.Types.Opaque_Module_Flag_Entry_Impl_T;
       Index   : unsigned;
       Len     : access stddef_h.size_t)
       return String
@@ -632,6 +643,14 @@ package body LLVM.Core is
    begin
       return Is_Undef_C (Val) /= 0;
    end Is_Undef;
+
+   function Is_Poison
+     (Val : LLVM.Types.Value_T)
+      return Boolean
+   is
+   begin
+      return Is_Poison_C (Val) /= 0;
+   end Is_Poison;
 
    function Get_Value_Name
      (Val : LLVM.Types.Value_T)

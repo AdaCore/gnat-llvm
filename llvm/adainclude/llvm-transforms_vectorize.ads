@@ -34,13 +34,13 @@ package LLVM.Transforms_Vectorize is
   --  
 
   --* See llvm::createLoopVectorizePass function.  
-   procedure Add_Loop_Vectorize_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-11.0.1.src/include/llvm-c/Transforms/Vectorize.h:36
+   procedure Add_Loop_Vectorize_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-12.0.0.src/include/llvm-c/Transforms/Vectorize.h:36
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddLoopVectorizePass";
 
   --* See llvm::createSLPVectorizerPass function.  
-   procedure Add_SLP_Vectorize_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-11.0.1.src/include/llvm-c/Transforms/Vectorize.h:39
+   procedure Add_SLP_Vectorize_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-12.0.0.src/include/llvm-c/Transforms/Vectorize.h:39
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddSLPVectorizePass";

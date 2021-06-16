@@ -25,7 +25,7 @@ package LLVM.Types is
   -- * @{
   --  
 
-   subtype Bool_T is int;  -- llvm-11.0.1.src/include/llvm-c/Types.h:28
+   subtype Bool_T is int;  -- llvm-12.0.0.src/include/llvm-c/Types.h:28
 
   -- Opaque types.  
   --*
@@ -47,7 +47,7 @@ package LLVM.Types is
 
    type Opaque_Memory_Buffer_Impl_T is null record;   -- incomplete struct
 
-   type Memory_Buffer_T is access all Opaque_Memory_Buffer_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:48
+   type Memory_Buffer_T is access all Opaque_Memory_Buffer_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:48
 
   --*
   -- * The top-level container for all LLVM global data. See the LLVMContext class.
@@ -55,7 +55,7 @@ package LLVM.Types is
 
    type Opaque_Context_Impl_T is null record;   -- incomplete struct
 
-   type Context_T is access all Opaque_Context_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:53
+   type Context_T is access all Opaque_Context_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:53
 
   --*
   -- * The top-level container for all other LLVM Intermediate Representation (IR)
@@ -66,7 +66,7 @@ package LLVM.Types is
 
    type Opaque_Module_Impl_T is null record;   -- incomplete struct
 
-   type Module_T is access all Opaque_Module_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:61
+   type Module_T is access all Opaque_Module_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:61
 
   --*
   -- * Each value in the LLVM IR has a type, an LLVMTypeRef.
@@ -76,7 +76,7 @@ package LLVM.Types is
 
    type Opaque_Type_Impl_T is null record;   -- incomplete struct
 
-   type Type_T is access all Opaque_Type_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:68
+   type Type_T is access all Opaque_Type_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:68
 
   --*
   -- * Represents an individual value in LLVM IR.
@@ -86,7 +86,7 @@ package LLVM.Types is
 
    type Opaque_Value_Impl_T is null record;   -- incomplete struct
 
-   type Value_T is access all Opaque_Value_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:75
+   type Value_T is access all Opaque_Value_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:75
 
   --*
   -- * Represents a basic block of instructions in LLVM IR.
@@ -96,7 +96,7 @@ package LLVM.Types is
 
    type Opaque_Basic_Block_Impl_T is null record;   -- incomplete struct
 
-   type Basic_Block_T is access all Opaque_Basic_Block_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:82
+   type Basic_Block_T is access all Opaque_Basic_Block_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:82
 
   --*
   -- * Represents an LLVM Metadata.
@@ -106,7 +106,7 @@ package LLVM.Types is
 
    type Opaque_Metadata_Impl_T is null record;   -- incomplete struct
 
-   type Metadata_T is access all Opaque_Metadata_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:89
+   type Metadata_T is access all Opaque_Metadata_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:89
 
   --*
   -- * Represents an LLVM Named Metadata Node.
@@ -116,7 +116,7 @@ package LLVM.Types is
 
    type Opaque_Named_MD_Node_Impl_T is null record;   -- incomplete struct
 
-   type Named_MD_Node_T is access all Opaque_Named_MD_Node_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:96
+   type Named_MD_Node_T is access all Opaque_Named_MD_Node_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:96
 
   --*
   -- * Represents an entry in a Global Object's metadata attachments.
@@ -126,7 +126,7 @@ package LLVM.Types is
 
    type Opaque_Value_Metadata_Entry_Impl_T is null record;   -- incomplete struct
 
-   subtype Value_Metadata_Entry_T is Opaque_Value_Metadata_Entry_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:103
+   subtype Value_Metadata_Entry_T is Opaque_Value_Metadata_Entry_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:103
 
   --*
   -- * Represents an LLVM basic block builder.
@@ -136,7 +136,7 @@ package LLVM.Types is
 
    type Opaque_Builder_Impl_T is null record;   -- incomplete struct
 
-   type Builder_T is access all Opaque_Builder_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:110
+   type Builder_T is access all Opaque_Builder_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:110
 
   --*
   -- * Represents an LLVM debug info builder.
@@ -146,7 +146,7 @@ package LLVM.Types is
 
    type Opaque_DI_Builder_Impl_T is null record;   -- incomplete struct
 
-   type DI_Builder_T is access all Opaque_DI_Builder_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:117
+   type DI_Builder_T is access all Opaque_DI_Builder_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:117
 
   --*
   -- * Interface used to provide a module to JIT or interpreter.
@@ -156,17 +156,17 @@ package LLVM.Types is
 
    type Opaque_Module_Provider_Impl_T is null record;   -- incomplete struct
 
-   type Module_Provider_T is access all Opaque_Module_Provider_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:124
+   type Module_Provider_T is access all Opaque_Module_Provider_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:124
 
   --* @see llvm::PassManagerBase  
    type Opaque_Pass_Manager_Impl_T is null record;   -- incomplete struct
 
-   type Pass_Manager_T is access all Opaque_Pass_Manager_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:127
+   type Pass_Manager_T is access all Opaque_Pass_Manager_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:127
 
   --* @see llvm::PassRegistry  
    type Opaque_Pass_Registry_Impl_T is null record;   -- incomplete struct
 
-   type Pass_Registry_T is access all Opaque_Pass_Registry_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:130
+   type Pass_Registry_T is access all Opaque_Pass_Registry_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:130
 
   --*
   -- * Used to get the users and usees of a Value.
@@ -175,7 +175,7 @@ package LLVM.Types is
 
    type Opaque_Use_Impl_T is null record;   -- incomplete struct
 
-   type Use_T is access all Opaque_Use_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:136
+   type Use_T is access all Opaque_Use_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:136
 
   --*
   -- * Used to represent an attributes.
@@ -185,7 +185,7 @@ package LLVM.Types is
 
    type Opaque_Attribute_Ref_Impl_T is null record;   -- incomplete struct
 
-   type Attribute_T is access all Opaque_Attribute_Ref_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:143
+   type Attribute_T is access all Opaque_Attribute_Ref_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:143
 
   --*
   -- * @see llvm::DiagnosticInfo
@@ -193,7 +193,7 @@ package LLVM.Types is
 
    type Opaque_Diagnostic_Info_Impl_T is null record;   -- incomplete struct
 
-   type Diagnostic_Info_T is access all Opaque_Diagnostic_Info_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:148
+   type Diagnostic_Info_T is access all Opaque_Diagnostic_Info_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:148
 
   --*
   -- * @see llvm::Comdat
@@ -201,7 +201,7 @@ package LLVM.Types is
 
    type Comdat_Impl_T is null record;   -- incomplete struct
 
-   type Comdat_T is access all Comdat_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:153
+   type Comdat_T is access all Comdat_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:153
 
   --*
   -- * @see llvm::Module::ModuleFlagEntry
@@ -209,7 +209,7 @@ package LLVM.Types is
 
    type Opaque_Module_Flag_Entry_Impl_T is null record;   -- incomplete struct
 
-   subtype Module_Flag_Entry_T is Opaque_Module_Flag_Entry_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:158
+   subtype Module_Flag_Entry_T is Opaque_Module_Flag_Entry_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:158
 
   --*
   -- * @see llvm::JITEventListener
@@ -217,7 +217,7 @@ package LLVM.Types is
 
    type Opaque_JIT_Event_Listener_Impl_T is null record;   -- incomplete struct
 
-   type JIT_Event_Listener_T is access all Opaque_JIT_Event_Listener_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:163
+   type JIT_Event_Listener_T is access all Opaque_JIT_Event_Listener_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:163
 
   --*
   -- * @see llvm::object::Binary
@@ -225,7 +225,7 @@ package LLVM.Types is
 
    type Opaque_Binary_Impl_T is null record;   -- incomplete struct
 
-   type Binary_T is access all Opaque_Binary_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Types.h:168
+   type Binary_T is access all Opaque_Binary_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Types.h:168
 
   --*
   -- * @}

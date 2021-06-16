@@ -6,7 +6,6 @@ pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On)
 
 package LLVM.Data_Types is
 
-   --  unsupported macro: HUGE_VALF (float)HUGE_VAL
   --===-- include/llvm-c/DataTypes.h - Define fixed size types ------*- C -*-===*|*                                                                            *|
   --|
   --|* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|

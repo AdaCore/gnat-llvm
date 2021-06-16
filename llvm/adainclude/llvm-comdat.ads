@@ -36,7 +36,7 @@ package LLVM.Comdat is
       Largest_Comdat_Selection_Kind,
       No_Duplicates_Comdat_Selection_Kind,
       Same_Size_Comdat_Selection_Kind)
-   with Convention => C;  -- llvm-11.0.1.src/include/llvm-c/Comdat.h:32
+   with Convention => C;  -- llvm-12.0.0.src/include/llvm-c/Comdat.h:32
 
   --*
   -- * Return the Comdat in the module with the specified name. It is created
@@ -63,7 +63,7 @@ function Get_Or_Insert_Comdat
   -- * @see llvm::GlobalObject::getComdat()
   --  
 
-   function Get_Comdat (V : LLVM.Types.Value_T) return LLVM.Types.Comdat_T  -- llvm-11.0.1.src/include/llvm-c/Comdat.h:47
+   function Get_Comdat (V : LLVM.Types.Value_T) return LLVM.Types.Comdat_T  -- llvm-12.0.0.src/include/llvm-c/Comdat.h:47
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetComdat";
@@ -74,7 +74,7 @@ function Get_Or_Insert_Comdat
   -- * @see llvm::GlobalObject::setComdat()
   --  
 
-   procedure Set_Comdat (V : LLVM.Types.Value_T; C : LLVM.Types.Comdat_T)  -- llvm-11.0.1.src/include/llvm-c/Comdat.h:54
+   procedure Set_Comdat (V : LLVM.Types.Value_T; C : LLVM.Types.Comdat_T)  -- llvm-12.0.0.src/include/llvm-c/Comdat.h:54
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMSetComdat";
@@ -84,7 +84,7 @@ function Get_Or_Insert_Comdat
   -- * @see llvm::Comdat::getSelectionKind()
   --  
 
-   function Get_Comdat_Selection_Kind (C : LLVM.Types.Comdat_T) return Comdat_Selection_Kind_T  -- llvm-11.0.1.src/include/llvm-c/Comdat.h:61
+   function Get_Comdat_Selection_Kind (C : LLVM.Types.Comdat_T) return Comdat_Selection_Kind_T  -- llvm-12.0.0.src/include/llvm-c/Comdat.h:61
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetComdatSelectionKind";
@@ -94,7 +94,7 @@ function Get_Or_Insert_Comdat
   -- * @see llvm::Comdat::setSelectionKind()
   --  
 
-   procedure Set_Comdat_Selection_Kind (C : LLVM.Types.Comdat_T; Kind : Comdat_Selection_Kind_T)  -- llvm-11.0.1.src/include/llvm-c/Comdat.h:68
+   procedure Set_Comdat_Selection_Kind (C : LLVM.Types.Comdat_T; Kind : Comdat_Selection_Kind_T)  -- llvm-12.0.0.src/include/llvm-c/Comdat.h:68
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMSetComdatSelectionKind";

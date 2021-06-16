@@ -19,35 +19,46 @@ package body LLVM.Orc is
       return Orc_Execution_Session_Intern_C (ES, Name_String);
    end Orc_Execution_Session_Intern;
 
-   function Orc_LLJIT_Get_Triple_String
-     (J : Orc_LLJIT_T)
+   function Orc_Symbol_String_Pool_Entry_Str
+     (S : Orc_Symbol_String_Pool_Entry_T)
       return String
    is
    begin
-      return Value (Orc_LLJIT_Get_Triple_String_C (J));
-   end Orc_LLJIT_Get_Triple_String;
+      return Value (Orc_Symbol_String_Pool_Entry_Str_C (S));
+   end Orc_Symbol_String_Pool_Entry_Str;
 
-   function Orc_LLJIT_Mangle_And_Intern
-     (J              : Orc_LLJIT_T;
-      Unmangled_Name : String)
-      return Orc_Symbol_String_Pool_Entry_T
+   function Orc_Execution_Session_Create_Bare_JIT_Dylib
+     (ES   : Orc_Execution_Session_T;
+      Name : String)
+      return Orc_JIT_Dylib_T
    is
-      Unmangled_Name_Array  : aliased char_array := To_C (Unmangled_Name);
-      Unmangled_Name_String : constant chars_ptr := To_Chars_Ptr (Unmangled_Name_Array'Unchecked_Access);
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
    begin
-      return Orc_LLJIT_Mangle_And_Intern_C (J, Unmangled_Name_String);
-   end Orc_LLJIT_Mangle_And_Intern;
+      return Orc_Execution_Session_Create_Bare_JIT_Dylib_C (ES, Name_String);
+   end Orc_Execution_Session_Create_Bare_JIT_Dylib;
 
-   function Orc_LLJIT_Lookup
-     (J      : Orc_LLJIT_T;
-      Result : access Orc_JIT_Target_Address_T;
+   function Orc_Execution_Session_Create_JIT_Dylib
+     (ES     : Orc_Execution_Session_T;
+      Result : System.Address;
       Name   : String)
       return LLVM.Error.Error_T
    is
       Name_Array  : aliased char_array := To_C (Name);
       Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
    begin
-      return Orc_LLJIT_Lookup_C (J, Result, Name_String);
-   end Orc_LLJIT_Lookup;
+      return Orc_Execution_Session_Create_JIT_Dylib_C (ES, Result, Name_String);
+   end Orc_Execution_Session_Create_JIT_Dylib;
+
+   function Orc_Execution_Session_Get_JIT_Dylib_By_Name
+     (ES   : Orc_Execution_Session_T;
+      Name : String)
+      return Orc_JIT_Dylib_T
+   is
+      Name_Array  : aliased char_array := To_C (Name);
+      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      return Orc_Execution_Session_Get_JIT_Dylib_By_Name_C (ES, Name_String);
+   end Orc_Execution_Session_Get_JIT_Dylib_By_Name;
 
 end LLVM.Orc;

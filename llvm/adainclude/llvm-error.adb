@@ -25,4 +25,14 @@ package body LLVM.Error is
       Dispose_Error_Message_C (Err_Msg_String);
    end Dispose_Error_Message;
 
+   function Create_String_Error
+     (Err_Msg : String)
+      return Error_T
+   is
+      Err_Msg_Array  : aliased char_array := To_C (Err_Msg);
+      Err_Msg_String : constant chars_ptr := To_Chars_Ptr (Err_Msg_Array'Unchecked_Access);
+   begin
+      return Create_String_Error_C (Err_Msg_String);
+   end Create_String_Error;
+
 end LLVM.Error;

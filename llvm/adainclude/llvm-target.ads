@@ -36,15 +36,15 @@ package LLVM.Target is
    type Byte_Ordering_T is 
      (Big_Endian,
       Little_Endian)
-   with Convention => C;  -- llvm-11.0.1.src/include/llvm-c/Target.h:35
+   with Convention => C;  -- llvm-12.0.0.src/include/llvm-c/Target.h:35
 
    type Opaque_Target_Data_Impl_T is null record;   -- incomplete struct
 
-   type Target_Data_T is access all Opaque_Target_Data_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Target.h:37
+   type Target_Data_T is access all Opaque_Target_Data_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Target.h:37
 
    type Opaque_Target_Library_Infot_Data_Impl_T is null record;   -- incomplete struct
 
-   type Target_Library_Info_T is access all Opaque_Target_Library_Infot_Data_Impl_T;  -- llvm-11.0.1.src/include/llvm-c/Target.h:38
+   type Target_Library_Info_T is access all Opaque_Target_Library_Infot_Data_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Target.h:38
 
   -- Declare all of the target-initialization functions that are available.  
   -- Declare all of the available assembly printer initialization functions.  
@@ -54,7 +54,7 @@ package LLVM.Target is
   --    it wants access to all available targets that LLVM is configured to
   --    support.  
 
-   procedure Initialize_All_Target_Infos  -- llvm-11.0.1.src/include/llvm-c/Target.h:76
+   procedure Initialize_All_Target_Infos  -- llvm-12.0.0.src/include/llvm-c/Target.h:76
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeAllTargetInfos";
@@ -63,7 +63,7 @@ package LLVM.Target is
   --    wants to link in all available targets that LLVM is configured to
   --    support.  
 
-   procedure Initialize_All_Targets  -- llvm-11.0.1.src/include/llvm-c/Target.h:85
+   procedure Initialize_All_Targets  -- llvm-12.0.0.src/include/llvm-c/Target.h:85
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeAllTargets";
@@ -72,7 +72,7 @@ package LLVM.Target is
   --    it wants access to all available target MC that LLVM is configured to
   --    support.  
 
-   procedure Initialize_All_Target_M_Cs  -- llvm-11.0.1.src/include/llvm-c/Target.h:94
+   procedure Initialize_All_Target_M_Cs  -- llvm-12.0.0.src/include/llvm-c/Target.h:94
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeAllTargetMCs";
@@ -81,7 +81,7 @@ package LLVM.Target is
   --    it wants all asm printers that LLVM is configured to support, to make them
   --    available via the TargetRegistry.  
 
-   procedure Initialize_All_Asm_Printers  -- llvm-11.0.1.src/include/llvm-c/Target.h:103
+   procedure Initialize_All_Asm_Printers  -- llvm-12.0.0.src/include/llvm-c/Target.h:103
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeAllAsmPrinters";
@@ -90,7 +90,7 @@ package LLVM.Target is
   --    it wants all asm parsers that LLVM is configured to support, to make them
   --    available via the TargetRegistry.  
 
-   procedure Initialize_All_Asm_Parsers  -- llvm-11.0.1.src/include/llvm-c/Target.h:112
+   procedure Initialize_All_Asm_Parsers  -- llvm-12.0.0.src/include/llvm-c/Target.h:112
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeAllAsmParsers";
@@ -99,7 +99,7 @@ package LLVM.Target is
   --    if it wants all disassemblers that LLVM is configured to support, to make
   --    them available via the TargetRegistry.  
 
-   procedure Initialize_All_Disassemblers  -- llvm-11.0.1.src/include/llvm-c/Target.h:121
+   procedure Initialize_All_Disassemblers  -- llvm-12.0.0.src/include/llvm-c/Target.h:121
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeAllDisassemblers";
@@ -108,7 +108,7 @@ package LLVM.Target is
   --    initialize the native target corresponding to the host.  This is useful
   --    for JIT applications to ensure that the target gets linked in correctly.  
 
-   function Initialize_Native_Target return LLVM.Types.Bool_T  -- llvm-11.0.1.src/include/llvm-c/Target.h:131
+   function Initialize_Native_Target return LLVM.Types.Bool_T  -- llvm-12.0.0.src/include/llvm-c/Target.h:131
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeNativeTarget";
@@ -118,7 +118,7 @@ package LLVM.Target is
   --    function to initialize the parser for the native target corresponding to the
   --    host.  
 
-   function Initialize_Native_Asm_Parser return LLVM.Types.Bool_T  -- llvm-11.0.1.src/include/llvm-c/Target.h:146
+   function Initialize_Native_Asm_Parser return LLVM.Types.Bool_T  -- llvm-12.0.0.src/include/llvm-c/Target.h:146
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeNativeAsmParser";
@@ -127,7 +127,7 @@ package LLVM.Target is
   --    function to initialize the printer for the native target corresponding to
   --    the host.  
 
-   function Initialize_Native_Asm_Printer return LLVM.Types.Bool_T  -- llvm-11.0.1.src/include/llvm-c/Target.h:158
+   function Initialize_Native_Asm_Printer return LLVM.Types.Bool_T  -- llvm-12.0.0.src/include/llvm-c/Target.h:158
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeNativeAsmPrinter";
@@ -136,7 +136,7 @@ package LLVM.Target is
   --    function to initialize the disassembler for the native target corresponding
   --    to the host.  
 
-   function Initialize_Native_Disassembler return LLVM.Types.Bool_T  -- llvm-11.0.1.src/include/llvm-c/Target.h:170
+   function Initialize_Native_Disassembler return LLVM.Types.Bool_T  -- llvm-12.0.0.src/include/llvm-c/Target.h:170
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeNativeDisassembler";
@@ -148,7 +148,7 @@ package LLVM.Target is
   -- * @see Module::getDataLayout()
   --  
 
-   function Get_Module_Data_Layout (M : LLVM.Types.Module_T) return Target_Data_T  -- llvm-11.0.1.src/include/llvm-c/Target.h:186
+   function Get_Module_Data_Layout (M : LLVM.Types.Module_T) return Target_Data_T  -- llvm-12.0.0.src/include/llvm-c/Target.h:186
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetModuleDataLayout";
@@ -159,7 +159,7 @@ package LLVM.Target is
   -- * @see Module::setDataLayout()
   --  
 
-   procedure Set_Module_Data_Layout (M : LLVM.Types.Module_T; DL : Target_Data_T)  -- llvm-11.0.1.src/include/llvm-c/Target.h:193
+   procedure Set_Module_Data_Layout (M : LLVM.Types.Module_T; DL : Target_Data_T)  -- llvm-12.0.0.src/include/llvm-c/Target.h:193
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMSetModuleDataLayout";
@@ -180,7 +180,7 @@ function Create_Target_Data
   --* Deallocates a TargetData.
   --    See the destructor llvm::DataLayout::~DataLayout.  
 
-   procedure Dispose_Target_Data (TD : Target_Data_T)  -- llvm-11.0.1.src/include/llvm-c/Target.h:201
+   procedure Dispose_Target_Data (TD : Target_Data_T)  -- llvm-12.0.0.src/include/llvm-c/Target.h:201
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDisposeTargetData";
@@ -189,7 +189,7 @@ function Create_Target_Data
   --    ownership of the target library info.
   --    See the method llvm::PassManagerBase::add.  
 
-   procedure Add_Target_Library_Info (TLI : Target_Library_Info_T; PM : LLVM.Types.Pass_Manager_T)  -- llvm-11.0.1.src/include/llvm-c/Target.h:206
+   procedure Add_Target_Library_Info (TLI : Target_Library_Info_T; PM : LLVM.Types.Pass_Manager_T)  -- llvm-12.0.0.src/include/llvm-c/Target.h:206
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddTargetLibraryInfo";
@@ -212,7 +212,7 @@ function Copy_String_Rep_Of_Target_Data
   --    LLVMLittleEndian.
   --    See the method llvm::DataLayout::isLittleEndian.  
 
-   function Byte_Order (TD : Target_Data_T) return Byte_Ordering_T  -- llvm-11.0.1.src/include/llvm-c/Target.h:217
+   function Byte_Order (TD : Target_Data_T) return Byte_Ordering_T  -- llvm-12.0.0.src/include/llvm-c/Target.h:217
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMByteOrder";
@@ -220,7 +220,7 @@ function Copy_String_Rep_Of_Target_Data
   --* Returns the pointer size in bytes for a target.
   --    See the method llvm::DataLayout::getPointerSize.  
 
-   function Pointer_Size (TD : Target_Data_T) return unsigned  -- llvm-11.0.1.src/include/llvm-c/Target.h:221
+   function Pointer_Size (TD : Target_Data_T) return unsigned  -- llvm-12.0.0.src/include/llvm-c/Target.h:221
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMPointerSize";
@@ -229,7 +229,7 @@ function Copy_String_Rep_Of_Target_Data
   --    address space.
   --    See the method llvm::DataLayout::getPointerSize.  
 
-   function Pointer_Size_For_AS (TD : Target_Data_T; AS : unsigned) return unsigned  -- llvm-11.0.1.src/include/llvm-c/Target.h:226
+   function Pointer_Size_For_AS (TD : Target_Data_T; AS : unsigned) return unsigned  -- llvm-12.0.0.src/include/llvm-c/Target.h:226
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMPointerSizeForAS";
@@ -237,7 +237,7 @@ function Copy_String_Rep_Of_Target_Data
   --* Returns the integer type that is the same size as a pointer on a target.
   --    See the method llvm::DataLayout::getIntPtrType.  
 
-   function Int_Ptr_Type (TD : Target_Data_T) return LLVM.Types.Type_T  -- llvm-11.0.1.src/include/llvm-c/Target.h:230
+   function Int_Ptr_Type (TD : Target_Data_T) return LLVM.Types.Type_T  -- llvm-12.0.0.src/include/llvm-c/Target.h:230
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMIntPtrType";
@@ -246,7 +246,7 @@ function Copy_String_Rep_Of_Target_Data
   --    This version allows the address space to be specified.
   --    See the method llvm::DataLayout::getIntPtrType.  
 
-   function Int_Ptr_Type_For_AS (TD : Target_Data_T; AS : unsigned) return LLVM.Types.Type_T  -- llvm-11.0.1.src/include/llvm-c/Target.h:235
+   function Int_Ptr_Type_For_AS (TD : Target_Data_T; AS : unsigned) return LLVM.Types.Type_T  -- llvm-12.0.0.src/include/llvm-c/Target.h:235
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMIntPtrTypeForAS";
@@ -254,7 +254,7 @@ function Copy_String_Rep_Of_Target_Data
   --* Returns the integer type that is the same size as a pointer on a target.
   --    See the method llvm::DataLayout::getIntPtrType.  
 
-   function Int_Ptr_Type_In_Context (C : LLVM.Types.Context_T; TD : Target_Data_T) return LLVM.Types.Type_T  -- llvm-11.0.1.src/include/llvm-c/Target.h:239
+   function Int_Ptr_Type_In_Context (C : LLVM.Types.Context_T; TD : Target_Data_T) return LLVM.Types.Type_T  -- llvm-12.0.0.src/include/llvm-c/Target.h:239
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMIntPtrTypeInContext";
@@ -266,7 +266,7 @@ function Copy_String_Rep_Of_Target_Data
    function Int_Ptr_Type_For_AS_In_Context
      (C : LLVM.Types.Context_T;
       TD : Target_Data_T;
-      AS : unsigned) return LLVM.Types.Type_T  -- llvm-11.0.1.src/include/llvm-c/Target.h:244
+      AS : unsigned) return LLVM.Types.Type_T  -- llvm-12.0.0.src/include/llvm-c/Target.h:244
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMIntPtrTypeForASInContext";
@@ -274,7 +274,7 @@ function Copy_String_Rep_Of_Target_Data
   --* Computes the size of a type in bytes for a target.
   --    See the method llvm::DataLayout::getTypeSizeInBits.  
 
-   function Size_Of_Type_In_Bits (TD : Target_Data_T; Ty : LLVM.Types.Type_T) return Extensions.unsigned_long_long  -- llvm-11.0.1.src/include/llvm-c/Target.h:249
+   function Size_Of_Type_In_Bits (TD : Target_Data_T; Ty : LLVM.Types.Type_T) return Extensions.unsigned_long_long  -- llvm-12.0.0.src/include/llvm-c/Target.h:249
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMSizeOfTypeInBits";
@@ -282,7 +282,7 @@ function Copy_String_Rep_Of_Target_Data
   --* Computes the storage size of a type in bytes for a target.
   --    See the method llvm::DataLayout::getTypeStoreSize.  
 
-   function Store_Size_Of_Type (TD : Target_Data_T; Ty : LLVM.Types.Type_T) return Extensions.unsigned_long_long  -- llvm-11.0.1.src/include/llvm-c/Target.h:253
+   function Store_Size_Of_Type (TD : Target_Data_T; Ty : LLVM.Types.Type_T) return Extensions.unsigned_long_long  -- llvm-12.0.0.src/include/llvm-c/Target.h:253
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMStoreSizeOfType";
@@ -290,7 +290,7 @@ function Copy_String_Rep_Of_Target_Data
   --* Computes the ABI size of a type in bytes for a target.
   --    See the method llvm::DataLayout::getTypeAllocSize.  
 
-   function ABI_Size_Of_Type (TD : Target_Data_T; Ty : LLVM.Types.Type_T) return Extensions.unsigned_long_long  -- llvm-11.0.1.src/include/llvm-c/Target.h:257
+   function ABI_Size_Of_Type (TD : Target_Data_T; Ty : LLVM.Types.Type_T) return Extensions.unsigned_long_long  -- llvm-12.0.0.src/include/llvm-c/Target.h:257
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMABISizeOfType";
@@ -298,7 +298,7 @@ function Copy_String_Rep_Of_Target_Data
   --* Computes the ABI alignment of a type in bytes for a target.
   --    See the method llvm::DataLayout::getTypeABISize.  
 
-   function ABI_Alignment_Of_Type (TD : Target_Data_T; Ty : LLVM.Types.Type_T) return unsigned  -- llvm-11.0.1.src/include/llvm-c/Target.h:261
+   function ABI_Alignment_Of_Type (TD : Target_Data_T; Ty : LLVM.Types.Type_T) return unsigned  -- llvm-12.0.0.src/include/llvm-c/Target.h:261
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMABIAlignmentOfType";
@@ -306,7 +306,7 @@ function Copy_String_Rep_Of_Target_Data
   --* Computes the call frame alignment of a type in bytes for a target.
   --    See the method llvm::DataLayout::getTypeABISize.  
 
-   function Call_Frame_Alignment_Of_Type (TD : Target_Data_T; Ty : LLVM.Types.Type_T) return unsigned  -- llvm-11.0.1.src/include/llvm-c/Target.h:265
+   function Call_Frame_Alignment_Of_Type (TD : Target_Data_T; Ty : LLVM.Types.Type_T) return unsigned  -- llvm-12.0.0.src/include/llvm-c/Target.h:265
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMCallFrameAlignmentOfType";
@@ -314,7 +314,7 @@ function Copy_String_Rep_Of_Target_Data
   --* Computes the preferred alignment of a type in bytes for a target.
   --    See the method llvm::DataLayout::getTypeABISize.  
 
-   function Preferred_Alignment_Of_Type (TD : Target_Data_T; Ty : LLVM.Types.Type_T) return unsigned  -- llvm-11.0.1.src/include/llvm-c/Target.h:269
+   function Preferred_Alignment_Of_Type (TD : Target_Data_T; Ty : LLVM.Types.Type_T) return unsigned  -- llvm-12.0.0.src/include/llvm-c/Target.h:269
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMPreferredAlignmentOfType";
@@ -322,7 +322,7 @@ function Copy_String_Rep_Of_Target_Data
   --* Computes the preferred alignment of a global variable in bytes for a target.
   --    See the method llvm::DataLayout::getPreferredAlignment.  
 
-   function Preferred_Alignment_Of_Global (TD : Target_Data_T; Global_Var : LLVM.Types.Value_T) return unsigned  -- llvm-11.0.1.src/include/llvm-c/Target.h:273
+   function Preferred_Alignment_Of_Global (TD : Target_Data_T; Global_Var : LLVM.Types.Value_T) return unsigned  -- llvm-12.0.0.src/include/llvm-c/Target.h:273
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMPreferredAlignmentOfGlobal";
@@ -333,7 +333,7 @@ function Copy_String_Rep_Of_Target_Data
    function Element_At_Offset
      (TD : Target_Data_T;
       Struct_Ty : LLVM.Types.Type_T;
-      Offset : Extensions.unsigned_long_long) return unsigned  -- llvm-11.0.1.src/include/llvm-c/Target.h:278
+      Offset : Extensions.unsigned_long_long) return unsigned  -- llvm-12.0.0.src/include/llvm-c/Target.h:278
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMElementAtOffset";
@@ -344,7 +344,7 @@ function Copy_String_Rep_Of_Target_Data
    function Offset_Of_Element
      (TD : Target_Data_T;
       Struct_Ty : LLVM.Types.Type_T;
-      Element : unsigned) return Extensions.unsigned_long_long  -- llvm-11.0.1.src/include/llvm-c/Target.h:283
+      Element : unsigned) return Extensions.unsigned_long_long  -- llvm-12.0.0.src/include/llvm-c/Target.h:283
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOffsetOfElement";

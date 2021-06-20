@@ -621,8 +621,7 @@ package body CCG.Blocks is
          Result := TP ("(#T1) ", Val) & (Result + Unary);
       end if;
 
-      --  Write out the initial part of the switch, which is the switch
-      --  statement and the default option.
+      --  Write the switch statement itself
 
       Process_Pending_Values;
       Output_Stmt ("switch (" & Result +  Assign & ")",
@@ -632,22 +631,28 @@ package body CCG.Blocks is
                    Semicolon     => False,
                    Indent_After  => C_Indent,
                    Indent_Before => C_Indent);
-      Output_Stmt ("default:",
-                   Semicolon => False,
-                   V         => Get_First_Instruction (Default));
-      Output_Branch (V, Default);
 
       --  Now handle each case. They start after the first two operands and
       --  alternate between value and branch target.
 
       for J in 1 .. Nat ((Ops'Length / 2) - 1) loop
          Output_Stmt ("case " &
-                        Process_Operand (Ops (Ops'First + J * 2), POO) &
-                        ":",
-                      Semicolon => False);
+                        Process_Operand (Ops (Ops'First + J * 2), POO) & ":",
+                      Semicolon     => False,
+                      Indent_After  => C_Indent,
+                      Indent_Before => -C_Indent);
          Output_Branch (V, Ops (Ops'First + J * 2 + 1));
+         Output_Stmt ("", Semicolon => False);
       end loop;
 
+      --  Finally, write the default and end the statement
+
+      Output_Stmt ("default:",
+                   Semicolon     => False,
+                   Indent_Before => -C_Indent,
+                   Indent_After  => C_Indent,
+                   V             => Get_First_Instruction (Default));
+      Output_Branch (V, Default);
       Output_Stmt ("}",
                    Semicolon     => False,
                    Indent_After  => -C_Indent,

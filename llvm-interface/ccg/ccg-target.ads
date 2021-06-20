@@ -20,7 +20,7 @@ package CCG.Target is
    --  This package contains target information about the C compiler used
    --  and how to format and generate code.
 
-   C_Indent     : constant         := 4;
+   C_Indent     : constant         := 2;
    --  Number of characters to indent at each level
 
    Warns_Parens : constant Boolean := True;

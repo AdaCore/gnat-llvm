@@ -608,12 +608,14 @@ package body CCG.Blocks is
    ------------------------
 
    procedure Switch_Instruction (V : Value_T; Ops : Value_Array) is
-      Val     : constant Value_T                := Ops (Ops'First);
-      Default : constant Basic_Block_T          :=
-        Value_As_Basic_Block (Ops (Ops'First + 1));
-      POO     : constant Process_Operand_Option :=
+      Val       : constant Value_T                := Ops (Ops'First);
+      Default   : constant Value_T                := Ops (Ops'First + 1);
+      POO       : constant Process_Operand_Option :=
         (if Get_Is_Unsigned (Val) then POO_Unsigned else POO_Signed);
-      Result  : Str                             := Process_Operand (Val, POO);
+      Last_Case : constant Nat := Ops'Length / 2 - 1;
+      Result    : Str                             :=
+        Process_Operand (Val, POO);
+
    begin
       --  If Val is narrower than int, we must force it to its size
 
@@ -635,14 +637,25 @@ package body CCG.Blocks is
       --  Now handle each case. They start after the first two operands and
       --  alternate between value and branch target.
 
-      for J in 1 .. Nat ((Ops'Length / 2) - 1) loop
+      for J in 1 .. Last_Case loop
          Output_Stmt ("case " &
                         Process_Operand (Ops (Ops'First + J * 2), POO) & ":",
                       Semicolon     => False,
                       Indent_After  => C_Indent,
                       Indent_Before => -C_Indent);
-         Output_Branch (V, Ops (Ops'First + J * 2 + 1));
-         Output_Stmt ("", Semicolon => False);
+
+         --  If this isn't branching to the same label as the next case
+         --  (or default if this is the last case), output the branch.
+         --  ??? We may want to sort to ensure this happens if there are any
+         --  duplicates.
+
+         if Effective_Dest (Ops (Ops'First + J * 2 + 1)) /=
+           Effective_Dest ((if   J = Last_Case then Default
+                            else Ops (Ops'First + J * 2 + 3)))
+         then
+            Output_Branch (V, Ops (Ops'First + J * 2 + 1));
+            Output_Stmt ("", Semicolon => False);
+         end if;
       end loop;
 
       --  Finally, write the default and end the statement
@@ -650,8 +663,7 @@ package body CCG.Blocks is
       Output_Stmt ("default:",
                    Semicolon     => False,
                    Indent_Before => -C_Indent,
-                   Indent_After  => C_Indent,
-                   V             => Get_First_Instruction (Default));
+                   Indent_After  => C_Indent);
       Output_Branch (V, Default);
       Output_Stmt ("}",
                    Semicolon     => False,

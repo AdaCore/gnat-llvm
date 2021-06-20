@@ -518,7 +518,10 @@ package body CCG.Blocks is
             --  Otherwise, if we need to write a brace and indent, do so
 
             elsif not Our_Had_Phi and then Need_Brace then
-               Output_Stmt ("{", Semicolon => False, Indent_After => C_Indent);
+               Output_Stmt ("{",
+                            Semicolon     => False,
+                            Indent_After  => C_Indent,
+                            Indent_Before => C_Indent);
             end if;
 
             Maybe_Decl (Phi_Val);
@@ -565,7 +568,10 @@ package body CCG.Blocks is
       --  Now, if we had a Phi, close the block we opened
 
       if Our_Had_Phi and then Need_Brace then
-         Output_Stmt ("}", Semicolon => False, Indent_Before => -C_Indent);
+         Output_Stmt ("}",
+                      Semicolon     => False,
+                      Indent_After  => -C_Indent,
+                      Indent_Before => -C_Indent);
       end if;
    end Output_Branch;
 
@@ -619,11 +625,16 @@ package body CCG.Blocks is
       --  statement and the default option.
 
       Process_Pending_Values;
-      Output_Stmt ("switch (" & Result & ") {" +  Assign, Semicolon => False,
-                   Indent_After => C_Indent, V => V);
+      Output_Stmt ("switch (" & Result +  Assign & ")",
+                   Semicolon => False,
+                   V         => V);
+      Output_Stmt ("{",
+                   Semicolon     => False,
+                   Indent_After  => C_Indent,
+                   Indent_Before => C_Indent);
       Output_Stmt ("default:",
                    Semicolon => False,
-                   V => Get_First_Instruction (Default));
+                   V         => Get_First_Instruction (Default));
       Output_Branch (V, Default);
 
       --  Now handle each case. They start after the first two operands and
@@ -637,7 +648,11 @@ package body CCG.Blocks is
          Output_Branch (V, Ops (Ops'First + J * 2 + 1));
       end loop;
 
-      Output_Stmt ("}", Semicolon => False, Indent_Before => -C_Indent);
+      Output_Stmt ("}",
+                   Semicolon     => False,
+                   Indent_After  => -C_Indent,
+                   Indent_Before => -C_Indent);
+
    end Switch_Instruction;
 
    --------------

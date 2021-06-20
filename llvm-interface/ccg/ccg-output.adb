@@ -1168,12 +1168,16 @@ package body CCG.Output is
       if Present (Line.BB) then
          if Has_Single_Predecessor (Line.BB) then
             if Line.Need_Brace then
-               Write_Line ("{", Indent_After => C_Indent);
+               Write_Line ("{",
+                           Indent_After  => C_Indent,
+                           Indent_Before => C_Indent);
             end if;
 
             Write_BB (Line.BB, Omit_Label => True);
             if Line.Need_Brace then
-               Write_Line ("}", Indent_Before => -C_Indent);
+               Write_Line ("}",
+                           Indent_After  => -C_Indent,
+                           Indent_Before => -C_Indent);
             end if;
 
             return;

@@ -705,9 +705,9 @@ Get_Opcode_Name (LLVMOpcode opc)
 }
 
 extern "C"
-BasicBlock *Get_Single_Predecessor (BasicBlock *bb)
+BasicBlock *Get_Unique_Predecessor (BasicBlock *bb)
 {
-  return bb->getSinglePredecessor ();
+  return bb->getUniquePredecessor ();
 }
 
 extern "C"

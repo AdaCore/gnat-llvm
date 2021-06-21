@@ -195,11 +195,11 @@ package body CCG.Blocks is
    end Effective_Dest;
 
    ----------------------------
-   -- Has_Single_Predecessor --
+   -- Has_Unique_Predecessor --
    ----------------------------
 
-   function Has_Single_Predecessor (BB : Basic_Block_T) return Boolean is
-      Pred : constant Basic_Block_T := Get_Single_Predecessor (BB);
+   function Has_Unique_Predecessor (BB : Basic_Block_T) return Boolean is
+      Pred : constant Basic_Block_T := Get_Unique_Predecessor (BB);
       V    : Value_T;
 
    begin
@@ -213,8 +213,8 @@ package body CCG.Blocks is
 
       V := Get_First_Non_Phi_Or_Dbg (Pred);
       return (if   Is_A_Branch_Inst (V) and then not Is_Conditional (V)
-              then Has_Single_Predecessor (Pred) else True);
-   end Has_Single_Predecessor;
+              then Has_Unique_Predecessor (Pred) else True);
+   end Has_Unique_Predecessor;
 
    ----------------------
    -- Transform_Blocks --
@@ -234,8 +234,8 @@ package body CCG.Blocks is
       while Present (BB) loop
          T := Get_Basic_Block_Terminator (BB);
          if Is_A_Branch_Inst (T) and then Is_Conditional (T)
-           and then not Has_Single_Predecessor (Get_Operand2 (T))
-           and then Has_Single_Predecessor (Get_Operand1 (T))
+           and then not Has_Unique_Predecessor (Get_Operand2 (T))
+           and then Has_Unique_Predecessor (Get_Operand1 (T))
            and then Negate_Condition (Get_Operand0 (T))
          then
             Swap_Successors (T);
@@ -583,24 +583,31 @@ package body CCG.Blocks is
       Op1    : constant Value_T := Ops (Ops'First);
       Result : Str;
    begin
-      --  See if this is an unconditional or conditional branch. We need
-      --  to process all pending values before taking the branch, but
-      --  want to do that after elaborating the condition to avoid needing
-      --  to force elaboration of the condition.
+      --  See if this is an unconditional or conditional branch. Treat a
+      --  conditional branch both of whom go to the same location as an
+      --  unconditional branch.  We need to process all pending values
+      --  before taking the branch, but want to do that after elaborating
+      --  the condition to avoid needing to force elaboration of the
+      --  condition.
       --  ??? We'd also prefer not to force elaboration of values needed in
       --  the phi computation, but that's hard and may not be possible.
 
-      if Ops'Length = 1 then
-         Process_Pending_Values;
-         Output_Branch (V, Op1);
-      else
+      if Is_Conditional (V) and then Ops (Ops'First + 1) /= Ops (Ops'First + 2)
+      then
          Result := TP ("if (#1)", Op1) + Assign;
          Process_Pending_Values;
          Output_Stmt (Result, Semicolon => False, V => V);
          Output_Branch (V, Ops (Ops'First + 2), Need_Brace => True);
          Output_Stmt ("else", Semicolon => False, V => V);
          Output_Branch (V, Ops (Ops'First + 1), Need_Brace => True);
+      elsif Is_Conditional (V) then
+         Process_Pending_Values;
+         Output_Branch (V, Ops (Ops'First + 1));
+      else
+         Process_Pending_Values;
+         Output_Branch (V, Op1);
       end if;
+
    end Branch_Instruction;
 
    ------------------------
@@ -638,24 +645,31 @@ package body CCG.Blocks is
       --  alternate between value and branch target.
 
       for J in 1 .. Last_Case loop
-         Output_Stmt ("case " &
-                        Process_Operand (Ops (Ops'First + J * 2), POO) & ":",
-                      Semicolon     => False,
-                      Indent_After  => C_Indent,
-                      Indent_Before => -C_Indent);
+         declare
+            Value     : constant Value_T := Ops (Ops'First + J * 2);
+            Dest      : constant Value_T := Ops (Ops'First + J * 2 + 1);
+            Next_Dest : constant Value_T :=
+              (if J = Last_Case then Default else Ops (Ops'First + J * 2 + 3));
 
-         --  If this isn't branching to the same label as the next case
-         --  (or default if this is the last case), output the branch.
-         --  ??? We may want to sort to ensure this happens if there are any
-         --  duplicates.
+         begin
+            Output_Stmt ("case " & Process_Operand (Value, POO) & ":",
+                         Semicolon     => False,
+                         Indent_After  => C_Indent,
+                         Indent_Before => -C_Indent);
 
-         if Effective_Dest (Ops (Ops'First + J * 2 + 1)) /=
-           Effective_Dest ((if   J = Last_Case then Default
-                            else Ops (Ops'First + J * 2 + 3)))
-         then
-            Output_Branch (V, Ops (Ops'First + J * 2 + 1));
-            Output_Stmt ("", Semicolon => False);
-         end if;
+            --  If this isn't branching to the same label as the next case
+            --  (or default if this is the last case), output the branch.
+            --  Note that we can't use Effective_Dest here because that's
+            --  used to determine which basic block is branched to and
+            --  ignores Phi nodes.
+            --  ??? We may want to sort to ensure this happens if there are
+            --  any duplicates.
+
+            if Dest /= Next_Dest then
+               Output_Branch (V, Dest);
+               Output_Stmt ("", Semicolon => False);
+            end if;
+         end;
       end loop;
 
       --  Finally, write the default and end the statement

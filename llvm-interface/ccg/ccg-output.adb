@@ -1166,7 +1166,7 @@ package body CCG.Output is
       --  the block here.
 
       if Present (Line.BB) then
-         if Has_Single_Predecessor (Line.BB) then
+         if Has_Unique_Predecessor (Line.BB) then
             if Line.Need_Brace then
                Write_Line ("{",
                            Indent_After  => C_Indent,

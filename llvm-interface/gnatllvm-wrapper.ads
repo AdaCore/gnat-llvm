@@ -327,8 +327,8 @@ package GNATLLVM.Wrapper is
    function Value_Has_Name (V : Value_T) return Boolean
      with Pre => Present (V);
 
-   function Get_Single_Predecessor (BB : Basic_Block_T) return Basic_Block_T
-     with Import, Convention => C, External_Name => "Get_Single_Predecessor";
+   function Get_Unique_Predecessor (BB : Basic_Block_T) return Basic_Block_T
+     with Import, Convention => C, External_Name => "Get_Unique_Predecessor";
 
    procedure Invert_Predicate (V : Value_T)
      with Import, Convention => C, External_Name => "Invert_Predicate";

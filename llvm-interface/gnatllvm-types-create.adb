@@ -573,7 +573,7 @@ package body GNATLLVM.Types.Create is
          end if;
       end if;
 
-      if not Known_Alignment (Out_TE) then
+      if not Known_Alignment (Out_TE) and then Known_Alignment (In_TE) then
          Set_Alignment (Out_TE, Alignment (In_TE));
       end if;
 

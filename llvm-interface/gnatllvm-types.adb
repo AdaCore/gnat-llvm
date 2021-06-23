@@ -1535,6 +1535,8 @@ package body GNATLLVM.Types is
    begin
       if Ekind (E) in E_Component | E_Discriminant then
          return Error_Str;
+      elsif Is_Type (E) and then By_Ref_Type then
+         return " by-reference type &";
       else
          return "&";
       end if;

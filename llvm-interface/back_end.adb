@@ -24,6 +24,7 @@ with GNAT.OS_Lib;     use GNAT.OS_Lib;
 with Namet;           use Namet;
 with Osint;           use Osint;
 with Osint.C;         use Osint.C;
+with Output;          use Output;
 
 with Adabkend;
 with Errout; use Errout;
@@ -98,6 +99,18 @@ package body Back_End is
       Osint.C.Set_File_Name (ALI_Suffix.all);
       GNAT.OS_Lib.Copy_Time_Stamps
         (Name_Buffer (1 .. Name_Len), Obj_File_Name, Success);
+
+      --  If we're using JSON error messages, the GCC backend will write an
+      --  empty JSON array and a newline. This doesn't relate to object files,
+      --  but this is the only place that's called in the backend late enough.
+
+      if Opt.JSON_Output then
+         Set_Standard_Error;
+         Write_Str ("[]");
+         Write_Eol;
+         Set_Standard_Output;
+      end if;
+
    end Gen_Or_Update_Object_File;
 
 begin

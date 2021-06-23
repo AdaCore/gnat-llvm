@@ -702,24 +702,24 @@ package body GNATLLVM.Types.Create is
    is
       Val_Clause : constant Node_Id :=
         Get_Attribute_Definition_Clause (E, Attribute_Value_Size);
-      Is_Field   : constant Boolean  :=
+      Is_Field   : constant Boolean :=
         Ekind (E) in E_Component | E_Discriminant;
-      Is_Var     : constant Boolean  :=
+      Is_Var     : constant Boolean :=
         not For_Type and then not For_Component and then not Is_Field;
-      Error_Node : constant Node_Id  :=
+      Error_Node : constant Node_Id :=
         (if    Is_Field and then Present (Component_Clause (E))
          then  Last_Bit (Component_Clause (E))
          elsif Present (Size_Clause (E)) then Expression (Size_Clause (E))
          else  E);
-      Msg_Prefix : constant String   :=
+      Msg_Prefix : constant String  :=
         (if    For_Component then "component size"
          elsif Is_RM_Size and then Present (Val_Clause)
          then  "Value_Size" else "size");
-      Error_Str  : constant String   := Field_Error_Msg (E, GT, False);
-      Atomic      : constant Boolean :=
+      Error_Str  : constant String  := Field_Error_Msg (E, GT, False);
+      Atomic     : constant Boolean :=
         Is_Full_Access (E) or else Is_Full_Access (GT);
-      Size_GT    : GL_Type           := Primitive_GL_Type (GT);
-      Is_Dynamic : Boolean           :=
+      Size_GT    : GL_Type          := Primitive_GL_Type (GT);
+      Is_Dynamic : Boolean          :=
          Is_Dynamic_Size (Size_GT,
                           Max_Size       => Is_Unconstrained_Record (Size_GT),
                           Allow_Overflow => True);

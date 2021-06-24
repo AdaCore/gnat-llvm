@@ -74,6 +74,10 @@ configure-prod:
 llvm:
 	$(MAKE) -s -C llvm-obj
 
+# Note: in order to use py/common.py you need to first install libadalang
+# and then run:
+# pip install <prefix>/share/libadalang/python/Libadalang-*.whl
+
 $(OUT_DIR)/llvm-core.adb: $(LLVM_INCLUDE_DIR_C)/Core.h py/common.py py/wrapper.py
 	rm -rf $(TMP_GEN_DIR) $(OUT_DIR)
 	mkdir -p $(TMP_GEN_DIR) $(OUT_DIR)

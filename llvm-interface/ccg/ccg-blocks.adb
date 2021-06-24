@@ -60,6 +60,10 @@ package body CCG.Blocks is
    Current_BB : Basic_Block_T := No_BB_T;
    --  The basic block for which we're outputting statements
 
+   type FN_Array is array (Boolean) of Value_T;
+   Short_Circuit_FNs : FN_Array := (others => No_Value_T);
+   --  Builtin functions for "or else" and "and or"
+
    function Negate_Condition
      (V : Value_T; Do_Nothing : Boolean := False) return Boolean
      with Pre => Present (V);
@@ -80,6 +84,19 @@ package body CCG.Blocks is
    --  block, but if the block consists just of Phi's and an unconditional
    --  branch, we follow that branch. If the first Phi's only use is a
    --  return instruction, we don't go anywhere.
+
+   function Is_Only_Condition (BB : Basic_Block_T) return Boolean
+     with Pre => Present (BB);
+   --  Returns True if every instruction in the basic block is used
+   --  to compute a condition and we'll be able to generate that condition
+   --  as a single C expression. This is used to reconstruct "or else" and
+   --  "and then".
+
+   procedure Make_Short_Circuit_Op (BB : Basic_Block_T; Is_Or : Boolean)
+     with Pre => Present (BB);
+   --  BB is a block ending in a conditional branch to a block that
+   --  just has a condition computation that corresponds to an "or else"
+   --  (if Is_Or is True) or an "and then" (if Is_Or is False) part.
 
    ----------------------
    -- Negate_Condition --
@@ -189,8 +206,8 @@ package body CCG.Blocks is
       --  target.
 
       Inst := Get_First_Non_Phi_Or_Dbg (BB);
-      return (if   Is_A_Branch_Inst (Inst) and then not Is_Conditional (Inst)
-              then Effective_Dest (Get_Operand0 (Inst)) else BB);
+      return (if   Is_Unc_Br (Inst) then Effective_Dest (Get_Operand0 (Inst))
+              else BB);
 
    end Effective_Dest;
 
@@ -212,33 +229,232 @@ package body CCG.Blocks is
       --  Otherwise, see if the predecessor is just an unconditional brancha
 
       V := Get_First_Non_Phi_Or_Dbg (Pred);
-      return (if   Is_A_Branch_Inst (V) and then not Is_Conditional (V)
-              then Has_Unique_Predecessor (Pred) else True);
+      return (if Is_Unc_Br (V) then Has_Unique_Predecessor (Pred) else True);
    end Has_Unique_Predecessor;
+
+   -----------------------
+   -- Is_Only_Condition --
+   -----------------------
+
+   function Is_Only_Condition (BB : Basic_Block_T) return Boolean is
+      function Scan_For_Only_Condition (V : Value_T) return Boolean
+        with Pre => Present (V);
+      --  Scan V, an operand of an instruction, to see if anything in
+      --  it prevents this block from being a basic block that only has
+      --  a condition. Return False if it means the block doesn't meet the
+      --  criteria. Also counts the number of instructions used for the
+      --  computation.
+
+      Term              : constant Value_T := Get_Basic_Block_Terminator (BB);
+      Num_Inst_In_Block : Nat              := 0;
+      Num_Inst_In_Cond  : Nat              := 1;
+      Had_Load_Call     : Boolean          := False;
+      V                 : Value_T          := Get_First_Instruction (BB);
+
+      -----------------------------
+      -- Scan_For_Only_Condition --
+      -----------------------------
+
+      function Scan_For_Only_Condition (V : Value_T) return Boolean is
+      begin
+         --  If V is not an instruction or is located outside of our basic
+         --  block, it doesn't cause any issues inside this block.
+
+         if not Is_A_Instruction (V) or else Get_Instruction_Parent (V) /= BB
+         then
+            return True;
+
+         --  If this is a variable or has multiple uses, we'll be making
+         --  a declaration for it. If it's a Phi, it will generate code.
+
+         elsif Get_Is_Variable (V) or else Num_Uses (V) /= 1
+           or else Is_APHI_Node (V)
+         then
+            return False;
+
+         --  If this is call or load, we can support it, but if there's more
+         --  than one, we'll be forcing things into variable, so we won't
+         --  be making a simple expression for this. We could do better, but
+         --  the idea here is just to catch the simple cases.
+
+         elsif Is_A_Load_Inst (V) or else Is_A_Call_Inst (V) then
+            if Had_Load_Call then
+               return False;
+            else
+               Had_Load_Call := True;
+            end if;
+         end if;
+
+         --  Otherwise, count this instruction. If one of its operands
+         --  don't meet our condition, this block doesn't qualify.
+
+         Num_Inst_In_Cond := Num_Inst_In_Cond + 1;
+         return (for all J in Nat range 0 .. Get_Num_Operands (V) - 1 =>
+                   Scan_For_Only_Condition (Get_Operand (V, J)));
+
+      end Scan_For_Only_Condition;
+
+   begin -- Start of processing for Is_Only_Condition
+
+      --  If the terminator isn't a conditional branch or if the
+      --  condition doesn't qualify, this block doesn't qualify.
+
+      if not Is_Cond_Br (Term)
+        or else not Scan_For_Only_Condition (Get_Operand0 (Term))
+      then
+         return False;
+      end if;
+
+      --  Otherwise, count the number of instruction in the block
+
+      while Present (V) loop
+         Num_Inst_In_Block := Num_Inst_In_Block + 1;
+         V := Get_Next_Instruction (V);
+      end loop;
+
+      --  This block qualifies iff all instructions are part of the
+      --  condition.
+
+      return Num_Inst_In_Block = Num_Inst_In_Cond;
+   end Is_Only_Condition;
+
+   ---------------------------
+   -- Make_Short_Circuit_Op --
+   ---------------------------
+
+   procedure Make_Short_Circuit_Op (BB : Basic_Block_T; Is_Or : Boolean) is
+      Our_Term    : constant Value_T       := Get_Basic_Block_Terminator (BB);
+      Our_Cond    : constant Value_T       := Get_Operand0 (Our_Term);
+      SC_Dest     : constant Value_T       :=
+        Get_Operand (Our_Term, (if Is_Or then Nat (1) else Nat (2)));
+      SC_BB       : constant Basic_Block_T := Value_As_Basic_Block (SC_Dest);
+      SC_Term     : constant Value_T       :=
+        Get_Basic_Block_Terminator (SC_BB);
+      SC_Cond     : constant Value_T       := Get_Operand0 (SC_Term);
+      Fn          : Value_T                := Short_Circuit_FNs (Is_Or);
+      Inst        : Value_T                := Get_First_Instruction (SC_BB);
+      Next_Inst   : Value_T;
+      Call_Inst   : Value_T;
+
+   begin
+      --  If we haven't already made the required function, do it now
+
+      if No (Fn) then
+         declare
+            Param_Types : constant Type_Array := (1 => Bit_T, 2 => Bit_T);
+            Name        : constant String     :=
+              (if Is_Or then "llvm.ccg.orelse" else "llvm.ccg.andthen");
+
+         begin
+            Fn := Add_Function
+              (Module, Name,
+               Function_Type (Bit_T, Param_Types'Address, 2, False));
+            Short_Circuit_FNs (Is_Or) := Fn;
+         end;
+      end if;
+
+      --  We now delete the present terminator from the current basic block
+      --  and all all instructions other than the terminator from our
+      --  other basic block.
+
+      Instruction_Erase_From_Parent (Our_Term);
+      while Inst /= SC_Term loop
+         Next_Inst := Get_Next_Instruction (Inst);
+         Instruction_Remove_From_Parent (Inst);
+         Insert_At_Block_End (Inst, BB);
+         Inst := Next_Inst;
+      end loop;
+
+      --  Now add the or else / and or builtin call, change the condition
+      --  of our other block's terminator to it, move that one as well,
+      --  and delete the other basic block.
+
+      Call_Inst := Create_Call_2 (Fn, Our_Cond, SC_Cond);
+      Insert_At_Block_End (Call_Inst, BB);
+      Set_Condition (SC_Term, Call_Inst);
+      Instruction_Remove_From_Parent (SC_Term);
+      Insert_At_Block_End (SC_Term, BB);
+      Delete_Basic_Block (SC_BB);
+
+   end Make_Short_Circuit_Op;
 
    ----------------------
    -- Transform_Blocks --
    ----------------------
 
    procedure Transform_Blocks (V : Value_T) is
-      BB : Basic_Block_T := Get_First_Basic_Block (V);
-      T  : Value_T;
+      BB      : Basic_Block_T := Get_First_Basic_Block (V);
+      Next_BB : Basic_Block_T;
+      Term    : Value_T;
 
    begin
+      --  First scan blocks looking for blocks that could represent
+      --  "and then" or "or else".
+
+      while Present (BB) loop
+         Next_BB := Get_Next_Basic_Block (BB);
+         Term    := Get_Basic_Block_Terminator (BB);
+         if Is_Cond_Br (Term) then
+            declare
+               True_Dest  : constant Value_T       := Get_Operand2 (Term);
+               False_Dest : constant Value_T       := Get_Operand1 (Term);
+               True_BB    : constant Basic_Block_T :=
+                 Value_As_Basic_Block (True_Dest);
+               False_BB   : constant Basic_Block_T :=
+                 Value_As_Basic_Block (False_Dest);
+               True_Term  : constant Value_T       :=
+                 Get_Basic_Block_Terminator (True_BB);
+               False_Term : constant Value_T       :=
+                 Get_Basic_Block_Terminator (False_BB);
+
+            begin
+               --  If our False side branches to a block whose terminator
+               --  is a conditional branch whose True side is the same as
+               --  ours and has only the computation of the condition and
+               --  only one predecessor (which must be us), we have an "or
+               --  else".
+
+               if Is_Cond_Br (False_Term)
+                 and then Get_Operand2 (False_Term) = True_Dest
+                 and then Has_Unique_Predecessor (False_BB)
+                 and then Is_Only_Condition (False_BB)
+               then
+                  Make_Short_Circuit_Op (BB, Is_Or => True);
+                  Next_BB := BB;
+
+               --  Similarly, if our True side branches to a block whose
+               --  terminator's False side is the same as ours, we have an
+               --  "and then".
+
+               elsif Is_Cond_Br (True_Term)
+                 and then Get_Operand1 (True_Term) = False_Dest
+                 and then Has_Unique_Predecessor (True_BB)
+                 and then Is_Only_Condition (True_BB)
+               then
+                  Make_Short_Circuit_Op (BB, Is_Or => False);
+                  Next_BB := BB;
+               end if;
+            end;
+         end if;
+
+         BB := Next_BB;
+      end loop;
+
       --  For each basic block, we start by looking at the terminator
       --  to see if it's a conditional branch where the "true" block has
       --  more than one predecessor but the "false" block doesn't. In that
       --  case, we'll generate cleaner code by swapping the two operands and
       --  negating the condition.
 
+      BB := Get_First_Basic_Block (V);
       while Present (BB) loop
-         T := Get_Basic_Block_Terminator (BB);
-         if Is_A_Branch_Inst (T) and then Is_Conditional (T)
-           and then not Has_Unique_Predecessor (Get_Operand2 (T))
-           and then Has_Unique_Predecessor (Get_Operand1 (T))
-           and then Negate_Condition (Get_Operand0 (T))
+         Term := Get_Basic_Block_Terminator (BB);
+         if Is_Cond_Br (Term)
+           and then not Has_Unique_Predecessor (Get_Operand2 (Term))
+           and then Has_Unique_Predecessor (Get_Operand1 (Term))
+           and then Negate_Condition (Get_Operand0 (Term))
          then
-            Swap_Successors (T);
+            Swap_Successors (Term);
          end if;
 
          BB := Get_Next_Basic_Block (BB);
@@ -540,9 +756,7 @@ package body CCG.Blocks is
       --  If the instruction at the target is an unconditional branch, go to
       --  it instead.
 
-      if Present (Target_I) and then Is_A_Branch_Inst (Target_I)
-        and then not Is_Conditional (Target_I)
-      then
+      if Present (Target_I) and then Is_Unc_Br (Target_I) then
          --  Since we're not going to actually execute this block, we need
          --  to copy back the temporaries, if any, we made above. Do this
          --  by executing any Phi nodes at the start.

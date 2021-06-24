@@ -732,15 +732,31 @@ Replace_Inst_With_Inst (Instruction *from, Instruction *to)
 }
 
 extern "C"
-BinaryOperator *Create_And (Value *Op1, Value *Op2)
+BinaryOperator *
+Create_And (Value *Op1, Value *Op2)
 {
   return BinaryOperator::CreateAnd (Op1, Op2);
 }
 
 extern "C"
-BinaryOperator *Create_Or (Value *Op1, Value *Op2)
+BinaryOperator *
+Create_Or (Value *Op1, Value *Op2)
 {
   return BinaryOperator::CreateOr (Op1, Op2);
+}
+
+extern "C"
+CallInst *
+Create_Call_2 (Function *Fn, Value *op1, Value *op2)
+{
+  return CallInst::Create (Fn, {op1, op2});
+}
+
+extern "C"
+void
+Insert_At_Block_End (Instruction *I, BasicBlock *BB)
+{
+  BB->getInstList  ().insert (BB->end (), I);
 }
 
 extern "C"

@@ -105,6 +105,14 @@ package CCG.Utils is
      with Pre => Present (V);
    --  True if V may have side effects. We take a very conservative view
 
+   function Is_Unc_Br (V : Value_T) return Boolean is
+     (Is_A_Branch_Inst (V) and then not Is_Conditional (V))
+     with Pre => Present (V);
+
+   function Is_Cond_Br (V : Value_T) return Boolean is
+     (Is_A_Branch_Inst (V) and then Is_Conditional (V))
+     with Pre => Present (V);
+
    --  LLVM uses a zero-length array to indicate a variable-length
    --  array.  C doesn't permit zero-element arrays. It's tempting to
    --  use a pointer to the element type instead of a pointer to the

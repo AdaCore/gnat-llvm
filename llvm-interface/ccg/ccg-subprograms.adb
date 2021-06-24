@@ -551,6 +551,17 @@ package body CCG.Subprograms is
       elsif Matches (S, "memset") then
          return Memory_Operation (V, Ops, "memset");
 
+      --  Handle the builtins we created for or else / and then
+
+      elsif Matches (S, "ccg.orelse") then
+         Assignment (V, TP ("#1 || #2", Ops (Ops'First), Ops (Ops'First + 1)),
+                     Is_Opencode_Builtin => True);
+         return True;
+      elsif Matches (S, "ccg.andthen") then
+         Assignment (V, TP ("#1 && #2", Ops (Ops'First), Ops (Ops'First + 1)),
+                     Is_Opencode_Builtin => True);
+         return True;
+
       --  And we don't process the rest
 
       else

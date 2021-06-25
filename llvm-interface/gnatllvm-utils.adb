@@ -15,12 +15,12 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Text_IO; use Ada.Text_IO;
 with System.Storage_Elements; use System.Storage_Elements;
 
 with LLVM.Core; use LLVM.Core;
 
 with Errout;   use Errout;
+with Output;   use Output;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
 with Snames;   use Snames;
@@ -31,6 +31,9 @@ with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
+
+   procedure Dump_New_Line;
+   --  Write an EOL to the standard output file
 
    Last_Struct_Id : Struct_Id := Struct_Id_Low_Bound;
 
@@ -579,6 +582,18 @@ package body GNATLLVM.Utils is
       Error_Msg_NE (Msg, N, E);
    end Error_Msg_NE_Num;
 
+   -------------------
+   -- Dump_New_Line --
+   -------------------
+
+   procedure Dump_New_Line is
+   begin
+      Push_Output;
+      Set_Standard_Error;
+      Write_Eol;
+      Pop_Output;
+   end Dump_New_Line;
+
    ---------------------
    -- Dump_LLVM_Value --
    ---------------------
@@ -586,7 +601,7 @@ package body GNATLLVM.Utils is
    procedure Dump_LLVM_Value (V : Value_T) is
    begin
       Dump_Value (V);
-      New_Line (Current_Error);
+      Dump_New_Line;
    end Dump_LLVM_Value;
 
    ------------------------
@@ -596,7 +611,7 @@ package body GNATLLVM.Utils is
    procedure Dump_LLVM_Metadata (MD : Metadata_T) is
    begin
       Dump_Metadata (MD);
-      New_Line (Current_Error);
+      Dump_New_Line;
    end Dump_LLVM_Metadata;
 
    ----------------------
@@ -615,7 +630,7 @@ package body GNATLLVM.Utils is
    procedure Dump_LLVM_Type (T : Type_T) is
    begin
       Dump_Type (T);
-      New_Line (Current_Error);
+      Dump_New_Line;
    end Dump_LLVM_Type;
 
 end GNATLLVM.Utils;

@@ -60,9 +60,14 @@ package body CCG.Blocks is
    Current_BB : Basic_Block_T := No_BB_T;
    --  The basic block for which we're outputting statements
 
-   type FN_Array is array (Boolean) of Value_T;
+   type SC_Kind is (Or_Else, And_Then);
+   type FN_Array is array (SC_Kind) of Value_T;
    Short_Circuit_FNs : FN_Array := (others => No_Value_T);
    --  Builtin functions for "or else" and "and or"
+
+   function Get_Short_Circuit_FN (Kind : SC_Kind) return Value_T
+     with Post => Present (Get_Short_Circuit_FN'Result);
+   --  Get or make the appropriate short circuit function for Kind
 
    function Negate_Condition
      (V : Value_T; Do_Nothing : Boolean := False) return Boolean
@@ -92,11 +97,11 @@ package body CCG.Blocks is
    --  as a single C expression. This is used to reconstruct "or else" and
    --  "and then".
 
-   procedure Make_Short_Circuit_Op (BB : Basic_Block_T; Is_Or : Boolean)
+   procedure Make_Short_Circuit_Op (BB : Basic_Block_T; Kind : SC_Kind)
      with Pre => Present (BB);
    --  BB is a block ending in a conditional branch to a block that
    --  just has a condition computation that corresponds to an "or else"
-   --  (if Is_Or is True) or an "and then" (if Is_Or is False) part.
+   --  or "and then" (Kind says which).
 
    ----------------------
    -- Negate_Condition --
@@ -318,23 +323,12 @@ package body CCG.Blocks is
       return Num_Inst_In_Block = Num_Inst_In_Cond;
    end Is_Only_Condition;
 
-   ---------------------------
-   -- Make_Short_Circuit_Op --
-   ---------------------------
+   --------------------------
+   -- Get_Short_Circuit_FN --
+   --------------------------
 
-   procedure Make_Short_Circuit_Op (BB : Basic_Block_T; Is_Or : Boolean) is
-      Our_Term    : constant Value_T       := Get_Basic_Block_Terminator (BB);
-      Our_Cond    : constant Value_T       := Get_Operand0 (Our_Term);
-      SC_Dest     : constant Value_T       :=
-        Get_Operand (Our_Term, (if Is_Or then Nat (1) else Nat (2)));
-      SC_BB       : constant Basic_Block_T := Value_As_Basic_Block (SC_Dest);
-      SC_Term     : constant Value_T       :=
-        Get_Basic_Block_Terminator (SC_BB);
-      SC_Cond     : constant Value_T       := Get_Operand0 (SC_Term);
-      Fn          : Value_T                := Short_Circuit_FNs (Is_Or);
-      Inst        : Value_T                := Get_First_Instruction (SC_BB);
-      Next_Inst   : Value_T;
-      Call_Inst   : Value_T;
+   function Get_Short_Circuit_FN (Kind : SC_Kind) return Value_T is
+      Fn : Value_T := Short_Circuit_FNs (Kind);
 
    begin
       --  If we haven't already made the required function, do it now
@@ -343,19 +337,42 @@ package body CCG.Blocks is
          declare
             Param_Types : constant Type_Array := (1 => Bit_T, 2 => Bit_T);
             Name        : constant String     :=
-              (if Is_Or then "llvm.ccg.orelse" else "llvm.ccg.andthen");
+              (if   Kind = Or_Else then "llvm.ccg.orelse"
+               else "llvm.ccg.andthen");
 
          begin
             Fn := Add_Function
               (Module, Name,
                Function_Type (Bit_T, Param_Types'Address, 2, False));
-            Short_Circuit_FNs (Is_Or) := Fn;
+            Short_Circuit_FNs (Kind) := Fn;
          end;
       end if;
 
-      --  We now delete the present terminator from the current basic block
-      --  and all all instructions other than the terminator from our
-      --  other basic block.
+      return Fn;
+   end Get_Short_Circuit_FN;
+
+   ---------------------------
+   -- Make_Short_Circuit_Op --
+   ---------------------------
+
+   procedure Make_Short_Circuit_Op (BB : Basic_Block_T; Kind : SC_Kind) is
+      Our_Term    : constant Value_T       := Get_Basic_Block_Terminator (BB);
+      Our_Cond    : constant Value_T       := Get_Operand0 (Our_Term);
+      SC_Dest     : constant Value_T       :=
+        Get_Operand (Our_Term, (if Kind = Or_Else then Nat (1) else Nat (2)));
+      SC_BB       : constant Basic_Block_T := Value_As_Basic_Block (SC_Dest);
+      SC_Term     : constant Value_T       :=
+        Get_Basic_Block_Terminator (SC_BB);
+      SC_Cond     : constant Value_T       := Get_Operand0 (SC_Term);
+      Fn          : constant Value_T       := Get_Short_Circuit_FN (Kind);
+      Inst        : Value_T                := Get_First_Instruction (SC_BB);
+      Next_Inst   : Value_T;
+      Call_Inst   : Value_T;
+
+   begin
+      --  Delete the present terminator from the current basic block and
+      --  all instructions other than the terminator from our other basic
+      --  block.
 
       Instruction_Erase_From_Parent (Our_Term);
       while Inst /= SC_Term loop
@@ -419,7 +436,7 @@ package body CCG.Blocks is
                  and then Has_Unique_Predecessor (False_BB)
                  and then Is_Only_Condition (False_BB)
                then
-                  Make_Short_Circuit_Op (BB, Is_Or => True);
+                  Make_Short_Circuit_Op (BB, Or_Else);
                   Next_BB := BB;
 
                --  Similarly, if our True side branches to a block whose
@@ -431,7 +448,7 @@ package body CCG.Blocks is
                  and then Has_Unique_Predecessor (True_BB)
                  and then Is_Only_Condition (True_BB)
                then
-                  Make_Short_Circuit_Op (BB, Is_Or => False);
+                  Make_Short_Circuit_Op (BB, And_Then);
                   Next_BB := BB;
                end if;
             end;

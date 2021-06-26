@@ -62,7 +62,7 @@ package body CCG.Blocks is
 
    type SC_Kind is (Or_Else, And_Then);
    type FN_Array is array (SC_Kind) of Value_T;
-   Short_Circuit_FNs : FN_Array := (others => No_Value_T);
+   SC_FNs : FN_Array := (others => No_Value_T);
    --  Builtin functions for "or else" and "and or"
 
    function Get_Short_Circuit_FN (Kind : SC_Kind) return Value_T
@@ -132,16 +132,28 @@ package body CCG.Blocks is
       --  If it's an AND or OR instruction, negate both operand and
       --  replace AND with OR and vice versa.
 
-      elsif Is_A_Instruction (V) and then Get_Opcode (V) in Op_And | Op_Or
+      elsif ((Is_A_Instruction (V) and then Get_Opcode (V) in Op_And | Op_Or)
+             or else (Is_A_Call_Inst (V)
+                        and then (Get_Called_Value (V) = SC_FNs (And_Then)
+                                    or else Get_Called_Value (V) =
+                                              SC_FNs (Or_Else))))
         and then Negate_Condition (Get_Operand0 (V), True)
         and then Negate_Condition (Get_Operand1 (V), Do_Nothing)
       then
          if not Do_Nothing then
             Discard (Negate_Condition (Get_Operand0 (V)));
             Replace_Inst_With_Inst
-              (V, (if   Get_Opcode (V) = Op_And
-                   then Create_Or  (Get_Operand0 (V), Get_Operand1 (V))
-                   else Create_And (Get_Operand0 (V), Get_Operand1 (V))));
+              (V, (case Get_Opcode (V) is
+                   when Op_And =>
+                     Create_Or  (Get_Operand0 (V), Get_Operand1 (V)),
+                   when Op_Or =>
+                     Create_And (Get_Operand0 (V), Get_Operand1 (V)),
+                   when others =>
+                     Create_Call_2
+                       ((if   Get_Called_Value (V) = SC_FNs (Or_Else)
+                         then Get_Short_Circuit_FN (And_Then)
+                         else Get_Short_Circuit_FN (Or_Else)),
+                        Get_Operand0 (V), Get_Operand1 (V))));
          end if;
 
          return True;
@@ -328,7 +340,7 @@ package body CCG.Blocks is
    --------------------------
 
    function Get_Short_Circuit_FN (Kind : SC_Kind) return Value_T is
-      Fn : Value_T := Short_Circuit_FNs (Kind);
+      Fn : Value_T := SC_FNs (Kind);
 
    begin
       --  If we haven't already made the required function, do it now
@@ -344,7 +356,7 @@ package body CCG.Blocks is
             Fn := Add_Function
               (Module, Name,
                Function_Type (Bit_T, Param_Types'Address, 2, False));
-            Short_Circuit_FNs (Kind) := Fn;
+            SC_FNs (Kind) := Fn;
          end;
       end if;
 

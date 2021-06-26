@@ -525,6 +525,16 @@ package body CCG.Blocks is
       Need_Brace    : Boolean       := False)
    is
    begin
+      --  If we've been given an instruction corresponding to this
+      --  statement and it has side-effects, first flush any pending
+      --  assignments.
+
+      if Present (V) and then Has_Side_Effects (V) then
+         Process_Pending_Values;
+      end if;
+
+      --  Add the statement to the appropriate block
+
       Stmts.Append ((Line_Text      => (if Semicolon then S & ";" else S),
                      No_Indent      => No_Indent,
                      Indent_Before  => Indent_Before,
@@ -809,16 +819,13 @@ package body CCG.Blocks is
       if Is_Conditional (V) and then Ops (Ops'First + 1) /= Ops (Ops'First + 2)
       then
          Result := TP ("if (#1)", Op1) + Assign;
-         Process_Pending_Values;
          Output_Stmt (Result, Semicolon => False, V => V);
          Output_Branch (V, Ops (Ops'First + 2), Need_Brace => True);
          Output_Stmt ("else", Semicolon => False, V => V);
          Output_Branch (V, Ops (Ops'First + 1), Need_Brace => True);
       elsif Is_Conditional (V) then
-         Process_Pending_Values;
          Output_Branch (V, Ops (Ops'First + 1));
       else
-         Process_Pending_Values;
          Output_Branch (V, Op1);
       end if;
 
@@ -846,7 +853,6 @@ package body CCG.Blocks is
 
       --  Write the switch statement itself
 
-      Process_Pending_Values;
       Output_Stmt ("switch (" & Result +  Assign & ")",
                    Semicolon => False,
                    V         => V);

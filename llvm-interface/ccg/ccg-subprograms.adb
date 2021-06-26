@@ -334,7 +334,6 @@ package body CCG.Subprograms is
       --  output it. Otherwise, set this as the value of V.
 
       Call := (Call & ")") + Component;
-      Process_Pending_Values;
       if Get_Type_Kind (V) = Void_Type_Kind then
          Output_Stmt (Call, V => V);
       else
@@ -500,7 +499,6 @@ package body CCG.Subprograms is
 
    begin
       Result := S & " (" & Op1 & ", " & Op2 & ", " & Op3 & ")";
-      Process_Pending_Values;
       Output_Stmt (Result, V => V);
       return True;
    end Memory_Operation;

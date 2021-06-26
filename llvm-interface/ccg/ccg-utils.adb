@@ -137,13 +137,16 @@ package body CCG.Utils is
    function Has_Side_Effects (V : Value_T) return Boolean is
    begin
       --  If this isn't an instruction, it doesn't have a side effect. If
-      --  it's a call instruction or a load that's either volatile or not
-      --  from a variable, it does have side effects.  Otherwise, it has a
-      --  side effect iff any operand does. We treat a Phi node as volatile
-      --  since we can have infinite recursion if we try to walk its operands.
+      --  it's a call instruction, a terminator, or a load that's either
+      --  volatile or not from a variable, it does have side effects.
+      --  Otherwise, it has a side effect iff any operand does. We treat a
+      --  Phi node as volatile since we can have infinite recursion if we
+      --  try to walk its operands.
 
       return (if    not Is_A_Instruction (V) then False
-              elsif Is_A_Call_Inst (V) or else Is_APHI_Node (V)
+      elsif Is_A_Call_Inst (V) or else Is_APHI_Node (V)
+                    or else Is_A_Terminator_Inst (V)
+                    or else Is_A_Store_Inst (V)
                     or else (Is_A_Load_Inst (V)
                              and then (Get_Volatile (V)
                                        or else not Get_Is_Variable

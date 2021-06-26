@@ -216,14 +216,14 @@ package body CCG.Instructions is
 
    procedure Process_Pending_Values is
    begin
-      --  We have a list of pending values, which represent LLVM values that
-      --  are being stored as C expressions and not copied into declared
-      --  variables. We want to do the stores for any "final" values. The
-      --  only values that have been saved to this list are those that are
-      --  used exactly once. That usage is either by a later entry in the
-      --  list or by an instruction we haven't encountered yet. In the
-      --  former case, we want to use it in the elaboration of that later
-      --  list entry.
+      --  We have a list of pending values, which represent LLVM
+      --  instructions that are being stored as C expressions and not
+      --  copied into declared variables. We want to do the stores for any
+      --  "final" values. The only values that have been saved to this list
+      --  are those that are used exactly once. That usage is either by a
+      --  later entry in the list or by an instruction we haven't
+      --  encountered yet. In the former case, we want to use it in the
+      --  elaboration of that later list entry.
       --
       --  We work from the end of the list towards the front since we don't
       --  need to produce variables for expressions only used later.  But
@@ -238,7 +238,7 @@ package body CCG.Instructions is
             V : constant Value_T := Pending_Values.Table (J);
 
          begin
-            if not Get_Is_Used (V) and then not Get_Is_Constant (V) then
+            if not Get_Is_Used (V) then
                Force_To_Variable (V);
             end if;
          end;
@@ -641,6 +641,17 @@ package body CCG.Instructions is
      (LHS : Value_T; RHS : Str; Is_Opencode_Builtin : Boolean := False)
    is
    begin
+      --  If LHS has no uses, see if it has side-effects. If so, force it
+      --  out so that we evaluate the side-effects. If not, do nothing.
+
+      if Num_Uses (LHS) = 0 then
+         if Has_Side_Effects (LHS) then
+            Maybe_Decl (LHS);
+            Write_Copy (LHS, RHS, Type_Of (LHS));
+         else
+            return;
+         end if;
+
       --  If LHS is a LHS, has more than one use in the IR, if we've
       --  already emitted a decl for it (e.g., it was defined in a block we
       --  haven't processed yet), if it's a source-level variable, or if
@@ -652,7 +663,7 @@ package body CCG.Instructions is
       --  and the latter because C doesn't allow assignments of objects of
       --  aggregate type.
 
-      if (Get_Is_LHS (LHS) or else Num_Uses (LHS) > 1
+      elsif (Get_Is_LHS (LHS) or else Num_Uses (LHS) > 1
             or else Get_Is_Variable (LHS) or else Get_Is_Decl_Output (LHS)
             or else (Is_A_Call_Inst (LHS) and then Is_Aggregate_Type (LHS)))
         and then not Is_A_Constant_Expr (LHS)

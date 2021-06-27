@@ -2030,12 +2030,15 @@ package body GNATLLVM.Variables is
 
       --  If this is a true constant, we can just use the expression that
       --  computed the constant as the value, once converted to the proper
-      --  type.  If the value is a Reference, it may be to something that's
-      --  not constant, so we actually have to allocate our entity and copy
-      --  into it.  We assume here if something is marked "constant" at
+      --  type. But don't do this if this comes from source and we're
+      --  generating C since we'd prefer to materialize those variable. If
+      --  the value is a Reference, it may be to something that's not
+      --  constant, so we actually have to allocate our entity and copy
+      --  into it. We assume here if something is marked "constant" at
       --  source level, we can't modify it even if its address is taken.
 
       elsif Is_True_Constant (E)
+        and then (not Emit_C or else not Comes_From_Source (E))
         and then (not Is_Volatile or else Ekind (E) = E_Constant)
         and then (Present (Expr) or else Present (Value))
       then

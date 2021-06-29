@@ -481,13 +481,15 @@ package body GNATLLVM.Codegen is
                else
                   --  Set the data layout and target triple of the math
                   --  library to agree with us and set the linkage of all
-                  --  functions so that we won't retain unused ones.
+                  --  functions so that we won't retain unused ones. Also
+                  --  mark each as Inline_Always.
 
                   Set_Data_Layout (Libdev_Module, Get_Data_Layout (Module));
                   Set_Target      (Libdev_Module, Get_Target (Module));
                   Func := Get_First_Function (Libdev_Module);
                   while Present (Func) loop
                      Set_Linkage (Func, Available_Externally_Linkage);
+                     Add_Inline_Always_Attribute (Func);
                      Func := Get_Next_Function (Func);
                   end loop;
 

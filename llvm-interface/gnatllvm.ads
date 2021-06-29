@@ -165,10 +165,6 @@ package GNATLLVM is
    function Present (U : Use_T)         return Boolean is (U /= No_Use_T);
    --  Test for presence and absence of fields of LLVM types
 
-   function No      (U : Uint) return Boolean is (U = No_Uint);
-   function Present (U : Uint) return Boolean is (U /= No_Uint);
-   --  Add presence and absense functions for Uint for consistency
-
    function Is_Type_Or_Void (E : Entity_Id) return Boolean is
      (Ekind (E) = E_Void or else Is_Type (E));
    --  We can have Etype's that are E_Void for E_Procedure

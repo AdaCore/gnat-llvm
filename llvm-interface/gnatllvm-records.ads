@@ -88,10 +88,12 @@ package GNATLLVM.Records is
    --  Present, contain any fields already filled in for the record.
 
    function Find_Matching_Field
-     (TE    : Record_Kind_Id;
-      Field : Record_Field_Kind_Id) return Record_Field_Kind_Id;
-   --  Find a field in the entity list of TE that has the same name as
-   --  F and has Field_Info.
+     (TE : Record_Kind_Id; Field : Record_Field_Kind_Id) return Entity_Id
+     with Post => No (Find_Matching_Field'Result)
+                  or else Ekind (Find_Matching_Field'Result)
+                            in Record_Field_Kind;
+   --  Find a field, if any, in the entity list of TE that has the same
+   --  name as F and has Field_Info.
 
    function Emit_Field_Position
      (E : Record_Field_Kind_Id; V : GL_Value) return GL_Value

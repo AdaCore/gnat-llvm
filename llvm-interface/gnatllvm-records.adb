@@ -376,9 +376,7 @@ package body GNATLLVM.Records is
    -------------------------
 
    function Find_Matching_Field
-     (TE    : Record_Kind_Id;
-      Field : Record_Field_Kind_Id) return Record_Field_Kind_Id
-   is
+     (TE : Record_Kind_Id; Field : Record_Field_Kind_Id) return Entity_Id is
       Ent : Entity_Id := First_Component_Or_Discriminant (TE);
 
    begin

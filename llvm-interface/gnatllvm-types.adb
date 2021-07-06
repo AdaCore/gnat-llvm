@@ -1408,7 +1408,8 @@ package body GNATLLVM.Types is
             null;
       end case;
 
-      return (if Is_Static_SO_Ref (Ret) then Ret else No_Uint);
+      return (if   Present (Ret) and then Is_Static_SO_Ref (Ret) then Ret
+              else No_Uint);
    end Get_Attribute_From_Annotation;
 
    ------------------------------

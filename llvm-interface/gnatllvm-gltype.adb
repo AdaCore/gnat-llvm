@@ -504,7 +504,7 @@ package body GNATLLVM.GLType is
         (if Prim_Fixed then Get_Type_Size (Prim_GT) else No_GL_Value);
       Prim_Align  : constant Nat          := Get_Type_Alignment (Prim_GT);
       Int_Sz      : constant Uint         :=
-        (if Size = 0 then Uint_1 else Size);
+        (if No (Size) or else Size = 0 then Uint_1 else Size);
       Size_V      : GL_Value              :=
         (if   No (Size) or else not UI_Is_In_ULL_Range (Size)
               or else Is_Dynamic_SO_Ref (Size)

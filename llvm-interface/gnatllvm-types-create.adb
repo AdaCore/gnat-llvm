@@ -289,11 +289,15 @@ package body GNATLLVM.Types.Create is
          begin
             Discard (Type_Of (BT));
 
-            if Has_Size_Clause (BT) and then not Known_RM_Size (TE) then
+            if Has_Size_Clause (BT) and then not Known_RM_Size (TE)
+              and then Known_RM_Size (BT)
+            then
                Set_RM_Size (TE, RM_Size (BT));
             end if;
 
-            if Has_Object_Size_Clause (BT) and then not Known_Esize (TE) then
+            if Has_Object_Size_Clause (BT) and then not Known_Esize (TE)
+              and then Known_Esize (BT)
+            then
                Set_Esize (TE, Esize (BT));
             end if;
          end;
@@ -512,27 +516,33 @@ package body GNATLLVM.Types.Create is
                then Original_Array_Type (TE) else Empty);
 
          begin
-            if not Known_Esize (TE) then
+            if not Known_Esize (TE) and then Present (BA_Esize) then
                Set_Esize (TE, BA_Esize);
             end if;
 
-            if Present (OAT) and then not Known_Esize (OAT) then
+            if Present (OAT) and then not Known_Esize (OAT)
+              and then Present (BA_Esize)
+            then
                Set_Esize (OAT, BA_Esize);
             end if;
 
-            if not Known_RM_Size (TE) then
+            if not Known_RM_Size (TE) and then Present (BA_RM_Size) then
                Set_RM_Size (TE, BA_RM_Size);
             end if;
 
-            if Present (OAT) and then not Known_RM_Size (OAT) then
+            if Present (OAT) and then not Known_RM_Size (OAT)
+              and then Present (BA_RM_Size)
+            then
                Set_RM_Size (OAT, BA_RM_Size);
             end if;
 
-            if not Known_Alignment (TE) then
+            if not Known_Alignment (TE) and then Present (BA_Align) then
                Set_Alignment (TE, BA_Align);
             end if;
 
-            if Present (OAT) and then not Known_Alignment (OAT) then
+            if Present (OAT) and then not Known_Alignment (OAT)
+              and then Present (BA_Align)
+            then
                Set_Alignment (OAT, BA_Align);
             end if;
          end;
@@ -564,10 +574,10 @@ package body GNATLLVM.Types.Create is
       if not Is_Access_Subprogram_Type (Out_TE)
         and then not Is_Scalar_Type (Out_TE)
       then
-         if not Known_Esize (Out_TE) then
+         if not Known_Esize (Out_TE) and then Known_Esize (In_TE) then
             Set_Esize   (Out_TE, Esize (In_TE));
          end if;
-         if not Known_RM_Size (Out_TE) then
+         if not Known_RM_Size (Out_TE) and then Known_RM_Size (In_TE) then
             Set_RM_Size (Out_TE, RM_Size (In_TE));
 
          end if;
@@ -579,6 +589,7 @@ package body GNATLLVM.Types.Create is
 
       if Is_Array_Type (Out_TE) and then Is_Base_Type (Out_TE)
         and then not Known_Component_Size (Out_TE)
+        and then Known_Component_Size (In_TE)
       then
          Set_Component_Size (Out_TE, Component_Size (In_TE));
       end if;
@@ -591,10 +602,16 @@ package body GNATLLVM.Types.Create is
    procedure Annotate_Object_Size_And_Alignment
      (E        : Exception_Or_Object_Kind_Id;
       GT       : GL_Type;
-      Want_Max : Boolean := True) is
+      Want_Max : Boolean := True)
+   is
+      Size : constant Node_Ref_Or_Val :=
+        Annotated_Object_Size (GT, Want_Max => Want_Max);
 
    begin
-      Set_Esize (E, Annotated_Object_Size (GT, Want_Max => Want_Max));
+      if Present (Size) then
+         Set_Esize (E, Size);
+      end if;
+
       Set_Alignment
         (E,
          UI_From_Int (Get_Type_Alignment (GT, Use_Specified => False) / BPU));
@@ -650,7 +667,10 @@ package body GNATLLVM.Types.Create is
       --  maximum allowed, give an error.  Otherwise, we try to use the new
       --  alignment if one is specified.
 
-      if not UI_Is_In_Int_Range (Align) or else Align > Max_Valid_Align then
+      if Present (Align)
+        and then (not UI_Is_In_Int_Range (Align)
+                    or else Align > Max_Valid_Align)
+      then
          if not No_Error then
             Error_Msg_NE_Num ("largest supported alignment for& is ^",
                               N, E, Max_Valid_Align);

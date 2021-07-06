@@ -223,7 +223,9 @@ package body GNATLLVM.Records.Create is
 
          while Present (Choice) loop
             Decode_Range (Choice, Low, High);
-            if Value >= Low and then Value <= High then
+            if Present (Low) and then Present (High)
+              and then Value >= Low and then Value <= High
+            then
                return Alt;
             end if;
 
@@ -250,7 +252,8 @@ package body GNATLLVM.Records.Create is
       Low, High  : Uint;
 
       function Protect_Neg (U : Uint) return SO_Ref is
-         (if U < 0 then Create_Node (Negate_Expr, -U) else U);
+         (if    Present (U) and then U < 0 then Create_Node (Negate_Expr, -U)
+          else U);
          --  A negative value means an expression, so we have to make a
          --  Negate_Expr of the positive value.
 
@@ -271,9 +274,9 @@ package body GNATLLVM.Records.Create is
          Decode_Range (Choice, Low, High);
          Low  := Protect_Neg (Low);
          High := Protect_Neg (High);
-         if Low = High then
+         if Present (Low) and then Present (High) and then Low = High then
             This_Expr := Create_Node (Eq_Expr, Discrim_SO, Low);
-         elsif High > Low then
+         elsif Present (Low) and then Present (High) and then High > Low then
             This_Expr := Create_Node (Truth_And_Expr,
                                       Create_Node (Ge_Expr, Discrim_SO, Low),
                                       Create_Node (Le_Expr, Discrim_SO, High));
@@ -334,6 +337,8 @@ package body GNATLLVM.Records.Create is
       return End_Pos : Uint := Uint_0 do
          while Present (F) loop
             if Present (Component_Clause (F))
+              and then Known_Component_Bit_Offset (F)
+              and then Known_Esize (F)
               and then Component_Bit_Offset (F) + Esize (F) > End_Pos
             then
                End_Pos := Component_Bit_Offset (F) + Esize (F);
@@ -2052,25 +2057,28 @@ package body GNATLLVM.Records.Create is
                  To_Bits (Byte_Position) + Bit_Offset;
                Bit_Position_T : constant Node_Ref_Or_Val :=
                  Annotated_Value (Bit_Position);
+               Field_Size     : constant Node_Ref_Or_Val :=
+                 Annotated_Value (Get_Type_Size (Field_Type (Cur_Field)));
 
             begin
-               if not Known_Esize (Cur_Field) then
-                  Set_Esize (Cur_Field, Annotated_Value (Get_Type_Size
-                                                           (Field_Type
-                                                              (Cur_Field))));
+               if not Known_Esize (Cur_Field) and then Present (Field_Size)
+               then
+                  Set_Esize (Cur_Field, Field_Size);
                end if;
 
-               Set_Component_Bit_Offset (Cur_Field, Bit_Position_T);
-               if Is_Static_SO_Ref (Bit_Position_T) then
-                  Set_Normalized_Position
-                    (Cur_Field, Bit_Position_T / BPU);
-                  Set_Normalized_First_Bit
-                    (Cur_Field, Bit_Position_T mod BPU);
-               else
-                  Set_Normalized_Position
-                    (Cur_Field,
-                     Annotated_Value (Byte_Position + Bit_Offset / BPU));
-                  Set_Normalized_First_Bit (Cur_Field, Bit_Offset mod BPU);
+               if Present (Bit_Position_T) then
+                  Set_Component_Bit_Offset (Cur_Field, Bit_Position_T);
+                  if Is_Static_SO_Ref (Bit_Position_T) then
+                     Set_Normalized_Position
+                       (Cur_Field, Bit_Position_T / BPU);
+                     Set_Normalized_First_Bit
+                       (Cur_Field, Bit_Position_T mod BPU);
+                  else
+                     Set_Normalized_Position
+                       (Cur_Field,
+                        Annotated_Value (Byte_Position + Bit_Offset / BPU));
+                     Set_Normalized_First_Bit (Cur_Field, Bit_Offset mod BPU);
+                  end if;
                end if;
             end;
          end if;

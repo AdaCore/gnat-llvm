@@ -2130,7 +2130,7 @@ package body GNATLLVM.Records is
    begin
       --  First check for the trivial case of a zero-length field
 
-      if Esize (F) = 0 then
+      if Known_Esize (F) and then Esize (F) = 0 then
          return (if Is_Data (LHS) then LHS else No_GL_Value);
 
       --  If this is for a volatile full access object, load that object

@@ -1036,7 +1036,7 @@ package body GNATLLVM.Records.Create is
          Size        : Uint                    :=
            (if not Known_Esize (E) then No_Uint
             else   Validate_Size (E, Def_GT, Esize (E),
-                                Zero_Allowed => Present (Clause)));
+                                  Zero_Allowed => Present (Clause)));
          Var_Depth   : Int                     := 0;
          Var_Align   : Nat                     := 0;
 

@@ -1404,7 +1404,8 @@ package body GNATLLVM.Variables is
       GT := Make_GT_Alternative
         (GT, E,
          Size          =>
-           (if UI_Is_In_Int_Range (Size) then Size else No_Uint),
+           (if   Present (Size) and then UI_Is_In_Int_Range (Size)
+            then Size else No_Uint),
          Align         => Align,
          For_Type      => False,
          For_Component => False,

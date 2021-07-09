@@ -779,7 +779,10 @@ package body GNATLLVM.Aliasing is
                      Get_String_Bounds (TE,   LB,   HB);
                      Get_String_Bounds (E_TE, E_LB, E_HB);
 
-                     if LB = E_LB and then HB = E_HB then
+                     if Present (LB) and then Present (HB)
+                       and then Present (E_LB) and then Present (E_HB)
+                       and then LB = E_LB and then HB = E_HB
+                     then
                         return E_TE;
                      end if;
                   end;

@@ -208,7 +208,7 @@ package body GNATLLVM.Exprs is
    procedure LHS_And_Component_For_Assignment
      (N             : Node_Id;
       LHS           : out GL_Value;
-      F             : out Entity_Id;
+      F             : out Opt_Record_Field_Kind_Id;
       Idxs          : out Access_GL_Value_Array;
       For_LHS       : Boolean := False;
       Only_Bitfield : Boolean := False) is
@@ -478,14 +478,15 @@ package body GNATLLVM.Exprs is
          pragma Assert (Do_Overflow_Check (N));
 
          declare
-            Func      : constant GL_Value  := Build_Intrinsic
-              (Boolean_And_Data, "llvm." & Ovfl_Name & ".with.overflow.i",
-               LHS_BT);
-            Fn_Ret    : constant GL_Value  :=
+            Func      : constant GL_Value       :=
+              Build_Intrinsic
+               (Boolean_And_Data, "llvm." & Ovfl_Name & ".with.overflow.i",
+                LHS_BT);
+            Fn_Ret    : constant GL_Value       :=
               Call_Relationship (Func, LHS_BT, (1 => LVal, 2 => RVal),
                                  Boolean_And_Data);
-            Overflow  : constant GL_Value  := Get (Fn_Ret, Boolean_Data);
-            Label_Ent : constant Entity_Id :=
+            Overflow  : constant GL_Value       := Get (Fn_Ret, Boolean_Data);
+            Label_Ent : constant Opt_E_Label_Id :=
               Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
             BB_Next   : Basic_Block_T;
 
@@ -671,15 +672,16 @@ package body GNATLLVM.Exprs is
                  and then not Is_Unsigned_Type (BT)
                then
                   declare
-                     Func      : constant GL_Value  := Build_Intrinsic
-                       (Boolean_And_Data, "llvm.ssub.with.overflow.i", BT);
-                     Fn_Ret    : constant GL_Value  :=
+                     Func      : constant GL_Value      :=
+                       Build_Intrinsic (Boolean_And_Data,
+                                        "llvm.ssub.with.overflow.i", BT);
+                     Fn_Ret    : constant GL_Value       :=
                        Call_Relationship (Func, GT,
                                           (1 => Const_Null (BT), 2 => V),
                                           Boolean_And_Data);
-                     Overflow  : constant GL_Value  :=
+                     Overflow  : constant GL_Value       :=
                        Get (Fn_Ret, Boolean_Data);
-                     Label_Ent : constant Entity_Id :=
+                     Label_Ent : constant Opt_E_Label_Id :=
                        Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
                      BB_Next   : Basic_Block_T;
 
@@ -712,20 +714,20 @@ package body GNATLLVM.Exprs is
    -------------------------
 
    procedure Emit_Overflow_Check (V : GL_Value; N : N_Type_Conversion_Id) is
-      In_GT      : constant GL_Type   := Related_Type (V);
-      Out_GT     : constant GL_Type   := Full_GL_Type (N);
-      In_BT      : constant GL_Type   := Base_GL_Type (In_GT);
-      Out_BT     : constant GL_Type   := Base_GL_Type (Out_GT);
-      In_FP      : constant Boolean   := Is_Floating_Point_Type (In_GT);
-      Out_FP     : constant Boolean   := Is_Floating_Point_Type (Out_GT);
-      In_LB      : constant Node_Id   := Type_Low_Bound  (In_BT);
-      In_HB      : constant Node_Id   := Type_High_Bound (In_BT);
-      Out_LB     : constant Node_Id   := Type_Low_Bound  (Out_BT);
-      Out_HB     : constant Node_Id   := Type_High_Bound (Out_BT);
-      Label_Ent  : constant Entity_Id :=
+      In_GT      : constant GL_Type        := Related_Type (V);
+      Out_GT     : constant GL_Type        := Full_GL_Type (N);
+      In_BT      : constant GL_Type        := Base_GL_Type (In_GT);
+      Out_BT     : constant GL_Type        := Base_GL_Type (Out_GT);
+      In_FP      : constant Boolean        := Is_Floating_Point_Type (In_GT);
+      Out_FP     : constant Boolean        := Is_Floating_Point_Type (Out_GT);
+      In_LB      : constant Node_Id        := Type_Low_Bound  (In_BT);
+      In_HB      : constant Node_Id        := Type_High_Bound (In_BT);
+      Out_LB     : constant Node_Id        := Type_Low_Bound  (Out_BT);
+      Out_HB     : constant Node_Id        := Type_High_Bound (Out_BT);
+      Label_Ent  : constant Opt_E_Label_Id :=
         Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
-      Compare_LB : GL_Value           := No_GL_Value;
-      Compare_HB : GL_Value           := No_GL_Value;
+      Compare_LB : GL_Value                := No_GL_Value;
+      Compare_HB : GL_Value                := No_GL_Value;
       BB_Raise   : Basic_Block_T;
       BB_Next    : Basic_Block_T;
 

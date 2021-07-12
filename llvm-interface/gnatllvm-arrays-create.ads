@@ -18,7 +18,7 @@
 package GNATLLVM.Arrays.Create is
 
    function Create_Array_Type
-     (TE : Entity_Id; For_Orig : Boolean := False) return Type_T
+     (TE : Type_Kind_Id; For_Orig : Boolean := False) return Type_T
      with Pre  => (if   For_Orig then Is_Packed_Array_Impl_Type (TE)
                    else Is_Array_Type (TE)),
           Post => Present (Create_Array_Type'Result);

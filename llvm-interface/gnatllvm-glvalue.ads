@@ -1259,13 +1259,13 @@ package GNATLLVM.GLValue is
      (Obj   : Value_T;
       GT    : GL_Type;
       E     : Entity_Id := Empty;
-      Align : Nat := 0) return Nat
+      Align : Nat       := 0) return Nat
      with Pre => Present (Obj) and then Present (GT), Inline;
    function Set_Object_Align
      (Obj   : GL_Value;
       GT    : GL_Type;
       E     : Entity_Id := Empty;
-      Align : Nat := 0) return Nat
+      Align : Nat       := 0) return Nat
      with Pre => Present (Obj) and then Present (GT), Inline;
    --  Set the alignment of alloca inst or global from GT and E (if
    --  present), allowing Align (in bits if nonzero) to override, and

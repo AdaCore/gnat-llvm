@@ -514,7 +514,7 @@ package body GNATLLVM.Blocks is
    -----------------------------
 
    procedure Start_Block_Statements
-     (At_End_Proc : Entity_Id := Empty; EH_List : List_Id := No_List)
+     (At_End_Proc : Node_Id := Empty; EH_List : List_Id := No_List)
    is
       BI         : Block_Info renames Block_Stack.Table (Block_Stack.Last);
       Invariants : A_Invariant_Data := BI.Invariant_List;
@@ -1061,7 +1061,7 @@ package body GNATLLVM.Blocks is
          Exc   : GL_Value;
          --  The address of the exception caught by this handler
 
-         Param : Entity_Id;
+         Param : Opt_E_Variable_Id;
          --  The value of Choice_Parameter, if any
 
          Stmts : List_Id;
@@ -1259,11 +1259,12 @@ package body GNATLLVM.Blocks is
 
                if Present (Clauses.Table (J).Param) then
                   declare
-                     Param   : constant Entity_Id  := Clauses.Table (J).Param;
-                     GT      : constant GL_Type    := Full_GL_Type (Param);
-                     V       : constant GL_Value   :=
+                     Param   : constant E_Variable_Id :=
+                       Clauses.Table (J).Param;
+                     GT      : constant GL_Type       := Full_GL_Type (Param);
+                     V       : constant GL_Value      :=
                        Allocate_For_Type (GT, N => Param, E => Param);
-                     Cvt_Ptr : constant GL_Value   :=
+                     Cvt_Ptr : constant GL_Value      :=
                        Convert_To_Access (Exc_Ptr, A_Char_GL_Type);
 
                   begin
@@ -1500,7 +1501,8 @@ package body GNATLLVM.Blocks is
    -- Get_Exception_Goto_Entry --
    ------------------------------
 
-   function Get_Exception_Goto_Entry (Kind : Node_Kind) return Entity_Id is
+   function Get_Exception_Goto_Entry (Kind : Node_Kind) return Opt_E_Label_Id
+   is
    begin
       if Kind = N_Raise_Constraint_Error
         and then Constraint_Error_Stack.Last /= 0
@@ -1623,18 +1625,18 @@ package body GNATLLVM.Blocks is
 
    function Enter_Block_With_Node (Node : Node_Id) return Basic_Block_T
    is
-      E         : constant Entity_Id     :=
+      E         : constant Opt_E_Label_Id  :=
         (if Present (Node) and then Present (Identifier (Node))
          then Entity (Identifier (Node)) else Empty);
-      Name      : constant String        :=
+      Name      : constant String          :=
         (if Present (E) then Get_Name (E) else "");
-      This_BB   : constant Basic_Block_T := Get_Insert_Block;
-      Last_Inst : constant Value_T       := Get_Last_Instruction (This_BB);
-      Entry_BB  : constant Basic_Block_T :=
+      This_BB   : constant Basic_Block_T   := Get_Insert_Block;
+      Last_Inst : constant Value_T         := Get_Last_Instruction (This_BB);
+      Entry_BB  : constant Basic_Block_T   :=
           Get_Entry_Basic_Block (+Current_Func);
-      L_Idx     : constant Label_Info_Id :=
+      L_Idx     : constant Label_Info_Id   :=
           (if Present (E) then Get_Label_Info (E) else Empty_Label_Info_Id);
-      BB        : constant Basic_Block_T :=
+      BB        : constant Basic_Block_T   :=
           (if    Present (L_Idx) then Label_Info.Table (L_Idx).Orig_BB
            elsif No (Last_Inst) and then This_BB /= Entry_BB
            then  This_BB else Create_Basic_Block (Name));
@@ -1816,13 +1818,13 @@ package body GNATLLVM.Blocks is
    ----------------
 
    procedure Emit_Raise (N : N_Raise_xxx_Error_Id) is
-      Label        : constant Entity_Id     :=
+      Label        : constant Opt_E_Label_Id :=
         Get_Exception_Goto_Entry (Nkind (N));
-      Cond         : constant Node_Id       := Condition (N);
-      BB_Raise     : constant Basic_Block_T :=
+      Cond         : constant Node_Id        := Condition (N);
+      BB_Raise     : constant Basic_Block_T  :=
         (if    Present (Label) then Get_Label_BB (Label)
          elsif No (Cond) then No_BB_T else Create_Basic_Block ("RAISE"));
-      BB_Next      : constant Basic_Block_T :=
+      BB_Next      : constant Basic_Block_T  :=
         (if   Present (Cond) or else Present (Label) then Create_Basic_Block
          else No_BB_T);
       Pos          : constant Position_T    := Get_Current_Position;

@@ -297,11 +297,6 @@ package GNATLLVM is
    type Ptr_Err_Msg_Type is access all Err_Msg_Type;
    --  Used for LLVM error handling
 
-   function Is_Field (E : Entity_Id) return Boolean is
-     (Ekind (E) in Record_Field_Kind)
-     with Pre => Present (E);
-   --  Return True if E is a field in a record
-
    --  For use in child packages:
    pragma Warnings (Off);
    use type Interfaces.C.Extensions.unsigned_long_long;

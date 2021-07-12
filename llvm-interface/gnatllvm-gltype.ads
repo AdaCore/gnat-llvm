@@ -594,7 +594,7 @@ package GNATLLVM.GLType is
      (Type_High_Bound (Full_Etype (GT)))
      with Pre => not Is_Access_Type (GT);
 
-   function First_Index (GT : Array_GL_Type) return Entity_Id is
+   function First_Index (GT : Array_GL_Type) return Type_Kind_Id is
      (First_Index (Full_Etype (GT)));
 
    function Strict_Alignment (GT : GL_Type) return Boolean is
@@ -602,11 +602,13 @@ package GNATLLVM.GLType is
      with Pre => Present (GT);
 
    function First_Component_Or_Discriminant
-     (GT : Record_GL_Type) return Entity_Id
+     (GT : Record_GL_Type) return Opt_Record_Field_Kind_Id
    is
      (First_Component_Or_Discriminant (Full_Etype (GT)));
 
-   function First_Stored_Discriminant (GT : Record_GL_Type) return Entity_Id is
+   function First_Stored_Discriminant
+     (GT : Record_GL_Type) return Opt_E_Discriminant_Id
+   is
      (First_Stored_Discriminant (Full_Etype (GT)));
 
    function Convention (GT : GL_Type) return Convention_Id is

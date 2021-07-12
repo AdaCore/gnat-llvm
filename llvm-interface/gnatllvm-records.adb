@@ -62,7 +62,7 @@ package body GNATLLVM.Records is
 
    type Write_Back is record
       LHS : GL_Value;
-      F   : Entity_Id;
+      F   : Opt_Record_Field_Kind_Id;
       RHS : GL_Value;
    end record;
 
@@ -244,7 +244,7 @@ package body GNATLLVM.Records is
       --  described by RI, In_Size, and Force_Align.
 
       function Get_Record_Size_So_Far
-        (TE          : Entity_Id;
+        (TE          : Opt_Record_Kind_Id;
          V           : GL_Value;
          Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
          Idx         : Record_Info_Id := Empty_Record_Info_Id;
@@ -360,8 +360,8 @@ package body GNATLLVM.Records is
    function Record_Type_For_Field
      (GT : GL_Type; F : Record_Field_Kind_Id) return Record_Kind_Id
    is
-      TE    : constant Record_Kind_Id := Full_Etype (GT);
-      New_F : constant Entity_Id      := Find_Matching_Field (TE, F);
+      TE    : constant Record_Kind_Id           := Full_Etype (GT);
+      New_F : constant Opt_Record_Field_Kind_Id := Find_Matching_Field (TE, F);
 
    begin
       --  We'd prefer to use GT's type, but only if we can find a match for
@@ -376,8 +376,10 @@ package body GNATLLVM.Records is
    -------------------------
 
    function Find_Matching_Field
-     (TE : Record_Kind_Id; Field : Record_Field_Kind_Id) return Entity_Id is
-      Ent : Entity_Id := First_Component_Or_Discriminant (TE);
+     (TE    : Record_Kind_Id;
+      Field : Record_Field_Kind_Id) return Opt_Record_Field_Kind_Id
+   is
+      Ent : Opt_Record_Field_Kind_Id := First_Component_Or_Discriminant (TE);
 
    begin
       while Present (Ent) loop
@@ -664,7 +666,7 @@ package body GNATLLVM.Records is
       ----------------------------
 
       function Get_Record_Size_So_Far
-        (TE          : Entity_Id;
+        (TE          : Opt_Record_Kind_Id;
          V           : GL_Value;
          Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
          Idx         : Record_Info_Id := Empty_Record_Info_Id;
@@ -942,7 +944,7 @@ package body GNATLLVM.Records is
                 Replace_Val             => Replace_Val);
 
    function Get_Record_Size_So_Far
-     (TE          : Entity_Id;
+     (TE          : Opt_Record_Kind_Id;
       V           : GL_Value;
       Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
       Idx         : Record_Info_Id := Empty_Record_Info_Id;
@@ -1003,7 +1005,7 @@ package body GNATLLVM.Records is
      renames IDS_Size.Get_Record_Type_Size;
 
    function Get_Record_Size_So_Far
-     (TE          : Entity_Id;
+     (TE          : Opt_Record_Kind_Id;
       V           : GL_Value;
       Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
       Idx         : Record_Info_Id := Empty_Record_Info_Id;
@@ -1374,7 +1376,7 @@ package body GNATLLVM.Records is
    function Record_Has_Aliased_Components
      (TE : Record_Kind_Id) return Boolean
    is
-      F : Entity_Id := First_Component_Or_Discriminant (TE);
+      F : Opt_Record_Field_Kind_Id := First_Component_Or_Discriminant (TE);
 
    begin
       --  We ignore the tag since no user code can take its address
@@ -1392,7 +1394,7 @@ package body GNATLLVM.Records is
    -------------------------------
 
    function Get_Record_Type_Alignment (TE : Record_Kind_Id) return Nat is
-      Field : Entity_Id;
+      Field : Opt_Record_Field_Kind_Id;
 
    begin
       --  Use the largest effective alignment of any field
@@ -1460,10 +1462,14 @@ package body GNATLLVM.Records is
    -- Parent_Field --
    ------------------
 
-   function Parent_Field (F : Record_Field_Kind_Id) return Entity_Id is
-      R_TE : constant Record_Kind_Id := Full_Scope (F);
-      ORC  : constant Entity_Id := Original_Record_Component (F);
-      CRC  : constant Entity_Id := Corresponding_Record_Component (F);
+   function Parent_Field
+     (F : Record_Field_Kind_Id) return Opt_Record_Field_Kind_Id
+   is
+      R_TE : constant Record_Kind_Id           := Full_Scope (F);
+      ORC  : constant Opt_Record_Field_Kind_Id :=
+        Original_Record_Component (F);
+      CRC  : constant Opt_Record_Field_Kind_Id :=
+        Corresponding_Record_Component (F);
 
    begin
       if Present (ORC) and then ORC /= F
@@ -1487,7 +1493,7 @@ package body GNATLLVM.Records is
    function Ancestor_Field
      (F : Record_Field_Kind_Id) return Record_Field_Kind_Id
    is
-      PF : Entity_Id;
+      PF : Opt_Record_Field_Kind_Id;
 
    begin
       return AF : Record_Field_Kind_Id := F do
@@ -1720,18 +1726,20 @@ package body GNATLLVM.Records is
    function Record_Field_Offset
      (V : GL_Value; Field : Record_Field_Kind_Id) return GL_Value
    is
-      F_GT       : GL_Type                       := Full_GL_Type (Field);
-      CRC        : constant Entity_Id            :=
+      F_GT       : GL_Type                           := Full_GL_Type (Field);
+      CRC        : constant Opt_Record_Field_Kind_Id :=
         Corresponding_Record_Component (Field);
-      Our_Field  : constant Record_Field_Kind_Id :=
+      Our_Field  : constant Record_Field_Kind_Id     :=
         (if   No (Get_Field_Info (Field)) and then Present (CRC)
               and then Full_Etype (CRC) = Full_Etype (F_GT)
          then CRC else Field);
-      Rec_Type   : constant Record_Kind_Id       := Full_Scope (Our_Field);
-      Rec_GT     : constant GL_Type              :=
-          Primitive_GL_Type (Rec_Type);
-      First_Idx  : constant Record_Info_Id       := Get_Record_Info (Rec_Type);
-      F_Idx      : Field_Info_Id                 := Get_Field_Info (Our_Field);
+      Rec_Type   : constant Record_Kind_Id           := Full_Scope (Our_Field);
+      Rec_GT     : constant GL_Type                  :=
+        Primitive_GL_Type (Rec_Type);
+      First_Idx  : constant Record_Info_Id           :=
+        Get_Record_Info (Rec_Type);
+      F_Idx      : Field_Info_Id                     :=
+        Get_Field_Info (Our_Field);
       FI         : Field_Info;
       Our_Idx    : Record_Info_Id;
       Offset     : GL_Value;
@@ -2347,7 +2355,8 @@ package body GNATLLVM.Records is
    -- Add_Write_Back --
    --------------------
 
-   procedure Add_Write_Back (LHS : GL_Value; F : Entity_Id; RHS : GL_Value) is
+   procedure Add_Write_Back
+     (LHS : GL_Value; F : Opt_Record_Field_Kind_Id; RHS : GL_Value) is
    begin
       Writeback_Stack.Append ((LHS => LHS, F => F, RHS => RHS));
    end Add_Write_Back;

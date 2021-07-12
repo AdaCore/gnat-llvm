@@ -318,9 +318,9 @@ package body GNATLLVM.DebugInfo is
    function Create_Subprogram_Debug_Info
      (Func     : GL_Value;
       N        : Node_Id;
-      E        : Entity_Id := Empty;
-      Name     : String    := "";
-      Ext_Name : String    := "") return Metadata_T
+      E        : Opt_Subprogram_Kind_Id := Empty;
+      Name     : String                 := "";
+      Ext_Name : String                 := "") return Metadata_T
    is
       function Create_Return_Debug_Info return Metadata_T
         with Pre => LRK in Struct_Out | Struct_Out_Subprog;
@@ -328,21 +328,21 @@ package body GNATLLVM.DebugInfo is
       --  in the case where we return a structure consisting of the Out
       --  parameters of the subprogram and possibly its return value.
 
-      RK         : constant Return_Kind         :=
+      RK         : constant Return_Kind            :=
         (if Present (E) then Get_Return_Kind (E) else None);
-      LRK        : constant L_Ret_Kind          :=
+      LRK        : constant L_Ret_Kind             :=
         (if Present (E) then Get_L_Ret_Kind (E)  else Void);
-      Ret_MD     : constant Metadata_T          :=
+      Ret_MD     : constant Metadata_T             :=
         (if   RK = None then No_Metadata_T
          else Create_Type_Data (Full_GL_Type (E)));
-      Num_MDs     : constant Nat                 :=
+      Num_MDs     : constant Nat                   :=
         (if   Present (E) then (Number_In_Params (E) +
                                 (if RK = Return_By_Parameter then 1 else 0))
          else 0);
       Types      : Metadata_Array (0 .. Num_MDs);
-      S_Name     : constant String              :=
+      S_Name     : constant String                 :=
         (if Name /= "" then Name else Get_Name (E));
-      S_Ext_Name : constant String              :=
+      S_Ext_Name : constant String                 :=
         (if Ext_Name /= "" then Ext_Name else Get_Ext_Name (E));
       File_Node     : constant Metadata_T          :=
         (if   Emit_Debug_Info
@@ -350,7 +350,7 @@ package body GNATLLVM.DebugInfo is
          else No_Metadata_T);
       Line_Number   : constant Logical_Line_Number :=
         Get_Logical_Line_Number (Sloc (N));
-      P          : Entity_Id                    :=
+      P          : Opt_Formal_Kind_Id              :=
         (if Present (E) then First_In_Param (E) else Empty);
       Idx        : Nat                          := 1;
 
@@ -360,14 +360,14 @@ package body GNATLLVM.DebugInfo is
 
       function Create_Return_Debug_Info return Metadata_T is
 
-         Num_Fields : constant Nat :=
+         Num_Fields : constant Nat       :=
            Number_Out_Params (E) + (if LRK = Struct_Out_Subprog then 1 else 0);
-         Rec_Align  : Nat          := BPU;
-         Offset     : ULL          := 0;
+         Rec_Align  : Nat                := BPU;
+         Offset     : ULL                := 0;
          Field_MDs  : Metadata_Array (1 .. Num_Fields);
-         Idx        : Nat          := Field_MDs'First;
-         Formal     : Entity_Id    := First_Out_Param (E);
-         OK         : Boolean      := True;
+         Idx        : Nat                := Field_MDs'First;
+         Formal     : Opt_Formal_Kind_Id := First_Out_Param (E);
+         OK         : Boolean            := True;
 
       begin -- Start of processing for Create_Return_Debug_Info
 
@@ -698,14 +698,14 @@ package body GNATLLVM.DebugInfo is
    ----------------------
 
    function Create_Type_Data (GT : GL_Type) return Metadata_T is
-      TE          : constant Entity_Id  := Full_Etype (GT);
-      Name        : constant String     := Get_Name (TE);
-      T           : constant Type_T     := Type_Of (GT);
-      Size        : constant ULL        :=
+      TE          : constant Void_Or_Type_Kind_Id := Full_Etype (GT);
+      Name        : constant String               := Get_Name (TE);
+      T           : constant Type_T               := Type_Of (GT);
+      Size        : constant ULL                  :=
         (if Type_Is_Sized (T) then Get_Type_Size (T) else 0);
-      Align       : constant Nat        := Get_Type_Alignment (GT);
-      S           : constant Source_Ptr := Sloc (TE);
-      Result      : Metadata_T          := Get_Debug_Type (TE);
+      Align       : constant Nat                  := Get_Type_Alignment (GT);
+      S           : constant Source_Ptr           := Sloc (TE);
+      Result      : Metadata_T                    := Get_Debug_Type (TE);
 
    begin
       --  If we already made debug info for this type, return it
@@ -811,7 +811,7 @@ package body GNATLLVM.DebugInfo is
                   Table_Increment      => 5,
                   Table_Name           => "Member_Table");
 
-               F : Entity_Id;
+               F : Opt_Record_Field_Kind_Id;
 
             begin
                F := First_Component_Or_Discriminant (TE);
@@ -885,7 +885,7 @@ package body GNATLLVM.DebugInfo is
                   Table_Increment      => 5,
                   Table_Name           => "Member_Table");
 
-               Member : Entity_Id;
+               Member : Opt_E_Enumeration_Literal_Id;
 
             begin
                Member := First_Literal (TE);

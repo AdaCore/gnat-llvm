@@ -80,7 +80,7 @@ package body GNATLLVM.Conversions is
         Is_Fixed_Lower_Bound_Array_Subtype (Full_Base_Type (GT1));
       FLB2       : constant Boolean :=
         Is_Fixed_Lower_Bound_Array_Subtype (Full_Base_Type (GT2));
-      Idx1, Idx2 : Entity_Id;
+      Idx1, Idx2 : Node_Id;
 
    begin
       --  If either isn't an array type, we don't have this case
@@ -738,7 +738,8 @@ package body GNATLLVM.Conversions is
       --  specially here.
 
       if In_R = Reference_To_Subprogram
-        and then Ekind (GT) = E_Access_Subprogram_Type
+        and then Ekind (GT) in
+           E_Access_Subprogram_Type | E_Anonymous_Access_Subprogram_Type
       then
          Result := Get (Ptr_To_Relationship (As_Ref, DT, Reference), R);
 

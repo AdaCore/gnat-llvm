@@ -230,18 +230,18 @@ package body GNATLLVM.Subprograms is
    function Is_Binder_Elab_Proc (Name : String) return Boolean;
    --  Return True if Name is the name of the elab proc for Ada_Main
 
-   First_Body_Elab_Idx    : Nat       := 0;
+   First_Body_Elab_Idx    : Nat                    := 0;
    --  Indicates the first entry in Elaborations that represents
    --  an elab entry for the body of a package.  If zero, then all entries
    --  are for the spec.
 
-   Ada_Main_Elabb         : GL_Value  := No_GL_Value;
-   Ada_Main_Elabb_Ident   : Entity_Id := Empty;
+   Ada_Main_Elabb         : GL_Value               := No_GL_Value;
+   Ada_Main_Elabb_Ident   : Opt_Subprogram_Kind_Id := Empty;
    --  We sometimes need an elab proc for Ada_Main and this can cause
    --  confusion with global names. So if we made it as part of the
    --  processing of a declaration, save it.
 
-   Subprogram_Access_Type : Type_T    := No_Type_T;
+   Subprogram_Access_Type : Type_T                 := No_Type_T;
    --  A type used for a subprogram access
 
    ----------------------
@@ -249,7 +249,7 @@ package body GNATLLVM.Subprograms is
    ----------------------
 
    function Number_In_Params (E : Entity_Id) return Nat is
-      Param : Entity_Id := First_Formal_With_Extras (E);
+      Param : Opt_Formal_Kind_Id := First_Formal_With_Extras (E);
 
    begin
       return Cnt : Nat := 0 do
@@ -268,7 +268,7 @@ package body GNATLLVM.Subprograms is
    -----------------------
 
    function Number_Out_Params (E : Entity_Id) return Nat is
-      Param : Entity_Id := First_Formal_With_Extras (E);
+      Param : Opt_Formal_Kind_Id := First_Formal_With_Extras (E);
 
    begin
       return Cnt : Nat := 0 do
@@ -286,9 +286,9 @@ package body GNATLLVM.Subprograms is
    -- First_In_Param --
    --------------------
 
-   function First_In_Param (E : Entity_Id) return Entity_Id is
+   function First_In_Param (E : Entity_Id) return Opt_Formal_Kind_Id is
    begin
-      return Param : Entity_Id := First_Formal_With_Extras (E) do
+      return Param : Opt_Formal_Kind_Id := First_Formal_With_Extras (E) do
          while Present (Param) loop
             exit when PK_Is_In_Or_Ref (Get_Param_Kind (Param));
             Next_Formal_With_Extras (Param);
@@ -300,10 +300,10 @@ package body GNATLLVM.Subprograms is
    -- Next_In_Param --
    -------------------
 
-   function Next_In_Param (E : Formal_Kind_Id) return Entity_Id is
+   function Next_In_Param (E : Formal_Kind_Id) return Opt_Formal_Kind_Id is
 
    begin
-      return Param : Entity_Id := Next_Formal_With_Extras (E) do
+      return Param : Opt_Formal_Kind_Id := Next_Formal_With_Extras (E) do
          while Present (Param) loop
             exit when PK_Is_In_Or_Ref (Get_Param_Kind (Param));
             Next_Formal_With_Extras (Param);
@@ -315,7 +315,7 @@ package body GNATLLVM.Subprograms is
    -- Next_In_Param --
    -------------------
 
-   procedure Next_In_Param (E : in out Entity_Id) is
+   procedure Next_In_Param (E : in out Opt_Formal_Kind_Id) is
    begin
       E := Next_In_Param (E);
    end Next_In_Param;
@@ -324,9 +324,9 @@ package body GNATLLVM.Subprograms is
    -- First_Out_Param --
    ---------------------
 
-   function First_Out_Param (E : Entity_Id) return Entity_Id is
+   function First_Out_Param (E : Entity_Id) return Opt_Formal_Kind_Id is
    begin
-      return Param : Entity_Id := First_Formal_With_Extras (E) do
+      return Param : Opt_Formal_Kind_Id := First_Formal_With_Extras (E) do
          while Present (Param) loop
             exit when PK_Is_Out (Get_Param_Kind (Param));
             Next_Formal_With_Extras (Param);
@@ -338,10 +338,9 @@ package body GNATLLVM.Subprograms is
    -- Next_Out_Param --
    --------------------
 
-   function Next_Out_Param (E : Formal_Kind_Id) return Entity_Id is
-
+   function Next_Out_Param (E : Formal_Kind_Id) return Opt_Formal_Kind_Id is
    begin
-      return Param : Entity_Id := Next_Formal_With_Extras (E) do
+      return Param : Opt_Formal_Kind_Id := Next_Formal_With_Extras (E) do
          while Present (Param) loop
             exit when PK_Is_Out (Get_Param_Kind (Param));
             Next_Formal_With_Extras (Param);
@@ -353,7 +352,7 @@ package body GNATLLVM.Subprograms is
    -- Next_Out_Param --
    --------------------
 
-   procedure Next_Out_Param (E : in out Entity_Id) is
+   procedure Next_Out_Param (E : in out Opt_Formal_Kind_Id) is
    begin
       E := Next_Out_Param (E);
    end Next_Out_Param;
@@ -390,7 +389,7 @@ package body GNATLLVM.Subprograms is
    function Is_Initialized
      (GT : GL_Type; Recurse : Boolean := True) return Boolean
    is
-      F : Entity_Id;
+      F : Opt_Record_Field_Kind_Id;
    begin
       if Is_Access_Type (GT)
         or else (Is_Scalar_Type (GT)
@@ -595,10 +594,11 @@ package body GNATLLVM.Subprograms is
    --------------------
 
    function Get_L_Ret_Kind (E : Entity_Id) return L_Ret_Kind is
-      RK        : constant Return_Kind := Get_Return_Kind  (E);
-      Num_Out   : constant Nat         := Number_Out_Params (E);
-      Out_Param : constant Entity_Id   := First_Out_Param (E);
-      Has_Ret   : constant Boolean     := RK not in None | Return_By_Parameter;
+      RK        : constant Return_Kind        := Get_Return_Kind  (E);
+      Num_Out   : constant Nat                := Number_Out_Params (E);
+      Out_Param : constant Opt_Formal_Kind_Id := First_Out_Param (E);
+      Has_Ret   : constant Boolean            :=
+        RK not in None | Return_By_Parameter;
 
    begin
       if not Has_Ret and then Num_Out = 0 then
@@ -629,7 +629,7 @@ package body GNATLLVM.Subprograms is
      (E : Subprogram_Kind_Id; Exprs : List_Id) return Uint
    is
       P_Num : Int;
-      Param : Entity_Id;
+      Param : Opt_Formal_Kind_Id;
 
    begin
       --  If there's no Exprs, then we're asking about the function return
@@ -701,7 +701,7 @@ package body GNATLLVM.Subprograms is
       In_Arg_Types    : Type_Array    (1 .. In_Args_Count);
       Out_Arg_Types   : Type_Array    (1 .. Out_Args_Count);
       Out_Arg_Names   : Name_Id_Array (1 .. Out_Args_Count);
-      Param_Ent       : Entity_Id            := First_Formal_With_Extras (E);
+      Param_Ent       : Opt_Formal_Kind_Id   := First_Formal_With_Extras (E);
       J               : Nat                  := 1;
       LLVM_Result_Typ : Type_T               := LLVM_Ret_Typ;
 
@@ -916,9 +916,9 @@ package body GNATLLVM.Subprograms is
    function Get_Activation_Record_Ptr
      (V : GL_Value; E : E_Component_Id) return GL_Value
    is
-      Need_Type   : constant Record_Kind_Id := Full_Scope (E);
-      Have_Type   : constant Record_Kind_Id := Full_Etype (V);
-      First_Field : constant Entity_Id      :=
+      Need_Type   : constant Record_Kind_Id           := Full_Scope (E);
+      Have_Type   : constant Record_Kind_Id           := Full_Etype (V);
+      First_Field : constant Opt_Record_Field_Kind_Id :=
         First_Component_Or_Discriminant (Have_Type);
 
    begin
@@ -1037,7 +1037,7 @@ package body GNATLLVM.Subprograms is
       LRK        : constant L_Ret_Kind         := Get_L_Ret_Kind  (E);
       Param_Num  : Nat                         := 0;
       LLVM_Param : GL_Value;
-      Param      : Entity_Id;
+      Param      : Opt_Formal_Kind_Id;
 
    begin
       --  If we're compiling this for inline, set the proper linkage, which
@@ -1617,9 +1617,9 @@ package body GNATLLVM.Subprograms is
          when Struct_Out | Struct_Out_Subprog =>
 
             declare
-               Retval : GL_Value  := Get_Undef_Fn_Ret (Current_Func);
-               Param  : Entity_Id := First_Out_Param  (Current_Subp);
-               J      : unsigned  := 0;
+               Retval : GL_Value           := Get_Undef_Fn_Ret (Current_Func);
+               Param  : Opt_Formal_Kind_Id := First_Out_Param  (Current_Subp);
+               J      : unsigned           := 0;
 
             begin
                if not Decls_Only then
@@ -1746,7 +1746,7 @@ package body GNATLLVM.Subprograms is
 
    function Has_Activation_Record (E : Entity_Id) return Boolean
    is
-      Formal : Entity_Id := First_Formal_With_Extras (E);
+      Formal : Opt_Formal_Kind_Id := First_Formal_With_Extras (E);
 
    begin
       --  In the type case, we don't consider it as having an activation
@@ -1861,12 +1861,11 @@ package body GNATLLVM.Subprograms is
    is
       procedure Write_Back
         (In_LHS  : GL_Value;
-         F       : Entity_Id;
+         F       : Opt_Record_Field_Kind_Id;
          In_Idxs : Access_GL_Value_Array;
          In_RHS  : GL_Value;
          VFA     : Boolean)
-        with Pre => Present (In_RHS) and then Is_Reference (In_LHS)
-                    and then (No (F) or else Is_Field (F));
+        with Pre => Present (In_RHS) and then Is_Reference (In_LHS);
       --  Write the value in In_RHS to the location In_LHS.  F, if Present,
       --  is a field into In_LHS to write.
 
@@ -1883,14 +1882,14 @@ package body GNATLLVM.Subprograms is
 
       type WB is record
          LHS, RHS : GL_Value;
-         Field    : Entity_Id;
+         Field    : Opt_Record_Field_Kind_Id;
          Idxs     : Access_GL_Value_Array;
          VFA      : Boolean;
       end record;
       --   A writeback entry for an by-ref type that's In or In Out
 
       type WB_Array     is array (Nat range <>) of WB;
-      type Entity_Array is array (Nat range <>) of Entity_Id;
+      type Entity_Array is array (Nat range <>) of Opt_Record_Field_Kind_Id;
 
       Subp             : constant Node_Id     := Name (N);
       Our_Return_GT    : constant GL_Type     := Full_GL_Type (N);
@@ -1902,7 +1901,7 @@ package body GNATLLVM.Subprograms is
       Return_GT        : constant GL_Type     := Full_GL_Type      (Subp_Typ);
       Orig_Arg_Count   : constant Nat         := Number_In_Params  (Subp_Typ);
       Out_Arg_Count    : constant Nat         := Number_Out_Params (Subp_Typ);
-      Out_Param        : Entity_Id            := First_Out_Param   (Subp_Typ);
+      Out_Param        : Opt_Formal_Kind_Id   := First_Out_Param   (Subp_Typ);
       No_Adjust_LV     : constant Boolean     := Contains_Discriminant (N);
       In_Idx           : Nat                  := 1;
       Out_Idx          : Nat                  := 1;
@@ -1938,7 +1937,7 @@ package body GNATLLVM.Subprograms is
 
       procedure Write_Back
         (In_LHS  : GL_Value;
-         F       : Entity_Id;
+         F       : Opt_Record_Field_Kind_Id;
          In_Idxs : Access_GL_Value_Array;
          In_RHS  : GL_Value;
          VFA     : Boolean)
@@ -2122,7 +2121,7 @@ package body GNATLLVM.Subprograms is
             GT   : constant GL_Type         := Get_Param_GL_Type (Param);
             PK   : constant Param_Kind      := Get_Param_Kind    (Param);
             R    : constant GL_Relationship := Relationship_For_PK (PK, GT);
-            F    : Entity_Id                := Empty;
+            F    : Opt_Record_Field_Kind_Id := Empty;
             Idxs : Access_GL_Value_Array    := null;
             LHS  : GL_Value                 := No_GL_Value;
             Arg  : GL_Value;
@@ -2479,7 +2478,7 @@ package body GNATLLVM.Subprograms is
       Param_Num   : Natural              := 0;
       Readonly    : Boolean              :=
           Pure_Func or else (Is_Pure (E) and then not Is_Imported);
-      Formal      : Entity_Id;
+      Formal      : Opt_Formal_Kind_Id;
 
    begin
       Check_Convention (E);

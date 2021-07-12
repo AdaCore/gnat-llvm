@@ -46,7 +46,7 @@ package body GNATLLVM.Arrays.Create is
    --  Helper function to build a One_Bound object from N
 
    function Create_String_Literal_Type
-     (TE : Entity_Id; Comp_Typ : Type_T) return Type_T
+     (TE : E_String_Literal_Subtype_Id; Comp_Typ : Type_T) return Type_T
      with Pre  => Ekind (TE) = E_String_Literal_Subtype
                   and then Present (Comp_Typ),
           Post => (Get_Type_Kind (Create_String_Literal_Type'Result) =
@@ -117,7 +117,7 @@ package body GNATLLVM.Arrays.Create is
    function Cannot_Be_Superflat (N : Node_Id) return Boolean is
       LB      : Node_Id := Low_Bound  (N);
       HB      : Node_Id := High_Bound (N);
-      TE      : Entity_Id;
+      TE      : Type_Kind_Id;
       Rng     : Node_Id;
 
    begin
@@ -243,7 +243,7 @@ package body GNATLLVM.Arrays.Create is
    --------------------------------
 
    function Create_String_Literal_Type
-     (TE : Entity_Id; Comp_Typ : Type_T) return Type_T
+     (TE : E_String_Literal_Subtype_Id; Comp_Typ : Type_T) return Type_T
    is
       First      : constant Uint         :=
         Get_Uint_Value (String_Literal_Low_Bound (TE));
@@ -251,7 +251,7 @@ package body GNATLLVM.Arrays.Create is
       Last       : constant Uint         := First + Length - 1;
       Low_Bound  : constant One_Bound    := (Cnst => First, Value => Empty);
       High_Bound : constant One_Bound    := (Cnst => Last, Value => Empty);
-      Index_TE   : constant Entity_Id    :=
+      Index_TE   : constant Type_Kind_Id :=
         Full_Etype (First_Index (Full_Base_Type (TE)));
       Dim_Info   : constant Index_Bounds :=
         (Bound_GT      => Base_GL_Type (Index_TE),
@@ -276,36 +276,36 @@ package body GNATLLVM.Arrays.Create is
    -----------------------
 
    function Create_Array_Type
-     (TE : Entity_Id; For_Orig : Boolean := False) return Type_T
+     (TE : Type_Kind_Id; For_Orig : Boolean := False) return Type_T
    is
       type Dim_Info_Array is array (Nat range <>) of Index_Bounds;
 
-      A_TE              : constant Entity_Id :=
+      A_TE              : constant Type_Kind_Id :=
         (if For_Orig then Full_Original_Array_Type (TE) else TE);
-      Unconstrained     : constant Boolean   := not Is_Constrained (A_TE);
-      CT                : constant Entity_Id := Full_Component_Type (A_TE);
-      Comp_Def_GT       : constant GL_Type   := Default_GL_Type (CT);
-      Comp_Size_To_Use  : constant Uint      :=
+      Unconstrained     : constant Boolean      := not Is_Constrained (A_TE);
+      CT                : constant Type_Kind_Id := Full_Component_Type (A_TE);
+      Comp_Def_GT       : constant GL_Type      := Default_GL_Type (CT);
+      Comp_Size_To_Use  : constant Uint         :=
         (if    Known_Static_Component_Size (A_TE) and then not For_Orig
          then  Component_Size (A_TE)
          elsif Is_Packed (A_TE) and then not Is_Packed_Array_Impl_Type (TE)
                and then not Strict_Alignment (Comp_Def_GT)
          then  RM_Size (Comp_Def_GT) else No_Uint);
-      Comp_Size         : constant Uint      :=
+      Comp_Size         : constant Uint         :=
          Validate_Size (A_TE, Comp_Def_GT, Comp_Size_To_Use,
                         For_Component => True,
                         Zero_Allowed  => Has_Component_Size_Clause (A_TE));
-      Max_Size          : constant Boolean   :=
+      Max_Size          : constant Boolean      :=
         Is_Unconstrained_Record (Comp_Def_GT);
-      Biased            : constant Boolean   :=
+      Biased            : constant Boolean      :=
         Has_Biased_Representation (A_TE);
-      Comp_Initial_GT   : constant GL_Type   :=
+      Comp_Initial_GT   : constant GL_Type      :=
         Make_GT_Alternative (Comp_Def_GT, TE,
                              Size          => Comp_Size,
                              For_Component => True,
                              Max_Size      => Max_Size,
                              Is_Biased     => Biased);
-      Comp_GT           : constant GL_Type   :=
+      Comp_GT           : constant GL_Type      :=
         (if  Has_Aliased_Components (A_TE)
              and then Present (GT_Size (Comp_Initial_GT))
              and then Is_Const_Int_Value (GT_Size (Comp_Initial_GT), 0)
@@ -313,25 +313,26 @@ package body GNATLLVM.Arrays.Create is
                                    Size          => +BPU,
                                    For_Component => True)
          else Comp_Initial_GT);
-      Base_Type         : constant Entity_Id :=
+      Base_Type         : constant Type_Kind_Id :=
         Full_Base_Type (A_TE, For_Orig);
-      Must_Use_Fake     : Boolean            :=
-          not Is_Native_Component_GT (Comp_GT);
-      This_Nonnative    : Boolean            := Must_Use_Fake or Unconstrained;
-      CT_To_Use         : constant GL_Type   :=
+      Must_Use_Fake     : Boolean               :=
+        not Is_Native_Component_GT (Comp_GT);
+      This_Nonnative    : Boolean               :=
+        Must_Use_Fake or Unconstrained;
+      CT_To_Use         : constant GL_Type      :=
         (if Must_Use_Fake then SSI_GL_Type else Comp_GT);
-      Typ               : Type_T             := Type_Of (CT_To_Use);
-      Dim               : Nat                := 0;
-      Last_Dim          : constant Nat       :=
+      Typ               : Type_T                := Type_Of (CT_To_Use);
+      Dim               : Nat                   := 0;
+      Last_Dim          : constant Nat          :=
         (if   Ekind (A_TE) = E_String_Literal_Subtype
          then 1 else Number_Dimensions (A_TE) - 1);
-      Total_Size        : GL_Value           :=
+      Total_Size        : GL_Value              :=
         (if This_Nonnative then Size_Const_Null else Get_Type_Size (Comp_GT));
-      Field_Index       : Nat                := 0;
+      Field_Index       : Nat                   := 0;
       Dim_Infos         : Dim_Info_Array (0 .. Last_Dim);
       First_Info        : Array_Info_Id;
-      Index             : Entity_Id;
-      Base_Index        : Entity_Id;
+      Index             : Node_Id;
+      Base_Index        : Node_Id;
 
    begin
       --  String literal subtypes are simple, so handle them separately

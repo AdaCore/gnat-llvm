@@ -70,11 +70,11 @@ package body GNATLLVM.Compile is
    ------------------
 
    procedure GNAT_To_LLVM (GNAT_Root : N_Compilation_Unit_Id) is
-      function Stand_Type (Size : Nat) return Entity_Id;
+      function Stand_Type (Size : Nat) return Opt_Signed_Integer_Kind_Id;
       --  Find a standard integer type with the specified size.  If none,
       --  return Empty.
 
-      function Stand_Type (Size : Nat) return Entity_Id is
+      function Stand_Type (Size : Nat) return Opt_Signed_Integer_Kind_Id is
       begin
          if Get_Long_Long_Long_Size = Size then
             return Standard_Long_Long_Long_Integer;
@@ -93,9 +93,9 @@ package body GNATLLVM.Compile is
          end if;
       end Stand_Type;
 
-      Size_Type   : Entity_Id;
-      Int_32_Type : Entity_Id;
-      Int_64_Type : Entity_Id;
+      Size_Type   : Opt_Signed_Integer_Kind_Id;
+      Int_32_Type : Opt_Signed_Integer_Kind_Id;
+      Int_64_Type : Opt_Signed_Integer_Kind_Id;
 
    begin
       --  If we read a target config file, we may not have called our
@@ -273,7 +273,7 @@ package body GNATLLVM.Compile is
          when N_Compilation_Unit =>
             declare
                U         : constant Node_Id := Unit (N);
-               Subp      : Entity_Id;
+               Subp      : Opt_Subprogram_Kind_Id;
                Subp_Body : Node_Id;
 
             begin
@@ -521,7 +521,7 @@ package body GNATLLVM.Compile is
             declare
                LHS  : GL_Value;
                Idxs : Access_GL_Value_Array;
-               F    : Entity_Id;
+               F    : Opt_Record_Field_Kind_Id;
 
             begin
                --  Get the LHS to evaluate and see if we need to do a
@@ -1549,11 +1549,11 @@ package body GNATLLVM.Compile is
    -------------------------
 
    procedure Emit_Loop_Statement (N : N_Loop_Statement_Id) is
-      Loop_Identifier : constant Entity_Id :=
+      Loop_Identifier : constant Opt_E_Loop_Id :=
         (if Present (Identifier (N)) then Entity (Identifier (N)) else Empty);
-      Iter_Scheme     : constant Node_Id   := Iteration_Scheme (N);
-      Is_Mere_Loop    : constant Boolean   := No (Iter_Scheme);
-      Is_For_Loop     : constant Boolean   :=
+      Iter_Scheme     : constant Node_Id       := Iteration_Scheme (N);
+      Is_Mere_Loop    : constant Boolean       := No (Iter_Scheme);
+      Is_For_Loop     : constant Boolean       :=
         not Is_Mere_Loop
         and then Present (Loop_Parameter_Specification (Iter_Scheme));
 

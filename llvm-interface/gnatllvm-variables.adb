@@ -486,7 +486,7 @@ package body GNATLLVM.Variables is
    ------------------------
 
    function Is_Static_Location (N : Node_Id) return Boolean is
-      Index : Entity_Id;
+      Index : Node_Id;
       Expr  : Node_Id;
 
    begin
@@ -2135,7 +2135,7 @@ package body GNATLLVM.Variables is
         and then not Is_True_Constant (E)
       then
          declare
-            Disc : Entity_Id := First_Stored_Discriminant (GT);
+            Disc : Opt_E_Discriminant_Id := First_Stored_Discriminant (GT);
 
          begin
             while Present (Disc) loop

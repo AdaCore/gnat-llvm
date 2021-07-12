@@ -41,7 +41,7 @@ package GNATLLVM.Records is
 
    function Record_Field_Offset
      (V : GL_Value; Field : Record_Field_Kind_Id) return GL_Value
-     with Pre  => not Is_Data (V) and then Is_Field (Field),
+     with Pre  => not Is_Data (V),
           Post => Present (Record_Field_Offset'Result);
    --  Return a GL_Value that represents the offset of a given record field
 
@@ -88,10 +88,9 @@ package GNATLLVM.Records is
    --  Present, contain any fields already filled in for the record.
 
    function Find_Matching_Field
-     (TE : Record_Kind_Id; Field : Record_Field_Kind_Id) return Entity_Id
-     with Post => No (Find_Matching_Field'Result)
-                  or else Ekind (Find_Matching_Field'Result)
-                            in Record_Field_Kind;
+     (TE    : Record_Kind_Id;
+      Field : Record_Field_Kind_Id) return Opt_Record_Field_Kind_Id;
+
    --  Find a field, if any, in the entity list of TE that has the same
    --  name as F and has Field_Info.
 
@@ -126,7 +125,8 @@ package GNATLLVM.Records is
    --  Return the index of the field denoted by F. We assume here, but
    --  don't check, that the F is in a record with just a single RI.
 
-   function Parent_Field (F : Record_Field_Kind_Id) return Entity_Id;
+   function Parent_Field
+     (F : Record_Field_Kind_Id) return Opt_Record_Field_Kind_Id;
    function Ancestor_Field
      (F : Record_Field_Kind_Id) return Record_Field_Kind_Id
      with Post => Ekind (F) = Ekind (Ancestor_Field'Result);
@@ -236,10 +236,10 @@ package GNATLLVM.Records is
      with  Pre => Is_Record_Type (LHS) and then Present (RHS);
    --  Similar to the function version, but we always update LHS.
 
-   procedure Add_Write_Back (LHS : GL_Value; F : Entity_Id; RHS : GL_Value)
+   procedure Add_Write_Back
+     (LHS : GL_Value; F : Opt_Record_Field_Kind_Id; RHS : GL_Value)
      with  Pre  => (No (F) or else Is_Record_Type (LHS))
-                   and then Present (RHS)
-                   and then (No (F) or else Is_Field (F));
+                   and then Present (RHS);
    --  Like Build_Field_Store, but stack the operation to be performed
    --  later.  The operations are performed LIFO.
 

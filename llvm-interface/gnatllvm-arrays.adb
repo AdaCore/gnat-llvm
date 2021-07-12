@@ -365,10 +365,12 @@ package body GNATLLVM.Arrays is
                --  and get the 'Pos of the first or last in the range.
 
                declare
-                  Params : constant List_Id   := Parameter_Associations (N);
-                  Discr  : constant Entity_Id := Entity (First (Params));
-                  GT     : constant GL_Type   := Full_GL_Type (Discr);
-                  Bound  : constant Node_Id   :=
+                  Params : constant List_Id           :=
+                    Parameter_Associations (N);
+                  Discr  : constant E_Discriminant_Id :=
+                    Entity (First (Params));
+                  GT     : constant GL_Type           := Full_GL_Type (Discr);
+                  Bound  : constant Node_Id           :=
                     Entity ((if   Is_Low then Type_Low_Bound (GT)
                              else Type_High_Bound (GT)));
 

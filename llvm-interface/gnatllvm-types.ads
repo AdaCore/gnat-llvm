@@ -367,14 +367,14 @@ package GNATLLVM.Types is
 
    function Heap_Allocate_For_Type
      (GT       : GL_Type;
-      Alloc_GT : GL_Type   := No_GL_Type;
-      V        : GL_Value  := No_GL_Value;
-      N        : Node_Id   := Empty;
-      Expr     : Node_Id   := Empty;
-      Proc     : Entity_Id := Empty;
-      Pool     : Entity_Id := Empty;
-      E        : Entity_Id := Empty;
-      Max_Size : Boolean   := False) return GL_Value
+      Alloc_GT : GL_Type                 := No_GL_Type;
+      V        : GL_Value                := No_GL_Value;
+      N        : Node_Id                 := Empty;
+      Expr     : Node_Id                 := Empty;
+      Proc     : Opt_Subprogram_Kind_Id  := Empty;
+      Pool     : Entity_Id               := Empty;
+      E        : Opt_Allocatable_Kind_Id := Empty;
+      Max_Size : Boolean                 := False) return GL_Value
      with Pre  => Present (GT) and then (No (Proc) or else Present (Pool)),
           Post => Is_Reference (Heap_Allocate_For_Type'Result);
    --  Similarly, but allocate storage on the heap.  This handles default
@@ -383,7 +383,7 @@ package GNATLLVM.Types is
    procedure Heap_Deallocate
      (V        : GL_Value;
       Desig_GT : GL_Type;
-      Proc     : Entity_Id;
+      Proc     : Opt_Subprogram_Kind_Id;
       Pool     : Entity_Id)
      with Pre => Present (V) and then (No (Proc) or else Present (Pool));
    --  Free memory allocated by Heap_Allocate_For_Type

@@ -35,7 +35,7 @@ package GNATLLVM.Subprograms is
    --  Return 2 is passed by reference, otherwise, return 1.
 
    function Create_Subprogram_Type (E : Entity_Id) return Type_T
-     with Pre  => Present (E),
+     with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type,
           Post => Present (Create_Subprogram_Type'Result);
    --  Create subprogram type.  E can either be a subprogram,
    --  in which case a subprogram type will be created from it or a
@@ -197,43 +197,30 @@ package GNATLLVM.Subprograms is
    --  Return a count of the number of parameters of E, that are
    --  output parameters to E.
 
-   function First_In_Param (E : Entity_Id) return Entity_Id
-     with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type,
-          Post => No (First_In_Param'Result)
-                  or else Ekind (First_In_Param'Result) in Formal_Kind;
+   function First_In_Param (E : Entity_Id) return Opt_Formal_Kind_Id
+     with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
    --  Return the first formal of E that's an input to the subprogram,
    --  either because it's an input passed by copy or a reference.
 
-   function Next_In_Param (E : Formal_Kind_Id) return Entity_Id
-     with Post => No (Next_In_Param'Result)
-                  or else Ekind (Next_In_Param'Result) in Formal_Kind;
+   function Next_In_Param (E : Formal_Kind_Id) return Opt_Formal_Kind_Id;
    --  Given E, a formal of some subprogram, return the next In parameter,
    --  as defined above, of that subprogram.
 
-   procedure Next_In_Param (E : in out Entity_Id)
-     with Pre  => Ekind (E) in Formal_Kind,
-          Post => No (E) or else Ekind (E) in Formal_Kind;
+   procedure Next_In_Param (E : in out Opt_Formal_Kind_Id)
+     with Pre => Present (E);
    --  Given E, a formal of some subprogram, update it to be the next In
    --  parameter, as defined above, of that subprogram.
 
-   function First_Out_Param (E : Entity_Id) return Entity_Id
-     with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type,
-          Post => No (First_Out_Param'Result)
-                  or else (Ekind (First_Out_Param'Result)
-                             in E_Out_Parameter | E_In_Out_Parameter);
+   function First_Out_Param (E : Entity_Id) return Opt_Formal_Kind_Id
+     with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
    --  Return the first formal of E that's an output from the subprogram
 
-   function Next_Out_Param (E : Formal_Kind_Id) return Entity_Id
-     with Post => No (Next_Out_Param'Result)
-                  or else (Ekind (Next_Out_Param'Result)
-                             in E_Out_Parameter | E_In_Out_Parameter);
+   function Next_Out_Param (E : Formal_Kind_Id) return Opt_Formal_Kind_Id;
    --  Given E, a formal of some subprogram, return the next Out parameter,
    --  as defined above, of that subprogram.
 
-   procedure Next_Out_Param (E : in out Entity_Id)
-     with Pre  => Ekind (E) in Formal_Kind,
-          Post => No (E)
-                  or else Ekind (E) in E_Out_Parameter | E_In_Out_Parameter;
+   procedure Next_Out_Param (E : in out Opt_Formal_Kind_Id)
+     with Pre  => Present (E);
    --  Given E, a formal of some subprogram, update it to be the next Out
    --  parameter, as defined above, of that subprogram.
 

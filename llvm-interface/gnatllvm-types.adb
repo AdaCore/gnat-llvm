@@ -749,14 +749,14 @@ package body GNATLLVM.Types is
 
    function Heap_Allocate_For_Type
      (GT       : GL_Type;
-      Alloc_GT : GL_Type   := No_GL_Type;
-      V        : GL_Value  := No_GL_Value;
-      N        : Node_Id   := Empty;
-      Expr     : Node_Id   := Empty;
-      Proc     : Entity_Id := Empty;
-      Pool     : Entity_Id := Empty;
-      E        : Entity_Id := Empty;
-      Max_Size : Boolean   := False) return GL_Value
+      Alloc_GT : GL_Type                 := No_GL_Type;
+      V        : GL_Value                := No_GL_Value;
+      N        : Node_Id                 := Empty;
+      Expr     : Node_Id                 := Empty;
+      Proc     : Opt_Subprogram_Kind_Id  := Empty;
+      Pool     : Entity_Id               := Empty;
+      E        : Opt_Allocatable_Kind_Id := Empty;
+      Max_Size : Boolean                 := False) return GL_Value
    is
       A_GT    : constant GL_Type   :=
         (if Present (Alloc_GT) then Alloc_GT else GT);
@@ -886,7 +886,7 @@ package body GNATLLVM.Types is
    procedure Heap_Deallocate
      (V        : GL_Value;
       Desig_GT : GL_Type;
-      Proc     : Entity_Id;
+      Proc     : Opt_Subprogram_Kind_Id;
       Pool     : Entity_Id)
    is
       Conv_V   : GL_Value := V;

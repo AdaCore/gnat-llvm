@@ -1138,7 +1138,7 @@ package body GNATLLVM.GLValue is
      (Obj   : Value_T;
       GT    : GL_Type;
       E     : Entity_Id := Empty;
-      Align : Nat := 0) return Nat
+      Align : Nat       := 0) return Nat
    is
       GT_Align  : constant Nat := Get_Type_Alignment (Default_GL_Type (GT));
       E_Align   : constant Nat :=
@@ -1160,7 +1160,7 @@ package body GNATLLVM.GLValue is
      (Obj   : GL_Value;
       GT    : GL_Type;
       E     : Entity_Id := Empty;
-      Align : Nat := 0) return Nat is
+      Align : Nat       := 0) return Nat is
    begin
       return Set_Object_Align (+Obj, GT, E, Align);
    end Set_Object_Align;

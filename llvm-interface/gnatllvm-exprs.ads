@@ -31,13 +31,11 @@ package GNATLLVM.Exprs is
    procedure LHS_And_Component_For_Assignment
      (N             : Node_Id;
       LHS           : out GL_Value;
-      F             : out Entity_Id;
+      F             : out Opt_Record_Field_Kind_Id;
       Idxs          : out Access_GL_Value_Array;
       For_LHS       : Boolean := False;
       Only_Bitfield : Boolean := False)
-     with Pre  => Present (N),
-          Post => Present (LHS)
-                  and then (No (F) or else Is_Field (F));
+     with Pre  => Present (N);
    --  N is an expression that's used in a LHS context, either the LHS side
    --  of an N_Assignment_Statement or an actual corresponding to an Out
    --  (or in Out) parameter.  If N represents an field selection (if

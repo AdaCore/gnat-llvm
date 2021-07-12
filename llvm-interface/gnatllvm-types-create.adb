@@ -57,7 +57,7 @@ package body GNATLLVM.Types.Create is
      (TE : Void_Or_Type_Kind_Id) return Boolean
    is
       BT : constant Void_Or_Type_Kind_Id := Full_Base_Type (TE);
-      F  : Entity_Id;
+      F  : Opt_Record_Field_Kind_Id;
 
    begin
       --  If this is a void type, it doesn't depend on anything.
@@ -503,14 +503,14 @@ package body GNATLLVM.Types.Create is
         and then Present (Size_GL_Type)
       then
          declare
-            BA_Esize   : constant Node_Ref_Or_Val :=
+            BA_Esize   : constant Node_Ref_Or_Val  :=
               Annotated_Object_Size (GT, Do_Align => True);
-            BA_RM_Size : constant Node_Ref_Or_Val :=
+            BA_RM_Size : constant Node_Ref_Or_Val  :=
               Annotated_Value (Get_Type_Size (GT, No_Padding => True));
-            BA_Align   : constant Uint            :=
+            BA_Align   : constant Uint             :=
               UI_From_Int (Get_Type_Alignment (GT, Use_Specified => False) /
                            BPU);
-            OAT        : constant Entity_Id       :=
+            OAT        : constant Opt_Type_Kind_Id :=
               (if  (Is_Array_Type (TE) or else Is_Modular_Integer_Type (TE))
                    and then Present (Original_Array_Type (TE))
                then Original_Array_Type (TE) else Empty);

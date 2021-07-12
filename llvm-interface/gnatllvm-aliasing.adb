@@ -237,9 +237,9 @@ package body GNATLLVM.Aliasing is
 
    function Get_TBAA_Name
      (Kind   : TBAA_Kind;
-      TE     : Entity_Id := Empty;
-      GT     : GL_Type   := No_GL_Type;
-      Suffix : String    := "") return String;
+      TE     : Opt_Void_Or_Type_Kind_Id := Empty;
+      GT     : GL_Type                  := No_GL_Type;
+      Suffix : String                   := "") return String;
    --  Return the name to use for a TBAA type entry for GT and TE, if present
 
    Name_Idx      : Nat := 0;
@@ -880,10 +880,11 @@ package body GNATLLVM.Aliasing is
    function Get_Field_TBAA
      (F : Record_Field_Kind_Id; GT : GL_Type) return Metadata_T
    is
-      Fidx   : constant Field_Info_Id := Get_Field_Info (F);
-      Kind   : constant TBAA_Kind     := Kind_From_Aliased (Is_Aliased (F));
-      TBAA   : Metadata_T             := TBAA_Type (Fidx);
-      PF     : constant Entity_Id     := Parent_Field (F);
+      Fidx   : constant Field_Info_Id            := Get_Field_Info (F);
+      Kind   : constant TBAA_Kind                :=
+        Kind_From_Aliased (Is_Aliased (F));
+      TBAA   : Metadata_T                        := TBAA_Type (Fidx);
+      PF     : constant Opt_Record_Field_Kind_Id := Parent_Field (F);
       Parent : Metadata_T             := No_Metadata_T;
 
    begin
@@ -918,9 +919,9 @@ package body GNATLLVM.Aliasing is
 
    function Get_TBAA_Name
      (Kind   : TBAA_Kind;
-      TE     : Entity_Id := Empty;
-      GT     : GL_Type   := No_GL_Type;
-      Suffix : String    := "") return String
+      TE     : Opt_Void_Or_Type_Kind_Id := Empty;
+      GT     : GL_Type                  := No_GL_Type;
+      Suffix : String                   := "") return String
    is
       Our_TE : constant Type_Kind_Id :=
         (if Present (TE) then TE else Full_Etype (GT));

@@ -167,9 +167,9 @@ package body GNATLLVM.Instructions is
    function Array_Alloca
      (GT       : GL_Type;
       Num_Elts : GL_Value;
-      E        : Entity_Id := Empty;
-      Align    : Nat       := 0;
-      Name     : String    := "") return GL_Value
+      E        : Opt_Allocatable_Kind_Id := Empty;
+      Align    : Nat                     := 0;
+      Name     : String                  := "") return GL_Value
    is
       T         : constant Type_T        := Type_Of (GT);
       Promote   : constant Basic_Block_T := Maybe_Promote_Alloca (T, Num_Elts);

@@ -57,7 +57,7 @@ package GNATLLVM.Blocks is
    --  start of the code for this block.
 
    procedure Start_Block_Statements
-     (At_End_Proc : Entity_Id := Empty; EH_List : List_Id := No_List)
+     (At_End_Proc : Node_Id := Empty; EH_List : List_Id := No_List)
      with Pre => not Library_Level;
    --  Indicate that this is the start of a region of the block to be
    --  protected by the exception handlers and an At_End_Proc and provide
@@ -74,7 +74,7 @@ package GNATLLVM.Blocks is
    procedure Process_Push_Pop_xxx_Error_Label (N : N_Push_Pop_xxx_Label_Id);
    --  Process the above nodes by pushing and popping entries in our tables
 
-   function Get_Exception_Goto_Entry (Kind : Node_Kind) return Entity_Id
+   function Get_Exception_Goto_Entry (Kind : Node_Kind) return Opt_E_Label_Id
      with Pre => Kind in N_Raise_xxx_Error;
    --  Get the last entry in the exception goto stack for Kind, if any
 

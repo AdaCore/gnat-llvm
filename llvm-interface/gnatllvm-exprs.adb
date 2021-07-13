@@ -46,18 +46,22 @@ with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Exprs is
 
-   procedure Emit_For_Address (N : Node_Id; V : out GL_Value; Bits : out Uint)
-     with Pre => Present (N);
+   procedure Emit_For_Address
+     (N : N_Subexpr_Id; V : out GL_Value; Bits : out Uint);
    --  Helper for Emit_Attribute_Reference to recursively find the address
    --  of an object.  Returns a GL_Value that's a reference that points into
    --  an object and a number of bits that must be added to that value.
+
+   function Is_Safe_From_Entity (LHS : GL_Value; E : Entity_Id) return Boolean
+     with Pre => Present (E);
+   --  Similar to Is_Safe_From but applies to entities
 
    ------------------
    -- Is_Safe_From --
    ------------------
 
-   function Is_Safe_From (LHS : GL_Value; N : Node_Id) return Boolean is
-      Expr : Node_Id;
+   function Is_Safe_From (LHS : GL_Value; N : N_Subexpr_Id) return Boolean is
+      Expr : Opt_N_Subexpr_Id;
 
    begin
       --  If LHS is pristine, we know this must be safe
@@ -89,28 +93,7 @@ package body GNATLLVM.Exprs is
               or else Is_Safe_From (LHS, Expression (N));
 
          when N_Identifier | N_Expanded_Name | N_Operator_Symbol =>
-            return Is_Safe_From (LHS, Entity (N));
-
-         when N_Defining_Identifier | N_Defining_Operator_Symbol =>
-
-            declare
-               V : constant GL_Value := Get_Value (N);
-
-            begin
-               --  If we have a value for V and it's either data or V and LHS
-               --  represent two different variables, it's safe.
-
-               if not Present (V) or else LHS = V then
-                  return False;
-               elsif Is_Data (V) then
-                  return True;
-               else
-                  return (Is_A_Alloca_Inst (LHS)
-                            or else Is_A_Global_Variable (LHS))
-                    and then (Is_A_Alloca_Inst (V)
-                                or else Is_A_Global_Variable (V));
-               end if;
-            end;
+            return Is_Safe_From_Entity (LHS, Entity (N));
 
          when N_Selected_Component =>
             return Is_Safe_From (LHS, Prefix (N));
@@ -145,17 +128,23 @@ package body GNATLLVM.Exprs is
             --  front end differs between records and arrays.
 
             if Is_Record_Type (Full_Etype (N)) then
-               Expr := First (Component_Associations (N));
-               while Present (Expr) loop
-                  if Present (Expression (Expr))
-                    and then not Is_Safe_From (LHS, Expression (Expr))
-                  then
-                     return False;
-                  end if;
+               declare
+                  CA : Opt_N_Component_Association_Id :=
+                    First (Component_Associations (N));
 
-                  Next (Expr);
-               end loop;
+               begin
+                  while Present (CA) loop
+                     if Present (Expression (CA))
+                       and then not Is_Safe_From (LHS, Expression (CA))
+                     then
+                        return False;
+                     end if;
+
+                     Next (CA);
+                  end loop;
+               end;
             else
+               pragma Assert (Is_Array_Type (Full_Etype (N)));
                Expr := First (Expressions (N));
                while Present (Expr) loop
                   if not Is_Safe_From (LHS, Expr) then
@@ -201,12 +190,37 @@ package body GNATLLVM.Exprs is
       end case;
    end Is_Safe_From;
 
+   -------------------------
+   -- Is_Safe_From_Entity --
+   -------------------------
+
+   function Is_Safe_From_Entity
+     (LHS : GL_Value; E : Entity_Id) return Boolean
+   is
+      V : constant GL_Value := Get_Value (E);
+
+   begin
+      --  If we have a value for V and it's either data or V and LHS
+      --  represent two different variables, it's safe.
+
+      if not Present (V) or else LHS = V then
+         return False;
+      elsif Is_Data (V) then
+         return True;
+      else
+         return (Is_A_Alloca_Inst (LHS)
+                   or else Is_A_Global_Variable (LHS))
+           and then (Is_A_Alloca_Inst (V)
+                       or else Is_A_Global_Variable (V));
+      end if;
+   end Is_Safe_From_Entity;
+
    --------------------------------------
    -- LHS_And_Component_For_Assignment --
    --------------------------------------
 
    procedure LHS_And_Component_For_Assignment
-     (N             : Node_Id;
+     (N             : N_Subexpr_Id;
       LHS           : out GL_Value;
       F             : out Opt_Record_Field_Kind_Id;
       Idxs          : out Access_GL_Value_Array;
@@ -259,7 +273,7 @@ package body GNATLLVM.Exprs is
    -- Emit_Literal --
    ------------------
 
-   function Emit_Literal (N : Node_Id) return GL_Value is
+   function Emit_Literal (N : N_Subexpr_Id) return GL_Value is
       GT      : constant GL_Type := Full_GL_Type (N);
       Prim_GT : constant GL_Type := Primitive_GL_Type (GT);
       V       : GL_Value;
@@ -391,16 +405,18 @@ package body GNATLLVM.Exprs is
       type Opf is access function
         (LHS, RHS : GL_Value; Name : String := "") return GL_Value;
 
-      LHS_Node   : constant Node_Id  := Left_Opnd (N);
-      RHS_Node   : constant Node_Id  := Right_Opnd (N);
-      LHS_GT     : constant GL_Type  := Full_GL_Type (LHS_Node);
-      RHS_GT     : constant GL_Type  := Full_GL_Type (RHS_Node);
-      LHS_BT     : constant GL_Type  := Base_GL_Type (LHS_GT);
-      RHS_BT     : constant GL_Type  := Base_GL_Type (RHS_GT);
-      LVal       : constant GL_Value := Emit_Convert_Value (LHS_Node, LHS_BT);
-      RVal       : constant GL_Value := Emit_Convert_Value (RHS_Node, RHS_BT);
-      FP         : constant Boolean  := Is_Floating_Point_Type (LHS_BT);
-      Ovfl_Check : constant Boolean  := Do_Overflow_Check (N)
+      LHS_Node   : constant N_Subexpr_Id := Left_Opnd (N);
+      RHS_Node   : constant N_Subexpr_Id := Right_Opnd (N);
+      LHS_GT     : constant GL_Type      := Full_GL_Type (LHS_Node);
+      RHS_GT     : constant GL_Type      := Full_GL_Type (RHS_Node);
+      LHS_BT     : constant GL_Type      := Base_GL_Type (LHS_GT);
+      RHS_BT     : constant GL_Type      := Base_GL_Type (RHS_GT);
+      LVal       : constant GL_Value     :=
+        Emit_Convert_Value (LHS_Node, LHS_BT);
+      RVal       : constant GL_Value     :=
+        Emit_Convert_Value (RHS_Node, RHS_BT);
+      FP         : constant Boolean      := Is_Floating_Point_Type (LHS_BT);
+      Ovfl_Check : constant Boolean      := Do_Overflow_Check (N)
         and then not Emit_C
         and then not (Is_A_Const_Int (LVal) and then Is_A_Const_Int (RVal));
       --  If both are constant, we don't need to do an explicit overflow
@@ -720,10 +736,10 @@ package body GNATLLVM.Exprs is
       Out_BT     : constant GL_Type        := Base_GL_Type (Out_GT);
       In_FP      : constant Boolean        := Is_Floating_Point_Type (In_GT);
       Out_FP     : constant Boolean        := Is_Floating_Point_Type (Out_GT);
-      In_LB      : constant Node_Id        := Type_Low_Bound  (In_BT);
-      In_HB      : constant Node_Id        := Type_High_Bound (In_BT);
-      Out_LB     : constant Node_Id        := Type_Low_Bound  (Out_BT);
-      Out_HB     : constant Node_Id        := Type_High_Bound (Out_BT);
+      In_LB      : constant N_Subexpr_Id   := Type_Low_Bound  (In_BT);
+      In_HB      : constant N_Subexpr_Id   := Type_High_Bound (In_BT);
+      Out_LB     : constant N_Subexpr_Id   := Type_Low_Bound  (Out_BT);
+      Out_HB     : constant N_Subexpr_Id   := Type_High_Bound (Out_BT);
       Label_Ent  : constant Opt_E_Label_Id :=
         Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
       Compare_LB : GL_Value                := No_GL_Value;
@@ -816,7 +832,7 @@ package body GNATLLVM.Exprs is
 
    function Emit_Shift
      (Operation          : Node_Kind;
-      LHS_Node, RHS_Node : Node_Id) return GL_Value
+      LHS_Node, RHS_Node : N_Subexpr_Id) return GL_Value
    is
       To_Left, Rotate, Arithmetic : Boolean := False;
 
@@ -939,7 +955,8 @@ package body GNATLLVM.Exprs is
    -- Emit_For_Address --
    ----------------------
 
-   procedure Emit_For_Address (N : Node_Id; V : out GL_Value; Bits : out Uint)
+   procedure Emit_For_Address
+     (N : N_Subexpr_Id; V : out GL_Value; Bits : out Uint)
    is
       GT : constant GL_Type := Full_GL_Type (N);
 
@@ -995,7 +1012,7 @@ package body GNATLLVM.Exprs is
 
    procedure Emit_Pragma (N : N_Pragma_Id) is
       PAAs : constant List_Id := Pragma_Argument_Associations (N);
-      Expr : Node_Id;
+      Expr : Opt_N_Pragma_Argument_Association_Id;
 
    begin
       case Get_Pragma_Id (N) is
@@ -1061,7 +1078,7 @@ package body GNATLLVM.Exprs is
      (N : N_Attribute_Reference_Id) return GL_Value
    is
       Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
-      Pref : constant Node_Id      := Prefix (N);
+      Pref : constant N_Subexpr_Id := Prefix (N);
       GT   : constant GL_Type      := Full_GL_Type (N);
       V    : GL_Value              := No_GL_Value;
       P_GT : GL_Type               := Full_GL_Type (Pref);
@@ -1136,10 +1153,10 @@ package body GNATLLVM.Exprs is
 
          when Attribute_Deref =>
             declare
-               Expr : constant Node_Id := First (Expressions (N));
-               pragma Assert (Is_Descendant_Of_Address (Full_Etype (Expr)));
+               Expr : constant N_Subexpr_Id := First (Expressions (N));
 
             begin
+               pragma Assert (Is_Descendant_Of_Address (Full_Etype (Expr)));
                return Int_To_Ref (Emit_Expression (Expr), GT, "attr.deref");
             end;
 
@@ -1263,10 +1280,10 @@ package body GNATLLVM.Exprs is
 
          when Attribute_Succ | Attribute_Pred =>
             declare
-               Exprs : constant List_Id  := Expressions (N);
-               Expr  : constant Node_Id  := First (Exprs);
-               Base  : constant GL_Value := Emit_Expression (Expr);
-               One   : constant GL_Value := Const_Int (Base, Uint_1);
+               Exprs : constant List_Id      := Expressions (N);
+               Expr  : constant N_Subexpr_Id := First (Exprs);
+               Base  : constant GL_Value     := Emit_Expression (Expr);
+               One   : constant GL_Value     := Const_Int (Base, Uint_1);
 
             begin
                pragma Assert (List_Length (Exprs) = 1);
@@ -1384,18 +1401,18 @@ package body GNATLLVM.Exprs is
 
    procedure Emit_Assignment
      (LValue       : GL_Value;
-      Expr         : Node_Id  := Empty;
-      Value        : GL_Value := No_GL_Value;
-      Forwards_OK  : Boolean  := True;
-      Backwards_OK : Boolean  := True;
-      VFA          : Boolean  := False)
+      Expr         : Opt_N_Subexpr_Id  := Empty;
+      Value        : GL_Value          := No_GL_Value;
+      Forwards_OK  : Boolean           := True;
+      Backwards_OK : Boolean           := True;
+      VFA          : Boolean           := False)
    is
-      E       : constant Node_Id := Strip_Complex_Conversions (Expr);
-      Dest_GT : constant GL_Type := Related_Type (LValue);
-      Src_GT  : constant GL_Type :=
+      E       : constant Opt_N_Subexpr_Id := Strip_Complex_Conversions (Expr);
+      Dest_GT : constant GL_Type          := Related_Type (LValue);
+      Src_GT  : constant GL_Type          :=
         (if Present (Value) then Related_Type (Value) else Full_GL_Type (E));
-      Dest    : GL_Value         := LValue;
-      Src     : GL_Value         := Value;
+      Dest    : GL_Value                  := LValue;
+      Src     : GL_Value                  := Value;
       Dest_R  : GL_Relationship;
       Src_R   : GL_Relationship;
 

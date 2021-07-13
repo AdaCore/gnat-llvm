@@ -25,25 +25,26 @@ with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 package GNATLLVM.Conversions is
 
    function Emit_Conversion
-     (N                   : Node_Id;
+     (N                   : N_Subexpr_Id;
       GT                  : GL_Type;
-      From_N              : Node_Id := Empty;
-      For_LHS             : Boolean := False;
-      Is_Unchecked        : Boolean := False;
-      Need_Overflow_Check : Boolean := False;
-      Float_Truncate      : Boolean := False;
-      No_Truncation       : Boolean := False) return GL_Value
-     with Pre  => Present (GT) and then Present (N)
+      From_N              : Opt_N_Subexpr_Id := Empty;
+      For_LHS             : Boolean          := False;
+      Is_Unchecked        : Boolean          := False;
+      Need_Overflow_Check : Boolean          := False;
+      Float_Truncate      : Boolean          := False;
+      No_Truncation       : Boolean          := False) return GL_Value
+     with Pre  => Present (GT)
                   and then not (Is_Unchecked and Need_Overflow_Check),
           Post => Present (Emit_Conversion'Result);
    --  Emit code to convert N to GT, optionally in unchecked mode
    --  and optionally with an overflow check.  From_N is the conversion node,
    --  if there is a corresponding source node.
 
-   function Emit_Convert_Value (N : Node_Id; GT : GL_Type) return GL_Value is
+   function Emit_Convert_Value
+     (N : N_Subexpr_Id; GT : GL_Type) return GL_Value
+   is
      (Get (Emit_Conversion (N, GT), Object))
-     with Pre  => Present (GT) and then Present (N),
-          Post => Present (Emit_Convert_Value'Result);
+     with Pre  => Present (GT), Post => Present (Emit_Convert_Value'Result);
    --  Emit code to convert N to GT and get it as a value
 
    function Convert
@@ -145,12 +146,13 @@ package GNATLLVM.Conversions is
    --  Return True iff V is a constant and that constant contains no
    --  symbolic or pointer values.
 
-   function Strip_Complex_Conversions (N : Node_Id) return Node_Id;
+   function Strip_Complex_Conversions
+     (N : Opt_N_Subexpr_Id) return Opt_N_Subexpr_Id;
    --  Remove any conversion from N, if Present, if they are record or array
    --  conversions that increase the complexity of the size of the
    --  type because the caller will be doing any needed conversions.
 
-   function Strip_Conversions (N : Node_Id) return Node_Id;
+   function Strip_Conversions (N : Opt_N_Subexpr_Id) return Opt_N_Subexpr_Id;
    --  Likewise, but remove all conversions
 
    function Is_Unsigned_For_Convert (GT : GL_Type) return Boolean

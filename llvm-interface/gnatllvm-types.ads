@@ -226,9 +226,8 @@ package GNATLLVM.Types is
       else Get_Fullest_View (Etype (N)))
      with Pre => Present (N);
 
-   function Full_Entity (N : Node_Id) return Type_Kind_Id is
-     (Get_Fullest_View (Entity (N)))
-     with Pre => Present (N);
+   function Full_Entity (N : N_Has_Entity_Id) return Type_Kind_Id is
+     (Get_Fullest_View (Entity (N)));
 
    function Full_Component_Type
      (TE : Array_Kind_Id) return Void_Or_Type_Kind_Id
@@ -349,13 +348,13 @@ package GNATLLVM.Types is
 
    function Allocate_For_Type
      (GT       : GL_Type;
-      Alloc_GT : GL_Type   := No_GL_Type;
-      N        : Node_Id   := Empty;
-      V        : GL_Value  := No_GL_Value;
-      Expr     : Node_Id   := Empty;
-      E        : Entity_Id := Empty;
-      Name     : String    := "";
-      Max_Size : Boolean   := False) return GL_Value
+      Alloc_GT : GL_Type          := No_GL_Type;
+      N        : Node_Id          := Empty;
+      V        : GL_Value         := No_GL_Value;
+      Expr     : Opt_N_Subexpr_Id := Empty;
+      E        : Entity_Id        := Empty;
+      Name     : String           := "";
+      Max_Size : Boolean          := False) return GL_Value
      with Pre  => Present (GT),
           Post => Is_Reference (Allocate_For_Type'Result);
    --  Allocate space on the stack for an object of type GT and return a
@@ -370,7 +369,7 @@ package GNATLLVM.Types is
       Alloc_GT : GL_Type                 := No_GL_Type;
       V        : GL_Value                := No_GL_Value;
       N        : Node_Id                 := Empty;
-      Expr     : Node_Id                 := Empty;
+      Expr     : Opt_N_Subexpr_Id        := Empty;
       Proc     : Opt_Subprogram_Kind_Id  := Empty;
       Pool     : Entity_Id               := Empty;
       E        : Opt_Allocatable_Kind_Id := Empty;
@@ -605,13 +604,12 @@ package GNATLLVM.Types is
       No_Truncation  : Boolean := False) return IDS
      with Pre => Present (V) and then Present (GT);
 
-   function Emit_Expr (N : Node_Id; LHS : IDS := No_IDS) return IDS
-     with Pre => Present (N), Post => Present (Emit_Expr'Result), Inline;
+   function Emit_Expr (N : N_Subexpr_Id; LHS : IDS := No_IDS) return IDS
+     with Post => Present (Emit_Expr'Result), Inline;
 
-   function Emit_Convert (N : Node_Id; GT : GL_Type) return IDS is
+   function Emit_Convert (N : N_Subexpr_Id; GT : GL_Type) return IDS is
      (Convert (Emit_Expr (N), GT))
-     with Pre  => Present (N) and then Present (GT),
-          Post => Present (Emit_Convert'Result);
+     with Pre  => Present (GT), Post => Present (Emit_Convert'Result);
 
    function Undef (GT : GL_Type) return IDS is
      (Var_IDS)
@@ -845,10 +843,10 @@ package GNATLLVM.Types is
       No_Truncation  : Boolean := False) return BA_Data
      with Pre => Present (GT), Inline;
 
-   function Emit_Expr (N : Node_Id; LHS : BA_Data := No_BA) return BA_Data
-     with Pre => Present (N), Inline;
+   function Emit_Expr (N : N_Subexpr_Id; LHS : BA_Data := No_BA) return BA_Data
+     with Inline;
 
-   function Emit_Convert (N : Node_Id; GT : GL_Type) return BA_Data is
+   function Emit_Convert (N : N_Subexpr_Id; GT : GL_Type) return BA_Data is
      (Convert (Emit_Expr (N), GT))
      with Pre => Present (GT);
 

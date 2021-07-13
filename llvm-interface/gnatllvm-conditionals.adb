@@ -35,7 +35,7 @@ package body GNATLLVM.Conditionals is
    ----------------------------
 
    function Build_Short_Circuit_Op
-     (Left, Right : Node_Id; Op : Node_Kind) return GL_Value
+     (Left, Right : N_Subexpr_Id; Op : Node_Kind) return GL_Value
    is
       And_Op               : constant Boolean       :=
         Op in N_And_Then | N_Op_And;
@@ -92,7 +92,7 @@ package body GNATLLVM.Conditionals is
    ---------------------
 
    function Emit_Comparison
-     (Kind : Node_Kind; LHS, RHS : Node_Id) return GL_Value
+     (Kind : Node_Kind; LHS, RHS : N_Subexpr_Id) return GL_Value
    is
       Operation : constant Pred_Mapping := Get_Preds (Kind);
       GT        : constant GL_Type      := Full_GL_Type (LHS);
@@ -196,7 +196,7 @@ package body GNATLLVM.Conditionals is
 
    procedure Emit_Comparison_And_Branch
      (Kind              : Node_Kind;
-      LHS, RHS          : Node_Id;
+      LHS, RHS          : N_Subexpr_Id;
       BB_True, BB_False : Basic_Block_T)
    is
       Cond : GL_Value;
@@ -220,26 +220,26 @@ package body GNATLLVM.Conditionals is
                           Number_Dimensions (Full_Etype (RHS)));
 
          declare
-            Last_Dim       : constant Nat     :=
+            Last_Dim       : constant Nat           :=
               Number_Dimensions (Full_Etype (LHS)) - 1;
-            LHS_Complexity : constant Nat     :=
+            LHS_Complexity : constant Nat           :=
               Get_Array_Size_Complexity (Full_Etype (LHS));
-            RHS_Complexity : constant Nat     :=
+            RHS_Complexity : constant Nat           :=
               Get_Array_Size_Complexity (Full_Etype (LHS));
-            Our_LHS        : constant Node_Id :=
+            Our_LHS        : constant N_Subexpr_Id  :=
               (if LHS_Complexity > RHS_Complexity then LHS else RHS);
             --  To simplify the code below, we arrange things so that the
             --  array with the most complex size is on the LHS.
 
-            Our_RHS        : constant Node_Id  :=
+            Our_RHS        : constant N_Subexpr_Id  :=
               (if LHS_Complexity > RHS_Complexity then RHS else LHS);
             BB_T           : constant Basic_Block_T :=
               (if Kind = N_Op_Eq then BB_True else BB_False);
             BB_F           : constant Basic_Block_T :=
               (if Kind = N_Op_Eq then BB_False else BB_True);
-            LHS_Val        : constant GL_Value :=
+            LHS_Val        : constant GL_Value      :=
               To_Primitive (Emit_LValue (Our_LHS));
-            RHS_Val        : constant GL_Value :=
+            RHS_Val        : constant GL_Value      :=
               To_Primitive (Emit_LValue (Our_RHS));
             BB_Next        : Basic_Block_T;
             LHS_Lengths    : GL_Value_Array (0 .. Last_Dim);
@@ -431,7 +431,7 @@ package body GNATLLVM.Conditionals is
    ---------------------
 
    function Emit_And_Or_Xor
-     (Kind : Node_Kind; LHS_Node, RHS_Node : Node_Id) return GL_Value
+     (Kind : Node_Kind; LHS_Node, RHS_Node : N_Subexpr_Id) return GL_Value
    is
       BT  : constant GL_Type := Base_GL_Type (Full_GL_Type (LHS_Node));
       LHS : GL_Value         := Emit (LHS_Node);
@@ -752,7 +752,7 @@ package body GNATLLVM.Conditionals is
       --  Record information about each part of an "if" statement
 
       type If_Ent is record
-         Cond     : Node_Id;
+         Cond     : N_Subexpr_Id;
          --  Expression to test
 
          Stmts    : List_Id;
@@ -771,7 +771,7 @@ package body GNATLLVM.Conditionals is
       If_Parts_Pos : Nat          := 1;
       If_Parts     : array (0 .. Elseif_Count) of If_Ent;
       BB_End       : Basic_Block_T;
-      Elsif_Part   : Node_Id;
+      Elsif_Part   : Opt_N_Elsif_Part_Id;
 
    begin
       --  First go through all the parts of the "if" statement recording
@@ -828,7 +828,7 @@ package body GNATLLVM.Conditionals is
    -- Is_Simple_Conditional --
    ---------------------------
 
-   function Is_Simple_Conditional (N : Node_Id) return Boolean is
+   function Is_Simple_Conditional (N : N_Subexpr_Id) return Boolean is
    begin
       case Nkind (N) is
          when N_Op_Compare =>
@@ -858,7 +858,7 @@ package body GNATLLVM.Conditionals is
    -- Emit_If_Cond --
    ------------------
 
-   procedure Emit_If_Cond (N : Node_Id; BB_True, BB_False : Basic_Block_T)
+   procedure Emit_If_Cond (N : N_Subexpr_Id; BB_True, BB_False : Basic_Block_T)
    is
       And_Op : constant Boolean := Nkind (N) in N_And_Then | N_Op_And;
       BB_New : Basic_Block_T;
@@ -874,7 +874,8 @@ package body GNATLLVM.Conditionals is
 
             declare
                Has_All : Boolean;
-               Expr    : constant Node_Id  := Simple_Value_Action (N, Has_All);
+               Expr    : constant Opt_N_Subexpr_Id :=
+                 Simple_Value_Action (N, Has_All);
 
             begin
                --  If this is just defining the value that is to be its
@@ -1027,10 +1028,10 @@ package body GNATLLVM.Conditionals is
       --  one being the final 'else'.
 
       type I_E_Part is record
-         Condition : Node_Id;
+         Condition : Opt_N_Subexpr_Id;
          --  Condition to test, or Empty for the else part
 
-         Expr      : Node_Id;
+         Expr      : N_Subexpr_Id;
          --  Expression to evaluate for this part
 
          BB        : Basic_Block_T;
@@ -1048,7 +1049,7 @@ package body GNATLLVM.Conditionals is
          Table_Increment      => 1,
          Table_Name           => "IE_Table");
 
-      Expr          : Node_Id                := N;
+      Expr          : N_Subexpr_Id           := N;
       Expr_GT       : constant GL_Type       := Full_GL_Type (N);
       Elementary    : constant Boolean       := Is_Elementary_Type (Expr_GT);
       Phi_BB        : constant Basic_Block_T := Create_Basic_Block ("i.e.phi");
@@ -1335,14 +1336,16 @@ package body GNATLLVM.Conditionals is
    function Emit_Min_Max
      (Exprs : List_Id; Compute_Max : Boolean) return GL_Value
    is
-      LHS_N      : constant Node_Id  := First (Exprs);
-      BT         : constant GL_Type  := Base_GL_Type (Full_GL_Type (LHS_N));
-      LHS        : constant GL_Value := Emit_Convert_Value (LHS_N, BT);
-      RHS        : constant GL_Value := Emit_Convert_Value (Last (Exprs), BT);
-      Choose     : constant GL_Value :=
+      LHS_N      : constant N_Subexpr_Id := First (Exprs);
+      BT         : constant GL_Type      :=
+        Base_GL_Type (Full_GL_Type (LHS_N));
+      LHS        : constant GL_Value     := Emit_Convert_Value (LHS_N, BT);
+      RHS        : constant GL_Value     :=
+        Emit_Convert_Value (Last (Exprs), BT);
+      Choose     : constant GL_Value     :=
         Build_Elementary_Comparison
         ((if Compute_Max then N_Op_Gt else N_Op_Lt), LHS, RHS);
-      RHS_No_Nan : constant GL_Value :=
+      RHS_No_Nan : constant GL_Value     :=
         (if   Is_Floating_Point_Type (RHS) then F_Cmp (Real_OEQ, RHS, RHS)
          else Const_True);
 
@@ -1358,7 +1361,7 @@ package body GNATLLVM.Conditionals is
    -- Safe_For_Short_Circuit --
    ----------------------------
 
-   function Safe_For_Short_Circuit (N : Node_Id) return Boolean is
+   function Safe_For_Short_Circuit (N : N_Subexpr_Id) return Boolean is
       function Process (N : Node_Id) return Traverse_Result;
       --  Process one node in search of something that could cause an
       --  exception.

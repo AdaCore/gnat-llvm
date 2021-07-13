@@ -91,8 +91,7 @@ package GNATLLVM.Utils is
      with Pre => not Is_Type (E);
    --  Return any enclosing subprogram scope above E
 
-   function Get_Uint_Value (N : Node_Id) return Uint
-     with Pre => Present (N);
+   function Get_Uint_Value (N : N_Subexpr_Id) return Uint;
    --  If Node has a static Uint value, return it.  Otherwise, return No_Uint
 
    function Const_Int (T : Type_T; Value : Uint)
@@ -108,14 +107,12 @@ package GNATLLVM.Utils is
    --  If Subp_Body acts as a spec, return it. Return the corresponding
    --  subprogram declaration otherwise.
 
-   function Has_Full_Access (N : Node_Id) return Boolean
-     with Pre => Present (N);
+   function Has_Full_Access (N : N_Subexpr_Id) return Boolean;
    --  Return True if N is a node which needs Full_Access
 
-   function Is_VFA_Ref (N : Node_Id) return Boolean is
+   function Is_VFA_Ref (N : N_Subexpr_Id) return Boolean is
      (Nkind (N) in N_Indexed_Component | N_Selected_Component
-        and then Has_Full_Access (Prefix (N)))
-     with Pre => Present (N);
+        and then Has_Full_Access (Prefix (N)));
    --  Return True if N is an expression that has a Volatile_Full_Access
    --  prefix.
 

@@ -115,8 +115,8 @@ package body GNATLLVM.Arrays.Create is
    -------------------------
 
    function Cannot_Be_Superflat (N : Node_Id) return Boolean is
-      LB      : Node_Id := Low_Bound  (N);
-      HB      : Node_Id := High_Bound (N);
+      LB      : N_Subexpr_Id := Low_Bound  (N);
+      HB      : N_Subexpr_Id := High_Bound (N);
       TE      : Type_Kind_Id;
       Rng     : Node_Id;
 
@@ -169,7 +169,7 @@ package body GNATLLVM.Arrays.Create is
    function FLB_Cannot_Be_Superflat (N : Node_Id) return Boolean is
       Our_Rng    : constant Node_Id := Get_Dim_Range (N);
       Parent_Rng : Node_Id;
-      Parent_LB  : Node_Id;
+      Parent_LB  : N_Subexpr_Id;
 
    begin
       --  If this is forming a subtype where our parent subtype's lower
@@ -376,17 +376,17 @@ package body GNATLLVM.Arrays.Create is
       Base_Index := First_Index (Base_Type);
       while Present (Index) loop
          declare
-            Idx_Range : constant Node_Id := Get_Dim_Range (Index);
+            Idx_Range : constant Node_Id         := Get_Dim_Range (Index);
             --  Sometimes, the frontend leaves an identifier that
             --  references an integer subtype instead of a range.
 
-            FLB               : constant Boolean   :=
+            FLB               : constant Boolean :=
               Nkind (Index) = N_Subtype_Indication
               and then Is_Fixed_Lower_Bound_Index_Subtype (Etype (Index));
-            Index_GT  : constant GL_Type := Full_GL_Type (Index);
-            Index_BT  : constant GL_Type := Base_GL_Type (Index_GT);
-            LB        : constant Node_Id := Low_Bound (Idx_Range);
-            HB        : constant Node_Id := High_Bound (Idx_Range);
+            Index_GT  : constant GL_Type         := Full_GL_Type (Index);
+            Index_BT  : constant GL_Type         := Base_GL_Type (Index_GT);
+            LB        : constant N_Subexpr_Id    := Low_Bound  (Idx_Range);
+            HB        : constant N_Subexpr_Id    := High_Bound (Idx_Range);
             Dim_Info  : Index_Bounds     :=
               (Bound_GT      => Index_BT,
                Bound_Sub_GT  => Full_GL_Type (Base_Index),

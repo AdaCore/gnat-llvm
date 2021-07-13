@@ -722,10 +722,10 @@ package body GNATLLVM.Aliasing is
             end;
          else
             declare
-               Index     : constant Node_Id := First_Index (TE);
-               Idx_Range : constant Node_Id := Get_Dim_Range (Index);
-               R_LB      : constant Node_Id := Low_Bound (Idx_Range);
-               R_HB      : constant Node_Id := High_Bound (Idx_Range);
+               Index     : constant Node_Id      := First_Index (TE);
+               Idx_Range : constant Node_Id      := Get_Dim_Range (Index);
+               R_LB      : constant N_Subexpr_Id := Low_Bound (Idx_Range);
+               R_HB      : constant N_Subexpr_Id := High_Bound (Idx_Range);
 
             begin
                LB := (if   Compile_Time_Known_Value (R_LB)
@@ -795,12 +795,14 @@ package body GNATLLVM.Aliasing is
                   begin
                      while Present (Index) loop
                         declare
-                           Rng   : constant Node_Id := Get_Dim_Range (Index);
-                           E_Rng : constant Node_Id := Get_Dim_Range (E_Index);
-                           LB    : constant Node_Id := Low_Bound (Rng);
-                           HB    : constant Node_Id := High_Bound (Rng);
-                           E_LB  : constant Node_Id := Low_Bound (E_Rng);
-                           E_HB  : constant Node_Id := High_Bound (E_Rng);
+                           Rng   : constant Node_Id      :=
+                             Get_Dim_Range (Index);
+                           E_Rng : constant Node_Id      :=
+                             Get_Dim_Range (E_Index);
+                           LB    : constant N_Subexpr_Id := Low_Bound (Rng);
+                           HB    : constant N_Subexpr_Id := High_Bound (Rng);
+                           E_LB  : constant N_Subexpr_Id := Low_Bound (E_Rng);
+                           E_HB  : constant N_Subexpr_Id := High_Bound (E_Rng);
 
                         begin
                            Matches := Matches

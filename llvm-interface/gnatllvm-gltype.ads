@@ -150,7 +150,7 @@ package GNATLLVM.GLType is
      with Pre => Present (N), Post => Present (Full_GL_Type'Result), Inline;
    --  Return the default GL_Type corresponding to the type of N
 
-   function Full_Alloc_GL_Type (N : Node_Id) return GL_Type
+   function Full_Alloc_GL_Type (N : N_Subexpr_Id) return GL_Type
      with Pre => Present (N), Post => Present (Full_Alloc_GL_Type'Result),
           Inline;
    --  Likewise, but use the type for an allocation, which may be an
@@ -586,11 +586,11 @@ package GNATLLVM.GLType is
      (Scalar_Range (Full_Etype (GT)))
      with Pre => not Is_Access_Type (GT);
 
-   function Type_Low_Bound (GT : GL_Type) return Node_Id is
+   function Type_Low_Bound (GT : GL_Type) return N_Subexpr_Id is
      (Type_Low_Bound (Full_Etype (GT)))
      with Pre => not Is_Access_Type (GT);
 
-   function Type_High_Bound (GT : GL_Type) return Node_Id is
+   function Type_High_Bound (GT : GL_Type) return N_Subexpr_Id is
      (Type_High_Bound (Full_Etype (GT)))
      with Pre => not Is_Access_Type (GT);
 
@@ -618,7 +618,7 @@ package GNATLLVM.GLType is
    function Component_Type (GT : Array_GL_Type) return Type_Kind_Id is
      (Component_Type (Full_Etype (GT)));
 
-   function Default_Aspect_Value (GT : GL_Type) return Node_Id is
+   function Default_Aspect_Value (GT : GL_Type) return N_Subexpr_Id is
      (Default_Aspect_Value (Full_Etype (GT)))
      with Pre => Present (GT);
 

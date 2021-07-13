@@ -1238,7 +1238,7 @@ package body GNATLLVM.GLType is
    -- Full_Alloc_GL_Type --
    ------------------------
 
-   function Full_Alloc_GL_Type (N : Node_Id) return GL_Type is
+   function Full_Alloc_GL_Type (N : N_Subexpr_Id) return GL_Type is
       TE : Type_Kind_Id := Full_Etype (N);
 
    begin

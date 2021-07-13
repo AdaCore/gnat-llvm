@@ -315,7 +315,7 @@ package body GNATLLVM.Blocks is
      with Post => Get_Type_Kind (Get_LP_Type'Result) = Struct_Type_Kind;
    --  Get (and create, if necessary, the type for an EH Landing Pad
 
-   function Find_Exit_Point (N : Node_Id) return Exit_Point_Level;
+   function Find_Exit_Point (N : Opt_N_Identifier_Id) return Exit_Point_Level;
    --  Find the index into the exit point table for node N, if Present
 
    procedure Call_At_End
@@ -350,8 +350,9 @@ package body GNATLLVM.Blocks is
    --  we want the "extended" (-gnateE) versions of the exception functions.
 
    function Emit_Raise_Call_With_Extra_Info
-     (N : Node_Id; Kind : RT_Exception_Code; Cond : Node_Id) return Boolean
-     with Pre => Present (N);
+     (N    : Node_Id;
+      Kind : RT_Exception_Code;
+      Cond : N_Subexpr_Id) return Boolean;
    --  Like Emit_Raise_Call, but generate extra info, if possible, about
    --  the bad value and the range that it's supposed to be within.  If
    --  if returns True, it was able to get the info and emit the call.
@@ -514,7 +515,7 @@ package body GNATLLVM.Blocks is
    -----------------------------
 
    procedure Start_Block_Statements
-     (At_End_Proc : Node_Id := Empty; EH_List : List_Id := No_List)
+     (At_End_Proc : Opt_N_Subexpr_Id := Empty; EH_List : List_Id := No_List)
    is
       BI         : Block_Info renames Block_Stack.Table (Block_Stack.Last);
       Invariants : A_Invariant_Data := BI.Invariant_List;
@@ -940,9 +941,11 @@ package body GNATLLVM.Blocks is
    ---------------------
 
    function Emit_Raise_Call_With_Extra_Info
-     (N : Node_Id; Kind : RT_Exception_Code; Cond : Node_Id) return Boolean
+     (N    : Node_Id;
+      Kind : RT_Exception_Code;
+      Cond : N_Subexpr_Id) return Boolean
    is
-      S     : constant Source_Ptr := Sloc (N);
+      S     : constant Source_Ptr  := Sloc (N);
       File   : constant GL_Value   :=
         Get_File_Name_Address (Get_Source_File_Index (S));
       Line   : constant GL_Value   :=
@@ -1029,7 +1032,8 @@ package body GNATLLVM.Blocks is
       Next_BB           : Basic_Block_T;
       DDT               : D_D_Info;
       BB                : Basic_Block_T;
-      Handler, Choice   : Node_Id;
+      Handler           : Opt_N_Exception_Handler_Id;
+      Choice            : Node_Id;
       EH_Data           : GL_Value;
       Selector, Exc_Ptr : GL_Value;
       Exc               : GL_Value;
@@ -1047,8 +1051,8 @@ package body GNATLLVM.Blocks is
       function Choice_To_Exc (Choice : Node_Id) return GL_Value is
       begin
          if Nkind (Choice) = N_Others_Choice then
-            return (if All_Others (Choice)
-                    then All_Others_Value else Others_Value);
+            return (if   All_Others (Choice) then All_Others_Value
+                    else Others_Value);
          else
             return Emit_LValue (Choice);
          end if;
@@ -1623,7 +1627,7 @@ package body GNATLLVM.Blocks is
    -- Enter_Block_With_Node --
    ---------------------------
 
-   function Enter_Block_With_Node (Node : Node_Id) return Basic_Block_T
+   function Enter_Block_With_Node (Node : Opt_N_Label_Id) return Basic_Block_T
    is
       E         : constant Opt_E_Label_Id  :=
         (if Present (Node) and then Present (Identifier (Node))
@@ -1753,7 +1757,8 @@ package body GNATLLVM.Blocks is
    -- Find_Exit_Point --
    ---------------------
 
-   function Find_Exit_Point (N : Node_Id) return Exit_Point_Level is
+   function Find_Exit_Point
+     (N : Opt_N_Identifier_Id) return Exit_Point_Level is
    begin
       --  If no exit label was specified, use the last one
 
@@ -1780,7 +1785,7 @@ package body GNATLLVM.Blocks is
    -- Get_Exit_Point --
    --------------------
 
-   function Get_Exit_Point (N : Node_Id) return Basic_Block_T is
+   function Get_Exit_Point (N : Opt_N_Has_Entity_Id) return Basic_Block_T is
       Current_BB : constant Basic_Block_T    := Get_Insert_Block;
       EPT_Index  : constant Exit_Point_Level := Find_Exit_Point (N);
       EPT        : Exit_Point renames Exit_Points.Table (EPT_Index);
@@ -1818,16 +1823,16 @@ package body GNATLLVM.Blocks is
    ----------------
 
    procedure Emit_Raise (N : N_Raise_xxx_Error_Id) is
-      Label        : constant Opt_E_Label_Id :=
+      Label        : constant Opt_E_Label_Id   :=
         Get_Exception_Goto_Entry (Nkind (N));
-      Cond         : constant Node_Id        := Condition (N);
-      BB_Raise     : constant Basic_Block_T  :=
+      Cond         : constant Opt_N_Subexpr_Id := Condition (N);
+      BB_Raise     : constant Basic_Block_T    :=
         (if    Present (Label) then Get_Label_BB (Label)
          elsif No (Cond) then No_BB_T else Create_Basic_Block ("RAISE"));
-      BB_Next      : constant Basic_Block_T  :=
+      BB_Next      : constant Basic_Block_T    :=
         (if   Present (Cond) or else Present (Label) then Create_Basic_Block
          else No_BB_T);
-      Pos          : constant Position_T    := Get_Current_Position;
+      Pos          : constant Position_T       := Get_Current_Position;
       Cannot_Raise : Boolean := False;
 
    begin

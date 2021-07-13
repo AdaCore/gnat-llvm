@@ -404,7 +404,7 @@ package body GNATLLVM.Records is
    ---------------------------------
 
    function Get_Discriminant_Constraint
-     (TE : E_Record_Subtype_Id; E : E_Discriminant_Id) return Node_Id
+     (TE : E_Record_Subtype_Id; E : E_Discriminant_Id) return N_Subexpr_Id
    is
       Discrim_Num : constant Uint      := Discriminant_Number (E);
       Constraint  : constant Elist_Id  := Stored_Constraint (TE);
@@ -1262,8 +1262,9 @@ package body GNATLLVM.Records is
 
          while (for some V of Values => Present (V)) loop
             declare
-               Variant    : Node_Id := First_Non_Pragma (RI.Variant_List);
-               This_Cond  : BA_Data := Const (0);
+               Variant    : Opt_N_Variant_Id :=
+                 First_Non_Pragma (RI.Variant_List);
+               This_Cond  : BA_Data          := Const (0);
                This_Value : BA_Data;
 
             begin
@@ -1839,10 +1840,10 @@ package body GNATLLVM.Records is
    ---------------------------
 
    function Emit_Record_Aggregate
-     (N : Node_Id; Result_So_Far : GL_Value) return GL_Value
+     (N : N_Subexpr_Id; Result_So_Far : GL_Value) return GL_Value
    is
       GT   : constant GL_Type := Primitive_GL_Type (Full_GL_Type (N));
-      Expr : Node_Id;
+      Expr : Opt_N_Component_Association_Id;
 
    begin
       --  If we can use Data for the result, it means that each of its
@@ -1878,7 +1879,7 @@ package body GNATLLVM.Records is
             declare
                In_F : constant Record_Field_Kind_Id :=
                  Entity (First (Choices (Expr)));
-               Val  : constant Node_Id              := Expression (Expr);
+               Val  : constant Opt_N_Subexpr_Id     := Expression (Expr);
                V    : GL_Value;
                F    : Record_Field_Kind_Id;
 

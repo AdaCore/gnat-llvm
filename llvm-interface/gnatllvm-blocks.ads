@@ -57,7 +57,7 @@ package GNATLLVM.Blocks is
    --  start of the code for this block.
 
    procedure Start_Block_Statements
-     (At_End_Proc : Node_Id := Empty; EH_List : List_Id := No_List)
+     (At_End_Proc : Opt_N_Subexpr_Id := Empty; EH_List : List_Id := No_List)
      with Pre => not Library_Level;
    --  Indicate that this is the start of a region of the block to be
    --  protected by the exception handlers and an At_End_Proc and provide
@@ -85,7 +85,7 @@ package GNATLLVM.Blocks is
    --  if we don't have it already.  If For_Address is True, we're getting
    --  this label to take its address, so we ignore any fixups.
 
-   function Enter_Block_With_Node (Node : Node_Id) return Basic_Block_T
+   function Enter_Block_With_Node (Node : Opt_N_Label_Id) return Basic_Block_T
      with Post => Present (Enter_Block_With_Node'Result);
    --  We need a basic block at the present location to branch to.
    --  This will normally be a new basic block, but may be the current
@@ -98,7 +98,7 @@ package GNATLLVM.Blocks is
      with Pre => Present (Exit_Point);
    procedure Pop_Loop;
 
-   function Get_Exit_Point (N : Node_Id) return Basic_Block_T
+   function Get_Exit_Point (N : Opt_N_Has_Entity_Id) return Basic_Block_T
      with Post => Present (Get_Exit_Point'Result);
    --  If N is specied, find the exit point corresponding to its entity.
    --  Otherwise, find the most recent (most inner) exit point.

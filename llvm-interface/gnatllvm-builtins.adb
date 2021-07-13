@@ -82,37 +82,37 @@ package body GNATLLVM.Builtins is
    --  in bytes or bits, depending on In_Bytes.  If it's in bits, a
    --  leading underscore isn't required.
 
-   function Emit_Ptr (Ptr : Node_Id; GT : GL_Type) return GL_Value
-     with Pre => Present (Ptr) and then Present (GT);
-   --  If Ptr is an Address or an access type pointing to GT, return a
+   function Emit_Ptr (N : N_Subexpr_Id; GT : GL_Type) return GL_Value
+     with Pre => Present (GT);
+   --  If N is an Address or an access type pointing to GT, return a
    --  GL_Value that's a Reference to GT.  If not, or if GT is not an
    --  elementary type, return No_GL_Value.
 
-   function Emit_And_Maybe_Deref (Ptr : Node_Id; GT : GL_Type) return GL_Value
-     with Pre => Present (Ptr) and then Present (GT);
-   --  If Ptr's type is GT or if it's an access type to GT, return the
+   function Emit_And_Maybe_Deref
+     (N : N_Subexpr_Id; GT : GL_Type) return GL_Value
+     with Pre => Present (GT);
+   --  If N's type is GT or if it's an access type to GT, return the
    --  evaluated expression (with a dereference if an access type).  If
    --  not, return No_GL_Value.
 
    function Memory_Order
-     (N          : Node_Id;
+     (N          : N_Subexpr_Id;
       No_Acquire : Boolean     := False;
-      No_Release : Boolean := False) return Atomic_Ordering_T
-     with Pre => Present (N);
+      No_Release : Boolean := False) return Atomic_Ordering_T;
    --  N is an expression being passed as an operand for a memory order.
    --  Return the corresponding memory ordering for an instruction.
 
    function Emit_Fetch_And_Op
-     (Ptr     : Node_Id;
+     (N       : N_Subexpr_Id;
       Val     : GL_Value;
       Op      : Atomic_RMW_Bin_Op_T;
       Op_Back : Boolean;
       Order   : Atomic_Ordering_T;
       S       : String;
       GT      : GL_Type) return GL_Value
-     with Pre => Present (Ptr) and then Present (Val) and then Present (GT);
+     with Pre => Present (Val) and then Present (GT);
    --  Perform the Fetch_And_Op (Atomic_RMW) given by Op at the location
-   --  Ptr.  If Op_Back is True, we want the new value, so we have to
+   --  N.  If Op_Back is True, we want the new value, so we have to
    --  perform the operation on the result.  Order is the memory ordering
    --  needed.  S and GT are as for Type_Size_Matches_Name.  If we can
    --  peform the operation, return the result.  Otherwise, return
@@ -351,8 +351,8 @@ package body GNATLLVM.Builtins is
    ------------------
 
    function Memory_Order
-     (N          : Node_Id;
-      No_Acquire : Boolean     := False;
+     (N          : N_Subexpr_Id;
+      No_Acquire : Boolean := False;
       No_Release : Boolean := False) return Atomic_Ordering_T
    is
       Val   : Uint;
@@ -395,10 +395,8 @@ package body GNATLLVM.Builtins is
    -- Emit_Ptr --
    --------------
 
-   function Emit_Ptr
-     (Ptr : Node_Id; GT : GL_Type) return GL_Value
-   is
-      Ptr_Val : GL_Value := Emit_Expression (Ptr);
+   function Emit_Ptr (N : N_Subexpr_Id; GT : GL_Type) return GL_Value is
+      Val : GL_Value := Emit_Expression (N);
 
    begin
       if not Is_Elementary_Type (GT) then
@@ -406,11 +404,11 @@ package body GNATLLVM.Builtins is
 
       --  If the pointer is derived from System.Address convert to GT
 
-      elsif Is_Descendant_Of_Address (Ptr_Val) then
-         return Int_To_Ref (Ptr_Val, GT);
-      elsif Is_Access_Type (Ptr_Val) then
-         Ptr_Val := From_Access (Ptr_Val);
-         return (if Related_Type (Ptr_Val) = GT then Ptr_Val else No_GL_Value);
+      elsif Is_Descendant_Of_Address (Val) then
+         return Int_To_Ref (Val, GT);
+      elsif Is_Access_Type (Val) then
+         Val := From_Access (Val);
+         return (if Related_Type (Val) = GT then Val else No_GL_Value);
       else
          return No_GL_Value;
       end if;
@@ -421,9 +419,9 @@ package body GNATLLVM.Builtins is
    --------------------------
 
    function Emit_And_Maybe_Deref
-     (Ptr : Node_Id; GT : GL_Type) return GL_Value
+     (N : N_Subexpr_Id; GT : GL_Type) return GL_Value
    is
-      Result : GL_Value := Emit_Expression (Ptr);
+      Result : GL_Value := Emit_Expression (N);
 
    begin
       --  This is valid if the Ada types are the same, but we need to be sure
@@ -446,7 +444,7 @@ package body GNATLLVM.Builtins is
    -----------------------
 
    function Emit_Fetch_And_Op
-     (Ptr     : Node_Id;
+     (N       : N_Subexpr_Id;
       Val     : GL_Value;
       Op      : Atomic_RMW_Bin_Op_T;
       Op_Back : Boolean;
@@ -460,7 +458,7 @@ package body GNATLLVM.Builtins is
    begin
       --  Emit all operands and validate all our conditions
 
-      Ptr_Val := Emit_Ptr (Ptr, GT);
+      Ptr_Val := Emit_Ptr (N, GT);
       if No (Ptr_Val) or else Related_Type (Val) /= GT
         or else not Type_Size_Matches_Name (S, True, GT)
       then
@@ -560,18 +558,19 @@ package body GNATLLVM.Builtins is
    function Emit_Sync_Call
      (N : N_Subprogram_Call_Id; S : String) return GL_Value
    is
-      Ptr       : constant Node_Id  := First_Actual (N);
-      N_Args    : constant Nat      := Num_Actuals (N);
-      Val       : constant Node_Id  :=
+      Ptr       : constant Opt_N_Subexpr_Id := First_Actual (N);
+      N_Args    : constant Nat              := Num_Actuals (N);
+      Val       : constant Opt_N_Subexpr_Id :=
         (if N_Args >= 2 then Next_Actual (Ptr) else Empty);
-      GT        : constant GL_Type  :=
+      GT        : constant GL_Type          :=
         (if    Present (Val) then Full_GL_Type (Val)
          elsif Present (Ptr) and then Is_Access_Type (Full_Etype (Ptr))
          then  Full_Designated_GL_Type (Full_Etype (Ptr)) else No_GL_Type);
-      First     : constant Integer  := S'First + String'("__sync_")'Length;
-      Last      : constant Integer  := Last_Non_Suffix (S);
-      Name      : constant String   := S (First .. Last);
-      Ptr_Val   : constant GL_Value :=
+      First     : constant Integer          :=
+        S'First + String'("__sync_")'Length;
+      Last      : constant Integer          := Last_Non_Suffix (S);
+      Name      : constant String           := S (First .. Last);
+      Ptr_Val   : constant GL_Value         :=
         (if Present (Ptr) then Emit_Ptr (Ptr, GT) else No_GL_Value);
       Order     : Atomic_Ordering_T := Atomic_Ordering_Sequentially_Consistent;
       Op        : Atomic_RMW_Bin_Op_T;
@@ -662,7 +661,7 @@ package body GNATLLVM.Builtins is
    function Emit_Bswap_Call
      (N : N_Subprogram_Call_Id; S : String) return GL_Value
    is
-      Val       : constant Node_Id := First_Actual (N);
+      Val       : constant Opt_N_Subexpr_Id := First_Actual (N);
       GT        : GL_Type;
 
    begin
@@ -693,8 +692,8 @@ package body GNATLLVM.Builtins is
    function Emit_Branch_Prediction_Call
      (N : N_Subprogram_Call_Id; S : String) return GL_Value
    is
-      Val      : constant Node_Id := First_Actual (N);
-      Two_Arg  : constant Boolean := S = "__builtin_expect";
+      Val      : constant Opt_N_Subexpr_Id := First_Actual (N);
+      Two_Arg  : constant Boolean          := S = "__builtin_expect";
       Expected : GL_Value;
 
    begin
@@ -735,20 +734,21 @@ package body GNATLLVM.Builtins is
    function Emit_Atomic_Call
      (N : N_Subprogram_Call_Id; S : String) return GL_Value
    is
-      Ptr       : constant Node_Id  := First_Actual (N);
-      N_Args    : constant Nat      := Num_Actuals (N);
-      Is_Proc   : constant Boolean  := Nkind (N) = N_Procedure_Call_Statement;
-      Arg2      : constant Node_Id  :=
+      Ptr       : constant Opt_N_Subexpr_Id := First_Actual (N);
+      N_Args    : constant Nat              := Num_Actuals (N);
+      Is_Proc   : constant Boolean          :=
+        Nkind (N) = N_Procedure_Call_Statement;
+      Arg2      : constant Opt_N_Subexpr_Id :=
         (if N_Args >= 2 then Next_Actual (Ptr) else Empty);
-      Arg3      : constant Node_Id  :=
+      Arg3      : constant Opt_N_Subexpr_Id :=
         (if N_Args >= 3 then Next_Actual (Arg2) else Empty);
-      Arg4      : constant Node_Id  :=
+      Arg4      : constant Opt_N_Subexpr_Id :=
         (if N_Args >= 4 then Next_Actual (Arg3) else Empty);
-      Arg5      : constant Node_Id  :=
+      Arg5      : constant Opt_N_Subexpr_Id :=
         (if N_Args >= 5 then Next_Actual (Arg4) else Empty);
-      Arg6      : constant Node_Id  :=
+      Arg6      : constant Opt_N_Subexpr_Id :=
         (if N_Args >= 6 then Next_Actual (Arg5) else Empty);
-      GT        : constant GL_Type  :=
+      GT        : constant GL_Type          :=
         (if    Present (Ptr) and then Is_Access_Type (Full_Etype (Ptr))
          then  Full_Designated_GL_Type (Full_Etype (Ptr))
          elsif N_Args > 2
@@ -762,14 +762,15 @@ package body GNATLLVM.Builtins is
       --  argument is always an ordering type, so can't determine the
       --  needed type.
 
-      Def_GT    : constant GL_Type  :=
+      Def_GT    : constant GL_Type          :=
         (if Present (GT) then GT else SSI_GL_Type);
       --  In some cases (test_and_set and clear), we may not have a type at
       --  all.  In that case, we mean to use a byte.
 
-      First     : constant Integer  := S'First + String'("__atomic_")'Length;
-      Last      : constant Integer  := Last_Non_Suffix (S);
-      Name      : constant String   := S (First .. Last);
+      First     : constant Integer          :=
+        S'First + String'("__atomic_")'Length;
+      Last      : constant Integer          := Last_Non_Suffix (S);
+      Name      : constant String           := S (First .. Last);
       Op        : Atomic_RMW_Bin_Op_T;
       Op_Back   : Boolean;
       Index     : Integer;
@@ -995,12 +996,12 @@ package body GNATLLVM.Builtins is
                                               in 'f' | 'l')))
          then
             declare
-               GT     : constant GL_Type  := Full_GL_Type (N);
-               I_Name : constant String   :=
+               GT     : constant GL_Type           := Full_GL_Type (N);
+               I_Name : constant String            :=
                  "llvm." & FP.Name (1 .. FP.Length) & ".f";
-               Subp   : constant GL_Value :=
+               Subp   : constant GL_Value          :=
                  Build_Intrinsic (FP.Kind, I_Name, GT);
-               Actual : constant Node_Id  := First_Actual (N);
+               Actual : constant Opt_N_Subexpr_Id  := First_Actual (N);
 
             begin
                if FP.Kind = Unary then

@@ -55,8 +55,7 @@ package body GNATLLVM.Records.Create is
    --  since we'll be requesting fields in roughly (but not exactly!)
    --  the same order as they are in the list.
 
-   function Variant_Alignment (Var_Part : Node_Id) return Nat
-     with Pre => Present (Var_Part);
+   function Variant_Alignment (Var_Part : N_Variant_Part_Id) return Nat;
    --  Compute the alignment of the variant at Var_Part, which is the
    --  maximum size of any field in the variant.  We recurse through
    --  any nested variants.
@@ -74,14 +73,14 @@ package body GNATLLVM.Records.Create is
    --  Given a position and an alignment (usually BPU), truncate that
    --  position to a multiple of the alignment.
 
-   function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id
+   function Find_Choice
+     (N : N_Subexpr_Id; Alts : List_Id) return Opt_N_Variant_Id
      with Pre => Is_Static_Expression (N) and then Present (Alts);
    --  N is a static expression and Alts is a list of alternatives. Return
    --  which alternate has a Choice that covers N.
 
    function Choices_To_SO_Ref
-     (Variant : Node_Id; Discrim : Node_Id) return SO_Ref
-     with Pre => Present (Variant) and then Present (Discrim);
+     (Variant : N_Variant_Id; Discrim : N_Subexpr_Id) return SO_Ref;
    --  Given an alternative for a variant record, return an SO_Ref
    --  corresponding to an expression that's True when that variant is
    --  present. This is a function of the discriminant (Discrim) and
@@ -155,7 +154,7 @@ package body GNATLLVM.Records.Create is
    -----------------------
 
    function Max_Discriminant (TE : Record_Kind_Id) return Int is
-      F     : Opt_Record_Field_Kind_Id := First_Component_Or_Discriminant (TE);
+      F : Opt_Record_Field_Kind_Id := First_Component_Or_Discriminant (TE);
 
    begin
       return Max : Int := 0 do
@@ -175,25 +174,27 @@ package body GNATLLVM.Records.Create is
    -- Variant_Alignment --
    -----------------------
 
-   function Variant_Alignment (Var_Part : Node_Id) return Nat is
-      Variant : Node_Id := First_Non_Pragma (Variants (Var_Part));
+   function Variant_Alignment (Var_Part : N_Variant_Part_Id) return Nat is
+      Variant : Opt_N_Variant_Id := First_Non_Pragma (Variants (Var_Part));
 
    begin
       return Align : Nat := BPU do
          while Present (Variant) loop
             declare
-               Comp_List      : constant Node_Id := Component_List (Variant);
-               Nested_Variant : constant Node_Id := Variant_Part (Comp_List);
-               Comp_Def       : Node_Id          :=
-                 First_Non_Pragma (Component_Items (Component_List (Variant)));
+               Comp_List      : constant N_Component_List_Id   :=
+                 Component_List (Variant);
+               Nested_Variant : constant Opt_N_Variant_Part_Id :=
+                 Variant_Part (Comp_List);
+               Comp_Decl      : Opt_N_Component_Declaration_Id :=
+                 First_Non_Pragma (Component_Items (Comp_List));
 
             begin
-               while Present (Comp_Def) loop
+               while Present (Comp_Decl) loop
                   Align := Nat'Max (Align,
                                     Effective_Field_Alignment
-                                      (Defining_Identifier (Comp_Def)));
+                                      (Defining_Identifier (Comp_Decl)));
 
-                  Next_Non_Pragma (Comp_Def);
+                  Next_Non_Pragma (Comp_Decl);
                end loop;
 
                if Present (Nested_Variant) then
@@ -210,10 +211,13 @@ package body GNATLLVM.Records.Create is
    -- Find_Choice --
    -----------------
 
-   function Find_Choice (N : Node_Id; Alts : List_Id) return Node_Id is
-      Value       : constant Uint := Expr_Rep_Value (N);
-      Alt, Choice : Node_Id;
-      Low, High   : Uint;
+   function Find_Choice
+     (N : N_Subexpr_Id; Alts : List_Id) return Opt_N_Variant_Id
+   is
+      Value     : constant Uint := Expr_Rep_Value (N);
+      Alt       : Opt_N_Variant_Id;
+      Choice    : Node_Id;
+      Low, High : Uint;
 
    begin
       Alt := First_Non_Pragma (Alts);
@@ -245,7 +249,7 @@ package body GNATLLVM.Records.Create is
    -----------------------
 
    function Choices_To_SO_Ref
-     (Variant : Node_Id; Discrim : Node_Id) return SO_Ref
+     (Variant : N_Variant_Id; Discrim : N_Subexpr_Id) return SO_Ref
    is
       Discrim_SO : constant SO_Ref := Annotated_Value (Emit_Expr (Discrim));
       Choice     : Node_Id;
@@ -312,9 +316,9 @@ package body GNATLLVM.Records.Create is
       Index := First_Index (GT);
       while Present (Index) loop
          declare
-            Idx_Range : constant Node_Id := Get_Dim_Range (Index);
-            LB        : constant Node_Id := Low_Bound (Idx_Range);
-            HB        : constant Node_Id := High_Bound (Idx_Range);
+            Idx_Range : constant Node_Id      := Get_Dim_Range (Index);
+            LB        : constant N_Subexpr_Id := Low_Bound (Idx_Range);
+            HB        : constant N_Subexpr_Id := High_Bound (Idx_Range);
 
          begin
             exit when Contains_Discriminant (LB);
@@ -527,7 +531,7 @@ package body GNATLLVM.Records.Create is
          Align            : Nat                         := 0;
          Position         : ULL                         := 0;
          Variant_List     : List_Id                     := No_List;
-         Variant_Expr     : Node_Id                     := Empty;
+         Variant_Expr     : Opt_N_Subexpr_Id            := Empty;
          Variants         : Record_Info_Id_Array_Access := null;
          Overlap_Variants : Record_Info_Id_Array_Access := null;
          Unused_Bits      : Uint                        := Uint_0);
@@ -580,7 +584,7 @@ package body GNATLLVM.Records.Create is
          Align            : Nat                         := 0;
          Position         : ULL                         := 0;
          Variant_List     : List_Id                     := No_List;
-         Variant_Expr     : Node_Id                     := Empty;
+         Variant_Expr     : Opt_N_Subexpr_Id            := Empty;
          Variants         : Record_Info_Id_Array_Access := null;
          Overlap_Variants : Record_Info_Id_Array_Access := null;
          Unused_Bits      : Uint                        := Uint_0) is
@@ -741,12 +745,9 @@ package body GNATLLVM.Records.Create is
          --  Cache used to limit quadratic behavior
 
          procedure Add_Component_List
-           (List     : Node_Id;
+           (List     : Opt_N_Component_List_Id;
             From_Rec : Opt_Record_Kind_Id;
-            Parent   : Boolean := False)
-           with Pre => (No (List) or else Nkind (List) = N_Component_List)
-                       and then (No (From_Rec)
-                                   or else Is_Record_Type (From_Rec));
+            Parent   : Boolean := False);
          --  Add fields in List.  If From_Rec is Present, instead
          --  of adding the actual field, add the field of the same
          --  name from From_Rec.  If Parent is true, only add the
@@ -757,25 +758,25 @@ package body GNATLLVM.Records.Create is
          ------------------------
 
          procedure Add_Component_List
-           (List     : Node_Id;
+           (List     : Opt_N_Component_List_Id;
             From_Rec : Opt_Record_Kind_Id;
             Parent   : Boolean := False)
          is
-            Var_Part           : constant Node_Id :=
+            Var_Part           : constant Opt_N_Variant_Part_Id :=
               (if Present (List) then Variant_Part (List) else Empty);
-            Discrim            : constant Node_Id :=
+            Discrim            : constant Opt_N_Subexpr_Id      :=
               (if Present (Var_Part) then Name (Var_Part) else Empty);
-            Constraining_Expr  : constant Node_Id :=
+            Constraining_Expr  : constant Opt_N_Subexpr_Id      :=
               (if   Present (From_Rec) and then Present (Var_Part)
                then Get_Discriminant_Constraint (From_Rec, Entity (Discrim))
                else Empty);
-            Variant_Expr       : constant Node_Id :=
+            Variant_Expr       : constant Opt_N_Subexpr_Id      :=
               (if    Present (Constraining_Expr) then Constraining_Expr
                elsif Present (Discrim) then Discrim else Empty);
-            Static_Constraint  : constant Boolean :=
+            Static_Constraint  : constant Boolean               :=
               Present (Constraining_Expr)
                 and then Is_Static_Expression (Constraining_Expr);
-            Variant_Align      : constant Nat     :=
+            Variant_Align      : constant Nat                   :=
               (if Present (Var_Part) then Variant_Alignment (Var_Part) else 0);
             Var_Array          : Record_Info_Id_Array_Access;
             Overlap_Var_Array  : Record_Info_Id_Array_Access;
@@ -783,10 +784,10 @@ package body GNATLLVM.Records.Create is
             Saved_Prev_Idx     : Record_Info_Id;
             Saved_First_Idx    : Record_Info_Id;
             Saved_Overlap_Idx  : Record_Info_Id;
-            Component_Def      : Node_Id;
+            Component_Decl     : Opt_N_Component_Declaration_Id;
             Field              : Record_Field_Kind_Id;
             Field_To_Add       : Opt_Record_Field_Kind_Id;
-            Variant            : Node_Id;
+            Variant            : Opt_N_Variant_Id;
             J                  : Nat;
 
          begin
@@ -797,9 +798,9 @@ package body GNATLLVM.Records.Create is
                return;
             end if;
 
-            Component_Def := First_Non_Pragma (Component_Items (List));
-            while Present (Component_Def) loop
-               Field := Defining_Identifier (Component_Def);
+            Component_Decl := First_Non_Pragma (Component_Items (List));
+            while Present (Component_Decl) loop
+               Field := Defining_Identifier (Component_Decl);
                if Parent = (Chars (Field) = Name_uParent) then
                   Field_To_Add := Field;
                   if Present (From_Rec) then
@@ -818,7 +819,7 @@ package body GNATLLVM.Records.Create is
                   end if;
                end if;
 
-               Next_Non_Pragma (Component_Def);
+               Next_Non_Pragma (Component_Decl);
             end loop;
 
             --  Done if we're just asking for the parent field or if
@@ -902,7 +903,7 @@ package body GNATLLVM.Records.Create is
          Field_To_Add      : Record_Field_Kind_Id;
          Outer_Field       : Opt_Record_Field_Kind_Id;
          Record_Definition : Node_Id;
-         Components        : Node_Id;
+         Components        : Opt_N_Component_List_Id;
 
       --  Start of processing for Add_Fields
 
@@ -1023,28 +1024,29 @@ package body GNATLLVM.Records.Create is
       ---------------
 
       procedure Add_Field (E : Record_Field_Kind_Id) is
-         Clause      : constant Node_Id            := Component_Clause (E);
-         R_TE        : constant Record_Kind_Id     := Full_Scope (E);
-         Def_GT      : constant GL_Type            :=
+         Clause      : constant Opt_N_Component_Clause_Id :=
+           Component_Clause (E);
+         R_TE        : constant Record_Kind_Id            := Full_Scope (E);
+         Def_GT      : constant GL_Type                   :=
            Default_GL_Type (Full_Etype (E));
-         F_GT        : GL_Type                     := Full_GL_Type (E);
-         Align       : constant Nat                :=
+         F_GT        : GL_Type                            := Full_GL_Type (E);
+         Align       : constant Nat                       :=
            Get_Type_Alignment (F_GT);
-         Parent_TE   : constant Opt_Record_Kind_Id :=
+         Parent_TE   : constant Opt_Record_Kind_Id        :=
            (if   Present (Parent_Subtype (R_TE))
             then Full_Parent_Subtype (R_TE) else Empty);
-         Atomic      : constant Boolean            :=
+         Atomic      : constant Boolean                   :=
            Is_Full_Access (E) or else Is_Full_Access (F_GT);
-         Error_Str   : constant String             :=
+         Error_Str   : constant String                    :=
            Field_Error_Msg (E, F_GT, True);
-         Pos         : Uint                        :=
+         Pos         : Uint                               :=
            (if Present (Clause) then Component_Bit_Offset (E) else No_Uint);
-         Size        : Uint                        :=
+         Size        : Uint                               :=
            (if not Known_Esize (E) then No_Uint
             else   Validate_Size (E, Def_GT, Esize (E),
                                   Zero_Allowed => Present (Clause)));
-         Var_Depth   : Int                         := 0;
-         Var_Align   : Nat                         := 0;
+         Var_Depth   : Int                                := 0;
+         Var_Align   : Nat                                := 0;
 
       begin
          --  If we've pushed the variant stack and the top entry is static,

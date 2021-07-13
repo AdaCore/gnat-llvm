@@ -278,14 +278,14 @@ package body GNATLLVM.Conversions is
    ---------------------
 
    function Emit_Conversion
-     (N                   : Node_Id;
+     (N                   : N_Subexpr_Id;
       GT                  : GL_Type;
-      From_N              : Node_Id := Empty;
-      For_LHS             : Boolean := False;
-      Is_Unchecked        : Boolean := False;
-      Need_Overflow_Check : Boolean := False;
-      Float_Truncate      : Boolean := False;
-      No_Truncation       : Boolean := False) return GL_Value
+      From_N              : Opt_N_Subexpr_Id := Empty;
+      For_LHS             : Boolean          := False;
+      Is_Unchecked        : Boolean          := False;
+      Need_Overflow_Check : Boolean          := False;
+      Float_Truncate      : Boolean          := False;
+      No_Truncation       : Boolean          := False) return GL_Value
    is
       Result      : GL_Value                 := Emit (N, For_LHS => For_LHS);
       Prim_GT     : constant GL_Type         := Primitive_GL_Type (GT);
@@ -738,8 +738,7 @@ package body GNATLLVM.Conversions is
       --  specially here.
 
       if In_R = Reference_To_Subprogram
-        and then Ekind (GT) in
-           E_Access_Subprogram_Type | E_Anonymous_Access_Subprogram_Type
+        and then Ekind (GT) = E_Access_Subprogram_Type
       then
          Result := Get (Ptr_To_Relationship (As_Ref, DT, Reference), R);
 
@@ -1316,9 +1315,11 @@ package body GNATLLVM.Conversions is
    -- Strip_Complex_Conversions --
    -------------------------------
 
-   function Strip_Complex_Conversions (N : Node_Id) return Node_Id is
+   function Strip_Complex_Conversions
+     (N : Opt_N_Subexpr_Id) return Opt_N_Subexpr_Id
+   is
    begin
-      return E : Node_Id := N do
+      return E : Opt_N_Subexpr_Id := N do
          while Present (E) loop
             exit when
               Nkind (E) not in N_Type_Conversion
@@ -1339,9 +1340,9 @@ package body GNATLLVM.Conversions is
    -- Strip_Conversions --
    -----------------------
 
-   function Strip_Conversions (N : Node_Id) return Node_Id is
+   function Strip_Conversions (N : Opt_N_Subexpr_Id) return Opt_N_Subexpr_Id is
    begin
-      return E : Node_Id := N do
+      return E : Opt_N_Subexpr_Id := N do
          while Present (E) loop
             exit when Nkind (E) not in N_Type_Conversion
                                      | N_Unchecked_Type_Conversion

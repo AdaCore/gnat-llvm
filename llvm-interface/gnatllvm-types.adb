@@ -586,13 +586,13 @@ package body GNATLLVM.Types is
 
    function Allocate_For_Type
      (GT       : GL_Type;
-      Alloc_GT : GL_Type   := No_GL_Type;
-      N        : Node_Id   := Empty;
-      V        : GL_Value  := No_GL_Value;
-      Expr     : Node_Id   := Empty;
-      E        : Entity_Id := Empty;
-      Name     : String    := "";
-      Max_Size : Boolean   := False) return GL_Value
+      Alloc_GT : GL_Type          := No_GL_Type;
+      N        : Node_Id          := Empty;
+      V        : GL_Value         := No_GL_Value;
+      Expr     : Opt_N_Subexpr_Id := Empty;
+      E        : Entity_Id        := Empty;
+      Name     : String           := "";
+      Max_Size : Boolean          := False) return GL_Value
    is
       Max_Alloc  : constant ULL     := 20_000_000;
       A_GT       : constant GL_Type :=
@@ -752,7 +752,7 @@ package body GNATLLVM.Types is
       Alloc_GT : GL_Type                 := No_GL_Type;
       V        : GL_Value                := No_GL_Value;
       N        : Node_Id                 := Empty;
-      Expr     : Node_Id                 := Empty;
+      Expr     : Opt_N_Subexpr_Id        := Empty;
       Proc     : Opt_Subprogram_Kind_Id  := Empty;
       Pool     : Entity_Id               := Empty;
       E        : Opt_Allocatable_Kind_Id := Empty;
@@ -862,7 +862,7 @@ package body GNATLLVM.Types is
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Result :=
            Call_Alloc (Proc,
-                       (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
+                       (1 => Ptr_To_Ref (Emit_Entity (Pool),
                                          Full_GL_Type (First_Formal (Proc))),
                         2 => To_Bytes (Size),
                         3 => To_Bytes (Align_V)));
@@ -963,7 +963,7 @@ package body GNATLLVM.Types is
 
          elsif Is_Record_Type (Full_Etype (Pool)) then
             Call_Dealloc (Proc,
-                          (1 => Ptr_To_Ref (Emit_Safe_LValue (Pool),
+                          (1 => Ptr_To_Ref (Emit_Entity (Pool),
                                             Full_GL_Type
                                               (First_Formal (Proc))),
                            2 => Ptr_To_Size_Type (Conv_V),
@@ -1564,7 +1564,7 @@ package body GNATLLVM.Types is
    -- Emit_Expr --
    ---------------
 
-   function Emit_Expr (N : Node_Id; LHS : IDS := No_IDS) return IDS is
+   function Emit_Expr (N : N_Subexpr_Id; LHS : IDS := No_IDS) return IDS is
       pragma Unreferenced (LHS);
    begin
       return (if   Is_No_Elab_Needed (N)
@@ -1818,7 +1818,7 @@ package body GNATLLVM.Types is
    ----------------
 
    function Emit_Expr
-     (N : Node_Id; LHS : BA_Data := No_BA) return BA_Data
+     (N : N_Subexpr_Id; LHS : BA_Data := No_BA) return BA_Data
    is
       pragma Unreferenced (LHS);
       SO_Info : Dynamic_SO_Ref := Get_SO_Ref (N);

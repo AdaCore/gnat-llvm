@@ -38,8 +38,7 @@ package body GNATLLVM.Arrays is
    --  Get the best type to use to search for a bound of an arrray
 
    function Emit_Expr_For_Minmax
-     (N : Node_Id; Is_Low : Boolean) return GL_Value
-     with Pre => Present (N);
+     (N : N_Subexpr_Id; Is_Low : Boolean) return GL_Value;
    --  Compute the value of N viewing any discriminant encountered as
    --  being either their lowest or highest values, respectively
 
@@ -57,7 +56,7 @@ package body GNATLLVM.Arrays is
    --  a pointer and is unsigned, we must return a wider type.
 
    function Emit_Constant_Aggregate
-     (N         : Node_Id;
+     (N         : N_Subexpr_Id;
       Comp_Type : GL_Type;
       GT        : Array_GL_Type;
       Dims_Left : Nat) return GL_Value
@@ -137,9 +136,9 @@ package body GNATLLVM.Arrays is
          Is_Unsigned    : Boolean := False;
          No_Truncation  : Boolean := False) return Result;
       with function  Emit_Expr
-        (V : Node_Id; LHS : Result := No_Result) return Result;
+        (V : N_Subexpr_Id; LHS : Result := No_Result) return Result;
       with function  Emit_Convert_Value
-        (N : Node_Id; GT : GL_Type) return Result;
+        (N : N_Subexpr_Id; GT : GL_Type) return Result;
       with function  Undef             (GT : GL_Type) return Result;
       with function  Overflowed        (V : Result)   return Boolean;
       with function  Related_Type      (V : Result)   return GL_Type;
@@ -155,7 +154,7 @@ package body GNATLLVM.Arrays is
          Not_Superflat   : Boolean := False) return Result;
 
       function Emit_Expr_For_Minmax
-        (N : Node_Id; Is_Low : Boolean) return Result;
+        (N : N_Subexpr_Id; Is_Low : Boolean) return Result;
 
       function Get_Array_Bound
         (GT       : Array_Or_PAT_GL_Type;
@@ -271,7 +270,7 @@ package body GNATLLVM.Arrays is
       --------------------------
 
       function Emit_Expr_For_Minmax
-        (N : Node_Id; Is_Low : Boolean) return Result
+        (N : N_Subexpr_Id; Is_Low : Boolean) return Result
       is
          Attr     : Attribute_Id;
          RHS, LHS : Result;
@@ -290,8 +289,8 @@ package body GNATLLVM.Arrays is
 
                pragma Assert (Ekind (Entity (N)) = E_Discriminant);
                declare
-                  GT    : constant GL_Type := Full_GL_Type (Entity (N));
-                  Limit : constant Node_Id :=
+                  GT    : constant GL_Type      := Full_GL_Type (Entity (N));
+                  Limit : constant N_Subexpr_Id :=
                     (if   Is_Low then Type_Low_Bound (GT)
                      else Type_High_Bound (GT));
 
@@ -308,9 +307,9 @@ package body GNATLLVM.Arrays is
                  and then Is_Scalar_Type (Full_Etype (Prefix (N)))
                then
                   declare
-                     PT : constant GL_Type := Full_GL_Type (Prefix (N));
-                     LB : constant Node_Id := Type_Low_Bound  (PT);
-                     HB : constant Node_Id := Type_High_Bound (PT);
+                     PT : constant GL_Type      := Full_GL_Type (Prefix (N));
+                     LB : constant N_Subexpr_Id := Type_Low_Bound  (PT);
+                     HB : constant N_Subexpr_Id := Type_High_Bound (PT);
 
                   begin
                      LHS := Emit_Expr_For_Minmax (LB, True);
@@ -365,12 +364,13 @@ package body GNATLLVM.Arrays is
                --  and get the 'Pos of the first or last in the range.
 
                declare
-                  Params : constant List_Id           :=
+                  Params : constant List_Id                  :=
                     Parameter_Associations (N);
-                  Discr  : constant E_Discriminant_Id :=
+                  Discr  : constant E_Discriminant_Id        :=
                     Entity (First (Params));
-                  GT     : constant GL_Type           := Full_GL_Type (Discr);
-                  Bound  : constant Node_Id           :=
+                  GT     : constant GL_Type                  :=
+                    Full_GL_Type (Discr);
+                  Bound  : constant E_Enumeration_Literal_Id :=
                     Entity ((if   Is_Low then Type_Low_Bound (GT)
                              else Type_High_Bound (GT)));
 
@@ -406,7 +406,7 @@ package body GNATLLVM.Arrays is
            Array_Info.Table (Info_Idx + Dim);
          Bound_Info : constant One_Bound            :=
            (if Is_Low then Dim_Info.Low else Dim_Info.High);
-         Expr       : constant Node_Id              := Bound_Info.Value;
+         Expr       : constant Opt_N_Subexpr_Id     := Bound_Info.Value;
          Res        : Result;
 
       begin
@@ -430,11 +430,11 @@ package body GNATLLVM.Arrays is
 
             if Max_Size and then Contains_Discriminant (Expr) then
                declare
-                  Bound_GT    : constant GL_Type := Dim_Info.Bound_Sub_GT;
-                  Bound_Limit : constant Node_Id :=
+                  Bound_GT    : constant GL_Type      := Dim_Info.Bound_Sub_GT;
+                  Bound_Limit : constant N_Subexpr_Id :=
                     (if   Is_Low then Type_Low_Bound (Bound_GT)
                      else Type_High_Bound (Bound_GT));
-                  Bound_Val   : constant Result  :=
+                  Bound_Val   : constant Result       :=
                     Convert (Emit_Expr_For_Minmax (Bound_Limit, Is_Low),
                              Dim_Info.Bound_GT);
 
@@ -453,8 +453,8 @@ package body GNATLLVM.Arrays is
 
          elsif Max_Size and then Is_Unconstrained_Array (GT) then
             declare
-               Bound_GT    : constant GL_Type := Dim_Info.Bound_Sub_GT;
-               Bound_Limit : constant Node_Id :=
+               Bound_GT    : constant GL_Type      := Dim_Info.Bound_Sub_GT;
+               Bound_Limit : constant N_Subexpr_Id :=
                  (if   Is_Low then Type_Low_Bound (Bound_GT)
                   else Type_High_Bound (Bound_GT));
 
@@ -605,7 +605,7 @@ package body GNATLLVM.Arrays is
      renames LLVM_Size.Bounds_To_Length;
 
    function Emit_Expr_For_Minmax
-     (N : Node_Id; Is_Low : Boolean) return GL_Value
+     (N : N_Subexpr_Id; Is_Low : Boolean) return GL_Value
      renames LLVM_Size.Emit_Expr_For_Minmax;
 
    function Get_Array_Bound
@@ -880,7 +880,7 @@ package body GNATLLVM.Arrays is
    -- Contains_Discriminant --
    ---------------------------
 
-   function Contains_Discriminant (N : Node_Id) return Boolean is
+   function Contains_Discriminant (N : N_Subexpr_Id) return Boolean is
 
       function See_If_Discriminant (N : Node_Id) return Traverse_Result;
       --  Scan a single node looking for a discriminant
@@ -956,10 +956,10 @@ package body GNATLLVM.Arrays is
 
       for Dim in 0 .. Number_Dimensions (GT) - 1 loop
          declare
-            Dim_Info  : constant Index_Bounds :=
+            Dim_Info  : constant Index_Bounds     :=
               Array_Info.Table (Get_Array_Info (Full_Etype (GT)) + Dim);
-            Low_Expr  : constant Node_Id      := Dim_Info.Low.Value;
-            High_Expr : constant Node_Id      := Dim_Info.High.Value;
+            Low_Expr  : constant Opt_N_Subexpr_Id := Dim_Info.Low.Value;
+            High_Expr : constant Opt_N_Subexpr_Id := Dim_Info.High.Value;
          begin
             if (Present (Low_Expr) and then Contains_Discriminant (Low_Expr))
               or else (Present (High_Expr)
@@ -977,10 +977,10 @@ package body GNATLLVM.Arrays is
    -- Emit_Single_Aggregate --
    ---------------------------
 
-   procedure Emit_Single_Aggregate (LValue : GL_Value; N : Node_Id) is
+   procedure Emit_Single_Aggregate (LValue : GL_Value; N : N_Subexpr_Id) is
       GT    : constant Array_GL_Type := Primitive_GL_Type (Full_GL_Type (N));
       Size  : constant GL_Value      := To_Bytes (Get_Type_Size (GT));
-      E     : Node_Id                :=
+      E     : N_Subexpr_Id           :=
         Expression (First (Component_Associations (N)));
       Value : GL_Value;
 
@@ -1025,7 +1025,7 @@ package body GNATLLVM.Arrays is
    -----------------------------
 
    function Emit_Constant_Aggregate
-     (N          : Node_Id;
+     (N         : N_Subexpr_Id;
       Comp_Type : GL_Type;
       GT        : Array_GL_Type;
       Dims_Left : Nat) return GL_Value
@@ -1034,7 +1034,7 @@ package body GNATLLVM.Arrays is
       Idx     : Int                    := 1;
       Vals    : Access_GL_Value_Array  :=
         new GL_Value_Array (1 .. List_Length (Expressions (N)));
-      Expr    : Node_Id;
+      Expr    : Opt_N_Subexpr_Id;
       Result  : GL_Value;
       procedure Free is new Ada.Unchecked_Deallocation (GL_Value_Array,
                                                         Access_GL_Value_Array);
@@ -1079,7 +1079,7 @@ package body GNATLLVM.Arrays is
    --------------------------
 
    function Emit_Array_Aggregate
-     (N              : Node_Id;
+     (N              : N_Subexpr_Id;
       Dims_Left      : Pos;
       Indices_So_Far : GL_Value_Array;
       Value_So_Far   : GL_Value) return GL_Value
@@ -1088,7 +1088,7 @@ package body GNATLLVM.Arrays is
         Primitive_GL_Type (Full_GL_Type (N));
       Comp_GT   : constant GL_Type       := Full_Component_GL_Type (GT);
       Cur_Index : GL_Value               := Size_Const_Null;
-      Expr      : Node_Id;
+      Expr      : Opt_N_Subexpr_Id;
 
    begin
       --  The back-end supports exactly two types of array aggregates.
@@ -1314,7 +1314,7 @@ package body GNATLLVM.Arrays is
         (if Fortran then N_Dim else 1);
       Dim        : Nat                           := 0;
       Idxs       : GL_Value_Array (1 .. N_Dim);
-      N          : Node_Id;
+      N          : Opt_N_Subexpr_Id;
 
    begin
       N := First (Indices);

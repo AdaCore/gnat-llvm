@@ -26,7 +26,7 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package GNATLLVM.Arrays is
 
-   function Contains_Discriminant (N : Node_Id) return Boolean;
+   function Contains_Discriminant (N : N_Subexpr_Id) return Boolean;
    --  Return True if N contains a reference to a discriminant
 
    function Is_Self_Referential_Type (GT : GL_Type) return Boolean
@@ -72,7 +72,7 @@ package GNATLLVM.Arrays is
 
    function Get_Dim_Range (N : Node_Id) return Node_Id
      with Pre  => Present (N), Post => Present (Get_Dim_Range'Result);
-   --  Return the N_Range for an array type
+   --  Return the a node giving the range of an array type
 
    function Get_Array_Bound
      (GT       : Array_Or_PAT_GL_Type;
@@ -221,21 +221,21 @@ package GNATLLVM.Arrays is
           Post => Data_Index_In_BD_Type'Result in 1 | 2;
    --  Get the index of the data in a Bounds and Data value
 
-   procedure Emit_Single_Aggregate (LValue : GL_Value; N : Node_Id)
+   procedure Emit_Single_Aggregate (LValue : GL_Value; N : N_Subexpr_Id)
      with Pre => Present (LValue)
                  and then Nkind (N) in N_Aggregate | N_Extension_Aggregate
                  and then Is_Single_Aggregate (N);
    --  Use memset to do an aggregate assignment from N to LValue
 
    function Emit_Array_Aggregate
-     (N              : Node_Id;
+     (N              : N_Subexpr_Id;
       Dims_Left      : Pos;
       Indices_So_Far : GL_Value_Array;
       Value_So_Far   : GL_Value) return GL_Value
      with Pre  => Nkind (N) in N_Aggregate | N_Extension_Aggregate
                   and then Is_Array_Type (Full_Etype (N)),
                Post => Present (Emit_Array_Aggregate'Result);
-   --  Emit an N_Aggregate which is an array, returning the GL_Value that
+   --  Emit an aggregate which is an array, returning the GL_Value that
    --  contains the data.  Value_So_Far, if Present, is any of the array
    --  whose value we've accumulated so far.  Dims_Left says how many
    --  dimensions of the outer array type we still can recurse into.
@@ -298,7 +298,7 @@ private
 
    type One_Bound is record
       Cnst    : Uint;
-      Value   : Node_Id;
+      Value   : Opt_N_Subexpr_Id;
    end record
      --  Only one item can be specified.  We might think that exactly one
      --  item must be specified, but that's not the case for an

@@ -80,7 +80,7 @@ package GNATLLVM.Records is
    --  the GNAT type.
 
    function Emit_Record_Aggregate
-     (N : Node_Id; Result_So_Far : GL_Value) return GL_Value
+     (N : N_Subexpr_Id; Result_So_Far : GL_Value) return GL_Value
      with Pre  => Nkind (N) in N_Aggregate | N_Extension_Aggregate
                   and then Is_Record_Type (Full_Etype (N)),
           Post => Present (Emit_Record_Aggregate'Result);
@@ -392,7 +392,7 @@ private
       Variant_List     : List_Id;
       --  List in GNAT tree of the variants for this fragment
 
-      Variant_Expr     : Node_Id;
+      Variant_Expr     : Opt_N_Subexpr_Id;
       --  Expression to evaluate to determine which variant is present
 
       Variants         : Record_Info_Id_Array_Access;
@@ -484,8 +484,7 @@ private
       Table_Name           => "Field_Info_Table");
 
    function Get_Discriminant_Constraint
-     (TE : E_Record_Subtype_Id; E : E_Discriminant_Id) return Node_Id
-     with Post => Present (Get_Discriminant_Constraint'Result);
+     (TE : E_Record_Subtype_Id; E : E_Discriminant_Id) return N_Subexpr_Id;
    --  Get the expression that constrains the discriminant E of type TE
 
    function Field_Position

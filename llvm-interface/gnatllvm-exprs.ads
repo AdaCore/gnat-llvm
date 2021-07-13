@@ -24,18 +24,17 @@ package GNATLLVM.Exprs is
    --  This can't be named GNATLLVM.Expressions because it conflicts
    --  with Expressions in Sinfo,
 
-   function Is_Safe_From (LHS : GL_Value; N : Node_Id) return Boolean
-     with Pre => Present (LHS) and then Present (N);
+   function Is_Safe_From (LHS : GL_Value; N : N_Subexpr_Id) return Boolean
+     with Pre => Present (LHS);
    --  True if we know that clobbering LHS won't change the value of N
 
    procedure LHS_And_Component_For_Assignment
-     (N             : Node_Id;
+     (N             : N_Subexpr_Id;
       LHS           : out GL_Value;
       F             : out Opt_Record_Field_Kind_Id;
       Idxs          : out Access_GL_Value_Array;
       For_LHS       : Boolean := False;
-      Only_Bitfield : Boolean := False)
-     with Pre  => Present (N);
+      Only_Bitfield : Boolean := False);
    --  N is an expression that's used in a LHS context, either the LHS side
    --  of an N_Assignment_Statement or an actual corresponding to an Out
    --  (or in Out) parameter.  If N represents an field selection (if
@@ -50,10 +49,8 @@ package GNATLLVM.Exprs is
 
    function Emit_Shift
      (Operation           : Node_Kind;
-      LHS_Node, RHS_Node  : Node_Id) return GL_Value
-     with Pre  => Operation in N_Op_Shift and then Present (LHS_Node)
-                  and then Present (RHS_Node),
-          Post => Present (Emit_Shift'Result);
+      LHS_Node, RHS_Node  : N_Subexpr_Id) return GL_Value
+     with Pre  => Operation in N_Op_Shift, Post => Present (Emit_Shift'Result);
    --  Handle shift and rotate operations
 
    function Emit_Binary_Operation (N : N_Binary_Op_Id) return GL_Value
@@ -64,8 +61,8 @@ package GNATLLVM.Exprs is
      with Post => Present (Emit_Unary_Operation'Result);
    --  Handle unary operations
 
-   function Emit_Literal (N : Node_Id) return GL_Value
-     with Pre => Present (N), Post => Present (Emit_Literal'Result);
+   function Emit_Literal (N : N_Subexpr_Id) return GL_Value
+     with Post => Present (Emit_Literal'Result);
    --  Generate code for a literal
 
    function Emit_Undef (GT : GL_Type) return GL_Value
@@ -82,11 +79,11 @@ package GNATLLVM.Exprs is
 
    procedure Emit_Assignment
      (LValue       : GL_Value;
-      Expr         : Node_Id  := Empty;
-      Value        : GL_Value := No_GL_Value;
-      Forwards_OK  : Boolean  := True;
-      Backwards_OK : Boolean  := True;
-      VFA          : Boolean  := False)
+      Expr         : Opt_N_Subexpr_Id := Empty;
+      Value        : GL_Value         := No_GL_Value;
+      Forwards_OK  : Boolean          := True;
+      Backwards_OK : Boolean          := True;
+      VFA          : Boolean          := False)
      with Pre => Present (LValue)
                  and then (Present (Expr) or else Present (Value));
    --  Copy the value of the expression Expr or Value to LValue

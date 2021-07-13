@@ -135,7 +135,7 @@ package body GNATLLVM.Variables is
    --  Return True if E may have a global name that we need to check for dups
 
    function Variable_GL_Type
-     (E : Exception_Or_Object_Kind_Id; Expr : Node_Id) return GL_Type
+     (E : Exception_Or_Object_Kind_Id; Expr : Opt_N_Subexpr_Id) return GL_Type
      with Post => Present (Variable_GL_Type'Result);
    --  Determine the proper GL_Type to use for E.  If Expr is Present, it's
    --  an initializing expression for E.
@@ -177,25 +177,44 @@ package body GNATLLVM.Variables is
    --  Return True iff Convert_Constant can convert V to GT.  If Not_Symbolic,
    --  the result must not be a symbolic constant
 
+   function Is_Entity_Static_Address
+     (E : Entity_Id; Not_Symbolic : Boolean := False) return Boolean
+     with Pre => Present (E);
+   --  Return True if E represents an address that can computed statically.
+   --  If Not_Symbolic is True, only return if this address is a constant
+   --  integer (rare).
+
    function Is_No_Elab_For_Convert
-     (N              : Node_Id;
+     (N              : N_Subexpr_Id;
       GT             : GL_Type;
       Not_Symbolic   : Boolean := False;
       Restrict_Types : Boolean := False) return Boolean
-     with Pre => Present (N) and then Present (GT);
+     with Pre => Present (GT);
    --  See if can avoid an elaboration procedure when elaborating N and
    --  then converting it to GT.
 
-   function Emit_No_Error (N : Node_Id) return GL_Value
-     with Pre => Present (N), Post => Present (Emit_No_Error'Result);
+   function Is_No_Elab_For_Convert_Entity
+     (E              : Entity_Id;
+      GT             : GL_Type;
+      Not_Symbolic   : Boolean := False;
+      Restrict_Types : Boolean := False) return Boolean
+     with Pre => Present (E) and then Present (GT);
+   --  See if can avoid an elaboration procedure when elaborating E and
+   --  then converting it to GT.
+
+   function Emit_No_Error (N : N_Subexpr_Id) return GL_Value
+     with Post => Present (Emit_No_Error'Result);
    --  Like Emit_Expression, but don't post an error if there's an
    --  overflow.
 
-   function Is_Static_Location (N : Node_Id) return Boolean
-     with Pre => Present (N);
+   function Is_Static_Location (N : N_Subexpr_Id) return Boolean;
    --  Return True if N represent an object with constant address
 
-   function Initialized_Value (E : Entity_Id) return Node_Id;
+   function Is_Entity_Static_Location (E : Entity_Id) return Boolean
+     with Pre => Present (E);
+   --  Return True if E represent an object with constant address
+
+   function Initialized_Value (E : Entity_Id) return Opt_N_Subexpr_Id;
    --  If E is an E_Constant that has an initializing expression, return it
 
    Const_Map : Value_Value_Map_P.Map;
@@ -471,7 +490,7 @@ package body GNATLLVM.Variables is
    -- Emit_No_Error --
    -------------------
 
-   function Emit_No_Error (N : Node_Id) return GL_Value is
+   function Emit_No_Error (N : N_Subexpr_Id) return GL_Value is
       Result : GL_Value;
 
    begin
@@ -485,43 +504,11 @@ package body GNATLLVM.Variables is
    -- Is_Static_Location --
    ------------------------
 
-   function Is_Static_Location (N : Node_Id) return Boolean is
-      Index : Node_Id;
-      Expr  : Node_Id;
-
+   function Is_Static_Location (N : N_Subexpr_Id) return Boolean is
    begin
       case Nkind (N) is
          when N_Identifier | N_Expanded_Name =>
-            return Is_Static_Location (Entity (N));
-
-         when N_Defining_Identifier | N_Defining_Operator_Symbol =>
-
-            --  If this is a deferred constant, look at the full view
-
-            if Ekind (N) = E_Constant and then Present (Full_View (N)) then
-               return Is_Static_Location (Full_View (N));
-
-            --  Likewise for a renamed object
-
-            elsif Present (Renamed_Object (N)) then
-               return Is_Static_Location (Renamed_Object (N));
-
-            --  If we have an address clause, see if the address is static
-
-            elsif Present (Address_Clause (N)) then
-               return Is_Static_Address (Expression (Address_Clause (N)));
-            end if;
-
-            --  Otherwise, this is at a static location if it's a
-            --  fixed-length object allocated statically.
-
-            return Ekind (N) /= E_Enumeration_Literal
-              and then (Ekind (Full_Etype (N)) = E_Void
-                          or else not Is_Nonnative_Type (Full_GL_Type (N)))
-              and then (Library_Level or else In_Elab_Proc
-                          or else Is_Statically_Allocated (N)
-                          or else Enclosing_Dynamic_Scope (N) =
-                                    Standard_Standard);
+            return Is_Entity_Static_Location (Entity (N));
 
          when N_Selected_Component =>
             return Is_Static_Location (Prefix (N))
@@ -542,6 +529,8 @@ package body GNATLLVM.Variables is
 
             declare
                GT : constant GL_Type := Full_GL_Type (Prefix (N));
+               Index : Node_Id;
+               Expr  : Opt_N_Subexpr_Id;
 
             begin
                --  Not static if prefix not static, a lower bound isn't
@@ -601,12 +590,50 @@ package body GNATLLVM.Variables is
       end case;
    end Is_Static_Location;
 
+   -------------------------------
+   -- Is_Entity_Static_Location --
+   -------------------------------
+
+   function Is_Entity_Static_Location (E : Entity_Id) return Boolean is
+   begin
+      if Ekind (E) = E_Constant and then Present (Full_View (E)) then
+         return Is_Entity_Static_Location (Full_View (E));
+
+      --  Likewise for a renamed object
+
+      elsif Present (Renamed_Object (E))
+        and then Is_Entity (Renamed_Object (E))
+      then
+         return Is_Entity_Static_Location (Renamed_Object (E));
+      elsif Present (Renamed_Object (E))
+        and then not Is_Entity (Renamed_Object (E))
+      then
+         return Is_Static_Location (Renamed_Object (E));
+
+      --  If we have an address clause, see if the address is static
+
+      elsif Present (Address_Clause (E)) then
+         return Is_Static_Address (Expression (Address_Clause (E)));
+      end if;
+
+      --  Otherwise, this is at a static location if it's a fixed-length
+      --  object allocated statically.
+
+      return Ekind (E) /= E_Enumeration_Literal
+        and then (Ekind (Full_Etype (E)) = E_Void
+                    or else not Is_Nonnative_Type (Full_GL_Type (E)))
+        and then (Library_Level or else In_Elab_Proc
+                    or else Is_Statically_Allocated (E)
+                    or else Enclosing_Dynamic_Scope (E) = Standard_Standard);
+
+   end Is_Entity_Static_Location;
+
    -----------------------
    -- Is_Static_Address --
    -----------------------
 
    function Is_Static_Address
-     (N : Node_Id; Not_Symbolic : Boolean := False) return Boolean is
+     (N : N_Subexpr_Id; Not_Symbolic : Boolean := False) return Boolean is
    begin
       case Nkind (N) is
          when N_Unchecked_Type_Conversion
@@ -623,16 +650,8 @@ package body GNATLLVM.Variables is
               and then Is_Static_Location (Prefix (N));
 
          when N_Identifier | N_Expanded_Name =>
-            return not Not_Symbolic and then Is_Static_Address (Entity (N));
-
-         when N_Defining_Identifier =>
-            declare
-               CV : constant Node_Id := Initialized_Value (N);
-
-            begin
-               return Present (CV)
-                 and then Is_Static_Address (CV, Not_Symbolic);
-            end;
+            return not Not_Symbolic
+              and then Is_Entity_Static_Address (Entity (N));
 
          when others =>
             return Compile_Time_Known_Value (N)
@@ -642,16 +661,30 @@ package body GNATLLVM.Variables is
       end case;
    end Is_Static_Address;
 
+   ------------------------------
+   -- Is_Entity_Static_Address --
+   ------------------------------
+
+   function Is_Entity_Static_Address
+     (E : Entity_Id; Not_Symbolic : Boolean := False) return Boolean
+   is
+      CV : constant Opt_N_Subexpr_Id := Initialized_Value (E);
+   begin
+      return Present (CV)
+        and then Is_Static_Address (CV, Not_Symbolic);
+
+   end Is_Entity_Static_Address;
+
    -----------------------
    -- Initialized_Value --
    -----------------------
 
-   function Initialized_Value (E : Entity_Id) return Node_Id is
+   function Initialized_Value (E : Entity_Id) return Opt_N_Subexpr_Id is
       Full_E : constant Entity_Id :=
         (if   Ekind (E) = E_Constant and then Present (Full_View (E))
          then Full_View (E) else E);
       Decl   : constant Node_Id   := Declaration_Node (Full_E);
-      CV     : Node_Id;
+      CV     : Opt_N_Subexpr_Id;
 
    begin
       --  First check for cases where we don't have or can't use the
@@ -712,7 +745,7 @@ package body GNATLLVM.Variables is
    -----------------------
 
    function Is_No_Elab_Needed
-     (N              : Node_Id;
+     (N              : N_Subexpr_Id;
       Not_Symbolic   : Boolean := False;
       Restrict_Types : Boolean := False) return Boolean
    is
@@ -938,38 +971,8 @@ package body GNATLLVM.Variables is
 
          when N_Identifier | N_Expanded_Name =>
 
-            return Is_No_Elab_For_Convert (Entity (N), GT, Not_Symbolic,
-                                           Restrict_Types);
-
-         --  If Emit_Identifier would walk into a constant value, we do as well
-
-         when N_Defining_Identifier =>
-
-            if Ekind (N) = E_Enumeration_Literal then
-               return True;
-            end if;
-
-            declare
-               CV : constant Node_Id  := Initialized_Value (N);
-               V  : constant GL_Value := Get_Value (N);
-
-            begin
-               if Present (V) and then Is_Data (V)
-                 and then Can_Convert_Constant (V, GT, Not_Symbolic)
-               then
-                  return True;
-
-               elsif Ekind (N) = E_Constant and then Present (Full_View (N))
-                 and then No (Address_Clause (N))
-               then
-                  return Is_No_Elab_For_Convert (Full_View (N), GT,
-                                                 Not_Symbolic, Restrict_Types);
-               else
-                  return Ekind (N) = E_Constant and then Present (CV)
-                    and then Is_No_Elab_For_Convert (CV, GT, Not_Symbolic,
-                                                     Restrict_Types);
-               end if;
-            end;
+            return Is_No_Elab_For_Convert_Entity (Entity (N), GT, Not_Symbolic,
+                                                  Restrict_Types);
 
          when N_Selected_Component =>
 
@@ -1013,12 +1016,47 @@ package body GNATLLVM.Variables is
 
    end Is_No_Elab_Needed;
 
+   ----------------------------------
+   -- Is_No_Elab_Needed_For_Entity --
+   ----------------------------------
+
+   function Is_No_Elab_Needed_For_Entity
+     (E              : Entity_Id;
+      Not_Symbolic   : Boolean := False;
+      Restrict_Types : Boolean := False) return Boolean
+   is
+      GT : constant GL_Type := Full_GL_Type (E);
+      CV : constant Opt_N_Subexpr_Id  := Initialized_Value (E);
+      V  : constant GL_Value          := Get_Value (E);
+
+   begin
+      if Ekind (E) = E_Enumeration_Literal then
+         return True;
+
+      elsif Present (V) and then Is_Data (V)
+        and then Can_Convert_Constant (V, GT, Not_Symbolic)
+      then
+         return True;
+
+      elsif Ekind (E) = E_Constant and then Present (Full_View (E))
+        and then No (Address_Clause (E))
+      then
+         return Is_No_Elab_For_Convert_Entity (Full_View (E), GT,
+                                               Not_Symbolic, Restrict_Types);
+      else
+         return Ekind (E) = E_Constant and then Present (CV)
+           and then Is_No_Elab_For_Convert (CV, GT, Not_Symbolic,
+                                            Restrict_Types);
+      end if;
+
+   end Is_No_Elab_Needed_For_Entity;
+
    ----------------------------
    -- Is_No_Elab_For_Convert --
    ---------------------------
 
    function Is_No_Elab_For_Convert
-     (N              : Node_Id;
+     (N              : N_Subexpr_Id;
       GT             : GL_Type;
       Not_Symbolic   : Boolean := False;
       Restrict_Types : Boolean := False) return Boolean is
@@ -1070,6 +1108,64 @@ package body GNATLLVM.Variables is
       end if;
 
    end Is_No_Elab_For_Convert;
+
+   -----------------------------------
+   -- Is_No_Elab_For_Convert_Entity --
+   -----------------------------------
+
+   function Is_No_Elab_For_Convert_Entity
+     (E              : Entity_Id;
+      GT             : GL_Type;
+      Not_Symbolic   : Boolean := False;
+      Restrict_Types : Boolean := False) return Boolean is
+   begin
+      --  If we're converting to a non-native type, this always needs
+      --  elaboration code.
+
+      if Is_Nonnative_Type (GT) then
+         return False;
+
+      --  We always require the input to not need elaboration, but we may
+      --  have further restrictions.
+
+      else
+         declare
+            In_GT  : constant GL_Type := Full_GL_Type (E);
+            Our_NS : Boolean          := Not_Symbolic;
+            Our_RT : Boolean          := Restrict_Types;
+
+         begin
+            --  If both types are elementary, the only restriction we may
+            --  have is that if we're converting to a scalar type other
+            --  than Size_Type, we can't have a relocatable expression.
+
+            if Is_Elementary_Type (In_GT) and then Is_Elementary_Type (GT) then
+               if Is_Scalar_Type (GT)
+                 and then Type_Of (GT) /= Size_T
+                 and then Type_Of (GT) /= Type_Of (In_GT)
+               then
+                  Our_NS := True;
+               end if;
+
+            --  Otherwise, we'll be using Convert_Aggregate_Constant, so
+            --  both restrictions apply unless the layouts are the same.
+            --  Also, we can't do this at all for types that are too large.
+
+            elsif not Is_Layout_Identical (In_GT, GT) then
+               Our_NS := True;
+               Our_RT := True;
+
+               if Get_Type_Size (GT) >= To_Bits (1024) then
+                  return False;
+               end if;
+            end if;
+
+            return Is_No_Elab_Needed_For_Entity (E, Not_Symbolic => Our_NS,
+                                                 Restrict_Types  => Our_RT);
+         end;
+      end if;
+
+   end Is_No_Elab_For_Convert_Entity;
 
    -------------------------
    -- Alloca_Smaller_Than --
@@ -1322,7 +1418,7 @@ package body GNATLLVM.Variables is
    -----------------------
 
    function Variable_GL_Type
-     (E : Exception_Or_Object_Kind_Id; Expr : Node_Id) return GL_Type
+     (E : Exception_Or_Object_Kind_Id; Expr : Opt_N_Subexpr_Id) return GL_Type
    is
       TE          : constant Void_Or_Type_Kind_Id :=
         (if   Ekind (Etype (E)) = E_Class_Wide_Type and then Present (Expr)
@@ -1473,20 +1569,23 @@ package body GNATLLVM.Variables is
       GT         : GL_Type;
       Definition : Boolean) return GL_Value
    is
-      LLVM_Var        : GL_Value         := Get_Dup_Global_Value (E);
-      Has_Addr        : constant Boolean := Present (Address_Clause (E));
-      Addr_Expr       : constant Node_Id :=
+      LLVM_Var        : GL_Value                  := Get_Dup_Global_Value (E);
+      Has_Addr        : constant Boolean          :=
+        Present (Address_Clause (E));
+      Addr_Expr       : constant Opt_N_Subexpr_Id :=
         (if Has_Addr then Expression (Address_Clause (E)) else Empty);
-      Has_Static_Addr : constant Boolean   :=
+      Has_Static_Addr : constant Boolean          :=
         Has_Addr and then Is_Static_Address (Addr_Expr);
-      Nonnative       : constant Boolean := Is_Nonnative_Type (GT);
-      Needs_Alloc     : constant Boolean := not Has_Addr and then Nonnative;
-      Is_Ref          : constant Boolean :=
+      Nonnative       : constant Boolean          := Is_Nonnative_Type (GT);
+      Needs_Alloc     : constant Boolean          :=
+        not Has_Addr and then Nonnative;
+      Is_Ref          : constant Boolean          :=
         (Has_Addr and then not Has_Static_Addr) or else Needs_Alloc
           or else (Present (Renamed_Object (E))
                      and then Is_Name (Renamed_Object (E)));
-      Is_Volatile     : constant Boolean := Is_Volatile_Entity (E);
-      Linker_Alias    : constant Node_Id :=
+      Is_Volatile     : constant Boolean          := Is_Volatile_Entity (E);
+      Renamed         : constant Node_Id          := Renamed_Object (E);
+      Linker_Alias    : constant Opt_N_Pragma_Id  :=
         Get_Pragma (E, Pragma_Linker_Alias);
 
    begin
@@ -1513,16 +1612,17 @@ package body GNATLLVM.Variables is
 
       --  Otherwise, see if this is a simple renaming
 
-      elsif Present (Renamed_Object (E))
-        and then Is_Static_Location (Renamed_Object (E))
+      elsif Present (Renamed) and then Is_Entity (Renamed)
+        and then Is_Entity_Static_Location (Renamed)
       then
-         --  ??? This may be wrong because it calls Emit_LValue on
-         --  an N_Defining_Identifier.
+         LLVM_Var := Emit_Entity (Renamed_Object (E));
+      elsif Present (Renamed) and then not Is_Entity (Renamed)
+        and then Is_Static_Location (Renamed)
+      then
+         LLVM_Var := Emit_Safe_LValue (Renamed_Object (E));
 
-         LLVM_Var := Emit_LValue (Renamed_Object (E));
-
-         --  Otherwise, if this is a linker alias and we're defining this
-         --  variable, set that up if we find a matching entity.
+      --  Otherwise, if this is a linker alias and we're defining this
+      --  variable, set that up if we find a matching entity.
 
       elsif Present (Linker_Alias) and then Definition and then not Is_Ref then
          declare
@@ -2268,24 +2368,23 @@ package body GNATLLVM.Variables is
 
    end Emit_Renaming_Declaration;
 
-   ---------------------
-   -- Emit_Identifier --
-   ---------------------
+   -----------------
+   -- Emit_Entity --
+   -----------------
 
-   function Emit_Identifier
-     (N : Node_Id; Prefer_LHS : Boolean := False) return GL_Value
+   function Emit_Entity
+     (E          : Entity_Id;
+      N          : Opt_N_Has_Entity_Id := Empty;
+      Prefer_LHS : Boolean             := False) return GL_Value
    is
-      GT        : constant GL_Type   := Full_GL_Type (N);
-      Direct_E  : constant Entity_Id :=
-        (if Nkind (N) in N_Entity then N else Entity (N));
-      E         : constant Entity_Id :=
-        (if Ekind (Direct_E) = E_Constant
-            and then Present (Full_View (Direct_E))
-            and then No (Address_Clause (Direct_E))
-         then Full_View (Direct_E) else Direct_E);
-      Expr      : constant Node_Id   := Initialized_Value          (E);
-      V_Act     : constant GL_Value  := Get_From_Activation_Record (E);
-      V         : GL_Value           := Get_Value                  (E);
+      GT        : constant GL_Type   := Full_GL_Type (E);
+      Full_E    : constant Entity_Id :=
+        (if   Ekind (E) = E_Constant and then Present (Full_View (E))
+              and then No (Address_Clause (E))
+         then Full_View (E) else E);
+      Expr      : constant Node_Id   := Initialized_Value          (Full_E);
+      V_Act     : constant GL_Value  := Get_From_Activation_Record (Full_E);
+      V         : GL_Value           := Get_Value                  (Full_E);
 
    begin
       --  See if this is an entity that's present in our
@@ -2312,7 +2411,7 @@ package body GNATLLVM.Variables is
 
       --  Otherwise, see if we have any special cases
 
-      case Ekind (E) is
+      case Ekind (Full_E) is
 
          when E_Enumeration_Literal =>
             --  N_Defining_Identifier nodes for enumeration literals are not
@@ -2328,34 +2427,35 @@ package body GNATLLVM.Variables is
                              Get_Label_BB (E, For_Address => True));
 
          when Subprogram_Kind =>
-            return Emit_Subprogram_Identifier (E, N, GT);
+            return Emit_Subprogram_Identifier (Full_E, N, GT);
 
          when E_Discriminant =>
 
             --  If this is a bare discriminant, it's a reference to the
             --  discriminant of some record.
 
-            return Use_Discriminant_For_Bound (E);
+            return Use_Discriminant_For_Bound (Full_E);
 
          when others =>
 
             --  If this has an address expression that's statically
             --  elaborable, dereference that.
 
-            if No (V) and then Present (Address_Clause (E))
-              and then Is_No_Elab_Needed (Expression (Address_Clause (E)))
+            if No (V) and then Present (Address_Clause (Full_E))
+              and then Is_No_Elab_Needed (Expression (Address_Clause (Full_E)))
             then
                V := Int_To_Ref (Emit_Expression
-                                  (Expression (Address_Clause (E))),
+                                  (Expression (Address_Clause (Full_E))),
                                 GT);
 
             --  Otherwise, if we haven't seen this variable and it's
             --  a top level, make a global for it.
 
             elsif No (V)
-              and then Enclosing_Dynamic_Scope (E) = Standard_Standard
+              and then Enclosing_Dynamic_Scope (Full_E) = Standard_Standard
             then
-               V := Make_Global_Variable (E, Variable_GL_Type (E, Empty),
+               V := Make_Global_Variable (Full_E,
+                                          Variable_GL_Type (Full_E, Empty),
                                           False);
 
             --  If we still have nothing, but are just elaboration decls,
@@ -2388,6 +2488,6 @@ package body GNATLLVM.Variables is
             return (if   Is_Double_Reference (V) then Get (V, Any_Reference)
                     else V);
       end case;
-   end Emit_Identifier;
+   end Emit_Entity;
 
 end GNATLLVM.Variables;

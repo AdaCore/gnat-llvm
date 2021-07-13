@@ -151,7 +151,7 @@ package body GNATLLVM.Utils is
    -- Get_Uint_Value --
    --------------------
 
-   function Get_Uint_Value (N : Node_Id) return Uint is
+   function Get_Uint_Value (N : N_Subexpr_Id) return Uint is
       E : Entity_Id;
 
    begin
@@ -245,7 +245,7 @@ package body GNATLLVM.Utils is
    -- Has_Full_Access --
    ---------------------
 
-   function Has_Full_Access (N : Node_Id) return Boolean is
+   function Has_Full_Access (N : N_Subexpr_Id) return Boolean is
       E : Entity_Id;
 
    begin

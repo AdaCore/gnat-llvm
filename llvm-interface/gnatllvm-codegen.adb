@@ -419,7 +419,7 @@ package body GNATLLVM.Codegen is
    -- Generate_Code --
    -------------------
 
-   procedure Generate_Code (GNAT_Root : Node_Id) is
+   procedure Generate_Code (GNAT_Root : N_Compilation_Unit_Id) is
       TT_First : constant Integer  := Target_Triple'First;
       Verified : Boolean           := True;
       Err_Msg  : aliased Ptr_Err_Msg_Type;

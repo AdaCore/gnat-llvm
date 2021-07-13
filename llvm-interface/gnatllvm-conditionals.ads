@@ -24,21 +24,21 @@ with GNATLLVM.Types;       use GNATLLVM.Types;
 package GNATLLVM.Conditionals is
 
    function Build_Short_Circuit_Op
-     (Left, Right : Node_Id; Op : Node_Kind) return GL_Value
+     (Left, Right : N_Subexpr_Id; Op : Node_Kind) return GL_Value
      with Pre  => Present (Left) and then Present (Right)
                   and then (Op in N_Op_Boolean | N_Short_Circuit),
           Post => Present (Build_Short_Circuit_Op'Result);
    --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
 
    function Emit_Comparison
-     (Kind : Node_Kind; LHS, RHS : Node_Id) return GL_Value
+     (Kind : Node_Kind; LHS, RHS : N_Subexpr_Id) return GL_Value
      with Pre  => Present (LHS) and then Present (RHS)
                   and then Kind in N_Op_Compare,
           Post => Present (Emit_Comparison'Result);
    --  Generate a result which is a comparison of two expressions
 
    function Emit_And_Or_Xor
-     (Kind : Node_Kind; LHS_Node, RHS_Node : Node_Id) return GL_Value
+     (Kind : Node_Kind; LHS_Node, RHS_Node : N_Subexpr_Id) return GL_Value
      with Pre  => Present (LHS_Node) and then Present (RHS_Node)
                   and then Kind in N_Op_And | N_Op_Or | N_Op_Xor,
           Post => Present (Emit_And_Or_Xor'Result);
@@ -46,7 +46,7 @@ package GNATLLVM.Conditionals is
 
    procedure Emit_Comparison_And_Branch
      (Kind              : Node_Kind;
-      LHS, RHS          : Node_Id;
+      LHS, RHS          : N_Subexpr_Id;
       BB_True, BB_False : Basic_Block_T)
      with Pre => Present (LHS) and then Present (RHS)
                  and then Present (BB_True) and then Present (BB_False)
@@ -68,12 +68,12 @@ package GNATLLVM.Conditionals is
    procedure Emit_If (N : N_If_Statement_Id);
    --  Helper for Emit: handle if statements
 
-   function Is_Simple_Conditional (N : Node_Id) return Boolean
+   function Is_Simple_Conditional (N : N_Subexpr_Id) return Boolean
      with Pre => Present (N);
    --  Return True if N is a simple conditional expression, meaning no
    --  comparisons of composite types.
 
-   procedure Emit_If_Cond (N : Node_Id; BB_True, BB_False : Basic_Block_T)
+   procedure Emit_If_Cond (N : N_Subexpr_Id; BB_True, BB_False : Basic_Block_T)
      with Pre => Present (N)
                  and then Present (BB_True) and then Present (BB_False);
    --  Helper for Emit_If to generate branch to BB_True or BB_False
@@ -113,7 +113,7 @@ package GNATLLVM.Conditionals is
    --  Emit code to evaluate both expressions. If Compute_Max, return the
    --  maximum value and return the minimum otherwise.
 
-   function Safe_For_Short_Circuit (N : Node_Id) return Boolean
+   function Safe_For_Short_Circuit (N : N_Subexpr_Id) return Boolean
      with Pre => Present (N);
    --  True iff N is an expression for which we can safely convert a
    --  short-circuit operation to a non-short-circuit and vice versa.

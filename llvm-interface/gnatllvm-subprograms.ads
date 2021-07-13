@@ -73,12 +73,14 @@ package GNATLLVM.Subprograms is
    --  that needs an activation record.
 
    function Emit_Subprogram_Identifier
-     (E : Subprogram_Kind_Id; N : Node_Id; GT : GL_Type) return GL_Value
-     with Pre  => Present (GT)
-                  and then (N = E or else Nkind (N) in N_Has_Entity),
+     (E  : Subprogram_Kind_Id;
+      N  : Opt_N_Has_Entity_Id;
+      GT : GL_Type) return GL_Value
+     with Pre  => Present (GT),
           Post => Present (Emit_Subprogram_Identifier'Result);
-   --  Emit the value (creating the subprogram if needed) of the N_Identifier
-   --  or similar at N.  The entity if E and its type is TE.
+   --  Emit the value (creating the subprogram if needed) of E whose
+   --  type is TE.  N, if Present, is the N_Identifier showing how this
+   --  was used.
 
    function Emit_Call
      (N : N_Subprogram_Call_Id; LHS : GL_Value := No_GL_Value) return GL_Value;
@@ -111,7 +113,10 @@ package GNATLLVM.Subprograms is
    --  the elab proc for the body.
 
    procedure Emit_Elab_Proc
-     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; For_Body : Boolean := False)
+     (N        : Node_Id;
+      Stmts    : Node_Id;
+      CU       : N_Compilation_Unit_Id;
+      For_Body : Boolean := False)
      with Pre => Library_Level
                  and then Nkind (N) in N_Package_Specification | N_Package_Body
                  and then Nkind (CU) = N_Compilation_Unit;
@@ -230,8 +235,8 @@ package GNATLLVM.Subprograms is
    function Create_Subprogram (E : Subprogram_Kind_Id) return GL_Value;
    --  Create and save an LLVM object for E, a subprogram
 
-   function Emit_Subprogram_Decl (N : Node_Id;
-      Frozen : Boolean := True) return GL_Value
+   function Emit_Subprogram_Decl
+     (N : Node_Id; Frozen : Boolean := True) return GL_Value
      with Pre => Present (N);
    --  Compile a subprogram declaration, creating the subprogram if not
    --  already done.  Return the subprogram value.
@@ -250,9 +255,9 @@ package GNATLLVM.Subprograms is
      with Pre => No (Proc) or else Ekind (Proc) in E_Procedure | E_Function;
    --  If Proc needs a static link, add it to the end of Args
 
-   function Subp_Ptr (N : Node_Id) return GL_Value
-     with Pre  => Present (N), Post => Present (Subp_Ptr'Result), Inline;
-   --  Return the subprogram pointer associated with Node
+   function Subp_Ptr (N : N_Subexpr_Id) return GL_Value
+     with Post => Present (Subp_Ptr'Result), Inline;
+   --  Return the subprogram pointer associated with N
 
    procedure Enter_Subp (Func : GL_Value)
      with Pre  => Present (Func) and then Library_Level,

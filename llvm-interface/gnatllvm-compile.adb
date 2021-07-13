@@ -55,11 +55,11 @@ package body GNATLLVM.Compile is
    --  Generate code for a loop
 
    function Emit_Internal
-     (N          : Node_Id;
+     (N          : N_Subexpr_Id;
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False;
       Prefer_LHS : Boolean  := False) return GL_Value
-     with Pre => Present (N), Post => Present (Emit_Internal'Result);
+     with Post => Present (Emit_Internal'Result);
    --  Same as Emit, but push result into LValue list
 
    Suppress_Overflow_Depth : Int := 0;
@@ -366,7 +366,8 @@ package body GNATLLVM.Compile is
             end if;
 
             declare
-               Stmts : constant Node_Id := Handled_Statement_Sequence (N);
+               Stmts : constant Opt_N_Handled_Sequence_Of_Statements_Id :=
+                 Handled_Statement_Sequence (N);
 
             begin
                --  If this is the uppermost compilation unit, show any
@@ -708,7 +709,7 @@ package body GNATLLVM.Compile is
               and then Present (Freeze_Node (Entity (Name (N))))
             then
                declare
-                  Expr : constant Node_Id := Expression (N);
+                  Expr : constant N_Subexpr_Id := Expression (N);
 
                begin
                   if Library_Level and then not Is_Static_Address (Expr) then
@@ -740,7 +741,7 @@ package body GNATLLVM.Compile is
    --------------------
 
    function Emit_Safe_Expr
-     (N : Node_Id; LHS : GL_Value := No_GL_Value) return GL_Value is
+     (N : N_Subexpr_Id; LHS : GL_Value := No_GL_Value) return GL_Value is
    begin
       return V : GL_Value do
          Push_LValue_List;
@@ -756,7 +757,7 @@ package body GNATLLVM.Compile is
    -----------------
 
    function Emit_LValue
-     (N          : Node_Id;
+     (N          : N_Subexpr_Id;
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False) return GL_Value is
    begin
@@ -784,7 +785,7 @@ package body GNATLLVM.Compile is
    ----------------------
 
    function Emit_Safe_LValue
-     (N          : Node_Id;
+     (N          : N_Subexpr_Id;
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False) return GL_Value is
    begin
@@ -802,7 +803,7 @@ package body GNATLLVM.Compile is
    ----------
 
    function Emit
-     (N          : Node_Id;
+     (N          : N_Subexpr_Id;
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False;
       Prefer_LHS : Boolean  := False) return GL_Value
@@ -846,11 +847,12 @@ package body GNATLLVM.Compile is
    -------------------------
 
    function Simple_Value_Action
-     (N : N_Expression_With_Actions_Id; Has_All : out Boolean) return Node_Id
+     (N : N_Expression_With_Actions_Id; Has_All : out Boolean)
+     return N_Subexpr_Id
    is
-      Action : Node_Id := First (Actions (N));
-      Expr   : Node_Id := Expression (N);
-      Freeze : Node_Id := First (Actions (N));
+      Action : Node_Id      := First (Actions (N));
+      Expr   : N_Subexpr_Id := Expression (N);
+      Freeze : Node_Id      := First (Actions (N));
 
    begin
       --  Skip any non-executable nodes
@@ -895,7 +897,7 @@ package body GNATLLVM.Compile is
       --  If we have an N_Explicit_Dereference and Action's expression is
       --  an N_Reference, use the inner expression.
 
-      return Init : Node_Id := Expression (Action) do
+      return Init : N_Subexpr_Id := Expression (Action) do
          if  Has_All and then Nkind (Init) = N_Reference then
             Has_All := False;
             Init    := Prefix (Init);
@@ -909,13 +911,12 @@ package body GNATLLVM.Compile is
    --------------------
 
    function Emit_Internal
-     (N          : Node_Id;
+     (N          : N_Subexpr_Id;
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False;
       Prefer_LHS : Boolean  := False) return GL_Value
    is
       GT     : constant GL_Type := Full_GL_Type (N);
-      Expr   : Node_Id;
       Result : GL_Value;
 
    begin
@@ -966,7 +967,8 @@ package body GNATLLVM.Compile is
 
             declare
                Has_All : Boolean;
-               Expr    : constant Node_Id  := Simple_Value_Action (N, Has_All);
+               Expr    : constant Opt_N_Subexpr_Id :=
+                 Simple_Value_Action (N, Has_All);
 
             begin
                --  If this is just defining the value that is to be its result,
@@ -1017,7 +1019,7 @@ package body GNATLLVM.Compile is
 
          when N_Unchecked_Type_Conversion =>
             declare
-               Expr   : constant Node_Id      := Expression (N);
+               Expr   : constant N_Subexpr_Id := Expression (N);
                BT     : constant Type_Kind_Id := Full_Base_Type (GT);
 
             begin
@@ -1052,7 +1054,7 @@ package body GNATLLVM.Compile is
             | N_Defining_Identifier
             | N_Defining_Operator_Symbol
             =>
-            return Emit_Identifier (N, Prefer_LHS => Prefer_LHS);
+            return Emit_Entity (Entity (N), N, Prefer_LHS => Prefer_LHS);
 
          when N_Function_Call =>
 
@@ -1106,9 +1108,17 @@ package body GNATLLVM.Compile is
             return Result;
 
          when N_Allocator =>
+
+            --  If we're just analying decls, don't go any further since
+            --  Expression may not be set properly.
+
+            if Decls_Only then
+               return Get_Undef (GT);
+            end if;
+
             declare
-               Expr  : constant Node_Id := Expression (N);
-               Value : GL_Value         := No_GL_Value;
+               Expr  : constant N_Subexpr_Id := Expression (N);
+               Value : GL_Value              := No_GL_Value;
                A_GT  : GL_Type;
 
             begin
@@ -1119,10 +1129,7 @@ package body GNATLLVM.Compile is
                --  value for the object.
 
                pragma Assert (not For_LHS);
-
-               if Decls_Only then
-                  return Get_Undef (GT);
-               elsif Is_Entity_Name (Expr) then
+               if Is_Entity_Name (Expr) then
                   A_GT  := Default_GL_Type (Get_Fullest_View (Entity (Expr)));
                   Value := No_GL_Value;
                else
@@ -1210,14 +1217,18 @@ package body GNATLLVM.Compile is
             then
                --  Evaluate any expressions in case they have side-effects
 
-               Expr := First (Expressions (N));
-               while Present (Expr) loop
-                  if not Is_No_Elab_Needed (Expr) then
-                     Discard (Emit (Expr));
-                  end if;
+               declare
+                  Expr : Opt_N_Subexpr_Id := First (Expressions (N));
 
-                  Next (Expr);
-               end loop;
+               begin
+                  while Present (Expr) loop
+                     if not Is_No_Elab_Needed (Expr) then
+                        Discard (Emit (Expr));
+                     end if;
+
+                     Next (Expr);
+                  end loop;
+               end;
 
                return (if   Is_Reference (Result) then Convert_Ref (Result, GT)
                        else Convert (Result, GT));
@@ -1501,7 +1512,6 @@ package body GNATLLVM.Compile is
       --  Otherwise, see what type of declaration this is. Since this isn't
       --  a type, we know there is one.
 
-      pragma Assert (Present (Decl));
       case Nkind (Decl) is
          when N_Object_Declaration | N_Exception_Declaration =>
 
@@ -1549,11 +1559,12 @@ package body GNATLLVM.Compile is
    -------------------------
 
    procedure Emit_Loop_Statement (N : N_Loop_Statement_Id) is
-      Loop_Identifier : constant Opt_E_Loop_Id :=
+      Loop_Identifier : constant Opt_E_Loop_Id             :=
         (if Present (Identifier (N)) then Entity (Identifier (N)) else Empty);
-      Iter_Scheme     : constant Node_Id       := Iteration_Scheme (N);
-      Is_Mere_Loop    : constant Boolean       := No (Iter_Scheme);
-      Is_For_Loop     : constant Boolean       :=
+      Iter_Scheme     : constant Opt_N_Iteration_Scheme_Id :=
+        Iteration_Scheme (N);
+      Is_Mere_Loop    : constant Boolean                   := No (Iter_Scheme);
+      Is_For_Loop     : constant Boolean                   :=
         not Is_Mere_Loop
         and then Present (Loop_Parameter_Specification (Iter_Scheme));
 

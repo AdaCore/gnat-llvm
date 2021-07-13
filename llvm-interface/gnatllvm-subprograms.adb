@@ -137,7 +137,7 @@ package body GNATLLVM.Subprograms is
      with Pre  => Present (GT) and then Present (Fn)
                   and then Present (Static_Link) and then Present (N),
           Post => Present (Make_Trampoline'Result);
-   --  Given the type of a function, a pointer to it, a static link 9and the
+   --  Given the type of a function, a pointer to it, a static link and the
    --  location of the reference, make a trampoline that combines the
    --  static link and function.
 
@@ -146,7 +146,7 @@ package body GNATLLVM.Subprograms is
 
    type Elaboration_Entry is record
       N         : Node_Id;
-      --  Note to elaborate, possibly as an exppression
+      --  Node to elaborate, possibly as an exppression
 
       For_GT    : GL_Type;
       --  If Present, compute N as a value, convert it to this type, and
@@ -164,7 +164,7 @@ package body GNATLLVM.Subprograms is
    --  Table of statements part of the current elaboration procedure
 
    package Nested_Functions is new Table.Table
-     (Table_Component_Type => Node_Id,
+     (Table_Component_Type => N_Subprogram_Body_Id,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 10,
@@ -958,7 +958,7 @@ package body GNATLLVM.Subprograms is
         and then Present (Activation_Record_Component (E))
         and then Present (Activation_Rec_Param)
         and then Get_Value (Enclosing_Subprogram (E)) /= Current_Func
-        and then not Is_No_Elab_Needed (E)
+        and then not Is_No_Elab_Needed_For_Entity (E)
       then
          --  If we've already recorded this in our map, return that
 
@@ -1159,9 +1159,12 @@ package body GNATLLVM.Subprograms is
                   begin
                      for J in 0 .. Number_Dimensions (GT) - 1 loop
                         declare
-                           IGT : constant GL_Type  := Array_Index_GT (GT, J);
-                           LB  : constant GL_Value := Const_Int (IGT, Uint_0);
-                           HB  : constant Node_Id  := Type_High_Bound (IGT);
+                           IGT : constant GL_Type      :=
+                             Array_Index_GT (GT, J);
+                           LB  : constant GL_Value     :=
+                             Const_Int (IGT, Uint_0);
+                           HB  : constant N_Subexpr_Id :=
+                             Type_High_Bound (IGT);
 
                         begin
                            Bound_Val := Insert_Value
@@ -1351,7 +1354,10 @@ package body GNATLLVM.Subprograms is
    --------------------
 
    procedure Emit_Elab_Proc
-     (N : Node_Id; Stmts : Node_Id; CU : Node_Id; For_Body : Boolean := False)
+     (N        : Node_Id;
+      Stmts    : Node_Id;
+      CU       : N_Compilation_Unit_Id;
+      For_Body : Boolean := False)
    is
       Nest_Table_First : constant Nat      := Nested_Functions.Last + 1;
       U                : constant Node_Id  := Defining_Unit_Name (N);
@@ -1534,14 +1540,14 @@ package body GNATLLVM.Subprograms is
    ---------------------------
 
    procedure Emit_Return_Statement (N : N_Simple_Return_Statement_Id) is
-      GT   : constant GL_Type     := Full_GL_Type (Current_Subp);
-      RK   : constant Return_Kind := Get_Return_Kind (Current_Subp);
-      LRK  : constant L_Ret_Kind  := Get_L_Ret_Kind (Current_Subp);
-      Expr : constant Node_Id     := Expression (N);
-      E    : constant Entity_Id   :=
+      GT   : constant GL_Type          := Full_GL_Type (Current_Subp);
+      RK   : constant Return_Kind      := Get_Return_Kind (Current_Subp);
+      LRK  : constant L_Ret_Kind       := Get_L_Ret_Kind (Current_Subp);
+      Expr : constant Opt_N_Subexpr_Id := Expression (N);
+      E    : constant Entity_Id        :=
         (if   Present (Expr) and then Nkind (Expr) = N_Identifier
          then Entity (Expr) else Empty);
-      V    : GL_Value             := No_GL_Value;
+      V    : GL_Value                  := No_GL_Value;
 
    begin
       --  Start by handling our expression, if any
@@ -1727,7 +1733,7 @@ package body GNATLLVM.Subprograms is
    function Call_Alloc
      (Proc : E_Procedure_Id; Args : GL_Value_Array) return GL_Value is
    begin
-      return Call (Emit_Identifier (Proc), Size_GL_Type,
+      return Call (Emit_Entity (Proc), Size_GL_Type,
                    Add_Static_Link (Proc, Args));
    end Call_Alloc;
 
@@ -1737,7 +1743,7 @@ package body GNATLLVM.Subprograms is
 
    procedure Call_Dealloc (Proc : E_Procedure_Id; Args : GL_Value_Array) is
    begin
-      Call (Emit_Identifier (Proc), Add_Static_Link (Proc, Args));
+      Call (Emit_Entity (Proc), Add_Static_Link (Proc, Args));
    end Call_Dealloc;
 
    ---------------------------
@@ -1773,7 +1779,9 @@ package body GNATLLVM.Subprograms is
    --------------------------------
 
    function Emit_Subprogram_Identifier
-     (E : Subprogram_Kind_Id; N : Node_Id; GT : GL_Type) return GL_Value
+     (E  : Subprogram_Kind_Id;
+      N  : Opt_N_Has_Entity_Id;
+      GT : GL_Type) return GL_Value
    is
       V  : GL_Value := Get_Value (E);
 
@@ -1788,7 +1796,7 @@ package body GNATLLVM.Subprograms is
               Pointer_Type (Create_Subprogram_Type (E), 0);
 
          begin
-            V := Emit_Identifier (Alias (E));
+            V := Emit_Entity (Alias (E));
             return (if   Type_Of (V) /= T
                     then Ptr_To_Relationship (V, T, Reference_To_Subprogram)
                     else V);
@@ -1811,14 +1819,14 @@ package body GNATLLVM.Subprograms is
       --  late to make it in Get because it doesn't know what subprogram it
       --  was for.
 
-      if Nkind (Parent (N)) = N_Attribute_Reference then
+      if Present (N) and then  Nkind (Parent (N)) = N_Attribute_Reference then
          declare
-            Ref    : constant Node_Id      := Parent (N);
-            Ref_GT : constant GL_Type      := Full_GL_Type (Ref);
-            S_Link : constant GL_Value     :=
+            Ref    : constant N_Attribute_Reference_Id := Parent (N);
+            Ref_GT : constant GL_Type                  := Full_GL_Type (Ref);
+            S_Link : constant GL_Value                 :=
               (if   Has_Activation_Record (E) then Get_Static_Link (E)
                else Get_Undef (A_Char_GL_Type));
-            Attr   : constant Attribute_Id :=
+            Attr   : constant Attribute_Id             :=
               Get_Attribute_Id (Attribute_Name (Ref));
 
          begin
@@ -1831,7 +1839,7 @@ package body GNATLLVM.Subprograms is
                     or else not Can_Use_Internal_Rep (Ref_GT)
                   then
                      return (if   Has_Activation_Record (E)
-                             then Make_Trampoline (DT, V, S_Link, N)
+                             then Make_Trampoline (DT, V, S_Link, E)
                              else G_Is_Relationship (V, DT, Trampoline));
                   else
                      return Insert_Value
@@ -1843,7 +1851,7 @@ package body GNATLLVM.Subprograms is
                end;
             elsif Attr = Attribute_Address then
                return (if   Has_Activation_Record (E)
-                       then Make_Trampoline (GT, V, S_Link, N) else V);
+                       then Make_Trampoline (GT, V, S_Link, E) else V);
             end if;
          end;
       end if;
@@ -1871,7 +1879,7 @@ package body GNATLLVM.Subprograms is
 
       function Misaligned_Copy_Required
         (V        : GL_Value;
-         Actual   : Node_Id;
+         Actual   : N_Subexpr_Id;
          Formal   : Formal_Kind_Id;
          Bitfield : Boolean) return Boolean
         with Pre => Present (V) and then Present (Param);
@@ -1891,31 +1899,31 @@ package body GNATLLVM.Subprograms is
       type WB_Array     is array (Nat range <>) of WB;
       type Entity_Array is array (Nat range <>) of Opt_Record_Field_Kind_Id;
 
-      Subp             : constant Node_Id     := Name (N);
-      Our_Return_GT    : constant GL_Type     := Full_GL_Type (N);
-      Direct_Call      : constant Boolean     := Is_Entity_Name (Subp);
-      Subp_Typ         : constant Entity_Id   :=
+      Subp             : constant N_Subexpr_Id := Name (N);
+      Our_Return_GT    : constant GL_Type      := Full_GL_Type (N);
+      Direct_Call      : constant Boolean      := Is_Entity_Name (Subp);
+      Subp_Typ         : constant Entity_Id    :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
-      RK               : constant Return_Kind := Get_Return_Kind   (Subp_Typ);
-      LRK              : constant L_Ret_Kind  := Get_L_Ret_Kind    (Subp_Typ);
-      Return_GT        : constant GL_Type     := Full_GL_Type      (Subp_Typ);
-      Orig_Arg_Count   : constant Nat         := Number_In_Params  (Subp_Typ);
-      Out_Arg_Count    : constant Nat         := Number_Out_Params (Subp_Typ);
-      Out_Param        : Opt_Formal_Kind_Id   := First_Out_Param   (Subp_Typ);
-      No_Adjust_LV     : constant Boolean     := Contains_Discriminant (N);
-      In_Idx           : Nat                  := 1;
-      Out_Idx          : Nat                  := 1;
-      Ret_Idx          : Nat                  := 0;
-      Result           : GL_Value             := No_GL_Value;
-      Foreign          : constant Boolean     :=
+      RK               : constant Return_Kind  := Get_Return_Kind   (Subp_Typ);
+      LRK              : constant L_Ret_Kind   := Get_L_Ret_Kind    (Subp_Typ);
+      Return_GT        : constant GL_Type      := Full_GL_Type      (Subp_Typ);
+      Orig_Arg_Count   : constant Nat          := Number_In_Params  (Subp_Typ);
+      Out_Arg_Count    : constant Nat          := Number_Out_Params (Subp_Typ);
+      Out_Param        : Opt_Formal_Kind_Id    := First_Out_Param   (Subp_Typ);
+      No_Adjust_LV     : constant Boolean      := Contains_Discriminant (N);
+      In_Idx           : Nat                   := 1;
+      Out_Idx          : Nat                   := 1;
+      Ret_Idx          : Nat                   := 0;
+      Result           : GL_Value              := No_GL_Value;
+      Foreign          : constant Boolean      :=
         Has_Foreign_Convention (Subp_Typ);
-      Has_S_Link       : constant Boolean     :=
+      Has_S_Link       : constant Boolean      :=
         Has_Activation_Record (Subp_Typ);
-      This_Adds_S_Link : constant Boolean     :=
+      This_Adds_S_Link : constant Boolean      :=
         (not Direct_Call and not Foreign)
           or else (not Has_S_Link and then Force_Activation_Record_Parameter
                      and then not Foreign);
-      Arg_Count        : constant Nat         :=
+      Arg_Count        : constant Nat          :=
         Orig_Arg_Count + (if This_Adds_S_Link then 1 else 0) +
           (if RK = Return_By_Parameter then 1 else 0);
       Args             : GL_Value_Array (1 .. Arg_Count);
@@ -1928,8 +1936,8 @@ package body GNATLLVM.Subprograms is
       Actual_Return    : GL_Value;
       S_Link           : GL_Value;
       LLVM_Func        : GL_Value;
-      Param            : Node_Id;
-      Actual           : Node_Id;
+      Param            : Opt_Formal_Kind_Id;
+      Actual           : Opt_N_Subexpr_Id;
 
       ----------------
       -- Write_Back --
@@ -2000,13 +2008,13 @@ package body GNATLLVM.Subprograms is
 
       function Misaligned_Copy_Required
         (V        : GL_Value;
-         Actual   : Node_Id;
+         Actual   : N_Subexpr_Id;
          Formal   : Formal_Kind_Id;
          Bitfield : Boolean) return Boolean
       is
          GT           : constant GL_Type := Full_GL_Type (Formal);
          Our_Bitfield : Boolean          := Bitfield;
-         N            : Node_Id          := Actual;
+         N            : N_Subexpr_Id     := Actual;
 
       begin
          --  If this is a fat pointer type, we don't need a copy.  Don't
@@ -2370,7 +2378,8 @@ package body GNATLLVM.Subprograms is
    is
       E           : constant Entity_Id := Defining_Entity (N);
       V           : GL_Value           := Get_Value      (E);
-      Addr_Clause : constant Node_Id   := Address_Clause (E);
+      Addr_Clause : constant Opt_N_Attribute_Definition_Clause_Id :=
+        Address_Clause (E);
 
    begin
       --  If we have a freeze node and we're not sure that it's already
@@ -2391,7 +2400,7 @@ package body GNATLLVM.Subprograms is
             Subp_T    : constant Type_T          :=
               Pointer_Type (Create_Subprogram_Type (E), 0);
             GT        : constant GL_Type         := Full_GL_Type (E);
-            Addr_Expr : constant Node_Id         := Expression (Addr_Clause);
+            Addr_Expr : constant N_Subexpr_Id    := Expression (Addr_Clause);
             R         : constant GL_Relationship := Reference_To_Subprogram;
             Addr      : GL_Value                 := Get_Value (Addr_Expr);
 
@@ -2685,7 +2694,7 @@ package body GNATLLVM.Subprograms is
    -- Subp_Ptr --
    --------------
 
-   function Subp_Ptr (N : Node_Id) return GL_Value is
+   function Subp_Ptr (N : N_Subexpr_Id) return GL_Value is
    begin
       if Nkind (N) = N_Null then
          return Const_Null (A_Char_GL_Type);

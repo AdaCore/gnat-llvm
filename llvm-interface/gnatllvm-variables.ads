@@ -100,18 +100,28 @@ package GNATLLVM.Variables is
      with Pre => Present (Alloca) and then Present (T);
 
    function Is_Static_Address
-     (N : Node_Id; Not_Symbolic : Boolean := False) return Boolean
-     with Pre => Present (N);
+     (N : N_Subexpr_Id; Not_Symbolic : Boolean := False) return Boolean;
    --  Return True if N represents an address that can computed statically.
    --  If Not_Symbolic is True, only return if this address is a constant
    --  integer (rare).
 
    function Is_No_Elab_Needed
-     (N              : Node_Id;
+     (N              : N_Subexpr_Id;
       Not_Symbolic   : Boolean := False;
       Restrict_Types : Boolean := False) return Boolean
      with Pre => Present (N);
    --  Return True if N represents an expression that can be computed
+   --  without needing an elab proc.  If Not_Symbolic is True, we also
+   --  can't alllow anything symbolic.  If Restrict_Types is True, we can't
+   --  allow anything that's an access type or an elementary type wider
+   --  than a word.
+
+   function Is_No_Elab_Needed_For_Entity
+     (E              : Entity_Id;
+      Not_Symbolic   : Boolean := False;
+      Restrict_Types : Boolean := False) return Boolean
+     with Pre => Present (E);
+   --  Return True if E represents an entity that can be computed
    --  without needing an elab proc.  If Not_Symbolic is True, we also
    --  can't alllow anything symbolic.  If Restrict_Types is True, we can't
    --  allow anything that's an access type or an elementary type wider
@@ -130,11 +140,12 @@ package GNATLLVM.Variables is
    procedure Emit_Renaming_Declaration (N : N_Renaming_Declaration_Id);
    --  Emit an object or exception renaming declaration
 
-   function Emit_Identifier
-     (N : Node_Id; Prefer_LHS : Boolean := False) return GL_Value
-     with Pre => Nkind (N) in N_Identifier | N_Expanded_Name |
-                              N_Operator_Symbol | N_Defining_Identifier |
-                              N_Defining_Operator_Symbol;
-   --  Evaluate an N_Identifier and similar
+   function Emit_Entity
+     (E          : Entity_Id;
+      N          : Opt_N_Has_Entity_Id := Empty;
+      Prefer_LHS : Boolean             := False) return GL_Value
+     with Pre => Present (E);
+   --  Evaluate an entity E. If Present, N is the corresponding N_Identifier
+   --  node.  Prefer_LHS is True if we'd prefer this for a LHS context.
 
 end GNATLLVM.Variables;

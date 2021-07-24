@@ -594,8 +594,9 @@ package GNATLLVM.GLType is
      (Type_High_Bound (Full_Etype (GT)))
      with Pre => not Is_Access_Type (GT);
 
-   function First_Index (GT : Array_GL_Type) return Type_Kind_Id is
-     (First_Index (Full_Etype (GT)));
+   function First_Index (GT : Array_GL_Type) return Node_Id is
+     (First_Index (Full_Etype (GT)))
+     with Post => Present (First_Index'Result);
 
    function Strict_Alignment (GT : GL_Type) return Boolean is
      (Strict_Alignment (Full_Etype (GT)))
@@ -618,7 +619,7 @@ package GNATLLVM.GLType is
    function Component_Type (GT : Array_GL_Type) return Type_Kind_Id is
      (Component_Type (Full_Etype (GT)));
 
-   function Default_Aspect_Value (GT : GL_Type) return N_Subexpr_Id is
+   function Default_Aspect_Value (GT : GL_Type) return Opt_N_Subexpr_Id is
      (Default_Aspect_Value (Full_Etype (GT)))
      with Pre => Present (GT);
 

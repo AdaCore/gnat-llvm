@@ -89,7 +89,7 @@ package GNATLLVM.Compile is
 
    function Simple_Value_Action
      (N : N_Expression_With_Actions_Id; Has_All : out Boolean)
-     return N_Subexpr_Id;
+     return Opt_N_Subexpr_Id;
    --  If N just declares the value it returns, return the initializer
    --  of that value; otherwise return Empty.  Has_All is True if we
    --  have an N_Explicit_Dereference of the expression.

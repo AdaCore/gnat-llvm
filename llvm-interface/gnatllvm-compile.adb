@@ -848,7 +848,7 @@ package body GNATLLVM.Compile is
 
    function Simple_Value_Action
      (N : N_Expression_With_Actions_Id; Has_All : out Boolean)
-     return N_Subexpr_Id
+     return Opt_N_Subexpr_Id
    is
       Action : Node_Id      := First (Actions (N));
       Expr   : N_Subexpr_Id := Expression (N);

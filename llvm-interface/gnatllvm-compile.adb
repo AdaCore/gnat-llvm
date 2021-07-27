@@ -897,7 +897,7 @@ package body GNATLLVM.Compile is
       --  If we have an N_Explicit_Dereference and Action's expression is
       --  an N_Reference, use the inner expression.
 
-      return Init : N_Subexpr_Id := Expression (Action) do
+      return Init : Opt_N_Subexpr_Id := Expression (Action) do
          if  Has_All and then Nkind (Init) = N_Reference then
             Has_All := False;
             Init    := Prefix (Init);

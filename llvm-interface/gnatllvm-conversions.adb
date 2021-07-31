@@ -209,7 +209,7 @@ package body GNATLLVM.Conversions is
 
    function Is_In_LHS_Context (N : Node_Id) return Boolean is
    begin
-      if No (N) or No (Parent (N)) then
+      if No (N) or else No (Parent (N)) then
          return False;
       end if;
 

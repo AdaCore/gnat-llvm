@@ -114,7 +114,7 @@ package GNATLLVM.Subprograms is
 
    procedure Emit_Elab_Proc
      (N        : Node_Id;
-      Stmts    : Node_Id;
+      Stmts    : Opt_N_Handled_Sequence_Of_Statements_Id;
       CU       : N_Compilation_Unit_Id;
       For_Body : Boolean := False)
      with Pre => Library_Level

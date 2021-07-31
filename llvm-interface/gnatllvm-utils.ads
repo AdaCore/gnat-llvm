@@ -67,8 +67,7 @@ package GNATLLVM.Utils is
    --  Given a decoded range, return the length of the range, or Max_Length,
    --  whichever is less.
 
-   function Is_Name (N : Node_Id) return Boolean
-     with Pre => Present (N);
+   function Is_Name (N : N_Subexpr_Id) return Boolean;
    --  Return True if N is an expression that represents a variable or
    --  something else that can be used in an LHS context.
 
@@ -102,8 +101,8 @@ package GNATLLVM.Utils is
      with Pre => Present (E);
    --  Return the name of an entity concatenated with Suffix.
 
-   function Get_Acting_Spec (Subp_Body : Node_Id) return Node_Id
-     with Pre => Present (Subp_Body);
+   function Get_Acting_Spec
+     (Subp_Body : N_Subprogram_Body_Id) return Node_Id;
    --  If Subp_Body acts as a spec, return it. Return the corresponding
    --  subprogram declaration otherwise.
 

@@ -304,7 +304,7 @@ package body GNATLLVM.Records.Create is
    -----------------------
 
    function Uses_Discriminant (GT : GL_Type) return Boolean is
-      Index : Node_Id;
+      Index : Opt_N_Is_Index_Id;
 
    begin
       --  Constrained array types are all we're concerned with here

@@ -419,10 +419,12 @@ package body GNATLLVM.Aliasing is
          STE : Type_Kind_Id;
          TTE : Type_Kind_Id;
 
-         function OK_Unit (N : Node_Id; TE : Type_Kind_Id) return Boolean is
+         function OK_Unit
+           (N  : N_Validate_Unchecked_Conversion_Id;
+            TE : Type_Kind_Id) return Boolean
+         is
            (In_Same_Extended_Unit (N, TE)
-              or else In_Extended_Main_Code_Unit (TE))
-           with Pre => Present (N);
+              or else In_Extended_Main_Code_Unit (TE));
          --  We can do something with TE if it's either in the code unit
          --  that we're compiling or in the same (extended) unit as the UC.
 
@@ -722,10 +724,10 @@ package body GNATLLVM.Aliasing is
             end;
          else
             declare
-               Index     : constant Node_Id      := First_Index (TE);
-               Idx_Range : constant Node_Id      := Get_Dim_Range (Index);
-               R_LB      : constant N_Subexpr_Id := Low_Bound (Idx_Range);
-               R_HB      : constant N_Subexpr_Id := High_Bound (Idx_Range);
+               Index     : constant N_Is_Index_Id   := First_Index (TE);
+               Idx_Range : constant N_Has_Bounds_Id := Get_Dim_Range (Index);
+               R_LB      : constant N_Subexpr_Id    := Low_Bound (Idx_Range);
+               R_HB      : constant N_Subexpr_Id    := High_Bound (Idx_Range);
 
             begin
                LB := (if   Compile_Time_Known_Value (R_LB)
@@ -788,21 +790,25 @@ package body GNATLLVM.Aliasing is
                   end;
                else
                   declare
-                     Index   : Node_Id := First_Index (TE);
-                     E_Index : Node_Id := First_Index (E_TE);
-                     Matches : Boolean := True;
+                     Index   : Opt_N_Is_Index_Id := First_Index (TE);
+                     E_Index : Opt_N_Is_Index_Id := First_Index (E_TE);
+                     Matches : Boolean           := True;
 
                   begin
                      while Present (Index) loop
                         declare
-                           Rng   : constant Node_Id      :=
+                           Rng   : constant N_Has_Bounds_Id :=
                              Get_Dim_Range (Index);
-                           E_Rng : constant Node_Id      :=
+                           E_Rng : constant N_Has_Bounds_Id :=
                              Get_Dim_Range (E_Index);
-                           LB    : constant N_Subexpr_Id := Low_Bound (Rng);
-                           HB    : constant N_Subexpr_Id := High_Bound (Rng);
-                           E_LB  : constant N_Subexpr_Id := Low_Bound (E_Rng);
-                           E_HB  : constant N_Subexpr_Id := High_Bound (E_Rng);
+                           LB    : constant N_Subexpr_Id    :=
+                             Low_Bound (Rng);
+                           HB    : constant N_Subexpr_Id    :=
+                             High_Bound (Rng);
+                           E_LB  : constant N_Subexpr_Id    :=
+                             Low_Bound (E_Rng);
+                           E_HB  : constant N_Subexpr_Id    :=
+                             High_Bound (E_Rng);
 
                         begin
                            Matches := Matches

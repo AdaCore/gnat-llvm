@@ -146,7 +146,7 @@ package body GNATLLVM.Subprograms is
 
    type Elaboration_Entry is record
       N         : Node_Id;
-      --  Node to elaborate, possibly as an exppression
+      --  Node to elaborate, possibly as an expression
 
       For_GT    : GL_Type;
       --  If Present, compute N as a value, convert it to this type, and
@@ -1355,7 +1355,7 @@ package body GNATLLVM.Subprograms is
 
    procedure Emit_Elab_Proc
      (N        : Node_Id;
-      Stmts    : Node_Id;
+      Stmts    : Opt_N_Handled_Sequence_Of_Statements_Id;
       CU       : N_Compilation_Unit_Id;
       For_Body : Boolean := False)
    is

@@ -81,7 +81,7 @@ package body GNATLLVM.Utils is
          when N_Subtype_Indication =>
             Decode_Range (Range_Expression (Constraint (N)), Low, High);
 
-         when N_Range | N_Signed_Integer_Type_Definition =>
+         when N_Has_Bounds =>
             Low  := Get_Uint_Value (Low_Bound (N));
             High := Get_Uint_Value (High_Bound (N));
 
@@ -127,7 +127,7 @@ package body GNATLLVM.Utils is
    -------------------
 
    function Number_Bounds (TE : Array_Kind_Id) return Nat is
-      N : Node_Id;
+      N : Opt_N_Is_Index_Id;
 
    begin
       if Ekind (TE) = E_String_Literal_Subtype then
@@ -156,14 +156,6 @@ package body GNATLLVM.Utils is
 
    begin
       case Nkind (N) is
-         when N_Character_Literal =>
-            --  If a Entity is present, it means that this was one of the
-            --  literals in a user-defined character type.
-
-            return
-              (if   Present (Entity (N)) then Enumeration_Rep (Entity (N))
-               else Char_Literal_Value (N));
-
          when N_Integer_Literal =>
             return Intval (N);
 
@@ -176,11 +168,20 @@ package body GNATLLVM.Utils is
                return No_Uint;
             end if;
 
-         when N_Identifier | N_Expanded_Name =>
+         when N_Has_Entity =>
+
+            --  If there's no entity, we don't know the value unless it's a
+            --  character literal.
+
+            E := Entity (N);
+            if No (E) then
+               return (if   Nkind (N) = N_Character_Literal
+                       then Char_Literal_Value (N) else No_Uint);
+            end if;
+
             --  If an N_Identifier is static, its N_Defining_Identifier is
             --  either an E_Constant or an E_Enumeration_Literal.
 
-            E := Entity (N);
             if Ekind (E) = E_Constant
               and then Present (Constant_Value (E))
             then
@@ -273,7 +274,9 @@ package body GNATLLVM.Utils is
    -- Get_Acting_Spec --
    ---------------------
 
-   function Get_Acting_Spec (Subp_Body : Node_Id) return Node_Id is
+   function Get_Acting_Spec
+     (Subp_Body : N_Subprogram_Body_Id) return Node_Id
+   is
    begin
       if Acts_As_Spec (Subp_Body) then
          return Specification (Subp_Body);
@@ -358,7 +361,7 @@ package body GNATLLVM.Utils is
    -- Is_Name --
    -------------
 
-   function Is_Name (N : Node_Id) return Boolean is
+   function Is_Name (N : N_Subexpr_Id) return Boolean is
    begin
       case Nkind (N) is
          when N_Identifier | N_Expanded_Name | N_Explicit_Dereference =>

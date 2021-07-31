@@ -107,9 +107,9 @@ package body GNATLLVM.Environment is
 
    type Access_LLVM_Data is access all LLVM_Data;
 
-   function Get_LLVM_Info         (TE : Entity_Id) return Access_LLVM_Data
-     with Pre => Is_Type_Or_Void (TE), Inline;
-   function Get_LLVM_Info_For_Set (E : Entity_Id)  return Access_LLVM_Data
+   function Get_LLVM_Info (TE : Void_Or_Type_Kind_Id) return Access_LLVM_Data
+     with Inline;
+   function Get_LLVM_Info_For_Set (N : Node_Id)  return Access_LLVM_Data
      with Inline;
    --  Helpers for below to either create type and then return entry or
    --  or to allocate LLVM_Info_Table entry if needed (for set).  In either
@@ -247,7 +247,8 @@ package body GNATLLVM.Environment is
    -- Get_LLVM_Info --
    -------------------
 
-   function Get_LLVM_Info (TE : Entity_Id) return Access_LLVM_Data is
+   function Get_LLVM_Info (TE : Void_Or_Type_Kind_Id) return Access_LLVM_Data
+   is
       GT : constant GL_Type := Default_GL_Type (TE, Create => False);
 
    begin
@@ -267,8 +268,8 @@ package body GNATLLVM.Environment is
    -- Get_LLVM_Info_For_Set --
    ---------------------------
 
-   function Get_LLVM_Info_For_Set (E : Entity_Id) return Access_LLVM_Data is
-      Id : LLVM_Info_Id := LLVM_Info_Map (E);
+   function Get_LLVM_Info_For_Set (N : Node_Id) return Access_LLVM_Data is
+      Id : LLVM_Info_Id := LLVM_Info_Map (N);
 
    begin
       if Id = Empty_LLVM_Info_Id then
@@ -288,7 +289,7 @@ package body GNATLLVM.Environment is
                             SO_Info             => No_Uint,
                             Flag1               => False));
          Id := LLVM_Info.Last;
-         LLVM_Info_Map (E) := Id;
+         LLVM_Info_Map (N) := Id;
       end if;
 
       return LLVM_Info.Table (Id)'Unrestricted_Access;
@@ -338,6 +339,49 @@ package body GNATLLVM.Environment is
 
    end Pkg_None;
 
+   --  Likewise for when we're getting values for subexpressions
+
+   --------------
+   -- Pkg_Expr --
+   --------------
+
+   generic
+      type Obj is private;
+      None : Obj;
+      with function  Getter (LI : Access_LLVM_Data) return Obj;
+      with procedure Setter (LI : Access_LLVM_Data; Val : Obj);
+   package Pkg_Expr is
+      function  Get (N : N_Subexpr_Id) return Obj with Inline;
+      procedure Set (N : N_Subexpr_Id; Val : Obj) with Inline;
+   end Pkg_Expr;
+
+   package body Pkg_Expr is
+
+      ---------
+      -- Get --
+      ---------
+
+      function Get (N : N_Subexpr_Id) return Obj is
+         Id : constant LLVM_Info_Id := LLVM_Info_Map (N);
+      begin
+         if Id = Empty_LLVM_Info_Id then
+            return None;
+         else
+            return Getter (LLVM_Info.Table (Id)'Unrestricted_Access);
+         end if;
+      end Get;
+
+      ---------
+      -- Set --
+      ---------
+
+      procedure Set (N : N_Subexpr_Id; Val : Obj) is
+      begin
+         Setter (Get_LLVM_Info_For_Set (N), Val);
+      end Set;
+
+   end Pkg_Expr;
+
    --  Likewise when we always elaborate the type first
 
    --------------
@@ -373,8 +417,6 @@ package body GNATLLVM.Environment is
                                          Raw_Get_GLT, Raw_Set_GLT);
    package Env_Value    is new Pkg_None (GL_Value, No_GL_Value,
                                          Raw_Get_Value, Raw_Set_Value);
-   package Env_SO       is new Pkg_None (Dynamic_SO_Ref, No_Uint,
-                                         Raw_Get_SO, Raw_Set_SO);
    package Env_Elab     is new Pkg_None (Boolean, False,
                                          Raw_Get_Elab, Raw_Set_Elab);
    package Env_Field    is new Pkg_None (Field_Info_Id, Empty_Field_Info_Id,
@@ -400,19 +442,23 @@ package body GNATLLVM.Environment is
    package Env_Flag1    is new Pkg_None (Boolean, False,
                                          Raw_Get_Flag1, Raw_Set_Flag1);
 
-   package Env_AGLT   is new Pkg_Elab (GL_Type, Raw_Get_AGLT, Raw_Set_AGLT);
-   package Env_TBAA   is new Pkg_Elab (Metadata_T, Raw_Get_TBAA, Raw_Set_TBAA);
-   package Env_TBAA_I is new Pkg_Elab (TBAA_Info_Id, Raw_Get_TBAA_I,
-                                       Raw_Set_TBAA_I);
-   package Env_O_A    is new Pkg_Elab (Array_Info_Id,
-                                       Raw_Get_O_A, Raw_Set_O_A);
-   package Env_Record is new Pkg_Elab (Record_Info_Id,
-                                       Raw_Get_Record, Raw_Set_Record);
-   package Env_Debug  is new Pkg_Elab (Metadata_T,
-                                       Raw_Get_Debug, Raw_Set_Debug);
-   package Env_Array  is new Pkg_Elab (Array_Info_Id,
-                                       Raw_Get_Array, Raw_Set_Array);
-   package Env_NN     is new Pkg_Elab (Boolean, Raw_Get_NN, Raw_Set_NN);
+   package Env_SO       is new Pkg_Expr (Dynamic_SO_Ref, No_Uint,
+                                         Raw_Get_SO, Raw_Set_SO);
+
+   package Env_AGLT     is new Pkg_Elab (GL_Type, Raw_Get_AGLT, Raw_Set_AGLT);
+   package Env_TBAA     is new Pkg_Elab (Metadata_T,
+                                         Raw_Get_TBAA, Raw_Set_TBAA);
+   package Env_TBAA_I   is new Pkg_Elab (TBAA_Info_Id, Raw_Get_TBAA_I,
+                                         Raw_Set_TBAA_I);
+   package Env_O_A      is new Pkg_Elab (Array_Info_Id,
+                                         Raw_Get_O_A, Raw_Set_O_A);
+   package Env_Record   is new Pkg_Elab (Record_Info_Id,
+                                         Raw_Get_Record, Raw_Set_Record);
+   package Env_Debug    is new Pkg_Elab (Metadata_T,
+                                         Raw_Get_Debug, Raw_Set_Debug);
+   package Env_Array    is new Pkg_Elab (Array_Info_Id,
+                                         Raw_Get_Array, Raw_Set_Array);
+   package Env_NN       is new Pkg_Elab (Boolean, Raw_Get_NN, Raw_Set_NN);
 
    --  Now complete our job by renaming the subprograms created above
 
@@ -433,9 +479,9 @@ package body GNATLLVM.Environment is
    procedure Set_Value_R              (VE : Entity_Id; VL : GL_Value)
      renames Env_Value.Set;
 
-   function  Get_SO_Ref               (N : Node_Id) return Dynamic_SO_Ref
+   function  Get_SO_Ref               (N : N_Subexpr_Id) return Dynamic_SO_Ref
      renames Env_SO.Get;
-   procedure Set_SO_Ref               (N : Node_Id; U : Dynamic_SO_Ref)
+   procedure Set_SO_Ref               (N : N_Subexpr_Id; U : Dynamic_SO_Ref)
      renames Env_SO.Set;
 
    function  Is_Being_Elaborated      (TE : Entity_Id) return Boolean

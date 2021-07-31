@@ -36,7 +36,7 @@ package body GNATLLVM.Conversions is
    --  Return True iff GT1 and GT2 are array types that have at least
    --  one index for whose LLVM types are different.
 
-   function Is_In_LHS_Context (N : Node_Id) return Boolean;
+   function Is_In_LHS_Context (N : Opt_N_Subexpr_Id) return Boolean;
    --  Return True if N's parent (if N is Present) is such that we need a
    --  LValue.
 
@@ -80,7 +80,7 @@ package body GNATLLVM.Conversions is
         Is_Fixed_Lower_Bound_Array_Subtype (Full_Base_Type (GT1));
       FLB2       : constant Boolean :=
         Is_Fixed_Lower_Bound_Array_Subtype (Full_Base_Type (GT2));
-      Idx1, Idx2 : Node_Id;
+      Idx1, Idx2 : Opt_N_Is_Index_Id;
 
    begin
       --  If either isn't an array type, we don't have this case
@@ -207,7 +207,7 @@ package body GNATLLVM.Conversions is
    -- Is_In_LHS_Context --
    -----------------------
 
-   function Is_In_LHS_Context (N : Node_Id) return Boolean is
+   function Is_In_LHS_Context (N : Opt_N_Subexpr_Id) return Boolean is
    begin
       if No (N) or else No (Parent (N)) then
          return False;
@@ -287,13 +287,13 @@ package body GNATLLVM.Conversions is
       Float_Truncate      : Boolean          := False;
       No_Truncation       : Boolean          := False) return GL_Value
    is
-      Result      : GL_Value                 := Emit (N, For_LHS => For_LHS);
-      Prim_GT     : constant GL_Type         := Primitive_GL_Type (GT);
-      In_GT       : constant GL_Type         := Related_Type (Result);
-      R           : constant GL_Relationship := Relationship (Result);
-      GT_Uns      : constant Boolean         := Is_Unsigned_For_RM (GT);
-      In_GT_Uns   : constant Boolean         := Is_Unsigned_For_RM (In_GT);
-      Error_N     : constant Node_Id         :=
+      Result      : GL_Value                  := Emit (N, For_LHS => For_LHS);
+      Prim_GT     : constant GL_Type          := Primitive_GL_Type (GT);
+      In_GT       : constant GL_Type          := Related_Type (Result);
+      R           : constant GL_Relationship  := Relationship (Result);
+      GT_Uns      : constant Boolean          := Is_Unsigned_For_RM (GT);
+      In_GT_Uns   : constant Boolean          := Is_Unsigned_For_RM (In_GT);
+      Error_N     : constant Opt_N_Subexpr_Id :=
         (if Present (From_N) then From_N else N);
 
    begin

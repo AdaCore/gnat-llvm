@@ -107,7 +107,7 @@ package GNATLLVM.Blocks is
      (V    : GL_Value;
       N    : Node_Id;
       Kind : RT_Exception_Code := CE_Overflow_Check_Failed)
-     with Pre => Present (V) and then Present (N);
+     with Pre => Present (N) and then Present (V);
    --  Raise an exception (default is overflow) if V evaluates to True
 
    procedure Emit_Fixups_For_Return;

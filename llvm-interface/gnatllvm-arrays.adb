@@ -1459,22 +1459,23 @@ package body GNATLLVM.Arrays is
 
    function Get_Slice_LValue (GT : Array_GL_Type; V : GL_Value) return GL_Value
    is
-      Rng         : constant Node_Id        :=
+      Rng         : constant N_Has_Bounds_Id :=
         Get_Dim_Range (First_Index (GT));
-      Array_Data  : constant GL_Value       :=
+      Array_Data  : constant GL_Value        :=
         Get (To_Primitive (V, No_Copy => True), Reference);
-      Arr_GT      : constant Array_GL_Type  := Related_Type (V);
-      Idx_LB      : constant GL_Value       :=
+      Arr_GT      : constant Array_GL_Type   := Related_Type (V);
+      Idx_LB      : constant GL_Value        :=
         Get_Array_Bound (Arr_GT, 0, True, V);
-      Index_Val   : constant GL_Value       :=
+      Index_Val   : constant GL_Value        :=
         Emit_Safe_Expr (Low_Bound (Rng));
-      Dim_Op_GT   : constant GL_Type        := Get_GEP_Safe_Type (Idx_LB);
-      Cvt_Index   : constant GL_Value       := Convert (Index_Val, Dim_Op_GT);
-      Cvt_LB      : constant GL_Value       := Convert (Idx_LB, Dim_Op_GT);
-      Index_Shift : constant GL_Value       := Cvt_Index - Cvt_LB;
+      Dim_Op_GT   : constant GL_Type         := Get_GEP_Safe_Type (Idx_LB);
+      Cvt_Index   : constant GL_Value        := Convert (Index_Val, Dim_Op_GT);
+      Cvt_LB      : constant GL_Value        := Convert (Idx_LB, Dim_Op_GT);
+      Index_Shift : constant GL_Value        := Cvt_Index - Cvt_LB;
       --  Compute how much we need to offset the array pointer. Slices
       --  can be built only on single-dimension arrays
-      Comp_GT     : constant GL_Type        := Full_Component_GL_Type (Arr_GT);
+      Comp_GT     : constant GL_Type         :=
+        Full_Component_GL_Type (Arr_GT);
       Result      : GL_Value;
 
    begin
@@ -1619,25 +1620,20 @@ package body GNATLLVM.Arrays is
    -- Get_Dim_Range --
    -------------------
 
-   function Get_Dim_Range (N : Node_Id) return Node_Id is
+   function Get_Dim_Range (N : N_Is_Index_Id) return N_Has_Bounds_Id is
    begin
       case Nkind (N) is
-         when N_Range
-            | N_Signed_Integer_Type_Definition
-            | N_Real_Range_Specification =>
+         when N_Has_Bounds =>
             return N;
-         when N_Identifier | N_Expanded_Name =>
-            return Get_Dim_Range (Scalar_Range (Full_Entity (N)));
 
-         when N_Defining_Identifier =>
-            return Get_Dim_Range (Scalar_Range (N));
+         when N_Has_Entity =>
+            return Get_Dim_Range (Scalar_Range (Full_Entity (N)));
 
          when N_Subtype_Indication =>
             declare
-               Constr : constant Node_Id := Constraint (N);
+               Constr : constant Opt_N_Range_Constraint_Id := Constraint (N);
             begin
                if Present (Constr) then
-                  pragma Assert (Nkind (Constr) = N_Range_Constraint);
                   return Get_Dim_Range (Range_Expression (Constr));
                else
                   return
@@ -1647,10 +1643,7 @@ package body GNATLLVM.Arrays is
             end;
 
          when others =>
-            null;
+            return Empty;
       end case;
-
-      pragma Assert (False);
-      return Empty;
    end Get_Dim_Range;
 end GNATLLVM.Arrays;

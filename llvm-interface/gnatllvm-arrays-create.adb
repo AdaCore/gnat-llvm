@@ -29,20 +29,17 @@ with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Arrays.Create is
 
-   function Cannot_Be_Superflat (N : Node_Id) return Boolean
-     with Pre => Present (N);
+   function Cannot_Be_Superflat (N : N_Has_Bounds_Id) return Boolean;
    --  Return True if the range described by N is known not to be
    --  able to be superflat.
 
-   function FLB_Cannot_Be_Superflat (N : Node_Id) return Boolean
-     with Pre => Present (N);
+   function FLB_Cannot_Be_Superflat (N : N_Is_Index_Id) return Boolean;
    --  Likewise, but for an array with a fixed lower bound
 
    function Build_One_Bound
-     (N             : Node_Id;
+     (N             : N_Subexpr_Id;
       Unconstrained : Boolean;
-      For_Orig      : Boolean) return One_Bound
-     with Pre => Present (N);
+      For_Orig      : Boolean) return One_Bound;
    --  Helper function to build a One_Bound object from N
 
    function Create_String_Literal_Type
@@ -114,11 +111,11 @@ package body GNATLLVM.Arrays.Create is
    -- Cannot_Be_Superflat --
    -------------------------
 
-   function Cannot_Be_Superflat (N : Node_Id) return Boolean is
+   function Cannot_Be_Superflat (N : N_Has_Bounds_Id) return Boolean is
       LB      : N_Subexpr_Id := Low_Bound  (N);
       HB      : N_Subexpr_Id := High_Bound (N);
       TE      : Type_Kind_Id;
-      Rng     : Node_Id;
+      Rng     : N_Has_Bounds_Id;
 
    begin
       --  If the low bound is not constant, try to find an upper bound
@@ -131,7 +128,6 @@ package body GNATLLVM.Arrays.Create is
            not in E_Signed_Integer_Subtype | E_Modular_Integer_Subtype;
 
          Rng := Scalar_Range (TE);
-
          exit when Nkind (Rng)
            not in N_Signed_Integer_Type_Definition | N_Range;
 
@@ -148,7 +144,6 @@ package body GNATLLVM.Arrays.Create is
            not in E_Signed_Integer_Subtype | E_Modular_Integer_Subtype;
 
          Rng := Scalar_Range (TE);
-
          exit when
            Nkind (Rng) not in N_Signed_Integer_Type_Definition | N_Range;
 
@@ -166,9 +161,9 @@ package body GNATLLVM.Arrays.Create is
    -- FLB_Cannot_Be_Superflat --
    -----------------------------
 
-   function FLB_Cannot_Be_Superflat (N : Node_Id) return Boolean is
-      Our_Rng    : constant Node_Id := Get_Dim_Range (N);
-      Parent_Rng : Node_Id;
+   function FLB_Cannot_Be_Superflat (N : N_Is_Index_Id) return Boolean is
+      Our_Rng    : constant N_Has_Bounds_Id := Get_Dim_Range (N);
+      Parent_Rng : N_Has_Bounds_Id;
       Parent_LB  : N_Subexpr_Id;
 
    begin
@@ -177,7 +172,7 @@ package body GNATLLVM.Arrays.Create is
       --  greater than that bound, we can't form superflat objects.
 
       if Nkind (N) = N_Subtype_Indication then
-         Parent_Rng := Get_Dim_Range (Entity (Subtype_Mark (N)));
+         Parent_Rng := Scalar_Range (Entity (Subtype_Mark (N)));
          Parent_LB  := Low_Bound (Parent_Rng);
          return Nkind (Parent_LB) = N_Integer_Literal
            and then Intval (Low_Bound (Our_Rng)) - 1 <= Intval (Parent_LB);
@@ -191,7 +186,7 @@ package body GNATLLVM.Arrays.Create is
    ---------------------
 
    function Build_One_Bound
-     (N             : Node_Id;
+     (N             : N_Subexpr_Id;
       Unconstrained : Boolean;
       For_Orig      : Boolean) return One_Bound
    is
@@ -331,8 +326,8 @@ package body GNATLLVM.Arrays.Create is
       Field_Index       : Nat                   := 0;
       Dim_Infos         : Dim_Info_Array (0 .. Last_Dim);
       First_Info        : Array_Info_Id;
-      Index             : Node_Id;
-      Base_Index        : Node_Id;
+      Index             : Opt_N_Is_Index_Id;
+      Base_Index        : Opt_N_Is_Index_Id;
 
    begin
       --  String literal subtypes are simple, so handle them separately
@@ -376,7 +371,7 @@ package body GNATLLVM.Arrays.Create is
       Base_Index := First_Index (Base_Type);
       while Present (Index) loop
          declare
-            Idx_Range : constant Node_Id         := Get_Dim_Range (Index);
+            Idx_Range : constant N_Has_Bounds_Id := Get_Dim_Range (Index);
             --  Sometimes, the frontend leaves an identifier that
             --  references an integer subtype instead of a range.
 

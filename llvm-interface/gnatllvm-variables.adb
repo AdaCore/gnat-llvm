@@ -529,7 +529,7 @@ package body GNATLLVM.Variables is
 
             declare
                GT : constant GL_Type := Full_GL_Type (Prefix (N));
-               Index : Node_Id;
+               Index : Opt_N_Is_Index_Id;
                Expr  : Opt_N_Subexpr_Id;
 
             begin
@@ -955,7 +955,7 @@ package body GNATLLVM.Variables is
                  | Attribute_Length | Attribute_Range_Length =>
 
                   if Is_Scalar_Type (Full_Etype (Prefix (N))) then
-                     Expr := Get_Dim_Range (Full_Etype (Prefix (N)));
+                     Expr := Scalar_Range (Full_Etype (Prefix (N)));
                      return Is_No_Elab_Needed (Low_Bound (Expr),
                                                Not_Symbolic, Restrict_Types)
                        and then Is_No_Elab_Needed (High_Bound (Expr),
@@ -1576,15 +1576,15 @@ package body GNATLLVM.Variables is
         (if Has_Addr then Expression (Address_Clause (E)) else Empty);
       Has_Static_Addr : constant Boolean          :=
         Has_Addr and then Is_Static_Address (Addr_Expr);
+      Renamed         : constant Node_Id          := Renamed_Object (E);
       Nonnative       : constant Boolean          := Is_Nonnative_Type (GT);
       Needs_Alloc     : constant Boolean          :=
         not Has_Addr and then Nonnative;
       Is_Ref          : constant Boolean          :=
-        (Has_Addr and then not Has_Static_Addr) or else Needs_Alloc
-          or else (Present (Renamed_Object (E))
-                     and then Is_Name (Renamed_Object (E)));
+          (Has_Addr and then not Has_Static_Addr) or else Needs_Alloc
+          or else (Present (Renamed) and then not Is_Entity (Renamed)
+                     and then Is_Name (Renamed));
       Is_Volatile     : constant Boolean          := Is_Volatile_Entity (E);
-      Renamed         : constant Node_Id          := Renamed_Object (E);
       Linker_Alias    : constant Opt_N_Pragma_Id  :=
         Get_Pragma (E, Pragma_Linker_Alias);
 

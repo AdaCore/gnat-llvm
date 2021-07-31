@@ -145,9 +145,9 @@ package GNATLLVM.GLType is
    --  Mark GT as the type to be used as the default representation of
    --  its corresponding GNAT type.
 
-   function Full_GL_Type (N : Node_Id) return GL_Type is
+   function Full_GL_Type (N : N_Has_Etype_Id) return GL_Type is
      (Default_GL_Type (Full_Etype (N)))
-     with Pre => Present (N), Post => Present (Full_GL_Type'Result), Inline;
+     with Post => Present (Full_GL_Type'Result), Inline;
    --  Return the default GL_Type corresponding to the type of N
 
    function Full_Alloc_GL_Type (N : N_Subexpr_Id) return GL_Type
@@ -582,7 +582,7 @@ package GNATLLVM.GLType is
      (Known_Static_RM_Size (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   function Scalar_Range (GT : GL_Type) return Node_Id is
+   function Scalar_Range (GT : GL_Type) return N_Has_Bounds_Id is
      (Scalar_Range (Full_Etype (GT)))
      with Pre => not Is_Access_Type (GT);
 
@@ -594,7 +594,7 @@ package GNATLLVM.GLType is
      (Type_High_Bound (Full_Etype (GT)))
      with Pre => not Is_Access_Type (GT);
 
-   function First_Index (GT : Array_GL_Type) return Node_Id is
+   function First_Index (GT : Array_GL_Type) return N_Is_Index_Id is
      (First_Index (Full_Etype (GT)))
      with Post => Present (First_Index'Result);
 

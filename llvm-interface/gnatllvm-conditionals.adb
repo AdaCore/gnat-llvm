@@ -463,11 +463,13 @@ package body GNATLLVM.Conditionals is
 
    procedure Emit_Case_Statement (N : N_Case_Statement_Id) is
 
-      Alts        : constant List_Id       := Alternatives (N);
-      Start_BB    : constant Basic_Block_T := Get_Insert_Block;
-      BB_End      : constant Basic_Block_T := Create_Basic_Block ("case.end");
-      Alt         : Node_Id                := First_Non_Pragma (Alts);
-      Current_Alt : Nat                    := 1;
+      Alts        : constant List_Id                    := Alternatives (N);
+      Start_BB    : constant Basic_Block_T              := Get_Insert_Block;
+      BB_End      : constant Basic_Block_T              :=
+        Create_Basic_Block ("case.end");
+      Alt         : Opt_N_Case_Statement_Alternative_Id :=
+        First_Non_Pragma (Alts);
+      Current_Alt : Nat                                 := 1;
       BBs         : Basic_Block_Array (1 .. List_Length_Non_Pragma (Alts));
 
    begin

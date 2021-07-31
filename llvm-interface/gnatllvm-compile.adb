@@ -242,7 +242,6 @@ package body GNATLLVM.Compile is
         and then ((Nkind (N) in N_Statement_Other_Than_Procedure_Call
                      and then Nkind (N) /= N_Null_Statement)
                     or else Nkind (N) in N_Subprogram_Call | N_Raise_xxx_Error
-                    or else Nkind (N) = N_Raise_Statement
                     or else (Nkind (N) = N_Handled_Sequence_Of_Statements
                                and then Has_Non_Null_Statements
                                           (Statements (N))))
@@ -1287,7 +1286,7 @@ package body GNATLLVM.Compile is
             declare
                Left       : constant GL_Value :=
                  Emit_Expression (Left_Opnd (N));
-               Rng        : Node_Id           := Right_Opnd (N);
+               Rng        : N_Is_Index_Id     := Right_Opnd (N);
                Compare_LB : GL_Value;
                Compare_HB : GL_Value;
 
@@ -1299,7 +1298,7 @@ package body GNATLLVM.Compile is
                pragma Assert (not For_LHS);
                pragma Assert (No (Alternatives (N)));
 
-               if Nkind (Rng) = N_Identifier then
+               if Nkind (Rng) in N_Identifier | N_Expanded_Name then
                   Rng := Scalar_Range (Full_Etype (Rng));
                end if;
 

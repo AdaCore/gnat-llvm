@@ -82,73 +82,73 @@ package GNATLLVM.Environment is
    procedure Initialize_Environment;
    --  Do any needed initializing of the environment
 
-   function Get_GL_Type               (TE : Entity_Id) return GL_Type
+   function Get_GL_Type               (TE : Entity_Id)    return GL_Type
      with Pre => Is_Type_Or_Void (TE), Inline;
 
-   function Get_Associated_GL_Type    (TE : Entity_Id) return GL_Type
+   function Get_Associated_GL_Type    (TE : Entity_Id)    return GL_Type
      with Pre => Is_Array_Type (TE) or else Is_Access_Type (TE), Inline;
 
-   function Get_Associated_GL_Type_N  (TE : Entity_Id) return GL_Type
+   function Get_Associated_GL_Type_N  (TE : Entity_Id)    return GL_Type
      with Pre => Is_Array_Type (TE) or else Is_Access_Type (TE), Inline;
 
-   function Is_Nonnative_Type         (TE : Entity_Id) return Boolean
+   function Is_Nonnative_Type         (TE : Entity_Id)    return Boolean
      with Pre => Is_Type_Or_Void (TE), Inline;
 
-   function Is_Nonnative_Type_N       (TE : Entity_Id) return Boolean
+   function Is_Nonnative_Type_N       (TE : Entity_Id)    return Boolean
      with Pre => Is_Type_Or_Void (TE), Inline;
 
-   function Is_Being_Elaborated       (TE : Entity_Id) return Boolean
+   function Is_Being_Elaborated       (TE : Entity_Id)    return Boolean
      with Pre => Is_Type_Or_Void (TE), Inline;
 
-   function Get_TBAA                  (TE : Entity_Id) return Metadata_T
+   function Get_TBAA                  (TE : Entity_Id)    return Metadata_T
      with Pre => Is_Type_Or_Void (TE), Inline;
 
-   function Get_TBAA_N                (TE : Entity_Id) return Metadata_T
+   function Get_TBAA_N                (TE : Entity_Id)    return Metadata_T
      with Pre => Is_Type_Or_Void (TE), Inline;
 
-   function Get_TBAA_Info             (TE : Entity_Id) return TBAA_Info_Id
+   function Get_TBAA_Info             (TE : Entity_Id)    return TBAA_Info_Id
      with Pre => Is_Type_Or_Void (TE), Inline;
 
-   function Get_TBAA_Info_N           (TE : Entity_Id) return TBAA_Info_Id
+   function Get_TBAA_Info_N           (TE : Entity_Id)    return TBAA_Info_Id
      with Pre => Is_Type_Or_Void (TE), Inline;
 
-   function Get_Value                 (VE : Entity_Id) return GL_Value
+   function Get_Value                 (VE : Entity_Id)    return GL_Value
      with Pre => Present (VE), Inline;
 
-   function Get_SO_Ref                (N : Node_Id)    return Dynamic_SO_Ref
-     with Pre => Present (N), Inline;
+   function Get_SO_Ref                (N  : N_Subexpr_Id) return Dynamic_SO_Ref
+     with Inline;
 
-   function Get_Debug_Type            (TE : Entity_Id) return Metadata_T
+   function Get_Debug_Type            (TE : Entity_Id)    return Metadata_T
      with Pre => Is_Type_Or_Void (TE), Inline;
 
-   function Get_Debug_Type_N          (TE : Entity_Id) return Metadata_T
+   function Get_Debug_Type_N          (TE : Entity_Id)    return Metadata_T
      with Pre => Is_Type_Or_Void (TE), Inline;
 
-   function Get_Array_Info            (TE : Entity_Id) return Array_Info_Id
+   function Get_Array_Info            (TE : Entity_Id)    return Array_Info_Id
      with Pre => Is_Array_Type (TE), Inline;
 
-   function Get_Array_Info_N          (TE : Entity_Id) return Array_Info_Id
+   function Get_Array_Info_N          (TE : Entity_Id)    return Array_Info_Id
      with Pre => Is_Array_Type (TE), Inline;
 
-   function Get_Orig_Array_Info       (TE : Entity_Id) return Array_Info_Id
+   function Get_Orig_Array_Info       (TE : Entity_Id)    return Array_Info_Id
      with Pre => Is_Packed_Array_Impl_Type (TE), Inline;
 
-   function Get_Orig_Array_Info_N     (TE : Entity_Id) return Array_Info_Id
+   function Get_Orig_Array_Info_N     (TE : Entity_Id)    return Array_Info_Id
      with Pre => Is_Packed_Array_Impl_Type (TE), Inline;
 
-   function Get_Record_Info           (TE : Entity_Id) return Record_Info_Id
+   function Get_Record_Info           (TE : Entity_Id)    return Record_Info_Id
      with Pre => Is_Record_Type (TE), Inline;
 
-   function Get_Record_Info_N         (TE : Entity_Id) return Record_Info_Id
+   function Get_Record_Info_N         (TE : Entity_Id)    return Record_Info_Id
      with Pre => Is_Record_Type (TE), Inline;
 
-   function Get_Field_Info            (VE : Entity_Id)  return Field_Info_Id
+   function Get_Field_Info            (VE : Entity_Id)    return Field_Info_Id
      with Pre => Ekind (VE) in Record_Field_Kind, Inline;
 
-   function Get_Label_Info            (VE : Entity_Id)  return Label_Info_Id
+   function Get_Label_Info            (VE : Entity_Id)    return Label_Info_Id
      with Pre => Present (VE), Inline;
 
-   function Get_Flag1                 (VE : Entity_Id)  return Boolean
+   function Get_Flag1                 (VE : Entity_Id)    return Boolean
       with Pre => Present (VE), Inline;
 
    procedure Set_GL_Type              (TE : Entity_Id; GT : GL_Type)
@@ -184,7 +184,7 @@ package GNATLLVM.Environment is
                   and then (No (Get_Value (VE)) or else Get_Value (VE) = VL),
           Post => Get_Value (VE) = VL, Inline;
 
-   procedure Set_SO_Ref               (N : Node_Id; U : Dynamic_SO_Ref)
+   procedure Set_SO_Ref               (N : N_Subexpr_Id; U : Dynamic_SO_Ref)
      with Pre  => Present (N) and then Present (U)
                   and then (No (Get_SO_Ref (N)) or else Get_SO_Ref (N) = U),
           Post => Get_SO_Ref (N) = U, Inline;

@@ -350,7 +350,7 @@ package body GNATLLVM.Blocks is
    --  we want the "extended" (-gnateE) versions of the exception functions.
 
    function Emit_Raise_Call_With_Extra_Info
-     (N    : Node_Id;
+     (N    : N_Raise_xxx_Error_Id;
       Kind : RT_Exception_Code;
       Cond : N_Subexpr_Id) return Boolean;
    --  Like Emit_Raise_Call, but generate extra info, if possible, about
@@ -941,7 +941,7 @@ package body GNATLLVM.Blocks is
    ---------------------
 
    function Emit_Raise_Call_With_Extra_Info
-     (N    : Node_Id;
+     (N    : N_Raise_xxx_Error_Id;
       Kind : RT_Exception_Code;
       Cond : N_Subexpr_Id) return Boolean
    is
@@ -955,8 +955,8 @@ package body GNATLLVM.Blocks is
                         then 0 else Get_Logical_Line_Number (S)));
       Col    : constant GL_Value   :=
         Const_Int (Integer_GL_Type, ULL (Get_Column_Number (S)));
-      LB, HB : Node_Id;
-      Rng    : Node_Id;
+      LB, HB : N_Subexpr_Id;
+      Rng    : N_Subexpr_Id;
       Index  : GL_Value;
       LB_V   : GL_Value;
       HB_V   : GL_Value;

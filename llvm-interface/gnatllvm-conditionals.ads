@@ -25,22 +25,19 @@ package GNATLLVM.Conditionals is
 
    function Build_Short_Circuit_Op
      (Left, Right : N_Subexpr_Id; Op : Node_Kind) return GL_Value
-     with Pre  => Present (Left) and then Present (Right)
-                  and then (Op in N_Op_Boolean | N_Short_Circuit),
+     with Pre  => Op in N_Op_Boolean | N_Short_Circuit,
           Post => Present (Build_Short_Circuit_Op'Result);
    --  Emit the LLVM IR for a short circuit operator ("or else", "and then")
 
    function Emit_Comparison
      (Kind : Node_Kind; LHS, RHS : N_Subexpr_Id) return GL_Value
-     with Pre  => Present (LHS) and then Present (RHS)
-                  and then Kind in N_Op_Compare,
+     with Pre  => Kind in N_Op_Compare,
           Post => Present (Emit_Comparison'Result);
    --  Generate a result which is a comparison of two expressions
 
    function Emit_And_Or_Xor
      (Kind : Node_Kind; LHS_Node, RHS_Node : N_Subexpr_Id) return GL_Value
-     with Pre  => Present (LHS_Node) and then Present (RHS_Node)
-                  and then Kind in N_Op_And | N_Op_Or | N_Op_Xor,
+     with Pre  => Kind in N_Op_And | N_Op_Or | N_Op_Xor,
           Post => Present (Emit_And_Or_Xor'Result);
    --  Generate a result which is the logical operation of the two expressions
 
@@ -48,8 +45,7 @@ package GNATLLVM.Conditionals is
      (Kind              : Node_Kind;
       LHS, RHS          : N_Subexpr_Id;
       BB_True, BB_False : Basic_Block_T)
-     with Pre => Present (LHS) and then Present (RHS)
-                 and then Present (BB_True) and then Present (BB_False)
+     with Pre => Present (BB_True) and then Present (BB_False)
                  and then Kind in N_Op_Compare;
    --  Similar, but generate comparison and branch to one of the basic
    --  blocks depending on the result
@@ -68,14 +64,12 @@ package GNATLLVM.Conditionals is
    procedure Emit_If (N : N_If_Statement_Id);
    --  Helper for Emit: handle if statements
 
-   function Is_Simple_Conditional (N : N_Subexpr_Id) return Boolean
-     with Pre => Present (N);
+   function Is_Simple_Conditional (N : N_Subexpr_Id) return Boolean;
    --  Return True if N is a simple conditional expression, meaning no
    --  comparisons of composite types.
 
    procedure Emit_If_Cond (N : N_Subexpr_Id; BB_True, BB_False : Basic_Block_T)
-     with Pre => Present (N)
-                 and then Present (BB_True) and then Present (BB_False);
+     with Pre => Present (BB_True) and then Present (BB_False);
    --  Helper for Emit_If to generate branch to BB_True or BB_False
    --  depending on whether Node is true or false.
 

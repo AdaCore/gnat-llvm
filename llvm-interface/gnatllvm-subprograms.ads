@@ -34,9 +34,9 @@ package GNATLLVM.Subprograms is
    --  of the parameter number given by the first expression of Exprs.
    --  Return 2 is passed by reference, otherwise, return 1.
 
-   function Create_Subprogram_Type (E : Entity_Id) return Type_T
-     with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type,
-          Post => Present (Create_Subprogram_Type'Result);
+   function Create_Subprogram_Type
+     (E : Subprogram_Type_Or_Kind_Id) return Type_T
+     with Post => Present (Create_Subprogram_Type'Result);
    --  Create subprogram type.  E can either be a subprogram,
    --  in which case a subprogram type will be created from it or a
    --  subprogram type directly.
@@ -67,8 +67,8 @@ package GNATLLVM.Subprograms is
      with Post => Present (Get_Static_Link'Result);
    --  Build and return the static link to pass to a call to Subp
 
-   function Has_Activation_Record (E : Entity_Id) return Boolean
-     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   function Has_Activation_Record
+     (E : Subprogram_Type_Or_Kind_Id) return Boolean;
    --  Return True if E is a nested subprogram or a subprogram type
    --  that needs an activation record.
 
@@ -158,8 +158,8 @@ package GNATLLVM.Subprograms is
       Return_By_Parameter);
       --  The result is returned via a pointer passed as an extra parameter
 
-   function Get_Return_Kind (E : Entity_Id) return Return_Kind
-     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   function Get_Return_Kind
+     (E : Subprogram_Type_Or_Kind_Id) return Return_Kind;
    --  Get the Return_Kind of E, a subprogram or subprogram type
 
    --  Next we have the actual LLVM return contents, which can be the
@@ -188,22 +188,19 @@ package GNATLLVM.Subprograms is
       --  return data of the function (either by value or reference) and
       --  one or more out parameters.
 
-   function Get_L_Ret_Kind (E : Entity_Id) return L_Ret_Kind
-     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   function Get_L_Ret_Kind (E : Subprogram_Type_Or_Kind_Id) return L_Ret_Kind;
 
-   function Number_In_Params (E : Entity_Id) return Nat
-     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   function Number_In_Params (E : Subprogram_Type_Or_Kind_Id) return Nat;
    --  Return a count of the number of parameters of E, that are
    --  explict input parameters to E.  We may have to add a parameter for
    --  an activation record and/or address to place the return.
 
-   function Number_Out_Params (E : Entity_Id) return Nat
-     with Pre => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   function Number_Out_Params (E : Subprogram_Type_Or_Kind_Id) return Nat;
    --  Return a count of the number of parameters of E, that are
    --  output parameters to E.
 
-   function First_In_Param (E : Entity_Id) return Opt_Formal_Kind_Id
-     with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   function First_In_Param
+     (E : Subprogram_Type_Or_Kind_Id) return Opt_Formal_Kind_Id;
    --  Return the first formal of E that's an input to the subprogram,
    --  either because it's an input passed by copy or a reference.
 
@@ -216,8 +213,8 @@ package GNATLLVM.Subprograms is
    --  Given E, a formal of some subprogram, update it to be the next In
    --  parameter, as defined above, of that subprogram.
 
-   function First_Out_Param (E : Entity_Id) return Opt_Formal_Kind_Id
-     with Pre  => Ekind (E) in Subprogram_Kind | E_Subprogram_Type;
+   function First_Out_Param
+     (E : Subprogram_Type_Or_Kind_Id) return Opt_Formal_Kind_Id;
    --  Return the first formal of E that's an output from the subprogram
 
    function Next_Out_Param (E : Formal_Kind_Id) return Opt_Formal_Kind_Id;
@@ -251,8 +248,8 @@ package GNATLLVM.Subprograms is
    --  Emit code for a return statement
 
    function Add_Static_Link
-     (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value_Array
-     with Pre => No (Proc) or else Ekind (Proc) in E_Procedure | E_Function;
+     (Proc : Opt_Subprogram_Kind_Id;
+      Args : GL_Value_Array) return GL_Value_Array;
    --  If Proc needs a static link, add it to the end of Args
 
    function Subp_Ptr (N : N_Subexpr_Id) return GL_Value
@@ -284,29 +281,29 @@ package GNATLLVM.Subprograms is
    --  Called at end of compilation to add functions to the module for which
    --  we haven't emitted a body.
 
-   Current_Subp             : Entity_Id  := Empty;
+   Current_Subp             : Opt_Subprogram_Kind_Id  := Empty;
    --  The spec entity for the subprogram currently being compiled
 
-   Current_Func             : GL_Value   := No_GL_Value;
+   Current_Func             : GL_Value                := No_GL_Value;
    --  Pointer to the current function
 
-   Activation_Rec_Param     : GL_Value   := No_GL_Value;
+   Activation_Rec_Param     : GL_Value                := No_GL_Value;
    --  Parameter to this subprogram, if any, that represents an
    --  activation record, expressed as a reference to the record.
 
-   Return_Address_Param     : GL_Value   := No_GL_Value;
+   Return_Address_Param     : GL_Value                := No_GL_Value;
    --  Parameter to this subprogram, if any, that represent the address
    --  to which we are to copy the return value
 
-   In_Elab_Proc             : Boolean    := False;
+   In_Elab_Proc             : Boolean                 := False;
    --  True if we're in the process of emitting the code for an elaboration
    --  procedure and processing the code for deferred declaration statements.
 
-   In_Elab_Proc_Stmts       : Boolean    := False;
+   In_Elab_Proc_Stmts       : Boolean                 := False;
    --  Likewise, but we're in the part of the elab proc that handles
    --  statements explicitly in the body of the package.
 
-   Entry_Block_Allocas      : Position_T := No_Position_T;
+   Entry_Block_Allocas      : Position_T              := No_Position_T;
    --  If Present, a location to use to insert small alloca's into the entry
    --  block.
 

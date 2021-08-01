@@ -248,7 +248,7 @@ package body GNATLLVM.Subprograms is
    -- Number_In_Params --
    ----------------------
 
-   function Number_In_Params (E : Entity_Id) return Nat is
+   function Number_In_Params (E : Subprogram_Type_Or_Kind_Id) return Nat is
       Param : Opt_Formal_Kind_Id := First_Formal_With_Extras (E);
 
    begin
@@ -267,7 +267,7 @@ package body GNATLLVM.Subprograms is
    -- Number_Out_Params --
    -----------------------
 
-   function Number_Out_Params (E : Entity_Id) return Nat is
+   function Number_Out_Params (E : Subprogram_Type_Or_Kind_Id) return Nat is
       Param : Opt_Formal_Kind_Id := First_Formal_With_Extras (E);
 
    begin
@@ -286,7 +286,9 @@ package body GNATLLVM.Subprograms is
    -- First_In_Param --
    --------------------
 
-   function First_In_Param (E : Entity_Id) return Opt_Formal_Kind_Id is
+   function First_In_Param
+     (E : Subprogram_Type_Or_Kind_Id) return Opt_Formal_Kind_Id
+   is
    begin
       return Param : Opt_Formal_Kind_Id := First_Formal_With_Extras (E) do
          while Present (Param) loop
@@ -324,7 +326,9 @@ package body GNATLLVM.Subprograms is
    -- First_Out_Param --
    ---------------------
 
-   function First_Out_Param (E : Entity_Id) return Opt_Formal_Kind_Id is
+   function First_Out_Param
+     (E : Subprogram_Type_Or_Kind_Id) return Opt_Formal_Kind_Id
+   is
    begin
       return Param : Opt_Formal_Kind_Id := First_Formal_With_Extras (E) do
          while Present (Param) loop
@@ -447,17 +451,19 @@ package body GNATLLVM.Subprograms is
    --------------------
 
    function Get_Param_Kind (Param : Formal_Kind_Id) return Param_Kind is
-      GT           : constant GL_Type           := Get_Param_GL_Type (Param);
-      T            : constant Type_T            := Type_Of (GT);
-      Size         : constant ULL               :=
+      GT           : constant GL_Type                    :=
+        Get_Param_GL_Type (Param);
+      T            : constant Type_T                     := Type_Of (GT);
+      Size         : constant ULL                        :=
         (if   Decls_Only or else Is_Nonnative_Type (GT)
          then ULL (Get_Bits_Per_Word) * 2 else Get_Type_Size (T));
-      Subp         : constant Entity_Id         := Scope (Param);
-      By_Ref_Mech  : constant Param_By_Ref_Mech := Get_Param_By_Ref_Mech (GT);
-      Foreign      : constant Boolean           :=
+      Subp         : constant Subprogram_Type_Or_Kind_Id := Scope (Param);
+      By_Ref_Mech  : constant Param_By_Ref_Mech          :=
+          Get_Param_By_Ref_Mech (GT);
+      Foreign      : constant Boolean                    :=
         Has_Foreign_Convention (Param) or else Has_Foreign_Convention (Subp);
-      Param_Mode   : Entity_Kind                := Ekind (Param);
-      Mech         : Int                        := Mechanism (Param);
+      Param_Mode   : Entity_Kind                         := Ekind (Param);
+      Mech         : Int                                 := Mechanism (Param);
       By_Copy_Kind : Param_Kind;
       By_Ref_Kind  : Param_Kind;
 
@@ -550,7 +556,8 @@ package body GNATLLVM.Subprograms is
    -- Get_Return_Kind --
    ---------------------
 
-   function Get_Return_Kind (E : Entity_Id) return Return_Kind is
+   function Get_Return_Kind (E : Subprogram_Type_Or_Kind_Id) return Return_Kind
+   is
       GT       : constant GL_Type   := Full_GL_Type (E);
       T        : constant Type_T    :=
         (if Ekind (GT) /= E_Void then Type_Of (GT) else No_Type_T);
@@ -593,7 +600,8 @@ package body GNATLLVM.Subprograms is
    -- Get_L_Ret_Kind --
    --------------------
 
-   function Get_L_Ret_Kind (E : Entity_Id) return L_Ret_Kind is
+   function Get_L_Ret_Kind (E : Subprogram_Type_Or_Kind_Id) return L_Ret_Kind
+   is
       RK        : constant Return_Kind        := Get_Return_Kind  (E);
       Num_Out   : constant Nat                := Number_Out_Params (E);
       Out_Param : constant Opt_Formal_Kind_Id := First_Out_Param (E);
@@ -677,7 +685,8 @@ package body GNATLLVM.Subprograms is
    -- Create_Subprogram_Type --
    ----------------------------
 
-   function Create_Subprogram_Type (E : Entity_Id) return Type_T
+   function Create_Subprogram_Type
+     (E : Subprogram_Type_Or_Kind_Id) return Type_T
    is
       Return_GT       : constant GL_Type     := Full_GL_Type    (E);
       RK              : constant Return_Kind := Get_Return_Kind (E);
@@ -1697,7 +1706,8 @@ package body GNATLLVM.Subprograms is
    ---------------------
 
    function Add_Static_Link
-     (Proc : Entity_Id; Args : GL_Value_Array) return GL_Value_Array
+     (Proc : Opt_Subprogram_Kind_Id;
+      Args : GL_Value_Array) return GL_Value_Array
    is
       S_Link         : GL_Value := No_GL_Value;
       Args_With_Link : GL_Value_Array (Args'First .. Args'Last + 1);
@@ -1750,7 +1760,8 @@ package body GNATLLVM.Subprograms is
    -- Has_Activation_Record --
    ---------------------------
 
-   function Has_Activation_Record (E : Entity_Id) return Boolean
+   function Has_Activation_Record
+     (E : Subprogram_Type_Or_Kind_Id) return Boolean
    is
       Formal : Opt_Formal_Kind_Id := First_Formal_With_Extras (E);
 
@@ -1902,7 +1913,7 @@ package body GNATLLVM.Subprograms is
       Subp             : constant N_Subexpr_Id := Name (N);
       Our_Return_GT    : constant GL_Type      := Full_GL_Type (N);
       Direct_Call      : constant Boolean      := Is_Entity_Name (Subp);
-      Subp_Typ         : constant Entity_Id    :=
+      Subp_Typ         : constant Subprogram_Type_Or_Kind_Id :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
       RK               : constant Return_Kind  := Get_Return_Kind   (Subp_Typ);
       LRK              : constant L_Ret_Kind   := Get_L_Ret_Kind    (Subp_Typ);

@@ -1419,10 +1419,16 @@ package body GNATLLVM.Compile is
    ---------------------
 
    procedure Insert_Code_For (E : E_Package_Id) is
+      Pkg_Body     : constant Node_Id :=
+        Corresponding_Body (Parent (Declaration_Node (E)));
       Code_To_Emit : constant Node_Id :=
-        Parent (Corresponding_Body (Parent (Declaration_Node (E))));
+        (if Present (Pkg_Body) then Parent (Pkg_Body) else Empty);
 
    begin
+      if No (Code_To_Emit) then
+         return;
+      end if;
+
       for J in 1 .. Code_Positions.Last loop
          declare
             RCP  : constant Code_Position := Code_Positions.Table (J);

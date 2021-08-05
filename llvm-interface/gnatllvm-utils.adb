@@ -95,7 +95,7 @@ package body GNATLLVM.Utils is
    procedure Decode_Range (N : Node_Id; Low, High : out Uint) is
    begin
       case Nkind (N) is
-         when N_Identifier | N_Expanded_Name =>
+         when N_Entity_Name =>
 
             --  An N_Identifier can either be a type, in which case we look
             --  at the range of the type, or a constant, in which case we
@@ -281,7 +281,7 @@ package body GNATLLVM.Utils is
 
    begin
       case Nkind (N) is
-         when N_Identifier | N_Expanded_Name =>
+         when N_Entity_Name =>
             E := Entity (N);
             return Is_Object (E)
               and then (Is_Full_Access (E)
@@ -394,7 +394,7 @@ package body GNATLLVM.Utils is
    function Is_Name (N : N_Subexpr_Id) return Boolean is
    begin
       case Nkind (N) is
-         when N_Identifier | N_Expanded_Name | N_Explicit_Dereference =>
+         when N_Entity_Name | N_Explicit_Dereference =>
             return True;
 
          when N_Expression_With_Actions =>

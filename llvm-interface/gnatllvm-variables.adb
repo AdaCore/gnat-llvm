@@ -507,7 +507,7 @@ package body GNATLLVM.Variables is
    function Is_Static_Location (N : N_Subexpr_Id) return Boolean is
    begin
       case Nkind (N) is
-         when N_Identifier | N_Expanded_Name =>
+         when N_Entity_Name =>
             return Is_Entity_Static_Location (Entity (N));
 
          when N_Selected_Component =>
@@ -649,7 +649,7 @@ package body GNATLLVM.Variables is
                           Attribute_Unrestricted_Access)
               and then Is_Static_Location (Prefix (N));
 
-         when N_Identifier | N_Expanded_Name =>
+         when N_Entity_Name =>
             return not Not_Symbolic
               and then Is_Entity_Static_Address (Entity (N));
 
@@ -970,7 +970,7 @@ package body GNATLLVM.Variables is
                   return False;
             end case;
 
-         when N_Identifier | N_Expanded_Name =>
+         when N_Entity_Name =>
 
             return Is_No_Elab_For_Convert_Entity (Entity (N), GT, Not_Symbolic,
                                                   Restrict_Types);

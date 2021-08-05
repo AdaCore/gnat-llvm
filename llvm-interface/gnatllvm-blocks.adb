@@ -974,7 +974,7 @@ package body GNATLLVM.Blocks is
       case Nkind (Right_Opnd (Cond)) is
          when N_In =>
             Rng := Right_Opnd (Right_Opnd (Cond));
-            if Nkind (Rng) in N_Identifier | N_Expanded_Name then
+            if Is_Entity_Name (Rng) then
                Rng := Simplify_Range (Scalar_Range (Full_Etype (Rng)));
             end if;
 

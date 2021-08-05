@@ -760,14 +760,13 @@ package body GNATLLVM.Compile is
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False) return GL_Value is
    begin
-      --  We have an important special case here.  If N is an N_Identifier or
-      --  N_Expanded_Name and its value is a Reference, always return that
-      --  reference in preference to returning its value and forcing it into
-      --  memory.  But don't do this for subprograms since they may need
-      --  static links and avoid variables that are in activation records.
+      --  We have an important special case here.  If N represents an
+      --  entity and its value is a Reference, always return that reference
+      --  in preference to returning its value and forcing it into memory.
+      --  But don't do this for subprograms since they may need static
+      --  links and avoid variables that are in activation records.
 
-      if Nkind (N) in N_Identifier | N_Expanded_Name
-        and then Ekind (Entity (N)) not in E_Function | E_Procedure
+      if Is_Entity_Name (N) and then Ekind (Entity (N)) not in Subprogram_Kind
         and then No (Get_From_Activation_Record (Entity (N)))
         and then Present (Get_Value (Entity (N)))
         and then Is_Single_Reference (Get_Value (Entity (N)))
@@ -812,9 +811,9 @@ package body GNATLLVM.Compile is
            and then Is_Volatile_Reference (N));
       Is_Atomic   : constant Boolean :=
         Is_Atomic_Object (N)
-        or else (Nkind (N) in N_Expanded_Name | N_Explicit_Dereference |
-                              N_Identifier    | N_Indexed_Component    |
-                              N_Selected_Component
+        or else (Nkind (N) in N_Identifier | N_Expanded_Name
+                              | N_Explicit_Dereference | N_Indexed_Component
+                              | N_Selected_Component
                    and then Atomic_Sync_Required (N));
       Result      : GL_Value         :=
         Emit_Internal (N, LHS, For_LHS => For_LHS, Prefer_LHS => Prefer_LHS);
@@ -1047,12 +1046,7 @@ package body GNATLLVM.Compile is
          when N_Qualified_Expression =>
             return Emit_Conversion (Expression (N), GT, N);
 
-         when N_Identifier
-            | N_Expanded_Name
-            | N_Operator_Symbol
-            | N_Defining_Identifier
-            | N_Defining_Operator_Symbol
-            =>
+         when N_Entity_Name =>
             return Emit_Entity (Entity (N), N, Prefer_LHS => Prefer_LHS);
 
          when N_Function_Call =>
@@ -1298,7 +1292,7 @@ package body GNATLLVM.Compile is
                pragma Assert (not For_LHS);
                pragma Assert (No (Alternatives (N)));
 
-               if Nkind (Rng) in N_Identifier | N_Expanded_Name then
+               if Is_Entity_Name (Rng) then
                   Rng := Simplify_Range (Scalar_Range (Full_Etype (Rng)));
                end if;
 

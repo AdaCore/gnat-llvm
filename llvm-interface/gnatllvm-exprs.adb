@@ -92,7 +92,7 @@ package body GNATLLVM.Exprs is
             return Nkind (Expression (N)) /= N_Qualified_Expression
               or else Is_Safe_From (LHS, Expression (N));
 
-         when N_Identifier | N_Expanded_Name | N_Operator_Symbol =>
+         when N_Entity_Name =>
             return Is_Safe_From_Entity (LHS, Entity (N));
 
          when N_Selected_Component =>

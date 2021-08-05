@@ -54,6 +54,10 @@ package GNATLLVM.Utils is
    --  Usually Number_Dimensions * 2, but may be lower if one or more index
    --  has a fixed lower bound.
 
+   function Simplify_Range (N : N_Is_Index_Id) return N_Has_Bounds_Id;
+   --  Given N, which can be an index of an array type, return a node that
+   --  has the bounds of N.
+
    procedure Decode_Range (N : Node_Id; Low, High : out Uint)
      with Pre => Present (N);
    --  Decode the right operand of an N_In or N_Not_In or of a Choice in a

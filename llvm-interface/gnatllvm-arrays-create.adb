@@ -115,23 +115,17 @@ package body GNATLLVM.Arrays.Create is
       LB      : N_Subexpr_Id := Low_Bound  (N);
       HB      : N_Subexpr_Id := High_Bound (N);
       TE      : Type_Kind_Id;
-      Rng     : N_Has_Bounds_Id;
 
    begin
-      --  If the low bound is not constant, try to find an upper bound
+      --  If the low bound is not constant, see if we can find the upper
+      --  bound of the subtype of the lower bound, since that's the
+      --  worse case.
 
       loop
          exit when Nkind (LB) = N_Integer_Literal;
          TE := Full_Etype (LB);
-
-         exit when Ekind (TE)
-           not in E_Signed_Integer_Subtype | E_Modular_Integer_Subtype;
-
-         Rng := Scalar_Range (TE);
-         exit when Nkind (Rng)
-           not in N_Signed_Integer_Type_Definition | N_Range;
-
-         LB := High_Bound (Rng);
+         exit when Ekind (TE) not in Integer_Kind or else Is_Base_Type (TE);
+         LB := High_Bound (Simplify_Range (Scalar_Range (TE)));
       end loop;
 
       --  Similarly for the high bound
@@ -140,14 +134,8 @@ package body GNATLLVM.Arrays.Create is
          exit when Nkind (HB) = N_Integer_Literal;
          TE := Full_Etype (HB);
 
-         exit when Ekind (TE)
-           not in E_Signed_Integer_Subtype | E_Modular_Integer_Subtype;
-
-         Rng := Scalar_Range (TE);
-         exit when
-           Nkind (Rng) not in N_Signed_Integer_Type_Definition | N_Range;
-
-         HB := Low_Bound (Rng);
+         exit when Ekind (TE) not in Integer_Kind or else Is_Base_Type (TE);
+         HB := Low_Bound (Simplify_Range (Scalar_Range (TE)));
       end loop;
 
       --  If both are integers and the bounds are safe, we can't be superflat
@@ -162,7 +150,7 @@ package body GNATLLVM.Arrays.Create is
    -----------------------------
 
    function FLB_Cannot_Be_Superflat (N : N_Is_Index_Id) return Boolean is
-      Our_Rng    : constant N_Has_Bounds_Id := Get_Dim_Range (N);
+      Our_Rng    : constant N_Has_Bounds_Id := Simplify_Range (N);
       Parent_Rng : N_Has_Bounds_Id;
       Parent_LB  : N_Subexpr_Id;
 
@@ -172,7 +160,7 @@ package body GNATLLVM.Arrays.Create is
       --  greater than that bound, we can't form superflat objects.
 
       if Nkind (N) = N_Subtype_Indication then
-         Parent_Rng := Scalar_Range (Entity (Subtype_Mark (N)));
+         Parent_Rng := Simplify_Range (N);
          Parent_LB  := Low_Bound (Parent_Rng);
          return Nkind (Parent_LB) = N_Integer_Literal
            and then Intval (Low_Bound (Our_Rng)) - 1 <= Intval (Parent_LB);
@@ -371,7 +359,7 @@ package body GNATLLVM.Arrays.Create is
       Base_Index := First_Index (Base_Type);
       while Present (Index) loop
          declare
-            Idx_Range : constant N_Has_Bounds_Id := Get_Dim_Range (Index);
+            Idx_Range : constant N_Has_Bounds_Id := Simplify_Range (Index);
             --  Sometimes, the frontend leaves an identifier that
             --  references an integer subtype instead of a range.
 

@@ -725,7 +725,7 @@ package body GNATLLVM.Aliasing is
          else
             declare
                Index     : constant N_Is_Index_Id   := First_Index (TE);
-               Idx_Range : constant N_Has_Bounds_Id := Get_Dim_Range (Index);
+               Idx_Range : constant N_Has_Bounds_Id := Simplify_Range (Index);
                R_LB      : constant N_Subexpr_Id    := Low_Bound (Idx_Range);
                R_HB      : constant N_Subexpr_Id    := High_Bound (Idx_Range);
 
@@ -798,9 +798,9 @@ package body GNATLLVM.Aliasing is
                      while Present (Index) loop
                         declare
                            Rng   : constant N_Has_Bounds_Id :=
-                             Get_Dim_Range (Index);
+                             Simplify_Range (Index);
                            E_Rng : constant N_Has_Bounds_Id :=
-                             Get_Dim_Range (E_Index);
+                             Simplify_Range (E_Index);
                            LB    : constant N_Subexpr_Id    :=
                              Low_Bound (Rng);
                            HB    : constant N_Subexpr_Id    :=

@@ -316,7 +316,7 @@ package body GNATLLVM.Records.Create is
       Index := First_Index (GT);
       while Present (Index) loop
          declare
-            Idx_Range : constant Node_Id      := Get_Dim_Range (Index);
+            Idx_Range : constant Node_Id      := Simplify_Range (Index);
             LB        : constant N_Subexpr_Id := Low_Bound (Idx_Range);
             HB        : constant N_Subexpr_Id := High_Bound (Idx_Range);
 

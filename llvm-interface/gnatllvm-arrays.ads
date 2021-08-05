@@ -70,9 +70,6 @@ package GNATLLVM.Arrays is
    function Get_Bound_Alignment (GT : Array_Or_PAT_GL_Type) return Nat;
    --  Get the alignment of the Bounds part of array and data of GT
 
-   function Get_Dim_Range (N : N_Is_Index_Id) return N_Has_Bounds_Id;
-   --  Return the a node giving the range of an index of an array type
-
    function Get_Array_Bound
      (GT       : Array_Or_PAT_GL_Type;
       Dim      : Nat;

@@ -29,6 +29,7 @@ with GNATLLVM.DebugInfo;     use GNATLLVM.DebugInfo;
 with GNATLLVM.Exprs;         use GNATLLVM.Exprs;
 with GNATLLVM.Instructions;  use GNATLLVM.Instructions;
 with GNATLLVM.Records;       use GNATLLVM.Records;
+with GNATLLVM.Utils;         use GNATLLVM.Utils;
 with GNATLLVM.Variables;     use GNATLLVM.Variables;
 
 package body GNATLLVM.Arrays is
@@ -1460,7 +1461,7 @@ package body GNATLLVM.Arrays is
    function Get_Slice_LValue (GT : Array_GL_Type; V : GL_Value) return GL_Value
    is
       Rng         : constant N_Has_Bounds_Id :=
-        Get_Dim_Range (First_Index (GT));
+        Simplify_Range (First_Index (GT));
       Array_Data  : constant GL_Value        :=
         Get (To_Primitive (V, No_Copy => True), Reference);
       Arr_GT      : constant Array_GL_Type   := Related_Type (V);
@@ -1616,34 +1617,4 @@ package body GNATLLVM.Arrays is
       end if;
    end Build_Indexed_Store;
 
-   -------------------
-   -- Get_Dim_Range --
-   -------------------
-
-   function Get_Dim_Range (N : N_Is_Index_Id) return N_Has_Bounds_Id is
-   begin
-      case Nkind (N) is
-         when N_Has_Bounds =>
-            return N;
-
-         when N_Has_Entity =>
-            return Get_Dim_Range (Scalar_Range (Full_Entity (N)));
-
-         when N_Subtype_Indication =>
-            declare
-               Constr : constant Opt_N_Range_Constraint_Id := Constraint (N);
-            begin
-               if Present (Constr) then
-                  return Get_Dim_Range (Range_Expression (Constr));
-               else
-                  return
-                    Get_Dim_Range (Scalar_Range
-                                     (Full_Entity (Subtype_Mark (N))));
-               end if;
-            end;
-
-         when others =>
-            return Empty;
-      end case;
-   end Get_Dim_Range;
 end GNATLLVM.Arrays;

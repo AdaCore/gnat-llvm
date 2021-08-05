@@ -1299,7 +1299,7 @@ package body GNATLLVM.Compile is
                pragma Assert (No (Alternatives (N)));
 
                if Nkind (Rng) in N_Identifier | N_Expanded_Name then
-                  Rng := Scalar_Range (Full_Etype (Rng));
+                  Rng := Simplify_Range (Scalar_Range (Full_Etype (Rng)));
                end if;
 
                Compare_LB := Build_Elementary_Comparison

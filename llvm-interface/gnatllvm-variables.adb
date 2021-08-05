@@ -551,7 +551,7 @@ package body GNATLLVM.Variables is
                Expr  := First (Expressions (N));
                while Present (Index) loop
                   exit when not Is_Static_Expression
-                    (Low_Bound (Get_Dim_Range (Index)))
+                    (Low_Bound (Simplify_Range (Index)))
                     or else not Is_Static_Expression (Expr);
                   Next_Index (Index);
                   Next (Expr);
@@ -567,7 +567,7 @@ package body GNATLLVM.Variables is
 
             if not Is_Static_Location (Prefix (N))
               or else not (Is_Static_Expression
-                             (Low_Bound (Get_Dim_Range (Discrete_Range (N)))))
+                             (Low_Bound (Simplify_Range (Discrete_Range (N)))))
             then
                return False;
             end if;
@@ -582,7 +582,7 @@ package body GNATLLVM.Variables is
                return not Is_Array_Type (GT)
                  or else Ekind (GT) = E_String_Literal_Subtype
                  or else (Is_Static_Expression
-                            (Low_Bound (Get_Dim_Range (First_Index (GT)))));
+                            (Low_Bound (Simplify_Range (First_Index (GT)))));
             end;
 
          when others =>
@@ -955,7 +955,8 @@ package body GNATLLVM.Variables is
                  | Attribute_Length | Attribute_Range_Length =>
 
                   if Is_Scalar_Type (Full_Etype (Prefix (N))) then
-                     Expr := Scalar_Range (Full_Etype (Prefix (N)));
+                     Expr :=
+                       Simplify_Range (Scalar_Range (Full_Etype (Prefix (N))));
                      return Is_No_Elab_Needed (Low_Bound (Expr),
                                                Not_Symbolic, Restrict_Types)
                        and then Is_No_Elab_Needed (High_Bound (Expr),

@@ -58,6 +58,36 @@ package body GNATLLVM.Utils is
       return Hash_Type'Mod (To_Integer (UC (Val)) / (Val'Size / 8));
    end Hash_Value_T;
 
+   --------------------
+   -- Simplify_Range --
+   --------------------
+
+   function Simplify_Range (N : N_Is_Index_Id) return N_Has_Bounds_Id is
+   begin
+      case Nkind (N) is
+         when N_Has_Bounds =>
+            return N;
+
+         when N_Has_Entity =>
+            return Simplify_Range (Scalar_Range (Full_Entity (N)));
+
+         when N_Subtype_Indication =>
+            declare
+               Constr : constant Opt_N_Range_Constraint_Id := Constraint (N);
+            begin
+               if Present (Constr) then
+                  return Simplify_Range (Range_Expression (Constr));
+               else
+                  return Simplify_Range (Scalar_Range
+                                           (Full_Entity (Subtype_Mark (N))));
+               end if;
+            end;
+
+         when others =>
+            return Empty;
+      end case;
+   end Simplify_Range;
+
    ------------------
    -- Decode_Range --
    ------------------

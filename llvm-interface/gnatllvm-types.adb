@@ -481,11 +481,8 @@ package body GNATLLVM.Types is
    ----------------------
 
    procedure Bounds_From_Type (GT : GL_Type; Low, High : out GL_Value) is
-      SRange : constant Node_Id := Scalar_Range (GT);
+      SRange : constant N_Has_Bounds_Id := Simplify_Range (Scalar_Range (GT));
    begin
-      pragma Assert
-        (Nkind (SRange) in N_Range | N_Signed_Integer_Type_Definition);
-
       Low  := Emit_Convert_Value (Low_Bound (SRange), GT);
       High := Emit_Convert_Value (High_Bound (SRange), GT);
    end Bounds_From_Type;

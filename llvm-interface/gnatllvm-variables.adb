@@ -680,10 +680,10 @@ package body GNATLLVM.Variables is
    -----------------------
 
    function Initialized_Value (E : Entity_Id) return Opt_N_Subexpr_Id is
-      Full_E : constant Entity_Id :=
+      Full_E : constant Entity_Id        :=
         (if   Ekind (E) = E_Constant and then Present (Full_View (E))
          then Full_View (E) else E);
-      Decl   : constant Node_Id   := Declaration_Node (Full_E);
+      Decl   : constant Opt_N_Is_Decl_Id := Declaration_Node (Full_E);
       CV     : Opt_N_Subexpr_Id;
 
    begin

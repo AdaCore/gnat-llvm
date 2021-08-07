@@ -97,7 +97,7 @@ package body GNATLLVM.Types is
    function Move_Into_Memory
      (Temp     : GL_Value;
       V        : GL_Value;
-      Expr     : Node_Id;
+      Expr     : Opt_N_Subexpr_Id;
       GT       : GL_Type;
       Alloc_GT : GL_Type) return GL_Value
      with Pre  => Present (Temp) and then Present (GT)
@@ -494,7 +494,7 @@ package body GNATLLVM.Types is
    function Move_Into_Memory
      (Temp     : GL_Value;
       V        : GL_Value;
-      Expr     : Node_Id;
+      Expr     : Opt_N_Subexpr_Id;
       GT       : GL_Type;
       Alloc_GT : GL_Type) return GL_Value
    is
@@ -507,10 +507,10 @@ package body GNATLLVM.Types is
         with Pre => Present (V1) and then Present (V2);
       --  Return True iff V1 and V2 are exactly the same memory location
 
-      R        : constant GL_Relationship := Relationship_For_Alloc (GT);
-      New_Expr : constant Node_Id         := Strip_Complex_Conversions (Expr);
-      Mem_GT   : constant GL_Type         := GT_To_Use (GT, Alloc_GT);
-      Memory   : GL_Value                 :=
+      R        : constant GL_Relationship  := Relationship_For_Alloc (GT);
+      New_Expr : constant Opt_N_Subexpr_Id := Strip_Complex_Conversions (Expr);
+      Mem_GT   : constant GL_Type          := GT_To_Use (GT, Alloc_GT);
+      Memory   : GL_Value                  :=
         (if   Is_Pointer (Temp)
          then Ptr_To_Relationship (Temp, Mem_GT, R)
          else Int_To_Relationship (Temp, Mem_GT, R));
@@ -1460,7 +1460,7 @@ package body GNATLLVM.Types is
       T           : constant Type_T := Type_Of (GT);
       Align       : constant Nat    := Get_Type_Alignment (GT);
       Error_Node  : Node_Id         := E;
-      Pragma_Node : Node_Id;
+      Pragma_Node : Opt_N_Pragma_Id;
 
    begin
       --  If this is an anonymous base type, nothing to check, the
@@ -1854,8 +1854,8 @@ package body GNATLLVM.Types is
                         declare
                            PT : constant Type_Kind_Id :=
                              Full_Etype (Prefix (N));
-                           LB : constant Node_Id      := Type_Low_Bound  (PT);
-                           HB : constant Node_Id      := Type_High_Bound (PT);
+                           LB : constant N_Subexpr_Id := Type_Low_Bound  (PT);
+                           HB : constant N_Subexpr_Id := Type_High_Bound (PT);
 
                         begin
 

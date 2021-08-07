@@ -393,7 +393,7 @@ package body GNATLLVM.Compile is
                   if Present (Corresponding_Spec (N)) then
                      declare
                         Spec : constant E_Package_Id := Corresponding_Spec (N);
-                        Decl : constant Node_Id      :=
+                        Decl : constant N_Is_Decl_Id :=
                           Declaration_Node (Spec);
 
                      begin
@@ -1500,7 +1500,8 @@ package body GNATLLVM.Compile is
 
    procedure Process_Freeze_Entity (N : N_Freeze_Entity_Id) is
       E    : constant Entity_Id := Entity (N);
-      Decl : constant Node_Id   := Declaration_Node (E);
+      Decl : N_Is_Decl_Id;
+
    begin
       --  We don't do anything for types
 
@@ -1511,6 +1512,7 @@ package body GNATLLVM.Compile is
       --  Otherwise, see what type of declaration this is. Since this isn't
       --  a type, we know there is one.
 
+      Decl := Declaration_Node (E);
       case Nkind (Decl) is
          when N_Object_Declaration | N_Exception_Declaration =>
 

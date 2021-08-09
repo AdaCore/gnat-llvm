@@ -119,7 +119,7 @@ package body GNATLLVM.Arrays.Create is
    begin
       --  If the low bound is not constant, see if we can find the upper
       --  bound of the subtype of the lower bound, since that's the
-      --  worse case.
+      --  worse case. Do this repeatedly, if need be.
 
       loop
          exit when Nkind (LB) = N_Integer_Literal;

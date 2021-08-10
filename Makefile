@@ -18,7 +18,7 @@ zfp: sanity-check
 	$(MAKE) -C llvm-interface $@
 
 automated:
-	$(MAKE) -C llvm-interface build-opt gnatlib-automated
+	$(MAKE) -C llvm-interface bootstrap
 
 llvm:
 	$(MAKE) -j1 -C llvm setup

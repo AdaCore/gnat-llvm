@@ -58,8 +58,7 @@ package GNATLLVM.Utils is
    --  Given N, which can be an index of an array type, return a node that
    --  has the bounds of N.
 
-   procedure Decode_Range (N : Node_Id; Low, High : out Uint)
-     with Pre => Present (N);
+   procedure Decode_Range (N : N_Is_Range_Id; Low, High : out Uint);
    --  Decode the right operand of an N_In or N_Not_In or of a Choice in a
    --  case statement into the low and high bounds.  If either Low or High
    --  is not Present, we have a nonstatic value, a non-discrete value, or
@@ -106,7 +105,7 @@ package GNATLLVM.Utils is
    --  Return the name of an entity concatenated with Suffix.
 
    function Get_Acting_Spec
-     (Subp_Body : N_Subprogram_Body_Id) return Node_Id;
+     (Subp_Body : N_Subprogram_Body_Id) return N_Subprogram_Specification_Id;
    --  If Subp_Body acts as a spec, return it. Return the corresponding
    --  subprogram declaration otherwise.
 

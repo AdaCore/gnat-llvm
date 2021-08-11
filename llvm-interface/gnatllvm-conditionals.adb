@@ -463,12 +463,10 @@ package body GNATLLVM.Conditionals is
 
    procedure Emit_Case_Statement (N : N_Case_Statement_Id) is
 
-      Alts        : constant List_Id                    := Alternatives (N);
-      Start_BB    : constant Basic_Block_T              := Get_Insert_Block;
-      BB_End      : constant Basic_Block_T              :=
-        Create_Basic_Block ("case.end");
-      Alt         : Opt_N_Case_Statement_Alternative_Id :=
-        First_Non_Pragma (Alts);
+      Alts        : constant List_Id       := Alternatives (N);
+      Start_BB    : constant Basic_Block_T := Get_Insert_Block;
+      BB_End      : constant Basic_Block_T := Create_Basic_Block ("case.end");
+      Alt         : Opt_N_Alternative_Id   := First_Non_Pragma (Alts);
       Current_Alt : Nat                                 := 1;
       BBs         : Basic_Block_Array (1 .. List_Length_Non_Pragma (Alts));
 
@@ -511,8 +509,8 @@ package body GNATLLVM.Conditionals is
       -------------------
 
       function Count_Choices (Alts : List_Id) return Nat is
-         Alt          : Node_Id := First_Non_Pragma (Alts);
-         First_Choice : Node_Id;
+         Alt          : Opt_N_Alternative_Id := First_Non_Pragma (Alts);
+         First_Choice : Opt_N_Is_Case_Choice_Id;
 
       begin
          return Num_Choices : Nat := 0 do
@@ -566,7 +564,8 @@ package body GNATLLVM.Conditionals is
       Alts           : array (1 .. Num_Alts) of One_Alt;
       Choices        : array (1 .. Count_Choices (In_Alts)) of One_Choice;
       BB             : Basic_Block_T;
-      Alt, Choice    : Node_Id;
+      Alt            : Opt_N_Alternative_Id;
+      Choice         : Opt_N_Is_Case_Choice_Id;
       Low, High      : Uint;
       If_Cost        : Nat;
       Switch_Cost    : Nat;

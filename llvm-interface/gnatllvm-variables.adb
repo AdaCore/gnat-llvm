@@ -1718,8 +1718,8 @@ package body GNATLLVM.Variables is
      (N : N_Declaration_Id; For_Freeze_Entity : Boolean := False)
    is
       function Is_Matching_Unc_Array
-        (GT : GL_Type; Addr : Node_Id) return Boolean
-        with Pre => Present (GT) and then Present (Addr);
+        (GT : GL_Type; Addr : N_Subexpr_Id) return Boolean
+        with Pre => Present (GT);
       --  Return True iff Addr is an expression that represents the address
       --  of an object that's an unconstrained array wih the same bounds
       --  size as GT.
@@ -1733,18 +1733,19 @@ package body GNATLLVM.Variables is
          then Full_View (E) else E);
       --  Identifier to use to find the initializing expression
 
-      No_Init         : constant Boolean   :=
+      No_Init         : constant Boolean                     :=
         Nkind (N) = N_Object_Declaration and then No_Initialization (N);
       --  True if we aren't to initialize this object (ignore expression)
 
-      Expr            : Node_Id            :=
+      Expr            : Opt_N_Subexpr_Id                     :=
         (if No_Init then Empty else Expression (N));
       --  Initializing expression, if Present and we are to use one
 
-      GT              : constant GL_Type   := Variable_GL_Type (E, Expr);
+      GT              : constant GL_Type                     :=
+        Variable_GL_Type (E, Expr);
       --  Type to use for E
 
-      Alloc_GT        : constant GL_Type   :=
+      Alloc_GT        : constant GL_Type                     :=
         (if   not Is_Class_Wide_Equivalent_Type (GT)
               and then not Is_Unconstrained_Record (GT)
               and then Present (Expr)
@@ -1752,51 +1753,55 @@ package body GNATLLVM.Variables is
          then Full_Alloc_GL_Type (Expr) else GT);
       --  Type to use for allocating E, if different
 
-      Nonnative       : constant Boolean   := Is_Nonnative_Type (GT);
+      Nonnative       : constant Boolean                     :=
+        Is_Nonnative_Type (GT);
       --  True if the type to use for this variable isn't a native LLVM type
 
-      Has_Addr        : constant Boolean   := Present (Address_Clause (E));
+      Has_Addr        : constant Boolean                     :=
+          Present (Address_Clause (E));
       --  True if variable has an address clause
 
-      Addr_Expr       : constant Node_Id   :=
+      Addr_Expr       : constant Opt_N_Subexpr_Id            :=
         (if Has_Addr then Expression (Address_Clause (E)) else Empty);
       --  Expression to use for the address, if Present
 
-      Is_External     : constant Boolean   :=
+      Is_External     : constant Boolean                    :=
         Is_Imported (E) and then not Has_Addr
           and then not Get_Dup_Global_Is_Defined (E);
       --  True if variable is not defined in this unit
 
-      Has_Static_Addr : constant Boolean   :=
+      Has_Static_Addr : constant Boolean                    :=
         Has_Addr and then Is_Static_Address (Addr_Expr);
       --  True if variable has an address clause that's static
 
-      Needs_Alloc     : constant Boolean   := not Has_Addr and then Nonnative;
+      Needs_Alloc     : constant Boolean                    :=
+        not Has_Addr and then Nonnative;
       --  True if variable needs a dynamic allocation
 
-      Is_Ref          : constant Boolean   :=
+      Is_Ref          : constant Boolean                    :=
         (Has_Addr and then not Has_Static_Addr) or else Needs_Alloc;
       --  True if we need to use an indirection for this variable
 
-      Is_Volatile     : constant Boolean   := Is_Volatile_Entity (E);
+      Is_Volatile     : constant Boolean                    :=
+        Is_Volatile_Entity (E);
       --  True if we need to consider E as volatile
 
-      Value           : GL_Value           :=
+      Value           : GL_Value                            :=
         (if Present (Expr) then Get_Value (Expr) else No_GL_Value);
       --  Any value that we've previously saved for an initializing expression
 
-      Addr            : GL_Value           :=
+      Addr            : GL_Value                            :=
         (if Has_Addr then Get_Value (Addr_Expr) else No_GL_Value);
       --  Likewise for address
 
-      Copied          : Boolean            := False;
+      Copied          : Boolean                             := False;
       --  True if we've copied the value to the variable
 
-      Set_Init        : Boolean            := False;
+      Set_Init        : Boolean                             := False;
       --  True if we've made an initializer for a static variable that we're
       --  defining.
 
-      LLVM_Var        : GL_Value           := Get_Value (E);
+      LLVM_Var        : GL_Value                            := Get_Value (E);
       --  The LLVM value for the variable
 
       ---------------------------
@@ -1804,7 +1809,7 @@ package body GNATLLVM.Variables is
       ---------------------------
 
       function Is_Matching_Unc_Array
-        (GT : GL_Type; Addr : Node_Id) return Boolean is
+        (GT : GL_Type; Addr : N_Subexpr_Id) return Boolean is
       begin
          --  If the address isn't a 'Address, this isn't a match
 
@@ -2378,14 +2383,15 @@ package body GNATLLVM.Variables is
       N          : Opt_N_Has_Entity_Id := Empty;
       Prefer_LHS : Boolean             := False) return GL_Value
    is
-      GT        : constant GL_Type   := Full_GL_Type (E);
-      Full_E    : constant Entity_Id :=
+      GT        : constant GL_Type          := Full_GL_Type (E);
+      Full_E    : constant Entity_Id        :=
         (if   Ekind (E) = E_Constant and then Present (Full_View (E))
               and then No (Address_Clause (E))
          then Full_View (E) else E);
-      Expr      : constant Node_Id   := Initialized_Value          (Full_E);
-      V_Act     : constant GL_Value  := Get_From_Activation_Record (Full_E);
-      V         : GL_Value           := Get_Value                  (Full_E);
+      Expr      : constant Opt_N_Subexpr_Id := Initialized_Value (Full_E);
+      V_Act     : constant GL_Value         :=
+        Get_From_Activation_Record (Full_E);
+      V         : GL_Value                  := Get_Value (Full_E);
 
    begin
       --  See if this is an entity that's present in our

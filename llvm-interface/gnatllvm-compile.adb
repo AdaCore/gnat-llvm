@@ -1413,9 +1413,9 @@ package body GNATLLVM.Compile is
    ---------------------
 
    procedure Insert_Code_For (E : E_Package_Id) is
-      Pkg_Body     : constant Node_Id :=
+      Pkg_Body     : constant Opt_E_Package_Body_Id :=
         Corresponding_Body (Parent (Declaration_Node (E)));
-      Code_To_Emit : constant Node_Id :=
+      Code_To_Emit : constant Opt_N_Package_Body_Id :=
         (if Present (Pkg_Body) then Parent (Pkg_Body) else Empty);
 
    begin

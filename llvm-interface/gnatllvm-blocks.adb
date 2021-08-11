@@ -1033,13 +1033,14 @@ package body GNATLLVM.Blocks is
       DDT               : D_D_Info;
       BB                : Basic_Block_T;
       Handler           : Opt_N_Exception_Handler_Id;
-      Choice            : Node_Id;
+      Choice            : Opt_N_Is_Exception_Choice_Id;
       EH_Data           : GL_Value;
       Selector, Exc_Ptr : GL_Value;
       Exc               : GL_Value;
 
-      function Choice_To_Exc (Choice : Node_Id) return GL_Value
-        with Pre => Present (Choice), Post => Present (Choice_To_Exc'Result);
+      function Choice_To_Exc
+        (Choice : N_Is_Exception_Choice_Id) return GL_Value
+        with Post => Present (Choice_To_Exc'Result);
       --  Given a Choice from an exception alternative, return a GL_Value
       --  corresponding to that choice, taking into account the special
       --  values use for "others".
@@ -1048,7 +1049,9 @@ package body GNATLLVM.Blocks is
       -- Choice_To_Exc --
       -------------------
 
-      function Choice_To_Exc (Choice : Node_Id) return GL_Value is
+      function Choice_To_Exc
+        (Choice : N_Is_Exception_Choice_Id) return GL_Value
+      is
       begin
          if Nkind (Choice) = N_Others_Choice then
             return (if   All_Others (Choice) then All_Others_Value

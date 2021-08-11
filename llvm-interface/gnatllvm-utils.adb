@@ -92,7 +92,7 @@ package body GNATLLVM.Utils is
    -- Decode_Range --
    ------------------
 
-   procedure Decode_Range (N : Node_Id; Low, High : out Uint) is
+   procedure Decode_Range (N : N_Is_Range_Id; Low, High : out Uint) is
    begin
       case Nkind (N) is
          when N_Entity_Name =>
@@ -120,9 +120,7 @@ package body GNATLLVM.Utils is
             High := Low;
 
          when others =>
-            pragma Assert (Decls_Only);
-            Low  := No_Uint;
-            High := No_Uint;
+            pragma Assert (False);
       end case;
    end Decode_Range;
 
@@ -260,7 +258,7 @@ package body GNATLLVM.Utils is
    -----------------
 
    function Num_Actuals (N : N_Subprogram_Call_Id) return Nat is
-      Actual : Node_Id := First_Actual (N);
+      Actual : Opt_N_Subexpr_Id := First_Actual (N);
 
    begin
       return Result : Nat := 0 do
@@ -305,7 +303,7 @@ package body GNATLLVM.Utils is
    ---------------------
 
    function Get_Acting_Spec
-     (Subp_Body : N_Subprogram_Body_Id) return Node_Id
+     (Subp_Body : N_Subprogram_Body_Id) return N_Subprogram_Specification_Id
    is
    begin
       if Acts_As_Spec (Subp_Body) then
@@ -481,10 +479,11 @@ package body GNATLLVM.Utils is
       if Ekind (E) /= E_Exception and then Present (Linker_Section_Pragma (E))
       then
          declare
-            P     : constant Node_Id   := Linker_Section_Pragma (E);
-            List  : constant List_Id   := Pragma_Argument_Associations (P);
-            Str   : constant Node_Id   := Expression (Last (List));
-            S_Id  : constant String_Id := Strval (Expr_Value_S (Str));
+            P     : constant Opt_N_Pragma_Id := Linker_Section_Pragma (E);
+            List  : constant List_Id         :=
+              Pragma_Argument_Associations (P);
+            Str   : constant N_Subexpr_Id    := Expression (Last (List));
+            S_Id  : constant String_Id       := Strval (Expr_Value_S (Str));
             S     : String (1 .. Integer (String_Length (S_Id)));
 
          begin

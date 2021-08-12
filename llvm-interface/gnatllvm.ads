@@ -166,7 +166,8 @@ package GNATLLVM is
    --  Test for presence and absence of fields of LLVM types
 
    function Is_Type_Or_Void (E : Entity_Id) return Boolean is
-     (Ekind (E) = E_Void or else Is_Type (E));
+     (Ekind (E) in Void_Or_Type_Kind)
+     with Pre => Present (E);
    --  We can have Etype's that are E_Void for E_Procedure
 
    --  For each GL_Type that corresponds to an array, we store the types

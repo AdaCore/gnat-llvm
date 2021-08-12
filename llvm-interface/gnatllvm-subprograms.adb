@@ -210,7 +210,7 @@ package body GNATLLVM.Subprograms is
    --  Convert an Entity_Id to a hash
 
    package Activation_Record_Map_P is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Exception_Or_Object_Kind_Id,
+     (Key_Type        => Object_Kind_Id,
       Element_Type    => GL_Value,
       Hash            => Hash_Entity_Id,
       Equivalent_Keys => "=");
@@ -951,7 +951,8 @@ package body GNATLLVM.Subprograms is
    -- Get_From_Activation_Record --
    --------------------------------
 
-   function Get_From_Activation_Record (E : Entity_Id) return GL_Value is
+   function Get_From_Activation_Record (E : Evaluable_Kind_Id) return GL_Value
+   is
       BB : Basic_Block_T;
 
    begin

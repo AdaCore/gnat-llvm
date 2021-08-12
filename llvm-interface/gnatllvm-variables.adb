@@ -74,7 +74,7 @@ package body GNATLLVM.Variables is
       S     : String_Id;
       --  The identifier of the string representing the name
 
-      E     : Entity_Id;
+      E     : Opt_Global_Name_Kind_Id;
       --  An entity we've seen (the first)
 
       Index : Global_Dup_Value_Id;
@@ -89,7 +89,7 @@ package body GNATLLVM.Variables is
       Table_Name           => "Interface_Names_Table");
 
    type Global_Dup_Entry is record
-      E     : Entity_Id;
+      E     : Global_Name_Kind_Id;
       --  One entity that's part of a duplicate set
 
       Index : Global_Dup_Value_Id;
@@ -114,24 +114,22 @@ package body GNATLLVM.Variables is
       Table_Increment      => 1,
       Table_Name           => "Global_Dup_Value_Table");
 
-   function Find_Dup_Entry (E : Entity_Id) return Global_Dup_Value_Id
-     with Pre => Present (E) and then not Is_Type (E);
+   function Find_Dup_Entry
+     (E : Global_Name_Kind_Id) return Global_Dup_Value_Id;
    --  If E is present in the above table, returns the value of Index
    --  for that entry or 0 if not present.
 
    function Find_Dup_Entry (S : String) return Global_Dup_Value_Id;
    --  Similar, but by string (for builtins)
 
-   function Get_Dup_Global_Is_Defined (E : Entity_Id) return Boolean
-     with Pre => Present (E) and then not Is_Type (E);
+   function Get_Dup_Global_Is_Defined (E : Global_Name_Kind_Id) return Boolean;
    --  Return True if E corresponds to a duplicated interface name and one
    --  occurence of that name in the extended main unit is defining it.
 
    function String_Equal (L : String_Id; R : String) return Boolean;
    --  Compare a string with an entry in the string table
 
-   function Has_Global_Name (E : Entity_Id) return Boolean
-     with Pre => Present (E) and then not Is_Type (E);
+   function Has_Global_Name (E : Global_Name_Kind_Id) return Boolean;
    --  Return True if E may have a global name that we need to check for dups
 
    function Variable_GL_Type
@@ -140,9 +138,7 @@ package body GNATLLVM.Variables is
    --  Determine the proper GL_Type to use for E.  If Expr is Present, it's
    --  an initializing expression for E.
 
-   function Is_Volatile_Entity
-     (E : Exception_Or_Object_Kind_Id) return Boolean
-   is
+   function Is_Volatile_Entity (E : Evaluable_Kind_Id) return Boolean is
      (Is_Volatile_Object (E) or else Treat_As_Volatile (E)
         or else Address_Taken (E));
    --  True iff E is an entity (a variable or constant) that we
@@ -178,8 +174,7 @@ package body GNATLLVM.Variables is
    --  the result must not be a symbolic constant
 
    function Is_Entity_Static_Address
-     (E : Entity_Id; Not_Symbolic : Boolean := False) return Boolean
-     with Pre => Present (E);
+     (E : Evaluable_Kind_Id; Not_Symbolic : Boolean := False) return Boolean;
    --  Return True if E represents an address that can computed statically.
    --  If Not_Symbolic is True, only return if this address is a constant
    --  integer (rare).
@@ -194,11 +189,11 @@ package body GNATLLVM.Variables is
    --  then converting it to GT.
 
    function Is_No_Elab_For_Convert_Entity
-     (E              : Entity_Id;
+     (E              : Evaluable_Kind_Id;
       GT             : GL_Type;
       Not_Symbolic   : Boolean := False;
       Restrict_Types : Boolean := False) return Boolean
-     with Pre => Present (E) and then Present (GT);
+     with Pre => Present (GT);
    --  See if can avoid an elaboration procedure when elaborating E and
    --  then converting it to GT.
 
@@ -210,11 +205,10 @@ package body GNATLLVM.Variables is
    function Is_Static_Location (N : N_Subexpr_Id) return Boolean;
    --  Return True if N represent an object with constant address
 
-   function Is_Entity_Static_Location (E : Entity_Id) return Boolean
-     with Pre => Present (E);
+   function Is_Entity_Static_Location (E : Evaluable_Kind_Id) return Boolean;
    --  Return True if E represent an object with constant address
 
-   function Initialized_Value (E : Entity_Id) return Opt_N_Subexpr_Id;
+   function Initialized_Value (E : Evaluable_Kind_Id) return Opt_N_Subexpr_Id;
    --  If E is an E_Constant that has an initializing expression, return it
 
    Const_Map : Value_Value_Map_P.Map;
@@ -248,7 +242,7 @@ package body GNATLLVM.Variables is
    -- Has_Global_Name --
    ---------------------
 
-   function Has_Global_Name (E : Entity_Id) return Boolean is
+   function Has_Global_Name (E : Global_Name_Kind_Id) return Boolean is
    begin
       --  If there's an address clause, there's no global name
 
@@ -272,7 +266,8 @@ package body GNATLLVM.Variables is
    -- Find_Dup_Entry --
    --------------------
 
-   function Find_Dup_Entry (E : Entity_Id) return Global_Dup_Value_Id is
+   function Find_Dup_Entry (E : Global_Name_Kind_Id) return Global_Dup_Value_Id
+   is
    begin
       --  Don't even to search if this doesn't have a global name
 
@@ -308,7 +303,7 @@ package body GNATLLVM.Variables is
    -- Get_Dup_Global_Value --
    --------------------------
 
-   function Get_Dup_Global_Value (E : Entity_Id) return GL_Value is
+   function Get_Dup_Global_Value (E : Global_Name_Kind_Id) return GL_Value is
       Idx : constant Global_Dup_Value_Id := Find_Dup_Entry (E);
 
    begin
@@ -319,7 +314,7 @@ package body GNATLLVM.Variables is
    -- Set_Dup_Global_Value --
    --------------------------
 
-   procedure Set_Dup_Global_Value (E : Entity_Id; V : GL_Value) is
+   procedure Set_Dup_Global_Value (E : Global_Name_Kind_Id; V : GL_Value) is
       Idx : constant Global_Dup_Value_Id := Find_Dup_Entry (E);
 
    begin
@@ -356,7 +351,8 @@ package body GNATLLVM.Variables is
    -- Get_Dup_Global_Is_Defined --
    -------------------------------
 
-   function Get_Dup_Global_Is_Defined (E : Entity_Id) return Boolean is
+   function Get_Dup_Global_Is_Defined (E : Global_Name_Kind_Id) return Boolean
+   is
       Idx : constant Global_Dup_Value_Id := Find_Dup_Entry (E);
 
    begin
@@ -427,8 +423,7 @@ package body GNATLLVM.Variables is
          --  and process each of them to check for duplicates.
 
          elsif Nkind (N) = N_Defining_Identifier
-           and then Ekind (N) in E_Constant | E_Variable  | E_Exception |
-                                 E_Function | E_Procedure | E_Package
+           and then Ekind (N) in Global_Name_Kind
            and then Has_Global_Name (N)
          then
             --  See if this name is already in our table.  If it
@@ -594,7 +589,7 @@ package body GNATLLVM.Variables is
    -- Is_Entity_Static_Location --
    -------------------------------
 
-   function Is_Entity_Static_Location (E : Entity_Id) return Boolean is
+   function Is_Entity_Static_Location (E : Evaluable_Kind_Id) return Boolean is
    begin
       if Ekind (E) = E_Constant and then Present (Full_View (E)) then
          return Is_Entity_Static_Location (Full_View (E));
@@ -666,7 +661,7 @@ package body GNATLLVM.Variables is
    ------------------------------
 
    function Is_Entity_Static_Address
-     (E : Entity_Id; Not_Symbolic : Boolean := False) return Boolean
+     (E : Evaluable_Kind_Id; Not_Symbolic : Boolean := False) return Boolean
    is
       CV : constant Opt_N_Subexpr_Id := Initialized_Value (E);
    begin
@@ -679,11 +674,12 @@ package body GNATLLVM.Variables is
    -- Initialized_Value --
    -----------------------
 
-   function Initialized_Value (E : Entity_Id) return Opt_N_Subexpr_Id is
-      Full_E : constant Entity_Id        :=
+   function Initialized_Value (E : Evaluable_Kind_Id) return Opt_N_Subexpr_Id
+   is
+      Full_E : constant Evaluable_Kind_Id :=
         (if   Ekind (E) = E_Constant and then Present (Full_View (E))
          then Full_View (E) else E);
-      Decl   : constant Opt_N_Is_Decl_Id := Declaration_Node (Full_E);
+      Decl   : constant Opt_N_Is_Decl_Id  := Declaration_Node (Full_E);
       CV     : Opt_N_Subexpr_Id;
 
    begin
@@ -1022,7 +1018,7 @@ package body GNATLLVM.Variables is
    ----------------------------------
 
    function Is_No_Elab_Needed_For_Entity
-     (E              : Entity_Id;
+     (E              : Evaluable_Kind_Id;
       Not_Symbolic   : Boolean := False;
       Restrict_Types : Boolean := False) return Boolean
    is
@@ -1115,7 +1111,7 @@ package body GNATLLVM.Variables is
    -----------------------------------
 
    function Is_No_Elab_For_Convert_Entity
-     (E              : Entity_Id;
+     (E              : Evaluable_Kind_Id;
       GT             : GL_Type;
       Not_Symbolic   : Boolean := False;
       Restrict_Types : Boolean := False) return Boolean is
@@ -1627,10 +1623,10 @@ package body GNATLLVM.Variables is
 
       elsif Present (Linker_Alias) and then Definition and then not Is_Ref then
          declare
-            Str_Id : constant String_Id :=
+            Str_Id : constant String_Id              :=
               Strval (Expression (Last (Pragma_Argument_Associations
                                           (Linker_Alias))));
-            Our_E  : Entity_Id          := Empty;
+            Our_E  : Opt_Exception_Or_Object_Kind_Id := Empty;
 
          begin
             --  Look for a variable in this compilation that has its
@@ -1824,8 +1820,10 @@ package body GNATLLVM.Variables is
          --  taken and see if it matches.
 
          declare
-            Other_Id : constant Entity_Id := Entity (Prefix (Addr_Expr));
-            Other_GT : constant GL_Type   := Full_GL_Type (Other_Id);
+            Other_Id : constant Exception_Or_Object_Kind_Id :=
+              Entity (Prefix (Addr_Expr));
+            Other_GT : constant GL_Type                     :=
+              Full_GL_Type (Other_Id);
 
          begin
             return Is_Array_Type (Other_GT)
@@ -2379,7 +2377,7 @@ package body GNATLLVM.Variables is
    -----------------
 
    function Emit_Entity
-     (E          : Entity_Id;
+     (E          : Exception_Or_Object_Kind_Id;
       N          : Opt_N_Has_Entity_Id := Empty;
       Prefer_LHS : Boolean             := False) return GL_Value
    is

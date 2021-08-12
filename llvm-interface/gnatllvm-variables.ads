@@ -48,13 +48,12 @@ package GNATLLVM.Variables is
    --  global name in two different entities and keep a record of all such
    --  duplications.
 
-   function Get_Dup_Global_Value (E : Entity_Id) return GL_Value
-     with Pre => Present (E) and then not Is_Type (E);
+   function Get_Dup_Global_Value (E : Global_Name_Kind_Id) return GL_Value;
    --  If E corresponds to a duplicated interface name and we've aready
    --  created a global for it, return that global.
 
-   procedure Set_Dup_Global_Value (E : Entity_Id; V : GL_Value)
-     with Pre => Present (E) and then not Is_Type (E) and then Present (V);
+   procedure Set_Dup_Global_Value (E : Global_Name_Kind_Id; V : GL_Value)
+     with Pre => Present (V);
    --  If E corresponds to a duplicated interface name, record that we've
    --  created a value for it.
 
@@ -117,10 +116,9 @@ package GNATLLVM.Variables is
    --  than a word.
 
    function Is_No_Elab_Needed_For_Entity
-     (E              : Entity_Id;
+     (E              : Evaluable_Kind_Id;
       Not_Symbolic   : Boolean := False;
-      Restrict_Types : Boolean := False) return Boolean
-     with Pre => Present (E);
+      Restrict_Types : Boolean := False) return Boolean;
    --  Return True if E represents an entity that can be computed
    --  without needing an elab proc.  If Not_Symbolic is True, we also
    --  can't alllow anything symbolic.  If Restrict_Types is True, we can't
@@ -141,10 +139,9 @@ package GNATLLVM.Variables is
    --  Emit an object or exception renaming declaration
 
    function Emit_Entity
-     (E          : Entity_Id;
+     (E          : Evaluable_Kind_Id;
       N          : Opt_N_Has_Entity_Id := Empty;
-      Prefer_LHS : Boolean             := False) return GL_Value
-     with Pre => Present (E);
+      Prefer_LHS : Boolean             := False) return GL_Value;
    --  Evaluate an entity E. If Present, N is the corresponding N_Identifier
    --  node.  Prefer_LHS is True if we'd prefer this for a LHS context.
 

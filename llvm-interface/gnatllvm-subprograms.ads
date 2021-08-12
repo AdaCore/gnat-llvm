@@ -58,8 +58,7 @@ package GNATLLVM.Subprograms is
    --  these functions can return, but will not throw an exception, but
    --  this can be changed.
 
-   function Get_From_Activation_Record (E : Entity_Id) return GL_Value
-     with Pre => not Is_Type (E);
+   function Get_From_Activation_Record (E : Evaluable_Kind_Id) return GL_Value;
    --  Checks whether E is present in the current activation record and
    --  returns an LValue pointing to the value of the object if so.
 

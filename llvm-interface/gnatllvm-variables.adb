@@ -1329,7 +1329,7 @@ package body GNATLLVM.Variables is
                                             E_Generic_Function
                           and then not Is_Eliminated (E)
                         then
-                           Discard (Emit_Subprogram_Decl (N));
+                           Discard (Emit_Subprogram_Decl (Specification (N)));
                         end if;
                      end if;
 

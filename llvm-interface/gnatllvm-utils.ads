@@ -104,11 +104,6 @@ package GNATLLVM.Utils is
      with Pre => Present (E);
    --  Return the name of an entity concatenated with Suffix.
 
-   function Get_Acting_Spec
-     (Subp_Body : N_Subprogram_Body_Id) return N_Subprogram_Specification_Id;
-   --  If Subp_Body acts as a spec, return it. Return the corresponding
-   --  subprogram declaration otherwise.
-
    function Has_Full_Access (N : N_Subexpr_Id) return Boolean;
    --  Return True if N is a node which needs Full_Access
 

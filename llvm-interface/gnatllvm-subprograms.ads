@@ -232,9 +232,9 @@ package GNATLLVM.Subprograms is
    --  Create and save an LLVM object for E, a subprogram
 
    function Emit_Subprogram_Decl
-     (N : Node_Id; Frozen : Boolean := True) return GL_Value
-     with Pre => Present (N);
-   --  Compile a subprogram declaration, creating the subprogram if not
+     (N      : N_Subprogram_Specification_Id;
+      Frozen : Boolean := True) return GL_Value;
+   --  Compile a subprogram specification, creating the subprogram if not
    --  already done.  Return the subprogram value.
 
    procedure Emit_Subprogram_Body

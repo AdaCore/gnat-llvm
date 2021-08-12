@@ -132,6 +132,11 @@ package body GNATLLVM.Subprograms is
      with Pre => Present (GT);
    --  Return the Relationship for a parameter of type GT and kind PK
 
+   function Get_Acting_Spec
+     (Subp_Body : N_Subprogram_Body_Id) return N_Subprogram_Specification_Id;
+   --  If Subp_Body acts as a spec, return it. Otherwise, return the
+   --  corresponding subprogram declaration.
+
    function Make_Trampoline
      (GT : GL_Type; Fn, Static_Link : GL_Value; N : Node_Id) return GL_Value
      with Pre  => Present (GT) and then Present (Fn)
@@ -680,6 +685,32 @@ package body GNATLLVM.Subprograms is
          return Data;
       end if;
    end Relationship_For_PK;
+
+   ---------------------
+   -- Get_Acting_Spec --
+   ---------------------
+
+   function Get_Acting_Spec
+     (Subp_Body : N_Subprogram_Body_Id) return N_Subprogram_Specification_Id
+   is
+   begin
+      if Acts_As_Spec (Subp_Body) then
+         return Specification (Subp_Body);
+      else
+         declare
+            Spec : constant Subprogram_Kind_Id :=
+              Corresponding_Spec (Subp_Body);
+
+         begin
+            if Nkind (Parent (Spec)) = N_Defining_Program_Unit_Name then
+               return Parent (Parent (Spec));
+            else
+               pragma Assert (Parent (Spec) in N_Subprogram_Specification_Id);
+               return Parent (Spec);
+            end if;
+         end;
+      end if;
+   end Get_Acting_Spec;
 
    ----------------------------
    -- Create_Subprogram_Type --
@@ -2386,7 +2417,8 @@ package body GNATLLVM.Subprograms is
    --------------------------
 
    function Emit_Subprogram_Decl
-     (N : Node_Id; Frozen : Boolean := True) return GL_Value
+     (N      : N_Subprogram_Specification_Id;
+      Frozen : Boolean := True) return GL_Value
    is
       E           : constant Entity_Id := Defining_Entity (N);
       V           : GL_Value           := Get_Value      (E);

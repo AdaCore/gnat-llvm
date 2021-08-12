@@ -2377,7 +2377,7 @@ package body GNATLLVM.Variables is
    -----------------
 
    function Emit_Entity
-     (E          : Exception_Or_Object_Kind_Id;
+     (E          : Evaluable_Kind_Id;
       N          : Opt_N_Has_Entity_Id := Empty;
       Prefer_LHS : Boolean             := False) return GL_Value
    is

@@ -37,6 +37,7 @@ with CCG.Helper;       use CCG.Helper;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Target;       use CCG.Target;
+with CCG.Transform;    use CCG.Transform;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Output is

@@ -187,22 +187,8 @@ package CCG.Blocks is
    --  Orig_From is used in recursive calls to track the original instruction
    --  leading to this branch.
 
-   function Has_Unique_Predecessor (BB : Basic_Block_T) return Boolean
-     with Pre => Present (BB);
-   function Has_Unique_Predecessor (V : Value_T) return Boolean is
-     (Has_Unique_Predecessor (Value_As_Basic_Block (V)))
-     with Pre => Value_Is_Basic_Block (V);
-   --  Return True iff BB has only one effective predeccessor. By "effective"
-   --  we mean that if the it does have a single predecessor but that block
-   --  is just an unconditional branch plus optionally Phi nodes, that
-   --  predecessor also must only have a single predecessor.
-
    procedure Write_BB (BB : Basic_Block_T; Omit_Label : Boolean := False)
      with Pre => Present (BB);
    --  Write the statements in BB, possibly omitting the initial label
-
-   procedure Transform_Blocks (V : Value_T)
-     with Pre => Is_A_Function (V);
-   --  Transform the basic blocks in V so that we can generate cleaner code
 
 end CCG.Blocks;

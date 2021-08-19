@@ -66,6 +66,16 @@ package body CCG.Transform is
    --  just has a condition computation that corresponds to an "or else"
    --  or "and then" (Kind says which).
 
+   procedure Build_Short_Circuit_Ops (V : Value_T)
+     with Pre => Is_A_Function (V);
+   --  Look at all the blocks in V and see if we can create "and then" or
+   --  "or else" operations.
+
+   procedure Swap_Branches (V : Value_T)
+     with Pre => Is_A_Function (V);
+   --  See if we can make cleaner code by swapping the operands in a
+   --  conditional branch instruction.
+
    ----------------------
    -- Negate_Condition --
    ----------------------
@@ -339,19 +349,16 @@ package body CCG.Transform is
 
    end Make_Short_Circuit_Op;
 
-   ----------------------
-   -- Transform_Blocks --
-   ----------------------
+   -----------------------------
+   -- Build_Short_Circuit_Ops --
+   -----------------------------
 
-   procedure Transform_Blocks (V : Value_T) is
+   procedure Build_Short_Circuit_Ops (V : Value_T) is
       BB      : Basic_Block_T := Get_First_Basic_Block (V);
       Next_BB : Basic_Block_T;
       Term    : Value_T;
 
    begin
-      --  First scan blocks looking for blocks that could represent
-      --  "and then" or "or else".
-
       while Present (BB) loop
          Next_BB := Get_Next_Basic_Block (BB);
          Term    := Get_Basic_Block_Terminator (BB);
@@ -400,7 +407,17 @@ package body CCG.Transform is
 
          BB := Next_BB;
       end loop;
+   end Build_Short_Circuit_Ops;
 
+   -------------------
+   -- Swap_Branches --
+   -------------------
+
+   procedure Swap_Branches (V : Value_T) is
+      BB   : Basic_Block_T := Get_First_Basic_Block (V);
+      Term : Value_T;
+
+   begin
       --  For each basic block, we start by looking at the terminator
       --  to see if it's a conditional branch where the "true" block has
       --  more than one predecessor but the "false" block doesn't. In that
@@ -420,7 +437,16 @@ package body CCG.Transform is
 
          BB := Get_Next_Basic_Block (BB);
       end loop;
+   end Swap_Branches;
 
+   ----------------------
+   -- Transform_Blocks --
+   ----------------------
+
+   procedure Transform_Blocks (V : Value_T) is
+   begin
+      Build_Short_Circuit_Ops (V);
+      Swap_Branches (V);
    end Transform_Blocks;
 
 end CCG.Transform;

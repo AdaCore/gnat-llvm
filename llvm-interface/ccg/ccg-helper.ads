@@ -156,6 +156,10 @@ package CCG.Helper is
      (Present (Is_A_Call_Inst (V)))
      with Pre => Present (V);
 
+   function Is_A_Dbg_Info_Intrinsic (V : Value_T) return Boolean is
+     (Present (Is_A_Dbg_Info_Intrinsic (V)))
+     with Pre => Present (V);
+
    function Is_A_Return_Inst (V : Value_T) return Boolean is
      (Present (Is_A_Return_Inst (V)))
      with Pre => Present (V);

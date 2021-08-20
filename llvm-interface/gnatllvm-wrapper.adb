@@ -398,15 +398,4 @@ package body GNATLLVM.Wrapper is
       return Value_Has_Name (V) /= 0;
    end Value_Has_Name;
 
-   ------------------------
-   -- Is_Debug_Intrinsic --
-   ------------------------
-
-   function Is_Debug_Intrinsic (V : Value_T) return Boolean is
-      function Is_Debug_Intrinsic (V : Value_T) return LLVM_Bool
-        with Import, Convention => C, External_Name => "Is_Debug_Intrinsic";
-   begin
-      return Is_Debug_Intrinsic (V) /= 0;
-   end Is_Debug_Intrinsic;
-
 end GNATLLVM.Wrapper;

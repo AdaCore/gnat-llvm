@@ -766,13 +766,6 @@ Get_First_Non_Phi_Or_Dbg (BasicBlock *BB)
   return BB->getFirstNonPHIOrDbg ();
 }
 
-extern "C"
-bool
-Is_Debug_Intrinsic (Instruction *V)
-{
-  return isa<DbgInfoIntrinsic> (V);
-}
-
 /* If we call into CCG from GNAT LLVM during the compilation process to
    record some information about a Value (for example, its signedness),
    there's a chance that that value will be deleted during the optimization

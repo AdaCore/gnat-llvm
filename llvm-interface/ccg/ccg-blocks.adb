@@ -420,7 +420,7 @@ package body CCG.Blocks is
 
       --  Skip any debug intrinsics
 
-      while Is_Debug_Intrinsic (Target_I) loop
+      while Is_A_Dbg_Info_Intrinsic (Target_I) loop
          Target_I := Get_Next_Instruction (Target_I);
       end loop;
 

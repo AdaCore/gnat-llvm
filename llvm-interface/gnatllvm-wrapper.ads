@@ -354,9 +354,6 @@ package GNATLLVM.Wrapper is
    function Get_First_Non_Phi_Or_Dbg (BB : Basic_Block_T) return Value_T
      with Import, Convention => C, External_Name => "Get_First_Non_Phi_Or_Dbg";
 
-   function Is_Debug_Intrinsic (V : Value_T) return Boolean
-     with Pre => Present (Is_A_Instruction (V));
-
    function Get_Num_CDA_Elements (V : Value_T) return unsigned
      with Import, Convention => C, External_Name => "Get_Num_CDA_Elements";
 

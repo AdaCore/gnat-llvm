@@ -36,6 +36,10 @@ package body CCG.Transform is
    SC_FNs : FN_Array := (others => No_Value_T);
    --  Builtin functions for "or else" and "and or"
 
+   procedure Remove_Some_Intrinsics (V : Value_T)
+     with Pre => Is_A_Function (V);
+   --  Remove debgu and lifetime intrinsics from the function V
+
    function Get_Short_Circuit_FN (Kind : SC_Kind) return Value_T
      with Post => Present (Get_Short_Circuit_FN'Result);
    --  Get or make the appropriate short circuit function for Kind
@@ -75,6 +79,38 @@ package body CCG.Transform is
      with Pre => Is_A_Function (V);
    --  See if we can make cleaner code by swapping the operands in a
    --  conditional branch instruction.
+
+   ----------------------------
+   -- Remove_Some_Intrinsics --
+   ----------------------------
+
+   procedure Remove_Some_Intrinsics (V : Value_T) is
+      BB        : Basic_Block_T := Get_First_Basic_Block (V);
+      Inst      : Value_T;
+      Next_Inst : Value_T;
+
+   begin
+      --  Loop through all basic blocks and look for instructions that are
+      --  debug or lifetime intrinsics. These can be added by the LLVM
+      --  optimizer and can confuse tests for when basic blocks are simple
+      --  enough, so remove all of them here.
+
+      while Present (BB) loop
+         Inst := Get_First_Instruction (BB);
+         while Present (Inst) loop
+            Next_Inst := Get_Next_Instruction (Inst);
+            if Is_A_Dbg_Info_Intrinsic (Inst)
+              or else Is_Lifetime_Intrinsic (Inst)
+            then
+               Instruction_Erase_From_Parent (Inst);
+            end if;
+
+            Inst := Next_Inst;
+         end loop;
+
+         BB := Get_Next_Basic_Block (BB);
+      end loop;
+   end Remove_Some_Intrinsics;
 
    ----------------------
    -- Negate_Condition --
@@ -445,6 +481,7 @@ package body CCG.Transform is
 
    procedure Transform_Blocks (V : Value_T) is
    begin
+      Remove_Some_Intrinsics (V);
       Build_Short_Circuit_Ops (V);
       Swap_Branches (V);
    end Transform_Blocks;

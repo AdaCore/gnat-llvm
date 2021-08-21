@@ -398,4 +398,15 @@ package body GNATLLVM.Wrapper is
       return Value_Has_Name (V) /= 0;
    end Value_Has_Name;
 
+   ---------------------------
+   -- Is_Lifetime_Intrinsic --
+   ---------------------------
+
+   function Is_Lifetime_Intrinsic (V : Value_T) return Boolean is
+      function Is_Lifetime_Intrinsic (V : Value_T) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Is_Lifetime_Intrinsic";
+   begin
+      return Is_Lifetime_Intrinsic (V) /= 0;
+   end Is_Lifetime_Intrinsic;
+
 end GNATLLVM.Wrapper;

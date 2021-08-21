@@ -327,6 +327,9 @@ package GNATLLVM.Wrapper is
    function Value_Has_Name (V : Value_T) return Boolean
      with Pre => Present (V);
 
+   function Is_Lifetime_Intrinsic (V : Value_T) return Boolean
+     with Pre => Present (V);
+
    function Get_Unique_Predecessor (BB : Basic_Block_T) return Basic_Block_T
      with Import, Convention => C, External_Name => "Get_Unique_Predecessor";
 

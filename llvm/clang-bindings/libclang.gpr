@@ -10,4 +10,12 @@ library project libclang is
 
    for Object_Dir use "obj-libclang." & Library_Type;
 
+   case Library_Type is
+      when "relocatable" =>
+         for Library_Options use ("-lclang");
+
+      when others =>
+         null;
+   end case;
+
 end libclang;

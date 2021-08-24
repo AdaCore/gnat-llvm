@@ -273,17 +273,6 @@ package body GNATLLVM.GLType is
 
    end GL_Type_Info_Is_Valid_Int;
 
-   -------------
-   -- Discard --
-   -------------
-
-   procedure Discard (GT : GL_Type) is
-      pragma Unreferenced (GT);
-
-   begin
-      null;
-   end Discard;
-
    ----------
    -- Next --
    ----------

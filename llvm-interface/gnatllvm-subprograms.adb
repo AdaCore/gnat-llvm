@@ -15,10 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Containers;             use Ada.Containers;
-with Ada.Containers.Hashed_Maps;
-with Ada.Unchecked_Conversion;
-
 with Errout;   use Errout;
 with Exp_Unst; use Exp_Unst;
 with Get_Targ; use Get_Targ;

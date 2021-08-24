@@ -15,10 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Containers;             use Ada.Containers;
-with Ada.Containers.Hashed_Maps;
-with Ada.Unchecked_Conversion;
-
 with Nlists;     use Nlists;
 with Sem_Util;   use Sem_Util;
 with Uintp.LLVM; use Uintp.LLVM;
@@ -30,15 +26,6 @@ package GNATLLVM.Utils is
 
    --  Define a mechanism for creating a hash table mapping one Value_T
    --  to another.
-
-   function Hash_Value_T (Val : Value_T) return Hash_Type;
-   --  Convert a Value_T to a hash
-
-   package Value_Value_Map_P is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Value_T,
-      Element_Type    => Value_T,
-      Hash            => Hash_Value_T,
-      Equivalent_Keys => "=");
 
    function New_Struct_Id return Struct_Id;
    --  Return a new, unique, Struct_Id
@@ -112,11 +99,6 @@ package GNATLLVM.Utils is
         and then Has_Full_Access (Prefix (N)));
    --  Return True if N is an expression that has a Volatile_Full_Access
    --  prefix.
-
-   procedure Discard (V  : Value_T)       is null;
-   procedure Discard (T  : Type_T)        is null;
-   procedure Discard (BB : Basic_Block_T) is null;
-   procedure Discard (B  : Boolean)       is null;
 
    function Get_Ext_Name (E : Entity_Id; Suffix : String := "") return Name_Id
      with Pre => Present (E), Post => Present (Get_Ext_Name'Result);

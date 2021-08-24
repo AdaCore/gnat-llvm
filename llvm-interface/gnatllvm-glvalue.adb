@@ -490,16 +490,6 @@ package body GNATLLVM.GLValue is
    function Is_Loadable_Type (V : GL_Value) return Boolean is
      (Is_Data (V) or else Is_Loadable_Type (Related_Type (V)));
 
-   -------------
-   -- Discard --
-   -------------
-
-   procedure Discard (V : GL_Value) is
-      pragma Unreferenced (V);
-   begin
-      null;
-   end Discard;
-
    ---------------------------
    --  Relationship_For_Ref --
    ---------------------------

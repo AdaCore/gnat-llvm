@@ -44,8 +44,7 @@ package GNATLLVM.GLType is
    --  padding) in the case of aggregates.  One GL_Type (possibly the same
    --  one, but not necessarily) is the default for that type.
 
-   procedure Discard (GT : GL_Type)
-     with Pre => Present (GT), Inline;
+   procedure Discard (GT : GL_Type) is null;
 
    function New_GT (TE : Void_Or_Type_Kind_Id) return GL_Type
      with Post => Present (New_GT'Result);

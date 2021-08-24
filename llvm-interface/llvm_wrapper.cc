@@ -756,7 +756,14 @@ extern "C"
 void
 Insert_At_Block_End (Instruction *I, BasicBlock *BB)
 {
-  BB->getInstList  ().insert (BB->end (), I);
+  BB->getInstList ().insert (BB->end (), I);
+}
+
+extern "C"
+AllocaInst *
+Insert_Alloca_Before (Type *Ty, Instruction *Before)
+{
+  return new AllocaInst (Ty, 0, "", Before);
 }
 
 extern "C"

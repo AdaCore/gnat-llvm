@@ -514,9 +514,7 @@ package GNATLLVM.GLValue is
      with Pre => Present (T);
    --  Return True if type T is valid for an atomic operation
 
-   procedure Discard (V : GL_Value)
-     with Inline;
-   --  Evaluate V and throw away the result
+   procedure Discard (V : GL_Value) is null;
 
    --  Constructors for a GL_Value
 

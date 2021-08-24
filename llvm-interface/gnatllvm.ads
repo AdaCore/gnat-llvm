@@ -16,8 +16,13 @@
 ------------------------------------------------------------------------------
 
 with System;
+with System.Storage_Elements; use System.Storage_Elements;
 
 with stdint_h; use stdint_h;
+
+with Ada.Containers;             use Ada.Containers;
+with Ada.Containers.Hashed_Maps;
+with Ada.Unchecked_Conversion;
 
 with Interfaces.C;
 with Interfaces.C.Extensions;
@@ -165,6 +170,11 @@ package GNATLLVM is
    function Present (U : Use_T)         return Boolean is (U /= No_Use_T);
    --  Test for presence and absence of fields of LLVM types
 
+   procedure Discard (V  : Value_T)       is null;
+   procedure Discard (T  : Type_T)        is null;
+   procedure Discard (BB : Basic_Block_T) is null;
+   procedure Discard (B  : Boolean)       is null;
+
    function Is_Type_Or_Void (E : Entity_Id) return Boolean is
      (Ekind (E) in Void_Or_Type_Kind)
      with Pre => Present (E);
@@ -293,6 +303,21 @@ package GNATLLVM is
 
    Short_Enums          : Boolean := False;
    --  True if we should use the RM_Size, not Esize, for enums
+
+   --  Define pieces to have maps from one value to another
+
+   function From_Value is
+      new Ada.Unchecked_Conversion (Value_T, System.Address);
+
+   function Hash_Value_T (V : Value_T) return Hash_Type is
+     (Hash_Type'Mod (To_Integer (From_Value (V)) / (V'Size / 8)))
+     with Pre => Present (V);
+
+   package Value_Value_Map_P is new Ada.Containers.Hashed_Maps
+     (Key_Type        => Value_T,
+      Element_Type    => Value_T,
+      Hash            => Hash_Value_T,
+      Equivalent_Keys => "=");
 
    subtype Err_Msg_Type is String (1 .. 10000);
    type Ptr_Err_Msg_Type is access all Err_Msg_Type;

@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with System.Storage_Elements; use System.Storage_Elements;
-
 with LLVM.Core; use LLVM.Core;
 
 with Errout;   use Errout;
@@ -46,17 +44,6 @@ package body GNATLLVM.Utils is
       Last_Struct_Id := Last_Struct_Id + 1;
       return Last_Struct_Id;
    end New_Struct_Id;
-
-   ------------------
-   -- Hash_Value_T --
-   ------------------
-
-   function Hash_Value_T (Val : Value_T) return Hash_Type is
-      function UC is new Ada.Unchecked_Conversion (Value_T, System.Address);
-
-   begin
-      return Hash_Type'Mod (To_Integer (UC (Val)) / (Val'Size / 8));
-   end Hash_Value_T;
 
    --------------------
    -- Simplify_Range --

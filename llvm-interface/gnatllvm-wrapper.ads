@@ -109,7 +109,7 @@ package GNATLLVM.Wrapper is
 
    procedure Add_Named_Attribute
      (Func : Value_T; Name, Value : String; Ctx : Context_T)
-     with Inline;
+     with Pre => Present (Is_A_Function (Func)), Inline;
 
    procedure Add_Nest_Attribute (Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name =>  "Add_Nest_Attribute";
@@ -225,12 +225,10 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C, External_Name => "Create_Invariant_Start";
 
    function Does_Not_Throw (Fn : Value_T) return Boolean
-     with Import, Convention => C, External_Name => "Does_Not_Throw",
-          Warnings => Off;
+     with Pre => Present (Is_A_Function (Fn)), Inline;
 
    function Does_Not_Return (Fn : Value_T) return Boolean
-     with Import, Convention => C, External_Name => "Does_Not_Return",
-          Warnings => Off;
+     with Pre => Present (Is_A_Function (Fn)), Inline;
 
    procedure Set_Does_Not_Throw (Fn : Value_T)
      with Import, Convention => C, External_Name => "Set_Does_Not_Throw";

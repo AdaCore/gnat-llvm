@@ -331,6 +331,28 @@ package body GNATLLVM.Wrapper is
       return Result /= 0;
    end Get_GEP_Constant_Offset;
 
+   --------------------
+   -- Does_Not_Throw --
+   --------------------
+
+   function Does_Not_Throw (Fn : Value_T) return Boolean is
+      function Does_Not_Throw_C (Fn : Value_T) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Does_Not_Throw";
+   begin
+      return Does_Not_Throw_C (Fn) /= 0;
+   end Does_Not_Throw;
+
+   ---------------------
+   -- Does_Not_Return --
+   ---------------------
+
+   function Does_Not_Return (Fn : Value_T) return Boolean is
+      function Does_Not_Return_C (Fn : Value_T) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Does_Not_Return";
+   begin
+      return Does_Not_Return_C (Fn) /= 0;
+   end Does_Not_Return;
+
    -----------------
    -- Is_C_String --
    -----------------

@@ -333,12 +333,15 @@ package body CCG.Transform is
       --  The optimizer sometimes creates a Phi just to merge returns.
       --  When generating C, we want to undo that and prefer to generate
       --  the return. So check for a Phi that's just used once and for a
-      --  return. For simplicity, do this only if it's the first Phi (which
-      --  it should be) and don't do this for array types, since they can't
-      --  be directly returned in C.
+      --  return. It must also have all predecessors be an unconditional
+      --  branch because we want to replace that with a return. For
+      --  simplicity, do this only if it's the first Phi (which it should
+      --  be) and don't do this for array types, since they can't be
+      --  directly returned in C.
 
       return Present (Single_User) and then Get_Opcode (Single_User) = Op_Ret
-        and then Get_Type_Kind (V) /= Array_Type_Kind;
+        and then Get_Type_Kind (V) /= Array_Type_Kind
+        and then All_Preds_Are_Unc_Branches (Get_Instruction_Parent (V));
    end Is_Return_Phi;
 
    ----------------------------

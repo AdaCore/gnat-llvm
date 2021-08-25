@@ -431,4 +431,17 @@ package body GNATLLVM.Wrapper is
       return Is_Lifetime_Intrinsic (V) /= 0;
    end Is_Lifetime_Intrinsic;
 
+   --------------------------------
+   -- All_Preds_Are_Unc_Branches --
+   --------------------------------
+
+   function All_Preds_Are_Unc_Branches (BB : Basic_Block_T) return Boolean is
+      function All_Preds_Are_Unc_Branches (BB : Basic_Block_T) return LLVM_Bool
+        with Import, Convention => C,
+             External_Name => "All_Preds_Are_Unc_Branches";
+
+   begin
+      return All_Preds_Are_Unc_Branches (BB) /= 0;
+   end All_Preds_Are_Unc_Branches;
+
 end GNATLLVM.Wrapper;

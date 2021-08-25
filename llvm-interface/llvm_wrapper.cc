@@ -781,6 +781,17 @@ Insert_Store_Before (Value *Val, Value *Ptr, Instruction *Before)
 }
 
 extern "C"
+bool
+All_Preds_Are_Unc_Branches (BasicBlock *BB)
+{
+  for (auto *PBB : predecessors (BB))
+    if (PBB->getTerminator ()->getNumSuccessors () != 1)
+      return false;
+
+  return true;
+}
+
+extern "C"
 Value *
 Get_First_Non_Phi_Or_Dbg (BasicBlock *BB)
 {

@@ -362,6 +362,9 @@ package GNATLLVM.Wrapper is
    procedure Insert_Store_Before (Val, Ptr : Value_T; Before : Value_T)
      with Import, Convention => C, External_Name => "Insert_Store_Before";
 
+   function All_Preds_Are_Unc_Branches (BB : Basic_Block_T) return Boolean
+     with Pre => Present (BB), Inline;
+
    function Get_First_Non_Phi_Or_Dbg (BB : Basic_Block_T) return Value_T
      with Import, Convention => C, External_Name => "Get_First_Non_Phi_Or_Dbg";
 

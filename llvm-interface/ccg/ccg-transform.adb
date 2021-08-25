@@ -137,6 +137,7 @@ package body CCG.Transform is
       Alloca_Loc : Value_T                := Get_First_Instruction (Entry_BB);
       Phi_Map    : Value_Value_Map_P.Map;
       Inst       : Value_T;
+      Next_BB    : Basic_Block_T;
       Dest_BB    : Basic_Block_T;
       Dest_Inst  : Value_T;
 
@@ -196,7 +197,9 @@ package body CCG.Transform is
 
       --  First, loop through each basic block in V looking for branches to
       --  blocks that start with one or more Phi nodes. If so, add stores
-      --  of the proper value to the Phi alloca.
+      --  of the proper value to the Phi alloca unless this a Phi that
+      --  handles returns. In the latter case, replace the terminator with
+      --  a return instruction and delete the current terminator.
       --
       --  We could do this in one of two ways in the cases of conditional
       --  branches and a switch statement: we could make new basic block
@@ -213,9 +216,17 @@ package body CCG.Transform is
             Dest_BB   := Get_Successor (Inst, J);
             Dest_Inst := Get_First_Instruction (Dest_BB);
             while Is_APHI_Node (Dest_Inst) loop
-               Insert_Store_Before (Phi_Value (Dest_Inst, BB),
-                                    Phi_Alloca (Dest_Inst), Inst);
-               Dest_Inst := Get_Next_Instruction (Dest_Inst);
+               if Is_Return_Phi (Dest_Inst) then
+                  Insert_At_Block_End
+                    (Create_Return (Phi_Value (Dest_Inst, BB)), BB);
+                  pragma Assert (Is_Unc_Br (Inst));
+                  Instruction_Erase_From_Parent (Inst);
+                  exit;
+               else
+                  Insert_Store_Before (Phi_Value (Dest_Inst, BB),
+                                       Phi_Alloca (Dest_Inst), Inst);
+                  Dest_Inst := Get_Next_Instruction (Dest_Inst);
+               end if;
             end loop;
          end loop;
 
@@ -223,28 +234,34 @@ package body CCG.Transform is
       end loop;
 
       --  In our second pass, we replace each Phi with a load from the
-      --  alloca we've made for it.
+      --  alloca we've made for it unless it's a return Phi, in which case
+      --  delete this block since it's dead.
 
       BB := Get_First_Basic_Block (V);
       while Present (BB) loop
-         Inst := Get_First_Instruction (BB);
+         Next_BB := Get_Next_Basic_Block (BB);
+         Inst    := Get_First_Instruction (BB);
          while Is_APHI_Node (Inst) loop
-            declare
-               Load_Inst : constant Value_T :=
-                 Insert_Load_Before (Type_Of (Inst), Phi_Alloca (Inst), Inst);
-               Next_Inst : constant Value_T := Get_Next_Instruction (Inst);
+            if Is_Return_Phi (Inst) then
+               Delete_Basic_Block (BB);
+               exit;
+            else
+               declare
+                  Load_Inst : constant Value_T :=
+                    Insert_Load_Before (Type_Of (Inst), Phi_Alloca (Inst),
+                                        Inst);
+                  Next_Inst : constant Value_T := Get_Next_Instruction (Inst);
 
-            begin
-               Replace_All_Uses_With (Inst, Load_Inst);
-               Instruction_Erase_From_Parent (Inst);
-               Inst := Next_Inst;
-            end;
+               begin
+                  Replace_All_Uses_With (Inst, Load_Inst);
+                  Instruction_Erase_From_Parent (Inst);
+                  Inst := Next_Inst;
+               end;
+            end if;
          end loop;
 
-         BB := Get_Next_Basic_Block (BB);
+         BB := Next_BB;
       end loop;
-
-      --  Dump_Value (V);
    end Eliminate_Phis;
 
    ----------------------

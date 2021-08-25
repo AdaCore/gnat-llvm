@@ -753,6 +753,13 @@ Create_Call_2 (Function *Fn, Value *op1, Value *op2)
 }
 
 extern "C"
+ReturnInst *
+Create_Return (LLVMContext &C, Value *retVal)
+{
+  return ReturnInst::Create (C, retVal);
+}
+
+extern "C"
 void
 Insert_At_Block_End (Instruction *I, BasicBlock *BB)
 {

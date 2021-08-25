@@ -283,4 +283,7 @@ package CCG.Helper is
      (Physical_Line_Number (unsigned'(Get_Debug_Loc_Line (V))))
      with Pre => Is_A_Instruction (V) or else Is_A_Function (V)
                  or else Is_A_Global_Variable (V);
+   function Create_Return (V : Value_T) return Value_T is
+     (Create_Return (Context, V))
+     with Pre => Present (V), Post => Is_A_Return_Inst (Create_Return'Result);
 end CCG.Helper;

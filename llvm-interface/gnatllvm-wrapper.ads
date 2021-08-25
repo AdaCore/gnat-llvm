@@ -349,6 +349,10 @@ package GNATLLVM.Wrapper is
    function Create_Call_2 (Fn, Op1, Op2 : Value_T) return Value_T
      with Import, Convention => C, External_Name => "Create_Call_2";
 
+   function Create_Return
+     (Context : Context_T; Retval : Value_T) return Value_T
+     with Import, Convention => C, External_Name => "Create_Return";
+
    procedure Insert_At_Block_End (V : Value_T; BB : Basic_Block_T)
      with Import, Convention => C, External_Name => "Insert_At_Block_End";
 

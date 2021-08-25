@@ -357,6 +357,13 @@ package GNATLLVM.Wrapper is
    function Insert_Alloca_Before (Ty : Type_T; Before : Value_T) return Value_T
      with Import, Convention => C, External_Name => "Insert_Alloca_Before";
 
+   function Insert_Load_Before
+     (Ty : Type_T; Ptr, Before : Value_T) return Value_T
+     with Import, Convention => C, External_Name => "Insert_Load_Before";
+
+   procedure Insert_Store_Before (Val, Ptr : Value_T; Before : Value_T)
+     with Import, Convention => C, External_Name => "Insert_Store_Before";
+
    function Get_First_Non_Phi_Or_Dbg (BB : Basic_Block_T) return Value_T
      with Import, Convention => C, External_Name => "Get_First_Non_Phi_Or_Dbg";
 

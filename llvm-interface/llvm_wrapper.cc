@@ -767,6 +767,20 @@ Insert_Alloca_Before (Type *Ty, Instruction *Before)
 }
 
 extern "C"
+LoadInst*
+Insert_Load_Before (Type *Ty, Value *Ptr, Instruction *Before)
+{
+  return new LoadInst (Ty, Ptr, "", Before);
+}
+
+extern "C"
+void
+Insert_Store_Before (Value *Val, Value *Ptr, Instruction *Before)
+{
+  (void) new StoreInst (Val, Ptr, Before);
+}
+
+extern "C"
 Value *
 Get_First_Non_Phi_Or_Dbg (BasicBlock *BB)
 {

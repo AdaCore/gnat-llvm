@@ -40,6 +40,11 @@ package body CCG.Transform is
      with Pre => Is_A_Function (V);
    --  Remove debgu and lifetime intrinsics from the function V
 
+   procedure Eliminate_Phis (V : Value_T)
+     with Pre => Is_A_Function (V);
+   --  Eliminate the usage of Phis in V by replacing with loads and
+   --  stores (or returns).
+
    function Get_Short_Circuit_FN (Kind : SC_Kind) return Value_T
      with Post => Present (Get_Short_Circuit_FN'Result);
    --  Get or make the appropriate short circuit function for Kind
@@ -111,6 +116,136 @@ package body CCG.Transform is
          BB := Get_Next_Basic_Block (BB);
       end loop;
    end Remove_Some_Intrinsics;
+
+   --------------------
+   -- Eliminate_Phis --
+   --------------------
+
+   procedure Eliminate_Phis (V : Value_T) is
+
+      function Phi_Alloca (V : Value_T) return Value_T
+        with Pre  => Is_APHI_Node (V),
+             Post => Is_A_Alloca_Inst (Phi_Alloca'Result);
+      --  Return the variable allocated to hold the value of Phi node V
+
+      function Phi_Value (V : Value_T; From_BB : Basic_Block_T) return Value_T
+        with Pre  => Is_APHI_Node (V) and then Present (From_BB),
+             Post => Type_Of (V) = Type_Of (Phi_Value'Result);
+
+      Entry_BB   : constant Basic_Block_T := Get_Entry_Basic_Block (V);
+      BB         : Basic_Block_T          := Get_First_Basic_Block (V);
+      Alloca_Loc : Value_T                := Get_First_Instruction (Entry_BB);
+      Phi_Map    : Value_Value_Map_P.Map;
+      Inst       : Value_T;
+      Dest_BB    : Basic_Block_T;
+      Dest_Inst  : Value_T;
+
+      ----------------
+      -- Phi_Alloca --
+      ----------------
+
+      function Phi_Alloca (V : Value_T) return Value_T is
+      begin
+         --  If we haven't already made an alloca for this phi, make one now
+
+         if not Phi_Map.Contains (V) then
+            declare
+               Result : constant Value_T :=
+                 Insert_Alloca_Before (Type_Of (V), Alloca_Loc);
+
+            begin
+               Set_Is_Variable (Result);
+               Phi_Map.Insert (V, Result);
+               return Result;
+            end;
+         else
+            return Phi_Map.Element (V);
+         end if;
+
+      end Phi_Alloca;
+
+      ---------------
+      -- Phi_Value --
+      ---------------
+
+      function Phi_Value (V : Value_T; From_BB : Basic_Block_T) return Value_T
+      is
+      begin
+         return Val : Value_T := No_Value_T do
+            for J in 0 .. Count_Incoming (V) - 1 loop
+               if Get_Incoming_Block (V, J) = From_BB then
+                  Val := Get_Operand (V, J);
+               end if;
+            end loop;
+         end return;
+      end Phi_Value;
+
+   begin -- Start of processing for Eliminate_Phis
+
+      --  We want to put any allocas we create after any that are already
+      --  present in the entry block. So skip them. We assume here that
+      --  we put them at the start of the block. If that's not the case, the
+      --  worst will be having two sequences of allocas in the entry block.
+
+      while Is_A_Alloca_Inst (Alloca_Loc) loop
+         Alloca_Loc := Get_Next_Instruction (Alloca_Loc);
+      end loop;
+
+      --  Our first pass goes through each basic block looking for branches
+      --  to a phi.
+
+      --  First, loop through each basic block in V looking for branches to
+      --  blocks that start with one or more Phi nodes. If so, add stores
+      --  of the proper value to the Phi alloca.
+      --
+      --  We could do this in one of two ways in the cases of conditional
+      --  branches and a switch statement: we could make new basic block
+      --  to hold the stores(s) and then branch to the Phi block or we
+      --  could unconditionally put the sets in front of the terminator
+      --  instruction. It's not clear which is more efficient, but both
+      --  will be the same if the C code is optimized. But putting the
+      --  instructions in front of the terminator is more efficient. So
+      --  we'll do it that way.
+
+      while Present (BB) loop
+         Inst := Get_Basic_Block_Terminator (BB);
+         for J in Nat range 0 .. Get_Num_Successors (Inst) - 1 loop
+            Dest_BB   := Get_Successor (Inst, J);
+            Dest_Inst := Get_First_Instruction (Dest_BB);
+            while Is_APHI_Node (Dest_Inst) loop
+               Insert_Store_Before (Phi_Value (Dest_Inst, BB),
+                                    Phi_Alloca (Dest_Inst), Inst);
+               Dest_Inst := Get_Next_Instruction (Dest_Inst);
+            end loop;
+         end loop;
+
+         BB := Get_Next_Basic_Block (BB);
+      end loop;
+
+      --  In our second pass, we replace each Phi with a load from the
+      --  alloca we've made for it.
+
+      BB := Get_First_Basic_Block (V);
+      while Present (BB) loop
+         Inst := Get_First_Instruction (BB);
+         while Is_APHI_Node (Inst) loop
+            declare
+               Load_Inst : constant Value_T :=
+                 Insert_Load_Before (Type_Of (Inst), Phi_Alloca (Inst), Inst);
+               Next_Inst : constant Value_T := Get_Next_Instruction (Inst);
+
+            begin
+               Replace_All_Uses_With (Inst, Load_Inst);
+               Instruction_Erase_From_Parent (Inst);
+               Inst := Next_Inst;
+            end;
+         end loop;
+
+         BB := Get_Next_Basic_Block (BB);
+      end loop;
+
+      --  Dump_Value (V);
+   end Eliminate_Phis;
 
    ----------------------
    -- Negate_Condition --
@@ -482,6 +617,7 @@ package body CCG.Transform is
    procedure Transform_Blocks (V : Value_T) is
    begin
       Remove_Some_Intrinsics (V);
+      Eliminate_Phis (V);
       Build_Short_Circuit_Ops (V);
       Swap_Branches (V);
    end Transform_Blocks;

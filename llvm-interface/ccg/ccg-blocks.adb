@@ -289,36 +289,10 @@ package body CCG.Blocks is
 
       --  Now process any block referenced by the terminator
 
-      case Get_Instruction_Opcode (Terminator) is
-         when Op_Ret | Op_Unreachable =>
-            null;
-
-         when Op_Br =>
-            if Get_Num_Operands (Terminator) = Nat (1) then
-               Output_BB (Effective_Dest (Get_Operand0 (Terminator)));
-            else
-               Output_BB (Effective_Dest (Get_Operand2 (Terminator)));
-               Output_BB (Effective_Dest (Get_Operand1 (Terminator)));
-            end if;
-
-         when Op_Switch =>
-
-            --  We have pairs of operands. The first pair is the value to
-            --  test and the default destination followed by pairs of values
-            --  and destinations. All odd numbered operands are destinations.
-
-            for J in Nat range 0 .. Get_Num_Operands (Terminator) / 2 - 1 loop
-               Output_BB
-                 (Effective_Dest (Get_Operand (Terminator, J * 2 + 1)));
-            end loop;
-
-         when others =>
-            Error_Msg
-              ("unsupported terminator: " & Get_Opcode_Name (Terminator));
-            Output_Stmt
-              (+("<unsupported terminator: " &
-                   Get_Opcode_Name (Terminator) & ">"));
-      end case;
+      for J in Nat range 0 .. Get_Num_Successors (Terminator) - 1 loop
+         Output_BB (Effective_Dest (Basic_Block_As_Value
+                                      (Get_Successor (Terminator, J))));
+      end loop;
 
       Current_BB := No_BB_T;
    end Output_BB;

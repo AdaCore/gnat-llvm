@@ -48,6 +48,15 @@ package CCG.Helper is
      (Get_Param (V, unsigned (P_Num)))
      with Pre => Present (V), Post => Present (Get_Param'Result);
 
+   function Get_Num_Successors (V : Value_T) return Nat is
+     (Nat (unsigned'(Get_Num_Successors (V))))
+     with Pre => Is_A_Terminator_Inst (V);
+
+   function Get_Successor (V : Value_T; J : Nat) return Basic_Block_T is
+     (Get_Successor (V, unsigned (J)))
+     with Pre  => Is_A_Terminator_Inst (V) and then J < Get_Num_Successors (V),
+          Post => Present (Get_Successor'Result);
+
    function Has_Name (T : Type_T) return Boolean is
      (Struct_Has_Name (T))
      with Pre => Present (T);

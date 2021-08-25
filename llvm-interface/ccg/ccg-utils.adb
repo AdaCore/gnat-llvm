@@ -73,9 +73,6 @@ package body CCG.Utils is
                      Result := Result & (Op + Initializer);
                   when 'L' =>
                      Result := Result & (Op + LHS);
-                  when 'P' =>
-                     Result := Result & (Op + Phi_Temp);
-                     pragma Assert (Is_APHI_Node (Op));
                   when 'T' =>
                      Result := Result & (Op + Write_Type);
                   when others =>

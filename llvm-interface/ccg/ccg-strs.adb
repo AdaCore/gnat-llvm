@@ -942,11 +942,7 @@ package body CCG.Strs is
    begin
       return Result : Value_T := No_Value_T do
          for Comp of S.Comps loop
-
-            --  We want to ignore a reference with Phi_Temp because that's
-            --  not a normal reference and shouldn't be treated as one.
-
-            if Comp.Kind = Value and then not Comp.Flags.Phi_Temp then
+            if Comp.Kind = Value then
                if Result /= No_Value_T then
                   Result := No_Value_T;
                   exit;
@@ -974,7 +970,6 @@ package body CCG.Strs is
            and then (Comp.Flags.Need_Unsigned
                        or else (not Comp.Flags.Need_Signed
                                   and then not Comp.Flags.Write_Type
-                                  and then not Comp.Flags.Phi_Temp
                                   and then Might_Be_Unsigned (Comp.Val)))
          then
             return True;

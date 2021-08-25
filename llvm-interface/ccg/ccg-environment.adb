@@ -36,9 +36,6 @@ package body CCG.Environment is
       Is_Decl_Output      : Boolean;
       --  True if we wrote any needed decl for this value
 
-      Is_Temp_Decl_Output : Boolean;
-      --  Likewise, but applies to the temporary needed for a PHI instruction
-
       Is_LHS              : Boolean;
       --  True if this value represents an LHS. This is usually either a
       --  global variable or an alloca in the entry block. In that case,
@@ -193,7 +190,6 @@ package body CCG.Environment is
          Value_Info.Append ((C_Value             => No_Str,
                              Is_Variable         => False,
                              Is_Decl_Output      => False,
-                             Is_Temp_Decl_Output => False,
                              Is_LHS              => False,
                              Is_Constant         => False,
                              Is_Unsigned         => False,
@@ -300,19 +296,6 @@ package body CCG.Environment is
 
    end Get_Is_Decl_Output;
 
-   -----------------------------
-   -- Get_Is_Temp_Decl_Output --
-   -----------------------------
-
-   function Get_Is_Temp_Decl_Output (V : Value_T) return Boolean is
-      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
-
-   begin
-      return Present (Idx)
-        and then Value_Info.Table (Idx).Is_Temp_Decl_Output;
-
-   end Get_Is_Temp_Decl_Output;
-
    ----------------
    -- Get_Is_LHS --
    ----------------
@@ -393,17 +376,6 @@ package body CCG.Environment is
    begin
       Value_Info.Table (Idx).Is_Decl_Output := B;
    end Set_Is_Decl_Output;
-
-   -----------------------------
-   -- Set_Is_Temp_Decl_Output --
-   -----------------------------
-
-   procedure Set_Is_Temp_Decl_Output (V : Value_T; B : Boolean := True) is
-      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
-
-   begin
-      Value_Info.Table (Idx).Is_Temp_Decl_Output := B;
-   end Set_Is_Temp_Decl_Output;
 
    ----------------
    -- Set_Is_LHS --

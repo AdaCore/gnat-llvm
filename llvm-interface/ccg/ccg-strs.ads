@@ -173,11 +173,6 @@ package CCG.Strs is
       --  If this is a constant, always output the value of the constant,
       --  instead of its name, even if it's an aggregate constant.
 
-      Phi_Temp,
-      --  This must be a Phi node, in which case we output the temporary
-      --  name and not the actual value name. We don't use the C_Value since
-      --  that refers to that of the actual value, not the temporary.
-
       Need_Unsigned,
       --  We need an unsigned form of this value. If the value isn't unsigned
       --  or can't be made unsigned (e.g. an integer constant), we emit a
@@ -194,7 +189,6 @@ package CCG.Strs is
    type Value_Flags is record
       LHS           : Boolean;
       Initializer   : Boolean;
-      Phi_Temp      : Boolean;
       Need_Unsigned : Boolean;
       Need_Signed   : Boolean;
       Write_Type    : Boolean;
@@ -203,22 +197,19 @@ package CCG.Strs is
    function "or" (X, Y : Value_Flags) return Value_Flags is
      (LHS            => X.LHS           or Y.LHS,
       Initializer    => X.Initializer   or Y.Initializer,
-      Phi_Temp       => X.Phi_Temp      or Y.Phi_Temp,
       Need_Unsigned  => X.Need_Unsigned or Y.Need_Unsigned,
       Need_Signed    => X.Need_Signed   or Y.Need_Signed,
       Write_Type     => X.Write_Type    or Y.Write_Type);
 
    type Flag_Array is array (Value_Flag) of Value_Flags;
 
-   Default_Flags : constant Value_Flags :=
-     (False, False, False, False, False, False);
+   Default_Flags : constant Value_Flags := (False, False, False, False, False);
    Flag_To_Flags : constant Flag_Array :=
-     (LHS           => (True,  False, False, False, False, False),
-      Initializer   => (False, True,  False, False, False, False),
-      Phi_Temp      => (False, False, True,  False, False, False),
-      Need_Unsigned => (False, False, False, True,  False, False),
-      Need_Signed   => (False, False, False, False, True,  False),
-      Write_Type    => (False, False, False, False, False, True));
+     (LHS           => (True,  False, False, False, False),
+      Initializer   => (False, True,  False, False, False),
+      Need_Unsigned => (False, False, True,  False, False),
+      Need_Signed   => (False, False, False, True,  False),
+      Write_Type    => (False, False, False, False, True));
 
    function "+" (F : Value_Flag) return Value_Flags is
      (Flag_To_Flags (F));
@@ -421,8 +412,7 @@ private
      (S.P);
 
    function Is_Value (S : Str) return Boolean is
-     (S.Length = 1 and then S.Comps (1).Kind = Value
-        and then not S.Comps (1).Flags.Phi_Temp);
+     (S.Length = 1 and then S.Comps (1).Kind = Value);
 
    function Is_Null_String (S : Str) return Boolean is
      (S.Length = 0);

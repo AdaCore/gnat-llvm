@@ -197,10 +197,6 @@ package body CCG.Instructions is
               and then Is_A_Constant_Int (Get_Operand1 (V))
               and then Equals_Int (Get_Operand1 (V), 1);
 
-         when Op_PHI =>
-            return (for all J in Nat range 0 .. Get_Num_Operands (V) - 1 =>
-                     Is_Comparison (Get_Operand (V, J)));
-
          when Op_Select =>
             return Is_Comparison (Get_Operand1 (V))
               and then Is_Comparison (Get_Operand2 (V));
@@ -702,18 +698,7 @@ package body CCG.Instructions is
       Opc : constant Opcode_T := Get_Opcode (V);
 
    begin
-      --  When we branch to a block, we set a temporary to contain the value
-      --  to be used for each PHI instruction (see Output_Branch for why).
-      --  Here, we have to copy that value in. We handle it specially here
-      --  since we don't want to declare any operands at this point this
-      --  we may not have evaluated them yet.
-
-      if Opc = Op_PHI then
-         Assignment (V, V + Phi_Temp);
-         return;
-      end if;
-
-      --  Otherwise, make sure we've declared all operands
+      --  First, make sure we've declared all operands
 
       for Op of Ops loop
          Maybe_Decl (Op);

@@ -41,10 +41,6 @@ package CCG.Environment is
      with Pre => Present (V), Inline;
    --  True if we wrote any needed decl for this value
 
-   function Get_Is_Temp_Decl_Output (V : Value_T) return Boolean
-     with Pre => Is_APHI_Node (V), Inline;
-   --  Likewise, but applies to the temporary needed for a PHI instruction
-
    function Get_Is_LHS              (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if this value represents an LHS. This is usually either a
@@ -73,9 +69,6 @@ package CCG.Environment is
      with Pre  => Present (V), Post => Get_Is_Variable (V) = B, Inline;
    procedure Set_Is_Decl_Output      (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Decl_Output (V) = B, Inline;
-   procedure Set_Is_Temp_Decl_Output (V : Value_T; B : Boolean := True)
-     with Pre => Is_APHI_Node (V), Post => Get_Is_Temp_Decl_Output (V) = B,
-          Inline;
    procedure Set_Is_LHS              (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_LHS (V) = B, Inline;
    procedure Set_Is_Constant         (V : Value_T; B : Boolean := True)

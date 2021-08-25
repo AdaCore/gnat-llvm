@@ -171,21 +171,18 @@ package CCG.Blocks is
      (From       : Value_T;
       To         : Value_T;
       Orig_From  : Value_T := No_Value_T;
-      Need_Brace : Boolean := False;
-      Had_Phi    : Boolean := False)
+      Need_Brace : Boolean := False)
      with Pre => Present (From) and then Present (To);
    procedure Output_Branch
      (From       : Value_T;
       To         : Basic_Block_T;
       Orig_From  : Value_T := No_Value_T;
-      Need_Brace : Boolean := False;
-      Had_Phi    : Boolean := False)
+      Need_Brace : Boolean := False)
      with Pre => Present (From) and then Present (To);
-   --  Generate code to jump from instruction From to instruction or basic
-   --  block To, taking care of any phi instructions at the target.
-   --  Need_Brace says whether we need to generate a "{ ... }" construct.
-   --  Orig_From is used in recursive calls to track the original instruction
-   --  leading to this branch.
+   --  Generate code to jump from instruction From to instruction or
+   --  basic block To. Need_Brace says whether we need to generate a
+   --  "{ ... }" construct. Orig_From is used in recursive calls to
+   --  track the original instruction leading to this branch.
 
    procedure Write_BB (BB : Basic_Block_T; Omit_Label : Boolean := False)
      with Pre => Present (BB);

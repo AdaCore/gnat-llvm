@@ -60,69 +60,6 @@ package body CCG.Blocks is
    Current_BB : Basic_Block_T := No_BB_T;
    --  The basic block for which we're outputting statements
 
-   function Is_Return_Phi (V : Value_T) return Boolean
-     with Pre => Is_APHI_Node (V);
-   --  Return True if V is a Phi instruction that's only used in a Return
-   --  instruction.
-
-   function Effective_Dest (V : Value_T) return Basic_Block_T
-     with Pre => Is_A_Basic_Block (V);
-   --  Returns the location to which we'll be generating a branch, if any,
-   --  when we see a branch to V, a basic block. Normally, this is that
-   --  block, but if the block consists just of Phi's and an unconditional
-   --  branch, we follow that branch. If the first Phi's only use is a
-   --  return instruction, we don't go anywhere.
-
-   -------------------
-   -- Is_Return_Phi --
-   -------------------
-
-   function Is_Return_Phi (V : Value_T) return Boolean is
-      Single_User : constant Value_T := Get_Single_User (V);
-
-   begin
-      --  The optimizer sometimes creates a Phi just to merge returns.
-      --  When generating C, we want to undo that and prefer to generate
-      --  the return. So check for a Phi that's just used once and for a
-      --  return. For simplicity, do this only if it's the first Phi (which
-      --  it should be) and don't do this for array types, since they can't
-      --  be directly returned in C.
-
-      return Present (Single_User) and then Get_Opcode (Single_User) = Op_Ret
-        and then Get_Type_Kind (V) /= Array_Type_Kind;
-   end Is_Return_Phi;
-
-   --------------------
-   -- Effective_Dest --
-   --------------------
-
-   function Effective_Dest (V : Value_T) return Basic_Block_T is
-      BB   : constant Basic_Block_T := Value_As_Basic_Block (V);
-      Inst : Value_T                := Get_First_Instruction (BB);
-
-   begin
-      --  If this is an empty block (shouldn't happen), we return that as
-      --  the destination to avoid propagating errors.
-
-      if No (Inst) then
-         return BB;
-
-      --  Next handle the return case
-
-      elsif Is_APHI_Node (Inst) and then Is_Return_Phi (Inst) then
-         return No_BB_T;
-      end if;
-
-      --  Now skip any Phi's or debug value builtins. If what's left is an
-      --  unconditional branch, return its target; otherwise, return our
-      --  target.
-
-      Inst := Get_First_Non_Phi_Or_Dbg (BB);
-      return (if   Is_Unc_Br (Inst) then Effective_Dest (Get_Operand0 (Inst))
-              else BB);
-
-   end Effective_Dest;
-
    -----------------
    -- Output_Decl --
    ----------------
@@ -290,8 +227,7 @@ package body CCG.Blocks is
       --  Now process any block referenced by the terminator
 
       for J in Nat range 0 .. Get_Num_Successors (Terminator) - 1 loop
-         Output_BB (Effective_Dest (Basic_Block_As_Value
-                                      (Get_Successor (Terminator, J))));
+         Output_BB (Get_Successor (Terminator, J));
       end loop;
 
       Current_BB := No_BB_T;
@@ -305,11 +241,10 @@ package body CCG.Blocks is
      (From       : Value_T;
       To         : Value_T;
       Orig_From  : Value_T := No_Value_T;
-      Need_Brace : Boolean := False;
-      Had_Phi    : Boolean := False) is
+      Need_Brace : Boolean := False)
+   is
    begin
-      Output_Branch (From, Value_As_Basic_Block (To), Orig_From, Need_Brace,
-                     Had_Phi);
+      Output_Branch (From, Value_As_Basic_Block (To), Orig_From, Need_Brace);
    end Output_Branch;
 
    -------------------
@@ -320,118 +255,17 @@ package body CCG.Blocks is
      (From       : Value_T;
       To         : Basic_Block_T;
       Orig_From  : Value_T := No_Value_T;
-      Need_Brace : Boolean := False;
-      Had_Phi    : Boolean := False)
+      Need_Brace : Boolean := False)
    is
       Our_From    : constant Value_T       :=
         (if Present (Orig_From) then Orig_From else From);
-      From_BB     : constant Basic_Block_T := Get_Instruction_Parent (From);
-      Our_Had_Phi : Boolean                := Had_Phi;
-      Target_I    : Value_T                := Get_First_Instruction (To);
 
    begin
-      --  Scan the start of the target block looking for Phi instructions
+      Output_Stmt ("goto " & To,
+                   V          => Our_From,
+                   BB         => To,
+                   Need_Brace => Need_Brace);
 
-      while Present (Target_I) and then Is_APHI_Node (Target_I) loop
-         declare
-            Used_In_Return : constant Boolean :=
-              not Our_Had_Phi and then Is_Return_Phi (Target_I);
-            Phi_Val        : Value_T := No_Value_T;
-
-         begin
-            --  If we find a phi, we must ensure we've declared its type
-            --  and then copy the appropriate data into a temporary
-            --  associated with it.  We need to use the temporary because
-            --  if we have something like
-            --
-            --     %foo = phi i32 [ 7, %0 ], [ 0, %entry ]
-            --     %1 = phi i32 [ %foo, %0 ], [ 3, %entry ]
-            --
-            --  we're supposed to set %1 to the value of %foo before the
-            --  assignment to it. Declare the temporary here too.
-
-            if not Used_In_Return
-              and then not Get_Is_Temp_Decl_Output (Target_I)
-            then
-               Maybe_Write_Typedef (Type_Of (Target_I));
-               Output_Decl (TP ("#T1 #P1", Target_I));
-               Set_Is_Temp_Decl_Output (Target_I);
-            end if;
-
-            for J in 0 .. Count_Incoming (Target_I) - 1 loop
-               if Get_Incoming_Block (Target_I, J) = From_BB then
-                  Phi_Val := Get_Operand (Target_I, J);
-               end if;
-            end loop;
-
-            --  If this Phi is only used in a return, emit the return and
-            --  we're done.
-
-            if Used_In_Return then
-               Output_Stmt ("return " & Phi_Val + Assign,
-                            Indent_Before =>
-                              (if Need_Brace then C_Indent else 0),
-                            Indent_After  =>
-                              (if Need_Brace then -C_Indent else 0),
-                             V            => Target_I);
-               return;
-
-            --  Otherwise, if we need to write a brace and indent, do so
-
-            elsif not Our_Had_Phi and then Need_Brace then
-               Output_Stmt ("{",
-                            Semicolon     => False,
-                            Indent_After  => C_Indent,
-                            Indent_Before => C_Indent);
-            end if;
-
-            Maybe_Decl (Phi_Val);
-            Write_Copy (Target_I + Phi_Temp, Phi_Val, Type_Of (Phi_Val));
-            Our_Had_Phi := True;
-            Target_I    := Get_Next_Instruction (Target_I);
-         end;
-      end loop;
-
-      --  Skip any debug intrinsics
-
-      while Is_A_Dbg_Info_Intrinsic (Target_I) loop
-         Target_I := Get_Next_Instruction (Target_I);
-      end loop;
-
-      --  If the instruction at the target is an unconditional branch, go to
-      --  it instead.
-
-      if Present (Target_I) and then Is_Unc_Br (Target_I) then
-         --  Since we're not going to actually execute this block, we need
-         --  to copy back the temporaries, if any, we made above. Do this
-         --  by executing any Phi nodes at the start.
-
-         Target_I := Get_First_Instruction (To);
-         while Present (Target_I) and then Is_APHI_Node (Target_I) loop
-            Process_Instruction (Target_I);
-            Target_I := Get_Next_Instruction (Target_I);
-         end loop;
-
-         --  Now branch to where this block would branch
-
-         Output_Branch (Target_I, Get_Operand0 (Target_I),
-                        Orig_From  => Our_From,
-                        Need_Brace => Need_Brace and then not Our_Had_Phi);
-      else
-         Output_Stmt ("goto " & To,
-                      V          => Our_From,
-                      BB         => To,
-                      Need_Brace => Need_Brace and then not Our_Had_Phi);
-      end if;
-
-      --  Now, if we had a Phi, close the block we opened
-
-      if Our_Had_Phi and then Need_Brace then
-         Output_Stmt ("}",
-                      Semicolon     => False,
-                      Indent_After  => -C_Indent,
-                      Indent_Before => -C_Indent);
-      end if;
    end Output_Branch;
 
    ------------------------
@@ -448,8 +282,6 @@ package body CCG.Blocks is
       --  before taking the branch, but want to do that after elaborating
       --  the condition to avoid needing to force elaboration of the
       --  condition.
-      --  ??? We'd also prefer not to force elaboration of values needed in
-      --  the phi computation, but that's hard and may not be possible.
 
       if Is_Conditional (V) and then Ops (Ops'First + 1) /= Ops (Ops'First + 2)
       then
@@ -514,9 +346,6 @@ package body CCG.Blocks is
 
             --  If this isn't branching to the same label as the next case
             --  (or default if this is the last case), output the branch.
-            --  Note that we can't use Effective_Dest here because that's
-            --  used to determine which basic block is branched to and
-            --  ignores Phi nodes.
             --  ??? We may want to sort to ensure this happens if there are
             --  any duplicates.
 

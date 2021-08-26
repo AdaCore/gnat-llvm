@@ -799,6 +799,13 @@ All_Preds_Are_Unc_Branches (BasicBlock *BB)
 }
 
 extern "C"
+bool
+Is_Dead_Basic_Block (BasicBlock *BB)
+{
+  return BB->hasNPredecessors (0);
+}
+
+extern "C"
 Value *
 Get_First_Non_Phi_Or_Dbg (BasicBlock *BB)
 {

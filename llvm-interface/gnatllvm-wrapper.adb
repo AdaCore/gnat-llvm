@@ -444,4 +444,17 @@ package body GNATLLVM.Wrapper is
       return All_Preds_Are_Unc_Branches (BB) /= 0;
    end All_Preds_Are_Unc_Branches;
 
+   -------------------------
+   -- Is_Dead_Basic_Block --
+   -------------------------
+
+   function Is_Dead_Basic_Block (BB : Basic_Block_T) return Boolean is
+      function Is_Dead_Basic_Block (BB : Basic_Block_T) return LLVM_Bool
+        with Import, Convention => C,
+             External_Name => "Is_Dead_Basic_Block";
+
+   begin
+      return Is_Dead_Basic_Block (BB) /= 0;
+   end Is_Dead_Basic_Block;
+
 end GNATLLVM.Wrapper;

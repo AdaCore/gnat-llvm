@@ -369,6 +369,9 @@ package GNATLLVM.Wrapper is
    function All_Preds_Are_Unc_Branches (BB : Basic_Block_T) return Boolean
      with Pre => Present (BB), Inline;
 
+   function Is_Dead_Basic_Block (BB : Basic_Block_T) return Boolean
+     with Pre => Present (BB), Inline;
+
    function Get_First_Non_Phi_Or_Dbg (BB : Basic_Block_T) return Value_T
      with Import, Convention => C, External_Name => "Get_First_Non_Phi_Or_Dbg";
 

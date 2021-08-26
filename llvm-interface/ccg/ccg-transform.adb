@@ -274,11 +274,14 @@ package body CCG.Transform is
    ------------------
 
    procedure Follow_Jumps (V : Value_T) is
-      BB    : Basic_Block_T := Get_First_Basic_Block (V);
-      Term  : Value_T;
-      Inst  : Value_T;
-      Dest  : Basic_Block_T;
-      Count : Nat;
+      Entry_BB : constant Basic_Block_T := Get_Entry_Basic_Block (V);
+      BB       : Basic_Block_T          := Get_First_Basic_Block (V);
+      Changed  : Boolean                := True;
+      Next_BB  : Basic_Block_T;
+      Term     : Value_T;
+      Inst     : Value_T;
+      Dest     : Basic_Block_T;
+      Count    : Nat;
 
    begin
       --  Look at the successors of the terminator of each basic block
@@ -303,6 +306,26 @@ package body CCG.Transform is
          end loop;
 
          BB := Get_Next_Basic_Block (BB);
+      end loop;
+
+      --  Now delete any basic blocks that were just a jump and have
+      --  become dead. Note that we can't delete other dead basic blocks
+      --  since their results may be used elsewhere.
+
+      while Changed loop
+         Changed := False;
+         BB      := Get_First_Basic_Block (V);
+         while Present (BB) loop
+            Next_BB := Get_Next_Basic_Block (BB);
+            if BB /= Entry_BB and then Is_Dead_Basic_Block (BB)
+              and then Is_A_Terminator_Inst (Get_First_Instruction (BB))
+            then
+               Delete_Basic_Block (BB);
+               Changed := True;
+            end if;
+
+            BB := Next_BB;
+         end loop;
       end loop;
 
    end Follow_Jumps;

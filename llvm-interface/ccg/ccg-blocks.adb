@@ -278,10 +278,8 @@ package body CCG.Blocks is
    begin
       --  See if this is an unconditional or conditional branch. Treat a
       --  conditional branch both of whom go to the same location as an
-      --  unconditional branch.  We need to process all pending values
-      --  before taking the branch, but want to do that after elaborating
-      --  the condition to avoid needing to force elaboration of the
-      --  condition.
+      --  unconditional branch, but mark the condition as used so we don't
+      --  try to output it as a pending value and then don't reference it.
 
       if Is_Conditional (V) and then Ops (Ops'First + 1) /= Ops (Ops'First + 2)
       then
@@ -291,6 +289,10 @@ package body CCG.Blocks is
          Output_Stmt ("else", Semicolon => False, V => V);
          Output_Branch (V, Ops (Ops'First + 1), Need_Brace => True);
       elsif Is_Conditional (V) then
+         if not Has_Side_Effects (Op1) then
+            Set_Is_Used (Op1);
+         end if;
+
          Output_Branch (V, Ops (Ops'First + 1));
       else
          Output_Branch (V, Op1);

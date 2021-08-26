@@ -45,6 +45,11 @@ package body CCG.Transform is
    --  Eliminate the usage of Phis in V by replacing with loads and
    --  stores (or returns).
 
+   procedure Follow_Jumps (V : Value_T)
+     with Pre => Is_A_Function (V);
+   --  If a successor is a basic block with just an unconditional branch,
+   --  update the successor to the target of that branch.
+
    function Get_Short_Circuit_FN (Kind : SC_Kind) return Value_T
      with Post => Present (Get_Short_Circuit_FN'Result);
    --  Get or make the appropriate short circuit function for Kind
@@ -263,6 +268,44 @@ package body CCG.Transform is
          BB := Next_BB;
       end loop;
    end Eliminate_Phis;
+
+   ------------------
+   -- Follow_Jumps --
+   ------------------
+
+   procedure Follow_Jumps (V : Value_T) is
+      BB    : Basic_Block_T := Get_First_Basic_Block (V);
+      Term  : Value_T;
+      Inst  : Value_T;
+      Dest  : Basic_Block_T;
+      Count : Nat;
+
+   begin
+      --  Look at the successors of the terminator of each basic block
+      --  and replace each with the ultimate destination. Protect against
+      --  and infinite loop here if the program has an infinite loop.
+
+      while Present (BB) loop
+         Term := Get_Basic_Block_Terminator (BB);
+         for J in Nat range 0 .. Get_Num_Successors (Term) - 1 loop
+            Dest  := Get_Successor (Term, J);
+            Inst  := Get_First_Instruction (Dest);
+            Count := 0;
+            while Is_A_Terminator_Inst (Inst)
+              and then Get_Num_Successors (Inst) = Nat (1) and then Count < 10
+            loop
+               Dest  := Get_Successor (Inst, Nat (0));
+               Inst  := Get_First_Instruction (Dest);
+               Count := Count + 1;
+            end loop;
+
+            Set_Successor (Term, J, Dest);
+         end loop;
+
+         BB := Get_Next_Basic_Block (BB);
+      end loop;
+
+   end Follow_Jumps;
 
    ----------------------
    -- Negate_Condition --
@@ -638,6 +681,7 @@ package body CCG.Transform is
    begin
       Remove_Some_Intrinsics (V);
       Eliminate_Phis (V);
+      Follow_Jumps (V);
       Build_Short_Circuit_Ops (V);
       Swap_Branches (V);
    end Transform_Blocks;

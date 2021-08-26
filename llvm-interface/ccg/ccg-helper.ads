@@ -57,6 +57,9 @@ package CCG.Helper is
      with Pre  => Is_A_Terminator_Inst (V) and then J < Get_Num_Successors (V),
           Post => Present (Get_Successor'Result);
 
+   procedure Set_Successor (V : Value_T; J : Nat; BB : Basic_Block_T)
+       with Pre => Present (V) and then Present (BB), Inline;
+
    function Has_Name (T : Type_T) return Boolean is
      (Struct_Has_Name (T))
      with Pre => Present (T);
@@ -286,4 +289,5 @@ package CCG.Helper is
    function Create_Return (V : Value_T) return Value_T is
      (Create_Return (Context, V))
      with Pre => Present (V), Post => Is_A_Return_Inst (Create_Return'Result);
+
 end CCG.Helper;

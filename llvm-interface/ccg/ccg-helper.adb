@@ -94,4 +94,13 @@ package body CCG.Helper is
       end if;
    end Get_Debug_Loc_Directory;
 
+   -------------------
+   -- Set_Successor --
+   -------------------
+
+   procedure Set_Successor (V : Value_T; J : Nat; BB : Basic_Block_T) is
+   begin
+      Set_Successor (V, unsigned (J), BB);
+   end Set_Successor;
+
 end CCG.Helper;

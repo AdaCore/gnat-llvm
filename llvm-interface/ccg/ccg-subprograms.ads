@@ -17,7 +17,6 @@
 
 with LLVM.Core;  use LLVM.Core;
 
-with CCG.Blocks; use CCG.Blocks;
 with CCG.Helper; use CCG.Helper;
 with CCG.Strs;   use CCG.Strs;
 

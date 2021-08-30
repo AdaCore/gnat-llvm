@@ -159,14 +159,6 @@ package CCG.Blocks is
    procedure Output_BB (BB : Basic_Block_T);
    --  Generate the code for basic block unless already output
 
-   procedure Branch_Instruction (V : Value_T; Ops : Value_Array)
-     with Pre => Is_A_Branch_Inst (V);
-   --  Process V, a branch instruction
-
-   procedure Switch_Instruction (V : Value_T; Ops : Value_Array)
-     with Pre => Is_A_Switch_Inst (V);
-   --  Process V, a switch instruction
-
    procedure Output_Branch
      (From       : Value_T;
       To         : Value_T;

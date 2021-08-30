@@ -33,6 +33,7 @@ with CCG.Blocks;      use CCG.Blocks;
 with CCG.Environment; use CCG.Environment;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
+with CCG.Target;      use CCG.Target;
 with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Instructions is
@@ -78,6 +79,14 @@ package body CCG.Instructions is
                   and then Present (Op1) and then Present (Op2),
           Post => Present (Cmp_Instruction'Result);
    --  Return the value corresponding to a comparison instruction
+
+   procedure Branch_Instruction (V : Value_T; Ops : Value_Array)
+     with Pre => Is_A_Branch_Inst (V);
+   --  Process V, a branch instruction
+
+   procedure Switch_Instruction (V : Value_T; Ops : Value_Array)
+     with Pre => Is_A_Switch_Inst (V);
+   --  Process V, a switch instruction
 
    procedure Force_To_Variable (V : Value_T)
      with Pre  => Present (V), Post => No (Get_C_Value (V));
@@ -543,6 +552,110 @@ package body CCG.Instructions is
          end case;
       end if;
    end Cmp_Instruction;
+
+   ------------------------
+   -- Branch_Instruction --
+   ------------------------
+
+   procedure Branch_Instruction (V : Value_T; Ops : Value_Array) is
+      Op1    : constant Value_T := Ops (Ops'First);
+      Result : Str;
+   begin
+      --  See if this is an unconditional or conditional branch. Treat a
+      --  conditional branch both of whom go to the same location as an
+      --  unconditional branch, but mark the condition as used so we don't
+      --  try to output it as a pending value and then don't reference it.
+
+      if Is_Conditional (V) and then Ops (Ops'First + 1) /= Ops (Ops'First + 2)
+      then
+         Result := TP ("if (#1)", Op1) + Assign;
+         Output_Stmt (Result, Semicolon => False, V => V);
+         Output_Branch (V, Ops (Ops'First + 2), Need_Brace => True);
+         Output_Stmt ("else", Semicolon => False, V => V);
+         Output_Branch (V, Ops (Ops'First + 1), Need_Brace => True);
+      elsif Is_Conditional (V) then
+         if not Has_Side_Effects (Op1) then
+            Set_Is_Used (Op1);
+         end if;
+
+         Output_Branch (V, Ops (Ops'First + 1));
+      else
+         Output_Branch (V, Op1);
+      end if;
+
+   end Branch_Instruction;
+
+   ------------------------
+   -- Switch_Instruction --
+   ------------------------
+
+   procedure Switch_Instruction (V : Value_T; Ops : Value_Array) is
+      Val       : constant Value_T                := Ops (Ops'First);
+      Default   : constant Value_T                := Ops (Ops'First + 1);
+      POO       : constant Process_Operand_Option :=
+        (if Get_Is_Unsigned (Val) then POO_Unsigned else POO_Signed);
+      Last_Case : constant Nat := Ops'Length / 2 - 1;
+      Result    : Str                             :=
+        Process_Operand (Val, POO);
+
+   begin
+      --  If Val is narrower than int, we must force it to its size
+
+      if Get_Scalar_Bit_Size (Val) < Int_Size then
+         Result := TP ("(#T1) ", Val) & (Result + Unary);
+      end if;
+
+      --  Write the switch statement itself
+
+      Output_Stmt ("switch (" & Result +  Assign & ")",
+                   Semicolon => False,
+                   V         => V);
+      Output_Stmt ("{",
+                   Semicolon     => False,
+                   Indent_After  => C_Indent,
+                   Indent_Before => C_Indent);
+
+      --  Now handle each case. They start after the first two operands and
+      --  alternate between value and branch target.
+
+      for J in 1 .. Last_Case loop
+         declare
+            Value     : constant Value_T := Ops (Ops'First + J * 2);
+            Dest      : constant Value_T := Ops (Ops'First + J * 2 + 1);
+            Next_Dest : constant Value_T :=
+              (if J = Last_Case then Default else Ops (Ops'First + J * 2 + 3));
+
+         begin
+            Output_Stmt ("case " & Process_Operand (Value, POO) & ":",
+                         Semicolon     => False,
+                         Indent_After  => C_Indent,
+                         Indent_Before => -C_Indent);
+
+            --  If this isn't branching to the same label as the next case
+            --  (or default if this is the last case), output the branch.
+            --  ??? We may want to sort to ensure this happens if there are
+            --  any duplicates.
+
+            if Dest /= Next_Dest then
+               Output_Branch (V, Dest);
+               Output_Stmt ("", Semicolon => False);
+            end if;
+         end;
+      end loop;
+
+      --  Finally, write the default and end the statement
+
+      Output_Stmt ("default:",
+                   Semicolon     => False,
+                   Indent_Before => -C_Indent,
+                   Indent_After  => C_Indent);
+      Output_Branch (V, Default);
+      Output_Stmt ("}",
+                   Semicolon     => False,
+                   Indent_After  => -C_Indent,
+                   Indent_Before => -C_Indent);
+
+   end Switch_Instruction;
 
    ----------------
    -- Write_Copy --

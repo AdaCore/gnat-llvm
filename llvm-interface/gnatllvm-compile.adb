@@ -1499,20 +1499,22 @@ package body GNATLLVM.Compile is
    ---------------------------
 
    procedure Process_Freeze_Entity (N : N_Freeze_Entity_Id) is
-      E    : constant Entity_Id := Entity (N);
-      Decl : N_Is_Decl_Id;
+      E      : constant Entity_Id        := Entity (N);
+      Full_E : constant Entity_Id        :=
+        (if Is_Type (E) then Get_Fullest_View (E) else E);
+      Decl   : constant Opt_N_Is_Decl_Id :=
+        (if   Is_Ignored_Ghost_Entity (Full_E) then Empty
+         else Declaration_Node (Full_E));
 
    begin
-      --  We don't do anything for types
+      --  If there's no declaration node, we have nothing to do
 
-      if Is_Type (E) then
+      if No (Decl) then
          return;
       end if;
 
-      --  Otherwise, see what type of declaration this is. Since this isn't
-      --  a type, we know there is one.
+      --  Otherwise, see what type of declaration this is
 
-      Decl := Declaration_Node (E);
       case Nkind (Decl) is
          when N_Object_Declaration | N_Exception_Declaration =>
 

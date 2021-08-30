@@ -34,6 +34,7 @@ with CCG.Output;       use CCG.Output;
 with CCG.Target;       use CCG.Target;
 with CCG.Transform;    use CCG.Transform;
 with CCG.Utils;        use CCG.Utils;
+with CCG.Write;        use CCG.Write;
 
 package body CCG.Subprograms is
 

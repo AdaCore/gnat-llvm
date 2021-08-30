@@ -23,6 +23,7 @@ with Table; use Table;
 
 with CCG.Output; use CCG.Output;
 with CCG.Utils;  use CCG.Utils;
+with CCG.Write;  use CCG.Write;
 
 package body CCG.Environment is
 

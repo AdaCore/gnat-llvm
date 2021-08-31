@@ -678,23 +678,23 @@ package body CCG.Write is
       end case;
    end Write_Type;
 
-   -------------------
-   -- Write_Typedef --
+   --------------------
+   -- Output_Typedef --
    --------------------
 
-   procedure Write_Typedef (T : Type_T; Incomplete : Boolean := False) is
+   procedure Output_Typedef (T : Type_T; Incomplete : Boolean := False) is
    begin
-      --  Show we're writing the typedef (so we know not to do it
+      --  Show we're outputting the typedef (so we know not to do it
       --  recursively).
 
-      Set_Are_Writing_Typedef (T);
+      Set_Are_Outputting_Typedef (T);
 
       --  See what type of type this is
 
       if Get_Type_Kind (T) = Struct_Type_Kind then
-         Write_Struct_Typedef (T, Incomplete => Incomplete);
+         Output_Struct_Typedef (T, Incomplete => Incomplete);
       elsif Get_Type_Kind (T) = Array_Type_Kind then
-         Write_Array_Typedef (T);
+         Output_Array_Typedef (T);
       elsif Get_Type_Kind (T) = Pointer_Type_Kind then
 
          --  We don't have typedefs for function types, just pointer to
@@ -703,20 +703,20 @@ package body CCG.Write is
          --  pointed-to type.
 
          if Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind then
-            Write_Function_Type_Typedef (T);
+            Output_Function_Type_Typedef (T);
          else
-            Maybe_Write_Typedef (Get_Element_Type (T), Incomplete => True);
+            Maybe_Output_Typedef (Get_Element_Type (T), Incomplete => True);
          end if;
       end if;
 
       --  Show we've written the typedef unless this is a struct type and
       --  we're only writing an incomplete definition.
 
-      Set_Are_Writing_Typedef (T, False);
+      Set_Are_Outputting_Typedef (T, False);
       if not Incomplete or else Get_Type_Kind (T) /= Struct_Type_Kind then
          Set_Is_Typedef_Output   (T);
       end if;
-   end Write_Typedef;
+   end Output_Typedef;
 
    --------------------
    -- Write_BB_Value --

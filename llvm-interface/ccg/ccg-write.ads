@@ -46,11 +46,11 @@ package CCG.Write is
      with Pre => S'Length > 0;
    --  Write S as a valid name in C
 
-   procedure Write_Typedef (T : Type_T; Incomplete : Boolean := False)
+   procedure Output_Typedef (T : Type_T; Incomplete : Boolean := False)
      with Pre =>  Present (T),
           Post => Get_Is_Typedef_Output (T)
                   or else (Incomplete and then Get_Is_Incomplete_Output (T));
-   --  Write the typedef for T, if any. If Incomplete an T is a struct type,
+   --  Output the typedef for T, if any. If Incomplete an T is a struct type,
 
    --  just write the initial definition of the struct, with no fields.
 

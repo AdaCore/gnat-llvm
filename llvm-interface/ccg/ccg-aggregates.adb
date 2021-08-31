@@ -230,11 +230,11 @@ package body CCG.Aggregates is
       end if;
    end Get_Field_Name;
 
-   --------------------------
-   -- Write_Struct_Typedef --
-   --------------------------
+   ---------------------------
+   -- Output_Struct_Typedef --
+   ---------------------------
 
-   procedure Write_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
+   procedure Output_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
    is
       Types : constant Nat := Count_Struct_Element_Types (T);
 
@@ -261,7 +261,7 @@ package body CCG.Aggregates is
       --  written any inner typedefs.
 
       for J in 0 .. Types - 1 loop
-         Maybe_Write_Typedef (Struct_Get_Type_At_Index (T, J));
+         Maybe_Output_Typedef (Struct_Get_Type_At_Index (T, J));
       end loop;
 
       --  Now that we know that all inner typedefs have been witten,
@@ -309,38 +309,38 @@ package body CCG.Aggregates is
       end if;
 
       Write_Str (+";", Eol => True);
-   end Write_Struct_Typedef;
+   end Output_Struct_Typedef;
 
    -------------------------
    -- Write_Array_Typedef --
    -------------------------
 
-   procedure Write_Array_Typedef (T : Type_T) is
+   procedure Output_Array_Typedef (T : Type_T) is
       Elem_T : constant Type_T := Get_Element_Type (T);
 
    begin
-      Maybe_Write_Typedef (Elem_T);
+      Maybe_Output_Typedef (Elem_T);
       Write_Str ("typedef " & Elem_T & " " & T & "[" &
                    Effective_Array_Length (T) & "];", Eol => True);
-   end Write_Array_Typedef;
+   end Output_Array_Typedef;
 
-   --------------------------------------
-   -- Maybe_Write_Array_Return_Typedef --
-   --------------------------------------
+   ---------------------------------------
+   -- Maybe_Output_Array_Return_Typedef --
+   ---------------------------------------
 
-   procedure Maybe_Write_Array_Return_Typedef (T : Type_T) is
+   procedure Maybe_Output_Array_Return_Typedef (T : Type_T) is
    begin
       --  If we haven't written this yet, first ensure that we've written
       --  the typedef for T since we reference it, then write the actual
       --  typedef, and mark it as written.
 
       if not Get_Is_Return_Typedef_Output (T) then
-         Maybe_Write_Typedef (T);
+         Maybe_Output_Typedef (T);
          Write_Str ("typedef struct " & T & "_R {" & T & " F;} " & T & "_R;",
                     Eol => True);
          Set_Is_Return_Typedef_Output (T);
       end if;
-   end Maybe_Write_Array_Return_Typedef;
+   end Maybe_Output_Array_Return_Typedef;
 
    -----------------
    -- Value_Piece --
@@ -461,7 +461,7 @@ package body CCG.Aggregates is
       --  type.
 
       for Op of Ops (Ops'First + 2 .. Ops'Last) loop
-         Maybe_Write_Typedef (Aggr_T);
+         Maybe_Output_Typedef (Aggr_T);
          if Get_Type_Kind (Aggr_T) = Array_Type_Kind then
 
             --  If this isn't an LHS, we have to make it one, but not if

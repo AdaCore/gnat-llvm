@@ -307,7 +307,7 @@ package body CCG.Strs is
    begin
       Set_Is_Used (V);
       if VF = Write_Type then
-         Maybe_Write_Typedef (Type_Of (V));
+         Maybe_Output_Typedef (Type_Of (V));
       end if;
 
       return Result;
@@ -325,7 +325,7 @@ package body CCG.Strs is
 
    begin
       if VF = Write_Type then
-         Maybe_Write_Typedef (Type_Of (S.Comps (1).Val));
+         Maybe_Output_Typedef (Type_Of (S.Comps (1).Val));
       end if;
 
       return Result;
@@ -446,7 +446,7 @@ package body CCG.Strs is
         (1, Unknown, (1 => (Typ, 1, T)));
       Result : constant Str := Undup_Str (S_Rec);
    begin
-      Maybe_Write_Typedef (T);
+      Maybe_Output_Typedef (T);
       return Result;
    end "+";
 
@@ -561,7 +561,7 @@ package body CCG.Strs is
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
-            Maybe_Write_Typedef (R);
+            Maybe_Output_Typedef (R);
             return Result;
          end;
       else
@@ -681,7 +681,7 @@ package body CCG.Strs is
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
-            Maybe_Write_Typedef (L);
+            Maybe_Output_Typedef (L);
             return Result;
          end;
       else
@@ -763,7 +763,7 @@ package body CCG.Strs is
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      Maybe_Write_Typedef (L);
+      Maybe_Output_Typedef (L);
       return Result;
    end "&";
 
@@ -806,7 +806,7 @@ package body CCG.Strs is
       Result : Str;
 
    begin
-      Maybe_Write_Typedef (L);
+      Maybe_Output_Typedef (L);
       S_Rec.P                         := R.P;
       S_Rec.Comps (1)                 := (Typ, 1, L);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
@@ -864,7 +864,7 @@ package body CCG.Strs is
          return +R;
       end if;
 
-      Maybe_Write_Typedef (R);
+      Maybe_Output_Typedef (R);
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
       S_Rec.Comps (L.Length + 1)  := (Typ, 1, R);

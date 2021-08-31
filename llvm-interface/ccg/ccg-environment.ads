@@ -92,9 +92,9 @@ package CCG.Environment is
    --  True if this is a struct type and we've just written the struct
    --  definition without fields (an incomplete type).
 
-   function Get_Are_Writing_Typedef      (T : Type_T) return Boolean
+   function Get_Are_Outputting_Typedef      (T : Type_T) return Boolean
      with Pre => Present (T), Inline;
-   --  True if we're in the process of writing a typedef
+   --  True if we're in the process of outputting a typedef
 
    procedure Set_Is_Typedef_Output        (T : Type_T; B : Boolean := True)
      with Pre  => Present (T), Post => Get_Is_Typedef_Output (T) = B, Inline;
@@ -104,8 +104,9 @@ package CCG.Environment is
    procedure Set_Is_Incomplete_Output     (T : Type_T; B : Boolean := True)
      with Pre  => Present (T), Post => Get_Is_Incomplete_Output (T) = B,
           Inline;
-   procedure Set_Are_Writing_Typedef      (T : Type_T; B : Boolean := True)
-     with Pre  => Present (T), Post => Get_Are_Writing_Typedef (T) = B, Inline;
+   procedure Set_Are_Outputting_Typedef   (T : Type_T; B : Boolean := True)
+     with Pre  => Present (T), Post => Get_Are_Outputting_Typedef (T) = B,
+          Inline;
 
    function Get_Was_Output (BB : Basic_Block_T) return Boolean
      with Pre => Present (BB), Inline;
@@ -143,9 +144,10 @@ package CCG.Environment is
    function Get_Output_Idx                      return Nat
      with Post => Get_Output_Idx'Result /= 0, Inline;
 
-   procedure Maybe_Write_Typedef (T : Type_T; Incomplete : Boolean := False)
+   procedure Maybe_Output_Typedef (T : Type_T; Incomplete : Boolean := False)
      with Pre  => Present (T),
-          Post => Get_Is_Typedef_Output (T) or else Get_Are_Writing_Typedef (T)
+          Post => Get_Is_Typedef_Output (T)
+                  or else Get_Are_Outputting_Typedef (T)
                   or else (Incomplete and then Get_Is_Incomplete_Output (T));
    --  See if we need to write a typedef for T and write one if so. If
    --  Incomplete is True, all we need is the initial portion of a struct

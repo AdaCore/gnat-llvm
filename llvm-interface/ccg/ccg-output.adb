@@ -76,9 +76,9 @@ package body CCG.Output is
    Current_BB : Basic_Block_T := No_BB_T;
    --  The basic block for which we're outputting statements
 
-   procedure Maybe_Write_Typedef_And_Decl (V : Value_T)
+   procedure Maybe_Output_Typedef_And_Decl (V : Value_T)
      with Pre => Is_A_Constant (V);
-   --  Ensure that we're written typedefs for any types within V and
+   --  Ensure that we're output typedefs for any types within V and
    --  declarations for anything in V that needs it
 
    ---------------------
@@ -122,12 +122,12 @@ package body CCG.Output is
       if Is_Metadata (V) then
          return;
 
-      --  Be sure that we've written a typedef for V's type. But don't do this
+      --  Be sure that we've output a typedef for V's type. But don't do this
       --  for a function since the reference to the function doesn't require
       --  us to declare its type separately.
 
       elsif not Is_A_Function (V) then
-         Maybe_Write_Typedef (Type_Of (V));
+         Maybe_Output_Typedef (Type_Of (V));
       end if;
 
       --  If this is an unprocessed constant expression, process it as an
@@ -212,7 +212,7 @@ package body CCG.Output is
                   if Present (Init) and then not Is_Undef (Init)
                     and then not Is_A_Constant_Aggregate_Zero (Init)
                   then
-                     Maybe_Write_Typedef_And_Decl (Init);
+                     Maybe_Output_Typedef_And_Decl (Init);
                      Decl := Decl & " = " & (Init + Initializer);
                   end if;
 
@@ -224,7 +224,7 @@ package body CCG.Output is
                --  constant and put it at the top level.
 
                if Is_A_Constant (V) then
-                  Maybe_Write_Typedef_And_Decl (V);
+                  Maybe_Output_Typedef_And_Decl (V);
                   Output_Decl ("static const " & Decl & " = " &
                                  (V + Initializer),
                                Is_Global => True, V => V);
@@ -237,11 +237,11 @@ package body CCG.Output is
       end if;
    end Maybe_Decl;
 
-   ----------------------------------
-   -- Maybe_Write_Typedef_And_Decl --
-   ----------------------------------
+   -----------------------------------
+   -- Maybe_Output_Typedef_And_Decl --
+   -----------------------------------
 
-   procedure Maybe_Write_Typedef_And_Decl (V : Value_T) is
+   procedure Maybe_Output_Typedef_And_Decl (V : Value_T) is
    begin
       --  First, ensure that V has been declared
 
@@ -252,20 +252,20 @@ package body CCG.Output is
       --  constant expressions, which may reference objects that could be
       --  of types for which we haven't yet written a typedef.
 
-      Maybe_Write_Typedef (Type_Of (V));
+      Maybe_Output_Typedef (Type_Of (V));
       if Is_A_Constant_Array (V) or else Is_A_Constant_Struct (V)
         or else Is_A_Constant_Expr (V)
       then
          for J in 0 .. Nat'(Get_Num_Operands (V)) - 1 loop
-            Maybe_Write_Typedef_And_Decl (Get_Operand (V, J));
+            Maybe_Output_Typedef_And_Decl (Get_Operand (V, J));
          end loop;
 
       elsif Is_A_Constant_Data_Array (V) then
          for J in 0 .. Nat'(Get_Num_CDA_Elements (V)) - 1 loop
-            Maybe_Write_Typedef_And_Decl (Get_Element_As_Constant (V, J));
+            Maybe_Output_Typedef_And_Decl (Get_Element_As_Constant (V, J));
          end loop;
       end if;
-   end Maybe_Write_Typedef_And_Decl;
+   end Maybe_Output_Typedef_And_Decl;
 
    -----------------
    -- Output_Decl --

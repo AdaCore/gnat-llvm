@@ -105,17 +105,17 @@ package body CCG.Subprograms is
    function Curr_Func return Value_T is
      (Subprograms.Table (Subprograms.Last).Func);
 
-   ---------------------------------
-   -- Write_Function_Type_Typedef --
-   ---------------------------------
+   ----------------------------------
+   -- Output_Function_Type_Typedef --
+   ----------------------------------
 
-   procedure Write_Function_Type_Typedef (T : Type_T) is
+   procedure Output_Function_Type_Typedef (T : Type_T) is
       Fn_T : constant Type_T := Get_Element_Type (T);
 
    begin
       Write_Str ("typedef " & Function_Proto (Fn_T, "(*" & T & ")") & ";",
                  Eol => True);
-   end Write_Function_Type_Typedef;
+   end Output_Function_Type_Typedef;
 
    ---------------------------
    -- Effective_Return_Type --
@@ -129,7 +129,7 @@ package body CCG.Subprograms is
       --  struct containing that array.
 
       if Get_Type_Kind (Ret_Typ) = Array_Type_Kind then
-         Maybe_Write_Array_Return_Typedef (Ret_Typ);
+         Maybe_Output_Array_Return_Typedef (Ret_Typ);
          return Ret_Typ & "_R";
       else
          return +Ret_Typ;

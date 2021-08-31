@@ -77,8 +77,8 @@ package body CCG.Environment is
       --  True if this is a struct type and we've just written the struct
       --  definition without fields (an incomplete type).
 
-      Are_Writing_Typedef      : Boolean;
-      --  True if we're in the process of writing a typedef
+      Are_Outputting_Typedef      : Boolean;
+      --  True if we're in the process of outputting a typedef
 
       Output_Idx               : Nat;
       --  A positive number if we've assigned an ordinal to use as
@@ -229,7 +229,7 @@ package body CCG.Environment is
          Type_Info.Append ((Is_Typedef_Output        => False,
                             Is_Return_Typedef_Output => False,
                             Is_Incomplete_Output     => False,
-                            Are_Writing_Typedef      => False,
+                            Are_Outputting_Typedef   => False,
                             Output_Idx               => 0));
          Insert (Type_Info_Map, T, Type_Info.Last);
          return Type_Info.Last;
@@ -456,16 +456,17 @@ package body CCG.Environment is
       return Present (Idx) and then Type_Info.Table (Idx).Is_Incomplete_Output;
    end Get_Is_Incomplete_Output;
 
-   -----------------------------
-   -- Get_Are_Writing_Typedef --
-   -----------------------------
+   --------------------------------
+   -- Get_Are_Outputting_Typedef --
+   --------------------------------
 
-   function Get_Are_Writing_Typedef (T : Type_T) return Boolean is
+   function Get_Are_Outputting_Typedef (T : Type_T) return Boolean is
       Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
 
    begin
-      return Present (Idx) and then Type_Info.Table (Idx).Are_Writing_Typedef;
-   end Get_Are_Writing_Typedef;
+      return Present (Idx)
+        and then Type_Info.Table (Idx).Are_Outputting_Typedef;
+   end Get_Are_Outputting_Typedef;
 
    --------------------------
    -- Set_Is_Typedef_Output --
@@ -500,16 +501,16 @@ package body CCG.Environment is
       Type_Info.Table (Idx).Is_Incomplete_Output := B;
    end Set_Is_Incomplete_Output;
 
-   -----------------------------
-   -- Set_Are_Writing_Typedef --
-   -----------------------------
+   --------------------------------
+   -- Set_Are_Outputting_Typedef --
+   --------------------------------
 
-   procedure Set_Are_Writing_Typedef (T : Type_T; B : Boolean := True) is
+   procedure Set_Are_Outputting_Typedef (T : Type_T; B : Boolean := True) is
       Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
 
    begin
-      Type_Info.Table (Idx).Are_Writing_Typedef := B;
-   end Set_Are_Writing_Typedef;
+      Type_Info.Table (Idx).Are_Outputting_Typedef := B;
+   end Set_Are_Outputting_Typedef;
 
    --------------------
    -- Get_Was_Output --
@@ -601,24 +602,26 @@ package body CCG.Environment is
       BB_Info.Table (Idx).Last_Stmt := Sidx;
    end Set_Last_Stmt;
 
-   -------------------------
-   -- Maybe_Write_Typedef --
-   -------------------------
+   --------------------------
+   -- Maybe_Output_Typedef --
+   --------------------------
 
-   procedure Maybe_Write_Typedef (T : Type_T; Incomplete : Boolean := False) is
+   procedure Maybe_Output_Typedef (T : Type_T; Incomplete : Boolean := False)
+   is
    begin
-      --  If we're writing this, have written it, or are just looking for
-      --  an incomplete definition and have already written one, we don't
-      --  need to do anything. Otherwise, write the typedef.
-      if Get_Are_Writing_Typedef (T)
+      --  If we're outputting this, have output it, or are just looking for
+      --  an incomplete definition and have already output one, we don't
+      --  need to do anything. Otherwise, output the typedef.
+
+      if Get_Are_Outputting_Typedef (T)
         or else Get_Is_Typedef_Output (T)
         or else (Incomplete and then Get_Is_Incomplete_Output (T))
       then
          null;
       else
-         Write_Typedef (T, Incomplete => Incomplete);
+         Output_Typedef (T, Incomplete => Incomplete);
       end if;
-   end Maybe_Write_Typedef;
+   end Maybe_Output_Typedef;
 
    --------------------
    -- Get_Output_Idx --

@@ -51,9 +51,9 @@ package CCG.Subprograms is
      with Pre => Is_A_Function (V);
    --  Generate the C statements and decls for V, a subprogram
 
-   procedure Write_Function_Type_Typedef (T : Type_T)
+   procedure Output_Function_Type_Typedef (T : Type_T)
      with Pre => Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind;
-   --  Write a typedef for T, which is a pointer to a function type
+   --  Output a typedef for T, which is a pointer to a function type
 
    function Function_Proto (V : Value_T; Extern : Boolean := False) return Str
      with Pre  => Is_A_Function (V),

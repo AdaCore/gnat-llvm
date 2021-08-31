@@ -416,6 +416,13 @@ package body CCG.Output is
                    BB, Need_Brace);
    end Output_Stmt;
 
+   ----------------------
+   -- Get_Typedef_Line --
+   ----------------------
+
+   function Get_Typedef_Line (Idx : Typedef_Idx) return Out_Line is
+     (Typedefs.Table (Idx));
+
    --------------------------
    -- Get_Global_Decl_Line --
    --------------------------
@@ -436,6 +443,13 @@ package body CCG.Output is
 
    function Get_Stmt_Line (Idx : Stmt_Idx) return Out_Line is
      (Stmts.Table (Idx));
+
+   ----------------------
+   -- Get_Last_Typedef --
+   ----------------------
+
+   function Get_Last_Typedef return Typedef_Idx is
+     (Typedefs.Last);
 
    --------------------------
    -- Get_Last_Global_Decl --

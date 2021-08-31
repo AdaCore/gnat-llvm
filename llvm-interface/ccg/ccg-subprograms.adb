@@ -634,7 +634,13 @@ package body CCG.Subprograms is
 
    procedure Write_Subprograms is
    begin
-      --  Start by writing out the global decls
+      --  First write out typedefs
+
+      for Tidx in Typedef_Idx_Start .. Get_Last_Typedef loop
+         Write_Line (Tidx);
+      end loop;
+
+      --  Next write out the global decls
 
       for Gidx in Global_Decl_Idx_Start .. Get_Last_Global_Decl loop
          Write_Line (Gidx);

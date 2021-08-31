@@ -809,6 +809,15 @@ package body CCG.Write is
    -- Write_Line --
    ----------------
 
+   procedure Write_Line (Idx : Typedef_Idx) is
+   begin
+      Write_Line (Get_Typedef_Line (Idx));
+   end Write_Line;
+
+   ----------------
+   -- Write_Line --
+   ----------------
+
    procedure Write_Line (Idx : Global_Decl_Idx) is
    begin
       Write_Line (Get_Global_Decl_Line (Idx));

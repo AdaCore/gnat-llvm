@@ -113,6 +113,8 @@ package CCG.Output is
       Need_Brace    : Boolean       := False);
    --  Like Output_Decl, but for the statement part of the current subprogram
 
+   function Get_Typedef_Line     (Idx : Typedef_Idx)     return Out_Line
+     with Inline;
    function Get_Global_Decl_Line (Idx : Global_Decl_Idx) return Out_Line
      with Inline;
    function Get_Local_Decl_Line  (Idx : Local_Decl_Idx)  return Out_Line
@@ -121,8 +123,9 @@ package CCG.Output is
      with Inline;
    --  Given an index to a decl or statement, return the data for it
 
+   function Get_Last_Typedef     return Typedef_Idx;
    function Get_Last_Global_Decl return Global_Decl_Idx;
-   --  Return the index of the last global decl that was output
+   --  Return the index of the last typedef or global decl that was output
 
    function Is_Entry_Block (BB : Basic_Block_T) return Boolean is
      (Get_Entry_Basic_Block (Get_Basic_Block_Parent (BB)) = BB)

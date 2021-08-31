@@ -55,6 +55,7 @@ package CCG.Write is
    procedure Write_Line (Line : Out_Line);
    procedure Write_Line (Idx : Stmt_Idx)
      with Pre => Present (Idx);
+   procedure Write_Line (Idx : Typedef_Idx);
    procedure Write_Line (Idx : Global_Decl_Idx);
    procedure Write_Line (Idx : Local_Decl_Idx)
      with Pre => Present (Idx);

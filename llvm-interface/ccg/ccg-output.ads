@@ -60,6 +60,12 @@ package CCG.Output is
    --  Return the string corresponding to the C name of an integer type of
    --  Size bits.
 
+   procedure Output_Typedef (T : Type_T; Incomplete : Boolean := False)
+     with Pre =>  Present (T),
+          Post => Get_Is_Typedef_Output (T)
+                  or else (Incomplete and then Get_Is_Incomplete_Output (T));
+   --  Output the typedef for T, if any. If Incomplete an T is a struct type,
+
    procedure Output_Decl
      (S             : Str;
       Semicolon     : Boolean := True;

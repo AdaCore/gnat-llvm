@@ -93,35 +93,6 @@ package body CCG.Write is
    --  The filename and line number of the last #line directive we wrote,
    --  if any.
 
-   ----------------
-   -- Int_String --
-   ----------------
-
-   function Int_String (Size : Pos) return String is
-   begin
-      --  ??? There are a number of issues here: Ada supports a
-      --  "long long long" type, which could correspond to C's
-      --  int128_t.  We also may want to generate intXX_t types
-      --  instead of the standard types based on a switch.  But for
-      --  now we'll keep it simple.
-
-      if Size > Long_Size and then Size > Int_Size
-        and then Size <= Long_Long_Size
-      then
-         return "long long";
-      elsif Size > Int_Size and then Size <= Long_Size then
-         return "long";
-      elsif Size > Short_Size and then Size <= Int_Size then
-         return "int";
-      elsif Size > Char_Size and then Size <= Short_Size then
-         return "short";
-      elsif Size <= Char_Size then
-         return "char";
-      else
-         return "<unknown int type:" & Size'Image & ">";
-      end if;
-   end Int_String;
-
    -----------------------
    -- Maybe_Write_Comma --
    -----------------------
@@ -658,7 +629,7 @@ package body CCG.Write is
             Write_Str ("double");
 
          when Integer_Type_Kind =>
-            Write_Str (Int_String (Pos (Get_Int_Type_Width (T))));
+            Write_Str (Int_Type_String (Pos (Get_Int_Type_Width (T))));
 
          when Pointer_Type_Kind =>
 

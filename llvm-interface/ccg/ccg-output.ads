@@ -56,6 +56,10 @@ package CCG.Output is
       --  replacing this by more than one statement.
    end record;
 
+   function Int_Type_String (Size : Pos) return Str;
+   --  Return the string corresponding to the C name of an integer type of
+   --  Size bits.
+
    procedure Output_Decl
      (S             : Str;
       Semicolon     : Boolean := True;

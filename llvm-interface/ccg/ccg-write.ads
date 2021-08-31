@@ -30,8 +30,6 @@ package CCG.Write is
    procedure Write_BB (BB : Basic_Block_T; Omit_Label : Boolean := False)
      with Pre => Present (BB);
    --  Write the statements in BB, possibly omitting the initial label
-   function Int_String (Size : Pos) return String;
-   --  Return the string corresponding to an integer type of Size bits
 
    procedure Write_Value
      (V              : Value_T;

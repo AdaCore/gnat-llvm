@@ -444,7 +444,7 @@ package body CCG.Subprograms is
       --  idea of the tradeoffs here.
 
       Write_Copy (+V & ".ccg_field_0",
-                  "(" & Int_String (Pos (Bits)) & ") " & Subp &
+                  "(" & Int_Type_String (Pos (Bits)) & ") " & Subp &
                     " ((long long) " & Op1 & ", (long long) " & Op2 & ")",
                   Int_Type (Bits),
                   V => V);

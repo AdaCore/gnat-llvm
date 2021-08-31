@@ -26,6 +26,7 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
+with CCG.Target;       use CCG.Target;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Aggregates is
@@ -246,28 +247,31 @@ package body CCG.Aggregates is
       --       struct foo { ... full definition ..}
 
       if not Get_Is_Incomplete_Output (T) then
-         Write_Str ("typedef struct " & T & " " & T & ";" & Eol_Str);
+         Output_Decl ("typedef struct " & T & " " & T, Is_Typedef => True);
          Set_Is_Incomplete_Output (T);
       end if;
 
-      --  If all we're to do is to to write the incomplete definition,
+      --  If all we're to do is to output the incomplete definition,
       --  we're done.
 
       if Incomplete then
          return;
       end if;
 
-      --  Before we write the typedef for this struct, make sure we've
-      --  written any inner typedefs.
+      --  Before we output the typedef for this struct, make sure we've
+      --  output any inner typedefs.
 
       for J in 0 .. Types - 1 loop
          Maybe_Output_Typedef (Struct_Get_Type_At_Index (T, J));
       end loop;
 
-      --  Now that we know that all inner typedefs have been witten,
-      --  we write out the struct definition.
+      --  Now that we know that all inner typedefs have been output,
+      --  we output the struct definition.
 
-      Write_Str ("struct " & T & " {", Eol => True);
+      Output_Decl ("struct " & T & " {",
+                   Semicolon    => False,
+                   Is_Typedef   => True,
+                   Indent_After => C_Indent);
 
       for J in 0 .. Types - 1 loop
 
@@ -286,8 +290,8 @@ package body CCG.Aggregates is
             --  options.
 
             if not Is_Zero_Length_Array (ST) then
-               Write_Str ("    " & ST & " " & Get_Field_Name (T, J) & ";",
-                          Eol => True);
+               Output_Decl (ST & " " & Get_Field_Name (T, J),
+                            Is_Typedef => True);
             end if;
          end;
       end loop;
@@ -296,19 +300,16 @@ package body CCG.Aggregates is
       --  ISO C89 doesn't allow an empty struct.
 
       if Types = 0 then
-         Write_Str (+"    char dummy_for_null_recordC;", Eol => True);
+         Output_Decl ("char dummy_for_null_recordC", Is_Typedef => True);
       end if;
-
-      Write_Str ("}");
 
       --  ??? We have many ways of handling packed, but don't worry about that
       --  in the initial support.
 
-      if Is_Packed_Struct (T) then
-         Write_Str (" __attribute__ ((packed))");
-      end if;
-
-      Write_Str (+";", Eol => True);
+      Output_Decl ("}" &
+                     (if    Is_Packed_Struct (T)
+                      then " __attribute__ ((packed))" else ""),
+                   Is_Typedef => True, Indent_Before => -C_Indent);
    end Output_Struct_Typedef;
 
    -------------------------
@@ -320,8 +321,8 @@ package body CCG.Aggregates is
 
    begin
       Maybe_Output_Typedef (Elem_T);
-      Write_Str ("typedef " & Elem_T & " " & T & "[" &
-                   Effective_Array_Length (T) & "];", Eol => True);
+      Output_Decl ("typedef " & Elem_T & " " & T & "[" &
+                   Effective_Array_Length (T) & "]", Is_Typedef => True);
    end Output_Array_Typedef;
 
    ---------------------------------------
@@ -336,8 +337,8 @@ package body CCG.Aggregates is
 
       if not Get_Is_Return_Typedef_Output (T) then
          Maybe_Output_Typedef (T);
-         Write_Str ("typedef struct " & T & "_R {" & T & " F;} " & T & "_R;",
-                    Eol => True);
+         Output_Decl ("typedef struct " & T & "_R {" & T & " F;} " & T & "_R",
+                      Is_Typedef => True);
          Set_Is_Return_Typedef_Output (T);
       end if;
    end Maybe_Output_Array_Return_Typedef;

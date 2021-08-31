@@ -113,8 +113,8 @@ package body CCG.Subprograms is
       Fn_T : constant Type_T := Get_Element_Type (T);
 
    begin
-      Write_Str ("typedef " & Function_Proto (Fn_T, "(*" & T & ")") & ";",
-                 Eol => True);
+      Output_Decl ("typedef " & Function_Proto (Fn_T, "(*" & T & ")"),
+                   Is_Typedef => True);
    end Output_Function_Type_Typedef;
 
    ---------------------------
@@ -245,8 +245,8 @@ package body CCG.Subprograms is
       --  Otherwise, write the definition of this function. If it has no
       --  basic blocks, it must be an extern.
 
-      Write_Str ((if No (Get_First_Basic_Block (V)) then "extern " else "") &
-        Function_Proto (V, Extern => True) & ";" & Eol_Str);
+      Output_Decl ((if No (Get_First_Basic_Block (V)) then "extern " else "") &
+        Function_Proto (V, Extern => True), Is_Global => True);
 
    end Declare_Subprogram;
 

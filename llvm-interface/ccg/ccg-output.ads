@@ -59,6 +59,7 @@ package CCG.Output is
    procedure Output_Decl
      (S             : Str;
       Semicolon     : Boolean := True;
+      Is_Typedef    : Boolean := False;
       Is_Global     : Boolean := False;
       No_Indent     : Boolean := False;
       Indent_Before : Integer := 0;
@@ -68,6 +69,7 @@ package CCG.Output is
    procedure Output_Decl
      (S             : String;
       Semicolon     : Boolean := True;
+      Is_Typedef    : Boolean := False;
       Is_Global     : Boolean := False;
       No_Indent     : Boolean := False;
       Indent_Before : Integer := 0;

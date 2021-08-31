@@ -39,13 +39,21 @@ with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Output is
 
-   --  Tables for global and local decls and statements
+   --  Tables for typedefs, and global and local decls, and statements
+
+   package Typedefs is new Table.Table
+     (Table_Component_Type => Out_Line,
+      Table_Index_Type     => Typedef_Idx,
+      Table_Low_Bound      => Typedef_Idx_Start,
+      Table_Initial        => 100,
+      Table_Increment      => 100,
+      Table_Name           => "Typedefs");
 
    package Global_Decls is new Table.Table
      (Table_Component_Type => Out_Line,
       Table_Index_Type     => Global_Decl_Idx,
       Table_Low_Bound      => Global_Decl_Idx_Start,
-      Table_Initial        => 500,
+      Table_Initial        => 100,
       Table_Increment      => 100,
       Table_Name           => "Global_Decls");
 
@@ -237,6 +245,7 @@ package body CCG.Output is
    procedure Output_Decl
      (S             : Str;
       Semicolon     : Boolean := True;
+      Is_Typedef    : Boolean := False;
       Is_Global     : Boolean := False;
       No_Indent     : Boolean := False;
       Indent_Before : Integer := 0;
@@ -252,7 +261,9 @@ package body CCG.Output is
          BB             => No_BB_T,
          Need_Brace     => False);
    begin
-      if Is_Global then
+      if Is_Typedef then
+         Typedefs.Append (OL);
+      elsif Is_Global then
          Global_Decls.Append (OL);
       else
          Local_Decls.Append (OL);
@@ -267,6 +278,7 @@ package body CCG.Output is
    procedure Output_Decl
      (S             : String;
       Semicolon     : Boolean := True;
+      Is_Typedef    : Boolean := False;
       Is_Global     : Boolean := False;
       No_Indent     : Boolean := False;
       Indent_Before : Integer := 0;
@@ -274,8 +286,8 @@ package body CCG.Output is
       V             : Value_T := No_Value_T)
    is
    begin
-      Output_Decl (+S, Semicolon, Is_Global, No_Indent, Indent_Before,
-                   Indent_After, V);
+      Output_Decl (+S, Semicolon, Is_Typedef, Is_Global, No_Indent,
+                   Indent_Before, Indent_After, V);
    end Output_Decl;
 
    -----------------

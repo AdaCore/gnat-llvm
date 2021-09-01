@@ -317,6 +317,9 @@ package CCG.Strs is
    function Is_Null_String (S : Str) return Boolean
      with Pre => Present (S);
 
+   function Is_String_First_Char (S : Str; C : Character) return Boolean
+     with Pre => Present (S);
+
    function Has_Unsigned (S : Str) return Boolean
       with Pre => Present (S);
    --  True if there is a reference within S to a value that's unsigned.
@@ -416,4 +419,9 @@ private
 
    function Is_Null_String (S : Str) return Boolean is
      (S.Length = 0);
+
+   function Is_String_First_Char (S : Str; C : Character) return Boolean is
+     (S.Length >= 1 and then S.Comps (1).Kind = Var_String
+      and then S.Comps (1).Str (1) = C);
+
 end CCG.Strs;

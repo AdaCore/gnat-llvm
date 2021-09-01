@@ -76,6 +76,10 @@ package body CCG.Output is
    Current_BB : Basic_Block_T := No_BB_T;
    --  The basic block for which we're outputting statements
 
+   Next_Block_Style : Block_Style := None;
+   --  The Block_Style to use for the next line written using Output_Decl
+   --  or Output_Stmt.
+
    procedure Maybe_Output_Typedef_And_Decl (V : Value_T)
      with Pre => Is_A_Constant (V);
    --  Ensure that we're output typedefs for any types within V and
@@ -313,23 +317,29 @@ package body CCG.Output is
 
    procedure Output_Decl
      (S             : Str;
-      Semicolon     : Boolean := True;
-      Is_Typedef    : Boolean := False;
-      Is_Global     : Boolean := False;
-      No_Indent     : Boolean := False;
-      Indent_Before : Integer := 0;
-      Indent_After  : Integer := 0;
-      V             : Value_T := No_Value_T)
+      Semicolon     : Boolean      := True;
+      Is_Typedef    : Boolean      := False;
+      Is_Global     : Boolean      := False;
+      End_Block     : Block_Style  := None;
+      Indent_Type   : Indent_Style := Normal;
+      No_Indent     : Boolean      := False;
+      Indent_Before : Integer      := 0;
+      Indent_After  : Integer      := 0;
+      V             : Value_T      := No_Value_T)
    is
       OL : constant Out_Line :=
         (Line_Text      => (if Semicolon then S & ";" else S),
+         Start_Block    => Next_Block_Style,
+         Indent_Type    => Indent_Type,
          No_Indent      => No_Indent,
+         End_Block      => End_Block,
          Indent_Before  => Indent_Before,
          Indent_After   => Indent_After,
          V              => V,
          BB             => No_BB_T,
          Need_Brace     => False);
    begin
+      Next_Block_Style := None;
       if Is_Typedef then
          Typedefs.Append (OL);
       elsif Is_Global then
@@ -346,17 +356,19 @@ package body CCG.Output is
 
    procedure Output_Decl
      (S             : String;
-      Semicolon     : Boolean := True;
-      Is_Typedef    : Boolean := False;
-      Is_Global     : Boolean := False;
-      No_Indent     : Boolean := False;
-      Indent_Before : Integer := 0;
-      Indent_After  : Integer := 0;
-      V             : Value_T := No_Value_T)
+      Semicolon     : Boolean      := True;
+      Is_Typedef    : Boolean      := False;
+      Is_Global     : Boolean      := False;
+      End_Block     : Block_Style  := None;
+      Indent_Type   : Indent_Style := Normal;
+      No_Indent     : Boolean      := False;
+      Indent_Before : Integer      := 0;
+      Indent_After  : Integer      := 0;
+      V             : Value_T      := No_Value_T)
    is
    begin
-      Output_Decl (+S, Semicolon, Is_Typedef, Is_Global, No_Indent,
-                   Indent_Before, Indent_After, V);
+      Output_Decl (+S, Semicolon, Is_Typedef, Is_Global, End_Block,
+                   Indent_Type, No_Indent, Indent_Before, Indent_After, V);
    end Output_Decl;
 
    -----------------
@@ -366,6 +378,8 @@ package body CCG.Output is
    procedure Output_Stmt
      (S             : Str;
       Semicolon     : Boolean       := True;
+      End_Block     : Block_Style   := None;
+      Indent_Type   : Indent_Style  := Normal;
       No_Indent     : Boolean       := False;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
@@ -385,12 +399,16 @@ package body CCG.Output is
       --  Add the statement to the appropriate block
 
       Stmts.Append ((Line_Text      => (if Semicolon then S & ";" else S),
+                     Start_Block    => Next_Block_Style,
+                     End_Block      => End_Block,
+                     Indent_Type    => Indent_Type,
                      No_Indent      => No_Indent,
                      Indent_Before  => Indent_Before,
                      Indent_After   => Indent_After,
                      V              => V,
                      BB             => BB,
                      Need_Brace     => Need_Brace));
+      Next_Block_Style := None;
       Set_Last_Stmt (Current_BB, Stmts.Last);
       if No (Get_First_Stmt (Current_BB)) then
          Set_First_Stmt (Current_BB, Stmts.Last);
@@ -404,6 +422,8 @@ package body CCG.Output is
    procedure Output_Stmt
      (S             : String;
       Semicolon     : Boolean       := True;
+      End_Block     : Block_Style    := None;
+      Indent_Type   : Indent_Style  := Normal;
       No_Indent     : Boolean       := False;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
@@ -412,9 +432,64 @@ package body CCG.Output is
       Need_Brace    : Boolean       := False)
    is
    begin
-      Output_Stmt (+S, Semicolon, No_Indent, Indent_Before, Indent_After, V,
-                   BB, Need_Brace);
+      Output_Stmt (+S, Semicolon, End_Block, Indent_Type, No_Indent,
+                   Indent_Before, Indent_After, V, BB, Need_Brace);
    end Output_Stmt;
+
+   ------------------------
+   -- Start_Output_Block --
+   ------------------------
+
+   procedure Start_Output_Block (BS : Block_Style) is
+   begin
+      pragma Assert (Next_Block_Style = None);
+      Next_Block_Style := BS;
+   end Start_Output_Block;
+
+   --------------------
+   -- End_Decl_Block --
+   --------------------
+
+   procedure End_Decl_Block
+     (BS         : Block_Style;
+      Is_Typedef : Boolean := False;
+      Is_Global  : Boolean := False)
+   is
+   begin
+      if Is_Typedef then
+         declare
+            OL : Out_Line renames Typedefs.Table (Typedefs.Last);
+         begin
+            pragma Assert (OL.End_Block = None);
+            OL.End_Block := BS;
+         end;
+      elsif Is_Global then
+         declare
+            OL : Out_Line renames Global_Decls.Table (Global_Decls.Last);
+         begin
+            pragma Assert (OL.End_Block = None);
+            OL.End_Block := BS;
+         end;
+      else
+         declare
+            OL : Out_Line renames Local_Decls.Table (Local_Decls.Last);
+         begin
+            pragma Assert (OL.End_Block = None);
+            OL.End_Block := BS;
+         end;
+      end if;
+   end End_Decl_Block;
+
+   --------------------
+   -- End_Stmt_Block --
+   --------------------
+
+   procedure End_Stmt_Block (BS : Block_Style) is
+      OL : Out_Line renames Stmts.Table (Stmts.Last);
+   begin
+      pragma Assert (OL.End_Block = None);
+      OL.End_Block := BS;
+   end End_Stmt_Block;
 
    ----------------------
    -- Get_Typedef_Line --

@@ -27,4 +27,8 @@ package CCG.Target is
    --  True if this C compiler will issue warning in cases where the
    --  precedence is correct but looks suspicious.
 
+   Always_Brace : constant Boolean := False;
+   --  True if we're to always write C lexical blocks using braces even
+   --  if they're only a single line.
+
 end CCG.Target;

@@ -39,6 +39,20 @@ with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Write is
 
+   --  To keep all related information in the same place, we define functions
+   --  here that, given a block style, tell us how to write that block.
+
+   function Need_Brace
+     (BS : Block_Style; Single_Line : Boolean) return Boolean
+   is
+     (not Single_Line or else BS in Decl | Switch or else Always_Brace);
+   --  Indicates whether we need a brace for this block. Single_Line says
+   --  whether or not the block consists of just a single line.
+
+   function Brace_Indent (BS : Block_Style) return Integer is
+     (if BS = Decl then 0 else C_Indent);
+   --  Gives the number of spaces to indent the brace line of a block
+
    procedure Write_Value_Name (V : Value_T)
      with Pre => Present (V);
    --  Write the value name of V, which is either the LLVM name or a name
@@ -847,6 +861,9 @@ package body CCG.Write is
    is
    begin
       Write_Line (Out_Line'(Line_Text     => S,
+                            Start_Block   => None,
+                            End_Block     => None,
+                            Indent_Type   => Normal,
                             No_Indent     => No_Indent,
                             Indent_Before => Indent_Before,
                             Indent_After  => Indent_After,
@@ -870,6 +887,9 @@ package body CCG.Write is
    is
    begin
       Write_Line (Out_Line'(Line_Text     => +S,
+                            Start_Block   => None,
+                            End_Block     => None,
+                            Indent_Type   => Normal,
                             No_Indent     => No_Indent,
                             Indent_Before => Indent_Before,
                             Indent_After  => Indent_After,

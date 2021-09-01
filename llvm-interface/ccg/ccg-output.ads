@@ -26,12 +26,36 @@ package CCG.Output is
    --  This package contains subprograms used to output segments of C
    --  code into structures that are later written to the output file.
 
+   --  When we write a C block structure, we have various indentation
+   --  rules and we may or may not need an open and close brace. We
+   --  have various types of blocks, which we name here according to
+   --  the statement type.
+
+   type Block_Style is (None, Decl, If_Part, Switch);
+
+   --  There are three possible indentations for a line: normal indentation,
+   --  all the way on the left (labels) and aligned with the brace (switch
+   --  statement).
+
+   type Indent_Style is (Normal, Left, Under_Brace);
+
    --  We represent each line being output as an Str, but also record
    --  other information that helps us output the line.
 
    type Out_Line is record
       Line_Text      : Str;
       --  The actual string to output
+
+      Start_Block    : Block_Style;
+      --  The type of block, if any, started by this line
+
+      End_Block      : Block_Style;
+      --  The type of block, if any, ended by this line. If the line starts
+      --  with a brace, we use this line instead of writing a line with
+      --  just a brace.
+
+      Indent_Type    : Indent_Style;
+      --  The indentation desired for this line
 
       No_Indent      : Boolean;
       --  If True, don't indent this to the current indentation level
@@ -68,23 +92,27 @@ package CCG.Output is
 
    procedure Output_Decl
      (S             : Str;
-      Semicolon     : Boolean := True;
-      Is_Typedef    : Boolean := False;
-      Is_Global     : Boolean := False;
-      No_Indent     : Boolean := False;
-      Indent_Before : Integer := 0;
-      Indent_After  : Integer := 0;
-      V             : Value_T := No_Value_T)
+      Semicolon     : Boolean      := True;
+      Is_Typedef    : Boolean      := False;
+      Is_Global     : Boolean      := False;
+      End_Block     : Block_Style  := None;
+      Indent_Type   : Indent_Style := Normal;
+      No_Indent     : Boolean      := False;
+      Indent_Before : Integer      := 0;
+      Indent_After  : Integer      := 0;
+      V             : Value_T      := No_Value_T)
      with Pre => Present (S);
    procedure Output_Decl
      (S             : String;
-      Semicolon     : Boolean := True;
-      Is_Typedef    : Boolean := False;
-      Is_Global     : Boolean := False;
-      No_Indent     : Boolean := False;
-      Indent_Before : Integer := 0;
-      Indent_After  : Integer := 0;
-      V             : Value_T := No_Value_T);
+      Semicolon     : Boolean      := True;
+      Is_Typedef    : Boolean      := False;
+      Is_Global     : Boolean      := False;
+      End_Block     : Block_Style  := None;
+      Indent_Type   : Indent_Style := Normal;
+      No_Indent     : Boolean      := False;
+      Indent_Before : Integer      := 0;
+      Indent_After  : Integer      := 0;
+      V             : Value_T      := No_Value_T);
    --  Save S as a decl for the current subprogram. Append a semicolon to
    --  the string if requested (the default) and specify indentation
    --  parameters. V, if Present, is a value that we may be able to get
@@ -95,6 +123,8 @@ package CCG.Output is
    procedure Output_Stmt
      (S             : Str;
       Semicolon     : Boolean       := True;
+      End_Block     : Block_Style   := None;
+      Indent_Type   : Indent_Style  := Normal;
       No_Indent     : Boolean       := False;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
@@ -105,6 +135,8 @@ package CCG.Output is
    procedure Output_Stmt
      (S             : String;
       Semicolon     : Boolean       := True;
+      End_Block     : Block_Style   := None;
+      Indent_Type   : Indent_Style  := Normal;
       No_Indent     : Boolean       := False;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
@@ -112,6 +144,18 @@ package CCG.Output is
       BB            : Basic_Block_T := No_BB_T;
       Need_Brace    : Boolean       := False);
    --  Like Output_Decl, but for the statement part of the current subprogram
+
+   procedure Start_Output_Block (BS : Block_Style);
+   --  Indicate that the next call to Output_Decl or Output_Stmt is the
+   --  start of a block of the specified style.
+
+   procedure End_Decl_Block
+     (BS         : Block_Style;
+      Is_Typedef : Boolean := False;
+      Is_Global  : Boolean := False);
+   procedure End_Stmt_Block (BS : Block_Style);
+   --  Flag the last line output via Output_Decl or Output_Stmt as being
+   --  the last in its block.
 
    function Get_Typedef_Line     (Idx : Typedef_Idx)     return Out_Line
      with Inline;

@@ -336,8 +336,7 @@ package body CCG.Output is
          Indent_Before  => Indent_Before,
          Indent_After   => Indent_After,
          V              => V,
-         BB             => No_BB_T,
-         Need_Brace     => False);
+         BB             => No_BB_T);
    begin
       Next_Block_Style := None;
       if Is_Typedef then
@@ -384,8 +383,7 @@ package body CCG.Output is
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T;
-      Need_Brace    : Boolean       := False)
+      BB            : Basic_Block_T := No_BB_T)
    is
    begin
       --  If we've been given an instruction corresponding to this
@@ -406,8 +404,7 @@ package body CCG.Output is
                      Indent_Before  => Indent_Before,
                      Indent_After   => Indent_After,
                      V              => V,
-                     BB             => BB,
-                     Need_Brace     => Need_Brace));
+                     BB             => BB));
       Next_Block_Style := None;
       Set_Last_Stmt (Current_BB, Stmts.Last);
       if No (Get_First_Stmt (Current_BB)) then
@@ -428,12 +425,11 @@ package body CCG.Output is
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T;
-      Need_Brace    : Boolean       := False)
+      BB            : Basic_Block_T := No_BB_T)
    is
    begin
       Output_Stmt (+S, Semicolon, End_Block, Indent_Type, No_Indent,
-                   Indent_Before, Indent_After, V, BB, Need_Brace);
+                   Indent_Before, Indent_After, V, BB);
    end Output_Stmt;
 
    ------------------------

@@ -84,10 +84,6 @@ package CCG.Output is
 
       BB             : Basic_Block_T;
       --  If line is "goto <label>;", the block this is branching to
-
-      Need_Brace     : Boolean;
-      --  In the goto case, True if we'll need to write a brace if we're
-      --  replacing this by more than one statement.
    end record;
 
    function Int_Type_String (Size : Pos) return Str;
@@ -139,8 +135,7 @@ package CCG.Output is
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T;
-      Need_Brace    : Boolean       := False)
+      BB            : Basic_Block_T := No_BB_T)
      with Pre => Present (S);
    procedure Output_Stmt
      (S             : String;
@@ -151,8 +146,7 @@ package CCG.Output is
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T;
-      Need_Brace    : Boolean       := False);
+      BB            : Basic_Block_T := No_BB_T);
    --  Like Output_Decl, but for the statement part of the current subprogram
 
    procedure Start_Output_Block (BS : Block_Style);

@@ -72,8 +72,7 @@ package CCG.Write is
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T;
-      Need_Brace    : Boolean       := False)
+      BB            : Basic_Block_T := No_BB_T)
      with Pre => Present (S);
    procedure Write_C_Line
      (S             : String;
@@ -81,8 +80,7 @@ package CCG.Write is
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T;
-      Need_Brace    : Boolean       := False);
+      BB            : Basic_Block_T := No_BB_T);
    --  Write one line to our output file, taking care of any required
    --  debug data, source line writing, and #line directives.
 

@@ -922,8 +922,7 @@ package body CCG.Write is
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T;
-      Need_Brace    : Boolean       := False)
+      BB            : Basic_Block_T := No_BB_T)
    is
    begin
       Write_C_Line (Out_Line'(Line_Text     => S,
@@ -934,8 +933,7 @@ package body CCG.Write is
                               Indent_Before => Indent_Before,
                               Indent_After  => Indent_After,
                               V             => V,
-                              BB            => BB,
-                              Need_Brace    => Need_Brace));
+                              BB            => BB));
    end Write_C_Line;
 
    ------------------
@@ -948,8 +946,7 @@ package body CCG.Write is
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T;
-      Need_Brace    : Boolean       := False)
+      BB            : Basic_Block_T := No_BB_T)
    is
    begin
       Write_C_Line (Out_Line'(Line_Text     => +S,
@@ -960,8 +957,7 @@ package body CCG.Write is
                               Indent_Before => Indent_Before,
                               Indent_After  => Indent_After,
                               V             => V,
-                              BB            => BB,
-                              Need_Brace    => Need_Brace));
+                              BB            => BB));
    end Write_C_Line;
 
    ------------------
@@ -988,8 +984,6 @@ package body CCG.Write is
       Our_Line      : constant Physical_Line_Number :=
         (if Have_File then +Get_Debug_Loc_Line (Our_V) else 1);
       S             : Str                           := Line.Line_Text;
-      Indent_Before : Integer                       := Line.Indent_Before;
-      Indent_After  : Integer                       := Line.Indent_After;
 
    begin
       --  If we have debug info and it differs from the last we have, and
@@ -1025,31 +1019,11 @@ package body CCG.Write is
 
       if Present (Line.BB) then
          if Has_Unique_Predecessor (Line.BB) then
-            if Line.Need_Brace then
-               Write_C_Line ("{",
-                             Indent_After  => C_Indent,
-                             Indent_Before => C_Indent);
-            end if;
-
             Write_BB (Line.BB,
                       Omit_Label  => True,
                       Start_Block => Line.Start_Block,
                       End_Block   => Line.End_Block);
-
-            if Line.Need_Brace then
-               Write_C_Line ("}",
-                             Indent_After  => -C_Indent,
-                             Indent_Before => -C_Indent);
-            end if;
-
             return;
-
-         --  Otherwise, if we need braces, set up the indent before and
-         --  after this line.
-
-         elsif Line.Need_Brace then
-            Indent_Before := Indent_Before + C_Indent;
-            Indent_After  := Indent_After  - C_Indent;
          end if;
 
          --  Since we're going to write the goto, indicate that that block
@@ -1062,13 +1036,13 @@ package body CCG.Write is
       --  possibly ending a block.
 
       Write_Start_Block (Line.Start_Block, Present (Line.End_Block));
-      Indent := Indent + Indent_Before;
+      Indent := Indent + Line.Indent_Before;
       if not Line.No_Indent then
          S := (Indent * " ") & S;
       end if;
 
       Write_Str (S, Eol => True);
-      Indent := Indent + Indent_After;
+      Indent := Indent + Line.Indent_After;
       Write_End_Block (Line.End_Block, Present (Line.Start_Block));
 
    end Write_C_Line;

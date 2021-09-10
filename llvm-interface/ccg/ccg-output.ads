@@ -39,6 +39,16 @@ package CCG.Output is
 
    type Indent_Style is (Normal, Left, Under_Brace);
 
+   function Present (BS   : Block_Style)  return Boolean is
+      (BS /= None);
+   function Present (INDS : Indent_Style) return Boolean is
+      (INDS /= Normal);
+
+   function No (BS   : Block_Style)  return Boolean is
+      (BS = None);
+   function No (INDS : Indent_Style) return Boolean is
+      (INDS = Normal);
+
    --  We represent each line being output as an Str, but also record
    --  other information that helps us output the line.
 

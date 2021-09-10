@@ -27,9 +27,15 @@ package CCG.Write is
    --  This package contains subprograms and data used to output the saved
    --  C statements into the output file.
 
-   procedure Write_BB (BB : Basic_Block_T; Omit_Label : Boolean := False)
+   procedure Write_BB
+     (BB          : Basic_Block_T;
+      Start_Block : Block_Style := None;
+      End_Block   : Block_Style := None;
+      Omit_Label  : Boolean     := False)
      with Pre => Present (BB);
-   --  Write the statements in BB, possibly omitting the initial label
+   --  Write the statements in BB, possibly omitting the initial label.
+   --  If this is being written as a replacement for a branch, we include
+   --  any start and end block styles from the line containing the branch.
 
    procedure Write_Value
      (V              : Value_T;
@@ -52,14 +58,15 @@ package CCG.Write is
    procedure Finalize_Writing;
    --  Set up for writing lines of C and finalize writing them
 
-   procedure Write_Line (Line : Out_Line);
-   procedure Write_Line (Idx : Stmt_Idx)
+   procedure Write_C_Line (Line : Out_Line);
+   procedure Write_C_Line
+     (Idx : Stmt_Idx; Start_Block, End_Block : Block_Style := None)
      with Pre => Present (Idx);
-   procedure Write_Line (Idx : Typedef_Idx);
-   procedure Write_Line (Idx : Global_Decl_Idx);
-   procedure Write_Line (Idx : Local_Decl_Idx)
+   procedure Write_C_Line (Idx : Typedef_Idx);
+   procedure Write_C_Line (Idx : Global_Decl_Idx);
+   procedure Write_C_Line (Idx : Local_Decl_Idx)
      with Pre => Present (Idx);
-   procedure Write_Line
+   procedure Write_C_Line
      (S             : Str;
       No_Indent     : Boolean       := False;
       Indent_Before : Integer       := 0;
@@ -68,7 +75,7 @@ package CCG.Write is
       BB            : Basic_Block_T := No_BB_T;
       Need_Brace    : Boolean       := False)
      with Pre => Present (S);
-   procedure Write_Line
+   procedure Write_C_Line
      (S             : String;
       No_Indent     : Boolean       := False;
       Indent_Before : Integer       := 0;

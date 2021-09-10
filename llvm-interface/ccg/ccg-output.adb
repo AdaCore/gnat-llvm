@@ -601,11 +601,16 @@ package body CCG.Output is
         (if Present (Orig_From) then Orig_From else From);
 
    begin
-      Output_Stmt ("goto " & To,
-                   V          => Our_From,
-                   BB         => To,
-                   Need_Brace => Need_Brace);
+      if Need_Brace then
+         Start_Output_Block (If_Part);
+      end if;
 
+      Output_Stmt ("goto " & To,
+                   V           => Our_From,
+                   BB          => To);
+      if Need_Brace then
+         End_Stmt_Block (If_Part);
+      end if;
    end Output_Branch;
 
 begin

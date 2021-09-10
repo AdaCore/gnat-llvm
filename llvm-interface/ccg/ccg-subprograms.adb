@@ -423,8 +423,7 @@ package body CCG.Subprograms is
       Maybe_Decl (V);
 
       if not Overflow_Declared (Arit) then
-         Write_Str ("extern long long " & Subp & " (long long, long long);");
-         Write_Eol;
+         Write_Line ("extern long long " & Subp & " (long long, long long);");
          Overflow_Declared (Arit) := True;
       end if;
 
@@ -637,13 +636,13 @@ package body CCG.Subprograms is
       --  First write out typedefs
 
       for Tidx in Typedef_Idx_Start .. Get_Last_Typedef loop
-         Write_Line (Tidx);
+         Write_C_Line (Tidx);
       end loop;
 
       --  Next write out the global decls
 
       for Gidx in Global_Decl_Idx_Start .. Get_Last_Global_Decl loop
-         Write_Line (Gidx);
+         Write_C_Line (Gidx);
       end loop;
 
       --  Now write out each subprogram
@@ -658,7 +657,7 @@ package body CCG.Subprograms is
 
             Write_Eol;
             for Didx in SD.First_Decl .. SD.Last_Decl loop
-               Write_Line (Didx);
+               Write_C_Line (Didx);
             end loop;
 
             --  If we're written more than just the prototype and the "{",
@@ -694,7 +693,7 @@ package body CCG.Subprograms is
 
          --  Finally, write the closing brace
 
-         Write_Line ("}", Indent_Before => -C_Indent);
+         Write_C_Line ("}", Indent_Before => -C_Indent);
       end loop;
    end Write_Subprograms;
 end CCG.Subprograms;

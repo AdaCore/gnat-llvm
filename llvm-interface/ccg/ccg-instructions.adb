@@ -569,9 +569,9 @@ package body CCG.Instructions is
       then
          Result := TP ("if (#1)", Op1) + Assign;
          Output_Stmt (Result, Semicolon => False, V => V);
-         Output_Branch (V, Ops (Ops'First + 2), Need_Brace => True);
+         Output_Branch (V, Ops (Ops'First + 2), If_Part);
          Output_Stmt ("else", Semicolon => False, V => V);
-         Output_Branch (V, Ops (Ops'First + 1), Need_Brace => True);
+         Output_Branch (V, Ops (Ops'First + 1), If_Part);
       elsif Is_Conditional (V) then
          if not Has_Side_Effects (Op1) then
             Set_Is_Used (Op1);

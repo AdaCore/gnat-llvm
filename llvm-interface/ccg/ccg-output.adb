@@ -442,7 +442,7 @@ package body CCG.Output is
 
    procedure Start_Output_Block (BS : Block_Style) is
    begin
-      pragma Assert (Next_Block_Style = None);
+      pragma Assert (No (Next_Block_Style));
       Next_Block_Style := BS;
    end Start_Output_Block;
 
@@ -456,7 +456,9 @@ package body CCG.Output is
       Is_Global  : Boolean := False)
    is
    begin
-      if Is_Typedef then
+      if No (BS) then
+         null;
+      elsif Is_Typedef then
          declare
             OL : Out_Line renames Typedefs.Table (Typedefs.Last);
          begin
@@ -487,8 +489,10 @@ package body CCG.Output is
    procedure End_Stmt_Block (BS : Block_Style) is
       OL : Out_Line renames Stmts.Table (Stmts.Last);
    begin
-      pragma Assert (OL.End_Block = None);
-      OL.End_Block := BS;
+      if Present (BS) then
+         pragma Assert (OL.End_Block = None);
+         OL.End_Block := BS;
+      end if;
    end End_Stmt_Block;
 
    ----------------------
@@ -578,13 +582,10 @@ package body CCG.Output is
    -------------------
 
    procedure Output_Branch
-     (From       : Value_T;
-      To         : Value_T;
-      Orig_From  : Value_T := No_Value_T;
-      Need_Brace : Boolean := False)
+     (From : Value_T; To : Value_T; BS : Block_Style := None)
    is
    begin
-      Output_Branch (From, Value_As_Basic_Block (To), Orig_From, Need_Brace);
+      Output_Branch (From, Value_As_Basic_Block (To), BS);
    end Output_Branch;
 
    -------------------
@@ -592,25 +593,12 @@ package body CCG.Output is
    -------------------
 
    procedure Output_Branch
-     (From       : Value_T;
-      To         : Basic_Block_T;
-      Orig_From  : Value_T := No_Value_T;
-      Need_Brace : Boolean := False)
+     (From : Value_T; To : Basic_Block_T; BS : Block_Style := None)
    is
-      Our_From    : constant Value_T       :=
-        (if Present (Orig_From) then Orig_From else From);
-
    begin
-      if Need_Brace then
-         Start_Output_Block (If_Part);
-      end if;
-
-      Output_Stmt ("goto " & To,
-                   V           => Our_From,
-                   BB          => To);
-      if Need_Brace then
-         End_Stmt_Block (If_Part);
-      end if;
+      Start_Output_Block (BS);
+      Output_Stmt ("goto " & To, V => From, BB => To);
+      End_Stmt_Block (BS);
    end Output_Branch;
 
 begin

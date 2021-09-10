@@ -195,21 +195,13 @@ package CCG.Output is
    --  Generate the code for basic block unless already output
 
    procedure Output_Branch
-     (From       : Value_T;
-      To         : Value_T;
-      Orig_From  : Value_T := No_Value_T;
-      Need_Brace : Boolean := False)
+     (From : Value_T; To : Value_T; BS : Block_Style := None)
      with Pre => Present (From) and then Present (To);
    procedure Output_Branch
-     (From       : Value_T;
-      To         : Basic_Block_T;
-      Orig_From  : Value_T := No_Value_T;
-      Need_Brace : Boolean := False)
+     (From : Value_T; To : Basic_Block_T; BS : Block_Style := None)
      with Pre => Present (From) and then Present (To);
    --  Generate code to jump from instruction From to instruction or
-   --  basic block To. Need_Brace says whether we need to generate a
-   --  "{ ... }" construct. Orig_From is used in recursive calls to
-   --  track the original instruction leading to this branch.
+   --  basic block To using the specify style block.
 
    procedure Maybe_Decl (V : Value_T; For_Initializer : Boolean := False)
      with Pre => Present (V);

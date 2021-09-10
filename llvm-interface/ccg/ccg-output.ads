@@ -67,9 +67,6 @@ package CCG.Output is
       Indent_Type    : Indent_Style;
       --  The indentation desired for this line
 
-      No_Indent      : Boolean;
-      --  If True, don't indent this to the current indentation level
-
       Indent_Before  : Integer;
       --  Number of spaces to increase indent before outputting this line.
       --  This line is indented by the new count.
@@ -103,7 +100,6 @@ package CCG.Output is
       Is_Global     : Boolean      := False;
       End_Block     : Block_Style  := None;
       Indent_Type   : Indent_Style := Normal;
-      No_Indent     : Boolean      := False;
       Indent_Before : Integer      := 0;
       Indent_After  : Integer      := 0;
       V             : Value_T      := No_Value_T)
@@ -115,7 +111,6 @@ package CCG.Output is
       Is_Global     : Boolean      := False;
       End_Block     : Block_Style  := None;
       Indent_Type   : Indent_Style := Normal;
-      No_Indent     : Boolean      := False;
       Indent_Before : Integer      := 0;
       Indent_After  : Integer      := 0;
       V             : Value_T      := No_Value_T);
@@ -131,7 +126,6 @@ package CCG.Output is
       Semicolon     : Boolean       := True;
       End_Block     : Block_Style   := None;
       Indent_Type   : Indent_Style  := Normal;
-      No_Indent     : Boolean       := False;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
@@ -142,7 +136,6 @@ package CCG.Output is
       Semicolon     : Boolean       := True;
       End_Block     : Block_Style   := None;
       Indent_Type   : Indent_Style  := Normal;
-      No_Indent     : Boolean       := False;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;

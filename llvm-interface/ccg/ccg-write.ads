@@ -68,7 +68,7 @@ package CCG.Write is
      with Pre => Present (Idx);
    procedure Write_C_Line
      (S             : Str;
-      No_Indent     : Boolean       := False;
+      Indent_Type   : Indent_Style  := Normal;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
@@ -76,7 +76,7 @@ package CCG.Write is
      with Pre => Present (S);
    procedure Write_C_Line
      (S             : String;
-      No_Indent     : Boolean       := False;
+      Indent_Type   : Indent_Style  := Normal;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;

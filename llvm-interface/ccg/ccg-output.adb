@@ -322,7 +322,6 @@ package body CCG.Output is
       Is_Global     : Boolean      := False;
       End_Block     : Block_Style  := None;
       Indent_Type   : Indent_Style := Normal;
-      No_Indent     : Boolean      := False;
       Indent_Before : Integer      := 0;
       Indent_After  : Integer      := 0;
       V             : Value_T      := No_Value_T)
@@ -331,7 +330,6 @@ package body CCG.Output is
         (Line_Text      => (if Semicolon then S & ";" else S),
          Start_Block    => Next_Block_Style,
          Indent_Type    => Indent_Type,
-         No_Indent      => No_Indent,
          End_Block      => End_Block,
          Indent_Before  => Indent_Before,
          Indent_After   => Indent_After,
@@ -360,14 +358,13 @@ package body CCG.Output is
       Is_Global     : Boolean      := False;
       End_Block     : Block_Style  := None;
       Indent_Type   : Indent_Style := Normal;
-      No_Indent     : Boolean      := False;
       Indent_Before : Integer      := 0;
       Indent_After  : Integer      := 0;
       V             : Value_T      := No_Value_T)
    is
    begin
       Output_Decl (+S, Semicolon, Is_Typedef, Is_Global, End_Block,
-                   Indent_Type, No_Indent, Indent_Before, Indent_After, V);
+                   Indent_Type, Indent_Before, Indent_After, V);
    end Output_Decl;
 
    -----------------
@@ -379,7 +376,6 @@ package body CCG.Output is
       Semicolon     : Boolean       := True;
       End_Block     : Block_Style   := None;
       Indent_Type   : Indent_Style  := Normal;
-      No_Indent     : Boolean       := False;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
@@ -400,7 +396,6 @@ package body CCG.Output is
                      Start_Block    => Next_Block_Style,
                      End_Block      => End_Block,
                      Indent_Type    => Indent_Type,
-                     No_Indent      => No_Indent,
                      Indent_Before  => Indent_Before,
                      Indent_After   => Indent_After,
                      V              => V,
@@ -421,15 +416,14 @@ package body CCG.Output is
       Semicolon     : Boolean       := True;
       End_Block     : Block_Style    := None;
       Indent_Type   : Indent_Style  := Normal;
-      No_Indent     : Boolean       := False;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T)
    is
    begin
-      Output_Stmt (+S, Semicolon, End_Block, Indent_Type, No_Indent,
-                   Indent_Before, Indent_After, V, BB);
+      Output_Stmt (+S, Semicolon, End_Block, Indent_Type, Indent_Before,
+                   Indent_After, V, BB);
    end Output_Stmt;
 
    ------------------------

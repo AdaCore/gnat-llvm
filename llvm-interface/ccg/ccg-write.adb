@@ -918,7 +918,7 @@ package body CCG.Write is
 
    procedure Write_C_Line
      (S             : Str;
-      No_Indent     : Boolean       := False;
+      Indent_Type   : Indent_Style  := Normal;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
@@ -928,8 +928,7 @@ package body CCG.Write is
       Write_C_Line (Out_Line'(Line_Text     => S,
                               Start_Block   => None,
                               End_Block     => None,
-                              Indent_Type   => Normal,
-                              No_Indent     => No_Indent,
+                              Indent_Type   => Indent_Type,
                               Indent_Before => Indent_Before,
                               Indent_After  => Indent_After,
                               V             => V,
@@ -942,7 +941,7 @@ package body CCG.Write is
 
    procedure Write_C_Line
      (S             : String;
-      No_Indent     : Boolean       := False;
+      Indent_Type   : Indent_Style  := Normal;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
@@ -952,8 +951,7 @@ package body CCG.Write is
       Write_C_Line (Out_Line'(Line_Text     => +S,
                               Start_Block   => None,
                               End_Block     => None,
-                              Indent_Type   => Normal,
-                              No_Indent     => No_Indent,
+                              Indent_Type   => Indent_Type,
                               Indent_Before => Indent_Before,
                               Indent_After  => Indent_After,
                               V             => V,
@@ -983,7 +981,7 @@ package body CCG.Write is
         Present (Our_File) and then not Is_Null_String (Our_File);
       Our_Line      : constant Physical_Line_Number :=
         (if Have_File then +Get_Debug_Loc_Line (Our_V) else 1);
-      S             : Str                           := Line.Line_Text;
+      Last_Indent   : Integer;
 
    begin
       --  If we have debug info and it differs from the last we have, and
@@ -1033,16 +1031,24 @@ package body CCG.Write is
       end if;
 
       --  Now handle possibly starting a block, write our line, then
-      --  possibly ending a block.
+      --  possibly ending a block. Handle any special indentation
+      --  requirements.
 
       Write_Start_Block (Line.Start_Block, Present (Line.End_Block));
+      Last_Indent := Indent;
       Indent := Indent + Line.Indent_Before;
-      if not Line.No_Indent then
-         S := (Indent * " ") & S;
+      if Line.Indent_Type = Left then
+         Indent := 0;
+      elsif Line.Indent_Type = Under_Brace then
+         Indent := Indent - C_Indent;
       end if;
 
-      Write_Str (S, Eol => True);
+      Write_Str ((Indent * " ") & Line.Line_Text, Eol => True);
       Indent := Indent + Line.Indent_After;
+      if Present (Line.Indent_Type) then
+         Indent := Last_Indent;
+      end if;
+
       Write_End_Block (Line.End_Block, Present (Line.Start_Block));
 
    end Write_C_Line;
@@ -1073,8 +1079,8 @@ package body CCG.Write is
       elsif not Omit_Label and then not Is_Entry_Block (BB) then
          Write_Eol;
          Write_C_Line (BB & ":",
-                       No_Indent => True,
-                       V => Get_First_Instruction (BB));
+                       Indent_Type => Left,
+                       V           => Get_First_Instruction (BB));
       end if;
 
       --  Now mark as written and write each statement that we output for

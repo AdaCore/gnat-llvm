@@ -609,10 +609,7 @@ package body CCG.Instructions is
       Output_Stmt ("switch (" & Result +  Assign & ")",
                    Semicolon => False,
                    V         => V);
-      Output_Stmt ("{",
-                   Semicolon     => False,
-                   Indent_After  => C_Indent,
-                   Indent_Before => C_Indent);
+      Start_Output_Block (Switch);
 
       --  Now handle each case. They start after the first two operands and
       --  alternate between value and branch target.
@@ -626,9 +623,8 @@ package body CCG.Instructions is
 
          begin
             Output_Stmt ("case " & Process_Operand (Value, POO) & ":",
-                         Semicolon     => False,
-                         Indent_After  => C_Indent,
-                         Indent_Before => -C_Indent);
+                         Semicolon   => False,
+                         Indent_Type => Under_Brace);
 
             --  If this isn't branching to the same label as the next case
             --  (or default if this is the last case), output the branch.
@@ -645,15 +641,10 @@ package body CCG.Instructions is
       --  Finally, write the default and end the statement
 
       Output_Stmt ("default:",
-                   Semicolon     => False,
-                   Indent_Before => -C_Indent,
-                   Indent_After  => C_Indent);
+                   Semicolon   => False,
+                   Indent_Type => Under_Brace);
       Output_Branch (V, Default);
-      Output_Stmt ("}",
-                   Semicolon     => False,
-                   Indent_After  => -C_Indent,
-                   Indent_Before => -C_Indent);
-
+      End_Stmt_Block (Switch);
    end Switch_Instruction;
 
    ----------------

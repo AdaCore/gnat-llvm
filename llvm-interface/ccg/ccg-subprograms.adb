@@ -268,7 +268,7 @@ package body CCG.Subprograms is
       New_Subprogram (V);
       Transform_Blocks (V);
       Output_Decl (Function_Proto (V), Semicolon => False, V => V);
-      Output_Decl ("{", Semicolon => False, Indent_After => C_Indent);
+      Output_Decl ("{", Semicolon => False, Start_Block => Decl);
       Output_BB (Get_Entry_Basic_Block (V));
       Clear_Pending_Values;
 
@@ -691,9 +691,13 @@ package body CCG.Subprograms is
             end loop;
          end;
 
-         --  Finally, write the closing brace
+         --  Finally, write the closing brace. We have to do it this
+         --  way rather than using End_Output_Block because we can't
+         --  know in what order basic blocks will be written when
+         --  we're outputting them.
 
-         Write_C_Line ("}", Indent_Before => -C_Indent);
+         Write_C_Line ("}", End_Block => Decl);
       end loop;
+
    end Write_Subprograms;
 end CCG.Subprograms;

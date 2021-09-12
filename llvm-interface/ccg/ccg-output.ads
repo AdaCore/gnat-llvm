@@ -98,6 +98,7 @@ package CCG.Output is
       Semicolon     : Boolean      := True;
       Is_Typedef    : Boolean      := False;
       Is_Global     : Boolean      := False;
+      Start_Block   : Block_Style  := None;
       End_Block     : Block_Style  := None;
       Indent_Type   : Indent_Style := Normal;
       Indent_Before : Integer      := 0;
@@ -109,6 +110,7 @@ package CCG.Output is
       Semicolon     : Boolean      := True;
       Is_Typedef    : Boolean      := False;
       Is_Global     : Boolean      := False;
+      Start_Block   : Block_Style  := None;
       End_Block     : Block_Style  := None;
       Indent_Type   : Indent_Style := Normal;
       Indent_Before : Integer      := 0;

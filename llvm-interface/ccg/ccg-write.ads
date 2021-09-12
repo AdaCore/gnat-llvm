@@ -69,6 +69,7 @@ package CCG.Write is
    procedure Write_C_Line
      (S             : Str;
       Indent_Type   : Indent_Style  := Normal;
+      End_Block     : Block_Style   := None;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
@@ -77,6 +78,7 @@ package CCG.Write is
    procedure Write_C_Line
      (S             : String;
       Indent_Type   : Indent_Style  := Normal;
+      End_Block     : Block_Style   := None;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;

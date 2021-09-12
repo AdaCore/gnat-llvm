@@ -58,10 +58,14 @@ package body CCG.Write is
    --  True if this style block's closing brace needs to be followed by a
    --  semicolon.
 
-   procedure Write_Start_Block (BS : Block_Style; Single_Line : Boolean);
-   procedure Write_End_Block   (BS : Block_Style; Single_Line : Boolean);
+   procedure Write_Start_Block
+     (BS : Block_Style; Single_Line : Boolean; S : Str := No_Str);
+   procedure Write_End_Block
+     (BS : Block_Style; Single_Line : Boolean; S : Str := No_Str);
    --  Write the start or end of a C block with the specifed style.
-   --  Single_Line is true iff the block only has a single line.
+   --  Single_Line is true iff the block only has a single line. If Present,
+   --  S is the string to write, if any. It must begin with an open brace
+   --  for the start of the block and an end brace for the end of the block.
 
    procedure Write_Value_Name (V : Value_T)
      with Pre => Present (V);
@@ -122,12 +126,14 @@ package body CCG.Write is
    -- Write_Start_Block --
    -----------------------
 
-   procedure Write_Start_Block (BS : Block_Style; Single_Line : Boolean) is
+   procedure Write_Start_Block
+     (BS : Block_Style; Single_Line : Boolean; S : Str := No_Str)
+   is
    begin
       if Present (BS) then
          if Need_Brace (BS, Single_Line) then
             Indent := Indent + Brace_Indent (BS);
-            Write_C_Line ("{");
+            Write_C_Line ((if Present (S) then S else +"{"));
          end if;
 
          Indent := Indent + C_Indent;
@@ -138,16 +144,19 @@ package body CCG.Write is
    -- Write_End_Block --
    ---------------------
 
-   procedure Write_End_Block (BS : Block_Style; Single_Line : Boolean) is
+   procedure Write_End_Block
+     (BS : Block_Style; Single_Line : Boolean; S : Str := No_Str)
+   is
    begin
       if Present (BS) then
          if Need_Brace (BS, Single_Line) then
-            Indent := Indent - Brace_Indent (BS);
+            Indent := Indent - C_Indent;
             Write_C_Line
-              ("}" & (if End_Brace_Needs_Semicolon (BS) then ";" else ""));
+              ((if    Present (S) then S
+                elsif End_Brace_Needs_Semicolon (BS) then +"};" else +"}"));
          end if;
 
-         Indent := Indent - C_Indent;
+         Indent := Indent - Brace_Indent (BS);
       end if;
    end Write_End_Block;
 
@@ -806,6 +815,7 @@ package body CCG.Write is
          Set_Standard_Output;
       end if;
 
+      pragma Assert (Indent = 0);
    end Finalize_Writing;
 
    ---------------------
@@ -919,6 +929,7 @@ package body CCG.Write is
    procedure Write_C_Line
      (S             : Str;
       Indent_Type   : Indent_Style  := Normal;
+      End_Block     : Block_Style   := None;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
@@ -927,7 +938,7 @@ package body CCG.Write is
    begin
       Write_C_Line (Out_Line'(Line_Text     => S,
                               Start_Block   => None,
-                              End_Block     => None,
+                              End_Block     => End_Block,
                               Indent_Type   => Indent_Type,
                               Indent_Before => Indent_Before,
                               Indent_After  => Indent_After,
@@ -942,6 +953,7 @@ package body CCG.Write is
    procedure Write_C_Line
      (S             : String;
       Indent_Type   : Indent_Style  := Normal;
+      End_Block     : Block_Style   := None;
       Indent_Before : Integer       := 0;
       Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
@@ -950,7 +962,7 @@ package body CCG.Write is
    begin
       Write_C_Line (Out_Line'(Line_Text     => +S,
                               Start_Block   => None,
-                              End_Block     => None,
+                              End_Block     => End_Block,
                               Indent_Type   => Indent_Type,
                               Indent_Before => Indent_Before,
                               Indent_After  => Indent_After,
@@ -981,6 +993,8 @@ package body CCG.Write is
         Present (Our_File) and then not Is_Null_String (Our_File);
       Our_Line      : constant Physical_Line_Number :=
         (if Have_File then +Get_Debug_Loc_Line (Our_V) else 1);
+      End_Block     : Block_Style                   := Line.End_Block;
+      S             : Str                           := Line.Line_Text;
       Last_Indent   : Integer;
 
    begin
@@ -1032,9 +1046,16 @@ package body CCG.Write is
 
       --  Now handle possibly starting a block, write our line, then
       --  possibly ending a block. Handle any special indentation
-      --  requirements.
+      --  requirements. We special-case having start line starting with
+      --  "{". In that case, we use that as the line to write.
 
-      Write_Start_Block (Line.Start_Block, Present (Line.End_Block));
+      if Present (Line.Start_Block) and then Is_String_First_Char (S, '{') then
+         Write_Start_Block (Line.Start_Block, False, S);
+         S := No_Str;
+      else
+         Write_Start_Block (Line.Start_Block, Present (End_Block));
+      end if;
+
       Last_Indent := Indent;
       Indent := Indent + Line.Indent_Before;
       if Line.Indent_Type = Left then
@@ -1043,13 +1064,22 @@ package body CCG.Write is
          Indent := Indent - C_Indent;
       end if;
 
-      Write_Str ((Indent * " ") & Line.Line_Text, Eol => True);
+      --  We special-case having an end line starting with "}". In that
+      --  case, we use that as the line to write.
+
+      if Present (Line.End_Block) and then Is_String_First_Char (S, '}') then
+         Write_End_Block (Line.End_Block, False, S);
+         End_Block := None;
+      elsif Present (S) then
+         Write_Str ((Indent * " ") & S, Eol => True);
+      end if;
+
       Indent := Indent + Line.Indent_After;
       if Present (Line.Indent_Type) then
          Indent := Last_Indent;
       end if;
 
-      Write_End_Block (Line.End_Block, Present (Line.Start_Block));
+      Write_End_Block (End_Block, Present (Line.Start_Block));
 
    end Write_C_Line;
 

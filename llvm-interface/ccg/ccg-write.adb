@@ -974,13 +974,11 @@ package body CCG.Write is
    -- Write_C_Line --
    ------------------
 
-   procedure Write_C_Line (Line : Out_Line) is
+   procedure Write_C_Line (OL : Out_Line) is
       Our_V         : constant Value_T              :=
-        (if   No (Line.V)
-           or else Is_A_Instruction (Line.V)
-           or else Is_A_Function (Line.V)
-           or else Is_A_Global_Variable (Line.V)
-           then Line.V else No_Value_T);
+        (if   No (OL.V)
+           or else Is_A_Instruction (OL.V) or else Is_A_Function (OL.V)
+           or else Is_A_Global_Variable (OL.V) then OL.V else No_Value_T);
       Our_File      : constant Str                  :=
         (if   Present (Our_V) and then Emit_Debug_Info
          then +Get_Debug_Loc_Filename (Our_V) else No_Str);
@@ -993,8 +991,8 @@ package body CCG.Write is
         Present (Our_File) and then not Is_Null_String (Our_File);
       Our_Line      : constant Physical_Line_Number :=
         (if Have_File then +Get_Debug_Loc_Line (Our_V) else 1);
-      End_Block     : Block_Style                   := Line.End_Block;
-      S             : Str                           := Line.Line_Text;
+      End_Block     : Block_Style                   := OL.End_Block;
+      S             : Str                           := OL.Line_Text;
       Last_Indent   : Integer;
 
    begin
@@ -1029,19 +1027,19 @@ package body CCG.Write is
       --  Process a goto. If the block has only one predecessor, we inline
       --  the block here.
 
-      if Present (Line.BB) then
-         if Has_Unique_Predecessor (Line.BB) then
-            Write_BB (Line.BB,
+      if Present (OL.BB) then
+         if Has_Unique_Predecessor (OL.BB) then
+            Write_BB (OL.BB,
                       Omit_Label  => True,
-                      Start_Block => Line.Start_Block,
-                      End_Block   => Line.End_Block);
+                      Start_Block => OL.Start_Block,
+                      End_Block   => End_Block);
             return;
          end if;
 
          --  Since we're going to write the goto, indicate that that block
          --  needs to be written.
 
-         Add_Block_To_Write (Line.BB);
+         Add_Block_To_Write (OL.BB);
       end if;
 
       --  Now handle possibly starting a block, write our line, then
@@ -1049,37 +1047,37 @@ package body CCG.Write is
       --  requirements. We special-case having start line starting with
       --  "{". In that case, we use that as the line to write.
 
-      if Present (Line.Start_Block) and then Is_String_First_Char (S, '{') then
-         Write_Start_Block (Line.Start_Block, False, S);
+      if Present (OL.Start_Block) and then Is_String_First_Char (S, '{') then
+         Write_Start_Block (OL.Start_Block, False, S);
          S := No_Str;
       else
-         Write_Start_Block (Line.Start_Block, Present (End_Block));
+         Write_Start_Block (OL.Start_Block, Present (End_Block));
       end if;
 
       Last_Indent := Indent;
-      Indent := Indent + Line.Indent_Before;
-      if Line.Indent_Type = Left then
+      Indent := Indent + OL.Indent_Before;
+      if OL.Indent_Type = Left then
          Indent := 0;
-      elsif Line.Indent_Type = Under_Brace then
+      elsif OL.Indent_Type = Under_Brace then
          Indent := Indent - C_Indent;
       end if;
 
       --  We special-case having an end line starting with "}". In that
       --  case, we use that as the line to write.
 
-      if Present (Line.End_Block) and then Is_String_First_Char (S, '}') then
-         Write_End_Block (Line.End_Block, False, S);
+      if Present (OL.End_Block) and then Is_String_First_Char (S, '}') then
+         Write_End_Block (End_Block, False, S);
          End_Block := None;
       elsif Present (S) then
          Write_Str ((Indent * " ") & S, Eol => True);
       end if;
 
-      Indent := Indent + Line.Indent_After;
-      if Present (Line.Indent_Type) then
+      Indent := Indent + OL.Indent_After;
+      if Present (OL.Indent_Type) then
          Indent := Last_Indent;
       end if;
 
-      Write_End_Block (End_Block, Present (Line.Start_Block));
+      Write_End_Block (End_Block, Present (OL.Start_Block));
 
    end Write_C_Line;
 

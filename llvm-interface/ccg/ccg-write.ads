@@ -58,7 +58,7 @@ package CCG.Write is
    procedure Finalize_Writing;
    --  Set up for writing lines of C and finalize writing them
 
-   procedure Write_C_Line (Line : Out_Line);
+   procedure Write_C_Line (OL : Out_Line);
    procedure Write_C_Line
      (Idx : Stmt_Idx; Start_Block, End_Block : Block_Style := None)
      with Pre => Present (Idx);

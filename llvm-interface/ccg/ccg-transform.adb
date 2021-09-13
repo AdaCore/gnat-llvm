@@ -17,9 +17,13 @@
 
 with Interfaces.C; use Interfaces.C;
 
+with Debug;  use Debug;
+with Errout; use Errout;
+with Osint;  use Osint;
 with Output; use Output;
 with Table;
 
+with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Environment;  use CCG.Environment;
@@ -701,12 +705,26 @@ package body CCG.Transform is
    ----------------------
 
    procedure Transform_Blocks (V : Value_T) is
+      Dump_Name : constant String := Output_File_Name (".trans.ll");
+      Err_Msg   : aliased Ptr_Err_Msg_Type;
+
    begin
       Remove_Some_Intrinsics (V);
       Eliminate_Phis (V);
       Follow_Jumps (V);
       Build_Short_Circuit_Ops (V);
       Swap_Branches (V);
+
+      --  If -gnatd_t, dump the transformed IR
+
+      if Debug_Flag_Underscore_T then
+         if Print_Module_To_File (Module, Dump_Name, Err_Msg'Address) then
+            Error_Msg
+              ("could not write `" & Dump_Name & "`: " &
+                 Get_LLVM_Error_Msg (Err_Msg));
+         end if;
+      end if;
+
    end Transform_Blocks;
 
 end CCG.Transform;

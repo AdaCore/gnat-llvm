@@ -57,14 +57,8 @@ package body GNATLLVM.Codegen is
    Emit_LLVM       : Boolean := False;
    --  True if -emit-llvm was specified
 
-   function Output_File_Name (Extension : String) return String;
-   --  Return the name of the output file, using the given Extension
-
    procedure Process_Switch (Switch : String);
    --  Process one command-line switch
-
-   function Get_LLVM_Error_Msg (Msg : Ptr_Err_Msg_Type) return String;
-   --  Get the LLVM error message that was stored in Msg
 
    --------------------
    -- Process_Switch --

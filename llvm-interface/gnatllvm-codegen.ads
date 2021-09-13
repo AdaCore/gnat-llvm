@@ -97,4 +97,10 @@ package GNATLLVM.Codegen is
    function Is_Back_End_Switch (Switch : String) return Boolean;
    --  Return True if Switch is a switch known to the back end
 
+   function Output_File_Name (Extension : String) return String;
+   --  Return the name of the output file, using the given Extension
+
+   function Get_LLVM_Error_Msg (Msg : Ptr_Err_Msg_Type) return String;
+   --  Get the LLVM error message that was stored in Msg
+
 end GNATLLVM.Codegen;

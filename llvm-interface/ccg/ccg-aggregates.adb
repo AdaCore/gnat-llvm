@@ -268,9 +268,7 @@ package body CCG.Aggregates is
       --  Now that we know that all inner typedefs have been output,
       --  we output the struct definition.
 
-      Output_Decl ("struct " & T,
-                   Semicolon    => False,
-                   Is_Typedef   => True);
+      Output_Decl ("struct " & T, Semicolon => False, Is_Typedef => True);
       Start_Output_Block (Decl);
       for J in 0 .. Types - 1 loop
 

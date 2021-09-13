@@ -114,7 +114,6 @@ package CCG.Output is
    procedure Output_Stmt
      (S             : Str;
       Semicolon     : Boolean       := True;
-      End_Block     : Block_Style   := None;
       Indent_Type   : Indent_Style  := Normal;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T)
@@ -122,7 +121,6 @@ package CCG.Output is
    procedure Output_Stmt
      (S             : String;
       Semicolon     : Boolean       := True;
-      End_Block     : Block_Style   := None;
       Indent_Type   : Indent_Style  := Normal;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T);

@@ -371,7 +371,6 @@ package body CCG.Output is
    procedure Output_Stmt
      (S             : Str;
       Semicolon     : Boolean       := True;
-      End_Block     : Block_Style   := None;
       Indent_Type   : Indent_Style  := Normal;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T)
@@ -389,7 +388,7 @@ package body CCG.Output is
 
       Stmts.Append ((Line_Text      => (if Semicolon then S & ";" else S),
                      Start_Block    => Next_Block_Style,
-                     End_Block      => End_Block,
+                     End_Block      => None,
                      Indent_Type    => Indent_Type,
                      V              => V,
                      BB             => BB));
@@ -407,13 +406,12 @@ package body CCG.Output is
    procedure Output_Stmt
      (S             : String;
       Semicolon     : Boolean       := True;
-      End_Block     : Block_Style    := None;
       Indent_Type   : Indent_Style  := Normal;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T)
    is
    begin
-      Output_Stmt (+S, Semicolon, End_Block, Indent_Type, V, BB);
+      Output_Stmt (+S, Semicolon, Indent_Type, V, BB);
    end Output_Stmt;
 
    ------------------------

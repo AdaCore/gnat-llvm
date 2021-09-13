@@ -268,11 +268,10 @@ package body CCG.Aggregates is
       --  Now that we know that all inner typedefs have been output,
       --  we output the struct definition.
 
-      Output_Decl ("struct " & T & " {",
+      Output_Decl ("struct " & T,
                    Semicolon    => False,
-                   Is_Typedef   => True,
-                   Indent_After => C_Indent);
-
+                   Is_Typedef   => True);
+      Start_Output_Block (Decl);
       for J in 0 .. Types - 1 loop
 
          declare
@@ -309,7 +308,7 @@ package body CCG.Aggregates is
       Output_Decl ("}" &
                      (if    Is_Packed_Struct (T)
                       then " __attribute__ ((packed))" else ""),
-                   Is_Typedef => True, Indent_Before => -C_Indent);
+                   Is_Typedef => True, End_Block => Decl);
    end Output_Struct_Typedef;
 
    -------------------------

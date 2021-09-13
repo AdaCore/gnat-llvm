@@ -938,6 +938,7 @@ package body CCG.Write is
                               Start_Block   => None,
                               End_Block     => End_Block,
                               Indent_Type   => Indent_Type,
+                              Stmt_Type     => Normal,
                               V             => V,
                               BB            => BB));
    end Write_C_Line;
@@ -958,6 +959,7 @@ package body CCG.Write is
                               Start_Block   => None,
                               End_Block     => End_Block,
                               Indent_Type   => Indent_Type,
+                              Stmt_Type     => Normal,
                               V             => V,
                               BB            => BB));
    end Write_C_Line;

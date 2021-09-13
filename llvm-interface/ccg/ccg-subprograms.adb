@@ -588,12 +588,16 @@ package body CCG.Subprograms is
          if Get_Type_Kind (Op) = Array_Type_Kind then
             Output_Decl (TP ("#T1_R #2", Op, V), V => V);
             Write_Copy (V & ".F", Op, Type_Of (Op));
-            Output_Stmt (TP ("return #1", V), V => V);
+            Output_Stmt (TP ("return #1", V),
+                         Stmt_Type => Return_Line,
+                         V         => V);
          else
-            Output_Stmt ("return " & Op + Assign, V => V);
+            Output_Stmt ("return " & Op + Assign,
+                         Stmt_Type => Return_Line,
+                         V         => V);
          end if;
       else
-         Output_Stmt ("return", V => V);
+         Output_Stmt ("return", Stmt_Type => Return_Line, V => V);
       end if;
    end Return_Instruction;
 

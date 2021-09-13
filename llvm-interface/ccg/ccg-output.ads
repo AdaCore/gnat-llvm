@@ -49,6 +49,12 @@ package CCG.Output is
    function No (INDS : Indent_Style) return Boolean is
       (INDS = Normal);
 
+   --  We record the type of certain statement lines to help us reconstruct
+   --  if/else if/else groups.
+
+   type Stmt_Type_T is (Normal, If_Line, Goto_Line, Else_Line,
+                        Return_Line, Switch_Line, Label_Line);
+
    --  We represent each line being output as an Str, but also record
    --  other information that helps us output the line.
 
@@ -66,6 +72,9 @@ package CCG.Output is
 
       Indent_Type    : Indent_Style;
       --  The indentation desired for this line
+
+      Stmt_Type      : Stmt_Type_T;
+      --  The statement type of this line
 
       V              : Value_T;
       --  An LLVM value that may contain debug information denoting the
@@ -115,6 +124,7 @@ package CCG.Output is
      (S             : Str;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
+      Stmt_Type     : Stmt_Type_T   := Normal;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T)
      with Pre => Present (S);
@@ -122,6 +132,7 @@ package CCG.Output is
      (S             : String;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
+      Stmt_Type     : Stmt_Type_T   := Normal;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T);
    --  Like Output_Decl, but for the statement part of the current subprogram

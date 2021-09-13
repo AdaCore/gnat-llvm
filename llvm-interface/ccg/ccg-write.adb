@@ -930,8 +930,6 @@ package body CCG.Write is
      (S             : Str;
       Indent_Type   : Indent_Style  := Normal;
       End_Block     : Block_Style   := None;
-      Indent_Before : Integer       := 0;
-      Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T)
    is
@@ -940,8 +938,6 @@ package body CCG.Write is
                               Start_Block   => None,
                               End_Block     => End_Block,
                               Indent_Type   => Indent_Type,
-                              Indent_Before => Indent_Before,
-                              Indent_After  => Indent_After,
                               V             => V,
                               BB            => BB));
    end Write_C_Line;
@@ -954,8 +950,6 @@ package body CCG.Write is
      (S             : String;
       Indent_Type   : Indent_Style  := Normal;
       End_Block     : Block_Style   := None;
-      Indent_Before : Integer       := 0;
-      Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T)
    is
@@ -964,8 +958,6 @@ package body CCG.Write is
                               Start_Block   => None,
                               End_Block     => End_Block,
                               Indent_Type   => Indent_Type,
-                              Indent_Before => Indent_Before,
-                              Indent_After  => Indent_After,
                               V             => V,
                               BB            => BB));
    end Write_C_Line;
@@ -993,7 +985,7 @@ package body CCG.Write is
         (if Have_File then +Get_Debug_Loc_Line (Our_V) else 1);
       End_Block     : Block_Style                   := OL.End_Block;
       S             : Str                           := OL.Line_Text;
-      Last_Indent   : Integer;
+      Our_Indent    : Integer;
 
    begin
       --  If we have debug info and it differs from the last we have, and
@@ -1054,12 +1046,13 @@ package body CCG.Write is
          Write_Start_Block (OL.Start_Block, Present (End_Block));
       end if;
 
-      Last_Indent := Indent;
-      Indent := Indent + OL.Indent_Before;
+      --  Process special indentation for this line
+
+      Our_Indent := Indent;
       if OL.Indent_Type = Left then
-         Indent := 0;
+         Our_Indent := 0;
       elsif OL.Indent_Type = Under_Brace then
-         Indent := Indent - C_Indent;
+         Our_Indent := Indent - C_Indent;
       end if;
 
       --  We special-case having an end line starting with "}". In that
@@ -1069,12 +1062,7 @@ package body CCG.Write is
          Write_End_Block (End_Block, False, S);
          End_Block := None;
       elsif Present (S) then
-         Write_Str ((Indent * " ") & S, Eol => True);
-      end if;
-
-      Indent := Indent + OL.Indent_After;
-      if Present (OL.Indent_Type) then
-         Indent := Last_Indent;
+         Write_Str ((Our_Indent * " ") & S, Eol => True);
       end if;
 
       Write_End_Block (End_Block, Present (OL.Start_Block));

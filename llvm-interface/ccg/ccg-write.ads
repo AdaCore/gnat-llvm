@@ -70,8 +70,6 @@ package CCG.Write is
      (S             : Str;
       Indent_Type   : Indent_Style  := Normal;
       End_Block     : Block_Style   := None;
-      Indent_Before : Integer       := 0;
-      Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T)
      with Pre => Present (S);
@@ -79,8 +77,6 @@ package CCG.Write is
      (S             : String;
       Indent_Type   : Indent_Style  := Normal;
       End_Block     : Block_Style   := None;
-      Indent_Before : Integer       := 0;
-      Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T);
    --  Write one line to our output file, taking care of any required

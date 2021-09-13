@@ -67,14 +67,6 @@ package CCG.Output is
       Indent_Type    : Indent_Style;
       --  The indentation desired for this line
 
-      Indent_Before  : Integer;
-      --  Number of spaces to increase indent before outputting this line.
-      --  This line is indented by the new count.
-
-      Indent_After   : Integer;
-      --  Number of spaces to increase indent after outputting this line.
-      --  This line is indented by the old count.
-
       V              : Value_T;
       --  An LLVM value that may contain debug information denoting the
       --  position of this line in the source.
@@ -101,8 +93,6 @@ package CCG.Output is
       Start_Block   : Block_Style  := None;
       End_Block     : Block_Style  := None;
       Indent_Type   : Indent_Style := Normal;
-      Indent_Before : Integer      := 0;
-      Indent_After  : Integer      := 0;
       V             : Value_T      := No_Value_T)
      with Pre => Present (S);
    procedure Output_Decl
@@ -113,8 +103,6 @@ package CCG.Output is
       Start_Block   : Block_Style  := None;
       End_Block     : Block_Style  := None;
       Indent_Type   : Indent_Style := Normal;
-      Indent_Before : Integer      := 0;
-      Indent_After  : Integer      := 0;
       V             : Value_T      := No_Value_T);
    --  Save S as a decl for the current subprogram. Append a semicolon to
    --  the string if requested (the default) and specify indentation
@@ -128,8 +116,6 @@ package CCG.Output is
       Semicolon     : Boolean       := True;
       End_Block     : Block_Style   := None;
       Indent_Type   : Indent_Style  := Normal;
-      Indent_Before : Integer       := 0;
-      Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T)
      with Pre => Present (S);
@@ -138,8 +124,6 @@ package CCG.Output is
       Semicolon     : Boolean       := True;
       End_Block     : Block_Style   := None;
       Indent_Type   : Indent_Style  := Normal;
-      Indent_Before : Integer       := 0;
-      Indent_After  : Integer       := 0;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T);
    --  Like Output_Decl, but for the statement part of the current subprogram

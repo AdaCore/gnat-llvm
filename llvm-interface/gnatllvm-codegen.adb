@@ -452,12 +452,11 @@ package body GNATLLVM.Codegen is
            and then Target_Triple (TT_First .. TT_First + 6) = "nvptx64"
          then
             declare
-               Root_Env    : constant String := Getenv ("CUDA_ROOT").all;
-               CUDA_Root   : constant String :=
+               Root_Env      : constant String := Getenv ("CUDA_ROOT").all;
+               CUDA_Root     : constant String :=
                  (if Root_Env /= "" then Root_Env else "/usr/local/cuda");
-               BC_Filename : constant String := CUDA_Root
-                 & "/nvvm/libdevice/libdevice.10.bc";
-
+               BC_Filename   : constant String :=
+                 CUDA_Root & "/nvvm/libdevice/libdevice.10.bc";
                Mem_Buffer    : aliased Memory_Buffer_T;
                Libdev_Module : aliased Module_T;
                Func          : Value_T;

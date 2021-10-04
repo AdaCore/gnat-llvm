@@ -1426,8 +1426,11 @@ package body GNATLLVM.Variables is
       --  type.
 
       GT           : GL_Type                       := Default_GL_Type (TE);
+      Max_Size : constant Boolean                  :=
+        Is_Unconstrained_Record (GT);
       In_Size      : constant GL_Value             :=
-        (if Is_Dynamic_Size (GT) then No_GL_Value else Get_Type_Size (GT));
+        (if   Is_Dynamic_Size (GT, Max_Size) then No_GL_Value
+         else Get_Type_Size (GT, Max_Size => Max_Size));
       In_Align     : constant GL_Value             := Get_Type_Alignment (GT);
       In_Align_Nat : constant Nat                  := +In_Align;
       Size         : constant Uint                 :=
@@ -1437,8 +1440,6 @@ package body GNATLLVM.Variables is
       Align        : Uint                          :=
         (if not Known_Alignment (E) then No_Uint
          else   Validate_Alignment (E, Alignment (E), In_Align_Nat));
-      Max_Size : constant Boolean                  :=
-        Is_Unconstrained_Record (GT);
       Biased   : constant Boolean                  :=
         Has_Biased_Representation (E);
 
@@ -1468,17 +1469,15 @@ package body GNATLLVM.Variables is
 
          begin
             --  Rather than trying to make this unnecessarily portable,
-            --  we're going to hardwire the four cases that make sense.
+            --  we're going to hardwire the three cases that make sense.
 
             case In_Size_ULL is
                when 16 =>
                   Our_Align := 16;
-               when 18 .. 32 =>
+               when 17 .. 32 =>
                   Our_Align := 32;
-               when 33 .. 64 =>
+               when 33 .. 128 =>
                   Our_Align := 64;
-               when 65 .. 128 =>
-                  Our_Align := 128;
                when others =>
                   null;
             end case;

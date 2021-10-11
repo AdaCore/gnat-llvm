@@ -256,7 +256,7 @@ package body GNATLLVM.Builtins is
    begin
       for RMW of Ops loop
          Len := RMW.Length;
-         if S'Last > Index + Len - 1
+         if S'Last >= Index + Len - 1
            and then S (Index .. Index + Len - 1) = RMW.Name (1 .. Len)
          then
             End_Index := Index + Len;

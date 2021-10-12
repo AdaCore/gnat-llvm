@@ -779,7 +779,7 @@ package body GNATLLVM.Builtins is
    begin
       --  First check for the function form of load
 
-      if not Is_Proc and then N_Args = 2 and then Name = "load"
+      if not Is_Proc and then N_Args = 2 and then Name in "load" | "load_n"
         and then Type_Size_Matches_Name (S, True, GT)
         and then Full_GL_Type (N) = GT
       then
@@ -801,7 +801,7 @@ package body GNATLLVM.Builtins is
 
       --  Check for store
 
-      elsif Is_Proc and then N_Args = 3 and then Name = "store"
+      elsif Is_Proc and then N_Args = 3 and then Name in "store" | "store_n"
         and then Type_Size_Matches_Name (S, True, GT)
       then
          Result := Emit_And_Maybe_Deref (Next_Actual (Ptr), GT);
@@ -817,8 +817,8 @@ package body GNATLLVM.Builtins is
 
       --  Handle exchange, which is a fetch-and operation
 
-      elsif not Is_Proc and then N_Args = 3 and then Name = "exchange"
-        and then Full_GL_Type (N) = GT
+      elsif not Is_Proc and then N_Args = 3 and then Full_GL_Type (N) = GT
+        and then Name in "exchange" | "exchange_n"
       then
          return
            Emit_Fetch_And_Op (Ptr, Emit_Expression (Arg2),
@@ -843,7 +843,8 @@ package body GNATLLVM.Builtins is
 
       --  Next is compare-exchange
 
-      elsif not Is_Proc and then N_Args = 6 and then Name = "compare_exchange"
+      elsif not Is_Proc and then N_Args = 6
+        and then Name in "compare_exchange" | "compare_exchange_n"
         and then Is_Boolean_Type (Full_Etype (N))
         and then Is_Boolean_Type (Full_Etype (Arg4))
         and then Full_GL_Type (Arg3) = GT

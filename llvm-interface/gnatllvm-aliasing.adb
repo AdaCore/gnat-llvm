@@ -359,7 +359,8 @@ package body GNATLLVM.Aliasing is
          S_Grp     : constant UC_Group_Idx := Find_UC_Group (STE);
          T_Grp     : constant UC_Group_Idx := Find_UC_Group (TTE);
          Our_Valid : Boolean               :=
-           Valid and then Esize (STE) = Esize (TTE)
+           Valid and then Known_Esize (STE) and then Known_Esize (TTE)
+           and then Esize (STE) = Esize (TTE)
            and then not Is_Aggregate_Type (STE)
            and then not Is_Aggregate_Type (TTE) and then S_Is_Base = T_Is_Base;
 

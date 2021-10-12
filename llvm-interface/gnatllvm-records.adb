@@ -1992,7 +1992,7 @@ package body GNATLLVM.Records is
 
       --  Check for the trivial case of a zero-length field
 
-      elsif Esize (F) = 0 then
+      elsif Known_Esize (F) and then Esize (F) = 0 then
          return (if    Is_Elementary_Type (F_GT) then Const_Null (F_GT)
                  elsif Is_Loadable_Type (F_GT)   then Get_Undef (F_GT)
                  else  Get_Undef_Ref (F_GT));

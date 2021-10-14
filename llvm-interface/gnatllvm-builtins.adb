@@ -459,7 +459,7 @@ package body GNATLLVM.Builtins is
       --  Emit all operands and validate all our conditions
 
       Ptr_Val := Emit_Ptr (N, GT);
-      if No (Ptr_Val) or else Related_Type (Val) /= GT
+      if No (Ptr_Val) or else Type_Of (Val) /= Type_Of (GT)
         or else not Type_Size_Matches_Name (S, True, GT)
       then
          return No_GL_Value;
@@ -594,7 +594,7 @@ package body GNATLLVM.Builtins is
             For_Val : constant Boolean  := Name (Name'First) = 'v';
 
          begin
-            if Present (Ptr_Val) and then Related_Type (New_Val) = GT
+            if Present (Ptr_Val) and then Type_Of (New_Val) = Type_Of (GT)
               and then Type_Size_Matches_Name (S, True, GT)
             then
                Result :=

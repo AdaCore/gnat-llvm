@@ -1468,7 +1468,9 @@ package body GNATLLVM.Blocks is
 
       procedure Maybe_Warn (E : E_Label_Id) is
       begin
-         if No (Get_Label_Info (E)) then
+         if No (Get_Label_Info (E))
+           and then No_Exception_Propagation_Active
+         then
             Warn_If_No_Local_Raise (E);
          end if;
       end Maybe_Warn;

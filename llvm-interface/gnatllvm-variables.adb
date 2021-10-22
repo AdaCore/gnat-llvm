@@ -590,18 +590,28 @@ package body GNATLLVM.Variables is
    -------------------------------
 
    function Is_Entity_Static_Location (E : Evaluable_Kind_Id) return Boolean is
+      Can_Have_Alias : constant Boolean :=
+        Is_Overloadable (E) or else Ekind (E) = E_Subprogram_Type;
+
    begin
+      --  If a deferred constant, look at the full object
+
       if Ekind (E) = E_Constant and then Present (Full_View (E)) then
          return Is_Entity_Static_Location (Full_View (E));
 
-      --  Likewise for a renamed object
+      --  If something with an alias, look at the alias
 
-      elsif Present (Renamed_Object (E))
-        and then Is_Entity (Renamed_Object (E))
+      elsif Can_Have_Alias and then Present (Alias (E)) then
+         return Is_Entity_Static_Location (Alias (E));
+
+      --  Likewise for a renamed object or exception
+
+      elsif not Can_Have_Alias and then not Is_Object (E)
+        and then Present (Renamed_Entity (E))
       then
-         return Is_Entity_Static_Location (Renamed_Object (E));
-      elsif Present (Renamed_Object (E))
-        and then not Is_Entity (Renamed_Object (E))
+         return Is_Entity_Static_Location (Renamed_Entity (E));
+      elsif not Can_Have_Alias and then Is_Object (E)
+        and then Present (Renamed_Object (E))
       then
          return Is_Static_Location (Renamed_Object (E));
 
@@ -1572,14 +1582,13 @@ package body GNATLLVM.Variables is
         (if Has_Addr then Expression (Address_Clause (E)) else Empty);
       Has_Static_Addr : constant Boolean          :=
         Has_Addr and then Is_Static_Address (Addr_Expr);
-      Renamed         : constant Node_Id          := Renamed_Object (E);
       Nonnative       : constant Boolean          := Is_Nonnative_Type (GT);
       Needs_Alloc     : constant Boolean          :=
         not Has_Addr and then Nonnative;
       Is_Ref          : constant Boolean          :=
           (Has_Addr and then not Has_Static_Addr) or else Needs_Alloc
-          or else (Present (Renamed) and then not Is_Entity (Renamed)
-                     and then Is_Name (Renamed));
+          or else (Is_Object (E) and then Present (Renamed_Object (E))
+                     and then Is_Name (Renamed_Object (E)));
       Is_Volatile     : constant Boolean          := Is_Volatile_Entity (E);
       Linker_Alias    : constant Opt_N_Pragma_Id  :=
         Get_Pragma (E, Pragma_Linker_Alias);
@@ -1608,12 +1617,12 @@ package body GNATLLVM.Variables is
 
       --  Otherwise, see if this is a simple renaming
 
-      elsif Present (Renamed) and then Is_Entity (Renamed)
-        and then Is_Entity_Static_Location (Renamed)
+      elsif not Is_Object (E) and then Present (Renamed_Entity (E))
+        and then Is_Entity_Static_Location (Renamed_Entity (E))
       then
-         LLVM_Var := Emit_Entity (Renamed_Object (E));
-      elsif Present (Renamed) and then not Is_Entity (Renamed)
-        and then Is_Static_Location (Renamed)
+         LLVM_Var := Emit_Entity (Renamed_Entity (E));
+      elsif Is_Object (E) and then Present (Renamed_Object (E))
+        and then Is_Static_Location (Renamed_Object (E))
       then
          LLVM_Var := Emit_Safe_LValue (Renamed_Object (E));
 
@@ -1884,8 +1893,8 @@ package body GNATLLVM.Variables is
       --  value is built manually.  And constants that are renamings are
       --  handled like variables.
 
-      if Full_Ident /= E and then not Has_Addr and then not No_Init
-        and then No (Renamed_Object (E))
+      if Is_Object (E) and then Full_Ident /= E and then not Has_Addr
+        and then not No_Init and then No (Renamed_Object (E))
       then
          return;
 

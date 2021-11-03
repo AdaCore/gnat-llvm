@@ -655,7 +655,9 @@ package body GNATLLVM.Aliasing is
    is
       Tidx   : constant TBAA_Info_Id :=
         Get_TBAA_Info (Base_Type_For_Aliasing (Full_Etype (GT)));
-      C_TBAA : constant Metadata_T   := TBAA_Info.Table (Tidx).Component;
+      C_TBAA : constant Metadata_T   :=
+        (if   Present (Tidx) then TBAA_Info.Table (Tidx).Component
+         else No_Metadata_T);
 
    begin
       if No (TBAA_Type (V)) and then Present (C_TBAA) then
@@ -1142,8 +1144,8 @@ package body GNATLLVM.Aliasing is
       Prim_TBAA  : constant Metadata_T            :=
         (if   No (TBAA) then No_Metadata_T
          else (case Kind is
-                 when For_Aliased => TBAA,
-                 when Native => TBAA_Parent (TBAA),
+                 when For_Aliased             => TBAA,
+                 when Native                  => TBAA_Parent (TBAA),
                  when Unique | Unique_Aliased =>
                     Create_TBAA_Type (TE, Kind, Our_Parent)));
 

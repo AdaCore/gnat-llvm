@@ -581,7 +581,7 @@ package GNATLLVM.GLType is
      (Known_Static_RM_Size (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   function Scalar_Range (GT : GL_Type) return N_Has_Bounds_Id is
+   function Scalar_Range (GT : GL_Type) return Opt_N_Has_Bounds_Id is
      (Scalar_Range (Full_Etype (GT)))
      with Pre => not Is_Access_Type (GT);
 

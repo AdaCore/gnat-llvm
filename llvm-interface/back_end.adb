@@ -96,9 +96,16 @@ package body Back_End is
       pragma Unreferenced (Success);
 
    begin
-      Osint.C.Set_File_Name (ALI_Suffix.all);
-      GNAT.OS_Lib.Copy_Time_Stamps
-        (Name_Buffer (1 .. Name_Len), Obj_File_Name, Success);
+      --  If we're to generate code, create an empty .o file is there isn't
+      --  one already. Then set the time of that file to be the same as
+      --  that of the .ali file.
+
+      if Code_Generation = Write_Object then
+         Close (Create_New_File (Obj_File_Name, Binary));
+         Osint.C.Set_File_Name (ALI_Suffix.all);
+         GNAT.OS_Lib.Copy_Time_Stamps
+           (Name_Buffer (1 .. Name_Len), Obj_File_Name, Success);
+      end if;
 
       --  If we're using JSON error messages, the GCC backend will write an
       --  empty JSON array and a newline. This doesn't relate to object files,

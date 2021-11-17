@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with LLVM.Types;
@@ -169,3 +170,4 @@ function Get_Bitcode_Module_2
 
 end LLVM.Bit_Reader;
 
+pragma Style_Checks (On);

@@ -29,7 +29,7 @@ package body LLVM.LLJIT is
 
    function Orc_LLJIT_Lookup
      (J      : Orc_LLJIT_T;
-      Result : access LLVM.Orc.Orc_JIT_Target_Address_T;
+      Result : access LLVM.Orc.Orc_Executor_Address_T;
       Name   : String)
       return LLVM.Error.Error_T
    is
@@ -38,5 +38,13 @@ package body LLVM.LLJIT is
    begin
       return Orc_LLJIT_Lookup_C (J, Result, Name_String);
    end Orc_LLJIT_Lookup;
+
+   function Orc_LLJIT_Get_Data_Layout_Str
+     (J : Orc_LLJIT_T)
+      return String
+   is
+   begin
+      return Value (Orc_LLJIT_Get_Data_Layout_Str_C (J));
+   end Orc_LLJIT_Get_Data_Layout_Str;
 
 end LLVM.LLJIT;

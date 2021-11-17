@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with Interfaces.C.Strings;
@@ -21,7 +22,7 @@ package LLVM.Error_Handling is
   --\*===----------------------------------------------------------------------=== 
 
    type Fatal_Error_Handler_T is access procedure (Arg_1 : Interfaces.C.Strings.chars_ptr)
-   with Convention => C;  -- llvm-12.0.0.src/include/llvm-c/ErrorHandling.h:21
+   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/ErrorHandling.h:21
 
   --*
   -- * Install a fatal error handler. By default, if LLVM detects a fatal error, it
@@ -31,7 +32,7 @@ package LLVM.Error_Handling is
   -- * call to exit(1).
   --  
 
-   procedure Install_Fatal_Error_Handler (Handler : Fatal_Error_Handler_T)  -- llvm-12.0.0.src/include/llvm-c/ErrorHandling.h:30
+   procedure Install_Fatal_Error_Handler (Handler : Fatal_Error_Handler_T)  -- llvm-13.0.0.src/include/llvm-c/ErrorHandling.h:30
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInstallFatalErrorHandler";
@@ -41,7 +42,7 @@ package LLVM.Error_Handling is
   -- * behavior to the default.
   --  
 
-   procedure Reset_Fatal_Error_Handler  -- llvm-12.0.0.src/include/llvm-c/ErrorHandling.h:36
+   procedure Reset_Fatal_Error_Handler  -- llvm-13.0.0.src/include/llvm-c/ErrorHandling.h:36
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMResetFatalErrorHandler";
@@ -52,10 +53,11 @@ package LLVM.Error_Handling is
   -- * crash.
   --  
 
-   procedure Enable_Pretty_Stack_Trace  -- llvm-12.0.0.src/include/llvm-c/ErrorHandling.h:43
+   procedure Enable_Pretty_Stack_Trace  -- llvm-13.0.0.src/include/llvm-c/ErrorHandling.h:43
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMEnablePrettyStackTrace";
 
 end LLVM.Error_Handling;
 
+pragma Style_Checks (On);

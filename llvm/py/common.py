@@ -396,8 +396,10 @@ def process_names_for(filenames, prefixes_for_filename, sanitize_unit_name):
 
             apply_alterations(alterations[filename], file_lines)
 
+            # Remove empty line at the end of the file
+            nb_lines = len(file_lines)
             out_file.write("\n".join(map(lambda line: line.decode('utf-8'),
-                                         file_lines)))
+                                         file_lines[:nb_lines - 1])))
 
 
 def get_with(unit):

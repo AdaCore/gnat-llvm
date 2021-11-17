@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -418,9 +419,9 @@ procedure CX_Index_Set_Invocation_Emission_Path_Option
   -- * across an indexing session.
   --  
 
-   type anon_array1072 is array (0 .. 2) of aliased Extensions.unsigned_long_long;
+   type anon_array1118 is array (0 .. 2) of aliased Extensions.unsigned_long_long;
    type File_Unique_ID_T is record
-      data : aliased anon_array1072;  -- /usr/local/include/clang-c/Index.h:370
+      data : aliased anon_array1118;  -- /usr/local/include/clang-c/Index.h:370
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:371
 
@@ -559,9 +560,9 @@ function File_Is_Equal
   -- * to map a source location to a particular file, line, and column.
   --  
 
-   type anon_array1087 is array (0 .. 1) of System.Address;
+   type anon_array1133 is array (0 .. 1) of System.Address;
    type Source_Location_T is record
-      ptr_data : anon_array1087;  -- /usr/local/include/clang-c/Index.h:457
+      ptr_data : anon_array1133;  -- /usr/local/include/clang-c/Index.h:457
       int_data : aliased unsigned;  -- /usr/local/include/clang-c/Index.h:458
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:459
@@ -574,7 +575,7 @@ function File_Is_Equal
   --  
 
    type Source_Range_T is record
-      ptr_data : anon_array1087;  -- /usr/local/include/clang-c/Index.h:468
+      ptr_data : anon_array1133;  -- /usr/local/include/clang-c/Index.h:468
       begin_int_data : aliased unsigned;  -- /usr/local/include/clang-c/Index.h:469
       end_int_data : aliased unsigned;  -- /usr/local/include/clang-c/Index.h:470
    end record
@@ -3161,11 +3162,11 @@ function Get_TU_Resource_Usage_Name
   -- * source code into the AST.
   --  
 
-   type anon_array1211 is array (0 .. 2) of System.Address;
+   type anon_array1257 is array (0 .. 2) of System.Address;
    type Cursor_T is record
       kind : aliased Cursor_Kind_T;  -- /usr/local/include/clang-c/Index.h:2683
       xdata : aliased int;  -- /usr/local/include/clang-c/Index.h:2684
-      data : anon_array1211;  -- /usr/local/include/clang-c/Index.h:2685
+      data : anon_array1257;  -- /usr/local/include/clang-c/Index.h:2685
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:2686
 
@@ -4117,10 +4118,10 @@ function Is_Unexposed
   -- *
   --  
 
-   type anon_array1270 is array (0 .. 1) of System.Address;
+   type anon_array1316 is array (0 .. 1) of System.Address;
    type Type_T is record
       kind : aliased Type_Kind_T;  -- /usr/local/include/clang-c/Index.h:3407
-      data : anon_array1270;  -- /usr/local/include/clang-c/Index.h:3408
+      data : anon_array1316;  -- /usr/local/include/clang-c/Index.h:3408
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:3409
 
@@ -6417,9 +6418,9 @@ function CXX_Method_Is_Const
   -- * Describes a single preprocessing token.
   --  
 
-   type anon_array1359 is array (0 .. 3) of aliased unsigned;
+   type anon_array1405 is array (0 .. 3) of aliased unsigned;
    type Token_T is record
-      int_data : aliased anon_array1359;  -- /usr/local/include/clang-c/Index.h:4972
+      int_data : aliased anon_array1405;  -- /usr/local/include/clang-c/Index.h:4972
       ptr_data : System.Address;  -- /usr/local/include/clang-c/Index.h:4973
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:4974
@@ -7913,7 +7914,7 @@ function Get_Remappings
   --  
 
    type Idx_Loc_T is record
-      ptr_data : anon_array1270;  -- /usr/local/include/clang-c/Index.h:6186
+      ptr_data : anon_array1316;  -- /usr/local/include/clang-c/Index.h:6186
       int_data : aliased unsigned;  -- /usr/local/include/clang-c/Index.h:6187
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6188
@@ -8658,3 +8659,5 @@ function Index_Source_File_Full_Argv
 
 end Clang.Index;
 
+pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

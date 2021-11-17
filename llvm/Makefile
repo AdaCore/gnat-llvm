@@ -32,11 +32,11 @@ all: setup llvm
 # Bindings generation works with GNAT versions starting from 22.0
 # (in terms of date > 2021-06-16)
 
-llvm-bindings: $(OUT_DIR)/llvm-core.adb
+llvm-bindings: $(LLVM_SRC_DIR) $(OUT_DIR)/llvm-core.adb
 	rm -rf llvm-bindings
 	mv $(OUT_DIR) llvm-bindings
 
-clang-bindings: $(OUT_DIR)/clang-index.adb
+clang-bindings: $(LLVM_SRC_DIR) $(OUT_DIR)/clang-index.adb
 	mv $(OUT_DIR)/* clang-bindings
 
 CONFIGURE=cd llvm-obj && CXX=g++ CC=gcc CXXC=g++ \

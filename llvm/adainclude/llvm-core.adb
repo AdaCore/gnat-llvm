@@ -136,6 +136,14 @@ package body LLVM.Core is
       return Is_String_Attribute_C (A) /= 0;
    end Is_String_Attribute;
 
+   function Is_Type_Attribute
+     (A : LLVM.Types.Attribute_T)
+      return Boolean
+   is
+   begin
+      return Is_Type_Attribute_C (A) /= 0;
+   end Is_Type_Attribute;
+
    function Get_Type_By_Name_2
      (C    : LLVM.Types.Context_T;
       Name : String)
@@ -346,7 +354,8 @@ package body LLVM.Core is
       Constraints_Size : stddef_h.size_t;
       Has_Side_Effects : Boolean;
       Is_Align_Stack   : Boolean;
-      Dialect          : Inline_Asm_Dialect_T)
+      Dialect          : Inline_Asm_Dialect_T;
+      Can_Throw        : Boolean)
       return LLVM.Types.Value_T
    is
       Asm_String_Array      : aliased char_array := To_C (Asm_String);
@@ -355,8 +364,9 @@ package body LLVM.Core is
       Constraints_String    : constant chars_ptr := To_Chars_Ptr (Constraints_Array'Unchecked_Access);
       Has_Side_Effects_Bool : constant LLVM.Types.Bool_T := Boolean'Pos (Has_Side_Effects);
       Is_Align_Stack_Bool   : constant LLVM.Types.Bool_T := Boolean'Pos (Is_Align_Stack);
+      Can_Throw_Bool        : constant LLVM.Types.Bool_T := Boolean'Pos (Can_Throw);
    begin
-      return Get_Inline_Asm_C (Ty, Asm_String_String, Asm_String_Size, Constraints_String, Constraints_Size, Has_Side_Effects_Bool, Is_Align_Stack_Bool, Dialect);
+      return Get_Inline_Asm_C (Ty, Asm_String_String, Asm_String_Size, Constraints_String, Constraints_Size, Has_Side_Effects_Bool, Is_Align_Stack_Bool, Dialect, Can_Throw_Bool);
    end Get_Inline_Asm;
 
    function Get_Type_By_Name
@@ -1026,6 +1036,18 @@ package body LLVM.Core is
    begin
       return Value (Intrinsic_Copy_Overloaded_Name_C (ID, Param_Types, Param_Count, Name_Length));
    end Intrinsic_Copy_Overloaded_Name;
+
+   function Intrinsic_Copy_Overloaded_Name_2
+     (C_Mod       : LLVM.Types.Module_T;
+      ID          : unsigned;
+      Param_Types : System.Address;
+      Param_Count : stddef_h.size_t;
+      Name_Length : access stddef_h.size_t)
+      return String
+   is
+   begin
+      return Value (Intrinsic_Copy_Overloaded_Name_2_C (C_Mod, ID, Param_Types, Param_Count, Name_Length));
+   end Intrinsic_Copy_Overloaded_Name_2;
 
    function Intrinsic_Is_Overloaded
      (ID : unsigned)

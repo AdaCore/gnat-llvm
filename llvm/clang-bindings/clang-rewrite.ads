@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -18,13 +19,13 @@ package Clang.Rewrite is
   --|*                                                                            *|
   --|*===----------------------------------------------------------------------=== 
 
-   type Rewriter_T is new System.Address;  -- llvm-12.0.0.src/tools/clang/include/clang-c/Rewrite.h:20
+   type Rewriter_T is new System.Address;  -- llvm-13.0.0.src/tools/clang/include/clang-c/Rewrite.h:20
 
   --*
   -- * Create CXRewriter.
   --  
 
-   function CX_Rewriter_Create (TU : Clang.Index.Translation_Unit_T) return Rewriter_T  -- llvm-12.0.0.src/tools/clang/include/clang-c/Rewrite.h:25
+   function CX_Rewriter_Create (TU : Clang.Index.Translation_Unit_T) return Rewriter_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Rewrite.h:25
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CXRewriter_create";
@@ -66,7 +67,7 @@ procedure CX_Rewriter_Replace_Text
   -- * Remove the specified range.
   --  
 
-   procedure CX_Rewriter_Remove_Text (Rew : Rewriter_T; To_Be_Removed : Clang.Index.Source_Range_T)  -- llvm-12.0.0.src/tools/clang/include/clang-c/Rewrite.h:43
+   procedure CX_Rewriter_Remove_Text (Rew : Rewriter_T; To_Be_Removed : Clang.Index.Source_Range_T)  -- llvm-13.0.0.src/tools/clang/include/clang-c/Rewrite.h:43
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CXRewriter_removeText";
@@ -76,7 +77,7 @@ procedure CX_Rewriter_Replace_Text
   -- * Returns 1 if any files were not saved successfully, returns 0 otherwise.
   --  
 
-   function CX_Rewriter_Overwrite_Changed_Files (Rew : Rewriter_T) return int  -- llvm-12.0.0.src/tools/clang/include/clang-c/Rewrite.h:49
+   function CX_Rewriter_Overwrite_Changed_Files (Rew : Rewriter_T) return int  -- llvm-13.0.0.src/tools/clang/include/clang-c/Rewrite.h:49
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CXRewriter_overwriteChangedFiles";
@@ -85,7 +86,7 @@ procedure CX_Rewriter_Replace_Text
   -- * Write out rewritten version of the main file to stdout.
   --  
 
-   procedure CX_Rewriter_Write_Main_File_To_Std_Out (Rew : Rewriter_T)  -- llvm-12.0.0.src/tools/clang/include/clang-c/Rewrite.h:54
+   procedure CX_Rewriter_Write_Main_File_To_Std_Out (Rew : Rewriter_T)  -- llvm-13.0.0.src/tools/clang/include/clang-c/Rewrite.h:54
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CXRewriter_writeMainFileToStdOut";
@@ -94,10 +95,12 @@ procedure CX_Rewriter_Replace_Text
   -- * Free the given CXRewriter.
   --  
 
-   procedure CX_Rewriter_Dispose (Rew : Rewriter_T)  -- llvm-12.0.0.src/tools/clang/include/clang-c/Rewrite.h:59
+   procedure CX_Rewriter_Dispose (Rew : Rewriter_T)  -- llvm-13.0.0.src/tools/clang/include/clang-c/Rewrite.h:59
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CXRewriter_dispose";
 
 end Clang.Rewrite;
 
+pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

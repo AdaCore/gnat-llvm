@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with LLVM.Orc;
@@ -36,7 +37,7 @@ package LLVM.Orc_EE is
   -- * SectionMemoryManager for memory management.
   --  
 
-   function Orc_Create_RT_Dyld_Object_Linking_Layer_With_Section_Memory_Manager (ES : LLVM.Orc.Orc_Execution_Session_T) return LLVM.Orc.Orc_Object_Layer_T  -- llvm-12.0.0.src/include/llvm-c/OrcEE.h:40
+   function Orc_Create_RT_Dyld_Object_Linking_Layer_With_Section_Memory_Manager (ES : LLVM.Orc.Orc_Execution_Session_T) return LLVM.Orc.Orc_Object_Layer_T  -- llvm-13.0.0.src/include/llvm-c/OrcEE.h:40
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcCreateRTDyldObjectLinkingLayerWithSectionMemoryManager";
@@ -48,10 +49,11 @@ package LLVM.Orc_EE is
   -- * behavior is undefined.
   --  
 
-   procedure Orc_RT_Dyld_Object_Linking_Layer_Register_JIT_Event_Listener (RT_Dyld_Obj_Linking_Layer : LLVM.Orc.Orc_Object_Layer_T; Listener : LLVM.Types.JIT_Event_Listener_T)  -- llvm-12.0.0.src/include/llvm-c/OrcEE.h:49
+   procedure Orc_RT_Dyld_Object_Linking_Layer_Register_JIT_Event_Listener (RT_Dyld_Obj_Linking_Layer : LLVM.Orc.Orc_Object_Layer_T; Listener : LLVM.Types.JIT_Event_Listener_T)  -- llvm-13.0.0.src/include/llvm-c/OrcEE.h:49
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcRTDyldObjectLinkingLayerRegisterJITEventListener";
 
 end LLVM.Orc_EE;
 
+pragma Style_Checks (On);

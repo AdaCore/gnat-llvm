@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with LLVM.Types;
@@ -40,7 +41,7 @@ package LLVM.Analysis is
      (Abort_Process_Action,
       Print_Message_Action,
       Return_Status_Action)
-   with Convention => C;  -- llvm-12.0.0.src/include/llvm-c/Analysis.h:38
+   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/Analysis.h:38
 
   -- Verifies that a module is valid, taking the specified action if not.
   --   Optionally returns a human-readable description of any invalid constructs.
@@ -78,12 +79,12 @@ function Verify_Function
   -- Open up a ghostview window that displays the CFG of the current function.
   --   Useful for debugging.  
 
-   procedure View_Function_CFG (Fn : LLVM.Types.Value_T)  -- llvm-12.0.0.src/include/llvm-c/Analysis.h:53
+   procedure View_Function_CFG (Fn : LLVM.Types.Value_T)  -- llvm-13.0.0.src/include/llvm-c/Analysis.h:53
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMViewFunctionCFG";
 
-   procedure View_Function_CFG_Only (Fn : LLVM.Types.Value_T)  -- llvm-12.0.0.src/include/llvm-c/Analysis.h:54
+   procedure View_Function_CFG_Only (Fn : LLVM.Types.Value_T)  -- llvm-13.0.0.src/include/llvm-c/Analysis.h:54
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMViewFunctionCFGOnly";
@@ -94,3 +95,4 @@ function Verify_Function
 
 end LLVM.Analysis;
 
+pragma Style_Checks (On);

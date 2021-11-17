@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -8,7 +9,7 @@ with Interfaces.C.Strings;
 
 package LLVM.Error is
 
-   LLVMErrorSuccess : constant := 0;  --  llvm-12.0.0.src/include/llvm-c/Error.h:21
+   LLVMErrorSuccess : constant := 0;  --  llvm-13.0.0.src/include/llvm-c/Error.h:21
 
   --===------- llvm-c/Error.h - llvm::Error class C Interface -------*- C -*-===*|*                                                                            *|
   --|
@@ -29,20 +30,20 @@ package LLVM.Error is
 
    type Opaque_Error_Impl_T is null record;   -- incomplete struct
 
-   type Error_T is access all Opaque_Error_Impl_T;  -- llvm-12.0.0.src/include/llvm-c/Error.h:26
+   type Error_T is access all Opaque_Error_Impl_T;  -- llvm-13.0.0.src/include/llvm-c/Error.h:26
 
   --*
   -- * Error type identifier.
   --  
 
-   type Error_Type_Id_T is new System.Address;  -- llvm-12.0.0.src/include/llvm-c/Error.h:31
+   type Error_Type_Id_T is new System.Address;  -- llvm-13.0.0.src/include/llvm-c/Error.h:31
 
   --*
   -- * Returns the type id for the given error instance, which must be a failure
   -- * value (i.e. non-null).
   --  
 
-   function Get_Error_Type_Id (Err : Error_T) return Error_Type_Id_T  -- llvm-12.0.0.src/include/llvm-c/Error.h:37
+   function Get_Error_Type_Id (Err : Error_T) return Error_Type_Id_T  -- llvm-13.0.0.src/include/llvm-c/Error.h:37
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetErrorTypeId";
@@ -54,7 +55,7 @@ package LLVM.Error is
   -- * to some other consuming operation, e.g. LLVMGetErrorMessage.
   --  
 
-   procedure Consume_Error (Err : Error_T)  -- llvm-12.0.0.src/include/llvm-c/Error.h:45
+   procedure Consume_Error (Err : Error_T)  -- llvm-13.0.0.src/include/llvm-c/Error.h:45
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMConsumeError";
@@ -92,7 +93,7 @@ procedure Dispose_Error_Message
   -- * Returns the type id for llvm StringError.
   --  
 
-   function Get_String_Error_Type_Id return Error_Type_Id_T  -- llvm-12.0.0.src/include/llvm-c/Error.h:63
+   function Get_String_Error_Type_Id return Error_Type_Id_T  -- llvm-13.0.0.src/include/llvm-c/Error.h:63
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetStringErrorTypeId";
@@ -113,3 +114,4 @@ function Create_String_Error
 
 end LLVM.Error;
 
+pragma Style_Checks (On);

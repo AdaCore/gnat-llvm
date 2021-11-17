@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with LLVM.Types;
@@ -28,7 +29,7 @@ package LLVM.Linker is
    type Linker_Mode_T is 
      (Linker_Destroy_Source,
       Linker_Preserve_Source_Removed)
-   with Convention => C;  -- llvm-12.0.0.src/include/llvm-c/Linker.h:27
+   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/Linker.h:27
 
   -- Links the source module into the destination module. The source module is
   -- * destroyed.
@@ -50,3 +51,4 @@ function Link_Modules_2
 
 end LLVM.Linker;
 
+pragma Style_Checks (On);

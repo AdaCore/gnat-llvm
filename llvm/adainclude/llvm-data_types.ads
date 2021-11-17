@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 
@@ -33,3 +34,4 @@ package LLVM.Data_Types is
   -- Set defaults for constants which we cannot find.  
 end LLVM.Data_Types;
 
+pragma Style_Checks (On);

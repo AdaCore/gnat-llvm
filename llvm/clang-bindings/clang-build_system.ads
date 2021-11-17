@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with Interfaces.C.Extensions;
@@ -219,3 +220,5 @@ function Module_Map_Descriptor_Set_Umbrella_Header
 
 end Clang.Build_System;
 
+pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

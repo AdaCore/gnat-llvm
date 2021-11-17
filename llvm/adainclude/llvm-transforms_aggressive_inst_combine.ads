@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with LLVM.Types;
@@ -29,7 +30,7 @@ package LLVM.Transforms_Aggressive_Inst_Combine is
   --  
 
   --* See llvm::createAggressiveInstCombinerPass function.  
-   procedure Add_Aggressive_Inst_Combiner_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-12.0.0.src/include/llvm-c/Transforms/AggressiveInstCombine.h:31
+   procedure Add_Aggressive_Inst_Combiner_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/AggressiveInstCombine.h:31
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddAggressiveInstCombinerPass";
@@ -40,3 +41,4 @@ package LLVM.Transforms_Aggressive_Inst_Combine is
 
 end LLVM.Transforms_Aggressive_Inst_Combine;
 
+pragma Style_Checks (On);

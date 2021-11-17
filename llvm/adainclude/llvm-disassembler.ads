@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with Interfaces.C.Strings;
@@ -11,15 +12,15 @@ with stddef_h;
 
 package LLVM.Disassembler is
 
-   LLVMDisassembler_Option_UseMarkup : constant := 1;  --  llvm-12.0.0.src/include/llvm-c/Disassembler.h:75
+   LLVMDisassembler_Option_UseMarkup : constant := 1;  --  llvm-13.0.0.src/include/llvm-c/Disassembler.h:75
 
-   LLVMDisassembler_Option_PrintImmHex : constant := 2;  --  llvm-12.0.0.src/include/llvm-c/Disassembler.h:77
+   LLVMDisassembler_Option_PrintImmHex : constant := 2;  --  llvm-13.0.0.src/include/llvm-c/Disassembler.h:77
 
-   LLVMDisassembler_Option_AsmPrinterVariant : constant := 4;  --  llvm-12.0.0.src/include/llvm-c/Disassembler.h:79
+   LLVMDisassembler_Option_AsmPrinterVariant : constant := 4;  --  llvm-13.0.0.src/include/llvm-c/Disassembler.h:79
 
-   LLVMDisassembler_Option_SetInstrComments : constant := 8;  --  llvm-12.0.0.src/include/llvm-c/Disassembler.h:81
+   LLVMDisassembler_Option_SetInstrComments : constant := 8;  --  llvm-13.0.0.src/include/llvm-c/Disassembler.h:81
 
-   LLVMDisassembler_Option_PrintLatency : constant := 16;  --  llvm-12.0.0.src/include/llvm-c/Disassembler.h:83
+   LLVMDisassembler_Option_PrintLatency : constant := 16;  --  llvm-13.0.0.src/include/llvm-c/Disassembler.h:83
 
   --===-- llvm-c/Disassembler.h - Disassembler Public C Interface ---*- C -*-===*|*                                                                            *|
   --|
@@ -133,7 +134,7 @@ function Create_Disasm_CPU_Features
   -- * otherwise.
   --  
 
-   function Set_Disasm_Options (DC : LLVM.Disassembler_Types.Disasm_Context_T; Options : stdint_h.uint64_t) return int  -- llvm-12.0.0.src/include/llvm-c/Disassembler.h:72
+   function Set_Disasm_Options (DC : LLVM.Disassembler_Types.Disasm_Context_T; Options : stdint_h.uint64_t) return int  -- llvm-13.0.0.src/include/llvm-c/Disassembler.h:72
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMSetDisasmOptions";
@@ -147,7 +148,7 @@ function Create_Disasm_CPU_Features
   -- * Dispose of a disassembler context.
   --  
 
-   procedure Disasm_Dispose (DC : LLVM.Disassembler_Types.Disasm_Context_T)  -- llvm-12.0.0.src/include/llvm-c/Disassembler.h:88
+   procedure Disasm_Dispose (DC : LLVM.Disassembler_Types.Disasm_Context_T)  -- llvm-13.0.0.src/include/llvm-c/Disassembler.h:88
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDisasmDispose";
@@ -189,3 +190,4 @@ function Disasm_Instruction
 
 end LLVM.Disassembler;
 
+pragma Style_Checks (On);

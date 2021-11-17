@@ -1,6 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
-pragma Warnings ("U");
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -87,3 +88,5 @@ function Get_C_String
 
 end Clang.CX_String;
 
+pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

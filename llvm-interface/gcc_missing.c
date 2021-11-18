@@ -58,5 +58,5 @@ update_path (char *path, char *key)
 }
 
 /* Originally defined in version.c */
-const char version_string[] = "1.0";
+const char gnat_version_string[] = "1.0";
 

@@ -503,8 +503,16 @@ package body GNATLLVM.Types.Create is
         and then Present (Size_GL_Type)
       then
          declare
+            Need_Max   : constant Boolean          :=
+              not Is_Limited_Record (TE)
+              and then not Is_Concurrent_Type (TE);
+            --  We normally want to use the maximum size here, but not in
+            --  the cases where Analyze_Object_Declaration in Sem_Ch3 would
+            --  build a default subtype for objects.
             BA_Esize   : constant Node_Ref_Or_Val  :=
-              Annotated_Object_Size (GT, Do_Align => True);
+              Annotated_Object_Size (GT,
+                                     Do_Align => True,
+                                     Want_Max => Need_Max);
             BA_RM_Size : constant Node_Ref_Or_Val  :=
               Annotated_Value (Get_Type_Size (GT, No_Padding => True));
             BA_Align   : constant Uint             :=

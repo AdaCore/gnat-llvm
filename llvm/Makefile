@@ -43,6 +43,8 @@ CONFIGURE=cd llvm-obj && CXX=g++ CC=gcc CXXC=g++ \
   cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$(PWD)/install \
   $(CMAKE_FLAGS) ../$(LLVM_SRC_DIR)
 
+.PHONY: llvm-obj
+
 setup: $(LLVM_SRC_DIR) llvm-obj
 
 $(LLVM_SRC_DIR):

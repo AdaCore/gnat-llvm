@@ -628,7 +628,7 @@ package GNATLLVM.Types is
       C_Value     : GL_Value;
       --  If a constant, the value of that constant
 
-      T_Value     : Node_Ref;
+      T_Value     : Node_Ref_Or_Val;
       --  If dynamic, the tree node reference of the expression
    end record
      with Predicate => Is_None or else Present (C_Value)

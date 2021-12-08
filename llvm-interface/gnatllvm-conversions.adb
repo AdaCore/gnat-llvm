@@ -335,7 +335,7 @@ package body GNATLLVM.Conversions is
          Error_Msg_Node_1 := Full_Etype (In_GT);
          Error_Msg_Node_2 := Full_Etype (GT);
          Error_Msg
-           ("??conversion between & and & may not work if ", Sloc (Error_N));
+           ("??conversion between & and & may not work if", Sloc (Error_N));
          Error_Msg
            ("\the former is a subprogram referencing parent variables.",
             Sloc (Error_N));

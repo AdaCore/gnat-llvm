@@ -495,13 +495,9 @@ package body GNATLLVM.Types.Create is
       --  Back-annotate sizes and alignments if not already set.  Be sure
       --  to annotate the original array type if there is one. Don't try to
       --  do this before Size_Type is elaborated since we can't compute
-      --  sizes that early. ???  Don't do anything for access subprogram
-      --  since this will cause warnings for UC's in g-thread and g-spipat.
-      --  They UC from pointer to subprogram to System.Address.
+      --  sizes that early.
 
-      if not Is_Access_Subprogram_Type (TE)
-        and then Present (Size_GL_Type)
-      then
+      if Present (Size_GL_Type) then
          declare
             Need_Max   : constant Boolean          :=
               not Is_Limited_Record (TE)

@@ -632,16 +632,22 @@ package body GNATLLVM.Compile is
             | N_Task_Type_Declaration
            =>
             declare
-               TE : constant Type_Kind_Id :=
-                 Get_Fullest_View (Defining_Identifier (N));
+               TE : Type_Kind_Id          := Defining_Identifier (N);
+               FT : constant Type_Kind_Id := Get_Fullest_View (TE);
 
             begin
-               Discard (Type_Of (TE));
+               --  Start by elaborating this type via its fullest view
 
-               --  Now copy any back-annotations from what we
-               --  elaborated to this type.
+               Discard (Type_Of (FT));
 
-               Copy_Annotations (TE, Defining_Identifier (N));
+               --  If the fullest view isn't the same as the type being
+               --  declared, copy the annotations from the full type to the
+               --  type being declared and any intermediate types.
+
+               while TE /= FT loop
+                  Copy_Annotations (FT, TE);
+                  TE := Get_Fullest_View (TE, Recurse => False);
+               end loop;
             end;
 
          when N_Freeze_Entity =>

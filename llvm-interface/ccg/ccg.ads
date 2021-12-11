@@ -58,6 +58,8 @@ package CCG is
    Empty_Stmt_Idx             : constant Stmt_Idx        :=
      Stmt_Idx_Low_Bound;
 
+   --  Subprogram_Idx (in ccg-subprograms.adb) is 5xx_xxx_xxx.
+
    --  We output any typedefs at the time we decide that we need it and
    --  also output decls for any global variables at a similar time.
    --  However, we keep lists of subprograms and decls and statements for

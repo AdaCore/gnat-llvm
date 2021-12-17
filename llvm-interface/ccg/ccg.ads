@@ -58,7 +58,13 @@ package CCG is
    Empty_Stmt_Idx             : constant Stmt_Idx        :=
      Stmt_Idx_Low_Bound;
 
-   --  Subprogram_Idx (in ccg-subprograms.adb) is 5xx_xxx_xxx.
+   Flow_Idx_Low_Bound         : constant := 500_000_000;
+   Flow_Idx_High_Bound        : constant := 599_999_999;
+   type Flow_Idx is range Flow_Idx_Low_Bound .. Flow_Idx_High_Bound;
+   Empty_Flow_Idx             : constant Flow_Idx := Flow_Idx_Low_Bound;
+
+   --  Case_Idx is 6xx_xxx_xxx and If_Idx is 7xx_xxx_xxx (in ccg-flow.ads).
+   --  Subprogram_Idx (in ccg-subprograms.adb) is 8xx_xxx_xxx.
 
    --  We output any typedefs at the time we decide that we need it and
    --  also output decls for any global variables at a similar time.
@@ -71,11 +77,15 @@ package CCG is
      (Idx /= Empty_Local_Decl_Idx);
    function Present (Idx : Stmt_Idx)        return Boolean is
      (Idx /= Empty_Stmt_Idx);
+   function Present (Idx : Flow_Idx)        return Boolean is
+    (Idx /= Empty_Flow_Idx);
 
-   function No (Idx : Local_Decl_Idx)  return Boolean is
+   function No (Idx : Local_Decl_Idx)       return Boolean is
      (Idx = Empty_Local_Decl_Idx);
-   function No (Idx : Stmt_Idx)        return Boolean is
+   function No (Idx : Stmt_Idx)             return Boolean is
      (Idx = Empty_Stmt_Idx);
+   function No (Idx : Flow_Idx)             return Boolean is
+     (Idx = Empty_Flow_Idx);
 
    procedure Initialize_C_Output;
    --  Do any initialization needed to output C.  This is always called after

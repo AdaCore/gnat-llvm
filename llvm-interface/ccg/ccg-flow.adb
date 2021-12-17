@@ -15,10 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Output; use Output;
 with Table;
 
-with CCG.Output; use CCG.Output;
+with Output; use Output;
 
 package body CCG.Flow is
 

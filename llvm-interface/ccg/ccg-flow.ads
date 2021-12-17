@@ -18,6 +18,7 @@
 with LLVM.Core; use LLVM.Core;
 
 with CCG.Helper; use CCG.Helper;
+with CCG.Output; use CCG.Output;
 with CCG.Strs;   use CCG.Strs;
 
 package CCG.Flow is
@@ -44,18 +45,11 @@ package CCG.Flow is
    type If_Idx is range If_Idx_Low_Bound .. If_Idx_High_Bound;
    Empty_If_Idx        : constant If_Idx := If_Idx_Low_Bound;
 
-   Flow_Idx_Low_Bound  : constant := 800_000_000;
-   Flow_Idx_High_Bound : constant := 899_999_999;
-   type Flow_Idx is range Flow_Idx_Low_Bound .. Flow_Idx_High_Bound;
-   Empty_Flow_Idx      : constant Flow_Idx := Flow_Idx_Low_Bound;
-
    function Present (Idx : Case_Idx) return Boolean is (Idx /= Empty_Case_Idx);
    function Present (Idx : If_Idx)   return Boolean is (Idx /= Empty_If_Idx);
-   function Present (Idx : Flow_Idx) return Boolean is (Idx /= Empty_Flow_Idx);
 
    function No (Idx : Case_Idx) return Boolean is (Idx = Empty_Case_Idx);
    function No (Idx : If_Idx)   return Boolean is (Idx = Empty_If_Idx);
-   function No (Idx : Flow_Idx) return Boolean is (Idx = Empty_Flow_Idx);
 
    --  Getters and setters for a Case node
 

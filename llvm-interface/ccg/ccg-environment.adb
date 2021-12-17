@@ -97,7 +97,10 @@ package body CCG.Environment is
       Last_Stmt   : Stmt_Idx;
       --  Index of first and last statements for this basic block
 
-      Output_Idx : Nat;
+      Flow        : Flow_Idx;
+      --  The Flow corresponding to this block, if any
+
+      Output_Idx  : Nat;
       --  A positive number if we've assigned an ordinal to use as
       --  part of the name for this block.
 
@@ -255,7 +258,8 @@ package body CCG.Environment is
                           Was_Written => False,
                           First_Stmt  => Empty_Stmt_Idx,
                           Last_Stmt   => Empty_Stmt_Idx,
-                          Output_Idx => 0));
+                          Flow        => Empty_Flow_Idx,
+                          Output_Idx  => 0));
          Insert (BB_Info_Map, B, BB_Info.Last);
          return BB_Info.Last;
       end if;
@@ -558,6 +562,18 @@ package body CCG.Environment is
               else Empty_Stmt_Idx);
    end Get_Last_Stmt;
 
+   --------------
+   -- Get_Flow --
+   --------------
+
+   function Get_Flow (BB : Basic_Block_T) return Flow_Idx is
+      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => False);
+
+   begin
+      return (if   Present (Idx) then BB_Info.Table (Idx).Flow
+              else Empty_Flow_Idx);
+   end Get_Flow;
+
    --------------------
    -- Set_Was_Output --
    --------------------
@@ -601,6 +617,17 @@ package body CCG.Environment is
    begin
       BB_Info.Table (Idx).Last_Stmt := Sidx;
    end Set_Last_Stmt;
+
+   --------------
+   -- Set_Flow --
+   --------------
+
+   procedure Set_Flow (BB : Basic_Block_T; Fidx : Flow_Idx) is
+      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => True);
+
+   begin
+      BB_Info.Table (Idx).Flow := Fidx;
+   end Set_Flow;
 
    --------------------------
    -- Maybe_Output_Typedef --

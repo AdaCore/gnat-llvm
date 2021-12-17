@@ -173,4 +173,13 @@ package CCG.Flow is
      with Pre  => Present (Idx) and then Present (Cidx),
           Post => Last_Case (Idx) = Cidx, Inline;
 
+   pragma Annotate (Xcov, Exempt_On, "Debug helper");
+
+   procedure Dump_Flow (J : Pos) with Export, External_Name => "dfl";
+   --  Dump a flow to stderr. To simplify its use, this can be called
+   --  either with the actual Flow_Idx value or a smaller integer which
+   --  represents the low-order digits of the value.
+
+   pragma Annotate (Xcov, Exempt_Off, "Debug helper");
+
 end CCG.Flow;

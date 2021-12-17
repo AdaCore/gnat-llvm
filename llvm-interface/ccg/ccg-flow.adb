@@ -15,7 +15,10 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Output; use Output;
 with Table;
+
+with CCG.Output; use CCG.Output;
 
 package body CCG.Flow is
 
@@ -321,6 +324,64 @@ package body CCG.Flow is
    begin
       Flows.Table (Idx).Last_Case := Cidx;
    end Set_Last_Case;
+
+   ---------------
+   -- Dump_Flow --
+   ---------------
+
+   procedure Dump_Flow (J : Pos) is
+      LB   : constant Pos      := Pos (Flow_Idx_Low_Bound);
+      Idx  : constant Flow_Idx := Flow_Idx ((if J < LB then J + LB else J));
+      --  To simplify its use, this can be called either with the actual
+      --  Flow_Idx value or a smaller integer which represents the low-order
+      --  digits of the value.
+
+   begin
+      Push_Output;
+      Set_Standard_Error;
+      Write_Str ("Flow ");
+      Write_Int (Pos (Idx));
+      Write_Str (":");
+      Write_Eol;
+      if Is_Return (Idx) then
+         Write_Str ("RETURN");
+         Write_Eol;
+      elsif Present (Next (Idx)) then
+         Write_Str ("Next flow: ");
+         Write_Int (Pos (Next (Idx)));
+         Write_Eol;
+      end if;
+
+      if Present (First_Stmt (Idx)) then
+         Write_Str ("Statements:");
+         Write_Eol;
+         for Sidx in First_Stmt (Idx) .. Last_Stmt (Idx) loop
+            Write_Str ("    " & Get_Stmt_Line (Sidx).Line_Text, Eol => True);
+         end loop;
+      end if;
+
+      if Present (First_If (Idx)) then
+         Write_Str ("If parts:");
+         Write_Eol;
+         for Iidx in First_If (Idx) .. Last_If (Idx) loop
+            Write_Str ("  if (" & Test (Iidx) & ") then ");
+            Write_Int (Pos (Target (Iidx)));
+            Write_Eol;
+         end loop;
+      end if;
+
+      if Present (Case_Expr (Idx)) then
+         Write_Str ("switch (" & Case_Expr (Idx) & ")");
+         Write_Eol;
+         for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
+            Write_Str ("  " & Value (Cidx) & ": goto");
+            Write_Int (Pos (Target (Cidx)));
+            Write_Eol;
+         end loop;
+      end if;
+
+      Pop_Output;
+   end Dump_Flow;
 
 begin
    --  Ensure we have an empty entry in the tables

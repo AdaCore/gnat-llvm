@@ -1099,4 +1099,16 @@ package body CCG.Strs is
       end if;
    end Deref;
 
+   --------------
+   -- Dump_Str --
+   --------------
+
+   procedure Dump_Str (S : Str) is
+   begin
+      Push_Output;
+      Set_Standard_Error;
+      Write_Str (S, Eol => True);
+      Pop_Output;
+   end Dump_Str;
+
 end CCG.Strs;

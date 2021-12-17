@@ -327,6 +327,12 @@ package CCG.Strs is
    --  in S is unsigned, even though the expression that S represents
    --  may no longer be unsigned.
 
+   pragma Annotate (Xcov, Exempt_On, "Debug helper");
+
+   procedure Dump_Str (S : Str) with Export, External_Name => "dstr";
+
+   pragma Annotate (Xcov, Exempt_Off, "Debug helper");
+
 private
 
    --  Most strings that we have are a combination of operators and

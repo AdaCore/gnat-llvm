@@ -832,7 +832,7 @@ package body GNATLLVM.Compile is
          Result := Get_Undef_Relationship (Related_Type (Result),
                                            Relationship (Result));
          if Suppress_Overflow_Depth = 0 then
-            Error_Msg_N ("??`Constraint_Error` will be raised at run time",
+            Error_Msg_N ("??Constraint_Error will be raised at run time",
                          N);
             Emit_Raise_Call (N, CE_Overflow_Check_Failed);
          end if;

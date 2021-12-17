@@ -166,6 +166,8 @@ package GNATLLVM.Utils is
    procedure Scan_Library_Item (U : Node_Id);
    --  Procedure to scan all library units calling the parameter for each
 
+   pragma Annotate (Xcov, Exempt_On, "Debug helpers");
+
    procedure Dump_LLVM_Value (V : Value_T)
      with Export, External_Name => "dllv";
    --  Simple wrapper around LLVM.Core.Dump_Value. Gives an Ada name to this
@@ -180,5 +182,7 @@ package GNATLLVM.Utils is
 
    procedure Dump_LLVM_Metadata (MD : Metadata_T)
      with Export, External_Name => "dllm";
+
+   pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 
 end GNATLLVM.Utils;

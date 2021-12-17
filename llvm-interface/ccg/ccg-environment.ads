@@ -66,15 +66,15 @@ package CCG.Environment is
      with Pre => Present (V), Post => Get_C_Value (V) = S, Inline;
    procedure Set_Is_Variable        (V : Value_T; B : Boolean := True)
      with Pre  => Present (V), Post => Get_Is_Variable (V) = B, Inline;
-   procedure Set_Is_Decl_Output      (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Decl_Output     (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Decl_Output (V) = B, Inline;
-   procedure Set_Is_LHS              (V : Value_T; B : Boolean := True)
+   procedure Set_Is_LHS             (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_LHS (V) = B, Inline;
-   procedure Set_Is_Constant         (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Constant        (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Constant (V) = B, Inline;
    procedure Set_Is_Unsigned        (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Unsigned (V) = B, Inline;
-   procedure Set_Is_Used             (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Used            (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Used (V) = B, Inline;
 
    function Get_Is_Typedef_Output        (T : Type_T) return Boolean
@@ -92,7 +92,7 @@ package CCG.Environment is
    --  True if this is a struct type and we've just written the struct
    --  definition without fields (an incomplete type).
 
-   function Get_Are_Outputting_Typedef      (T : Type_T) return Boolean
+   function Get_Are_Outputting_Typedef   (T : Type_T) return Boolean
      with Pre => Present (T), Inline;
    --  True if we're in the process of outputting a typedef
 
@@ -108,14 +108,15 @@ package CCG.Environment is
      with Pre  => Present (T), Post => Get_Are_Outputting_Typedef (T) = B,
           Inline;
 
-   function Get_Was_Output (BB : Basic_Block_T) return Boolean
+   function Get_Was_Output (BB : Basic_Block_T)  return Boolean
      with Pre => Present (BB), Inline;
    function Get_Was_Written (BB : Basic_Block_T) return Boolean
      with Pre => Present (BB), Inline;
-   function Get_First_Stmt (BB : Basic_Block_T) return Stmt_Idx
+   function Get_First_Stmt (BB : Basic_Block_T)  return Stmt_Idx
      with Pre => Present (BB), Inline;
-   function Get_Last_Stmt (BB : Basic_Block_T) return Stmt_Idx
+   function Get_Last_Stmt (BB : Basic_Block_T)  return Stmt_Idx
      with Pre => Present (BB), Inline;
+
    procedure Set_Was_Output (BB : Basic_Block_T; B : Boolean := True)
      with Pre  => Present (BB), Post => Get_Was_Output (BB) = B, Inline;
    procedure Set_Was_Written (BB : Basic_Block_T; B : Boolean := True)

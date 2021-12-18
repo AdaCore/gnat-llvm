@@ -100,6 +100,9 @@ package body CCG.Flow is
       Table_Increment      => 200,
       Table_Name           => "Flows");
 
+   Return_Flow : Flow_Idx with Unreferenced;
+   --  The unique Flow that indicates a return
+
    -----------
    -- Value --
    -----------
@@ -388,5 +391,18 @@ begin
    Cases.Increment_Last;
    Ifs.Increment_Last;
    Flows.Increment_Last;
+
+   --  Create the entry for the unique return flow
+
+   Flows.Append ((Is_Return  => True,
+                  First_Stmt => Empty_Stmt_Idx,
+                  Last_Stmt  => Empty_Stmt_Idx,
+                  Next       => Empty_Flow_Idx,
+                  First_If   => Empty_If_Idx,
+                  Last_If    => Empty_If_Idx,
+                  Case_Expr  => No_Value_T,
+                  First_Case => Empty_Case_Idx,
+                  Last_Case  => Empty_Case_Idx));
+   Return_Flow := Flows.Last;
 
 end CCG.Flow;

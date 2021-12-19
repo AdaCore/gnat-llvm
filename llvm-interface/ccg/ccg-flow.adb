@@ -73,6 +73,10 @@ package body CCG.Flow is
       Last_Stmt  : Stmt_Idx;
       --  Last statement that's part of this flow, if any
 
+      Use_Count  : Nat;
+      --  Number of times this flow is referenced by another flow (always one
+      --  for the entry block).
+
       Next       : Flow_Idx;
       --  Next flow executed after this one has completed, if any
 
@@ -197,6 +201,13 @@ package body CCG.Flow is
    function Last_Stmt (Idx : Flow_Idx) return Stmt_Idx is
      (Flows.Table (Idx).Last_Stmt);
 
+   ---------------
+   -- Use_Count --
+   ---------------
+
+   function Use_Count (Idx : Flow_Idx)  return Nat is
+     (Flows.Table (Idx).Use_Count);
+
    ----------
    -- Next --
    ----------
@@ -263,6 +274,24 @@ package body CCG.Flow is
    begin
       Flows.Table (Idx).Last_Stmt := S;
    end Set_Last_Stmt;
+
+   -------------
+   -- Add_Use --
+   -------------
+
+   procedure Add_Use (Idx : Flow_Idx) is
+   begin
+      Flows.Table (Idx).Use_Count := Flows.Table (Idx).Use_Count + 1;
+   end Add_Use;
+
+   ----------------
+   -- Remove_Use --
+   ----------------
+
+   procedure Remove_Use (Idx : Flow_Idx) is
+   begin
+      Flows.Table (Idx).Use_Count := Flows.Table (Idx).Use_Count - 1;
+   end Remove_Use;
 
    --------------
    -- Set_Next --
@@ -343,7 +372,9 @@ package body CCG.Flow is
       Set_Standard_Error;
       Write_Str ("Flow ");
       Write_Int (Pos (Idx));
-      Write_Str (":");
+      Write_Str (", ");
+      Write_Int (Use_Count (Idx));
+      Write_Str (" uses:");
       Write_Eol;
       if Is_Return (Idx) then
          Write_Str ("RETURN");
@@ -397,6 +428,7 @@ begin
    Flows.Append ((Is_Return  => True,
                   First_Stmt => Empty_Stmt_Idx,
                   Last_Stmt  => Empty_Stmt_Idx,
+                  Use_Count  => 0,
                   Next       => Empty_Flow_Idx,
                   First_If   => Empty_If_Idx,
                   Last_If    => Empty_If_Idx,

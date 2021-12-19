@@ -108,6 +108,11 @@ package CCG.Flow is
      with Pre => Present (Idx);
    --  Last statement that's part of this flow, if any
 
+   function Use_Count (Idx : Flow_Idx)  return Nat
+     with Pre => Present (Idx);
+   --  Number of times this flow is referenced by another flow (always one
+   --  for the entry block).
+
    function Next (Idx : Flow_Idx)       return Flow_Idx
      with Pre => Present (Idx);
    --  Next flow executed after this one has completed, if any
@@ -139,6 +144,11 @@ package CCG.Flow is
    procedure Set_Last_Stmt (Idx : Flow_Idx; S : Stmt_Idx)
      with Pre  => Present (Idx) and then Present (S),
           Post => Last_Stmt (Idx) = S, Inline;
+
+   procedure Add_Use (Idx : Flow_Idx)
+     with Pre => Present (Idx);
+   procedure Remove_Use (Idx : Flow_Idx)
+     with Pre => Present (Idx) and then Use_Count (Idx) > 0;
 
    procedure Set_Next (Idx, Nidx : Flow_Idx)
      with Pre  => Present (Idx) and then Present (Nidx),

@@ -19,6 +19,8 @@ with Table;
 
 with Output; use Output;
 
+with CCG.Instructions; use CCG.Instructions;
+
 package body CCG.Flow is
 
    --  First is a table containing pairs of switch statement values and
@@ -49,7 +51,7 @@ package body CCG.Flow is
       --  represents an "else".
 
       Inst   : Value_T;
-      --  Instruction that does test (for debug info), if any
+      --  Instruction that does test (for debug info)
 
       Target : Flow_Idx;
       --  Destination if this test is true (or not Present)
@@ -104,8 +106,16 @@ package body CCG.Flow is
       Table_Increment      => 200,
       Table_Name           => "Flows");
 
-   Return_Flow : Flow_Idx with Unreferenced;
+   Return_Flow  : Flow_Idx;
    --  The unique Flow that indicates a return
+
+   Current_Flow : Flow_Idx := Empty_Flow_Idx;
+   --  The flow that we're currently building
+
+   function New_If (V, Inst : Value_T) return If_Idx
+     with Pre  => Is_A_Instruction (Inst),
+          Post => Present (New_If'Result);
+   --  Create a new "if" piece for the specified value and instruction
 
    -----------
    -- Value --
@@ -355,6 +365,121 @@ package body CCG.Flow is
    begin
       Flows.Table (Idx).Last_Case := Cidx;
    end Set_Last_Case;
+
+   ----------------------
+   -- Add_Stmt_To_Flow --
+   ----------------------
+
+   procedure Add_Stmt_To_Flow (Sidx : Stmt_Idx) is
+   begin
+      --  ?? During development, allow this to be called with no flow set.
+      if No (Current_Flow) then
+         return;
+      end if;
+
+      if No (First_Stmt (Current_Flow)) then
+         Set_First_Stmt (Current_Flow, Sidx);
+      end if;
+
+      Set_Last_Stmt (Current_Flow, Sidx);
+   end Add_Stmt_To_Flow;
+
+   ------------
+   -- New_If --
+   ------------
+
+   function New_If (V, Inst : Value_T) return If_Idx is
+   begin
+      Ifs.Append ((Test => V, Inst => Inst, Target => Empty_Flow_Idx));
+      return Ifs.Last;
+   end New_If;
+
+   ------------------------
+   -- Get_Or_Create_Flow --
+   ------------------------
+
+   function Get_Or_Create_Flow (V : Value_T) return Flow_Idx is
+     (Get_Or_Create_Flow (Value_As_Basic_Block (V)));
+
+   ------------------------
+   -- Get_Or_Create_Flow --
+   ------------------------
+
+   function Get_Or_Create_Flow (BB : Basic_Block_T) return Flow_Idx is
+      T   : constant Value_T  := Get_Basic_Block_Terminator (BB);
+      Idx : Flow_Idx          := Get_Flow (BB);
+      V   : Value_T           := Get_First_Instruction (BB);
+
+   begin
+      --  If we already made a flow for this block, mark it as used once
+      --  more and return it.
+
+      if Present (Idx) then
+         Add_Use (Idx);
+         return Idx;
+      end if;
+
+      --  Otherwise, make a new flow and set it as the flow for this block
+      --  and as the current flow.
+
+      Flows.Append ((Is_Return  => False,
+                     First_Stmt => Empty_Stmt_Idx,
+                     Last_Stmt  => Empty_Stmt_Idx,
+                     Use_Count  => 1,
+                     Next       => Empty_Flow_Idx,
+                     First_If   => Empty_If_Idx,
+                     Last_If    => Empty_If_Idx,
+                     Case_Expr  => No_Value_T,
+                     First_Case => Empty_Case_Idx,
+                     Last_Case  => Empty_Case_Idx));
+      Idx := Flows.Last;
+      Set_Flow (BB, Idx);
+      Current_Flow := Idx;
+
+      --  Add all instructions to the flow
+
+      while V /= T loop
+         Process_Instruction (V);
+         V := Get_Next_Instruction (V);
+      end loop;
+
+      --  Finally, process the various types of terminators
+
+      case Get_Opcode (T) is
+         when Op_Ret =>
+            --  ??? We ignore the return value for this preliminary version
+
+            Set_Next (Idx, Return_Flow);
+
+         when Op_Br =>
+
+            --  For a conditional branch, create two if entries, one for
+            --  the true and false branch. But make those flows in a second
+            --  pass to be sure that our entries are consecutive.
+
+            if Is_Conditional (T) then
+               declare
+                  Iidx1 : constant If_Idx := New_If (Get_Operand0 (T), T);
+                  Iidx2 : constant If_Idx := New_If (No_Value_T, T);
+
+               begin
+                  Set_First_If (Idx, Iidx1);
+                  Set_Last_If  (Idx, Iidx2);
+                  Set_Target   (Iidx1, Get_Or_Create_Flow (Get_Operand2 (T)));
+                  Set_Target   (Iidx2, Get_Or_Create_Flow (Get_Operand1 (T)));
+               end;
+            else
+               Set_Next (Idx, Get_Or_Create_Flow (Get_Operand0 (T)));
+            end if;
+
+         when others =>
+            pragma Assert (False);
+      end case;
+
+      --  Finally, return the new Flow we contructed
+
+      return Idx;
+   end Get_Or_Create_Flow;
 
    ---------------
    -- Dump_Flow --

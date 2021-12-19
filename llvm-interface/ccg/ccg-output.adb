@@ -31,6 +31,7 @@ with Table;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
+with CCG.Flow;         use CCG.Flow;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Target;       use CCG.Target;
@@ -400,6 +401,10 @@ package body CCG.Output is
       if No (Get_First_Stmt (Current_BB)) then
          Set_First_Stmt (Current_BB, Stmts.Last);
       end if;
+
+      --  Finally, all the statement to the current flow
+      Add_Stmt_To_Flow (Stmts.Last);
+
    end Output_Stmt;
 
    -----------------

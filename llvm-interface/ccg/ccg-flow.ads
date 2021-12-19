@@ -17,9 +17,10 @@
 
 with LLVM.Core; use LLVM.Core;
 
-with CCG.Helper; use CCG.Helper;
-with CCG.Output; use CCG.Output;
-with CCG.Strs;   use CCG.Strs;
+with CCG.Environment; use CCG.Environment;
+with CCG.Helper;      use CCG.Helper;
+with CCG.Output;      use CCG.Output;
+with CCG.Strs;        use CCG.Strs;
 
 package CCG.Flow is
 
@@ -176,6 +177,19 @@ package CCG.Flow is
    procedure Set_Last_Case (Idx : Flow_Idx; Cidx : Case_Idx)
      with Pre  => Present (Idx) and then Present (Cidx),
           Post => Last_Case (Idx) = Cidx, Inline;
+
+   function Get_Or_Create_Flow (V : Value_T) return Flow_Idx
+     with Pre  => Is_A_Basic_Block (V),
+          Post => Present (Get_Or_Create_Flow'Result);
+   function Get_Or_Create_Flow (BB : Basic_Block_T) return Flow_Idx
+     with Pre  => Present (BB),
+          Post => Present (Get_Or_Create_Flow'Result)
+                  and then Get_Flow (BB) = Get_Or_Create_Flow'Result;
+   --  Get (and create if needed) a Flow for a block
+
+   procedure Add_Stmt_To_Flow (Sidx : Stmt_Idx)
+     with Pre => Present (Sidx);
+   --  Add Sidx the set of statement for the current flow
 
    pragma Annotate (Xcov, Exempt_On, "Debug helper");
 

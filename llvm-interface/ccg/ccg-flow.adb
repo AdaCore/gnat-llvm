@@ -361,11 +361,26 @@ package body CCG.Flow is
    ---------------
 
    procedure Dump_Flow (J : Pos) is
+      procedure Write_Flow_Idx (Idx : Flow_Idx)
+        with Pre => Present (Idx);
+
       LB   : constant Pos      := Pos (Flow_Idx_Low_Bound);
       Idx  : constant Flow_Idx := Flow_Idx ((if J < LB then J + LB else J));
       --  To simplify its use, this can be called either with the actual
       --  Flow_Idx value or a smaller integer which represents the low-order
       --  digits of the value.
+
+      --------------------
+      -- Write_Flow_Idx --
+      --------------------
+
+      procedure Write_Flow_Idx (Idx : Flow_Idx) is
+      begin
+         Write_Int (Pos (Idx));
+         if Is_Return (Idx) then
+            Write_Str (" (return)");
+         end if;
+      end Write_Flow_Idx;
 
    begin
       Push_Output;
@@ -377,38 +392,43 @@ package body CCG.Flow is
       Write_Str (" uses:");
       Write_Eol;
       if Is_Return (Idx) then
-         Write_Str ("RETURN");
+         Write_Str ("  RETURN");
          Write_Eol;
       elsif Present (Next (Idx)) then
-         Write_Str ("Next flow: ");
-         Write_Int (Pos (Next (Idx)));
+         Write_Str ("  Next flow: ");
+         Write_Flow_Idx (Next (Idx));
          Write_Eol;
       end if;
 
       if Present (First_Stmt (Idx)) then
-         Write_Str ("Statements:");
+         Write_Str ("  Statements:");
          Write_Eol;
          for Sidx in First_Stmt (Idx) .. Last_Stmt (Idx) loop
-            Write_Str ("    " & Get_Stmt_Line (Sidx).Line_Text, Eol => True);
+            Write_Str ("      " & Get_Stmt_Line (Sidx).Line_Text, Eol => True);
          end loop;
       end if;
 
       if Present (First_If (Idx)) then
-         Write_Str ("If parts:");
+         Write_Str ("  If parts:");
          Write_Eol;
          for Iidx in First_If (Idx) .. Last_If (Idx) loop
-            Write_Str ("  if (" & Test (Iidx) & ") then ");
-            Write_Int (Pos (Target (Iidx)));
+            if Present (Test (Iidx)) then
+               Write_Str ("    if (" & Test (Iidx) & ") then ");
+            else
+               Write_Str ("    else ");
+            end if;
+
+            Write_Flow_Idx (Target (Iidx));
             Write_Eol;
          end loop;
       end if;
 
       if Present (Case_Expr (Idx)) then
-         Write_Str ("switch (" & Case_Expr (Idx) & ")");
+         Write_Str ("  switch (" & Case_Expr (Idx) & ")");
          Write_Eol;
          for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
-            Write_Str ("  " & Value (Cidx) & ": goto");
-            Write_Int (Pos (Target (Cidx)));
+            Write_Str ("    " & Value (Cidx) & ": goto");
+            Write_Flow_Idx (Target (Cidx));
             Write_Eol;
          end loop;
       end if;

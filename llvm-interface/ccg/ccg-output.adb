@@ -397,9 +397,14 @@ package body CCG.Output is
                      V              => V,
                      BB             => BB));
       Next_Block_Style := None;
-      Set_Last_Stmt (Current_BB, Stmts.Last);
-      if No (Get_First_Stmt (Current_BB)) then
-         Set_First_Stmt (Current_BB, Stmts.Last);
+
+      --  ??? For now, only do this if there is a current block
+
+      if Present (Current_BB) then
+         Set_Last_Stmt (Current_BB, Stmts.Last);
+         if No (Get_First_Stmt (Current_BB)) then
+            Set_First_Stmt (Current_BB, Stmts.Last);
+         end if;
       end if;
 
       --  Finally, all the statement to the current flow

@@ -16,11 +16,16 @@
 ------------------------------------------------------------------------------
 
 with Ada.Containers.Ordered_Sets;
+with Ada.Containers.Hashed_Maps;
 
 with Output; use Output;
 with Table;
 
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+
 with CCG.Instructions; use CCG.Instructions;
+with CCG.Subprograms;  use CCG.Subprograms;
+with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Flow is
 
@@ -110,7 +115,16 @@ package body CCG.Flow is
       Table_Increment      => 200,
       Table_Name           => "Flows");
 
-   Return_Flow  : Flow_Idx;
+   --  We merge returns that have the same return value (or those that
+   --  have no return value) and use a map to allow us to do that.
+
+   package Return_Maps is new Ada.Containers.Hashed_Maps
+     (Key_Type        => Value_T,
+      Element_Type    => Flow_Idx,
+      Hash            => Hash,
+      Equivalent_Keys => "=");
+   Return_Map : Return_Maps.Map;
+
    --  The unique Flow that indicates a return
 
    Current_Flow : Flow_Idx := Empty_Flow_Idx;
@@ -483,9 +497,59 @@ package body CCG.Flow is
 
       case Get_Opcode (T) is
          when Op_Ret =>
-            --  ??? We ignore the return value for this preliminary version
+            declare
+               use Return_Maps;
+               Retval   : Value_T := No_Value_T;
+               Ret_Idx  : Flow_Idx;
+               Position : Cursor;
 
-            Set_Next (Idx, Return_Flow);
+            begin
+               --  If this function returns and it returns a value,
+               --  we'll need to make a return flow coresponding to that
+               --  value. Otherwise, we use a flow with no value.
+
+               if not Does_Not_Return (Curr_Func)
+                 and then Get_Num_Operands (T) = 1
+               then
+                  Retval := Get_Operand0 (T);
+
+                  --  If we're returning an array, declare a value (we can
+                  --  use T even though its LLVM type is void) of the
+                  --  struct type corresponding to Retval's type, assign Retval
+                  --  into its only field (which will be done with a
+                  --  memmove), and return that value.
+
+                  if Get_Type_Kind (Retval) = Array_Type_Kind then
+                     Output_Decl (TP ("#T1_R #2", Retval, T), V => T);
+                     Write_Copy (T & ".F", Retval, Type_Of (Retval));
+                     Retval := T;
+                  end if;
+               end if;
+
+               --  If we already have a return flow for this value, use
+               --  it. Otherwise, make one and record it.
+
+               Position := Find (Return_Map, Retval);
+               if Has_Element (Position) then
+                  Ret_Idx := Element (Position);
+               else
+                  Flows.Append ((Is_Return    => True,
+                                 Return_Value => Retval,
+                                 First_Stmt   => Empty_Stmt_Idx,
+                                 Last_Stmt    => Empty_Stmt_Idx,
+                                 Use_Count    => 0,
+                                 Next         => Empty_Flow_Idx,
+                                 First_If     => Empty_If_Idx,
+                                 Last_If      => Empty_If_Idx,
+                                 Case_Expr    => No_Value_T,
+                                 First_Case   => Empty_Case_Idx,
+                                 Last_Case    => Empty_Case_Idx));
+                  Ret_Idx := Flows.Last;
+                  Insert (Return_Map, Retval, Ret_Idx);
+               end if;
+
+               Set_Next (Idx, Ret_Idx);
+            end;
 
          when Op_Br =>
 
@@ -547,7 +611,12 @@ package body CCG.Flow is
       begin
          Write_Int (Pos (Idx));
          if Is_Return (Idx) then
-            Write_Str (" (return)");
+            Write_Str (" (return");
+            if Present (Return_Value (Idx)) then
+               Write_Str (" " & Return_Value (Idx));
+            end if;
+
+            Write_Str (")");
          end if;
 
          --  If we haven't already dump this flow, show that we may need to
@@ -571,6 +640,10 @@ package body CCG.Flow is
          Write_Eol;
          if Is_Return (Idx) then
             Write_Str ("  RETURN");
+            if Present (Return_Value (Idx)) then
+               Write_Str (" " & Return_Value (Idx));
+            end if;
+
             Write_Eol;
          elsif Present (Next (Idx)) then
             Write_Str ("  Next flow: ");
@@ -627,9 +700,15 @@ package body CCG.Flow is
                Dump_Idx : constant Flow_Idx := First_Element (To_Dump);
 
             begin
-               Dump_One_Flow (Dump_Idx);
-               Delete        (To_Dump, Dump_Idx);
-               Insert        (Dumped, Dump_Idx);
+               --  We don't dump return flows since we see them when they are
+               --  referenced. But pretend that we did.
+
+               if not Is_Return (Dump_Idx) then
+                  Dump_One_Flow (Dump_Idx);
+               end if;
+
+               Delete (To_Dump, Dump_Idx);
+               Insert (Dumped, Dump_Idx);
             end;
          end loop;
       end if;
@@ -643,20 +722,5 @@ begin
    Cases.Increment_Last;
    Ifs.Increment_Last;
    Flows.Increment_Last;
-
-   --  Create the entry for the unique return flow
-
-   Flows.Append ((Is_Return    => True,
-                  Return_Value => No_Value_T,
-                  First_Stmt   => Empty_Stmt_Idx,
-                  Last_Stmt    => Empty_Stmt_Idx,
-                  Use_Count    => 0,
-                  Next         => Empty_Flow_Idx,
-                  First_If     => Empty_If_Idx,
-                  Last_If      => Empty_If_Idx,
-                  Case_Expr    => No_Value_T,
-                  First_Case   => Empty_Case_Idx,
-                  Last_Case    => Empty_Case_Idx));
-   Return_Flow := Flows.Last;
 
 end CCG.Flow;

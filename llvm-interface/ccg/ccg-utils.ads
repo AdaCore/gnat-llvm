@@ -132,8 +132,7 @@ package CCG.Utils is
                                                   System.Address);
 
    function Hash (V : Value_T)       return Hash_Type is
-     (Hash_Type'Mod (To_Integer (UC_V (V)) / (V'Size / 8)))
-     with Pre => Present (V);
+     (Hash_Type'Mod (To_Integer (UC_V (V)) / (V'Size / 8)));
    function Hash (T : Type_T)        return Hash_Type is
      (Hash_Type'Mod (To_Integer (UC_T (T)) / (T'Size / 8)))
      with Pre => Present (T);

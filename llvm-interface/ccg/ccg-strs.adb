@@ -42,8 +42,8 @@ package body CCG.Strs is
    --  Update the hash key from Flags
 
    package Str_Sets is new Ada.Containers.Hashed_Sets
-     (Element_Type => Str,
-      Hash         => Hash,
+     (Element_Type        => Str,
+      Hash                => Hash,
       Equivalent_Elements => "=");
    Str_Set : Str_Sets.Set;
    --  The set of all strings that we've made so far

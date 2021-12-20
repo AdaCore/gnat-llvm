@@ -15,9 +15,10 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Table;
+with Ada.Containers.Ordered_Sets;
 
 with Output; use Output;
+with Table;
 
 with CCG.Instructions; use CCG.Instructions;
 
@@ -500,12 +501,20 @@ package body CCG.Flow is
    -- Dump_Flow --
    ---------------
 
-   procedure Dump_Flow (J : Pos) is
+   procedure Dump_Flow (J : Pos; Dump_All : Boolean) is
       procedure Write_Flow_Idx (Idx : Flow_Idx)
         with Pre => Present (Idx);
-
-      LB   : constant Pos      := Pos (Flow_Idx_Low_Bound);
-      Idx  : constant Flow_Idx := Flow_Idx ((if J < LB then J + LB else J));
+      procedure Dump_One_Flow (Idx : Flow_Idx)
+        with Pre => Present (Idx);
+      package Dump_Flows is new Ada.Containers.Ordered_Sets
+        (Element_Type => Flow_Idx,
+         "<"          => "<",
+         "="          => "=");
+      use Dump_Flows;
+      To_Dump : Set;
+      Dumped  : Set;
+      LB      : constant Pos      := Pos (Flow_Idx_Low_Bound);
+      Idx     : constant Flow_Idx := Flow_Idx ((if J < LB then J + LB else J));
       --  To simplify its use, this can be called either with the actual
       --  Flow_Idx value or a smaller integer which represents the low-order
       --  digits of the value.
@@ -520,56 +529,88 @@ package body CCG.Flow is
          if Is_Return (Idx) then
             Write_Str (" (return)");
          end if;
+
+         --  If we haven't already dump this flow, show that we may need to
+
+         if not Contains (Dumped, Idx) then
+            Insert (To_Dump, Idx);
+         end if;
       end Write_Flow_Idx;
 
-   begin
+      -------------------
+      -- Dump_one_Flow --
+      -------------------
+
+      procedure Dump_One_Flow (Idx : Flow_Idx) is
+      begin
+         Write_Str ("Flow ");
+         Write_Int (Pos (Idx));
+         Write_Str (", ");
+         Write_Int (Use_Count (Idx));
+         Write_Str (" uses:");
+         Write_Eol;
+         if Is_Return (Idx) then
+            Write_Str ("  RETURN");
+            Write_Eol;
+         elsif Present (Next (Idx)) then
+            Write_Str ("  Next flow: ");
+            Write_Flow_Idx (Next (Idx));
+            Write_Eol;
+         end if;
+
+         if Present (First_Stmt (Idx)) then
+            Write_Str ("  Statements:");
+            Write_Eol;
+            for Sidx in First_Stmt (Idx) .. Last_Stmt (Idx) loop
+               Write_Str ("      " & Get_Stmt_Line (Sidx).Line_Text,
+                          Eol => True);
+            end loop;
+         end if;
+
+         if Present (First_If (Idx)) then
+            Write_Str ("  If parts:");
+            Write_Eol;
+            for Iidx in First_If (Idx) .. Last_If (Idx) loop
+               if Present (Test (Iidx)) then
+                  Write_Str ("    if (" & Test (Iidx) & ") then ");
+               else
+                  Write_Str ("    else ");
+               end if;
+
+               Write_Flow_Idx (Target (Iidx));
+               Write_Eol;
+            end loop;
+         end if;
+
+         if Present (Case_Expr (Idx)) then
+            Write_Str ("  switch (" & Case_Expr (Idx) & ")");
+            Write_Eol;
+            for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
+               Write_Str ("    " & Value (Cidx) & ": goto");
+               Write_Flow_Idx (Target (Cidx));
+               Write_Eol;
+            end loop;
+         end if;
+      end Dump_One_Flow;
+
+   begin  --  Start of processing for Dump_Flow
       Push_Output;
       Set_Standard_Error;
-      Write_Str ("Flow ");
-      Write_Int (Pos (Idx));
-      Write_Str (", ");
-      Write_Int (Use_Count (Idx));
-      Write_Str (" uses:");
-      Write_Eol;
-      if Is_Return (Idx) then
-         Write_Str ("  RETURN");
-         Write_Eol;
-      elsif Present (Next (Idx)) then
-         Write_Str ("  Next flow: ");
-         Write_Flow_Idx (Next (Idx));
-         Write_Eol;
-      end if;
 
-      if Present (First_Stmt (Idx)) then
-         Write_Str ("  Statements:");
-         Write_Eol;
-         for Sidx in First_Stmt (Idx) .. Last_Stmt (Idx) loop
-            Write_Str ("      " & Get_Stmt_Line (Sidx).Line_Text, Eol => True);
-         end loop;
-      end if;
+      --  Dump the flow we're asked to dump. If we're to dump nested flow,
+      --  keep dumping until all are done.
+      Dump_One_Flow (Idx);
+      Insert (Dumped, Idx);
+      if Dump_All then
+         while not Is_Empty (To_Dump) loop
+            declare
+               Dump_Idx : constant Flow_Idx := First_Element (To_Dump);
 
-      if Present (First_If (Idx)) then
-         Write_Str ("  If parts:");
-         Write_Eol;
-         for Iidx in First_If (Idx) .. Last_If (Idx) loop
-            if Present (Test (Iidx)) then
-               Write_Str ("    if (" & Test (Iidx) & ") then ");
-            else
-               Write_Str ("    else ");
-            end if;
-
-            Write_Flow_Idx (Target (Iidx));
-            Write_Eol;
-         end loop;
-      end if;
-
-      if Present (Case_Expr (Idx)) then
-         Write_Str ("  switch (" & Case_Expr (Idx) & ")");
-         Write_Eol;
-         for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
-            Write_Str ("    " & Value (Cidx) & ": goto");
-            Write_Flow_Idx (Target (Cidx));
-            Write_Eol;
+            begin
+               Dump_One_Flow (Dump_Idx);
+               Delete        (To_Dump, Dump_Idx);
+               Insert        (Dumped, Dump_Idx);
+            end;
          end loop;
       end if;
 

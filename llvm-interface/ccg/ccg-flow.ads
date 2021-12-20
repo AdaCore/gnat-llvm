@@ -101,40 +101,44 @@ package CCG.Flow is
 
    --  Getters and setters for a Flow
 
-   function First_Stmt (Idx : Flow_Idx) return Stmt_Idx
+   function First_Stmt (Idx : Flow_Idx)   return Stmt_Idx
      with Pre => Present (Idx);
    --  First statement that's part of this flow, if any
 
-   function Last_Stmt (Idx : Flow_Idx)  return Stmt_Idx
+   function Last_Stmt (Idx : Flow_Idx)    return Stmt_Idx
      with Pre => Present (Idx);
    --  Last statement that's part of this flow, if any
 
-   function Use_Count (Idx : Flow_Idx)  return Nat
+   function Use_Count (Idx : Flow_Idx)    return Nat
      with Pre => Present (Idx);
    --  Number of times this flow is referenced by another flow (always one
    --  for the entry block).
 
-   function Next (Idx : Flow_Idx)       return Flow_Idx
+   function Next (Idx : Flow_Idx)         return Flow_Idx
      with Pre => Present (Idx);
    --  Next flow executed after this one has completed, if any
 
-   function Is_Return (Idx : Flow_Idx)  return Boolean
+   function Is_Return (Idx : Flow_Idx)    return Boolean
      with Pre => Present (Idx);
-   --  True for the unique return flow
+   --  True for a return flow
 
-   function First_If (Idx : Flow_Idx)   return If_Idx
+   function Return_Value (Idx : Flow_Idx) return Value_T
+     with Pre => Is_Return (Idx) and then Present (Idx);
+   --  If a return flow, the value to return, if any
+
+   function First_If (Idx : Flow_Idx)     return If_Idx
      with Pre => Present (Idx);
-   function Last_If (Idx : Flow_Idx)    return If_Idx
+   function Last_If (Idx : Flow_Idx)      return If_Idx
      with Pre => Present (Idx);
    --  First and last if/then/elseif/else parts, if any
 
-   function Case_Expr (Idx : Flow_Idx)  return Value_T
+   function Case_Expr (Idx : Flow_Idx)    return Value_T
      with Pre => Present (Idx);
    --  Expression for switch statement, if any
 
-   function First_Case (Idx : Flow_Idx) return Case_Idx
+   function First_Case (Idx : Flow_Idx)   return Case_Idx
      with Pre => Present (Idx);
-   function Last_Case (Idx : Flow_Idx)  return Case_Idx
+   function Last_Case (Idx : Flow_Idx)    return Case_Idx
      with Pre => Present (Idx);
    --  First and last of cases for a switch statement, if any
 
@@ -151,6 +155,10 @@ package CCG.Flow is
 
    procedure Set_Is_Return (Idx : Flow_Idx; B : Boolean := True)
      with Pre  => Present (Idx), Post => Is_Return (Idx) = B, Inline;
+
+   procedure Set_Return_Value (Idx : Flow_Idx; V : Value_T)
+     with Pre  => Present (Idx) and then Is_Return (Idx) and then Present (V),
+          Post => Return_Value (Idx) = V, Inline;
 
    procedure Set_First_If (Idx : Flow_Idx; Iidx : If_Idx)
      with Pre  => Present (Idx) and then Present (Iidx),

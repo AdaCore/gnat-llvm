@@ -70,31 +70,34 @@ package body CCG.Flow is
    --  Finally, we have the table that encodes the flows themselves
 
    type Flow_Data is record
-      First_Stmt : Stmt_Idx;
+      First_Stmt   : Stmt_Idx;
       --  First statement that's part of this flow, if any
 
-      Last_Stmt  : Stmt_Idx;
+      Last_Stmt    : Stmt_Idx;
       --  Last statement that's part of this flow, if any
 
-      Use_Count  : Nat;
+      Use_Count    : Nat;
       --  Number of times this flow is referenced by another flow (always one
       --  for the entry block).
 
-      Next       : Flow_Idx;
+      Next         : Flow_Idx;
       --  Next flow executed after this one has completed, if any
 
-      Is_Return  : Boolean;
+      Is_Return    : Boolean;
       --  This is set for the unique return flow
 
-      First_If   : If_Idx;
-      Last_If    : If_Idx;
+      Return_Value : Value_T;
+      --  If a return flow, the value to return, if any
+
+      First_If     : If_Idx;
+      Last_If      : If_Idx;
       --  First and last if/then/elseif/else parts, if any
 
-      Case_Expr  : Value_T;
+      Case_Expr    : Value_T;
       --  Expression for switch statement, if any
 
-      First_Case : Case_Idx;
-      Last_Case  : Case_Idx;
+      First_Case   : Case_Idx;
+      Last_Case    : Case_Idx;
       --  First and last of cases for a switch statement, if any
 
    end record;
@@ -242,6 +245,13 @@ package body CCG.Flow is
    function Is_Return (Idx : Flow_Idx) return Boolean is
      (Flows.Table (Idx).Is_Return);
 
+   ------------------
+   -- Return_Value --
+   ------------------
+
+   function Return_Value (Idx : Flow_Idx) return Value_T is
+     (Flows.Table (Idx).Return_Value);
+
    --------------
    -- First_If --
    --------------
@@ -338,6 +348,15 @@ package body CCG.Flow is
    begin
       Flows.Table (Idx).Is_Return := B;
    end Set_Is_Return;
+
+   ----------------------
+   -- Set_Return_Value --
+   ----------------------
+
+   procedure Set_Return_Value (Idx : Flow_Idx; V : Value_T) is
+   begin
+      Flows.Table (Idx).Return_Value := V;
+   end Set_Return_Value;
 
    ------------------
    -- Set_First_If --
@@ -438,16 +457,17 @@ package body CCG.Flow is
       --  Otherwise, make a new flow and set it as the flow for this block
       --  and as the current flow.
 
-      Flows.Append ((Is_Return  => False,
-                     First_Stmt => Empty_Stmt_Idx,
-                     Last_Stmt  => Empty_Stmt_Idx,
-                     Use_Count  => 0,
-                     Next       => Empty_Flow_Idx,
-                     First_If   => Empty_If_Idx,
-                     Last_If    => Empty_If_Idx,
-                     Case_Expr  => No_Value_T,
-                     First_Case => Empty_Case_Idx,
-                     Last_Case  => Empty_Case_Idx));
+      Flows.Append ((Is_Return    => False,
+                     Return_Value => No_Value_T,
+                     First_Stmt   => Empty_Stmt_Idx,
+                     Last_Stmt    => Empty_Stmt_Idx,
+                     Use_Count    => 0,
+                     Next         => Empty_Flow_Idx,
+                     First_If     => Empty_If_Idx,
+                     Last_If      => Empty_If_Idx,
+                     Case_Expr    => No_Value_T,
+                     First_Case   => Empty_Case_Idx,
+                     Last_Case    => Empty_Case_Idx));
       Idx := Flows.Last;
       Set_Flow (BB, Idx);
       Current_Flow := Idx;
@@ -626,16 +646,17 @@ begin
 
    --  Create the entry for the unique return flow
 
-   Flows.Append ((Is_Return  => True,
-                  First_Stmt => Empty_Stmt_Idx,
-                  Last_Stmt  => Empty_Stmt_Idx,
-                  Use_Count  => 0,
-                  Next       => Empty_Flow_Idx,
-                  First_If   => Empty_If_Idx,
-                  Last_If    => Empty_If_Idx,
-                  Case_Expr  => No_Value_T,
-                  First_Case => Empty_Case_Idx,
-                  Last_Case  => Empty_Case_Idx));
+   Flows.Append ((Is_Return    => True,
+                  Return_Value => No_Value_T,
+                  First_Stmt   => Empty_Stmt_Idx,
+                  Last_Stmt    => Empty_Stmt_Idx,
+                  Use_Count    => 0,
+                  Next         => Empty_Flow_Idx,
+                  First_If     => Empty_If_Idx,
+                  Last_If      => Empty_If_Idx,
+                  Case_Expr    => No_Value_T,
+                  First_Case   => Empty_Case_Idx,
+                  Last_Case    => Empty_Case_Idx));
    Return_Flow := Flows.Last;
 
 end CCG.Flow;

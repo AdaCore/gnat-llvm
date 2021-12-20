@@ -60,7 +60,7 @@ package CCG.Flow is
    --  is for "default".
 
    function Target (Idx : Case_Idx) return Flow_Idx
-     with Pre => Present (Idx), Post => Present (Target'Result);
+     with Pre => Present (Idx);
    --  Return the Flow corresponding to this case node
 
    procedure Set_Value (Idx : Case_Idx; V : Value_T)
@@ -84,7 +84,7 @@ package CCG.Flow is
    --  Instruction that does test (for debug info), if any
 
    function Target (Idx : If_Idx) return Flow_Idx
-     with Pre => Present (Idx), Post => Present (Target'Result);
+     with Pre => Present (Idx);
    --  Destination if this test is true (or not Present)
 
    procedure Set_Test (Idx : If_Idx; V : Value_T)
@@ -146,14 +146,8 @@ package CCG.Flow is
      with Pre  => Present (Idx) and then Present (S),
           Post => Last_Stmt (Idx) = S, Inline;
 
-   procedure Add_Use (Idx : Flow_Idx)
-     with Pre => Present (Idx);
-   procedure Remove_Use (Idx : Flow_Idx)
-     with Pre => Present (Idx) and then Use_Count (Idx) > 0;
-
    procedure Set_Next (Idx, Nidx : Flow_Idx)
-     with Pre  => Present (Idx) and then Present (Nidx),
-          Post => Next (Idx) = Nidx, Inline;
+     with Pre  => Present (Idx), Post => Next (Idx) = Nidx, Inline;
 
    procedure Set_Is_Return (Idx : Flow_Idx; B : Boolean := True)
      with Pre  => Present (Idx), Post => Is_Return (Idx) = B, Inline;

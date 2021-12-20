@@ -117,6 +117,11 @@ package body CCG.Flow is
           Post => Present (New_If'Result);
    --  Create a new "if" piece for the specified value and instruction
 
+   procedure Add_Use (Idx : Flow_Idx) with Inline;
+   procedure Remove_Use (Idx : Flow_Idx) with Inline;
+   --  Add or remove (respectively) a usage of the Flow denoted by Idx,
+   --  if any.
+
    -----------
    -- Value --
    -----------
@@ -146,6 +151,8 @@ package body CCG.Flow is
 
    procedure Set_Target (Idx : Case_Idx; Fidx : Flow_Idx) is
    begin
+      Remove_Use (Target (Idx));
+      Add_Use (Fidx);
       Cases.Table (Idx).Target := Fidx;
    end Set_Target;
 
@@ -194,6 +201,8 @@ package body CCG.Flow is
 
    procedure Set_Target (Idx : If_Idx; Fidx : Flow_Idx) is
    begin
+      Remove_Use (Target (Idx));
+      Add_Use (Fidx);
       Ifs.Table (Idx).Target := Fidx;
    end Set_Target;
 
@@ -291,7 +300,10 @@ package body CCG.Flow is
 
    procedure Add_Use (Idx : Flow_Idx) is
    begin
-      Flows.Table (Idx).Use_Count := Flows.Table (Idx).Use_Count + 1;
+      if Present (Idx) then
+         Flows.Table (Idx).Use_Count := Flows.Table (Idx).Use_Count + 1;
+      end if;
+
    end Add_Use;
 
    ----------------
@@ -300,7 +312,10 @@ package body CCG.Flow is
 
    procedure Remove_Use (Idx : Flow_Idx) is
    begin
-      Flows.Table (Idx).Use_Count := Flows.Table (Idx).Use_Count - 1;
+      if Present (Idx) then
+         Flows.Table (Idx).Use_Count := Flows.Table (Idx).Use_Count - 1;
+      end if;
+
    end Remove_Use;
 
    --------------
@@ -309,6 +324,8 @@ package body CCG.Flow is
 
    procedure Set_Next (Idx, Nidx : Flow_Idx) is
    begin
+      Remove_Use (Next (Idx));
+      Add_Use (Nidx);
       Flows.Table (Idx).Next := Nidx;
    end Set_Next;
 
@@ -411,11 +428,9 @@ package body CCG.Flow is
       V   : Value_T           := Get_First_Instruction (BB);
 
    begin
-      --  If we already made a flow for this block, mark it as used once
-      --  more and return it.
+      --  If we already made a flow for this block, return it.
 
       if Present (Idx) then
-         Add_Use (Idx);
          return Idx;
       end if;
 
@@ -425,7 +440,7 @@ package body CCG.Flow is
       Flows.Append ((Is_Return  => False,
                      First_Stmt => Empty_Stmt_Idx,
                      Last_Stmt  => Empty_Stmt_Idx,
-                     Use_Count  => 1,
+                     Use_Count  => 0,
                      Next       => Empty_Flow_Idx,
                      First_If   => Empty_If_Idx,
                      Last_If    => Empty_If_Idx,

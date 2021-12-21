@@ -597,7 +597,7 @@ package body CCG.Instructions is
       Default   : constant Value_T                := Ops (Ops'First + 1);
       POO       : constant Process_Operand_Option :=
         (if Get_Is_Unsigned (Val) then POO_Unsigned else POO_Signed);
-      Last_Case : constant Nat := Ops'Length / 2 - 1;
+      Last_Case : constant Nat                    := Ops'Length / 2 - 1;
       Result    : Str                             :=
         Process_Operand (Val, POO);
 

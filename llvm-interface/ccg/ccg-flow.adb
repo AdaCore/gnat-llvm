@@ -133,6 +133,9 @@ package body CCG.Flow is
    Current_Flow : Flow_Idx := Empty_Flow_Idx;
    --  The flow that we're currently building
 
+   function New_Case (V : Value_T) return Case_Idx;
+   --  Create a new case element for V, if any
+
    function New_If (V, Inst : Value_T) return If_Idx
      with Pre  => Is_A_Instruction (Inst),
           Post => Present (New_If'Result);
@@ -454,6 +457,16 @@ package body CCG.Flow is
       Set_Last_Stmt (Current_Flow, Sidx);
    end Add_Stmt_To_Flow;
 
+   --------------
+   -- New_Case --
+   --------------
+
+   function New_Case (V : Value_T) return Case_Idx is
+   begin
+      Cases.Append ((Value => V, Target => Empty_Flow_Idx));
+      return Cases.Last;
+   end New_Case;
+
    ------------
    -- New_If --
    ------------
@@ -592,6 +605,50 @@ package body CCG.Flow is
             else
                Set_Next (Idx, Get_Or_Create_Flow (Get_Operand0 (T)));
             end if;
+
+         when Op_Switch =>
+
+            declare
+               Val       : constant Value_T                := Get_Operand0 (T);
+               POO       : constant Process_Operand_Option :=
+                 (if Get_Is_Unsigned (Val) then POO_Unsigned else POO_Signed);
+               Last_Case : constant Nat                    :=
+                 Get_Num_Operands (T) / 2 - 1;
+               Result    : Str                             :=
+                 Process_Operand (Val, POO);
+               Cidx      : Case_Idx                        :=
+                 New_Case (No_Value_T);
+
+            begin
+               --  If Val is narrower than int, we must force it to its size
+
+               if Get_Scalar_Bit_Size (Val) < Int_Size then
+                  Result := TP ("(#T1) ", Val) & (Result + Unary);
+               end if;
+
+               --  Set the case expression and the first case data
+
+               Set_Case_Expr  (Idx, Result);
+               Set_First_Case (Idx, Cidx);
+
+               --  Now make case data for each alternative
+
+               for J in 1 .. Last_Case loop
+                  Cidx := New_Case (Get_Operand (T, J * 2));
+               end loop;
+
+               --  Finally, set the last case and all the targets of the
+               --  default and alternative choices.
+
+               Set_Last_Case (Idx, Cidx);
+               Cidx := First_Case (Idx);
+               Set_Target (Cidx, Get_Or_Create_Flow (Get_Operand1 (T)));
+               for J in 1 .. Last_Case loop
+                  Cidx := Cidx + 1;
+                  Set_Target
+                    (Cidx, Get_Or_Create_Flow (Get_Operand (T, J * 2 + 1)));
+               end loop;
+            end;
 
          when others =>
             pragma Assert (False);

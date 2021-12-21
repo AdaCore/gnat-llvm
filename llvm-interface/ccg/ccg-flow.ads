@@ -101,6 +101,10 @@ package CCG.Flow is
 
    --  Getters and setters for a Flow
 
+   function BB (Idx : Flow_Idx)           return Basic_Block_T
+     with Pre => not Is_Return (Idx), Post => Present (BB'Result);
+   --  Block corresponding to this flow, if not a return flow
+
    function First_Stmt (Idx : Flow_Idx)   return Stmt_Idx
      with Pre => Present (Idx);
    --  First statement that's part of this flow, if any
@@ -132,7 +136,7 @@ package CCG.Flow is
      with Pre => Present (Idx);
    --  First and last if/then/elseif/else parts, if any
 
-   function Case_Expr (Idx : Flow_Idx)    return Value_T
+   function Case_Expr (Idx : Flow_Idx)    return Str
      with Pre => Present (Idx);
    --  Expression for switch statement, if any
 
@@ -142,10 +146,13 @@ package CCG.Flow is
      with Pre => Present (Idx);
    --  First and last of cases for a switch statement, if any
 
+   procedure Set_BB (Idx : Flow_Idx; B : Basic_Block_T)
+     with Pre  => Present (Idx) and then Present (B),
+          Post => BB (Idx) = B, Inline;
+
    procedure Set_First_Stmt (Idx : Flow_Idx; S : Stmt_Idx)
      with Pre  => Present (Idx) and then Present (S),
           Post => First_Stmt (Idx) = S, Inline;
-
    procedure Set_Last_Stmt (Idx : Flow_Idx; S : Stmt_Idx)
      with Pre  => Present (Idx) and then Present (S),
           Post => Last_Stmt (Idx) = S, Inline;
@@ -163,19 +170,17 @@ package CCG.Flow is
    procedure Set_First_If (Idx : Flow_Idx; Iidx : If_Idx)
      with Pre  => Present (Idx) and then Present (Iidx),
           Post => First_If (Idx) = Iidx, Inline;
-
    procedure Set_Last_If (Idx : Flow_Idx; Iidx : If_Idx)
      with Pre  => Present (Idx) and then Present (Iidx),
           Post => Last_If (Idx) = Iidx, Inline;
 
-   procedure Set_Case_Expr (Idx : Flow_Idx; V : Value_T)
-     with Pre  => Present (Idx) and then Present (V),
-          Post => Case_Expr (Idx) = V, Inline;
+   procedure Set_Case_Expr (Idx : Flow_Idx; S : Str)
+     with Pre  => Present (Idx) and then Present (S),
+          Post => Case_Expr (Idx) = S, Inline;
 
    procedure Set_First_Case (Idx : Flow_Idx; Cidx : Case_Idx)
      with Pre  => Present (Idx) and then Present (Cidx),
           Post => First_Case (Idx) = Cidx, Inline;
-
    procedure Set_Last_Case (Idx : Flow_Idx; Cidx : Case_Idx)
      with Pre  => Present (Idx) and then Present (Cidx),
           Post => Last_Case (Idx) = Cidx, Inline;

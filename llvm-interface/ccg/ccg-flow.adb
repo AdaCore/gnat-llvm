@@ -75,6 +75,9 @@ package body CCG.Flow is
    --  Finally, we have the table that encodes the flows themselves
 
    type Flow_Data is record
+      BB           : Basic_Block_T;
+      --  Block corresponding to this flow, if not a return flow
+
       First_Stmt   : Stmt_Idx;
       --  First statement that's part of this flow, if any
 
@@ -98,7 +101,7 @@ package body CCG.Flow is
       Last_If      : If_Idx;
       --  First and last if/then/elseif/else parts, if any
 
-      Case_Expr    : Value_T;
+      Case_Expr    : Str;
       --  Expression for switch statement, if any
 
       First_Case   : Case_Idx;
@@ -224,6 +227,13 @@ package body CCG.Flow is
       Ifs.Table (Idx).Target := Fidx;
    end Set_Target;
 
+   --------
+   -- BB --
+   --------
+
+   function BB (Idx : Flow_Idx) return Basic_Block_T is
+     (Flows.Table (Idx).BB);
+
    ----------------
    -- First_Stmt --
    ----------------
@@ -284,7 +294,7 @@ package body CCG.Flow is
    -- Case_Expr --
    ---------------
 
-   function Case_Expr (Idx : Flow_Idx)  return Value_T is
+   function Case_Expr (Idx : Flow_Idx)  return Str is
      (Flows.Table (Idx).Case_Expr);
 
    ----------------
@@ -300,6 +310,15 @@ package body CCG.Flow is
 
    function Last_Case (Idx : Flow_Idx) return Case_Idx is
       (Flows.Table (Idx).Last_Case);
+
+   ------------
+   -- Set_BB --
+   ------------
+
+   procedure Set_BB (Idx : Flow_Idx; B : Basic_Block_T) is
+   begin
+      Flows.Table (Idx).BB := B;
+   end Set_BB;
 
    --------------------
    -- Set_First_Stmt --
@@ -394,9 +413,9 @@ package body CCG.Flow is
    -- Set_Case_Expr --
    -------------------
 
-   procedure Set_Case_Expr (Idx : Flow_Idx; V : Value_T) is
+   procedure Set_Case_Expr (Idx : Flow_Idx; S : Str) is
    begin
-      Flows.Table (Idx).Case_Expr := V;
+      Flows.Table (Idx).Case_Expr := S;
    end Set_Case_Expr;
 
    --------------------
@@ -473,13 +492,14 @@ package body CCG.Flow is
 
       Flows.Append ((Is_Return    => False,
                      Return_Value => No_Value_T,
+                     BB           => BB,
                      First_Stmt   => Empty_Stmt_Idx,
                      Last_Stmt    => Empty_Stmt_Idx,
                      Use_Count    => 0,
                      Next         => Empty_Flow_Idx,
                      First_If     => Empty_If_Idx,
                      Last_If      => Empty_If_Idx,
-                     Case_Expr    => No_Value_T,
+                     Case_Expr    => No_Str,
                      First_Case   => Empty_Case_Idx,
                      Last_Case    => Empty_Case_Idx));
       Idx := Flows.Last;
@@ -535,13 +555,14 @@ package body CCG.Flow is
                else
                   Flows.Append ((Is_Return    => True,
                                  Return_Value => Retval,
+                                 BB           => No_BB_T,
                                  First_Stmt   => Empty_Stmt_Idx,
                                  Last_Stmt    => Empty_Stmt_Idx,
                                  Use_Count    => 0,
                                  Next         => Empty_Flow_Idx,
                                  First_If     => Empty_If_Idx,
                                  Last_If      => Empty_If_Idx,
-                                 Case_Expr    => No_Value_T,
+                                 Case_Expr    => No_Str,
                                  First_Case   => Empty_Case_Idx,
                                  Last_Case    => Empty_Case_Idx));
                   Ret_Idx := Flows.Last;

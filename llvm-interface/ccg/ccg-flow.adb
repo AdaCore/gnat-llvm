@@ -655,26 +655,33 @@ package body CCG.Flow is
       begin
          Write_Str ("Flow ");
          Write_Int (Pos (Idx));
-         Write_Str (", ");
+         Write_Str (" has ");
          Write_Int (Use_Count (Idx));
-         Write_Str (" uses:");
-         Write_Eol;
+         if Use_Count (Idx) = 1 then
+            Write_Str (" use");
+         else
+            Write_Str (" uses");
+         end if;
+
          if Is_Return (Idx) then
-            Write_Str ("  RETURN");
+            Write_Str (" return");
             if Present (Return_Value (Idx)) then
                Write_Str (" " & Return_Value (Idx));
             end if;
-
-            Write_Eol;
          elsif Present (Next (Idx)) then
-            Write_Str ("  Next flow: ");
+            Write_Str (" next ");
             Write_Flow_Idx (Next (Idx));
-            Write_Eol;
          end if;
 
+         if Present (First_Stmt (Idx)) or else Present (First_If (Idx))
+           or else Present (Case_Expr (Idx))
+         then
+            Write_Str (":");
+         end if;
+
+         Write_Eol;
+
          if Present (First_Stmt (Idx)) then
-            Write_Str ("  Statements:");
-            Write_Eol;
             for Sidx in First_Stmt (Idx) .. Last_Stmt (Idx) loop
                Write_Str ("      " & Get_Stmt_Line (Sidx).Line_Text,
                           Eol => True);
@@ -682,8 +689,6 @@ package body CCG.Flow is
          end if;
 
          if Present (First_If (Idx)) then
-            Write_Str ("  If parts:");
-            Write_Eol;
             for Iidx in First_If (Idx) .. Last_If (Idx) loop
                if Present (Test (Iidx)) then
                   Write_Str ("    if (" & Test (Iidx) & ") then ");
@@ -700,7 +705,12 @@ package body CCG.Flow is
             Write_Str ("  switch (" & Case_Expr (Idx) & ")");
             Write_Eol;
             for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
-               Write_Str ("    " & Value (Cidx) & ": goto");
+               if Present (Value (Cidx)) then
+                  Write_Str ("    " & Value (Cidx) & ": goto ");
+               else
+                  Write_Str ("    default: goto ");
+               end if;
+
                Write_Flow_Idx (Target (Cidx));
                Write_Eol;
             end loop;

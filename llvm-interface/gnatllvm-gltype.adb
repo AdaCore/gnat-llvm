@@ -517,7 +517,7 @@ package body GNATLLVM.GLType is
          --  any corner cases.
 
          return Result : Type_T := Byte_T do
-            while True loop
+            loop
                This_Count := ULL'Min (Count_Left, ULL (unsigned'Last / 2));
                Result     := Array_Type (Result, unsigned (This_Count));
                exit when This_Count = Count_Left;

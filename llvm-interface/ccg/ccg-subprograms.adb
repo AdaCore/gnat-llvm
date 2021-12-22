@@ -29,6 +29,7 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
 with CCG.Environment;  use CCG.Environment;
+with CCG.Flow;         use CCG.Flow;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Target;       use CCG.Target;
@@ -338,6 +339,7 @@ package body CCG.Subprograms is
       Call := (Call & ")") + Component;
       if Get_Type_Kind (V) = Void_Type_Kind then
          Output_Stmt (Call, V => V);
+         Add_Line    (Call, V);
       else
          --  If this returns an array, we've changed it to returning a
          --  struct whose field is that array, so we need to do the
@@ -358,6 +360,7 @@ package body CCG.Subprograms is
             begin
                Output_Decl (TP ("#T1_R ", V) & Our_Var, V => V);
                Output_Stmt (Our_Var & " = " & Call + Assign, V => V);
+               Add_Line    (Our_Var & " = " & Call + Assign, V);
                Call := Our_Var & ".F" + Component;
             end;
          end if;
@@ -501,6 +504,7 @@ package body CCG.Subprograms is
    begin
       Result := S & " (" & Op1 & ", " & Op2 & ", " & Op3 & ")";
       Output_Stmt (Result, V => V);
+      Add_Line (Result, V);
       return True;
    end Memory_Operation;
 

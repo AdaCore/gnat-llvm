@@ -30,6 +30,7 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;  use CCG.Aggregates;
 with CCG.Environment; use CCG.Environment;
+with CCG.Flow;        use CCG.Flow;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
 with CCG.Target;      use CCG.Target;
@@ -687,6 +688,7 @@ package body CCG.Instructions is
 
       if Get_Type_Kind (T) /= Array_Type_Kind then
          Output_Stmt (LHS & " = " & RHS + Assign, V => V);
+         Add_Line    (LHS & " = " & RHS + Assign, V);
       else
          --  If T is a zero-sized array, it means that we're not to move
          --  anything, but we make a one-element array for zero-length
@@ -696,6 +698,9 @@ package body CCG.Instructions is
             Output_Stmt ("memmove ((void *) " & (Addr_Of (LHS) + Comma) &
                            ", (void *) " & (Addr_Of (RHS) + Comma) &
                            ", sizeof (" & T & "))", V => V);
+            Add_Line    ("memmove ((void *) " & (Addr_Of (LHS) + Comma) &
+                           ", (void *) " & (Addr_Of (RHS) + Comma) &
+                           ", sizeof (" & T & "))", V);
          end if;
       end if;
    end Write_Copy;

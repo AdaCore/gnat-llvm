@@ -404,9 +404,6 @@ package body CCG.Output is
          end if;
       end if;
 
-      --  Finally, all the statement to the current flow
-      Add_Stmt_To_Flow (Stmts.Last);
-
    end Output_Stmt;
 
    -----------------

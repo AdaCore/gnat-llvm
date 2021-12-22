@@ -98,11 +98,11 @@ package body CCG.Flow is
       BB           : Basic_Block_T;
       --  Block corresponding to this flow, if not a return flow
 
-      First_Stmt   : Stmt_Idx;
-      --  First statement that's part of this flow, if any
+      First_Line   : Line_Idx;
+      --  First line that's part of this flow, if any
 
-      Last_Stmt    : Stmt_Idx;
-      --  Last statement that's part of this flow, if any
+      Last_Line    : Line_Idx;
+      --  Last line that's part of this flow, if any
 
       Use_Count    : Nat;
       --  Number of times this flow is referenced by another flow (always one
@@ -152,6 +152,10 @@ package body CCG.Flow is
 
    Current_Flow : Flow_Idx := Empty_Flow_Idx;
    --  The flow that we're currently building
+
+   function New_Line (S : Str; V : Value_T) return Line_Idx
+     with Pre => Present (S) and then Present (V);
+   --  Create a new Line entry with the specified values
 
    function New_Case (V : Value_T) return Case_Idx;
    --  Create a new case element for V, if any
@@ -290,18 +294,18 @@ package body CCG.Flow is
      (Flows.Table (Idx).BB);
 
    ----------------
-   -- First_Stmt --
+   -- First_Line --
    ----------------
 
-   function First_Stmt (Idx : Flow_Idx) return Stmt_Idx is
-     (Flows.Table (Idx).First_Stmt);
+   function First_Line (Idx : Flow_Idx) return Line_Idx is
+     (Flows.Table (Idx).First_Line);
 
    ---------------
    -- Last_Stmt --
    ---------------
 
-   function Last_Stmt (Idx : Flow_Idx) return Stmt_Idx is
-     (Flows.Table (Idx).Last_Stmt);
+   function Last_Line (Idx : Flow_Idx) return Line_Idx is
+     (Flows.Table (Idx).Last_Line);
 
    ---------------
    -- Use_Count --
@@ -376,22 +380,22 @@ package body CCG.Flow is
    end Set_BB;
 
    --------------------
-   -- Set_First_Stmt --
+   -- Set_First_Line --
    --------------------
 
-   procedure Set_First_Stmt (Idx : Flow_Idx; S : Stmt_Idx) is
+   procedure Set_First_Line (Idx : Flow_Idx; Lidx : Line_Idx) is
    begin
-      Flows.Table (Idx).First_Stmt := S;
-   end Set_First_Stmt;
+      Flows.Table (Idx).First_Line := Lidx;
+   end Set_First_Line;
 
    -------------------
    -- Set_Last_Stmt --
    -------------------
 
-   procedure Set_Last_Stmt (Idx : Flow_Idx; S : Stmt_Idx) is
+   procedure Set_Last_Line (Idx : Flow_Idx; Lidx : Line_Idx) is
    begin
-      Flows.Table (Idx).Last_Stmt := S;
-   end Set_Last_Stmt;
+      Flows.Table (Idx).Last_Line := Lidx;
+   end Set_Last_Line;
 
    -------------
    -- Add_Use --
@@ -491,23 +495,36 @@ package body CCG.Flow is
       Flows.Table (Idx).Last_Case := Cidx;
    end Set_Last_Case;
 
-   ----------------------
-   -- Add_Stmt_To_Flow --
-   ----------------------
+   --------------
+   -- Add_Line --
+   --------------
 
-   procedure Add_Stmt_To_Flow (Sidx : Stmt_Idx) is
+   procedure Add_Line (S : Str; V : Value_T) is
+      Idx : constant Line_Idx := New_Line (S, V);
+
    begin
-      --  ?? During development, allow this to be called with no flow set.
+      --  ??? For development, ignore if no current flow
+
       if No (Current_Flow) then
          return;
       end if;
 
-      if No (First_Stmt (Current_Flow)) then
-         Set_First_Stmt (Current_Flow, Sidx);
+      if No (First_Line (Current_Flow)) then
+         Set_First_Line (Current_Flow, Idx);
       end if;
 
-      Set_Last_Stmt (Current_Flow, Sidx);
-   end Add_Stmt_To_Flow;
+      Set_Last_Line (Current_Flow, Idx);
+   end Add_Line;
+
+   --------------
+   -- New_Line --
+   --------------
+
+   function New_Line (S : Str; V : Value_T) return Line_Idx is
+   begin
+      Lines.Append ((Text => S, Inst => V));
+      return Lines.Last;
+   end New_Line;
 
    --------------
    -- New_Case --
@@ -558,8 +575,8 @@ package body CCG.Flow is
       Flows.Append ((Is_Return    => False,
                      Return_Value => No_Value_T,
                      BB           => BB,
-                     First_Stmt   => Empty_Stmt_Idx,
-                     Last_Stmt    => Empty_Stmt_Idx,
+                     First_Line   => Empty_Line_Idx,
+                     Last_Line    => Empty_Line_Idx,
                      Use_Count    => 0,
                      Next         => Empty_Flow_Idx,
                      First_If     => Empty_If_Idx,
@@ -621,8 +638,8 @@ package body CCG.Flow is
                   Flows.Append ((Is_Return    => True,
                                  Return_Value => Retval,
                                  BB           => No_BB_T,
-                                 First_Stmt   => Empty_Stmt_Idx,
-                                 Last_Stmt    => Empty_Stmt_Idx,
+                                 First_Line   => Empty_Line_Idx,
+                                 Last_Line    => Empty_Line_Idx,
                                  Use_Count    => 0,
                                  Next         => Empty_Flow_Idx,
                                  First_If     => Empty_If_Idx,
@@ -782,7 +799,7 @@ package body CCG.Flow is
             Write_Flow_Idx (Next (Idx));
          end if;
 
-         if Present (First_Stmt (Idx)) or else Present (First_If (Idx))
+         if Present (First_Line (Idx)) or else Present (First_If (Idx))
            or else Present (Case_Expr (Idx))
          then
             Write_Str (":");
@@ -790,10 +807,9 @@ package body CCG.Flow is
 
          Write_Eol;
 
-         if Present (First_Stmt (Idx)) then
-            for Sidx in First_Stmt (Idx) .. Last_Stmt (Idx) loop
-               Write_Str ("      " & Get_Stmt_Line (Sidx).Line_Text,
-                          Eol => True);
+         if Present (First_Line (Idx)) then
+            for Lidx in First_Line (Idx) .. Last_Line (Idx) loop
+               Write_Str ("      " & Text (Lidx), Eol => True);
             end loop;
          end if;
 

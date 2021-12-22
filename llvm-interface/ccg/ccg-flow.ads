@@ -130,13 +130,13 @@ package CCG.Flow is
      with Pre => not Is_Return (Idx), Post => Present (BB'Result);
    --  Block corresponding to this flow, if not a return flow
 
-   function First_Stmt (Idx : Flow_Idx)   return Stmt_Idx
+   function First_Line (Idx : Flow_Idx)   return Line_Idx
      with Pre => Present (Idx);
-   --  First statement that's part of this flow, if any
+   --  First line that's part of this flow, if any
 
-   function Last_Stmt (Idx : Flow_Idx)    return Stmt_Idx
+   function Last_Line (Idx : Flow_Idx)    return Line_Idx
      with Pre => Present (Idx);
-   --  Last statement that's part of this flow, if any
+   --  Last line that's part of this flow, if any
 
    function Use_Count (Idx : Flow_Idx)    return Nat
      with Pre => Present (Idx);
@@ -175,12 +175,12 @@ package CCG.Flow is
      with Pre  => Present (Idx) and then Present (B),
           Post => BB (Idx) = B, Inline;
 
-   procedure Set_First_Stmt (Idx : Flow_Idx; S : Stmt_Idx)
-     with Pre  => Present (Idx) and then Present (S),
-          Post => First_Stmt (Idx) = S, Inline;
-   procedure Set_Last_Stmt (Idx : Flow_Idx; S : Stmt_Idx)
-     with Pre  => Present (Idx) and then Present (S),
-          Post => Last_Stmt (Idx) = S, Inline;
+   procedure Set_First_Line (Idx : Flow_Idx; Lidx : Line_Idx)
+     with Pre  => Present (Idx) and then Present (Lidx),
+          Post => First_Line (Idx) = Lidx, Inline;
+   procedure Set_Last_Line (Idx : Flow_Idx; Lidx : Line_Idx)
+     with Pre  => Present (Idx) and then Present (Lidx),
+          Post => Last_Line (Idx) = Lidx, Inline;
 
    procedure Set_Next (Idx, Nidx : Flow_Idx)
      with Pre  => Present (Idx), Post => Next (Idx) = Nidx, Inline;
@@ -219,9 +219,9 @@ package CCG.Flow is
                   and then Get_Flow (BB) = Get_Or_Create_Flow'Result;
    --  Get (and create if needed) a Flow for a block
 
-   procedure Add_Stmt_To_Flow (Sidx : Stmt_Idx)
-     with Pre => Present (Sidx);
-   --  Add Sidx the set of statement for the current flow
+   procedure Add_Line (S : Str; V : Value_T)
+     with Pre => Present (S) and then Present (V);
+   --  Add a line and corresponding instruction to the current flow
 
    pragma Annotate (Xcov, Exempt_On, "Debug helper");
 

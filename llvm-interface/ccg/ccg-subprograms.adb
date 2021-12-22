@@ -20,6 +20,7 @@ with Ada.Strings.Fixed;       use Ada.Strings.Fixed;
 
 with Interfaces.C; use Interfaces.C;
 
+with Debug;  use Debug;
 with Lib;    use Lib;
 with Opt;    use Opt;
 with Output; use Output;
@@ -256,6 +257,8 @@ package body CCG.Subprograms is
    -----------------------
 
    procedure Output_Subprogram (V : Value_T) is
+      Idx : Flow_Idx;
+
    begin
       --  If there are no blocks, we have nothing to do
 
@@ -264,14 +267,25 @@ package body CCG.Subprograms is
       end if;
 
       --  Otherwise, start a new function, do any transformation to help
-      --  our output, and output it, starting from the entry block.
+      --  our output, make all flows in this subprogram, and ouput each flow.
 
       New_Subprogram (V);
       Transform_Blocks (V);
       Output_Decl (Function_Proto (V), Semicolon => False, V => V);
       Output_Decl ("{", Semicolon => False, Start_Block => Decl);
-      Output_BB (Get_Entry_Basic_Block (V));
+      Idx := Get_Or_Create_Flow (Get_Entry_Basic_Block (V));
       Clear_Pending_Values;
+      Add_Use (Idx);
+      if Debug_Flag_Underscore_U then
+         Push_Output;
+         Set_Standard_Error;
+         Write_Eol;
+         Write_Str ("Initial flows for " & V, Eol => True);
+         Pop_Output;
+         Dump_Flow (Pos (Idx), True);
+      end if;
+
+      Output_Flow (Idx);
 
    end Output_Subprogram;
 
@@ -338,8 +352,7 @@ package body CCG.Subprograms is
 
       Call := (Call & ")") + Component;
       if Get_Type_Kind (V) = Void_Type_Kind then
-         Output_Stmt (Call, V => V);
-         Add_Line    (Call, V);
+         Add_Line (Call, V);
       else
          --  If this returns an array, we've changed it to returning a
          --  struct whose field is that array, so we need to do the
@@ -359,8 +372,7 @@ package body CCG.Subprograms is
 
             begin
                Output_Decl (TP ("#T1_R ", V) & Our_Var, V => V);
-               Output_Stmt (Our_Var & " = " & Call + Assign, V => V);
-               Add_Line    (Our_Var & " = " & Call + Assign, V);
+               Add_Line (Our_Var & " = " & Call + Assign, V);
                Call := Our_Var & ".F" + Component;
             end;
          end if;
@@ -503,7 +515,6 @@ package body CCG.Subprograms is
 
    begin
       Result := S & " (" & Op1 & ", " & Op2 & ", " & Op3 & ")";
-      Output_Stmt (Result, V => V);
       Add_Line (Result, V);
       return True;
    end Memory_Operation;

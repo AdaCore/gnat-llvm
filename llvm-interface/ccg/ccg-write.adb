@@ -1016,21 +1016,10 @@ package body CCG.Write is
          Next_Line_To_Dump := Our_Line + 1;
       end if;
 
-      --  Process a goto. If the block has only one predecessor, we inline
+      --  Process a goto by adding the destination block to be written
       --  the block here.
 
       if Present (OL.BB) then
-         if Has_Unique_Predecessor (OL.BB) then
-            Write_BB (OL.BB,
-                      Omit_Label  => True,
-                      Start_Block => OL.Start_Block,
-                      End_Block   => End_Block);
-            return;
-         end if;
-
-         --  Since we're going to write the goto, indicate that that block
-         --  needs to be written.
-
          Add_Block_To_Write (OL.BB);
       end if;
 

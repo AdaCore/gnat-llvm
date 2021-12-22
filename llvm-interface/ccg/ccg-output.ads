@@ -111,6 +111,10 @@ package CCG.Output is
    --  section, in front of all subprograms; otherwise it's local to the
    --  current subprogram.
 
+   procedure Set_Current_BB (BB : Basic_Block_T)
+     with Pre => Present (BB);
+   --  Set BB as the block to be used for the next Output_Stmt call
+
    procedure Output_Stmt
      (S             : Str;
       Semicolon     : Boolean       := True;

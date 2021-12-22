@@ -104,6 +104,9 @@ package body CCG.Flow is
       Last_Line    : Line_Idx;
       --  Last line that's part of this flow, if any
 
+      Was_Output   : Boolean;
+      --  True if flow was already output
+
       Use_Count    : Nat;
       --  Number of times this flow is referenced by another flow (always one
       --  for the entry block).
@@ -165,10 +168,10 @@ package body CCG.Flow is
           Post => Present (New_If'Result);
    --  Create a new "if" piece for the specified value and instruction
 
-   procedure Add_Use (Idx : Flow_Idx) with Inline;
-   procedure Remove_Use (Idx : Flow_Idx) with Inline;
-   --  Add or remove (respectively) a usage of the Flow denoted by Idx,
-   --  if any.
+   procedure Output_Flow_Target (Idx : Flow_Idx; V : Value_T)
+     with Pre => Present (Idx) and then Present (V);
+   --  Write the line(s) needed to go to the flow denoted by Idx from
+   --  the instruction V.
 
    ----------
    -- Text --
@@ -307,6 +310,13 @@ package body CCG.Flow is
    function Last_Line (Idx : Flow_Idx) return Line_Idx is
      (Flows.Table (Idx).Last_Line);
 
+   ----------------
+   -- Was_Output --
+   ----------------
+
+   function Was_Output (Idx : Flow_Idx)  return Boolean is
+     (Flows.Table (Idx).Was_Output);
+
    ---------------
    -- Use_Count --
    ---------------
@@ -396,6 +406,15 @@ package body CCG.Flow is
    begin
       Flows.Table (Idx).Last_Line := Lidx;
    end Set_Last_Line;
+
+   ---------------------
+   -- Set_Was_Output --
+   ---------------------
+
+   procedure Set_Was_Output (Idx : Flow_Idx; B : Boolean := True) is
+   begin
+      Flows.Table (Idx).Was_Output := B;
+   end Set_Was_Output;
 
    -------------
    -- Add_Use --
@@ -500,7 +519,7 @@ package body CCG.Flow is
    --------------
 
    procedure Add_Line (S : Str; V : Value_T) is
-      Idx : constant Line_Idx := New_Line (S, V);
+      Idx : Line_Idx;
 
    begin
       --  ??? For development, ignore if no current flow
@@ -509,6 +528,17 @@ package body CCG.Flow is
          return;
       end if;
 
+      --  If we've been given an instruction corresponding to this
+      --  statement and it has side-effects, first flush any pending
+      --  assignments.
+
+      if Present (V) and then Has_Side_Effects (V) then
+         Process_Pending_Values;
+      end if;
+
+      --  Then add this line to the current flow
+
+      Idx := New_Line (S, V);
       if No (First_Line (Current_Flow)) then
          Set_First_Line (Current_Flow, Idx);
       end if;
@@ -575,6 +605,7 @@ package body CCG.Flow is
       Flows.Append ((Is_Return    => False,
                      Return_Value => No_Value_T,
                      BB           => BB,
+                     Was_Output   => False,
                      First_Line   => Empty_Line_Idx,
                      Last_Line    => Empty_Line_Idx,
                      Use_Count    => 0,
@@ -595,8 +626,10 @@ package body CCG.Flow is
          V := Get_Next_Instruction (V);
       end loop;
 
-      --  Finally, process the various types of terminators
+      --  Finally, write any pending values and process the various types
+      --  of terminators
 
+      Process_Pending_Values;
       case Get_Opcode (T) is
          when Op_Ret =>
             declare
@@ -614,6 +647,7 @@ package body CCG.Flow is
                  and then Get_Num_Operands (T) = 1
                then
                   Retval := Get_Operand0 (T);
+                  Maybe_Decl (Retval);
 
                   --  If we're returning an array, declare a value (we can
                   --  use T even though its LLVM type is void) of the
@@ -638,6 +672,7 @@ package body CCG.Flow is
                   Flows.Append ((Is_Return    => True,
                                  Return_Value => Retval,
                                  BB           => No_BB_T,
+                                 Was_Output   => False,
                                  First_Line   => Empty_Line_Idx,
                                  Last_Line    => Empty_Line_Idx,
                                  Use_Count    => 0,
@@ -662,10 +697,12 @@ package body CCG.Flow is
 
             if Is_Conditional (T) then
                declare
-                  Iidx1 : constant If_Idx := New_If (Get_Operand0 (T), T);
-                  Iidx2 : constant If_Idx := New_If (No_Value_T, T);
+                  Test  : constant Value_T := Get_Operand0 (T);
+                  Iidx1 : constant If_Idx  := New_If (Test, T);
+                  Iidx2 : constant If_Idx  := New_If (No_Value_T, T);
 
                begin
+                  Maybe_Decl   (Test);
                   Set_First_If (Idx, Iidx1);
                   Set_Last_If  (Idx, Iidx2);
                   Set_Target   (Iidx1, Get_Or_Create_Flow (Get_Operand2 (T)));
@@ -689,6 +726,8 @@ package body CCG.Flow is
                  New_Case (No_Value_T);
 
             begin
+               Maybe_Decl (Val);
+
                --  If Val is narrower than int, we must force it to its size
 
                if Get_Scalar_Bit_Size (Val) < Int_Size then
@@ -727,6 +766,122 @@ package body CCG.Flow is
 
       return Idx;
    end Get_Or_Create_Flow;
+
+   ------------------------
+   -- Output_Flow_Target --
+   ------------------------
+
+   procedure Output_Flow_Target (Idx : Flow_Idx; V : Value_T) is
+   begin
+      --  If this represents a return, write a return
+
+      if Is_Return (Idx) then
+         if Present (Return_Value (Idx)) then
+            Output_Stmt ("return " & Return_Value (Idx), V => V);
+         else
+            Output_Stmt ("return", V => V);
+         end if;
+
+      --  Otherwise, write a goto
+
+      else
+         Output_Stmt ("goto " & BB (Idx), V => V, BB => BB (Idx));
+      end if;
+   end Output_Flow_Target;
+
+   -----------------
+   -- Output_Flow --
+   -----------------
+
+   procedure Output_Flow (Idx : Flow_Idx) is
+      T : Value_T;
+
+   begin
+      --  If we have no flow, this was already output, or this is a return
+      --  flow, do nothing. Otherwise, indicate that it was output.
+
+      if No (Idx) or else Is_Return (Idx) or else Was_Output (Idx) then
+         return;
+      else
+         Set_Was_Output (Idx);
+         Set_Was_Output (BB (Idx));
+      end if;
+
+      --  ??? This preliminary version outputs something that looks very
+      --  ugly, but is the transition to the new mechanism.
+
+      Set_Current_BB (BB (Idx));
+      T := Get_Basic_Block_Terminator (BB (Idx));
+
+      --  Now process lines in the flow, if any
+
+      if Present (First_Line (Idx)) then
+         for Lidx in First_Line (Idx) .. Last_Line (Idx) loop
+            Output_Stmt (Text (Lidx), V => Inst (Lidx));
+         end loop;
+      end if;
+
+      --  Next process any "if" parts in the flow
+
+      if Present (First_If (Idx)) then
+         Output_Stmt ("if (" & Test (First_If (Idx)) & ")",
+                      V         => Inst (First_If (Idx)),
+                      Semicolon => False);
+         Output_Flow_Target (Target (First_If (Idx)), T);
+         for Iidx in First_If (Idx) + 1 .. Last_If (Idx) loop
+            if Present (Test (Iidx)) then
+               Output_Stmt ("else if (" & Test (Iidx) & ")",
+                      V         => Inst (Iidx),
+                      Semicolon => False);
+            else
+               Output_Stmt ("else", V => Inst (Iidx), Semicolon => False);
+            end if;
+
+            Output_Flow_Target (Target (Iidx), Inst (Iidx));
+         end loop;
+      end if;
+
+      --  Now any Case parts
+
+      if Present (Case_Expr (Idx)) then
+         Output_Stmt ("switch (" & Case_Expr (Idx) & ")",
+                      V         => T,
+                      Semicolon => False);
+         Output_Stmt ("{", Semicolon => False);
+         for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
+            if Present (Value (Cidx)) then
+               Output_Stmt ("case " & Value (Cidx) & ":", Semicolon => False);
+            else
+               Output_Stmt ("default:", Semicolon => False);
+            end if;
+
+            Output_Flow_Target (Target (Cidx), T);
+         end loop;
+
+         Output_Stmt ("}", Semicolon => False);
+      end if;
+
+      --  The final thing to output is any jump at the end
+
+      if Present (Next (Idx)) then
+         Output_Flow_Target (Next (Idx), T);
+      end if;
+
+      --  Now output any flows referenced by this one
+
+      Output_Flow (Next (Idx));
+      if Present (First_If (Idx)) then
+         for Iidx in First_If (Idx) .. Last_If (Idx) loop
+            Output_Flow (Target (Iidx));
+         end loop;
+      end if;
+
+      if Present (Case_Expr (Idx)) then
+         for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
+            Output_Flow (Target (Cidx));
+         end loop;
+      end if;
+   end Output_Flow;
 
    ---------------
    -- Dump_Flow --

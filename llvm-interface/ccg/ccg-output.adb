@@ -365,6 +365,15 @@ package body CCG.Output is
                    End_Block, Indent_Type, V);
    end Output_Decl;
 
+   --------------------
+   -- Set_Current_BB --
+   --------------------
+
+   procedure Set_Current_BB (BB : Basic_Block_T) is
+   begin
+      Current_BB := BB;
+   end Set_Current_BB;
+
    -----------------
    -- Output_Stmt --
    ----------------

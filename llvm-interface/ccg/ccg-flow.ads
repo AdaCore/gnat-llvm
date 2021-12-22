@@ -66,7 +66,7 @@ package CCG.Flow is
    --  The string containing the line to be written
 
    function Inst (Idx : Line_Idx)   return Value_T
-     with Pre => Present (Idx), Post => Is_A_Instruction (Inst'Result);
+     with Pre => Present (Idx), Post => Present (Inst'Result);
       --  The instruction corresponding to the line (for debug data)
 
    procedure Set_Text (Idx : Line_Idx; S : Str)
@@ -74,7 +74,7 @@ package CCG.Flow is
           Post => Text (Idx) = S, Inline;
 
    procedure Set_Inst (Idx : Line_Idx; V : Value_T)
-     with Pre  => Present (Idx) and then Is_A_Instruction (V),
+     with Pre  => Present (Idx) and then Present (V),
           Post => Inst (Idx) = V, Inline;
 
    --  Getters and setters for a Case node
@@ -143,6 +143,10 @@ package CCG.Flow is
    --  Number of times this flow is referenced by another flow (always one
    --  for the entry block).
 
+   function Was_Output (Idx : Flow_Idx)   return Boolean
+     with Pre => Present (Idx);
+   --  True if flow was already output
+
    function Next (Idx : Flow_Idx)         return Flow_Idx
      with Pre => Present (Idx);
    --  Next flow executed after this one has completed, if any
@@ -182,6 +186,9 @@ package CCG.Flow is
      with Pre  => Present (Idx) and then Present (Lidx),
           Post => Last_Line (Idx) = Lidx, Inline;
 
+   procedure Set_Was_Output (Idx : Flow_Idx; B : Boolean := True)
+     with Pre  => Present (Idx), Post => Was_Output (Idx) = B, Inline;
+
    procedure Set_Next (Idx, Nidx : Flow_Idx)
      with Pre  => Present (Idx), Post => Next (Idx) = Nidx, Inline;
 
@@ -219,9 +226,17 @@ package CCG.Flow is
                   and then Get_Flow (BB) = Get_Or_Create_Flow'Result;
    --  Get (and create if needed) a Flow for a block
 
+   procedure Add_Use (Idx : Flow_Idx) with Inline;
+   procedure Remove_Use (Idx : Flow_Idx) with Inline;
+   --  Add or remove (respectively) a usage of the Flow denoted by Idx,
+   --  if any.
+
    procedure Add_Line (S : Str; V : Value_T)
      with Pre => Present (S) and then Present (V);
    --  Add a line and corresponding instruction to the current flow
+
+   procedure Output_Flow (Idx : Flow_Idx);
+   --  Output the flow for Idx, if Present
 
    pragma Annotate (Xcov, Exempt_On, "Debug helper");
 

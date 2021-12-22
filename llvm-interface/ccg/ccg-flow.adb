@@ -29,7 +29,27 @@ with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Flow is
 
-   --  First is a table containing pairs of switch statement values and
+   --  First is how we record a line of C to be output, which contains the
+   --  string to output and the instruction it comes from (for debug data).
+
+   type Line_Data is record
+      Text : Str;
+      --  The string containing the line to be written
+
+      Inst : Value_T;
+      --  The instruction corresponding to the line (for debug data)
+
+   end record;
+
+   package Lines is new Table.Table
+     (Table_Component_Type => Line_Data,
+      Table_Index_Type     => Line_Idx,
+      Table_Low_Bound      => Line_Idx_Low_Bound,
+      Table_Initial        => 10,
+      Table_Increment      => 50,
+      Table_Name           => "Cases");
+
+   --  Next is a table containing pairs of switch statement values and
    --  targets.
 
    type Case_Data is record
@@ -145,6 +165,38 @@ package body CCG.Flow is
    procedure Remove_Use (Idx : Flow_Idx) with Inline;
    --  Add or remove (respectively) a usage of the Flow denoted by Idx,
    --  if any.
+
+   ----------
+   -- Text --
+   ----------
+
+   function Text (Idx : Line_Idx) return Str is
+     (Lines.Table (Idx).Text);
+
+   ----------
+   -- Inst --
+   ----------
+
+   function Inst (Idx : Line_Idx) return Value_T is
+     (Lines.Table (Idx).Inst);
+
+   --------------
+   -- Set_Text --
+   --------------
+
+   procedure Set_Text (Idx : Line_Idx; S : Str) is
+   begin
+      Lines.Table (Idx).Text := S;
+   end Set_Text;
+
+   --------------
+   -- Set_Inst --
+   --------------
+
+   procedure Set_Inst (Idx : Line_Idx; V : Value_T) is
+   begin
+      Lines.Table (Idx).Inst := V;
+   end Set_Inst;
 
    -----------
    -- Value --
@@ -807,6 +859,7 @@ package body CCG.Flow is
 begin
    --  Ensure we have an empty entry in the tables
 
+   Lines.Increment_Last;
    Cases.Increment_Last;
    Ifs.Increment_Last;
    Flows.Increment_Last;

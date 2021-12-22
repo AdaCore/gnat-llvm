@@ -38,8 +38,8 @@ with CCG.Write;        use CCG.Write;
 
 package body CCG.Subprograms is
 
-   Subprogram_Idx_Low_Bound  : constant := 800_000_000;
-   Subprogram_Idx_High_Bound : constant := 899_999_999;
+   Subprogram_Idx_Low_Bound  : constant := 900_000_000;
+   Subprogram_Idx_High_Bound : constant := 999_999_999;
    type Subprogram_Idx is
      range Subprogram_Idx_Low_Bound .. Subprogram_Idx_High_Bound;
    Subprogram_Idx_Start      : constant Subprogram_Idx :=

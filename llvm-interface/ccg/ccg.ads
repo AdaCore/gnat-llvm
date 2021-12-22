@@ -63,8 +63,9 @@ package CCG is
    type Flow_Idx is range Flow_Idx_Low_Bound .. Flow_Idx_High_Bound;
    Empty_Flow_Idx             : constant Flow_Idx := Flow_Idx_Low_Bound;
 
-   --  Case_Idx is 6xx_xxx_xxx and If_Idx is 7xx_xxx_xxx (in ccg-flow.ads).
-   --  Subprogram_Idx (in ccg-subprograms.adb) is 8xx_xxx_xxx.
+   --  Line_Idx is 6xx_xxx_xxx, Case_Idx is 7xx_xxx_xxx, and If_Idx is
+   --  8xx_xxx_xxx (in ccg-flow.ads). Subprogram_Idx (in ccg-subprograms.adb)
+   --  is 9xx_xxx_xxx.
 
    --  We output any typedefs at the time we decide that we need it and
    --  also output decls for any global variables at a similar time.

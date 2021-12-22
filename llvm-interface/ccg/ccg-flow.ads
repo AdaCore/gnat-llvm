@@ -36,21 +36,46 @@ package CCG.Flow is
    --  a second to contains information about one case of a switch
    --  statement, and the final table to represent a Flow itself.
 
-   Case_Idx_Low_Bound  : constant := 600_000_000;
-   Case_Idx_High_Bound : constant := 699_999_999;
+   Line_Idx_Low_Bound  : constant := 600_000_000;
+   Line_Idx_High_Bound : constant := 699_999_999;
+   type Line_Idx is range Line_Idx_Low_Bound .. Line_Idx_High_Bound;
+   Empty_Line_Idx      : constant Line_Idx := Line_Idx_Low_Bound;
+
+   Case_Idx_Low_Bound  : constant := 700_000_000;
+   Case_Idx_High_Bound : constant := 799_999_999;
    type Case_Idx is range Case_Idx_Low_Bound .. Case_Idx_High_Bound;
    Empty_Case_Idx      : constant Case_Idx := Case_Idx_Low_Bound;
 
-   If_Idx_Low_Bound    : constant := 700_000_000;
-   If_Idx_High_Bound   : constant := 799_999_999;
+   If_Idx_Low_Bound    : constant := 800_000_000;
+   If_Idx_High_Bound   : constant := 899_999_999;
    type If_Idx is range If_Idx_Low_Bound .. If_Idx_High_Bound;
    Empty_If_Idx        : constant If_Idx := If_Idx_Low_Bound;
 
+   function Present (Idx : Line_Idx) return Boolean is (Idx /= Empty_Line_Idx);
    function Present (Idx : Case_Idx) return Boolean is (Idx /= Empty_Case_Idx);
    function Present (Idx : If_Idx)   return Boolean is (Idx /= Empty_If_Idx);
 
+   function No (Idx : Line_Idx) return Boolean is (Idx = Empty_Line_Idx);
    function No (Idx : Case_Idx) return Boolean is (Idx = Empty_Case_Idx);
    function No (Idx : If_Idx)   return Boolean is (Idx = Empty_If_Idx);
+
+   --  Getters and setters for a Line node
+
+   function Text (Idx : Line_Idx)   return Str
+     with Pre => Present (Idx), Post => Present (Text'Result);
+   --  The string containing the line to be written
+
+   function Inst (Idx : Line_Idx)   return Value_T
+     with Pre => Present (Idx), Post => Is_A_Instruction (Inst'Result);
+      --  The instruction corresponding to the line (for debug data)
+
+   procedure Set_Text (Idx : Line_Idx; S : Str)
+     with Pre  => Present (Idx) and then Present (S),
+          Post => Text (Idx) = S, Inline;
+
+   procedure Set_Inst (Idx : Line_Idx; V : Value_T)
+     with Pre  => Present (Idx) and then Is_A_Instruction (V),
+          Post => Inst (Idx) = V, Inline;
 
    --  Getters and setters for a Case node
 

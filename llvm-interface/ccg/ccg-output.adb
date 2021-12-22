@@ -331,7 +331,6 @@ package body CCG.Output is
          Start_Block    =>
           (if Present (Start_Block) then Start_Block else Next_Block_Style),
          Indent_Type    => Indent_Type,
-         Stmt_Type      => Normal,
          End_Block      => End_Block,
          V              => V,
          BB             => No_BB_T);
@@ -374,7 +373,6 @@ package body CCG.Output is
      (S             : Str;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
-      Stmt_Type     : Stmt_Type_T   := Normal;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T)
    is
@@ -393,7 +391,6 @@ package body CCG.Output is
                      Start_Block    => Next_Block_Style,
                      End_Block      => None,
                      Indent_Type    => Indent_Type,
-                     Stmt_Type      => Stmt_Type,
                      V              => V,
                      BB             => BB));
       Next_Block_Style := None;
@@ -420,12 +417,11 @@ package body CCG.Output is
      (S             : String;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
-      Stmt_Type     : Stmt_Type_T   := Normal;
       V             : Value_T       := No_Value_T;
       BB            : Basic_Block_T := No_BB_T)
    is
    begin
-      Output_Stmt (+S, Semicolon, Indent_Type, Stmt_Type, V, BB);
+      Output_Stmt (+S, Semicolon, Indent_Type, V, BB);
    end Output_Stmt;
 
    ------------------------
@@ -589,7 +585,7 @@ package body CCG.Output is
    is
    begin
       Start_Output_Block (BS);
-      Output_Stmt ("goto " & To, Stmt_Type => Goto_Line, V => From, BB => To);
+      Output_Stmt ("goto " & To, V => From, BB => To);
       End_Stmt_Block (BS);
    end Output_Branch;
 

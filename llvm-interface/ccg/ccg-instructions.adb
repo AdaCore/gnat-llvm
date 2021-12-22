@@ -567,14 +567,9 @@ package body CCG.Instructions is
       if Is_Conditional (V) and then Ops (Ops'First + 1) /= Ops (Ops'First + 2)
       then
          Output_Stmt (TP ("if (#1)", Op1) + Assign,
-                      Semicolon => False,
-                      Stmt_Type => If_Line,
-                      V         => V);
+                      Semicolon => False, V => V);
          Output_Branch (V, Ops (Ops'First + 2), If_Part);
-         Output_Stmt ("else",
-                      Semicolon => False,
-                      Stmt_Type => Else_Line,
-                      V         => V);
+         Output_Stmt ("else", Semicolon => False, V => V);
          Output_Branch (V, Ops (Ops'First + 1), If_Part);
       elsif Is_Conditional (V) then
          if not Has_Side_Effects (Op1) then
@@ -612,7 +607,6 @@ package body CCG.Instructions is
 
       Output_Stmt ("switch (" & Result +  Assign & ")",
                    Semicolon => False,
-                   Stmt_Type => Switch_Line,
                    V         => V);
       Start_Output_Block (Switch);
 
@@ -629,7 +623,6 @@ package body CCG.Instructions is
          begin
             Output_Stmt ("case " & Process_Operand (Value, POO) & ":",
                          Semicolon   => False,
-                         Stmt_Type   => Label_Line,
                          Indent_Type => Under_Brace);
 
             --  If this isn't branching to the same label as the next case
@@ -648,7 +641,6 @@ package body CCG.Instructions is
 
       Output_Stmt ("default:",
                    Semicolon   => False,
-                   Stmt_Type   => Label_Line,
                    Indent_Type => Under_Brace);
       Output_Branch (V, Default);
       End_Stmt_Block (Switch);

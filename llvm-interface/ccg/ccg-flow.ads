@@ -98,7 +98,7 @@ package CCG.Flow is
 
    --  Getters and setters for an If node
 
-   function Test (Idx : If_Idx)   return Value_T
+   function Test (Idx : If_Idx)   return Str
      with Pre => Present (Idx);
    --  Return the expression corresponding to the test, if Present. If
    --  not, this represents an "else".
@@ -112,9 +112,9 @@ package CCG.Flow is
      with Pre => Present (Idx);
    --  Destination if this test is true (or not Present)
 
-   procedure Set_Test (Idx : If_Idx; V : Value_T)
-     with Pre  => Present (Idx) and then Present (V),
-          Post => Test (Idx) = V, Inline;
+   procedure Set_Test (Idx : If_Idx; S : Str)
+     with Pre  => Present (Idx) and then Present (S),
+          Post => Test (Idx) = S, Inline;
 
    procedure Set_Inst (Idx : If_Idx; V : Value_T)
      with Pre  => Present (Idx) and then Is_A_Instruction (V),
@@ -155,7 +155,7 @@ package CCG.Flow is
      with Pre => Present (Idx);
    --  True for a return flow
 
-   function Return_Value (Idx : Flow_Idx) return Value_T
+   function Return_Value (Idx : Flow_Idx) return Str
      with Pre => Is_Return (Idx) and then Present (Idx);
    --  If a return flow, the value to return, if any
 
@@ -195,9 +195,9 @@ package CCG.Flow is
    procedure Set_Is_Return (Idx : Flow_Idx; B : Boolean := True)
      with Pre  => Present (Idx), Post => Is_Return (Idx) = B, Inline;
 
-   procedure Set_Return_Value (Idx : Flow_Idx; V : Value_T)
-     with Pre  => Present (Idx) and then Is_Return (Idx) and then Present (V),
-          Post => Return_Value (Idx) = V, Inline;
+   procedure Set_Return_Value (Idx : Flow_Idx; S : Str)
+     with Pre  => Present (Idx) and then Is_Return (Idx) and then Present (S),
+          Post => Return_Value (Idx) = S, Inline;
 
    procedure Set_First_If (Idx : Flow_Idx; Iidx : If_Idx)
      with Pre  => Present (Idx) and then Present (Iidx),

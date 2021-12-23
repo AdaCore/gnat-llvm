@@ -72,7 +72,7 @@ package body CCG.Flow is
    --  Next is a table containing pairs of if/then tests and targets.
 
    type If_Data is record
-      Test   : Value_T;
+      Test   : Str;
       --  Expression corresponding to the test, if Present. If not, this
       --  represents an "else".
 
@@ -117,7 +117,7 @@ package body CCG.Flow is
       Is_Return    : Boolean;
       --  This is set for the unique return flow
 
-      Return_Value : Value_T;
+      Return_Value : Str;
       --  If a return flow, the value to return, if any
 
       First_If     : If_Idx;
@@ -163,7 +163,7 @@ package body CCG.Flow is
    function New_Case (V : Value_T) return Case_Idx;
    --  Create a new case element for V, if any
 
-   function New_If (V, Inst : Value_T) return If_Idx
+   function New_If (S : Str; Inst : Value_T) return If_Idx
      with Pre  => Is_A_Instruction (Inst),
           Post => Present (New_If'Result);
    --  Create a new "if" piece for the specified value and instruction
@@ -243,7 +243,7 @@ package body CCG.Flow is
    -- Test --
    ----------
 
-   function Test (Idx : If_Idx) return Value_T is
+   function Test (Idx : If_Idx) return Str is
      (Ifs.Table (Idx).Test);
 
    ----------
@@ -264,9 +264,9 @@ package body CCG.Flow is
    -- Set_Test --
    --------------
 
-   procedure Set_Test (Idx : If_Idx; V : Value_T) is
+   procedure Set_Test (Idx : If_Idx; S : Str) is
    begin
-      Ifs.Table (Idx).Test := V;
+      Ifs.Table (Idx).Test := S;
    end Set_Test;
 
    --------------
@@ -342,7 +342,7 @@ package body CCG.Flow is
    -- Return_Value --
    ------------------
 
-   function Return_Value (Idx : Flow_Idx) return Value_T is
+   function Return_Value (Idx : Flow_Idx) return Str is
      (Flows.Table (Idx).Return_Value);
 
    --------------
@@ -464,9 +464,9 @@ package body CCG.Flow is
    -- Set_Return_Value --
    ----------------------
 
-   procedure Set_Return_Value (Idx : Flow_Idx; V : Value_T) is
+   procedure Set_Return_Value (Idx : Flow_Idx; S : Str) is
    begin
-      Flows.Table (Idx).Return_Value := V;
+      Flows.Table (Idx).Return_Value := S;
    end Set_Return_Value;
 
    ------------------
@@ -570,9 +570,9 @@ package body CCG.Flow is
    -- New_If --
    ------------
 
-   function New_If (V, Inst : Value_T) return If_Idx is
+   function New_If (S : Str; Inst : Value_T) return If_Idx is
    begin
-      Ifs.Append ((Test => V, Inst => Inst, Target => Empty_Flow_Idx));
+      Ifs.Append ((Test => S, Inst => Inst, Target => Empty_Flow_Idx));
       return Ifs.Last;
    end New_If;
 
@@ -603,7 +603,7 @@ package body CCG.Flow is
       --  and as the current flow.
 
       Flows.Append ((Is_Return    => False,
-                     Return_Value => No_Value_T,
+                     Return_Value => No_Str,
                      BB           => BB,
                      Was_Output   => False,
                      First_Line   => Empty_Line_Idx,
@@ -670,7 +670,9 @@ package body CCG.Flow is
                   Ret_Idx := Element (Position);
                else
                   Flows.Append ((Is_Return    => True,
-                                 Return_Value => Retval,
+                                 Return_Value =>
+                                   (if   Present (Retval) then +Retval
+                                    else No_Str),
                                  BB           => No_BB_T,
                                  Was_Output   => False,
                                  First_Line   => Empty_Line_Idx,
@@ -698,11 +700,13 @@ package body CCG.Flow is
             if Is_Conditional (T) then
                declare
                   Test  : constant Value_T := Get_Operand0 (T);
-                  Iidx1 : constant If_Idx  := New_If (Test, T);
-                  Iidx2 : constant If_Idx  := New_If (No_Value_T, T);
+                  Iidx1 : If_Idx;
+                  Iidx2 : If_Idx;
 
                begin
-                  Maybe_Decl   (Test);
+                  Maybe_Decl (Test);
+                  Iidx1 := New_If (+Test, T);
+                  Iidx2 := New_If (No_Str, T);
                   Set_First_If (Idx, Iidx1);
                   Set_Last_If  (Idx, Iidx2);
                   Set_Target   (Iidx1, Get_Or_Create_Flow (Get_Operand2 (T)));

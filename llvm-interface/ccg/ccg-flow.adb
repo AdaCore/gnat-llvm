@@ -921,9 +921,12 @@ package body CCG.Flow is
             Write_Str (")");
          end if;
 
-         --  If we haven't already dump this flow, show that we may need to
+         --  If we haven't already dumped this flow and haven't
+         --  already indicated we need to, show that we may need to
 
-         if not Contains (Dumped, Idx) then
+         if not Contains (Dumped, Idx)
+           and then not Contains (To_Dump, Idx)
+         then
             Insert (To_Dump, Idx);
          end if;
       end Write_Flow_Idx;

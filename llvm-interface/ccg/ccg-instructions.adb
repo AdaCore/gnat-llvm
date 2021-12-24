@@ -80,14 +80,6 @@ package body CCG.Instructions is
           Post => Present (Cmp_Instruction'Result);
    --  Return the value corresponding to a comparison instruction
 
-   procedure Branch_Instruction (V : Value_T; Ops : Value_Array)
-     with Pre => Is_A_Branch_Inst (V);
-   --  Process V, a branch instruction
-
-   procedure Switch_Instruction (V : Value_T; Ops : Value_Array)
-     with Pre => Is_A_Switch_Inst (V);
-   --  Process V, a switch instruction
-
    procedure Force_To_Variable (V : Value_T)
      with Pre  => Present (V), Post => No (Get_C_Value (V));
    --  If V has an expression for it, declare V as a variable and copy the
@@ -553,100 +545,6 @@ package body CCG.Instructions is
       end if;
    end Cmp_Instruction;
 
-   ------------------------
-   -- Branch_Instruction --
-   ------------------------
-
-   procedure Branch_Instruction (V : Value_T; Ops : Value_Array) is
-      Op1    : constant Value_T := Ops (Ops'First);
-   begin
-      --  See if this is an unconditional or conditional branch. Treat a
-      --  conditional branch both of whom go to the same location as an
-      --  unconditional branch, but mark the condition as used so we don't
-      --  try to output it as a pending value and then don't reference it.
-
-      if Is_Conditional (V) and then Ops (Ops'First + 1) /= Ops (Ops'First + 2)
-      then
-         Output_Stmt (TP ("if (#1)", Op1) + Assign,
-                      Semicolon => False, V => V);
-         Output_Branch (V, Ops (Ops'First + 2), If_Part);
-         Output_Stmt ("else", Semicolon => False, V => V);
-         Output_Branch (V, Ops (Ops'First + 1), If_Part);
-      elsif Is_Conditional (V) then
-         if not Has_Side_Effects (Op1) then
-            Set_Is_Used (Op1);
-         end if;
-
-         Output_Branch (V, Ops (Ops'First + 1));
-      else
-         Output_Branch (V, Op1);
-      end if;
-
-   end Branch_Instruction;
-
-   ------------------------
-   -- Switch_Instruction --
-   ------------------------
-
-   procedure Switch_Instruction (V : Value_T; Ops : Value_Array) is
-      Val       : constant Value_T                := Ops (Ops'First);
-      Default   : constant Value_T                := Ops (Ops'First + 1);
-      POO       : constant Process_Operand_Option :=
-        (if Get_Is_Unsigned (Val) then POO_Unsigned else POO_Signed);
-      Last_Case : constant Nat                    := Ops'Length / 2 - 1;
-      Result    : Str                             :=
-        Process_Operand (Val, POO);
-
-   begin
-      --  If Val is narrower than int, we must force it to its size
-
-      if Get_Scalar_Bit_Size (Val) < Int_Size then
-         Result := TP ("(#T1) ", Val) & (Result + Unary);
-      end if;
-
-      --  Write the switch statement itself
-
-      Output_Stmt ("switch (" & Result +  Assign & ")",
-                   Semicolon => False,
-                   V         => V);
-      Start_Output_Block (Switch);
-
-      --  Now handle each case. They start after the first two operands and
-      --  alternate between value and branch target.
-
-      for J in 1 .. Last_Case loop
-         declare
-            Value     : constant Value_T := Ops (Ops'First + J * 2);
-            Dest      : constant Value_T := Ops (Ops'First + J * 2 + 1);
-            Next_Dest : constant Value_T :=
-              (if J = Last_Case then Default else Ops (Ops'First + J * 2 + 3));
-
-         begin
-            Output_Stmt ("case " & Process_Operand (Value, POO) & ":",
-                         Semicolon   => False,
-                         Indent_Type => Under_Brace);
-
-            --  If this isn't branching to the same label as the next case
-            --  (or default if this is the last case), output the branch.
-            --  ??? We may want to sort to ensure this happens if there are
-            --  any duplicates.
-
-            if Dest /= Next_Dest then
-               Output_Branch (V, Dest);
-               Output_Stmt ("", Semicolon => False);
-            end if;
-         end;
-      end loop;
-
-      --  Finally, write the default and end the statement
-
-      Output_Stmt ("default:",
-                   Semicolon   => False,
-                   Indent_Type => Under_Brace);
-      Output_Branch (V, Default);
-      End_Stmt_Block (Switch);
-   end Switch_Instruction;
-
    ----------------
    -- Write_Copy --
    ----------------
@@ -810,9 +708,6 @@ package body CCG.Instructions is
       --  Handle the instruction according to its opcode
 
       case Opc is
-         when Op_Ret =>
-            Return_Instruction (V, Op1);
-
          when Op_Call =>
             Call_Instruction (V, Ops);
 
@@ -830,9 +725,6 @@ package body CCG.Instructions is
 
          when Op_Select =>
             Assignment (V, TP ("#1 ? #2 : #3", Op1, Op2, Op3) + Conditional);
-
-         when Op_Br =>
-            Branch_Instruction (V, Ops);
 
          when Op_Add | Op_Sub | Op_Mul | Op_S_Div | Op_U_Div | Op_S_Rem
             | Op_U_Rem | Op_Shl | Op_L_Shr | Op_A_Shr | Op_F_Add | Op_F_Sub
@@ -855,9 +747,6 @@ package body CCG.Instructions is
 
          when Op_Get_Element_Ptr =>
             GEP_Instruction (V, Ops);
-
-         when Op_Switch =>
-            Switch_Instruction (V, Ops);
 
          when Op_Unreachable =>
             null;

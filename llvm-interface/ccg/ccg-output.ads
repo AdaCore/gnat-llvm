@@ -169,15 +169,6 @@ package CCG.Output is
    procedure Output_BB (BB : Basic_Block_T);
    --  Generate the code for basic block unless already output
 
-   procedure Output_Branch
-     (From : Value_T; To : Value_T; BS : Block_Style := None)
-     with Pre => Present (From) and then Present (To);
-   procedure Output_Branch
-     (From : Value_T; To : Basic_Block_T; BS : Block_Style := None)
-     with Pre => Present (From) and then Present (To);
-   --  Generate code to jump from instruction From to instruction or
-   --  basic block To using the specify style block.
-
    procedure Maybe_Decl (V : Value_T; For_Initializer : Boolean := False)
      with Pre => Present (V);
    --  See if we need to write a declaration for V and write one if so.

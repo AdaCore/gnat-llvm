@@ -571,30 +571,6 @@ package body CCG.Output is
       Current_BB := No_BB_T;
    end Output_BB;
 
-   -------------------
-   -- Output_Branch --
-   -------------------
-
-   procedure Output_Branch
-     (From : Value_T; To : Value_T; BS : Block_Style := None)
-   is
-   begin
-      Output_Branch (From, Value_As_Basic_Block (To), BS);
-   end Output_Branch;
-
-   -------------------
-   -- Output_Branch --
-   -------------------
-
-   procedure Output_Branch
-     (From : Value_T; To : Basic_Block_T; BS : Block_Style := None)
-   is
-   begin
-      Start_Output_Block (BS);
-      Output_Stmt ("goto " & To, V => From, BB => To);
-      End_Stmt_Block (BS);
-   end Output_Branch;
-
 begin
    --  Ensure we have an empty entry in the tables that support empty
    --  entries.

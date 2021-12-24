@@ -582,36 +582,6 @@ package body CCG.Subprograms is
 
    end Call_Builtin;
 
-   ------------------------
-   -- Return_Instruction --
-   ------------------------
-
-   procedure Return_Instruction (V : Value_T; Op : Value_T) is
-   begin
-      --  If our function is marked no-return, we don't do anything.
-      --  Otherwise, handle the cases with and without a value to return.
-
-      if Does_Not_Return (Curr_Func) then
-         null;
-      elsif Present (Op) then
-
-         --  If we're returning an array, declare a value (we can use V even
-         --  though its LLVM type is void) of the struct type corresponding
-         --  to Op's type, assign Op into its only field (which will be done
-         --  with a memmove), and return that value.
-
-         if Get_Type_Kind (Op) = Array_Type_Kind then
-            Output_Decl (TP ("#T1_R #2", Op, V), V => V);
-            Write_Copy (V & ".F", Op, Type_Of (Op));
-            Output_Stmt (TP ("return #1", V), V => V);
-         else
-            Output_Stmt ("return " & Op + Assign, V => V);
-         end if;
-      else
-         Output_Stmt ("return", V => V);
-      end if;
-   end Return_Instruction;
-
    -------------------
    -- Add_Decl_Line --
    -------------------

@@ -93,7 +93,6 @@ package body Back_End is
                 (Get_Name_String (Name_Id (Unit_File_Name (Main_Unit))))
                 & Get_Target_Object_Suffix.all);
       Success       : Boolean;
-      pragma Unreferenced (Success);
 
    begin
       --  If we're to generate code, create an empty .o file is there isn't

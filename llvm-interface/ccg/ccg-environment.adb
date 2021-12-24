@@ -87,16 +87,6 @@ package body CCG.Environment is
    end record;
 
    type BB_Data is record
-      Was_Output  : Boolean;
-      --  True if this basic block has already been output
-
-      Was_Written : Boolean;
-      --  True if this basic block has already been written
-
-      First_Stmt  : Stmt_Idx;
-      Last_Stmt   : Stmt_Idx;
-      --  Index of first and last statements for this basic block
-
       Flow        : Flow_Idx;
       --  The Flow corresponding to this block, if any
 
@@ -254,11 +244,7 @@ package body CCG.Environment is
       elsif not Create then
          return No_BB_Idx;
       else
-         BB_Info.Append ((Was_Output  => False,
-                          Was_Written => False,
-                          First_Stmt  => Empty_Stmt_Idx,
-                          Last_Stmt   => Empty_Stmt_Idx,
-                          Flow        => Empty_Flow_Idx,
+         BB_Info.Append ((Flow        => Empty_Flow_Idx,
                           Output_Idx  => 0));
          Insert (BB_Info_Map, B, BB_Info.Last);
          return BB_Info.Last;
@@ -516,52 +502,6 @@ package body CCG.Environment is
       Type_Info.Table (Idx).Are_Outputting_Typedef := B;
    end Set_Are_Outputting_Typedef;
 
-   --------------------
-   -- Get_Was_Output --
-   --------------------
-
-   function Get_Was_Output (BB : Basic_Block_T) return Boolean is
-      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => False);
-
-   begin
-      return Present (Idx) and then BB_Info.Table (Idx).Was_Output;
-   end Get_Was_Output;
-
-   ---------------------
-   -- Get_Was_Written --
-   ---------------------
-
-   function Get_Was_Written (BB : Basic_Block_T) return Boolean is
-      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => False);
-
-   begin
-      return Present (Idx) and then BB_Info.Table (Idx).Was_Written;
-   end Get_Was_Written;
-
-   --------------------
-   -- Get_First_Stmt --
-   --------------------
-
-   function Get_First_Stmt (BB : Basic_Block_T) return Stmt_Idx is
-      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => False);
-
-   begin
-      return (if   Present (Idx) then BB_Info.Table (Idx).First_Stmt
-              else Empty_Stmt_Idx);
-   end Get_First_Stmt;
-
-   -------------------
-   -- Get_Last_Stmt --
-   -------------------
-
-   function Get_Last_Stmt (BB : Basic_Block_T) return Stmt_Idx is
-      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => False);
-
-   begin
-      return (if   Present (Idx) then BB_Info.Table (Idx).Last_Stmt
-              else Empty_Stmt_Idx);
-   end Get_Last_Stmt;
-
    --------------
    -- Get_Flow --
    --------------
@@ -573,50 +513,6 @@ package body CCG.Environment is
       return (if   Present (Idx) then BB_Info.Table (Idx).Flow
               else Empty_Flow_Idx);
    end Get_Flow;
-
-   --------------------
-   -- Set_Was_Output --
-   --------------------
-
-   procedure Set_Was_Output (BB : Basic_Block_T; B : Boolean := True) is
-      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => True);
-
-   begin
-      BB_Info.Table (Idx).Was_Output := B;
-   end Set_Was_Output;
-
-   ---------------------
-   -- Set_Was_Written --
-   ---------------------
-
-   procedure Set_Was_Written (BB : Basic_Block_T; B : Boolean := True) is
-      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => True);
-
-   begin
-      BB_Info.Table (Idx).Was_Written := B;
-   end Set_Was_Written;
-
-   --------------------
-   -- Set_First_Stmt --
-   --------------------
-
-   procedure Set_First_Stmt (BB : Basic_Block_T; Sidx : Stmt_Idx) is
-      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => True);
-
-   begin
-      BB_Info.Table (Idx).First_Stmt := Sidx;
-   end Set_First_Stmt;
-
-   -------------------
-   -- Set_Last_Stmt --
-   -------------------
-
-   procedure Set_Last_Stmt (BB : Basic_Block_T; Sidx : Stmt_Idx) is
-      Idx : constant BB_Idx := BB_Info_Idx (BB, Create => True);
-
-   begin
-      BB_Info.Table (Idx).Last_Stmt := Sidx;
-   end Set_Last_Stmt;
 
    --------------
    -- Set_Flow --

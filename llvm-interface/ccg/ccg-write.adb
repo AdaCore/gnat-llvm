@@ -1016,13 +1016,6 @@ package body CCG.Write is
          Next_Line_To_Dump := Our_Line + 1;
       end if;
 
-      --  Process a goto by adding the destination block to be written
-      --  the block here.
-
-      if Present (OL.BB) then
-         Add_Block_To_Write (OL.BB);
-      end if;
-
       --  Now handle possibly starting a block, write our line, then
       --  possibly ending a block. Handle any special indentation
       --  requirements. We special-case having start line starting with
@@ -1055,50 +1048,6 @@ package body CCG.Write is
       end if;
 
       Write_End_Block (End_Block, Present (OL.Start_Block));
-
    end Write_C_Line;
-
-   --------------
-   -- Write_BB --
-   --------------
-
-   procedure Write_BB
-     (BB          : Basic_Block_T;
-      Start_Block : Block_Style := None;
-      End_Block   : Block_Style := None;
-      Omit_Label  : Boolean     := False)
-   is
-      First_Stmt : constant Stmt_Idx := Get_First_Stmt (BB);
-      Last_Stmt  : constant Stmt_Idx := Get_Last_Stmt  (BB);
-
-   begin
-      --  If we didn't output anything for this BB or we've already written
-      --  it, do nothing.
-
-      if not Get_Was_Output (BB) or else Get_Was_Written (BB) then
-         return;
-
-      --  Unless this is the entry block or we've been asked to omit the
-      --  label, write the label for the block, preceeded by a blank line.
-
-      elsif not Omit_Label and then not Is_Entry_Block (BB) then
-         Write_Eol;
-         Write_C_Line (BB & ":",
-                       Indent_Type => Left,
-                       V           => Get_First_Instruction (BB));
-      end if;
-
-      --  Now mark as written and write each statement that we output for
-      --  this block.
-
-      Set_Was_Written (BB);
-      for Idx in First_Stmt .. Last_Stmt loop
-         Write_C_Line (Idx,
-                       Start_Block =>
-                         (if Idx = First_Stmt then Start_Block else None),
-                       End_Block   =>
-                         (if Idx = Last_Stmt  then End_Block   else None));
-      end loop;
-   end Write_BB;
 
 end CCG.Write;

@@ -111,10 +111,6 @@ package CCG.Output is
    --  section, in front of all subprograms; otherwise it's local to the
    --  current subprogram.
 
-   procedure Set_Current_BB (BB : Basic_Block_T)
-     with Pre => Present (BB);
-   --  Set BB as the block to be used for the next Output_Stmt call
-
    procedure Output_Stmt
      (S             : Str;
       Semicolon     : Boolean       := True;
@@ -165,9 +161,6 @@ package CCG.Output is
      with Pre => Is_A_Basic_Block (V) or else Is_A_Instruction (V);
    --  Determine whether something is the entry block or an instruction
    --  within the entry block
-
-   procedure Output_BB (BB : Basic_Block_T);
-   --  Generate the code for basic block unless already output
 
    procedure Maybe_Decl (V : Value_T; For_Initializer : Boolean := False)
      with Pre => Present (V);

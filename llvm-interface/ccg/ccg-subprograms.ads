@@ -64,12 +64,11 @@ package CCG.Subprograms is
    --  Return the prototype for function type T, using S for where the name
    --  of the function would be.
 
-   procedure Add_Decl_Line (Idx : Local_Decl_Idx);
-   --  Add a declaration line to the current subprogram
-
-   procedure Add_Block_To_Write (BB : Basic_Block_T)
-     with Pre => Present (BB);
-   --  Add BB to the list of blocks that we have to write
+   procedure Add_Decl_Line (Idx : Local_Decl_Idx)
+     with Pre => Present (Idx);
+   procedure Add_Stmt_Line (Idx : Stmt_Idx)
+     with Pre => Present (Idx);
+   --  Add a declaration or statement line to the current subprogram
 
    procedure Write_Subprograms;
    --  Write all the decls and statements for all subprograms

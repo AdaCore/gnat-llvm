@@ -27,16 +27,6 @@ package CCG.Write is
    --  This package contains subprograms and data used to output the saved
    --  C statements into the output file.
 
-   procedure Write_BB
-     (BB          : Basic_Block_T;
-      Start_Block : Block_Style := None;
-      End_Block   : Block_Style := None;
-      Omit_Label  : Boolean     := False)
-     with Pre => Present (BB);
-   --  Write the statements in BB, possibly omitting the initial label.
-   --  If this is being written as a replacement for a branch, we include
-   --  any start and end block styles from the line containing the branch.
-
    procedure Write_Value
      (V              : Value_T;
       Flags          : Value_Flags := Default_Flags;

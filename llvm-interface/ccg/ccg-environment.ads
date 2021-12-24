@@ -108,29 +108,9 @@ package CCG.Environment is
      with Pre  => Present (T), Post => Get_Are_Outputting_Typedef (T) = B,
           Inline;
 
-   function Get_Was_Output  (BB : Basic_Block_T) return Boolean
-     with Pre => Present (BB), Inline;
-   function Get_Was_Written (BB : Basic_Block_T) return Boolean
-     with Pre => Present (BB), Inline;
-   function Get_First_Stmt  (BB : Basic_Block_T) return Stmt_Idx
-     with Pre => Present (BB), Inline;
-   function Get_Last_Stmt   (BB : Basic_Block_T) return Stmt_Idx
-     with Pre => Present (BB), Inline;
    function Get_Flow        (BB : Basic_Block_T) return Flow_Idx
      with Pre => Present (BB), Inline;
 
-   procedure Set_Was_Output  (BB : Basic_Block_T; B : Boolean := True)
-     with Pre  => Present (BB), Post => Get_Was_Output (BB) = B, Inline;
-   procedure Set_Was_Written (BB : Basic_Block_T; B : Boolean := True)
-     with Pre  => Present (BB), Post => Get_Was_Written (BB) = B, Inline;
-   procedure Set_First_Stmt  (BB : Basic_Block_T; Sidx : Stmt_Idx)
-     with Pre  => Present (BB) and then No (Get_First_Stmt (BB)),
-          Post => Get_First_Stmt (BB) = Sidx, Inline;
-   procedure Set_Last_Stmt   (BB : Basic_Block_T; Sidx : Stmt_Idx)
-     with Pre  => Present (BB)
-                  and then (No (Get_Last_Stmt (BB))
-                            or else Sidx = Get_Last_Stmt (BB) + 1),
-          Post => Get_Last_Stmt (BB) = Sidx, Inline;
    procedure Set_Flow        (BB : Basic_Block_T; Fidx : Flow_Idx)
      with Pre  => Present (BB) and then Present (Fidx)
                   and then No (Get_Flow (BB)),

@@ -74,9 +74,6 @@ package body CCG.Output is
       Table_Increment      => 1000,
       Table_Name           => "Stmts");
 
-   Current_BB : Basic_Block_T := No_BB_T;
-   --  The basic block for which we're outputting statements
-
    Next_Block_Style : Block_Style := None;
    --  The Block_Style to use for the next line written using Output_Decl
    --  or Output_Stmt.
@@ -365,15 +362,6 @@ package body CCG.Output is
                    End_Block, Indent_Type, V);
    end Output_Decl;
 
-   --------------------
-   -- Set_Current_BB --
-   --------------------
-
-   procedure Set_Current_BB (BB : Basic_Block_T) is
-   begin
-      Current_BB := BB;
-   end Set_Current_BB;
-
    -----------------
    -- Output_Stmt --
    ----------------
@@ -394,7 +382,7 @@ package body CCG.Output is
          Process_Pending_Values;
       end if;
 
-      --  Add the statement to the appropriate block
+      --  Add the statement to the current subprogram
 
       Stmts.Append ((Line_Text      => (if Semicolon then S & ";" else S),
                      Start_Block    => Next_Block_Style,
@@ -402,16 +390,8 @@ package body CCG.Output is
                      Indent_Type    => Indent_Type,
                      V              => V,
                      BB             => BB));
+      Add_Stmt_Line (Stmts.Last);
       Next_Block_Style := None;
-
-      --  ??? For now, only do this if there is a current block
-
-      if Present (Current_BB) then
-         Set_Last_Stmt (Current_BB, Stmts.Last);
-         if No (Get_First_Stmt (Current_BB)) then
-            Set_First_Stmt (Current_BB, Stmts.Last);
-         end if;
-      end if;
 
    end Output_Stmt;
 
@@ -530,46 +510,6 @@ package body CCG.Output is
 
    function Get_Last_Global_Decl return Global_Decl_Idx is
      (Global_Decls.Last);
-
-   ---------------
-   -- Output_BB --
-   ---------------
-
-   procedure Output_BB (BB : Basic_Block_T) is
-      V          : Value_T          :=
-        (if Present (BB) then Get_First_Instruction (BB) else No_Value_T);
-      Terminator : constant Value_T :=
-        (if Present (BB) then Get_Basic_Block_Terminator (BB) else No_Value_T);
-
-   begin
-      --  Set which block we're dealing with
-
-      Current_BB := BB;
-
-      --  If this isn't really a basic block or we already processed it, do
-      --  nothing.
-
-      if No (BB) or else Get_Was_Output (BB) then
-         return;
-      end if;
-
-      --  Mark that we're outputing this block and process each
-      --  instruction it.
-
-      Set_Was_Output (BB);
-      while Present (V) loop
-         Process_Instruction (V);
-         V := Get_Next_Instruction (V);
-      end loop;
-
-      --  Now process any block referenced by the terminator
-
-      for J in Nat range 0 .. Get_Num_Successors (Terminator) - 1 loop
-         Output_BB (Get_Successor (Terminator, J));
-      end loop;
-
-      Current_BB := No_BB_T;
-   end Output_BB;
 
 begin
    --  Ensure we have an empty entry in the tables that support empty

@@ -54,6 +54,8 @@ package body CCG.Subprograms is
       Func       : Value_T;
       First_Decl : Local_Decl_Idx;
       Last_Decl  : Local_Decl_Idx;
+      First_Stmt : Stmt_Idx;
+      Last_Stmt  : Stmt_Idx;
    end record;
 
    package Subprograms is new Table.Table
@@ -81,14 +83,6 @@ package body CCG.Subprograms is
    --  Return a string corresponding to the return type of T, adjusting the
    --  type in the case where it's an array.
 
-   package Blocks_To_Write is new Table.Table
-     (Table_Component_Type => Basic_Block_T,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 10,
-      Table_Increment      => 10,
-      Table_Name           => "Blocks_To_Write");
-
    --------------------
    -- New_Subprogram --
    --------------------
@@ -97,7 +91,9 @@ package body CCG.Subprograms is
    begin
       Subprograms.Append ((Func       => V,
                            First_Decl => Empty_Local_Decl_Idx,
-                           Last_Decl  => Empty_Local_Decl_Idx));
+                           Last_Decl  => Empty_Local_Decl_Idx,
+                           First_Stmt => Empty_Stmt_Idx,
+                           Last_Stmt  => Empty_Stmt_Idx));
    end New_Subprogram;
 
    ---------------
@@ -603,14 +599,26 @@ package body CCG.Subprograms is
       SD.Last_Decl := Idx;
    end Add_Decl_Line;
 
-   ------------------------
-   -- Add_Block_To_Write --
-   ------------------------
+   -------------------
+   -- Add_Stmt_Line --
+   -------------------
 
-   procedure Add_Block_To_Write (BB : Basic_Block_T) is
+   procedure Add_Stmt_Line (Idx : Stmt_Idx) is
+      SD : Subprogram_Data renames Subprograms.Table (Subprograms.Last);
+
    begin
-      Blocks_To_Write.Append (BB);
-   end Add_Block_To_Write;
+      --  If this is the first we've written, set it as the first and last
+      --  for the current subprogram. Otherwise, verify that it's consecutive
+      --  to the last statement we added to this subprogram.
+
+      if No (SD.First_Stmt) then
+         SD.First_Stmt := Idx;
+      else
+         pragma Assert (Idx = SD.Last_Stmt + 1);
+      end if;
+
+      SD.Last_Stmt := Idx;
+   end Add_Stmt_Line;
 
    -----------------------
    -- Write_Subprograms --
@@ -641,8 +649,8 @@ package body CCG.Subprograms is
             --  First write the decls. We at least have the function prototype
 
             Write_Eol;
-            for Didx in SD.First_Decl .. SD.Last_Decl loop
-               Write_C_Line (Didx);
+            for Idx in SD.First_Decl .. SD.Last_Decl loop
+               Write_C_Line (Idx);
             end loop;
 
             --  If we're written more than just the prototype and the "{",
@@ -652,27 +660,10 @@ package body CCG.Subprograms is
                Write_Eol;
             end if;
 
-            --  Write the entry block for the function
+            --  Now write out the statements for the subprogram
 
-            if Present (Get_Entry_Basic_Block (SD.Func)) then
-               Write_BB (Get_Entry_Basic_Block (SD.Func));
-            end if;
-
-            --  Now write all other blocks that we branch to and that we
-            --  haven't already written.
-
-            while BB_J <= Blocks_To_Write.Last loop
-               declare
-                  BB : constant Basic_Block_T :=
-                    Blocks_To_Write.Table (BB_J);
-
-               begin
-                  if Get_Was_Output (BB) and then not Get_Was_Written (BB) then
-                     Write_BB (BB);
-                  end if;
-
-                  BB_J := BB_J + 1;
-               end;
+            for Idx in SD.First_Stmt .. SD.Last_Stmt loop
+               Write_C_Line (Idx);
             end loop;
          end;
 

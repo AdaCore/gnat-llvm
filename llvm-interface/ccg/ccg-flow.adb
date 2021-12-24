@@ -808,14 +808,21 @@ package body CCG.Flow is
          return;
       else
          Set_Was_Output (Idx);
-         Set_Was_Output (BB (Idx));
       end if;
 
       --  ??? This preliminary version outputs something that looks very
       --  ugly, but is the transition to the new mechanism.
 
-      Set_Current_BB (BB (Idx));
       T := Get_Basic_Block_Terminator (BB (Idx));
+
+      --  If this isn't the entry block, write the block's label
+
+      if not Is_Entry_Block (BB (Idx)) then
+         Output_Stmt (BB (Idx) & ":",
+                      Semicolon   => False,
+                      Indent_Type => Left,
+                      V           => Get_First_Instruction (BB (Idx)));
+      end if;
 
       --  Now process lines in the flow, if any
 

@@ -493,9 +493,11 @@ package body CCG.Transform is
             return False;
 
          --  If this is call or load, we can support it, but if there's more
-         --  than one, we'll be forcing things into variable, so we won't
+         --  than one, we'll be forcing things into variables, so we won't
          --  be making a simple expression for this. We could do better, but
          --  the idea here is just to catch the simple cases.
+         --  ??? The problem here is that we consider loads as volatile and
+         --  we perhaps should do this only for stores.
 
          elsif Is_A_Load_Inst (V) or else Is_A_Call_Inst (V) then
             if Had_Load_Call then

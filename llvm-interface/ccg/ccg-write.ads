@@ -60,15 +60,13 @@ package CCG.Write is
      (S             : Str;
       Indent_Type   : Indent_Style  := Normal;
       End_Block     : Block_Style   := None;
-      V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T)
+      V             : Value_T       := No_Value_T)
      with Pre => Present (S);
    procedure Write_C_Line
      (S             : String;
       Indent_Type   : Indent_Style  := Normal;
       End_Block     : Block_Style   := None;
-      V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T);
+      V             : Value_T       := No_Value_T);
    --  Write one line to our output file, taking care of any required
    --  debug data, source line writing, and #line directives.
 

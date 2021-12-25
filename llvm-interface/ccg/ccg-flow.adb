@@ -789,7 +789,7 @@ package body CCG.Flow is
       --  Otherwise, write a goto
 
       else
-         Output_Stmt ("goto " & BB (Idx), V => V, BB => BB (Idx));
+         Output_Stmt ("goto " & BB (Idx), V => V);
       end if;
    end Output_Flow_Target;
 

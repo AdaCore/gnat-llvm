@@ -329,8 +329,8 @@ package body CCG.Output is
           (if Present (Start_Block) then Start_Block else Next_Block_Style),
          Indent_Type    => Indent_Type,
          End_Block      => End_Block,
-         V              => V,
-         BB             => No_BB_T);
+         V              => V);
+
    begin
       Next_Block_Style := None;
       if Is_Typedef then
@@ -370,8 +370,7 @@ package body CCG.Output is
      (S             : Str;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
-      V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T)
+      V             : Value_T       := No_Value_T)
    is
    begin
       --  If we've been given an instruction corresponding to this
@@ -388,8 +387,7 @@ package body CCG.Output is
                      Start_Block    => Next_Block_Style,
                      End_Block      => None,
                      Indent_Type    => Indent_Type,
-                     V              => V,
-                     BB             => BB));
+                     V              => V));
       Add_Stmt_Line (Stmts.Last);
       Next_Block_Style := None;
 
@@ -403,11 +401,10 @@ package body CCG.Output is
      (S             : String;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
-      V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T)
+      V             : Value_T       := No_Value_T)
    is
    begin
-      Output_Stmt (+S, Semicolon, Indent_Type, V, BB);
+      Output_Stmt (+S, Semicolon, Indent_Type, V);
    end Output_Stmt;
 
    ------------------------

@@ -70,9 +70,6 @@ package CCG.Output is
       V              : Value_T;
       --  An LLVM value that may contain debug information denoting the
       --  position of this line in the source.
-
-      BB             : Basic_Block_T;
-      --  If line is "goto <label>;", the block this is branching to
    end record;
 
    function Int_Type_String (Size : Pos) return Str;
@@ -115,15 +112,13 @@ package CCG.Output is
      (S             : Str;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
-      V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T)
+      V             : Value_T       := No_Value_T)
      with Pre => Present (S);
    procedure Output_Stmt
      (S             : String;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
-      V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T);
+      V             : Value_T       := No_Value_T);
    --  Like Output_Decl, but for the statement part of the current subprogram
 
    procedure Start_Output_Block (BS : Block_Style);

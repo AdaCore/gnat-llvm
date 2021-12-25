@@ -930,16 +930,14 @@ package body CCG.Write is
      (S             : Str;
       Indent_Type   : Indent_Style  := Normal;
       End_Block     : Block_Style   := None;
-      V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T)
+      V             : Value_T       := No_Value_T)
    is
    begin
       Write_C_Line (Out_Line'(Line_Text     => S,
                               Start_Block   => None,
                               End_Block     => End_Block,
                               Indent_Type   => Indent_Type,
-                              V             => V,
-                              BB            => BB));
+                              V             => V));
    end Write_C_Line;
 
    ------------------
@@ -950,16 +948,14 @@ package body CCG.Write is
      (S             : String;
       Indent_Type   : Indent_Style  := Normal;
       End_Block     : Block_Style   := None;
-      V             : Value_T       := No_Value_T;
-      BB            : Basic_Block_T := No_BB_T)
+      V             : Value_T       := No_Value_T)
    is
    begin
       Write_C_Line (Out_Line'(Line_Text     => +S,
                               Start_Block   => None,
                               End_Block     => End_Block,
                               Indent_Type   => Indent_Type,
-                              V             => V,
-                              BB            => BB));
+                              V             => V));
    end Write_C_Line;
 
    ------------------

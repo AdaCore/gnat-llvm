@@ -522,12 +522,6 @@ package body CCG.Flow is
       Idx : Line_Idx;
 
    begin
-      --  ??? For development, ignore if no current flow
-
-      if No (Current_Flow) then
-         return;
-      end if;
-
       --  If we've been given an instruction corresponding to this
       --  statement and it has side-effects, first flush any pending
       --  assignments.

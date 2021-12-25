@@ -84,6 +84,10 @@ package CCG.Flow is
    --  Return the integer value for this case node or No_Value_T if this
    --  is for "default".
 
+   function Expr (Idx : Case_Idx)  return Str
+     with Pre => Present (Idx);
+   --  Return the string for this case node or No_Str if this is for "default"
+
    function Target (Idx : Case_Idx) return Flow_Idx
      with Pre => Present (Idx);
    --  Return the Flow corresponding to this case node
@@ -91,6 +95,10 @@ package CCG.Flow is
    procedure Set_Value (Idx : Case_Idx; V : Value_T)
      with Pre  => Present (Idx) and then Present (V),
           Post => Value (Idx) = V, Inline;
+
+   procedure Set_Expr (Idx : Case_Idx; S : Str)
+     with Pre  => Present (Idx) and then Present (S),
+          Post => Expr (Idx) = S, Inline;
 
    procedure Set_Target (Idx : Case_Idx; Fidx : Flow_Idx)
      with Pre  => Present (Idx) and then Present (Fidx),

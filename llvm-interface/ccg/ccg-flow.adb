@@ -50,12 +50,17 @@ package body CCG.Flow is
       Table_Name           => "Cases");
 
    --  Next is a table containing pairs of switch statement values and
-   --  targets.
+   --  targets. We record the value as an LLVM integer so we can use it
+   --  for a stable sort and as a Str so we can output the proper value in
+   --  C, including any handling of unsigned.
 
    type Case_Data is record
       Value  : Value_T;
       --  Value corresponding to this case or No_Value_T for "default"
 
+      Expr   : Str;
+
+      --  String for this case node or No_Str if this is for "default"
       Target : Flow_Idx;
       --  Destination for this value
 
@@ -160,8 +165,8 @@ package body CCG.Flow is
      with Pre => Present (S) and then Present (V);
    --  Create a new Line entry with the specified values
 
-   function New_Case (V : Value_T) return Case_Idx;
-   --  Create a new case element for V, if any
+   function New_Case (V : Value_T; S : Str) return Case_Idx;
+   --  Create a new case element for V and S, if any
 
    function New_If (S : Str; Inst : Value_T) return If_Idx
      with Pre  => Is_A_Instruction (Inst),
@@ -212,6 +217,13 @@ package body CCG.Flow is
    function Value (Idx : Case_Idx) return Value_T is
      (Cases.Table (Idx).Value);
 
+   ----------
+   -- Expr --
+   ----------
+
+   function Expr (Idx : Case_Idx) return Str is
+     (Cases.Table (Idx).Expr);
+
    ------------
    -- Target --
    ------------
@@ -219,14 +231,23 @@ package body CCG.Flow is
    function Target (Idx : Case_Idx) return Flow_Idx is
      (Cases.Table (Idx).Target);
 
-   --------------
+   ---------------
    -- Set_Value --
-   --------------
+   ---------------
 
    procedure Set_Value (Idx : Case_Idx; V : Value_T) is
    begin
       Cases.Table (Idx).Value := V;
    end Set_Value;
+
+   --------------
+   -- Set_Expr --
+   --------------
+
+   procedure Set_Expr (Idx : Case_Idx; S : Str) is
+   begin
+      Cases.Table (Idx).Expr := S;
+   end Set_Expr;
 
    ----------------
    -- Set_Target --
@@ -554,9 +575,9 @@ package body CCG.Flow is
    -- New_Case --
    --------------
 
-   function New_Case (V : Value_T) return Case_Idx is
+   function New_Case (V : Value_T; S : Str) return Case_Idx is
    begin
-      Cases.Append ((Value => V, Target => Empty_Flow_Idx));
+      Cases.Append ((Value => V, Expr => S, Target => Empty_Flow_Idx));
       return Cases.Last;
    end New_Case;
 
@@ -721,7 +742,7 @@ package body CCG.Flow is
                Result    : Str                             :=
                  Process_Operand (Val, POO);
                Cidx      : Case_Idx                        :=
-                 New_Case (No_Value_T);
+                 New_Case (No_Value_T, No_Str);
 
             begin
                Maybe_Decl (Val);
@@ -740,7 +761,12 @@ package body CCG.Flow is
                --  Now make case data for each alternative
 
                for J in 1 .. Last_Case loop
-                  Cidx := New_Case (Get_Operand (T, J * 2));
+                  declare
+                     Value : constant Value_T := Get_Operand (T, J * 2);
+
+                  begin
+                     Cidx := New_Case (Value, Process_Operand (Value, POO));
+                  end;
                end loop;
 
                --  Finally, set the last case and all the targets of the
@@ -855,7 +881,7 @@ package body CCG.Flow is
          Output_Stmt ("{", Semicolon => False);
          for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
             if Present (Value (Cidx)) then
-               Output_Stmt ("case " & Value (Cidx) & ":", Semicolon => False);
+               Output_Stmt ("case " & Expr (Cidx) & ":", Semicolon => False);
             else
                Output_Stmt ("default:", Semicolon => False);
             end if;

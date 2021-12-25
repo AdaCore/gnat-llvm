@@ -465,7 +465,7 @@ package body GNATLLVM.Conditionals is
 
       Alts        : constant List_Id       := Alternatives (N);
       Start_BB    : constant Basic_Block_T := Get_Insert_Block;
-      BB_End      : constant Basic_Block_T := Create_Basic_Block ("case.end");
+      BB_End      : constant Basic_Block_T := Create_Basic_Block;
       Alt         : Opt_N_Alternative_Id   := First_Non_Pragma (Alts);
       Current_Alt : Nat                                 := 1;
       BBs         : Basic_Block_Array (1 .. List_Length_Non_Pragma (Alts));
@@ -474,7 +474,7 @@ package body GNATLLVM.Conditionals is
       --  First emit the code for each alternative and add its BB
 
       while Present (Alt) loop
-         BBs (Current_Alt) := Create_Basic_Block ("case.alt");
+         BBs (Current_Alt) := Create_Basic_Block;
          Position_Builder_At_End (BBs (Current_Alt));
          Emit (Statements (Alt));
          Build_Br (BB_End);
@@ -732,7 +732,7 @@ package body GNATLLVM.Conditionals is
                   if J = Alts'Last - 1 and then K = Alts (J).Last_Choice then
                      BB := Alts (Alts'Last).BB;
                   else
-                     BB := Create_Basic_Block ("case.when");
+                     BB := Create_Basic_Block;
                   end if;
 
                   Build_If_Range (LHS, Choices (K).Low, Choices (K).High,

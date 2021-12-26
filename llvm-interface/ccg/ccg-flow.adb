@@ -173,10 +173,11 @@ package body CCG.Flow is
           Post => Present (New_If'Result);
    --  Create a new "if" piece for the specified value and instruction
 
-   procedure Output_Flow_Target (Idx : Flow_Idx; V : Value_T)
+   procedure Output_Flow_Target
+     (Idx : Flow_Idx; V : Value_T; BS : Block_Style)
      with Pre => Present (Idx) and then Present (V);
    --  Write the line(s) needed to go to the flow denoted by Idx from
-   --  the instruction V.
+   --  the instruction V. BS is the style of this block, if any
 
    ----------
    -- Text --
@@ -641,10 +642,10 @@ package body CCG.Flow is
          V := Get_Next_Instruction (V);
       end loop;
 
-      --  Finally, write any pending values and process the various types
-      --  of terminators
+      --  Finally, process the various types of terminators. We need to write
+      --  pending values after we've built the strings for any expressions
+      --  in ther terminator.
 
-      Process_Pending_Values;
       case Get_Opcode (T) is
          when Op_Ret =>
             declare
@@ -704,6 +705,7 @@ package body CCG.Flow is
                end if;
 
                Set_Next (Idx, Ret_Idx);
+               Process_Pending_Values;
             end;
 
          when Op_Br =>
@@ -719,9 +721,10 @@ package body CCG.Flow is
                   Iidx2 : If_Idx;
 
                begin
-                  Maybe_Decl (Test);
                   Iidx1 := New_If (+Test, T);
                   Iidx2 := New_If (No_Str, T);
+                  Maybe_Decl   (Test);
+                  Process_Pending_Values;
                   Set_First_If (Idx, Iidx1);
                   Set_Last_If  (Idx, Iidx2);
                   Set_Target   (Iidx1, Get_Or_Create_Flow (Get_Operand2 (T)));
@@ -729,6 +732,7 @@ package body CCG.Flow is
                end;
             else
                Set_Next (Idx, Get_Or_Create_Flow (Get_Operand0 (T)));
+               Process_Pending_Values;
             end if;
 
          when Op_Switch =>
@@ -753,8 +757,10 @@ package body CCG.Flow is
                   Result := TP ("(#T1) ", Val) & (Result + Unary);
                end if;
 
-               --  Set the case expression and the first case data
+               --  Process pending values and set the case expression and
+               --  the first case data.
 
+               Process_Pending_Values;
                Set_Case_Expr  (Idx, Result);
                Set_First_Case (Idx, Cidx);
 
@@ -795,8 +801,11 @@ package body CCG.Flow is
    -- Output_Flow_Target --
    ------------------------
 
-   procedure Output_Flow_Target (Idx : Flow_Idx; V : Value_T) is
+   procedure Output_Flow_Target
+     (Idx : Flow_Idx; V : Value_T; BS : Block_Style) is
    begin
+      Start_Output_Block (BS);
+
       --  If this represents a return, write a return
 
       if Is_Return (Idx) then
@@ -811,6 +820,8 @@ package body CCG.Flow is
       else
          Output_Stmt ("goto " & BB (Idx), V => V);
       end if;
+
+      End_Stmt_Block (BS);
    end Output_Flow_Target;
 
    -----------------
@@ -858,7 +869,7 @@ package body CCG.Flow is
          Output_Stmt ("if (" & Test (First_If (Idx)) & ")",
                       V         => Inst (First_If (Idx)),
                       Semicolon => False);
-         Output_Flow_Target (Target (First_If (Idx)), T);
+         Output_Flow_Target (Target (First_If (Idx)), T, BS => If_Part);
          for Iidx in First_If (Idx) + 1 .. Last_If (Idx) loop
             if Present (Test (Iidx)) then
                Output_Stmt ("else if (" & Test (Iidx) & ")",
@@ -868,7 +879,7 @@ package body CCG.Flow is
                Output_Stmt ("else", V => Inst (Iidx), Semicolon => False);
             end if;
 
-            Output_Flow_Target (Target (Iidx), Inst (Iidx));
+            Output_Flow_Target (Target (Iidx), Inst (Iidx), BS => If_Part);
          end loop;
       end if;
 
@@ -878,25 +889,33 @@ package body CCG.Flow is
          Output_Stmt ("switch (" & Case_Expr (Idx) & ")",
                       V         => T,
                       Semicolon => False);
-         Output_Stmt ("{", Semicolon => False);
+         Start_Output_Block (Switch);
          for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
             if Present (Value (Cidx)) then
-               Output_Stmt ("case " & Expr (Cidx) & ":", Semicolon => False);
+               Output_Stmt ("case " & Expr (Cidx) & ":",
+                            Semicolon   => False,
+                            Indent_Type => Under_Brace);
             else
-               Output_Stmt ("default:", Semicolon => False);
+               Output_Stmt ("default:",
+                            Semicolon   => False,
+                            Indent_Type => Under_Brace);
             end if;
 
-            Output_Flow_Target (Target (Cidx), T);
+            Output_Flow_Target (Target (Cidx), T, BS => None);
          end loop;
 
-         Output_Stmt ("}", Semicolon => False);
+         End_Stmt_Block (Switch);
       end if;
 
       --  The final thing to output is any jump at the end
 
       if Present (Next (Idx)) then
-         Output_Flow_Target (Next (Idx), T);
+         Output_Flow_Target (Next (Idx), T, BS => None);
       end if;
+
+      --  And separate flows
+
+      Output_Stmt ("", Semicolon => False);
 
       --  Now output any flows referenced by this one
 

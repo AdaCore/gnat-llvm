@@ -1159,7 +1159,7 @@ package body CCG.Flow is
 
          if Present (First_Line (Idx)) then
             for Lidx in First_Line (Idx) .. Last_Line (Idx) loop
-               Write_Str ("      " & Text (Lidx), Eol => True);
+               Write_Str ("    " & Text (Lidx), Eol => True);
             end loop;
          end if;
 

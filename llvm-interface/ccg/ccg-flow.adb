@@ -188,7 +188,7 @@ package body CCG.Flow is
    --  Simplify all targets in Idx to their ultimate destinations
 
    procedure Output_Flow_Target
-     (Idx : Flow_Idx; V : Value_T; BS : Block_Style)
+     (Idx : Flow_Idx; V : Value_T; BS : Block_Style; Depth : Nat)
      with Pre => Present (Idx) and then Present (V);
    --  Write the line(s) needed to go to the flow denoted by Idx from
    --  the instruction V. BS is the style of this block, if any
@@ -931,7 +931,7 @@ package body CCG.Flow is
    ------------------------
 
    procedure Output_Flow_Target
-     (Idx : Flow_Idx; V : Value_T; BS : Block_Style) is
+     (Idx : Flow_Idx; V : Value_T; BS : Block_Style; Depth : Nat) is
    begin
       Start_Output_Block (BS);
 
@@ -943,6 +943,12 @@ package body CCG.Flow is
          else
             Output_Stmt ("return", V => V);
          end if;
+
+      --  If this is a flow with only one use (so it must be this one),
+      --  output that flow directly.
+
+      elsif Use_Count (Idx) = 1 then
+         Output_Flow (Idx, Write_Label => False, Depth => Depth + 1);
 
       --  Otherwise, write a goto
 
@@ -957,7 +963,9 @@ package body CCG.Flow is
    -- Output_Flow --
    -----------------
 
-   procedure Output_Flow (Idx : Flow_Idx) is
+   procedure Output_Flow
+     (Idx : Flow_Idx; Depth : Nat := 0; Write_Label : Boolean := True)
+   is
       T : Value_T;
 
    begin
@@ -975,9 +983,9 @@ package body CCG.Flow is
 
       T := Get_Basic_Block_Terminator (BB (Idx));
 
-      --  If this isn't the entry block, write the block's label
+      --  Write the block's label, if requested
 
-      if not Is_Entry_Block (BB (Idx)) then
+      if Write_Label then
          Output_Stmt (BB (Idx) & ":",
                       Semicolon   => False,
                       Indent_Type => Left,
@@ -998,7 +1006,10 @@ package body CCG.Flow is
          Output_Stmt ("if (" & Test (First_If (Idx)) & ")",
                       V         => Inst (First_If (Idx)),
                       Semicolon => False);
-         Output_Flow_Target (Target (First_If (Idx)), T, BS => If_Part);
+         Output_Flow_Target (Target (First_If (Idx)), T,
+                             BS    => If_Part,
+                             Depth => Depth);
+
          for Iidx in First_If (Idx) + 1 .. Last_If (Idx) loop
             if Present (Test (Iidx)) then
                Output_Stmt ("else if (" & Test (Iidx) & ")",
@@ -1008,7 +1019,9 @@ package body CCG.Flow is
                Output_Stmt ("else", V => Inst (Iidx), Semicolon => False);
             end if;
 
-            Output_Flow_Target (Target (Iidx), Inst (Iidx), BS => If_Part);
+            Output_Flow_Target (Target (Iidx), Inst (Iidx),
+                                BS    => If_Part,
+                                Depth => Depth);
          end loop;
       end if;
 
@@ -1030,7 +1043,7 @@ package body CCG.Flow is
                             Indent_Type => Under_Brace);
             end if;
 
-            Output_Flow_Target (Target (Cidx), T, BS => None);
+            Output_Flow_Target (Target (Cidx), T, BS => None, Depth => Depth);
          end loop;
 
          End_Stmt_Block (Switch);
@@ -1039,7 +1052,7 @@ package body CCG.Flow is
       --  The final thing to output is any jump at the end
 
       if Present (Next (Idx)) then
-         Output_Flow_Target (Next (Idx), T, BS => None);
+         Output_Flow_Target (Next (Idx), T, BS => None, Depth => Depth);
       end if;
 
       --  And separate flows

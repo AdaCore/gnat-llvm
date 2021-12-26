@@ -247,8 +247,11 @@ package CCG.Flow is
      with Pre => Present (Idx);
    --  Perform simplifications of Idx and the flows referenced by it
 
-   procedure Output_Flow (Idx : Flow_Idx);
-   --  Output the flow for Idx, if Present
+   procedure Output_Flow
+     (Idx : Flow_Idx; Depth : Nat := 0; Write_Label : Boolean := True);
+   --  Output the flow for Idx, if Present, and all nested flows,
+   --  possibly omitting the starting label. We track the nesting depth to
+   --  make sure it doesn't get too deep.
 
    procedure Maybe_Dump_Flow (Idx : Flow_Idx; V : Value_T; Desc : String)
      with Pre => Present (Idx) and then Present (V);

@@ -31,4 +31,7 @@ package CCG.Target is
    --  True if we're to always write C lexical blocks using braces even
    --  if they're only a single line.
 
+   Max_Depth    : constant         := (80 / 2) / (2 * C_Indent);
+   --  Maximum allowable nesting depth of constructs
+
 end CCG.Target;

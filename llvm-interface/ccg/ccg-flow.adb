@@ -174,6 +174,19 @@ package body CCG.Flow is
           Post => Present (New_If'Result);
    --  Create a new "if" piece for the specified value and instruction
 
+   type Process_Subprogram is access procedure (Idx : Flow_Idx);
+   procedure Process_Flows (Idx : Flow_Idx; Subprog : Process_Subprogram)
+     with Pre => Present (Idx);
+   --  Call Subprog once for each flow nested inside Idx in a depth-first
+   --  fashion.
+
+   function Final_Target (Idx : Flow_Idx) return Flow_Idx;
+   --  Follow Idx through flows that just jump to another flow
+
+   procedure Simplify_Final_Target (Idx : Flow_Idx)
+     with Pre => Present (Idx);
+   --  Simplify all targets in Idx to their ultimate destinations
+
    procedure Output_Flow_Target
      (Idx : Flow_Idx; V : Value_T; BS : Block_Style)
      with Pre => Present (Idx) and then Present (V);
@@ -800,6 +813,118 @@ package body CCG.Flow is
 
       return Idx;
    end Get_Or_Create_Flow;
+
+   -------------------
+   -- Process_Flows --
+   -------------------
+
+   procedure Process_Flows (Idx : Flow_Idx; Subprog : Process_Subprogram) is
+      procedure Process_One_Flow (Idx : Flow_Idx);
+      --  Do one recursive call is Idx is Present and wasn't processed
+
+      procedure Process_Flow_Graph (Idx : Flow_Idx)
+        with Pre => Present (Idx);
+      --  Proces all flows nested in Idx
+
+      package Processed_Flows is new Ada.Containers.Ordered_Sets
+        (Element_Type => Flow_Idx,
+         "<"          => "<",
+         "="          => "=");
+      use Processed_Flows;
+      Processed : Set;
+
+      ----------------------
+      -- Process_One_Flow --
+      ----------------------
+
+      procedure Process_One_Flow (Idx : Flow_Idx) is
+      begin
+         if No (Idx) or else Contains (Processed, Idx) then
+            return;
+         else
+            Insert (Processed, Idx);
+            Process_Flow_Graph (Idx);
+         end if;
+      end Process_One_Flow;
+
+      ------------------------
+      -- Process_Flow_Graph --
+      ------------------------
+
+      procedure Process_Flow_Graph (Idx : Flow_Idx) is
+      begin
+         Subprog.all (Idx);
+         Process_One_Flow (Next (Idx));
+         if Present (First_If (Idx)) then
+            for Iidx in First_If (Idx) .. Last_If (Idx) loop
+               Process_One_Flow (Target (Iidx));
+            end loop;
+         end if;
+
+         if Present (Case_Expr (Idx)) then
+            for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
+               Process_One_Flow (Target (Cidx));
+            end loop;
+         end if;
+      end Process_Flow_Graph;
+
+   begin  --  Start of processing for Process_Flow
+
+      Process_Flow_Graph (Idx);
+   end Process_Flows;
+
+   ------------------
+   -- Final_Target --
+   ------------------
+
+   function Final_Target (Idx : Flow_Idx) return Flow_Idx is
+      Max_Count : constant := 10;
+      Count     : Nat      := 0;
+      --  To protect against infinite loops in the source, set a maximum
+      --  count for how many flows we'll follow.
+
+   begin
+      return Final : Flow_Idx := Idx do
+         while Present (Final) and then not Is_Return (Final)
+           and then No (First_Line (Final)) and then No (First_If (Final))
+           and then No (Case_Expr (Final)) and then Count < Max_Count
+         loop
+            Final := Next (Final);
+            Count := Count + 1;
+         end loop;
+      end return;
+   end Final_Target;
+
+   ---------------------------
+   -- Simplify_Final_Target --
+   ---------------------------
+
+   procedure Simplify_Final_Target (Idx : Flow_Idx) is
+   begin
+      --  Replace all targets in Idx with their final targets
+
+      Set_Next (Idx, Final_Target (Next (Idx)));
+      if Present (First_If (Idx)) then
+         for Iidx in First_If (Idx) .. Last_If (Idx) loop
+            Set_Target (Iidx, Final_Target (Target (Iidx)));
+         end loop;
+      end if;
+
+      if Present (Case_Expr (Idx)) then
+         for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
+            Set_Target (Cidx, Final_Target (Target (Cidx)));
+         end loop;
+      end if;
+   end Simplify_Final_Target;
+
+   -------------------
+   -- Simplify_Flow --
+   -------------------
+
+   procedure Simplify_Flow (Idx : Flow_Idx) is
+   begin
+      Process_Flows (Idx, Simplify_Final_Target'Access);
+   end Simplify_Flow;
 
    ------------------------
    -- Output_Flow_Target --

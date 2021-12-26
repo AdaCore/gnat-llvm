@@ -243,6 +243,10 @@ package CCG.Flow is
      with Pre => Present (S) and then Present (V);
    --  Add a line and corresponding instruction to the current flow
 
+   procedure Simplify_Flow (Idx : Flow_Idx)
+     with Pre => Present (Idx);
+   --  Perform simplifications of Idx and the flows referenced by it
+
    procedure Output_Flow (Idx : Flow_Idx);
    --  Output the flow for Idx, if Present
 

@@ -272,6 +272,8 @@ package body CCG.Subprograms is
       Idx := Get_Or_Create_Flow (Get_Entry_Basic_Block (V));
       Add_Use (Idx);
       Maybe_Dump_Flow (Idx, V, "Initial");
+      Simplify_Flow (Idx);
+      Maybe_Dump_Flow (Idx, V, "Simplified");
       Output_Flow (Idx);
 
    end Output_Subprogram;

@@ -270,17 +270,8 @@ package body CCG.Subprograms is
       Output_Decl (Function_Proto (V), Semicolon => False, V => V);
       Output_Decl ("{", Semicolon => False, Start_Block => Decl);
       Idx := Get_Or_Create_Flow (Get_Entry_Basic_Block (V));
-      Clear_Pending_Values;
       Add_Use (Idx);
-      if Debug_Flag_Underscore_U then
-         Push_Output;
-         Set_Standard_Error;
-         Write_Eol;
-         Write_Str ("Initial flows for " & V, Eol => True);
-         Pop_Output;
-         Dump_Flow (Pos (Idx), True);
-      end if;
-
+      Maybe_Dump_Flow (Idx, V, "Initial");
       Output_Flow (Idx);
 
    end Output_Subprogram;

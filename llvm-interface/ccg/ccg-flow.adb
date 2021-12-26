@@ -18,6 +18,7 @@
 with Ada.Containers.Ordered_Sets;
 with Ada.Containers.Hashed_Maps;
 
+with Debug;  use Debug;
 with Output; use Output;
 with Table;
 
@@ -1079,6 +1080,22 @@ package body CCG.Flow is
 
       Pop_Output;
    end Dump_Flow;
+
+   ---------------------
+   -- Maybe_Dump_Flow --
+   ---------------------
+
+   procedure Maybe_Dump_Flow (Idx : Flow_Idx; V : Value_T; Desc : String) is
+   begin
+      if Debug_Flag_Underscore_U then
+         Push_Output;
+         Set_Standard_Error;
+         Write_Eol;
+         Write_Str (Desc & " flows for " & V, Eol => True);
+         Pop_Output;
+         Dump_Flow (Pos (Idx), True);
+      end if;
+   end Maybe_Dump_Flow;
 
 begin
    --  Ensure we have an empty entry in the tables

@@ -246,6 +246,11 @@ package CCG.Flow is
    procedure Output_Flow (Idx : Flow_Idx);
    --  Output the flow for Idx, if Present
 
+   procedure Maybe_Dump_Flow (Idx : Flow_Idx; V : Value_T; Desc : String)
+     with Pre => Present (Idx) and then Present (V);
+   --  Idx is the flow for the entry block of V. If -gnatd_u is specified,
+   --  label the flow with Desc, and dump it.
+
    pragma Annotate (Xcov, Exempt_On, "Debug helper");
 
    procedure Dump_Flow (J : Pos; Dump_All : Boolean)

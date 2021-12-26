@@ -553,11 +553,14 @@ package body CCG.Flow is
          Process_Pending_Values;
       end if;
 
-      --  Then add this line to the current flow
+      --  Then add this line to the current flow, make sure that it's
+      --  consecutive to a previous line if any.
 
       Idx := New_Line (S, V);
       if No (First_Line (Current_Flow)) then
          Set_First_Line (Current_Flow, Idx);
+      else
+         pragma Assert (Idx = Last_Line (Current_Flow) + 1);
       end if;
 
       Set_Last_Line (Current_Flow, Idx);

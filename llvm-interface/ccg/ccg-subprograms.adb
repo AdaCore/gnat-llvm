@@ -274,7 +274,7 @@ package body CCG.Subprograms is
       Maybe_Dump_Flow (Idx, V, "Initial");
       Simplify_Flow (Idx);
       Maybe_Dump_Flow (Idx, V, "Simplified");
-      Output_Flow (Idx, Write_Label => False);
+      Output_Flow (Idx);
 
    end Output_Subprogram;
 

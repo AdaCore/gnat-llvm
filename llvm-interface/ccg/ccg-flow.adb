@@ -26,6 +26,7 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Subprograms;  use CCG.Subprograms;
+with CCG.Target;       use CCG.Target;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Flow is
@@ -186,12 +187,6 @@ package body CCG.Flow is
    procedure Simplify_Final_Target (Idx : Flow_Idx)
      with Pre => Present (Idx);
    --  Simplify all targets in Idx to their ultimate destinations
-
-   procedure Output_Flow_Target
-     (Idx : Flow_Idx; V : Value_T; BS : Block_Style; Depth : Nat)
-     with Pre => Present (Idx) and then Present (V);
-   --  Write the line(s) needed to go to the flow denoted by Idx from
-   --  the instruction V. BS is the style of this block, if any
 
    ----------
    -- Text --
@@ -926,153 +921,179 @@ package body CCG.Flow is
       Process_Flows (Idx, Simplify_Final_Target'Access);
    end Simplify_Flow;
 
-   ------------------------
-   -- Output_Flow_Target --
-   ------------------------
-
-   procedure Output_Flow_Target
-     (Idx : Flow_Idx; V : Value_T; BS : Block_Style; Depth : Nat) is
-   begin
-      Start_Output_Block (BS);
-
-      --  If this represents a return, write a return
-
-      if Is_Return (Idx) then
-         if Present (Return_Value (Idx)) then
-            Output_Stmt ("return " & Return_Value (Idx), V => V);
-         else
-            Output_Stmt ("return", V => V);
-         end if;
-
-      --  If this is a flow with only one use (so it must be this one),
-      --  output that flow directly.
-
-      elsif Use_Count (Idx) = 1 then
-         Output_Flow (Idx, Write_Label => False, Depth => Depth + 1);
-
-      --  Otherwise, write a goto
-
-      else
-         Output_Stmt ("goto " & BB (Idx), V => V);
-      end if;
-
-      End_Stmt_Block (BS);
-   end Output_Flow_Target;
-
    -----------------
    -- Output_Flow --
    -----------------
 
-   procedure Output_Flow
-     (Idx : Flow_Idx; Depth : Nat := 0; Write_Label : Boolean := True)
-   is
-      T : Value_T;
+   procedure Output_Flow (Idx : Flow_Idx) is
+      procedure Output_Flow_Target
+        (Idx : Flow_Idx; V : Value_T; BS : Block_Style; Depth : Nat)
+        with Pre => Present (Idx) and then Present (V);
+      --  Write the line(s) needed to go to the flow denoted by Idx from
+      --  the instruction V. BS is the style of this block, if any
 
-   begin
-      --  If we have no flow, this was already output, or this is a return
-      --  flow, do nothing. Otherwise, indicate that it was output.
+      procedure Output_One_Flow
+        (Idx : Flow_Idx; Depth : Nat := 0; Write_Label : Boolean := True);
+      --  Output the flow for Idx, if Present, and all nested flows,
+      --  possibly omitting the starting label. We track the nesting depth to
+      --  make sure it doesn't get too deep.
 
-      if No (Idx) or else Is_Return (Idx) or else Was_Output (Idx) then
-         return;
-      else
-         Set_Was_Output (Idx);
-      end if;
+      package Output_Flows is new Ada.Containers.Ordered_Sets
+        (Element_Type => Flow_Idx,
+         "<"          => "<",
+         "="          => "=");
+      use Output_Flows;
+      To_Output : Set;
+      Output    : Set;
 
-      --  ??? This preliminary version outputs something that looks very
-      --  ugly, but is the transition to the new mechanism.
+      ------------------------
+      -- Output_Flow_Target --
+      ------------------------
 
-      T := Get_Basic_Block_Terminator (BB (Idx));
+      procedure Output_Flow_Target
+        (Idx : Flow_Idx; V : Value_T; BS : Block_Style; Depth : Nat) is
+      begin
+         Start_Output_Block (BS);
 
-      --  Write the block's label, if requested
+         --  If this represents a return, write a return
 
-      if Write_Label then
-         Output_Stmt (BB (Idx) & ":",
-                      Semicolon   => False,
-                      Indent_Type => Left,
-                      V           => Get_First_Instruction (BB (Idx)));
-      end if;
-
-      --  Now process lines in the flow, if any
-
-      if Present (First_Line (Idx)) then
-         for Lidx in First_Line (Idx) .. Last_Line (Idx) loop
-            Output_Stmt (Text (Lidx), V => Inst (Lidx));
-         end loop;
-      end if;
-
-      --  Next process any "if" parts in the flow
-
-      if Present (First_If (Idx)) then
-         Output_Stmt ("if (" & Test (First_If (Idx)) & ")",
-                      V         => Inst (First_If (Idx)),
-                      Semicolon => False);
-         Output_Flow_Target (Target (First_If (Idx)), T,
-                             BS    => If_Part,
-                             Depth => Depth);
-
-         for Iidx in First_If (Idx) + 1 .. Last_If (Idx) loop
-            if Present (Test (Iidx)) then
-               Output_Stmt ("else if (" & Test (Iidx) & ")",
-                      V         => Inst (Iidx),
-                      Semicolon => False);
-            else
-               Output_Stmt ("else", V => Inst (Iidx), Semicolon => False);
+         if Is_Return (Idx) then
+            if Present (Return_Value (Idx)) then
+               Output_Stmt ("return " & Return_Value (Idx), V => V);
+            elsif not Does_Not_Return (Curr_Func) then
+               Output_Stmt ("return", V => V);
             end if;
 
-            Output_Flow_Target (Target (Iidx), Inst (Iidx),
+            --  If this is a flow with only one use (so it must be this one),
+            --  output that flow directly unless we're already too deep
+
+         elsif Use_Count (Idx) = 1 and then Depth < Max_Depth then
+            Output_One_Flow (Idx, Write_Label => False, Depth => Depth);
+
+         --  Otherwise, write a goto and mark it for output
+
+         else
+            Output_Stmt ("goto " & BB (Idx), V => V);
+            if not Is_Return (Idx) and then not Contains (Output, Idx)
+              and then not Contains (To_Output, Idx)
+            then
+               Insert (To_Output, Idx);
+            end if;
+         end if;
+
+         End_Stmt_Block (BS);
+      end Output_Flow_Target;
+
+      ---------------------
+      -- Output_One_Flow --
+      ---------------------
+
+      procedure Output_One_Flow
+        (Idx : Flow_Idx; Depth : Nat := 0; Write_Label : Boolean := True)
+      is
+         T : Value_T;
+
+      begin
+         Insert (Output, Idx);
+         T := Get_Basic_Block_Terminator (BB (Idx));
+
+         --  Write the block's label, if requested
+
+         if Write_Label then
+            Output_Stmt (BB (Idx) & ":",
+                         Semicolon   => False,
+                         Indent_Type => Left,
+                         V           => Get_First_Instruction (BB (Idx)));
+         end if;
+
+         --  Now process lines in the flow, if any
+
+         if Present (First_Line (Idx)) then
+            for Lidx in First_Line (Idx) .. Last_Line (Idx) loop
+               Output_Stmt (Text (Lidx), V => Inst (Lidx));
+            end loop;
+         end if;
+
+         --  Next process any "if" parts in the flow
+
+         if Present (First_If (Idx)) then
+            Output_Stmt ("if (" & Test (First_If (Idx)) & ")",
+                         V         => Inst (First_If (Idx)),
+                         Semicolon => False);
+            Output_Flow_Target (Target (First_If (Idx)), T,
                                 BS    => If_Part,
-                                Depth => Depth);
-         end loop;
-      end if;
+                                Depth => Depth + 1);
 
-      --  Now any Case parts
+            for Iidx in First_If (Idx) + 1 .. Last_If (Idx) loop
+               if Present (Test (Iidx)) then
+                  Output_Stmt ("else if (" & Test (Iidx) & ")",
+                               V         => Inst (Iidx),
+                               Semicolon => False);
+               else
+                  Output_Stmt ("else", V => Inst (Iidx), Semicolon => False);
+               end if;
 
-      if Present (Case_Expr (Idx)) then
-         Output_Stmt ("switch (" & Case_Expr (Idx) & ")",
-                      V         => T,
-                      Semicolon => False);
-         Start_Output_Block (Switch);
-         for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
-            if Present (Value (Cidx)) then
-               Output_Stmt ("case " & Expr (Cidx) & ":",
-                            Semicolon   => False,
-                            Indent_Type => Under_Brace);
-            else
-               Output_Stmt ("default:",
-                            Semicolon   => False,
-                            Indent_Type => Under_Brace);
-            end if;
+               Output_Flow_Target (Target (Iidx), Inst (Iidx),
+                                   BS    => If_Part,
+                                   Depth => Depth + 1);
+            end loop;
+         end if;
 
-            Output_Flow_Target (Target (Cidx), T, BS => None, Depth => Depth);
-         end loop;
+         --  Now any Case parts
 
-         End_Stmt_Block (Switch);
-      end if;
+         if Present (Case_Expr (Idx)) then
+            Output_Stmt ("switch (" & Case_Expr (Idx) & ")",
+                         V         => T,
+                         Semicolon => False);
+            Start_Output_Block (Switch);
+            for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
+               if Present (Value (Cidx)) then
+                  Output_Stmt ("case " & Expr (Cidx) & ":",
+                               Semicolon   => False,
+                               Indent_Type => Under_Brace);
+               else
+                  Output_Stmt ("default:",
+                               Semicolon   => False,
+                               Indent_Type => Under_Brace);
+               end if;
 
-      --  The final thing to output is any jump at the end
+               Output_Flow_Target (Target (Cidx), T,
+                                   BS    => None,
+                                   Depth => Depth + 1);
+            end loop;
 
-      if Present (Next (Idx)) then
-         Output_Flow_Target (Next (Idx), T, BS => None, Depth => Depth);
-      end if;
+            End_Stmt_Block (Switch);
+         end if;
 
-      --  And separate flows
+         --  The final thing to output is any jump at the end
 
-      Output_Stmt ("", Semicolon => False);
+         if Present (Next (Idx)) then
+            Output_Flow_Target (Next (Idx), T, BS => None, Depth => Depth);
+         end if;
 
-      --  Now output any flows referenced by this one
+         --  And separate flows
 
-      Output_Flow (Next (Idx));
-      if Present (First_If (Idx)) then
-         for Iidx in First_If (Idx) .. Last_If (Idx) loop
-            Output_Flow (Target (Iidx));
-         end loop;
-      end if;
+         Output_Stmt ("", Semicolon => False);
+      end Output_One_Flow;
 
-      if Present (Case_Expr (Idx)) then
-         for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
-            Output_Flow (Target (Cidx));
-         end loop;
-      end if;
+   begin  -- Start of processing for Output_Flow
+
+      --  Output the top-level flow
+
+      Output_One_Flow (Idx, Depth => 0, Write_Label => False);
+
+      --  Now loop while there are still flows to output
+
+      while not Is_Empty (To_Output) loop
+         declare
+            Output_Idx : constant Flow_Idx := First_Element (To_Output);
+
+         begin
+            Output_One_Flow (Output_Idx, Depth => 0);
+            Delete (To_Output, Output_Idx);
+         end;
+      end loop;
+
    end Output_Flow;
 
    ---------------

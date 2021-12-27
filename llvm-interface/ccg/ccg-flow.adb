@@ -1124,15 +1124,13 @@ package body CCG.Flow is
       end Write_Flow_Idx;
 
       -------------------
-      -- Dump_one_Flow --
+      -- Dump_One_Flow --
       -------------------
 
       procedure Dump_One_Flow (Idx : Flow_Idx) is
       begin
-         Write_Str ("Flow ");
-         Write_Int (Pos (Idx));
-         Write_Str (" has ");
-         Write_Int (Use_Count (Idx));
+         Write_Str ("Flow " & Pos (Idx) & " (" & BB (Idx) &
+                    ") has " & Use_Count (Idx));
          if Use_Count (Idx) = 1 then
             Write_Str (" use");
          else
@@ -1198,8 +1196,9 @@ package body CCG.Flow is
 
       --  Dump the flow we're asked to dump. If we're to dump nested flow,
       --  keep dumping until all are done.
-      Dump_One_Flow (Idx);
+
       Insert (Dumped, Idx);
+      Dump_One_Flow (Idx);
       if Dump_All then
          while not Is_Empty (To_Dump) loop
             declare

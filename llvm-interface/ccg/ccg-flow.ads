@@ -151,10 +151,6 @@ package CCG.Flow is
    --  Number of times this flow is referenced by another flow (always one
    --  for the entry block).
 
-   function Was_Output (Idx : Flow_Idx)   return Boolean
-     with Pre => Present (Idx);
-   --  True if flow was already output
-
    function Next (Idx : Flow_Idx)         return Flow_Idx
      with Pre => Present (Idx);
    --  Next flow executed after this one has completed, if any
@@ -193,9 +189,6 @@ package CCG.Flow is
    procedure Set_Last_Line (Idx : Flow_Idx; Lidx : Line_Idx)
      with Pre  => Present (Idx) and then Present (Lidx),
           Post => Last_Line (Idx) = Lidx, Inline;
-
-   procedure Set_Was_Output (Idx : Flow_Idx; B : Boolean := True)
-     with Pre  => Present (Idx), Post => Was_Output (Idx) = B, Inline;
 
    procedure Set_Next (Idx, Nidx : Flow_Idx)
      with Pre  => Present (Idx), Post => Next (Idx) = Nidx, Inline;

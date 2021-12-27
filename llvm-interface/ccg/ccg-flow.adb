@@ -111,9 +111,6 @@ package body CCG.Flow is
       Last_Line    : Line_Idx;
       --  Last line that's part of this flow, if any
 
-      Was_Output   : Boolean;
-      --  True if flow was already output
-
       Use_Count    : Nat;
       --  Number of times this flow is referenced by another flow (always one
       --  for the entry block).
@@ -341,13 +338,6 @@ package body CCG.Flow is
    function Last_Line (Idx : Flow_Idx) return Line_Idx is
      (Flows.Table (Idx).Last_Line);
 
-   ----------------
-   -- Was_Output --
-   ----------------
-
-   function Was_Output (Idx : Flow_Idx)  return Boolean is
-     (Flows.Table (Idx).Was_Output);
-
    ---------------
    -- Use_Count --
    ---------------
@@ -437,15 +427,6 @@ package body CCG.Flow is
    begin
       Flows.Table (Idx).Last_Line := Lidx;
    end Set_Last_Line;
-
-   ---------------------
-   -- Set_Was_Output --
-   ---------------------
-
-   procedure Set_Was_Output (Idx : Flow_Idx; B : Boolean := True) is
-   begin
-      Flows.Table (Idx).Was_Output := B;
-   end Set_Was_Output;
 
    -------------
    -- Add_Use --
@@ -633,7 +614,6 @@ package body CCG.Flow is
       Flows.Append ((Is_Return    => False,
                      Return_Value => No_Str,
                      BB           => BB,
-                     Was_Output   => False,
                      First_Line   => Empty_Line_Idx,
                      Last_Line    => Empty_Line_Idx,
                      Use_Count    => 0,
@@ -702,7 +682,6 @@ package body CCG.Flow is
                                    (if   Present (Retval) then +Retval
                                     else No_Str),
                                  BB           => No_BB_T,
-                                 Was_Output   => False,
                                  First_Line   => Empty_Line_Idx,
                                  Last_Line    => Empty_Line_Idx,
                                  Use_Count    => 0,

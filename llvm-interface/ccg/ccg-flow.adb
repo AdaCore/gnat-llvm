@@ -996,16 +996,10 @@ package body CCG.Flow is
          --  Next process any "if" parts in the flow
 
          if Present (First_If (Idx)) then
-            Output_Stmt ("if (" & Test (First_If (Idx)) & ")",
-                         V         => Inst (First_If (Idx)),
-                         Semicolon => False);
-            Output_Flow_Target (Target (First_If (Idx)), T,
-                                BS    => If_Part,
-                                Depth => Depth + 1);
-
-            for Iidx in First_If (Idx) + 1 .. Last_If (Idx) loop
+            for Iidx in First_If (Idx) .. Last_If (Idx) loop
                if Present (Test (Iidx)) then
-                  Output_Stmt ("else if (" & Test (Iidx) & ")",
+                  Output_Stmt ((if Iidx = First_If (Idx) then "" else "else ")
+                                & "if (" & Test (Iidx) & ")",
                                V         => Inst (Iidx),
                                Semicolon => False);
                else

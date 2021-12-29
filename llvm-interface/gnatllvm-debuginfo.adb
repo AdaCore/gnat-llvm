@@ -656,7 +656,7 @@ package body GNATLLVM.DebugInfo is
       CT          : constant GL_Type    := Full_Component_GL_Type (DT);
       Size        : constant ULL        := ULL (Thin_Pointer_Size);
       Align       : constant Nat        := Thin_Pointer_Size;
-      Bounds_Size : ULL with Unreferenced;
+      Bounds_Size : ULL;
       Bounds_MD   : constant Metadata_T :=
         Create_Bounds_Type_Data (DT, Bounds_Size);
       P_Bounds_MD : constant Metadata_T :=
@@ -944,7 +944,7 @@ package body GNATLLVM.DebugInfo is
       Base_R : constant GL_Relationship :=
         (if Is_Reference (R) then Deref (R) else R);
       MD     : constant Metadata_T      := Create_Type_Data (GT);
-      Size   : ULL with Unreferenced;
+      Size   : ULL;
 
    begin
       --  If we weren't able to get debug info for the underlying type

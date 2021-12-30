@@ -15,8 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Containers.Ordered_Sets;
+with Ada.Containers.Generic_Sort;
 with Ada.Containers.Hashed_Maps;
+with Ada.Containers.Ordered_Sets;
 
 with Debug;  use Debug;
 with Output; use Output;
@@ -61,11 +62,13 @@ package body CCG.Flow is
       --  Value corresponding to this case or No_Value_T for "default"
 
       Expr   : Str;
-
       --  String for this case node or No_Str if this is for "default"
+
       Target : Flow_Idx;
       --  Destination for this value
 
+      Inst   : Value_T;
+      --  First instruction at target, for debug info
    end record;
 
    package Cases is new Table.Table
@@ -178,12 +181,28 @@ package body CCG.Flow is
    --  Call Subprog once for each flow nested inside Idx in a depth-first
    --  fashion.
 
+   function Case_Before (L, R : Case_Idx) return Boolean
+     with Pre => Present (L) and then Present (R);
+   --  Return whether L is before R in the sort order for case values
+
+   procedure Swap_Cases (L, R : Case_Idx)
+     with Pre => Present (L) and then Present (R);
+   --  Swap the contents of L and R in the case table
+
+   procedure Case_Sort is new Ada.Containers.Generic_Sort
+     (Index_Type => Case_Idx, Before => Case_Before, Swap => Swap_Cases);
+   --  Sort a list of Case parts
+
    function Final_Target (Idx : Flow_Idx) return Flow_Idx;
    --  Follow Idx through flows that just jump to another flow
 
    procedure Simplify_Final_Target (Idx : Flow_Idx)
      with Pre => Present (Idx);
    --  Simplify all targets in Idx to their ultimate destinations
+
+   procedure Sort_One_Flow_Cases (Idx : Flow_Idx)
+     with Pre => Present (Idx);
+   --  Sort case parts in Idx
 
    ----------
    -- Text --
@@ -238,6 +257,13 @@ package body CCG.Flow is
    function Target (Idx : Case_Idx) return Flow_Idx is
      (Cases.Table (Idx).Target);
 
+   ----------
+   -- Inst --
+   ----------
+
+   function Inst (Idx : Case_Idx) return Value_T is
+     (Cases.Table (Idx).Inst);
+
    ---------------
    -- Set_Value --
    ---------------
@@ -266,6 +292,15 @@ package body CCG.Flow is
       Add_Use (Fidx);
       Cases.Table (Idx).Target := Fidx;
    end Set_Target;
+
+   --------------
+   -- Set_Inst --
+   --------------
+
+   procedure Set_Inst (Idx : Case_Idx; V : Value_T) is
+   begin
+      Cases.Table (Idx).Inst := V;
+   end Set_Inst;
 
    ----------
    -- Test --
@@ -571,7 +606,10 @@ package body CCG.Flow is
 
    function New_Case (V : Value_T; S : Str) return Case_Idx is
    begin
-      Cases.Append ((Value => V, Expr => S, Target => Empty_Flow_Idx));
+      Cases.Append ((Value  => V,
+                     Expr   => S,
+                     Target => Empty_Flow_Idx,
+                     Inst   => No_Value_T));
       return Cases.Last;
    end New_Case;
 
@@ -596,10 +634,10 @@ package body CCG.Flow is
    -- Get_Or_Create_Flow --
    ------------------------
 
-   function Get_Or_Create_Flow (BB : Basic_Block_T) return Flow_Idx is
-      T   : constant Value_T  := Get_Basic_Block_Terminator (BB);
-      Idx : Flow_Idx          := Get_Flow (BB);
-      V   : Value_T           := Get_First_Instruction (BB);
+   function Get_Or_Create_Flow (B : Basic_Block_T) return Flow_Idx is
+      T   : constant Value_T  := Get_Basic_Block_Terminator (B);
+      Idx : Flow_Idx          := Get_Flow (B);
+      V   : Value_T           := Get_First_Instruction (B);
 
    begin
       --  If we already made a flow for this block, return it.
@@ -613,7 +651,7 @@ package body CCG.Flow is
 
       Flows.Append ((Is_Return    => False,
                      Return_Value => No_Str,
-                     BB           => BB,
+                     BB           => B,
                      First_Line   => Empty_Line_Idx,
                      Last_Line    => Empty_Line_Idx,
                      Use_Count    => 0,
@@ -624,7 +662,7 @@ package body CCG.Flow is
                      First_Case   => Empty_Case_Idx,
                      Last_Case    => Empty_Case_Idx));
       Idx := Flows.Last;
-      Set_Flow (BB, Idx);
+      Set_Flow (B, Idx);
       Current_Flow := Idx;
 
       --  Add all instructions to the flow
@@ -772,10 +810,12 @@ package body CCG.Flow is
                Set_Last_Case (Idx, Cidx);
                Cidx := First_Case (Idx);
                Set_Target (Cidx, Get_Or_Create_Flow (Get_Operand1 (T)));
+               Set_Inst   (Cidx, Get_First_Instruction (BB (Target (Cidx))));
                for J in 1 .. Last_Case loop
                   Cidx := Cidx + 1;
                   Set_Target
                     (Cidx, Get_Or_Create_Flow (Get_Operand (T, J * 2 + 1)));
+                  Set_Inst (Cidx, Get_First_Instruction (BB (Target (Cidx))));
                end loop;
             end;
 
@@ -783,10 +823,63 @@ package body CCG.Flow is
             pragma Assert (False);
       end case;
 
-      --  Finally, return the new Flow we contructed
+      --  Finally, return the new Flow we constructed
 
       return Idx;
    end Get_Or_Create_Flow;
+
+   -----------------
+   -- Case_Before --
+   -----------------
+
+   function Case_Before (L, R : Case_Idx) return Boolean is
+      L_Inst : constant Value_T              := Inst (L);
+      R_Inst : constant Value_T              := Inst (R);
+      L_Line : constant Physical_Line_Number := Get_Debug_Loc_Line (L_Inst);
+      R_Line : constant Physical_Line_Number := Get_Debug_Loc_Line (R_Inst);
+
+   begin
+      --  The two filenames should be the same, but just in case, use
+      --  that as a sort criteria too.
+
+      if Get_Debug_Loc_Filename (L_Inst) < Get_Debug_Loc_Filename (R_Inst) then
+         return True;
+      elsif Get_Debug_Loc_Filename (L_Inst) /= Get_Debug_Loc_Filename (R_Inst)
+      then
+         return False;
+
+      --  Next, compare the line numbers of the target
+
+      elsif L_Line < R_Line then
+         return True;
+      elsif L_Line /= R_Line then
+         return False;
+
+      --  If one is "default", put that last
+
+      elsif No (Value (L)) then
+         return False;
+      elsif No (Value (R)) then
+         return True;
+
+      --  Otherwise, put the values in order
+
+      else
+         return Equals_Int (Const_I_Cmp (Int_SLE, Value (L), Value (R)), 1);
+      end if;
+   end Case_Before;
+
+   ----------------
+   -- Swap_Cases --
+   ----------------
+
+   procedure Swap_Cases (L, R : Case_Idx) is
+      Temp : constant Case_Data := Cases.Table (L);
+
+   begin
+      Cases.Table (L) := Cases.Table (R);
+      Cases.Table (R) := Temp;
+   end Swap_Cases;
 
    -------------------
    -- Process_Flows --
@@ -891,6 +984,17 @@ package body CCG.Flow is
       end if;
    end Simplify_Final_Target;
 
+   -------------------------
+   -- Sort_One_Flow_Cases --
+   -------------------------
+
+   procedure Sort_One_Flow_Cases (Idx : Flow_Idx) is
+   begin
+      if Present (Case_Expr (Idx)) then
+         Case_Sort (First_Case (Idx), Last_Case (Idx));
+      end if;
+   end Sort_One_Flow_Cases;
+
    -------------------
    -- Simplify_Flow --
    -------------------
@@ -898,6 +1002,7 @@ package body CCG.Flow is
    procedure Simplify_Flow (Idx : Flow_Idx) is
    begin
       Process_Flows (Idx, Simplify_Final_Target'Access);
+      Process_Flows (Idx, Sort_One_Flow_Cases'Access);
    end Simplify_Flow;
 
    -----------------

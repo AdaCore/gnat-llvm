@@ -92,6 +92,11 @@ package CCG.Flow is
      with Pre => Present (Idx);
    --  Return the Flow corresponding to this case node
 
+   function Inst (Idx : Case_Idx) return Value_T
+     with Pre  => Present (Idx),
+          Post => Is_A_Instruction (Inst'Result);
+   --  Return the Flow corresponding to this case node
+
    procedure Set_Value (Idx : Case_Idx; V : Value_T)
      with Pre  => Present (Idx) and then Present (V),
           Post => Value (Idx) = V, Inline;
@@ -103,6 +108,10 @@ package CCG.Flow is
    procedure Set_Target (Idx : Case_Idx; Fidx : Flow_Idx)
      with Pre  => Present (Idx) and then Present (Fidx),
           Post => Target (Idx) = Fidx, Inline;
+
+   procedure Set_Inst (Idx : Case_Idx; V : Value_T)
+     with Pre  => Present (Idx) and then Is_A_Instruction (V),
+          Post => Inst (Idx) = V, Inline;
 
    --  Getters and setters for an If node
 
@@ -221,10 +230,10 @@ package CCG.Flow is
    function Get_Or_Create_Flow (V : Value_T) return Flow_Idx
      with Pre  => Is_A_Basic_Block (V),
           Post => Present (Get_Or_Create_Flow'Result);
-   function Get_Or_Create_Flow (BB : Basic_Block_T) return Flow_Idx
-     with Pre  => Present (BB),
+   function Get_Or_Create_Flow (B : Basic_Block_T) return Flow_Idx
+     with Pre  => Present (B),
           Post => Present (Get_Or_Create_Flow'Result)
-                  and then Get_Flow (BB) = Get_Or_Create_Flow'Result;
+                  and then Get_Flow (B) = Get_Or_Create_Flow'Result;
    --  Get (and create if needed) a Flow for a block
 
    procedure Add_Use (Idx : Flow_Idx) with Inline;

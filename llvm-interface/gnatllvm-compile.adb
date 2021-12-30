@@ -106,9 +106,10 @@ package body GNATLLVM.Compile is
          Initialize_LLVM_Target;
       end if;
 
-      --  If we're going to generate C code, initialize that subsystem
+      --  If we're going to generate C code (or LLVM IR as if we were to
+      --  generate C code), initialize that subsystem.
 
-      if Code_Generation = Write_C then
+      if Emit_C then
          Initialize_C_Output;
       end if;
 

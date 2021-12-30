@@ -53,12 +53,12 @@ package body CCG is
 
       --  When emitting C, we don't want to write variable-specific debug
       --  info, just line number information. But we do want to write #line
-      --  info if -g was specified and need to turn on minimal debugging if
-      --  -gnatL was specified.
+      --  info if -g was specified. We always want to write location
+      --  information into the LLVM IR specified.
 
       Emit_Full_Debug_Info := False;
       Emit_C_Line          := Emit_Debug_Info;
-      Emit_Debug_Info      := Emit_Debug_Info or Dump_Source_Text;
+      Emit_Debug_Info      := True;
    end Initialize_C_Output;
 
    ------------------

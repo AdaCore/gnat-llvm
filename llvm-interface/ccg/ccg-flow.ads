@@ -90,7 +90,9 @@ package CCG.Flow is
 
    function Target (Idx : Case_Idx) return Flow_Idx
      with Pre => Present (Idx);
-   --  Return the Flow corresponding to this case node
+   --  Return the Flow corresponding to this case node, if any. No flow
+   --  means that the target of this node is the same as that of the next
+   --  node (which may also not be Present).
 
    function Inst (Idx : Case_Idx) return Value_T
      with Pre  => Present (Idx),
@@ -106,8 +108,7 @@ package CCG.Flow is
           Post => Expr (Idx) = S, Inline;
 
    procedure Set_Target (Idx : Case_Idx; Fidx : Flow_Idx)
-     with Pre  => Present (Idx) and then Present (Fidx),
-          Post => Target (Idx) = Fidx, Inline;
+     with Pre => Present (Idx), Post => Target (Idx) = Fidx, Inline;
 
    procedure Set_Inst (Idx : Case_Idx; V : Value_T)
      with Pre  => Present (Idx) and then Is_A_Instruction (V),

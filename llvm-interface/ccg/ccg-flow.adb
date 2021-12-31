@@ -65,7 +65,9 @@ package body CCG.Flow is
       --  String for this case node or No_Str if this is for "default"
 
       Target : Flow_Idx;
-      --  Destination for this value
+      --  The Flow corresponding to this case node, if any. No flow means
+      --  that the target of this node is the same as that of the next node
+      --  (which may also not be Present).
 
       Inst   : Value_T;
       --  First instruction at target, for debug info
@@ -200,9 +202,9 @@ package body CCG.Flow is
      with Pre => Present (Idx);
    --  Simplify all targets in Idx to their ultimate destinations
 
-   procedure Sort_One_Flow_Cases (Idx : Flow_Idx)
+   procedure Simplify_One_Flow_Cases (Idx : Flow_Idx)
      with Pre => Present (Idx);
-   --  Sort case parts in Idx
+   --  Sort a and simplify case parts in Idx
 
    ----------
    -- Text --
@@ -988,12 +990,25 @@ package body CCG.Flow is
    -- Sort_One_Flow_Cases --
    -------------------------
 
-   procedure Sort_One_Flow_Cases (Idx : Flow_Idx) is
+   procedure Simplify_One_Flow_Cases (Idx : Flow_Idx) is
    begin
+      --  If we have case parts, first sort them
+
       if Present (Case_Expr (Idx)) then
          Case_Sort (First_Case (Idx), Last_Case (Idx));
+
+         --  Now loop through them and remove the target for a case part
+         --  if it's the same as the target of the next part. Note that we
+         --  can't sort the cases once this has been done.
+
+         for Cidx in First_Case (Idx) .. Last_Case (Idx) - 1 loop
+            if Target (Cidx) = Target (Cidx + 1) then
+               Set_Target (Cidx, Empty_Flow_Idx);
+            end if;
+         end loop;
       end if;
-   end Sort_One_Flow_Cases;
+
+   end Simplify_One_Flow_Cases;
 
    -------------------
    -- Simplify_Flow --
@@ -1002,7 +1017,7 @@ package body CCG.Flow is
    procedure Simplify_Flow (Idx : Flow_Idx) is
    begin
       Process_Flows (Idx, Simplify_Final_Target'Access);
-      Process_Flows (Idx, Sort_One_Flow_Cases'Access);
+      Process_Flows (Idx, Simplify_One_Flow_Cases'Access);
    end Simplify_Flow;
 
    -----------------
@@ -1135,9 +1150,11 @@ package body CCG.Flow is
                                Indent_Type => Under_Brace);
                end if;
 
-               Output_Flow_Target (Target (Cidx), T,
-                                   BS    => None,
-                                   Depth => Depth + 1);
+               if Present (Target (Cidx)) then
+                  Output_Flow_Target (Target (Cidx), T,
+                                      BS    => None,
+                                      Depth => Depth + 1);
+               end if;
             end loop;
 
             End_Stmt_Block (Switch);
@@ -1278,12 +1295,16 @@ package body CCG.Flow is
             Write_Eol;
             for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
                if Present (Value (Cidx)) then
-                  Write_Str ("    " & Value (Cidx) & ": goto ");
+                  Write_Str ("    " & Value (Cidx) & ":");
                else
-                  Write_Str ("    default: goto ");
+                  Write_Str ("    default:");
                end if;
 
-               Write_Flow_Idx (Target (Cidx));
+               if Present (Target (Cidx)) then
+                  Write_Str (" goto ");
+                  Write_Flow_Idx (Target (Cidx));
+               end if;
+
                Write_Eol;
             end loop;
          end if;

@@ -2782,8 +2782,7 @@ package body GNATLLVM.Subprograms is
 
    function Create_Basic_Block (Name : String := "") return Basic_Block_T is
    begin
-      return Append_Basic_Block_In_Context
-        (Context, +Current_Func, Name);
+      return Append_Basic_Block (+Current_Func, Name);
    end Create_Basic_Block;
 
    --------------------------------------------

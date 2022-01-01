@@ -235,7 +235,7 @@ package body CCG.Transform is
 
                      Ret_BB   : constant Basic_Block_T :=
                        (if   Is_Unc_Br (Inst) then BB
-                        else Append_Basic_Block_In_Context (Context, V, ""));
+                        else Append_Basic_Block (V, ""));
 
                   begin
                      --  Insert the return instruction into the appropriate

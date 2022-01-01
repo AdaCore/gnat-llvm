@@ -1387,7 +1387,7 @@ package body GNATLLVM.GLValue is
       Our_Words : aliased Word_Array := Words;
    begin
       return G (Get_Float_From_Words_And_Exp
-                  (Context, Type_Of (GT), Exp, Our_Words'Length,
+                  (Get_Global_Context, Type_Of (GT), Exp, Our_Words'Length,
                    Our_Words (Our_Words'First)'Access),
                 GT);
    end Get_Float_From_Words_And_Exp;
@@ -1398,7 +1398,8 @@ package body GNATLLVM.GLValue is
 
    function Pred_FP (V : GL_Value) return GL_Value is
    begin
-      return G (Pred_FP (Context, Type_Of (V), +V), Related_Type (V));
+      return G (Pred_FP (Get_Global_Context, Type_Of (V), +V),
+                Related_Type (V));
    end Pred_FP;
 
    ------------------------
@@ -1616,7 +1617,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Named_Attribute (V : GL_Value; Name, Value : String) is
    begin
-      Add_Named_Attribute (+V, Name, Value, Context);
+      Add_Named_Attribute (+V, Name, Value, Get_Global_Context);
    end Add_Named_Attribute;
 
    ------------------------

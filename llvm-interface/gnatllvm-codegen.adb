@@ -39,6 +39,7 @@ with Osint.C; use Osint.C;
 with Output;  use Output;
 with Switch;  use Switch;
 
+with GNATLLVM.Helper;  use GNATLLVM.Helper;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Codegen is
@@ -368,13 +369,10 @@ package body GNATLLVM.Codegen is
       --  Initialize the translation environment
 
       Initialize_LLVM;
-      Context        := Get_Global_Context;
-      IR_Builder     := Create_Builder_In_Context (Context);
-      MD_Builder     := Create_MDBuilder_In_Context (Context);
-      Module         :=
-        Module_Create_With_Name_In_Context (Filename.all, Context);
-      Convert_Module :=
-        Module_Create_With_Name_In_Context ("Convert_Constant", Context);
+      IR_Builder     := Create_Builder;
+      MD_Builder     := Create_MDBuilder;
+      Module         := Module_Create_With_Name (Filename.all);
+      Convert_Module := Module_Create_With_Name ("Convert_Constant");
 
       if Get_Target_From_Triple
         (Target_Triple.all, LLVM_Target'Address, Ptr_Err_Msg'Address)

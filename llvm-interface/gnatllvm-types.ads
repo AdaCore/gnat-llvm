@@ -195,7 +195,7 @@ package GNATLLVM.Types is
    --  an anonymous type.
 
    function Struct_Create_Named (Name : Name_Id) return Type_T is
-     (Struct_Create_Named (Context, Get_Name_String (Name)))
+     (Struct_Create_Named (Get_Global_Context, Get_Name_String (Name)))
      with Pre  => Present (Name),
           Post => Present (Struct_Create_Named'Result);
 

@@ -321,8 +321,7 @@ package body GNATLLVM.Types is
 
    begin
       if No (Name) then
-         return Struct_Type_In_Context (Context, Types'Address,
-                                        Types'Length, Packed);
+         return Struct_Type (Types'Address, Types'Length, Packed);
 
       else
          T := Struct_Create_Named (Name);

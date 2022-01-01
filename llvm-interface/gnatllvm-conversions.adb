@@ -1122,12 +1122,9 @@ package body GNATLLVM.Conversions is
    is
       BB       : constant Basic_Block_T  := Get_Insert_Block (IR_Builder);
       Ptr_Ty   : constant Type_T         := Pointer_Type (T, 0);
-      Convert_Module  : constant Module_T       :=
-        Module_Create_With_Name_In_Context ("_CC", Context);
       Our_Func : constant Value_T        :=
         Add_Function (Convert_Module, "__CC", Fn_Ty ((1 .. 0 => <>), T));
-      Our_BB   : constant Basic_Block_T  :=
-        Append_Basic_Block_In_Context (Context, Our_Func, "");
+      Our_BB   : constant Basic_Block_T  := Append_Basic_Block (Our_Func, "");
       G_C      : constant Value_T        :=
         Add_Global (Convert_Module, Type_Of (V), "_CC");
       Our_PM   : constant Pass_Manager_T := Create_Pass_Manager;

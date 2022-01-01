@@ -154,12 +154,12 @@ package body GNATLLVM.Types.Create is
          when IEEE_Binary =>
             case UI_To_ULL (Size) is
                when 32 =>
-                  T := Float_Type_In_Context (Context);
+                  T := Float_Type;
                when 64 =>
-                  T := Double_Type_In_Context (Context);
+                  T := Double_Type;
                when 80 | 96 | 128 =>
                   --  Extended precision; not IEEE_128
-                  T := X86FP80_Type_In_Context (Context);
+                  T := X86FP80_Type;
                when others =>
                   pragma Assert (Decls_Only);
                   T := Byte_T;

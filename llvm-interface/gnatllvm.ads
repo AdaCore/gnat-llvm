@@ -219,9 +219,6 @@ package GNATLLVM is
    type Word_Array is array (Nat range <>) of aliased uint64_t;
    --  Array of words for LLVM construction functions
 
-   Context            : Context_T;
-   --  The current LLVM Context
-
    IR_Builder         : Builder_T;
    --  The current LLVM Instruction builder
 

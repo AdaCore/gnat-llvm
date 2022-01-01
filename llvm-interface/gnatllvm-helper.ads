@@ -31,10 +31,14 @@ package GNATLLVM.Helper is
    --  GL_Value that LLVM supports on a Value_T, it should be in
    --  GNATLLVM.GLValue.
 
+   function Create_MDBuilder return MD_Builder_T is
+     (Create_MDBuilder_In_Context (Get_Global_Context));
+
    function Create_TBAA_Scalar_Type_Node
      (Name : String; Size : ULL; Parent : Metadata_T) return Metadata_T
    is
-     (Create_TBAA_Scalar_Type_Node (Context, MD_Builder, Name, Size, Parent))
+     (Create_TBAA_Scalar_Type_Node (Get_Global_Context, MD_Builder, Name,
+                                    Size, Parent))
      with Pre  => Present (Parent),
           Post => Present (Create_TBAA_Scalar_Type_Node'Result);
 
@@ -47,7 +51,7 @@ package GNATLLVM.Helper is
       TBAAs   : Metadata_Array) return Metadata_T
    is
       (Create_TBAA_Struct_Type_Node
-         (Context, MD_Builder, Name, Size, Offsets'Length,
+         (Get_Global_Context, MD_Builder, Name, Size, Offsets'Length,
           Parent, TBAAs'Address, Offsets'Address, Sizes'Address))
      with Pre  => Present (Parent) and then Sizes'First = Offsets'First
                   and then Sizes'Last  = Offsets'Last
@@ -62,8 +66,8 @@ package GNATLLVM.Helper is
       Sizes   : ULL_Array) return Metadata_T
    is
       (Create_TBAA_Struct_Node
-         (Context, MD_Builder, TBAAs'Length, TBAAs'Address, Offsets'Address,
-          Sizes'Address))
+         (Get_Global_Context, MD_Builder, TBAAs'Length, TBAAs'Address,
+          Offsets'Address, Sizes'Address))
      with Pre  => TBAAs'First = Offsets'First
                   and then TBAAs'Last  = Offsets'Last
                   and then TBAAs'First = Sizes'First
@@ -96,7 +100,7 @@ package GNATLLVM.Helper is
      with Pre => Present (V), Post => Present (Value_As_Metadata'Result);
 
    function Metadata_As_Value (M : Metadata_T) return Value_T is
-     (Metadata_As_Value (Context, M))
+     (Metadata_As_Value (Get_Global_Context, M))
      with Pre => Present (M), Post => Present (Metadata_As_Value'Result);
 
    function Const_32_As_Metadata (U : Uint) return Metadata_T is
@@ -104,11 +108,11 @@ package GNATLLVM.Helper is
      with Pre => Present (U), Post => Present (Const_32_As_Metadata'Result);
 
    function MD_String (S : String) return Metadata_T is
-     (MD_String_In_Context_2 (Context, S, S'Length))
+     (MD_String_In_Context_2 (Get_Global_Context, S, S'Length))
      with Post => Present (MD_String'Result);
 
    function MD_Node (MDs : Metadata_Array) return Metadata_T is
-     (MD_Node_In_Context_2 (Context, MDs'Address, MDs'Length))
+     (MD_Node_In_Context_2 (Get_Global_Context, MDs'Address, MDs'Length))
      with Pre  => (for all M of MDs => Present (M)),
           Post => Present (MD_Node'Result);
 
@@ -204,7 +208,8 @@ package GNATLLVM.Helper is
       Inlined_At : Metadata_T) return Metadata_T
    is
      (DI_Builder_Create_Debug_Location
-        (Context, unsigned (Line), unsigned (Column), Scope, Inlined_At))
+        (Get_Global_Context, unsigned (Line), unsigned (Column), Scope,
+         Inlined_At))
      with Pre  => Present (Scope),
           Post => Present (DI_Builder_Create_Debug_Location'Result);
 

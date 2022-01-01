@@ -101,7 +101,7 @@ package body GNATLLVM.Compile is
       --  If we read a target config file, we may not have called our
       --  initialization yet, so do it here.
 
-      if Context = null then
+      if Module = null then
          Scan_Command_Line;
          Initialize_LLVM_Target;
       end if;

@@ -353,7 +353,8 @@ package GNATLLVM.Wrapper is
      (Context : Context_T; Retval : Value_T) return Value_T
      with Import, Convention => C, External_Name => "Create_Return";
 
-   procedure Insert_At_Block_End (V : Value_T; BB : Basic_Block_T)
+   procedure Insert_At_Block_End
+     (V : Value_T; BB : Basic_Block_T; From : Value_T)
      with Import, Convention => C, External_Name => "Insert_At_Block_End";
 
    function Insert_Alloca_Before (Ty : Type_T; Before : Value_T) return Value_T

@@ -761,9 +761,10 @@ Create_Return (LLVMContext &C, Value *retVal)
 
 extern "C"
 void
-Insert_At_Block_End (Instruction *I, BasicBlock *BB)
+Insert_At_Block_End (Instruction *I, BasicBlock *BB, Instruction *From)
 {
   BB->getInstList ().insert (BB->end (), I);
+  I->setDebugLoc (From->getDebugLoc ());
 }
 
 extern "C"

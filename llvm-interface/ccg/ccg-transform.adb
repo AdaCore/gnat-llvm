@@ -207,8 +207,11 @@ package body CCG.Transform is
       --  First, loop through each basic block in V looking for branches to
       --  blocks that start with one or more Phi nodes. If so, add stores
       --  of the proper value to the Phi alloca unless this a Phi that
-      --  handles returns. In the latter case, replace the terminator with
-      --  a return instruction and delete the current terminator.
+      --  handles returns. In the latter case, if the terminator is an
+      --  unconditional branch, replace the terminator with a return
+      --  instruction and delete the current terminator. For a conditional
+      --  branch or a switch, create a new basic block with the return and
+      --  branch to it instead.
       --
       --  We could do this in one of two ways in the cases of conditional
       --  branches and a switch statement: we could make new basic block
@@ -226,10 +229,27 @@ package body CCG.Transform is
             Dest_Inst := Get_First_Instruction (Dest_BB);
             while Is_APHI_Node (Dest_Inst) loop
                if Is_Return_Phi (Dest_Inst) then
-                  Insert_At_Block_End
-                    (Create_Return (Phi_Value (Dest_Inst, BB)), BB);
-                  pragma Assert (Is_Unc_Br (Inst));
-                  Instruction_Erase_From_Parent (Inst);
+                  declare
+                     Ret_Inst : constant Value_T       :=
+                       Create_Return (Phi_Value (Dest_Inst, BB));
+
+                     Ret_BB   : constant Basic_Block_T :=
+                       (if   Is_Unc_Br (Inst) then BB
+                        else Append_Basic_Block_In_Context (Context, V, ""));
+
+                  begin
+                     --  Insert the return instruction into the appropriate
+                     --  block and either remove our instruction if it's
+                     --  an unconditional branch or update this successor to
+                     --  point to the new block.
+
+                     Insert_At_Block_End (Ret_Inst, Ret_BB, Dest_Inst);
+                     if Is_Unc_Br (Inst) then
+                        Instruction_Erase_From_Parent (Inst);
+                     else
+                        Set_Successor (Inst, J, Ret_BB);
+                     end if;
+                  end;
                   exit;
                else
                   Insert_Store_Before (Phi_Value (Dest_Inst, BB),
@@ -420,15 +440,12 @@ package body CCG.Transform is
       --  The optimizer sometimes creates a Phi just to merge returns.
       --  When generating C, we want to undo that and prefer to generate
       --  the return. So check for a Phi that's just used once and for a
-      --  return. It must also have all predecessors be an unconditional
-      --  branch because we want to replace that with a return. For
-      --  simplicity, do this only if it's the first Phi (which it should
-      --  be) and don't do this for array types, since they can't be
-      --  directly returned in C.
+      --  return. For simplicity, do this only if it's the first Phi (which
+      --  it should be) and don't do this for array types, since they can't
+      --  be directly returned in C.
 
       return Present (Single_User) and then Get_Opcode (Single_User) = Op_Ret
-        and then Get_Type_Kind (V) /= Array_Type_Kind
-        and then All_Preds_Are_Unc_Branches (Get_Instruction_Parent (V));
+        and then Get_Type_Kind (V) /= Array_Type_Kind;
    end Is_Return_Phi;
 
    ----------------------------
@@ -595,7 +612,7 @@ package body CCG.Transform is
       while Inst /= SC_Term loop
          Next_Inst := Get_Next_Instruction (Inst);
          Instruction_Remove_From_Parent (Inst);
-         Insert_At_Block_End (Inst, BB);
+         Insert_At_Block_End (Inst, BB, Inst);
          Inst := Next_Inst;
       end loop;
 
@@ -603,11 +620,11 @@ package body CCG.Transform is
       --  of our other block's terminator to it, move that one as well,
       --  and delete the other basic block.
 
-      Call_Inst := Create_Call_2 (Fn, Our_Cond, SC_Cond);
-      Insert_At_Block_End (Call_Inst, BB);
+      Call_Inst := Create_Call_2 (Fn, Our_Cond, Get_Last_Instruction (BB));
+      Insert_At_Block_End (Call_Inst, BB, Our_Term);
       Set_Condition (SC_Term, Call_Inst);
       Instruction_Remove_From_Parent (SC_Term);
-      Insert_At_Block_End (SC_Term, BB);
+      Insert_At_Block_End (SC_Term, BB, SC_Term);
       Delete_Basic_Block (SC_BB);
 
    end Make_Short_Circuit_Op;

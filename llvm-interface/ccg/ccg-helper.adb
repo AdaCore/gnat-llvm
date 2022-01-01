@@ -94,6 +94,16 @@ package body CCG.Helper is
       end if;
    end Get_Debug_Loc_Directory;
 
+   ------------------------
+   -- Get_Debug_Loc_Line --
+   ------------------------
+
+   function Get_Debug_Loc_Line (V : Value_T) return Physical_Line_Number is
+      Line : constant unsigned := Get_Debug_Loc_Line (V);
+   begin
+      return (if Line = 0 then 1 else Physical_Line_Number (Line));
+   end Get_Debug_Loc_Line;
+
    -------------------
    -- Set_Successor --
    -------------------

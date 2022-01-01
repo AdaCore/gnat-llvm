@@ -282,8 +282,7 @@ package CCG.Helper is
    function Get_Debug_Loc_Directory (V : Value_T) return String
      with Pre => Is_A_Instruction (V) or else Is_A_Function (V)
                  or else Is_A_Global_Variable (V);
-   function Get_Debug_Loc_Line (V : Value_T) return Physical_Line_Number is
-     (Physical_Line_Number (unsigned'(Get_Debug_Loc_Line (V))))
+   function Get_Debug_Loc_Line (V : Value_T) return Physical_Line_Number
      with Pre => Is_A_Instruction (V) or else Is_A_Function (V)
                  or else Is_A_Global_Variable (V);
    function Create_Return (V : Value_T) return Value_T is

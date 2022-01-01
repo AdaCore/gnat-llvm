@@ -206,6 +206,16 @@ package body CCG.Flow is
      with Pre => Present (Idx);
    --  Sort a and simplify case parts in Idx
 
+   function Effective_Flow (Idx : Flow_Idx) return Flow_Idx
+     with Pre => Present (Idx), Post => Present (Effective_Flow'Result);
+   --  Return the flow corresponding to Idx, which means following a
+   --  any flows where there's a chain of Next links.
+
+   procedure Try_Merge_Ifs (Idx : Flow_Idx)
+     with Pre => Present (Idx);
+   --  See if Idx has if parts that allow merging the destination of the
+   --  "else" into another if parts and do the merge if so.
+
    ----------
    -- Text --
    ----------
@@ -1010,6 +1020,77 @@ package body CCG.Flow is
 
    end Simplify_One_Flow_Cases;
 
+   --------------------
+   -- Effective_Flow --
+   -------------------
+
+   function Effective_Flow (Idx : Flow_Idx) return Flow_Idx is
+      Max_Count : constant := 10;
+      Count     : Integer  := 0;
+
+   begin
+      --  Follow the Next chain, but avoid infinite loops
+
+      return Ret_Idx : Flow_Idx := Idx do
+         while Count < Max_Count and then Present (Next (Ret_Idx)) loop
+            Ret_Idx := Next (Ret_Idx);
+            Count   := Count + 1;
+         end loop;
+      end return;
+   end Effective_Flow;
+
+   -------------------
+   -- Try_Merge_Ifs --
+   -------------------
+
+   procedure Try_Merge_Ifs (Idx : Flow_Idx) is
+      New_First   : constant If_Idx := Ifs.Last + 1;
+      Then_Target : Flow_Idx;
+      Else_Target : Flow_Idx;
+
+   begin
+      --  If this doesn't have "if" parts, we can't do anything with it
+
+      if No (First_If (Idx)) then
+         return;
+      end if;
+
+      --  Otherwise, get our "then" and "else" targets. We can do the
+      --  merge if the latter has only one use, has no code, has only
+      --  two "if" parts, and the destination of the "then" part is
+      --  either our "then" target or one or both are return flows.
+
+      Then_Target := Target (First_If (Idx));
+      Else_Target := Target (Last_If (Idx));
+      if Use_Count (Else_Target) = 1 and then No (First_Line (Else_Target))
+        and then Present (First_If (Else_Target))
+        and then First_If (Else_Target) + 1 = Last_If (Else_Target)
+        and then (Is_Return (Effective_Flow (Then_Target))
+                    or else Is_Return (Effective_Flow
+                                         (Target (First_If (Else_Target))))
+                    or else Effective_Flow (Then_Target) =
+                              Effective_Flow (Target (First_If (Else_Target))))
+      then
+         --  Copy all but the last of our "if" targets, then the two from
+         --  our "else" target.
+
+         for Iidx in First_If (Idx) .. Last_If (Idx) - 1 loop
+            Ifs.Append (Ifs.Table (Iidx));
+         end loop;
+
+         for Iidx in First_If (Else_Target) .. Last_If (Else_Target) loop
+            Ifs.Append (Ifs.Table (Iidx));
+         end loop;
+
+         --  Update our first and last indexes and make a recursive call
+         --  in case we can merge more parts into this.
+
+         Set_First_If (Idx, New_First);
+         Set_Last_If  (Idx, Ifs.Last);
+         Try_Merge_Ifs (Idx);
+      end if;
+   end Try_Merge_Ifs;
+
    -------------------
    -- Simplify_Flow --
    -------------------
@@ -1018,6 +1099,7 @@ package body CCG.Flow is
    begin
       Process_Flows (Idx, Simplify_Final_Target'Access);
       Process_Flows (Idx, Simplify_One_Flow_Cases'Access);
+      Process_Flows (Idx, Try_Merge_Ifs'Access);
    end Simplify_Flow;
 
    -----------------

@@ -1328,8 +1328,13 @@ package body CCG.Flow is
 
       procedure Dump_One_Flow (Idx : Flow_Idx) is
       begin
-         Write_Str ("Flow " & Pos (Idx) & " (" & BB (Idx) &
-                    ") has " & Use_Count (Idx));
+         if Is_Return (Idx) then
+            Write_Str ("Flow " & Pos (Idx) & " has " & Use_Count (Idx));
+         else
+            Write_Str  ("Flow " & Pos (Idx) & " (" & BB (Idx) &
+                          ") has " & Use_Count (Idx));
+         end if;
+
          if Use_Count (Idx) = 1 then
             Write_Str (" use");
          else

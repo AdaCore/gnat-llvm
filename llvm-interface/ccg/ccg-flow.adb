@@ -932,7 +932,6 @@ package body CCG.Flow is
 
       procedure Process_Flow_Graph (Idx : Flow_Idx) is
       begin
-         Subprog.all (Idx);
          Process_One_Flow (Next (Idx));
          if Present (First_If (Idx)) then
             for Iidx in First_If (Idx) .. Last_If (Idx) loop
@@ -945,6 +944,8 @@ package body CCG.Flow is
                Process_One_Flow (Target (Cidx));
             end loop;
          end if;
+
+         Subprog.all (Idx);
       end Process_Flow_Graph;
 
    begin  --  Start of processing for Process_Flow

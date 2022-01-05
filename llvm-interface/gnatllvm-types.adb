@@ -618,7 +618,7 @@ package body GNATLLVM.Types is
            and then Get_Type_Size (Type_Of (A_GT)) > Max_Alloc * UBPU
          then
             Emit_Raise_Call (N, SE_Object_Too_Large);
-            Error_Msg_N ("??`Storage_Error` will be raised at run time!", N);
+            Error_Msg_N ("??Storage_Error will be raised at run time!", N);
             return Get_Undef_Ref (GT);
          else
             declare
@@ -695,7 +695,7 @@ package body GNATLLVM.Types is
             then
                Emit_Raise_Call (N, SE_Object_Too_Large);
                Error_Msg_N
-                 ("??`Storage_Error` will be raised at run time!", N);
+                 ("??Storage_Error will be raised at run time!", N);
                return Get_Undef_Ref (GT);
             end if;
          else
@@ -714,7 +714,7 @@ package body GNATLLVM.Types is
             Num_Elts := Size_Const_Int (Uint_1);
          else
             if not Is_Undef (Num_Elts) then
-               Error_Msg_N ("??`Storage_Error` will be raised at run time!",
+               Error_Msg_N ("??Storage_Error will be raised at run time!",
                             N);
             end if;
 
@@ -789,7 +789,7 @@ package body GNATLLVM.Types is
 
       if Overflowed (Size) or else Is_Undef (Size) then
          if not Is_Undef (Size) then
-            Error_Msg_N ("??`Storage_Error` will be raised at run time!", N);
+            Error_Msg_N ("??Storage_Error will be raised at run time!", N);
          end if;
 
          Emit_Raise_Call (N, SE_Object_Too_Large);
@@ -839,7 +839,7 @@ package body GNATLLVM.Types is
             --  we did the computation above.  So check again.
 
             if Overflowed (Total_Size) then
-               Error_Msg_N ("??`Storage_Error` will be raised at run time!",
+               Error_Msg_N ("??Storage_Error will be raised at run time!",
                             N);
                Emit_Raise_Call (N, SE_Object_Too_Large);
                return Get_Undef_Ref (GT);

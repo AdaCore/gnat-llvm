@@ -59,6 +59,11 @@ package CCG.Flow is
    function No (Idx : Case_Idx) return Boolean is (Idx = Empty_Case_Idx);
    function No (Idx : If_Idx)   return Boolean is (Idx = Empty_If_Idx);
 
+   procedure Discard (Idx : Line_Idx) is null;
+   procedure Discard (Idx : Case_Idx) is null;
+   procedure Discard (Idx : If_Idx)   is null;
+   procedure Discard (Idx : Flow_Idx) is null;
+
    --  Getters and setters for a Line node
 
    function Text (Idx : Line_Idx)   return Str
@@ -139,8 +144,7 @@ package CCG.Flow is
           Post => Inst (Idx) = V, Inline;
 
    procedure Set_Target (Idx : If_Idx; Fidx : Flow_Idx)
-     with Pre  => Present (Idx) and then Present (Fidx),
-          Post => Target (Idx) = Fidx, Inline;
+     with Pre => Present (Idx), Post => Target (Idx) = Fidx, Inline;
 
    --  Getters and setters for a Flow
 

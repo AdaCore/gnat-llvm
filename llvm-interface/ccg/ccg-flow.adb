@@ -206,10 +206,28 @@ package body CCG.Flow is
      with Pre => Present (Idx);
    --  Sort a and simplify case parts in Idx
 
+   generic
+      type Part_Idx is range <>;
+      with function Present (Pidx : Part_Idx) return Boolean;
+      with function Target (Pidx : Part_Idx) return Flow_Idx;
+      with procedure Set_Target (Pidx : Part_Idx; Idx : Flow_Idx);
+   function Replace_Target_Generic
+     (Pidx : Part_Idx; Wanted_Target : Flow_Idx) return Flow_Idx
+     with Pre => Present (Pidx);
+   --  Starting at the target of Pidx, follow the Next chain through
+   --  flows that have only one use looking for Wanted_Target, if
+   --  present, or the end of the chain if it isn't.  Then clear the
+   --  Next or Target of Pidx, as appropriate, and
+   --  return its old value.
+
    function Effective_Flow (Idx : Flow_Idx) return Flow_Idx
      with Pre => Present (Idx), Post => Present (Effective_Flow'Result);
    --  Return the flow corresponding to Idx, which means following a
    --  any flows where there's a chain of Next links.
+
+   procedure Factor_One_If (Idx : Flow_Idx)
+     with Pre => Present (Idx);
+   --  Factor out any common destination in "if" parts within Idx
 
    procedure Try_Merge_Ifs (Idx : Flow_Idx)
      with Pre => Present (Idx);
@@ -831,6 +849,9 @@ package body CCG.Flow is
                end loop;
             end;
 
+         when Op_Unreachable =>
+            null;
+
          when others =>
             pragma Assert (False);
       end case;
@@ -1021,6 +1042,93 @@ package body CCG.Flow is
 
    end Simplify_One_Flow_Cases;
 
+   ----------------------------
+   -- Replace_Target_Generic --
+   ----------------------------
+
+   function Replace_Target_Generic
+     (Pidx : Part_Idx; Wanted_Target : Flow_Idx) return Flow_Idx
+   is
+      Idx      : Flow_Idx := Target (Pidx);
+      Prev_Idx : Flow_Idx := Empty_Flow_Idx;
+      Ret_Idx  : Flow_Idx := Empty_Flow_Idx;
+
+   begin
+      --  If Wanted_Target isn't Present, we're looking for the last
+      --  flow in the chain of one-use flows. If it is Present, we're
+      --  looking for the flow that points to it.
+
+      while Use_Count (Idx) = 1 and then Present (Next (Idx))
+        and then ((Present (Wanted_Target) and then Idx /= Wanted_Target)
+                  or else No (Wanted_Target))
+      loop
+         Prev_Idx := Idx;
+         Idx      := Next (Idx);
+      end loop;
+
+      --  Now see if this is the first or a subsequent flow and perform
+      --  the replacement if we are to do so.
+
+      if No (Prev_Idx) then
+         if No (Wanted_Target) or else Target (Pidx) = Wanted_Target then
+            Ret_Idx := Target (Pidx);
+            Set_Target (Pidx, Empty_Flow_Idx);
+         end if;
+      else
+         if No (Wanted_Target) or else Next (Prev_Idx) = Wanted_Target then
+            Ret_Idx := Next (Prev_Idx);
+            Set_Next (Prev_Idx, Empty_Flow_Idx);
+
+         end if;
+      end if;
+
+      return Ret_Idx;
+   end Replace_Target_Generic;
+
+   --------------------
+   -- Replace_Target --
+   -------------------
+
+   function Replace_Target is
+      new Replace_Target_Generic (If_Idx, Present, Target, Set_Target);
+
+   --------------------
+   -- Replace_Target --
+   -------------------
+
+   function Replace_Target is
+      new Replace_Target_Generic (Case_Idx, Present, Target, Set_Target);
+
+   -------------------
+   -- Factor_One_If --
+   -------------------
+
+   procedure Factor_One_If (Idx : Flow_Idx) is
+   begin
+      --  If this doesn't have any "if" parts, we have nothing to do
+
+      if No (First_If (Idx)) then
+         return;
+
+      --  Otherwise, if we have an "else" clause and we haven't set a Next,
+      --  do so from that clause.
+
+      elsif No (Next (Idx)) and then No (Test (Last_If (Idx))) then
+         Set_Next (Idx, Replace_Target (Last_If (Idx), Empty_Flow_Idx));
+         --  If the else clause now has no destination either, delete it
+
+         if No (Target (Last_If (Idx))) then
+            Set_Last_If (Idx, Last_If (Idx) - 1);
+         end if;
+      end if;
+
+      --  Now remove any branches to our Next from any If part
+
+      for Iidx in First_If (Idx) .. Last_If (Idx) loop
+         Discard (Replace_Target (Iidx, Next (Idx)));
+      end loop;
+   end Factor_One_If;
+
    --------------------
    -- Effective_Flow --
    -------------------
@@ -1050,9 +1158,10 @@ package body CCG.Flow is
       Else_Target : Flow_Idx;
 
    begin
-      --  If this doesn't have "if" parts, we can't do anything with it
+      --  If this doesn't have "if" parts, we can't do anything with it.
+      --  ??? Likewise, for now, if it doesn't have an "else" part.
 
-      if No (First_If (Idx)) then
+      if No (First_If (Idx)) or else No (Test (Last_If (Idx))) then
          return;
       end if;
 
@@ -1060,12 +1169,18 @@ package body CCG.Flow is
       --  merge if the latter has only one use, has no code, has only
       --  two "if" parts, and the destination of the "then" part is
       --  either our "then" target or one or both are return flows.
+      --  ??? This is essentially disabled until the "if" factoring
+      --  is taken into account.
 
       Then_Target := Target (First_If (Idx));
       Else_Target := Target (Last_If (Idx));
-      if Use_Count (Else_Target) = 1 and then No (First_Line (Else_Target))
+      if Present (Else_Target) and then Use_Count (Else_Target) = 1
+        and then No (Test (Last_If (Idx)))
+        and then No (Next (Idx))
+        and then No (First_Line (Else_Target))
         and then Present (First_If (Else_Target))
         and then First_If (Else_Target) + 1 = Last_If (Else_Target)
+        and then Present (Target (First_If (Else_Target)))
         and then (Is_Return (Effective_Flow (Then_Target))
                     or else Is_Return (Effective_Flow
                                          (Target (First_If (Else_Target))))
@@ -1100,6 +1215,7 @@ package body CCG.Flow is
    begin
       Process_Flows (Idx, Simplify_Final_Target'Access);
       Process_Flows (Idx, Simplify_One_Flow_Cases'Access);
+      Process_Flows (Idx, Factor_One_If'Access);
       Process_Flows (Idx, Try_Merge_Ifs'Access);
    end Simplify_Flow;
 
@@ -1110,9 +1226,9 @@ package body CCG.Flow is
    procedure Output_Flow (Idx : Flow_Idx) is
       procedure Output_Flow_Target
         (Idx : Flow_Idx; V : Value_T; BS : Block_Style; Depth : Nat)
-        with Pre => Present (Idx) and then Present (V);
-      --  Write the line(s) needed to go to the flow denoted by Idx from
-      --  the instruction V. BS is the style of this block, if any
+        with Pre => Present (V);
+      --  Write the line(s) needed to go to the flow denoted by Idx, if
+      --  any, from the instruction V. BS is the style of this block, if any
 
       procedure Output_One_Flow
         (Idx : Flow_Idx; Depth : Nat := 0; Write_Label : Boolean := True);
@@ -1137,9 +1253,14 @@ package body CCG.Flow is
       begin
          Start_Output_Block (BS);
 
+         --  If there's no block to write, write an empty statement
+
+         if No (Idx) then
+            Output_Stmt ("");
+
          --  If this represents a return, write a return
 
-         if Is_Return (Idx) then
+         elsif Is_Return (Idx) then
             if Present (Return_Value (Idx)) then
                Output_Stmt ("return " & Return_Value (Idx), V => V);
             elsif not Does_Not_Return (Curr_Func) then
@@ -1252,6 +1373,7 @@ package body CCG.Flow is
          --  And separate flows
 
          Output_Stmt ("", Semicolon => False);
+
       end Output_One_Flow;
 
    begin  -- Start of processing for Output_Flow
@@ -1279,8 +1401,7 @@ package body CCG.Flow is
    ---------------
 
    procedure Dump_Flow (J : Pos; Dump_All : Boolean) is
-      procedure Write_Flow_Idx (Idx : Flow_Idx)
-        with Pre => Present (Idx);
+      procedure Write_Flow_Idx (Idx : Flow_Idx);
       procedure Dump_One_Flow (Idx : Flow_Idx)
         with Pre => Present (Idx);
       package Dump_Flows is new Ada.Containers.Ordered_Sets
@@ -1302,6 +1423,11 @@ package body CCG.Flow is
 
       procedure Write_Flow_Idx (Idx : Flow_Idx) is
       begin
+         if No (Idx) then
+            Write_Str ("null");
+            return;
+         end if;
+
          Write_Int (Pos (Idx));
          if Is_Return (Idx) then
             Write_Str (" (return");
@@ -1349,12 +1475,6 @@ package body CCG.Flow is
          elsif Present (Next (Idx)) then
             Write_Str (" next ");
             Write_Flow_Idx (Next (Idx));
-         end if;
-
-         if Present (First_Line (Idx)) or else Present (First_If (Idx))
-           or else Present (Case_Expr (Idx))
-         then
-            Write_Str (":");
          end if;
 
          Write_Eol;

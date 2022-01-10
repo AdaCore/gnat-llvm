@@ -1401,7 +1401,7 @@ package body CCG.Flow is
    ---------------
 
    procedure Dump_Flow (J : Pos; Dump_All : Boolean) is
-      procedure Write_Flow_Idx (Idx : Flow_Idx);
+      function Goto_Flow_Idx (Idx : Flow_Idx) return Str;
       procedure Dump_One_Flow (Idx : Flow_Idx)
         with Pre => Present (Idx);
       package Dump_Flows is new Ada.Containers.Ordered_Sets
@@ -1418,24 +1418,25 @@ package body CCG.Flow is
       --  digits of the value.
 
       --------------------
-      -- Write_Flow_Idx --
+      -- Goto_Flow_Idx --
       --------------------
 
-      procedure Write_Flow_Idx (Idx : Flow_Idx) is
+      function Goto_Flow_Idx (Idx : Flow_Idx) return Str is
+         Result : Str := +"goto ";
+
       begin
          if No (Idx) then
-            Write_Str ("null");
-            return;
+            return Result & "null";
          end if;
 
-         Write_Int (Pos (Idx));
+         Result := Result & Pos (Idx);
          if Is_Return (Idx) then
-            Write_Str (" (return");
+            Result := Result & " (return";
             if Present (Return_Value (Idx)) then
-               Write_Str (" " & Return_Value (Idx));
+               Result := Result & " " & Return_Value (Idx);
             end if;
 
-            Write_Str (")");
+            Result := Result & ")";
          end if;
 
          --  If we haven't already dumped this flow and haven't
@@ -1446,7 +1447,9 @@ package body CCG.Flow is
          then
             Insert (To_Dump, Idx);
          end if;
-      end Write_Flow_Idx;
+
+         return Result;
+      end Goto_Flow_Idx;
 
       -------------------
       -- Dump_One_Flow --
@@ -1472,13 +1475,12 @@ package body CCG.Flow is
             if Present (Return_Value (Idx)) then
                Write_Str (" " & Return_Value (Idx));
             end if;
-         elsif Present (Next (Idx)) then
-            Write_Str (" next ");
-            Write_Flow_Idx (Next (Idx));
+
+            Write_Eol;
+            return;
          end if;
 
          Write_Eol;
-
          if Present (First_Line (Idx)) then
             for Lidx in First_Line (Idx) .. Last_Line (Idx) loop
                Write_Str ("    " & Text (Lidx), Eol => True);
@@ -1487,14 +1489,11 @@ package body CCG.Flow is
 
          if Present (First_If (Idx)) then
             for Iidx in First_If (Idx) .. Last_If (Idx) loop
-               if Present (Test (Iidx)) then
-                  Write_Str ("    if (" & Test (Iidx) & ") then ");
-               else
-                  Write_Str ("    else ");
-               end if;
-
-               Write_Flow_Idx (Target (Iidx));
-               Write_Eol;
+               Write_Str ((if   Present (Test (Iidx))
+                           then +"    if (" & Test (Iidx) & ") then "
+                           else +"    else ") &
+                          Goto_Flow_Idx (Target (Iidx)),
+                          Eol => True);
             end loop;
          end if;
 
@@ -1502,19 +1501,17 @@ package body CCG.Flow is
             Write_Str ("  switch (" & Case_Expr (Idx) & ")");
             Write_Eol;
             for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
-               if Present (Value (Cidx)) then
-                  Write_Str ("    " & Value (Cidx) & ":");
-               else
-                  Write_Str ("    default:");
-               end if;
-
-               if Present (Target (Cidx)) then
-                  Write_Str (" goto ");
-                  Write_Flow_Idx (Target (Cidx));
-               end if;
-
-               Write_Eol;
+               Write_Str ((if   Present (Value (Cidx))
+                           then +"    " & Value (Cidx) & ": "
+                           else +"    default: ") &
+                          (if   Present (Target (Cidx))
+                           then Goto_Flow_Idx (Target (Cidx)) else +""),
+                          Eol => True);
             end loop;
+         end if;
+
+         if Present (Next (Idx)) then
+            Write_Str ("    " & Goto_Flow_Idx (Next (Idx)), Eol => True);
          end if;
       end Dump_One_Flow;
 

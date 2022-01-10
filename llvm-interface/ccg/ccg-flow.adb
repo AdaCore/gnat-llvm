@@ -58,19 +58,25 @@ package body CCG.Flow is
    --  C, including any handling of unsigned.
 
    type Case_Data is record
-      Value  : Value_T;
+      Value           : Value_T;
       --  Value corresponding to this case or No_Value_T for "default"
 
-      Expr   : Str;
+      Expr            : Str;
       --  String for this case node or No_Str if this is for "default"
 
-      Target : Flow_Idx;
+      Target          : Flow_Idx;
       --  The Flow corresponding to this case node, if any. No flow means
-      --  that the target of this node is the same as that of the next node
-      --  (which may also not be Present).
+      --  either that the target of this node is the same as that of the
+      --  next node (which may also not be Present) or that this case
+      --  immediately falls though to after the switch statement. See below
+      --  to determine which.
 
-      Inst   : Value_T;
+      Inst            : Value_T;
       --  First instruction at target, for debug info
+
+      Is_Same_As_Next : Boolean;
+      --  True if this case part branches to the same place as the next part
+
    end record;
 
    package Cases is new Table.Table
@@ -225,9 +231,17 @@ package body CCG.Flow is
    --  Return the flow corresponding to Idx, which means following a
    --  any flows where there's a chain of Next links.
 
+   function Falls_Through (Idx : Flow_Idx) return Boolean;
+   --  Return True if Idx isn't Present or the chain of flows starting
+   --  at Idx that each have only one use doesn't either branch or return.
+
    procedure Factor_One_If (Idx : Flow_Idx)
      with Pre => Present (Idx);
    --  Factor out any common destination in "if" parts within Idx
+
+   procedure Factor_One_Case (Idx : Flow_Idx)
+     with Pre => Present (Idx);
+   --  Factor out any common destination in "case" parts within Idx
 
    procedure Try_Merge_Ifs (Idx : Flow_Idx)
      with Pre => Present (Idx);
@@ -294,6 +308,13 @@ package body CCG.Flow is
    function Inst (Idx : Case_Idx) return Value_T is
      (Cases.Table (Idx).Inst);
 
+   ---------------------
+   -- Is_Same_As_Next --
+   ---------------------
+
+   function Is_Same_As_Next (Idx : Case_Idx) return Boolean is
+     (Cases.Table (Idx).Is_Same_As_Next);
+
    ---------------
    -- Set_Value --
    ---------------
@@ -331,6 +352,14 @@ package body CCG.Flow is
    begin
       Cases.Table (Idx).Inst := V;
    end Set_Inst;
+
+   -------------------------
+   -- Set_Is_Same_As_Next --
+   -------------------------
+   procedure Set_Is_Same_As_Next (Idx : Case_Idx; B : Boolean := True) is
+   begin
+      Cases.Table (Idx).Is_Same_As_Next := B;
+   end Set_Is_Same_As_Next;
 
    ----------
    -- Test --
@@ -636,10 +665,11 @@ package body CCG.Flow is
 
    function New_Case (V : Value_T; S : Str) return Case_Idx is
    begin
-      Cases.Append ((Value  => V,
-                     Expr   => S,
-                     Target => Empty_Flow_Idx,
-                     Inst   => No_Value_T));
+      Cases.Append ((Value           => V,
+                     Expr            => S,
+                     Target          => Empty_Flow_Idx,
+                     Is_Same_As_Next => False,
+                     Inst            => No_Value_T));
       return Cases.Last;
    end New_Case;
 
@@ -1035,7 +1065,8 @@ package body CCG.Flow is
 
          for Cidx in First_Case (Idx) .. Last_Case (Idx) - 1 loop
             if Target (Cidx) = Target (Cidx + 1) then
-               Set_Target (Cidx, Empty_Flow_Idx);
+               Set_Is_Same_As_Next (Cidx);
+               Set_Target          (Cidx, Empty_Flow_Idx);
             end if;
          end loop;
       end if;
@@ -1054,6 +1085,12 @@ package body CCG.Flow is
       Ret_Idx  : Flow_Idx := Empty_Flow_Idx;
 
    begin
+      --  If there's already no target, we have nothing to do
+
+      if No (Idx) then
+         return Empty_Flow_Idx;
+      end if;
+
       --  If Wanted_Target isn't Present, we're looking for the last
       --  flow in the chain of one-use flows. If it is Present, we're
       --  looking for the flow that points to it.
@@ -1129,6 +1166,30 @@ package body CCG.Flow is
       end loop;
    end Factor_One_If;
 
+   -------------------
+   -- Factor_One_Case --
+   -------------------
+
+   procedure Factor_One_Case (Idx : Flow_Idx) is
+   begin
+      --  If this doesn't have any "case" parts, we have nothing to do
+
+      if No (Case_Expr (Idx)) then
+         return;
+
+      --  If we haven't we haven't set a Next, do so from our last clause
+
+      elsif No (Next (Idx)) then
+         Set_Next (Idx, Replace_Target (Last_Case (Idx), Empty_Flow_Idx));
+      end if;
+
+      --  Now remove any branches to our Next from any part
+
+      for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
+         Discard (Replace_Target (Cidx, Next (Idx)));
+      end loop;
+   end Factor_One_Case;
+
    --------------------
    -- Effective_Flow --
    -------------------
@@ -1147,6 +1208,20 @@ package body CCG.Flow is
          end loop;
       end return;
    end Effective_Flow;
+
+   -------------------
+   -- Falls_Through --
+   -------------------
+
+   function Falls_Through (Idx : Flow_Idx) return Boolean is
+      Our_Idx : Flow_Idx := Idx;
+   begin
+      while Present (Our_Idx) and then Use_Count (Our_Idx) = 1 loop
+         Our_Idx := Next (Our_Idx);
+      end loop;
+
+      return No (Our_Idx);
+   end Falls_Through;
 
    -------------------
    -- Try_Merge_Ifs --
@@ -1216,6 +1291,7 @@ package body CCG.Flow is
       Process_Flows (Idx, Simplify_Final_Target'Access);
       Process_Flows (Idx, Simplify_One_Flow_Cases'Access);
       Process_Flows (Idx, Factor_One_If'Access);
+      Process_Flows (Idx, Factor_One_Case'Access);
       Process_Flows (Idx, Try_Merge_Ifs'Access);
    end Simplify_Flow;
 
@@ -1354,10 +1430,13 @@ package body CCG.Flow is
                                Indent_Type => Under_Brace);
                end if;
 
-               if Present (Target (Cidx)) then
+               if not Is_Same_As_Next (Cidx) then
                   Output_Flow_Target (Target (Cidx), T,
                                       BS    => None,
                                       Depth => Depth + 1);
+                  if Falls_Through (Target (Cidx)) then
+                     Output_Stmt ("break");
+                  end if;
                end if;
             end loop;
 
@@ -1504,8 +1583,8 @@ package body CCG.Flow is
                Write_Str ((if   Present (Value (Cidx))
                            then +"    " & Value (Cidx) & ": "
                            else +"    default: ") &
-                          (if   Present (Target (Cidx))
-                           then Goto_Flow_Idx (Target (Cidx)) else +""),
+                          (if   Is_Same_As_Next (Cidx) then +""
+                           else Goto_Flow_Idx (Target (Cidx))),
                           Eol => True);
             end loop;
          end if;

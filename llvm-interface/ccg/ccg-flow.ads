@@ -84,20 +84,26 @@ package CCG.Flow is
 
    --  Getters and setters for a Case node
 
-   function Value (Idx : Case_Idx)  return Value_T
+   function Value (Idx : Case_Idx)           return Value_T
      with Pre => Present (Idx);
    --  Return the integer value for this case node or No_Value_T if this
    --  is for "default".
 
-   function Expr (Idx : Case_Idx)  return Str
+   function Expr (Idx : Case_Idx)            return Str
      with Pre => Present (Idx);
    --  Return the string for this case node or No_Str if this is for "default"
 
-   function Target (Idx : Case_Idx) return Flow_Idx
+   function Target (Idx : Case_Idx)          return Flow_Idx
      with Pre => Present (Idx);
    --  Return the Flow corresponding to this case node, if any. No flow
-   --  means that the target of this node is the same as that of the next
-   --  node (which may also not be Present).
+   --  means either that the target of this node is the same as that of
+   --  the next node (which may also not be Present) or that this case
+   --  immediately falls though to after the switch statement.
+   --  Is_Same_As_Next_Says which.
+
+   function Is_Same_As_Next (Idx : Case_Idx) return Boolean
+     with Pre => Present (Idx);
+   --  True if this case part branches to the same place as the next part
 
    function Inst (Idx : Case_Idx) return Value_T
      with Pre  => Present (Idx),
@@ -119,6 +125,8 @@ package CCG.Flow is
      with Pre  => Present (Idx) and then Is_A_Instruction (V),
           Post => Inst (Idx) = V, Inline;
 
+   procedure Set_Is_Same_As_Next (Idx : Case_Idx; B : Boolean := True)
+     with Pre => Present (Idx), Post => Is_Same_As_Next (Idx) = B, Inline;
    --  Getters and setters for an If node
 
    function Test (Idx : If_Idx)   return Str

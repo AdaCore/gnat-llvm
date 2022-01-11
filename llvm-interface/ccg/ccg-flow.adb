@@ -1180,16 +1180,22 @@ package body CCG.Flow is
          Discard (Replace_Target (Cidx, Next (Idx)));
       end loop;
 
-      --  If all we have left is a one part that's a default case with
-      --  no target, we don't have a switch statement to write.
+      --  If our last part is a default case with no target, delete it.
+      --  If that's all that's left, show we don't have any case parts.
+      --  But be careful that there aren't any previous parts that have
+      --  the same target as the one we plan to delete and don't actually
+      --  delete it in that case.
 
-      if First_Case (Idx) = Last_Case (Idx)
-        and then No (Value (First_Case (Idx)))
-        and then No (Target (First_Case (Idx)))
+      if No (Value (Last_Case (Idx)))
+        and then No (Target (Last_Case (Idx)))
       then
-         Set_Case_Expr  (Idx, No_Str);
-         Set_First_Case (Idx, Empty_Case_Idx);
-         Set_Last_Case  (Idx, Empty_Case_Idx);
+         if First_Case (Idx) = Last_Case (Idx) then
+            Set_Case_Expr  (Idx, No_Str);
+            Set_First_Case (Idx, Empty_Case_Idx);
+            Set_Last_Case  (Idx, Empty_Case_Idx);
+         elsif not Is_Same_As_Next (Last_Case (Idx) - 1) then
+            Set_Last_Case (Idx, Last_Case (Idx) - 1);
+         end if;
       end if;
    end Factor_One_Case;
 

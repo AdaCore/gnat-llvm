@@ -112,8 +112,7 @@ package CCG.Output is
      (S             : Str;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
-      V             : Value_T       := No_Value_T)
-     with Pre => Present (S);
+      V             : Value_T       := No_Value_T);
    procedure Output_Stmt
      (S             : String;
       Semicolon     : Boolean       := True;

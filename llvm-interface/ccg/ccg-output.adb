@@ -383,7 +383,9 @@ package body CCG.Output is
 
       --  Add the statement to the current subprogram
 
-      Stmts.Append ((Line_Text      => (if Semicolon then S & ";" else S),
+      Stmts.Append ((Line_Text      =>
+                       (if    No (S) then No_Str
+                        elsif Semicolon then S & ";" else S),
                      Start_Block    => Next_Block_Style,
                      End_Block      => None,
                      Indent_Type    => Indent_Type,
@@ -413,6 +415,8 @@ package body CCG.Output is
 
    procedure Start_Output_Block (BS : Block_Style) is
    begin
+      --  We don't allow consecutive block openers
+
       pragma Assert (No (Next_Block_Style));
       Next_Block_Style := BS;
    end Start_Output_Block;
@@ -458,11 +462,16 @@ package body CCG.Output is
    --------------------
 
    procedure End_Stmt_Block (BS : Block_Style) is
-      OL : Out_Line renames Stmts.Table (Stmts.Last);
    begin
+      --  We allow consecutive closing of blocks and implement that by
+      --  writing a blank entry.
+
       if Present (BS) then
-         pragma Assert (OL.End_Block = None);
-         OL.End_Block := BS;
+         if Stmts.Table (Stmts.Last).End_Block /= None then
+            Output_Stmt (No_Str);
+         end if;
+
+         Stmts.Table (Stmts.Last).End_Block := BS;
       end if;
    end End_Stmt_Block;
 

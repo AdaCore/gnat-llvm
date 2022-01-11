@@ -1036,7 +1036,9 @@ package body CCG.Write is
       --  We special-case having an end line starting with "}". In that
       --  case, we use that as the line to write.
 
-      if Present (OL.End_Block) and then Is_String_First_Char (S, '}') then
+      if Present (OL.End_Block) and then Present (S)
+        and then Is_String_First_Char (S, '}')
+      then
          Write_End_Block (End_Block, False, S);
          End_Block := None;
       elsif Present (S) then

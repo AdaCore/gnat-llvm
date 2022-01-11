@@ -1478,10 +1478,6 @@ package body CCG.Flow is
          if Present (Next (Idx)) then
             Output_Flow_Target (Next (Idx), T, BS => None, Depth => Depth);
          end if;
-
-         --  And separate flows
-
-         Output_Stmt ("", Semicolon => False);
       end Output_One_Flow;
 
    begin  -- Start of processing for Output_Flow

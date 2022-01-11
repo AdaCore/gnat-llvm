@@ -102,25 +102,27 @@ package body CCG.Write is
    procedure Write_Source_Line (L : Physical_Line_Number);
    --  Write the Ada source line L from the main file
 
-   Octal               : constant array (Integer range 0 .. 7) of Character :=
-    "01234567";
+   Octal : constant array (Integer range 0 .. 7) of Character := "01234567";
 
-   Main_Source_Name    : Str;
+   Main_Source_Name      : Str;
    --  If -gnatL is specifed, the fully-qualified filename of the main unit
 
-   Src                 : Source_Buffer_Ptr;
+   Src                   : Source_Buffer_Ptr;
    --  If -gnatL is specified, the text of the main unit's source file
 
-   Indent              : Integer                    := 0;
+   Indent                : Integer                    := 0;
    --  The current indentation level for all but non-indented lines
 
-   Next_Line_To_Dump   : Physical_Line_Number       := 1;
+   Next_Line_To_Dump     : Physical_Line_Number       := 1;
    --  The next source line to dump
 
-   Previous_Debug_File : Str                        := No_Str;
-   Previous_Debug_Line : Physical_Line_Number;
+   Previous_Debug_File   : Str                        := No_Str;
+   Previous_Debug_Line   : Physical_Line_Number;
    --  The filename and line number of the last #line directive we wrote,
    --  if any.
+
+   Previous_Was_End_Block : Boolean                    := False;
+   --  True if the last line written was the end of a block
 
    -----------------------
    -- Write_Start_Block --
@@ -1012,6 +1014,16 @@ package body CCG.Write is
          Next_Line_To_Dump := Our_Line + 1;
       end if;
 
+      --  If our last line ended a block and this one neither ends a
+      --  block nor starts with "else", write a blank line.
+
+      if Previous_Was_End_Block and then Present (S) and then No (End_Block)
+        and then not Is_String_First_Char (S, '}')
+        and then not Is_String_Starts_With (S, "else")
+      then
+         Write_Eol;
+      end if;
+
       --  Now handle possibly starting a block, write our line, then
       --  possibly ending a block. Handle any special indentation
       --  requirements. We special-case having start line starting with
@@ -1045,6 +1057,9 @@ package body CCG.Write is
          Write_Str ((Our_Indent * " ") & S, Eol => True);
       end if;
 
+      Previous_Was_End_Block :=
+        Present (End_Block)
+        or else (Present (S) and then Is_String_First_Char (S, '}'));
       Write_End_Block (End_Block, Present (OL.Start_Block));
    end Write_C_Line;
 

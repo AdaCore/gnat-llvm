@@ -27,6 +27,7 @@ package CCG.Strs is
    type Str is private;
    No_Str  : constant Str;
    Eol_Str : constant String;
+   Str_Max : constant Integer;
 
    function Present (S : Str) return Boolean;
    function No      (S : Str) return Boolean;
@@ -320,6 +321,9 @@ package CCG.Strs is
    function Is_String_First_Char (S : Str; C : Character) return Boolean
      with Pre => Present (S);
 
+   function Is_String_Starts_With (S1 : Str; S2 : String) return Boolean
+     with Pre => Present (S1) and then S2'Length < Str_Max;
+
    function Has_Unsigned (S : Str) return Boolean
       with Pre => Present (S);
    --  True if there is a reference within S to a value that's unsigned.
@@ -349,7 +353,7 @@ private
    --  component of the concatenation is limited to a small size.  In the
    --  rare case where we need a larger string, we break it into segments.
 
-   Str_Max : constant := 9;
+   Str_Max : constant Integer := 9;
    subtype Str_Length is Integer range 0 .. Str_Max;
    --  The longest string we'll use often is "unsigned ".  We allow empty
    --  strings, but optimize operations to not create them except when
@@ -430,4 +434,8 @@ private
      (S.Length >= 1 and then S.Comps (1).Kind = Var_String
       and then S.Comps (1).Str (1) = C);
 
+   function Is_String_Starts_With (S1 : Str; S2 : String) return Boolean is
+     (S1.Length >= 1 and then S1.Comps (1).Kind = Var_String
+      and then S1.Comps (1).Length >= S2'Length
+      and then S1.Comps (1).Str (1 .. S2'Length) = S2);
 end CCG.Strs;

@@ -1107,7 +1107,13 @@ package body CCG.Strs is
    begin
       Push_Output;
       Set_Standard_Error;
-      Write_Str (S, Eol => True);
+      if Present (S) then
+         Write_Str (S, Eol => True);
+      else
+         Write_Str ("(null)");
+         Write_Eol;
+      end if;
+
       Pop_Output;
    end Dump_Str;
 

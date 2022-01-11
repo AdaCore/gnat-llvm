@@ -230,15 +230,12 @@ package CCG.Flow is
           Post => Last_If (Idx) = Iidx, Inline;
 
    procedure Set_Case_Expr (Idx : Flow_Idx; S : Str)
-     with Pre  => Present (Idx) and then Present (S),
-          Post => Case_Expr (Idx) = S, Inline;
+     with Pre  => Present (Idx), Post => Case_Expr (Idx) = S, Inline;
 
    procedure Set_First_Case (Idx : Flow_Idx; Cidx : Case_Idx)
-     with Pre  => Present (Idx) and then Present (Cidx),
-          Post => First_Case (Idx) = Cidx, Inline;
+     with Pre => Present (Idx), Post => First_Case (Idx) = Cidx, Inline;
    procedure Set_Last_Case (Idx : Flow_Idx; Cidx : Case_Idx)
-     with Pre  => Present (Idx) and then Present (Cidx),
-          Post => Last_Case (Idx) = Cidx, Inline;
+     with Pre => Present (Idx), Post => Last_Case (Idx) = Cidx, Inline;
 
    function Get_Or_Create_Flow (V : Value_T) return Flow_Idx
      with Pre  => Is_A_Basic_Block (V),

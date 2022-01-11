@@ -41,7 +41,6 @@ package body CCG.Flow is
 
       Inst : Value_T;
       --  The instruction corresponding to the line (for debug data)
-
    end record;
 
    package Lines is new Table.Table
@@ -76,7 +75,6 @@ package body CCG.Flow is
 
       Is_Same_As_Next : Boolean;
       --  True if this case part branches to the same place as the next part
-
    end record;
 
    package Cases is new Table.Table
@@ -99,7 +97,6 @@ package body CCG.Flow is
 
       Target : Flow_Idx;
       --  Destination if this test is true (or not Present)
-
    end record;
 
    package Ifs is new Table.Table
@@ -145,7 +142,6 @@ package body CCG.Flow is
       First_Case   : Case_Idx;
       Last_Case    : Case_Idx;
       --  First and last of cases for a switch statement, if any
-
    end record;
 
    package Flows is new Table.Table
@@ -543,7 +539,6 @@ package body CCG.Flow is
       if Present (Idx) then
          Flows.Table (Idx).Use_Count := Flows.Table (Idx).Use_Count - 1;
       end if;
-
    end Remove_Use;
 
    --------------
@@ -626,7 +621,6 @@ package body CCG.Flow is
 
    procedure Add_Line (S : Str; V : Value_T) is
       Idx : Line_Idx;
-
    begin
       --  If we've been given an instruction corresponding to this
       --  statement and it has side-effects, first flush any pending
@@ -825,7 +819,6 @@ package body CCG.Flow is
             end if;
 
          when Op_Switch =>
-
             declare
                Val       : constant Value_T                := Get_Operand0 (T);
                POO       : constant Process_Operand_Option :=
@@ -938,7 +931,6 @@ package body CCG.Flow is
 
    procedure Swap_Cases (L, R : Case_Idx) is
       Temp : constant Case_Data := Cases.Table (L);
-
    begin
       Cases.Table (L) := Cases.Table (R);
       Cases.Table (R) := Temp;
@@ -1000,7 +992,6 @@ package body CCG.Flow is
       end Process_Flow_Graph;
 
    begin  --  Start of processing for Process_Flow
-
       Process_Flow_Graph (Idx);
    end Process_Flows;
 
@@ -1127,14 +1118,14 @@ package body CCG.Flow is
    -------------------
 
    function Replace_Target is
-      new Replace_Target_Generic (If_Idx, Present, Target, Set_Target);
+     new Replace_Target_Generic (If_Idx, Present, Target, Set_Target);
 
    --------------------
    -- Replace_Target --
    -------------------
 
    function Replace_Target is
-      new Replace_Target_Generic (Case_Idx, Present, Target, Set_Target);
+     new Replace_Target_Generic (Case_Idx, Present, Target, Set_Target);
 
    -------------------
    -- Factor_One_If --
@@ -1188,6 +1179,18 @@ package body CCG.Flow is
       for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
          Discard (Replace_Target (Cidx, Next (Idx)));
       end loop;
+
+      --  If all we have left is a one part that's a default case with
+      --  no target, we don't have a switch statement to write.
+
+      if First_Case (Idx) = Last_Case (Idx)
+        and then No (Value (First_Case (Idx)))
+        and then No (Target (First_Case (Idx)))
+      then
+         Set_Case_Expr  (Idx, No_Str);
+         Set_First_Case (Idx, Empty_Case_Idx);
+         Set_Last_Case  (Idx, Empty_Case_Idx);
+      end if;
    end Factor_One_Case;
 
    --------------------
@@ -1249,6 +1252,7 @@ package body CCG.Flow is
 
       Then_Target := Target (First_If (Idx));
       Else_Target := Target (Last_If (Idx));
+
       if Present (Else_Target) and then Use_Count (Else_Target) = 1
         and then No (Test (Last_If (Idx)))
         and then No (Next (Idx))
@@ -1329,10 +1333,13 @@ package body CCG.Flow is
       begin
          Start_Output_Block (BS);
 
-         --  If there's no block to write, write an empty statement
+         --  If there's no block to write for an "if", write an empty
+         --  statement.
 
          if No (Idx) then
-            Output_Stmt ("");
+            if BS = If_Part then
+               Output_Stmt ("");
+            end if;
 
          --  If this represents a return, write a return
 
@@ -1370,7 +1377,8 @@ package body CCG.Flow is
       procedure Output_One_Flow
         (Idx : Flow_Idx; Depth : Nat := 0; Write_Label : Boolean := True)
       is
-         T : Value_T;
+         Was_Same : Boolean := False;
+         T        : Value_T;
 
       begin
          Insert (Output, Idx);
@@ -1419,23 +1427,45 @@ package body CCG.Flow is
                          V         => T,
                          Semicolon => False);
             Start_Output_Block (Switch);
-            for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
-               if Present (Value (Cidx)) then
-                  Output_Stmt ("case " & Expr (Cidx) & ":",
-                               Semicolon   => False,
-                               Indent_Type => Under_Brace);
-               else
-                  Output_Stmt ("default:",
-                               Semicolon   => False,
-                               Indent_Type => Under_Brace);
-               end if;
 
-               if not Is_Same_As_Next (Cidx) then
-                  Output_Flow_Target (Target (Cidx), T,
-                                      BS    => None,
-                                      Depth => Depth + 1);
-                  if Falls_Through (Target (Cidx)) then
-                     Output_Stmt ("break");
+            for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
+
+               --  If we have a default case that just goes to the
+               --  fallthrough, we can omit it.
+
+               if No (Value (Cidx)) and then not Is_Same_As_Next (Cidx)
+                 and then not Was_Same and then No (Target (Cidx))
+               then
+                  null;
+               else
+                  --  Otherwise, write the label (or "default") and the
+                  --  destination (if not the same as the next case).
+
+                  Was_Same := Is_Same_As_Next (Cidx);
+
+                  if Present (Value (Cidx)) then
+                     Output_Stmt ("case " & Expr (Cidx) & ":",
+                                  Semicolon   => False,
+                                  Indent_Type => Under_Brace);
+                  else
+                     Output_Stmt ("default:",
+                                  Semicolon   => False,
+                                  Indent_Type => Under_Brace);
+                  end if;
+
+                  if not Is_Same_As_Next (Cidx) then
+                     Output_Flow_Target (Target (Cidx), T,
+                                         BS    => None,
+                                         Depth => Depth + 1);
+                     if Falls_Through (Target (Cidx)) then
+                        Output_Stmt ("break");
+                     end if;
+
+                     --  If this isn't the last case, write a blank line
+
+                     if Cidx /= Last_Case (Idx) then
+                        Output_Stmt ("", Semicolon => False);
+                     end if;
                   end if;
                end if;
             end loop;
@@ -1452,7 +1482,6 @@ package body CCG.Flow is
          --  And separate flows
 
          Output_Stmt ("", Semicolon => False);
-
       end Output_One_Flow;
 
    begin  -- Start of processing for Output_Flow
@@ -1466,7 +1495,6 @@ package body CCG.Flow is
       while not Is_Empty (To_Output) loop
          declare
             Output_Idx : constant Flow_Idx := First_Element (To_Output);
-
          begin
             Output_One_Flow (Output_Idx, Depth => 0);
             Delete (To_Output, Output_Idx);
@@ -1488,6 +1516,7 @@ package body CCG.Flow is
          "<"          => "<",
          "="          => "=");
       use Dump_Flows;
+
       To_Dump : Set;
       Dumped  : Set;
       LB      : constant Pos      := Pos (Flow_Idx_Low_Bound);
@@ -1502,7 +1531,6 @@ package body CCG.Flow is
 
       function Goto_Flow_Idx (Idx : Flow_Idx) return Str is
          Result : Str := +"goto ";
-
       begin
          if No (Idx) then
             return Result & "null";
@@ -1583,7 +1611,7 @@ package body CCG.Flow is
                Write_Str ((if   Present (Value (Cidx))
                            then +"    " & Value (Cidx) & ": "
                            else +"    default: ") &
-                          (if   Is_Same_As_Next (Cidx) then +""
+                          (if   Is_Same_As_Next (Cidx) then +"(same)"
                            else Goto_Flow_Idx (Target (Cidx))),
                           Eol => True);
             end loop;
@@ -1648,5 +1676,4 @@ begin
    Cases.Increment_Last;
    Ifs.Increment_Last;
    Flows.Increment_Last;
-
 end CCG.Flow;

@@ -437,21 +437,21 @@ package body CCG.Output is
          declare
             OL : Out_Line renames Typedefs.Table (Typedefs.Last);
          begin
-            pragma Assert (OL.End_Block = None);
+            pragma Assert (No (OL.End_Block));
             OL.End_Block := BS;
          end;
       elsif Is_Global then
          declare
             OL : Out_Line renames Global_Decls.Table (Global_Decls.Last);
          begin
-            pragma Assert (OL.End_Block = None);
+            pragma Assert (No (OL.End_Block));
             OL.End_Block := BS;
          end;
       else
          declare
             OL : Out_Line renames Local_Decls.Table (Local_Decls.Last);
          begin
-            pragma Assert (OL.End_Block = None);
+            pragma Assert (No (OL.End_Block));
             OL.End_Block := BS;
          end;
       end if;
@@ -467,7 +467,7 @@ package body CCG.Output is
       --  writing a blank entry.
 
       if Present (BS) then
-         if Stmts.Table (Stmts.Last).End_Block /= None then
+         if Present (Stmts.Table (Stmts.Last).End_Block) then
             Output_Stmt (No_Str);
          end if;
 

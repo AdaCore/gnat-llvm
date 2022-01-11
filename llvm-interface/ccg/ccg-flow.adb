@@ -1570,17 +1570,13 @@ package body CCG.Flow is
             Write_Str ("Flow " & Pos (Idx) & " has " & Use_Count (Idx));
          else
             Write_Str  ("Flow " & Pos (Idx) & " (" & BB (Idx) &
-                          ") has " & Use_Count (Idx));
-         end if;
-
-         if Use_Count (Idx) = 1 then
-            Write_Str (" use");
-         else
-            Write_Str (" uses");
+                        ") has " & Use_Count (Idx) &
+                        (if Use_Count (Idx) = 1 then " use" else " uses"),
+                        Eol => True);
          end if;
 
          if Is_Return (Idx) then
-            Write_Str (" return");
+            Write_Str ("   return");
             if Present (Return_Value (Idx)) then
                Write_Str (" " & Return_Value (Idx));
             end if;
@@ -1589,30 +1585,29 @@ package body CCG.Flow is
             return;
          end if;
 
-         Write_Eol;
          if Present (First_Line (Idx)) then
             for Lidx in First_Line (Idx) .. Last_Line (Idx) loop
-               Write_Str ("    " & Text (Lidx), Eol => True);
+               Write_Str ("   " & Text (Lidx), Eol => True);
             end loop;
          end if;
 
          if Present (First_If (Idx)) then
             for Iidx in First_If (Idx) .. Last_If (Idx) loop
                Write_Str ((if   Present (Test (Iidx))
-                           then +"    if (" & Test (Iidx) & ") then "
-                           else +"    else ") &
+                           then +"   if (" & Test (Iidx) & ") then "
+                           else +"   else ") &
                           Goto_Flow_Idx (Target (Iidx)),
                           Eol => True);
             end loop;
          end if;
 
          if Present (Case_Expr (Idx)) then
-            Write_Str ("  switch (" & Case_Expr (Idx) & ")");
+            Write_Str ("   switch (" & Case_Expr (Idx) & ")");
             Write_Eol;
             for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
                Write_Str ((if   Present (Value (Cidx))
-                           then +"    " & Value (Cidx) & ": "
-                           else +"    default: ") &
+                           then +"      " & Value (Cidx) & ": "
+                           else +"      default: ") &
                           (if   Is_Same_As_Next (Cidx) then +"(same)"
                            else Goto_Flow_Idx (Target (Cidx))),
                           Eol => True);
@@ -1620,7 +1615,7 @@ package body CCG.Flow is
          end if;
 
          if Present (Next (Idx)) then
-            Write_Str ("    " & Goto_Flow_Idx (Next (Idx)), Eol => True);
+            Write_Str ("   " & Goto_Flow_Idx (Next (Idx)), Eol => True);
          end if;
       end Dump_One_Flow;
 

@@ -222,10 +222,10 @@ package body CCG.Flow is
    --  Next or Target of Pidx, as appropriate, and
    --  return its old value.
 
-   function Effective_Flow (Idx : Flow_Idx) return Flow_Idx
-     with Pre => Present (Idx), Post => Present (Effective_Flow'Result);
+   function Effective_Flow (Idx : Flow_Idx) return Flow_Idx;
    --  Return the flow corresponding to Idx, which means following a
-   --  any flows where there's a chain of Next links.
+   --  any flows where there's a chain of Next links. If the flow
+   --  falls through or is a return flow, return empty.
 
    function Falls_Through (Idx : Flow_Idx) return Boolean;
    --  Return True if Idx isn't Present or the chain of flows starting
@@ -1204,17 +1204,20 @@ package body CCG.Flow is
    -------------------
 
    function Effective_Flow (Idx : Flow_Idx) return Flow_Idx is
-      Max_Count : constant := 10;
-      Count     : Integer  := 0;
-
    begin
-      --  Follow the Next chain, but avoid infinite loops
-
       return Ret_Idx : Flow_Idx := Idx do
-         while Count < Max_Count and then Present (Next (Ret_Idx)) loop
+
+         --  Loop through all flows with a single use
+
+         while Present (Ret_Idx) and then Use_Count (Ret_Idx) = 1 loop
             Ret_Idx := Next (Ret_Idx);
-            Count   := Count + 1;
          end loop;
+
+         --  If we found a return flow, return empty instead
+
+         if Present (Ret_Idx) and then Is_Return (Ret_Idx) then
+            Ret_Idx := Empty_Flow_Idx;
+         end if;
       end return;
    end Effective_Flow;
 
@@ -1242,37 +1245,32 @@ package body CCG.Flow is
       Else_Target : Flow_Idx;
 
    begin
-      --  If this doesn't have "if" parts, we can't do anything with it.
-      --  ??? Likewise, for now, if it doesn't have an "else" part.
+      --  If this doesn't have "if" parts or doesn't have an "else" part,
+      --  we can't do anything with it.
 
-      if No (First_If (Idx)) or else No (Test (Last_If (Idx))) then
+      if No (First_If (Idx)) or else Present (Test (Last_If (Idx))) then
          return;
       end if;
 
       --  Otherwise, get our "then" and "else" targets. We can do the
-      --  merge if the latter has only one use, has no code, has only
-      --  two "if" parts, and the destination of the "then" part is
-      --  either our "then" target or one or both are return flows.
-      --  ??? This is essentially disabled until the "if" factoring
-      --  is taken into account.
+      --  merge if the latter has only one use, has no code and no
+      --  Next, and the destination of one "then" part is either our
+      --  "then" target or one or both are return or fallthrough
+      --  flows.
 
       Then_Target := Target (First_If (Idx));
       Else_Target := Target (Last_If (Idx));
 
-      if Present (Else_Target) and then Use_Count (Else_Target) = 1
-        and then No (Test (Last_If (Idx)))
-        and then No (Next (Idx))
+      if Use_Count (Else_Target) = 1 and then No (Next (Else_Target))
         and then No (First_Line (Else_Target))
         and then Present (First_If (Else_Target))
-        and then First_If (Else_Target) + 1 = Last_If (Else_Target)
-        and then Present (Target (First_If (Else_Target)))
-        and then (Is_Return (Effective_Flow (Then_Target))
-                    or else Is_Return (Effective_Flow
-                                         (Target (First_If (Else_Target))))
+        and then (No (Effective_Flow (Then_Target))
+                    or else No (Effective_Flow
+                                  (Target (First_If (Else_Target))))
                     or else Effective_Flow (Then_Target) =
                               Effective_Flow (Target (First_If (Else_Target))))
       then
-         --  Copy all but the last of our "if" targets, then the two from
+         --  Copy all but the last of our "if" targets, then those from
          --  our "else" target.
 
          for Iidx in First_If (Idx) .. Last_If (Idx) - 1 loop

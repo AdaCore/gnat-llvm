@@ -37,7 +37,7 @@ ifeq ($(OS),Windows_NT)
   LDFLAGS+=-Wl,--stack=0x2000000
 endif
 
-compare=cmp --ignore-initial=16 -l
+compare=cmp --ignore-initial=16
 
 .PHONY: setup force clean
 

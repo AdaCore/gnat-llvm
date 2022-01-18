@@ -166,12 +166,21 @@ package body CCG.Transform is
 
          if not Phi_Map.Contains (V) then
             declare
+               Name   : constant String  := Get_Value_Name (V);
                Result : constant Value_T :=
                  Insert_Alloca_Before (Type_Of (V), Alloca_Loc);
 
             begin
+               --  The name of the Phi instruction won't be used, so clear that
+               --  name and use it, if any, for the variable we're making.
+
                Set_Is_Variable (Result);
+               Set_Value_Name_2 (V, "", 0);
                Phi_Map.Insert (V, Result);
+               if Name'Length /= 0 then
+                  Set_Value_Name_2 (Result, Name, Name'Length);
+               end if;
+
                return Result;
             end;
          else

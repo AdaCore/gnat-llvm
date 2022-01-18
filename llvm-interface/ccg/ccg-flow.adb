@@ -244,6 +244,11 @@ package body CCG.Flow is
    --  See if Idx has if parts that allow merging the destination of the
    --  "else" into another if parts and do the merge if so.
 
+   procedure Remove_Nested_Next (Idx : Flow_Idx)
+     with Pre => Present (Idx);
+   --  If Idx has a Next, see if any flow that's under us has the same Next
+   --  and remove it if so.
+
    ----------
    -- Text --
    ----------
@@ -1290,6 +1295,37 @@ package body CCG.Flow is
       end if;
    end Try_Merge_Ifs;
 
+   ------------------------
+   -- Remove_Nested_Next --
+   ------------------------
+
+   procedure Remove_Nested_Next (Idx : Flow_Idx) is
+   begin
+      if Present (Next (Idx)) then
+         if Present (First_If (Idx)) then
+            for Iidx in First_If (Idx) .. Last_If (Idx) loop
+               if Present (Target (Iidx))
+                 and then Use_Count (Target (Iidx)) = 1
+                 and then Next (Target (Iidx)) = Next (Idx)
+               then
+                  Set_Next (Target (Iidx), Empty_Flow_Idx);
+               end if;
+            end loop;
+         end if;
+
+         if Present (Case_Expr (Idx)) then
+            for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
+               if Present (Target (Cidx))
+                 and then Use_Count (Target (Cidx)) = 1
+                 and then Next (Target (Cidx)) = Next (Idx)
+               then
+                  Set_Next (Target (Cidx), Empty_Flow_Idx);
+               end if;
+            end loop;
+         end if;
+      end if;
+   end Remove_Nested_Next;
+
    -------------------
    -- Simplify_Flow --
    -------------------
@@ -1301,6 +1337,7 @@ package body CCG.Flow is
       Process_Flows (Idx, Factor_One_If'Access);
       Process_Flows (Idx, Factor_One_Case'Access);
       Process_Flows (Idx, Try_Merge_Ifs'Access);
+      Process_Flows (Idx, Remove_Nested_Next'Access);
    end Simplify_Flow;
 
    -----------------

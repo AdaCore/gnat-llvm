@@ -29,8 +29,6 @@ with Snames;   use Snames;
 with Table;    use Table;
 with Targparm; use Targparm;
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;

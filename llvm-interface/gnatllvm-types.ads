@@ -20,8 +20,6 @@ with Ada.Unchecked_Conversion;
 with Repinfo;  use Repinfo;
 with Sem_Util; use Sem_Util;
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 

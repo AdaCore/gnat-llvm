@@ -17,8 +17,6 @@
 
 with Ada.Unchecked_Deallocation;
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package GNATLLVM.GLValue is

@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Core; use LLVM.Core;
-
 with Errout;   use Errout;
 with Output;   use Output;
 with Sem_Aux;  use Sem_Aux;

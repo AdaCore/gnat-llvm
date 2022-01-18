@@ -28,8 +28,6 @@ with Stand;    use Stand;
 with Stringt;  use Stringt;
 with Table;    use Table;
 
-with LLVM.Core;  use LLVM.Core;
-
 with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;

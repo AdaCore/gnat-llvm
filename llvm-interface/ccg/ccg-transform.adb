@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Containers.Hashed_Sets;
+
 with Interfaces.C; use Interfaces.C;
 
 with Debug;  use Debug;
@@ -132,6 +134,11 @@ package body CCG.Transform is
 
    procedure Eliminate_Phis (V : Value_T) is
 
+      package BB_Sets is new Ada.Containers.Hashed_Sets
+        (Element_Type        => Basic_Block_T,
+         Hash                => Hash_BB,
+         Equivalent_Elements => "=");
+
       function Phi_Alloca (V : Value_T) return Value_T
         with Pre  => Is_APHI_Node (V),
              Post => Is_A_Alloca_Inst (Phi_Alloca'Result);
@@ -141,14 +148,13 @@ package body CCG.Transform is
         with Pre  => Is_APHI_Node (V) and then Present (From_BB),
              Post => Type_Of (V) = Type_Of (Phi_Value'Result);
 
-      Entry_BB   : constant Basic_Block_T := Get_Entry_Basic_Block (V);
-      BB         : Basic_Block_T          := Get_First_Basic_Block (V);
-      Alloca_Loc : Value_T                := Get_First_Instruction (Entry_BB);
+      BB         : Basic_Block_T := Get_First_Basic_Block (V);
+      Alloca_Loc : Value_T       :=
+        Get_First_Instruction (Get_Entry_Basic_Block (V));
       Phi_Map    : Value_Value_Map_P.Map;
+      New_BBs    : BB_Sets.Set;
       Inst       : Value_T;
       Next_BB    : Basic_Block_T;
-      Dest_BB    : Basic_Block_T;
-      Dest_Inst  : Value_T;
 
       ----------------
       -- Phi_Alloca --
@@ -213,50 +219,85 @@ package body CCG.Transform is
       --  branch or a switch, create a new basic block with the return and
       --  branch to it instead.
       --
-      --  We could do this in one of two ways in the cases of conditional
-      --  branches and a switch statement: we could make new basic block
-      --  to hold the stores(s) and then branch to the Phi block or we
-      --  could unconditionally put the sets in front of the terminator
-      --  instruction. It's not clear which is more efficient, but both
-      --  will be the same if the C code is optimized. But putting the
-      --  instructions in front of the terminator is more efficient. So
-      --  we'll do it that way.
+      --  If we have a unconditional branch, put the store(s) in front of
+      --  the unconditional branch. However, if we have a conditional branch,
+      --  do the same as we do for a return and create a new block for
+      --  the store(s). We do this to make it easier to create an if/elseif
+      --  construct for optimized code.
 
       while Present (BB) loop
          Inst := Get_Basic_Block_Terminator (BB);
          for J in Nat range 0 .. Get_Num_Successors (Inst) - 1 loop
-            Dest_BB   := Get_Successor (Inst, J);
-            Dest_Inst := Get_First_Instruction (Dest_BB);
-            while Is_APHI_Node (Dest_Inst) loop
-               if Is_Return_Phi (Dest_Inst) then
-                  declare
-                     Ret_Inst : constant Value_T       :=
-                       Create_Return (Phi_Value (Dest_Inst, BB));
+            declare
+               Dest_BB     : constant Basic_Block_T := Get_Successor (Inst, J);
+               Insert_BB   : Basic_Block_T          := BB;
+               Dest_Inst   : Value_T                :=
+                 Get_First_Instruction (Dest_BB);
+               Insert_Inst : Value_T                := Inst;
 
-                     Ret_BB   : constant Basic_Block_T :=
-                       (if   Is_Unc_Br (Inst) then BB
-                        else Append_Basic_Block (V, ""));
+            begin
+               while Is_APHI_Node (Dest_Inst)
+                 and then not New_BBs.Contains (BB)
+               loop
 
-                  begin
+                  --  If our terminator isn't an unconditional branch and
+                  --  we haven't created a new basic block, do it now.
+
+                  if not Is_Unc_Br (Inst) and then Insert_BB = BB then
+                     Insert_BB := Append_Basic_Block (V, "");
+                     New_BBs.Insert (Insert_BB);
+                  end if;
+
+                  --  Now handle the case of a return Phi and non-return Phi
+                  --  separately.
+
+                  if Is_Return_Phi (Dest_Inst) then
+
                      --  Insert the return instruction into the appropriate
-                     --  block and either remove our instruction if it's
-                     --  an unconditional branch or update this successor to
-                     --  point to the new block.
+                     --  block and remove our instruction if it's
+                     --  an unconditional branch.
 
-                     Insert_At_Block_End (Ret_Inst, Ret_BB, Dest_Inst);
+                     Insert_At_Block_End
+                       (Create_Return (Phi_Value (Dest_Inst, BB)),
+                        Insert_BB, Dest_Inst);
                      if Is_Unc_Br (Inst) then
                         Instruction_Erase_From_Parent (Inst);
-                     else
-                        Set_Successor (Inst, J, Ret_BB);
                      end if;
-                  end;
-                  exit;
-               else
-                  Insert_Store_Before (Phi_Value (Dest_Inst, BB),
-                                       Phi_Alloca (Dest_Inst), Inst);
+
+                     --  Since, by definition, there's only one return
+                     --  Phi per block, we're done.
+
+                     exit;
+                  else
+                     --  If we have an unconditional branch instruction, we
+                     --  can insert the store immediately before it. But if
+                     --  not, we've already made a basic block above and we
+                     --  need to add a branch to our original successor. By
+                     --  updating Insert_Inst each time, we ensure that
+                     --  this will only happen for the first Phi in the
+                     --  destination block.
+
+                     if not Is_Unc_Br (Insert_Inst) then
+                        Insert_Inst := Create_Br (Dest_BB);
+                        Insert_At_Block_End (Insert_Inst, Insert_BB, Inst);
+                     end if;
+
+                     --  Now add the store, either to the original block or
+                     --  to the one we made above.
+
+                     Insert_Store_Before (Phi_Value (Dest_Inst, BB),
+                                          Phi_Alloca (Dest_Inst), Insert_Inst);
+                  end if;
+
                   Dest_Inst := Get_Next_Instruction (Dest_Inst);
+               end loop;
+
+               --  Now possibly update our successor
+
+               if not Is_Unc_Br (Inst) and then Insert_BB /= BB then
+                  Set_Successor (Inst, J, Insert_BB);
                end if;
-            end loop;
+            end;
          end loop;
 
          BB := Get_Next_Basic_Block (BB);
@@ -660,9 +701,10 @@ package body CCG.Transform is
                --  is a conditional branch whose True side is the same as
                --  ours and has only the computation of the condition and
                --  only one predecessor (which must be us), we have an "or
-               --  else".
+               --  else". But make sure we don't have a loop back to us.
 
-               if Is_Cond_Br (False_Term)
+               if False_BB /= BB and then True_BB /= BB
+                 and then Is_Cond_Br (False_Term)
                  and then Get_Operand2 (False_Term) = True_Dest
                  and then Has_Unique_Predecessor (False_BB)
                  and then Is_Only_Condition (False_BB)
@@ -674,7 +716,8 @@ package body CCG.Transform is
                --  terminator's False side is the same as ours, we have an
                --  "and then".
 
-               elsif Is_Cond_Br (True_Term)
+               elsif False_BB /= BB and then True_BB /= BB
+                 and then Is_Cond_Br (True_Term)
                  and then Get_Operand1 (True_Term) = False_Dest
                  and then Has_Unique_Predecessor (True_BB)
                  and then Is_Only_Condition (True_BB)

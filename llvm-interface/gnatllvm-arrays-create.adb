@@ -19,8 +19,6 @@ with Sem_Eval; use Sem_Eval;
 with Snames;   use Snames;
 with Table;    use Table;
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;

@@ -22,8 +22,6 @@ with Sem_Aux;    use Sem_Aux;
 with Snames;     use Snames;
 with Uintp.LLVM; use Uintp.LLVM;
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.Arrays;         use GNATLLVM.Arrays;
 with GNATLLVM.Arrays.Create;  use GNATLLVM.Arrays.Create;
 with GNATLLVM.Environment;    use GNATLLVM.Environment;

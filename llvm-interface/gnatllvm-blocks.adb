@@ -28,8 +28,6 @@ with Sinput;   use Sinput;
 with Stand;    use Stand;
 with Table;    use Table;
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
 with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;

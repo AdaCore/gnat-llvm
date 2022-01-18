@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 

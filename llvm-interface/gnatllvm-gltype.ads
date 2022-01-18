@@ -19,8 +19,6 @@ with Sem_Aux;  use Sem_Aux;
 with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;

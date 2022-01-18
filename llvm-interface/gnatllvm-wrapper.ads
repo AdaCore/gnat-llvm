@@ -19,8 +19,6 @@ with System;
 
 with stdint_h;
 
-with LLVM.Core; use LLVM.Core;
-
 package GNATLLVM.Wrapper is
 
    function Get_Latest_Instruction (Bld : Builder_T) return Value_T
@@ -352,6 +350,9 @@ package GNATLLVM.Wrapper is
    function Create_Return
      (Context : Context_T; Retval : Value_T) return Value_T
      with Import, Convention => C, External_Name => "Create_Return";
+
+   function Create_Br (Dest : Basic_Block_T) return Value_T
+     with Import, Convention => C, External_Name => "Create_Br";
 
    procedure Insert_At_Block_End
      (V : Value_T; BB : Basic_Block_T; From : Value_T)

@@ -23,7 +23,6 @@ with Interfaces.C;     use Interfaces.C;
 with LLVM.Analysis;   use LLVM.Analysis;
 with LLVM.Bit_Reader; use LLVM.Bit_Reader;
 with LLVM.Bit_Writer; use LLVM.Bit_Writer;
-with LLVM.Core;       use LLVM.Core;
 with LLVM.Debug_Info; use LLVM.Debug_Info;
 with LLVM.Linker;     use LLVM.Linker;
 with LLVM.Support;    use LLVM.Support;

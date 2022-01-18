@@ -30,8 +30,6 @@ with Sprint;     use Sprint;
 with Table;      use Table;
 with Uintp.LLVM; use Uintp.LLVM;
 
-with LLVM.Core;  use LLVM.Core;
-
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;

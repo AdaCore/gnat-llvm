@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Core; use LLVM.Core;
-
 with Opt;        use Opt;
 with Sinput;     use Sinput;
 with Table;      use Table;

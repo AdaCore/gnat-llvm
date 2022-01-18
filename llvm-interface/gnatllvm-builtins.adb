@@ -21,8 +21,6 @@ with Sem_Util; use Sem_Util;
 with Stand;    use Stand;
 with Table;    use Table;
 
-with LLVM.Core; use LLVM.Core;
-
 with Ada.Characters.Handling; use Ada.Characters.Handling;
 with GNAT.Strings;            use GNAT.Strings;
 

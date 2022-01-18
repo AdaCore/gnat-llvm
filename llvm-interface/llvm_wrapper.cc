@@ -760,6 +760,13 @@ Create_Return (LLVMContext &C, Value *retVal)
 }
 
 extern "C"
+BranchInst *
+Create_Br (BasicBlock *dest)
+{
+  return BranchInst::Create (dest);
+}
+
+extern "C"
 void
 Insert_At_Block_End (Instruction *I, BasicBlock *BB, Instruction *From)
 {

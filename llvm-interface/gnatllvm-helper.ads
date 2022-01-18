@@ -15,7 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Core;       use LLVM.Core;
 with LLVM.Debug_Info; use LLVM.Debug_Info;
 
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;

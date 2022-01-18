@@ -19,8 +19,6 @@ with Ada.Unchecked_Deallocation;
 
 with Snames;   use Snames;
 
-with LLVM.Core;  use LLVM.Core;
-
 with GNATLLVM.Aliasing;      use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
 with GNATLLVM.Compile;       use GNATLLVM.Compile;

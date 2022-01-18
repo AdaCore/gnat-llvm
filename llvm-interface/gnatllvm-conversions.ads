@@ -17,8 +17,6 @@
 
 with Ada.Unchecked_Conversion;
 
-with LLVM.Core; use LLVM.Core;
-
 with GNATLLVM.GLType;  use GNATLLVM.GLType;
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 

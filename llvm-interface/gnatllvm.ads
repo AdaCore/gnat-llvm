@@ -41,6 +41,7 @@ with Sinfo.Nodes; use Sinfo.Nodes;
 with Sinfo.Utils; use Sinfo.Utils;
 pragma Warnings (On);
 
+with LLVM.Core;           use LLVM.Core;
 with LLVM.Target;         use LLVM.Target;
 with LLVM.Target_Machine; use LLVM.Target_Machine;
 with LLVM.Types;          use LLVM.Types;
@@ -306,14 +307,18 @@ package GNATLLVM is
    function From_Value is
       new Ada.Unchecked_Conversion (Value_T, System.Address);
 
-   function Hash_Value_T (V : Value_T) return Hash_Type is
+   function Hash_Value (V : Value_T) return Hash_Type is
      (Hash_Type'Mod (To_Integer (From_Value (V)) / (V'Size / 8)))
      with Pre => Present (V);
+
+   function Hash_BB (BB : Basic_Block_T) return Hash_Type is
+     (Hash_Value (Basic_Block_As_Value (BB)))
+     with Pre => Present (BB);
 
    package Value_Value_Map_P is new Ada.Containers.Hashed_Maps
      (Key_Type        => Value_T,
       Element_Type    => Value_T,
-      Hash            => Hash_Value_T,
+      Hash            => Hash_Value,
       Equivalent_Keys => "=");
 
    subtype Err_Msg_Type is String (1 .. 10000);

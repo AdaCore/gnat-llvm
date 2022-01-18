@@ -24,8 +24,6 @@ with Snames;     use Snames;
 with Sprint;     use Sprint;
 with Uintp.LLVM; use Uintp.LLVM;
 
-with LLVM.Core;  use LLVM.Core;
-
 with GNATLLVM.Aliasing;      use GNATLLVM.Aliasing;
 with GNATLLVM.Compile;       use GNATLLVM.Compile;
 with GNATLLVM.Conditionals;  use GNATLLVM.Conditionals;

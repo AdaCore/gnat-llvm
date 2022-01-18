@@ -1111,7 +1111,7 @@ package body GNATLLVM.Subprograms is
                                   Is_Pristine => True);
          Initialize_Alignment (LLVM_Param);
          Initialize_TBAA      (LLVM_Param);
-         Set_Value_Name (+LLVM_Param, "_return");
+         Set_Value_Name       (LLVM_Param, "_return");
          Return_Address_Param := LLVM_Param;
          Param_Num := Param_Num + 1;
       end if;

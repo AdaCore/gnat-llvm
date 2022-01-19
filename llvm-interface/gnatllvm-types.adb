@@ -500,7 +500,7 @@ package body GNATLLVM.Types is
       function Same_Memory (V1, V2 : Value_T) return Boolean is
         ((if    Present (Is_A_Bit_Cast_Inst (V1))
           then  Same_Memory (Get_Operand (V1, 0), V2)
-          elsif Present (Is_A_Bit_Cast_Inst (V1))
+          elsif Present (Is_A_Bit_Cast_Inst (V2))
           then  Same_Memory (Get_Operand (V2, 0), V1)
           else  V1 = V2))
         with Pre => Present (V1) and then Present (V2);
@@ -1394,8 +1394,9 @@ package body GNATLLVM.Types is
             if Known_Normalized_First_Bit (Our_E) then
                Ret := Normalized_First_Bit (Our_E);
             end if;
+
             if Present (Ret) and then Is_Static_SO_Ref (Ret)
-              and then Known_Esize (Our_E) and then Is_Static_SO_Ref (Ret)
+              and then Known_Esize (Our_E) and then Is_Static_SO_Ref (Our_E)
             then
                Ret := Ret + Esize (Our_E) - 1;
             end if;

@@ -175,7 +175,7 @@ package body CCG.Strs is
                when Value =>
                   if SL.Comps (PosL).Val /= SR.Comps (PosR).Val
                     or else SL.Comps (PosL).Flags /= SR.Comps (PosR).Flags
-                    or else SL.Comps (PosL).For_P /= SL.Comps (PosL).For_P
+                    or else SL.Comps (PosL).For_P /= SL.Comps (PosR).For_P
                   then
                      return False;
                   end if;

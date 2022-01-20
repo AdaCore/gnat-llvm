@@ -1396,7 +1396,8 @@ package body GNATLLVM.Types is
             end if;
 
             if Present (Ret) and then Is_Static_SO_Ref (Ret)
-              and then Known_Esize (Our_E) and then Is_Static_SO_Ref (Our_E)
+              and then Known_Esize (Our_E)
+              and then Is_Static_SO_Ref (Esize (Our_E))
             then
                Ret := Ret + Esize (Our_E) - 1;
             end if;

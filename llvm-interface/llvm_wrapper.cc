@@ -18,6 +18,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Passes/PassBuilder.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
@@ -28,7 +29,6 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm-c/Core.h"
 
@@ -517,54 +517,57 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM,
 		      bool PrepareForThinLTO, bool PrepareForLTO,
 		      bool RerollLoops)
 {
-  legacy::PassManager Passes;
-  std::unique_ptr<legacy::FunctionPassManager> FPasses;
-  PassManagerBuilder Builder;
+  // This code is derived from EmitAssemblyWithNewPassManager in clang
 
-  TargetLibraryInfoImpl TLII(TM->getTargetTriple());
+  Optional<PGOOptions> PGOOpt;
+  PipelineTuningOptions PTO;
+  PassInstrumentationCallbacks PIC;
+  Triple TargetTriple (M->getTargetTriple ());
+  PassBuilder::OptimizationLevel Level
+    = (Code_Opt_Level == 1 ? PassBuilder::OptimizationLevel::O1
+       : Code_Opt_Level == 2 ? PassBuilder::OptimizationLevel::O2
+       : Code_Opt_Level == 3 ? PassBuilder::OptimizationLevel::O3
+       : PassBuilder::OptimizationLevel::O0);
+  PTO.LoopUnrolling = !No_Unroll_Loops;
+  PTO.LoopInterleaving = !No_Unroll_Loops;
+  PTO.LoopVectorization = !No_Loop_Vectorization;
+  PTO.SLPVectorization = !No_SLP_Vectorization;
+  PTO.MergeFunctions = MergeFunctions;
 
-  Passes.add(new TargetLibraryInfoWrapperPass(TLII));
+  LoopAnalysisManager LAM;
+  FunctionAnalysisManager FAM;
+  CGSCCAnalysisManager CGAM;
+  ModuleAnalysisManager MAM;
 
-  // Add internal analysis passes from the target machine.
-  Passes.add(createTargetTransformInfoWrapperPass (TM->getTargetIRAnalysis()));
+  PassBuilder PB (TM, PTO, PGOOpt, &PIC);
 
-  FPasses.reset(new legacy::FunctionPassManager(M));
-  FPasses->add(createTargetTransformInfoWrapperPass
-	       (TM ? TM->getTargetIRAnalysis() : TargetIRAnalysis()));
+  FAM.registerPass ([&] { return PB.buildDefaultAAPipeline (); });
 
-  Builder.OptLevel = Code_Opt_Level;
-  Builder.SizeLevel = Size_Opt_Level;
+  // Register the target library analysis directly and give it a customized
+  // preset TLI.
+  TargetLibraryInfoImpl *TLII = new TargetLibraryInfoImpl(TargetTriple);
+  FAM.registerPass ([&] { return TargetLibraryAnalysis (*TLII); });
 
-  if (! No_Inlining && Code_Opt_Level >= 1)
-    Builder.Inliner
-      = createFunctionInliningPass(Code_Opt_Level, Size_Opt_Level, false);
+  // Register all the basic analyses with the managers.
+
+  PB.registerModuleAnalyses (MAM);
+  PB.registerCGSCCAnalyses (CGAM);
+  PB.registerFunctionAnalyses (FAM);
+  PB.registerLoopAnalyses (LAM);
+  PB.crossRegisterProxies (LAM, FAM, CGAM, MAM);
+
+  ModulePassManager MPM;
+  if (Code_Opt_Level == 0)
+    MPM = PB.buildO0DefaultPipeline (Level,
+				     PrepareForLTO || PrepareForThinLTO);
+  else if (PrepareForThinLTO)
+    MPM = PB.buildThinLTOPreLinkDefaultPipeline (Level);
+  else if (PrepareForLTO)
+    MPM = PB.buildLTOPreLinkDefaultPipeline (Level);
   else
-    Builder.Inliner = createAlwaysInlinerLegacyPass();
+    MPM = PB.buildPerModuleDefaultPipeline (Level);
 
-  Builder.DisableUnrollLoops = Code_Opt_Level == 0 || No_Unroll_Loops;
-  Builder.LoopsInterleaved = Code_Opt_Level != 0 && ! No_Unroll_Loops;
-  Builder.LoopVectorize = (No_Loop_Vectorization ? false
-			   : Code_Opt_Level > 1 && Size_Opt_Level < 2);
-
-  Builder.SLPVectorize = (No_SLP_Vectorization ? false
-			  : Code_Opt_Level > 1 && Size_Opt_Level < 2);
-
-  Builder.MergeFunctions = Code_Opt_Level != 0 && MergeFunctions;
-  Builder.PrepareForThinLTO = Code_Opt_Level != 0 && PrepareForThinLTO;
-  Builder.PrepareForLTO = Code_Opt_Level != 0 && PrepareForLTO;
-  Builder.RerollLoops = Code_Opt_Level != 0 && RerollLoops;
-
-  TM->adjustPassManager(Builder);
-
-  Builder.populateFunctionPassManager(*FPasses);
-  Builder.populateModulePassManager(Passes);
-
-  FPasses->doInitialization();
-  for (Function &F : *M)
-    FPasses->run(F);
-  FPasses->doFinalization();
-
-  Passes.run(*M);
+  MPM.run (*M, MAM);
 }
 
 extern "C"

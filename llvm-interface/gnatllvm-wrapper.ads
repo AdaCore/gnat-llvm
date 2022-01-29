@@ -139,6 +139,9 @@ package GNATLLVM.Wrapper is
    procedure Add_Writeonly_Attribute (Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name => "Add_Writeonly_Attribute";
 
+   function Has_Nest_Attribute (Func : Value_T; Idx : unsigned) return Boolean
+     with Pre => Present (Is_A_Function (Func));
+
    function Get_Stack_Alignment (Layout : Target_Data_T) return unsigned
      with Import, Convention => C, External_Name => "Get_Stack_Alignment";
 

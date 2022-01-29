@@ -202,6 +202,14 @@ Add_Writeonly_Attribute (Function *fn, unsigned idx)
 }
 
 extern "C"
+bool
+Has_Nest_Attribute (Function *fn, unsigned idx)
+{
+  return fn->hasParamAttribute (idx, Attribute::Nest);
+}
+
+
+extern "C"
 MDNode *
 Create_TBAA_Scalar_Type_Node (LLVMContext &ctx, MDBuilder *MDHelper,
 			      const char *name, uint64_t size, MDNode *parent)

@@ -1399,23 +1399,29 @@ package body GNATLLVM.Instructions is
       Args        : GL_Value_Array;
       Name        : String := "") return Value_T
    is
+      function To_Param_Num (Idx : Nat) return unsigned;
+      --  Map index in Args array to LLVM parameter number
+
       LLVM_Func   : constant Value_T       := +Func;
       No_Raise    : constant Boolean       :=
         No_Exception_Propagation_Active
           or else (Is_A_Function (Func) and then Does_Not_Throw (Func));
       Lpad        : constant Basic_Block_T :=
         (if No_Raise then No_BB_T else Get_Landing_Pad);
-      Act_Param   : Int                    := -1;
       Arg_Values  : aliased Value_Array (Args'Range);
       Next_BB     : Basic_Block_T;
       Call_Inst   : Value_T;
 
+      ------------------
+      -- To_Param_Num --
+      ------------------
+
+      function To_Param_Num (Idx : Nat) return unsigned is
+        (unsigned (Idx - Args'First));
+
    begin
       for J in Args'Range loop
          Arg_Values (J) := +Args (J);
-         if Relationship (Args (J)) = Reference_To_Activation_Record then
-            Act_Param := J - Args'First;
-         end if;
       end loop;
 
       --  If we have a landing pad, use an invoke instruction, first creating
@@ -1432,21 +1438,31 @@ package body GNATLLVM.Instructions is
                             Arg_Values'Address, Arg_Values'Length, Name);
       end if;
 
-      --  If we found a parameter that was an activation record, mark it
-
-      if Act_Param >= 0
-        and then not Restrictions_On_Target.Set (No_Implicit_Dynamic_Code)
-      then
-         Add_Nest_Attribute (Call_Inst, unsigned (Act_Param));
-      end if;
-
-      --  For each parameter that's a pointer, set the alignment and
+      --   Set some parameter attributes based on the called function.
+      --   It is peculiar that the two LLVM calls to set attributes of
+      --   the call instruction have a different value for the first
+      --   parameter.
 
       for J in Args'Range loop
+
+         --  For each parameter that's a pointer, set the alignment.
+
          if Get_Type_Kind (Type_Of (Args (J))) = Pointer_Type_Kind then
-            Set_Instr_Param_Alignment (Call_Inst, unsigned (J),
+            Set_Instr_Param_Alignment (Call_Inst, To_Param_Num (J) + 1,
                                        unsigned (To_Bytes (Alignment
                                                              (Args (J)))));
+         end if;
+
+         --  If this is a direct call and we have a parameter of the function
+         --  that's an activation record, mark it in the call too.
+
+         if (Is_A_Function (Func)
+               and then not Restrictions_On_Target.Set
+                              (No_Implicit_Dynamic_Code)
+               and then Has_Nest_Attribute (LLVM_Func, To_Param_Num (J)))
+           or else Relationship (Args (J)) = Reference_To_Activation_Record
+         then
+            Add_Nest_Attribute (Call_Inst, To_Param_Num (J));
          end if;
       end loop;
 

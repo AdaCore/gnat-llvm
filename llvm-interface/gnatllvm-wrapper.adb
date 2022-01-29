@@ -244,6 +244,19 @@ package body GNATLLVM.Wrapper is
       Add_Named_Attribute_C (Func, Name & ASCII.NUL, Value & ASCII.NUL, Ctx);
    end Add_Named_Attribute;
 
+   ------------------------
+   -- Has_Nest_Attribute --
+   ------------------------
+
+   function Has_Nest_Attribute (Func : Value_T; Idx : unsigned) return Boolean
+   is
+      function Has_Nest_Attribute
+        (Func : Value_T; Idx : unsigned) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Has_Nest_Attribute";
+   begin
+      return Has_Nest_Attribute (Func, Idx) /= 0;
+   end Has_Nest_Attribute;
+
    -----------------------------------------
    -- Get_Metadata_Operand_Constant_Value --
    -----------------------------------------

@@ -17,12 +17,15 @@
 
 with Ada.Unchecked_Conversion;
 
-with Output; use Output;
-with Sprint; use Sprint;
+with Debug;    use Debug;
+with Output;   use Output;
+with Sem_Util; use Sem_Util;
+with Sprint;   use Sprint;
 
 with GNATLLVM.Arrays;        use GNATLLVM.Arrays;
 with GNATLLVM.Aliasing;      use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
+with GNATLLVM.Codegen;       use GNATLLVM.Codegen;
 with GNATLLVM.Conversions;   use GNATLLVM.Conversions;
 with GNATLLVM.Environment;   use GNATLLVM.Environment;
 with GNATLLVM.GLType;        use GNATLLVM.GLType;
@@ -1602,12 +1605,16 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Inline_Attribute (V : GL_Value; Subp : Subprogram_Kind_Id) is
    begin
-      if Is_Inlined (Subp) and then Has_Pragma_Inline_Always (Subp) then
-         Add_Inline_Always_Attribute (+V);
-      elsif Is_Inlined (Subp) and then Has_Pragma_Inline (Subp) then
-         Add_Inline_Hint_Attribute (+V);
-      elsif Has_Pragma_No_Inline (Subp) then
+      if Has_Pragma_No_Inline (Subp) then
          Add_Inline_No_Attribute (+V);
+      elsif Has_Pragma_Inline_Always (Subp) then
+         Add_Inline_Always_Attribute (+V);
+      elsif Is_Expression_Function (Subp) and then Size_Opt_Level = 0
+        and then not Debug_Flag_Dot_8
+      then
+         Add_Inline_Always_Attribute (+V);
+      elsif Is_Inlined (Subp) then
+         Add_Inline_Hint_Attribute (+V);
       end if;
    end Add_Inline_Attribute;
 

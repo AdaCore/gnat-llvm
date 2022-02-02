@@ -218,7 +218,9 @@ package body GNATLLVM.Codegen is
          No_Inlining := True;
       elsif Switch = "-fmerge-functions" then
          Merge_Functions := True;
-      elsif Switch = "-fno-merge-functions" then
+      elsif Switch = "-fno-merge-functions"
+        or else Switch = "-fno-toplevel-reorder"
+      then
          Merge_Functions := False;
       elsif Switch = "-fno-lto" then
          PrepareForThinLTO := False;

@@ -275,7 +275,6 @@ package GNATLLVM.Wrapper is
       Target_Machine        : Target_Machine_T;
       Code_Opt_Level        : Nat;
       Size_Opt_Level        : Nat;
-      No_Inlining           : Boolean;
       No_Unroll_Loops       : Boolean;
       No_Loop_Vectorization : Boolean;
       No_SLP_Vectorization  : Boolean;

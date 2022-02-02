@@ -280,7 +280,6 @@ package body GNATLLVM.Wrapper is
       Target_Machine        : Target_Machine_T;
       Code_Opt_Level        : Nat;
       Size_Opt_Level        : Nat;
-      No_Inlining           : Boolean;
       No_Unroll_Loops       : Boolean;
       No_Loop_Vectorization : Boolean;
       No_SLP_Vectorization  : Boolean;
@@ -294,7 +293,6 @@ package body GNATLLVM.Wrapper is
          Target_Machine        : Target_Machine_T;
          Code_Opt_Level        : Nat;
          Size_Opt_Level        : Nat;
-         No_Inlining           : LLVM_Bool;
          No_Unroll_Loops       : LLVM_Bool;
          No_Loop_Vectorization : LLVM_Bool;
          No_SLP_Vectorization  : LLVM_Bool;
@@ -303,7 +301,6 @@ package body GNATLLVM.Wrapper is
          PrepareForLTO         : LLVM_Bool;
          RerollLoopS           : LLVM_Bool)
         with Import, Convention => C, External_Name => "LLVM_Optimize_Module";
-      No_Inlining_B  : constant LLVM_Bool := Boolean'Pos (No_Inlining);
       No_Unroll_B    : constant LLVM_Bool := Boolean'Pos (No_Unroll_Loops);
       No_Loop_Vect_B : constant LLVM_Bool :=
         Boolean'Pos (No_Loop_Vectorization);
@@ -316,7 +313,7 @@ package body GNATLLVM.Wrapper is
 
    begin
       LLVM_Optimize_Module_C (Module, Target_Machine,
-                              Code_Opt_Level, Size_Opt_Level, No_Inlining_B,
+                              Code_Opt_Level, Size_Opt_Level,
                               No_Unroll_B, No_Loop_Vect_B, No_SLP_Vect_B,
                               Merge_B, Thin_LTO_B, LTO_B, Reroll_B);
    end LLVM_Optimize_Module;

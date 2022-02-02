@@ -494,7 +494,6 @@ package body GNATLLVM.Codegen is
            (Module, Target_Machine,
             Code_Opt_Level        => Code_Opt_Level,
             Size_Opt_Level        => Size_Opt_Level,
-            No_Inlining           => No_Inlining,
             No_Unroll_Loops       => No_Unroll_Loops,
             No_Loop_Vectorization => No_Loop_Vectorization,
             No_SLP_Vectorization  => No_SLP_Vectorization,

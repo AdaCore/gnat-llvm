@@ -1609,6 +1609,8 @@ package body GNATLLVM.GLValue is
          Add_Inline_No_Attribute (+V);
       elsif Has_Pragma_Inline_Always (Subp) then
          Add_Inline_Always_Attribute (+V);
+      elsif No_Inlining then
+         Add_Inline_No_Attribute (+V);
       elsif Is_Expression_Function (Subp) and then Size_Opt_Level = 0
         and then not Debug_Flag_Dot_8
       then

@@ -511,7 +511,7 @@ Initialize_LLVM (void)
 extern "C"
 void
 LLVM_Optimize_Module (Module *M, TargetMachine *TM,
-		      int Code_Opt_Level, int Size_Opt_Level, bool No_Inlining,
+		      int Code_Opt_Level, int Size_Opt_Level,
 		      bool No_Unroll_Loops, bool No_Loop_Vectorization,
 		      bool No_SLP_Vectorization, bool MergeFunctions,
 		      bool PrepareForThinLTO, bool PrepareForLTO,

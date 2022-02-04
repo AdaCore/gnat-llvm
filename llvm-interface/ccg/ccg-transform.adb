@@ -60,6 +60,12 @@ package body CCG.Transform is
      with Post => Present (Get_Short_Circuit_FN'Result);
    --  Get or make the appropriate short circuit function for Kind
 
+   function Call_Is_Short_Circuit (V : Value_T) return Boolean is
+     (Get_Called_Value (V) = SC_FNs (And_Then)
+      or else Get_Called_Value (V) = SC_FNs (Or_Else))
+     with Pre => Is_A_Call_Inst (V);
+   --  Return True if this is a call to one of the above builtins
+
    function Negate_Condition
      (V : Value_T; Do_Nothing : Boolean := False) return Boolean
      with Pre => Present (V);
@@ -434,10 +440,7 @@ package body CCG.Transform is
       --  replace AND with OR and vice versa.
 
       elsif ((Is_A_Instruction (V) and then Get_Opcode (V) in Op_And | Op_Or)
-             or else (Is_A_Call_Inst (V)
-                        and then (Get_Called_Value (V) = SC_FNs (And_Then)
-                                    or else Get_Called_Value (V) =
-                                              SC_FNs (Or_Else))))
+             or else (Is_A_Call_Inst (V) and then Call_Is_Short_Circuit (V)))
         and then Negate_Condition (Get_Operand0 (V), True)
         and then Negate_Condition (Get_Operand1 (V), Do_Nothing)
       then
@@ -566,7 +569,9 @@ package body CCG.Transform is
          --  ??? The problem here is that we consider loads as volatile and
          --  we perhaps should do this only for stores.
 
-         elsif Is_A_Load_Inst (V) or else Is_A_Call_Inst (V) then
+         elsif Is_A_Load_Inst (V)
+           or else (Is_A_Call_Inst (V) and then not Call_Is_Short_Circuit (V))
+         then
             if Had_Load_Call then
                return False;
             else
@@ -694,12 +699,8 @@ package body CCG.Transform is
          Term    := Get_Basic_Block_Terminator (BB);
          if Is_Cond_Br (Term) then
             declare
-               True_Dest  : constant Value_T       := Get_Operand2 (Term);
-               False_Dest : constant Value_T       := Get_Operand1 (Term);
-               True_BB    : constant Basic_Block_T :=
-                 Value_As_Basic_Block (True_Dest);
-               False_BB   : constant Basic_Block_T :=
-                 Value_As_Basic_Block (False_Dest);
+               True_BB    : constant Basic_Block_T := Get_True_BB (Term);
+               False_BB   : constant Basic_Block_T := Get_False_BB (Term);
                True_Term  : constant Value_T       :=
                  Get_Basic_Block_Terminator (True_BB);
                False_Term : constant Value_T       :=
@@ -714,7 +715,7 @@ package body CCG.Transform is
 
                if False_BB /= BB and then True_BB /= BB
                  and then Is_Cond_Br (False_Term)
-                 and then Get_Operand2 (False_Term) = True_Dest
+                 and then Get_True_BB (False_Term) = True_BB
                  and then Has_Unique_Predecessor (False_BB)
                  and then Is_Only_Condition (False_BB)
                then
@@ -727,7 +728,7 @@ package body CCG.Transform is
 
                elsif False_BB /= BB and then True_BB /= BB
                  and then Is_Cond_Br (True_Term)
-                 and then Get_Operand1 (True_Term) = False_Dest
+                 and then Get_False_BB (True_Term) = False_BB
                  and then Has_Unique_Predecessor (True_BB)
                  and then Is_Only_Condition (True_BB)
                then
@@ -760,9 +761,9 @@ package body CCG.Transform is
       while Present (BB) loop
          Term := Get_Basic_Block_Terminator (BB);
          if Is_Cond_Br (Term)
-           and then not Has_Unique_Predecessor (Get_Operand2 (Term))
-           and then Has_Unique_Predecessor (Get_Operand1 (Term))
-           and then Negate_Condition (Get_Operand0 (Term))
+           and then not Has_Unique_Predecessor (Get_True_BB (Term))
+           and then Has_Unique_Predecessor (Get_False_BB (Term))
+           and then Negate_Condition (Get_Condition (Term))
          then
             Swap_Successors (Term);
          end if;

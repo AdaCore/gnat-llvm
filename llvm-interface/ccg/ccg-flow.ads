@@ -237,13 +237,14 @@ package CCG.Flow is
    procedure Set_Last_Case (Idx : Flow_Idx; Cidx : Case_Idx)
      with Pre => Present (Idx), Post => Last_Case (Idx) = Cidx, Inline;
 
-   function Get_Or_Create_Flow (V : Value_T) return Flow_Idx
-     with Pre  => Is_A_Basic_Block (V),
-          Post => Present (Get_Or_Create_Flow'Result);
    function Get_Or_Create_Flow (B : Basic_Block_T) return Flow_Idx
      with Pre  => Present (B),
           Post => Present (Get_Or_Create_Flow'Result)
                   and then Get_Flow (B) = Get_Or_Create_Flow'Result;
+   function Get_Or_Create_Flow (V : Value_T) return Flow_Idx is
+     (Get_Or_Create_Flow (Value_As_Basic_Block (V)))
+   with Pre  => Is_A_Basic_Block (V),
+        Post => Present (Get_Or_Create_Flow'Result);
    --  Get (and create if needed) a Flow for a block
 
    procedure Add_Use (Idx : Flow_Idx) with Inline;

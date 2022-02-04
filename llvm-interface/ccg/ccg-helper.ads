@@ -57,6 +57,45 @@ package CCG.Helper is
      with Pre  => Is_A_Terminator_Inst (V) and then J < Get_Num_Successors (V),
           Post => Present (Get_Successor'Result);
 
+   function Get_Num_Operands (V : Value_T) return Int is
+      (Int (Interfaces.C.int'(Get_Num_Operands (V))))
+      with Pre => Present (V);
+
+   function Get_Operand (V : Value_T; Idx : Nat) return Value_T is
+      (Get_Operand (V, unsigned (Idx)))
+      with Pre  => Present (V) and then Idx < Get_Num_Operands (V),
+           Post => Present (Get_Operand'Result);
+
+   function Get_Operand0 (V : Value_T) return Value_T is
+      (Get_Operand (V, unsigned (0)))
+      with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (0),
+           Post => Present (Get_Operand0'Result);
+
+   function Get_Operand1 (V : Value_T) return Value_T is
+      (Get_Operand (V, unsigned (1)))
+      with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (1),
+           Post => Present (Get_Operand1'Result);
+
+   function Get_Operand2 (V : Value_T) return Value_T is
+      (Get_Operand (V, unsigned (2)))
+      with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (2),
+           Post => Present (Get_Operand2'Result);
+
+   function Get_Dest_BB (V : Value_T) return Basic_Block_T is
+     (Value_As_Basic_Block (Get_Operand0 (V)))
+     with Pre  => Is_A_Branch_Inst (V) and then not Is_Conditional (V),
+          Post => Present (Get_Dest_BB'Result);
+
+   function Get_True_BB (V : Value_T) return Basic_Block_T is
+     (Value_As_Basic_Block (Get_Operand2 (V)))
+     with Pre  => Is_A_Branch_Inst (V) and then Is_Conditional (V),
+          Post => Present (Get_True_BB'Result);
+
+   function Get_False_BB (V : Value_T) return Basic_Block_T is
+     (Value_As_Basic_Block (Get_Operand1 (V)))
+     with Pre  => Is_A_Branch_Inst (V) and then Is_Conditional (V),
+          Post => Present (Get_False_BB'Result);
+
    procedure Set_Successor (V : Value_T; J : Nat; BB : Basic_Block_T)
        with Pre => Present (V) and then Present (BB), Inline;
 
@@ -87,30 +126,6 @@ package CCG.Helper is
    function Get_Array_Length (T : Type_T) return Nat is
       (Nat (unsigned'(Get_Array_Length (T))))
       with Pre => Get_Type_Kind (T) = Array_Type_Kind;
-
-   function Get_Num_Operands (V : Value_T) return Int is
-      (Int (Interfaces.C.int'(Get_Num_Operands (V))))
-      with Pre => Present (V);
-
-   function Get_Operand (V : Value_T; Idx : Nat) return Value_T is
-      (Get_Operand (V, unsigned (Idx)))
-      with Pre  => Present (V) and then Idx < Get_Num_Operands (V),
-           Post => Present (Get_Operand'Result);
-
-   function Get_Operand0 (V : Value_T) return Value_T is
-      (Get_Operand (V, unsigned (0)))
-      with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (0),
-           Post => Present (Get_Operand0'Result);
-
-   function Get_Operand1 (V : Value_T) return Value_T is
-      (Get_Operand (V, unsigned (1)))
-      with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (1),
-           Post => Present (Get_Operand1'Result);
-
-   function Get_Operand2 (V : Value_T) return Value_T is
-      (Get_Operand (V, unsigned (2)))
-      with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (2),
-           Post => Present (Get_Operand2'Result);
 
    function Is_A_Constant (V : Value_T) return Boolean is
      (Present (Is_A_Constant (V)))

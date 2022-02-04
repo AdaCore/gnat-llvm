@@ -686,13 +686,6 @@ package body CCG.Flow is
    -- Get_Or_Create_Flow --
    ------------------------
 
-   function Get_Or_Create_Flow (V : Value_T) return Flow_Idx is
-     (Get_Or_Create_Flow (Value_As_Basic_Block (V)));
-
-   ------------------------
-   -- Get_Or_Create_Flow --
-   ------------------------
-
    function Get_Or_Create_Flow (B : Basic_Block_T) return Flow_Idx is
       T   : constant Value_T  := Get_Basic_Block_Terminator (B);
       Idx : Flow_Idx          := Get_Flow (B);
@@ -815,11 +808,11 @@ package body CCG.Flow is
                   Process_Pending_Values;
                   Set_First_If (Idx, Iidx1);
                   Set_Last_If  (Idx, Iidx2);
-                  Set_Target   (Iidx1, Get_Or_Create_Flow (Get_Operand2 (T)));
-                  Set_Target   (Iidx2, Get_Or_Create_Flow (Get_Operand1 (T)));
+                  Set_Target   (Iidx1, Get_Or_Create_Flow (Get_True_BB (T)));
+                  Set_Target   (Iidx2, Get_Or_Create_Flow (Get_False_BB (T)));
                end;
             else
-               Set_Next (Idx, Get_Or_Create_Flow (Get_Operand0 (T)));
+               Set_Next (Idx, Get_Or_Create_Flow (Get_Dest_BB (T)));
                Process_Pending_Values;
             end if;
 

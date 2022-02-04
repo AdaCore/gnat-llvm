@@ -167,6 +167,179 @@ package body CCG.Flow is
    Current_Flow : Flow_Idx := Empty_Flow_Idx;
    --  The flow that we're currently building
 
+   --  Getters and setters for a Line node
+
+   function Text (Idx : Line_Idx)   return Str
+     with Pre => Present (Idx), Post => Present (Text'Result);
+   --  The string containing the line to be written
+
+   function Inst (Idx : Line_Idx)   return Value_T
+     with Pre => Present (Idx), Post => Present (Inst'Result);
+      --  The instruction corresponding to the line (for debug data)
+
+   procedure Set_Text (Idx : Line_Idx; S : Str)
+     with Pre  => Present (Idx) and then Present (S),
+          Post => Text (Idx) = S, Inline;
+
+   procedure Set_Inst (Idx : Line_Idx; V : Value_T)
+     with Pre  => Present (Idx) and then Present (V),
+          Post => Inst (Idx) = V, Inline;
+
+   --  Getters and setters for a Case node
+
+   function Value (Idx : Case_Idx)           return Value_T
+     with Pre => Present (Idx);
+   --  Return the integer value for this case node or No_Value_T if this
+   --  is for "default".
+
+   function Expr (Idx : Case_Idx)            return Str
+     with Pre => Present (Idx);
+   --  Return the string for this case node or No_Str if this is for "default"
+
+   function Target (Idx : Case_Idx)          return Flow_Idx
+     with Pre => Present (Idx);
+   --  Return the Flow corresponding to this case node, if any. No flow
+   --  means either that the target of this node is the same as that of
+   --  the next node (which may also not be Present) or that this case
+   --  immediately falls though to after the switch statement.
+   --  Is_Same_As_Next_Says which.
+
+   function Is_Same_As_Next (Idx : Case_Idx) return Boolean
+     with Pre => Present (Idx);
+   --  True if this case part branches to the same place as the next part
+
+   function Inst (Idx : Case_Idx) return Value_T
+     with Pre  => Present (Idx),
+          Post => Is_A_Instruction (Inst'Result);
+   --  Return the Flow corresponding to this case node
+
+   procedure Set_Value (Idx : Case_Idx; V : Value_T)
+     with Pre  => Present (Idx) and then Present (V),
+          Post => Value (Idx) = V, Inline;
+
+   procedure Set_Expr (Idx : Case_Idx; S : Str)
+     with Pre  => Present (Idx) and then Present (S),
+          Post => Expr (Idx) = S, Inline;
+
+   procedure Set_Target (Idx : Case_Idx; Fidx : Flow_Idx)
+     with Pre => Present (Idx), Post => Target (Idx) = Fidx, Inline;
+
+   procedure Set_Inst (Idx : Case_Idx; V : Value_T)
+     with Pre  => Present (Idx) and then Is_A_Instruction (V),
+          Post => Inst (Idx) = V, Inline;
+
+   procedure Set_Is_Same_As_Next (Idx : Case_Idx; B : Boolean := True)
+     with Pre => Present (Idx), Post => Is_Same_As_Next (Idx) = B, Inline;
+   --  Getters and setters for an If node
+
+   function Test (Idx : If_Idx)   return Str
+     with Pre => Present (Idx);
+   --  Return the expression corresponding to the test, if Present. If
+   --  not, this represents an "else".
+
+   function Inst (Idx : If_Idx)   return Value_T
+     with Pre  => Present (Idx),
+          Post => No (Inst'Result) or else Is_A_Instruction (Inst'Result);
+   --  Instruction that does test (for debug info), if any
+
+   function Target (Idx : If_Idx) return Flow_Idx
+     with Pre => Present (Idx);
+   --  Destination if this test is true (or not Present)
+
+   procedure Set_Test (Idx : If_Idx; S : Str)
+     with Pre  => Present (Idx) and then Present (S),
+          Post => Test (Idx) = S, Inline;
+
+   procedure Set_Inst (Idx : If_Idx; V : Value_T)
+     with Pre  => Present (Idx) and then Is_A_Instruction (V),
+          Post => Inst (Idx) = V, Inline;
+
+   procedure Set_Target (Idx : If_Idx; Fidx : Flow_Idx)
+     with Pre => Present (Idx), Post => Target (Idx) = Fidx, Inline;
+
+   --  Getters and setters for a Flow
+
+   function BB (Idx : Flow_Idx)           return Basic_Block_T
+     with Pre => not Is_Return (Idx), Post => Present (BB'Result);
+   --  Block corresponding to this flow, if not a return flow
+
+   function First_Line (Idx : Flow_Idx)   return Line_Idx
+     with Pre => Present (Idx);
+   --  First line that's part of this flow, if any
+
+   function Last_Line (Idx : Flow_Idx)    return Line_Idx
+     with Pre => Present (Idx);
+   --  Last line that's part of this flow, if any
+
+   function Use_Count (Idx : Flow_Idx)    return Nat
+     with Pre => Present (Idx);
+   --  Number of times this flow is referenced by another flow (always one
+   --  for the entry block).
+
+   function Next (Idx : Flow_Idx)         return Flow_Idx
+     with Pre => Present (Idx);
+   --  Next flow executed after this one has completed, if any
+
+   function Is_Return (Idx : Flow_Idx)    return Boolean
+     with Pre => Present (Idx);
+   --  True for a return flow
+
+   function Return_Value (Idx : Flow_Idx) return Str
+     with Pre => Is_Return (Idx) and then Present (Idx);
+   --  If a return flow, the value to return, if any
+
+   function First_If (Idx : Flow_Idx)     return If_Idx
+     with Pre => Present (Idx);
+   function Last_If (Idx : Flow_Idx)      return If_Idx
+     with Pre => Present (Idx);
+   --  First and last if/then/elseif/else parts, if any
+
+   function Case_Expr (Idx : Flow_Idx)    return Str
+     with Pre => Present (Idx);
+   --  Expression for switch statement, if any
+
+   function First_Case (Idx : Flow_Idx)   return Case_Idx
+     with Pre => Present (Idx);
+   function Last_Case (Idx : Flow_Idx)    return Case_Idx
+     with Pre => Present (Idx);
+   --  First and last of cases for a switch statement, if any
+
+   procedure Set_BB (Idx : Flow_Idx; B : Basic_Block_T)
+     with Pre  => Present (Idx) and then Present (B),
+          Post => BB (Idx) = B, Inline;
+
+   procedure Set_First_Line (Idx : Flow_Idx; Lidx : Line_Idx)
+     with Pre  => Present (Idx) and then Present (Lidx),
+          Post => First_Line (Idx) = Lidx, Inline;
+   procedure Set_Last_Line (Idx : Flow_Idx; Lidx : Line_Idx)
+     with Pre  => Present (Idx) and then Present (Lidx),
+          Post => Last_Line (Idx) = Lidx, Inline;
+
+   procedure Set_Next (Idx, Nidx : Flow_Idx)
+     with Pre  => Present (Idx), Post => Next (Idx) = Nidx, Inline;
+
+   procedure Set_Is_Return (Idx : Flow_Idx; B : Boolean := True)
+     with Pre  => Present (Idx), Post => Is_Return (Idx) = B, Inline;
+
+   procedure Set_Return_Value (Idx : Flow_Idx; S : Str)
+     with Pre  => Present (Idx) and then Is_Return (Idx) and then Present (S),
+          Post => Return_Value (Idx) = S, Inline;
+
+   procedure Set_First_If (Idx : Flow_Idx; Iidx : If_Idx)
+     with Pre  => Present (Idx) and then Present (Iidx),
+          Post => First_If (Idx) = Iidx, Inline;
+   procedure Set_Last_If (Idx : Flow_Idx; Iidx : If_Idx)
+     with Pre  => Present (Idx) and then Present (Iidx),
+          Post => Last_If (Idx) = Iidx, Inline;
+
+   procedure Set_Case_Expr (Idx : Flow_Idx; S : Str)
+     with Pre  => Present (Idx), Post => Case_Expr (Idx) = S, Inline;
+
+   procedure Set_First_Case (Idx : Flow_Idx; Cidx : Case_Idx)
+     with Pre => Present (Idx), Post => First_Case (Idx) = Cidx, Inline;
+   procedure Set_Last_Case (Idx : Flow_Idx; Cidx : Case_Idx)
+     with Pre => Present (Idx), Post => Last_Case (Idx) = Cidx, Inline;
+
    function New_Line (S : Str; V : Value_T) return Line_Idx
      with Pre => Present (S) and then Present (V);
    --  Create a new Line entry with the specified values

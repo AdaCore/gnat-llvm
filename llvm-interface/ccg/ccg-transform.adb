@@ -42,6 +42,21 @@ package body CCG.Transform is
    SC_FNs : FN_Array := (others => No_Value_T);
    --  Builtin functions for "or else" and "and or"
 
+   function Has_Cond_Br (BB : Basic_Block_T) return Boolean is
+     (Is_Cond_Br (Get_Basic_Block_Terminator (BB)))
+     with Pre => Present (BB);
+   function Has_Return (BB : Basic_Block_T) return Boolean is
+     (Is_A_Return_Inst (Get_Basic_Block_Terminator (BB)))
+     with Pre => Present (BB);
+   function Get_Term_True_BB (BB : Basic_Block_T) return Basic_Block_T is
+     (Get_True_BB (Get_Basic_Block_Terminator (BB)))
+     with Pre => Present (BB), Post => Present (Get_Term_True_BB'Result);
+   function Get_Term_False_BB (BB : Basic_Block_T) return Basic_Block_T is
+     (Get_False_BB (Get_Basic_Block_Terminator (BB)))
+     with Pre => Present (BB), Post => Present (Get_Term_False_BB'Result);
+   --  Some shortcuts to simplify code that checks what a terminator of
+   --  a basic block does.
+
    procedure Remove_Some_Intrinsics (V : Value_T)
      with Pre => Is_A_Function (V);
    --  Remove debgu and lifetime intrinsics from the function V
@@ -594,7 +609,7 @@ package body CCG.Transform is
       --  condition doesn't qualify, this block doesn't qualify.
 
       if not Is_Cond_Br (Term)
-        or else not Scan_For_Only_Condition (Get_Operand0 (Term))
+        or else not Scan_For_Only_Condition (Get_Condition (Term))
       then
          return False;
       end if;
@@ -646,13 +661,13 @@ package body CCG.Transform is
 
    procedure Make_Short_Circuit_Op (BB : Basic_Block_T; Kind : SC_Kind) is
       Our_Term    : constant Value_T       := Get_Basic_Block_Terminator (BB);
-      Our_Cond    : constant Value_T       := Get_Operand0 (Our_Term);
+      Our_Cond    : constant Value_T       := Get_Condition (Our_Term);
       SC_Dest     : constant Value_T       :=
         Get_Operand (Our_Term, (if Kind = Or_Else then Nat (1) else Nat (2)));
       SC_BB       : constant Basic_Block_T := Value_As_Basic_Block (SC_Dest);
       SC_Term     : constant Value_T       :=
         Get_Basic_Block_Terminator (SC_BB);
-      SC_Cond     : constant Value_T       := Get_Operand0 (SC_Term);
+      SC_Cond     : constant Value_T       := Get_Condition (SC_Term);
       Fn          : constant Value_T       := Get_Short_Circuit_FN (Kind);
       Inst        : Value_T                := Get_First_Instruction (SC_BB);
       Next_Inst   : Value_T;
@@ -701,10 +716,6 @@ package body CCG.Transform is
             declare
                True_BB    : constant Basic_Block_T := Get_True_BB (Term);
                False_BB   : constant Basic_Block_T := Get_False_BB (Term);
-               True_Term  : constant Value_T       :=
-                 Get_Basic_Block_Terminator (True_BB);
-               False_Term : constant Value_T       :=
-                 Get_Basic_Block_Terminator (False_BB);
 
             begin
                --  If our False side branches to a block whose terminator
@@ -714,8 +725,8 @@ package body CCG.Transform is
                --  else". But make sure we don't have a loop back to us.
 
                if False_BB /= BB and then True_BB /= BB
-                 and then Is_Cond_Br (False_Term)
-                 and then Get_True_BB (False_Term) = True_BB
+                 and then Has_Cond_Br (False_BB)
+                 and then Get_Term_True_BB (False_BB) = True_BB
                  and then Has_Unique_Predecessor (False_BB)
                  and then Is_Only_Condition (False_BB)
                then
@@ -727,8 +738,8 @@ package body CCG.Transform is
                --  "and then".
 
                elsif False_BB /= BB and then True_BB /= BB
-                 and then Is_Cond_Br (True_Term)
-                 and then Get_False_BB (True_Term) = False_BB
+                 and then Has_Cond_Br (True_BB)
+                 and then Get_Term_False_BB (True_BB) = False_BB
                  and then Has_Unique_Predecessor (True_BB)
                  and then Is_Only_Condition (True_BB)
                then
@@ -751,18 +762,37 @@ package body CCG.Transform is
       Term : Value_T;
 
    begin
-      --  For each basic block, we start by looking at the terminator
-      --  to see if it's a conditional branch where the "true" block has
-      --  more than one predecessor but the "false" block doesn't. In that
-      --  case, we'll generate cleaner code by swapping the two operands and
-      --  negating the condition.
+
+      --  For each basic block, we start by looking at the terminator to
+      --  see if we'll generate cleaner code by swapping the two operands
+      --  and negating the condition.
 
       BB := Get_First_Basic_Block (V);
       while Present (BB) loop
          Term := Get_Basic_Block_Terminator (BB);
+
+         --  One case is if it's a conditional branch where the "true"
+         --  block has more than one predecessor but the "false" block
+         --  doesn't.
+
          if Is_Cond_Br (Term)
            and then not Has_Unique_Predecessor (Get_True_BB (Term))
            and then Has_Unique_Predecessor (Get_False_BB (Term))
+           and then Negate_Condition (Get_Condition (Term))
+         then
+            Swap_Successors (Term);
+
+         --  Another case is where we may be able to merge two tests into an
+         --  "else if". We only test for the simple cases.
+
+         elsif Is_Cond_Br (Term) and then not Has_Cond_Br (Get_False_BB (Term))
+           and then Has_Cond_Br (Get_True_BB (Term))
+           and then Is_Only_Condition (Get_True_BB (Term))
+           and then ((Has_Return (Get_False_BB (Term))
+                        and then Has_Return (Get_Term_True_BB
+                                               (Get_True_BB (Term))))
+                     or else Get_False_BB (Term) =
+                               Get_Term_True_BB (Get_True_BB (Term)))
            and then Negate_Condition (Get_Condition (Term))
          then
             Swap_Successors (Term);

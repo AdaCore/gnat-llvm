@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Deallocation;
-
 with Errout;     use Errout;
 with Eval_Fat;   use Eval_Fat;
 with Exp_Code;   use Exp_Code;
@@ -351,10 +349,6 @@ package body GNATLLVM.Exprs is
 
                if ULL'(Get_Type_Size (Type_Of (Elmt_GT))) = 8 then
                   declare
-                     type String_Access is access String;
-                     procedure Free is new Ada.Unchecked_Deallocation
-                       (String, String_Access);
-
                      Str : String_Access := new String (1 .. Integer (Length));
 
                   begin

@@ -51,11 +51,15 @@ package body GNATLLVM.Codegen is
       Table_Increment      => 1,
       Table_Name           => "Switches");
 
-   Output_Assembly : Boolean := False;
+   Output_Assembly    : Boolean := False;
    --  True if -S was specified
 
-   Emit_LLVM       : Boolean := False;
+   Emit_LLVM          : Boolean := False;
    --  True if -emit-llvm was specified
+
+   Libdevice_Filename : String_Access :=
+     new String'("/usr/local/cuda/nvvm/libdevice/libdevice.10.bc");
+   --  Location for libdevice for CUDA
 
    procedure Process_Switch (Switch : String);
    --  Process one command-line switch
@@ -136,6 +140,9 @@ package body GNATLLVM.Codegen is
       elsif Starts_With ("-mtriple=") then
          To_Free       := Target_Triple;
          Target_Triple := new String'(Switch_Value ("-mtriple="));
+      elsif Starts_With ("-mcuda-libdevice=") then
+         Free (Libdevice_Filename);
+         Libdevice_Filename := new String'(Switch_Value ("-mcuda-libdevice="));
 
       --  -march= and -mcpu= set the CPU to be used. -mtune= does likewise,
       --  but only if we haven't already seen one of the previous two switches
@@ -446,11 +453,6 @@ package body GNATLLVM.Codegen is
            and then Target_Triple (TT_First .. TT_First + 6) = "nvptx64"
          then
             declare
-               Root_Env      : constant String := Getenv ("CUDA_ROOT").all;
-               CUDA_Root     : constant String :=
-                 (if Root_Env /= "" then Root_Env else "/usr/local/cuda");
-               BC_Filename   : constant String :=
-                 CUDA_Root & "/nvvm/libdevice/libdevice.10.bc";
                Mem_Buffer    : aliased Memory_Buffer_T;
                Libdev_Module : aliased Module_T;
                Func          : Value_T;
@@ -459,14 +461,14 @@ package body GNATLLVM.Codegen is
                --  Read the file into a new module
 
                if Create_Memory_Buffer_With_Contents_Of_File
-                 (BC_Filename, Mem_Buffer'Address, Err_Msg'Address)
+                 (Libdevice_Filename.all, Mem_Buffer'Address, Err_Msg'Address)
                then
-                  Error_Msg_N ("could not read `" & BC_Filename & "`: " &
-                                 Get_LLVM_Error_Msg (Err_Msg),
+                  Error_Msg_N ("could not read `" & Libdevice_Filename.all &
+                               "`: " & Get_LLVM_Error_Msg (Err_Msg),
                                GNAT_Root);
                elsif Parse_Bitcode_2 (Mem_Buffer, Libdev_Module'Address) then
-                  Error_Msg_N ("could not parse `" & BC_Filename & "`",
-                               GNAT_Root);
+                  Error_Msg_N ("could not parse `" & Libdevice_Filename.all &
+                               "`", GNAT_Root);
                else
                   --  Set the data layout and target triple of the math
                   --  library to agree with us and set the linkage of all
@@ -485,7 +487,8 @@ package body GNATLLVM.Codegen is
                   --  Finally, put all of the math library into our module
 
                   if Link_Modules_2 (Module, Libdev_Module) then
-                     Error_Msg_N ("could not merge `" & BC_Filename & "`",
+                     Error_Msg_N ("could not merge `" &
+                                  Libdevice_Filename.all & "`",
                                   GNAT_Root);
                   end if;
                end if;

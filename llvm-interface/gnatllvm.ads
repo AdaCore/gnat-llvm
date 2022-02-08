@@ -23,6 +23,7 @@ with stdint_h; use stdint_h;
 with Ada.Containers;             use Ada.Containers;
 with Ada.Containers.Hashed_Maps;
 with Ada.Unchecked_Conversion;
+with Ada.Unchecked_Deallocation;
 
 with Interfaces.C;
 with Interfaces.C.Extensions;
@@ -219,6 +220,9 @@ package GNATLLVM is
 
    type Word_Array is array (Nat range <>) of aliased uint64_t;
    --  Array of words for LLVM construction functions
+
+   type String_Access is access String;
+   procedure Free is new Ada.Unchecked_Deallocation (String, String_Access);
 
    IR_Builder         : Builder_T;
    --  The current LLVM Instruction builder

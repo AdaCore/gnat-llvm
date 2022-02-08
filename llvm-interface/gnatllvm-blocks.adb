@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Deallocation;
-
 with Debug;    use Debug;
 with Errout;   use Errout;
 with Exp_Ch11; use Exp_Ch11;
@@ -399,7 +397,6 @@ package body GNATLLVM.Blocks is
    --  Array of GL_Values corresponding to 'Address of the string literal
    --  representing the name of the file.
 
-   type String_Access is access String;
    type Rcheck_Name_Array is array (RT_Exception_Code) of String_Access;
 
    Rcheck_Names      : Rcheck_Name_Array;

@@ -482,7 +482,6 @@ package body GNATLLVM.Compile is
             Emit (Statements (N), Starting_At => First_Real_Statement (N));
 
          when N_Raise_Statement =>
-            pragma Assert (Decls_Only or else Back_End_Exceptions);
             Emit_Reraise;
 
          when N_Raise_xxx_Error =>

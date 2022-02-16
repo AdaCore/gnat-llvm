@@ -1557,17 +1557,24 @@ package body CCG.Flow is
                Output_Stmt ("return", V => V);
             end if;
 
-            --  If this is a flow with only one use (so it must be this one),
-            --  output that flow directly unless we're already too deep
+         --  If this is a flow with only one use (so it must be this one),
+         --  output that flow directly unless we're already too deep.
 
          elsif Use_Count (Idx) = 1 and then Depth < Max_Depth then
             Output_One_Flow (Idx, Write_Label => False, Depth => Depth);
+
+         --  Similarly, if we're at top level and haven't output this flow
+         --  yet, output it directly, but this time we need a label since
+         --  we know it's used more than once.
+
+         elsif Depth = 0 and then not Contains (Output, Idx) then
+            Output_One_Flow (Idx, Write_Label => True, Depth => Depth);
 
          --  Otherwise, write a goto and mark it for output
 
          else
             Output_Stmt ("goto " & BB (Idx), V => V);
-            if not Is_Return (Idx) and then not Contains (Output, Idx)
+            if not Contains (Output, Idx)
               and then not Contains (To_Output, Idx)
             then
                Insert (To_Output, Idx);
@@ -1588,8 +1595,14 @@ package body CCG.Flow is
          T        : Value_T;
 
       begin
-         Insert (Output, Idx);
+         --  Get the terminator instruction, mark this flow as output,
+         --  and remove it from the set to later output if in that set.
+
          T := Get_Basic_Block_Terminator (BB (Idx));
+         Insert (Output, Idx);
+         if Contains (To_Output, Idx) then
+            Delete (To_Output, Idx);
+         end if;
 
          --  Write the block's label, if requested
 
@@ -1701,7 +1714,6 @@ package body CCG.Flow is
             Output_Idx : constant Flow_Idx := First_Element (To_Output);
          begin
             Output_One_Flow (Output_Idx, Depth => 0);
-            Delete (To_Output, Output_Idx);
          end;
       end loop;
 

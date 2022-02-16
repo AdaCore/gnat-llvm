@@ -1014,12 +1014,14 @@ package body CCG.Write is
          Next_Line_To_Dump := Our_Line + 1;
       end if;
 
-      --  If our last line ended a block and this one neither ends a
-      --  block nor starts with "else", write a blank line.
+      --  If our last line ended a block and this one neither ends a block,
+      --  starts with "else", or is itself a blank line, write a blank
+      --  line.
 
       if Previous_Was_End_Block and then Present (S) and then No (End_Block)
         and then not Is_String_First_Char (S, '}')
         and then not Is_String_Starts_With (S, "else")
+        and then not Is_Null_String (S)
       then
          Write_Eol;
       end if;

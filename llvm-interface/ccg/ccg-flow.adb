@@ -1594,6 +1594,7 @@ package body CCG.Flow is
          --  Write the block's label, if requested
 
          if Write_Label then
+            Output_Stmt ("", Semicolon => False);
             Output_Stmt (BB (Idx) & ":",
                          Semicolon   => False,
                          Indent_Type => Left,

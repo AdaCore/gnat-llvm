@@ -45,8 +45,6 @@ with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
-with CCG; use CCG;
-
 package body GNATLLVM.Variables is
 
    --  We sometime have a case where we have a pragma Export on one entity
@@ -1696,16 +1694,16 @@ package body GNATLLVM.Variables is
 
       Set_Value (E, LLVM_Var);
 
-      --  If this is of unsigned type, mark the value as unsigned
+      --  If this is of discrete type, mark the signedness
 
-      if Is_Unsigned_Type (GT) and then not Is_Ref then
-         C_Set_Is_Unsigned (+LLVM_Var);
+      if Is_Discrete_Type (GT) and then not Is_Ref then
+         C_Set_Signedness (LLVM_Var, Is_Unsigned_Type (GT));
       end if;
 
       --  If this is a variable that comes from source, mark it as such
 
       if Comes_From_Source (E) then
-         C_Set_Is_Variable (+LLVM_Var);
+         C_Set_Is_Variable (LLVM_Var);
       end if;
 
       return LLVM_Var;
@@ -2266,16 +2264,16 @@ package body GNATLLVM.Variables is
          Set_Value (E, LLVM_Var);
       end if;
 
-      --  If this is of unsigned type, mark the value as unsigned
+      --  If this is of discrete type, mark the signedness
 
-      if Is_Unsigned_Type (GT) and then not Is_Ref then
-         C_Set_Is_Unsigned (+LLVM_Var);
+      if Is_Discrete_Type (GT) and then not Is_Ref then
+         C_Set_Signedness (LLVM_Var, Is_Unsigned_Type (GT));
       end if;
 
       --  If this is a variable that comes from source, mark it as such
 
       if Comes_From_Source (E) then
-         C_Set_Is_Variable (+LLVM_Var);
+         C_Set_Is_Variable (LLVM_Var);
       end if;
 
       --  If we haven't already copied in any initializing expression, do

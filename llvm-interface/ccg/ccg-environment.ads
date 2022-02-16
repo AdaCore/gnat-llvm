@@ -57,6 +57,10 @@ package CCG.Environment is
      with Pre => Present (V), Inline;
    --  True if this value represents a variable that's unsigned
 
+   function Get_Is_Signed           (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if this value represents a variable that's unsigned
+
    function Get_Is_Used             (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if this value represents a variable that has been used in an
@@ -74,6 +78,8 @@ package CCG.Environment is
      with Pre => Present (V), Post => Get_Is_Constant (V) = B, Inline;
    procedure Set_Is_Unsigned        (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Unsigned (V) = B, Inline;
+   procedure Set_Is_Signed          (V : Value_T; B : Boolean := True)
+     with Pre => Present (V), Post => Get_Is_Signed (V) = B, Inline;
    procedure Set_Is_Used            (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Used (V) = B, Inline;
 

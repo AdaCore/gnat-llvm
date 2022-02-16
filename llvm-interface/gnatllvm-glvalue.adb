@@ -71,13 +71,13 @@ package body GNATLLVM.GLValue is
       TBAA_Offset : ULL             := 0) return GL_Value
    is
    begin
-      --  If this is of unsigned type, mark the value as unsigned. We have to
-      --  check for Void here since void is not a type.
+      --  Set the signedness of the value if this is a discrete type. We
+      --  have to check for Void here since void is not a type.
 
-      if Ekind (GT) /= E_Void and then Is_Unsigned_Type (GT)
+      if Ekind (GT) /= E_Void and then Is_Discrete_Type (GT)
         and then (not Is_Reference (R) or else R = Reference_To_Subprogram)
       then
-         C_Set_Is_Unsigned (V);
+         C_Set_Signedness (V, Is_Unsigned_Type (GT));
       end if;
 
       return (V, GT, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic,
@@ -2012,6 +2012,24 @@ package body GNATLLVM.GLValue is
 
       return Align;
    end Get_GEP_Offset_Alignment;
+
+   ----------------------
+   -- C_Set_Signedness --
+   ----------------------
+
+   procedure C_Set_Signedness (V : GL_Value; Is_Unsigned : Boolean) is
+   begin
+      C_Set_Signedness (+V, Is_Unsigned);
+   end C_Set_Signedness;
+
+   -----------------------
+   -- C_Set_Is_Variable --
+   -----------------------
+
+   procedure C_Set_Is_Variable (V : GL_Value) is
+   begin
+      C_Set_Is_Variable (+V);
+   end C_Set_Is_Variable;
 
    ---------------------
    -- Get_Alloca_Name --

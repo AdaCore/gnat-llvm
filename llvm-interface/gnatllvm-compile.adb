@@ -1655,6 +1655,8 @@ package body GNATLLVM.Compile is
 
                Set_Value (E, LLVM_Var);
                Create_Local_Variable_Debug_Data (E, LLVM_Var);
+               C_Set_Is_Variable (LLVM_Var);
+               C_Set_Signedness  (LLVM_Var, Is_Unsigned_Type (Var_GT));
 
                --  Then go to the condition block if the range isn't empty.
                --  Note that this comparison must be done in the base type.

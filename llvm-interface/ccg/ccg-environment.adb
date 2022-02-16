@@ -54,6 +54,10 @@ package body CCG.Environment is
       --  True if this value was marked as unsigned and will be declared
       --  that way.
 
+      Is_Signed          : Boolean;
+      --  True if this value was marked as signed and will be declared
+      --  that way.
+
       Is_Used             : Boolean;
       --  True if this value represents a variable that has been used in an
       --  expression.
@@ -187,6 +191,7 @@ package body CCG.Environment is
                              Is_LHS              => False,
                              Is_Constant         => False,
                              Is_Unsigned         => False,
+                             Is_Signed           => False,
                              Is_Used             => False,
                              Output_Idx          => 0));
          Insert (Value_Info_Map, V, Value_Info.Last);
@@ -323,6 +328,18 @@ package body CCG.Environment is
 
    end Get_Is_Unsigned;
 
+   -------------------
+   -- Get_Is_Signed --
+   -------------------
+
+   function Get_Is_Signed (V : Value_T) return Boolean is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
+
+   begin
+      return Present (Idx) and then Value_Info.Table (Idx).Is_Signed;
+
+   end Get_Is_Signed;
+
    ------------------
    -- Get_Is_Used --
    ------------------
@@ -400,6 +417,17 @@ package body CCG.Environment is
    begin
       Value_Info.Table (Idx).Is_Unsigned := B;
    end Set_Is_Unsigned;
+
+   -------------------
+   -- Set_Is_Signed --
+   -------------------
+
+   procedure Set_Is_Signed (V : Value_T; B : Boolean := True) is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
+
+   begin
+      Value_Info.Table (Idx).Is_Signed := B;
+   end Set_Is_Signed;
 
    -----------------
    -- Set_Is_Used --

@@ -135,17 +135,25 @@ package body CCG is
       end if;
    end C_Set_Struct;
 
-   -----------------------
-   -- C_Set_Is_Unsigned --
-   -----------------------
+   ----------------------
+   -- C_Set_Signedness --
+   ----------------------
 
-   procedure C_Set_Is_Unsigned (V : Value_T) is
+   procedure C_Set_Signedness (V : Value_T; Is_Unsigned : Boolean) is
    begin
-      if Emit_C then
-         Set_Is_Unsigned (V);
+      --  If we haven't set the signedness of V before, do it now
+
+      if Emit_C and then not Get_Is_Unsigned (V)
+        and then not Get_Is_Signed (V)
+      then
          Notify_On_Value_Delete (V, Delete_Value_Info'Access);
+         if Is_Unsigned then
+            Set_Is_Unsigned (V);
+         else
+            Set_Is_Signed (V);
+         end if;
       end if;
-   end C_Set_Is_Unsigned;
+   end C_Set_Signedness;
 
    -----------------------
    -- C_Set_Is_Variable --

@@ -5,7 +5,6 @@
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/MDBuilder.h"
@@ -29,6 +28,7 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
+#include "llvm/Transforms/Scalar/LoopPassManager.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm-c/Core.h"
 
@@ -508,6 +508,35 @@ Initialize_LLVM (void)
   InitializeAllAsmPrinters();
 }
 
+/* This is a dummy optimization "pass" that serves just to obtain loop
+   information when generating C.
+
+   For now, we don't actually do anything except collect information to look
+   at in the debugger.  */
+
+namespace llvm {
+
+class Loop;
+
+struct OurLoopPass : PassInfoMixin<OurLoopPass> {
+public:
+  PreservedAnalyses run (Loop &L, LoopAnalysisManager &AM,
+			 LoopStandardAnalysisResults &AR, LPMUpdater &U);
+  static bool isRequired () { return true; }
+};
+}
+
+PreservedAnalyses
+OurLoopPass::run (Loop &L, LoopAnalysisManager &LAM,
+		  LoopStandardAnalysisResults &AR, LPMUpdater &U)
+{
+
+  auto pre = L.getLoopPreheader ();
+  auto header = L.getHeader ();
+  auto cmp = L.getLatchCmpInst ();
+  return PreservedAnalyses::all ();
+}
+
 extern "C"
 void
 LLVM_Optimize_Module (Module *M, TargetMachine *TM,
@@ -567,6 +596,8 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM,
   else
     MPM = PB.buildPerModuleDefaultPipeline (Level);
 
+  MPM.addPass (createModuleToFunctionPassAdaptor
+	       (createFunctionToLoopPassAdaptor (OurLoopPass ())));
   MPM.run (*M, MAM);
 }
 

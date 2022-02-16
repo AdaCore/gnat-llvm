@@ -773,11 +773,22 @@ package body CCG.Transform is
 
          --  One case is if it's a conditional branch where the "true"
          --  block has more than one predecessor but the "false" block
-         --  doesn't.
+         --  doesn't. But don't do this if the "false" has a return.
 
          if Is_Cond_Br (Term)
            and then not Has_Unique_Predecessor (Get_True_BB (Term))
            and then Has_Unique_Predecessor (Get_False_BB (Term))
+           and then not Has_Return (Get_False_BB (Term))
+           and then Negate_Condition (Get_Condition (Term))
+         then
+            Swap_Successors (Term);
+
+         --  But do swap if the "false" is a return as long as the "true"
+         --  isn't.
+
+         elsif Is_Cond_Br (Term)
+           and then Has_Return (Get_False_BB (Term))
+           and then not Has_Return (Get_True_BB (Term))
            and then Negate_Condition (Get_Condition (Term))
          then
             Swap_Successors (Term);

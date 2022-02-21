@@ -27,9 +27,9 @@ package GNATLLVM.Blocks is
    --  We handle three kinds of "things" here:
    --
    --  (1) The stack pointer needs to be saved and restored to
-   --  deallocate any variables created in the block.  This is done
+   --  deallocate any variables created in the block. This is done
    --  both on normal and abnormal exit and operates from the start of
-   --  the block to the end of the block.  Every block other than the
+   --  the block to the end of the block. Every block other than the
    --  block corresponding to the enter subprogram has this action.
    --
    --  (2) If there if an "at end" handler, it needs to be executed on
@@ -82,16 +82,16 @@ package GNATLLVM.Blocks is
      (E : E_Label_Id; For_Address : Boolean := False) return Basic_Block_T
      with Post => Present (Get_Label_BB'Result);
    --  Lazily get the basic block associated with label E, creating it
-   --  if we don't have it already.  If For_Address is True, we're getting
+   --  if we don't have it already. If For_Address is True, we're getting
    --  this label to take its address, so we ignore any fixups.
 
    function Enter_Block_With_Node (Node : Opt_N_Label_Id) return Basic_Block_T
      with Post => Present (Enter_Block_With_Node'Result);
    --  We need a basic block at the present location to branch to.
    --  This will normally be a new basic block, but may be the current
-   --  basic block it if's empty and not the entry block.  If Node is
+   --  basic block if it's empty and not the entry block. If Node is
    --  Present and already points to a basic block, we have to use
-   --  that one.  If Present, but it doesn't point to a basic block,
+   --  that one. If Present, but it doesn't point to a basic block,
    --  set it to the one we made.
 
    procedure Push_Loop (LE : E_Loop_Id; Exit_Point : Basic_Block_T)
@@ -117,7 +117,7 @@ package GNATLLVM.Blocks is
    procedure Emit_Raise_Call
      (N : Node_Id; Kind : RT_Exception_Code; Column : Boolean := False)
      with Pre => Present (N);
-   --  Generate a call to a raise subprogram.  If Column is true, this is
+   --  Generate a call to a raise subprogram. If Column is true, this is
    --  call to and "extended" raise subprogram that accept column
    --  information.
 

@@ -88,7 +88,10 @@ package GNATLLVM.Conditionals is
    --  which is of type Operand_Type, is in the range from Low to High.
 
    procedure Emit_Case_Statement (N : N_Case_Statement_Id);
-   --  Handle a case statement
+   --  Generate code for a case statement
+
+   procedure Emit_Loop_Statement (N : N_Loop_Statement_Id);
+   --  Generate code for a loop
 
    procedure Emit_Case_Code
      (In_Alts : List_Id; LHS : GL_Value; In_BBs : Basic_Block_Array)

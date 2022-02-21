@@ -533,7 +533,9 @@ OurLoopPass::run (Loop &L, LoopAnalysisManager &LAM,
 
   auto pre = L.getLoopPreheader ();
   auto header = L.getHeader ();
+  auto latch = L.getLoopLatch ();
   auto cmp = L.getLatchCmpInst ();
+  auto issimple = L.isLoopSimplifyForm ();
   return PreservedAnalyses::all ();
 }
 

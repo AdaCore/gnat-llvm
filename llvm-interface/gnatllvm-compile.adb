@@ -586,7 +586,7 @@ package body GNATLLVM.Compile is
                Next_BB : Basic_Block_T;
             begin
                if Present (Condition (N)) then
-                  Next_BB := Create_Basic_Block ("loop.after.exit");
+                  Next_BB := Create_Basic_Block;
                   Emit_If_Cond (Condition (N), Exit_BB, Next_BB);
                   Position_Builder_At_End (Next_BB);
                else

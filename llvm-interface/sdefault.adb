@@ -66,7 +66,7 @@ package body Sdefault is
 
    function Search_Dir_Prefix return String_Ptr is
    begin
-      return Relocate_Path ("/PREFIX", "/PREFIX/bin");
+      return Relocate_Path ("/PREFIX", "/PREFIX/lib/");
    end Search_Dir_Prefix;
 
    -----------------

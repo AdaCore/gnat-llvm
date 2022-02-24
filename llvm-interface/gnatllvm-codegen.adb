@@ -495,17 +495,19 @@ package body GNATLLVM.Codegen is
             end;
          end if;
 
-         LLVM_Optimize_Module
-           (Module, Target_Machine,
-            Code_Opt_Level        => Code_Opt_Level,
-            Size_Opt_Level        => Size_Opt_Level,
-            No_Unroll_Loops       => No_Unroll_Loops,
-            No_Loop_Vectorization => No_Loop_Vectorization,
-            No_SLP_Vectorization  => No_SLP_Vectorization,
-            Merge_Functions       => Merge_Functions,
-            PrepareForThinLTO     => PrepareForThinLTO,
-            PrepareForLTO         => PrepareForLTO,
-            RerollLoops           => RerollLoops);
+         if Verified then
+            LLVM_Optimize_Module
+              (Module, Target_Machine,
+               Code_Opt_Level        => Code_Opt_Level,
+               Size_Opt_Level        => Size_Opt_Level,
+               No_Unroll_Loops       => No_Unroll_Loops,
+               No_Loop_Vectorization => No_Loop_Vectorization,
+               No_SLP_Vectorization  => No_SLP_Vectorization,
+               Merge_Functions       => Merge_Functions,
+               PrepareForThinLTO     => PrepareForThinLTO,
+               PrepareForLTO         => PrepareForLTO,
+               RerollLoops           => RerollLoops);
+         end if;
       end if;
 
       --  Output the translation

@@ -1395,6 +1395,9 @@ package body GNATLLVM.Conditionals is
    -------------------------
 
    procedure Emit_Loop_Statement (N : N_Loop_Statement_Id) is
+      procedure Emit_Loop_Body;
+      --  Emit the body of the loop
+
       Loop_Identifier : constant Opt_E_Loop_Id             :=
         (if Present (Identifier (N)) then Entity (Identifier (N)) else Empty);
       Iter_Scheme     : constant Opt_N_Iteration_Scheme_Id :=
@@ -1403,136 +1406,157 @@ package body GNATLLVM.Conditionals is
       Is_For_Loop     : constant Boolean                   :=
         not Is_Mere_Loop
         and then Present (Loop_Parameter_Specification (Iter_Scheme));
+      BB_Exit         : constant Basic_Block_T             :=
+        Create_Basic_Block;
+      BB_Start        : constant Basic_Block_T             :=
+        (if   Is_For_Loop then Create_Basic_Block
+         else Enter_Block_With_Node (Empty));
 
-      --  The general format for a loop is:
-      --    INIT;
-      --    while COND loop
-      --       STMTS;
-      --       ITER;
-      --    end loop;
-      --    NEXT:
-      --
-      --  Each step has its own basic block. When a loop doesn't need one
-      --  of these steps, just alias it with another one.
+      --------------------
+      -- Emit_Loop_Body --
+      --------------------
 
-      BB_Cond : Basic_Block_T              :=
-        (if   not Is_For_Loop then Enter_Block_With_Node (Empty)
-         else Create_Basic_Block ("loop.cond"));
-      --  If this is not a FOR loop, there is no initialization: alias
-      --  it with the COND block.
+      procedure Emit_Loop_Body is
+      begin
+         --  Record where the exit point for this loop is, create a block
+         --  to handle any per-iteration variables, write the loop body
+         --  itself, including a branch to the iteration point, and ????
 
-      BB_Stmts : constant Basic_Block_T    :=
-        (if   Is_Mere_Loop or else Is_For_Loop
-         then BB_Cond else Create_Basic_Block ("loop.stmts"));
-      --  If this is a mere loop or a For loop, there is no condition
-      --  block: alias it with the STMTS block.
-
-      BB_Iter : Basic_Block_T              :=
-        (if Is_For_Loop then Create_Basic_Block ("loop.iter") else BB_Cond);
-      --  If this is not a FOR loop, there is no iteration: alias it with
-      --  the COND block, so that at the end of every STMTS, jump on ITER
-      --  or COND.
-
-      BB_Next : constant Basic_Block_T     := Create_Basic_Block ("loop.exit");
-      --  The NEXT step contains no statement that comes from the loop: it
-      --  is the exit point.
+         Push_Loop (Loop_Identifier, BB_Exit);
+         Push_Block;
+         Start_Block_Statements;
+         Emit (Statements (N));
+         Set_Debug_Pos_At_Node (N);
+         Pop_Block;
+         Pop_Loop;
+      end Emit_Loop_Body;
 
    begin
-      --  First compile the iterative part of the loop: evaluation of the
-      --  exit condition, etc.
+      --  Handle each case separarely. First we have the case of no
+      --  iteration scheme, where the only ways to exit the loop are
+      --  explicit.
 
-      if not Is_Mere_Loop then
-         if not Is_For_Loop then
+      if Is_Mere_Loop then
+         Emit_Loop_Body;
+         Build_Br (BB_Start);
 
-            --  This is a WHILE loop: jump to the loop-body if the
-            --  condition evaluates to True, jump to the loop-exit
-            --  otherwise.
+      --  Next is the case where we have a condition, but not iteration
+      --  variable. In that case, we start the loop with a test of that
+      --  condition.
 
+      elsif not Is_For_Loop then
+         declare
+            BB_Stmts : constant Basic_Block_T := Create_Basic_Block;
+
+         begin
             if not Decls_Only then
-               Position_Builder_At_End (BB_Cond);
-               Emit_If_Cond (Condition (Iter_Scheme), BB_Stmts, BB_Next);
+               Emit_If_Cond (Condition (Iter_Scheme), BB_Stmts, BB_Exit);
+               Position_Builder_At_End (BB_Stmts);
+               Emit_Loop_Body;
+               Build_Br (BB_Start);
+            end if;
+         end;
+
+      --  The remaining case is a FOR loop. We have an initialization
+      --  section, the body of the loop, an adjustment of the iterator, and
+      --  a comparison.
+
+      else
+         --  We use the subtype of the loop parameter only to establish the
+         --  bounds of the loop. It's more efficient to do the computation in
+         --  the base type than to potentially have conversions to and from
+         --  the subtype.
+
+         declare
+            Spec       : constant N_Loop_Parameter_Specification_Id :=
+              Loop_Parameter_Specification (Iter_Scheme);
+            E          : constant E_Loop_Parameter_Id               :=
+              Defining_Identifier (Spec);
+            Reversed   : constant Boolean                           :=
+              Reverse_Present (Spec);
+            Var_GT     : constant GL_Type                           :=
+              Full_GL_Type (E);
+            Var_BT     : constant GL_Type                           :=
+              Base_GL_Type (Var_GT);
+            Uns_BT     : constant Boolean                           :=
+              Is_Unsigned_Type (Var_BT);
+            One        : constant GL_Value                          :=
+              Const_Int (Var_BT, Uint_1);
+            SRange     : constant N_Has_Bounds_Id                   :=
+              Simplify_Range (Scalar_Range (Var_GT));
+            Low        : constant GL_Value                          :=
+              Emit_Convert_Value (Low_Bound (SRange), Var_BT);
+            High       : constant GL_Value                          :=
+              Emit_Convert_Value (High_Bound (SRange), Var_BT);
+            Start      : constant GL_Value                          :=
+              (if Reversed then High else Low);
+            Last       : constant GL_Value                          :=
+              (if Reversed then Low else High);
+            Loop_Var   : constant GL_Value                          :=
+              Allocate_For_Type (Var_BT, N => E, E => E);
+            Prev       : GL_Value;
+
+         begin
+            --  If we use an inequality comparison against the last element
+            --  in the range each iteration of the loop, that comparison
+            --  will always succeed if that element is a bound of the
+            --  subtype.  We can replace that comparison with a equality
+            --  comparison if we add a test that verifies that the loop
+            --  will be executed at least once. But once we do that, we can
+            --  move the test to the end of the loop, which is a more
+            --  canonical form.  We need not do this test if we can prove
+            --  that the loop will always be executed, but we only check
+            --  for the trivial case of constants. If we determine that the
+            --  loop is never executed, we don't do anything more.
+
+            if Is_Constant (Low) and then Is_Constant (High)
+              and then High < Low
+            then
+               Delete_Basic_Block (BB_Start);
+               Delete_Basic_Block (BB_Exit);
+               return;
+
+            --  Otherwise, if either isn't a constant, add the test
+
+            elsif not Is_Constant (Low) or else not Is_Constant (High) then
+               declare
+                  BB_Init : constant Basic_Block_T := Create_Basic_Block;
+
+               begin
+                  Build_Cond_Br
+                    (I_Cmp ((if Uns_BT then Int_ULT else Int_SLT), High, Low),
+                      BB_Exit, BB_Init);
+                  Position_Builder_At_End (BB_Init);
+               end;
             end if;
 
-         else
-            --  This is a FOR loop
+            --  Initialization block: initialize the loop variable
 
-            declare
-               Spec       : constant N_Loop_Parameter_Specification_Id :=
-                 Loop_Parameter_Specification (Iter_Scheme);
-               E          : constant E_Loop_Parameter_Id  :=
-                 Defining_Identifier (Spec);
-               Reversed   : constant Boolean   := Reverse_Present (Spec);
-               Var_GT     : constant GL_Type   := Full_GL_Type (E);
-               Prim_GT    : constant GL_Type   := Primitive_GL_Type (Var_GT);
-               Var_BT     : constant GL_Type   := Base_GL_Type (Var_GT);
-               Uns_BT     : constant Boolean   := Is_Unsigned_Type (Var_BT);
-               One        : constant GL_Value  := Const_Int (Prim_GT, Uint_1);
-               LLVM_Var   : GL_Value;
-               Low, High  : GL_Value;
-               Prev, Next : GL_Value;
+            Set_Value (E, Loop_Var);
+            Create_Local_Variable_Debug_Data (E, Loop_Var);
+            C_Set_Is_Variable (Loop_Var);
+            C_Set_Signedness  (Loop_Var, Uns_BT);
+            Store (Start, Loop_Var);
+            Move_To_BB (BB_Start);
 
-            begin
-               --  Initialization block: create the loop variable and
-               --  initialize it.
+            --  Now the loop body
 
-               Bounds_From_Type (Var_GT, Low, High);
-               LLVM_Var := Allocate_For_Type
-                 (Var_GT,
-                  N => E,
-                  V => (if Reversed then High else Low),
-                  E => E);
+            Emit_Loop_Body;
 
-               Set_Value (E, LLVM_Var);
-               Create_Local_Variable_Debug_Data (E, LLVM_Var);
-               C_Set_Is_Variable (LLVM_Var);
-               C_Set_Signedness  (LLVM_Var, Is_Unsigned_Type (Var_GT));
+            --  Increment (or decrement, as requested) the loop variable
+            --  and test for the end condition.
 
-               --  Then go to the condition block if the range isn't empty.
-               --  Note that this comparison must be done in the base type.
-
-               Build_Cond_Br
-                 (I_Cmp ((if Uns_BT then Int_ULE else Int_SLE),
-                   Convert (Low, Var_BT), Convert (High, Var_BT)),
-                   BB_Cond, BB_Next);
-
-               --  Stop if the loop variable was equal to the "exit"
-               --  bound. Increment/decrement it otherwise.
-
-               BB_Cond := Create_Basic_Block ("loop.cond.iter");
-               Position_Builder_At_End (BB_Cond);
-               Prev := To_Primitive (Get (LLVM_Var, Data));
-               Build_Cond_Br
-                 (I_Cmp (Int_EQ, Prev,
-                         To_Primitive ((if Reversed then Low else High))),
-                  BB_Next, BB_Iter);
-
-               Position_Builder_At_End (BB_Iter);
-               Next :=  (if   Reversed then Sub (Prev, One)
-                         else Add (Prev, One));
-               Store (From_Primitive (Next, Var_GT), LLVM_Var);
-               Build_Br (BB_Stmts);
-
-               --  The ITER step starts at this special COND step
-
-               BB_Iter := BB_Cond;
-            end;
-         end if;
+            if not Are_In_Dead_Code then
+               Prev := Get (Loop_Var, Data);
+               Store ((if Reversed then Sub (Prev, One) else Add (Prev, One)),
+                      Loop_Var);
+               Build_Cond_Br (I_Cmp (Int_NE, Prev, Last), BB_Start, BB_Exit);
+            end if;
+         end;
       end if;
 
-      --  Finally, emit the body of the loop.  Save and restore the stack
-      --  around that code, so we free any variables allocated each iteration.
+      Position_Builder_At_End (BB_Exit);
 
-      Position_Builder_At_End (BB_Stmts);
-      Push_Loop (Loop_Identifier, BB_Next);
-      Push_Block;
-      Start_Block_Statements;
-      Emit (Statements (N));
-      Set_Debug_Pos_At_Node (N);
-      Pop_Block;
-      Pop_Loop;
-
-      Build_Br (BB_Iter);
-      Position_Builder_At_End (BB_Next);
    end Emit_Loop_Statement;
 
 end GNATLLVM.Conditionals;

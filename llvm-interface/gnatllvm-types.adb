@@ -476,17 +476,6 @@ package body GNATLLVM.Types is
    end Type_Of;
 
    ----------------------
-   -- Bounds_From_Type --
-   ----------------------
-
-   procedure Bounds_From_Type (GT : GL_Type; Low, High : out GL_Value) is
-      SRange : constant N_Has_Bounds_Id := Simplify_Range (Scalar_Range (GT));
-   begin
-      Low  := Emit_Convert_Value (Low_Bound (SRange), GT);
-      High := Emit_Convert_Value (High_Bound (SRange), GT);
-   end Bounds_From_Type;
-
-   ----------------------
    -- Move_Into_Memory --
    ----------------------
 

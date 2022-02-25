@@ -620,16 +620,12 @@ package body GNATLLVM.GLType is
          --  bias.
 
          if Needs_Bias then
-            declare
-               LB, HB : GL_Value;
-
-            begin
-               Bounds_From_Type (Prim_GT, LB, HB);
-               GTI.LLVM_Type :=
-                 (if No (Int_Sz) then Prim_T else Int_Ty (Int_Sz));
-               GTI.Kind      := Biased;
-               GTI.Bias      := LB;
-            end;
+            GTI.LLVM_Type :=
+              (if No (Int_Sz) then Prim_T else Int_Ty (Int_Sz));
+            GTI.Kind      := Biased;
+            GTI.Bias      :=
+              Emit_Convert_Value
+                (Low_Bound (Simplify_Range (Scalar_Range (Prim_GT))), Prim_GT);
 
          --  If this is a discrete or fixed-point type and a size was
          --  specified that's no larger than the largest integral type,

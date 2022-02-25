@@ -107,10 +107,6 @@ package GNATLLVM.Types is
    --  no special attribute.  Otherwise, just return "&".  GT is the
    --  type to be used.
 
-   procedure Bounds_From_Type (GT : GL_Type; Low, High : out GL_Value)
-     with Pre => Present (GT), Post => Present (Low) and then Present (High),
-          Inline;
-
    procedure Push_LValue_List  with Inline;
    procedure Pop_LValue_List   with Inline;
    --  Push and pop the active range of the LValue pair list

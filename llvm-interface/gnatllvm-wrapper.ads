@@ -275,14 +275,14 @@ package GNATLLVM.Wrapper is
       Target_Machine        : Target_Machine_T;
       Code_Opt_Level        : Nat;
       Size_Opt_Level        : Nat;
+      Need_Loop_Info        : Boolean;
       No_Unroll_Loops       : Boolean;
       No_Loop_Vectorization : Boolean;
       No_SLP_Vectorization  : Boolean;
       Merge_Functions       : Boolean;
-      PrepareForThinLTO     : Boolean;
-      PrepareForLTO         : Boolean;
-      RerollLoops           : Boolean)
-     with Inline;
+      Prepare_For_Thin_LTO  : Boolean;
+      Prepare_For_LTO       : Boolean;
+      Reroll_Loops          : Boolean);
    --  Perform optimizations on the module
 
    procedure Add_Debug_Flags (Module : Module_T)

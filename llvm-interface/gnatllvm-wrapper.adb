@@ -280,40 +280,44 @@ package body GNATLLVM.Wrapper is
       Target_Machine        : Target_Machine_T;
       Code_Opt_Level        : Nat;
       Size_Opt_Level        : Nat;
+      Need_Loop_Info        : Boolean;
       No_Unroll_Loops       : Boolean;
       No_Loop_Vectorization : Boolean;
       No_SLP_Vectorization  : Boolean;
       Merge_Functions       : Boolean;
-      PrepareForThinLTO     : Boolean;
-      PrepareForLTO         : Boolean;
-      RerollLoops           : Boolean)
+      Prepare_For_Thin_LTO  : Boolean;
+      Prepare_For_LTO       : Boolean;
+      Reroll_Loops          : Boolean)
    is
       procedure LLVM_Optimize_Module_C
         (Module                : Module_T;
          Target_Machine        : Target_Machine_T;
          Code_Opt_Level        : Nat;
          Size_Opt_Level        : Nat;
+         Need_Loop_Info        : LLVM_Bool;
          No_Unroll_Loops       : LLVM_Bool;
          No_Loop_Vectorization : LLVM_Bool;
          No_SLP_Vectorization  : LLVM_Bool;
          Merge_Functions       : LLVM_Bool;
-         PrepareForThinLTO     : LLVM_Bool;
-         PrepareForLTO         : LLVM_Bool;
-         RerollLoopS           : LLVM_Bool)
+         Prepare_For_Thin_LTO  : LLVM_Bool;
+         PrepareFor_LTO        : LLVM_Bool;
+         Reroll_Loops          : LLVM_Bool)
         with Import, Convention => C, External_Name => "LLVM_Optimize_Module";
-      No_Unroll_B    : constant LLVM_Bool := Boolean'Pos (No_Unroll_Loops);
-      No_Loop_Vect_B : constant LLVM_Bool :=
+      Need_Loop_Info_B : constant LLVM_Bool := Boolean'Pos (Need_Loop_Info);
+      No_Unroll_B      : constant LLVM_Bool := Boolean'Pos (No_Unroll_Loops);
+      No_Loop_Vect_B   : constant LLVM_Bool :=
         Boolean'Pos (No_Loop_Vectorization);
-      No_SLP_Vect_B  : constant LLVM_Bool :=
+      No_SLP_Vect_B    : constant LLVM_Bool :=
         Boolean'Pos (No_SLP_Vectorization);
-      Merge_B        : constant LLVM_Bool := Boolean'Pos (Merge_Functions);
-      Thin_LTO_B     : constant LLVM_Bool := Boolean'Pos (PrepareForThinLTO);
-      LTO_B          : constant LLVM_Bool := Boolean'Pos (PrepareForLTO);
-      Reroll_B       : constant LLVM_Bool := Boolean'Pos (RerollLoops);
+      Merge_B          : constant LLVM_Bool := Boolean'Pos (Merge_Functions);
+      Thin_LTO_B       : constant LLVM_Bool :=
+        Boolean'Pos (Prepare_For_Thin_LTO);
+      LTO_B            : constant LLVM_Bool := Boolean'Pos (Prepare_For_LTO);
+      Reroll_B         : constant LLVM_Bool := Boolean'Pos (Reroll_Loops);
 
    begin
       LLVM_Optimize_Module_C (Module, Target_Machine,
-                              Code_Opt_Level, Size_Opt_Level,
+                              Code_Opt_Level, Size_Opt_Level, Need_Loop_Info_B,
                               No_Unroll_B, No_Loop_Vect_B, No_SLP_Vect_B,
                               Merge_B, Thin_LTO_B, LTO_B, Reroll_B);
    end LLVM_Optimize_Module;

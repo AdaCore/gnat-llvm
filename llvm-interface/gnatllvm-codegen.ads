@@ -68,9 +68,9 @@ package GNATLLVM.Codegen is
    No_Loop_Vectorization   : Boolean := False;
    No_SLP_Vectorization    : Boolean := False;
    Merge_Functions         : Boolean := True;
-   PrepareForThinLTO       : Boolean := False;
-   PrepareForLTO           : Boolean := False;
-   RerollLoops             : Boolean := False;
+   Prepare_For_Thin_LTO    : Boolean := False;
+   Prepare_For_LTO         : Boolean := False;
+   Reroll_Loops            : Boolean := False;
    No_Tail_Calls           : Boolean := False;
    --  Switch options for optimization
 

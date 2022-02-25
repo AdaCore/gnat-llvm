@@ -29,6 +29,7 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/Scalar/LoopPassManager.h"
+#include "llvm/Transforms/Scalar/LoopRotation.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm-c/Core.h"
 
@@ -541,10 +542,10 @@ OurLoopPass::run (Loop &L, LoopAnalysisManager &LAM,
 
 extern "C"
 void
-LLVM_Optimize_Module (Module *M, TargetMachine *TM,
-		      int Code_Opt_Level, int Size_Opt_Level,
-		      bool No_Unroll_Loops, bool No_Loop_Vectorization,
-		      bool No_SLP_Vectorization, bool MergeFunctions,
+LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
+		      int SizeOptLevel, bool NeedLoopInfo,
+		      bool NoUnrollLoops, bool NoLoopVectorization,
+		      bool NoSLPVectorization, bool MergeFunctions,
 		      bool PrepareForThinLTO, bool PrepareForLTO,
 		      bool RerollLoops)
 {
@@ -555,14 +556,14 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM,
   PassInstrumentationCallbacks PIC;
   Triple TargetTriple (M->getTargetTriple ());
   PassBuilder::OptimizationLevel Level
-    = (Code_Opt_Level == 1 ? PassBuilder::OptimizationLevel::O1
-       : Code_Opt_Level == 2 ? PassBuilder::OptimizationLevel::O2
-       : Code_Opt_Level == 3 ? PassBuilder::OptimizationLevel::O3
+    = (CodeOptLevel == 1 ? PassBuilder::OptimizationLevel::O1
+       : CodeOptLevel == 2 ? PassBuilder::OptimizationLevel::O2
+       : CodeOptLevel == 3 ? PassBuilder::OptimizationLevel::O3
        : PassBuilder::OptimizationLevel::O0);
-  PTO.LoopUnrolling = !No_Unroll_Loops;
-  PTO.LoopInterleaving = !No_Unroll_Loops;
-  PTO.LoopVectorization = !No_Loop_Vectorization;
-  PTO.SLPVectorization = !No_SLP_Vectorization;
+  PTO.LoopUnrolling = !NoUnrollLoops;
+  PTO.LoopInterleaving = !NoUnrollLoops;
+  PTO.LoopVectorization = !NoLoopVectorization;
+  PTO.SLPVectorization = !NoSLPVectorization;
   PTO.MergeFunctions = MergeFunctions;
 
   LoopAnalysisManager LAM;
@@ -588,9 +589,13 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM,
   PB.crossRegisterProxies (LAM, FAM, CGAM, MAM);
 
   ModulePassManager MPM;
-  if (Code_Opt_Level == 0)
+  if (CodeOptLevel == 0) {
     MPM = PB.buildO0DefaultPipeline (Level,
 				     PrepareForLTO || PrepareForThinLTO);
+    if (NeedLoopInfo)
+      MPM.addPass (createModuleToFunctionPassAdaptor
+		   (createFunctionToLoopPassAdaptor (LoopRotatePass ())));
+  }
   else if (PrepareForThinLTO)
     MPM = PB.buildThinLTOPreLinkDefaultPipeline (Level);
   else if (PrepareForLTO)
@@ -598,8 +603,9 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM,
   else
     MPM = PB.buildPerModuleDefaultPipeline (Level);
 
-  MPM.addPass (createModuleToFunctionPassAdaptor
-	       (createFunctionToLoopPassAdaptor (OurLoopPass ())));
+  if (NeedLoopInfo)
+    MPM.addPass (createModuleToFunctionPassAdaptor
+		 (createFunctionToLoopPassAdaptor (OurLoopPass ())));
   MPM.run (*M, MAM);
 }
 

@@ -230,18 +230,18 @@ package body GNATLLVM.Codegen is
       then
          Merge_Functions := False;
       elsif Switch = "-fno-lto" then
-         PrepareForThinLTO := False;
-         PrepareForLTO     := False;
+         Prepare_For_Thin_LTO := False;
+         Prepare_For_LTO      := False;
       elsif Switch = "-flto" or else Switch = "-flto=full" then
-         PrepareForThinLTO := False;
-         PrepareForLTO     := True;
+         Prepare_For_Thin_LTO := False;
+         Prepare_For_LTO      := True;
       elsif Switch = "-flto=thin" then
-         PrepareForThinLTO := True;
-         PrepareForLTO     := False;
+         Prepare_For_Thin_LTO  := True;
+         Prepare_For_LTO       := False;
       elsif Switch = "-freroll-loops" then
-         RerollLoops := True;
+         Reroll_Loops := True;
       elsif Switch = "-fno-reroll-loops" then
-         RerollLoops := False;
+         Reroll_Loops := False;
       elsif Switch = "-fno-optimize-sibling-calls" then
          No_Tail_Calls := True;
       elsif Switch = "-fforce-activation-record-parameter" then
@@ -500,13 +500,14 @@ package body GNATLLVM.Codegen is
               (Module, Target_Machine,
                Code_Opt_Level        => Code_Opt_Level,
                Size_Opt_Level        => Size_Opt_Level,
+               Need_Loop_Info        => Emit_C,
                No_Unroll_Loops       => No_Unroll_Loops,
                No_Loop_Vectorization => No_Loop_Vectorization,
                No_SLP_Vectorization  => No_SLP_Vectorization,
                Merge_Functions       => Merge_Functions,
-               PrepareForThinLTO     => PrepareForThinLTO,
-               PrepareForLTO         => PrepareForLTO,
-               RerollLoops           => RerollLoops);
+               Prepare_For_Thin_LTO  => Prepare_For_Thin_LTO,
+               Prepare_For_LTO       => Prepare_For_LTO,
+               Reroll_Loops          => Reroll_Loops);
          end if;
       end if;
 

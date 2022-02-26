@@ -227,7 +227,7 @@ package body CCG.Instructions is
       --  because the only entries in the list are used exactly once, we
       --  know that we don't see the reference to the value as a variable
       --  in elaborating any other list entry. So we know that the values
-      --  written out here are independant and thus the fact that we're
+      --  written out here are independent and thus the fact that we're
       --  writing them out "backwards" is fine.
 
       for J in reverse 1 .. Pending_Values.Last loop
@@ -658,6 +658,14 @@ package body CCG.Instructions is
       --  assignment statement, the former because we may be at top level
       --  and the latter because C doesn't allow assignments of objects of
       --  aggregate type.
+      --
+      --  ??? We'd like to avoid the copy if we have a load of a variable
+      --  that's used more than once, but that causes problems if it gets
+      --  deferred until after a store into that variable. The handling of
+      --  pending values can't help us here because it assumes  that all
+      --  deferred values are used only once. It may be worth trying to do
+      --  something better here because it generates a lot of extra variables
+      --  in optimized code.
 
       elsif (Get_Is_LHS (LHS) or else Num_Uses (LHS) > 1
             or else Get_Is_Variable (LHS) or else Get_Is_Decl_Output (LHS)

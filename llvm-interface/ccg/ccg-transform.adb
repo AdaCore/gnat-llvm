@@ -773,11 +773,13 @@ package body CCG.Transform is
 
          --  One case is if it's a conditional branch where the "true"
          --  block has more than one predecessor but the "false" block
-         --  doesn't. But don't do this if the "false" has a return.
+         --  doesn't. But don't do this if the either destination has a
+         --  return.
 
          if Is_Cond_Br (Term)
            and then not Has_Unique_Predecessor (Get_True_BB (Term))
            and then Has_Unique_Predecessor (Get_False_BB (Term))
+           and then not Has_Return (Get_True_BB (Term))
            and then not Has_Return (Get_False_BB (Term))
            and then Negate_Condition (Get_Condition (Term))
          then

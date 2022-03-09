@@ -435,11 +435,11 @@ package body CCG.Aggregates is
       --  The resulting operation so far
 
    begin
-      --  The first operand is special in that it represents a value to
-      --  be multiplied by the size of the type pointed to and added to
-      --  the value of the pointer input. Normally, we have a GEP that either
+      --  The first operand is special in that it represents a value to be
+      --  multiplied by the size of the type pointed to and added to the
+      --  value of the pointer input. Normally, we have a GEP that either
       --  has a nonzero value for this operand and no others or that has a
-      --  zero for this value, those aren't requirements. However, it's
+      --  zero for this value, but those aren't requirements. However, it's
       --  very worth special-casing the zero case here because we have
       --  nothing to do in that case.
 
@@ -550,18 +550,9 @@ package body CCG.Aggregates is
          return;
       end if;
 
-      --  If we ended up with a LHS, we usually set this as the value of
-      --  V but mark it as an LHS. This is to avoid taking an address and
-      --  then doing a dereference for nested GEP's. However, we can't do
-      --  it this way if V has more than one use since there's no clean
-      --  way of recording all the needed information. In that case, we have
-      --  to explicitly take the address of Result. We rely here on the
-      --  optimizer to not share the value if we can chain GEPs.
-
-      if Is_LHS and then Num_Uses (V) > 1 then
-         Result := Addr_Of (Result);
-         Is_LHS := False;
-      end if;
+      --  If we ended up with a LHS, we set this as the value of V but mark
+      --  it as an LHS. This is to avoid taking an address and then doing a
+      --  dereference for nested GEP's.
 
       Set_Is_LHS (V, Is_LHS);
       if Is_LHS then

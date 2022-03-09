@@ -1139,12 +1139,13 @@ package body GNATLLVM.Compile is
 
                Result := Heap_Allocate_For_Type
                  (Full_Designated_GL_Type (GT), A_GT,
-                  V        => Value,
-                  N        => N,
-                  Proc     => Procedure_To_Call (N),
-                  Pool     => Storage_Pool (N),
-                  Max_Size => (Is_Unconstrained_Record (A_GT)
-                                 and then No (Value)));
+                  V         => Value,
+                  N         => N,
+                  Access_GT => Full_GL_Type (N),
+                  Proc      => Procedure_To_Call (N),
+                  Pool      => Storage_Pool (N),
+                  Max_Size  => (Is_Unconstrained_Record (A_GT)
+                                  and then No (Value)));
                return Convert_To_Access (Result, GT);
             end;
 

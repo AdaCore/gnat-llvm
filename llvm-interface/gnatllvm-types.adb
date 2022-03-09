@@ -733,15 +733,16 @@ package body GNATLLVM.Types is
    ----------------------------
 
    function Heap_Allocate_For_Type
-     (GT       : GL_Type;
-      Alloc_GT : GL_Type                 := No_GL_Type;
-      V        : GL_Value                := No_GL_Value;
-      N        : Node_Id                 := Empty;
-      Expr     : Opt_N_Subexpr_Id        := Empty;
-      Proc     : Opt_Subprogram_Kind_Id  := Empty;
-      Pool     : Entity_Id               := Empty;
-      E        : Opt_Allocatable_Kind_Id := Empty;
-      Max_Size : Boolean                 := False) return GL_Value
+     (GT        : GL_Type;
+      Alloc_GT  : GL_Type                 := No_GL_Type;
+      V         : GL_Value                := No_GL_Value;
+      N         : Node_Id                 := Empty;
+      Access_GT : GL_Type                 := No_GL_Type;
+      Expr      : Opt_N_Subexpr_Id        := Empty;
+      Proc      : Opt_Subprogram_Kind_Id  := Empty;
+      Pool      : Entity_Id               := Empty;
+      E         : Opt_Allocatable_Kind_Id := Empty;
+      Max_Size  : Boolean                 := False) return GL_Value
    is
       A_GT    : constant GL_Type   :=
         (if Present (Alloc_GT) then Alloc_GT else GT);
@@ -856,6 +857,14 @@ package body GNATLLVM.Types is
 
       else
          Result := Call_Alloc (Proc, (1 => To_Bytes (Size)));
+      end if;
+
+      --  If this is for a non-default storage model, indicate that
+
+      if Present (Access_GT)
+        and then Has_Designated_Storage_Model_Aspect (Access_GT)
+      then
+         Set_SM_Type (Result, Storage_Model_Type (Access_GT));
       end if;
 
       --  Set the known alignment for the address and move any data into it

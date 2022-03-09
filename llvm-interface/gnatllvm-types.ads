@@ -358,15 +358,16 @@ package GNATLLVM.Types is
    --  raise an exception.
 
    function Heap_Allocate_For_Type
-     (GT       : GL_Type;
-      Alloc_GT : GL_Type                 := No_GL_Type;
-      V        : GL_Value                := No_GL_Value;
-      N        : Node_Id                 := Empty;
-      Expr     : Opt_N_Subexpr_Id        := Empty;
-      Proc     : Opt_Subprogram_Kind_Id  := Empty;
-      Pool     : Entity_Id               := Empty;
-      E        : Opt_Allocatable_Kind_Id := Empty;
-      Max_Size : Boolean                 := False) return GL_Value
+     (GT        : GL_Type;
+      Alloc_GT  : GL_Type                 := No_GL_Type;
+      V         : GL_Value                := No_GL_Value;
+      N         : Node_Id                 := Empty;
+      Access_GT : GL_Type                 := No_GL_Type;
+      Expr      : Opt_N_Subexpr_Id        := Empty;
+      Proc      : Opt_Subprogram_Kind_Id  := Empty;
+      Pool      : Entity_Id               := Empty;
+      E         : Opt_Allocatable_Kind_Id := Empty;
+      Max_Size  : Boolean                 := False) return GL_Value
      with Pre  => Present (GT) and then (No (Proc) or else Present (Pool)),
           Post => Is_Reference (Heap_Allocate_For_Type'Result);
    --  Similarly, but allocate storage on the heap.  This handles default

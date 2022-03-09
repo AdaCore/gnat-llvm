@@ -60,15 +60,16 @@ package body GNATLLVM.GLValue is
    function G
      (V           : Value_T;
       GT          : GL_Type;
-      R           : GL_Relationship := Data;
-      Alignment   : Nat             := BPU;
-      Is_Pristine : Boolean         := False;
-      Is_Volatile : Boolean         := False;
-      Is_Atomic   : Boolean         := False;
-      Overflowed  : Boolean         := False;
-      Aliases_All : Boolean         := False;
-      TBAA_Type   : Metadata_T      := No_Metadata_T;
-      TBAA_Offset : ULL             := 0) return GL_Value
+      R           : GL_Relationship    := Data;
+      Alignment   : Nat                := BPU;
+      Is_Pristine : Boolean            := False;
+      Is_Volatile : Boolean            := False;
+      Is_Atomic   : Boolean            := False;
+      Overflowed  : Boolean            := False;
+      Aliases_All : Boolean            := False;
+      SM_Type     : Opt_Record_Kind_Id := Empty;
+      TBAA_Type   : Metadata_T         := No_Metadata_T;
+      TBAA_Offset : ULL                := 0) return GL_Value
    is
    begin
       --  Set the signedness of the value if this is a discrete type. We
@@ -81,7 +82,7 @@ package body GNATLLVM.GLValue is
       end if;
 
       return (V, GT, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic,
-              Overflowed, Aliases_All, TBAA_Type, TBAA_Offset);
+              Overflowed, Aliases_All, SM_Type, TBAA_Type, TBAA_Offset);
    end G;
 
    -----------------------
@@ -289,6 +290,26 @@ package body GNATLLVM.GLValue is
       Initialize_Alignment (New_V);
       return New_V;
    end Initialize_Alignment;
+
+   -----------------
+   -- Set_SM_Type --
+   -----------------
+
+   procedure Set_SM_Type (V : in out GL_Value; TE : Record_Kind_Id) is
+   begin
+      V.SM_Type := TE;
+   end Set_SM_Type;
+
+   -----------------
+   -- Set_SM_Type --
+   -----------------
+
+   function Set_SM_Type (V : GL_Value; TE : Record_Kind_Id) return GL_Value is
+      New_V : GL_Value := V;
+   begin
+      Set_SM_Type (New_V, TE);
+      return New_V;
+   end Set_SM_Type;
 
    ------------------
    -- Not_Pristine --
@@ -1118,6 +1139,10 @@ package body GNATLLVM.GLValue is
          Set_Aliases_All (Result);
       else
          Initialize_TBAA (Result, For_Aliased);
+      end if;
+
+      if Has_Designated_Storage_Model_Aspect (GT) then
+         Set_SM_Type (Result, Storage_Model_Type (GT));
       end if;
 
       return Result;
@@ -2084,6 +2109,10 @@ package body GNATLLVM.GLValue is
       end if;
       if Aliases_All (V) then
          Write_Str ("Aliases_All ");
+      end if;
+      if Has_Storage_Model (V) then
+         Write_Str ("SM_Type = ");
+         pg (Union_Id (V.SM_Type));
       end if;
       if Present (V.TBAA_Type) then
          Write_Str ("TBAA_Offset = ");

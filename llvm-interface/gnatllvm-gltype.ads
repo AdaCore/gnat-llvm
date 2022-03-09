@@ -328,6 +328,17 @@ package GNATLLVM.GLType is
      (Is_Access_Constant (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Has_Designated_Storage_Model_Aspect (GT : GL_Type) return Boolean
+   is
+    (Storage_Model_Support.Has_Designated_Storage_Model_Aspect
+       (Full_Etype (GT)))
+     with Pre => Is_Access_Type (GT);
+
+   function Storage_Model_Type (GT : GL_Type) return Record_Kind_Id is
+    (Storage_Model_Support.Storage_Model_Type
+       (Storage_Model_Support.Storage_Model_Object (Full_Etype (GT))))
+     with Pre => Is_Access_Type (GT);
+
    function Full_Original_Array_Type
      (GT : Array_Or_PAT_GL_Type) return Array_Kind_Id
    is

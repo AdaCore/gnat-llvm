@@ -361,6 +361,10 @@ package GNATLLVM.GLValue is
       --  relying on no TBAA_Type because without this flag, we might
       --  deduce some type-based TBAA as we manipulate this value.
 
+      SM_Type              : Opt_Record_Kind_Id;
+      --  If this is a value of an access type that has a nonstandard
+      --  Storage_Model, this is the value returned by Storage_Model_Type.
+
       TBAA_Type            : Metadata_T;
       --  The TBAA node representing the type that this value, treated as
       --  an address, points to (for a scalar) or points into (for an
@@ -414,6 +418,7 @@ package GNATLLVM.GLValue is
       Is_Atomic    => False,
       Overflowed   => False,
       Aliases_All  => False,
+      SM_Type      => Empty,
       TBAA_Type    => No_Metadata_T,
       TBAA_Offset  => 0);
 
@@ -461,6 +466,9 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function Aliases_All  (V : GL_Value)  return Boolean    is (V.Aliases_All)
+     with Pre => Present (V);
+
+   function SM_Type      (V : GL_Value)  return Entity_Id  is (V.SM_Type)
      with Pre => Present (V);
 
    function TBAA_Type    (V : GL_Value)  return Metadata_T is (V.TBAA_Type)
@@ -512,6 +520,10 @@ package GNATLLVM.GLValue is
      with Pre => Present (T);
    --  Return True if type T is valid for an atomic operation
 
+   function Has_Storage_Model (V : GL_Value) return Boolean is
+     (Present (SM_Type (V)))
+     with Pre => Present (V);
+
    procedure Discard (V : GL_Value) is null;
 
    --  Constructors for a GL_Value
@@ -519,15 +531,16 @@ package GNATLLVM.GLValue is
    function G
      (V           : Value_T;
       GT          : GL_Type;
-      R           : GL_Relationship := Data;
-      Alignment   : Nat             := BPU;
-      Is_Pristine : Boolean         := False;
-      Is_Volatile : Boolean         := False;
-      Is_Atomic   : Boolean         := False;
-      Overflowed  : Boolean         := False;
-      Aliases_All : Boolean         := False;
-      TBAA_Type   : Metadata_T      := No_Metadata_T;
-      TBAA_Offset : ULL             := 0) return GL_Value
+      R           : GL_Relationship    := Data;
+      Alignment   : Nat                := BPU;
+      Is_Pristine : Boolean            := False;
+      Is_Volatile : Boolean            := False;
+      Is_Atomic   : Boolean            := False;
+      Overflowed  : Boolean            := False;
+      Aliases_All : Boolean            := False;
+      SM_Type     : Opt_Record_Kind_Id := Empty;
+      TBAA_Type   : Metadata_T         := No_Metadata_T;
+      TBAA_Offset : ULL                := 0) return GL_Value
      with Pre => Present (V) and then Present (GT), Inline;
    --  Raw constructor that allows full specification of all fields
 
@@ -543,6 +556,7 @@ package GNATLLVM.GLValue is
          Is_Atomic   => Is_Atomic   (GV),
          Overflowed  => Overflowed  (GV),
          Aliases_All => Aliases_All (GV),
+         SM_Type     => SM_Type     (GV),
          TBAA_Type   => TBAA_Type   (GV),
          TBAA_Offset => TBAA_Offset (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
@@ -603,14 +617,15 @@ package GNATLLVM.GLValue is
    function G_Ref
      (V           : Value_T;
       GT          : GL_Type;
-      Alignment   : Nat        := BPU;
-      Is_Pristine : Boolean    := False;
-      Is_Volatile : Boolean    := False;
-      Is_Atomic   : Boolean    := False;
-      Overflowed  : Boolean    := False;
-      Aliases_All : Boolean    := False;
-      TBAA_Type   : Metadata_T := No_Metadata_T;
-      TBAA_Offset : ULL        := 0) return GL_Value
+      Alignment   : Nat                := BPU;
+      Is_Pristine : Boolean            := False;
+      Is_Volatile : Boolean            := False;
+      Is_Atomic   : Boolean            := False;
+      Overflowed  : Boolean            := False;
+      Aliases_All : Boolean            := False;
+      SM_Type     : Opt_Record_Kind_Id := Empty;
+      TBAA_Type   : Metadata_T         := No_Metadata_T;
+      TBAA_Offset : ULL                := 0) return GL_Value
    is
      (G (V, GT, Relationship_For_Ref (GT),
          Alignment   => Alignment,
@@ -619,6 +634,7 @@ package GNATLLVM.GLValue is
          Is_Atomic   => Is_Atomic,
          Overflowed  => Overflowed,
          Aliases_All => Aliases_All,
+         SM_Type     => SM_Type,
          TBAA_Type   => TBAA_Type,
          TBAA_Offset => TBAA_Offset))
      with Pre  => Present (V) and then Present (GT),
@@ -636,6 +652,7 @@ package GNATLLVM.GLValue is
              Is_Atomic   => Is_Atomic   (GV),
              Overflowed  => Overflowed  (GV),
              Aliases_All => Aliases_All (GV),
+             SM_Type     => SM_Type     (GV),
              TBAA_Type   => TBAA_Type   (GV),
              TBAA_Offset => TBAA_Offset (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
@@ -664,6 +681,12 @@ package GNATLLVM.GLValue is
    --  data, we have no idea of its alignment, but if it's a reference or
    --  double reference, we know at least a minimum alignment, from either
    --  the type or the alignment of a pointer to the type.
+
+   procedure Set_SM_Type (V : in out GL_Value; TE : Record_Kind_Id)
+     with Pre => Present (V), Inline;
+   function Set_SM_Type (V : GL_Value; TE : Record_Kind_Id) return GL_Value
+     with Pre => Present (V), Inline;
+   --  Set the SM_Type of V
 
    procedure Not_Pristine (V : in out GL_Value)
      with Pre => Present (V), Post => not Is_Pristine (V),

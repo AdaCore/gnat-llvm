@@ -1437,7 +1437,10 @@ package body GNATLLVM.Exprs is
          if Src = Dest then
             Maybe_Store_Bounds (Dest, Src, Src_GT, False);
             return;
-         elsif not Is_Data (Src) and then Is_Loadable_Type (Src_GT) then
+         elsif not Is_Data (Src) and then Is_Loadable_Type (Src_GT)
+           and then not Has_SM_Copy_From (Src)
+           and then not Has_SM_Copy_To (Dest)
+         then
             Src := Get (Src, Object);
          end if;
 
@@ -1497,11 +1500,23 @@ package body GNATLLVM.Exprs is
             Src := Convert_Ref (Get (Src, Reference), Dest_GT);
          end if;
 
-         Store (Convert (Get (Src, Data), Dest_GT), Get (Dest, Reference));
+         --  If we have to convert or Dest doesn't have a copy-from
+         --  procedure, get Src as data.
+
+         if Related_Type (Src) /= Dest_GT or else not Has_SM_Copy_From (Dest)
+         then
+            Src := Convert (Get (Src, Data), Dest_GT);
+         end if;
+
+         --  And finally do the store
+
+         Store (Src, Get (Dest, Reference));
 
       --  If we're setting Dest to zeros, use memset
 
-      elsif Is_A_Constant_Aggregate_Zero (Src) then
+      elsif Is_A_Constant_Aggregate_Zero (Src)
+        and then not Has_SM_Copy_To (Dest)
+      then
          declare
             Size : constant GL_Value :=
               To_Bytes (Compute_Size (Dest_GT, Related_Type (Src), Dest, Src));

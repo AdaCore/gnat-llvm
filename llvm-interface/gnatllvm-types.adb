@@ -864,7 +864,7 @@ package body GNATLLVM.Types is
       if Present (Access_GT)
         and then Has_Designated_Storage_Model_Aspect (Access_GT)
       then
-         Set_SM_Type (Result, Storage_Model_Type (Access_GT));
+         Set_SM_Object (Result, Storage_Model_Object (Access_GT));
       end if;
 
       --  Set the known alignment for the address and move any data into it
@@ -973,6 +973,34 @@ package body GNATLLVM.Types is
          end if;
       end;
    end Heap_Deallocate;
+
+   ------------------
+   -- SM_Copy_From --
+   ------------------
+
+   procedure SM_Copy_From (Dest, Src, Size : GL_Value) is
+   begin
+      Call (Emit_LValue (SM_Copy_From (Src)),
+            (1 => Emit_LValue (SM_Object (Src)),
+             2 => Get (Dest, Reference),
+             3 => Convert (Get (Src, Reference),
+                           SM_Address_Type (Src)),
+             4 => Get (Size, Data)));
+   end SM_Copy_From;
+
+   ----------------
+   -- SM_Copy_To --
+   ----------------
+
+   procedure SM_Copy_To (Dest, Src, Size : GL_Value) is
+   begin
+      Call (Emit_LValue (SM_Copy_To (Dest)),
+            (1 => Emit_LValue (SM_Object (Dest)),
+             2 => Convert (Get (Dest, Reference),
+                           SM_Address_Type (Dest)),
+             3 => Get (Src, Reference),
+             4 => Get (Size, Data)));
+   end SM_Copy_To;
 
    ------------------
    -- To_Size_Type --

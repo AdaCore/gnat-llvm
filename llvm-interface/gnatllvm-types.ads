@@ -98,6 +98,12 @@ package GNATLLVM.Types is
    --  object, atomic component, or atomic type. Produce an error message
    --  if we can't make it atomic.
 
+   function Atomic_Kind (T : Type_T) return Boolean is
+     (Get_Type_Kind (T)
+        in Half_Type_Kind .. Integer_Type_Kind | Pointer_Type_Kind)
+     with Pre => Present (T);
+   --  Return True if type T is valid for an atomic operation
+
    function Field_Error_Msg
      (E : Entity_Id; GT : GL_Type; Only_Special : Boolean) return String
      with Pre => Present (E) and then Present (GT);
@@ -380,6 +386,12 @@ package GNATLLVM.Types is
       Pool     : Entity_Id)
      with Pre => Present (V) and then (No (Proc) or else Present (Pool));
    --  Free memory allocated by Heap_Allocate_For_Type
+
+   procedure SM_Copy_From (Dest, Src, Size : GL_Value)
+     with Pre => Has_SM_Copy_From (Src);
+   procedure SM_Copy_To (Dest, Src, Size : GL_Value)
+     with Pre => Has_SM_Copy_To (Dest);
+   --  Generate calls to procedures to implement storage model copies
 
    function To_Size_Type (V : GL_Value) return GL_Value
      with Pre  => Present (V),

@@ -334,10 +334,13 @@ package GNATLLVM.GLType is
        (Full_Etype (GT)))
      with Pre => Is_Access_Type (GT);
 
-   function Storage_Model_Type (GT : GL_Type) return Record_Kind_Id is
-    (Storage_Model_Support.Storage_Model_Type
-       (Storage_Model_Support.Storage_Model_Object (Full_Etype (GT))))
+   function Storage_Model_Object (GT : GL_Type) return E_Variable_Id is
+     (Storage_Model_Support.Storage_Model_Object (Full_Etype (GT)))
      with Pre => Is_Access_Type (GT);
+
+   function SM_Address_Type (V : GL_Value) return GL_Type is
+     (Default_GL_Type (Opt_Record_Kind_Id'(SM_Address_Type (V))))
+     with Pre => Has_Storage_Model (V);
 
    function Full_Original_Array_Type
      (GT : Array_Or_PAT_GL_Type) return Array_Kind_Id

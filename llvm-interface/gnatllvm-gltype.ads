@@ -19,6 +19,8 @@ with Sem_Aux;  use Sem_Aux;
 with Sem_Util; use Sem_Util;
 with Snames;   use Snames;
 
+use Sem_Util.Storage_Model_Support;
+
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Types;       use GNATLLVM.Types;
@@ -330,12 +332,11 @@ package GNATLLVM.GLType is
 
    function Has_Designated_Storage_Model_Aspect (GT : GL_Type) return Boolean
    is
-    (Storage_Model_Support.Has_Designated_Storage_Model_Aspect
-       (Full_Etype (GT)))
+    (Has_Designated_Storage_Model_Aspect (Full_Etype (GT)))
      with Pre => Is_Access_Type (GT);
 
    function Storage_Model_Object (GT : GL_Type) return E_Variable_Id is
-     (Storage_Model_Support.Storage_Model_Object (Full_Etype (GT)))
+     (Storage_Model_Object (Full_Etype (GT)))
      with Pre => Is_Access_Type (GT);
 
    function SM_Address_Type (V : GL_Value) return GL_Type is

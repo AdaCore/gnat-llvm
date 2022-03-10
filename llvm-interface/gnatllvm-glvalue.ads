@@ -19,6 +19,8 @@ with Ada.Unchecked_Deallocation;
 
 with Sem_Util; use Sem_Util;
 
+use Sem_Util.Storage_Model_Support;
+
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package GNATLLVM.GLValue is
@@ -525,21 +527,20 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Return True if V has a storage model specified
 
-   function SM_Type (V : GL_Value) return Record_Kind_Id is
-     (Storage_Model_Support.Storage_Model_Type (SM_Object (V)))
+   function Storage_Model_Type (V : GL_Value) return Record_Kind_Id is
+     (Storage_Model_Type (SM_Object (V)))
      with Pre => Has_Storage_Model (V);
 
    function SM_Copy_From (V : GL_Value) return Opt_E_Procedure_Id is
-     (Storage_Model_Support.Storage_Model_Copy_From (SM_Type (V)))
+     (Storage_Model_Copy_From (Storage_Model_Type (V)))
      with Pre => Has_Storage_Model (V);
 
    function SM_Copy_To (V : GL_Value) return Opt_E_Procedure_Id is
-     (Storage_Model_Support.Storage_Model_Copy_To (SM_Type (V)))
+     (Storage_Model_Copy_To (Storage_Model_Type (V)))
      with Pre => Has_Storage_Model (V);
 
    function SM_Address_Type (V : GL_Value) return Type_Kind_Id is
-     (Get_Fullest_View
-        (Storage_Model_Support.Storage_Model_Address_Type (SM_Type (V))))
+     (Get_Fullest_View (Storage_Model_Address_Type (Storage_Model_Type (V))))
      with Pre => Has_Storage_Model (V);
 
    function Has_SM_Copy_From (V : GL_Value) return Boolean is

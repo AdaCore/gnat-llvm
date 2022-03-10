@@ -336,7 +336,7 @@ package GNATLLVM.Instructions is
                   and then Is_Floating_Point_Type (T),
           Post => Is_Floating_Point_Type (SI_To_FP'Result);
 
-   procedure Store (Expr : GL_Value; Ptr : GL_Value)
+   procedure Store (Expr, Ptr : GL_Value)
      with Pre => Present (Expr)
                  and then Present (Ptr) and then Is_Reference (Ptr),
           Inline;

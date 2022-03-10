@@ -339,7 +339,7 @@ package GNATLLVM.GLType is
      with Pre => Is_Access_Type (GT);
 
    function SM_Address_Type (V : GL_Value) return GL_Type is
-     (Default_GL_Type (Opt_Record_Kind_Id'(SM_Address_Type (V))))
+     (Default_GL_Type (Type_Kind_Id'(SM_Address_Type (V))))
      with Pre => Has_Storage_Model (V);
 
    function Full_Original_Array_Type

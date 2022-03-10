@@ -1245,19 +1245,30 @@ package body GNATLLVM.Instructions is
          else No_Type_T);
       --  Integer type with size matching that of the type to be loaded
 
-      Ptr_Val        : constant Value_T        :=
+      Ptr_Val        : Value_T                 :=
         (if   Special_Atomic then Pointer_Cast (IR_Builder, +Ptr, Equiv_T, "")
          else +Ptr);
       --  Address of item to load
 
-      Load_Inst : Value_T                      :=
-        Load (IR_Builder, Ptr_Val, Name);
+      Load_Inst : Value_T;
       --  The actual load instruction
 
       Result    : GL_Value;
       --  Data to return
 
    begin
+      --  If this needs a copy-in, make a temporary for it, copy the
+      --  value into the temporary, and load the temporary.
+
+      if Has_SM_Copy_From (Ptr) then
+         Result := Allocate_For_Type (Load_GT);
+         Call_SM_Copy_From (Result, Ptr, Get_Type_Size (Load_GT));
+         Ptr_Val := +Result;
+      end if;
+
+      --  Now generate the load instruction and set up any flags
+
+      Load_Inst := Load (IR_Builder, Ptr_Val, Name);
       Add_Flags_To_Instruction (Load_Inst, Ptr, Special_Atomic);
 
       --  If this is the special atomic case, we need to allocate memory,
@@ -1292,7 +1303,7 @@ package body GNATLLVM.Instructions is
    -- Store --
    -----------
 
-   procedure Store (Expr : GL_Value; Ptr : GL_Value) is
+   procedure Store (Expr, Ptr : GL_Value) is
       GT             : constant GL_Type := Related_Type (Expr);
       T              : constant Type_T  := Type_Of (Expr);
       Result_Bits    : constant Nat     :=
@@ -1311,11 +1322,18 @@ package body GNATLLVM.Instructions is
       Memory         : GL_Value;
 
    begin
+      --  If Ptr has a non-default storage model, we have to generate
+      --  a copy procedure.
+
+      if Has_SM_Copy_To (Ptr) then
+         Call_SM_Copy_To (Ptr, Expr, Get_Type_Size (Expr));
+         return;
+
       --  If this is a special atomic store, allocate a temporary, store
       --  the data into it, then load that as the equivalent type and store
       --  into into the pointer-punned result.
 
-      if Special_Atomic then
+      elsif Special_Atomic then
          Memory := Allocate_For_Type (GT);
          Discard (Build_Store (IR_Builder, Val_To_Store, +Memory));
          Val_To_Store := Load (IR_Builder,

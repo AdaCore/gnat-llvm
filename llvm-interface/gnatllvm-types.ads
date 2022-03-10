@@ -387,9 +387,9 @@ package GNATLLVM.Types is
      with Pre => Present (V) and then (No (Proc) or else Present (Pool));
    --  Free memory allocated by Heap_Allocate_For_Type
 
-   procedure SM_Copy_From (Dest, Src, Size : GL_Value)
+   procedure Call_SM_Copy_From (Dest, Src, Size : GL_Value)
      with Pre => Has_SM_Copy_From (Src);
-   procedure SM_Copy_To (Dest, Src, Size : GL_Value)
+   procedure Call_SM_Copy_To (Dest, Src, Size : GL_Value)
      with Pre => Has_SM_Copy_To (Dest);
    --  Generate calls to procedures to implement storage model copies
 

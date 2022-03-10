@@ -538,7 +538,8 @@ package GNATLLVM.GLValue is
      with Pre => Has_Storage_Model (V);
 
    function SM_Address_Type (V : GL_Value) return Type_Kind_Id is
-     (Storage_Model_Support.Storage_Model_Type (SM_Type (V)))
+     (Get_Fullest_View
+        (Storage_Model_Support.Storage_Model_Address_Type (SM_Type (V))))
      with Pre => Has_Storage_Model (V);
 
    function Has_SM_Copy_From (V : GL_Value) return Boolean is

@@ -2110,12 +2110,12 @@ package body GNATLLVM.GLValue is
          Write_Str ("Aliases_All ");
       end if;
       if Has_Storage_Model (V) then
-         Write_Str ("SM_Object = ");
+         Write_Str ("SM_Object=");
          Write_Int (Int (V.SM_Object));
          Write_Str (" ");
       end if;
       if Present (V.TBAA_Type) then
-         Write_Str ("TBAA_Offset = ");
+         Write_Str ("TBAA_Offset=");
          Write_Int (Int (V.TBAA_Offset));
          Write_Str (" ");
       end if;

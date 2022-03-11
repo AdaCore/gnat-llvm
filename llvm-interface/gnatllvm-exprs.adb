@@ -1552,7 +1552,7 @@ package body GNATLLVM.Exprs is
 
          Store (Src, Dest);
 
-      --  Otherwise, we have to do a variable-sized copy
+      --  Otherwise, we have to do a block copy, which may be variable-sized
 
       else
          declare
@@ -1592,7 +1592,33 @@ package body GNATLLVM.Exprs is
             Mem_Src := Pointer_Cast (Get (Src, Src_R), A_Char_GL_Type);
             Mem_Dst := Pointer_Cast (Get (Dest, Dest_R), A_Char_GL_Type);
 
-            if (Forwards_OK and then Backwards_OK)
+            --  We may have to use a copy from/to procedure (or both) if
+            --  either side has a non-default Storage Model.
+
+            if Has_SM_Copy_From (Mem_Src) and then not Has_SM_Copy_To (Mem_Dst)
+            then
+               Call_SM_Copy_From (Mem_Dst, Mem_Src, Size);
+            elsif Has_SM_Copy_To (Mem_Dst)
+              and then not Has_SM_Copy_From (Mem_Src)
+            then
+               Call_SM_Copy_To (Mem_Dst, Mem_Src, Size);
+            elsif Has_SM_Copy_From (Mem_Src) and then Has_SM_Copy_To (Mem_Dst)
+            then
+               declare
+                  Temp : constant GL_Value :=
+                    Array_Alloca
+                      (SSI_GL_Type, Size, Empty,
+                       To_Bytes (Nat'Max (Get_Type_Alignment (Dest_GT),
+                                          Get_Type_Alignment (Src_GT))));
+
+               begin
+                  Call_SM_Copy_From (Temp, Mem_Src, Size);
+                  Call_SM_Copy_To   (Mem_Dst, Temp, Size);
+               end;
+
+            --  Othewise memcpy if we know there's no overlap
+
+            elsif (Forwards_OK and then Backwards_OK)
               or else (Present (Expr) and then Is_Safe_From (Dest, Expr))
             then
                Build_MemCpy (Mem_Dst, To_Bytes (Get_Type_Alignment (Dest_GT)),
@@ -1602,6 +1628,9 @@ package body GNATLLVM.Exprs is
                                Compute_TBAA_Access (Dest, Src, Size),
                              TBAA_Struct =>
                                Compute_TBAA_Struct (Dest, Src, Size));
+
+            --  Or else use memmove
+
             else
                Build_MemMove (Mem_Dst, To_Bytes (Get_Type_Alignment (Dest_GT)),
                               Mem_Src, To_Bytes (Get_Type_Alignment (Src_GT)),

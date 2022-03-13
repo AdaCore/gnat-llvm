@@ -47,9 +47,9 @@ To build GNAT LLVM from sources, follow these steps:
       $ mv llvm-interface/gcc/gcc/ada llvm-interface/gnat_src
 
 - Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2020
-  or GCC 9.
+  or GCC 10.
 
-- Install LLVM and Clang 12.0.x
+- Install LLVM and Clang 13.0.x
 
   The recommended way to build GNAT LLVM is to use an existing LLVM and
   clang package installed via e.g.  "brew install llvm" on Mac OS or "sudo

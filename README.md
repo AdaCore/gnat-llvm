@@ -2,26 +2,18 @@ GNAT LLVM
 =========
 
 This is an Ada compiler based on LLVM, connecting the GNAT front-end to the
-LLVM code generator.
-
-This is a work-in-progress research project that's not meant for and
-shouldn't be used for industrial purposes. It's meant to show the
-feasibility of generating LLVM bitcode for Ada and to open the LLVM
+LLVM code generator to generate LLVM bitcode for Ada and to open the LLVM
 ecosystem to Ada.
 
 Note that we are not planning on replacing any existing GNAT port that's
 based on GCC: this project is meant to provide additional, not replacement,
 GNAT ports.
 
-Early users are welcome to experiment with this technology and provide
+You are welcome to experiment with this technology and provide
 feedback on successes, usages, limitations, pull requests, etc.
 
 - For more information on LLVM, see [llvm.org](https://llvm.org).
 - For more information on GNAT, see [adacore.com](https://www.adacore.com).
-
-GNAT LLVM has been built successfully on GNU/Linux and Mac OS Mojave x86_64
-native targets, using LLVM 10.0.0. Do not hesitate to report success
-on other configurations.
 
 Building
 --------
@@ -46,8 +38,8 @@ To build GNAT LLVM from sources, follow these steps:
 
       $ mv llvm-interface/gcc/gcc/ada llvm-interface/gnat_src
 
-- Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2020
-  or GCC 10.
+- Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2021
+  or GCC 11.
 
 - Install LLVM and Clang 13.0.x
 

@@ -1536,7 +1536,6 @@ package body GNATLLVM.Conditionals is
             Create_Local_Variable_Debug_Data (E, Loop_Var);
             C_Set_Is_Variable (Loop_Var);
             C_Set_GNAT_Type   (Loop_Var, Var_BT);
-            C_Set_Signedness  (Loop_Var, Uns_BT);
             Store (Start, Loop_Var);
             Move_To_BB (BB_Start);
 

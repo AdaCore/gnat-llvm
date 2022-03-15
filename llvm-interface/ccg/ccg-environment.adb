@@ -50,14 +50,6 @@ package body CCG.Environment is
       --  in C. We use this to indicate that we have to cast the type
       --  to the non-constant pointer to take the address of the value.
 
-      Is_Unsigned         : Boolean;
-      --  True if this value was marked as unsigned and will be declared
-      --  that way.
-
-      Is_Signed           : Boolean;
-      --  True if this value was marked as signed and will be declared
-      --  that way.
-
       GNAT_Type           : Opt_Type_Kind_Id;
       --  GNAT type of this value, if known
 
@@ -193,8 +185,6 @@ package body CCG.Environment is
                              Is_Decl_Output      => False,
                              Is_LHS              => False,
                              Is_Constant         => False,
-                             Is_Unsigned         => False,
-                             Is_Signed           => False,
                              GNAT_Type           => Types.Empty,
                              Is_Used             => False,
                              Output_Idx          => 0));
@@ -320,30 +310,6 @@ package body CCG.Environment is
 
    end Get_Is_Constant;
 
-   ---------------------
-   -- Get_Is_Unsigned --
-   ---------------------
-
-   function Get_Is_Unsigned (V : Value_T) return Boolean is
-      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
-
-   begin
-      return Present (Idx) and then Value_Info.Table (Idx).Is_Unsigned;
-
-   end Get_Is_Unsigned;
-
-   -------------------
-   -- Get_Is_Signed --
-   -------------------
-
-   function Get_Is_Signed (V : Value_T) return Boolean is
-      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
-
-   begin
-      return Present (Idx) and then Value_Info.Table (Idx).Is_Signed;
-
-   end Get_Is_Signed;
-
    -------------------
    -- Get_GNAT_Type --
    -------------------
@@ -423,28 +389,6 @@ package body CCG.Environment is
    begin
       Value_Info.Table (Idx).Is_Constant := B;
    end Set_Is_Constant;
-
-   ---------------------
-   -- Set_Is_Unsigned --
-   ---------------------
-
-   procedure Set_Is_Unsigned (V : Value_T; B : Boolean := True) is
-      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
-
-   begin
-      Value_Info.Table (Idx).Is_Unsigned := B;
-   end Set_Is_Unsigned;
-
-   -------------------
-   -- Set_Is_Signed --
-   -------------------
-
-   procedure Set_Is_Signed (V : Value_T; B : Boolean := True) is
-      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
-
-   begin
-      Value_Info.Table (Idx).Is_Signed := B;
-   end Set_Is_Signed;
 
    -------------------
    -- Set_GNAT_Type --

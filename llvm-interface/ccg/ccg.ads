@@ -111,10 +111,6 @@ package CCG is
    --  Indicate that the previous calls to Set_Field_Name_Info for SID
    --  were for LLVM struct type T.
 
-   procedure C_Set_Signedness (V : Value_T; Is_Unsigned : Boolean)
-     with Pre => Present (V), Inline;
-   --  Indicate whether V is being referenced in an unsigned or signed manner
-
    procedure C_Set_GNAT_Type  (V : Value_T; TE : Type_Kind_Id)
      with Pre => Present (V), Inline;
    --  Indicate that TE is the type of V

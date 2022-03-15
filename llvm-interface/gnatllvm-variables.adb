@@ -1698,7 +1698,6 @@ package body GNATLLVM.Variables is
 
       if Is_Discrete_Type (GT) and then not Is_Ref then
          C_Set_GNAT_Type  (LLVM_Var, GT);
-         C_Set_Signedness (LLVM_Var, Is_Unsigned_Type (GT));
       end if;
 
       --  If this is a variable that comes from source, mark it as such
@@ -2269,7 +2268,6 @@ package body GNATLLVM.Variables is
 
       if Is_Discrete_Type (GT) and then not Is_Ref then
          C_Set_GNAT_Type  (LLVM_Var, GT);
-         C_Set_Signedness (LLVM_Var, Is_Unsigned_Type (GT));
       end if;
 
       --  If this is a variable that comes from source, mark it as such

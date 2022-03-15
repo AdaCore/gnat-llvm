@@ -136,29 +136,6 @@ package body CCG is
       end if;
    end C_Set_Struct;
 
-   ----------------------
-   -- C_Set_Signedness --
-   ----------------------
-
-   procedure C_Set_Signedness (V : Value_T; Is_Unsigned : Boolean) is
-   begin
-      --  If we haven't set the signedness of V before, do it now.
-      --  But don't set signedness for constants or things that aren't
-      --  of integral type.
-
-      if Emit_C and then not Is_A_Constant (V)
-        and then Get_Type_Kind (Type_Of (V)) = Integer_Type_Kind
-        and then not Get_Is_Unsigned (V) and then not Get_Is_Signed (V)
-      then
-         Notify_On_Value_Delete (V, Delete_Value_Info'Access);
-         if Is_Unsigned then
-            Set_Is_Unsigned (V);
-         else
-            Set_Is_Signed (V);
-         end if;
-      end if;
-   end C_Set_Signedness;
-
    ---------------------
    -- C_Set_GNAT_Type --
    ---------------------

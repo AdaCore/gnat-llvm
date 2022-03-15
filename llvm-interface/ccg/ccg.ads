@@ -19,8 +19,11 @@ with Interfaces.C;
 
 with LLVM.Types; use LLVM.Types;
 
-with Namet; use Namet;
-with Types; use Types;
+with Einfo;          use Einfo;
+with Einfo.Entities; use Einfo.Entities;
+with Einfo.Utils;    use Einfo.Utils;
+with Namet;          use Namet;
+with Types;          use Types;
 
 with GNATLLVM; use GNATLLVM;
 
@@ -111,6 +114,10 @@ package CCG is
    procedure C_Set_Signedness (V : Value_T; Is_Unsigned : Boolean)
      with Pre => Present (V), Inline;
    --  Indicate whether V is being referenced in an unsigned or signed manner
+
+   procedure C_Set_GNAT_Type  (V : Value_T; TE : Type_Kind_Id)
+     with Pre => Present (V), Inline;
+   --  Indicate that TE is the type of V
 
    procedure C_Set_Is_Variable (V : Value_T)
      with Pre => Present (V), Inline;

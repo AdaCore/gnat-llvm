@@ -54,9 +54,12 @@ package body CCG.Environment is
       --  True if this value was marked as unsigned and will be declared
       --  that way.
 
-      Is_Signed          : Boolean;
+      Is_Signed           : Boolean;
       --  True if this value was marked as signed and will be declared
       --  that way.
+
+      GNAT_Type           : Type_Kind_Id;
+      --  GNAT type of this value, if known
 
       Is_Used             : Boolean;
       --  True if this value represents a variable that has been used in an
@@ -192,6 +195,7 @@ package body CCG.Environment is
                              Is_Constant         => False,
                              Is_Unsigned         => False,
                              Is_Signed           => False,
+                             GNAT_Type           => Types.Empty,
                              Is_Used             => False,
                              Output_Idx          => 0));
          Insert (Value_Info_Map, V, Value_Info.Last);
@@ -340,6 +344,19 @@ package body CCG.Environment is
 
    end Get_Is_Signed;
 
+   -------------------
+   -- Get_GNAT_Type --
+   -------------------
+
+   function Get_GNAT_Type (V : Value_T) return Opt_Type_Kind_Id is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
+
+   begin
+      return (if  Present (Idx) then Value_Info.Table (Idx).GNAT_Type
+              else Types.Empty);
+
+   end Get_GNAT_Type;
+
    ------------------
    -- Get_Is_Used --
    ------------------
@@ -428,6 +445,17 @@ package body CCG.Environment is
    begin
       Value_Info.Table (Idx).Is_Signed := B;
    end Set_Is_Signed;
+
+   -------------------
+   -- Set_GNAT_Type --
+   -------------------
+
+   procedure Set_GNAT_Type (V : Value_T; TE : Type_Kind_Id) is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
+
+   begin
+      Value_Info.Table (Idx).GNAT_Type := TE;
+   end Set_GNAT_Type;
 
    -----------------
    -- Set_Is_Used --

@@ -17,6 +17,7 @@
 
 with LLVM.Core; use LLVM.Core;
 
+with Atree;    use Atree;
 with Errout;   use Errout;
 with Get_Targ; use Get_Targ;
 with Opt;      use Opt;
@@ -157,6 +158,30 @@ package body CCG is
          end if;
       end if;
    end C_Set_Signedness;
+
+   ---------------------
+   -- C_Set_GNAT_Type --
+   ---------------------
+
+   procedure C_Set_GNAT_Type (V : Value_T; TE : Type_Kind_Id) is
+   begin
+      --  We only want to set this the first time because that will be the
+      --  most reliable information. But we also don't need this for a
+      --  constant and only want it for integral types or functions
+      --  returning integral types.
+
+      if Emit_C and then not Is_A_Constant (V)
+        and then No (Get_GNAT_Type (V))
+        and then (Get_Type_Kind (Type_Of (V)) = Integer_Type_Kind
+                    or else (Get_Type_Kind (Type_Of (V)) = Function_Type_Kind
+                               and then Get_Type_Kind
+                                          (Get_Return_Type (Type_Of (V))) =
+                                        Integer_Type_Kind))
+      then
+         Notify_On_Value_Delete (V, Delete_Value_Info'Access);
+         Set_GNAT_Type (V, TE);
+      end if;
+   end C_Set_GNAT_Type;
 
    -----------------------
    -- C_Set_Is_Variable --

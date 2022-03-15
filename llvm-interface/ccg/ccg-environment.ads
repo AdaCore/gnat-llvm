@@ -61,6 +61,10 @@ package CCG.Environment is
      with Pre => Present (V), Inline;
    --  True if this value represents a variable that's unsigned
 
+   function Get_GNAT_Type           (V : Value_T) return Opt_Type_Kind_Id
+     with Pre => Present (V), Inline;
+   --  Get the GNAT type associated with this value, if known
+
    function Get_Is_Used             (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if this value represents a variable that has been used in an
@@ -80,6 +84,8 @@ package CCG.Environment is
      with Pre => Present (V), Post => Get_Is_Unsigned (V) = B, Inline;
    procedure Set_Is_Signed          (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Signed (V) = B, Inline;
+   procedure Set_GNAT_Type          (V : Value_T; TE : Type_Kind_Id)
+     with Pre => Present (V), Post => Get_GNAT_Type (V) = TE, Inline;
    procedure Set_Is_Used            (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Used (V) = B, Inline;
 

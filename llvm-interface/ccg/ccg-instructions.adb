@@ -295,7 +295,7 @@ package body CCG.Instructions is
       --  that's marked unsigned, so it may be an array or record
       --  reference), add a cast to the unsigned form.
 
-      if Get_Is_Unsigned (V) and then not Get_Is_Unsigned (Op) then
+      if Is_Unsigned (V) and then not Is_Unsigned (Op) then
          Assignment (V, "(unsigned " & Type_Of (V) & ") " & Deref (Op));
       else
          Assignment (V, Deref (Op));

@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with CCG.Environment; use CCG.Environment;
-
 package body CCG.Utils is
 
    --------
@@ -122,7 +120,7 @@ package body CCG.Utils is
 
    function Might_Be_Unsigned (V : Value_T) return Boolean is
    begin
-      return Get_Is_Unsigned (V)
+      return Is_Unsigned (V)
         or else (Present (Get_C_Value (V))
                    and then Has_Unsigned (Get_C_Value (V)));
    end Might_Be_Unsigned;

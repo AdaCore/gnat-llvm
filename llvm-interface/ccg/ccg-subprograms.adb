@@ -161,7 +161,7 @@ package body CCG.Subprograms is
 
       --  Indicate if this returns unsigned
 
-      if Get_Is_Unsigned (V) then
+      if Is_Unsigned (V) then
          Result := "unsigned " & Result;
       end if;
 

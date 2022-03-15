@@ -218,7 +218,7 @@ package body CCG.Output is
          begin
             --  If this is known to be unsigned, indicate that
 
-            if Get_Is_Unsigned (V) then
+            if Is_Unsigned (V) then
                Decl := "unsigned " & Decl;
             end if;
 

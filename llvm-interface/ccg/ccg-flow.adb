@@ -993,7 +993,7 @@ package body CCG.Flow is
             declare
                Val       : constant Value_T                := Get_Operand0 (T);
                POO       : constant Process_Operand_Option :=
-                 (if Get_Is_Unsigned (Val) then POO_Unsigned else POO_Signed);
+                 (if Is_Unsigned (Val) then POO_Unsigned else POO_Signed);
                Last_Case : constant Nat                    :=
                  Get_Num_Operands (T) / 2 - 1;
                Result    : Str                             :=

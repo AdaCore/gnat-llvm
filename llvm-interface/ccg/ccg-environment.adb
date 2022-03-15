@@ -58,7 +58,7 @@ package body CCG.Environment is
       --  True if this value was marked as signed and will be declared
       --  that way.
 
-      GNAT_Type           : Type_Kind_Id;
+      GNAT_Type           : Opt_Type_Kind_Id;
       --  GNAT type of this value, if known
 
       Is_Used             : Boolean;

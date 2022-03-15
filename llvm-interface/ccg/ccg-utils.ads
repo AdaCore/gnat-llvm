@@ -21,11 +21,14 @@ with Ada.Containers; use Ada.Containers;
 with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
 
+with Atree; use Atree;
+
 with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
 
-with CCG.Helper; use CCG.Helper;
-with CCG.Strs;   use CCG.Strs;
+with CCG.Environment; use CCG.Environment;
+with CCG.Helper;      use CCG.Helper;
+with CCG.Strs;        use CCG.Strs;
 
 package CCG.Utils is
 
@@ -91,6 +94,12 @@ package CCG.Utils is
    --  source as a constant.
    --  ??? Strings are also simple constants, but we don't support them just
    --  yet.
+
+   function Is_Unsigned (V : Value_T) return Boolean is
+     (Present (Get_GNAT_Type (V))
+        and then Is_Unsigned_Type (Get_GNAT_Type (V)))
+     with Pre => Present (V);
+   --  True if V is known to be unsigned from sources
 
    function Might_Be_Unsigned (V : Value_T) return Boolean
      with Pre => Present (V);

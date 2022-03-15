@@ -560,7 +560,7 @@ package body CCG.Write is
       --  If we're to write the type of V instead of the value of V, do so
 
       if Flags.Write_Type then
-         if Get_Is_Unsigned (V) then
+         if Is_Unsigned (V) then
             Write_Str ("unsigned ");
          end if;
 
@@ -592,7 +592,7 @@ package body CCG.Write is
          --  that we can't use #T or Write_Type here because we often want
          --  to write a different signedness than V. Likewise below.
 
-         elsif not (Get_Is_Unsigned (V) and then Get_Is_Decl_Output (V))
+         elsif not (Is_Unsigned (V) and then Get_Is_Decl_Output (V))
            or else Must_Write_Cast
          then
             Maybe_Write_Parens;
@@ -620,7 +620,7 @@ package body CCG.Write is
          --  except that in that case, the relevant aspect of the type is
          --  that it's not unsigned.
 
-         if Get_Is_Constant (V) or else Get_Is_Unsigned (V) then
+         if Get_Is_Constant (V) or else Is_Unsigned (V) then
             Maybe_Write_Parens;
             Write_Str ("(" & Type_Of (V) & ") ");
          end if;

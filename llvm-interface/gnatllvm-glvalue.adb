@@ -77,6 +77,7 @@ package body GNATLLVM.GLValue is
       if Ekind (GT) /= E_Void and then Is_Discrete_Type (GT)
         and then (not Is_Reference (R) or else R = Reference_To_Subprogram)
       then
+         C_Set_GNAT_Type  (V, GT);
          C_Set_Signedness (V, Is_Unsigned_Type (GT));
       end if;
 
@@ -2045,6 +2046,15 @@ package body GNATLLVM.GLValue is
    begin
       C_Set_Signedness (+V, Is_Unsigned);
    end C_Set_Signedness;
+
+   ---------------------
+   -- C_Set_GNAT_Type --
+   ---------------------
+
+   procedure C_Set_GNAT_Type (V : GL_Value; TE : Type_Kind_Id) is
+   begin
+      C_Set_GNAT_Type (+V, TE);
+   end C_Set_GNAT_Type;
 
    -----------------------
    -- C_Set_Is_Variable --

@@ -1477,6 +1477,10 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Inline;
    --  Indicate whether V is being referenced in an unsigned or signed manner
 
+   procedure C_Set_GNAT_Type  (V : GL_Value; TE : Type_Kind_Id)
+     with Pre => Present (V) and then Present (TE), Inline;
+   --  Set the GNAT type of V
+
    procedure C_Set_Is_Variable (V : GL_Value)
      with Pre => Present (V), Inline;
    --  Indicate that V is variable found in the source

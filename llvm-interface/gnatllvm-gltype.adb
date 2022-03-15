@@ -27,6 +27,8 @@ with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 
+with CCG; use CCG;
+
 package body GNATLLVM.GLType is
 
    --  A GL_Type can be of various different kinds.  We list them here.
@@ -1355,6 +1357,24 @@ package body GNATLLVM.GLType is
       end if;
 
    end Full_Designated_GL_Type;
+
+   ---------------------
+   -- C_Set_GNAT_Type --
+   ---------------------
+
+   procedure C_Set_GNAT_Type (V : GL_Value; GT : GL_Type) is
+   begin
+      C_Set_GNAT_Type (V, Full_Etype (GT));
+   end C_Set_GNAT_Type;
+
+   ---------------------
+   -- C_Set_GNAT_Type --
+   ---------------------
+
+   procedure C_Set_GNAT_Type (V : Value_T; GT : GL_Type) is
+   begin
+      C_Set_GNAT_Type (V, Full_Etype (GT));
+   end C_Set_GNAT_Type;
 
    ------------------
    -- Dump_GL_Type --

@@ -1694,9 +1694,10 @@ package body GNATLLVM.Variables is
 
       Set_Value (E, LLVM_Var);
 
-      --  If this is of discrete type, mark the signedness
+      --  If this is of discrete type, show the type
 
       if Is_Discrete_Type (GT) and then not Is_Ref then
+         C_Set_GNAT_Type  (LLVM_Var, GT);
          C_Set_Signedness (LLVM_Var, Is_Unsigned_Type (GT));
       end if;
 
@@ -2264,9 +2265,10 @@ package body GNATLLVM.Variables is
          Set_Value (E, LLVM_Var);
       end if;
 
-      --  If this is of discrete type, mark the signedness
+      --  If this is of discrete type, record the type
 
       if Is_Discrete_Type (GT) and then not Is_Ref then
+         C_Set_GNAT_Type  (LLVM_Var, GT);
          C_Set_Signedness (LLVM_Var, Is_Unsigned_Type (GT));
       end if;
 

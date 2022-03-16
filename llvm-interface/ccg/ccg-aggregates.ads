@@ -47,11 +47,6 @@ package CCG.Aggregates is
    --  Indicate that the previous calls to Set_Field_Name_Info for SID
    --  were for LLVM struct type T.
 
-   function Get_Field_Name (T : Type_T; Idx : Nat) return Str
-     with Pre  => Get_Type_Kind (T) = Struct_Type_Kind,
-          Post => Present (Get_Field_Name'Result);
-   --  Return a name to use for field Idx of LLVM struct T
-
    procedure Output_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
      with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
    --  Output a typedef for T, a struct type. If Incomplete, only output the

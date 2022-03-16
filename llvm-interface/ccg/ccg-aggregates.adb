@@ -18,6 +18,7 @@
 with Ada.Containers; use Ada.Containers;
 with Ada.Containers.Hashed_Maps;
 
+with Atree;  use Atree;
 with Output; use Output;
 with Table;
 
@@ -119,6 +120,15 @@ package body CCG.Aggregates is
    --  T is the type of a component of the aggregate in an extractvalue or
    --  insertvalue instruction V. Return an Str saying how to access that
    --  component and update T to be the type of that component.
+
+   function Get_Field_Name (T : Type_T; Idx : Nat) return Str
+     with Pre  => Get_Type_Kind (T) = Struct_Type_Kind,
+          Post => Present (Get_Field_Name'Result);
+   --  Return a name to use for field Idx of LLVM struct T
+
+   function Get_Field_GNAT_Type (T : Type_T; Idx : Nat) return Opt_Type_Kind_Id
+     with Pre  => Get_Type_Kind (T) = Struct_Type_Kind;
+   --  Return a name to use for field Idx of LLVM struct T
 
    ----------------------
    -- Set_Field_C_Info --
@@ -237,6 +247,21 @@ package body CCG.Aggregates is
       end if;
    end Get_Field_Name;
 
+   --------------------
+   -- Get_Field_Type --
+   --------------------
+
+   function Get_Field_GNAT_Type (T : Type_T; Idx : Nat) return Opt_Type_Kind_Id
+   is
+      use FCI_Maps;
+      Position : constant Cursor := Find (FCI_Map, (T, Idx));
+
+   begin
+      return (if   Has_Element (Position)
+              then Field_C_Info.Table (Element (Position)).TE
+              else Types.Empty);
+   end Get_Field_GNAT_Type;
+
    ---------------------------
    -- Output_Struct_Typedef --
    ---------------------------
@@ -293,8 +318,19 @@ package body CCG.Aggregates is
             --  options.
 
             if not Is_Zero_Length_Array (ST) then
-               Output_Decl (ST & " " & Get_Field_Name (T, J),
-                            Is_Typedef => True);
+               declare
+                  Name           : constant Str              :=
+                    Get_Field_Name (T, J);
+                  TE             : constant Opt_Type_Kind_Id :=
+                    Get_Field_GNAT_Type (T, J);
+                  Maybe_Unsigned : constant Str              :=
+                    +(if   Present (TE) and then Is_Unsigned_Type (TE)
+                      then "unsigned " else "");
+
+               begin
+                  Output_Decl (Maybe_Unsigned & ST & " " & Name,
+                               Is_Typedef => True);
+               end;
             end if;
          end;
       end loop;

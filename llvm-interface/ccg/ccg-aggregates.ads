@@ -33,12 +33,13 @@ package CCG.Aggregates is
    --  link those two. Doing it in the opposite order would make things
    --  simpler for us, but complicate the record creation process.
 
-   procedure Set_Field_Name_Info
+   procedure Set_Field_C_Info
      (SID         : Struct_Id;
       Idx         : Nat;
-      Name        : Name_Id := No_Name;
-      Is_Padding  : Boolean := False;
-      Is_Bitfield : Boolean := False);
+      Name        : Name_Id          := No_Name;
+      TE          : Opt_Type_Kind_Id := Empty;
+      Is_Padding  : Boolean          := False;
+      Is_Bitfield : Boolean          := False);
    --  Say what field Idx in the struct temporarily denoted by SID is used for
 
    procedure Set_Struct (SID : Struct_Id; T : Type_T)

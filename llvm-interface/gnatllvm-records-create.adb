@@ -1182,8 +1182,7 @@ package body GNATLLVM.Records.Create is
          begin
             if Count /= 0 then
                LLVM_Types.Append (Use_T);
-               C_Set_Field_Name_Info (SID, LLVM_Types.Last,
-                                      Is_Padding => True);
+               C_Set_Field_Info (SID, LLVM_Types.Last, Is_Padding => True);
                Cur_RI_Pos  := Cur_RI_Pos + Count * ULL (Size);
                Left_To_Pad := Left_To_Pad - Count * ULL (Size);
             end if;
@@ -1619,7 +1618,7 @@ package body GNATLLVM.Records.Create is
                                      unsigned (To_Bytes (Bitfield_Len))));
             end if;
 
-            C_Set_Field_Name_Info (SID, LLVM_Types.Last, Is_Bitfield => True);
+            C_Set_Field_Info (SID, LLVM_Types.Last, Is_Bitfield => True);
             Cur_RI_Pos := +Bitfield_End_Pos;
          end Create_Bitfield_Field;
 
@@ -1918,8 +1917,8 @@ package body GNATLLVM.Records.Create is
                      else
                         Force_To_Pos (Needed_Pos);
                         LLVM_Types.Append (T);
-                        C_Set_Field_Name_Info (SID, LLVM_Types.Last,
-                                               Get_Ext_Name (F));
+                        C_Set_Field_Info (SID, LLVM_Types.Last,
+                                          Get_Ext_Name (F), Full_Etype (F));
 
                         Cur_RI_Pos :=
                           Align_Pos (Cur_RI_Pos + Get_Type_Size (T), BPU);

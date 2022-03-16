@@ -329,9 +329,8 @@ package body GNATLLVM.Types is
          if Field_Names'Length > 0 then
             SID := New_Struct_Id;
             for J in Field_Names'Range loop
-               C_Set_Field_Name_Info (SID, J - Field_Names'First,
-                                      Field_Names (J),
-                                      Is_Padding => No (Field_Names (J)));
+               C_Set_Field_Info (SID, J - Field_Names'First, Field_Names (J),
+                                 Is_Padding => No (Field_Names (J)));
             end loop;
 
             C_Set_Struct (SID, T);

@@ -39,13 +39,13 @@ package body CCG.Aggregates is
    --  those names in the generated code. The following record is used
    --  to store information about fields.
 
-   type Field_Name_Idx is new Nat;
-   No_Field_Name_Idx : constant Field_Name_Idx := 0;
+   type Field_C_Info_Idx is new Nat;
+   No_Field_C_Info_Idx : constant Field_C_Info_Idx := 0;
 
-   function Present (F : Field_Name_Idx) return Boolean is
-     (F /= No_Field_Name_Idx);
+   function Present (F : Field_C_Info_Idx) return Boolean is
+     (F /= No_Field_C_Info_Idx);
 
-   type Field_Name_Data is record
+   type Field_C_Data is record
       T           : Type_T;
       --  LLVM "struct" type containing this field
 
@@ -55,10 +55,13 @@ package body CCG.Aggregates is
       Name        : Name_Id;
       --  If Present, the name of the field
 
+      TE          : Opt_Type_Kind_Id;
+      --  If Present, the GNAT entity corresponding to the type of the field
+
       SID         : Struct_Id;
       --  The Struct_Id for the field; used only when initializing field info
 
-      Next        : Field_Name_Idx;
+      Next        : Field_C_Info_Idx;
       --  Index of next field entry for this type
 
       Is_Padding  : Boolean;
@@ -72,13 +75,13 @@ package body CCG.Aggregates is
 
    --  Define the table that records all of the field name info
 
-   package Field_Name_Info is new Table.Table
-     (Table_Component_Type => Field_Name_Data,
-      Table_Index_Type     => Field_Name_Idx,
+   package Field_C_Info is new Table.Table
+     (Table_Component_Type => Field_C_Data,
+      Table_Index_Type     => Field_C_Info_Idx,
       Table_Low_Bound      => 1,
       Table_Initial        => 500,
       Table_Increment      => 100,
-      Table_Name           => "Field_Name_Info");
+      Table_Name           => "Field_C_Info");
 
    --  We need two maps into the above table. One maps a Struct_Id into
    --  a table entry. This is used to track the initial setting of field info
@@ -87,27 +90,27 @@ package body CCG.Aggregates is
 
    function Hash (SID : Struct_Id) return Hash_Type is (Hash_Type (SID));
 
-   package Entity_To_FNI_Maps is new Ada.Containers.Hashed_Maps
+   package Entity_To_FCI_Maps is new Ada.Containers.Hashed_Maps
      (Key_Type        => Struct_Id,
-      Element_Type    => Field_Name_Idx,
+      Element_Type    => Field_C_Info_Idx,
       Hash            => Hash,
       Equivalent_Keys => "=");
-   Entity_To_FNI_Map : Entity_To_FNI_Maps.Map;
+   Entity_To_FCI_Map : Entity_To_FCI_Maps.Map;
 
-   type FN_Key is record
+   type FC_Key is record
       T   : Type_T;
       Idx : Nat;
    end record;
 
-   function Hash (K : FN_Key) return Hash_Type is
+   function Hash (K : FC_Key) return Hash_Type is
      (Hash (K.T) + Hash_Type (K.Idx));
 
-   package FNI_Maps is new Ada.Containers.Hashed_Maps
-     (Key_Type        => FN_Key,
-      Element_Type    => Field_Name_Idx,
+   package FCI_Maps is new Ada.Containers.Hashed_Maps
+     (Key_Type        => FC_Key,
+      Element_Type    => Field_C_Info_Idx,
       Hash            => Hash,
       Equivalent_Keys => "=");
-   FNI_Map : FNI_Maps.Map;
+   FCI_Map : FCI_Maps.Map;
 
    function Value_Piece (V : Value_T; T : in out Type_T; Idx : Nat) return Str
      with Pre  => Get_Opcode (V) in Op_Extract_Value | Op_Insert_Value
@@ -117,52 +120,54 @@ package body CCG.Aggregates is
    --  insertvalue instruction V. Return an Str saying how to access that
    --  component and update T to be the type of that component.
 
-   -------------------------
-   -- Set_Field_Name_Info --
-   -------------------------
+   ----------------------
+   -- Set_Field_C_Info --
+   ----------------------
 
-   procedure Set_Field_Name_Info
+   procedure Set_Field_C_Info
      (SID         : Struct_Id;
       Idx         : Nat;
-      Name        : Name_Id := No_Name;
-      Is_Padding  : Boolean := False;
-      Is_Bitfield : Boolean := False)
+      Name        : Name_Id          := No_Name;
+      TE          : Opt_Type_Kind_Id := Empty;
+      Is_Padding  : Boolean          := False;
+      Is_Bitfield : Boolean          := False)
    is
-      use Entity_To_FNI_Maps;
-      Position : constant Cursor         := Find (Entity_To_FNI_Map, SID);
-      F_Idx    : constant Field_Name_Idx :=
+      use Entity_To_FCI_Maps;
+      Position : constant Cursor           := Find (Entity_To_FCI_Map, SID);
+      F_Idx    : constant Field_C_Info_Idx :=
         (if   Has_Element (Position) then Element (Position)
-         else No_Field_Name_Idx);
+         else No_Field_C_Info_Idx);
 
    begin
       --  Start by adding an entry to our table. Then either update the
       --  head of the chain or set a new head.
 
-      Field_Name_Info.Append ((T           => No_Type_T,
-                               F_Number    => Idx,
-                               Name        => Name,
-                               SID         => SID,
-                               Next        => F_Idx,
-                               Is_Padding  => Is_Padding,
-                               Is_Bitfield => Is_Bitfield));
+      Field_C_Info.Append ((T           => No_Type_T,
+                            F_Number    => Idx,
+                            Name        => Name,
+                            TE          => TE,
+                            SID         => SID,
+                            Next        => F_Idx,
+                            Is_Padding  => Is_Padding,
+                            Is_Bitfield => Is_Bitfield));
       if Has_Element (Position) then
-         Replace_Element (Entity_To_FNI_Map, Position,
-                          Field_Name_Info.Last);
+         Replace_Element (Entity_To_FCI_Map, Position,
+                          Field_C_Info.Last);
       else
-         Insert (Entity_To_FNI_Map, SID, Field_Name_Info.Last);
+         Insert (Entity_To_FCI_Map, SID, Field_C_Info.Last);
       end if;
 
-   end Set_Field_Name_Info;
+   end Set_Field_C_Info;
 
    ----------------
    -- Set_Struct --
    ----------------
 
    procedure Set_Struct (SID : Struct_Id; T : Type_T) is
-      package EFM renames Entity_To_FNI_Maps;
-      package TFM renames FNI_Maps;
-      Position : constant EFM.Cursor := EFM.Find (Entity_To_FNI_Map, SID);
-      F_Idx    : Field_Name_Idx;
+      package EFM renames Entity_To_FCI_Maps;
+      package TFM renames FCI_Maps;
+      Position : constant EFM.Cursor := EFM.Find (Entity_To_FCI_Map, SID);
+      F_Idx    : Field_C_Info_Idx;
 
    begin
       --  If we didn't make any entry in the Field Name Info table for
@@ -183,17 +188,17 @@ package body CCG.Aggregates is
       F_Idx := EFM.Element (Position);
       while Present (F_Idx) loop
          declare
-            FNI : Field_Name_Data renames Field_Name_Info.Table (F_Idx);
+            FCI : Field_C_Data renames Field_C_Info.Table (F_Idx);
          begin
-            if No (FNI.T) then
-               FNI.T := T;
+            if No (FCI.T) then
+               FCI.T := T;
 
                if Has_Name (T) then
-                  TFM.Insert (FNI_Map, (T, FNI.F_Number), F_Idx);
+                  TFM.Insert (FCI_Map, (T, FCI.F_Number), F_Idx);
                end if;
             end if;
 
-            F_Idx := FNI.Next;
+            F_Idx := FCI.Next;
          end;
       end loop;
    end Set_Struct;
@@ -203,28 +208,29 @@ package body CCG.Aggregates is
    --------------------
 
    function Get_Field_Name (T : Type_T; Idx : Nat) return Str is
-      use FNI_Maps;
-      Position : constant Cursor := Find (FNI_Map, (T, Idx));
-      FNI      : Field_Name_Data :=
-        (T, Idx, No_Name, No_Struct_Id, No_Field_Name_Idx, False, False);
+      use FCI_Maps;
+      Position : constant Cursor := Find (FCI_Map, (T, Idx));
+      FCI      : Field_C_Data    :=
+        (T, Idx, No_Name, Types.Empty, No_Struct_Id, No_Field_C_Info_Idx,
+         False, False);
 
    begin
       --  If we have information for this field in our table (we should),
       --  replace the default above with that information.
 
       if Has_Element (Position) then
-         FNI := Field_Name_Info.Table (Element (Position));
+         FCI := Field_C_Info.Table (Element (Position));
       end if;
 
       --  Now create a name for the field, based on the saved information.
       --  We really shouldn't be requesting a padding field, but handle it
       --  anyway.
 
-      if Present (FNI.Name) then
-         return Get_Name_String (FNI.Name) + Name;
-      elsif FNI.Is_Padding then
+      if Present (FCI.Name) then
+         return Get_Name_String (FCI.Name) + Name;
+      elsif FCI.Is_Padding then
          return "ccg_pad_" & Idx;
-      elsif FNI.Is_Bitfield then
+      elsif FCI.Is_Bitfield then
          return "ccg_bits_" & Idx;
       else
          return "ccg_field_" & Idx;

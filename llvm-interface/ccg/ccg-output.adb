@@ -211,17 +211,12 @@ package body CCG.Output is
          --  points to.
 
          declare
-            Typ  : constant Type_T :=
-              (if Get_Is_LHS (V) then Get_Element_Type (V) else Type_Of (V));
+            Typ  : constant Str :=
+              (if   Get_Is_LHS (V) then +Get_Element_Type (V)
+               else V + Write_Type);
             Decl : Str             := Typ & " " & (V + LHS);
 
          begin
-            --  If this is known to be unsigned, indicate that
-
-            if Is_Unsigned (V) then
-               Decl := "unsigned " & Decl;
-            end if;
-
             --  For globals, we write the decl immediately. Otherwise, it's
             --  part of the decls for the subprogram.  Figure out whether
             --  this is static or extern.  It's extern if there's no

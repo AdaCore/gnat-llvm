@@ -278,7 +278,7 @@ package body CCG.Instructions is
             Call : constant Str := "alloca (" & Size & ")" + Component;
 
          begin
-            Assignment (V, "(" & Type_Of (V) & ") " & Call + Unary);
+            Assignment (V, TP ("(#T1) ", V) & Call + Unary);
          end;
       end if;
    end Alloca_Instruction;
@@ -296,7 +296,7 @@ package body CCG.Instructions is
       --  reference), add a cast to the unsigned form.
 
       if Is_Unsigned (V) and then not Is_Unsigned (Op) then
-         Assignment (V, "(unsigned " & Type_Of (V) & ") " & Deref (Op));
+         Assignment (V, TP ("(#T1) ", V) & Deref (Op));
       else
          Assignment (V, Deref (Op));
       end if;

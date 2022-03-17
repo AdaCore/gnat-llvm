@@ -109,7 +109,7 @@ package CCG is
 
    procedure C_Set_Struct (SID : Struct_Id; T : Type_T)
      with Pre => Present (T), Inline;
-   --  Indicate that the previous calls to Set_Field_Name_Info for SID
+   --  Indicate that the previous calls to C_Set_Field_Info for SID
    --  were for LLVM struct type T.
 
    procedure C_Set_GNAT_Type  (V : Value_T; TE : Type_Kind_Id)

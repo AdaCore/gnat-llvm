@@ -28,19 +28,19 @@ package CCG.Environment is
    --  Get and set attributes we record of LLVM values, types, and
    --  basic blocks.
 
-   function Get_C_Value             (V : Value_T) return Str
+   function Get_C_Value        (V : Value_T) return Str
      with Pre => Present (V), Inline;
    --  If Present, a string that represents the value of the Value_T
 
-   function Get_Is_Variable         (V : Value_T) return Boolean
+   function Get_Is_Variable    (V : Value_T) return Boolean
    --  True if V represents a variable declared at source level
      with Pre => Present (V), Inline;
 
-   function Get_Is_Decl_Output      (V : Value_T) return Boolean
+   function Get_Is_Decl_Output (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if we wrote any needed decl for this value
 
-   function Get_Is_LHS              (V : Value_T) return Boolean
+   function Get_Is_LHS         (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if this value represents an LHS. This is usually either a
    --  global variable or an alloca in the entry block. In that case, from
@@ -48,33 +48,33 @@ package CCG.Environment is
    --  of the value; only "load" or "store" instruction actually accesses
    --  the value. It can also be the result of a GEP instruction.
 
-   function Get_Is_Constant         (V : Value_T) return Boolean
+   function Get_Is_Constant    (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if this value is a constant and was declared that way
    --  in C.
 
-   function Get_GNAT_Type           (V : Value_T) return Opt_Type_Kind_Id
+   function Get_Entity         (V : Value_T) return Entity_Id
      with Pre => Present (V), Inline;
-   --  Get the GNAT type associated with this value, if known
+   --  Get the GNAT entity (either object or type) of this value, if known
 
-   function Get_Is_Used             (V : Value_T) return Boolean
+   function Get_Is_Used        (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if this value represents a variable that has been used in an
    --  expression.
 
-   procedure Set_C_Value            (V : Value_T; S : Str)
+   procedure Set_C_Value        (V : Value_T; S : Str)
      with Pre => Present (V), Post => Get_C_Value (V) = S, Inline;
-   procedure Set_Is_Variable        (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Variable    (V : Value_T; B : Boolean := True)
      with Pre  => Present (V), Post => Get_Is_Variable (V) = B, Inline;
-   procedure Set_Is_Decl_Output     (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Decl_Output (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Decl_Output (V) = B, Inline;
-   procedure Set_Is_LHS             (V : Value_T; B : Boolean := True)
+   procedure Set_Is_LHS         (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_LHS (V) = B, Inline;
-   procedure Set_Is_Constant        (V : Value_T; B : Boolean := True)
+   procedure Set_Is_Constant    (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Constant (V) = B, Inline;
-   procedure Set_GNAT_Type          (V : Value_T; TE : Type_Kind_Id)
-     with Pre => Present (V), Post => Get_GNAT_Type (V) = TE, Inline;
-   procedure Set_Is_Used            (V : Value_T; B : Boolean := True)
+   procedure Set_Entity         (V : Value_T; E : Entity_Id)
+     with Pre => Present (V), Post => Get_Entity (V) = E, Inline;
+   procedure Set_Is_Used        (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Used (V) = B, Inline;
 
    function Get_Is_Typedef_Output        (T : Type_T) return Boolean

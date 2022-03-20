@@ -2037,13 +2037,22 @@ package body GNATLLVM.GLValue is
       return Align;
    end Get_GEP_Offset_Alignment;
 
+   ------------------
+   -- C_Set_Entity --
+   ------------------
+
+   procedure C_Set_Entity (V : GL_Value; E : Entity_Id) is
+   begin
+      C_Set_Entity (+V, E);
+   end C_Set_Entity;
+
    ---------------------
    -- C_Set_GNAT_Type --
    ---------------------
 
    procedure C_Set_GNAT_Type (V : GL_Value; TE : Type_Kind_Id) is
    begin
-      C_Set_GNAT_Type (+V, TE);
+      C_Set_Entity (+V, TE);
    end C_Set_GNAT_Type;
 
    -----------------------

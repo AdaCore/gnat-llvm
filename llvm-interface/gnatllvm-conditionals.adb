@@ -1532,10 +1532,10 @@ package body GNATLLVM.Conditionals is
 
             --  Initialization block: initialize the loop variable
 
-            Set_Value (E, Loop_Var);
+            Set_Value                        (E, Loop_Var);
             Create_Local_Variable_Debug_Data (E, Loop_Var);
-            C_Set_Is_Variable (Loop_Var);
-            C_Set_GNAT_Type   (Loop_Var, Var_BT);
+            C_Set_Is_Variable                (Loop_Var);
+            C_Set_Entity                     (Loop_Var, E);
             Store (Start, Loop_Var);
             Move_To_BB (BB_Start);
 

@@ -1693,12 +1693,7 @@ package body GNATLLVM.Variables is
       --  Now save the value we've made for this variable
 
       Set_Value (E, LLVM_Var);
-
-      --  If this is of discrete type, show the type
-
-      if Is_Discrete_Type (GT) and then not Is_Ref then
-         C_Set_GNAT_Type  (LLVM_Var, GT);
-      end if;
+      C_Set_Entity (LLVM_Var, E);
 
       --  If this is a variable that comes from source, mark it as such
 
@@ -2264,11 +2259,9 @@ package body GNATLLVM.Variables is
          Set_Value (E, LLVM_Var);
       end if;
 
-      --  If this is of discrete type, record the type
+      --  Show which variable this is
 
-      if Is_Discrete_Type (GT) and then not Is_Ref then
-         C_Set_GNAT_Type  (LLVM_Var, GT);
-      end if;
+      C_Set_Entity (LLVM_Var, E);
 
       --  If this is a variable that comes from source, mark it as such
 

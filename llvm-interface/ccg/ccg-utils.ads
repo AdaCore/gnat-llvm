@@ -53,6 +53,18 @@ package CCG.Utils is
      with Pre => Present (V);
    --  Returns the number of uses of V
 
+   function Is_Integral_Type (T : Type_T) return Boolean is
+     (Get_Type_Kind (T) = Integer_Type_Kind)
+     with Pre => Present (T);
+   function Is_Integral_Type (V : Value_T) return Boolean is
+     (Get_Type_Kind (Type_Of (V)) = Integer_Type_Kind)
+     with Pre => Present (V);
+   function Is_Function_Type (T : Type_T) return Boolean is
+     (Get_Type_Kind (T) = Function_Type_Kind)
+     with Pre => Present (T);
+   function Is_Function_Type (V : Value_T) return Boolean is
+     (Get_Type_Kind (V) = Function_Type_Kind)
+     with Pre => Present (V);
    function Is_Pointer_Type (T : Type_T) return Boolean is
      (Get_Type_Kind (T) = Pointer_Type_Kind)
      with Pre => Present (T);
@@ -95,11 +107,13 @@ package CCG.Utils is
    --  ??? Strings are also simple constants, but we don't support them just
    --  yet.
 
-   function Is_Unsigned (V : Value_T) return Boolean is
-     (Present (Get_GNAT_Type (V))
-        and then Is_Unsigned_Type (Get_GNAT_Type (V)))
+   function GNAT_Type (V : Value_T) return Opt_Type_Kind_Id
+     with Pre => Present (V), Inline;
+   --  Get the GNAT type of V, if known
+
+   function Is_Unsigned (V : Value_T) return Boolean
      with Pre => Present (V);
-   --  True if V is known to be unsigned from sources
+   --  True if V is known from sources to be unsigned
 
    function Might_Be_Unsigned (V : Value_T) return Boolean
      with Pre => Present (V);

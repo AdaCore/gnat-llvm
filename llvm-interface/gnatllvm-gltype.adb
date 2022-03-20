@@ -1358,13 +1358,13 @@ package body GNATLLVM.GLType is
 
    end Full_Designated_GL_Type;
 
-   ---------------------
-   -- C_Set_GNAT_Type --
-   ---------------------
+   ------------------
+   -- C_Set_Entity --
+   ------------------
 
    procedure C_Set_GNAT_Type (V : GL_Value; GT : GL_Type) is
    begin
-      C_Set_GNAT_Type (V, Full_Etype (GT));
+      C_Set_Entity (V, Full_Etype (GT));
    end C_Set_GNAT_Type;
 
    ---------------------
@@ -1373,7 +1373,7 @@ package body GNATLLVM.GLType is
 
    procedure C_Set_GNAT_Type (V : Value_T; GT : GL_Type) is
    begin
-      C_Set_GNAT_Type (V, Full_Etype (GT));
+      C_Set_Entity (V, Full_Etype (GT));
    end C_Set_GNAT_Type;
 
    ------------------

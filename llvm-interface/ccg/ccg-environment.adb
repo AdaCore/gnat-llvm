@@ -28,16 +28,16 @@ with CCG.Write;  use CCG.Write;
 package body CCG.Environment is
 
    type Value_Data is record
-      C_Value             : Str;
+      C_Value        : Str;
       --  If Present, a string that represents the value of the Value_T
 
-      Is_Variable         : Boolean;
+      Is_Variable    : Boolean;
       --  True if a variable declared at source level
 
-      Is_Decl_Output      : Boolean;
+      Is_Decl_Output : Boolean;
       --  True if we wrote any needed decl for this value
 
-      Is_LHS              : Boolean;
+      Is_LHS         : Boolean;
       --  True if this value represents an LHS. This is usually either a
       --  global variable or an alloca in the entry block. In that case,
       --  from a C perspective, a use of a value in LLVM IR represents the
@@ -45,19 +45,19 @@ package body CCG.Environment is
       --  accesses the value. It can also be the result of a GEP
       --  instruction.
 
-      Is_Constant         : Boolean;
+      Is_Constant    : Boolean;
       --  True if this value is a constant and was declared that way
       --  in C. We use this to indicate that we have to cast the type
       --  to the non-constant pointer to take the address of the value.
 
-      GNAT_Type           : Opt_Type_Kind_Id;
-      --  GNAT type of this value, if known
+      Entity         : Entity_Id;
+      --  GNAT entity (either object or type) of this value, if known
 
-      Is_Used             : Boolean;
+      Is_Used        : Boolean;
       --  True if this value represents a variable that has been used in an
       --  expression.
 
-      Output_Idx          : Nat;
+      Output_Idx     : Nat;
       --  A positive number if we've assigned an ordinal to use as
       --  part of the name for this anonymous value.
 
@@ -180,14 +180,14 @@ package body CCG.Environment is
       elsif not Create then
          return No_Value_Idx;
       else
-         Value_Info.Append ((C_Value             => No_Str,
-                             Is_Variable         => False,
-                             Is_Decl_Output      => False,
-                             Is_LHS              => False,
-                             Is_Constant         => False,
-                             GNAT_Type           => Types.Empty,
-                             Is_Used             => False,
-                             Output_Idx          => 0));
+         Value_Info.Append ((C_Value        => No_Str,
+                             Is_Variable    => False,
+                             Is_Decl_Output => False,
+                             Is_LHS         => False,
+                             Is_Constant    => False,
+                             Entity         => Types.Empty,
+                             Is_Used        => False,
+                             Output_Idx     => 0));
          Insert (Value_Info_Map, V, Value_Info.Last);
          return Value_Info.Last;
       end if;
@@ -310,18 +310,18 @@ package body CCG.Environment is
 
    end Get_Is_Constant;
 
-   -------------------
-   -- Get_GNAT_Type --
-   -------------------
+   ----------------
+   -- Get_Entity --
+   ----------------
 
-   function Get_GNAT_Type (V : Value_T) return Opt_Type_Kind_Id is
+   function Get_Entity (V : Value_T) return Entity_Id is
       Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
 
    begin
-      return (if  Present (Idx) then Value_Info.Table (Idx).GNAT_Type
+      return (if  Present (Idx) then Value_Info.Table (Idx).Entity
               else Types.Empty);
 
-   end Get_GNAT_Type;
+   end Get_Entity;
 
    ------------------
    -- Get_Is_Used --
@@ -390,16 +390,16 @@ package body CCG.Environment is
       Value_Info.Table (Idx).Is_Constant := B;
    end Set_Is_Constant;
 
-   -------------------
-   -- Set_GNAT_Type --
-   -------------------
+   ----------------
+   -- Set_Entity --
+   ----------------
 
-   procedure Set_GNAT_Type (V : Value_T; TE : Type_Kind_Id) is
+   procedure Set_Entity (V : Value_T; E : Entity_Id) is
       Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
 
    begin
-      Value_Info.Table (Idx).GNAT_Type := TE;
-   end Set_GNAT_Type;
+      Value_Info.Table (Idx).Entity := E;
+   end Set_Entity;
 
    -----------------
    -- Set_Is_Used --

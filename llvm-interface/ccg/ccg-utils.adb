@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with GNATLLVM.Types; use GNATLLVM.Types;
+
 package body CCG.Utils is
 
    --------
@@ -113,6 +115,37 @@ package body CCG.Utils is
          end loop;
       end return;
    end Num_Uses;
+
+   ---------------
+   -- GNAT_Type --
+   ---------------
+
+   function GNAT_Type (V : Value_T) return Opt_Type_Kind_Id is
+      E : constant Entity_Id := Get_Entity (V);
+
+   begin
+      return (if   No (E) then Types.Empty elsif Is_Type (E) then E
+              else Full_Etype (E));
+   end GNAT_Type;
+
+   -----------------
+   -- Is_Unsigned --
+   -----------------
+
+   function Is_Unsigned (V : Value_T) return Boolean is
+      TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
+      T  : constant Type_T := Type_Of (V);
+
+   begin
+      --  Only check for unsigned if V has an integral type or is a function
+      --  type that returns an integral type.
+
+      return Present (TE)
+        and then ((Is_Function_Type (T)
+                     and then Is_Function_Type (Get_Return_Type (T)))
+                  or else Is_Integral_Type (T))
+        and then Is_Unsigned_Type (TE);
+   end Is_Unsigned;
 
    -----------------------
    -- Might_Be_Unsigned --

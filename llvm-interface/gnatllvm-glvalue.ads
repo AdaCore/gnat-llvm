@@ -1473,9 +1473,11 @@ package GNATLLVM.GLValue is
    --  it's a relationship that points to bounds or it's a constrained array
    --  (which has bounds).
 
+   procedure C_Set_Entity (V : GL_Value; E : Entity_Id)
+     with Pre => Present (V) and then Present (E), Inline;
    procedure C_Set_GNAT_Type  (V : GL_Value; TE : Type_Kind_Id)
-     with Pre => Present (V) and then Present (TE), Inline;
-   --  Set the GNAT type of V
+     with Pre => Present (V), Inline;
+   --  Set the GNAT entity or type of V
 
    procedure C_Set_Is_Variable (V : GL_Value)
      with Pre => Present (V), Inline;

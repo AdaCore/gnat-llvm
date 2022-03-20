@@ -2055,15 +2055,6 @@ package body GNATLLVM.GLValue is
       C_Set_Entity (+V, TE);
    end C_Set_GNAT_Type;
 
-   -----------------------
-   -- C_Set_Is_Variable --
-   -----------------------
-
-   procedure C_Set_Is_Variable (V : GL_Value) is
-   begin
-      C_Set_Is_Variable (+V);
-   end C_Set_Is_Variable;
-
    ---------------------
    -- Get_Alloca_Name --
    ---------------------

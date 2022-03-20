@@ -154,21 +154,6 @@ package body CCG is
       end if;
    end C_Set_Entity;
 
-   -----------------------
-   -- C_Set_Is_Variable --
-   -----------------------
-
-   procedure C_Set_Is_Variable (V : Value_T) is
-   begin
-      --  If we're generating LLVM to generate C and this has a name,
-      --  show that it's a variable.
-
-      if Emit_C and then Has_Name (V) then
-         Set_Is_Variable (V);
-         Notify_On_Value_Delete (V, Delete_Value_Info'Access);
-      end if;
-   end C_Set_Is_Variable;
-
    ---------------
    -- Error_Msg --
    ---------------

@@ -194,9 +194,10 @@ package body CCG.Transform is
             begin
                --  The name of the Phi instruction won't be used, so clear that
                --  name and use it, if any, for the variable we're making.
+               --  Also copy any entity from the original value.
 
-               Set_Is_Variable (Result);
                Set_Value_Name_2 (V, "", 0);
+               Set_Entity (Result, Get_Entity (V));
                Phi_Map.Insert (V, Result);
                if Name'Length /= 0 then
                   Set_Value_Name_2 (Result, Name, Name'Length);
@@ -572,7 +573,7 @@ package body CCG.Transform is
          --  If this is a variable or has multiple uses, we'll be making
          --  a declaration for it. If it's a Phi, it will generate code.
 
-         elsif Get_Is_Variable (V) or else Num_Uses (V) /= 1
+         elsif Is_Variable (V) or else Num_Uses (V) /= 1
            or else Is_APHI_Node (V)
          then
             return False;

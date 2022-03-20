@@ -15,6 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Sinfo.Nodes; use Sinfo.Nodes;
+with Sinfo.Utils; use Sinfo.Utils;
+
 with GNATLLVM.Types; use GNATLLVM.Types;
 
 package body CCG.Utils is
@@ -147,6 +150,18 @@ package body CCG.Utils is
         and then Is_Unsigned_Type (TE);
    end Is_Unsigned;
 
+   -----------------
+   -- Is_Variable --
+   -----------------
+
+   function Is_Variable (V : Value_T) return Boolean is
+      E : constant Entity_Id := Get_Entity (V);
+
+   begin
+      return Present (E) and then not Is_Type (E) and then Has_Name (V)
+        and then Comes_From_Source (E);
+   end Is_Variable;
+
    -----------------------
    -- Might_Be_Unsigned --
    -----------------------
@@ -177,7 +192,7 @@ package body CCG.Utils is
                     or else Is_A_Store_Inst (V)
                     or else (Is_A_Load_Inst (V)
                              and then (Get_Volatile (V)
-                                       or else not Get_Is_Variable
+                                       or else not Is_Variable
                                                      (Get_Operand0 (V))))
               then True
               else (for some J in Nat range 0 .. Get_Num_Operands (V) - 1 =>

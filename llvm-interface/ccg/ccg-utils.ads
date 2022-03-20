@@ -112,8 +112,12 @@ package CCG.Utils is
    --  Get the GNAT type of V, if known
 
    function Is_Unsigned (V : Value_T) return Boolean
-     with Pre => Present (V);
+     with Pre => Present (V), Inline;
    --  True if V is known from sources to be unsigned
+
+   function Is_Variable (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if V is a variable present in the source code
 
    function Might_Be_Unsigned (V : Value_T) return Boolean
      with Pre => Present (V);

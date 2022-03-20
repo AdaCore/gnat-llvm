@@ -1479,10 +1479,6 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Inline;
    --  Set the GNAT entity or type of V
 
-   procedure C_Set_Is_Variable (V : GL_Value)
-     with Pre => Present (V), Inline;
-   --  Indicate that V is variable found in the source
-
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 
    --  Debug routine to print the LLVM value and GNAT tree node for a GL_Value

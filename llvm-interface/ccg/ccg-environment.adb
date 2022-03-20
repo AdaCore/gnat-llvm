@@ -31,9 +31,6 @@ package body CCG.Environment is
       C_Value        : Str;
       --  If Present, a string that represents the value of the Value_T
 
-      Is_Variable    : Boolean;
-      --  True if a variable declared at source level
-
       Is_Decl_Output : Boolean;
       --  True if we wrote any needed decl for this value
 
@@ -181,7 +178,6 @@ package body CCG.Environment is
          return No_Value_Idx;
       else
          Value_Info.Append ((C_Value        => No_Str,
-                             Is_Variable    => False,
                              Is_Decl_Output => False,
                              Is_LHS         => False,
                              Is_Constant    => False,
@@ -262,17 +258,6 @@ package body CCG.Environment is
               else No_Str);
    end Get_C_Value;
 
-   ---------------------
-   -- Get_Is_Variable --
-   ---------------------
-
-   function Get_Is_Variable (V : Value_T) return Boolean is
-      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
-
-   begin
-      return Present (Idx) and then Value_Info.Table (Idx).Is_Variable;
-   end Get_Is_Variable;
-
    ------------------------
    -- Get_Is_Decl_Output --
    ------------------------
@@ -345,17 +330,6 @@ package body CCG.Environment is
    begin
       Value_Info.Table (Idx).C_Value := S;
    end Set_C_Value;
-
-   ---------------------
-   -- Set_Is_Variable --
-   ---------------------
-
-   procedure Set_Is_Variable (V : Value_T; B : Boolean := True) is
-      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
-
-   begin
-      Value_Info.Table (Idx).Is_Variable := B;
-   end Set_Is_Variable;
 
    ------------------------
    -- Set_Is_Decl_Output --

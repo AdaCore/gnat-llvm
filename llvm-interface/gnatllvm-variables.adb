@@ -1694,13 +1694,6 @@ package body GNATLLVM.Variables is
 
       Set_Value (E, LLVM_Var);
       C_Set_Entity (LLVM_Var, E);
-
-      --  If this is a variable that comes from source, mark it as such
-
-      if Comes_From_Source (E) then
-         C_Set_Is_Variable (LLVM_Var);
-      end if;
-
       return LLVM_Var;
 
    end Make_Global_Variable;
@@ -2262,12 +2255,6 @@ package body GNATLLVM.Variables is
       --  Show which variable this is
 
       C_Set_Entity (LLVM_Var, E);
-
-      --  If this is a variable that comes from source, mark it as such
-
-      if Comes_From_Source (E) then
-         C_Set_Is_Variable (LLVM_Var);
-      end if;
 
       --  If we haven't already copied in any initializing expression, do
       --  that now.

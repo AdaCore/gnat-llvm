@@ -32,10 +32,6 @@ package CCG.Environment is
      with Pre => Present (V), Inline;
    --  If Present, a string that represents the value of the Value_T
 
-   function Get_Is_Variable    (V : Value_T) return Boolean
-   --  True if V represents a variable declared at source level
-     with Pre => Present (V), Inline;
-
    function Get_Is_Decl_Output (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if we wrote any needed decl for this value
@@ -64,8 +60,6 @@ package CCG.Environment is
 
    procedure Set_C_Value        (V : Value_T; S : Str)
      with Pre => Present (V), Post => Get_C_Value (V) = S, Inline;
-   procedure Set_Is_Variable    (V : Value_T; B : Boolean := True)
-     with Pre  => Present (V), Post => Get_Is_Variable (V) = B, Inline;
    procedure Set_Is_Decl_Output (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Decl_Output (V) = B, Inline;
    procedure Set_Is_LHS         (V : Value_T; B : Boolean := True)

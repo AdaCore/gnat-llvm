@@ -1918,7 +1918,7 @@ package body GNATLLVM.Records.Create is
                         Force_To_Pos (Needed_Pos);
                         LLVM_Types.Append (T);
                         C_Set_Field_Info (SID, LLVM_Types.Last,
-                                          Get_Ext_Name (F), Full_Etype (F));
+                                          Get_Ext_Name (F), F);
 
                         Cur_RI_Pos :=
                           Align_Pos (Cur_RI_Pos + Get_Type_Size (T), BPU);

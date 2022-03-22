@@ -116,13 +116,13 @@ package body CCG is
    procedure C_Set_Field_Info
      (SID         : Struct_Id;
       Idx         : Nat;
-      Name        : Name_Id          := No_Name;
-      TE          : Opt_Type_Kind_Id := Empty;
-      Is_Padding  : Boolean          := False;
-      Is_Bitfield : Boolean          := False) is
+      Name        : Name_Id   := No_Name;
+      Entity      : Entity_Id := Empty;
+      Is_Padding  : Boolean   := False;
+      Is_Bitfield : Boolean   := False) is
    begin
       if Emit_C then
-         Set_Field_C_Info (SID, Idx, Name, TE, Is_Padding, Is_Bitfield);
+         Set_Field_C_Info (SID, Idx, Name, Entity, Is_Padding, Is_Bitfield);
       end if;
    end C_Set_Field_Info;
 

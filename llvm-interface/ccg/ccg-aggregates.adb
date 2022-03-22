@@ -22,6 +22,8 @@ with Atree;  use Atree;
 with Output; use Output;
 with Table;
 
+with GNATLLVM.Types;   use GNATLLVM.Types;
+with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Environment;  use CCG.Environment;
@@ -56,8 +58,8 @@ package body CCG.Aggregates is
       Name        : Name_Id;
       --  If Present, the name of the field
 
-      TE          : Opt_Type_Kind_Id;
-      --  If Present, the GNAT entity corresponding to the type of the field
+      Entity      : Entity_Id;
+      --  If Present, the GNAT entity for the field
 
       SID         : Struct_Id;
       --  The Struct_Id for the field; used only when initializing field info
@@ -126,10 +128,6 @@ package body CCG.Aggregates is
           Post => Present (Get_Field_Name'Result);
    --  Return a name to use for field Idx of LLVM struct T
 
-   function Get_Field_GNAT_Type (T : Type_T; Idx : Nat) return Opt_Type_Kind_Id
-     with Pre  => Get_Type_Kind (T) = Struct_Type_Kind;
-   --  Return a name to use for field Idx of LLVM struct T
-
    ----------------------
    -- Set_Field_C_Info --
    ----------------------
@@ -137,10 +135,10 @@ package body CCG.Aggregates is
    procedure Set_Field_C_Info
      (SID         : Struct_Id;
       Idx         : Nat;
-      Name        : Name_Id          := No_Name;
-      TE          : Opt_Type_Kind_Id := Empty;
-      Is_Padding  : Boolean          := False;
-      Is_Bitfield : Boolean          := False)
+      Name        : Name_Id   := No_Name;
+      Entity      : Entity_Id := Empty;
+      Is_Padding  : Boolean   := False;
+      Is_Bitfield : Boolean   := False)
    is
       use Entity_To_FCI_Maps;
       Position : constant Cursor           := Find (Entity_To_FCI_Map, SID);
@@ -155,7 +153,7 @@ package body CCG.Aggregates is
       Field_C_Info.Append ((T           => No_Type_T,
                             F_Number    => Idx,
                             Name        => Name,
-                            TE          => TE,
+                            Entity      => Entity,
                             SID         => SID,
                             Next        => F_Idx,
                             Is_Padding  => Is_Padding,
@@ -238,6 +236,8 @@ package body CCG.Aggregates is
 
       if Present (FCI.Name) then
          return Get_Name_String (FCI.Name) + Name;
+      elsif Present (FCI.Entity) then
+         return Get_Ext_Name (FCI.Entity) + Name;
       elsif FCI.Is_Padding then
          return "ccg_pad_" & Idx;
       elsif FCI.Is_Bitfield then
@@ -247,20 +247,19 @@ package body CCG.Aggregates is
       end if;
    end Get_Field_Name;
 
-   --------------------
-   -- Get_Field_Type --
-   --------------------
+   ----------------------
+   -- Get_Field_Entity --
+   ----------------------
 
-   function Get_Field_GNAT_Type (T : Type_T; Idx : Nat) return Opt_Type_Kind_Id
-   is
+   function Get_Field_Entity (T : Type_T; Idx : Nat) return Entity_Id is
       use FCI_Maps;
       Position : constant Cursor := Find (FCI_Map, (T, Idx));
 
    begin
       return (if   Has_Element (Position)
-              then Field_C_Info.Table (Element (Position)).TE
+              then Field_C_Info.Table (Element (Position)).Entity
               else Types.Empty);
-   end Get_Field_GNAT_Type;
+   end Get_Field_Entity;
 
    ---------------------------
    -- Output_Struct_Typedef --
@@ -321,10 +320,11 @@ package body CCG.Aggregates is
                declare
                   Name           : constant Str              :=
                     Get_Field_Name (T, J);
-                  TE             : constant Opt_Type_Kind_Id :=
-                    Get_Field_GNAT_Type (T, J);
+                  F              : constant Entity_Id        :=
+                    Get_Field_Entity (T, J);
                   Maybe_Unsigned : constant Str              :=
-                    +(if   Present (TE) and then Is_Unsigned_Type (TE)
+                    +(if   Present (F)
+                           and then Is_Unsigned_Type (Full_Etype (F))
                       then "unsigned " else "");
 
                begin

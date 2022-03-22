@@ -487,7 +487,7 @@ package body CCG.Strs is
             when Var_String =>
                if Comp.Str = Eol_Str then
                   Write_Eol;
-               elsif Comp.S_Kind = Name then
+               elsif Comp.S_Kind = C_Name then
                   Write_C_Name (Comp.Str);
                else
                   Write_Str (Comp.Str);

@@ -27,30 +27,6 @@ package CCG.Aggregates is
    --  This package contains routines used to process aggregate data,
    --  which are arrays and structs.
 
-   --  When creating LLVM structs, we record what each field in the
-   --  struct is for. We first say what each field is for and then
-   --  say what struct it was for. We specify the type so that we can
-   --  link those two. Doing it in the opposite order would make things
-   --  simpler for us, but complicate the record creation process.
-
-   procedure Set_Field_C_Info
-     (SID         : Struct_Id;
-      Idx         : Nat;
-      Name        : Name_Id   := No_Name;
-      Entity      : Entity_Id := Empty;
-      Is_Padding  : Boolean   := False;
-      Is_Bitfield : Boolean   := False);
-   --  Say what field Idx in the struct temporarily denoted by SID is used for
-
-   procedure Set_Struct (SID : Struct_Id; T : Type_T)
-     with Pre => Present (T);
-   --  Indicate that the previous calls to Set_Field_Name_Info for SID
-   --  were for LLVM type T.
-
-   function Get_Field_Entity (T : Type_T; Idx : Nat) return Entity_Id
-     with Pre  => Present (T);
-   --  Return the entity corresponding to for field Idx of LLVM type T
-
    procedure Output_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
      with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
    --  Output a typedef for T, a struct type. If Incomplete, only output the

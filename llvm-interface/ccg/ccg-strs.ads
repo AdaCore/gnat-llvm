@@ -220,7 +220,7 @@ package CCG.Strs is
    function "+" (S : Str; VF : Value_Flag) return Str
      with Pre => Present (S);
 
-   type String_Kind is (Normal, Name);
+   type String_Kind is (Normal, C_Name);
    --  A string can either be a literal string or a name, in which case we
    --  have to ensure that it's valid for C.
 

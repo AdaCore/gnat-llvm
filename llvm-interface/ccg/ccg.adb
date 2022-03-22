@@ -31,6 +31,7 @@ with CCG.Environment; use CCG.Environment;
 with CCG.Helper;      use CCG.Helper;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
+with CCG.Utils;       use CCG.Utils;
 with CCG.Write;       use CCG.Write;
 
 package body CCG is

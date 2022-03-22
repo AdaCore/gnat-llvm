@@ -209,14 +209,14 @@ package GNATLLVM is
    function No      (GT : GL_Type) return Boolean is (GT =  No_GL_Type);
    function Present (GT : GL_Type) return Boolean is (GT /= No_GL_Type);
 
-   --  When we tell CCG which fields are part of a struct, we have to
-   --  create a unique Id to link the fields and the struct, so define
-   --  a type for that purpose.
+   --  When we tell CCG which fields are part of a struct or function, we
+   --  have to create a unique Id to link the fields and the struct, so
+   --  define a type for that purpose.
 
-   Struct_Id_Low_Bound  : constant := 900_000_000;
-   Struct_Id_High_Bound : constant := 999_999_999;
-   type Struct_Id is range Struct_Id_Low_Bound .. Struct_Id_High_Bound;
-   No_Struct_Id         : constant Struct_Id := Struct_Id_Low_Bound;
+   Unique_Id_Low_Bound  : constant := 900_000_000;
+   Unique_Id_High_Bound : constant := 999_999_999;
+   type Unique_Id is range Unique_Id_Low_Bound .. Unique_Id_High_Bound;
+   No_Unique_Id         : constant Unique_Id := Unique_Id_Low_Bound;
 
    type Word_Array is array (Nat range <>) of aliased uint64_t;
    --  Array of words for LLVM construction functions

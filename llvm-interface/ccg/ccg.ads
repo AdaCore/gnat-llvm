@@ -99,7 +99,7 @@ package CCG is
    --  The main procedure, which generates C code from the LLVM IR
 
    procedure C_Set_Field_Info
-     (SID         : Struct_Id;
+     (UID         : Unique_Id;
       Idx         : Nat;
       Name        : Name_Id   := No_Name;
       Entity      : Entity_Id := Empty;
@@ -107,7 +107,7 @@ package CCG is
       Is_Bitfield : Boolean   := False);
    --  Say what field Idx in the struct temporarily denoted by SID is used for
 
-   procedure C_Set_Struct (SID : Struct_Id; T : Type_T)
+   procedure C_Set_Struct (UID : Unique_Id; T : Type_T)
      with Pre => Present (T), Inline;
    --  Indicate that the previous calls to C_Set_Field_Info for SID
    --  were for LLVM struct type T.

@@ -39,7 +39,7 @@ package CCG.Utils is
    --  simpler for us, but complicate the record creation process.
 
    procedure Set_Field_C_Info
-     (SID         : Struct_Id;
+     (UID         : Unique_Id;
       Idx         : Nat;
       Name        : Name_Id   := No_Name;
       Entity      : Entity_Id := Empty;
@@ -47,7 +47,7 @@ package CCG.Utils is
       Is_Bitfield : Boolean   := False);
    --  Say what field Idx in the struct temporarily denoted by SID is used for
 
-   procedure Set_Struct (SID : Struct_Id; T : Type_T)
+   procedure Set_Struct (UID : Unique_Id; T : Type_T)
      with Pre => Present (T);
    --  Indicate that the previous calls to Set_Field_Name_Info for SID
    --  were for LLVM type T.

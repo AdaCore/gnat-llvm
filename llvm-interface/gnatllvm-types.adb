@@ -317,7 +317,7 @@ package body GNATLLVM.Types is
       Field_Names : Name_Id_Array := (1 .. 0 => <>)) return Type_T
    is
       T   : Type_T;
-      SID : Struct_Id;
+      UID : Unique_Id;
 
    begin
       if No (Name) then
@@ -327,13 +327,13 @@ package body GNATLLVM.Types is
          T := Struct_Create_Named (Name);
          Struct_Set_Body (T, Types, Packed);
          if Field_Names'Length > 0 then
-            SID := New_Struct_Id;
+            UID := New_Unique_Id;
             for J in Field_Names'Range loop
-               C_Set_Field_Info (SID, J - Field_Names'First, Field_Names (J),
+               C_Set_Field_Info (UID, J - Field_Names'First, Field_Names (J),
                                  Is_Padding => No (Field_Names (J)));
             end loop;
 
-            C_Set_Struct (SID, T);
+            C_Set_Struct (UID, T);
          end if;
 
          return T;

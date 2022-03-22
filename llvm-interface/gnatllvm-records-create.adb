@@ -502,8 +502,8 @@ package body GNATLLVM.Records.Create is
       Last_Field_Id  : Field_Info_Id            := Empty_Field_Info_Id;
       --  Last Field_Info_Id created, if any
 
-      SID            : Struct_Id                := New_Struct_Id;
-      --  The Struct_Id for the struct that we're building
+      UID            : Unique_Id                := New_Unique_Id;
+      --  The Unique_Id for the struct that we're building
 
       GT             :  GL_Type                 :=
         Default_GL_Type (TE, Create => False);
@@ -623,12 +623,12 @@ package body GNATLLVM.Records.Create is
          Prev_Idx := Cur_Idx;
          Cur_Idx  := Record_Info_Table.Last;
 
-         --  Reset the chain info for FIs and get a new SID if we need a
+         --  Reset the chain info for FIs and get a new UID if we need a
          --  new struct.
 
          First_Field_Id := Empty_Field_Info_Id;
          Last_Field_Id  := Empty_Field_Info_Id;
-         SID            := New_Struct_Id;
+         UID            := New_Unique_Id;
       end Add_RI;
 
       ------------
@@ -1002,7 +1002,7 @@ package body GNATLLVM.Records.Create is
                   Name   => Get_Ext_Name (TE, "_I"));
 
             begin
-               C_Set_Struct (SID, T);
+               C_Set_Struct (UID, T);
                Add_RI (T           => T,
                        Align       => RI_Align,
                        Position    => RI_Position,
@@ -1182,7 +1182,7 @@ package body GNATLLVM.Records.Create is
          begin
             if Count /= 0 then
                LLVM_Types.Append (Use_T);
-               C_Set_Field_Info (SID, LLVM_Types.Last, Is_Padding => True);
+               C_Set_Field_Info (UID, LLVM_Types.Last, Is_Padding => True);
                Cur_RI_Pos  := Cur_RI_Pos + Count * ULL (Size);
                Left_To_Pad := Left_To_Pad - Count * ULL (Size);
             end if;
@@ -1618,7 +1618,7 @@ package body GNATLLVM.Records.Create is
                                      unsigned (To_Bytes (Bitfield_Len))));
             end if;
 
-            C_Set_Field_Info (SID, LLVM_Types.Last, Is_Bitfield => True);
+            C_Set_Field_Info (UID, LLVM_Types.Last, Is_Bitfield => True);
             Cur_RI_Pos := +Bitfield_End_Pos;
          end Create_Bitfield_Field;
 
@@ -1917,7 +1917,7 @@ package body GNATLLVM.Records.Create is
                      else
                         Force_To_Pos (Needed_Pos);
                         LLVM_Types.Append (T);
-                        C_Set_Field_Info (SID, LLVM_Types.Last,
+                        C_Set_Field_Info (UID, LLVM_Types.Last,
                                           Get_Ext_Name (F), F);
 
                         Cur_RI_Pos :=
@@ -1993,7 +1993,7 @@ package body GNATLLVM.Records.Create is
          Struct_Set_Body (LLVM_Type,
                           Type_Array (LLVM_Types.Table (0 .. LLVM_Types.Last)),
                           Packed => True);
-         C_Set_Struct (SID, LLVM_Type);
+         C_Set_Struct (UID, LLVM_Type);
          Add_RI (T           => LLVM_Type,
                  Align       => RI_Align,
                  Unused_Bits => RI_Unused_Bits);

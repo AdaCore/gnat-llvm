@@ -27,8 +27,8 @@ package GNATLLVM.Utils is
    --  Define a mechanism for creating a hash table mapping one Value_T
    --  to another.
 
-   function New_Struct_Id return Struct_Id;
-   --  Return a new, unique, Struct_Id
+   function New_Unique_Id return Unique_Id;
+   --  Return a new, unique, id
 
    function List_Length_Non_Pragma (List : List_Id) return Nat
      with Pre => Present (List);

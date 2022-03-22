@@ -115,7 +115,7 @@ package body CCG is
    ----------------------
 
    procedure C_Set_Field_Info
-     (SID         : Struct_Id;
+     (UID         : Unique_Id;
       Idx         : Nat;
       Name        : Name_Id   := No_Name;
       Entity      : Entity_Id := Empty;
@@ -123,7 +123,7 @@ package body CCG is
       Is_Bitfield : Boolean   := False) is
    begin
       if Emit_C then
-         Set_Field_C_Info (SID, Idx, Name, Entity, Is_Padding, Is_Bitfield);
+         Set_Field_C_Info (UID, Idx, Name, Entity, Is_Padding, Is_Bitfield);
       end if;
    end C_Set_Field_Info;
 
@@ -131,10 +131,10 @@ package body CCG is
    -- C_Set_Struct --
    ------------------
 
-   procedure C_Set_Struct (SID : Struct_Id; T : Type_T) is
+   procedure C_Set_Struct (UID : Unique_Id; T : Type_T) is
    begin
       if Emit_C then
-         Set_Struct (SID, T);
+         Set_Struct (UID, T);
       end if;
    end C_Set_Struct;
 

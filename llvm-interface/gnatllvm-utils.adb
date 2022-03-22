@@ -31,17 +31,17 @@ package body GNATLLVM.Utils is
    procedure Dump_New_Line;
    --  Write an EOL to the standard output file
 
-   Last_Struct_Id : Struct_Id := Struct_Id_Low_Bound;
+   Last_Unique_Id : Unique_Id := Unique_Id_Low_Bound;
 
    -------------------
-   -- New_Struct_Id --
+   -- New_Unique_Id --
    -------------------
 
-   function New_Struct_Id return Struct_Id is
+   function New_Unique_Id return Unique_Id is
    begin
-      Last_Struct_Id := Last_Struct_Id + 1;
-      return Last_Struct_Id;
-   end New_Struct_Id;
+      Last_Unique_Id := Last_Unique_Id + 1;
+      return Last_Unique_Id;
+   end New_Unique_Id;
 
    --------------------
    -- Simplify_Range --

@@ -28,216 +28,286 @@ with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 package body CCG.Utils is
 
-   --  We want to record information about each field in an LLVM struct
-   --  type corresponding to an Ada record or part thereof so we can use
-   --  those names in the generated code. The following record is used
-   --  to store information about fields.
+   --  We have cases where we want to record information about components
+   --  of LLVM types or values, such as fields of a struct type and
+   --  parameters of a subprogram. We have a generic that allows us to
+   --  record this for both types and values.
 
-   type Field_C_Info_Idx is new Nat;
-   No_Field_C_Info_Idx : constant Field_C_Info_Idx := 0;
+   generic
+      type Key_T is private;
+      No_Key_T : Key_T;
+      with function Hash (K : Key_T) return Hash_Type;
+      with function Should_Insert (K : Key_T) return Boolean;
 
-   function Present (F : Field_C_Info_Idx) return Boolean is
-     (F /= No_Field_C_Info_Idx);
+   package Component_Info_P is
 
-   type Field_C_Data is record
-      T           : Type_T;
-      --  LLVM "struct" type containing this field
+      type Component_Info_Idx is new Nat;
+      No_Component_Info_Idx : constant Component_Info_Idx := 0;
 
-      F_Number    : Nat;
-      --  0-origin count of field in type
+      function Present (C : Component_Info_Idx) return Boolean is
+        (C /= No_Component_Info_Idx);
 
-      Name        : Name_Id;
-      --  If Present, the name of the field
+      function Present (K : Key_T) return Boolean is (K /= No_Key_T);
+      function No      (K : Key_T) return Boolean is (K = No_Key_T);
 
-      Entity      : Entity_Id;
-      --  If Present, the GNAT entity for the field
+      procedure Set_Component_Info
+        (UID         : Unique_Id;
+         Idx         : Nat;
+         Name        : Name_Id   := No_Name;
+         Entity      : Entity_Id := Empty;
+         Is_Padding  : Boolean   := False;
+         Is_Bitfield : Boolean   := False);
+      --  Set component info corresponding to Idx in the value or type to be
+      --  denoted by UID.
 
-      SID         : Struct_Id;
-      --  The Struct_Id for the field; used only when initializing field info
+      procedure Set_Key (UID : Unique_Id; K : Key_T)
+        with Pre => Present (K);
+      --  Indicate that UID corresponds to K
 
-      Next        : Field_C_Info_Idx;
-      --  Index of next field entry for this type
+      function Get_Component_Name (K : Key_T; Idx : Nat) return Str
+        with Pre => Present (K);
+      --  Get the name previously stored for index Idx in key K
 
-      Is_Padding  : Boolean;
-      --  True if this field is padding and doesn't correspond to any
-      --  source-level field.
+      function Get_Component_Entity (K : Key_T; Idx : Nat) return Entity_Id;
+      --  Get the Entity previously stored for index Idx in key K
 
-      Is_Bitfield : Boolean;
-      --  True if this is a field that's used to store one or more bitfields
+   end Component_Info_P;
 
-   end record;
+   package body Component_Info_P is
 
-   --  Define the table that records all of the field name info
+      type Component_Data is record
+         K           : Key_T;
+         --  LLVM type or value containing this component
 
-   package Field_C_Info is new Table.Table
-     (Table_Component_Type => Field_C_Data,
-      Table_Index_Type     => Field_C_Info_Idx,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 500,
-      Table_Increment      => 100,
-      Table_Name           => "Field_C_Info");
+         C_Number    : Nat;
+         --  0-origin count of component in key
 
-   --  We need two maps into the above table. One maps a Struct_Id into
-   --  a table entry. This is used to track the initial setting of field info
-   --  and is used when we set the struct type.  The second maps a
-   --  (struct type, field index) pair into the name info for that field.
+         Name        : Name_Id;
+         --  If Present, the name of the component
 
-   function Hash (SID : Struct_Id) return Hash_Type is (Hash_Type (SID));
+         Entity      : Entity_Id;
+         --  If Present, the GNAT entity for the component
 
-   package Entity_To_FCI_Maps is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Struct_Id,
-      Element_Type    => Field_C_Info_Idx,
-      Hash            => Hash,
-      Equivalent_Keys => "=");
-   Entity_To_FCI_Map : Entity_To_FCI_Maps.Map;
+         UID         : Unique_Id;
+         --  A Unique_Id for the component; used only when initializing info
 
-   type FC_Key is record
-      T   : Type_T;
-      Idx : Nat;
-   end record;
+         Next        : Component_Info_Idx;
+         --  Index of next field entry for this key
 
-   function Hash (K : FC_Key) return Hash_Type is
-     (Hash (K.T) + Hash_Type (K.Idx));
+         Is_Padding  : Boolean;
+         --  True if this componment is a field, is padding, and doesn't
+         --  correspond to any source-level field.
 
-   package FCI_Maps is new Ada.Containers.Hashed_Maps
-     (Key_Type        => FC_Key,
-      Element_Type    => Field_C_Info_Idx,
-      Hash            => Hash,
-      Equivalent_Keys => "=");
-   FCI_Map : FCI_Maps.Map;
+         Is_Bitfield : Boolean;
+         --  True if this is a field that's used to store one or more
+         --  bitfields.
 
-   ----------------------
-   -- Set_Field_C_Info --
-   ----------------------
+      end record;
+
+      --  Define the table that records all of the component info
+
+      package Component_Info is new Table.Table
+        (Table_Component_Type => Component_Data,
+         Table_Index_Type     => Component_Info_Idx,
+         Table_Low_Bound      => 1,
+         Table_Initial        => 500,
+         Table_Increment      => 100,
+         Table_Name           => "Component_Info");
+
+      --  We need two maps into the above table. One maps a Unique_Id into
+      --  a table entry. This is used to track the initial setting and is
+      --  used again when we set the key.  The second maps a (key,
+      --  component index) pair into the name info for that component.
+
+      function Hash (UID : Unique_Id) return Hash_Type is (Hash_Type (UID));
+
+      package Entity_To_CI_Maps is new Ada.Containers.Hashed_Maps
+        (Key_Type        => Unique_Id,
+         Element_Type    => Component_Info_Idx,
+         Hash            => Hash,
+         Equivalent_Keys => "=");
+      Entity_To_CI_Map : Entity_To_CI_Maps.Map;
+
+      type FC_Key is record
+         K   : Key_T;
+         Idx : Nat;
+      end record;
+
+      function Hash (K : FC_Key) return Hash_Type is
+        (Hash (K.K) + Hash_Type (K.Idx));
+
+      package CI_Maps is new Ada.Containers.Hashed_Maps
+        (Key_Type        => FC_Key,
+            Element_Type    => Component_Info_Idx,
+         Hash            => Hash,
+         Equivalent_Keys => "=");
+      CI_Map : CI_Maps.Map;
+
+      ------------------------
+      -- Set_Component_Info --
+      ------------------------
+
+      procedure Set_Component_Info
+        (UID         : Unique_Id;
+         Idx         : Nat;
+         Name        : Name_Id   := No_Name;
+         Entity      : Entity_Id := Empty;
+         Is_Padding  : Boolean   := False;
+         Is_Bitfield : Boolean   := False)
+      is
+         use Entity_To_CI_Maps;
+         Position : constant Cursor             :=
+           Find (Entity_To_CI_Map, UID);
+         C_Idx    : constant Component_Info_Idx :=
+           (if   Has_Element (Position) then Element (Position)
+            else No_Component_Info_Idx);
+
+      begin
+         --  Start by adding an entry to our table. Then either update the
+         --  head of the chain or set a new head.
+
+         Component_Info.Append ((K           => No_Key_T,
+                                 C_Number    => Idx,
+                                 Name        => Name,
+                                 Entity      => Entity,
+                                 UID         => UID,
+                                 Next        => C_Idx,
+                                 Is_Padding  => Is_Padding,
+                                 Is_Bitfield => Is_Bitfield));
+         if Has_Element (Position) then
+            Replace_Element (Entity_To_CI_Map, Position,
+                             Component_Info.Last);
+         else
+            Insert (Entity_To_CI_Map, UID, Component_Info.Last);
+         end if;
+
+      end Set_Component_Info;
+
+      ----------------
+      -- Set_Key --
+      ----------------
+
+      procedure Set_Key (UID : Unique_Id; K : Key_T) is
+         package ECM renames Entity_To_CI_Maps;
+         package TCM renames CI_Maps;
+         Position : constant ECM.Cursor := ECM.Find (Entity_To_CI_Map, UID);
+         C_Idx    : Component_Info_Idx;
+
+      begin
+         --  If we didn't make any entry in the table for this key, we
+         --  don't have anything to do. This could have happened either if
+         --  we weren't generating C or if UID denotes a null record or
+         --  a subprogram with no parameters
+
+         if not ECM.Has_Element (Position) then
+            return;
+         end if;
+
+         --  Otherwise get the first entry we made and loop over all
+         --  entries for UID, looking for entries where the key hasn't yet
+         --  been set. For each, set the key and add the (key, field index)
+         --  pair to the hash table, but if the type has no name, don't
+         --  insert it into the table since it'll be a shared struct.
+
+         C_Idx := ECM.Element (Position);
+         while Present (C_Idx) loop
+            declare
+               CD : Component_Data renames Component_Info.Table (C_Idx);
+            begin
+               if No (CD.K) then
+                  CD.K := K;
+
+                  if Should_Insert (K) then
+                     TCM.Insert (CI_Map, (K, CD.C_Number), C_Idx);
+                  end if;
+               end if;
+
+               C_Idx := CD.Next;
+            end;
+         end loop;
+      end Set_Key;
+
+      ------------------------
+      -- Get_Component_Name --
+      ------------------------
+
+      function Get_Component_Name (K : Key_T; Idx : Nat) return Str is
+         use CI_Maps;
+         Position : constant Cursor := Find (CI_Map, (K, Idx));
+         CD       : Component_Data    :=
+           (K, Idx, No_Name, Types.Empty, No_Unique_Id, No_Component_Info_Idx,
+            False, False);
+
+      begin
+         --  If we have information for this field in our table (we should),
+         --  replace the default above with that information.
+
+         if Has_Element (Position) then
+            CD := Component_Info.Table (Element (Position));
+         end if;
+
+         --  Now create a name for the component, based on the saved
+         --  information.  We really shouldn't be requesting a padding
+         --  field, but handle it anyway.
+
+         if Present (CD.Name) then
+            return Get_Name_String (CD.Name) + C_Name;
+         elsif Present (CD.Entity) then
+            return Get_Ext_Name (CD.Entity) + C_Name;
+         elsif CD.Is_Padding then
+            return "ccg_pad_" & Idx;
+         elsif CD.Is_Bitfield then
+            return "ccg_bits_" & Idx;
+         else
+            return "ccg_field_" & Idx;
+         end if;
+      end Get_Component_Name;
+
+      --------------------------
+      -- Get_Component_Entity --
+      --------------------------
+
+      function Get_Component_Entity (K : Key_T; Idx : Nat) return Entity_Id is
+         use CI_Maps;
+         Position : constant Cursor := Find (CI_Map, (K, Idx));
+
+      begin
+         return (if   Has_Element (Position)
+                 then Component_Info.Table (Element (Position)).Entity
+                 else Types.Empty);
+      end Get_Component_Entity;
+
+   end Component_Info_P;
+
+   --  Now set up instantiations of the package for types and values
+
+   function Should_Insert (T : Type_T) return Boolean renames Has_Name;
+   function Should_Insert (V : Value_T) return Boolean is (False);
+
+   package CI_T is new Component_Info_P  (Key_T         => Type_T,
+                                          No_Key_T      => No_Type_T,
+                                          Hash          => Hash,
+                                          Should_Insert => Should_Insert);
+   package CI_V is new Component_Info_P  (Key_T         => Value_T,
+                                          No_Key_T      => No_Value_T,
+                                          Hash          => Hash,
+                                          Should_Insert => Should_Insert);
+
+   --  And now use them to define the needed functions
 
    procedure Set_Field_C_Info
-     (SID         : Struct_Id;
+     (UID         : Unique_Id;
       Idx         : Nat;
       Name        : Name_Id   := No_Name;
       Entity      : Entity_Id := Empty;
       Is_Padding  : Boolean   := False;
-      Is_Bitfield : Boolean   := False)
-   is
-      use Entity_To_FCI_Maps;
-      Position : constant Cursor           := Find (Entity_To_FCI_Map, SID);
-      F_Idx    : constant Field_C_Info_Idx :=
-        (if   Has_Element (Position) then Element (Position)
-         else No_Field_C_Info_Idx);
+      Is_Bitfield : Boolean   := False) renames CI_T.Set_Component_Info;
 
-   begin
-      --  Start by adding an entry to our table. Then either update the
-      --  head of the chain or set a new head.
-
-      Field_C_Info.Append ((T           => No_Type_T,
-                            F_Number    => Idx,
-                            Name        => Name,
-                            Entity      => Entity,
-                            SID         => SID,
-                            Next        => F_Idx,
-                            Is_Padding  => Is_Padding,
-                            Is_Bitfield => Is_Bitfield));
-      if Has_Element (Position) then
-         Replace_Element (Entity_To_FCI_Map, Position,
-                          Field_C_Info.Last);
-      else
-         Insert (Entity_To_FCI_Map, SID, Field_C_Info.Last);
-      end if;
-
-   end Set_Field_C_Info;
-
-   ----------------
-   -- Set_Struct --
-   ----------------
-
-   procedure Set_Struct (SID : Struct_Id; T : Type_T) is
-      package EFM renames Entity_To_FCI_Maps;
-      package TFM renames FCI_Maps;
-      Position : constant EFM.Cursor := EFM.Find (Entity_To_FCI_Map, SID);
-      F_Idx    : Field_C_Info_Idx;
-
-   begin
-      --  If we didn't make any entry in the Field Name Info table for
-      --  this type, we don't have anything to do. This could have happened
-      --  either if we weren't generating C or if SID denotes a null record.
-
-      if not EFM.Has_Element (Position) then
-         return;
-      end if;
-
-      --  Otherwise get the first entry we made and loop over all
-      --  Field_Name_Info entries for SID, looking for entries where the
-      --  LLVM type hasn't yet been set. For each, set the type and add the
-      --  (LLVM type, field index) pair to the hash table, but if the type has
-      --  no name, don't insert it into the table since it'll be a shared
-      --  struct.
-
-      F_Idx := EFM.Element (Position);
-      while Present (F_Idx) loop
-         declare
-            FCI : Field_C_Data renames Field_C_Info.Table (F_Idx);
-         begin
-            if No (FCI.T) then
-               FCI.T := T;
-
-               if Has_Name (T) then
-                  TFM.Insert (FCI_Map, (T, FCI.F_Number), F_Idx);
-               end if;
-            end if;
-
-            F_Idx := FCI.Next;
-         end;
-      end loop;
-   end Set_Struct;
-
-   --------------------
-   -- Get_Field_Name --
-   --------------------
-
-   function Get_Field_Name (T : Type_T; Idx : Nat) return Str is
-      use FCI_Maps;
-      Position : constant Cursor := Find (FCI_Map, (T, Idx));
-      FCI      : Field_C_Data    :=
-        (T, Idx, No_Name, Types.Empty, No_Struct_Id, No_Field_C_Info_Idx,
-         False, False);
-
-   begin
-      --  If we have information for this field in our table (we should),
-      --  replace the default above with that information.
-
-      if Has_Element (Position) then
-         FCI := Field_C_Info.Table (Element (Position));
-      end if;
-
-      --  Now create a name for the field, based on the saved information.
-      --  We really shouldn't be requesting a padding field, but handle it
-      --  anyway.
-
-      if Present (FCI.Name) then
-         return Get_Name_String (FCI.Name) + C_Name;
-      elsif Present (FCI.Entity) then
-         return Get_Ext_Name (FCI.Entity) + C_Name;
-      elsif FCI.Is_Padding then
-         return "ccg_pad_" & Idx;
-      elsif FCI.Is_Bitfield then
-         return "ccg_bits_" & Idx;
-      else
-         return "ccg_field_" & Idx;
-      end if;
-   end Get_Field_Name;
-
-   ----------------------
-   -- Get_Field_Entity --
-   ----------------------
-
-   function Get_Field_Entity (T : Type_T; Idx : Nat) return Entity_Id is
-      use FCI_Maps;
-      Position : constant Cursor := Find (FCI_Map, (T, Idx));
-
-   begin
-      return (if   Has_Element (Position)
-              then Field_C_Info.Table (Element (Position)).Entity
-              else Types.Empty);
-   end Get_Field_Entity;
+   procedure Set_Struct (UID : Unique_Id; T : Type_T) renames CI_T.Set_Key;
+   function Get_Field_Name (T : Type_T; Idx : Nat) return Str
+     renames CI_T.Get_Component_Name;
+   function Get_Field_Entity (T : Type_T; Idx : Nat) return Entity_Id
+     renames CI_T.Get_Component_Entity;
 
    --------
    -- TP --

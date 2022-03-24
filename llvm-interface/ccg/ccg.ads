@@ -118,7 +118,6 @@ package CCG is
    --  or the GNAT type of V.
 
    procedure C_Set_Parameter (UID : Unique_Id; Idx : Nat; Entity : Entity_Id);
-
    --  Give the entity corresponding to parameter Idx of the function that
    --  will be denoted by UID
 

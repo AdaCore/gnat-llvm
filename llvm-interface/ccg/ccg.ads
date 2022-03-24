@@ -117,6 +117,16 @@ package CCG is
    --  Indicate that E is related to V, either the object that V represents
    --  or the GNAT type of V.
 
+   procedure C_Set_Parameter (UID : Unique_Id; Idx : Nat; Entity : Entity_Id);
+
+   --  Give the entity corresponding to parameter Idx of the function that
+   --  will be denoted by UID
+
+   procedure C_Set_Function (UID : Unique_Id; V : Value_T)
+     with Pre => Present (V);
+   --  Indicate that the previous calls to Set_Parameter_Info for UID
+   --  were for LLVM value V.
+
    procedure Error_Msg (Msg : String);
    --  Post an error message via the GNAT errout mechanism.
    --  ??? For now, default to the First_Source_Ptr sloc. Will hopefully use a

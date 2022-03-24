@@ -1479,6 +1479,10 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Inline;
    --  Set the GNAT entity or type of V
 
+   procedure C_Set_Function (UID : Unique_Id; V : GL_Value)
+     with Pre => Present (V), Inline;
+   --  Set which function corresponds to UID
+
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 
    --  Debug routine to print the LLVM value and GNAT tree node for a GL_Value

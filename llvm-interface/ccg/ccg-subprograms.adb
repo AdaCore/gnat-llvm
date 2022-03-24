@@ -20,12 +20,14 @@ with Ada.Strings.Fixed;       use Ada.Strings.Fixed;
 
 with Interfaces.C; use Interfaces.C;
 
+with Atree;  use Atree;
 with Debug;  use Debug;
 with Lib;    use Lib;
 with Opt;    use Opt;
 with Output; use Output;
 with Sinput; use Sinput;
 
+with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
@@ -173,11 +175,15 @@ package body CCG.Subprograms is
       else
          for J in 0 .. Num_Params - 1 loop
             declare
-               Param : constant Value_T := Get_Param (V, J);
-
+               Param  : constant Value_T   := Get_Param (V, J);
+               E      : constant Entity_Id := Get_Parameter_Entity (V, J);
+               Uns    : constant Str       :=
+                 (if   Present (E) and then Is_Integral_Type (Param)
+                        and then Is_Unsigned_Type (Full_Etype (E))
+                  then +"unsigned " else +"");
             begin
                Result :=
-                 Result & (if J = 0 then "" else ", ") & (Param + Write_Type);
+                 Result & (if J = 0 then "" else ", ") & Uns & Type_Of (Param);
 
                if not Extern then
                   Result := Result & " " & Param;

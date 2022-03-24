@@ -45,11 +45,11 @@ package CCG.Utils is
       Entity      : Entity_Id := Empty;
       Is_Padding  : Boolean   := False;
       Is_Bitfield : Boolean   := False);
-   --  Say what field Idx in the struct temporarily denoted by SID is used for
+   --  Say what field Idx in the struct temporarily denoted by UID is used for
 
    procedure Set_Struct (UID : Unique_Id; T : Type_T)
      with Pre => Present (T);
-   --  Indicate that the previous calls to Set_Field_Name_Info for SID
+   --  Indicate that the previous calls to Set_Field_C_Info for UID
    --  were for LLVM type T.
 
    function Get_Field_Name (T : Type_T; Idx : Nat) return Str
@@ -60,6 +60,22 @@ package CCG.Utils is
    function Get_Field_Entity (T : Type_T; Idx : Nat) return Entity_Id
      with Pre  => Present (T);
    --  Return the entity corresponding to for field Idx of LLVM type T
+
+   --  We do similarly for the parameters of a function
+
+   procedure Set_Parameter (UID : Unique_Id; Idx : Nat; Entity : Entity_Id)
+     with Pre => Present (Entity);
+   --  Give the entity corresponding to parameter Idx of the function that
+   --  will be denoted by UID
+
+   procedure Set_Function (UID : Unique_Id; V : Value_T)
+     with Pre => Present (V);
+   --  Indicate that the previous calls to Set_Parameter_Info for UID
+   --  were for LLVM value V.
+
+   function Get_Parameter_Entity (V : Value_T; Idx : Nat) return Entity_Id
+     with Pre  => Present (V);
+   --  Return the entity corresponding to for parameter Idx of LLVM value V
 
    function TP
      (S           : String;

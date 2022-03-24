@@ -282,7 +282,7 @@ package body CCG.Utils is
    --  Now set up instantiations of the package for types and values
 
    function Should_Insert (T : Type_T) return Boolean renames Has_Name;
-   function Should_Insert (V : Value_T) return Boolean is (False);
+   function Should_Insert (V : Value_T) return Boolean is (True);
 
    package CI_T is new Component_Info_P  (Key_T         => Type_T,
                                           No_Key_T      => No_Type_T,
@@ -308,6 +308,19 @@ package body CCG.Utils is
      renames CI_T.Get_Component_Name;
    function Get_Field_Entity (T : Type_T; Idx : Nat) return Entity_Id
      renames CI_T.Get_Component_Entity;
+
+   procedure Set_Function (UID : Unique_Id; V : Value_T) renames CI_V.Set_Key;
+   function Get_Parameter_Entity (V : Value_T; Idx : Nat) return Entity_Id
+     renames CI_V.Get_Component_Entity;
+
+   -------------------
+   -- Set_Parameter --
+   -------------------
+
+   procedure Set_Parameter (UID : Unique_Id; Idx : Nat; Entity : Entity_Id) is
+   begin
+      CI_V.Set_Component_Info (UID, Idx, Entity => Entity);
+   end Set_Parameter;
 
    --------
    -- TP --

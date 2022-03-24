@@ -138,6 +138,29 @@ package body CCG is
       end if;
    end C_Set_Struct;
 
+   ---------------------
+   -- C_Set_Parameter --
+   ---------------------
+
+   procedure C_Set_Parameter (UID : Unique_Id; Idx : Nat; Entity : Entity_Id)
+   is
+   begin
+      if Emit_C then
+         Set_Parameter (UID, Idx, Entity);
+      end if;
+   end C_Set_Parameter;
+
+   --------------------
+   -- C_Set_Function --
+   --------------------
+
+   procedure C_Set_Function (UID : Unique_Id; V : Value_T) is
+   begin
+      if Emit_C then
+         Set_Function (UID, V);
+      end if;
+   end C_Set_Function;
+
    ------------------
    -- C_Set_Entity --
    ------------------

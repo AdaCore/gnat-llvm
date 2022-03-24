@@ -2046,6 +2046,15 @@ package body GNATLLVM.GLValue is
       C_Set_Entity (+V, E);
    end C_Set_Entity;
 
+   --------------------
+   -- C_Set_Function --
+   --------------------
+
+   procedure C_Set_Function (UID : Unique_Id; V : GL_Value) is
+   begin
+      C_Set_Function (UID, +V);
+   end C_Set_Function;
+
    ---------------------
    -- C_Set_GNAT_Type --
    ---------------------

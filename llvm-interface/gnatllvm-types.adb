@@ -128,6 +128,18 @@ package body GNATLLVM.Types is
    --  Make a Node_Ref_Or_Val from V. Normally this is just the integer
    --  value of V, but if it's negative, we need to build a negation node.
 
+   function Prepare_SM_Copy_Host (V : GL_Value) return GL_Value
+     with Pre  => Present (V),
+          Post => Get_Type_Kind (Prepare_SM_Copy_Host'Result) =
+                    Integer_Type_Kind;
+   function Prepare_SM_Copy_Target (V : GL_Value) return GL_Value
+     with Pre  => Present (V),
+          Post => Get_Type_Kind (Prepare_SM_Copy_Target'Result) =
+                    Integer_Type_Kind;
+   --  V is an operand that's being passed to a Storage_Model copy from / to
+   --  procedure. Convert it to the appropriate integral type for the host
+   --  or target part of that call, respectively.
+
    --  We put the function used to compute sizes into a generic so that we
    --  can instantiate it using various types of sizing.  The most common
    --  case is an actual size computation, where we produce a GL_Value.
@@ -973,6 +985,53 @@ package body GNATLLVM.Types is
       end;
    end Heap_Deallocate;
 
+   --------------------------
+   -- Prepare_SM_Copy_Host --
+   --------------------------
+
+   function Prepare_SM_Copy_Host (V : GL_Value) return GL_Value is
+      Result : GL_Value := V;
+
+   begin
+      --  We may need to change the relationship of V. If it's a
+      --  double reference, we need to change it to a single reference
+      --  and if it's data, we need to change to a reference.
+
+      if Is_Double_Reference (Result) then
+         Result := Get (Result, Deref (Relationship (Result)));
+      elsif not Is_Reference (Result) then
+         Result := Get (Result, Ref (Relationship (Result)));
+      end if;
+
+      --  Then convert to a size_type
+
+      return Ptr_To_Size_Type (Result);
+   end Prepare_SM_Copy_Host;
+
+   ----------------------------
+   -- Prepare_SM_Copy_Target --
+   ----------------------------
+
+   function Prepare_SM_Copy_Target (V : GL_Value) return GL_Value is
+      Result : GL_Value := V;
+
+   begin
+      --  If V is a double reference, we need to change it to a single
+      --  reference.
+
+      if Is_Double_Reference (Result) then
+         Result := Get (Result, Deref (Relationship (Result)));
+      end if;
+
+      --  We must now have a reference since we can't have target data
+
+      pragma Assert (Is_Reference (Result));
+
+      --  Then convert to the appropriate address type
+
+      return Ptr_To_Int (Result, SM_Address_Type (Result));
+   end Prepare_SM_Copy_Target;
+
    -----------------------
    -- Call_SM_Copy_From --
    -----------------------
@@ -981,9 +1040,8 @@ package body GNATLLVM.Types is
    begin
       Call (Emit_Entity (SM_Copy_From (Src)),
             (1 => Emit_Entity (SM_Object (Src)),
-             2 => Ptr_To_Size_Type (Get (Dest, Reference)),
-             3 => Ptr_To_Int (Get (Src, Reference),
-                              SM_Address_Type (Src)),
+             2 => Prepare_SM_Copy_Target (Dest),
+             3 => Prepare_SM_Copy_Host (Src),
              4 => Get (Size, Data)));
    end Call_SM_Copy_From;
 
@@ -995,9 +1053,8 @@ package body GNATLLVM.Types is
    begin
       Call (Emit_Entity (SM_Copy_To (Dest)),
             (1 => Emit_Entity (SM_Object (Dest)),
-             2 => Ptr_To_Int (Get (Dest, Reference),
-                              SM_Address_Type (Dest)),
-             3 => Ptr_To_Size_Type (Get (Src, Reference)),
+             2 => Prepare_SM_Copy_Target (Dest),
+             3 => Prepare_SM_Copy_Host (Src),
              4 => Get (Size, Data)));
    end Call_SM_Copy_To;
 

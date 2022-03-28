@@ -742,48 +742,6 @@ package body CCG.Strs is
    -- "&" --
    ---------
 
-   function "&" (L : Value_T; R : Nat) return Str is
-      S_Rec  : aliased constant Str_Record (2) :=
-        (2, Primary, (1 => (Value, 1, L, Default_Flags, Unknown),
-                      2 => (Number, 1, R)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      Set_Is_Used (L);
-      return Result;
-   end "&";
-
-   ---------
-   -- "&" --
-   ---------
-
-   function "&" (L : Type_T; R : Nat) return Str is
-      S_Rec  : aliased constant Str_Record (2) :=
-        (2, Unknown, (1 => (Typ, 1, L), 2 => (Number, 1, R)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      Maybe_Output_Typedef (L);
-      return Result;
-   end "&";
-
-   ---------
-   -- "&" --
-   ---------
-
-   function "&" (L : Basic_Block_T; R : Nat) return Str is
-      S_Rec  : aliased constant Str_Record (2) :=
-        (2, Unknown, (1 => (BB, 1, L), 2 => (Number, 1, R)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      return Result;
-   end "&";
-
-   ---------
-   -- "&" --
-   ---------
-
    function "&" (L : Value_T; R : Str) return Str is
       S_Rec  : aliased Str_Record (R.Length + 1);
       Result : Str;

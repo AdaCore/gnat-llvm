@@ -2226,6 +2226,9 @@ package body GNATLLVM.Subprograms is
                      --  writeback if we have to.
 
                      if Misaligned_Copy_Required (LHS, Actual, Param, False)
+                       or else Has_SM_Copy_From (LHS)
+                       or else (Ekind (Param) /= E_In_Parameter
+                                  and then Has_SM_Copy_To (LHS))
                      then
                         Arg  := Allocate_For_Type (Related_Type (LHS),
                                                    N => Actual,

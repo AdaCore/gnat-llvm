@@ -1040,8 +1040,8 @@ package body GNATLLVM.Types is
    begin
       Call (Emit_Entity (SM_Copy_From (Src)),
             (1 => Emit_Entity (SM_Object (Src)),
-             2 => Prepare_SM_Copy_Target (Dest),
-             3 => Prepare_SM_Copy_Host (Src),
+             2 => Prepare_SM_Copy_Host (Dest),
+             3 => Prepare_SM_Copy_Target (Src),
              4 => Get (Size, Data)));
    end Call_SM_Copy_From;
 

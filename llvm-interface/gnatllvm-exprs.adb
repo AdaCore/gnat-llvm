@@ -1589,8 +1589,8 @@ package body GNATLLVM.Exprs is
             --  ensure a consistent ordering.
 
             Size    := To_Bytes (Size);
-            Mem_Src := Pointer_Cast (Get (Src, Src_R), A_Char_GL_Type);
-            Mem_Dst := Pointer_Cast (Get (Dest, Dest_R), A_Char_GL_Type);
+            Mem_Src := Get (Src, Src_R);
+            Mem_Dst := Get (Dest, Dest_R);
 
             --  We may have to use a copy from/to procedure (or both) if
             --  either side has a non-default Storage Model.
@@ -1621,6 +1621,8 @@ package body GNATLLVM.Exprs is
             elsif (Forwards_OK and then Backwards_OK)
               or else (Present (Expr) and then Is_Safe_From (Dest, Expr))
             then
+               Mem_Src := Pointer_Cast (Mem_Src, A_Char_GL_Type);
+               Mem_Dst := Pointer_Cast (Mem_Dst, A_Char_GL_Type);
                Build_MemCpy (Mem_Dst, To_Bytes (Get_Type_Alignment (Dest_GT)),
                              Mem_Src, To_Bytes (Get_Type_Alignment (Src_GT)),
                              Size, Need_Volatile,

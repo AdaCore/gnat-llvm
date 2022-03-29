@@ -23,6 +23,8 @@ with LLVM.Core; use LLVM.Core;
 
 with Output; use Output;
 
+with GNATLLVM.GLType; use GNATLLVM.GLType;
+
 with CCG.Environment; use CCG.Environment;
 with CCG.Output;      use CCG.Output;
 with CCG.Utils;       use CCG.Utils;
@@ -83,7 +85,7 @@ package body CCG.Strs is
                      Update_Hash (H, Comp.Str);
                   when Value =>
                      Update_Hash (H, Comp.Val);
-                     Update_Hash (H, Comp.Flags);
+                     Update_Hash (H, Comp.V_Flags);
                      Update_Hash (H, Precedence'Pos (Comp.For_P));
                   when Typ =>
                      Update_Hash (H, Comp.T);
@@ -91,6 +93,9 @@ package body CCG.Strs is
                      Update_Hash (H, Comp.B);
                   when Number =>
                      Update_Hash (H, Hash_Type (Comp.N));
+                  when Entity =>
+                     Update_Hash (H, Hash_Type (Comp.E));
+                     Update_Hash (H, Comp.E_Flags);
                end case;
             end;
          end loop;
@@ -174,7 +179,7 @@ package body CCG.Strs is
 
                when Value =>
                   if SL.Comps (PosL).Val /= SR.Comps (PosR).Val
-                    or else SL.Comps (PosL).Flags /= SR.Comps (PosR).Flags
+                    or else SL.Comps (PosL).V_Flags /= SR.Comps (PosR).V_Flags
                     or else SL.Comps (PosL).For_P /= SL.Comps (PosR).For_P
                   then
                      return False;
@@ -192,6 +197,13 @@ package body CCG.Strs is
 
                when Number =>
                   if SL.Comps (PosL).N /= SR.Comps (PosR).N then
+                     return False;
+                  end if;
+
+               when Entity =>
+                  if SL.Comps (PosL).E /= SR.Comps (PosR).E
+                    or else SL.Comps (PosL).E_Flags /= SL.Comps (PosR).E_Flags
+                  then
                      return False;
                   end if;
             end case;
@@ -299,6 +311,19 @@ package body CCG.Strs is
    -- "+" --
    ---------
 
+   function "+" (E : Entity_Id) return Str is
+      S_Rec  : aliased constant Str_Record (1) :=
+        (1, Unknown, (1 => (Entity, 1, E, Default_Flags)));
+      Result : constant Str := Undup_Str (S_Rec);
+
+   begin
+      return Result;
+   end "+";
+
+   ---------
+   -- "+" --
+   ---------
+
    function "+" (V : Value_T; VF : Value_Flag) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
         (1, Unknown, (1 => (Value, 1, V, +VF, Unknown)));
@@ -317,17 +342,12 @@ package body CCG.Strs is
    -- "+" --
    ---------
 
-   function "+" (S : Str; VF : Value_Flag) return Str is
+   function "+" (E : Entity_Id; VF : Value_Flag) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Value, 1, S.Comps (1).Val,
-                            S.Comps (1).Flags or +VF, Unknown)));
+        (1, Unknown, (1 => (Entity, 1, E, +VF)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      if VF = Write_Type then
-         Maybe_Output_Typedef (Type_Of (S.Comps (1).Val));
-      end if;
-
       return Result;
    end "+";
 
@@ -494,7 +514,7 @@ package body CCG.Strs is
                end if;
 
             when Value =>
-               Write_Value (Comp.Val, Flags => Comp.Flags,
+               Write_Value (Comp.Val, Flags => Comp.V_Flags,
                             For_Precedence => Comp.For_P);
 
             when Typ =>
@@ -505,6 +525,10 @@ package body CCG.Strs is
 
             when Number =>
                Write_Int (Comp.N);
+
+            when Entity =>
+               pragma Assert (Comp.E_Flags.Write_Type);
+               Write_Type (Type_Of (Full_GL_Type (Comp.E)));
          end case;
       end loop;
 
@@ -926,9 +950,9 @@ package body CCG.Strs is
          --  already).
 
          if Comp.Kind = Value
-           and then (Comp.Flags.Need_Unsigned
-                       or else (not Comp.Flags.Need_Signed
-                                  and then not Comp.Flags.Write_Type
+           and then (Comp.V_Flags.Need_Unsigned
+                       or else (not Comp.V_Flags.Need_Signed
+                                  and then not Comp.V_Flags.Write_Type
                                   and then Might_Be_Unsigned (Comp.Val)))
          then
             return True;
@@ -950,7 +974,7 @@ package body CCG.Strs is
       --  compute the address of that expression.
 
       if Is_Value (S) and then Present (Get_C_Value (S))
-        and then not S.Comps (1).Flags.LHS
+        and then not S.Comps (1).V_Flags.LHS
       then
          return Addr_Of (Get_C_Value (S), T);
 
@@ -973,7 +997,7 @@ package body CCG.Strs is
       --  If this is an LHS, convert it into a normal reference
 
       elsif Is_Value (S) and then Get_Is_LHS (S)
-        and then S.Comps (1).Flags.LHS
+        and then S.Comps (1).V_Flags.LHS
       then
          declare
             S_Rec  : aliased constant Str_Record :=
@@ -1016,12 +1040,13 @@ package body CCG.Strs is
       --  reference to the name.
 
       if Is_Value (S) and then Get_Is_LHS (S)
-        and then not S.Comps (1).Flags.LHS
+        and then not S.Comps (1).V_Flags.LHS
       then
          declare
             S_Rec  : aliased constant Str_Record :=
               (1, S.P, (1 => (Value, 0, S.Comps (1).Val,
-                              S.Comps (1).Flags or +LHS, S.Comps (1).For_P)));
+                              S.Comps (1).V_Flags or +LHS,
+                              S.Comps (1).For_P)));
             Result : constant Str                := Undup_Str (S_Rec);
          begin
             return Result;
@@ -1031,7 +1056,7 @@ package body CCG.Strs is
       --  compute the dereference of that expression.
 
       elsif Is_Value (S) and then Present (Get_C_Value (S))
-        and then not S.Comps (1).Flags.LHS
+        and then not S.Comps (1).V_Flags.LHS
       then
          return Deref (Get_C_Value (S.Comps (1).Val));
 

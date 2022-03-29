@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Atree; use Atree;
+
 with CCG.Target; use CCG.Target;
 
 package CCG.Strs is
@@ -35,6 +37,20 @@ package CCG.Strs is
    procedure Write_Str (S : Str; Eol : Boolean := False)
      with Pre => Present (S);
    --  Write the contents of S to the current output target
+
+   function "+" (S : String)        return Str
+     with Post => Present ("+"'Result);
+   function "+" (V : Value_T)       return Str
+     with Pre => Present (V), Post => Present ("+"'Result);
+   function "+" (T : Type_T)        return Str
+     with Pre => Present (T), Post => Present ("+"'Result);
+   function "+" (B : Basic_Block_T) return Str
+     with Pre => Present (B), Post => Present ("+"'Result);
+   function "+" (N : Nat)           return Str
+     with Post => Present ("+"'Result);
+   function "+" (E : Entity_Id)     return Str
+     with Pre => Present (E), Post => Present ("+"'Result);
+   --  Return an internal representation of S, V, T, B, or E
 
    --  In order to eliminate most parentheses, we record the operator
    --  precedence, if known, of a string, and the precedence of how a value
@@ -216,9 +232,9 @@ package CCG.Strs is
      (Flag_To_Flags (F));
 
    function "+" (V : Value_T; VF : Value_Flag) return Str
-     with Pre => Present (V);
-   function "+" (S : Str; VF : Value_Flag) return Str
-     with Pre => Present (S);
+     with Pre => Present (V), Post => Present ("+"'Result);
+   function "+" (E : Entity_Id; VF : Value_Flag) return Str
+     with Pre => Present (E), Post => Present ("+"'Result);
 
    type String_Kind is (Normal, C_Name);
    --  A string can either be a literal string or a name, in which case we
@@ -226,18 +242,6 @@ package CCG.Strs is
 
    function "+" (S : String; K : String_Kind) return Str
      with Post => Present ("+"'Result);
-
-   function "+" (S : String)        return Str
-     with Post => Present ("+"'Result);
-   function "+" (V : Value_T)       return Str
-     with Pre => Present (V), Post => Present ("+"'Result);
-   function "+" (T : Type_T)        return Str
-     with Pre => Present (T), Post => Present ("+"'Result);
-   function "+" (B : Basic_Block_T) return Str
-     with Pre => Present (B), Post => Present ("+"'Result);
-   function "+" (N : Nat)           return Str
-     with Post => Present ("+"'Result);
-   --  Return an internal representation of S, V, T, or B
 
    function "+" (V : Value_T; P : Precedence) return Str
      with Pre => Present (V), Post => Get_Precedence ("+"'Result) = P;
@@ -283,6 +287,22 @@ package CCG.Strs is
    function "&" (L : Str;            R : Str)           return Str
      with Pre  => Present (R),
           Post => Present ("&"'Result);
+
+   --  For entities, we're not going to use them often, so we can just
+   --  concatenate the conversion of the operands.
+
+   function "&" (L : String;         R : Entity_Id)      return Str is
+     ((+L) & (+R))
+     with Post => Present ("&"'Result);
+   function "&" (L : Str;            R : Entity_Id)      return Str is
+     (L & Str'(+R))
+     with Post => Present ("&"'Result);
+   function "&" (L : Entity_Id;      R : String)         return Str is
+     ((+L) & (+R))
+     with Post => Present ("&"'Result);
+   function "&" (L : Entity_Id;      R : Str)            return Str is
+     (Str'(+L) & R)
+     with Post => Present ("&"'Result);
 
    function Addr_Of (S : Str; T : Type_T := No_Type_T) return Str
      with Pre => Present (S), Post => Present (Addr_Of'Result);
@@ -368,31 +388,37 @@ private
       BB,
       --  An LLVM basic block
 
-      Number);
+      Number,
       --  An integer
+
+      Entity);
+      --  A GNAT Entity
 
    type Str_Component
      (Kind : Str_Component_Kind := Var_String; Length : Str_Length := 3)
    is record
       case Kind is
          when Var_String =>
-            S_Kind : String_Kind;
-            Str    : String (1 .. Length);
+            S_Kind  : String_Kind;
+            Str     : String (1 .. Length);
 
          when Value =>
-            Val    : Value_T;
-            Flags  : Value_Flags;
-            For_P  : Precedence;
+            Val     : Value_T;
+            V_Flags : Value_Flags;
+            For_P   : Precedence;
 
          when Typ =>
-            T      :  Type_T;
+            T       :  Type_T;
 
          when BB =>
-            B      : Basic_Block_T;
+            B       : Basic_Block_T;
 
          when Number =>
-            N     : Nat;
+            N       : Nat;
 
+         when Entity =>
+            E       : Entity_Id;
+            E_Flags : Value_Flags;
       end case;
    end record;
 

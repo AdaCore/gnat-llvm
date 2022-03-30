@@ -304,6 +304,11 @@ package CCG.Strs is
      (Str'(+L) & R)
      with Post => Present ("&"'Result);
 
+   function "or" (T : Type_T; E : Entity_Id)             return Str
+     with Pre => Present (T), Post => Present ("or"'Result);
+   --  Produce a string that either references T or E, depending on which
+   --  will provide a more accurate version of the type
+
    function Addr_Of (S : Str; T : Type_T := No_Type_T) return Str
      with Pre => Present (S), Post => Present (Addr_Of'Result);
    function Addr_Of (V : Value_T; T : Type_T := No_Type_T) return Str is

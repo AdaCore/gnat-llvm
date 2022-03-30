@@ -181,9 +181,11 @@ package body CCG.Subprograms is
                  (if   Present (E) and then Is_Integral_Type (Param)
                         and then Is_Unsigned_Type (Full_Etype (E))
                   then +"unsigned " else +"");
+               Typ    : constant Str       := Type_Of (Param) or E;
+
             begin
                Result :=
-                 Result & (if J = 0 then "" else ", ") & Uns & Type_Of (Param);
+                 Result & (if J = 0 then "" else ", ") & Uns & Typ;
 
                if not Extern then
                   Result := Result & " " & Param;

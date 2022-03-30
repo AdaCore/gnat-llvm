@@ -348,6 +348,10 @@ package body CCG.Strs is
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
+      if VF = Write_Type then
+         Maybe_Output_Typedef (Type_Of (Full_GL_Type (E)));
+      end if;
+
       return Result;
    end "+";
 
@@ -916,6 +920,19 @@ package body CCG.Strs is
       Result := Undup_Str (S_Rec);
       return Result;
    end "&";
+
+   ----------
+   -- "or" --
+   ----------
+
+   function "or" (T : Type_T; E : Entity_Id) return Str is
+   begin
+      --  If there's an entity specified and the default type of the entity
+      --  matches T, it's best to use the entity, otherwise T.
+
+      return ((if   Present (E) and then Type_Of (Full_GL_Type (E)) = T
+               then E + Write_Type else +T));
+   end "or";
 
    ------------------
    -- Single_Value --

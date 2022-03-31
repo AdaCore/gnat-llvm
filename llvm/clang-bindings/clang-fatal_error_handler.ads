@@ -1,7 +1,5 @@
 pragma Ada_2012;
-
 pragma Style_Checks (Off);
-pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 
@@ -38,6 +36,3 @@ package Clang.Fatal_Error_Handler is
         External_Name => "clang_uninstall_llvm_fatal_error_handler";
 
 end Clang.Fatal_Error_Handler;
-
-pragma Style_Checks (On);
-pragma Warnings (On, "-gnatwu");

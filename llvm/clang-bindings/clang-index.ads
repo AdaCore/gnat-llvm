@@ -1,7 +1,5 @@
 pragma Ada_2012;
-
 pragma Style_Checks (Off);
-pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -377,12 +375,6 @@ package Clang.Index is
 procedure CX_Index_Set_Invocation_Emission_Path_Option
      (Arg_1 : Index_T;
       Path  : String);
-   procedure CX_Index_Set_Invocation_Emission_Path_Option_C
-     (Arg_1 : Index_T;
-      Path  : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXIndex_setInvocationEmissionPathOption";
 
   --*
   -- * \defgroup CINDEX_FILES File manipulation routines
@@ -400,10 +392,9 @@ procedure CX_Index_Set_Invocation_Emission_Path_Option
   -- * Retrieve the complete file and path name of the given file.
   --  
 
-   function Get_File_Name (S_File : File_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:358
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getFileName";
+function Get_File_Name
+     (S_File : File_T)
+      return String;
 
   --*
   -- * Retrieve the last modification time of the given file.
@@ -419,11 +410,13 @@ procedure CX_Index_Set_Invocation_Emission_Path_Option
   -- * across an indexing session.
   --  
 
-   type anon_array1118 is array (0 .. 2) of aliased Extensions.unsigned_long_long;
+   type File_Unique_ID_Data_Array_T is array (0 .. 2) of aliased Extensions.unsigned_long_long;
    type File_Unique_ID_T is record
-      data : aliased anon_array1118;  -- /usr/local/include/clang-c/Index.h:370
+      data : aliased File_Unique_ID_Data_Array_T;  -- /usr/local/include/clang-c/Index.h:370
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:371
+
+   --  skipped anonymous struct anon_4
 
   --*
   -- * Retrieve the unique ID for the given \c file.
@@ -449,13 +442,6 @@ function Is_File_Multiple_Include_Guarded
      (Tu   : Translation_Unit_T;
       File : File_T)
       return Boolean;
-   function Is_File_Multiple_Include_Guarded_C
-     (Tu   : Translation_Unit_T;
-      File : File_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isFileMultipleIncludeGuarded";
 
   --*
   -- * Retrieve a file handle within the given translation unit.
@@ -472,13 +458,6 @@ function Get_File
      (Tu        : Translation_Unit_T;
       File_Name : String)
       return File_T;
-   function Get_File_C
-     (Tu        : Translation_Unit_T;
-      File_Name : Interfaces.C.Strings.chars_ptr)
-      return File_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_getFile";
 
   --*
   -- * Retrieve the buffer associated with the given file.
@@ -498,14 +477,6 @@ function Get_File_Contents
       File : File_T;
       Size : access stddef_h.size_t)
       return String;
-   function Get_File_Contents_C
-     (Tu   : Translation_Unit_T;
-      File : File_T;
-      Size : access stddef_h.size_t)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_getFileContents";
 
   --*
   -- * Returns non-zero if the \c file1 and \c file2 point to the same file,
@@ -516,13 +487,6 @@ function File_Is_Equal
      (File_1 : File_T;
       File_2 : File_T)
       return Boolean;
-   function File_Is_Equal_C
-     (File_1 : File_T;
-      File_2 : File_T)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_File_isEqual";
 
   --*
   -- * Returns the real path name of \c file.
@@ -530,10 +494,9 @@ function File_Is_Equal
   -- * An empty string may be returned. Use \c clang_getFileName() in that case.
   --  
 
-   function File_Try_Get_Real_Path_Name (File : File_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:430
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_File_tryGetRealPathName";
+function File_Try_Get_Real_Path_Name
+     (File : File_T)
+      return String;
 
   --*
   -- * @}
@@ -560,12 +523,14 @@ function File_Is_Equal
   -- * to map a source location to a particular file, line, and column.
   --  
 
-   type anon_array1133 is array (0 .. 1) of System.Address;
+   type Source_Location_Ptr_Data_Array_T is array (0 .. 1) of System.Address;
    type Source_Location_T is record
-      ptr_data : anon_array1133;  -- /usr/local/include/clang-c/Index.h:457
+      ptr_data : Source_Location_Ptr_Data_Array_T;  -- /usr/local/include/clang-c/Index.h:457
       int_data : aliased unsigned;  -- /usr/local/include/clang-c/Index.h:458
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:459
+
+   --  skipped anonymous struct anon_5
 
   --*
   -- * Identifies a half-open character range in the source code.
@@ -574,12 +539,15 @@ function File_Is_Equal
   -- * starting and end locations from a source range, respectively.
   --  
 
+   type Source_Range_Ptr_Data_Array_T is array (0 .. 1) of System.Address;
    type Source_Range_T is record
-      ptr_data : anon_array1133;  -- /usr/local/include/clang-c/Index.h:468
+      ptr_data : Source_Range_Ptr_Data_Array_T;  -- /usr/local/include/clang-c/Index.h:468
       begin_int_data : aliased unsigned;  -- /usr/local/include/clang-c/Index.h:469
       end_int_data : aliased unsigned;  -- /usr/local/include/clang-c/Index.h:470
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:471
+
+   --  skipped anonymous struct anon_6
 
   --*
   -- * Retrieve a NULL (invalid) source location.
@@ -638,12 +606,6 @@ function File_Is_Equal
 function Location_Is_In_System_Header
      (Location : Source_Location_T)
       return Boolean;
-   function Location_Is_In_System_Header_C
-     (Location : Source_Location_T)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Location_isInSystemHeader";
 
   --*
   -- * Returns non-zero if the given source location is in the main file of
@@ -653,12 +615,6 @@ function Location_Is_In_System_Header
 function Location_Is_From_Main_File
      (Location : Source_Location_T)
       return Boolean;
-   function Location_Is_From_Main_File_C
-     (Location : Source_Location_T)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Location_isFromMainFile";
 
   --*
   -- * Retrieve a NULL (invalid) source range.
@@ -697,12 +653,6 @@ function Location_Is_From_Main_File
 function Range_Is_Null
      (C_Range : Source_Range_T)
       return Boolean;
-   function Range_Is_Null_C
-     (C_Range : Source_Range_T)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Range_isNull";
 
   --*
   -- * Retrieve the file, line, column, and offset represented by
@@ -904,6 +854,8 @@ function Range_Is_Null
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:700
 
+   --  skipped anonymous struct anon_7
+
   --*
   --   * An array of \c CXSourceRanges.
   --    
@@ -1076,14 +1028,6 @@ function Load_Diagnostics
       Error        : access Load_Diag_Error_T;
       Error_String : access Clang.CX_String.String_T)
       return Diagnostic_Set_T;
-   function Load_Diagnostics_C
-     (File         : Interfaces.C.Strings.chars_ptr;
-      Error        : access Load_Diag_Error_T;
-      Error_String : access Clang.CX_String.String_T)
-      return Diagnostic_Set_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_loadDiagnostics";
 
   --*
   -- * Release a CXDiagnosticSet and all of its contained diagnostics.
@@ -1160,12 +1104,12 @@ function Load_Diagnostics
   --  
 
    subtype Diagnostic_Display_Options_T is unsigned;
-   Diagnostic_Display_Source_Location : constant Diagnostic_Display_Options_T := 1;
-   Diagnostic_Display_Column : constant Diagnostic_Display_Options_T := 2;
-   Diagnostic_Display_Source_Ranges : constant Diagnostic_Display_Options_T := 4;
-   Diagnostic_Display_Option : constant Diagnostic_Display_Options_T := 8;
-   Diagnostic_Display_Category_Id : constant Diagnostic_Display_Options_T := 16;
-   Diagnostic_Display_Category_Name : constant Diagnostic_Display_Options_T := 32;  -- /usr/local/include/clang-c/Index.h:895
+   Diagnostic_Display_Source_Location : constant unsigned := 1;
+   Diagnostic_Display_Column : constant unsigned := 2;
+   Diagnostic_Display_Source_Ranges : constant unsigned := 4;
+   Diagnostic_Display_Option : constant unsigned := 8;
+   Diagnostic_Display_Category_Id : constant unsigned := 16;
+   Diagnostic_Display_Category_Name : constant unsigned := 32;  -- /usr/local/include/clang-c/Index.h:895
 
   --*
   --   * Display the source-location information where the
@@ -1237,10 +1181,10 @@ function Load_Diagnostics
   -- * \returns A new string containing for formatted diagnostic.
   --  
 
-   function Format_Diagnostic (Diagnostic : Diagnostic_T; Options : unsigned) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:972
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_formatDiagnostic";
+function Format_Diagnostic
+     (Diagnostic : Diagnostic_T;
+      Options    : unsigned)
+      return String;
 
   --*
   -- * Retrieve the set of display options most similar to the
@@ -1280,10 +1224,9 @@ function Load_Diagnostics
   -- * Retrieve the text of the given diagnostic.
   --  
 
-   function Get_Diagnostic_Spelling (Arg_1 : Diagnostic_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:1001
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getDiagnosticSpelling";
+function Get_Diagnostic_Spelling
+     (Arg_1 : Diagnostic_T)
+      return String;
 
   --*
   -- * Retrieve the name of the command-line option that enabled this
@@ -1298,10 +1241,10 @@ function Load_Diagnostics
   -- * warning, such as "-Wconversion" or "-pedantic".
   --  
 
-   function Get_Diagnostic_Option (Diag : Diagnostic_T; Disable : access Clang.CX_String.String_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:1015
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getDiagnosticOption";
+function Get_Diagnostic_Option
+     (Diag    : Diagnostic_T;
+      Disable : access Clang.CX_String.String_T)
+      return String;
 
   --*
   -- * Retrieve the category number for this diagnostic.
@@ -1330,10 +1273,9 @@ function Load_Diagnostics
   -- * \returns The name of the given diagnostic category.
   --  
 
-   function Get_Diagnostic_Category_Name (Category : unsigned) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:1041
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getDiagnosticCategoryName";
+function Get_Diagnostic_Category_Name
+     (Category : unsigned)
+      return String;
 
   --*
   -- * Retrieve the diagnostic category text for a given diagnostic.
@@ -1341,10 +1283,9 @@ function Load_Diagnostics
   -- * \returns The text of the given diagnostic category.
   --  
 
-   function Get_Diagnostic_Category_Text (Arg_1 : Diagnostic_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:1048
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getDiagnosticCategoryText";
+function Get_Diagnostic_Category_Text
+     (Arg_1 : Diagnostic_T)
+      return String;
 
   --*
   -- * Determine the number of source ranges associated with the given
@@ -1411,13 +1352,11 @@ function Load_Diagnostics
   -- * code indicated by the \c ReplacementRange.
   --  
 
-   function Get_Diagnostic_Fix_It
-     (Diagnostic : Diagnostic_T;
-      Fix_It : unsigned;
-      Replacement_Range : access Source_Range_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:1103
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getDiagnosticFixIt";
+function Get_Diagnostic_Fix_It
+     (Diagnostic        : Diagnostic_T;
+      Fix_It            : unsigned;
+      Replacement_Range : access Source_Range_T)
+      return String;
 
   --*
   -- * @}
@@ -1437,10 +1376,9 @@ function Load_Diagnostics
   -- * Get the original translation unit source file name.
   --  
 
-   function Get_Translation_Unit_Spelling (CT_Unit : Translation_Unit_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:1124
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getTranslationUnitSpelling";
+function Get_Translation_Unit_Spelling
+     (CT_Unit : Translation_Unit_T)
+      return String;
 
   --*
   -- * Return the CXTranslationUnit for a given source file and the provided
@@ -1491,17 +1429,6 @@ function Create_Translation_Unit_From_Source_File
       Num_Unsaved_Files           : unsigned;
       Unsaved_Files               : access Unsaved_File_T)
       return Translation_Unit_T;
-   function Create_Translation_Unit_From_Source_File_C
-     (C_Idx                       : Index_T;
-      Source_Filename             : Interfaces.C.Strings.chars_ptr;
-      Num_Clang_Command_Line_Args : int;
-      Command_Line_Args           : System.Address;
-      Num_Unsaved_Files           : unsigned;
-      Unsaved_Files               : access Unsaved_File_T)
-      return Translation_Unit_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_createTranslationUnitFromSourceFile";
 
   --*
   -- * Same as \c clang_createTranslationUnit2, but returns
@@ -1514,13 +1441,6 @@ function Create_Translation_Unit
      (C_Idx        : Index_T;
       Ast_Filename : String)
       return Translation_Unit_T;
-   function Create_Translation_Unit_C
-     (C_Idx        : Index_T;
-      Ast_Filename : Interfaces.C.Strings.chars_ptr)
-      return Translation_Unit_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_createTranslationUnit";
 
   --*
   -- * Create a translation unit from an AST file (\c -emit-ast).
@@ -1536,14 +1456,6 @@ function Create_Translation_Unit_2
       Ast_Filename : String;
       Out_TU       : System.Address)
       return Clang.CX_Error_Code.Error_Code_T;
-   function Create_Translation_Unit_2_C
-     (C_Idx        : Index_T;
-      Ast_Filename : Interfaces.C.Strings.chars_ptr;
-      Out_TU       : System.Address)
-      return Clang.CX_Error_Code.Error_Code_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_createTranslationUnit2";
 
   --*
   -- * Flags that control the creation of translation units.
@@ -1554,23 +1466,23 @@ function Create_Translation_Unit_2
   --  
 
    subtype Translation_Unit_Flags_T is unsigned;
-   Translation_Unit_None : constant Translation_Unit_Flags_T := 0;
-   Translation_Unit_Detailed_Preprocessing_Record : constant Translation_Unit_Flags_T := 1;
-   Translation_Unit_Incomplete : constant Translation_Unit_Flags_T := 2;
-   Translation_Unit_Precompiled_Preamble : constant Translation_Unit_Flags_T := 4;
-   Translation_Unit_Cache_Completion_Results : constant Translation_Unit_Flags_T := 8;
-   Translation_Unit_For_Serialization : constant Translation_Unit_Flags_T := 16;
-   Translation_Unit_CXX_Chained_PCH : constant Translation_Unit_Flags_T := 32;
-   Translation_Unit_Skip_Function_Bodies : constant Translation_Unit_Flags_T := 64;
-   Translation_Unit_Include_Brief_Comments_In_Code_Completion : constant Translation_Unit_Flags_T := 128;
-   Translation_Unit_Create_Preamble_On_First_Parse : constant Translation_Unit_Flags_T := 256;
-   Translation_Unit_Keep_Going : constant Translation_Unit_Flags_T := 512;
-   Translation_Unit_Single_File_Parse : constant Translation_Unit_Flags_T := 1024;
-   Translation_Unit_Limit_Skip_Function_Bodies_To_Preamble : constant Translation_Unit_Flags_T := 2048;
-   Translation_Unit_Include_Attributed_Types : constant Translation_Unit_Flags_T := 4096;
-   Translation_Unit_Visit_Implicit_Attributes : constant Translation_Unit_Flags_T := 8192;
-   Translation_Unit_Ignore_Non_Errors_From_Included_Files : constant Translation_Unit_Flags_T := 16384;
-   Translation_Unit_Retain_Excluded_Conditional_Blocks : constant Translation_Unit_Flags_T := 32768;  -- /usr/local/include/clang-c/Index.h:1199
+   Translation_Unit_None : constant unsigned := 0;
+   Translation_Unit_Detailed_Preprocessing_Record : constant unsigned := 1;
+   Translation_Unit_Incomplete : constant unsigned := 2;
+   Translation_Unit_Precompiled_Preamble : constant unsigned := 4;
+   Translation_Unit_Cache_Completion_Results : constant unsigned := 8;
+   Translation_Unit_For_Serialization : constant unsigned := 16;
+   Translation_Unit_CXX_Chained_PCH : constant unsigned := 32;
+   Translation_Unit_Skip_Function_Bodies : constant unsigned := 64;
+   Translation_Unit_Include_Brief_Comments_In_Code_Completion : constant unsigned := 128;
+   Translation_Unit_Create_Preamble_On_First_Parse : constant unsigned := 256;
+   Translation_Unit_Keep_Going : constant unsigned := 512;
+   Translation_Unit_Single_File_Parse : constant unsigned := 1024;
+   Translation_Unit_Limit_Skip_Function_Bodies_To_Preamble : constant unsigned := 2048;
+   Translation_Unit_Include_Attributed_Types : constant unsigned := 4096;
+   Translation_Unit_Visit_Implicit_Attributes : constant unsigned := 8192;
+   Translation_Unit_Ignore_Non_Errors_From_Included_Files : constant unsigned := 16384;
+   Translation_Unit_Retain_Excluded_Conditional_Blocks : constant unsigned := 32768;  -- /usr/local/include/clang-c/Index.h:1199
 
   --*
   --   * Used to indicate that no special translation-unit options are
@@ -1736,18 +1648,6 @@ function Parse_Translation_Unit
       Num_Unsaved_Files     : unsigned;
       Options               : unsigned)
       return Translation_Unit_T;
-   function Parse_Translation_Unit_C
-     (C_Idx                 : Index_T;
-      Source_Filename       : Interfaces.C.Strings.chars_ptr;
-      Command_Line_Args     : System.Address;
-      Num_Command_Line_Args : int;
-      Unsaved_Files         : access Unsaved_File_T;
-      Num_Unsaved_Files     : unsigned;
-      Options               : unsigned)
-      return Translation_Unit_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_parseTranslationUnit";
 
   --*
   -- * Parse the given source file and the translation unit corresponding
@@ -1804,19 +1704,6 @@ function Parse_Translation_Unit_2
       Options               : unsigned;
       Out_TU                : System.Address)
       return Clang.CX_Error_Code.Error_Code_T;
-   function Parse_Translation_Unit_2_C
-     (C_Idx                 : Index_T;
-      Source_Filename       : Interfaces.C.Strings.chars_ptr;
-      Command_Line_Args     : System.Address;
-      Num_Command_Line_Args : int;
-      Unsaved_Files         : access Unsaved_File_T;
-      Num_Unsaved_Files     : unsigned;
-      Options               : unsigned;
-      Out_TU                : System.Address)
-      return Clang.CX_Error_Code.Error_Code_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_parseTranslationUnit2";
 
   --*
   -- * Same as clang_parseTranslationUnit2 but requires a full command line
@@ -1834,19 +1721,6 @@ function Parse_Translation_Unit_2_Full_Argv
       Options               : unsigned;
       Out_TU                : System.Address)
       return Clang.CX_Error_Code.Error_Code_T;
-   function Parse_Translation_Unit_2_Full_Argv_C
-     (C_Idx                 : Index_T;
-      Source_Filename       : Interfaces.C.Strings.chars_ptr;
-      Command_Line_Args     : System.Address;
-      Num_Command_Line_Args : int;
-      Unsaved_Files         : access Unsaved_File_T;
-      Num_Unsaved_Files     : unsigned;
-      Options               : unsigned;
-      Out_TU                : System.Address)
-      return Clang.CX_Error_Code.Error_Code_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_parseTranslationUnit2FullArgv";
 
   --*
   -- * Flags that control how translation units are saved.
@@ -1945,14 +1819,6 @@ function Save_Translation_Unit
       File_Name : String;
       Options   : unsigned)
       return int;
-   function Save_Translation_Unit_C
-     (TU        : Translation_Unit_T;
-      File_Name : Interfaces.C.Strings.chars_ptr;
-      Options   : unsigned)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_saveTranslationUnit";
 
   --*
   -- * Suspend a translation unit in order to free memory associated with it.
@@ -2062,24 +1928,24 @@ function Save_Translation_Unit
   --  
 
    subtype TU_Resource_Usage_Kind_T is unsigned;
-   TU_Resource_Usage_AST : constant TU_Resource_Usage_Kind_T := 1;
-   TU_Resource_Usage_Identifiers : constant TU_Resource_Usage_Kind_T := 2;
-   TU_Resource_Usage_Selectors : constant TU_Resource_Usage_Kind_T := 3;
-   TU_Resource_Usage_Global_Completion_Results : constant TU_Resource_Usage_Kind_T := 4;
-   TU_Resource_Usage_Source_Manager_Content_Cache : constant TU_Resource_Usage_Kind_T := 5;
-   TU_Resource_Usage_AST_Side_Tables : constant TU_Resource_Usage_Kind_T := 6;
-   TU_Resource_Usage_Source_Manager_Membuffer_Malloc : constant TU_Resource_Usage_Kind_T := 7;
-   TU_Resource_Usage_Source_Manager_Membuffer_M_Map : constant TU_Resource_Usage_Kind_T := 8;
-   TU_Resource_Usage_External_AST_Source_Membuffer_Malloc : constant TU_Resource_Usage_Kind_T := 9;
-   TU_Resource_Usage_External_AST_Source_Membuffer_M_Map : constant TU_Resource_Usage_Kind_T := 10;
-   TU_Resource_Usage_Preprocessor : constant TU_Resource_Usage_Kind_T := 11;
-   TU_Resource_Usage_Preprocessing_Record : constant TU_Resource_Usage_Kind_T := 12;
-   TU_Resource_Usage_Source_Manager_Data_Structures : constant TU_Resource_Usage_Kind_T := 13;
-   TU_Resource_Usage_Preprocessor_Header_Search : constant TU_Resource_Usage_Kind_T := 14;
-   TU_Resource_Usage_MEMORY_IN_BYTES_BEGIN : constant TU_Resource_Usage_Kind_T := 1;
-   TU_Resource_Usage_MEMORY_IN_BYTES_END : constant TU_Resource_Usage_Kind_T := 14;
-   TU_Resource_Usage_First : constant TU_Resource_Usage_Kind_T := 1;
-   TU_Resource_Usage_Last : constant TU_Resource_Usage_Kind_T := 14;  -- /usr/local/include/clang-c/Index.h:1609
+   TU_Resource_Usage_AST : constant unsigned := 1;
+   TU_Resource_Usage_Identifiers : constant unsigned := 2;
+   TU_Resource_Usage_Selectors : constant unsigned := 3;
+   TU_Resource_Usage_Global_Completion_Results : constant unsigned := 4;
+   TU_Resource_Usage_Source_Manager_Content_Cache : constant unsigned := 5;
+   TU_Resource_Usage_AST_Side_Tables : constant unsigned := 6;
+   TU_Resource_Usage_Source_Manager_Membuffer_Malloc : constant unsigned := 7;
+   TU_Resource_Usage_Source_Manager_Membuffer_M_Map : constant unsigned := 8;
+   TU_Resource_Usage_External_AST_Source_Membuffer_Malloc : constant unsigned := 9;
+   TU_Resource_Usage_External_AST_Source_Membuffer_M_Map : constant unsigned := 10;
+   TU_Resource_Usage_Preprocessor : constant unsigned := 11;
+   TU_Resource_Usage_Preprocessing_Record : constant unsigned := 12;
+   TU_Resource_Usage_Source_Manager_Data_Structures : constant unsigned := 13;
+   TU_Resource_Usage_Preprocessor_Header_Search : constant unsigned := 14;
+   TU_Resource_Usage_MEMORY_IN_BYTES_BEGIN : constant unsigned := 1;
+   TU_Resource_Usage_MEMORY_IN_BYTES_END : constant unsigned := 14;
+   TU_Resource_Usage_First : constant unsigned := 1;
+   TU_Resource_Usage_Last : constant unsigned := 14;  -- /usr/local/include/clang-c/Index.h:1609
 
   --*
   -- * Returns the human-readable null-terminated C string that represents
@@ -2089,12 +1955,6 @@ function Save_Translation_Unit
 function Get_TU_Resource_Usage_Name
      (Kind : TU_Resource_Usage_Kind_T)
       return String;
-   function Get_TU_Resource_Usage_Name_C
-     (Kind : TU_Resource_Usage_Kind_T)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_getTUResourceUsageName";
 
   -- The memory usage category.  
    type TU_Resource_Usage_Entry_T is record
@@ -2163,10 +2023,9 @@ function Get_TU_Resource_Usage_Name
   -- * Returns the empty string in case of any error.
   --  
 
-   function Target_Info_Get_Triple (Info : Target_Info_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:1690
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_TargetInfo_getTriple";
+function Target_Info_Get_Triple
+     (Info : Target_Info_T)
+      return String;
 
   --*
   -- * Get the pointer width of the target in bits.
@@ -2188,271 +2047,271 @@ function Get_TU_Resource_Usage_Name
   --  
 
    subtype Cursor_Kind_T is unsigned;
-   Cursor_Unexposed_Decl : constant Cursor_Kind_T := 1;
-   Cursor_Struct_Decl : constant Cursor_Kind_T := 2;
-   Cursor_Union_Decl : constant Cursor_Kind_T := 3;
-   Cursor_Class_Decl : constant Cursor_Kind_T := 4;
-   Cursor_Enum_Decl : constant Cursor_Kind_T := 5;
-   Cursor_Field_Decl : constant Cursor_Kind_T := 6;
-   Cursor_Enum_Constant_Decl : constant Cursor_Kind_T := 7;
-   Cursor_Function_Decl : constant Cursor_Kind_T := 8;
-   Cursor_Var_Decl : constant Cursor_Kind_T := 9;
-   Cursor_Parm_Decl : constant Cursor_Kind_T := 10;
-   Cursor_Obj_C_Interface_Decl : constant Cursor_Kind_T := 11;
-   Cursor_Obj_C_Category_Decl : constant Cursor_Kind_T := 12;
-   Cursor_Obj_C_Protocol_Decl : constant Cursor_Kind_T := 13;
-   Cursor_Obj_C_Property_Decl : constant Cursor_Kind_T := 14;
-   Cursor_Obj_C_Ivar_Decl : constant Cursor_Kind_T := 15;
-   Cursor_Obj_C_Instance_Method_Decl : constant Cursor_Kind_T := 16;
-   Cursor_Obj_C_Class_Method_Decl : constant Cursor_Kind_T := 17;
-   Cursor_Obj_C_Implementation_Decl : constant Cursor_Kind_T := 18;
-   Cursor_Obj_C_Category_Impl_Decl : constant Cursor_Kind_T := 19;
-   Cursor_Typedef_Decl : constant Cursor_Kind_T := 20;
-   Cursor_CXX_Method : constant Cursor_Kind_T := 21;
-   Cursor_Namespace : constant Cursor_Kind_T := 22;
-   Cursor_Linkage_Spec : constant Cursor_Kind_T := 23;
-   Cursor_Constructor : constant Cursor_Kind_T := 24;
-   Cursor_Destructor : constant Cursor_Kind_T := 25;
-   Cursor_Conversion_Function : constant Cursor_Kind_T := 26;
-   Cursor_Template_Type_Parameter : constant Cursor_Kind_T := 27;
-   Cursor_Non_Type_Template_Parameter : constant Cursor_Kind_T := 28;
-   Cursor_Template_Template_Parameter : constant Cursor_Kind_T := 29;
-   Cursor_Function_Template : constant Cursor_Kind_T := 30;
-   Cursor_Class_Template : constant Cursor_Kind_T := 31;
-   Cursor_Class_Template_Partial_Specialization : constant Cursor_Kind_T := 32;
-   Cursor_Namespace_Alias : constant Cursor_Kind_T := 33;
-   Cursor_Using_Directive : constant Cursor_Kind_T := 34;
-   Cursor_Using_Declaration : constant Cursor_Kind_T := 35;
-   Cursor_Type_Alias_Decl : constant Cursor_Kind_T := 36;
-   Cursor_Obj_C_Synthesize_Decl : constant Cursor_Kind_T := 37;
-   Cursor_Obj_C_Dynamic_Decl : constant Cursor_Kind_T := 38;
-   Cursor_CXX_Access_Specifier : constant Cursor_Kind_T := 39;
-   Cursor_First_Decl : constant Cursor_Kind_T := 1;
-   Cursor_Last_Decl : constant Cursor_Kind_T := 39;
-   Cursor_First_Ref : constant Cursor_Kind_T := 40;
-   Cursor_Obj_C_Super_Class_Ref : constant Cursor_Kind_T := 40;
-   Cursor_Obj_C_Protocol_Ref : constant Cursor_Kind_T := 41;
-   Cursor_Obj_C_Class_Ref : constant Cursor_Kind_T := 42;
-   Cursor_Type_Ref : constant Cursor_Kind_T := 43;
-   Cursor_CXX_Base_Specifier : constant Cursor_Kind_T := 44;
-   Cursor_Template_Ref : constant Cursor_Kind_T := 45;
-   Cursor_Namespace_Ref : constant Cursor_Kind_T := 46;
-   Cursor_Member_Ref : constant Cursor_Kind_T := 47;
-   Cursor_Label_Ref : constant Cursor_Kind_T := 48;
-   Cursor_Overloaded_Decl_Ref : constant Cursor_Kind_T := 49;
-   Cursor_Variable_Ref : constant Cursor_Kind_T := 50;
-   Cursor_Last_Ref : constant Cursor_Kind_T := 50;
-   Cursor_First_Invalid : constant Cursor_Kind_T := 70;
-   Cursor_Invalid_File : constant Cursor_Kind_T := 70;
-   Cursor_No_Decl_Found : constant Cursor_Kind_T := 71;
-   Cursor_Not_Implemented : constant Cursor_Kind_T := 72;
-   Cursor_Invalid_Code : constant Cursor_Kind_T := 73;
-   Cursor_Last_Invalid : constant Cursor_Kind_T := 73;
-   Cursor_First_Expr : constant Cursor_Kind_T := 100;
-   Cursor_Unexposed_Expr : constant Cursor_Kind_T := 100;
-   Cursor_Decl_Ref_Expr : constant Cursor_Kind_T := 101;
-   Cursor_Member_Ref_Expr : constant Cursor_Kind_T := 102;
-   Cursor_Call_Expr : constant Cursor_Kind_T := 103;
-   Cursor_Obj_C_Message_Expr : constant Cursor_Kind_T := 104;
-   Cursor_Block_Expr : constant Cursor_Kind_T := 105;
-   Cursor_Integer_Literal : constant Cursor_Kind_T := 106;
-   Cursor_Floating_Literal : constant Cursor_Kind_T := 107;
-   Cursor_Imaginary_Literal : constant Cursor_Kind_T := 108;
-   Cursor_String_Literal : constant Cursor_Kind_T := 109;
-   Cursor_Character_Literal : constant Cursor_Kind_T := 110;
-   Cursor_Paren_Expr : constant Cursor_Kind_T := 111;
-   Cursor_Unary_Operator : constant Cursor_Kind_T := 112;
-   Cursor_Array_Subscript_Expr : constant Cursor_Kind_T := 113;
-   Cursor_Binary_Operator : constant Cursor_Kind_T := 114;
-   Cursor_Compound_Assign_Operator : constant Cursor_Kind_T := 115;
-   Cursor_Conditional_Operator : constant Cursor_Kind_T := 116;
-   Cursor_C_Style_Cast_Expr : constant Cursor_Kind_T := 117;
-   Cursor_Compound_Literal_Expr : constant Cursor_Kind_T := 118;
-   Cursor_Init_List_Expr : constant Cursor_Kind_T := 119;
-   Cursor_Addr_Label_Expr : constant Cursor_Kind_T := 120;
-   Cursor_Stmt_Expr : constant Cursor_Kind_T := 121;
-   Cursor_Generic_Selection_Expr : constant Cursor_Kind_T := 122;
-   Cursor_GNU_Null_Expr : constant Cursor_Kind_T := 123;
-   Cursor_CXX_Static_Cast_Expr : constant Cursor_Kind_T := 124;
-   Cursor_CXX_Dynamic_Cast_Expr : constant Cursor_Kind_T := 125;
-   Cursor_CXX_Reinterpret_Cast_Expr : constant Cursor_Kind_T := 126;
-   Cursor_CXX_Const_Cast_Expr : constant Cursor_Kind_T := 127;
-   Cursor_CXX_Functional_Cast_Expr : constant Cursor_Kind_T := 128;
-   Cursor_CXX_Typeid_Expr : constant Cursor_Kind_T := 129;
-   Cursor_CXX_Bool_Literal_Expr : constant Cursor_Kind_T := 130;
-   Cursor_CXX_Null_Ptr_Literal_Expr : constant Cursor_Kind_T := 131;
-   Cursor_CXX_This_Expr : constant Cursor_Kind_T := 132;
-   Cursor_CXX_Throw_Expr : constant Cursor_Kind_T := 133;
-   Cursor_CXX_New_Expr : constant Cursor_Kind_T := 134;
-   Cursor_CXX_Delete_Expr : constant Cursor_Kind_T := 135;
-   Cursor_Unary_Expr : constant Cursor_Kind_T := 136;
-   Cursor_Obj_C_String_Literal : constant Cursor_Kind_T := 137;
-   Cursor_Obj_C_Encode_Expr : constant Cursor_Kind_T := 138;
-   Cursor_Obj_C_Selector_Expr : constant Cursor_Kind_T := 139;
-   Cursor_Obj_C_Protocol_Expr : constant Cursor_Kind_T := 140;
-   Cursor_Obj_C_Bridged_Cast_Expr : constant Cursor_Kind_T := 141;
-   Cursor_Pack_Expansion_Expr : constant Cursor_Kind_T := 142;
-   Cursor_Size_Of_Pack_Expr : constant Cursor_Kind_T := 143;
-   Cursor_Lambda_Expr : constant Cursor_Kind_T := 144;
-   Cursor_Obj_C_Bool_Literal_Expr : constant Cursor_Kind_T := 145;
-   Cursor_Obj_C_Self_Expr : constant Cursor_Kind_T := 146;
-   Cursor_OMP_Array_Section_Expr : constant Cursor_Kind_T := 147;
-   Cursor_Obj_C_Availability_Check_Expr : constant Cursor_Kind_T := 148;
-   Cursor_Fixed_Point_Literal : constant Cursor_Kind_T := 149;
-   Cursor_OMP_Array_Shaping_Expr : constant Cursor_Kind_T := 150;
-   Cursor_OMP_Iterator_Expr : constant Cursor_Kind_T := 151;
-   Cursor_CXX_Addrspace_Cast_Expr : constant Cursor_Kind_T := 152;
-   Cursor_Last_Expr : constant Cursor_Kind_T := 152;
-   Cursor_First_Stmt : constant Cursor_Kind_T := 200;
-   Cursor_Unexposed_Stmt : constant Cursor_Kind_T := 200;
-   Cursor_Label_Stmt : constant Cursor_Kind_T := 201;
-   Cursor_Compound_Stmt : constant Cursor_Kind_T := 202;
-   Cursor_Case_Stmt : constant Cursor_Kind_T := 203;
-   Cursor_Default_Stmt : constant Cursor_Kind_T := 204;
-   Cursor_If_Stmt : constant Cursor_Kind_T := 205;
-   Cursor_Switch_Stmt : constant Cursor_Kind_T := 206;
-   Cursor_While_Stmt : constant Cursor_Kind_T := 207;
-   Cursor_Do_Stmt : constant Cursor_Kind_T := 208;
-   Cursor_For_Stmt : constant Cursor_Kind_T := 209;
-   Cursor_Goto_Stmt : constant Cursor_Kind_T := 210;
-   Cursor_Indirect_Goto_Stmt : constant Cursor_Kind_T := 211;
-   Cursor_Continue_Stmt : constant Cursor_Kind_T := 212;
-   Cursor_Break_Stmt : constant Cursor_Kind_T := 213;
-   Cursor_Return_Stmt : constant Cursor_Kind_T := 214;
-   Cursor_GCC_Asm_Stmt : constant Cursor_Kind_T := 215;
-   Cursor_Asm_Stmt : constant Cursor_Kind_T := 215;
-   Cursor_Obj_C_At_Try_Stmt : constant Cursor_Kind_T := 216;
-   Cursor_Obj_C_At_Catch_Stmt : constant Cursor_Kind_T := 217;
-   Cursor_Obj_C_At_Finally_Stmt : constant Cursor_Kind_T := 218;
-   Cursor_Obj_C_At_Throw_Stmt : constant Cursor_Kind_T := 219;
-   Cursor_Obj_C_At_Synchronized_Stmt : constant Cursor_Kind_T := 220;
-   Cursor_Obj_C_Autorelease_Pool_Stmt : constant Cursor_Kind_T := 221;
-   Cursor_Obj_C_For_Collection_Stmt : constant Cursor_Kind_T := 222;
-   Cursor_CXX_Catch_Stmt : constant Cursor_Kind_T := 223;
-   Cursor_CXX_Try_Stmt : constant Cursor_Kind_T := 224;
-   Cursor_CXX_For_Range_Stmt : constant Cursor_Kind_T := 225;
-   Cursor_SEH_Try_Stmt : constant Cursor_Kind_T := 226;
-   Cursor_SEH_Except_Stmt : constant Cursor_Kind_T := 227;
-   Cursor_SEH_Finally_Stmt : constant Cursor_Kind_T := 228;
-   Cursor_MS_Asm_Stmt : constant Cursor_Kind_T := 229;
-   Cursor_Null_Stmt : constant Cursor_Kind_T := 230;
-   Cursor_Decl_Stmt : constant Cursor_Kind_T := 231;
-   Cursor_OMP_Parallel_Directive : constant Cursor_Kind_T := 232;
-   Cursor_OMP_Simd_Directive : constant Cursor_Kind_T := 233;
-   Cursor_OMP_For_Directive : constant Cursor_Kind_T := 234;
-   Cursor_OMP_Sections_Directive : constant Cursor_Kind_T := 235;
-   Cursor_OMP_Section_Directive : constant Cursor_Kind_T := 236;
-   Cursor_OMP_Single_Directive : constant Cursor_Kind_T := 237;
-   Cursor_OMP_Parallel_For_Directive : constant Cursor_Kind_T := 238;
-   Cursor_OMP_Parallel_Sections_Directive : constant Cursor_Kind_T := 239;
-   Cursor_OMP_Task_Directive : constant Cursor_Kind_T := 240;
-   Cursor_OMP_Master_Directive : constant Cursor_Kind_T := 241;
-   Cursor_OMP_Critical_Directive : constant Cursor_Kind_T := 242;
-   Cursor_OMP_Taskyield_Directive : constant Cursor_Kind_T := 243;
-   Cursor_OMP_Barrier_Directive : constant Cursor_Kind_T := 244;
-   Cursor_OMP_Taskwait_Directive : constant Cursor_Kind_T := 245;
-   Cursor_OMP_Flush_Directive : constant Cursor_Kind_T := 246;
-   Cursor_SEH_Leave_Stmt : constant Cursor_Kind_T := 247;
-   Cursor_OMP_Ordered_Directive : constant Cursor_Kind_T := 248;
-   Cursor_OMP_Atomic_Directive : constant Cursor_Kind_T := 249;
-   Cursor_OMP_For_Simd_Directive : constant Cursor_Kind_T := 250;
-   Cursor_OMP_Parallel_For_Simd_Directive : constant Cursor_Kind_T := 251;
-   Cursor_OMP_Target_Directive : constant Cursor_Kind_T := 252;
-   Cursor_OMP_Teams_Directive : constant Cursor_Kind_T := 253;
-   Cursor_OMP_Taskgroup_Directive : constant Cursor_Kind_T := 254;
-   Cursor_OMP_Cancellation_Point_Directive : constant Cursor_Kind_T := 255;
-   Cursor_OMP_Cancel_Directive : constant Cursor_Kind_T := 256;
-   Cursor_OMP_Target_Data_Directive : constant Cursor_Kind_T := 257;
-   Cursor_OMP_Task_Loop_Directive : constant Cursor_Kind_T := 258;
-   Cursor_OMP_Task_Loop_Simd_Directive : constant Cursor_Kind_T := 259;
-   Cursor_OMP_Distribute_Directive : constant Cursor_Kind_T := 260;
-   Cursor_OMP_Target_Enter_Data_Directive : constant Cursor_Kind_T := 261;
-   Cursor_OMP_Target_Exit_Data_Directive : constant Cursor_Kind_T := 262;
-   Cursor_OMP_Target_Parallel_Directive : constant Cursor_Kind_T := 263;
-   Cursor_OMP_Target_Parallel_For_Directive : constant Cursor_Kind_T := 264;
-   Cursor_OMP_Target_Update_Directive : constant Cursor_Kind_T := 265;
-   Cursor_OMP_Distribute_Parallel_For_Directive : constant Cursor_Kind_T := 266;
-   Cursor_OMP_Distribute_Parallel_For_Simd_Directive : constant Cursor_Kind_T := 267;
-   Cursor_OMP_Distribute_Simd_Directive : constant Cursor_Kind_T := 268;
-   Cursor_OMP_Target_Parallel_For_Simd_Directive : constant Cursor_Kind_T := 269;
-   Cursor_OMP_Target_Simd_Directive : constant Cursor_Kind_T := 270;
-   Cursor_OMP_Teams_Distribute_Directive : constant Cursor_Kind_T := 271;
-   Cursor_OMP_Teams_Distribute_Simd_Directive : constant Cursor_Kind_T := 272;
-   Cursor_OMP_Teams_Distribute_Parallel_For_Simd_Directive : constant Cursor_Kind_T := 273;
-   Cursor_OMP_Teams_Distribute_Parallel_For_Directive : constant Cursor_Kind_T := 274;
-   Cursor_OMP_Target_Teams_Directive : constant Cursor_Kind_T := 275;
-   Cursor_OMP_Target_Teams_Distribute_Directive : constant Cursor_Kind_T := 276;
-   Cursor_OMP_Target_Teams_Distribute_Parallel_For_Directive : constant Cursor_Kind_T := 277;
-   Cursor_OMP_Target_Teams_Distribute_Parallel_For_Simd_Directive : constant Cursor_Kind_T := 278;
-   Cursor_OMP_Target_Teams_Distribute_Simd_Directive : constant Cursor_Kind_T := 279;
-   Cursor_Builtin_Bit_Cast_Expr : constant Cursor_Kind_T := 280;
-   Cursor_OMP_Master_Task_Loop_Directive : constant Cursor_Kind_T := 281;
-   Cursor_OMP_Parallel_Master_Task_Loop_Directive : constant Cursor_Kind_T := 282;
-   Cursor_OMP_Master_Task_Loop_Simd_Directive : constant Cursor_Kind_T := 283;
-   Cursor_OMP_Parallel_Master_Task_Loop_Simd_Directive : constant Cursor_Kind_T := 284;
-   Cursor_OMP_Parallel_Master_Directive : constant Cursor_Kind_T := 285;
-   Cursor_OMP_Depobj_Directive : constant Cursor_Kind_T := 286;
-   Cursor_OMP_Scan_Directive : constant Cursor_Kind_T := 287;
-   Cursor_Last_Stmt : constant Cursor_Kind_T := 287;
-   Cursor_Translation_Unit : constant Cursor_Kind_T := 300;
-   Cursor_First_Attr : constant Cursor_Kind_T := 400;
-   Cursor_Unexposed_Attr : constant Cursor_Kind_T := 400;
-   Cursor_IB_Action_Attr : constant Cursor_Kind_T := 401;
-   Cursor_IB_Outlet_Attr : constant Cursor_Kind_T := 402;
-   Cursor_IB_Outlet_Collection_Attr : constant Cursor_Kind_T := 403;
-   Cursor_CXX_Final_Attr : constant Cursor_Kind_T := 404;
-   Cursor_CXX_Override_Attr : constant Cursor_Kind_T := 405;
-   Cursor_Annotate_Attr : constant Cursor_Kind_T := 406;
-   Cursor_Asm_Label_Attr : constant Cursor_Kind_T := 407;
-   Cursor_Packed_Attr : constant Cursor_Kind_T := 408;
-   Cursor_Pure_Attr : constant Cursor_Kind_T := 409;
-   Cursor_Const_Attr : constant Cursor_Kind_T := 410;
-   Cursor_No_Duplicate_Attr : constant Cursor_Kind_T := 411;
-   Cursor_CUDA_Constant_Attr : constant Cursor_Kind_T := 412;
-   Cursor_CUDA_Device_Attr : constant Cursor_Kind_T := 413;
-   Cursor_CUDA_Global_Attr : constant Cursor_Kind_T := 414;
-   Cursor_CUDA_Host_Attr : constant Cursor_Kind_T := 415;
-   Cursor_CUDA_Shared_Attr : constant Cursor_Kind_T := 416;
-   Cursor_Visibility_Attr : constant Cursor_Kind_T := 417;
-   Cursor_DLL_Export : constant Cursor_Kind_T := 418;
-   Cursor_DLL_Import : constant Cursor_Kind_T := 419;
-   Cursor_NS_Returns_Retained : constant Cursor_Kind_T := 420;
-   Cursor_NS_Returns_Not_Retained : constant Cursor_Kind_T := 421;
-   Cursor_NS_Returns_Autoreleased : constant Cursor_Kind_T := 422;
-   Cursor_NS_Consumes_Self : constant Cursor_Kind_T := 423;
-   Cursor_NS_Consumed : constant Cursor_Kind_T := 424;
-   Cursor_Obj_C_Exception : constant Cursor_Kind_T := 425;
-   Cursor_Obj_CNS_Object : constant Cursor_Kind_T := 426;
-   Cursor_Obj_C_Independent_Class : constant Cursor_Kind_T := 427;
-   Cursor_Obj_C_Precise_Lifetime : constant Cursor_Kind_T := 428;
-   Cursor_Obj_C_Returns_Inner_Pointer : constant Cursor_Kind_T := 429;
-   Cursor_Obj_C_Requires_Super : constant Cursor_Kind_T := 430;
-   Cursor_Obj_C_Root_Class : constant Cursor_Kind_T := 431;
-   Cursor_Obj_C_Subclassing_Restricted : constant Cursor_Kind_T := 432;
-   Cursor_Obj_C_Explicit_Protocol_Impl : constant Cursor_Kind_T := 433;
-   Cursor_Obj_C_Designated_Initializer : constant Cursor_Kind_T := 434;
-   Cursor_Obj_C_Runtime_Visible : constant Cursor_Kind_T := 435;
-   Cursor_Obj_C_Boxable : constant Cursor_Kind_T := 436;
-   Cursor_Flag_Enum : constant Cursor_Kind_T := 437;
-   Cursor_Convergent_Attr : constant Cursor_Kind_T := 438;
-   Cursor_Warn_Unused_Attr : constant Cursor_Kind_T := 439;
-   Cursor_Warn_Unused_Result_Attr : constant Cursor_Kind_T := 440;
-   Cursor_Aligned_Attr : constant Cursor_Kind_T := 441;
-   Cursor_Last_Attr : constant Cursor_Kind_T := 441;
-   Cursor_Preprocessing_Directive : constant Cursor_Kind_T := 500;
-   Cursor_Macro_Definition : constant Cursor_Kind_T := 501;
-   Cursor_Macro_Expansion : constant Cursor_Kind_T := 502;
-   Cursor_Macro_Instantiation : constant Cursor_Kind_T := 502;
-   Cursor_Inclusion_Directive : constant Cursor_Kind_T := 503;
-   Cursor_First_Preprocessing : constant Cursor_Kind_T := 500;
-   Cursor_Last_Preprocessing : constant Cursor_Kind_T := 503;
-   Cursor_Module_Import_Decl : constant Cursor_Kind_T := 600;
-   Cursor_Type_Alias_Template_Decl : constant Cursor_Kind_T := 601;
-   Cursor_Static_Assert : constant Cursor_Kind_T := 602;
-   Cursor_Friend_Decl : constant Cursor_Kind_T := 603;
-   Cursor_First_Extra_Decl : constant Cursor_Kind_T := 600;
-   Cursor_Last_Extra_Decl : constant Cursor_Kind_T := 603;
-   Cursor_Overload_Candidate : constant Cursor_Kind_T := 700;  -- /usr/local/include/clang-c/Index.h:1706
+   Cursor_Unexposed_Decl : constant unsigned := 1;
+   Cursor_Struct_Decl : constant unsigned := 2;
+   Cursor_Union_Decl : constant unsigned := 3;
+   Cursor_Class_Decl : constant unsigned := 4;
+   Cursor_Enum_Decl : constant unsigned := 5;
+   Cursor_Field_Decl : constant unsigned := 6;
+   Cursor_Enum_Constant_Decl : constant unsigned := 7;
+   Cursor_Function_Decl : constant unsigned := 8;
+   Cursor_Var_Decl : constant unsigned := 9;
+   Cursor_Parm_Decl : constant unsigned := 10;
+   Cursor_Obj_C_Interface_Decl : constant unsigned := 11;
+   Cursor_Obj_C_Category_Decl : constant unsigned := 12;
+   Cursor_Obj_C_Protocol_Decl : constant unsigned := 13;
+   Cursor_Obj_C_Property_Decl : constant unsigned := 14;
+   Cursor_Obj_C_Ivar_Decl : constant unsigned := 15;
+   Cursor_Obj_C_Instance_Method_Decl : constant unsigned := 16;
+   Cursor_Obj_C_Class_Method_Decl : constant unsigned := 17;
+   Cursor_Obj_C_Implementation_Decl : constant unsigned := 18;
+   Cursor_Obj_C_Category_Impl_Decl : constant unsigned := 19;
+   Cursor_Typedef_Decl : constant unsigned := 20;
+   Cursor_CXX_Method : constant unsigned := 21;
+   Cursor_Namespace : constant unsigned := 22;
+   Cursor_Linkage_Spec : constant unsigned := 23;
+   Cursor_Constructor : constant unsigned := 24;
+   Cursor_Destructor : constant unsigned := 25;
+   Cursor_Conversion_Function : constant unsigned := 26;
+   Cursor_Template_Type_Parameter : constant unsigned := 27;
+   Cursor_Non_Type_Template_Parameter : constant unsigned := 28;
+   Cursor_Template_Template_Parameter : constant unsigned := 29;
+   Cursor_Function_Template : constant unsigned := 30;
+   Cursor_Class_Template : constant unsigned := 31;
+   Cursor_Class_Template_Partial_Specialization : constant unsigned := 32;
+   Cursor_Namespace_Alias : constant unsigned := 33;
+   Cursor_Using_Directive : constant unsigned := 34;
+   Cursor_Using_Declaration : constant unsigned := 35;
+   Cursor_Type_Alias_Decl : constant unsigned := 36;
+   Cursor_Obj_C_Synthesize_Decl : constant unsigned := 37;
+   Cursor_Obj_C_Dynamic_Decl : constant unsigned := 38;
+   Cursor_CXX_Access_Specifier : constant unsigned := 39;
+   Cursor_First_Decl : constant unsigned := 1;
+   Cursor_Last_Decl : constant unsigned := 39;
+   Cursor_First_Ref : constant unsigned := 40;
+   Cursor_Obj_C_Super_Class_Ref : constant unsigned := 40;
+   Cursor_Obj_C_Protocol_Ref : constant unsigned := 41;
+   Cursor_Obj_C_Class_Ref : constant unsigned := 42;
+   Cursor_Type_Ref : constant unsigned := 43;
+   Cursor_CXX_Base_Specifier : constant unsigned := 44;
+   Cursor_Template_Ref : constant unsigned := 45;
+   Cursor_Namespace_Ref : constant unsigned := 46;
+   Cursor_Member_Ref : constant unsigned := 47;
+   Cursor_Label_Ref : constant unsigned := 48;
+   Cursor_Overloaded_Decl_Ref : constant unsigned := 49;
+   Cursor_Variable_Ref : constant unsigned := 50;
+   Cursor_Last_Ref : constant unsigned := 50;
+   Cursor_First_Invalid : constant unsigned := 70;
+   Cursor_Invalid_File : constant unsigned := 70;
+   Cursor_No_Decl_Found : constant unsigned := 71;
+   Cursor_Not_Implemented : constant unsigned := 72;
+   Cursor_Invalid_Code : constant unsigned := 73;
+   Cursor_Last_Invalid : constant unsigned := 73;
+   Cursor_First_Expr : constant unsigned := 100;
+   Cursor_Unexposed_Expr : constant unsigned := 100;
+   Cursor_Decl_Ref_Expr : constant unsigned := 101;
+   Cursor_Member_Ref_Expr : constant unsigned := 102;
+   Cursor_Call_Expr : constant unsigned := 103;
+   Cursor_Obj_C_Message_Expr : constant unsigned := 104;
+   Cursor_Block_Expr : constant unsigned := 105;
+   Cursor_Integer_Literal : constant unsigned := 106;
+   Cursor_Floating_Literal : constant unsigned := 107;
+   Cursor_Imaginary_Literal : constant unsigned := 108;
+   Cursor_String_Literal : constant unsigned := 109;
+   Cursor_Character_Literal : constant unsigned := 110;
+   Cursor_Paren_Expr : constant unsigned := 111;
+   Cursor_Unary_Operator : constant unsigned := 112;
+   Cursor_Array_Subscript_Expr : constant unsigned := 113;
+   Cursor_Binary_Operator : constant unsigned := 114;
+   Cursor_Compound_Assign_Operator : constant unsigned := 115;
+   Cursor_Conditional_Operator : constant unsigned := 116;
+   Cursor_C_Style_Cast_Expr : constant unsigned := 117;
+   Cursor_Compound_Literal_Expr : constant unsigned := 118;
+   Cursor_Init_List_Expr : constant unsigned := 119;
+   Cursor_Addr_Label_Expr : constant unsigned := 120;
+   Cursor_Stmt_Expr : constant unsigned := 121;
+   Cursor_Generic_Selection_Expr : constant unsigned := 122;
+   Cursor_GNU_Null_Expr : constant unsigned := 123;
+   Cursor_CXX_Static_Cast_Expr : constant unsigned := 124;
+   Cursor_CXX_Dynamic_Cast_Expr : constant unsigned := 125;
+   Cursor_CXX_Reinterpret_Cast_Expr : constant unsigned := 126;
+   Cursor_CXX_Const_Cast_Expr : constant unsigned := 127;
+   Cursor_CXX_Functional_Cast_Expr : constant unsigned := 128;
+   Cursor_CXX_Typeid_Expr : constant unsigned := 129;
+   Cursor_CXX_Bool_Literal_Expr : constant unsigned := 130;
+   Cursor_CXX_Null_Ptr_Literal_Expr : constant unsigned := 131;
+   Cursor_CXX_This_Expr : constant unsigned := 132;
+   Cursor_CXX_Throw_Expr : constant unsigned := 133;
+   Cursor_CXX_New_Expr : constant unsigned := 134;
+   Cursor_CXX_Delete_Expr : constant unsigned := 135;
+   Cursor_Unary_Expr : constant unsigned := 136;
+   Cursor_Obj_C_String_Literal : constant unsigned := 137;
+   Cursor_Obj_C_Encode_Expr : constant unsigned := 138;
+   Cursor_Obj_C_Selector_Expr : constant unsigned := 139;
+   Cursor_Obj_C_Protocol_Expr : constant unsigned := 140;
+   Cursor_Obj_C_Bridged_Cast_Expr : constant unsigned := 141;
+   Cursor_Pack_Expansion_Expr : constant unsigned := 142;
+   Cursor_Size_Of_Pack_Expr : constant unsigned := 143;
+   Cursor_Lambda_Expr : constant unsigned := 144;
+   Cursor_Obj_C_Bool_Literal_Expr : constant unsigned := 145;
+   Cursor_Obj_C_Self_Expr : constant unsigned := 146;
+   Cursor_OMP_Array_Section_Expr : constant unsigned := 147;
+   Cursor_Obj_C_Availability_Check_Expr : constant unsigned := 148;
+   Cursor_Fixed_Point_Literal : constant unsigned := 149;
+   Cursor_OMP_Array_Shaping_Expr : constant unsigned := 150;
+   Cursor_OMP_Iterator_Expr : constant unsigned := 151;
+   Cursor_CXX_Addrspace_Cast_Expr : constant unsigned := 152;
+   Cursor_Last_Expr : constant unsigned := 152;
+   Cursor_First_Stmt : constant unsigned := 200;
+   Cursor_Unexposed_Stmt : constant unsigned := 200;
+   Cursor_Label_Stmt : constant unsigned := 201;
+   Cursor_Compound_Stmt : constant unsigned := 202;
+   Cursor_Case_Stmt : constant unsigned := 203;
+   Cursor_Default_Stmt : constant unsigned := 204;
+   Cursor_If_Stmt : constant unsigned := 205;
+   Cursor_Switch_Stmt : constant unsigned := 206;
+   Cursor_While_Stmt : constant unsigned := 207;
+   Cursor_Do_Stmt : constant unsigned := 208;
+   Cursor_For_Stmt : constant unsigned := 209;
+   Cursor_Goto_Stmt : constant unsigned := 210;
+   Cursor_Indirect_Goto_Stmt : constant unsigned := 211;
+   Cursor_Continue_Stmt : constant unsigned := 212;
+   Cursor_Break_Stmt : constant unsigned := 213;
+   Cursor_Return_Stmt : constant unsigned := 214;
+   Cursor_GCC_Asm_Stmt : constant unsigned := 215;
+   Cursor_Asm_Stmt : constant unsigned := 215;
+   Cursor_Obj_C_At_Try_Stmt : constant unsigned := 216;
+   Cursor_Obj_C_At_Catch_Stmt : constant unsigned := 217;
+   Cursor_Obj_C_At_Finally_Stmt : constant unsigned := 218;
+   Cursor_Obj_C_At_Throw_Stmt : constant unsigned := 219;
+   Cursor_Obj_C_At_Synchronized_Stmt : constant unsigned := 220;
+   Cursor_Obj_C_Autorelease_Pool_Stmt : constant unsigned := 221;
+   Cursor_Obj_C_For_Collection_Stmt : constant unsigned := 222;
+   Cursor_CXX_Catch_Stmt : constant unsigned := 223;
+   Cursor_CXX_Try_Stmt : constant unsigned := 224;
+   Cursor_CXX_For_Range_Stmt : constant unsigned := 225;
+   Cursor_SEH_Try_Stmt : constant unsigned := 226;
+   Cursor_SEH_Except_Stmt : constant unsigned := 227;
+   Cursor_SEH_Finally_Stmt : constant unsigned := 228;
+   Cursor_MS_Asm_Stmt : constant unsigned := 229;
+   Cursor_Null_Stmt : constant unsigned := 230;
+   Cursor_Decl_Stmt : constant unsigned := 231;
+   Cursor_OMP_Parallel_Directive : constant unsigned := 232;
+   Cursor_OMP_Simd_Directive : constant unsigned := 233;
+   Cursor_OMP_For_Directive : constant unsigned := 234;
+   Cursor_OMP_Sections_Directive : constant unsigned := 235;
+   Cursor_OMP_Section_Directive : constant unsigned := 236;
+   Cursor_OMP_Single_Directive : constant unsigned := 237;
+   Cursor_OMP_Parallel_For_Directive : constant unsigned := 238;
+   Cursor_OMP_Parallel_Sections_Directive : constant unsigned := 239;
+   Cursor_OMP_Task_Directive : constant unsigned := 240;
+   Cursor_OMP_Master_Directive : constant unsigned := 241;
+   Cursor_OMP_Critical_Directive : constant unsigned := 242;
+   Cursor_OMP_Taskyield_Directive : constant unsigned := 243;
+   Cursor_OMP_Barrier_Directive : constant unsigned := 244;
+   Cursor_OMP_Taskwait_Directive : constant unsigned := 245;
+   Cursor_OMP_Flush_Directive : constant unsigned := 246;
+   Cursor_SEH_Leave_Stmt : constant unsigned := 247;
+   Cursor_OMP_Ordered_Directive : constant unsigned := 248;
+   Cursor_OMP_Atomic_Directive : constant unsigned := 249;
+   Cursor_OMP_For_Simd_Directive : constant unsigned := 250;
+   Cursor_OMP_Parallel_For_Simd_Directive : constant unsigned := 251;
+   Cursor_OMP_Target_Directive : constant unsigned := 252;
+   Cursor_OMP_Teams_Directive : constant unsigned := 253;
+   Cursor_OMP_Taskgroup_Directive : constant unsigned := 254;
+   Cursor_OMP_Cancellation_Point_Directive : constant unsigned := 255;
+   Cursor_OMP_Cancel_Directive : constant unsigned := 256;
+   Cursor_OMP_Target_Data_Directive : constant unsigned := 257;
+   Cursor_OMP_Task_Loop_Directive : constant unsigned := 258;
+   Cursor_OMP_Task_Loop_Simd_Directive : constant unsigned := 259;
+   Cursor_OMP_Distribute_Directive : constant unsigned := 260;
+   Cursor_OMP_Target_Enter_Data_Directive : constant unsigned := 261;
+   Cursor_OMP_Target_Exit_Data_Directive : constant unsigned := 262;
+   Cursor_OMP_Target_Parallel_Directive : constant unsigned := 263;
+   Cursor_OMP_Target_Parallel_For_Directive : constant unsigned := 264;
+   Cursor_OMP_Target_Update_Directive : constant unsigned := 265;
+   Cursor_OMP_Distribute_Parallel_For_Directive : constant unsigned := 266;
+   Cursor_OMP_Distribute_Parallel_For_Simd_Directive : constant unsigned := 267;
+   Cursor_OMP_Distribute_Simd_Directive : constant unsigned := 268;
+   Cursor_OMP_Target_Parallel_For_Simd_Directive : constant unsigned := 269;
+   Cursor_OMP_Target_Simd_Directive : constant unsigned := 270;
+   Cursor_OMP_Teams_Distribute_Directive : constant unsigned := 271;
+   Cursor_OMP_Teams_Distribute_Simd_Directive : constant unsigned := 272;
+   Cursor_OMP_Teams_Distribute_Parallel_For_Simd_Directive : constant unsigned := 273;
+   Cursor_OMP_Teams_Distribute_Parallel_For_Directive : constant unsigned := 274;
+   Cursor_OMP_Target_Teams_Directive : constant unsigned := 275;
+   Cursor_OMP_Target_Teams_Distribute_Directive : constant unsigned := 276;
+   Cursor_OMP_Target_Teams_Distribute_Parallel_For_Directive : constant unsigned := 277;
+   Cursor_OMP_Target_Teams_Distribute_Parallel_For_Simd_Directive : constant unsigned := 278;
+   Cursor_OMP_Target_Teams_Distribute_Simd_Directive : constant unsigned := 279;
+   Cursor_Builtin_Bit_Cast_Expr : constant unsigned := 280;
+   Cursor_OMP_Master_Task_Loop_Directive : constant unsigned := 281;
+   Cursor_OMP_Parallel_Master_Task_Loop_Directive : constant unsigned := 282;
+   Cursor_OMP_Master_Task_Loop_Simd_Directive : constant unsigned := 283;
+   Cursor_OMP_Parallel_Master_Task_Loop_Simd_Directive : constant unsigned := 284;
+   Cursor_OMP_Parallel_Master_Directive : constant unsigned := 285;
+   Cursor_OMP_Depobj_Directive : constant unsigned := 286;
+   Cursor_OMP_Scan_Directive : constant unsigned := 287;
+   Cursor_Last_Stmt : constant unsigned := 287;
+   Cursor_Translation_Unit : constant unsigned := 300;
+   Cursor_First_Attr : constant unsigned := 400;
+   Cursor_Unexposed_Attr : constant unsigned := 400;
+   Cursor_IB_Action_Attr : constant unsigned := 401;
+   Cursor_IB_Outlet_Attr : constant unsigned := 402;
+   Cursor_IB_Outlet_Collection_Attr : constant unsigned := 403;
+   Cursor_CXX_Final_Attr : constant unsigned := 404;
+   Cursor_CXX_Override_Attr : constant unsigned := 405;
+   Cursor_Annotate_Attr : constant unsigned := 406;
+   Cursor_Asm_Label_Attr : constant unsigned := 407;
+   Cursor_Packed_Attr : constant unsigned := 408;
+   Cursor_Pure_Attr : constant unsigned := 409;
+   Cursor_Const_Attr : constant unsigned := 410;
+   Cursor_No_Duplicate_Attr : constant unsigned := 411;
+   Cursor_CUDA_Constant_Attr : constant unsigned := 412;
+   Cursor_CUDA_Device_Attr : constant unsigned := 413;
+   Cursor_CUDA_Global_Attr : constant unsigned := 414;
+   Cursor_CUDA_Host_Attr : constant unsigned := 415;
+   Cursor_CUDA_Shared_Attr : constant unsigned := 416;
+   Cursor_Visibility_Attr : constant unsigned := 417;
+   Cursor_DLL_Export : constant unsigned := 418;
+   Cursor_DLL_Import : constant unsigned := 419;
+   Cursor_NS_Returns_Retained : constant unsigned := 420;
+   Cursor_NS_Returns_Not_Retained : constant unsigned := 421;
+   Cursor_NS_Returns_Autoreleased : constant unsigned := 422;
+   Cursor_NS_Consumes_Self : constant unsigned := 423;
+   Cursor_NS_Consumed : constant unsigned := 424;
+   Cursor_Obj_C_Exception : constant unsigned := 425;
+   Cursor_Obj_CNS_Object : constant unsigned := 426;
+   Cursor_Obj_C_Independent_Class : constant unsigned := 427;
+   Cursor_Obj_C_Precise_Lifetime : constant unsigned := 428;
+   Cursor_Obj_C_Returns_Inner_Pointer : constant unsigned := 429;
+   Cursor_Obj_C_Requires_Super : constant unsigned := 430;
+   Cursor_Obj_C_Root_Class : constant unsigned := 431;
+   Cursor_Obj_C_Subclassing_Restricted : constant unsigned := 432;
+   Cursor_Obj_C_Explicit_Protocol_Impl : constant unsigned := 433;
+   Cursor_Obj_C_Designated_Initializer : constant unsigned := 434;
+   Cursor_Obj_C_Runtime_Visible : constant unsigned := 435;
+   Cursor_Obj_C_Boxable : constant unsigned := 436;
+   Cursor_Flag_Enum : constant unsigned := 437;
+   Cursor_Convergent_Attr : constant unsigned := 438;
+   Cursor_Warn_Unused_Attr : constant unsigned := 439;
+   Cursor_Warn_Unused_Result_Attr : constant unsigned := 440;
+   Cursor_Aligned_Attr : constant unsigned := 441;
+   Cursor_Last_Attr : constant unsigned := 441;
+   Cursor_Preprocessing_Directive : constant unsigned := 500;
+   Cursor_Macro_Definition : constant unsigned := 501;
+   Cursor_Macro_Expansion : constant unsigned := 502;
+   Cursor_Macro_Instantiation : constant unsigned := 502;
+   Cursor_Inclusion_Directive : constant unsigned := 503;
+   Cursor_First_Preprocessing : constant unsigned := 500;
+   Cursor_Last_Preprocessing : constant unsigned := 503;
+   Cursor_Module_Import_Decl : constant unsigned := 600;
+   Cursor_Type_Alias_Template_Decl : constant unsigned := 601;
+   Cursor_Static_Assert : constant unsigned := 602;
+   Cursor_Friend_Decl : constant unsigned := 603;
+   Cursor_First_Extra_Decl : constant unsigned := 600;
+   Cursor_Last_Extra_Decl : constant unsigned := 603;
+   Cursor_Overload_Candidate : constant unsigned := 700;  -- /usr/local/include/clang-c/Index.h:1706
 
   -- Declarations  
   --*
@@ -3162,13 +3021,15 @@ function Get_TU_Resource_Usage_Name
   -- * source code into the AST.
   --  
 
-   type anon_array1257 is array (0 .. 2) of System.Address;
+   type Cursor_Data_Array_T is array (0 .. 2) of System.Address;
    type Cursor_T is record
       kind : aliased Cursor_Kind_T;  -- /usr/local/include/clang-c/Index.h:2683
       xdata : aliased int;  -- /usr/local/include/clang-c/Index.h:2684
-      data : anon_array1257;  -- /usr/local/include/clang-c/Index.h:2685
+      data : Cursor_Data_Array_T;  -- /usr/local/include/clang-c/Index.h:2685
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:2686
+
+   --  skipped anonymous struct anon_8
 
   --*
   -- * \defgroup CINDEX_CURSOR_MANIP Cursor manipulations
@@ -3213,12 +3074,6 @@ function Get_TU_Resource_Usage_Name
 function Cursor_Is_Null
      (Cursor : Cursor_T)
       return Boolean;
-   function Cursor_Is_Null_C
-     (Cursor : Cursor_T)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Cursor_isNull";
 
   --*
   -- * Compute a hash value for the given cursor.
@@ -3245,12 +3100,6 @@ function Cursor_Is_Null
 function Is_Declaration
      (Arg_1 : Cursor_Kind_T)
       return Boolean;
-   function Is_Declaration_C
-     (Arg_1 : Cursor_Kind_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isDeclaration";
 
   --*
   -- * Determine whether the given declaration is invalid.
@@ -3264,12 +3113,6 @@ function Is_Declaration
 function Is_Invalid_Declaration
      (Arg_1 : Cursor_T)
       return Boolean;
-   function Is_Invalid_Declaration_C
-     (Arg_1 : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isInvalidDeclaration";
 
   --*
   -- * Determine whether the given cursor kind represents a simple
@@ -3283,12 +3126,6 @@ function Is_Invalid_Declaration
 function Is_Reference
      (Arg_1 : Cursor_Kind_T)
       return Boolean;
-   function Is_Reference_C
-     (Arg_1 : Cursor_Kind_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isReference";
 
   --*
   -- * Determine whether the given cursor kind represents an expression.
@@ -3297,12 +3134,6 @@ function Is_Reference
 function Is_Expression
      (Arg_1 : Cursor_Kind_T)
       return Boolean;
-   function Is_Expression_C
-     (Arg_1 : Cursor_Kind_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isExpression";
 
   --*
   -- * Determine whether the given cursor kind represents a statement.
@@ -3311,12 +3142,6 @@ function Is_Expression
 function Is_Statement
      (Arg_1 : Cursor_Kind_T)
       return Boolean;
-   function Is_Statement_C
-     (Arg_1 : Cursor_Kind_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isStatement";
 
   --*
   -- * Determine whether the given cursor kind represents an attribute.
@@ -3325,12 +3150,6 @@ function Is_Statement
 function Is_Attribute
      (Arg_1 : Cursor_Kind_T)
       return Boolean;
-   function Is_Attribute_C
-     (Arg_1 : Cursor_Kind_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isAttribute";
 
   --*
   -- * Determine whether the given cursor has any attributes.
@@ -3349,12 +3168,6 @@ function Is_Attribute
 function Is_Invalid
      (Arg_1 : Cursor_Kind_T)
       return Boolean;
-   function Is_Invalid_C
-     (Arg_1 : Cursor_Kind_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isInvalid";
 
   --*
   -- * Determine whether the given cursor kind represents a translation
@@ -3364,12 +3177,6 @@ function Is_Invalid
 function Is_Translation_Unit
      (Arg_1 : Cursor_Kind_T)
       return Boolean;
-   function Is_Translation_Unit_C
-     (Arg_1 : Cursor_Kind_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isTranslationUnit";
 
   --**
   -- * Determine whether the given cursor represents a preprocessing
@@ -3379,12 +3186,6 @@ function Is_Translation_Unit
 function Is_Preprocessing
      (Arg_1 : Cursor_Kind_T)
       return Boolean;
-   function Is_Preprocessing_C
-     (Arg_1 : Cursor_Kind_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isPreprocessing";
 
   --**
   -- * Determine whether the given cursor represents a currently
@@ -3394,12 +3195,6 @@ function Is_Preprocessing
 function Is_Unexposed
      (Arg_1 : Cursor_Kind_T)
       return Boolean;
-   function Is_Unexposed_C
-     (Arg_1 : Cursor_Kind_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isUnexposed";
 
   --*
   -- * Describe the linkage of the entity referred to by a cursor.
@@ -3947,126 +3742,126 @@ function Is_Unexposed
   --  
 
    subtype Type_Kind_T is unsigned;
-   Type_Invalid : constant Type_Kind_T := 0;
-   Type_Unexposed : constant Type_Kind_T := 1;
-   Type_Void : constant Type_Kind_T := 2;
-   Type_Bool : constant Type_Kind_T := 3;
-   Type_Char_U : constant Type_Kind_T := 4;
-   Type_U_Char : constant Type_Kind_T := 5;
-   Type_Char_16 : constant Type_Kind_T := 6;
-   Type_Char_32 : constant Type_Kind_T := 7;
-   Type_U_Short : constant Type_Kind_T := 8;
-   Type_U_Int : constant Type_Kind_T := 9;
-   Type_U_Long : constant Type_Kind_T := 10;
-   Type_U_Long_Long : constant Type_Kind_T := 11;
-   Type_U_Int_128 : constant Type_Kind_T := 12;
-   Type_Char_S : constant Type_Kind_T := 13;
-   Type_S_Char : constant Type_Kind_T := 14;
-   Type_W_Char : constant Type_Kind_T := 15;
-   Type_Short : constant Type_Kind_T := 16;
-   Type_Int : constant Type_Kind_T := 17;
-   Type_Long : constant Type_Kind_T := 18;
-   Type_Long_Long : constant Type_Kind_T := 19;
-   Type_Int_128 : constant Type_Kind_T := 20;
-   Type_Float : constant Type_Kind_T := 21;
-   Type_Double : constant Type_Kind_T := 22;
-   Type_Long_Double : constant Type_Kind_T := 23;
-   Type_Null_Ptr : constant Type_Kind_T := 24;
-   Type_Overload : constant Type_Kind_T := 25;
-   Type_Dependent : constant Type_Kind_T := 26;
-   Type_Obj_C_Id : constant Type_Kind_T := 27;
-   Type_Obj_C_Class : constant Type_Kind_T := 28;
-   Type_Obj_C_Sel : constant Type_Kind_T := 29;
-   Type_Float_128 : constant Type_Kind_T := 30;
-   Type_Half : constant Type_Kind_T := 31;
-   Type_Float_16 : constant Type_Kind_T := 32;
-   Type_Short_Accum : constant Type_Kind_T := 33;
-   Type_Accum : constant Type_Kind_T := 34;
-   Type_Long_Accum : constant Type_Kind_T := 35;
-   Type_U_Short_Accum : constant Type_Kind_T := 36;
-   Type_U_Accum : constant Type_Kind_T := 37;
-   Type_U_Long_Accum : constant Type_Kind_T := 38;
-   Type_B_Float_16 : constant Type_Kind_T := 39;
-   Type_First_Builtin : constant Type_Kind_T := 2;
-   Type_Last_Builtin : constant Type_Kind_T := 39;
-   Type_Complex : constant Type_Kind_T := 100;
-   Type_Pointer : constant Type_Kind_T := 101;
-   Type_Block_Pointer : constant Type_Kind_T := 102;
-   Type_L_Value_Reference : constant Type_Kind_T := 103;
-   Type_R_Value_Reference : constant Type_Kind_T := 104;
-   Type_Record : constant Type_Kind_T := 105;
-   Type_Enum : constant Type_Kind_T := 106;
-   Type_Typedef : constant Type_Kind_T := 107;
-   Type_Obj_C_Interface : constant Type_Kind_T := 108;
-   Type_Obj_C_Object_Pointer : constant Type_Kind_T := 109;
-   Type_Function_No_Proto : constant Type_Kind_T := 110;
-   Type_Function_Proto : constant Type_Kind_T := 111;
-   Type_Constant_Array : constant Type_Kind_T := 112;
-   Type_Vector : constant Type_Kind_T := 113;
-   Type_Incomplete_Array : constant Type_Kind_T := 114;
-   Type_Variable_Array : constant Type_Kind_T := 115;
-   Type_Dependent_Sized_Array : constant Type_Kind_T := 116;
-   Type_Member_Pointer : constant Type_Kind_T := 117;
-   Type_Auto : constant Type_Kind_T := 118;
-   Type_Elaborated : constant Type_Kind_T := 119;
-   Type_Pipe : constant Type_Kind_T := 120;
-   Type_OCL_Image_1d_RO : constant Type_Kind_T := 121;
-   Type_OCL_Image_1d_Array_RO : constant Type_Kind_T := 122;
-   Type_OCL_Image_1d_Buffer_RO : constant Type_Kind_T := 123;
-   Type_OCL_Image_2d_RO : constant Type_Kind_T := 124;
-   Type_OCL_Image_2d_Array_RO : constant Type_Kind_T := 125;
-   Type_OCL_Image_2d_Depth_RO : constant Type_Kind_T := 126;
-   Type_OCL_Image_2d_Array_Depth_RO : constant Type_Kind_T := 127;
-   Type_OCL_Image_2d_MSAARO : constant Type_Kind_T := 128;
-   Type_OCL_Image_2d_Array_MSAARO : constant Type_Kind_T := 129;
-   Type_OCL_Image_2d_MSAA_Depth_RO : constant Type_Kind_T := 130;
-   Type_OCL_Image_2d_Array_MSAA_Depth_RO : constant Type_Kind_T := 131;
-   Type_OCL_Image_3d_RO : constant Type_Kind_T := 132;
-   Type_OCL_Image_1d_WO : constant Type_Kind_T := 133;
-   Type_OCL_Image_1d_Array_WO : constant Type_Kind_T := 134;
-   Type_OCL_Image_1d_Buffer_WO : constant Type_Kind_T := 135;
-   Type_OCL_Image_2d_WO : constant Type_Kind_T := 136;
-   Type_OCL_Image_2d_Array_WO : constant Type_Kind_T := 137;
-   Type_OCL_Image_2d_Depth_WO : constant Type_Kind_T := 138;
-   Type_OCL_Image_2d_Array_Depth_WO : constant Type_Kind_T := 139;
-   Type_OCL_Image_2d_MSAAWO : constant Type_Kind_T := 140;
-   Type_OCL_Image_2d_Array_MSAAWO : constant Type_Kind_T := 141;
-   Type_OCL_Image_2d_MSAA_Depth_WO : constant Type_Kind_T := 142;
-   Type_OCL_Image_2d_Array_MSAA_Depth_WO : constant Type_Kind_T := 143;
-   Type_OCL_Image_3d_WO : constant Type_Kind_T := 144;
-   Type_OCL_Image_1d_RW : constant Type_Kind_T := 145;
-   Type_OCL_Image_1d_Array_RW : constant Type_Kind_T := 146;
-   Type_OCL_Image_1d_Buffer_RW : constant Type_Kind_T := 147;
-   Type_OCL_Image_2d_RW : constant Type_Kind_T := 148;
-   Type_OCL_Image_2d_Array_RW : constant Type_Kind_T := 149;
-   Type_OCL_Image_2d_Depth_RW : constant Type_Kind_T := 150;
-   Type_OCL_Image_2d_Array_Depth_RW : constant Type_Kind_T := 151;
-   Type_OCL_Image_2d_MSAARW : constant Type_Kind_T := 152;
-   Type_OCL_Image_2d_Array_MSAARW : constant Type_Kind_T := 153;
-   Type_OCL_Image_2d_MSAA_Depth_RW : constant Type_Kind_T := 154;
-   Type_OCL_Image_2d_Array_MSAA_Depth_RW : constant Type_Kind_T := 155;
-   Type_OCL_Image_3d_RW : constant Type_Kind_T := 156;
-   Type_OCL_Sampler : constant Type_Kind_T := 157;
-   Type_OCL_Event : constant Type_Kind_T := 158;
-   Type_OCL_Queue : constant Type_Kind_T := 159;
-   Type_OCL_Reserve_ID : constant Type_Kind_T := 160;
-   Type_Obj_C_Object : constant Type_Kind_T := 161;
-   Type_Obj_C_Type_Param : constant Type_Kind_T := 162;
-   Type_Attributed : constant Type_Kind_T := 163;
-   Type_OCL_Intel_Subgroup_AVC_Mce_Payload : constant Type_Kind_T := 164;
-   Type_OCL_Intel_Subgroup_AVC_Ime_Payload : constant Type_Kind_T := 165;
-   Type_OCL_Intel_Subgroup_AVC_Ref_Payload : constant Type_Kind_T := 166;
-   Type_OCL_Intel_Subgroup_AVC_Sic_Payload : constant Type_Kind_T := 167;
-   Type_OCL_Intel_Subgroup_AVC_Mce_Result : constant Type_Kind_T := 168;
-   Type_OCL_Intel_Subgroup_AVC_Ime_Result : constant Type_Kind_T := 169;
-   Type_OCL_Intel_Subgroup_AVC_Ref_Result : constant Type_Kind_T := 170;
-   Type_OCL_Intel_Subgroup_AVC_Sic_Result : constant Type_Kind_T := 171;
-   Type_OCL_Intel_Subgroup_AVC_Ime_Result_Single_Ref_Streamout : constant Type_Kind_T := 172;
-   Type_OCL_Intel_Subgroup_AVC_Ime_Result_Dual_Ref_Streamout : constant Type_Kind_T := 173;
-   Type_OCL_Intel_Subgroup_AVC_Ime_Single_Ref_Streamin : constant Type_Kind_T := 174;
-   Type_OCL_Intel_Subgroup_AVC_Ime_Dual_Ref_Streamin : constant Type_Kind_T := 175;
-   Type_Ext_Vector : constant Type_Kind_T := 176;
-   Type_Atomic : constant Type_Kind_T := 177;  -- /usr/local/include/clang-c/Index.h:3226
+   Type_Invalid : constant unsigned := 0;
+   Type_Unexposed : constant unsigned := 1;
+   Type_Void : constant unsigned := 2;
+   Type_Bool : constant unsigned := 3;
+   Type_Char_U : constant unsigned := 4;
+   Type_U_Char : constant unsigned := 5;
+   Type_Char_16 : constant unsigned := 6;
+   Type_Char_32 : constant unsigned := 7;
+   Type_U_Short : constant unsigned := 8;
+   Type_U_Int : constant unsigned := 9;
+   Type_U_Long : constant unsigned := 10;
+   Type_U_Long_Long : constant unsigned := 11;
+   Type_U_Int_128 : constant unsigned := 12;
+   Type_Char_S : constant unsigned := 13;
+   Type_S_Char : constant unsigned := 14;
+   Type_W_Char : constant unsigned := 15;
+   Type_Short : constant unsigned := 16;
+   Type_Int : constant unsigned := 17;
+   Type_Long : constant unsigned := 18;
+   Type_Long_Long : constant unsigned := 19;
+   Type_Int_128 : constant unsigned := 20;
+   Type_Float : constant unsigned := 21;
+   Type_Double : constant unsigned := 22;
+   Type_Long_Double : constant unsigned := 23;
+   Type_Null_Ptr : constant unsigned := 24;
+   Type_Overload : constant unsigned := 25;
+   Type_Dependent : constant unsigned := 26;
+   Type_Obj_C_Id : constant unsigned := 27;
+   Type_Obj_C_Class : constant unsigned := 28;
+   Type_Obj_C_Sel : constant unsigned := 29;
+   Type_Float_128 : constant unsigned := 30;
+   Type_Half : constant unsigned := 31;
+   Type_Float_16 : constant unsigned := 32;
+   Type_Short_Accum : constant unsigned := 33;
+   Type_Accum : constant unsigned := 34;
+   Type_Long_Accum : constant unsigned := 35;
+   Type_U_Short_Accum : constant unsigned := 36;
+   Type_U_Accum : constant unsigned := 37;
+   Type_U_Long_Accum : constant unsigned := 38;
+   Type_B_Float_16 : constant unsigned := 39;
+   Type_First_Builtin : constant unsigned := 2;
+   Type_Last_Builtin : constant unsigned := 39;
+   Type_Complex : constant unsigned := 100;
+   Type_Pointer : constant unsigned := 101;
+   Type_Block_Pointer : constant unsigned := 102;
+   Type_L_Value_Reference : constant unsigned := 103;
+   Type_R_Value_Reference : constant unsigned := 104;
+   Type_Record : constant unsigned := 105;
+   Type_Enum : constant unsigned := 106;
+   Type_Typedef : constant unsigned := 107;
+   Type_Obj_C_Interface : constant unsigned := 108;
+   Type_Obj_C_Object_Pointer : constant unsigned := 109;
+   Type_Function_No_Proto : constant unsigned := 110;
+   Type_Function_Proto : constant unsigned := 111;
+   Type_Constant_Array : constant unsigned := 112;
+   Type_Vector : constant unsigned := 113;
+   Type_Incomplete_Array : constant unsigned := 114;
+   Type_Variable_Array : constant unsigned := 115;
+   Type_Dependent_Sized_Array : constant unsigned := 116;
+   Type_Member_Pointer : constant unsigned := 117;
+   Type_Auto : constant unsigned := 118;
+   Type_Elaborated : constant unsigned := 119;
+   Type_Pipe : constant unsigned := 120;
+   Type_OCL_Image_1d_RO : constant unsigned := 121;
+   Type_OCL_Image_1d_Array_RO : constant unsigned := 122;
+   Type_OCL_Image_1d_Buffer_RO : constant unsigned := 123;
+   Type_OCL_Image_2d_RO : constant unsigned := 124;
+   Type_OCL_Image_2d_Array_RO : constant unsigned := 125;
+   Type_OCL_Image_2d_Depth_RO : constant unsigned := 126;
+   Type_OCL_Image_2d_Array_Depth_RO : constant unsigned := 127;
+   Type_OCL_Image_2d_MSAARO : constant unsigned := 128;
+   Type_OCL_Image_2d_Array_MSAARO : constant unsigned := 129;
+   Type_OCL_Image_2d_MSAA_Depth_RO : constant unsigned := 130;
+   Type_OCL_Image_2d_Array_MSAA_Depth_RO : constant unsigned := 131;
+   Type_OCL_Image_3d_RO : constant unsigned := 132;
+   Type_OCL_Image_1d_WO : constant unsigned := 133;
+   Type_OCL_Image_1d_Array_WO : constant unsigned := 134;
+   Type_OCL_Image_1d_Buffer_WO : constant unsigned := 135;
+   Type_OCL_Image_2d_WO : constant unsigned := 136;
+   Type_OCL_Image_2d_Array_WO : constant unsigned := 137;
+   Type_OCL_Image_2d_Depth_WO : constant unsigned := 138;
+   Type_OCL_Image_2d_Array_Depth_WO : constant unsigned := 139;
+   Type_OCL_Image_2d_MSAAWO : constant unsigned := 140;
+   Type_OCL_Image_2d_Array_MSAAWO : constant unsigned := 141;
+   Type_OCL_Image_2d_MSAA_Depth_WO : constant unsigned := 142;
+   Type_OCL_Image_2d_Array_MSAA_Depth_WO : constant unsigned := 143;
+   Type_OCL_Image_3d_WO : constant unsigned := 144;
+   Type_OCL_Image_1d_RW : constant unsigned := 145;
+   Type_OCL_Image_1d_Array_RW : constant unsigned := 146;
+   Type_OCL_Image_1d_Buffer_RW : constant unsigned := 147;
+   Type_OCL_Image_2d_RW : constant unsigned := 148;
+   Type_OCL_Image_2d_Array_RW : constant unsigned := 149;
+   Type_OCL_Image_2d_Depth_RW : constant unsigned := 150;
+   Type_OCL_Image_2d_Array_Depth_RW : constant unsigned := 151;
+   Type_OCL_Image_2d_MSAARW : constant unsigned := 152;
+   Type_OCL_Image_2d_Array_MSAARW : constant unsigned := 153;
+   Type_OCL_Image_2d_MSAA_Depth_RW : constant unsigned := 154;
+   Type_OCL_Image_2d_Array_MSAA_Depth_RW : constant unsigned := 155;
+   Type_OCL_Image_3d_RW : constant unsigned := 156;
+   Type_OCL_Sampler : constant unsigned := 157;
+   Type_OCL_Event : constant unsigned := 158;
+   Type_OCL_Queue : constant unsigned := 159;
+   Type_OCL_Reserve_ID : constant unsigned := 160;
+   Type_Obj_C_Object : constant unsigned := 161;
+   Type_Obj_C_Type_Param : constant unsigned := 162;
+   Type_Attributed : constant unsigned := 163;
+   Type_OCL_Intel_Subgroup_AVC_Mce_Payload : constant unsigned := 164;
+   Type_OCL_Intel_Subgroup_AVC_Ime_Payload : constant unsigned := 165;
+   Type_OCL_Intel_Subgroup_AVC_Ref_Payload : constant unsigned := 166;
+   Type_OCL_Intel_Subgroup_AVC_Sic_Payload : constant unsigned := 167;
+   Type_OCL_Intel_Subgroup_AVC_Mce_Result : constant unsigned := 168;
+   Type_OCL_Intel_Subgroup_AVC_Ime_Result : constant unsigned := 169;
+   Type_OCL_Intel_Subgroup_AVC_Ref_Result : constant unsigned := 170;
+   Type_OCL_Intel_Subgroup_AVC_Sic_Result : constant unsigned := 171;
+   Type_OCL_Intel_Subgroup_AVC_Ime_Result_Single_Ref_Streamout : constant unsigned := 172;
+   Type_OCL_Intel_Subgroup_AVC_Ime_Result_Dual_Ref_Streamout : constant unsigned := 173;
+   Type_OCL_Intel_Subgroup_AVC_Ime_Single_Ref_Streamin : constant unsigned := 174;
+   Type_OCL_Intel_Subgroup_AVC_Ime_Dual_Ref_Streamin : constant unsigned := 175;
+   Type_Ext_Vector : constant unsigned := 176;
+   Type_Atomic : constant unsigned := 177;  -- /usr/local/include/clang-c/Index.h:3226
 
   --*
   --   * Represents an invalid type (e.g., where no type is available).
@@ -4091,26 +3886,26 @@ function Is_Unexposed
   --  
 
    subtype Calling_Conv_T is unsigned;
-   Calling_Conv_Default : constant Calling_Conv_T := 0;
-   Calling_Conv_C : constant Calling_Conv_T := 1;
-   Calling_Conv_X86_Std_Call : constant Calling_Conv_T := 2;
-   Calling_Conv_X86_Fast_Call : constant Calling_Conv_T := 3;
-   Calling_Conv_X86_This_Call : constant Calling_Conv_T := 4;
-   Calling_Conv_X86_Pascal : constant Calling_Conv_T := 5;
-   Calling_Conv_AAPCS : constant Calling_Conv_T := 6;
-   Calling_Conv_AAPCS_VFP : constant Calling_Conv_T := 7;
-   Calling_Conv_X86_Reg_Call : constant Calling_Conv_T := 8;
-   Calling_Conv_Intel_Ocl_Bicc : constant Calling_Conv_T := 9;
-   Calling_Conv_Win_64 : constant Calling_Conv_T := 10;
-   Calling_Conv_X86_64_Win_64 : constant Calling_Conv_T := 10;
-   Calling_Conv_X86_64_Sys_V : constant Calling_Conv_T := 11;
-   Calling_Conv_X86_Vector_Call : constant Calling_Conv_T := 12;
-   Calling_Conv_Swift : constant Calling_Conv_T := 13;
-   Calling_Conv_Preserve_Most : constant Calling_Conv_T := 14;
-   Calling_Conv_Preserve_All : constant Calling_Conv_T := 15;
-   Calling_Conv_A_Arch_64_Vector_Call : constant Calling_Conv_T := 16;
-   Calling_Conv_Invalid : constant Calling_Conv_T := 100;
-   Calling_Conv_Unexposed : constant Calling_Conv_T := 200;  -- /usr/local/include/clang-c/Index.h:3377
+   Calling_Conv_Default : constant unsigned := 0;
+   Calling_Conv_C : constant unsigned := 1;
+   Calling_Conv_X86_Std_Call : constant unsigned := 2;
+   Calling_Conv_X86_Fast_Call : constant unsigned := 3;
+   Calling_Conv_X86_This_Call : constant unsigned := 4;
+   Calling_Conv_X86_Pascal : constant unsigned := 5;
+   Calling_Conv_AAPCS : constant unsigned := 6;
+   Calling_Conv_AAPCS_VFP : constant unsigned := 7;
+   Calling_Conv_X86_Reg_Call : constant unsigned := 8;
+   Calling_Conv_Intel_Ocl_Bicc : constant unsigned := 9;
+   Calling_Conv_Win_64 : constant unsigned := 10;
+   Calling_Conv_X86_64_Win_64 : constant unsigned := 10;
+   Calling_Conv_X86_64_Sys_V : constant unsigned := 11;
+   Calling_Conv_X86_Vector_Call : constant unsigned := 12;
+   Calling_Conv_Swift : constant unsigned := 13;
+   Calling_Conv_Preserve_Most : constant unsigned := 14;
+   Calling_Conv_Preserve_All : constant unsigned := 15;
+   Calling_Conv_A_Arch_64_Vector_Call : constant unsigned := 16;
+   Calling_Conv_Invalid : constant unsigned := 100;
+   Calling_Conv_Unexposed : constant unsigned := 200;  -- /usr/local/include/clang-c/Index.h:3377
 
   -- Alias for compatibility with older versions of API.  
   --*
@@ -4118,12 +3913,14 @@ function Is_Unexposed
   -- *
   --  
 
-   type anon_array1316 is array (0 .. 1) of System.Address;
+   type Type_Data_Array_T is array (0 .. 1) of System.Address;
    type Type_T is record
       kind : aliased Type_Kind_T;  -- /usr/local/include/clang-c/Index.h:3407
-      data : anon_array1316;  -- /usr/local/include/clang-c/Index.h:3408
+      data : Type_Data_Array_T;  -- /usr/local/include/clang-c/Index.h:3408
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:3409
+
+   --  skipped anonymous struct anon_9
 
   --*
   -- * Retrieve the type of a CXCursor (if any).
@@ -4141,10 +3938,9 @@ function Is_Unexposed
   -- * If the type is invalid, an empty string is returned.
   --  
 
-   function Get_Type_Spelling (CT : Type_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:3422
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getTypeSpelling";
+function Get_Type_Spelling
+     (CT : Type_T)
+      return String;
 
   --*
   -- * Retrieve the underlying type of a typedef declaration.
@@ -4405,12 +4201,6 @@ function Is_Unexposed
 function Is_Const_Qualified_Type
      (T : Type_T)
       return Boolean;
-   function Is_Const_Qualified_Type_C
-     (T : Type_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isConstQualifiedType";
 
   --*
   -- * Determine whether a  CXCursor that is a macro, is
@@ -4420,12 +4210,6 @@ function Is_Const_Qualified_Type
 function Cursor_Is_Macro_Function_Like
      (C : Cursor_T)
       return Boolean;
-   function Cursor_Is_Macro_Function_Like_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Cursor_isMacroFunctionLike";
 
   --*
   -- * Determine whether a  CXCursor that is a macro, is a
@@ -4435,12 +4219,6 @@ function Cursor_Is_Macro_Function_Like
 function Cursor_Is_Macro_Builtin
      (C : Cursor_T)
       return Boolean;
-   function Cursor_Is_Macro_Builtin_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Cursor_isMacroBuiltin";
 
   --*
   -- * Determine whether a  CXCursor that is a function declaration, is an
@@ -4450,12 +4228,6 @@ function Cursor_Is_Macro_Builtin
 function Cursor_Is_Function_Inlined
      (C : Cursor_T)
       return Boolean;
-   function Cursor_Is_Function_Inlined_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Cursor_isFunctionInlined";
 
   --*
   -- * Determine whether a CXType has the "volatile" qualifier set,
@@ -4466,12 +4238,6 @@ function Cursor_Is_Function_Inlined
 function Is_Volatile_Qualified_Type
      (T : Type_T)
       return Boolean;
-   function Is_Volatile_Qualified_Type_C
-     (T : Type_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isVolatileQualifiedType";
 
   --*
   -- * Determine whether a CXType has the "restrict" qualifier set,
@@ -4482,12 +4248,6 @@ function Is_Volatile_Qualified_Type
 function Is_Restrict_Qualified_Type
      (T : Type_T)
       return Boolean;
-   function Is_Restrict_Qualified_Type_C
-     (T : Type_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isRestrictQualifiedType";
 
   --*
   -- * Returns the address space of the given type.
@@ -4502,10 +4262,9 @@ function Is_Restrict_Qualified_Type
   -- * Returns the typedef name of the given type.
   --  
 
-   function Get_Typedef_Name (CT : Type_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:3669
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getTypedefName";
+function Get_Typedef_Name
+     (CT : Type_T)
+      return String;
 
   --*
   -- * For pointer types, returns the type of the pointee.
@@ -4529,28 +4288,25 @@ function Is_Restrict_Qualified_Type
   -- * Returns the Objective-C type encoding for the specified declaration.
   --  
 
-   function Get_Decl_Obj_C_Type_Encoding (C : Cursor_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:3684
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getDeclObjCTypeEncoding";
+function Get_Decl_Obj_C_Type_Encoding
+     (C : Cursor_T)
+      return String;
 
   --*
   -- * Returns the Objective-C type encoding for the specified CXType.
   --  
 
-   function Type_Get_Obj_C_Encoding (C_Type : Type_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:3689
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_Type_getObjCEncoding";
+function Type_Get_Obj_C_Encoding
+     (C_Type : Type_T)
+      return String;
 
   --*
   -- * Retrieve the spelling of a given CXTypeKind.
   --  
 
-   function Get_Type_Kind_Spelling (K : Type_Kind_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:3694
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getTypeKindSpelling";
+function Get_Type_Kind_Spelling
+     (K : Type_Kind_T)
+      return String;
 
   --*
   -- * Retrieve the calling convention associated with a function type.
@@ -4674,12 +4430,6 @@ function Is_Restrict_Qualified_Type
 function Is_Function_Type_Variadic
      (T : Type_T)
       return Boolean;
-   function Is_Function_Type_Variadic_C
-     (T : Type_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isFunctionTypeVariadic";
 
   --*
   -- * Retrieve the return type associated with a given cursor.
@@ -4713,12 +4463,6 @@ function Is_Function_Type_Variadic
 function Is_POD_Type
      (T : Type_T)
       return Boolean;
-   function Is_POD_Type_C
-     (T : Type_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isPODType";
 
   --*
   -- * Return the element type of an array, complex, or vector type.
@@ -4789,12 +4533,6 @@ function Is_POD_Type
 function Type_Is_Transparent_Tag_Typedef
      (T : Type_T)
       return Boolean;
-   function Type_Is_Transparent_Tag_Typedef_C
-     (T : Type_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Type_isTransparentTagTypedef";
 
    type Type_Nullability_Kind_T is 
      (Type_Nullability_Non_Null,
@@ -4849,12 +4587,12 @@ function Type_Is_Transparent_Tag_Typedef
   --  
 
    subtype Type_Layout_Error_T is int;
-   Type_Layout_Error_Invalid : constant Type_Layout_Error_T := -1;
-   Type_Layout_Error_Incomplete : constant Type_Layout_Error_T := -2;
-   Type_Layout_Error_Dependent : constant Type_Layout_Error_T := -3;
-   Type_Layout_Error_Not_Constant_Size : constant Type_Layout_Error_T := -4;
-   Type_Layout_Error_Invalid_Field_Name : constant Type_Layout_Error_T := -5;
-   Type_Layout_Error_Undeduced : constant Type_Layout_Error_T := -6;  -- /usr/local/include/clang-c/Index.h:3888
+   Type_Layout_Error_Invalid : constant int := -1;
+   Type_Layout_Error_Incomplete : constant int := -2;
+   Type_Layout_Error_Dependent : constant int := -3;
+   Type_Layout_Error_Not_Constant_Size : constant int := -4;
+   Type_Layout_Error_Invalid_Field_Name : constant int := -5;
+   Type_Layout_Error_Undeduced : constant int := -6;  -- /usr/local/include/clang-c/Index.h:3888
 
   --*
   --   * Type is of kind CXType_Invalid.
@@ -4942,13 +4680,6 @@ function Type_Get_Offset_Of
      (T : Type_T;
       S : String)
       return Long_Long_Integer;
-   function Type_Get_Offset_Of_C
-     (T : Type_T;
-      S : Interfaces.C.Strings.chars_ptr)
-      return Long_Long_Integer
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Type_getOffsetOf";
 
   --*
   -- * Return the type that was modified by this attributed type.
@@ -4999,12 +4730,6 @@ function Type_Get_Offset_Of
 function Cursor_Is_Anonymous
      (C : Cursor_T)
       return Boolean;
-   function Cursor_Is_Anonymous_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Cursor_isAnonymous";
 
   --*
   -- * Determine whether the given cursor represents an anonymous record
@@ -5014,12 +4739,6 @@ function Cursor_Is_Anonymous
 function Cursor_Is_Anonymous_Record_Decl
      (C : Cursor_T)
       return Boolean;
-   function Cursor_Is_Anonymous_Record_Decl_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Cursor_isAnonymousRecordDecl";
 
   --*
   -- * Determine whether the given cursor represents an inline namespace
@@ -5029,12 +4748,6 @@ function Cursor_Is_Anonymous_Record_Decl
 function Cursor_Is_Inline_Namespace
      (C : Cursor_T)
       return Boolean;
-   function Cursor_Is_Inline_Namespace_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Cursor_isInlineNamespace";
 
    type Ref_Qualifier_Kind_T is 
      (Ref_Qualifier_None,
@@ -5088,12 +4801,6 @@ function Cursor_Is_Inline_Namespace
 function Cursor_Is_Bit_Field
      (C : Cursor_T)
       return Boolean;
-   function Cursor_Is_Bit_Field_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Cursor_isBitField";
 
   --*
   -- * Returns 1 if the base class specified by the cursor with kind
@@ -5103,12 +4810,6 @@ function Cursor_Is_Bit_Field
 function Is_Virtual_Base
      (Arg_1 : Cursor_T)
       return Boolean;
-   function Is_Virtual_Base_C
-     (Arg_1 : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isVirtualBase";
 
   --*
   -- * Represents the C++ access control level to a base class for a
@@ -5351,10 +5052,9 @@ function Is_Virtual_Base
   -- * one translation refer to an entity defined in another translation unit.
   --  
 
-   function Get_Cursor_USR (Arg_1 : Cursor_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:4268
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getCursorUSR";
+function Get_Cursor_USR
+     (Arg_1 : Cursor_T)
+      return String;
 
   --*
   -- * Construct a USR for a specified Objective-C class.
@@ -5362,13 +5062,7 @@ function Is_Virtual_Base
 
 function Construct_USR_Obj_C_Class
      (Class_Name : String)
-      return Clang.CX_String.String_T;
-   function Construct_USR_Obj_C_Class_C
-     (Class_Name : Interfaces.C.Strings.chars_ptr)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_constructUSR_ObjCClass";
+      return String;
 
   --*
   -- * Construct a USR for a specified Objective-C category.
@@ -5377,14 +5071,7 @@ function Construct_USR_Obj_C_Class
 function Construct_USR_Obj_C_Category
      (Class_Name    : String;
       Category_Name : String)
-      return Clang.CX_String.String_T;
-   function Construct_USR_Obj_C_Category_C
-     (Class_Name    : Interfaces.C.Strings.chars_ptr;
-      Category_Name : Interfaces.C.Strings.chars_ptr)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_constructUSR_ObjCCategory";
+      return String;
 
   --*
   -- * Construct a USR for a specified Objective-C protocol.
@@ -5392,13 +5079,7 @@ function Construct_USR_Obj_C_Category
 
 function Construct_USR_Obj_C_Protocol
      (Protocol_Name : String)
-      return Clang.CX_String.String_T;
-   function Construct_USR_Obj_C_Protocol_C
-     (Protocol_Name : Interfaces.C.Strings.chars_ptr)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_constructUSR_ObjCProtocol";
+      return String;
 
   --*
   -- * Construct a USR for a specified Objective-C instance variable and
@@ -5408,14 +5089,7 @@ function Construct_USR_Obj_C_Protocol
 function Construct_USR_Obj_C_Ivar
      (Name      : String;
       Class_USR : Clang.CX_String.String_T)
-      return Clang.CX_String.String_T;
-   function Construct_USR_Obj_C_Ivar_C
-     (Name      : Interfaces.C.Strings.chars_ptr;
-      Class_USR : Clang.CX_String.String_T)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_constructUSR_ObjCIvar";
+      return String;
 
   --*
   -- * Construct a USR for a specified Objective-C method and
@@ -5426,15 +5100,7 @@ function Construct_USR_Obj_C_Method
      (Name               : String;
       Is_Instance_Method : unsigned;
       Class_USR          : Clang.CX_String.String_T)
-      return Clang.CX_String.String_T;
-   function Construct_USR_Obj_C_Method_C
-     (Name               : Interfaces.C.Strings.chars_ptr;
-      Is_Instance_Method : unsigned;
-      Class_USR          : Clang.CX_String.String_T)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_constructUSR_ObjCMethod";
+      return String;
 
   --*
   -- * Construct a USR for a specified Objective-C property and the USR
@@ -5444,23 +5110,15 @@ function Construct_USR_Obj_C_Method
 function Construct_USR_Obj_C_Property
      (Property  : String;
       Class_USR : Clang.CX_String.String_T)
-      return Clang.CX_String.String_T;
-   function Construct_USR_Obj_C_Property_C
-     (Property  : Interfaces.C.Strings.chars_ptr;
-      Class_USR : Clang.CX_String.String_T)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_constructUSR_ObjCProperty";
+      return String;
 
   --*
   -- * Retrieve a name for the entity referenced by this cursor.
   --  
 
-   function Get_Cursor_Spelling (Arg_1 : Cursor_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:4312
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getCursorSpelling";
+function Get_Cursor_Spelling
+     (Arg_1 : Cursor_T)
+      return String;
 
   --*
   -- * Retrieve a range for a piece that forms the cursors spelling name.
@@ -5496,33 +5154,33 @@ function Construct_USR_Obj_C_Property
   --  
 
    subtype Printing_Policy_Property_T is unsigned;
-   Printing_Policy_Indentation : constant Printing_Policy_Property_T := 0;
-   Printing_Policy_Suppress_Specifiers : constant Printing_Policy_Property_T := 1;
-   Printing_Policy_Suppress_Tag_Keyword : constant Printing_Policy_Property_T := 2;
-   Printing_Policy_Include_Tag_Definition : constant Printing_Policy_Property_T := 3;
-   Printing_Policy_Suppress_Scope : constant Printing_Policy_Property_T := 4;
-   Printing_Policy_Suppress_Unwritten_Scope : constant Printing_Policy_Property_T := 5;
-   Printing_Policy_Suppress_Initializers : constant Printing_Policy_Property_T := 6;
-   Printing_Policy_Constant_Array_Size_As_Written : constant Printing_Policy_Property_T := 7;
-   Printing_Policy_Anonymous_Tag_Locations : constant Printing_Policy_Property_T := 8;
-   Printing_Policy_Suppress_Strong_Lifetime : constant Printing_Policy_Property_T := 9;
-   Printing_Policy_Suppress_Lifetime_Qualifiers : constant Printing_Policy_Property_T := 10;
-   Printing_Policy_Suppress_Template_Args_In_CXX_Constructors : constant Printing_Policy_Property_T := 11;
-   Printing_Policy_Bool : constant Printing_Policy_Property_T := 12;
-   Printing_Policy_Restrict : constant Printing_Policy_Property_T := 13;
-   Printing_Policy_Alignof : constant Printing_Policy_Property_T := 14;
-   Printing_Policy_Underscore_Alignof : constant Printing_Policy_Property_T := 15;
-   Printing_Policy_Use_Void_For_Zero_Params : constant Printing_Policy_Property_T := 16;
-   Printing_Policy_Terse_Output : constant Printing_Policy_Property_T := 17;
-   Printing_Policy_Polish_For_Declaration : constant Printing_Policy_Property_T := 18;
-   Printing_Policy_Half : constant Printing_Policy_Property_T := 19;
-   Printing_Policy_MSW_Char : constant Printing_Policy_Property_T := 20;
-   Printing_Policy_Include_Newlines : constant Printing_Policy_Property_T := 21;
-   Printing_Policy_MSVC_Formatting : constant Printing_Policy_Property_T := 22;
-   Printing_Policy_Constants_As_Written : constant Printing_Policy_Property_T := 23;
-   Printing_Policy_Suppress_Implicit_Base : constant Printing_Policy_Property_T := 24;
-   Printing_Policy_Fully_Qualified_Name : constant Printing_Policy_Property_T := 25;
-   Printing_Policy_Last_Property : constant Printing_Policy_Property_T := 25;  -- /usr/local/include/clang-c/Index.h:4339
+   Printing_Policy_Indentation : constant unsigned := 0;
+   Printing_Policy_Suppress_Specifiers : constant unsigned := 1;
+   Printing_Policy_Suppress_Tag_Keyword : constant unsigned := 2;
+   Printing_Policy_Include_Tag_Definition : constant unsigned := 3;
+   Printing_Policy_Suppress_Scope : constant unsigned := 4;
+   Printing_Policy_Suppress_Unwritten_Scope : constant unsigned := 5;
+   Printing_Policy_Suppress_Initializers : constant unsigned := 6;
+   Printing_Policy_Constant_Array_Size_As_Written : constant unsigned := 7;
+   Printing_Policy_Anonymous_Tag_Locations : constant unsigned := 8;
+   Printing_Policy_Suppress_Strong_Lifetime : constant unsigned := 9;
+   Printing_Policy_Suppress_Lifetime_Qualifiers : constant unsigned := 10;
+   Printing_Policy_Suppress_Template_Args_In_CXX_Constructors : constant unsigned := 11;
+   Printing_Policy_Bool : constant unsigned := 12;
+   Printing_Policy_Restrict : constant unsigned := 13;
+   Printing_Policy_Alignof : constant unsigned := 14;
+   Printing_Policy_Underscore_Alignof : constant unsigned := 15;
+   Printing_Policy_Use_Void_For_Zero_Params : constant unsigned := 16;
+   Printing_Policy_Terse_Output : constant unsigned := 17;
+   Printing_Policy_Polish_For_Declaration : constant unsigned := 18;
+   Printing_Policy_Half : constant unsigned := 19;
+   Printing_Policy_MSW_Char : constant unsigned := 20;
+   Printing_Policy_Include_Newlines : constant unsigned := 21;
+   Printing_Policy_MSVC_Formatting : constant unsigned := 22;
+   Printing_Policy_Constants_As_Written : constant unsigned := 23;
+   Printing_Policy_Suppress_Implicit_Base : constant unsigned := 24;
+   Printing_Policy_Fully_Qualified_Name : constant unsigned := 25;
+   Printing_Policy_Last_Property : constant unsigned := 25;  -- /usr/local/include/clang-c/Index.h:4339
 
   --*
   -- * Get a property value for the given printing policy.
@@ -5578,10 +5236,10 @@ function Construct_USR_Obj_C_Property
   -- * other cursors.
   --  
 
-   function Get_Cursor_Pretty_Printed (Cursor : Cursor_T; Policy : Printing_Policy_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:4409
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getCursorPrettyPrinted";
+function Get_Cursor_Pretty_Printed
+     (Cursor : Cursor_T;
+      Policy : Printing_Policy_T)
+      return String;
 
   --*
   -- * Retrieve the display name for the entity referenced by this cursor.
@@ -5591,10 +5249,9 @@ function Construct_USR_Obj_C_Property
   -- * class template specialization.
   --  
 
-   function Get_Cursor_Display_Name (Arg_1 : Cursor_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:4419
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getCursorDisplayName";
+function Get_Cursor_Display_Name
+     (Arg_1 : Cursor_T)
+      return String;
 
   --* For a cursor that is a reference, retrieve a cursor representing the
   -- * entity that it references.
@@ -5654,12 +5311,6 @@ function Construct_USR_Obj_C_Property
 function Is_Cursor_Definition
      (Arg_1 : Cursor_T)
       return Boolean;
-   function Is_Cursor_Definition_C
-     (Arg_1 : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_isCursorDefinition";
 
   --*
   -- * Retrieve the canonical cursor corresponding to the given cursor.
@@ -5723,12 +5374,6 @@ function Is_Cursor_Definition
 function Cursor_Is_Dynamic_Call
      (C : Cursor_T)
       return Boolean;
-   function Cursor_Is_Dynamic_Call_C
-     (C : Cursor_T)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Cursor_isDynamicCall";
 
   --*
   -- * Given a cursor pointing to an Objective-C message or property
@@ -5745,20 +5390,20 @@ function Cursor_Is_Dynamic_Call
   --  
 
    subtype Obj_C_Property_Attr_Kind_T is unsigned;
-   Obj_C_Property_Attr_Noattr : constant Obj_C_Property_Attr_Kind_T := 0;
-   Obj_C_Property_Attr_Readonly : constant Obj_C_Property_Attr_Kind_T := 1;
-   Obj_C_Property_Attr_Getter : constant Obj_C_Property_Attr_Kind_T := 2;
-   Obj_C_Property_Attr_Assign : constant Obj_C_Property_Attr_Kind_T := 4;
-   Obj_C_Property_Attr_Readwrite : constant Obj_C_Property_Attr_Kind_T := 8;
-   Obj_C_Property_Attr_Retain : constant Obj_C_Property_Attr_Kind_T := 16;
-   Obj_C_Property_Attr_Copy : constant Obj_C_Property_Attr_Kind_T := 32;
-   Obj_C_Property_Attr_Nonatomic : constant Obj_C_Property_Attr_Kind_T := 64;
-   Obj_C_Property_Attr_Setter : constant Obj_C_Property_Attr_Kind_T := 128;
-   Obj_C_Property_Attr_Atomic : constant Obj_C_Property_Attr_Kind_T := 256;
-   Obj_C_Property_Attr_Weak : constant Obj_C_Property_Attr_Kind_T := 512;
-   Obj_C_Property_Attr_Strong : constant Obj_C_Property_Attr_Kind_T := 1024;
-   Obj_C_Property_Attr_Unsafe_Unretained : constant Obj_C_Property_Attr_Kind_T := 2048;
-   Obj_C_Property_Attr_Class : constant Obj_C_Property_Attr_Kind_T := 4096;  -- /usr/local/include/clang-c/Index.h:4545
+   Obj_C_Property_Attr_Noattr : constant unsigned := 0;
+   Obj_C_Property_Attr_Readonly : constant unsigned := 1;
+   Obj_C_Property_Attr_Getter : constant unsigned := 2;
+   Obj_C_Property_Attr_Assign : constant unsigned := 4;
+   Obj_C_Property_Attr_Readwrite : constant unsigned := 8;
+   Obj_C_Property_Attr_Retain : constant unsigned := 16;
+   Obj_C_Property_Attr_Copy : constant unsigned := 32;
+   Obj_C_Property_Attr_Nonatomic : constant unsigned := 64;
+   Obj_C_Property_Attr_Setter : constant unsigned := 128;
+   Obj_C_Property_Attr_Atomic : constant unsigned := 256;
+   Obj_C_Property_Attr_Weak : constant unsigned := 512;
+   Obj_C_Property_Attr_Strong : constant unsigned := 1024;
+   Obj_C_Property_Attr_Unsafe_Unretained : constant unsigned := 2048;
+   Obj_C_Property_Attr_Class : constant unsigned := 4096;  -- /usr/local/include/clang-c/Index.h:4545
 
   --*
   -- * Given a cursor that represents a property declaration, return the
@@ -5778,20 +5423,18 @@ function Cursor_Is_Dynamic_Call
   -- * name of the method that implements the getter.
   --  
 
-   function Cursor_Get_Obj_C_Property_Getter_Name (C : Cursor_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:4561
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_Cursor_getObjCPropertyGetterName";
+function Cursor_Get_Obj_C_Property_Getter_Name
+     (C : Cursor_T)
+      return String;
 
   --*
   -- * Given a cursor that represents a property declaration, return the
   -- * name of the method that implements the setter, if any.
   --  
 
-   function Cursor_Get_Obj_C_Property_Setter_Name (C : Cursor_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:4567
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_Cursor_getObjCPropertySetterName";
+function Cursor_Get_Obj_C_Property_Setter_Name
+     (C : Cursor_T)
+      return String;
 
   --*
   -- * 'Qualifiers' written next to the return and parameter types in
@@ -5799,13 +5442,13 @@ function Cursor_Is_Dynamic_Call
   --  
 
    subtype Obj_C_Decl_Qualifier_Kind_T is unsigned;
-   Obj_C_Decl_Qualifier_None : constant Obj_C_Decl_Qualifier_Kind_T := 0;
-   Obj_C_Decl_Qualifier_In : constant Obj_C_Decl_Qualifier_Kind_T := 1;
-   Obj_C_Decl_Qualifier_Inout : constant Obj_C_Decl_Qualifier_Kind_T := 2;
-   Obj_C_Decl_Qualifier_Out : constant Obj_C_Decl_Qualifier_Kind_T := 4;
-   Obj_C_Decl_Qualifier_Bycopy : constant Obj_C_Decl_Qualifier_Kind_T := 8;
-   Obj_C_Decl_Qualifier_Byref : constant Obj_C_Decl_Qualifier_Kind_T := 16;
-   Obj_C_Decl_Qualifier_Oneway : constant Obj_C_Decl_Qualifier_Kind_T := 32;  -- /usr/local/include/clang-c/Index.h:4581
+   Obj_C_Decl_Qualifier_None : constant unsigned := 0;
+   Obj_C_Decl_Qualifier_In : constant unsigned := 1;
+   Obj_C_Decl_Qualifier_Inout : constant unsigned := 2;
+   Obj_C_Decl_Qualifier_Out : constant unsigned := 4;
+   Obj_C_Decl_Qualifier_Bycopy : constant unsigned := 8;
+   Obj_C_Decl_Qualifier_Byref : constant unsigned := 16;
+   Obj_C_Decl_Qualifier_Oneway : constant unsigned := 32;  -- /usr/local/include/clang-c/Index.h:4581
 
   --*
   -- * Given a cursor that represents an Objective-C method or parameter
@@ -5828,12 +5471,6 @@ function Cursor_Is_Dynamic_Call
 function Cursor_Is_Obj_C_Optional
      (C : Cursor_T)
       return Boolean;
-   function Cursor_Is_Obj_C_Optional_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Cursor_isObjCOptional";
 
   --*
   -- * Returns non-zero if the given cursor is a variadic function or method.
@@ -5842,12 +5479,6 @@ function Cursor_Is_Obj_C_Optional
 function Cursor_Is_Variadic
      (C : Cursor_T)
       return Boolean;
-   function Cursor_Is_Variadic_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Cursor_isVariadic";
 
   --*
   -- * Returns non-zero if the given cursor points to a symbol marked with
@@ -5869,15 +5500,6 @@ function Cursor_Is_External_Symbol
       Defined_In   : access Clang.CX_String.String_T;
       Is_Generated : access unsigned)
       return Boolean;
-   function Cursor_Is_External_Symbol_C
-     (C            : Cursor_T;
-      Language     : access Clang.CX_String.String_T;
-      Defined_In   : access Clang.CX_String.String_T;
-      Is_Generated : access unsigned)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Cursor_isExternalSymbol";
 
   --*
   -- * Given a cursor that represents a declaration, return the associated
@@ -5895,10 +5517,9 @@ function Cursor_Is_External_Symbol
   -- * comment text, including comment markers.
   --  
 
-   function Cursor_Get_Raw_Comment_Text (C : Cursor_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:4632
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_Cursor_getRawCommentText";
+function Cursor_Get_Raw_Comment_Text
+     (C : Cursor_T)
+      return String;
 
   --*
   -- * Given a cursor that represents a documentable entity (e.g.,
@@ -5906,10 +5527,9 @@ function Cursor_Is_External_Symbol
   -- * first paragraph.
   --  
 
-   function Cursor_Get_Brief_Comment_Text (C : Cursor_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:4639
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_Cursor_getBriefCommentText";
+function Cursor_Get_Brief_Comment_Text
+     (C : Cursor_T)
+      return String;
 
   --*
   -- * @}
@@ -5924,10 +5544,9 @@ function Cursor_Is_External_Symbol
   -- * Retrieve the CXString representing the mangled name of the cursor.
   --  
 
-   function Cursor_Get_Mangling (Arg_1 : Cursor_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:4653
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_Cursor_getMangling";
+function Cursor_Get_Mangling
+     (Arg_1 : Cursor_T)
+      return String;
 
   --*
   -- * Retrieve the CXStrings representing the mangled symbols of the C++
@@ -6012,10 +5631,9 @@ function Cursor_Is_External_Symbol
   -- * will return "vector".
   --  
 
-   function Module_Get_Name (Module : Module_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:4713
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_Module_getName";
+function Module_Get_Name
+     (Module : Module_T)
+      return String;
 
   --*
   -- * \param Module a module object.
@@ -6023,10 +5641,9 @@ function Cursor_Is_External_Symbol
   -- * \returns the full name of the module, e.g. "std.vector".
   --  
 
-   function Module_Get_Full_Name (Module : Module_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:4720
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_Module_getFullName";
+function Module_Get_Full_Name
+     (Module : Module_T)
+      return String;
 
   --*
   -- * \param Module a module object.
@@ -6037,12 +5654,6 @@ function Cursor_Is_External_Symbol
 function Module_Is_System
      (Module : Module_T)
       return Boolean;
-   function Module_Is_System_C
-     (Module : Module_T)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Module_isSystem";
 
   --*
   -- * \param Module a module object.
@@ -6091,12 +5702,6 @@ function Module_Is_System
 function CXX_Constructor_Is_Converting_Constructor
      (C : Cursor_T)
       return Boolean;
-   function CXX_Constructor_Is_Converting_Constructor_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXXConstructor_isConvertingConstructor";
 
   --*
   -- * Determine if a C++ constructor is a copy constructor.
@@ -6105,12 +5710,6 @@ function CXX_Constructor_Is_Converting_Constructor
 function CXX_Constructor_Is_Copy_Constructor
      (C : Cursor_T)
       return Boolean;
-   function CXX_Constructor_Is_Copy_Constructor_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXXConstructor_isCopyConstructor";
 
   --*
   -- * Determine if a C++ constructor is the default constructor.
@@ -6119,12 +5718,6 @@ function CXX_Constructor_Is_Copy_Constructor
 function CXX_Constructor_Is_Default_Constructor
      (C : Cursor_T)
       return Boolean;
-   function CXX_Constructor_Is_Default_Constructor_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXXConstructor_isDefaultConstructor";
 
   --*
   -- * Determine if a C++ constructor is a move constructor.
@@ -6133,12 +5726,6 @@ function CXX_Constructor_Is_Default_Constructor
 function CXX_Constructor_Is_Move_Constructor
      (C : Cursor_T)
       return Boolean;
-   function CXX_Constructor_Is_Move_Constructor_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXXConstructor_isMoveConstructor";
 
   --*
   -- * Determine if a C++ field is declared 'mutable'.
@@ -6147,12 +5734,6 @@ function CXX_Constructor_Is_Move_Constructor
 function CXX_Field_Is_Mutable
      (C : Cursor_T)
       return Boolean;
-   function CXX_Field_Is_Mutable_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXXField_isMutable";
 
   --*
   -- * Determine if a C++ method is declared '= default'.
@@ -6161,12 +5742,6 @@ function CXX_Field_Is_Mutable
 function CXX_Method_Is_Defaulted
      (C : Cursor_T)
       return Boolean;
-   function CXX_Method_Is_Defaulted_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXXMethod_isDefaulted";
 
   --*
   -- * Determine if a C++ member function or member function template is
@@ -6176,12 +5751,6 @@ function CXX_Method_Is_Defaulted
 function CXX_Method_Is_Pure_Virtual
      (C : Cursor_T)
       return Boolean;
-   function CXX_Method_Is_Pure_Virtual_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXXMethod_isPureVirtual";
 
   --*
   -- * Determine if a C++ member function or member function template is
@@ -6191,12 +5760,6 @@ function CXX_Method_Is_Pure_Virtual
 function CXX_Method_Is_Static
      (C : Cursor_T)
       return Boolean;
-   function CXX_Method_Is_Static_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXXMethod_isStatic";
 
   --*
   -- * Determine if a C++ member function or member function template is
@@ -6207,12 +5770,6 @@ function CXX_Method_Is_Static
 function CXX_Method_Is_Virtual
      (C : Cursor_T)
       return Boolean;
-   function CXX_Method_Is_Virtual_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXXMethod_isVirtual";
 
   --*
   -- * Determine if a C++ record is abstract, i.e. whether a class or struct
@@ -6222,12 +5779,6 @@ function CXX_Method_Is_Virtual
 function CXX_Record_Is_Abstract
      (C : Cursor_T)
       return Boolean;
-   function CXX_Record_Is_Abstract_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXXRecord_isAbstract";
 
   --*
   -- * Determine if an enum declaration refers to a scoped enum.
@@ -6236,12 +5787,6 @@ function CXX_Record_Is_Abstract
 function Enum_Decl_Is_Scoped
      (C : Cursor_T)
       return Boolean;
-   function Enum_Decl_Is_Scoped_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_EnumDecl_isScoped";
 
   --*
   -- * Determine if a C++ member function or member function template is
@@ -6251,12 +5796,6 @@ function Enum_Decl_Is_Scoped
 function CXX_Method_Is_Const
      (C : Cursor_T)
       return Boolean;
-   function CXX_Method_Is_Const_C
-     (C : Cursor_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXXMethod_isConst";
 
   --*
   -- * Given a cursor that represents a template, determine
@@ -6343,9 +5882,9 @@ function CXX_Method_Is_Const
         External_Name => "clang_getCursorReferenceNameRange";
 
    subtype Name_Ref_Flags_T is unsigned;
-   Name_Range_Want_Qualifier : constant Name_Ref_Flags_T := 1;
-   Name_Range_Want_Template_Args : constant Name_Ref_Flags_T := 2;
-   Name_Range_Want_Single_Piece : constant Name_Ref_Flags_T := 4;  -- /usr/local/include/clang-c/Index.h:4898
+   Name_Range_Want_Qualifier : constant unsigned := 1;
+   Name_Range_Want_Template_Args : constant unsigned := 2;
+   Name_Range_Want_Single_Piece : constant unsigned := 4;  -- /usr/local/include/clang-c/Index.h:4898
 
   --*
   --   * Include the nested-name-specifier, e.g. Foo:: in x.Foo::y, in the
@@ -6418,12 +5957,14 @@ function CXX_Method_Is_Const
   -- * Describes a single preprocessing token.
   --  
 
-   type anon_array1405 is array (0 .. 3) of aliased unsigned;
+   type Token_Int_Data_Array_T is array (0 .. 3) of aliased unsigned;
    type Token_T is record
-      int_data : aliased anon_array1405;  -- /usr/local/include/clang-c/Index.h:4972
+      int_data : aliased Token_Int_Data_Array_T;  -- /usr/local/include/clang-c/Index.h:4972
       ptr_data : System.Address;  -- /usr/local/include/clang-c/Index.h:4973
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:4974
+
+   --  skipped anonymous struct anon_12
 
   --*
   -- * Get the raw lexical token starting with the given location.
@@ -6458,10 +5999,10 @@ function CXX_Method_Is_Const
   -- * the text of an identifier or keyword.
   --  
 
-   function Get_Token_Spelling (Arg_1 : Translation_Unit_T; Arg_2 : Token_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:5001
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getTokenSpelling";
+function Get_Token_Spelling
+     (Arg_1 : Translation_Unit_T;
+      Arg_2 : Token_T)
+      return String;
 
   --*
   -- * Retrieve the source location of the given token.
@@ -6574,10 +6115,9 @@ function CXX_Method_Is_Const
   --  
 
   -- for debug/testing  
-   function Get_Cursor_Kind_Spelling (Kind : Cursor_Kind_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:5087
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getCursorKindSpelling";
+function Get_Cursor_Kind_Spelling
+     (Kind : Cursor_Kind_T)
+      return String;
 
    procedure Get_Definition_Spelling_And_Extent
      (Arg_1 : Cursor_T;
@@ -6656,6 +6196,8 @@ function CXX_Method_Is_Const
       CompletionString : Completion_String_T;  -- /usr/local/include/clang-c/Index.h:5146
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:5147
+
+   --  skipped anonymous struct anon_13
 
   --*
   --   * The code-completion string that describes how to insert this
@@ -6881,10 +6423,10 @@ function CXX_Method_Is_Const
   -- * \returns the text associated with the chunk at index \c chunk_number.
   --  
 
-   function Get_Completion_Chunk_Text (Completion_String : Completion_String_T; Chunk_Number : unsigned) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:5343
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getCompletionChunkText";
+function Get_Completion_Chunk_Text
+     (Completion_String : Completion_String_T;
+      Chunk_Number      : unsigned)
+      return String;
 
   --*
   -- * Retrieve the completion string associated with a particular chunk
@@ -6971,10 +6513,10 @@ function CXX_Method_Is_Const
   -- * \c annotation_number, or a NULL string if that annotation is not available.
   --  
 
-   function Get_Completion_Annotation (Completion_String : Completion_String_T; Annotation_Number : unsigned) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:5415
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getCompletionAnnotation";
+function Get_Completion_Annotation
+     (Completion_String : Completion_String_T;
+      Annotation_Number : unsigned)
+      return String;
 
   --*
   -- * Retrieve the parent context of the given completion string.
@@ -6993,20 +6535,19 @@ function CXX_Method_Is_Const
   -- * the completion string represents a method in the NSObject class.
   --  
 
-   function Get_Completion_Parent (Completion_String : Completion_String_T; Kind : access Cursor_Kind_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:5434
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getCompletionParent";
+function Get_Completion_Parent
+     (Completion_String : Completion_String_T;
+      Kind              : access Cursor_Kind_T)
+      return String;
 
   --*
   -- * Retrieve the brief documentation comment attached to the declaration
   -- * that corresponds to the given completion string.
   --  
 
-   function Get_Completion_Brief_Comment (Completion_String : Completion_String_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:5442
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getCompletionBriefComment";
+function Get_Completion_Brief_Comment
+     (Completion_String : Completion_String_T)
+      return String;
 
   --*
   -- * Retrieve a completion string for an arbitrary declaration or macro
@@ -7040,6 +6581,8 @@ function CXX_Method_Is_Const
       NumResults : aliased unsigned;  -- /usr/local/include/clang-c/Index.h:5473
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:5474
+
+   --  skipped anonymous struct anon_14
 
   --*
   --   * The number of code-completion results stored in the
@@ -7109,14 +6652,12 @@ function CXX_Method_Is_Const
   -- * before the completion at completion_index can be applied
   --  
 
-   function Get_Completion_Fix_It
-     (Results : access Code_Complete_Results_T;
-      Completion_Index : unsigned;
-      Fixit_Index : unsigned;
-      Replacement_Range : access Source_Range_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:5536
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getCompletionFixIt";
+function Get_Completion_Fix_It
+     (Results           : access Code_Complete_Results_T;
+      Completion_Index  : unsigned;
+      Fixit_Index       : unsigned;
+      Replacement_Range : access Source_Range_T)
+      return String;
 
   --*
   -- * Flags that can be passed to \c clang_codeCompleteAt() to
@@ -7127,11 +6668,11 @@ function CXX_Method_Is_Const
   --  
 
    subtype Code_Complete_Flags_T is unsigned;
-   Code_Complete_Include_Macros : constant Code_Complete_Flags_T := 1;
-   Code_Complete_Include_Code_Patterns : constant Code_Complete_Flags_T := 2;
-   Code_Complete_Include_Brief_Comments : constant Code_Complete_Flags_T := 4;
-   Code_Complete_Skip_Preamble : constant Code_Complete_Flags_T := 8;
-   Code_Complete_Include_Completions_With_Fix_Its : constant Code_Complete_Flags_T := 16;  -- /usr/local/include/clang-c/Index.h:5547
+   Code_Complete_Include_Macros : constant unsigned := 1;
+   Code_Complete_Include_Code_Patterns : constant unsigned := 2;
+   Code_Complete_Include_Brief_Comments : constant unsigned := 4;
+   Code_Complete_Skip_Preamble : constant unsigned := 8;
+   Code_Complete_Include_Completions_With_Fix_Its : constant unsigned := 16;  -- /usr/local/include/clang-c/Index.h:5547
 
   --*
   --   * Whether to include macros within the set of code
@@ -7167,31 +6708,31 @@ function CXX_Method_Is_Const
   --  
 
    subtype Completion_Context_T is unsigned;
-   Completion_Context_Unexposed : constant Completion_Context_T := 0;
-   Completion_Context_Any_Type : constant Completion_Context_T := 1;
-   Completion_Context_Any_Value : constant Completion_Context_T := 2;
-   Completion_Context_Obj_C_Object_Value : constant Completion_Context_T := 4;
-   Completion_Context_Obj_C_Selector_Value : constant Completion_Context_T := 8;
-   Completion_Context_CXX_Class_Type_Value : constant Completion_Context_T := 16;
-   Completion_Context_Dot_Member_Access : constant Completion_Context_T := 32;
-   Completion_Context_Arrow_Member_Access : constant Completion_Context_T := 64;
-   Completion_Context_Obj_C_Property_Access : constant Completion_Context_T := 128;
-   Completion_Context_Enum_Tag : constant Completion_Context_T := 256;
-   Completion_Context_Union_Tag : constant Completion_Context_T := 512;
-   Completion_Context_Struct_Tag : constant Completion_Context_T := 1024;
-   Completion_Context_Class_Tag : constant Completion_Context_T := 2048;
-   Completion_Context_Namespace : constant Completion_Context_T := 4096;
-   Completion_Context_Nested_Name_Specifier : constant Completion_Context_T := 8192;
-   Completion_Context_Obj_C_Interface : constant Completion_Context_T := 16384;
-   Completion_Context_Obj_C_Protocol : constant Completion_Context_T := 32768;
-   Completion_Context_Obj_C_Category : constant Completion_Context_T := 65536;
-   Completion_Context_Obj_C_Instance_Message : constant Completion_Context_T := 131072;
-   Completion_Context_Obj_C_Class_Message : constant Completion_Context_T := 262144;
-   Completion_Context_Obj_C_Selector_Name : constant Completion_Context_T := 524288;
-   Completion_Context_Macro_Name : constant Completion_Context_T := 1048576;
-   Completion_Context_Natural_Language : constant Completion_Context_T := 2097152;
-   Completion_Context_Included_File : constant Completion_Context_T := 4194304;
-   Completion_Context_Unknown : constant Completion_Context_T := 8388607;  -- /usr/local/include/clang-c/Index.h:5586
+   Completion_Context_Unexposed : constant unsigned := 0;
+   Completion_Context_Any_Type : constant unsigned := 1;
+   Completion_Context_Any_Value : constant unsigned := 2;
+   Completion_Context_Obj_C_Object_Value : constant unsigned := 4;
+   Completion_Context_Obj_C_Selector_Value : constant unsigned := 8;
+   Completion_Context_CXX_Class_Type_Value : constant unsigned := 16;
+   Completion_Context_Dot_Member_Access : constant unsigned := 32;
+   Completion_Context_Arrow_Member_Access : constant unsigned := 64;
+   Completion_Context_Obj_C_Property_Access : constant unsigned := 128;
+   Completion_Context_Enum_Tag : constant unsigned := 256;
+   Completion_Context_Union_Tag : constant unsigned := 512;
+   Completion_Context_Struct_Tag : constant unsigned := 1024;
+   Completion_Context_Class_Tag : constant unsigned := 2048;
+   Completion_Context_Namespace : constant unsigned := 4096;
+   Completion_Context_Nested_Name_Specifier : constant unsigned := 8192;
+   Completion_Context_Obj_C_Interface : constant unsigned := 16384;
+   Completion_Context_Obj_C_Protocol : constant unsigned := 32768;
+   Completion_Context_Obj_C_Category : constant unsigned := 65536;
+   Completion_Context_Obj_C_Instance_Message : constant unsigned := 131072;
+   Completion_Context_Obj_C_Class_Message : constant unsigned := 262144;
+   Completion_Context_Obj_C_Selector_Name : constant unsigned := 524288;
+   Completion_Context_Macro_Name : constant unsigned := 1048576;
+   Completion_Context_Natural_Language : constant unsigned := 2097152;
+   Completion_Context_Included_File : constant unsigned := 4194304;
+   Completion_Context_Unknown : constant unsigned := 8388607;  -- /usr/local/include/clang-c/Index.h:5586
 
   --*
   --   * The context for completions is unexposed, as only Clang results
@@ -7398,18 +6939,6 @@ function Code_Complete_At
       Num_Unsaved_Files : unsigned;
       Options           : unsigned)
       return access Code_Complete_Results_T;
-   function Code_Complete_At_C
-     (TU                : Translation_Unit_T;
-      Complete_Filename : Interfaces.C.Strings.chars_ptr;
-      Complete_Line     : unsigned;
-      Complete_Column   : unsigned;
-      Unsaved_Files     : access Unsaved_File_T;
-      Num_Unsaved_Files : unsigned;
-      Options           : unsigned)
-      return access Code_Complete_Results_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_codeCompleteAt";
 
   --*
   -- * Sort the code-completion results in case-insensitive alphabetical
@@ -7505,10 +7034,9 @@ function Code_Complete_At
   -- * \returns the USR for the container
   --  
 
-   function Code_Complete_Get_Container_USR (Results : access Code_Complete_Results_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:5878
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_codeCompleteGetContainerUSR";
+function Code_Complete_Get_Container_USR
+     (Results : access Code_Complete_Results_T)
+      return String;
 
   --*
   -- * Returns the currently-entered selector for an Objective-C message
@@ -7522,10 +7050,9 @@ function Code_Complete_At
   -- * for an Objective-C message send.
   --  
 
-   function Code_Complete_Get_Obj_C_Selector (Results : access Code_Complete_Results_T) return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:5892
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_codeCompleteGetObjCSelector";
+function Code_Complete_Get_Obj_C_Selector
+     (Results : access Code_Complete_Results_T)
+      return String;
 
   --*
   -- * @}
@@ -7542,10 +7069,8 @@ function Code_Complete_At
   -- *        intended to be parsed (the format is not guaranteed to be stable).
   --  
 
-   function Get_Clang_Version return Clang.CX_String.String_T  -- /usr/local/include/clang-c/Index.h:5908
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_getClangVersion";
+function Get_Clang_Version
+      return String;
 
   --*
   -- * Enable/disable crash recovery.
@@ -7594,13 +7119,13 @@ function Code_Complete_At
         External_Name => "clang_getInclusions";
 
    subtype Eval_Result_Kind_T is unsigned;
-   Eval_Int : constant Eval_Result_Kind_T := 1;
-   Eval_Float : constant Eval_Result_Kind_T := 2;
-   Eval_Obj_C_Str_Literal : constant Eval_Result_Kind_T := 3;
-   Eval_Str_Literal : constant Eval_Result_Kind_T := 4;
-   Eval_CF_Str : constant Eval_Result_Kind_T := 5;
-   Eval_Other : constant Eval_Result_Kind_T := 6;
-   Eval_Un_Exposed : constant Eval_Result_Kind_T := 0;  -- /usr/local/include/clang-c/Index.h:5954
+   Eval_Int : constant unsigned := 1;
+   Eval_Float : constant unsigned := 2;
+   Eval_Obj_C_Str_Literal : constant unsigned := 3;
+   Eval_Str_Literal : constant unsigned := 4;
+   Eval_CF_Str : constant unsigned := 5;
+   Eval_Other : constant unsigned := 6;
+   Eval_Un_Exposed : constant unsigned := 0;  -- /usr/local/include/clang-c/Index.h:5954
 
   --*
   -- * Evaluation result of a cursor
@@ -7658,12 +7183,6 @@ function Code_Complete_At
 function Eval_Result_Is_Unsigned_Int
      (E : Eval_Result_T)
       return Boolean;
-   function Eval_Result_Is_Unsigned_Int_C
-     (E : Eval_Result_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_EvalResult_isUnsignedInt";
 
   --*
   -- * Returns the evaluation result as an unsigned integer if
@@ -7695,12 +7214,6 @@ function Eval_Result_Is_Unsigned_Int
 function Eval_Result_Get_As_Str
      (E : Eval_Result_T)
       return String;
-   function Eval_Result_Get_As_Str_C
-     (E : Eval_Result_T)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_EvalResult_getAsStr";
 
   --*
   -- * Disposes the created Eval memory.
@@ -7738,12 +7251,6 @@ function Eval_Result_Get_As_Str
 function Get_Remappings
      (Path : String)
       return Remapping_T;
-   function Get_Remappings_C
-     (Path : Interfaces.C.Strings.chars_ptr)
-      return Remapping_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_getRemappings";
 
   --*
   -- * Retrieve a remapping.
@@ -7913,11 +7420,14 @@ function Get_Remappings
   -- * Source location passed to index callbacks.
   --  
 
+   type Idx_Loc_Ptr_Data_Array_T is array (0 .. 1) of System.Address;
    type Idx_Loc_T is record
-      ptr_data : anon_array1316;  -- /usr/local/include/clang-c/Index.h:6186
+      ptr_data : Idx_Loc_Ptr_Data_Array_T;  -- /usr/local/include/clang-c/Index.h:6186
       int_data : aliased unsigned;  -- /usr/local/include/clang-c/Index.h:6187
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6188
+
+   --  skipped anonymous struct anon_17
 
   --*
   -- * Data for ppIncludedFile callback.
@@ -7936,6 +7446,8 @@ function Get_Remappings
       isModuleImport : aliased int;  -- /usr/local/include/clang-c/Index.h:6212
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6213
+
+   --  skipped anonymous struct anon_18
 
   --*
   --   * Filename as written in the \#include/\#import directive.
@@ -7965,6 +7477,8 @@ function Get_Remappings
       isImplicit : aliased int;  -- /usr/local/include/clang-c/Index.h:6235
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6237
+
+   --  skipped anonymous struct anon_19
 
   --*
   --   * The imported module or NULL if the AST file is a PCH.
@@ -8049,6 +7563,8 @@ function Get_Remappings
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6310
 
+   --  skipped anonymous struct anon_24
+
    type Idx_Entity_Info_T is record
       kind : aliased Idx_Entity_Kind_T;  -- /usr/local/include/clang-c/Index.h:6313
       templateKind : aliased Idx_Entity_CXX_Template_Kind_T;  -- /usr/local/include/clang-c/Index.h:6314
@@ -8061,10 +7577,14 @@ function Get_Remappings
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6321
 
+   --  skipped anonymous struct anon_25
+
    type Idx_Container_Info_T is record
       cursor : aliased Cursor_T;  -- /usr/local/include/clang-c/Index.h:6324
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6325
+
+   --  skipped anonymous struct anon_26
 
    type Idx_IB_Outlet_Collection_Attr_Info_T is record
       attrInfo : access constant Idx_Attr_Info_T;  -- /usr/local/include/clang-c/Index.h:6328
@@ -8074,8 +7594,10 @@ function Get_Remappings
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6332
 
+   --  skipped anonymous struct anon_27
+
    subtype Idx_Decl_Info_Flags_T is unsigned;
-   Idx_Decl_Flag_Skipped : constant Idx_Decl_Info_Flags_T := 1;  -- /usr/local/include/clang-c/Index.h:6334
+   Idx_Decl_Flag_Skipped : constant unsigned := 1;  -- /usr/local/include/clang-c/Index.h:6334
 
    type Idx_Decl_Info_T is record
       entityInfo : access constant Idx_Entity_Info_T;  -- /usr/local/include/clang-c/Index.h:6337
@@ -8093,6 +7615,8 @@ function Get_Remappings
       flags : aliased unsigned;  -- /usr/local/include/clang-c/Index.h:6358
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6360
+
+   --  skipped anonymous struct anon_29
 
   --*
   --   * Generally same as #semanticContainer but can be different in
@@ -8116,12 +7640,16 @@ function Get_Remappings
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6371
 
+   --  skipped anonymous struct anon_31
+
    type Idx_Base_Class_Info_T is record
       base : access constant Idx_Entity_Info_T;  -- /usr/local/include/clang-c/Index.h:6374
       cursor : aliased Cursor_T;  -- /usr/local/include/clang-c/Index.h:6375
       loc : aliased Idx_Loc_T;  -- /usr/local/include/clang-c/Index.h:6376
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6377
+
+   --  skipped anonymous struct anon_32
 
    type Idx_Obj_C_Protocol_Ref_Info_T is record
       protocol : access constant Idx_Entity_Info_T;  -- /usr/local/include/clang-c/Index.h:6380
@@ -8130,11 +7658,15 @@ function Get_Remappings
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6383
 
+   --  skipped anonymous struct anon_33
+
    type Idx_Obj_C_Protocol_Ref_List_Info_T is record
       protocols : System.Address;  -- /usr/local/include/clang-c/Index.h:6386
       numProtocols : aliased unsigned;  -- /usr/local/include/clang-c/Index.h:6387
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6388
+
+   --  skipped anonymous struct anon_34
 
    type Idx_Obj_C_Interface_Decl_Info_T is record
       containerInfo : access constant Idx_Obj_C_Container_Decl_Info_T;  -- /usr/local/include/clang-c/Index.h:6391
@@ -8142,6 +7674,8 @@ function Get_Remappings
       protocols : access constant Idx_Obj_C_Protocol_Ref_List_Info_T;  -- /usr/local/include/clang-c/Index.h:6393
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6394
+
+   --  skipped anonymous struct anon_35
 
    type Idx_Obj_C_Category_Decl_Info_T is record
       containerInfo : access constant Idx_Obj_C_Container_Decl_Info_T;  -- /usr/local/include/clang-c/Index.h:6397
@@ -8152,6 +7686,8 @@ function Get_Remappings
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6402
 
+   --  skipped anonymous struct anon_36
+
    type Idx_Obj_C_Property_Decl_Info_T is record
       declInfo : access constant Idx_Decl_Info_T;  -- /usr/local/include/clang-c/Index.h:6405
       getter : access constant Idx_Entity_Info_T;  -- /usr/local/include/clang-c/Index.h:6406
@@ -8159,12 +7695,16 @@ function Get_Remappings
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6408
 
+   --  skipped anonymous struct anon_37
+
    type Idx_CXX_Class_Decl_Info_T is record
       declInfo : access constant Idx_Decl_Info_T;  -- /usr/local/include/clang-c/Index.h:6411
       bases : System.Address;  -- /usr/local/include/clang-c/Index.h:6412
       numBases : aliased unsigned;  -- /usr/local/include/clang-c/Index.h:6413
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6414
+
+   --  skipped anonymous struct anon_38
 
   --*
   -- * Data for IndexerCallbacks#indexEntityReference.
@@ -8183,8 +7723,8 @@ function Get_Remappings
   --    
 
    subtype Idx_Entity_Ref_Kind_T is unsigned;
-   Idx_Entity_Ref_Direct : constant Idx_Entity_Ref_Kind_T := 1;
-   Idx_Entity_Ref_Implicit : constant Idx_Entity_Ref_Kind_T := 2;  -- /usr/local/include/clang-c/Index.h:6432
+   Idx_Entity_Ref_Direct : constant unsigned := 1;
+   Idx_Entity_Ref_Implicit : constant unsigned := 2;  -- /usr/local/include/clang-c/Index.h:6432
 
   --*
   -- * Roles that are attributed to symbol occurrences.
@@ -8194,16 +7734,16 @@ function Get_Remappings
   --  
 
    subtype Symbol_Role_T is unsigned;
-   Symbol_Role_None : constant Symbol_Role_T := 0;
-   Symbol_Role_Declaration : constant Symbol_Role_T := 1;
-   Symbol_Role_Definition : constant Symbol_Role_T := 2;
-   Symbol_Role_Reference : constant Symbol_Role_T := 4;
-   Symbol_Role_Read : constant Symbol_Role_T := 8;
-   Symbol_Role_Write : constant Symbol_Role_T := 16;
-   Symbol_Role_Call : constant Symbol_Role_T := 32;
-   Symbol_Role_Dynamic : constant Symbol_Role_T := 64;
-   Symbol_Role_Address_Of : constant Symbol_Role_T := 128;
-   Symbol_Role_Implicit : constant Symbol_Role_T := 256;  -- /usr/local/include/clang-c/Index.h:6451
+   Symbol_Role_None : constant unsigned := 0;
+   Symbol_Role_Declaration : constant unsigned := 1;
+   Symbol_Role_Definition : constant unsigned := 2;
+   Symbol_Role_Reference : constant unsigned := 4;
+   Symbol_Role_Read : constant unsigned := 8;
+   Symbol_Role_Write : constant unsigned := 16;
+   Symbol_Role_Call : constant unsigned := 32;
+   Symbol_Role_Dynamic : constant unsigned := 64;
+   Symbol_Role_Address_Of : constant unsigned := 128;
+   Symbol_Role_Implicit : constant unsigned := 256;  -- /usr/local/include/clang-c/Index.h:6451
 
   --*
   -- * Data for IndexerCallbacks#indexEntityReference.
@@ -8219,6 +7759,8 @@ function Get_Remappings
       role : aliased Symbol_Role_T;  -- /usr/local/include/clang-c/Index.h:6486
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6487
+
+   --  skipped anonymous struct anon_41
 
   --*
   --   * Reference cursor.
@@ -8267,14 +7809,16 @@ function Get_Remappings
       enteredMainFile : access function
            (Arg_1 : Client_Data_T;
             Arg_2 : File_T;
-            Arg_3 : System.Address) return Idx_Client_File_T;  -- /usr/local/include/clang-c/Index.h:6505
-      ppIncludedFile : access function (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Included_File_Info_T) return Idx_Client_File_T;  -- /usr/local/include/clang-c/Index.h:6511
-      importedASTFile : access function (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Imported_AST_File_Info_T) return Idx_Client_AST_File_T;  -- /usr/local/include/clang-c/Index.h:6522
-      startedTranslationUnit : access function (Arg_1 : Client_Data_T; Arg_2 : System.Address) return Idx_Client_Container_T;  -- /usr/local/include/clang-c/Index.h:6528
+            Arg_3 : System.Address) return Idx_Client_File_T;  -- /usr/local/include/clang-c/Index.h:6506
+      ppIncludedFile : access function (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Included_File_Info_T) return Idx_Client_File_T;  -- /usr/local/include/clang-c/Index.h:6512
+      importedASTFile : access function (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Imported_AST_File_Info_T) return Idx_Client_AST_File_T;  -- /usr/local/include/clang-c/Index.h:6523
+      startedTranslationUnit : access function (Arg_1 : Client_Data_T; Arg_2 : System.Address) return Idx_Client_Container_T;  -- /usr/local/include/clang-c/Index.h:6529
       indexDeclaration : access procedure (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Decl_Info_T);  -- /usr/local/include/clang-c/Index.h:6531
-      indexEntityReference : access procedure (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Entity_Ref_Info_T);  -- /usr/local/include/clang-c/Index.h:6536
+      indexEntityReference : access procedure (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Entity_Ref_Info_T);  -- /usr/local/include/clang-c/Index.h:6537
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/Index.h:6539
+
+   --  skipped anonymous struct anon_42
 
   --*
   --   * Called at the end of indexing; passes the complete diagnostic set.
@@ -8304,12 +7848,6 @@ function Get_Remappings
 function Index_Is_Entity_Obj_C_Container_Kind
      (Arg_1 : Idx_Entity_Kind_T)
       return Boolean;
-   function Index_Is_Entity_Obj_C_Container_Kind_C
-     (Arg_1 : Idx_Entity_Kind_T)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_index_isEntityObjCContainerKind";
 
    function Index_Get_Obj_C_Container_Decl_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_Obj_C_Container_Decl_Info_T  -- /usr/local/include/clang-c/Index.h:6543
    with Import => True, 
@@ -8446,12 +7984,12 @@ function Index_Is_Entity_Obj_C_Container_Kind
   --    
 
    subtype Index_Opt_Flags_T is unsigned;
-   Index_Opt_None : constant Index_Opt_Flags_T := 0;
-   Index_Opt_Suppress_Redundant_Refs : constant Index_Opt_Flags_T := 1;
-   Index_Opt_Index_Function_Local_Symbols : constant Index_Opt_Flags_T := 2;
-   Index_Opt_Index_Implicit_Template_Instantiations : constant Index_Opt_Flags_T := 4;
-   Index_Opt_Suppress_Warnings : constant Index_Opt_Flags_T := 8;
-   Index_Opt_Skip_Parsed_Bodies_In_Session : constant Index_Opt_Flags_T := 16;  -- /usr/local/include/clang-c/Index.h:6649
+   Index_Opt_None : constant unsigned := 0;
+   Index_Opt_Suppress_Redundant_Refs : constant unsigned := 1;
+   Index_Opt_Index_Function_Local_Symbols : constant unsigned := 2;
+   Index_Opt_Index_Implicit_Template_Instantiations : constant unsigned := 4;
+   Index_Opt_Suppress_Warnings : constant unsigned := 8;
+   Index_Opt_Skip_Parsed_Bodies_In_Session : constant unsigned := 16;  -- /usr/local/include/clang-c/Index.h:6649
 
   --*
   -- * Index the given source file and the translation unit corresponding
@@ -8493,23 +8031,6 @@ function Index_Source_File
       Out_TU                : System.Address;
       TU_Options            : unsigned)
       return int;
-   function Index_Source_File_C
-     (Arg_1                 : Index_Action_T;
-      Client_Data           : Client_Data_T;
-      Index_Callbacks       : access IndexerCallbacks;
-      Index_Callbacks_Size  : unsigned;
-      Index_Options         : unsigned;
-      Source_Filename       : Interfaces.C.Strings.chars_ptr;
-      Command_Line_Args     : System.Address;
-      Num_Command_Line_Args : int;
-      Unsaved_Files         : access Unsaved_File_T;
-      Num_Unsaved_Files     : unsigned;
-      Out_TU                : System.Address;
-      TU_Options            : unsigned)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_indexSourceFile";
 
   --*
   -- * Same as clang_indexSourceFile but requires a full command line
@@ -8531,23 +8052,6 @@ function Index_Source_File_Full_Argv
       Out_TU                : System.Address;
       TU_Options            : unsigned)
       return int;
-   function Index_Source_File_Full_Argv_C
-     (Arg_1                 : Index_Action_T;
-      Client_Data           : Client_Data_T;
-      Index_Callbacks       : access IndexerCallbacks;
-      Index_Callbacks_Size  : unsigned;
-      Index_Options         : unsigned;
-      Source_Filename       : Interfaces.C.Strings.chars_ptr;
-      Command_Line_Args     : System.Address;
-      Num_Command_Line_Args : int;
-      Unsaved_Files         : access Unsaved_File_T;
-      Num_Unsaved_Files     : unsigned;
-      Out_TU                : System.Address;
-      TU_Options            : unsigned)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_indexSourceFileFullArgv";
 
   --*
   -- * Index the given translation unit via callbacks implemented through
@@ -8658,6 +8162,3 @@ function Index_Source_File_Full_Argv
   --  
 
 end Clang.Index;
-
-pragma Style_Checks (On);
-pragma Warnings (On, "-gnatwu");

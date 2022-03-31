@@ -1,7 +1,5 @@
 pragma Ada_2012;
-
 pragma Style_Checks (Off);
-pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -44,11 +42,15 @@ package Clang.CX_String is
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/CXString.h:40
 
+   --  skipped anonymous struct anon_0
+
    type String_Set_T is record
       Strings : access String_T;  -- /usr/local/include/clang-c/CXString.h:43
       Count : aliased unsigned;  -- /usr/local/include/clang-c/CXString.h:44
    end record
    with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/CXString.h:45
+
+   --  skipped anonymous struct anon_1
 
   --*
   -- * Retrieve the character data associated with the given string.
@@ -57,12 +59,6 @@ package Clang.CX_String is
 function Get_C_String
      (Str : String_T)
       return String;
-   function Get_C_String_C
-     (Str : String_T)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_getCString";
 
   --*
   -- * Free the given string.
@@ -87,6 +83,3 @@ function Get_C_String
   --  
 
 end Clang.CX_String;
-
-pragma Style_Checks (On);
-pragma Warnings (On, "-gnatwu");

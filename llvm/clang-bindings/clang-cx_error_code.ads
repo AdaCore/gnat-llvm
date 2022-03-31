@@ -1,7 +1,5 @@
 pragma Ada_2012;
-
 pragma Style_Checks (Off);
-pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 
@@ -60,6 +58,3 @@ package Clang.CX_Error_Code is
   --    
 
 end Clang.CX_Error_Code;
-
-pragma Style_Checks (On);
-pragma Warnings (On, "-gnatwu");

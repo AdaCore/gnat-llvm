@@ -10,10 +10,18 @@ package body Clang.CX_String is
 
    function Get_C_String
      (Str : String_T)
+      return Interfaces.C.Strings.chars_ptr
+   with Import => True,
+        Convention => C,
+        External_Name => "clang_getCString";
+   function Get_C_String
+     (Str : String_T)
       return String
    is
+      Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
-      return Value (Get_C_String_C (Str));
+      Return_Value := Get_C_String (Str);
+      return Value (Return_Value);
    end Get_C_String;
 
 end Clang.CX_String;

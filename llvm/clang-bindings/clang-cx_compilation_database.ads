@@ -1,7 +1,5 @@
 pragma Ada_2012;
-
 pragma Style_Checks (Off);
-pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -85,13 +83,6 @@ function Compilation_Database_From_Directory
      (Build_Dir  : String;
       Error_Code : access Compilation_Database_Error_T)
       return Compilation_Database_T;
-   function Compilation_Database_From_Directory_C
-     (Build_Dir  : Interfaces.C.Strings.chars_ptr;
-      Error_Code : access Compilation_Database_Error_T)
-      return Compilation_Database_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CompilationDatabase_fromDirectory";
 
   --*
   -- * Free the given compilation database
@@ -111,13 +102,6 @@ function Compilation_Database_Get_Compile_Commands
      (Arg_1              : Compilation_Database_T;
       Complete_File_Name : String)
       return Compile_Commands_T;
-   function Compilation_Database_Get_Compile_Commands_C
-     (Arg_1              : Compilation_Database_T;
-      Complete_File_Name : Interfaces.C.Strings.chars_ptr)
-      return Compile_Commands_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CompilationDatabase_getCompileCommands";
 
   --*
   -- * Get all the compile commands in the given compilation database.
@@ -161,19 +145,17 @@ function Compilation_Database_Get_Compile_Commands
   -- * Get the working directory where the CompileCommand was executed from
   --  
 
-   function Compile_Command_Get_Directory (Arg_1 : Compile_Command_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/CXCompilationDatabase.h:125
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_CompileCommand_getDirectory";
+function Compile_Command_Get_Directory
+     (Arg_1 : Compile_Command_T)
+      return String;
 
   --*
   -- * Get the filename associated with the CompileCommand.
   --  
 
-   function Compile_Command_Get_Filename (Arg_1 : Compile_Command_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/CXCompilationDatabase.h:131
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_CompileCommand_getFilename";
+function Compile_Command_Get_Filename
+     (Arg_1 : Compile_Command_T)
+      return String;
 
   --*
   -- * Get the number of arguments in the compiler invocation.
@@ -192,10 +174,10 @@ function Compilation_Database_Get_Compile_Commands
   -- *  - argument 0 is the compiler executable
   --  
 
-   function Compile_Command_Get_Arg (Arg_1 : Compile_Command_T; I : unsigned) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/CXCompilationDatabase.h:147
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_CompileCommand_getArg";
+function Compile_Command_Get_Arg
+     (Arg_1 : Compile_Command_T;
+      I     : unsigned)
+      return String;
 
   --*
   -- * Get the number of source mappings for the compiler invocation.
@@ -210,25 +192,22 @@ function Compilation_Database_Get_Compile_Commands
   -- * Get the I'th mapped source path for the compiler invocation.
   --  
 
-   function Compile_Command_Get_Mapped_Source_Path (Arg_1 : Compile_Command_T; I : unsigned) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/CXCompilationDatabase.h:159
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_CompileCommand_getMappedSourcePath";
+function Compile_Command_Get_Mapped_Source_Path
+     (Arg_1 : Compile_Command_T;
+      I     : unsigned)
+      return String;
 
   --*
   -- * Get the I'th mapped source content for the compiler invocation.
   --  
 
-   function Compile_Command_Get_Mapped_Source_Content (Arg_1 : Compile_Command_T; I : unsigned) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/CXCompilationDatabase.h:165
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_CompileCommand_getMappedSourceContent";
+function Compile_Command_Get_Mapped_Source_Content
+     (Arg_1 : Compile_Command_T;
+      I     : unsigned)
+      return String;
 
   --*
   -- * @}
   --  
 
 end Clang.CX_Compilation_Database;
-
-pragma Style_Checks (On);
-pragma Warnings (On, "-gnatwu");

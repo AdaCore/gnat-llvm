@@ -1,7 +1,5 @@
 pragma Ada_2012;
-
 pragma Style_Checks (Off);
-pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -38,13 +36,6 @@ procedure CX_Rewriter_Insert_Text_Before
      (Rew    : Rewriter_T;
       Loc    : Clang.Index.Source_Location_T;
       Insert : String);
-   procedure CX_Rewriter_Insert_Text_Before_C
-     (Rew    : Rewriter_T;
-      Loc    : Clang.Index.Source_Location_T;
-      Insert : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXRewriter_insertTextBefore";
 
   --*
   -- * Replace the specified range of characters in the input with the specified
@@ -55,13 +46,6 @@ procedure CX_Rewriter_Replace_Text
      (Rew            : Rewriter_T;
       To_Be_Replaced : Clang.Index.Source_Range_T;
       Replacement    : String);
-   procedure CX_Rewriter_Replace_Text_C
-     (Rew            : Rewriter_T;
-      To_Be_Replaced : Clang.Index.Source_Range_T;
-      Replacement    : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_CXRewriter_replaceText";
 
   --*
   -- * Remove the specified range.
@@ -101,6 +85,3 @@ procedure CX_Rewriter_Replace_Text
         External_Name => "clang_CXRewriter_dispose";
 
 end Clang.Rewrite;
-
-pragma Style_Checks (On);
-pragma Warnings (On, "-gnatwu");

@@ -1,7 +1,5 @@
 pragma Ada_2012;
-
 pragma Style_Checks (Off);
-pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with Interfaces.C.Extensions;
@@ -71,14 +69,6 @@ function Virtual_File_Overlay_Add_File_Mapping
       Virtual_Path : String;
       Real_Path    : String)
       return Clang.CX_Error_Code.Error_Code_T;
-   function Virtual_File_Overlay_Add_File_Mapping_C
-     (Arg_1        : Virtual_File_Overlay_T;
-      Virtual_Path : Interfaces.C.Strings.chars_ptr;
-      Real_Path    : Interfaces.C.Strings.chars_ptr)
-      return Clang.CX_Error_Code.Error_Code_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_VirtualFileOverlay_addFileMapping";
 
   --*
   -- * Set the case sensitivity for the \c CXVirtualFileOverlay object.
@@ -161,13 +151,6 @@ function Module_Map_Descriptor_Set_Framework_Module_Name
      (Arg_1 : Module_Map_Descriptor_T;
       Name  : String)
       return Clang.CX_Error_Code.Error_Code_T;
-   function Module_Map_Descriptor_Set_Framework_Module_Name_C
-     (Arg_1 : Module_Map_Descriptor_T;
-      Name  : Interfaces.C.Strings.chars_ptr)
-      return Clang.CX_Error_Code.Error_Code_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_ModuleMapDescriptor_setFrameworkModuleName";
 
   --*
   -- * Sets the umbrella header name that the module.map describes.
@@ -178,13 +161,6 @@ function Module_Map_Descriptor_Set_Umbrella_Header
      (Arg_1 : Module_Map_Descriptor_T;
       Name  : String)
       return Clang.CX_Error_Code.Error_Code_T;
-   function Module_Map_Descriptor_Set_Umbrella_Header_C
-     (Arg_1 : Module_Map_Descriptor_T;
-      Name  : Interfaces.C.Strings.chars_ptr)
-      return Clang.CX_Error_Code.Error_Code_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_ModuleMapDescriptor_setUmbrellaHeader";
 
   --*
   -- * Write out the \c CXModuleMapDescriptor object to a char buffer.
@@ -219,6 +195,3 @@ function Module_Map_Descriptor_Set_Umbrella_Header
   --  
 
 end Clang.Build_System;
-
-pragma Style_Checks (On);
-pragma Warnings (On, "-gnatwu");

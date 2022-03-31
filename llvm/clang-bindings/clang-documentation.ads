@@ -1,7 +1,5 @@
 pragma Ada_2012;
-
 pragma Style_Checks (Off);
-pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -43,6 +41,8 @@ package Clang.Documentation is
       TranslationUnit : Clang.Index.Translation_Unit_T;  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:38
    end record
    with Convention => C_Pass_By_Copy;  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:39
+
+   --  skipped anonymous struct anon_44
 
   --*
   -- * Given a cursor that represents a documentable entity (e.g.,
@@ -273,12 +273,6 @@ package Clang.Documentation is
 function Comment_Is_Whitespace
      (Comment : Comment_T)
       return Boolean;
-   function Comment_Is_Whitespace_C
-     (Comment : Comment_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Comment_isWhitespace";
 
   --*
   -- * \returns non-zero if \c Comment is inline content and has a newline
@@ -297,10 +291,9 @@ function Comment_Is_Whitespace
   -- * \returns text contained in the AST node.
   --  
 
-   function Text_Comment_Get_Text (Comment : Comment_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:260
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_TextComment_getText";
+function Text_Comment_Get_Text
+     (Comment : Comment_T)
+      return String;
 
   --*
   -- * \param Comment a \c CXComment_InlineCommand AST node.
@@ -308,10 +301,9 @@ function Comment_Is_Whitespace
   -- * \returns name of the inline command.
   --  
 
-   function Inline_Command_Comment_Get_Command_Name (Comment : Comment_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:268
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_InlineCommandComment_getCommandName";
+function Inline_Command_Comment_Get_Command_Name
+     (Comment : Comment_T)
+      return String;
 
   --*
   -- * \param Comment a \c CXComment_InlineCommand AST node.
@@ -344,10 +336,10 @@ function Comment_Is_Whitespace
   -- * \returns text of the specified argument.
   --  
 
-   function Inline_Command_Comment_Get_Arg_Text (Comment : Comment_T; Arg_Idx : unsigned) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:295
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_InlineCommandComment_getArgText";
+function Inline_Command_Comment_Get_Arg_Text
+     (Comment : Comment_T;
+      Arg_Idx : unsigned)
+      return String;
 
   --*
   -- * \param Comment a \c CXComment_HTMLStartTag or \c CXComment_HTMLEndTag AST
@@ -356,10 +348,9 @@ function Comment_Is_Whitespace
   -- * \returns HTML tag name.
   --  
 
-   function HTML_Tag_Comment_Get_Tag_Name (Comment : Comment_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:304
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_HTMLTagComment_getTagName";
+function HTML_Tag_Comment_Get_Tag_Name
+     (Comment : Comment_T)
+      return String;
 
   --*
   -- * \param Comment a \c CXComment_HTMLStartTag AST node.
@@ -370,12 +361,6 @@ function Comment_Is_Whitespace
 function HTML_Start_Tag_Comment_Is_Self_Closing
      (Comment : Comment_T)
       return Boolean;
-   function HTML_Start_Tag_Comment_Is_Self_Closing_C
-     (Comment : Comment_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_HTMLStartTagComment_isSelfClosing";
 
   --*
   -- * \param Comment a \c CXComment_HTMLStartTag AST node.
@@ -396,10 +381,10 @@ function HTML_Start_Tag_Comment_Is_Self_Closing
   -- * \returns name of the specified attribute.
   --  
 
-   function HTML_Start_Tag_Get_Attr_Name (Comment : Comment_T; Attr_Idx : unsigned) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:329
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_HTMLStartTag_getAttrName";
+function HTML_Start_Tag_Get_Attr_Name
+     (Comment  : Comment_T;
+      Attr_Idx : unsigned)
+      return String;
 
   --*
   -- * \param Comment a \c CXComment_HTMLStartTag AST node.
@@ -409,10 +394,10 @@ function HTML_Start_Tag_Comment_Is_Self_Closing
   -- * \returns value of the specified attribute.
   --  
 
-   function HTML_Start_Tag_Get_Attr_Value (Comment : Comment_T; Attr_Idx : unsigned) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:339
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_HTMLStartTag_getAttrValue";
+function HTML_Start_Tag_Get_Attr_Value
+     (Comment  : Comment_T;
+      Attr_Idx : unsigned)
+      return String;
 
   --*
   -- * \param Comment a \c CXComment_BlockCommand AST node.
@@ -420,10 +405,9 @@ function HTML_Start_Tag_Comment_Is_Self_Closing
   -- * \returns name of the block command.
   --  
 
-   function Block_Command_Comment_Get_Command_Name (Comment : Comment_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:347
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_BlockCommandComment_getCommandName";
+function Block_Command_Comment_Get_Command_Name
+     (Comment : Comment_T)
+      return String;
 
   --*
   -- * \param Comment a \c CXComment_BlockCommand AST node.
@@ -444,10 +428,10 @@ function HTML_Start_Tag_Comment_Is_Self_Closing
   -- * \returns text of the specified word-like argument.
   --  
 
-   function Block_Command_Comment_Get_Arg_Text (Comment : Comment_T; Arg_Idx : unsigned) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:365
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_BlockCommandComment_getArgText";
+function Block_Command_Comment_Get_Arg_Text
+     (Comment : Comment_T;
+      Arg_Idx : unsigned)
+      return String;
 
   --*
   -- * \param Comment a \c CXComment_BlockCommand or
@@ -467,10 +451,9 @@ function HTML_Start_Tag_Comment_Is_Self_Closing
   -- * \returns parameter name.
   --  
 
-   function Param_Command_Comment_Get_Param_Name (Comment : Comment_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:383
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_ParamCommandComment_getParamName";
+function Param_Command_Comment_Get_Param_Name
+     (Comment : Comment_T)
+      return String;
 
   --*
   -- * \param Comment a \c CXComment_ParamCommand AST node.
@@ -483,12 +466,6 @@ function HTML_Start_Tag_Comment_Is_Self_Closing
 function Param_Command_Comment_Is_Param_Index_Valid
      (Comment : Comment_T)
       return Boolean;
-   function Param_Command_Comment_Is_Param_Index_Valid_C
-     (Comment : Comment_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_ParamCommandComment_isParamIndexValid";
 
   --*
   -- * \param Comment a \c CXComment_ParamCommand AST node.
@@ -511,12 +488,6 @@ function Param_Command_Comment_Is_Param_Index_Valid
 function Param_Command_Comment_Is_Direction_Explicit
      (Comment : Comment_T)
       return Boolean;
-   function Param_Command_Comment_Is_Direction_Explicit_C
-     (Comment : Comment_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_ParamCommandComment_isDirectionExplicit";
 
   --*
   -- * \param Comment a \c CXComment_ParamCommand AST node.
@@ -535,10 +506,9 @@ function Param_Command_Comment_Is_Direction_Explicit
   -- * \returns template parameter name.
   --  
 
-   function T_Param_Command_Comment_Get_Param_Name (Comment : Comment_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:427
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_TParamCommandComment_getParamName";
+function T_Param_Command_Comment_Get_Param_Name
+     (Comment : Comment_T)
+      return String;
 
   --*
   -- * \param Comment a \c CXComment_TParamCommand AST node.
@@ -553,12 +523,6 @@ function Param_Command_Comment_Is_Direction_Explicit
 function T_Param_Command_Comment_Is_Param_Position_Valid
      (Comment : Comment_T)
       return Boolean;
-   function T_Param_Command_Comment_Is_Param_Position_Valid_C
-     (Comment : Comment_T)
-      return unsigned
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_TParamCommandComment_isParamPositionValid";
 
   --*
   -- * \param Comment a \c CXComment_TParamCommand AST node.
@@ -609,10 +573,9 @@ function T_Param_Command_Comment_Is_Param_Position_Valid
   -- * \returns text contained in the AST node.
   --  
 
-   function Verbatim_Block_Line_Comment_Get_Text (Comment : Comment_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:484
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_VerbatimBlockLineComment_getText";
+function Verbatim_Block_Line_Comment_Get_Text
+     (Comment : Comment_T)
+      return String;
 
   --*
   -- * \param Comment a \c CXComment_VerbatimLine AST node.
@@ -620,10 +583,9 @@ function T_Param_Command_Comment_Is_Param_Position_Valid
   -- * \returns text contained in the AST node.
   --  
 
-   function Verbatim_Line_Comment_Get_Text (Comment : Comment_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:491
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_VerbatimLineComment_getText";
+function Verbatim_Line_Comment_Get_Text
+     (Comment : Comment_T)
+      return String;
 
   --*
   -- * Convert an HTML tag AST node to string.
@@ -634,10 +596,9 @@ function T_Param_Command_Comment_Is_Param_Position_Valid
   -- * \returns string containing an HTML tag.
   --  
 
-   function HTML_Tag_Comment_Get_As_String (Comment : Comment_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:501
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_HTMLTagComment_getAsString";
+function HTML_Tag_Comment_Get_As_String
+     (Comment : Comment_T)
+      return String;
 
   --*
   -- * Convert a given full parsed comment to an HTML fragment.
@@ -671,10 +632,9 @@ function T_Param_Command_Comment_Is_Param_Position_Valid
   -- * \returns string containing an HTML fragment.
   --  
 
-   function Full_Comment_Get_As_HTML (Comment : Comment_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:534
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_FullComment_getAsHTML";
+function Full_Comment_Get_As_HTML
+     (Comment : Comment_T)
+      return String;
 
   --*
   -- * Convert a given full parsed comment to an XML document.
@@ -687,16 +647,12 @@ function T_Param_Command_Comment_Is_Param_Position_Valid
   -- * \returns string containing an XML document.
   --  
 
-   function Full_Comment_Get_As_XML (Comment : Comment_T) return Clang.CX_String.String_T  -- llvm-13.0.0.src/tools/clang/include/clang-c/Documentation.h:546
-   with Import => True, 
-        Convention => C, 
-        External_Name => "clang_FullComment_getAsXML";
+function Full_Comment_Get_As_XML
+     (Comment : Comment_T)
+      return String;
 
   --*
   -- * @}
   --  
 
 end Clang.Documentation;
-
-pragma Style_Checks (On);
-pragma Warnings (On, "-gnatwu");

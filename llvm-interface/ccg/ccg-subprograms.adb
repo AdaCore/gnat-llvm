@@ -177,16 +177,10 @@ package body CCG.Subprograms is
             declare
                Param  : constant Value_T   := Get_Param (V, J);
                E      : constant Entity_Id := Get_Parameter_Entity (V, J);
-               Uns    : constant Str       :=
-                 (if   Present (E) and then Is_Integral_Type (Param)
-                        and then Is_Unsigned_Type (Full_Etype (E))
-                  then +"unsigned " else +"");
                Typ    : constant Str       := Type_Of (Param) or E;
 
             begin
-               Result :=
-                 Result & (if J = 0 then "" else ", ") & Uns & Typ;
-
+               Result := Result & (if J = 0 then "" else ", ") & Typ;
                if not Extern then
                   Result := Result & " " & Param;
                end if;

@@ -32,11 +32,13 @@ package CCG.Write is
       Flags          : Value_Flags := Default_Flags;
       For_Precedence : Precedence  := Primary)
      with Pre => Present (V);
-   procedure Write_Type  (T : Type_T)
+   procedure Write_Type
+     (T : Type_T; E : Entity_Id := Empty; V : Value_T := No_Value_T)
      with Pre => Present (T);
    procedure Write_BB_Value  (BB : Basic_Block_T)
      with Pre => Present (BB);
-   --  Write the name of a value, type, or basic block
+   --  Write the name of a value, type, or basic block. For types, possibly
+   --  use entity or value to help say something about the type.
 
    procedure Write_C_Name (S : String)
      with Pre => S'Length > 0;

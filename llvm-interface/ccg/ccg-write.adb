@@ -19,6 +19,7 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 
 with Get_Targ; use Get_Targ;
 
+with Atree;   use Atree;
 with Debug;   use Debug;
 with Lib;     use Lib;
 with Opt;     use Opt;
@@ -28,6 +29,7 @@ with Output;  use Output;
 with Sinput;  use Sinput;
 with Table;
 
+with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
@@ -560,11 +562,7 @@ package body CCG.Write is
       --  If we're to write the type of V instead of the value of V, do so
 
       if Flags.Write_Type then
-         if Is_Unsigned (V) then
-            Write_Str ("unsigned ");
-         end if;
-
-         Write_Type (Type_Of (V));
+         Write_Type (Type_Of (V), V => V);
          return;
       end if;
 
@@ -681,7 +679,13 @@ package body CCG.Write is
    -- Write_Type --
    -----------------
 
-   procedure Write_Type (T : Type_T) is
+   procedure Write_Type
+     (T : Type_T; E : Entity_Id := Empty; V : Value_T := No_Value_T)
+   is
+      Our_E : constant Entity_Id :=
+        (if   Present (E) then E elsif Present (V) then GNAT_Type (V)
+              else Empty);
+
    begin
       case Get_Type_Kind (T) is
          when Void_Type_Kind =>
@@ -698,6 +702,15 @@ package body CCG.Write is
             Write_Str ("double");
 
          when Integer_Type_Kind =>
+
+            --  First see if we have a reference that says whether this
+            --  type is unsigned or not.
+
+            if Present (Our_E) and then Is_Unsigned_Type (Full_Etype (Our_E))
+            then
+               Write_Str ("unsigned ");
+            end if;
+
             Write_Str (Int_Type_String (Pos (Get_Int_Type_Width (T))));
 
          when Pointer_Type_Kind =>

@@ -13,47 +13,123 @@ for functions so that the conversions between C and Ada strings/booleans/...
 are hidden.
 """
 
-from collections import namedtuple
+from transformers import (AllTypesTransformer, BooleanCheckTransformer,
+                          INDENT, ReturnTypeTransformer, LocalVariable)
 
-ADA_KEYWORDS = set('''and or xor not select'''.split())
+from utils import (
+    Package, Function, Procedure, Argument,
+    include, get_prototype
+)
 
-# Types used to describe a fragment of API to wrap.
-Package = namedtuple('Package', 'name elements')
-Function = namedtuple('Function', 'name return_type args aspects')
-Procedure = namedtuple('Procedure', 'name args aspects')
-Argument = namedtuple('Argument', 'name type')
 
-INDENT = ' ' * 3
 C_STRING = 'Interfaces.C.Strings.chars_ptr'
 LLVM_BOOL = 'Bool_T'
 LLVM_TYPES_BOOL = 'LLVM.Types.Bool_T'
 
-TYPES_TRANSLATION_TABLE = {
-    C_STRING: 'String',
-    LLVM_BOOL: 'Boolean',
-    LLVM_TYPES_BOOL: 'Boolean',
-}
+# Internal representation of chars_ptr in libclang
+CLANG_STRING = 'String_T'
+CLANG_TYPES_STRING = "Clang.CX_String.String_T"
 
 
-def translate_type(type):
-    """Translate a type, if needed."""
-    return TYPES_TRANSLATION_TABLE.get(type, type)
+class C_String_Transformer(AllTypesTransformer):
+    """
+    Convert all uses of chars_ptr to Ada String.
+    """
+
+    def __init__(self):
+        super().__init__([C_STRING], 'String')
+
+    def convert_arg(self, arg):
+        local_vars = []
+        char_array = LocalVariable(
+            '{}_Array'.format(arg.name),
+            'aliased char_array',
+            'To_C ({})'.format(arg.name)
+        )
+        chars_ptr = LocalVariable(
+            '{}_String'.format(arg.name),
+            'constant chars_ptr',
+            "To_Chars_Ptr ({}'Unchecked_Access)".format(
+                char_array.name
+            )
+        )
+        local_vars.extend([char_array, chars_ptr])
+        return (local_vars, chars_ptr.name)
+
+    def convert_return(self, ret_variable):
+        return ['return Value ({});'.format(ret_variable.name)]
+
+
+class LLVM_Bool_Transformer(AllTypesTransformer):
+    """
+    Convert all uses of LLVM boolean type to Ada Boolean type.
+    """
+
+    def __init__(self):
+        super().__init__([LLVM_BOOL, LLVM_TYPES_BOOL], 'Boolean')
+
+    def convert_arg(self, arg):
+        bool_t = LocalVariable(
+            '{}_Bool'.format(arg.name),
+            'constant LLVM.Types.Bool_T',
+            "Boolean'Pos ({})".format(arg.name)
+        )
+        return ([bool_t], bool_t.name)
+
+    def convert_return(self, ret_variable):
+        return ["return {} /= 0;".format(ret_variable.name)]
+
+
+class Clang_String_Transformer(ReturnTypeTransformer):
+    """
+    Convert returned values of CXString type to Ada String type.
+    """
+
+    def __init__(self):
+        super().__init__([CLANG_TYPES_STRING], 'String')
+
+    def convert_return(self, ret_variable):
+        return [
+            'declare'
+            '{}Ada_String : String := Clang.CX_String.Get_C_String ({});'.format(
+                INDENT, ret_variable.name
+            ),
+            'begin'
+            '{}Clang.CX_String.Dispose_String ({});'.format(
+                INDENT, ret_variable.name
+            ),
+            'return Ada_String;',
+            'end;'
+        ]
+
+
+class Clang_Check_Transformer(BooleanCheckTransformer):
+    """
+    Specific to clang-c headers: as C doesn't have a boolean standard type,
+    and the clang-c headers do not define a boolean type like LLVM does, we
+    will assume that every function containing Is_ that returns an unsigned
+    or an integer actually returns a boolean (encoded in the resulting
+    unsigned / integer).
+    """
+
+    def __init__(self):
+        super().__init__(['unsigned', 'int'], 'Boolean')
+
+    def convert_return(self, ret_variable):
+        return ["return {} /= 0;".format(ret_variable.name)]
+
+
+TRANSFORMERS = [
+    C_String_Transformer(),
+    LLVM_Bool_Transformer(),
+    Clang_String_Transformer(),
+    Clang_Check_Transformer()
+]
 
 
 def fmt_name(name):
     """Format a structured name to a string."""
     return '.'.join(name)
-
-
-def include(substream, stream, indent=False):
-    """
-    Extend the "stream" list with the "substream" list of strings.
-
-    If "indent", add one level of identation to the appenned lines.
-    """
-    if indent:
-        substream = (INDENT + line for line in substream)
-    stream.extend(substream)
 
 
 def is_wrapper_needed(element):
@@ -63,103 +139,25 @@ def is_wrapper_needed(element):
     if element.name.startswith("Initialize_Native_"):
         return False
 
-    for arg in element.args:
-        if arg.type in TYPES_TRANSLATION_TABLE:
+    for tr in TRANSFORMERS:
+        if tr.accept(element):
             return True
 
-    # Specific to clang-c headers: as C doesn't have a boolean standard type,
-    # and the clang-c headers do not define a boolean type like LLVM does, we
-    # will assume that every function containing Is_ that returns an unsigned
-    # or an integer actually returns a boolean (encoded in the resulting
-    # unsigned / integer).
 
-    if (isinstance(element, Function) and "Is_" in element.name
-            and element.return_type in ('unsigned', 'int')):
-        return True
-
-    return (
-        isinstance(element, Function) and
-        element.return_type in TYPES_TRANSLATION_TABLE
-    )
-
-
-def get_wrapped(element):
+def transform_fixpoint(subp, tr_callback):
     """
-    Return the prototype of the Ada binding for the "element" C subprogram to
-    wrap.
+    While the subprogram can be transformed, keep transforming it. Every time we
+    transform it, apply further transformations to the transformed subprogram
+    instead of the original one.
     """
-    return element._replace(name='{}_C'.format(element.name))
-
-
-def get_wrapper(element):
-    """
-    Return the prototype of the Ada subprogram that wraps the "element" C
-    subprogram.
-    """
-    wrapper_fn = element._replace(args=[
-        arg._replace(type=translate_type(arg.type))
-        for arg in element.args
-    ])
-
-    if isinstance(wrapper_fn, Function):
-        wrapper_fn = wrapper_fn._replace(
-            return_type=translate_type(wrapper_fn.return_type)
-        )
-        # For clang, we will assume that every function that contains Is_ and
-        # returns an unsigned / integer is a boolean check.
-        if ("Is" in wrapper_fn.name and
-                element.return_type in ('unsigned', 'int')):
-            wrapper_fn = wrapper_fn._replace(return_type='Boolean')
-
-    new_name = wrapper_fn.name
-
-    # Special case for instruction builder primitives: strip the "Build_"
-    # prefix, unless the result is an Ada keyword.
-    if new_name.startswith('Build_'):
-        n = new_name[6:]
-        if n.lower() not in ADA_KEYWORDS:
-            new_name = n
-    # Also remove any "_Builder" suffix.
-    new_name = new_name.replace('_Builder', '')
-
-    wrapper_fn = wrapper_fn._replace(name=new_name)
-
-    wrapper_fn = wrapper_fn._replace(aspects=[])
-
-    return wrapper_fn
-
-
-def get_prototype(function, decl=False):
-    """
-    Format the prototype of the "function" subprogram in Ada.
-
-    If "decl", append ";" at the end, so it can be used as a subprogram
-    declaration.
-    """
-    is_fnct = isinstance(function, Function)
-
-    result = ['{} {}'.format(
-        'function' if is_fnct else 'procedure', function.name
-    )]
-    if function.args:
-        longest_name = max(len(arg.name) for arg in function.args)
-        for i, arg in enumerate(function.args):
-            prefix = (' ' * 2 + '(') if i == 0 else INDENT
-            suffix = ')' if i + 1 == len(function.args) else ';'
-            result.append('{}{} : {}{}'.format(
-                prefix, arg.name.ljust(longest_name), arg.type, suffix
-            ))
-    if is_fnct:
-        result.append('{}return {}'.format(INDENT, function.return_type))
-    if decl:
-        for i, aspect in enumerate(function.aspects):
-            prefix = "with " if i == 0 else ' ' * 5
-            suffix = "" if i + 1 == len(function.aspects) else ","
-            result.append('{}{} => {}{}'.format(
-                prefix, aspect.f_id.text, aspect.f_expr.text, suffix
-            ))
-        result[-1] += ';'
-    return result
+    accepted = True
+    while accepted:
+        accepted = False
+        for tr in TRANSFORMERS:
+            if tr.accept(subp):
+                tr_callback(tr, subp)
+                subp = tr.wrapper_fn(subp)
+                accepted = True
 
 
 def generate_body(package):
@@ -178,97 +176,18 @@ def generate_body(package):
     ]
 
     for elt in package.elements:
-        elt_body = []
-        is_fnct = isinstance(elt, Function)
-
-        # If there is no type to translate, no need for a wrapper: go next.
         if not is_wrapper_needed(elt):
             continue
 
-        orig_name = elt.name
-        wrapped_elt = get_wrapper(elt)
+        # In that case, we do not expose the C declaration. The user
+        # should use the wrappers.
+        include(get_prototype(elt, decl=True), result, indent=True)
 
-        # Generate the header of the wrapper subprogram (name, args and return
-        # type).
-        include(get_prototype(get_wrapper(elt)), elt_body)
+        def callback(tr, subp):
+            include(tr.wrapper_body(subp), result, indent=True)
+            result.append('')
 
-        # Mapping argument name -> object name to pass the the wrapped
-        # subprogram.
-        call_args = {
-            arg.name: arg.name
-            for arg in elt.args
-        }
-
-        local_vars = []
-        LocalVariable = namedtuple('LocalVariable', 'name type value')
-
-        # Now declare variables, to hold conversion temporaries.
-        for arg in elt.args:
-            if arg.type == C_STRING:
-                char_array = LocalVariable(
-                    '{}_Array'.format(arg.name),
-                    'aliased char_array',
-                    'To_C ({})'.format(arg.name)
-                )
-                chars_ptr = LocalVariable(
-                    '{}_String'.format(arg.name),
-                    'constant chars_ptr',
-                    "To_Chars_Ptr ({}'Unchecked_Access)".format(
-                        char_array.name
-                    )
-                )
-                local_vars.extend([char_array, chars_ptr])
-                call_args[arg.name] = chars_ptr.name
-            elif arg.type in (LLVM_BOOL, LLVM_TYPES_BOOL):
-                bool_t = LocalVariable(
-                    '{}_Bool'.format(arg.name),
-                    'constant LLVM.Types.Bool_T',
-                    "Boolean'Pos ({})".format(arg.name)
-                )
-                local_vars.append(bool_t)
-                call_args[arg.name] = bool_t.name
-
-        # Emit them.
-        elt_body.append('is')
-        if local_vars:
-            longest_name = max(len(var.name) for var in local_vars)
-            for var in local_vars:
-                elt_body.append('{}{} : {} := {};'.format(
-                    INDENT,
-                    var.name.ljust(longest_name), var.type, var.value
-                ))
-
-        elt_body.append('begin')
-
-        # Generate the call to the C subprogram.
-        call = '{}_C'.format(orig_name)
-        if elt.args:
-            call = '{} ({})'.format(call, ', '.join(
-                call_args[arg.name] for arg in elt.args
-            ))
-        # Make some type conversion for the result if needed.
-        if is_fnct:
-            if elt.return_type == C_STRING:
-                call = 'Value ({})'.format(call)
-
-            # Specific to LLVM
-            elif elt.return_type in (LLVM_BOOL, LLVM_TYPES_BOOL):
-                call = "{} /= 0".format(call)
-
-            # Specific to clang
-            elif ('Is_' in elt.name and elt.return_type in
-                  ('unsigned', 'int')):
-                call = "(if {} = 0 then False else True)".format(call)
-
-            stmt = 'return {}'.format(call)
-        else:
-            stmt = call
-        elt_body.append('{}{};'.format(INDENT, stmt))
-
-        # And then, the wrapper is done!
-        elt_body.append('end {};'.format(wrapped_elt.name))
-        include(elt_body, result, indent=True)
-        result.append('')
+        transform_fixpoint(elt, callback)
 
     result.append('end {};'.format(fmt_name(package.name)))
 
@@ -276,12 +195,22 @@ def generate_body(package):
 
 
 def generate_decl(function):
-    wrapped_fn = get_wrapped(function)
-    ret = (
-        get_prototype(get_wrapper(function), decl=True) +
-        get_prototype(wrapped_fn, decl=True)
-    )
-    return ret
+    exposed_decl = []
+
+    # Expose only the end-wrapper decl (if we wrap the function several times,
+    # we will not expose the intermediate wrappers, nor the C underlying
+    # definition).
+
+    def callback(tr, subp):
+        nonlocal exposed_decl
+        exposed_decl = get_prototype(tr.wrapper_fn(subp), decl=True)
+
+    transform_fixpoint(
+        function,
+        callback
+        )
+
+    return exposed_decl
 
 
 if __name__ == '__main__':

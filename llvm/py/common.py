@@ -6,8 +6,8 @@ import shutil
 from os import path
 from functools import partial
 from sys import argv
-from wrapper import (Argument, Function, Package, Procedure,
-                     generate_body, generate_decl, is_wrapper_needed)
+from utils import Argument, Function, Package, Procedure
+from wrapper import generate_body, generate_decl, is_wrapper_needed
 
 
 # Remove the first prefix in prefixes string starts with. If string does not

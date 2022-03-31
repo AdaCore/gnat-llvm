@@ -106,14 +106,8 @@ package body CCG.Aggregates is
                     Get_Field_Name (T, J);
                   F              : constant Entity_Id        :=
                     Get_Field_Entity (T, J);
-                  Maybe_Unsigned : constant Str              :=
-                    +(if   Present (F)
-                           and then Is_Unsigned_Type (Full_Etype (F))
-                      then "unsigned " else "");
-
                begin
-                  Output_Decl (Maybe_Unsigned & ST & " " & Name,
-                               Is_Typedef => True);
+                  Output_Decl ((ST or F) & " " & Name, Is_Typedef => True);
                end;
             end if;
          end;

@@ -72,10 +72,6 @@ package CCG.Output is
       --  position of this line in the source.
    end record;
 
-   function Int_Type_String (Size : Pos) return Str;
-   --  Return the string corresponding to the C name of an integer type of
-   --  Size bits.
-
    procedure Output_Typedef (T : Type_T; Incomplete : Boolean := False)
      with Pre =>  Present (T),
           Post => Get_Is_Typedef_Output (T)

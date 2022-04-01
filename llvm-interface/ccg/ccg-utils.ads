@@ -255,4 +255,8 @@ package CCG.Utils is
      ((if Num_Uses (V) = 1 then Get_User (Get_First_Use (V)) else No_Value_T))
      with Pre => Present (V);
 
+   function Int_Type_String (Size : Pos) return Str;
+   --  Return the string corresponding to the C name of an integer type of
+   --  Size bits.
+
 end CCG.Utils;

@@ -560,4 +560,33 @@ package body CCG.Utils is
       Update_Hash (H, Hash (B));
    end Update_Hash;
 
+   ---------------------
+   -- Int_Type_String --
+   ---------------------
+
+   function Int_Type_String (Size : Pos) return Str is
+   begin
+      --  ??? There are a number of issues here: Ada supports a
+      --  "long long long" type, which could correspond to C's
+      --  int128_t.  We also may want to generate intXX_t types
+      --  instead of the standard types based on a switch.  But for
+      --  now we'll keep it simple.
+
+      if Size > Long_Size and then Size > Int_Size
+        and then Size <= Long_Long_Size
+      then
+         return +"long long";
+      elsif Size > Int_Size and then Size <= Long_Size then
+         return +"long";
+      elsif Size > Short_Size and then Size <= Int_Size then
+         return +"int";
+      elsif Size > Char_Size and then Size <= Short_Size then
+         return +"short";
+      elsif Size <= Char_Size then
+         return +"char";
+      else
+         return +"<unknown int type:" & Size'Image & ">";
+      end if;
+   end Int_Type_String;
+
 end CCG.Utils;

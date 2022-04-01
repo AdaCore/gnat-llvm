@@ -171,7 +171,7 @@ package body CCG is
       --  most reliable information. But we also don't need this for a
       --  constants.
 
-      if Emit_C and then not Is_A_Constant (V) and then No (Get_Entity (V))
+      if Emit_C and then not Is_A_Constant_Int (V) and then No (Get_Entity (V))
       then
          Notify_On_Value_Delete (V, Delete_Value_Info'Access);
          Set_Entity (V, E);

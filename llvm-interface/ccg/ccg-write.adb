@@ -30,6 +30,7 @@ with Sinput;  use Sinput;
 with Table;
 
 with GNATLLVM.Types;   use GNATLLVM.Types;
+with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
@@ -703,15 +704,52 @@ package body CCG.Write is
 
          when Integer_Type_Kind =>
 
-            --  First see if we have a reference that says whether this
-            --  type is unsigned or not.
+            declare
+               TE   : constant Opt_Type_Kind_Id :=
+                 (if Present (Our_E) then Full_Etype (Our_E) else Empty);
+               Name : constant String           :=
+                 (if  Present (TE) then Get_Name (TE) else "");
 
-            if Present (Our_E) and then Is_Unsigned_Type (Full_Etype (Our_E))
-            then
-               Write_Str ("unsigned ");
-            end if;
+            begin
+               --  First see if we have a reference that says whether this
+               --  type is unsigned or not.
 
-            Write_Str (Int_Type_String (Pos (Get_Int_Type_Width (T))));
+               if Present (TE) and then Is_Unsigned_Type (TE) then
+                  Write_Str ("unsigned ");
+               end if;
+
+               --  Now see if this is a known type in Interfaces.C. Note
+               --  that we can ignore signedness here since it's been taken
+               --  care of above. We really only need to worry about "long"
+               --  and maybe "long long" here, since the other type sizes
+               --  should be unique here, but we'll be conservative. We
+               --  also have to be tricky here since "char" is an enum and
+               --  hence unsigned, so we look for "signed_char".
+
+               if Name = "interfaces__c__long_long"
+                 or else Name = "interfaces__c__unsigned_long_long"
+               then
+                  Write_Str ("long long");
+               elsif Name = "interfaces__c__long"
+                 or else Name = "interfaces__c__unsigned_long"
+               then
+                  Write_Str ("long");
+               elsif Name = "interfaces__c__int"
+                 or else Name = "interfaces__c__unsigned_int"
+               then
+                  Write_Str ("int");
+               elsif Name = "interfaces__c__short"
+                 or else Name = "interfaces__c__unsigned_short"
+               then
+                  Write_Str ("short");
+               elsif Name = "interfaces__c__signed_char"
+                 or else Name = "interfaces__c__unsigned_char"
+               then
+                  Write_Str ("char");
+               else
+                  Write_Str (Int_Type_String (Pos (Get_Int_Type_Width (T))));
+               end if;
+            end;
 
          when Pointer_Type_Kind =>
 

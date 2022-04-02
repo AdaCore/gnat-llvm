@@ -324,15 +324,22 @@ package body CCG.Strs is
    -- "+" --
    ---------
 
-   function "+" (V : Value_T; VF : Value_Flag) return Str is
+   function "+" (V : Value_T; VF : Value_Flags) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Value, 1, V, +VF, Unknown)));
+        (1, Unknown, (1 => (Value, 1, V, VF, Unknown)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
       Set_Is_Used (V);
-      if VF = Write_Type then
-         Maybe_Output_Typedef (Type_Of (V));
+
+      --  If we're doing this to write the type of V, make sure we don't
+      --  need a typedef for it. But respect whether this is actually the
+      --  type of V or the type if points to, depending on LHS status.
+
+      if VF.Write_Type then
+         Maybe_Output_Typedef
+           ((if   VF.LHS and then Get_Is_LHS (V)
+             then Get_Element_Type (Type_Of (V)) else Type_Of (V)));
       end if;
 
       return Result;
@@ -342,13 +349,13 @@ package body CCG.Strs is
    -- "+" --
    ---------
 
-   function "+" (E : Entity_Id; VF : Value_Flag) return Str is
+   function "+" (E : Entity_Id; VF : Value_Flags) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Entity, 1, E, +VF)));
+        (1, Unknown, (1 => (Entity, 1, E, VF)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      if VF = Write_Type then
+      if VF.Write_Type then
          Maybe_Output_Typedef (Type_Of (Full_GL_Type (E)));
       end if;
 

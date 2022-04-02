@@ -231,9 +231,15 @@ package CCG.Strs is
    function "+" (F : Value_Flag) return Value_Flags is
      (Flag_To_Flags (F));
 
-   function "+" (V : Value_T; VF : Value_Flag) return Str
+   function "+" (V : Value_T; VF : Value_Flags) return Str
      with Pre => Present (V), Post => Present ("+"'Result);
-   function "+" (E : Entity_Id; VF : Value_Flag) return Str
+   function "+" (V : Value_T; VF : Value_Flag) return Str is
+     (V + (+VF))
+     with Pre => Present (V), Post => Present ("+"'Result);
+   function "+" (E : Entity_Id; VF : Value_Flags) return Str
+     with Pre => Present (E), Post => Present ("+"'Result);
+   function "+" (E : Entity_Id; VF : Value_Flag) return Str is
+     (E + (+VF))
      with Pre => Present (E), Post => Present ("+"'Result);
 
    type String_Kind is (Normal, C_Name);

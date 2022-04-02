@@ -19,15 +19,17 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 
 with Get_Targ; use Get_Targ;
 
-with Atree;   use Atree;
-with Debug;   use Debug;
-with Lib;     use Lib;
-with Opt;     use Opt;
-with Osint;   use Osint;
-with Osint.C; use Osint.C;
-with Output;  use Output;
-with Sinput;  use Sinput;
+with Atree;       use Atree;
+with Debug;       use Debug;
+with Lib;         use Lib;
+with Opt;         use Opt;
+with Osint;       use Osint;
+with Osint.C;     use Osint.C;
+with Output;      use Output;
+with Sinfo.Nodes; use Sinfo.Nodes;
+with Sinput;      use Sinput;
 with Table;
+with Uintp;       use Uintp;
 
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
@@ -560,10 +562,13 @@ package body CCG.Write is
       end Maybe_Write_Parens;
 
    begin
-      --  If we're to write the type of V instead of the value of V, do so
+      --  If we're to write the type of V instead of the value of V, do so.
+      --  If this is for a decl and its an LHS, use the element type instead.
 
       if Flags.Write_Type then
-         Write_Type (Type_Of (V), V => V);
+         Write_Type ((if   Flags.LHS and then Get_Is_LHS (V)
+                      then Get_Element_Type (Type_Of (V)) else Type_Of (V)),
+                     V => V);
          return;
       end if;
 
@@ -683,9 +688,11 @@ package body CCG.Write is
    procedure Write_Type
      (T : Type_T; E : Entity_Id := Empty; V : Value_T := No_Value_T)
    is
-      Our_E : constant Entity_Id :=
-        (if   Present (E) then E elsif Present (V) then GNAT_Type (V)
-              else Empty);
+      TE : constant Opt_Type_Kind_Id :=
+        (if    Present (E) then Full_Etype (E)
+         elsif Present (V) then GNAT_Type (V)
+         else  Empty);
+      BT : Opt_Type_Kind_Id          := TE;
 
    begin
       case Get_Type_Kind (T) is
@@ -704,52 +711,82 @@ package body CCG.Write is
 
          when Integer_Type_Kind =>
 
-            declare
-               TE   : constant Opt_Type_Kind_Id :=
-                 (if Present (Our_E) then Full_Etype (Our_E) else Empty);
-               Name : constant String           :=
-                 (if  Present (TE) then Get_Name (TE) else "");
+            --  First see if we have a reference that says whether this
+            --  type is unsigned or not.
 
-            begin
-               --  First see if we have a reference that says whether this
-               --  type is unsigned or not.
+            if Present (TE) and then Is_Unsigned_Type (TE) then
+               Write_Str ("unsigned ");
+            end if;
 
-               if Present (TE) and then Is_Unsigned_Type (TE) then
-                  Write_Str ("unsigned ");
-               end if;
+            --  Now see if a type in Interfaces.C is in the type chain
+            --  at the same size.
 
-               --  Now see if this is a known type in Interfaces.C. Note
-               --  that we can ignore signedness here since it's been taken
-               --  care of above. We really only need to worry about "long"
-               --  and maybe "long long" here, since the other type sizes
-               --  should be unique here, but we'll be conservative. We
-               --  also have to be tricky here since "char" is an enum and
-               --  hence unsigned, so we look for "signed_char".
+            while Present (BT) and then Etype (BT) /= BT
+              and then RM_Size (BT) = RM_Size (Etype (BT))
+            loop
+               declare
+                  NBT  : constant Type_Kind_Id := Etype (BT);
+                  Name : constant String       := Get_Name (NBT);
 
-               if Name = "interfaces__c__long_long"
-                 or else Name = "interfaces__c__unsigned_long_long"
-               then
-                  Write_Str ("long long");
-               elsif Name = "interfaces__c__long"
-                 or else Name = "interfaces__c__unsigned_long"
-               then
-                  Write_Str ("long");
-               elsif Name = "interfaces__c__int"
-                 or else Name = "interfaces__c__unsigned_int"
-               then
-                  Write_Str ("int");
-               elsif Name = "interfaces__c__short"
-                 or else Name = "interfaces__c__unsigned_short"
-               then
-                  Write_Str ("short");
-               elsif Name = "interfaces__c__signed_char"
-                 or else Name = "interfaces__c__unsigned_char"
-               then
-                  Write_Str ("char");
-               else
-                  Write_Str (Int_Type_String (Pos (Get_Int_Type_Width (T))));
-               end if;
-            end;
+               begin
+                  --  Now see if this is a known type in Interfaces.C. Note
+                  --  that we can ignore signedness here since it's been
+                  --  taken care of above. We really only need to worry
+                  --  about "long" and maybe "long long" here, since the
+                  --  other type sizes should be unique here, but we'll be
+                  --  conservative. We also have to be tricky here since
+                  --  "char" is an enum and hence unsigned, so we look for
+                  --  "signed_char".
+                  --
+                  --  We could do the below using a table, but that would
+                  --  involve lots of slow run-time operations.
+
+                  if Name = "interfaces__c__long_long"
+                    or else Name = "interfaces__c__unsigned_long_long"
+                    or else Name = "interfaces__c__Tlong_longB"
+                    or else Name = "interfaces__c__Tunsigned_long_longB"
+                  then
+                     Write_Str ("long long");
+                     return;
+                  elsif Name = "interfaces__c__long"
+                    or else Name = "interfaces__c__unsigned_long"
+                    or else Name = "interfaces__c__TlongB"
+                    or else Name = "interfaces__c__Tunsigned_longB"
+                  then
+                     Write_Str ("long");
+                     return;
+                  elsif Name = "interfaces__c__int"
+                    or else Name = "interfaces__c__unsigned_int"
+                    or else Name = "interfaces__c__TintB"
+                    or else Name = "interfaces__c__Tunsigned_intB"
+                  then
+                     Write_Str ("int");
+                     return;
+                  elsif Name = "interfaces__c__short"
+                    or else Name = "interfaces__c__unsigned_short"
+                    or else Name = "interfaces__c__TshortB"
+                    or else Name = "interfaces__c__Tunsigned_short"
+                  then
+                     Write_Str ("short");
+                     return;
+                  elsif Name = "interfaces__c__signed_char"
+                    or else Name = "interfaces__c__unsigned_char"
+                    or else Name = "interfaces__c__Tsigned_charB"
+                    or else Name = "interfaces__c__Tunsigned_charB"
+                  then
+                     Write_Str ("char");
+                     return;
+                  end if;
+
+                  --  Go on to the next type in the base type chain
+
+                  BT := NBT;
+               end;
+            end loop;
+
+            --  If nothing in Interfaces.C, write type name from size
+
+            Write_Str (Int_Type_String (Pos (Get_Int_Type_Width (T))));
 
          when Pointer_Type_Kind =>
 

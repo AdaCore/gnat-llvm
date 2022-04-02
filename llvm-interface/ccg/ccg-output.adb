@@ -177,21 +177,13 @@ package body CCG.Output is
             Set_Is_LHS (V);
          end if;
 
-         --  The relevant type is the type of V unless V is an LHS, in
-         --  which case the type of V is a pointer and we want what it
-         --  points to.
-
          declare
-            Typ  : constant Str :=
-              (if   Get_Is_LHS (V) then +Get_Element_Type (V)
-               else V + Write_Type);
-            Decl : Str             := Typ & " " & (V + LHS);
+            Decl : Str := (V + (+Write_Type or +LHS)) & " " & (V + LHS);
 
          begin
             --  For globals, we write the decl immediately. Otherwise, it's
-            --  part of the decls for the subprogram.  Figure out whether
-            --  this is static or extern.  It's extern if there's no
-            --  initializer.
+            --  part of the decls for the subprogram.  Figure out whether this
+            --  is static or extern.  It's extern if there's no initializer.
 
             if Is_A_Global_Variable (V) then
                declare

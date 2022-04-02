@@ -724,64 +724,64 @@ package body CCG.Write is
             while Present (BT) and then Etype (BT) /= BT
               and then RM_Size (BT) = RM_Size (Etype (BT))
             loop
-               declare
-                  NBT  : constant Type_Kind_Id := Etype (BT);
-                  Name : constant String       := Get_Name (NBT);
+               --  Now see if this is a known type in Interfaces.C. Note
+               --  that we can ignore signedness here since it's been taken
+               --  care of above. We really only need to worry about "long"
+               --  and maybe "long long" here, since the other type sizes
+               --  should be unique here, but we'll be conservative. We
+               --  also have to be tricky here since "char" is an enum and
+               --  hence unsigned, so we look for "signed_char" and also have
+               --  to allow for derivation from both the subtype and base
+               --  type of these names.
+               --
+               --  To save time, we check to see if this is known to be in
+               --  Interfaces.C. It's tempting to do this check by calling
+               --  Name_Find on "interfaces__c" and just comparing Chars,
+               --  but Name_Enter is used to enter that name into the
+               --  table.
 
-               begin
-                  --  Now see if this is a known type in Interfaces.C. Note
-                  --  that we can ignore signedness here since it's been
-                  --  taken care of above. We really only need to worry
-                  --  about "long" and maybe "long long" here, since the
-                  --  other type sizes should be unique here, but we'll be
-                  --  conservative. We also have to be tricky here since
-                  --  "char" is an enum and hence unsigned, so we look for
-                  --  "signed_char".
-                  --
-                  --  We could do the below using a table, but that would
-                  --  involve lots of slow run-time operations.
+               if Get_Name (Scope (Etype (BT))) = "interfaces__c" then
+                  declare
+                     Full_Name : constant String := Get_Name (Etype (BT));
+                     Name      : constant String :=
+                       Full_Name (Full_Name'First + 15 .. Full_Name'Last);
 
-                  if Name = "interfaces__c__long_long"
-                    or else Name = "interfaces__c__unsigned_long_long"
-                    or else Name = "interfaces__c__Tlong_longB"
-                    or else Name = "interfaces__c__Tunsigned_long_longB"
-                  then
-                     Write_Str ("long long");
-                     return;
-                  elsif Name = "interfaces__c__long"
-                    or else Name = "interfaces__c__unsigned_long"
-                    or else Name = "interfaces__c__TlongB"
-                    or else Name = "interfaces__c__Tunsigned_longB"
-                  then
-                     Write_Str ("long");
-                     return;
-                  elsif Name = "interfaces__c__int"
-                    or else Name = "interfaces__c__unsigned_int"
-                    or else Name = "interfaces__c__TintB"
-                    or else Name = "interfaces__c__Tunsigned_intB"
-                  then
-                     Write_Str ("int");
-                     return;
-                  elsif Name = "interfaces__c__short"
-                    or else Name = "interfaces__c__unsigned_short"
-                    or else Name = "interfaces__c__TshortB"
-                    or else Name = "interfaces__c__Tunsigned_short"
-                  then
-                     Write_Str ("short");
-                     return;
-                  elsif Name = "interfaces__c__signed_char"
-                    or else Name = "interfaces__c__unsigned_char"
-                    or else Name = "interfaces__c__Tsigned_charB"
-                    or else Name = "interfaces__c__Tunsigned_charB"
-                  then
-                     Write_Str ("char");
-                     return;
-                  end if;
+                  begin
+                     if Name = "long_long" or else Name = "unsigned_long_long"
+                       or else Name = "Tlong_longB"
+                       or else Name = "Tunsigned_long_longB"
+                     then
+                        Write_Str ("long long");
+                        return;
+                     elsif Name = "long" or else Name = "unsigned_long"
+                       or else Name = "TlongB" or else Name = "Tunsigned_longB"
+                     then
+                        Write_Str ("long");
+                        return;
+                     elsif Name = "int" or else Name = "unsigned_int"
+                       or else Name = "TintB" or else Name = "Tunsigned_intB"
+                     then
+                        Write_Str ("int");
+                        return;
+                     elsif Name = "short" or else Name = "unsigned_short"
+                       or else Name = "TshortB"
+                       or else Name = "Tunsigned_short"
+                     then
+                        Write_Str ("short");
+                        return;
+                     elsif Name = "signed_char" or else Name = "unsigned_char"
+                       or else Name = "Tsigned_charB"
+                       or else Name = "Tunsigned_charB"
+                     then
+                        Write_Str ("char");
+                        return;
+                     end if;
+                  end;
+               end if;
 
-                  --  Go on to the next type in the base type chain
+               --  Go on to the next type in the type chain
 
-                  BT := NBT;
-               end;
+               BT := Etype (BT);
             end loop;
 
             --  If nothing in Interfaces.C, write type name from size

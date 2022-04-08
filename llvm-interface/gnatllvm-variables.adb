@@ -1455,8 +1455,13 @@ package body GNATLLVM.Variables is
       --  and it is composite and not an exception, an Out parameter or a
       --  reference to another object, and the size of its type is a
       --  constant, adjust the alignment.
+      --
+      --  But don't do this when generating C. Doing so will make it
+      --  harder to detect user-specified alignments and this really should
+      --  be done by the underlying C compiler if it would benefit the target.
 
-      if No (Size) and then No (Align) and then Present (In_Size)
+      if not Emit_C and then No (Size) and then No (Align)
+        and then Present (In_Size)
         and then (Is_Full_Access_Object (E)
                     or else (Ekind (E) not in E_Exception     |
                                               E_Out_Parameter |

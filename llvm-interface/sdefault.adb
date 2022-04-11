@@ -25,6 +25,9 @@
 --  This package body provides the llvm-gnat1 implementation of the routines
 --  that locate the Ada library source and object directories.
 
+with Ada.Command_Line; use Ada.Command_Line;
+with GNAT.Directory_Operations; use GNAT.Directory_Operations;
+
 with Osint; use Osint;
 with System.OS_Lib; use System.OS_Lib;
 
@@ -35,8 +38,11 @@ package body Sdefault is
    -- Local Data --
    ----------------
 
+   Executable : constant String := Base_Name (Command_Name, ".exe");
+
    Target : constant String := "llvm/";
-   CCG    : constant Boolean := Getenv ("CCG").all /= "";
+   CCG    : constant Boolean :=
+     Getenv ("CCG").all /= "" or else Executable = "c-gnat1";
 
    ------------------------------
    -- Include_Dir_Default_Name --

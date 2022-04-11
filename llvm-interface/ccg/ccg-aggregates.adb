@@ -103,20 +103,22 @@ package body CCG.Aggregates is
         or else Count_Struct_Element_Types (T) = Nat (0)
       then
          return Padding;
-      end if;
 
       --  if we can't determine the base type, its base type is
       --  unconstrained (see the discussion in GNATLLVM.Records.Create for
       --  the rationale of this test), or if the alignment of the struct
       --  is smaller that the default alignment, we must pack.
-      --  ??? For now do this if optimizing, since LLVM's SROA may try
-      --  to preserve padding fields.
 
-      if No (TE) or else not Is_Constrained (TE)
+      elsif No (TE) or else not Is_Constrained (TE)
         or else (+Alignment (TE)) * UBPU < ULL (Default_Alignment (T))
-        or else Code_Opt_Level > 0
       then
          return Packed;
+
+      --  ??? For now, if optimizing, we need to include padding
+      --  fields since LLVM's SROA may try to preserve padding fields.
+
+      elsif Code_Opt_Level > 0 then
+         Need_Pad := True;
       end if;
 
       --  Now we look at the position of each field relative to its default

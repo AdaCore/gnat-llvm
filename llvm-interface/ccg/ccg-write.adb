@@ -332,19 +332,29 @@ package body CCG.Write is
             Write_Str ("NULL");
 
          when Struct_Type_Kind =>
-            Write_Str ("{");
-            for J in 0 .. Nat'(Count_Struct_Element_Types (T)) - 1 loop
-               Maybe_Write_Comma (First);
-               Write_Undef (Struct_Get_Type_At_Index (T, J));
-            end loop;
+            declare
+               Types : constant Nat                :=
+                 Count_Struct_Element_Types (T);
+               SOS   : constant Struct_Out_Style_T :=
+                 Struct_Out_Style (T);
 
-            --  For an empty struct, write out a value for the dummy field
+            begin
+               Write_Str ("{");
+               for J in 0 .. Types - 1 loop
+                  if not (SOS = Normal and then Is_Field_Padding (T, J)) then
+                     Maybe_Write_Comma (First);
+                     Write_Undef (Struct_Get_Type_At_Index (T, J));
+                  end if;
+               end loop;
 
-            if Count_Struct_Element_Types (T) = 0 then
-               Write_Str ("0");
-            end if;
+               --  For an empty struct, write out a value for the dummy field
 
-            Write_Str ("}");
+               if Types = 0 then
+                  Write_Str ("0");
+               end if;
+
+               Write_Str ("}");
+            end;
 
          when Array_Type_Kind =>
             Write_Str ("{");
@@ -444,26 +454,54 @@ package body CCG.Write is
             Write_Str (Buffer (1 .. Len));
          end;
 
-      --  For a struct or array, write the values individually
+      --  For a struct, write the values individually
 
-      elsif Is_A_Constant_Array (V) or else Is_A_Constant_Struct (V) then
+      elsif Is_A_Constant_Struct (V) then
+         declare
+            T     : constant Type_T             := Type_Of (V);
+            Types : constant Nat                :=
+              Count_Struct_Element_Types (T);
+            SOS   : constant Struct_Out_Style_T :=
+              Struct_Out_Style (T);
+
+         begin
+            Write_Str ("{");
+            pragma Assert (Types = Get_Num_Operands (V));
+            for J in 0 .. Types - 1 loop
+
+               --  If this is a zero-length array or a padding field, omit
+               --  the initializer, since we don't have that field.
+
+               if not Is_Zero_Length_Array (Struct_Get_Type_At_Index
+                                              (Type_Of (V), J))
+                 and then not (SOS = Normal and then Is_Field_Padding (T, J))
+               then
+                  Maybe_Write_Comma (First);
+                  Maybe_Decl (Get_Operand (V, J), For_Initializer => True);
+                  Write_Value (Get_Operand (V, J), Flags => Flags);
+               end if;
+            end loop;
+
+            --  If this is a zero-length struct, add an extra item
+
+            if Types = 0 then
+               Write_Undef (Get_Element_Type (V));
+            end if;
+
+            Write_Str ("}");
+         end;
+
+      --  For an array, write the values individually
+
+      elsif Is_A_Constant_Array (V) then
          Write_Str ("{");
          for J in 0 .. Nat'(Get_Num_Operands (V)) - 1 loop
-
-            --  If this is a zero-length array in a struct, omit the
-            --  initializer, since we don't have that field.
-
-            if not Is_A_Constant_Struct (V)
-              or else not Is_Zero_Length_Array (Struct_Get_Type_At_Index
-                                                  (Type_Of (V), J))
-            then
-               Maybe_Write_Comma (First);
-               Maybe_Decl (Get_Operand (V, J), For_Initializer => True);
-               Write_Value (Get_Operand (V, J), Flags => Flags);
-            end if;
+            Maybe_Write_Comma (First);
+            Maybe_Decl (Get_Operand (V, J), For_Initializer => True);
+            Write_Value (Get_Operand (V, J), Flags => Flags);
          end loop;
 
-         --  If this is a zero-length array or struct, add an extra item
+         --  If this is a zero-length array, add an extra item
 
          if Nat'(Get_Num_Operands (V)) = 0 then
             Write_Undef (Get_Element_Type (V));

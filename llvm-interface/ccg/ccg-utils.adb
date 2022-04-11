@@ -71,6 +71,9 @@ package body CCG.Utils is
       function Get_Component_Entity (K : Key_T; Idx : Nat) return Entity_Id;
       --  Get the Entity previously stored for index Idx in key K
 
+      function Is_Component_Padding (K : Key_T; Idx : Nat) return Boolean;
+      --  Say whether the field at index Idx in key K is a padding field
+
    end Component_Info_P;
 
    package body Component_Info_P is
@@ -277,6 +280,19 @@ package body CCG.Utils is
                  else Types.Empty);
       end Get_Component_Entity;
 
+      --------------------------
+      -- Is_Component_Padding --
+      --------------------------
+
+      function Is_Component_Padding (K : Key_T; Idx : Nat) return Boolean is
+         use CI_Maps;
+         Position : constant Cursor := Find (CI_Map, (K, Idx));
+
+      begin
+         return Has_Element (Position)
+           and then Component_Info.Table (Element (Position)).Is_Padding;
+      end Is_Component_Padding;
+
    end Component_Info_P;
 
    --  Now set up instantiations of the package for types and values
@@ -308,6 +324,8 @@ package body CCG.Utils is
      renames CI_T.Get_Component_Name;
    function Get_Field_Entity (T : Type_T; Idx : Nat) return Entity_Id
      renames CI_T.Get_Component_Entity;
+   function Is_Field_Padding (T : Type_T; Idx : Nat) return Boolean
+     renames CI_T.Is_Component_Padding;
 
    procedure Set_Function (UID : Unique_Id; V : Value_T) renames CI_V.Set_Key;
    function Get_Parameter_Entity (V : Value_T; Idx : Nat) return Entity_Id

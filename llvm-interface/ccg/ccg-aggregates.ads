@@ -21,12 +21,71 @@ with LLVM.Core; use LLVM.Core;
 
 with CCG.Helper; use CCG.Helper;
 with CCG.Strs;   use CCG.Strs;
+with CCG.Utils;  use CCG.Utils;
 
 package CCG.Aggregates is
 
    --  This package contains routines used to process aggregate data,
    --  which are arrays and structs.
 
+   --  For reasons discussed in the spec of GNATLLVM.Records.Create, we
+   --  create most LLVM struct types as packed. However, we would prefer to
+   --  not have most records packed in the C output, both because this
+   --  makes it harder to read and to avoid warnings if we take the address
+   --  of a packed field. Likewise, we'd prefer to avoid outputting any
+   --  padding fields since they clutter the output. So we need to compute
+   --  whether or not the record actually needs to be packed. It does if
+   --  one of the following is true:
+   --
+   --  - a field is at a position that is less than that determined by
+   --    the default alignment of the previous field
+   --
+   --  - the alignment of the record is less than that of its default
+   --    alignment
+   --
+   --  - the struct is part of an unconstrained record
+   --
+   --  In order to make these determinations, we need a function that
+   --  computes the default alignment of a type, which recurses over all
+   --  fields in the struct. Because this is exponential in the depth of
+   --  nesting of structs, we could use a map to cache the intermediate
+   --  alignment, but multiple deep structures are rare.
+   --
+   --  In addition to the default alignment that a record would have if it
+   --  weren't packed, we have the actual alignment of the record, which is
+   --  the default if we aren't going to pack it and byte-alignment if we
+   --  are.
+   --
+   --  We also record whether, for the non-packed case, we need to include
+   --  padding fields. We do if the padding fields produce additional
+   --  space. So there are three cases:
+   --
+   --  (1) Each field is at its natural position, taking into account
+   --      alignment. We don't pack the record or output padding fields.
+   --  (2) At least one field is at a lower offset than its natural
+   --      position. We must pack the record and output padding fields.
+   --  (3) At least one field is at a higher offset than its natural position
+   --      but none is at a lower offset. We don't pack the record, but
+   --      do output padding fields.
+   --
+   --  In computing alignment, we use the ABI-returned alignment for
+   --  elementary types, which can be specified by the user in the data
+   --  layout string, assume that the default alignment of a struct is the
+   --  maximum alignments of all the fields in the struct, and assume that
+   --  the alignment of an array is that of its component.
+
+   type Struct_Out_Style_T is (Normal, Padding, Packed);
+   --  Says how we want to output the struct. Packed also means that we
+   --  output padding fields.
+
+   function Default_Alignment (T : Type_T) return Nat
+     with Pre => Present (T);
+   function Struct_Out_Style (T : Type_T) return Struct_Out_Style_T
+     with Pre => Is_Struct_Type (T);
+   function Actual_Alignment (T : Type_T) return Nat is
+     ((if   Is_Struct_Type (T) and then Struct_Out_Style (T) = Packed
+       then BPU else Default_Alignment (T)))
+     with Pre => Present (T);
    procedure Output_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
      with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
    --  Output a typedef for T, a struct type. If Incomplete, only output the

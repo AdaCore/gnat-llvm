@@ -18,10 +18,13 @@
 with Ada.Containers; use Ada.Containers;
 with Ada.Containers.Hashed_Maps;
 
-with Atree;  use Atree;
-with Output; use Output;
+with Atree;       use Atree;
+with Output;      use Output;
+with Sinfo.Nodes; use Sinfo.Nodes;
 with Table;
+with Uintp.LLVM;  use Uintp.LLVM;
 
+with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -30,7 +33,6 @@ with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Target;       use CCG.Target;
-with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Aggregates is
 
@@ -45,13 +47,128 @@ package body CCG.Aggregates is
    --  insertvalue instruction V. Return an Str saying how to access that
    --  component and update T to be the type of that component.
 
+   -----------------------
+   -- Default_Alignment --
+   -----------------------
+
+   function Default_Alignment (T : Type_T) return Nat is
+   begin
+      --  As documented in the spec of this package, we have three cases,
+      --  arrays, structs, and non-composite types
+
+      if Is_Array_Type (T) then
+         return Default_Alignment (Get_Element_Type (T));
+
+      elsif Is_Struct_Type (T) then
+         declare
+            Types : constant Nat := Count_Struct_Element_Types (T);
+
+         begin
+            return Max_Align : Nat := BPU do
+               for J in 0 .. Types - 1 loop
+                  Max_Align :=
+                    Nat'Max (Actual_Alignment
+                               (Struct_Get_Type_At_Index (T, J)),
+                             Max_Align);
+               end loop;
+            end return;
+         end;
+      else
+         return Get_Type_Alignment (T);
+      end if;
+
+   end Default_Alignment;
+
+   ----------------------
+   -- Struct_Out_Style --
+   ----------------------
+
+   function Struct_Out_Style (T : Type_T) return Struct_Out_Style_T is
+      Types     : constant Nat              := Count_Struct_Element_Types (T);
+      F0        : constant Entity_Id        :=
+        (if Types = 0 then Empty else Get_Field_Entity (T, 0));
+      TE        : constant Opt_Type_Kind_Id :=
+        (if   Present (F0) then Full_Base_Type (Full_Etype (Scope (F0)))
+         else Empty);
+      Cur_Pos   :  ULL                      := 0;
+      Need_Pack : Boolean                   := False;
+      Need_Pad  : Boolean                   := False;
+
+   begin
+      --  If this isn't a packed struct, we don't need packing. Likewise if
+      --  there are no fields. But we don't know that we can omit padding
+      --  fields.
+
+      if not Is_Packed_Struct (T)
+        or else Count_Struct_Element_Types (T) = Nat (0)
+      then
+         return Padding;
+      end if;
+
+      --  if we can't determine the base type, its base type is
+      --  unconstrained (see the discussion in GNATLLVM.Records.Create for
+      --  the rationale of this test), or if the alignment of the struct
+      --  is smaller that the default alignment, we must pack.
+      --  ??? For now do this if optimizing, since LLVM's SROA may try
+      --  to preserve padding fields.
+
+      if No (TE) or else not Is_Constrained (TE)
+        or else (+Alignment (TE)) * UBPU < ULL (Default_Alignment (T))
+        or else Code_Opt_Level > 0
+      then
+         return Packed;
+      end if;
+
+      --  Now we look at the position of each field relative to its default
+      --  position. Skip padding fields when doing this.
+
+      for J in 0 .. Types - 1 loop
+         declare
+            Actual_Pos : constant ULL    :=
+              To_Bits (Get_Element_Offset (T, J));
+            Elem_T     : constant Type_T := Struct_Get_Type_At_Index (T, J);
+            Size       : constant ULL    := Get_Type_Size (Elem_T);
+            Align      : constant ULL    := ULL (Actual_Alignment (Elem_T));
+            SB_Pos     : constant ULL    :=
+              (Cur_Pos + Align - 1) / Align * Align;
+
+         begin
+            if not Is_Field_Padding (T, J) then
+               if Actual_Pos < SB_Pos then
+                  Need_Pack := True;
+               elsif Actual_Pos > SB_Pos then
+                  Need_Pad  := True;
+               end if;
+
+               Cur_Pos := Cur_Pos + Size;
+            end if;
+
+            --  ??? If we have a zero-length array, we may be doing an
+            --  reference to that field, which won't work properly if we
+            --  make any changes here, so keep that record packed for now.
+            --  This is a major kludge and we have to figure out the proper
+            --  way of referencing such a field.
+
+            if Is_Zero_Length_Array (Elem_T) then
+               Need_Pack := True;
+            end if;
+         end;
+      end loop;
+
+      return (if   Need_Pack then Packed elsif Need_Pad then Padding
+              else Normal);
+
+   end Struct_Out_Style;
+
    ---------------------------
    -- Output_Struct_Typedef --
    ---------------------------
 
    procedure Output_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
    is
-      Types : constant Nat := Count_Struct_Element_Types (T);
+      Types : constant Nat                := Count_Struct_Element_Types (T);
+      SOS   : constant Struct_Out_Style_T :=
+        Struct_Out_Style (T);
 
    begin
       --  Because this struct may contain a pointer to itself, we always have
@@ -100,7 +217,9 @@ package body CCG.Aggregates is
             --  functionality to support various different C compiler
             --  options.
 
-            if not Is_Zero_Length_Array (ST) then
+            if not Is_Zero_Length_Array (ST)
+              and then not (SOS = Normal and then Is_Field_Padding (T, J))
+            then
                declare
                   Name           : constant Str              :=
                     Get_Field_Name (T, J);
@@ -124,8 +243,8 @@ package body CCG.Aggregates is
       --  in the initial support.
 
       Output_Decl ("}" &
-                     (if    Is_Packed_Struct (T)
-                      then " __attribute__ ((packed))" else ""),
+                     (if    SOS = Packed then " __attribute__ ((packed))"
+                      else ""),
                    Is_Typedef => True, End_Block => Decl);
    end Output_Struct_Typedef;
 

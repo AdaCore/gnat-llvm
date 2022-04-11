@@ -61,6 +61,10 @@ package CCG.Utils is
      with Pre  => Present (T);
    --  Return the entity corresponding to for field Idx of LLVM type T
 
+   function Is_Field_Padding (T : Type_T; Idx : Nat) return Boolean
+     with Pre  => Present (T);
+   --  Indicate whether field Idx of LLVM type T is added for padding
+
    --  We do similarly for the parameters of a function
 
    procedure Set_Parameter (UID : Unique_Id; Idx : Nat; Entity : Entity_Id)
@@ -123,10 +127,21 @@ package CCG.Utils is
    function Is_Simple_Type (V : Value_T) return Boolean is
      (Is_Simple_Type (Type_Of (V)))
      with Pre => Present (V);
-   --  True if this is or has a type that's simple (elementary)
+   function Is_Struct_Type (T : Type_T) return Boolean is
+     (Get_Type_Kind (T) = Struct_Type_Kind)
+     with Pre => Present (T);
+   function Is_Struct_Type (V : Value_T) return Boolean is
+     (Get_Type_Kind (V) = Struct_Type_Kind)
+     with Pre => Present (V);
+   function Is_Array_Type (T : Type_T) return Boolean is
+     (Get_Type_Kind (T) = Array_Type_Kind)
+     with Pre => Present (T);
+   function Is_Array_Type (V : Value_T) return Boolean is
+     (Get_Type_Kind (V) = Array_Type_Kind)
+     with Pre => Present (V);
 
    function Is_Aggregate_Type (T : Type_T) return Boolean is
-     (Get_Type_Kind (T) in Struct_Type_Kind | Array_Type_Kind)
+     (Is_Struct_Type (T) or else Is_Array_Type (T))
      with Pre => Present (T);
    function Is_Aggregate_Type (V : Value_T) return Boolean is
      (Is_Aggregate_Type (Type_Of (V)))

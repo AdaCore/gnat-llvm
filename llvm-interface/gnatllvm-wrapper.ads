@@ -310,7 +310,7 @@ package GNATLLVM.Wrapper is
 
    function Is_C_String (V : Value_T) return Boolean with Inline;
 
-   function Get_Element_Offset (T : Type_T; Idx : unsigned) return ULL
+   function Get_Element_Offset (T : Type_T; Idx : Int) return ULL
      with Inline;
 
    function Equals_Int (V : Value_T; Val : ULL) return Boolean

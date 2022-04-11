@@ -1523,7 +1523,7 @@ package body GNATLLVM.Records is
          Table_Increment      => 5,
          Table_Name           => "Fields");
 
-      Last_Ord : Int               := -1;
+      Last_Ord : Int                  := -1;
       RI       : constant Record_Info := Record_Info_Table.Table (Ridx);
       F_Idx    : Field_Info_Id        := RI.First_Field;
       FI       : Field_Info;
@@ -1548,7 +1548,7 @@ package body GNATLLVM.Records is
                F_Type  : constant Type_T        :=
                  Struct_Get_Type_At_Index (RI.LLVM_Type, unsigned (Last_Ord));
                Offset  : constant ULL           :=
-                 Get_Element_Offset (RI.LLVM_Type, unsigned (Last_Ord));
+                 Get_Element_Offset (RI.LLVM_Type, Last_Ord);
                GT      : constant GL_Type       :=
                  (if Is_Bitfield_By_Rep (FI.Field) then No_GL_Type else FI.GT);
 

@@ -683,7 +683,8 @@ package body GNATLLVM.GLType is
                     Build_Struct_Type
                     ((1 => Prim_T, 2 => Make_Large_Array (ULL (Pad_Count))),
                      Name        => Get_Ext_Name (GT, "_PAD"),
-                     Field_Names => (1 => Name_Find ("DATA"), 2 => No_Name));
+                     Field_Names => (1 => Name_Find ("DATA"), 2 => No_Name),
+                     Packed      => (+Size_V) mod ULL (Align_N) /= 0);
                   GTI.Kind      := Padded;
                else
                   GTI.LLVM_Type := Prim_T;

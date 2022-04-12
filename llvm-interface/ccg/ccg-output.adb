@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with LLVM.Target; use LLVM.Target;
+
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 
 with Get_Targ; use Get_Targ;
@@ -28,6 +30,7 @@ with Output;  use Output;
 with Sinput;  use Sinput;
 with Table;
 
+with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
@@ -181,6 +184,27 @@ package body CCG.Output is
             Decl : Str := (V + (+Write_Type or +LHS)) & " " & (V + LHS);
 
          begin
+            --  If this is a global variable or alloca, see if the
+            --  specified alignment is more than the default alignment for
+            --  the variable's type and more that the preferred alignment
+            --  for that type.
+
+            if Is_A_Global_Variable (V) or else Is_A_Alloca_Inst (V) then
+               declare
+                  Align  : constant Nat    :=
+                    To_Bits (Nat (Get_Alignment (V)));
+                  T      : constant Type_T := Get_Element_Type (V);
+                  Actual : constant Nat    := Actual_Alignment (T);
+                  Pref   : constant Nat    := Get_Preferred_Type_Alignment (T);
+
+               begin
+                  if Align > Actual and then Align > Pref then
+                     Decl := Decl & " __attribute__ ((aligned (" &
+                       To_Bytes (Align) & ")))";
+                  end if;
+               end;
+            end if;
+
             --  For globals, we write the decl immediately. Otherwise, it's
             --  part of the decls for the subprogram.  Figure out whether this
             --  is static or extern.  It's extern if there's no initializer.

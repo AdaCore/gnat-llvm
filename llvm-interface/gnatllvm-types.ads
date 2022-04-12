@@ -303,11 +303,17 @@ package GNATLLVM.Types is
    function Get_Scalar_Bit_Size (T : Type_T) return ULL is
      (Size_Of_Type_In_Bits (Module_Data_Layout, T))
      with Pre => Present (T);
+   --  Return the size of an LLVM type, in bits
 
    function Get_Type_Alignment (T : Type_T) return Nat is
      (To_Bits (Nat (ABI_Alignment_Of_Type (Module_Data_Layout, T))))
      with Pre => Present (T);
-   --  Return the size of an LLVM type, in bits
+   --  Return the alignment of an LLVM type, in bits
+
+   function Get_Preferred_Type_Alignment (T : Type_T) return Nat is
+     (To_Bits (Nat (Preferred_Alignment_Of_Type (Module_Data_Layout, T))))
+     with Pre => Present (T);
+   --  Return the preferred alignment of an LLVM type, in bits
 
    function Get_Type_Alignment (T : Type_T) return ULL is
      (To_Bits (ULL (ABI_Alignment_Of_Type (Module_Data_Layout, T))))

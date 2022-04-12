@@ -42,7 +42,10 @@ package body Sdefault is
 
    Target : constant String := "llvm/";
    CCG    : constant Boolean :=
-     Getenv ("CCG").all /= "" or else Executable = "c-gnat1";
+     Getenv ("CCG").all /= ""
+     or else (Executable'Length > 2
+              and then Executable (Executable'First .. Executable'First + 1) =
+                       "c-");
 
    ------------------------------
    -- Include_Dir_Default_Name --

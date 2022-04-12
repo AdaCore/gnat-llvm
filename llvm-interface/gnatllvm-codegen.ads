@@ -17,12 +17,13 @@
 
 with System;        use System;
 with System.OS_Lib; use System.OS_Lib;
+with Options;       use Options;
 
 with Table;
 
 package GNATLLVM.Codegen is
 
-   Filename        : String_Access  := new String'("");
+   Filename : String_Access := new String'("");
    --  Filename to compile.
 
    type Code_Generation_Kind is
@@ -32,8 +33,8 @@ package GNATLLVM.Codegen is
    Code_Generation : Code_Generation_Kind := Write_Object;
    --  Type of code generation we're doing
 
-   Emit_C          : Boolean        := False;
-   --  True if -emit-c was specified
+   Emit_C          : Boolean        := CCG;
+   --  True if -emit-c was specified explicitly or CCG set
 
    CPU             : String_Access  := new String'("generic");
    --  Name of the specific CPU for this compilation.

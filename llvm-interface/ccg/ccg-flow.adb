@@ -36,11 +36,14 @@ package body CCG.Flow is
    --  string to output and the instruction it comes from (for debug data).
 
    type Line_Data is record
-      Text : Str;
+      Text       : Str;
       --  The string containing the line to be written
 
-      Inst : Value_T;
+      Inst       : Value_T;
       --  The instruction corresponding to the line (for debug data)
+
+      Force_Left : Boolean;
+      --  True if the line should be forced to the left margin
    end record;
 
    package Lines is new Table.Table
@@ -167,23 +170,20 @@ package body CCG.Flow is
    Current_Flow : Flow_Idx := Empty_Flow_Idx;
    --  The flow that we're currently building
 
-   --  Getters and setters for a Line node
+   --  Getters a Line node. We never change an existing node, so we
+   --  don't need setters.
 
-   function Text (Idx : Line_Idx)   return Str
+   function Text       (Idx : Line_Idx) return Str
      with Pre => Present (Idx), Post => Present (Text'Result);
    --  The string containing the line to be written
 
-   function Inst (Idx : Line_Idx)   return Value_T
+   function Inst       (Idx : Line_Idx) return Value_T
      with Pre => Present (Idx), Post => Present (Inst'Result);
-      --  The instruction corresponding to the line (for debug data)
+   --  The instruction corresponding to the line (for debug data)
 
-   procedure Set_Text (Idx : Line_Idx; S : Str)
-     with Pre  => Present (Idx) and then Present (S),
-          Post => Text (Idx) = S, Inline;
-
-   procedure Set_Inst (Idx : Line_Idx; V : Value_T)
-     with Pre  => Present (Idx) and then Present (V),
-          Post => Inst (Idx) = V, Inline;
+   function Force_Left (Idx : Line_Idx) return Boolean
+     with Pre => Present (Idx);
+   --  Whether this line should be left-aligned
 
    --  Getters and setters for a Case node
 
@@ -340,7 +340,8 @@ package body CCG.Flow is
    procedure Set_Last_Case (Idx : Flow_Idx; Cidx : Case_Idx)
      with Pre => Present (Idx), Post => Last_Case (Idx) = Cidx, Inline;
 
-   function New_Line (S : Str; V : Value_T) return Line_Idx
+   function New_Line
+     (S : Str; V : Value_T; Force_Left : Boolean) return Line_Idx
      with Pre => Present (S) and then Present (V);
    --  Create a new Line entry with the specified values
 
@@ -436,23 +437,12 @@ package body CCG.Flow is
    function Inst (Idx : Line_Idx) return Value_T is
      (Lines.Table (Idx).Inst);
 
-   --------------
-   -- Set_Text --
-   --------------
+   ----------------
+   -- Force_Left --
+   ----------------
 
-   procedure Set_Text (Idx : Line_Idx; S : Str) is
-   begin
-      Lines.Table (Idx).Text := S;
-   end Set_Text;
-
-   --------------
-   -- Set_Inst --
-   --------------
-
-   procedure Set_Inst (Idx : Line_Idx; V : Value_T) is
-   begin
-      Lines.Table (Idx).Inst := V;
-   end Set_Inst;
+   function Force_Left (Idx : Line_Idx) return Boolean is
+     (Lines.Table (Idx).Force_Left);
 
    -----------
    -- Value --
@@ -797,7 +787,7 @@ package body CCG.Flow is
    -- Add_Line --
    --------------
 
-   procedure Add_Line (S : Str; V : Value_T) is
+   procedure Add_Line (S : Str; V : Value_T; Force_Left : Boolean := False) is
       Idx : Line_Idx;
    begin
       --  If we've been given an instruction corresponding to this
@@ -811,7 +801,7 @@ package body CCG.Flow is
       --  Then add this line to the current flow, make sure that it's
       --  consecutive to a previous line if any.
 
-      Idx := New_Line (S, V);
+      Idx := New_Line (S, V, Force_Left);
       if No (First_Line (Current_Flow)) then
          Set_First_Line (Current_Flow, Idx);
       else
@@ -825,9 +815,10 @@ package body CCG.Flow is
    -- New_Line --
    --------------
 
-   function New_Line (S : Str; V : Value_T) return Line_Idx is
+   function New_Line
+     (S : Str; V : Value_T; Force_Left : Boolean) return Line_Idx is
    begin
-      Lines.Append ((Text => S, Inst => V));
+      Lines.Append ((Text => S, Inst => V, Force_Left => Force_Left));
       return Lines.Last;
    end New_Line;
 
@@ -1618,7 +1609,10 @@ package body CCG.Flow is
 
          if Present (First_Line (Idx)) then
             for Lidx in First_Line (Idx) .. Last_Line (Idx) loop
-               Output_Stmt (Text (Lidx), V => Inst (Lidx));
+               Output_Stmt (Text (Lidx),
+                            V           => Inst (Lidx),
+                            Indent_Type =>
+                              (if Force_Left (Lidx) then Left else Normal));
             end loop;
          end if;
 

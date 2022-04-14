@@ -56,17 +56,17 @@ package body GNATLLVM.Utils is
          when N_Has_Entity =>
             return Simplify_Range (Scalar_Range (Full_Entity (N)));
 
-         when N_Subtype_Indication =>
-            declare
-               Constr : constant Opt_N_Range_Constraint_Id := Constraint (N);
-            begin
-               if Present (Constr) then
-                  return Simplify_Range (Range_Expression (Constr));
-               else
-                  return Simplify_Range (Scalar_Range
-                                           (Full_Entity (Subtype_Mark (N))));
-               end if;
-            end;
+         when N_Subtype_Indication => Subtype_Indication : declare
+
+            Constr : constant Opt_N_Range_Constraint_Id := Constraint (N);
+         begin
+            if Present (Constr) then
+               return Simplify_Range (Range_Expression (Constr));
+            else
+               return Simplify_Range (Scalar_Range
+                                        (Full_Entity (Subtype_Mark (N))));
+            end if;
+         end Subtype_Indication;
 
          when others =>
             return Empty;

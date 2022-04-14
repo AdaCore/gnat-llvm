@@ -516,40 +516,39 @@ package body GNATLLVM.Variables is
             return Is_Composite_Type (Etype (N))
               and then Is_Static_Location (Expression (N));
 
-         when N_Indexed_Component =>
+         when N_Indexed_Component => Indexed_Component : declare
 
-            declare
-               GT : constant GL_Type := Full_GL_Type (Prefix (N));
-               Index : Opt_N_Is_Index_Id;
-               Expr  : Opt_N_Subexpr_Id;
+            GT : constant GL_Type := Full_GL_Type (Prefix (N));
+            Index : Opt_N_Is_Index_Id;
+            Expr  : Opt_N_Subexpr_Id;
 
-            begin
-               --  Not static if prefix not static, a lower bound isn't
-               --  static, or an expression isn't static.  It's also
-               --  possible that the type of the prefix isn't actually an
-               --  array in the case where we have a packed array type.
-               --  But then we know that it is static.
+         begin
+            --  Not static if prefix not static, a lower bound isn't
+            --  static, or an expression isn't static.  It's also possible
+            --  that the type of the prefix isn't actually an array in the
+            --  case where we have a packed array type.  But then we know
+            --  that it is static.
 
-               if not Is_Static_Location (Prefix (N)) then
-                  return False;
-               elsif not Is_Array_Type (GT)
-                 or else Ekind (GT) = E_String_Literal_Subtype
-               then
-                  return True;
-               end if;
+            if not Is_Static_Location (Prefix (N)) then
+               return False;
+            elsif not Is_Array_Type (GT)
+              or else Ekind (GT) = E_String_Literal_Subtype
+            then
+               return True;
+            end if;
 
-               Index := First_Index (GT);
-               Expr  := First (Expressions (N));
-               while Present (Index) loop
-                  exit when not Is_Static_Expression
-                    (Low_Bound (Simplify_Range (Index)))
-                    or else not Is_Static_Expression (Expr);
-                  Next_Index (Index);
-                  Next (Expr);
-               end loop;
+            Index := First_Index (GT);
+            Expr  := First (Expressions (N));
+            while Present (Index) loop
+               exit when not Is_Static_Expression
+                               (Low_Bound (Simplify_Range (Index)))
+                 or else not Is_Static_Expression (Expr);
+               Next_Index (Index);
+               Next (Expr);
+            end loop;
 
-               return No (Index);
-            end;
+            return No (Index);
+         end Indexed_Component;
 
          when N_Slice =>
 
@@ -828,7 +827,7 @@ package body GNATLLVM.Variables is
 
             return No (Expr);
 
-         when N_Binary_Op =>
+         when N_Binary_Op => Binary_Op : declare
 
             --  LLVM only allows adds and subtracts of symbols to be
             --  considered static, so we can only allow actual known values
@@ -838,37 +837,36 @@ package body GNATLLVM.Variables is
             --  operation "clears" the flags because all we'll see is the
             --  result of the comparison.
 
-            declare
-               Is_Cmp : constant Boolean := Nkind (N) in N_Op_Compare;
-               Our_NS : constant Boolean :=
-                 (Not_Symbolic and then not Is_Cmp)
-                 or Nkind (N) not in N_Op_Add | N_Op_Subtract | N_Op_Compare;
-               Our_RT : constant Boolean := Restrict_Types and not Is_Cmp;
+            Is_Cmp : constant Boolean := Nkind (N) in N_Op_Compare;
+            Our_NS : constant Boolean :=
+              (Not_Symbolic and then not Is_Cmp)
+              or Nkind (N) not in N_Op_Add | N_Op_Subtract | N_Op_Compare;
+            Our_RT : constant Boolean := Restrict_Types and not Is_Cmp;
 
-            begin
-               if not Is_No_Elab_Needed (Left_Opnd (N),
-                                         Not_Symbolic   => Our_NS,
-                                         Restrict_Types => Our_RT)
-                 or else not Is_No_Elab_Needed (Right_Opnd (N),
-                                                Not_Symbolic   => Our_NS,
-                                                Restrict_Types => Our_RT)
-                 --  If either side needs an elab proc, we do
+         begin
+            if not Is_No_Elab_Needed (Left_Opnd (N),
+                                      Not_Symbolic   => Our_NS,
+                                      Restrict_Types => Our_RT)
+              or else not Is_No_Elab_Needed (Right_Opnd (N),
+                                             Not_Symbolic   => Our_NS,
+                                             Restrict_Types => Our_RT)
+              --  If either side needs an elab proc, we do
 
-                 or else (Do_Overflow_Check (N)
-                            and then Overflowed (Emit_No_Error (N)))
-                 --  If we're to check for overflow, this needs an elab proc
-                 --  if the operation overflows.
+              or else (Do_Overflow_Check (N)
+                         and then Overflowed (Emit_No_Error (N)))
+              --  If we're to check for overflow, this needs an elab proc
+              --  if the operation overflows.
 
-               then
-                  return False;
-               end if;
+            then
+               return False;
+            end if;
 
-               --  Otherwise, we're OK if this isn't a comparison or if it
-               --  is and the result is a constant.
+            --  Otherwise, we're OK if this isn't a comparison or if it
+            --  is and the result is a constant.
 
-               return Nkind (N) not in N_Op_Compare
-                 or else Is_A_Const_Int (Emit_No_Error (N));
-            end;
+            return Nkind (N) not in N_Op_Compare
+              or else Is_A_Const_Int (Emit_No_Error (N));
+         end Binary_Op;
 
          when N_Unary_Op =>
 

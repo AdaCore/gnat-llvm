@@ -265,72 +265,71 @@ package body GNATLLVM.Compile is
       Set_Debug_Pos_At_Node (N);
       Clear_LValue_List;
       case Nkind (N) is
-         when N_Compilation_Unit =>
-            declare
-               U         : constant Node_Id := Unit (N);
-               Subp      : Opt_Subprogram_Kind_Id;
-               Subp_Body : Node_Id;
 
-            begin
-               --  We assume there won't be any elaboration code and
-               --  clear that flag if we're wrong.
+         when N_Compilation_Unit => Compilation_Unit : declare
+            U         : constant Node_Id := Unit (N);
+            Subp      : Opt_Subprogram_Kind_Id;
+            Subp_Body : Node_Id;
 
-               Set_Has_No_Elaboration_Code (N, True);
+         begin
+            --  We assume there won't be any elaboration code and
+            --  clear that flag if we're wrong.
 
-               --  For a body, first process the spec if there is one
+            Set_Has_No_Elaboration_Code (N, True);
 
-               if (Nkind (U) = N_Subprogram_Body and then not Acts_As_Spec (U))
-                 or else Nkind (U) = N_Package_Body
+            --  For a body, first process the spec if there is one
+
+            if (Nkind (U) = N_Subprogram_Body and then not Acts_As_Spec (U))
+              or else Nkind (U) = N_Package_Body
+            then
+               Emit (Library_Unit (N));
+            end if;
+
+            Emit (Context_Items (N));
+            Emit_Decl_Lists (Declarations (Aux_Decls_Node (N)));
+            Emit (U);
+
+            --  Generate code for all the inlined subprograms
+
+            Subp := First_Inlined_Subprogram (N);
+            while Present (Subp) loop
+               Subp_Body := Parent (Declaration_Node (Subp));
+
+               --  Without optimization or if inlining is disabled,
+               --  process only the required subprograms.
+
+               if (Has_Pragma_Inline_Always (Subp)
+                     or else (not No_Inlining and then Code_Opt_Level > 0))
+
+                 --  The set of inlined subprograms is computed from data
+                 --  recorded early during expansion and it can be a strict
+                 --  superset of the final set computed after semantic
+                 --  analysis, for example if a call to such a subprogram
+                 --  occurs in a pragma Assert and assertions are disabled.
+                 --  In that case, semantic analysis resets Is_Public to
+                 --  false but the entry for the subprogram in the inlining
+                 --  tables is stalled.
+
+                 and then Is_Public (Subp)
                then
-                  Emit (Library_Unit (N));
-               end if;
-
-               Emit (Context_Items (N));
-               Emit_Decl_Lists (Declarations (Aux_Decls_Node (N)));
-               Emit (U);
-
-               --  Generate code for all the inlined subprograms
-
-               Subp := First_Inlined_Subprogram (N);
-               while Present (Subp) loop
-                  Subp_Body := Parent (Declaration_Node (Subp));
-
-                  --  Without optimization or if inlining is disabled,
-                  --  process only the required subprograms.
-
-                  if (Has_Pragma_Inline_Always (Subp)
-                        or else (not No_Inlining and then Code_Opt_Level > 0))
-
-                    --  The set of inlined subprograms is computed from
-                    --  data recorded early during expansion and it can be
-                    --  a strict superset of the final set computed after
-                    --  semantic analysis, for example if a call to such a
-                    --  subprogram occurs in a pragma Assert and assertions
-                    --  are disabled.  In that case, semantic analysis
-                    --  resets Is_Public to false but the entry for the
-                    --  subprogram in the inlining tables is stalled.
-
-                    and then Is_Public (Subp)
+                  if Nkind (Subp_Body) = N_Subprogram_Declaration
+                    and then Present (Corresponding_Body (Subp_Body))
                   then
-                     if Nkind (Subp_Body) = N_Subprogram_Declaration
-                       and then Present (Corresponding_Body (Subp_Body))
-                     then
-                        Subp_Body := Parent (Declaration_Node
-                                               (Corresponding_Body
-                                                  (Subp_Body)));
-                     end if;
-
-                     if Nkind (Subp_Body) = N_Subprogram_Body then
-                        Emit_Subprogram_Body (Subp_Body, For_Inline => True);
-                     end if;
+                     Subp_Body := Parent (Declaration_Node
+                                            (Corresponding_Body (Subp_Body)));
                   end if;
 
-                  Next_Inlined_Subprogram (Subp);
-               end loop;
+                  if Nkind (Subp_Body) = N_Subprogram_Body then
+                     Emit_Subprogram_Body (Subp_Body, For_Inline => True);
+                  end if;
+               end if;
 
-               Emit (Actions (Aux_Decls_Node (N)));
-               Emit (Pragmas_After (Aux_Decls_Node (N)));
-            end;
+               Next_Inlined_Subprogram (Subp);
+            end loop;
+
+            Emit (Actions (Aux_Decls_Node (N)));
+            Emit (Pragmas_After (Aux_Decls_Node (N)));
+         end Compilation_Unit;
 
          when N_Subunit =>
             Emit (Proper_Body (N));
@@ -512,52 +511,50 @@ package body GNATLLVM.Compile is
 
             null;
 
-         when N_Assignment_Statement =>
-            declare
-               LHS  : GL_Value;
-               Idxs : Access_GL_Value_Array;
-               F    : Opt_Record_Field_Kind_Id;
+         when N_Assignment_Statement => Assignment_Statement : declare
+            LHS  : GL_Value;
+            Idxs : Access_GL_Value_Array;
+            F    : Opt_Record_Field_Kind_Id;
 
-            begin
-               --  Get the LHS to evaluate and see if we need to do a
-               --  field or array operation.
+         begin
+            --  Get the LHS to evaluate and see if we need to do a field or
+            --  array operation.
 
-               LHS_And_Component_For_Assignment (Name (N), LHS, F, Idxs,
-                                                 For_LHS => True);
+            LHS_And_Component_For_Assignment (Name (N), LHS, F, Idxs,
+                                              For_LHS => True);
 
-               --  If this is a reference, set atomic or volatile as neeed
+            --  If this is a reference, set atomic or volatile as neeed
 
-               if Present (F) or else Idxs /= null then
-                  Mark_Volatile (LHS,
-                                 Atomic_Sync_Required (Name (N))
-                                   or else Is_Volatile_Reference (Name (N)));
-                  Mark_Atomic   (LHS, Atomic_Sync_Required (Name (N)));
-               end if;
+            if Present (F) or else Idxs /= null then
+               Mark_Volatile (LHS,
+                              Atomic_Sync_Required (Name (N))
+                                or else Is_Volatile_Reference (Name (N)));
+               Mark_Atomic   (LHS, Atomic_Sync_Required (Name (N)));
+            end if;
 
-               --  Now do the operation
+            --  Now do the operation
 
-               if Present (F) then
-                  Build_Field_Store (LHS, F, Emit_Expression (Expression (N)),
-                                     VFA => Is_VFA_Ref (Name (N)));
-               elsif Idxs /= null then
-                  Build_Indexed_Store (LHS, Idxs.all,
-                                       Emit_Expression (Expression (N)),
-                                       VFA => Is_VFA_Ref (Name (N)));
-                  Free (Idxs);
-
-               else
-                  Emit_Assignment (LHS,
-                                   Expr         => Expression (N),
-                                   Forwards_OK  => Forwards_OK (N),
-                                   Backwards_OK => Backwards_OK (N),
+            if Present (F) then
+               Build_Field_Store (LHS, F, Emit_Expression (Expression (N)),
+                                  VFA => Is_VFA_Ref (Name (N)));
+            elsif Idxs /= null then
+               Build_Indexed_Store (LHS, Idxs.all,
+                                    Emit_Expression (Expression (N)),
+                                    VFA => Is_VFA_Ref (Name (N)));
+               Free (Idxs);
+            else
+               Emit_Assignment (LHS,
+                                Expr         => Expression (N),
+                                Forwards_OK  => Forwards_OK (N),
+                                Backwards_OK => Backwards_OK (N),
                                    VFA          => Has_Full_Access (Name (N)));
-               end if;
-            end;
+            end if;
 
             --  Deal with any writebacks needed if we had a bitfield in an
             --  LHS context above.
 
             Perform_Writebacks;
+         end Assignment_Statement;
 
          when N_Procedure_Call_Statement =>
 
@@ -622,28 +619,28 @@ package body GNATLLVM.Compile is
 
             null;
 
-         when N_Full_Type_Declaration
-            | N_Subtype_Declaration
+         when N_Full_Type_Declaration | N_Subtype_Declaration
             | N_Task_Type_Declaration
-           =>
-            declare
-               TE : Type_Kind_Id          := Defining_Identifier (N);
-               FT : constant Type_Kind_Id := Get_Fullest_View (TE);
+         =>
+         Declaration : declare
 
-            begin
-               --  Start by elaborating this type via its fullest view
+            TE : Type_Kind_Id          := Defining_Identifier (N);
+            FT : constant Type_Kind_Id := Get_Fullest_View (TE);
 
-               Discard (Type_Of (FT));
+         begin
+            --  Start by elaborating this type via its fullest view
 
-               --  If the fullest view isn't the same as the type being
-               --  declared, copy the annotations from the full type to the
-               --  type being declared and any intermediate types.
+            Discard (Type_Of (FT));
 
-               while TE /= FT loop
-                  Copy_Annotations (FT, TE);
-                  TE := Get_Fullest_View (TE, Recurse => False);
-               end loop;
-            end;
+            --  If the fullest view isn't the same as the type being
+            --  declared, copy the annotations from the full type to the
+            --  type being declared and any intermediate types.
+
+            while TE /= FT loop
+               Copy_Annotations (FT, TE);
+               TE := Get_Fullest_View (TE, Recurse => False);
+            end loop;
+         end Declaration;
 
          when N_Freeze_Entity =>
             Process_Freeze_Entity (N);
@@ -962,39 +959,37 @@ package body GNATLLVM.Compile is
                return Emit_Unary_Operation (N);
             end if;
 
-         when N_Expression_With_Actions =>
+         when N_Expression_With_Actions => Expression_With_Actions : declare
+            Has_All : Boolean;
+            Expr    : constant Opt_N_Subexpr_Id :=
+              Simple_Value_Action (N, Has_All);
 
-            declare
-               Has_All : Boolean;
-               Expr    : constant Opt_N_Subexpr_Id :=
-                 Simple_Value_Action (N, Has_All);
+         begin
+            --  If this is just defining the value that is to be its
+            --  result, just expand the initializer.
 
-            begin
-               --  If this is just defining the value that is to be its result,
-               --  just expand the initializer.
-
-               if Present (Expr) then
-                  Result := Emit (Expr,
-                                  LHS        => LHS,
-                                  For_LHS    => For_LHS,
-                                  Prefer_LHS => Prefer_LHS);
-                  if Has_All then
-                     Result := From_Access (Result);
-                  end if;
-
-                  return Result;
+            if Present (Expr) then
+               Result := Emit (Expr,
+                               LHS        => LHS,
+                               For_LHS    => For_LHS,
+                               Prefer_LHS => Prefer_LHS);
+               if Has_All then
+                  Result := From_Access (Result);
                end if;
 
-               --  Otherwise do each action and evaluate our expression
+               return Result;
+            end if;
 
-               Push_LValue_List;
-               Emit (Actions (N));
-               Pop_LValue_List;
-               return Emit (Expression (N),
-                            LHS        => LHS,
-                            For_LHS    => For_LHS,
-                            Prefer_LHS => Prefer_LHS);
-            end;
+            --  Otherwise do each action and evaluate our expression
+
+            Push_LValue_List;
+            Emit (Actions (N));
+            Pop_LValue_List;
+            return Emit (Expression (N),
+                         LHS        => LHS,
+                         For_LHS    => For_LHS,
+                         Prefer_LHS => Prefer_LHS);
+         end Expression_With_Actions;
 
          when N_Character_Literal | N_Numeric_Or_String_Literal =>
             pragma Assert (not For_LHS);
@@ -1016,27 +1011,25 @@ package body GNATLLVM.Compile is
                                               Nkind (N));
             end if;
 
-         when N_Unchecked_Type_Conversion =>
-            declare
-               Expr   : constant N_Subexpr_Id := Expression (N);
-               BT     : constant Type_Kind_Id := Full_Base_Type (GT);
+         when N_Unchecked_Type_Conversion => Unchecked_Conversion : declare
+            Expr   : constant N_Subexpr_Id := Expression (N);
+            BT     : constant Type_Kind_Id := Full_Base_Type (GT);
 
-            begin
-               --  The result can't have overflowed (this is unchecked),
-               --  but if this is not just converting between subtypes of
-               --  the same base type, it must be marked as aliasing
-               --  everything.
+         begin
+            --  The result can't have overflowed (this is unchecked), but
+            --  if this is not just converting between subtypes of the same
+            --  base type, it must be marked as aliasing everything.
 
-               Result := Emit_Conversion (Expr, GT, N,
-                                          Is_Unchecked  => True,
-                                          No_Truncation => No_Truncation (N));
-               Clear_Overflowed (Result);
-               if Full_Base_Type (Full_Etype (Expr)) /= BT then
-                  Set_Aliases_All (Result);
-               end if;
+            Result := Emit_Conversion (Expr, GT, N,
+                                       Is_Unchecked  => True,
+                                       No_Truncation => No_Truncation (N));
+            Clear_Overflowed (Result);
+            if Full_Base_Type (Full_Etype (Expr)) /= BT then
+               Set_Aliases_All (Result);
+            end if;
 
-               return Result;
-            end;
+            return Result;
+         end Unchecked_Conversion;
 
          when N_Type_Conversion =>
             return Emit_Conversion
@@ -1278,32 +1271,30 @@ package body GNATLLVM.Compile is
 
             return Const_Null (GT);
 
-         when N_In =>
-            declare
-               Left       : constant GL_Value :=
-                 Emit_Expression (Left_Opnd (N));
-               Rng        : N_Is_Index_Id     := Right_Opnd (N);
-               Compare_LB : GL_Value;
-               Compare_HB : GL_Value;
+         when N_In => In_Expr : declare
+            Left       : constant GL_Value := Emit_Expression (Left_Opnd (N));
+            Rng        : N_Is_Index_Id     := Right_Opnd (N);
+            Compare_LB : GL_Value;
+            Compare_HB : GL_Value;
 
-            begin
-               if Decls_Only then
-                  return Get (Get_Undef (Boolean_GL_Type), Boolean_Data);
-               end if;
+         begin
+            if Decls_Only then
+               return Get (Get_Undef (Boolean_GL_Type), Boolean_Data);
+            end if;
 
-               pragma Assert (not For_LHS);
-               pragma Assert (No (Alternatives (N)));
+            pragma Assert (not For_LHS);
+            pragma Assert (No (Alternatives (N)));
 
-               if Is_Entity_Name (Rng) then
-                  Rng := Simplify_Range (Scalar_Range (Full_Etype (Rng)));
-               end if;
+            if Is_Entity_Name (Rng) then
+               Rng := Simplify_Range (Scalar_Range (Full_Etype (Rng)));
+            end if;
 
-               Compare_LB := Build_Elementary_Comparison
-                 (N_Op_Ge, Left, Emit_Expression (Low_Bound (Rng)));
-               Compare_HB := Build_Elementary_Comparison
-                 (N_Op_Le, Left, Emit_Expression (High_Bound (Rng)));
-               return Build_And (Compare_LB, Compare_HB);
-            end;
+            Compare_LB := Build_Elementary_Comparison
+              (N_Op_Ge, Left, Emit_Expression (Low_Bound (Rng)));
+            Compare_HB := Build_Elementary_Comparison
+              (N_Op_Le, Left, Emit_Expression (High_Bound (Rng)));
+            return Build_And (Compare_LB, Compare_HB);
+         end In_Expr;
 
          when N_Raise_xxx_Error =>
             pragma Assert (No (Condition (N)));

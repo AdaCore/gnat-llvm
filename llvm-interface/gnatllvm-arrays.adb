@@ -357,25 +357,24 @@ package body GNATLLVM.Arrays is
                LHS := Emit_Expr_For_Minmax (Expression (N), Is_Low);
                return Convert (LHS, Full_GL_Type (N));
 
-            when N_Function_Call =>
+            when N_Function_Call => Function_Call : declare
 
                --  We assume here that what we have is a call to enumRP (disc)
                --  and get the 'Pos of the first or last in the range.
 
-               declare
-                  Params : constant List_Id                  :=
-                    Parameter_Associations (N);
-                  Discr  : constant E_Discriminant_Id        :=
-                    Entity (First (Params));
-                  GT     : constant GL_Type                  :=
-                    Full_GL_Type (Discr);
-                  Bound  : constant E_Enumeration_Literal_Id :=
-                    Entity ((if   Is_Low then Type_Low_Bound (GT)
-                             else Type_High_Bound (GT)));
+               Params : constant List_Id                  :=
+                 Parameter_Associations (N);
+               Discr  : constant E_Discriminant_Id        :=
+                 Entity (First (Params));
+               GT     : constant GL_Type                  :=
+                 Full_GL_Type (Discr);
+               Bound  : constant E_Enumeration_Literal_Id :=
+                 Entity ((if   Is_Low then Type_Low_Bound (GT)
+                          else Type_High_Bound (GT)));
 
-               begin
-                  return Const_Int (Full_GL_Type (N), Enumeration_Pos (Bound));
-               end;
+            begin
+               return Const_Int (Full_GL_Type (N), Enumeration_Pos (Bound));
+            end Function_Call;
 
             when others =>
                pragma Assert (False);

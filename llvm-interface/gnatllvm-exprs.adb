@@ -337,51 +337,51 @@ package body GNATLLVM.Exprs is
                end;
             end if;
 
-         when N_String_Literal =>
-            declare
-               Str_Id  : constant String_Id := Strval (N);
-               Length  : constant Nat       := String_Length (Str_Id);
-               Elmt_GT : constant GL_Type   := Full_Component_GL_Type (GT);
+         when N_String_Literal => String_Literal : declare
 
-            begin
-               --  If this is a normal string, where the size of a character
-               --  is a byte, use Const_String to create the string.
+            Str_Id  : constant String_Id := Strval (N);
+            Length  : constant Nat       := String_Length (Str_Id);
+            Elmt_GT : constant GL_Type   := Full_Component_GL_Type (GT);
 
-               if ULL'(Get_Type_Size (Type_Of (Elmt_GT))) = 8 then
-                  declare
-                     Str : String_Access := new String (1 .. Integer (Length));
+         begin
+            --  If this is a normal string, where the size of a character
+            --  is a byte, use Const_String to create the string.
 
-                  begin
-                     for J in Str'Range loop
-                        Str (J) :=
-                          Get_Character (Get_String_Char (Str_Id, Nat (J)));
-                     end loop;
+            if ULL'(Get_Type_Size (Type_Of (Elmt_GT))) = 8 then
+               declare
+                  Str : String_Access := new String (1 .. Integer (Length));
 
-                     V := Const_String (Str.all, Prim_GT);
-                     Free (Str);
-                  end;
+               begin
+                  for J in Str'Range loop
+                     Str (J) :=
+                       Get_Character (Get_String_Char (Str_Id, Nat (J)));
+                  end loop;
 
-               else
-                  --  Otherwise, we have to create an array for each character
-                  --  this might be large, so don't try to allocate it in
-                  --  the stack.
+                  V := Const_String (Str.all, Prim_GT);
+                  Free (Str);
+               end;
 
-                  declare
-                     Elements : Access_GL_Value_Array :=
-                       new GL_Value_Array (1 .. Length);
+            else
+               --  Otherwise, we have to create an array for each character
+               --  this might be large, so don't try to allocate it in the
+               --  stack.
 
-                  begin
-                     for J in Elements'Range loop
-                        Elements (J) :=
-                          Const_Int (Elmt_GT,
-                                     ULL (Get_String_Char (Str_Id, Nat (J))));
-                     end loop;
+               declare
+                  Elements : Access_GL_Value_Array :=
+                    new GL_Value_Array (1 .. Length);
 
-                     V := Const_Array (Elements.all, Prim_GT);
-                     Free (Elements);
-                  end;
-               end if;
-            end;
+               begin
+                  for J in Elements'Range loop
+                     Elements (J) :=
+                       Const_Int (Elmt_GT,
+                                  ULL (Get_String_Char (Str_Id, Nat (J))));
+                  end loop;
+
+                  V := Const_Array (Elements.all, Prim_GT);
+                  Free (Elements);
+               end;
+            end if;
+         end String_Literal;
 
          when others =>
             pragma Assert (Decls_Only);
@@ -665,52 +665,51 @@ package body GNATLLVM.Exprs is
          when N_Op_Plus =>
             return Get (Op, Data);
 
-         when N_Op_Minus =>
-            declare
-               V : constant GL_Value  := Convert (Get (Op, Data), BT);
+         when N_Op_Minus => Minus : declare
 
-            begin
-               if Is_Floating_Point_Type (BT) then
-                  return F_Neg (V);
+            V : constant GL_Value  := Convert (Get (Op, Data), BT);
 
-               --  ??? Testing Emit_C shouldn't be needed but the frontend
-               --  apparently doesn't clear the Do_Overflow_Check flag when
-               --  handling overflow checking in the frontend.
+         begin
+            if Is_Floating_Point_Type (BT) then
+               return F_Neg (V);
 
-               elsif Do_Overflow_Check (N)
-                 and then not Emit_C
-                 and then not Is_Unsigned_Type (BT)
-               then
-                  declare
-                     Func      : constant GL_Value      :=
-                       Build_Intrinsic (Boolean_And_Data,
-                                        "llvm.ssub.with.overflow.i", BT);
-                     Fn_Ret    : constant GL_Value       :=
-                       Call_Relationship (Func, GT,
-                                          (1 => Const_Null (BT), 2 => V),
-                                          Boolean_And_Data);
-                     Overflow  : constant GL_Value       :=
-                       Get (Fn_Ret, Boolean_Data);
-                     Label_Ent : constant Opt_E_Label_Id :=
-                       Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
-                     BB_Next   : Basic_Block_T;
+            --  ??? Testing Emit_C shouldn't be needed but the frontend
+            --  apparently doesn't clear the Do_Overflow_Check flag when
+            --  handling overflow checking in the frontend.
 
-                  begin
-                     if Present (Label_Ent) then
-                        BB_Next := Create_Basic_Block;
-                        Build_Cond_Br (Overflow, Get_Label_BB (Label_Ent),
-                                       BB_Next);
-                        Position_Builder_At_End (BB_Next);
-                     else
-                        Emit_Raise_Call_If (Overflow, N);
-                     end if;
+            elsif Do_Overflow_Check (N) and then not Emit_C
+              and then not Is_Unsigned_Type (BT)
+            then
+               declare
+                  Func      : constant GL_Value      :=
+                    Build_Intrinsic (Boolean_And_Data,
+                                     "llvm.ssub.with.overflow.i", BT);
+                  Fn_Ret    : constant GL_Value       :=
+                    Call_Relationship (Func, GT,
+                                       (1 => Const_Null (BT), 2 => V),
+                                       Boolean_And_Data);
+                  Overflow  : constant GL_Value       :=
+                    Get (Fn_Ret, Boolean_Data);
+                  Label_Ent : constant Opt_E_Label_Id :=
+                    Get_Exception_Goto_Entry (N_Raise_Constraint_Error);
+                  BB_Next   : Basic_Block_T;
 
-                     return Get (Fn_Ret, Data);
-                  end;
-               else
-                  return Neg (V);
-               end if;
-            end;
+               begin
+                  if Present (Label_Ent) then
+                     BB_Next := Create_Basic_Block;
+                     Build_Cond_Br (Overflow, Get_Label_BB (Label_Ent),
+                                    BB_Next);
+                     Position_Builder_At_End (BB_Next);
+                  else
+                     Emit_Raise_Call_If (Overflow, N);
+                  end if;
+
+                  return Get (Fn_Ret, Data);
+               end;
+            else
+               return Neg (V);
+            end if;
+         end Minus;
 
          when others =>
             pragma Assert (False);
@@ -964,33 +963,33 @@ package body GNATLLVM.Exprs is
             Emit_For_Address (Prefix (N), V, Bits);
             V := Get_Slice_LValue (GT, V);
 
-         when N_Selected_Component =>
-            declare
-               In_F  : constant Record_Field_Kind_Id :=
-                 Entity (Selector_Name (N));
-               R_TE  : constant Record_Kind_Id       := Full_Scope (In_F);
-               Rec_T : constant Type_T               := Type_Of (R_TE);
-               F     : constant Record_Field_Kind_Id :=
-                 Find_Matching_Field (R_TE, In_F);
-               pragma Unreferenced (Rec_T);
+         when N_Selected_Component => Selected_Component : declare
 
-            begin
-               --  Compute an LValue that points either to the field or the
-               --  bitfield field that contains the field.
+            In_F  : constant Record_Field_Kind_Id :=
+              Entity (Selector_Name (N));
+            R_TE  : constant Record_Kind_Id       := Full_Scope (In_F);
+            Rec_T : constant Type_T               := Type_Of (R_TE);
+            F     : constant Record_Field_Kind_Id :=
+              Find_Matching_Field (R_TE, In_F);
+            pragma Unreferenced (Rec_T);
 
-               Emit_For_Address (Prefix (N), V, Bits);
-               V := Record_Field_Offset (V, F);
+         begin
+            --  Compute an LValue that points either to the field or the
+            --  bitfield field that contains the field.
 
-               --  If it's a bitfield, record the offset in bits and force
-               --  the type to be the desired type so outer component
-               --  references will work properly.
+            Emit_For_Address (Prefix (N), V, Bits);
+            V := Record_Field_Offset (V, F);
 
-               if Is_Bitfield (F) then
-                  pragma Assert (Relationship (V) = Reference_To_Unknown);
-                  V := Convert_Ref (V, GT);
-                  Bits := Bits + Field_Bit_Offset (F);
-               end if;
-            end;
+            --  If it's a bitfield, record the offset in bits and force the
+            --  type to be the desired type so outer component references
+            --  will work properly.
+
+            if Is_Bitfield (F) then
+               pragma Assert (Relationship (V) = Reference_To_Unknown);
+               V := Convert_Ref (V, GT);
+               Bits := Bits + Field_Bit_Offset (F);
+            end if;
+         end Selected_Component;
 
          when others =>
             --  Just get this as an LValue and initialize the bit offset.
@@ -1145,125 +1144,124 @@ package body GNATLLVM.Exprs is
                           then Reference_To_Bounds_And_Data else Reference));
             return Ptr_To_Int (V, GT, "pool.address");
 
-         when Attribute_Deref =>
-            declare
-               Expr : constant N_Subexpr_Id := First (Expressions (N));
+         when Attribute_Deref => Deref : declare
 
-            begin
-               pragma Assert (Is_Descendant_Of_Address (Full_Etype (Expr)));
-               return Int_To_Ref (Emit_Expression (Expr), GT, "attr.deref");
-            end;
+            Expr : constant N_Subexpr_Id := First (Expressions (N));
 
-         when Attribute_First  | Attribute_Last
-            | Attribute_Length | Attribute_Range_Length =>
+         begin
+            pragma Assert (Is_Descendant_Of_Address (Full_Etype (Expr)));
+            return Int_To_Ref (Emit_Expression (Expr), GT, "attr.deref");
+         end Deref;
 
-            declare
-               BT          : constant GL_Type := Base_GL_Type (P_GT);
-               Dim         : constant Nat     :=
-                 (if   Present (Expressions (N))
-                  then +Intval (First (Expressions (N))) - 1 else 0);
-               Array_Descr : GL_Value;
-               Low, High   : GL_Value;
+         when Attribute_First  | Attribute_Last | Attribute_Length
+            | Attribute_Range_Length
+         =>
+         Range_Attr : declare
 
-            begin
-               if Is_Scalar_Type (P_GT) then
-                  Low  := Emit_Convert_Value (Type_Low_Bound  (P_GT), BT);
-                  High := Emit_Convert_Value (Type_High_Bound (P_GT), BT);
+            BT          : constant GL_Type := Base_GL_Type (P_GT);
+            Dim         : constant Nat     :=
+              (if   Present (Expressions (N))
+              then +Intval (First (Expressions (N))) - 1 else 0);
+            Array_Descr : GL_Value;
+            Low, High   : GL_Value;
 
-                  if Attr = Attribute_First then
-                     V := Low;
-                  elsif Attr = Attribute_Last then
-                     V := High;
-                  elsif Attr = Attribute_Range_Length then
+         begin
+            if Is_Scalar_Type (P_GT) then
+               Low  := Emit_Convert_Value (Type_Low_Bound  (P_GT), BT);
+               High := Emit_Convert_Value (Type_High_Bound (P_GT), BT);
+
+               if Attr = Attribute_First then
+                  V := Low;
+               elsif Attr = Attribute_Last then
+                  V := High;
+               elsif Attr = Attribute_Range_Length then
                      V := Bounds_To_Length (Low, High, GT);
-                  else
-                     pragma Assert (Decls_Only);
-                     V := Emit_Undef (GT);
-                  end if;
-
-               elsif Is_Array_Type (P_GT) then
-
-                  --  If what we're taking the prefix of is a type, we can't
-                  --  evaluate it as an expression.
-
-                  if Is_Entity_Name (Pref)
-                    and then Is_Type (Entity (Pref))
-                  then
-                     Array_Descr := No_GL_Value;
-                  else
-                     Array_Descr := Emit_LValue (Pref);
-                     P_GT        := Related_Type (Array_Descr);
-                  end if;
-
-                  if Attr = Attribute_Length then
-                     V := Get_Array_Length (Full_Etype (P_GT), Dim,
-                                            Array_Descr);
-                  else
-                     V := Get_Array_Bound
-                       (P_GT, Dim, Attr = Attribute_First, Array_Descr,
-                        For_Orig => Is_Bit_Packed_Array_Impl_Type (P_GT));
-                  end if;
                else
                   pragma Assert (Decls_Only);
                   V := Emit_Undef (GT);
                end if;
 
-               return Convert (V, GT);
-            end;
+            elsif Is_Array_Type (P_GT) then
+
+               --  If what we're taking the prefix of is a type, we can't
+               --  evaluate it as an expression.
+
+               if Is_Entity_Name (Pref) and then Is_Type (Entity (Pref)) then
+                  Array_Descr := No_GL_Value;
+               else
+                  Array_Descr := Emit_LValue (Pref);
+                  P_GT        := Related_Type (Array_Descr);
+               end if;
+
+               if Attr = Attribute_Length then
+                  V := Get_Array_Length (Full_Etype (P_GT), Dim, Array_Descr);
+               else
+                  V := Get_Array_Bound
+                    (P_GT, Dim, Attr = Attribute_First, Array_Descr,
+                     For_Orig => Is_Bit_Packed_Array_Impl_Type (P_GT));
+               end if;
+            else
+               pragma Assert (Decls_Only);
+               V := Emit_Undef (GT);
+            end if;
+
+            return Convert (V, GT);
+         end Range_Attr;
 
          when Attribute_Position | Attribute_Bit_Position
-            | Attribute_First_Bit | Attribute_Bit | Attribute_Last_Bit =>
+            | Attribute_First_Bit | Attribute_Bit | Attribute_Last_Bit
+         =>
+         Position_Attr : declare
 
-            declare
-               F            : Record_Field_Kind_Id;
-               Val          : GL_Value;
-               Position     : GL_Value;
+            F            : Record_Field_Kind_Id;
+            Val          : GL_Value;
+            Position     : GL_Value;
 
-            begin
-               --  Get the relevant field and expression for this operation,
-               --  if any.
+         begin
+            --  Get the relevant field and expression for this operation,
+            --  if any.
 
-               if Nkind (Pref) = N_Identifier
-                 and then Ekind (Entity (Pref)) in E_Discriminant | E_Component
-               then
-                  F   := Entity (Pref);
-                  Val := No_GL_Value;
-               elsif Nkind (Pref) = N_Selected_Component then
-                  F   := Entity (Selector_Name (Pref));
-                  Val := Emit_LValue (Prefix (Pref));
-               else
-                  pragma Assert (Attr = Attribute_Bit);
-                  return Const_Null (GT);
-               end if;
+            if Nkind (Pref) = N_Identifier
+              and then Ekind (Entity (Pref)) in E_Discriminant | E_Component
+            then
+               F   := Entity (Pref);
+               Val := No_GL_Value;
+            elsif Nkind (Pref) = N_Selected_Component then
+               F   := Entity (Selector_Name (Pref));
+               Val := Emit_LValue (Prefix (Pref));
+            else
+               pragma Assert (Attr = Attribute_Bit);
+               return Const_Null (GT);
+            end if;
 
-               --  Now compute the offset and bit position
+            --  Now compute the offset and bit position
 
-               Position := Emit_Field_Position (F, Val);
-               if No (Position) then
-                  return Get_Undef (GT);
-               else
-                  Position := Position + Size_Const_Int (Field_Bit_Offset (F));
-               end if;
+            Position := Emit_Field_Position (F, Val);
+            if No (Position) then
+               return Get_Undef (GT);
+            else
+               Position := Position + Size_Const_Int (Field_Bit_Offset (F));
+            end if;
 
-               case Attr is
-                  when Attribute_Position =>
-                     V := Position / BPU;
+            case Attr is
+               when Attribute_Position =>
+                  V := Position / BPU;
 
-                  when Attribute_Bit_Position =>
-                     V := Position;
+               when Attribute_Bit_Position =>
+                  V := Position;
 
-                  when Attribute_First_Bit | Attribute_Bit =>
-                     V := S_Rem (Position, Size_Const_Int (+BPU));
+               when Attribute_First_Bit | Attribute_Bit =>
+                  V := S_Rem (Position, Size_Const_Int (+BPU));
 
-                  when Attribute_Last_Bit =>
-                     V := Position + Size_Const_Int (Esize (F) - 1);
+               when Attribute_Last_Bit =>
+                  V := Position + Size_Const_Int (Esize (F) - 1);
 
-                  when others =>
-                     pragma Assert (False);
-               end case;
+               when others =>
+                  pragma Assert (False);
+            end case;
 
-               return Convert (V, GT);
-            end;
+            return Convert (V, GT);
+         end Position_Attr;
 
          when Attribute_Max | Attribute_Min =>
             pragma Assert (List_Length (Expressions (N)) = 2);
@@ -1272,39 +1270,39 @@ package body GNATLLVM.Exprs is
          when Attribute_Pos | Attribute_Val =>
             return Emit_Conversion (First (Expressions (N)), GT, N);
 
-         when Attribute_Succ | Attribute_Pred =>
-            declare
-               Exprs : constant List_Id      := Expressions (N);
-               Expr  : constant N_Subexpr_Id := First (Exprs);
-               Base  : constant GL_Value     := Emit_Expression (Expr);
-               One   : constant GL_Value     := Const_Int (Base, Uint_1);
+         when Attribute_Succ | Attribute_Pred => Succ_Pred : declare
 
-            begin
-               pragma Assert (List_Length (Exprs) = 1);
-               V := (if   Attr = Attribute_Succ
-                     then Add (Base, One, "attr.succ")
+            Exprs : constant List_Id      := Expressions (N);
+            Expr  : constant N_Subexpr_Id := First (Exprs);
+            Base  : constant GL_Value     := Emit_Expression (Expr);
+            One   : constant GL_Value     := Const_Int (Base, Uint_1);
+
+         begin
+            pragma Assert (List_Length (Exprs) = 1);
+            V := (if   Attr = Attribute_Succ
+                   then Add (Base, One, "attr.succ")
                      else Sub (Base, One, "attr.pred"));
 
-               --  If this is a modular type, we have to check for wrap
-               --  and adjust if so.
+            --  If this is a modular type, we have to check for wrap and
+            --  adjust if so.
 
-               if Non_Binary_Modulus (GT) then
-                  declare
-                     C_0  : constant GL_Value := Const_Null (Base);
-                     C_M1 : constant GL_Value :=
-                       Const_Int (Base, Modulus (GT) - 1);
+            if Non_Binary_Modulus (GT) then
+               declare
+                  C_0  : constant GL_Value := Const_Null (Base);
+                  C_M1 : constant GL_Value :=
+                    Const_Int (Base, Modulus (GT) - 1);
 
-                  begin
-                     if Attr = Attribute_Succ then
-                        V := Build_Select (I_Cmp (Int_EQ, Base, C_M1), C_0, V);
-                     else --  Attr = Attribute_Pred
-                        V := Build_Select (I_Cmp (Int_EQ, Base, C_0), C_M1, V);
-                     end if;
-                  end;
-               end if;
+               begin
+                  if Attr = Attribute_Succ then
+                     V := Build_Select (I_Cmp (Int_EQ, Base, C_M1), C_0, V);
+                  else --  Attr = Attribute_Pred
+                     V := Build_Select (I_Cmp (Int_EQ, Base, C_0), C_M1, V);
+                  end if;
+               end;
+            end if;
 
-               return V;
-            end;
+            return V;
+         end Succ_Pred;
 
          when Attribute_Machine | Attribute_Model =>
 
@@ -1318,45 +1316,46 @@ package body GNATLLVM.Exprs is
                               Sign_Extend => False);
 
          when Attribute_Size | Attribute_Object_Size | Attribute_Value_Size
-            | Attribute_Max_Size_In_Storage_Elements =>
+            | Attribute_Max_Size_In_Storage_Elements
+         =>
+         Size : declare
 
-            declare
-               Is_A_Type   : constant Boolean :=
-                 (Is_Entity_Name (Pref)) and then Is_Type (Entity (Pref));
-               Max_Size    : constant Boolean :=
-                 Is_A_Type and then not Is_Constrained (P_GT);
-               No_Padding  : constant Boolean :=
-                 Is_A_Type
-                 and then Attr in Attribute_Size | Attribute_Value_Size;
+            Is_A_Type   : constant Boolean :=
+              (Is_Entity_Name (Pref)) and then Is_Type (Entity (Pref));
+            Max_Size    : constant Boolean :=
+              Is_A_Type and then not Is_Constrained (P_GT);
+            No_Padding  : constant Boolean :=
+              Is_A_Type
+              and then Attr in Attribute_Size | Attribute_Value_Size;
 
-            begin
-               --  If this is a value we want to use that value to help
-               --  find the size of the type and also to get the actual
-               --  GL_Type. This is only useful for aggregate types or
-               --  N_Selected_Component and could cause us to needlessly
-               --  make a Reference in other cases.
+         begin
+            --  If this is a value we want to use that value to help find
+            --  the size of the type and also to get the actual
+            --  GL_Type. This is only useful for aggregate types or
+            --  N_Selected_Component and could cause us to needlessly make
+            --  a Reference in other cases.
 
-               if not Is_A_Type
-                 and then (Is_Aggregate_Type (Full_Etype (Pref))
-                             or else Nkind (Pref) = N_Selected_Component)
-               then
-                  V    := Emit_LValue (Pref);
-                  P_GT := Related_Type (V);
+            if not Is_A_Type
+              and then (Is_Aggregate_Type (Full_Etype (Pref))
+                        or else Nkind (Pref) = N_Selected_Component)
+            then
+               V    := Emit_LValue (Pref);
+               P_GT := Related_Type (V);
+            end if;
+
+            V := Get_Type_Size (P_GT, V,
+                                Max_Size   => Max_Size,
+                                No_Padding => No_Padding);
+            if Attr = Attribute_Max_Size_In_Storage_Elements then
+               if Is_Unconstrained_Array (P_GT) then
+                  V := V + Get_Bound_Size (P_GT);
                end if;
 
-               V := Get_Type_Size (P_GT, V,
-                                   Max_Size   => Max_Size,
-                                   No_Padding => No_Padding);
-               if Attr = Attribute_Max_Size_In_Storage_Elements then
-                  if Is_Unconstrained_Array (P_GT) then
-                     V := V + Get_Bound_Size (P_GT);
-                  end if;
-
-                  return Convert (To_Bytes (V), GT);
-               else
-                  return Convert (V, GT);
-               end if;
-            end;
+               return Convert (To_Bytes (V), GT);
+            else
+               return Convert (V, GT);
+            end if;
+         end Size;
 
          when Attribute_Component_Size =>
             return Convert

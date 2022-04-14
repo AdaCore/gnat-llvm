@@ -1031,32 +1031,31 @@ package body GNATLLVM.GLValue is
                return Get (Get (V, Bounds_And_Data), R);
             end if;
 
-         when Fat_Pointer =>
+         when Fat_Pointer => FP : declare
 
             --  To make a fat pointer, we make the address of the bounds
             --  and the address of the data and put them together. In the
             --  case of an array with one bound (a single-dimension array
             --  with a fixed low bound), the fat pointer has the bound itself.
 
-            declare
-               Val     : constant GL_Value :=
-                 (if Is_Reference (V) then V else Get (V, Ref (Our_R)));
-               --  If we have something that isn't a reference, start by
-               --  getting a reference to it.
+            Val     : constant GL_Value :=
+              (if Is_Reference (V) then V else Get (V, Ref (Our_R)));
+            --  If we have something that isn't a reference, start by
+            --  getting a reference to it.
 
-               Data_P  : constant GL_Value := Remove_Padding (Val);
-               N_GT    : constant GL_Type  := Related_Type (Data_P);
-               BT      : constant GL_Type  := Array_Base_GL_Type (N_GT);
-               Fat_Ptr : constant GL_Value := Get_Undef_Relationship (N_GT, R);
-               Bnd     : constant GL_Value :=
-                   Get (Val, (if   Number_Bounds (BT) = 1 then Bounds
-                              else Reference_To_Bounds));
-               Data    : constant GL_Value :=
-                   Convert_Pointer (Get (Data_P, Reference), BT);
+            Data_P  : constant GL_Value := Remove_Padding (Val);
+            N_GT    : constant GL_Type  := Related_Type (Data_P);
+            BT      : constant GL_Type  := Array_Base_GL_Type (N_GT);
+            Fat_Ptr : constant GL_Value := Get_Undef_Relationship (N_GT, R);
+            Bnd     : constant GL_Value :=
+              Get (Val, (if   Number_Bounds (BT) = 1 then Bounds
+                         else Reference_To_Bounds));
+            Data    : constant GL_Value :=
+              Convert_Pointer (Get (Data_P, Reference), BT);
 
-            begin
-               return Insert_Value (Insert_Value (Fat_Ptr, Data, 0), Bnd,  1);
-            end;
+         begin
+            return Insert_Value (Insert_Value (Fat_Ptr, Data, 0), Bnd,  1);
+         end FP;
 
          when Reference_To_Activation_Record =>
 

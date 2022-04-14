@@ -769,155 +769,151 @@ package body GNATLLVM.DebugInfo is
          --  this is of fixed size, get info for each of the bounds and
          --  make a description of the type.
 
-         when Array_Kind =>
+         when Array_Kind => Array_Type : declare
 
-            declare
-               Inner_Type : constant Metadata_T :=
-                 Create_Type_Data (Full_Component_GL_Type (GT));
-               Ranges     : Metadata_Array (0 .. Number_Dimensions (TE) - 1);
+            Inner_Type : constant Metadata_T :=
+              Create_Type_Data (Full_Component_GL_Type (GT));
+            Ranges     : Metadata_Array (0 .. Number_Dimensions (TE) - 1);
 
-            begin
-               for J in Ranges'Range loop
-                  declare
-                     Low_Bound  : constant GL_Value   :=
-                       Get_Array_Bound (GT, J, True, No_GL_Value);
-                     Length     : constant GL_Value   :=
-                       Get_Array_Length (TE, J, No_GL_Value);
+         begin
+            for J in Ranges'Range loop
+               declare
+                  Low_Bound  : constant GL_Value   :=
+                    Get_Array_Bound (GT, J, True, No_GL_Value);
+                  Length     : constant GL_Value   :=
+                    Get_Array_Length (TE, J, No_GL_Value);
 
-                  begin
-                     Ranges (J) := DI_Builder_Get_Or_Create_Subrange
-                       (+Low_Bound, +Length);
-                  end;
-               end loop;
+               begin
+                  Ranges (J) := DI_Builder_Get_Or_Create_Subrange (+Low_Bound,
+                                                                   +Length);
+               end;
+            end loop;
 
-               Result := DI_Builder_Create_Array_Type (Size, Align,
-                                                       Inner_Type, Ranges);
-            end;
+            Result := DI_Builder_Create_Array_Type (Size, Align, Inner_Type,
+                                                    Ranges);
+         end Array_Type;
 
          --  For records, go through each field.  If we can make debug info
          --  for the type and the position and size are known and static,
          --  add that field as a member.
 
-         when Record_Kind =>
+         when Record_Kind => Record_Type : declare
+
+            package Member_Table is new Table.Table
+              (Table_Component_Type => Metadata_T,
+               Table_Index_Type     => Int,
+               Table_Low_Bound      => 1,
+               Table_Initial        => 20,
+               Table_Increment      => 5,
+               Table_Name           => "Member_Table");
+
+            F : Opt_Record_Field_Kind_Id;
+
+         begin
+            F := First_Component_Or_Discriminant (TE);
+            while Present (F) loop
+               if Known_Static_Component_Bit_Offset (F)
+                 and then Known_Static_Esize (F)
+               then
+                  declare
+                     F_GT           : constant GL_Type    := Field_Type (F);
+                     Mem_MD         : constant Metadata_T :=
+                       Create_Type_Data (F_GT);
+                     Name           : constant String     := Get_Name (F);
+                     F_S            : constant Source_Ptr := Sloc (F);
+                     File           : constant Metadata_T :=
+                       Get_Debug_File_Node (Get_Source_File_Index (F_S));
+                     Offset         : constant ULL        :=
+                       UI_To_ULL (Component_Bit_Offset (F));
+                     Storage_Offset : constant ULL        :=
+                       (Offset / UBPU) * UBPU;
+                     MD             : constant Metadata_T :=
+                       (if   Is_Bitfield (F)
+                        then DI_Create_Bit_Field_Member_Type
+                               (No_Metadata_T, Name, File,
+                                Get_Logical_Line_Number (F_S),
+                                UI_To_ULL (Esize (F)), Offset,
+                                Storage_Offset, Mem_MD)
+                        else DI_Create_Member_Type
+                               (No_Metadata_T, Name, File,
+                                Get_Logical_Line_Number (F_S),
+                                UI_To_ULL (Esize (F)),
+                                Get_Type_Alignment (F_GT), Offset, Mem_MD));
+
+                  begin
+                     --  Add the member type to the table
+
+                     Member_Table.Append (MD);
+                  end;
+               end if;
+
+               Next_Component_Or_Discriminant (F);
+            end loop;
 
             declare
-               package Member_Table is new Table.Table
-                 (Table_Component_Type => Metadata_T,
-                  Table_Index_Type     => Int,
-                  Table_Low_Bound      => 1,
-                  Table_Initial        => 20,
-                  Table_Increment      => 5,
-                  Table_Name           => "Member_Table");
-
-               F : Opt_Record_Field_Kind_Id;
+               Members : Metadata_Array (1 .. Member_Table.Last);
 
             begin
-               F := First_Component_Or_Discriminant (TE);
-               while Present (F) loop
-                  if Known_Static_Component_Bit_Offset (F)
-                    and then Known_Static_Esize (F)
-                  then
-                     declare
-                        F_GT           : constant GL_Type    := Field_Type (F);
-                        Mem_MD         : constant Metadata_T :=
-                          Create_Type_Data (F_GT);
-                        Name           : constant String     := Get_Name (F);
-                        F_S            : constant Source_Ptr := Sloc (F);
-                        File           : constant Metadata_T :=
-                          Get_Debug_File_Node (Get_Source_File_Index (F_S));
-                        Offset         : constant ULL        :=
-                          UI_To_ULL (Component_Bit_Offset (F));
-                        Storage_Offset : constant ULL        :=
-                          (Offset / UBPU) * UBPU;
-                        MD             : constant Metadata_T :=
-                          (if   Is_Bitfield (F)
-                           then DI_Create_Bit_Field_Member_Type
-                                  (No_Metadata_T, Name, File,
-                                   Get_Logical_Line_Number (F_S),
-                                   UI_To_ULL (Esize (F)), Offset,
-                                   Storage_Offset, Mem_MD)
-                           else DI_Create_Member_Type
-                                  (No_Metadata_T, Name, File,
-                                   Get_Logical_Line_Number (F_S),
-                                   UI_To_ULL (Esize (F)),
-                                   Get_Type_Alignment (F_GT), Offset, Mem_MD));
-
-                     begin
-                        --  Add the member type to the table
-
-                        Member_Table.Append (MD);
-                     end;
-                  end if;
-
-                  Next_Component_Or_Discriminant (F);
+               for J in Members'Range loop
+                  Members (J) := Member_Table.Table (J);
                end loop;
 
-               declare
-                  Members : Metadata_Array (1 .. Member_Table.Last);
-
-               begin
-                  for J in Members'Range loop
-                     Members (J) := Member_Table.Table (J);
-                  end loop;
-
-                  Result := DI_Create_Struct_Type
-                    (No_Metadata_T, Name,
-                     Get_Debug_File_Node (Get_Source_File_Index (S)),
-                     Get_Logical_Line_Number (S), Size, Align, DI_Flag_Zero,
-                     No_Metadata_T, Members, 0, No_Metadata_T, "");
-               end;
+               Result := DI_Create_Struct_Type
+                 (No_Metadata_T, Name,
+                  Get_Debug_File_Node (Get_Source_File_Index (S)),
+                  Get_Logical_Line_Number (S), Size, Align, DI_Flag_Zero,
+                  No_Metadata_T, Members, 0, No_Metadata_T, "");
             end;
+         end Record_Type;
 
          --  For an enumeration type, make an enumerator metadata for each
          --  entry.  The code below is a bit convoluted to avoid needing a
          --  UI_To_LLI function just for this purpose.
 
-         when Enumeration_Kind =>
+         when Enumeration_Kind => Enumeration : declare
 
-            declare
-               package Member_Table is new Table.Table
-                 (Table_Component_Type => Metadata_T,
-                  Table_Index_Type     => Int,
-                  Table_Low_Bound      => 1,
-                  Table_Initial        => 20,
-                  Table_Increment      => 5,
-                  Table_Name           => "Member_Table");
+            package Member_Table is new Table.Table
+              (Table_Component_Type => Metadata_T,
+               Table_Index_Type     => Int,
+               Table_Low_Bound      => 1,
+               Table_Initial        => 20,
+               Table_Increment      => 5,
+               Table_Name           => "Member_Table");
 
-               Member : Opt_E_Enumeration_Literal_Id;
+            Member : Opt_E_Enumeration_Literal_Id;
 
-            begin
-               Member := First_Literal (TE);
-               while Present (Member) loop
-
-                  declare
-                     UI  : constant Uint       := Enumeration_Rep (Member);
-                     Val : constant LLI        :=
-                       Const_Int_Get_S_Ext_Value (Const_Int (Int_Ty (Uint_64),
-                                                             UI));
-                     MD  : constant Metadata_T :=
-                       DI_Create_Enumerator (Get_Name (Member), Val, UI >= 0);
-
-                  begin
-                     Member_Table.Append (MD);
-                     Next_Literal (Member);
-                  end;
-               end loop;
-
+         begin
+            Member := First_Literal (TE);
+            while Present (Member) loop
                declare
-                  Members : Metadata_Array (1 .. Member_Table.Last);
+                  UI  : constant Uint       := Enumeration_Rep (Member);
+                  Val : constant LLI        :=
+                    Const_Int_Get_S_Ext_Value (Const_Int (Int_Ty (Uint_64),
+                                                             UI));
+                  MD  : constant Metadata_T :=
+                    DI_Create_Enumerator (Get_Name (Member), Val, UI >= 0);
 
                begin
-                  for J in Members'Range loop
-                     Members (J) := Member_Table.Table (J);
-                  end loop;
-
-                  Result := DI_Create_Enumeration_Type
-                    (Debug_Compile_Unit, Name,
-                     Get_Debug_File_Node (Get_Source_File_Index (S)),
-                     Get_Logical_Line_Number (S), Size, Align, Members,
-                     No_Metadata_T);
+                  Member_Table.Append (MD);
+                  Next_Literal (Member);
                end;
+            end loop;
+
+            declare
+               Members : Metadata_Array (1 .. Member_Table.Last);
+
+            begin
+               for J in Members'Range loop
+                  Members (J) := Member_Table.Table (J);
+               end loop;
+
+               Result := DI_Create_Enumeration_Type
+                 (Debug_Compile_Unit, Name,
+                  Get_Debug_File_Node (Get_Source_File_Index (S)),
+                  Get_Logical_Line_Number (S), Size, Align, Members,
+                  No_Metadata_T);
             end;
+         end Enumeration;
 
          --  Use "unspecified" for every other kind
 

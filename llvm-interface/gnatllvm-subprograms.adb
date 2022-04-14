@@ -1657,30 +1657,29 @@ package body GNATLLVM.Subprograms is
          when Out_Return =>
             Build_Ret (Get (Get_Value (First_Out_Param (Current_Subp)), Data));
 
-         when Struct_Out | Struct_Out_Subprog =>
+         when Struct_Out | Struct_Out_Subprog => Struct : declare
 
-            declare
-               Retval : GL_Value           := Get_Undef_Fn_Ret (Current_Func);
-               Param  : Opt_Formal_Kind_Id := First_Out_Param  (Current_Subp);
-               J      : unsigned           := 0;
+            Retval : GL_Value           := Get_Undef_Fn_Ret (Current_Func);
+            Param  : Opt_Formal_Kind_Id := First_Out_Param  (Current_Subp);
+            J      : unsigned           := 0;
 
-            begin
-               if not Decls_Only then
-                  if LRK = Struct_Out_Subprog then
-                     Retval := Insert_Value (Retval, V, J);
-                     J      := J + 1;
-                  end if;
-
-                  while Present (Param) loop
-                     Retval :=
-                       Insert_Value (Retval, Get (Get_Value (Param), Data), J);
-                     J      := J + 1;
-                     Next_Out_Param (Param);
-                  end loop;
+         begin
+            if not Decls_Only then
+               if LRK = Struct_Out_Subprog then
+                  Retval := Insert_Value (Retval, V, J);
+                  J      := J + 1;
                end if;
 
-               Build_Ret (Retval);
-            end;
+               while Present (Param) loop
+                  Retval :=
+                    Insert_Value (Retval, Get (Get_Value (Param), Data), J);
+                  J      := J + 1;
+                  Next_Out_Param (Param);
+               end loop;
+            end if;
+
+            Build_Ret (Retval);
+         end Struct;
       end case;
 
    end Emit_Return_Statement;

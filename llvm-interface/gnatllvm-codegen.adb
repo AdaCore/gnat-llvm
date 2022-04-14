@@ -517,56 +517,49 @@ package body GNATLLVM.Codegen is
          when Dump_IR =>
             Dump_Module (Module);
 
-         when Write_BC =>
-            declare
-               S : constant String := Output_File_Name (".bc");
+         when Write_BC => BC : declare
+            S : constant String := Output_File_Name (".bc");
 
-            begin
-               if Integer (Write_Bitcode_To_File (Module, S)) /= 0 then
-                  Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
-               end if;
-            end;
+         begin
+            if Integer (Write_Bitcode_To_File (Module, S)) /= 0 then
+               Error_Msg_N ("could not write `" & S & "`", GNAT_Root);
+            end if;
+         end BC;
 
-         when Write_IR =>
-            declare
-               S : constant String := Output_File_Name (".ll");
+         when Write_IR => IR : declare
+            S : constant String := Output_File_Name (".ll");
 
-            begin
-               if Print_Module_To_File (Module, S, Err_Msg'Address) then
-                  Error_Msg_N
-                    ("could not write `" & S & "`: " &
-                       Get_LLVM_Error_Msg (Err_Msg),
-                     GNAT_Root);
-               end if;
-            end;
+         begin
+            if Print_Module_To_File (Module, S, Err_Msg'Address) then
+               Error_Msg_N ("could not write `" & S & "`: " &
+                              Get_LLVM_Error_Msg (Err_Msg),
+                            GNAT_Root);
+            end if;
+         end IR;
 
-         when Write_Assembly =>
-            declare
-               S : constant String := Output_File_Name (".s");
+         when Write_Assembly => Assembly : declare
+            S : constant String := Output_File_Name (".s");
 
-            begin
-               if Target_Machine_Emit_To_File
-                 (Target_Machine, Module, S, Assembly_File, Err_Msg'Address)
-               then
-                  Error_Msg_N
-                    ("could not write `" & S & "`: " &
-                       Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
-               end if;
-            end;
+         begin
+            if Target_Machine_Emit_To_File
+              (Target_Machine, Module, S, Assembly_File, Err_Msg'Address)
+            then
+               Error_Msg_N ("could not write `" & S & "`: " &
+                              Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
+            end if;
+         end Assembly;
 
-         when Write_Object =>
-            declare
-               S : constant String := Output_File_Name (".o");
+         when Write_Object => Object : declare
+            S : constant String := Output_File_Name (".o");
 
-            begin
-               if Target_Machine_Emit_To_File (Target_Machine, Module, S,
-                                               Object_File, Err_Msg'Address)
-               then
-                  Error_Msg_N
-                    ("could not write `" & S & "`: " &
-                       Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
-               end if;
-            end;
+         begin
+            if Target_Machine_Emit_To_File (Target_Machine, Module, S,
+                                            Object_File, Err_Msg'Address)
+            then
+               Error_Msg_N ("could not write `" & S & "`: " &
+                              Get_LLVM_Error_Msg (Err_Msg), GNAT_Root);
+            end if;
+         end Object;
 
          when Write_C =>
 

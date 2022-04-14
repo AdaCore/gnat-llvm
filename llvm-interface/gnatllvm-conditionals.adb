@@ -274,6 +274,7 @@ package body GNATLLVM.Conditionals is
                     Create_Basic_Block ("rhs.has.0.dim");
                   BB_Continue         : constant Basic_Block_T :=
                     Create_Basic_Block ("normal.tests");
+
                begin
                   for Dim in 0 .. Last_Dim loop
                      BB_Next :=
@@ -693,6 +694,7 @@ package body GNATLLVM.Conditionals is
 
          declare
             BBs : Basic_Block_Array (Alts'Range);
+
          begin
             for J in BBs'Range loop
                BBs (J) := Alts (J).BB;
@@ -871,27 +873,27 @@ package body GNATLLVM.Conditionals is
          --  Process operations that we can handle in terms of different branch
          --  mechanisms, such as short-circuit operators.
 
-         when N_Expression_With_Actions =>
+         when N_Expression_With_Actions => Expression_With_Actions : declare
 
-            declare
-               Has_All : Boolean;
-               Expr    : constant Opt_N_Subexpr_Id :=
-                 Simple_Value_Action (N, Has_All);
+            Has_All : Boolean;
+            Expr    : constant Opt_N_Subexpr_Id :=
+              Simple_Value_Action (N, Has_All);
 
-            begin
-               --  If this is just defining the value that is to be its
-               --  result with no reference, just use that as the condition
-               --  that we test. Otherwise, emit the actions and then test.
+         begin
+            --  If this is just defining the value that is to be its result
+            --  with no reference, just use that as the condition that we
+            --  test. Otherwise, emit the actions and then test.
 
-               if Present (Expr) and then not Has_All then
-                  Emit_If_Cond (Expr, BB_True, BB_False);
-               else
-                  Emit (Actions (N));
-                  Emit_If_Cond (Expression (N), BB_True, BB_False);
-               end if;
-            end;
+            if Present (Expr) and then not Has_All then
+               Emit_If_Cond (Expr, BB_True, BB_False);
+            else
+               Emit (Actions (N));
+               Emit_If_Cond (Expression (N), BB_True, BB_False);
+            end if;
 
             return;
+
+         end Expression_With_Actions;
 
          when N_Op_Not =>
             Emit_If_Cond (Right_Opnd (N), BB_False, BB_True);
@@ -924,32 +926,31 @@ package body GNATLLVM.Conditionals is
                                         Right_Opnd (N), BB_True, BB_False);
             return;
 
-         when N_In | N_Not_In =>
+         when N_In | N_Not_In => In_Not_In : declare
 
+            Low, High : Uint;
+
+         begin
             --  If we can decode the range into Uint's, we can just do
             --  simple comparisons.
+            --
+            --  If we're just elaborating decls, this may not be
+            --  complete at this point, so don't try to do anything.
 
-            declare
-               Low, High : Uint;
+            if Decls_Only then
+               return;
+            end if;
 
-            begin
-               --  If we're just elaborating decls, this may not be
-               --  complete at this point, so don't try to do anything.
-
-               if Decls_Only then
-                  return;
-               end if;
-
-               pragma Assert (No (Alternatives (N)));
-               Decode_Range (Right_Opnd (N), Low, High);
-               if Present (Low) and then Present (High) then
-                  Build_If_Range
-                    (Emit_Expression (Left_Opnd (N)), Low, High,
-                     (if Nkind (N) = N_In then BB_True  else BB_False),
-                     (if Nkind (N) = N_In then BB_False else BB_True));
-                  return;
-               end if;
-            end;
+            pragma Assert (No (Alternatives (N)));
+            Decode_Range (Right_Opnd (N), Low, High);
+            if Present (Low) and then Present (High) then
+               Build_If_Range
+                 (Emit_Expression (Left_Opnd (N)), Low, High,
+                  (if Nkind (N) = N_In then BB_True  else BB_False),
+                    (if Nkind (N) = N_In then BB_False else BB_True));
+               return;
+            end if;
+         end In_Not_In;
 
          when others =>
             null;

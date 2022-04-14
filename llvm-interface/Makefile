@@ -233,7 +233,7 @@ quicklib: $(RTSDIR)
 	  -XLIBRARY_KIND=$(LIBRARY_KIND)
 	cd $(RTSLIB) && $(CHMOD) a-wx *.ali
 
-$(RTSDIR): bin/llvm-gnat1
+$(RTSDIR):
 	$(RMDIR) $(RTS)
 	$(MKDIR) $(RTSLIB)
 	$(MAKE) setup-rts

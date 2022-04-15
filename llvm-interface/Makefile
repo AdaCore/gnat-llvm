@@ -35,6 +35,7 @@ ALL_CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags) $(CXXFLAGS)
 ifeq ($(OS),Windows_NT)
   LN_S=cp -p
   LDFLAGS+=-Wl,--stack=0x2000000
+  EXE=.exe
 endif
 
 compare=cmp --ignore-initial=16
@@ -238,7 +239,7 @@ quicklib: $(RTSDIR)
 	  -XLIBRARY_KIND=$(LIBRARY_KIND)
 	cd $(RTSLIB) && $(CHMOD) a-wx *.ali
 
-$(RTSDIR):
+$(RTSDIR): bin/llvm-gnat1$(EXE)
 	$(RMDIR) $(RTS)
 	$(MKDIR) $(RTSLIB)
 	$(MAKE) setup-rts

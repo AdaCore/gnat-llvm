@@ -26,13 +26,14 @@ with Output;   use Output;
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
-with CCG.Aggregates;  use CCG.Aggregates;
-with CCG.Environment; use CCG.Environment;
-with CCG.Helper;      use CCG.Helper;
-with CCG.Output;      use CCG.Output;
-with CCG.Subprograms; use CCG.Subprograms;
-with CCG.Utils;       use CCG.Utils;
-with CCG.Write;       use CCG.Write;
+with CCG.Aggregates;   use CCG.Aggregates;
+with CCG.Environment;  use CCG.Environment;
+with CCG.Helper;       use CCG.Helper;
+with CCG.Instructions; use CCG.Instructions;
+with CCG.Output;       use CCG.Output;
+with CCG.Subprograms;  use CCG.Subprograms;
+with CCG.Utils;        use CCG.Utils;
+with CCG.Write;        use CCG.Write;
 
 package body CCG is
 
@@ -186,5 +187,12 @@ package body CCG is
    begin
       Error_Msg (Msg, First_Source_Ptr);
    end Error_Msg;
+
+   -------------------------
+   -- C_Create_Annotation --
+   -------------------------
+
+   function C_Create_Annotation (S : String) return Nat
+     renames Create_Annotation;
 
 end CCG;

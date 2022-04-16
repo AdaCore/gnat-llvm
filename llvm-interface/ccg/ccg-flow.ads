@@ -79,7 +79,11 @@ package CCG.Flow is
    --  Add or remove (respectively) a usage of the Flow denoted by Idx,
    --  if any.
 
-   procedure Add_Line (S : Str; V : Value_T; Force_Left : Boolean := False)
+   procedure Add_Line
+     (S          : Str;
+      V          : Value_T;
+      Force_Left : Boolean := False;
+      Semicolon  : Boolean := True)
      with Pre => Present (S) and then Present (V);
    --  Add a line and corresponding instruction to the current flow
 

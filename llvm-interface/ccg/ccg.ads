@@ -126,6 +126,10 @@ package CCG is
    --  Indicate that the previous calls to Set_Parameter_Info for UID
    --  were for LLVM value V.
 
+   function C_Create_Annotation (S : String) return Nat;
+   --  Return the value to put as the operand of a call to llvm.ccg.annotate
+   --  to write Str into the C output.
+
    procedure Error_Msg (Msg : String);
    --  Post an error message via the GNAT errout mechanism.
    --  ??? For now, default to the First_Source_Ptr sloc. Will hopefully use a

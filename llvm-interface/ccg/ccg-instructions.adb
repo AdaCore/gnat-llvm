@@ -101,6 +101,20 @@ package body CCG.Instructions is
       Table_Increment      => 50,
       Table_Name           => "Pending_Values");
 
+   --  For annotations (pragma Annotate and Comment) that aren't at top
+   --  level, we need to generate a builtin call (to llvm.ccg.annotate)
+   --  that points to the string.  We could pass the Str as an integer, but
+   --  that involves potentially nonportable code, so it's simplest to make
+   --  a table of these and pass the index in the table.
+
+   package Annotations is new Table.Table
+     (Table_Component_Type => Str,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 5,
+      Table_Name           => "Annotations");
+
    --------------------
    -- Get_Extra_Bits --
    --------------------
@@ -780,5 +794,34 @@ package body CCG.Instructions is
 
       Instruction (V, Ops);
    end Process_Instruction;
+
+   -----------------------
+   -- Create_Annotation --
+   ----------------------
+
+   function Create_Annotation (S : String) return Nat is
+   begin
+      --  Other than the normal hashing of strings, we make no attempt
+      --  to try to detect duplicate annotations. Though it's possible
+      --  there may be some, there aren't enough to justify the effort
+      --  and the space utilization is very small.
+
+      Annotations.Append (+S);
+      return Annotations.Last;
+   end Create_Annotation;
+
+   -----------------------
+   -- Output_Annotation --
+   -----------------------
+
+   procedure Output_Annotation (J : Nat; V : Value_T) is
+   begin
+      pragma Assert (J > 0 and then J <= Annotations.Last);
+
+      Add_Line (Annotations.Table (J), V,
+                Force_Left =>
+                  Is_String_First_Char (Annotations.Table (J), '#'),
+                Semicolon  => False);
+   end Output_Annotation;
 
 end CCG.Instructions;

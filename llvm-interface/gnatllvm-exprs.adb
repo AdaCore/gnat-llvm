@@ -19,6 +19,8 @@ with Errout;     use Errout;
 with Eval_Fat;   use Eval_Fat;
 with Exp_Code;   use Exp_Code;
 with Nlists;     use Nlists;
+with Opt;        use Opt;
+with Output;     use Output;
 with Sem_Aggr;   use Sem_Aggr;
 with Sem_Util;   use Sem_Util;
 with Snames;     use Snames;
@@ -42,6 +44,8 @@ with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
+with CCG; use CCG;
+
 package body GNATLLVM.Exprs is
 
    procedure Emit_For_Address
@@ -53,6 +57,13 @@ package body GNATLLVM.Exprs is
    function Is_Safe_From_Entity (LHS : GL_Value; E : Entity_Id) return Boolean
      with Pre => Present (E);
    --  Similar to Is_Safe_From but applies to entities
+
+   procedure Emit_Annotation (S : String)
+     with Pre => Emit_C;
+   --  Emit LLVM to put string S in the C output
+
+   Annotate_Fn : GL_Value := No_GL_Value;
+   --  Declaration for CCG builtin annotation function, if any
 
    ------------------
    -- Is_Safe_From --
@@ -1049,9 +1060,95 @@ package body GNATLLVM.Exprs is
 
             null;
 
+         when Pragma_Annotate | Pragma_GNAT_Annotate =>
+
+            --  Only do something if we're emitting C and we have three
+            --  operands.
+
+            if Emit_C and then List_Length (PAAs) = 3 then
+               declare
+                  Arg1  : constant N_Pragma_Argument_Association_Id :=
+                    First (PAAs);
+                  Arg2  : constant N_Pragma_Argument_Association_Id :=
+                    Next (Arg1);
+                  Arg3  : constant N_Pragma_Argument_Association_Id :=
+                    Next (Arg2);
+                  Expr1 : constant N_Subexpr_Id                     :=
+                    Expression (Arg1);
+                  Expr2 : constant N_Subexpr_Id                     :=
+                    Expression (Arg2);
+                  Expr3 : constant N_Subexpr_Id                     :=
+                    Expression (Arg3);
+
+               begin
+                  --  The first operand must be an identifier named
+                  --  "ccg", the second must be an identifier, and the
+                  --  third must be a string literal.
+
+                  if Nkind (Expr1) = N_Identifier
+                    and then Get_Name_String (Chars (Expr1)) = "ccg"
+                    and then Nkind (Expr2) = N_Identifier
+                    and then Nkind (Expr3) = N_String_Literal
+                  then
+                     --  We support "c_pragma" and "verbatim"
+
+                     String_To_Name_Buffer (Strval (Expr3));
+                     if Get_Name_String (Chars (Expr2)) = "c_pragma" then
+                        Emit_Annotation
+                          ("#pragma " & Name_Buffer (1 .. Name_Len));
+                     elsif Get_Name_String (Chars (Expr2)) = "verbatim" then
+                        Emit_Annotation (Name_Buffer (1 .. Name_Len));
+                     end if;
+                  end if;
+               end;
+            end if;
+
+          --  For pragma Comment, set up an annotation for the comment
+          --  if we're generating C and aren't outputting source code.
+
+         when Pragma_Comment =>
+            if Emit_C and then not Dump_Source_Text
+              and then Is_Non_Empty_List (PAAs)
+              and then Nkind (Expression (First (PAAs))) = N_String_Literal
+            then
+               String_To_Name_Buffer (Strval (Expression (First (PAAs))));
+               Emit_Annotation ("/* " & Name_Buffer (1 .. Name_Len) & " */");
+            end if;
+
          when others => null;
       end case;
    end Emit_Pragma;
+
+   ---------------------
+   -- Emit_Annotation --
+   ---------------------
+
+   procedure Emit_Annotation (S : String) is
+      Idx : constant Nat := C_Create_Annotation (S);
+
+   begin
+      --  ??? If this isn't inside a subprogram, do nothing for now.
+
+      if Library_Level then
+         return;
+
+      --  If the annotation builtin isn't defined yet, define it.
+      --  This piece in some sense is part of CCG, but is put here because
+      --  we have infrastructure here to write calls using GLValues that's
+      --  more straightforward than what we have in CCG.
+
+      elsif No (Annotate_Fn) then
+         Annotate_Fn :=
+           Add_Global_Function ("llvm.ccg.annotate",
+                                Fn_Ty ((1 => Type_Of (Integer_GL_Type)),
+                                       Void_Type),
+                                Void_GL_Type);
+      end if;
+
+      --  Now call it
+
+      Call (Annotate_Fn, (1 => Const_Int (Integer_GL_Type, ULL (Idx), True)));
+   end Emit_Annotation;
 
    ------------------------------
    -- Emit_Attribute_Reference --

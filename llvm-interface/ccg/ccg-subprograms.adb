@@ -565,6 +565,13 @@ package body CCG.Subprograms is
                      Is_Opencode_Builtin => True);
          return True;
 
+      --  Handle the builtin for annotations
+
+      elsif Matches (S, "ccg.annotate") then
+         Output_Annotation (Nat (Const_Int_Get_Z_Ext_Value (Ops (Ops'First))),
+                            V);
+         return True;
+
       --  And we don't process the rest
 
       else

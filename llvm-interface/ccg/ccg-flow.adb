@@ -44,6 +44,10 @@ package body CCG.Flow is
 
       Force_Left : Boolean;
       --  True if the line should be forced to the left margin
+
+      Semicolon  : Boolean;
+      --  True if the line should have a semicolon added at the end
+
    end record;
 
    package Lines is new Table.Table
@@ -184,6 +188,10 @@ package body CCG.Flow is
    function Force_Left (Idx : Line_Idx) return Boolean
      with Pre => Present (Idx);
    --  Whether this line should be left-aligned
+
+   function Semicolon (Idx : Line_Idx) return Boolean
+     with Pre => Present (Idx);
+   --  Whether this line should have a semicolon added at the end
 
    --  Getters and setters for a Case node
 
@@ -341,7 +349,10 @@ package body CCG.Flow is
      with Pre => Present (Idx), Post => Last_Case (Idx) = Cidx, Inline;
 
    function New_Line
-     (S : Str; V : Value_T; Force_Left : Boolean) return Line_Idx
+     (S          : Str;
+      V          : Value_T;
+      Force_Left : Boolean;
+      Semicolon  : Boolean) return Line_Idx
      with Pre => Present (S) and then Present (V);
    --  Create a new Line entry with the specified values
 
@@ -443,6 +454,13 @@ package body CCG.Flow is
 
    function Force_Left (Idx : Line_Idx) return Boolean is
      (Lines.Table (Idx).Force_Left);
+
+   ---------------
+   -- Semicolon --
+   ---------------
+
+   function Semicolon (Idx : Line_Idx) return Boolean is
+     (Lines.Table (Idx).Semicolon);
 
    -----------
    -- Value --
@@ -787,7 +805,12 @@ package body CCG.Flow is
    -- Add_Line --
    --------------
 
-   procedure Add_Line (S : Str; V : Value_T; Force_Left : Boolean := False) is
+   procedure Add_Line
+     (S          : Str;
+      V          : Value_T;
+      Force_Left : Boolean := False;
+      Semicolon  : Boolean := True)
+   is
       Idx : Line_Idx;
    begin
       --  If we've been given an instruction corresponding to this
@@ -801,7 +824,7 @@ package body CCG.Flow is
       --  Then add this line to the current flow, make sure that it's
       --  consecutive to a previous line if any.
 
-      Idx := New_Line (S, V, Force_Left);
+      Idx := New_Line (S, V, Force_Left, Semicolon);
       if No (First_Line (Current_Flow)) then
          Set_First_Line (Current_Flow, Idx);
       else
@@ -816,9 +839,16 @@ package body CCG.Flow is
    --------------
 
    function New_Line
-     (S : Str; V : Value_T; Force_Left : Boolean) return Line_Idx is
+     (S          : Str;
+      V          : Value_T;
+      Force_Left : Boolean;
+      Semicolon  : Boolean) return Line_Idx is
+
    begin
-      Lines.Append ((Text => S, Inst => V, Force_Left => Force_Left));
+      Lines.Append ((Text => S,
+                     Inst => V,
+                     Force_Left => Force_Left,
+                     Semicolon => Semicolon));
       return Lines.Last;
    end New_Line;
 
@@ -1612,7 +1642,8 @@ package body CCG.Flow is
                Output_Stmt (Text (Lidx),
                             V           => Inst (Lidx),
                             Indent_Type =>
-                              (if Force_Left (Lidx) then Left else Normal));
+                              (if Force_Left (Lidx) then Left else Normal),
+                            Semicolon   => Semicolon (Lidx));
             end loop;
          end if;
 

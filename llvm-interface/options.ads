@@ -20,13 +20,17 @@
 
 with Ada.Command_Line; use Ada.Command_Line;
 with GNAT.Directory_Operations; use GNAT.Directory_Operations;
+with System.OS_Lib; use System.OS_Lib;
 
 package Options is
 
-   Executable : constant String := Base_Name (Command_Name, ".exe");
+   Executable : constant String  := Base_Name (Command_Name, ".exe");
+   First      : constant Integer := Executable'First;
 
-   CCG : constant Boolean := Executable'Length > 2
-     and then Executable (Executable'First .. Executable'First + 1) = "c-";
+   CCG : constant Boolean :=
+     Getenv ("CCG").all /= ""
+     or else (Executable'Length > 2
+                and then Executable (First .. First + 1) = "c-");
    --  True if CCG mode should be enabled
 
 end Options;

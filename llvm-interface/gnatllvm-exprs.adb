@@ -348,18 +348,8 @@ package body GNATLLVM.Exprs is
             --  is a byte, use Const_String to create the string.
 
             if ULL'(Get_Type_Size (Type_Of (Elmt_GT))) = 8 then
-               declare
-                  Str : String_Access := new String (1 .. Integer (Length));
-
-               begin
-                  for J in Str'Range loop
-                     Str (J) :=
-                       Get_Character (Get_String_Char (Str_Id, Nat (J)));
-                  end loop;
-
-                  V := Const_String (Str.all, Prim_GT);
-                  Free (Str);
-               end;
+               String_To_Name_Buffer (Str_Id);
+               V := Const_String (Name_Buffer (1 .. Name_Len), Prim_GT);
 
             else
                --  Otherwise, we have to create an array for each character

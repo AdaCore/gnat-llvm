@@ -204,6 +204,20 @@ Add_Writeonly_Attribute (Function *fn, unsigned idx)
 
 extern "C"
 bool
+Has_Inline_Attribute (Function *fn)
+{
+  return fn->hasFnAttribute (Attribute::InlineHint);
+}
+
+extern "C"
+bool
+Has_Inline_Always_Attribute (Function *fn)
+{
+  return fn->hasFnAttribute (Attribute::AlwaysInline);
+}
+
+extern "C"
+bool
 Has_Nest_Attribute (Function *fn, unsigned idx)
 {
   return fn->hasParamAttribute (idx, Attribute::Nest);

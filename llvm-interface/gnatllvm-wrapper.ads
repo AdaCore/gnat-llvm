@@ -139,6 +139,12 @@ package GNATLLVM.Wrapper is
    procedure Add_Writeonly_Attribute (Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name => "Add_Writeonly_Attribute";
 
+   function Has_Inline_Attribute (Func : Value_T) return Boolean
+     with Pre => Present (Is_A_Function (Func));
+
+   function Has_Inline_Always_Attribute (Func : Value_T) return Boolean
+     with Pre => Present (Is_A_Function (Func));
+
    function Has_Nest_Attribute (Func : Value_T; Idx : unsigned) return Boolean
      with Pre => Present (Is_A_Function (Func));
 

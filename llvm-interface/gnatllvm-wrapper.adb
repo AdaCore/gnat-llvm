@@ -244,6 +244,29 @@ package body GNATLLVM.Wrapper is
       Add_Named_Attribute_C (Func, Name & ASCII.NUL, Value & ASCII.NUL, Ctx);
    end Add_Named_Attribute;
 
+   --------------------------
+   -- Has_Inline_Attribute --
+   --------------------------
+
+   function Has_Inline_Attribute (Func : Value_T) return Boolean is
+      function Has_Inline_Attribute_C (Func : Value_T) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Has_Inline_Attribute";
+   begin
+      return Has_Inline_Attribute_C (Func) /= 0;
+   end Has_Inline_Attribute;
+
+   ---------------------------------
+   -- Has_Inline_Always_Attribute --
+   ---------------------------------
+
+   function Has_Inline_Always_Attribute (Func : Value_T) return Boolean is
+      function Has_Inline_Always_Attribute_C (Func : Value_T) return LLVM_Bool
+        with Import, Convention => C,
+        External_Name => "Has_Inline_Always_Attribute";
+   begin
+      return Has_Inline_Always_Attribute_C (Func) /= 0;
+   end Has_Inline_Always_Attribute;
+
    ------------------------
    -- Has_Nest_Attribute --
    ------------------------

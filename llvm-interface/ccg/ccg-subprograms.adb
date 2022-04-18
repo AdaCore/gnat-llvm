@@ -155,6 +155,19 @@ package body CCG.Subprograms is
          Result := "static " & Result;
       end if;
 
+      --  If inline was requested, mark that, but only if the language
+      --  version is recent enough.
+
+      if Has_Inline_Attribute (V) and then Version > 1990 then
+         Result := "inline " & Result;
+      end if;
+
+      --  If inline always was requested, mark that
+
+      if Has_Inline_Always_Attribute (V) then
+         Result := "__attribute__ ((always_inline)) " & Result;
+      end if;
+
       --  If this doesn't return mark that
 
       if Does_Not_Return (V) then

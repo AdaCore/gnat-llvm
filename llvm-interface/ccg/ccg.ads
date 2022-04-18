@@ -139,6 +139,9 @@ package CCG is
    procedure Discard (B : Boolean) is null;
    --  Used to discard Boolean function results
 
+   procedure C_Set_Parameter (S : String);
+   --  S is of the form "name=value". Use it to set parameter "name" to "value"
+
    --  Define the sizes of all the basic C types.
 
    Char_Size      : Pos;

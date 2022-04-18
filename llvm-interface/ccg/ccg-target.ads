@@ -36,4 +36,8 @@ package CCG.Target is
 
    Version      : Integer := 1990;
    --  C standard for which we're to write output
+
+   procedure Set_C_Parameter (S : String);
+   --  S is of the form "name=value". Use it to set parameter "name" to "value"
+
 end CCG.Target;

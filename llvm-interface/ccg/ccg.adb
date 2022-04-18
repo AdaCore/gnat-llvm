@@ -32,6 +32,7 @@ with CCG.Helper;       use CCG.Helper;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;
+with CCG.Target;       use CCG.Target;
 with CCG.Utils;        use CCG.Utils;
 with CCG.Write;        use CCG.Write;
 
@@ -195,4 +196,10 @@ package body CCG is
    function C_Create_Annotation (S : String) return Nat
      renames Create_Annotation;
 
+   ---------------------
+   -- C_Set_Parameter --
+   ---------------------
+
+   procedure C_Set_Parameter (S : String)
+     renames Set_C_Parameter;
 end CCG;

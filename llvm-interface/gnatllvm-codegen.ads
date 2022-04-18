@@ -101,6 +101,11 @@ package GNATLLVM.Codegen is
    function Output_File_Name (Extension : String) return String;
    --  Return the name of the output file, using the given Extension
 
+   procedure Early_Error (S : String);
+   --  This is called too early to call Error_Msg (because we haven't
+   --  initialized the source input structure), so we have to use a
+   --  low-level mechanism to emit errors here.
+
    function Get_LLVM_Error_Msg (Msg : Ptr_Err_Msg_Type) return String;
    --  Get the LLVM error message that was stored in Msg
 

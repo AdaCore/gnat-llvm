@@ -272,6 +272,8 @@ package body GNATLLVM.Codegen is
          Reloc_Mode := Reloc_Default;
       elsif Starts_With ("-llvm-") then
          Switches.Append (new String'(Switch_Value ("-llvm")));
+      elsif Starts_With ("-c-target-") then
+         C_Set_Parameter (Switch_Value ("-c-target-"));
       end if;
 
       --  Free string that we replaced above, if any
@@ -293,6 +295,18 @@ package body GNATLLVM.Codegen is
          Process_Switch (Argument (J));
       end loop;
    end Scan_Command_Line;
+
+   -----------------
+   -- Early_Error --
+   -----------------
+
+   procedure Early_Error (S : String) is
+   begin
+      Write_Str ("error: ");
+      Write_Str (S);
+      Write_Eol;
+      OS_Exit (4);
+   end Early_Error;
 
    ------------------------
    -- Get_LLVM_Error_Msg --
@@ -320,11 +334,6 @@ package body GNATLLVM.Codegen is
 
       type    Addr_Arr     is array (Interfaces.C.int range <>) of Address;
       subtype Switch_Addrs is Addr_Arr (1 .. Switches.Last + Num_Builtin);
-      procedure Early_Error (S : String);
-      --  This is called too early to call Error_Msg (because we haven't
-      --  initialized the source input structure), so we have to use a
-      --  low-level mechanism to emit errors here.
-
       Opt0        : constant String   := "filename" & ASCII.NUL;
       Opt1        : constant String   := "-enable-shrink-wrap=0" & ASCII.NUL;
       Opt2        : constant String   :=
@@ -334,18 +343,6 @@ package body GNATLLVM.Codegen is
          others => <>);
       Ptr_Err_Msg : aliased Ptr_Err_Msg_Type;
       TT_First    : constant Integer  := Target_Triple'First;
-
-      -----------------
-      -- Early_Error --
-      -----------------
-
-      procedure Early_Error (S : String) is
-      begin
-         Write_Str ("error: ");
-         Write_Str (S);
-         Write_Eol;
-         OS_Exit (4);
-      end Early_Error;
 
    begin
       --  Add any LLVM parameters to the list of switches
@@ -612,6 +609,7 @@ package body GNATLLVM.Codegen is
         or else Starts_With ("--target=")
         or else Starts_With ("-llvm-")
         or else Starts_With ("-emit-")
+        or else Starts_With ("-c-target-")
       then
          return True;
       end if;

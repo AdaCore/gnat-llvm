@@ -1581,7 +1581,7 @@ package body CCG.Flow is
          --  If this is a flow with only one use (so it must be this one),
          --  output that flow directly unless we're already too deep.
 
-         elsif Use_Count (Idx) = 1 and then Depth < Max_Depth then
+         elsif Use_Count (Idx) = 1 and then Depth < Nat (Max_Depth) then
             Output_One_Flow (Idx, Write_Label => False, Depth => Depth);
 
          --  Similarly, if we're at top level and haven't output this flow

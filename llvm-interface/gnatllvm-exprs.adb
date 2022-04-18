@@ -356,11 +356,22 @@ package body GNATLLVM.Exprs is
 
          begin
             --  If this is a normal string, where the size of a character
-            --  is a byte, use Const_String to create the string.
+            --  is a byte, use Const_String to create the string.  We can't
+            --  use Name_Buffer here since it might overflow.
 
             if ULL'(Get_Type_Size (Type_Of (Elmt_GT))) = 8 then
-               String_To_Name_Buffer (Str_Id);
-               V := Const_String (Name_Buffer (1 .. Name_Len), Prim_GT);
+               declare
+                  Str : String_Access := new String (1 .. Integer (Length));
+
+               begin
+                  for J in Str'Range loop
+                     Str (J) :=
+                       Get_Character (Get_String_Char (Str_Id, Nat (J)));
+                  end loop;
+
+                  V := Const_String (Str.all, Prim_GT);
+                  Free (Str);
+               end;
 
             else
                --  Otherwise, we have to create an array for each character

@@ -1628,6 +1628,11 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Inline_Attribute (V : GL_Value; Subp : Subprogram_Kind_Id) is
    begin
+      --  If generating code, we need to set inlining attributes according
+      --  to whether we actually want to inline the subprogram, but if
+      --  generating C, we want to more closely follow the pragmas specified
+      --  by the programmer.
+
       if Has_Pragma_No_Inline (Subp) then
          Add_Inline_No_Attribute (+V);
       elsif Has_Pragma_Inline_Always (Subp) then
@@ -1638,7 +1643,9 @@ package body GNATLLVM.GLValue is
         and then not Debug_Flag_Dot_8
       then
          Add_Inline_Always_Attribute (+V);
-      elsif Is_Inlined (Subp) then
+      elsif Is_Inlined (Subp)
+        or else (Emit_C and then Has_Pragma_Inline (Subp))
+      then
          Add_Inline_Hint_Attribute (+V);
       end if;
    end Add_Inline_Attribute;

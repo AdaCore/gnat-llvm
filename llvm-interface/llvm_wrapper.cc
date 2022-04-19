@@ -22,7 +22,6 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
@@ -85,7 +84,8 @@ extern "C"
 void
 Add_Ret_Dereferenceable_Attribute (Function *fn, unsigned long long Bytes)
 {
-  fn->addDereferenceableAttr (0, Bytes);
+  /* There doesn't appear to be a way to do this in LLVM 14, so skip for now.
+     fn->addDereferenceableRetAttr (Bytes); */
 }
 
 extern "C"
@@ -93,7 +93,7 @@ void
 Add_Dereferenceable_Or_Null_Attribute (Function *fn, unsigned idx,
 				       unsigned long long Bytes)
 {
-  fn->addDereferenceableOrNullParamAttr (idx, Bytes);
+   fn->addDereferenceableOrNullParamAttr (idx, Bytes);
 }
 
 extern "C"
@@ -101,7 +101,8 @@ void
 Add_Ret_Dereferenceable_Or_Null_Attribute (Function *fn, 
 					  unsigned long long Bytes)
 {
-  fn->addDereferenceableOrNullAttr (0, Bytes);
+  /* There doesn't appear to be a way to do this in LLVM 14, so skip for now.
+     fn->addDereferenceableOrNullRetAttr (Bytes); */
 }
 
 extern "C"
@@ -164,7 +165,7 @@ extern "C"
 void
 Add_Ret_Noalias_Attribute (Function *fn)
 {
-  fn->addAttribute (0, Attribute::NoAlias);
+  fn->addRetAttr (Attribute::NoAlias);
 }
 
 extern "C"
@@ -185,7 +186,7 @@ extern "C"
 void
 Add_Ret_Non_Null_Attribute (Function *fn, unsigned idx)
 {
-  fn->addAttribute (0, Attribute::NonNull);
+  fn->addRetAttr (Attribute::NonNull);
 }
 
 extern "C"
@@ -569,11 +570,11 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
   PipelineTuningOptions PTO;
   PassInstrumentationCallbacks PIC;
   Triple TargetTriple (M->getTargetTriple ());
-  PassBuilder::OptimizationLevel Level
-    = (CodeOptLevel == 1 ? PassBuilder::OptimizationLevel::O1
-       : CodeOptLevel == 2 ? PassBuilder::OptimizationLevel::O2
-       : CodeOptLevel == 3 ? PassBuilder::OptimizationLevel::O3
-       : PassBuilder::OptimizationLevel::O0);
+  OptimizationLevel Level
+    = (CodeOptLevel == 1 ? OptimizationLevel::O1
+       : CodeOptLevel == 2 ? OptimizationLevel::O2
+       : CodeOptLevel == 3 ? OptimizationLevel::O3
+       : OptimizationLevel::O0);
   PTO.LoopUnrolling = !NoUnrollLoops;
   PTO.LoopInterleaving = !NoUnrollLoops;
   PTO.LoopVectorization = !NoLoopVectorization;

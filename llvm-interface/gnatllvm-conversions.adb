@@ -425,13 +425,17 @@ package body GNATLLVM.Conversions is
          --  have been smaller types involved in primitive types of the
          --  conversion, but converting to and from them is not only
          --  unnecessary code, but can break 'Valid of a widened field.
-         --  However, we always have to do something if there's a biased
-         --  type involved.
+         --  However, we always have to do something if there's a biased or
+         --  packed array implementation type involved. But first be sure
+         --  we have data.
 
+         Result := Get (Result, Data);
          if Is_Discrete_Or_Fixed_Point_Type (GT)
            and then Type_Of (GT) = Type_Of (Result)
            and then not Is_Biased_GL_Type (GT)
            and then not Is_Biased_GL_Type (Result)
+           and then not Is_Packed_Array_Impl_Type (GT)
+           and then not Is_Packed_Array_Impl_Type (Result)
            and then not Is_Unchecked
          then
             Result := G_Is (Result, GT);

@@ -1261,9 +1261,14 @@ package body GNATLLVM.Instructions is
       --  value into the temporary, and load the temporary.
 
       if Has_SM_Copy_From (Ptr) then
-         Result := Allocate_For_Type (Load_GT);
-         Call_SM_Copy_From (Result, Ptr, Get_Type_Size (Load_GT));
-         Ptr_Val := +Result;
+         declare
+            T : constant Type_T := Get_Element_Type (Type_Of (Ptr));
+
+         begin
+            Result := G_From (Alloca (IR_Builder, T, ""), Ptr);
+            Call_SM_Copy_From (Result, Ptr, To_Bytes (Get_Type_Size (T)));
+            Ptr_Val := +Result;
+         end;
       end if;
 
       --  Now generate the load instruction and set up any flags
@@ -1326,7 +1331,9 @@ package body GNATLLVM.Instructions is
       --  a copy procedure.
 
       if Has_SM_Copy_To (Ptr) then
-         Call_SM_Copy_To (Ptr, Expr, Get_Type_Size (Expr));
+         Call_SM_Copy_To
+           (Ptr, Expr,
+            To_Bytes (Get_Type_Size (Get_Element_Type (Type_Of (Ptr)))));
          return;
 
       --  If this is a special atomic store, allocate a temporary, store

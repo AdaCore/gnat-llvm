@@ -125,4 +125,5 @@ begin
    Back_End_Return_Slot         := False;
    Expand_Nonbinary_Modular_Ops := True;
    Unnest_Subprogram_Mode       := True;
+   CCG_Mode                     := True;
 end Back_End;

@@ -7,18 +7,16 @@ PWD:=$(shell pwd)
 TMP_GEN_DIR=gen
 OUT_DIR=out
 LLVM_RELEASE=14.0.1
+LLVM_INSTALL_DIR=$(PWD)/install
 LLVM_SRC_DIR=llvm-$(LLVM_RELEASE).src
-LLVM_CLANG_EXP_NAME=clang-$(LLVM_RELEASE).src
-LLVM_INCLUDE_DIR=$(PWD)/$(LLVM_SRC_DIR)/include
+LLVM_INCLUDE_DIR=$(LLVM_INSTALL_DIR)/include
 LLVM_INCLUDE_DIR_C=$(LLVM_INCLUDE_DIR)/llvm-c
-CLANG_INCLUDE_DIR=$(PWD)/$(LLVM_SRC_DIR)/tools/clang/include
+CLANG_INCLUDE_DIR=$(LLVM_INSTALL_DIR)/include
 CLANG_INCLUDE_DIR_C=$(CLANG_INCLUDE_DIR)/clang-c
 DL=wget
 LLVM_SRC_FNAME=$(LLVM_SRC_DIR).tar.xz
-LLVM_CLANG_SRC_FNAME=$(LLVM_CLANG_EXP_NAME).tar.xz
 LLVM_RELEASE_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-$(LLVM_RELEASE)
 LLVM_SRC_LINK=$(LLVM_RELEASE_URL)/$(LLVM_SRC_FNAME)
-LLVM_CLANG_SRC_LINK=$(LLVM_RELEASE_URL)/$(LLVM_CLANG_SRC_FNAME)
 LLVM_TARGETS=X86
 CMAKE_FLAGS=-DLLVM_TARGETS_TO_BUILD="$(LLVM_TARGETS)" \
 	-DBUILD_SHARED_LIBS=ON -DLLVM_INCLUDE_BENCHMARKS=OFF
@@ -40,7 +38,7 @@ clang-bindings: $(LLVM_SRC_DIR) $(OUT_DIR)/clang-index.adb
 	mv $(OUT_DIR)/* clang-bindings
 
 CONFIGURE=cd llvm-obj && CXX=g++ CC=gcc CXXC=g++ \
-  cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$(PWD)/install \
+  cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$(LLVM_INSTALL_DIR) \
   $(CMAKE_FLAGS) ../$(LLVM_SRC_DIR)
 
 .PHONY: llvm-obj
@@ -51,10 +49,6 @@ $(LLVM_SRC_DIR):
 	$(DL) $(LLVM_SRC_LINK)
 	tar xJf $(LLVM_SRC_FNAME)
 	rm $(LLVM_SRC_FNAME)
-	$(DL) $(LLVM_CLANG_SRC_LINK)
-	tar xJf $(LLVM_CLANG_SRC_FNAME)
-	mv $(LLVM_CLANG_EXP_NAME) $(LLVM_SRC_DIR)/tools/clang
-	rm $(LLVM_CLANG_SRC_FNAME)
 
 llvm-obj:
 	mkdir -p llvm-obj
@@ -72,14 +66,17 @@ configure-prod:
 	mkdir -p llvm-obj
 	$(CONFIGURE) $(CMAKE_FLAGS_PROD)
 
-llvm:
+llvm: llvm-obj
 	$(MAKE) -s -C llvm-obj
+
+install: llvm
+	cd llvm-obj && cmake -P cmake_install.cmake
 
 # Note: in order to use py/common.py you need to first install libadalang
 # and then run:
 # pip install <prefix>/share/libadalang/python/Libadalang-*.whl
 
-$(OUT_DIR)/llvm-core.adb: $(LLVM_INCLUDE_DIR_C)/Core.h py/common.py py/wrapper.py
+$(OUT_DIR)/llvm-core.adb: install py/common.py py/wrapper.py
 	rm -rf $(TMP_GEN_DIR) $(OUT_DIR)
 	mkdir -p $(TMP_GEN_DIR) $(OUT_DIR)
 	cd $(TMP_GEN_DIR) && g++ -I$(LLVM_INCLUDE_DIR) -I$(PWD)/llvm-obj/include -DNDEBUG -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -U__cplusplus -c -D_Bool=bool -Dlto_api_version=lto_api_version_fun -fdump-ada-spec -C $(LLVM_INCLUDE_DIR_C)/*.h $(LLVM_INCLUDE_DIR_C)/*/*.h
@@ -100,7 +97,7 @@ $(OUT_DIR)/llvm-core.adb: $(LLVM_INCLUDE_DIR_C)/Core.h py/common.py py/wrapper.p
 	ls gen/*.ads | grep -v llvm | xargs -i cp {} out/
 	rm -rf gen
 
-$(OUT_DIR)/clang-index.adb: $(CLANG_INCLUDE_DIR_C)/Index.h py/common.py py/wrapper.py
+$(OUT_DIR)/clang-index.adb: install py/common.py py/wrapper.py
 	rm -rf $(TMP_GEN_DIR) $(OUT_DIR)
 	mkdir -p $(TMP_GEN_DIR) $(OUT_DIR)
 	cd $(TMP_GEN_DIR) && g++ -I$(LLVM_INCLUDE_DIR) -I$(PWD)/llvm-obj/include -DNDEBUG -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -U__cplusplus -c -D_Bool=bool -Dlto_api_version=lto_api_version_fun -fdump-ada-spec -C $(CLANG_INCLUDE_DIR_C)/*.h
@@ -121,8 +118,7 @@ $(OUT_DIR)/clang-index.adb: $(CLANG_INCLUDE_DIR_C)/Index.h py/common.py py/wrapp
 	rm -rf gen
 
 clean:
-	rm -rf $(TMP_GEN_DIR) $(OUT_DIR) llvm-obj
+	rm -rf $(TMP_GEN_DIR) $(OUT_DIR) llvm-obj $(LLVM_INSTALL_DIR)
 
 distclean: clean
 	rm -rf $(LLVM_SRC_DIR)
-

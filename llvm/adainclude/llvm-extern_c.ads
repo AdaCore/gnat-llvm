@@ -25,3 +25,4 @@ package LLVM.Extern_C is
 end LLVM.Extern_C;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

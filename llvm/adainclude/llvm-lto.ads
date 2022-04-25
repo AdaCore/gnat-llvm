@@ -11,7 +11,7 @@ with stddef_h;
 
 package LLVM.Lto is
 
-   LTO_API_VERSION : constant := 28;  --  llvm-13.0.0.src/include/llvm-c/lto.h:49
+   LTO_API_VERSION : constant := 29;  --  llvm-14.0.1.install/include/llvm-c/lto.h:49
 
   --===-- llvm-c/lto.h - LTO Public C Interface ---------------------*- C -*-===*|*                                                                            *|
   --|
@@ -28,7 +28,7 @@ package LLVM.Lto is
   --|*                                                                            *|
   --\*===----------------------------------------------------------------------=== 
 
-   subtype Bool_T_T is Extensions.bool;  -- llvm-13.0.0.src/include/llvm-c/lto.h:31
+   subtype Bool_T_T is Extensions.bool;  -- llvm-14.0.1.install/include/llvm-c/lto.h:31
 
   -- MSVC in particular does not have anything like _Bool or bool in C, but we can
   --   at least make sure the type is the same size.  The implementation side will
@@ -65,7 +65,7 @@ package LLVM.Lto is
    SYMBOL_SCOPE_DEFAULT : constant Symbol_Attributes_T := 6144;
    SYMBOL_SCOPE_DEFAULT_CAN_BE_HIDDEN : constant Symbol_Attributes_T := 10240;
    SYMBOL_COMDAT : constant Symbol_Attributes_T := 16384;
-   SYMBOL_ALIAS : constant Symbol_Attributes_T := 32768;  -- llvm-13.0.0.src/include/llvm-c/lto.h:74
+   SYMBOL_ALIAS : constant Symbol_Attributes_T := 32768;  -- llvm-14.0.1.install/include/llvm-c/lto.h:74
 
   --*
   -- * \since prior to LTO_API_VERSION=3
@@ -74,7 +74,7 @@ package LLVM.Lto is
    type Debug_Model_T is 
      (DEBUG_MODEL_NONE,
       DEBUG_MODEL_DWARF)
-   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/lto.h:82
+   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/lto.h:82
 
   --*
   -- * \since prior to LTO_API_VERSION=3
@@ -85,22 +85,22 @@ package LLVM.Lto is
       CODEGEN_PIC_MODEL_DYNAMIC,
       CODEGEN_PIC_MODEL_DYNAMIC_NO_PIC,
       CODEGEN_PIC_MODEL_DEFAULT)
-   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/lto.h:92
+   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/lto.h:92
 
   --* opaque reference to a loaded object module  
    type LLVMOpaqueLTOModule is null record;   -- incomplete struct
 
-   type Module_T_T is access all LLVMOpaqueLTOModule;  -- llvm-13.0.0.src/include/llvm-c/lto.h:95
+   type Module_T_T is access all LLVMOpaqueLTOModule;  -- llvm-14.0.1.install/include/llvm-c/lto.h:95
 
   --* opaque reference to a code generator  
    type LLVMOpaqueLTOCodeGenerator is null record;   -- incomplete struct
 
-   type Code_Gen_T_T is access all LLVMOpaqueLTOCodeGenerator;  -- llvm-13.0.0.src/include/llvm-c/lto.h:98
+   type Code_Gen_T_T is access all LLVMOpaqueLTOCodeGenerator;  -- llvm-14.0.1.install/include/llvm-c/lto.h:98
 
   --* opaque reference to a thin code generator  
    type LLVMOpaqueThinLTOCodeGenerator is null record;   -- incomplete struct
 
-   type thinlto_code_gen_t is access all LLVMOpaqueThinLTOCodeGenerator;  -- llvm-13.0.0.src/include/llvm-c/lto.h:101
+   type thinlto_code_gen_t is access all LLVMOpaqueThinLTOCodeGenerator;  -- llvm-14.0.1.install/include/llvm-c/lto.h:101
 
   --*
   -- * Returns a printable string.
@@ -110,11 +110,6 @@ package LLVM.Lto is
 
 function Get_Version
       return String;
-   function Get_Version_C
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_get_version";
 
   --*
   -- * Returns the last error string or NULL if last operation was successful.
@@ -124,11 +119,6 @@ function Get_Version
 
 function Get_Error_Message
       return String;
-   function Get_Error_Message_C
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_get_error_message";
 
   --*
   -- * Checks if a file is a loadable object file.
@@ -139,12 +129,6 @@ function Get_Error_Message
 function Module_Is_Object_File
      (Path : String)
       return Bool_T_T;
-   function Module_Is_Object_File_C
-     (Path : Interfaces.C.Strings.chars_ptr)
-      return Bool_T_T
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_is_object_file";
 
   --*
   -- * Checks if a file is a loadable object compiled for requested target.
@@ -156,13 +140,6 @@ function Module_Is_Object_File_For_Target
      (Path                 : String;
       Target_Triple_Prefix : String)
       return Bool_T_T;
-   function Module_Is_Object_File_For_Target_C
-     (Path                 : Interfaces.C.Strings.chars_ptr;
-      Target_Triple_Prefix : Interfaces.C.Strings.chars_ptr)
-      return Bool_T_T
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_is_object_file_for_target";
 
   --*
   -- * Return true if \p Buffer contains a bitcode file with ObjC code (category
@@ -171,7 +148,7 @@ function Module_Is_Object_File_For_Target
   -- * \since LTO_API_VERSION=20
   --  
 
-   function Module_Has_Objc_Category (Mem : System.Address; Length : stddef_h.size_t) return Bool_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:145
+   function Module_Has_Objc_Category (Mem : System.Address; Length : stddef_h.size_t) return Bool_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:145
    with Import => True, 
         Convention => C, 
         External_Name => "lto_module_has_objc_category";
@@ -182,7 +159,7 @@ function Module_Is_Object_File_For_Target
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Module_Is_Object_File_In_Memory (Mem : System.Address; Length : stddef_h.size_t) return Bool_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:152
+   function Module_Is_Object_File_In_Memory (Mem : System.Address; Length : stddef_h.size_t) return Bool_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:152
    with Import => True, 
         Convention => C, 
         External_Name => "lto_module_is_object_file_in_memory";
@@ -198,14 +175,6 @@ function Module_Is_Object_File_In_Memory_For_Target
       Length               : stddef_h.size_t;
       Target_Triple_Prefix : String)
       return Bool_T_T;
-   function Module_Is_Object_File_In_Memory_For_Target_C
-     (Mem                  : System.Address;
-      Length               : stddef_h.size_t;
-      Target_Triple_Prefix : Interfaces.C.Strings.chars_ptr)
-      return Bool_T_T
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_is_object_file_in_memory_for_target";
 
   --*
   -- * Loads an object file from disk.
@@ -217,12 +186,6 @@ function Module_Is_Object_File_In_Memory_For_Target
 function Module_Create
      (Path : String)
       return Module_T_T;
-   function Module_Create_C
-     (Path : Interfaces.C.Strings.chars_ptr)
-      return Module_T_T
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_create";
 
   --*
   -- * Loads an object file from memory.
@@ -231,7 +194,7 @@ function Module_Create
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Module_Create_From_Memory (Mem : System.Address; Length : stddef_h.size_t) return Module_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:180
+   function Module_Create_From_Memory (Mem : System.Address; Length : stddef_h.size_t) return Module_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:180
    with Import => True, 
         Convention => C, 
         External_Name => "lto_module_create_from_memory";
@@ -248,14 +211,6 @@ function Module_Create_From_Memory_With_Path
       Length : stddef_h.size_t;
       Path   : String)
       return Module_T_T;
-   function Module_Create_From_Memory_With_Path_C
-     (Mem    : System.Address;
-      Length : stddef_h.size_t;
-      Path   : Interfaces.C.Strings.chars_ptr)
-      return Module_T_T
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_create_from_memory_with_path";
 
   --*
   -- * Loads an object file in its own context.
@@ -274,14 +229,6 @@ function Module_Create_In_Local_Context
       Length : stddef_h.size_t;
       Path   : String)
       return Module_T_T;
-   function Module_Create_In_Local_Context_C
-     (Mem    : System.Address;
-      Length : stddef_h.size_t;
-      Path   : Interfaces.C.Strings.chars_ptr)
-      return Module_T_T
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_create_in_local_context";
 
   --*
   -- * Loads an object file in the codegen context.
@@ -300,15 +247,6 @@ function Module_Create_In_Codegen_Context
       Path   : String;
       Cg     : Code_Gen_T_T)
       return Module_T_T;
-   function Module_Create_In_Codegen_Context_C
-     (Mem    : System.Address;
-      Length : stddef_h.size_t;
-      Path   : Interfaces.C.Strings.chars_ptr;
-      Cg     : Code_Gen_T_T)
-      return Module_T_T
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_create_in_codegen_context";
 
   --*
   -- * Loads an object file from disk. The seek point of fd is not preserved.
@@ -322,14 +260,6 @@ function Module_Create_From_Fd
       Path      : String;
       File_Size : stddef_h.size_t)
       return Module_T_T;
-   function Module_Create_From_Fd_C
-     (Fd        : int;
-      Path      : Interfaces.C.Strings.chars_ptr;
-      File_Size : stddef_h.size_t)
-      return Module_T_T
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_create_from_fd";
 
   --*
   -- * Loads an object file from disk. The seek point of fd is not preserved.
@@ -345,16 +275,6 @@ function Module_Create_From_Fd_At_Offset
       Map_Size  : stddef_h.size_t;
       Offset    : stddef_h.off_t)
       return Module_T_T;
-   function Module_Create_From_Fd_At_Offset_C
-     (Fd        : int;
-      Path      : Interfaces.C.Strings.chars_ptr;
-      File_Size : stddef_h.size_t;
-      Map_Size  : stddef_h.size_t;
-      Offset    : stddef_h.off_t)
-      return Module_T_T
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_create_from_fd_at_offset";
 
   --*
   -- * Frees all memory internally allocated by the module.
@@ -363,7 +283,7 @@ function Module_Create_From_Fd_At_Offset
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   procedure Module_Dispose (C_Mod : Module_T_T)  -- llvm-13.0.0.src/include/llvm-c/lto.h:247
+   procedure Module_Dispose (C_Mod : Module_T_T)  -- llvm-14.0.1.install/include/llvm-c/lto.h:247
    with Import => True, 
         Convention => C, 
         External_Name => "lto_module_dispose";
@@ -377,12 +297,6 @@ function Module_Create_From_Fd_At_Offset
 function Module_Get_Target_Triple
      (C_Mod : Module_T_T)
       return String;
-   function Module_Get_Target_Triple_C
-     (C_Mod : Module_T_T)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_get_target_triple";
 
   --*
   -- * Sets triple string with which the object will be codegened.
@@ -393,12 +307,6 @@ function Module_Get_Target_Triple
 procedure Module_Set_Target_Triple
      (C_Mod  : Module_T_T;
       Triple : String);
-   procedure Module_Set_Target_Triple_C
-     (C_Mod  : Module_T_T;
-      Triple : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_set_target_triple";
 
   --*
   -- * Returns the number of symbols in the object module.
@@ -406,7 +314,7 @@ procedure Module_Set_Target_Triple
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Module_Get_Num_Symbols (C_Mod : Module_T_T) return unsigned  -- llvm-13.0.0.src/include/llvm-c/lto.h:271
+   function Module_Get_Num_Symbols (C_Mod : Module_T_T) return unsigned  -- llvm-14.0.1.install/include/llvm-c/lto.h:271
    with Import => True, 
         Convention => C, 
         External_Name => "lto_module_get_num_symbols";
@@ -421,13 +329,6 @@ function Module_Get_Symbol_Name
      (C_Mod : Module_T_T;
       Index : unsigned)
       return String;
-   function Module_Get_Symbol_Name_C
-     (C_Mod : Module_T_T;
-      Index : unsigned)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_get_symbol_name";
 
   --*
   -- * Returns the attributes of the ith symbol in the object module.
@@ -435,7 +336,7 @@ function Module_Get_Symbol_Name
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Module_Get_Symbol_Attribute (C_Mod : Module_T_T; Index : unsigned) return Symbol_Attributes_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:287
+   function Module_Get_Symbol_Attribute (C_Mod : Module_T_T; Index : unsigned) return Symbol_Attributes_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:287
    with Import => True, 
         Convention => C, 
         External_Name => "lto_module_get_symbol_attribute";
@@ -452,12 +353,6 @@ function Module_Get_Symbol_Name
 function Module_Get_Linkeropts
      (C_Mod : Module_T_T)
       return String;
-   function Module_Get_Linkeropts_C
-     (C_Mod : Module_T_T)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_module_get_linkeropts";
 
   --*
   -- * If targeting mach-o on darwin, this function gets the CPU type and subtype
@@ -474,10 +369,25 @@ function Module_Get_Linkeropts
    function Module_Get_Macho_Cputype
      (C_Mod : Module_T_T;
       Out_Cputype : access unsigned;
-      Out_Cpusubtype : access unsigned) return Bool_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:311
+      Out_Cpusubtype : access unsigned) return Bool_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:311
    with Import => True, 
         Convention => C, 
         External_Name => "lto_module_get_macho_cputype";
+
+  --*
+  -- * This function can be used by the linker to check if a given module has
+  -- * any constructor or destructor functions.
+  -- *
+  -- * Returns true if the module has either the @llvm.global_ctors or the
+  -- * @llvm.global_dtors symbol. Otherwise returns false.
+  -- *
+  -- * \since LTO_API_VERSION=29
+  --  
+
+   function Module_Has_Ctor_Dtor (C_Mod : Module_T_T) return Bool_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:324
+   with Import => True, 
+        Convention => C, 
+        External_Name => "lto_module_has_ctor_dtor";
 
   --*
   -- * Diagnostic severity.
@@ -490,7 +400,7 @@ function Module_Get_Linkeropts
    DS_ERROR : constant Codegen_Diagnostic_Severity_T_T := 0;
    DS_WARNING : constant Codegen_Diagnostic_Severity_T_T := 1;
    DS_REMARK : constant Codegen_Diagnostic_Severity_T_T := 3;
-   DS_NOTE : constant Codegen_Diagnostic_Severity_T_T := 2;  -- llvm-13.0.0.src/include/llvm-c/lto.h:325
+   DS_NOTE : constant Codegen_Diagnostic_Severity_T_T := 2;  -- llvm-14.0.1.install/include/llvm-c/lto.h:335
 
   --*
   -- * Diagnostic handler type.
@@ -506,7 +416,7 @@ function Module_Get_Linkeropts
         (Arg_1 : Codegen_Diagnostic_Severity_T_T;
          Arg_2 : Interfaces.C.Strings.chars_ptr;
          Arg_3 : System.Address)
-   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/lto.h:336
+   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/lto.h:346
 
   --*
   -- * Set a diagnostic handler and the related context (void *).
@@ -519,7 +429,7 @@ function Module_Get_Linkeropts
    procedure Codegen_Set_Diagnostic_Handler
      (Arg_1 : Code_Gen_T_T;
       Arg_2 : Diagnostic_Handler_T_T;
-      Arg_3 : System.Address)  -- llvm-13.0.0.src/include/llvm-c/lto.h:346
+      Arg_3 : System.Address)  -- llvm-14.0.1.install/include/llvm-c/lto.h:356
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_set_diagnostic_handler";
@@ -534,7 +444,7 @@ function Module_Get_Linkeropts
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Codegen_Create return Code_Gen_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:360
+   function Codegen_Create return Code_Gen_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:370
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_create";
@@ -549,7 +459,7 @@ function Module_Get_Linkeropts
   -- * \since LTO_API_VERSION=11
   --  
 
-   function Codegen_Create_In_Local_Context return Code_Gen_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:372
+   function Codegen_Create_In_Local_Context return Code_Gen_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:382
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_create_in_local_context";
@@ -561,7 +471,7 @@ function Module_Get_Linkeropts
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   procedure Codegen_Dispose (Arg_1 : Code_Gen_T_T)  -- llvm-13.0.0.src/include/llvm-c/lto.h:381
+   procedure Codegen_Dispose (Arg_1 : Code_Gen_T_T)  -- llvm-14.0.1.install/include/llvm-c/lto.h:391
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_dispose";
@@ -577,7 +487,7 @@ function Module_Get_Linkeropts
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Codegen_Add_Module (Cg : Code_Gen_T_T; C_Mod : Module_T_T) return Bool_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:394
+   function Codegen_Add_Module (Cg : Code_Gen_T_T; C_Mod : Module_T_T) return Bool_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:404
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_add_module";
@@ -591,7 +501,7 @@ function Module_Get_Linkeropts
   -- * \since LTO_API_VERSION=13
   --  
 
-   procedure Codegen_Set_Module (Cg : Code_Gen_T_T; C_Mod : Module_T_T)  -- llvm-13.0.0.src/include/llvm-c/lto.h:405
+   procedure Codegen_Set_Module (Cg : Code_Gen_T_T; C_Mod : Module_T_T)  -- llvm-14.0.1.install/include/llvm-c/lto.h:415
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_set_module";
@@ -603,7 +513,7 @@ function Module_Get_Linkeropts
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Codegen_Set_Debug_Model (Cg : Code_Gen_T_T; Arg_2 : Debug_Model_T) return Bool_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:414
+   function Codegen_Set_Debug_Model (Cg : Code_Gen_T_T; Arg_2 : Debug_Model_T) return Bool_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:424
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_set_debug_model";
@@ -615,7 +525,7 @@ function Module_Get_Linkeropts
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Codegen_Set_Pic_Model (Cg : Code_Gen_T_T; Arg_2 : Codegen_Model_T) return Bool_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:423
+   function Codegen_Set_Pic_Model (Cg : Code_Gen_T_T; Arg_2 : Codegen_Model_T) return Bool_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:433
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_set_pic_model";
@@ -629,12 +539,6 @@ function Module_Get_Linkeropts
 procedure Codegen_Set_Cpu
      (Cg  : Code_Gen_T_T;
       Cpu : String);
-   procedure Codegen_Set_Cpu_C
-     (Cg  : Code_Gen_T_T;
-      Cpu : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_codegen_set_cpu";
 
   --*
   -- * Sets the location of the assembler tool to run. If not set, libLTO
@@ -646,12 +550,6 @@ procedure Codegen_Set_Cpu
 procedure Codegen_Set_Assembler_Path
      (Cg   : Code_Gen_T_T;
       Path : String);
-   procedure Codegen_Set_Assembler_Path_C
-     (Cg   : Code_Gen_T_T;
-      Path : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_codegen_set_assembler_path";
 
   --*
   -- * Sets extra arguments that libLTO should pass to the assembler.
@@ -662,7 +560,7 @@ procedure Codegen_Set_Assembler_Path
    procedure Codegen_Set_Assembler_Args
      (Cg : Code_Gen_T_T;
       Args : System.Address;
-      Nargs : int)  -- llvm-13.0.0.src/include/llvm-c/lto.h:448
+      Nargs : int)  -- llvm-14.0.1.install/include/llvm-c/lto.h:458
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_set_assembler_args";
@@ -678,12 +576,6 @@ procedure Codegen_Set_Assembler_Path
 procedure Codegen_Add_Must_Preserve_Symbol
      (Cg     : Code_Gen_T_T;
       Symbol : String);
-   procedure Codegen_Add_Must_Preserve_Symbol_C
-     (Cg     : Code_Gen_T_T;
-      Symbol : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_codegen_add_must_preserve_symbol";
 
   --*
   -- * Writes a new object file at the specified path that contains the
@@ -697,13 +589,6 @@ function Codegen_Write_Merged_Modules
      (Cg   : Code_Gen_T_T;
       Path : String)
       return Bool_T_T;
-   function Codegen_Write_Merged_Modules_C
-     (Cg   : Code_Gen_T_T;
-      Path : Interfaces.C.Strings.chars_ptr)
-      return Bool_T_T
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_codegen_write_merged_modules";
 
   --*
   -- * Generates code for all added modules into one native object file.
@@ -718,7 +603,7 @@ function Codegen_Write_Merged_Modules
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Codegen_Compile (Cg : Code_Gen_T_T; Length : access stddef_h.size_t) return System.Address  -- llvm-13.0.0.src/include/llvm-c/lto.h:484
+   function Codegen_Compile (Cg : Code_Gen_T_T; Length : access unsigned_long) return System.Address  -- llvm-14.0.1.install/include/llvm-c/lto.h:494
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_compile";
@@ -733,7 +618,7 @@ function Codegen_Write_Merged_Modules
   -- * \since LTO_API_VERSION=5
   --  
 
-   function Codegen_Compile_To_File (Cg : Code_Gen_T_T; Name : System.Address) return Bool_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:496
+   function Codegen_Compile_To_File (Cg : Code_Gen_T_T; Name : System.Address) return Bool_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:506
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_compile_to_file";
@@ -744,7 +629,7 @@ function Codegen_Write_Merged_Modules
   -- * \since LTO_API_VERSION=12
   --  
 
-   function Codegen_Optimize (Cg : Code_Gen_T_T) return Bool_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:504
+   function Codegen_Optimize (Cg : Code_Gen_T_T) return Bool_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:514
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_optimize";
@@ -762,7 +647,7 @@ function Codegen_Write_Merged_Modules
   -- * \since LTO_API_VERSION=12
   --  
 
-   function Codegen_Compile_Optimized (Cg : Code_Gen_T_T; Length : access stddef_h.size_t) return System.Address  -- llvm-13.0.0.src/include/llvm-c/lto.h:519
+   function Codegen_Compile_Optimized (Cg : Code_Gen_T_T; Length : access unsigned_long) return System.Address  -- llvm-14.0.1.install/include/llvm-c/lto.h:529
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_compile_optimized";
@@ -773,7 +658,7 @@ function Codegen_Write_Merged_Modules
   -- * \since LTO_API_VERSION=12
   --  
 
-   function Api_Version_Fun return unsigned  -- llvm-13.0.0.src/include/llvm-c/lto.h:527
+   function Api_Version_Fun return unsigned  -- llvm-14.0.1.install/include/llvm-c/lto.h:537
    with Import => True, 
         Convention => C, 
         External_Name => "lto_api_version_fun";
@@ -791,7 +676,7 @@ function Codegen_Write_Merged_Modules
   -- * \since LTO_API_VERSION=28
   --  
 
-   procedure Set_Debug_Options (Options : System.Address; Number : int)  -- llvm-13.0.0.src/include/llvm-c/lto.h:541
+   procedure Set_Debug_Options (Options : System.Address; Number : int)  -- llvm-14.0.1.install/include/llvm-c/lto.h:551
    with Import => True, 
         Convention => C, 
         External_Name => "lto_set_debug_options";
@@ -811,12 +696,6 @@ function Codegen_Write_Merged_Modules
 procedure Codegen_Debug_Options
      (Cg    : Code_Gen_T_T;
       Arg_2 : String);
-   procedure Codegen_Debug_Options_C
-     (Cg    : Code_Gen_T_T;
-      Arg_2 : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_codegen_debug_options";
 
   --*
   -- * Same as the previous function, but takes every option separately through an
@@ -828,7 +707,7 @@ procedure Codegen_Debug_Options
    procedure Codegen_Debug_Options_Array
      (Cg : Code_Gen_T_T;
       Arg_2 : System.Address;
-      Number : int)  -- llvm-13.0.0.src/include/llvm-c/lto.h:563
+      Number : int)  -- llvm-14.0.1.install/include/llvm-c/lto.h:573
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_debug_options_array";
@@ -840,7 +719,7 @@ procedure Codegen_Debug_Options
   -- * \since LTO_API_VERSION=5
   --  
 
-   procedure Initialize_Disassembler  -- llvm-13.0.0.src/include/llvm-c/lto.h:573
+   procedure Initialize_Disassembler  -- llvm-14.0.1.install/include/llvm-c/lto.h:583
    with Import => True, 
         Convention => C, 
         External_Name => "lto_initialize_disassembler";
@@ -852,7 +731,7 @@ procedure Codegen_Debug_Options
   -- * \since LTO_API_VERSION=14
   --  
 
-   procedure Codegen_Set_Should_Internalize (Cg : Code_Gen_T_T; Should_Internalize : Bool_T_T)  -- llvm-13.0.0.src/include/llvm-c/lto.h:582
+   procedure Codegen_Set_Should_Internalize (Cg : Code_Gen_T_T; Should_Internalize : Bool_T_T)  -- llvm-14.0.1.install/include/llvm-c/lto.h:592
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_set_should_internalize";
@@ -866,7 +745,7 @@ procedure Codegen_Debug_Options
   -- * \since LTO_API_VERSION=15
   --  
 
-   procedure Codegen_Set_Should_Embed_Uselists (Cg : Code_Gen_T_T; Should_Embed_Uselists : Bool_T_T)  -- llvm-13.0.0.src/include/llvm-c/lto.h:594
+   procedure Codegen_Set_Should_Embed_Uselists (Cg : Code_Gen_T_T; Should_Embed_Uselists : Bool_T_T)  -- llvm-14.0.1.install/include/llvm-c/lto.h:604
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_set_should_embed_uselists";
@@ -874,7 +753,7 @@ procedure Codegen_Debug_Options
   --* Opaque reference to an LTO input file  
    type LLVMOpaqueLTOInput is null record;   -- incomplete struct
 
-   type Input_T_T is access all LLVMOpaqueLTOInput;  -- llvm-13.0.0.src/include/llvm-c/lto.h:598
+   type Input_T_T is access all LLVMOpaqueLTOInput;  -- llvm-14.0.1.install/include/llvm-c/lto.h:608
 
   --*
   --  * Creates an LTO input file from a buffer. The path
@@ -890,14 +769,6 @@ function Input_Create
       Buffer_Size : stddef_h.size_t;
       Path        : String)
       return Input_T_T;
-   function Input_Create_C
-     (Buffer      : System.Address;
-      Buffer_Size : stddef_h.size_t;
-      Path        : Interfaces.C.Strings.chars_ptr)
-      return Input_T_T
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_input_create";
 
   --*
   --  * Frees all memory internally allocated by the LTO input file.
@@ -906,7 +777,7 @@ function Input_Create
   --  * \since LTO_API_VERSION=24
   --   
 
-   procedure Input_Dispose (Input : Input_T_T)  -- llvm-13.0.0.src/include/llvm-c/lto.h:618
+   procedure Input_Dispose (Input : Input_T_T)  -- llvm-14.0.1.install/include/llvm-c/lto.h:628
    with Import => True, 
         Convention => C, 
         External_Name => "lto_input_dispose";
@@ -918,7 +789,7 @@ function Input_Create
   --  * \since LTO_API_VERSION=24
   --   
 
-   function Input_Get_Num_Dependent_Libraries (Input : Input_T_T) return unsigned  -- llvm-13.0.0.src/include/llvm-c/lto.h:626
+   function Input_Get_Num_Dependent_Libraries (Input : Input_T_T) return unsigned  -- llvm-14.0.1.install/include/llvm-c/lto.h:636
    with Import => True, 
         Convention => C, 
         External_Name => "lto_input_get_num_dependent_libraries";
@@ -934,16 +805,8 @@ function Input_Create
 function Input_Get_Dependent_Library
      (Input : Input_T_T;
       Index : stddef_h.size_t;
-      Size  : access stddef_h.size_t)
+      Size  : access unsigned_long)
       return String;
-   function Input_Get_Dependent_Library_C
-     (Input : Input_T_T;
-      Index : stddef_h.size_t;
-      Size  : access stddef_h.size_t)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "lto_input_get_dependent_library";
 
   --*
   -- * Returns the list of libcall symbols that can be generated by LTO
@@ -952,7 +815,7 @@ function Input_Get_Dependent_Library
   -- * \since prior to LTO_API_VERSION=25
   --  
 
-   function Runtime_Lib_Symbols_List (Size : access stddef_h.size_t) return System.Address  -- llvm-13.0.0.src/include/llvm-c/lto.h:645
+   function Runtime_Lib_Symbols_List (Size : access unsigned_long) return System.Address  -- llvm-14.0.1.install/include/llvm-c/lto.h:655
    with Import => True, 
         Convention => C, 
         External_Name => "lto_runtime_lib_symbols_list";
@@ -972,10 +835,10 @@ function Input_Get_Dependent_Library
   --  
 
    type Object_Buffer_T is record
-      Buffer : Interfaces.C.Strings.chars_ptr;  -- llvm-13.0.0.src/include/llvm-c/lto.h:661
-      Size : aliased stddef_h.size_t;  -- llvm-13.0.0.src/include/llvm-c/lto.h:662
+      Buffer : Interfaces.C.Strings.chars_ptr;  -- llvm-14.0.1.install/include/llvm-c/lto.h:671
+      Size : aliased stddef_h.size_t;  -- llvm-14.0.1.install/include/llvm-c/lto.h:672
    end record
-   with Convention => C_Pass_By_Copy;  -- llvm-13.0.0.src/include/llvm-c/lto.h:663
+   with Convention => C_Pass_By_Copy;  -- llvm-14.0.1.install/include/llvm-c/lto.h:673
 
   --*
   -- * Instantiates a ThinLTO code generator.
@@ -990,7 +853,7 @@ function Input_Get_Dependent_Library
   -- * \since LTO_API_VERSION=18
   --  
 
-   function thinlto_create_codegen return thinlto_code_gen_t  -- llvm-13.0.0.src/include/llvm-c/lto.h:677
+   function thinlto_create_codegen return thinlto_code_gen_t  -- llvm-14.0.1.install/include/llvm-c/lto.h:687
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_create_codegen";
@@ -1002,7 +865,7 @@ function Input_Get_Dependent_Library
   -- * \since LTO_API_VERSION=18
   --  
 
-   procedure thinlto_codegen_dispose (Cg : thinlto_code_gen_t)  -- llvm-13.0.0.src/include/llvm-c/lto.h:685
+   procedure thinlto_codegen_dispose (Cg : thinlto_code_gen_t)  -- llvm-14.0.1.install/include/llvm-c/lto.h:695
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_codegen_dispose";
@@ -1024,14 +887,6 @@ procedure thinlto_codegen_add_module
       Identifier : String;
       Data       : String;
       Length     : int);
-   procedure thinlto_codegen_add_module_C
-     (Cg         : thinlto_code_gen_t;
-      Identifier : Interfaces.C.Strings.chars_ptr;
-      Data       : Interfaces.C.Strings.chars_ptr;
-      Length     : int)
-   with Import => True,
-        Convention => C,
-        External_Name => "thinlto_codegen_add_module";
 
   --*
   -- * Optimize and codegen all the modules added to the codegenerator using
@@ -1040,7 +895,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=18
   --  
 
-   procedure thinlto_codegen_process (Cg : thinlto_code_gen_t)  -- llvm-13.0.0.src/include/llvm-c/lto.h:708
+   procedure thinlto_codegen_process (Cg : thinlto_code_gen_t)  -- llvm-14.0.1.install/include/llvm-c/lto.h:718
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_codegen_process";
@@ -1055,7 +910,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=18
   --  
 
-   function thinlto_module_get_num_objects (Cg : thinlto_code_gen_t) return unsigned  -- llvm-13.0.0.src/include/llvm-c/lto.h:719
+   function thinlto_module_get_num_objects (Cg : thinlto_code_gen_t) return unsigned  -- llvm-14.0.1.install/include/llvm-c/lto.h:729
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_module_get_num_objects";
@@ -1070,7 +925,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=18
   --  
 
-   function thinlto_module_get_object (Cg : thinlto_code_gen_t; Index : unsigned) return Object_Buffer_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:730
+   function thinlto_module_get_object (Cg : thinlto_code_gen_t; Index : unsigned) return Object_Buffer_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:740
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_module_get_object";
@@ -1085,7 +940,7 @@ procedure thinlto_codegen_add_module
   -- * \since LTO_API_VERSION=21
   --  
 
-   function thinlto_module_get_num_object_files (Cg : thinlto_code_gen_t) return unsigned  -- llvm-13.0.0.src/include/llvm-c/lto.h:742
+   function thinlto_module_get_num_object_files (Cg : thinlto_code_gen_t) return unsigned  -- llvm-14.0.1.install/include/llvm-c/lto.h:752
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_module_get_num_object_files";
@@ -1104,13 +959,6 @@ function thinlto_module_get_object_file
      (Cg    : thinlto_code_gen_t;
       Index : unsigned)
       return String;
-   function thinlto_module_get_object_file_C
-     (Cg    : thinlto_code_gen_t;
-      Index : unsigned)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "thinlto_module_get_object_file";
 
   --*
   -- * Sets which PIC code model to generate.
@@ -1119,7 +967,7 @@ function thinlto_module_get_object_file
   -- * \since LTO_API_VERSION=18
   --  
 
-   function thinlto_codegen_set_pic_model (Cg : thinlto_code_gen_t; Arg_2 : Codegen_Model_T) return Bool_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:762
+   function thinlto_codegen_set_pic_model (Cg : thinlto_code_gen_t; Arg_2 : Codegen_Model_T) return Bool_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:772
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_codegen_set_pic_model";
@@ -1135,12 +983,6 @@ function thinlto_module_get_object_file
 procedure thinlto_codegen_set_savetemps_dir
      (Cg             : thinlto_code_gen_t;
       Save_Temps_Dir : String);
-   procedure thinlto_codegen_set_savetemps_dir_C
-     (Cg             : thinlto_code_gen_t;
-      Save_Temps_Dir : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "thinlto_codegen_set_savetemps_dir";
 
   --*
   -- * Set the path to a directory where to save generated object files. This
@@ -1154,12 +996,6 @@ procedure thinlto_codegen_set_savetemps_dir
 procedure thinlto_set_generated_objects_dir
      (Cg             : thinlto_code_gen_t;
       Save_Temps_Dir : String);
-   procedure thinlto_set_generated_objects_dir_C
-     (Cg             : thinlto_code_gen_t;
-      Save_Temps_Dir : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "thinlto_set_generated_objects_dir";
 
   --*
   -- * Sets the cpu to generate code for.
@@ -1170,12 +1006,6 @@ procedure thinlto_set_generated_objects_dir
 procedure thinlto_codegen_set_cpu
      (Cg  : thinlto_code_gen_t;
       Cpu : String);
-   procedure thinlto_codegen_set_cpu_C
-     (Cg  : thinlto_code_gen_t;
-      Cpu : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "thinlto_codegen_set_cpu";
 
   --*
   -- * Disable CodeGen, only run the stages till codegen and stop. The output will
@@ -1184,7 +1014,7 @@ procedure thinlto_codegen_set_cpu
   -- * \since LTO_API_VERSION=19
   --  
 
-   procedure thinlto_codegen_disable_codegen (Cg : thinlto_code_gen_t; Disable : Bool_T_T)  -- llvm-13.0.0.src/include/llvm-c/lto.h:799
+   procedure thinlto_codegen_disable_codegen (Cg : thinlto_code_gen_t; Disable : Bool_T_T)  -- llvm-14.0.1.install/include/llvm-c/lto.h:809
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_codegen_disable_codegen";
@@ -1195,7 +1025,7 @@ procedure thinlto_codegen_set_cpu
   -- * \since LTO_API_VERSION=19
   --  
 
-   procedure thinlto_codegen_set_codegen_only (Cg : thinlto_code_gen_t; Codegen_Only : Bool_T_T)  -- llvm-13.0.0.src/include/llvm-c/lto.h:807
+   procedure thinlto_codegen_set_codegen_only (Cg : thinlto_code_gen_t; Codegen_Only : Bool_T_T)  -- llvm-14.0.1.install/include/llvm-c/lto.h:817
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_codegen_set_codegen_only";
@@ -1206,7 +1036,7 @@ procedure thinlto_codegen_set_cpu
   -- * \since LTO_API_VERSION=18
   --  
 
-   procedure thinlto_debug_options (Options : System.Address; Number : int)  -- llvm-13.0.0.src/include/llvm-c/lto.h:815
+   procedure thinlto_debug_options (Options : System.Address; Number : int)  -- llvm-14.0.1.install/include/llvm-c/lto.h:825
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_debug_options";
@@ -1217,7 +1047,7 @@ procedure thinlto_codegen_set_cpu
   -- * \since LTO_API_VERSION=18
   --  
 
-   function Module_Is_Thinlto (C_Mod : Module_T_T) return Bool_T_T  -- llvm-13.0.0.src/include/llvm-c/lto.h:822
+   function Module_Is_Thinlto (C_Mod : Module_T_T) return Bool_T_T  -- llvm-14.0.1.install/include/llvm-c/lto.h:832
    with Import => True, 
         Convention => C, 
         External_Name => "lto_module_is_thinlto";
@@ -1235,13 +1065,6 @@ procedure thinlto_codegen_add_must_preserve_symbol
      (Cg     : thinlto_code_gen_t;
       Name   : String;
       Length : int);
-   procedure thinlto_codegen_add_must_preserve_symbol_C
-     (Cg     : thinlto_code_gen_t;
-      Name   : Interfaces.C.Strings.chars_ptr;
-      Length : int)
-   with Import => True,
-        Convention => C,
-        External_Name => "thinlto_codegen_add_must_preserve_symbol";
 
   --*
   -- * Adds a symbol to the list of global symbols that are cross-referenced between
@@ -1256,13 +1079,6 @@ procedure thinlto_codegen_add_cross_referenced_symbol
      (Cg     : thinlto_code_gen_t;
       Name   : String;
       Length : int);
-   procedure thinlto_codegen_add_cross_referenced_symbol_C
-     (Cg     : thinlto_code_gen_t;
-      Name   : Interfaces.C.Strings.chars_ptr;
-      Length : int)
-   with Import => True,
-        Convention => C,
-        External_Name => "thinlto_codegen_add_cross_referenced_symbol";
 
   --*
   -- * @} // endgoup LLVMCTLTO
@@ -1295,12 +1111,6 @@ procedure thinlto_codegen_add_cross_referenced_symbol
 procedure thinlto_codegen_set_cache_dir
      (Cg        : thinlto_code_gen_t;
       Cache_Dir : String);
-   procedure thinlto_codegen_set_cache_dir_C
-     (Cg        : thinlto_code_gen_t;
-      Cache_Dir : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "thinlto_codegen_set_cache_dir";
 
   --*
   -- * Sets the cache pruning interval (in seconds). A negative value disables the
@@ -1310,7 +1120,7 @@ procedure thinlto_codegen_set_cache_dir
   -- * \since LTO_API_VERSION=18
   --  
 
-   procedure thinlto_codegen_set_cache_pruning_interval (Cg : thinlto_code_gen_t; Interval : int)  -- llvm-13.0.0.src/include/llvm-c/lto.h:885
+   procedure thinlto_codegen_set_cache_pruning_interval (Cg : thinlto_code_gen_t; Interval : int)  -- llvm-14.0.1.install/include/llvm-c/lto.h:895
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_codegen_set_cache_pruning_interval";
@@ -1329,7 +1139,7 @@ procedure thinlto_codegen_set_cache_dir
   -- * \since LTO_API_VERSION=18
   --  
 
-   procedure thinlto_codegen_set_final_cache_size_relative_to_available_space (Cg : thinlto_code_gen_t; Percentage : unsigned)  -- llvm-13.0.0.src/include/llvm-c/lto.h:901
+   procedure thinlto_codegen_set_final_cache_size_relative_to_available_space (Cg : thinlto_code_gen_t; Percentage : unsigned)  -- llvm-14.0.1.install/include/llvm-c/lto.h:911
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_codegen_set_final_cache_size_relative_to_available_space";
@@ -1341,7 +1151,7 @@ procedure thinlto_codegen_set_cache_dir
   -- * \since LTO_API_VERSION=18
   --  
 
-   procedure thinlto_codegen_set_cache_entry_expiration (Cg : thinlto_code_gen_t; Expiration : unsigned)  -- llvm-13.0.0.src/include/llvm-c/lto.h:910
+   procedure thinlto_codegen_set_cache_entry_expiration (Cg : thinlto_code_gen_t; Expiration : unsigned)  -- llvm-14.0.1.install/include/llvm-c/lto.h:920
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_codegen_set_cache_entry_expiration";
@@ -1355,7 +1165,7 @@ procedure thinlto_codegen_set_cache_dir
   -- * \since LTO_API_VERSION=22
   --  
 
-   procedure thinlto_codegen_set_cache_size_bytes (Cg : thinlto_code_gen_t; Max_Size_Bytes : unsigned)  -- llvm-13.0.0.src/include/llvm-c/lto.h:921
+   procedure thinlto_codegen_set_cache_size_bytes (Cg : thinlto_code_gen_t; Max_Size_Bytes : unsigned)  -- llvm-14.0.1.install/include/llvm-c/lto.h:931
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_codegen_set_cache_size_bytes";
@@ -1367,7 +1177,7 @@ procedure thinlto_codegen_set_cache_dir
   -- * \since LTO_API_VERSION=23
   --  
 
-   procedure thinlto_codegen_set_cache_size_megabytes (Cg : thinlto_code_gen_t; Max_Size_Megabytes : unsigned)  -- llvm-13.0.0.src/include/llvm-c/lto.h:931
+   procedure thinlto_codegen_set_cache_size_megabytes (Cg : thinlto_code_gen_t; Max_Size_Megabytes : unsigned)  -- llvm-14.0.1.install/include/llvm-c/lto.h:941
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_codegen_set_cache_size_megabytes";
@@ -1379,7 +1189,7 @@ procedure thinlto_codegen_set_cache_dir
   -- * \since LTO_API_VERSION=22
   --  
 
-   procedure thinlto_codegen_set_cache_size_files (Cg : thinlto_code_gen_t; Max_Size_Files : unsigned)  -- llvm-13.0.0.src/include/llvm-c/lto.h:940
+   procedure thinlto_codegen_set_cache_size_files (Cg : thinlto_code_gen_t; Max_Size_Files : unsigned)  -- llvm-14.0.1.install/include/llvm-c/lto.h:950
    with Import => True, 
         Convention => C, 
         External_Name => "thinlto_codegen_set_cache_size_files";
@@ -1391,3 +1201,4 @@ procedure thinlto_codegen_set_cache_dir
 end LLVM.Lto;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

@@ -31,79 +31,79 @@ package LLVM.Transforms_IPO is
   --  
 
   --* See llvm::createArgumentPromotionPass function.  
-   procedure Add_Argument_Promotion_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:31
+   procedure Add_Argument_Promotion_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:31
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddArgumentPromotionPass";
 
   --* See llvm::createConstantMergePass function.  
-   procedure Add_Constant_Merge_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:34
+   procedure Add_Constant_Merge_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:34
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddConstantMergePass";
 
   --* See llvm::createMergeFunctionsPass function.  
-   procedure Add_Merge_Functions_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:37
+   procedure Add_Merge_Functions_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:37
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddMergeFunctionsPass";
 
   --* See llvm::createCalledValuePropagationPass function.  
-   procedure Add_Called_Value_Propagation_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:40
+   procedure Add_Called_Value_Propagation_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:40
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddCalledValuePropagationPass";
 
   --* See llvm::createDeadArgEliminationPass function.  
-   procedure Add_Dead_Arg_Elimination_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:43
+   procedure Add_Dead_Arg_Elimination_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:43
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddDeadArgEliminationPass";
 
   --* See llvm::createFunctionAttrsPass function.  
-   procedure Add_Function_Attrs_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:46
+   procedure Add_Function_Attrs_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:46
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddFunctionAttrsPass";
 
   --* See llvm::createFunctionInliningPass function.  
-   procedure Add_Function_Inlining_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:49
+   procedure Add_Function_Inlining_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:49
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddFunctionInliningPass";
 
   --* See llvm::createAlwaysInlinerPass function.  
-   procedure Add_Always_Inliner_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:52
+   procedure Add_Always_Inliner_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:52
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddAlwaysInlinerPass";
 
   --* See llvm::createGlobalDCEPass function.  
-   procedure Add_Global_DCE_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:55
+   procedure Add_Global_DCE_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:55
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddGlobalDCEPass";
 
   --* See llvm::createGlobalOptimizerPass function.  
-   procedure Add_Global_Optimizer_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:58
+   procedure Add_Global_Optimizer_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:58
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddGlobalOptimizerPass";
 
   --* See llvm::createPruneEHPass function.  
-   procedure Add_Prune_EH_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:61
+   procedure Add_Prune_EH_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:61
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddPruneEHPass";
 
   --* See llvm::createIPSCCPPass function.  
-   procedure Add_IPSCCP_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:64
+   procedure Add_IPSCCP_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:64
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddIPSCCPPass";
 
   --* See llvm::createInternalizePass function.  
-   procedure Add_Internalize_Pass (Arg_1 : LLVM.Types.Pass_Manager_T; All_But_Main : unsigned)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:67
+   procedure Add_Internalize_Pass (Arg_1 : LLVM.Types.Pass_Manager_T; All_But_Main : unsigned)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:67
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddInternalizePass";
@@ -122,19 +122,19 @@ package LLVM.Transforms_IPO is
    procedure Add_Internalize_Pass_With_Must_Preserve_Predicate
      (PM : LLVM.Types.Pass_Manager_T;
       Context : System.Address;
-      Must_Preserve : access function (Arg_1 : LLVM.Types.Value_T; Arg_2 : System.Address) return LLVM.Types.Bool_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:79
+      Must_Preserve : access function (Arg_1 : LLVM.Types.Value_T; Arg_2 : System.Address) return LLVM.Types.Bool_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:79
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddInternalizePassWithMustPreservePredicate";
 
   --* See llvm::createStripDeadPrototypesPass function.  
-   procedure Add_Strip_Dead_Prototypes_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:85
+   procedure Add_Strip_Dead_Prototypes_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:85
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddStripDeadPrototypesPass";
 
   --* See llvm::createStripSymbolsPass function.  
-   procedure Add_Strip_Symbols_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/IPO.h:88
+   procedure Add_Strip_Symbols_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/IPO.h:88
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddStripSymbolsPass";
@@ -146,3 +146,4 @@ package LLVM.Transforms_IPO is
 end LLVM.Transforms_IPO;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

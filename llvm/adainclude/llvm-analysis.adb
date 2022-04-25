@@ -12,19 +12,38 @@ package body LLVM.Analysis is
      (M           : LLVM.Types.Module_T;
       Action      : Verifier_Failure_Action_T;
       Out_Message : System.Address)
+      return LLVM.Types.Bool_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMVerifyModule";
+   function Verify_Module
+     (M           : LLVM.Types.Module_T;
+      Action      : Verifier_Failure_Action_T;
+      Out_Message : System.Address)
       return Boolean
    is
+      Return_Value : LLVM.Types.Bool_T;
    begin
-      return Verify_Module_C (M, Action, Out_Message) /= 0;
+      Return_Value := Verify_Module (M, Action, Out_Message);
+      return Return_Value /= 0;
    end Verify_Module;
 
    function Verify_Function
      (Fn     : LLVM.Types.Value_T;
       Action : Verifier_Failure_Action_T)
+      return LLVM.Types.Bool_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMVerifyFunction";
+   function Verify_Function
+     (Fn     : LLVM.Types.Value_T;
+      Action : Verifier_Failure_Action_T)
       return Boolean
    is
+      Return_Value : LLVM.Types.Bool_T;
    begin
-      return Verify_Function_C (Fn, Action) /= 0;
+      Return_Value := Verify_Function (Fn, Action);
+      return Return_Value /= 0;
    end Verify_Function;
 
 end LLVM.Analysis;

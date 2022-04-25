@@ -40,20 +40,13 @@ function Write_Bitcode_To_File
      (M    : LLVM.Types.Module_T;
       Path : String)
       return int;
-   function Write_Bitcode_To_File_C
-     (M    : LLVM.Types.Module_T;
-      Path : Interfaces.C.Strings.chars_ptr)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMWriteBitcodeToFile";
 
   --* Writes a module to an open file descriptor. Returns 0 on success.  
    function Write_Bitcode_To_FD
      (M : LLVM.Types.Module_T;
       FD : int;
       Should_Close : int;
-      Unbuffered : int) return int  -- llvm-13.0.0.src/include/llvm-c/BitWriter.h:40
+      Unbuffered : int) return int  -- llvm-14.0.1.install/include/llvm-c/BitWriter.h:40
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMWriteBitcodeToFD";
@@ -61,13 +54,13 @@ function Write_Bitcode_To_File
   --* Deprecated for LLVMWriteBitcodeToFD. Writes a module to an open file
   --    descriptor. Returns 0 on success. Closes the Handle.  
 
-   function Write_Bitcode_To_File_Handle (M : LLVM.Types.Module_T; Handle : int) return int  -- llvm-13.0.0.src/include/llvm-c/BitWriter.h:45
+   function Write_Bitcode_To_File_Handle (M : LLVM.Types.Module_T; Handle : int) return int  -- llvm-14.0.1.install/include/llvm-c/BitWriter.h:45
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMWriteBitcodeToFileHandle";
 
   --* Writes a module to a new memory buffer and returns it.  
-   function Write_Bitcode_To_Memory_Buffer (M : LLVM.Types.Module_T) return LLVM.Types.Memory_Buffer_T  -- llvm-13.0.0.src/include/llvm-c/BitWriter.h:48
+   function Write_Bitcode_To_Memory_Buffer (M : LLVM.Types.Module_T) return LLVM.Types.Memory_Buffer_T  -- llvm-14.0.1.install/include/llvm-c/BitWriter.h:48
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMWriteBitcodeToMemoryBuffer";
@@ -79,3 +72,4 @@ function Write_Bitcode_To_File
 end LLVM.Bit_Writer;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

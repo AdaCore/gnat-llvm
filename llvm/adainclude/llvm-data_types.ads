@@ -35,3 +35,4 @@ package LLVM.Data_Types is
 end LLVM.Data_Types;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

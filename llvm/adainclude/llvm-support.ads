@@ -24,6 +24,12 @@ package LLVM.Support is
   --\*===----------------------------------------------------------------------=== 
 
   --*
+  -- * @addtogroup LLVMCCore
+  -- *
+  -- * @{
+  --  
+
+  --*
   -- * This function permanently loads the dynamic library at the given path.
   -- * It is safe to call this function multiple times for the same library.
   -- *
@@ -33,12 +39,6 @@ package LLVM.Support is
 function Load_Library_Permanently
      (Filename : String)
       return Boolean;
-   function Load_Library_Permanently_C
-     (Filename : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMLoadLibraryPermanently";
 
   --*
   -- * This function parses the given arguments using the LLVM command line parser.
@@ -53,13 +53,6 @@ procedure Parse_Command_Line_Options
      (Argc     : int;
       Argv     : System.Address;
       Overview : String);
-   procedure Parse_Command_Line_Options_C
-     (Argc     : int;
-      Argv     : System.Address;
-      Overview : Interfaces.C.Strings.chars_ptr)
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMParseCommandLineOptions";
 
   --*
   -- * This function will search through all previously loaded dynamic
@@ -72,12 +65,6 @@ procedure Parse_Command_Line_Options
 function Search_For_Address_Of_Symbol
      (Symbol_Name : String)
       return System.Address;
-   function Search_For_Address_Of_Symbol_C
-     (Symbol_Name : Interfaces.C.Strings.chars_ptr)
-      return System.Address
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMSearchForAddressOfSymbol";
 
   --*
   -- * This functions permanently adds the symbol \p symbolName with the
@@ -90,13 +77,12 @@ function Search_For_Address_Of_Symbol
 procedure Add_Symbol
      (Symbol_Name  : String;
       Symbol_Value : System.Address);
-   procedure Add_Symbol_C
-     (Symbol_Name  : Interfaces.C.Strings.chars_ptr;
-      Symbol_Value : System.Address)
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMAddSymbol";
+
+  --*
+  -- * @}
+  --  
 
 end LLVM.Support;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

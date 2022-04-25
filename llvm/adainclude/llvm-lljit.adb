@@ -10,41 +10,76 @@ package body LLVM.LLJIT is
 
    function Orc_LLJIT_Get_Triple_String
      (J : Orc_LLJIT_T)
+      return Interfaces.C.Strings.chars_ptr
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMOrcLLJITGetTripleString";
+   function Orc_LLJIT_Get_Triple_String
+     (J : Orc_LLJIT_T)
       return String
    is
+      Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
-      return Value (Orc_LLJIT_Get_Triple_String_C (J));
+      Return_Value := Orc_LLJIT_Get_Triple_String (J);
+      return Value (Return_Value);
    end Orc_LLJIT_Get_Triple_String;
 
+   function Orc_LLJIT_Mangle_And_Intern
+     (J              : Orc_LLJIT_T;
+      Unmangled_Name : Interfaces.C.Strings.chars_ptr)
+      return LLVM.Orc.Orc_Symbol_String_Pool_Entry_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMOrcLLJITMangleAndIntern";
    function Orc_LLJIT_Mangle_And_Intern
      (J              : Orc_LLJIT_T;
       Unmangled_Name : String)
       return LLVM.Orc.Orc_Symbol_String_Pool_Entry_T
    is
+      Return_Value          : LLVM.Orc.Orc_Symbol_String_Pool_Entry_T;
       Unmangled_Name_Array  : aliased char_array := To_C (Unmangled_Name);
       Unmangled_Name_String : constant chars_ptr := To_Chars_Ptr (Unmangled_Name_Array'Unchecked_Access);
    begin
-      return Orc_LLJIT_Mangle_And_Intern_C (J, Unmangled_Name_String);
+      Return_Value := Orc_LLJIT_Mangle_And_Intern (J, Unmangled_Name_String);
+      return Return_Value;
    end Orc_LLJIT_Mangle_And_Intern;
 
    function Orc_LLJIT_Lookup
      (J      : Orc_LLJIT_T;
-      Result : access LLVM.Orc.Orc_Executor_Address_T;
+      Result : access unsigned_long;
+      Name   : Interfaces.C.Strings.chars_ptr)
+      return LLVM.Error.Error_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMOrcLLJITLookup";
+   function Orc_LLJIT_Lookup
+     (J      : Orc_LLJIT_T;
+      Result : access unsigned_long;
       Name   : String)
       return LLVM.Error.Error_T
    is
-      Name_Array  : aliased char_array := To_C (Name);
-      Name_String : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+      Return_Value : LLVM.Error.Error_T;
+      Name_Array   : aliased char_array := To_C (Name);
+      Name_String  : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
    begin
-      return Orc_LLJIT_Lookup_C (J, Result, Name_String);
+      Return_Value := Orc_LLJIT_Lookup (J, Result, Name_String);
+      return Return_Value;
    end Orc_LLJIT_Lookup;
 
    function Orc_LLJIT_Get_Data_Layout_Str
      (J : Orc_LLJIT_T)
+      return Interfaces.C.Strings.chars_ptr
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMOrcLLJITGetDataLayoutStr";
+   function Orc_LLJIT_Get_Data_Layout_Str
+     (J : Orc_LLJIT_T)
       return String
    is
+      Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
-      return Value (Orc_LLJIT_Get_Data_Layout_Str_C (J));
+      Return_Value := Orc_LLJIT_Get_Data_Layout_Str (J);
+      return Value (Return_Value);
    end Orc_LLJIT_Get_Data_Layout_Str;
 
 end LLVM.LLJIT;

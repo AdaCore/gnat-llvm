@@ -10,51 +10,51 @@ with Interfaces.C.Strings;
 
 package LLVM.Disassembler_Types is
 
-   LLVMDisassembler_VariantKind_None : constant := 0;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:82
+   LLVMDisassembler_VariantKind_None : constant := 0;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:88
 
-   LLVMDisassembler_VariantKind_ARM_HI16 : constant := 1;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:87
-   LLVMDisassembler_VariantKind_ARM_LO16 : constant := 2;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:88
+   LLVMDisassembler_VariantKind_ARM_HI16 : constant := 1;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:93
+   LLVMDisassembler_VariantKind_ARM_LO16 : constant := 2;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:94
 
-   LLVMDisassembler_VariantKind_ARM64_PAGE : constant := 1;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:93
-   LLVMDisassembler_VariantKind_ARM64_PAGEOFF : constant := 2;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:94
-   LLVMDisassembler_VariantKind_ARM64_GOTPAGE : constant := 3;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:95
-   LLVMDisassembler_VariantKind_ARM64_GOTPAGEOFF : constant := 4;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:96
-   LLVMDisassembler_VariantKind_ARM64_TLVP : constant := 5;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:97
-   LLVMDisassembler_VariantKind_ARM64_TLVOFF : constant := 6;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:98
+   LLVMDisassembler_VariantKind_ARM64_PAGE : constant := 1;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:99
+   LLVMDisassembler_VariantKind_ARM64_PAGEOFF : constant := 2;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:100
+   LLVMDisassembler_VariantKind_ARM64_GOTPAGE : constant := 3;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:101
+   LLVMDisassembler_VariantKind_ARM64_GOTPAGEOFF : constant := 4;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:102
+   LLVMDisassembler_VariantKind_ARM64_TLVP : constant := 5;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:103
+   LLVMDisassembler_VariantKind_ARM64_TLVOFF : constant := 6;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:104
 
-   LLVMDisassembler_ReferenceType_InOut_None : constant := 0;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:121
+   LLVMDisassembler_ReferenceType_InOut_None : constant := 0;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:127
 
-   LLVMDisassembler_ReferenceType_In_Branch : constant := 1;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:124
+   LLVMDisassembler_ReferenceType_In_Branch : constant := 1;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:130
 
-   LLVMDisassembler_ReferenceType_In_PCrel_Load : constant := 2;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:126
+   LLVMDisassembler_ReferenceType_In_PCrel_Load : constant := 2;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:132
 
-   LLVMDisassembler_ReferenceType_In_ARM64_ADRP : constant := 16#100000001#;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:129
+   LLVMDisassembler_ReferenceType_In_ARM64_ADRP : constant := 16#100000001#;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:135
 
-   LLVMDisassembler_ReferenceType_In_ARM64_ADDXri : constant := 16#100000002#;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:131
+   LLVMDisassembler_ReferenceType_In_ARM64_ADDXri : constant := 16#100000002#;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:137
 
-   LLVMDisassembler_ReferenceType_In_ARM64_LDRXui : constant := 16#100000003#;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:133
+   LLVMDisassembler_ReferenceType_In_ARM64_LDRXui : constant := 16#100000003#;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:139
 
-   LLVMDisassembler_ReferenceType_In_ARM64_LDRXl : constant := 16#100000004#;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:135
+   LLVMDisassembler_ReferenceType_In_ARM64_LDRXl : constant := 16#100000004#;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:141
 
-   LLVMDisassembler_ReferenceType_In_ARM64_ADR : constant := 16#100000005#;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:137
+   LLVMDisassembler_ReferenceType_In_ARM64_ADR : constant := 16#100000005#;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:143
 
-   LLVMDisassembler_ReferenceType_Out_SymbolStub : constant := 1;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:140
+   LLVMDisassembler_ReferenceType_Out_SymbolStub : constant := 1;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:146
 
-   LLVMDisassembler_ReferenceType_Out_LitPool_SymAddr : constant := 2;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:142
+   LLVMDisassembler_ReferenceType_Out_LitPool_SymAddr : constant := 2;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:148
 
-   LLVMDisassembler_ReferenceType_Out_LitPool_CstrAddr : constant := 3;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:144
+   LLVMDisassembler_ReferenceType_Out_LitPool_CstrAddr : constant := 3;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:150
 
-   LLVMDisassembler_ReferenceType_Out_Objc_CFString_Ref : constant := 4;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:147
+   LLVMDisassembler_ReferenceType_Out_Objc_CFString_Ref : constant := 4;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:153
 
-   LLVMDisassembler_ReferenceType_Out_Objc_Message : constant := 5;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:149
+   LLVMDisassembler_ReferenceType_Out_Objc_Message : constant := 5;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:155
 
-   LLVMDisassembler_ReferenceType_Out_Objc_Message_Ref : constant := 6;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:151
+   LLVMDisassembler_ReferenceType_Out_Objc_Message_Ref : constant := 6;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:157
 
-   LLVMDisassembler_ReferenceType_Out_Objc_Selector_Ref : constant := 7;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:153
+   LLVMDisassembler_ReferenceType_Out_Objc_Selector_Ref : constant := 7;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:159
 
-   LLVMDisassembler_ReferenceType_Out_Objc_Class_Ref : constant := 8;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:155
+   LLVMDisassembler_ReferenceType_Out_Objc_Class_Ref : constant := 8;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:161
 
-   LLVMDisassembler_ReferenceType_DeMangled_Name : constant := 9;  --  llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:158
+   LLVMDisassembler_ReferenceType_DeMangled_Name : constant := 9;  --  llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:164
 
   --===-- llvm-c/DisassemblerTypedefs.h -----------------------------*- C -*-===*|*                                                                            *|
   --|
@@ -66,10 +66,16 @@ package LLVM.Disassembler_Types is
   --|*===----------------------------------------------------------------------=== 
 
   --*
+  -- * @addtogroup LLVMCDisassembler
+  -- *
+  -- * @{
+  --  
+
+  --*
   -- * An opaque reference to a disassembler context.
   --  
 
-   type Disasm_Context_T is new System.Address;  -- llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:23
+   type Disasm_Context_T is new System.Address;  -- llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:29
 
   --*
   -- * The type for the operand information call back function.  This is called to
@@ -96,7 +102,7 @@ package LLVM.Disassembler_Types is
          Arg_4 : stdint_h.uint64_t;
          Arg_5 : int;
          Arg_6 : System.Address) return int
-   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:42
+   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:48
 
   --*
   -- * The initial support in LLVM MC for the most general form of a relocatable
@@ -121,21 +127,21 @@ package LLVM.Disassembler_Types is
 
   -- 1 if this symbol is present  
    type Op_Info_Symbol_1_T is record
-      Present : aliased stdint_h.uint64_t;  -- llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:67
-      Name : Interfaces.C.Strings.chars_ptr;  -- llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:68
-      Value : aliased stdint_h.uint64_t;  -- llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:69
+      Present : aliased stdint_h.uint64_t;  -- llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:73
+      Name : Interfaces.C.Strings.chars_ptr;  -- llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:74
+      Value : aliased stdint_h.uint64_t;  -- llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:75
    end record
-   with Convention => C_Pass_By_Copy;  -- llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:66
+   with Convention => C_Pass_By_Copy;  -- llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:72
 
   -- symbol name if not NULL  
   -- symbol value if name is NULL  
    type Op_Info_1_T is record
-      AddSymbol : aliased Op_Info_Symbol_1_T;  -- llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:73
-      SubtractSymbol : aliased Op_Info_Symbol_1_T;  -- llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:74
-      Value : aliased stdint_h.uint64_t;  -- llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:75
-      VariantKind : aliased stdint_h.uint64_t;  -- llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:76
+      AddSymbol : aliased Op_Info_Symbol_1_T;  -- llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:79
+      SubtractSymbol : aliased Op_Info_Symbol_1_T;  -- llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:80
+      Value : aliased stdint_h.uint64_t;  -- llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:81
+      VariantKind : aliased stdint_h.uint64_t;  -- llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:82
    end record
-   with Convention => C_Pass_By_Copy;  -- llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:72
+   with Convention => C_Pass_By_Copy;  -- llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:78
 
   --*
   -- * The operand VariantKinds for symbolic disassembly.
@@ -165,10 +171,10 @@ package LLVM.Disassembler_Types is
    type Symbol_Lookup_Callback_T is access function
         (Arg_1 : System.Address;
          Arg_2 : stdint_h.uint64_t;
-         Arg_3 : access stdint_h.uint64_t;
+         Arg_3 : access unsigned_long;
          Arg_4 : stdint_h.uint64_t;
          Arg_5 : System.Address) return Interfaces.C.Strings.chars_ptr
-   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/DisassemblerTypes.h:112
+   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/DisassemblerTypes.h:118
 
   --*
   -- * The reference types on input and output.
@@ -191,6 +197,11 @@ package LLVM.Disassembler_Types is
   -- The output reference is to a Objective-C selector ref.  
   -- The output reference is to a Objective-C class ref.  
   -- The output reference is to a C++ symbol name.  
+  --*
+  -- * @}
+  --  
+
 end LLVM.Disassembler_Types;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

@@ -41,7 +41,7 @@ package LLVM.Analysis is
      (Abort_Process_Action,
       Print_Message_Action,
       Return_Status_Action)
-   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/Analysis.h:38
+   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/Analysis.h:38
 
   -- Verifies that a module is valid, taking the specified action if not.
   --   Optionally returns a human-readable description of any invalid constructs.
@@ -52,14 +52,6 @@ function Verify_Module
       Action      : Verifier_Failure_Action_T;
       Out_Message : System.Address)
       return Boolean;
-   function Verify_Module_C
-     (M           : LLVM.Types.Module_T;
-      Action      : Verifier_Failure_Action_T;
-      Out_Message : System.Address)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMVerifyModule";
 
   -- Verifies that a single function is valid, taking the specified action. Useful
   --   for debugging.  
@@ -68,23 +60,16 @@ function Verify_Function
      (Fn     : LLVM.Types.Value_T;
       Action : Verifier_Failure_Action_T)
       return Boolean;
-   function Verify_Function_C
-     (Fn     : LLVM.Types.Value_T;
-      Action : Verifier_Failure_Action_T)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMVerifyFunction";
 
   -- Open up a ghostview window that displays the CFG of the current function.
   --   Useful for debugging.  
 
-   procedure View_Function_CFG (Fn : LLVM.Types.Value_T)  -- llvm-13.0.0.src/include/llvm-c/Analysis.h:53
+   procedure View_Function_CFG (Fn : LLVM.Types.Value_T)  -- llvm-14.0.1.install/include/llvm-c/Analysis.h:53
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMViewFunctionCFG";
 
-   procedure View_Function_CFG_Only (Fn : LLVM.Types.Value_T)  -- llvm-13.0.0.src/include/llvm-c/Analysis.h:54
+   procedure View_Function_CFG_Only (Fn : LLVM.Types.Value_T)  -- llvm-14.0.1.install/include/llvm-c/Analysis.h:54
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMViewFunctionCFGOnly";
@@ -96,3 +81,4 @@ function Verify_Function
 end LLVM.Analysis;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

@@ -44,14 +44,6 @@ function Parse_Bitcode
       Out_Module  : System.Address;
       Out_Message : System.Address)
       return Boolean;
-   function Parse_Bitcode_C
-     (Mem_Buf     : LLVM.Types.Memory_Buffer_T;
-      Out_Module  : System.Address;
-      Out_Message : System.Address)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMParseBitcode";
 
   -- Builds a module from the bitcode in the specified memory buffer, returning a
   --   reference to the module via the OutModule parameter. Returns 0 on success.  
@@ -60,13 +52,6 @@ function Parse_Bitcode_2
      (Mem_Buf    : LLVM.Types.Memory_Buffer_T;
       Out_Module : System.Address)
       return Boolean;
-   function Parse_Bitcode_2_C
-     (Mem_Buf    : LLVM.Types.Memory_Buffer_T;
-      Out_Module : System.Address)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMParseBitcode2";
 
   -- This is deprecated. Use LLVMParseBitcodeInContext2.  
 function Parse_Bitcode_In_Context
@@ -75,29 +60,12 @@ function Parse_Bitcode_In_Context
       Out_Module  : System.Address;
       Out_Message : System.Address)
       return Boolean;
-   function Parse_Bitcode_In_Context_C
-     (Context_Ref : LLVM.Types.Context_T;
-      Mem_Buf     : LLVM.Types.Memory_Buffer_T;
-      Out_Module  : System.Address;
-      Out_Message : System.Address)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMParseBitcodeInContext";
 
 function Parse_Bitcode_In_Context_2
      (Context_Ref : LLVM.Types.Context_T;
       Mem_Buf     : LLVM.Types.Memory_Buffer_T;
       Out_Module  : System.Address)
       return Boolean;
-   function Parse_Bitcode_In_Context_2_C
-     (Context_Ref : LLVM.Types.Context_T;
-      Mem_Buf     : LLVM.Types.Memory_Buffer_T;
-      Out_Module  : System.Address)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMParseBitcodeInContext2";
 
   --* Reads a module from the specified path, returning via the OutMP parameter
   --    a module provider which performs lazy deserialization. Returns 0 on success.
@@ -110,15 +78,6 @@ function Get_Bitcode_Module_In_Context
       Out_M       : System.Address;
       Out_Message : System.Address)
       return Boolean;
-   function Get_Bitcode_Module_In_Context_C
-     (Context_Ref : LLVM.Types.Context_T;
-      Mem_Buf     : LLVM.Types.Memory_Buffer_T;
-      Out_M       : System.Address;
-      Out_Message : System.Address)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetBitcodeModuleInContext";
 
   --* Reads a module from the specified path, returning via the OutMP parameter a
   -- * module provider which performs lazy deserialization. Returns 0 on success.  
@@ -128,14 +87,6 @@ function Get_Bitcode_Module_In_Context_2
       Mem_Buf     : LLVM.Types.Memory_Buffer_T;
       Out_M       : System.Address)
       return Boolean;
-   function Get_Bitcode_Module_In_Context_2_C
-     (Context_Ref : LLVM.Types.Context_T;
-      Mem_Buf     : LLVM.Types.Memory_Buffer_T;
-      Out_M       : System.Address)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetBitcodeModuleInContext2";
 
   -- This is deprecated. Use LLVMGetBitcodeModule2.  
 function Get_Bitcode_Module
@@ -143,26 +94,11 @@ function Get_Bitcode_Module
       Out_M       : System.Address;
       Out_Message : System.Address)
       return Boolean;
-   function Get_Bitcode_Module_C
-     (Mem_Buf     : LLVM.Types.Memory_Buffer_T;
-      Out_M       : System.Address;
-      Out_Message : System.Address)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetBitcodeModule";
 
 function Get_Bitcode_Module_2
      (Mem_Buf : LLVM.Types.Memory_Buffer_T;
       Out_M   : System.Address)
       return Boolean;
-   function Get_Bitcode_Module_2_C
-     (Mem_Buf : LLVM.Types.Memory_Buffer_T;
-      Out_M   : System.Address)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetBitcodeModule2";
 
   --*
   -- * @}
@@ -171,3 +107,4 @@ function Get_Bitcode_Module_2
 end LLVM.Bit_Reader;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

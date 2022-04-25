@@ -21,6 +21,13 @@ package LLVM.Linker is
   --|*                                                                            *|
   --\*===----------------------------------------------------------------------=== 
 
+  --*
+  -- * @defgroup LLVMCCoreLinker Linker
+  -- * @ingroup LLVMCCore
+  -- *
+  -- * @{
+  --  
+
   -- This enum is provided for backwards-compatibility only. It has no effect.  
   -- This is the default behavior.  
   -- This option has been deprecated and
@@ -29,7 +36,7 @@ package LLVM.Linker is
    type Linker_Mode_T is 
      (Linker_Destroy_Source,
       Linker_Preserve_Source_Removed)
-   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/Linker.h:27
+   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/Linker.h:34
 
   -- Links the source module into the destination module. The source module is
   -- * destroyed.
@@ -41,14 +48,12 @@ function Link_Modules_2
      (Dest : LLVM.Types.Module_T;
       Src  : LLVM.Types.Module_T)
       return Boolean;
-   function Link_Modules_2_C
-     (Dest : LLVM.Types.Module_T;
-      Src  : LLVM.Types.Module_T)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMLinkModules2";
+
+  --*
+  -- * @}
+  --  
 
 end LLVM.Linker;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

@@ -10,26 +10,50 @@ package body LLVM.Remarks is
 
    function Remark_String_Get_Data
      (Str : Remark_String_T)
+      return Interfaces.C.Strings.chars_ptr
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMRemarkStringGetData";
+   function Remark_String_Get_Data
+     (Str : Remark_String_T)
       return String
    is
+      Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
-      return Value (Remark_String_Get_Data_C (Str));
+      Return_Value := Remark_String_Get_Data (Str);
+      return Value (Return_Value);
    end Remark_String_Get_Data;
 
    function Remark_Parser_Has_Error
      (Parser : Remark_Parser_T)
+      return LLVM.Types.Bool_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMRemarkParserHasError";
+   function Remark_Parser_Has_Error
+     (Parser : Remark_Parser_T)
       return Boolean
    is
+      Return_Value : LLVM.Types.Bool_T;
    begin
-      return Remark_Parser_Has_Error_C (Parser) /= 0;
+      Return_Value := Remark_Parser_Has_Error (Parser);
+      return Return_Value /= 0;
    end Remark_Parser_Has_Error;
 
    function Remark_Parser_Get_Error_Message
      (Parser : Remark_Parser_T)
+      return Interfaces.C.Strings.chars_ptr
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMRemarkParserGetErrorMessage";
+   function Remark_Parser_Get_Error_Message
+     (Parser : Remark_Parser_T)
       return String
    is
+      Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
-      return Value (Remark_Parser_Get_Error_Message_C (Parser));
+      Return_Value := Remark_Parser_Get_Error_Message (Parser);
+      return Value (Return_Value);
    end Remark_Parser_Get_Error_Message;
 
 end LLVM.Remarks;

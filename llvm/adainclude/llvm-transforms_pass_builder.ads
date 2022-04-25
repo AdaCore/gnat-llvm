@@ -25,6 +25,13 @@ package LLVM.Transforms_Pass_Builder is
   --\*===----------------------------------------------------------------------=== 
 
   --*
+  -- * @defgroup LLVMCCoreNewPM New Pass Manager
+  -- * @ingroup LLVMCCore
+  -- *
+  -- * @{
+  --  
+
+  --*
   -- * A set of options passed which are attached to the Pass Manager upon run.
   -- *
   -- * This corresponds to an llvm::LLVMPassBuilderOptions instance
@@ -35,7 +42,7 @@ package LLVM.Transforms_Pass_Builder is
 
    type Opaque_Pass_Builder_Options_Impl_T is null record;   -- incomplete struct
 
-   type Pass_Builder_Options_T is access all Opaque_Pass_Builder_Options_Impl_T;  -- llvm-13.0.0.src/include/llvm-c/Transforms/PassBuilder.h:31
+   type Pass_Builder_Options_T is access all Opaque_Pass_Builder_Options_Impl_T;  -- llvm-14.0.1.install/include/llvm-c/Transforms/PassBuilder.h:38
 
   --*
   -- * Construct and run a set of passes over a module
@@ -53,15 +60,6 @@ function Run_Passes
       TM      : LLVM.Target_Machine.Target_Machine_T;
       Options : Pass_Builder_Options_T)
       return LLVM.Error.Error_T;
-   function Run_Passes_C
-     (M       : LLVM.Types.Module_T;
-      Passes  : Interfaces.C.Strings.chars_ptr;
-      TM      : LLVM.Target_Machine.Target_Machine_T;
-      Options : Pass_Builder_Options_T)
-      return LLVM.Error.Error_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMRunPasses";
 
   --*
   -- * Create a new set of options for a PassBuilder
@@ -71,7 +69,7 @@ function Run_Passes
   -- * to free the pass builder options.
   --  
 
-   function Create_Pass_Builder_Options return Pass_Builder_Options_T  -- llvm-13.0.0.src/include/llvm-c/Transforms/PassBuilder.h:53
+   function Create_Pass_Builder_Options return Pass_Builder_Options_T  -- llvm-14.0.1.install/include/llvm-c/Transforms/PassBuilder.h:60
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMCreatePassBuilderOptions";
@@ -84,12 +82,6 @@ function Run_Passes
 procedure Pass_Options_Set_Verify_Each
      (Options     : Pass_Builder_Options_T;
       Verify_Each : Boolean);
-   procedure Pass_Builder_Options_Set_Verify_Each_C
-     (Options     : Pass_Builder_Options_T;
-      Verify_Each : LLVM.Types.Bool_T)
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMPassBuilderOptionsSetVerifyEach";
 
   --*
   -- * Toggle debug logging when running the PassBuilder
@@ -98,69 +90,33 @@ procedure Pass_Options_Set_Verify_Each
 procedure Pass_Options_Set_Debug_Logging
      (Options       : Pass_Builder_Options_T;
       Debug_Logging : Boolean);
-   procedure Pass_Builder_Options_Set_Debug_Logging_C
-     (Options       : Pass_Builder_Options_T;
-      Debug_Logging : LLVM.Types.Bool_T)
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMPassBuilderOptionsSetDebugLogging";
 
 procedure Pass_Options_Set_Loop_Interleaving
      (Options           : Pass_Builder_Options_T;
       Loop_Interleaving : Boolean);
-   procedure Pass_Builder_Options_Set_Loop_Interleaving_C
-     (Options           : Pass_Builder_Options_T;
-      Loop_Interleaving : LLVM.Types.Bool_T)
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMPassBuilderOptionsSetLoopInterleaving";
 
 procedure Pass_Options_Set_Loop_Vectorization
      (Options            : Pass_Builder_Options_T;
       Loop_Vectorization : Boolean);
-   procedure Pass_Builder_Options_Set_Loop_Vectorization_C
-     (Options            : Pass_Builder_Options_T;
-      Loop_Vectorization : LLVM.Types.Bool_T)
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMPassBuilderOptionsSetLoopVectorization";
 
 procedure Pass_Options_Set_SLP_Vectorization
      (Options           : Pass_Builder_Options_T;
       SLP_Vectorization : Boolean);
-   procedure Pass_Builder_Options_Set_SLP_Vectorization_C
-     (Options           : Pass_Builder_Options_T;
-      SLP_Vectorization : LLVM.Types.Bool_T)
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMPassBuilderOptionsSetSLPVectorization";
 
 procedure Pass_Options_Set_Loop_Unrolling
      (Options        : Pass_Builder_Options_T;
       Loop_Unrolling : Boolean);
-   procedure Pass_Builder_Options_Set_Loop_Unrolling_C
-     (Options        : Pass_Builder_Options_T;
-      Loop_Unrolling : LLVM.Types.Bool_T)
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMPassBuilderOptionsSetLoopUnrolling";
 
 procedure Pass_Options_Set_Forget_All_SCEV_In_Loop_Unroll
      (Options                        : Pass_Builder_Options_T;
       Forget_All_SCEV_In_Loop_Unroll : Boolean);
-   procedure Pass_Builder_Options_Set_Forget_All_SCEV_In_Loop_Unroll_C
-     (Options                        : Pass_Builder_Options_T;
-      Forget_All_SCEV_In_Loop_Unroll : LLVM.Types.Bool_T)
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMPassBuilderOptionsSetForgetAllSCEVInLoopUnroll";
 
-   procedure Pass_Builder_Options_Set_Licm_Mssa_Opt_Cap (Options : Pass_Builder_Options_T; Licm_Mssa_Opt_Cap : unsigned)  -- llvm-13.0.0.src/include/llvm-c/Transforms/PassBuilder.h:83
+   procedure Pass_Builder_Options_Set_Licm_Mssa_Opt_Cap (Options : Pass_Builder_Options_T; Licm_Mssa_Opt_Cap : unsigned)  -- llvm-14.0.1.install/include/llvm-c/Transforms/PassBuilder.h:90
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMPassBuilderOptionsSetLicmMssaOptCap";
 
-   procedure Pass_Builder_Options_Set_Licm_Mssa_No_Acc_For_Promotion_Cap (Options : Pass_Builder_Options_T; Licm_Mssa_No_Acc_For_Promotion_Cap : unsigned)  -- llvm-13.0.0.src/include/llvm-c/Transforms/PassBuilder.h:86
+   procedure Pass_Builder_Options_Set_Licm_Mssa_No_Acc_For_Promotion_Cap (Options : Pass_Builder_Options_T; Licm_Mssa_No_Acc_For_Promotion_Cap : unsigned)  -- llvm-14.0.1.install/include/llvm-c/Transforms/PassBuilder.h:93
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMPassBuilderOptionsSetLicmMssaNoAccForPromotionCap";
@@ -168,32 +124,25 @@ procedure Pass_Options_Set_Forget_All_SCEV_In_Loop_Unroll
 procedure Pass_Options_Set_Call_Graph_Profile
      (Options            : Pass_Builder_Options_T;
       Call_Graph_Profile : Boolean);
-   procedure Pass_Builder_Options_Set_Call_Graph_Profile_C
-     (Options            : Pass_Builder_Options_T;
-      Call_Graph_Profile : LLVM.Types.Bool_T)
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMPassBuilderOptionsSetCallGraphProfile";
 
 procedure Pass_Options_Set_Merge_Functions
      (Options         : Pass_Builder_Options_T;
       Merge_Functions : Boolean);
-   procedure Pass_Builder_Options_Set_Merge_Functions_C
-     (Options         : Pass_Builder_Options_T;
-      Merge_Functions : LLVM.Types.Bool_T)
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMPassBuilderOptionsSetMergeFunctions";
 
   --*
   -- * Dispose of a heap-allocated PassBuilderOptions instance
   --  
 
-   procedure Dispose_Pass_Builder_Options (Options : Pass_Builder_Options_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/PassBuilder.h:98
+   procedure Dispose_Pass_Builder_Options (Options : Pass_Builder_Options_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/PassBuilder.h:105
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDisposePassBuilderOptions";
 
+  --*
+  -- * @}
+  --  
+
 end LLVM.Transforms_Pass_Builder;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

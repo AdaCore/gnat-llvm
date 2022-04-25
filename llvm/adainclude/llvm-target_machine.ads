@@ -29,20 +29,26 @@ package LLVM.Target_Machine is
   --|*                                                                            *|
   --\*===----------------------------------------------------------------------=== 
 
+  --*
+  -- * @addtogroup LLVMCTarget
+  -- *
+  -- * @{
+  --  
+
    type Opaque_Target_Machine_Impl_T is null record;   -- incomplete struct
 
-   type Target_Machine_T is access all Opaque_Target_Machine_Impl_T;  -- llvm-13.0.0.src/include/llvm-c/TargetMachine.h:28
+   type Target_Machine_T is access all Opaque_Target_Machine_Impl_T;  -- llvm-14.0.1.install/include/llvm-c/TargetMachine.h:34
 
    type Target_Impl_T is null record;   -- incomplete struct
 
-   type Target_T is access all Target_Impl_T;  -- llvm-13.0.0.src/include/llvm-c/TargetMachine.h:29
+   type Target_T is access all Target_Impl_T;  -- llvm-14.0.1.install/include/llvm-c/TargetMachine.h:35
 
    type Code_Gen_Opt_Level_T is 
      (Code_Gen_Level_None,
       Code_Gen_Level_Less,
       Code_Gen_Level_Default,
       Code_Gen_Level_Aggressive)
-   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/TargetMachine.h:36
+   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/TargetMachine.h:42
 
    type Reloc_Mode_T is 
      (Reloc_Default,
@@ -52,7 +58,7 @@ package LLVM.Target_Machine is
       Reloc_ROPI,
       Reloc_RWPI,
       Reloc_ROPI_RWPI)
-   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/TargetMachine.h:46
+   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/TargetMachine.h:52
 
    type Code_Model_T is 
      (Code_Model_Default,
@@ -62,21 +68,21 @@ package LLVM.Target_Machine is
       Code_Model_Kernel,
       Code_Model_Medium,
       Code_Model_Large)
-   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/TargetMachine.h:56
+   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/TargetMachine.h:62
 
    type Code_Gen_File_Type_T is 
      (Assembly_File,
       Object_File)
-   with Convention => C;  -- llvm-13.0.0.src/include/llvm-c/TargetMachine.h:61
+   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/TargetMachine.h:67
 
   --* Returns the first llvm::Target in the registered targets list.  
-   function Get_First_Target return Target_T  -- llvm-13.0.0.src/include/llvm-c/TargetMachine.h:64
+   function Get_First_Target return Target_T  -- llvm-14.0.1.install/include/llvm-c/TargetMachine.h:70
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetFirstTarget";
 
   --* Returns the next llvm::Target given a previous one (or null if there's none)  
-   function Get_Next_Target (T : Target_T) return Target_T  -- llvm-13.0.0.src/include/llvm-c/TargetMachine.h:66
+   function Get_Next_Target (T : Target_T) return Target_T  -- llvm-14.0.1.install/include/llvm-c/TargetMachine.h:72
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetNextTarget";
@@ -88,12 +94,6 @@ package LLVM.Target_Machine is
 function Get_Target_From_Name
      (Name : String)
       return Target_T;
-   function Get_Target_From_Name_C
-     (Name : Interfaces.C.Strings.chars_ptr)
-      return Target_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetTargetFromName";
 
   --* Finds the target corresponding to the given triple and stores it in \p T.
   --  Returns 0 on success. Optionally returns any error in ErrorMessage.
@@ -104,69 +104,31 @@ function Get_Target_From_Triple
       T             : System.Address;
       Error_Message : System.Address)
       return Boolean;
-   function Get_Target_From_Triple_C
-     (Triple        : Interfaces.C.Strings.chars_ptr;
-      T             : System.Address;
-      Error_Message : System.Address)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetTargetFromTriple";
 
   --* Returns the name of a target. See llvm::Target::getName  
 function Get_Target_Name
      (T : Target_T)
       return String;
-   function Get_Target_Name_C
-     (T : Target_T)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetTargetName";
 
   --* Returns the description  of a target. See llvm::Target::getDescription  
 function Get_Target_Description
      (T : Target_T)
       return String;
-   function Get_Target_Description_C
-     (T : Target_T)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetTargetDescription";
 
   --* Returns if the target has a JIT  
 function Target_Has_JIT
      (T : Target_T)
       return Boolean;
-   function Target_Has_JIT_C
-     (T : Target_T)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMTargetHasJIT";
 
   --* Returns if the target has a TargetMachine associated  
 function Target_Has_Target_Machine
      (T : Target_T)
       return Boolean;
-   function Target_Has_Target_Machine_C
-     (T : Target_T)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMTargetHasTargetMachine";
 
   --* Returns if the target as an ASM backend (required for emitting output)  
 function Target_Has_Asm_Backend
      (T : Target_T)
       return Boolean;
-   function Target_Has_Asm_Backend_C
-     (T : Target_T)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMTargetHasAsmBackend";
 
   --===-- Target Machine ----------------------------------------------------=== 
   --* Creates a new llvm::TargetMachine. See llvm::Target::createTargetMachine  
@@ -179,29 +141,17 @@ function Create_Target_Machine
       Reloc      : Reloc_Mode_T;
       Code_Model : Code_Model_T)
       return Target_Machine_T;
-   function Create_Target_Machine_C
-     (T          : Target_T;
-      Triple     : Interfaces.C.Strings.chars_ptr;
-      CPU        : Interfaces.C.Strings.chars_ptr;
-      Features   : Interfaces.C.Strings.chars_ptr;
-      Level      : Code_Gen_Opt_Level_T;
-      Reloc      : Reloc_Mode_T;
-      Code_Model : Code_Model_T)
-      return Target_Machine_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMCreateTargetMachine";
 
   --* Dispose the LLVMTargetMachineRef instance generated by
   --  LLVMCreateTargetMachine.  
 
-   procedure Dispose_Target_Machine (T : Target_Machine_T)  -- llvm-13.0.0.src/include/llvm-c/TargetMachine.h:102
+   procedure Dispose_Target_Machine (T : Target_Machine_T)  -- llvm-14.0.1.install/include/llvm-c/TargetMachine.h:108
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDisposeTargetMachine";
 
   --* Returns the Target used in a TargetMachine  
-   function Get_Target_Machine_Target (T : Target_Machine_T) return Target_T  -- llvm-13.0.0.src/include/llvm-c/TargetMachine.h:105
+   function Get_Target_Machine_Target (T : Target_Machine_T) return Target_T  -- llvm-14.0.1.install/include/llvm-c/TargetMachine.h:111
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetTargetMachineTarget";
@@ -213,12 +163,6 @@ function Create_Target_Machine
 function Get_Target_Machine_Triple
      (T : Target_Machine_T)
       return String;
-   function Get_Target_Machine_Triple_C
-     (T : Target_Machine_T)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetTargetMachineTriple";
 
   --* Returns the cpu used creating this target machine. See
   --  llvm::TargetMachine::getCPU. The result needs to be disposed with
@@ -227,12 +171,6 @@ function Get_Target_Machine_Triple
 function Get_Target_Machine_CPU
      (T : Target_Machine_T)
       return String;
-   function Get_Target_Machine_CPU_C
-     (T : Target_Machine_T)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetTargetMachineCPU";
 
   --* Returns the feature string used creating this target machine. See
   --  llvm::TargetMachine::getFeatureString. The result needs to be disposed with
@@ -241,15 +179,9 @@ function Get_Target_Machine_CPU
 function Get_Target_Machine_Feature_String
      (T : Target_Machine_T)
       return String;
-   function Get_Target_Machine_Feature_String_C
-     (T : Target_Machine_T)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetTargetMachineFeatureString";
 
   --* Create a DataLayout based on the targetMachine.  
-   function Create_Target_Data_Layout (T : Target_Machine_T) return LLVM.Target.Target_Data_T  -- llvm-13.0.0.src/include/llvm-c/TargetMachine.h:123
+   function Create_Target_Data_Layout (T : Target_Machine_T) return LLVM.Target.Target_Data_T  -- llvm-14.0.1.install/include/llvm-c/TargetMachine.h:129
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMCreateTargetDataLayout";
@@ -258,12 +190,6 @@ function Get_Target_Machine_Feature_String
 procedure Set_Target_Machine_Asm_Verbosity
      (T           : Target_Machine_T;
       Verbose_Asm : Boolean);
-   procedure Set_Target_Machine_Asm_Verbosity_C
-     (T           : Target_Machine_T;
-      Verbose_Asm : LLVM.Types.Bool_T)
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMSetTargetMachineAsmVerbosity";
 
   --* Emits an asm or object file for the given module to the filename. This
   --  wraps several c++ only classes (among them a file stream). Returns any
@@ -276,16 +202,6 @@ function Target_Machine_Emit_To_File
       Codegen       : Code_Gen_File_Type_T;
       Error_Message : System.Address)
       return Boolean;
-   function Target_Machine_Emit_To_File_C
-     (T             : Target_Machine_T;
-      M             : LLVM.Types.Module_T;
-      Filename      : Interfaces.C.Strings.chars_ptr;
-      Codegen       : Code_Gen_File_Type_T;
-      Error_Message : System.Address)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMTargetMachineEmitToFile";
 
   --* Compile the LLVM IR stored in \p M and store the result in \p OutMemBuf.  
 function Target_Machine_Emit_To_Memory_Buffer
@@ -295,16 +211,6 @@ function Target_Machine_Emit_To_Memory_Buffer
       Error_Message : System.Address;
       Out_Mem_Buf   : System.Address)
       return Boolean;
-   function Target_Machine_Emit_To_Memory_Buffer_C
-     (T             : Target_Machine_T;
-      M             : LLVM.Types.Module_T;
-      Codegen       : Code_Gen_File_Type_T;
-      Error_Message : System.Address;
-      Out_Mem_Buf   : System.Address)
-      return LLVM.Types.Bool_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMTargetMachineEmitToMemoryBuffer";
 
   --===-- Triple ------------------------------------------------------------=== 
   --* Get a triple for the host machine as a string. The result needs to be
@@ -312,11 +218,6 @@ function Target_Machine_Emit_To_Memory_Buffer
 
 function Get_Default_Target_Triple
       return String;
-   function Get_Default_Target_Triple_C
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetDefaultTargetTriple";
 
   --* Normalize a target triple. The result needs to be disposed with
   --  LLVMDisposeMessage.  
@@ -324,41 +225,30 @@ function Get_Default_Target_Triple
 function Normalize_Target_Triple
      (Triple : String)
       return String;
-   function Normalize_Target_Triple_C
-     (Triple : Interfaces.C.Strings.chars_ptr)
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMNormalizeTargetTriple";
 
   --* Get the host CPU as a string. The result needs to be disposed with
   --  LLVMDisposeMessage.  
 
 function Get_Host_CPU_Name
       return String;
-   function Get_Host_CPU_Name_C
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetHostCPUName";
 
   --* Get the host CPU's features as a string. The result needs to be disposed
   --  with LLVMDisposeMessage.  
 
 function Get_Host_CPU_Features
       return String;
-   function Get_Host_CPU_Features_C
-      return Interfaces.C.Strings.chars_ptr
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMGetHostCPUFeatures";
 
   --* Adds the target-specific analysis passes to the pass manager.  
-   procedure Add_Analysis_Passes (T : Target_Machine_T; PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/TargetMachine.h:157
+   procedure Add_Analysis_Passes (T : Target_Machine_T; PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/TargetMachine.h:163
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddAnalysisPasses";
 
+  --*
+  -- * @}
+  --  
+
 end LLVM.Target_Machine;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

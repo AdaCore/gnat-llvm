@@ -35,31 +35,31 @@ package LLVM.Transforms_Coroutines is
   --  
 
   --* See llvm::createCoroEarlyLegacyPass function.  
-   procedure Add_Coro_Early_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/Coroutines.h:36
+   procedure Add_Coro_Early_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/Coroutines.h:36
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddCoroEarlyPass";
 
   --* See llvm::createCoroSplitLegacyPass function.  
-   procedure Add_Coro_Split_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/Coroutines.h:39
+   procedure Add_Coro_Split_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/Coroutines.h:39
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddCoroSplitPass";
 
   --* See llvm::createCoroElideLegacyPass function.  
-   procedure Add_Coro_Elide_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/Coroutines.h:42
+   procedure Add_Coro_Elide_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/Coroutines.h:42
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddCoroElidePass";
 
   --* See llvm::createCoroCleanupLegacyPass function.  
-   procedure Add_Coro_Cleanup_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/Coroutines.h:45
+   procedure Add_Coro_Cleanup_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/Coroutines.h:45
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddCoroCleanupPass";
 
   --* See llvm::addCoroutinePassesToExtensionPoints.  
-   procedure Pass_Manager_Builder_Add_Coroutine_Passes_To_Extension_Points (PMB : LLVM.Transforms_Pass_Manager_Builder.Pass_Manager_Builder_T)  -- llvm-13.0.0.src/include/llvm-c/Transforms/Coroutines.h:48
+   procedure Pass_Manager_Builder_Add_Coroutine_Passes_To_Extension_Points (PMB : LLVM.Transforms_Pass_Manager_Builder.Pass_Manager_Builder_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/Coroutines.h:48
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMPassManagerBuilderAddCoroutinePassesToExtensionPoints";
@@ -71,3 +71,4 @@ package LLVM.Transforms_Coroutines is
 end LLVM.Transforms_Coroutines;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

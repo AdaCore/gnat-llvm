@@ -10,29 +10,50 @@ package body LLVM.Error is
 
    function Get_Error_Message
      (Err : Error_T)
+      return Interfaces.C.Strings.chars_ptr
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMGetErrorMessage";
+   function Get_Error_Message
+     (Err : Error_T)
       return String
    is
+      Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
-      return Value (Get_Error_Message_C (Err));
+      Return_Value := Get_Error_Message (Err);
+      return Value (Return_Value);
    end Get_Error_Message;
 
+   procedure Dispose_Error_Message
+     (Err_Msg : Interfaces.C.Strings.chars_ptr)
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMDisposeErrorMessage";
    procedure Dispose_Error_Message
      (Err_Msg : String)
    is
       Err_Msg_Array  : aliased char_array := To_C (Err_Msg);
       Err_Msg_String : constant chars_ptr := To_Chars_Ptr (Err_Msg_Array'Unchecked_Access);
    begin
-      Dispose_Error_Message_C (Err_Msg_String);
+      Dispose_Error_Message (Err_Msg_String);
    end Dispose_Error_Message;
 
+   function Create_String_Error
+     (Err_Msg : Interfaces.C.Strings.chars_ptr)
+      return Error_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMCreateStringError";
    function Create_String_Error
      (Err_Msg : String)
       return Error_T
    is
+      Return_Value   : Error_T;
       Err_Msg_Array  : aliased char_array := To_C (Err_Msg);
       Err_Msg_String : constant chars_ptr := To_Chars_Ptr (Err_Msg_Array'Unchecked_Access);
    begin
-      return Create_String_Error_C (Err_Msg_String);
+      Return_Value := Create_String_Error (Err_Msg_String);
+      return Return_Value;
    end Create_String_Error;
 
 end LLVM.Error;

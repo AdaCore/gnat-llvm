@@ -11,10 +11,19 @@ package body LLVM.Linker is
    function Link_Modules_2
      (Dest : LLVM.Types.Module_T;
       Src  : LLVM.Types.Module_T)
+      return LLVM.Types.Bool_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMLinkModules2";
+   function Link_Modules_2
+     (Dest : LLVM.Types.Module_T;
+      Src  : LLVM.Types.Module_T)
       return Boolean
    is
+      Return_Value : LLVM.Types.Bool_T;
    begin
-      return Link_Modules_2_C (Dest, Src) /= 0;
+      Return_Value := Link_Modules_2 (Dest, Src);
+      return Return_Value /= 0;
    end Link_Modules_2;
 
 end LLVM.Linker;

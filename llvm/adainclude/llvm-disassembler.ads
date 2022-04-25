@@ -12,15 +12,15 @@ with stddef_h;
 
 package LLVM.Disassembler is
 
-   LLVMDisassembler_Option_UseMarkup : constant := 1;  --  llvm-13.0.0.src/include/llvm-c/Disassembler.h:75
+   LLVMDisassembler_Option_UseMarkup : constant := 1;  --  llvm-14.0.1.install/include/llvm-c/Disassembler.h:75
 
-   LLVMDisassembler_Option_PrintImmHex : constant := 2;  --  llvm-13.0.0.src/include/llvm-c/Disassembler.h:77
+   LLVMDisassembler_Option_PrintImmHex : constant := 2;  --  llvm-14.0.1.install/include/llvm-c/Disassembler.h:77
 
-   LLVMDisassembler_Option_AsmPrinterVariant : constant := 4;  --  llvm-13.0.0.src/include/llvm-c/Disassembler.h:79
+   LLVMDisassembler_Option_AsmPrinterVariant : constant := 4;  --  llvm-14.0.1.install/include/llvm-c/Disassembler.h:79
 
-   LLVMDisassembler_Option_SetInstrComments : constant := 8;  --  llvm-13.0.0.src/include/llvm-c/Disassembler.h:81
+   LLVMDisassembler_Option_SetInstrComments : constant := 8;  --  llvm-14.0.1.install/include/llvm-c/Disassembler.h:81
 
-   LLVMDisassembler_Option_PrintLatency : constant := 16;  --  llvm-13.0.0.src/include/llvm-c/Disassembler.h:83
+   LLVMDisassembler_Option_PrintLatency : constant := 16;  --  llvm-14.0.1.install/include/llvm-c/Disassembler.h:83
 
   --===-- llvm-c/Disassembler.h - Disassembler Public C Interface ---*- C -*-===*|*                                                                            *|
   --|
@@ -59,16 +59,6 @@ function Create_Disasm
       Get_Op_Info    : LLVM.Disassembler_Types.Op_Info_Callback_T;
       Symbol_Look_Up : LLVM.Disassembler_Types.Symbol_Lookup_Callback_T)
       return LLVM.Disassembler_Types.Disasm_Context_T;
-   function Create_Disasm_C
-     (Triple_Name    : Interfaces.C.Strings.chars_ptr;
-      Dis_Info       : System.Address;
-      Tag_Type       : int;
-      Get_Op_Info    : LLVM.Disassembler_Types.Op_Info_Callback_T;
-      Symbol_Look_Up : LLVM.Disassembler_Types.Symbol_Lookup_Callback_T)
-      return LLVM.Disassembler_Types.Disasm_Context_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMCreateDisasm";
 
   --*
   -- * Create a disassembler for the TripleName and a specific CPU.  Symbolic
@@ -87,17 +77,6 @@ function Create_Disasm_CPU
       Get_Op_Info    : LLVM.Disassembler_Types.Op_Info_Callback_T;
       Symbol_Look_Up : LLVM.Disassembler_Types.Symbol_Lookup_Callback_T)
       return LLVM.Disassembler_Types.Disasm_Context_T;
-   function Create_Disasm_CPU_C
-     (Triple         : Interfaces.C.Strings.chars_ptr;
-      CPU            : Interfaces.C.Strings.chars_ptr;
-      Dis_Info       : System.Address;
-      Tag_Type       : int;
-      Get_Op_Info    : LLVM.Disassembler_Types.Op_Info_Callback_T;
-      Symbol_Look_Up : LLVM.Disassembler_Types.Symbol_Lookup_Callback_T)
-      return LLVM.Disassembler_Types.Disasm_Context_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMCreateDisasmCPU";
 
   --*
   -- * Create a disassembler for the TripleName, a specific CPU and specific feature
@@ -116,25 +95,13 @@ function Create_Disasm_CPU_Features
       Get_Op_Info    : LLVM.Disassembler_Types.Op_Info_Callback_T;
       Symbol_Look_Up : LLVM.Disassembler_Types.Symbol_Lookup_Callback_T)
       return LLVM.Disassembler_Types.Disasm_Context_T;
-   function Create_Disasm_CPU_Features_C
-     (Triple         : Interfaces.C.Strings.chars_ptr;
-      CPU            : Interfaces.C.Strings.chars_ptr;
-      Features       : Interfaces.C.Strings.chars_ptr;
-      Dis_Info       : System.Address;
-      Tag_Type       : int;
-      Get_Op_Info    : LLVM.Disassembler_Types.Op_Info_Callback_T;
-      Symbol_Look_Up : LLVM.Disassembler_Types.Symbol_Lookup_Callback_T)
-      return LLVM.Disassembler_Types.Disasm_Context_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMCreateDisasmCPUFeatures";
 
   --*
   -- * Set the disassembler's options.  Returns 1 if it can set the Options and 0
   -- * otherwise.
   --  
 
-   function Set_Disasm_Options (DC : LLVM.Disassembler_Types.Disasm_Context_T; Options : stdint_h.uint64_t) return int  -- llvm-13.0.0.src/include/llvm-c/Disassembler.h:72
+   function Set_Disasm_Options (DC : LLVM.Disassembler_Types.Disasm_Context_T; Options : stdint_h.uint64_t) return int  -- llvm-14.0.1.install/include/llvm-c/Disassembler.h:72
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMSetDisasmOptions";
@@ -148,7 +115,7 @@ function Create_Disasm_CPU_Features
   -- * Dispose of a disassembler context.
   --  
 
-   procedure Disasm_Dispose (DC : LLVM.Disassembler_Types.Disasm_Context_T)  -- llvm-13.0.0.src/include/llvm-c/Disassembler.h:88
+   procedure Disasm_Dispose (DC : LLVM.Disassembler_Types.Disasm_Context_T)  -- llvm-14.0.1.install/include/llvm-c/Disassembler.h:88
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDisasmDispose";
@@ -166,23 +133,12 @@ function Create_Disasm_CPU_Features
 
 function Disasm_Instruction
      (DC              : LLVM.Disassembler_Types.Disasm_Context_T;
-      Bytes           : access stdint_h.uint8_t;
+      Bytes           : access unsigned_char;
       Bytes_Size      : stdint_h.uint64_t;
       PC              : stdint_h.uint64_t;
       Out_String      : String;
       Out_String_Size : stddef_h.size_t)
       return stddef_h.size_t;
-   function Disasm_Instruction_C
-     (DC              : LLVM.Disassembler_Types.Disasm_Context_T;
-      Bytes           : access stdint_h.uint8_t;
-      Bytes_Size      : stdint_h.uint64_t;
-      PC              : stdint_h.uint64_t;
-      Out_String      : Interfaces.C.Strings.chars_ptr;
-      Out_String_Size : stddef_h.size_t)
-      return stddef_h.size_t
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMDisasmInstruction";
 
   --*
   -- * @}
@@ -191,3 +147,4 @@ function Disasm_Instruction
 end LLVM.Disassembler;
 
 pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

@@ -1673,7 +1673,13 @@ package body GNATLLVM.Variables is
          Mark_Atomic      (LLVM_Var, Is_Atomic (E) or else Is_Atomic (GT));
          Set_Thread_Local (LLVM_Var, Has_Pragma_Thread_Local_Storage (E));
 
-         if not Is_Public (E) and not Is_Imported (E) then
+         --  If this isn't to be a globally-visible "global", mark it as
+         --  internal. But since it isn't globally-visible, we must be
+         --  declaring it. If not, this will generate an undefined external
+         --  when linking.
+
+         if not Is_Public (E) and then not Is_Imported (E) then
+            pragma Assert (Definition);
             Set_Linkage (LLVM_Var, Internal_Linkage);
          end if;
 

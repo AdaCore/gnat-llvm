@@ -27,10 +27,11 @@ with Osint.C;         use Osint.C;
 with Output;          use Output;
 
 with Adabkend;
-with Errout; use Errout;
-with Lib;    use Lib;
-with Opt;    use Opt;
-with Types;  use Types;
+with Errout;  use Errout;
+with Lib;     use Lib;
+with Opt;     use Opt;
+with Options; use Options;
+with Types;   use Types;
 
 package body Back_End is
 
@@ -125,5 +126,5 @@ begin
    Back_End_Return_Slot         := False;
    Expand_Nonbinary_Modular_Ops := True;
    Unnest_Subprogram_Mode       := True;
-   CCG_Mode                     := True;
+   CCG_Mode                     := CCG;
 end Back_End;

@@ -20,6 +20,7 @@ with Exp_Unst; use Exp_Unst;
 with Get_Targ; use Get_Targ;
 with Lib;      use Lib;
 with Nlists;   use Nlists;
+with Opt;      use Opt;
 with Restrict; use Restrict;
 with Rident;   use Rident;
 with Sem_Mech; use Sem_Mech;
@@ -575,7 +576,10 @@ package body GNATLLVM.Subprograms is
       elsif Returns_By_Ref (E) or else Is_By_Reference_Type (GT)
         or else Requires_Transient_Scope (GT)
       then
-         return RK_By_Reference;
+         return (if   Back_End_Return_Slot
+                      and then not Returns_On_Secondary_Stack (GT)
+                      and then Needs_Finalization (GT)
+                 then Return_By_Parameter else RK_By_Reference);
 
       --  If this is not an unconstrained array, but is either of dynamic
       --  size or a Convention Ada subprogram with a large return, we
@@ -1768,10 +1772,51 @@ package body GNATLLVM.Subprograms is
    ----------------
 
    function Call_Alloc
-     (Proc : E_Procedure_Id; Args : GL_Value_Array) return GL_Value is
+     (Proc : E_Procedure_Id;
+      N    : Node_Id;
+      Args : GL_Value_Array) return GL_Value is
    begin
-      return Call (Emit_Entity (Proc), Size_GL_Type,
-                   Add_Static_Link (Proc, Args));
+      --  See if this is a call to __builtin_return_slot and handle if so.
+      --  If something is wrong with the call, we'll likely get an ICE.
+      --  It's theoretically possible, but very hard, for a user to produce
+      --  a call to that here.
+
+      if Is_Intrinsic_Subprogram (Proc)
+        and then Get_Ext_Name (Proc) = "__builtin_return_slot"
+      then
+         declare
+            Our_Size : constant GL_Value := Args (Args'First);
+            Ret_GT   : constant GL_Type  :=
+              Related_Type (Return_Address_Param);
+            Ret_Size : constant GL_Value :=
+              To_Bytes (Get_Type_Size (Ret_GT, Max_Size =>
+                                         Is_Unconstrained_Record (Ret_GT)));
+
+         begin
+            --  If both sizes are constant, our size must be no larger than
+            --  the size of the return area. Otherwise, emit a runtime
+            --  test to verify that.
+
+            if Is_A_Const_Int (Our_Size) and then Is_A_Const_Int (Ret_Size)
+            then
+               pragma Assert (Ret_Size >= Our_Size);
+            else
+               Emit_Raise_Call_If (I_Cmp (Int_SGT, Our_Size, Ret_Size),
+                                   (if Present (N) then N else Proc),
+                                   PE_Explicit_Raise);
+            end if;
+
+            --  Finally, return the address of the return parameter
+
+            return Ptr_To_Size_Type (Return_Address_Param);
+         end;
+
+      --  Otherwise, call the function with our size and return its return
+
+      else
+         return Call (Emit_Entity (Proc), Size_GL_Type,
+                      Add_Static_Link (Proc, Args));
+      end if;
    end Call_Alloc;
 
    ------------------

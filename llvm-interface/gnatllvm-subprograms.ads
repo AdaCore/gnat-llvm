@@ -89,11 +89,15 @@ package GNATLLVM.Subprograms is
    --  the function in case that turns out to be useful.
 
    function Call_Alloc
-     (Proc : E_Procedure_Id; Args : GL_Value_Array) return GL_Value;
-   --  Proc is a Procedure_To_Call for an allocation and Args are its
-   --  arguments.  See if Proc needs a static link and pass one, if
-   --  so.  This procedure has one out parameter, so the low-level
-   --  call is as a function returning the memory that was allocated.
+     (Proc : E_Procedure_Id;
+      N    : Node_Id;
+      Args : GL_Value_Array) return GL_Value
+     with Post => Present (Call_Alloc'Result);
+   --  Proc is a Procedure_To_Call for an allocation, Args are its
+   --  arguments, and N is the node causing the allocation. See if
+   --  Proc needs a static link and pass one, if so. This procedure
+   --  has one out parameter, so the low-level call is as a function
+   --  returning the memory that was allocated.
 
    procedure Call_Dealloc (Proc : E_Procedure_Id; Args : GL_Value_Array);
    --  Proc is a Procedure_To_Call for a deallocation and Args are its

@@ -2179,9 +2179,17 @@ package body GNATLLVM.Variables is
       end if;
 
       --  If this is the object from an extended return and we have a
-      --  return address, we can use that value for this variable.
+      --  return address, we can use that value for this variable. But we
+      --  can't do this if finalization is needed since we need to do
+      --  that separately for the variable and the object to be placed
+      --  at the return address.
+      --  ??? The setting of Set_Allocated_For_Return below looks bogus
+      --  because we only check it when the return kind isn't
+      --  Return_By_Parameter.
 
-      if Is_Return_Object (E) and then Present (Return_Address_Param) then
+      if Is_Return_Object (E) and then Present (Return_Address_Param)
+        and then not Needs_Finalization (GT)
+      then
          LLVM_Var := Return_Address_Param;
          Set_Allocated_For_Return (E);
 

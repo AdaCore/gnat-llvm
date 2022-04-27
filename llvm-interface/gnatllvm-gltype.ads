@@ -550,6 +550,14 @@ package GNATLLVM.GLType is
      (Requires_Transient_Scope (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Returns_On_Secondary_Stack (GT : GL_Type) return Boolean is
+     (Returns_On_Secondary_Stack (Full_Etype (GT)))
+     with Pre => Present (GT);
+
+   function Needs_Finalization (GT : GL_Type) return Boolean is
+     (Needs_Finalization (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Has_Task (GT : GL_Type) return Boolean is
      (Has_Task (Full_Etype (GT)))
      with Pre => Present (GT);

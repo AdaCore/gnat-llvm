@@ -858,7 +858,7 @@ package body GNATLLVM.Types is
 
       elsif Is_Record_Type (Full_Etype (Pool)) then
          Result :=
-           Call_Alloc (Proc,
+           Call_Alloc (Proc, N,
                        (1 => Ptr_To_Ref (Emit_Entity (Pool),
                                          Full_GL_Type (First_Formal (Proc))),
                         2 => To_Bytes (Size),
@@ -867,7 +867,7 @@ package body GNATLLVM.Types is
       --  Otherwise, this is the secondary stack and we just call with size
 
       else
-         Result := Call_Alloc (Proc, (1 => To_Bytes (Size)));
+         Result := Call_Alloc (Proc, N, (1 => To_Bytes (Size)));
       end if;
 
       --  If this is for a non-default storage model, indicate that

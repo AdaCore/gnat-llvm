@@ -180,17 +180,17 @@ package GNATLLVM.Arrays is
      with Post => Present (Get_Unc_Array_Type_Size'Result);
 
    function Get_Unc_Array_Type_Size
-     (TE       : Array_Kind_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return IDS
+     (Unused_TE       : Array_Kind_Id;
+      Unused_V        : GL_Value;
+      Unused_Max_Size : Boolean := False) return IDS
    is
      (Var_IDS)
      with Post => Present (Get_Unc_Array_Type_Size'Result);
 
    function Get_Unc_Array_Type_Size
-     (TE       : Array_Kind_Id;
-      V        : GL_Value;
-      Max_Size : Boolean := False) return BA_Data
+     (Unused_TE       : Array_Kind_Id;
+      Unused_V        : GL_Value;
+      Unused_Max_Size : Boolean := False) return BA_Data
    is
      (No_BA);
 

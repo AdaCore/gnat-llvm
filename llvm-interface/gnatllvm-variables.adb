@@ -1804,8 +1804,8 @@ package body GNATLLVM.Variables is
       begin
          --  If the address isn't a 'Address, this isn't a match
 
-         if Nkind (Addr_Expr) /= N_Attribute_Reference
-           or else (Get_Attribute_Id (Attribute_Name (Addr_Expr))
+         if Nkind (Addr) /= N_Attribute_Reference
+           or else (Get_Attribute_Id (Attribute_Name (Addr))
                       /= Attribute_Address)
          then
             return False;
@@ -1816,7 +1816,7 @@ package body GNATLLVM.Variables is
 
          declare
             Other_Id : constant Exception_Or_Object_Kind_Id :=
-              Entity (Prefix (Addr_Expr));
+              Entity (Prefix (Addr));
             Other_GT : constant GL_Type                     :=
               Full_GL_Type (Other_Id);
 

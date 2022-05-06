@@ -297,8 +297,8 @@ package body CCG.Utils is
 
    --  Now set up instantiations of the package for types and values
 
-   function Should_Insert (T : Type_T) return Boolean renames Has_Name;
-   function Should_Insert (V : Value_T) return Boolean is (True);
+   function Should_Insert (Unused_T : Type_T) return Boolean renames Has_Name;
+   function Should_Insert (Unused_V : Value_T) return Boolean is (True);
 
    package CI_T is new Component_Info_P  (Key_T         => Type_T,
                                           No_Key_T      => No_Type_T,

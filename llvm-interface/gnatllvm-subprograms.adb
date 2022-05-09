@@ -577,7 +577,7 @@ package body GNATLLVM.Subprograms is
         or else Requires_Transient_Scope (GT)
       then
          return (if   Back_End_Return_Slot
-                      and then not Returns_On_Secondary_Stack (GT)
+                      and then not Needs_Secondary_Stack (GT)
                       and then Needs_Finalization (GT)
                  then Return_By_Parameter else RK_By_Reference);
 

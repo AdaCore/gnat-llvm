@@ -459,26 +459,28 @@ package GNATLLVM.Instructions is
    function Build_Or
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (Set_TBAA_Type
-        (Set_Alignment
-           (Mark_Overflowed
-              (G_From (Build_Or (IR_Builder, +LHS, +RHS, Name), LHS),
-               Overflowed (LHS) or else Overflowed (RHS)),
-            Nat'Min (Alignment (LHS), Alignment (RHS))),
-         No_Metadata_T))
+     ((if   Is_Const_Int_Value (RHS, 0) then LHS
+       else Set_TBAA_Type
+             (Set_Alignment
+                (Mark_Overflowed
+                   (G_From (Build_Or (IR_Builder, +LHS, +RHS, Name), LHS),
+                    Overflowed (LHS) or else Overflowed (RHS)),
+                 Nat'Min (Alignment (LHS), Alignment (RHS))),
+              No_Metadata_T)))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (Build_Or'Result);
 
    function Build_Xor
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     (Set_TBAA_Type
-        (Set_Alignment
-           (Mark_Overflowed
-              (G_From (Build_Xor (IR_Builder, +LHS, +RHS, Name), LHS),
-               Overflowed (LHS) or else Overflowed (RHS)),
-            Nat'Min (Alignment (LHS), Alignment (RHS))),
-         No_Metadata_T))
+     ((if   Is_Const_Int_Value (RHS, 0) then LHS
+       else Set_TBAA_Type
+              (Set_Alignment
+                 (Mark_Overflowed
+                    (G_From (Build_Xor (IR_Builder, +LHS, +RHS, Name), LHS),
+                     Overflowed (LHS) or else Overflowed (RHS)),
+                  Nat'Min (Alignment (LHS), Alignment (RHS))),
+               No_Metadata_T)))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (Build_Xor'Result);
 

@@ -102,21 +102,6 @@ package body GNATLLVM.Codegen is
          Code_Generation := Write_BC;
       elsif Switch = "-emit-c" then
          Emit_C := True;
-
-         --  Building static dispatch tables causes circular references
-         --  in initializers, which there's no way to handle in C.
-
-         Building_Static_Dispatch_Tables := False;
-
-         --  Disable 128bits support for C code generation for now
-
-         Debug_Flag_Dot_HH := True;
-
-         --  Use a simple 32bits target by default for C code generation
-
-         To_Free       := Target_Triple;
-         Target_Triple := new String'("i386-linux");
-
       elsif Switch = "-emit-llvm" then
          Emit_LLVM := True;
       elsif Switch = "-S" then
@@ -294,6 +279,26 @@ package body GNATLLVM.Codegen is
       for J in 1 .. Argument_Count loop
          Process_Switch (Argument (J));
       end loop;
+
+      --  If emitting C, change some other defaults
+
+      if Emit_C then
+
+         --  Building static dispatch tables causes circular references
+         --  in initializers, which there's no way to handle in C.
+
+         Building_Static_Dispatch_Tables := False;
+
+         --  Disable 128bits support for C code generation for now
+
+         Debug_Flag_Dot_HH := True;
+
+         --  Use a simple 32bits target by default for C code generation
+
+         Free (Target_Triple);
+         Target_Triple := new String'("i386-linux");
+      end if;
+
    end Scan_Command_Line;
 
    -----------------

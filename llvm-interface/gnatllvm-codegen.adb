@@ -46,6 +46,9 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Codegen is
 
+   Target_Triple_Set : Boolean := False;
+   --  Set to True by Process_Switch if Target_Triple was modified
+
    package Switches is new Table.Table
      (Table_Component_Type => String_Access,
       Table_Index_Type     => Interfaces.C.int,
@@ -123,11 +126,15 @@ package body GNATLLVM.Codegen is
       elsif Switch = "-fno-optimize-ir" then
          Optimize_IR := False;
       elsif Starts_With ("--target=") then
-         To_Free       := Target_Triple;
-         Target_Triple := new String'(Switch_Value ("--target="));
+         To_Free           := Target_Triple;
+         Target_Triple     := new String'(Switch_Value ("--target="));
+         Target_Triple_Set := True;
+
       elsif Starts_With ("-mtriple=") then
-         To_Free       := Target_Triple;
-         Target_Triple := new String'(Switch_Value ("-mtriple="));
+         To_Free           := Target_Triple;
+         Target_Triple     := new String'(Switch_Value ("-mtriple="));
+         Target_Triple_Set := True;
+
       elsif Starts_With ("-mcuda-libdevice=") then
          Free (Libdevice_Filename);
          Libdevice_Filename := new String'(Switch_Value ("-mcuda-libdevice="));
@@ -298,8 +305,10 @@ package body GNATLLVM.Codegen is
 
          --  Use a simple 32bits target by default for C code generation
 
-         Free (Target_Triple);
-         Target_Triple := new String'("i386-linux");
+         if not Target_Triple_Set then
+            Free (Target_Triple);
+            Target_Triple := new String'("i386-linux");
+         end if;
       end if;
 
    end Scan_Command_Line;

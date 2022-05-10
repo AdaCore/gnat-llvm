@@ -15,30 +15,13 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Target; use LLVM.Target;
-
-with Ada.Strings.Fixed; use Ada.Strings.Fixed;
-
-with Get_Targ; use Get_Targ;
-
-with Debug;   use Debug;
-with Lib;     use Lib;
-with Opt;     use Opt;
-with Osint;   use Osint;
-with Osint.C; use Osint.C;
-with Output;  use Output;
-with Sinput;  use Sinput;
 with Table;
 
 with GNATLLVM.Types;   use GNATLLVM.Types;
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
-with CCG.Flow;         use CCG.Flow;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Subprograms;  use CCG.Subprograms;
-with CCG.Target;       use CCG.Target;
-with CCG.Transform;    use CCG.Transform;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Output is

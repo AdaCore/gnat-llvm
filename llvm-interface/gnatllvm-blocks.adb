@@ -15,16 +15,17 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Debug;    use Debug;
-with Errout;   use Errout;
-with Exp_Ch11; use Exp_Ch11;
-with Exp_Unst; use Exp_Unst;
-with Nlists;   use Nlists;
-with Opt;      use Opt;
-with Restrict; use Restrict;
-with Sinput;   use Sinput;
-with Stand;    use Stand;
-with Table;    use Table;
+with Debug;       use Debug;
+with Einfo.Utils; use Einfo.Utils;
+with Errout;      use Errout;
+with Exp_Ch11;    use Exp_Ch11;
+with Exp_Unst;    use Exp_Unst;
+with Nlists;      use Nlists;
+with Opt;         use Opt;
+with Restrict;    use Restrict;
+with Sinput;      use Sinput;
+with Stand;       use Stand;
+with Table;       use Table;
 
 with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
 with GNATLLVM.Codegen;      use GNATLLVM.Codegen;

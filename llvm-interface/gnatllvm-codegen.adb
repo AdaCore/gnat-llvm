@@ -19,6 +19,8 @@ with Ada.Command_Line; use Ada.Command_Line;
 with Ada.Directories;
 with Interfaces;
 with Interfaces.C;     use Interfaces.C;
+with System;           use System;
+with System.OS_Lib;    use System.OS_Lib;
 
 with LLVM.Analysis;   use LLVM.Analysis;
 with LLVM.Bit_Reader; use LLVM.Bit_Reader;
@@ -37,6 +39,7 @@ with Osint;   use Osint;
 with Osint.C; use Osint.C;
 with Output;  use Output;
 with Switch;  use Switch;
+with Table;
 
 with GNATLLVM.Helper;  use GNATLLVM.Helper;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;

@@ -15,20 +15,20 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout;   use Errout;
-with Exp_Unst; use Exp_Unst;
-with Get_Targ; use Get_Targ;
-with Lib;      use Lib;
-with Nlists;   use Nlists;
-with Opt;      use Opt;
-with Restrict; use Restrict;
-with Rident;   use Rident;
-with Sem_Mech; use Sem_Mech;
-with Sem_Util; use Sem_Util;
-with Sinput;   use Sinput;
-with Snames;   use Snames;
-with Table;    use Table;
-with Targparm; use Targparm;
+with Einfo.Utils; use Einfo.Utils;
+with Errout;      use Errout;
+with Exp_Unst;    use Exp_Unst;
+with Get_Targ;    use Get_Targ;
+with Lib;         use Lib;
+with Nlists;      use Nlists;
+with Restrict;    use Restrict;
+with Rident;      use Rident;
+with Sem_Mech;    use Sem_Mech;
+with Sem_Util;    use Sem_Util;
+with Sinput;      use Sinput;
+with Snames;      use Snames;
+with Table;       use Table;
+with Targparm;    use Targparm;
 
 with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;

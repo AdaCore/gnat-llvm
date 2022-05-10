@@ -15,9 +15,10 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Nlists;     use Nlists;
-with Sem_Util;   use Sem_Util;
-with Uintp.LLVM; use Uintp.LLVM;
+with Einfo.Utils; use Einfo.Utils;
+with Nlists;      use Nlists;
+with Sem_Util;    use Sem_Util;
+with Uintp.LLVM;  use Uintp.LLVM;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;

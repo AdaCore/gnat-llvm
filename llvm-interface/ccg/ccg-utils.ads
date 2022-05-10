@@ -21,14 +21,14 @@ with Ada.Containers; use Ada.Containers;
 with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
 
-with Atree; use Atree;
+with Atree;          use Atree;
+with Einfo.Entities; use Einfo.Entities;
 
 with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
 
-with CCG.Environment; use CCG.Environment;
-with CCG.Helper;      use CCG.Helper;
-with CCG.Strs;        use CCG.Strs;
+with CCG.Helper; use CCG.Helper;
+with CCG.Strs;   use CCG.Strs;
 
 package CCG.Utils is
 

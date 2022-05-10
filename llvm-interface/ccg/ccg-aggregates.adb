@@ -15,24 +15,18 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Containers; use Ada.Containers;
-with Ada.Containers.Hashed_Maps;
-
-with Atree;       use Atree;
-with Output;      use Output;
-with Sinfo.Nodes; use Sinfo.Nodes;
-with Table;
-with Uintp.LLVM;  use Uintp.LLVM;
+with Atree;          use Atree;
+with Einfo.Entities; use Einfo.Entities;
+with Sinfo.Nodes;    use Sinfo.Nodes;
+with Uintp.LLVM;     use Uintp.LLVM;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
-with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
-with CCG.Target;       use CCG.Target;
 
 package body CCG.Aggregates is
 

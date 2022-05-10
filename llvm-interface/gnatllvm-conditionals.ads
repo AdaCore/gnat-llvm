@@ -15,7 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Nlists; use Nlists;
+with Einfo.Utils; use Einfo.Utils;
+with Nlists;      use Nlists;
 
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;

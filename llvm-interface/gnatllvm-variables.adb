@@ -15,18 +15,19 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout;   use Errout;
-with Get_Targ; use Get_Targ;
-with Lib;      use Lib;
-with Nlists;   use Nlists;
-with Sem;      use Sem;
-with Sem_Aux;  use Sem_Aux;
-with Sem_Eval; use Sem_Eval;
-with Sem_Util; use Sem_Util;
-with Snames;   use Snames;
-with Stand;    use Stand;
-with Stringt;  use Stringt;
-with Table;    use Table;
+with Einfo.Utils; use Einfo.Utils;
+with Errout;      use Errout;
+with Get_Targ;    use Get_Targ;
+with Lib;         use Lib;
+with Nlists;      use Nlists;
+with Sem;         use Sem;
+with Sem_Aux;     use Sem_Aux;
+with Sem_Eval;    use Sem_Eval;
+with Sem_Util;    use Sem_Util;
+with Snames;      use Snames;
+with Stand;       use Stand;
+with Stringt;     use Stringt;
+with Table;       use Table;
 
 with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;

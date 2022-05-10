@@ -19,20 +19,15 @@ with Ada.Containers.Hashed_Sets;
 
 with Interfaces.C; use Interfaces.C;
 
+with LLVM.Core; use LLVM.Core;
+
 with Debug;  use Debug;
 with Errout; use Errout;
-with Osint;  use Osint;
-with Output; use Output;
-with Table;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Environment;  use CCG.Environment;
-with CCG.Instructions; use CCG.Instructions;
-with CCG.Output;       use CCG.Output;
-with CCG.Subprograms;  use CCG.Subprograms;
-with CCG.Target;       use CCG.Target;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Transform is
@@ -668,7 +663,6 @@ package body CCG.Transform is
       SC_BB       : constant Basic_Block_T := Value_As_Basic_Block (SC_Dest);
       SC_Term     : constant Value_T       :=
         Get_Basic_Block_Terminator (SC_BB);
-      SC_Cond     : constant Value_T       := Get_Condition (SC_Term);
       Fn          : constant Value_T       := Get_Short_Circuit_FN (Kind);
       Inst        : Value_T                := Get_First_Instruction (SC_BB);
       Next_Inst   : Value_T;

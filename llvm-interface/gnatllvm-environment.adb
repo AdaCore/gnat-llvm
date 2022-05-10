@@ -15,9 +15,10 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Table; use Table;
+
 with GNATLLVM.GLType;  use GNATLLVM.GLType;
 with GNATLLVM.Types;   use GNATLLVM.Types;
-with GNATLLVM.Utils;   use GNATLLVM.Utils;
 
 package body GNATLLVM.Environment is
 

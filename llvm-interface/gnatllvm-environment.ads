@@ -15,8 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Repinfo; use Repinfo;
-with Table;   use Table;
+with Einfo.Utils; use Einfo.Utils;
+with Repinfo;     use Repinfo;
 
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 

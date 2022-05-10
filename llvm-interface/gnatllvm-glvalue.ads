@@ -17,9 +17,8 @@
 
 with Ada.Unchecked_Deallocation;
 
-with Sem_Util; use Sem_Util;
-
-use Sem_Util.Storage_Model_Support;
+with Einfo.Utils; use Einfo.Utils;
+with Sem_Util;    use Sem_Util; use Sem_Util.Storage_Model_Support;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 

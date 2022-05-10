@@ -15,14 +15,14 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout;   use Errout;
-with Sem_Eval; use Sem_Eval;
-with Sem_Util; use Sem_Util;
-with Stand;    use Stand;
-with Table;    use Table;
-
 with Ada.Characters.Handling; use Ada.Characters.Handling;
-with GNAT.Strings;            use GNAT.Strings;
+
+with Einfo.Utils; use Einfo.Utils;
+with Errout;      use Errout;
+with Sem_Eval;    use Sem_Eval;
+with Sem_Util;    use Sem_Util;
+with Stand;       use Stand;
+with Table;       use Table;
 
 with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;

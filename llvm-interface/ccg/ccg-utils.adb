@@ -17,14 +17,14 @@
 
 with Ada.Containers.Hashed_Maps;
 
-with Output; use Output;
-with Table;
-
+with Einfo.Utils; use Einfo.Utils;
 with Sinfo.Nodes; use Sinfo.Nodes;
-with Sinfo.Utils; use Sinfo.Utils;
+with Table;
 
 with GNATLLVM.Types; use GNATLLVM.Types;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
+
+with CCG.Environment; use CCG.Environment;
 
 package body CCG.Utils is
 

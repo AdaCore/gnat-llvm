@@ -15,10 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Core; use LLVM.Core;
-
-with CCG.Environment; use CCG.Environment;
-with CCG.Helper;      use CCG.Helper;
 with CCG.Output;      use CCG.Output;
 with CCG.Strs;        use CCG.Strs;
 

@@ -20,13 +20,10 @@ with LLVM.Core; use LLVM.Core;
 with Atree;    use Atree;
 with Errout;   use Errout;
 with Get_Targ; use Get_Targ;
-with Opt;      use Opt;
-with Output;   use Output;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
-with CCG.Aggregates;   use CCG.Aggregates;
 with CCG.Environment;  use CCG.Environment;
 with CCG.Helper;       use CCG.Helper;
 with CCG.Instructions; use CCG.Instructions;

@@ -33,7 +33,6 @@ with CCG.Environment; use CCG.Environment;
 with CCG.Flow;        use CCG.Flow;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
-with CCG.Target;      use CCG.Target;
 with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Instructions is

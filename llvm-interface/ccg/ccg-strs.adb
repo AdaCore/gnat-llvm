@@ -26,7 +26,6 @@ with Output; use Output;
 with GNATLLVM.GLType; use GNATLLVM.GLType;
 
 with CCG.Environment; use CCG.Environment;
-with CCG.Output;      use CCG.Output;
 with CCG.Utils;       use CCG.Utils;
 with CCG.Write;       use CCG.Write;
 

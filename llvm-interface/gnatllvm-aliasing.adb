@@ -15,16 +15,17 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Elists;   use Elists;
-with Errout;   use Errout;
-with Lib;      use Lib;
+with Einfo.Utils; use Einfo.Utils;
+with Elists;      use Elists;
+with Errout;      use Errout;
+with Lib;         use Lib;
 with Opt;
-with Sem;      use Sem;
-with Sem_Aux;  use Sem_Aux;
-with Sem_Ch13; use Sem_Ch13;
-with Sem_Eval; use Sem_Eval;
-with Sem_Util; use Sem_Util;
-with Table;    use Table;
+with Sem;         use Sem;
+with Sem_Aux;     use Sem_Aux;
+with Sem_Ch13;    use Sem_Ch13;
+with Sem_Eval;    use Sem_Eval;
+with Sem_Util;    use Sem_Util;
+with Table;       use Table;
 
 with GNATLLVM.Aliasing.Params; use GNATLLVM.Aliasing.Params;
 with GNATLLVM.Arrays;          use GNATLLVM.Arrays;

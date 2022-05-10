@@ -16,18 +16,12 @@
 ------------------------------------------------------------------------------
 
 with Ada.Characters.Handling; use Ada.Characters.Handling;
-with Ada.Strings.Fixed;       use Ada.Strings.Fixed;
 
 with Interfaces.C; use Interfaces.C;
 
-with Atree;  use Atree;
-with Debug;  use Debug;
-with Lib;    use Lib;
-with Opt;    use Opt;
 with Output; use Output;
-with Sinput; use Sinput;
+with Table;
 
-with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
@@ -658,7 +652,6 @@ package body CCG.Subprograms is
       for Sidx in Subprogram_Idx_Start .. Subprograms.Last loop
          declare
             SD   : constant Subprogram_Data := Subprograms.Table (Sidx);
-            BB_J : Nat                      := 1;
 
          begin
             --  First write the decls. We at least have the function prototype

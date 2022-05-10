@@ -15,18 +15,18 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout;     use Errout;
-with Eval_Fat;   use Eval_Fat;
-with Exp_Code;   use Exp_Code;
-with Nlists;     use Nlists;
-with Opt;        use Opt;
-with Output;     use Output;
-with Sem_Aggr;   use Sem_Aggr;
-with Sem_Util;   use Sem_Util;
-with Snames;     use Snames;
-with Stringt;    use Stringt;
-with Uintp.LLVM; use Uintp.LLVM;
-with Urealp;     use Urealp;
+with Einfo.Utils; use Einfo.Utils;
+with Errout;      use Errout;
+with Eval_Fat;    use Eval_Fat;
+with Exp_Code;    use Exp_Code;
+with Nlists;      use Nlists;
+with Opt;         use Opt;
+with Sem_Aggr;    use Sem_Aggr;
+with Sem_Util;    use Sem_Util;
+with Snames;      use Snames;
+with Stringt;     use Stringt;
+with Uintp.LLVM;  use Uintp.LLVM;
+with Urealp;      use Urealp;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;

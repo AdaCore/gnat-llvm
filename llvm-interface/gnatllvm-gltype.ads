@@ -15,11 +15,10 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Sem_Aux;  use Sem_Aux;
-with Sem_Util; use Sem_Util;
-with Snames;   use Snames;
-
-use Sem_Util.Storage_Model_Support;
+with Einfo.Utils; use Einfo.Utils;
+with Sem_Aux;     use Sem_Aux;
+with Sem_Util;    use Sem_Util; use Sem_Util.Storage_Model_Support;
+with Snames;      use Snames;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;

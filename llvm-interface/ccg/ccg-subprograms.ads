@@ -20,8 +20,6 @@ with LLVM.Core;  use LLVM.Core;
 with CCG.Helper; use CCG.Helper;
 with CCG.Strs;   use CCG.Strs;
 
-with Table;
-
 package CCG.Subprograms is
 
    --  This package contains subprograms and data used in the handling of

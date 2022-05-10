@@ -15,10 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Core; use LLVM.Core;
-
 with CCG.Helper; use CCG.Helper;
-with CCG.Strs;   use CCG.Strs;
 
 package CCG.Transform is
 

@@ -26,6 +26,7 @@ with Table;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Instructions; use CCG.Instructions;
+with CCG.Output;       use CCG.Output;
 with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Target;       use CCG.Target;
 with CCG.Utils;        use CCG.Utils;
@@ -221,14 +222,6 @@ package body CCG.Flow is
           Post => Is_A_Instruction (Inst'Result);
    --  Return the Flow corresponding to this case node
 
-   procedure Set_Value (Idx : Case_Idx; V : Value_T)
-     with Pre  => Present (Idx) and then Present (V),
-          Post => Value (Idx) = V, Inline;
-
-   procedure Set_Expr (Idx : Case_Idx; S : Str)
-     with Pre  => Present (Idx) and then Present (S),
-          Post => Expr (Idx) = S, Inline;
-
    procedure Set_Target (Idx : Case_Idx; Fidx : Flow_Idx)
      with Pre => Present (Idx), Post => Target (Idx) = Fidx, Inline;
 
@@ -253,14 +246,6 @@ package body CCG.Flow is
    function Target (Idx : If_Idx) return Flow_Idx
      with Pre => Present (Idx);
    --  Destination if this test is true (or not Present)
-
-   procedure Set_Test (Idx : If_Idx; S : Str)
-     with Pre  => Present (Idx) and then Present (S),
-          Post => Test (Idx) = S, Inline;
-
-   procedure Set_Inst (Idx : If_Idx; V : Value_T)
-     with Pre  => Present (Idx) and then Is_A_Instruction (V),
-          Post => Inst (Idx) = V, Inline;
 
    procedure Set_Target (Idx : If_Idx; Fidx : Flow_Idx)
      with Pre => Present (Idx), Post => Target (Idx) = Fidx, Inline;
@@ -312,10 +297,6 @@ package body CCG.Flow is
      with Pre => Present (Idx);
    --  First and last of cases for a switch statement, if any
 
-   procedure Set_BB (Idx : Flow_Idx; B : Basic_Block_T)
-     with Pre  => Present (Idx) and then Present (B),
-          Post => BB (Idx) = B, Inline;
-
    procedure Set_First_Line (Idx : Flow_Idx; Lidx : Line_Idx)
      with Pre  => Present (Idx) and then Present (Lidx),
           Post => First_Line (Idx) = Lidx, Inline;
@@ -325,13 +306,6 @@ package body CCG.Flow is
 
    procedure Set_Next (Idx, Nidx : Flow_Idx)
      with Pre  => Present (Idx), Post => Next (Idx) = Nidx, Inline;
-
-   procedure Set_Is_Return (Idx : Flow_Idx; B : Boolean := True)
-     with Pre  => Present (Idx), Post => Is_Return (Idx) = B, Inline;
-
-   procedure Set_Return_Value (Idx : Flow_Idx; S : Str)
-     with Pre  => Present (Idx) and then Is_Return (Idx) and then Present (S),
-          Post => Return_Value (Idx) = S, Inline;
 
    procedure Set_First_If (Idx : Flow_Idx; Iidx : If_Idx)
      with Pre  => Present (Idx) and then Present (Iidx),
@@ -497,24 +471,6 @@ package body CCG.Flow is
    function Is_Same_As_Next (Idx : Case_Idx) return Boolean is
      (Cases.Table (Idx).Is_Same_As_Next);
 
-   ---------------
-   -- Set_Value --
-   ---------------
-
-   procedure Set_Value (Idx : Case_Idx; V : Value_T) is
-   begin
-      Cases.Table (Idx).Value := V;
-   end Set_Value;
-
-   --------------
-   -- Set_Expr --
-   --------------
-
-   procedure Set_Expr (Idx : Case_Idx; S : Str) is
-   begin
-      Cases.Table (Idx).Expr := S;
-   end Set_Expr;
-
    ----------------
    -- Set_Target --
    ----------------
@@ -563,24 +519,6 @@ package body CCG.Flow is
 
    function Target (Idx : If_Idx) return Flow_Idx is
      (Ifs.Table (Idx).Target);
-
-   --------------
-   -- Set_Test --
-   --------------
-
-   procedure Set_Test (Idx : If_Idx; S : Str) is
-   begin
-      Ifs.Table (Idx).Test := S;
-   end Set_Test;
-
-   --------------
-   -- Set_Inst --
-   --------------
-
-   procedure Set_Inst (Idx : If_Idx; V : Value_T) is
-   begin
-      Ifs.Table (Idx).Inst := V;
-   end Set_Inst;
 
    ----------------
    -- Set_Target --
@@ -677,15 +615,6 @@ package body CCG.Flow is
    function Last_Case (Idx : Flow_Idx) return Case_Idx is
       (Flows.Table (Idx).Last_Case);
 
-   ------------
-   -- Set_BB --
-   ------------
-
-   procedure Set_BB (Idx : Flow_Idx; B : Basic_Block_T) is
-   begin
-      Flows.Table (Idx).BB := B;
-   end Set_BB;
-
    --------------------
    -- Set_First_Line --
    --------------------
@@ -737,24 +666,6 @@ package body CCG.Flow is
       Add_Use (Nidx);
       Flows.Table (Idx).Next := Nidx;
    end Set_Next;
-
-   -------------------
-   -- Set_Is_Return --
-   -------------------
-
-   procedure Set_Is_Return (Idx : Flow_Idx; B : Boolean := True) is
-   begin
-      Flows.Table (Idx).Is_Return := B;
-   end Set_Is_Return;
-
-   ----------------------
-   -- Set_Return_Value --
-   ----------------------
-
-   procedure Set_Return_Value (Idx : Flow_Idx; S : Str) is
-   begin
-      Flows.Table (Idx).Return_Value := S;
-   end Set_Return_Value;
 
    ------------------
    -- Set_First_If --

@@ -15,11 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with System;        use System;
-with System.OS_Lib; use System.OS_Lib;
-with Options;       use Options;
-
-with Table;
+with Options; use Options;
 
 package GNATLLVM.Codegen is
 

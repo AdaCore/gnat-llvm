@@ -15,9 +15,10 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Nlists;   use Nlists;
-with Sem_Aggr; use Sem_Aggr;
-with Table;    use Table;
+with Einfo.Utils; use Einfo.Utils;
+with Nlists;      use Nlists;
+with Sem_Aggr;    use Sem_Aggr;
+with Table;       use Table;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;

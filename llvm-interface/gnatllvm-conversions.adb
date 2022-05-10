@@ -15,8 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout; use Errout;
-with Snames; use Snames;
+with Einfo.Utils; use Einfo.Utils;
+with Errout;      use Errout;
+with Snames;      use Snames;
 
 with LLVM.Transforms_Inst_Combine; use LLVM.Transforms_Inst_Combine;
 

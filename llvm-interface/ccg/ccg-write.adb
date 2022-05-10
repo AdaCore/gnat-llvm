@@ -15,32 +15,33 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with LLVM.Core; use LLVM.Core;
+
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 
 with Get_Targ; use Get_Targ;
 
-with Atree;       use Atree;
-with Debug;       use Debug;
-with Lib;         use Lib;
-with Opt;         use Opt;
-with Osint;       use Osint;
-with Osint.C;     use Osint.C;
-with Output;      use Output;
-with Sinfo.Nodes; use Sinfo.Nodes;
-with Sinput;      use Sinput;
-with Table;
-with Uintp;       use Uintp;
+with Atree;          use Atree;
+with Debug;          use Debug;
+with Einfo.Entities; use Einfo.Entities;
+with Lib;            use Lib;
+with Opt;            use Opt;
+with Osint;          use Osint;
+with Osint.C;        use Osint.C;
+with Output;         use Output;
+with Sinfo.Nodes;    use Sinfo.Nodes;
+with Sinput;         use Sinput;
+with Uintp;          use Uintp;
 
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
-with CCG.Aggregates;   use CCG.Aggregates;
-with CCG.Instructions; use CCG.Instructions;
-with CCG.Subprograms;  use CCG.Subprograms;
-with CCG.Target;       use CCG.Target;
-with CCG.Transform;    use CCG.Transform;
-with CCG.Utils;        use CCG.Utils;
+with CCG.Aggregates;  use CCG.Aggregates;
+with CCG.Environment; use CCG.Environment;
+with CCG.Helper;      use CCG.Helper;
+with CCG.Target;      use CCG.Target;
+with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Write is
 

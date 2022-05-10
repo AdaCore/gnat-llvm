@@ -17,6 +17,8 @@
 
 with LLVM.Debug_Info; use LLVM.Debug_Info;
 
+with Einfo.Utils; use Einfo.Utils;
+
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 
 package GNATLLVM.DebugInfo is

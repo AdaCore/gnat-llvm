@@ -19,11 +19,8 @@ with Interfaces.C;
 
 with LLVM.Types; use LLVM.Types;
 
-with Einfo;          use Einfo;
-with Einfo.Entities; use Einfo.Entities;
-with Einfo.Utils;    use Einfo.Utils;
-with Namet;          use Namet;
-with Types;          use Types;
+with Namet; use Namet;
+with Types; use Types;
 
 with GNATLLVM; use GNATLLVM;
 

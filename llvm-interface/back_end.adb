@@ -123,8 +123,7 @@ package body Back_End is
 begin
    --  Set the switches in Opt that we depend on
 
-   --  Back_End_Return_Slot     := True;
-   Back_End_Return_Slot         := False;
+   Back_End_Return_Slot         := True;
    Expand_Nonbinary_Modular_Ops := True;
    Unnest_Subprogram_Mode       := True;
    CCG_Mode                     := CCG;

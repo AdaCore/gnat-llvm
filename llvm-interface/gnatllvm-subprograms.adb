@@ -571,15 +571,21 @@ package body GNATLLVM.Subprograms is
       if Ekind (GT) = E_Void then
          return None;
 
-      --  Otherwise, we return by reference if we're required to
+      --  Otherwise, we return by reference if we're required to or if we
+      --  need the secondary stack.
 
-      elsif Returns_By_Ref (E) or else Is_By_Reference_Type (GT)
-        or else Requires_Transient_Scope (GT)
-      then
-         return (if   Back_End_Return_Slot
-                      and then not Needs_Secondary_Stack (GT)
-                      and then Needs_Finalization (GT)
-                 then Return_By_Parameter else RK_By_Reference);
+      elsif Returns_By_Ref (E) or else Needs_Secondary_Stack (GT) then
+         return RK_By_Reference;
+
+      --  If we need finalization, we must return by hidden parameter
+
+      elsif  Needs_Finalization (GT) then
+         return Return_By_Parameter;
+
+      --  Otherwise, return by parameter for by-reference type
+
+      elsif Is_By_Reference_Type (GT) then
+         return Return_By_Parameter;
 
       --  If this is not an unconstrained array, but is either of dynamic
       --  size or a Convention Ada subprogram with a large return, we

@@ -1,5 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 
@@ -19,7 +21,7 @@ package Clang.Fatal_Error_Handler is
   -- * Replaces currently installed error handler (if any).
   --  
 
-   procedure Install_Aborting_Llvm_Fatal_Error_Handler  -- llvm-13.0.0.src/tools/clang/include/clang-c/FatalErrorHandler.h:21
+   procedure Install_Aborting_Llvm_Fatal_Error_Handler  -- llvm-14.0.1.install/include/clang-c/FatalErrorHandler.h:21
    with Import => True, 
         Convention => C, 
         External_Name => "clang_install_aborting_llvm_fatal_error_handler";
@@ -30,9 +32,12 @@ package Clang.Fatal_Error_Handler is
   -- * message to stderr and call exit(1).
   --  
 
-   procedure Uninstall_Llvm_Fatal_Error_Handler  -- llvm-13.0.0.src/tools/clang/include/clang-c/FatalErrorHandler.h:28
+   procedure Uninstall_Llvm_Fatal_Error_Handler  -- llvm-14.0.1.install/include/clang-c/FatalErrorHandler.h:28
    with Import => True, 
         Convention => C, 
         External_Name => "clang_uninstall_llvm_fatal_error_handler";
 
 end Clang.Fatal_Error_Handler;
+
+pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

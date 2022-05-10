@@ -1,5 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
@@ -37,20 +39,16 @@ package Clang.CX_String is
   --  
 
    type String_T is record
-      data : System.Address;  -- /usr/local/include/clang-c/CXString.h:38
-      private_flags : aliased unsigned;  -- /usr/local/include/clang-c/CXString.h:39
+      data : System.Address;  -- llvm-14.0.1.install/include/clang-c/CXString.h:38
+      private_flags : aliased unsigned;  -- llvm-14.0.1.install/include/clang-c/CXString.h:39
    end record
-   with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/CXString.h:40
-
-   --  skipped anonymous struct anon_0
+   with Convention => C_Pass_By_Copy;  -- llvm-14.0.1.install/include/clang-c/CXString.h:40
 
    type String_Set_T is record
-      Strings : access String_T;  -- /usr/local/include/clang-c/CXString.h:43
-      Count : aliased unsigned;  -- /usr/local/include/clang-c/CXString.h:44
+      Strings : access String_T;  -- llvm-14.0.1.install/include/clang-c/CXString.h:43
+      Count : aliased unsigned;  -- llvm-14.0.1.install/include/clang-c/CXString.h:44
    end record
-   with Convention => C_Pass_By_Copy;  -- /usr/local/include/clang-c/CXString.h:45
-
-   --  skipped anonymous struct anon_1
+   with Convention => C_Pass_By_Copy;  -- llvm-14.0.1.install/include/clang-c/CXString.h:45
 
   --*
   -- * Retrieve the character data associated with the given string.
@@ -64,7 +62,7 @@ function Get_C_String
   -- * Free the given string.
   --  
 
-   procedure Dispose_String (Str : String_T)  -- /usr/local/include/clang-c/CXString.h:55
+   procedure Dispose_String (Str : String_T)  -- llvm-14.0.1.install/include/clang-c/CXString.h:55
    with Import => True, 
         Convention => C, 
         External_Name => "clang_disposeString";
@@ -73,7 +71,7 @@ function Get_C_String
   -- * Free the given string set.
   --  
 
-   procedure Dispose_String_Set (Set : access String_Set_T)  -- /usr/local/include/clang-c/CXString.h:60
+   procedure Dispose_String_Set (Set : access String_Set_T)  -- llvm-14.0.1.install/include/clang-c/CXString.h:60
    with Import => True, 
         Convention => C, 
         External_Name => "clang_disposeStringSet";
@@ -83,3 +81,6 @@ function Get_C_String
   --  
 
 end Clang.CX_String;
+
+pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

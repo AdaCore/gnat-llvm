@@ -1,5 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 
@@ -31,7 +33,7 @@ package Clang.CX_Error_Code is
       Error_Crashed,
       Error_Invalid_Arguments,
       Error_AST_Read_Error)
-   with Convention => C;  -- /usr/local/include/clang-c/CXErrorCode.h:28
+   with Convention => C;  -- llvm-14.0.1.install/include/clang-c/CXErrorCode.h:28
 
   --*
   --   * No error.
@@ -58,3 +60,6 @@ package Clang.CX_Error_Code is
   --    
 
 end Clang.CX_Error_Code;
+
+pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

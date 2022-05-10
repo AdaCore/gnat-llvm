@@ -1,5 +1,7 @@
 pragma Ada_2012;
+
 pragma Style_Checks (Off);
+pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with Interfaces.C.Extensions;
@@ -32,7 +34,7 @@ package Clang.Build_System is
   -- * \c -fbuild-session-timestamp= option.
   --  
 
-   function Get_Build_Session_Timestamp return Extensions.unsigned_long_long  -- /usr/local/include/clang-c/BuildSystem.h:33
+   function Get_Build_Session_Timestamp return Extensions.unsigned_long_long  -- llvm-14.0.1.install/include/clang-c/BuildSystem.h:33
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getBuildSessionTimestamp";
@@ -44,7 +46,7 @@ package Clang.Build_System is
 
    type Virtual_File_Overlay_Impl_T is null record;   -- incomplete struct
 
-   type Virtual_File_Overlay_T is access all Virtual_File_Overlay_Impl_T;  -- /usr/local/include/clang-c/BuildSystem.h:39
+   type Virtual_File_Overlay_T is access all Virtual_File_Overlay_Impl_T;  -- llvm-14.0.1.install/include/clang-c/BuildSystem.h:39
 
   --*
   -- * Create a \c CXVirtualFileOverlay object.
@@ -53,7 +55,7 @@ package Clang.Build_System is
   -- * \param options is reserved, always pass 0.
   --  
 
-   function Virtual_File_Overlay_Create (Options : unsigned) return Virtual_File_Overlay_T  -- /usr/local/include/clang-c/BuildSystem.h:48
+   function Virtual_File_Overlay_Create (Options : unsigned) return Virtual_File_Overlay_T  -- llvm-14.0.1.install/include/clang-c/BuildSystem.h:48
    with Import => True, 
         Convention => C, 
         External_Name => "clang_VirtualFileOverlay_create";
@@ -77,7 +79,7 @@ function Virtual_File_Overlay_Add_File_Mapping
   -- * \returns 0 for success, non-zero to indicate an error.
   --  
 
-   function Virtual_File_Overlay_Set_Case_Sensitivity (Arg_1 : Virtual_File_Overlay_T; Case_Sensitive : int) return Clang.CX_Error_Code.Error_Code_T  -- /usr/local/include/clang-c/BuildSystem.h:67
+   function Virtual_File_Overlay_Set_Case_Sensitivity (Arg_1 : Virtual_File_Overlay_T; Case_Sensitive : int) return Clang.CX_Error_Code.Error_Code_T  -- llvm-14.0.1.install/include/clang-c/BuildSystem.h:67
    with Import => True, 
         Convention => C, 
         External_Name => "clang_VirtualFileOverlay_setCaseSensitivity";
@@ -96,7 +98,7 @@ function Virtual_File_Overlay_Add_File_Mapping
      (Arg_1 : Virtual_File_Overlay_T;
       Options : unsigned;
       Out_Buffer_Ptr : System.Address;
-      Out_Buffer_Size : access unsigned) return Clang.CX_Error_Code.Error_Code_T  -- /usr/local/include/clang-c/BuildSystem.h:80
+      Out_Buffer_Size : access unsigned) return Clang.CX_Error_Code.Error_Code_T  -- llvm-14.0.1.install/include/clang-c/BuildSystem.h:80
    with Import => True, 
         Convention => C, 
         External_Name => "clang_VirtualFileOverlay_writeToBuffer";
@@ -108,7 +110,7 @@ function Virtual_File_Overlay_Add_File_Mapping
   -- * \param buffer memory pointer to free.
   --  
 
-   procedure Free (Buffer : System.Address)  -- /usr/local/include/clang-c/BuildSystem.h:90
+   procedure Free (Buffer : System.Address)  -- llvm-14.0.1.install/include/clang-c/BuildSystem.h:90
    with Import => True, 
         Convention => C, 
         External_Name => "clang_free";
@@ -117,7 +119,7 @@ function Virtual_File_Overlay_Add_File_Mapping
   -- * Dispose a \c CXVirtualFileOverlay object.
   --  
 
-   procedure Virtual_File_Overlay_Dispose (Arg_1 : Virtual_File_Overlay_T)  -- /usr/local/include/clang-c/BuildSystem.h:95
+   procedure Virtual_File_Overlay_Dispose (Arg_1 : Virtual_File_Overlay_T)  -- llvm-14.0.1.install/include/clang-c/BuildSystem.h:95
    with Import => True, 
         Convention => C, 
         External_Name => "clang_VirtualFileOverlay_dispose";
@@ -128,7 +130,7 @@ function Virtual_File_Overlay_Add_File_Mapping
 
    type Module_Map_Descriptor_Impl_T is null record;   -- incomplete struct
 
-   type Module_Map_Descriptor_T is access all Module_Map_Descriptor_Impl_T;  -- /usr/local/include/clang-c/BuildSystem.h:100
+   type Module_Map_Descriptor_T is access all Module_Map_Descriptor_Impl_T;  -- llvm-14.0.1.install/include/clang-c/BuildSystem.h:100
 
   --*
   -- * Create a \c CXModuleMapDescriptor object.
@@ -137,7 +139,7 @@ function Virtual_File_Overlay_Add_File_Mapping
   -- * \param options is reserved, always pass 0.
   --  
 
-   function Module_Map_Descriptor_Create (Options : unsigned) return Module_Map_Descriptor_T  -- /usr/local/include/clang-c/BuildSystem.h:109
+   function Module_Map_Descriptor_Create (Options : unsigned) return Module_Map_Descriptor_T  -- llvm-14.0.1.install/include/clang-c/BuildSystem.h:109
    with Import => True, 
         Convention => C, 
         External_Name => "clang_ModuleMapDescriptor_create";
@@ -176,7 +178,7 @@ function Module_Map_Descriptor_Set_Umbrella_Header
      (Arg_1 : Module_Map_Descriptor_T;
       Options : unsigned;
       Out_Buffer_Ptr : System.Address;
-      Out_Buffer_Size : access unsigned) return Clang.CX_Error_Code.Error_Code_T  -- /usr/local/include/clang-c/BuildSystem.h:137
+      Out_Buffer_Size : access unsigned) return Clang.CX_Error_Code.Error_Code_T  -- llvm-14.0.1.install/include/clang-c/BuildSystem.h:137
    with Import => True, 
         Convention => C, 
         External_Name => "clang_ModuleMapDescriptor_writeToBuffer";
@@ -185,7 +187,7 @@ function Module_Map_Descriptor_Set_Umbrella_Header
   -- * Dispose a \c CXModuleMapDescriptor object.
   --  
 
-   procedure Module_Map_Descriptor_Dispose (Arg_1 : Module_Map_Descriptor_T)  -- /usr/local/include/clang-c/BuildSystem.h:144
+   procedure Module_Map_Descriptor_Dispose (Arg_1 : Module_Map_Descriptor_T)  -- llvm-14.0.1.install/include/clang-c/BuildSystem.h:144
    with Import => True, 
         Convention => C, 
         External_Name => "clang_ModuleMapDescriptor_dispose";
@@ -195,3 +197,6 @@ function Module_Map_Descriptor_Set_Umbrella_Header
   --  
 
 end Clang.Build_System;
+
+pragma Style_Checks (On);
+pragma Warnings (On, "-gnatwu");

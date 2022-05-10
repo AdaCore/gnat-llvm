@@ -84,7 +84,7 @@ package body Clang.Index is
    function Get_File_Contents
      (Tu   : Translation_Unit_T;
       File : File_T;
-      Size : access stddef_h.size_t)
+      Size : access unsigned_long)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
@@ -92,7 +92,7 @@ package body Clang.Index is
    function Get_File_Contents
      (Tu   : Translation_Unit_T;
       File : File_T;
-      Size : access stddef_h.size_t)
+      Size : access unsigned_long)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;

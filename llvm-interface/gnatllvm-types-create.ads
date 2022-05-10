@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Conversion;
-
 package GNATLLVM.Types.Create is
 
    function Create_Type (TE : Void_Or_Type_Kind_Id) return Type_T

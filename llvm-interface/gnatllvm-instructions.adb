@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Conversion;
-
 with Restrict; use Restrict;
 with Rident;   use Rident;
 with Targparm; use Targparm;

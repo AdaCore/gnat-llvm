@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Conversion;
-
 with GNATLLVM.GLType;  use GNATLLVM.GLType;
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 

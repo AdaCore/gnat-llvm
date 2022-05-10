@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Conversion;
-
 with Debug;    use Debug;
 with Output;   use Output;
 with Sprint;   use Sprint;

@@ -15,7 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Conversion;
 with Ada.Containers; use Ada.Containers;
 with Ada.Containers.Hashed_Maps;
 

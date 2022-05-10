@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Conversion;
-
 with Einfo.Utils;  use Einfo.Utils;
 with Repinfo;      use Repinfo;
 with Sem_Util;     use Sem_Util;

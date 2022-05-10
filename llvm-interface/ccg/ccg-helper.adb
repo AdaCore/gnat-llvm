@@ -18,8 +18,6 @@
 with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings; use Interfaces.C.Strings;
 
-with stddef_h; use stddef_h;
-
 package body CCG.Helper is
 
    ---------------------------
@@ -54,7 +52,7 @@ package body CCG.Helper is
    -------------------
 
    function Get_As_String (V : Value_T) return String is
-      Length : aliased stddef_h.size_t;
+      Length : aliased Interfaces.C.unsigned_long;
       S      : constant String := Get_As_String (V, Length'Access);
    begin
       return S;
@@ -66,15 +64,10 @@ package body CCG.Helper is
 
    function Get_Debug_Loc_Filename (V : Value_T) return String is
       Length : aliased unsigned;
-      Str    : constant chars_ptr :=
-        Get_Debug_Loc_Filename_C (V, Length'Access);
+      Str    : constant String := Get_Debug_Loc_Filename (V, Length'Access);
 
    begin
-      if Str = Null_Ptr then
-         return "";
-      else
-         return Value (Str);
-      end if;
+      return Str;
    end Get_Debug_Loc_Filename;
 
    -----------------------------
@@ -83,15 +76,10 @@ package body CCG.Helper is
 
    function Get_Debug_Loc_Directory (V : Value_T) return String is
       Length : aliased unsigned;
-      Str    : constant chars_ptr :=
-        Get_Debug_Loc_Directory_C (V, Length'Access);
+      Str    : constant String := Get_Debug_Loc_Directory (V, Length'Access);
 
    begin
-      if Str = Null_Ptr then
-         return "";
-      else
-         return Value (Str);
-      end if;
+      return Str;
    end Get_Debug_Loc_Directory;
 
    ------------------------

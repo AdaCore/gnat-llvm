@@ -17,8 +17,6 @@
 
 with System;
 
-with stdint_h;
-
 package GNATLLVM.Wrapper is
 
    function Get_Latest_Instruction (Bld : Builder_T) return Value_T
@@ -299,7 +297,7 @@ package GNATLLVM.Wrapper is
       Typ       : Type_T;
       Exp       : Int;
       Num_Words : unsigned;
-      Words     : access stdint_h.uint64_t) return Value_T
+      Words     : access Interfaces.C.unsigned_long) return Value_T
      with Import, Convention => C,
           External_Name => "Get_Float_From_Words_And_Exp";
 

@@ -181,7 +181,7 @@ package body GNATLLVM.DebugInfo is
    ----------------
 
    procedure Initialize is
-      Exp : aliased stdint_h.int64_t;
+      Exp : aliased Interfaces.C.unsigned_long;
 
    begin
       --  If we're emitting debug info, set up everything we need to do  so.

@@ -21,7 +21,11 @@ package body LLVM.Error is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Error_Message (Err);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Error_Message;
 
    procedure Dispose_Error_Message

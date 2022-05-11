@@ -23,7 +23,11 @@ package body LLVM.Core is
       Message_String : constant chars_ptr := To_Chars_Ptr (Message_Array'Unchecked_Access);
    begin
       Return_Value := Create_Message (Message_String);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Create_Message;
 
    procedure Dispose_Message
@@ -84,7 +88,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Diag_Info_Description (DI);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Diag_Info_Description;
 
    function Get_MD_Kind_ID_In_Context
@@ -192,7 +200,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_String_Attribute_Kind (A, Length);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_String_Attribute_Kind;
 
    function Get_String_Attribute_Value
@@ -210,7 +222,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_String_Attribute_Value (A, Length);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_String_Attribute_Value;
 
    function Is_Enum_Attribute
@@ -334,7 +350,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Module_Identifier (M, Len);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Module_Identifier;
 
    procedure Set_Module_Identifier
@@ -370,7 +390,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Source_File_Name (M, Len);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Source_File_Name;
 
    procedure Set_Source_File_Name
@@ -404,7 +428,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Data_Layout_Str (M);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Data_Layout_Str;
 
    function Get_Data_Layout
@@ -420,7 +448,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Data_Layout (M);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Data_Layout;
 
    procedure Set_Data_Layout
@@ -452,7 +484,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Target (M);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Target;
 
    procedure Set_Target
@@ -488,7 +524,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Module_Flag_Entries_Get_Key (Entries, Index, Len);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Module_Flag_Entries_Get_Key;
 
    function Get_Module_Flag
@@ -582,7 +622,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Print_Module_To_String (M);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Print_Module_To_String;
 
    function Get_Module_Inline_Asm
@@ -600,7 +644,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Module_Inline_Asm (M, Len);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Module_Inline_Asm;
 
    procedure Set_Module_Inline_Asm_2
@@ -775,7 +823,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Named_Metadata_Name (Named_MD, Name_Len);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Named_Metadata_Name;
 
    function Get_Named_Metadata_Num_Operands
@@ -849,7 +901,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Debug_Loc_Directory (Val, Length);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Debug_Loc_Directory;
 
    function Get_Debug_Loc_Filename
@@ -867,7 +923,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Debug_Loc_Filename (Val, Length);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Debug_Loc_Filename;
 
    function Add_Function
@@ -957,7 +1017,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Print_Type_To_String (Val);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Print_Type_To_String;
 
    function Function_Type
@@ -1076,7 +1140,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Struct_Name (Ty);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Struct_Name;
 
    procedure Struct_Set_Body
@@ -1161,7 +1229,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Value_Name_2 (Val, Length);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Value_Name_2;
 
    procedure Set_Value_Name_2
@@ -1195,7 +1267,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Print_Value_To_String (Val);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Print_Value_To_String;
 
    function Is_Constant
@@ -1259,7 +1335,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Value_Name (Val);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Value_Name;
 
    procedure Set_Value_Name
@@ -1507,7 +1587,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_As_String (C, Length);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_As_String;
 
    function Const_Struct_In_Context
@@ -1648,7 +1732,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Section (Global);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Section;
 
    procedure Set_Section
@@ -1980,7 +2068,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Intrinsic_Get_Name (ID, Name_Length);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Intrinsic_Get_Name;
 
    function Intrinsic_Copy_Overloaded_Name
@@ -2002,7 +2094,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Intrinsic_Copy_Overloaded_Name (ID, Param_Types, Param_Count, Name_Length);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Intrinsic_Copy_Overloaded_Name;
 
    function Intrinsic_Copy_Overloaded_Name_2
@@ -2026,7 +2122,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Intrinsic_Copy_Overloaded_Name_2 (C_Mod, ID, Param_Types, Param_Count, Name_Length);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Intrinsic_Copy_Overloaded_Name_2;
 
    function Intrinsic_Is_Overloaded
@@ -2058,7 +2158,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_GC (Fn);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_GC;
 
    procedure Set_GC
@@ -2228,7 +2332,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_MD_String (V, Length);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_MD_String;
 
    function MD_String_In_Context
@@ -2302,7 +2410,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Basic_Block_Name (BB);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Basic_Block_Name;
 
    function Create_Basic_Block_In_Context
@@ -5109,7 +5221,11 @@ package body LLVM.Core is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Buffer_Start (Mem_Buf);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Buffer_Start;
 
    function Run_Pass_Manager

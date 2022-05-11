@@ -21,7 +21,11 @@ package body LLVM.Remarks is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Remark_String_Get_Data (Str);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Remark_String_Get_Data;
 
    function Remark_Parser_Has_Error
@@ -53,7 +57,11 @@ package body LLVM.Remarks is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Remark_Parser_Get_Error_Message (Parser);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Remark_Parser_Get_Error_Message;
 
 end LLVM.Remarks;

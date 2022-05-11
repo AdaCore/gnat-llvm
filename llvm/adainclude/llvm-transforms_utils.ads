@@ -34,19 +34,19 @@ package LLVM.Transforms_Utils is
   --  
 
   --* See llvm::createLowerSwitchPass function.  
-   procedure Add_Lower_Switch_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/Utils.h:35
+   procedure Add_Lower_Switch_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Utils.h:35
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddLowerSwitchPass";
 
   --* See llvm::createPromoteMemoryToRegisterPass function.  
-   procedure Add_Promote_Memory_To_Register_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/Utils.h:38
+   procedure Add_Promote_Memory_To_Register_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Utils.h:38
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddPromoteMemoryToRegisterPass";
 
   --* See llvm::createAddDiscriminatorsPass function.  
-   procedure Add_Add_Discriminators_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/Utils.h:41
+   procedure Add_Add_Discriminators_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Utils.h:41
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddAddDiscriminatorsPass";

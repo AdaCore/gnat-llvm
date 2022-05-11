@@ -81,7 +81,11 @@ package body LLVM.Object is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Section_Name (SI);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Section_Name;
 
    function Get_Section_Contents
@@ -97,7 +101,11 @@ package body LLVM.Object is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Section_Contents (SI);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Section_Contents;
 
    function Get_Section_Contains_Symbol
@@ -149,7 +157,11 @@ package body LLVM.Object is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Symbol_Name (SI);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Symbol_Name;
 
    function Get_Relocation_Type_Name
@@ -165,7 +177,11 @@ package body LLVM.Object is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Relocation_Type_Name (RI);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Relocation_Type_Name;
 
    function Get_Relocation_Value_String
@@ -181,7 +197,11 @@ package body LLVM.Object is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Relocation_Value_String (RI);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Relocation_Value_String;
 
    function Is_Section_Iterator_At_End

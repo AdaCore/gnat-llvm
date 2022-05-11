@@ -39,15 +39,15 @@ package LLVM.Object is
   -- Opaque type wrappers
    type Opaque_Section_Iterator_Impl_T is null record;   -- incomplete struct
 
-   type Section_Iterator_T is access all Opaque_Section_Iterator_Impl_T;  -- llvm-14.0.1.install/include/llvm-c/Object.h:36
+   type Section_Iterator_T is access all Opaque_Section_Iterator_Impl_T;  -- install/include/llvm-c/Object.h:36
 
    type Opaque_Symbol_Iterator_Impl_T is null record;   -- incomplete struct
 
-   type Symbol_Iterator_T is access all Opaque_Symbol_Iterator_Impl_T;  -- llvm-14.0.1.install/include/llvm-c/Object.h:37
+   type Symbol_Iterator_T is access all Opaque_Symbol_Iterator_Impl_T;  -- install/include/llvm-c/Object.h:37
 
    type Opaque_Relocation_Iterator_Impl_T is null record;   -- incomplete struct
 
-   type Relocation_Iterator_T is access all Opaque_Relocation_Iterator_Impl_T;  -- llvm-14.0.1.install/include/llvm-c/Object.h:38
+   type Relocation_Iterator_T is access all Opaque_Relocation_Iterator_Impl_T;  -- install/include/llvm-c/Object.h:38
 
   --*< Archive file.  
   --*< Mach-O Universal Binary file.  
@@ -80,7 +80,7 @@ package LLVM.Object is
       Binary_Type_Mach_O64L,
       Binary_Type_Mach_O64B,
       Binary_Type_Wasm)
-   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/Object.h:56
+   with Convention => C;  -- install/include/llvm-c/Object.h:56
 
   --*
   -- * Create a binary file from the given memory buffer.
@@ -102,7 +102,7 @@ package LLVM.Object is
    function Create_Binary
      (Mem_Buf : LLVM.Types.Memory_Buffer_T;
       Context : LLVM.Types.Context_T;
-      Error_Message : System.Address) return LLVM.Types.Binary_T  -- llvm-14.0.1.install/include/llvm-c/Object.h:74
+      Error_Message : System.Address) return LLVM.Types.Binary_T  -- install/include/llvm-c/Object.h:74
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMCreateBinary";
@@ -114,7 +114,7 @@ package LLVM.Object is
   -- * of the caller to free it with \c LLVMDisposeMemoryBuffer.
   --  
 
-   procedure Dispose_Binary (BR : LLVM.Types.Binary_T)  -- llvm-14.0.1.install/include/llvm-c/Object.h:84
+   procedure Dispose_Binary (BR : LLVM.Types.Binary_T)  -- install/include/llvm-c/Object.h:84
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDisposeBinary";
@@ -129,7 +129,7 @@ package LLVM.Object is
   -- * @see llvm::object::getMemoryBufferRef
   --  
 
-   function Binary_Copy_Memory_Buffer (BR : LLVM.Types.Binary_T) return LLVM.Types.Memory_Buffer_T  -- llvm-14.0.1.install/include/llvm-c/Object.h:95
+   function Binary_Copy_Memory_Buffer (BR : LLVM.Types.Binary_T) return LLVM.Types.Memory_Buffer_T  -- install/include/llvm-c/Object.h:95
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMBinaryCopyMemoryBuffer";
@@ -140,7 +140,7 @@ package LLVM.Object is
   -- * @see llvm::object::Binary::getType
   --  
 
-   function Binary_Get_Type (BR : LLVM.Types.Binary_T) return Binary_Type_T  -- llvm-14.0.1.install/include/llvm-c/Object.h:102
+   function Binary_Get_Type (BR : LLVM.Types.Binary_T) return Binary_Type_T  -- install/include/llvm-c/Object.h:102
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMBinaryGetType";
@@ -175,7 +175,7 @@ function Mach_O_Universal_Binary_Copy_Object_For_Arch
   -- * @see llvm::object::sections()
   --  
 
-   function Object_File_Copy_Section_Iterator (BR : LLVM.Types.Binary_T) return Section_Iterator_T  -- llvm-14.0.1.install/include/llvm-c/Object.h:131
+   function Object_File_Copy_Section_Iterator (BR : LLVM.Types.Binary_T) return Section_Iterator_T  -- install/include/llvm-c/Object.h:131
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMObjectFileCopySectionIterator";
@@ -203,7 +203,7 @@ function Object_File_Is_Section_Iterator_At_End
   -- * @see llvm::object::symbols()
   --  
 
-   function Object_File_Copy_Symbol_Iterator (BR : LLVM.Types.Binary_T) return Symbol_Iterator_T  -- llvm-14.0.1.install/include/llvm-c/Object.h:152
+   function Object_File_Copy_Symbol_Iterator (BR : LLVM.Types.Binary_T) return Symbol_Iterator_T  -- install/include/llvm-c/Object.h:152
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMObjectFileCopySymbolIterator";
@@ -219,28 +219,28 @@ function Object_File_Is_Symbol_Iterator_At_End
       SI : Symbol_Iterator_T)
       return Boolean;
 
-   procedure Dispose_Section_Iterator (SI : Section_Iterator_T)  -- llvm-14.0.1.install/include/llvm-c/Object.h:162
+   procedure Dispose_Section_Iterator (SI : Section_Iterator_T)  -- install/include/llvm-c/Object.h:162
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDisposeSectionIterator";
 
-   procedure Move_To_Next_Section (SI : Section_Iterator_T)  -- llvm-14.0.1.install/include/llvm-c/Object.h:164
+   procedure Move_To_Next_Section (SI : Section_Iterator_T)  -- install/include/llvm-c/Object.h:164
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMMoveToNextSection";
 
-   procedure Move_To_Containing_Section (Sect : Section_Iterator_T; Sym : Symbol_Iterator_T)  -- llvm-14.0.1.install/include/llvm-c/Object.h:165
+   procedure Move_To_Containing_Section (Sect : Section_Iterator_T; Sym : Symbol_Iterator_T)  -- install/include/llvm-c/Object.h:165
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMMoveToContainingSection";
 
   -- ObjectFile Symbol iterators
-   procedure Dispose_Symbol_Iterator (SI : Symbol_Iterator_T)  -- llvm-14.0.1.install/include/llvm-c/Object.h:169
+   procedure Dispose_Symbol_Iterator (SI : Symbol_Iterator_T)  -- install/include/llvm-c/Object.h:169
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDisposeSymbolIterator";
 
-   procedure Move_To_Next_Symbol (SI : Symbol_Iterator_T)  -- llvm-14.0.1.install/include/llvm-c/Object.h:170
+   procedure Move_To_Next_Symbol (SI : Symbol_Iterator_T)  -- install/include/llvm-c/Object.h:170
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMMoveToNextSymbol";
@@ -250,7 +250,7 @@ function Get_Section_Name
      (SI : Section_Iterator_T)
       return String;
 
-   function Get_Section_Size (SI : Section_Iterator_T) return stdint_h.uint64_t  -- llvm-14.0.1.install/include/llvm-c/Object.h:174
+   function Get_Section_Size (SI : Section_Iterator_T) return stdint_h.uint64_t  -- install/include/llvm-c/Object.h:174
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetSectionSize";
@@ -259,7 +259,7 @@ function Get_Section_Contents
      (SI : Section_Iterator_T)
       return String;
 
-   function Get_Section_Address (SI : Section_Iterator_T) return stdint_h.uint64_t  -- llvm-14.0.1.install/include/llvm-c/Object.h:176
+   function Get_Section_Address (SI : Section_Iterator_T) return stdint_h.uint64_t  -- install/include/llvm-c/Object.h:176
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetSectionAddress";
@@ -270,12 +270,12 @@ function Get_Section_Contains_Symbol
       return Boolean;
 
   -- Section Relocation iterators
-   function Get_Relocations (Section : Section_Iterator_T) return Relocation_Iterator_T  -- llvm-14.0.1.install/include/llvm-c/Object.h:181
+   function Get_Relocations (Section : Section_Iterator_T) return Relocation_Iterator_T  -- install/include/llvm-c/Object.h:181
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetRelocations";
 
-   procedure Dispose_Relocation_Iterator (RI : Relocation_Iterator_T)  -- llvm-14.0.1.install/include/llvm-c/Object.h:182
+   procedure Dispose_Relocation_Iterator (RI : Relocation_Iterator_T)  -- install/include/llvm-c/Object.h:182
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDisposeRelocationIterator";
@@ -285,7 +285,7 @@ function Is_Relocation_Iterator_At_End
       RI      : Relocation_Iterator_T)
       return Boolean;
 
-   procedure Move_To_Next_Relocation (RI : Relocation_Iterator_T)  -- llvm-14.0.1.install/include/llvm-c/Object.h:185
+   procedure Move_To_Next_Relocation (RI : Relocation_Iterator_T)  -- install/include/llvm-c/Object.h:185
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMMoveToNextRelocation";
@@ -295,28 +295,28 @@ function Get_Symbol_Name
      (SI : Symbol_Iterator_T)
       return String;
 
-   function Get_Symbol_Address (SI : Symbol_Iterator_T) return stdint_h.uint64_t  -- llvm-14.0.1.install/include/llvm-c/Object.h:190
+   function Get_Symbol_Address (SI : Symbol_Iterator_T) return stdint_h.uint64_t  -- install/include/llvm-c/Object.h:190
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetSymbolAddress";
 
-   function Get_Symbol_Size (SI : Symbol_Iterator_T) return stdint_h.uint64_t  -- llvm-14.0.1.install/include/llvm-c/Object.h:191
+   function Get_Symbol_Size (SI : Symbol_Iterator_T) return stdint_h.uint64_t  -- install/include/llvm-c/Object.h:191
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetSymbolSize";
 
   -- RelocationRef accessors
-   function Get_Relocation_Offset (RI : Relocation_Iterator_T) return stdint_h.uint64_t  -- llvm-14.0.1.install/include/llvm-c/Object.h:194
+   function Get_Relocation_Offset (RI : Relocation_Iterator_T) return stdint_h.uint64_t  -- install/include/llvm-c/Object.h:194
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetRelocationOffset";
 
-   function Get_Relocation_Symbol (RI : Relocation_Iterator_T) return Symbol_Iterator_T  -- llvm-14.0.1.install/include/llvm-c/Object.h:195
+   function Get_Relocation_Symbol (RI : Relocation_Iterator_T) return Symbol_Iterator_T  -- install/include/llvm-c/Object.h:195
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetRelocationSymbol";
 
-   function Get_Relocation_Type (RI : Relocation_Iterator_T) return stdint_h.uint64_t  -- llvm-14.0.1.install/include/llvm-c/Object.h:196
+   function Get_Relocation_Type (RI : Relocation_Iterator_T) return stdint_h.uint64_t  -- install/include/llvm-c/Object.h:196
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetRelocationType";
@@ -334,22 +334,22 @@ function Get_Relocation_Value_String
   --* Deprecated: Use LLVMBinaryRef instead.  
    type Opaque_Object_File_Impl_T is null record;   -- incomplete struct
 
-   type Object_File_T is access all Opaque_Object_File_Impl_T;  -- llvm-14.0.1.install/include/llvm-c/Object.h:203
+   type Object_File_T is access all Opaque_Object_File_Impl_T;  -- install/include/llvm-c/Object.h:203
 
   --* Deprecated: Use LLVMCreateBinary instead.  
-   function Create_Object_File (Mem_Buf : LLVM.Types.Memory_Buffer_T) return Object_File_T  -- llvm-14.0.1.install/include/llvm-c/Object.h:206
+   function Create_Object_File (Mem_Buf : LLVM.Types.Memory_Buffer_T) return Object_File_T  -- install/include/llvm-c/Object.h:206
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMCreateObjectFile";
 
   --* Deprecated: Use LLVMDisposeBinary instead.  
-   procedure Dispose_Object_File (Object_File : Object_File_T)  -- llvm-14.0.1.install/include/llvm-c/Object.h:209
+   procedure Dispose_Object_File (Object_File : Object_File_T)  -- install/include/llvm-c/Object.h:209
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDisposeObjectFile";
 
   --* Deprecated: Use LLVMObjectFileCopySectionIterator instead.  
-   function Get_Sections (Object_File : Object_File_T) return Section_Iterator_T  -- llvm-14.0.1.install/include/llvm-c/Object.h:212
+   function Get_Sections (Object_File : Object_File_T) return Section_Iterator_T  -- install/include/llvm-c/Object.h:212
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetSections";
@@ -361,7 +361,7 @@ function Is_Section_Iterator_At_End
       return Boolean;
 
   --* Deprecated: Use LLVMObjectFileCopySymbolIterator instead.  
-   function Get_Symbols (Object_File : Object_File_T) return Symbol_Iterator_T  -- llvm-14.0.1.install/include/llvm-c/Object.h:219
+   function Get_Symbols (Object_File : Object_File_T) return Symbol_Iterator_T  -- install/include/llvm-c/Object.h:219
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetSymbols";

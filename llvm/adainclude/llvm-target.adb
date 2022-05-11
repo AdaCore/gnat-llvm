@@ -39,7 +39,11 @@ package body LLVM.Target is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Copy_String_Rep_Of_Target_Data (TD);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Copy_String_Rep_Of_Target_Data;
 
 end LLVM.Target;

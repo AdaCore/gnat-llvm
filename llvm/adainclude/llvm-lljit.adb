@@ -21,7 +21,11 @@ package body LLVM.LLJIT is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Orc_LLJIT_Get_Triple_String (J);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Orc_LLJIT_Get_Triple_String;
 
    function Orc_LLJIT_Mangle_And_Intern
@@ -79,7 +83,11 @@ package body LLVM.LLJIT is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Orc_LLJIT_Get_Data_Layout_Str (J);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Orc_LLJIT_Get_Data_Layout_Str;
 
 end LLVM.LLJIT;

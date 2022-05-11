@@ -36,7 +36,7 @@ package LLVM.Linker is
    type Linker_Mode_T is 
      (Linker_Destroy_Source,
       Linker_Preserve_Source_Removed)
-   with Convention => C;  -- llvm-14.0.1.install/include/llvm-c/Linker.h:34
+   with Convention => C;  -- install/include/llvm-c/Linker.h:34
 
   -- Links the source module into the destination module. The source module is
   -- * destroyed.

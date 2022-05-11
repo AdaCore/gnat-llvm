@@ -30,7 +30,7 @@ package LLVM.Transforms_Aggressive_Inst_Combine is
   --  
 
   --* See llvm::createAggressiveInstCombinerPass function.  
-   procedure Add_Aggressive_Inst_Combiner_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/AggressiveInstCombine.h:31
+   procedure Add_Aggressive_Inst_Combiner_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/AggressiveInstCombine.h:31
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddAggressiveInstCombinerPass";

@@ -30,7 +30,7 @@ package LLVM.Transforms_Inst_Combine is
   --  
 
   --* See llvm::createInstructionCombiningPass function.  
-   procedure Add_Instruction_Combining_Pass (PM : LLVM.Types.Pass_Manager_T)  -- llvm-14.0.1.install/include/llvm-c/Transforms/InstCombine.h:31
+   procedure Add_Instruction_Combining_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/InstCombine.h:31
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddInstructionCombiningPass";

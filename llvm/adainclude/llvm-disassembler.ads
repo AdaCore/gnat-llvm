@@ -12,15 +12,15 @@ with stddef_h;
 
 package LLVM.Disassembler is
 
-   LLVMDisassembler_Option_UseMarkup : constant := 1;  --  llvm-14.0.1.install/include/llvm-c/Disassembler.h:75
+   LLVMDisassembler_Option_UseMarkup : constant := 1;  --  install/include/llvm-c/Disassembler.h:75
 
-   LLVMDisassembler_Option_PrintImmHex : constant := 2;  --  llvm-14.0.1.install/include/llvm-c/Disassembler.h:77
+   LLVMDisassembler_Option_PrintImmHex : constant := 2;  --  install/include/llvm-c/Disassembler.h:77
 
-   LLVMDisassembler_Option_AsmPrinterVariant : constant := 4;  --  llvm-14.0.1.install/include/llvm-c/Disassembler.h:79
+   LLVMDisassembler_Option_AsmPrinterVariant : constant := 4;  --  install/include/llvm-c/Disassembler.h:79
 
-   LLVMDisassembler_Option_SetInstrComments : constant := 8;  --  llvm-14.0.1.install/include/llvm-c/Disassembler.h:81
+   LLVMDisassembler_Option_SetInstrComments : constant := 8;  --  install/include/llvm-c/Disassembler.h:81
 
-   LLVMDisassembler_Option_PrintLatency : constant := 16;  --  llvm-14.0.1.install/include/llvm-c/Disassembler.h:83
+   LLVMDisassembler_Option_PrintLatency : constant := 16;  --  install/include/llvm-c/Disassembler.h:83
 
   --===-- llvm-c/Disassembler.h - Disassembler Public C Interface ---*- C -*-===*|*                                                                            *|
   --|
@@ -101,7 +101,7 @@ function Create_Disasm_CPU_Features
   -- * otherwise.
   --  
 
-   function Set_Disasm_Options (DC : LLVM.Disassembler_Types.Disasm_Context_T; Options : stdint_h.uint64_t) return int  -- llvm-14.0.1.install/include/llvm-c/Disassembler.h:72
+   function Set_Disasm_Options (DC : LLVM.Disassembler_Types.Disasm_Context_T; Options : stdint_h.uint64_t) return int  -- install/include/llvm-c/Disassembler.h:72
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMSetDisasmOptions";
@@ -115,7 +115,7 @@ function Create_Disasm_CPU_Features
   -- * Dispose of a disassembler context.
   --  
 
-   procedure Disasm_Dispose (DC : LLVM.Disassembler_Types.Disasm_Context_T)  -- llvm-14.0.1.install/include/llvm-c/Disassembler.h:88
+   procedure Disasm_Dispose (DC : LLVM.Disassembler_Types.Disasm_Context_T)  -- install/include/llvm-c/Disassembler.h:88
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDisasmDispose";

@@ -44,7 +44,7 @@ package LLVM.Orc_EE is
   -- * SectionMemoryManager for memory management.
   --  
 
-   function Orc_Create_RT_Dyld_Object_Linking_Layer_With_Section_Memory_Manager (ES : LLVM.Orc.Orc_Execution_Session_T) return LLVM.Orc.Orc_Object_Layer_T  -- llvm-14.0.1.install/include/llvm-c/OrcEE.h:47
+   function Orc_Create_RT_Dyld_Object_Linking_Layer_With_Section_Memory_Manager (ES : LLVM.Orc.Orc_Execution_Session_T) return LLVM.Orc.Orc_Object_Layer_T  -- install/include/llvm-c/OrcEE.h:47
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcCreateRTDyldObjectLinkingLayerWithSectionMemoryManager";
@@ -56,7 +56,7 @@ package LLVM.Orc_EE is
   -- * behavior is undefined.
   --  
 
-   procedure Orc_RT_Dyld_Object_Linking_Layer_Register_JIT_Event_Listener (RT_Dyld_Obj_Linking_Layer : LLVM.Orc.Orc_Object_Layer_T; Listener : LLVM.Types.JIT_Event_Listener_T)  -- llvm-14.0.1.install/include/llvm-c/OrcEE.h:56
+   procedure Orc_RT_Dyld_Object_Linking_Layer_Register_JIT_Event_Listener (RT_Dyld_Obj_Linking_Layer : LLVM.Orc.Orc_Object_Layer_T; Listener : LLVM.Types.JIT_Event_Listener_T)  -- install/include/llvm-c/OrcEE.h:56
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcRTDyldObjectLinkingLayerRegisterJITEventListener";

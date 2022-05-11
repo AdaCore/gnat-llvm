@@ -9,7 +9,7 @@ with Interfaces.C.Strings;
 
 package LLVM.Error is
 
-   LLVMErrorSuccess : constant := 0;  --  llvm-14.0.1.install/include/llvm-c/Error.h:28
+   LLVMErrorSuccess : constant := 0;  --  install/include/llvm-c/Error.h:28
 
   --===------- llvm-c/Error.h - llvm::Error class C Interface -------*- C -*-===*|*                                                                            *|
   --|
@@ -37,20 +37,20 @@ package LLVM.Error is
 
    type Opaque_Error_Impl_T is null record;   -- incomplete struct
 
-   type Error_T is access all Opaque_Error_Impl_T;  -- llvm-14.0.1.install/include/llvm-c/Error.h:33
+   type Error_T is access all Opaque_Error_Impl_T;  -- install/include/llvm-c/Error.h:33
 
   --*
   -- * Error type identifier.
   --  
 
-   type Error_Type_Id_T is new System.Address;  -- llvm-14.0.1.install/include/llvm-c/Error.h:38
+   type Error_Type_Id_T is new System.Address;  -- install/include/llvm-c/Error.h:38
 
   --*
   -- * Returns the type id for the given error instance, which must be a failure
   -- * value (i.e. non-null).
   --  
 
-   function Get_Error_Type_Id (Err : Error_T) return Error_Type_Id_T  -- llvm-14.0.1.install/include/llvm-c/Error.h:44
+   function Get_Error_Type_Id (Err : Error_T) return Error_Type_Id_T  -- install/include/llvm-c/Error.h:44
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetErrorTypeId";
@@ -62,7 +62,7 @@ package LLVM.Error is
   -- * to some other consuming operation, e.g. LLVMGetErrorMessage.
   --  
 
-   procedure Consume_Error (Err : Error_T)  -- llvm-14.0.1.install/include/llvm-c/Error.h:52
+   procedure Consume_Error (Err : Error_T)  -- install/include/llvm-c/Error.h:52
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMConsumeError";
@@ -89,7 +89,7 @@ procedure Dispose_Error_Message
   -- * Returns the type id for llvm StringError.
   --  
 
-   function Get_String_Error_Type_Id return Error_Type_Id_T  -- llvm-14.0.1.install/include/llvm-c/Error.h:70
+   function Get_String_Error_Type_Id return Error_Type_Id_T  -- install/include/llvm-c/Error.h:70
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGetStringErrorTypeId";

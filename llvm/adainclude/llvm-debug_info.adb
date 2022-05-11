@@ -349,7 +349,11 @@ package body LLVM.Debug_Info is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := DI_File_Get_Directory (File, Len);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end DI_File_Get_Directory;
 
    function DI_File_Get_Filename
@@ -367,7 +371,11 @@ package body LLVM.Debug_Info is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := DI_File_Get_Filename (File, Len);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end DI_File_Get_Filename;
 
    function DI_File_Get_Source
@@ -385,7 +393,11 @@ package body LLVM.Debug_Info is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := DI_File_Get_Source (File, Len);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end DI_File_Get_Source;
 
    function DI_Builder_Create_Macro
@@ -1054,7 +1066,11 @@ package body LLVM.Debug_Info is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := DI_Type_Get_Name (D_Type, Length);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end DI_Type_Get_Name;
 
    function DI_Builder_Create_Global_Variable_Expression

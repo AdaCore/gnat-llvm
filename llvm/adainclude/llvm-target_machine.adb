@@ -73,7 +73,11 @@ package body LLVM.Target_Machine is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Target_Name (T);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Target_Name;
 
    function Get_Target_Description
@@ -89,7 +93,11 @@ package body LLVM.Target_Machine is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Target_Description (T);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Target_Description;
 
    function Target_Has_JIT
@@ -187,7 +195,11 @@ package body LLVM.Target_Machine is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Target_Machine_Triple (T);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Target_Machine_Triple;
 
    function Get_Target_Machine_CPU
@@ -203,7 +215,11 @@ package body LLVM.Target_Machine is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Target_Machine_CPU (T);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Target_Machine_CPU;
 
    function Get_Target_Machine_Feature_String
@@ -219,7 +235,11 @@ package body LLVM.Target_Machine is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Target_Machine_Feature_String (T);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Target_Machine_Feature_String;
 
    procedure Set_Target_Machine_Asm_Verbosity
@@ -312,7 +332,11 @@ package body LLVM.Target_Machine is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Default_Target_Triple;
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Default_Target_Triple;
 
    function Normalize_Target_Triple
@@ -330,7 +354,11 @@ package body LLVM.Target_Machine is
       Triple_String : constant chars_ptr := To_Chars_Ptr (Triple_Array'Unchecked_Access);
    begin
       Return_Value := Normalize_Target_Triple (Triple_String);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Normalize_Target_Triple;
 
    function Get_Host_CPU_Name
@@ -344,7 +372,11 @@ package body LLVM.Target_Machine is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Host_CPU_Name;
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Host_CPU_Name;
 
    function Get_Host_CPU_Features
@@ -358,7 +390,11 @@ package body LLVM.Target_Machine is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Host_CPU_Features;
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Host_CPU_Features;
 
 end LLVM.Target_Machine;

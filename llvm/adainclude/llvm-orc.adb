@@ -41,7 +41,11 @@ package body LLVM.Orc is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Orc_Symbol_String_Pool_Entry_Str (S);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Orc_Symbol_String_Pool_Entry_Str;
 
    function Orc_Create_Custom_Materialization_Unit
@@ -203,7 +207,11 @@ package body LLVM.Orc is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Orc_JIT_Target_Machine_Builder_Get_Target_Triple (JTMB);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Orc_JIT_Target_Machine_Get_Target_Triple;
 
    procedure Orc_JIT_Target_Machine_Builder_Set_Target_Triple

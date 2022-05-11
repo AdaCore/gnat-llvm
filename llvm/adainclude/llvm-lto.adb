@@ -19,7 +19,11 @@ package body LLVM.Lto is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Version;
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Version;
 
    function Get_Error_Message
@@ -33,7 +37,11 @@ package body LLVM.Lto is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_Error_Message;
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_Error_Message;
 
    function Module_Is_Object_File
@@ -245,7 +253,11 @@ package body LLVM.Lto is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Module_Get_Target_Triple (C_Mod);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Module_Get_Target_Triple;
 
    procedure Module_Set_Target_Triple
@@ -279,7 +291,11 @@ package body LLVM.Lto is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Module_Get_Symbol_Name (C_Mod, Index);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Module_Get_Symbol_Name;
 
    function Module_Get_Linkeropts
@@ -295,7 +311,11 @@ package body LLVM.Lto is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Module_Get_Linkeropts (C_Mod);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Module_Get_Linkeropts;
 
    procedure Codegen_Set_Cpu
@@ -421,7 +441,11 @@ package body LLVM.Lto is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Input_Get_Dependent_Library (Input, Index, Size);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Input_Get_Dependent_Library;
 
    procedure thinlto_codegen_add_module
@@ -461,7 +485,11 @@ package body LLVM.Lto is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := thinlto_module_get_object_file (Cg, Index);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end thinlto_module_get_object_file;
 
    procedure thinlto_codegen_set_savetemps_dir

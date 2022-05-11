@@ -57,7 +57,12 @@ class C_String_Transformer(AllTypesTransformer):
         return (local_vars, chars_ptr.name)
 
     def convert_return(self, ret_variable):
-        return ['return Value ({});'.format(ret_variable.name)]
+        return [
+            'if {} /= Null_Ptr then'.format(ret_variable.name),
+            '   return Value ({});'.format(ret_variable.name),
+            'else',
+            '   return "";',
+            'end if;']
 
 
 class LLVM_Bool_Transformer(AllTypesTransformer):

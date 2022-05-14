@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Interfaces; use Interfaces;
-with Interfaces.C;
 
 with stdint_h; use stdint_h;
 
@@ -59,7 +58,7 @@ package body Uintp.LLVM is
          return ULL (UI_To_Int (U));
       else
          declare
-            Words  : constant Word_Array := Big_UI_To_Words (U);
+            Words : constant Word_Array := Big_UI_To_Words (U);
          begin
             --  We assume that ULL is no wider than an element of Word_Array,
             --  but is no narrower than Int.
@@ -96,13 +95,12 @@ package body Uintp.LLVM is
 
    function UI_To_Words (U : Uint) return Word_Array is
       Words : Word_Array (1 .. 1);
-
    begin
       --  If this fits in an int, get that value.  We can't use
       --  Big_UI_To_Words for many integer values due to the way Uint works.
 
       if UI_Is_In_Int_Range (U) then
-         Words (1) := Interfaces.C.unsigned_long (UI_To_Int (U));
+         Words (1) := uint64_t (UI_To_Int (U));
          return Words;
       else
          return Big_UI_To_Words (U);
@@ -155,7 +153,7 @@ package body Uintp.LLVM is
             begin
                --  First finish filling the current word
 
-               Words (Cur_Word) := Interfaces.C.unsigned_long
+               Words (Cur_Word) := uint64_t
                  (Unsigned_64 (Words (Cur_Word))
                   or Shift_Right (Buffer, Integer (Left_Over)));
 
@@ -169,8 +167,7 @@ package body Uintp.LLVM is
             end;
          end if;
 
-         Words (Cur_Word) := Interfaces.C.unsigned_long
-           (Unsigned_64 (Words (Cur_Word))
+         Words (Cur_Word) := uint64_t (Unsigned_64 (Words (Cur_Word))
             or Shift_Left (Buffer, Integer (Cur_Bit - Buffer_Length)));
          Cur_Bit := Cur_Bit - Buffer_Length;
 

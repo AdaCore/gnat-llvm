@@ -18,6 +18,8 @@
 with System;
 with System.Storage_Elements; use System.Storage_Elements;
 
+with stdint_h; use stdint_h;
+
 with Ada.Containers;             use Ada.Containers;
 with Ada.Containers.Hashed_Maps;
 with Ada.Unchecked_Conversion;
@@ -215,8 +217,7 @@ package GNATLLVM is
    type Unique_Id is range Unique_Id_Low_Bound .. Unique_Id_High_Bound;
    No_Unique_Id         : constant Unique_Id := Unique_Id_Low_Bound;
 
-   type Word_Array is array (Nat range <>)
-     of aliased Interfaces.C.unsigned_long;
+   type Word_Array is array (Nat range <>) of aliased uint64_t;
    --  Array of words for LLVM construction functions
 
    type String_Access is access String;

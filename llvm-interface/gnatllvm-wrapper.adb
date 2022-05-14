@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with stdint_h; use stdint_h;
-
 package body GNATLLVM.Wrapper is
 
    ----------------------------------

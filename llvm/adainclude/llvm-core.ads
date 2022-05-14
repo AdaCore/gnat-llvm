@@ -3082,7 +3082,7 @@ function Const_Int
    function Const_Int_Of_Arbitrary_Precision
      (Int_Ty : LLVM.Types.Type_T;
       Num_Words : unsigned;
-      Words : access unsigned_long) return LLVM.Types.Value_T  -- install/include/llvm-c/Core.h:1942
+      Words : access stdint_h.uint64_t) return LLVM.Types.Value_T  -- install/include/llvm-c/Core.h:1942
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMConstIntOfArbitraryPrecision";

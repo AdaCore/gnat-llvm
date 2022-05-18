@@ -741,7 +741,8 @@ package GNATLLVM.Instructions is
       Name  : String := "") return GL_Value
    is
       (Initialize_Alignment
-         (G (Extract_Value (IR_Builder, +Arg, Index, Name), GT)))
+         (G (Extract_Value (IR_Builder, +Arg, Index, Name), GT,
+             SM_Object => SM_Object (Arg))))
      with  Pre  => Present (Arg) and then Present (GT),
            Post => Present (Extract_Value'Result);
 
@@ -752,7 +753,8 @@ package GNATLLVM.Instructions is
       Name  : String := "") return GL_Value
    is
      (Initialize_Alignment
-        (G_Ref (Extract_Value (IR_Builder, +Arg, Index, Name), GT)))
+        (G_Ref (Extract_Value (IR_Builder, +Arg, Index, Name), GT,
+                SM_Object => SM_Object (Arg))))
      with  Pre  => Present (Arg) and then Present (GT),
            Post => Is_Pointer (Extract_Value_To_Ref'Result);
 
@@ -765,7 +767,8 @@ package GNATLLVM.Instructions is
    is
      (Initialize_TBAA
         (Initialize_Alignment
-           (G (Extract_Value (IR_Builder, +Arg, Index, Name), GT, R))))
+           (G (Extract_Value (IR_Builder, +Arg, Index, Name), GT, R,
+               SM_Object => SM_Object (Arg)))))
      with  Pre  => Present (Arg) and then Present (GT),
            Post => Present (Extract_Value_To_Relationship'Result);
 
@@ -801,7 +804,7 @@ package GNATLLVM.Instructions is
      (Initialize_Alignment
         (G_Ref (Build_Extract_Value (IR_Builder, +Arg, Idx_Arr'Address,
                                      Idx_Arr'Length, Name),
-                GT)))
+                GT, SM_Object => SM_Object (Arg))))
      with  Pre  => Present (GT) and then Present (Arg),
            Post => Present (Extract_Value_To_Ref'Result);
 
@@ -816,7 +819,7 @@ package GNATLLVM.Instructions is
         (Initialize_Alignment
            (G (Build_Extract_Value (IR_Builder, +Arg, Idx_Arr'Address,
                                     Idx_Arr'Length, Name),
-               GT, R))))
+               GT, R, SM_Object => SM_Object (Arg)))))
      with  Pre  => Present (GT) and then Present (Arg),
            Post => Present (Extract_Value_To_Relationship'Result);
 

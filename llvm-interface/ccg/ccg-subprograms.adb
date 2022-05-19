@@ -150,9 +150,12 @@ package body CCG.Subprograms is
       end if;
 
       --  If inline was requested, mark that, but only if the language
-      --  version is recent enough.
+      --  version is recent enough and only if this isn't an extern
+      --  (because "extern inline" expects a body).
 
-      if Has_Inline_Attribute (V) and then Version > 1990 then
+      if Has_Inline_Attribute (V) and then Version > 1990
+        and then not Extern
+      then
          Result := "inline " & Result;
       end if;
 

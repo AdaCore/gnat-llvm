@@ -18,6 +18,7 @@
 with Einfo.Utils; use Einfo.Utils;
 with Errout;      use Errout;
 with Exp_Unst;    use Exp_Unst;
+with Exp_Util;    use Exp_Util;
 with Get_Targ;    use Get_Targ;
 with Lib;         use Lib;
 with Nlists;      use Nlists;
@@ -574,7 +575,10 @@ package body GNATLLVM.Subprograms is
       --  Otherwise, we return by reference if we're required to or if we
       --  need the secondary stack.
 
-      elsif Returns_By_Ref (E) or else Needs_Secondary_Stack (GT) then
+      elsif Returns_By_Ref (E)
+        or else Needs_Secondary_Stack (GT)
+        or else Is_Secondary_Stack_Thunk (E)
+      then
          return RK_By_Reference;
 
       --  If we need finalization, we must return by hidden parameter
@@ -1613,13 +1617,11 @@ package body GNATLLVM.Subprograms is
          --  an extended return statement, in which case we've already
          --  done the allocation.
 
-         elsif By_Ref (N)
-           or else (RK = RK_By_Reference
-                      and then (No (Storage_Pool (N))
-                                  or else (Present (E)
-                                             and then Is_Return_Object (E)
-                                             and then Get_Allocated_For_Return
-                                                        (E))))
+         elsif RK = RK_By_Reference
+           and then (No (Storage_Pool (N))
+                      or else (Present (E)
+                                and then Is_Return_Object (E)
+                                and then Get_Allocated_For_Return (E)))
          then
             V := Convert_Ref (Emit_LValue (Expr), GT);
 

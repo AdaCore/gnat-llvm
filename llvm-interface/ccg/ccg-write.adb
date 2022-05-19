@@ -330,7 +330,7 @@ package body CCG.Write is
             Write_Str ("0");
 
          when Pointer_Type_Kind =>
-            Write_Str ("NULL");
+            Write_Str ((if Have_Includes then "NULL" else "(void *) 0"));
 
          when Struct_Type_Kind =>
             declare
@@ -536,7 +536,7 @@ package body CCG.Write is
          end if;
 
       elsif Is_A_Constant_Pointer_Null (V) then
-         Write_Str ("NULL");
+         Write_Str ((if Have_Includes then "NULL" else "(void *) 0"));
 
       elsif Is_Undef (V) or else Is_A_Constant_Aggregate_Zero (V) then
          Write_Undef (Type_Of (V));
@@ -915,11 +915,16 @@ package body CCG.Write is
          Set_Output (Output_FD);
       end if;
 
-      --  Write the initial header info
+      --  Write the initial header info as requested
 
-      Write_Line ("#include <string.h>");
-      Write_Line ("#include <stdlib.h>");
-      Write_Line ("#include <alloca.h>");
+      if Have_Includes then
+         Write_Line ("#include <string.h>");
+         Write_Line ("#include <stdlib.h>");
+         if Version > 1990 then
+            Write_Line ("#include <alloca.h>");
+         end if;
+      end if;
+
       Write_Eol;
    end Initialize_Writing;
 

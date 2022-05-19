@@ -26,12 +26,14 @@ package body CCG.Target is
    ---------------------
 
    procedure Set_C_Parameter (Name : String; Value : String) is
-      Bool_Val : Boolean;
+      Bool_Val    : Boolean;
 
    begin
       --  First handle boolean values
 
-      if Name = "warns-parens" or else Name = "always-brace" then
+      if Name = "warns-parens" or else Name = "always-brace"
+        or else Name = "have-includes"
+      then
          if Value = "yes" or else Value = "y"
            or else Value = "true" or else Value = "t" or else Value = "on"
          then
@@ -48,8 +50,10 @@ package body CCG.Target is
 
          if Name = "warns-parens" then
             Warns_Parens := Bool_Val;
-         else --  Name = "always-brace"
+         elsif Name = "always-brace" then
             Always_Brace := Bool_Val;
+         else  -- Name = "have-includes"
+            Have_Includes := Bool_Val;
          end if;
 
       --  Now handle integer values. Make a block here to catch an exception
@@ -57,10 +61,17 @@ package body CCG.Target is
       elsif Name = "indent" or else Name = "max-depth" or else Name = "version"
       then
          declare
-            Int_Val : Integer;
+            Value_First : Integer := Value'First;
+            Int_Val     : Integer;
 
          begin
-            Int_Val := Integer'Value (Value);
+            --  For "version", we allow a leading "C", which we ignore
+
+            if Value (Value_First) = 'C' or else Value (Value_First) = 'c' then
+               Value_First := Value_First + 1;
+            end if;
+
+            Int_Val := Integer'Value (Value (Value_First .. Value'Last));
             if Name = "indent" then
                C_Indent := Int_Val;
             elsif Name = "max-depth" then

@@ -20,21 +20,24 @@ package CCG.Target is
    --  This package contains target information about the C compiler used
    --  and how to format and generate code.
 
-   C_Indent     : Integer := 2;
+   C_Indent      : Integer := 2;
    --  Number of characters to indent at each level
 
-   Warns_Parens : Boolean := True;
+   Warns_Parens  : Boolean := True;
    --  True if this C compiler will issue warning in cases where the
    --  precedence is correct but looks suspicious.
 
-   Always_Brace : Boolean := False;
+   Always_Brace  : Boolean := False;
    --  True if we're to always write C lexical blocks using braces even
    --  if they're only a single line.
 
-   Max_Depth    : Integer := (80 / 2) / (2 * C_Indent);
+   Max_Depth     : Integer := (80 / 2) / (2 * C_Indent);
    --  Maximum allowable nesting depth of constructs
 
-   Version      : Integer := 1990;
+   Have_Includes : Boolean := True;
+   --  True if we're to write #include lines for the standard C includes
+
+   Version       : Integer := 1999;
    --  C standard for which we're to write output
 
    procedure Set_C_Parameter (S : String);

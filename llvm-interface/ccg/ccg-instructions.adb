@@ -33,6 +33,7 @@ with CCG.Environment; use CCG.Environment;
 with CCG.Flow;        use CCG.Flow;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
+with CCG.Target;      use CCG.Target;
 with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Instructions is
@@ -292,6 +293,16 @@ package body CCG.Instructions is
 
          begin
             Assignment (V, TP ("(#T1) ", V) & Call + Unary);
+
+            --  We can't support alloca in very early versions of C.
+            --  ??? We should see if we can conjure up a node somehow
+            --  for this and the other usages of Error_Msg.
+
+            if Version <= 1990 then
+               Error_Msg ("dynamic stack allocation not supported in C89/C90");
+               Error_Msg
+                 ("\\specify -c-target-version=C99 or later to support this");
+            end if;
          end;
       end if;
    end Alloca_Instruction;

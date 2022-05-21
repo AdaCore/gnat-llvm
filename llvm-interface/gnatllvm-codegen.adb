@@ -15,12 +15,13 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Command_Line; use Ada.Command_Line;
+with Ada.Command_Line;  use Ada.Command_Line;
 with Ada.Directories;
+with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Interfaces;
-with Interfaces.C;     use Interfaces.C;
-with System;           use System;
-with System.OS_Lib;    use System.OS_Lib;
+with Interfaces.C;      use Interfaces.C;
+with System;            use System;
+with System.OS_Lib;     use System.OS_Lib;
 
 with LLVM.Analysis;   use LLVM.Analysis;
 with LLVM.Bit_Reader; use LLVM.Bit_Reader;
@@ -78,6 +79,7 @@ package body GNATLLVM.Codegen is
       First   : constant Integer := Switch'First;
       Last    : constant Integer := Switch_Last (Switch);
       Len     : constant Integer := Last - First + 1;
+      Idx     : Natural;
       To_Free : String_Access    := null;
 
       function Starts_With (S : String) return Boolean is
@@ -129,11 +131,20 @@ package body GNATLLVM.Codegen is
          To_Free           := Target_Triple;
          Target_Triple     := new String'(Switch_Value ("--target="));
          Target_Triple_Set := True;
+         Idx               := Index (Target_Triple.all, ":");
+         if Idx /= 0 then
+            Free (To_Free);
+            To_Free       := Target_Triple;
+            Target_Layout :=
+              new String'(Target_Triple.all (Idx + 1 .. Target_Triple'Last));
+            Target_Triple :=
+              new String'(Target_Triple.all (Target_Triple'First .. Idx - 1));
+         end if;
 
       elsif Starts_With ("-mtriple=") then
          To_Free           := Target_Triple;
-         Target_Triple     := new String'(Switch_Value ("-mtriple="));
          Target_Triple_Set := True;
+         Target_Triple     := new String'(Switch_Value ("-mtriple="));
 
       elsif Starts_With ("-mcuda-libdevice=") then
          Free (Libdevice_Filename);
@@ -413,7 +424,15 @@ package body GNATLLVM.Codegen is
            Reloc      => Reloc_Mode,
            Code_Model => Code_Model);
 
-      Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
+      --  If a target layout was specified, use it. Otherwise, use the default
+      --  layout for the specified target.
+
+      if Target_Layout /= null then
+         Module_Data_Layout := Create_Target_Data (Target_Layout.all);
+      else
+         Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
+      end if;
+
       Set_Target             (Module, Target_Triple.all);
       Set_Module_Data_Layout (Module, Module_Data_Layout);
 
@@ -591,7 +610,7 @@ package body GNATLLVM.Codegen is
 
       Dispose_Builder (IR_Builder);
       Dispose_Module (Module);
-
+      Dispose_Target_Data (Module_Data_Layout);
       pragma Assert (Verified);
    end Generate_Code;
 

@@ -41,6 +41,9 @@ package GNATLLVM.Codegen is
    Target_Triple   : String_Access  := new String'(Get_Default_Target_Triple);
    --  Name of the target for this compilation
 
+   Target_Layout   : String_Access  := null;
+   --  Target data layout, if specified
+
    Code_Gen_Level  : Code_Gen_Opt_Level_T := Code_Gen_Level_None;
    --  Optimization level for codegen
 

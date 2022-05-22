@@ -15,11 +15,68 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Table;
+
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 
 package body CCG.Target is
 
+   --  We have a table of parameters, which are (for now at least) either
+   --  booleans or integers. We create a record type to describe each
+   --  parameter.
+
+   type    Access_Boolean is access all Boolean;
+   type    Access_Integer is access all Integer;
+   type    Param_Type     is (Bool, Int);
+   subtype Str_Len        is Integer range 1 .. 20;
+
+   type Parameter_Desc (PT : Param_Type := Int; SL : Str_Len := 20) is record
+      Name : String (1 .. SL);
+      case PT is
+         when Bool =>
+            Bool_Ptr : Access_Boolean;
+         when Int =>
+            Int_Ptr  : Access_Integer;
+      end case;
+   end record;
+
+   package Parameter_Table is new Table.Table
+     (Table_Component_Type => Parameter_Desc,
+      Table_Index_Type     => Integer,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 10,
+      Table_Increment      => 5,
+      Table_Name           => "Parameter_Table");
+
+   procedure Add_Param
+     (Name     : String;
+      PT       : Param_Type;
+      Bool_Ptr : Access_Boolean := null;
+      Int_Ptr  : Access_Integer := null)
+     with Pre => (if   PT = Bool then Bool_Ptr /= null and then Int_Ptr = null
+                  else Bool_Ptr = null and then Int_Ptr /= null);
+   --  Add a table entry for the specified parameter
+
    procedure Set_C_Parameter (Name : String; Value : String);
+
+   ---------------
+   -- Add_Param --
+   ---------------
+
+   procedure Add_Param
+     (Name     : String;
+      PT       : Param_Type;
+      Bool_Ptr : Access_Boolean := null;
+      Int_Ptr  : Access_Integer := null)
+   is
+   begin
+      case PT is
+         when Bool =>
+            Parameter_Table.Append ((Bool, Name'Length, Name, Bool_Ptr));
+         when Int =>
+            Parameter_Table.Append ((Int,  Name'Length, Name, Int_Ptr));
+      end case;
+   end Add_Param;
 
    ---------------------
    -- Set_C_Parameter --
@@ -120,5 +177,13 @@ package body CCG.Target is
                           S (Equal_Pos + 1 .. S'Last));
       end if;
    end Set_C_Parameter;
+
+begin
+   Add_Param ("C_Indent",      Int,  Int_Ptr  => C_Indent'Access);
+   Add_Param ("Warns_Parens",  Bool, Bool_Ptr => Warns_Parens'Access);
+   Add_Param ("Always_Brace",  Bool, Bool_Ptr => Always_Brace'Access);
+   Add_Param ("Max_Depth",     Int,  Int_Ptr  => Max_Depth'Access);
+   Add_Param ("Have_Includes", Bool, Bool_Ptr => Have_Includes'Access);
+   Add_Param ("Version",       Int,  Int_Ptr  => Version'Access);
 
 end CCG.Target;

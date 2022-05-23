@@ -24,6 +24,7 @@ with Lib;         use Lib;
 with Nlists;      use Nlists;
 with Restrict;    use Restrict;
 with Rident;      use Rident;
+with Sem_Aux;     use Sem_Aux;
 with Sem_Mech;    use Sem_Mech;
 with Sem_Util;    use Sem_Util;
 with Sinput;      use Sinput;
@@ -561,10 +562,11 @@ package body GNATLLVM.Subprograms is
 
    function Get_Return_Kind (E : Subprogram_Type_Or_Kind_Id) return Return_Kind
    is
-      GT       : constant GL_Type   := Full_GL_Type (E);
-      T        : constant Type_T    :=
+      TE       : constant Void_Or_Type_Kind_Id := Etype (E);
+      GT       : constant GL_Type              := Full_GL_Type (E);
+      T        : constant Type_T               :=
         (if Ekind (GT) /= E_Void then Type_Of (GT) else No_Type_T);
-      Ptr_Size : constant ULL       := Get_Type_Size (Void_Ptr_T);
+      Ptr_Size : constant ULL                  := Get_Type_Size (Void_Ptr_T);
 
    begin
       --  If there's no return type, that's simple
@@ -573,22 +575,19 @@ package body GNATLLVM.Subprograms is
          return None;
 
       --  Otherwise, we return by reference if we're required to or if we
-      --  need the secondary stack.
+      --  need the secondary stack. We need to use the GNAT type of E
+      --  for this and not the GL_Type, as often would, because we care
+      --  about properties of the original, not implementation, type,
+      --  such as if it's an E_Class_Wide_Type.
 
-      elsif Returns_By_Ref (E)
-        or else Needs_Secondary_Stack (GT)
+      elsif Returns_By_Ref (E) or else Needs_Secondary_Stack (TE)
         or else Is_Secondary_Stack_Thunk (E)
       then
          return RK_By_Reference;
 
-      --  If we need finalization, we must return by hidden parameter
-
-      elsif  Needs_Finalization (GT) then
-         return Return_By_Parameter;
-
       --  Otherwise, return by parameter for by-reference type
 
-      elsif Is_By_Reference_Type (GT) then
+      elsif Is_By_Reference_Type (TE) then
          return Return_By_Parameter;
 
       --  If this is not an unconstrained array, but is either of dynamic

@@ -26,33 +26,37 @@ package GNATLLVM.Codegen is
      (Dump_IR, Write_IR, Write_BC, Write_Assembly, Write_Object, Write_C,
       None);
 
-   Code_Generation : Code_Generation_Kind := Write_Object;
+   Code_Generation   : Code_Generation_Kind := Write_Object;
    --  Type of code generation we're doing
 
-   Emit_C          : Boolean        := CCG;
+   Emit_C            : Boolean        := CCG;
    --  True if -emit-c was specified explicitly or CCG set
 
-   CPU             : String_Access  := new String'("generic");
+   Dump_C_Parameters : Boolean        := False;
+   --  True if we're to dump the values of the parameters
+
+   CPU               : String_Access  := new String'("generic");
    --  Name of the specific CPU for this compilation.
 
-   Features        : String_Access  := new String'("");
+   Features          : String_Access  := new String'("");
    --  Features to enable or disable for this target
 
-   Target_Triple   : String_Access  := new String'(Get_Default_Target_Triple);
+   Target_Triple     : String_Access  :=
+     new String'(Get_Default_Target_Triple);
    --  Name of the target for this compilation
 
-   Target_Layout   : String_Access  := null;
+   Target_Layout     : String_Access  := null;
    --  Target data layout, if specified
 
-   Code_Gen_Level  : Code_Gen_Opt_Level_T := Code_Gen_Level_None;
+   Code_Gen_Level    : Code_Gen_Opt_Level_T := Code_Gen_Level_None;
    --  Optimization level for codegen
 
-   Code_Model      : Code_Model_T   := Code_Model_Default;
-   Reloc_Mode      : Reloc_Mode_T   := Reloc_Default;
+   Code_Model        : Code_Model_T   := Code_Model_Default;
+   Reloc_Mode        : Reloc_Mode_T   := Reloc_Default;
    --  Code generation options
 
-   Code_Opt_Level  : Int            := 0;
-   Size_Opt_Level  : Int            := 0;
+   Code_Opt_Level    : Int            := 0;
+   Size_Opt_Level    : Int            := 0;
    --  Optimization levels
 
    DSO_Preemptable : Boolean        := False;

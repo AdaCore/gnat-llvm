@@ -60,6 +60,13 @@ package body CCG is
       Emit_Full_Debug_Info := False;
       Emit_C_Line          := Emit_Debug_Info;
       Emit_Debug_Info      := True;
+
+      --  If we're to dump the C parameters, do so
+
+      if Dump_C_Parameters then
+         Output_C_Parameters;
+      end if;
+
    end Initialize_C_Output;
 
    ------------------

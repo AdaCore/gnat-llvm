@@ -119,6 +119,8 @@ package body GNATLLVM.Codegen is
       then
          Emit_Debug_Info      := True;
          Emit_Full_Debug_Info := True;
+      elsif Switch = "-fdump-c-parameters" then
+         Dump_C_Parameters := True;
       elsif Switch = "-fstack-check" then
          Do_Stack_Check := True;
       elsif Switch = "-fshort-enums" then
@@ -397,6 +399,13 @@ package body GNATLLVM.Codegen is
       elsif Output_Assembly then
          Code_Generation := Write_Assembly;
 
+      end if;
+
+      --  Can't dump C parameters if not generating C
+
+      if Dump_C_Parameters and then not Emit_C then
+         Early_Error
+           ("cannot specify -fdump-c-parameters unless generating C");
       end if;
 
       --  Initialize the translation environment

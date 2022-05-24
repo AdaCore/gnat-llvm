@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Output; use Output;
 with Table;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
@@ -27,26 +28,26 @@ package body CCG.Target is
 
    type    Access_Boolean is access all Boolean;
    type    Access_Integer is access all Integer;
-   type    Param_Type     is (Bool, Int);
+   type    Param_Type     is (Bool, Num);
    subtype Str_Len        is Integer range 1 .. 20;
 
-   type Parameter_Desc (PT : Param_Type := Int; SL : Str_Len := 20) is record
+   type Parameter_Desc (PT : Param_Type := Num; SL : Str_Len := 20) is record
       Name : String (1 .. SL);
       case PT is
          when Bool =>
             Bool_Ptr : Access_Boolean;
-         when Int =>
+         when Num =>
             Int_Ptr  : Access_Integer;
       end case;
    end record;
 
-   package Parameter_Table is new Table.Table
+   package Parameters is new Table.Table
      (Table_Component_Type => Parameter_Desc,
       Table_Index_Type     => Integer,
       Table_Low_Bound      => 1,
       Table_Initial        => 10,
       Table_Increment      => 5,
-      Table_Name           => "Parameter_Table");
+      Table_Name           => "Parameters");
 
    procedure Add_Param
      (Name     : String;
@@ -72,9 +73,9 @@ package body CCG.Target is
    begin
       case PT is
          when Bool =>
-            Parameter_Table.Append ((Bool, Name'Length, Name, Bool_Ptr));
-         when Int =>
-            Parameter_Table.Append ((Int,  Name'Length, Name, Int_Ptr));
+            Parameters.Append ((Bool, Name'Length, Name, Bool_Ptr));
+         when Num =>
+            Parameters.Append ((Num,  Name'Length, Name, Int_Ptr));
       end case;
    end Add_Param;
 
@@ -178,12 +179,37 @@ package body CCG.Target is
       end if;
    end Set_C_Parameter;
 
+   -------------------------
+   -- Output_C_Parameters --
+   -------------------------
+
+   procedure Output_C_Parameters is
+   begin
+      for J in 1 .. Parameters.Last loop
+         declare
+            PD : constant Parameter_Desc := Parameters.Table (J);
+
+         begin
+            Write_Str (PD.Name);
+            Write_Str ("=");
+            case PD.PT is
+               when Bool =>
+                  Write_Str ((if PD.Bool_Ptr.all then "True" else "False"));
+               when Num =>
+                  Write_Int (Int (PD.Int_Ptr.all));
+            end case;
+
+            Write_Eol;
+         end;
+      end loop;
+   end Output_C_Parameters;
+
 begin
-   Add_Param ("C_Indent",      Int,  Int_Ptr  => C_Indent'Access);
+   Add_Param ("C_Indent",      Num,  Int_Ptr  => C_Indent'Access);
    Add_Param ("Warns_Parens",  Bool, Bool_Ptr => Warns_Parens'Access);
    Add_Param ("Always_Brace",  Bool, Bool_Ptr => Always_Brace'Access);
-   Add_Param ("Max_Depth",     Int,  Int_Ptr  => Max_Depth'Access);
+   Add_Param ("Max_Depth",     Num,  Int_Ptr  => Max_Depth'Access);
    Add_Param ("Have_Includes", Bool, Bool_Ptr => Have_Includes'Access);
-   Add_Param ("Version",       Int,  Int_Ptr  => Version'Access);
+   Add_Param ("Version",       Num,  Int_Ptr  => Version'Access);
 
 end CCG.Target;

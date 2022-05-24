@@ -43,4 +43,7 @@ package CCG.Target is
    procedure Set_C_Parameter (S : String);
    --  S is of the form "name=value". Use it to set parameter "name" to "value"
 
+   procedure Output_C_Parameters;
+   --  Output all the C parameters
+
 end CCG.Target;

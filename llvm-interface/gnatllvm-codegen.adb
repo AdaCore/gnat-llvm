@@ -333,8 +333,7 @@ package body GNATLLVM.Codegen is
    procedure Early_Error (S : String) is
    begin
       Write_Str ("error: ");
-      Write_Str (S);
-      Write_Eol;
+      Write_Line (S);
       OS_Exit (4);
    end Early_Error;
 

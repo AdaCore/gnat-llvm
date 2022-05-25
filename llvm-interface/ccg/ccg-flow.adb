@@ -1749,8 +1749,7 @@ package body CCG.Flow is
          end if;
 
          if Present (Case_Expr (Idx)) then
-            Write_Str ("   switch (" & Case_Expr (Idx) & ")");
-            Write_Eol;
+            Write_Str ("   switch (" & Case_Expr (Idx) & ")", Eol => True);
             for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
                Write_Str ((if   Present (Value (Cidx))
                            then +"      " & Value (Cidx) & ": "

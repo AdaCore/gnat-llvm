@@ -113,8 +113,7 @@ package body Back_End is
 
       if Opt.JSON_Output then
          Set_Standard_Error;
-         Write_Str ("[]");
-         Write_Eol;
+         Write_Line ("[]");
          Set_Standard_Output;
       end if;
 

@@ -1115,8 +1115,7 @@ package body CCG.Strs is
       if Present (S) then
          Write_Str (S, Eol => True);
       else
-         Write_Str ("(null)");
-         Write_Eol;
+         Write_Line ("(null)");
       end if;
 
       Pop_Output;

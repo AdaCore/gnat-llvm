@@ -33,7 +33,10 @@ package GNATLLVM.Codegen is
    --  True if -emit-c was specified explicitly or CCG set
 
    Dump_C_Parameters : Boolean        := False;
-   --  True if we're to dump the values of the parameters
+   --  True if we should dump the values of the C target parameters
+
+   C_Parameter_File  : String_Access  := null;
+   --  If non-null, the name of a file to dump the C parameters
 
    CPU               : String_Access  := new String'("generic");
    --  Name of the specific CPU for this compilation.
@@ -59,7 +62,7 @@ package GNATLLVM.Codegen is
    Size_Opt_Level    : Int            := 0;
    --  Optimization levels
 
-   DSO_Preemptable : Boolean        := False;
+   DSO_Preemptable   : Boolean        := False;
    --  Indicates that the function or variable may be replaced by a symbol
    --  from outside the linkage unit at runtime.  clang derives this from
    --  a complex set of machine-dependent criterial, but the need for

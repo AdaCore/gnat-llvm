@@ -15,7 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Output; use Output;
+with Osint;   use Osint;
+with Osint.C; use Osint.C;
+with Output;  use Output;
 with Table;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
@@ -185,6 +187,14 @@ package body CCG.Target is
 
    procedure Output_C_Parameters is
    begin
+      Push_Output;
+      if C_Parameter_File /= null then
+         Namet.Unlock;
+         Create_List_File (C_Parameter_File.all);
+         Set_Output (Output_FD);
+         Namet.Lock;
+      end if;
+
       for J in 1 .. Parameters.Last loop
          declare
             PD : constant Parameter_Desc := Parameters.Table (J);
@@ -202,6 +212,8 @@ package body CCG.Target is
             Write_Eol;
          end;
       end loop;
+
+      Pop_Output;
    end Output_C_Parameters;
 
 begin

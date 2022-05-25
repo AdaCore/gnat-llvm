@@ -121,6 +121,10 @@ package body GNATLLVM.Codegen is
          Emit_Full_Debug_Info := True;
       elsif Switch = "-fdump-c-parameters" then
          Dump_C_Parameters := True;
+      elsif Starts_With ("-fdump-c-parameters=") then
+         Dump_C_Parameters := True;
+         C_Parameter_File  :=
+           new String'(Switch_Value ("-fdump-c-parameters="));
       elsif Switch = "-fstack-check" then
          Do_Stack_Check := True;
       elsif Switch = "-fshort-enums" then

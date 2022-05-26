@@ -34,7 +34,8 @@ package body CCG.Target is
    subtype Str_Len        is Integer range 1 .. 20;
 
    type Parameter_Desc (PT : Param_Type := Num; SL : Str_Len := 20) is record
-      Name : String (1 .. SL);
+      Is_Version : Boolean;
+      Name       : String (1 .. SL);
       case PT is
          when Bool =>
             Bool_Ptr : Access_Boolean;
@@ -52,110 +53,98 @@ package body CCG.Target is
       Table_Name           => "Parameters");
 
    procedure Add_Param
-     (Name     : String;
-      PT       : Param_Type;
-      Bool_Ptr : Access_Boolean := null;
-      Int_Ptr  : Access_Integer := null)
+     (Name       : String;
+      PT         : Param_Type;
+      Is_Version : Boolean        := False;
+      Bool_Ptr   : Access_Boolean := null;
+      Int_Ptr    : Access_Integer := null)
      with Pre => (if   PT = Bool then Bool_Ptr /= null and then Int_Ptr = null
                   else Bool_Ptr = null and then Int_Ptr /= null);
    --  Add a table entry for the specified parameter
 
-   procedure Set_C_Parameter (Name : String; Value : String);
+   procedure Set_One_Parameter (PD : Parameter_Desc; Value : String);
+   --  Set the parameter denoted by PD to Value
 
    ---------------
    -- Add_Param --
    ---------------
 
    procedure Add_Param
-     (Name     : String;
-      PT       : Param_Type;
-      Bool_Ptr : Access_Boolean := null;
-      Int_Ptr  : Access_Integer := null)
+     (Name       : String;
+      PT         : Param_Type;
+      Is_Version : Boolean        := False;
+      Bool_Ptr   : Access_Boolean := null;
+      Int_Ptr    : Access_Integer := null)
    is
    begin
       case PT is
          when Bool =>
-            Parameters.Append ((Bool, Name'Length, Name, Bool_Ptr));
+            Parameters.Append ((Bool, Name'Length, Is_Version, Name,
+                                Bool_Ptr));
          when Num =>
-            Parameters.Append ((Num,  Name'Length, Name, Int_Ptr));
+            Parameters.Append ((Num,  Name'Length, Is_Version, Name,
+                                Int_Ptr));
       end case;
    end Add_Param;
 
    ---------------------
-   -- Set_C_Parameter --
+   -- Set_One_Parameter --
    ---------------------
 
-   procedure Set_C_Parameter (Name : String; Value : String) is
-      Bool_Val    : Boolean;
-
+   procedure Set_One_Parameter (PD : Parameter_Desc; Value : String) is
    begin
-      --  First handle boolean values
-
-      if Name = "warns-parens" or else Name = "always-brace"
-        or else Name = "have-includes"
-      then
-         if Value = "yes" or else Value = "y"
-           or else Value = "true" or else Value = "t" or else Value = "on"
-         then
-            Bool_Val := True;
-         elsif Value = "no" or else Value = "n"
-           or else Value = "false" or else Value = "f" or else Value = "off"
-         then
-            Bool_Val := False;
-         else
-            Early_Error ("illegal value '" & Value & "' for parameter '"
-                           & Name & "'");
-            return;
-         end if;
-
-         if Name = "warns-parens" then
-            Warns_Parens := Bool_Val;
-         elsif Name = "always-brace" then
-            Always_Brace := Bool_Val;
-         else  -- Name = "have-includes"
-            Have_Includes := Bool_Val;
-         end if;
-
-      --  Now handle integer values. Make a block here to catch an exception
-
-      elsif Name = "indent" or else Name = "max-depth" or else Name = "version"
-      then
-         declare
-            Value_First : Integer := Value'First;
-            Int_Val     : Integer;
-
-         begin
-            --  For "version", we allow a leading "C", which we ignore
-
-            if Value (Value_First) = 'C' or else Value (Value_First) = 'c' then
-               Value_First := Value_First + 1;
+      case PD.PT is
+         when Bool =>
+            if Value = "yes" or else Value = "y" or else Value = "true"
+              or else Value = "t" or else Value = "on"
+            then
+               PD.Bool_Ptr.all := True;
+            elsif Value = "no" or else Value = "n" or else Value = "false"
+              or else Value = "f" or else Value = "off"
+            then
+               PD.Bool_Ptr.all := False;
+            else
+               Early_Error ("illegal value '" & Value & "' for parameter '" &
+                            PD.Name & "'");
             end if;
 
-            Int_Val := Integer'Value (Value (Value_First .. Value'Last));
-            if Name = "indent" then
-               C_Indent := Int_Val;
-            elsif Name = "max-depth" then
-               Max_Depth := Int_Val;
-            else --  Name = "version"
-               if Int_Val < 80 then
-                  Int_Val := Int_Val + 2000;
-               elsif Int_Val < 1900 then
-                  Int_Val := Int_Val + 1900;
+         when Num =>
+
+            --  Make a block here to catch an exception
+
+            declare
+               Value_First : Integer := Value'First;
+               Int_Val     : Integer;
+
+            begin
+
+               --  For "version", we allow a leading "C", which we ignore
+
+               if PD.Is_Version and then Value (Value_First) in 'c' | 'C' then
+                  Value_First := Value_First + 1;
                end if;
 
-               Version := Int_Val;
-            end if;
-         end;
+               Int_Val := Integer'Value (Value (Value_First .. Value'Last));
 
-      else
-         Early_Error ("unknown C parameter '" & Name & "'");
-      end if;
+               --  For "version", handle either full or partial year
 
-   exception
-      when Constraint_Error =>
-         Early_Error ("illegal value '" & Value & "' for parameter '"
-                        & Name & "'");
-   end Set_C_Parameter;
+               if PD.Is_Version then
+                  if Int_Val < 80 then
+                     Int_Val := Int_Val + 2000;
+                  elsif Int_Val < 1900 then
+                     Int_Val := Int_Val + 1900;
+                  end if;
+               end if;
+
+               PD.Int_Ptr.all := Int_Val;
+
+            exception
+               when Constraint_Error =>
+                  Early_Error ("illegal value '" & Value &
+                               "' for parameter '" & PD.Name & "'");
+            end;
+      end case;
+   end Set_One_Parameter;
 
    ----------------------
    --  Set_C_Parameter --
@@ -176,9 +165,18 @@ package body CCG.Target is
       elsif Equal_Pos = S'Last then
          Early_Error ("Missing value in parameter specification");
       else
-         Set_C_Parameter (S (S'First .. Equal_Pos - 1),
-                          S (Equal_Pos + 1 .. S'Last));
+         for J in 1 .. Parameters.Last loop
+            if S (S'First .. Equal_Pos - 1) = Parameters.Table (J).Name then
+               Set_One_Parameter (Parameters.Table (J),
+                                  S (Equal_Pos + 1 .. S'Last));
+               return;
+            end if;
+         end loop;
+
+         Early_Error
+           ("unknown C parameter '" & S (S'First .. Equal_Pos - 1) & "'");
       end if;
+
    end Set_C_Parameter;
 
    -------------------------
@@ -217,11 +215,12 @@ package body CCG.Target is
    end Output_C_Parameters;
 
 begin
-   Add_Param ("C_Indent",      Num,  Int_Ptr  => C_Indent'Access);
-   Add_Param ("Warns_Parens",  Bool, Bool_Ptr => Warns_Parens'Access);
-   Add_Param ("Always_Brace",  Bool, Bool_Ptr => Always_Brace'Access);
-   Add_Param ("Max_Depth",     Num,  Int_Ptr  => Max_Depth'Access);
-   Add_Param ("Have_Includes", Bool, Bool_Ptr => Have_Includes'Access);
-   Add_Param ("Version",       Num,  Int_Ptr  => Version'Access);
+   Add_Param ("c-indent",      Num,  Int_Ptr  => C_Indent'Access);
+   Add_Param ("warns-parens",  Bool, Bool_Ptr => Warns_Parens'Access);
+   Add_Param ("always-brace",  Bool, Bool_Ptr => Always_Brace'Access);
+   Add_Param ("max-depth",     Num,  Int_Ptr  => Max_Depth'Access);
+   Add_Param ("have-includes", Bool, Bool_Ptr => Have_Includes'Access);
+   Add_Param ("version",       Num,  Int_Ptr  => Version'Access,
+                                     Is_Version => True);
 
 end CCG.Target;

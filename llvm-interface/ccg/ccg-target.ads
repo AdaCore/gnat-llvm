@@ -40,6 +40,9 @@ package CCG.Target is
    Version       : aliased Integer := 1999;
    --  C standard for which we're to write output
 
+   procedure Read_C_Parameters (Name : String);
+   --  Read C parameters from file Name
+
    procedure Set_C_Parameter (S : String);
    --  S is of the form "name=value". Use it to set parameter "name" to "value"
 

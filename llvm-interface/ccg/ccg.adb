@@ -52,6 +52,12 @@ package body CCG is
       Emit_C_Line          := Emit_Debug_Info;
       Emit_Debug_Info      := True;
 
+      --  If we're to read C parameter values, do so
+
+      if Target_Info_File /= null then
+         Read_C_Parameters (Target_Info_File.all);
+      end if;
+
       --  If we're to dump the C parameters, do so
 
       if Dump_C_Parameters then

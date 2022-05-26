@@ -32,6 +32,9 @@ package GNATLLVM.Codegen is
    Emit_C            : Boolean        := CCG;
    --  True if -emit-c was specified explicitly or CCG set
 
+   Target_Info_File  : String_Access  := null;
+   --  If non-null, the name of a file from which to read C target parameters
+
    Dump_C_Parameters : Boolean        := False;
    --  True if we should dump the values of the C target parameters
 

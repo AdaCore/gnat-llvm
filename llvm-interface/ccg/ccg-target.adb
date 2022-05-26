@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with System.OS_Lib; use System.OS_Lib;
+
 with Osint;   use Osint;
 with Osint.C; use Osint.C;
 with Output;  use Output;
@@ -95,13 +97,9 @@ package body CCG.Target is
    begin
       case PD.PT is
          when Bool =>
-            if Value = "yes" or else Value = "y" or else Value = "true"
-              or else Value = "t" or else Value = "on"
-            then
+            if Value = "True" or else Value = "true" then
                PD.Bool_Ptr.all := True;
-            elsif Value = "no" or else Value = "n" or else Value = "false"
-              or else Value = "f" or else Value = "off"
-            then
+            elsif Value = "False" or else Value = "false" then
                PD.Bool_Ptr.all := False;
             else
                Early_Error ("illegal value '" & Value & "' for parameter '" &
@@ -178,6 +176,55 @@ package body CCG.Target is
       end if;
 
    end Set_C_Parameter;
+
+   -----------------------
+   -- Read_C_Parameters --
+   -----------------------
+
+   procedure Read_C_Parameters (Name : String) is
+      Desc        : constant File_Descriptor := Open_Read (Name, Text);
+      Length      : constant Integer         :=
+        Integer ((if Desc = Invalid_FD then 0 else File_Length (Desc)));
+      Read_Length : Natural;
+      Line_Ptr    : Natural                  := 1;
+      N           : Natural                  := 1;
+      Buffer      : aliased String (1 .. Length);
+
+   begin
+      --  ??? We probably need to do something to handle CR for Windows
+
+      if Desc = Invalid_FD then
+         Early_Error ("cannot read file " & Name);
+      end if;
+
+      Read_Length := Read (Desc, Buffer'Address, Length);
+      Close (Desc);
+
+      --  If the lengths don't agree, we had some issues with the file, so
+      --  assume we couldn't read it. Likewise if the length is zero.
+
+      if Read_Length /= Length or else Read_Length = 0 then
+         Early_Error ("problem reading file " & Name);
+      end if;
+
+      --  Now scan the file, looking for ends of lines
+
+      while N < Length loop
+         if Buffer (N) = ASCII.LF then
+            Set_C_Parameter (Buffer (Line_Ptr .. N - 1));
+            Line_Ptr := N + 1;
+         end if;
+
+         N := N + 1;
+      end loop;
+
+      --  If the last character isn't a newline, the file is misformed
+
+      if Buffer (Length) /= ASCII.LF then
+         Early_Error (Name & " doesn't end with a newline");
+      end if;
+
+   end Read_C_Parameters;
 
    -------------------------
    -- Output_C_Parameters --

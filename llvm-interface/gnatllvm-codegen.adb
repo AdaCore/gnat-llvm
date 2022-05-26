@@ -123,6 +123,7 @@ package body GNATLLVM.Codegen is
          Dump_C_Parameters := True;
       elsif Starts_With ("-fdump-c-parameters=") then
          Dump_C_Parameters := True;
+         To_Free           := C_Parameter_File;
          C_Parameter_File  :=
            new String'(Switch_Value ("-fdump-c-parameters="));
       elsif Switch = "-fstack-check" then
@@ -284,6 +285,9 @@ package body GNATLLVM.Codegen is
          Reloc_Mode := Reloc_Default;
       elsif Starts_With ("-llvm-") then
          Switches.Append (new String'(Switch_Value ("-llvm")));
+      elsif Starts_With ("-c-target-file=") then
+         To_Free          := Target_Info_File;
+         Target_Info_File := new String'(Switch_Value ("-c-target-file="));
       elsif Starts_With ("-c-target-") then
          C_Set_Parameter (Switch_Value ("-c-target-"));
       end if;

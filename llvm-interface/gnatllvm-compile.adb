@@ -18,11 +18,11 @@
 with Einfo.Utils; use Einfo.Utils;
 with Errout;      use Errout;
 with Exp_Util;    use Exp_Util;
-with Get_Targ;    use Get_Targ;
 with Nlists;      use Nlists;
 with Opt;         use Opt;
 with Restrict;    use Restrict;
 with Sem_Util;    use Sem_Util;
+with Set_Targ;    use Set_Targ;
 with Snames;      use Snames;
 with Stand;       use Stand;
 with Stringt;     use Stringt;
@@ -72,17 +72,17 @@ package body GNATLLVM.Compile is
 
       function Stand_Type (Size : Nat) return Opt_Signed_Integer_Kind_Id is
       begin
-         if Get_Long_Long_Long_Size = Size then
+         if Long_Long_Long_Size = Size then
             return Standard_Long_Long_Long_Integer;
-         elsif Get_Long_Long_Size = Size then
+         elsif Long_Long_Size = Size then
             return Standard_Long_Long_Integer;
-         elsif Get_Long_Size = Size then
+         elsif Long_Size = Size then
             return Standard_Long_Integer;
-         elsif Get_Int_Size = Size then
+         elsif Int_Size = Size then
             return Standard_Integer;
-         elsif Get_Short_Size = Size then
+         elsif Short_Size = Size then
             return Standard_Short_Integer;
-         elsif Get_Char_Size = Size then
+         elsif Char_Size = Size then
             return Standard_Short_Short_Integer;
          else
             return Empty;
@@ -111,10 +111,10 @@ package body GNATLLVM.Compile is
 
       --  Initialize the environment and get the sizes of fat and thin
       --  pointers and make some types.  We must do this after initializing
-      --  the target info since Get_Pointer_Size requires it.
+      --  the target info since Pointer_Size requires it.
 
       Initialize_Environment;
-      Thin_Pointer_Size := Get_Pointer_Size;
+      Thin_Pointer_Size := Set_Targ.Pointer_Size;
       Fat_Pointer_Size  := Thin_Pointer_Size * 2;
       Size_Type         := Stand_Type (Thin_Pointer_Size);
       Int_32_Type       := Stand_Type (32);
@@ -123,13 +123,13 @@ package body GNATLLVM.Compile is
       --  Get single bit and single byte values and types, max alignmen
       --  and maximum integer size.
 
-      BPU          := Get_Bits_Per_Unit;
+      BPU          := Bits_Per_Unit;
       UBPU         := ULL (BPU);
       Bit_T        := Int_Ty (Nat (1));
       Byte_T       := Int_Ty (BPU);
-      Max_Align    := Get_Maximum_Alignment * BPU;
-      Max_Int_Size := (if   Enable_128bit_Types then +Get_Long_Long_Long_Size
-                       else +Get_Long_Long_Size);
+      Max_Align    := Maximum_Alignment * BPU;
+      Max_Int_Size := (if   Enable_128bit_Types then +Long_Long_Long_Size
+                       else +Long_Long_Size);
 
       --  We want to be able to support overaligned values, but we still need
       --  to have a maximum possible alignment to start with.  The maximum

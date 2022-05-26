@@ -139,14 +139,6 @@ package CCG is
    procedure C_Set_Parameter (S : String);
    --  S is of the form "name=value". Use it to set parameter "name" to "value"
 
-   --  Define the sizes of all the basic C types.
-
-   Char_Size      : Pos;
-   Short_Size     : Pos;
-   Int_Size       : Pos;
-   Long_Size      : Pos;
-   Long_Long_Size : Pos;
-
    Emit_C_Line    : Boolean := False;
    --  When generating C code, indicates that we want to generate #line
    --  directives. This corresponds to -g.

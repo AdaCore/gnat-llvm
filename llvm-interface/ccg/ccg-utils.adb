@@ -18,6 +18,7 @@
 with Ada.Containers.Hashed_Maps;
 
 with Einfo.Utils; use Einfo.Utils;
+with Set_Targ;    use Set_Targ;
 with Sinfo.Nodes; use Sinfo.Nodes;
 with Table;
 

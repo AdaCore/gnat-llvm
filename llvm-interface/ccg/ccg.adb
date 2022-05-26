@@ -19,7 +19,6 @@ with LLVM.Core; use LLVM.Core;
 
 with Atree;    use Atree;
 with Errout;   use Errout;
-with Get_Targ; use Get_Targ;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -44,14 +43,6 @@ package body CCG is
 
    procedure Initialize_C_Output is
    begin
-      --  Initialize the sizes of integer types.
-
-      Char_Size      := Get_Char_Size;
-      Short_Size     := Get_Short_Size;
-      Int_Size       := Get_Int_Size;
-      Long_Size      := Get_Long_Size;
-      Long_Long_Size := Get_Long_Long_Size;
-
       --  When emitting C, we don't want to write variable-specific debug
       --  info, just line number information. But we do want to write #line
       --  info if -g was specified. We always want to write location

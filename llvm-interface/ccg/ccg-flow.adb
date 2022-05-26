@@ -19,8 +19,9 @@ with Ada.Containers.Generic_Sort;
 with Ada.Containers.Hashed_Maps;
 with Ada.Containers.Ordered_Sets;
 
-with Debug;  use Debug;
-with Output; use Output;
+with Debug;    use Debug;
+with Output;   use Output;
+with Set_Targ; use Set_Targ;
 with Table;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;

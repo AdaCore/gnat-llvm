@@ -22,6 +22,7 @@ with Interfaces.C; use Interfaces.C;
 with Output; use Output;
 with Table;
 
+with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
@@ -255,7 +256,8 @@ package body CCG.Subprograms is
       --  Otherwise, write the definition of this function. If it has no
       --  basic blocks, it must be an extern.
 
-      Output_Decl ((if No (Get_First_Basic_Block (V)) then "extern " else "") &
+      Output_Decl ((if   Emit_Headers or else No (Get_First_Basic_Block (V))
+                    then "extern " else "") &
         Function_Proto (V, Extern => True), Is_Global => True);
 
    end Declare_Subprogram;

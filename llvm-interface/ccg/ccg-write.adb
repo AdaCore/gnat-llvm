@@ -33,6 +33,7 @@ with Sinfo.Nodes;    use Sinfo.Nodes;
 with Sinput;         use Sinput;
 with Uintp;          use Uintp;
 
+with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -908,24 +909,29 @@ package body CCG.Write is
          Src              := Source_Text (Main_Source_File);
       end if;
 
-      --  If we're not writing to standard output, open the .c file
+      --  If we're not writing to standard output, open the .c or .h file
 
       if not Debug_Flag_Dot_YY then
-         Create_C_File;
+         if Emit_Headers then
+            Create_H_File;
+         else
+            Create_C_File;
+         end if;
+
          Set_Output (Output_FD);
       end if;
 
       --  Write the initial header info as requested
 
-      if Have_Includes then
+      if not Emit_Headers and then Have_Includes then
          Write_Line ("#include <string.h>");
          Write_Line ("#include <stdlib.h>");
          if Version > 1990 then
             Write_Line ("#include <alloca.h>");
          end if;
-      end if;
 
-      Write_Eol;
+         Write_Eol;
+      end if;
    end Initialize_Writing;
 
    ----------------------
@@ -936,7 +942,7 @@ package body CCG.Write is
    begin
       --  If we're dumping source lines, dump any that remain
 
-      if Dump_Source_Text then
+      if not Emit_Headers and then Dump_Source_Text then
          for J in Next_Line_To_Dump .. Last_Source_Line (Main_Source_File) loop
             Write_Source_Line (J);
          end loop;
@@ -945,7 +951,12 @@ package body CCG.Write is
       --  If we opened a file to write to, close it
 
       if not Debug_Flag_Dot_YY then
-         Close_C_File;
+         if Emit_Headers then
+            Close_H_File;
+         else
+            Close_C_File;
+         end if;
+
          Set_Standard_Output;
       end if;
 

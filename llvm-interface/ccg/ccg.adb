@@ -71,8 +71,18 @@ package body CCG is
    ------------------
 
    procedure Write_C_Code (Module : Module_T) is
+      function Is_Public (V : Value_T) return Boolean;
+      --  True if V is publically-visible
+
       Func : Value_T;
       Glob : Value_T;
+
+      ---------------
+      -- Is_Public --
+      ---------------
+
+      function Is_Public (V : Value_T) return Boolean is
+        (Get_Linkage (V) not in Internal_Linkage | Private_Linkage);
 
    begin
       Initialize_Writing;
@@ -82,29 +92,40 @@ package body CCG is
 
       Func := Get_First_Function (Module);
       while Present (Func) loop
-         Declare_Subprogram (Func);
+         if not Emit_Headers
+           or else (Present (Get_First_Basic_Block (Func))
+                      and then Is_Public (Func))
+         then
+            Declare_Subprogram (Func);
+         end if;
+
          Func := Get_Next_Function (Func);
       end loop;
 
-      --  Write out declarations for all globals with initializers
+      --  Write out declarations for all globals with initializers if
+      --  writing C code and all public globals if writing headers
 
       Glob := Get_First_Global (Module);
       while Present (Glob) loop
-         if Present (Get_Initializer (Glob)) then
+         if Present (Get_Initializer (Glob))
+           and then (Is_Public (Glob) or else not Emit_Headers)
+         then
             Maybe_Decl (Glob);
          end if;
 
          Glob := Get_Next_Global (Glob);
       end loop;
 
-      --  Process all functions, writing globals and typedefs on the fly
-      --  and queueing the rest for later output.
+      --  Process all functions, writing referenced globals and
+      --  typedefs on the fly and queueing the rest for later output.
 
-      Func := Get_First_Function (Module);
-      while Present (Func) loop
-         Output_Subprogram (Func);
-         Func := Get_Next_Function (Func);
-      end loop;
+      if not Emit_Headers then
+         Func := Get_First_Function (Module);
+         while Present (Func) loop
+            Output_Subprogram (Func);
+            Func := Get_Next_Function (Func);
+         end loop;
+      end if;
 
       --  Finally, write all the code we generated and finalize the writing
       --  process.

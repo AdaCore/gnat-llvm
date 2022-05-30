@@ -92,12 +92,14 @@ package body CCG.Output is
          --  We don't have typedefs for function types, just pointer to
          --  function types. But for normal pointer types, make sure we've
          --  written at least an incomplete version of the typedef for the
-         --  pointed-to type.
+         --  pointed-to type. Always write the complete definition if writing
+         --  a header file
 
          if Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind then
             Output_Function_Type_Typedef (T);
          else
-            Maybe_Output_Typedef (Get_Element_Type (T), Incomplete => True);
+            Maybe_Output_Typedef (Get_Element_Type (T),
+                                  Incomplete => not Emit_Header);
          end if;
       end if;
 

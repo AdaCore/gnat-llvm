@@ -1027,6 +1027,10 @@ package GNATLLVM.GLValue is
    procedure Set_Value_Name (V : GL_Value; Name : String)
      with Pre => Present (V), Inline;
 
+   function Has_Inline_Attribute (V : GL_Value) return Boolean is
+     (Has_Inline_Attribute (+V))
+      with Pre => Present (V);
+
    procedure Add_Cold_Attribute (V : GL_Value)
      with Pre => Is_A_Function (V), Inline;
    --  Add the Cold attribute to function V

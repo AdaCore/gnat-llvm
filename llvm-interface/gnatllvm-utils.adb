@@ -23,6 +23,7 @@ with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
 
+with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
@@ -561,6 +562,15 @@ package body GNATLLVM.Utils is
 
       Scan (U);
    end Scan_Library_Item;
+
+   --------------------
+   -- Globalize_Name --
+   --------------------
+
+   function
+     Globalize_Name (S : String; Is_Global : Boolean := True) return String
+   is
+     ((if Is_Global then Output_File_Name ("") & "." & S else S));
 
    ----------------------
    -- Error_Msg_NE_Num --

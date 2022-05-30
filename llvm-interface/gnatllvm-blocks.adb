@@ -35,7 +35,6 @@ with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
-
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
@@ -871,13 +870,16 @@ package body GNATLLVM.Blocks is
 
       if No (File_Name_Strings (Index)) then
          declare
-            File     : constant String :=
+            File      : constant String  :=
               (if   Debug_Flag_NN or else Exception_Locations_Suppressed
                then ""
                else Get_Name_String (Debug_Source_Name (Index)));
-            Elements : GL_Value_Array (1 .. File'Length + 1);
-            V        : GL_Value;
-            Str      : GL_Value;
+            Is_Global : constant Boolean :=
+              Emit_C and then Present (Current_Func)
+              and then Has_Inline_Attribute (Current_Func);
+            Elements  : GL_Value_Array (1 .. File'Length + 1);
+            V         : GL_Value;
+            Str       : GL_Value;
 
          begin
             --  First build a string literal for FILE
@@ -887,16 +889,21 @@ package body GNATLLVM.Blocks is
                  Const_Int (SSI_GL_Type, ULL (Character'Pos (File (J))));
             end loop;
 
-            --  Append NUL character
+            --  Append NUL character and create the string for the filename.
+            --  If we're generating C and this function is inline, we
+            --  need to make this a global.
 
             Elements (Elements'Last) := Const_Null (SSI_GL_Type);
             Str := Const_Array (Elements, Any_Array_GL_Type);
-            V   := G_Ref (Add_Global (Module, Type_Of (Str), "FNAME"),
+            V   := G_Ref (Add_Global (Module, Type_Of (Str),
+                                      Globalize_Name ("FNAME", Is_Global)),
                           Any_Array_GL_Type);
             Set_Initializer     (V, Str);
-            Set_Linkage         (V, Private_Linkage);
             Set_Global_Constant (V);
             File_Name_Strings (Index) := Ptr_To_Int (V, Size_GL_Type);
+            if not Is_Global then
+               Set_Linkage (V, Private_Linkage);
+            end if;
          end;
       end if;
 

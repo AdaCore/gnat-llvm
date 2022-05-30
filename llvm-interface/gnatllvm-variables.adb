@@ -1548,15 +1548,22 @@ package body GNATLLVM.Variables is
          In_V := Get (In_V, Bounds_And_Data);
       end if;
 
-      --  If we haven't already seen this value, make a constant for it
+      --  If we haven't already seen this value, make a constant for it.
+      --  If we're generating C and the current function is inline, we need
+      --  to make this a global.
 
       if not Const_Map.Contains (+In_V) then
-         Out_Val := Add_Global  (Module, Type_Of (In_V), "for.ref");
+         Out_Val := Add_Global  (Module, Type_Of (In_V),
+                                 Globalize_Name ("for.ref"));
          Set_Initializer        (Out_Val, +In_V);
-         Set_Linkage            (Out_Val, Private_Linkage);
          Set_Global_Constant    (Out_Val, True);
          Set_Unnamed_Addr       (Out_Val, True);
          Const_Map.Insert       (+In_V,  Out_Val);
+         if not (Emit_C and then Present (Current_Func)
+                   and then Has_Inline_Attribute (Current_Func))
+         then
+            Set_Linkage         (Out_Val, Private_Linkage);
+         end if;
       end if;
 
       --  Now make a GL_Value.  We do this here since different constant

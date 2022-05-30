@@ -198,7 +198,7 @@ package body CCG.Output is
                   Init : constant Value_T := Get_Initializer (V);
 
                begin
-                  if No (Init) or else Emit_Headers then
+                  if No (Init) or else Emit_Header then
                      Decl := "extern " & Decl;
                   elsif Get_Linkage (V) in Internal_Linkage | Private_Linkage
                   then
@@ -217,7 +217,7 @@ package body CCG.Output is
                   --  the default initialization, which is defined by the
                   --  C standard as being all zeros (hence the name).
 
-                  if not Emit_Headers and then Present (Init)
+                  if not Emit_Header and then Present (Init)
                     and then not Is_Undef (Init)
                     and then not Is_A_Constant_Aggregate_Zero (Init)
                   then

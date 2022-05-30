@@ -92,7 +92,7 @@ package body CCG is
 
       Func := Get_First_Function (Module);
       while Present (Func) loop
-         if not Emit_Headers
+         if not Emit_Header
            or else (Present (Get_First_Basic_Block (Func))
                       and then Is_Public (Func))
          then
@@ -103,12 +103,12 @@ package body CCG is
       end loop;
 
       --  Write out declarations for all globals with initializers if
-      --  writing C code and all public globals if writing headers
+      --  writing C code and all public globals if writing a header
 
       Glob := Get_First_Global (Module);
       while Present (Glob) loop
          if Present (Get_Initializer (Glob))
-           and then (Is_Public (Glob) or else not Emit_Headers)
+           and then (Is_Public (Glob) or else not Emit_Header)
          then
             Maybe_Decl (Glob);
          end if;
@@ -119,7 +119,7 @@ package body CCG is
       --  Process all functions, writing referenced globals and
       --  typedefs on the fly and queueing the rest for later output.
 
-      if not Emit_Headers then
+      if not Emit_Header then
          Func := Get_First_Function (Module);
          while Present (Func) loop
             Output_Subprogram (Func);

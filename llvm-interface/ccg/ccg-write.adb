@@ -912,7 +912,7 @@ package body CCG.Write is
       --  If we're not writing to standard output, open the .c or .h file
 
       if not Debug_Flag_Dot_YY then
-         if Emit_Headers then
+         if Emit_Header then
             Create_H_File;
          else
             Create_C_File;
@@ -923,7 +923,7 @@ package body CCG.Write is
 
       --  Write the initial header info as requested
 
-      if not Emit_Headers and then Have_Includes then
+      if not Emit_Header and then Have_Includes then
          Write_Line ("#include <string.h>");
          Write_Line ("#include <stdlib.h>");
          if Version > 1990 then
@@ -942,7 +942,7 @@ package body CCG.Write is
    begin
       --  If we're dumping source lines, dump any that remain
 
-      if not Emit_Headers and then Dump_Source_Text then
+      if not Emit_Header and then Dump_Source_Text then
          for J in Next_Line_To_Dump .. Last_Source_Line (Main_Source_File) loop
             Write_Source_Line (J);
          end loop;
@@ -951,7 +951,7 @@ package body CCG.Write is
       --  If we opened a file to write to, close it
 
       if not Debug_Flag_Dot_YY then
-         if Emit_Headers then
+         if Emit_Header then
             Close_H_File;
          else
             Close_C_File;

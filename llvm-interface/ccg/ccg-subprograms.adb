@@ -256,7 +256,7 @@ package body CCG.Subprograms is
       --  Otherwise, write the definition of this function. If it has no
       --  basic blocks, it must be an extern.
 
-      Output_Decl ((if   Emit_Headers or else No (Get_First_Basic_Block (V))
+      Output_Decl ((if   Emit_Header or else No (Get_First_Basic_Block (V))
                     then "extern " else "") &
         Function_Proto (V, Extern => True), Is_Global => True);
 

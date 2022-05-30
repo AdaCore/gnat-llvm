@@ -41,8 +41,8 @@ package GNATLLVM.Codegen is
    C_Parameter_File  : String_Access  := null;
    --  If non-null, the name of a file to dump the C parameters
 
-   Emit_Headers      : Boolean        := False;
-   --  If True, emit headers to .h file
+   Emit_Header      : Boolean        := False;
+   --  If True, emit header to .h file
 
    CPU               : String_Access  := new String'("generic");
    --  Name of the specific CPU for this compilation.

@@ -17,8 +17,9 @@
 
 with LLVM.Core; use LLVM.Core;
 
-with Atree;    use Atree;
-with Errout;   use Errout;
+with Atree;  use Atree;
+with Errout; use Errout;
+with Lib;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -206,9 +207,24 @@ package body CCG is
    -- Error_Msg --
    ---------------
 
-   procedure Error_Msg (Msg : String) is
+   procedure Error_Msg (Msg : String; V : Value_T) is
    begin
-      Error_Msg (Msg, First_Source_Ptr);
+      if Is_A_Instruction (V) or else Is_A_Function (V)
+        or else Is_A_Global_Variable (V)
+      then
+         declare
+            File : constant String := Get_Debug_Loc_Filename (V);
+            Line : constant String := CCG.Helper.Get_Debug_Loc_Line (V)'Image;
+         begin
+            if File /= "" then
+               Error_Msg_N (Msg & " at " & File & ":" & Line (2 .. Line'Last),
+                            Lib.Cunit (Types.Main_Unit));
+               return;
+            end if;
+         end;
+      end if;
+
+      Error_Msg_N (Msg, Lib.Cunit (Types.Main_Unit));
    end Error_Msg;
 
    -------------------------

@@ -368,7 +368,9 @@ package body CCG.Write is
             Write_Str ("}");
 
          when others =>
-            Error_Msg ("unsupported undef type: " & Get_Type_Kind (T)'Image);
+            Error_Msg
+              ("unsupported undef type: " & Get_Type_Kind (T)'Image,
+               No_Value_T);
             Write_Str ("<unsupported undef type: " & Get_Type_Kind (T)'Image
                        & ">");
       end case;
@@ -870,7 +872,7 @@ package body CCG.Write is
             Write_Int (Get_Output_Idx (T));
 
          when others =>
-            Error_Msg ("unsupported type: " & Get_Type_Kind (T)'Image);
+            Error_Msg ("unsupported type: " & Get_Type_Kind (T)'Image, V);
             Write_Str ("<unsupported type: " & Get_Type_Kind (T)'Image & ">");
       end case;
    end Write_Type;

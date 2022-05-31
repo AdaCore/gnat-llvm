@@ -127,11 +127,11 @@ package CCG is
    --  Return the value to put as the operand of a call to llvm.ccg.annotate
    --  to write Str into the C output.
 
-   procedure Error_Msg (Msg : String);
-   --  Post an error message via the GNAT errout mechanism.
-   --  ??? For now, default to the First_Source_Ptr sloc. Will hopefully use a
-   --  better source location in the future when we keep track of them for e.g.
-   --  generating #line information.
+   procedure Error_Msg (Msg : String; V : Value_T);
+   --  Post an error message via the GNAT errout mechanism, posted on the
+   --  main unit start sloc.
+   --  If V has an associated debug location, append this location to the error
+   --  message as " at file:line".
 
    procedure Discard (B : Boolean) is null;
    --  Used to discard Boolean function results

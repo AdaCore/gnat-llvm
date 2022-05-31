@@ -299,9 +299,11 @@ package body CCG.Instructions is
             --  for this and the other usages of Error_Msg.
 
             if Version <= 1990 then
-               Error_Msg ("dynamic stack allocation not supported in C89/C90");
                Error_Msg
-                 ("\\specify -c-target-version=C99 or later to support this");
+                 ("dynamic stack allocation not supported in C89/C90", V);
+               Error_Msg
+                 ("\\specify -c-target-version=C99 or later to support this",
+                  V);
             end if;
          end;
       end if;
@@ -783,7 +785,7 @@ package body CCG.Instructions is
             null;
 
          when others =>
-            Error_Msg ("unsupported instruction: " & Get_Opcode_Name (Opc));
+            Error_Msg ("unsupported instruction: " & Get_Opcode_Name (Opc), V);
             Output_Stmt
               ("<unsupported instruction: " & Get_Opcode_Name (Opc) & ">");
       end case;

@@ -831,10 +831,9 @@ package body CCG.Transform is
          if Print_Module_To_File (Module, Dump_Name, Err_Msg'Address) then
             Error_Msg
               ("could not write `" & Dump_Name & "`: " &
-                 Get_LLVM_Error_Msg (Err_Msg));
+               Get_LLVM_Error_Msg (Err_Msg), V);
          end if;
       end if;
-
    end Transform_Blocks;
 
 end CCG.Transform;

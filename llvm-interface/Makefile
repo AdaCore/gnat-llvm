@@ -139,7 +139,9 @@ stage3: stage2
 ifeq ($(OS),Windows_NT)
 bootstrap: build-opt gnatlib-automated
 else
-bootstrap: stage3
+# Disable bootstrap also on Linux pending V502-034
+# bootstrap: stage3
+bootstrap: build-opt gnatlib-automated
 endif
 
 unbootstrap:

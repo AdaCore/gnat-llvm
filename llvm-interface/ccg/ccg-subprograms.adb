@@ -150,6 +150,13 @@ package body CCG.Subprograms is
          Result := "static " & Result;
       end if;
 
+      --  If this has a linker section, indicate that
+
+      if Get_Section (V) /= "" then
+         Result :=
+           "__attribute ((section (""" & Get_Section (V) & """))) " & Result;
+      end if;
+
       --  If inline was requested, mark that, but only if the language
       --  version is recent enough and only if this isn't an extern
       --  (because "extern inline" expects a body).

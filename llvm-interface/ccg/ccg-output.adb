@@ -191,6 +191,14 @@ package body CCG.Output is
                end;
             end if;
 
+            --  If this is a global variable, see if it has a linker
+            --  section and write it if so.
+
+            if Is_A_Global_Variable (V) and then Get_Section (V) /= "" then
+               Decl := (Decl & " __attribute ((section (""" &
+                        Get_Section (V) & """)))");
+            end if;
+
             --  For globals, we write the decl immediately. Otherwise, it's
             --  part of the decls for the subprogram.  Figure out whether this
             --  is static or extern.  It's extern if there's no initializer.

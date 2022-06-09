@@ -203,6 +203,17 @@ package body CCG is
       end if;
    end C_Set_Entity;
 
+   ------------------
+   -- C_Set_Entity --
+   ------------------
+
+   procedure C_Set_Entity (T : Type_T; TE : Type_Kind_Id) is
+   begin
+      if Emit_C then
+         Set_Entity (T, TE);
+      end if;
+   end C_Set_Entity;
+
    ---------------
    -- Error_Msg --
    ---------------

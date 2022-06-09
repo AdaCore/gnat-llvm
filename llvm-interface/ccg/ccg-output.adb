@@ -167,7 +167,9 @@ package body CCG.Output is
          end if;
 
          declare
-            Decl : Str := (V + (+Write_Type or +LHS)) & " " & (V + LHS);
+            Decl : Str :=
+              (V + (+Write_Type or +LHS)) & " " &
+               (if Is_Volatile (V) then "volatile " else "") & (V + LHS);
 
          begin
             --  If this is a global variable or alloca, see if the

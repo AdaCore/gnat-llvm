@@ -19,8 +19,9 @@ with Interfaces.C;
 
 with LLVM.Types; use LLVM.Types;
 
-with Namet; use Namet;
-with Types; use Types;
+with Einfo.Entities; use Einfo.Entities;
+with Namet;          use Namet;
+with Types;          use Types;
 
 with GNATLLVM; use GNATLLVM;
 
@@ -113,6 +114,9 @@ package CCG is
      with Pre => Present (V), Inline;
    --  Indicate that E is related to V, either the object that V represents
    --  or the GNAT type of V.
+   procedure C_Set_Entity  (T : Type_T; TE : Type_Kind_Id)
+     with Pre => Present (T), Inline;
+   --  Indicate that E is the entity corresponding to T
 
    procedure C_Set_Parameter (UID : Unique_Id; Idx : Nat; Entity : Entity_Id);
    --  Give the entity corresponding to parameter Idx of the function that

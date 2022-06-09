@@ -15,10 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree;          use Atree;
-with Einfo.Entities; use Einfo.Entities;
-with Sinfo.Nodes;    use Sinfo.Nodes;
-with Uintp.LLVM;     use Uintp.LLVM;
+with Atree;       use Atree;
+with Sinfo.Nodes; use Sinfo.Nodes;
+with Uintp.LLVM;  use Uintp.LLVM;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
@@ -162,9 +161,13 @@ package body CCG.Aggregates is
 
    procedure Output_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
    is
-      Types : constant Nat                := Count_Struct_Element_Types (T);
-      SOS   : constant Struct_Out_Style_T :=
-        Struct_Out_Style (T);
+      Types   : constant Nat                := Count_Struct_Element_Types (T);
+      TE      : constant Opt_Type_Kind_Id   := Get_Entity (T);
+      Is_Vol  : constant Boolean            :=
+        Present (TE) and then Treat_As_Volatile (TE);
+      Vol_Str : constant String             :=
+        (if Is_Vol then "volatile " else "");
+      SOS     : constant Struct_Out_Style_T := Struct_Out_Style (T);
 
    begin
       --  Because this struct may contain a pointer to itself, we always have
@@ -174,7 +177,8 @@ package body CCG.Aggregates is
       --       struct foo { ... full definition ..}
 
       if not Get_Is_Incomplete_Output (T) then
-         Output_Decl ("typedef struct " & T & " " & T, Is_Typedef => True);
+         Output_Decl ("typedef " & Vol_Str & "struct " & T & " " & T,
+                      Is_Typedef => True);
          Set_Is_Incomplete_Output (T);
       end if;
 
@@ -221,8 +225,15 @@ package body CCG.Aggregates is
                     Get_Field_Name (T, J);
                   F              : constant Entity_Id        :=
                     Get_Field_Entity (T, J);
+                  F_Is_Vol       : constant Boolean          :=
+                    Present (F) and then Treat_As_Volatile (F)
+                    and then not Is_Vol;
+
                begin
-                  Output_Decl ((ST or F) & " " & Name, Is_Typedef => True);
+                  Output_Decl
+                    ((ST or F) & (if F_Is_Vol then "volatile " else "") &
+                      " " & Name,
+                     Is_Typedef => True);
                end;
             end if;
          end;

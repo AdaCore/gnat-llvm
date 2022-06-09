@@ -456,7 +456,7 @@ package body CCG.Utils is
 
    function Is_Unsigned (V : Value_T) return Boolean is
       TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
-      T  : constant Type_T := Type_Of (V);
+      T  : constant Type_T           := Type_Of (V);
 
    begin
       --  Only check for unsigned if V has an integral type or is a function
@@ -480,6 +480,19 @@ package body CCG.Utils is
       return Present (E) and then not Is_Type (E) and then Has_Name (V)
         and then Comes_From_Source (E);
    end Is_Variable;
+
+   -----------------
+   -- Is_Volatile --
+   -----------------
+
+   function Is_Volatile (V : Value_T) return Boolean is
+      E : constant Entity_Id := Get_Entity (V);
+
+   begin
+      return Present (E)
+        and then (Treat_As_Volatile (E) or else Address_Taken (E));
+
+   end Is_Volatile;
 
    -----------------------
    -- Might_Be_Unsigned --

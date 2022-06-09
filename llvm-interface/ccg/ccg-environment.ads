@@ -70,6 +70,10 @@ package CCG.Environment is
    procedure Set_Is_Used        (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Used (V) = B, Inline;
 
+   function Get_Entity                   (T : Type_T) return Opt_Type_Kind_Id
+     with Pre => Present (T), Inline;
+   --  Get the GNAT entity for non-void type T, if Present
+
    function Get_Is_Typedef_Output        (T : Type_T) return Boolean
      with Pre => Present (T), Inline;
    --  True if this is a type either for which we don't write a typedef
@@ -89,6 +93,8 @@ package CCG.Environment is
      with Pre => Present (T), Inline;
    --  True if we're in the process of outputting a typedef
 
+   procedure Set_Entity                   (T : Type_T; TE : Type_Kind_Id)
+     with Pre => Present (T), Post => Get_Entity (T) = TE, Inline;
    procedure Set_Is_Typedef_Output        (T : Type_T; B : Boolean := True)
      with Pre  => Present (T), Post => Get_Is_Typedef_Output (T) = B, Inline;
    procedure Set_Is_Return_Typedef_Output (T : Type_T; B : Boolean := True)

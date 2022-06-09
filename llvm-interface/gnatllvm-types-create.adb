@@ -30,6 +30,9 @@ with GNATLLVM.Records;        use GNATLLVM.Records;
 with GNATLLVM.Records.Create; use GNATLLVM.Records.Create;
 with GNATLLVM.Subprograms;    use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;          use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;        use GNATLLVM.Wrapper;
+
+with CCG; use CCG;
 
 package body GNATLLVM.Types.Create is
 
@@ -339,9 +342,19 @@ package body GNATLLVM.Types.Create is
             T := Byte_T;
       end case;
 
-      --  Now save the result.  If we don't have a GT already made, make one.
+      --  Now save the result
 
       GT := Default_GL_Type (TE, Create => False);
+
+      --  Struct types that have names aren't shared, so we can link them
+      --  to the GNAT entity.
+
+      if Get_Type_Kind (T) = Struct_Type_Kind and then Struct_Has_Name (T) then
+         C_Set_Entity (T, TE);
+      end if;
+
+      --  If we don't have a GT already made, make one
+
       if No (GT) then
          GT := New_GT (TE);
       end if;

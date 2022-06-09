@@ -21,8 +21,7 @@ with Ada.Containers; use Ada.Containers;
 with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
 
-with Atree;          use Atree;
-with Einfo.Entities; use Einfo.Entities;
+with Atree; use Atree;
 
 with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
@@ -178,6 +177,10 @@ package CCG.Utils is
    function Is_Variable (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if V is a variable present in the source code
+
+   function Is_Volatile (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if V is a variable that's to be treated as volatile
 
    function Might_Be_Unsigned (V : Value_T) return Boolean
      with Pre => Present (V);

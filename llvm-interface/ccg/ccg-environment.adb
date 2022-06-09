@@ -59,6 +59,9 @@ package body CCG.Environment is
    end record;
 
    type Type_Data is record
+      Entity                   : Opt_Type_Kind_Id;
+      --  GNAT entity of this type, if known
+
       Is_Typedef_Output        : Boolean;
       --  True if this is a type either for which we don't write a typedef
       --  or if it is and we've written that typedef previously.
@@ -71,7 +74,7 @@ package body CCG.Environment is
       --  True if this is a struct type and we've just written the struct
       --  definition without fields (an incomplete type).
 
-      Are_Outputting_Typedef      : Boolean;
+      Are_Outputting_Typedef   : Boolean;
       --  True if we're in the process of outputting a typedef
 
       Output_Idx               : Nat;
@@ -212,7 +215,8 @@ package body CCG.Environment is
       elsif not Create then
          return No_Type_Idx;
       else
-         Type_Info.Append ((Is_Typedef_Output        => False,
+         Type_Info.Append ((Entity                   => Types.Empty,
+                            Is_Typedef_Output        => False,
                             Is_Return_Typedef_Output => False,
                             Is_Incomplete_Output     => False,
                             Are_Outputting_Typedef   => False,
@@ -384,6 +388,18 @@ package body CCG.Environment is
       Value_Info.Table (Idx).Is_Used := B;
    end Set_Is_Used;
 
+   ----------------
+   -- Get_Entity --
+   ----------------
+
+   function Get_Entity (T : Type_T) return Opt_Type_Kind_Id is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
+
+   begin
+      return (if   Present (Idx) then Type_Info.Table (Idx).Entity
+              else Types.Empty);
+   end Get_Entity;
+
    ---------------------------
    -- Get_Is_Typedef_Output --
    ---------------------------
@@ -429,6 +445,17 @@ package body CCG.Environment is
       return Present (Idx)
         and then Type_Info.Table (Idx).Are_Outputting_Typedef;
    end Get_Are_Outputting_Typedef;
+
+   ----------------
+   -- Set_Entity --
+   ----------------
+
+   procedure Set_Entity (T : Type_T; TE : Type_Kind_Id) is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
+
+   begin
+      Type_Info.Table (Idx).Entity := TE;
+   end Set_Entity;
 
    --------------------------
    -- Set_Is_Typedef_Output --

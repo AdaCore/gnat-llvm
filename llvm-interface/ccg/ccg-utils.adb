@@ -489,9 +489,7 @@ package body CCG.Utils is
       E : constant Entity_Id := Get_Entity (V);
 
    begin
-      return Present (E)
-        and then (Treat_As_Volatile (E) or else Address_Taken (E));
-
+      return Present (E) and then Treat_As_Volatile (E);
    end Is_Volatile;
 
    -----------------------
@@ -518,7 +516,7 @@ package body CCG.Utils is
       --  Phi node as volatile since we can have infinite recursion if we
       --  try to walk its operands.
 
-      return (if    not Is_A_Instruction (V) then False
+      return (if not Is_A_Instruction (V) then False
       elsif Is_A_Call_Inst (V) or else Is_APHI_Node (V)
                     or else Is_A_Terminator_Inst (V)
                     or else Is_A_Store_Inst (V)

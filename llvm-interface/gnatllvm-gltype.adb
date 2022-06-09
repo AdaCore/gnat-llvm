@@ -26,6 +26,7 @@ with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Records;      use GNATLLVM.Records;
+with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 
 with CCG; use CCG;
 
@@ -406,11 +407,19 @@ package body GNATLLVM.GLType is
       Out_GT    : constant GL_Type   :=
         Make_GT_Alternative_Internal (GT, Size, Align, For_Type, Max_Size,
                                       Is_Biased);
+      T         : constant Type_T    := Type_Of (GT);
       Err_Ident : constant Entity_Id :=
         (if   Present (E) and then Is_Packed_Array_Impl_Type (E)
          then Original_Array_Type (E) else E);
 
    begin
+      --  Struct types that have names aren't shared, so we can link them
+      --  to the GNAT entity.
+
+      if Get_Type_Kind (T) = Struct_Type_Kind and then Struct_Has_Name (T) then
+         C_Set_Entity (T, Full_Etype (GT));
+      end if;
+
       --  If this is an entity that comes from source, is in the unit being
       --  compiled, a size was specified, and we've made a padded type, set
       --  a warning saying how many bits are unused.  Consider the alignment
@@ -742,6 +751,13 @@ package body GNATLLVM.GLType is
       GTI.LLVM_Type := T;
       GTI.Kind      := (if Is_Dummy then Dummy else Primitive);
       Mark_Default (GT);
+
+      --  Struct types that have names aren't shared, so we can link them
+      --  to the GNAT entity.
+
+      if Get_Type_Kind (T) = Struct_Type_Kind and then Struct_Has_Name (T) then
+         C_Set_Entity (T, Full_Etype (GT));
+      end if;
 
       --  If Size_Type hasn't been elaborated yet, we're done for now.
       --  If this is a E_Void or E_Subprogram_Type, it doesn't have a

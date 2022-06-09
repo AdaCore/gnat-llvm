@@ -137,9 +137,14 @@ package body GNATLLVM.Variables is
 
    function Is_Volatile_Entity (E : Evaluable_Kind_Id) return Boolean is
      (Is_Volatile_Object (E) or else Treat_As_Volatile (E)
-        or else Address_Taken (E));
+        or else (not Emit_C and then Address_Taken (E)));
    --  True iff E is an entity (a variable or constant) that we
-   --  need to treat as volatile for any reason.
+   --  need to treat as volatile for any reason. If we take the address of
+   --  an entity, we want to treat it as volatile for optimization purposes,
+   --  but we don't need to do this when generating C because the optimizer
+   --  can see the address being taken. Moreover, if we do this, we'll
+   --  produce a warning on the assignment of the address in the case
+   --  of 'Unrestricted_Access.
 
    function Make_Global_Variable
      (E          : Exception_Or_Object_Kind_Id;

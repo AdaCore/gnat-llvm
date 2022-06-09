@@ -231,6 +231,10 @@ package CCG.Helper is
      (Present (Is_A_Global_Variable (V)))
      with Pre => Present (V);
 
+   function Is_A_Get_Element_Ptr_Inst (V : Value_T) return Boolean is
+     (Present (Is_A_Get_Element_Ptr_Inst (V)))
+     with Pre => Present (V);
+
    function Acts_As_Instruction (V : Value_T) return Boolean is
      (Is_A_Instruction (V) or else Is_A_Constant_Expr (V))
      with Pre => Present (V);

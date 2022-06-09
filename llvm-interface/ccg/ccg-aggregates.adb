@@ -221,11 +221,11 @@ package body CCG.Aggregates is
               and then not (SOS = Normal and then Is_Field_Padding (T, J))
             then
                declare
-                  Name           : constant Str              :=
+                  Name           : constant Str                      :=
                     Get_Field_Name (T, J);
-                  F              : constant Entity_Id        :=
+                  F              : constant Opt_Record_Field_Kind_Id :=
                     Get_Field_Entity (T, J);
-                  F_Is_Vol       : constant Boolean          :=
+                  F_Is_Vol       : constant Boolean                  :=
                     Present (F) and then Treat_As_Volatile (F)
                     and then not Is_Vol;
 

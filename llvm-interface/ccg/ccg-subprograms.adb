@@ -161,8 +161,8 @@ package body CCG.Subprograms is
       --  version is recent enough and only if this isn't an extern
       --  (because "extern inline" expects a body).
 
-      if Has_Inline_Attribute (V) and then Version > 1990
-        and then not Extern
+      if (Has_Inline_Attribute (V) or else Has_Inline_Always_Attribute (V))
+        and then Version > 1990 and then not Extern
       then
          Result := "inline " & Result;
       end if;

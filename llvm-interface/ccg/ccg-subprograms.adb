@@ -201,6 +201,7 @@ package body CCG.Subprograms is
                Result := Result & (if J = 0 then "" else ", ") & Typ;
                if not Extern then
                   Result := Result & " " & Param;
+                  Set_Is_Decl_Output (Param);
                end if;
             end;
          end loop;

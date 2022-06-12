@@ -155,6 +155,11 @@ package body CCG.Transform is
          Hash                => Hash_BB,
          Equivalent_Elements => "=");
 
+      package Value_Sets is new Ada.Containers.Hashed_Sets
+        (Element_Type        => Value_T,
+         Hash                => Hash_Value,
+         Equivalent_Elements => "=");
+
       function Phi_Alloca (V : Value_T) return Value_T
         with Pre  => Is_APHI_Node (V),
              Post => Is_A_Alloca_Inst (Phi_Alloca'Result);
@@ -168,6 +173,7 @@ package body CCG.Transform is
       Alloca_Loc : Value_T       :=
         Get_First_Instruction (Get_Entry_Basic_Block (V));
       Phi_Map    : Value_Value_Map_P.Map;
+      Ret_Phis   : Value_Sets.Set;
       New_BBs    : BB_Sets.Set;
       Inst       : Value_T;
       Next_BB    : Basic_Block_T;
@@ -290,6 +296,16 @@ package body CCG.Transform is
                         Instruction_Erase_From_Parent (Inst);
                      end if;
 
+                     --  If we have nested phi nodes, it's possible that
+                     --  something that wasn't considered a return phi here
+                     --  may later if we've replaced a branch with a return.
+                     --  That will later cause a crash. So record the Phi's
+                     --  that we consider return Phis and use that below.
+
+                     if not Ret_Phis.Contains (Dest_Inst) then
+                        Ret_Phis.Insert (Dest_Inst);
+                     end if;
+
                      --  Since, by definition, there's only one return
                      --  Phi per block, we're done.
 
@@ -338,7 +354,7 @@ package body CCG.Transform is
          Next_BB := Get_Next_Basic_Block (BB);
          Inst    := Get_First_Instruction (BB);
          while Is_APHI_Node (Inst) loop
-            if Is_Return_Phi (Inst) then
+            if Ret_Phis.Contains (Inst) then
                Delete_Basic_Block (BB);
                exit;
             else

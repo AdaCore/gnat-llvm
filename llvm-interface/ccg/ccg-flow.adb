@@ -21,7 +21,6 @@ with Ada.Containers.Ordered_Sets;
 
 with Debug;    use Debug;
 with Output;   use Output;
-with Set_Targ; use Set_Targ;
 with Table;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -929,19 +928,13 @@ package body CCG.Flow is
                  (if Is_Unsigned (Val) then POO_Unsigned else POO_Signed);
                Last_Case : constant Nat                    :=
                  Get_Num_Operands (T) / 2 - 1;
-               Result    : Str                             :=
+               Result    : constant Str                    :=
                  Process_Operand (Val, POO);
                Cidx      : Case_Idx                        :=
                  New_Case (No_Value_T, No_Str);
 
             begin
                Maybe_Decl (Val);
-
-               --  If Val is narrower than int, we must force it to its size
-
-               if Get_Scalar_Bit_Size (Val) < Int_Size then
-                  Result := TP ("(#T1) ", Val) & (Result + Unary);
-               end if;
 
                --  Process pending values and set the case expression and
                --  the first case data.

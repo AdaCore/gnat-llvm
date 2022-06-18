@@ -864,10 +864,11 @@ package body GNATLLVM.Types is
                         2 => To_Bytes (Size),
                         3 => To_Bytes (Align_V)));
 
-      --  Otherwise, this is the secondary stack and we just call with size
+      --  Otherwise, this is the secondary stack
 
       else
-         Result := Call_Alloc (Proc, N, (1 => To_Bytes (Size)));
+         Result := Call_Alloc (Proc, N, (1 => To_Bytes (Size),
+                                         2 => To_Bytes (Align_V)));
       end if;
 
       --  If this is for a non-default storage model, indicate that

@@ -341,6 +341,130 @@ package body CCG.Utils is
       CI_V.Set_Component_Info (UID, Idx, Entity => Entity);
    end Set_Parameter;
 
+   ------------------------
+   -- Is_Ref_To_Volatile --
+   ------------------------
+
+   function Is_Ref_To_Volatile (Op : Value_T) return Boolean is
+   begin
+      --  If it is volatile, then it's a reference to a volatile object
+
+      if Is_Volatile (Op) then
+         return True;
+
+      --  If it's not an instruction, it's not a reference to volatile
+
+      elsif not Is_A_Instruction (Op) then
+         return False;
+      end if;
+
+      --  Otherwise, look at the opcode
+
+      case Get_Opcode (Op) is
+
+         --  For addition and subtraction look at the first operand
+
+         when Op_Add | Op_Sub =>
+            return Is_Ref_To_Volatile (Get_Operand0 (Op));
+
+         --  For GEP, first look at the first operand
+
+         when Op_Get_Element_Ptr =>
+            return Is_Volatile_GEP (Op);
+
+         --  All else isn't known to be volatile
+
+         when others =>
+            null;
+
+      end case;
+
+      return False;
+   end Is_Ref_To_Volatile;
+
+   --  We have common code to scan a GEP. Return a record giving our result
+   --  and then the external functions just extract the needed result
+   --  from that.
+
+   type VF is record
+      V_Is_Volatile : Boolean;
+      V_Is_Unsigned : Boolean;
+   end record;
+
+   function GEP_Volatile_And_Unsigned (V : Value_T) return VF
+     with Pre => Is_A_Instruction (V);
+
+   ----------------------------
+   -- GEP_Volatile_And_Field --
+   ----------------------------
+
+   function GEP_Volatile_And_Unsigned (V : Value_T) return VF is
+      Aggr          : constant Value_T := Get_Operand0 (V);
+      N_Ops         : constant Nat     := Get_Num_Operands (V);
+      Aggr_T        : Type_T           := Get_Element_Type (Aggr);
+      V_Is_Volatile : Boolean          := False;
+      V_Is_Unsigned : Boolean          := False;
+      Ops           : Value_Array (1 .. N_Ops);
+
+   begin
+      for J in Ops'Range loop
+         Ops (J) := Get_Operand (V, J - Ops'First);
+      end loop;
+
+      --  If the input to GEP is volatile, its a reference to volatile
+
+      if Is_Ref_To_Volatile (Aggr) then
+         V_Is_Volatile := True;
+      end if;
+
+      --  Now look at all operands and find the relevant type for each.
+      --  If its a struct, see if we know that the type is volatile.
+      --  Otherwise, look at the field and its signedness/volatile
+      --  status. We mark the result as volatile if any operand is and
+      --  the signedness comes just from the last operand.
+
+      for Op of Ops (Ops'First + 2 .. Ops'Last) loop
+         if Get_Type_Kind (Aggr_T) = Array_Type_Kind then
+            Aggr_T        := Get_Element_Type (Aggr_T);
+            V_Is_Unsigned := False;
+         else
+            pragma Assert (Get_Type_Kind (Aggr_T) = Struct_Type_Kind);
+
+            declare
+               Idx   : constant Nat                      :=
+                 Nat (Const_Int_Get_S_Ext_Value (Op));
+               F     : constant Opt_Record_Field_Kind_Id :=
+                 Get_Field_Entity (Aggr_T, Idx);
+
+            begin
+               if Present (F) then
+                  V_Is_Unsigned :=
+                    Is_Unsigned_Type (Full_Base_Type (Full_Etype (F)));
+                  V_Is_Volatile :=
+                    V_Is_Volatile or Treat_As_Volatile (F)
+                    or Treat_As_Volatile (Full_Etype (F));
+               end if;
+            end;
+         end if;
+      end loop;
+
+      return (V_Is_Volatile, V_Is_Unsigned);
+   end GEP_Volatile_And_Unsigned;
+
+   ---------------------
+   -- Is_Volatile_GEP --
+   ---------------------
+
+   function Is_Volatile_GEP (V : Value_T) return Boolean is
+     (GEP_Volatile_And_Unsigned (V).V_Is_Volatile);
+
+   ---------------------
+   -- Is_Unsigned_GEP --
+   ---------------------
+
+   function Is_Unsigned_GEP (V : Value_T) return Boolean is
+     (GEP_Volatile_And_Unsigned (V).V_Is_Unsigned);
+
    --------
    -- TP --
    --------

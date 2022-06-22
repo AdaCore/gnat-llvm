@@ -24,7 +24,6 @@ pragma Warnings (On);
 
 with LLVM.Core; use LLVM.Core;
 
-with Atree; use Atree;
 with Table;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -54,10 +53,6 @@ package body CCG.Instructions is
    procedure Alloca_Instruction (V, Op : Value_T)
      with Pre  => Is_A_Alloca_Inst (V) and then Present (Op);
    --  Return the value corresponding to a cast instruction
-
-   function Is_Ref_To_Volatile (Op : Value_T) return Boolean
-     with Pre => Present (Op);
-   --  True if Op represents a value that we can determine to be volatile
 
    function Deref_For_Load_Store (Op, V : Value_T) return Str
      with Pre  => (Is_A_Load_Inst (V) or else Is_A_Store_Inst (V))
@@ -320,65 +315,6 @@ package body CCG.Instructions is
          end;
       end if;
    end Alloca_Instruction;
-
-   ------------------------
-   -- Is_Ref_To_Volatile --
-   ------------------------
-
-   function Is_Ref_To_Volatile (Op : Value_T) return Boolean is
-   begin
-      --  If it is volatile, then it's a reference to a volatile object
-
-      if Is_Volatile (Op) then
-         return True;
-
-      --  If it's not an instruction, it's not a reference to volatile
-
-      elsif not Is_A_Instruction (Op) then
-         return False;
-      end if;
-
-      --  Otherwise, look at the opcode
-
-      case Get_Opcode (Op) is
-
-         --  For addition and subtraction look at the first operand
-
-         when Op_Add | Op_Sub =>
-            return Is_Ref_To_Volatile (Get_Operand0 (Op));
-
-         --  For GEP, first look at the first operand
-
-         when Op_Get_Element_Ptr =>
-            if Is_Ref_To_Volatile (Get_Operand0 (Op)) then
-               return True;
-
-            --  Otherwise, see if it's a simple reference to a volatile field
-
-            elsif Nat'(Get_Num_Operands (Op)) = 3
-              and then Is_A_Constant_Int (Get_Operand2 (Op))
-            then
-               declare
-                  T : constant Type_T                     :=
-                    Get_GEP_Source_Element_Type (Op);
-                  Idx : constant LLI                       :=
-                    Const_Int_Get_S_Ext_Value (Get_Operand2 (Op));
-                  F   : constant Opt_Record_Field_Kind_Id :=
-                    Get_Field_Entity (T, Nat (Idx));
-               begin
-                  return Present (F) and then Treat_As_Volatile (F);
-               end;
-            end if;
-
-         --  All else isn't known to be volatile
-
-         when others =>
-            null;
-
-      end case;
-
-      return False;
-   end Is_Ref_To_Volatile;
 
    --------------------------
    -- Deref_For_Load_Store --
@@ -891,7 +827,7 @@ package body CCG.Instructions is
 
    begin
       for J in Ops'Range loop
-         Ops (J) := Get_Operand (V, J - 1);
+         Ops (J) := Get_Operand (V, J - Ops'First);
       end loop;
 
       Instruction (V, Ops);

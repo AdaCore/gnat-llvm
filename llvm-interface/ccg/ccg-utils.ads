@@ -97,6 +97,18 @@ package CCG.Utils is
    --  is present. If 'T' is present, we output the type of that operand.
    --  If 'P' is present, we use the value of the Phi temporary.
 
+   function Is_Ref_To_Volatile (Op : Value_T) return Boolean
+     with Pre => Present (Op);
+   --  True if Op represents a value that we can determine to be volatile
+
+   function Is_Volatile_GEP (V : Value_T) return Boolean
+     with Pre => Is_A_Instruction (V);
+   --  True if V, a GEP instruction, points to a volatile variable or field
+
+   function Is_Unsigned_GEP (V : Value_T) return Boolean
+     with Pre => Is_A_Instruction (V);
+   --  True if V, a GEP instruction, points to an unsigned field
+
    function Num_Uses (V : Value_T) return Nat
      with Pre => Present (V);
    --  Returns the number of uses of V

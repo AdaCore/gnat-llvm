@@ -404,13 +404,8 @@ package body CCG.Utils is
       Aggr_T        : Type_T           := Get_Element_Type (Aggr);
       V_Is_Volatile : Boolean          := False;
       V_Is_Unsigned : Boolean          := False;
-      Ops           : Value_Array (1 .. N_Ops);
 
    begin
-      for J in Ops'Range loop
-         Ops (J) := Get_Operand (V, J - Ops'First);
-      end loop;
-
       --  If the input to GEP is volatile, its a reference to volatile
 
       if Is_Ref_To_Volatile (Aggr) then
@@ -423,7 +418,7 @@ package body CCG.Utils is
       --  status. We mark the result as volatile if any operand is and
       --  the signedness comes just from the last operand.
 
-      for Op of Ops (Ops'First + 2 .. Ops'Last) loop
+      for J in 2 .. N_Ops - 1 loop
          if Get_Type_Kind (Aggr_T) = Array_Type_Kind then
             Aggr_T        := Get_Element_Type (Aggr_T);
             V_Is_Unsigned := False;
@@ -432,7 +427,7 @@ package body CCG.Utils is
 
             declare
                Idx   : constant Nat                      :=
-                 Nat (Const_Int_Get_S_Ext_Value (Op));
+                 Nat (Const_Int_Get_S_Ext_Value (Get_Operand (V, J)));
                F     : constant Opt_Record_Field_Kind_Id :=
                  Get_Field_Entity (Aggr_T, Idx);
 

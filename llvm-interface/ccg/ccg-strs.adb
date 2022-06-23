@@ -959,31 +959,6 @@ package body CCG.Strs is
       end return;
    end Single_Value;
 
-   ------------------
-   -- Has_Unsigned --
-   ------------------
-
-   function Has_Unsigned (S : Str) return Boolean is
-   begin
-      for Comp of S.Comps loop
-
-         --  It's unsigned if this is an unsigned reference to a value or
-         --  the value may be unsigned (unless we've forced to signed
-         --  already).
-
-         if Comp.Kind = Value
-           and then (Comp.V_Flags.Need_Unsigned
-                       or else (not Comp.V_Flags.Need_Signed
-                                  and then not Comp.V_Flags.Write_Type
-                                  and then Might_Be_Unsigned (Comp.Val)))
-         then
-            return True;
-         end if;
-      end loop;
-
-      return False;
-   end Has_Unsigned;
-
    -------------
    -- Addr_Of --
    -------------
@@ -1040,6 +1015,8 @@ package body CCG.Strs is
       --  Otherwise, add the operator to take the address. If this is a
       --  value that's constant, we have to cast to the non-constant
       --  pointer type.
+      --  ??? This can lose "volatile", but it's not clear what to do
+      --  about that.
 
       else
          Result := "&" & (S + Unary);

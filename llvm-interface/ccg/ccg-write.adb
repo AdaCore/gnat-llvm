@@ -632,14 +632,12 @@ package body CCG.Write is
             Write_Constant_Value (V, Need_Unsigned => True);
             return;
 
-         --  If it's not declared to be unsigned or we need to be concerned
-         --  about integer promotion, write a cast and then the value. Note
-         --  that we can't use #T or Write_Type here because we often want
-         --  to write a different signedness than V. Likewise below.
+         --  If it's not unsigned or we need to be concerned about integer
+         --  promotion, write a cast and then the value. Note that we can't
+         --  use #T or Write_Type here because we often want to write a
+         --  different signedness than V. Likewise below.
 
-         elsif not (Is_Unsigned (V) and then Get_Is_Decl_Output (V))
-           or else Must_Write_Cast
-         then
+         elsif not Is_Unsigned (V) or else Must_Write_Cast then
             Maybe_Write_Parens;
             Write_Str ("(unsigned " & Type_Of (V) & ") ");
          end if;
@@ -649,7 +647,7 @@ package body CCG.Write is
          --  integer promotion, write a cast to the signed type.
 
       elsif Flags.Need_Signed
-        and then (Might_Be_Unsigned (V) or else Must_Write_Cast)
+        and then (Is_Unsigned (V) or else Must_Write_Cast)
       then
          Write_Str ("(" & Type_Of (V) & ") ");
       end if;
@@ -733,7 +731,9 @@ package body CCG.Write is
         (if    Present (E) then Full_Etype (E)
          elsif Present (V) then GNAT_Type (V)
          else  Empty);
-      BT : Opt_Type_Kind_Id          := TE;
+      BT : constant Opt_Type_Kind_Id  :=
+        (if Present (TE) then Full_Base_Type (TE) else Empty);
+      RT : Opt_Type_Kind_Id           := TE;
 
    begin
       case Get_Type_Kind (T) is
@@ -753,17 +753,20 @@ package body CCG.Write is
          when Integer_Type_Kind =>
 
             --  First see if we have a reference that says whether this
-            --  type is unsigned or not.
+            --  type is unsigned or not. Note that we need to check the
+            --  base type to avoid unnecessary conversions.
 
-            if Present (TE) and then Is_Unsigned_Type (TE) then
+            if (Present (V) and then Is_Unsigned (V))
+              or else (Present (BT) and then Is_Unsigned_Type (BT))
+            then
                Write_Str ("unsigned ");
             end if;
 
             --  Now see if a type in Interfaces.C is in the type chain
             --  at the same size.
 
-            while Present (BT) and then Etype (BT) /= BT
-              and then RM_Size (BT) = RM_Size (Etype (BT))
+            while Present (RT) and then Etype (RT) /= RT
+              and then RM_Size (RT) = RM_Size (Etype (RT))
             loop
                --  Now see if this is a known type in Interfaces.C. Note
                --  that we can ignore signedness here since it's been taken
@@ -781,9 +784,9 @@ package body CCG.Write is
                --  but Name_Enter is used to enter that name into the
                --  table.
 
-               if Get_Name (Scope (Etype (BT))) = "interfaces__c" then
+               if Get_Name (Scope (Etype (RT))) = "interfaces__c" then
                   declare
-                     Full_Name : constant String := Get_Name (Etype (BT));
+                     Full_Name : constant String := Get_Name (Etype (RT));
                      Name      : constant String :=
                        Full_Name (Full_Name'First + 15 .. Full_Name'Last);
 
@@ -822,7 +825,7 @@ package body CCG.Write is
 
                --  Go on to the next type in the type chain
 
-               BT := Etype (BT);
+               RT := Etype (RT);
             end loop;
 
             --  If nothing in Interfaces.C, write type name from size

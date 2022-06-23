@@ -349,13 +349,6 @@ package CCG.Strs is
    function Is_String_Starts_With (S1 : Str; S2 : String) return Boolean
      with Pre => Present (S1) and then S2'Length < Str_Max;
 
-   function Has_Unsigned (S : Str) return Boolean
-      with Pre => Present (S);
-   --  True if there is a reference within S to a value that's unsigned.
-   --  This is purposely conservative in that it returns true if *anything*
-   --  in S is unsigned, even though the expression that S represents
-   --  may no longer be unsigned.
-
    pragma Annotate (Xcov, Exempt_On, "Debug helper");
 
    procedure Dump_Str (S : Str) with Export, External_Name => "dstr";

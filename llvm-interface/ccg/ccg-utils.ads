@@ -186,22 +186,15 @@ package CCG.Utils is
      with Pre => Present (V), Inline;
    --  True if V is known from sources to be unsigned
 
-   function Is_Variable (V : Value_T) return Boolean
+   function Is_Variable
+     (V : Value_T; Need_From_Source : Boolean := True) return Boolean
      with Pre => Present (V), Inline;
-   --  True if V is a variable present in the source code
+   --  True if V is a variable. If Need_From_Source, it also must be
+   --  present in the source code.
 
    function Is_Volatile (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if V is a variable that's to be treated as volatile
-
-   function Might_Be_Unsigned (V : Value_T) return Boolean
-     with Pre => Present (V);
-   --  True if it's possible that V is unsigned.
-   --  ??? GNAT LLVM marks which values are unsigned. Unfortunately, that's
-   --  not good enough in the presence of optimization since the LLVM
-   --  optimizer will create new values whose signedness we don't know.
-   --  It's not completely clear what we can or should do about this, but
-   --  let's see if it's an issue in practice.
 
    function Has_Side_Effects (V : Value_T) return Boolean
      with Pre => Present (V);

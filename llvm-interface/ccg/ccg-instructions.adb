@@ -160,9 +160,10 @@ package body CCG.Instructions is
                      when POO_Unsigned => V + Need_Unsigned);
 
    begin
-      --  If all we have to do is deal with signedness, we're done
+      --  If all we have to do is deal with signedness, we're done. We also
+      --  don't need to do anything if we have a constant.
 
-      if Extras = 0 then
+      if Extras = 0 or else Is_A_Constant_Int (V) then
          return Result;
       end if;
 
@@ -174,7 +175,7 @@ package body CCG.Instructions is
 
       declare
          Use_Signed : constant Boolean :=
-           (case POO is when X            => Might_Be_Unsigned (V),
+           (case POO is when X            => Is_Unsigned (V),
                         when POO_Signed   => True,
                         when POO_Unsigned => False);
          Cast       : constant Str     :=
@@ -343,15 +344,7 @@ package body CCG.Instructions is
    begin
       --  ??? Need to deal with both unaligned load and unaligned store
 
-      --  If V is unsigned but Op1 isn't (meaning that it's not a variable
-      --  that's marked unsigned, so it may be an array or record
-      --  reference), add a cast to the unsigned form.
-
-      if Is_Unsigned (V) and then not Is_Unsigned (Op) then
-         Assignment (V, TP ("(#T1) ", V) & Deref_For_Load_Store (Op, V));
-      else
-         Assignment (V, Deref_For_Load_Store (Op, V));
-      end if;
+      Assignment (V, Deref_For_Load_Store (Op, V));
    end Load_Instruction;
 
    -----------------------
@@ -490,10 +483,13 @@ package body CCG.Instructions is
       then
          return +Op;
 
-      --  Otherwise, just do a cast
+      --  Otherwise, just do a cast. If we're considered volatile, make
+      --  sure that's reflected in the cast we write.
 
       else
-         return ("(" & (V + Write_Type) & ") " & Our_Op) + Unary;
+         return ("(" & (V + Write_Type) &
+                 (if Is_Volatile (V) then " volatile) " else ") ") & Our_Op) +
+                 Unary;
       end if;
 
    end Cast_Instruction;
@@ -530,7 +526,7 @@ package body CCG.Instructions is
                Int_SLE => (False, 2, "<="));
             Info        : constant I_Info := Int_Info (Pred);
             Maybe_Uns   : constant Boolean :=
-              Might_Be_Unsigned (Op1) or else Might_Be_Unsigned (Op2);
+              Is_Unsigned (Op1) or else Is_Unsigned (Op2);
             Do_Unsigned : constant Boolean :=
               (if   Pred in Int_EQ | Int_NE then Maybe_Uns
                else Info.Is_Unsigned);

@@ -29,6 +29,24 @@ with CCG.Environment; use CCG.Environment;
 
 package body CCG.Utils is
 
+   --  We have common code to scan a GEP. Return a record giving our result
+   --  and then the external functions just extract the needed result
+   --  from that.
+
+   type VF is record
+      V_Is_Volatile : Boolean;
+      V_Is_Unsigned : Boolean;
+   end record;
+
+   function GEP_Volatile_And_Unsigned (V : Value_T) return VF
+     with Pre => Is_A_Instruction (V);
+
+   function Is_Unsigned_Ref (V : Value_T) return Boolean
+     with Pre => Present (V);
+   --  True if V is a reference to an unsigned integer, meaning that the
+   --  result of a "load" instruction with that operand will produce
+   --  an unsigned result.
+
    --  We have cases where we want to record information about components
    --  of LLVM types or values, such as fields of a struct type and
    --  parameters of a subprogram. We have a generic that allows us to
@@ -382,18 +400,6 @@ package body CCG.Utils is
       return False;
    end Is_Ref_To_Volatile;
 
-   --  We have common code to scan a GEP. Return a record giving our result
-   --  and then the external functions just extract the needed result
-   --  from that.
-
-   type VF is record
-      V_Is_Volatile : Boolean;
-      V_Is_Unsigned : Boolean;
-   end record;
-
-   function GEP_Volatile_And_Unsigned (V : Value_T) return VF
-     with Pre => Is_A_Instruction (V);
-
    ----------------------------
    -- GEP_Volatile_And_Field --
    ----------------------------
@@ -439,6 +445,8 @@ package body CCG.Utils is
                     V_Is_Volatile or Treat_As_Volatile (F)
                     or Treat_As_Volatile (Full_Etype (F));
                end if;
+
+               Aggr_T := Struct_Get_Type_At_Index (Aggr_T, Idx);
             end;
          end if;
       end loop;
@@ -569,35 +577,120 @@ package body CCG.Utils is
               else Full_Etype (E));
    end GNAT_Type;
 
+   ---------------------
+   -- Is_Unsigned_Ref --
+   ---------------------
+
+   function Is_Unsigned_Ref (V : Value_T) return Boolean is
+      TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
+      BT : constant Opt_Type_Kind_Id :=
+        (if Present (TE) then Full_Base_Type (TE) else Empty);
+
+   begin
+      --  Note that what we care about here is whether the C compiler
+      --  will interpret our generated code for V as a pointer to
+      --  unsigned, not whether it actually IS unsigned. The only two
+      --  cases where we have a pointer to unsigned are when we have the
+      --  address of an unsigned variable or an unsigned field.
+
+      --  If this is an LHS and a variable, there has to be a
+      --  declaration, and we either declared it as unsigned or we
+      --  did. We did if the condition below is true.
+
+      if Get_Is_LHS (V) and then Is_Variable (V, False) then
+         return Present (BT) and then Is_Unsigned_Type (BT);
+      else
+         return Is_A_Get_Element_Ptr_Inst (V) and then Is_Unsigned_GEP (V);
+      end if;
+
+   end Is_Unsigned_Ref;
+
    -----------------
    -- Is_Unsigned --
    -----------------
 
    function Is_Unsigned (V : Value_T) return Boolean is
       TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
-      T  : constant Type_T           := Type_Of (V);
+      BT : constant Opt_Type_Kind_Id :=
+        (if Present (TE) then Full_Base_Type (TE) else Empty);
 
    begin
-      --  Only check for unsigned if V has an integral type or is a function
-      --  type that returns an integral type.
+      --  Note that what we care about here is whether the C compiler
+      --  will interpret our generated code for V as unsigned, not
+      --  whether it actually IS unsigned.
 
-      return Present (TE)
-        and then ((Is_Function_Type (T)
-                     and then Is_Function_Type (Get_Return_Type (T)))
-                  or else Is_Integral_Type (T))
-        and then Is_Unsigned_Type (TE);
+      --  If V isn't a LHS but is a variable and we've written a
+      --  declaration for it, it's only unsigned if we've written "unsigned"
+      --  in the declaration.
+
+      if not Get_Is_LHS (V) and then Is_Variable (V, False)
+        and then Get_Is_Decl_Output (V)
+      then
+         return Present (BT) and then Is_Unsigned_Type (BT);
+
+      --  If it's not an instruction, we won't have made it unsigned
+
+      elsif not Is_A_Instruction (V) then
+         return False;
+      end if;
+
+      --  Now handle instructions that could produce unsigned
+
+      case Get_Opcode (V) is
+
+         --  A load is unsigned iff the pointer is a reference to unsigned
+
+         when Op_Load =>
+            return Is_Unsigned_Ref (Get_Operand0 (V));
+
+         --  Some instructions always produce unsigned results
+
+         when Op_U_Div | Op_U_Rem | Op_L_Shr | Op_Z_Ext | Op_FP_To_UI =>
+            return True;
+
+         --  Arithmetic instructions are unsigned if either operand are
+         --  (since we know that both operands are the same size).
+
+         when Op_Add | Op_Sub | Op_Mul | Op_Shl | Op_And | Op_Or | Op_Xor =>
+            return Is_Unsigned (Get_Operand0 (V))
+              or else Is_Unsigned (Get_Operand1 (V));
+
+         --  A call instruction is unsigned if the function called is known
+         --  and has an unsigned return type.
+
+         when Op_Call =>
+
+            declare
+               TE : constant Opt_Type_Kind_Id := GNAT_Type (Get_Operand0 (V));
+               BT : constant Opt_Type_Kind_Id :=
+                 (if Present (TE) then Full_Base_Type (TE) else Empty);
+
+            begin
+               return Present (BT) and then Is_Unsigned_Type (BT);
+            end;
+
+         when others =>
+            null;
+
+      end case;
+
+      --  In all other case, it isn't unsigned
+
+      return False;
    end Is_Unsigned;
 
    -----------------
    -- Is_Variable --
    -----------------
 
-   function Is_Variable (V : Value_T) return Boolean is
+   function Is_Variable
+     (V : Value_T; Need_From_Source : Boolean := True) return Boolean
+   is
       E : constant Entity_Id := Get_Entity (V);
 
    begin
       return Present (E) and then not Is_Type (E) and then Has_Name (V)
-        and then Comes_From_Source (E);
+        and then (not Need_From_Source or else Comes_From_Source (E));
    end Is_Variable;
 
    -----------------
@@ -610,17 +703,6 @@ package body CCG.Utils is
    begin
       return Present (E) and then Treat_As_Volatile (E);
    end Is_Volatile;
-
-   -----------------------
-   -- Might_Be_Unsigned --
-   -----------------------
-
-   function Might_Be_Unsigned (V : Value_T) return Boolean is
-   begin
-      return Is_Unsigned (V)
-        or else (Present (Get_C_Value (V))
-                   and then Has_Unsigned (Get_C_Value (V)));
-   end Might_Be_Unsigned;
 
    ----------------------
    -- Has_Side_Effects --

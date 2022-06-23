@@ -1170,6 +1170,7 @@ package body GNATLLVM.Subprograms is
                   V    => V,
                   E    => Param,
                   Name => Name.all);
+               C_Set_Entity (LLVM_Param, Param);
 
             --  Handle the case where we have to pun the object from
             --  integer to its actual type.

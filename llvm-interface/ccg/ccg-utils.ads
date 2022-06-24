@@ -26,6 +26,8 @@ with Atree; use Atree;
 with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
 
+with GNATLLVM.Types; use GNATLLVM.Types;
+
 with CCG.Helper; use CCG.Helper;
 with CCG.Strs;   use CCG.Strs;
 
@@ -207,6 +209,18 @@ package CCG.Utils is
    function Is_Cond_Br (V : Value_T) return Boolean is
      (Is_A_Branch_Inst (V) and then Is_Conditional (V))
      with Pre => Present (V);
+
+   function Opt_Full_Base_Type
+     (TE : Opt_Void_Or_Type_Kind_Id) return Opt_Void_Or_Type_Kind_Id
+   is
+     (if Present (TE) then Full_Base_Type (TE) else Empty);
+   --  Version of Full_Base_Type that handles an Empty input
+
+   function Opt_Is_Unsigned_Type
+    (TE : Opt_Void_Or_Type_Kind_Id) return Boolean
+   is
+     (Present (TE) and then Is_Unsigned_Type (TE));
+   --  Likewise for Is_Unsigned_Type
 
    --  LLVM uses a zero-length array to indicate a variable-length
    --  array.  C doesn't permit zero-element arrays. It's tempting to

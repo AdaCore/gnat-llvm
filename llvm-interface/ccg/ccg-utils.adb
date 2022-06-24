@@ -22,7 +22,6 @@ with Set_Targ;    use Set_Targ;
 with Sinfo.Nodes; use Sinfo.Nodes;
 with Table;
 
-with GNATLLVM.Types; use GNATLLVM.Types;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 with CCG.Environment; use CCG.Environment;
@@ -583,8 +582,7 @@ package body CCG.Utils is
 
    function Is_Unsigned_Ref (V : Value_T) return Boolean is
       TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
-      BT : constant Opt_Type_Kind_Id :=
-        (if Present (TE) then Full_Base_Type (TE) else Empty);
+      BT : constant Opt_Type_Kind_Id := Opt_Full_Base_Type (TE);
 
    begin
       --  Note that what we care about here is whether the C compiler
@@ -598,7 +596,7 @@ package body CCG.Utils is
       --  did. We did if the condition below is true.
 
       if Get_Is_LHS (V) and then Is_Variable (V, False) then
-         return Present (BT) and then Is_Unsigned_Type (BT);
+         return Opt_Is_Unsigned_Type (BT);
       else
          return Is_A_Get_Element_Ptr_Inst (V) and then Is_Unsigned_GEP (V);
       end if;
@@ -611,8 +609,7 @@ package body CCG.Utils is
 
    function Is_Unsigned (V : Value_T) return Boolean is
       TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
-      BT : constant Opt_Type_Kind_Id :=
-        (if Present (TE) then Full_Base_Type (TE) else Empty);
+      BT : constant Opt_Type_Kind_Id := Opt_Full_Base_Type (TE);
 
    begin
       --  Note that what we care about here is whether the C compiler
@@ -626,7 +623,7 @@ package body CCG.Utils is
       if not Get_Is_LHS (V) and then Is_Variable (V, False)
         and then Get_Is_Decl_Output (V)
       then
-         return Present (BT) and then Is_Unsigned_Type (BT);
+         return Opt_Is_Unsigned_Type (BT);
 
       --  If it's not an instruction, we won't have made it unsigned
 
@@ -662,11 +659,10 @@ package body CCG.Utils is
 
             declare
                TE : constant Opt_Type_Kind_Id := GNAT_Type (Get_Operand0 (V));
-               BT : constant Opt_Type_Kind_Id :=
-                 (if Present (TE) then Full_Base_Type (TE) else Empty);
+               BT : constant Opt_Type_Kind_Id := Opt_Full_Base_Type (TE);
 
             begin
-               return Present (BT) and then Is_Unsigned_Type (BT);
+               return Opt_Is_Unsigned_Type (BT);
             end;
 
          when others =>

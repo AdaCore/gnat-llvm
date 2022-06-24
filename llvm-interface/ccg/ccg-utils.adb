@@ -642,7 +642,8 @@ package body CCG.Utils is
 
          --  Some instructions always produce unsigned results
 
-         when Op_U_Div | Op_U_Rem | Op_L_Shr | Op_Z_Ext | Op_FP_To_UI =>
+         when Op_U_Div | Op_U_Rem | Op_L_Shr | Op_Z_Ext | Op_FP_To_UI |
+              Op_I_Cmp | Op_F_Cmp =>
             return True;
 
          --  Arithmetic instructions are unsigned if either operand are

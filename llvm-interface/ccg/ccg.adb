@@ -17,8 +17,9 @@
 
 with LLVM.Core; use LLVM.Core;
 
-with Atree;  use Atree;
-with Errout; use Errout;
+with Atree;       use Atree;
+with Einfo.Utils; use Einfo.Utils;
+with Errout;      use Errout;
 with Lib;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
@@ -191,12 +192,21 @@ package body CCG is
    ------------------
 
    procedure C_Set_Entity (V : Value_T; E : Entity_Id) is
-   begin
-      --  We only want to set this the first time because that will be the
-      --  most reliable information. But we also don't need this for a
-      --  constants.
+      Prev_E : constant Entity_Id := Get_Entity (V);
 
-      if Emit_C and then not Is_A_Constant_Int (V) and then No (Get_Entity (V))
+   begin
+      --  If we're not emitting C or this is a constant integer, we
+      --  don't need to do anything.
+
+      if not Emit_C or else Is_A_Constant_Int (V) then
+         return;
+
+      --  We only want to set this the first time because that will be the
+      --  most reliable information. However, we prefer an entity over a type.
+
+      elsif (Present (Prev_E) and then not Is_Type (E)
+             and then Is_Type (Prev_E))
+        or else No (Prev_E)
       then
          Notify_On_Value_Delete (V, Delete_Value_Info'Access);
          Set_Entity (V, E);

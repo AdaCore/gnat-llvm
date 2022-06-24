@@ -573,8 +573,11 @@ package body CCG.Write is
          (Get_Type_Kind (V) = Integer_Type_Kind
             and then Get_Scalar_Bit_Size (Type_Of (V)) < Get_Int_Size
             and then Is_A_Instruction (V)
-            and then Get_Opcode (V) not in Op_Alloca | Op_Load |
-                                           Op_Extract_Value | Op_Insert_Value);
+            and then Get_Opcode (V) in Op_Add   | Op_Sub   | Op_Mul   |
+                                       Op_U_Div | Op_S_Div | Op_U_Rem |
+                                       Op_S_Rem | Op_L_Shr | Op_A_Shr |
+                                       Op_Shl   | Op_And   | Op_Or    |
+                                       Op_Xor);
       --  Because of C's integer promotion rules, we must insert a cast if
       --  V is an integer narrower than int and the output of an
       --  arithmetic, shift, or logical instruction.

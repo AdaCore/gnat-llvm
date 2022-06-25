@@ -475,12 +475,10 @@ package body CCG.Instructions is
          return TP ("*((#T2 *) #A1)", Op, V) + Unary;
 
       --  If we're zero-extending a value that's known to be a comparison
-      --  result to an i8, we do nothing since we know that the value is
-      --  already either a zero or one.
+      --  result, we do nothing since we know that the value is already
+      --  either a zero or one.
 
-      elsif Opc = Op_Z_Ext and then Is_Comparison (Op)
-        and then Dest_T = Byte_T
-      then
+      elsif Opc = Op_Z_Ext and then Is_Comparison (Op) then
          return +Op;
 
       --  Otherwise, just do a cast. If we're considered volatile, make

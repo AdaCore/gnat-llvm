@@ -450,6 +450,10 @@ package body CCG.Instructions is
    ----------------------
 
    function Cast_Instruction (V, Op : Value_T) return Str is
+      function Next_Pow2 (W : Nat) return Nat;
+      --  Return the lowest power of 2 higher or equal to W. For large values
+      --  of W, it's safe for this to return an arbitrary value of at least W.
+
       Opc    : constant Opcode_T := Get_Opcode (V);
       Src_T  : constant Type_T   := Type_Of (Op);
       Dest_T : constant Type_T   := Type_Of (V);
@@ -459,6 +463,11 @@ package body CCG.Instructions is
                           when Op_SI_To_FP | Op_S_Ext => POO_Signed,
                           when others                 => X));
 
+      function Next_Pow2 (W : Nat) return Nat is
+        ((case W is when 1  .. 8  => 8,  when  9 .. 16 => 16,
+                    when 17 .. 32 => 32, when 33 .. 64 => 64,
+                    when others   => (if   W < 128 then 128
+                                      else Nat'Max (W, 256))));
    begin
       --  If we're doing a bitcast and the input and output types aren't
       --  both pointers, we need to do this by pointer-punning.
@@ -479,6 +488,15 @@ package body CCG.Instructions is
       --  either a zero or one.
 
       elsif Opc = Op_Z_Ext and then Is_Comparison (Op) then
+         return +Op;
+
+      --  Likewise if this is a truncation to a small integral type that's
+      --  the same C type.
+
+      elsif Opc = Op_Trunc
+        and then Get_Scalar_Bit_Size (Src_T) =
+                   Next_Pow2 (Get_Scalar_Bit_Size (Dest_T))
+      then
          return +Op;
 
       --  Otherwise, just do a cast. If we're considered volatile, make

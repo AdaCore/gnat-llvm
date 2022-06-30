@@ -393,9 +393,9 @@ package body CCG.Write is
 
       procedure Write_Int_Qualifier (Width : Int) is
       begin
-         if Width = Get_Long_Long_Size then
+         if Width = Long_Long_Size then
             Write_Str ("LL");
-         elsif Width > Get_Int_Size then
+         elsif Width > Int_Size then
             Write_Str ("L");
          end if;
       end Write_Int_Qualifier;

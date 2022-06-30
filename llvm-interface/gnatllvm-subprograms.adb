@@ -1236,6 +1236,7 @@ package body GNATLLVM.Subprograms is
 
             else
                LLVM_Param := V;
+               C_Set_Entity (LLVM_Param, Param);
             end if;
 
             --  Save the location of an activation record parameter

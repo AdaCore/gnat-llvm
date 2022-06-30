@@ -640,7 +640,7 @@ package body CCG.Write is
          --  use #T or Write_Type here because we often want to write a
          --  different signedness than V. Likewise below.
 
-         elsif not Is_Unsigned (V) or else Must_Write_Cast then
+         elsif Must_Write_Cast or else not Is_Unsigned (V) then
             Maybe_Write_Parens;
             Write_Str ("(unsigned " & Type_Of (V) & ") ");
          end if;

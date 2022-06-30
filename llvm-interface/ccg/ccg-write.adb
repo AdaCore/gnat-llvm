@@ -28,6 +28,7 @@ with Opt;         use Opt;
 with Osint;       use Osint;
 with Osint.C;     use Osint.C;
 with Output;      use Output;
+with Set_Targ;    use Set_Targ;
 with Sinfo.Nodes; use Sinfo.Nodes;
 with Sinput;      use Sinput;
 with Uintp;       use Uintp;

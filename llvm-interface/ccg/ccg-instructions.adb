@@ -24,6 +24,7 @@ pragma Warnings (On);
 
 with LLVM.Core; use LLVM.Core;
 
+with Set_Targ; use Set_Targ;
 with Table;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -529,7 +530,7 @@ package body CCG.Instructions is
             end record;
             type I_Info_Array is array (Int_Predicate_T range <>) of I_Info;
             Pred        : constant Int_Predicate_T := Get_I_Cmp_Predicate (V);
-            Int_Info    : constant I_Info_Array :=
+            Int_Info    : constant I_Info_Array    :=
               (Int_EQ  => (False, 2, "=="),
                Int_NE  => (False, 2, "!="),
                Int_UGT => (True,  1, "> "),
@@ -540,14 +541,18 @@ package body CCG.Instructions is
                Int_SGE => (False, 2, ">="),
                Int_SLT => (False, 1, "< "),
                Int_SLE => (False, 2, "<="));
-            Info        : constant I_Info := Int_Info (Pred);
-            Maybe_Uns   : constant Boolean :=
+            Info        : constant I_Info           := Int_Info (Pred);
+            Maybe_Uns   : constant Boolean          :=
               Is_Unsigned (Op1) or else Is_Unsigned (Op2);
-            Do_Unsigned : constant Boolean :=
+            Do_Unsigned : constant Boolean          :=
               (if   Pred in Int_EQ | Int_NE then Maybe_Uns
                else Info.Is_Unsigned);
+            X_Signed    : constant Boolean          :=
+               Pred in Int_EQ | Int_NE
+               and then Get_Scalar_Bit_Size (Op1) = Int_Size;
             POO         : constant Process_Operand_Option :=
-              (if Do_Unsigned then POO_Unsigned else POO_Signed);
+              (if    X_Signed then X
+               elsif Do_Unsigned then POO_Unsigned else POO_Signed);
             LHS         : constant Str    := Process_Operand (Op1, POO);
             RHS         : constant Str    := Process_Operand (Op2, POO);
 

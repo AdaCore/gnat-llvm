@@ -125,8 +125,16 @@ package body GNATLLVM.Types.Create is
       --
       --  So we only use i1 for the internal boolean object (e.g., the result
       --  of a comparison) and for a 1-bit modular type.
+      --
+      --  For most modular types, we use RM_Size because we need the
+      --  automatic truncation provided by the smaller types. But for a
+      --  nonbinary modulus, that isn't helpful and indeed creates a
+      --  significant inefficency.
 
-      if Is_Modular_Integer_Type (Size_TE) and then RM_Size (Size_TE) /= 0 then
+      if Is_Modular_Integer_Type (Size_TE)
+        and then not Non_Binary_Modulus (Size_TE)
+        and then RM_Size (Size_TE) /= 0
+      then
          Size := RM_Size (Size_TE);
       elsif Esize (Size_TE) = 0 then
          Size := +BPU;

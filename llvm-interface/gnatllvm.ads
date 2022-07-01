@@ -124,9 +124,9 @@ package GNATLLVM is
    function UI_From_LLI is new UI_From_Integral (LLI);
    --  And conversion routine from LLI to Uint
 
-   function "+" (U : Uint) return Int  renames UI_To_Int;
+   function "+" (U : Uint) return Int   renames UI_To_Int;
    function "+" (J : LLI)  return Uint  renames UI_From_LLI;
-   function "+" (J : Int)  return Uint renames UI_From_Int;
+   function "+" (J : Int)  return Uint  renames UI_From_Int;
    --  Add operators to easily convert to and from Uints.
 
    --  The type Bool_T is used for the subprograms provided by the LLVM C

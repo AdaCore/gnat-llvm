@@ -649,7 +649,7 @@ package body CCG.Utils is
          --  Arithmetic instructions are unsigned if either operand are
          --  (since we know that both operands are the same size).
 
-         when Op_Add | Op_Sub | Op_Mul | Op_Shl | Op_And | Op_Or | Op_Xor =>
+         when Op_Add | Op_Sub | Op_Mul | Op_And | Op_Or | Op_Xor =>
             return Is_Unsigned (Get_Operand0 (V))
               or else Is_Unsigned (Get_Operand1 (V));
 
@@ -665,6 +665,12 @@ package body CCG.Utils is
             begin
                return Opt_Is_Unsigned_Type (BT);
             end;
+
+         --  Some conversions don't change signedness and neither does left
+         --  shift.
+
+         when Op_Bit_Cast | Op_Trunc | Op_Shl =>
+            return Is_Unsigned (Get_Operand0 (V));
 
          when others =>
             null;

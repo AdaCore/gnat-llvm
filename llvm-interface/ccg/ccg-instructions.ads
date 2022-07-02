@@ -40,11 +40,11 @@ package CCG.Instructions is
    --  signedless the operand is and, if so, which one.
 
    function Process_Operand
-     (V : Value_T; POO : Process_Operand_Option) return Str
+     (V : Value_T; POO : Process_Operand_Option; P : Precedence) return Str
      with Pre => Present (V), Post => Present (Process_Operand'Result);
    --  Called when we care about any high bits in a possible partial-word
    --  operand and possibly about signedness. We return the way to
-   --  reference V. If nothing is special, this is just +V.
+   --  reference V. If nothing is special, this is just +V + P.
 
    procedure Write_Copy (LHS, RHS : Str; T : Type_T; V : Value_T := No_Value_T)
      with Pre => Present (LHS) and then Present (RHS) and then Present (T);

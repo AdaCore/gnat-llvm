@@ -443,7 +443,7 @@ package body CCG.Strs is
 
       --  Otherwise add parentheses if necessary.
 
-      elsif Needs_Parens (S, P) then
+      elsif not Is_Value (S) and then Needs_Parens (S, P) then
          declare
             S_Rec_1 : aliased Str_Record (S.Length + 2);
 

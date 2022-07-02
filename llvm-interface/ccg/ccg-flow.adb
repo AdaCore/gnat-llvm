@@ -929,7 +929,7 @@ package body CCG.Flow is
                Last_Case : constant Nat                    :=
                  Get_Num_Operands (T) / 2 - 1;
                Result    : constant Str                    :=
-                 Process_Operand (Val, POO);
+                 Process_Operand (Val, POO, Comma);
                Cidx      : Case_Idx                        :=
                  New_Case (No_Value_T, No_Str);
 
@@ -950,7 +950,8 @@ package body CCG.Flow is
                      Value : constant Value_T := Get_Operand (T, J * 2);
 
                   begin
-                     Cidx := New_Case (Value, Process_Operand (Value, POO));
+                     Cidx := New_Case (Value,
+                                       Process_Operand (Value, POO, Comma));
                   end;
                end loop;
 

@@ -329,7 +329,7 @@ package CCG.Strs is
    function Deref (S : Str) return Str
      with Pre => Present (S), Post => Present (Deref'Result);
    function Deref (V : Value_T) return Str is
-     (Deref (V + Unary))
+     (Deref (+V))
      with Pre => Present (V), Post => Present (Deref'Result);
    --  Make an Str that represents rerefencing S or V. This usually means
    --  prepending "*", but we can also do that by removing a leading "&" or

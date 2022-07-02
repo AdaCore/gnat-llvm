@@ -27,6 +27,7 @@ with LLVM.Core; use LLVM.Core;
 with Set_Targ; use Set_Targ;
 with Table;
 
+with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;  use CCG.Aggregates;
@@ -39,10 +40,18 @@ with CCG.Utils;       use CCG.Utils;
 
 package body CCG.Instructions is
 
-   function Get_Extra_Bits (J : Nat)    return Nat;
-   function Get_Extra_Bits (T : Type_T) return Nat is
-     (Get_Extra_Bits (Get_Scalar_Bit_Size (T)))
-     with Pre => Get_Type_Kind (T) = Integer_Type_Kind, Unreferenced;
+   function Shift_Left (Value : ULL; Amount : Natural) return ULL
+     with Import, Convention => Intrinsic;
+
+   function Next_Pow2 (W : Nat) return Nat is
+     ((case W is when 1  .. 8  => 8,  when  9 .. 16 => 16,
+                 when 17 .. 32 => 32, when 33 .. 64 => 64,
+                 when others   => (if   W < 128 then 128
+                                      else Nat'Max (W, 256))));
+   --  Return the lowest power of 2 higher or equal to W. For large values
+   --  of W, it's safe for this to return an arbitrary value of at least W.
+
+   function Get_Extra_Bits (J : Nat) return Nat;
    --  Return the number of bits needed to go from J or the bit width of T to
    --  the next power-of-two size in bits that's at least a byte wide.
 
@@ -148,7 +157,7 @@ package body CCG.Instructions is
    ---------------------
 
    function Process_Operand
-     (V : Value_T; POO : Process_Operand_Option) return Str
+     (V : Value_T; POO : Process_Operand_Option; P : Precedence) return Str
    is
       T      : constant Type_T := Type_Of (V);
       Size   : constant Nat    :=
@@ -156,9 +165,13 @@ package body CCG.Instructions is
          then Get_Scalar_Bit_Size (T) else BPU);
       Extras : constant Nat    := Get_Extra_Bits (Size);
       Result : Str             :=
-        (case POO is when X            => +V,
-                     when POO_Signed   => V + Need_Signed,
-                     when POO_Unsigned => V + Need_Unsigned);
+        (case POO is when X            => V + P,
+                     when POO_Signed   => V + Need_Signed + P,
+                     when POO_Unsigned => V + Need_Unsigned + P);
+      Use_Signed : constant Boolean :=
+        (case POO is when X            => Is_Unsigned (V),
+                     when POO_Signed   => True,
+                     when POO_Unsigned => False);
 
    begin
       --  If all we have to do is deal with signedness, we're done. We also
@@ -166,7 +179,24 @@ package body CCG.Instructions is
 
       if Extras = 0 or else Is_A_Constant_Int (V) then
          return Result;
-      end if;
+
+      --  A pair of shifts will always work and a decent optimizer will
+      --  turn the pair of shifts into a AND in the unsigned case, but
+      --  an AND operation is much easier to read, so we generate that.
+      --  The size test should never be false, but we put it there just
+      --  to be safe.
+
+      elsif not Use_Signed and then Extras < ULL'Size - 1 then
+         declare
+            Size   : constant Nat     := Next_Pow2 (Get_Scalar_Bit_Size (T));
+            Mask_T : constant Type_T  := Int_Ty (Size);
+            Mask_W : constant Natural := Integer (Size - Extras);
+            Mask   : constant ULL     := Shift_Left (1, Mask_W) - 1;
+            Mask_V : constant Value_T := Const_Int (Mask_T, Mask, False);
+
+         begin
+            return (Result + Bit & " & " & Mask_V) + P;
+         end;
 
       --  Otherwise, we have to do a pair of shifts. Because of the C's
       --  integer promotion rules, we have to cast back to our type after
@@ -174,18 +204,16 @@ package body CCG.Instructions is
       --  V depending on which we want or which we think it is if we don't
       --  care.
 
-      declare
-         Use_Signed : constant Boolean :=
-           (case POO is when X            => Is_Unsigned (V),
-                        when POO_Signed   => True,
-                        when POO_Unsigned => False);
-         Cast       : constant Str     :=
-           (if Use_Signed then "(" else "(unsigned ") & T & ") ";
+      else
+         declare
+            Cast       : constant Str     :=
+              (if Use_Signed then "(" else "(unsigned ") & T & ") ";
 
-      begin
-         Result := Cast & "(" & (Result + Shift) & " << " & Extras & ")";
-         return Cast & "(" & Result & " >> " & Extras & ")";
-      end;
+         begin
+            Result := Cast & "(" & (Result + Shift) & " << " & Extras & ")";
+            return (Cast & "(" & Result + Shift & " >> " & Extras & ")") + P;
+         end;
+      end if;
    end Process_Operand;
 
    -------------------
@@ -385,18 +413,18 @@ package body CCG.Instructions is
             return TP ("#1 * #2", Op1, Op2) + Mult;
 
          when Op_S_Div | Op_U_Div =>
-            return Process_Operand (Op1, POO) & " / " &
-              Process_Operand (Op2, POO) + Mult;
+            return (Process_Operand (Op1, POO, Mult) & " / " &
+                    Process_Operand (Op2, POO, Mult)) + Mult;
 
          when Op_S_Rem | Op_U_Rem =>
-            return Process_Operand (Op1, POO) & " % " &
-              Process_Operand (Op2, POO) + Mult;
+            return (Process_Operand (Op1, POO, Mult) & " % " &
+                    Process_Operand (Op2, POO, Mult)) + Mult;
 
          when Op_Shl =>
             return TP ("#1 << #2", Op1, Op2) + Shift;
 
          when Op_L_Shr | Op_A_Shr =>
-            return Process_Operand (Op1, POO) & " >> " & Op2 + Shift;
+            return Process_Operand (Op1, POO, Shift) & " >> " & Op2 + Shift;
 
          when Op_F_Add =>
             return TP ("#1 + #2", Op1, Op2) + Add;
@@ -451,10 +479,6 @@ package body CCG.Instructions is
    ----------------------
 
    function Cast_Instruction (V, Op : Value_T) return Str is
-      function Next_Pow2 (W : Nat) return Nat;
-      --  Return the lowest power of 2 higher or equal to W. For large values
-      --  of W, it's safe for this to return an arbitrary value of at least W.
-
       Opc    : constant Opcode_T := Get_Opcode (V);
       Src_T  : constant Type_T   := Type_Of (Op);
       Dest_T : constant Type_T   := Type_Of (V);
@@ -462,13 +486,9 @@ package body CCG.Instructions is
         Process_Operand
         (Op, (case Opc is when Op_UI_To_FP | Op_Z_Ext => POO_Unsigned,
                           when Op_SI_To_FP | Op_S_Ext => POO_Signed,
-                          when others                 => X));
+                          when others                 => X),
+         Unary);
 
-      function Next_Pow2 (W : Nat) return Nat is
-        ((case W is when 1  .. 8  => 8,  when  9 .. 16 => 16,
-                    when 17 .. 32 => 32, when 33 .. 64 => 64,
-                    when others   => (if   W < 128 then 128
-                                      else Nat'Max (W, 256))));
    begin
       --  If we're doing a bitcast and the input and output types aren't
       --  both pointers, we need to do this by pointer-punning.
@@ -495,8 +515,19 @@ package body CCG.Instructions is
       --  the same C type.
 
       elsif Opc = Op_Trunc
-        and then Get_Scalar_Bit_Size (Src_T) =
-                   Next_Pow2 (Get_Scalar_Bit_Size (Dest_T))
+        and then Next_Pow2 (Get_Scalar_Bit_Size (Src_T)) =
+                 Next_Pow2 (Get_Scalar_Bit_Size (Dest_T))
+      then
+         return +Op;
+
+      --  Similarly, if this is an extension from a small integral type
+      --  that's the same C type and the signedness is the same, it's
+      --  the same C type.
+
+      elsif Opc in Op_Z_Ext | Op_S_Ext
+        and then Next_Pow2 (Get_Scalar_Bit_Size (Dest_T)) =
+                 Next_Pow2 (Get_Scalar_Bit_Size (Src_T))
+        and then (Opc = Op_Z_Ext) = Is_Unsigned (Op)
       then
          return +Op;
 
@@ -529,8 +560,9 @@ package body CCG.Instructions is
                Op          : String (1 .. 2);
             end record;
             type I_Info_Array is array (Int_Predicate_T range <>) of I_Info;
-            Pred        : constant Int_Predicate_T := Get_I_Cmp_Predicate (V);
-            Int_Info    : constant I_Info_Array    :=
+            Pred        : constant Int_Predicate_T        :=
+              Get_I_Cmp_Predicate (V);
+            Int_Info    : constant I_Info_Array           :=
               (Int_EQ  => (False, 2, "=="),
                Int_NE  => (False, 2, "!="),
                Int_UGT => (True,  1, "> "),
@@ -541,24 +573,26 @@ package body CCG.Instructions is
                Int_SGE => (False, 2, ">="),
                Int_SLT => (False, 1, "< "),
                Int_SLE => (False, 2, "<="));
-            Info        : constant I_Info           := Int_Info (Pred);
-            Maybe_Uns   : constant Boolean          :=
+            Info        : constant I_Info                 := Int_Info (Pred);
+            Maybe_Uns   : constant Boolean                :=
               Is_Unsigned (Op1) or else Is_Unsigned (Op2);
-            Do_Unsigned : constant Boolean          :=
+            Do_Unsigned : constant Boolean                :=
               (if   Pred in Int_EQ | Int_NE then Maybe_Uns
                else Info.Is_Unsigned);
-            X_Signed    : constant Boolean          :=
+            X_Signed    : constant Boolean                :=
                Pred in Int_EQ | Int_NE
                and then Get_Scalar_Bit_Size (Op1) = Int_Size;
             POO         : constant Process_Operand_Option :=
               (if    X_Signed then X
                elsif Do_Unsigned then POO_Unsigned else POO_Signed);
-            LHS         : constant Str    := Process_Operand (Op1, POO);
-            RHS         : constant Str    := Process_Operand (Op2, POO);
+            LHS         : constant Str                    :=
+               Process_Operand (Op1, POO, Relation);
+            RHS         : constant Str                    :=
+               Process_Operand (Op2, POO, Relation);
 
          begin
             return (LHS & " " & Info.Op (1 .. Info.Length) & " " & RHS) +
-              Relation;
+                    Relation;
          end;
 
       --  If not integer comparison, it must be FP

@@ -1090,6 +1090,8 @@ package body CCG.Strs is
       Push_Output;
       Set_Standard_Error;
       if Present (S) then
+         Write_Str (Precedence'Image (S.P));
+         Write_Str (": ");
          Write_Str (S, Eol => True);
       else
          Write_Line ("(null)");

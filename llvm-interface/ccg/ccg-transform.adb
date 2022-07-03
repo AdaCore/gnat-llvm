@@ -37,20 +37,33 @@ package body CCG.Transform is
    SC_FNs : FN_Array := (others => No_Value_T);
    --  Builtin functions for "or else" and "and or"
 
-   function Has_Cond_Br (BB : Basic_Block_T) return Boolean is
-     (Is_Cond_Br (Get_Basic_Block_Terminator (BB)))
-     with Pre => Present (BB);
-   function Has_Return (BB : Basic_Block_T) return Boolean is
-     (Is_A_Return_Inst (Get_Basic_Block_Terminator (BB)))
-     with Pre => Present (BB);
    function Get_Term_True_BB (BB : Basic_Block_T) return Basic_Block_T is
      (Get_True_BB (Get_Basic_Block_Terminator (BB)))
      with Pre => Present (BB), Post => Present (Get_Term_True_BB'Result);
+
    function Get_Term_False_BB (BB : Basic_Block_T) return Basic_Block_T is
      (Get_False_BB (Get_Basic_Block_Terminator (BB)))
      with Pre => Present (BB), Post => Present (Get_Term_False_BB'Result);
+
+   function Get_Term_BB (BB : Basic_Block_T) return Basic_Block_T is
+     (Value_As_Basic_Block (Get_Operand0 (Get_Basic_Block_Terminator (BB))))
+     with Pre => Present (BB), Post => Present (Get_Term_BB'Result);
    --  Some shortcuts to simplify code that checks what a terminator of
    --  a basic block does.
+
+   function Has_Cond_Br (BB : Basic_Block_T) return Boolean is
+     (Is_Cond_Br (Get_Basic_Block_Terminator (BB)))
+     with Pre => Present (BB);
+
+   function Is_Just_Return (BB : Basic_Block_T) return Boolean is
+     (Is_A_Return_Inst (Get_First_Instruction (BB)))
+     with Pre => Present (BB);
+
+   function Has_Return (BB : Basic_Block_T) return Boolean is
+     (Is_A_Return_Inst (Get_Basic_Block_Terminator (BB))
+      or else (Is_Unc_Br (Get_Basic_Block_Terminator (BB))
+               and then Is_Just_Return (Get_Term_BB (BB))))
+     with Pre => Present (BB);
 
    procedure Remove_Some_Intrinsics (V : Value_T)
      with Pre => Is_A_Function (V);
@@ -778,7 +791,6 @@ package body CCG.Transform is
       --  see if we'll generate cleaner code by swapping the two operands
       --  and negating the condition.
 
-      BB := Get_First_Basic_Block (V);
       while Present (BB) loop
          Term := Get_Basic_Block_Terminator (BB);
 
@@ -796,12 +808,22 @@ package body CCG.Transform is
          then
             Swap_Successors (Term);
 
-         --  But do swap if the "false" is a return as long as the "true"
-         --  isn't.
+         --  Or if the "false" is a return as long as the "true" isn't
 
          elsif Is_Cond_Br (Term)
            and then Has_Return (Get_False_BB (Term))
            and then not Has_Return (Get_True_BB (Term))
+           and then Negate_Condition (Get_Condition (Term))
+         then
+            Swap_Successors (Term);
+
+         --  Swap if both are a return but the "true" is just a return
+         --  and the "false" isn't.
+
+         elsif Is_Cond_Br (Term) and then Has_Return (Get_True_BB (Term))
+           and then Has_Return (Get_False_BB (Term))
+           and then Is_Just_Return (Get_True_BB (Term))
+           and then not Is_Just_Return (Get_False_BB (Term))
            and then Negate_Condition (Get_Condition (Term))
          then
             Swap_Successors (Term);

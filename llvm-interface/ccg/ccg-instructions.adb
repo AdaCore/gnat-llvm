@@ -326,14 +326,13 @@ package body CCG.Instructions is
          declare
             Size : constant Str :=
               "sizeof (" & Get_Allocated_Type (V) & ") * " & (Op + Mult);
-            Call : constant Str := "alloca (" & Size & ")" + Component;
+            Call : constant Str :=
+              "alloca (" & Size & ")" + Unknown + Component;
 
          begin
             Assignment (V, TP ("(#T1) ", V) & Call + Unary);
 
             --  We can't support alloca in very early versions of C.
-            --  ??? We should see if we can conjure up a node somehow
-            --  for this and the other usages of Error_Msg.
 
             if Version <= 1990 then
                Error_Msg
@@ -479,10 +478,10 @@ package body CCG.Instructions is
    ----------------------
 
    function Cast_Instruction (V, Op : Value_T) return Str is
-      Opc    : constant Opcode_T := Get_Opcode (V);
-      Src_T  : constant Type_T   := Type_Of (Op);
-      Dest_T : constant Type_T   := Type_Of (V);
-      Our_Op : constant Str      :=
+      Opc       : constant Opcode_T := Get_Opcode (V);
+      Src_T     : constant Type_T   := Type_Of (Op);
+      Dest_T    : constant Type_T   := Type_Of (V);
+      Our_Op    : constant Str      :=
         Process_Operand
         (Op, (case Opc is when Op_UI_To_FP | Op_Z_Ext => POO_Unsigned,
                           when Op_SI_To_FP | Op_S_Ext => POO_Signed,
@@ -503,6 +502,52 @@ package body CCG.Instructions is
 
          Force_To_Variable (Op);
          return TP ("*((#T2 *) #A1)", Op, V) + Unary;
+
+         --  If we have a bitcast where both are pointers, we have a few cases
+         --  to look at.
+
+      elsif Opc = Op_Bit_Cast and then Is_Pointer_Type (Src_T)
+        and then Is_Pointer_Type (Dest_T)
+      then
+         declare
+            Safe_User : constant Value_T  := Safe_Single_User (V);
+            Inner_Op  : Value_T           := Op;
+
+         begin
+            --  First see if our only user is another bitcast to a pointer
+            --  type, this is a nop because multiple conversions between
+            --  pointer types are equivalent to just the outer one.
+
+            if Present (Safe_User) and then Is_A_Bit_Cast_Inst (Safe_User)
+              and then Is_Pointer_Type (Safe_User)
+              and then not Get_Is_LHS (Op)
+            then
+               return Our_Op;
+            end if;
+
+            --  Otherwise, see if we have an input where the above may have
+            --  been done one or more times. If so, get the type of the
+            --  actual source.
+
+            while Present (Get_C_Value (Inner_Op))
+              and then Is_Value (Get_C_Value (Inner_Op))
+              and then not Get_Is_Decl_Output
+                             (Single_Value (Get_C_Value (Inner_Op)))
+            loop
+               Inner_Op := Single_Value (Get_C_Value (Inner_Op));
+            end loop;
+
+            --  If the types are the same, we don't have to do anything.
+            --  Note here that we consider a 0-length array to be a pointer
+            --  to its element type. But if we have an LHS, don't do anything
+            --  since we can't flag that on our result.
+
+            if Equivalent_Pointers (Dest_T, Type_Of (Inner_Op))
+              and then not Get_Is_LHS (Inner_Op)
+            then
+               return Our_Op;
+            end if;
+         end;
 
       --  If we're zero-extending a value that's known to be a comparison
       --  result, we do nothing since we know that the value is already
@@ -530,15 +575,14 @@ package body CCG.Instructions is
         and then (Opc = Op_Z_Ext) = Is_Unsigned (Op)
       then
          return +Op;
+      end if;
 
       --  Otherwise, just do a cast. If we're considered volatile, make
       --  sure that's reflected in the cast we write.
 
-      else
-         return ("(" & (V + Write_Type) &
-                 (if Is_Volatile (V) then " volatile) " else ") ") & Our_Op) +
-                 Unary;
-      end if;
+      return ("(" & (V + Write_Type) &
+              (if Is_Volatile (V) then " volatile) " else ") ") & Our_Op) +
+              Unary;
 
    end Cast_Instruction;
 

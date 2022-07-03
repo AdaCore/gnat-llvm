@@ -514,7 +514,7 @@ package body CCG.Transform is
    -------------------
 
    function Is_Return_Phi (V : Value_T) return Boolean is
-      Single_User : constant Value_T := Get_Single_User (V);
+      User : constant Value_T := Single_User (V);
 
    begin
       --  The optimizer sometimes creates a Phi just to merge returns.
@@ -524,7 +524,7 @@ package body CCG.Transform is
       --  it should be) and don't do this for array types, since they can't
       --  be directly returned in C.
 
-      return Present (Single_User) and then Get_Opcode (Single_User) = Op_Ret
+      return Present (User) and then Get_Opcode (User) = Op_Ret
         and then Get_Type_Kind (V) /= Array_Type_Kind;
    end Is_Return_Phi;
 

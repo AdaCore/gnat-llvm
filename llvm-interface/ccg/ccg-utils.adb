@@ -794,7 +794,66 @@ package body CCG.Utils is
       Update_Hash (H, Hash (B));
    end Update_Hash;
 
-   ---------------------
+   ----------------------
+   -- Safe_Single_User --
+   ----------------------
+
+   function Safe_Single_User (V : Value_T) return Value_T is
+      User : constant Value_T := Single_User (V);
+      Next : Value_T;
+
+   begin
+      --  If there isn't a unique single user or V isn't an instruction,
+      --  we're done.
+
+      if No (User) or else not Is_A_Instruction (V) then
+         return No_Value_T;
+      end if;
+
+      --  Otherwise try to find User
+
+      Next := Get_Next_Instruction (V);
+      while Present (Next) loop
+
+         --  If we've reached User, we're good. If we reached an instruction
+         --  with side-effects, we're bad.
+
+         if Next = User then
+            return User;
+         elsif Has_Side_Effects (Next) then
+            return No_Value_T;
+         end if;
+
+         Next := Get_Next_Instruction (Next);
+      end loop;
+
+      return No_Value_T;
+
+   end Safe_Single_User;
+
+   -------------------------
+   -- Equivalent_Pointers --
+   -------------------------
+
+   function Equivalent_Pointers (T1, T2 : Type_T) return Boolean is
+      E_T1 : constant Type_T := Get_Element_Type (T1);
+      E_T2 : constant Type_T := Get_Element_Type (T2);
+
+   begin
+      --  True if the types are the same or one points to a zero-length
+      --  array whose type is what the other points to.
+
+      return E_T1 = E_T2
+        or else (Get_Type_Kind (E_T1) = Array_Type_Kind
+                 and then Get_Array_Length (E_T1) = 0
+                 and then Get_Element_Type (E_T1) = E_T2)
+        or else (Get_Type_Kind (E_T2) = Array_Type_Kind
+                 and then Get_Array_Length (E_T2) = 0
+                 and then Get_Element_Type (E_T2) = E_T1);
+
+   end Equivalent_Pointers;
+
+---------------------
    -- Int_Type_String --
    ---------------------
 

@@ -58,28 +58,28 @@ package CCG.Helper is
           Post => Present (Get_Successor'Result);
 
    function Get_Num_Operands (V : Value_T) return Int is
-      (Int (Interfaces.C.int'(Get_Num_Operands (V))))
-      with Pre => Present (V);
+     (Int (Interfaces.C.int'(Get_Num_Operands (V))))
+     with Pre => Present (V);
 
    function Get_Operand (V : Value_T; Idx : Nat) return Value_T is
-      (Get_Operand (V, unsigned (Idx)))
-      with Pre  => Present (V) and then Idx < Get_Num_Operands (V),
-           Post => Present (Get_Operand'Result);
+     (Get_Operand (V, unsigned (Idx)))
+     with Pre  => Present (V) and then Idx < Get_Num_Operands (V),
+          Post => Present (Get_Operand'Result);
 
    function Get_Operand0 (V : Value_T) return Value_T is
-      (Get_Operand (V, unsigned (0)))
-      with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (0),
-           Post => Present (Get_Operand0'Result);
+     (Get_Operand (V, unsigned (0)))
+     with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (0),
+          Post => Present (Get_Operand0'Result);
 
    function Get_Operand1 (V : Value_T) return Value_T is
-      (Get_Operand (V, unsigned (1)))
-      with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (1),
-           Post => Present (Get_Operand1'Result);
+     (Get_Operand (V, unsigned (1)))
+     with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (1),
+          Post => Present (Get_Operand1'Result);
 
    function Get_Operand2 (V : Value_T) return Value_T is
-      (Get_Operand (V, unsigned (2)))
-      with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (2),
-           Post => Present (Get_Operand2'Result);
+     (Get_Operand (V, unsigned (2)))
+     with Pre  => Present (V) and then Get_Num_Operands (V) > Nat (2),
+          Post => Present (Get_Operand2'Result);
 
    function Get_Dest_BB (V : Value_T) return Basic_Block_T is
      (Value_As_Basic_Block (Get_Operand0 (V)))

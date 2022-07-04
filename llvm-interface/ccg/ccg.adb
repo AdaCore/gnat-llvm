@@ -89,14 +89,16 @@ package body CCG is
    begin
       Initialize_Writing;
 
-      --  Declare all functions first, since they may be referenced in
-      --  globals.
+      --  Declare functions first, since they may be referenced in
+      --  globals. Put public functions that we define into the header file,
+      --  as well as inline_always functions.
 
       Func := Get_First_Function (Module);
       while Present (Func) loop
          if not Emit_Header
-           or else (Present (Get_First_Basic_Block (Func))
-                      and then Is_Public (Func))
+           or else (not Is_Declaration (Func)
+                      and then (Is_Public (Func)
+                                  or else Has_Inline_Always_Attribute (Func)))
          then
             Declare_Subprogram (Func);
          end if;
@@ -120,14 +122,16 @@ package body CCG is
 
       --  Process all functions, writing referenced globals and
       --  typedefs on the fly and queueing the rest for later output.
+      --  Write inline_always functions to the header file.
 
-      if not Emit_Header then
-         Func := Get_First_Function (Module);
-         while Present (Func) loop
+      Func := Get_First_Function (Module);
+      while Present (Func) loop
+         if not Emit_Header or else Has_Inline_Always_Attribute (Func) then
             Output_Subprogram (Func);
-            Func := Get_Next_Function (Func);
-         end loop;
-      end if;
+         end if;
+
+         Func := Get_Next_Function (Func);
+      end loop;
 
       --  Finally, write all the code we generated and finalize the writing
       --  process.

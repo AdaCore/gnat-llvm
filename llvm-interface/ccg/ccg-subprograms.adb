@@ -286,10 +286,15 @@ package body CCG.Subprograms is
 
       --  Otherwise, start a new function, do any transformation to help
       --  our output, make all flows in this subprogram, and ouput each flow.
+      --  If we're writing a header file, this must be an inline_always
+      --  function, so mark it extern.
 
       New_Subprogram (V);
       Transform_Blocks (V);
-      Output_Decl (Function_Proto (V), Semicolon => False, V => V);
+      Output_Decl
+        ((if Emit_Header then "extern " else "") & Function_Proto (V),
+         Semicolon => False,
+         V         => V);
       Output_Decl ("{", Semicolon => False, Start_Block => Decl);
       Idx := Get_Or_Create_Flow (Get_Entry_Basic_Block (V));
       Add_Use (Idx);

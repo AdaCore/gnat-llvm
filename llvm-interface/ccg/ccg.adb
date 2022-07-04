@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Containers.Hashed_Sets;
+
 with LLVM.Core; use LLVM.Core;
 
 with Atree;       use Atree;
@@ -73,11 +75,24 @@ package body CCG is
    ------------------
 
    procedure Write_C_Code (Module : Module_T) is
+      package Value_Sets is new Ada.Containers.Hashed_Sets
+        (Element_Type        => Value_T,
+         Hash                => Hash_Value,
+         Equivalent_Elements => "=");
+      use Value_Sets;
+
       function Is_Public (V : Value_T) return Boolean;
       --  True if V is publically-visible
 
-      Func : Value_T;
-      Glob : Value_T;
+      procedure Maybe_Decl_Func (V : Value_T)
+        with Pre => Present (V);
+      --  Called for each value in an inline function
+
+      procedure Scan_For_Func_To_Decl is new Walk_Function (Maybe_Decl_Func);
+
+      Func      : Value_T;
+      Glob      : Value_T;
+      Must_Decl : Value_Sets.Set;
 
       ---------------
       -- Is_Public --
@@ -86,7 +101,38 @@ package body CCG is
       function Is_Public (V : Value_T) return Boolean is
         (Get_Linkage (V) not in Internal_Linkage | Private_Linkage);
 
+      ---------------------
+      -- Maybe_Decl_Func --
+      ---------------------
+
+      procedure Maybe_Decl_Func (V : Value_T) is
+      begin
+         if Is_A_Function (V) and then not Must_Decl.Contains (V) then
+            Must_Decl.Insert (V);
+         end if;
+      end Maybe_Decl_Func;
+
    begin
+      --  If we're writing headers, scan inline-always functions to see if
+      --  we need to declare any functions used by them.
+
+      if Emit_Header then
+         Func := Get_First_Function (Module);
+         while Present (Func) loop
+            if not Is_Declaration (Func)
+              and then Has_Inline_Always_Attribute (Func)
+            then
+               Have_Inline_Always := True;
+               Scan_For_Func_To_Decl (Func);
+            end if;
+
+            Func := Get_Next_Function (Func);
+         end loop;
+      end if;
+
+      --  Now that we know if we have any inline_always functions, set up
+      --  for writing the desired file.
+
       Initialize_Writing;
 
       --  Declare functions first, since they may be referenced in
@@ -99,6 +145,7 @@ package body CCG is
            or else (not Is_Declaration (Func)
                       and then (Is_Public (Func)
                                   or else Has_Inline_Always_Attribute (Func)))
+           or else Must_Decl.Contains (Func)
          then
             Declare_Subprogram (Func);
          end if;

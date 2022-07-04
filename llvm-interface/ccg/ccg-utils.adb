@@ -853,6 +853,49 @@ package body CCG.Utils is
 
    end Equivalent_Pointers;
 
+   -------------------
+   -- Walk_Function --
+   -------------------
+
+   procedure Walk_Function (F : Value_T) is
+      procedure Walk_Value (V : Value_T);
+
+      BB : Basic_Block_T := Get_First_Basic_Block (F);
+      V  : Value_T;
+
+      ----------------
+      -- Walk_Value --
+      ----------------
+
+      procedure Walk_Value (V : Value_T) is
+      begin
+         --  First call the procedure on this value and then see if there
+         --  are any values below this to walk.
+
+         if Present (V) then
+            Process (V);
+            if Is_A_Instruction (V) or else Is_A_Constant_Expr (V)
+              or else Is_A_Constant_Struct (V) or else Is_A_Constant_Array (V)
+            then
+               for J in Nat (0) .. Get_Num_Operands (V) - 1 loop
+                  Walk_Value (Get_Operand (V, J));
+               end loop;
+            end if;
+         end if;
+      end Walk_Value;
+
+   begin
+      while Present (BB) loop
+         V := Get_First_Instruction (BB);
+         while Present (V) loop
+            Walk_Value (V);
+            V := Get_Next_Instruction (V);
+         end loop;
+
+         BB := Get_Next_Basic_Block (BB);
+      end loop;
+   end Walk_Function;
+
    ---------------------
    -- Int_Type_String --
    ---------------------

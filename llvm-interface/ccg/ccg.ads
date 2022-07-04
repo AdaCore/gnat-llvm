@@ -143,8 +143,11 @@ package CCG is
    procedure C_Set_Parameter (S : String);
    --  S is of the form "name=value". Use it to set parameter "name" to "value"
 
-   Emit_C_Line    : Boolean := False;
+   Emit_C_Line        : Boolean := False;
    --  When generating C code, indicates that we want to generate #line
    --  directives. This corresponds to -g.
+
+   Have_Inline_Always : Boolean := False;
+   --  If True, we have at least one inline_always function
 
 end CCG;

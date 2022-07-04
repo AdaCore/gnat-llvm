@@ -931,7 +931,9 @@ package body CCG.Write is
 
       --  Write the initial header info as requested
 
-      if not Emit_Header and then Have_Includes then
+      if (not Emit_Header or else Have_Inline_Always)
+        and then Have_Includes
+      then
          Write_Line ("#include <string.h>");
          Write_Line ("#include <stdlib.h>");
          if Version > 1990 then

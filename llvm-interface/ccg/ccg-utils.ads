@@ -303,6 +303,12 @@ package CCG.Utils is
      with Pre => Is_Pointer_Type (T1) and then Is_Pointer_Type (T2);
    --  True if T1 and T2 are identical pointer types in their C representation
 
+   generic
+      with procedure Process (V : Value_T) is <>;
+   procedure Walk_Function (F : Value_T)
+     with Pre => Is_A_Function (F);
+   --  Call Process for each value within F
+
    function Int_Type_String (Size : Pos) return Str;
    --  Return the string corresponding to the C name of an integer type of
    --  Size bits.

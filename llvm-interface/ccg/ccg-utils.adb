@@ -853,7 +853,7 @@ package body CCG.Utils is
 
    end Equivalent_Pointers;
 
----------------------
+   ---------------------
    -- Int_Type_String --
    ---------------------
 

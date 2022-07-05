@@ -391,11 +391,13 @@ package body GNATLLVM.Blocks is
    LCH_Fn            : GL_Value      := No_GL_Value;
    --  Last-chance handler.  We only initialize this if needed
 
-   type File_GL_Value_Array is array (Source_File_Index range <>) of GL_Value;
+   type File_GL_Value_Array is
+     array (Source_File_Index range <>, Boolean range <>) of GL_Value;
    type File_GL_Value_Array_Access is access all File_GL_Value_Array;
    File_Name_Strings : File_GL_Value_Array_Access := null;
    --  Array of GL_Values corresponding to 'Address of the string literal
-   --  representing the name of the file.
+   --  representing the name of the file, with one entry when we need a
+   --  global for the name and one where we don't.
 
    type Rcheck_Name_Array is array (RT_Exception_Code) of String_Access;
 
@@ -855,28 +857,32 @@ package body GNATLLVM.Blocks is
    ---------------------------
 
    function Get_File_Name_Address
-     (Index : Source_File_Index) return GL_Value is
+     (Index : Source_File_Index) return GL_Value
+   is
+      Is_Global : constant Boolean :=
+        Emit_C and then Present (Current_Func)
+        and then (Has_Inline_Attribute (Current_Func)
+                  or else Has_Inline_Always_Attribute (Current_Func));
+
    begin
-      --  If we haven't yet allocated the cache for our filename, strings
+      --  If we haven't yet allocated the cache for our filename strings
       --  do it now.
 
       if File_Name_Strings = null then
          File_Name_Strings :=
-           new File_GL_Value_Array'(1 .. Last_Source_File => No_GL_Value);
+           new File_GL_Value_Array'(1 .. Last_Source_File =>
+                                      (False .. True => No_GL_Value));
       end if;
 
       --  If we haven't already computed a string literal for this filename,
       --  do it now.  Take into account pragma Suppress_Exception_Location.
 
-      if No (File_Name_Strings (Index)) then
+      if No (File_Name_Strings (Index, Is_Global)) then
          declare
             File      : constant String  :=
               (if   Debug_Flag_NN or else Exception_Locations_Suppressed
                then ""
                else Get_Name_String (Debug_Source_Name (Index)));
-            Is_Global : constant Boolean :=
-              Emit_C and then Present (Current_Func)
-              and then Has_Inline_Attribute (Current_Func);
             Elements  : GL_Value_Array (1 .. File'Length + 1);
             V         : GL_Value;
             Str       : GL_Value;
@@ -900,14 +906,15 @@ package body GNATLLVM.Blocks is
                           Any_Array_GL_Type);
             Set_Initializer     (V, Str);
             Set_Global_Constant (V);
-            File_Name_Strings (Index) := Ptr_To_Int (V, Size_GL_Type);
+            File_Name_Strings (Index, Is_Global) :=
+              Ptr_To_Int (V, Size_GL_Type);
             if not Is_Global then
                Set_Linkage (V, Private_Linkage);
             end if;
          end;
       end if;
 
-      return File_Name_Strings (Index);
+      return File_Name_Strings (Index, Is_Global);
    end Get_File_Name_Address;
 
    ---------------------

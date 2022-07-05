@@ -1031,6 +1031,10 @@ package GNATLLVM.GLValue is
      (Has_Inline_Attribute (+V))
       with Pre => Present (V);
 
+   function Has_Inline_Always_Attribute (V : GL_Value) return Boolean is
+     (Has_Inline_Always_Attribute (+V))
+      with Pre => Present (V);
+
    procedure Add_Cold_Attribute (V : GL_Value)
      with Pre => Is_A_Function (V), Inline;
    --  Add the Cold attribute to function V

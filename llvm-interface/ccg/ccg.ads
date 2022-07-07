@@ -147,7 +147,7 @@ package CCG is
    --  When generating C code, indicates that we want to generate #line
    --  directives. This corresponds to -g.
 
-   Have_Inline_Always : Boolean := False;
-   --  If True, we have at least one inline_always function
+   Inlines_In_Header  : Boolean := False;
+   --  If True, we have at least one inline function in the header file
 
 end CCG;

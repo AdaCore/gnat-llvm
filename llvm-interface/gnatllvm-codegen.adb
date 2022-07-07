@@ -113,6 +113,17 @@ package body GNATLLVM.Codegen is
       elsif Switch = "-emit-header" then
          Emit_C      := True;
          Emit_Header := True;
+      elsif Starts_With ("-header-inline=") then
+         if Switch_Value ("-header-inline=") = "none" then
+            Header_Inline := None;
+         elsif Switch_Value ("-header-inline=") = "inline-always" then
+            Header_Inline := Inline_Always;
+         elsif Switch_Value ("-header-inline=") = "inline" then
+            Header_Inline := Inline;
+         else
+            Early_Error ("invalid -header-inline option: " &
+                           Switch_Value ("-header-inline="));
+         end if;
       elsif Switch = "-emit-llvm" then
          Emit_LLVM := True;
       elsif Switch = "-S" then
@@ -664,6 +675,7 @@ package body GNATLLVM.Codegen is
         or else Starts_With ("--target=")
         or else Starts_With ("-llvm-")
         or else Starts_With ("-emit-")
+        or else Starts_With ("-header-inline=")
         or else Starts_With ("-c-target-")
       then
          return True;

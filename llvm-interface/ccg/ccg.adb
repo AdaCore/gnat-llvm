@@ -81,6 +81,17 @@ package body CCG is
          Equivalent_Elements => "=");
       use Value_Sets;
 
+      function Output_To_Header (F : Value_T) return Boolean is
+        (Emit_Header
+         and then (case Header_Inline is
+                        when None          => False,
+                        when Inline_Always => Has_Inline_Always_Attribute (F),
+                        when Inline        => Has_Inline_Always_Attribute (F)
+                                              or else Has_Inline_Attribute
+                                                        (F)))
+        with Pre => Is_A_Function (F);
+      --  True if we should output F to the header file
+
       function Is_Public (V : Value_T) return Boolean;
       --  True if V is publically-visible
 
@@ -120,9 +131,9 @@ package body CCG is
          Func := Get_First_Function (Module);
          while Present (Func) loop
             if not Is_Declaration (Func)
-              and then Has_Inline_Always_Attribute (Func)
+              and then Output_To_Header (Func)
             then
-               Have_Inline_Always := True;
+               Inlines_In_Header := True;
                Scan_For_Func_To_Decl (Func);
             end if;
 
@@ -143,8 +154,8 @@ package body CCG is
       while Present (Func) loop
          if not Emit_Header
            or else (not Is_Declaration (Func)
-                      and then (Is_Public (Func)
-                                  or else Has_Inline_Always_Attribute (Func)))
+                    and then (Is_Public (Func)
+                              or else Output_To_Header (Func)))
            or else Must_Decl.Contains (Func)
          then
             Declare_Subprogram (Func);
@@ -173,7 +184,7 @@ package body CCG is
 
       Func := Get_First_Function (Module);
       while Present (Func) loop
-         if not Emit_Header or else Has_Inline_Always_Attribute (Func) then
+         if not Emit_Header or else Output_To_Header (Func) then
             Output_Subprogram (Func);
          end if;
 

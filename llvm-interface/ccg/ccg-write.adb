@@ -931,7 +931,7 @@ package body CCG.Write is
 
       --  Write the initial header info as requested
 
-      if (not Emit_Header or else Have_Inline_Always)
+      if (not Emit_Header or else Inlines_In_Header)
         and then Have_Includes
       then
          Write_Line ("#include <string.h>");

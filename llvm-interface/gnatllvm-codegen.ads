@@ -19,6 +19,10 @@ with Options; use Options;
 
 package GNATLLVM.Codegen is
 
+   type Inline_Header is (None, Inline_Always, Inline);
+   --  Says whether to output no function to .h file, only those that are
+   --  are marked as Inline_Always, or those plus ones marked Inline.
+
    Filename : String_Access := new String'("");
    --  Filename to compile.
 
@@ -41,8 +45,11 @@ package GNATLLVM.Codegen is
    C_Parameter_File  : String_Access  := null;
    --  If non-null, the name of a file to dump the C parameters
 
-   Emit_Header      : Boolean        := False;
+   Emit_Header       : Boolean        := False;
    --  If True, emit header to .h file
+
+   Header_Inline     : Inline_Header  := None;
+   --  Says which inline functions to write to .h file
 
    CPU               : String_Access  := new String'("generic");
    --  Name of the specific CPU for this compilation.

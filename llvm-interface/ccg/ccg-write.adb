@@ -735,8 +735,7 @@ package body CCG.Write is
         (if    Present (E) then Full_Etype (E)
          elsif Present (V) then GNAT_Type (V)
          else  Empty);
-      BT : constant Opt_Type_Kind_Id  :=
-        (if Present (TE) then Full_Base_Type (TE) else Empty);
+      BT : constant Opt_Type_Kind_Id  := Opt_Full_Base_Type (TE);
       RT : Opt_Type_Kind_Id           := TE;
 
    begin

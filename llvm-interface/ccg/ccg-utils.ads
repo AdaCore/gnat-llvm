@@ -21,7 +21,8 @@ with Ada.Containers; use Ada.Containers;
 with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
 
-with Atree; use Atree;
+with Atree;       use Atree;
+with Sinfo.Nodes; use Sinfo.Nodes;
 
 with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
@@ -215,6 +216,12 @@ package CCG.Utils is
    is
      (if Present (TE) then Full_Base_Type (TE) else Empty);
    --  Version of Full_Base_Type that handles an Empty input
+
+   function Opt_Full_Etype
+     (E : Opt_N_Has_Etype_Id) return Opt_Void_Or_Type_Kind_Id
+   is
+     (if Present (E) then Full_Etype (E) else Empty);
+   --  Version of Full_Etype that handles an Empty input
 
    function Opt_Is_Unsigned_Type
     (TE : Opt_Void_Or_Type_Kind_Id) return Boolean

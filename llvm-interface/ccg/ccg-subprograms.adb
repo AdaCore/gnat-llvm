@@ -19,6 +19,7 @@ with Ada.Characters.Handling; use Ada.Characters.Handling;
 
 with Interfaces.C; use Interfaces.C;
 
+with Atree;  use Atree;
 with Output; use Output;
 with Table;
 
@@ -193,11 +194,25 @@ package body CCG.Subprograms is
       else
          for J in 0 .. Num_Params - 1 loop
             declare
-               Param  : constant Value_T   := Get_Param (V, J);
-               E      : constant Entity_Id := Get_Parameter_Entity (V, J);
-               Typ    : constant Str       := Type_Of (Param) or E;
+               Param  : constant Value_T          := Get_Param (V, J);
+               E      : constant Entity_Id        :=
+                 Get_Parameter_Entity (V, J);
+               BT     : constant Opt_Type_Kind_Id :=
+                 Opt_Full_Base_Type (Opt_Full_Etype (E));
+               Typ    : Str                       := Type_Of (Param) or E;
 
             begin
+               --  We may be passing an unsigned integer type by reference.
+               --  If so, add "unsigned ".
+
+               if Present (BT) and then Is_Unsigned_Type (BT)
+                 and then Is_Pointer_Type (Param)
+               then
+                  Typ := "unsigned " & Typ;
+               end if;
+
+               --  Add this parameter to the list, usually preceeded by a comma
+
                Result := Result & (if J = 0 then "" else ", ") & Typ;
                if not Extern then
                   Result := Result & " " & Param;

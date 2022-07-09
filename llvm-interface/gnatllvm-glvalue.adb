@@ -69,11 +69,13 @@ package body GNATLLVM.GLValue is
       TBAA_Offset : ULL               := 0) return GL_Value
    is
    begin
-      --  Set the signedness of the value if this is a discrete type. We
-      --  have to check for Void here since void is not a type.
+      --  Set the entity corresponding to the type of the value if this is
+      --  a discrete type. We have to check for Void here since void is not
+      --  a type. Also don't do this is V is a constant.
 
       if Ekind (GT) /= E_Void and then Is_Discrete_Type (GT)
         and then (not Is_Reference (R) or else R = Reference_To_Subprogram)
+        and then not Present (Is_A_Constant_Int (V))
       then
          C_Set_GNAT_Type (V, GT);
       end if;

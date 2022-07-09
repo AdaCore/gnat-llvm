@@ -257,10 +257,9 @@ package body CCG is
       Prev_E : constant Entity_Id := Get_Entity (V);
 
    begin
-      --  If we're not emitting C or this is a constant integer, we
-      --  don't need to do anything.
+      --  If we're not emitting C, we don't need to do anything
 
-      if not Emit_C or else Is_A_Constant_Int (V) then
+      if not Emit_C then
          return;
 
       --  We only want to set this the first time because that will be the

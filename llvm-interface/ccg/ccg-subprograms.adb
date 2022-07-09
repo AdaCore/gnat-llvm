@@ -422,8 +422,7 @@ package body CCG.Subprograms is
    --  (after "llvm."). If Exact is true, there must be nothing following
    --  Name in S.
 
-   type Arithmetic_Operation is (Add, Subtract);
-   --  For now only support Add/Sub for overflow builtin
+   type Arithmetic_Operation is (Add, Subtract, Multiply);
 
    function Op_With_Overflow
      (V    : Value_T;
@@ -573,9 +572,10 @@ package body CCG.Subprograms is
 
       elsif Matches (S, "sadd.with.overflow") then
          return Op_With_Overflow (V, Ops, S, Add);
-
       elsif Matches (S, "ssub.with.overflow") then
          return Op_With_Overflow (V, Ops, S, Subtract);
+      elsif Matches (S, "smul.with.overflow") then
+         return Op_With_Overflow (V, Ops, S, Multiply);
 
       --  Handle funnel shifts
 

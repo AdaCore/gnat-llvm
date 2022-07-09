@@ -2474,7 +2474,7 @@ package body GNATLLVM.Subprograms is
       Frozen : Boolean := True) return GL_Value
    is
       E           : constant Entity_Id := Defining_Entity (N);
-      V           : GL_Value           := Get_Value      (E);
+      V           : GL_Value           := Get_Value       (E);
       Addr_Clause : constant Opt_N_Attribute_Definition_Clause_Id :=
         Address_Clause (E);
 
@@ -2757,6 +2757,7 @@ package body GNATLLVM.Subprograms is
 
       Set_Value (E, LLVM_Func);
       C_Set_Function (UID, LLVM_Func);
+      C_Set_Entity   (LLVM_Func, E);
       if Readonly then
          Add_Readonly_Attribute (LLVM_Func);
       end if;

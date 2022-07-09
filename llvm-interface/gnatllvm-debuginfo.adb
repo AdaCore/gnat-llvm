@@ -272,7 +272,7 @@ package body GNATLLVM.DebugInfo is
         (if   No (GT) or else Is_Dynamic_Size (GT) then No_GL_Value
          else Get_Type_Size (GT));
       Our_Size  : constant ULL     :=
-        (if   Present (Size_V) and then Is_A_Const_Int (Size_V) then +Size_V
+        (if   Present (Size_V) and then Is_A_Constant_Int (Size_V) then +Size_V
          else Size);
 
    begin
@@ -280,7 +280,7 @@ package body GNATLLVM.DebugInfo is
       --  and can't continue since we don't know where things will be.
 
       if Present (GT)
-        and then (No (Size_V) or else not Is_A_Const_Int (Size_V))
+        and then (No (Size_V) or else not Is_A_Constant_Int (Size_V))
       then
          return False;
       end if;
@@ -624,7 +624,8 @@ package body GNATLLVM.DebugInfo is
       --  or if we have no debug info for GT (which will usually be because
       --  the size isn't constant.
 
-      if No (Size_V) or else not Is_A_Const_Int (Size_V) or else No (Data_MD)
+      if No (Size_V) or else not Is_A_Constant_Int (Size_V)
+        or else No (Data_MD)
       then
          return No_Metadata_T;
       end if;

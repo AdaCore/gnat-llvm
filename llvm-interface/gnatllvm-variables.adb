@@ -662,8 +662,8 @@ package body GNATLLVM.Variables is
          when others =>
             return Compile_Time_Known_Value (N)
               and then (not Not_Symbolic
-                          or else Is_A_Const_Int (Emit_No_Error (N))
-                          or else Is_A_Const_FP  (Emit_No_Error (N)));
+                          or else Is_A_Constant_Int (Emit_No_Error (N))
+                          or else Is_A_Constant_FP  (Emit_No_Error (N)));
       end case;
    end Is_Static_Address;
 
@@ -742,8 +742,8 @@ package body GNATLLVM.Variables is
       --  a symbolic value.
 
       else
-         return not Not_Symbolic or else Is_A_Const_Int (V)
-           or else Is_A_Const_FP (V);
+         return not Not_Symbolic or else Is_A_Constant_Int (V)
+           or else Is_A_Constant_FP (V);
       end if;
    end Can_Convert_Constant;
 
@@ -871,7 +871,7 @@ package body GNATLLVM.Variables is
             --  is and the result is a constant.
 
             return Nkind (N) not in N_Op_Compare
-              or else Is_A_Const_Int (Emit_No_Error (N));
+              or else Is_A_Constant_Int (Emit_No_Error (N));
          end Binary_Op;
 
          when N_Unary_Op =>
@@ -891,12 +891,12 @@ package body GNATLLVM.Variables is
 
               and then (not Is_Scalar_Type (GT)
                           or else Type_Of (GT) = Size_T
-                          or else Is_A_Const_Int (Emit_No_Error
-                                                    (Expression (N)))
-                          or else Is_A_Const_FP  (Emit_No_Error
+                          or else Is_A_Constant_Int (Emit_No_Error
+                                                       (Expression (N)))
+                          or else Is_A_Constant_FP  (Emit_No_Error
+                                                       (Expression (N))))
               --  If converting to a scalar type other than Size_Type,
               --  we can't have a relocatable expression.
-                                                    (Expression (N))))
               and then (Nkind (N) /= N_Type_Conversion
                           or else not Do_Overflow_Check (N)
                           or else not Overflowed (Emit_No_Error (N)));
@@ -1183,7 +1183,7 @@ package body GNATLLVM.Variables is
    is
       T_Size           : constant ULL          := Get_Type_Size (T);
       Var_Size         : constant Boolean      :=
-        Present (Elts) and then not Is_A_Const_Int (Elts);
+        Present (Elts) and then not Is_A_Constant_Int (Elts);
       Elts_ULL         : constant ULL          :=
         (if Present (Elts) and then not Var_Size then +Elts else 1);
 

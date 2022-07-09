@@ -614,7 +614,7 @@ package body GNATLLVM.Conversions is
       then
          return Mark_Overflowed (G_Is (In_V, GT),
                                  not Dest_Uns and then Src_Uns
-                                   and then Is_A_Const_Int (In_V)
+                                   and then Is_A_Constant_Int (In_V)
                                    and then +In_V < ULL (0));
 
       --  If we're converting between two GL_Types corresponding to the same

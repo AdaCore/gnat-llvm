@@ -204,7 +204,7 @@ package body GNATLLVM.Arrays.Create is
             Val : LLI;
 
          begin
-            if Is_A_Const_Int (V) then
+            if Is_A_Constant_Int (V) then
                Val := +V;
                if Val in LLI (Int'First) .. LLI (Int'Last) then
                   return (Cnst => +Val, Value => Empty);

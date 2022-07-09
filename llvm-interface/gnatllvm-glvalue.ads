@@ -967,12 +967,12 @@ package GNATLLVM.GLValue is
    function Is_Nonsymbolic_Constant (V : GL_Value) return Boolean
      with Pre => Present (V);
 
-   function Is_A_Const_Int (V : GL_Value) return Boolean is
+   function Is_A_Constant_Int (V : GL_Value) return Boolean is
      (Present (Is_A_Constant_Int (+V)))
      with Pre => Present (V);
    --  Return True if V is a constant integer
 
-   function Is_A_Const_FP (V : GL_Value) return Boolean is
+   function Is_A_Constant_FP (V : GL_Value) return Boolean is
      (Present (Is_A_Constant_FP (+V)))
      with Pre => Present (V);
    --  Return True if V is a constant floating point value
@@ -989,16 +989,16 @@ package GNATLLVM.GLValue is
 
    function Get_Const_Int_Value (V : GL_Value) return LLI is
      (LLI (Const_Int_Get_S_Ext_Value (+V)))
-     with Pre => Is_A_Const_Int (V);
+     with Pre => Is_A_Constant_Int (V);
    --  V is a constant integer; get its value
 
    function Get_Const_Int_Value_ULL (V : GL_Value) return ULL is
      (ULL (Const_Int_Get_S_Ext_Value (+V)))
-     with Pre => Is_A_Const_Int (V);
+     with Pre => Is_A_Constant_Int (V);
 
    function Get_Const_Int_Value_Nat (V : GL_Value) return Nat is
      (Nat (Const_Int_Get_S_Ext_Value (+V)))
-     with Pre => Is_A_Const_Int (V);
+     with Pre => Is_A_Constant_Int (V);
 
    function "+" (V : GL_Value) return LLI is
      (Get_Const_Int_Value (V));
@@ -1009,7 +1009,7 @@ package GNATLLVM.GLValue is
 
    function UI_From_GL_Value (V : GL_Value) return Uint is
      (UI_From_LLI (+V))
-     with Pre => Is_A_Const_Int (V);
+     with Pre => Is_A_Constant_Int (V);
    function "+" (V : GL_Value) return Uint renames UI_From_GL_Value;
 
    function Get_Value_Name (V : GL_Value) return String is
@@ -1108,13 +1108,13 @@ package GNATLLVM.GLValue is
    --  Add the DSOlocal attribute to a global (variable or function)
 
    function Is_Const_Int_Value (V : GL_Value; Val : ULL) return Boolean is
-     (Is_A_Const_Int (V) and then not Overflowed (V)
+     (Is_A_Constant_Int (V) and then not Overflowed (V)
         and then Equals_Int (+V, Val))
      with Pre => Present (V);
    --  Return True if V is a constant integer of value Val
 
    function Is_Const_Int_Values_Equal (V1, V2 : GL_Value) return Boolean is
-     (Is_A_Const_Int (V1) and then Is_A_Const_Int (V2)
+     (Is_A_Constant_Int (V1) and then Is_A_Constant_Int (V2)
         and then not Overflowed (V1) and then not Overflowed (V2)
         and then Equal_Constants (+V1, +V2))
      with Pre => Present (V1) and then Present (V2);

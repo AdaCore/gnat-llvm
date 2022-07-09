@@ -1548,7 +1548,7 @@ package body GNATLLVM.Arrays is
       --  should do this with an Extract_Value.
 
       if Is_Data (Result) and then not For_LHS and then not Prefer_LHS
-        and then (for all J of Idxs => Is_A_Const_Int (J))
+        and then (for all J of Idxs => Is_A_Constant_Int (J))
       then
          return Extract_Value (Full_Component_GL_Type (Result),
                                To_Primitive (Result),

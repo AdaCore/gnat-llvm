@@ -123,7 +123,7 @@ package body GNATLLVM.Types is
    --  unless this is a tagged type.
 
    function GL_Value_To_Node_Ref_Or_Val (V : GL_Value) return Node_Ref_Or_Val
-     with Pre  => Is_A_Const_Int (V),
+     with Pre  => Is_A_Constant_Int (V),
           Post => Present (GL_Value_To_Node_Ref_Or_Val'Result);
    --  Make a Node_Ref_Or_Val from V. Normally this is just the integer
    --  value of V, but if it's negative, we need to build a negation node.
@@ -183,7 +183,7 @@ package body GNATLLVM.Types is
    ----------------
 
    function From_Const (V : GL_Value) return IDS is
-     (if Is_A_Const_Int (V) then (False, V) else Var_IDS)
+     (if Is_A_Constant_Int (V) then (False, V) else Var_IDS)
      with Pre => Is_Constant (V), Post => Present (From_Const'Result);
    --  V is a constant.  If it's a constant integer, return that value.
    --  Otherwise, don't treat it as a constant.
@@ -226,7 +226,7 @@ package body GNATLLVM.Types is
    ----------------
 
    function From_Const (V : GL_Value) return BA_Data is
-     (if   Is_A_Const_Int (V) then (False, V, No_Uint) else No_BA)
+     (if   Is_A_Constant_Int (V) then (False, V, No_Uint) else No_BA)
      with Pre => Is_Constant (V);
    --  Likewise, for back-annotation
 

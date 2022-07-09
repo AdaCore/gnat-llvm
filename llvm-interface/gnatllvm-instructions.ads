@@ -598,14 +598,14 @@ package GNATLLVM.Instructions is
 
    function "+" (LHS : Uint; RHS : GL_Value) return Uint is
      (LHS + UI_From_GL_Value (RHS))
-     with Pre  => Present (LHS) and then Is_A_Const_Int (RHS);
+     with Pre  => Present (LHS) and then Is_A_Constant_Int (RHS);
    function "+" (LHS : GL_Value; RHS : Uint) return Uint is
      (RHS + UI_From_GL_Value (LHS))
-     with Pre  => Present (RHS) and then Is_A_Const_Int (LHS);
+     with Pre  => Present (RHS) and then Is_A_Constant_Int (LHS);
 
    function "-" (LHS : Uint; RHS : GL_Value) return Uint is
      (LHS - UI_From_GL_Value (RHS))
-     with Pre  => Present (LHS) and then Is_A_Const_Int (RHS);
+     with Pre  => Present (LHS) and then Is_A_Constant_Int (RHS);
 
    function "<" (LHS, RHS : GL_Value) return Boolean is
      (I_Cmp ((if Is_Unsigned_Type (LHS) then Int_ULT else Int_SLT),

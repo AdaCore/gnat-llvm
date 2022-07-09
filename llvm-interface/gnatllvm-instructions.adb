@@ -374,7 +374,7 @@ package body GNATLLVM.Instructions is
       --  be true that the new offset is not negative.
 
       if Present (TBAA_Type (Result)) then
-         if Present (TBAA_Type (RHS)) or else not Is_A_Const_Int (RHS)
+         if Present (TBAA_Type (RHS)) or else not Is_A_Constant_Int (RHS)
            or else Overflowed (RHS)
          then
             Set_TBAA_Type (Result, No_Metadata_T);
@@ -401,8 +401,8 @@ package body GNATLLVM.Instructions is
       --  don't have to test for overflow.
       --  ???  We can't currently test for overflow if wider than ULL.
 
-      if not Is_A_Const_Int (LHS) or else not Is_A_Const_Int (RHS)
-        or else not Is_A_Const_Int (Result) or else Overflowed (Result)
+      if not Is_A_Constant_Int (LHS) or else not Is_A_Constant_Int (RHS)
+        or else not Is_A_Constant_Int (Result) or else Overflowed (Result)
         or else Is_Modular_Integer_Type (Result)
         or else Esize (Result) > ULL'Size
       then
@@ -487,8 +487,8 @@ package body GNATLLVM.Instructions is
       --  don't have to test for overflow.
       --  ???  We can't currently test for overflow if wider than ULL.
 
-      if not Is_A_Const_Int (LHS) or else not Is_A_Const_Int (RHS)
-        or else not Is_A_Const_Int (Result) or else Overflowed (Result)
+      if not Is_A_Constant_Int (LHS) or else not Is_A_Constant_Int (RHS)
+        or else not Is_A_Constant_Int (Result) or else Overflowed (Result)
         or else Is_Modular_Integer_Type (Result)
         or else Esize (Result) > ULL'Size
       then
@@ -607,7 +607,7 @@ package body GNATLLVM.Instructions is
       --  the result from the input.  Otherwise we don't know anything
       --  about the alignment.
 
-      if Is_A_Const_Int (Count) and then +Count > ULL (0) then
+      if Is_A_Constant_Int (Count) and then +Count > ULL (0) then
          if +Count >= ULL (20) then
             Set_Alignment (Result, (if Left then Max_Valid_Align else BPU));
          else
@@ -647,8 +647,8 @@ package body GNATLLVM.Instructions is
       --  we can't have an overlow (the output should be an integer if the
       --  input is, but let's check anyway).
 
-      if Is_Modular_Integer_Type (Result) or else not Is_A_Const_Int (V)
-        or else not Is_A_Const_Int (Result)
+      if Is_Modular_Integer_Type (Result) or else not Is_A_Constant_Int (V)
+        or else not Is_A_Constant_Int (Result)
 
         --  If the values of the old and new constants are the same, there's
         --  no overflow.

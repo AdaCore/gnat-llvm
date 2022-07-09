@@ -1806,7 +1806,8 @@ package body GNATLLVM.Subprograms is
             --  the size of the return area. Otherwise, emit a runtime
             --  test to verify that.
 
-            if Is_A_Const_Int (Our_Size) and then Is_A_Const_Int (Ret_Size)
+            if Is_A_Constant_Int (Our_Size)
+              and then Is_A_Constant_Int (Ret_Size)
             then
                pragma Assert (Ret_Size >= Our_Size);
             else

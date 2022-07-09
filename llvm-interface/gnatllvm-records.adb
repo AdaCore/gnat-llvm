@@ -189,7 +189,7 @@ package body GNATLLVM.Records is
         (V1, V2 : Result; Name : String := "") return Result;
       with function Build_Max
         (V1, V2 : Result; Name : String := "") return Result;
-      with function Is_A_Const_Int          (V : Result)    return Boolean;
+      with function Is_A_Constant_Int       (V : Result)    return Boolean;
       with function Get_Const_Int_Value_ULL (V : Result)    return ULL;
       with function Replace_Val             (O, N : Result) return Result;
    package Size is
@@ -483,7 +483,7 @@ package body GNATLLVM.Records is
             This_Size  := Size_Const_Int (Get_Type_Size (T));
             Must_Align := BPU;
             Is_Align   :=
-              (if   Is_A_Const_Int (Total_Size)
+              (if   Is_A_Constant_Int (Total_Size)
                then ULL_Align (Get_Const_Int_Value_ULL
                                  (Total_Size + This_Size))
                else Nat'(BPU));
@@ -637,7 +637,7 @@ package body GNATLLVM.Records is
                                            Force_Align,
                                            Max_Size   => True,
                                            No_Padding => No_Padding);
-            if Is_A_Const_Int (Our_Size) then
+            if Is_A_Constant_Int (Our_Size) then
                if Get_Const_Int_Value_ULL (Our_Size) > Max_Const_Size then
                   Max_Const_Size := Get_Const_Int_Value_ULL (Our_Size);
                end if;
@@ -935,7 +935,7 @@ package body GNATLLVM.Records is
                 Neg                     => Neg,
                 Build_And               => Build_And,
                 Build_Max               => Build_Max,
-                Is_A_Const_Int          => Is_A_Const_Int,
+                Is_A_Constant_Int       => Is_A_Constant_Int,
                 Get_Const_Int_Value_ULL => Get_Const_Int_Value_ULL,
                 Get_Type_Size           => Get_Type_Size,
                 Get_Variant_Size        => Get_Variant_Size,
@@ -989,7 +989,7 @@ package body GNATLLVM.Records is
                 Neg                     => Neg,
                 Build_And               => Build_And,
                 Build_Max               => Build_Max,
-                Is_A_Const_Int          => Is_Const,
+                Is_A_Constant_Int       => Is_Const,
                 Get_Const_Int_Value_ULL => Const_Val_ULL,
                 Get_Type_Size           => Get_Type_Size,
                 Get_Variant_Size        => Get_Variant_Size,
@@ -1038,7 +1038,7 @@ package body GNATLLVM.Records is
                 Neg                     => Neg,
                 Build_And               => Build_And,
                 Build_Max               => Build_Max,
-                Is_A_Const_Int          => Is_Const,
+                Is_A_Constant_Int       => Is_Const,
                 Get_Const_Int_Value_ULL => Const_Val_ULL,
                 Get_Type_Size           => Get_Type_Size,
                 Get_Variant_Size        => Get_Variant_Size,
@@ -1097,7 +1097,7 @@ package body GNATLLVM.Records is
       --  this logic to avoid trying to create a BB at top level for a
       --  record where each variant is the same size and hence isn't dynamic.
 
-      if Is_A_Const_Int (In_Size) then
+      if Is_A_Constant_Int (In_Size) then
          for J in RI.Variants'Range loop
             if Is_Const (IDS'(Get_Record_Size_So_Far
                                 (Empty, No_GL_Value,

@@ -1648,8 +1648,8 @@ package body GNATLLVM.Aliasing is
       --  both sides that have a common tag if both sides are Present or
       --  use the one for LHS if only it's Present.
 
-      if not Is_A_Const_Int (Size) or else Aliases_All (LHS) or else Size = 0
-        or else LLVM_Struct_Tag_Bug
+      if not Is_A_Constant_Int (Size) or else Aliases_All (LHS)
+        or else Size = 0 or else LLVM_Struct_Tag_Bug
       then
          return No_Metadata_T;
       elsif No (RHS) then
@@ -1692,7 +1692,7 @@ package body GNATLLVM.Aliasing is
       --  aliases everything.  Otherwise, see if we can find a struct type
       --  tag on either side that corresponds to the specified size.
 
-      if not Is_A_Const_Int (Size) or else Aliases_All (LHS)
+      if not Is_A_Constant_Int (Size) or else Aliases_All (LHS)
         or else Aliases_All (RHS)
       then
          return No_Metadata_T;

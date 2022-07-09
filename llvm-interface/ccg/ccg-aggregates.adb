@@ -345,7 +345,7 @@ package body CCG.Aggregates is
       if Is_Undef (Aggr) then
          null;
       else
-         Write_Copy (V, +Aggr, T);
+         Output_Copy (V, +Aggr, T);
       end if;
 
       --  Next we generate the string that represents the access of this
@@ -358,7 +358,7 @@ package body CCG.Aggregates is
       --  The resulting type must be that of Op and we emit the assignment
 
       pragma Assert (T = Type_Of (Op));
-      Write_Copy (Acc, Op + Assign, T, V);
+      Output_Copy (Acc, Op + Assign, T, V);
    end Insert_Value_Instruction;
 
    ---------------------

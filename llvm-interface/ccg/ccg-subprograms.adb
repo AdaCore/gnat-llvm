@@ -394,7 +394,7 @@ package body CCG.Subprograms is
          --  variable, assign the function result to it, and dereference
          --  that.  We don't have a value to use as the variable, so we
          --  have to use a bit of a kludge. Note that we can't call
-         --  Write_Copy here since it'll think that this is an array copy
+         --  Output_Copy here since it'll think that this is an array copy
          --  and use memmove.
 
          if Get_Type_Kind (V) = Array_Type_Kind then
@@ -488,12 +488,12 @@ package body CCG.Subprograms is
       --  better job. But this is for later work; we need to get a better
       --  idea of the tradeoffs here.
 
-      Write_Copy (+V & ".ccg_field_0",
-                  "(" & Int_Type_String (Pos (Bits)) & ") " & Subp &
-                    " ((long long) " & Op1 & ", (long long) " & Op2 & ")",
-                  Int_Type (Bits),
-                  V => V);
-      Write_Copy (+V & ".ccg_field_1", +"0", Int_Type (1), V => V);
+      Output_Copy (+V & ".ccg_field_0",
+                   "(" & Int_Type_String (Pos (Bits)) & ") " & Subp &
+                   " ((long long) " & Op1 & ", (long long) " & Op2 & ")",
+                   Int_Type (Bits),
+                   V => V);
+      Output_Copy (+V & ".ccg_field_1", +"0", Int_Type (1), V => V);
       return True;
    end Op_With_Overflow;
 

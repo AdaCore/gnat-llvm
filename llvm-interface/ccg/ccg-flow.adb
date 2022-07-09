@@ -860,7 +860,7 @@ package body CCG.Flow is
 
                   if Get_Type_Kind (Retval) = Array_Type_Kind then
                      Output_Decl (TP ("#T1_R #2", Retval, T), V => T);
-                     Write_Copy (T & ".F", Retval, Type_Of (Retval));
+                     Output_Copy (T & ".F", Retval, Type_Of (Retval));
                      Retval := T;
                   end if;
                end if;

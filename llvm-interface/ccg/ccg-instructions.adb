@@ -385,7 +385,7 @@ package body CCG.Instructions is
 
    begin
       Process_Pending_Values;
-      Write_Copy (LHS, RHS, Type_Of (Op1), V => V);
+      Output_Copy (LHS, RHS, Type_Of (Op1), V => V);
    end Store_Instruction;
 
    ------------------------
@@ -691,38 +691,39 @@ package body CCG.Instructions is
       end if;
    end Cmp_Instruction;
 
-   ----------------
-   -- Write_Copy --
-   ----------------
+   -----------------
+   -- Output_Copy --
+   -----------------
 
-   procedure Write_Copy (LHS : Value_T; RHS : Str; T : Type_T) is
+   procedure Output_Copy (LHS : Value_T; RHS : Str; T : Type_T) is
    begin
-      Write_Copy (+LHS, RHS, T, V => LHS);
-   end Write_Copy;
+      Output_Copy (+LHS, RHS, T, V => LHS);
+   end Output_Copy;
 
-   ----------------
-   -- Write_Copy --
-   ----------------
+   -----------------
+   -- Output_Copy --
+   -----------------
 
-   procedure Write_Copy (LHS : Str; RHS : Value_T; T : Type_T) is
+   procedure Output_Copy (LHS : Str; RHS : Value_T; T : Type_T) is
    begin
-      Write_Copy (LHS, +RHS, T, V => RHS);
-   end Write_Copy;
+      Output_Copy (LHS, +RHS, T, V => RHS);
+   end Output_Copy;
 
-   ----------------
-   -- Write_Copy --
-   ----------------
+   -----------------
+   -- Output_Copy --
+   -----------------
 
-   procedure Write_Copy (LHS, RHS : Value_T; T : Type_T) is
+   procedure Output_Copy (LHS, RHS : Value_T; T : Type_T) is
    begin
-      Write_Copy (+LHS, +RHS, T, V => LHS);
-   end Write_Copy;
+      Output_Copy (+LHS, +RHS, T, V => LHS);
+   end Output_Copy;
 
-   ----------------
-   -- Write_Copy --
-   ----------------
+   -----------------
+   -- Output_Copy --
+   -----------------
 
-   procedure Write_Copy (LHS, RHS : Str; T : Type_T; V : Value_T := No_Value_T)
+   procedure Output_Copy
+     (LHS, RHS : Str; T : Type_T; V : Value_T := No_Value_T)
    is
    begin
       --  If this isn't an array type, write a normal assignment. Otherwise,
@@ -743,7 +744,7 @@ package body CCG.Instructions is
                         ", sizeof (" & T & "))", V);
          end if;
       end if;
-   end Write_Copy;
+   end Output_Copy;
 
    -----------------------
    -- Force_To_Variable --
@@ -772,7 +773,7 @@ package body CCG.Instructions is
          --  Declare the variable and write the copy into it
 
          Maybe_Decl  (V);
-         Write_Copy  (V, C_Val, Type_Of (V));
+         Output_Copy  (V, C_Val, Type_Of (V));
       end if;
    end Force_To_Variable;
 
@@ -790,7 +791,7 @@ package body CCG.Instructions is
       if Num_Uses (LHS) = 0 then
          if Has_Side_Effects (LHS) then
             Maybe_Decl (LHS);
-            Write_Copy (LHS, RHS, Type_Of (LHS));
+            Output_Copy (LHS, RHS, Type_Of (LHS));
          else
             return;
          end if;
@@ -821,7 +822,7 @@ package body CCG.Instructions is
         and then Get_Type_Kind (Type_Of (LHS)) /= Array_Type_Kind
       then
          Maybe_Decl (LHS);
-         Write_Copy (LHS, RHS, Type_Of (LHS));
+         Output_Copy (LHS, RHS, Type_Of (LHS));
       else
          --  Make a note of the value of V. If V is an instruction, that
          --  has a potential side effect-such as call or load, make a

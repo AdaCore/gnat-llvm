@@ -131,11 +131,6 @@ package body GNATLLVM.Subprograms is
      with Pre => Present (GT);
    --  Return the Relationship for a parameter of type GT and kind PK
 
-   function Get_Acting_Spec
-     (Subp_Body : N_Subprogram_Body_Id) return N_Subprogram_Specification_Id;
-   --  If Subp_Body acts as a spec, return it. Otherwise, return the
-   --  corresponding subprogram declaration.
-
    function Make_Trampoline
      (GT : GL_Type; Fn, Static_Link : GL_Value; N : Node_Id) return GL_Value
      with Pre  => Present (GT) and then Present (Fn)
@@ -695,32 +690,6 @@ package body GNATLLVM.Subprograms is
       end if;
    end Relationship_For_PK;
 
-   ---------------------
-   -- Get_Acting_Spec --
-   ---------------------
-
-   function Get_Acting_Spec
-     (Subp_Body : N_Subprogram_Body_Id) return N_Subprogram_Specification_Id
-   is
-   begin
-      if Acts_As_Spec (Subp_Body) then
-         return Specification (Subp_Body);
-      else
-         declare
-            Spec : constant Subprogram_Kind_Id :=
-              Corresponding_Spec (Subp_Body);
-
-         begin
-            if Nkind (Parent (Spec)) = N_Defining_Program_Unit_Name then
-               return Parent (Parent (Spec));
-            else
-               pragma Assert (Parent (Spec) in N_Subprogram_Specification_Id);
-               return Parent (Spec);
-            end if;
-         end;
-      end if;
-   end Get_Acting_Spec;
-
    ----------------------------
    -- Create_Subprogram_Type --
    ----------------------------
@@ -1079,7 +1048,7 @@ package body GNATLLVM.Subprograms is
    procedure Emit_One_Body
      (N : N_Subprogram_Body_Id; For_Inline : Boolean := False)
    is
-      Spec       : constant Node_Id            := Get_Acting_Spec (N);
+      Spec       : constant Node_Id            := Acting_Spec (N);
       Func       : constant GL_Value           := Emit_Subprogram_Decl (Spec);
       E          : constant Subprogram_Kind_Id := Defining_Entity (Spec);
       Return_GT  : constant GL_Type            := Full_GL_Type    (E);
@@ -1556,7 +1525,7 @@ package body GNATLLVM.Subprograms is
      (N : N_Subprogram_Body_Id; For_Inline : Boolean := False)
    is
       Nest_Table_First : constant Nat     := Nested_Functions.Last + 1;
-      Spec             : constant Node_Id := Get_Acting_Spec (N);
+      Spec             : constant Node_Id := Acting_Spec (N);
 
    begin
       --  Do nothing if this is an eliminated subprogram
@@ -1569,7 +1538,7 @@ package body GNATLLVM.Subprograms is
       --  ensure that the spec has been elaborated.
 
       elsif not Library_Level then
-         Discard (Emit_Subprogram_Decl (Get_Acting_Spec (N)));
+         Discard (Emit_Subprogram_Decl (Acting_Spec (N)));
          Nested_Functions.Append (N);
          return;
       end if;

@@ -507,6 +507,31 @@ package body GNATLLVM.Utils is
       end return;
    end Enclosing_Subprogram_Scope;
 
+   -----------------
+   -- Acting_Spec --
+   -----------------
+
+   function Acting_Spec
+     (N : N_Subprogram_Body_Id) return N_Subprogram_Specification_Id
+   is
+   begin
+      if Acts_As_Spec (N) then
+         return Specification (N);
+      else
+         declare
+            Spec : constant Subprogram_Kind_Id := Corresponding_Spec (N);
+
+         begin
+            if Nkind (Parent (Spec)) = N_Defining_Program_Unit_Name then
+               return Parent (Parent (Spec));
+            else
+               pragma Assert (Parent (Spec) in N_Subprogram_Specification_Id);
+               return Parent (Spec);
+            end if;
+         end;
+      end if;
+   end Acting_Spec;
+
    --------------------------
    -- Set_Orig_By_Ref_Mech --
    --------------------------

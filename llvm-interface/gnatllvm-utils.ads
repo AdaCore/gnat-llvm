@@ -81,6 +81,11 @@ package GNATLLVM.Utils is
      with Pre => not Is_Type (E);
    --  Return any enclosing subprogram scope above E
 
+   function Acting_Spec
+     (N : N_Subprogram_Body_Id) return N_Subprogram_Specification_Id;
+   --  If Subp_Body acts as a spec, return it. Otherwise, return the
+   --  corresponding subprogram declaration.
+
    function Get_Uint_Value (N : N_Subexpr_Id) return Uint;
    --  If Node has a static Uint value, return it.  Otherwise, return No_Uint
 

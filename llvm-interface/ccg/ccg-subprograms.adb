@@ -468,7 +468,8 @@ package body CCG.Subprograms is
       Maybe_Decl (V);
 
       if not Overflow_Declared (Arit) then
-         Write_Line ("extern long long " & Subp & " (long long, long long);");
+         Output_Decl ("extern long long " & Subp & " (long long, long long)",
+                      Is_Global => True);
          Overflow_Declared (Arit) := True;
       end if;
 

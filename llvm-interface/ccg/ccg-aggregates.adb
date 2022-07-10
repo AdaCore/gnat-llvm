@@ -15,9 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Atree;       use Atree;
-with Sinfo.Nodes; use Sinfo.Nodes;
-with Uintp.LLVM;  use Uintp.LLVM;
+with Atree;      use Atree;
+with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;

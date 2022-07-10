@@ -21,17 +21,16 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 
 with Get_Targ; use Get_Targ;
 
-with Atree;       use Atree;
-with Debug;       use Debug;
-with Lib;         use Lib;
-with Opt;         use Opt;
-with Osint;       use Osint;
-with Osint.C;     use Osint.C;
-with Output;      use Output;
-with Set_Targ;    use Set_Targ;
-with Sinfo.Nodes; use Sinfo.Nodes;
-with Sinput;      use Sinput;
-with Uintp;       use Uintp;
+with Atree;    use Atree;
+with Debug;    use Debug;
+with Lib;      use Lib;
+with Opt;      use Opt;
+with Osint;    use Osint;
+with Osint.C;  use Osint.C;
+with Output;   use Output;
+with Set_Targ; use Set_Targ;
+with Sinput;   use Sinput;
+with Uintp;    use Uintp;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;

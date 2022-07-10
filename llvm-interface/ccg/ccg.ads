@@ -21,6 +21,7 @@ with LLVM.Types; use LLVM.Types;
 
 with Einfo.Entities; use Einfo.Entities;
 with Namet;          use Namet;
+with Sinfo.Nodes;    use Sinfo.Nodes;
 with Types;          use Types;
 
 with GNATLLVM; use GNATLLVM;
@@ -95,6 +96,15 @@ package CCG is
 
    procedure Generate_C (Module : Module_T);
    --  The main procedure, which generates C code from the LLVM IR
+
+   procedure C_Add_To_Source_Order (N : Node_Id)
+     with Pre => Nkind (N) in N_Pragma | N_Subprogram_Declaration |
+                              N_Subprogram_Body | N_Object_Declaration |
+                              N_Object_Renaming_Declaration |
+                              N_Exception_Declaration |
+                              N_Exception_Renaming_Declaration;
+   --  Add N to the list of file-level objects present in the source if
+   --  it indeed does come from the source.
 
    procedure C_Set_Field_Info
      (UID         : Unique_Id;

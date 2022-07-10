@@ -421,6 +421,9 @@ package body GNATLLVM.Compile is
                          in Generic_Subprogram_Kind)
             then
                Emit_Subprogram_Body (N);
+               if Library_Level then
+                  C_Add_To_Source_Order (N);
+               end if;
             end if;
 
          when N_Subprogram_Declaration =>
@@ -432,6 +435,9 @@ package body GNATLLVM.Compile is
               or else not Rewritten_For_C (Unique_Defining_Entity (N))
             then
                Emit (Specification (N));
+               if Library_Level then
+                  C_Add_To_Source_Order (N);
+               end if;
             end if;
 
          when N_Function_Specification | N_Procedure_Specification =>
@@ -486,11 +492,17 @@ package body GNATLLVM.Compile is
 
          when N_Object_Declaration | N_Exception_Declaration =>
             Emit_Declaration (N);
+            if Library_Level then
+               C_Add_To_Source_Order (N);
+            end if;
 
          when N_Object_Renaming_Declaration
             | N_Exception_Renaming_Declaration =>
 
             Emit_Renaming_Declaration (N);
+            if Library_Level then
+               C_Add_To_Source_Order (N);
+            end if;
 
          when N_Subprogram_Renaming_Declaration =>
 

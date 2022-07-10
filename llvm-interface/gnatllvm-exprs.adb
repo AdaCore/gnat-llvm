@@ -58,9 +58,9 @@ package body GNATLLVM.Exprs is
      with Pre => Present (E);
    --  Similar to Is_Safe_From but applies to entities
 
-   procedure Emit_Annotation (S : String)
+   procedure Emit_Annotation (N : Node_Id; S : String)
      with Pre => Emit_C;
-   --  Emit LLVM to put string S in the C output
+   --  Emit LLVM to put string S (from node N) in the C output
 
    Annotate_Fn : GL_Value := No_GL_Value;
    --  Declaration for CCG builtin annotation function, if any
@@ -1106,9 +1106,9 @@ package body GNATLLVM.Exprs is
                      String_To_Name_Buffer (Strval (Expr3));
                      if Get_Name_String (Chars (Expr2)) = "c_pragma" then
                         Emit_Annotation
-                          ("#pragma " & Name_Buffer (1 .. Name_Len));
+                          (N, "#pragma " & Name_Buffer (1 .. Name_Len));
                      elsif Get_Name_String (Chars (Expr2)) = "verbatim" then
-                        Emit_Annotation (Name_Buffer (1 .. Name_Len));
+                        Emit_Annotation (N, Name_Buffer (1 .. Name_Len));
                      end if;
                   end if;
                end;
@@ -1123,7 +1123,8 @@ package body GNATLLVM.Exprs is
               and then Nkind (Expression (First (PAAs))) = N_String_Literal
             then
                String_To_Name_Buffer (Strval (Expression (First (PAAs))));
-               Emit_Annotation ("/* " & Name_Buffer (1 .. Name_Len) & " */");
+               Emit_Annotation (N,
+                                "/* " & Name_Buffer (1 .. Name_Len) & " */");
             end if;
 
          when others => null;
@@ -1134,13 +1135,10 @@ package body GNATLLVM.Exprs is
    -- Emit_Annotation --
    ---------------------
 
-   procedure Emit_Annotation (S : String) is
-      Idx : constant Nat := C_Create_Annotation (S);
-
+   procedure Emit_Annotation (N : Node_Id; S : String) is
    begin
-      --  ??? If this isn't inside a subprogram, do nothing for now.
-
       if Library_Level then
+         C_Add_To_Source_Order (N);
          return;
 
       --  If the annotation builtin isn't defined yet, define it.
@@ -1158,7 +1156,9 @@ package body GNATLLVM.Exprs is
 
       --  Now call it
 
-      Call (Annotate_Fn, (1 => Const_Int (Integer_GL_Type, ULL (Idx), True)));
+      Call (Annotate_Fn, (1 => Const_Int (Integer_GL_Type,
+                                          ULL (C_Create_Annotation (S)),
+                                          True)));
    end Emit_Annotation;
 
    ------------------------------

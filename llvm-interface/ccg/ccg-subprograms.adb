@@ -64,6 +64,18 @@ package body CCG.Subprograms is
       Table_Increment      => 50,
       Table_Name           => "Subprograms");
 
+   --  We track the order in which file-level variables and subprograms
+   --  are declared, along with pragmas Comment and Annotate. We use this
+   --  to decide what order to output our translations.
+
+   package Source_Order is new Table.Table
+     (Table_Component_Type => Node_Id,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 50,
+      Table_Increment      => 50,
+      Table_Name           => "Source_Order");
+
    function Is_Builtin_Name (S : String) return Boolean is
      (S'Length > 5 and then S (S'First .. S'First + 4) = "llvm.");
    --  Return True if S denotes an LLVM builtin function
@@ -80,6 +92,17 @@ package body CCG.Subprograms is
           Post => Present (Effective_Return_Type'Result);
    --  Return a string corresponding to the return type of T, adjusting the
    --  type in the case where it's an array.
+
+   -------------------------
+   -- Add_To_Source_Order --
+   -------------------------
+
+   procedure Add_To_Source_Order (N : Node_Id) is
+   begin
+      if Comes_From_Source (N) then
+         Source_Order.Append (N);
+      end if;
+   end Add_To_Source_Order;
 
    --------------------
    -- New_Subprogram --

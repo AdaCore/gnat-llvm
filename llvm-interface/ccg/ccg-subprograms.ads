@@ -23,7 +23,16 @@ with CCG.Strs;   use CCG.Strs;
 package CCG.Subprograms is
 
    --  This package contains subprograms and data used in the handling of
-   --  subprograms.
+   --  subprograms and writing out the final C code.
+
+   procedure Add_To_Source_Order (N : Node_Id)
+     with Pre => Nkind (N) in N_Pragma | N_Subprogram_Declaration |
+                              N_Subprogram_Body | N_Object_Declaration |
+                              N_Object_Renaming_Declaration |
+                              N_Exception_Declaration |
+                              N_Exception_Renaming_Declaration;
+   --  Add N to the list of file-level objects present in the source if
+   --  it indeed does come from the source.
 
    procedure New_Subprogram (V : Value_T)
      with Pre => Present (Is_A_Function (V));

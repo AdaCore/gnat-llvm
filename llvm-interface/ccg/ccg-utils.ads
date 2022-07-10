@@ -21,8 +21,7 @@ with Ada.Containers; use Ada.Containers;
 with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
 
-with Atree;       use Atree;
-with Sinfo.Nodes; use Sinfo.Nodes;
+with Atree; use Atree;
 
 with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;

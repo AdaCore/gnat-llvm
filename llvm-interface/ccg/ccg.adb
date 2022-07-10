@@ -199,6 +199,17 @@ package body CCG is
 
    end Generate_C;
 
+   ---------------------------
+   -- C_Add_To_Source_Order --
+   ---------------------------
+
+   procedure C_Add_To_Source_Order (N : Node_Id) is
+   begin
+      if Emit_C then
+         Add_To_Source_Order (N);
+      end if;
+   end C_Add_To_Source_Order;
+
    ----------------------
    -- C_Set_Field_Info --
    ----------------------

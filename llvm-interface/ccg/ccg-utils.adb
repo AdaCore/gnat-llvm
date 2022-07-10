@@ -571,8 +571,9 @@ package body CCG.Utils is
       E : constant Entity_Id := Get_Entity (V);
 
    begin
-      return (if   No (E) then Types.Empty elsif Is_Type (E) then E
-              else Full_Etype (E));
+      return (if    No (E) then Types.Empty elsif Is_Type (E) then E
+              elsif Ekind (Full_Etype (E)) /= E_Void then Full_Etype (E)
+              else Empty);
    end GNAT_Type;
 
    ---------------------

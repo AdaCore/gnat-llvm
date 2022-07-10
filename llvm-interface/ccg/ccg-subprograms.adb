@@ -663,11 +663,11 @@ package body CCG.Subprograms is
       SD.Last_Stmt := Idx;
    end Add_Stmt_Line;
 
-   -----------------------
-   -- Write_Subprograms --
-   -----------------------
+   ------------------
+   -- Write_C_File --
+   ------------------
 
-   procedure Write_Subprograms is
+   procedure Write_C_File is
    begin
       --  First write out typedefs
 
@@ -717,5 +717,5 @@ package body CCG.Subprograms is
          Write_C_Line ("}", End_Block => Decl);
       end loop;
 
-   end Write_Subprograms;
+   end Write_C_File;
 end CCG.Subprograms;

@@ -68,7 +68,8 @@ package CCG.Subprograms is
      with Pre => Present (Idx);
    --  Add a declaration or statement line to the current subprogram
 
-   procedure Write_Subprograms;
-   --  Write all the decls and statements for all subprograms
+   procedure Write_C_File;
+   --  Write all the typedefs, globals, and decls and statements for
+   --  all subprograms.
 
 end CCG.Subprograms;

@@ -70,11 +70,11 @@ package body CCG is
 
    end Initialize_C_Output;
 
-   ------------------
-   -- Write_C_Code --
-   ------------------
+   ----------------
+   -- Generate_C --
+   ----------------
 
-   procedure Write_C_Code (Module : Module_T) is
+   procedure Generate_C (Module : Module_T) is
       package Value_Sets is new Ada.Containers.Hashed_Sets
         (Element_Type        => Value_T,
          Hash                => Hash_Value,
@@ -194,9 +194,10 @@ package body CCG is
       --  Finally, write all the code we generated and finalize the writing
       --  process.
 
-      Write_Subprograms;
+      Write_C_File;
       Finalize_Writing;
-   end Write_C_Code;
+
+   end Generate_C;
 
    ----------------------
    -- C_Set_Field_Info --

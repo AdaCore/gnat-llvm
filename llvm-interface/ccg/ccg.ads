@@ -93,7 +93,7 @@ package CCG is
    --  Do any initialization needed to output C.  This is always called after
    --  we've obtained target parameters.
 
-   procedure Write_C_Code (Module : Module_T);
+   procedure Generate_C (Module : Module_T);
    --  The main procedure, which generates C code from the LLVM IR
 
    procedure C_Set_Field_Info

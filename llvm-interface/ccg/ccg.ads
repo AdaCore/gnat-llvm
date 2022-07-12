@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Containers.Hashed_Sets;
+
 with Interfaces.C;
 
 with LLVM.Types; use LLVM.Types;
@@ -89,6 +91,16 @@ package CCG is
      (Idx = Empty_Stmt_Idx);
    function No (Idx : Flow_Idx)             return Boolean is
      (Idx = Empty_Flow_Idx);
+
+   package Value_Sets is new Ada.Containers.Hashed_Sets
+     (Element_Type        => Value_T,
+      Hash                => Hash_Value,
+      Equivalent_Elements => "=");
+
+   package BB_Sets is new Ada.Containers.Hashed_Sets
+     (Element_Type        => Basic_Block_T,
+      Hash                => Hash_BB,
+      Equivalent_Elements => "=");
 
    procedure Initialize_C_Output;
    --  Do any initialization needed to output C.  This is always called after

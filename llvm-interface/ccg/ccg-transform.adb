@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Containers.Hashed_Sets;
-
 with Interfaces.C; use Interfaces.C;
 
 with LLVM.Core; use LLVM.Core;
@@ -29,6 +27,9 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Environment;  use CCG.Environment;
 with CCG.Utils;        use CCG.Utils;
+
+use CCG.BB_Sets;
+use CCG.Value_Sets;
 
 package body CCG.Transform is
 
@@ -163,16 +164,6 @@ package body CCG.Transform is
 
    procedure Eliminate_Phis (V : Value_T) is
 
-      package BB_Sets is new Ada.Containers.Hashed_Sets
-        (Element_Type        => Basic_Block_T,
-         Hash                => Hash_BB,
-         Equivalent_Elements => "=");
-
-      package Value_Sets is new Ada.Containers.Hashed_Sets
-        (Element_Type        => Value_T,
-         Hash                => Hash_Value,
-         Equivalent_Elements => "=");
-
       function Phi_Alloca (V : Value_T) return Value_T
         with Pre  => Is_APHI_Node (V),
              Post => Is_A_Alloca_Inst (Phi_Alloca'Result);
@@ -282,7 +273,7 @@ package body CCG.Transform is
 
             begin
                while Is_APHI_Node (Dest_Inst)
-                 and then not New_BBs.Contains (BB)
+                 and then not Contains (New_BBs, BB)
                loop
 
                   --  If our terminator isn't an unconditional branch and
@@ -290,7 +281,7 @@ package body CCG.Transform is
 
                   if not Is_Unc_Br (Inst) and then Insert_BB = BB then
                      Insert_BB := Append_Basic_Block (V, "");
-                     New_BBs.Insert (Insert_BB);
+                     Insert (New_BBs, Insert_BB);
                   end if;
 
                   --  Now handle the case of a return Phi and non-return Phi
@@ -315,8 +306,8 @@ package body CCG.Transform is
                      --  That will later cause a crash. So record the Phi's
                      --  that we consider return Phis and use that below.
 
-                     if not Ret_Phis.Contains (Dest_Inst) then
-                        Ret_Phis.Insert (Dest_Inst);
+                     if not Contains (Ret_Phis, Dest_Inst) then
+                        Insert (Ret_Phis, Dest_Inst);
                      end if;
 
                      --  Since, by definition, there's only one return
@@ -367,7 +358,7 @@ package body CCG.Transform is
          Next_BB := Get_Next_Basic_Block (BB);
          Inst    := Get_First_Instruction (BB);
          while Is_APHI_Node (Inst) loop
-            if Ret_Phis.Contains (Inst) then
+            if Contains (Ret_Phis, Inst) then
                Delete_Basic_Block (BB);
                exit;
             else

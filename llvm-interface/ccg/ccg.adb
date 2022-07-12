@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Containers.Hashed_Sets;
-
 with LLVM.Core; use LLVM.Core;
 
 with Atree;       use Atree;
@@ -35,6 +33,8 @@ with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Target;       use CCG.Target;
 with CCG.Utils;        use CCG.Utils;
 with CCG.Write;        use CCG.Write;
+
+use CCG.Value_Sets;
 
 package body CCG is
 
@@ -75,12 +75,6 @@ package body CCG is
    ----------------
 
    procedure Generate_C (Module : Module_T) is
-      package Value_Sets is new Ada.Containers.Hashed_Sets
-        (Element_Type        => Value_T,
-         Hash                => Hash_Value,
-         Equivalent_Elements => "=");
-      use Value_Sets;
-
       function Output_To_Header (F : Value_T) return Boolean is
         (Emit_Header
          and then (case Header_Inline is
@@ -103,7 +97,7 @@ package body CCG is
 
       Func      : Value_T;
       Glob      : Value_T;
-      Must_Decl : Value_Sets.Set;
+      Must_Decl : Set;
 
       ---------------
       -- Is_Public --
@@ -118,8 +112,8 @@ package body CCG is
 
       procedure Maybe_Decl_Func (V : Value_T) is
       begin
-         if Is_A_Function (V) and then not Must_Decl.Contains (V) then
-            Must_Decl.Insert (V);
+         if Is_A_Function (V) and then not Contains (Must_Decl, V) then
+            Insert (Must_Decl, V);
          end if;
       end Maybe_Decl_Func;
 
@@ -156,7 +150,7 @@ package body CCG is
            or else (not Is_Declaration (Func)
                     and then (Is_Public (Func)
                               or else Output_To_Header (Func)))
-           or else Must_Decl.Contains (Func)
+           or else Contains (Must_Decl, Func)
          then
             Declare_Subprogram (Func);
          end if;
@@ -218,7 +212,7 @@ package body CCG is
      (UID         : Unique_Id;
       Idx         : Nat;
       Name        : Name_Id   := No_Name;
-      Entity      : Entity_Id := Empty;
+      Entity      : Entity_Id := Types.Empty;
       Is_Padding  : Boolean   := False;
       Is_Bitfield : Boolean   := False) is
    begin

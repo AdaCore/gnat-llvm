@@ -112,8 +112,8 @@ package body CCG is
 
       procedure Maybe_Decl_Func (V : Value_T) is
       begin
-         if Is_A_Function (V) and then not Contains (Must_Decl, V) then
-            Insert (Must_Decl, V);
+         if Is_A_Function (V) then
+            Include (Must_Decl, V);
          end if;
       end Maybe_Decl_Func;
 

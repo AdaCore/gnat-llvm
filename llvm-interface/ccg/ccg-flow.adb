@@ -1501,10 +1501,8 @@ package body CCG.Flow is
 
          else
             Output_Stmt ("goto " & BB (Idx), V => V);
-            if not Contains (Output, Idx)
-              and then not Contains (To_Output, Idx)
-            then
-               Insert (To_Output, Idx);
+            if not Contains (Output, Idx) then
+               Include (To_Output, Idx);
             end if;
          end if;
 
@@ -1696,10 +1694,8 @@ package body CCG.Flow is
          --  If we haven't already dumped this flow and haven't
          --  already indicated we need to, show that we may need to
 
-         if not Contains (Dumped, Idx)
-           and then not Contains (To_Dump, Idx)
-         then
-            Insert (To_Dump, Idx);
+         if not Contains (Dumped, Idx) then
+            Include (To_Dump, Idx);
          end if;
 
          return Result;

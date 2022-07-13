@@ -742,8 +742,8 @@ package body CCG.Subprograms is
             if Present (Get_Value (E)) then
                if Defining then
                   Insert (Defined_In_Source, +Get_Value (E));
-               elsif not Contains (Decl_In_Source, +Get_Value (E)) then
-                  Insert (Decl_In_Source, +Get_Value (E));
+               else
+                  Include (Decl_In_Source, +Get_Value (E));
                end if;
             end if;
          end;

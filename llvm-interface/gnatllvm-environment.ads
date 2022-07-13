@@ -180,8 +180,9 @@ package GNATLLVM.Environment is
           Post => Get_TBAA_Info_N (TE) = T, Inline;
 
    procedure Set_Value_R              (VE : Entity_Id; VL : GL_Value)
-     with Pre  => Present (VE) and then Present (VL)
-                  and then (No (Get_Value (VE)) or else Get_Value (VE) = VL),
+     with Pre  => Present (VE)
+                  and then (No (Get_Value (VE)) or else Get_Value (VE) = VL
+                            or else No (VL)),
           Post => Get_Value (VE) = VL, Inline;
 
    procedure Set_SO_Ref               (N : N_Subexpr_Id; U : Dynamic_SO_Ref)

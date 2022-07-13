@@ -18,7 +18,11 @@
 with Ada.Containers; use Ada.Containers;
 with Ada.Containers.Hashed_Maps;
 
+with Atree; use Atree;
 with Table; use Table;
+
+with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 with CCG.Output; use CCG.Output;
 with CCG.Utils;  use CCG.Utils;
@@ -197,6 +201,15 @@ package body CCG.Environment is
    procedure Delete_Value_Info (V : Value_T) is
       use Value_Info_Maps;
    begin
+      --  If we had an entity associated with this value, show that we
+      --  no longer have that assocation.
+
+      if Present (Get_Entity (V)) then
+         Set_Value_R (Get_Entity (V), No_GL_Value);
+      end if;
+
+      --  Then delete all the information we think we know about this value
+
       Exclude (Value_Info_Map, V);
    end Delete_Value_Info;
 

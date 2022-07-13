@@ -747,7 +747,7 @@ package GNATLLVM.GLValue is
    --  Set the TBAA type and offset of V
 
    procedure Set_Value (VE : Node_Id; VL : GL_Value)
-     with Pre => Present (VE), Inline;
+     with Pre => Present (VE) and then Present (VL), Inline;
    --  Set a value for a node (usually an entity). This turns off the
    --  Is_Pristine flag.
 

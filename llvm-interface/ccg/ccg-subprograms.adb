@@ -23,8 +23,11 @@ with Atree;  use Atree;
 with Output; use Output;
 with Table;
 
-with GNATLLVM.Codegen; use GNATLLVM.Codegen;
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
+with GNATLLVM.Environment; use GNATLLVM.Environment;
+with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
 with CCG.Environment;  use CCG.Environment;
@@ -35,6 +38,8 @@ with CCG.Target;       use CCG.Target;
 with CCG.Transform;    use CCG.Transform;
 with CCG.Utils;        use CCG.Utils;
 with CCG.Write;        use CCG.Write;
+
+use CCG.Value_Sets;
 
 package body CCG.Subprograms is
 
@@ -99,7 +104,12 @@ package body CCG.Subprograms is
 
    procedure Add_To_Source_Order (N : Node_Id) is
    begin
-      if Comes_From_Source (N) then
+      --  If this is an expression function, treat it as if it's from source
+
+      if Comes_From_Source (N)
+        or else (Nkind (N) = N_Subprogram_Body
+                   and then Was_Expression_Function (N))
+      then
          Source_Order.Append (N);
       end if;
    end Add_To_Source_Order;
@@ -691,8 +701,56 @@ package body CCG.Subprograms is
    ------------------
 
    procedure Write_C_File is
+      Decl_In_Source    : Set;
+      Defined_In_Source : Set;
+
    begin
-      --  First write out typedefs
+      --  Make a pass over the items in source and record for which we
+      --  have declarations (objects and subprograms) and for which we
+      --  have definitions (subprograms).
+
+      for J in 1 .. Source_Order.Last loop
+         declare
+            N        : constant Node_Id := Source_Order.Table (J);
+            Defining : Boolean          := False;
+            E        : Entity_Id;
+
+         begin
+            case Nkind (N) is
+               when N_Object_Declaration |
+                              N_Object_Renaming_Declaration |
+                              N_Exception_Declaration |
+                              N_Exception_Renaming_Declaration
+                 =>
+                  E := Defining_Identifier (N);
+
+               when N_Subprogram_Declaration =>
+                  E := Defining_Unit_Name (Specification (N));
+
+               when N_Subprogram_Body =>
+                  Defining := True;
+                  E        := Defining_Unit_Name (Acting_Spec (N));
+
+               when others =>
+                  pragma Assert (False);
+            end case;
+
+            --  If E has a value (it may not if it's an intrinsic function,
+            --  for example), add it to the appropriate set. If this is an
+            --  object renaming, it may already be there.
+
+            if Present (Get_Value (E)) then
+               if Defining then
+                  Insert (Defined_In_Source, +Get_Value (E));
+               elsif not Contains (Decl_In_Source, +Get_Value (E)) then
+                  Insert (Decl_In_Source, +Get_Value (E));
+               end if;
+            end if;
+         end;
+
+      end loop;
+
+      --  We write out typedefs first
 
       for Tidx in Typedef_Idx_Start .. Get_Last_Typedef loop
          Write_C_Line (Tidx);

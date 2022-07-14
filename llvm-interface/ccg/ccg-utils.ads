@@ -78,6 +78,10 @@ package CCG.Utils is
    --  Indicate that the previous calls to Set_Parameter_Info for UID
    --  were for LLVM value V.
 
+   procedure Delete_Function_Info (V : Value_T)
+     with Pre => Is_A_Function (V);
+   --  Delete any mention in our tables of V
+
    function Get_Parameter_Entity (V : Value_T; Idx : Nat) return Entity_Id
      with Pre  => Present (V);
    --  Return the entity corresponding to for parameter Idx of LLVM value V

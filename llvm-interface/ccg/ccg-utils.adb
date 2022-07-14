@@ -81,6 +81,10 @@ package body CCG.Utils is
         with Pre => Present (K);
       --  Indicate that UID corresponds to K
 
+      procedure Delete_Key (K : Key_T)
+        with Pre => Present (K);
+      --  Delete any mention in our tables of K
+
       function Get_Component_Name (K : Key_T; Idx : Nat) return Str
         with Pre => Present (K);
       --  Get the name previously stored for index Idx in key K
@@ -158,7 +162,7 @@ package body CCG.Utils is
 
       package CI_Maps is new Ada.Containers.Hashed_Maps
         (Key_Type        => FC_Key,
-            Element_Type    => Component_Info_Idx,
+         Element_Type    => Component_Info_Idx,
          Hash            => Hash,
          Equivalent_Keys => "=");
       CI_Map : CI_Maps.Map;
@@ -246,6 +250,36 @@ package body CCG.Utils is
             end;
          end loop;
       end Set_Key;
+
+      ----------------
+      -- Delete_Key --
+      ----------------
+
+      procedure Delete_Key (K : Key_T) is
+         use CI_Maps;
+      begin
+         --  We can potentially do this one of two ways. The first is to
+         --  try to "guess" what values of indices are have been stored, so
+         --  we can search all of those and delete them. We can't assume
+         --  that index 0 exists. We could potentially get the upper bound
+         --  from K, but that's iffy because we're called when K is being
+         --  deleted. The other approach is to scan our table for all
+         --  entries with K. That's quadratic in the number of deleted
+         --  keys. We could adopt a hybrid approach of first checking for
+         --  the presence of a zero key, but that's probably not worthwhile
+         --  because deleted functions are relatively rare.
+
+         for C_Idx in 1 .. Component_Info.Last loop
+            declare
+               CD : constant Component_Data := Component_Info.Table (C_Idx);
+
+            begin
+               if K = CD.K then
+                  Exclude (CI_Map, (K, CD.C_Number));
+               end if;
+            end;
+         end loop;
+      end Delete_Key;
 
       ------------------------
       -- Get_Component_Name --
@@ -345,6 +379,7 @@ package body CCG.Utils is
      renames CI_T.Is_Component_Padding;
 
    procedure Set_Function (UID : Unique_Id; V : Value_T) renames CI_V.Set_Key;
+   procedure Delete_Function_Info (V : Value_T) renames CI_V.Delete_Key;
    function Get_Parameter_Entity (V : Value_T; Idx : Nat) return Entity_Id
      renames CI_V.Get_Component_Entity;
 

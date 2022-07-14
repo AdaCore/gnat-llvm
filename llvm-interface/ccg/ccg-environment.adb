@@ -24,6 +24,7 @@ with Table; use Table;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
+with CCG.Helper; use CCG.Helper;
 with CCG.Output; use CCG.Output;
 with CCG.Utils;  use CCG.Utils;
 
@@ -208,7 +209,15 @@ package body CCG.Environment is
          Set_Value_R (Get_Entity (V), No_GL_Value);
       end if;
 
-      --  Then delete all the information we think we know about this value
+      --  If this a function, delete any information we have about the
+      --  function's parameters
+
+      if Is_A_Function (V) then
+         Delete_Function_Info (V);
+      end if;
+
+      --  Finally delete all other information we think we know about
+      --  this value.
 
       Exclude (Value_Info_Map, V);
    end Delete_Value_Info;

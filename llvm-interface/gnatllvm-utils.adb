@@ -106,7 +106,7 @@ package body GNATLLVM.Utils is
             High := Low;
 
          when others =>
-            pragma Assert (False);
+            pragma Assert (Standard.False);
       end case;
    end Decode_Range;
 

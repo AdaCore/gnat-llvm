@@ -699,7 +699,7 @@ package body GNATLLVM.GLValue is
             return Create_Subprogram_Access_Type;
 
          when others =>
-            pragma Assert (False);
+            pragma Assert (Standard.False);
             return Void_Ptr_T;
       end case;
    end Type_For_Relationship;

@@ -732,7 +732,7 @@ package body CCG.Subprograms is
                   E        := Defining_Unit_Name (Acting_Spec (N));
 
                when others =>
-                  pragma Assert (False);
+                  pragma Assert (Standard.False);
             end case;
 
             --  If E has a value (it may not if it's an intrinsic function,

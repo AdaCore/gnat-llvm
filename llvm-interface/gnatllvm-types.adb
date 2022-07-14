@@ -1199,7 +1199,7 @@ package body GNATLLVM.Types is
          elsif Is_Array_Type (GT) then
             return Get_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
          else
-            pragma Assert (False);
+            pragma Assert (Standard.False);
             return Empty_Result;
          end if;
 

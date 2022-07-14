@@ -724,7 +724,7 @@ package body GNATLLVM.Exprs is
          end Minus;
 
          when others =>
-            pragma Assert (False);
+            pragma Assert (Standard.False);
             return Emit_Undef (GT);
       end case;
 
@@ -1047,7 +1047,7 @@ package body GNATLLVM.Exprs is
                   end if;
 
                when others =>
-                  pragma Assert (False);
+                  pragma Assert (Standard.False);
             end case;
 
          when Pragma_Compile_Time_Error | Pragma_Compile_Time_Warning =>
@@ -1355,7 +1355,7 @@ package body GNATLLVM.Exprs is
                   V := Position + Size_Const_Int (Esize (F) - 1);
 
                when others =>
-                  pragma Assert (False);
+                  pragma Assert (Standard.False);
             end case;
 
             return Convert (V, GT);

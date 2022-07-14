@@ -974,7 +974,7 @@ package body CCG.Flow is
             null;
 
          when others =>
-            pragma Assert (False);
+            pragma Assert (Standard.False);
       end case;
 
       --  Finally, return the new Flow we constructed

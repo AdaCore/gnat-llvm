@@ -377,7 +377,7 @@ package body GNATLLVM.Arrays is
             end Function_Call;
 
             when others =>
-               pragma Assert (False);
+               pragma Assert (Standard.False);
                return Undef (Full_GL_Type (N));
          end case;
 

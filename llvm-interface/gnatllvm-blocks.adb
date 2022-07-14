@@ -811,7 +811,7 @@ package body GNATLLVM.Blocks is
                            Void_Type);
 
                when others =>
-                  pragma Assert (False);
+                  pragma Assert (Standard.False);
             end case;
 
             Rcheck_Ext_FNs (Kind) := Add_Global_Function

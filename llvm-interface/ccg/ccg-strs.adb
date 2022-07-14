@@ -173,7 +173,7 @@ package body CCG.Strs is
 
             case SL.Comps (PosL).Kind is
                when Var_String =>
-                  pragma Assert (False);
+                  pragma Assert (Standard.False);
 
                when Value =>
                   if SL.Comps (PosL).Val /= SR.Comps (PosR).Val

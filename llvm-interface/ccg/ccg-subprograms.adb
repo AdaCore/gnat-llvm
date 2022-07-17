@@ -750,7 +750,7 @@ package body CCG.Subprograms is
       function Referenced_Value
         (N : Node_Id; Defining : out Boolean) return Value_T
       is
-         E : Entity_Id;
+         E : Entity_Id := Types.Empty;
 
       begin
          --  In most cases, we're just declaring the value
@@ -768,6 +768,9 @@ package body CCG.Subprograms is
                Defining := True;
                E        := Defining_Unit_Name (Acting_Spec (N));
 
+            when N_Pragma =>
+               null;
+
             when others =>
                pragma Assert (Standard.False);
          end case;
@@ -775,7 +778,8 @@ package body CCG.Subprograms is
          --  If the entity has a value, return it
 
          return
-           (if Present (Get_Value (E)) then +Get_Value (E) else No_Value_T);
+           (if   Present (E) and then Present (Get_Value (E))
+            then +Get_Value (E) else No_Value_T);
       end Referenced_Value;
 
    begin

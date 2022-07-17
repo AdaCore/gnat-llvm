@@ -199,7 +199,7 @@ package body CCG is
 
    procedure C_Add_To_Source_Order (N : Node_Id) is
    begin
-      if Emit_C then
+      if Emit_C and then not Emit_Header then
          Add_To_Source_Order (N);
       end if;
    end C_Add_To_Source_Order;

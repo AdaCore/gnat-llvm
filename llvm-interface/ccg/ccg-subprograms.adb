@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Ada.Characters.Handling; use Ada.Characters.Handling;
+with Ada.Containers.Hashed_Maps;
 
 with Interfaces.C; use Interfaces.C;
 
@@ -49,6 +50,15 @@ package body CCG.Subprograms is
      range Subprogram_Idx_Low_Bound .. Subprogram_Idx_High_Bound;
    Subprogram_Idx_Start      : constant Subprogram_Idx :=
      Subprogram_Idx_Low_Bound + 1;
+   Empty_Subprogram_Idx      : constant Subprogram_Idx :=
+     Subprogram_Idx_Low_Bound;
+
+   function Present (Idx : Subprogram_Idx) return Boolean is
+     (Idx /= Empty_Subprogram_Idx)
+     with Unreferenced;
+   function No      (Idx : Subprogram_Idx) return Boolean is
+     (Idx = Empty_Subprogram_Idx)
+     with Unreferenced;
 
    --  For each subprogram, we record the first and last decl and statement
    --  belonging to that subprogram.
@@ -64,7 +74,7 @@ package body CCG.Subprograms is
    package Subprograms is new Table.Table
      (Table_Component_Type => Subprogram_Data,
       Table_Index_Type     => Subprogram_Idx,
-      Table_Low_Bound      => Subprogram_Idx_Start,
+      Table_Low_Bound      => Subprogram_Idx_Low_Bound,
       Table_Initial        => 50,
       Table_Increment      => 50,
       Table_Name           => "Subprograms");
@@ -701,53 +711,94 @@ package body CCG.Subprograms is
    ------------------
 
    procedure Write_C_File is
-      Decl_In_Source    : Set;
-      Defined_In_Source : Set;
+      function Referenced_Value
+        (N : Node_Id; Defining : out Boolean) return Value_T
+        with Pre => Nkind (N) in N_Pragma | N_Subprogram_Declaration |
+                                 N_Subprogram_Body | N_Object_Declaration |
+                                 N_Object_Renaming_Declaration |
+                                 N_Exception_Declaration |
+                                 N_Exception_Renaming_Declaration;
+      --  Find the value, if any, being referenced (declared or defined) in
+      --  the subtree rooted at N. Defining says if it's being declared
+      --  or defined there.
+
+      --  We have two maps, one mapping a value (either a global variable
+      --  or a subprogram) being declared to the (first) global decl that
+      --  outputs it and one mapping a value denoting a function to the
+      --  subprogram entry for it.
+
+      package Value_To_Decl_Maps is new Ada.Containers.Hashed_Maps
+        (Key_Type        => Value_T,
+         Element_Type    => Global_Decl_Idx,
+         Hash            => Hash,
+         Equivalent_Keys => "=");
+      package Value_To_Subprogram_Maps is new Ada.Containers.Hashed_Maps
+        (Key_Type        => Value_T,
+         Element_Type    => Subprogram_Idx,
+         Hash            => Hash,
+         Equivalent_Keys => "=");
+      use Value_To_Decl_Maps;
+      use Value_To_Subprogram_Maps;
+
+      Declaration_Map : Value_To_Decl_Maps.Map;
+      Definition_Map  : Value_To_Subprogram_Maps.Map;
+
+      ----------------------
+      -- Referenced_Value --
+      ----------------------
+
+      function Referenced_Value
+        (N : Node_Id; Defining : out Boolean) return Value_T
+      is
+         E : Entity_Id;
+
+      begin
+         --  In most cases, we're just declaring the value
+
+         case Nkind (N) is
+            when N_Object_Declaration | N_Object_Renaming_Declaration |
+                 N_Exception_Declaration | N_Exception_Renaming_Declaration
+              =>
+               E := Defining_Identifier (N);
+
+            when N_Subprogram_Declaration =>
+               E := Defining_Unit_Name (Specification (N));
+
+            when N_Subprogram_Body =>
+               Defining := True;
+               E        := Defining_Unit_Name (Acting_Spec (N));
+
+            when others =>
+               pragma Assert (Standard.False);
+         end case;
+
+         --  If the entity has a value, return it
+
+         return
+           (if Present (Get_Value (E)) then +Get_Value (E) else No_Value_T);
+      end Referenced_Value;
 
    begin
       --  Make a pass over the items in source and record for which we
       --  have declarations (objects and subprograms) and for which we
-      --  have definitions (subprograms).
+      --  have definitions (subprograms). We may have a duplicate entry in
+      --  renaming cases.
 
       for J in 1 .. Source_Order.Last loop
          declare
-            N        : constant Node_Id := Source_Order.Table (J);
-            Defining : Boolean          := False;
-            E        : Entity_Id;
+            Defining : Boolean;
+            V        : constant Value_T :=
+              Referenced_Value (Source_Order.Table (J), Defining);
 
          begin
-            case Nkind (N) is
-               when N_Object_Declaration |
-                              N_Object_Renaming_Declaration |
-                              N_Exception_Declaration |
-                              N_Exception_Renaming_Declaration
-                 =>
-                  E := Defining_Identifier (N);
-
-               when N_Subprogram_Declaration =>
-                  E := Defining_Unit_Name (Specification (N));
-
-               when N_Subprogram_Body =>
-                  Defining := True;
-                  E        := Defining_Unit_Name (Acting_Spec (N));
-
-               when others =>
-                  pragma Assert (Standard.False);
-            end case;
-
-            --  If E has a value (it may not if it's an intrinsic function,
-            --  for example), add it to the appropriate set. If this is an
-            --  object renaming, it may already be there.
-
-            if Present (Get_Value (E)) then
+            if Present (V) then
                if Defining then
-                  Insert (Defined_In_Source, +Get_Value (E));
+                  Include (Definition_Map,  V, Empty_Subprogram_Idx);
                else
-                  Include (Decl_In_Source, +Get_Value (E));
+                  Include (Declaration_Map, V, Empty_Global_Decl_Idx);
                end if;
             end if;
          end;
-
       end loop;
 
       --  We write out typedefs first
@@ -799,4 +850,9 @@ package body CCG.Subprograms is
       end loop;
 
    end Write_C_File;
+
+begin
+   --  Ensure we have an empty entry in the subprogram table
+
+   Subprograms.Increment_Last;
 end CCG.Subprograms;

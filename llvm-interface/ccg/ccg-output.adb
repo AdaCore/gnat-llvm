@@ -40,7 +40,7 @@ package body CCG.Output is
    package Global_Decls is new Table.Table
      (Table_Component_Type => Out_Line,
       Table_Index_Type     => Global_Decl_Idx,
-      Table_Low_Bound      => Global_Decl_Idx_Start,
+      Table_Low_Bound      => Global_Decl_Idx_Low_Bound,
       Table_Initial        => 100,
       Table_Increment      => 100,
       Table_Name           => "Global_Decls");
@@ -500,6 +500,7 @@ begin
    --  Ensure we have an empty entry in the tables that support empty
    --  entries.
 
+   Global_Decls.Increment_Last;
    Local_Decls.Increment_Last;
    Stmts.Increment_Last;
 

@@ -48,6 +48,8 @@ package CCG is
      range Global_Decl_Idx_Low_Bound .. Global_Decl_Idx_High_Bound;
    Global_Decl_Idx_Start      : constant Global_Decl_Idx :=
      Global_Decl_Idx_Low_Bound + 1;
+   Empty_Global_Decl_Idx      : constant Global_Decl_Idx  :=
+     Global_Decl_Idx_Low_Bound;
 
    Local_Decl_Idx_Low_Bound   : constant := 300_000_000;
    Local_Decl_Idx_High_Bound  : constant := 399_999_999;
@@ -78,6 +80,8 @@ package CCG is
    --  so that all typedefs and globals are written first.  These
    --  procedures manage those lists.
 
+   function Present (Idx : Global_Decl_Idx) return Boolean is
+     (Idx /= Empty_Global_Decl_Idx);
    function Present (Idx : Local_Decl_Idx)  return Boolean is
      (Idx /= Empty_Local_Decl_Idx);
    function Present (Idx : Stmt_Idx)        return Boolean is
@@ -85,6 +89,8 @@ package CCG is
    function Present (Idx : Flow_Idx)        return Boolean is
     (Idx /= Empty_Flow_Idx);
 
+   function No (Idx : Global_Decl_Idx)      return Boolean is
+     (Idx = Empty_Global_Decl_Idx);
    function No (Idx : Local_Decl_Idx)       return Boolean is
      (Idx = Empty_Local_Decl_Idx);
    function No (Idx : Stmt_Idx)             return Boolean is

@@ -468,6 +468,13 @@ package body CCG.Output is
    function Get_Global_Decl_Line (Idx : Global_Decl_Idx) return Out_Line is
      (Global_Decls.Table (Idx));
 
+   ---------------------------
+   -- Get_Global_Decl_Value --
+   ---------------------------
+
+   function Get_Global_Decl_Value (Idx : Global_Decl_Idx) return Value_T is
+     (Global_Decls.Table (Idx).V);
+
    -------------------------
    -- Get_Local_Decl_Line --
    -------------------------

@@ -315,9 +315,9 @@ package CCG.Utils is
 
    generic
       with procedure Process (V : Value_T) is <>;
-   procedure Walk_Function (F : Value_T)
-     with Pre => Is_A_Function (F);
-   --  Call Process for each value within F
+   procedure Walk_Object (V : Value_T)
+     with Pre => Present (V);
+   --  Call Process for each value within V
 
    function Int_Type_String (Size : Pos) return Str;
    --  Return the string corresponding to the C name of an integer type of

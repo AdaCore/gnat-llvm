@@ -54,11 +54,9 @@ package body CCG.Subprograms is
      Subprogram_Idx_Low_Bound;
 
    function Present (Idx : Subprogram_Idx) return Boolean is
-     (Idx /= Empty_Subprogram_Idx)
-     with Unreferenced;
+     (Idx /= Empty_Subprogram_Idx);
    function No      (Idx : Subprogram_Idx) return Boolean is
-     (Idx = Empty_Subprogram_Idx)
-     with Unreferenced;
+     (Idx = Empty_Subprogram_Idx);
 
    --  For each subprogram, we record the first and last decl and statement
    --  belonging to that subprogram.
@@ -324,7 +322,7 @@ package body CCG.Subprograms is
 
       Output_Decl ((if   Emit_Header or else No (Get_First_Basic_Block (V))
                     then "extern " else "") &
-        Function_Proto (V, Extern => True), Is_Global => True);
+        Function_Proto (V, Extern => True), V => V, Is_Global => True);
 
    end Declare_Subprogram;
 
@@ -722,6 +720,20 @@ package body CCG.Subprograms is
       --  the subtree rooted at N. Defining says if it's being declared
       --  or defined there.
 
+      procedure Write_One_Subprogram (Sidx : Subprogram_Idx)
+        with Pre => Present (Sidx);
+      --  Write the declarations and statements for Sidx, a subprogram
+
+      procedure Write_One_Declaration (Gidx : Global_Decl_Idx; V : Value_T)
+        with Pre => Present (Gidx);
+      --  Write the declaratation for Gidx
+
+      procedure Maybe_Write_Decl (V : Value_T);
+      --  If V is queued to be output later, output it now and remove it
+      --  from the list.
+
+      procedure Scan_For_Decls is new Walk_Object (Maybe_Write_Decl);
+
       --  We have two maps, one mapping a value (either a global variable
       --  or a subprogram) being declared to the (first) global decl that
       --  outputs it and one mapping a value denoting a function to the
@@ -755,6 +767,8 @@ package body CCG.Subprograms is
       begin
          --  In most cases, we're just declaring the value
 
+         Defining := False;
+
          case Nkind (N) is
             when N_Object_Declaration | N_Object_Renaming_Declaration |
                  N_Exception_Declaration | N_Exception_Renaming_Declaration
@@ -782,7 +796,97 @@ package body CCG.Subprograms is
             then +Get_Value (E) else No_Value_T);
       end Referenced_Value;
 
-   begin
+      --------------------------
+      -- Write_One_Subprogram --
+      --------------------------
+
+      procedure Write_One_Subprogram (Sidx : Subprogram_Idx) is
+         SD : constant Subprogram_Data := Subprograms.Table (Sidx);
+
+      begin
+         --  First write the decls. We at least have the function prototype.
+
+         Write_Eol;
+         for Idx in SD.First_Decl .. SD.Last_Decl loop
+            Write_C_Line (Idx);
+         end loop;
+
+         --  If we're written more than just the prototype and the
+         --  "{", add a blank line between the decls and statements.
+
+         if SD.Last_Decl > SD.First_Decl + 1 then
+            Write_Eol;
+         end if;
+
+         --  Now write out the statements for the subprogram
+
+         for Idx in SD.First_Stmt .. SD.Last_Stmt loop
+            Write_C_Line (Idx);
+         end loop;
+
+         --  Finally, write the closing brace. We have to do it this
+         --  way rather than using End_Output_Block because we can't
+         --  know in what order basic blocks will be written when
+         --  we're outputting them.
+
+         Write_C_Line ("}", End_Block => Decl);
+         Exclude (Definition_Map, SD.Func);
+      end Write_One_Subprogram;
+
+      ---------------------------
+      -- Write_One_Declaration --
+      ---------------------------
+
+      procedure Write_One_Declaration (Gidx : Global_Decl_Idx; V : Value_T) is
+         Our_Gidx : Global_Decl_Idx := Gidx;
+
+      begin
+         --  Show that we've written the value corresponding to this
+         --  declaration to avoid doing it more than once.
+
+         Exclude (Declaration_Map, V);
+
+         --  Write any decls that declare this variable. There should
+         --  only be one, but we don't want or need to depend on that.
+
+         while Our_Gidx <= Get_Last_Global_Decl
+           and then Get_Global_Decl_Value (Our_Gidx) = V
+         loop
+            Write_C_Line (Our_Gidx);
+            Our_Gidx := Our_Gidx + 1;
+         end loop;
+      end Write_One_Declaration;
+
+      ----------------------
+      -- Maybe_Write_Decl --
+      ----------------------
+
+      procedure Maybe_Write_Decl (V : Value_T) is
+         Pos : Value_To_Decl_Maps.Cursor;
+
+      begin
+         if No (V)
+           or else (not Is_A_Global_Variable (V)
+                    and then not Is_A_Function (V))
+         then
+            return;
+         end if;
+
+         --  See if V is in the list of deferred decls
+
+         Pos := Find (Declaration_Map, V);
+         if Has_Element (Pos) then
+            declare
+               Gidx : constant Global_Decl_Idx := Element (Pos);
+
+            begin
+               Write_One_Declaration (Gidx, V);
+            end;
+         end if;
+      end Maybe_Write_Decl;
+
+   begin -- Start of processing for Write_C_File
+
       --  Make a pass over the items in source and record for which we
       --  have declarations (objects and subprograms) and for which we
       --  have definitions (subprograms). We may have a duplicate entry in
@@ -811,48 +915,99 @@ package body CCG.Subprograms is
          Write_C_Line (Tidx);
       end loop;
 
-      --  Next write out the global decls
+      --  If we wrote some typedefs, write a blank line
+
+      if Get_Last_Typedef >= Typedef_Idx_Start then
+         Write_Eol;
+      end if;
+
+      --  Next write out the global decls other than those that are
+      --  present in the source order table. For those, we record the first
+      --  index for a definition.
 
       for Gidx in Global_Decl_Idx_Start .. Get_Last_Global_Decl loop
-         Write_C_Line (Gidx);
+         declare
+            V   : constant Value_T                    :=
+              Get_Global_Decl_Value (Gidx);
+            Pos : constant Value_To_Decl_Maps.Cursor :=
+              (if   Present (V) then Find (Declaration_Map, V)
+               else Value_To_Decl_Maps.No_Element);
+
+         begin
+            if not Has_Element (Pos) then
+
+               --  First see if this forces us to declare anything that's
+               --  pending.  Only check variables here because the
+               --  declaration of a function doesn't reference objects
+               --  inside it.
+
+               if not Is_A_Function (V) then
+                  Scan_For_Decls (V);
+               end if;
+
+               Write_C_Line (Gidx);
+            elsif No (Element (Pos)) then
+               Replace (Declaration_Map, V, Gidx);
+            end if;
+         end;
       end loop;
 
-      --  Now write out each subprogram
+      --  Now write out each subprogram, except for those that are present
+      --  in the source index table.
 
       for Sidx in Subprogram_Idx_Start .. Subprograms.Last loop
          declare
-            SD   : constant Subprogram_Data := Subprograms.Table (Sidx);
+            V   : constant Value_T                    :=
+              Subprograms.Table (Sidx).Func;
+            Pos : constant Value_To_Subprogram_Maps.Cursor :=
+              (if   Present (V) then Find (Definition_Map, V)
+               else Value_To_Subprogram_Maps.No_Element);
 
          begin
-            --  First write the decls. We at least have the function prototype
-
-            Write_Eol;
-            for Idx in SD.First_Decl .. SD.Last_Decl loop
-               Write_C_Line (Idx);
-            end loop;
-
-            --  If we're written more than just the prototype and the "{",
-            --  add a blank line between the decls and statements.
-
-            if SD.Last_Decl > SD.First_Decl + 1 then
-               Write_Eol;
+            if not Has_Element (Pos) then
+               Scan_For_Decls (V);
+               Write_One_Subprogram (Sidx);
+            elsif No (Element (Pos)) then
+               Replace (Definition_Map, V, Sidx);
             end if;
-
-            --  Now write out the statements for the subprogram
-
-            for Idx in SD.First_Stmt .. SD.Last_Stmt loop
-               Write_C_Line (Idx);
-            end loop;
          end;
-
-         --  Finally, write the closing brace. We have to do it this
-         --  way rather than using End_Output_Block because we can't
-         --  know in what order basic blocks will be written when
-         --  we're outputting them.
-
-         Write_C_Line ("}", End_Block => Decl);
       end loop;
 
+      --  Now write objects from source in source order, interspersing
+      --  declarations, definitions, and annotation pragmas.
+
+      for J in 1 .. Source_Order.Last loop
+         declare
+            Defining : Boolean;
+            N        : constant Node_Id := Source_Order.Table (J);
+            V        : constant Value_T := Referenced_Value (N, Defining);
+
+         begin
+            if Present (V) then
+               if Defining then
+                  declare
+                     Pos : constant Value_To_Subprogram_Maps.Cursor :=
+                       Find (Definition_Map, V);
+
+                  begin
+                     if Has_Element (Pos) and then Present (Element (Pos)) then
+                        Write_One_Subprogram (Element (Pos));
+                     end if;
+                  end;
+               else
+                  declare
+                     Pos : constant Value_To_Decl_Maps.Cursor :=
+                       Find (Declaration_Map, V);
+
+                  begin
+                     if Has_Element (Pos) and then Present (Element (Pos)) then
+                        Write_One_Declaration (Element (Pos), V);
+                     end if;
+                  end;
+               end if;
+            end if;
+         end;
+      end loop;
    end Write_C_File;
 
 begin

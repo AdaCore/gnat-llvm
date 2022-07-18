@@ -93,7 +93,7 @@ package body CCG is
         with Pre => Present (V);
       --  Called for each value in an inline function
 
-      procedure Scan_For_Func_To_Decl is new Walk_Function (Maybe_Decl_Func);
+      procedure Scan_For_Func_To_Decl is new Walk_Object (Maybe_Decl_Func);
 
       Func      : Value_T;
       Glob      : Value_T;

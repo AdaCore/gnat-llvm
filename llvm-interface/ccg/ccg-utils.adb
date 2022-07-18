@@ -888,27 +888,27 @@ package body CCG.Utils is
 
    end Equivalent_Pointers;
 
-   -------------------
-   -- Walk_Function --
-   -------------------
+   -----------------
+   -- Walk_Object --
+   -----------------
 
-   procedure Walk_Function (F : Value_T) is
-      procedure Walk_Value (V : Value_T);
-
-      BB : Basic_Block_T := Get_First_Basic_Block (F);
-      V  : Value_T;
+   procedure Walk_Object (V : Value_T) is
+      procedure Walk_Value (V : Value_T; Walk_Outer : Boolean := True);
 
       ----------------
       -- Walk_Value --
       ----------------
 
-      procedure Walk_Value (V : Value_T) is
+      procedure Walk_Value (V : Value_T; Walk_Outer : Boolean := True) is
       begin
-         --  First call the procedure on this value and then see if there
-         --  are any values below this to walk.
+         --  First call the procedure on this value (unless we're asked not
+         --  to) and then see if there are any values below this to walk.
 
          if Present (V) then
-            Process (V);
+            if Walk_Outer then
+               Process (V);
+            end if;
+
             if Is_A_Instruction (V) or else Is_A_Constant_Expr (V)
               or else Is_A_Constant_Struct (V) or else Is_A_Constant_Array (V)
             then
@@ -920,16 +920,31 @@ package body CCG.Utils is
       end Walk_Value;
 
    begin
-      while Present (BB) loop
-         V := Get_First_Instruction (BB);
-         while Present (V) loop
-            Walk_Value (V);
-            V := Get_Next_Instruction (V);
-         end loop;
+      --  If this is a function, walk every instruction in each BB
 
-         BB := Get_Next_Basic_Block (BB);
-      end loop;
-   end Walk_Function;
+      if Is_A_Function (V) then
+         declare
+            BB   : Basic_Block_T := Get_First_Basic_Block (V);
+            Inst : Value_T;
+
+         begin
+            while Present (BB) loop
+               Inst := Get_First_Instruction (BB);
+               while Present (Inst) loop
+                  Walk_Value (Inst);
+                  Inst := Get_Next_Instruction (Inst);
+               end loop;
+
+               BB := Get_Next_Basic_Block (BB);
+            end loop;
+         end;
+
+      --  Otherwise, we just walk the value
+
+      else
+         Walk_Value (V, False);
+      end if;
+   end Walk_Object;
 
    ---------------------
    -- Int_Type_String --

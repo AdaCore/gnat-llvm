@@ -128,15 +128,16 @@ package CCG.Output is
    --  Flag the last line output via Output_Decl or Output_Stmt as being
    --  the last in its block.
 
-   function Get_Typedef_Line     (Idx : Typedef_Idx)     return Out_Line
-     with Inline;
+   function Get_Typedef_Line     (Idx : Typedef_Idx)     return Out_Line;
+   function Get_Local_Decl_Line  (Idx : Local_Decl_Idx)  return Out_Line;
+   function Get_Stmt_Line        (Idx : Stmt_Idx)        return Out_Line;
    function Get_Global_Decl_Line (Idx : Global_Decl_Idx) return Out_Line
-     with Inline;
-   function Get_Local_Decl_Line  (Idx : Local_Decl_Idx)  return Out_Line
-     with Inline;
-   function Get_Stmt_Line        (Idx : Stmt_Idx)        return Out_Line
-     with Inline;
+     with Pre => Present (Idx);
    --  Given an index to a decl or statement, return the data for it
+
+   function Get_Global_Decl_Value (Idx : Global_Decl_Idx) return Value_T
+     with Pre => Present (Idx);
+   --  Get the value, if any, being declared by a global decl line
 
    function Get_Last_Typedef     return Typedef_Idx;
    function Get_Last_Global_Decl return Global_Decl_Idx;

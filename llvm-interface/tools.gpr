@@ -43,4 +43,8 @@ project Tools is
       end case;
    end Compiler;
 
+   package Linker is
+      for Switches ("Ada") use ("-static-libstdc++");
+   end Linker;
+
 end Tools;

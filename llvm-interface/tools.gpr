@@ -44,7 +44,7 @@ project Tools is
    end Compiler;
 
    package Linker is
-      for Switches ("Ada") use ("-static-libstdc++");
+      for Switches ("Ada") use ("-static-libgcc", "-static-libstdc++");
    end Linker;
 
 end Tools;

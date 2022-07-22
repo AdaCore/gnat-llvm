@@ -903,6 +903,9 @@ package body CCG.Instructions is
          when Op_Get_Element_Ptr =>
             GEP_Instruction (V, Ops);
 
+         when Op_Freeze =>
+            Assignment (V, +Op1);
+
          when Op_Unreachable =>
             null;
 

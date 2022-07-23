@@ -27,8 +27,7 @@ else
   LLVM_CONFIG=llvm-config
 endif
 
-LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs) \
-  -static-libgcc -static-libstdc++
+LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs)
 CXXFLAGS=
 ALL_CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags) $(CXXFLAGS)
 

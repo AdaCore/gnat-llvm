@@ -30,6 +30,13 @@ project Gnat_LLVM is
       end case;
    end Compiler;
 
+   package Linker is
+      --  Force -static-libgcc via Required_Switches so that gprbuild does
+      --  not override it.
+      for Required_Switches use ("-static-libgcc");
+      for Switches ("Ada") use ("-static-libstdc++");
+   end Linker;
+
    package CodePeer is
       for Switches use ("-level", "1");
       --  ("-level", "3", "--be-messages=validity_check", "--no-lal-checkers",

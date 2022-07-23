@@ -44,7 +44,10 @@ project Tools is
    end Compiler;
 
    package Linker is
-      for Switches ("Ada") use ("-static-libgcc", "-static-libstdc++");
+      --  Force -static-libgcc via Required_Switches so that gprbuild does
+      --  not override it.
+      for Required_Switches use ("-static-libgcc");
+      for Switches ("Ada") use ("-static-libstdc++");
    end Linker;
 
 end Tools;

@@ -15,10 +15,16 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with CCG.Helper; use CCG.Helper;
-with CCG.Strs;   use CCG.Strs;
+with CCG.Environment; use CCG.Environment;
+with CCG.Helper;      use CCG.Helper;
+with CCG.Strs;        use CCG.Strs;
 
 package CCG.Instructions is
+
+   procedure Force_To_Variable (V : Value_T)
+     with Pre  => Present (V), Post => No (Get_C_Value (V));
+   --  If V has an expression for it, declare V as a variable and copy the
+   --  expression into it.
 
    procedure Assignment
      (LHS : Value_T; RHS : Str; Is_Opencode_Builtin : Boolean := False)

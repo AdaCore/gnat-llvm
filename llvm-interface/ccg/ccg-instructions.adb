@@ -31,7 +31,6 @@ with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;  use CCG.Aggregates;
-with CCG.Environment; use CCG.Environment;
 with CCG.Flow;        use CCG.Flow;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
@@ -96,11 +95,6 @@ package body CCG.Instructions is
                   and then Present (Op1) and then Present (Op2),
           Post => Present (Cmp_Instruction'Result);
    --  Return the value corresponding to a comparison instruction
-
-   procedure Force_To_Variable (V : Value_T)
-     with Pre  => Present (V), Post => No (Get_C_Value (V));
-   --  If V has an expression for it, declare V as a variable and copy the
-   --  expression into it.
 
    --  We need to record those values where we've made them equivalent to
    --  a C value but haven't written them yet because if we encounter a

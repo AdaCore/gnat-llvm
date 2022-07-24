@@ -151,13 +151,18 @@ package CCG.Strs is
      with Pre => Present (S);
    --  Return the precedence assigned to S
 
+   function Will_Warn (Is_P, For_P : Precedence) return Boolean is
+      ((Is_P = Relation and then For_P = Bit)
+       or else (Is_P = Add and then For_P = Shift));
+      --  Indicates that some compilers will warn in the case of a
+      --  predence that doesn't need parens.
+
    function Needs_Parens (Is_P, For_P : Precedence) return Boolean is
       (Is_P /= Unknown and then For_P /= Unknown
          and then (Is_P < For_P
                      or else (Is_P = For_P
                                 and then For_P not in Unary | Component)
-                     or else (Warns_Parens and then Is_P = Relation
-                                and then For_P = Bit)));
+                     or else (Warns_Parens and Will_Warn (Is_P, For_P))));
    function Needs_Parens (S : Str; For_P : Precedence) return Boolean is
      (Needs_Parens (Get_Precedence (S), For_P));
    --  Indicates whether we need to enclose S (or an expression of precedence

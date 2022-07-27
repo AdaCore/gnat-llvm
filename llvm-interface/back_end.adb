@@ -37,7 +37,7 @@ with Types;   use Types;
 package body Back_End is
 
    package GNAT2LLVM is new Adabkend
-     (Product_Name       => "GNAT for LLVM",
+     (Product_Name       => "GNAT for " & (if CCG then "CCG" else "LLVM"),
       Copyright_Years    => "2013-" & Current_Year,
       Driver             => GNAT_To_LLVM,
       Is_Back_End_Switch => Is_Back_End_Switch);

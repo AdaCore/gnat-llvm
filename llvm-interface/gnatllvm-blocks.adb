@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
---                     Copyright (C) 2013-2019, AdaCore                     --
+--                     Copyright (C) 2013-2022, AdaCore                     --
 --                                                                          --
 -- This is free software;  you can redistribute it  and/or modify it  under --
 -- terms of the  GNU General Public License as published  by the Free Soft- --
@@ -1355,7 +1355,22 @@ package body GNATLLVM.Blocks is
    -- Process_Push_Pop_xxx_Error_Label --
    --------------------------------------
 
-   procedure Process_Push_Pop_xxx_Error_Label (N : Node_Id) is begin
+   procedure Process_Push_Pop_xxx_Error_Label (N : Node_Id) is
+      procedure Maybe_Warn (E : Entity_Id);
+      --  Warn if we haven't generated a branch to E
+
+      ----------------
+      -- Maybe_Warn --
+      ----------------
+
+      procedure Maybe_Warn (E : Entity_Id) is
+      begin
+         if No (Get_Label_Info (E)) then
+            Warn_If_No_Local_Raise (E);
+         end if;
+      end Maybe_Warn;
+
+   begin
       case Nkind (N) is
          when N_Push_Constraint_Error_Label =>
             Constraint_Error_Stack.Append (Exception_Label (N));
@@ -1367,12 +1382,18 @@ package body GNATLLVM.Blocks is
             Program_Error_Stack.Append (Exception_Label (N));
 
          when N_Pop_Constraint_Error_Label =>
+            Maybe_Warn
+              (Constraint_Error_Stack.Table (Constraint_Error_Stack.Last));
             Constraint_Error_Stack.Decrement_Last;
 
          when N_Pop_Storage_Error_Label =>
+            Maybe_Warn
+              (Storage_Error_Stack.Table (Storage_Error_Stack.Last));
             Storage_Error_Stack.Decrement_Last;
 
          when N_Pop_Program_Error_Label =>
+            Maybe_Warn
+              (Program_Error_Stack.Table (Program_Error_Stack.Last));
             Program_Error_Stack.Decrement_Last;
 
          when others =>

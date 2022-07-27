@@ -27,6 +27,7 @@ with Osint.C;         use Osint.C;
 with Output;          use Output;
 
 with Adabkend;
+with Gnatvsn; use Gnatvsn;
 with Errout;  use Errout;
 with Lib;     use Lib;
 with Opt;     use Opt;
@@ -37,7 +38,7 @@ package body Back_End is
 
    package GNAT2LLVM is new Adabkend
      (Product_Name       => "GNAT for LLVM",
-      Copyright_Years    => "2013-2020",
+      Copyright_Years    => "2013-" & Current_Year,
       Driver             => GNAT_To_LLVM,
       Is_Back_End_Switch => Is_Back_End_Switch);
 

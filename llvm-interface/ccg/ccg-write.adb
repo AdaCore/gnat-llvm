@@ -934,10 +934,6 @@ package body CCG.Write is
       then
          Write_Line ("#include <string.h>");
          Write_Line ("#include <stdlib.h>");
-         if Version > 1990 then
-            Write_Line ("#include <alloca.h>");
-         end if;
-
          Write_Eol;
       end if;
    end Initialize_Writing;

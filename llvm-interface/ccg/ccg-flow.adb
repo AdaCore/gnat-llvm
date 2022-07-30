@@ -1712,13 +1712,50 @@ package body CCG.Flow is
       -------------------
 
       procedure Dump_One_Flow (Idx : Flow_Idx) is
+         procedure Maybe_Output_Use (Tfidx, Fidx : Flow_Idx);
+         --  Show that Fidx is a use of Idx if Tfidx is Idx and Fidx has uses
+
+         Had_Use : Boolean := False;
+
+         ----------------------
+         -- Maybe_Output_Use --
+         ----------------------
+
+         procedure Maybe_Output_Use (Tfidx, Fidx : Flow_Idx) is
+         begin
+            if Tfidx /= Idx or else Use_Count (Fidx) = 0 then
+               return;
+            elsif Had_Use then
+               Write_Str (", ");
+            else
+               Had_Use := True;
+            end if;
+
+            Write_Int (Nat (Fidx));
+         end Maybe_Output_Use;
+
       begin
          Write_Str  ("Flow " & Pos (Idx) &
                      (if Is_Return (Idx) then +"" else " (" & BB (Idx) & ")") &
                      " has " & Use_Count (Idx) &
-                     (if Use_Count (Idx) = 1 then " use" else " uses"),
-                     Eol => True);
+                     (if Use_Count (Idx) = 1 then " use (" else " uses ("));
 
+         for Fidx in Flow_Idx_Low_Bound + 1 .. Flows.Last loop
+            Maybe_Output_Use (Next (Fidx), Fidx);
+            if Present (First_If (Fidx)) then
+               for Iidx in First_If (Fidx) .. Last_If (Fidx) loop
+                  Maybe_Output_Use (Target (Iidx), Fidx);
+               end loop;
+            end if;
+
+            if Present (Case_Expr (Fidx)) then
+               for Cidx in First_Case (Fidx) .. Last_Case (Fidx) loop
+                  Maybe_Output_Use (Target (Cidx), Fidx);
+               end loop;
+            end if;
+         end loop;
+
+         Write_Str (+")", Eol => True);
          if Is_Return (Idx) then
             Write_Str ("   return");
             if Present (Return_Value (Idx)) then

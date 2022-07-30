@@ -223,14 +223,14 @@ package body CCG.Flow is
    --  Return the Flow corresponding to this case node
 
    procedure Set_Target (Idx : Case_Idx; Fidx : Flow_Idx)
-     with Pre => Present (Idx), Post => Target (Idx) = Fidx, Inline;
+     with Pre => Present (Idx), Post => Target (Idx) = Fidx;
 
    procedure Set_Inst (Idx : Case_Idx; V : Value_T)
      with Pre  => Present (Idx) and then Is_A_Instruction (V),
-          Post => Inst (Idx) = V, Inline;
+          Post => Inst (Idx) = V;
 
    procedure Set_Is_Same_As_Next (Idx : Case_Idx; B : Boolean := True)
-     with Pre => Present (Idx), Post => Is_Same_As_Next (Idx) = B, Inline;
+     with Pre => Present (Idx), Post => Is_Same_As_Next (Idx) = B;
    --  Getters and setters for an If node
 
    function Test (Idx : If_Idx)   return Str
@@ -248,7 +248,7 @@ package body CCG.Flow is
    --  Destination if this test is true (or not Present)
 
    procedure Set_Target (Idx : If_Idx; Fidx : Flow_Idx)
-     with Pre => Present (Idx), Post => Target (Idx) = Fidx, Inline;
+     with Pre => Present (Idx), Post => Target (Idx) = Fidx;
 
    --  Getters and setters for a Flow
 
@@ -299,28 +299,28 @@ package body CCG.Flow is
 
    procedure Set_First_Line (Idx : Flow_Idx; Lidx : Line_Idx)
      with Pre  => Present (Idx) and then Present (Lidx),
-          Post => First_Line (Idx) = Lidx, Inline;
+          Post => First_Line (Idx) = Lidx;
    procedure Set_Last_Line (Idx : Flow_Idx; Lidx : Line_Idx)
      with Pre  => Present (Idx) and then Present (Lidx),
-          Post => Last_Line (Idx) = Lidx, Inline;
+          Post => Last_Line (Idx) = Lidx;
 
    procedure Set_Next (Idx, Nidx : Flow_Idx)
-     with Pre  => Present (Idx), Post => Next (Idx) = Nidx, Inline;
+     with Pre  => Present (Idx), Post => Next (Idx) = Nidx;
 
    procedure Set_First_If (Idx : Flow_Idx; Iidx : If_Idx)
      with Pre  => Present (Idx) and then Present (Iidx),
-          Post => First_If (Idx) = Iidx, Inline;
+          Post => First_If (Idx) = Iidx;
    procedure Set_Last_If (Idx : Flow_Idx; Iidx : If_Idx)
      with Pre  => Present (Idx) and then Present (Iidx),
-          Post => Last_If (Idx) = Iidx, Inline;
+          Post => Last_If (Idx) = Iidx;
 
    procedure Set_Case_Expr (Idx : Flow_Idx; S : Str)
-     with Pre  => Present (Idx), Post => Case_Expr (Idx) = S, Inline;
+     with Pre  => Present (Idx), Post => Case_Expr (Idx) = S;
 
    procedure Set_First_Case (Idx : Flow_Idx; Cidx : Case_Idx)
-     with Pre => Present (Idx), Post => First_Case (Idx) = Cidx, Inline;
+     with Pre => Present (Idx), Post => First_Case (Idx) = Cidx;
    procedure Set_Last_Case (Idx : Flow_Idx; Cidx : Case_Idx)
-     with Pre => Present (Idx), Post => Last_Case (Idx) = Cidx, Inline;
+     with Pre => Present (Idx), Post => Last_Case (Idx) = Cidx;
 
    function New_Line
      (S          : Str;

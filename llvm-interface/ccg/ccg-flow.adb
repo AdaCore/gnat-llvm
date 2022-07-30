@@ -1768,7 +1768,7 @@ package body CCG.Flow is
          procedure Maybe_Output_Use (Tfidx, Fidx : Flow_Idx);
          --  Show that Fidx is a use of Idx if Tfidx is Idx and Fidx has uses
 
-         Had_Use : Boolean := False;
+         Num_Uses_Found : Nat := 0;
 
          ----------------------
          -- Maybe_Output_Use --
@@ -1778,13 +1778,12 @@ package body CCG.Flow is
          begin
             if Tfidx /= Idx or else Num_Uses (Fidx) = 0 then
                return;
-            elsif Had_Use then
+            elsif Num_Uses_Found > 0 then
                Write_Str (", ");
-            else
-               Had_Use := True;
             end if;
 
             Write_Int (Nat (Fidx));
+            Num_Uses_Found := Num_Uses_Found + 1;
          end Maybe_Output_Use;
 
       begin
@@ -1808,7 +1807,11 @@ package body CCG.Flow is
             end if;
          end loop;
 
-         Write_Str (+")", Eol => True);
+         Write_Line (")");
+         if Num_Uses (Idx) /= Num_Uses_Found then
+            Write_Line ("**** Incorrect number of uses ****");
+         end if;
+
          if Is_Return (Idx) then
             Write_Str ("   return");
             if Present (Return_Value (Idx)) then

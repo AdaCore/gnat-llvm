@@ -1529,6 +1529,12 @@ package body CCG.Flow is
             Delete (To_Output, Idx);
          end if;
 
+         --  If debugging, write the flow number
+
+         if Debug_Flag_Underscore_U then
+            Output_Stmt ("/* Flow " & Nat (Idx) & " */", Semicolon => False);
+         end if;
+
          --  Write the block's label, if requested
 
          if Write_Label then

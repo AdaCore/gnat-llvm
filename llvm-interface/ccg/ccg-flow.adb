@@ -127,7 +127,7 @@ package body CCG.Flow is
       Last_Line    : Line_Idx;
       --  Last line that's part of this flow, if any
 
-      Use_Count    : Nat;
+      Num_Uses     : Nat;
       --  Number of times this flow is referenced by another flow (always one
       --  for the entry block).
 
@@ -264,7 +264,7 @@ package body CCG.Flow is
      with Pre => Present (Idx);
    --  Last line that's part of this flow, if any
 
-   function Use_Count (Idx : Flow_Idx)    return Nat
+   function Num_Uses (Idx : Flow_Idx)    return Nat
      with Pre => Present (Idx);
    --  Number of times this flow is referenced by another flow (always one
    --  for the entry block).
@@ -552,12 +552,12 @@ package body CCG.Flow is
    function Last_Line (Idx : Flow_Idx) return Line_Idx is
      (Flows.Table (Idx).Last_Line);
 
-   ---------------
-   -- Use_Count --
-   ---------------
+   --------------
+   -- Num_Uses --
+   --------------
 
-   function Use_Count (Idx : Flow_Idx)  return Nat is
-     (Flows.Table (Idx).Use_Count);
+   function Num_Uses (Idx : Flow_Idx)  return Nat is
+     (Flows.Table (Idx).Num_Uses);
 
    ----------
    -- Next --
@@ -640,7 +640,7 @@ package body CCG.Flow is
    procedure Add_Use (Idx : Flow_Idx) is
    begin
       if Present (Idx) then
-         Flows.Table (Idx).Use_Count := Flows.Table (Idx).Use_Count + 1;
+         Flows.Table (Idx).Num_Uses := Flows.Table (Idx).Num_Uses + 1;
       end if;
 
    end Add_Use;
@@ -652,7 +652,7 @@ package body CCG.Flow is
    procedure Remove_Use (Idx : Flow_Idx) is
    begin
       if Present (Idx) then
-         Flows.Table (Idx).Use_Count := Flows.Table (Idx).Use_Count - 1;
+         Flows.Table (Idx).Num_Uses := Flows.Table (Idx).Num_Uses - 1;
       end if;
    end Remove_Use;
 
@@ -811,7 +811,7 @@ package body CCG.Flow is
                      BB           => B,
                      First_Line   => Empty_Line_Idx,
                      Last_Line    => Empty_Line_Idx,
-                     Use_Count    => 0,
+                     Num_Uses     => 0,
                      Next         => Empty_Flow_Idx,
                      First_If     => Empty_If_Idx,
                      Last_If      => Empty_If_Idx,
@@ -879,7 +879,7 @@ package body CCG.Flow is
                                  BB           => No_BB_T,
                                  First_Line   => Empty_Line_Idx,
                                  Last_Line    => Empty_Line_Idx,
-                                 Use_Count    => 0,
+                                 Num_Uses     => 0,
                                  Next         => Empty_Flow_Idx,
                                  First_If     => Empty_If_Idx,
                                  Last_If      => Empty_If_Idx,
@@ -1184,7 +1184,7 @@ package body CCG.Flow is
       --  flow in the chain of one-use flows. If it is Present, we're
       --  looking for the flow that points to it.
 
-      while Use_Count (Idx) = 1 and then Present (Next (Idx))
+      while Num_Uses (Idx) = 1 and then Present (Next (Idx))
         and then ((Present (Wanted_Target) and then Idx /= Wanted_Target)
                   or else No (Wanted_Target))
       loop
@@ -1307,7 +1307,7 @@ package body CCG.Flow is
 
          --  Loop through all flows with a single use
 
-         while Present (Ret_Idx) and then Use_Count (Ret_Idx) = 1 loop
+         while Present (Ret_Idx) and then Num_Uses (Ret_Idx) = 1 loop
             Ret_Idx := Next (Ret_Idx);
          end loop;
 
@@ -1326,7 +1326,7 @@ package body CCG.Flow is
    function Falls_Through (Idx : Flow_Idx) return Boolean is
       Our_Idx : Flow_Idx := Idx;
    begin
-      while Present (Our_Idx) and then Use_Count (Our_Idx) = 1 loop
+      while Present (Our_Idx) and then Num_Uses (Our_Idx) = 1 loop
          Our_Idx := Next (Our_Idx);
       end loop;
 
@@ -1359,7 +1359,7 @@ package body CCG.Flow is
       Then_Target := Target (First_If (Idx));
       Else_Target := Target (Last_If (Idx));
 
-      if Use_Count (Else_Target) = 1 and then No (Next (Else_Target))
+      if Num_Uses (Else_Target) = 1 and then No (Next (Else_Target))
         and then No (First_Line (Else_Target))
         and then Present (First_If (Else_Target))
         and then (No (Effective_Flow (Then_Target))
@@ -1398,7 +1398,7 @@ package body CCG.Flow is
          if Present (First_If (Idx)) then
             for Iidx in First_If (Idx) .. Last_If (Idx) loop
                if Present (Target (Iidx))
-                 and then Use_Count (Target (Iidx)) = 1
+                 and then Num_Uses (Target (Iidx)) = 1
                  and then Next (Target (Iidx)) = Next (Idx)
                then
                   Set_Next (Target (Iidx), Empty_Flow_Idx);
@@ -1409,7 +1409,7 @@ package body CCG.Flow is
          if Present (Case_Expr (Idx)) then
             for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
                if Present (Target (Cidx))
-                 and then Use_Count (Target (Cidx)) = 1
+                 and then Num_Uses (Target (Cidx)) = 1
                  and then Next (Target (Cidx)) = Next (Idx)
                then
                   Set_Next (Target (Cidx), Empty_Flow_Idx);
@@ -1487,7 +1487,7 @@ package body CCG.Flow is
          --  If this is a flow with only one use (so it must be this one),
          --  output that flow directly unless we're already too deep.
 
-         elsif Use_Count (Idx) = 1 and then Depth < Nat (Max_Depth) then
+         elsif Num_Uses (Idx) = 1 and then Depth < Nat (Max_Depth) then
             Output_One_Flow (Idx, Write_Label => False, Depth => Depth);
 
          --  Similarly, if we're at top level and haven't output this flow
@@ -1723,7 +1723,7 @@ package body CCG.Flow is
 
          procedure Maybe_Output_Use (Tfidx, Fidx : Flow_Idx) is
          begin
-            if Tfidx /= Idx or else Use_Count (Fidx) = 0 then
+            if Tfidx /= Idx or else Num_Uses (Fidx) = 0 then
                return;
             elsif Had_Use then
                Write_Str (", ");
@@ -1737,8 +1737,8 @@ package body CCG.Flow is
       begin
          Write_Str  ("Flow " & Pos (Idx) &
                      (if Is_Return (Idx) then +"" else " (" & BB (Idx) & ")") &
-                     " has " & Use_Count (Idx) &
-                     (if Use_Count (Idx) = 1 then " use (" else " uses ("));
+                     " has " & Num_Uses (Idx) &
+                     (if Num_Uses (Idx) = 1 then " use (" else " uses ("));
 
          for Fidx in Flow_Idx_Low_Bound + 1 .. Flows.Last loop
             Maybe_Output_Use (Next (Fidx), Fidx);

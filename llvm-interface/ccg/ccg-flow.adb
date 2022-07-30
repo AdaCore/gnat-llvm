@@ -304,6 +304,9 @@ package body CCG.Flow is
      with Pre  => Present (Idx) and then Present (Lidx),
           Post => Last_Line (Idx) = Lidx;
 
+   procedure Set_Num_Uses (Idx : Flow_Idx; Num : Nat)
+     with Pre => Present (Idx);
+
    procedure Set_Next (Idx, Nidx : Flow_Idx)
      with Pre  => Present (Idx), Post => Next (Idx) = Nidx;
 
@@ -477,8 +480,8 @@ package body CCG.Flow is
 
    procedure Set_Target (Idx : Case_Idx; Fidx : Flow_Idx) is
    begin
-      Remove_Use (Target (Idx));
       Add_Use (Fidx);
+      Remove_Use (Target (Idx));
       Cases.Table (Idx).Target := Fidx;
    end Set_Target;
 
@@ -526,8 +529,8 @@ package body CCG.Flow is
 
    procedure Set_Target (Idx : If_Idx; Fidx : Flow_Idx) is
    begin
-      Remove_Use (Target (Idx));
       Add_Use (Fidx);
+      Remove_Use (Target (Idx));
       Ifs.Table (Idx).Target := Fidx;
    end Set_Target;
 
@@ -640,7 +643,7 @@ package body CCG.Flow is
    procedure Add_Use (Idx : Flow_Idx) is
    begin
       if Present (Idx) then
-         Flows.Table (Idx).Num_Uses := Flows.Table (Idx).Num_Uses + 1;
+         Set_Num_Uses (Idx, Num_Uses (Idx) + 1);
       end if;
 
    end Add_Use;
@@ -652,7 +655,28 @@ package body CCG.Flow is
    procedure Remove_Use (Idx : Flow_Idx) is
    begin
       if Present (Idx) then
-         Flows.Table (Idx).Num_Uses := Flows.Table (Idx).Num_Uses - 1;
+         Set_Num_Uses (Idx, Num_Uses (Idx) - 1);
+
+         --  If we now have no uses, show that anything we reference has
+         --  one less use.
+
+         if Num_Uses (Idx) = 0 then
+            if Present (Next (Idx)) then
+               Remove_Use (Next (Idx));
+            end if;
+
+            if Present (First_If (Idx)) then
+               for Iidx in First_If (Idx) .. Last_If (Idx) loop
+                  Remove_Use (Target (Iidx));
+               end loop;
+            end if;
+
+            if Present (Case_Expr (Idx)) then
+               for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
+                  Remove_Use (Target (Cidx));
+               end loop;
+            end if;
+         end if;
       end if;
    end Remove_Use;
 
@@ -662,10 +686,19 @@ package body CCG.Flow is
 
    procedure Set_Next (Idx, Nidx : Flow_Idx) is
    begin
-      Remove_Use (Next (Idx));
       Add_Use (Nidx);
+      Remove_Use (Next (Idx));
       Flows.Table (Idx).Next := Nidx;
    end Set_Next;
+
+   ------------------
+   -- Set_Num_Uses --
+   ------------------
+
+   procedure Set_Num_Uses (Idx : Flow_Idx; Num : Nat) is
+   begin
+      Flows.Table (Idx).Num_Uses := Num;
+   end Set_Num_Uses;
 
    ------------------
    -- Set_First_If --
@@ -1040,7 +1073,7 @@ package body CCG.Flow is
 
    procedure Process_Flows (Idx : Flow_Idx; Subprog : Process_Subprogram) is
       procedure Process_One_Flow (Idx : Flow_Idx);
-      --  Do one recursive call is Idx is Present and wasn't processed
+      --  Do one recursive call if Idx is Present and wasn't processed
 
       procedure Process_Flow_Graph (Idx : Flow_Idx)
         with Pre => Present (Idx);
@@ -1193,18 +1226,21 @@ package body CCG.Flow is
       end loop;
 
       --  Now see if this is the first or a subsequent flow and perform
-      --  the replacement if we are to do so.
+      --  the replacement if we are to do so. Add a use to the value we
+      --  return so we don't bring its use to zero here and then add it
+      --  again later.
 
       if No (Prev_Idx) then
          if No (Wanted_Target) or else Target (Pidx) = Wanted_Target then
             Ret_Idx := Target (Pidx);
+            Add_Use (Ret_Idx);
             Set_Target (Pidx, Empty_Flow_Idx);
          end if;
       else
          if No (Wanted_Target) or else Next (Prev_Idx) = Wanted_Target then
             Ret_Idx := Next (Prev_Idx);
+            Add_Use (Ret_Idx);
             Set_Next (Prev_Idx, Empty_Flow_Idx);
-
          end if;
       end if;
 
@@ -1240,7 +1276,15 @@ package body CCG.Flow is
       --  do so from that clause.
 
       elsif No (Next (Idx)) and then No (Test (Last_If (Idx))) then
-         Set_Next (Idx, Replace_Target (Last_If (Idx), Empty_Flow_Idx));
+         declare
+            New_Idx : constant Flow_Idx :=
+              Replace_Target (Last_If (Idx), Empty_Flow_Idx);
+
+         begin
+            Set_Next (Idx, New_Idx);
+            Remove_Use (New_Idx);
+         end;
+
          --  If the else clause now has no destination either, delete it
 
          if No (Target (Last_If (Idx))) then
@@ -1251,7 +1295,7 @@ package body CCG.Flow is
       --  Now remove any branches to our Next from any If part
 
       for Iidx in First_If (Idx) .. Last_If (Idx) loop
-         Discard (Replace_Target (Iidx, Next (Idx)));
+         Remove_Use (Replace_Target (Iidx, Next (Idx)));
       end loop;
    end Factor_One_If;
 
@@ -1269,13 +1313,20 @@ package body CCG.Flow is
       --  If we haven't we haven't set a Next, do so from our last clause
 
       elsif No (Next (Idx)) then
-         Set_Next (Idx, Replace_Target (Last_Case (Idx), Empty_Flow_Idx));
+         declare
+            New_Idx : constant Flow_Idx :=
+              Replace_Target (Last_Case (Idx), Empty_Flow_Idx);
+
+         begin
+            Set_Next (Idx, New_Idx);
+            Remove_Use (New_Idx);
+         end;
       end if;
 
       --  Now remove any branches to our Next from any part
 
       for Cidx in First_Case (Idx) .. Last_Case (Idx) loop
-         Discard (Replace_Target (Cidx, Next (Idx)));
+         Remove_Use (Replace_Target (Cidx, Next (Idx)));
       end loop;
 
       --  If our last part is a default case with no target, delete it.
@@ -1369,7 +1420,7 @@ package body CCG.Flow is
                               Effective_Flow (Target (First_If (Else_Target))))
       then
          --  Copy all but the last of our "if" targets, then those from
-         --  our "else" target.
+         --  our "else" target. Update relevant counts.
 
          for Iidx in First_If (Idx) .. Last_If (Idx) - 1 loop
             Ifs.Append (Ifs.Table (Iidx));
@@ -1377,11 +1428,13 @@ package body CCG.Flow is
 
          for Iidx in First_If (Else_Target) .. Last_If (Else_Target) loop
             Ifs.Append (Ifs.Table (Iidx));
+            Add_Use (Target (Iidx));
          end loop;
 
          --  Update our first and last indexes and make a recursive call
          --  in case we can merge more parts into this.
 
+         Remove_Use (Else_Target);
          Set_First_If (Idx, New_First);
          Set_Last_If  (Idx, Ifs.Last);
          Try_Merge_Ifs (Idx);

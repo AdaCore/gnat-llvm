@@ -76,7 +76,10 @@ package CCG.Flow is
    procedure Add_Use (Idx : Flow_Idx) with Inline;
    procedure Remove_Use (Idx : Flow_Idx) with Inline;
    --  Add or remove (respectively) a usage of the Flow denoted by Idx,
-   --  if any.
+   --  if any. Because we remove the uses of anything that has zero
+   --  uses, if we're moving a flow index from one location to another,
+   --  be sure that we add it to the new place before removing it from
+   --  the previous.
 
    procedure Add_Line
      (S          : Str;

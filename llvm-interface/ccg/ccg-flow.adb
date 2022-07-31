@@ -1492,16 +1492,27 @@ package body CCG.Flow is
 
    procedure Output_Flow (Idx : Flow_Idx) is
       procedure Output_Flow_Target
-        (Idx : Flow_Idx; V : Value_T; BS : Block_Style; Depth : Nat)
+        (Idx      : Flow_Idx;
+         V        : Value_T;
+         BS       : Block_Style;
+         Depth    : Nat;
+         Our_Next : Flow_Idx)
         with Pre => Present (V);
       --  Write the line(s) needed to go to the flow denoted by Idx, if
-      --  any, from the instruction V. BS is the style of this block, if any
+      --  any, from the instruction V. BS is the style of this block, if
+      --  any. We track the nesting depth to make sure it doesn't get too
+      --  deep. If Our_Next is Present, it says where we'll want to go
+      --  after outputting this flow, in the case where we can't output the
+      --  flow inline because of depth.
 
       procedure Output_One_Flow
-        (Idx : Flow_Idx; Depth : Nat := 0; Write_Label : Boolean := True);
-      --  Output the flow for Idx, if Present, and all nested flows,
-      --  possibly omitting the starting label. We track the nesting depth to
-      --  make sure it doesn't get too deep.
+        (Idx         : Flow_Idx;
+         Depth       : Nat      := 0;
+         Our_Next    : Flow_Idx := Empty_Flow_Idx;
+         Write_Label : Boolean  := True);
+      --  Output the flow for Idx, if Present, and all nested flows.
+      --  We write the label if there's more than one use or if Write_Label
+      --  is True.
 
       package Output_Flows is new Ada.Containers.Ordered_Sets
         (Element_Type => Flow_Idx,
@@ -1516,7 +1527,12 @@ package body CCG.Flow is
       ------------------------
 
       procedure Output_Flow_Target
-        (Idx : Flow_Idx; V : Value_T; BS : Block_Style; Depth : Nat) is
+        (Idx      : Flow_Idx;
+         V        : Value_T;
+         BS       : Block_Style;
+         Depth    : Nat;
+         Our_Next : Flow_Idx)
+      is
       begin
          Start_Output_Block (BS);
 
@@ -1541,14 +1557,20 @@ package body CCG.Flow is
          --  output that flow directly unless we're already too deep.
 
          elsif Num_Uses (Idx) = 1 and then Depth < Nat (Max_Depth) then
-            Output_One_Flow (Idx, Write_Label => False, Depth => Depth);
+            Output_One_Flow (Idx,
+                             Write_Label => False,
+                             Depth       => Depth,
+                             Our_Next    => Our_Next);
 
          --  Similarly, if we're at top level and haven't output this flow
          --  yet, output it directly, but this time we need a label since
          --  we know it's used more than once.
 
          elsif Depth = 0 and then not Contains (Output, Idx) then
-            Output_One_Flow (Idx, Write_Label => True, Depth => Depth);
+            Output_One_Flow (Idx,
+                             Write_Label => False,
+                             Depth       => Depth,
+                             Our_Next    => Our_Next);
 
          --  Otherwise, write a goto and mark it for output
 
@@ -1557,8 +1579,21 @@ package body CCG.Flow is
             if not Contains (Output, Idx) then
                Include (To_Output, Idx);
             end if;
-         end if;
 
+            --  If this is only used once and we reach here, it means that
+            --  we maxed out on the depth. So indicate where the flow must
+            --  branch when it's been output unless there already is such a
+            --  flow. If it's already been output, something has gone
+            --  wrong.
+
+            if Num_Uses (Idx) = 1 and then Present (Our_Next)
+              and then No (Next (Idx))
+            then
+               pragma Assert (not Contains (Output, Idx));
+               Set_Next (Idx, Our_Next);
+            end if;
+
+         end if;
          End_Stmt_Block (BS);
       end Output_Flow_Target;
 
@@ -1567,7 +1602,10 @@ package body CCG.Flow is
       ---------------------
 
       procedure Output_One_Flow
-        (Idx : Flow_Idx; Depth : Nat := 0; Write_Label : Boolean := True)
+        (Idx         : Flow_Idx;
+         Depth       : Nat      := 0;
+         Our_Next    : Flow_Idx := Empty_Flow_Idx;
+         Write_Label : Boolean  := True)
       is
          Was_Same : Boolean := False;
          T        : Value_T;
@@ -1590,7 +1628,7 @@ package body CCG.Flow is
 
          --  Write the block's label, if requested
 
-         if Write_Label then
+         if Write_Label or else Num_Uses (Idx) > 1 then
             Output_Stmt ("", Semicolon => False);
             Output_Stmt (BB (Idx) & ":",
                          Semicolon   => False,
@@ -1624,8 +1662,11 @@ package body CCG.Flow is
                end if;
 
                Output_Flow_Target (Target (Iidx), Inst (Iidx),
-                                   BS    => If_Part,
-                                   Depth => Depth + 1);
+                                   BS       => If_Part,
+                                   Depth    => Depth + 1,
+                                   Our_Next =>
+                                     (if   Present (Next (Idx))
+                                      then Next (Idx) else Our_Next));
             end loop;
          end if;
 
@@ -1664,8 +1705,9 @@ package body CCG.Flow is
 
                   if not Is_Same_As_Next (Cidx) then
                      Output_Flow_Target (Target (Cidx), T,
-                                         BS    => None,
-                                         Depth => Depth + 1);
+                                         BS       => None,
+                                         Depth    => Depth + 1,
+                                         Our_Next => Empty_Flow_Idx);
                      if Falls_Through (Target (Cidx)) then
                         Output_Stmt ("break");
                      end if;
@@ -1685,7 +1727,10 @@ package body CCG.Flow is
          --  The final thing to output is any jump at the end
 
          if Present (Next (Idx)) then
-            Output_Flow_Target (Next (Idx), T, BS => None, Depth => Depth);
+            Output_Flow_Target (Next (Idx), T,
+                                BS       => None,
+                                Depth    => Depth,
+                                Our_Next => Empty_Flow_Idx);
          end if;
       end Output_One_Flow;
 
@@ -1698,11 +1743,7 @@ package body CCG.Flow is
       --  Now loop while there are still flows to output
 
       while not Is_Empty (To_Output) loop
-         declare
-            Output_Idx : constant Flow_Idx := First_Element (To_Output);
-         begin
-            Output_One_Flow (Output_Idx, Depth => 0);
-         end;
+         Output_One_Flow (First_Element (To_Output));
       end loop;
 
    end Output_Flow;

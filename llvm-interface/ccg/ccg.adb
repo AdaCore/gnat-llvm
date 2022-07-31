@@ -135,11 +135,6 @@ package body CCG is
          end loop;
       end if;
 
-      --  Now that we know if we have any inline_always functions, set up
-      --  for writing the desired file.
-
-      Initialize_Writing;
-
       --  Declare functions first, since they may be referenced in
       --  globals. Put public functions that we define into the header file,
       --  as well as inline_always functions.
@@ -158,8 +153,8 @@ package body CCG is
          Func := Get_Next_Function (Func);
       end loop;
 
-      --  Write out declarations for all globals with initializers if
-      --  writing C code and all public globals if writing a header
+      --  Output declarations for all globals with initializers if writing
+      --  C code and all public globals if writing a header.
 
       Glob := Get_First_Global (Module);
       while Present (Glob) loop
@@ -185,9 +180,11 @@ package body CCG is
          Func := Get_Next_Function (Func);
       end loop;
 
-      --  Finally, write all the code we generated and finalize the writing
-      --  process.
+      --  Now that we know if we have any inline_always functions, set up
+      --  for writing the desired file. Finally, write all the code we
+      --  generated and finalize the writing process.
 
+      Initialize_Writing;
       Write_C_File;
       Finalize_Writing;
 

@@ -6,9 +6,9 @@
 PWD:=$(shell pwd)
 TMP_GEN_DIR=gen
 OUT_DIR=out
-LLVM_RELEASE=14.0.1
+LLVM_RELEASE=14.0.6
 LLVM_INSTALL_DIR=$(PWD)/install
-LLVM_SRC_DIR=llvm-$(LLVM_RELEASE).src
+LLVM_SRC_DIR=llvm-project-$(LLVM_RELEASE).src
 LLVM_INCLUDE_DIR=$(LLVM_INSTALL_DIR)/include
 LLVM_INCLUDE_DIR_C=$(LLVM_INCLUDE_DIR)/llvm-c
 CLANG_INCLUDE_DIR=$(LLVM_INSTALL_DIR)/include
@@ -39,7 +39,7 @@ clang-bindings: $(LLVM_SRC_DIR) $(OUT_DIR)/clang-index.adb
 
 CONFIGURE=cd llvm-obj && CXX=g++ CC=gcc CXXC=g++ \
   cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$(LLVM_INSTALL_DIR) \
-  $(CMAKE_FLAGS) ../$(LLVM_SRC_DIR)
+  $(CMAKE_FLAGS) -DLLVM_ENABLE_PROJECTS=clang ../$(LLVM_SRC_DIR)/llvm
 
 .PHONY: llvm-obj
 

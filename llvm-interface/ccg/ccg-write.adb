@@ -570,7 +570,7 @@ package body CCG.Write is
       --  expression, set that up. Also mark how V will be used.
 
       function Must_Write_Cast return Boolean is
-         (Get_Type_Kind (V) = Integer_Type_Kind
+         (Is_Integral_Type (V)
             and then Get_Scalar_Bit_Size (Type_Of (V)) < Get_Int_Size
             and then Is_A_Instruction (V)
             and then Get_Opcode (V) in Op_Add   | Op_Sub   | Op_Mul   |
@@ -671,7 +671,7 @@ package body CCG.Write is
             Write_Str ("(" & Type_Of (V) & ") ");
          end if;
 
-         if Get_Type_Kind (V) /= Array_Type_Kind then
+         if not Is_Array_Type (V) then
             Maybe_Write_Parens;
             Write_Str ("&");
          end if;
@@ -839,7 +839,7 @@ package body CCG.Write is
             --  There's no such thing in C as a function type, only a
             --  pointer to function type. So we special-case that.
 
-            if Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind then
+            if Is_Function_Type (Get_Element_Type (T)) then
                Write_Str ("ccg_f");
                Write_Int (Get_Output_Idx (T));
 
@@ -847,9 +847,7 @@ package body CCG.Write is
             --  which C doesn't support, so consider this a pointer to the
             --  element type of the array.
 
-            elsif Get_Type_Kind (Get_Element_Type (T)) = Array_Type_Kind
-              and then Get_Array_Length (Get_Element_Type (T)) = 0
-            then
+            elsif Is_Zero_Length_Array (Get_Element_Type (T)) then
                Write_Type (Get_Element_Type (Get_Element_Type (T)));
                Write_Str (" *");
 

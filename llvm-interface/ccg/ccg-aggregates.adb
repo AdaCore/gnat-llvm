@@ -298,7 +298,7 @@ package body CCG.Aggregates is
          begin
             --  We know this is either a struct or an array
 
-            if Get_Type_Kind (T) = Struct_Type_Kind then
+            if Is_Struct_Type (T) then
                Result := "." & Get_Field_Name (T, Ins_Idx) + Component;
                T      := Struct_Get_Type_At_Index (T, Ins_Idx);
             else
@@ -405,7 +405,7 @@ package body CCG.Aggregates is
 
       for Op of Ops (Ops'First + 2 .. Ops'Last) loop
          Maybe_Output_Typedef (Aggr_T);
-         if Get_Type_Kind (Aggr_T) = Array_Type_Kind then
+         if Is_Array_Type (Aggr_T) then
 
             --  If this isn't an LHS, we have to make it one, but not if
             --  this is a zero-size array, since we've written the pointer
@@ -420,7 +420,7 @@ package body CCG.Aggregates is
             Is_LHS := True;
 
          else
-            pragma Assert (Get_Type_Kind (Aggr_T) = Struct_Type_Kind);
+            pragma Assert (Is_Struct_Type (Aggr_T));
 
             declare
                Idx   : constant Nat    := Nat (Const_Int_Get_S_Ext_Value (Op));

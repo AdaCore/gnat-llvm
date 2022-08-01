@@ -529,7 +529,7 @@ package body CCG.Transform is
       --  be directly returned in C.
 
       return Present (User) and then Get_Opcode (User) = Op_Ret
-        and then Get_Type_Kind (V) /= Array_Type_Kind;
+        and then not Is_Array_Type (V);
    end Is_Return_Phi;
 
    ----------------------------

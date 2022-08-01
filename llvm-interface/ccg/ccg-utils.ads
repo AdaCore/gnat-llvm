@@ -54,16 +54,15 @@ package CCG.Utils is
    --  were for LLVM type T.
 
    function Get_Field_Name (T : Type_T; Idx : Nat) return Str
-     with Pre  => Get_Type_Kind (T) = Struct_Type_Kind,
-          Post => Present (Get_Field_Name'Result);
+     with Pre => Is_Struct_Type (T), Post => Present (Get_Field_Name'Result);
    --  Return a name to use for field Idx of LLVM struct T
 
    function Get_Field_Entity (T : Type_T; Idx : Nat) return Entity_Id
-     with Pre  => Present (T);
+     with Pre => Present (T);
    --  Return the entity corresponding to for field Idx of LLVM type T
 
    function Is_Field_Padding (T : Type_T; Idx : Nat) return Boolean
-     with Pre  => Present (T);
+     with Pre => Present (T);
    --  Indicate whether field Idx of LLVM type T is added for padding
 
    --  We do similarly for the parameters of a function
@@ -138,8 +137,8 @@ package CCG.Utils is
      (Get_Type_Kind (V) = Pointer_Type_Kind)
      with Pre => Present (V);
    function Is_Simple_Type (T : Type_T) return Boolean is
-     (Get_Type_Kind (T) in Half_Type_Kind .. Integer_Type_Kind
-        or else Get_Type_Kind (T) = Pointer_Type_Kind)
+     (Get_Type_Kind (T)
+        in Half_Type_Kind .. Integer_Type_Kind | Pointer_Type_Kind)
      with Pre => Present (T);
    function Is_Simple_Type (V : Value_T) return Boolean is
      (Is_Simple_Type (Type_Of (V)))
@@ -169,8 +168,7 @@ package CCG.Utils is
      with Pre => Present (V);
 
    function Is_Zero_Length_Array (T : Type_T) return Boolean is
-     (Get_Type_Kind (T) = Array_Type_Kind
-        and then Get_Array_Length (T) = Nat (0))
+     (Is_Array_Type (T) and then Get_Array_Length (T) = Nat (0))
      with Pre => Present (T);
 
    function Is_Simple_Constant (V : Value_T) return Boolean is
@@ -296,7 +294,7 @@ package CCG.Utils is
 
    function Int_Ty (Num_Bits : ULL) return Type_T is
      (Int_Type (unsigned (Num_Bits)))
-     with Post => Get_Type_Kind (Int_Ty'Result) = Integer_Type_Kind;
+     with Post => Is_Integral_Type (Int_Ty'Result);
 
    function Single_User (V : Value_T) return Value_T is
      ((if Num_Uses (V) = 1 then Get_User (Get_First_Use (V)) else No_Value_T))

@@ -155,8 +155,7 @@ package body CCG.Instructions is
    is
       T      : constant Type_T := Type_Of (V);
       Size   : constant Nat    :=
-        (if   Get_Type_Kind (T) = Integer_Type_Kind
-         then Get_Scalar_Bit_Size (T) else BPU);
+        (if Is_Integral_Type (T) then Get_Scalar_Bit_Size (T) else BPU);
       Extras : constant Nat    := Get_Extra_Bits (Size);
       Result : Str             :=
         (case POO is when X            => V + P,
@@ -725,7 +724,7 @@ package body CCG.Instructions is
       --  ??? We can usually use memcpy, but it's not clear what test to
       --  do here at the moment.
 
-      if Get_Type_Kind (T) /= Array_Type_Kind then
+      if not Is_Array_Type (T) then
          Add_Line (LHS & " = " & RHS + Assign, V);
       else
          --  If T is a zero-sized array, it means that we're not to move
@@ -812,8 +811,7 @@ package body CCG.Instructions is
       elsif (Get_Is_LHS (LHS) or else Num_Uses (LHS) > 1
             or else Is_Variable (LHS) or else Get_Is_Decl_Output (LHS)
             or else (Is_A_Call_Inst (LHS) and then Is_Aggregate_Type (LHS)))
-        and then not Is_A_Constant_Expr (LHS)
-        and then Get_Type_Kind (Type_Of (LHS)) /= Array_Type_Kind
+        and then not Is_A_Constant_Expr (LHS) and then not Is_Array_Type (LHS)
       then
          Maybe_Decl (LHS);
          Output_Copy (LHS, RHS, Type_Of (LHS));

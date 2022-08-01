@@ -458,11 +458,11 @@ package body CCG.Utils is
       --  the signedness comes just from the last operand.
 
       for J in 2 .. N_Ops - 1 loop
-         if Get_Type_Kind (Aggr_T) = Array_Type_Kind then
+         if Is_Array_Type (Aggr_T) then
             Aggr_T        := Get_Element_Type (Aggr_T);
             V_Is_Unsigned := False;
          else
-            pragma Assert (Get_Type_Kind (Aggr_T) = Struct_Type_Kind);
+            pragma Assert (Is_Struct_Type (Aggr_T));
 
             declare
                Idx   : constant Nat                      :=
@@ -879,11 +879,9 @@ package body CCG.Utils is
       --  array whose type is what the other points to.
 
       return E_T1 = E_T2
-        or else (Get_Type_Kind (E_T1) = Array_Type_Kind
-                 and then Get_Array_Length (E_T1) = 0
+        or else (Is_Array_Type (E_T1) and then Get_Array_Length (E_T1) = 0
                  and then Get_Element_Type (E_T1) = E_T2)
-        or else (Get_Type_Kind (E_T2) = Array_Type_Kind
-                 and then Get_Array_Length (E_T2) = 0
+        or else (Is_Array_Type (E_T2) and then Get_Array_Length (E_T2) = 0
                  and then Get_Element_Type (E_T2) = E_T1);
 
    end Equivalent_Pointers;

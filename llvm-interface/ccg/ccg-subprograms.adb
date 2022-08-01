@@ -37,7 +37,6 @@ with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Target;       use CCG.Target;
 with CCG.Transform;    use CCG.Transform;
-with CCG.Utils;        use CCG.Utils;
 with CCG.Write;        use CCG.Write;
 
 use CCG.Value_Sets;
@@ -101,7 +100,7 @@ package body CCG.Subprograms is
    --  otherwise.
 
    function Effective_Return_Type (T : Type_T) return Str
-     with Pre  => Get_Type_Kind (T) = Function_Type_Kind,
+     with Pre  => Is_Function_Type (T),
           Post => Present (Effective_Return_Type'Result);
    --  Return a string corresponding to the return type of T, adjusting the
    --  type in the case where it's an array.
@@ -165,7 +164,7 @@ package body CCG.Subprograms is
       --  If this function returns an array, change it to return a
       --  struct containing that array.
 
-      if Get_Type_Kind (Ret_Typ) = Array_Type_Kind then
+      if Is_Array_Type (Ret_Typ) then
          Maybe_Output_Array_Return_Typedef (Ret_Typ);
          return Ret_Typ & "_R";
       else
@@ -406,8 +405,7 @@ package body CCG.Subprograms is
          --  If Op is a constant array, we have to cast it to the non-constant
          --  type which is a pointer to the element type.
 
-         if Get_Type_Kind (Op) = Array_Type_Kind and then Get_Is_Constant (Op)
-         then
+         if Is_Array_Type (Op) and then Get_Is_Constant (Op) then
             Call :=
               Call & "(" & Get_Element_Type (Op) & " *) " & (Op + Comma);
          else
@@ -438,7 +436,7 @@ package body CCG.Subprograms is
          --  Output_Copy here since it'll think that this is an array copy
          --  and use memmove.
 
-         if Get_Type_Kind (V) = Array_Type_Kind then
+         if Is_Array_Type (V) then
             declare
                Our_Var : constant Str := "ccg_v" & Get_Output_Idx;
 

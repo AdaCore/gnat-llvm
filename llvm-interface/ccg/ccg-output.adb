@@ -83,11 +83,11 @@ package body CCG.Output is
 
       --  See what type of type this is
 
-      if Get_Type_Kind (T) = Struct_Type_Kind then
+      if Is_Struct_Type (T) then
          Output_Struct_Typedef (T, Incomplete => Incomplete);
-      elsif Get_Type_Kind (T) = Array_Type_Kind then
+      elsif Is_Array_Type (T) then
          Output_Array_Typedef (T);
-      elsif Get_Type_Kind (T) = Pointer_Type_Kind then
+      elsif Is_Pointer_Type (T) then
 
          --  We don't have typedefs for function types, just pointer to
          --  function types. But for normal pointer types, make sure we've
@@ -95,7 +95,7 @@ package body CCG.Output is
          --  pointed-to type. Always write the complete definition if writing
          --  a header file
 
-         if Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind then
+         if Is_Function_Type (Get_Element_Type (T)) then
             Output_Function_Type_Typedef (T);
          else
             Maybe_Output_Typedef (Get_Element_Type (T),
@@ -107,7 +107,7 @@ package body CCG.Output is
       --  we're only writing an incomplete definition.
 
       Set_Are_Outputting_Typedef (T, False);
-      if not Incomplete or else Get_Type_Kind (T) /= Struct_Type_Kind then
+      if not Incomplete or else not Is_Struct_Type (T) then
          Set_Is_Typedef_Output   (T);
       end if;
    end Output_Typedef;

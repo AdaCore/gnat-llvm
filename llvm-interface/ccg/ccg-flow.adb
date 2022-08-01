@@ -891,7 +891,7 @@ package body CCG.Flow is
                   --  into its only field (which will be done with a
                   --  memmove), and return that value.
 
-                  if Get_Type_Kind (Retval) = Array_Type_Kind then
+                  if Is_Array_Type (Retval) then
                      Output_Decl (TP ("#T1_R #2", Retval, T), V => T);
                      Output_Copy (T & ".F", Retval, Type_Of (Retval));
                      Retval := T;

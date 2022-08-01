@@ -19,6 +19,7 @@ with LLVM.Core;  use LLVM.Core;
 
 with CCG.Helper; use CCG.Helper;
 with CCG.Strs;   use CCG.Strs;
+with CCG.Utils;  use CCG.Utils;
 
 package CCG.Subprograms is
 
@@ -55,7 +56,7 @@ package CCG.Subprograms is
    --  Generate the C statements and decls for V, a subprogram
 
    procedure Output_Function_Type_Typedef (T : Type_T)
-     with Pre => Get_Type_Kind (Get_Element_Type (T)) = Function_Type_Kind;
+     with Pre => Is_Function_Type (Get_Element_Type (T));
    --  Output a typedef for T, which is a pointer to a function type
 
    function Function_Proto (V : Value_T; Extern : Boolean := False) return Str
@@ -65,8 +66,7 @@ package CCG.Subprograms is
    --  a declaration of the function (meaning we don't have parameter names).
 
    function Function_Proto (T : Type_T; S : Str) return Str
-     with Pre  => Get_Type_Kind (T) = Function_Type_Kind
-                  and then Present (S),
+     with Pre  => Is_Function_Type (T) and then Present (S),
           Post => Present (Function_Proto'Result);
    --  Return the prototype for function type T, using S for where the name
    --  of the function would be.

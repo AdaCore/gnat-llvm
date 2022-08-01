@@ -87,16 +87,16 @@ package CCG.Aggregates is
        then BPU else Default_Alignment (T)))
      with Pre => Present (T);
    procedure Output_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
-     with Pre => Get_Type_Kind (T) = Struct_Type_Kind;
+     with Pre => Is_Struct_Type (T);
    --  Output a typedef for T, a struct type. If Incomplete, only output the
    --  initial struct definition, not the fields.
 
    procedure Output_Array_Typedef (T : Type_T)
-     with Pre => Get_Type_Kind (T) = Array_Type_Kind;
+     with Pre => Is_Array_Type (T);
    --  Output a typedef for T, an array type
 
    procedure Maybe_Output_Array_Return_Typedef (T : Type_T)
-     with Pre => Get_Type_Kind (T) = Array_Type_Kind;
+     with Pre => Is_Array_Type (T);
    --  If we haven't done so already, output the typedef for the struct that
    --  will be used as the actual return type if T were the return type of
    --  a function. This is known to be the name of T with a suffixed "_R".

@@ -726,16 +726,18 @@ package body CCG.Instructions is
 
       if not Is_Array_Type (T) then
          Add_Line (LHS & " = " & RHS + Assign, V);
-      else
-         --  If T is a zero-sized array, it means that we're not to move
-         --  anything, but we make a one-element array for zero-length
-         --  arrays, so taking sizeof the type is wrong.
 
-         if Get_Array_Length (T) /= Nat (0) then
-            Add_Line ("memmove ((void *) " & (Addr_Of (LHS) + Comma) &
-                        ", (void *) " & (Addr_Of (RHS) + Comma) &
-                        ", sizeof (" & T & "))", V);
-         end if;
+      --  If T is a zero-sized array, it means that we're not to move
+      --  anything, but we make a one-element array for zero-length arrays,
+      --  so taking sizeof the type is wrong. Also note that we represent
+      --  the "value" of an array type by its address, so we don't have
+      --  to explicitly take the address here and, in fact, doing that
+      --  is wrong in some cases.
+
+      elsif Get_Array_Length (T) /= Nat (0) then
+         Add_Line ("memmove ((void *) " & (LHS + Unary) &
+                     ", (void *) " & (RHS + Unary) &
+                     ", sizeof (" & T & "))", V);
       end if;
    end Output_Copy;
 

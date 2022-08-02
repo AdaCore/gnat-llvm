@@ -36,9 +36,10 @@ package CCG.Write is
    --  Write the name of a value, type, or basic block. For types, possibly
    --  use entity or value to help say something about the type.
 
-   procedure Write_C_Name (S : String)
+   procedure Write_C_Name (S : String; Need_Suffix : Boolean := False)
      with Pre => S'Length > 0;
-   --  Write S as a valid name in C
+   --  Write S as a valid name in C. If Need_Suffix is True, force a
+   --  suffix to distinguish it from a normal C name.
 
    --  just write the initial definition of the struct, with no fields.
 

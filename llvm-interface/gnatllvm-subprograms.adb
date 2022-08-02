@@ -1123,6 +1123,7 @@ package body GNATLLVM.Subprograms is
             if Present (V) then
                Set_Value_Name (V, P_Name);
                Name := A_Name'Access;
+               C_Set_Entity (V, Param);
             end if;
 
             --  If this is an out parameter, we have to make a variable
@@ -1154,7 +1155,7 @@ package body GNATLLVM.Subprograms is
                      N    => Param,
                      E    => Param,
                      Name => Name.all);
-
+                  C_Set_Entity (LLVM_Param, Param);
                   Store (V, Ptr_To_Relationship
                            (LLVM_Param, Pointer_Type (Int_Ty (Size), 0),
                             Reference_To_Unknown));
@@ -1205,7 +1206,6 @@ package body GNATLLVM.Subprograms is
 
             else
                LLVM_Param := V;
-               C_Set_Entity (LLVM_Param, Param);
             end if;
 
             --  Save the location of an activation record parameter

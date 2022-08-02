@@ -21,16 +21,17 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 
 with Get_Targ; use Get_Targ;
 
-with Atree;    use Atree;
-with Debug;    use Debug;
-with Lib;      use Lib;
-with Opt;      use Opt;
-with Osint;    use Osint;
-with Osint.C;  use Osint.C;
-with Output;   use Output;
-with Set_Targ; use Set_Targ;
-with Sinput;   use Sinput;
-with Uintp;    use Uintp;
+with Atree;       use Atree;
+with Debug;       use Debug;
+with Einfo.Utils; use Einfo.Utils;
+with Lib;         use Lib;
+with Opt;         use Opt;
+with Osint;       use Osint;
+with Osint.C;     use Osint.C;
+with Output;      use Output;
+with Set_Targ;    use Set_Targ;
+with Sinput;      use Sinput;
+with Uintp;       use Uintp;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
@@ -185,8 +186,8 @@ package body CCG.Write is
    -- Write_C_Name --
    ------------------
 
-   procedure Write_C_Name (S : String) is
-      Append_Suffix : Boolean := False;
+   procedure Write_C_Name (S : String; Need_Suffix : Boolean := False) is
+      Append_Suffix : Boolean := Need_Suffix;
    begin
       --  First check for C predefined types and keywords. Note that we do not
       --  need to check C keywords which are also Ada reserved words since
@@ -253,11 +254,18 @@ package body CCG.Write is
    ----------------------
 
    procedure Write_Value_Name (V : Value_T) is
+      E : constant Entity_Id := Get_Entity (V);
+
    begin
-      --  If it has a name, write that name and we're done
+      --  If it has a name, write that name and we're done. But if it's a
+      --  variable not associated with a source entity, append "_" to the
+      --  name since an internal name could conflict with a user name
+      --  (variable vs. function).
 
       if Has_Name (V) then
-         Write_C_Name (Get_Value_Name (V));
+         Write_C_Name
+           (Get_Value_Name (V),
+            not Is_A_Function (V) and then (No (E) or else Is_Type (E)));
 
       --  Otherwise print (and make if necessary) an internal name for this
       --  value.

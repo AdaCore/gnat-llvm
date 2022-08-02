@@ -1835,7 +1835,7 @@ package body CCG.Flow is
                      " has " & Num_Uses (Idx) &
                      (if Num_Uses (Idx) = 1 then " use (" else " uses ("));
 
-         if Is_Entry_Block (BB (Idx)) then
+         if not Is_Return (Idx) and then Is_Entry_Block (BB (Idx)) then
             Write_Str ("ENTRY");
             Num_Uses_Found := Num_Uses_Found + 1;
          end if;

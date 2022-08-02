@@ -813,7 +813,8 @@ package body CCG.Instructions is
       elsif (Get_Is_LHS (LHS) or else Num_Uses (LHS) > 1
             or else Is_Variable (LHS) or else Get_Is_Decl_Output (LHS)
             or else (Is_A_Call_Inst (LHS) and then Is_Aggregate_Type (LHS)))
-        and then not Is_A_Constant_Expr (LHS) and then not Is_Array_Type (LHS)
+        and then not Is_A_Constant_Expr (LHS)
+        and then not (Get_Is_LHS (LHS) and then Is_Array_Type (LHS))
       then
          Maybe_Decl (LHS);
          Output_Copy (LHS, RHS, Type_Of (LHS));

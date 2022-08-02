@@ -757,6 +757,7 @@ package body CCG.Utils is
 
       return (if not Is_A_Instruction (V) then False
         elsif Is_A_Call_Inst (V) or else Is_APHI_Node (V)
+              or else (Is_A_Alloca_Inst (V) and then not Get_Is_LHS (V))
               or else Is_A_Terminator_Inst (V)
               or else Is_A_Store_Inst (V)
               or else (Is_A_Load_Inst (V)

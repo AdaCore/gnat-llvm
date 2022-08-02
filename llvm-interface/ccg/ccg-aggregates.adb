@@ -501,7 +501,17 @@ package body CCG.Aggregates is
 
       Set_Is_LHS (V, Is_LHS);
       if Is_LHS then
-         Set_C_Value (V, Result);
+
+         --  If we have more than one uses and side-effects (e.g., an
+         --  alloca), we can't do this. So remove the LHS indication,
+         --  explicitly take the address, and process as a normal assignment.
+
+         if Num_Uses (V) > 1 and then Has_Side_Effects (V) then
+            Set_Is_LHS (V, False);
+            Assignment (V, Addr_Of (Result));
+         else
+            Set_C_Value (V, Result);
+         end if;
       else
          Assignment (V, Result);
       end if;

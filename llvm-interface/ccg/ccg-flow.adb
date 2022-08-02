@@ -1707,7 +1707,9 @@ package body CCG.Flow is
                      Output_Flow_Target (Target (Cidx), T,
                                          BS       => None,
                                          Depth    => Depth + 1,
-                                         Our_Next => Empty_Flow_Idx);
+                                         Our_Next =>
+                                           (if   Present (Next (Idx))
+                                            then Next (Idx) else Our_Next));
                      if Falls_Through (Target (Cidx)) then
                         Output_Stmt ("break");
                      end if;

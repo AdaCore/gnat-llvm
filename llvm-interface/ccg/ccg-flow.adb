@@ -1491,6 +1491,11 @@ package body CCG.Flow is
    -----------------
 
    procedure Output_Flow (Idx : Flow_Idx) is
+
+      procedure Mark_When_Inline (Idx : Flow_Idx);
+      --  If Idx was expected to be inline (e.g, it has a use count of 1),
+      --  record that by adding it to the Was_Inline set.
+
       procedure Output_Flow_Target
         (Idx      : Flow_Idx;
          V        : Value_T;
@@ -1519,8 +1524,20 @@ package body CCG.Flow is
          "<"          => "<",
          "="          => "=");
       use Output_Flows;
-      To_Output : Set;
-      Output    : Set;
+      To_Output  : Set;
+      Output     : Set;
+      Was_Inline : Set;
+
+      ----------------------
+      -- Mark_When_Inline --
+      ----------------------
+
+      procedure Mark_When_Inline (Idx : Flow_Idx) is
+      begin
+         if Present (Idx) and then Num_Uses (Idx) = 1 then
+            Include (Was_Inline, Idx);
+         end if;
+      end Mark_When_Inline;
 
       ------------------------
       -- Output_Flow_Target --
@@ -1580,13 +1597,13 @@ package body CCG.Flow is
                Include (To_Output, Idx);
             end if;
 
-            --  If this is only used once and we reach here, it means that
-            --  we maxed out on the depth. So indicate where the flow must
-            --  branch when it's been output unless there already is such a
-            --  flow. If it's already been output, something has gone
-            --  wrong.
+            --  If this was expected to be inline and we reach here, it
+            --  means that we maxed out on the depth or the number of uses
+            --  changed. So indicate where the flow must branch when it's
+            --  been output unless there already is such a flow. If it's
+            --  already been output, something has gone wrong.
 
-            if Num_Uses (Idx) = 1 and then Present (Our_Next)
+            if Contains (Was_Inline, Idx) and then Present (Our_Next)
               and then No (Next (Idx))
             then
                pragma Assert (not Contains (Output, Idx));
@@ -1732,14 +1749,16 @@ package body CCG.Flow is
             Output_Flow_Target (Next (Idx), T,
                                 BS       => None,
                                 Depth    => Depth,
-                                Our_Next => Empty_Flow_Idx);
+                                Our_Next => Our_Next);
          end if;
       end Output_One_Flow;
 
    begin  -- Start of processing for Output_Flow
 
-      --  Output the top-level flow
+      --  Mark which flows were expected to be inline during the
+      --  simplification phase. Then output the top-level flow
 
+      Process_Flows (Idx, Mark_When_Inline'Unrestricted_Access);
       Output_One_Flow (Idx, Depth => 0, Write_Label => False);
 
       --  Now loop while there are still flows to output

@@ -228,9 +228,13 @@ package body CCG.Subprograms is
 
       --  Then output the list of parameter types, if any.  If this isn't
       --  for an extern definition, include the parameter names.
+      --  Special-case calloc since we can't tell that the integral type
+      --  is really size_t and that our result is really void *.
 
       if Num_Params = 0 then
          Result := Result & "void";
+      elsif Get_Value_Name (V) = "calloc" then
+         Result := +"void *calloc (size_t, size_t";
       else
          for J in 0 .. Num_Params - 1 loop
             declare

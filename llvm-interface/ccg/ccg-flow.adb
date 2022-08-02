@@ -1833,6 +1833,11 @@ package body CCG.Flow is
                      " has " & Num_Uses (Idx) &
                      (if Num_Uses (Idx) = 1 then " use (" else " uses ("));
 
+         if Is_Entry_Block (BB (Idx)) then
+            Write_Str ("ENTRY");
+            Num_Uses_Found := Num_Uses_Found + 1;
+         end if;
+
          for Fidx in Flow_Idx_Low_Bound + 1 .. Flows.Last loop
             Maybe_Output_Use (Next (Fidx), Fidx);
             if Present (First_If (Fidx)) then

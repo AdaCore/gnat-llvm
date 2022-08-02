@@ -756,16 +756,15 @@ package body CCG.Utils is
       --  try to walk its operands.
 
       return (if not Is_A_Instruction (V) then False
-      elsif Is_A_Call_Inst (V) or else Is_APHI_Node (V)
-                    or else Is_A_Terminator_Inst (V)
-                    or else Is_A_Store_Inst (V)
-                    or else (Is_A_Load_Inst (V)
-                             and then (Get_Volatile (V)
-                                       or else not Is_Variable
-                                                     (Get_Operand0 (V))))
-              then True
-              else (for some J in Nat range 0 .. Get_Num_Operands (V) - 1 =>
-                Has_Side_Effects (Get_Operand (V, J))));
+        elsif Is_A_Call_Inst (V) or else Is_APHI_Node (V)
+              or else Is_A_Terminator_Inst (V)
+              or else Is_A_Store_Inst (V)
+              or else (Is_A_Load_Inst (V)
+                       and then (Get_Volatile (V)
+                                 or else not Is_Variable (Get_Operand0 (V))))
+        then True
+        else (for some J in Nat range 0 .. Get_Num_Operands (V) - 1 =>
+              Has_Side_Effects (Get_Operand (V, J))));
 
    end Has_Side_Effects;
 

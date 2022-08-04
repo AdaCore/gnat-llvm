@@ -35,6 +35,7 @@ with CCG.Environment;  use CCG.Environment;
 with CCG.Flow;         use CCG.Flow;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
+with CCG.Strs;         use CCG.Strs;
 with CCG.Target;       use CCG.Target;
 with CCG.Transform;    use CCG.Transform;
 with CCG.Write;        use CCG.Write;
@@ -87,6 +88,19 @@ package body CCG.Subprograms is
       Table_Initial        => 50,
       Table_Increment      => 50,
       Table_Name           => "Source_Order");
+
+   function Function_Proto
+     (V : Value_T; Parameter_Names : Boolean := True) return Str
+     with Pre  => Is_A_Function (V),
+          Post => Present (Function_Proto'Result);
+   --  Return the prototype for function V, possibly including parameter
+   --  names.
+
+   function Function_Proto (T : Type_T; S : Str) return Str
+     with Pre  => Is_Function_Type (T) and then Present (S),
+          Post => Present (Function_Proto'Result);
+   --  Return the prototype for function type T, using S for where the name
+   --  of the function would be.
 
    function Is_Builtin_Name (S : String) return Boolean is
      (S'Length > 5 and then S (S'First .. S'First + 4) = "llvm.");
@@ -177,11 +191,12 @@ package body CCG.Subprograms is
    --------------------
 
    function Function_Proto
-     (V : Value_T; Extern : Boolean := False) return Str
+     (V : Value_T; Parameter_Names : Boolean := True) return Str
    is
-      Num_Params : constant Nat    := Count_Params (V);
-      Fn_Typ     : constant Type_T := Get_Element_Type (V);
-      Result     : Str             :=
+      Have_Body  : constant Boolean := Present (Get_First_Basic_Block (V));
+      Num_Params : constant Nat     := Count_Params (V);
+      Fn_Typ     : constant Type_T  := Get_Element_Type (V);
+      Result     : Str              :=
         Effective_Return_Type (Fn_Typ) & " " & V & " (";
 
    begin
@@ -199,18 +214,19 @@ package body CCG.Subprograms is
       end if;
 
       --  If inline was requested, mark that, but only if the language
-      --  version is recent enough and only if this isn't an extern
-      --  (because "extern inline" expects a body).
+      --  version is recent enough and only if we have a body (because
+      --  "extern inline" expects a body).
 
       if (Has_Inline_Attribute (V) or else Has_Inline_Always_Attribute (V))
-        and then Version > 1990 and then not Extern
+        and then Version > 1990 and then Have_Body
       then
          Result := "inline " & Result;
       end if;
 
-      --  If inline always was requested, mark that
+      --  If inline always was requested, mark that unless we're just
+      --  declaring this.
 
-      if Has_Inline_Always_Attribute (V) then
+      if Has_Inline_Always_Attribute (V) and then Have_Body then
          Result := "__attribute__ ((always_inline)) " & Result;
       end if;
 
@@ -258,7 +274,7 @@ package body CCG.Subprograms is
                --  Add this parameter to the list, usually preceeded by a comma
 
                Result := Result & (if J = 0 then "" else ", ") & Typ;
-               if not Extern then
+               if Parameter_Names then
                   Result := Result & " " & Param;
                   Set_Is_Decl_Output (Param);
                end if;
@@ -325,7 +341,9 @@ package body CCG.Subprograms is
 
       Output_Decl ((if   Emit_Header or else No (Get_First_Basic_Block (V))
                     then "extern " else "") &
-        Function_Proto (V, Extern => True), V => V, Is_Global => True);
+                         Function_Proto (V,
+                                         Parameter_Names => False),
+                    V => V, Is_Global => True);
 
    end Declare_Subprogram;
 

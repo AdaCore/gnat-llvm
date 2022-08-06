@@ -352,14 +352,6 @@ package body CCG.Output is
       V             : Value_T       := No_Value_T)
    is
    begin
-      --  If we've been given an instruction corresponding to this
-      --  statement and it has side-effects, first flush any pending
-      --  assignments.
-
-      if Present (V) and then Has_Side_Effects (V) then
-         Process_Pending_Values;
-      end if;
-
       --  Add the statement to the current subprogram
 
       Stmts.Append ((Line_Text      =>

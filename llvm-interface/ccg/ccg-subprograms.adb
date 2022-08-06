@@ -90,11 +90,11 @@ package body CCG.Subprograms is
       Table_Name           => "Source_Order");
 
    function Function_Proto
-     (V : Value_T; Parameter_Names : Boolean := True) return Str
+     (V : Value_T; Definition : Boolean := True) return Str
      with Pre  => Is_A_Function (V),
           Post => Present (Function_Proto'Result);
-   --  Return the prototype for function V, possibly including parameter
-   --  names.
+   --  Return the prototype for function V, for either a definition or
+   --  a declaration, as appropriate.
 
    function Function_Proto (T : Type_T; S : Str) return Str
      with Pre  => Is_Function_Type (T) and then Present (S),
@@ -191,9 +191,8 @@ package body CCG.Subprograms is
    --------------------
 
    function Function_Proto
-     (V : Value_T; Parameter_Names : Boolean := True) return Str
+     (V : Value_T; Definition : Boolean := True) return Str
    is
-      Have_Body  : constant Boolean := Present (Get_First_Basic_Block (V));
       Num_Params : constant Nat     := Count_Params (V);
       Fn_Typ     : constant Type_T  := Get_Element_Type (V);
       Result     : Str              :=
@@ -214,19 +213,18 @@ package body CCG.Subprograms is
       end if;
 
       --  If inline was requested, mark that, but only if the language
-      --  version is recent enough and only if we have a body (because
-      --  "extern inline" expects a body).
+      --  version is recent enough and only if it's a definition.
 
       if (Has_Inline_Attribute (V) or else Has_Inline_Always_Attribute (V))
-        and then Version > 1990 and then Have_Body
+        and then Version > 1990 and then Definition
       then
          Result := "inline " & Result;
       end if;
 
-      --  If inline always was requested, mark that unless we're just
-      --  declaring this.
+      --  If inline always was requested, mark it as such, but only in
+      --  the definition.
 
-      if Has_Inline_Always_Attribute (V) and then Have_Body then
+      if Has_Inline_Always_Attribute (V) and then Definition then
          Result := "__attribute__ ((always_inline)) " & Result;
       end if;
 
@@ -274,7 +272,7 @@ package body CCG.Subprograms is
                --  Add this parameter to the list, usually preceeded by a comma
 
                Result := Result & (if J = 0 then "" else ", ") & Typ;
-               if Parameter_Names then
+               if Definition then
                   Result := Result & " " & Param;
                   Set_Is_Decl_Output (Param);
                end if;
@@ -341,8 +339,7 @@ package body CCG.Subprograms is
 
       Output_Decl ((if   Emit_Header or else No (Get_First_Basic_Block (V))
                     then "extern " else "") &
-                         Function_Proto (V,
-                                         Parameter_Names => False),
+                         Function_Proto (V, Definition => False),
                     V => V, Is_Global => True);
 
    end Declare_Subprogram;

@@ -96,9 +96,9 @@ package body CCG.Subprograms is
    --  Return the prototype for function V, for either a definition or
    --  a declaration, as appropriate.
 
-   function Function_Proto (T : Type_T; S : Str) return Str
+   function Function_Type_Proto (T : Type_T; S : Str) return Str
      with Pre  => Is_Function_Type (T) and then Present (S),
-          Post => Present (Function_Proto'Result);
+          Post => Present (Function_Type_Proto'Result);
    --  Return the prototype for function type T, using S for where the name
    --  of the function would be.
 
@@ -163,7 +163,7 @@ package body CCG.Subprograms is
       Fn_T : constant Type_T := Get_Element_Type (T);
 
    begin
-      Output_Decl ("typedef " & Function_Proto (Fn_T, "(*" & T & ")"),
+      Output_Decl ("typedef " & Function_Type_Proto (Fn_T, "(*" & T & ")"),
                    Is_Typedef => True);
    end Output_Function_Type_Typedef;
 
@@ -283,11 +283,11 @@ package body CCG.Subprograms is
       return Result & ")";
    end Function_Proto;
 
-   --------------------
-   -- Function_Proto --
-   --------------------
+   -------------------------
+   -- Function_Type_Proto --
+   -------------------------
 
-   function Function_Proto (T : Type_T; S : Str) return Str is
+   function Function_Type_Proto (T : Type_T; S : Str) return Str is
       Num_Params : constant Nat    := Count_Param_Types (T);
       P_Types    : Type_Array (1 .. Num_Params);
       First      : Boolean         := True;
@@ -309,7 +309,7 @@ package body CCG.Subprograms is
 
       return Result & ")";
 
-   end Function_Proto;
+   end Function_Type_Proto;
 
    ------------------------
    -- Declare_Subprogram --

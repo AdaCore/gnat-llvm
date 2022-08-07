@@ -34,6 +34,10 @@ package CCG.Subprograms is
    --  Add N to the list of file-level objects present in the source if
    --  it indeed does come from the source.
 
+   procedure Protect_Source_Order;
+   --  Make a pass over everything we added to the source order and
+   --  set up to be notified if any of them have been deleted.
+
    procedure New_Subprogram (V : Value_T)
      with Pre => Present (Is_A_Function (V));
    --  Switch to a new subprogram V

@@ -81,13 +81,24 @@ package body CCG.Subprograms is
    --  are declared, along with pragmas Comment and Annotate. We use this
    --  to decide what order to output our translations.
 
+   type Source_Order_Idx is new Nat;
    package Source_Order is new Table.Table
      (Table_Component_Type => Node_Id,
-      Table_Index_Type     => Nat,
+      Table_Index_Type     => Source_Order_Idx,
       Table_Low_Bound      => 1,
       Table_Initial        => 50,
       Table_Increment      => 50,
       Table_Name           => "Source_Order");
+
+   procedure Delete_From_Source_Order (V : Value_T) with Convention => C;
+   --  Called when V, which we know has been added to the source order
+   --  table, is deleted. Remove it from the table if so.
+
+   function Referenced_Value
+     (J : Source_Order_Idx; Defining : out Boolean) return Value_T;
+   --  Find the value, if any, being referenced (declared or defined) in
+   --  the subtree rooted at entry J in the source order table, if any.
+   --  Defining says if it's being declared or defined there.
 
    function Function_Proto
      (V : Value_T; Definition : Boolean := True) return Str
@@ -119,6 +130,76 @@ package body CCG.Subprograms is
    --  Return a string corresponding to the return type of T, adjusting the
    --  type in the case where it's an array.
 
+   ------------------------------
+   -- Delete_From_Source_Order --
+   ------------------------------
+
+   procedure Delete_From_Source_Order (V : Value_T) is
+      Defining : Boolean;
+
+   begin
+      --  Scan the source order table to find the entry for V and invalidate
+      --  that entry. This is quadratic on the number of deleted values,
+      --  but deleting values that are referenced in the source is
+      --  quite rare.
+
+      for J in 1 .. Source_Order.Last loop
+         if Referenced_Value (J, Defining) = V then
+            Source_Order.Set_Item (J, Types.Empty);
+            exit;
+         end if;
+      end loop;
+   end Delete_From_Source_Order;
+
+   ----------------------
+   -- Referenced_Value --
+   ----------------------
+
+   function Referenced_Value
+     (J : Source_Order_Idx; Defining : out Boolean) return Value_T
+   is
+      N : constant Node_Id := Source_Order.Table (J);
+      E : Entity_Id        := Types.Empty;
+
+   begin
+      --  If there's no entity (in the rare case where a value was deleted),
+      --  show there's no value either.
+
+      if No (N) then
+         return No_Value_T;
+      end if;
+
+      --  In most cases, we're just declaring the value
+
+      Defining := False;
+
+      case Nkind (N) is
+         when N_Object_Declaration | N_Object_Renaming_Declaration |
+           N_Exception_Declaration | N_Exception_Renaming_Declaration
+           =>
+            E := Defining_Identifier (N);
+
+         when N_Subprogram_Declaration =>
+            E := Defining_Unit_Name (Specification (N));
+
+         when N_Subprogram_Body =>
+            Defining := True;
+            E        := Defining_Unit_Name (Acting_Spec (N));
+
+         when N_Pragma =>
+            null;
+
+         when others =>
+            pragma Assert (Standard.False);
+      end case;
+
+      --  If the entity has a value, return it
+
+      return
+        (if   Present (E) and then Present (Get_Value (E))
+           then +Get_Value (E) else No_Value_T);
+   end Referenced_Value;
+
    -------------------------
    -- Add_To_Source_Order --
    -------------------------
@@ -134,6 +215,24 @@ package body CCG.Subprograms is
          Source_Order.Append (N);
       end if;
    end Add_To_Source_Order;
+
+   --------------------------
+   -- Protect_Source_Order --
+   --------------------------
+
+   procedure Protect_Source_Order is
+      Defining : Boolean;
+
+   begin
+      --  Note that we can't do this when we add each source order entry
+      --  because we may not have made a value for it (e.g., if there's
+      --  a freeze node.
+
+      for J in 1 .. Source_Order.Last loop
+         Notify_On_Value_Delete
+           (Referenced_Value (J, Defining), Delete_From_Source_Order'Access);
+      end loop;
+   end Protect_Source_Order;
 
    --------------------
    -- New_Subprogram --
@@ -753,17 +852,6 @@ package body CCG.Subprograms is
    ------------------
 
    procedure Write_C_File is
-      function Referenced_Value
-        (N : Node_Id; Defining : out Boolean) return Value_T
-        with Pre => Nkind (N) in N_Pragma | N_Subprogram_Declaration |
-                                 N_Subprogram_Body | N_Object_Declaration |
-                                 N_Object_Renaming_Declaration |
-                                 N_Exception_Declaration |
-                                 N_Exception_Renaming_Declaration;
-      --  Find the value, if any, being referenced (declared or defined) in
-      --  the subtree rooted at N. Defining says if it's being declared
-      --  or defined there.
-
       procedure Write_One_Subprogram (Sidx : Subprogram_Idx)
         with Pre => Present (Sidx);
       --  Write the declarations and statements for Sidx, a subprogram
@@ -798,47 +886,6 @@ package body CCG.Subprograms is
 
       Declaration_Map : Value_To_Decl_Maps.Map;
       Definition_Map  : Value_To_Subprogram_Maps.Map;
-
-      ----------------------
-      -- Referenced_Value --
-      ----------------------
-
-      function Referenced_Value
-        (N : Node_Id; Defining : out Boolean) return Value_T
-      is
-         E : Entity_Id := Types.Empty;
-
-      begin
-         --  In most cases, we're just declaring the value
-
-         Defining := False;
-
-         case Nkind (N) is
-            when N_Object_Declaration | N_Object_Renaming_Declaration |
-                 N_Exception_Declaration | N_Exception_Renaming_Declaration
-              =>
-               E := Defining_Identifier (N);
-
-            when N_Subprogram_Declaration =>
-               E := Defining_Unit_Name (Specification (N));
-
-            when N_Subprogram_Body =>
-               Defining := True;
-               E        := Defining_Unit_Name (Acting_Spec (N));
-
-            when N_Pragma =>
-               null;
-
-            when others =>
-               pragma Assert (Standard.False);
-         end case;
-
-         --  If the entity has a value, return it
-
-         return
-           (if   Present (E) and then Present (Get_Value (E))
-            then +Get_Value (E) else No_Value_T);
-      end Referenced_Value;
 
       --------------------------
       -- Write_One_Subprogram --
@@ -939,8 +986,7 @@ package body CCG.Subprograms is
       for J in 1 .. Source_Order.Last loop
          declare
             Defining : Boolean;
-            V        : constant Value_T :=
-              Referenced_Value (Source_Order.Table (J), Defining);
+            V        : constant Value_T := Referenced_Value (J, Defining);
 
          begin
             if Present (V) then
@@ -1023,8 +1069,7 @@ package body CCG.Subprograms is
       for J in 1 .. Source_Order.Last loop
          declare
             Defining : Boolean;
-            N        : constant Node_Id := Source_Order.Table (J);
-            V        : constant Value_T := Referenced_Value (N, Defining);
+            V        : constant Value_T := Referenced_Value (J, Defining);
 
          begin
             if Present (V) then

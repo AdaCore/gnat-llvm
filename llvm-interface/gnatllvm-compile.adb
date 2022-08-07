@@ -198,6 +198,7 @@ package body GNATLLVM.Compile is
 
       --   Now finalize things and generate code
 
+      C_Protect_Source_Order;
       Output_Global_Constructors_Destructors;
       Add_Functions_To_Module;
       Finalize_Debugging;

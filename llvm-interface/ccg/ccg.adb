@@ -201,6 +201,12 @@ package body CCG is
       end if;
    end C_Add_To_Source_Order;
 
+   ----------------------------
+   -- C_Protect_Source_Order --
+   ----------------------------
+
+   procedure C_Protect_Source_Order renames Protect_Source_Order;
+
    ----------------------
    -- C_Set_Field_Info --
    ----------------------
@@ -323,6 +329,5 @@ package body CCG is
    -- C_Set_Parameter --
    ---------------------
 
-   procedure C_Set_Parameter (S : String)
-     renames Set_C_Parameter;
+   procedure C_Set_Parameter (S : String) renames Set_C_Parameter;
 end CCG;

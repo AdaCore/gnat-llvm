@@ -79,6 +79,11 @@ package body CCG.Instructions is
                   and then Present (Op2);
    --  Process a store instruction
 
+   function Select_Instruction (Op1, Op2, Op3 : Value_T) return Str
+     with Pre  => Present (Op1) and then Present (Op2) and then Present (Op3),
+          Post => Present (Select_Instruction'Result);
+   --  Return the value corresponding to a "select" instruction
+
    function Binary_Instruction (V, Op1, Op2 : Value_T) return Str
      with Pre  => Acts_As_Instruction (V) and then Present (Op1)
                   and then Present (Op2),
@@ -371,6 +376,27 @@ package body CCG.Instructions is
       Process_Pending_Values;
       Output_Copy (LHS, RHS, Type_Of (Op1), V => V);
    end Store_Instruction;
+
+   ------------------------
+   -- Select_Instruction --
+   ------------------------
+
+   function Select_Instruction (Op1, Op2, Op3 : Value_T) return Str is
+   begin
+      --  If either operand has side effects, force it to a variable so that
+      --  we're sure that both are evaluated.
+
+      if Has_Side_Effects (Op2) then
+         Force_To_Variable (Op2);
+      end if;
+      if Has_Side_Effects (Op3) then
+         Force_To_Variable (Op3);
+      end if;
+
+      --  Now generate the C conditional operation
+
+      return TP ("#1 ? #2 : #3", Op1, Op2, Op3) + Conditional;
+   end Select_Instruction;
 
    ------------------------
    -- Binary_Instruction --
@@ -817,8 +843,7 @@ package body CCG.Instructions is
 
          Set_C_Value (LHS, RHS);
          if Is_A_Instruction (LHS)
-           and then (Num_Uses (LHS) > 0
-                     or else (Is_A_Call_Inst (LHS) and not Is_Opencode_Builtin)
+           and then ((Is_A_Call_Inst (LHS) and then not Is_Opencode_Builtin)
                      or else Is_A_Load_Inst (LHS))
          then
             Pending_Values.Append (LHS);
@@ -865,7 +890,7 @@ package body CCG.Instructions is
             Assignment (V, Cmp_Instruction (V, Op1, Op2));
 
          when Op_Select =>
-            Assignment (V, TP ("#1 ? #2 : #3", Op1, Op2, Op3) + Conditional);
+            Assignment (V, Select_Instruction (Op1, Op2, Op3));
 
          when Op_Add | Op_Sub | Op_Mul | Op_S_Div | Op_U_Div | Op_S_Rem
             | Op_U_Rem | Op_Shl | Op_L_Shr | Op_A_Shr | Op_F_Add | Op_F_Sub

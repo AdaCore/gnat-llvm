@@ -1639,6 +1639,12 @@ package body GNATLLVM.GLValue is
          Add_Inline_Always_Attribute (+V);
       elsif No_Inlining then
          Add_Inline_No_Attribute (+V);
+
+      --  We want to inline expression functions as much as practical unless
+      --  -Os or -gnatd.8. Note that we are abusing the Inline_Always attribute
+      --  for this purpose since failure to inline is not considered fatal in
+      --  this context.
+
       elsif Is_Expression_Function (Subp) and then Size_Opt_Level = 0
         and then not Debug_Flag_Dot_8
       then

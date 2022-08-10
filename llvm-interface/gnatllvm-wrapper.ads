@@ -251,6 +251,9 @@ package GNATLLVM.Wrapper is
    procedure Set_NSW (V : Value_T)
      with Import, Convention => C, External_Name => "Set_NSW";
 
+   function Has_NSW (V : Value_T) return Boolean
+     with Pre => Present (Is_A_Instruction (V));
+
    procedure Set_Volatile_For_Atomic (V : Value_T)
      with Import, Convention => C, External_Name => "Set_Volatile_For_Atomic";
 

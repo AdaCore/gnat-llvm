@@ -280,6 +280,17 @@ package body GNATLLVM.Wrapper is
       return Has_Nest_Attribute (Func, Idx) /= 0;
    end Has_Nest_Attribute;
 
+   -------------
+   -- Has_NSW --
+   -------------
+
+   function Has_NSW (V : Value_T) return Boolean is
+      function Has_NSW (V : Value_T) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Has_NSW";
+   begin
+      return Has_NSW (V) /= 0;
+   end Has_NSW;
+
    -----------------------------------------
    -- Get_Metadata_Operand_Constant_Value --
    -----------------------------------------

@@ -311,6 +311,13 @@ Set_NSW (Instruction *inst)
 }
 
 extern "C"
+bool
+Has_NSW (Instruction *inst)
+{
+  return inst->hasNoSignedWrap ();
+}
+
+extern "C"
 void
 Add_TBAA_Access (Instruction *inst, MDNode *md)
 {

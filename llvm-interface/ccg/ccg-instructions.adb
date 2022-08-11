@@ -403,23 +403,40 @@ package body CCG.Instructions is
    ------------------------
 
    function Binary_Instruction (V, Op1, Op2 : Value_T) return Str is
-      Opc : constant Opcode_T := Get_Opcode (V);
-      T   : constant Type_T   := Type_Of (V);
-      POO : constant Process_Operand_Option :=
+      Opc      : constant Opcode_T                := Get_Opcode (V);
+      T        : constant Type_T                 := Type_Of (V);
+      Can_Ovfl : constant Boolean                :=
+        Is_A_Instruction (V) and then Opc in Op_Add | Op_Sub | Op_Mul
+        and then not Has_NSW (V);
+      POO      : constant Process_Operand_Option :=
         (case Opc is when Op_U_Div | Op_U_Rem | Op_L_Shr => POO_Unsigned,
                      when Op_S_Div | Op_S_Rem | Op_A_Shr => POO_Signed,
-                     when others => X);
+                     when others => (if Can_Ovfl then POO_Unsigned else X));
+      --  If this operation is allowed to overflow, we must ensure that
+      --  it's performed as unsigned, since unsigned overflow is defined.
+      --  If we don't do this, some C compilers can make incorrect
+      --  assumptions. After we do this, we have to convert back to the
+      --  signed type and that conversion may produce an unrepresentable
+      --  value, which is implementation-specified, but all compilers do
+      --  the right thing as far as we know and there doesn't seem to be a
+      --  better approach.
+
+      Result : Str;
+
    begin
       case Opc is
          when Op_Add =>
             --  ??? J + -6 should be J - 6 and likewise for Op_Sub
-            return TP ("#1 + #2", Op1, Op2) + Add;
+            Result := Process_Operand (Op1, POO, Add) & " + " &
+              Process_Operand (Op2, POO, Add) + Add;
 
          when Op_Sub =>
-            return TP ("#1 - #2", Op1, Op2) + Add;
+            Result := Process_Operand (Op1, POO, Add) & " - " &
+              Process_Operand (Op2, POO, Add) + Add;
 
          when Op_Mul =>
-            return TP ("#1 * #2", Op1, Op2) + Mult;
+            Result := Process_Operand (Op1, POO, Mult) & " * " &
+              Process_Operand (Op2, POO, Mult) + Mult;
 
          when Op_S_Div | Op_U_Div =>
             return (Process_Operand (Op1, POO, Mult) & " / " &
@@ -481,6 +498,17 @@ package body CCG.Instructions is
          when others =>
             return raise Program_Error;
       end case;
+
+      --  If we fall through to here and have an instruction that can
+      --  overflow but which wasn't supposed to be unsigned, cast the
+      --  result to signed.
+
+      if Can_Ovfl and then not Is_Unsigned (V) then
+         Result := "(" & T & ") (" & Result & ")" + Unary;
+      end if;
+
+      return Result;
+
    end Binary_Instruction;
 
    ----------------------

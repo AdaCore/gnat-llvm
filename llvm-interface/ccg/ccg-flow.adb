@@ -1603,14 +1603,31 @@ package body CCG.Flow is
             --  been output unless there already is such a flow. If it's
             --  already been output, something has gone wrong.
 
-            if Contains (Was_Inline, Idx) and then Present (Our_Next)
-              and then No (Next (Idx))
-            then
-               pragma Assert (not Contains (Output, Idx));
-               Set_Next (Idx, Our_Next);
-            end if;
+            if Contains (Was_Inline, Idx) and then Present (Our_Next) then
 
+               --  Go down the (possibly empty) chain of Next's to find one
+               --  that has no Next entry.  Since this might be an infinite
+               --  loop, set a limit. If we hit a flow that was output, we
+               --  could not have pulled a Next out of it, so we don't need
+               --  to look past that point.
+
+               declare
+                  Next_Idx : Flow_Idx := Idx;
+
+               begin
+                  for J in 1 .. 200 loop
+                     exit when Contains (Output, Next_Idx);
+                     if No (Next (Next_Idx)) then
+                        Set_Next (Next_Idx, Our_Next);
+                        exit;
+                     else
+                        Next_Idx := Next (Next_Idx);
+                     end if;
+                  end loop;
+               end;
+            end if;
          end if;
+
          End_Stmt_Block (BS);
       end Output_Flow_Target;
 

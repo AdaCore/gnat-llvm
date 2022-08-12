@@ -64,9 +64,11 @@ package CCG.Instructions is
    --  Write a statement to copy RHS, of type T, to LHS. If V is Present,
    --  it represents something that may give line/file information.
 
-   procedure Process_Pending_Values;
+   procedure Process_Pending_Values (Calls_Only : Boolean := False);
    --  Walk the set of pending values in reverse order and generate
-   --  assignments for any that haven't been written yet.
+   --  assignments for any that haven't been written yet. Is Call_Only,
+   --  we only want to process pending calls (this is used when seeing a
+   --  load).
 
    function Create_Annotation (S : String) return Nat;
    --  Return the value to put as the operand of a call to llvm.ccg.annotate

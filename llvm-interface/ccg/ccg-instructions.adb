@@ -260,7 +260,7 @@ package body CCG.Instructions is
    -- Process_Pending_Values --
    ----------------------------
 
-   procedure Process_Pending_Values is
+   procedure Process_Pending_Values (Calls_Only : Boolean := False) is
    begin
       --  We have a list of pending values, which represent LLVM
       --  instructions that are being stored as C expressions and not
@@ -284,7 +284,9 @@ package body CCG.Instructions is
             V : constant Value_T := Pending_Values.Table (J);
 
          begin
-            if not Get_Is_Used (V) then
+            if not Get_Is_Used (V)
+              and then (not Calls_Only or Is_A_Call_Inst (V))
+            then
                Force_To_Variable (V);
             end if;
          end;
@@ -361,6 +363,7 @@ package body CCG.Instructions is
    begin
       --  ??? Need to deal with both unaligned load and unaligned store
 
+      Process_Pending_Values (Calls_Only => True);
       Assignment (V, Deref_For_Load_Store (Op, V));
    end Load_Instruction;
 

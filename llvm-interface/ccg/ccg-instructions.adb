@@ -296,7 +296,12 @@ package body CCG.Instructions is
          end;
       end loop;
 
-      Pending_Values.Set_Last (0);
+      --  If we're processing all of the pending values, clear them
+
+      if not Calls_Only then
+         Clear_Pending_Values;
+      end if;
+
    end Process_Pending_Values;
 
    --------------------------

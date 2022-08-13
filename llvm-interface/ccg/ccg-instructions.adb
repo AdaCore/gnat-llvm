@@ -279,6 +279,10 @@ package body CCG.Instructions is
       --  written out here are independent and thus the fact that we're
       --  writing them out "backwards" is fine.
 
+      --  ??? This is quadratic in the number of pending values and they
+      --  can accumulate between blocks. We need to find a better
+      --  implementation.
+
       for J in reverse 1 .. Pending_Values.Last loop
          declare
             V : constant Value_T := Pending_Values.Table (J);
@@ -294,6 +298,15 @@ package body CCG.Instructions is
 
       Pending_Values.Set_Last (0);
    end Process_Pending_Values;
+
+   --------------------------
+   -- Clear_Pending_Values --
+   --------------------------
+
+   procedure Clear_Pending_Values is
+   begin
+      Pending_Values.Set_Last (0);
+   end Clear_Pending_Values;
 
    ------------------------
    -- Alloca_Instruction --

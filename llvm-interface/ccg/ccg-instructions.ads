@@ -70,6 +70,11 @@ package CCG.Instructions is
    --  we only want to process pending calls (this is used when seeing a
    --  load).
 
+   procedure Clear_Pending_Values;
+   --  Clear any pending values that remain at the end of a subprogram.
+   --  They're dead, but we don't want them to be output as part of another
+   --  subprogram.
+
    function Create_Annotation (S : String) return Nat;
    --  Return the value to put as the operand of a call to llvm.ccg.annotate
    --  to write Str into the C output.

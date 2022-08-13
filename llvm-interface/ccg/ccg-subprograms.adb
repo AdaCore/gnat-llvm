@@ -475,6 +475,7 @@ package body CCG.Subprograms is
       Simplify_Flow (Idx);
       Maybe_Dump_Flow (Idx, V, "Simplified");
       Output_Flow (Idx);
+      Clear_Pending_Values;
 
    end Output_Subprogram;
 

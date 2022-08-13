@@ -323,7 +323,9 @@ package body CCG.Subprograms is
       --  If inline always was requested, mark it as such, but only in
       --  the definition.
 
-      if Has_Inline_Always_Attribute (V) and then Definition then
+      if Has_Inline_Always_Attribute (V) and then Version > 1990
+        and then Definition
+      then
          Result := "__attribute__ ((always_inline)) " & Result;
       end if;
 

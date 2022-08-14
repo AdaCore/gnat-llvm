@@ -594,8 +594,7 @@ package body GNATLLVM.Codegen is
          end Object;
 
          when Write_C =>
-
-            Generate_C (Module);
+            C_Generate (Module);
 
          when None =>
             null;

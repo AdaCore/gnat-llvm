@@ -24,6 +24,8 @@ with Table;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 
+with CCG.Codegen; use CCG.Codegen;
+
 package body CCG.Target is
 
    --  We have a table of parameters, which are (for now at least) either

@@ -30,6 +30,7 @@ with GNATLLVM.Utils;       use GNATLLVM.Utils;
 with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;   use CCG.Aggregates;
+with CCG.Codegen;      use CCG.Codegen;
 with CCG.Environment;  use CCG.Environment;
 with CCG.Flow;         use CCG.Flow;
 with CCG.Instructions; use CCG.Instructions;

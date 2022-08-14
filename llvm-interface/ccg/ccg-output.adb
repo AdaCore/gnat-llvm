@@ -20,6 +20,7 @@ with Table;
 with GNATLLVM.Types; use GNATLLVM.Types;
 
 with CCG.Aggregates;   use CCG.Aggregates;
+with CCG.Codegen;      use CCG.Codegen;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Utils;        use CCG.Utils;

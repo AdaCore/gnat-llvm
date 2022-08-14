@@ -106,7 +106,7 @@ package body GNATLLVM.Compile is
       --  generate C code), initialize that subsystem.
 
       if Emit_C then
-         Initialize_C_Output;
+         C_Initialize_Output;
       end if;
 
       --  Initialize the environment and get the sizes of fat and thin

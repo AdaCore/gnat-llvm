@@ -1032,9 +1032,9 @@ package body GNATLLVM.Variables is
       Not_Symbolic   : Boolean := False;
       Restrict_Types : Boolean := False) return Boolean
    is
-      GT : constant GL_Type := Full_GL_Type (E);
-      CV : constant Opt_N_Subexpr_Id  := Initialized_Value (E);
-      V  : constant GL_Value          := Get_Value (E);
+      GT : constant GL_Type          := Full_GL_Type (E);
+      CV : constant Opt_N_Subexpr_Id := Initialized_Value (E);
+      V  : constant GL_Value         := Get_Value (E);
 
    begin
       if Ekind (E) = E_Enumeration_Literal then
@@ -2157,7 +2157,8 @@ package body GNATLLVM.Variables is
       --  source level, we can't modify it even if its address is taken.
 
       elsif Is_True_Constant (E)
-        and then (not Emit_C or else not Comes_From_Source (E))
+        and then (not Emit_C or else not Comes_From_Source (E)
+                  or else Is_No_Elab_Needed_For_Entity (E))
         and then (not Is_Volatile or else Ekind (E) = E_Constant)
         and then (Present (Expr) or else Present (Value))
       then

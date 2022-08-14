@@ -20,7 +20,27 @@ package CCG.Target is
    --  This package contains target information about the C compiler used
    --  and how to format and generate code.
 
-   Version       : aliased Integer := 1999;
+   Target_Info_File  : String_Access  := null;
+   --  If non-null, the name of a file from which to read C target parameters
+
+   Dump_C_Parameters : Boolean        := False;
+   --  True if we should dump the values of the C target parameters
+
+   C_Parameter_File  : String_Access  := null;
+   --  If non-null, the name of a file to dump the C parameters
+
+   procedure Read_C_Parameters (Name : String);
+   --  Read C parameters from file Name
+
+   procedure Set_C_Parameter (S : String);
+   --  S is of the form "name=value". Use it to set parameter "name" to "value"
+
+   procedure Output_C_Parameters;
+   --  Output all the C parameters
+
+   --  These are the parameters themselves
+
+   Version            : aliased Integer := 1999;
    --  C standard for which we're to write output
 
    C_Indent           : aliased Integer := 2;
@@ -46,14 +66,5 @@ package CCG.Target is
    --  In others (e.g., gcc), if the function can't be inlined, it issues
    --  a warning (or error, depending on the warning mode). The value of
    --  this option says which is the case.
-
-   procedure Read_C_Parameters (Name : String);
-   --  Read C parameters from file Name
-
-   procedure Set_C_Parameter (S : String);
-   --  S is of the form "name=value". Use it to set parameter "name" to "value"
-
-   procedure Output_C_Parameters;
-   --  Output all the C parameters
 
 end CCG.Target;

@@ -21,15 +21,6 @@ package CCG.Codegen is
    --  Says whether to output no function to .h file, only those that are
    --  are marked as Inline_Always, or those plus ones marked Inline.
 
-   Target_Info_File  : String_Access  := null;
-   --  If non-null, the name of a file from which to read C target parameters
-
-   Dump_C_Parameters : Boolean        := False;
-   --  True if we should dump the values of the C target parameters
-
-   C_Parameter_File  : String_Access  := null;
-   --  If non-null, the name of a file to dump the C parameters
-
    Emit_Header       : Boolean        := False;
    --  If True, emit header to .h file
 

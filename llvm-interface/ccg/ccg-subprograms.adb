@@ -24,7 +24,6 @@ with Atree;  use Atree;
 with Output; use Output;
 with Table;
 
-with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;

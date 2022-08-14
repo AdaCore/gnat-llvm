@@ -33,7 +33,6 @@ with Set_Targ;    use Set_Targ;
 with Sinput;      use Sinput;
 with Uintp;       use Uintp;
 
-with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;

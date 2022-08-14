@@ -110,20 +110,6 @@ package body GNATLLVM.Codegen is
          Code_Generation := Write_BC;
       elsif Switch = "-emit-c" then
          Emit_C := True;
-      elsif Switch = "-emit-header" then
-         Emit_C      := True;
-         Emit_Header := True;
-      elsif Starts_With ("-header-inline=") then
-         if Switch_Value ("-header-inline=") = "none" then
-            Header_Inline := None;
-         elsif Switch_Value ("-header-inline=") = "inline-always" then
-            Header_Inline := Inline_Always;
-         elsif Switch_Value ("-header-inline=") = "inline" then
-            Header_Inline := Inline;
-         else
-            Early_Error ("invalid -header-inline option: " &
-                           Switch_Value ("-header-inline="));
-         end if;
       elsif Switch = "-emit-llvm" then
          Emit_LLVM := True;
       elsif Switch = "-S" then
@@ -133,13 +119,6 @@ package body GNATLLVM.Codegen is
       then
          Emit_Debug_Info      := True;
          Emit_Full_Debug_Info := True;
-      elsif Switch = "-fdump-c-parameters" then
-         Dump_C_Parameters := True;
-      elsif Starts_With ("-fdump-c-parameters=") then
-         Dump_C_Parameters := True;
-         To_Free           := C_Parameter_File;
-         C_Parameter_File  :=
-           new String'(Switch_Value ("-fdump-c-parameters="));
       elsif Switch = "-fstack-check" then
          Do_Stack_Check := True;
       elsif Switch = "-fshort-enums" then
@@ -299,11 +278,8 @@ package body GNATLLVM.Codegen is
          Reloc_Mode := Reloc_Default;
       elsif Starts_With ("-llvm-") then
          Switches.Append (new String'(Switch_Value ("-llvm")));
-      elsif Starts_With ("-c-target-file=") then
-         To_Free          := Target_Info_File;
-         Target_Info_File := new String'(Switch_Value ("-c-target-file="));
-      elsif Starts_With ("-c-target-") then
-         C_Set_Parameter (Switch_Value ("-c-target-"));
+      elsif C_Process_Switch (Switch) then
+         null;
       end if;
 
       --  Free string that we replaced above, if any
@@ -420,13 +396,6 @@ package body GNATLLVM.Codegen is
       elsif Output_Assembly then
          Code_Generation := Write_Assembly;
 
-      end if;
-
-      --  Can't dump C parameters if not generating C
-
-      if Dump_C_Parameters and then not Emit_C then
-         Early_Error
-           ("cannot specify -fdump-c-parameters unless generating C");
       end if;
 
       --  Initialize the translation environment

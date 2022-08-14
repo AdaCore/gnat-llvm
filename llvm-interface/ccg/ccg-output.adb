@@ -17,8 +17,7 @@
 
 with Table;
 
-with GNATLLVM.Codegen; use GNATLLVM.Codegen;
-with GNATLLVM.Types;   use GNATLLVM.Types;
+with GNATLLVM.Types; use GNATLLVM.Types;
 
 with CCG.Aggregates;   use CCG.Aggregates;
 with CCG.Instructions; use CCG.Instructions;

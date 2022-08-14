@@ -179,6 +179,29 @@ package CCG is
    procedure C_Set_Parameter (S : String);
    --  S is of the form "name=value". Use it to set parameter "name" to "value"
 
+   function C_Process_Switch (Switch : String) return Boolean;
+   --  S is a switch passed to GNAT LLVM. If it's a switch meaningful
+   --  to CCG, process it and return True.
+
+   type Inline_Header is (None, Inline_Always, Inline);
+   --  Says whether to output no function to .h file, only those that are
+   --  are marked as Inline_Always, or those plus ones marked Inline.
+
+   Target_Info_File  : String_Access  := null;
+   --  If non-null, the name of a file from which to read C target parameters
+
+   Dump_C_Parameters : Boolean        := False;
+   --  True if we should dump the values of the C target parameters
+
+   C_Parameter_File  : String_Access  := null;
+   --  If non-null, the name of a file to dump the C parameters
+
+   Emit_Header       : Boolean        := False;
+   --  If True, emit header to .h file
+
+   Header_Inline     : Inline_Header  := None;
+   --  Says which inline functions to write to .h file
+
    Emit_C_Line        : Boolean := False;
    --  When generating C code, indicates that we want to generate #line
    --  directives. This corresponds to -g.

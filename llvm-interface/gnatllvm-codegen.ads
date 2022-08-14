@@ -19,67 +19,52 @@ with Options; use Options;
 
 package GNATLLVM.Codegen is
 
-   type Inline_Header is (None, Inline_Always, Inline);
-   --  Says whether to output no function to .h file, only those that are
-   --  are marked as Inline_Always, or those plus ones marked Inline.
-
-   Filename : String_Access := new String'("");
-   --  Filename to compile.
-
    type Code_Generation_Kind is
      (Dump_IR, Write_IR, Write_BC, Write_Assembly, Write_Object, Write_C,
       None);
 
-   Code_Generation   : Code_Generation_Kind := Write_Object;
+   Filename        : String_Access := new String'("");
+   --  Filename to compile.
+
+   Code_Generation : Code_Generation_Kind := Write_Object;
    --  Type of code generation we're doing
 
-   Emit_C            : Boolean        := CCG;
+   Emit_C          : Boolean        := CCG;
    --  True if -emit-c was specified explicitly or CCG set
 
-   Target_Info_File  : String_Access  := null;
-   --  If non-null, the name of a file from which to read C target parameters
-
-   Dump_C_Parameters : Boolean        := False;
-   --  True if we should dump the values of the C target parameters
-
-   C_Parameter_File  : String_Access  := null;
-   --  If non-null, the name of a file to dump the C parameters
-
-   Emit_Header       : Boolean        := False;
-   --  If True, emit header to .h file
-
-   Header_Inline     : Inline_Header  := None;
-   --  Says which inline functions to write to .h file
-
-   CPU               : String_Access  := new String'("generic");
+   CPU             : String_Access  := new String'("generic");
    --  Name of the specific CPU for this compilation.
 
-   Features          : String_Access  := new String'("");
+   Features        : String_Access  := new String'("");
    --  Features to enable or disable for this target
 
-   Target_Triple     : String_Access  :=
+   Target_Triple   : String_Access  :=
      new String'(Get_Default_Target_Triple);
    --  Name of the target for this compilation
 
-   Target_Layout     : String_Access  := null;
+   Target_Layout   : String_Access  := null;
    --  Target data layout, if specified
 
-   Code_Gen_Level    : Code_Gen_Opt_Level_T := Code_Gen_Level_None;
+   Code_Gen_Level  : Code_Gen_Opt_Level_T := Code_Gen_Level_None;
    --  Optimization level for codegen
 
-   Code_Model        : Code_Model_T   := Code_Model_Default;
-   Reloc_Mode        : Reloc_Mode_T   := Reloc_Default;
+   Code_Model      : Code_Model_T   := Code_Model_Default;
+   Reloc_Mode      : Reloc_Mode_T   := Reloc_Default;
    --  Code generation options
 
-   Code_Opt_Level    : Int            := 0;
-   Size_Opt_Level    : Int            := 0;
+   Code_Opt_Level  : Int            := 0;
+   Size_Opt_Level  : Int            := 0;
    --  Optimization levels
 
-   DSO_Preemptable   : Boolean        := False;
+   DSO_Preemptable : Boolean        := False;
    --  Indicates that the function or variable may be replaced by a symbol
    --  from outside the linkage unit at runtime.  clang derives this from
    --  a complex set of machine-dependent criterial, but the need for
    --  this is rare enough that we'll just provide a switch instead.
+
+   Optimize_IR     : Boolean := True;
+   --  True if we should optimize IR before writing it out when optimization
+   --  is enabled.
 
    No_Strict_Aliasing_Flag : Boolean := False;
    C_Style_Aliasing        : Boolean := False;
@@ -98,10 +83,6 @@ package GNATLLVM.Codegen is
    --  Indicates that we need to force all subprograms to have an activation
    --  record parameter.  We need to do this for targets, such as WebAssembly,
    --  that require strict parameter agreement between calls and declarations.
-
-   Optimize_IR           : Boolean := True;
-   --  True if we should optimize IR before writing it out when optimization
-   --  is enabled.
 
    procedure Scan_Command_Line;
    --  Scan operands relevant to code generation

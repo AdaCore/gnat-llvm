@@ -20,7 +20,8 @@ with LLVM.Core; use LLVM.Core;
 with Atree;       use Atree;
 with Einfo.Utils; use Einfo.Utils;
 with Errout;      use Errout;
-with Lib;
+with Lib;         use Lib;
+with Switch;      use Switch;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -47,6 +48,13 @@ package body CCG is
 
    procedure Initialize_C_Output is
    begin
+      --  Can't dump C parameters if not generating C
+
+      if Dump_C_Parameters and then not Emit_C then
+         Early_Error
+           ("cannot specify -fdump-c-parameters unless generating C");
+      end if;
+
       --  When emitting C, we don't want to write variable-specific debug
       --  info, just line number information. But we do want to write #line
       --  info if -g was specified. We always want to write location
@@ -316,13 +324,13 @@ package body CCG is
          begin
             if File /= "" then
                Error_Msg_N (Msg & " at " & File & ":" & Line (2 .. Line'Last),
-                            Lib.Cunit (Types.Main_Unit));
+                            Cunit (Types.Main_Unit));
                return;
             end if;
          end;
       end if;
 
-      Error_Msg_N (Msg, Lib.Cunit (Types.Main_Unit));
+      Error_Msg_N (Msg, Cunit (Types.Main_Unit));
    end Error_Msg;
 
    -------------------------
@@ -337,4 +345,66 @@ package body CCG is
    ---------------------
 
    procedure C_Set_Parameter (S : String) renames Set_C_Parameter;
+
+   ----------------------
+   -- C_Process_Switch --
+   ----------------------
+
+   function C_Process_Switch (Switch : String) return Boolean is
+      First   : constant Integer := Switch'First;
+      Last    : constant Integer := Switch_Last (Switch);
+      Len     : constant Integer := Last - First + 1;
+      To_Free : String_Access    := null;
+
+      function Starts_With (S : String) return Boolean is
+        (Len > S'Length and then Switch (First .. First + S'Length - 1) = S);
+      --  Return True if Switch starts with S
+
+      function Switch_Value (S : String) return String is
+        (Switch (S'Length + First .. Last));
+      --  Returns the value of a switch known to start with S
+
+   begin
+      if Switch = "-emit-header" then
+         Emit_C      := True;
+         Emit_Header := True;
+         return True;
+      elsif Starts_With ("-header-inline=") then
+         if Switch_Value ("-header-inline=") = "none" then
+            Header_Inline := None;
+         elsif Switch_Value ("-header-inline=") = "inline-always" then
+            Header_Inline := Inline_Always;
+         elsif Switch_Value ("-header-inline=") = "inline" then
+            Header_Inline := Inline;
+         else
+            Early_Error ("invalid -header-inline option: " &
+                           Switch_Value ("-header-inline="));
+         end if;
+
+         return True;
+      elsif Switch = "-fdump-c-parameters" then
+         Dump_C_Parameters := True;
+         return True;
+      elsif Starts_With ("-fdump-c-parameters=") then
+         Dump_C_Parameters := True;
+         To_Free           := C_Parameter_File;
+         C_Parameter_File  :=
+           new String'(Switch_Value ("-fdump-c-parameters="));
+      elsif Starts_With ("-c-target-") then
+         C_Set_Parameter (Switch_Value ("-c-target-"));
+         return True;
+      elsif Starts_With ("-c-target-file=") then
+         To_Free          := Target_Info_File;
+         Target_Info_File := new String'(Switch_Value ("-c-target-file="));
+      end if;
+
+      --  If we were to free an old string value, do so and show that
+      --  we processed this parameter. Otherwise, show we didn't.
+
+      if To_Free /= null then
+         Free (To_Free);
+      end if;
+
+      return False;
+   end C_Process_Switch;
 end CCG;

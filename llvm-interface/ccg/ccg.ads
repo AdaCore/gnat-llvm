@@ -163,6 +163,10 @@ package CCG is
    --  Return the value to put as the operand of a call to llvm.ccg.annotate
    --  to write Str into the C output.
 
+   function C_Dont_Add_Inline_Always return Boolean;
+   --  Return True if we're emitting C and shouldn't add an Inline_Always
+   --  except when explicitly present in the input source.
+
    procedure Error_Msg (Msg : String; V : Value_T);
    --  Post an error message via the GNAT errout mechanism, posted on the
    --  main unit start sloc.

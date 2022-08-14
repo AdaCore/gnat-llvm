@@ -20,25 +20,32 @@ package CCG.Target is
    --  This package contains target information about the C compiler used
    --  and how to format and generate code.
 
-   C_Indent      : aliased Integer := 2;
+   Version       : aliased Integer := 1999;
+   --  C standard for which we're to write output
+
+   C_Indent           : aliased Integer := 2;
    --  Number of characters to indent at each level
 
-   Warns_Parens  : aliased Boolean := True;
-   --  True if this C compiler will issue warning in cases where the
-   --  precedence is correct but looks suspicious.
+   Max_Depth          : aliased Integer := (80 / 2) / (2 * C_Indent);
+   --  Maximum allowable nesting depth of constructs
 
-   Always_Brace  : aliased Boolean := False;
+   Always_Brace       : aliased Boolean := False;
    --  True if we're to always write C lexical blocks using braces even
    --  if they're only a single line.
 
-   Max_Depth     : aliased Integer := (80 / 2) / (2 * C_Indent);
-   --  Maximum allowable nesting depth of constructs
-
-   Have_Includes : aliased Boolean := True;
+   Have_Includes      : aliased Boolean := True;
    --  True if we're to write #include lines for the standard C includes
 
-   Version       : aliased Integer := 1999;
-   --  C standard for which we're to write output
+   Warns_Parens       : aliased Boolean := True;
+   --  True if this C compiler will issue warning in cases where the
+   --  precedence is correct but looks suspicious.
+
+   Inline_Always_Must : aliased Boolean := True;
+   --  In some C compilers (e.g., clang), Inline_Always means to make a
+   --  best try at inlining, but be silent if the function can't be inlned.
+   --  In others (e.g., gcc), if the function can't be inlined, it issues
+   --  a warning (or error, depending on the warning mode). The value of
+   --  this option says which is the case.
 
    procedure Read_C_Parameters (Name : String);
    --  Read C parameters from file Name

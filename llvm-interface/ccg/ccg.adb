@@ -294,6 +294,13 @@ package body CCG is
       end if;
    end C_Set_Entity;
 
+   ------------------------------
+   -- C_Dont_Add_Inline_Always --
+   ------------------------------
+
+   function C_Dont_Add_Inline_Always return Boolean is
+     (Emit_C and then Inline_Always_Must);
+
    ---------------
    -- Error_Msg --
    ---------------

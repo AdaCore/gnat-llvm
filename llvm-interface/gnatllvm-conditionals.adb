@@ -1425,7 +1425,6 @@ package body GNATLLVM.Conditionals is
 
          Push_Loop (Loop_Identifier, BB_Exit);
          Push_Block;
-         Start_Block_Statements;
          Emit (Statements (N));
          Set_Debug_Pos_At_Node (N);
          Pop_Block;

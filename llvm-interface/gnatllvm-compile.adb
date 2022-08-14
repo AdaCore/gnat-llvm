@@ -373,6 +373,12 @@ package body GNATLLVM.Compile is
                   Mark_Body_Elab;
                end if;
 
+               --  If we have an At_End_Proc, we need to make a block for it
+
+               if Present (At_End_Proc (N)) then
+                  Push_Block (At_End_Proc => At_End_Proc (N));
+               end if;
+
                --  Always process declarations, but they do not provide
                --  a scope, since those declarations are part of what
                --  encloses us, if anything.
@@ -400,17 +406,20 @@ package body GNATLLVM.Compile is
 
                   Emit_Elab_Proc (N, Stmts, Parent (N), For_Body => True);
                elsif Present (Stmts) then
-                  if not Library_Level then
+                  if not Library_Level and then No (At_End_Proc (N)) then
                      Push_Block;
                   end if;
 
                   Emit (Stmts);
-                  if not Library_Level then
+                  if not Library_Level and then No (At_End_Proc (N)) then
                      Pop_Block;
                   end if;
                end if;
 
                Pop_Debug_Scope;
+               if Present (At_End_Proc (N)) then
+                  Pop_Block;
+               end if;
             end;
 
          when N_Subprogram_Body =>
@@ -465,25 +474,29 @@ package body GNATLLVM.Compile is
             Emit_Code_Statement (N);
 
          when N_Handled_Sequence_Of_Statements =>
+            declare
+               Need_Block : constant Boolean :=
+                 Present (At_End_Proc (N))
+                 or else Present (Exception_Handlers (N));
 
-            --  If this block doesn't contain any statements, ignore it
+            begin
+               --  If this block doesn't contain any statements, ignore it
 
-            if not Has_Non_Null_Statements (Statements (N)) then
-               return;
-            end if;
+               if not Has_Non_Null_Statements (Statements (N)) then
+                  return;
+               end if;
 
-            --  If First_Real_Statement is Present, items in Statements
-            --  prior to it are declarations and need to be mostly treated
-            --  as such except that they are protected by the exception
-            --  handlers of this block.  Otherwise, all are statements.
+               --  If we need a block, make it
 
-            Start_Block_Statements (At_End_Proc (N), Exception_Handlers (N));
-            if Present (First_Real_Statement (N)) then
-               Emit_Decl_Lists (Statements (N),
-                                End_List => First_Real_Statement (N));
-            end if;
+               if Need_Block then
+                  Push_Block (At_End_Proc (N), Exception_Handlers (N));
+               end if;
 
-            Emit (Statements (N), Starting_At => First_Real_Statement (N));
+               Emit (Statements (N));
+               if Need_Block then
+                  Pop_Block;
+               end if;
+            end;
 
          when N_Raise_Statement =>
             Emit_Reraise;
@@ -616,7 +629,7 @@ package body GNATLLVM.Compile is
 
          when N_Block_Statement =>
             Push_Lexical_Debug_Scope (N);
-            Push_Block;
+            Push_Block (At_End_Proc => At_End_Proc (N));
             Emit_Decl_Lists (Declarations (N));
             Emit (Handled_Statement_Sequence (N));
             Set_Debug_Pos_At_Node (N);
@@ -1327,12 +1340,12 @@ package body GNATLLVM.Compile is
    -- Emit --
    ----------
 
-   procedure Emit (List : List_Id; Starting_At : Node_Id := Empty) is
+   procedure Emit (List : List_Id) is
       N : Node_Id;
+
    begin
       if Present (List) then
-         N := (if Present (Starting_At) then Starting_At else First (List));
-
+         N := First (List);
          while Present (N) loop
 
             --  If N is an N_Handled_Sequence_Of_Statements here, we know

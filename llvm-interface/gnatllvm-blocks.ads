@@ -41,8 +41,14 @@ package GNATLLVM.Blocks is
    --  region of the block.
 
    procedure Push_Block
+     (At_End_Proc : Opt_N_Subexpr_Id := Empty; EH_List : List_Id := No_List)
      with Pre => not Library_Level;
-   --  Push a block onto the block stack and mark its start
+   --  Push a block onto the block stack
+
+   procedure Maybe_Update_At_End (E : E_Constant_Id);
+   --  E is a constant being declared. See if it's a static chain for
+   --  the current function and update the at end parameter for the
+   --  current block if necessary.
 
    procedure Save_Stack_Pointer;
    --  Generate a stack save at the start of the current block
@@ -50,18 +56,6 @@ package GNATLLVM.Blocks is
    procedure Add_Lifetime_Entry (Ptr, Size : GL_Value)
      with Pre => Present (Ptr) and then Present (Size);
    --  Add an entry for a variable lifetime that ends at the end of this block
-
-   procedure Add_Invariant_Entry (V : GL_Value; Size : GL_Value := No_GL_Value)
-     with Pre => Present (V);
-   --  Add an entry for a constant whose invariant point starts at the
-   --  start of the code for this block.
-
-   procedure Start_Block_Statements
-     (At_End_Proc : Opt_N_Subexpr_Id := Empty; EH_List : List_Id := No_List)
-     with Pre => not Library_Level;
-   --  Indicate that this is the start of a region of the block to be
-   --  protected by the exception handlers and an At_End_Proc and provide
-   --  those, if present.
 
    function Get_Landing_Pad return Basic_Block_T;
    --  Get the basic block for the landingpad in the current block, if any

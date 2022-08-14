@@ -1101,7 +1101,7 @@ package body GNATLLVM.Subprograms is
       end if;
 
       Entry_Block_Allocas := Get_Current_Position;
-      Push_Block;
+      Push_Block (At_End_Proc => At_End_Proc (N));
       Param := First_Formal_With_Extras (E);
       while Present (Param) loop
          declare
@@ -1435,7 +1435,8 @@ package body GNATLLVM.Subprograms is
             Ext_Name => Name));
       Set_Debug_Pos_At_Node (N);
       Entry_Block_Allocas := Get_Current_Position;
-      Push_Block;
+      Push_Block (EH_List => (if   No (Stmts) then No_List
+                              else Exception_Handlers (Stmts)));
       In_Elab_Proc := True;
 
       --  Do through the elaboration table and process each entry
@@ -1471,8 +1472,6 @@ package body GNATLLVM.Subprograms is
 
       In_Elab_Proc       := False;
       In_Elab_Proc_Stmts := True;
-      Start_Block_Statements (EH_List => (if   No (Stmts) then No_List
-                                          else Exception_Handlers (Stmts)));
       Emit (S_List);
       Pop_Block;
       Build_Ret_Void;

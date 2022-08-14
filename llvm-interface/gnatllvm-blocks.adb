@@ -23,6 +23,7 @@ with Exp_Unst;    use Exp_Unst;
 with Nlists;      use Nlists;
 with Opt;         use Opt;
 with Restrict;    use Restrict;
+with Sem_Util;    use Sem_Util;
 with Sinput;      use Sinput;
 with Stand;       use Stand;
 with Table;       use Table;
@@ -52,24 +53,10 @@ package body GNATLLVM.Blocks is
      Size   : GL_Value;
    end record;
 
-   --  We record a list of variables and sizes that we must mark as
-   --  becoming invariant at the start of code for a block.
-
-   type Invariant_Data;
-   type A_Invariant_Data is access Invariant_Data;
-   type Invariant_Data is record
-     Next   : A_Invariant_Data;
-     Memory : GL_Value;
-     Size   : GL_Value;
-   end record;
-
    --  This data structure records the information about each block that
    --  we're in and we construct a table to act as a block stack.
 
    type Block_Info is record
-      In_Stmts           : Boolean;
-      --  True if we are in the statement section of the current block
-
       Unprotected        : Boolean;
       --  True if we've reached the pop of the block (in the end handler
       --  or its fixup) where calls aren't protected by exceptions or
@@ -84,6 +71,7 @@ package body GNATLLVM.Blocks is
       Starting_Position  : Position_T;
       --  The position at the start of the block
 
+      At_End_Subp        : Opt_Subprogram_Kind_Id;
       At_End_Proc        : GL_Value;
       --  Procedure to be called at normal or abnormal exit of the block
 
@@ -115,9 +103,6 @@ package body GNATLLVM.Blocks is
       --  List of memory locations whose lifetimes end at the end of this
       --  block.
 
-      Invariant_List     : A_Invariant_Data;
-      --  List of memory locations whose constant regions begin at the
-      --  start of code for this block.
    end record;
 
    type Block_Stack_Level is new Integer;
@@ -416,26 +401,83 @@ package body GNATLLVM.Blocks is
    -- Push_Block --
    ----------------
 
-   procedure Push_Block is
+   procedure Push_Block
+     (At_End_Proc : Opt_N_Subexpr_Id := Empty; EH_List : List_Id := No_List)
+   is
+      End_Subp      : Opt_Subprogram_Kind_Id := Empty;
+      End_Proc      : GL_Value               := No_GL_Value;
+      End_Parameter : GL_Value               := No_GL_Value;
+
    begin
+      if Present (At_End_Proc) then
+
+         --  Save both the end proc and the value of the static link.
+         --  Since we'll be generating the call directly, we have to
+         --  convert the static link to the proper pointer type for the
+         --  activation record.  There may not be a static link, however,
+         --  if there are no uplevel references.
+
+         End_Subp := Entity (At_End_Proc);
+         End_Proc := Emit_LValue (At_End_Proc);
+         if Has_Activation_Record (End_Subp)
+           and then Present (Subps.Table (Subp_Index (End_Subp)).ARECnF)
+         then
+            --  We have to defer doing this if the parent of Subp is
+            --  us and we haven't elaborated our ARECnP variable yet.
+
+            if Enclosing_Subprogram (End_Subp) /= Current_Subp
+              or else Present (Get_Value
+                                 (Subps.Table
+                                    (Subp_Index (Current_Subp)).ARECnP))
+            then
+               End_Parameter :=
+                 Pointer_Cast (Get_Static_Link (End_Subp),
+                               Full_GL_Type (Extra_Formals (End_Subp)));
+            end if;
+         end if;
+      end if;
+
       Block_Stack.Append ((Stack_Save         => No_GL_Value,
                            Starting_Position  => Get_Current_Position,
-                           At_End_Proc        => No_GL_Value,
-                           At_End_Parameter   => No_GL_Value,
+                           At_End_Subp        => End_Subp,
+                           At_End_Proc        => End_Proc,
+                           At_End_Parameter   => End_Parameter,
                            At_End_Parameter_2 => No_GL_Value,
                            At_End_Pass_Excptr => False,
                            Landing_Pad        => No_BB_T,
                            Dispatch_BB        => No_BB_T,
                            Exc_Ptr            => No_GL_Value,
-                           EH_List            => No_List,
-                           In_Stmts           => False,
+                           EH_List            => EH_List,
                            Unprotected        => False,
                            At_Entry_Start     =>
                              Get_Current_Position = Entry_Block_Allocas,
-                           Lifetime_List      => null,
-                           Invariant_List     => null));
+                           Lifetime_List      => null));
 
    end Push_Block;
+
+   -------------------------
+   -- Maybe_Update_At_End --
+   -------------------------
+
+   procedure Maybe_Update_At_End (E : E_Constant_Id) is
+      BI : Block_Info renames Block_Stack.Table (Block_Stack.Last);
+
+   begin
+      --  See if this is the ARECnP variable for this subprogram. We have
+      --  nothing to do if not. Likewise if there's no At_End_Proc
+      --  for this block.
+
+      if Present (Current_Subp)
+        and then Has_Nested_Subprogram (Current_Subp)
+        and then E = Subps.Table (Subp_Index (Current_Subp)).ARECnP
+        and then Present (BI.At_End_Subp) and then No (BI.At_End_Parameter)
+        and then Has_Activation_Record (BI.At_End_Subp)
+      then
+         BI.At_End_Parameter :=
+           Pointer_Cast (Get_Static_Link (BI.At_End_Subp),
+                         Full_GL_Type (Extra_Formals (BI.At_End_Subp)));
+      end if;
+   end Maybe_Update_At_End;
 
    ------------------------
    -- Save_Stack_Pointer --
@@ -488,79 +530,6 @@ package body GNATLLVM.Blocks is
 
    end Add_Lifetime_Entry;
 
-   -------------------------
-   -- Add_Invariant_Entry --
-   -------------------------
-
-   procedure Add_Invariant_Entry (V : GL_Value; Size : GL_Value := No_GL_Value)
-   is
-      BI     : Block_Info renames Block_Stack.Table (Block_Stack.Last);
-
-   begin
-      --  If we don't have a 64-bit type, we can't make invariant lifetime
-      --  calls, so do nothing in that case. Likewise if we're generating C.
-
-      if No (Int_64_GL_Type) or else Emit_C then
-         return;
-      end if;
-
-      BI.Invariant_List := new Invariant_Data'(BI.Invariant_List, V, Size);
-   end Add_Invariant_Entry;
-
-   -----------------------------
-   --  Start_Block_Statements --
-   -----------------------------
-
-   procedure Start_Block_Statements
-     (At_End_Proc : Opt_N_Subexpr_Id := Empty; EH_List : List_Id := No_List)
-   is
-      BI         : Block_Info renames Block_Stack.Table (Block_Stack.Last);
-      Invariants : A_Invariant_Data := BI.Invariant_List;
-      Subp       : Subprogram_Kind_Id;
-
-      procedure Free is new Ada.Unchecked_Deallocation (Invariant_Data,
-                                                        A_Invariant_Data);
-   begin
-      pragma Assert (not BI.In_Stmts);
-
-      BI.EH_List  := EH_List;
-      BI.In_Stmts := True;
-
-      if Present (At_End_Proc) then
-
-         --  Save both the end proc and the value of the static link.
-         --  Since we'll be generating the call directly, we have to convert
-         --  the static link to the proper pointer type for the activation
-         --  record.  There may not be a static link, however, if there re
-         --  no uplevel references.
-
-         Subp           := Entity (At_End_Proc);
-         BI.At_End_Proc := Emit_LValue (At_End_Proc);
-         if Has_Activation_Record (Subp)
-           and then Present (Subps.Table (Subp_Index (Subp)).ARECnF)
-         then
-            BI.At_End_Parameter :=
-              Pointer_Cast (Get_Static_Link (Subp),
-                            Full_GL_Type (Extra_Formals (Subp)));
-         end if;
-      end if;
-
-      --  Emit intrinsics for variables start are constant at the start
-      --  of the code for the block.
-
-      while Invariants /= null loop
-         declare
-            Next : constant A_Invariant_Data := Invariants.Next;
-
-         begin
-            Create_Invariant_Start (Invariants.Memory, Invariants.Size);
-            Free (Invariants);
-            Invariants := Next;
-         end;
-      end loop;
-
-   end Start_Block_Statements;
-
    ---------------------
    -- Get_Landing_Pad --
    ---------------------
@@ -574,8 +543,8 @@ package body GNATLLVM.Blocks is
 
       for J in reverse 1 .. Block_Stack.Last loop
          BI := Block_Stack.Table (J);
-         if (Present (BI.EH_List) and then BI.In_Stmts)
-           or else (Present (BI.At_End_Proc) and then not BI.Unprotected)
+         if (Present (BI.EH_List) or else Present (BI.At_End_Proc))
+           and then not BI.Unprotected
          then
             if No (BI.Landing_Pad) then
                Block_Stack.Table (J).Landing_Pad :=
@@ -600,13 +569,12 @@ package body GNATLLVM.Blocks is
       --  Push V onto the Params array below if it's Present
 
       BI          : Block_Info renames Block_Stack.Table (Block);
-      Our_BI      : constant Block_Info :=
-        Block_Stack.Table (Block_Stack.Last);
+      Our_BI      : Block_Info renames Block_Stack.Table (Block_Stack.Last);
       Our_Exc_Ptr : constant GL_Value   :=
         (if    not BI.At_End_Pass_Excptr then No_GL_Value
          elsif For_Exception then Our_BI.Exc_Ptr
          else  Const_Null (A_Char_GL_Type));
-      Unprotected : constant Boolean   := BI.Unprotected;
+      Unprotected : constant Boolean   := Our_BI.Unprotected;
       Params      : GL_Value_Array (1 .. 3);
       Last_Param  : Nat                := 0;
 
@@ -627,9 +595,9 @@ package body GNATLLVM.Blocks is
          Push_If_Present (BI.At_End_Parameter);
          Push_If_Present (BI.At_End_Parameter_2);
          Push_If_Present (Our_Exc_Ptr);
-         BI.Unprotected := True;
+         Our_BI.Unprotected := True;
          Call (BI.At_End_Proc, Params (1 .. Last_Param));
-         BI.Unprotected := Unprotected;
+         Our_BI.Unprotected := Unprotected;
       end if;
    end Call_At_End;
 
@@ -1260,7 +1228,6 @@ package body GNATLLVM.Blocks is
             if No (Get_Last_Instruction (Clauses.Table (J).BB)) then
                Position_Builder_At_End (Clauses.Table (J).BB);
                Push_Block;
-               Start_Block_Statements;
 
                declare
                   BI_Inner : Block_Info
@@ -1378,7 +1345,6 @@ package body GNATLLVM.Blocks is
       --  exception handlers in the block and this code isn't protected by
       --  any At_End handler.
 
-      BI.In_Stmts    := False;
       BI.Unprotected := True;
       if not At_Dead then
          Build_Fixups_From_To (Depth, Depth - 1);

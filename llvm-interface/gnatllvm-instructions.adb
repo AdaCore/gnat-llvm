@@ -20,6 +20,7 @@ with Rident;   use Rident;
 with Targparm; use Targparm;
 
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
+with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
 with GNATLLVM.Conversions; use GNATLLVM.Conversions;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
@@ -1084,11 +1085,20 @@ package body GNATLLVM.Instructions is
    procedure Create_Invariant_Start
      (Ptr : GL_Value; Size : GL_Value := No_GL_Value)
    is
-      Byte_Size : constant Value_T :=
-        (if   Present (Size) then +Convert (To_Bytes (Size), Int_64_GL_Type)
-         else No_Value_T);
+      Byte_Size : Value_T;
 
    begin
+      --  If we don't have a 64-bit type, we can't make invariant lifetime
+      --  calls, so do nothing in that case. Likewise if we're generating C.
+
+      if No (Int_64_GL_Type) or else Emit_C then
+         return;
+      end if;
+
+      Byte_Size := (if   Present (Size)
+                    then +Convert (To_Bytes (Size), Int_64_GL_Type)
+                    else No_Value_T);
+
       Discard (Create_Invariant_Start (IR_Builder, +Ptr, Byte_Size));
    end Create_Invariant_Start;
 

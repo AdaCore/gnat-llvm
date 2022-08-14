@@ -2239,10 +2239,10 @@ package body GNATLLVM.Variables is
          --  constant from that point on.
 
          if Is_True_Constant (E) and then No (Value) and then No (Expr) then
-            Add_Invariant_Entry (LLVM_Var,
-                                 (if   Is_Dynamic_Size (Alloc_GT)
-                                  then No_GL_Value
-                                  else Get_Type_Size (Alloc_GT)));
+            Create_Invariant_Start (LLVM_Var,
+                                    (if   Is_Dynamic_Size (Alloc_GT)
+                                     then No_GL_Value
+                                     else Get_Type_Size (Alloc_GT)));
          end if;
       end if;
 
@@ -2250,8 +2250,8 @@ package body GNATLLVM.Variables is
       --  that the bounds are constant.
 
       if Relationship (LLVM_Var) = Thin_Pointer and then not Library_Level then
-         Add_Invariant_Entry (Get (LLVM_Var, Reference_To_Bounds),
-                              Get_Bound_Size (GT));
+         Create_Invariant_Start (Get (LLVM_Var, Reference_To_Bounds),
+                                 Get_Bound_Size (GT));
 
       --  If this is a constrained record, the discriminant values are
       --  invariant once we've set them.  If this is a constant, we'll
@@ -2267,7 +2267,7 @@ package body GNATLLVM.Variables is
          begin
             while Present (Disc) loop
                if not Is_Bitfield (Ancestor_Field (Disc)) then
-                  Add_Invariant_Entry
+                  Create_Invariant_Start
                     (Record_Field_Offset (LLVM_Var, Disc),
                      Get_Type_Size (Field_Type (Ancestor_Field (Disc))));
                end if;
@@ -2286,6 +2286,13 @@ package body GNATLLVM.Variables is
       --  Show which variable this is
 
       C_Set_Entity (LLVM_Var, E);
+
+      --  For a constant, show that we may need to update "at end"
+      --  information.
+
+      if Ekind (E) = E_Constant then
+         Maybe_Update_At_End (E);
+      end if;
 
       --  If we haven't already copied in any initializing expression, do
       --  that now.

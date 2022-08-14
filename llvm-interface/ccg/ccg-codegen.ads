@@ -45,4 +45,8 @@ package CCG.Codegen is
    --  S is a switch passed to GNAT LLVM. If it's a switch meaningful
    --  to us, process it and return True.
 
+   function Is_Switch (Switch : String) return Boolean;
+   --  Switch is a switch passed to GNAT LLVM. If it's a switch meaningful
+   --  to CCG, return True.
+
 end CCG.Codegen;

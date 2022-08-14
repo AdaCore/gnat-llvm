@@ -197,4 +197,9 @@ package body CCG is
    function C_Process_Switch (Switch : String) return Boolean
      renames Process_Switch;
 
+   -----------------
+   -- C_Is_Switch --
+   -----------------
+
+   function C_Is_Switch (Switch : String) return Boolean renames Is_Switch;
 end CCG;

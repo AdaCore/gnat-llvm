@@ -67,6 +67,10 @@ package body CCG.Target is
    procedure Set_One_Parameter (PD : Parameter_Desc; Value : String);
    --  Set the parameter denoted by PD to Value
 
+   function Compiler_To_Parameters (S : String) return String;
+   --  Return a string corresponding to the changes to the target
+   --  parameters for the compiler named S.
+
    ---------------
    -- Add_Param --
    ---------------
@@ -225,6 +229,52 @@ package body CCG.Target is
       end if;
 
    end Read_C_Parameters;
+
+   ----------------------------
+   -- Compiler_To_Parameters --
+   ----------------------------
+
+   function Compiler_To_Parameters (S : String) return String is
+   begin
+      if S = "gcc" then
+         return "";
+      elsif S = "clang" then
+         return "inline-always-must=false";
+      else
+         Early_Error ("unsupported C compiler: " & S);
+         return "";
+      end if;
+
+   end Compiler_To_Parameters;
+
+   --------------------
+   -- Set_C_Compiler --
+   --------------------
+
+   procedure Set_C_Compiler (S : String) is
+      Parameter_List : constant String := Compiler_To_Parameters (S);
+      N              : Natural         := Parameter_List'First;
+      Line_Ptr       : Natural         := N;
+
+   begin
+      --  Now scan the file, looking for semicolons
+
+      while N < Parameter_List'Last loop
+         if Parameter_List (N) = ';' then
+            Set_C_Parameter (Parameter_List (Line_Ptr .. N - 1));
+            Line_Ptr := N + 1;
+         end if;
+
+         N := N + 1;
+      end loop;
+
+      --  If there's something left, that's the last parameter to set
+
+      if Line_Ptr < Parameter_List'Last then
+         Set_C_Parameter (Parameter_List (Line_Ptr .. Parameter_List'Last));
+      end if;
+
+   end Set_C_Compiler;
 
    -------------------------
    -- Output_C_Parameters --

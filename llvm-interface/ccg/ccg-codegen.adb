@@ -233,6 +233,9 @@ package body CCG.Codegen is
          To_Free           := C_Parameter_File;
          C_Parameter_File  :=
            new String'(Switch_Value ("-fdump-c-parameters="));
+      elsif Starts_With ("-c-compiler=") then
+         Set_C_Compiler (Switch_Value ("-c-compiler="));
+         return True;
       elsif Starts_With ("-c-target-") then
          Set_C_Parameter (Switch_Value ("-c-target-"));
          return True;
@@ -250,5 +253,24 @@ package body CCG.Codegen is
 
       return False;
    end Process_Switch;
+
+   ---------------
+   -- Is_Switch --
+   ---------------
+
+   function Is_Switch (Switch : String) return Boolean is
+      First : constant Integer := Switch'First;
+      Last  : constant Integer := Switch_Last (Switch);
+      Len   : constant Integer := Last - First + 1;
+
+      function Starts_With (S : String) return Boolean is
+        (Len > S'Length and then Switch (First .. First + S'Length - 1) = S);
+      --  Return True if Switch starts with S
+
+   begin
+      return Starts_With ("-header-inline=")
+        or else Starts_With ("-c-target-")
+        or else Starts_With ("-c-compiler=");
+   end Is_Switch;
 
 end CCG.Codegen;

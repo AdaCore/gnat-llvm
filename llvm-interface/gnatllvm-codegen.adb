@@ -616,22 +616,16 @@ package body GNATLLVM.Codegen is
    -- Is_Back_End_Switch --
    ------------------------
 
-   First_Call : Boolean := True;
-
    function Is_Back_End_Switch (Switch : String) return Boolean is
       First : constant Integer := Switch'First;
-      Last  : constant Integer  := Switch_Last (Switch);
-      Len   : constant Integer  := Last - First + 1;
+      Last  : constant Integer := Switch_Last (Switch);
+      Len   : constant Integer := Last - First + 1;
 
       function Starts_With (S : String) return Boolean is
         (Len > S'Length and then Switch (First .. First + S'Length - 1) = S);
       --  Return True if Switch starts with S
 
    begin
-      if First_Call then
-         First_Call := False;
-      end if;
-
       if not Is_Switch (Switch) then
          return False;
       elsif Switch = "--dump-ir"
@@ -643,8 +637,7 @@ package body GNATLLVM.Codegen is
         or else Starts_With ("--target=")
         or else Starts_With ("-llvm-")
         or else Starts_With ("-emit-")
-        or else Starts_With ("-header-inline=")
-        or else Starts_With ("-c-target-")
+        or else C_Is_Switch (Switch)
       then
          return True;
       end if;

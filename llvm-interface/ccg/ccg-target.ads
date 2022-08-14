@@ -29,6 +29,9 @@ package CCG.Target is
    C_Parameter_File  : String_Access  := null;
    --  If non-null, the name of a file to dump the C parameters
 
+   procedure Set_C_Compiler (S : String);
+   --  Set the parameters corresponding to the C compiler given in S
+
    procedure Read_C_Parameters (Name : String);
    --  Read C parameters from file Name
 

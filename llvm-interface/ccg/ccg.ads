@@ -177,7 +177,11 @@ package CCG is
    --  Used to discard Boolean function results
 
    function C_Process_Switch (Switch : String) return Boolean;
-   --  S is a switch passed to GNAT LLVM. If it's a switch meaningful
+   --  Switch is a switch passed to GNAT LLVM. If it's a switch meaningful
    --  to CCG, process it and return True.
+
+   function C_Is_Switch (Switch : String) return Boolean;
+   --  Switch is a switch passed to GNAT LLVM. If it's a switch meaningful
+   --  to CCG, return True.
 
 end CCG;

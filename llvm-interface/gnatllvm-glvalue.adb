@@ -1770,8 +1770,19 @@ package body GNATLLVM.GLValue is
 
       if Get_Value_Kind (VV) = Constant_Expr_Value_Kind then
          VV := Get_Operand (VV, 0);
-         VE := Convert_Aggregate_Constant (VE,
-                                           Get_Element_Type (Type_Of (VV)));
+         VE := Convert_Aggregate_Constant
+           (VE, Get_Element_Type (Type_Of (VV)));
+      end if;
+
+      --  If the types of VE and VV have the same layout, convert VE
+      --  to VV's type.
+
+      if Type_Of (VE) /= Type_Of (VV)
+        and then Is_Layout_Identical (Type_Of (VE),
+                                      Get_Element_Type (Type_Of (VV)))
+      then
+         VE := Convert_Aggregate_Constant
+           (VE, Get_Element_Type (Type_Of (VV)));
       end if;
 
       Set_Initializer (VV, VE);

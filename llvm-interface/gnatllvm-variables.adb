@@ -620,6 +620,12 @@ package body GNATLLVM.Variables is
 
       elsif Present (Address_Clause (E)) then
          return Is_Static_Address (Expression (Address_Clause (E)));
+
+      --  If it's a subprogram with no activation record, it's always at a
+      --  static location.
+
+      elsif E in Subprogram_Kind_Id and then not Has_Activation_Record (E) then
+         return True;
       end if;
 
       --  Otherwise, this is at a static location if it's a fixed-length
@@ -1623,7 +1629,12 @@ package body GNATLLVM.Variables is
               ("All uses of same interface name must have static size", E);
             LLVM_Var := Get_Undef_Relationship
               (GT, (if Is_Ref then Reference_To_Reference else Reference));
-         else
+
+         --  If the old and new types have the same layout, don't do the
+         --  conversion. Doing so can prevent a delayed initialization
+         --  when the types are slightly different from working.
+
+         elsif not Is_Layout_Identical (Related_Type (LLVM_Var), GT) then
             LLVM_Var := Convert_Ref (LLVM_Var, GT);
          end if;
 

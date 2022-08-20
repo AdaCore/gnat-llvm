@@ -777,7 +777,17 @@ package body GNATLLVM.Conversions is
       elsif Is_Unchecked and then R = Thin_Pointer
         and then not Is_Array_Type (As_Ref)
       then
-         Result := Ptr_To_Relationship (As_Ref, DT, Thin_Pointer);
+         --  If this is a fat pointer (a pointer isn't viewed as an array
+         --  type above), extract the data first.
+
+         Result := As_Ref;
+         if In_R = Fat_Pointer then
+            Result := Get (Result, Reference);
+         end if;
+
+         --  And then set it as a thin pointer
+
+         Result := Ptr_To_Relationship (Result, DT, Thin_Pointer);
 
       --  Otherwise, get the input in the desired relationship and then
       --  convert the pointer.

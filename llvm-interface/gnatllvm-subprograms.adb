@@ -2162,7 +2162,10 @@ package body GNATLLVM.Subprograms is
 
       if RK = Return_By_Parameter then
          Args (In_Idx) :=
-           (if   Present (LHS) and then Is_Safe_From (LHS, N)
+           (if   Present (LHS)
+                 and then (Is_Safe_From (LHS, N)
+                           or else (Is_By_Reference_Type (Return_GT)
+                                    and then Nkind (N) = N_Function_Call))
             then Convert_Ref (LHS, Return_GT)
             else Get (Allocate_For_Type (Return_GT,
                                          N        => Subp,

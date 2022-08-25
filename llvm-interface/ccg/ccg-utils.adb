@@ -32,18 +32,37 @@ package body CCG.Utils is
    --  from that.
 
    type VF is record
-      V_Is_Volatile : Boolean;
-      V_Is_Unsigned : Boolean;
+      V_Is_Volatile  : Boolean;
+      V_Is_Unsigned  : Boolean;
+      V_Is_Access_SP : Boolean;
    end record;
 
-   function GEP_Volatile_And_Unsigned (V : Value_T) return VF
-     with Pre => Is_A_Instruction (V);
+   function GEP_Volatile_Unsigned_Access_SP  (V : Value_T) return VF
+     with Pre => Is_A_Get_Element_Ptr_Inst (V);
+
+   function Is_Volatile_GEP (V : Value_T) return Boolean
+     with Pre => Is_A_Get_Element_Ptr_Inst (V);
+   --  True if V, a GEP instruction, points to a volatile variable or field
+
+   function Is_Unsigned_GEP (V : Value_T) return Boolean
+     with Pre => Is_A_Get_Element_Ptr_Inst (V);
+   --  True if V, a GEP instruction, points to an unsigned field
+
+   function Is_Access_SP_GEP (V : Value_T) return Boolean
+     with Pre => Is_A_Get_Element_Ptr_Inst (V);
+   --  True if V, a GEP instruction, points to an access to a subprogram
 
    function Is_Unsigned_Ref (V : Value_T) return Boolean
      with Pre => Present (V);
    --  True if V is a reference to an unsigned integer, meaning that the
    --  result of a "load" instruction with that operand will produce
    --  an unsigned result.
+
+   function Is_Access_SP_Ref (V : Value_T) return Boolean
+     with Pre => Present (V);
+   --  True if V is a reference to an access to a subprogram, meaning that the
+   --  result of a "load" instruction with that operand will be an access
+   --  to a subprogram.
 
    --  We have cases where we want to record information about components
    --  of LLVM types or values, such as fields of a struct type and
@@ -433,16 +452,17 @@ package body CCG.Utils is
       return False;
    end Is_Ref_To_Volatile;
 
-   ----------------------------
-   -- GEP_Volatile_And_Field --
-   ----------------------------
+   -------------------------------
+   -- GEP_Volatile_And_Unsigned --
+   -------------------------------
 
-   function GEP_Volatile_And_Unsigned (V : Value_T) return VF is
-      Aggr          : constant Value_T := Get_Operand0 (V);
-      N_Ops         : constant Nat     := Get_Num_Operands (V);
-      Aggr_T        : Type_T           := Get_Element_Type (Aggr);
-      V_Is_Volatile : Boolean          := False;
-      V_Is_Unsigned : Boolean          := False;
+   function GEP_Volatile_Unsigned_Access_SP (V : Value_T) return VF is
+      Aggr           : constant Value_T := Get_Operand0 (V);
+      N_Ops          : constant Nat     := Get_Num_Operands (V);
+      Aggr_T         : Type_T           := Get_Element_Type (Aggr);
+      V_Is_Volatile  : Boolean          := False;
+      V_Is_Unsigned  : Boolean          := False;
+      V_Is_Access_SP : Boolean          := False;
 
    begin
       --  If the input to GEP is volatile, its a reference to volatile
@@ -472,11 +492,12 @@ package body CCG.Utils is
 
             begin
                if Present (F) then
-                  V_Is_Unsigned :=
+                  V_Is_Unsigned   :=
                     Is_Unsigned_Type (Full_Base_Type (Full_Etype (F)));
-                  V_Is_Volatile :=
+                  V_Is_Volatile   :=
                     V_Is_Volatile or Treat_As_Volatile (F)
                     or Treat_As_Volatile (Full_Etype (F));
+                  V_Is_Access_SP := Is_Access_Subprogram_Type (Full_Etype (F));
                end if;
 
                Aggr_T := Struct_Get_Type_At_Index (Aggr_T, Idx);
@@ -484,22 +505,29 @@ package body CCG.Utils is
          end if;
       end loop;
 
-      return (V_Is_Volatile, V_Is_Unsigned);
-   end GEP_Volatile_And_Unsigned;
+      return (V_Is_Volatile, V_Is_Unsigned, V_Is_Access_SP);
+   end GEP_Volatile_Unsigned_Access_SP;
 
    ---------------------
    -- Is_Volatile_GEP --
    ---------------------
 
    function Is_Volatile_GEP (V : Value_T) return Boolean is
-     (GEP_Volatile_And_Unsigned (V).V_Is_Volatile);
+     (GEP_Volatile_Unsigned_Access_SP (V).V_Is_Volatile);
 
    ---------------------
    -- Is_Unsigned_GEP --
    ---------------------
 
    function Is_Unsigned_GEP (V : Value_T) return Boolean is
-     (GEP_Volatile_And_Unsigned (V).V_Is_Unsigned);
+     (GEP_Volatile_Unsigned_Access_SP (V).V_Is_Unsigned);
+
+   ----------------------
+   -- Is_Access_SP_GEP --
+   ----------------------
+
+   function Is_Access_SP_GEP (V : Value_T) return Boolean is
+     (GEP_Volatile_Unsigned_Access_SP (V).V_Is_Unsigned);
 
    --------
    -- TP --
@@ -638,6 +666,32 @@ package body CCG.Utils is
 
    end Is_Unsigned_Ref;
 
+   ---------------------
+   -- Is_Access_SP_Ref --
+   ---------------------
+
+   function Is_Access_SP_Ref (V : Value_T) return Boolean is
+      TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
+
+   begin
+      --  Note that what we care about here is whether the C compiler
+      --  will interpret our generated code for V as a pointer to
+      --  unsigned, not whether it actually IS unsigned. The only two
+      --  cases where we have a pointer to unsigned are when we have the
+      --  address of an unsigned variable or an unsigned field.
+
+      --  If this is an LHS and a variable, there has to be a
+      --  declaration, and we either declared it as unsigned or we
+      --  did. We did if the condition below is true.
+
+      if Get_Is_LHS (V) and then Is_Variable (V, False) then
+         return Present (TE) and then Is_Access_Subprogram_Type (TE);
+      else
+         return Is_A_Get_Element_Ptr_Inst (V) and then Is_Access_SP_GEP (V);
+      end if;
+
+   end Is_Access_SP_Ref;
+
    -----------------
    -- Is_Unsigned --
    -----------------
@@ -662,7 +716,7 @@ package body CCG.Utils is
 
       --  If it's not an instruction, we won't have made it unsigned
 
-      elsif not Is_A_Instruction (V) then
+      elsif not Is_A_Instruction (V) and then not Is_A_Constant_Expr (V) then
          return False;
       end if;
 
@@ -716,6 +770,68 @@ package body CCG.Utils is
 
       return False;
    end Is_Unsigned;
+
+   --------------------------
+   -- Is_Access_Subprogram --
+   --------------------------
+
+   function Is_Access_Subprogram (V : Value_T) return Boolean is
+      E  : constant Entity_Id        := Get_Entity (V);
+      TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
+
+   begin
+      --  If this is an access subprogram type or a subprogram, this is
+      --  the address of a subprogram (a name represents an address in the
+      --  LLVM IR).
+
+      if (Present (TE) and then Is_Access_Subprogram_Type (TE))
+        or else (Present (E) and then Ekind (E) in Subprogram_Kind)
+      then
+         return True;
+
+      --  If it's not an instruction then we know nothing about it
+
+      elsif not Is_A_Instruction (V) and then not Is_A_Constant_Expr (V) then
+         return False;
+      end if;
+
+      --  Now handle instructions that could produce unsigned
+
+      case Get_Opcode (V) is
+
+         --  A load is an access to a subprogram iff the pointer is a
+         --  reference to an access to a subprogram
+
+         when Op_Load =>
+            return Is_Access_SP_Ref (Get_Operand0 (V));
+
+         --  A call instruction returns an access to a subprogram if the
+         --  function called is known and has that as a return type.
+
+         when Op_Call =>
+
+            declare
+               TE : constant Opt_Type_Kind_Id := GNAT_Type (Get_Operand0 (V));
+
+            begin
+               return Present (TE) and then Is_Access_Subprogram_Type (TE);
+            end;
+
+         --  Some conversions don't change whether it is or isn't
+         --  an access subprogram.
+
+         when Op_Bit_Cast =>
+            return Is_Access_Subprogram (Get_Operand0 (V));
+
+         when others =>
+            null;
+
+      end case;
+
+      --  In all other case, it isn't
+
+      return False;
+   end Is_Access_Subprogram;
 
    -----------------
    -- Is_Variable --

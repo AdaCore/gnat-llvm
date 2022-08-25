@@ -21,6 +21,7 @@ with Errout;      use Errout;
 with Lib;         use Lib;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
+with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Codegen;      use CCG.Codegen;
@@ -139,6 +140,17 @@ package body CCG is
          Notify_On_Value_Delete (V, Delete_Value_Info'Access);
          Set_Entity (V, E);
       end if;
+
+      --  If we have a type that's an access function type, show that we
+      --  have such since we need to write out a typedef.
+
+      if (Is_Type (E) and then Is_Access_Subprogram_Type (E))
+        or else (not Is_Type (E)
+                   and then Is_Access_Subprogram_Type (Full_Etype (E)))
+      then
+         Has_Access_Subtype := True;
+      end if;
+
    end C_Set_Entity;
 
    ------------------

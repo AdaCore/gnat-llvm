@@ -106,14 +106,6 @@ package CCG.Utils is
      with Pre => Present (Op);
    --  True if Op represents a value that we can determine to be volatile
 
-   function Is_Volatile_GEP (V : Value_T) return Boolean
-     with Pre => Is_A_Instruction (V);
-   --  True if V, a GEP instruction, points to a volatile variable or field
-
-   function Is_Unsigned_GEP (V : Value_T) return Boolean
-     with Pre => Is_A_Instruction (V);
-   --  True if V, a GEP instruction, points to an unsigned field
-
    function Num_Uses (V : Value_T) return Nat
      with Pre => Present (V);
    --  Returns the number of uses of V
@@ -189,6 +181,10 @@ package CCG.Utils is
    function Is_Unsigned (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if V is known from sources to be unsigned
+
+   function Is_Access_Subprogram (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if V is known from sources to an access to a subprogram
 
    function Is_Variable
      (V : Value_T; Need_From_Source : Boolean := True) return Boolean

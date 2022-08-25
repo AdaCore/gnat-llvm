@@ -859,6 +859,15 @@ package body CCG.Write is
                Write_Type (Get_Element_Type (Get_Element_Type (T)));
                Write_Str (" *");
 
+            --  If we have a value and it's an access to a subprogram,
+            --  we must use "ccg_f", a generic function pointer, and
+            --  not char *.
+
+            elsif (Present (V) and then Is_Access_Subprogram (V))
+              or else (Present (TE) and then Is_Access_Subprogram_Type (TE))
+            then
+               Write_Str ("ccg_f");
+
             --  Otherwise, this is handled normally. We don't want to use a
             --  concatenation operator because that might cause us to try
             --  to write out the typedef for the pointed-to type, which
@@ -942,6 +951,13 @@ package body CCG.Write is
          Write_Line ("#include <stdlib.h>");
          Write_Eol;
       end if;
+
+      --  And maybe write a typedef for ccg_f
+
+      if Has_Access_Subtype then
+         Write_Line ("typedef void (*ccg_f) (void);");
+      end if;
+
    end Initialize_Writing;
 
    ----------------------

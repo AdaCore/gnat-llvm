@@ -17,6 +17,8 @@
 
 with Interfaces.C;            use Interfaces.C;
 
+with Ada.Containers.Hashed_Maps;
+
 --  This clause is only needed with old versions of GNAT
 pragma Warnings (Off);
 with Interfaces.C.Extensions; use Interfaces.C.Extensions;
@@ -107,15 +109,45 @@ package body CCG.Instructions is
    --  may be changed by that store or procedure call. Here we store each
    --  such value when we make the assignment, but don't delete it when
    --  we've written it; we assume that the caller will check if it's been
-   --  written.
+   --  written. We record whether this is from a chain containing a load
+   --  since we have cases where we only need to flush stores.
+
+   type Pending_Value_Entry is record
+      Value    : Value_T;
+      Has_Load : Boolean;
+   end record;
 
    package Pending_Values is new Table.Table
-     (Table_Component_Type => Value_T,
+     (Table_Component_Type => Pending_Value_Entry,
       Table_Index_Type     => Nat,
       Table_Low_Bound      => 1,
       Table_Initial        => 50,
       Table_Increment      => 50,
       Table_Name           => "Pending_Values");
+
+   package Pending_Values_Map_P is new Ada.Containers.Hashed_Maps
+     (Key_Type        => Value_T,
+      Element_Type    => Nat,
+      Hash            => Hash_Value,
+      Equivalent_Keys => "=");
+   use Pending_Values_Map_P;
+
+   Pending_Values_Map : Pending_Values_Map_P.Map;
+   --  The table of pending values and a map that links a value to its
+   --  entry in the table.
+
+   procedure Add_Pending_Value (V : Value_T)
+      with Pre => Present (V);
+   --  Add a value to the pending value tables
+
+   function Depends_On_Pending (V : Value_T) return Boolean
+     with Pre => Present (V);
+   --  True if V depends on a value in the pending value table
+
+   procedure Remove_Pending_Value (V : Value_T)
+     with Pre => Present (V);
+   --  Remove V, which is known to be in the pending value table, and
+   --  all uses which are.
 
    --  For annotations (pragma Annotate and Comment) that aren't at top
    --  level, we need to generate a builtin call (to llvm.ccg.annotate)
@@ -256,6 +288,72 @@ package body CCG.Instructions is
       end case;
    end Is_Comparison;
 
+   -----------------------
+   -- Add_Pending_Value --
+   -----------------------
+
+   procedure Add_Pending_Value (V : Value_T) is
+      Has_Load : Boolean := Is_A_Load_Inst (V);
+
+   begin
+      --  If this has operands, go through the operands to see if any
+      --  are pending loads.
+
+      if Has_Operands (V) then
+         for J in Nat (0) .. Get_Num_Operands (V) - 1 loop
+            declare
+               Op : constant Value_T := Get_Operand (V, J);
+
+            begin
+               if Contains (Pending_Values_Map, Op)
+                 and then Pending_Values.Table
+                            (Element (Pending_Values_Map, Op)).Has_Load
+               then
+                  Has_Load := True;
+               end if;
+            end;
+         end loop;
+      end if;
+
+      --  Finally add to both table and map
+
+      Pending_Values.Append ((V, Has_Load));
+      Insert (Pending_Values_Map, V, Pending_Values.Last);
+   end Add_Pending_Value;
+
+   ------------------------
+   -- Depends_On_Pending --
+   ------------------------
+
+   function Depends_On_Pending (V : Value_T) return Boolean is
+   begin
+      if Has_Operands (V) then
+         for J in Nat (0) .. Get_Num_Operands (V) - 1 loop
+            if Contains (Pending_Values_Map, Get_Operand (V, J)) then
+               return True;
+            end if;
+         end loop;
+      end if;
+
+      return False;
+   end Depends_On_Pending;
+
+   --------------------------
+   -- Remove_Pending_Value --
+   --------------------------
+
+   procedure Remove_Pending_Value (V : Value_T) is
+   begin
+      Delete (Pending_Values_Map, V);
+      if Has_Operands (V) then
+         for J in Nat (0) .. Get_Num_Operands (V) - 1 loop
+            if Contains (Pending_Values_Map, Get_Operand (V, J)) then
+               Remove_Pending_Value (Get_Operand (V, J));
+            end if;
+         end loop;
+      end if;
+   end Remove_Pending_Value;
+
    ----------------------------
    -- Process_Pending_Values --
    ----------------------------
@@ -285,12 +383,14 @@ package body CCG.Instructions is
 
       for J in reverse 1 .. Pending_Values.Last loop
          declare
-            V : constant Value_T := Pending_Values.Table (J);
+            V : constant Value_T := Pending_Values.Table (J).Value;
 
          begin
             if not Get_Is_Used (V)
-              and then (not Calls_Only or Is_A_Call_Inst (V))
+              and then (not Calls_Only
+                        or else not Pending_Values.Table (J).Has_Load)
             then
+               Remove_Pending_Value (V);
                Force_To_Variable (V);
             end if;
          end;
@@ -311,6 +411,7 @@ package body CCG.Instructions is
    procedure Clear_Pending_Values is
    begin
       Pending_Values.Set_Last (0);
+      Clear (Pending_Values_Map);
    end Clear_Pending_Values;
 
    ------------------------
@@ -895,14 +996,14 @@ package body CCG.Instructions is
          --  Make a note of the value of V. If V is an instruction, that
          --  has a potential side effect-such as call or load, make a
          --  note of this pending assignment in case we get a store or
-         --  call.
+         --  call. Also do this if it depends on a pending value.
 
          Set_C_Value (LHS, RHS);
-         if Is_A_Instruction (LHS)
-           and then ((Is_A_Call_Inst (LHS) and then not Is_Opencode_Builtin)
-                     or else Is_A_Load_Inst (LHS))
+         if (Is_A_Call_Inst (LHS) and then not Is_Opencode_Builtin)
+           or else Is_A_Load_Inst (LHS)
+           or else Depends_On_Pending (LHS)
          then
-            Pending_Values.Append (LHS);
+            Add_Pending_Value (LHS);
          end if;
       end if;
    end Assignment;

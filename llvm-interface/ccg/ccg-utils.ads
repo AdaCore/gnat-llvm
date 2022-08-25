@@ -200,6 +200,10 @@ package CCG.Utils is
      with Pre => Present (V);
    --  True if V may have side effects. We take a very conservative view
 
+   function Has_Operands (V : Value_T) return Boolean is
+     (Is_A_Instruction (V) or else Is_A_Constant_Expr (V))
+     with Pre => Present (V);
+
    function Is_Unc_Br (V : Value_T) return Boolean is
      (Is_A_Branch_Inst (V) and then not Is_Conditional (V))
      with Pre => Present (V);

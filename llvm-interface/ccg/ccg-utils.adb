@@ -714,9 +714,9 @@ package body CCG.Utils is
       then
          return Opt_Is_Unsigned_Type (BT);
 
-      --  If it's not an instruction, we won't have made it unsigned
+      --  If it doesn't have operands, we won't have made it unsigned
 
-      elsif not Is_A_Instruction (V) and then not Is_A_Constant_Expr (V) then
+      elsif not Has_Operands (V) then
          return False;
       end if;
 
@@ -789,9 +789,9 @@ package body CCG.Utils is
       then
          return True;
 
-      --  If it's not an instruction then we know nothing about it
+      --  If it doesn't have operands, we know nothing about it
 
-      elsif not Is_A_Instruction (V) and then not Is_A_Constant_Expr (V) then
+      elsif not Has_Operands (V) then
          return False;
       end if;
 
@@ -1023,8 +1023,8 @@ package body CCG.Utils is
                Process (V);
             end if;
 
-            if Is_A_Instruction (V) or else Is_A_Constant_Expr (V)
-              or else Is_A_Constant_Struct (V) or else Is_A_Constant_Array (V)
+            if Has_Operands (V) or else Is_A_Constant_Struct (V)
+              or else Is_A_Constant_Array (V)
             then
                for J in Nat (0) .. Get_Num_Operands (V) - 1 loop
                   Walk_Value (Get_Operand (V, J));

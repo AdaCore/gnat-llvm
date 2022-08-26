@@ -530,7 +530,7 @@ package body CCG.Subprograms is
             Call :=
               Call & "(" & Get_Element_Type (Op) & " *) " & (Op + Comma);
          else
-            Call := Call & (Op + Comma);
+            Call := Call & (Process_Operand (Op, X, Comma) + Comma);
          end if;
 
          First := False;
@@ -667,6 +667,8 @@ package body CCG.Subprograms is
       Op1      : constant Value_T := Ops (Ops'First);
       Op2      : constant Value_T := Ops (Ops'First + 1);
       Op3      : constant Value_T := Ops (Ops'First + 2);
+      Str_Op1  : constant Str     := Process_Operand (Op1, X, Shift);
+      Str_Op2  : constant Str     := Process_Operand (Op2, X, Shift);
       Size     : constant Nat     := Get_Scalar_Bit_Size (Op1);
       Cnt      : Nat;
       Sh1, Sh2 : Str;
@@ -686,8 +688,9 @@ package body CCG.Subprograms is
       --  the two shifts.
 
       Cnt := Nat (Const_Int_Get_Z_Ext_Value (Op3));
-      Sh1 := (Op1 + Shift) & (if Left then " << " else " >> ") & Cnt;
-      Sh2 := (Op2 + Shift) & (if Left then " >> " else " << ") & (Size - Cnt);
+      Sh1 := (Str_Op1 + Shift) & (if Left then " << " else " >> ") & Cnt;
+      Sh2 :=
+        (Str_Op2 + Shift) & (if Left then " >> " else " << ") & (Size - Cnt);
       Res := (Sh1 & " | " & Sh2) + Bit;
       Assignment (V,
                   (if Is_Unsigned (V) then "(" else "(unsigned ") &

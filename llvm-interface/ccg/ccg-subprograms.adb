@@ -690,7 +690,8 @@ package body CCG.Subprograms is
       Sh2 := (Op2 + Shift) & (if Left then " >> " else " << ") & (Size - Cnt);
       Res := (Sh1 & " | " & Sh2) + Bit;
       Assignment (V,
-                  "(unsigned " & (V + Write_Type) & ") (" & Res & ")" + Unary,
+                  (if Is_Unsigned (V) then "(" else "(unsigned ") &
+                  (V + Write_Type) & ") (" & Res & ")" + Unary,
                   Is_Opencode_Builtin => True);
       return True;
 

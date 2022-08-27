@@ -107,12 +107,6 @@ package body CCG.Subprograms is
    --  Return the prototype for function V, for either a definition or
    --  a declaration, as appropriate.
 
-   function Function_Type_Proto (T : Type_T; S : Str) return Str
-     with Pre  => Is_Function_Type (T) and then Present (S),
-          Post => Present (Function_Type_Proto'Result);
-   --  Return the prototype for function type T, using S for where the name
-   --  of the function would be.
-
    function Is_Builtin_Name (S : String) return Boolean is
      (S'Length > 5 and then S (S'First .. S'First + 4) = "llvm.");
    --  Return True if S denotes an LLVM builtin function
@@ -259,11 +253,27 @@ package body CCG.Subprograms is
    ----------------------------------
 
    procedure Output_Function_Type_Typedef (T : Type_T) is
-      Fn_T : constant Type_T := Get_Element_Type (T);
+      Fn_T       : constant Type_T := Get_Element_Type (T);
+      Num_Params : constant Nat    := Count_Param_Types (Fn_T);
+      First      : Boolean         := True;
+      Result     : Str             :=
+        Effective_Return_Type (Fn_T) & " " & "(*" & T & ")" & " (";
+      P_Types    : Type_Array (1 .. Num_Params);
 
    begin
-      Output_Decl ("typedef " & Function_Type_Proto (Fn_T, "(*" & T & ")"),
-                   Is_Typedef => True);
+      if Num_Params = 0 then
+         Result := Result & "void";
+      else
+         Get_Param_Types (Fn_T, P_Types'Address);
+         for P_T of P_Types loop
+            begin
+               Result := Result & (if First then "" else ", ") & P_T;
+               First := False;
+            end;
+         end loop;
+      end if;
+
+      Output_Decl ("typedef " & Result & ")", Is_Typedef => True);
    end Output_Function_Type_Typedef;
 
    ---------------------------
@@ -383,34 +393,6 @@ package body CCG.Subprograms is
 
       return Result & ")";
    end Function_Proto;
-
-   -------------------------
-   -- Function_Type_Proto --
-   -------------------------
-
-   function Function_Type_Proto (T : Type_T; S : Str) return Str is
-      Num_Params : constant Nat    := Count_Param_Types (T);
-      P_Types    : Type_Array (1 .. Num_Params);
-      First      : Boolean         := True;
-      Result     : Str             :=
-        Effective_Return_Type (T) & " " & S & " (";
-
-   begin
-      if Num_Params = 0 then
-         Result := Result & "void";
-      else
-         Get_Param_Types (T, P_Types'Address);
-         for T of P_Types loop
-            begin
-               Result := Result & (if First then "" else ", ") & T;
-               First := False;
-            end;
-         end loop;
-      end if;
-
-      return Result & ")";
-
-   end Function_Type_Proto;
 
    ------------------------
    -- Declare_Subprogram --

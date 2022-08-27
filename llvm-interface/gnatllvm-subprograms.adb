@@ -1982,8 +1982,8 @@ package body GNATLLVM.Subprograms is
         Has_Activation_Record (Subp_Typ);
       This_Adds_S_Link : constant Boolean      :=
         (not Direct_Call and not Foreign)
-          or else (not Has_S_Link and then Force_Activation_Record_Parameter
-                     and then not Foreign);
+        or else (not Has_S_Link and then Force_Activation_Record_Parameter
+                 and then not Foreign);
       Arg_Count        : constant Nat          :=
         Orig_Arg_Count + (if This_Adds_S_Link then 1 else 0) +
           (if RK = Return_By_Parameter then 1 else 0);

@@ -177,8 +177,9 @@ package body CCG is
 
    procedure Error_Msg (Msg : String; V : Value_T) is
    begin
-      if Is_A_Instruction (V) or else Is_A_Function (V)
-        or else Is_A_Global_Variable (V)
+      if Present (V)
+        and then (Is_A_Instruction (V) or else Is_A_Function (V)
+                  or else Is_A_Global_Variable (V))
       then
          declare
             File : constant String := Get_Debug_Loc_Filename (V);

@@ -24,10 +24,11 @@
 --  ASIS-based tools (or automated tests) which expect xxx-gcc as the Ada
 --  driver.
 
-with Ada.Text_IO;       use Ada.Text_IO;
-with Ada.Command_Line;  use Ada.Command_Line;
-with Ada.Strings.Fixed; use Ada.Strings.Fixed;
-with GNAT.OS_Lib;       use GNAT.OS_Lib;
+with Ada.Characters.Handling; use Ada.Characters.Handling;
+with Ada.Text_IO;             use Ada.Text_IO;
+with Ada.Command_Line;        use Ada.Command_Line;
+with Ada.Strings.Fixed;       use Ada.Strings.Fixed;
+with GNAT.OS_Lib;             use GNAT.OS_Lib;
 with Gnatvsn;
 
 procedure GCC_Wrapper is
@@ -266,7 +267,7 @@ begin
       Last := GCC'Last - 3;
 
    elsif GCC'Length >= 7
-     and then GCC (GCC'Last - 6 .. GCC'Last) = "gcc.exe"
+     and then To_Lower (GCC (GCC'Last - 6 .. GCC'Last)) = "gcc.exe"
    then
       Last := GCC'Last - 7;
 

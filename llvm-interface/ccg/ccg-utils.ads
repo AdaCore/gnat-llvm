@@ -322,7 +322,7 @@ package CCG.Utils is
    --  Return the string corresponding to the C name of an integer type of
    --  Size bits.
 
-   function Null_String return String is
+   function NULL_String return String is
      (if Have_Includes then "NULL" else "(void *) 0");
 
 end CCG.Utils;

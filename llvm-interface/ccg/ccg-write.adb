@@ -338,7 +338,7 @@ package body CCG.Write is
             Write_Str ("0");
 
          when Pointer_Type_Kind =>
-            Write_Str (Null_String);
+            Write_Str (NULL_String);
 
          when Struct_Type_Kind =>
 
@@ -550,7 +550,7 @@ package body CCG.Write is
          end if;
 
       elsif Is_A_Constant_Pointer_Null (V) then
-         Write_Str (Null_String);
+         Write_Str (NULL_String);
 
       elsif Is_Undef (V) or else Is_A_Constant_Aggregate_Zero (V) then
          Write_Undef (Type_Of (V));

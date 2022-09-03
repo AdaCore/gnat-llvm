@@ -302,11 +302,15 @@ package body CCG.Subprograms is
    function Function_Proto
      (V : Value_T; Definition : Boolean := True) return Str
    is
-      Num_Params     : constant Nat    := Count_Params (V);
-      Fn_Typ         : constant Type_T := Get_Element_Type (V);
-      Result         : Str             :=
+      Num_Params     : constant Nat     := Count_Params (V);
+      Fn_Typ         : constant Type_T  := Get_Element_Type (V);
+      Result         : Str              :=
         Effective_Return_Type (Fn_Typ) & " " & V & " (";
-      Maybe_Add_Nest : Boolean         := Get_Needs_Nest (V);
+      Maybe_Add_Nest : constant Boolean :=
+        Get_Needs_Nest (V)
+        and then (Num_Params = 0
+                  or else not Has_Nest_Attribute
+                                (V, unsigned (Num_Params - 1)));
 
    begin
       --  If this is an internal subprogram, mark it as static
@@ -350,17 +354,6 @@ package body CCG.Subprograms is
 
       if Is_Unsigned (V) then
          Result := "unsigned " & Result;
-      end if;
-
-      --  If this function may need a nest parameter added, so if it
-      --  already has one.
-
-      if Maybe_Add_Nest then
-         for J in 0 .. Num_Params - 1 loop
-            if Has_Nest_Attribute (V, unsigned (J)) then
-               Maybe_Add_Nest := False;
-            end if;
-         end loop;
       end if;
 
       --  Then output the list of parameter types, if any.  If this isn't
@@ -487,10 +480,15 @@ package body CCG.Subprograms is
    ----------------------
 
    procedure Call_Instruction (V : Value_T; Ops : Value_Array) is
-      Func  : constant Value_T := Ops (Ops'Last);
-      S     : constant String  := Get_Value_Name (Func);
-      Call  : Str              := Func + Component & " (";
-      First : Boolean          := True;
+
+      --  The operands to a call instruction are the parameters of the
+      --  function being called followed by the function to call.
+
+      Func       : constant Value_T  := Ops (Ops'Last);
+      Num_Params : constant unsigned := unsigned (Ops'Length - 1);
+      S          : constant String   := Get_Value_Name (Func);
+      Call       : Str               := Func + Component & " (";
+      First      : Boolean           := True;
 
    begin
       --  If this is a builtin, handle that
@@ -537,24 +535,14 @@ package body CCG.Subprograms is
          First := False;
       end loop;
 
-      --  If we have a function that needs a nest parameter and none of the
-      --  parameters passed here were, add a dummy nest parameter.
+      --  If we have a function that needs a nest parameter and the last
+      --  parameter passed here isn't a nest parameter, pass one.
 
-      if Is_A_Function (Func) and then Get_Needs_Nest (Func) then
-         declare
-            Has_Nest : Boolean := False;
-
-         begin
-            for J in 0 .. Ops'Length - 1 loop
-               if Call_Param_Has_Nest (V, unsigned (J)) then
-                  Has_Nest := True;
-               end if;
-            end loop;
-
-            if not Has_Nest then
-               Call := Call & (if First then "" else ", ") & Null_String;
-            end if;
-         end;
+      if Is_A_Function (Func) and then Get_Needs_Nest (Func)
+        and then (Num_Params = 0
+                  or else not Call_Param_Has_Nest (V, Num_Params - 1))
+      then
+         Call := Call & (if First then "" else ", ") & NULL_String;
       end if;
 
       --  Add the final close paren, then write any pending values (we

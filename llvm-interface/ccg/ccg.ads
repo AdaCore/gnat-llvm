@@ -170,6 +170,10 @@ package CCG is
    --  Return True if we're emitting C and shouldn't add an Inline_Always
    --  except when explicitly present in the input source.
 
+   procedure C_Address_Taken (V : Value_T)
+     with Pre => Present (V);
+   --  Indicate that V is a subprogram whose address is being taken
+
    procedure Error_Msg (Msg : String; V : Value_T);
    --  Post an error message via the GNAT errout mechanism, posted on the
    --  main unit start sloc.

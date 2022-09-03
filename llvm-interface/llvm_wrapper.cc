@@ -224,6 +224,12 @@ Has_Nest_Attribute (Function *fn, unsigned idx)
   return fn->hasParamAttribute (idx, Attribute::Nest);
 }
 
+extern "C"
+bool
+Call_Param_Has_Nest (CallBase *CI, unsigned idx)
+{
+  return CI->getAttributes ().hasParamAttr (idx, Attribute::Nest);
+}
 
 extern "C"
 MDNode *

@@ -171,6 +171,17 @@ package body CCG is
    function C_Dont_Add_Inline_Always return Boolean is
      (Emit_C and then Inline_Always_Must);
 
+   ---------------------
+   -- C_Address_Taken --
+   ---------------------
+
+   procedure C_Address_Taken (V : Value_T) is
+   begin
+      if Emit_C then
+         Set_Needs_Nest (V);
+      end if;
+   end C_Address_Taken;
+
    ---------------
    -- Error_Msg --
    ---------------

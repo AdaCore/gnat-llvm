@@ -30,6 +30,7 @@ with GNATLLVM.Types; use GNATLLVM.Types;
 
 with CCG.Helper; use CCG.Helper;
 with CCG.Strs;   use CCG.Strs;
+with CCG.Target; use CCG.Target;
 
 package CCG.Utils is
 
@@ -320,5 +321,8 @@ package CCG.Utils is
    function Int_Type_String (Size : Pos) return Str;
    --  Return the string corresponding to the C name of an integer type of
    --  Size bits.
+
+   function Null_String return String is
+     (if Have_Includes then "NULL" else "(void *) 0");
 
 end CCG.Utils;

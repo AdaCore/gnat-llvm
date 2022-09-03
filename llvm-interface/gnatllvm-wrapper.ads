@@ -146,6 +146,9 @@ package GNATLLVM.Wrapper is
    function Has_Nest_Attribute (Func : Value_T; Idx : unsigned) return Boolean
      with Pre => Present (Is_A_Function (Func));
 
+   function Call_Param_Has_Nest (V : Value_T; Idx : unsigned) return Boolean
+     with Pre => Present (Is_A_Call_Inst (V));
+
    function Get_Stack_Alignment (Layout : Target_Data_T) return unsigned
      with Import, Convention => C, External_Name => "Get_Stack_Alignment";
 

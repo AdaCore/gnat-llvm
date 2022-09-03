@@ -302,10 +302,11 @@ package body CCG.Subprograms is
    function Function_Proto
      (V : Value_T; Definition : Boolean := True) return Str
    is
-      Num_Params : constant Nat     := Count_Params (V);
-      Fn_Typ     : constant Type_T  := Get_Element_Type (V);
-      Result     : Str              :=
+      Num_Params     : constant Nat    := Count_Params (V);
+      Fn_Typ         : constant Type_T := Get_Element_Type (V);
+      Result         : Str             :=
         Effective_Return_Type (Fn_Typ) & " " & V & " (";
+      Maybe_Add_Nest : Boolean         := Get_Needs_Nest (V);
 
    begin
       --  If this is an internal subprogram, mark it as static
@@ -351,13 +352,24 @@ package body CCG.Subprograms is
          Result := "unsigned " & Result;
       end if;
 
+      --  If this function may need a nest parameter added, so if it
+      --  already has one.
+
+      if Maybe_Add_Nest then
+         for J in 0 .. Num_Params - 1 loop
+            if Has_Nest_Attribute (V, unsigned (J)) then
+               Maybe_Add_Nest := False;
+            end if;
+         end loop;
+      end if;
+
       --  Then output the list of parameter types, if any.  If this isn't
       --  for an extern definition, include the parameter names.
       --  Special-case calloc since we can't tell that the integral type
       --  is really size_t and that our result is really void *.
 
       if Num_Params = 0 then
-         Result := Result & "void";
+         Result := Result & (if Maybe_Add_Nest then "char * _n" else "void");
       elsif Get_Value_Name (V) = "calloc" then
          Result := +"void *calloc (size_t, size_t";
       else
@@ -389,6 +401,13 @@ package body CCG.Subprograms is
                end if;
             end;
          end loop;
+
+         --  If we've determined that we need to add a nest parameter to this
+         --  function, do it.
+
+         if Maybe_Add_Nest then
+            Result := Result & ", char * _n";
+         end if;
       end if;
 
       return Result & ")";
@@ -517,6 +536,26 @@ package body CCG.Subprograms is
 
          First := False;
       end loop;
+
+      --  If we have a function that needs a nest parameter and none of the
+      --  parameters passed here were, add a dummy nest parameter.
+
+      if Is_A_Function (Func) and then Get_Needs_Nest (Func) then
+         declare
+            Has_Nest : Boolean := False;
+
+         begin
+            for J in 0 .. Ops'Length - 1 loop
+               if Call_Param_Has_Nest (V, unsigned (J)) then
+                  Has_Nest := True;
+               end if;
+            end loop;
+
+            if not Has_Nest then
+               Call := Call & (if First then "" else ", ") & Null_String;
+            end if;
+         end;
+      end if;
 
       --  Add the final close paren, then write any pending values (we
       --  do it here to avoid writing out things only used as part of
@@ -1020,7 +1059,7 @@ package body CCG.Subprograms is
             if not Has_Element (Pos) then
 
                --  First see if this forces us to declare anything that's
-               --  pending.  Only check variables here because the
+               --  pending. Only check variables here because the
                --  declaration of a function doesn't reference objects
                --  inside it.
 

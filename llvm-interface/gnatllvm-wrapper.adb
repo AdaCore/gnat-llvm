@@ -280,6 +280,19 @@ package body GNATLLVM.Wrapper is
       return Has_Nest_Attribute (Func, Idx) /= 0;
    end Has_Nest_Attribute;
 
+   -------------------------
+   -- Call_Param_Has_Nest --
+   -------------------------
+
+   function Call_Param_Has_Nest (V : Value_T; Idx : unsigned) return Boolean
+   is
+      function Call_Param_Has_Nest
+        (V : Value_T; Idx : unsigned) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Call_Param_Has_Nest";
+   begin
+      return Call_Param_Has_Nest (V, Idx) /= 0;
+   end Call_Param_Has_Nest;
+
    -------------
    -- Has_NSW --
    -------------

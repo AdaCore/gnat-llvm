@@ -1168,21 +1168,22 @@ package body GNATLLVM.Exprs is
    function Emit_Attribute_Reference
      (N : N_Attribute_Reference_Id) return GL_Value
    is
-      Attr : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
-      Pref : constant N_Subexpr_Id := Prefix (N);
-      GT   : constant GL_Type      := Full_GL_Type (N);
-      V    : GL_Value              := No_GL_Value;
-      P_GT : GL_Type               := Full_GL_Type (Pref);
-      Bits : Uint;
-      Ret  : Uint;
+      Attr   : constant Attribute_Id := Get_Attribute_Id (Attribute_Name (N));
+      Pref   : constant N_Subexpr_Id := Prefix (N);
+      GT     : constant GL_Type      := Full_GL_Type (N);
+      V      : GL_Value              := No_GL_Value;
+      P_GT   : GL_Type               := Full_GL_Type (Pref);
+      Bits   : Uint;
+      Ret_UI : Uint;
+      Result : GL_Value;
 
    begin
       --  First see if this is something we can compute from annotations
       --  in the tree.
 
-      Ret := Get_Attribute_From_Annotation (N);
-      if Present (Ret) then
-         return Const_Int (GT, Ret);
+      Ret_UI := Get_Attribute_From_Annotation (N);
+      if Present (Ret_UI) then
+         return Const_Int (GT, Ret_UI);
       end if;
 
       case Attr is
@@ -1198,7 +1199,22 @@ package body GNATLLVM.Exprs is
             then
                return Get_Undef (GT);
             else
-               return Convert_To_Access (Emit_LValue (Pref), GT);
+               Result :=  Convert_To_Access (Emit_LValue (Pref), GT);
+
+               --  If we're taking the address of a subprogram, flag that
+               --  we are (and that we may need a nest parameter added if
+               --  generating C). Do this after the above call so we know
+               --  that if Pref has an entity, it will have been evaluated.
+
+               if Nkind (Pref) in N_Has_Entity
+                 and then Ekind (Entity (Pref)) in Subprogram_Kind
+                 and then not Has_Foreign_Convention (Entity (Pref))
+                 and then Present (Get_Value (Entity (Pref)))
+               then
+                  C_Address_Taken (+Get_Value (Entity (Pref)));
+               end if;
+
+               return Result;
             end if;
 
          when Attribute_Address | Attribute_Code_Address =>

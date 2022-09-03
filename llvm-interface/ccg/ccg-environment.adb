@@ -57,6 +57,11 @@ package body CCG.Environment is
       --  True if this value represents a variable that has been used in an
       --  expression.
 
+      Needs_Nest     : Boolean;
+      --  True if V is a function that needs to have a parameter added for
+      --  the static chain. This is the usually the case if its address is
+      --  taken and it doesn't already have one.
+
       Output_Idx     : Nat;
       --  A positive number if we've assigned an ordinal to use as
       --  part of the name for this anonymous value.
@@ -189,6 +194,7 @@ package body CCG.Environment is
                              Is_Constant    => False,
                              Entity         => Types.Empty,
                              Is_Used        => False,
+                             Needs_Nest     => False,
                              Output_Idx     => 0));
          Insert (Value_Info_Map, V, Value_Info.Last);
          return Value_Info.Last;
@@ -344,6 +350,18 @@ package body CCG.Environment is
 
    end Get_Is_Used;
 
+   --------------------
+   -- Get_Needs_Nest --
+   --------------------
+
+   function Get_Needs_Nest (V : Value_T) return Boolean is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
+
+   begin
+      return Present (Idx) and then Value_Info.Table (Idx).Needs_Nest;
+
+   end Get_Needs_Nest;
+
    -----------------
    -- Set_C_Value --
    -----------------
@@ -409,6 +427,17 @@ package body CCG.Environment is
    begin
       Value_Info.Table (Idx).Is_Used := B;
    end Set_Is_Used;
+
+   --------------------
+   -- Set_Needs_Nest --
+   --------------------
+
+   procedure Set_Needs_Nest (V : Value_T; B : Boolean := True) is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
+
+   begin
+      Value_Info.Table (Idx).Needs_Nest := B;
+   end Set_Needs_Nest;
 
    ----------------
    -- Get_Entity --

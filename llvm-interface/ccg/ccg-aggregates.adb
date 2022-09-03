@@ -160,13 +160,15 @@ package body CCG.Aggregates is
 
    procedure Output_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
    is
-      Types   : constant Nat                := Count_Struct_Element_Types (T);
-      TE      : constant Opt_Type_Kind_Id   := Get_Entity (T);
-      Is_Vol  : constant Boolean            :=
+      Types          : constant Nat                :=
+        Count_Struct_Element_Types (T);
+      TE             : constant Opt_Type_Kind_Id   := Get_Entity (T);
+      Is_Vol         : constant Boolean            :=
         Present (TE) and then Treat_As_Volatile (TE);
-      Vol_Str : constant String             :=
+      Vol_Str        : constant String             :=
         (if Is_Vol then "volatile " else "");
-      SOS     : constant Struct_Out_Style_T := Struct_Out_Style (T);
+      SOS            : constant Struct_Out_Style_T := Struct_Out_Style (T);
+      Fields_Written : Nat                         := 0;
 
    begin
       --  Because this struct may contain a pointer to itself, we always have
@@ -201,7 +203,6 @@ package body CCG.Aggregates is
       Output_Decl ("struct " & T, Semicolon => False, Is_Typedef => True);
       Start_Output_Block (Decl);
       for J in 0 .. Types - 1 loop
-
          declare
             ST : constant Type_T := Struct_Get_Type_At_Index (T, J);
 
@@ -233,6 +234,7 @@ package body CCG.Aggregates is
                     ((ST or F) & (if F_Is_Vol then "volatile " else "") &
                       " " & Name,
                      Is_Typedef => True);
+                  Fields_Written := Fields_Written + 1;
                end;
             end if;
          end;
@@ -241,7 +243,7 @@ package body CCG.Aggregates is
       --  If this is an empty struct, we need to add a dummy field since
       --  ISO C89 doesn't allow an empty struct.
 
-      if Types = 0 then
+      if Fields_Written = 0 then
          Output_Decl ("char dummy_for_null_recordC", Is_Typedef => True);
       end if;
 

@@ -341,24 +341,26 @@ package body CCG.Write is
             Write_Str (Null_String);
 
          when Struct_Type_Kind =>
+
             declare
-               Types : constant Nat                :=
-                 Count_Struct_Element_Types (T);
-               SOS   : constant Struct_Out_Style_T :=
-                 Struct_Out_Style (T);
+               Fields_Written : Nat := 0;
 
             begin
                Write_Str ("{");
-               for J in 0 .. Types - 1 loop
-                  if not (SOS = Normal and then Is_Field_Padding (T, J)) then
+               for J in Nat (0) .. Count_Struct_Element_Types (T) - 1 loop
+                  if not Is_Zero_Length_Array (Struct_Get_Type_At_Index (T, J))
+                    and then not (Struct_Out_Style (T) = Normal
+                                  and then Is_Field_Padding (T, J))
+                  then
                      Maybe_Write_Comma (First);
                      Write_Undef (Struct_Get_Type_At_Index (T, J));
+                     Fields_Written := Fields_Written + 1;
                   end if;
                end loop;
 
                --  For an empty struct, write out a value for the dummy field
 
-               if Types = 0 then
+               if Fields_Written = 0 then
                   Write_Str ("0");
                end if;
 
@@ -469,11 +471,12 @@ package body CCG.Write is
 
       elsif Is_A_Constant_Struct (V) then
          declare
-            T     : constant Type_T             := Type_Of (V);
-            Types : constant Nat                :=
+            T              : constant Type_T             := Type_Of (V);
+            Types          : constant Nat                :=
               Count_Struct_Element_Types (T);
-            SOS   : constant Struct_Out_Style_T :=
+            SOS            : constant Struct_Out_Style_T :=
               Struct_Out_Style (T);
+            Fields_Written : Nat                         := 0;
 
          begin
             Write_Str ("{");
@@ -490,12 +493,13 @@ package body CCG.Write is
                   Maybe_Write_Comma (First);
                   Maybe_Decl (Get_Operand (V, J), For_Initializer => True);
                   Write_Value (Get_Operand (V, J), Flags => Flags);
+                  Fields_Written := Fields_Written + 1;
                end if;
             end loop;
 
             --  If this is a zero-length struct, add an extra item
 
-            if Types = 0 then
+            if Fields_Written = 0 then
                Write_Undef (Get_Element_Type (V));
             end if;
 

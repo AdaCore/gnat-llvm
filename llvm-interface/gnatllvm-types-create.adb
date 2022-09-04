@@ -56,6 +56,7 @@ package body GNATLLVM.Types.Create is
    is
       BT : constant Void_Or_Type_Kind_Id := Full_Base_Type (TE);
       F  : Opt_Record_Field_Kind_Id;
+      P  : Opt_Formal_Kind_Id;
 
    begin
       --  If this is a void type, it doesn't depend on anything.
@@ -90,6 +91,21 @@ package body GNATLLVM.Types.Create is
 
          return Present (F);
 
+      --  If this is a subprogram type, if depends on its result type
+      --  and the type of its parameters.
+
+      elsif Ekind (TE) = E_Subprogram_Type then
+         if Depends_On_Being_Elaborated (Full_Etype (TE)) then
+            return True;
+         end if;
+
+         P := First_Formal (TE);
+         while Present (P) loop
+            exit when Depends_On_Being_Elaborated (Full_Etype (P));
+            Next_Formal (P);
+         end loop;
+
+         return Present (P);
       else
          --  Otherwise, this doesn't depend on something being elaborated
 
@@ -208,13 +224,12 @@ package body GNATLLVM.Types.Create is
          Set_Associated_GL_Type (TE, GT);
          return Pointer_Type (Type_Of (GT), 0);
 
-      --  If DT is a subprogram type (since the access type to it is always
-      --  the same type), handle this normally, but don't try to record an
-      --  associated type.
+      --  If we have a fat reference to a subprogram, handle this normally
+      --  (since the access type to it is always the same type), but don't
+      --  try to record an associated type.
 
-      elsif Ekind (DT) = E_Subprogram_Type then
-         return
-           Type_For_Relationship (No_GL_Type, R);
+      elsif R = Fat_Reference_To_Subprogram then
+         return Type_For_Relationship (No_GL_Type, R);
 
       --  If DT doesn't depend on something that's being
       --  elaborated, handle this normally.

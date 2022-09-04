@@ -677,7 +677,7 @@ package body GNATLLVM.GLValue is
          when Object =>
             return (if Is_Loadable_Type (GT) then T else Pointer_Type (T, 0));
 
-         when Thin_Pointer | Any_Reference =>
+         when Trampoline | Thin_Pointer | Any_Reference =>
             return Pointer_Type (T, 0);
 
          when Activation_Record =>
@@ -691,9 +691,6 @@ package body GNATLLVM.GLValue is
 
          when Bounds_And_Data =>
             return Create_Array_Bounds_And_Data_Type (GT);
-
-         when Trampoline =>
-            return Void_Ptr_T;
 
          when Fat_Reference_To_Subprogram =>
             return Create_Subprogram_Access_Type;
@@ -1089,7 +1086,7 @@ package body GNATLLVM.GLValue is
             if Our_R = Fat_Reference_To_Subprogram then
                return Extract_Value_To_Relationship (GT, V, 0, R);
             elsif Our_R = Reference then
-               return Get (Get (V, Fat_Reference_To_Subprogram), R);
+               return G_Is_Relationship (V, GT, R);
             end if;
 
          when Any_Reference =>

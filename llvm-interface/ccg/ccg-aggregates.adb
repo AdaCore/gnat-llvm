@@ -469,8 +469,7 @@ package body CCG.Aggregates is
 
                   --  Now cast to the desired type
 
-                  Result :=
-                    "((" & Get_Element_Type (ST) & " *) (" & Result & "))";
+                  Result := "((" & ST & " *) (" & Result & "))";
                   Is_LHS := False;
 
                --  Otherwise, just do a normal field reference

@@ -677,40 +677,16 @@ package body CCG.Instructions is
         and then Is_Pointer_Type (Dest_T)
       then
          declare
-            Safe_User : constant Value_T  := Safe_Single_User (V);
-            Inner_Op  : Value_T           := Op;
+            Safe_User : constant Value_T := Safe_Single_User (V);
 
          begin
-            --  First see if our only user is another bitcast to a pointer
-            --  type, this is a nop because multiple conversions between
-            --  pointer types are equivalent to just the outer one.
+            --  If our only user is another bitcast to a pointer type, this
+            --  is a nop because multiple conversions between pointer types
+            --  are equivalent to just the outer one.
 
             if Present (Safe_User) and then Is_A_Bit_Cast_Inst (Safe_User)
               and then Is_Pointer_Type (Safe_User)
               and then not Get_Is_LHS (Op)
-            then
-               return Our_Op;
-            end if;
-
-            --  Otherwise, see if we have an input where the above may have
-            --  been done one or more times. If so, get the type of the
-            --  actual source.
-
-            while Present (Get_C_Value (Inner_Op))
-              and then Is_Value (Get_C_Value (Inner_Op))
-              and then not Get_Is_Decl_Output
-                             (Single_Value (Get_C_Value (Inner_Op)))
-            loop
-               Inner_Op := Single_Value (Get_C_Value (Inner_Op));
-            end loop;
-
-            --  If the types are the same, we don't have to do anything.
-            --  Note here that we consider a 0-length array to be a pointer
-            --  to its element type. But if we have an LHS, don't do anything
-            --  since we can't flag that on our result.
-
-            if Equivalent_Pointers (Dest_T, Type_Of (Inner_Op))
-              and then not Get_Is_LHS (Inner_Op)
             then
                return Our_Op;
             end if;

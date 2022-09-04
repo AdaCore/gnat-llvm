@@ -855,14 +855,6 @@ package body CCG.Write is
                Write_Str ("ccg_f");
                Write_Int (Get_Output_Idx (T));
 
-            --  An array of zero size represents a variable-sized array,
-            --  which C doesn't support, so consider this a pointer to the
-            --  element type of the array.
-
-            elsif Is_Zero_Length_Array (Get_Element_Type (T)) then
-               Write_Type (Get_Element_Type (Get_Element_Type (T)));
-               Write_Str (" *");
-
             --  If we have a value and it's an access to a subprogram,
             --  we must use "ccg_f", a generic function pointer, and
             --  not char *.

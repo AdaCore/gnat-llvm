@@ -308,10 +308,6 @@ package CCG.Utils is
    --  user is an instruction, both are in the same basic block, and
    --  there are no instructions with side effects between them.
 
-   function Equivalent_Pointers (T1, T2 : Type_T) return Boolean
-     with Pre => Is_Pointer_Type (T1) and then Is_Pointer_Type (T2);
-   --  True if T1 and T2 are identical pointer types in their C representation
-
    generic
       with procedure Process (V : Value_T) is <>;
    procedure Walk_Object (V : Value_T)

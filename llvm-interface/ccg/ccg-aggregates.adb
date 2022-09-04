@@ -409,11 +409,9 @@ package body CCG.Aggregates is
          Maybe_Output_Typedef (Aggr_T);
          if Is_Array_Type (Aggr_T) then
 
-            --  If this isn't an LHS, we have to make it one, but not if
-            --  this is a zero-size array, since we've written the pointer
-            --  type as a pointer to the element.
+            --  If this isn't an LHS, we have to make it one
 
-            if not Is_LHS and then Get_Array_Length (Aggr_T) /= Nat (0) then
+            if not Is_LHS then
                Result := Deref (Result) + Component;
             end if;
 

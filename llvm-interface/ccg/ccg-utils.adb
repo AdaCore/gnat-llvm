@@ -982,26 +982,6 @@ package body CCG.Utils is
 
    end Safe_Single_User;
 
-   -------------------------
-   -- Equivalent_Pointers --
-   -------------------------
-
-   function Equivalent_Pointers (T1, T2 : Type_T) return Boolean is
-      E_T1 : constant Type_T := Get_Element_Type (T1);
-      E_T2 : constant Type_T := Get_Element_Type (T2);
-
-   begin
-      --  True if the types are the same or one points to a zero-length
-      --  array whose type is what the other points to.
-
-      return E_T1 = E_T2
-        or else (Is_Array_Type (E_T1) and then Get_Array_Length (E_T1) = 0
-                 and then Get_Element_Type (E_T1) = E_T2)
-        or else (Is_Array_Type (E_T2) and then Get_Array_Length (E_T2) = 0
-                 and then Get_Element_Type (E_T2) = E_T1);
-
-   end Equivalent_Pointers;
-
    -----------------
    -- Walk_Object --
    -----------------

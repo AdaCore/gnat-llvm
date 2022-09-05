@@ -431,6 +431,47 @@ package body GNATLLVM.Utils is
 
             return True;
 
+         when Pointer_Type_Kind =>
+
+            --  Pointers have the same layout if they're pointing at the
+            --  same address space.
+
+            return
+              Get_Pointer_Address_Space (T1) = Get_Pointer_Address_Space (T2);
+
+         when Function_Type_Kind =>
+
+            --  Two function types have different layouts if their
+            --  return types have different layouts or they have
+            --  a different number of parameter types.
+
+            if not Is_Layout_Identical (Get_Return_Type (T1),
+                                        Get_Return_Type (T2))
+              or else Count_Param_Types (T1) /= Count_Param_Types (T2)
+            then
+               return False;
+            end if;
+
+            --  If any parameter type is not the identical layout of the
+            --  corresponding parameter type, the layouts aren't the same.
+
+            declare
+               Num_Params : constant Nat := Nat (Count_Param_Types (T1));
+               T1_Types   : Type_Array (1 .. Num_Params);
+               T2_Types   : Type_Array (1 .. Num_Params);
+
+            begin
+               Get_Param_Types (T1, T1_Types'Address);
+               Get_Param_Types (T2, T2_Types'Address);
+               for J in T1_Types'Range loop
+                  if not Is_Layout_Identical (T1_Types (J), T2_Types (J)) then
+                     return False;
+                  end if;
+               end loop;
+
+               return True;
+            end;
+
          when others =>
             --  Otherwise, types are only identical if they're the same
             --  and that was checked above.

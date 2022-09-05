@@ -484,11 +484,12 @@ package body CCG.Subprograms is
       --  The operands to a call instruction are the parameters of the
       --  function being called followed by the function to call.
 
-      Func       : constant Value_T  := Ops (Ops'Last);
-      Num_Params : constant unsigned := unsigned (Ops'Length - 1);
-      S          : constant String   := Get_Value_Name (Func);
-      Call       : Str               := Func + Component & " (";
-      First      : Boolean           := True;
+      Num_Params  : constant unsigned      := unsigned (Ops'Length - 1);
+      Func        : Value_T                := Ops (Ops'Last);
+      S           : constant String        := Get_Value_Name (Func);
+      First       : Boolean                := True;
+      Cast_T      : Type_Array (Ops'Range) := (others => No_Type_T);
+      Call        : Str;
 
    begin
       --  If this is a builtin, handle that
@@ -513,26 +514,105 @@ package body CCG.Subprograms is
             Call :=
               "/* unsupported builtin */ " & (Builtin + Component) & " (";
          end;
+
+      --  Otherwise, see if our function is a bitcast from one
+      --  function type to another and the two are compatible.
+      --  We don't do this if the return types aren't the same and are
+      --  structure types because that'll require copying.
+
+      elsif Is_A_Constant_Expr (Func) and then Get_Opcode (Func) = Op_Bit_Cast
+      then
+         declare
+            Src_T     : constant Type_T := Type_Of (Func);
+            Dest_T    : constant Type_T := Type_Of (Get_Operand0 (Func));
+            Dest_Fn_T : constant Type_T := Get_Element_Type (Dest_T);
+            Src_Fn_T  : constant Type_T := Get_Element_Type (Src_T);
+
+         begin
+            if Is_Pointer_Type (Dest_T)
+              and then Is_Function_Type (Dest_Fn_T)
+              and then Is_Layout_Identical (Src_Fn_T, Dest_Fn_T)
+              and then Count_Param_Types (Dest_Fn_T) = Num_Params
+              and then (Get_Return_Type (Dest_Fn_T) =
+                        Get_Return_Type (Src_Fn_T)
+                        or else not Is_Struct_Type (Get_Return_Type
+                                                      (Src_Fn_T)))
+            then
+               declare
+                  Src_P_Types  : Type_Array (Ops'Range);
+                  Dest_P_Types : Type_Array (Ops'Range);
+
+               begin
+                  --  Mark which parameters have a different type (though
+                  --  an identical layout).
+
+                  Get_Param_Types (Src_Fn_T, Src_P_Types'Address);
+                  Get_Param_Types (Dest_Fn_T, Dest_P_Types'Address);
+                  for J in Ops'First .. Ops'Last - 1 loop
+                     if Src_P_Types (J) /= Dest_P_Types (J) then
+                        Cast_T (J) := Dest_P_Types (J);
+                     end if;
+                  end loop;
+
+                  --  See if the return needs a cast and then get the new
+                  --  function to call.
+
+                  if Get_Return_Type (Src_Fn_T) /= Get_Return_Type (Dest_Fn_T)
+                  then
+                     Cast_T (Cast_T'Last) := Get_Return_Type (Dest_Fn_T);
+                  end if;
+
+                  Func := Get_Operand0 (Func);
+               end;
+            end if;
+         end;
       end if;
 
-      --  Otherwise, generate the argument list for the call
+      --  Now generate the argument list for the call
 
-      for Op of Ops (Ops'First .. Ops'Last - 1) loop
-         if not First then
-            Call := Call & ", ";
-         end if;
+      Call := Func + Component & " (";
+      for J in Ops'First .. Ops'Last - 1 loop
+         declare
+            Op    : constant Value_T := Ops (J);
+            Param : Str;
 
-         --  If Op is a constant array, we have to cast it to the non-constant
-         --  type which is a pointer to the element type.
+         begin
+            --  If we need a cast and it's a struct type, we need to force
+            --  Op into a variable.
 
-         if Is_Array_Type (Op) and then Get_Is_Constant (Op) then
-            Call :=
-              Call & "(" & Get_Element_Type (Op) & " *) " & (Op + Comma);
-         else
-            Call := Call & (Process_Operand (Op, X, Comma) + Comma);
-         end if;
+            if Present (Cast_T (J)) and then Is_Struct_Type (Op) then
+               Force_To_Variable (Op);
+            end if;
 
-         First := False;
+            --  If Op is a constant array, we have to cast it to the
+            --  non-constant type which is a pointer to the element type.
+
+            if Is_Array_Type (Op) and then Get_Is_Constant (Op) then
+               Param := "(" & Get_Element_Type (Op) & " *) " & (Op + Comma);
+            else
+               Param := Process_Operand (Op, X, Comma) + Comma;
+            end if;
+
+            --  If we need a cast for this operand (because LLVM merged
+            --  two functions), generate it. But if we're casting to
+            --  a struct type, do it by pointer putting.
+
+            if Present (Cast_T (J)) then
+               if Is_Struct_Type (Op) then
+                  Param :=
+                    Deref ("(" & Cast_T (J) & "*) " & Addr_Of (Param));
+               else
+                  Param := "(" & Cast_T (J) & ") " & Param;
+               end if;
+            end if;
+
+            if not First then
+               Call := Call & ", ";
+            end if;
+
+            Call := Call & Param;
+            First := False;
+         end;
       end loop;
 
       --  If we have a function that needs a nest parameter and the last
@@ -543,6 +623,12 @@ package body CCG.Subprograms is
                   or else not Call_Param_Has_Nest (V, Num_Params - 1))
       then
          Call := Call & (if First then "" else ", ") & NULL_String;
+      end if;
+
+      --  If we need to cast the result to a different type, do that
+
+      if Present (Cast_T (Cast_T'Last)) then
+         Call := "(" & Cast_T (Cast_T'Last) & ") " & Call;
       end if;
 
       --  Add the final close paren, then write any pending values (we

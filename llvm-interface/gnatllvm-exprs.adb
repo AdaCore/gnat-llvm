@@ -1207,6 +1207,7 @@ package body GNATLLVM.Exprs is
                --  that if Pref has an entity, it will have been evaluated.
 
                if Nkind (Pref) in N_Has_Entity
+                 and then Present (Entity (Pref))
                  and then Ekind (Entity (Pref)) in Subprogram_Kind
                  and then not Has_Foreign_Convention (Entity (Pref))
                  and then Present (Get_Value (Entity (Pref)))

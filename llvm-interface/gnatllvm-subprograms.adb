@@ -91,6 +91,10 @@ package body GNATLLVM.Subprograms is
       --  be a difference in the ABI.   We do this compromise since this
       --  case is rare and all known instances are of small size.
 
+      Zero_Size,
+      --  This parameter is of zero-size and we're going to ignore it
+      --  (only used when emitting C).
+
       Out_Value,
       --  This parameter is passed by value, but is only an output
 
@@ -103,7 +107,7 @@ package body GNATLLVM.Subprograms is
    --  True if this parameter kind represents a value passed by reference
 
    function PK_Is_In_Or_Ref (PK : Param_Kind) return Boolean is
-     (PK /= Out_Value);
+     (PK not in Out_Value | Zero_Size);
    --  True if this parameter kind corresponds to an input parameter to
    --  the subprogram in the C sense.
 
@@ -467,10 +471,15 @@ package body GNATLLVM.Subprograms is
       By_Ref_Kind  : Param_Kind;
 
    begin
+      --  If we're emitting C and this parameter has zero size, omit it
+
+      if Emit_C and then Is_Zero_Size (GT) then
+         return Zero_Size;
+
       --  If this is the first parameter of a Valued Procedure, it needs to be
       --  an out parameter and is treated as an out parameter passed by value.
 
-      if Param = First_Formal_With_Extras (Subp)
+      elsif Param = First_Formal_With_Extras (Subp)
         and then Ekind (Subp) = E_Procedure and then Is_Valued_Procedure (Subp)
       then
          return Out_Value;
@@ -564,9 +573,11 @@ package body GNATLLVM.Subprograms is
       Ptr_Size : constant ULL                  := Get_Type_Size (Void_Ptr_T);
 
    begin
-      --  If there's no return type, that's simple
+      --  If there's no return type, that's simple. If we're emitting C
+      --  and the return kind is a zero-sized type, we don't have a return
+      --  either.
 
-      if Ekind (GT) = E_Void then
+      if Ekind (GT) = E_Void or else (Emit_C and then Is_Zero_Size (GT)) then
          return None;
 
       --  Otherwise, we return by reference if we're required to or if we
@@ -1202,6 +1213,11 @@ package body GNATLLVM.Subprograms is
                   Set_Value_Name (LLVM_Param, Name.all);
                end if;
 
+            --  If this is a zero-size parameter (which we return onlywhen
+            --  emitting C), use an Undef.
+
+            elsif PK = Zero_Size then
+               LLVM_Param := Get_Undef (GT);
             --  Otherwise we have the simple case
 
             else
@@ -1570,9 +1586,13 @@ package body GNATLLVM.Subprograms is
       V    : GL_Value                  := No_GL_Value;
 
    begin
-      --  Start by handling our expression, if any
+      --  Start by handling our expression, if any. Note that we ignore
+      --  the expression if we're emitting C and this is a function that
+      --  returns a zero-sized object.
 
-      if Present (Expression (N)) then
+      if Present (Expression (N))
+        and then not (Emit_C and then Is_Zero_Size (GT))
+      then
          pragma Assert (RK /= None);
 
          --  If there's a parameter for the address to which to copy the
@@ -2365,6 +2385,13 @@ package body GNATLLVM.Subprograms is
       case LRK is
          when Void =>
             Call (LLVM_Func, Args);
+
+            --  If we're emitting C and the return type is of zero size,
+            --  we may get here, in which case our result is undef.
+
+            if Emit_C and then Is_Zero_Size (Return_GT) then
+               Result := Get_Undef (Return_GT);
+            end if;
 
          when Subprog_Return =>
             if RK = RK_By_Reference then

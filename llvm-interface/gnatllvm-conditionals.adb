@@ -131,7 +131,7 @@ package body GNATLLVM.Conditionals is
             --  Now we need to get the size of the record (in bytes) to do
             --  the memory comparison.  Memcmp is defined as returning zero
             --  for a zero size, so we don't need to worry about testing
-            --  for that case.
+            --  for that case, but handle the case of a constant 0.
 
             LHS_Val : constant GL_Value := To_Primitive (Emit_LValue (LHS));
             RHS_Val : constant GL_Value := To_Primitive (Emit_LValue (RHS));
@@ -139,10 +139,12 @@ package body GNATLLVM.Conditionals is
               Compute_Size (Related_Type (LHS_Val), Related_Type (RHS_Val),
                             LHS_Val, RHS_Val);
             Memcmp  : constant GL_Value :=
-              Call (Get_Memory_Compare_Fn, Integer_GL_Type,
-                    (1 => Pointer_Cast (LHS_Val, A_Char_GL_Type),
-                     2 => Pointer_Cast (RHS_Val, A_Char_GL_Type),
-                     3 => To_Bytes (Size)));
+              (if   Is_Const_Int_Value (Size, 0)
+               then Const_Null (Integer_GL_Type)
+               else Call (Get_Memory_Compare_Fn, Integer_GL_Type,
+                          (1 => Pointer_Cast (LHS_Val, A_Char_GL_Type),
+                           2 => Pointer_Cast (RHS_Val, A_Char_GL_Type),
+                           3 => To_Bytes (Size))));
          begin
             return I_Cmp (Operation.Signed, Memcmp,
                           Const_Null (Integer_GL_Type));
@@ -327,18 +329,20 @@ package body GNATLLVM.Conditionals is
                --  Now we need to get the size of the array (in bytes)
                --  to do the memory comparison.  Memcmp is defined as
                --  returning zero for a zero size, so we don't need to worry
-               --  about testing for that case.
+               --  about testing for that case, but do check for constant 0.
 
                Size   : constant GL_Value :=
                  Compute_Size (Related_Type (LHS_Val), Related_Type (RHS_Val),
                                LHS_Val, RHS_Val);
-               Memcmp : constant GL_Value := Call
-                 (Get_Memory_Compare_Fn, Integer_GL_Type,
-                  (1 => Pointer_Cast (Get (LHS_Val, Reference),
-                                      A_Char_GL_Type),
-                   2 => Pointer_Cast (Get (RHS_Val, Reference),
-                                      A_Char_GL_Type),
-                   3 => To_Bytes (Size)));
+               Memcmp : constant GL_Value :=
+                 (if   Is_Const_Int_Value (Size, 0)
+                  then Const_Null (Integer_GL_Type)
+                  else Call (Get_Memory_Compare_Fn, Integer_GL_Type,
+                             (1 => Pointer_Cast (Get (LHS_Val, Reference),
+                                                 A_Char_GL_Type),
+                              2 => Pointer_Cast (Get (RHS_Val, Reference),
+                                                 A_Char_GL_Type),
+                              3 => To_Bytes (Size))));
                Cond   : constant GL_Value :=
                  I_Cmp (Int_EQ, Memcmp, Const_Null (Integer_GL_Type));
 

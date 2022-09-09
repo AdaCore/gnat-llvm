@@ -1385,7 +1385,15 @@ package body GNATLLVM.Arrays is
       Result     : GL_Value;
 
    begin
-      if not Is_Nonnative_Type (GT) then
+      --  Handle Undef array data which can occur for a zero-length
+      --  array when emitting C.
+
+      if Is_Undef (Array_Data) then
+         return Get_Undef_Ref (Comp_GT);
+
+      --  Handle the case of a simple array
+
+      elsif not Is_Nonnative_Type (GT) then
          Result := GEP (Comp_GT, Array_Data,
                         GL_Value_Array'(1 => Size_Const_Null) & Idxs);
          Mark_Atomic   (Result, Has_Atomic_Components (GT));
@@ -1477,6 +1485,12 @@ package body GNATLLVM.Arrays is
       Result      : GL_Value;
 
    begin
+      --  Handle Undef array data which can occur for a zero-length
+      --  array when emitting C.
+
+      if Is_Undef (Array_Data) then
+         return Get_Undef_Ref (GT);
+
       --  Like in Get_Indexed_LValue, we have to hande both the fake and
       --  non-fake cases.  Luckily, we know we're only a single dimension.
       --  However, GEP's result type is a pointer to the component type, so
@@ -1484,7 +1498,7 @@ package body GNATLLVM.Arrays is
       --  need to reinitialize any TBAA type since we've potentially changed
       --  the size.
 
-      if not Is_Nonnative_Type (Arr_GT) then
+      elsif not Is_Nonnative_Type (Arr_GT) then
          Result := Ptr_To_Ref (GEP (GT, Array_Data,
                                     (1 => Size_Const_Null, 2 => Index_Shift),
                                     "arr.lvalue"),
@@ -1543,11 +1557,17 @@ package body GNATLLVM.Arrays is
          end if;
       end if;
 
+      --  If the input is Undef (e.g., a zero-sized object when emitting C),
+      --  so is our result.
+
+      if Is_Undef (Result) then
+         return Get_Undef (Full_Component_GL_Type (Result));
+
       --  If we have something in a data form, we're not requiring or
       --  preferring an LHS, and all indices are constants, we can and
       --  should do this with an Extract_Value.
 
-      if Is_Data (Result) and then not For_LHS and then not Prefer_LHS
+      elsif Is_Data (Result) and then not For_LHS and then not Prefer_LHS
         and then (for all J of Idxs => Is_A_Constant_Int (J))
       then
          return Extract_Value (Full_Component_GL_Type (Result),

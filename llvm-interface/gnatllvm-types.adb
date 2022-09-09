@@ -27,6 +27,7 @@ with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
 with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
+with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
@@ -683,9 +684,8 @@ package body GNATLLVM.Types is
       --  labels and -fstack-check at the same time.  The divide below
       --  will constant-fold, but make sure we aren't dividing by zero.
 
-      if Do_Stack_Check
-        and then Get_Type_Size (Element_GT) /= Size_Const_Null
-      then
+      if Do_Stack_Check and then not Is_Zero_Size (Element_GT) then
+
          --  If everything is constant, we may know that we unconditionally
          --  overflow.
 
@@ -723,7 +723,14 @@ package body GNATLLVM.Types is
          end if;
       end if;
 
-      --  Now allocate the object, align if necessary, and then move
+      --  If we're emitting C and we have an array of zero-sized objects,
+      --  return Undef.
+
+      if Emit_C and then Is_Zero_Size (Element_GT) then
+         return Get_Undef_Ref (GT);
+      end if;
+
+      --  Otherwise allocate the object, align if necessary, and then move
       --  any data into it.
 
       Result := Array_Alloca (Element_GT, Num_Elts, E, Align,
@@ -1354,9 +1361,17 @@ package body GNATLLVM.Types is
          Size_Value := Left_Value;
 
       --  Use the type of right side unless its complexity is more
-      --  than that of the size of the type on the left side.
+      --  than that of the size of the type on the left side. If both
+      --  sizes are constant, use the smaller one.
 
       elsif RHS_Complex > LHS_Complex or else Class_Wide then
+         Size_GT    := Left_GT;
+         Size_Value := Left_Value;
+      elsif RHS_Complex = 0 and then LHS_Complex = 0
+        and then Present (GT_Size (Left_GT))
+        and then Present (GT_Size (Right_GT))
+        and then GT_Size (Left_GT) < GT_Size (Right_GT)
+      then
          Size_GT    := Left_GT;
          Size_Value := Left_Value;
       else

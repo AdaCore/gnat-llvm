@@ -946,7 +946,6 @@ package body GNATLLVM.GLValue is
             --  Otherwise get the bounds and force them into memory
 
             else
-               Result := Get (V, Bounds);
                return Get (Get (V, Bounds), R);
             end if;
 

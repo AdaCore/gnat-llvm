@@ -127,7 +127,8 @@ package GNATLLVM.Variables is
 
    function Make_Global_Constant (V : GL_Value) return GL_Value
      with Pre  => not Is_Reference (V),
-          Post => Is_A_Global_Variable (Make_Global_Constant'Result);
+          Post => Is_A_Global_Variable (Make_Global_Constant'Result)
+                  or else Is_Undef (Make_Global_Constant'Result);
    --  Create a global constant that contains the value of V
 
    procedure Emit_Declaration

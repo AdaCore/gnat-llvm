@@ -1730,7 +1730,12 @@ package body GNATLLVM.Exprs is
                   Call_SM_Copy_To   (Mem_Dst, Temp, Size);
                end;
 
-            --  Othewise memcpy if we know there's no overlap
+            --  If emitting C and this is of zero size, do nothing
+
+            elsif Emit_C and then Size = Size_Const_Null then
+               null;
+
+            --  Otherwise use memcpy if we know there's no overlap
 
             elsif (Forwards_OK and then Backwards_OK)
               or else (Present (Expr) and then Is_Safe_From (Dest, Expr))

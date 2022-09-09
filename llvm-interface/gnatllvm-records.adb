@@ -72,6 +72,11 @@ package body GNATLLVM.Records is
       Table_Increment      => 1,
       Table_Name           => "Writeback_Stack");
 
+   function RI_Size_Complexity
+     (Idx : Record_Info_Id; Max_Size : Boolean) return Nat
+     with Pre => Present (Idx);
+   --  Return the size complexity of the RI designated by Idx
+
    function Get_Variant_Size
      (RI          : Record_Info;
       V           : GL_Value;
@@ -1694,6 +1699,44 @@ package body GNATLLVM.Records is
      (if   not Is_Bitfield (F) then Uint_0
       else Field_Info_Table.Table (Get_Field_Info (F)).First_Bit);
 
+   ------------------------
+   -- RI_Size_Complexity --
+   ------------------------
+
+   function RI_Size_Complexity
+     (Idx : Record_Info_Id; Max_Size : Boolean) return Nat
+   is
+      RI : constant Record_Info := Record_Info_Table.Table (Idx);
+
+   begin
+      --  If this represents a GL_Type, use the complexity of that size
+
+      if Present (RI.GT) then
+         return Get_Type_Size_Complexity (RI.GT, Max_Size);
+
+      --  If we have a variant expression, we start with the complexity
+      --  of evaluating the variant (or zero if we're looking for the
+      --  max size) and then add the complexity of each variant (we add
+      --  because even if looking for the max size, we have to consider each
+      --  variant).
+
+      elsif Present (RI.Variant_Expr) then
+         return Complexity : Nat := (if Max_Size then 0 else 2) do
+            for Vidx of RI.Variants.all loop
+               if Present (Vidx) then
+                  Complexity :=
+                    Complexity + RI_Size_Complexity (Vidx, Max_Size);
+               end if;
+            end loop;
+         end return;
+
+      --  Otherwise this is fixed size
+
+      else
+         return 0;
+      end if;
+   end RI_Size_Complexity;
+
    --------------------------------
    -- Get_Record_Size_Complexity --
    --------------------------------
@@ -1701,19 +1744,14 @@ package body GNATLLVM.Records is
    function Get_Record_Size_Complexity
      (TE : Record_Kind_Id; Max_Size : Boolean := False) return Nat
    is
-      Cur_Idx    : Record_Info_Id := Get_Record_Info (TE);
-      RI         : Record_Info;
+      Cur_Idx : Record_Info_Id := Get_Record_Info (TE);
 
    begin
       return Complexity : Nat := 0 do
          while Present (Cur_Idx) loop
-            RI := Record_Info_Table.Table (Cur_Idx);
-            if Present (RI.GT) then
-               Complexity := Complexity +
-                 Get_Type_Size_Complexity (RI.GT, Max_Size);
-            end if;
-
-            Cur_Idx := RI.Next;
+            Complexity :=
+              Complexity + RI_Size_Complexity (Cur_Idx, Max_Size);
+            Cur_Idx := Record_Info_Table.Table (Cur_Idx).Next;
          end loop;
       end return;
    end Get_Record_Size_Complexity;

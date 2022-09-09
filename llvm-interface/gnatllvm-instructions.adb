@@ -1264,10 +1264,17 @@ package body GNATLLVM.Instructions is
       --  Data to return
 
    begin
+      --  If we're emitting C and this is a zero-sized load, the result is
+      --  an undef. Likewise if the pointer is an undef (meaning it was
+      --  zero-sized).
+
+      if Emit_C and then (Is_Zero_Size (Load_GT) or else Is_Undef (Ptr)) then
+         return Get_Undef_Relationship (Load_GT, New_R);
+
       --  If this needs a copy-in, make a temporary for it, copy the
       --  value into the temporary, and load the temporary.
 
-      if Has_SM_Copy_From (Ptr) then
+      elsif Has_SM_Copy_From (Ptr) then
          declare
             T : constant Type_T := Get_Element_Type (Type_Of (Ptr));
 
@@ -1278,7 +1285,7 @@ package body GNATLLVM.Instructions is
          end;
       end if;
 
-      --  Now generate the load instruction and set up any flags
+      --  Generate the load instruction and set up any flags
 
       Load_Inst := Load (IR_Builder, Ptr_Val, Name);
       Add_Flags_To_Instruction (Load_Inst, Ptr, Special_Atomic);
@@ -1303,7 +1310,7 @@ package body GNATLLVM.Instructions is
          end;
       end if;
 
-      --  Now build the result, with the proper GT and relationship
+      --  Build the result, with the proper GT and relationship
 
       Result := G (Load_Inst, Load_GT, New_R);
       Initialize_Alignment (Result);
@@ -1355,10 +1362,19 @@ package body GNATLLVM.Instructions is
                                              Equiv_T, ""), "");
       end if;
 
-      --  Now do the actual store and set the attributes
+      --  If we're emitting C and this is a zero-sized store do nothing.
+      --  Likewise if the address is an object that was zero-sized and is
+      --  now an undef.
 
-      Store_Inst := Build_Store (IR_Builder, Val_To_Store, Ptr_Val);
-      Add_Flags_To_Instruction (Store_Inst, Ptr, Special_Atomic);
+      if Emit_C and then (Is_Zero_Size (GT) or else Is_Undef (Ptr)) then
+         return;
+
+      --  Otherwise, do the actual store and set the attributes
+
+      else
+         Store_Inst := Build_Store (IR_Builder, Val_To_Store, Ptr_Val);
+         Add_Flags_To_Instruction (Store_Inst, Ptr, Special_Atomic);
+      end if;
    end Store;
 
    ----------------

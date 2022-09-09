@@ -736,7 +736,7 @@ package body GNATLLVM.Variables is
    begin
       --  If it's not data or not a constant, we can't
 
-      if not Is_Data (V) or else not Is_Constant (V) then
+      if not Is_Data (V) or else not Is_Constant (V) or else Is_Undef (V) then
          return False;
 
       --  If one type is aggregate, see if we can convert it that way
@@ -1526,12 +1526,12 @@ package body GNATLLVM.Variables is
          Is_Biased     => Biased);
 
       --  To avoid linker issues, pad a zero-size object to one byte, but
-      --  don't get confused for cases where we need to store bounds.
-      --  We needn't do this for non-file-level objects, but do so for
-      --  compatibility with Gigi.
+      --  don't get confused for cases where we need to store bounds.  We
+      --  needn't do this for non-file-level objects, but do so for
+      --  compatibility with Gigi. But don't do this when generating C,
+      --  since we want to delete zero-sized objects in that case.
 
-      if not Is_Nonnative_Type (GT)
-        and then Get_Type_Size (GT) = Size_Const_Null
+      if not Emit_C and then Is_Zero_Size (GT)
         and then not (Is_Constr_Subt_For_UN_Aliased (GT)
                         and then Is_Array_Type (GT))
       then
@@ -1552,10 +1552,17 @@ package body GNATLLVM.Variables is
       Out_Val : Value_T;
 
    begin
-      --  If we're making a constant for a string literal, we want
-      --  both the bounds and data.
+      --  If we're making a constant for an undef, use an undef address
 
-      if Ekind (GT) = E_String_Literal_Subtype then
+      if Is_Undef (In_V) then
+         return Get_Undef_Relationship (GT, Ref (In_V));
+
+      --  If we're making a constant for a string literal, we want both the
+      --  bounds and data unless what we're being passed is just bounds.
+
+      elsif Ekind (GT) = E_String_Literal_Subtype
+        and then Relationship (V) /= Bounds
+      then
          In_V := Get (In_V, Bounds_And_Data);
       end if;
 
@@ -1685,6 +1692,11 @@ package body GNATLLVM.Variables is
                Initialize_TBAA (LLVM_Var, Kind_From_Decl (E));
             end if;
          end;
+
+      --  If we're emitting C and this is of zero size, use undef.
+
+      elsif Emit_C and then Is_Zero_Size (GT) then
+         LLVM_Var := Get_Undef (GT);
 
       --  Otherwise, make one here and properly set its linkage
       --  information.  Note that we don't set External_Linkage since
@@ -2038,7 +2050,10 @@ package body GNATLLVM.Variables is
                   Value := Get (Value, Bounds_And_Data);
                end if;
 
-               Set_Initializer (LLVM_Var, Value);
+               if not Is_Undef (LLVM_Var) then
+                  Set_Initializer (LLVM_Var, Value);
+               end if;
+
                Set_Init := True;
                Copied   := True;
 
@@ -2233,6 +2248,11 @@ package body GNATLLVM.Variables is
             Proc => Procedure_To_Call (Return_Statement (E)),
             Pool => Storage_Pool (Return_Statement (E)));
 
+      --  If we're emitting C and this is of zero size, use Undef
+
+      elsif Emit_C and then Is_Zero_Size (Alloc_GT) then
+         LLVM_Var := Get_Undef (Alloc_GT);
+
       --  Otherwise, if we still haven't made a variable, allocate it
       --  on the stack, copying in any value.
 
@@ -2305,10 +2325,17 @@ package body GNATLLVM.Variables is
          Maybe_Update_At_End (E);
       end if;
 
-      --  If we haven't already copied in any initializing expression, do
-      --  that now.
+      --  If we're emitting C, LLVM_Var might be an undef (if it's of zero
+      --  size).  In that case, just evaluate anything that needs to be
+      --  evaluated in case there's a side-effect.
 
-      if not Copied and then (Present (Expr) or else Present (Value)) then
+      if Is_Undef (LLVM_Var) and then Present (Expr) and then No (Value) then
+         Discard (Emit_Expression (Expr));
+
+      --  Otherwise, if we haven't already copied in any initializing
+      --  expression, do that now.
+
+      elsif not Copied and then (Present (Expr) or else Present (Value)) then
          Emit_Assignment (Get (LLVM_Var, Any_Reference), Expr, Value);
       end if;
 

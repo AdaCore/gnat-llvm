@@ -117,6 +117,10 @@ package body CCG.Output is
    ----------------
 
    procedure Maybe_Decl (V : Value_T; For_Initializer : Boolean := False) is
+      T   : constant Type_T :=
+        (if   Is_A_Global_Variable (V) or else Is_A_Alloca_Inst (V)
+         then Get_Element_Type (Type_Of (V)) else Type_Of (V));
+
    begin
       --  If this is metadata, we do nothing. This can occur for some
       --  builtins, but we don't process those.
@@ -129,7 +133,7 @@ package body CCG.Output is
       --  us to declare its type separately.
 
       elsif not Is_A_Function (V) then
-         Maybe_Output_Typedef (Type_Of (V));
+         Maybe_Output_Typedef (T);
       end if;
 
       --  If this is an unprocessed constant expression, process it as an
@@ -160,9 +164,21 @@ package body CCG.Output is
       then
          Set_Is_Decl_Output (V);
 
+         --  We ensure in GNAT LLVM that we never have a variable of zero
+         --  size, but the optimizer might create one for us if it
+         --  determines than an alloca has a count that's known to be zero.
+         --  If we're already planning to write this as an array of 1, we
+         --  don't need to do anything. Otherwise kludge this case by
+         --  making it an array of size 1.
+
+         if Is_Zero_Length_Array (T) and then Effective_Array_Length (T) = 0
+         then
+            Output_Decl (Get_Element_Type (T) & " " & (V + LHS) & "[1]");
+            return;
+
          --  If this is a global, mark it as an LHS
 
-         if Is_A_Global_Variable (V) then
+         elsif Is_A_Global_Variable (V) then
             Set_Is_LHS (V);
          end if;
 
@@ -181,7 +197,6 @@ package body CCG.Output is
                declare
                   Align  : constant Nat    :=
                     To_Bits (Nat (Get_Alignment (V)));
-                  T      : constant Type_T := Get_Element_Type (V);
                   Actual : constant Nat    := Actual_Alignment (T);
                   Pref   : constant Nat    := Get_Preferred_Type_Alignment (T);
 

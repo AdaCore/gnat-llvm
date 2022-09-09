@@ -25,6 +25,7 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
+with CCG.Target;       use CCG.Target;
 
 package body CCG.Aggregates is
 
@@ -38,6 +39,13 @@ package body CCG.Aggregates is
    --  T is the type of a component of the aggregate in an extractvalue or
    --  insertvalue instruction V. Return an Str saying how to access that
    --  component and update T to be the type of that component.
+
+   function Omitted_Field_Type (T : Type_T; Is_Last : Boolean) return Boolean
+   is
+     (Is_Zero_Length_Array (T) and then not (Is_Last and then Version >= 1999))
+     with Pre => Present (T);
+   --  Return True if we should omit a field of type T from a struct.
+   --  Is_Last says if it's the last field in the struct.
 
    -----------------------
    -- Default_Alignment --
@@ -76,9 +84,9 @@ package body CCG.Aggregates is
    ----------------------
 
    function Struct_Out_Style (T : Type_T) return Struct_Out_Style_T is
-      Types     : constant Nat              := Count_Struct_Element_Types (T);
+      Num_Types : constant Nat              := Count_Struct_Element_Types (T);
       F0        : constant Entity_Id        :=
-        (if Types = 0 then Empty else Get_Field_Entity (T, 0));
+        (if Num_Types = 0 then Empty else Get_Field_Entity (T, 0));
       TE        : constant Opt_Type_Kind_Id :=
         (if   Present (F0) then Full_Base_Type (Full_Etype (Scope (F0)))
          else Empty);
@@ -91,9 +99,7 @@ package body CCG.Aggregates is
       --  there are no fields. But we don't know that we can omit padding
       --  fields.
 
-      if not Is_Packed_Struct (T)
-        or else Count_Struct_Element_Types (T) = Nat (0)
-      then
+      if not Is_Packed_Struct (T) or else Num_Types = 0 then
          return Padding;
 
       --  if we can't determine the base type, its base type is
@@ -116,7 +122,7 @@ package body CCG.Aggregates is
       --  Now we look at the position of each field relative to its default
       --  position. Skip padding fields when doing this.
 
-      for J in 0 .. Types - 1 loop
+      for J in 0 .. Num_Types - 1 loop
          declare
             Actual_Pos : constant ULL    :=
               To_Bits (Get_Element_Offset (T, J));
@@ -137,13 +143,12 @@ package body CCG.Aggregates is
                Cur_Pos := Cur_Pos + Size;
             end if;
 
-            --  ??? If we have a zero-length array, we may be doing an
-            --  reference to that field, which won't work properly if we
-            --  make any changes here, so keep that record packed for now.
-            --  This is a major kludge and we have to figure out the proper
-            --  way of referencing such a field.
+            --  If we have a zero-length array that isn't the last field,
+            --  which is a very rare case, we reference that field by taking
+            --  the address of the next one, so we need to be conservative
+            --  here.
 
-            if Is_Zero_Length_Array (Elem_T) then
+            if Is_Zero_Length_Array (Elem_T) and then J /= Num_Types - 1 then
                Need_Pack := True;
             end if;
          end;
@@ -160,7 +165,7 @@ package body CCG.Aggregates is
 
    procedure Output_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
    is
-      Types          : constant Nat                :=
+      Num_Types      : constant Nat                :=
         Count_Struct_Element_Types (T);
       TE             : constant Opt_Type_Kind_Id   := Get_Entity (T);
       Is_Vol         : constant Boolean            :=
@@ -193,7 +198,7 @@ package body CCG.Aggregates is
       --  Before we output the typedef for this struct, make sure we've
       --  output any inner typedefs.
 
-      for J in 0 .. Types - 1 loop
+      for J in 0 .. Num_Types - 1 loop
          Maybe_Output_Typedef (Struct_Get_Type_At_Index (T, J));
       end loop;
 
@@ -202,22 +207,13 @@ package body CCG.Aggregates is
 
       Output_Decl ("struct " & T, Semicolon => False, Is_Typedef => True);
       Start_Output_Block (Decl);
-      for J in 0 .. Types - 1 loop
+      for J in 0 .. Num_Types - 1 loop
          declare
-            ST : constant Type_T := Struct_Get_Type_At_Index (T, J);
+            ST : constant Type_T  := Struct_Get_Type_At_Index (T, J);
 
          begin
-            --  If the type of a field is a zero-length array, this can
-            --  indicate either a variable-sized array (usually for the last
-            --  field) or an instance of a variable-sized array where the
-            --  size is zero.  In either case, if we write it as an array of
-            --  length one, the size of the struct will be different than
-            --  expected, but not all versions of C support 0-sized arrays.
-            --  ??? We may want to adjust what we do here as we add
-            --  functionality to support various different C compiler
-            --  options.
 
-            if not Is_Zero_Length_Array (ST)
+            if not Omitted_Field_Type (ST, J = Num_Types - 1)
               and then not (SOS = Normal and then Is_Field_Padding (T, J))
             then
                declare
@@ -261,12 +257,28 @@ package body CCG.Aggregates is
    -------------------------
 
    procedure Output_Array_Typedef (T : Type_T) is
-      Elem_T : constant Type_T := Get_Element_Type (T);
-
+      Elem_T : Type_T := Get_Element_Type (T);
+      Decl   : Str    := +"typedef ";
    begin
+      --  If Elem_T is an array that we'll write with indefinite dimensions,
+      --  go down into its element type.
+
+      while Is_Array_Type (Elem_T) and then Effective_Array_Length (Elem_T) = 0
+      loop
+         Elem_T := Get_Element_Type (Elem_T);
+      end loop;
+
+      --  Now build the declaration
+
       Maybe_Output_Typedef (Elem_T);
-      Output_Decl ("typedef " & Elem_T & " " & T & "[" &
-                   Effective_Array_Length (T) & "]", Is_Typedef => True);
+      Decl := Decl & Elem_T & " " & T & "[";
+      if Effective_Array_Length (T) /= 0 then
+         Decl := Decl & Effective_Array_Length (T);
+      end if;
+
+      --  Finally, output it
+
+      Output_Decl (Decl & "]", Is_Typedef => True);
    end Output_Array_Typedef;
 
    ---------------------------------------
@@ -429,13 +441,15 @@ package body CCG.Aggregates is
                Found : Boolean         := False;
 
             begin
-               --  If this is a zero-length array, it doesn't actually
-               --  exist, so convert this into a cast to char *, point past
-               --  the end of a previous non-zero-length-array field (or at
-               --  the start of the struct if none) and then cast to a
-               --  pointer to the array's element type.
+               --  If this is a zero-length array, it may not actually
+               --  exist. If it doesn't, convert this into a cast to char *,
+               --  point past the end of a previous non-zero-length-array
+               --  field (or at the start of the struct if none) and then
+               --  cast to a pointer to the array's element type.
 
-               if Is_Zero_Length_Array (ST) then
+               if Omitted_Field_Type
+                 (ST, Idx = Count_Struct_Element_Types (Aggr_T) - 1)
+               then
                   for Prev_Idx in reverse 0 .. Idx - 1 loop
                      declare
                         Prev_ST : constant Type_T :=
@@ -448,7 +462,7 @@ package body CCG.Aggregates is
                         --  If we found a previous non-zero-length array
                         --  field, point to the end of it.
 
-                        if not Is_Zero_Length_Array (Prev_ST) then
+                        if not Omitted_Field_Type (Prev_ST, False) then
                            Result := ("(char *) " & Addr_Of (Ref) &
                                         " + sizeof (" & Ref & ")");
                            Found  := True;

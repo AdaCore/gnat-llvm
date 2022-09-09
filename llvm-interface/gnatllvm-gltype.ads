@@ -667,6 +667,10 @@ package GNATLLVM.GLType is
      (Can_Use_Internal_Rep (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Is_Zero_Size (GT : GL_Type) return Boolean is
+     (not Is_Nonnative_Type (GT) and then GT_Size (GT) = Size_Const_Null)
+     with Pre => Present (GT);
+
    function C_Pass_By_Copy (GT : GL_Type) return Boolean is
      (C_Pass_By_Copy (Full_Etype (GT)))
      with Pre => Present (GT);

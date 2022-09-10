@@ -157,6 +157,10 @@ package CCG is
    --  Give the entity corresponding to parameter Idx of the function that
    --  will be denoted by UID
 
+   procedure C_Set_Elab_Proc (V : Value_T; For_Body : Boolean)
+     with Pre => Present (V);
+   --  Indicate that V is an elab proc and which one it is
+
    procedure C_Set_Function (UID : Unique_Id; V : Value_T)
      with Pre => Present (V);
    --  Indicate that the previous calls to Set_Parameter_Info for UID

@@ -990,6 +990,8 @@ package body CCG.Subprograms is
       use Value_To_Decl_Maps;
       use Value_To_Subprogram_Maps;
 
+      Elab_Spec_SI    : Subprogram_Idx := Empty_Subprogram_Idx;
+      Elab_Body_SI    : Subprogram_Idx := Empty_Subprogram_Idx;
       Declaration_Map : Value_To_Decl_Maps.Map;
       Definition_Map  : Value_To_Subprogram_Maps.Map;
 
@@ -1149,7 +1151,7 @@ package body CCG.Subprograms is
       end loop;
 
       --  Now write out each subprogram, except for those that are present
-      --  in the source index table.
+      --  in the source index table or are an elab proc.
 
       for Sidx in Subprogram_Idx_Start .. Subprograms.Last loop
          declare
@@ -1160,7 +1162,11 @@ package body CCG.Subprograms is
                else Value_To_Subprogram_Maps.No_Element);
 
          begin
-            if not Has_Element (Pos) then
+            if V = Elab_Spec_Func then
+               Elab_Spec_SI := Sidx;
+            elsif V = Elab_Body_Func then
+               Elab_Body_SI := Sidx;
+            elsif not Has_Element (Pos) then
                Scan_For_Decls (V);
                Write_One_Subprogram (Sidx);
             elsif No (Element (Pos)) then
@@ -1203,6 +1209,18 @@ package body CCG.Subprograms is
             end if;
          end;
       end loop;
+
+      --  Finally, write each elab proc, if we have it
+
+      if Present (Elab_Spec_SI) then
+         Scan_For_Decls (Elab_Spec_Func);
+         Write_One_Subprogram (Elab_Spec_SI);
+      end if;
+      if Present (Elab_Body_SI) then
+         Scan_For_Decls (Elab_Body_Func);
+         Write_One_Subprogram (Elab_Body_SI);
+      end if;
+
    end Write_C_File;
 
 begin

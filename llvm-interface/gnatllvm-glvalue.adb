@@ -2084,6 +2084,15 @@ package body GNATLLVM.GLValue is
    end C_Set_GNAT_Type;
 
    ---------------------
+   -- C_Set_Elab_Proc --
+   ---------------------
+
+   procedure C_Set_Elab_Proc (V : GL_Value; For_Body : Boolean) is
+   begin
+      C_Set_Elab_Proc (+V, For_Body);
+   end C_Set_Elab_Proc;
+
+   ---------------------
    -- Get_Alloca_Name --
    ---------------------
 

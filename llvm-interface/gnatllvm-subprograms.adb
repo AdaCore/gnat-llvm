@@ -1454,6 +1454,7 @@ package body GNATLLVM.Subprograms is
       Push_Block (EH_List => (if   No (Stmts) then No_List
                               else Exception_Handlers (Stmts)));
       In_Elab_Proc := True;
+      C_Set_Elab_Proc (LLVM_Func, For_Body);
 
       --  Do through the elaboration table and process each entry
 

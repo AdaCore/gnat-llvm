@@ -1490,6 +1490,10 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Inline;
    --  Set which function corresponds to UID
 
+   procedure C_Set_Elab_Proc (V : GL_Value; For_Body : Boolean)
+     with Pre => Present (V);
+   --  Set which function is an elab proc and whether it's for the spec or body
+
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 
    --  Debug routine to print the LLVM value and GNAT tree node for a GL_Value

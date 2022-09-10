@@ -182,6 +182,19 @@ package body CCG is
       end if;
    end C_Address_Taken;
 
+   ---------------------
+   -- C_Set_Elab_Proc --
+   ---------------------
+
+   procedure C_Set_Elab_Proc (V : Value_T; For_Body : Boolean) is
+   begin
+      if For_Body then
+         Elab_Body_Func := V;
+      else
+         Elab_Spec_Func := V;
+      end if;
+   end C_Set_Elab_Proc;
+
    ---------------
    -- Error_Msg --
    ---------------

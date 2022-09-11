@@ -1421,8 +1421,10 @@ package body GNATLLVM.Types is
          elsif Nkind (Prefix (N)) = N_Selected_Component
          then  Entity (Selector_Name (Prefix (N)))
          else  Empty);
-      Our_E  : constant Entity_Id            :=
+      Use_E  : constant Entity_Id            :=
          (if Present (E) then E else TE);
+      Our_E  : constant Entity_Id            :=
+         (if Is_Type (Use_E) then Get_Fullest_View (Use_E) else Use_E);
       Ret    : Uint                          := No_Uint;
 
    begin

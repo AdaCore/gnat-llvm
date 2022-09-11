@@ -76,9 +76,10 @@ package CCG.Instructions is
    --  latter case, they're dead, but we don't want them to be output as
    --  part of another subprogram.
 
-   function Create_Annotation (S : String) return Nat;
-   --  Return the value to put as the operand of a call to llvm.ccg.annotate
-   --  to write Str into the C output.
+   function Create_Annotation (N : N_Pragma_Id) return Nat;
+   --  Return the value to eventually pass to Output_Annotation to perform
+   --  the operation designated by the pragma N if there is one to perform.
+   --  Otherwise, return 0.
 
    procedure Output_Annotation (J : Nat; V : Value_T);
    --  Output the annotation we recorded as J (the return of the previous

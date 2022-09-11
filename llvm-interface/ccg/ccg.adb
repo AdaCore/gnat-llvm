@@ -224,7 +224,7 @@ package body CCG is
    -- C_Create_Annotation --
    -------------------------
 
-   function C_Create_Annotation (S : String) return Nat
+   function C_Create_Annotation (N : N_Pragma_Id) return Nat
      renames Create_Annotation;
 
    ----------------------

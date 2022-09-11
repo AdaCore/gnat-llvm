@@ -58,9 +58,9 @@ package body GNATLLVM.Exprs is
      with Pre => Present (E);
    --  Similar to Is_Safe_From but applies to entities
 
-   procedure Emit_Annotation (N : Node_Id; S : String)
+   procedure Emit_Annotation (N : Node_Id)
      with Pre => Emit_C;
-   --  Emit LLVM to put string S (from node N) in the C output
+   --  Process node N, an annotation
 
    Annotate_Fn : GL_Value := No_GL_Value;
    --  Declaration for CCG builtin annotation function, if any
@@ -1077,41 +1077,7 @@ package body GNATLLVM.Exprs is
             --  operands.
 
             if Emit_C and then List_Length (PAAs) = 3 then
-               declare
-                  Arg1  : constant N_Pragma_Argument_Association_Id :=
-                    First (PAAs);
-                  Arg2  : constant N_Pragma_Argument_Association_Id :=
-                    Next (Arg1);
-                  Arg3  : constant N_Pragma_Argument_Association_Id :=
-                    Next (Arg2);
-                  Expr1 : constant N_Subexpr_Id                     :=
-                    Expression (Arg1);
-                  Expr2 : constant N_Subexpr_Id                     :=
-                    Expression (Arg2);
-                  Expr3 : constant N_Subexpr_Id                     :=
-                    Expression (Arg3);
-
-               begin
-                  --  The first operand must be an identifier named
-                  --  "ccg", the second must be an identifier, and the
-                  --  third must be a string literal.
-
-                  if Nkind (Expr1) = N_Identifier
-                    and then Get_Name_String (Chars (Expr1)) = "ccg"
-                    and then Nkind (Expr2) = N_Identifier
-                    and then Nkind (Expr3) = N_String_Literal
-                  then
-                     --  We support "c_pragma" and "verbatim"
-
-                     String_To_Name_Buffer (Strval (Expr3));
-                     if Get_Name_String (Chars (Expr2)) = "c_pragma" then
-                        Emit_Annotation
-                          (N, "#pragma " & Name_Buffer (1 .. Name_Len));
-                     elsif Get_Name_String (Chars (Expr2)) = "verbatim" then
-                        Emit_Annotation (N, Name_Buffer (1 .. Name_Len));
-                     end if;
-                  end if;
-               end;
+               Emit_Annotation (N);
             end if;
 
           --  For pragma Comment, set up an annotation for the comment
@@ -1122,9 +1088,7 @@ package body GNATLLVM.Exprs is
               and then Is_Non_Empty_List (PAAs)
               and then Nkind (Expression (First (PAAs))) = N_String_Literal
             then
-               String_To_Name_Buffer (Strval (Expression (First (PAAs))));
-               Emit_Annotation (N,
-                                "/* " & Name_Buffer (1 .. Name_Len) & " */");
+               Emit_Annotation (N);
             end if;
 
          when others => null;
@@ -1135,10 +1099,20 @@ package body GNATLLVM.Exprs is
    -- Emit_Annotation --
    ---------------------
 
-   procedure Emit_Annotation (N : Node_Id; S : String) is
+   procedure Emit_Annotation (N : Node_Id) is
+      Ann_Idx : Nat;
+
    begin
       if Library_Level then
          C_Add_To_Source_Order (N);
+         return;
+      end if;
+
+      --  Create the annotation and do nothing if there isn't anything
+      --  to annotate here.
+
+      Ann_Idx := C_Create_Annotation (N);
+      if Ann_Idx = 0 then
          return;
 
       --  If the annotation builtin isn't defined yet, define it.
@@ -1156,9 +1130,9 @@ package body GNATLLVM.Exprs is
 
       --  Now call it
 
-      Call (Annotate_Fn, (1 => Const_Int (Integer_GL_Type,
-                                          ULL (C_Create_Annotation (S)),
-                                          True)));
+      Call (Annotate_Fn,
+            (1 => Const_Int (Integer_GL_Type, ULL (Ann_Idx), True)));
+
    end Emit_Annotation;
 
    ------------------------------

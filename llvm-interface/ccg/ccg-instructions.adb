@@ -26,7 +26,11 @@ pragma Warnings (On);
 
 with LLVM.Core; use LLVM.Core;
 
+with Nlists;   use Nlists;
+with Sem_Util; use Sem_Util;
 with Set_Targ; use Set_Targ;
+with Snames;   use Snames;
+with Stringt;  use Stringt;
 with Table;
 
 with GNATLLVM.Types;   use GNATLLVM.Types;
@@ -1080,15 +1084,66 @@ package body CCG.Instructions is
    -- Create_Annotation --
    ----------------------
 
-   function Create_Annotation (S : String) return Nat is
+   function Create_Annotation (N : N_Pragma_Id) return Nat is
+      PAAs : constant List_Id := Pragma_Argument_Associations (N);
+      S    : Str              := No_Str;
+
    begin
+      if Get_Pragma_Id (N) in Pragma_Annotate | Pragma_GNAT_Annotate then
+         pragma Assert (List_Length (PAAs) = 3);
+         declare
+            Arg1  : constant N_Pragma_Argument_Association_Id := First (PAAs);
+            Arg2  : constant N_Pragma_Argument_Association_Id := Next (Arg1);
+            Arg3  : constant N_Pragma_Argument_Association_Id := Next (Arg2);
+            Expr1 : constant N_Subexpr_Id                     :=
+              Expression (Arg1);
+            Expr2 : constant N_Subexpr_Id                     :=
+              Expression (Arg2);
+            Expr3 : constant N_Subexpr_Id                     :=
+              Expression (Arg3);
+
+         begin
+            --  The first operand must be an identifier named
+            --  "ccg", the second must be an identifier, and the
+            --  third must be a string literal.
+
+            if Nkind (Expr1) = N_Identifier
+              and then Get_Name_String (Chars (Expr1)) = "ccg"
+              and then Nkind (Expr2) = N_Identifier
+              and then Nkind (Expr3) = N_String_Literal
+            then
+               --  We support "c_pragma" and "verbatim"
+
+               String_To_Name_Buffer (Strval (Expr3));
+               if Get_Name_String (Chars (Expr2)) = "c_pragma" then
+                  S := +"#pragma " & Name_Buffer (1 .. Name_Len);
+               elsif Get_Name_String (Chars (Expr2)) = "verbatim" then
+                  S := +Name_Buffer (1 .. Name_Len);
+               end if;
+            end if;
+         end;
+      else
+         pragma Assert (Get_Pragma_Id (N) = Pragma_Comment
+                        and then Is_Non_Empty_List (PAAs)
+                        and then Nkind (Expression (First (PAAs))) =
+                                 N_String_Literal);
+
+         String_To_Name_Buffer (Strval (Expression (First (PAAs))));
+         S := +"/* " & Name_Buffer (1 .. Name_Len) & " */";
+      end if;
+
       --  Other than the normal hashing of strings, we make no attempt
       --  to try to detect duplicate annotations. Though it's possible
       --  there may be some, there aren't enough to justify the effort
       --  and the space utilization is very small.
 
-      Annotations.Append (+S);
-      return Annotations.Last;
+      if Present (S) then
+         Annotations.Append (S);
+         return Annotations.Last;
+      else
+         return 0;
+      end if;
+
    end Create_Annotation;
 
    -----------------------

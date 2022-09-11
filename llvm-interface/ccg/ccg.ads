@@ -166,9 +166,10 @@ package CCG is
    --  Indicate that the previous calls to Set_Parameter_Info for UID
    --  were for LLVM value V.
 
-   function C_Create_Annotation (S : String) return Nat;
-   --  Return the value to put as the operand of a call to llvm.ccg.annotate
-   --  to write Str into the C output.
+   function C_Create_Annotation (N : N_Pragma_Id) return Nat;
+   --  Return the value to eventually pass to Output_Annotation to perform
+   --  the operation designated by the pragma N if there is one to perform.
+   --  Otherwise, return 0.
 
    function C_Dont_Add_Inline_Always return Boolean;
    --  Return True if we're emitting C and shouldn't add an Inline_Always

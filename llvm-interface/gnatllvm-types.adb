@@ -516,7 +516,8 @@ package body GNATLLVM.Types is
          else Int_To_Relationship (Temp, Mem_GT, R));
       New_V    : GL_Value                 :=
         (if    Present (V) then V
-         elsif Present (New_Expr) then Emit (New_Expr, LHS => Memory)
+         elsif Present (New_Expr)
+         then  Remove_Padding (Emit (New_Expr, LHS => Memory))
          else  No_GL_Value);
 
    begin

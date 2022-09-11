@@ -81,8 +81,8 @@ package CCG.Instructions is
    --  the operation designated by the pragma N if there is one to perform.
    --  Otherwise, return 0.
 
-   procedure Output_Annotation (J : Nat; V : Value_T);
+   procedure Output_Annotation (J : Nat; V : Value_T; Is_Global : Boolean);
    --  Output the annotation we recorded as J (the return of the previous
-   --  function) in instruction V.
+   --  function) in instruction V. If Is_Global, this is at file level.
 
 end CCG.Instructions;

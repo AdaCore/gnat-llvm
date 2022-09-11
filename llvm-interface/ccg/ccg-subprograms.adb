@@ -900,7 +900,7 @@ package body CCG.Subprograms is
 
       elsif Matches (S, "ccg.annotate") then
          Output_Annotation (Nat (Const_Int_Get_Z_Ext_Value (Ops (Ops'First))),
-                            V);
+                            V, Is_Global => False);
          return True;
 
       --  And we don't process the rest
@@ -1182,6 +1182,7 @@ package body CCG.Subprograms is
          declare
             Defining : Boolean;
             V        : constant Value_T := Referenced_Value (J, Defining);
+            N        : constant Node_Id := Source_Order.Table (J);
 
          begin
             if Present (V) then
@@ -1206,6 +1207,17 @@ package body CCG.Subprograms is
                      end if;
                   end;
                end if;
+
+            elsif Nkind (N) = N_Pragma then
+               declare
+                  Ann_Idx : constant Nat := Create_Annotation (N);
+
+               begin
+                  if Ann_Idx /= 0 then
+                     Output_Annotation
+                       (Ann_Idx, No_Value_T, Is_Global => True);
+                  end if;
+               end;
             end if;
          end;
       end loop;

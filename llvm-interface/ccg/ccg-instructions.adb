@@ -1150,14 +1150,18 @@ package body CCG.Instructions is
    -- Output_Annotation --
    -----------------------
 
-   procedure Output_Annotation (J : Nat; V : Value_T) is
+   procedure Output_Annotation (J : Nat; V : Value_T; Is_Global : Boolean) is
    begin
       pragma Assert (J > 0 and then J <= Annotations.Last);
 
-      Add_Line (Annotations.Table (J), V,
-                Force_Left =>
-                  Is_String_First_Char (Annotations.Table (J), '#'),
-                Semicolon  => False);
+      if Is_Global then
+         Write_Str (Annotations.Table (J), Eol => True);
+      else
+         Add_Line (Annotations.Table (J), V,
+                   Force_Left =>
+                     Is_String_First_Char (Annotations.Table (J), '#'),
+                   Semicolon  => False);
+      end if;
    end Output_Annotation;
 
 end CCG.Instructions;

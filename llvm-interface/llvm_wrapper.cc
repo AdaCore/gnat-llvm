@@ -39,16 +39,16 @@ extern "C"
 Instruction *
 Get_Latest_Instruction (IRBuilder<> *bld)
 {
-  return dyn_cast<Instruction>(&*--bld->GetInsertPoint());
+  return dyn_cast<Instruction>(&*--bld->GetInsertPoint ());
 }
 
 extern "C"
 void
 Add_Debug_Flags (Module *TheModule)
 {
-  TheModule->addModuleFlag(Module::Warning, "Debug Info Version",
-			   DEBUG_METADATA_VERSION);
-  TheModule->addModuleFlag(Module::Warning, "Dwarf Version", 4);
+  TheModule->addModuleFlag (Module::Warning, "Debug Info Version",
+			    DEBUG_METADATA_VERSION);
+  TheModule->addModuleFlag (Module::Warning, "Dwarf Version", 4);
 }
 
 extern "C"
@@ -69,7 +69,7 @@ extern "C"
 void
 Add_Cold_Attribute (Function *fn)
 {
-  fn->addFnAttr(Attribute::Cold);
+  fn->addFnAttr (Attribute::Cold);
 }
 
 extern "C"
@@ -99,7 +99,7 @@ Add_Dereferenceable_Or_Null_Attribute (Function *fn, unsigned idx,
 extern "C"
 void
 Add_Ret_Dereferenceable_Or_Null_Attribute (Function *fn, 
-					  unsigned long long Bytes)
+					   unsigned long long Bytes)
 {
   /* There doesn't appear to be a way to do this in LLVM 14, so skip for now.
      fn->addDereferenceableOrNullRetAttr (Bytes); */
@@ -109,28 +109,28 @@ extern "C"
 void
 Add_Inline_Always_Attribute (Function *fn)
 {
-  fn->addFnAttr(Attribute::AlwaysInline);
+  fn->addFnAttr (Attribute::AlwaysInline);
 }
 
 extern "C"
 void
 Add_Inline_Hint_Attribute (Function *fn)
 {
-  fn->addFnAttr(Attribute::InlineHint);
+  fn->addFnAttr (Attribute::InlineHint);
 }
 
 extern "C"
 void
 Add_Inline_No_Attribute (Function *fn)
 {
-  fn->addFnAttr(Attribute::NoInline);
+  fn->addFnAttr (Attribute::NoInline);
 }
 
 extern "C"
 void
 Add_Fn_Readonly_Attribute (Function *fn)
 {
-  fn->addFnAttr(Attribute::ReadOnly);
+  fn->addFnAttr (Attribute::ReadOnly);
 }
 
 extern "C"
@@ -239,7 +239,7 @@ Create_TBAA_Scalar_Type_Node (LLVMContext &ctx, MDBuilder *MDHelper,
   Type *Int64 = Type::getInt64Ty (ctx);
   auto MDname = MDHelper->createString (name);
   auto MDsize = MDHelper->createConstant (ConstantInt::get (Int64, size));
-  return MDNode::get(ctx, {parent, MDsize, MDname});
+  return MDNode::get (ctx, {parent, MDsize, MDname});
 }
 
 extern "C"
@@ -249,7 +249,7 @@ Create_TBAA_Struct_Type_Node (LLVMContext &ctx, MDBuilder *MDHelper,
 			      MDNode *parent, MDNode *fields[],
 			      uint64_t offsets[], uint64_t sizes[])
 {
-  Type *Int64 = Type::getInt64Ty(ctx);
+  Type *Int64 = Type::getInt64Ty (ctx);
   SmallVector<Metadata *, 8> Ops (num_fields * 3 + 3);
   Ops [0] = parent;
   Ops [1] = MDHelper->createConstant (ConstantInt::get (Int64, size));
@@ -272,7 +272,7 @@ Create_TBAA_Struct_Node (LLVMContext &ctx, MDBuilder *MDHelper,
 			 int num_fields, MDNode *types[], uint64_t offsets[],
 			 uint64_t sizes[])
 {
-  Type *Int64 = Type::getInt64Ty(ctx);
+  Type *Int64 = Type::getInt64Ty (ctx);
   SmallVector<Metadata *, 8> Ops (num_fields * 3);
   for (unsigned i = 0; i < num_fields; i++)
     {
@@ -343,7 +343,7 @@ extern "C"
 Value *
 Is_Constant_Data (Value *v)
 {
-  return dyn_cast<ConstantData> (v);
+  return dyn_cast<ConstantData>(v);
 }
 
 /* Say whether this struct type has a name.  */
@@ -468,30 +468,31 @@ Set_Does_Not_Return (Function *fn)
   return fn->setDoesNotReturn ();
 }
 
-/* The LLVM C interest Set_Volatile only works for loads and stores, not
+/* The LLVM C procedure Set_Volatile only works for loads and stores, not
    Atomic instructions.  */
 
 extern "C"
 void
 Set_Volatile_For_Atomic (Instruction *inst)
 {
-  if (AtomicRMWInst *ARW = dyn_cast<AtomicRMWInst> (inst))
-    return ARW->setVolatile(true);
-  return cast<AtomicCmpXchgInst> (inst)->setVolatile(true);
+  if (AtomicRMWInst *ARW = dyn_cast<AtomicRMWInst>(inst))
+    ARW->setVolatile (true);
+  else
+    cast<AtomicCmpXchgInst>(inst)->setVolatile (true);
 }
 
 extern "C"
 void
 Set_Weak_For_Atomic_Xchg (AtomicCmpXchgInst *inst)
 {
-  inst->setWeak(true);
+  inst->setWeak (true);
 }
 
 extern "C"
 void
 Add_Function_To_Module (Function *f, Module *m)
 {
-  m->getFunctionList().push_back(f);
+  m->getFunctionList ().push_back (f);
 }
 
 extern "C"
@@ -519,7 +520,7 @@ extern "C"
 MDNode *
 Get_Metadata_Operand (MDNode *MD, unsigned i)
 {
-  return dyn_cast<MDNode> (MD->getOperand (i));
+  return dyn_cast<MDNode>(MD->getOperand (i));
 }
 
 extern "C"
@@ -530,11 +531,11 @@ Initialize_LLVM (void)
   // in LLVM.Target, but they reference static inline function, so they
   // can only be used from C, not Ada.
 
-  InitializeAllTargetInfos();
-  InitializeAllTargets();
-  InitializeAllTargetMCs();
-  InitializeAllAsmParsers();
-  InitializeAllAsmPrinters();
+  InitializeAllTargetInfos ();
+  InitializeAllTargets ();
+  InitializeAllTargetMCs ();
+  InitializeAllAsmParsers ();
+  InitializeAllAsmPrinters ();
 }
 
 /* This is a dummy optimization "pass" that serves just to obtain loop
@@ -543,16 +544,20 @@ Initialize_LLVM (void)
    For now, we don't actually do anything except collect information to look
    at in the debugger.  */
 
-namespace llvm {
+namespace llvm
+{
+  class Loop;
 
-class Loop;
-
-struct OurLoopPass : PassInfoMixin<OurLoopPass> {
-public:
-  PreservedAnalyses run (Loop &L, LoopAnalysisManager &AM,
-			 LoopStandardAnalysisResults &AR, LPMUpdater &U);
-  static bool isRequired () { return true; }
-};
+  struct OurLoopPass : PassInfoMixin<OurLoopPass>
+  {
+  public:
+    PreservedAnalyses run (Loop &L, LoopAnalysisManager &AM,
+			   LoopStandardAnalysisResults &AR, LPMUpdater &U);
+    static bool isRequired ()
+    {
+      return true;
+    }
+  };
 }
 
 PreservedAnalyses
@@ -617,13 +622,14 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
   PB.crossRegisterProxies (LAM, FAM, CGAM, MAM);
 
   ModulePassManager MPM;
-  if (CodeOptLevel == 0) {
-    MPM = PB.buildO0DefaultPipeline (Level,
-				     PrepareForLTO || PrepareForThinLTO);
-    if (NeedLoopInfo)
-      MPM.addPass (createModuleToFunctionPassAdaptor
-		   (createFunctionToLoopPassAdaptor (LoopRotatePass ())));
-  }
+  if (CodeOptLevel == 0)
+    {
+      MPM = PB.buildO0DefaultPipeline (Level,
+				       PrepareForLTO || PrepareForThinLTO);
+      if (NeedLoopInfo)
+	MPM.addPass (createModuleToFunctionPassAdaptor
+		     (createFunctionToLoopPassAdaptor (LoopRotatePass ())));
+    }
   else if (PrepareForThinLTO)
     MPM = PB.buildThinLTOPreLinkDefaultPipeline (Level);
   else if (PrepareForLTO)
@@ -644,8 +650,8 @@ Get_Float_From_Words_And_Exp (LLVMContext *Context, Type *T, int Exp,
 {
   auto LongInt = APInt (NumWords * 64, makeArrayRef (Words, NumWords));
   auto Initial = APFloat (T->getFltSemantics (),
-			  APInt::getNullValue(T->getPrimitiveSizeInBits()));
-  Initial.convertFromAPInt(LongInt, false, APFloat::rmTowardZero);
+			  APInt::getNullValue (T->getPrimitiveSizeInBits ()));
+  Initial.convertFromAPInt (LongInt, false, APFloat::rmTowardZero);
   auto Result = scalbn (Initial, Exp, APFloat::rmTowardZero);
   return ConstantFP::get (*Context, Result);
 }
@@ -660,7 +666,7 @@ Pred_FP (LLVMContext *Context, Type *T, Value *Val)
   auto apf = dyn_cast<ConstantFP>(Val)->getValueAPF ();
   auto one = APFloat (T->getFltSemantics (), 1);
   apf.next (true);
-  apf.multiply(one, APFloat::rmTowardZero);
+  apf.multiply (one, APFloat::rmTowardZero);
   return ConstantFP:: get (*Context, apf);
 }
 
@@ -668,26 +674,33 @@ extern "C"
 int
 Convert_FP_To_String (Value *V, char *Buf)
 {
-  const APFloat &APF = dyn_cast<ConstantFP>(V)->getValueAPF();
-  if (&APF.getSemantics() == &APFloat::IEEEsingle() ||
-      &APF.getSemantics() == &APFloat::IEEEdouble()) {
-    if (!APF.isInfinity() && !APF.isNaN()) {
-      SmallString<128> StrVal;
-      APF.toString(StrVal, 0, 0, false);
+  const APFloat &APF = dyn_cast<ConstantFP>(V)->getValueAPF ();
 
-      if (&APF.getSemantics() == &APFloat::IEEEsingle())
-        StrVal += "f";
+  if (&APF.getSemantics () == &APFloat::IEEEsingle ()
+      || &APF.getSemantics () == &APFloat::IEEEdouble ())
+    {
+      if (!APF.isInfinity () && !APF.isNaN ())
+	{
+	  SmallString<128> StrVal;
+	  APF.toString (StrVal, 0, 0, false);
 
-      strcpy (Buf, StrVal.c_str());
-      return strlen (Buf);
+	  if (&APF.getSemantics () == &APFloat::IEEEsingle ())
+	    StrVal += "f";
+
+	  strcpy (Buf, StrVal.c_str ());
+	  return strlen (Buf);
+	}
+
+      // Output special values in hexadecimal format
+      std::string S =
+	("0x" + utohexstr (APF.bitcastToAPInt ().getZExtValue (),
+			   /*Lower=*/true)
+	 + "p0");
+
+      std::strcpy (Buf, S.c_str ());
+      return S.length ();
     }
-    // Output special values in hexadecimal format
-    std::string S =
-      "0x" + utohexstr(APF.bitcastToAPInt().getZExtValue(), /*Lower=*/true) +
-      "p0";
-    std::strcpy (Buf, S.c_str());
-    return S.length();
-  }
+
   return strlen (strcpy (Buf, "<unsupported floating point type>"));
 }
 
@@ -726,8 +739,8 @@ extern "C"
 bool
 Get_GEP_Constant_Offset (Value *GEP, DataLayout &dl, uint64_t *result)
 {
-  auto Offset = APInt (dl.getTypeAllocSize(GEP->getType()) * 8, 0);
-  auto GEPO = dyn_cast<GEPOperator> (GEP);
+  auto Offset = APInt (dl.getTypeAllocSize (GEP->getType()) * 8, 0);
+  auto GEPO = dyn_cast<GEPOperator>(GEP);
 
   if (!GEPO || !GEPO->accumulateConstantOffset (dl, Offset)
       || !Offset.isIntN (64))
@@ -765,14 +778,16 @@ Is_C_String (ConstantDataSequential *CDS)
    but the only function to do so in LLVM is static (in Core.cpp), so we
    duplicate that small function here.  */
 
-static int map_from_llvmopcode(LLVMOpcode code)
+static int map_from_llvmopcode (LLVMOpcode code)
 {
-  switch (code) {
+  switch (code)
+    {
 #define HANDLE_INST(num, opc, clas) case LLVM##opc: return num;
 #include "llvm/IR/Instruction.def"
 #undef HANDLE_INST
-  }
-  llvm_unreachable("Unhandled Opcode.");
+    }
+
+  llvm_unreachable ("Unhandled Opcode.");
 }
 
 extern "C"
@@ -918,7 +933,8 @@ Is_Lifetime_Intrinsic (Instruction *v)
    delete the value from our table. The below class and function is used
    for that purpose.  */
 
-class GNATCallbackVH final : public CallbackVH {
+class GNATCallbackVH final : public CallbackVH
+{
   Value *val;
   void (*fn) (Value *);
   void deleted () override;
@@ -928,7 +944,8 @@ class GNATCallbackVH final : public CallbackVH {
 };
 
 void
-GNATCallbackVH::deleted() {
+GNATCallbackVH::deleted()
+{
   delete this;
   (this->fn) (this->val);
 }

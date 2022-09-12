@@ -1559,12 +1559,29 @@ package body GNATLLVM.Types is
    procedure Check_OK_For_Atomic_Type
      (GT : GL_Type; E : Entity_Id; Is_Component : Boolean := False)
    is
-      T           : constant Type_T := Type_Of (GT);
-      Align       : constant Nat    := Get_Type_Alignment (GT);
-      Error_Node  : Node_Id         := E;
-      Pragma_Node : Opt_N_Pragma_Id;
+      T           : constant Type_T          := Type_Of (GT);
+      Align       : constant Nat             := Get_Type_Alignment (GT);
+      Pragma_Node : constant Opt_N_Pragma_Id :=
+        Get_Pragma (E, (if   Is_Component then Pragma_Atomic_Components
+                        else Pragma_Atomic));
+      Error_Node  : constant Node_Id         :=
+        (if   Present (Pragma_Node)
+         then First (Pragma_Argument_Associations (Pragma_Node)) else E);
 
    begin
+      --  If we're emitting C and this is in the source, give a warning
+
+      if Emit_C and then Comes_From_Source (E) and then Is_Type (E) then
+         if Is_Component then
+            Error_Msg_NE ("??type & with atomic components", Error_Node, E);
+            Error_Msg_N  ("\\treated as having volatile components",
+                          Error_Node);
+         else
+            Error_Msg_NE ("??atomic type & treated as volatile",
+                          Error_Node, E);
+         end if;
+      end if;
+
       --  If this is an anonymous base type, nothing to check, the
       --  error will be reported on the source type if need be.
 
@@ -1585,16 +1602,6 @@ package body GNATLLVM.Types is
                    and then ULL (Align) = +Get_Type_Size (GT))
       then
          return;
-      end if;
-
-      --  We normally give an error at E, but if there's a relevant
-      --  pragma, the error point is there.
-
-      Pragma_Node :=
-        Get_Pragma (E, (if   Is_Component then Pragma_Atomic_Components
-                        else Pragma_Atomic));
-      if Present (Pragma_Node) then
-         Error_Node := First (Pragma_Argument_Associations (Pragma_Node));
       end if;
 
       --  Now give the appropriate error message

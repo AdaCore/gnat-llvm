@@ -1894,7 +1894,9 @@ package body GNATLLVM.Variables is
       --  If the object is to have atomic components, find the component
       --  type and validate it.
 
-      elsif Has_Atomic_Components (E) then
+      elsif Has_Atomic_Components (E)
+        or else (Is_Array_Type (GT) and then Has_Atomic_Components (GT))
+      then
          Check_OK_For_Atomic_Type ((if   Is_Array_Type (GT)
                                     then Full_Component_GL_Type (GT) else GT),
                                    E, True);
@@ -1904,6 +1906,17 @@ package body GNATLLVM.Variables is
 
       if Is_Full_Access (E) then
          Check_OK_For_Atomic_Type (GT, E);
+      end if;
+
+      --  If we're emitting C, we're going to ignore "atomic" and just treat
+      --  it as volatile, so warn about it. But don't do this if it's atomic
+      --  because the type is: we'll already have warned then.
+
+      if Emit_C and then Is_Atomic (E) and then not Is_Atomic (GT) then
+         Error_Msg_NE ("??atomic object & treated as volatile", E, E);
+      elsif Emit_C and then Has_Atomic_Components (E) then
+         Error_Msg_NE ("??object & with atomic components treated as", E, E);
+         Error_Msg_N  ("\\having volatile components", E);
       end if;
 
       --  Object declarations are variables either allocated on the
@@ -1974,14 +1987,14 @@ package body GNATLLVM.Variables is
 
          if Nkind (Strip_Conversions (Addr_Expr)) = N_Integer_Literal then
             Error_Msg_NE ("??aliased object& with unconstrained array " &
-                            "nominal subtype", Address_Clause (E), E);
-            Error_Msg_N ("\\starts with a descriptor whose size is " &
-                           "given by ''Descriptor_Size", Address_Clause (E));
+                          "nominal subtype", Address_Clause (E), E);
+            Error_Msg_N  ("\\starts with a descriptor whose size is " &
+                          "given by ''Descriptor_Size", Address_Clause (E));
          elsif not Is_Matching_Unc_Array (GT, Addr_Expr) then
             Error_Msg_NE ("aliased object& with unconstrained array " &
-                            "nominal subtype", Address_Clause (E), E);
-            Error_Msg_N ("\\can overlay only aliased object with " &
-                              "compatible subtype", Address_Clause (E));
+                          "nominal subtype", Address_Clause (E), E);
+            Error_Msg_N  ("\\can overlay only aliased object with " &
+                          "compatible subtype", Address_Clause (E));
          end if;
       end if;
 

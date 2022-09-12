@@ -512,8 +512,8 @@ package body GNATLLVM.Types is
       Mem_GT   : constant GL_Type          := GT_To_Use (GT, Alloc_GT);
       Memory   : GL_Value                  :=
         (if   Is_Pointer (Temp)
-         then Ptr_To_Relationship (Temp, Mem_GT, R)
-         else Int_To_Relationship (Temp, Mem_GT, R));
+         then Remove_Padding (Ptr_To_Relationship (Temp, Mem_GT, R))
+         else Remove_Padding (Int_To_Relationship (Temp, Mem_GT, R)));
       New_V    : GL_Value                 :=
         (if    Present (V) then V
          elsif Present (New_Expr)

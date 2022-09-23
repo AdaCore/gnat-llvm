@@ -225,14 +225,14 @@ package body CCG.Codegen is
          end if;
 
          return True;
-      elsif Switch = "-fdump-c-parameters" then
+      elsif Switch = "--dump-c-parameters" then
          Dump_C_Parameters := True;
          return True;
-      elsif Starts_With ("-fdump-c-parameters=") then
+      elsif Starts_With ("--dump-c-parameters=") then
          Dump_C_Parameters := True;
          To_Free           := C_Parameter_File;
          C_Parameter_File  :=
-           new String'(Switch_Value ("-fdump-c-parameters="));
+           new String'(Switch_Value ("--dump-c-parameters="));
       elsif Starts_With ("-c-compiler=") then
          Set_C_Compiler (Switch_Value ("-c-compiler="));
          return True;
@@ -270,7 +270,9 @@ package body CCG.Codegen is
    begin
       return Starts_With ("-header-inline=")
         or else Starts_With ("-c-target-")
-        or else Starts_With ("-c-compiler=");
+        or else Starts_With ("-c-compiler=")
+        or else Switch = "--dump-c-parameters"
+        or else Starts_With ("--dump-c-parameters=");
    end Is_Switch;
 
 end CCG.Codegen;

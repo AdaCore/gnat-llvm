@@ -430,13 +430,15 @@ package body CCG.Subprograms is
       end if;
 
       --  Otherwise, write the definition of this function. If it has no
-      --  basic blocks, it must be an extern.
+      --  basic blocks, it must be an extern. We don't want to use the
+      --  debug info here if we'll later have declaration.
 
       Output_Decl ((if   Emit_Header or else No (Get_First_Basic_Block (V))
                     then "extern " else "") &
                          Function_Proto (V, Definition => False),
-                    V => V, Is_Global => True);
-
+                    V             => V,
+                    Is_Global     => True,
+                    No_Debug_Info => Present (Get_First_Basic_Block (V)));
    end Declare_Subprogram;
 
    -----------------------

@@ -68,8 +68,11 @@ package CCG.Output is
       --  The indentation desired for this line
 
       V              : Value_T;
-      --  An LLVM value that may contain debug information denoting the
-      --  position of this line in the source.
+      --  An LLVM value corresponding to this line, if any
+
+      No_Debug_Info  : Boolean;
+      --  If True, don't use V for debug information
+
    end record;
 
    procedure Output_Typedef (T : Type_T; Incomplete : Boolean := False)
@@ -86,7 +89,8 @@ package CCG.Output is
       Start_Block   : Block_Style  := None;
       End_Block     : Block_Style  := None;
       Indent_Type   : Indent_Style := Normal;
-      V             : Value_T      := No_Value_T)
+      V             : Value_T      := No_Value_T;
+      No_Debug_Info : Boolean      := False)
      with Pre => Present (S);
    procedure Output_Decl
      (S             : String;
@@ -96,7 +100,8 @@ package CCG.Output is
       Start_Block   : Block_Style  := None;
       End_Block     : Block_Style  := None;
       Indent_Type   : Indent_Style := Normal;
-      V             : Value_T      := No_Value_T);
+      V             : Value_T      := No_Value_T;
+      No_Debug_Info : Boolean      := False);
    --  Save S as a decl for the current subprogram. Append a semicolon to
    --  the string if requested (the default) and specify indentation
    --  parameters. V, if Present, is a value that we may be able to get
@@ -108,12 +113,14 @@ package CCG.Output is
      (S             : Str;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
-      V             : Value_T       := No_Value_T);
+      V             : Value_T       := No_Value_T;
+      No_Debug_Info : Boolean       := False);
    procedure Output_Stmt
      (S             : String;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
-      V             : Value_T       := No_Value_T);
+      V             : Value_T       := No_Value_T;
+      No_Debug_Info : Boolean       := False);
    --  Like Output_Decl, but for the statement part of the current subprogram
 
    procedure Start_Output_Block (BS : Block_Style);

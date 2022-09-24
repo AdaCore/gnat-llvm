@@ -299,7 +299,7 @@ package body GNATLLVM.DebugInfo is
          Field_MDs (Idx) := DI_Create_Member_Type
            (No_Metadata_T, Name,
             Get_Debug_File_Node (Get_Source_File_Index (S)),
-            Get_Logical_Line_Number (S), Size, Align, Offset, Our_MD);
+            Get_Physical_Line_Number (S), Size, Align, Offset, Our_MD);
          Idx := Idx + 1;
       end if;
 
@@ -346,8 +346,8 @@ package body GNATLLVM.DebugInfo is
         (if   Emit_Debug_Info
          then Get_Debug_File_Node (Get_Source_File_Index (Sloc (N)))
          else No_Metadata_T);
-      Line_Number   : constant Logical_Line_Number :=
-        Get_Logical_Line_Number (Sloc (N));
+      Line_Number   : constant Physical_Line_Number :=
+        Get_Physical_Line_Number (Sloc (N));
       P          : Opt_Formal_Kind_Id              :=
         (if Present (E) then First_In_Param (E) else Empty);
       Idx        : Nat                          := 1;
@@ -487,7 +487,7 @@ package body GNATLLVM.DebugInfo is
          Push_Debug_Scope
            (SFI, DI_Builder_Create_Lexical_Block
               (Current_Debug_Scope, Get_Debug_File_Node (SFI),
-               Get_Logical_Line_Number (Sloc (N)),
+               Get_Physical_Line_Number (Sloc (N)),
                Get_Column_Number (Sloc (N))));
       end if;
    end Push_Lexical_Debug_Scope;
@@ -530,7 +530,7 @@ package body GNATLLVM.DebugInfo is
       --  Otherwise, make a new one, set up our cache, and return it
 
       Result          := DI_Builder_Create_Debug_Location
-        (Get_Logical_Line_Number (S), Get_Column_Number (S),
+        (Get_Physical_Line_Number (S), Get_Column_Number (S),
          Current_Debug_Scope, No_Metadata_T);
       Debug_Loc_Sloc  := S;
       Debug_Loc_Scope := Current_Debug_Scope;
@@ -593,7 +593,7 @@ package body GNATLLVM.DebugInfo is
       return DI_Create_Struct_Type
         (No_Metadata_T, Get_Name (GT, "__XUB"),
          Get_Debug_File_Node (Get_Source_File_Index (S)),
-         Get_Logical_Line_Number (S), Size, Rec_Align, DI_Flag_Zero,
+         Get_Physical_Line_Number (S), Size, Rec_Align, DI_Flag_Zero,
          No_Metadata_T, Field_MDs (1 .. Idx - 1), 0, No_Metadata_T, "");
 
    end Create_Bounds_Type_Data;
@@ -640,7 +640,7 @@ package body GNATLLVM.DebugInfo is
       return DI_Create_Struct_Type
         (No_Metadata_T, Get_Name (GT, "__XUT"),
          Get_Debug_File_Node (Get_Source_File_Index (S)),
-         Get_Logical_Line_Number (S), Offset, Align, DI_Flag_Zero,
+         Get_Physical_Line_Number (S), Offset, Align, DI_Flag_Zero,
          No_Metadata_T, Field_MDs, 0, No_Metadata_T, "");
 
    end Create_Bounds_And_Data_Type_Data;
@@ -687,7 +687,7 @@ package body GNATLLVM.DebugInfo is
       return DI_Create_Struct_Type
         (No_Metadata_T, Get_Name (GT),
          Get_Debug_File_Node (Get_Source_File_Index (S)),
-         Get_Logical_Line_Number (S), Offset, Align, DI_Flag_Zero,
+         Get_Physical_Line_Number (S), Offset, Align, DI_Flag_Zero,
          No_Metadata_T, Field_MDs, 0, No_Metadata_T, "");
 
    end Create_Fat_Pointer_Type_Data;
@@ -832,12 +832,12 @@ package body GNATLLVM.DebugInfo is
                        (if   Is_Bitfield (F)
                         then DI_Create_Bit_Field_Member_Type
                                (No_Metadata_T, Name, File,
-                                Get_Logical_Line_Number (F_S),
+                                Get_Physical_Line_Number (F_S),
                                 UI_To_ULL (Esize (F)), Offset,
                                 Storage_Offset, Mem_MD)
                         else DI_Create_Member_Type
                                (No_Metadata_T, Name, File,
-                                Get_Logical_Line_Number (F_S),
+                                Get_Physical_Line_Number (F_S),
                                 UI_To_ULL (Esize (F)),
                                 Get_Type_Alignment (F_GT), Offset, Mem_MD));
 
@@ -862,7 +862,7 @@ package body GNATLLVM.DebugInfo is
                Result := DI_Create_Struct_Type
                  (No_Metadata_T, Name,
                   Get_Debug_File_Node (Get_Source_File_Index (S)),
-                  Get_Logical_Line_Number (S), Size, Align, DI_Flag_Zero,
+                  Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
                   No_Metadata_T, Members, 0, No_Metadata_T, "");
             end;
          end Record_Type;
@@ -911,7 +911,7 @@ package body GNATLLVM.DebugInfo is
                Result := DI_Create_Enumeration_Type
                  (Debug_Compile_Unit, Name,
                   Get_Debug_File_Node (Get_Source_File_Index (S)),
-                  Get_Logical_Line_Number (S), Size, Align, Members,
+                  Get_Physical_Line_Number (S), Size, Align, Members,
                   No_Metadata_T);
             end;
          end Enumeration;
@@ -992,7 +992,7 @@ package body GNATLLVM.DebugInfo is
               (Debug_Compile_Unit, Name,
                (if Ext_Name = Name then "" else Ext_Name),
                Get_Debug_File_Node (Get_Source_File_Index (S)),
-               Get_Logical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
+               Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
                No_Metadata_T, Get_Type_Alignment (GT)));
       end if;
    end Create_Global_Variable_Debug_Data;
@@ -1016,14 +1016,14 @@ package body GNATLLVM.DebugInfo is
               DI_Create_Auto_Variable
               (Current_Debug_Scope, Name,
                Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
-               Get_Logical_Line_Number (Sloc (E)), Type_Data, False,
+               Get_Physical_Line_Number (Sloc (E)), Type_Data, False,
                DI_Flag_Zero, Get_Type_Alignment (GT));
          else
             Var_Data :=
               DI_Create_Parameter_Variable
               (Current_Debug_Scope, Name, Arg_Num,
                Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
-               Get_Logical_Line_Number (Sloc (E)),
+               Get_Physical_Line_Number (Sloc (E)),
                Type_Data, False, DI_Flag_Zero);
          end if;
 

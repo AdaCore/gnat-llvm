@@ -19,6 +19,7 @@ with Atree;       use Atree;
 with Einfo.Utils; use Einfo.Utils;
 with Errout;      use Errout;
 with Lib;         use Lib;
+with Sinput;      use Sinput;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
@@ -55,8 +56,17 @@ package body CCG is
 
    procedure C_Add_To_Source_Order (N : Node_Id) is
    begin
+      --  If we're emitting C, add the item to the source order list and
+      --  record the lowest line number we've seen.
+
       if Emit_C and then not Emit_Header then
          Add_To_Source_Order (N);
+         if Get_Source_File_Index (Sloc (N)) = Source_Index (Main_Unit)
+           and then (Get_Physical_Line_Number (Sloc (N)) < Lowest_Line_Number
+                     or else Lowest_Line_Number = Physical_Line_Number'First)
+         then
+            Lowest_Line_Number := Get_Physical_Line_Number (Sloc (N));
+         end if;
       end if;
    end C_Add_To_Source_Order;
 

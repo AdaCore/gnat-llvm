@@ -120,7 +120,8 @@ package body CCG.Write is
    Indent                : Integer                    := 0;
    --  The current indentation level for all but non-indented lines
 
-   Next_Line_To_Dump     : Physical_Line_Number       := 1;
+   Next_Line_To_Dump     : Physical_Line_Number       :=
+     Physical_Line_Number'First;
    --  The next source line to dump
 
    Previous_Debug_File   : Str                        := No_Str;
@@ -918,14 +919,6 @@ package body CCG.Write is
         Source_Index (Main_Unit);
 
    begin
-      --  Set up our main file name and get its source if needed to be dumped
-
-      if Dump_Source_Text then
-         Main_Source_Name :=
-           +Get_Name_String (Full_Debug_Name (Main_Source_File));
-         Src              := Source_Text (Main_Source_File);
-      end if;
-
       --  If we're not writing to standard output, open the .c or .h file
 
       if not Debug_Flag_Dot_YY then
@@ -952,6 +945,20 @@ package body CCG.Write is
 
       if Has_Access_Subtype then
          Write_Line ("typedef void (*ccg_f) (void);");
+      end if;
+
+      --  If we're writing lines from the Ada source, set up our main
+      --  file name and write the initial lines.
+
+      if not Emit_Header and then Dump_Source_Text then
+         Main_Source_Name :=
+           +Get_Name_String (Full_Debug_Name (Main_Source_File));
+         Src              := Source_Text (Main_Source_File);
+         for J in Physical_Line_Number'First .. Lowest_Line_Number - 1 loop
+            Write_Source_Line (J);
+         end loop;
+
+         Next_Line_To_Dump := Lowest_Line_Number;
       end if;
 
    end Initialize_Writing;
@@ -1097,14 +1104,16 @@ package body CCG.Write is
      (S             : Str;
       Indent_Type   : Indent_Style  := Normal;
       End_Block     : Block_Style   := None;
-      V             : Value_T       := No_Value_T)
+      V             : Value_T       := No_Value_T;
+      No_Debug_Info : Boolean       := False)
    is
    begin
       Write_C_Line (Out_Line'(Line_Text     => S,
                               Start_Block   => None,
                               End_Block     => End_Block,
                               Indent_Type   => Indent_Type,
-                              V             => V));
+                              V             => V,
+                              No_Debug_Info => No_Debug_Info));
    end Write_C_Line;
 
    ------------------
@@ -1115,14 +1124,16 @@ package body CCG.Write is
      (S             : String;
       Indent_Type   : Indent_Style  := Normal;
       End_Block     : Block_Style   := None;
-      V             : Value_T       := No_Value_T)
+      V             : Value_T       := No_Value_T;
+      No_Debug_Info : Boolean       := False)
    is
    begin
       Write_C_Line (Out_Line'(Line_Text     => +S,
                               Start_Block   => None,
                               End_Block     => End_Block,
                               Indent_Type   => Indent_Type,
-                              V             => V));
+                              V             => V,
+                              No_Debug_Info => No_Debug_Info));
    end Write_C_Line;
 
    ------------------
@@ -1131,9 +1142,10 @@ package body CCG.Write is
 
    procedure Write_C_Line (OL : Out_Line) is
       Our_V         : constant Value_T              :=
-        (if   No (OL.V)
-           or else Is_A_Instruction (OL.V) or else Is_A_Function (OL.V)
-           or else Is_A_Global_Variable (OL.V) then OL.V else No_Value_T);
+        (if   No (OL.V) or else OL.No_Debug_Info then No_Value_T
+           elsif Is_A_Instruction (OL.V) or else Is_A_Function (OL.V)
+                 or else Is_A_Global_Variable (OL.V) then OL.V
+         else No_Value_T);
       Our_File      : constant Str                  :=
         (if   Present (Our_V) and then Emit_Debug_Info
          then +Get_Debug_Loc_Filename (Our_V) else No_Str);

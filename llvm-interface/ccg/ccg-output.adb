@@ -315,7 +315,8 @@ package body CCG.Output is
       Start_Block   : Block_Style  := None;
       End_Block     : Block_Style  := None;
       Indent_Type   : Indent_Style := Normal;
-      V             : Value_T      := No_Value_T)
+      V             : Value_T      := No_Value_T;
+      No_Debug_Info : Boolean      := False)
    is
       OL : constant Out_Line :=
         (Line_Text      => (if Semicolon then S & ";" else S),
@@ -323,7 +324,8 @@ package body CCG.Output is
           (if Present (Start_Block) then Start_Block else Next_Block_Style),
          Indent_Type    => Indent_Type,
          End_Block      => End_Block,
-         V              => V);
+         V              => V,
+         No_Debug_Info  => No_Debug_Info);
 
    begin
       Next_Block_Style := None;
@@ -349,11 +351,12 @@ package body CCG.Output is
       Start_Block   : Block_Style  := None;
       End_Block     : Block_Style  := None;
       Indent_Type   : Indent_Style := Normal;
-      V             : Value_T      := No_Value_T)
+      V             : Value_T      := No_Value_T;
+      No_Debug_Info : Boolean      := False)
    is
    begin
       Output_Decl (+S, Semicolon, Is_Typedef, Is_Global, Start_Block,
-                   End_Block, Indent_Type, V);
+                   End_Block, Indent_Type, V, No_Debug_Info);
    end Output_Decl;
 
    -----------------
@@ -364,7 +367,8 @@ package body CCG.Output is
      (S             : Str;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
-      V             : Value_T       := No_Value_T)
+      V             : Value_T       := No_Value_T;
+      No_Debug_Info : Boolean       := False)
    is
    begin
       --  Add the statement to the current subprogram
@@ -375,7 +379,8 @@ package body CCG.Output is
                      Start_Block    => Next_Block_Style,
                      End_Block      => None,
                      Indent_Type    => Indent_Type,
-                     V              => V));
+                     V              => V,
+                     No_Debug_Info  => No_Debug_Info));
       Add_Stmt_Line (Stmts.Last);
       Next_Block_Style := None;
 
@@ -389,10 +394,11 @@ package body CCG.Output is
      (S             : String;
       Semicolon     : Boolean       := True;
       Indent_Type   : Indent_Style  := Normal;
-      V             : Value_T       := No_Value_T)
+      V             : Value_T       := No_Value_T;
+      No_Debug_Info : Boolean       := False)
    is
    begin
-      Output_Stmt (+S, Semicolon, Indent_Type, V);
+      Output_Stmt (+S, Semicolon, Indent_Type, V, No_Debug_Info);
    end Output_Stmt;
 
    ------------------------

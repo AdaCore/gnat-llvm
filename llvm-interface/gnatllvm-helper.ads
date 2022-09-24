@@ -173,11 +173,11 @@ package GNATLLVM.Helper is
       Name             : String;
       Linkage_Name     : String;
       File             : Metadata_T;
-      Line_No          : Logical_Line_Number;
+      Line_No          : Physical_Line_Number;
       Ty               : Metadata_T;
       Is_Local_To_Unit : Boolean;
       Is_Definition    : Boolean;
-      Scope_Line       : Logical_Line_Number;
+      Scope_Line       : Physical_Line_Number;
       Flags            : DI_Flags_T;
       Is_Optimized     : Boolean) return Metadata_T
    is
@@ -192,7 +192,7 @@ package GNATLLVM.Helper is
    function DI_Builder_Create_Lexical_Block
      (Scope  : Metadata_T;
       File   : Metadata_T;
-      Line   : Logical_Line_Number;
+      Line   : Physical_Line_Number;
       Column : Column_Number) return Metadata_T
    is
      (DI_Builder_Create_Lexical_Block
@@ -201,7 +201,7 @@ package GNATLLVM.Helper is
           Post => Present (DI_Builder_Create_Lexical_Block'Result);
 
    function DI_Builder_Create_Debug_Location
-     (Line       : Logical_Line_Number;
+     (Line       : Physical_Line_Number;
       Column     : Column_Number;
       Scope      : Metadata_T;
       Inlined_At : Metadata_T) return Metadata_T
@@ -263,7 +263,7 @@ package GNATLLVM.Helper is
      (Scope          : Metadata_T;
       Name           : String;
       File           : Metadata_T;
-      Line_Number    : Logical_Line_Number;
+      Line_Number    : Physical_Line_Number;
       Size_In_Bits   : ULL;
       Align_In_Bits  : Nat;
       Flags          : DI_Flags_T;
@@ -286,7 +286,7 @@ package GNATLLVM.Helper is
      (Scope         : Metadata_T;
       Name          : String;
       File          : Metadata_T;
-      Line_Number   : Logical_Line_Number;
+      Line_Number   : Physical_Line_Number;
       Size_In_Bits  : ULL;
       Align_In_Bits : Nat;
       Elements      : Metadata_Array;
@@ -304,7 +304,7 @@ package GNATLLVM.Helper is
      (Scope          : Metadata_T;
       Name           : String;
       File           : Metadata_T;
-      Line_No        : Logical_Line_Number;
+      Line_No        : Physical_Line_Number;
       Size_In_Bits   : ULL;
       Align_In_Bits  : Nat;
       Offset_In_Bits : ULL;
@@ -322,7 +322,7 @@ package GNATLLVM.Helper is
      (Scope                  : Metadata_T;
       Name                   : String;
       File                   : Metadata_T;
-      Line_Number            : Logical_Line_Number;
+      Line_Number            : Physical_Line_Number;
       Size_In_Bits           : ULL;
       Offset_In_Bits         : ULL;
       Storage_Offset_In_Bits : ULL;
@@ -349,7 +349,7 @@ package GNATLLVM.Helper is
       Name          : String;
       Linkage       : String;
       File          : Metadata_T;
-      Line_No       : Logical_Line_Number;
+      Line_No       : Physical_Line_Number;
       Ty            : Metadata_T;
       Local_To_Unit : Boolean;
       Expr          : Metadata_T;
@@ -368,7 +368,7 @@ package GNATLLVM.Helper is
      (Scope           : Metadata_T;
       Name            : String;
       File            : Metadata_T;
-      Line_No         : Logical_Line_Number;
+      Line_No         : Physical_Line_Number;
       Ty              : Metadata_T;
       Always_Preserve : Boolean;
       Flags           : DI_Flags_T;
@@ -386,7 +386,7 @@ package GNATLLVM.Helper is
       Name            : String;
       Arg_No          : Nat;
       File            : Metadata_T;
-      Line_No         : Logical_Line_Number;
+      Line_No         : Physical_Line_Number;
       Ty              : Metadata_T;
       Always_Preserve : Boolean;
       Flags           : DI_Flags_T) return Metadata_T

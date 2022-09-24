@@ -111,6 +111,9 @@ package CCG is
    Has_Access_Subtype : Boolean := False;
    --  If True, we need to use our generic "ccg_f" type for a function pointer
 
+   Lowest_Line_Number : Physical_Line_Number := Physical_Line_Number'First;
+   --  The lowest line number of any object that we're writting out
+
    procedure C_Initialize_Output;
    --  Do any initialization needed to output C.  This is always called after
    --  we've obtained target parameters.

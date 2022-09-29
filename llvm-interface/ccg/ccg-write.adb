@@ -22,6 +22,7 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Get_Targ; use Get_Targ;
 
 with Atree;       use Atree;
+with Csets;       use Csets;
 with Debug;       use Debug;
 with Einfo.Utils; use Einfo.Utils;
 with Lib;         use Lib;
@@ -111,26 +112,29 @@ package body CCG.Write is
 
    Octal : constant array (Integer range 0 .. 7) of Character := "01234567";
 
-   Main_Source_Name      : Str;
+   Main_Source_Name       : Str;
    --  If -gnatL is specifed, the fully-qualified filename of the main unit
 
-   Src                   : Source_Buffer_Ptr;
+   Src                    : Source_Buffer_Ptr;
    --  If -gnatL is specified, the text of the main unit's source file
 
-   Indent                : Integer                    := 0;
+   Indent                 : Integer                    := 0;
    --  The current indentation level for all but non-indented lines
 
-   Next_Line_To_Dump     : Physical_Line_Number       :=
+   Next_Line_To_Dump      : Physical_Line_Number       :=
      Physical_Line_Number'First;
    --  The next source line to dump
 
-   Previous_Debug_File   : Str                        := No_Str;
-   Previous_Debug_Line   : Physical_Line_Number;
+   Previous_Debug_File    : Str                        := No_Str;
+   Previous_Debug_Line    : Physical_Line_Number;
    --  The filename and line number of the last #line directive we wrote,
    --  if any.
 
    Previous_Was_End_Block : Boolean                    := False;
    --  True if the last line written was the end of a block
+
+   Defined_Name           : Str;
+   --  Name used in #define for this .h file.
 
    -----------------------
    -- Write_Start_Block --
@@ -931,6 +935,35 @@ package body CCG.Write is
          Set_Output (Output_FD);
       end if;
 
+      --  If we're writing a header file, add test for file-specific symbol
+      --  and #define for it.
+
+      if Emit_Header then
+         declare
+            File   : constant String :=
+              Get_Name_String (File_Name (Main_Source_File));
+            Result : String (File'Range);
+
+         begin
+            for J in File'Range loop
+               case File (J) is
+                  when 'A' .. 'Z' | '0' .. '9' | '_' =>
+                     Result (J) := File (J);
+                  when 'a' .. 'z' =>
+                     Result (J) := Fold_Upper (File (J));
+                  when others =>
+                     Result (J) := '_';
+               end case;
+            end loop;
+
+            Defined_Name := +(Result & "_H");
+         end;
+
+         Write_Str ("#ifndef " & Defined_Name, Eol => True);
+         Write_Str ("#define " & Defined_Name, Eol => True);
+         Write_Eol;
+      end if;
+
       --  Write the initial header info as requested
 
       if (not Emit_Header or else Inlines_In_Header)
@@ -975,6 +1008,13 @@ package body CCG.Write is
          for J in Next_Line_To_Dump .. Last_Source_Line (Main_Source_File) loop
             Write_Source_Line (J);
          end loop;
+      end if;
+
+      --  If this is a header file, write the #endif for the protection
+
+      if Emit_Header then
+         Write_Eol;
+         Write_Str ("#endif /* " & Defined_Name & "*/", Eol => True);
       end if;
 
       --  If we opened a file to write to, close it

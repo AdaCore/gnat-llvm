@@ -21,7 +21,7 @@ package Clang.Fatal_Error_Handler is
   -- * Replaces currently installed error handler (if any).
   --  
 
-   procedure Install_Aborting_Llvm_Fatal_Error_Handler  -- llvm-14.0.1.install/include/clang-c/FatalErrorHandler.h:21
+   procedure Install_Aborting_Llvm_Fatal_Error_Handler  -- install/include/clang-c/FatalErrorHandler.h:21
    with Import => True, 
         Convention => C, 
         External_Name => "clang_install_aborting_llvm_fatal_error_handler";
@@ -32,7 +32,7 @@ package Clang.Fatal_Error_Handler is
   -- * message to stderr and call exit(1).
   --  
 
-   procedure Uninstall_Llvm_Fatal_Error_Handler  -- llvm-14.0.1.install/include/clang-c/FatalErrorHandler.h:28
+   procedure Uninstall_Llvm_Fatal_Error_Handler  -- install/include/clang-c/FatalErrorHandler.h:28
    with Import => True, 
         Convention => C, 
         External_Name => "clang_uninstall_llvm_fatal_error_handler";

@@ -84,7 +84,7 @@ package body Clang.Index is
    function Get_File_Contents
      (Tu   : Translation_Unit_T;
       File : File_T;
-      Size : access unsigned_long)
+      Size : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
@@ -92,13 +92,17 @@ package body Clang.Index is
    function Get_File_Contents
      (Tu   : Translation_Unit_T;
       File : File_T;
-      Size : access unsigned_long)
+      Size : access stddef_h.size_t)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_File_Contents (Tu, File, Size);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_File_Contents;
 
    function File_Is_Equal
@@ -548,7 +552,11 @@ package body Clang.Index is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_TU_Resource_Usage_Name (Kind);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_TU_Resource_Usage_Name;
 
    function Target_Info_Get_Triple
@@ -2054,7 +2062,11 @@ package body Clang.Index is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Eval_Result_Get_As_Str (E);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Eval_Result_Get_As_Str;
 
    function Get_Remappings

@@ -21,7 +21,11 @@ package body Clang.CX_String is
       Return_Value : Interfaces.C.Strings.chars_ptr;
    begin
       Return_Value := Get_C_String (Str);
-      return Value (Return_Value);
+      if Return_Value /= Null_Ptr then
+         return Value (Return_Value);
+      else
+         return "";
+      end if;
    end Get_C_String;
 
 end Clang.CX_String;

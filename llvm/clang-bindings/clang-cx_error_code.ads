@@ -33,7 +33,7 @@ package Clang.CX_Error_Code is
       Error_Crashed,
       Error_Invalid_Arguments,
       Error_AST_Read_Error)
-   with Convention => C;  -- llvm-14.0.1.install/include/clang-c/CXErrorCode.h:28
+   with Convention => C;  -- install/include/clang-c/CXErrorCode.h:28
 
   --*
   --   * No error.

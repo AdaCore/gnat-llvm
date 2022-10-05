@@ -38,7 +38,7 @@ package Clang.CX_Compilation_Database is
   -- * Must be freed by \c clang_CompilationDatabase_dispose
   --  
 
-   type Compilation_Database_T is new System.Address;  -- llvm-14.0.1.install/include/clang-c/CXCompilationDatabase.h:37
+   type Compilation_Database_T is new System.Address;  -- install/include/clang-c/CXCompilationDatabase.h:37
 
   --*
   -- * Contains the results of a search in the compilation database
@@ -50,13 +50,13 @@ package Clang.CX_Compilation_Database is
   -- * \c clang_CompileCommands_dispose.
   --  
 
-   type Compile_Commands_T is new System.Address;  -- llvm-14.0.1.install/include/clang-c/CXCompilationDatabase.h:48
+   type Compile_Commands_T is new System.Address;  -- install/include/clang-c/CXCompilationDatabase.h:48
 
   --*
   -- * Represents the command line invocation to compile a specific file.
   --  
 
-   type Compile_Command_T is new System.Address;  -- llvm-14.0.1.install/include/clang-c/CXCompilationDatabase.h:53
+   type Compile_Command_T is new System.Address;  -- install/include/clang-c/CXCompilationDatabase.h:53
 
   --*
   -- * Error codes for Compilation Database
@@ -71,7 +71,7 @@ package Clang.CX_Compilation_Database is
    type Compilation_Database_Error_T is 
      (Compilation_Database_No_Error,
       Compilation_Database_Can_Not_Load_Database)
-   with Convention => C;  -- llvm-14.0.1.install/include/clang-c/CXCompilationDatabase.h:69
+   with Convention => C;  -- install/include/clang-c/CXCompilationDatabase.h:69
 
   --*
   -- * Creates a compilation database from the database found in directory
@@ -90,7 +90,7 @@ function Compilation_Database_From_Directory
   -- * Free the given compilation database
   --  
 
-   procedure Compilation_Database_Dispose (Arg_1 : Compilation_Database_T)  -- llvm-14.0.1.install/include/clang-c/CXCompilationDatabase.h:86
+   procedure Compilation_Database_Dispose (Arg_1 : Compilation_Database_T)  -- install/include/clang-c/CXCompilationDatabase.h:86
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CompilationDatabase_dispose";
@@ -109,7 +109,7 @@ function Compilation_Database_Get_Compile_Commands
   -- * Get all the compile commands in the given compilation database.
   --  
 
-   function Compilation_Database_Get_All_Compile_Commands (Arg_1 : Compilation_Database_T) return Compile_Commands_T  -- llvm-14.0.1.install/include/clang-c/CXCompilationDatabase.h:100
+   function Compilation_Database_Get_All_Compile_Commands (Arg_1 : Compilation_Database_T) return Compile_Commands_T  -- install/include/clang-c/CXCompilationDatabase.h:100
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CompilationDatabase_getAllCompileCommands";
@@ -118,7 +118,7 @@ function Compilation_Database_Get_Compile_Commands
   -- * Free the given CompileCommands
   --  
 
-   procedure Compile_Commands_Dispose (Arg_1 : Compile_Commands_T)  -- llvm-14.0.1.install/include/clang-c/CXCompilationDatabase.h:105
+   procedure Compile_Commands_Dispose (Arg_1 : Compile_Commands_T)  -- install/include/clang-c/CXCompilationDatabase.h:105
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CompileCommands_dispose";
@@ -127,7 +127,7 @@ function Compilation_Database_Get_Compile_Commands
   -- * Get the number of CompileCommand we have for a file
   --  
 
-   function Compile_Commands_Get_Size (Arg_1 : Compile_Commands_T) return unsigned  -- llvm-14.0.1.install/include/clang-c/CXCompilationDatabase.h:111
+   function Compile_Commands_Get_Size (Arg_1 : Compile_Commands_T) return unsigned  -- install/include/clang-c/CXCompilationDatabase.h:111
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CompileCommands_getSize";
@@ -138,7 +138,7 @@ function Compilation_Database_Get_Compile_Commands
   -- * Note : 0 <= i < clang_CompileCommands_getSize(CXCompileCommands)
   --  
 
-   function Compile_Commands_Get_Command (Arg_1 : Compile_Commands_T; I : unsigned) return Compile_Command_T  -- llvm-14.0.1.install/include/clang-c/CXCompilationDatabase.h:119
+   function Compile_Commands_Get_Command (Arg_1 : Compile_Commands_T; I : unsigned) return Compile_Command_T  -- install/include/clang-c/CXCompilationDatabase.h:119
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CompileCommands_getCommand";
@@ -164,7 +164,7 @@ function Compile_Command_Get_Filename
   -- *
   --  
 
-   function Compile_Command_Get_Num_Args (Arg_1 : Compile_Command_T) return unsigned  -- llvm-14.0.1.install/include/clang-c/CXCompilationDatabase.h:138
+   function Compile_Command_Get_Num_Args (Arg_1 : Compile_Command_T) return unsigned  -- install/include/clang-c/CXCompilationDatabase.h:138
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CompileCommand_getNumArgs";
@@ -185,7 +185,7 @@ function Compile_Command_Get_Arg
   -- * Get the number of source mappings for the compiler invocation.
   --  
 
-   function Compile_Command_Get_Num_Mapped_Sources (Arg_1 : Compile_Command_T) return unsigned  -- llvm-14.0.1.install/include/clang-c/CXCompilationDatabase.h:153
+   function Compile_Command_Get_Num_Mapped_Sources (Arg_1 : Compile_Command_T) return unsigned  -- install/include/clang-c/CXCompilationDatabase.h:153
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CompileCommand_getNumMappedSources";

@@ -39,10 +39,10 @@ package Clang.Documentation is
   --  
 
    type Comment_T is record
-      ASTNode : System.Address;  -- llvm-14.0.1.install/include/clang-c/Documentation.h:37
-      TranslationUnit : Clang.Index.Translation_Unit_T;  -- llvm-14.0.1.install/include/clang-c/Documentation.h:38
+      ASTNode : System.Address;  -- install/include/clang-c/Documentation.h:37
+      TranslationUnit : Clang.Index.Translation_Unit_T;  -- install/include/clang-c/Documentation.h:38
    end record
-   with Convention => C_Pass_By_Copy;  -- llvm-14.0.1.install/include/clang-c/Documentation.h:39
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Documentation.h:39
 
   --*
   -- * Given a cursor that represents a documentable entity (e.g.,
@@ -50,7 +50,7 @@ package Clang.Documentation is
   -- * \c CXComment_FullComment AST node.
   --  
 
-   function Cursor_Get_Parsed_Comment (C : Clang.Index.Cursor_T) return Comment_T  -- llvm-14.0.1.install/include/clang-c/Documentation.h:46
+   function Cursor_Get_Parsed_Comment (C : Clang.Index.Cursor_T) return Comment_T  -- install/include/clang-c/Documentation.h:46
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getParsedComment";
@@ -75,7 +75,7 @@ package Clang.Documentation is
       Comment_Verbatim_Block_Line,
       Comment_Verbatim_Line,
       Comment_Full_Comment)
-   with Convention => C;  -- llvm-14.0.1.install/include/clang-c/Documentation.h:53
+   with Convention => C;  -- install/include/clang-c/Documentation.h:53
 
   --*
   --   * Null comment.  No AST node is constructed at the requested location
@@ -180,7 +180,7 @@ package Clang.Documentation is
       Comment_Inline_Command_Render_Kind_Monospaced,
       Comment_Inline_Command_Render_Kind_Emphasized,
       Comment_Inline_Command_Render_Kind_Anchor)
-   with Convention => C;  -- llvm-14.0.1.install/include/clang-c/Documentation.h:164
+   with Convention => C;  -- install/include/clang-c/Documentation.h:164
 
   --*
   --   * Command argument should be rendered in a normal font.
@@ -211,7 +211,7 @@ package Clang.Documentation is
      (Comment_Param_Pass_Direction_In,
       Comment_Param_Pass_Direction_Out,
       Comment_Param_Pass_Direction_In_Out)
-   with Convention => C;  -- llvm-14.0.1.install/include/clang-c/Documentation.h:195
+   with Convention => C;  -- install/include/clang-c/Documentation.h:195
 
   --*
   --   * The parameter is an input parameter.
@@ -231,7 +231,7 @@ package Clang.Documentation is
   -- * \returns the type of the AST node.
   --  
 
-   function Comment_Get_Kind (Comment : Comment_T) return Comment_Kind_T  -- llvm-14.0.1.install/include/clang-c/Documentation.h:217
+   function Comment_Get_Kind (Comment : Comment_T) return Comment_Kind_T  -- install/include/clang-c/Documentation.h:217
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Comment_getKind";
@@ -242,7 +242,7 @@ package Clang.Documentation is
   -- * \returns number of children of the AST node.
   --  
 
-   function Comment_Get_Num_Children (Comment : Comment_T) return unsigned  -- llvm-14.0.1.install/include/clang-c/Documentation.h:224
+   function Comment_Get_Num_Children (Comment : Comment_T) return unsigned  -- install/include/clang-c/Documentation.h:224
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Comment_getNumChildren";
@@ -255,7 +255,7 @@ package Clang.Documentation is
   -- * \returns the specified child of the AST node.
   --  
 
-   function Comment_Get_Child (Comment : Comment_T; Child_Idx : unsigned) return Comment_T  -- llvm-14.0.1.install/include/clang-c/Documentation.h:234
+   function Comment_Get_Child (Comment : Comment_T; Child_Idx : unsigned) return Comment_T  -- install/include/clang-c/Documentation.h:234
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Comment_getChild";
@@ -280,7 +280,7 @@ function Comment_Is_Whitespace
   -- * do not count.
   --  
 
-   function Inline_Content_Comment_Has_Trailing_Newline (Comment : Comment_T) return unsigned  -- llvm-14.0.1.install/include/clang-c/Documentation.h:253
+   function Inline_Content_Comment_Has_Trailing_Newline (Comment : Comment_T) return unsigned  -- install/include/clang-c/Documentation.h:253
    with Import => True, 
         Convention => C, 
         External_Name => "clang_InlineContentComment_hasTrailingNewline";
@@ -312,7 +312,7 @@ function Inline_Command_Comment_Get_Command_Name
   -- * semantics in Doxygen.
   --  
 
-   function Inline_Command_Comment_Get_Render_Kind (Comment : Comment_T) return Comment_Inline_Command_Render_Kind_T  -- llvm-14.0.1.install/include/clang-c/Documentation.h:277
+   function Inline_Command_Comment_Get_Render_Kind (Comment : Comment_T) return Comment_Inline_Command_Render_Kind_T  -- install/include/clang-c/Documentation.h:277
    with Import => True, 
         Convention => C, 
         External_Name => "clang_InlineCommandComment_getRenderKind";
@@ -323,7 +323,7 @@ function Inline_Command_Comment_Get_Command_Name
   -- * \returns number of command arguments.
   --  
 
-   function Inline_Command_Comment_Get_Num_Args (Comment : Comment_T) return unsigned  -- llvm-14.0.1.install/include/clang-c/Documentation.h:285
+   function Inline_Command_Comment_Get_Num_Args (Comment : Comment_T) return unsigned  -- install/include/clang-c/Documentation.h:285
    with Import => True, 
         Convention => C, 
         External_Name => "clang_InlineCommandComment_getNumArgs";
@@ -368,7 +368,7 @@ function HTML_Start_Tag_Comment_Is_Self_Closing
   -- * \returns number of attributes (name-value pairs) attached to the start tag.
   --  
 
-   function HTML_Start_Tag_Get_Num_Attrs (Comment : Comment_T) return unsigned  -- llvm-14.0.1.install/include/clang-c/Documentation.h:319
+   function HTML_Start_Tag_Get_Num_Attrs (Comment : Comment_T) return unsigned  -- install/include/clang-c/Documentation.h:319
    with Import => True, 
         Convention => C, 
         External_Name => "clang_HTMLStartTag_getNumAttrs";
@@ -415,7 +415,7 @@ function Block_Command_Comment_Get_Command_Name
   -- * \returns number of word-like arguments.
   --  
 
-   function Block_Command_Comment_Get_Num_Args (Comment : Comment_T) return unsigned  -- llvm-14.0.1.install/include/clang-c/Documentation.h:355
+   function Block_Command_Comment_Get_Num_Args (Comment : Comment_T) return unsigned  -- install/include/clang-c/Documentation.h:355
    with Import => True, 
         Convention => C, 
         External_Name => "clang_BlockCommandComment_getNumArgs";
@@ -440,7 +440,7 @@ function Block_Command_Comment_Get_Arg_Text
   -- * \returns paragraph argument of the block command.
   --  
 
-   function Block_Command_Comment_Get_Paragraph (Comment : Comment_T) return Comment_T  -- llvm-14.0.1.install/include/clang-c/Documentation.h:375
+   function Block_Command_Comment_Get_Paragraph (Comment : Comment_T) return Comment_T  -- install/include/clang-c/Documentation.h:375
    with Import => True, 
         Convention => C, 
         External_Name => "clang_BlockCommandComment_getParagraph";
@@ -473,7 +473,7 @@ function Param_Command_Comment_Is_Param_Index_Valid
   -- * \returns zero-based parameter index in function prototype.
   --  
 
-   function Param_Command_Comment_Get_Param_Index (Comment : Comment_T) return unsigned  -- llvm-14.0.1.install/include/clang-c/Documentation.h:401
+   function Param_Command_Comment_Get_Param_Index (Comment : Comment_T) return unsigned  -- install/include/clang-c/Documentation.h:401
    with Import => True, 
         Convention => C, 
         External_Name => "clang_ParamCommandComment_getParamIndex";
@@ -495,7 +495,7 @@ function Param_Command_Comment_Is_Direction_Explicit
   -- * \returns parameter passing direction.
   --  
 
-   function Param_Command_Comment_Get_Direction (Comment : Comment_T) return Comment_Param_Pass_Direction_T  -- llvm-14.0.1.install/include/clang-c/Documentation.h:418
+   function Param_Command_Comment_Get_Direction (Comment : Comment_T) return Comment_Param_Pass_Direction_T  -- install/include/clang-c/Documentation.h:418
    with Import => True, 
         Convention => C, 
         External_Name => "clang_ParamCommandComment_getDirection";
@@ -538,7 +538,7 @@ function T_Param_Command_Comment_Is_Param_Position_Valid
   -- * for T nesting depth is 1.
   --  
 
-   function T_Param_Command_Comment_Get_Depth (Comment : Comment_T) return unsigned  -- llvm-14.0.1.install/include/clang-c/Documentation.h:455
+   function T_Param_Command_Comment_Get_Depth (Comment : Comment_T) return unsigned  -- install/include/clang-c/Documentation.h:455
    with Import => True, 
         Convention => C, 
         External_Name => "clang_TParamCommandComment_getDepth";
@@ -562,7 +562,7 @@ function T_Param_Command_Comment_Is_Param_Position_Valid
   -- * at depth 1 T's index is 0.
   --  
 
-   function T_Param_Command_Comment_Get_Index (Comment : Comment_T; Depth : unsigned) return unsigned  -- llvm-14.0.1.install/include/clang-c/Documentation.h:476
+   function T_Param_Command_Comment_Get_Index (Comment : Comment_T; Depth : unsigned) return unsigned  -- install/include/clang-c/Documentation.h:476
    with Import => True, 
         Convention => C, 
         External_Name => "clang_TParamCommandComment_getIndex";

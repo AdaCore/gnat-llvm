@@ -1947,7 +1947,8 @@ package body GNATLLVM.Subprograms is
    ---------------
 
    function Emit_Call
-     (N : N_Subprogram_Call_Id; LHS : GL_Value := No_GL_Value) return GL_Value
+     (N         : N_Subprogram_Call_Id;
+      Outer_LHS : GL_Value := No_GL_Value) return GL_Value
    is
       procedure Write_Back
         (In_LHS  : GL_Value;
@@ -2183,11 +2184,11 @@ package body GNATLLVM.Subprograms is
 
       if RK = Return_By_Parameter then
          Args (In_Idx) :=
-           (if   Present (LHS)
-                 and then (Is_Safe_From (LHS, N)
+           (if   Present (Outer_LHS)
+                 and then (Is_Safe_From (Outer_LHS, N)
                            or else (Is_By_Reference_Type (Return_GT)
                                     and then Nkind (N) = N_Function_Call))
-            then Convert_Ref (LHS, Return_GT)
+            then Convert_Ref (Outer_LHS, Return_GT)
             else Get (Allocate_For_Type (Return_GT,
                                          N        => Subp,
                                          Name     => "RETURN",
@@ -2195,7 +2196,7 @@ package body GNATLLVM.Subprograms is
                                            Is_Unconstrained_Record
                                            (Return_GT)),
                       Relationship_For_Ref (Return_GT)));
-         In_Idx        := In_Idx + 1;
+         In_Idx := In_Idx + 1;
       end if;
 
       --  Normally, we want to handle any LValues in each argument separately.

@@ -82,11 +82,12 @@ package GNATLLVM.Subprograms is
    --  was used.
 
    function Emit_Call
-     (N : N_Subprogram_Call_Id; LHS : GL_Value := No_GL_Value) return GL_Value;
-   --  Compile a call statement/expression and return its result
-   --  value.  If this is calling a procedure, there will be no return value.
-   --  If LHS is Present, it's a place that we'll be storing the result of
-   --  the function in case that turns out to be useful.
+     (N         : N_Subprogram_Call_Id;
+      Outer_LHS : GL_Value := No_GL_Value) return GL_Value;
+   --  Compile a call statement/expression and return its result value.  If
+   --  this is calling a procedure, there will be no return value.  If
+   --  Outer_LHS is Present, it's a place that we'll be storing the result
+   --  of the function in case that turns out to be useful.
 
    function Call_Alloc
      (Proc : E_Procedure_Id;

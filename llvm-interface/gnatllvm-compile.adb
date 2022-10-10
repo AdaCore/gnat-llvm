@@ -1081,7 +1081,7 @@ package body GNATLLVM.Compile is
                return Emit_Undef (GT);
             else
                pragma Assert (Decls_Only or else not For_LHS);
-               return Emit_Call (N, LHS => LHS);
+               return Emit_Call (N, Outer_LHS => LHS);
             end if;
 
          when N_Explicit_Dereference =>

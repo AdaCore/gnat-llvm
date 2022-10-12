@@ -200,31 +200,11 @@ package body CCG.Write is
       --  Those keywords are: case do else for goto if return while.
       --  In this case, append an _ at the end of the name.
 
-      if S = "auto"
-        or else S = "bool"
-        or else S = "break"
-        or else S = "char"
-        or else S = "const"
-        or else S = "continue"
-        or else S = "default"
-        or else S = "double"
-        or else S = "enum"
-        or else S = "extern"
-        or else S = "float"
-        or else S = "int"
-        or else S = "long"
-        or else S = "register"
-        or else S = "short"
-        or else S = "signed"
-        or else S = "sizeof"
-        or else S = "static"
-        or else S = "struct"
-        or else S = "switch"
-        or else S = "typedef"
-        or else S = "union"
-        or else S = "unsigned"
-        or else S = "void"
-        or else S = "volatile"
+      if S in "auto" | "bool" | "break" | "char" | "const" | "continue" |
+              "default" | "double" | "enum" | "extern" | "float" | "int" |
+              "long" | "register" | "short" | "signed" | "sizeof" | "static" |
+              "struct" | "switch" | "typedef" | "union" | "unsigned" | "void" |
+              "volatile"
       then
          Write_Str (S);
          Append_Suffix := True;

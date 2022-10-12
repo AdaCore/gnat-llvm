@@ -1079,8 +1079,7 @@ package body GNATLLVM.Builtins is
 
       elsif Name = "__builtin_bswap" then
          return Emit_Bswap_Call (N, S);
-      elsif S = "__builtin_expect" or else S = "__builtin_likely"
-        or else S = "__builtin_unlikely"
+      elsif S in "__builtin_expect" | "__builtin_likely" | "__builtin_unlikely"
       then
          return Emit_Branch_Prediction_Call (N, S);
       elsif S'Length > 9

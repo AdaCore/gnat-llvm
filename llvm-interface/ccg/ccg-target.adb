@@ -101,9 +101,9 @@ package body CCG.Target is
    begin
       case PD.PT is
          when Bool =>
-            if Value = "True" or else Value = "true" then
+            if Value in "True" | "true" then
                PD.Bool_Ptr.all := True;
-            elsif Value = "False" or else Value = "false" then
+            elsif Value in "False" | "false" then
                PD.Bool_Ptr.all := False;
             else
                Early_Error ("illegal value '" & Value & "' for parameter '" &

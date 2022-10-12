@@ -106,7 +106,7 @@ package body GNATLLVM.Codegen is
 
       elsif Switch = "--dump-ir" then
          Code_Generation := Dump_IR;
-      elsif Switch = "--dump-bc" or else Switch = "--write-bc" then
+      elsif Switch in "--dump-bc" | "--write-bc" then
          Code_Generation := Write_BC;
       elsif Switch = "-emit-c" then
          Emit_C := True;
@@ -231,14 +231,12 @@ package body GNATLLVM.Codegen is
          No_Inlining := True;
       elsif Switch = "-fmerge-functions" then
          Merge_Functions := True;
-      elsif Switch = "-fno-merge-functions"
-        or else Switch = "-fno-toplevel-reorder"
-      then
+      elsif Switch in "-fno-merge-functions" | "-fno-toplevel-reorder" then
          Merge_Functions := False;
       elsif Switch = "-fno-lto" then
          Prepare_For_Thin_LTO := False;
          Prepare_For_LTO      := False;
-      elsif Switch = "-flto" or else Switch = "-flto=full" then
+      elsif Switch in "-flto" | "-flto=full" then
          Prepare_For_Thin_LTO := False;
          Prepare_For_LTO      := True;
       elsif Switch = "-flto=thin" then
@@ -270,7 +268,7 @@ package body GNATLLVM.Codegen is
          Code_Model := Code_Model_Default;
       elsif Switch = "-mrelocation-model=static" then
          Reloc_Mode := Reloc_Static;
-      elsif Switch = "-fPIC" or else Switch = "-mrelocation-model=pic" then
+      elsif Switch in "-fPIC" | "-mrelocation-model=pic" then
          Reloc_Mode := Reloc_PIC;
       elsif Switch = "-mrelocation-model=dynamic-no-pic" then
          Reloc_Mode := Reloc_Dynamic_No_Pic;

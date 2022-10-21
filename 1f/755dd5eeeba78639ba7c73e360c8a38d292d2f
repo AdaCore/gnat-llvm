@@ -1,0 +1,6 @@
+Code-Review+2: Richard Kenner <kenner@adacore.com>
+Submitted-by: Richard Kenner <kenner@adacore.com>
+Submitted-at: Fri, 21 Oct 2022 13:27:08 +0000
+Reviewed-on: https://git.adacore-it.com/c/gnat-llvm/+/123490
+Project: gnat-llvm
+Branch: refs/heads/master

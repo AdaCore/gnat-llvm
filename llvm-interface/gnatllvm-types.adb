@@ -278,7 +278,7 @@ package body GNATLLVM.Types is
 
    function ULL_Align (C : ULL) return Nat is
    begin
-      return Nat ((if   C = 0 then ULL (Max_Valid_Align)
+      return Nat ((if   C = 0 then Max_Valid_Align
                    else ULL'Min (ULL (Max_Valid_Align), C and (not (C - 1)))));
    end ULL_Align;
 

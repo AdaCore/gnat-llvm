@@ -32,14 +32,15 @@ with LLVM.Support;    use LLVM.Support;
 
 with CCG; use CCG;
 
-with Debug;   use Debug;
-with Errout;  use Errout;
-with Lib;     use Lib;
-with Opt;     use Opt;
-with Osint;   use Osint;
-with Osint.C; use Osint.C;
-with Output;  use Output;
-with Switch;  use Switch;
+with Debug;    use Debug;
+with Errout;   use Errout;
+with Set_Targ; use Set_Targ;
+with Lib;      use Lib;
+with Opt;      use Opt;
+with Osint;    use Osint;
+with Osint.C;  use Osint.C;
+with Output;   use Output;
+with Switch;   use Switch;
 with Table;
 
 with GNATLLVM.Helper;  use GNATLLVM.Helper;
@@ -314,12 +315,11 @@ package body GNATLLVM.Codegen is
 
          --  Use a simple 32bits target by default for C code generation
 
-         if not Target_Triple_Set then
+         if not Target_Triple_Set and then Set_Targ.Pointer_Size = 32 then
             Free (Target_Triple);
             Target_Triple := new String'("i386-linux");
          end if;
       end if;
-
    end Scan_Command_Line;
 
    -----------------
@@ -370,6 +370,10 @@ package body GNATLLVM.Codegen is
       TT_First    : constant Integer  := Target_Triple'First;
 
    begin
+      if Long_Long_Long_Size > 64 then
+         Early_Error ("Long_Long_Long_Size greater than 64 not supported");
+      end if;
+
       --  Add any LLVM parameters to the list of switches
 
       for J in 1 .. Switches.Last loop
@@ -385,15 +389,13 @@ package body GNATLLVM.Codegen is
          Code_Generation := (if Output_Assembly then Write_IR else Write_BC);
 
       elsif Emit_C then
-         Code_Generation      := Write_C;
+         Code_Generation := Write_C;
 
          if Output_Assembly then
             Early_Error ("cannot specify both -emit-c and -S flags");
          end if;
-
       elsif Output_Assembly then
          Code_Generation := Write_Assembly;
-
       end if;
 
       --  Initialize the translation environment

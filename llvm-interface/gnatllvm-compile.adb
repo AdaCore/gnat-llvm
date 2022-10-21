@@ -167,10 +167,12 @@ package body GNATLLVM.Compile is
          Int_64_T       := Type_Of (Int_64_GL_Type);
       end if;
 
-      --  Create GL_Types for builtin types
+      --  Create GL_Types for builtin types. Create Boolean first because
+      --  we use it internally to make boolean constants in the evaluation
+      --  of expressions used in elaborating other types.
 
-      A_Char_GL_Type    := Primitive_GL_Type (Standard_A_Char);
       Boolean_GL_Type   := Primitive_GL_Type (Standard_Boolean);
+      A_Char_GL_Type    := Primitive_GL_Type (Standard_A_Char);
       SSI_GL_Type       := Primitive_GL_Type (Standard_Short_Short_Integer);
       SI_GL_Type        := Primitive_GL_Type (Standard_Short_Integer);
       Integer_GL_Type   := Primitive_GL_Type (Standard_Integer);

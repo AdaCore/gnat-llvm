@@ -51,6 +51,9 @@ package body GNATLLVM.Codegen is
    Target_Triple_Set : Boolean := False;
    --  Set to True by Process_Switch if Target_Triple was modified
 
+   Target_Config_File_Specified : Boolean := False;
+   --  Set to True by Process_Switch if -gnateT is specified
+
    package Switches is new Table.Table
      (Table_Component_Type => String_Access,
       Table_Index_Type     => Interfaces.C.int,
@@ -120,6 +123,8 @@ package body GNATLLVM.Codegen is
       then
          Emit_Debug_Info      := True;
          Emit_Full_Debug_Info := True;
+      elsif Starts_With ("-gnateT=") then
+         Target_Config_File_Specified := True;
       elsif Switch = "-fstack-check" then
          Do_Stack_Check := True;
       elsif Switch = "-fshort-enums" then
@@ -284,7 +289,6 @@ package body GNATLLVM.Codegen is
       --  Free string that we replaced above, if any
 
       Free (To_Free);
-
    end Process_Switch;
 
    -----------------------
@@ -315,7 +319,9 @@ package body GNATLLVM.Codegen is
 
          --  Use a simple 32bits target by default for C code generation
 
-         if not Target_Triple_Set and then Set_Targ.Pointer_Size = 32 then
+         if not Target_Triple_Set
+           and then not Target_Config_File_Specified
+         then
             Free (Target_Triple);
             Target_Triple := new String'("i386-linux");
          end if;

@@ -265,7 +265,7 @@ zfp: build
 	done
 	cp -p zfp/*.* $(ZFPINCLUDE)
 	PATH=$(pwd)/bin:$$PATH \
-	$(GPRBUILD) -p --target=llvm -j$(PROCS) -P$(ZFPINCLUDE)/zfp \
+	$(GPRBUILD) -p --target=llvm --RTS=zfp -j$(PROCS) -P$(ZFPINCLUDE)/zfp \
 	  -XCFLAGS="$(CFLAGS)" \
 	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
 	  -XLIBRARY_KIND=$(LIBRARY_KIND) \

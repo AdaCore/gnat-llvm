@@ -940,7 +940,7 @@ function Module_Create_With_Name_In_Context
 
 function Get_Module_Identifier
      (M   : LLVM.Types.Module_T;
-      Len : access unsigned_long)
+      Len : access stddef_h.size_t)
       return String;
 
   --*
@@ -968,7 +968,7 @@ procedure Set_Module_Identifier
 
 function Get_Source_File_Name
      (M   : LLVM.Types.Module_T;
-      Len : access unsigned_long)
+      Len : access stddef_h.size_t)
       return String;
 
   --*
@@ -1042,7 +1042,7 @@ procedure Set_Target
   -- * @see Module::getModuleFlagsMetadata()
   --  
 
-   function Copy_Module_Flags_Metadata (M : LLVM.Types.Module_T; Len : access unsigned_long) return access LLVM.Types.Opaque_Module_Flag_Entry_Impl_T  -- install/include/llvm-c/Core.h:776
+   function Copy_Module_Flags_Metadata (M : LLVM.Types.Module_T; Len : access stddef_h.size_t) return access LLVM.Types.Opaque_Module_Flag_Entry_Impl_T  -- install/include/llvm-c/Core.h:776
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMCopyModuleFlagsMetadata";
@@ -1076,7 +1076,7 @@ procedure Set_Target
 function Module_Flag_Entries_Get_Key
      (Entries : access LLVM.Types.Opaque_Module_Flag_Entry_Impl_T;
       Index   : unsigned;
-      Len     : access unsigned_long)
+      Len     : access stddef_h.size_t)
       return String;
 
   --*
@@ -1160,7 +1160,7 @@ function Print_Module_To_String
 
 function Get_Module_Inline_Asm
      (M   : LLVM.Types.Module_T;
-      Len : access unsigned_long)
+      Len : access stddef_h.size_t)
       return String;
 
   --*
@@ -1300,7 +1300,7 @@ function Get_Or_Insert_Named_Metadata
 
 function Get_Named_Metadata_Name
      (Named_MD : LLVM.Types.Named_MD_Node_T;
-      Name_Len : access unsigned_long)
+      Name_Len : access stddef_h.size_t)
       return String;
 
   --*
@@ -2282,7 +2282,7 @@ function Is_Literal_Struct
 
 function Get_Value_Name_2
      (Val    : LLVM.Types.Value_T;
-      Length : access unsigned_long)
+      Length : access stddef_h.size_t)
       return String;
 
   --*
@@ -3241,7 +3241,7 @@ function Is_Constant_String
 
 function Get_As_String
      (C      : LLVM.Types.Value_T;
-      Length : access unsigned_long)
+      Length : access stddef_h.size_t)
       return String;
 
   --*
@@ -3888,7 +3888,7 @@ procedure Set_Unnamed_Addr
   -- * @see llvm::GlobalObject::getAllMetadata()
   --  
 
-   function Global_Copy_All_Metadata (Value : LLVM.Types.Value_T; Num_Entries : access unsigned_long) return access LLVM.Types.Opaque_Value_Metadata_Entry_Impl_T  -- install/include/llvm-c/Core.h:2318
+   function Global_Copy_All_Metadata (Value : LLVM.Types.Value_T; Num_Entries : access stddef_h.size_t) return access LLVM.Types.Opaque_Value_Metadata_Entry_Impl_T  -- install/include/llvm-c/Core.h:2318
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMGlobalCopyAllMetadata";
@@ -4255,7 +4255,7 @@ function Lookup_Intrinsic_ID
 
 function Intrinsic_Get_Name
      (ID          : unsigned;
-      Name_Length : access unsigned_long)
+      Name_Length : access stddef_h.size_t)
       return String;
 
   --* Deprecated: Use LLVMIntrinsicCopyOverloadedName2 instead.  
@@ -4263,7 +4263,7 @@ function Intrinsic_Copy_Overloaded_Name
      (ID          : unsigned;
       Param_Types : System.Address;
       Param_Count : stddef_h.size_t;
-      Name_Length : access unsigned_long)
+      Name_Length : access stddef_h.size_t)
       return String;
 
   --*
@@ -4283,7 +4283,7 @@ function Intrinsic_Copy_Overloaded_Name_2
       ID          : unsigned;
       Param_Types : System.Address;
       Param_Count : stddef_h.size_t;
-      Name_Length : access unsigned_long)
+      Name_Length : access stddef_h.size_t)
       return String;
 
   --*
@@ -5190,7 +5190,7 @@ function Insert_Basic_Block
   -- * @see llvm::Instruction::getAllMetadataOtherThanDebugLoc()
   --  
 
-   function Instruction_Get_All_Metadata_Other_Than_Debug_Loc (Instr : LLVM.Types.Value_T; Num_Entries : access unsigned_long) return access LLVM.Types.Opaque_Value_Metadata_Entry_Impl_T  -- install/include/llvm-c/Core.h:3172
+   function Instruction_Get_All_Metadata_Other_Than_Debug_Loc (Instr : LLVM.Types.Value_T; Num_Entries : access stddef_h.size_t) return access LLVM.Types.Opaque_Value_Metadata_Entry_Impl_T  -- install/include/llvm-c/Core.h:3172
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInstructionGetAllMetadataOtherThanDebugLoc";

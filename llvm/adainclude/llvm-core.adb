@@ -337,14 +337,14 @@ package body LLVM.Core is
 
    function Get_Module_Identifier
      (M   : LLVM.Types.Module_T;
-      Len : access unsigned_long)
+      Len : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
         External_Name => "LLVMGetModuleIdentifier";
    function Get_Module_Identifier
      (M   : LLVM.Types.Module_T;
-      Len : access unsigned_long)
+      Len : access stddef_h.size_t)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;
@@ -377,14 +377,14 @@ package body LLVM.Core is
 
    function Get_Source_File_Name
      (M   : LLVM.Types.Module_T;
-      Len : access unsigned_long)
+      Len : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
         External_Name => "LLVMGetSourceFileName";
    function Get_Source_File_Name
      (M   : LLVM.Types.Module_T;
-      Len : access unsigned_long)
+      Len : access stddef_h.size_t)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;
@@ -510,7 +510,7 @@ package body LLVM.Core is
    function Module_Flag_Entries_Get_Key
      (Entries : access LLVM.Types.Opaque_Module_Flag_Entry_Impl_T;
       Index   : unsigned;
-      Len     : access unsigned_long)
+      Len     : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
@@ -518,7 +518,7 @@ package body LLVM.Core is
    function Module_Flag_Entries_Get_Key
      (Entries : access LLVM.Types.Opaque_Module_Flag_Entry_Impl_T;
       Index   : unsigned;
-      Len     : access unsigned_long)
+      Len     : access stddef_h.size_t)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;
@@ -631,14 +631,14 @@ package body LLVM.Core is
 
    function Get_Module_Inline_Asm
      (M   : LLVM.Types.Module_T;
-      Len : access unsigned_long)
+      Len : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
         External_Name => "LLVMGetModuleInlineAsm";
    function Get_Module_Inline_Asm
      (M   : LLVM.Types.Module_T;
-      Len : access unsigned_long)
+      Len : access stddef_h.size_t)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;
@@ -810,14 +810,14 @@ package body LLVM.Core is
 
    function Get_Named_Metadata_Name
      (Named_MD : LLVM.Types.Named_MD_Node_T;
-      Name_Len : access unsigned_long)
+      Name_Len : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
         External_Name => "LLVMGetNamedMetadataName";
    function Get_Named_Metadata_Name
      (Named_MD : LLVM.Types.Named_MD_Node_T;
-      Name_Len : access unsigned_long)
+      Name_Len : access stddef_h.size_t)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;
@@ -1216,14 +1216,14 @@ package body LLVM.Core is
 
    function Get_Value_Name_2
      (Val    : LLVM.Types.Value_T;
-      Length : access unsigned_long)
+      Length : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
         External_Name => "LLVMGetValueName2";
    function Get_Value_Name_2
      (Val    : LLVM.Types.Value_T;
-      Length : access unsigned_long)
+      Length : access stddef_h.size_t)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;
@@ -1574,14 +1574,14 @@ package body LLVM.Core is
 
    function Get_As_String
      (C      : LLVM.Types.Value_T;
-      Length : access unsigned_long)
+      Length : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
         External_Name => "LLVMGetAsString";
    function Get_As_String
      (C      : LLVM.Types.Value_T;
-      Length : access unsigned_long)
+      Length : access stddef_h.size_t)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;
@@ -2055,14 +2055,14 @@ package body LLVM.Core is
 
    function Intrinsic_Get_Name
      (ID          : unsigned;
-      Name_Length : access unsigned_long)
+      Name_Length : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
         External_Name => "LLVMIntrinsicGetName";
    function Intrinsic_Get_Name
      (ID          : unsigned;
-      Name_Length : access unsigned_long)
+      Name_Length : access stddef_h.size_t)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;
@@ -2079,7 +2079,7 @@ package body LLVM.Core is
      (ID          : unsigned;
       Param_Types : System.Address;
       Param_Count : stddef_h.size_t;
-      Name_Length : access unsigned_long)
+      Name_Length : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
@@ -2088,7 +2088,7 @@ package body LLVM.Core is
      (ID          : unsigned;
       Param_Types : System.Address;
       Param_Count : stddef_h.size_t;
-      Name_Length : access unsigned_long)
+      Name_Length : access stddef_h.size_t)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;
@@ -2106,7 +2106,7 @@ package body LLVM.Core is
       ID          : unsigned;
       Param_Types : System.Address;
       Param_Count : stddef_h.size_t;
-      Name_Length : access unsigned_long)
+      Name_Length : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
@@ -2116,7 +2116,7 @@ package body LLVM.Core is
       ID          : unsigned;
       Param_Types : System.Address;
       Param_Count : stddef_h.size_t;
-      Name_Length : access unsigned_long)
+      Name_Length : access stddef_h.size_t)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;

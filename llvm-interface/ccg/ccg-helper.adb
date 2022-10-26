@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with stddef_h;
 with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings; use Interfaces.C.Strings;
 
@@ -52,7 +53,7 @@ package body CCG.Helper is
    -------------------
 
    function Get_As_String (V : Value_T) return String is
-      Length : aliased Interfaces.C.unsigned_long;
+      Length : aliased stddef_h.size_t;
       S      : constant String := Get_As_String (V, Length'Access);
    begin
       return S;

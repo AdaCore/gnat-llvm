@@ -257,7 +257,7 @@ interfac.ads s-stoele.adb s-stoele.ads s-unstyp.ads
 ZFPINCLUDE=lib/rts-zfp/adainclude
 ZFPLIB=lib/rts-zfp/adalib
 
-zfp: build
+zfp-build:
 	$(RMDIR) $(ZFPINCLUDE) $(ZFPLIB)
 	$(MKDIR) $(ZFPINCLUDE) $(ZFPLIB)
 	for f in $(COMMON_ZFP_SRCS); do \
@@ -271,6 +271,12 @@ zfp: build
 	  -XLIBRARY_KIND=$(LIBRARY_KIND) \
 	  -XADAFLAGS=$(ADAFLAGS)
 	cd $(ZFPLIB) && $(CHMOD) a-wx *.ali
+
+zfp: build
+	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" zfp-build
+
+zfp-opt: build-opt
+	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" zfp-build
 
 # Optionally include sub makefile
 

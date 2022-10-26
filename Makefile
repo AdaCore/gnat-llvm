@@ -20,6 +20,13 @@ zfp: sanity-check
 automated:
 	$(MAKE) -C llvm-interface bootstrap
 
+# Entry points for cross builds. Currently, it builds a cross compiler that
+# isn't bootstrapped (i.e., we build it directly with native GNAT). Cross
+# GNAT-LLVM then compiles the minimal ZFP runtime (to be extended to the
+# standard cross runtimes).
+cross-automated:
+	$(MAKE) -C llvm-interface zfp-opt
+
 llvm:
 	$(MAKE) -j1 -C llvm setup
 	$(MAKE) -C llvm llvm

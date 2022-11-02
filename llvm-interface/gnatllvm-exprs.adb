@@ -1806,6 +1806,7 @@ package body GNATLLVM.Exprs is
            Integer (String_Length (Template_Strval));
          Constraints    : String (1 .. Constraint_Len);
          Template       : String (1 .. Template_Len);
+         Template_Char  : Character;
          Asm            : GL_Value;
 
          procedure Add_Char (C : Character);
@@ -1875,11 +1876,15 @@ package body GNATLLVM.Exprs is
             Clobber := Clobber_Get_Next;
          end loop;
 
-         --  Finally, build the template
+         --  Finally, build the template.  LLVM bitcode uses a syntax for the
+         --  template that is different from GNU as.  For now, we only
+         --  translate numeric input/output references (e.g., "%0").
 
-         for J in 1 .. Integer (String_Length (Template_Strval)) loop
-            Template (J) := Get_Character (Get_String_Char (Template_Strval,
-                                                            Int (J)));
+         for J in 1 .. Template_Len loop
+            Template_Char := Get_Character (Get_String_Char (Template_Strval,
+                                                             Int (J)));
+            Template (J) :=
+              (if Template_Char = '%' then '$' else Template_Char);
          end loop;
 
          --  Create the inline asm

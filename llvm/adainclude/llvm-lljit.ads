@@ -292,7 +292,7 @@ function Orc_LLJIT_Mangle_And_Intern
 
 function Orc_LLJIT_Lookup
      (J      : Orc_LLJIT_T;
-      Result : access unsigned_long;
+      Result : access LLVM.Orc.Orc_Executor_Address_T;
       Name   : String)
       return LLVM.Error.Error_T;
 

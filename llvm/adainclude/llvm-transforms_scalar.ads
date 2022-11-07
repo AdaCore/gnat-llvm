@@ -159,134 +159,128 @@ package LLVM.Transforms_Scalar is
         Convention => C, 
         External_Name => "LLVMAddLoopUnrollAndJamPass";
 
-  --* See llvm::createLoopUnswitchPass function.  
-   procedure Add_Loop_Unswitch_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:98
-   with Import => True, 
-        Convention => C, 
-        External_Name => "LLVMAddLoopUnswitchPass";
-
   --* See llvm::createLowerAtomicPass function.  
-   procedure Add_Lower_Atomic_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:101
+   procedure Add_Lower_Atomic_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:98
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddLowerAtomicPass";
 
   --* See llvm::createMemCpyOptPass function.  
-   procedure Add_Mem_Cpy_Opt_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:104
+   procedure Add_Mem_Cpy_Opt_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:101
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddMemCpyOptPass";
 
   --* See llvm::createPartiallyInlineLibCallsPass function.  
-   procedure Add_Partially_Inline_Lib_Calls_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:107
+   procedure Add_Partially_Inline_Lib_Calls_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:104
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddPartiallyInlineLibCallsPass";
 
   --* See llvm::createReassociatePass function.  
-   procedure Add_Reassociate_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:110
+   procedure Add_Reassociate_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:107
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddReassociatePass";
 
   --* See llvm::createSCCPPass function.  
-   procedure Add_SCCP_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:113
+   procedure Add_SCCP_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:110
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddSCCPPass";
 
   --* See llvm::createSROAPass function.  
-   procedure Add_Scalar_Repl_Aggregates_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:116
+   procedure Add_Scalar_Repl_Aggregates_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:113
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddScalarReplAggregatesPass";
 
   --* See llvm::createSROAPass function.  
-   procedure Add_Scalar_Repl_Aggregates_Pass_SSA (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:119
+   procedure Add_Scalar_Repl_Aggregates_Pass_SSA (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:116
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddScalarReplAggregatesPassSSA";
 
   --* See llvm::createSROAPass function.  
-   procedure Add_Scalar_Repl_Aggregates_Pass_With_Threshold (PM : LLVM.Types.Pass_Manager_T; Threshold : int)  -- install/include/llvm-c/Transforms/Scalar.h:122
+   procedure Add_Scalar_Repl_Aggregates_Pass_With_Threshold (PM : LLVM.Types.Pass_Manager_T; Threshold : int)  -- install/include/llvm-c/Transforms/Scalar.h:119
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddScalarReplAggregatesPassWithThreshold";
 
   --* See llvm::createSimplifyLibCallsPass function.  
-   procedure Add_Simplify_Lib_Calls_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:126
+   procedure Add_Simplify_Lib_Calls_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:123
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddSimplifyLibCallsPass";
 
   --* See llvm::createTailCallEliminationPass function.  
-   procedure Add_Tail_Call_Elimination_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:129
+   procedure Add_Tail_Call_Elimination_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:126
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddTailCallEliminationPass";
 
   --* See llvm::demotePromoteMemoryToRegisterPass function.  
-   procedure Add_Demote_Memory_To_Register_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:132
+   procedure Add_Demote_Memory_To_Register_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:129
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddDemoteMemoryToRegisterPass";
 
   --* See llvm::createVerifierPass function.  
-   procedure Add_Verifier_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:135
+   procedure Add_Verifier_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:132
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddVerifierPass";
 
   --* See llvm::createCorrelatedValuePropagationPass function  
-   procedure Add_Correlated_Value_Propagation_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:138
+   procedure Add_Correlated_Value_Propagation_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:135
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddCorrelatedValuePropagationPass";
 
   --* See llvm::createEarlyCSEPass function  
-   procedure Add_Early_CSE_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:141
+   procedure Add_Early_CSE_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:138
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddEarlyCSEPass";
 
   --* See llvm::createEarlyCSEPass function  
-   procedure Add_Early_CSE_Mem_SSA_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:144
+   procedure Add_Early_CSE_Mem_SSA_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:141
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddEarlyCSEMemSSAPass";
 
   --* See llvm::createLowerExpectIntrinsicPass function  
-   procedure Add_Lower_Expect_Intrinsic_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:147
+   procedure Add_Lower_Expect_Intrinsic_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:144
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddLowerExpectIntrinsicPass";
 
   --* See llvm::createLowerConstantIntrinsicsPass function  
-   procedure Add_Lower_Constant_Intrinsics_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:150
+   procedure Add_Lower_Constant_Intrinsics_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:147
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddLowerConstantIntrinsicsPass";
 
   --* See llvm::createTypeBasedAliasAnalysisPass function  
-   procedure Add_Type_Based_Alias_Analysis_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:153
+   procedure Add_Type_Based_Alias_Analysis_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:150
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddTypeBasedAliasAnalysisPass";
 
   --* See llvm::createScopedNoAliasAAPass function  
-   procedure Add_Scoped_No_Alias_AA_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:156
+   procedure Add_Scoped_No_Alias_AA_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:153
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddScopedNoAliasAAPass";
 
   --* See llvm::createBasicAliasAnalysisPass function  
-   procedure Add_Basic_Alias_Analysis_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:159
+   procedure Add_Basic_Alias_Analysis_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:156
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddBasicAliasAnalysisPass";
 
   --* See llvm::createUnifyFunctionExitNodesPass function  
-   procedure Add_Unify_Function_Exit_Nodes_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:162
+   procedure Add_Unify_Function_Exit_Nodes_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/Scalar.h:159
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddUnifyFunctionExitNodesPass";

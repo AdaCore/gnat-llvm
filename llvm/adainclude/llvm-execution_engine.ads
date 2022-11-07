@@ -272,7 +272,7 @@ function Execution_Engine_Get_Err_Msg
          Arg_2 : stdint_h.uintptr_t;
          Arg_3 : unsigned;
          Arg_4 : unsigned;
-         Arg_5 : Interfaces.C.Strings.chars_ptr) return access unsigned_char
+         Arg_5 : Interfaces.C.Strings.chars_ptr) return access stdint_h.uint8_t
    with Convention => C;  -- install/include/llvm-c/ExecutionEngine.h:159
 
    type Memory_Manager_Allocate_Data_Section_Callback_T is access function
@@ -281,7 +281,7 @@ function Execution_Engine_Get_Err_Msg
          Arg_3 : unsigned;
          Arg_4 : unsigned;
          Arg_5 : Interfaces.C.Strings.chars_ptr;
-         Arg_6 : LLVM.Types.Bool_T) return access unsigned_char
+         Arg_6 : LLVM.Types.Bool_T) return access stdint_h.uint8_t
    with Convention => C;  -- install/include/llvm-c/ExecutionEngine.h:162
 
    type Memory_Manager_Finalize_Memory_Callback_T is access function (Arg_1 : System.Address; Arg_2 : System.Address) return LLVM.Types.Bool_T

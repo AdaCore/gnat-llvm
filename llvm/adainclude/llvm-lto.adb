@@ -427,7 +427,7 @@ package body LLVM.Lto is
    function Input_Get_Dependent_Library
      (Input : Input_T_T;
       Index : stddef_h.size_t;
-      Size  : access unsigned_long)
+      Size  : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
         Convention => C,
@@ -435,7 +435,7 @@ package body LLVM.Lto is
    function Input_Get_Dependent_Library
      (Input : Input_T_T;
       Index : stddef_h.size_t;
-      Size  : access unsigned_long)
+      Size  : access stddef_h.size_t)
       return String
    is
       Return_Value : Interfaces.C.Strings.chars_ptr;

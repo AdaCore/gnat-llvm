@@ -1327,7 +1327,7 @@ function DI_Create_Class_Type
 
 function DI_Type_Get_Name
      (D_Type : LLVM.Types.Metadata_T;
-      Length : access unsigned_long)
+      Length : access stddef_h.size_t)
       return String;
 
   --*
@@ -1430,7 +1430,7 @@ function DI_Type_Get_Name
 
    function DI_Builder_Create_Expression
      (Builder : LLVM.Types.DI_Builder_T;
-      Addr : access unsigned_long;
+      Addr : access stdint_h.uint64_t;
       Length : stddef_h.size_t) return LLVM.Types.Metadata_T  -- install/include/llvm-c/DebugInfo.h:1104
    with Import => True, 
         Convention => C, 

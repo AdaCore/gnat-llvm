@@ -75,6 +75,21 @@ package body LLVM.Core is
       Context_Set_Discard_Value_Names (C, Discard_Bool);
    end Context_Set_Discard_Value_Names;
 
+   procedure Context_Set_Opaque_Pointers
+     (C               : LLVM.Types.Context_T;
+      Opaque_Pointers : LLVM.Types.Bool_T)
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMContextSetOpaquePointers";
+   procedure Context_Set_Opaque_Pointers
+     (C               : LLVM.Types.Context_T;
+      Opaque_Pointers : Boolean)
+   is
+      Opaque_Pointers_Bool : constant LLVM.Types.Bool_T := Boolean'Pos (Opaque_Pointers);
+   begin
+      Context_Set_Opaque_Pointers (C, Opaque_Pointers_Bool);
+   end Context_Set_Opaque_Pointers;
+
    function Get_Diag_Info_Description
      (DI : LLVM.Types.Diagnostic_Info_T)
       return Interfaces.C.Strings.chars_ptr
@@ -1213,6 +1228,22 @@ package body LLVM.Core is
       Return_Value := Is_Literal_Struct (Struct_Ty);
       return Return_Value /= 0;
    end Is_Literal_Struct;
+
+   function Pointer_Type_Is_Opaque
+     (Ty : LLVM.Types.Type_T)
+      return LLVM.Types.Bool_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMPointerTypeIsOpaque";
+   function Pointer_Type_Is_Opaque
+     (Ty : LLVM.Types.Type_T)
+      return Boolean
+   is
+      Return_Value : LLVM.Types.Bool_T;
+   begin
+      Return_Value := Pointer_Type_Is_Opaque (Ty);
+      return Return_Value /= 0;
+   end Pointer_Type_Is_Opaque;
 
    function Get_Value_Name_2
      (Val    : LLVM.Types.Value_T;
@@ -4546,6 +4577,30 @@ package body LLVM.Core is
       Return_Value := Build_Int_Cast (Arg_1, Val, Dest_Ty, Name_String);
       return Return_Value;
    end Int_Cast;
+
+   function Get_Cast_Opcode
+     (Src            : LLVM.Types.Value_T;
+      Src_Is_Signed  : LLVM.Types.Bool_T;
+      Dest_Ty        : LLVM.Types.Type_T;
+      Dest_Is_Signed : LLVM.Types.Bool_T)
+      return Opcode_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMGetCastOpcode";
+   function Get_Cast_Opcode
+     (Src            : LLVM.Types.Value_T;
+      Src_Is_Signed  : Boolean;
+      Dest_Ty        : LLVM.Types.Type_T;
+      Dest_Is_Signed : Boolean)
+      return Opcode_T
+   is
+      Return_Value        : Opcode_T;
+      Src_Is_Signed_Bool  : constant LLVM.Types.Bool_T := Boolean'Pos (Src_Is_Signed);
+      Dest_Is_Signed_Bool : constant LLVM.Types.Bool_T := Boolean'Pos (Dest_Is_Signed);
+   begin
+      Return_Value := Get_Cast_Opcode (Src, Src_Is_Signed_Bool, Dest_Ty, Dest_Is_Signed_Bool);
+      return Return_Value;
+   end Get_Cast_Opcode;
 
    function Build_I_Cmp
      (Arg_1 : LLVM.Types.Builder_T;

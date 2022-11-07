@@ -87,12 +87,12 @@ package LLVM.Disassembler_Types is
   -- * one operand with symbolic information.  To determine the symbolic operand
   -- * information for each operand, the bytes for the specific operand in the
   -- * instruction are specified by the Offset parameter and its byte widith is the
-  -- * size parameter.  For instructions sets with fixed widths and one symbolic
-  -- * operand per instruction, the Offset parameter will be zero and Size parameter
-  -- * will be the instruction width.  The information is returned in TagBuf and is
-  -- * Triple specific with its specific information defined by the value of
-  -- * TagType for that Triple.  If symbolic information is returned the function
-  -- * returns 1, otherwise it returns 0.
+  -- * OpSize parameter.  For instructions sets with fixed widths and one symbolic
+  -- * operand per instruction, the Offset parameter will be zero and InstSize
+  -- * parameter will be the instruction width.  The information is returned in
+  -- * TagBuf and is Triple specific with its specific information defined by the
+  -- * value of TagType for that Triple.  If symbolic information is returned the
+  -- * function * returns 1, otherwise it returns 0.
   --  
 
    type Op_Info_Callback_T is access function
@@ -100,8 +100,9 @@ package LLVM.Disassembler_Types is
          Arg_2 : stdint_h.uint64_t;
          Arg_3 : stdint_h.uint64_t;
          Arg_4 : stdint_h.uint64_t;
-         Arg_5 : int;
-         Arg_6 : System.Address) return int
+         Arg_5 : stdint_h.uint64_t;
+         Arg_6 : int;
+         Arg_7 : System.Address) return int
    with Convention => C;  -- install/include/llvm-c/DisassemblerTypes.h:48
 
   --*
@@ -171,7 +172,7 @@ package LLVM.Disassembler_Types is
    type Symbol_Lookup_Callback_T is access function
         (Arg_1 : System.Address;
          Arg_2 : stdint_h.uint64_t;
-         Arg_3 : access unsigned_long;
+         Arg_3 : access stdint_h.uint64_t;
          Arg_4 : stdint_h.uint64_t;
          Arg_5 : System.Address) return Interfaces.C.Strings.chars_ptr
    with Convention => C;  -- install/include/llvm-c/DisassemblerTypes.h:118

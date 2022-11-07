@@ -100,7 +100,7 @@ package body LLVM.Disassembler is
 
    function Disasm_Instruction
      (DC              : LLVM.Disassembler_Types.Disasm_Context_T;
-      Bytes           : access unsigned_char;
+      Bytes           : access stdint_h.uint8_t;
       Bytes_Size      : stdint_h.uint64_t;
       PC              : stdint_h.uint64_t;
       Out_String      : Interfaces.C.Strings.chars_ptr;
@@ -111,7 +111,7 @@ package body LLVM.Disassembler is
         External_Name => "LLVMDisasmInstruction";
    function Disasm_Instruction
      (DC              : LLVM.Disassembler_Types.Disasm_Context_T;
-      Bytes           : access unsigned_char;
+      Bytes           : access stdint_h.uint8_t;
       Bytes_Size      : stdint_h.uint64_t;
       PC              : stdint_h.uint64_t;
       Out_String      : String;

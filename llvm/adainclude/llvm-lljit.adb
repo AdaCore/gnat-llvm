@@ -50,7 +50,7 @@ package body LLVM.LLJIT is
 
    function Orc_LLJIT_Lookup
      (J      : Orc_LLJIT_T;
-      Result : access unsigned_long;
+      Result : access LLVM.Orc.Orc_Executor_Address_T;
       Name   : Interfaces.C.Strings.chars_ptr)
       return LLVM.Error.Error_T
    with Import => True,
@@ -58,7 +58,7 @@ package body LLVM.LLJIT is
         External_Name => "LLVMOrcLLJITLookup";
    function Orc_LLJIT_Lookup
      (J      : Orc_LLJIT_T;
-      Result : access unsigned_long;
+      Result : access LLVM.Orc.Orc_Executor_Address_T;
       Name   : String)
       return LLVM.Error.Error_T
    is

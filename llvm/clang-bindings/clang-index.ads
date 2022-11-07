@@ -412,9 +412,9 @@ function Get_File_Name
   -- * across an indexing session.
   --  
 
-   type anon_array1124 is array (0 .. 2) of aliased Extensions.unsigned_long_long;
+   type anon_array1133 is array (0 .. 2) of aliased Extensions.unsigned_long_long;
    type File_Unique_ID_T is record
-      data : aliased anon_array1124;  -- install/include/clang-c/Index.h:370
+      data : aliased anon_array1133;  -- install/include/clang-c/Index.h:370
    end record
    with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:371
 
@@ -523,9 +523,9 @@ function File_Try_Get_Real_Path_Name
   -- * to map a source location to a particular file, line, and column.
   --  
 
-   type anon_array1139 is array (0 .. 1) of System.Address;
+   type anon_array1148 is array (0 .. 1) of System.Address;
    type Source_Location_T is record
-      ptr_data : anon_array1139;  -- install/include/clang-c/Index.h:457
+      ptr_data : anon_array1148;  -- install/include/clang-c/Index.h:457
       int_data : aliased unsigned;  -- install/include/clang-c/Index.h:458
    end record
    with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:459
@@ -538,7 +538,7 @@ function File_Try_Get_Real_Path_Name
   --  
 
    type Source_Range_T is record
-      ptr_data : anon_array1139;  -- install/include/clang-c/Index.h:468
+      ptr_data : anon_array1148;  -- install/include/clang-c/Index.h:468
       begin_int_data : aliased unsigned;  -- install/include/clang-c/Index.h:469
       end_int_data : aliased unsigned;  -- install/include/clang-c/Index.h:470
    end record
@@ -2154,7 +2154,9 @@ function Target_Info_Get_Triple
    Cursor_OMP_Array_Shaping_Expr : constant Cursor_Kind_T := 150;
    Cursor_OMP_Iterator_Expr : constant Cursor_Kind_T := 151;
    Cursor_CXX_Addrspace_Cast_Expr : constant Cursor_Kind_T := 152;
-   Cursor_Last_Expr : constant Cursor_Kind_T := 152;
+   Cursor_Concept_Specialization_Expr : constant Cursor_Kind_T := 153;
+   Cursor_Requires_Expr : constant Cursor_Kind_T := 154;
+   Cursor_Last_Expr : constant Cursor_Kind_T := 154;
    Cursor_First_Stmt : constant Cursor_Kind_T := 200;
    Cursor_Unexposed_Stmt : constant Cursor_Kind_T := 200;
    Cursor_Label_Stmt : constant Cursor_Kind_T := 201;
@@ -2253,8 +2255,17 @@ function Target_Info_Get_Triple
    Cursor_OMP_Unroll_Directive : constant Cursor_Kind_T := 293;
    Cursor_OMP_Meta_Directive : constant Cursor_Kind_T := 294;
    Cursor_OMP_Generic_Loop_Directive : constant Cursor_Kind_T := 295;
-   Cursor_Last_Stmt : constant Cursor_Kind_T := 295;
-   Cursor_Translation_Unit : constant Cursor_Kind_T := 300;
+   Cursor_OMP_Teams_Generic_Loop_Directive : constant Cursor_Kind_T := 296;
+   Cursor_OMP_Target_Teams_Generic_Loop_Directive : constant Cursor_Kind_T := 297;
+   Cursor_OMP_Parallel_Generic_Loop_Directive : constant Cursor_Kind_T := 298;
+   Cursor_OMP_Target_Parallel_Generic_Loop_Directive : constant Cursor_Kind_T := 299;
+   Cursor_OMP_Parallel_Masked_Directive : constant Cursor_Kind_T := 300;
+   Cursor_OMP_Masked_Task_Loop_Directive : constant Cursor_Kind_T := 301;
+   Cursor_OMP_Masked_Task_Loop_Simd_Directive : constant Cursor_Kind_T := 302;
+   Cursor_OMP_Parallel_Masked_Task_Loop_Directive : constant Cursor_Kind_T := 303;
+   Cursor_OMP_Parallel_Masked_Task_Loop_Simd_Directive : constant Cursor_Kind_T := 304;
+   Cursor_Last_Stmt : constant Cursor_Kind_T := 304;
+   Cursor_Translation_Unit : constant Cursor_Kind_T := 350;
    Cursor_First_Attr : constant Cursor_Kind_T := 400;
    Cursor_Unexposed_Attr : constant Cursor_Kind_T := 400;
    Cursor_IB_Action_Attr : constant Cursor_Kind_T := 401;
@@ -2310,8 +2321,9 @@ function Target_Info_Get_Triple
    Cursor_Type_Alias_Template_Decl : constant Cursor_Kind_T := 601;
    Cursor_Static_Assert : constant Cursor_Kind_T := 602;
    Cursor_Friend_Decl : constant Cursor_Kind_T := 603;
+   Cursor_Concept_Decl : constant Cursor_Kind_T := 604;
    Cursor_First_Extra_Decl : constant Cursor_Kind_T := 600;
-   Cursor_Last_Extra_Decl : constant Cursor_Kind_T := 603;
+   Cursor_Last_Extra_Decl : constant Cursor_Kind_T := 604;
    Cursor_Overload_Candidate : constant Cursor_Kind_T := 700;  -- install/include/clang-c/Index.h:1706
 
   -- Declarations  
@@ -2685,6 +2697,14 @@ function Target_Info_Get_Triple
   --* OpenCL's addrspace_cast<> expression.
   --    
 
+  --*
+  --   * Expression that references a C++20 concept.
+  --    
+
+  --*
+  --   * Expression that references a C++20 concept.
+  --    
+
   -- Statements  
   --*
   --   * A statement whose specific kind is not exposed via this
@@ -2996,6 +3016,33 @@ function Target_Info_Get_Triple
   --* OpenMP loop directive.
   --    
 
+  --* OpenMP teams loop directive.
+  --    
+
+  --* OpenMP target teams loop directive.
+  --    
+
+  --* OpenMP parallel loop directive.
+  --    
+
+  --* OpenMP target parallel loop directive.
+  --    
+
+  --* OpenMP parallel masked directive.
+  --    
+
+  --* OpenMP masked taskloop directive.
+  --    
+
+  --* OpenMP masked taskloop simd directive.
+  --    
+
+  --* OpenMP parallel masked taskloop directive.
+  --    
+
+  --* OpenMP parallel masked taskloop simd directive.
+  --    
+
   --*
   --   * Cursor that represents the translation unit itself.
   --   *
@@ -3024,6 +3071,10 @@ function Target_Info_Get_Triple
   --    
 
   --*
+  --   * a concept declaration.
+  --    
+
+  --*
   --   * A code completion overload candidate.
   --    
 
@@ -3046,13 +3097,13 @@ function Target_Info_Get_Triple
   -- * source code into the AST.
   --  
 
-   type anon_array1263 is array (0 .. 2) of System.Address;
+   type anon_array1272 is array (0 .. 2) of System.Address;
    type Cursor_T is record
-      kind : aliased Cursor_Kind_T;  -- install/include/clang-c/Index.h:2715
-      xdata : aliased int;  -- install/include/clang-c/Index.h:2716
-      data : anon_array1263;  -- install/include/clang-c/Index.h:2717
+      kind : aliased Cursor_Kind_T;  -- install/include/clang-c/Index.h:2766
+      xdata : aliased int;  -- install/include/clang-c/Index.h:2767
+      data : anon_array1272;  -- install/include/clang-c/Index.h:2768
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:2718
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:2769
 
   --*
   -- * \defgroup CINDEX_CURSOR_MANIP Cursor manipulations
@@ -3064,7 +3115,7 @@ function Target_Info_Get_Triple
   -- * Retrieve the NULL cursor, which represents no entity.
   --  
 
-   function Get_Null_Cursor return Cursor_T  -- install/include/clang-c/Index.h:2729
+   function Get_Null_Cursor return Cursor_T  -- install/include/clang-c/Index.h:2780
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getNullCursor";
@@ -3076,7 +3127,7 @@ function Target_Info_Get_Triple
   -- * various declarations within the given translation unit.
   --  
 
-   function Get_Translation_Unit_Cursor (Arg_1 : Translation_Unit_T) return Cursor_T  -- install/include/clang-c/Index.h:2737
+   function Get_Translation_Unit_Cursor (Arg_1 : Translation_Unit_T) return Cursor_T  -- install/include/clang-c/Index.h:2788
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getTranslationUnitCursor";
@@ -3085,7 +3136,7 @@ function Target_Info_Get_Triple
   -- * Determine whether two cursors are equivalent.
   --  
 
-   function Equal_Cursors (Arg_1 : Cursor_T; Arg_2 : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:2742
+   function Equal_Cursors (Arg_1 : Cursor_T; Arg_2 : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:2793
    with Import => True, 
         Convention => C, 
         External_Name => "clang_equalCursors";
@@ -3102,7 +3153,7 @@ function Cursor_Is_Null
   -- * Compute a hash value for the given cursor.
   --  
 
-   function Hash_Cursor (Arg_1 : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:2752
+   function Hash_Cursor (Arg_1 : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:2803
    with Import => True, 
         Convention => C, 
         External_Name => "clang_hashCursor";
@@ -3111,7 +3162,7 @@ function Cursor_Is_Null
   -- * Retrieve the kind of the given cursor.
   --  
 
-   function Get_Cursor_Kind (Arg_1 : Cursor_T) return Cursor_Kind_T  -- install/include/clang-c/Index.h:2757
+   function Get_Cursor_Kind (Arg_1 : Cursor_T) return Cursor_Kind_T  -- install/include/clang-c/Index.h:2808
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorKind";
@@ -3178,7 +3229,7 @@ function Is_Attribute
   -- * Determine whether the given cursor has any attributes.
   --  
 
-   function Cursor_Has_Attrs (C : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:2802
+   function Cursor_Has_Attrs (C : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:2853
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_hasAttrs";
@@ -3229,7 +3280,7 @@ function Is_Unexposed
       Linkage_Internal,
       Linkage_Unique_External,
       Linkage_External)
-   with Convention => C;  -- install/include/clang-c/Index.h:2831
+   with Convention => C;  -- install/include/clang-c/Index.h:2882
 
   --* This value indicates that no linkage information is available
   --   * for a provided CXCursor.  
@@ -3248,7 +3299,7 @@ function Is_Unexposed
   -- * Determine the linkage of the entity referred to by a given cursor.
   --  
 
-   function Get_Cursor_Linkage (Cursor : Cursor_T) return Linkage_Kind_T  -- install/include/clang-c/Index.h:2852
+   function Get_Cursor_Linkage (Cursor : Cursor_T) return Linkage_Kind_T  -- install/include/clang-c/Index.h:2903
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorLinkage";
@@ -3258,7 +3309,7 @@ function Is_Unexposed
       Visibility_Hidden,
       Visibility_Protected,
       Visibility_Default)
-   with Convention => C;  -- install/include/clang-c/Index.h:2854
+   with Convention => C;  -- install/include/clang-c/Index.h:2905
 
   --* This value indicates that no visibility information is available
   --   * for a provided CXCursor.  
@@ -3278,7 +3329,7 @@ function Is_Unexposed
   -- * \returns The visibility of the cursor.
   --  
 
-   function Get_Cursor_Visibility (Cursor : Cursor_T) return Visibility_Kind_T  -- install/include/clang-c/Index.h:2878
+   function Get_Cursor_Visibility (Cursor : Cursor_T) return Visibility_Kind_T  -- install/include/clang-c/Index.h:2929
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorVisibility";
@@ -3292,7 +3343,7 @@ function Is_Unexposed
   -- * \returns The availability of the cursor.
   --  
 
-   function Get_Cursor_Availability (Cursor : Cursor_T) return Availability_Kind_T  -- install/include/clang-c/Index.h:2889
+   function Get_Cursor_Availability (Cursor : Cursor_T) return Availability_Kind_T  -- install/include/clang-c/Index.h:2940
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorAvailability";
@@ -3310,14 +3361,14 @@ function Is_Unexposed
   --    
 
    type Platform_Availability_T is record
-      Platform : aliased Clang.CX_String.String_T;  -- install/include/clang-c/Index.h:2902
-      Introduced : aliased Version_T;  -- install/include/clang-c/Index.h:2906
-      Deprecated : aliased Version_T;  -- install/include/clang-c/Index.h:2911
-      Obsoleted : aliased Version_T;  -- install/include/clang-c/Index.h:2916
-      Unavailable : aliased int;  -- install/include/clang-c/Index.h:2920
-      Message : aliased Clang.CX_String.String_T;  -- install/include/clang-c/Index.h:2925
+      Platform : aliased Clang.CX_String.String_T;  -- install/include/clang-c/Index.h:2953
+      Introduced : aliased Version_T;  -- install/include/clang-c/Index.h:2957
+      Deprecated : aliased Version_T;  -- install/include/clang-c/Index.h:2962
+      Obsoleted : aliased Version_T;  -- install/include/clang-c/Index.h:2967
+      Unavailable : aliased int;  -- install/include/clang-c/Index.h:2971
+      Message : aliased Clang.CX_String.String_T;  -- install/include/clang-c/Index.h:2976
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:2895
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:2946
 
   --*
   --   * The version number in which this entity was introduced.
@@ -3386,7 +3437,7 @@ function Is_Unexposed
       Always_Unavailable : access int;
       Unavailable_Message : access Clang.CX_String.String_T;
       Availability : access Platform_Availability_T;
-      Availability_Size : int) return int  -- install/include/clang-c/Index.h:2964
+      Availability_Size : int) return int  -- install/include/clang-c/Index.h:3015
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorPlatformAvailability";
@@ -3395,7 +3446,7 @@ function Is_Unexposed
   -- * Free the memory associated with a \c CXPlatformAvailability structure.
   --  
 
-   procedure Dispose_CX_Platform_Availability (Availability : access Platform_Availability_T)  -- install/include/clang-c/Index.h:2973
+   procedure Dispose_CX_Platform_Availability (Availability : access Platform_Availability_T)  -- install/include/clang-c/Index.h:3024
    with Import => True, 
         Convention => C, 
         External_Name => "clang_disposeCXPlatformAvailability";
@@ -3405,7 +3456,7 @@ function Is_Unexposed
   -- * cursor referring to the initializer otherwise return null cursor.
   --  
 
-   function Cursor_Get_Var_Decl_Initializer (Cursor : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:2979
+   function Cursor_Get_Var_Decl_Initializer (Cursor : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:3030
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getVarDeclInitializer";
@@ -3416,7 +3467,7 @@ function Is_Unexposed
   -- * returns 0. Otherwise returns -1.
   --  
 
-   function Cursor_Has_Var_Decl_Global_Storage (Cursor : Cursor_T) return int  -- install/include/clang-c/Index.h:2986
+   function Cursor_Has_Var_Decl_Global_Storage (Cursor : Cursor_T) return int  -- install/include/clang-c/Index.h:3037
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_hasVarDeclGlobalStorage";
@@ -3427,7 +3478,7 @@ function Is_Unexposed
   -- * external storage returns 0. Otherwise returns -1.
   --  
 
-   function Cursor_Has_Var_Decl_External_Storage (Cursor : Cursor_T) return int  -- install/include/clang-c/Index.h:2993
+   function Cursor_Has_Var_Decl_External_Storage (Cursor : Cursor_T) return int  -- install/include/clang-c/Index.h:3044
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_hasVarDeclExternalStorage";
@@ -3441,13 +3492,13 @@ function Is_Unexposed
       Language_C,
       Language_Obj_C,
       Language_C_Plus_Plus)
-   with Convention => C;  -- install/include/clang-c/Index.h:2998
+   with Convention => C;  -- install/include/clang-c/Index.h:3049
 
   --*
   -- * Determine the "language" of the entity referred to by a given cursor.
   --  
 
-   function Get_Cursor_Language (Cursor : Cursor_T) return Language_Kind_T  -- install/include/clang-c/Index.h:3008
+   function Get_Cursor_Language (Cursor : Cursor_T) return Language_Kind_T  -- install/include/clang-c/Index.h:3059
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorLanguage";
@@ -3461,14 +3512,14 @@ function Is_Unexposed
      (TLS_None,
       TLS_Dynamic,
       TLS_Static)
-   with Convention => C;  -- install/include/clang-c/Index.h:3014
+   with Convention => C;  -- install/include/clang-c/Index.h:3065
 
   --*
   -- * Determine the "thread-local storage (TLS) kind" of the declaration
   -- * referred to by a cursor.
   --  
 
-   function Get_Cursor_TLS_Kind (Cursor : Cursor_T) return TLS_Kind_T  -- install/include/clang-c/Index.h:3020
+   function Get_Cursor_TLS_Kind (Cursor : Cursor_T) return TLS_Kind_T  -- install/include/clang-c/Index.h:3071
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorTLSKind";
@@ -3477,7 +3528,7 @@ function Is_Unexposed
   -- * Returns the translation unit that a cursor originated from.
   --  
 
-   function Cursor_Get_Translation_Unit (Arg_1 : Cursor_T) return Translation_Unit_T  -- install/include/clang-c/Index.h:3025
+   function Cursor_Get_Translation_Unit (Arg_1 : Cursor_T) return Translation_Unit_T  -- install/include/clang-c/Index.h:3076
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getTranslationUnit";
@@ -3488,13 +3539,13 @@ function Is_Unexposed
 
    type Cursor_Set_Impl_T is null record;   -- incomplete struct
 
-   type Cursor_Set_T is access all Cursor_Set_Impl_T;  -- install/include/clang-c/Index.h:3030
+   type Cursor_Set_T is access all Cursor_Set_Impl_T;  -- install/include/clang-c/Index.h:3081
 
   --*
   -- * Creates an empty CXCursorSet.
   --  
 
-   function Create_CX_Cursor_Set return Cursor_Set_T  -- install/include/clang-c/Index.h:3035
+   function Create_CX_Cursor_Set return Cursor_Set_T  -- install/include/clang-c/Index.h:3086
    with Import => True, 
         Convention => C, 
         External_Name => "clang_createCXCursorSet";
@@ -3503,7 +3554,7 @@ function Is_Unexposed
   -- * Disposes a CXCursorSet and releases its associated memory.
   --  
 
-   procedure Dispose_CX_Cursor_Set (Cset : Cursor_Set_T)  -- install/include/clang-c/Index.h:3040
+   procedure Dispose_CX_Cursor_Set (Cset : Cursor_Set_T)  -- install/include/clang-c/Index.h:3091
    with Import => True, 
         Convention => C, 
         External_Name => "clang_disposeCXCursorSet";
@@ -3514,7 +3565,7 @@ function Is_Unexposed
   -- * \returns non-zero if the set contains the specified cursor.
   --  
 
-   function CX_Cursor_Set_Contains (Cset : Cursor_Set_T; Cursor : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:3047
+   function CX_Cursor_Set_Contains (Cset : Cursor_Set_T; Cursor : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:3098
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CXCursorSet_contains";
@@ -3525,7 +3576,7 @@ function Is_Unexposed
   -- * \returns zero if the CXCursor was already in the set, and non-zero otherwise.
   --  
 
-   function CX_Cursor_Set_Insert (Cset : Cursor_Set_T; Cursor : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:3055
+   function CX_Cursor_Set_Insert (Cset : Cursor_Set_T; Cursor : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:3106
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CXCursorSet_insert";
@@ -3564,7 +3615,7 @@ function Is_Unexposed
   -- * For global declarations, the semantic parent is the translation unit.
   --  
 
-   function Get_Cursor_Semantic_Parent (Cursor : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:3091
+   function Get_Cursor_Semantic_Parent (Cursor : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:3142
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorSemanticParent";
@@ -3604,7 +3655,7 @@ function Is_Unexposed
   -- * the translation unit.
   --  
 
-   function Get_Cursor_Lexical_Parent (Cursor : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:3127
+   function Get_Cursor_Lexical_Parent (Cursor : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:3178
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorLexicalParent";
@@ -3656,7 +3707,7 @@ function Is_Unexposed
    procedure Get_Overridden_Cursors
      (Cursor : Cursor_T;
       Overridden : System.Address;
-      Num_Overridden : access unsigned)  -- install/include/clang-c/Index.h:3172
+      Num_Overridden : access unsigned)  -- install/include/clang-c/Index.h:3223
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getOverriddenCursors";
@@ -3666,7 +3717,7 @@ function Is_Unexposed
   -- * clang_getOverriddenCursors().
   --  
 
-   procedure Dispose_Overridden_Cursors (Overridden : access Cursor_T)  -- install/include/clang-c/Index.h:3180
+   procedure Dispose_Overridden_Cursors (Overridden : access Cursor_T)  -- install/include/clang-c/Index.h:3231
    with Import => True, 
         Convention => C, 
         External_Name => "clang_disposeOverriddenCursors";
@@ -3676,7 +3727,7 @@ function Is_Unexposed
   -- * cursor.
   --  
 
-   function Get_Included_File (Cursor : Cursor_T) return File_T  -- install/include/clang-c/Index.h:3186
+   function Get_Included_File (Cursor : Cursor_T) return File_T  -- install/include/clang-c/Index.h:3237
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getIncludedFile";
@@ -3712,7 +3763,7 @@ function Is_Unexposed
   -- * a NULL cursor if no such entity can be found.
   --  
 
-   function Get_Cursor (Arg_1 : Translation_Unit_T; Arg_2 : Source_Location_T) return Cursor_T  -- install/include/clang-c/Index.h:3218
+   function Get_Cursor (Arg_1 : Translation_Unit_T; Arg_2 : Source_Location_T) return Cursor_T  -- install/include/clang-c/Index.h:3269
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursor";
@@ -3728,7 +3779,7 @@ function Is_Unexposed
   -- * source code.
   --  
 
-   function Get_Cursor_Location (Arg_1 : Cursor_T) return Source_Location_T  -- install/include/clang-c/Index.h:3230
+   function Get_Cursor_Location (Arg_1 : Cursor_T) return Source_Location_T  -- install/include/clang-c/Index.h:3281
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorLocation";
@@ -3745,7 +3796,7 @@ function Is_Unexposed
   -- * entity was actually used).
   --  
 
-   function Get_Cursor_Extent (Arg_1 : Cursor_T) return Source_Range_T  -- install/include/clang-c/Index.h:3243
+   function Get_Cursor_Extent (Arg_1 : Cursor_T) return Source_Range_T  -- install/include/clang-c/Index.h:3294
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorExtent";
@@ -3885,7 +3936,8 @@ function Is_Unexposed
    Type_OCL_Intel_Subgroup_AVC_Ime_Single_Ref_Streamin : constant Type_Kind_T := 174;
    Type_OCL_Intel_Subgroup_AVC_Ime_Dual_Ref_Streamin : constant Type_Kind_T := 175;
    Type_Ext_Vector : constant Type_Kind_T := 176;
-   Type_Atomic : constant Type_Kind_T := 177;  -- install/include/clang-c/Index.h:3258
+   Type_Atomic : constant Type_Kind_T := 177;
+   Type_BTF_Tag_Attributed : constant Type_Kind_T := 178;  -- install/include/clang-c/Index.h:3309
 
   --*
   --   * Represents an invalid type (e.g., where no type is available).
@@ -3929,8 +3981,9 @@ function Is_Unexposed
    Calling_Conv_Preserve_All : constant Calling_Conv_T := 15;
    Calling_Conv_A_Arch_64_Vector_Call : constant Calling_Conv_T := 16;
    Calling_Conv_Swift_Async : constant Calling_Conv_T := 17;
+   Calling_Conv_A_Arch_64SVEPCS : constant Calling_Conv_T := 18;
    Calling_Conv_Invalid : constant Calling_Conv_T := 100;
-   Calling_Conv_Unexposed : constant Calling_Conv_T := 200;  -- install/include/clang-c/Index.h:3410
+   Calling_Conv_Unexposed : constant Calling_Conv_T := 200;  -- install/include/clang-c/Index.h:3462
 
   -- Alias for compatibility with older versions of API.  
   --*
@@ -3938,18 +3991,18 @@ function Is_Unexposed
   -- *
   --  
 
-   type anon_array1322 is array (0 .. 1) of System.Address;
+   type anon_array1331 is array (0 .. 1) of System.Address;
    type Type_T is record
-      kind : aliased Type_Kind_T;  -- install/include/clang-c/Index.h:3441
-      data : anon_array1322;  -- install/include/clang-c/Index.h:3442
+      kind : aliased Type_Kind_T;  -- install/include/clang-c/Index.h:3494
+      data : anon_array1331;  -- install/include/clang-c/Index.h:3495
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:3443
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:3496
 
   --*
   -- * Retrieve the type of a CXCursor (if any).
   --  
 
-   function Get_Cursor_Type (C : Cursor_T) return Type_T  -- install/include/clang-c/Index.h:3448
+   function Get_Cursor_Type (C : Cursor_T) return Type_T  -- install/include/clang-c/Index.h:3501
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorType";
@@ -3972,7 +4025,7 @@ function Get_Type_Spelling
   -- * returned.
   --  
 
-   function Get_Typedef_Decl_Underlying_Type (C : Cursor_T) return Type_T  -- install/include/clang-c/Index.h:3464
+   function Get_Typedef_Decl_Underlying_Type (C : Cursor_T) return Type_T  -- install/include/clang-c/Index.h:3517
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getTypedefDeclUnderlyingType";
@@ -3984,7 +4037,7 @@ function Get_Type_Spelling
   -- * returned.
   --  
 
-   function Get_Enum_Decl_Integer_Type (C : Cursor_T) return Type_T  -- install/include/clang-c/Index.h:3472
+   function Get_Enum_Decl_Integer_Type (C : Cursor_T) return Type_T  -- install/include/clang-c/Index.h:3525
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getEnumDeclIntegerType";
@@ -3998,7 +4051,7 @@ function Get_Type_Spelling
   -- * the cursor must be verified before calling this function.
   --  
 
-   function Get_Enum_Constant_Decl_Value (C : Cursor_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:3482
+   function Get_Enum_Constant_Decl_Value (C : Cursor_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:3535
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getEnumConstantDeclValue";
@@ -4012,7 +4065,7 @@ function Get_Type_Spelling
   -- * the cursor must be verified before calling this function.
   --  
 
-   function Get_Enum_Constant_Decl_Unsigned_Value (C : Cursor_T) return Extensions.unsigned_long_long  -- install/include/clang-c/Index.h:3493
+   function Get_Enum_Constant_Decl_Unsigned_Value (C : Cursor_T) return Extensions.unsigned_long_long  -- install/include/clang-c/Index.h:3546
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getEnumConstantDeclUnsignedValue";
@@ -4023,7 +4076,7 @@ function Get_Type_Spelling
   -- * If a cursor that is not a bit field declaration is passed in, -1 is returned.
   --  
 
-   function Get_Field_Decl_Bit_Width (C : Cursor_T) return int  -- install/include/clang-c/Index.h:3500
+   function Get_Field_Decl_Bit_Width (C : Cursor_T) return int  -- install/include/clang-c/Index.h:3553
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getFieldDeclBitWidth";
@@ -4036,7 +4089,7 @@ function Get_Type_Spelling
   -- * declarations of functions or methods. For other cursors -1 is returned.
   --  
 
-   function Cursor_Get_Num_Arguments (C : Cursor_T) return int  -- install/include/clang-c/Index.h:3509
+   function Cursor_Get_Num_Arguments (C : Cursor_T) return int  -- install/include/clang-c/Index.h:3562
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getNumArguments";
@@ -4049,7 +4102,7 @@ function Get_Type_Spelling
   -- * invalid cursor is returned.
   --  
 
-   function Cursor_Get_Argument (C : Cursor_T; I : unsigned) return Cursor_T  -- install/include/clang-c/Index.h:3518
+   function Cursor_Get_Argument (C : Cursor_T; I : unsigned) return Cursor_T  -- install/include/clang-c/Index.h:3571
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getArgument";
@@ -4072,7 +4125,7 @@ function Get_Type_Spelling
       Template_Argument_Kind_Expression,
       Template_Argument_Kind_Pack,
       Template_Argument_Kind_Invalid)
-   with Convention => C;  -- install/include/clang-c/Index.h:3526
+   with Convention => C;  -- install/include/clang-c/Index.h:3579
 
   -- Indicates an error case, preventing the kind from being deduced.  
   --*
@@ -4092,7 +4145,7 @@ function Get_Type_Spelling
   -- * The value 3 would be returned from this call.
   --  
 
-   function Cursor_Get_Num_Template_Arguments (C : Cursor_T) return int  -- install/include/clang-c/Index.h:3556
+   function Cursor_Get_Num_Template_Arguments (C : Cursor_T) return int  -- install/include/clang-c/Index.h:3609
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getNumTemplateArguments";
@@ -4114,7 +4167,7 @@ function Get_Type_Spelling
   -- * respectively.
   --  
 
-   function Cursor_Get_Template_Argument_Kind (C : Cursor_T; I : unsigned) return Template_Argument_Kind_T  -- install/include/clang-c/Index.h:3575
+   function Cursor_Get_Template_Argument_Kind (C : Cursor_T; I : unsigned) return Template_Argument_Kind_T  -- install/include/clang-c/Index.h:3628
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getTemplateArgumentKind";
@@ -4138,7 +4191,7 @@ function Get_Type_Spelling
   -- * Invalid types will be returned for I == 1 or 2.
   --  
 
-   function Cursor_Get_Template_Argument_Type (C : Cursor_T; I : unsigned) return Type_T  -- install/include/clang-c/Index.h:3595
+   function Cursor_Get_Template_Argument_Type (C : Cursor_T; I : unsigned) return Type_T  -- install/include/clang-c/Index.h:3648
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getTemplateArgumentType";
@@ -4161,7 +4214,7 @@ function Get_Type_Spelling
   -- * For I == 0, this function's behavior is undefined.
   --  
 
-   function Cursor_Get_Template_Argument_Value (C : Cursor_T; I : unsigned) return Long_Long_Integer  -- install/include/clang-c/Index.h:3615
+   function Cursor_Get_Template_Argument_Value (C : Cursor_T; I : unsigned) return Long_Long_Integer  -- install/include/clang-c/Index.h:3668
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getTemplateArgumentValue";
@@ -4184,7 +4237,7 @@ function Get_Type_Spelling
   -- * For I == 0, this function's behavior is undefined.
   --  
 
-   function Cursor_Get_Template_Argument_Unsigned_Value (C : Cursor_T; I : unsigned) return Extensions.unsigned_long_long  -- install/include/clang-c/Index.h:3636
+   function Cursor_Get_Template_Argument_Unsigned_Value (C : Cursor_T; I : unsigned) return Extensions.unsigned_long_long  -- install/include/clang-c/Index.h:3689
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getTemplateArgumentUnsignedValue";
@@ -4196,7 +4249,7 @@ function Get_Type_Spelling
   -- *          zero otherwise.
   --  
 
-   function Equal_Types (A : Type_T; B : Type_T) return unsigned  -- install/include/clang-c/Index.h:3644
+   function Equal_Types (A : Type_T; B : Type_T) return unsigned  -- install/include/clang-c/Index.h:3697
    with Import => True, 
         Convention => C, 
         External_Name => "clang_equalTypes";
@@ -4210,7 +4263,7 @@ function Get_Type_Spelling
   -- * for 'int', the canonical type for 'T' would be 'int'.
   --  
 
-   function Get_Canonical_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3654
+   function Get_Canonical_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3707
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCanonicalType";
@@ -4276,7 +4329,7 @@ function Is_Restrict_Qualified_Type
   -- * Returns the address space of the given type.
   --  
 
-   function Get_Address_Space (T : Type_T) return unsigned  -- install/include/clang-c/Index.h:3698
+   function Get_Address_Space (T : Type_T) return unsigned  -- install/include/clang-c/Index.h:3751
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getAddressSpace";
@@ -4293,7 +4346,7 @@ function Get_Typedef_Name
   -- * For pointer types, returns the type of the pointee.
   --  
 
-   function Get_Pointee_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3708
+   function Get_Pointee_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3761
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getPointeeType";
@@ -4302,7 +4355,7 @@ function Get_Typedef_Name
   -- * Return the cursor for the declaration of the given type.
   --  
 
-   function Get_Type_Declaration (T : Type_T) return Cursor_T  -- install/include/clang-c/Index.h:3713
+   function Get_Type_Declaration (T : Type_T) return Cursor_T  -- install/include/clang-c/Index.h:3766
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getTypeDeclaration";
@@ -4337,7 +4390,7 @@ function Get_Type_Kind_Spelling
   -- * If a non-function type is passed in, CXCallingConv_Invalid is returned.
   --  
 
-   function Get_Function_Type_Calling_Conv (T : Type_T) return Calling_Conv_T  -- install/include/clang-c/Index.h:3735
+   function Get_Function_Type_Calling_Conv (T : Type_T) return Calling_Conv_T  -- install/include/clang-c/Index.h:3788
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getFunctionTypeCallingConv";
@@ -4348,7 +4401,7 @@ function Get_Type_Kind_Spelling
   -- * If a non-function type is passed in, an invalid type is returned.
   --  
 
-   function Get_Result_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3742
+   function Get_Result_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3795
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getResultType";
@@ -4360,7 +4413,7 @@ function Get_Type_Kind_Spelling
   -- * If a non-function type is passed in, an error code of -1 is returned.
   --  
 
-   function Get_Exception_Specification_Type (T : Type_T) return int  -- install/include/clang-c/Index.h:3750
+   function Get_Exception_Specification_Type (T : Type_T) return int  -- install/include/clang-c/Index.h:3803
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getExceptionSpecificationType";
@@ -4372,7 +4425,7 @@ function Get_Type_Kind_Spelling
   -- * If a non-function type is passed in, -1 is returned.
   --  
 
-   function Get_Num_Arg_Types (T : Type_T) return int  -- install/include/clang-c/Index.h:3758
+   function Get_Num_Arg_Types (T : Type_T) return int  -- install/include/clang-c/Index.h:3811
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getNumArgTypes";
@@ -4384,7 +4437,7 @@ function Get_Type_Kind_Spelling
   -- * parameters, an invalid type is returned.
   --  
 
-   function Get_Arg_Type (T : Type_T; I : unsigned) return Type_T  -- install/include/clang-c/Index.h:3766
+   function Get_Arg_Type (T : Type_T; I : unsigned) return Type_T  -- install/include/clang-c/Index.h:3819
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getArgType";
@@ -4395,7 +4448,7 @@ function Get_Type_Kind_Spelling
   -- * If the type is not an ObjC object, an invalid type is returned.
   --  
 
-   function Type_Get_Obj_C_Object_Base_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3773
+   function Type_Get_Obj_C_Object_Base_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3826
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getObjCObjectBaseType";
@@ -4406,7 +4459,7 @@ function Get_Type_Kind_Spelling
   -- * If the type is not an ObjC object, 0 is returned.
   --  
 
-   function Type_Get_Num_Obj_C_Protocol_Refs (T : Type_T) return unsigned  -- install/include/clang-c/Index.h:3780
+   function Type_Get_Num_Obj_C_Protocol_Refs (T : Type_T) return unsigned  -- install/include/clang-c/Index.h:3833
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getNumObjCProtocolRefs";
@@ -4418,7 +4471,7 @@ function Get_Type_Kind_Spelling
   -- * references, an invalid cursor is returned.
   --  
 
-   function Type_Get_Obj_C_Protocol_Decl (T : Type_T; I : unsigned) return Cursor_T  -- install/include/clang-c/Index.h:3788
+   function Type_Get_Obj_C_Protocol_Decl (T : Type_T; I : unsigned) return Cursor_T  -- install/include/clang-c/Index.h:3841
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getObjCProtocolDecl";
@@ -4429,7 +4482,7 @@ function Get_Type_Kind_Spelling
   -- * If the type is not an ObjC object, 0 is returned.
   --  
 
-   function Type_Get_Num_Obj_C_Type_Args (T : Type_T) return unsigned  -- install/include/clang-c/Index.h:3795
+   function Type_Get_Num_Obj_C_Type_Args (T : Type_T) return unsigned  -- install/include/clang-c/Index.h:3848
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getNumObjCTypeArgs";
@@ -4441,7 +4494,7 @@ function Get_Type_Kind_Spelling
   -- * an invalid type is returned.
   --  
 
-   function Type_Get_Obj_C_Type_Arg (T : Type_T; I : unsigned) return Type_T  -- install/include/clang-c/Index.h:3803
+   function Type_Get_Obj_C_Type_Arg (T : Type_T; I : unsigned) return Type_T  -- install/include/clang-c/Index.h:3856
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getObjCTypeArg";
@@ -4460,7 +4513,7 @@ function Is_Function_Type_Variadic
   -- * This only returns a valid type if the cursor refers to a function or method.
   --  
 
-   function Get_Cursor_Result_Type (C : Cursor_T) return Type_T  -- install/include/clang-c/Index.h:3815
+   function Get_Cursor_Result_Type (C : Cursor_T) return Type_T  -- install/include/clang-c/Index.h:3868
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorResultType";
@@ -4473,7 +4526,7 @@ function Is_Function_Type_Variadic
   -- * method.
   --  
 
-   function Get_Cursor_Exception_Specification_Type (C : Cursor_T) return int  -- install/include/clang-c/Index.h:3824
+   function Get_Cursor_Exception_Specification_Type (C : Cursor_T) return int  -- install/include/clang-c/Index.h:3877
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorExceptionSpecificationType";
@@ -4494,7 +4547,7 @@ function Is_POD_Type
   -- * an invalid type is returned.
   --  
 
-   function Get_Element_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3838
+   function Get_Element_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3891
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getElementType";
@@ -4506,7 +4559,7 @@ function Is_POD_Type
   -- * -1 is returned.
   --  
 
-   function Get_Num_Elements (T : Type_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:3846
+   function Get_Num_Elements (T : Type_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:3899
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getNumElements";
@@ -4517,7 +4570,7 @@ function Is_POD_Type
   -- * If a non-array type is passed in, an invalid type is returned.
   --  
 
-   function Get_Array_Element_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3853
+   function Get_Array_Element_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3906
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getArrayElementType";
@@ -4528,7 +4581,7 @@ function Is_POD_Type
   -- * If a non-array type is passed in, -1 is returned.
   --  
 
-   function Get_Array_Size (T : Type_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:3860
+   function Get_Array_Size (T : Type_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:3913
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getArraySize";
@@ -4539,7 +4592,7 @@ function Is_POD_Type
   -- * If a non-elaborated type is passed in, an invalid type is returned.
   --  
 
-   function Type_Get_Named_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3867
+   function Type_Get_Named_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3920
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getNamedType";
@@ -4563,7 +4616,7 @@ function Type_Is_Transparent_Tag_Typedef
       Type_Nullability_Unspecified,
       Type_Nullability_Invalid,
       Type_Nullability_Nullable_Result)
-   with Convention => C;  -- install/include/clang-c/Index.h:3879
+   with Convention => C;  -- install/include/clang-c/Index.h:3932
 
   --*
   --   * Values of this type can never be null.
@@ -4587,7 +4640,7 @@ function Type_Is_Transparent_Tag_Typedef
   --*
   --   * Generally behaves like Nullable, except when used in a block parameter that
   --   * was imported into a swift async method. There, swift will assume that the
-  --   * parameter can get null even if no error occured. _Nullable parameters are
+  --   * parameter can get null even if no error occurred. _Nullable parameters are
   --   * assumed to only get null on error.
   --    
 
@@ -4595,7 +4648,7 @@ function Type_Is_Transparent_Tag_Typedef
   -- * Retrieve the nullability kind of a pointer type.
   --  
 
-   function Type_Get_Nullability (T : Type_T) return Type_Nullability_Kind_T  -- install/include/clang-c/Index.h:3912
+   function Type_Get_Nullability (T : Type_T) return Type_Nullability_Kind_T  -- install/include/clang-c/Index.h:3965
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getNullability";
@@ -4615,7 +4668,7 @@ function Type_Is_Transparent_Tag_Typedef
    Type_Layout_Error_Dependent : constant Type_Layout_Error_T := -3;
    Type_Layout_Error_Not_Constant_Size : constant Type_Layout_Error_T := -4;
    Type_Layout_Error_Invalid_Field_Name : constant Type_Layout_Error_T := -5;
-   Type_Layout_Error_Undeduced : constant Type_Layout_Error_T := -6;  -- install/include/clang-c/Index.h:3922
+   Type_Layout_Error_Undeduced : constant Type_Layout_Error_T := -6;  -- install/include/clang-c/Index.h:3975
 
   --*
   --   * Type is of kind CXType_Invalid.
@@ -4654,7 +4707,7 @@ function Type_Is_Transparent_Tag_Typedef
   -- *   CXTypeLayoutError_NotConstantSize is returned.
   --  
 
-   function Type_Get_Align_Of (T : Type_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:3961
+   function Type_Get_Align_Of (T : Type_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:4014
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getAlignOf";
@@ -4665,7 +4718,7 @@ function Type_Is_Transparent_Tag_Typedef
   -- * If a non-member-pointer type is passed in, an invalid type is returned.
   --  
 
-   function Type_Get_Class_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:3968
+   function Type_Get_Class_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:4021
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getClassType";
@@ -4680,7 +4733,7 @@ function Type_Is_Transparent_Tag_Typedef
   -- *   returned.
   --  
 
-   function Type_Get_Size_Of (T : Type_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:3979
+   function Type_Get_Size_Of (T : Type_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:4032
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getSizeOf";
@@ -4710,7 +4763,7 @@ function Type_Get_Offset_Of
   -- * If the type is not an attributed type, an invalid type is returned.
   --  
 
-   function Type_Get_Modified_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:4001
+   function Type_Get_Modified_Type (T : Type_T) return Type_T  -- install/include/clang-c/Index.h:4054
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getModifiedType";
@@ -4721,7 +4774,7 @@ function Type_Get_Offset_Of
   -- * If a non-atomic type is passed in, an invalid type is returned.
   --  
 
-   function Type_Get_Value_Type (CT : Type_T) return Type_T  -- install/include/clang-c/Index.h:4008
+   function Type_Get_Value_Type (CT : Type_T) return Type_T  -- install/include/clang-c/Index.h:4061
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getValueType";
@@ -4740,7 +4793,7 @@ function Type_Get_Offset_Of
   -- *   CXTypeLayoutError_InvalidFieldName is returned.
   --  
 
-   function Cursor_Get_Offset_Of_Field (C : Cursor_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:4023
+   function Cursor_Get_Offset_Of_Field (C : Cursor_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:4076
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getOffsetOfField";
@@ -4776,7 +4829,7 @@ function Cursor_Is_Inline_Namespace
      (Ref_Qualifier_None,
       Ref_Qualifier_L_Value,
       Ref_Qualifier_R_Value)
-   with Convention => C;  -- install/include/clang-c/Index.h:4043
+   with Convention => C;  -- install/include/clang-c/Index.h:4096
 
   --* No ref-qualifier was provided.  
   --* An lvalue ref-qualifier was provided (\c &).  
@@ -4786,7 +4839,7 @@ function Cursor_Is_Inline_Namespace
   -- * specialization, or -1 if type \c T is not a template specialization.
   --  
 
-   function Type_Get_Num_Template_Arguments (T : Type_T) return int  -- install/include/clang-c/Index.h:4056
+   function Type_Get_Num_Template_Arguments (T : Type_T) return int  -- install/include/clang-c/Index.h:4109
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getNumTemplateArguments";
@@ -4799,7 +4852,7 @@ function Cursor_Is_Inline_Namespace
   -- * template template arguments or variadic packs.
   --  
 
-   function Type_Get_Template_Argument_As_Type (T : Type_T; I : unsigned) return Type_T  -- install/include/clang-c/Index.h:4065
+   function Type_Get_Template_Argument_As_Type (T : Type_T; I : unsigned) return Type_T  -- install/include/clang-c/Index.h:4118
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getTemplateArgumentAsType";
@@ -4811,7 +4864,7 @@ function Cursor_Is_Inline_Namespace
   -- * or non-C++ declarations, CXRefQualifier_None is returned.
   --  
 
-   function Type_Get_CXX_Ref_Qualifier (T : Type_T) return Ref_Qualifier_Kind_T  -- install/include/clang-c/Index.h:4074
+   function Type_Get_CXX_Ref_Qualifier (T : Type_T) return Ref_Qualifier_Kind_T  -- install/include/clang-c/Index.h:4127
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_getCXXRefQualifier";
@@ -4844,7 +4897,7 @@ function Is_Virtual_Base
       CXX_Public,
       CXX_Protected,
       CXX_Private)
-   with Convention => C;  -- install/include/clang-c/Index.h:4092
+   with Convention => C;  -- install/include/clang-c/Index.h:4145
 
   --*
   -- * Returns the access control level for the referenced object.
@@ -4854,7 +4907,7 @@ function Is_Virtual_Base
   -- * specifier or access specifier, the specifier itself is returned.
   --  
 
-   function Get_CXX_Access_Specifier (Arg_1 : Cursor_T) return CXX_Access_Specifier_T  -- install/include/clang-c/Index.h:4106
+   function Get_CXX_Access_Specifier (Arg_1 : Cursor_T) return CXX_Access_Specifier_T  -- install/include/clang-c/Index.h:4159
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCXXAccessSpecifier";
@@ -4873,7 +4926,7 @@ function Is_Virtual_Base
       SC_Open_CL_Work_Group_Local,
       SC_Auto,
       SC_Register)
-   with Convention => C;  -- install/include/clang-c/Index.h:4112
+   with Convention => C;  -- install/include/clang-c/Index.h:4165
 
   --*
   -- * Returns the storage class for a function or variable declaration.
@@ -4882,7 +4935,7 @@ function Is_Virtual_Base
   -- * CX_SC_Invalid is returned else the storage class.
   --  
 
-   function Cursor_Get_Storage_Class (Arg_1 : Cursor_T) return Storage_Class_T  -- install/include/clang-c/Index.h:4129
+   function Cursor_Get_Storage_Class (Arg_1 : Cursor_T) return Storage_Class_T  -- install/include/clang-c/Index.h:4182
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getStorageClass";
@@ -4897,7 +4950,7 @@ function Is_Virtual_Base
   -- * is not a \c CXCursor_OverloadedDeclRef cursor, returns 0.
   --  
 
-   function Get_Num_Overloaded_Decls (Cursor : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:4140
+   function Get_Num_Overloaded_Decls (Cursor : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:4193
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getNumOverloadedDecls";
@@ -4917,7 +4970,7 @@ function Is_Virtual_Base
   -- * returns \c clang_getNullCursor();
   --  
 
-   function Get_Overloaded_Decl (Cursor : Cursor_T; Index : unsigned) return Cursor_T  -- install/include/clang-c/Index.h:4156
+   function Get_Overloaded_Decl (Cursor : Cursor_T; Index : unsigned) return Cursor_T  -- install/include/clang-c/Index.h:4209
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getOverloadedDecl";
@@ -4938,7 +4991,7 @@ function Is_Virtual_Base
   -- *
   --  
 
-   function Get_IB_Outlet_Collection_Type (Arg_1 : Cursor_T) return Type_T  -- install/include/clang-c/Index.h:4174
+   function Get_IB_Outlet_Collection_Type (Arg_1 : Cursor_T) return Type_T  -- install/include/clang-c/Index.h:4227
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getIBOutletCollectionType";
@@ -4968,7 +5021,7 @@ function Is_Virtual_Base
      (Child_Visit_Break,
       Child_Visit_Continue,
       Child_Visit_Recurse)
-   with Convention => C;  -- install/include/clang-c/Index.h:4196
+   with Convention => C;  -- install/include/clang-c/Index.h:4249
 
   --*
   --   * Terminates the cursor traversal.
@@ -5001,7 +5054,7 @@ function Is_Virtual_Base
         (Arg_1 : Cursor_T;
          Arg_2 : Cursor_T;
          Arg_3 : Client_Data_T) return Child_Visit_Result_T
-   with Convention => C;  -- install/include/clang-c/Index.h:4225
+   with Convention => C;  -- install/include/clang-c/Index.h:4278
 
   --*
   -- * Visit the children of a particular cursor.
@@ -5029,7 +5082,7 @@ function Is_Virtual_Base
    function Visit_Children
      (Parent : Cursor_T;
       Visitor : Cursor_Visitor_T;
-      Client_Data : Client_Data_T) return unsigned  -- install/include/clang-c/Index.h:4251
+      Client_Data : Client_Data_T) return unsigned  -- install/include/clang-c/Index.h:4304
    with Import => True, 
         Convention => C, 
         External_Name => "clang_visitChildren";
@@ -5158,7 +5211,7 @@ function Get_Cursor_Spelling
    function Cursor_Get_Spelling_Name_Range
      (Arg_1 : Cursor_T;
       Piece_Index : unsigned;
-      Options : unsigned) return Source_Range_T  -- install/include/clang-c/Index.h:4359
+      Options : unsigned) return Source_Range_T  -- install/include/clang-c/Index.h:4412
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getSpellingNameRange";
@@ -5168,7 +5221,7 @@ function Get_Cursor_Spelling
   -- * for \c clang_getCursorPrettyPrinted.
   --  
 
-   type Printing_Policy_T is new System.Address;  -- install/include/clang-c/Index.h:4366
+   type Printing_Policy_T is new System.Address;  -- install/include/clang-c/Index.h:4419
 
   --*
   -- * Properties for the printing policy.
@@ -5203,13 +5256,13 @@ function Get_Cursor_Spelling
    Printing_Policy_Constants_As_Written : constant Printing_Policy_Property_T := 23;
    Printing_Policy_Suppress_Implicit_Base : constant Printing_Policy_Property_T := 24;
    Printing_Policy_Fully_Qualified_Name : constant Printing_Policy_Property_T := 25;
-   Printing_Policy_Last_Property : constant Printing_Policy_Property_T := 25;  -- install/include/clang-c/Index.h:4373
+   Printing_Policy_Last_Property : constant Printing_Policy_Property_T := 25;  -- install/include/clang-c/Index.h:4426
 
   --*
   -- * Get a property value for the given printing policy.
   --  
 
-   function Printing_Policy_Get_Property (Policy : Printing_Policy_T; Property : Printing_Policy_Property_T) return unsigned  -- install/include/clang-c/Index.h:4408
+   function Printing_Policy_Get_Property (Policy : Printing_Policy_T; Property : Printing_Policy_Property_T) return unsigned  -- install/include/clang-c/Index.h:4461
    with Import => True, 
         Convention => C, 
         External_Name => "clang_PrintingPolicy_getProperty";
@@ -5221,7 +5274,7 @@ function Get_Cursor_Spelling
    procedure Printing_Policy_Set_Property
      (Policy : Printing_Policy_T;
       Property : Printing_Policy_Property_T;
-      Value : unsigned)  -- install/include/clang-c/Index.h:4415
+      Value : unsigned)  -- install/include/clang-c/Index.h:4468
    with Import => True, 
         Convention => C, 
         External_Name => "clang_PrintingPolicy_setProperty";
@@ -5233,7 +5286,7 @@ function Get_Cursor_Spelling
   -- * clang_PrintingPolicy_dispose.
   --  
 
-   function Get_Cursor_Printing_Policy (Arg_1 : Cursor_T) return Printing_Policy_T  -- install/include/clang-c/Index.h:4425
+   function Get_Cursor_Printing_Policy (Arg_1 : Cursor_T) return Printing_Policy_T  -- install/include/clang-c/Index.h:4478
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorPrintingPolicy";
@@ -5242,7 +5295,7 @@ function Get_Cursor_Spelling
   -- * Release a printing policy.
   --  
 
-   procedure Printing_Policy_Dispose (Policy : Printing_Policy_T)  -- install/include/clang-c/Index.h:4430
+   procedure Printing_Policy_Dispose (Policy : Printing_Policy_T)  -- install/include/clang-c/Index.h:4483
    with Import => True, 
         Convention => C, 
         External_Name => "clang_PrintingPolicy_dispose";
@@ -5287,7 +5340,7 @@ function Get_Cursor_Display_Name
   -- * Otherwise, returns the NULL cursor.
   --  
 
-   function Get_Cursor_Referenced (Arg_1 : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:4465
+   function Get_Cursor_Referenced (Arg_1 : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:4518
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorReferenced";
@@ -5321,7 +5374,7 @@ function Get_Cursor_Display_Name
   -- *  translation unit, returns a NULL cursor.
   --  
 
-   function Get_Cursor_Definition (Arg_1 : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:4495
+   function Get_Cursor_Definition (Arg_1 : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:4548
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorDefinition";
@@ -5360,7 +5413,7 @@ function Is_Cursor_Definition
   -- * \returns The canonical cursor for the entity referred to by the given cursor.
   --  
 
-   function Get_Canonical_Cursor (Arg_1 : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:4527
+   function Get_Canonical_Cursor (Arg_1 : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:4580
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCanonicalCursor";
@@ -5377,7 +5430,7 @@ function Is_Cursor_Definition
   -- * otherwise.
   --  
 
-   function Cursor_Get_Obj_C_Selector_Index (Arg_1 : Cursor_T) return int  -- install/include/clang-c/Index.h:4540
+   function Cursor_Get_Obj_C_Selector_Index (Arg_1 : Cursor_T) return int  -- install/include/clang-c/Index.h:4593
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getObjCSelectorIndex";
@@ -5403,7 +5456,7 @@ function Cursor_Is_Dynamic_Call
   -- * reference, or C++ method call, returns the CXType of the receiver.
   --  
 
-   function Cursor_Get_Receiver_Type (C : Cursor_T) return Type_T  -- install/include/clang-c/Index.h:4559
+   function Cursor_Get_Receiver_Type (C : Cursor_T) return Type_T  -- install/include/clang-c/Index.h:4612
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getReceiverType";
@@ -5426,7 +5479,7 @@ function Cursor_Is_Dynamic_Call
    Obj_C_Property_Attr_Weak : constant Obj_C_Property_Attr_Kind_T := 512;
    Obj_C_Property_Attr_Strong : constant Obj_C_Property_Attr_Kind_T := 1024;
    Obj_C_Property_Attr_Unsafe_Unretained : constant Obj_C_Property_Attr_Kind_T := 2048;
-   Obj_C_Property_Attr_Class : constant Obj_C_Property_Attr_Kind_T := 4096;  -- install/include/clang-c/Index.h:4579
+   Obj_C_Property_Attr_Class : constant Obj_C_Property_Attr_Kind_T := 4096;  -- install/include/clang-c/Index.h:4632
 
   --*
   -- * Given a cursor that represents a property declaration, return the
@@ -5436,7 +5489,7 @@ function Cursor_Is_Dynamic_Call
   -- * \param reserved Reserved for future use, pass 0.
   --  
 
-   function Cursor_Get_Obj_C_Property_Attributes (C : Cursor_T; Reserved : unsigned) return unsigned  -- install/include/clang-c/Index.h:4589
+   function Cursor_Get_Obj_C_Property_Attributes (C : Cursor_T; Reserved : unsigned) return unsigned  -- install/include/clang-c/Index.h:4642
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getObjCPropertyAttributes";
@@ -5471,7 +5524,7 @@ function Cursor_Get_Obj_C_Property_Setter_Name
    Obj_C_Decl_Qualifier_Out : constant Obj_C_Decl_Qualifier_Kind_T := 4;
    Obj_C_Decl_Qualifier_Bycopy : constant Obj_C_Decl_Qualifier_Kind_T := 8;
    Obj_C_Decl_Qualifier_Byref : constant Obj_C_Decl_Qualifier_Kind_T := 16;
-   Obj_C_Decl_Qualifier_Oneway : constant Obj_C_Decl_Qualifier_Kind_T := 32;  -- install/include/clang-c/Index.h:4615
+   Obj_C_Decl_Qualifier_Oneway : constant Obj_C_Decl_Qualifier_Kind_T := 32;  -- install/include/clang-c/Index.h:4668
 
   --*
   -- * Given a cursor that represents an Objective-C method or parameter
@@ -5480,7 +5533,7 @@ function Cursor_Get_Obj_C_Property_Setter_Name
   -- * CXObjCDeclQualifierKind.
   --  
 
-   function Cursor_Get_Obj_C_Decl_Qualifiers (C : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:4623
+   function Cursor_Get_Obj_C_Decl_Qualifiers (C : Cursor_T) return unsigned  -- install/include/clang-c/Index.h:4676
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getObjCDeclQualifiers";
@@ -5530,7 +5583,7 @@ function Cursor_Is_External_Symbol
   -- * with whitespace in between.
   --  
 
-   function Cursor_Get_Comment_Range (C : Cursor_T) return Source_Range_T  -- install/include/clang-c/Index.h:4660
+   function Cursor_Get_Comment_Range (C : Cursor_T) return Source_Range_T  -- install/include/clang-c/Index.h:4713
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getCommentRange";
@@ -5576,7 +5629,7 @@ function Cursor_Get_Mangling
   -- * constructor or destructor at the cursor.
   --  
 
-   function Cursor_Get_CXX_Manglings (Arg_1 : Cursor_T) return access Clang.CX_String.String_Set_T  -- install/include/clang-c/Index.h:4693
+   function Cursor_Get_CXX_Manglings (Arg_1 : Cursor_T) return access Clang.CX_String.String_Set_T  -- install/include/clang-c/Index.h:4746
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getCXXManglings";
@@ -5586,7 +5639,7 @@ function Cursor_Get_Mangling
   -- * class interface or implementation at the cursor.
   --  
 
-   function Cursor_Get_Obj_C_Manglings (Arg_1 : Cursor_T) return access Clang.CX_String.String_Set_T  -- install/include/clang-c/Index.h:4699
+   function Cursor_Get_Obj_C_Manglings (Arg_1 : Cursor_T) return access Clang.CX_String.String_Set_T  -- install/include/clang-c/Index.h:4752
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getObjCManglings";
@@ -5603,13 +5656,13 @@ function Cursor_Get_Mangling
   -- * @{
   --  
 
-   type Module_T is new System.Address;  -- install/include/clang-c/Index.h:4713
+   type Module_T is new System.Address;  -- install/include/clang-c/Index.h:4766
 
   --*
   -- * Given a CXCursor_ModuleImportDecl cursor, return the associated module.
   --  
 
-   function Cursor_Get_Module (C : Cursor_T) return Module_T  -- install/include/clang-c/Index.h:4718
+   function Cursor_Get_Module (C : Cursor_T) return Module_T  -- install/include/clang-c/Index.h:4771
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_getModule";
@@ -5619,7 +5672,7 @@ function Cursor_Get_Mangling
   -- * exists.
   --  
 
-   function Get_Module_For_File (Arg_1 : Translation_Unit_T; Arg_2 : File_T) return Module_T  -- install/include/clang-c/Index.h:4724
+   function Get_Module_For_File (Arg_1 : Translation_Unit_T; Arg_2 : File_T) return Module_T  -- install/include/clang-c/Index.h:4777
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getModuleForFile";
@@ -5630,7 +5683,7 @@ function Cursor_Get_Mangling
   -- * \returns the module file where the provided module object came from.
   --  
 
-   function Module_Get_AST_File (Module : Module_T) return File_T  -- install/include/clang-c/Index.h:4731
+   function Module_Get_AST_File (Module : Module_T) return File_T  -- install/include/clang-c/Index.h:4784
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Module_getASTFile";
@@ -5642,7 +5695,7 @@ function Cursor_Get_Mangling
   -- * e.g. for 'std.vector' it will return the 'std' module.
   --  
 
-   function Module_Get_Parent (Module : Module_T) return Module_T  -- install/include/clang-c/Index.h:4739
+   function Module_Get_Parent (Module : Module_T) return Module_T  -- install/include/clang-c/Index.h:4792
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Module_getParent";
@@ -5684,7 +5737,7 @@ function Module_Is_System
   -- * \returns the number of top level headers associated with this module.
   --  
 
-   function Module_Get_Num_Top_Level_Headers (Arg_1 : Translation_Unit_T; Module : Module_T) return unsigned  -- install/include/clang-c/Index.h:4768
+   function Module_Get_Num_Top_Level_Headers (Arg_1 : Translation_Unit_T; Module : Module_T) return unsigned  -- install/include/clang-c/Index.h:4821
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Module_getNumTopLevelHeaders";
@@ -5700,7 +5753,7 @@ function Module_Is_System
    function Module_Get_Top_Level_Header
      (Arg_1 : Translation_Unit_T;
       Module : Module_T;
-      Index : unsigned) return File_T  -- install/include/clang-c/Index.h:4779
+      Index : unsigned) return File_T  -- install/include/clang-c/Index.h:4832
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Module_getTopLevelHeader";
@@ -5838,7 +5891,7 @@ function CXX_Method_Is_Const
   -- * \c CXCursor_NoDeclFound.
   --  
 
-   function Get_Template_Cursor_Kind (C : Cursor_T) return Cursor_Kind_T  -- install/include/clang-c/Index.h:4879
+   function Get_Template_Cursor_Kind (C : Cursor_T) return Cursor_Kind_T  -- install/include/clang-c/Index.h:4932
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getTemplateCursorKind";
@@ -5872,7 +5925,7 @@ function CXX_Method_Is_Const
   -- * from which it was instantiated. Otherwise, returns a NULL cursor.
   --  
 
-   function Get_Specialized_Cursor_Template (C : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:4909
+   function Get_Specialized_Cursor_Template (C : Cursor_T) return Cursor_T  -- install/include/clang-c/Index.h:4962
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getSpecializedCursorTemplate";
@@ -5899,7 +5952,7 @@ function CXX_Method_Is_Const
    function Get_Cursor_Reference_Name_Range
      (C : Cursor_T;
       Name_Flags : unsigned;
-      Piece_Index : unsigned) return Source_Range_T  -- install/include/clang-c/Index.h:4929
+      Piece_Index : unsigned) return Source_Range_T  -- install/include/clang-c/Index.h:4982
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorReferenceNameRange";
@@ -5907,7 +5960,7 @@ function CXX_Method_Is_Const
    subtype Name_Ref_Flags_T is unsigned;
    Name_Range_Want_Qualifier : constant Name_Ref_Flags_T := 1;
    Name_Range_Want_Template_Args : constant Name_Ref_Flags_T := 2;
-   Name_Range_Want_Single_Piece : constant Name_Ref_Flags_T := 4;  -- install/include/clang-c/Index.h:4932
+   Name_Range_Want_Single_Piece : constant Name_Ref_Flags_T := 4;  -- install/include/clang-c/Index.h:4985
 
   --*
   --   * Include the nested-name-specifier, e.g. Foo:: in x.Foo::y, in the
@@ -5954,7 +6007,7 @@ function CXX_Method_Is_Const
       Token_Identifier,
       Token_Literal,
       Token_Comment)
-   with Convention => C;  -- install/include/clang-c/Index.h:4975
+   with Convention => C;  -- install/include/clang-c/Index.h:5028
 
   --*
   --   * A token that contains some kind of punctuation.
@@ -5980,12 +6033,12 @@ function CXX_Method_Is_Const
   -- * Describes a single preprocessing token.
   --  
 
-   type anon_array1411 is array (0 .. 3) of aliased unsigned;
+   type anon_array1420 is array (0 .. 3) of aliased unsigned;
    type Token_T is record
-      int_data : aliased anon_array1411;  -- install/include/clang-c/Index.h:5006
-      ptr_data : System.Address;  -- install/include/clang-c/Index.h:5007
+      int_data : aliased anon_array1420;  -- install/include/clang-c/Index.h:5059
+      ptr_data : System.Address;  -- install/include/clang-c/Index.h:5060
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:5008
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:5061
 
   --*
   -- * Get the raw lexical token starting with the given location.
@@ -5999,7 +6052,7 @@ function CXX_Method_Is_Const
   -- * translation unit is destroyed.
   --  
 
-   function Get_Token (TU : Translation_Unit_T; Location : Source_Location_T) return access Token_T  -- install/include/clang-c/Index.h:5021
+   function Get_Token (TU : Translation_Unit_T; Location : Source_Location_T) return access Token_T  -- install/include/clang-c/Index.h:5074
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getToken";
@@ -6008,7 +6061,7 @@ function CXX_Method_Is_Const
   -- * Determine the kind of the given token.
   --  
 
-   function Get_Token_Kind (Arg_1 : Token_T) return Token_Kind_T  -- install/include/clang-c/Index.h:5027
+   function Get_Token_Kind (Arg_1 : Token_T) return Token_Kind_T  -- install/include/clang-c/Index.h:5080
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getTokenKind";
@@ -6029,7 +6082,7 @@ function Get_Token_Spelling
   -- * Retrieve the source location of the given token.
   --  
 
-   function Get_Token_Location (Arg_1 : Translation_Unit_T; Arg_2 : Token_T) return Source_Location_T  -- install/include/clang-c/Index.h:5040
+   function Get_Token_Location (Arg_1 : Translation_Unit_T; Arg_2 : Token_T) return Source_Location_T  -- install/include/clang-c/Index.h:5093
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getTokenLocation";
@@ -6038,7 +6091,7 @@ function Get_Token_Spelling
   -- * Retrieve a source range that covers the given token.
   --  
 
-   function Get_Token_Extent (Arg_1 : Translation_Unit_T; Arg_2 : Token_T) return Source_Range_T  -- install/include/clang-c/Index.h:5046
+   function Get_Token_Extent (Arg_1 : Translation_Unit_T; Arg_2 : Token_T) return Source_Range_T  -- install/include/clang-c/Index.h:5099
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getTokenExtent";
@@ -6065,7 +6118,7 @@ function Get_Token_Spelling
      (TU : Translation_Unit_T;
       C_Range : Source_Range_T;
       Tokens : System.Address;
-      Num_Tokens : access unsigned)  -- install/include/clang-c/Index.h:5065
+      Num_Tokens : access unsigned)  -- install/include/clang-c/Index.h:5118
    with Import => True, 
         Convention => C, 
         External_Name => "clang_tokenize";
@@ -6105,7 +6158,7 @@ function Get_Token_Spelling
      (TU : Translation_Unit_T;
       Tokens : access Token_T;
       Num_Tokens : unsigned;
-      Cursors : access Cursor_T)  -- install/include/clang-c/Index.h:5098
+      Cursors : access Cursor_T)  -- install/include/clang-c/Index.h:5151
    with Import => True, 
         Convention => C, 
         External_Name => "clang_annotateTokens";
@@ -6117,7 +6170,7 @@ function Get_Token_Spelling
    procedure Dispose_Tokens
      (TU : Translation_Unit_T;
       Tokens : access Token_T;
-      Num_Tokens : unsigned)  -- install/include/clang-c/Index.h:5104
+      Num_Tokens : unsigned)  -- install/include/clang-c/Index.h:5157
    with Import => True, 
         Convention => C, 
         External_Name => "clang_disposeTokens";
@@ -6147,12 +6200,12 @@ function Get_Cursor_Kind_Spelling
       Start_Line : access unsigned;
       Start_Column : access unsigned;
       End_Line : access unsigned;
-      End_Column : access unsigned)  -- install/include/clang-c/Index.h:5122
+      End_Column : access unsigned)  -- install/include/clang-c/Index.h:5175
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getDefinitionSpellingAndExtent";
 
-   procedure Enable_Stack_Traces  -- install/include/clang-c/Index.h:5125
+   procedure Enable_Stack_Traces  -- install/include/clang-c/Index.h:5178
    with Import => True, 
         Convention => C, 
         External_Name => "clang_enableStackTraces";
@@ -6160,7 +6213,7 @@ function Get_Cursor_Kind_Spelling
    procedure Execute_On_Thread
      (Fn : access procedure (Arg_1 : System.Address);
       User_Data : System.Address;
-      Stack_Size : unsigned)  -- install/include/clang-c/Index.h:5126
+      Stack_Size : unsigned)  -- install/include/clang-c/Index.h:5179
    with Import => True, 
         Convention => C, 
         External_Name => "clang_executeOnThread";
@@ -6195,7 +6248,7 @@ function Get_Cursor_Kind_Spelling
   -- * description of the different kinds of chunks.
   --  
 
-   type Completion_String_T is new System.Address;  -- install/include/clang-c/Index.h:5158
+   type Completion_String_T is new System.Address;  -- install/include/clang-c/Index.h:5211
 
   --*
   -- * A single result of code completion.
@@ -6213,10 +6266,10 @@ function Get_Cursor_Kind_Spelling
   --    
 
    type Completion_Result_T is record
-      CursorKind : aliased Cursor_Kind_T;  -- install/include/clang-c/Index.h:5174
-      CompletionString : Completion_String_T;  -- install/include/clang-c/Index.h:5180
+      CursorKind : aliased Cursor_Kind_T;  -- install/include/clang-c/Index.h:5227
+      CompletionString : Completion_String_T;  -- install/include/clang-c/Index.h:5233
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:5181
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:5234
 
   --*
   --   * The code-completion string that describes how to insert this
@@ -6253,7 +6306,7 @@ function Get_Cursor_Kind_Spelling
       Completion_Chunk_Equal,
       Completion_Chunk_Horizontal_Space,
       Completion_Chunk_Vertical_Space)
-   with Convention => C;  -- install/include/clang-c/Index.h:5190
+   with Convention => C;  -- install/include/clang-c/Index.h:5243
 
   --*
   --   * A code-completion string that describes "optional" text that
@@ -6426,7 +6479,7 @@ function Get_Cursor_Kind_Spelling
   -- * \returns the kind of the chunk at the index \c chunk_number.
   --  
 
-   function Get_Completion_Chunk_Kind (Completion_String : Completion_String_T; Chunk_Number : unsigned) return Completion_Chunk_Kind_T  -- install/include/clang-c/Index.h:5364
+   function Get_Completion_Chunk_Kind (Completion_String : Completion_String_T; Chunk_Number : unsigned) return Completion_Chunk_Kind_T  -- install/include/clang-c/Index.h:5417
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCompletionChunkKind";
@@ -6459,7 +6512,7 @@ function Get_Completion_Chunk_Text
   -- * \c chunk_number.
   --  
 
-   function Get_Completion_Chunk_Completion_String (Completion_String : Completion_String_T; Chunk_Number : unsigned) return Completion_String_T  -- install/include/clang-c/Index.h:5391
+   function Get_Completion_Chunk_Completion_String (Completion_String : Completion_String_T; Chunk_Number : unsigned) return Completion_String_T  -- install/include/clang-c/Index.h:5444
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCompletionChunkCompletionString";
@@ -6468,7 +6521,7 @@ function Get_Completion_Chunk_Text
   -- * Retrieve the number of chunks in the given code-completion string.
   --  
 
-   function Get_Num_Completion_Chunks (Completion_String : Completion_String_T) return unsigned  -- install/include/clang-c/Index.h:5398
+   function Get_Num_Completion_Chunks (Completion_String : Completion_String_T) return unsigned  -- install/include/clang-c/Index.h:5451
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getNumCompletionChunks";
@@ -6486,7 +6539,7 @@ function Get_Completion_Chunk_Text
   -- * higher-priority (more likely) completions.
   --  
 
-   function Get_Completion_Priority (Completion_String : Completion_String_T) return unsigned  -- install/include/clang-c/Index.h:5413
+   function Get_Completion_Priority (Completion_String : Completion_String_T) return unsigned  -- install/include/clang-c/Index.h:5466
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCompletionPriority";
@@ -6500,7 +6553,7 @@ function Get_Completion_Chunk_Text
   -- * \returns The availability of the completion string.
   --  
 
-   function Get_Completion_Availability (Completion_String : Completion_String_T) return Availability_Kind_T  -- install/include/clang-c/Index.h:5424
+   function Get_Completion_Availability (Completion_String : Completion_String_T) return Availability_Kind_T  -- install/include/clang-c/Index.h:5477
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCompletionAvailability";
@@ -6515,7 +6568,7 @@ function Get_Completion_Chunk_Text
   -- * string.
   --  
 
-   function Get_Completion_Num_Annotations (Completion_String : Completion_String_T) return unsigned  -- install/include/clang-c/Index.h:5436
+   function Get_Completion_Num_Annotations (Completion_String : Completion_String_T) return unsigned  -- install/include/clang-c/Index.h:5489
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCompletionNumAnnotations";
@@ -6578,7 +6631,7 @@ function Get_Completion_Brief_Comment
   -- * definition cursors, or NULL for other kinds of cursors.
   --  
 
-   function Get_Cursor_Completion_String (Cursor : Cursor_T) return Completion_String_T  -- install/include/clang-c/Index.h:5488
+   function Get_Cursor_Completion_String (Cursor : Cursor_T) return Completion_String_T  -- install/include/clang-c/Index.h:5541
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCursorCompletionString";
@@ -6596,10 +6649,10 @@ function Get_Completion_Brief_Comment
   --    
 
    type Code_Complete_Results_T is record
-      Results : access Completion_Result_T;  -- install/include/clang-c/Index.h:5501
-      NumResults : aliased unsigned;  -- install/include/clang-c/Index.h:5507
+      Results : access Completion_Result_T;  -- install/include/clang-c/Index.h:5554
+      NumResults : aliased unsigned;  -- install/include/clang-c/Index.h:5560
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:5508
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:5561
 
   --*
   --   * The number of code-completion results stored in the
@@ -6620,7 +6673,7 @@ function Get_Completion_Brief_Comment
   -- * completion_index can be applied
   --  
 
-   function Get_Completion_Num_Fix_Its (Results : access Code_Complete_Results_T; Completion_Index : unsigned) return unsigned  -- install/include/clang-c/Index.h:5524
+   function Get_Completion_Num_Fix_Its (Results : access Code_Complete_Results_T; Completion_Index : unsigned) return unsigned  -- install/include/clang-c/Index.h:5577
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getCompletionNumFixIts";
@@ -6689,7 +6742,7 @@ function Get_Completion_Fix_It
    Code_Complete_Include_Code_Patterns : constant Code_Complete_Flags_T := 2;
    Code_Complete_Include_Brief_Comments : constant Code_Complete_Flags_T := 4;
    Code_Complete_Skip_Preamble : constant Code_Complete_Flags_T := 8;
-   Code_Complete_Include_Completions_With_Fix_Its : constant Code_Complete_Flags_T := 16;  -- install/include/clang-c/Index.h:5581
+   Code_Complete_Include_Completions_With_Fix_Its : constant Code_Complete_Flags_T := 16;  -- install/include/clang-c/Index.h:5634
 
   --*
   --   * Whether to include macros within the set of code
@@ -6749,7 +6802,7 @@ function Get_Completion_Fix_It
    Completion_Context_Macro_Name : constant Completion_Context_T := 1048576;
    Completion_Context_Natural_Language : constant Completion_Context_T := 2097152;
    Completion_Context_Included_File : constant Completion_Context_T := 4194304;
-   Completion_Context_Unknown : constant Completion_Context_T := 8388607;  -- install/include/clang-c/Index.h:5620
+   Completion_Context_Unknown : constant Completion_Context_T := 8388607;  -- install/include/clang-c/Index.h:5673
 
   --*
   --   * The context for completions is unexposed, as only Clang results
@@ -6873,7 +6926,7 @@ function Get_Completion_Fix_It
   -- * passed to\c clang_codeCompleteAt().
   --  
 
-   function Default_Code_Complete_Options return unsigned  -- install/include/clang-c/Index.h:5754
+   function Default_Code_Complete_Options return unsigned  -- install/include/clang-c/Index.h:5807
    with Import => True, 
         Convention => C, 
         External_Name => "clang_defaultCodeCompleteOptions";
@@ -6965,7 +7018,7 @@ function Code_Complete_At
   -- * \param NumResults The number of results in \p Results.
   --  
 
-   procedure Sort_Code_Completion_Results (Results : access Completion_Result_T; Num_Results : unsigned)  -- install/include/clang-c/Index.h:5839
+   procedure Sort_Code_Completion_Results (Results : access Completion_Result_T; Num_Results : unsigned)  -- install/include/clang-c/Index.h:5892
    with Import => True, 
         Convention => C, 
         External_Name => "clang_sortCodeCompletionResults";
@@ -6974,7 +7027,7 @@ function Code_Complete_At
   -- * Free the given set of code-completion results.
   --  
 
-   procedure Dispose_Code_Complete_Results (Results : access Code_Complete_Results_T)  -- install/include/clang-c/Index.h:5846
+   procedure Dispose_Code_Complete_Results (Results : access Code_Complete_Results_T)  -- install/include/clang-c/Index.h:5899
    with Import => True, 
         Convention => C, 
         External_Name => "clang_disposeCodeCompleteResults";
@@ -6984,7 +7037,7 @@ function Code_Complete_At
   -- * location where code completion was performed.
   --  
 
-   function Code_Complete_Get_Num_Diagnostics (Results : access Code_Complete_Results_T) return unsigned  -- install/include/clang-c/Index.h:5853
+   function Code_Complete_Get_Num_Diagnostics (Results : access Code_Complete_Results_T) return unsigned  -- install/include/clang-c/Index.h:5906
    with Import => True, 
         Convention => C, 
         External_Name => "clang_codeCompleteGetNumDiagnostics";
@@ -6999,7 +7052,7 @@ function Code_Complete_At
   -- * via a call to \c clang_disposeDiagnostic().
   --  
 
-   function Code_Complete_Get_Diagnostic (Results : access Code_Complete_Results_T; Index : unsigned) return Diagnostic_T  -- install/include/clang-c/Index.h:5865
+   function Code_Complete_Get_Diagnostic (Results : access Code_Complete_Results_T; Index : unsigned) return Diagnostic_T  -- install/include/clang-c/Index.h:5918
    with Import => True, 
         Convention => C, 
         External_Name => "clang_codeCompleteGetDiagnostic";
@@ -7014,7 +7067,7 @@ function Code_Complete_At
   -- * along with the given code completion results.
   --  
 
-   function Code_Complete_Get_Contexts (Results : access Code_Complete_Results_T) return Extensions.unsigned_long_long  -- install/include/clang-c/Index.h:5879
+   function Code_Complete_Get_Contexts (Results : access Code_Complete_Results_T) return Extensions.unsigned_long_long  -- install/include/clang-c/Index.h:5932
    with Import => True, 
         Convention => C, 
         External_Name => "clang_codeCompleteGetContexts";
@@ -7036,7 +7089,7 @@ function Code_Complete_At
   -- * container
   --  
 
-   function Code_Complete_Get_Container_Kind (Results : access Code_Complete_Results_T; Is_Incomplete : access unsigned) return Cursor_Kind_T  -- install/include/clang-c/Index.h:5899
+   function Code_Complete_Get_Container_Kind (Results : access Code_Complete_Results_T; Is_Incomplete : access unsigned) return Cursor_Kind_T  -- install/include/clang-c/Index.h:5952
    with Import => True, 
         Convention => C, 
         External_Name => "clang_codeCompleteGetContainerKind";
@@ -7096,7 +7149,7 @@ function Get_Clang_Version
   -- *        value enables crash recovery, while 0 disables it.
   --  
 
-   procedure Toggle_Crash_Recovery (Is_Enabled : unsigned)  -- install/include/clang-c/Index.h:5950
+   procedure Toggle_Crash_Recovery (Is_Enabled : unsigned)  -- install/include/clang-c/Index.h:6003
    with Import => True, 
         Convention => C, 
         External_Name => "clang_toggleCrashRecovery";
@@ -7118,7 +7171,7 @@ function Get_Clang_Version
          Arg_2 : access Source_Location_T;
          Arg_3 : unsigned;
          Arg_4 : Client_Data_T)
-   with Convention => C;  -- install/include/clang-c/Index.h:5963
+   with Convention => C;  -- install/include/clang-c/Index.h:6016
 
   --*
   -- * Visit the set of preprocessor inclusions in a translation unit.
@@ -7130,7 +7183,7 @@ function Get_Clang_Version
    procedure Get_Inclusions
      (Tu : Translation_Unit_T;
       Visitor : Inclusion_Visitor_T;
-      Client_Data : Client_Data_T)  -- install/include/clang-c/Index.h:5974
+      Client_Data : Client_Data_T)  -- install/include/clang-c/Index.h:6027
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getInclusions";
@@ -7142,13 +7195,13 @@ function Get_Clang_Version
    Eval_Str_Literal : constant Eval_Result_Kind_T := 4;
    Eval_CF_Str : constant Eval_Result_Kind_T := 5;
    Eval_Other : constant Eval_Result_Kind_T := 6;
-   Eval_Un_Exposed : constant Eval_Result_Kind_T := 0;  -- install/include/clang-c/Index.h:5988
+   Eval_Un_Exposed : constant Eval_Result_Kind_T := 0;  -- install/include/clang-c/Index.h:6041
 
   --*
   -- * Evaluation result of a cursor
   --  
 
-   type Eval_Result_T is new System.Address;  -- install/include/clang-c/Index.h:5993
+   type Eval_Result_T is new System.Address;  -- install/include/clang-c/Index.h:6046
 
   --*
   -- * If cursor is a statement declaration tries to evaluate the
@@ -7157,7 +7210,7 @@ function Get_Clang_Version
   -- * If it's an expression, tries to evaluate the expression.
   --  
 
-   function Cursor_Evaluate (C : Cursor_T) return Eval_Result_T  -- install/include/clang-c/Index.h:6001
+   function Cursor_Evaluate (C : Cursor_T) return Eval_Result_T  -- install/include/clang-c/Index.h:6054
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Cursor_Evaluate";
@@ -7166,7 +7219,7 @@ function Get_Clang_Version
   -- * Returns the kind of the evaluated result.
   --  
 
-   function Eval_Result_Get_Kind (E : Eval_Result_T) return Eval_Result_Kind_T  -- install/include/clang-c/Index.h:6006
+   function Eval_Result_Get_Kind (E : Eval_Result_T) return Eval_Result_Kind_T  -- install/include/clang-c/Index.h:6059
    with Import => True, 
         Convention => C, 
         External_Name => "clang_EvalResult_getKind";
@@ -7176,7 +7229,7 @@ function Get_Clang_Version
   -- * kind is Int.
   --  
 
-   function Eval_Result_Get_As_Int (E : Eval_Result_T) return int  -- install/include/clang-c/Index.h:6012
+   function Eval_Result_Get_As_Int (E : Eval_Result_T) return int  -- install/include/clang-c/Index.h:6065
    with Import => True, 
         Convention => C, 
         External_Name => "clang_EvalResult_getAsInt";
@@ -7187,7 +7240,7 @@ function Get_Clang_Version
   -- * returned with clang_EvalResult_getAsInt.
   --  
 
-   function Eval_Result_Get_As_Long_Long (E : Eval_Result_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:6019
+   function Eval_Result_Get_As_Long_Long (E : Eval_Result_T) return Long_Long_Integer  -- install/include/clang-c/Index.h:6072
    with Import => True, 
         Convention => C, 
         External_Name => "clang_EvalResult_getAsLongLong";
@@ -7206,7 +7259,7 @@ function Eval_Result_Is_Unsigned_Int
   -- * the kind is Int and clang_EvalResult_isUnsignedInt is non-zero.
   --  
 
-   function Eval_Result_Get_As_Unsigned (E : Eval_Result_T) return Extensions.unsigned_long_long  -- install/include/clang-c/Index.h:6032
+   function Eval_Result_Get_As_Unsigned (E : Eval_Result_T) return Extensions.unsigned_long_long  -- install/include/clang-c/Index.h:6085
    with Import => True, 
         Convention => C, 
         External_Name => "clang_EvalResult_getAsUnsigned";
@@ -7216,7 +7269,7 @@ function Eval_Result_Is_Unsigned_Int
   -- * kind is double.
   --  
 
-   function Eval_Result_Get_As_Double (E : Eval_Result_T) return double  -- install/include/clang-c/Index.h:6038
+   function Eval_Result_Get_As_Double (E : Eval_Result_T) return double  -- install/include/clang-c/Index.h:6091
    with Import => True, 
         Convention => C, 
         External_Name => "clang_EvalResult_getAsDouble";
@@ -7236,7 +7289,7 @@ function Eval_Result_Get_As_Str
   -- * Disposes the created Eval memory.
   --  
 
-   procedure Eval_Result_Dispose (E : Eval_Result_T)  -- install/include/clang-c/Index.h:6051
+   procedure Eval_Result_Dispose (E : Eval_Result_T)  -- install/include/clang-c/Index.h:6104
    with Import => True, 
         Convention => C, 
         External_Name => "clang_EvalResult_dispose";
@@ -7254,7 +7307,7 @@ function Eval_Result_Get_As_Str
   -- * A remapping of original source files and their translated files.
   --  
 
-   type Remapping_T is new System.Address;  -- install/include/clang-c/Index.h:6064
+   type Remapping_T is new System.Address;  -- install/include/clang-c/Index.h:6117
 
   --*
   -- * Retrieve a remapping.
@@ -7280,7 +7333,7 @@ function Get_Remappings
   -- * via a call to \c clang_remap_dispose(). Can return NULL if an error occurred.
   --  
 
-   function Get_Remappings_From_File_List (File_Paths : System.Address; Num_Files : unsigned) return Remapping_T  -- install/include/clang-c/Index.h:6087
+   function Get_Remappings_From_File_List (File_Paths : System.Address; Num_Files : unsigned) return Remapping_T  -- install/include/clang-c/Index.h:6140
    with Import => True, 
         Convention => C, 
         External_Name => "clang_getRemappingsFromFileList";
@@ -7289,7 +7342,7 @@ function Get_Remappings
   -- * Determine the number of remappings.
   --  
 
-   function Remap_Get_Num_Files (Arg_1 : Remapping_T) return unsigned  -- install/include/clang-c/Index.h:6093
+   function Remap_Get_Num_Files (Arg_1 : Remapping_T) return unsigned  -- install/include/clang-c/Index.h:6146
    with Import => True, 
         Convention => C, 
         External_Name => "clang_remap_getNumFiles";
@@ -7307,7 +7360,7 @@ function Get_Remappings
      (Arg_1 : Remapping_T;
       Index : unsigned;
       Original : access Clang.CX_String.String_T;
-      Transformed : access Clang.CX_String.String_T)  -- install/include/clang-c/Index.h:6103
+      Transformed : access Clang.CX_String.String_T)  -- install/include/clang-c/Index.h:6156
    with Import => True, 
         Convention => C, 
         External_Name => "clang_remap_getFilenames";
@@ -7316,7 +7369,7 @@ function Get_Remappings
   -- * Dispose the remapping.
   --  
 
-   procedure Remap_Dispose (Arg_1 : Remapping_T)  -- install/include/clang-c/Index.h:6110
+   procedure Remap_Dispose (Arg_1 : Remapping_T)  -- install/include/clang-c/Index.h:6163
    with Import => True, 
         Convention => C, 
         External_Name => "clang_remap_dispose";
@@ -7333,16 +7386,16 @@ function Get_Remappings
    type Visitor_Result_T is 
      (Visit_Break,
       Visit_Continue)
-   with Convention => C;  -- install/include/clang-c/Index.h:6121
+   with Convention => C;  -- install/include/clang-c/Index.h:6174
 
    type Cursor_And_Range_Visitor_T is record
-      context : System.Address;  -- install/include/clang-c/Index.h:6124
+      context : System.Address;  -- install/include/clang-c/Index.h:6177
       visit : access function
            (Arg_1 : System.Address;
             Arg_2 : Cursor_T;
-            Arg_3 : Source_Range_T) return Visitor_Result_T;  -- install/include/clang-c/Index.h:6125
+            Arg_3 : Source_Range_T) return Visitor_Result_T;  -- install/include/clang-c/Index.h:6178
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6123
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6176
 
   --*
   --   * Function returned successfully.
@@ -7361,7 +7414,7 @@ function Get_Remappings
      (Result_Success,
       Result_Invalid,
       Result_Visit_Break)
-   with Convention => C;  -- install/include/clang-c/Index.h:6143
+   with Convention => C;  -- install/include/clang-c/Index.h:6196
 
   --*
   -- * Find references of a declaration in a specific file.
@@ -7381,7 +7434,7 @@ function Get_Remappings
    function Find_References_In_File
      (Cursor : Cursor_T;
       File : File_T;
-      Visitor : Cursor_And_Range_Visitor_T) return Result_T  -- install/include/clang-c/Index.h:6159
+      Visitor : Cursor_And_Range_Visitor_T) return Result_T  -- install/include/clang-c/Index.h:6212
    with Import => True, 
         Convention => C, 
         External_Name => "clang_findReferencesInFile";
@@ -7402,7 +7455,7 @@ function Get_Remappings
    function Find_Includes_In_File
      (TU : Translation_Unit_T;
       File : File_T;
-      Visitor : Cursor_And_Range_Visitor_T) return Result_T  -- install/include/clang-c/Index.h:6174
+      Visitor : Cursor_And_Range_Visitor_T) return Result_T  -- install/include/clang-c/Index.h:6227
    with Import => True, 
         Convention => C, 
         External_Name => "clang_findIncludesInFile";
@@ -7411,37 +7464,37 @@ function Get_Remappings
   -- * The client's data object that is associated with a CXFile.
   --  
 
-   type Idx_Client_File_T is new System.Address;  -- install/include/clang-c/Index.h:6197
+   type Idx_Client_File_T is new System.Address;  -- install/include/clang-c/Index.h:6250
 
   --*
   -- * The client's data object that is associated with a semantic entity.
   --  
 
-   type Idx_Client_Entity_T is new System.Address;  -- install/include/clang-c/Index.h:6202
+   type Idx_Client_Entity_T is new System.Address;  -- install/include/clang-c/Index.h:6255
 
   --*
   -- * The client's data object that is associated with a semantic container
   -- * of entities.
   --  
 
-   type Idx_Client_Container_T is new System.Address;  -- install/include/clang-c/Index.h:6208
+   type Idx_Client_Container_T is new System.Address;  -- install/include/clang-c/Index.h:6261
 
   --*
   -- * The client's data object that is associated with an AST file (PCH
   -- * or module).
   --  
 
-   type Idx_Client_AST_File_T is new System.Address;  -- install/include/clang-c/Index.h:6214
+   type Idx_Client_AST_File_T is new System.Address;  -- install/include/clang-c/Index.h:6267
 
   --*
   -- * Source location passed to index callbacks.
   --  
 
    type Idx_Loc_T is record
-      ptr_data : anon_array1322;  -- install/include/clang-c/Index.h:6220
-      int_data : aliased unsigned;  -- install/include/clang-c/Index.h:6221
+      ptr_data : anon_array1331;  -- install/include/clang-c/Index.h:6273
+      int_data : aliased unsigned;  -- install/include/clang-c/Index.h:6274
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6222
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6275
 
   --*
   -- * Data for ppIncludedFile callback.
@@ -7452,14 +7505,14 @@ function Get_Remappings
   --    
 
    type Idx_Included_File_Info_T is record
-      hashLoc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6231
-      filename : Interfaces.C.Strings.chars_ptr;  -- install/include/clang-c/Index.h:6235
-      file : File_T;  -- install/include/clang-c/Index.h:6239
-      isImport : aliased int;  -- install/include/clang-c/Index.h:6240
-      isAngled : aliased int;  -- install/include/clang-c/Index.h:6241
-      isModuleImport : aliased int;  -- install/include/clang-c/Index.h:6246
+      hashLoc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6284
+      filename : Interfaces.C.Strings.chars_ptr;  -- install/include/clang-c/Index.h:6288
+      file : File_T;  -- install/include/clang-c/Index.h:6292
+      isImport : aliased int;  -- install/include/clang-c/Index.h:6293
+      isAngled : aliased int;  -- install/include/clang-c/Index.h:6294
+      isModuleImport : aliased int;  -- install/include/clang-c/Index.h:6299
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6247
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6300
 
   --*
   --   * Filename as written in the \#include/\#import directive.
@@ -7483,12 +7536,12 @@ function Get_Remappings
   --    
 
    type Idx_Imported_AST_File_Info_T is record
-      file : File_T;  -- install/include/clang-c/Index.h:6256
-      module : Module_T;  -- install/include/clang-c/Index.h:6260
-      loc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6264
-      isImplicit : aliased int;  -- install/include/clang-c/Index.h:6269
+      file : File_T;  -- install/include/clang-c/Index.h:6309
+      module : Module_T;  -- install/include/clang-c/Index.h:6313
+      loc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6317
+      isImplicit : aliased int;  -- install/include/clang-c/Index.h:6322
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6271
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6324
 
   --*
   --   * The imported module or NULL if the AST file is a PCH.
@@ -7530,8 +7583,9 @@ function Get_Remappings
       Idx_Entity_CXX_Destructor,
       Idx_Entity_CXX_Conversion_Function,
       Idx_Entity_CXX_Type_Alias,
-      Idx_Entity_CXX_Interface)
-   with Convention => C;  -- install/include/clang-c/Index.h:6306
+      Idx_Entity_CXX_Interface,
+      Idx_Entity_CXX_Concept)
+   with Convention => C;  -- install/include/clang-c/Index.h:6360
 
    type Idx_Entity_Language_T is 
      (Idx_Entity_Lang_None,
@@ -7539,7 +7593,7 @@ function Get_Remappings
       Idx_Entity_Lang_Obj_C,
       Idx_Entity_Lang_CXX,
       Idx_Entity_Lang_Swift)
-   with Convention => C;  -- install/include/clang-c/Index.h:6314
+   with Convention => C;  -- install/include/clang-c/Index.h:6368
 
   --*
   -- * Extra C++ template information for an entity. This can apply to:
@@ -7557,66 +7611,66 @@ function Get_Remappings
       Idx_Entity_Template,
       Idx_Entity_Template_Partial_Specialization,
       Idx_Entity_Template_Specialization)
-   with Convention => C;  -- install/include/clang-c/Index.h:6331
+   with Convention => C;  -- install/include/clang-c/Index.h:6385
 
    type Idx_Attr_Kind_T is 
      (Idx_Attr_Unexposed,
       Idx_Attr_IB_Action,
       Idx_Attr_IB_Outlet,
       Idx_Attr_IB_Outlet_Collection)
-   with Convention => C;  -- install/include/clang-c/Index.h:6338
+   with Convention => C;  -- install/include/clang-c/Index.h:6392
 
    type Idx_Attr_Info_T is record
-      kind : aliased Idx_Attr_Kind_T;  -- install/include/clang-c/Index.h:6341
-      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6342
-      loc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6343
+      kind : aliased Idx_Attr_Kind_T;  -- install/include/clang-c/Index.h:6395
+      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6396
+      loc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6397
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6344
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6398
 
    type Idx_Entity_Info_T is record
-      kind : aliased Idx_Entity_Kind_T;  -- install/include/clang-c/Index.h:6347
-      templateKind : aliased Idx_Entity_CXX_Template_Kind_T;  -- install/include/clang-c/Index.h:6348
-      lang : aliased Idx_Entity_Language_T;  -- install/include/clang-c/Index.h:6349
-      name : Interfaces.C.Strings.chars_ptr;  -- install/include/clang-c/Index.h:6350
-      USR : Interfaces.C.Strings.chars_ptr;  -- install/include/clang-c/Index.h:6351
-      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6352
-      attributes : System.Address;  -- install/include/clang-c/Index.h:6353
-      numAttributes : aliased unsigned;  -- install/include/clang-c/Index.h:6354
+      kind : aliased Idx_Entity_Kind_T;  -- install/include/clang-c/Index.h:6401
+      templateKind : aliased Idx_Entity_CXX_Template_Kind_T;  -- install/include/clang-c/Index.h:6402
+      lang : aliased Idx_Entity_Language_T;  -- install/include/clang-c/Index.h:6403
+      name : Interfaces.C.Strings.chars_ptr;  -- install/include/clang-c/Index.h:6404
+      USR : Interfaces.C.Strings.chars_ptr;  -- install/include/clang-c/Index.h:6405
+      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6406
+      attributes : System.Address;  -- install/include/clang-c/Index.h:6407
+      numAttributes : aliased unsigned;  -- install/include/clang-c/Index.h:6408
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6355
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6409
 
    type Idx_Container_Info_T is record
-      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6358
+      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6412
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6359
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6413
 
    type Idx_IB_Outlet_Collection_Attr_Info_T is record
-      attrInfo : access constant Idx_Attr_Info_T;  -- install/include/clang-c/Index.h:6362
-      objcClass : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6363
-      classCursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6364
-      classLoc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6365
+      attrInfo : access constant Idx_Attr_Info_T;  -- install/include/clang-c/Index.h:6416
+      objcClass : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6417
+      classCursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6418
+      classLoc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6419
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6366
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6420
 
    subtype Idx_Decl_Info_Flags_T is unsigned;
-   Idx_Decl_Flag_Skipped : constant Idx_Decl_Info_Flags_T := 1;  -- install/include/clang-c/Index.h:6368
+   Idx_Decl_Flag_Skipped : constant Idx_Decl_Info_Flags_T := 1;  -- install/include/clang-c/Index.h:6422
 
    type Idx_Decl_Info_T is record
-      entityInfo : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6371
-      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6372
-      loc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6373
-      semanticContainer : access constant Idx_Container_Info_T;  -- install/include/clang-c/Index.h:6374
-      lexicalContainer : access constant Idx_Container_Info_T;  -- install/include/clang-c/Index.h:6379
-      isRedeclaration : aliased int;  -- install/include/clang-c/Index.h:6380
-      isDefinition : aliased int;  -- install/include/clang-c/Index.h:6381
-      isContainer : aliased int;  -- install/include/clang-c/Index.h:6382
-      declAsContainer : access constant Idx_Container_Info_T;  -- install/include/clang-c/Index.h:6383
-      isImplicit : aliased int;  -- install/include/clang-c/Index.h:6388
-      attributes : System.Address;  -- install/include/clang-c/Index.h:6389
-      numAttributes : aliased unsigned;  -- install/include/clang-c/Index.h:6390
-      flags : aliased unsigned;  -- install/include/clang-c/Index.h:6392
+      entityInfo : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6425
+      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6426
+      loc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6427
+      semanticContainer : access constant Idx_Container_Info_T;  -- install/include/clang-c/Index.h:6428
+      lexicalContainer : access constant Idx_Container_Info_T;  -- install/include/clang-c/Index.h:6433
+      isRedeclaration : aliased int;  -- install/include/clang-c/Index.h:6434
+      isDefinition : aliased int;  -- install/include/clang-c/Index.h:6435
+      isContainer : aliased int;  -- install/include/clang-c/Index.h:6436
+      declAsContainer : access constant Idx_Container_Info_T;  -- install/include/clang-c/Index.h:6437
+      isImplicit : aliased int;  -- install/include/clang-c/Index.h:6442
+      attributes : System.Address;  -- install/include/clang-c/Index.h:6443
+      numAttributes : aliased unsigned;  -- install/include/clang-c/Index.h:6444
+      flags : aliased unsigned;  -- install/include/clang-c/Index.h:6446
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6394
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6448
 
   --*
   --   * Generally same as #semanticContainer but can be different in
@@ -7632,63 +7686,63 @@ function Get_Remappings
      (Idx_Obj_C_Container_Forward_Ref,
       Idx_Obj_C_Container_Interface,
       Idx_Obj_C_Container_Implementation)
-   with Convention => C;  -- install/include/clang-c/Index.h:6400
+   with Convention => C;  -- install/include/clang-c/Index.h:6454
 
    type Idx_Obj_C_Container_Decl_Info_T is record
-      declInfo : access constant Idx_Decl_Info_T;  -- install/include/clang-c/Index.h:6403
-      kind : aliased Idx_Obj_C_Container_Kind_T;  -- install/include/clang-c/Index.h:6404
+      declInfo : access constant Idx_Decl_Info_T;  -- install/include/clang-c/Index.h:6457
+      kind : aliased Idx_Obj_C_Container_Kind_T;  -- install/include/clang-c/Index.h:6458
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6405
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6459
 
    type Idx_Base_Class_Info_T is record
-      base : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6408
-      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6409
-      loc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6410
+      base : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6462
+      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6463
+      loc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6464
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6411
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6465
 
    type Idx_Obj_C_Protocol_Ref_Info_T is record
-      protocol : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6414
-      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6415
-      loc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6416
+      protocol : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6468
+      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6469
+      loc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6470
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6417
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6471
 
    type Idx_Obj_C_Protocol_Ref_List_Info_T is record
-      protocols : System.Address;  -- install/include/clang-c/Index.h:6420
-      numProtocols : aliased unsigned;  -- install/include/clang-c/Index.h:6421
+      protocols : System.Address;  -- install/include/clang-c/Index.h:6474
+      numProtocols : aliased unsigned;  -- install/include/clang-c/Index.h:6475
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6422
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6476
 
    type Idx_Obj_C_Interface_Decl_Info_T is record
-      containerInfo : access constant Idx_Obj_C_Container_Decl_Info_T;  -- install/include/clang-c/Index.h:6425
-      superInfo : access constant Idx_Base_Class_Info_T;  -- install/include/clang-c/Index.h:6426
-      protocols : access constant Idx_Obj_C_Protocol_Ref_List_Info_T;  -- install/include/clang-c/Index.h:6427
+      containerInfo : access constant Idx_Obj_C_Container_Decl_Info_T;  -- install/include/clang-c/Index.h:6479
+      superInfo : access constant Idx_Base_Class_Info_T;  -- install/include/clang-c/Index.h:6480
+      protocols : access constant Idx_Obj_C_Protocol_Ref_List_Info_T;  -- install/include/clang-c/Index.h:6481
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6428
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6482
 
    type Idx_Obj_C_Category_Decl_Info_T is record
-      containerInfo : access constant Idx_Obj_C_Container_Decl_Info_T;  -- install/include/clang-c/Index.h:6431
-      objcClass : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6432
-      classCursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6433
-      classLoc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6434
-      protocols : access constant Idx_Obj_C_Protocol_Ref_List_Info_T;  -- install/include/clang-c/Index.h:6435
+      containerInfo : access constant Idx_Obj_C_Container_Decl_Info_T;  -- install/include/clang-c/Index.h:6485
+      objcClass : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6486
+      classCursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6487
+      classLoc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6488
+      protocols : access constant Idx_Obj_C_Protocol_Ref_List_Info_T;  -- install/include/clang-c/Index.h:6489
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6436
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6490
 
    type Idx_Obj_C_Property_Decl_Info_T is record
-      declInfo : access constant Idx_Decl_Info_T;  -- install/include/clang-c/Index.h:6439
-      getter : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6440
-      setter : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6441
+      declInfo : access constant Idx_Decl_Info_T;  -- install/include/clang-c/Index.h:6493
+      getter : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6494
+      setter : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6495
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6442
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6496
 
    type Idx_CXX_Class_Decl_Info_T is record
-      declInfo : access constant Idx_Decl_Info_T;  -- install/include/clang-c/Index.h:6445
-      bases : System.Address;  -- install/include/clang-c/Index.h:6446
-      numBases : aliased unsigned;  -- install/include/clang-c/Index.h:6447
+      declInfo : access constant Idx_Decl_Info_T;  -- install/include/clang-c/Index.h:6499
+      bases : System.Address;  -- install/include/clang-c/Index.h:6500
+      numBases : aliased unsigned;  -- install/include/clang-c/Index.h:6501
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6448
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6502
 
   --*
   -- * Data for IndexerCallbacks#indexEntityReference.
@@ -7708,7 +7762,7 @@ function Get_Remappings
 
    subtype Idx_Entity_Ref_Kind_T is unsigned;
    Idx_Entity_Ref_Direct : constant Idx_Entity_Ref_Kind_T := 1;
-   Idx_Entity_Ref_Implicit : constant Idx_Entity_Ref_Kind_T := 2;  -- install/include/clang-c/Index.h:6466
+   Idx_Entity_Ref_Implicit : constant Idx_Entity_Ref_Kind_T := 2;  -- install/include/clang-c/Index.h:6520
 
   --*
   -- * Roles that are attributed to symbol occurrences.
@@ -7727,22 +7781,22 @@ function Get_Remappings
    Symbol_Role_Call : constant Symbol_Role_T := 32;
    Symbol_Role_Dynamic : constant Symbol_Role_T := 64;
    Symbol_Role_Address_Of : constant Symbol_Role_T := 128;
-   Symbol_Role_Implicit : constant Symbol_Role_T := 256;  -- install/include/clang-c/Index.h:6485
+   Symbol_Role_Implicit : constant Symbol_Role_T := 256;  -- install/include/clang-c/Index.h:6539
 
   --*
   -- * Data for IndexerCallbacks#indexEntityReference.
   --  
 
    type Idx_Entity_Ref_Info_T is record
-      kind : aliased Idx_Entity_Ref_Kind_T;  -- install/include/clang-c/Index.h:6491
-      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6495
-      loc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6496
-      referencedEntity : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6500
-      parentEntity : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6512
-      container : access constant Idx_Container_Info_T;  -- install/include/clang-c/Index.h:6516
-      role : aliased Symbol_Role_T;  -- install/include/clang-c/Index.h:6520
+      kind : aliased Idx_Entity_Ref_Kind_T;  -- install/include/clang-c/Index.h:6545
+      cursor : aliased Cursor_T;  -- install/include/clang-c/Index.h:6549
+      loc : aliased Idx_Loc_T;  -- install/include/clang-c/Index.h:6550
+      referencedEntity : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6554
+      parentEntity : access constant Idx_Entity_Info_T;  -- install/include/clang-c/Index.h:6566
+      container : access constant Idx_Container_Info_T;  -- install/include/clang-c/Index.h:6570
+      role : aliased Symbol_Role_T;  -- install/include/clang-c/Index.h:6574
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6521
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6575
 
   --*
   --   * Reference cursor.
@@ -7783,22 +7837,22 @@ function Get_Remappings
   --    
 
    type IndexerCallbacks is record
-      abortQuery : access function (Arg_1 : Client_Data_T; Arg_2 : System.Address) return int;  -- install/include/clang-c/Index.h:6532
+      abortQuery : access function (Arg_1 : Client_Data_T; Arg_2 : System.Address) return int;  -- install/include/clang-c/Index.h:6586
       diagnostic : access procedure
            (Arg_1 : Client_Data_T;
             Arg_2 : Diagnostic_Set_T;
-            Arg_3 : System.Address);  -- install/include/clang-c/Index.h:6537
+            Arg_3 : System.Address);  -- install/include/clang-c/Index.h:6591
       enteredMainFile : access function
            (Arg_1 : Client_Data_T;
             Arg_2 : File_T;
-            Arg_3 : System.Address) return Idx_Client_File_T;  -- install/include/clang-c/Index.h:6539
-      ppIncludedFile : access function (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Included_File_Info_T) return Idx_Client_File_T;  -- install/include/clang-c/Index.h:6545
-      importedASTFile : access function (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Imported_AST_File_Info_T) return Idx_Client_AST_File_T;  -- install/include/clang-c/Index.h:6556
-      startedTranslationUnit : access function (Arg_1 : Client_Data_T; Arg_2 : System.Address) return Idx_Client_Container_T;  -- install/include/clang-c/Index.h:6562
-      indexDeclaration : access procedure (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Decl_Info_T);  -- install/include/clang-c/Index.h:6565
-      indexEntityReference : access procedure (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Entity_Ref_Info_T);  -- install/include/clang-c/Index.h:6570
+            Arg_3 : System.Address) return Idx_Client_File_T;  -- install/include/clang-c/Index.h:6593
+      ppIncludedFile : access function (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Included_File_Info_T) return Idx_Client_File_T;  -- install/include/clang-c/Index.h:6599
+      importedASTFile : access function (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Imported_AST_File_Info_T) return Idx_Client_AST_File_T;  -- install/include/clang-c/Index.h:6610
+      startedTranslationUnit : access function (Arg_1 : Client_Data_T; Arg_2 : System.Address) return Idx_Client_Container_T;  -- install/include/clang-c/Index.h:6616
+      indexDeclaration : access procedure (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Decl_Info_T);  -- install/include/clang-c/Index.h:6619
+      indexEntityReference : access procedure (Arg_1 : Client_Data_T; Arg_2 : access constant Idx_Entity_Ref_Info_T);  -- install/include/clang-c/Index.h:6624
    end record
-   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6573
+   with Convention => C_Pass_By_Copy;  -- install/include/clang-c/Index.h:6627
 
   --*
   --   * Called at the end of indexing; passes the complete diagnostic set.
@@ -7829,37 +7883,37 @@ function Index_Is_Entity_Obj_C_Container_Kind
      (Arg_1 : Idx_Entity_Kind_T)
       return Boolean;
 
-   function Index_Get_Obj_C_Container_Decl_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_Obj_C_Container_Decl_Info_T  -- install/include/clang-c/Index.h:6577
+   function Index_Get_Obj_C_Container_Decl_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_Obj_C_Container_Decl_Info_T  -- install/include/clang-c/Index.h:6631
    with Import => True, 
         Convention => C, 
         External_Name => "clang_index_getObjCContainerDeclInfo";
 
-   function Index_Get_Obj_C_Interface_Decl_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_Obj_C_Interface_Decl_Info_T  -- install/include/clang-c/Index.h:6580
+   function Index_Get_Obj_C_Interface_Decl_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_Obj_C_Interface_Decl_Info_T  -- install/include/clang-c/Index.h:6634
    with Import => True, 
         Convention => C, 
         External_Name => "clang_index_getObjCInterfaceDeclInfo";
 
-   function Index_Get_Obj_C_Category_Decl_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_Obj_C_Category_Decl_Info_T  -- install/include/clang-c/Index.h:6584
+   function Index_Get_Obj_C_Category_Decl_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_Obj_C_Category_Decl_Info_T  -- install/include/clang-c/Index.h:6638
    with Import => True, 
         Convention => C, 
         External_Name => "clang_index_getObjCCategoryDeclInfo";
 
-   function Index_Get_Obj_C_Protocol_Ref_List_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_Obj_C_Protocol_Ref_List_Info_T  -- install/include/clang-c/Index.h:6587
+   function Index_Get_Obj_C_Protocol_Ref_List_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_Obj_C_Protocol_Ref_List_Info_T  -- install/include/clang-c/Index.h:6641
    with Import => True, 
         Convention => C, 
         External_Name => "clang_index_getObjCProtocolRefListInfo";
 
-   function Index_Get_Obj_C_Property_Decl_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_Obj_C_Property_Decl_Info_T  -- install/include/clang-c/Index.h:6590
+   function Index_Get_Obj_C_Property_Decl_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_Obj_C_Property_Decl_Info_T  -- install/include/clang-c/Index.h:6644
    with Import => True, 
         Convention => C, 
         External_Name => "clang_index_getObjCPropertyDeclInfo";
 
-   function Index_Get_IB_Outlet_Collection_Attr_Info (Arg_1 : access constant Idx_Attr_Info_T) return access constant Idx_IB_Outlet_Collection_Attr_Info_T  -- install/include/clang-c/Index.h:6593
+   function Index_Get_IB_Outlet_Collection_Attr_Info (Arg_1 : access constant Idx_Attr_Info_T) return access constant Idx_IB_Outlet_Collection_Attr_Info_T  -- install/include/clang-c/Index.h:6647
    with Import => True, 
         Convention => C, 
         External_Name => "clang_index_getIBOutletCollectionAttrInfo";
 
-   function Index_Get_CXX_Class_Decl_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_CXX_Class_Decl_Info_T  -- install/include/clang-c/Index.h:6596
+   function Index_Get_CXX_Class_Decl_Info (Arg_1 : access constant Idx_Decl_Info_T) return access constant Idx_CXX_Class_Decl_Info_T  -- install/include/clang-c/Index.h:6650
    with Import => True, 
         Convention => C, 
         External_Name => "clang_index_getCXXClassDeclInfo";
@@ -7869,7 +7923,7 @@ function Index_Is_Entity_Obj_C_Container_Kind
   -- * container.
   --  
 
-   function Index_Get_Client_Container (Arg_1 : access constant Idx_Container_Info_T) return Idx_Client_Container_T  -- install/include/clang-c/Index.h:6603
+   function Index_Get_Client_Container (Arg_1 : access constant Idx_Container_Info_T) return Idx_Client_Container_T  -- install/include/clang-c/Index.h:6657
    with Import => True, 
         Convention => C, 
         External_Name => "clang_index_getClientContainer";
@@ -7879,7 +7933,7 @@ function Index_Is_Entity_Obj_C_Container_Kind
   -- * container.
   --  
 
-   procedure Index_Set_Client_Container (Arg_1 : access constant Idx_Container_Info_T; Arg_2 : Idx_Client_Container_T)  -- install/include/clang-c/Index.h:6609
+   procedure Index_Set_Client_Container (Arg_1 : access constant Idx_Container_Info_T; Arg_2 : Idx_Client_Container_T)  -- install/include/clang-c/Index.h:6663
    with Import => True, 
         Convention => C, 
         External_Name => "clang_index_setClientContainer";
@@ -7888,7 +7942,7 @@ function Index_Is_Entity_Obj_C_Container_Kind
   -- * For retrieving a custom CXIdxClientEntity attached to an entity.
   --  
 
-   function Index_Get_Client_Entity (Arg_1 : access constant Idx_Entity_Info_T) return Idx_Client_Entity_T  -- install/include/clang-c/Index.h:6616
+   function Index_Get_Client_Entity (Arg_1 : access constant Idx_Entity_Info_T) return Idx_Client_Entity_T  -- install/include/clang-c/Index.h:6670
    with Import => True, 
         Convention => C, 
         External_Name => "clang_index_getClientEntity";
@@ -7897,7 +7951,7 @@ function Index_Is_Entity_Obj_C_Container_Kind
   -- * For setting a custom CXIdxClientEntity attached to an entity.
   --  
 
-   procedure Index_Set_Client_Entity (Arg_1 : access constant Idx_Entity_Info_T; Arg_2 : Idx_Client_Entity_T)  -- install/include/clang-c/Index.h:6621
+   procedure Index_Set_Client_Entity (Arg_1 : access constant Idx_Entity_Info_T; Arg_2 : Idx_Client_Entity_T)  -- install/include/clang-c/Index.h:6675
    with Import => True, 
         Convention => C, 
         External_Name => "clang_index_setClientEntity";
@@ -7907,7 +7961,7 @@ function Index_Is_Entity_Obj_C_Container_Kind
   -- * translation units.
   --  
 
-   type Index_Action_T is new System.Address;  -- install/include/clang-c/Index.h:6628
+   type Index_Action_T is new System.Address;  -- install/include/clang-c/Index.h:6682
 
   --*
   -- * An indexing action/session, to be applied to one or multiple
@@ -7916,7 +7970,7 @@ function Index_Is_Entity_Obj_C_Container_Kind
   -- * \param CIdx The index object with which the index action will be associated.
   --  
 
-   function Index_Action_Create (C_Idx : Index_T) return Index_Action_T  -- install/include/clang-c/Index.h:6636
+   function Index_Action_Create (C_Idx : Index_T) return Index_Action_T  -- install/include/clang-c/Index.h:6690
    with Import => True, 
         Convention => C, 
         External_Name => "clang_IndexAction_create";
@@ -7928,7 +7982,7 @@ function Index_Is_Entity_Obj_C_Container_Kind
   -- * created within that index action have been destroyed.
   --  
 
-   procedure Index_Action_Dispose (Arg_1 : Index_Action_T)  -- install/include/clang-c/Index.h:6644
+   procedure Index_Action_Dispose (Arg_1 : Index_Action_T)  -- install/include/clang-c/Index.h:6698
    with Import => True, 
         Convention => C, 
         External_Name => "clang_IndexAction_dispose";
@@ -7969,7 +8023,7 @@ function Index_Is_Entity_Obj_C_Container_Kind
    Index_Opt_Index_Function_Local_Symbols : constant Index_Opt_Flags_T := 2;
    Index_Opt_Index_Implicit_Template_Instantiations : constant Index_Opt_Flags_T := 4;
    Index_Opt_Suppress_Warnings : constant Index_Opt_Flags_T := 8;
-   Index_Opt_Skip_Parsed_Bodies_In_Session : constant Index_Opt_Flags_T := 16;  -- install/include/clang-c/Index.h:6683
+   Index_Opt_Skip_Parsed_Bodies_In_Session : constant Index_Opt_Flags_T := 16;  -- install/include/clang-c/Index.h:6737
 
   --*
   -- * Index the given source file and the translation unit corresponding
@@ -8056,7 +8110,7 @@ function Index_Source_File_Full_Argv
       Index_Callbacks : access IndexerCallbacks;
       Index_Callbacks_Size : unsigned;
       Index_Options : unsigned;
-      Arg_6 : Translation_Unit_T) return int  -- install/include/clang-c/Index.h:6745
+      Arg_6 : Translation_Unit_T) return int  -- install/include/clang-c/Index.h:6799
    with Import => True, 
         Convention => C, 
         External_Name => "clang_indexTranslationUnit";
@@ -8076,7 +8130,7 @@ function Index_Source_File_Full_Argv
       File : System.Address;
       Line : access unsigned;
       Column : access unsigned;
-      Offset : access unsigned)  -- install/include/clang-c/Index.h:6757
+      Offset : access unsigned)  -- install/include/clang-c/Index.h:6811
    with Import => True, 
         Convention => C, 
         External_Name => "clang_indexLoc_getFileLocation";
@@ -8085,7 +8139,7 @@ function Index_Source_File_Full_Argv
   -- * Retrieve the CXSourceLocation represented by the given CXIdxLoc.
   --  
 
-   function Index_Loc_Get_CX_Source_Location (Loc : Idx_Loc_T) return Source_Location_T  -- install/include/clang-c/Index.h:6767
+   function Index_Loc_Get_CX_Source_Location (Loc : Idx_Loc_T) return Source_Location_T  -- install/include/clang-c/Index.h:6821
    with Import => True, 
         Convention => C, 
         External_Name => "clang_indexLoc_getCXSourceLocation";
@@ -8103,7 +8157,7 @@ function Index_Source_File_Full_Argv
   --  
 
    type Field_Visitor_T is access function (Arg_1 : Cursor_T; Arg_2 : Client_Data_T) return Visitor_Result_T
-   with Convention => C;  -- install/include/clang-c/Index.h:6780
+   with Convention => C;  -- install/include/clang-c/Index.h:6834
 
   --*
   -- * Visit the fields of a particular type.
@@ -8128,7 +8182,7 @@ function Index_Source_File_Full_Argv
    function Type_Visit_Fields
      (T : Type_T;
       Visitor : Field_Visitor_T;
-      Client_Data : Client_Data_T) return unsigned  -- install/include/clang-c/Index.h:6802
+      Client_Data : Client_Data_T) return unsigned  -- install/include/clang-c/Index.h:6856
    with Import => True, 
         Convention => C, 
         External_Name => "clang_Type_visitFields";

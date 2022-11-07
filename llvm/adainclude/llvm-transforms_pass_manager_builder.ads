@@ -88,13 +88,6 @@ procedure Pass_Manager_Set_Disable_Simplify_Lib_Calls
         Convention => C, 
         External_Name => "LLVMPassManagerBuilderPopulateModulePassManager";
 
-  --* See llvm::PassManagerBuilder::populateLTOPassManager.  
-procedure Pass_Manager_Populate_LTO_Pass_Manager
-     (PMB         : Pass_Manager_Builder_T;
-      PM          : LLVM.Types.Pass_Manager_T;
-      Internalize : Boolean;
-      Run_Inliner : Boolean);
-
   --*
   -- * @}
   --  

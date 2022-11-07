@@ -603,7 +603,7 @@ function Codegen_Write_Merged_Modules
   -- * \since prior to LTO_API_VERSION=3
   --  
 
-   function Codegen_Compile (Cg : Code_Gen_T_T; Length : access unsigned_long) return System.Address  -- install/include/llvm-c/lto.h:494
+   function Codegen_Compile (Cg : Code_Gen_T_T; Length : access stddef_h.size_t) return System.Address  -- install/include/llvm-c/lto.h:494
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_compile";
@@ -647,7 +647,7 @@ function Codegen_Write_Merged_Modules
   -- * \since LTO_API_VERSION=12
   --  
 
-   function Codegen_Compile_Optimized (Cg : Code_Gen_T_T; Length : access unsigned_long) return System.Address  -- install/include/llvm-c/lto.h:529
+   function Codegen_Compile_Optimized (Cg : Code_Gen_T_T; Length : access stddef_h.size_t) return System.Address  -- install/include/llvm-c/lto.h:529
    with Import => True, 
         Convention => C, 
         External_Name => "lto_codegen_compile_optimized";
@@ -805,7 +805,7 @@ function Input_Create
 function Input_Get_Dependent_Library
      (Input : Input_T_T;
       Index : stddef_h.size_t;
-      Size  : access unsigned_long)
+      Size  : access stddef_h.size_t)
       return String;
 
   --*
@@ -815,7 +815,7 @@ function Input_Get_Dependent_Library
   -- * \since prior to LTO_API_VERSION=25
   --  
 
-   function Runtime_Lib_Symbols_List (Size : access unsigned_long) return System.Address  -- install/include/llvm-c/lto.h:655
+   function Runtime_Lib_Symbols_List (Size : access stddef_h.size_t) return System.Address  -- install/include/llvm-c/lto.h:655
    with Import => True, 
         Convention => C, 
         External_Name => "lto_runtime_lib_symbols_list";

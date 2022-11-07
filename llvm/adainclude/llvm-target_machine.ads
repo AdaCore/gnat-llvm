@@ -239,7 +239,7 @@ function Get_Host_CPU_Features
       return String;
 
   --* Adds the target-specific analysis passes to the pass manager.  
-   procedure Add_Analysis_Passes (T : Target_Machine_T; PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/TargetMachine.h:163
+   procedure Add_Analysis_Passes (T : Target_Machine_T; PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/TargetMachine.h:165
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddAnalysisPasses";

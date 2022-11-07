@@ -6,7 +6,7 @@
 PWD:=$(shell pwd)
 TMP_GEN_DIR=gen
 OUT_DIR=out
-LLVM_RELEASE=14.0.6
+LLVM_RELEASE=15.0.4
 LLVM_INSTALL_DIR=$(PWD)/install
 LLVM_SRC_DIR=llvm-project-$(LLVM_RELEASE).src
 LLVM_INCLUDE_DIR=$(LLVM_INSTALL_DIR)/include
@@ -18,8 +18,16 @@ LLVM_SRC_FNAME=$(LLVM_SRC_DIR).tar.xz
 LLVM_RELEASE_URL=https://github.com/llvm/llvm-project/releases/download/llvmorg-$(LLVM_RELEASE)
 LLVM_SRC_LINK=$(LLVM_RELEASE_URL)/$(LLVM_SRC_FNAME)
 LLVM_TARGETS=X86
+# Linking LLVM libraries and binaries requires lots of RAM and is a common cause
+# for out-of-memory errors. Restricting the build system to a single link job at
+# a time doesn't affect the build time significantly but protects us from those
+# memory issues.
 CMAKE_FLAGS=-DLLVM_TARGETS_TO_BUILD="$(LLVM_TARGETS)" \
-	-DBUILD_SHARED_LIBS=ON -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_ENABLE_PROJECTS=clang
+	-DBUILD_SHARED_LIBS=ON -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_ENABLE_PROJECTS=clang \
+	-DLLVM_PARALLEL_LINK_JOBS=1
+# LLVM 15 requires us to specify a CMake build type explicitly; we use Debug for
+# the default target.
+CMAKE_FLAGS_DEBUG=-DCMAKE_BUILD_TYPE=Debug
 CMAKE_FLAGS_NO_DEBUG=-DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON
 CMAKE_FLAGS_PROD=-DCMAKE_BUILD_TYPE=RelWithDebInfo
 
@@ -41,22 +49,16 @@ CONFIGURE=cd llvm-obj && CXX=g++ CC=gcc CXXC=g++ \
   cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$(LLVM_INSTALL_DIR) \
   $(CMAKE_FLAGS) ../$(LLVM_SRC_DIR)/llvm
 
-.PHONY: llvm-obj
-
-setup: $(LLVM_SRC_DIR) llvm-obj
+setup: $(LLVM_SRC_DIR)
 
 $(LLVM_SRC_DIR):
 	$(DL) $(LLVM_SRC_LINK)
 	tar xJf $(LLVM_SRC_FNAME)
 	rm $(LLVM_SRC_FNAME)
 
-llvm-obj:
+llvm-obj/CMakeCache.txt:
 	mkdir -p llvm-obj
-	$(CONFIGURE)
-
-configure:
-	mkdir -p llvm-obj
-	$(CONFIGURE)
+	$(CONFIGURE) $(CMAKE_FLAGS_DEBUG)
 
 configure-no-debug:
 	mkdir -p llvm-obj
@@ -66,7 +68,7 @@ configure-prod:
 	mkdir -p llvm-obj
 	$(CONFIGURE) $(CMAKE_FLAGS_PROD)
 
-llvm: llvm-obj
+llvm: llvm-obj/CMakeCache.txt
 	$(MAKE) -s -C llvm-obj
 
 install: llvm

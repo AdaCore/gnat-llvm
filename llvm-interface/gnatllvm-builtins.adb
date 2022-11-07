@@ -507,10 +507,16 @@ package body GNATLLVM.Builtins is
          when Atomic_RMW_Bin_Op_Xor =>
             return Build_Xor (Result, Val);
 
-         when Atomic_RMW_Bin_Op_Max | Atomic_RMW_Bin_Op_U_Max =>
+         when Atomic_RMW_Bin_Op_Max
+            | Atomic_RMW_Bin_Op_U_Max
+            | Atomic_RMW_Bin_Op_F_Max
+            =>
             return Build_Max (Result, Val);
 
-         when Atomic_RMW_Bin_Op_Min | Atomic_RMW_Bin_Op_U_Min =>
+         when Atomic_RMW_Bin_Op_Min
+            | Atomic_RMW_Bin_Op_U_Min
+            | Atomic_RMW_Bin_Op_F_Min
+            =>
             return Build_Min (Result, Val);
       end case;
    end Emit_Fetch_And_Op;

@@ -93,8 +93,11 @@ package GNATLLVM.Exprs is
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (Build_Select
-        (I_Cmp ((if Is_Unsigned_Type (LHS) then Int_UGT else Int_SGT),
-                LHS, RHS),
+        ((if Is_Floating_Point_Type (LHS) then
+             F_Cmp (Real_OGT, LHS, RHS)
+          else
+             I_Cmp ((if Is_Unsigned_Type (LHS) then Int_UGT else Int_SGT),
+                    LHS, RHS)),
          LHS, RHS, Name))
      with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (Build_Max'Result);
@@ -103,8 +106,11 @@ package GNATLLVM.Exprs is
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
      (Build_Select
-        (I_Cmp ((if Is_Unsigned_Type (LHS) then Int_ULT else Int_SLT),
-                LHS, RHS),
+        ((if Is_Floating_Point_Type (LHS) then
+             F_Cmp (Real_OLT, LHS, RHS)
+          else
+             I_Cmp ((if Is_Unsigned_Type (LHS) then Int_ULT else Int_SLT),
+                     LHS, RHS)),
          LHS, RHS, Name))
      with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (Build_Min'Result);

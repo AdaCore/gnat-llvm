@@ -334,7 +334,10 @@ begin
             return;
          end if;
 
-         Spawn (S.all, Args (1 .. Arg_Count), Status);
+         --  Clang 15 and above default to creating position-independent
+         --  executables; since we don't use PIE for Ada code, disable it in
+         --  the linker.
+         Spawn (S.all, new String'("-no-pie") & Args (1 .. Arg_Count), Status);
          Free (S);
       end;
    end if;

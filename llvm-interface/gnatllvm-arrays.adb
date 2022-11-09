@@ -1437,8 +1437,8 @@ package body GNATLLVM.Arrays is
 
       begin
          for Idx in 2 .. Idxs'Last loop
-            Index := Index * Get_Array_Length (Full_Etype (GT), Dim, V) +
-                      To_Size_Type (Idxs (Idx));
+            Index := Index * Get_Array_Length (Full_Etype (GT), Dim, V);
+            Index := Index + To_Size_Type (Idxs (Idx));
             Dim   := (if Fortran then Dim - 1 else Dim + 1);
          end loop;
 

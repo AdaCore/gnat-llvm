@@ -1,3 +1,4 @@
+#include "llvm-c/Types.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/Analysis/AliasAnalysis.h"
@@ -18,7 +19,9 @@
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Passes/PassBuilder.h"
+#include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
@@ -574,13 +577,14 @@ OurLoopPass::run (Loop &L, LoopAnalysisManager &LAM,
 }
 
 extern "C"
-void
+LLVMBool
 LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
 		      int SizeOptLevel, bool NeedLoopInfo,
 		      bool NoUnrollLoops, bool NoLoopVectorization,
 		      bool NoSLPVectorization, bool MergeFunctions,
 		      bool PrepareForThinLTO, bool PrepareForLTO,
-		      bool RerollLoops)
+		      bool RerollLoops, const char *PassPluginName,
+                      char** ErrorMessage)
 {
   // This code is derived from EmitAssemblyWithNewPassManager in clang
 
@@ -605,6 +609,23 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
   ModuleAnalysisManager MAM;
 
   PassBuilder PB (TM, PTO, PGOOpt, &PIC);
+
+  if (PassPluginName != nullptr)
+    {
+      auto Plugin = PassPlugin::Load (PassPluginName);
+
+      if (auto Err = Plugin.takeError())
+        {
+          handleAllErrors(std::move(Err), [&](const StringError &Err) {
+            if (ErrorMessage != nullptr)
+              *ErrorMessage = strdup (Err.getMessage().c_str());
+          });
+
+          return 1;
+        }
+
+      Plugin->registerPassBuilderCallbacks(PB);
+    }
 
   FAM.registerPass ([&] { return PB.buildDefaultAAPipeline (); });
 
@@ -641,6 +662,7 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
     MPM.addPass (createModuleToFunctionPassAdaptor
 		 (createFunctionToLoopPassAdaptor (OurLoopPass ())));
   MPM.run (*M, MAM);
+  return 0;
 }
 
 extern "C"

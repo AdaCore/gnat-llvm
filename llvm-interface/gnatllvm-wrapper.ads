@@ -280,7 +280,7 @@ package GNATLLVM.Wrapper is
      (MD : Metadata_T; Idx : Nat) return ULL
      with Pre => Present (MD), Inline;
 
-   procedure LLVM_Optimize_Module
+   function LLVM_Optimize_Module
      (Module                : Module_T;
       Target_Machine        : Target_Machine_T;
       Code_Opt_Level        : Nat;
@@ -292,8 +292,13 @@ package GNATLLVM.Wrapper is
       Merge_Functions       : Boolean;
       Prepare_For_Thin_LTO  : Boolean;
       Prepare_For_LTO       : Boolean;
-      Reroll_Loops          : Boolean);
-   --  Perform optimizations on the module
+      Reroll_Loops          : Boolean;
+      Pass_Plugin_Name      : String_Access;
+      Error_Message         : System.Address) return Boolean;
+   --  Perform optimizations on the module. The function's interface mimics our
+   --  LLVM bindings (e.g., LLVM.Core) by taking the address of a value of type
+   --  Ptr_Err_Msg_Type for the optionally returned error message, and
+   --  returning a Boolean which is true if an error occurred.
 
    procedure Add_Debug_Flags (Module : Module_T)
      with Import, Convention => C, External_Name => "Add_Debug_Flags";

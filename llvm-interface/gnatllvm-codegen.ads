@@ -66,17 +66,18 @@ package GNATLLVM.Codegen is
    --  True if we should optimize IR before writing it out when optimization
    --  is enabled.
 
-   No_Strict_Aliasing_Flag : Boolean := False;
-   C_Style_Aliasing        : Boolean := False;
-   No_Inlining             : Boolean := False;
-   No_Unroll_Loops         : Boolean := False;
-   No_Loop_Vectorization   : Boolean := False;
-   No_SLP_Vectorization    : Boolean := False;
-   Merge_Functions         : Boolean := True;
-   Prepare_For_Thin_LTO    : Boolean := False;
-   Prepare_For_LTO         : Boolean := False;
-   Reroll_Loops            : Boolean := False;
-   No_Tail_Calls           : Boolean := False;
+   No_Strict_Aliasing_Flag : Boolean       := False;
+   C_Style_Aliasing        : Boolean       := False;
+   No_Inlining             : Boolean       := False;
+   No_Unroll_Loops         : Boolean       := False;
+   No_Loop_Vectorization   : Boolean       := False;
+   No_SLP_Vectorization    : Boolean       := False;
+   Merge_Functions         : Boolean       := True;
+   Prepare_For_Thin_LTO    : Boolean       := False;
+   Prepare_For_LTO         : Boolean       := False;
+   Reroll_Loops            : Boolean       := False;
+   No_Tail_Calls           : Boolean       := False;
+   Pass_Plugin_Name        : String_Access := null;
    --  Switch options for optimization
 
    Force_Activation_Record_Parameter : Boolean := False;

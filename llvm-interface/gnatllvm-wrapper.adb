@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Interfaces.C.Strings; use Interfaces.C.Strings;
+
 package body GNATLLVM.Wrapper is
 
    ----------------------------------
@@ -322,7 +324,7 @@ package body GNATLLVM.Wrapper is
    --  LLVM_Optimize_Module --
    ---------------------------
 
-   procedure LLVM_Optimize_Module
+   function LLVM_Optimize_Module
      (Module                : Module_T;
       Target_Machine        : Target_Machine_T;
       Code_Opt_Level        : Nat;
@@ -334,9 +336,11 @@ package body GNATLLVM.Wrapper is
       Merge_Functions       : Boolean;
       Prepare_For_Thin_LTO  : Boolean;
       Prepare_For_LTO       : Boolean;
-      Reroll_Loops          : Boolean)
+      Reroll_Loops          : Boolean;
+      Pass_Plugin_Name      : String_Access;
+      Error_Message         : System.Address) return Boolean
    is
-      procedure LLVM_Optimize_Module_C
+      function LLVM_Optimize_Module_C
         (Module                : Module_T;
          Target_Machine        : Target_Machine_T;
          Code_Opt_Level        : Nat;
@@ -348,7 +352,9 @@ package body GNATLLVM.Wrapper is
          Merge_Functions       : LLVM_Bool;
          Prepare_For_Thin_LTO  : LLVM_Bool;
          PrepareFor_LTO        : LLVM_Bool;
-         Reroll_Loops          : LLVM_Bool)
+         Reroll_Loops          : LLVM_Bool;
+         Pass_Plugin_Name      : chars_ptr;
+         Error_Message         : System.Address) return LLVM_Bool
         with Import, Convention => C, External_Name => "LLVM_Optimize_Module";
       Need_Loop_Info_B : constant LLVM_Bool := Boolean'Pos (Need_Loop_Info);
       No_Unroll_B      : constant LLVM_Bool := Boolean'Pos (No_Unroll_Loops);
@@ -361,12 +367,22 @@ package body GNATLLVM.Wrapper is
         Boolean'Pos (Prepare_For_Thin_LTO);
       LTO_B            : constant LLVM_Bool := Boolean'Pos (Prepare_For_LTO);
       Reroll_B         : constant LLVM_Bool := Boolean'Pos (Reroll_Loops);
+      Pass_PN_Ptr      : chars_ptr :=
+        (if Pass_Plugin_Name = null then
+            Null_Ptr
+         else
+            New_String (Pass_Plugin_Name.all));
+      Result           : LLVM_Bool;
 
    begin
-      LLVM_Optimize_Module_C (Module, Target_Machine,
-                              Code_Opt_Level, Size_Opt_Level, Need_Loop_Info_B,
-                              No_Unroll_B, No_Loop_Vect_B, No_SLP_Vect_B,
-                              Merge_B, Thin_LTO_B, LTO_B, Reroll_B);
+      Result :=
+        LLVM_Optimize_Module_C (Module, Target_Machine,
+                                Code_Opt_Level, Size_Opt_Level,
+                                Need_Loop_Info_B, No_Unroll_B, No_Loop_Vect_B,
+                                No_SLP_Vect_B, Merge_B, Thin_LTO_B, LTO_B,
+                                Reroll_B, Pass_PN_Ptr, Error_Message);
+      Free (Pass_PN_Ptr);
+      return Result /= 0;
    end LLVM_Optimize_Module;
 
    -----------------------------

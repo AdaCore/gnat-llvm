@@ -35,6 +35,11 @@ ifeq ($(OS),Windows_NT)
   LN_S=cp -p
   LDFLAGS+=-Wl,--stack=0x2000000
   EXE=.exe
+else
+  # In order to enable pass plugins, the compiler binary needs to reexport LLVM
+  # symbols to shared objects. We achieve this by building with -rdynamic (which
+  # is equivalent to -Wl,--export-dynamic), just like Clang.
+  LDFLAGS+=-rdynamic
 endif
 
 compare=cmp --ignore-initial=16

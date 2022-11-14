@@ -189,8 +189,10 @@ begin
 
          elsif Arg = "-x" then
             if J < Args'Last
-              and then (Argument (J + 1) = "c"
-                        or else Argument (J + 1) = "c++")
+              and then (Argument (J + 1) in "c"
+                                          | "c++"
+                                          | "assembler"
+                                          | "assembler-with-cpp")
             then
                Compile_With_Clang := True;
             end if;

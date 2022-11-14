@@ -9,10 +9,9 @@ project Tools is
    for Main use
      ("gnatmake.adb", "gnatbind.adb", "gnatlink.adb", "gnatchop.adb",
       "gnatkr.adb", "gnatls.adb", "gnatprep.adb", "gnatname.adb",
-      "gnatclean.adb", "gnatcmd.adb", "gcc_wrapper.adb");
+      "gnatclean.adb", "gnatcmd.adb");
 
    package Builder is
-      for Executable ("gcc_wrapper.adb") use "llvm-gcc";
       for Executable ("gnatmake.adb") use "llvm-gnatmake";
       for Executable ("gnatbind.adb") use "llvm-gnatbind";
       for Executable ("gnatlink.adb") use "llvm-gnatlink";

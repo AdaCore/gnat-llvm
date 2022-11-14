@@ -30,6 +30,7 @@ with Ada.Command_Line;        use Ada.Command_Line;
 with Ada.Strings.Fixed;       use Ada.Strings.Fixed;
 with GNAT.OS_Lib;             use GNAT.OS_Lib;
 with Gnatvsn;
+with LLVM.Target_Machine;
 
 procedure GCC_Wrapper is
 
@@ -124,9 +125,7 @@ begin
 
          elsif Arg = "-dumpmachine" then
 
-            --  ??? At some point, this should be the real target triple
-
-            Put_Line ("llvm");
+            Put_Line (LLVM.Target_Machine.Get_Default_Target_Triple);
             OS_Exit (0);
 
          elsif Arg = "--version" then

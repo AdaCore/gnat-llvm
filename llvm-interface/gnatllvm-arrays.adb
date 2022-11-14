@@ -1437,6 +1437,9 @@ package body GNATLLVM.Arrays is
 
       begin
          for Idx in 2 .. Idxs'Last loop
+            --  The functions below emit bitcode as a side effect; perform the
+            --  index computation in two steps to prevent non-determinism
+            --  introduced by Ada's arbitrary parameter evaluation order.
             Index := Index * Get_Array_Length (Full_Etype (GT), Dim, V);
             Index := Index + To_Size_Type (Idxs (Idx));
             Dim   := (if Fortran then Dim - 1 else Dim + 1);

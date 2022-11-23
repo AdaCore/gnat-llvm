@@ -25,17 +25,13 @@
 --  This package body provides the llvm-gnat1 implementation of the routines
 --  that locate the Ada library source and object directories.
 
+with LLVM.Target_Machine; use LLVM.Target_Machine;
+
 with Options; use Options;
 with Osint; use Osint;
 
 package body Sdefault is
    pragma Style_Checks (Off);
-
-   ----------------
-   -- Local Data --
-   ----------------
-
-   Target : constant String := "llvm/";
 
    ------------------------------
    -- Include_Dir_Default_Name --
@@ -74,7 +70,7 @@ package body Sdefault is
 
    function Target_Name return String_Ptr is
    begin
-      return new String'(Target);
+      return new String'(Get_Default_Target_Triple);
    end Target_Name;
 
 end Sdefault;

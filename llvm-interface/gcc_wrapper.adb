@@ -29,8 +29,10 @@ with Ada.Text_IO;             use Ada.Text_IO;
 with Ada.Command_Line;        use Ada.Command_Line;
 with Ada.Strings.Fixed;       use Ada.Strings.Fixed;
 with GNAT.OS_Lib;             use GNAT.OS_Lib;
-with Gnatvsn;
-with LLVM.Target_Machine;
+
+with LLVM.Target_Machine; use LLVM.Target_Machine;
+
+with Gnatvsn; use Gnatvsn;
 
 procedure GCC_Wrapper is
 
@@ -100,7 +102,7 @@ begin
       begin
          if Arg = "-v" then
             declare
-               Version : constant String := Gnatvsn.Gnat_Version_String;
+               Version : constant String := Gnat_Version_String;
             begin
                Put_Line ("Target: llvm");
 
@@ -125,7 +127,7 @@ begin
 
          elsif Arg = "-dumpmachine" then
 
-            Put_Line (LLVM.Target_Machine.Get_Default_Target_Triple);
+            Put_Line (Get_Default_Target_Triple);
             OS_Exit (0);
 
          elsif Arg = "--version" then

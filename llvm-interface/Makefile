@@ -80,7 +80,7 @@ setup:
 build: setup force
 	$(GPRBUILD) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
-	$(GPRBUILD) -Ptools -j$(PROCS)
+	$(GPRBUILD) -Ptools -j$(PROCS) -largs $(LDFLAGS)
 
 build-uninit: setup force
 	$(GPRBUILD) -XBuild=Uninitialized -Pgnat_llvm -j$(PROCS) \

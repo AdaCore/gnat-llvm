@@ -85,12 +85,12 @@ build: setup force
 build-uninit: setup force
 	$(GPRBUILD) -XBuild=Uninitialized -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
-	$(GPRBUILD) -Ptools -j$(PROCS)
+	$(GPRBUILD) -Ptools -j$(PROCS) -largs $(LDFLAGS)
 
 build-opt: setup force
 	$(GPRBUILD) $(GPROPT) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
-	$(GPRBUILD) $(GPROPT) -Ptools -j$(PROCS)
+	$(GPRBUILD) $(GPROPT) -Ptools -j$(PROCS) -largs $(LDFLAGS)
 
 # Target for building with coverage instrumentation.
 build-cov: setup force
@@ -103,7 +103,8 @@ build-cov: setup force
 	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
 	$(GPRBUILD) -Ptools -j$(PROCS) -O \
 	  --subdirs=cov --src-subdirs=gnatcov-instr \
-	  --implicit-with=$(pwd)/../gnatcov_rts-build/install/share/gpr/gnatcov_rts_full.gpr
+	  --implicit-with=$(pwd)/../gnatcov_rts-build/install/share/gpr/gnatcov_rts_full.gpr \
+	  -largs $(LDFLAGS)
 
 cov-info:
 	gnatcov coverage -Pgnat_llvm --level=stmt --save-checkpoint=acats.ckpt \

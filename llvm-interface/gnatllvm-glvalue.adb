@@ -66,7 +66,8 @@ package body GNATLLVM.GLValue is
       Aliases_All : Boolean           := False;
       SM_Object   : Opt_E_Variable_Id := Empty;
       TBAA_Type   : Metadata_T        := No_Metadata_T;
-      TBAA_Offset : ULL               := 0) return GL_Value
+      TBAA_Offset : ULL               := 0;
+      Unknown_T   : Type_T            := No_Type_T) return GL_Value
    is
    begin
       --  Set the entity corresponding to the type of the value if this is
@@ -81,7 +82,8 @@ package body GNATLLVM.GLValue is
       end if;
 
       return (V, GT, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic,
-              Overflowed, Aliases_All, SM_Object, TBAA_Type, TBAA_Offset);
+              Overflowed, Aliases_All, SM_Object, TBAA_Type, TBAA_Offset,
+              Unknown_T);
    end G;
 
    -----------------------
@@ -133,7 +135,6 @@ package body GNATLLVM.GLValue is
 
             --  We allow a non-loadable type to be Data to handle cases
             --  such as passing large objects by value.  We don't want to
-            --  generate such unless we have to, but we also don't want to
             --  generate such unless we have to, but we also don't want
             --  to make it invalid.  We can't use Data for a dynamic
             --  size type, though.
@@ -378,6 +379,15 @@ package body GNATLLVM.GLValue is
    end Set_Aliases_All;
 
    -------------------
+   -- Set_Unknown_T --
+   -------------------
+
+   procedure Set_Unknown_T   (V : in out GL_Value; T : Type_T) is
+   begin
+      V.Unknown_T := T;
+   end Set_Unknown_T;
+
+   -------------------
    -- Set_TBAA_Type --
    -------------------
 
@@ -512,6 +522,47 @@ package body GNATLLVM.GLValue is
 
    function Is_Loadable_Type (V : GL_Value) return Boolean is
      (Is_Data (V) or else Is_Loadable_Type (Related_Type (V)));
+
+   ---------------------
+   -- Element_Type_Of --
+   ---------------------
+
+   function Element_Type_Of (V : GL_Value) return Type_T is
+   begin
+      --  If we don't have opaque pointers, we can get the type from the
+      --  pointer.
+
+      if not Pointer_Type_Is_Opaque (Void_Ptr_T) then
+         return Get_Element_Type (Type_Of (V));
+
+      --  If this is a double reference, the type is a pointer and since
+      --  pointers are opaque, they're all the same.
+
+      elsif Is_Double_Reference (V) then
+         return Void_Ptr_T;
+
+      --  If this is a reference to Unknown, we're supposed to have set the
+      --  type to use.
+
+      elsif Relationship (V) = Reference_To_Unknown then
+         return Unknown_T (V);
+
+      --  If this is a thin pointer, it points to data
+      elsif Relationship (V) = Thin_Pointer then
+         return Type_Of (Related_Type (V));
+
+      --  If this is an access type, we know what its designated type is
+
+      elsif Is_Access_Type (V) then
+         return Type_Of (Full_Designated_GL_Type (V));
+
+      --  Otherwise, we use the LLVM type to be used for this type with the
+      --  dereferenced relationship.
+
+      else
+         return Type_For_Relationship (Related_Type (V), Deref (V));
+      end if;
+   end Element_Type_Of;
 
    ---------------------------
    --  Relationship_For_Ref --
@@ -1766,19 +1817,18 @@ package body GNATLLVM.GLValue is
 
       if Get_Value_Kind (VV) = Constant_Expr_Value_Kind then
          VV := Get_Operand (VV, 0);
-         VE := Convert_Aggregate_Constant
-           (VE, Get_Element_Type (Type_Of (VV)));
+         VE := Convert_Aggregate_Constant (VE, Global_Get_Value_Type (VV));
       end if;
 
       --  If the types of VE and VV have the same layout, convert VE
       --  to VV's type.
 
       if Type_Of (VE) /= Type_Of (VV)
+        and then Relationship (V) = Reference
         and then Is_Layout_Identical (Type_Of (VE),
-                                      Get_Element_Type (Type_Of (VV)))
+                                      Global_Get_Value_Type (VV))
       then
-         VE := Convert_Aggregate_Constant
-           (VE, Get_Element_Type (Type_Of (VV)));
+         VE := Convert_Aggregate_Constant (VE, Global_Get_Value_Type (VV));
       end if;
 
       Set_Initializer (VV, VE);
@@ -1994,7 +2044,7 @@ package body GNATLLVM.GLValue is
       Num_Operands : constant Nat := Get_Num_Operands (GEP);
       Op_Num       : Nat          := 1;
       Align        : Nat          := Max_Valid_Align;
-      T            : Type_T;
+      T            : Type_T       := Type_Of (Get_Operand (GEP, 0));
       Offset       : ULL;
 
    begin
@@ -2017,15 +2067,18 @@ package body GNATLLVM.GLValue is
 
       --  Otherwise, loop through operands as long as we have operands left
       --  and T is a pointer or array.  For each, take the alignment of
-      --  what T points to.
+      --  what T points to. The only time T can be a pointer is the
+      --  first time through, in which case the next type must be the source
+      --  operand type of the GEP.
 
-      T := Type_Of (Get_Operand (GEP, 0));
       while Op_Num < Num_Operands
         and then Get_Type_Kind (T) in Pointer_Type_Kind | Array_Type_Kind
       loop
          declare
             This_Op    : constant Value_T := Get_Operand (GEP, Op_Num);
-            Next_T     : constant Type_T  := Get_Element_Type (T);
+            Next_T     : constant Type_T  :=
+              (if   Get_Type_Kind (T) = Pointer_Type_Kind
+               then Get_Source_Element_Type (GEP) else Get_Element_Type (T));
             This_Align : Nat              := Get_Type_Alignment (Next_T);
             Const_Val  : ULL;
 
@@ -2155,6 +2208,10 @@ package body GNATLLVM.GLValue is
          Write_Str ("TBAA_Offset=");
          Write_Int (Int (V.TBAA_Offset));
          Write_Str (" ");
+      end if;
+      if Present (V.Unknown_T) then
+         Write_Str ("Unknown_T=");
+         Dump_LLVM_Type (V.Unknown_T);
       end if;
       Write_Str (GL_Relationship'Image (V.Relationship) & "(");
       Dump_GL_Type_Int (V.GT, False);

@@ -122,6 +122,10 @@ package body GNATLLVM.Subprograms is
    --  initial value. See RM 6.4.1(14) and RM 3.1.1. If Recurse is true,
    --  check component types as above, but otherwise just check GT itself.
 
+   function Create_Subprogram_Type_Internal
+     (E : Subprogram_Type_Or_Kind_Id) return Type_T
+     with Post => Present (Create_Subprogram_Type_Internal'Result);
+
    function Get_Param_Kind (Param : Formal_Kind_Id) return Param_Kind;
    --  Return the parameter kind for Param
 
@@ -708,6 +712,24 @@ package body GNATLLVM.Subprograms is
    function Create_Subprogram_Type
      (E : Subprogram_Type_Or_Kind_Id) return Type_T
    is
+      T : Type_T := Get_Subprogram_Type (E);
+
+   begin
+      if not Present (T) then
+         T := Create_Subprogram_Type_Internal (E);
+         Set_Subprogram_Type (E, T);
+      end if;
+
+      return T;
+   end Create_Subprogram_Type;
+
+   -------------------------------------
+   -- Create_Subprogram_Type_Internal --
+   -------------------------------------
+
+   function Create_Subprogram_Type_Internal
+     (E : Subprogram_Type_Or_Kind_Id) return Type_T
+   is
       Return_GT       : constant GL_Type     := Full_GL_Type    (E);
       RK              : constant Return_Kind := Get_Return_Kind (E);
       LRK             : constant L_Ret_Kind  := Get_L_Ret_Kind  (E);
@@ -842,7 +864,7 @@ package body GNATLLVM.Subprograms is
       end case;
 
       return Fn_Ty (In_Arg_Types, LLVM_Result_Typ);
-   end Create_Subprogram_Type;
+   end Create_Subprogram_Type_Internal;
 
    -----------------------------------
    -- Create_Subprogram_Access_Type --
@@ -933,8 +955,7 @@ package body GNATLLVM.Subprograms is
       Call (Get_Tramp_Init_Fn, (1 => Tramp, 2 => Cvt_Fn, 3 => Static_Link));
 
       return G_Is_Relationship
-        (Call (Get_Tramp_Adjust_Fn, A_Char_GL_Type, (1 => Tramp)),
-         GT, Trampoline);
+        (Call (Get_Tramp_Adjust_Fn, (1 => Tramp)), GT, Trampoline);
 
    end Make_Trampoline;
 
@@ -1023,7 +1044,10 @@ package body GNATLLVM.Subprograms is
                Result := From_Access (Result);
             else
                Result := Int_To_Ref (Result, GT);
-               Set_Alignment (Result, Alignment (V));
+               Set_Alignment
+                 (Result,
+                  (if   Relationship (Result) = Relationship (V)
+                   then Alignment (V) else Get_Type_Alignment (V)));
             end if;
 
             --  If we have the same relationship as that of the underlying
@@ -1158,7 +1182,9 @@ package body GNATLLVM.Subprograms is
 
             elsif PK = In_Value_By_Int then
                declare
-                  Size : constant ULL := Get_Type_Size (Type_Of (GT));
+                  Size  : constant ULL      := Get_Type_Size (Type_Of (GT));
+                  T     : constant Type_T   := Int_Ty (Size);
+                  Val   : GL_Value;
 
                begin
                   LLVM_Param := Allocate_For_Type
@@ -1166,10 +1192,12 @@ package body GNATLLVM.Subprograms is
                      N    => Param,
                      E    => Param,
                      Name => Name.all);
-                  C_Set_Entity (LLVM_Param, Param);
-                  Store (V, Ptr_To_Relationship
-                           (LLVM_Param, Pointer_Type (Int_Ty (Size), 0),
-                            Reference_To_Unknown));
+
+                  Val := Ptr_To_Relationship (LLVM_Param, Pointer_Type (T, 0),
+                                              Reference_To_Unknown);
+                  Set_Unknown_T (Val, T);
+                  Store (V, Val);
+                  C_Set_Entity  (LLVM_Param, Param);
                end;
 
             --  If this is an array passed to a foreign convention, we
@@ -1810,11 +1838,32 @@ package body GNATLLVM.Subprograms is
             return Ptr_To_Size_Type (Return_Address_Param);
          end;
 
-      --  Otherwise, call the function with our size and return its return
+         --  Otherwise, call the procedure with our size. We treat this as
+         --  a function because we know that it's been converted into a
+         --  function whose return is the parameter which has "out" mode,
+         --  but we have to make sure the type is correct. We have to
+         --  handle both the integral and record pointer cases.
 
       else
-         return Call (Emit_Entity (Proc), Size_GL_Type,
-                      Add_Static_Link (Proc, Args));
+         declare
+            Result : constant GL_Value  :=
+              Call (Emit_Entity (Proc), Add_Static_Link (Proc, Args));
+            Formal : Opt_Formal_Kind_Id := First_Formal_With_Extras (Proc);
+            GT     : GL_Type;
+
+         begin
+            while Present (Formal) loop
+               if Ekind (Formal) = E_Out_Parameter then
+                  GT := Default_GL_Type (Full_Etype (Formal));
+                  return (if Is_Descendant_Of_Address (GT)
+                          then G_Is (Result, GT) else G_Is_Ref (Result, GT));
+               end if;
+
+               Next_Formal_With_Extras (Formal);
+            end loop;
+
+            pragma Assert (False);
+         end;
       end if;
    end Call_Alloc;
 
@@ -1987,6 +2036,8 @@ package body GNATLLVM.Subprograms is
       Direct_Call      : constant Boolean      := Is_Entity_Name (Subp);
       Subp_Typ         : constant Subprogram_Type_Or_Kind_Id :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
+      Fn_Ty            : constant Type_T       :=
+        Create_Subprogram_Type (Subp_Typ);
       RK               : constant Return_Kind  := Get_Return_Kind   (Subp_Typ);
       LRK              : constant L_Ret_Kind   := Get_L_Ret_Kind    (Subp_Typ);
       Return_GT        : constant GL_Type      := Full_GL_Type      (Subp_Typ);
@@ -2312,15 +2363,17 @@ package body GNATLLVM.Subprograms is
 
                   if PK = In_Value_By_Int then
                      declare
-                        Size : constant ULL :=
+                        Size : constant ULL    :=
                           Get_Type_Size (Type_Of (Related_Type (Arg)));
+                        T    : constant Type_T := Int_Ty (Size);
 
                      begin
                         Arg := Get (Arg, Reference);
-                        Arg := Load (Ptr_To_Relationship
-                                       (Get (Arg, Reference),
-                                        Pointer_Type (Int_Ty (Size), 0),
-                                        Reference_To_Unknown));
+                        Arg := Ptr_To_Relationship (Get (Arg, Reference),
+                                                    Pointer_Type (T, 0),
+                                                    Reference_To_Unknown);
+                        Set_Unknown_T (Arg, T);
+                        Arg := Load (Arg);
                      end;
                   else
                      Arg := Get (Arg, Data);
@@ -2386,7 +2439,7 @@ package body GNATLLVM.Subprograms is
 
       case LRK is
          when Void =>
-            Call (LLVM_Func, Args);
+            Call (LLVM_Func, Fn_Ty, Args);
 
             --  If we're emitting C and the return type is of zero size,
             --  we may get here, in which case our result is undef.
@@ -2397,9 +2450,9 @@ package body GNATLLVM.Subprograms is
 
          when Subprog_Return =>
             if RK = RK_By_Reference then
-               Result := Call_Ref (LLVM_Func, Return_GT, Args);
+               Result := Call_Ref (LLVM_Func, Fn_Ty, Args);
             else
-               Result := Call (LLVM_Func, Return_GT, Args);
+               Result := Call (LLVM_Func, Fn_Ty, Args);
             end if;
 
          when Out_Return =>
@@ -2408,12 +2461,12 @@ package body GNATLLVM.Subprograms is
 
             Write_Back
               (Out_LHSs (1), Out_Flds (1), Out_Idxs (1),
-               Call (LLVM_Func, Get_Param_GL_Type (Out_Param), Args),
+               Call (LLVM_Func, Fn_Ty, Args, Get_Param_GL_Type (Out_Param)),
                VFA => Out_VFAs (1));
 
          when Struct_Out | Struct_Out_Subprog =>
             Actual_Return :=
-              Call_Relationship (LLVM_Func, Return_GT, Args, Unknown);
+              Call_Relationship (LLVM_Func, Fn_Ty, Args, Unknown);
 
             --  First extract the return value (possibly returned by-ref)
 

@@ -255,6 +255,8 @@ package GNATLLVM.GLValue is
      (Relation_Props (R).Deref);
    function Ref (R : GL_Relationship)   return GL_Relationship is
      (Relation_Props (R).Ref);
+   function Can_Deref (R : GL_Relationship) return Boolean is
+     (Deref (R) /= Invalid);
 
    function Is_Reference (R : GL_Relationship)            return Boolean is
      (Relation_Props (R).Is_Ref);
@@ -321,10 +323,10 @@ package GNATLLVM.GLValue is
       --  The LLVM value that was generated
 
       GT                   : GL_Type;
-      --  The GL_Type of this value, which points to the GNAT type
+      --  The GL_Type of this value, which points to the GNAT and LLVM types
 
       Relationship         : GL_Relationship;
-      --  The relationship between Value and Typ.
+      --  The relationship between Value and GT
 
       Alignment            : Nat;
       --  The maximum alignment, expressed in bits, and no larger than the
@@ -379,6 +381,10 @@ package GNATLLVM.GLValue is
       --  if a scalar type).  If TBAA_Type isn't Present, this value is
       --  undefined.
 
+      Unknown_T            : Type_T;
+      --  If Relationship is Reference_To_Unknown, this gives the
+      --  LLVM type of the object being referenced.
+
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make
    --  a subtype for that purpose.
@@ -423,7 +429,8 @@ package GNATLLVM.GLValue is
       Aliases_All  => False,
       SM_Object    => Empty,
       TBAA_Type    => No_Metadata_T,
-      TBAA_Offset  => 0);
+      TBAA_Offset  => 0,
+      Unknown_T    => No_Type_T);
 
    function Present (V : GL_Value) return Boolean      is (Present (V.Value));
    function No      (V : GL_Value) return Boolean      is (No      (V.Value));
@@ -482,6 +489,9 @@ package GNATLLVM.GLValue is
    function TBAA_Offset  (V : GL_Value)  return ULL        is (V.TBAA_Offset)
      with Pre => Present (V);
 
+   function Unknown_T    (V : GL_Value)  return Type_T     is (V.Unknown_T)
+     with Pre => Present (V);
+
    --  Define functions about relationships
 
    function Equiv_Relationship (R1, R2 : GL_Relationship) return Boolean is
@@ -514,6 +524,10 @@ package GNATLLVM.GLValue is
 
    function Is_Data (V : GL_Value)                 return Boolean is
      (Is_Data (Relationship (V)))
+     with Pre => Present (V);
+
+   function Can_Deref (V : GL_Value) return Boolean is
+     (Deref (V) /= Invalid)
      with Pre => Present (V);
 
    function Full_Etype (V : GL_Value)              return Void_Or_Type_Kind_Id
@@ -559,7 +573,8 @@ package GNATLLVM.GLValue is
       Aliases_All : Boolean           := False;
       SM_Object   : Opt_E_Variable_Id := Empty;
       TBAA_Type   : Metadata_T        := No_Metadata_T;
-      TBAA_Offset : ULL               := 0) return GL_Value
+      TBAA_Offset : ULL               := 0;
+      Unknown_T   : Type_T            := No_Type_T) return GL_Value
      with Pre => Present (V) and then Present (GT), Inline;
    --  Raw constructor that allows full specification of all fields
 
@@ -577,7 +592,8 @@ package GNATLLVM.GLValue is
          Aliases_All => Aliases_All (GV),
          SM_Object   => SM_Object   (GV),
          TBAA_Type   => TBAA_Type   (GV),
-         TBAA_Offset => TBAA_Offset (GV)))
+         TBAA_Offset => TBAA_Offset (GV),
+         Unknown_T   => Unknown_T   (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
           Post => Present (GM'Result);
    --  Likewise, but copy all but type and relationship from an existing value
@@ -593,6 +609,12 @@ package GNATLLVM.GLValue is
      (GM (+V, GT, Relationship (V), V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is'Result);
+   --  Constructor for case where we want to show that V has a different type
+
+   function G_Is_Ref (V : GL_Value; GT : GL_Type) return GL_Value is
+     (GM (+V, GT, Ref (Relationship (V)), V))
+     with Pre  => Present (V) and then Present (GT),
+          Post => Present (G_Is_Ref'Result);
    --  Constructor for case where we want to show that V has a different type
 
    function G_Is (V : GL_Value; T : GL_Value) return GL_Value is
@@ -644,7 +666,8 @@ package GNATLLVM.GLValue is
       Aliases_All : Boolean           := False;
       SM_Object   : Opt_E_Variable_Id := Empty;
       TBAA_Type   : Metadata_T        := No_Metadata_T;
-      TBAA_Offset : ULL               := 0) return GL_Value
+      TBAA_Offset : ULL               := 0;
+      Unknown_T   : Type_T            := No_Type_T) return GL_Value
    is
      (G (V, GT, Relationship_For_Ref (GT),
          Alignment   => Alignment,
@@ -655,7 +678,8 @@ package GNATLLVM.GLValue is
          Aliases_All => Aliases_All,
          SM_Object   => SM_Object,
          TBAA_Type   => TBAA_Type,
-         TBAA_Offset => TBAA_Offset))
+         TBAA_Offset => TBAA_Offset,
+         Unknown_T   => Unknown_T))
      with Pre  => Present (V) and then Present (GT),
           Post => Is_Reference (G_Ref'Result);
    --  Constructor for case where we create a value that's a pointer
@@ -673,7 +697,8 @@ package GNATLLVM.GLValue is
              Aliases_All => Aliases_All (GV),
              SM_Object   => SM_Object   (GV),
              TBAA_Type   => TBAA_Type   (GV),
-             TBAA_Offset => TBAA_Offset (GV)))
+             TBAA_Offset => TBAA_Offset (GV),
+             Unknown_T   => Unknown_T   (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
           Post => Is_Reference (GM_Ref'Result);
    --  Likewise, but copy the rest of the attributes from GV
@@ -737,6 +762,9 @@ package GNATLLVM.GLValue is
    procedure Set_Aliases_All (V : in out GL_Value; AA : Boolean := True)
      with Pre => Present (V), Post => not AA or else Aliases_All (V), Inline;
 
+   procedure Set_Unknown_T   (V : in out GL_Value; T : Type_T)
+     with Pre => Present (V), Post => Unknown_T (V) = T, Inline;
+
    procedure Set_TBAA_Type (V : in out GL_Value; MD : Metadata_T)
      with Pre => Present (V), Post => TBAA_Type (V) = MD, inline;
    procedure Set_TBAA_Offset (V : in out GL_Value; Offset : ULL)
@@ -759,6 +787,10 @@ package GNATLLVM.GLValue is
    function Type_Of (V : GL_Value) return Type_T is
      (Type_Of (+V))
      with Pre => Present (V), Post => Present (Type_Of'Result);
+
+   function Element_Type_Of (V : GL_Value) return Type_T
+     with Pre => Is_Double_Reference (V) or else Is_Access_Type (V)
+                 or else Relationship (V) = Thin_Pointer or else Can_Deref (V);
 
    function Get_Type_Kind (V : GL_Value) return Type_Kind_T is
      (Get_Type_Kind (Type_Of (V)))
@@ -936,25 +968,40 @@ package GNATLLVM.GLValue is
      (Get_Value_Kind (+V))
      with Pre => Present (V);
 
+   function Get_Function_Type (V : GL_Value) return Type_T is
+     (Get_Function_Type (+V))
+     with Pre => Is_A_Function (V);
+
+   function Get_Source_Element_Type (V : GL_Value) return Type_T is
+     (Get_Source_Element_Type (+V))
+     with Pre => Present (V);
+
    function Is_A_Global_Variable (V : GL_Value) return Boolean is
      (Present (Is_A_Global_Variable (+V)))
      with Pre => Present (V);
-   --  Return True if V is a global variable
 
    function Is_Global_Constant (V : GL_Value) return Boolean is
      (Is_Global_Constant (+V))
      with Pre => Is_A_Global_Variable (V);
-   --  Return True if V is a global constant
 
    function Is_A_Function (V : GL_Value) return Boolean is
      (Present (Is_A_Function (+V)))
      with Pre => Present (V);
-   --  Return True if V is a function
 
    function Is_A_Alloca_Inst (V : GL_Value) return Boolean is
      (Present (Is_A_Alloca_Inst (+V)))
      with Pre => Present (V);
-   --  Return True if V is a function
+
+   function Is_A_Get_Element_Ptr_Inst (V : GL_Value) return Boolean is
+     (Present (Is_A_Get_Element_Ptr_Inst (+V)))
+     with Pre => Present (V);
+
+   function Is_A_GEP (V : GL_Value) return Boolean is
+     ((Present (Is_A_Instruction (+V))
+       and then Get_Instruction_Opcode (+V) = Op_Get_Element_Ptr)
+      or else (Present (Is_A_Constant_Expr (+V))
+               and then Get_Const_Opcode (+V) = Op_Get_Element_Ptr))
+     with Pre => Present (V);
 
    function Is_Undef (V : GL_Value) return Boolean is
      (Is_Undef (+V))
@@ -1142,7 +1189,7 @@ package GNATLLVM.GLValue is
           Post => Present (Get_Undef_Relationship'Result);
 
    function Get_Undef_Fn_Ret (V : GL_Value) return GL_Value is
-     (G (Get_Undef (Get_Return_Type (Get_Element_Type (Type_Of (V)))),
+     (G (Get_Undef (Get_Return_Type (Get_Function_Type ((V)))),
          Related_Type (V), Unknown, Is_Pristine => True))
      with Pre => Is_A_Function (V), Post => Is_Undef (Get_Undef_Fn_Ret'Result);
 
@@ -1246,7 +1293,7 @@ package GNATLLVM.GLValue is
      with Post => Present (Const_Int_32'Result);
 
    function Const_Int_32
-     (N : unsigned; Sign_Extend : Boolean := False) return GL_Value
+     (N : Nat; Sign_Extend : Boolean := False) return GL_Value
    is
      (Const_Int (Int_32_GL_Type, unsigned_long_long (N), Sign_Extend))
      with Post => Present (Const_Int_32'Result);

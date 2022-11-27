@@ -820,6 +820,28 @@ Get_Opcode_Name (LLVMOpcode opc)
 }
 
 extern "C"
+Type *
+Get_Load_Store_Type (Value *I)
+{
+  return getLoadStoreType (I);
+}
+
+extern "C"
+Type *
+Get_Source_Element_Type (Value *I)
+{
+  auto *GEPO = cast<GEPOperator>(I);
+  return GEPO->getSourceElementType ();
+}
+    
+extern "C"
+Type *
+Get_Function_Type (Function *F)
+{
+  return F->getFunctionType ();
+}
+
+extern "C"
 BasicBlock *Get_Unique_Predecessor (BasicBlock *bb)
 {
   return bb->getUniquePredecessor ();

@@ -1585,14 +1585,11 @@ package body GNATLLVM.Aliasing is
    ---------------------------------
 
    procedure Add_Aliasing_To_Instruction (Inst : Value_T; V : GL_Value) is
-      GT            : constant GL_Type  :=
+      GT            : constant GL_Type :=
         (if   Is_Data (V) then Full_Designated_GL_Type (V)
          else Related_Type (V));
-      Ptr_Opnum     : constant unsigned :=
-        (if Present (Is_A_Store_Inst (Inst)) then 1 else 0);
-      Size_In_Bytes : constant ULL      :=
-        To_Bytes (Get_Type_Size (Get_Element_Type
-                                   (Type_Of (Get_Operand (Inst, Ptr_Opnum)))));
+      Size_In_Bytes : constant ULL     :=
+        To_Bytes (Get_Type_Size (Element_Type_Of (V)));
       Offset        : ULL              := TBAA_Offset  (V);
       Base_Type     : Metadata_T       := TBAA_Type    (V);
       Access_Type   : Metadata_T;

@@ -1782,6 +1782,7 @@ package body GNATLLVM.Records is
       Offset     : GL_Value;
       RI         : Record_Info;
       Result     : GL_Value;
+      Result_T   : Type_T;
 
    begin
       --  If the field information isn't present, this must be because
@@ -1851,10 +1852,14 @@ package body GNATLLVM.Records is
       --  type of this piece (which has no corresponding GNAT type).
 
       if Is_Nonnative_Type (Rec_Type) then
-         Result := Ptr_To_Relationship (Result, Pointer_Type (RI.LLVM_Type, 0),
-                                        Rec_GT, Reference_To_Unknown);
+         Result   := Ptr_To_Relationship (Result,
+                                          Pointer_Type (RI.LLVM_Type, 0),
+                                          Rec_GT, Reference_To_Unknown);
+         Set_Unknown_T (Result, RI.LLVM_Type);
+         Result_T := RI.LLVM_Type;
       else
-         Result := Convert_Ref (Result, Rec_GT);
+         Result   := Convert_Ref (Result, Rec_GT);
+         Result_T := Type_Of (Rec_GT);
       end if;
 
       --  Finally, do a regular GEP for the field
@@ -1862,11 +1867,19 @@ package body GNATLLVM.Records is
       Result := GEP_To_Relationship
         (F_GT,
          (if Is_Bitfield (Field) then Reference_To_Unknown else Reference),
-         Result,
-         (1 => Const_Null_32,
-          2 => Const_Int_32 (unsigned (FI.Field_Ordinal))));
+         Result, Result_T,
+         (1 => Const_Null_32, 2 => Const_Int_32 (FI.Field_Ordinal)));
+
+      --  If we've set this to a an unknown reference, set the type so that
+      --  we know what we're pointing to.
 
       Maybe_Initialize_TBAA_For_Field (Result, Field, F_GT);
+      if Is_Bitfield (Field) then
+         Set_Unknown_T (Result,
+                        Struct_Get_Type_At_Index
+                          (Result_T, unsigned (FI.Field_Ordinal)));
+      end if;
+
       return Result;
 
    end Record_Field_Offset;
@@ -2045,19 +2058,23 @@ package body GNATLLVM.Records is
 
          if Is_Array_Bitfield (F) then
             if Relationship (Result) = Unknown then
-               Result := G (Convert_Aggregate_Constant
-                              (+Result, Int_Ty (Get_Type_Size (Result))),
-                            F_GT, Unknown);
+               declare
+                  T : constant Type_T := Int_Ty (Get_Type_Size (Result));
+
+               begin
+                  Result := G (Convert_Aggregate_Constant (+Result, T),
+                               F_GT, Unknown);
+               end;
             else
                declare
-                  T     : constant Type_T :=
-                    Get_Element_Type (Type_Of (Result));
+                  T     : constant Type_T := Element_Type_Of (Result);
                   New_T : constant Type_T := Int_Ty (Get_Scalar_Bit_Size (T));
 
                begin
                   Result := Ptr_To_Relationship (Result,
                                                  Pointer_Type (New_T, 0),
                                                  Reference_To_Unknown);
+                  Set_Unknown_T (Result, New_T);
                end;
             end if;
          end if;
@@ -2121,12 +2138,13 @@ package body GNATLLVM.Records is
                      Memory         : constant GL_Value :=
                        (if   Present (LHS) then LHS
                         else Allocate_For_Type (F_GT));
-                     Mem_As_Int_Ptr : constant GL_Value :=
+                     Mem_As_Int_Ptr : GL_Value          :=
                        Ptr_To_Relationship
                          (Memory, Pointer_Type (Type_Of (Result), 0),
                           F_GT, Reference_To_Unknown);
 
                   begin
+                     Set_Unknown_T (Mem_As_Int_Ptr, Type_Of (Result));
                      Store (Result, Mem_As_Int_Ptr);
 
                      --  For aggregates, we need to queue up a write-back of
@@ -2253,14 +2271,14 @@ package body GNATLLVM.Records is
                                  F_GT, Unknown);
             else
                declare
-                  T     : constant Type_T :=
-                    Get_Element_Type (Type_Of (Rec_Data));
+                  T     : constant Type_T := Element_Type_Of (Rec_Data);
                   New_T : constant Type_T := Int_Ty (Get_Type_Size (T));
 
                begin
                   Data_LHS := Ptr_To_Relationship (Data_LHS,
                                                    Pointer_Type (New_T, 0),
                                                    Reference_To_Unknown);
+                  Set_Unknown_T (Data_LHS, New_T);
                   Rec_Data := Data_LHS;
                end;
             end if;
@@ -2292,6 +2310,7 @@ package body GNATLLVM.Records is
                RHS_Cvt :=
                  Ptr_To_Relationship (RHS_Cvt, Pointer_Type (New_RHS_T, 0),
                                       Reference_To_Unknown);
+               Set_Unknown_T (RHS_Cvt, New_RHS_T);
                RHS_Cvt := Load (RHS_Cvt);
             end if;
          else

@@ -505,7 +505,7 @@ package body GNATLLVM.Exprs is
                (Boolean_And_Data, "llvm." & Ovfl_Name & ".with.overflow.i",
                 LHS_BT);
             Fn_Ret    : constant GL_Value       :=
-              Call_Relationship (Func, LHS_BT, (1 => LVal, 2 => RVal),
+              Call_Relationship (Func, (1 => LVal, 2 => RVal),
                                  Boolean_And_Data);
             Overflow  : constant GL_Value       := Get (Fn_Ret, Boolean_Data);
             Label_Ent : constant Opt_E_Label_Id :=
@@ -697,8 +697,7 @@ package body GNATLLVM.Exprs is
                     Build_Intrinsic (Boolean_And_Data,
                                      "llvm.ssub.with.overflow.i", BT);
                   Fn_Ret    : constant GL_Value       :=
-                    Call_Relationship (Func, GT,
-                                       (1 => Const_Null (BT), 2 => V),
+                    Call_Relationship (Func, (1 => Const_Null (BT), 2 => V),
                                        Boolean_And_Data);
                   Overflow  : constant GL_Value       :=
                     Get (Fn_Ret, Boolean_Data);
@@ -1625,15 +1624,17 @@ package body GNATLLVM.Exprs is
       --  the destination may or may not be a variable-sized type.  Since
       --  we know the size and know the object to store, we can convert
       --  Dest to the type of the pointer to Src, which we know is
-      --  fixed-size, and do the store.  If Dest is pointer to an array
-      --  type, we need to get the actual array data.
+      --  fixed-size, and do the store.  If Dest is a pointer to an array
+      --  type, we need to point to the actual array data.
 
       elsif (No (E) or else Is_Loadable_Type (Full_GL_Type (E)))
         and then (No (Value) or else Is_Loadable_Type (Value))
         and then not Is_Class_Wide_Equivalent_Type (Dest_GT)
       then
          Src := Get (Src, (if Src_R = Bounds_And_Data then Src_R else Data));
-         if Pointer_Type (Type_Of (Src),  0) /= Type_Of (Dest) then
+         if Relationship (Dest) = Fat_Pointer
+           or else Type_Of (Src) /= Element_Type_Of (Dest)
+         then
             Dest := Ptr_To_Relationship (Get (Dest, Reference), Src,
                                          Ref (Relationship (Src)));
          end if;
@@ -1749,6 +1750,7 @@ package body GNATLLVM.Exprs is
       Output_Variable   : Node_Id;
       Input             : Node_Id;
       Clobber           : System.Address;
+      Fn_T              : Type_T;
 
    begin
       --  LLVM only allows one output, so just get the information on
@@ -1890,17 +1892,16 @@ package body GNATLLVM.Exprs is
          --  Create the inline asm
 
          Asm := Inline_Asm (Args, Output_Variable, Template,
-                            Constraints (1 .. Constraint_Pos),
+                            Constraints (1 .. Constraint_Pos), Fn_T,
                             Is_Asm_Volatile (N), False);
 
          --  If we have an output, generate the call with an output and store
          --  the result.  Otherwise, just do the call.
 
          if Present (Output_Variable) then
-            Store (Call (Asm, Full_GL_Type (Output_Variable), Args),
-                   Output_Val);
+            Store (Call (Asm, Fn_T, Args), Output_Val);
          else
-            Call (Asm, Args);
+            Call (Asm, Fn_T, Args);
          end if;
       end;
    end Emit_Code_Statement;

@@ -278,10 +278,10 @@ package body GNATLLVM.Types is
 
    function ULL_Align (C : ULL) return Nat is
    begin
-      if C = 0 then
+      if C = 0 or else (C and not (C - 1)) > ULL (Max_Valid_Align) then
          return Max_Valid_Align;
       else
-         return Nat'Min (Max_Valid_Align, Nat (C and (not (C - 1))));
+         return Nat (C and (not (C - 1)));
       end if;
    end ULL_Align;
 
@@ -824,8 +824,7 @@ package body GNATLLVM.Types is
       --  than the system allocator alignment.
 
       if No (Proc) and then Align <= Get_System_Allocator_Alignment * BPU then
-         Result := Call (Get_Default_Alloc_Fn, A_Char_GL_Type,
-                         (1 => To_Bytes (Size)));
+         Result := Call (Get_Default_Alloc_Fn, (1 => To_Bytes (Size)));
 
       --  Otherwise, if we can use the default memory allocation
       --  function but have to overalign, increase the size by both
@@ -837,12 +836,13 @@ package body GNATLLVM.Types is
          declare
             Ptr_Size   : constant GL_Value := Get_Type_Size (A_Char_GL_Type);
             Total_Size : constant GL_Value := Size + Align + Ptr_Size;
+            Alloc_R    : constant GL_Value :=
+              Call (Get_Default_Alloc_Fn, (1 => To_Bytes (Total_Size)));
             Alloc      : constant GL_Value :=
-              Call (Get_Default_Alloc_Fn, A_Char_GL_Type,
-                    (1 => To_Bytes (Total_Size)));
-            Alloc_Int  : constant GL_Value := Ptr_To_Int (Alloc, Size_GL_Type);
+              (if   Is_Pointer (Alloc_R)
+               then Ptr_To_Int (Alloc_R, Size_GL_Type) else Alloc_R);
             Aligned    : constant GL_Value :=
-              Align_To (Alloc_Int + To_Bytes (Ptr_Size),
+              Align_To (Alloc + To_Bytes (Ptr_Size),
                         Get_System_Allocator_Alignment, To_Bytes (Align));
             Ptr_Loc    : constant GL_Value := Aligned - To_Bytes (Ptr_Size);
 
@@ -951,7 +951,9 @@ package body GNATLLVM.Types is
          if No (Proc) and then Align <= Get_System_Allocator_Alignment * BPU
          then
             Call (Get_Default_Free_Fn,
-                  (1 => Pointer_Cast (Conv_V, A_Char_GL_Type)));
+                  (1 => (if   Emit_C
+                         then Convert_To_Access (Conv_V, A_Char_GL_Type)
+                         else Ptr_To_Int (Conv_V, Size_GL_Type))));
 
          --  If we have to use the normal deallocation procedure to
          --  deallocate an overaligned value, the actual address of the
@@ -965,11 +967,13 @@ package body GNATLLVM.Types is
                Ptr_Size   : constant GL_Value :=
                  Get_Type_Size (A_Char_GL_Type);
                Ptr_Loc    : constant GL_Value := Addr - To_Bytes (Ptr_Size);
-               Ptr_Ref    : constant GL_Value :=
-                 Int_To_Ref (Ptr_Loc, A_Char_GL_Type);
+               Ptr_Addr   : constant GL_Value := Load (Ptr_Loc);
 
             begin
-               Call (Get_Default_Free_Fn, (1 => Load (Ptr_Ref)));
+               Call (Get_Default_Free_Fn,
+                     (1 => (if   Emit_C
+                            then Convert_To_Access (Ptr_Addr, A_Char_GL_Type)
+                            else Ptr_Addr)));
             end;
 
          --  If a procedure was specified (meaning that a pool must also
@@ -1526,17 +1530,18 @@ package body GNATLLVM.Types is
       Our_Volatile : constant Boolean    := Is_Volatile (V);
       Our_Atomic   : constant Boolean    :=
         Is_Atomic (V)
-        and then (Special_Atomic
-                    or else (Atomic_Kind (Get_Element_Type (Type_Of (V)))));
+        and then (Special_Atomic or else Atomic_Kind (Element_Type_Of (V)));
 
    begin
       --  We always set the alignment, since that's correct for all
-      --  references, and always add aliasing information.
+      --  references, and add aliasing information unless we have an undef.
 
       Set_Alignment (Inst, unsigned (To_Bytes (Align)));
-      Add_Aliasing_To_Instruction (Inst, V);
+      if not Is_Undef (V) then
+         Add_Aliasing_To_Instruction (Inst, V);
+      end if;
 
-      --  But nothing else is
+      --  But nothing else is correct in all cases
 
       if not Is_Data (Deref (V)) then
          return;

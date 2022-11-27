@@ -323,6 +323,15 @@ package GNATLLVM.Wrapper is
      (GEP : Value_T; Layout : Target_Data_T; Offset : out ULL) return Boolean
      with Inline;
 
+   function Get_Load_Store_Type (V : Value_T) return Type_T
+     with Import, Convention => C, External_Name => "Get_Load_Store_Type";
+
+   function Get_Function_Type (V : Value_T) return Type_T
+     with Import, Convention => C, External_Name => "Get_Function_Type";
+
+   function Get_Source_Element_Type (V : Value_T) return Type_T
+     with Import, Convention => C, External_Name => "Get_Source_Element_Type";
+
    function Is_C_String (V : Value_T) return Boolean with Inline;
 
    function Get_Element_Offset (T : Type_T; Idx : Int) return ULL

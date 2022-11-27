@@ -1103,10 +1103,13 @@ package body GNATLLVM.Compile is
             end if;
 
             --  If we have a reference to a global constant, we can
-            --  use the value instead.
+            --  use the value instead. But we can't do this if we're
+            --  pointing to a variable-sized type because we've lost the
+            --  type of what this points to.
 
             if Is_Reference (Result) and then Is_A_Global_Variable (Result)
               and then Is_Global_Constant (Result)
+              and then not Is_Nonnative_Type (Result)
             then
                Result := Get_Initializer (Result);
             end if;

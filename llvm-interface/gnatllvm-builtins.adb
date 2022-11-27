@@ -156,6 +156,12 @@ package body GNATLLVM.Builtins is
      (N : N_Subprogram_Call_Id; S : String) return GL_Value;
    --  Generate a call to the an __atomic builtin if valid
 
+   function Get_Default_Alloc_Fn_Name return String is
+     ((if Emit_C then "malloc" else "__gnat_malloc"));
+
+   function Get_Default_Free_Fn_Name return String is
+     ((if Emit_C then "free" else "__gnat_free"));
+
    Default_Alloc_Fn   : GL_Value := No_GL_Value;
    --  Default memory allocation function
 
@@ -528,7 +534,8 @@ package body GNATLLVM.Builtins is
    function Emit_Atomic_Load
      (Ptr : GL_Value; Order : Atomic_Ordering_T; GT : GL_Type) return GL_Value
    is
-      Inst : constant Value_T := Load (IR_Builder, +Ptr, "");
+      Inst : constant Value_T :=
+        Load_2 (IR_Builder, Element_Type_Of (Ptr), +Ptr, "");
 
    begin
       Set_Ordering  (Inst, Order);
@@ -685,7 +692,7 @@ package body GNATLLVM.Builtins is
 
       --  Otherwise, emit the intrinsic
 
-      return Call (Build_Intrinsic (Unary, "llvm.bswap.i", GT), GT,
+      return Call (Build_Intrinsic (Unary, "llvm.bswap.i", GT),
                    (1 => Emit_Expression (Val)));
    end Emit_Bswap_Call;
 
@@ -725,7 +732,7 @@ package body GNATLLVM.Builtins is
 
       --  Now emit the call and return the result
 
-      return Call_Relationship (Get_Expect_Fn, Boolean_GL_Type,
+      return Call_Relationship (Get_Expect_Fn,
                                 (1 => Get (Emit (Val), Boolean_Data),
                                  2 => Expected),
                                 Boolean_Data);
@@ -1010,11 +1017,11 @@ package body GNATLLVM.Builtins is
 
             begin
                if FP.Kind = Unary then
-                  return Call (Subp, GT, (1 => Emit_Expression (Actual)));
+                  return Call (Subp, (1 => Emit_Expression (Actual)));
                else
-                  return Call (Subp, GT, (1 => Emit_Expression (Actual),
-                                          2 => Emit_Expression (Next_Actual
-                                                                  (Actual))));
+                  return Call (Subp, (1 => Emit_Expression (Actual),
+                                      2 => Emit_Expression (Next_Actual
+                                                              (Actual))));
                end if;
             end;
          end if;
@@ -1119,13 +1126,10 @@ package body GNATLLVM.Builtins is
    begin
       if No (Default_Alloc_Fn) then
          Default_Alloc_Fn :=
-           Add_Global_Function ((if Emit_C then "malloc" else "__gnat_malloc"),
-                                Fn_Ty ((1 => Size_T), Void_Ptr_T),
-                                A_Char_GL_Type);
-
-         if Is_A_Function (Default_Alloc_Fn) then
-            Add_Noalias_Attribute (Default_Alloc_Fn);
-         end if;
+           Add_Global_Function
+           (Get_Default_Alloc_Fn_Name,
+            Fn_Ty ((1 => Size_T), (if Emit_C then Void_Ptr_T else Size_T)),
+              (if Emit_C then A_Char_GL_Type else Size_GL_Type));
       end if;
 
       return Default_Alloc_Fn;
@@ -1139,9 +1143,11 @@ package body GNATLLVM.Builtins is
    begin
       if No (Default_Free_Fn) then
          Default_Free_Fn :=
-           Add_Global_Function ((if Emit_C then "free" else "__gnat_free"),
-                                Fn_Ty ((1 => Void_Ptr_T), Void_Type),
-                                Void_GL_Type);
+           Add_Global_Function
+           (Get_Default_Free_Fn_Name,
+            Fn_Ty ((1 => (if Emit_C then Void_Ptr_T else Size_T)),
+              Void_Type),
+              Void_GL_Type);
       end if;
 
       return Default_Free_Fn;
@@ -1252,7 +1258,7 @@ package body GNATLLVM.Builtins is
          Expect_Fn := Add_Function
            ("llvm.expect.i1",
             Fn_Ty ((1 => Bit_T, 2 => Bit_T), Bit_T),
-            Void_GL_Type, Is_Builtin => True);
+            Boolean_GL_Type, Is_Builtin => True);
          Set_Does_Not_Throw      (Get_Expect_Fn);
       end if;
 
@@ -1265,8 +1271,8 @@ package body GNATLLVM.Builtins is
 
    procedure Initialize is
    begin
-      Register_Global_Name ("__gnat_free");
-      Register_Global_Name ("__gnat_malloc");
+      Register_Global_Name (Get_Default_Free_Fn_Name);
+      Register_Global_Name (Get_Default_Alloc_Fn_Name);
       Register_Global_Name ("memcmp");
    end Initialize;
 

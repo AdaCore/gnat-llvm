@@ -495,8 +495,7 @@ package body GNATLLVM.Blocks is
       if No (BI.Stack_Save) and then Block_Stack.Last > 1 and then not Emit_C
       then
          Set_Current_Position (BI.Starting_Position);
-         BI.Stack_Save := Call (Get_Stack_Save_Fn, A_Char_GL_Type,
-                                (1 .. 0 => <>));
+         BI.Stack_Save := Call (Get_Stack_Save_Fn, (1 .. 0 => <>));
          Position_Builder_At_End (Our_BB);
       end if;
    end Save_Stack_Pointer;
@@ -1237,7 +1236,7 @@ package body GNATLLVM.Blocks is
                   BI_Inner.At_End_Proc        := End_Handler_Fn;
                   BI_Inner.At_End_Parameter   := Exc_Ptr;
                   BI_Inner.At_End_Parameter_2 :=
-                    Call (Begin_Handler_Fn, A_Char_GL_Type, (1 => Exc_Ptr));
+                    Call (Begin_Handler_Fn, (1 => Exc_Ptr));
                   BI_Inner.At_End_Pass_Excptr := True;
                end;
 
@@ -1269,7 +1268,7 @@ package body GNATLLVM.Blocks is
             Position_Builder_At_End (BB);
             BB := Create_Basic_Block;
             Build_Cond_Br (I_Cmp (Int_EQ, Selector,
-                                  Call (EH_Slot_Id_Fn, Int_32_GL_Type,
+                                  Call (EH_Slot_Id_Fn,
                                         (1 => Clauses.Table (J).Exc))),
                            Clauses.Table (J).BB, BB);
          end loop;

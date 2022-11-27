@@ -1684,10 +1684,9 @@ package body GNATLLVM.Variables is
                Error_Msg_NE ("No matching object found", Linker_Alias, Our_E);
                LLVM_Var := Get_Undef (GT);
             else
-               LLVM_Var := G (Add_Alias (Module,
-                                         Create_Access_Type_To (GT),
-                                         +Get_Value (Our_E),
-                                         Get_Ext_Name (E)),
+               LLVM_Var := G (Add_Alias_2 (Module, Type_Of (GT), 0,
+                                           +Get_Value (Our_E),
+                                           Get_Ext_Name (E)),
                               GT, Reference);
                Initialize_TBAA (LLVM_Var, Kind_From_Decl (E));
             end if;
@@ -2104,7 +2103,7 @@ package body GNATLLVM.Variables is
          --  this is not an external or something we've already defined,
          --  set one to null to indicate that this is being defined.
 
-         if not Set_Init and then not Is_External
+         if not Set_Init and then not Is_External and then not Is_Imported (E)
            and then Is_A_Global_Variable (LLVM_Var)
          then
             Set_Initializer
@@ -2261,9 +2260,12 @@ package body GNATLLVM.Variables is
             Proc => Procedure_To_Call (Return_Statement (E)),
             Pool => Storage_Pool (Return_Statement (E)));
 
-      --  If we're emitting C and this is of zero size, use Undef
+      --  If we're emitting C and this is of zero size, use Undef unless
+      --  it's aliased or we're taking its address.
 
-      elsif Emit_C and then Is_Zero_Size (Alloc_GT) then
+      elsif Emit_C and then Is_Zero_Size (Alloc_GT) and then not Is_Aliased (E)
+        and then not Address_Taken (E)
+      then
          LLVM_Var := Get_Undef (Alloc_GT);
 
       --  Otherwise, if we still haven't made a variable, allocate it

@@ -880,6 +880,7 @@ package GNATLLVM.Instructions is
 
    function GEP
      (Bld     : Builder_T;
+      T       : Type_T;
       Ptr     : Value_T;
       Indices : Value_Array;
       Name    : String := "") return Value_T
@@ -894,6 +895,18 @@ package GNATLLVM.Instructions is
       Indices : GL_Value_Array;
       Name    : String := "") return GL_Value
      with Pre  => Is_Pointer (Ptr) and then Present (GT)
+                  and then (for all V of Indices => Present (V)),
+          Post => Is_Pointer (GEP_To_Relationship'Result);
+
+   function GEP_To_Relationship
+     (GT      : GL_Type;
+      R       : GL_Relationship;
+      Ptr     : GL_Value;
+      Ptr_T   : Type_T;
+      Indices : GL_Value_Array;
+      Name    : String := "") return GL_Value
+     with Pre  => Is_Pointer (Ptr) and then Present (GT)
+                  and then Present (Ptr_T)
                   and then (for all V of Indices => Present (V)),
           Post => Is_Pointer (GEP_To_Relationship'Result);
 
@@ -929,8 +942,26 @@ package GNATLLVM.Instructions is
 
    function Call
      (Func : GL_Value;
-      GT   : GL_Type;
       Args : GL_Value_Array;
+      Name : String := "") return GL_Value
+     with Pre  => Is_A_Function (Func)
+                  and then (for all V of Args => Present (V)),
+          Post => Present (Call'Result), Inline;
+
+   function Call
+     (Func : GL_Value;
+      Fn_T : Type_T;
+      Args : GL_Value_Array;
+      Name : String := "") return GL_Value
+     with Pre  => Present (Func)
+                  and then (for all V of Args => Present (V)),
+          Post => Present (Call'Result), Inline;
+
+   function Call
+     (Func : GL_Value;
+      Fn_T : Type_T;
+      Args : GL_Value_Array;
+      GT   : GL_Type;
       Name : String := "") return GL_Value
      with Pre  => Present (Func) and then Present (GT)
                   and then (for all V of Args => Present (V)),
@@ -938,20 +969,28 @@ package GNATLLVM.Instructions is
 
    function Call_Ref
      (Func : GL_Value;
-      GT   : GL_Type;
+      Fn_T : Type_T;
       Args : GL_Value_Array;
       Name : String := "") return GL_Value
-     with Pre  => Present (Func) and then Present (GT)
+     with Pre  => Present (Func)
                   and then (for all V of Args => Present (V)),
           Post => Is_Reference (Call_Ref'Result), Inline;
 
    function Call_Relationship
      (Func : GL_Value;
-      GT   : GL_Type;
       Args : GL_Value_Array;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
-     with Pre  => Present (Func) and then Present (GT)
+     with Pre  => Is_A_Function (Func)
+                  and then (for all V of Args => Present (V)),
+          Post => Present (Call_Relationship'Result), Inline;
+   function Call_Relationship
+     (Func : GL_Value;
+      Fn_T : Type_T;
+      Args : GL_Value_Array;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value
+     with Pre  => Present (Func)
                   and then (for all V of Args => Present (V)),
           Post => Present (Call_Relationship'Result), Inline;
      --  Used when an LLVM function is returning something of a specified
@@ -959,6 +998,15 @@ package GNATLLVM.Instructions is
 
    procedure Call
      (Func : GL_Value; Args : GL_Value_Array; Name : String := "")
+     with Pre => Is_A_Function (Func)
+                  and then (for all V of Args => Present (V)),
+          Inline;
+
+   procedure Call
+     (Func : GL_Value;
+      Fn_T : Type_T;
+      Args : GL_Value_Array;
+      Name : String := "")
      with Pre => Present (Func)
                   and then (for all V of Args => Present (V)),
           Inline;
@@ -983,10 +1031,12 @@ package GNATLLVM.Instructions is
       Output_Value   : Entity_Id;
       Template       : String;
       Constraints    : String;
+      Fn_T           : out Type_T;
       Is_Volatile    : Boolean := False;
       Is_Stack_Align : Boolean := False) return GL_Value
      with Pre  => (for all V of Args => Present (V)),
-          Post => Present (Inline_Asm'Result);
+          Post => Present (Inline_Asm'Result)
+                  and then Get_Type_Kind (Fn_T) = Function_Type_Kind;
 
    function Build_Switch
      (V : GL_Value; Default : Basic_Block_T; Blocks : Nat := 15) return Value_T

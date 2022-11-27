@@ -148,6 +148,9 @@ package GNATLLVM.Environment is
    function Get_Label_Info            (VE : Entity_Id)    return Label_Info_Id
      with Pre => Present (VE), Inline;
 
+   function Get_Subprogram_Type       (VE : Entity_Id)    return Type_T
+     with Pre => Present (VE), Inline;
+
    function Get_Flag1                 (VE : Entity_Id)    return Boolean
       with Pre => Present (VE), Inline;
 
@@ -225,6 +228,12 @@ package GNATLLVM.Environment is
                   and then (No (Get_Label_Info (VE))
                               or else Get_Label_Info (VE) = LI),
           Post => Get_Label_Info (VE) = LI, Inline;
+
+   procedure Set_Subprogram_Type       (VE : Entity_Id; T : Type_T)
+     with Pre  => Present (VE)
+                  and then (No (Get_Subprogram_Type (VE))
+                              or else Get_Subprogram_Type (VE) = T),
+          Post => Get_Subprogram_Type (VE) = T, Inline;
 
    procedure Set_Flag1                 (VE : Entity_Id; F : Boolean)
      with Pre  => Present (VE),

@@ -141,7 +141,7 @@ package body GNATLLVM.Conditionals is
             Memcmp  : constant GL_Value :=
               (if   Is_Const_Int_Value (Size, 0)
                then Const_Null (Integer_GL_Type)
-               else Call (Get_Memory_Compare_Fn, Integer_GL_Type,
+               else Call (Get_Memory_Compare_Fn,
                           (1 => Pointer_Cast (LHS_Val, A_Char_GL_Type),
                            2 => Pointer_Cast (RHS_Val, A_Char_GL_Type),
                            3 => To_Bytes (Size))));
@@ -337,7 +337,7 @@ package body GNATLLVM.Conditionals is
                Memcmp : constant GL_Value :=
                  (if   Is_Const_Int_Value (Size, 0)
                   then Const_Null (Integer_GL_Type)
-                  else Call (Get_Memory_Compare_Fn, Integer_GL_Type,
+                  else Call (Get_Memory_Compare_Fn,
                              (1 => Pointer_Cast (Get (LHS_Val, Reference),
                                                  A_Char_GL_Type),
                               2 => Pointer_Cast (Get (RHS_Val, Reference),

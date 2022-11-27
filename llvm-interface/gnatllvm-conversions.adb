@@ -142,7 +142,8 @@ package body GNATLLVM.Conversions is
       --  GNAT types aren't scalar types.
 
       else
-         return Type_Of (V) = Pointer_Type (Type_Of (GT), 0)
+         return (Is_Reference (V) and then Relationship (V) /= Fat_Pointer
+                 and then Element_Type_Of (V) = Type_Of (GT))
            or else (not Is_Scalar_Type (GT)
                       and then not Is_Scalar_Type (Related_Type (V)));
       end if;
@@ -1174,9 +1175,9 @@ package body GNATLLVM.Conversions is
       Set_Unnamed_Addr    (G_C, True);
       Position_Builder_At_End (Our_BB);
       Discard (Build_Ret (IR_Builder,
-                          Load (IR_Builder,
-                                Pointer_Cast (IR_Builder, G_C, Ptr_Ty, ""),
-                                "")));
+                          Load_2 (IR_Builder, T,
+                                  Pointer_Cast (IR_Builder, G_C, Ptr_Ty, ""),
+                                  "")));
       Add_Instruction_Combining_Pass (Our_PM);
       Changed := Run_Pass_Manager (Our_PM, Convert_Module);
       New_Ret := Get_First_Instruction (Our_BB);

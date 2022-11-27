@@ -164,7 +164,8 @@ package GNATLLVM.Aliasing is
 
    procedure Add_Aliasing_To_Instruction (Inst : Value_T; V : GL_Value)
      with Pre => Present (Is_A_Instruction (Inst)) and then Present (V);
-   --  Add aliasing information from V to Inst
+   --  Add aliasing information from V, which is the pointer to the data
+   --  being stored, to Inst.
 
    function Common_TBAA (M1, M2 : Metadata_T) return Metadata_T;
    --  If M1 and M2 are the same or have a common parent, return that.

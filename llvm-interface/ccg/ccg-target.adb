@@ -205,9 +205,9 @@ package body CCG.Target is
       Close (Desc);
 
       --  If the lengths don't agree, we had some issues with the file, so
-      --  assume we couldn't read it. Likewise if the length is zero.
+      --  assume we couldn't read it.
 
-      if Read_Length /= Length or else Read_Length = 0 then
+      if Read_Length /= Length then
          Early_Error ("problem reading file " & Name);
       end if;
 
@@ -224,7 +224,7 @@ package body CCG.Target is
 
       --  If the last character isn't a newline, the file is misformed
 
-      if Buffer (Length) /= ASCII.LF then
+      if Length > 0 and then Buffer (Length) /= ASCII.LF then
          Early_Error (Name & " doesn't end with a newline");
       end if;
 

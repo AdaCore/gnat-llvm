@@ -236,12 +236,12 @@ package body CCG.Codegen is
       elsif Starts_With ("-c-compiler=") then
          Set_C_Compiler (Switch_Value ("-c-compiler="));
          return True;
-      elsif Starts_With ("-c-target-") then
-         Set_C_Parameter (Switch_Value ("-c-target-"));
-         return True;
       elsif Starts_With ("-c-target-file=") then
          To_Free          := Target_Info_File;
          Target_Info_File := new String'(Switch_Value ("-c-target-file="));
+      elsif Starts_With ("-c-target-") then
+         Set_C_Parameter (Switch_Value ("-c-target-"));
+         return True;
       end if;
 
       --  If we were to free an old string value, do so and show that

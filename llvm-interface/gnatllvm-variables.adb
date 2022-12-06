@@ -2438,8 +2438,7 @@ package body GNATLLVM.Variables is
          Mark_Atomic   (LLVM_Var, Is_Atomic (E) or else Is_Atomic (GT));
          Set_Value     (E, LLVM_Var);
          Set_Initializer
-           (LLVM_Var,
-            (if Use_LHS then Const_Null_Ref (GT) else Const_Null_Alloc (GT)));
+           (LLVM_Var, Const_Null_Relationship (GT, Deref (LLVM_Var)));
          Add_To_Elab_Proc (N);
       end if;
 

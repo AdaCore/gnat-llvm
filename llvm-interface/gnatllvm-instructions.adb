@@ -1300,14 +1300,14 @@ package body GNATLLVM.Instructions is
       --  True if this is an atomic reference that LLVM can't handle
       --  directly.
 
-      Equiv_T        : constant Type_T         :=
-        (if   Special_Atomic then Pointer_Type (Int_Ty (Result_Bits), 0)
-         else No_Type_T);
-      --  Integer type with size matching that of the type to be loaded
-
       Ptr_T          : constant Type_T         :=
-        (if Special_Atomic then Equiv_T else T);
+        (if Special_Atomic then Int_Ty (Result_Bits) else T);
       --  Type that Ptr_Val will have
+
+      Equiv_T        : constant Type_T         :=
+        (if Special_Atomic then Pointer_Type (Ptr_T, 0) else No_Type_T);
+      --  Pointer to integer type with size matching that of the type
+      --  to be loaded
 
       Ptr_Val        : Value_T                 :=
         (if   Special_Atomic then Pointer_Cast (IR_Builder, +Ptr, Equiv_T, "")

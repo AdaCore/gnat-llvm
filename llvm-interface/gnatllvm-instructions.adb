@@ -1333,7 +1333,7 @@ package body GNATLLVM.Instructions is
 
       elsif Has_SM_Copy_From (Ptr) then
          declare
-            T : constant Type_T := Get_Element_Type (Type_Of (Ptr));
+            T : constant Type_T := Element_Type_Of (Ptr);
 
          begin
             Result := G_From (Alloca (IR_Builder, T, ""), Ptr);
@@ -1407,7 +1407,7 @@ package body GNATLLVM.Instructions is
       if Has_SM_Copy_To (Ptr) then
          Call_SM_Copy_To
            (Ptr, Expr,
-            To_Bytes (Get_Type_Size (Get_Element_Type (Type_Of (Ptr)))));
+            To_Bytes (Get_Type_Size (Element_Type_Of (Ptr))));
          return;
 
       --  If this is a special atomic store, allocate a temporary, store

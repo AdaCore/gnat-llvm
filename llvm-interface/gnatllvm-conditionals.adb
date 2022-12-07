@@ -112,7 +112,13 @@ package body GNATLLVM.Conditionals is
         and then not Has_Foreign_Convention (GT)
         and then Can_Use_Internal_Rep (GT)
       then
-         return I_Cmp (Operation.Unsigned, Subp_Ptr (LHS), Subp_Ptr (RHS));
+         declare
+            LHS_Val : constant GL_Value := Subp_Ptr (LHS);
+            RHS_Val : constant GL_Value := Subp_Ptr (RHS);
+
+         begin
+            return I_Cmp (Operation.Unsigned, LHS_Val, RHS_Val);
+         end;
 
       elsif Is_Elementary_Type (GT) then
          declare

@@ -30,8 +30,8 @@ package body CCG.Target is
    --  booleans or integers. We create a record type to describe each
    --  parameter.
 
-   type    Access_Boolean is access all Boolean;
-   type    Access_Integer is access all Integer;
+   type    Boolean_Access is access all Boolean;
+   type    Integer_Access is access all Integer;
    type    Param_Type     is (Bool, Num);
    subtype Str_Len        is Integer range 1 .. 20;
 
@@ -40,9 +40,9 @@ package body CCG.Target is
       Name       : String (1 .. SL);
       case PT is
          when Bool =>
-            Bool_Ptr : Access_Boolean;
+            Bool_Ptr : Boolean_Access;
          when Num =>
-            Int_Ptr  : Access_Integer;
+            Int_Ptr  : Integer_Access;
       end case;
    end record;
 
@@ -58,8 +58,8 @@ package body CCG.Target is
      (Name       : String;
       PT         : Param_Type;
       Is_Version : Boolean        := False;
-      Bool_Ptr   : Access_Boolean := null;
-      Int_Ptr    : Access_Integer := null)
+      Bool_Ptr   : Boolean_Access := null;
+      Int_Ptr    : Integer_Access := null)
      with Pre => (if   PT = Bool then Bool_Ptr /= null and then Int_Ptr = null
                   else Bool_Ptr = null and then Int_Ptr /= null);
    --  Add a table entry for the specified parameter
@@ -79,8 +79,8 @@ package body CCG.Target is
      (Name       : String;
       PT         : Param_Type;
       Is_Version : Boolean        := False;
-      Bool_Ptr   : Access_Boolean := null;
-      Int_Ptr    : Access_Integer := null)
+      Bool_Ptr   : Boolean_Access := null;
+      Int_Ptr    : Integer_Access := null)
    is
    begin
       case PT is

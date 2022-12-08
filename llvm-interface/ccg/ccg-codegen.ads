@@ -45,12 +45,12 @@ package CCG.Codegen is
    procedure Generate (Module : Module_T);
    --  The main procedure, which generates C code from the LLVM IR
 
-   function Process_Switch (Switch : String) return Boolean;
+   function Process_Switch (S : String) return Boolean;
    --  S is a switch passed to GNAT LLVM. If it's a switch meaningful
    --  to us, process it and return True.
 
-   function Is_Switch (Switch : String) return Boolean;
-   --  Switch is a switch passed to GNAT LLVM. If it's a switch meaningful
+   function Is_Switch (S : String) return Boolean;
+   --  S is a switch passed to GNAT LLVM. If it's a switch meaningful
    --  to CCG, return True.
 
 end CCG.Codegen;

@@ -17,8 +17,6 @@
 
 with LLVM.Core; use LLVM.Core;
 
-with Switch; use Switch;
-
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
@@ -193,54 +191,43 @@ package body CCG.Codegen is
    -- Process_Switch --
    --------------------
 
-   function Process_Switch (Switch : String) return Boolean is
-      First   : constant Integer := Switch'First;
-      Last    : constant Integer := Switch_Last (Switch);
-      Len     : constant Integer := Last - First + 1;
+   function Process_Switch (S : String) return Boolean is
       To_Free : String_Access    := null;
 
-      function Starts_With (S : String) return Boolean is
-        (Len > S'Length and then Switch (First .. First + S'Length - 1) = S);
-      --  Return True if Switch starts with S
-
-      function Switch_Value (S : String) return String is
-        (Switch (S'Length + First .. Last));
-      --  Returns the value of a switch known to start with S
-
    begin
-      if Switch = "-emit-header" then
+      if S = "-emit-header" then
          Emit_C      := True;
          Emit_Header := True;
          return True;
-      elsif Starts_With ("-header-inline=") then
-         if Switch_Value ("-header-inline=") = "none" then
+      elsif Starts_With (S, "-header-inline=") then
+         if Switch_Value (S, "-header-inline=") = "none" then
             Header_Inline := None;
-         elsif Switch_Value ("-header-inline=") = "inline-always" then
+         elsif Switch_Value (S, "-header-inline=") = "inline-always" then
             Header_Inline := Inline_Always;
-         elsif Switch_Value ("-header-inline=") = "inline" then
+         elsif Switch_Value (S, "-header-inline=") = "inline" then
             Header_Inline := Inline;
          else
             Early_Error ("invalid -header-inline option: " &
-                           Switch_Value ("-header-inline="));
+                           Switch_Value (S, "-header-inline="));
          end if;
 
          return True;
-      elsif Switch = "--dump-c-parameters" then
+      elsif S = "--dump-c-parameters" then
          Dump_C_Parameters := True;
          return True;
-      elsif Starts_With ("--dump-c-parameters=") then
+      elsif Starts_With (S, "--dump-c-parameters=") then
          Dump_C_Parameters := True;
          To_Free           := C_Parameter_File;
          C_Parameter_File  :=
-           new String'(Switch_Value ("--dump-c-parameters="));
-      elsif Starts_With ("-c-compiler=") then
-         Set_C_Compiler (Switch_Value ("-c-compiler="));
+           new String'(Switch_Value (S, "--dump-c-parameters="));
+      elsif Starts_With (S, "-c-compiler=") then
+         Set_C_Compiler (Switch_Value (S, "-c-compiler="));
          return True;
-      elsif Starts_With ("-c-target-file=") then
+      elsif Starts_With (S, "-c-target-file=") then
          To_Free          := Target_Info_File;
-         Target_Info_File := new String'(Switch_Value ("-c-target-file="));
-      elsif Starts_With ("-c-target-") then
-         Set_C_Parameter (Switch_Value ("-c-target-"));
+         Target_Info_File := new String'(Switch_Value (S, "-c-target-file="));
+      elsif Starts_With (S, "-c-target-") then
+         Set_C_Parameter (Switch_Value (S, "-c-target-"));
          return True;
       end if;
 
@@ -258,21 +245,13 @@ package body CCG.Codegen is
    -- Is_Switch --
    ---------------
 
-   function Is_Switch (Switch : String) return Boolean is
-      First : constant Integer := Switch'First;
-      Last  : constant Integer := Switch_Last (Switch);
-      Len   : constant Integer := Last - First + 1;
-
-      function Starts_With (S : String) return Boolean is
-        (Len > S'Length and then Switch (First .. First + S'Length - 1) = S);
-      --  Return True if Switch starts with S
-
+   function Is_Switch (S : String) return Boolean is
    begin
-      return Starts_With ("-header-inline=")
-        or else Starts_With ("-c-target-")
-        or else Starts_With ("-c-compiler=")
-        or else Switch = "--dump-c-parameters"
-        or else Starts_With ("--dump-c-parameters=");
+      return Starts_With    (S, "-header-inline=")
+        or else Starts_With (S, "-c-target-")
+        or else Starts_With (S, "-c-compiler=")
+        or else S = "--dump-c-parameters"
+        or else Starts_With (S, "--dump-c-parameters=");
    end Is_Switch;
 
 end CCG.Codegen;

@@ -24,12 +24,15 @@ with Table;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 
+with CCG.Utils; use CCG.Utils;
+
 package body CCG.Target is
 
    --  We have a table of parameters, which are (for now at least) either
    --  booleans or integers. We create a record type to describe each
    --  parameter.
 
+   subtype String_Access  is GNATLLVM.String_Access;
    type    Boolean_Access is access all Boolean;
    type    Integer_Access is access all Integer;
    type    Param_Type     is (Bool, Num);
@@ -64,6 +67,28 @@ package body CCG.Target is
                   else Bool_Ptr = null and then Int_Ptr /= null);
    --  Add a table entry for the specified parameter
 
+   --  The user can specify the template to use for various declaration
+   --  modifiers. We record the name and the template value in a table.
+   --  The template contains the text to write for a modifier of the
+   --  specified name, with the string "%d" used to represent a value
+   --  in the cases where a value is needed (e.g., for alignment).
+
+   type Modifier is record
+      Name  : String_Access;
+      Value : String_Access;
+   end record;
+
+   package Modifiers is new Table.Table
+     (Table_Component_Type => Modifier,
+      Table_Index_Type     => Integer,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 10,
+      Table_Increment      => 5,
+      Table_Name           => "Modifiers");
+
+   procedure Add_Modifier (Name, Value : String);
+   --  Add Value as the template for modifier Name
+
    procedure Set_One_Parameter (PD : Parameter_Desc; Value : String);
    --  Set the parameter denoted by PD to Value
 
@@ -92,6 +117,21 @@ package body CCG.Target is
                                 Int_Ptr));
       end case;
    end Add_Param;
+
+   ------------------
+   -- Add_Modifier --
+   ------------------
+
+   procedure Add_Modifier (Name, Value : String) is
+   begin
+      for J in 1 .. Modifiers.Last loop
+         if Modifiers.Table (J).Name.all = Name then
+            Early_Error ("duplicate modifier '" & Name & "'");
+         end if;
+      end loop;
+
+      Modifiers.Append ((new String'(Name), new String'(Value)));
+   end Add_Modifier;
 
    ---------------------
    -- Set_One_Parameter --
@@ -166,6 +206,10 @@ package body CCG.Target is
          Early_Error ("Missing equal sign in parameter specification");
       elsif Equal_Pos = S'Last then
          Early_Error ("Missing value in parameter specification");
+      elsif Starts_With (S (S'First .. Equal_Pos - 1), "modifier-") then
+         Add_Modifier (Switch_Value (S (S'First .. Equal_Pos - 1),
+                                     "modifier-"),
+                       S (Equal_Pos + 1 .. S'Last));
       else
          for J in 1 .. Parameters.Last loop
             if S (S'First .. Equal_Pos - 1) = Parameters.Table (J).Name then
@@ -213,7 +257,7 @@ package body CCG.Target is
 
       --  Now scan the file, looking for ends of lines
 
-      while N < Length loop
+      while N <= Length loop
          if Buffer (N) = ASCII.LF then
             Set_C_Parameter (Buffer (Line_Ptr .. N - 1));
             Line_Ptr := N + 1;
@@ -306,6 +350,14 @@ package body CCG.Target is
 
             Write_Eol;
          end;
+      end loop;
+
+      for J in 1 .. Modifiers.Last loop
+         Write_Str ("modifier-");
+         Write_Str (Modifiers.Table (J).Name.all);
+         Write_Str ("=");
+         Write_Str (Modifiers.Table (J).Value.all);
+         Write_Eol;
       end loop;
 
       Pop_Output;

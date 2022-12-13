@@ -984,6 +984,10 @@ package GNATLLVM.GLValue is
      (Is_Global_Constant (+V))
      with Pre => Is_A_Global_Variable (V);
 
+   function Global_Get_Value_Type (V : GL_Value) return Type_T is
+     (Global_Get_Value_Type (+V))
+     with Pre => Is_A_Global_Variable (V);
+
    function Is_A_Function (V : GL_Value) return Boolean is
      (Present (Is_A_Function (+V)))
      with Pre => Present (V);

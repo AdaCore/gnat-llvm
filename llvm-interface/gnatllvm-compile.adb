@@ -1105,11 +1105,18 @@ package body GNATLLVM.Compile is
             --  If we have a reference to a global constant, we can
             --  use the value instead. But we can't do this if we're
             --  pointing to a variable-sized type because we've lost the
-            --  type of what this points to.
+            --  type of what this points to. We also can't do this if pointer
+            --  punning has been done so that the type of the global variable
+            --  doesn't agree with the type we want.
+            --
+            --  ??? We could optimize this in some cases, such as
+            --  where padding is involved, but it's not worth it.
 
             if Is_Reference (Result) and then Is_A_Global_Variable (Result)
               and then Is_Global_Constant (Result)
               and then not Is_Nonnative_Type (Result)
+              and then Type_Of (Related_Type (Result)) =
+                       Global_Get_Value_Type (Result)
             then
                Result := Get_Initializer (Result);
             end if;
@@ -1274,9 +1281,11 @@ package body GNATLLVM.Compile is
                return Const_Null (GT);
 
             elsif Ekind (GT) in Record_Kind then
-               return Emit_Record_Aggregate
-                 (N, (if   Present (LHS) and then Is_Safe_From (LHS, N)
-                      then LHS else No_GL_Value));
+               return Convert_GT
+                 (Emit_Record_Aggregate
+                    (N, (if   Present (LHS) and then Is_Safe_From (LHS, N)
+                           then LHS else No_GL_Value)),
+                  GT);
 
             elsif not Is_Array_Type (GT) then
                pragma Assert (Decls_Only);

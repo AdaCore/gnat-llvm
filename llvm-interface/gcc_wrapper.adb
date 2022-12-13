@@ -324,6 +324,14 @@ begin
          then
             Skip := True;
 
+         --  If compiling with Clang, ignore GCC switches that Clang doesn't
+         --  support
+
+         elsif Compile_With_Clang and then
+           Arg = "-fno-tree-loop-distribute-patterns"
+         then
+            Skip := True;
+
          --  Recognize -fdump-scos specially
 
          elsif Arg = "-fdump-scos" then

@@ -76,6 +76,16 @@ procedure GCC_Wrapper is
    procedure Spawn (S : String; Args : Argument_List; Status : out Boolean);
    --  Call GNAT.OS_Lib.Spawn and take Verbose into account
 
+   function Executable_Location return String;
+   --  Return the name of the parent directory where the executable is stored
+   --  (so if you are running "prefix"/bin/gcc, you would get "prefix").
+   --  A special case is done for "bin" directories, which are skipped.
+   --  The returned directory always ends up with a directory separator.
+
+   function Locate_Exec_In_Libexec (Exec : String) return String_Access;
+   --  Locate Exec in <prefix>/libexec/gnat-llvm/<arch>. The function allocates
+   --  memory that needs to be freed by the caller.
+
    -----------
    -- Spawn --
    -----------
@@ -94,6 +104,110 @@ procedure GCC_Wrapper is
 
       GNAT.OS_Lib.Spawn (S, Args, Status);
    end Spawn;
+
+   -------------------------
+   -- Executable_Location --
+   -------------------------
+
+   function Executable_Location return String is
+      Exec_Name : constant String := Ada.Command_Line.Command_Name;
+
+      function Get_Install_Dir (S : String) return String;
+      --  S is the executable name preceeded by the absolute or relative path,
+      --  e.g. "c:\usr\bin\gcc.exe" or "..\bin\gcc". Returns the absolute or
+      --  relative directory where "bin" lies (in the example "C:\usr" or
+      --  ".."). If the executable is not a "bin" directory, return "".
+
+      function Is_Directory_Separator (C : Character) return Boolean;
+      --  Return True if C is a directory separator
+
+      ---------------------
+      -- Get_Install_Dir --
+      ---------------------
+
+      function Get_Install_Dir (S : String) return String is
+         Exec      : constant String :=
+           Normalize_Pathname (S, Resolve_Links => True);
+         Path_Last : Integer         := 0;
+
+      begin
+         for J in reverse Exec'Range loop
+            if Is_Directory_Separator (Exec (J)) then
+               Path_Last := J - 1;
+               exit;
+            end if;
+         end loop;
+
+         --  If we are not in a bin/ directory
+
+         if Path_Last < Exec'First + 2
+           or else To_Lower (Exec (Path_Last - 2 .. Path_Last)) /= "bin"
+           or else (Path_Last - 3 >= Exec'First
+                     and then
+                       not Is_Directory_Separator (Exec (Path_Last - 3)))
+         then
+            return Exec (Exec'First .. Path_Last) & Directory_Separator;
+
+         else
+            --  Skip bin/, but keep the last directory separator
+
+            return Exec (Exec'First .. Path_Last - 3);
+         end if;
+      end Get_Install_Dir;
+
+      ----------------------------
+      -- Is_Directory_Separator --
+      ----------------------------
+
+      function Is_Directory_Separator (C : Character) return Boolean is
+      begin
+         --  In addition to the default directory_separator allow the '/' to
+         --  act as separator.
+
+         return C = Directory_Separator or else C = '/';
+      end Is_Directory_Separator;
+
+   --  Start of processing for Executable_Location
+
+   begin
+      --  First determine if a path prefix was placed in front of the
+      --  executable name.
+
+      for J in reverse Exec_Name'Range loop
+         if Is_Directory_Separator (Exec_Name (J)) then
+            return Get_Install_Dir (Exec_Name);
+         end if;
+      end loop;
+
+      --  If you are here, the user has typed the executable name with no
+      --  directory prefix.
+
+      declare
+         Ex  : String_Access   := Locate_Exec_On_Path (Exec_Name);
+         Dir : constant String := Get_Install_Dir (Ex.all);
+
+      begin
+         Free (Ex);
+         return Dir;
+      end;
+   end Executable_Location;
+
+   -----------------
+   -- Locate_Exec --
+   -----------------
+
+   function Locate_Exec_In_Libexec (Exec : String) return String_Access is
+      Suffix  : String_Access    := Get_Target_Executable_Suffix;
+      Result  : constant String  :=
+        Executable_Location & "libexec/gnat-llvm/" &
+        Get_Default_Target_Triple & "/" & Exec;
+      Is_Exec : constant Boolean :=
+        Is_Executable_File (Result & Suffix.all);
+
+   begin
+      Free (Suffix);
+      return (if Is_Exec then new String'(Result) else null);
+   end Locate_Exec_In_Libexec;
 
 begin
    if Args'Last = 1 then
@@ -283,7 +397,11 @@ begin
    --  Compile c/c++ files with clang
 
    if Compile_With_Clang then
-      S := Locate_Exec_On_Path ("clang");
+      S := Locate_Exec_In_Libexec ("clang");
+
+      if S = null then
+         S := Locate_Exec_On_Path ("clang");
+      end if;
 
       if S = null then
          Put_Line ("warning: clang not found, using gcc.");
@@ -315,19 +433,20 @@ begin
       end;
    else
       declare
-         Linker : constant String := GCC (GCC'First .. Last) & "ld";
-         S      : String_Access;
+         S          : String_Access;
+         Have_Clang : Boolean := True;
       begin
-         S := Locate_Exec_On_Path (Linker);
+         S := Locate_Exec_In_Libexec ("clang");
 
          if S = null then
-            --  If llvm-ld is not found, default to "clang" for now
+            --  Our own Clang is not found, default to system Clang for now
             S := Locate_Exec_On_Path ("clang");
          end if;
 
          if S = null then
             --  Last fallback is gcc
             S := Locate_Exec_On_Path ("gcc");
+            Have_Clang := False;
          end if;
 
          if S = null then
@@ -339,7 +458,18 @@ begin
          --  Clang 15 and above default to creating position-independent
          --  executables; since we don't use PIE for Ada code, disable it in
          --  the linker.
-         Spawn (S.all, new String'("-no-pie") & Args (1 .. Arg_Count), Status);
+
+         --  We also need to tell Clang how to find the linker when
+         --  cross-compiling. Make sure that it always looks for "ld"; it would
+         --  otherwise expect "ld.lld" for some targets.
+
+         if Have_Clang then
+            Args := new String'("-no-pie") & new String'("--ld-path=ld") &
+              Args (1 .. Arg_Count);
+            Arg_Count := Arg_Count + 2;
+         end if;
+
+         Spawn (S.all, Args, Status);
          Free (S);
       end;
    end if;

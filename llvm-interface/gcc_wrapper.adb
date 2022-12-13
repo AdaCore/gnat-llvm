@@ -472,12 +472,14 @@ begin
          --  otherwise expect "ld.lld" for some targets.
 
          if Have_Clang then
-            Args := new String'("-no-pie") & new String'("--ld-path=ld") &
-              Args (1 .. Arg_Count);
-            Arg_Count := Arg_Count + 2;
+            Spawn
+              (S.all,
+               new String'("-no-pie") & new String'("--ld-path=ld") & Args,
+              Status);
+         else
+            Spawn (S.all, Args, Status);
          end if;
 
-         Spawn (S.all, Args, Status);
          Free (S);
       end;
    end if;

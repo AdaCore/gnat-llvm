@@ -71,11 +71,15 @@ package body CCG.Target is
    --  modifiers. We record the name and the template value in a table.
    --  The template contains the text to write for a modifier of the
    --  specified name, with the string "%d" used to represent a value
-   --  in the cases where a value is needed (e.g., for alignment).
+   --  in the cases where a value is needed (e.g., for alignment) or
+   --  just a dollar sign if this modifier isn't supported and we shouldn't
+   --  output anything. Percent_Pos is non-negative if there's a % in the
+   --  string and indicates its position if so.
 
    type Modifier is record
-      Name  : String_Access;
-      Value : String_Access;
+      Name        : String_Access;
+      Value       : String_Access;
+      Percent_Pos : Integer;
    end record;
 
    package Modifiers is new Table.Table
@@ -123,15 +127,88 @@ package body CCG.Target is
    ------------------
 
    procedure Add_Modifier (Name, Value : String) is
+      Percent_Pos : Integer := 0;
+
    begin
+      --  Check for duplicate entry
+
       for J in 1 .. Modifiers.Last loop
          if Modifiers.Table (J).Name.all = Name then
             Early_Error ("duplicate modifier '" & Name & "'");
          end if;
       end loop;
 
-      Modifiers.Append ((new String'(Name), new String'(Value)));
+      --  See if there's a % in Value and record where it is, if so.
+      --  Value'First should be 1, but if it's less than one we can have an
+      --  issue with Percent_Pos and it's not worth worrying about.
+
+      pragma Assert (Value'First >= 0);
+      for J in Value'First .. Value'Last loop
+         if Value (J) = '%' then
+            Percent_Pos := J;
+         end if;
+      end loop;
+
+      --  Now add the entry
+
+      Modifiers.Append ((new String'(Name), new String'(Value), Percent_Pos));
    end Add_Modifier;
+
+   ---------------------
+   -- Output_Modifier --
+   ---------------------
+
+   function Output_Modifier
+     (M : String; Blank : OM_Blank := Before; Val : Int := -1) return Str
+   is
+      Prefix : constant Str := (if Blank = Before then +" " else +"");
+      Suffix : constant Str := (if Blank = After  then +" " else +"");
+      Idx    : Integer      := 0;
+
+   begin
+      --  First see if we have a template specified for this modifier
+
+      for J in 1 .. Modifiers.Last loop
+         if Modifiers.Table (J).Name.all = M then
+            Idx := J;
+         end if;
+      end loop;
+
+      --  If we didn't find a template, we use the GCC/LLVM syntax and
+      --  have different cases whether or not we have a value.
+
+      if Idx = 0 and then Val >= 0 then
+         return
+           Prefix & "__attribute__ ((" & M & " (" & Nat (Val) & ")))" & Suffix;
+      elsif Idx = 0 and then Val < 0 then
+         return Prefix & "__attribute__ ((" & M & "))" & Suffix;
+
+      --  If the template is a single dollar sign, that means our target
+      --  doesn't support this modifier, so output nothing.
+
+      elsif Modifiers.Table (Idx).Value.all = "$" then
+         return +"";
+
+      --  If we don't have a value, we just output the template
+
+      elsif Val < 0 then
+         return Prefix & Modifiers.Table (Idx).Value.all & Suffix;
+
+      --  Otherwise, we see if there's a % in the string
+
+      elsif Modifiers.Table (Idx).Percent_Pos >= 0 then
+         declare
+            Value : constant String  := Modifiers.Table (Idx).Value.all;
+            Pos   : constant Integer := Modifiers.Table (Idx).Percent_Pos;
+
+         begin
+            return Prefix & Value (Value'First .. Pos - 1) & Nat (Val) &
+              Value (Pos + 1 .. Value'Last) & Suffix;
+         end;
+      else
+         return Prefix & Modifiers.Table (Idx).Value.all & Suffix;
+      end if;
+   end Output_Modifier;
 
    ---------------------
    -- Set_One_Parameter --

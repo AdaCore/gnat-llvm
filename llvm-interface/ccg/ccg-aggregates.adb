@@ -247,8 +247,7 @@ package body CCG.Aggregates is
       --  in the initial support.
 
       Output_Decl ("}" &
-                     (if    SOS = Packed then " __attribute__ ((packed))"
-                      else ""),
+                   (if SOS = Packed then Output_Modifier ("packed") else +""),
                    Is_Typedef => True, End_Block => Decl);
    end Output_Struct_Typedef;
 

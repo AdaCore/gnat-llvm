@@ -341,13 +341,13 @@ package body CCG.Subprograms is
       if Has_Inline_Always_Attribute (V) and then Version > 1990
         and then Definition
       then
-         Result := "__attribute__ ((always_inline)) " & Result;
+         Result := Output_Modifier ("always_inline", After) & Result;
       end if;
 
       --  If this doesn't return mark that
 
       if Does_Not_Return (V) then
-         Result := "__attribute__((noreturn)) " & Result;
+         Result := Output_Modifier ("noreturn", After) & Result;
       end if;
 
       --  Indicate if this returns unsigned

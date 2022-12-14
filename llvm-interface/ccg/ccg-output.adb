@@ -23,6 +23,7 @@ with CCG.Aggregates;   use CCG.Aggregates;
 with CCG.Codegen;      use CCG.Codegen;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Subprograms;  use CCG.Subprograms;
+with CCG.Target;       use CCG.Target;
 with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Output is
@@ -202,8 +203,9 @@ package body CCG.Output is
 
                begin
                   if Align > Actual and then Align > Pref then
-                     Decl := Decl & " __attribute__ ((aligned (" &
-                       To_Bytes (Align) & ")))";
+                     Decl :=
+                       Decl & Output_Modifier ("aligned",
+                                               Val => To_Bytes (Align));
                   end if;
                end;
             end if;

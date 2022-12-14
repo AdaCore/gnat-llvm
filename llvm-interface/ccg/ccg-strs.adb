@@ -25,6 +25,7 @@ with Output; use Output;
 with GNATLLVM.GLType; use GNATLLVM.GLType;
 
 with CCG.Environment; use CCG.Environment;
+with CCG.Target;      use CCG.Target;
 with CCG.Utils;       use CCG.Utils;
 with CCG.Write;       use CCG.Write;
 
@@ -233,6 +234,17 @@ package body CCG.Strs is
          return New_S;
       end if;
    end Undup_Str;
+
+   ------------------
+   -- Needs_Parens --
+   ------------------
+
+   function Needs_Parens (Is_P, For_P : Precedence) return Boolean is
+      (Is_P /= Unknown and then For_P /= Unknown
+         and then (Is_P < For_P
+                     or else (Is_P = For_P
+                                and then For_P not in Unary | Component)
+                     or else (Warns_Parens and Will_Warn (Is_P, For_P))));
 
    ---------
    -- "+" --

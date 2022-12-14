@@ -17,8 +17,6 @@
 
 with Atree; use Atree;
 
-with CCG.Target; use CCG.Target;
-
 package CCG.Strs is
 
    --  This package contains the tables used by CCG to record data about
@@ -157,12 +155,7 @@ package CCG.Strs is
       --  Indicates that some compilers will warn in the case of a
       --  predence that doesn't need parens.
 
-   function Needs_Parens (Is_P, For_P : Precedence) return Boolean is
-      (Is_P /= Unknown and then For_P /= Unknown
-         and then (Is_P < For_P
-                     or else (Is_P = For_P
-                                and then For_P not in Unary | Component)
-                     or else (Warns_Parens and Will_Warn (Is_P, For_P))));
+   function Needs_Parens (Is_P, For_P : Precedence) return Boolean;
    function Needs_Parens (S : Str; For_P : Precedence) return Boolean is
      (Needs_Parens (Get_Precedence (S), For_P));
    --  Indicates whether we need to enclose S (or an expression of precedence

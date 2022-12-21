@@ -332,11 +332,14 @@ package body CCG.Target is
          Early_Error ("problem reading file " & Name);
       end if;
 
-      --  Now scan the file, looking for ends of lines
+      --  Now scan the file, looking for ends of lines. Ignore blank lines.
 
       while N <= Length loop
          if Buffer (N) = ASCII.LF then
-            Set_C_Parameter (Buffer (Line_Ptr .. N - 1));
+            if Line_Ptr /= N then
+               Set_C_Parameter (Buffer (Line_Ptr .. N - 1));
+            end if;
+
             Line_Ptr := N + 1;
          end if;
 

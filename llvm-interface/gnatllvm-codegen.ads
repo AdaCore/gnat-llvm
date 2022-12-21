@@ -110,4 +110,9 @@ package GNATLLVM.Codegen is
    function Get_LLVM_Error_Msg (Msg : Ptr_Err_Msg_Type) return String;
    --  Get the LLVM error message that was stored in Msg
 
+   Libdevice_Filename : String_Access :=
+     new String'("/usr/local/cuda/nvvm/libdevice/libdevice.10.bc");
+   --  Location for libdevice for CUDA
+   --  This should be moved back to the body once VC21-031 is fixed
+
 end GNATLLVM.Codegen;

@@ -308,12 +308,12 @@ package body CCG.Target is
 
    procedure Read_C_Parameters (Name : String) is
       Desc        : constant File_Descriptor := Open_Read (Name, Text);
-      Length      : constant Integer         :=
+      F_Length    : constant Integer         :=
         Integer ((if Desc = Invalid_FD then 0 else File_Length (Desc)));
-      Read_Length : Natural;
+      Length      : Natural;
       Line_Ptr    : Natural                  := 1;
       N           : Natural                  := 1;
-      Buffer      : aliased String (1 .. Length);
+      Buffer      : aliased String (1 .. F_Length);
 
    begin
       --  ??? We probably need to do something to handle CR for Windows
@@ -322,15 +322,8 @@ package body CCG.Target is
          Early_Error ("cannot read file " & Name);
       end if;
 
-      Read_Length := Read (Desc, Buffer'Address, Length);
+      Length := Read (Desc, Buffer'Address, F_Length);
       Close (Desc);
-
-      --  If the lengths don't agree, we had some issues with the file, so
-      --  assume we couldn't read it.
-
-      if Read_Length /= Length then
-         Early_Error ("problem reading file " & Name);
-      end if;
 
       --  Now scan the file, looking for ends of lines. Ignore blank lines.
 

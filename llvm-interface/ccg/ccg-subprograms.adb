@@ -323,8 +323,10 @@ package body CCG.Subprograms is
 
       if Get_Section (V) /= "" then
          Result :=
-           Output_Modifier ("section", Blank => After, S => Get_Section (V)) &
-             Result;
+           Output_Modifier (Code_Section_Modifier.all,
+                            Blank => After,
+                            S     => Get_Section (V)) &
+           Result;
       end if;
 
       --  If inline was requested, mark that, but only if the language

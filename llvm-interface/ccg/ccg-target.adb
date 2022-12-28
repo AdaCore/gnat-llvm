@@ -32,13 +32,14 @@ package body CCG.Target is
    --  booleans or integers. We create a record type to describe each
    --  parameter.
 
-   subtype String_Access  is GNATLLVM.String_Access;
-   type    Boolean_Access is access all Boolean;
-   type    Integer_Access is access all Integer;
-   type    Param_Type     is (Bool, Num);
-   subtype Str_Len        is Integer range 1 .. 20;
+   subtype String_Access        is GNATLLVM.String_Access;
+   type    Boolean_Access       is access all Boolean;
+   type    Integer_Access       is access all Integer;
+   type    String_Access_Access is access all String_Access;
+   type    Param_Type           is (Bool, Num, P_Str);
+   subtype Str_Len              is Integer range 1 .. 25;
 
-   type Parameter_Desc (PT : Param_Type := Num; SL : Str_Len := 20) is record
+   type Parameter_Desc (PT : Param_Type := Num; SL : Str_Len := 25) is record
       Is_Version : Boolean;
       Name       : String (1 .. SL);
       case PT is
@@ -46,6 +47,8 @@ package body CCG.Target is
             Bool_Ptr : Boolean_Access;
          when Num =>
             Int_Ptr  : Integer_Access;
+         when P_Str =>
+            Str_Ptr  : String_Access_Access;
       end case;
    end record;
 
@@ -60,11 +63,17 @@ package body CCG.Target is
    procedure Add_Param
      (Name       : String;
       PT         : Param_Type;
-      Is_Version : Boolean        := False;
-      Bool_Ptr   : Boolean_Access := null;
-      Int_Ptr    : Integer_Access := null)
-     with Pre => (if   PT = Bool then Bool_Ptr /= null and then Int_Ptr = null
-                  else Bool_Ptr = null and then Int_Ptr /= null);
+      Is_Version : Boolean              := False;
+      Bool_Ptr   : Boolean_Access       := null;
+      Int_Ptr    : Integer_Access       := null;
+      Str_Ptr    : String_Access_Access := null)
+     with Pre => (case PT is
+                  when Bool => Bool_Ptr /= null and then Int_Ptr = null
+                               and then Str_Ptr = null,
+                  when Num => Bool_Ptr = null and then Int_Ptr /= null
+                       and then Str_Ptr = null,
+                  when P_Str => Bool_Ptr = null and then Int_Ptr = null
+                       and then Str_Ptr /= null);
    --  Add a table entry for the specified parameter
 
    --  The user can specify the template to use for various declaration
@@ -107,9 +116,10 @@ package body CCG.Target is
    procedure Add_Param
      (Name       : String;
       PT         : Param_Type;
-      Is_Version : Boolean        := False;
-      Bool_Ptr   : Boolean_Access := null;
-      Int_Ptr    : Integer_Access := null)
+      Is_Version : Boolean              := False;
+      Bool_Ptr   : Boolean_Access       := null;
+      Int_Ptr    : Integer_Access       := null;
+      Str_Ptr    : String_Access_Access := null)
    is
    begin
       case PT is
@@ -117,8 +127,11 @@ package body CCG.Target is
             Parameters.Append ((Bool, Name'Length, Is_Version, Name,
                                 Bool_Ptr));
          when Num =>
-            Parameters.Append ((Num,  Name'Length, Is_Version, Name,
+            Parameters.Append ((Num,   Name'Length, Is_Version, Name,
                                 Int_Ptr));
+         when P_Str =>
+            Parameters.Append ((P_Str, Name'Length, Is_Version, Name,
+                                Str_Ptr));
       end case;
    end Add_Param;
 
@@ -270,6 +283,10 @@ package body CCG.Target is
                   Early_Error ("illegal value '" & Value &
                                "' for parameter '" & PD.Name & "'");
             end;
+
+         when P_Str =>
+            Free (PD.Str_Ptr.all);
+            PD.Str_Ptr.all := new String'(Value);
       end case;
    end Set_One_Parameter;
 
@@ -427,6 +444,8 @@ package body CCG.Target is
                   Write_Str ((if PD.Bool_Ptr.all then "True" else "False"));
                when Num =>
                   Write_Int (Int (PD.Int_Ptr.all));
+               when P_Str =>
+                  Write_Str (PD.Str_Ptr.all.all);
             end case;
 
             Write_Eol;
@@ -445,14 +464,17 @@ package body CCG.Target is
    end Output_C_Parameters;
 
 begin
-   Add_Param ("version",            Num,  Int_Ptr  => Version'Access,
+   Add_Param ("version",               Num,  Int_Ptr  => Version'Access,
               Is_Version => True);
-   Add_Param ("c-indent",           Num,  Int_Ptr  => C_Indent'Access);
-   Add_Param ("max-depth",          Num,  Int_Ptr  => Max_Depth'Access);
-   Add_Param ("always-brace",       Bool, Bool_Ptr => Always_Brace'Access);
-   Add_Param ("warns-parens",       Bool, Bool_Ptr => Warns_Parens'Access);
-   Add_Param ("have-includes",      Bool, Bool_Ptr => Have_Includes'Access);
-   Add_Param ("inline-always-must", Bool,
+   Add_Param ("c-indent",              Num,  Int_Ptr  => C_Indent'Access);
+   Add_Param ("max-depth",             Num,  Int_Ptr  => Max_Depth'Access);
+   Add_Param ("always-brace",          Bool, Bool_Ptr => Always_Brace'Access);
+   Add_Param ("warns-parens",          Bool, Bool_Ptr => Warns_Parens'Access);
+   Add_Param ("have-includes",         Bool,
+              Bool_Ptr => Have_Includes'Access);
+   Add_Param ("inline-always-must",    Bool,
               Bool_Ptr => Inline_Always_Must'Access);
+   Add_Param ("code-section-modifier", P_Str,
+              Str_Ptr => Code_Section_Modifier'Access);
 
 end CCG.Target;

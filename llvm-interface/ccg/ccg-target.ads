@@ -91,4 +91,10 @@ package CCG.Target is
    --  Gives the value of the "modifier" used for code sections. By default,
    --  the code and data sction modifiers are the same.
 
+   Packed_Mechanism      : aliased String_Access := new String'("modifier");
+   --  Says how we output an indication that a record is packed. We
+   --  can either use the "packed" modifier ("modifier"), a packed
+   --  pragma in MSVC syntax ("pragma"), or we can't support packed records
+   --  ("none").
+
 end CCG.Target;

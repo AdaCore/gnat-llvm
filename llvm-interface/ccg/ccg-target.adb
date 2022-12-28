@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Characters.Handling; use Ada.Characters.Handling;
+
 with System.OS_Lib; use System.OS_Lib;
 
 with Osint;   use Osint;
@@ -286,7 +288,7 @@ package body CCG.Target is
 
          when P_Str =>
             Free (PD.Str_Ptr.all);
-            PD.Str_Ptr.all := new String'(Value);
+            PD.Str_Ptr.all := new String'(To_Lower (Value));
       end case;
    end Set_One_Parameter;
 
@@ -476,5 +478,7 @@ begin
               Bool_Ptr => Inline_Always_Must'Access);
    Add_Param ("code-section-modifier", P_Str,
               Str_Ptr => Code_Section_Modifier'Access);
+   Add_Param ("packed-mechanism",      P_Str,
+              Str_Ptr => Packed_Mechanism'Access);
 
 end CCG.Target;

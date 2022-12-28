@@ -173,8 +173,11 @@ package body CCG.Aggregates is
       Vol_Str        : constant String             :=
         (if Is_Vol then "volatile " else "");
       SOS            : constant Struct_Out_Style_T := Struct_Out_Style (T);
+      Pack_Pragma    : constant Boolean            :=
+        SOS = Packed and then Packed_Mechanism.all = "pragma";
+      Pack_Modifier  : constant Boolean            :=
+        SOS = Packed and then Packed_Mechanism.all = "modifier";
       Fields_Written : Nat                         := 0;
-
    begin
       --  Because this struct may contain a pointer to itself, we always have
       --  to write an incomplete struct. So we write, e.g.,
@@ -204,6 +207,13 @@ package body CCG.Aggregates is
 
       --  Now that we know that all inner typedefs have been output,
       --  we output the struct definition.
+
+      if Pack_Pragma then
+         Output_Decl ("#pragma pack(push, 1)",
+                      Is_Typedef  => True,
+                      Semicolon   => False,
+                      Indent_Type => Left);
+      end if;
 
       Output_Decl ("struct " & T, Semicolon => False, Is_Typedef => True);
       Start_Output_Block (Decl);
@@ -243,12 +253,17 @@ package body CCG.Aggregates is
          Output_Decl ("char dummy_for_null_recordC", Is_Typedef => True);
       end if;
 
-      --  ??? We have many ways of handling packed, but don't worry about that
-      --  in the initial support.
+      --  End the decl and deal with any packing
 
       Output_Decl ("}" &
-                   (if SOS = Packed then Output_Modifier ("packed") else +""),
+                   (if Pack_Modifier then Output_Modifier ("packed") else +""),
                    Is_Typedef => True, End_Block => Decl);
+      if Pack_Pragma then
+         Output_Decl ("#pragma pack(pop)",
+                      Is_Typedef  => True,
+                      Semicolon   => False,
+                      Indent_Type => Left);
+      end if;
    end Output_Struct_Typedef;
 
    -------------------------

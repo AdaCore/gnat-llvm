@@ -65,6 +65,14 @@ package body CCG.Codegen is
          Output_C_Parameters;
       end if;
 
+      --  Do validity testing on C target parameters
+
+      if Packed_Mechanism.all not in "modifier" | "pragma" | "none" then
+         Early_Error
+           ("packed-mechanism must be 'modifier', 'pragma', or 'none'");
+      elsif Packed_Mechanism.all = "none" then
+         Early_Error ("packed-mechanism of 'none' not yet supported");
+      end if;
    end Initialize_Output;
 
    --------------

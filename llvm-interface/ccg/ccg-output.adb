@@ -214,8 +214,8 @@ package body CCG.Output is
             --  section and write it if so.
 
             if Is_A_Global_Variable (V) and then Get_Section (V) /= "" then
-               Decl := (Decl & " __attribute ((section (""" &
-                        Get_Section (V) & """)))");
+               Decl :=
+                 (Decl & Output_Modifier ("section", S => Get_Section (V)));
             end if;
 
             --  For globals, we write the decl immediately. Otherwise, it's

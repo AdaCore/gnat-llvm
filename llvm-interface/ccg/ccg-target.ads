@@ -45,13 +45,18 @@ package CCG.Target is
 
    type OM_Blank is (Before, After);
    function Output_Modifier
-     (M : String; Blank : OM_Blank := Before; Val : Int := -1) return Str
+     (M     : String;
+      Blank : OM_Blank := Before;
+      Val   : Int      := -1;
+      S     : String   := "") return Str
      with Post => Present (Output_Modifier'Result);
    --  Return a Str corresponding to the way we write modifier M on our
    --  target. If Val is non-negative, we expect the template to contain a
-   --  way to write an integer. Blank says whether we're to write a blank
-   --  before or after the value. If we're writing the null string, we
-   --  don't write a blank at all.
+   --  way to write an integer and if S is non-null, we expect it to
+   --  contain a way to write a string (in both cases, the character
+   --  '%'). Blank says whether we're to write a blank before or after the
+   --  value. If we're writing the null string, we don't write a blank at
+   --  all.
 
    --  These are the parameters themselves
 

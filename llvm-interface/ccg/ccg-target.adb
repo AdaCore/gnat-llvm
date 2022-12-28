@@ -159,7 +159,10 @@ package body CCG.Target is
    ---------------------
 
    function Output_Modifier
-     (M : String; Blank : OM_Blank := Before; Val : Int := -1) return Str
+     (M     : String;
+      Blank : OM_Blank := Before;
+      Val   : Int      := -1;
+      S     : String   := "") return Str
    is
       Prefix : constant Str := (if Blank = Before then +" " else +"");
       Suffix : constant Str := (if Blank = After  then +" " else +"");
@@ -180,6 +183,9 @@ package body CCG.Target is
       if Idx = 0 and then Val >= 0 then
          return
            Prefix & "__attribute__ ((" & M & " (" & Nat (Val) & ")))" & Suffix;
+      elsif Idx = 0 and then S /= "" then
+         return
+           Prefix & "__attribute__ ((" & M & " (""" & S & """)))" & Suffix;
       elsif Idx = 0 and then Val < 0 then
          return Prefix & "__attribute__ ((" & M & "))" & Suffix;
 
@@ -189,9 +195,9 @@ package body CCG.Target is
       elsif Modifiers.Table (Idx).Value.all = "$" then
          return +"";
 
-      --  If we don't have a value, we just output the template
+      --  If we don't have a value or string, we just output the template
 
-      elsif Val < 0 then
+      elsif Val < 0 and then S = "" then
          return Prefix & Modifiers.Table (Idx).Value.all & Suffix;
 
       --  Otherwise, we see if there's a % in the string
@@ -202,7 +208,9 @@ package body CCG.Target is
             Pos   : constant Integer := Modifiers.Table (Idx).Percent_Pos;
 
          begin
-            return Prefix & Value (Value'First .. Pos - 1) & Nat (Val) &
+            return
+              Prefix & Value (Value'First .. Pos - 1) &
+              (if Val >= 0 then +Nat (Val) else +("""" & S & """")) &
               Value (Pos + 1 .. Value'Last) & Suffix;
          end;
       else

@@ -424,6 +424,17 @@ package body CCG.Target is
          return "";
       elsif To_Lower (S) = "clang" then
          return "inline-always-must=false";
+      elsif To_Lower (S) = "msvc" then
+         return
+           "packed-mechanism=pragma;" &
+           "modifier-section=__declspec(allocate(%));" &
+           "code-section-modifier=code-seg;" &
+           "modifier-code-seg=__declspec(code_seg(%));" &
+           "declare-section-modifier=decl_sect;" &
+           "modifier-decl_sect=#pragma section(%);" &
+           "modifier-always_inline=$;" &
+           "modifier-noreturn=__declspec(noreturn);" &
+           "modifier-aligned=__declspec(align(%));";
       else
          Early_Error ("unsupported C compiler: " & S);
          return "";

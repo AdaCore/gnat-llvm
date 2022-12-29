@@ -26,6 +26,8 @@ with Table;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 
+with CCG.Output; use CCG.Output;
+
 package body CCG.Target is
 
    --  We have a table of parameters, which are (for now at least) either
@@ -108,6 +110,17 @@ package body CCG.Target is
    function Compiler_To_Parameters (S : String) return String;
    --  Return a string corresponding to the changes to the target
    --  parameters for the compiler named S.
+
+   --  We don't expect to have many sections that need declaring, so
+   --  we can use a table for them and accept the quadratic behavior.
+
+   package Sections is new Table.Table
+     (Table_Component_Type => String_Access,
+      Table_Index_Type     => Integer,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 10,
+      Table_Increment      => 5,
+      Table_Name           => "Sections");
 
    ---------------
    -- Add_Param --
@@ -230,6 +243,35 @@ package body CCG.Target is
          return Prefix & Modifiers.Table (Idx).Value.all & Suffix;
       end if;
    end Output_Modifier;
+
+   ---------------------------
+   -- Maybe_Declare_Section --
+   ---------------------------
+
+   procedure Maybe_Declare_Section (S : String) is
+   begin
+      --  If we don't need to declare sections, do nothing
+
+      if Declare_Section_Modifier.all = "$" then
+         return;
+      end if;
+
+      --  If it's already been declared, do nothing
+
+      for J in 1 .. Sections.Last loop
+         if Sections.Table (J).all = S then
+            return;
+         end if;
+      end loop;
+
+      --  Otherwise, add it to the table and declare it
+
+      Sections.Append (new String'(S));
+      Output_Decl (Output_Modifier (Declare_Section_Modifier.all,
+                                    Blank => None,
+                                    S     => S),
+                   Is_Typedef => True, Semicolon => False);
+   end Maybe_Declare_Section;
 
    ---------------------
    -- Set_One_Parameter --
@@ -476,6 +518,8 @@ begin
               Bool_Ptr => Inline_Always_Must'Access);
    Add_Param ("code-section-modifier", P_Str,
               Str_Ptr => Code_Section_Modifier'Access);
+   Add_Param ("declare-section-modifier", P_Str,
+              Str_Ptr => Declare_Section_Modifier'Access);
    Add_Param ("packed-mechanism",      P_Str,
               Str_Ptr => Packed_Mechanism'Access);
 

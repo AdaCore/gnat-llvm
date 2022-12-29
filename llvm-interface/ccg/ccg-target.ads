@@ -43,7 +43,7 @@ package CCG.Target is
    procedure Output_C_Parameters;
    --  Output all the C parameters
 
-   type OM_Blank is (Before, After);
+   type OM_Blank is (Before, After, None);
    function Output_Modifier
      (M     : String;
       Blank : OM_Blank := Before;
@@ -58,40 +58,47 @@ package CCG.Target is
    --  value. If we're writing the null string, we don't write a blank at
    --  all.
 
+   procedure Maybe_Declare_Section (S : String);
+   --  If we have to declare code sections, do so for section S
+
    --  These are the parameters themselves
 
-   Version              : aliased Integer       := 1999;
+   Version                 : aliased Integer       := 1999;
    --  C standard for which we're to write output
 
-   C_Indent             : aliased Integer       := 2;
+   C_Indent                : aliased Integer       := 2;
    --  Number of characters to indent at each level
 
-   Max_Depth            : aliased Integer       := (80 / 2) / (2 * C_Indent);
+   Max_Depth               : aliased Integer       :=
+     (80 / 2) / (2 * C_Indent);
    --  Maximum allowable nesting depth of constructs
 
-   Always_Brace         : aliased Boolean       := False;
+   Always_Brace            : aliased Boolean       := False;
    --  True if we're to always write C lexical blocks using braces even
    --  if they're only a single line.
 
-   Have_Includes        : aliased Boolean       := True;
+   Have_Includes           : aliased Boolean       := True;
    --  True if we're to write #include lines for the standard C includes
 
-   Warns_Parens         : aliased Boolean       := True;
+   Warns_Parens            : aliased Boolean       := True;
    --  True if this C compiler will issue warning in cases where the
    --  precedence is correct but looks suspicious.
 
-   Inline_Always_Must   : aliased Boolean       := True;
+   Inline_Always_Must      : aliased Boolean       := True;
    --  In some C compilers (e.g., clang), Inline_Always means to make a
    --  best try at inlining, but be silent if the function can't be inlned.
    --  In others (e.g., gcc), if the function can't be inlined, it issues
    --  a warning (or error, depending on the warning mode). The value of
    --  this option says which is the case.
 
-   Code_Section_Modifier : aliased String_Access := new String'("section");
+   Code_Section_Modifier    : aliased String_Access := new String'("section");
    --  Gives the value of the "modifier" used for code sections. By default,
    --  the code and data sction modifiers are the same.
 
-   Packed_Mechanism      : aliased String_Access := new String'("modifier");
+   Declare_Section_Modifier : aliased String_Access := new String'("$");
+   --  If not "$", the modifier to be used to declare a data section
+
+   Packed_Mechanism         : aliased String_Access := new String'("modifier");
    --  Says how we output an indication that a record is packed. We
    --  can either use the "packed" modifier ("modifier"), a packed
    --  pragma in MSVC syntax ("pragma"), or we can't support packed records

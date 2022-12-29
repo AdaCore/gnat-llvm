@@ -211,11 +211,12 @@ package body CCG.Output is
             end if;
 
             --  If this is a global variable, see if it has a linker
-            --  section and write it if so.
+            --  section and write it and declare the section if so.
 
             if Is_A_Global_Variable (V) and then Get_Section (V) /= "" then
+               Maybe_Declare_Section (Get_Section (V));
                Decl :=
-                 (Decl & Output_Modifier ("section", S => Get_Section (V)));
+                 Output_Modifier ("section", S => Get_Section (V)) & Decl;
             end if;
 
             --  For globals, we write the decl immediately. Otherwise, it's

@@ -204,8 +204,8 @@ package body CCG.Output is
                begin
                   if Align > Actual and then Align > Pref then
                      Decl :=
-                       Decl & Output_Modifier ("aligned",
-                                               Val => To_Bytes (Align));
+                       Output_Modifier ("aligned", Val => To_Bytes (Align)) &
+                       Decl;
                   end if;
                end;
             end if;

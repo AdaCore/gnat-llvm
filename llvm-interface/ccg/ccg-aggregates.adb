@@ -256,7 +256,8 @@ package body CCG.Aggregates is
       --  End the decl and deal with any packing
 
       Output_Decl ("}" &
-                   (if Pack_Modifier then Output_Modifier ("packed") else +""),
+                   (if   Pack_Modifier then Output_Modifier ("packed", Before)
+                    else +""),
                    Is_Typedef => True, End_Block => Decl);
       if Pack_Pragma then
          Output_Decl ("#pragma pack(pop)",

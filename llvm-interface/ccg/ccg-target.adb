@@ -186,7 +186,7 @@ package body CCG.Target is
 
    function Output_Modifier
      (M     : String;
-      Blank : OM_Blank := Before;
+      Blank : OM_Blank := After;
       Val   : Int      := -1;
       S     : String   := "") return Str
    is

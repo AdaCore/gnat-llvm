@@ -46,7 +46,7 @@ package CCG.Target is
    type OM_Blank is (Before, After, None);
    function Output_Modifier
      (M     : String;
-      Blank : OM_Blank := Before;
+      Blank : OM_Blank := After;
       Val   : Int      := -1;
       S     : String   := "") return Str
      with Post => Present (Output_Modifier'Result);

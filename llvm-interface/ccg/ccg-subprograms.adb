@@ -323,9 +323,7 @@ package body CCG.Subprograms is
 
       if Get_Section (V) /= "" then
          Result :=
-           Output_Modifier (Code_Section_Modifier.all,
-                            Blank => After,
-                            S     => Get_Section (V)) &
+           Output_Modifier (Code_Section_Modifier.all, S => Get_Section (V)) &
            Result;
       end if;
 
@@ -344,13 +342,13 @@ package body CCG.Subprograms is
       if Has_Inline_Always_Attribute (V) and then Version > 1990
         and then Definition
       then
-         Result := Output_Modifier ("always_inline", After) & Result;
+         Result := Output_Modifier ("always_inline") & Result;
       end if;
 
       --  If this doesn't return mark that
 
       if Does_Not_Return (V) then
-         Result := Output_Modifier ("noreturn", After) & Result;
+         Result := Output_Modifier ("noreturn") & Result;
       end if;
 
       --  Indicate if this returns unsigned

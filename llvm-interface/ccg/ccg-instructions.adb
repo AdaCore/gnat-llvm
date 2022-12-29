@@ -1158,8 +1158,7 @@ package body CCG.Instructions is
          Write_Str (Annotations.Table (J), Eol => True);
       else
          Add_Line (Annotations.Table (J), V,
-                   Force_Left =>
-                     Is_String_First_Char (Annotations.Table (J), '#'),
+                   Force_Left => Is_First_Char (Annotations.Table (J), '#'),
                    Semicolon  => False);
       end if;
    end Output_Annotation;

@@ -26,8 +26,6 @@ with Table;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 
-with CCG.Utils; use CCG.Utils;
-
 package body CCG.Target is
 
    --  We have a table of parameters, which are (for now at least) either
@@ -380,9 +378,9 @@ package body CCG.Target is
 
    function Compiler_To_Parameters (S : String) return String is
    begin
-      if S = "gcc" then
+      if To_Lower (S) = "gcc" then
          return "";
-      elsif S = "clang" then
+      elsif To_Lower (S) = "clang" then
          return "inline-always-must=false";
       else
          Early_Error ("unsupported C compiler: " & S);
@@ -401,7 +399,7 @@ package body CCG.Target is
       Line_Ptr       : Natural         := N;
 
    begin
-      --  Now scan the file, looking for semicolons
+      --  Scan the string of parameters, looking for semicolons
 
       while N < Parameter_List'Last loop
          if Parameter_List (N) = ';' then

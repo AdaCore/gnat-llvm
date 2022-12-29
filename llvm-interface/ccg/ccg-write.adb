@@ -1216,9 +1216,8 @@ package body CCG.Write is
       --  line.
 
       if Previous_Was_End_Block and then Present (S) and then No (End_Block)
-        and then not Is_String_First_Char (S, '}')
-        and then not Is_String_Starts_With (S, "else")
-        and then not Is_Null_String (S)
+        and then not Is_First_Char (S, '}')
+        and then not Starts_With (S, "else") and then not Is_Null_String (S)
       then
          Write_Eol;
       end if;
@@ -1228,7 +1227,7 @@ package body CCG.Write is
       --  requirements. We special-case having start line starting with
       --  "{". In that case, we use that as the line to write.
 
-      if Present (OL.Start_Block) and then Is_String_First_Char (S, '{') then
+      if Present (OL.Start_Block) and then Is_First_Char (S, '{') then
          Write_Start_Block (OL.Start_Block, False, S);
          S := No_Str;
       else
@@ -1248,7 +1247,7 @@ package body CCG.Write is
       --  case, we use that as the line to write.
 
       if Present (OL.End_Block) and then Present (S)
-        and then Is_String_First_Char (S, '}')
+        and then Is_First_Char (S, '}')
       then
          Write_End_Block (End_Block, False, S);
          End_Block := None;
@@ -1258,7 +1257,7 @@ package body CCG.Write is
 
       Previous_Was_End_Block :=
         Present (End_Block)
-        or else (Present (S) and then Is_String_First_Char (S, '}'));
+        or else (Present (S) and then Is_First_Char (S, '}'));
       Write_End_Block (End_Block, Present (OL.Start_Block));
    end Write_C_Line;
 

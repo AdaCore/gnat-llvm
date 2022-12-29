@@ -341,10 +341,10 @@ package CCG.Strs is
    function Is_Null_String (S : Str) return Boolean
      with Pre => Present (S);
 
-   function Is_String_First_Char (S : Str; C : Character) return Boolean
+   function Is_First_Char (S : Str; C : Character) return Boolean
      with Pre => Present (S);
 
-   function Is_String_Starts_With (S1 : Str; S2 : String) return Boolean
+   function Starts_With (S1 : Str; S2 : String) return Boolean
      with Pre => Present (S1) and then S2'Length < Str_Max;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helper");
@@ -452,11 +452,11 @@ private
    function Is_Null_String (S : Str) return Boolean is
      (S.Length = 0);
 
-   function Is_String_First_Char (S : Str; C : Character) return Boolean is
+   function Is_First_Char (S : Str; C : Character) return Boolean is
      (S.Length >= 1 and then S.Comps (1).Kind = Var_String
       and then S.Comps (1).Str (1) = C);
 
-   function Is_String_Starts_With (S1 : Str; S2 : String) return Boolean is
+   function Starts_With (S1 : Str; S2 : String) return Boolean is
      (S1.Length >= 1 and then S1.Comps (1).Kind = Var_String
       and then S1.Comps (1).Length >= S2'Length
       and then S1.Comps (1).Str (1 .. S2'Length) = S2);

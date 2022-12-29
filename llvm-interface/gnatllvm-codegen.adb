@@ -68,27 +68,19 @@ package body GNATLLVM.Codegen is
    Emit_LLVM          : Boolean := False;
    --  True if -emit-llvm was specified
 
-   procedure Process_Switch (Switch : String);
+   procedure Process_Switch (S : String);
    --  Process one command-line switch
 
    --------------------
    -- Process_Switch --
    --------------------
 
-   procedure Process_Switch (Switch : String) is
-      First   : constant Integer := Switch'First;
-      Last    : constant Integer := Switch_Last (Switch);
+   procedure Process_Switch (S : String) is
+      First   : constant Integer := S'First;
+      Last    : constant Integer := Switch_Last (S);
       Len     : constant Integer := Last - First + 1;
       Idx     : Natural;
       To_Free : String_Access    := null;
-
-      function Starts_With (S : String) return Boolean is
-        (Len > S'Length and then Switch (First .. First + S'Length - 1) = S);
-      --  Return True if Switch starts with S
-
-      function Switch_Value (S : String) return String is
-        (Switch (S'Length + First .. Last));
-      --  Returns the value of a switch known to start with S
 
       function Add_Maybe_With_Comma (S1, S2 : String) return String is
         ((if S1 = "" then S1 else S1 & ",") & S2);
@@ -98,40 +90,40 @@ package body GNATLLVM.Codegen is
       --  ??? At some point, this and Is_Back_End_Switch need to have
       --  some sort of common code.
 
-      if Len > 0 and then Switch (First) /= '-' then
-         if Is_Regular_File (Switch) then
+      if Len > 0 and then S (First) /= '-' then
+         if Is_Regular_File (S) then
             Free (Filename);
-            Filename := new String'(Switch);
+            Filename := new String'(S);
          end if;
 
-      elsif Switch = "--dump-ir" then
+      elsif S = "--dump-ir" then
          Code_Generation := Dump_IR;
-      elsif Switch in "--dump-bc" | "--write-bc" then
+      elsif S in "--dump-bc" | "--write-bc" then
          Code_Generation := Write_BC;
-      elsif Switch = "-emit-c" then
+      elsif S = "-emit-c" then
          Emit_C := True;
-      elsif Switch = "-emit-llvm" then
+      elsif S = "-emit-llvm" then
          Emit_LLVM := True;
-      elsif Switch = "-S" then
+      elsif S = "-S" then
          Output_Assembly := True;
-      elsif Switch = "-g"
-        or else (Starts_With ("-g") and then not Starts_With ("-gnat"))
+      elsif S = "-g"
+        or else (Starts_With (S, "-g") and then not Starts_With (S, "-gnat"))
       then
          Emit_Debug_Info      := True;
          Emit_Full_Debug_Info := True;
-      elsif Starts_With ("-gnateT=") then
+      elsif Starts_With (S, "-gnateT=") then
          Target_Config_File_Specified := True;
-      elsif Switch = "-fstack-check" then
+      elsif S = "-fstack-check" then
          Do_Stack_Check := True;
-      elsif Switch = "-fshort-enums" then
+      elsif S = "-fshort-enums" then
          Short_Enums := True;
-      elsif Switch = "-foptimize-ir" then
+      elsif S = "-foptimize-ir" then
          Optimize_IR := True;
-      elsif Switch = "-fno-optimize-ir" then
+      elsif S = "-fno-optimize-ir" then
          Optimize_IR := False;
-      elsif Starts_With ("--target=") then
+      elsif Starts_With (S, "--target=") then
          To_Free           := Target_Triple;
-         Target_Triple     := new String'(Switch_Value ("--target="));
+         Target_Triple     := new String'(Switch_Value (S, "--target="));
          Target_Triple_Set := True;
          Idx               := Index (Target_Triple.all, ":");
          if Idx /= 0 then
@@ -143,48 +135,49 @@ package body GNATLLVM.Codegen is
               new String'(Target_Triple.all (Target_Triple'First .. Idx - 1));
          end if;
 
-      elsif Starts_With ("-mtriple=") then
+      elsif Starts_With (S, "-mtriple=") then
          To_Free           := Target_Triple;
          Target_Triple_Set := True;
-         Target_Triple     := new String'(Switch_Value ("-mtriple="));
+         Target_Triple     := new String'(Switch_Value (S, "-mtriple="));
 
-      elsif Starts_With ("-mcuda-libdevice=") then
+      elsif Starts_With (S, "-mcuda-libdevice=") then
          Free (Libdevice_Filename);
-         Libdevice_Filename := new String'(Switch_Value ("-mcuda-libdevice="));
+         Libdevice_Filename :=
+           new String'(Switch_Value (S, "-mcuda-libdevice="));
 
       --  -march= and -mcpu= set the CPU to be used. -mtune= does likewise,
       --  but only if we haven't already seen one of the previous two switches
 
-      elsif Starts_With ("-march=") then
+      elsif Starts_With (S, "-march=") then
          To_Free       := CPU;
-         CPU           := new String'(Switch_Value ("-march="));
-      elsif Starts_With ("-mcpu=") then
+         CPU           := new String'(Switch_Value (S, "-march="));
+      elsif Starts_With (S, "-mcpu=") then
          To_Free       := CPU;
-         CPU           := new String'(Switch_Value ("-mcpu="));
-      elsif Starts_With ("-mtune=") then
+         CPU           := new String'(Switch_Value (S, "-mcpu="));
+      elsif Starts_With (S, "-mtune=") then
          if CPU.all = "generic" then
             To_Free    := CPU;
-            CPU        := new String'(Switch_Value ("-march="));
+            CPU        := new String'(Switch_Value (S, "-march="));
          end if;
 
       --  We support -mXXX and -mno-XXX by adding +XXX or -XXX, respectively,
       --  to the list of features.
 
-      elsif Starts_With ("-mno-") then
+      elsif Starts_With (S, "-mno-") then
          To_Free       := Features;
          Features      :=
            new String'(Add_Maybe_With_Comma (Features.all,
-                                       "-" & Switch_Value ("-mno-")));
-      elsif Starts_With ("-m") then
+                                       "-" & Switch_Value (S, "-mno-")));
+      elsif Starts_With (S, "-m") then
          To_Free       := Features;
          Features      :=
            new String'(Add_Maybe_With_Comma (Features.all,
-                                             "+" & Switch_Value ("-m")));
-      elsif Switch = "-O" then
+                                             "+" & Switch_Value (S, "-m")));
+      elsif S = "-O" then
             Code_Opt_Level := 1;
             Code_Gen_Level := Code_Gen_Level_Less;
-      elsif Starts_With ("-O") then
-         case Switch (First + 2) is
+      elsif Starts_With (S, "-O") then
+         case S (First + 2) is
             when '1' =>
                Code_Gen_Level := Code_Gen_Level_Less;
                Code_Opt_Level := 1;
@@ -206,82 +199,82 @@ package body GNATLLVM.Codegen is
                Code_Opt_Level := 2;
                Size_Opt_Level := 2;
             when 'f' =>
-               if Switch_Value ("-O") = "fast" then
+               if Switch_Value (S, "-O") = "fast" then
                   Code_Gen_Level := Code_Gen_Level_Aggressive;
                   Code_Opt_Level := 3;
                end if;
             when others =>
                null;
          end case;
-      elsif Switch = "-fno-strict-aliasing" then
+      elsif S = "-fno-strict-aliasing" then
          No_Strict_Aliasing_Flag := True;
-      elsif Switch = "-fc-style-aliasing" then
+      elsif S = "-fc-style-aliasing" then
          C_Style_Aliasing := True;
-      elsif Switch = "-fno-unroll-loops" then
+      elsif S = "-fno-unroll-loops" then
          No_Unroll_Loops := True;
-      elsif Switch = "-funroll-loops" then
+      elsif S = "-funroll-loops" then
          No_Unroll_Loops := False;
-      elsif Switch = "-fno-vectorize" then
+      elsif S = "-fno-vectorize" then
          No_Loop_Vectorization := True;
-      elsif Switch = "-fvectorize" then
+      elsif S = "-fvectorize" then
          No_Loop_Vectorization := False;
-      elsif Switch = "-fno-slp-vectorize" then
+      elsif S = "-fno-slp-vectorize" then
          No_SLP_Vectorization := True;
-      elsif Switch = "-fslp-vectorize" then
+      elsif S = "-fslp-vectorize" then
          No_SLP_Vectorization := False;
-      elsif Switch = "-fno-inline" then
+      elsif S = "-fno-inline" then
          No_Inlining := True;
-      elsif Switch = "-fmerge-functions" then
+      elsif S = "-fmerge-functions" then
          Merge_Functions := True;
-      elsif Switch in "-fno-merge-functions" | "-fno-toplevel-reorder" then
+      elsif S in "-fno-merge-functions" | "-fno-toplevel-reorder" then
          Merge_Functions := False;
-      elsif Switch = "-fno-lto" then
+      elsif S = "-fno-lto" then
          Prepare_For_Thin_LTO := False;
          Prepare_For_LTO      := False;
-      elsif Switch in "-flto" | "-flto=full" then
+      elsif S in "-flto" | "-flto=full" then
          Prepare_For_Thin_LTO := False;
          Prepare_For_LTO      := True;
-      elsif Switch = "-flto=thin" then
+      elsif S = "-flto=thin" then
          Prepare_For_Thin_LTO  := True;
          Prepare_For_LTO       := False;
-      elsif Switch = "-freroll-loops" then
+      elsif S = "-freroll-loops" then
          Reroll_Loops := True;
-      elsif Switch = "-fno-reroll-loops" then
+      elsif S = "-fno-reroll-loops" then
          Reroll_Loops := False;
-      elsif Switch = "-fno-optimize-sibling-calls" then
+      elsif S = "-fno-optimize-sibling-calls" then
          No_Tail_Calls := True;
-      elsif Switch = "-fforce-activation-record-parameter" then
+      elsif S = "-fforce-activation-record-parameter" then
          Force_Activation_Record_Parameter := True;
-      elsif Switch = "-fno-force-activation-record-parameter" then
+      elsif S = "-fno-force-activation-record-parameter" then
          Force_Activation_Record_Parameter := False;
-      elsif Switch = "-mdso-preemptable" then
+      elsif S = "-mdso-preemptable" then
          DSO_Preemptable := True;
-      elsif Switch = "-mdso-local" then
+      elsif S = "-mdso-local" then
          DSO_Preemptable := False;
-      elsif Switch = "-mcode-model=small" then
+      elsif S = "-mcode-model=small" then
          Code_Model := Code_Model_Small;
-      elsif Switch = "-mcode-model=kernel" then
+      elsif S = "-mcode-model=kernel" then
          Code_Model := Code_Model_Kernel;
-      elsif Switch = "-mcode-model=medium" then
+      elsif S = "-mcode-model=medium" then
          Code_Model := Code_Model_Medium;
-      elsif Switch = "-mcode-model=large" then
+      elsif S = "-mcode-model=large" then
          Code_Model := Code_Model_Large;
-      elsif Switch = "-mcode-model=default" then
+      elsif S = "-mcode-model=default" then
          Code_Model := Code_Model_Default;
-      elsif Switch = "-mrelocation-model=static" then
+      elsif S = "-mrelocation-model=static" then
          Reloc_Mode := Reloc_Static;
-      elsif Switch in "-fPIC" | "-mrelocation-model=pic" then
+      elsif S in "-fPIC" | "-mrelocation-model=pic" then
          Reloc_Mode := Reloc_PIC;
-      elsif Switch = "-mrelocation-model=dynamic-no-pic" then
+      elsif S = "-mrelocation-model=dynamic-no-pic" then
          Reloc_Mode := Reloc_Dynamic_No_Pic;
-      elsif Switch = "-mrelocation-model=default" then
+      elsif S = "-mrelocation-model=default" then
          Reloc_Mode := Reloc_Default;
-      elsif Starts_With ("-fpass-plugin=") then
+      elsif Starts_With (S, "-fpass-plugin=") then
          To_Free := Pass_Plugin_Name;
-         Pass_Plugin_Name := new String'(Switch_Value ("-fpass-plugin="));
-      elsif Starts_With ("-llvm-") then
-         Switches.Append (new String'(Switch_Value ("-llvm")));
-      elsif C_Process_Switch (Switch) then
+         Pass_Plugin_Name := new String'(Switch_Value (S, "-fpass-plugin="));
+      elsif Starts_With (S, "-llvm-") then
+         Switches.Append (new String'(Switch_Value (S, "-llvm")));
+      elsif C_Process_Switch (S) then
          null;
       end if;
 

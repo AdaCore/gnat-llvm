@@ -322,13 +322,4 @@ package CCG.Utils is
    function NULL_String return String is
      (if Have_Includes then "NULL" else "(void *) 0");
 
-   function Starts_With (Switch, S : String) return Boolean is
-     (Switch'Length > S'Length
-     and then Switch (Switch'First .. Switch'First + S'Length - 1) = S);
-   --  Return True if Switch starts with S
-
-   function Switch_Value (Switch, S : String) return String is
-     (Switch (S'Length + Switch'First .. Switch'Last));
-   --  Returns the value of a switch known to start with S
-
 end CCG.Utils;

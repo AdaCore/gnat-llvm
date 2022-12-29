@@ -324,6 +324,15 @@ package GNATLLVM is
       Hash            => Hash_Value,
       Equivalent_Keys => "=");
 
+   function Starts_With (Switch, S : String) return Boolean is
+     (Switch'Length > S'Length
+     and then Switch (Switch'First .. Switch'First + S'Length - 1) = S);
+   --  Return True if Switch starts with S
+
+   function Switch_Value (Switch, S : String) return String is
+     (Switch (S'Length + Switch'First .. Switch'Last));
+   --  Returns the value of a switch known to start with S
+
    subtype Err_Msg_Type is String (1 .. 10000);
    type Ptr_Err_Msg_Type is access all Err_Msg_Type;
    --  Used for LLVM error handling

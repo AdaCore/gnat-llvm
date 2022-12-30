@@ -31,36 +31,6 @@ package CCG.Target is
    C_Parameter_File  : String_Access  := null;
    --  If non-null, the name of a file to dump the C parameters
 
-   procedure Set_C_Compiler (S : String);
-   --  Set the parameters corresponding to the C compiler given in S
-
-   procedure Read_C_Parameters (Name : String);
-   --  Read C parameters from file Name
-
-   procedure Set_C_Parameter (S : String);
-   --  S is of the form "name=value". Use it to set parameter "name" to "value"
-
-   procedure Output_C_Parameters;
-   --  Output all the C parameters
-
-   type OM_Blank is (Before, After, None);
-   function Output_Modifier
-     (M     : String;
-      Blank : OM_Blank := After;
-      Val   : Int      := -1;
-      S     : String   := "") return Str
-     with Post => Present (Output_Modifier'Result);
-   --  Return a Str corresponding to the way we write modifier M on our
-   --  target. If Val is non-negative, we expect the template to contain a
-   --  way to write an integer and if S is non-null, we expect it to
-   --  contain a way to write a string (in both cases, the character
-   --  '%'). Blank says whether we're to write a blank before or after the
-   --  value. If we're writing the null string, we don't write a blank at
-   --  all.
-
-   procedure Maybe_Declare_Section (S : String);
-   --  If we have to declare code sections, do so for section S
-
    --  These are the parameters themselves
 
    Version                 : aliased Integer       := 1999;
@@ -103,5 +73,43 @@ package CCG.Target is
    --  can either use the "packed" modifier ("modifier"), a packed
    --  pragma in MSVC syntax ("pragma"), or we can't support packed records
    --  ("none").
+
+   procedure Set_C_Compiler (S : String);
+   --  Set the parameters corresponding to the C compiler given in S
+
+   procedure Read_C_Parameters (Name : String);
+   --  Read C parameters from file Name
+
+   procedure Set_C_Parameter (S : String);
+   --  S is of the form "name=value". Use it to set parameter "name" to "value"
+
+   procedure Output_C_Parameters;
+   --  Output all the C parameters
+
+   type OM_Blank is (Before, After, None);
+   function Output_Modifier
+     (M     : String;
+      Blank : OM_Blank := After;
+      Val   : Int      := -1;
+      S     : String   := "") return Str
+     with Post => Present (Output_Modifier'Result);
+   --  Return a Str corresponding to the way we write modifier M on our
+   --  target. If Val is non-negative, we expect the template to contain a
+   --  way to write an integer and if S is non-null, we expect it to
+   --  contain a way to write a string (in both cases, the character
+   --  '%'). Blank says whether we're to write a blank before or after the
+   --  value. If we're writing the null string, we don't write a blank at
+   --  all.
+
+   procedure Maybe_Declare_Section (S : String);
+   --  If we have to declare code sections, do so for section S
+
+   function Pack_Via_Modifier return Boolean
+     is (Packed_Mechanism.all = "modifier");
+   function Pack_Via_Pragma return Boolean
+     is (Packed_Mechanism.all = "pragma");
+   function Pack_Not_Supported return Boolean
+     is (Packed_Mechanism.all = "none");
+   --  Functions to say how we're indicating packed records in the C output
 
 end CCG.Target;

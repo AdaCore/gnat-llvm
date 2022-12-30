@@ -18,6 +18,8 @@
 with Ada.Containers.Hashed_Maps;
 
 with Einfo.Utils; use Einfo.Utils;
+with Errout;      use Errout;
+with Lib;         use Lib;
 with Set_Targ;    use Set_Targ;
 with Table;
 
@@ -1068,5 +1070,65 @@ package body CCG.Utils is
          return +"<unknown int type:" & Size'Image & ">";
       end if;
    end Int_Type_String;
+
+   ---------------
+   -- Error_Msg --
+   ---------------
+
+   procedure Error_Msg (Msg : String; V : Value_T) is
+      E : constant Entity_Id :=
+        (if Present (V) then Get_Entity (V) else Empty);
+
+   begin
+      --  First see if this corresponds to an entity that we can get a
+      --  Sloc from.
+
+      if Present (E) and then not Is_Type (E) then
+         Error_Msg_N (Msg, E);
+
+      --  Otherwise, post it on the main unit and try to find a line and
+      --  column.
+
+      elsif Present (V)
+        and then (Is_A_Instruction (V) or else Is_A_Function (V)
+                  or else Is_A_Global_Variable (V))
+      then
+         declare
+            File : constant String := Get_Debug_Loc_Filename (V);
+            Line : constant String := CCG.Helper.Get_Debug_Loc_Line (V)'Image;
+         begin
+            if File /= "" then
+               Error_Msg_N (Msg & " at " & File & ":" & Line (2 .. Line'Last),
+                            Cunit (Main_Unit));
+               return;
+            end if;
+         end;
+      end if;
+
+      Error_Msg_N (Msg, Cunit (Main_Unit));
+   end Error_Msg;
+
+   ---------------
+   -- Error_Msg --
+   ---------------
+
+   procedure Error_Msg (Msg : String; T : Type_T) is
+   begin
+      --  First see if this corresponds to a type that we can get a Sloc
+      --  from.
+
+      if Present (Get_Entity (T)) then
+         Error_Msg_NE (Msg & " for type &", Get_Entity (T), Get_Entity (T));
+
+      --  Otherwise, post it on the main unit and try to find a name for
+      --  the type.
+
+      elsif Is_Struct_Type (T) then
+         Error_Msg_N (Msg & " for type `" & Get_Struct_Name (T) & "`",
+                      Cunit (Main_Unit));
+      else
+         Error_Msg_N (Msg, Cunit (Main_Unit));
+      end if;
+   end Error_Msg;
 
 end CCG.Utils;

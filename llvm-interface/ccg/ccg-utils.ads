@@ -309,6 +309,16 @@ package CCG.Utils is
    --  user is an instruction, both are in the same basic block, and
    --  there are no instructions with side effects between them.
 
+   procedure Error_Msg (Msg : String; V : Value_T);
+   --  Post an error message via the GNAT errout mechanism. If V
+   --  corresponds to an entity from the front end, post it on
+   --  that. Otherwise, posted it on the main unit start sloc and if V has
+   --  an associated debug location, append this location to the error
+   --  message as " at file:line".
+
+   procedure Error_Msg (Msg : String; T : Type_T);
+   --  Similarly, but for a type
+
    generic
       with procedure Process (V : Value_T) is <>;
    procedure Walk_Object (V : Value_T)

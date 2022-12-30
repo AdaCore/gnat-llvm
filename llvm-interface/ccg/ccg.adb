@@ -17,7 +17,6 @@
 
 with Atree;       use Atree;
 with Einfo.Utils; use Einfo.Utils;
-with Errout;      use Errout;
 with Lib;         use Lib;
 with Sinput;      use Sinput;
 
@@ -27,7 +26,6 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Codegen;      use CCG.Codegen;
 with CCG.Environment;  use CCG.Environment;
-with CCG.Helper;       use CCG.Helper;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Target;       use CCG.Target;
@@ -204,31 +202,6 @@ package body CCG is
          Elab_Spec_Func := V;
       end if;
    end C_Set_Elab_Proc;
-
-   ---------------
-   -- Error_Msg --
-   ---------------
-
-   procedure Error_Msg (Msg : String; V : Value_T) is
-   begin
-      if Present (V)
-        and then (Is_A_Instruction (V) or else Is_A_Function (V)
-                  or else Is_A_Global_Variable (V))
-      then
-         declare
-            File : constant String := Get_Debug_Loc_Filename (V);
-            Line : constant String := CCG.Helper.Get_Debug_Loc_Line (V)'Image;
-         begin
-            if File /= "" then
-               Error_Msg_N (Msg & " at " & File & ":" & Line (2 .. Line'Last),
-                            Cunit (Types.Main_Unit));
-               return;
-            end if;
-         end;
-      end if;
-
-      Error_Msg_N (Msg, Cunit (Types.Main_Unit));
-   end Error_Msg;
 
    -------------------------
    -- C_Create_Annotation --

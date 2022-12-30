@@ -182,12 +182,6 @@ package CCG is
      with Pre => Present (V);
    --  Indicate that V is a subprogram whose address is being taken
 
-   procedure Error_Msg (Msg : String; V : Value_T);
-   --  Post an error message via the GNAT errout mechanism, posted on the
-   --  main unit start sloc.
-   --  If V has an associated debug location, append this location to the error
-   --  message as " at file:line".
-
    procedure Discard (B : Boolean) is null;
    --  Used to discard Boolean function results
 

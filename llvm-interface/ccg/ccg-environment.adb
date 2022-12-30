@@ -87,10 +87,13 @@ package body CCG.Environment is
       Are_Outputting_Typedef   : Boolean;
       --  True if we're in the process of outputting a typedef
 
+      Cannot_Pack              : Boolean;
+      --  True if this is a type that we want to pack, but can't because of
+      --  restrictions in our C compiler.
+
       Output_Idx               : Nat;
       --  A positive number if we've assigned an ordinal to use as
       --  part of the name for this anonymous type.
-
    end record;
 
    type BB_Data is record
@@ -248,6 +251,7 @@ package body CCG.Environment is
                             Is_Return_Typedef_Output => False,
                             Is_Incomplete_Output     => False,
                             Are_Outputting_Typedef   => False,
+                            Cannot_Pack              => False,
                             Output_Idx               => 0));
          Insert (Type_Info_Map, T, Type_Info.Last);
          return Type_Info.Last;
@@ -497,6 +501,17 @@ package body CCG.Environment is
         and then Type_Info.Table (Idx).Are_Outputting_Typedef;
    end Get_Are_Outputting_Typedef;
 
+   ---------------------
+   -- Get_Cannot_Pack --
+   ---------------------
+
+   function Get_Cannot_Pack (T : Type_T) return Boolean is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
+
+   begin
+      return Present (Idx) and then Type_Info.Table (Idx).Cannot_Pack;
+   end Get_Cannot_Pack;
+
    ----------------
    -- Set_Entity --
    ----------------
@@ -551,6 +566,17 @@ package body CCG.Environment is
    begin
       Type_Info.Table (Idx).Are_Outputting_Typedef := B;
    end Set_Are_Outputting_Typedef;
+
+   ---------------------
+   -- Set_Cannot_Pack --
+   ---------------------
+
+   procedure Set_Cannot_Pack (T : Type_T; B : Boolean := True) is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
+
+   begin
+      Type_Info.Table (Idx).Cannot_Pack := B;
+   end Set_Cannot_Pack;
 
    --------------
    -- Get_Flow --

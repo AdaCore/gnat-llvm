@@ -86,10 +86,17 @@ package CCG.Aggregates is
      ((if   Is_Struct_Type (T) and then Struct_Out_Style (T) = Packed
        then BPU else Default_Alignment (T)))
      with Pre => Present (T);
+
    procedure Output_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
      with Pre => Is_Struct_Type (T);
    --  Output a typedef for T, a struct type. If Incomplete, only output the
    --  initial struct definition, not the fields.
+
+   procedure Error_If_Cannot_Pack (T : Type_T)
+     with Pre => Present (T);
+   --  We're using T in a context where it matters if its size isn't a
+   --  multiple of its alignment, so give an error if that's that case
+   --  and we don't support packing.
 
    procedure Output_Array_Typedef (T : Type_T)
      with Pre => Is_Array_Type (T);

@@ -499,6 +499,7 @@ package body CCG.Instructions is
       RHS : constant Str := +Op1;
 
    begin
+      Error_If_Cannot_Pack (Type_Of (Op1));
       Process_Pending_Values;
       Output_Copy (LHS, RHS, Type_Of (Op1), V => V);
    end Store_Instruction;

@@ -101,6 +101,11 @@ package CCG.Environment is
      with Pre => Present (T), Inline;
    --  True if we're in the process of outputting a typedef
 
+   function Get_Cannot_Pack              (T : Type_T) return Boolean
+     with Pre => Present (T), Inline;
+   --  True if this is a type that we want to pack, but can't because of
+   --  restrictions in our C compiler.
+
    procedure Set_Entity                   (T : Type_T; TE : Type_Kind_Id)
      with Pre => Present (T), Post => Get_Entity (T) = TE, Inline;
    procedure Set_Is_Typedef_Output        (T : Type_T; B : Boolean := True)
@@ -113,6 +118,9 @@ package CCG.Environment is
           Inline;
    procedure Set_Are_Outputting_Typedef   (T : Type_T; B : Boolean := True)
      with Pre  => Present (T), Post => Get_Are_Outputting_Typedef (T) = B,
+          Inline;
+   procedure Set_Cannot_Pack              (T : Type_T; B : Boolean := True)
+     with Pre  => Present (T), Post => Get_Cannot_Pack (T) = B,
           Inline;
 
    function Get_Flow        (BB : Basic_Block_T) return Flow_Idx

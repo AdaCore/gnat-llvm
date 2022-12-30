@@ -88,29 +88,25 @@ package body CCG.Aggregates is
       F0        : constant Entity_Id        :=
         (if Num_Types = 0 then Empty else Get_Field_Entity (T, 0));
       TE        : constant Opt_Type_Kind_Id :=
-        (if   Present (F0) then Full_Base_Type (Full_Etype (Scope (F0)))
-         else Empty);
-      Cur_Pos   :  ULL                      := 0;
+        (if Present (F0) then Full_Scope (F0) else Empty);
+      Cur_Pos   : ULL                       := 0;
       Need_Pack : Boolean                   := False;
       Need_Pad  : Boolean                   := False;
 
    begin
+      --  If this is an opaque type, we're not going to be referencing it
+      --  directly, and certainly aren't going to be outputting fields for
+      --  it, so we can pretend it's normal.
+
+      if Is_Opaque_Struct (T) then
+         return Normal;
+
       --  If this isn't a packed struct, we don't need packing. Likewise if
       --  there are no fields. But we don't know that we can omit padding
       --  fields.
 
-      if not Is_Packed_Struct (T) or else Num_Types = 0 then
+      elsif not Is_Packed_Struct (T) or else Num_Types = 0 then
          return Padding;
-
-      --  if we can't determine the base type, its base type is
-      --  unconstrained (see the discussion in GNATLLVM.Records.Create for
-      --  the rationale of this test), or if the alignment of the struct
-      --  is smaller that the default alignment, we must pack.
-
-      elsif No (TE) or else not Is_Constrained (TE)
-        or else (+Alignment (TE)) * UBPU < ULL (Default_Alignment (T))
-      then
-         return Packed;
 
       --  ??? For now, if optimizing, we need to include padding
       --  fields since LLVM's SROA may try to preserve padding fields.
@@ -154,10 +150,55 @@ package body CCG.Aggregates is
          end;
       end loop;
 
+      --  If we've already determined that we need packing but we don't
+      --  have a way of indicating that to the C compiler, give an error.
+
+      if Need_Pack and then Pack_Not_Supported then
+         Error_Msg ("C compiler does not support packing", T);
+      end if;
+
+      --  If we haven't already neded to pack, we need to pack if the
+      --  alignment of the struct is smaller than the default alignment of
+      --  the type (or if we can't determine the alignment). However, in
+      --  that case, we only need to pack if this type is used as a
+      --  component of another type (because that will affect the layout)
+      --  or if we store an object of the type (since it will clobber other
+      --  memory), so we mark it as such as test for it in the appropriate
+      --  places.
+
+      if (No (TE)
+          or else (+Alignment (TE)) * UBPU < ULL (Default_Alignment (T)))
+        and then not Need_Pack
+      then
+         Need_Pack := True;
+         if Pack_Not_Supported then
+            Set_Cannot_Pack (T);
+         end if;
+      end if;
+
+      --  Now return what we've computed above
+
       return (if   Need_Pack then Packed elsif Need_Pad then Padding
               else Normal);
 
    end Struct_Out_Style;
+
+   --------------------------
+   -- Error_If_Cannot_Pack --
+   --------------------------
+
+   procedure Error_If_Cannot_Pack (T : Type_T) is
+   begin
+      --  We want this error to be output only once for a type. If the
+      --  type corresponds to a GNAT type, the handling of error messages
+      --  will guarantee that. If not, we may be outputting duplicates,
+      --  but let's assume that's a rare case and not add a bit just for
+      --  that purpose.
+
+      if Get_Cannot_Pack (T) then
+         Error_Msg ("unsupported use when packing not available", T);
+      end if;
+   end Error_If_Cannot_Pack;
 
    ---------------------------
    -- Output_Struct_Typedef --
@@ -218,7 +259,7 @@ package body CCG.Aggregates is
             ST : constant Type_T  := Struct_Get_Type_At_Index (T, J);
 
          begin
-
+            Error_If_Cannot_Pack (ST);
             if not Omitted_Field_Type (ST, J = Num_Types - 1)
               and then not (SOS = Normal and then Is_Field_Padding (T, J))
             then
@@ -282,6 +323,7 @@ package body CCG.Aggregates is
       --  Now build the declaration
 
       Maybe_Output_Typedef (Elem_T);
+      Error_If_Cannot_Pack (Elem_T);
       Decl := Decl & Elem_T & " " & T & "[";
       if Effective_Array_Length (T) /= 0 then
          Decl := Decl & Effective_Array_Length (T);

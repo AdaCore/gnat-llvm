@@ -435,6 +435,13 @@ package body CCG.Target is
            "modifier-always_inline=$;" &
            "modifier-noreturn=__declspec(noreturn);" &
            "modifier-aligned=__declspec(align(%));";
+      elsif To_Lower (S) = "generic" then
+         return
+           "packed-mechanism=none;" &
+           "modifier-section=$;" &
+           "modifier-always_inline=$;" &
+           "modifier-noreturn=$;" &
+           "modifier-aligned=$;";
       else
          Early_Error ("unsupported C compiler: " & S);
          return "";

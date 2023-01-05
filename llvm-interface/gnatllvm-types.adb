@@ -599,11 +599,9 @@ package body GNATLLVM.Types is
       A_GT       : constant GL_Type :=
         (if Present (Alloc_GT) then Alloc_GT else GT);
       Align      : constant Nat     := Get_Alloc_Alignment (GT, A_GT, E);
-      Overalign  : constant Boolean := Align > (Get_Stack_Alignment * BPU);
       Value      : GL_Value         := V;
       Element_GT : GL_Type;
       Num_Elts   : GL_Value;
-      Result     : GL_Value;
 
    begin
       --  Skip this when only processing decls
@@ -611,14 +609,13 @@ package body GNATLLVM.Types is
       if Decls_Only then
          return Get_Undef_Ref (GT);
 
-      --  We have three cases.  If the object has a native type and we're
-      --  not trying to over-align it, we just do the alloca and that's
-      --  all.  Test for the size being other an overflow or an undef,
-      --  which we'll assume was likely caused by an overflow.
-      --  If this is an undef, it likely means that we already said we were
+      --  We have three cases. If the object has a native type, we just do the
+      --  alloca and that's all. Test for the size being either an overflow or
+      --  an undef, which we'll assume was likely caused by an overflow. If
+      --  this is an undef, it likely means that we already said we were
       --  raising constraint error, so if we did, omit this one.
 
-      elsif not Is_Nonnative_Type (A_GT) and then not Overalign then
+      elsif not Is_Nonnative_Type (A_GT) then
          if Do_Stack_Check
            and then Get_Type_Size (Type_Of (A_GT)) > Max_Alloc * UBPU
          then
@@ -638,15 +635,13 @@ package body GNATLLVM.Types is
          end if;
       end if;
 
-      --  Otherwise, we probably have to do some sort of dynamic
-      --  allocation.  If this is an array of a component that's not of
-      --  dynamic size that we're not overaligning, we can allocate an
-      --  array of the component type corresponding to the array type and
-      --  cast it to a pointer to the actual type.  If not, we have to
-      --  allocate it as an array of bytes.  We must use an array of bytes
-      --  if we have to include bounds.  If this is an unconstrained array,
-      --  we need to find the bounds, so evaluate Expr if Present and
-      --  there's no Value.
+      --  Otherwise, we probably have to do some sort of dynamic allocation. If
+      --  this is an array of a component that's not of dynamic size, we can
+      --  allocate an array of the component type corresponding to the array
+      --  type and cast it to a pointer to the actual type. If not, we have to
+      --  allocate it as an array of bytes. We must use an array of bytes if we
+      --  have to include bounds. If this is an unconstrained array, we need to
+      --  find the bounds, so evaluate Expr if Present and there's no Value.
 
       if Is_Unconstrained_Array (A_GT) and then No (Value)
         and then Present (Expr)
@@ -657,7 +652,6 @@ package body GNATLLVM.Types is
       if Is_Array_Type (A_GT)
         and then Is_Native_Component_GT (Full_Component_GL_Type (A_GT))
         and then not Is_Constr_Subt_For_UN_Aliased (GT)
-        and then not Overalign
       then
          Element_GT := Full_Component_GL_Type (A_GT);
          Num_Elts   := Get_Array_Elements (Value, Full_Etype (A_GT));
@@ -667,16 +661,11 @@ package body GNATLLVM.Types is
            To_Bytes (Get_Alloc_Size (GT, A_GT, Value, Max_Size));
       end if;
 
-      --  Handle overalignment by adding the alignment to the size
+      --  If this is an aliased array of nominal constrained type and the
+      --  number of elements isn't a constant, make sure that it's at least one
+      --  element.
 
-      if Overalign then
-         Num_Elts := Num_Elts + To_Bytes (Align);
-
-      --  Otherwise, if this is an aliased array of nominal constrained type
-      --  and the number of elements isn't a constant, make sure that it's
-      --  at least one element.
-
-      elsif Present (E) and then Is_Array_Type (A_GT)
+      if Present (E) and then Is_Array_Type (A_GT)
         and then not Is_Constr_Subt_For_UN_Aliased (GT) and then Is_Aliased (E)
         and then not Is_Constant (Num_Elts)
       then
@@ -711,7 +700,7 @@ package body GNATLLVM.Types is
       end if;
 
       --  If the number of elements overflowed, raise Storage_Error.  But
-      --  check for the pathalogical case of an array of zero-sized elements.
+      --  check for the pathological case of an array of zero-sized elements.
 
       if Overflowed (Num_Elts) or else Is_Undef (Num_Elts) then
          if Get_Type_Size (Element_GT) = 0 then
@@ -734,19 +723,11 @@ package body GNATLLVM.Types is
          return Get_Undef_Ref (GT);
       end if;
 
-      --  Otherwise allocate the object, align if necessary, and then move
-      --  any data into it.
+      --  Otherwise allocate the object and then move any data into it.
 
-      Result := Array_Alloca (Element_GT, Num_Elts, E, Align,
-                              (if Overalign then "%%" else Name));
-      if Overalign then
-         Result := Ptr_To_Int (Result, Size_GL_Type);
-         Result := Align_To   (Result, Get_Stack_Alignment, To_Bytes (Align));
-         Result := Int_To_Ptr (Result, A_Char_GL_Type);
-         Set_Value_Name (Result, Get_Alloca_Name (E, Name));
-      end if;
-
-      return Move_Into_Memory (Result, Value, Expr, GT, A_GT);
+      return Move_Into_Memory (Array_Alloca
+                                 (Element_GT, Num_Elts, E, Align, Name),
+                               Value, Expr, GT, A_GT);
 
    end Allocate_For_Type;
 

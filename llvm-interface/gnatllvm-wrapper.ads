@@ -149,9 +149,6 @@ package GNATLLVM.Wrapper is
    function Call_Param_Has_Nest (V : Value_T; Idx : unsigned) return Boolean
      with Pre => Present (Is_A_Call_Inst (V));
 
-   function Get_Stack_Alignment (Layout : Target_Data_T) return unsigned
-     with Import, Convention => C, External_Name => "Get_Stack_Alignment";
-
    procedure Set_DSO_Local (V : Value_T)
      with Import, Convention => C, External_Name => "Set_DSO_Local";
 

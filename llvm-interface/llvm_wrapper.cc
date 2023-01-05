@@ -290,13 +290,6 @@ Create_TBAA_Struct_Node (LLVMContext &ctx, MDBuilder *MDHelper,
 }
 
 extern "C"
-unsigned
-Get_Stack_Alignment (DataLayout *dl)
-{
-  return dl->getStackAlignment ().value ();
-}
-
-extern "C"
 MDNode *
 Create_TBAA_Access_Tag (MDBuilder *MDHelper, MDNode *BaseType,
 			MDNode *AccessType, uint64_t offset, uint64_t size)

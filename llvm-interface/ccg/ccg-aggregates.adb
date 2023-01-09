@@ -88,7 +88,8 @@ package body CCG.Aggregates is
       F0        : constant Entity_Id        :=
         (if Num_Types = 0 then Empty else Get_Field_Entity (T, 0));
       TE        : constant Opt_Type_Kind_Id :=
-        (if Present (F0) then Full_Scope (F0) else Empty);
+        (if   Present (F0) then Full_Base_Type (Full_Etype (Scope (F0)))
+         else Empty);
       Cur_Pos   : ULL                       := 0;
       Need_Pack : Boolean                   := False;
       Need_Pad  : Boolean                   := False;
@@ -157,17 +158,13 @@ package body CCG.Aggregates is
          Error_Msg ("C compiler does not support packing", T);
       end if;
 
-      --  If we haven't already neded to pack, we need to pack if the
-      --  alignment of the struct is smaller than the default alignment of
-      --  the type (or if we can't determine the alignment). However, in
-      --  that case, we only need to pack if this type is used as a
-      --  component of another type (because that will affect the layout)
-      --  or if we store an object of the type (since it will clobber other
-      --  memory), so we mark it as such as test for it in the appropriate
-      --  places.
+      --  if we can't determine the base type, its base type is
+      --  unconstrained (see the discussion in GNATLLVM.Records.Create for
+      --  the rationale of this test), or if the alignment of the struct
+      --  is smaller that the default alignment, we must pack.
 
-      if (No (TE)
-          or else (+Alignment (TE)) * UBPU < ULL (Default_Alignment (T)))
+      if (No (TE) or else not Is_Constrained (TE)
+            or else (+Alignment (TE)) * UBPU < ULL (Default_Alignment (T)))
         and then not Need_Pack
       then
          Need_Pack := True;

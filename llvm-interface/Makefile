@@ -221,6 +221,14 @@ gnatlib-automated: build-opt
 	  LN_S="cp -p" quicklib
 	$(RMDIR) $(RTSOBJ)
 
+gnatlib-symcc-automated: setup
+	$(RMDIR) $(RTS)
+	$(MAKE) CFLAGS="$(CFLAGS)" \
+	  EXTRALIBFLAGS="-fpass-plugin=libSymbolize.so $(EXTRALIBFLAGS)" \
+	  LN_S="cp -p" \
+	  quicklib
+	$(RMDIR) $(RTSOBJ)
+
 gnatlib-shared:
 	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
 	  LIBRARY_KIND=dynamic gnatlib
@@ -244,7 +252,7 @@ quicklib: $(RTSDIR)
 	  -XLIBRARY_KIND=$(LIBRARY_KIND)
 	cd $(RTSLIB) && $(CHMOD) a-wx *.ali
 
-$(RTSDIR): bin/llvm-gnat1$(EXE)
+$(RTSDIR):
 	$(RMDIR) $(RTS)
 	$(MKDIR) $(RTSLIB)
 	$(MAKE) setup-rts

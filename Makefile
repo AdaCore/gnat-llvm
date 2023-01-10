@@ -27,6 +27,13 @@ automated:
 cross-automated:
 	$(MAKE) -C llvm-interface zfp-opt
 
+# Build the full runtime instrumented with SymCC. This target requires SymCC and
+# a working GNAT-LLVM on the path, i.e., it builds only the runtime.
+symcc-automated:
+	$(MAKE) -C llvm-interface \
+	  RTS="$(shell pwd)/llvm-interface/lib/rts-symcc" \
+	  gnatlib-symcc-automated
+
 llvm:
 	$(MAKE) -j1 -C llvm setup
 	$(MAKE) -C llvm llvm

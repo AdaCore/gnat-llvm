@@ -223,8 +223,9 @@ gnatlib-automated: build-opt
 
 gnatlib-symcc-automated: setup
 	$(RMDIR) $(RTS)
-	$(MAKE) CFLAGS="$(CFLAGS)" \
-	  EXTRALIBFLAGS="-fpass-plugin=libSymbolize.so $(EXTRALIBFLAGS)" \
+	$(MAKE) \
+	  CFLAGS="-fpass-plugin=libSymbolize.so $(CFLAGS)" \
+	  EXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
 	  LN_S="cp -p" \
 	  quicklib
 	$(RMDIR) $(RTSOBJ)

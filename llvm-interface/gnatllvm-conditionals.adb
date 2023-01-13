@@ -1255,7 +1255,7 @@ package body GNATLLVM.Conditionals is
          declare
             IEP    : I_E_Part renames Parts.Table (J);
             GT     : constant GL_Type := Related_Type (IEP.Value);
-            Result : GL_Value := IEP.Value;
+            Result : GL_Value         := IEP.Value;
 
          begin
             Position_Builder_At_End (IEP.BB);
@@ -1289,6 +1289,7 @@ package body GNATLLVM.Conditionals is
             --  native LLVM type.  If so, just change the GT.
 
             if not Is_Nonnative_Type (GT)
+              and then not Is_Nonnative_Type (Phi_GT)
               and then Type_Of (GT) = Type_Of (Phi_GT)
             then
                Result := G_Is (Result, Phi_GT);

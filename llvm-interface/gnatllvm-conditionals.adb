@@ -1077,7 +1077,6 @@ package body GNATLLVM.Conditionals is
       Need_Ref      : Boolean;
       Prefer_Ref    : Boolean;
       Use_Ref       : Boolean;
-      Result        : GL_Value;
 
       -------------------------
       -- Need_Ref_To_Convert --
@@ -1320,6 +1319,7 @@ package body GNATLLVM.Conditionals is
       end loop;
 
       declare
+         Result : GL_Value;
          Values : GL_Value_Array (1 .. Parts.Last);
          BBs    : Basic_Block_Array (1 .. Parts.Last);
 

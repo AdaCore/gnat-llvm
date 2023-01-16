@@ -116,8 +116,7 @@ package body Get_Targ is
 
    function Get_Long_Long_Long_Size return Pos is
    begin
-      --  We do not fully support 128bits integers
-      return 64;
+      return (if Emit_C then 64 else 128);
    end Get_Long_Long_Long_Size;
 
    ----------------------

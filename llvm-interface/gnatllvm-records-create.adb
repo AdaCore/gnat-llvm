@@ -876,8 +876,15 @@ package body GNATLLVM.Records.Create is
                   Flush_Current_Types;
                end if;
 
-               Set_Present_Expr (Variant,
-                                 Choices_To_SO_Ref (Variant, Variant_Expr));
+               --  When we're processing subtypes, we're still looking at
+               --  the variant entries for the type. So ensure we only set
+               --  Present_Expr for it once.
+
+               if No (Present_Expr (Variant)) then
+                  Set_Present_Expr (Variant,
+                                    Choices_To_SO_Ref (Variant, Variant_Expr));
+               end if;
+
                Var_Array (J)         := First_Idx;
                Overlap_Var_Array (J) := Overlap_Idx;
                J                     := J + 1;

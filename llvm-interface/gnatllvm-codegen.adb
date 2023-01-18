@@ -368,7 +368,7 @@ package body GNATLLVM.Codegen is
       TT_First    : constant Integer  := Target_Triple'First;
 
    begin
-      if Long_Long_Long_Size > 64 then
+      if Emit_C and then Long_Long_Long_Size > 64 then
          Early_Error ("Long_Long_Long_Size greater than 64 not supported");
       end if;
 

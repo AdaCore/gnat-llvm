@@ -207,10 +207,6 @@ objext=.o
 
 include $(GNAT_SRC)/Makefile.rtl
 
-# Disable runtime units that depend on 128bits support
-export GNATRTL_128BIT_PAIRS=
-export GNATRTL_128BIT_OBJS=
-
 gnatlib: build
 	$(RMDIR) $(RTS)
 	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" quicklib

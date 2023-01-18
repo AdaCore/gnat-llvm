@@ -635,7 +635,7 @@ package GNATLLVM.GLType is
      (Component_Type (Full_Etype (GT)));
 
    function Default_Aspect_Value (GT : GL_Type) return Opt_N_Subexpr_Id is
-     (Default_Aspect_Value (Full_Etype (GT)))
+     (Default_Aspect_Value (Full_Base_Type (GT)))
      with Pre => Present (GT);
 
    function Number_Dimensions (GT : Array_GL_Type) return Pos is

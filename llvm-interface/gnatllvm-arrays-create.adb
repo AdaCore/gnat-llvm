@@ -27,11 +27,11 @@ with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Arrays.Create is
 
-   function Cannot_Be_Superflat (N : N_Has_Bounds_Id) return Boolean;
+   function Known_Not_Superflat (N : N_Has_Bounds_Id) return Boolean;
    --  Return True if the range described by N is known not to be
    --  able to be superflat.
 
-   function FLB_Cannot_Be_Superflat (N : N_Is_Index_Id) return Boolean;
+   function FLB_Known_Not_Superflat (N : N_Is_Index_Id) return Boolean;
    --  Likewise, but for an array with a fixed lower bound
 
    function Build_One_Bound
@@ -106,10 +106,10 @@ package body GNATLLVM.Arrays.Create is
    --  Return the type used to store the bounds and data of an array
 
    -------------------------
-   -- Cannot_Be_Superflat --
+   -- Known_Not_Superflat --
    -------------------------
 
-   function Cannot_Be_Superflat (N : N_Has_Bounds_Id) return Boolean is
+   function Known_Not_Superflat (N : N_Has_Bounds_Id) return Boolean is
       LB      : N_Subexpr_Id := Low_Bound  (N);
       HB      : N_Subexpr_Id := High_Bound (N);
       TE      : Type_Kind_Id;
@@ -117,7 +117,7 @@ package body GNATLLVM.Arrays.Create is
    begin
       --  This is the easy case
 
-      if Cannot_Be_Superflat (N) then
+      if Nkind (N) = N_Range and then Cannot_Be_Superflat (N) then
          return True;
       end if;
 
@@ -147,23 +147,28 @@ package body GNATLLVM.Arrays.Create is
       return Nkind (LB) = N_Integer_Literal
         and then Nkind (HB) = N_Integer_Literal
         and then Intval (HB) >= Intval (LB) - 1;
-   end Cannot_Be_Superflat;
+   end Known_Not_Superflat;
 
    -----------------------------
-   -- FLB_Cannot_Be_Superflat --
+   -- FLB_Known_Not_Superflat --
    -----------------------------
 
-   function FLB_Cannot_Be_Superflat (N : N_Is_Index_Id) return Boolean is
+   function FLB_Known_Not_Superflat (N : N_Is_Index_Id) return Boolean is
       Our_Rng    : constant N_Has_Bounds_Id := Simplify_Range (N);
       Parent_Rng : N_Has_Bounds_Id;
       Parent_LB  : N_Subexpr_Id;
 
    begin
+      --  Start with the easy case
+
+      if Nkind (N) = N_Range and then Cannot_Be_Superflat (N) then
+         return True;
+
       --  If this is forming a subtype where our parent subtype's lower
       --  bound is also an integer and our lower bound minus one is no
       --  greater than that bound, we can't form superflat objects.
 
-      if Nkind (N) = N_Subtype_Indication then
+      elsif Nkind (N) = N_Subtype_Indication then
          Parent_Rng := Simplify_Range (N);
          Parent_LB  := Low_Bound (Parent_Rng);
          return Nkind (Parent_LB) = N_Integer_Literal
@@ -171,7 +176,7 @@ package body GNATLLVM.Arrays.Create is
       else
          return False;
       end if;
-   end FLB_Cannot_Be_Superflat;
+   end FLB_Known_Not_Superflat;
 
    ---------------------
    -- Build_One_Bound --
@@ -384,11 +389,11 @@ package body GNATLLVM.Arrays.Create is
                First_Field   => Field_Index,
                Not_Superflat =>
                  (Ekind (TE) = E_Array_Subtype and then Nkind (Index) = N_Range
-                    and then Cannot_Be_Superflat (Idx_Range))
+                    and then Known_Not_Superflat (Idx_Range))
                  or else (not For_Orig and then Is_Packed_Array_Impl_Type (TE)
                             and then Is_Bit_Packed_Array
                                        (Original_Array_Type (TE)))
-                 or else (FLB and then FLB_Cannot_Be_Superflat (Index)));
+                 or else (FLB and then FLB_Known_Not_Superflat (Index)));
 
             --  We have to be careful here and flag the type of the index
             --  from that of the base type since we can have index ranges

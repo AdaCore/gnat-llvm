@@ -115,6 +115,12 @@ package body GNATLLVM.Arrays.Create is
       TE      : Type_Kind_Id;
 
    begin
+      --  This is the easy case
+
+      if Cannot_Be_Superflat (N) then
+         return True;
+      end if;
+
       --  If the low bound is not constant, see if we can find the upper
       --  bound of the subtype of the lower bound, since that's the
       --  worse case. Do this repeatedly, if need be.

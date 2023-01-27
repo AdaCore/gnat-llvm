@@ -1661,7 +1661,8 @@ package body GNATLLVM.Records is
       --  two due to the way that LLVM handles types like i24.
 
       elsif Is_Discrete_Or_Fixed_Point_Type (TE) then
-         return Our_Size not in Uint_8 | Uint_16 | Uint_32 | Uint_64;
+         return Our_Size not in
+           Uint_8 | Uint_16 | Uint_32 | Uint_64 | Uint_128;
       else
          return Our_Size mod BPU /= 0;
       end if;

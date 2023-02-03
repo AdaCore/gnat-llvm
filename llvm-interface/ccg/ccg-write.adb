@@ -541,6 +541,7 @@ package body CCG.Write is
          Write_Undef (Type_Of (V));
 
       else
+         Error_Msg ("unsupported constant", V);
          Write_Str ("<unknown constant>");
       end if;
    end Write_Constant_Value;

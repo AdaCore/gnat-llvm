@@ -997,15 +997,26 @@ package body CCG.Utils is
 
       procedure Walk_Value (V : Value_T; Walk_Outer : Boolean := True) is
       begin
-         --  First call the procedure on this value (unless we're asked not
-         --  to) and then see if there are any values below this to walk.
 
          if Present (V) then
+
+            --  First call the procedure on this value (unless we're asked not
+            --  to).
+
             if Walk_Outer then
                Process (V);
             end if;
 
-            if Has_Operands (V) or else Is_A_Constant_Struct (V)
+            --  If this is a global variable with an initializer, walk the
+            --  value of that initializer.
+
+            if Is_A_Global_Variable (V) and then Present (Get_Initializer (V))
+            then
+               Walk_Value (Get_Initializer (V));
+
+            --  Otherwise, see if there are any values below this to walk
+
+            elsif Has_Operands (V) or else Is_A_Constant_Struct (V)
               or else Is_A_Constant_Array (V)
             then
                for J in Nat (0) .. Get_Num_Operands (V) - 1 loop

@@ -679,13 +679,15 @@ package body CCG.Write is
       if Present (C_Value) then
          Write_Str_With_Precedence (C_Value, Inner_For_P);
 
-      --  If this is either a simple constant or any constant for an
-      --  initializer, write the constant. If this is an LHS, it means
-      --  that we have its address and so we want to write the name.
+      --  If this is either a simple constant or any constant except a
+      --  function for an initializer, write the constant. If this is an
+      --  LHS, it means that we have its address and so we want to write
+      --  the name.
 
       elsif not Get_Is_LHS (V)
         and then (Is_Simple_Constant (V)
-                    or else (Flags.Initializer and then Is_A_Constant (V)))
+                    or else (Flags.Initializer and then Is_A_Constant (V)
+                             and then not Is_A_Function (V)))
       then
          Write_Constant_Value (V, Flags => Flags);
 

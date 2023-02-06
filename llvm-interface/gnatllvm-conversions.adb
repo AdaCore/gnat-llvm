@@ -409,8 +409,8 @@ package body GNATLLVM.Conversions is
                      and then Is_Discrete_Or_Fixed_Point_Type (In_GT))
                   or else (Is_Discrete_Or_Fixed_Point_Type (GT)
                              and then Is_Floating_Point_Type (In_GT)))
-        and then (ULL'(Get_Type_Size (Type_Of (GT))) =
-                    ULL'(Get_Type_Size (Type_Of (In_GT))))
+        and then ULL'(Get_Type_Size (Type_Of (GT))) =
+                   ULL'(Get_Type_Size (Type_Of (In_GT)))
         and then Get_Type_Kind (GT) /= X86_FP80_Type_Kind
         and then Get_Type_Kind (In_GT) /= X86_FP80_Type_Kind
       then

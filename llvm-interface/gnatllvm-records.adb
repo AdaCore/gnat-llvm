@@ -1972,7 +1972,7 @@ package body GNATLLVM.Records is
 
                      pragma Assert (Ekind (GT) = E_Record_Subtype
                                       and then Has_Discriminants (GT)
-                                      and then (Ekind (F) = E_Component));
+                                      and then Ekind (F) = E_Component);
                   end if;
                end if;
             end;

@@ -1004,8 +1004,8 @@ package body GNATLLVM.Builtins is
            and then S (S'First + 10 .. S'First + Len + 9) = FP.Name (1 .. Len)
            and then (S'Length = Len + 10
                        or else (S'Length = Len + 11
-                                  and then (S (S'First + Len + 10)
-                                              in 'f' | 'l')))
+                                  and then S (S'First + Len + 10)
+                                             in 'f' | 'l'))
          then
             declare
                GT     : constant GL_Type           := Full_GL_Type (N);
@@ -1043,7 +1043,7 @@ package body GNATLLVM.Builtins is
            and then S (S'First .. S'First + 14) = "__builtin_isinf"
            and then (S'Length = 15
                        or else (S'Length = 16
-                                  and then (S (S'First + 15) in 'f' | 'l')))
+                                  and then S (S'First + 15) in 'f' | 'l'))
       then
          --  Compute the absolute value of the operand and compare that
          --  against infinity.

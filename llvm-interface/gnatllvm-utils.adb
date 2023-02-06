@@ -413,8 +413,8 @@ package body GNATLLVM.Utils is
             --  is identical.
 
             if Is_Packed_Struct (T1) /= Is_Packed_Struct (T2)
-              or else (Count_Struct_Element_Types (T1) /=
-                         Count_Struct_Element_Types (T2))
+              or else Count_Struct_Element_Types (T1) /=
+                        Count_Struct_Element_Types (T2)
             then
                return False;
             elsif Count_Struct_Element_Types (T1) = 0 then

@@ -73,8 +73,8 @@ package body GNATLLVM.Types.Create is
         or else (BT /= TE and then Depends_On_Being_Elaborated (BT))
         or else (Is_Array_Type (TE)
                    and then Is_Aggregate_Type (Full_Component_Type (TE))
-                   and then (Depends_On_Being_Elaborated
-                               (Full_Component_Type (TE))))
+                   and then Depends_On_Being_Elaborated
+                              (Full_Component_Type (TE)))
       then
          return True;
 
@@ -581,8 +581,8 @@ package body GNATLLVM.Types.Create is
 
       if Has_Alignment_Clause (TE) and then Known_Static_RM_Size (TE)
         and then Alignment (TE) > Get_Maximum_Alignment
-        and then (Alignment (TE) >=
-                    (if Is_Scalar_Type (TE) then Esize (TE) else RM_Size (TE)))
+        and then Alignment (TE) >=
+                   (if Is_Scalar_Type (TE) then Esize (TE) else RM_Size (TE))
       then
          Error_Msg_NE ("??suspiciously large alignment specified for&",
                        Expression (Alignment_Clause (TE)), TE);

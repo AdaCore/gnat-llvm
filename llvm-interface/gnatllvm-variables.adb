@@ -577,8 +577,8 @@ package body GNATLLVM.Variables is
             begin
                return not Is_Array_Type (GT)
                  or else Ekind (GT) = E_String_Literal_Subtype
-                 or else (Is_Static_Expression
-                            (Low_Bound (Simplify_Range (First_Index (GT)))));
+                 or else Is_Static_Expression
+                           (Low_Bound (Simplify_Range (First_Index (GT))));
             end;
 
          when others =>
@@ -655,10 +655,10 @@ package body GNATLLVM.Variables is
 
          when N_Attribute_Reference =>
             return not Not_Symbolic
-              and then (Get_Attribute_Id (Attribute_Name (N))
-                          in Attribute_Address | Attribute_Access |
-                          Attribute_Unchecked_Access | Attribute_Code_Address |
-                          Attribute_Unrestricted_Access)
+              and then Get_Attribute_Id (Attribute_Name (N))
+                         in Attribute_Address | Attribute_Access |
+                         Attribute_Unchecked_Access | Attribute_Code_Address |
+                         Attribute_Unrestricted_Access
               and then Is_Static_Location (Prefix (N));
 
          when N_Entity_Name =>
@@ -1299,8 +1299,8 @@ package body GNATLLVM.Variables is
                   --  thus taking the two pass approach inside the boundary.
 
                   if Nkind (N) = N_Package_Declaration
-                    and then (Nkind (Specification (N)) =
-                                N_Package_Specification)
+                    and then Nkind (Specification (N)) =
+                               N_Package_Specification
                   then
                      Emit_Decl_Lists (Visible_Declarations (Specification (N)),
                                       Private_Declarations (Specification (N)),
@@ -1324,8 +1324,8 @@ package body GNATLLVM.Variables is
 
                   elsif Nkind (N) = N_Package_Body_Stub
                     and then Present (Library_Unit (N))
-                    and then (Nkind (Proper_Body (Unit (Library_Unit (N)))) =
-                                N_Package_Body)
+                    and then Nkind (Proper_Body (Unit (Library_Unit (N)))) =
+                               N_Package_Body
                     and then Present (Freeze_Node
                                         (Corresponding_Spec
                                            (Proper_Body
@@ -1405,8 +1405,8 @@ package body GNATLLVM.Variables is
                      Emit (N);
 
                   elsif Nkind (N) = N_Package_Declaration
-                    and then (Nkind (Specification (N))
-                                = N_Package_Specification)
+                    and then Nkind (Specification (N))
+                               = N_Package_Specification
                   then
                      Emit_Decl_Lists (Visible_Declarations (Specification (N)),
                                       Private_Declarations (Specification (N)),
@@ -1846,8 +1846,8 @@ package body GNATLLVM.Variables is
          --  If the address isn't a 'Address, this isn't a match
 
          if Nkind (Addr) /= N_Attribute_Reference
-           or else (Get_Attribute_Id (Attribute_Name (Addr))
-                      /= Attribute_Address)
+           or else Get_Attribute_Id (Attribute_Name (Addr))
+                     /= Attribute_Address
          then
             return False;
          end if;
@@ -2374,8 +2374,8 @@ package body GNATLLVM.Variables is
       Use_LHS     : constant Boolean                     :=
         Is_Name (Name (N))
         and then (Nkind (Name (N)) not in N_Has_Entity
-                    or else (Ekind (Entity (Name (N))) /=
-                               E_Enumeration_Literal));
+                    or else Ekind (Entity (Name (N))) /=
+                              E_Enumeration_Literal);
       LLVM_Var  : GL_Value                               := Get_Value (E);
       V         : GL_Value;
 

@@ -583,10 +583,10 @@ package body GNATLLVM.GLType is
                                   and then (No (Size_V)
                                               or else not Prim_Native))
                   and then not (Present (Size)
-                                  and then (Get_Type_Kind (GTI.LLVM_Type) =
-                                              Integer_Type_Kind)
-                                  and then (ULL'(Get_Type_Size (GTI.LLVM_Type))
-                                              /= +Size)))
+                                  and then Get_Type_Kind (GTI.LLVM_Type) =
+                                             Integer_Type_Kind
+                                  and then ULL'(Get_Type_Size (GTI.LLVM_Type))
+                                             /= +Size))
               --  If the size and alignment are the same, this must be the
               --  same type.  But this isn't the case if we need the
               --  maximim size and there's no size for the type or the

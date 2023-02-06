@@ -1409,7 +1409,7 @@ package body GNATLLVM.Exprs is
          Size : declare
 
             Is_A_Type   : constant Boolean :=
-              (Is_Entity_Name (Pref)) and then Is_Type (Entity (Pref));
+              Is_Entity_Name (Pref) and then Is_Type (Entity (Pref));
             Max_Size    : constant Boolean :=
               Is_A_Type and then not Is_Constrained (P_GT);
             No_Padding  : constant Boolean :=

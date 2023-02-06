@@ -165,9 +165,9 @@ package CCG.Utils is
      with Pre => Present (T);
 
    function Is_Simple_Constant (V : Value_T) return Boolean is
-     ((Get_Value_Kind (V)
+     (Get_Value_Kind (V)
          in Constant_Int_Value_Kind | Constant_Pointer_Null_Value_Kind
-            | Constant_FP_Value_Kind | Constant_Expr_Value_Kind)
+            | Constant_FP_Value_Kind | Constant_Expr_Value_Kind
       or else (Is_Undef (V) and then Is_Simple_Type (Type_Of (V))))
      with Pre => Present (V);
    --  True if this is a simple enough constant that we output it in C

@@ -198,7 +198,7 @@ package body GNATLLVM.Arrays is
       --  unconstrained.
 
       if No (V_GT) or else not Is_Array_Type (V_GT)
-        or else (Ultimate_Base_Type (V_GT) /= Ultimate_Base_Type (GT))
+        or else Ultimate_Base_Type (V_GT) /= Ultimate_Base_Type (GT)
         or else not Is_Unconstrained_Array (GT)
         or else (not Is_Constrained (V_GT) and then Is_Constrained (GT))
       then
@@ -915,8 +915,8 @@ package body GNATLLVM.Arrays is
          elsif Is_Discrete_Or_Fixed_Point_Type (Entity (N)) then
             begin
                return (if Contains_Discriminant (Type_Low_Bound (Entity (N)))
-                         or else (Contains_Discriminant
-                                    (Type_High_Bound (Entity (N))))
+                         or else Contains_Discriminant
+                                   (Type_High_Bound (Entity (N)))
                        then Abandon else OK);
             end;
 

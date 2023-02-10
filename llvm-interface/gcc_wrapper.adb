@@ -58,20 +58,21 @@ procedure GCC_Wrapper is
       return S (First .. Last);
    end Base_Name;
 
-   GCC                : constant String := Command_Name;
-   Args               : Argument_List (1 .. Argument_Count);
-   Arg_Count          : Natural := 0;
-   Status             : Boolean;
-   Last               : Natural;
-   Compile            : Boolean := False;
-   Compile_With_Clang : Boolean := False;
-   Compile_Ada        : Boolean := True;
-   Verbose            : Boolean := False;
-   Dash_O_Index       : Natural := 0;
-   Dash_w_Index       : Natural := 0;
-   Dash_Wall_Index    : Natural := 0;
-   Dump_SCOs_Index    : Natural := 0;
-   S                  : String_Access;
+   GCC                  : constant String := Command_Name;
+   Args                 : Argument_List (1 .. Argument_Count);
+   Arg_Count            : Natural := 0;
+   Status               : Boolean;
+   Last                 : Natural;
+   Compile              : Boolean := False;
+   Compile_With_Clang   : Boolean := False;
+   Compile_Ada          : Boolean := True;
+   Verbose              : Boolean := False;
+   Dash_O_Index         : Natural := 0;
+   Dash_w_Index         : Natural := 0;
+   Dash_Wall_Index      : Natural := 0;
+   Dump_SCOs_Index      : Natural := 0;
+   Static_Libasan_Index : Natural := 0;
+   S                    : String_Access;
 
    procedure Spawn (S : String; Args : Argument_List; Status : out Boolean);
    --  Call GNAT.OS_Lib.Spawn and take Verbose into account
@@ -350,6 +351,9 @@ begin
          elsif Arg = "-Wall" then
             Dash_Wall_Index := Arg_Count + 1;
 
+         elsif Arg = "-static-libasan" then
+            Static_Libasan_Index := Arg_Count + 1;
+
          elsif Arg = "-v" then
             Verbose := True;
             Skip := True;
@@ -384,6 +388,12 @@ begin
 
    if Dash_Wall_Index /= 0 and then Compile and then Compile_Ada then
       Args (Dash_Wall_Index) := new String'("-gnatwa");
+   end if;
+
+   --  Replace -static-libasan with the LLVM equivalent -static-libsan
+
+   if Static_Libasan_Index /= 0 then
+      Args (Static_Libasan_Index) := new String'("-static-libsan");
    end if;
 
    if GCC'Length >= 3

@@ -1391,10 +1391,12 @@ package body GNATLLVM.Instructions is
         Is_Data (Expr) and then Is_Atomic (Ptr) and then not Atomic_Kind (T)
           and then Nat'(Get_Type_Alignment (GT)) >= Result_Bits;
       Equiv_T        : constant Type_T  :=
-        (if   Special_Atomic then Pointer_Type (Int_Ty (Result_Bits), 0)
+        (if   Special_Atomic then Int_Ty (Result_Bits) else No_Type_T);
+      Ptr_T          : constant Type_T  :=
+        (if   Special_Atomic then Pointer_Type (Equiv_T, 0)
          else No_Type_T);
       Ptr_Val        : constant Value_T :=
-        (if   Special_Atomic then Pointer_Cast (IR_Builder, +Ptr, Equiv_T, "")
+        (if   Special_Atomic then Pointer_Cast (IR_Builder, +Ptr, Ptr_T, "")
          else +Ptr);
       Val_To_Store   : Value_T          := +Expr;
       Store_Inst     : Value_T;
@@ -1419,7 +1421,7 @@ package body GNATLLVM.Instructions is
          Discard (Build_Store (IR_Builder, Val_To_Store, +Memory));
          Val_To_Store := Load_2 (IR_Builder, Equiv_T,
                                  Pointer_Cast (IR_Builder, +Memory,
-                                               Equiv_T, ""), "");
+                                               Ptr_T, ""), "");
       end if;
 
       --  If we're emitting C and this is a zero-sized store do nothing.

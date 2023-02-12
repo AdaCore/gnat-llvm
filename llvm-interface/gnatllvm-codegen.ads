@@ -88,6 +88,10 @@ package GNATLLVM.Codegen is
    procedure Scan_Command_Line;
    --  Scan operands relevant to code generation
 
+   procedure Initialize_GNAT_LLVM;
+   --  Perform initializations that need to be done before calling the
+   --  front end.
+
    procedure Initialize_LLVM_Target;
    --  Initialize all the data structures specific to the LLVM target code
    --  generation.

@@ -42,17 +42,12 @@ with Osint.C;  use Osint.C;
 with Output;   use Output;
 with Switch;   use Switch;
 with Table;
+with Targparm; use Targparm;
 
 with GNATLLVM.Helper;  use GNATLLVM.Helper;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Codegen is
-
-   Target_Triple_Set : Boolean := False;
-   --  Set to True by Process_Switch if Target_Triple was modified
-
-   Target_Config_File_Specified : Boolean := False;
-   --  Set to True by Process_Switch if -gnateT is specified
 
    package Switches is new Table.Table
      (Table_Component_Type => String_Access,
@@ -62,14 +57,37 @@ package body GNATLLVM.Codegen is
       Table_Increment      => 1,
       Table_Name           => "Switches");
 
-   Output_Assembly    : Boolean := False;
+   Target_Triple_Set            : Boolean := False;
+   --  Set to True by Process_Switch if Target_Triple was modified
+
+   Target_Config_File_Specified : Boolean := False;
+   --  Set to True by Process_Switch if -gnateT is specified
+
+   Output_Assembly               : Boolean := False;
    --  True if -S was specified
 
-   Emit_LLVM          : Boolean := False;
+   Emit_LLVM                      : Boolean := False;
    --  True if -emit-llvm was specified
+
+   GNAT_LLVM_Initialized          : Boolean := False;
+   --  Set when Initialize_GNAT_LLVM has done something
 
    procedure Process_Switch (S : String);
    --  Process one command-line switch
+
+   --------------------------
+   -- Initialize_GNAT_LLVM --
+   --------------------------
+
+   procedure Initialize_GNAT_LLVM is
+   begin
+      if not GNAT_LLVM_Initialized then
+         Scan_Command_Line;
+         Initialize_LLVM_Target;
+         Always_Compatible_Rep_On_Target := False;
+         GNAT_LLVM_Initialized := True;
+      end if;
+   end Initialize_GNAT_LLVM;
 
    --------------------
    -- Process_Switch --
@@ -688,5 +706,8 @@ package body GNATLLVM.Codegen is
          end;
       end if;
    end Output_File_Name;
+
+begin
+   Initialize_GNAT_LLVM;
 
 end GNATLLVM.Codegen;

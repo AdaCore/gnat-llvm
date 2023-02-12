@@ -26,8 +26,6 @@
 
 with LLVM.Target; use LLVM.Target;
 
-with Targparm; use Targparm;
-
 with GNATLLVM;         use GNATLLVM;
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 
@@ -289,8 +287,6 @@ package body Get_Targ is
    -- Get_Back_End_Config_File --
    ------------------------------
 
-   First_Call : Boolean := True;
-
    function Get_Back_End_Config_File return String_Ptr is
 
       function Exec_Name return String;
@@ -339,18 +335,10 @@ package body Get_Targ is
    --  Start of processing for Get_Back_End_Config_File
 
    begin
-      if First_Call then
-         First_Call := False;
+      --  Ensure we've done initialization of LLVM values, including scanning
+      --  the command line. Then return the filename.
 
-         --  We need information from the LLVM target to get our parameters
-         --  so initialize that now, which will also mean scanning the
-         --  command-line for parameters that are needed to initialize it.
-
-         Scan_Command_Line;
-         Initialize_LLVM_Target;
-         Always_Compatible_Rep_On_Target := False;
-      end if;
-
+      Initialize_GNAT_LLVM;
       if Is_Absolute_Path (Exec) then
          return Get_Target_File (Dir_Name (Exec));
       else

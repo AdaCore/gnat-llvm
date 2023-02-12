@@ -271,7 +271,7 @@ package body CCG.Aggregates is
 
                begin
                   Output_Decl
-                    ((ST or F) & (if F_Is_Vol then "volatile " else "") &
+                    ((ST or F) & (if F_Is_Vol then " volatile" else "") &
                       " " & Name,
                      Is_Typedef => True);
                   Fields_Written := Fields_Written + 1;

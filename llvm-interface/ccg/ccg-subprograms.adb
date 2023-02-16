@@ -1142,7 +1142,7 @@ package body CCG.Subprograms is
                --  declaration of a function doesn't reference objects
                --  inside it.
 
-               if not Is_A_Function (V) then
+               if Present (V) and then not Is_A_Function (V) then
                   Scan_For_Decls (V);
                end if;
 

@@ -1006,6 +1006,10 @@ package body CCG.Flow is
          when Op_Unreachable =>
             null;
 
+         when Op_Invoke =>
+            Error_Msg ("exceptions not supported", T);
+            Set_Next (Idx, Get_Or_Create_Flow (Get_Normal_Dest (T)));
+
          when others =>
             pragma Assert (Standard.False);
       end case;

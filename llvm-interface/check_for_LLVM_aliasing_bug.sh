@@ -1,4 +1,6 @@
 #! /bin/bash
+set -eu
+
 cat << EOF > obj/c43204h.ll
 ; ModuleID = 'c43204h.adb'
 source_filename = "c43204h.adb"

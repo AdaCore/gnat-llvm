@@ -325,9 +325,9 @@ package CCG.Utils is
      with Pre => Present (V);
    --  Call Process for each value within V
 
-   function Int_Type_String (Size : Pos) return Str;
+   function Int_Type_String (Size : Pos; Unsigned_P : Boolean) return Str;
    --  Return the string corresponding to the C name of an integer type of
-   --  Size bits.
+   --  Size bits and the specified signedness.
 
    function NULL_String return String is
      (if Have_Includes then "NULL" else "(void *) 0");

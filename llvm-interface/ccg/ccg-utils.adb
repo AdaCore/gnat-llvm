@@ -25,6 +25,7 @@ with Table;
 
 with GNATLLVM.Utils; use GNATLLVM.Utils;
 
+with CCG.Codegen;     use CCG.Codegen;
 with CCG.Environment; use CCG.Environment;
 
 package body CCG.Utils is
@@ -1057,28 +1058,47 @@ package body CCG.Utils is
    -- Int_Type_String --
    ---------------------
 
-   function Int_Type_String (Size : Pos) return Str is
+   function Int_Type_String (Size : Pos; Unsigned_P : Boolean) return Str is
    begin
-      --  ??? There are a number of issues here: Ada supports a
-      --  "long long long" type, which could correspond to C's
-      --  int128_t.  We also may want to generate intXX_t types
-      --  instead of the standard types based on a switch.  But for
-      --  now we'll keep it simple.
+      --  If we're to use the <stdint.h> sizes, our logic is simple.
 
-      if Size > Long_Size and then Size > Int_Size
-        and then Size <= Long_Long_Size
-      then
-         return +"long long";
-      elsif Size > Int_Size and then Size <= Long_Size then
-         return +"long";
-      elsif Size > Short_Size and then Size <= Int_Size then
-         return +"int";
-      elsif Size > Char_Size and then Size <= Short_Size then
-         return +"short";
-      elsif Size <= Char_Size then
-         return +"char";
+      if Use_Stdint then
+         declare
+            Our_Size : constant Pos :=
+              (if    Size <= 8 then 8 elsif Size <= 16 then 16
+               elsif Size <= 32 then 32 else 64);
+
+         begin
+            return
+              (if Unsigned_P then +"u" else +"") & "int" & Our_Size & "_t";
+         end;
+
+      --  ??? There are a number of issues here: Ada supports a "long
+      --  long long" type, which could correspond to C's int128_t. But
+      --  for now we'll keep it simple.
+
       else
-         return +"<unknown int type:" & Size'Image & ">";
+         declare
+            Result : constant Str :=
+              (if Unsigned_P then +"unsigned " else +"");
+
+         begin
+            if Size > Long_Size and then Size > Int_Size
+              and then Size <= Long_Long_Size
+            then
+               return Result & "long long";
+            elsif Size > Int_Size and then Size <= Long_Size then
+               return Result & "long";
+            elsif Size > Short_Size and then Size <= Int_Size then
+               return Result & "int";
+            elsif Size > Char_Size and then Size <= Short_Size then
+               return Result & "short";
+            elsif Size <= Char_Size then
+               return Result & "char";
+            else
+               return +"<unknown int type:" & Size'Image & ">";
+            end if;
+         end;
       end if;
    end Int_Type_String;
 

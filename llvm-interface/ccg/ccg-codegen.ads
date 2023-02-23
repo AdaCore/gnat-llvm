@@ -34,6 +34,9 @@ package CCG.Codegen is
    Inlines_In_Header  : Boolean := False;
    --  If True, we have at least one inline function in the header file
 
+   Use_Stdint         : Boolean := False;
+   --  If True, use the integer type names in <stdint.h>
+
    Elab_Spec_Func     : Value_T := No_Value_T;
    Elab_Body_Func     : Value_T := No_Value_T;
    --  Function corresponding to the spec and body elab proc, respectively.

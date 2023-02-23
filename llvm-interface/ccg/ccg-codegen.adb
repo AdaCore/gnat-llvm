@@ -94,7 +94,10 @@ package body CCG.Codegen is
       if Packed_Mechanism.all not in "modifier" | "pragma" | "none" then
          Early_Error
            ("packed-mechanism must be 'modifier', 'pragma', or 'none'");
+      elsif Use_Stdint and then Version < 1999 then
+         Early_Error ("-fuse-stdint only supported on C99 or later");
       end if;
+
    end Initialize_Output;
 
    --------------
@@ -262,6 +265,8 @@ package body CCG.Codegen is
          Emit_C      := True;
          Emit_Header := True;
          return True;
+      elsif S = "-fuse-stdint" then
+         Use_Stdint  := True;
       elsif Starts_With (S, "-header-inline=") then
          if Switch_Value (S, "-header-inline=") = "none" then
             Header_Inline := None;

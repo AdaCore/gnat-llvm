@@ -730,12 +730,25 @@ package body CCG.Write is
    procedure Write_Type
      (T : Type_T; E : Entity_Id := Empty; V : Value_T := No_Value_T)
    is
-      TE : constant Opt_Type_Kind_Id :=
+      procedure Write_Str_With_Signedness (S : String);
+      --  Write S possibly preceeded by "unsigned".
+
+      TE         : constant Opt_Type_Kind_Id :=
         (if    Present (E) then Full_Etype (E)
          elsif Present (V) then GNAT_Type (V)
          else  Empty);
-      BT : constant Opt_Type_Kind_Id  := Opt_Full_Base_Type (TE);
-      RT : Opt_Type_Kind_Id           := TE;
+      BT         : constant Opt_Type_Kind_Id  := Opt_Full_Base_Type (TE);
+      RT         : Opt_Type_Kind_Id           := TE;
+      Unsigned_P : Boolean                    := False;
+
+      -------------------------------
+      -- Write_Str_With_Signedness --
+      -------------------------------
+
+      procedure Write_Str_With_Signedness (S : String) is
+      begin
+         Write_Str ((if Unsigned_P then "unsigned " & S else S));
+      end Write_Str_With_Signedness;
 
    begin
       case Get_Type_Kind (T) is
@@ -761,7 +774,7 @@ package body CCG.Write is
             if (Present (V) and then Is_Unsigned (V))
               or else (Present (BT) and then Is_Unsigned_Type (BT))
             then
-               Write_Str ("unsigned ");
+               Unsigned_P := True;
             end if;
 
             --  Now see if a type in Interfaces.C is in the type chain
@@ -797,29 +810,29 @@ package body CCG.Write is
                        or else Name = "Tlong_longB"
                        or else Name = "Tunsigned_long_longB"
                      then
-                        Write_Str ("long long");
+                        Write_Str_With_Signedness ("long long");
                         return;
                      elsif Name = "long" or else Name = "unsigned_long"
                        or else Name = "TlongB" or else Name = "Tunsigned_longB"
                      then
-                        Write_Str ("long");
+                        Write_Str_With_Signedness ("long");
                         return;
                      elsif Name = "int" or else Name = "unsigned_int"
                        or else Name = "TintB" or else Name = "Tunsigned_intB"
                      then
-                        Write_Str ("int");
+                        Write_Str_With_Signedness ("int");
                         return;
                      elsif Name = "short" or else Name = "unsigned_short"
                        or else Name = "TshortB"
                        or else Name = "Tunsigned_short"
                      then
-                        Write_Str ("short");
+                        Write_Str_With_Signedness ("short");
                         return;
                      elsif Name = "signed_char" or else Name = "unsigned_char"
                        or else Name = "Tsigned_charB"
                        or else Name = "Tunsigned_charB"
                      then
-                        Write_Str ("char");
+                        Write_Str_With_Signedness ("char");
                         return;
                      end if;
                   end;
@@ -832,7 +845,8 @@ package body CCG.Write is
 
             --  If nothing in Interfaces.C, write type name from size
 
-            Write_Str (Int_Type_String (Pos (Get_Int_Type_Width (T))));
+            Write_Str
+              (Int_Type_String (Pos (Get_Int_Type_Width (T)), Unsigned_P));
 
          when Pointer_Type_Kind =>
 
@@ -954,6 +968,10 @@ package body CCG.Write is
       then
          Write_Line ("#include <string.h>");
          Write_Line ("#include <stdlib.h>");
+         if Use_Stdint then
+            Write_Line ("#include <stdint.h>");
+         end if;
+
          Write_Eol;
       end if;
 

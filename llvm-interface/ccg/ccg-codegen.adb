@@ -17,7 +17,13 @@
 
 with LLVM.Core; use LLVM.Core;
 
+with Atree;       use Atree;
+with Einfo.Utils; use Einfo.Utils;
+with Table;
+with Uintp;       use Uintp;
+
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
+with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Helper;      use CCG.Helper;
@@ -30,6 +36,24 @@ with CCG.Write;       use CCG.Write;
 use CCG.Value_Sets;
 
 package body CCG.Codegen is
+
+   type Enum_List_Idx is new Nat;
+   package Enum_List is new Table.Table
+     (Table_Component_Type => E_Enumeration_Type_Id,
+      Table_Index_Type     => Enum_List_Idx,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 10,
+      Table_Increment      => 10,
+      Table_Name           => "Enum_List");
+
+   ---------------
+   -- Note_Enum --
+   ---------------
+
+   procedure Note_Enum (TE : E_Enumeration_Type_Id) is
+   begin
+      Enum_List.Append (TE);
+   end Note_Enum;
 
    -----------------------
    -- Initialize_Output --
@@ -78,6 +102,9 @@ package body CCG.Codegen is
    --------------
 
    procedure Generate (Module : Module_T) is
+      procedure Output_Enum_Decl (TE : E_Enumeration_Type_Id);
+      --  Output a declaration for TE, a enumeration type
+
       function Output_To_Header (F : Value_T) return Boolean is
         (Emit_Header
          and then (case Header_Inline is
@@ -102,6 +129,30 @@ package body CCG.Codegen is
       Glob      : Value_T;
       Must_Decl : Set;
 
+      ----------------------
+      -- Output_Enum_Decl --
+      ----------------------
+
+      procedure Output_Enum_Decl (TE : E_Enumeration_Type_Id) is
+         Lit : Opt_E_Enumeration_Literal_Id := First_Literal (TE);
+
+      begin
+         Output_Decl ("enum " & Get_Ext_Name (TE) & " {",
+                      Is_Typedef => True,
+                      Semicolon  => False);
+         while Present (Lit) loop
+            Output_Decl ("    " & Get_Ext_Name (Lit) & " = " &
+                         UI_Image (Enumeration_Rep (Lit)) &
+                         (if Present (Next_Literal (Lit)) then "," else ""),
+                         Is_Typedef => True,
+                         Semicolon  => False);
+            Next_Literal (Lit);
+         end loop;
+
+         Output_Decl ("}", Is_Typedef => True);
+         Output_Decl ("", Is_Typedef => True, Semicolon => False);
+      end Output_Enum_Decl;
+
       ---------------
       -- Is_Public --
       ---------------
@@ -121,6 +172,12 @@ package body CCG.Codegen is
       end Maybe_Decl_Func;
 
    begin
+      --  Scan all public enums and add declarations for them
+
+      for J in 1 .. Enum_List.Last loop
+         Output_Enum_Decl (Enum_List.Table (J));
+      end loop;
+
       --  If we're writing headers, scan inline-always functions to see if
       --  we need to declare any functions used by them.
 

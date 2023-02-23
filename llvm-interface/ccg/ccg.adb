@@ -18,6 +18,8 @@
 with Atree;       use Atree;
 with Einfo.Utils; use Einfo.Utils;
 with Lib;         use Lib;
+with Sem_Aux;     use Sem_Aux;
+with Stand;       use Stand;
 with Sinput;      use Sinput;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
@@ -202,6 +204,38 @@ package body CCG is
          Elab_Spec_Func := V;
       end if;
    end C_Set_Elab_Proc;
+
+   -----------------
+   -- C_Note_Enum --
+   -----------------
+
+   procedure C_Note_Enum (TE : E_Enumeration_Type_Id) is
+      E : Entity_Id := First_Entity (Scope (TE));
+
+   begin
+      --  We only do something if we're emitting a header file, this type
+      --  is public, and it's not in a dynamic scope.
+
+      if not Emit_Header or else not Is_Public (TE)
+        or else Enclosing_Dynamic_Scope (TE) /= Standard_Standard
+      then
+         return;
+      end if;
+
+      --  If this type is in the entity chain of its scope, it means that
+      --  it's a package spec, so make a note of it. But if we've passed the
+      --  first private entity, it's in the private part, so don't include it.
+
+      while Present (E) loop
+         if E = First_Private_Entity (Scope (TE)) then
+            return;
+         elsif E = TE then
+            Note_Enum (TE);
+         end if;
+
+         E := Next_Entity (E);
+      end loop;
+   end C_Note_Enum;
 
    -------------------------
    -- C_Create_Annotation --

@@ -661,6 +661,12 @@ package body GNATLLVM.Compile is
                Copy_Annotations (FT, TE);
                TE := Get_Fullest_View (TE, Recurse => False);
             end loop;
+
+            --  If this is an enumeration type, notify CCG
+
+            if Ekind (TE) = E_Enumeration_Type then
+               C_Note_Enum (TE);
+            end if;
          end Declaration;
 
          when N_Freeze_Entity =>

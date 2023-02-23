@@ -169,6 +169,10 @@ package CCG is
    --  Indicate that the previous calls to Set_Parameter_Info for UID
    --  were for LLVM value V.
 
+   procedure C_Note_Enum (TE : E_Enumeration_Type_Id);
+   --  Indicate that we're processing the declaration of TE, an enumeration
+   --  type.
+
    function C_Create_Annotation (N : N_Pragma_Id) return Nat;
    --  Return the value to eventually pass to Output_Annotation to perform
    --  the operation designated by the pragma N if there is one to perform.

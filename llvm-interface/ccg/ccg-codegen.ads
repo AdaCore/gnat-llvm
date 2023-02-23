@@ -42,6 +42,10 @@ package CCG.Codegen is
    --  Do any initialization needed to output C.  This is always called after
    --  we've obtained target parameters.
 
+   procedure Note_Enum (TE : E_Enumeration_Type_Id);
+   --  Indicate that we're processing the declaration of TE, an enumeration
+   --  type.
+
    procedure Generate (Module : Module_T);
    --  The main procedure, which generates C code from the LLVM IR
 

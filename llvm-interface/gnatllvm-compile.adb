@@ -94,14 +94,6 @@ package body GNATLLVM.Compile is
       Int_64_Type : Opt_Signed_Integer_Kind_Id;
 
    begin
-      --  If we read a target config file, we may not have called our
-      --  initialization yet, so do it here.
-
-      if Module = null then
-         Scan_Command_Line;
-         Initialize_LLVM_Target;
-      end if;
-
       --  If we're going to generate C code (or LLVM IR as if we were to
       --  generate C code), initialize that subsystem.
 

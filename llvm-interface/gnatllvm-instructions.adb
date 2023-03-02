@@ -1296,6 +1296,7 @@ package body GNATLLVM.Instructions is
       Special_Atomic : constant Boolean         :=
         Is_Data (New_R) and then Is_Atomic (Ptr)
           and then not Atomic_Kind (T)
+          and then Result_Bits /= 0
           and then Nat'(Get_Type_Alignment (Load_GT)) >= Result_Bits;
       --  True if this is an atomic reference that LLVM can't handle
       --  directly.

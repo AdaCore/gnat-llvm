@@ -682,18 +682,24 @@ package body GNATLLVM.Instructions is
 
       --  Otherwise, we could have an issue because LLVM views all constants
       --  as sign-extended, so if the high-order bit is set, it'll extend
-      --  the sign all the way out.  We check for this by masking the
-      --  value to its width.
+      --  the sign all the way out. We check for this by masking the
+      --  value to its width. But don't do this unless we have data (not
+      --  "unknown"
 
-      else
+      elsif Is_Data (V) then
          declare
-            Mask          : constant ULL := (ULL (2) ** Bitsize) - 1;
-            Orig          : constant ULL := +V;
-            Masked_Result : constant ULL := +V and Mask;
+            Mask          : constant GL_Value :=
+              Const_Int (V, (ULL (2) ** Bitsize) - 1);
+            Masked_Result : constant GL_Value := Build_And (Mask, V);
 
          begin
-            return Orig /= Masked_Result;
+            return not Is_Const_Int_Values_Equal (V, Masked_Result);
          end;
+
+      --  Otherwise, no overflow could have occurred
+
+      else
+         return False;
       end if;
    end Trunc_Overflowed;
 

@@ -108,7 +108,7 @@ package body CCG.Codegen is
       procedure Output_Enum_Decl (TE : E_Enumeration_Type_Id);
       --  Output a declaration for TE, a enumeration type
 
-      function Output_To_Header (F : Value_T) return Boolean is
+      function Must_Output_To_Header (F : Value_T) return Boolean is
         (Emit_Header
          and then (case Header_Inline is
                         when None          => False,
@@ -188,7 +188,7 @@ package body CCG.Codegen is
          Func := Get_First_Function (Module);
          while Present (Func) loop
             if not Is_Declaration (Func)
-              and then Output_To_Header (Func)
+              and then Must_Output_To_Header (Func)
             then
                Inlines_In_Header := True;
                Scan_For_Func_To_Decl (Func);
@@ -207,7 +207,7 @@ package body CCG.Codegen is
          if not Emit_Header
            or else (not Is_Declaration (Func)
                     and then (Is_Public (Func)
-                              or else Output_To_Header (Func)))
+                              or else Must_Output_To_Header (Func)))
            or else Contains (Must_Decl, Func)
          then
             Declare_Subprogram (Func);
@@ -236,7 +236,7 @@ package body CCG.Codegen is
 
       Func := Get_First_Function (Module);
       while Present (Func) loop
-         if not Emit_Header or else Output_To_Header (Func) then
+         if not Emit_Header or else Must_Output_To_Header (Func) then
             Output_Subprogram (Func);
          end if;
 

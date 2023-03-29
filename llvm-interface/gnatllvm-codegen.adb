@@ -69,10 +69,14 @@ package body GNATLLVM.Codegen is
    Emit_LLVM                      : Boolean := False;
    --  True if -emit-llvm was specified
 
+   Libdevice_Filename : String_Access :=
+     new String'("/usr/local/cuda/nvvm/libdevice/libdevice.10.bc");
+   --  Location for libdevice for CUDA
+
    GNAT_LLVM_Initialized          : Boolean := False;
    --  Set when Initialize_GNAT_LLVM has done something
 
-   procedure Process_Switch (S : String);
+   procedure Process_Switch (Switch : String);
    --  Process one command-line switch
 
    --------------------------

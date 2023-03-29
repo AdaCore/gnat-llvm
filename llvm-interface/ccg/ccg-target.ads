@@ -33,7 +33,7 @@ package CCG.Target is
 
    --  These are the parameters themselves
 
-   Version                 : aliased Integer       := 1999;
+   C_Version               : aliased Integer       := 1999;
    --  C standard for which we're to write output
 
    C_Indent                : aliased Integer       := 2;

@@ -42,7 +42,8 @@ package body CCG.Aggregates is
 
    function Omitted_Field_Type (T : Type_T; Is_Last : Boolean) return Boolean
    is
-     (Is_Zero_Length_Array (T) and then not (Is_Last and then Version >= 1999))
+     (Is_Zero_Length_Array (T)
+      and then not (Is_Last and then C_Version >= 1999))
      with Pre => Present (T);
    --  Return True if we should omit a field of type T from a struct.
    --  Is_Last says if it's the last field in the struct.

@@ -331,7 +331,7 @@ package body CCG.Subprograms is
       --  version is recent enough and only if it's a definition.
 
       if (Has_Inline_Attribute (V) or else Has_Inline_Always_Attribute (V))
-        and then Version > 1990 and then Definition
+        and then C_Version > 1990 and then Definition
       then
          Result := "inline " & Result;
       end if;
@@ -339,7 +339,7 @@ package body CCG.Subprograms is
       --  If inline always was requested, mark it as such, but only in
       --  the definition.
 
-      if Has_Inline_Always_Attribute (V) and then Version > 1990
+      if Has_Inline_Always_Attribute (V) and then C_Version > 1990
         and then Definition
       then
          Result := Output_Modifier ("always_inline") & Result;

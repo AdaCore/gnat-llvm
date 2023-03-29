@@ -94,7 +94,7 @@ package body CCG.Codegen is
       if Packed_Mechanism.all not in "modifier" | "pragma" | "none" then
          Early_Error
            ("packed-mechanism must be 'modifier', 'pragma', or 'none'");
-      elsif Use_Stdint and then Version < 1999 then
+      elsif Use_Stdint and then C_Version < 1999 then
          Early_Error ("-fuse-stdint only supported on C99 or later");
       end if;
 

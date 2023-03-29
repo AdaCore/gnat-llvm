@@ -524,9 +524,9 @@ package body CCG.Target is
    end Output_C_Parameters;
 
 begin
-   Add_Param ("version",               Num,  Int_Ptr  => Version'Access,
+   Add_Param ("version",               Num,  Int_Ptr  => C_Version'Access,
               Is_Version => True);
-   Add_Param ("c-indent",              Num,  Int_Ptr  => C_Indent'Access);
+   Add_Param ("indent",                Num,  Int_Ptr  => C_Indent'Access);
    Add_Param ("max-depth",             Num,  Int_Ptr  => Max_Depth'Access);
    Add_Param ("always-brace",          Bool, Bool_Ptr => Always_Brace'Access);
    Add_Param ("warns-parens",          Bool, Bool_Ptr => Warns_Parens'Access);

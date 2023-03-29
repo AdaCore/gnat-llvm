@@ -448,7 +448,7 @@ package body CCG.Instructions is
 
             --  We can't support alloca in very early versions of C.
 
-            if Version <= 1990 then
+            if C_Version <= 1990 then
                Error_Msg
                  ("dynamic stack allocation not supported in C89/C90", V);
                Error_Msg

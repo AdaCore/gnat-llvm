@@ -241,7 +241,7 @@ package CCG.Utils is
    --  an array of length one.
 
    function Effective_Array_Length (T : Type_T) return Nat is
-     (if   Version < 1999 and then Get_Array_Length (T) = 0
+     (if   C_Version < 1999 and then Get_Array_Length (T) = 0
       then 1 else Get_Array_Length (T))
       with Pre => Present (T);
 

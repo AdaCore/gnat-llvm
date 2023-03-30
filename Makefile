@@ -8,17 +8,11 @@ sanity-check:
           echo "error: directory llvm-interface/gnat_src not found"; exit 1; \
 	fi
 
-build build-opt clean gnatlib: sanity-check
+build build-opt clean gnatlib bootstrap automated zfp: sanity-check
 	$(MAKE) -C llvm-interface $@
 
 gnatlib%: sanity-check
 	$(MAKE) -C llvm-interface $@
-
-zfp: sanity-check
-	$(MAKE) -C llvm-interface $@
-
-automated:
-	$(MAKE) -C llvm-interface bootstrap
 
 # Entry points for cross builds. Currently, it builds a cross compiler that
 # isn't bootstrapped (i.e., we build it directly with native GNAT). Cross

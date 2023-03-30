@@ -140,12 +140,9 @@ stage3: stage2
 	@echo "Comparing stage2 and stage3 objects"
 	$(MAKE) bootstrap-compare
 
-# Disable bootstrap on Windows for now
-ifeq ($(OS),Windows_NT)
-bootstrap: build-opt gnatlib-automated
-else
+automated: build-opt gnatlib-automated
+
 bootstrap: stage3
-endif
 
 unbootstrap:
 	rm -rf $(BOOT_DIRS)

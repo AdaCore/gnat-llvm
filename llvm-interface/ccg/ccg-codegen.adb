@@ -19,16 +19,19 @@ with LLVM.Core; use LLVM.Core;
 
 with Atree;       use Atree;
 with Einfo.Utils; use Einfo.Utils;
+with Set_Targ;    use Set_Targ;
 with Table;
 with Uintp;       use Uintp;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
+with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Helper;      use CCG.Helper;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
+with CCG.Strs;        use CCG.Strs;
 with CCG.Target;      use CCG.Target;
 with CCG.Utils;       use CCG.Utils;
 with CCG.Write;       use CCG.Write;
@@ -137,10 +140,38 @@ package body CCG.Codegen is
       ----------------------
 
       procedure Output_Enum_Decl (TE : E_Enumeration_Type_Id) is
-         Lit : Opt_E_Enumeration_Literal_Id := First_Literal (TE);
+         TE_Name      : constant Str                 := +Get_Ext_Name (TE);
+         Lit          : Opt_E_Enumeration_Literal_Id := First_Literal (TE);
+         Need_Typedef : Boolean                      := False;
+         Name_Part    : Str;
 
       begin
-         Output_Decl ("enum " & Get_Ext_Name (TE) & " {",
+         --  We have three cases. If we're using C23 or later, we can
+         --  write the name of the enum followed by a colon and the C
+         --  type used to represent the enum.
+
+         if C_Version >= 2023 then
+            Name_Part := TE_Name & " : " & Type_Of (TE);
+
+         --  Otherwise, if the width of the type used to represent the
+         --  enum is equal to or greater than the width of an integer,
+         --  C will use that type, so we can just write the enum name.
+
+         elsif Esize (TE) >= Int_Size then
+            Name_Part := TE_Name;
+
+         --  Otherwise, don't write the enum name and instead write a
+         --  typedef when we're done.
+
+         else
+            Name_Part    := +"";
+            Need_Typedef := True;
+         end if;
+
+         --  Now write the declaration of the enum, including all of its
+         --  values.
+
+         Output_Decl ("enum " & Name_Part & " {",
                       Is_Typedef => True,
                       Semicolon  => False);
          while Present (Lit) loop
@@ -153,6 +184,14 @@ package body CCG.Codegen is
          end loop;
 
          Output_Decl ("}", Is_Typedef => True);
+
+         --  If we need to write a typedef for this enum, do it now
+
+         if Need_Typedef then
+            Output_Decl ("typedef " & Type_Of (TE) & " " & TE_Name,
+                         Is_Typedef => True);
+         end if;
+
          Output_Decl ("", Is_Typedef => True, Semicolon => False);
       end Output_Enum_Decl;
 

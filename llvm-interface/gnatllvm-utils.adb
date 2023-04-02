@@ -307,11 +307,19 @@ package body GNATLLVM.Utils is
       Buf : Bounded_String;
 
    begin
+      --  If we have an enumeration literal, write the name of the type
+      --  followed by "__" and then the unqualified name of the literal.
+
+      if Ekind (E) = E_Enumeration_Literal then
+         Append (Buf, Chars (Full_Etype (E)));
+         Append (Buf, "__");
+         Append_Unqualified (Buf, Chars (E));
+
       --  If we have an interface name, copy either the entire name or
       --  all but the first character of the name, depending on whether
       --  the first character is a "*".
 
-      if E not in Formal_Kind_Id and then No (Address_Clause (E))
+      elsif Ekind (E) not in Formal_Kind and then No (Address_Clause (E))
         and then Present (Interface_Name (E))
       then
          declare

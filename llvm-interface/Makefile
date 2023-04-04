@@ -157,7 +157,7 @@ bootstrap-compare:
 	@for f in `cd stage2/obj && echo *.o`; do \
 	  objcopy --strip-debug stage2/obj/$$f bootstrap-compare/stage2-$$f; \
 	  objcopy --strip-debug obj/$$f bootstrap-compare/stage3-$$f; \
-	  $(compare) bootstrap-compare/stage?-$$f; \
+	  $(compare) bootstrap-compare/stage?-$$f || exit 1; \
 	done
 	@rm -rf bootstrap-compare
 	@echo "Comparison successful."

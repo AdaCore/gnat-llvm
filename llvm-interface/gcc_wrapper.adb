@@ -58,14 +58,19 @@ procedure GCC_Wrapper is
       return S (First .. Last);
    end Base_Name;
 
+   type Compiler_Type is (Ada_Frontend, Bundled_Clang, External_Clang);
+   --  The type of compiler that we're delegating the work to. Ada_Frontend is
+   --  our Ada frontend (followed by the LLVM pipeline), Bundled_Clang is a
+   --  renamed Clang that we ship for linking and assembly, and External_Clang
+   --  is a Clang instance that we expect to be on the PATH, like GNAT-LLVM C.
+
    GCC                  : constant String := Command_Name;
    Args                 : Argument_List (1 .. Argument_Count);
    Arg_Count            : Natural := 0;
    Status               : Boolean;
    Last                 : Natural;
    Compile              : Boolean := False;
-   Compile_With_Clang   : Boolean := False;
-   Compile_Ada          : Boolean := True;
+   Compiler             : Compiler_Type := Ada_Frontend;
    Verbose              : Boolean := False;
    Dash_O_Index         : Natural := 0;
    Dash_w_Index         : Natural := 0;
@@ -288,8 +293,7 @@ begin
                           and then Arg (Arg'Last - 3 .. Arg'Last) = ".cpp"))
               and then (J = Args'First or else Argument (J - 1) /= "-o")
             then
-               Compile_With_Clang := True;
-               Compile_Ada := False;
+               Compiler := External_Clang;
             end if;
          end if;
       end;
@@ -304,13 +308,17 @@ begin
             null;
 
          elsif Arg = "-x" then
-            if J < Args'Last
-              and then Argument (J + 1) in "c"
-                                         | "c++"
-                                         | "assembler"
-                                         | "assembler-with-cpp"
-            then
-               Compile_With_Clang := True;
+            if J < Args'Last then
+
+               --  While we can use our embedded Clang ("llvm-helper") to
+               --  compile assembly code, we need to forward C and C++ code to
+               --  an externally installed Clang like GNAT-LLVM C.
+
+               if Argument (J + 1) in "assembler" | "assembler-with-cpp" then
+                  Compiler := Bundled_Clang;
+               elsif Argument (J + 1) in "c" | "c++" then
+                  Compiler := External_Clang;
+               end if;
             end if;
 
          elsif Arg = "-c" or else Arg = "-S" then
@@ -319,7 +327,7 @@ begin
          --  If compiling Ada, Ignore -Dxxx and -E switches for compatibility
          --  with GCC
 
-         elsif Compile_Ada
+         elsif Compiler = Ada_Frontend
            and then (Arg = "-E"
                      or else (Arg'Length >= 2 and then Arg (1 .. 2) = "-D"))
          then
@@ -328,8 +336,8 @@ begin
          --  If compiling with Clang, ignore GCC switches that Clang doesn't
          --  support
 
-         elsif Compile_With_Clang and then
-           Arg = "-fno-tree-loop-distribute-patterns"
+         elsif (Compiler = Bundled_Clang or else Compiler = External_Clang)
+           and then Arg = "-fno-tree-loop-distribute-patterns"
          then
             Skip := True;
 
@@ -368,25 +376,37 @@ begin
 
    --  Replace -fdump-scos by -gnateS when compiling Ada code
 
-   if Dump_SCOs_Index /= 0 and then Compile and then Compile_Ada then
+   if Dump_SCOs_Index /= 0
+     and then Compile
+     and then Compiler = Ada_Frontend
+   then
       Args (Dump_SCOs_Index) := new String'("-gnateS");
    end if;
 
    --  Replace -o by -gnatO when compiling Ada code
 
-   if Dash_O_Index /= 0 and then Compile and then Compile_Ada then
+   if Dash_O_Index /= 0
+     and then Compile
+     and then Compiler = Ada_Frontend
+   then
       Args (Dash_O_Index) := new String'("-gnatO");
    end if;
 
    --  Replace -w by -gnatws when compiling Ada code
 
-   if Dash_w_Index /= 0 and then Compile and then Compile_Ada then
+   if Dash_w_Index /= 0
+     and then Compile
+     and then Compiler = Ada_Frontend
+   then
       Args (Dash_w_Index) := new String'("-gnatws");
    end if;
 
    --  Replace -Wall by -gnatwa when compiling Ada code
 
-   if Dash_Wall_Index /= 0 and then Compile and then Compile_Ada then
+   if Dash_Wall_Index /= 0
+     and then Compile
+     and then Compiler = Ada_Frontend
+   then
       Args (Dash_Wall_Index) := new String'("-gnatwa");
    end if;
 
@@ -414,8 +434,10 @@ begin
 
    --  Compile c/c++ files with clang
 
-   if Compile_With_Clang then
-      S := Locate_Exec_In_Libexec ("clang");
+   if Compiler = Bundled_Clang or else Compiler = External_Clang then
+      if Compiler = Bundled_Clang then
+         S := Locate_Exec_In_Libexec ("llvm-helper");
+      end if;
 
       if S = null then
          S := Locate_Exec_On_Path ("clang");
@@ -454,7 +476,9 @@ begin
          S          : String_Access;
          Have_Clang : Boolean := True;
       begin
-         S := Locate_Exec_In_Libexec ("clang");
+         --  We use the bundled Clang for linking by default.
+
+         S := Locate_Exec_In_Libexec ("llvm-helper");
 
          if S = null then
             --  Our own Clang is not found, default to system Clang for now

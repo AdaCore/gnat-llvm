@@ -916,8 +916,9 @@ package body CCG.Write is
    ------------------------
 
    procedure Initialize_Writing is
-      Main_Source_File    : constant Source_File_Index :=
+      Main_Source_File : constant Source_File_Index :=
         Source_Index (Main_Unit);
+      Wrote_Include    : Boolean                    := False;
 
    begin
       --  If we're not writing to standard output, open the .c or .h file
@@ -968,10 +969,15 @@ package body CCG.Write is
       then
          Write_Line ("#include <string.h>");
          Write_Line ("#include <stdlib.h>");
-         if Use_Stdint then
-            Write_Line ("#include <stdint.h>");
-         end if;
+         Wrote_Include := True;
+      end if;
 
+      if Use_Stdint then
+         Write_Line ("#include <stdint.h>");
+         Wrote_Include := True;
+      end if;
+
+      if Wrote_Include then
          Write_Eol;
       end if;
 

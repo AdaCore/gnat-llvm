@@ -48,7 +48,7 @@ package body GNATLLVM.Arrays is
 
    function Get_GEP_Safe_Type (V : GL_Value) return GL_Type
      with Pre  => Is_Data (V),
-          Post => Is_Integer_Type (Get_GEP_Safe_Type'Result);
+          Post => Is_Discrete_Type (Get_GEP_Safe_Type'Result);
    --  GEP treats array indices as signed values.  If the type is unsigned
    --  (including Boolean; see C55C02B), it will sign-extend rather than
    --  zero-extend the value.  So if this type is smaller than the size of

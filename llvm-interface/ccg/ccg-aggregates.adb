@@ -40,13 +40,16 @@ package body CCG.Aggregates is
    --  insertvalue instruction V. Return an Str saying how to access that
    --  component and update T to be the type of that component.
 
-   function Omitted_Field_Type (T : Type_T; Is_Last : Boolean) return Boolean
+   function Omitted_Field_Type
+     (T : Type_T; Is_First, Is_Last : Boolean) return Boolean
    is
      (Is_Zero_Length_Array (T)
-      and then not (Is_Last and then C_Version >= 1999))
+      and then (Is_First
+                or else not (Is_Last and then C_Version >= 1999)))
      with Pre => Present (T);
    --  Return True if we should omit a field of type T from a struct.
-   --  Is_Last says if it's the last field in the struct.
+   --  Is_First and Is_Last says if it's the first or last field in the
+   --  struct, respectively.
 
    -----------------------
    -- Default_Alignment --
@@ -258,7 +261,7 @@ package body CCG.Aggregates is
 
          begin
             Error_If_Cannot_Pack (ST);
-            if not Omitted_Field_Type (ST, J = Num_Types - 1)
+            if not Omitted_Field_Type (ST, J = 0, J = Num_Types - 1)
               and then not (SOS = Normal and then Is_Field_Padding (T, J))
             then
                declare
@@ -499,7 +502,7 @@ package body CCG.Aggregates is
                --  cast to a pointer to the array's element type.
 
                if Omitted_Field_Type
-                 (ST, Idx = Count_Struct_Element_Types (Aggr_T) - 1)
+                 (ST, Idx = 0, Idx = Count_Struct_Element_Types (Aggr_T) - 1)
                then
                   for Prev_Idx in reverse 0 .. Idx - 1 loop
                      declare
@@ -513,7 +516,9 @@ package body CCG.Aggregates is
                         --  If we found a previous non-zero-length array
                         --  field, point to the end of it.
 
-                        if not Omitted_Field_Type (Prev_ST, False) then
+                        if not Omitted_Field_Type
+                          (Prev_ST, Prev_Idx = 0, False)
+                        then
                            Result := ("(char *) " & Addr_Of (Ref) &
                                         " + sizeof (" & Ref & ")");
                            Found  := True;

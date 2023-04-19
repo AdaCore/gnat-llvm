@@ -495,9 +495,14 @@ package body CCG.Subprograms is
       Call        : Str;
 
    begin
+      --  If this is an undef, don't do anything
+
+      if Is_Undef (Func) then
+         return;
+
       --  If this is a builtin, handle that
 
-      if Is_Builtin_Name (S) then
+      elsif Is_Builtin_Name (S) then
          if Call_Builtin (V, S, Ops) then
             return;
          end if;

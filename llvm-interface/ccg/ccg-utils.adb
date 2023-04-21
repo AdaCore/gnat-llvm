@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Ada.Containers.Hashed_Maps;
+with Ada.Containers.Hashed_Sets;
 
 with Einfo.Utils; use Einfo.Utils;
 with Errout;      use Errout;
@@ -990,6 +991,13 @@ package body CCG.Utils is
    -----------------
 
    procedure Walk_Object (V : Value_T) is
+      package Walked_Sets is new Ada.Containers.Hashed_Sets
+        (Element_Type        => Value_T,
+         Hash                => Hash,
+         Equivalent_Elements => "=");
+      Walked : Walked_Sets.Set;
+      use Walked_Sets;
+
       procedure Walk_Value (V : Value_T; Walk_Outer : Boolean := True);
 
       ----------------
@@ -998,12 +1006,18 @@ package body CCG.Utils is
 
       procedure Walk_Value (V : Value_T; Walk_Outer : Boolean := True) is
       begin
-
          if Present (V) then
 
-            --  First call the procedure on this value (unless we're asked not
-            --  to).
+            --  If we've walked this already, we're done
 
+            if Contains (Walked, V) then
+               return;
+            end if;
+
+            --  Otherwise, show that we've walked it and call the
+            --  procedure on this value (unless we're asked not to).
+
+            Insert (Walked, V);
             if Walk_Outer then
                Process (V);
             end if;

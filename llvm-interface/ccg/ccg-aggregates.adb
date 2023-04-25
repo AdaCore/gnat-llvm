@@ -162,7 +162,7 @@ package body CCG.Aggregates is
          Error_Msg ("C compiler does not support packing", T);
       end if;
 
-      --  if we can't determine the base type, its base type is
+      --  If we can't determine the base type, its base type is
       --  unconstrained (see the discussion in GNATLLVM.Records.Create for
       --  the rationale of this test), or if the alignment of the struct
       --  is smaller that the default alignment, we must pack.
@@ -175,6 +175,14 @@ package body CCG.Aggregates is
          if Pack_Not_Supported then
             Set_Cannot_Pack (T);
          end if;
+      end if;
+
+      --  If the last field is a padding field, it's there to increase
+      --  the size of the struct to match the alignment and so must always
+      --  be there.
+
+      if Is_Field_Padding (T, Num_Types - 1) then
+         Need_Pad := True;
       end if;
 
       --  Now return what we've computed above

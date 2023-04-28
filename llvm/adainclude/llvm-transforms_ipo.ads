@@ -84,20 +84,14 @@ package LLVM.Transforms_IPO is
         Convention => C, 
         External_Name => "LLVMAddGlobalOptimizerPass";
 
-  --* See llvm::createPruneEHPass function.  
-   procedure Add_Prune_EH_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/IPO.h:58
-   with Import => True, 
-        Convention => C, 
-        External_Name => "LLVMAddPruneEHPass";
-
   --* See llvm::createIPSCCPPass function.  
-   procedure Add_IPSCCP_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/IPO.h:61
+   procedure Add_IPSCCP_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/IPO.h:58
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddIPSCCPPass";
 
   --* See llvm::createInternalizePass function.  
-   procedure Add_Internalize_Pass (Arg_1 : LLVM.Types.Pass_Manager_T; All_But_Main : unsigned)  -- install/include/llvm-c/Transforms/IPO.h:64
+   procedure Add_Internalize_Pass (Arg_1 : LLVM.Types.Pass_Manager_T; All_But_Main : unsigned)  -- install/include/llvm-c/Transforms/IPO.h:61
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddInternalizePass";
@@ -116,19 +110,19 @@ package LLVM.Transforms_IPO is
    procedure Add_Internalize_Pass_With_Must_Preserve_Predicate
      (PM : LLVM.Types.Pass_Manager_T;
       Context : System.Address;
-      Must_Preserve : access function (Arg_1 : LLVM.Types.Value_T; Arg_2 : System.Address) return LLVM.Types.Bool_T)  -- install/include/llvm-c/Transforms/IPO.h:76
+      Must_Preserve : access function (Arg_1 : LLVM.Types.Value_T; Arg_2 : System.Address) return LLVM.Types.Bool_T)  -- install/include/llvm-c/Transforms/IPO.h:73
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddInternalizePassWithMustPreservePredicate";
 
   --* See llvm::createStripDeadPrototypesPass function.  
-   procedure Add_Strip_Dead_Prototypes_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/IPO.h:82
+   procedure Add_Strip_Dead_Prototypes_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/IPO.h:79
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddStripDeadPrototypesPass";
 
   --* See llvm::createStripSymbolsPass function.  
-   procedure Add_Strip_Symbols_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/IPO.h:85
+   procedure Add_Strip_Symbols_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/IPO.h:82
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMAddStripSymbolsPass";

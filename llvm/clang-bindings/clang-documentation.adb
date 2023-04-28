@@ -381,4 +381,57 @@ package body Clang.Documentation is
       end;
    end Full_Comment_Get_As_XML;
 
+   function Get_Symbol_Graph_For_USR
+     (Usr : Interfaces.C.Strings.chars_ptr;
+      Api : API_Set_T)
+      return Clang.CX_String.String_T
+   with Import => True,
+        Convention => C,
+        External_Name => "clang_getSymbolGraphForUSR";
+   function Get_Symbol_Graph_For_USR
+     (Usr : String;
+      Api : API_Set_T)
+      return Clang.CX_String.String_T
+   is
+      Return_Value : Clang.CX_String.String_T;
+      Usr_Array    : aliased char_array := To_C (Usr);
+      Usr_String   : constant chars_ptr := To_Chars_Ptr (Usr_Array'Unchecked_Access);
+   begin
+      Return_Value := Get_Symbol_Graph_For_USR (Usr_String, Api);
+      return Return_Value;
+   end Get_Symbol_Graph_For_USR;
+
+   function Get_Symbol_Graph_For_USR
+     (Usr : String;
+      Api : API_Set_T)
+      return String
+   is
+      Return_Value : Clang.CX_String.String_T;
+   begin
+      Return_Value := Get_Symbol_Graph_For_USR (Usr, Api);
+      declare   Ada_String : String := Clang.CX_String.Get_C_String (Return_Value);
+      begin   Clang.CX_String.Dispose_String (Return_Value);
+      return Ada_String;
+      end;
+   end Get_Symbol_Graph_For_USR;
+
+   function Get_Symbol_Graph_For_Cursor
+     (Cursor : Clang.Index.Cursor_T)
+      return Clang.CX_String.String_T
+   with Import => True,
+        Convention => C,
+        External_Name => "clang_getSymbolGraphForCursor";
+   function Get_Symbol_Graph_For_Cursor
+     (Cursor : Clang.Index.Cursor_T)
+      return String
+   is
+      Return_Value : Clang.CX_String.String_T;
+   begin
+      Return_Value := Get_Symbol_Graph_For_Cursor (Cursor);
+      declare   Ada_String : String := Clang.CX_String.Get_C_String (Return_Value);
+      begin   Clang.CX_String.Dispose_String (Return_Value);
+      return Ada_String;
+      end;
+   end Get_Symbol_Graph_For_Cursor;
+
 end Clang.Documentation;

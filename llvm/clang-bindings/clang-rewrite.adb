@@ -10,14 +10,14 @@ package body Clang.Rewrite is
 
    procedure CX_Rewriter_Insert_Text_Before
      (Rew    : Rewriter_T;
-      Loc    : Clang.Index.Source_Location_T;
+      Loc    : Clang.CX_Source_Location.Source_Location_T;
       Insert : Interfaces.C.Strings.chars_ptr)
    with Import => True,
         Convention => C,
         External_Name => "clang_CXRewriter_insertTextBefore";
    procedure CX_Rewriter_Insert_Text_Before
      (Rew    : Rewriter_T;
-      Loc    : Clang.Index.Source_Location_T;
+      Loc    : Clang.CX_Source_Location.Source_Location_T;
       Insert : String)
    is
       Insert_Array  : aliased char_array := To_C (Insert);
@@ -28,14 +28,14 @@ package body Clang.Rewrite is
 
    procedure CX_Rewriter_Replace_Text
      (Rew            : Rewriter_T;
-      To_Be_Replaced : Clang.Index.Source_Range_T;
+      To_Be_Replaced : Clang.CX_Source_Location.Source_Range_T;
       Replacement    : Interfaces.C.Strings.chars_ptr)
    with Import => True,
         Convention => C,
         External_Name => "clang_CXRewriter_replaceText";
    procedure CX_Rewriter_Replace_Text
      (Rew            : Rewriter_T;
-      To_Be_Replaced : Clang.Index.Source_Range_T;
+      To_Be_Replaced : Clang.CX_Source_Location.Source_Range_T;
       Replacement    : String)
    is
       Replacement_Array  : aliased char_array := To_C (Replacement);

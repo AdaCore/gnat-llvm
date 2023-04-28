@@ -24,35 +24,16 @@ package body Clang.Index is
       CX_Index_Set_Invocation_Emission_Path_Option (Arg_1, Path_String);
    end CX_Index_Set_Invocation_Emission_Path_Option;
 
-   function Get_File_Name
-     (S_File : File_T)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_getFileName";
-   function Get_File_Name
-     (S_File : File_T)
-      return String
-   is
-      Return_Value : Clang.CX_String.String_T;
-   begin
-      Return_Value := Get_File_Name (S_File);
-      declare   Ada_String : String := Clang.CX_String.Get_C_String (Return_Value);
-      begin   Clang.CX_String.Dispose_String (Return_Value);
-      return Ada_String;
-      end;
-   end Get_File_Name;
-
    function Is_File_Multiple_Include_Guarded
      (Tu   : Translation_Unit_T;
-      File : File_T)
+      File : Clang.CX_File.File_T)
       return unsigned
    with Import => True,
         Convention => C,
         External_Name => "clang_isFileMultipleIncludeGuarded";
    function Is_File_Multiple_Include_Guarded
      (Tu   : Translation_Unit_T;
-      File : File_T)
+      File : Clang.CX_File.File_T)
       return Boolean
    is
       Return_Value : unsigned;
@@ -64,16 +45,16 @@ package body Clang.Index is
    function Get_File
      (Tu        : Translation_Unit_T;
       File_Name : Interfaces.C.Strings.chars_ptr)
-      return File_T
+      return Clang.CX_File.File_T
    with Import => True,
         Convention => C,
         External_Name => "clang_getFile";
    function Get_File
      (Tu        : Translation_Unit_T;
       File_Name : String)
-      return File_T
+      return Clang.CX_File.File_T
    is
-      Return_Value     : File_T;
+      Return_Value     : Clang.CX_File.File_T;
       File_Name_Array  : aliased char_array := To_C (File_Name);
       File_Name_String : constant chars_ptr := To_Chars_Ptr (File_Name_Array'Unchecked_Access);
    begin
@@ -83,7 +64,7 @@ package body Clang.Index is
 
    function Get_File_Contents
      (Tu   : Translation_Unit_T;
-      File : File_T;
+      File : Clang.CX_File.File_T;
       Size : access stddef_h.size_t)
       return Interfaces.C.Strings.chars_ptr
    with Import => True,
@@ -91,7 +72,7 @@ package body Clang.Index is
         External_Name => "clang_getFileContents";
    function Get_File_Contents
      (Tu   : Translation_Unit_T;
-      File : File_T;
+      File : Clang.CX_File.File_T;
       Size : access stddef_h.size_t)
       return String
    is
@@ -104,235 +85,6 @@ package body Clang.Index is
          return "";
       end if;
    end Get_File_Contents;
-
-   function File_Is_Equal
-     (File_1 : File_T;
-      File_2 : File_T)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_File_isEqual";
-   function File_Is_Equal
-     (File_1 : File_T;
-      File_2 : File_T)
-      return Boolean
-   is
-      Return_Value : int;
-   begin
-      Return_Value := File_Is_Equal (File_1, File_2);
-      return Return_Value /= 0;
-   end File_Is_Equal;
-
-   function File_Try_Get_Real_Path_Name
-     (File : File_T)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_File_tryGetRealPathName";
-   function File_Try_Get_Real_Path_Name
-     (File : File_T)
-      return String
-   is
-      Return_Value : Clang.CX_String.String_T;
-   begin
-      Return_Value := File_Try_Get_Real_Path_Name (File);
-      declare   Ada_String : String := Clang.CX_String.Get_C_String (Return_Value);
-      begin   Clang.CX_String.Dispose_String (Return_Value);
-      return Ada_String;
-      end;
-   end File_Try_Get_Real_Path_Name;
-
-   function Location_Is_In_System_Header
-     (Location : Source_Location_T)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Location_isInSystemHeader";
-   function Location_Is_In_System_Header
-     (Location : Source_Location_T)
-      return Boolean
-   is
-      Return_Value : int;
-   begin
-      Return_Value := Location_Is_In_System_Header (Location);
-      return Return_Value /= 0;
-   end Location_Is_In_System_Header;
-
-   function Location_Is_From_Main_File
-     (Location : Source_Location_T)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Location_isFromMainFile";
-   function Location_Is_From_Main_File
-     (Location : Source_Location_T)
-      return Boolean
-   is
-      Return_Value : int;
-   begin
-      Return_Value := Location_Is_From_Main_File (Location);
-      return Return_Value /= 0;
-   end Location_Is_From_Main_File;
-
-   function Range_Is_Null
-     (C_Range : Source_Range_T)
-      return int
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_Range_isNull";
-   function Range_Is_Null
-     (C_Range : Source_Range_T)
-      return Boolean
-   is
-      Return_Value : int;
-   begin
-      Return_Value := Range_Is_Null (C_Range);
-      return Return_Value /= 0;
-   end Range_Is_Null;
-
-   function Load_Diagnostics
-     (File         : Interfaces.C.Strings.chars_ptr;
-      Error        : access Load_Diag_Error_T;
-      Error_String : access Clang.CX_String.String_T)
-      return Diagnostic_Set_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_loadDiagnostics";
-   function Load_Diagnostics
-     (File         : String;
-      Error        : access Load_Diag_Error_T;
-      Error_String : access Clang.CX_String.String_T)
-      return Diagnostic_Set_T
-   is
-      Return_Value : Diagnostic_Set_T;
-      File_Array   : aliased char_array := To_C (File);
-      File_String  : constant chars_ptr := To_Chars_Ptr (File_Array'Unchecked_Access);
-   begin
-      Return_Value := Load_Diagnostics (File_String, Error, Error_String);
-      return Return_Value;
-   end Load_Diagnostics;
-
-   function Format_Diagnostic
-     (Diagnostic : Diagnostic_T;
-      Options    : unsigned)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_formatDiagnostic";
-   function Format_Diagnostic
-     (Diagnostic : Diagnostic_T;
-      Options    : unsigned)
-      return String
-   is
-      Return_Value : Clang.CX_String.String_T;
-   begin
-      Return_Value := Format_Diagnostic (Diagnostic, Options);
-      declare   Ada_String : String := Clang.CX_String.Get_C_String (Return_Value);
-      begin   Clang.CX_String.Dispose_String (Return_Value);
-      return Ada_String;
-      end;
-   end Format_Diagnostic;
-
-   function Get_Diagnostic_Spelling
-     (Arg_1 : Diagnostic_T)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_getDiagnosticSpelling";
-   function Get_Diagnostic_Spelling
-     (Arg_1 : Diagnostic_T)
-      return String
-   is
-      Return_Value : Clang.CX_String.String_T;
-   begin
-      Return_Value := Get_Diagnostic_Spelling (Arg_1);
-      declare   Ada_String : String := Clang.CX_String.Get_C_String (Return_Value);
-      begin   Clang.CX_String.Dispose_String (Return_Value);
-      return Ada_String;
-      end;
-   end Get_Diagnostic_Spelling;
-
-   function Get_Diagnostic_Option
-     (Diag    : Diagnostic_T;
-      Disable : access Clang.CX_String.String_T)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_getDiagnosticOption";
-   function Get_Diagnostic_Option
-     (Diag    : Diagnostic_T;
-      Disable : access Clang.CX_String.String_T)
-      return String
-   is
-      Return_Value : Clang.CX_String.String_T;
-   begin
-      Return_Value := Get_Diagnostic_Option (Diag, Disable);
-      declare   Ada_String : String := Clang.CX_String.Get_C_String (Return_Value);
-      begin   Clang.CX_String.Dispose_String (Return_Value);
-      return Ada_String;
-      end;
-   end Get_Diagnostic_Option;
-
-   function Get_Diagnostic_Category_Name
-     (Category : unsigned)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_getDiagnosticCategoryName";
-   function Get_Diagnostic_Category_Name
-     (Category : unsigned)
-      return String
-   is
-      Return_Value : Clang.CX_String.String_T;
-   begin
-      Return_Value := Get_Diagnostic_Category_Name (Category);
-      declare   Ada_String : String := Clang.CX_String.Get_C_String (Return_Value);
-      begin   Clang.CX_String.Dispose_String (Return_Value);
-      return Ada_String;
-      end;
-   end Get_Diagnostic_Category_Name;
-
-   function Get_Diagnostic_Category_Text
-     (Arg_1 : Diagnostic_T)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_getDiagnosticCategoryText";
-   function Get_Diagnostic_Category_Text
-     (Arg_1 : Diagnostic_T)
-      return String
-   is
-      Return_Value : Clang.CX_String.String_T;
-   begin
-      Return_Value := Get_Diagnostic_Category_Text (Arg_1);
-      declare   Ada_String : String := Clang.CX_String.Get_C_String (Return_Value);
-      begin   Clang.CX_String.Dispose_String (Return_Value);
-      return Ada_String;
-      end;
-   end Get_Diagnostic_Category_Text;
-
-   function Get_Diagnostic_Fix_It
-     (Diagnostic        : Diagnostic_T;
-      Fix_It            : unsigned;
-      Replacement_Range : access Source_Range_T)
-      return Clang.CX_String.String_T
-   with Import => True,
-        Convention => C,
-        External_Name => "clang_getDiagnosticFixIt";
-   function Get_Diagnostic_Fix_It
-     (Diagnostic        : Diagnostic_T;
-      Fix_It            : unsigned;
-      Replacement_Range : access Source_Range_T)
-      return String
-   is
-      Return_Value : Clang.CX_String.String_T;
-   begin
-      Return_Value := Get_Diagnostic_Fix_It (Diagnostic, Fix_It, Replacement_Range);
-      declare   Ada_String : String := Clang.CX_String.Get_C_String (Return_Value);
-      begin   Clang.CX_String.Dispose_String (Return_Value);
-      return Ada_String;
-      end;
-   end Get_Diagnostic_Fix_It;
 
    function Get_Translation_Unit_Spelling
      (CT_Unit : Translation_Unit_T)
@@ -1705,6 +1457,22 @@ package body Clang.Index is
       return Return_Value /= 0;
    end CXX_Method_Is_Defaulted;
 
+   function CXX_Method_Is_Deleted
+     (C : Cursor_T)
+      return unsigned
+   with Import => True,
+        Convention => C,
+        External_Name => "clang_CXXMethod_isDeleted";
+   function CXX_Method_Is_Deleted
+     (C : Cursor_T)
+      return Boolean
+   is
+      Return_Value : unsigned;
+   begin
+      Return_Value := CXX_Method_Is_Deleted (C);
+      return Return_Value /= 0;
+   end CXX_Method_Is_Deleted;
+
    function CXX_Method_Is_Pure_Virtual
      (C : Cursor_T)
       return unsigned
@@ -1752,6 +1520,38 @@ package body Clang.Index is
       Return_Value := CXX_Method_Is_Virtual (C);
       return Return_Value /= 0;
    end CXX_Method_Is_Virtual;
+
+   function CXX_Method_Is_Copy_Assignment_Operator
+     (C : Cursor_T)
+      return unsigned
+   with Import => True,
+        Convention => C,
+        External_Name => "clang_CXXMethod_isCopyAssignmentOperator";
+   function CXX_Method_Is_Copy_Assignment_Operator
+     (C : Cursor_T)
+      return Boolean
+   is
+      Return_Value : unsigned;
+   begin
+      Return_Value := CXX_Method_Is_Copy_Assignment_Operator (C);
+      return Return_Value /= 0;
+   end CXX_Method_Is_Copy_Assignment_Operator;
+
+   function CXX_Method_Is_Move_Assignment_Operator
+     (C : Cursor_T)
+      return unsigned
+   with Import => True,
+        Convention => C,
+        External_Name => "clang_CXXMethod_isMoveAssignmentOperator";
+   function CXX_Method_Is_Move_Assignment_Operator
+     (C : Cursor_T)
+      return Boolean
+   is
+      Return_Value : unsigned;
+   begin
+      Return_Value := CXX_Method_Is_Move_Assignment_Operator (C);
+      return Return_Value /= 0;
+   end CXX_Method_Is_Move_Assignment_Operator;
 
    function CXX_Record_Is_Abstract
      (C : Cursor_T)
@@ -1927,7 +1727,7 @@ package body Clang.Index is
      (Results           : access Code_Complete_Results_T;
       Completion_Index  : unsigned;
       Fixit_Index       : unsigned;
-      Replacement_Range : access Source_Range_T)
+      Replacement_Range : access Clang.CX_Source_Location.Source_Range_T)
       return Clang.CX_String.String_T
    with Import => True,
         Convention => C,
@@ -1936,7 +1736,7 @@ package body Clang.Index is
      (Results           : access Code_Complete_Results_T;
       Completion_Index  : unsigned;
       Fixit_Index       : unsigned;
-      Replacement_Range : access Source_Range_T)
+      Replacement_Range : access Clang.CX_Source_Location.Source_Range_T)
       return String
    is
       Return_Value : Clang.CX_String.String_T;

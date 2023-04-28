@@ -1245,6 +1245,34 @@ package body LLVM.Core is
       return Return_Value /= 0;
    end Pointer_Type_Is_Opaque;
 
+   function Target_Ext_Type_In_Context
+     (C                : LLVM.Types.Context_T;
+      Name             : Interfaces.C.Strings.chars_ptr;
+      Type_Params      : System.Address;
+      Type_Param_Count : unsigned;
+      Int_Params       : access unsigned;
+      Int_Param_Count  : unsigned)
+      return LLVM.Types.Type_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMTargetExtTypeInContext";
+   function Target_Ext_Type_In_Context
+     (C                : LLVM.Types.Context_T;
+      Name             : String;
+      Type_Params      : System.Address;
+      Type_Param_Count : unsigned;
+      Int_Params       : access unsigned;
+      Int_Param_Count  : unsigned)
+      return LLVM.Types.Type_T
+   is
+      Return_Value : LLVM.Types.Type_T;
+      Name_Array   : aliased char_array := To_C (Name);
+      Name_String  : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
+   begin
+      Return_Value := Target_Ext_Type_In_Context (C, Name_String, Type_Params, Type_Param_Count, Int_Params, Int_Param_Count);
+      return Return_Value;
+   end Target_Ext_Type_In_Context;
+
    function Get_Value_Name_2
      (Val    : LLVM.Types.Value_T;
       Length : access stddef_h.size_t)
@@ -1976,30 +2004,6 @@ package body LLVM.Core is
       Set_Externally_Initialized (Global_Var, Is_Ext_Init_Bool);
    end Set_Externally_Initialized;
 
-   function Add_Alias
-     (M       : LLVM.Types.Module_T;
-      Ty      : LLVM.Types.Type_T;
-      Aliasee : LLVM.Types.Value_T;
-      Name    : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMAddAlias";
-   function Add_Alias
-     (M       : LLVM.Types.Module_T;
-      Ty      : LLVM.Types.Type_T;
-      Aliasee : LLVM.Types.Value_T;
-      Name    : String)
-      return LLVM.Types.Value_T
-   is
-      Return_Value : LLVM.Types.Value_T;
-      Name_Array   : aliased char_array := To_C (Name);
-      Name_String  : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
-   begin
-      Return_Value := Add_Alias (M, Ty, Aliasee, Name_String);
-      return Return_Value;
-   end Add_Alias;
-
    function Add_Alias_2
      (M          : LLVM.Types.Module_T;
       Value_Ty   : LLVM.Types.Type_T;
@@ -2691,36 +2695,6 @@ package body LLVM.Core is
    begin
       Insert_Into_Builder_With_Name (Builder, Instr, Name_String);
    end Insert_Into_With_Name;
-
-   function Build_Invoke
-     (Arg_1    : LLVM.Types.Builder_T;
-      Fn       : LLVM.Types.Value_T;
-      Args     : System.Address;
-      Num_Args : unsigned;
-      C_Then   : LLVM.Types.Basic_Block_T;
-      Catch    : LLVM.Types.Basic_Block_T;
-      Name     : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMBuildInvoke";
-   function Invoke
-     (Arg_1    : LLVM.Types.Builder_T;
-      Fn       : LLVM.Types.Value_T;
-      Args     : System.Address;
-      Num_Args : unsigned;
-      C_Then   : LLVM.Types.Basic_Block_T;
-      Catch    : LLVM.Types.Basic_Block_T;
-      Name     : String)
-      return LLVM.Types.Value_T
-   is
-      Return_Value : LLVM.Types.Value_T;
-      Name_Array   : aliased char_array := To_C (Name);
-      Name_String  : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
-   begin
-      Return_Value := Build_Invoke (Arg_1, Fn, Args, Num_Args, C_Then, Catch, Name_String);
-      return Return_Value;
-   end Invoke;
 
    function Build_Invoke_2
      (Arg_1    : LLVM.Types.Builder_T;
@@ -3741,28 +3715,6 @@ package body LLVM.Core is
       return Return_Value;
    end Array_Alloca;
 
-   function Build_Load
-     (Arg_1       : LLVM.Types.Builder_T;
-      Pointer_Val : LLVM.Types.Value_T;
-      Name        : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMBuildLoad";
-   function Load
-     (Arg_1       : LLVM.Types.Builder_T;
-      Pointer_Val : LLVM.Types.Value_T;
-      Name        : String)
-      return LLVM.Types.Value_T
-   is
-      Return_Value : LLVM.Types.Value_T;
-      Name_Array   : aliased char_array := To_C (Name);
-      Name_String  : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
-   begin
-      Return_Value := Build_Load (Arg_1, Pointer_Val, Name_String);
-      return Return_Value;
-   end Load;
-
    function Build_Load_2
      (Arg_1       : LLVM.Types.Builder_T;
       Ty          : LLVM.Types.Type_T;
@@ -3786,82 +3738,6 @@ package body LLVM.Core is
       Return_Value := Build_Load_2 (Arg_1, Ty, Pointer_Val, Name_String);
       return Return_Value;
    end Load_2;
-
-   function Build_GEP
-     (B           : LLVM.Types.Builder_T;
-      Pointer     : LLVM.Types.Value_T;
-      Indices     : System.Address;
-      Num_Indices : unsigned;
-      Name        : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMBuildGEP";
-   function GEP
-     (B           : LLVM.Types.Builder_T;
-      Pointer     : LLVM.Types.Value_T;
-      Indices     : System.Address;
-      Num_Indices : unsigned;
-      Name        : String)
-      return LLVM.Types.Value_T
-   is
-      Return_Value : LLVM.Types.Value_T;
-      Name_Array   : aliased char_array := To_C (Name);
-      Name_String  : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
-   begin
-      Return_Value := Build_GEP (B, Pointer, Indices, Num_Indices, Name_String);
-      return Return_Value;
-   end GEP;
-
-   function Build_In_Bounds_GEP
-     (B           : LLVM.Types.Builder_T;
-      Pointer     : LLVM.Types.Value_T;
-      Indices     : System.Address;
-      Num_Indices : unsigned;
-      Name        : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMBuildInBoundsGEP";
-   function In_Bounds_GEP
-     (B           : LLVM.Types.Builder_T;
-      Pointer     : LLVM.Types.Value_T;
-      Indices     : System.Address;
-      Num_Indices : unsigned;
-      Name        : String)
-      return LLVM.Types.Value_T
-   is
-      Return_Value : LLVM.Types.Value_T;
-      Name_Array   : aliased char_array := To_C (Name);
-      Name_String  : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
-   begin
-      Return_Value := Build_In_Bounds_GEP (B, Pointer, Indices, Num_Indices, Name_String);
-      return Return_Value;
-   end In_Bounds_GEP;
-
-   function Build_Struct_GEP
-     (B       : LLVM.Types.Builder_T;
-      Pointer : LLVM.Types.Value_T;
-      Idx     : unsigned;
-      Name    : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMBuildStructGEP";
-   function Struct_GEP
-     (B       : LLVM.Types.Builder_T;
-      Pointer : LLVM.Types.Value_T;
-      Idx     : unsigned;
-      Name    : String)
-      return LLVM.Types.Value_T
-   is
-      Return_Value : LLVM.Types.Value_T;
-      Name_Array   : aliased char_array := To_C (Name);
-      Name_String  : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
-   begin
-      Return_Value := Build_Struct_GEP (B, Pointer, Idx, Name_String);
-      return Return_Value;
-   end Struct_GEP;
 
    function Build_GEP2
      (B           : LLVM.Types.Builder_T;
@@ -4676,32 +4552,6 @@ package body LLVM.Core is
       return Return_Value;
    end Phi;
 
-   function Build_Call
-     (Arg_1    : LLVM.Types.Builder_T;
-      Fn       : LLVM.Types.Value_T;
-      Args     : System.Address;
-      Num_Args : unsigned;
-      Name     : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMBuildCall";
-   function Call
-     (Arg_1    : LLVM.Types.Builder_T;
-      Fn       : LLVM.Types.Value_T;
-      Args     : System.Address;
-      Num_Args : unsigned;
-      Name     : String)
-      return LLVM.Types.Value_T
-   is
-      Return_Value : LLVM.Types.Value_T;
-      Name_Array   : aliased char_array := To_C (Name);
-      Name_String  : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
-   begin
-      Return_Value := Build_Call (Arg_1, Fn, Args, Num_Args, Name_String);
-      return Return_Value;
-   end Call;
-
    function Build_Call_2
      (Arg_1    : LLVM.Types.Builder_T;
       Arg_2    : LLVM.Types.Type_T;
@@ -4971,30 +4821,6 @@ package body LLVM.Core is
       Return_Value := Build_Is_Not_Null (Arg_1, Val, Name_String);
       return Return_Value;
    end Is_Not_Null;
-
-   function Build_Ptr_Diff
-     (Arg_1 : LLVM.Types.Builder_T;
-      LHS   : LLVM.Types.Value_T;
-      RHS   : LLVM.Types.Value_T;
-      Name  : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Types.Value_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMBuildPtrDiff";
-   function Ptr_Diff
-     (Arg_1 : LLVM.Types.Builder_T;
-      LHS   : LLVM.Types.Value_T;
-      RHS   : LLVM.Types.Value_T;
-      Name  : String)
-      return LLVM.Types.Value_T
-   is
-      Return_Value : LLVM.Types.Value_T;
-      Name_Array   : aliased char_array := To_C (Name);
-      Name_String  : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
-   begin
-      Return_Value := Build_Ptr_Diff (Arg_1, LHS, RHS, Name_String);
-      return Return_Value;
-   end Ptr_Diff;
 
    function Build_Ptr_Diff_2
      (Arg_1   : LLVM.Types.Builder_T;

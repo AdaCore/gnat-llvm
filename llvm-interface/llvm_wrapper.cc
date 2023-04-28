@@ -141,7 +141,7 @@ extern "C"
 void
 Add_Fn_Readonly_Attribute (Function *fn)
 {
-  fn->addFnAttr (Attribute::ReadOnly);
+  fn->setOnlyReadsMemory ();
 }
 
 extern "C"
@@ -590,7 +590,7 @@ Get_Target_C_Types (const char *Triple, const char *CPU,
   if (Info == nullptr)
     return;
 
-  Result->PointerSize = Info->getPointerWidth(0);
+  Result->PointerSize = Info->getPointerWidth(LangAS::Default);
   Result->CharSize = Info->getCharWidth();
   Result->WCharTSize = Info->getWCharWidth();
   Result->ShortSize = Info->getShortWidth();
@@ -655,7 +655,7 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
 {
   // This code is derived from EmitAssemblyWithNewPassManager in clang
 
-  Optional<PGOOptions> PGOOpt;
+  std::optional<PGOOptions> PGOOpt;
   PipelineTuningOptions PTO;
   PassInstrumentationCallbacks PIC;
   Triple TargetTriple (M->getTargetTriple ());
@@ -974,7 +974,7 @@ extern "C"
 void
 Insert_At_Block_End (Instruction *I, BasicBlock *BB, Instruction *From)
 {
-  BB->getInstList ().insert (BB->end (), I);
+  I->insertInto (BB, BB->end());
   I->setDebugLoc (From->getDebugLoc ());
 }
 

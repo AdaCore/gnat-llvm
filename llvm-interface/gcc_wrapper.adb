@@ -89,8 +89,8 @@ procedure GCC_Wrapper is
    --  The returned directory always ends up with a directory separator.
 
    function Locate_Exec_In_Libexec (Exec : String) return String_Access;
-   --  Locate Exec in <prefix>/libexec/gnat-llvm/<arch>. The function allocates
-   --  memory that needs to be freed by the caller.
+   --  Locate Exec in <prefix>/libexec/gnat-llvm/<arch>/bin. The function
+   --  allocates memory that needs to be freed by the caller.
 
    -----------
    -- Spawn --
@@ -206,7 +206,7 @@ procedure GCC_Wrapper is
       Suffix  : String_Access    := Get_Target_Executable_Suffix;
       Result  : constant String  :=
         Executable_Location & "libexec/gnat-llvm/" &
-        Get_Default_Target_Triple & "/" & Exec;
+        Get_Default_Target_Triple & "/bin/" & Exec;
       Is_Exec : constant Boolean :=
         Is_Executable_File (Result & Suffix.all);
 

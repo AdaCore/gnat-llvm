@@ -501,15 +501,8 @@ begin
          --  executables; since we don't use PIE for Ada code, disable it in
          --  the linker.
 
-         --  We also need to tell Clang how to find the linker when
-         --  cross-compiling. Make sure that it always looks for "ld"; it would
-         --  otherwise expect "ld.lld" for some targets.
-
          if Have_Clang then
-            Spawn
-              (S.all,
-               new String'("-no-pie") & new String'("--ld-path=ld") & Args,
-              Status);
+            Spawn (S.all, new String'("-no-pie") & Args, Status);
          else
             Spawn (S.all, Args, Status);
          end if;

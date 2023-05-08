@@ -245,6 +245,13 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C, External_Name => "Initialize_LLVM";
    --  Initializes various parts of the LLVM infrastructure.
 
+   procedure Get_Target_C_Types
+     (Triple  : String;
+      CPU     : String;
+      Info    : out Target_C_Type_Info;
+      Success : out Boolean);
+   --  Retrieve information about the C types for the target.
+
    procedure Set_NUW (V : Value_T)
      with Import, Convention => C, External_Name => "Set_NUW";
 

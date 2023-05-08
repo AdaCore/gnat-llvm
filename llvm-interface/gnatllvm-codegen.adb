@@ -384,6 +384,7 @@ package body GNATLLVM.Codegen is
          others => <>);
       Ptr_Err_Msg : aliased Ptr_Err_Msg_Type;
       TT_First    : constant Integer  := Target_Triple'First;
+      Success     : Boolean;
 
    begin
       if Emit_C and then Long_Long_Long_Size > 64 then
@@ -439,6 +440,11 @@ package body GNATLLVM.Codegen is
            Level      => Code_Gen_Level,
            Reloc      => Reloc_Mode,
            Code_Model => Code_Model);
+
+      Get_Target_C_Types (Target_Triple.all, CPU.all, Target_C_Types, Success);
+      if not Success then
+         Early_Error ("cannot get C type information from LLVM");
+      end if;
 
       --  If a target layout was specified, use it. Otherwise, use the default
       --  layout for the specified target.

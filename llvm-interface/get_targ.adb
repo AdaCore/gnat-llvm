@@ -50,7 +50,7 @@ package body Get_Targ is
 
    function Get_Bits_Per_Word return Pos is
    begin
-      return Pos (Pointer_Size (Module_Data_Layout)) * Get_Bits_Per_Unit;
+      return Pos (Target_C_Types.Pointer_Size);
    end Get_Bits_Per_Word;
 
    -------------------
@@ -59,7 +59,7 @@ package body Get_Targ is
 
    function Get_Char_Size return Pos is
    begin
-      return 8;
+      return Pos (Target_C_Types.Char_Size);
    end Get_Char_Size;
 
    ----------------------
@@ -68,7 +68,7 @@ package body Get_Targ is
 
    function Get_Wchar_T_Size return Pos is
    begin
-      return 32;
+      return Pos (Target_C_Types.Wchar_T_Size);
    end Get_Wchar_T_Size;
 
    --------------------
@@ -77,7 +77,7 @@ package body Get_Targ is
 
    function Get_Short_Size return Pos is
    begin
-      return 16;
+      return Pos (Target_C_Types.Short_Size);
    end Get_Short_Size;
 
    ------------------
@@ -86,7 +86,7 @@ package body Get_Targ is
 
    function Get_Int_Size return Pos is
    begin
-      return 32;
+      return Pos (Target_C_Types.Int_Size);
    end Get_Int_Size;
 
    -------------------
@@ -95,8 +95,7 @@ package body Get_Targ is
 
    function Get_Long_Size return Pos is
    begin
-      --  Not true on all ABIs but good enough for now ???
-      return Get_Pointer_Size;
+      return Pos (Target_C_Types.Long_Size);
    end Get_Long_Size;
 
    ------------------------
@@ -105,7 +104,7 @@ package body Get_Targ is
 
    function Get_Long_Long_Size return Pos is
    begin
-      return 64;
+      return Pos (Target_C_Types.Long_Long_Size);
    end Get_Long_Long_Size;
 
    -----------------------------
@@ -114,7 +113,7 @@ package body Get_Targ is
 
    function Get_Long_Long_Long_Size return Pos is
    begin
-      return (if Emit_C then 64 else 128);
+      return Pos (Target_C_Types.Long_Long_Long_Size);
    end Get_Long_Long_Long_Size;
 
    ----------------------
@@ -123,7 +122,7 @@ package body Get_Targ is
 
    function Get_Pointer_Size return Pos is
    begin
-      return Pos (Pointer_Size (Module_Data_Layout)) * Get_Bits_Per_Unit;
+      return Pos (Target_C_Types.Pointer_Size);
    end Get_Pointer_Size;
 
    ---------------------------
@@ -132,12 +131,7 @@ package body Get_Targ is
 
    function Get_Maximum_Alignment return Pos is
    begin
-      --  This isn't the maximum supported alignment, which is 2 ** 29 in
-      --  LLVM, but the maximum default alignment for any datatype.  There's
-      --  no portable way of getting this in LLVM, so we use a reasonable
-      --  value.
-
-      return 16;
+      return Pos (Target_C_Types.Maximum_Alignment);
    end Get_Maximum_Alignment;
 
    ------------------------------------

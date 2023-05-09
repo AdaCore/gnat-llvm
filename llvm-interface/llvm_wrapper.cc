@@ -35,8 +35,16 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm-c/Core.h"
 
+#include "clang/Basic/Diagnostic.h"
+#include "clang/Basic/DiagnosticIDs.h"
+#include "clang/Basic/DiagnosticOptions.h"
+#include "clang/Basic/TargetInfo.h"
+#include "clang/Basic/TargetOptions.h"
+
 using namespace llvm;
 using namespace llvm::sys;
+
+using namespace clang;
 
 extern "C"
 Instruction *
@@ -532,6 +540,63 @@ Initialize_LLVM (void)
   InitializeAllTargetMCs ();
   InitializeAllAsmParsers ();
   InitializeAllAsmPrinters ();
+}
+
+// Description of C type properties to pass to Ada. Unless otherwise noted,
+// sizes are in bits.
+struct Target_C_Type_Info {
+  unsigned PointerSize;
+  unsigned CharSize;
+  unsigned WCharTSize;
+  unsigned ShortSize;
+  unsigned IntSize;
+  unsigned LongSize;
+  unsigned LongLongSize;
+  unsigned LongLongLongSize;
+  unsigned MaximumAlignmentBytes;
+};
+
+extern "C"
+void
+Get_Target_C_Types (const char *Triple, const char *CPU,
+                    Target_C_Type_Info *Result, unsigned char *success)
+{
+  *Result = {};
+  *success = 0;
+
+  auto Options = std::make_shared<clang::TargetOptions>();
+  Options->Triple = Triple;
+  std::string CPUString = CPU;
+  if (CPUString != "generic") // GNAT-LLVM's default CPU, unknown to LLVM
+    Options->CPU = CPU;
+  // ??? If we encounter target features which are relevant for the C type
+  // information that we're interested in, set Options->Features.
+
+  // The Clang API requires us to provide a handler for diagnostic messages
+  // emitted during the operation.
+  //
+  // ??? Use a real diagnostics consumer if we ever get an error from Clang.
+  IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
+  IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
+  DiagnosticsEngine Diags(DiagID, &*DiagOpts, new IgnoringDiagConsumer());
+
+  // Finally, we can create the TargetInfo structure.
+  std::unique_ptr<TargetInfo> Info(
+    TargetInfo::CreateTargetInfo(Diags, Options));
+
+  if (Info == nullptr)
+    return;
+
+  Result->PointerSize = Info->getPointerWidth(0);
+  Result->CharSize = Info->getCharWidth();
+  Result->WCharTSize = Info->getWCharWidth();
+  Result->ShortSize = Info->getShortWidth();
+  Result->IntSize = Info->getIntWidth();
+  Result->LongSize = Info->getLongWidth();
+  Result->LongLongSize = Info->getLongLongWidth();
+  Result->LongLongLongSize = Info->hasInt128Type() ? 128 : 64;
+  Result->MaximumAlignmentBytes = Info->getSuitableAlign() / 8;
+  *success = 1;
 }
 
 /* This is a dummy optimization "pass" that serves just to obtain loop

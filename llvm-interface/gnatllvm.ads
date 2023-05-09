@@ -139,6 +139,22 @@ package GNATLLVM is
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us
 
+   type Target_C_Type_Info is record
+      Pointer_Size        : Interfaces.C.unsigned;
+      Char_Size           : Interfaces.C.unsigned;
+      Wchar_T_Size        : Interfaces.C.unsigned;
+      Short_Size          : Interfaces.C.unsigned;
+      Int_Size            : Interfaces.C.unsigned;
+      Long_Size           : Interfaces.C.unsigned;
+      Long_Long_Size      : Interfaces.C.unsigned;
+      Long_Long_Long_Size : Interfaces.C.unsigned;
+      Maximum_Alignment   : Interfaces.C.unsigned;
+   end record
+     with Convention => C;
+   --  C-compatible record of target-specific C type information. Members are
+   --  named after the functions in the Get_Targ package and have the same
+   --  meaning.
+
    type Value_Array        is array (Nat range <>) of Value_T;
    type Type_Array         is array (Nat range <>) of Type_T;
    type Basic_Block_Array  is array (Nat range <>) of Basic_Block_T;
@@ -240,6 +256,9 @@ package GNATLLVM is
 
    MD_Builder         : MD_Builder_T;
    --  The current LLVM Metadata builder
+
+   Target_C_Types     : Target_C_Type_Info;
+   --  Information about C types on the target
 
    Module_Data_Layout : Target_Data_T;
    --  LLVM current module data layout.

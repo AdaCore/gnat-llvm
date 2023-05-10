@@ -254,17 +254,12 @@ package body Get_Targ is
       Long_Double_Str (Long_Double_Str'First .. Long_Double_Str'First + 10) :=
         "long double";
 
-      if Emit_C then
-         Call_Back
-           (C_Name    => Long_Double_Str,
-            Digs      => 15,
-            Complex   => False,
-            Count     => 0,
-            Float_Rep => IEEE_Binary,
-            Precision => 64,
-            Size      => 64,
-            Alignment => 64);
-      else
+      --  We can't currently handle floating-point types with more than 80 bits
+      --  of precision; in CCG mode, we don't want to use 80-bit double
+      --  extended either because the target hardware likely can't handle it.
+      if Nat (Target_C_Types.Long_Double_Precision) = 80
+        and then not Emit_C
+      then
          Call_Back
            (C_Name    => Long_Double_Str,
             Digs      => 18,
@@ -274,6 +269,16 @@ package body Get_Targ is
             Precision => 80,
             Size      => 128,
             Alignment => 128);
+      else
+         Call_Back
+           (C_Name    => Long_Double_Str,
+            Digs      => 15,
+            Complex   => False,
+            Count     => 0,
+            Float_Rep => IEEE_Binary,
+            Precision => 64,
+            Size      => 64,
+            Alignment => 64);
       end if;
    end Register_Back_End_Types;
 

@@ -140,15 +140,16 @@ package GNATLLVM is
    --  Metadata builder type: opaque for us
 
    type Target_C_Type_Info is record
-      Pointer_Size        : Interfaces.C.unsigned;
-      Char_Size           : Interfaces.C.unsigned;
-      Wchar_T_Size        : Interfaces.C.unsigned;
-      Short_Size          : Interfaces.C.unsigned;
-      Int_Size            : Interfaces.C.unsigned;
-      Long_Size           : Interfaces.C.unsigned;
-      Long_Long_Size      : Interfaces.C.unsigned;
-      Long_Long_Long_Size : Interfaces.C.unsigned;
-      Maximum_Alignment   : Interfaces.C.unsigned;
+      Pointer_Size          : Interfaces.C.unsigned;
+      Char_Size             : Interfaces.C.unsigned;
+      Wchar_T_Size          : Interfaces.C.unsigned;
+      Short_Size            : Interfaces.C.unsigned;
+      Int_Size              : Interfaces.C.unsigned;
+      Long_Size             : Interfaces.C.unsigned;
+      Long_Long_Size        : Interfaces.C.unsigned;
+      Long_Long_Long_Size   : Interfaces.C.unsigned;
+      Long_Double_Precision : Interfaces.C.unsigned;
+      Maximum_Alignment     : Interfaces.C.unsigned;
    end record
      with Convention => C;
    --  C-compatible record of target-specific C type information. Members are

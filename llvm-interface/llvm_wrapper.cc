@@ -553,6 +553,7 @@ struct Target_C_Type_Info {
   unsigned LongSize;
   unsigned LongLongSize;
   unsigned LongLongLongSize;
+  unsigned LongDoublePrecision; // 0 if the target doesn't have long double
   unsigned MaximumAlignmentBytes;
 };
 
@@ -595,6 +596,9 @@ Get_Target_C_Types (const char *Triple, const char *CPU,
   Result->LongSize = Info->getLongWidth();
   Result->LongLongSize = Info->getLongLongWidth();
   Result->LongLongLongSize = Info->hasInt128Type() ? 128 : 64;
+  Result->LongDoublePrecision =
+    Info->hasLongDoubleType() ?
+      APFloat::semanticsPrecision(Info->getLongDoubleFormat()) : 0;
   Result->MaximumAlignmentBytes = Info->getSuitableAlign() / 8;
   *success = 1;
 }

@@ -149,6 +149,8 @@ package GNATLLVM is
       Long_Long_Size        : Interfaces.C.unsigned;
       Long_Long_Long_Size   : Interfaces.C.unsigned;
       Long_Double_Precision : Interfaces.C.unsigned;
+      Long_Double_Size      : Interfaces.C.unsigned;
+      Long_Double_Alignment : Interfaces.C.unsigned;
       Maximum_Alignment     : Interfaces.C.unsigned;
    end record
      with Convention => C;

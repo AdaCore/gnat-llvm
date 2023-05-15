@@ -258,8 +258,8 @@ package body Get_Targ is
             Count     => 0,
             Float_Rep => IEEE_Binary,
             Precision => 80,
-            Size      => 128,
-            Alignment => 128);
+            Size      => Integer (Target_C_Types.Long_Double_Size),
+            Alignment => Integer (Target_C_Types.Long_Double_Alignment));
       else
          Call_Back
            (C_Name    => Long_Double_Str,

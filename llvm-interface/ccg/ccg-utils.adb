@@ -41,6 +41,10 @@ package body CCG.Utils is
       V_Is_Access_SP : Boolean;
    end record;
 
+   function GNAT_Ref_Type (V : Value_T) return Opt_Type_Kind_Id
+     with Pre => Present (V), Inline;
+   --  Get the GNAT type that V is referencing, if known
+
    function GEP_Volatile_Unsigned_Access_SP  (V : Value_T) return VF
      with Pre => Is_A_Get_Element_Ptr_Inst (V);
 
@@ -643,12 +647,25 @@ package body CCG.Utils is
               else Empty);
    end GNAT_Type;
 
+   ---------------
+   -- GNAT_Ref_Type --
+   ---------------
+
+   function GNAT_Ref_Type (V : Value_T) return Opt_Type_Kind_Id is
+      TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
+
+   begin
+      return (if    Get_Entity_Is_Ref (V) then TE
+              elsif Present (TE) and then Is_Access_Type (TE)
+              then  Full_Designated_Type (TE) else  Types.Empty);
+   end GNAT_Ref_Type;
+
    ---------------------
    -- Is_Unsigned_Ref --
    ---------------------
 
    function Is_Unsigned_Ref (V : Value_T) return Boolean is
-      TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
+      TE : constant Opt_Type_Kind_Id := GNAT_Ref_Type (V);
       BT : constant Opt_Type_Kind_Id := Opt_Full_Base_Type (TE);
 
    begin
@@ -658,9 +675,9 @@ package body CCG.Utils is
       --  cases where we have a pointer to unsigned are when we have the
       --  address of an unsigned variable or an unsigned field.
 
-      --  If this is an LHS and a variable, there has to be a
-      --  declaration, and we either declared it as unsigned or we
-      --  did. We did if the condition below is true.
+      --  If this is an LHS and a variable, there has to be a declaration,
+      --  and we either declared it as unsigned or we didn't. We did if the
+      --  condition below is true.
 
       if Get_Is_LHS (V) and then Is_Variable (V, False) then
          return Opt_Is_Unsigned_Type (BT);
@@ -675,18 +692,18 @@ package body CCG.Utils is
    ---------------------
 
    function Is_Access_SP_Ref (V : Value_T) return Boolean is
-      TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
+      TE : constant Opt_Type_Kind_Id := GNAT_Ref_Type (V);
 
    begin
-      --  Note that what we care about here is whether the C compiler
-      --  will interpret our generated code for V as a pointer to
-      --  unsigned, not whether it actually IS unsigned. The only two
-      --  cases where we have a pointer to unsigned are when we have the
-      --  address of an unsigned variable or an unsigned field.
+      --  Note that what we care about here is whether the C compiler will
+      --  interpret our generated code for V as a pointer to access to
+      --  subprogram, not whether it actually IS such. The only two cases
+      --  where we have a pointer to access subprogram are when we have the
+      --  address of such a variable or field.
 
-      --  If this is an LHS and a variable, there has to be a
-      --  declaration, and we either declared it as unsigned or we
-      --  did. We did if the condition below is true.
+      --  If this is an LHS and a variable, there has to be a declaration,
+      --  and we either declared it as access subprogram or we didn't. We
+      --  did if the condition below is true.
 
       if Get_Is_LHS (V) and then Is_Variable (V, False) then
          return Present (TE) and then Is_Access_Subprogram_Type (TE);
@@ -780,16 +797,19 @@ package body CCG.Utils is
    --------------------------
 
    function Is_Access_Subprogram (V : Value_T) return Boolean is
-      E  : constant Entity_Id        := Get_Entity (V);
-      TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
+      E      : constant Entity_Id        := Get_Entity (V);
+      Is_Ref : constant Boolean          := Get_Entity_Is_Ref (V);
+      TE     : constant Opt_Type_Kind_Id := GNAT_Type (V);
 
    begin
       --  If this is an access subprogram type or a subprogram, this is
       --  the address of a subprogram (a name represents an address in the
       --  LLVM IR).
 
-      if (Present (TE) and then Is_Access_Subprogram_Type (TE))
-        or else (Present (E) and then Ekind (E) in Subprogram_Kind)
+      if (not Is_Ref and then Present (TE)
+          and then Is_Access_Subprogram_Type (TE))
+        or else (Is_Ref and then Present (E)
+                 and then Ekind (E) in Subprogram_Kind)
       then
          return True;
 
@@ -799,7 +819,7 @@ package body CCG.Utils is
          return False;
       end if;
 
-      --  Now handle instructions that could produce unsigned
+      --  Now handle instructions that could produce an access to a subprogram
 
       case Get_Opcode (V) is
 

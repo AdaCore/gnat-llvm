@@ -306,7 +306,6 @@ package body CCG.Environment is
    begin
       return Present (Idx)
         and then Value_Info.Table (Idx).Is_Decl_Output;
-
    end Get_Is_Decl_Output;
 
    ----------------
@@ -318,7 +317,6 @@ package body CCG.Environment is
 
    begin
       return Present (Idx) and then Value_Info.Table (Idx).Is_LHS;
-
    end Get_Is_LHS;
 
    ---------------------
@@ -330,7 +328,6 @@ package body CCG.Environment is
 
    begin
       return Present (Idx) and then Value_Info.Table (Idx).Is_Constant;
-
    end Get_Is_Constant;
 
    ----------------
@@ -343,7 +340,6 @@ package body CCG.Environment is
    begin
       return (if  Present (Idx) then Value_Info.Table (Idx).Entity
               else Types.Empty);
-
    end Get_Entity;
 
    -----------------------
@@ -355,7 +351,6 @@ package body CCG.Environment is
 
    begin
       return Present (Idx) and then Value_Info.Table (Idx).Entity_Is_Ref;
-
    end Get_Entity_Is_Ref;
 
    ------------------
@@ -367,7 +362,6 @@ package body CCG.Environment is
 
    begin
       return Present (Idx) and then Value_Info.Table (Idx).Is_Used;
-
    end Get_Is_Used;
 
    --------------------
@@ -379,7 +373,6 @@ package body CCG.Environment is
 
    begin
       return Present (Idx) and then Value_Info.Table (Idx).Needs_Nest;
-
    end Get_Needs_Nest;
 
    -----------------

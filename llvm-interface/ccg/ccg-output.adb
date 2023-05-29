@@ -108,6 +108,7 @@ package body CCG.Output is
       --  we're only writing an incomplete definition.
 
       Set_Are_Outputting_Typedef (T, False);
+
       if not Incomplete or else not Is_Struct_Type (T) then
          Set_Is_Typedef_Output   (T);
       end if;
@@ -292,6 +293,7 @@ package body CCG.Output is
       --  of types for which we haven't yet written a typedef.
 
       Maybe_Output_Typedef (Type_Of (V));
+
       if Is_A_Constant_Array (V) or else Is_A_Constant_Struct (V)
         or else Is_A_Constant_Expr (V)
       then
@@ -332,6 +334,7 @@ package body CCG.Output is
 
    begin
       Next_Block_Style := None;
+
       if Is_Typedef then
          Typedefs.Append (OL);
       elsif Is_Global then

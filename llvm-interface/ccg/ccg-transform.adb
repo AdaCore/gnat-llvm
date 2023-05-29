@@ -145,6 +145,7 @@ package body CCG.Transform is
          Inst := Get_First_Instruction (BB);
          while Present (Inst) loop
             Next_Inst := Get_Next_Instruction (Inst);
+
             if Is_A_Dbg_Info_Intrinsic (Inst)
               or else Is_Lifetime_Intrinsic (Inst)
             then
@@ -203,12 +204,14 @@ package body CCG.Transform is
                --  isn't already a reference.
 
                Set_Value_Name_2 (V, "", 0);
+
                if not Get_Entity_Is_Ref (V) then
                   Set_Entity (Result, Get_Entity (V));
                   Set_Entity_Is_Ref (Result);
                end if;
 
                Phi_Map.Insert (V, Result);
+
                if Name'Length /= 0 then
                   Set_Value_Name_2 (Result, Name, Name'Length);
                end if;
@@ -301,6 +304,7 @@ package body CCG.Transform is
                      Insert_At_Block_End
                        (Create_Return (Phi_Value (Dest_Inst, BB)),
                         Insert_BB, Dest_Inst);
+
                      if Is_Unc_Br (Inst) then
                         Instruction_Erase_From_Parent (Inst);
                      end if;
@@ -433,6 +437,7 @@ package body CCG.Transform is
          BB      := Get_First_Basic_Block (V);
          while Present (BB) loop
             Next_BB := Get_Next_Basic_Block (BB);
+
             if BB /= Entry_BB and then Is_Dead_Basic_Block (BB)
               and then Is_A_Terminator_Inst (Get_First_Instruction (BB))
             then
@@ -732,6 +737,7 @@ package body CCG.Transform is
       while Present (BB) loop
          Next_BB := Get_Next_Basic_Block (BB);
          Term    := Get_Basic_Block_Terminator (BB);
+
          if Is_Cond_Br (Term) then
             declare
                True_BB    : constant Basic_Block_T := Get_True_BB (Term);

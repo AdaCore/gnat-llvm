@@ -157,6 +157,7 @@ package body CCG.Strs is
             else
                CharL := CharL + 1;
                CharR := CharR + 1;
+
                if CharL > SL.Comps (PosL).Length then
                   PosL  := PosL + 1;
                   CharL := 1;
@@ -1101,6 +1102,7 @@ package body CCG.Strs is
    begin
       Push_Output;
       Set_Standard_Error;
+
       if Present (S) then
          Write_Str (Precedence'Image (S.P));
          Write_Str (": ");

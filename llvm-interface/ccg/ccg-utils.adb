@@ -225,6 +225,7 @@ package body CCG.Utils is
                                  Next        => C_Idx,
                                  Is_Padding  => Is_Padding,
                                  Is_Bitfield => Is_Bitfield));
+
          if Has_Element (Position) then
             Replace_Element (Entity_To_CI_Map, Position,
                              Component_Info.Last);
@@ -574,6 +575,7 @@ package body CCG.Utils is
                --  may be, e.g., #1 or #B2.
 
                Last := J - 2 - (if Modifier = ' ' then 0 else 1);
+
                if Start <= Last then
                   Result := Result & S (Start .. Last);
                end if;
@@ -1038,6 +1040,7 @@ package body CCG.Utils is
             --  procedure on this value (unless we're asked not to).
 
             Insert (Walked, V);
+
             if Walk_Outer then
                Process (V);
             end if;

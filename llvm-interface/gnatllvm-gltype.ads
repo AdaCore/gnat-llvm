@@ -675,10 +675,11 @@ package GNATLLVM.GLType is
      (C_Pass_By_Copy (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   procedure C_Set_GNAT_Type (V : GL_Value; GT : GL_Type)
+   procedure C_Set_Entity (V : GL_Value; GT : GL_Type)
      with Pre => Present (V) and then Present (GT), Inline;
 
-   procedure C_Set_GNAT_Type (V : Value_T; GT : GL_Type)
+   procedure C_Set_Entity
+     (V : Value_T; GT : GL_Type; Reference : Boolean := False)
      with Pre => Present (V) and then Present (GT), Inline;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");

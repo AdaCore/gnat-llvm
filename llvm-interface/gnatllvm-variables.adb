@@ -546,9 +546,9 @@ package body GNATLLVM.Variables is
             Index := First_Index (GT);
             Expr  := First (Expressions (N));
             while Present (Index) loop
-               exit when not Is_Static_Expression
+               exit when not Is_No_Elab_Needed
                                (Low_Bound (Simplify_Range (Index)))
-                 or else not Is_Static_Expression (Expr);
+                 or else not Is_No_Elab_Needed (Expr);
                Next_Index (Index);
                Next (Expr);
             end loop;

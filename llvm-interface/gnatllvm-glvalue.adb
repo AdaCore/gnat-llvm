@@ -78,7 +78,7 @@ package body GNATLLVM.GLValue is
         and then (not Is_Reference (R) or else R = Reference_To_Subprogram)
         and then not Present (Is_A_Constant_Int (V))
       then
-         C_Set_GNAT_Type (V, GT);
+         C_Set_Entity (V, GT);
       end if;
 
       return (V, GT, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic,
@@ -2115,7 +2115,7 @@ package body GNATLLVM.GLValue is
 
    procedure C_Set_Entity (V : GL_Value; E : Entity_Id) is
    begin
-      C_Set_Entity (+V, E);
+      C_Set_Entity (+V, E, Reference => Is_Reference (V));
    end C_Set_Entity;
 
    --------------------
@@ -2126,15 +2126,6 @@ package body GNATLLVM.GLValue is
    begin
       C_Set_Function (UID, +V);
    end C_Set_Function;
-
-   ---------------------
-   -- C_Set_GNAT_Type --
-   ---------------------
-
-   procedure C_Set_GNAT_Type (V : GL_Value; TE : Type_Kind_Id) is
-   begin
-      C_Set_Entity (+V, TE);
-   end C_Set_GNAT_Type;
 
    ---------------------
    -- C_Set_Elab_Proc --

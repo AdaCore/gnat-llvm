@@ -199,10 +199,15 @@ package body CCG.Transform is
             begin
                --  The name of the Phi instruction won't be used, so clear that
                --  name and use it, if any, for the variable we're making.
-               --  Also copy any entity from the original value.
+               --  Also copy any entity from the original value if the entity
+               --  isn't already a reference.
 
                Set_Value_Name_2 (V, "", 0);
-               Set_Entity (Result, Get_Entity (V));
+               if not Get_Entity_Is_Ref (V) then
+                  Set_Entity (Result, Get_Entity (V));
+                  Set_Entity_Is_Ref (Result);
+               end if;
+
                Phi_Map.Insert (V, Result);
                if Name'Length /= 0 then
                   Set_Value_Name_2 (Result, Name, Name'Length);

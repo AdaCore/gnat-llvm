@@ -327,6 +327,11 @@ package body GNATLLVM.Codegen is
 
          Debug_Flag_Dot_HH := True;
 
+         --  Don't merge function, since this can cause references to
+         --  pad fields and also generate messier C code.
+
+         Merge_Functions := False;
+
          --  Use a simple 32bits target by default for C code generation
 
          if not Target_Triple_Set

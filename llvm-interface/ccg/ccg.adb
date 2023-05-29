@@ -131,7 +131,9 @@ package body CCG is
    -- C_Set_Entity --
    ------------------
 
-   procedure C_Set_Entity (V : Value_T; E : Entity_Id) is
+   procedure C_Set_Entity
+     (V : Value_T; E : Entity_Id; Reference : Boolean := False)
+   is
       Prev_E : constant Entity_Id := Get_Entity (V);
 
    begin
@@ -148,15 +150,17 @@ package body CCG is
         or else No (Prev_E)
       then
          Notify_On_Value_Delete (V, Delete_Value_Info'Access);
-         Set_Entity (V, E);
+         Set_Entity             (V, E);
+         Set_Entity_Is_Ref      (V, Reference);
       end if;
 
       --  If we have a type that's an access function type, show that we
       --  have such since we need to write out a typedef.
 
-      if (Is_Type (E) and then Is_Access_Subprogram_Type (E))
-        or else (not Is_Type (E)
-                   and then Is_Access_Subprogram_Type (Full_Etype (E)))
+      if (not (Is_Type (E) and then Is_Access_Subprogram_Type (E))
+          or else (not Is_Type (E)
+                   and then Is_Access_Subprogram_Type (Full_Etype (E))))
+        and then not Reference
       then
          Has_Access_Subtype := True;
       end if;
@@ -167,7 +171,8 @@ package body CCG is
    -- C_Set_Entity --
    ------------------
 
-   procedure C_Set_Entity (T : Type_T; TE : Type_Kind_Id) is
+   procedure C_Set_Entity (T : Type_T; TE : Type_Kind_Id)
+   is
    begin
       if Emit_C then
          Set_Entity (T, TE);

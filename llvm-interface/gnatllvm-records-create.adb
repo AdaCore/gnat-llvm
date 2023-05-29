@@ -31,6 +31,7 @@ with Table;      use Table;
 with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
+with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
@@ -1196,6 +1197,16 @@ package body GNATLLVM.Records.Create is
          end Append_Padding;
 
       begin
+         --  If we're going backwards, we need to flush the current RI
+         --  and then start a new one.
+
+         if Needed_Pos < Cur_RI_Pos then
+            Flush_Current_Types;
+            Set_Is_Nonnative_Type (TE);
+         end if;
+
+         --  If this is the start of a new RI, set its position
+
          if Needed_Pos /= 0 and then LLVM_Types.Last = -1
            and then Present (Prev_Idx)
          then
@@ -1314,6 +1325,16 @@ package body GNATLLVM.Records.Create is
 
          procedure Sort is new Ada.Containers.Generic_Sort
            (Index_Type => Int, Before => Field_Before, Swap => Swap_Fields);
+
+         function Start_Position (Pos : Uint) return Uint is
+           (Truncate_Pos (Pos, BPU));
+
+         function End_Position (Pos, Size : Uint) return Uint is
+           (Align_Pos (Pos + Size, BPU));
+
+         function Fits_In_Bitfield_Field (AF : Added_Field) return Boolean;
+         --  True if the field denoted by AF fits in the current bitfield
+         --  field.
 
          procedure Create_Bitfield_Field (J : Int);
          --  We're processing the component at table index J, which is known
@@ -1533,6 +1554,24 @@ package body GNATLLVM.Records.Create is
             Added_Fields.Table (R) := Temp;
          end Swap_Fields;
 
+         ----------------------------
+         -- Fits_In_Bitfield_Field --
+         ----------------------------
+
+         function Fits_In_Bitfield_Field (AF : Added_Field) return Boolean is
+            SP : constant Uint := Start_Position (AF.Pos);
+            EP : constant Uint := End_Position (AF.Pos, AF.Size);
+
+         begin
+            return SP < Bitfield_End_Pos
+              and then (not Emit_C
+                        or else EP - Bitfield_Start_Pos <=
+                                Get_Long_Long_Size);
+         end Fits_In_Bitfield_Field;
+
+         --  If we're emitting C, don't let the bitsize be wider than
+         --  "long long" since we can't do arithmetic wider than that.
+
          ---------------------------
          -- Create_Bitfield_Field --
          ---------------------------
@@ -1540,12 +1579,6 @@ package body GNATLLVM.Records.Create is
          procedure Create_Bitfield_Field (J : Int) is
             AF           : constant Added_Field := Added_Fields.Table (J);
             Bitfield_Len : ULL;
-
-            function Start_Position (Pos : Uint) return Uint is
-              (Truncate_Pos (Pos, BPU));
-
-            function End_Position (Pos, Size : Uint) return Uint is
-              (Align_Pos (Pos + Size, BPU));
 
          begin
             --  We need to create an LLVM field to use to represent one or
@@ -1561,6 +1594,8 @@ package body GNATLLVM.Records.Create is
 
             --  Now go through all the remaining components that start within
             --  the field we made and widen the bitfield field to include it.
+            --  If we're emitting C, don't let the bitsize be wider than
+            --  "long long" since we can't do arithmetic wider than that.
 
             for K in J + 1 .. Added_Fields.Last loop
                declare
@@ -1572,7 +1607,7 @@ package body GNATLLVM.Records.Create is
                   exit when No (AF_K.Pos) or else No (AF_K.Size)
                     or else not Is_Bitfield_By_Rep (F, AF_K.Pos, AF_K.Size,
                                                     Use_Pos_Size => True)
-                    or else Start_Position (AF_K.Pos) >= Bitfield_End_Pos;
+                    or else not Fits_In_Bitfield_Field (AF_K);
 
                   Bitfield_End_Pos := End_Position (AF_K.Pos, AF_K.Size);
                end;
@@ -1908,7 +1943,7 @@ package body GNATLLVM.Records.Create is
                                   and then J /= Added_Fields.Last)
                      then
                         if No (Bitfield_Start_Pos)
-                          or else AF.Pos >= Bitfield_End_Pos
+                          or else not Fits_In_Bitfield_Field (AF)
                         then
                            Create_Bitfield_Field (J);
                         end if;

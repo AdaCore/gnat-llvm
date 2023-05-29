@@ -148,11 +148,13 @@ package CCG is
    --  Indicate that the previous calls to C_Set_Field_Info for SID
    --  were for LLVM struct type T.
 
-   procedure C_Set_Entity  (V : Value_T; E : Entity_Id)
+   procedure C_Set_Entity
+     (V : Value_T; E : Entity_Id; Reference : Boolean := False)
      with Pre => Present (V), Inline;
    --  Indicate that E is related to V, either the object that V represents
-   --  or the GNAT type of V.
-   procedure C_Set_Entity  (T : Type_T; TE : Type_Kind_Id)
+   --  or the GNAT type of V. If Reference, then V is actually a reference
+   --  to (the address of) E.
+   procedure C_Set_Entity (T : Type_T; TE : Type_Kind_Id)
      with Pre => Present (T), Inline;
    --  Indicate that E is the entity corresponding to T
 

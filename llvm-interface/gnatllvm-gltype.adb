@@ -1378,19 +1378,21 @@ package body GNATLLVM.GLType is
    -- C_Set_Entity --
    ------------------
 
-   procedure C_Set_GNAT_Type (V : GL_Value; GT : GL_Type) is
+   procedure C_Set_Entity (V : GL_Value; GT : GL_Type) is
    begin
       C_Set_Entity (V, Full_Etype (GT));
-   end C_Set_GNAT_Type;
+   end C_Set_Entity;
 
-   ---------------------
-   -- C_Set_GNAT_Type --
-   ---------------------
+   ------------------
+   -- C_Set_Entity --
+   ------------------
 
-   procedure C_Set_GNAT_Type (V : Value_T; GT : GL_Type) is
+   procedure C_Set_Entity
+     (V : Value_T; GT : GL_Type; Reference : Boolean := False)
+   is
    begin
-      C_Set_Entity (V, Full_Etype (GT));
-   end C_Set_GNAT_Type;
+      C_Set_Entity (V, Full_Etype (GT), Reference => Reference);
+   end C_Set_Entity;
 
    ------------------
    -- Dump_GL_Type --

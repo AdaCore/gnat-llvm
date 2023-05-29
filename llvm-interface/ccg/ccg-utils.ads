@@ -185,7 +185,7 @@ package CCG.Utils is
 
    function Is_Access_Subprogram (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
-   --  True if V is known from sources to an access to a subprogram
+   --  True if V is known from sources to be an access to a subprogram
 
    function Is_Variable
      (V : Value_T; Need_From_Source : Boolean := True) return Boolean

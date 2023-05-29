@@ -733,7 +733,9 @@ package body CCG.Write is
       procedure Write_Str_With_Signedness (S : String);
       --  Write S possibly preceeded by "unsigned".
 
-      TE         : constant Opt_Type_Kind_Id :=
+      Is_Ref     : constant Boolean           :=
+        Present (V) and then Get_Entity_Is_Ref (V);
+      TE         : constant Opt_Type_Kind_Id  :=
         (if    Present (E) then Full_Etype (E)
          elsif Present (V) then GNAT_Type (V)
          else  Empty);
@@ -862,7 +864,8 @@ package body CCG.Write is
             --  not char *.
 
             elsif (Present (V) and then Is_Access_Subprogram (V))
-              or else (Present (TE) and then Is_Access_Subprogram_Type (TE))
+              or else (not Is_Ref and then Present (TE)
+                       and then Is_Access_Subprogram_Type (TE))
             then
                Write_Str ("ccg_f");
 

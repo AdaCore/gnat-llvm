@@ -1530,8 +1530,6 @@ package GNATLLVM.GLValue is
 
    procedure C_Set_Entity (V : GL_Value; E : Entity_Id)
      with Pre => Present (V) and then Present (E), Inline;
-   procedure C_Set_GNAT_Type  (V : GL_Value; TE : Type_Kind_Id)
-     with Pre => Present (V), Inline;
    --  Set the GNAT entity or type of V
 
    procedure C_Set_Function (UID : Unique_Id; V : GL_Value)

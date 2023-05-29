@@ -495,9 +495,14 @@ package body CCG.Subprograms is
       Call        : Str;
 
    begin
+      --  If this is an undef, don't do anything
+
+      if Is_Undef (Func) then
+         return;
+
       --  If this is a builtin, handle that
 
-      if Is_Builtin_Name (S) then
+      elsif Is_Builtin_Name (S) then
          if Call_Builtin (V, S, Ops) then
             return;
          end if;
@@ -1006,7 +1011,11 @@ package body CCG.Subprograms is
          SD : constant Subprogram_Data := Subprograms.Table (Sidx);
 
       begin
-         --  First write the decls. We at least have the function prototype.
+         --  Scan this subprogram for any decls we have to write first
+
+         Scan_For_Decls (SD.Func);
+
+         --  Now write our decls. We at least have the function prototype.
 
          Write_Eol;
          for Idx in SD.First_Decl .. SD.Last_Decl loop
@@ -1170,7 +1179,6 @@ package body CCG.Subprograms is
             elsif V = Elab_Body_Func then
                Elab_Body_SI := Sidx;
             elsif not Has_Element (Pos) then
-               Scan_For_Decls (V);
                Write_One_Subprogram (Sidx);
             elsif No (Element (Pos)) then
                Replace (Definition_Map, V, Sidx);
@@ -1228,11 +1236,9 @@ package body CCG.Subprograms is
       --  Finally, write each elab proc, if we have it
 
       if Present (Elab_Spec_SI) then
-         Scan_For_Decls (Elab_Spec_Func);
          Write_One_Subprogram (Elab_Spec_SI);
       end if;
       if Present (Elab_Body_SI) then
-         Scan_For_Decls (Elab_Body_Func);
          Write_One_Subprogram (Elab_Body_SI);
       end if;
 

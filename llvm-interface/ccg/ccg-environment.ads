@@ -52,6 +52,10 @@ package CCG.Environment is
      with Pre => Present (V), Inline;
    --  Get the GNAT entity (either object or type) of this value, if known
 
+   function Get_Entity_Is_Ref  (V : Value_T) return Boolean
+     with Pre => Present (V);
+   --  True if V is a reference to Get_Entity (V)
+
    function Get_Is_Used        (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if this value represents a variable that has been used in an
@@ -73,6 +77,8 @@ package CCG.Environment is
      with Pre => Present (V), Post => Get_Is_Constant (V) = B, Inline;
    procedure Set_Entity         (V : Value_T; E : Entity_Id)
      with Pre => Present (V), Post => Get_Entity (V) = E, Inline;
+   procedure Set_Entity_Is_Ref  (V : Value_T; B : Boolean := True)
+     with Pre => Present (V), Post => Get_Entity_Is_Ref (V) = B, Inline;
    procedure Set_Is_Used        (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Used (V) = B, Inline;
    procedure Set_Needs_Nest     (V : Value_T; B : Boolean := True)

@@ -53,6 +53,9 @@ package body CCG.Environment is
       Entity         : Entity_Id;
       --  GNAT entity (either object or type) of this value, if known
 
+      Entity_Is_Ref  : Boolean;
+      --  True if this value corresponds to a reference to Entity
+
       Is_Used        : Boolean;
       --  True if this value represents a variable that has been used in an
       --  expression.
@@ -196,6 +199,7 @@ package body CCG.Environment is
                              Is_LHS         => False,
                              Is_Constant    => False,
                              Entity         => Types.Empty,
+                             Entity_Is_Ref  => False,
                              Is_Used        => False,
                              Needs_Nest     => False,
                              Output_Idx     => 0));
@@ -342,6 +346,18 @@ package body CCG.Environment is
 
    end Get_Entity;
 
+   -----------------------
+   -- Get_Entity_Is_Ref --
+   -----------------------
+
+   function Get_Entity_Is_Ref (V : Value_T) return Boolean is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
+
+   begin
+      return Present (Idx) and then Value_Info.Table (Idx).Entity_Is_Ref;
+
+   end Get_Entity_Is_Ref;
+
    ------------------
    -- Get_Is_Used --
    ------------------
@@ -420,6 +436,17 @@ package body CCG.Environment is
    begin
       Value_Info.Table (Idx).Entity := E;
    end Set_Entity;
+
+   -----------------------
+   -- Set_Entity_Is_Ref --
+   -----------------------
+
+   procedure Set_Entity_Is_Ref (V : Value_T; B : Boolean := True) is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
+
+   begin
+      Value_Info.Table (Idx).Entity_Is_Ref := B;
+   end Set_Entity_Is_Ref;
 
    -----------------
    -- Set_Is_Used --

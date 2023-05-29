@@ -260,6 +260,7 @@ package body GNATLLVM.Builtins is
    begin
       for RMW of Ops loop
          Len := RMW.Length;
+
          if S'Last >= Index + Len - 1
            and then S (Index .. Index + Len - 1) = RMW.Name (1 .. Len)
          then
@@ -368,6 +369,7 @@ package body GNATLLVM.Builtins is
       end if;
 
       Val := Expr_Value (N);
+
       if Val = Uint_0 then
          return Atomic_Ordering_Unordered;
       elsif Val =  Uint_1 or else Val = Uint_2 then
@@ -463,6 +465,7 @@ package body GNATLLVM.Builtins is
       --  Emit all operands and validate all our conditions
 
       Ptr_Val := Emit_Ptr (N, GT);
+
       if No (Ptr_Val) or else Type_Of (Val) /= Type_Of (GT)
         or else not Type_Size_Matches_Name (S, True, GT)
       then
@@ -684,6 +687,7 @@ package body GNATLLVM.Builtins is
       end if;
 
       GT := Full_GL_Type (Val);
+
       if not Is_Elementary_Type (GT)
         or else not Type_Size_Matches_Name (S, False, GT)
       then
@@ -816,6 +820,7 @@ package body GNATLLVM.Builtins is
         and then Type_Size_Matches_Name (S, True, GT)
       then
          Result := Emit_And_Maybe_Deref (Next_Actual (Ptr), GT);
+
          if No (Result) then
             return No_GL_Value;
          else
@@ -839,6 +844,7 @@ package body GNATLLVM.Builtins is
         and then Full_Designated_GL_Type (Full_Etype (Arg3)) = GT
       then
          Result := Emit_And_Maybe_Deref (Arg2, GT);
+
          if Present (Result) then
             Result := Emit_Fetch_And_Op (Ptr, Result,
                                          Atomic_RMW_Bin_Op_Xchg, False,
@@ -998,6 +1004,7 @@ package body GNATLLVM.Builtins is
    begin
       for FP of FP_Builtins loop
          Len := FP.Length;
+
          if Num_Actuals (N) = (if FP.Kind = Unary then 1 else 2)
            and then S'Length >= Len + 10
            and then S (S'First .. S'First + 9) = "__builtin_"
@@ -1104,6 +1111,7 @@ package body GNATLLVM.Builtins is
 
       elsif Nkind (N) = N_Function_Call then
          Result := Emit_FP_Builtin_Call (N, S);
+
          if No (Result) then
             Result := Emit_FP_Isinf_Call (N, S);
          end if;

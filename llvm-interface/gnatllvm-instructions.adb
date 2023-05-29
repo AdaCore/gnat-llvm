@@ -52,7 +52,7 @@ package body GNATLLVM.Instructions is
 
    procedure Update_Offset_For_GEP (Result : in out GL_Value; Ptr : GL_Value)
      with Pre => Present (Result) and then Present (Ptr);
-   --  Result is the result of a GEP whose pointer is Ptr.  Update the
+   --  Result is the result of a GEP whose pointer is Ptr. Update the
    --  TBAA offset of Result or clear the TBAA data if we can't compute it.
 
    function Return_GL_Type (Func : GL_Value) return GL_Type is
@@ -84,18 +84,19 @@ package body GNATLLVM.Instructions is
       Next : Value_T;
 
    begin
-      --  There are two tricky parts here.  First is that if there's no
+      --  There are two tricky parts here. First is that if there's no
       --  instruction, LLVM will treat this as a request to insert at the
-      --  end of a basic block, but we mean the beginning.  So we need to
+      --  end of a basic block, but we mean the beginning. So we need to
       --  get the first instruction in the block and set the insertion
-      --  point in front of it.  Secondly, if we have an instruction, the
+      --  point in front of it. Secondly, if we have an instruction, the
       --  builder operation inserts in front of it, but we want to insert
-      --  after.  The way to do that is to get the next instruction and
+      --  after. The way to do that is to get the next instruction and
       --  insert before that, but there may not be another instruction.
       --  If so, then insert at the end of the block.
 
       if Present (P.Instr) then
          Next := Get_Next_Instruction (P.Instr);
+
          if Present (Next) then
             Position_Builder (IR_Builder, BB, Next);
          else

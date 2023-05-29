@@ -49,7 +49,7 @@ package body GNATLLVM.Records.Create is
       Cur_Field : in out Opt_Record_Field_Kind_Id)
      return Opt_Record_Field_Kind_Id;
    --  Find a field in the entity list of TE that has the same
-   --  Original_Record_Component as F and return it if so.  Cur_Field
+   --  Original_Record_Component as F and return it if so. Cur_Field
    --  is used to cache the last field tested to avoid quadratic behavior
    --  since we'll be requesting fields in roughly (but not exactly!)
    --  the same order as they are in the list.
@@ -222,12 +222,14 @@ package body GNATLLVM.Records.Create is
       Alt := First_Non_Pragma (Alts);
       while Present (Alt) loop
          Choice := First (Discrete_Choices (Alt));
+
          if Nkind (Choice) = N_Others_Choice then
             Choice := First (Others_Discrete_Choices (Choice));
          end if;
 
          while Present (Choice) loop
             Decode_Range (Choice, Low, High);
+
             if Present (Low) and then Present (High)
               and then Value >= Low and then Value <= High
             then
@@ -279,6 +281,7 @@ package body GNATLLVM.Records.Create is
          Decode_Range (Choice, Low, High);
          Low  := Protect_Neg (Low);
          High := Protect_Neg (High);
+
          if Present (Low) and then Present (High) and then Low = High then
             This_Expr := Create_Node (Eq_Expr, Discrim_SO, Low);
          elsif Present (Low) and then Present (High) and then High > Low then
@@ -673,7 +676,7 @@ package body GNATLLVM.Records.Create is
          Last_Field_Id := Field_Info_Table.Last;
 
          --  If this field really isn't in the record we're working on, it
-         --  must be in a parent.  So it was correct to allocate space for
+         --  must be in a parent. So it was correct to allocate space for
          --  it, but we let the record description be from the type that
          --  it's actually in.
          --
@@ -688,6 +691,7 @@ package body GNATLLVM.Records.Create is
             Set_Field_Info (E, Field_Info_Table.Last);
          else
             Matching_Field := Find_Field_In_Entity_List (E, TE, Cur_Field);
+
             if Present (Matching_Field) then
                Set_Field_Info (Matching_Field, Field_Info_Table.Last);
                F_GT := Full_GL_Type (Matching_Field);
@@ -747,9 +751,9 @@ package body GNATLLVM.Records.Create is
            (List     : Opt_N_Component_List_Id;
             From_Rec : Opt_Record_Kind_Id;
             Parent   : Boolean := False);
-         --  Add fields in List.  If From_Rec is Present, instead
+         --  Add fields in List. If From_Rec is Present, instead
          --  of adding the actual field, add the field of the same
-         --  name from From_Rec.  If Parent is true, only add the
+         --  name from From_Rec. If Parent is true, only add the
          --  parent record, otherwise, add all records except the parent.
 
          ------------------------
@@ -800,8 +804,10 @@ package body GNATLLVM.Records.Create is
             Component_Decl := First_Non_Pragma (Component_Items (List));
             while Present (Component_Decl) loop
                Field := Defining_Identifier (Component_Decl);
+
                if Parent = (Chars (Field) = Name_uParent) then
                   Field_To_Add := Field;
+
                   if Present (From_Rec) then
                      Field_To_Add :=
                        Find_Field_In_Entity_List (Field, From_Rec, Rec_Field);
@@ -830,13 +836,14 @@ package body GNATLLVM.Records.Create is
 
             --  Otherwise process variants. If we statically constrain the
             --  variant, see which variant is being referenced and output
-            --  that one.  Walk the proper variant here to verify that
-            --  ever.  Otherwise, set up for the variant, make the entres
+            --  that one. Walk the proper variant here to verify that
+            --  ever. Otherwise, set up for the variant, make the entres
             --  for each variant, and then create the RI for the variant.
             --  In the case of an error, there may not be a match.
 
             if Static_Constraint then
                Variant := Find_Choice (Constraining_Expr, Variants (Var_Part));
+
                if Present (Variant) then
                   Variant_Stack.Append ((Variant_Align, True));
                   Add_Component_List (Component_List (Variant), From_Rec);
@@ -867,6 +874,7 @@ package body GNATLLVM.Records.Create is
                Variant_Stack.Append ((Variant_Align, False));
                First_Idx   := Empty_Record_Info_Id;
                Overlap_Idx := Empty_Record_Info_Id;
+
                if Present (Component_Items (Component_List (Variant))) then
                   Record_Info_Table.Increment_Last;
                   Prev_Idx      := Empty_Record_Info_Id;
@@ -918,6 +926,7 @@ package body GNATLLVM.Records.Create is
 
          Record_Definition :=
            Type_Definition (Declaration_Node (Rec_Type));
+
          if Nkind (Record_Definition) = N_Derived_Type_Definition then
             Record_Definition := Record_Extension_Part (Record_Definition);
             Is_Derived        := True;
@@ -939,8 +948,8 @@ package body GNATLLVM.Records.Create is
             Add_Component_List (Components, Sub_Rec_Type, True);
          end if;
 
-         --  If there are discriminants, process them.  But
-         --  ignore discriminants that are already in a parent type.
+         --  If there are discriminants, process them. But ignore
+         --  discriminants that are already in a parent type.
 
          if Has_Discriminants (Rec_Type)
            and then not Is_Unchecked_Union (Rec_Type)
@@ -948,6 +957,7 @@ package body GNATLLVM.Records.Create is
             Field := First_Stored_Discriminant (Rec_Type);
             while Present (Field) loop
                Field_To_Add := Field;
+
                if Present (Sub_Rec_Type)
                  and then not Is_Completely_Hidden (Field)
                then
@@ -971,11 +981,11 @@ package body GNATLLVM.Records.Create is
                then
                   Add_Field (Field_To_Add);
 
-               --  If this field is a hidden discriminant, we need to
-               --  allow space for it in the record even though we
-               --  won't have a field for it.  Handle that case here.
-               --  The test for scope is testing whether we'll be
-               --  setting the field info for the field.
+               --  If this field is a hidden discriminant, we need to allow
+               --  space for it in the record even though we won't have a
+               --  field for it. Handle that case here.  The test for scope
+               --  is testing whether we'll be setting the field info for
+               --  the field.
 
                elsif Is_Completely_Hidden (Field_To_Add)
                  and then Scope (Field_To_Add) /= TE
@@ -1073,13 +1083,13 @@ package body GNATLLVM.Records.Create is
             return;
 
          --  Ensure the position does not overlap with the parent subtype,
-         --  if there is one.  At one point, we omitted this test if the
+         --  if there is one. At one point, we omitted this test if the
          --  parent of the tagged type has a full rep clause since, in this
          --  case, component clauses are allowed to overlay the space
          --  allocated for the parent type and the front-end has checked
-         --  that there are no overlapping components.  But there are
-         --  cases where this won't work.  We do allow it with -gnatd.K
-         --  for compatibility purposes.
+         --  that there are no overlapping components. But there are cases
+         --  where this won't work. We do allow it with -gnatd.K for
+         --  compatibility purposes.
 
          elsif Present (Clause) and then Present (Parent_TE)
            and then not (Is_Fully_Repped_Tagged_Type (Parent_TE)
@@ -1226,11 +1236,13 @@ package body GNATLLVM.Records.Create is
             if Left_To_Pad >= UBPU and then Cur_RI_Pos mod (2 * UBPU) /= 0 then
                Append_Padding (BPU, 1);
             end if;
+
             if Left_To_Pad >= UBPU * 2
               and then Cur_RI_Pos mod (4 * UBPU) /= 0
             then
                Append_Padding (BPU * 2, 1);
             end if;
+
             if Left_To_Pad >= UBPU * 4
               and then Cur_RI_Pos mod (8 * UBPU) /= 0
             then
@@ -1238,12 +1250,15 @@ package body GNATLLVM.Records.Create is
             end if;
 
             Append_Padding (BPU * 8, Left_To_Pad / (UBPU * 8));
+
             if Left_To_Pad >= UBPU * 4 then
                Append_Padding (BPU * 4, Left_To_Pad / (UBPU * 4));
             end if;
+
             if Left_To_Pad >= UBPU * 2 then
                Append_Padding (BPU * 2, Left_To_Pad / (UBPU * 2));
             end if;
+
             if Left_To_Pad >= UBPU then
                Append_Padding (BPU, Left_To_Pad / UBPU);
             end if;
@@ -1365,6 +1380,7 @@ package body GNATLLVM.Records.Create is
 
                begin
                   AFs (J) := AF;
+
                   if First_Discrim_Use = 0
                     and then Uses_Discriminant (Full_GL_Type (AF.AF))
                   then
@@ -1614,7 +1630,7 @@ package body GNATLLVM.Records.Create is
             end loop;
 
             --  We can be the most efficient if we can use a normal integral
-            --  type (i8, i16, i32, or i64) for this field.  If it's not
+            --  type (i8, i16, i32, or i64) for this field. If it's not
             --  the size already, the only option we have now is to see if
             --  we have padding between our current position and the start of
             --  the bitfield that we can use to widen the bitfield.
@@ -1647,6 +1663,7 @@ package body GNATLLVM.Records.Create is
             --  Now we know what we have to do for the bitfield field
 
             Force_To_Pos (+Bitfield_Start_Pos);
+
             if Bitfield_Len in 8 | 16 | 32 | 64 then
                Bitfield_Is_Array       := False;
                Bitfield_Is_Large_Array := False;
@@ -1761,6 +1778,7 @@ package body GNATLLVM.Records.Create is
                end if;
 
                Last_Par_Depth := AF.Par_Depth;
+
                if Last_Par_Depth /= 0 then
                   Parent_TE := Full_Scope (F);
                end if;
@@ -1773,7 +1791,7 @@ package body GNATLLVM.Records.Create is
                               then Effective_Field_Alignment (F) else 1);
 
                --  If we've pushed into a new static variant, see if
-               --  we need to align it.  But update our level anyway and
+               --  we need to align it. But update our level anyway and
                --  clear out any starting location for packed fields.
                --  Ignore if there's a position specified.
 
@@ -1887,7 +1905,7 @@ package body GNATLLVM.Records.Create is
 
                else
                   --  We need to flush the previous types if required
-                  --  by the alignment.  We assume here that if Add_FI
+                  --  by the alignment. We assume here that if Add_FI
                   --  updates our type that it has the same alignment.
 
                   if Need_Align > Split_Align then
@@ -1932,9 +1950,9 @@ package body GNATLLVM.Records.Create is
 
                   begin
                      --  If this is a bitfield, we'll be using the special
-                     --  "bitfield field".  If we don't fit in the current
+                     --  "bitfield field". If we don't fit in the current
                      --  one or there isn't one, make one.  Otherwise, just
-                     --  record this field.  If we have a truncated type
+                     --  record this field. If we have a truncated type
                      --  that's not the last field, also treat it as a
                      --  bitfield.
 
@@ -1982,13 +2000,14 @@ package body GNATLLVM.Records.Create is
       --  Because of the potential recursion between record and access types,
       --  make a dummy type for us and set it as our type right at the start.
       --  Then initialize our first record info table entry, which we know
-      --  will be used.  But first see if the dummy type was already made.
+      --  will be used. But first see if the dummy type was already made.
 
       if No (GT) then
          GT := New_GT (TE);
       end if;
 
       LLVM_Type := Type_Of (GT);
+
       if No (LLVM_Type) then
          pragma Assert (Is_Empty_GL_Type (GT));
          LLVM_Type := Struct_Create_Named (Get_Ext_Name (TE));
@@ -2041,7 +2060,7 @@ package body GNATLLVM.Records.Create is
                  Unused_Bits => RI_Unused_Bits);
       else
          --  Otherwise, close out the last record info if we have any
-         --  fields.  Note that if we don't have any fields, the entry we
+         --  fields. Note that if we don't have any fields, the entry we
          --  allocated will remain unused, but trying to reclaim it is
          --  risky.
 
@@ -2051,7 +2070,7 @@ package body GNATLLVM.Records.Create is
       --  If we have a new discriminant that renames one from our parent,
       --  we need to mark which field the discriminant corresponds to.  So
       --  make a pass over the discriminants of this type seeing if any
-      --  haven't had field information set.  If we find any, copy it from
+      --  haven't had field information set. If we find any, copy it from
       --  the original field.
 
       if Has_Discriminants (BT) and then not Is_Unchecked_Union (BT) then
@@ -2068,6 +2087,7 @@ package body GNATLLVM.Records.Create is
 
             begin
                Outer_Field := Find_Field_In_Entity_List (Field, TE, Cur_Field);
+
                if Present (Outer_Field)
                  and then No (Get_Field_Info (Outer_Field))
                  and then Scope (ORC) = BT
@@ -2115,6 +2135,7 @@ package body GNATLLVM.Records.Create is
 
                if Present (Bit_Position_T) then
                   Set_Component_Bit_Offset (Cur_Field, Bit_Position_T);
+
                   if Is_Static_SO_Ref (Bit_Position_T) then
                      Set_Normalized_Position
                        (Cur_Field, Bit_Position_T / BPU);

@@ -132,7 +132,7 @@ package body GNATLLVM.Variables is
    function Variable_GL_Type
      (E : Exception_Or_Object_Kind_Id; Expr : Opt_N_Subexpr_Id) return GL_Type
      with Post => Present (Variable_GL_Type'Result);
-   --  Determine the proper GL_Type to use for E.  If Expr is Present, it's
+   --  Determine the proper GL_Type to use for E. If Expr is Present, it's
    --  an initializing expression for E.
 
    function Is_Volatile_Entity (E : Evaluable_Kind_Id) return Boolean is
@@ -172,7 +172,7 @@ package body GNATLLVM.Variables is
       GT           : GL_Type;
       Not_Symbolic : Boolean := False) return Boolean
      with Pre => Present (V) and then Present (GT);
-   --  Return True iff Convert_Constant can convert V to GT.  If Not_Symbolic,
+   --  Return True iff Convert_Constant can convert V to GT. If Not_Symbolic,
    --  the result must not be a symbolic constant
 
    function Is_Entity_Static_Address
@@ -215,7 +215,7 @@ package body GNATLLVM.Variables is
 
    Const_Map : Value_Value_Map_P.Map;
    --  Map the Value_T for a constant to the Value_T for the global
-   --  variable containing that constant.  We do this at the Value_T level
+   --  variable containing that constant. We do this at the Value_T level
    --  rather than the GL_Value level because we may want to interpret the
    --  same constant differently if they have different bounds.
 
@@ -428,10 +428,10 @@ package body GNATLLVM.Variables is
            and then Ekind (N) in Global_Name_Kind
            and then Has_Global_Name (N)
          then
-            --  See if this name is already in our table.  If it
-            --  isn't, add it and indicate which node it was from, but
-            --  then we're done since it's not a duplicate yet.  Handle
-            --  both Interface_Name and exceptions in Standard.
+            --  See if this name is already in our table. If it isn't, add
+            --  it and indicate which node it was from, but then we're done
+            --  since it's not a duplicate yet. Handle both Interface_Name
+            --  and exceptions in Standard.
 
             if Present (Interface_Name (N)) then
                This_Str := Strval (Interface_Name (N));
@@ -446,7 +446,7 @@ package body GNATLLVM.Variables is
             for J in 1 .. Interface_Names.Last loop
                if String_Equal (Interface_Names.Table (J).S, This_Str) then
 
-                  --  But if it is present, we do have a duplicate.  If we've
+                  --  But if it is present, we do have a duplicate. If we've
                   --  already built a Global_Dup_Value entry, all we have to
                   --  do is make a new Global_Dup entry recording our entity.
 
@@ -460,6 +460,7 @@ package body GNATLLVM.Variables is
                      Global_Dup_Value.Append (No_GL_Value);
                      Interface_Names.Table (J).Index := Global_Dup_Value.Last;
                      Global_Dup.Append ((N, Global_Dup_Value.Last));
+
                      if Present (Interface_Names.Table (J).E) then
                         Global_Dup.Append ((Interface_Names.Table (J).E,
                                             Global_Dup_Value.Last));
@@ -530,9 +531,9 @@ package body GNATLLVM.Variables is
 
          begin
             --  Not static if prefix not static, a lower bound isn't
-            --  static, or an expression isn't static.  It's also possible
+            --  static, or an expression isn't static. It's also possible
             --  that the type of the prefix isn't actually an array in the
-            --  case where we have a packed array type.  But then we know
+            --  case where we have a packed array type. But then we know
             --  that it is static.
 
             if not Is_Static_Location (Prefix (N)) then
@@ -701,7 +702,7 @@ package body GNATLLVM.Variables is
 
    begin
       --  First check for cases where we don't have or can't use the
-      --  initialized value.  But if this is in Standard, we have to use
+      --  initialized value. But if this is in Standard, we have to use
       --  the initialized value even if it appears to be volatile.
 
       if No (Decl) or else not Is_True_Constant (E)
@@ -788,15 +789,16 @@ package body GNATLLVM.Variables is
 
             if Is_Array_Type (GT) then
 
-               --  We don't support constant aggregates of multi-dimensional
-               --  Fortran arrays because it's too complex.  And we also
-               --  can't make a constant aggregate of a dynamic size type
-               --  even if the array has constant elements because we can't
-               --  form the resulting GL_Value.  But be careful not to
-               --  be confused by having the unconstrained array as the type
-               --  of inner aggregates of multi-dimensional arrays.
-               --  We also can't support an aggregate where the component
-               --  type is a unconstrained record.
+               --  We don't support constant aggregates of
+               --  multi-dimensional Fortran arrays because it's too
+               --  complex. And we also can't make a constant aggregate of
+               --  a dynamic size type even if the array has constant
+               --  elements because we can't form the resulting
+               --  GL_Value. But be careful not to be confused by having
+               --  the unconstrained array as the type of inner aggregates
+               --  of multi-dimensional arrays.  We also can't support an
+               --  aggregate where the component type is a unconstrained
+               --  record.
 
                if (Number_Dimensions (GT) > 1
                      and then Convention (GT) = Convention_Fortran)
@@ -818,6 +820,7 @@ package body GNATLLVM.Variables is
                Expr := First (Component_Associations (N));
                while Present (Expr) loop
                   F := Entity (First (Choices (Expr)));
+
                   if Ekind (F) /= E_Discriminant
                     or else not Is_Unchecked_Union (Full_Scope (F))
                   then
@@ -845,7 +848,7 @@ package body GNATLLVM.Variables is
             --  considered static, so we can only allow actual known values
             --  in that case with one exception, which is if we have a
             --  comparison involving symbolic operands and that comparison
-            --  has a constant value.  Note that having a comparison
+            --  has a constant value. Note that having a comparison
             --  operation "clears" the flags because all we'll see is the
             --  result of the comparison.
 
@@ -1250,11 +1253,11 @@ package body GNATLLVM.Variables is
          Entry_Block_Allocas.Instr := +Alloca;
          Position_Builder_At_End (BB);
 
-         --  If this is a large enough object to be worthwhile, emit a
-         --  call to indicate the start of the lifetime and set up to
-         --  emit the end of the lifetime when the block ends.  Note that
-         --  we know this has a constant size because Maybe_Promote_Alloca
-         --  promoted this.
+         --  If this is a large enough object to be worthwhile, emit a call
+         --  to indicate the start of the lifetime and set up to emit the
+         --  end of the lifetime when the block ends. Note that we know
+         --  this has a constant size because Maybe_Promote_Alloca promoted
+         --  this.
 
          if not Alloca_Smaller_Than (T, Elts, Min_Lifetime_Size) then
             declare
@@ -1577,6 +1580,7 @@ package body GNATLLVM.Variables is
          Set_Global_Constant    (Out_Val, True);
          Set_Unnamed_Addr       (Out_Val, True);
          Const_Map.Insert       (+In_V,  Out_Val);
+
          if not (Emit_C and then Present (Current_Func)
                    and then Has_Inline_Attribute (Current_Func))
          then
@@ -1698,8 +1702,8 @@ package body GNATLLVM.Variables is
          LLVM_Var := Get_Undef (GT);
 
       --  Otherwise, make one here and properly set its linkage
-      --  information.  Note that we don't set External_Linkage since
-      --  that's the default if there's no initializer.
+      --  information. Note that we don't set External_Linkage since that's
+      --  the default if there's no initializer.
 
       else
          LLVM_Var := Add_Global (GT, Get_Ext_Name (E),
@@ -1923,15 +1927,15 @@ package body GNATLLVM.Variables is
       --  first we allocate the global itself, which may include some static
       --  initialization, and then do any required dynamic operations,
       --  which may include setting an address, allocating memory from the
-      --  heap, and/or actually setting an initializing value.  If we're at
+      --  heap, and/or actually setting an initializing value. If we're at
       --  library level, we have to do the dynamic operations in an elab
       --  proc, but, if not (if we have something to be statically allocated),
       --  we do it inline.
       --
       --  Ignore deferred constant definitions without address Clause since
-      --  they are processed fully in the front-end.  If No_Initialization
+      --  they are processed fully in the front-end. If No_Initialization
       --  is set, this is not a deferred constant but a constant whose
-      --  value is built manually.  And constants that are renamings are
+      --  value is built manually. And constants that are renamings are
       --  handled like variables.
 
       if Is_Object (E) and then Full_Ident /= E and then not Has_Addr
@@ -1949,7 +1953,7 @@ package body GNATLLVM.Variables is
       --  If this entity has a freeze node and we're not currently
       --  processing the freeze node, all we do is evaluate the
       --  initial expression, if there is one and it's not something
-      --  we can evaluate statically.  Otherwise, see if we've already
+      --  we can evaluate statically. Otherwise, see if we've already
       --  evaluated that expression and get the value.
 
       elsif Present (Freeze_Node (E))
@@ -2020,11 +2024,12 @@ package body GNATLLVM.Variables is
             Set_Init := True;
             Set_Value (E, LLVM_Var);
          else
-            --  Otherwise, make a global variable.  If we have an address
+            --  Otherwise, make a global variable. If we have an address
             --  expression, we know it must be nonstatic, so add this to
             --  the elab proc if at library level.
 
             LLVM_Var := Make_Global_Variable (E, GT, True);
+
             if Library_Level and then Has_Addr then
                Add_To_Elab_Proc (N);
             end if;
@@ -2157,9 +2162,9 @@ package body GNATLLVM.Variables is
       end if;
 
       --  If we've already gotten a value for the address of this entity,
-      --  fetch it.  If a non-constant address was specified, set the the
-      --  address of the entity to that address.  Otherwise, if the
-      --  variable is of dynamic size, do the allocation here, copying any
+      --  fetch it. If a non-constant address was specified, set the the
+      --  address of the entity to that address. Otherwise, if the variable
+      --  is of dynamic size, do the allocation here, copying any
       --  initializing expression.
 
       if Present (LLVM_Var)  then
@@ -2177,7 +2182,7 @@ package body GNATLLVM.Variables is
             Copied := True;
          end if;
 
-      --  Otherwise, if we have an address, that's what we use.  But it's
+      --  Otherwise, if we have an address, that's what we use. But it's
       --  erroneous if the address is not a multiple of the alignment, so
       --  show that we know this alignment.
 
@@ -2200,7 +2205,7 @@ package body GNATLLVM.Variables is
         and then (not Is_Volatile or else Ekind (E) = E_Constant)
         and then (Present (Expr) or else Present (Value))
       then
-         --  Evaluate the expression if needed.  Normally, convert it to
+         --  Evaluate the expression if needed. Normally, convert it to
          --  our type, but if our type is an unconstrained record, we need
          --  to preserve the source type to prevent too much data from
          --  being copied.
@@ -2300,7 +2305,7 @@ package body GNATLLVM.Variables is
                                  Get_Bound_Size (GT));
 
       --  If this is a constrained record, the discriminant values are
-      --  invariant once we've set them.  If this is a constant, we'll
+      --  invariant once we've set them. If this is a constant, we'll
       --  be marking the whole thing constant.
 
       elsif Has_Discriminants (GT) and then Is_Constrained (GT)
@@ -2341,7 +2346,7 @@ package body GNATLLVM.Variables is
       end if;
 
       --  If we're emitting C, LLVM_Var might be an undef (if it's of zero
-      --  size).  In that case, just evaluate anything that needs to be
+      --  size). In that case, just evaluate anything that needs to be
       --  evaluated in case there's a side-effect.
 
       if Is_Undef (LLVM_Var) and then Present (Expr) and then No (Value) then
@@ -2381,7 +2386,7 @@ package body GNATLLVM.Variables is
 
    begin
       --  If this is just a macro substitution by the front end, omit
-      --  the declaration.  ??? We may be able to write debugging info
+      --  the declaration. ??? We may be able to write debugging info
       --  for this object, but then again, maybe we can't (e.g. packed
       --  array slice case).
 
@@ -2404,9 +2409,9 @@ package body GNATLLVM.Variables is
          end if;
 
       --  If this is a constant, just use the value of the expression for
-      --  this object.  Otherwise, get the LValue of the expression, but
+      --  this object. Otherwise, get the LValue of the expression, but
       --  don't try to force it into memory since that would give us a
-      --  copy, which isn't useful.  If this is not a constant, the front
+      --  copy, which isn't useful. If this is not a constant, the front
       --  end will have verified that the renaming is an actual LValue.
       --  Don't do this at library level if it needs run-time computation.
 
@@ -2544,11 +2549,11 @@ package body GNATLLVM.Variables is
                V := Emit_Undef (GT);
             end if;
 
-            --  If we're not looking for an LHS and this is a modular integer
-            --  type that's a packed array implementation type, we need to
-            --  mask to only the defined bits.  It may be more efficient
-            --  to do this when storing the data, but this is easier and
-            --  safer.
+            --  If we're not looking for an LHS and this is a modular
+            --  integer type that's a packed array implementation type, we
+            --  need to mask to only the defined bits. It may be more
+            --  efficient to do this when storing the data, but this is
+            --  easier and safer.
 
             if not Prefer_LHS and then Is_Modular_Integer_Type (GT)
               and then Is_Packed_Array_Impl_Type (GT)
@@ -2557,7 +2562,7 @@ package body GNATLLVM.Variables is
             end if;
 
             --  Now return what we got (if we didn't get anything by now,
-            --  we have an internal error).  But avoid returning a double
+            --  we have an internal error). But avoid returning a double
             --  reference.
 
             if No (V) then

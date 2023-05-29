@@ -121,9 +121,9 @@ package body GNATLLVM.Utils is
 
    begin
       --  We compute the range as a Uint above so we can do it in infinite
-      --  precision.  We don't care whether the individual values are
+      --  precision. We don't care whether the individual values are
       --  within the range of Int (though our caller might), only if the
-      --  result is.  Since the second test is comparing Uint's, it tests
+      --  result is. Since the second test is comparing Uint's, it tests
       --  both for out of range of Int and being larger than the Max_Length.
 
       if Length_M1 <= 0 then

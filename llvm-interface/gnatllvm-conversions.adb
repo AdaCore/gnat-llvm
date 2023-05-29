@@ -299,26 +299,26 @@ package body GNATLLVM.Conversions is
         (if Present (From_N) then From_N else N);
 
    begin
-      --  We have to be careful here.  There isn't as clear a distinction
+      --  We have to be careful here. There isn't as clear a distinction
       --  between unchecked conversion and regular conversion as we might
       --  like.  Both the front-end and RTS have code of the form "Type
       --  (LValue)'Unrestricted_Access" and expect this to produce a
-      --  reference to the address of LValue.  This code is called in both
-      --  the LValue and value case.  If we're starting with a reference,
+      --  reference to the address of LValue. This code is called in both
+      --  the LValue and value case. If we're starting with a reference,
       --  we want to keep it as a reference unless we're sure that this
       --  needs an actual conversion.
       --
       --  We test two things: first, we see if we're being used in a
       --  context where an LValue is definitely or likely needed and also
-      --  look for a conversion that won't actually change any bits.  If
-      --  both, do this as an unchecked conversion.  On the other hand, if
+      --  look for a conversion that won't actually change any bits. If
+      --  both, do this as an unchecked conversion. On the other hand, if
       --  an overflow check is required, we know this is NOT an unchecked
       --  conversion.
 
       --  First, if we're converting from an subprogram access type that's
       --  convention Ada to one that's a foreign convention, give a warning
       --  since that can cause issues with nested subprograms because we
-      --  don't have a way of making a trampoline at this point.  However,
+      --  don't have a way of making a trampoline at this point. However,
       --  the other direction works fine since if an activation record is
       --  needed, the "subprogram address" will be a trampoline that will load
       --  it (the value in the second part of the fat subprogram pointer will
@@ -401,7 +401,7 @@ package body GNATLLVM.Conversions is
 
       --  We can unchecked convert floating point of the same width
       --  (the only way that UC is formally defined) with a "bitcast"
-      --  instruction.  But we can't do this if either type is X86_Fp80
+      --  instruction. But we can't do this if either type is X86_Fp80
       --  because the sizes aren't well-defined there.
 
       elsif Is_Unchecked
@@ -432,6 +432,7 @@ package body GNATLLVM.Conversions is
          --  we have data.
 
          Result := Get (Result, Data);
+
          if Is_Discrete_Or_Fixed_Point_Type (GT)
            and then Type_Of (GT) = Type_Of (Result)
            and then not Is_Biased_GL_Type (GT)
@@ -465,9 +466,9 @@ package body GNATLLVM.Conversions is
          Result := Convert_Aggregate_Constant (Result, GT);
 
       --  If we have an undefined value that we're converting to another
-      --  type, just get an undefined value of that type.  But watch for
+      --  type, just get an undefined value of that type. But watch for
       --  the case where we have Data of some fixed-size type and we're
-      --  converting to a dynamic-sized type.  We handle the reference
+      --  converting to a dynamic-sized type. We handle the reference
       --  cases below since we may have to deal with materializing bounds.
 
       elsif Is_Undef (Result) and then R = Data and then Is_Loadable_Type (GT)
@@ -491,7 +492,7 @@ package body GNATLLVM.Conversions is
          then
             Result := G_Is (Result, Prim_GT);
 
-            --  Otherwise, do an actual pointer pun.  But if we have a modular
+            --  Otherwise, do an actual pointer pun. But if we have a modular
             --  integer type that's a packed array implementation type,
             --  we can't use the primitive since that's i1 and the data
             --  will have been stored as i8.
@@ -512,10 +513,10 @@ package body GNATLLVM.Conversions is
 
       --  For unchecked conversion, if the result is a non-biased
       --  integral type whose precision is not equal to its size, sign-
-      --  or zero-extend the result.  But we need not do this if the
+      --  or zero-extend the result. But we need not do this if the
       --  input is also an integral type and both are unsigned or both
       --  are signed and the output is not narrower than the input and
-      --  we can't do this in the case of nonbinary modulus.  We can't do
+      --  we can't do this in the case of nonbinary modulus. We can't do
       --  this for modular integer types since LLVM already did it and
       --  we'll generate bad shifts if we try to do it again.
 
@@ -620,7 +621,7 @@ package body GNATLLVM.Conversions is
 
       --  If we're converting between two GL_Types corresponding to the same
       --  GNAT type, convert to the primitive type and the to the desired
-      --  GL_Type (one of those will likely be a nop).  Don't do this if
+      --  GL_Type (one of those will likely be a nop). Don't do this if
       --  we have a UC to or from a biased type.
 
       elsif Full_Etype (In_GT) = Full_Etype (GT) and then not Is_Unc_Bias then
@@ -653,17 +654,17 @@ package body GNATLLVM.Conversions is
 
             --  In the FP to Integer case, the LLVM instructions round to
             --  zero, but the Ada semantics round away from zero, so we have
-            --  to adjust the input.  We first compute Type'Pred (0.5).  If
+            --  to adjust the input. We first compute Type'Pred (0.5).  If
             --  the input is strictly negative, subtract this value and
-            --  otherwise add it from the input.  For 0.5, the result is
+            --  otherwise add it from the input. For 0.5, the result is
             --  exactly between 1.0 and the machine number preceding 1.0.
             --  Since the last bit of 1.0 is even, this 0.5 will round to 1.0,
             --  while all other number with an absolute value less than 0.5
-            --  round to 0.0.  For larger numbers exactly halfway between
+            --  round to 0.0. For larger numbers exactly halfway between
             --  integers, rounding will always be correct as the true
             --  mathematical result will be closer to the higher integer
-            --  compared to the lower one.  So, this constant works for all
-            --  floating-point numbers.  We compute this using an LLVM
+            --  compared to the lower one. So, this constant works for all
+            --  floating-point numbers. We compute this using an LLVM
             --  function ("next") that operates on an APFloat and returns
             --  either a value epsilon higher or lower than the original.
             --
@@ -696,15 +697,16 @@ package body GNATLLVM.Conversions is
          Subp := (if Src_Uns then Z_Ext'Access else S_Ext'Access);
       end if;
 
-      --  We've verified at the start that our input isn't an undef.  If we
+      --  We've verified at the start that our input isn't an undef. If we
       --  see an undef here, it means that LLVM has flagged a conversion as
-      --  overflowing (which only happens for FP to int).  Be consistent
+      --  overflowing (which only happens for FP to int). Be consistent
       --  with the rest of our infrastructure in that case and mark it as
-      --  overflowed.  Then all that's left to do is deal with
+      --  overflowed. Then all that's left to do is deal with
       --  non-primitive types and generate the IR instruction.
 
       return Result : GL_Value := Subp (Value, Prim_GT) do
          Result := Mark_Overflowed (Result, Is_Undef (Result));
+
          if Related_Type (Result) /= GT then
             Result := From_Primitive (Result, GT);
          end if;
@@ -757,11 +759,12 @@ package body GNATLLVM.Conversions is
       then
          --  Start making a fat pointer with both parts initial undefined.
          --  If As_Ref is a pointer, cast it into the proper type and insert
-         --  it into the fat pointer.  If it's an integer of the proper width,
-         --  convert it to a pointer (it may be System.Address).  Otherwise,
+         --  it into the fat pointer. If it's an integer of the proper width,
+         --  convert it to a pointer (it may be System.Address). Otherwise,
          --  leave it as undef.
 
          Result := Get_Undef_Relationship (DT, R);
+
          if Is_Pointer (As_Ref) then
             Result := Insert_Value (Result, Ptr_To_Ref (As_Ref, DT), 0);
          elsif Is_Integer_Type (As_Ref)
@@ -782,6 +785,7 @@ package body GNATLLVM.Conversions is
          --  type above), extract the data first.
 
          Result := As_Ref;
+
          if In_R = Fat_Pointer then
             Result := Get (Result, Reference);
          end if;
@@ -814,7 +818,7 @@ package body GNATLLVM.Conversions is
          return V;
 
       --  If this is an elementary type, the GT's may be of a different
-      --  size, so pointer-punning will give the wrong result.  Instead,
+      --  size, so pointer-punning will give the wrong result. Instead,
       --  we have to ensure the value is Data and do a normal conversion.
       --  However, we don't need to do the load if the LLVM types are the
       --  same.
@@ -862,9 +866,9 @@ package body GNATLLVM.Conversions is
       In_V       : GL_Value;
 
    begin
-      --  V is some type of reference to some type.  We want to
+      --  V is some type of reference to some type. We want to
       --  convert it to be some type of reference to GT, which may be
-      --  some other type (if it's the same, we have no work to do).  The
+      --  some other type (if it's the same, we have no work to do). The
       --  relationship of the result to GT may or may not be the same as
       --  the relationship of V to its type.
       --
@@ -878,14 +882,14 @@ package body GNATLLVM.Conversions is
       --      we can't recover, but should also not discard any information
       --      that we might conceivable need later if we can keep it
       --
-      --  These principles dictate our behavior in all cases.  For example,
+      --  These principles dictate our behavior in all cases. For example,
       --  if the input is a fat pointer, we should try to retain it as a
       --  fat pointer even if possible because we may want those bounds if
-      --  we later convert to an unconstrained type.  However, if we're
+      --  we later convert to an unconstrained type. However, if we're
       --  converting to an array with an index type that has a different
       --  LLVM type, we discard the bounds rather than recomputing them
       --  since we may NOT need them and hence may be wasting that
-      --  computation.  On the other hand, if the input is a a constrained
+      --  computation. On the other hand, if the input is a a constrained
       --  array type and the output is unconstrained, we MUST materialize
       --  the bounds because they come from the bounds of the constrained
       --  array and would be lost if we were to just return a pointer to
@@ -914,11 +918,12 @@ package body GNATLLVM.Conversions is
          --  If the result is an unconstrained array and the index types
          --  are the same, just convert the pointer and keep it in the same
          --  representation, making one if we have an unconstrained result
-         --  type but don't already have bounds.  Otherwise, recreate the
+         --  type but don't already have bounds. Otherwise, recreate the
          --  bounds for an unconstrained destination and discard them for a
          --  constrained destination.
 
          In_V := Remove_Padding (V);
+
          if Unc_Dest
            and then not Are_Arrays_With_Different_Index_Types (GT, V_GT)
          then
@@ -1102,7 +1107,7 @@ package body GNATLLVM.Conversions is
    begin
       --  If this isn't data, isn't a constant, we have a nonnative
       --  type or both are an elementary type, we can't use this form
-      --  of conversion.  Likewise if this isn't a constant.
+      --  of conversion. Likewise if this isn't a constant.
 
       if not Is_Data (V) or else not Is_Constant (V)
         or else Is_Nonnative_Type (GT)
@@ -1151,7 +1156,7 @@ package body GNATLLVM.Conversions is
    begin
       --  We want to build a function that contains a return of a load from
       --  a constant global corresponding to V that's cast to a reference
-      --  to GT and pass that to the instruction combiner.  It should
+      --  to GT and pass that to the instruction combiner. It should
       --  produce just one instruction, which is the return whose argument
       --  is the converted constant.
       --
@@ -1216,7 +1221,7 @@ package body GNATLLVM.Conversions is
               or else Get_Scalar_Bit_Size (In_T) = In_Size
          then In_T else Int_Ty (In_Bytes * UBPU));
       --  If we have a non-byte-width input type, make one that rounds up the
-      --  size.  We do the same for the output type below.
+      --  size. We do the same for the output type below.
 
       Out_Size  : constant ULL     := Get_Type_Size (T);
       Out_Bytes : constant ULL     := To_Bytes (Out_Size);
@@ -1272,7 +1277,7 @@ package body GNATLLVM.Conversions is
       In_T  : constant Type_T := Type_Of (V);
 
    begin
-      --  There are many ways we can do this conversion.  If the types
+      --  There are many ways we can do this conversion. If the types
       --  are the same, we're done.
 
       if In_T = T then

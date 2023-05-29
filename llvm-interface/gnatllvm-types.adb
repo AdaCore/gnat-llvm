@@ -92,7 +92,7 @@ package body GNATLLVM.Types is
       E        : Entity_Id := Empty) return Nat
      with Pre  => Present (GT) and then Present (Alloc_GT);
    --  Like Get_Type_Size, but used for the alignment in an allocator, so we
-   --  include the alignment of the bounds in some array cases.  It also
+   --  include the alignment of the bounds in some array cases. It also
    --  may take into account the alignment of E, if present.
 
    function Move_Into_Memory
@@ -104,12 +104,12 @@ package body GNATLLVM.Types is
      with Pre  => Present (Temp) and then Present (GT)
                   and then Present (Alloc_GT),
           Post => Is_Pointer (Move_Into_Memory'Result);
-   --  Temp is memory that was recently allocated.  Move V, if Present, or
+   --  Temp is memory that was recently allocated. Move V, if Present, or
    --  the evaluation of Expr if Present and V isn't, into that allocated
    --  memory and return the allocated memory as a reference to type GT
-   --  This is used by both type of memory allocators.  Temp can be of any
-   --  type, either an integer or pointer to anything.  Alloc_GT is the
-   --  type that was used to allocate the memory.
+   --  This is used by both type of memory allocators. Temp can be of any
+   --  type, either an integer or pointer to anything. Alloc_GT is the type
+   --  that was used to allocate the memory.
 
    function GT_To_Use (GT, Alloc_GT : GL_Type) return GL_Type is
      ((if   Is_Unconstrained_Type (Alloc_GT)
@@ -119,7 +119,7 @@ package body GNATLLVM.Types is
      with Pre  => Present (GT) and then Present (Alloc_GT),
           Post => GT_To_Use'Result in GT | Alloc_GT;
    --  When we have a GT for an object and a GT to use for allocating the
-   --  object, return the one we're to use.  We normally want to use
+   --  object, return the one we're to use. We normally want to use
    --  Alloc_GT, but an exception is if it's constrained and GT isn't
    --  unless this is a tagged type.
 
@@ -186,7 +186,7 @@ package body GNATLLVM.Types is
    function From_Const (V : GL_Value) return IDS is
      (if Is_A_Constant_Int (V) then (False, V) else Var_IDS)
      with Pre => Is_Constant (V), Post => Present (From_Const'Result);
-   --  V is a constant.  If it's a constant integer, return that value.
+   --  V is a constant. If it's a constant integer, return that value.
    --  Otherwise, don't treat it as a constant.
 
    -------------
@@ -242,7 +242,7 @@ package body GNATLLVM.Types is
    is
       Size : IDS;
    begin
-      --  If this is of elementary type, it's not of dynamic size.  We have
+      --  If this is of elementary type, it's not of dynamic size. We have
       --  to do this test not just for efficiency, but also to avoid
       --  infinite recursion if we are passed Size_Type.
 
@@ -250,7 +250,7 @@ package body GNATLLVM.Types is
          return False;
       end if;
 
-      --  Otherwise get the size for our purposes.  If not a constant or not
+      --  Otherwise get the size for our purposes. If not a constant or not
       --  something LLVM can use natively as an array bound, this is dynamic.
       --  But we conservatively test for the range of Int to be consistent
       --  with how we create arrays.
@@ -258,7 +258,7 @@ package body GNATLLVM.Types is
       Size := Get_Type_Size (GT, No_GL_Value, Max_Size);
 
       --  If the size isn't a constant, this is dynamically-sized.  If it's
-      --  a constant and we allow overflow, it isn't.  Otherwise, we need to
+      --  a constant and we allow overflow, it isn't. Otherwise, we need to
       --  check for overflow.
 
       if not Is_Const (Size) then
@@ -342,6 +342,7 @@ package body GNATLLVM.Types is
       else
          T := Struct_Create_Named (Name);
          Struct_Set_Body (T, Types, Packed);
+
          if Field_Names'Length > 0 then
             UID := New_Unique_Id;
             for J in Field_Names'Range loop
@@ -403,7 +404,7 @@ package body GNATLLVM.Types is
 
    procedure Add_To_LValue_List (V : GL_Value) is
    begin
-      --  Only add to the LValue list if this is a record type.  We might
+      --  Only add to the LValue list if this is a record type. We might
       --  be tempted to do this only if the type has discriminants, but
       --  that doesn't work because a parent might and it's not worth
       --  checking.
@@ -673,8 +674,8 @@ package body GNATLLVM.Types is
       end if;
 
       --  Check that we aren't trying to allocate too much memory.  Raise
-      --  Storage_Error if so.  We don't try to support local exception
-      --  labels and -fstack-check at the same time.  The divide below
+      --  Storage_Error if so. We don't try to support local exception
+      --  labels and -fstack-check at the same time. The divide below
       --  will constant-fold, but make sure we aren't dividing by zero.
 
       if Do_Stack_Check and then not Is_Zero_Size (Element_GT) then
@@ -800,7 +801,7 @@ package body GNATLLVM.Types is
       end if;
 
       --  If no procedure was specified, use the default memory allocation
-      --  function, where we just pass a size.  But we can only do this
+      --  function, where we just pass a size. But we can only do this
       --  directly if the requested alignment is a constant and no larger
       --  than the system allocator alignment.
 
@@ -893,7 +894,7 @@ package body GNATLLVM.Types is
 
    begin
       --  If V is an access type, convert it to a reference to the
-      --  underlying data.  We also want to record the actual designated
+      --  underlying data. We also want to record the actual designated
       --  type in this case since it may contain bound information and
       --  we need to record the bounds as well as their size.
 
@@ -911,7 +912,7 @@ package body GNATLLVM.Types is
       end if;
 
       --  If V is an unconstrained array, we want a pointer to the bounds
-      --  and data.  Otherwise just a Reference.  We'll then either convert
+      --  and data. Otherwise just a Reference. We'll then either convert
       --  it to a generic pointer or to an integer (System.Address).
 
       Conv_V := Get (Conv_V, Relationship_For_Alloc (DT));
@@ -925,7 +926,7 @@ package body GNATLLVM.Types is
 
       begin
          --  If no procedure was specified, use the default memory deallocation
-         --  procedure, where we just pass a size.  But we can only do this
+         --  procedure, where we just pass a size. But we can only do this
          --  directly if the requested alignment is a constand and no larger
          --  than the system allocator alignment.
 
@@ -959,7 +960,7 @@ package body GNATLLVM.Types is
 
          --  If a procedure was specified (meaning that a pool must also
          --  have been specified) and the pool is a record, then it's a
-         --  storage pool and we pass the pool, size, and alignment.  Be
+         --  storage pool and we pass the pool, size, and alignment. Be
          --  sure that we convert the pool to actual type of the formal of
          --  the deallocator function: it may be a derived type.
 
@@ -1149,7 +1150,7 @@ package body GNATLLVM.Types is
 
       begin
          --  If a value was specified and it's data, then it must be of a
-         --  fixed size.  That's the size we're looking for.
+         --  fixed size. That's the size we're looking for.
 
          if Present (V) and then Is_Data (V)
            and then not Use_Max_Size and then not Unpad_Record
@@ -1324,15 +1325,15 @@ package body GNATLLVM.Types is
       Size_Value  : GL_Value;
 
    begin
-      --  In most cases, the two sizes are equal.  However, we can't verify
-      --  that.  In most cases, our goal is to just choose the type whose size
-      --  is easiest to compute, either in terms of what we need to do the
-      --  computation (favoring unconstrained over constrained) or the
-      --  amount of work to compute the type.  There are, however, two
+      --  In most cases, the two sizes are equal. However, we can't verify
+      --  that.  In most cases, our goal is to just choose the type whose
+      --  size is easiest to compute, either in terms of what we need to do
+      --  the computation (favoring unconstrained over constrained) or the
+      --  amount of work to compute the type. There are, however, two
       --  exceptions: if the LHS is a class-wide equivalent type, we must
-      --  do the copy using that size.  We check for that first.  Conversely,
+      --  do the copy using that size. We check for that first. Conversely,
       --  if the LHS is an unconstrained record, we must use the size of
-      --  the RHS.  This case, however, is covered in our general preference
+      --  the RHS. This case, however, is covered in our general preference
       --  of unconstrained.
 
       if Class_Wide then
@@ -1440,6 +1441,7 @@ package body GNATLLVM.Types is
             if Known_Esize (Our_E) and then Is_Static_SO_Ref (Esize (Our_E))
             then
                Ret := Esize (Our_E) / BPU;
+
                if Is_Unconstrained_Array (TE) then
                   Ret := Ret + UI_From_GL_Value
                     (To_Bytes (Get_Bound_Size (Default_GL_Type (TE))));
@@ -1466,6 +1468,7 @@ package body GNATLLVM.Types is
          when Attribute_Position | Attribute_Bit_Position =>
 
             Ret := Component_Bit_Offset (Our_E);
+
             if Present (Ret) and then Is_Static_SO_Ref (Ret)
               and then Attr = Attribute_Position
             then
@@ -1518,6 +1521,7 @@ package body GNATLLVM.Types is
       --  references, and add aliasing information unless we have an undef.
 
       Set_Alignment (Inst, unsigned (To_Bytes (Align)));
+
       if not Is_Undef (V) then
          Add_Aliasing_To_Instruction (Inst, V);
       end if;
@@ -1695,7 +1699,7 @@ package body GNATLLVM.Types is
       elsif Present (V.T_Value) then
          return V.T_Value;
 
-      --  Otherwise, we have a constant.  If negative, make a Negate_Expr.
+      --  Otherwise, we have a constant. If negative, make a Negate_Expr.
 
       else
          return GL_Value_To_Node_Ref_Or_Val (V.C_Value);
@@ -1745,6 +1749,7 @@ package body GNATLLVM.Types is
 
    begin
       --  If we don't have an input, propagate that to the output.
+
       if No (V) then
          return V;
 
@@ -1802,7 +1807,7 @@ package body GNATLLVM.Types is
       if No (LHS_Op) or else No (RHS_Op) then
          return No_BA;
 
-      --  Otherwise build and return a node.  If there's a constant, it
+      --  Otherwise build and return a node. If there's a constant, it
       --  should be in the RHS.
 
       else
@@ -1923,7 +1928,7 @@ package body GNATLLVM.Types is
 
       if No (SO_Info) then
          --  If this expression contains a discriminant, build tree nodes
-         --  corresponding to that discriminant.  If we have an unsupported
+         --  corresponding to that discriminant. If we have an unsupported
          --  node, return no value.
 
          if Contains_Discriminant (N) then
@@ -1935,7 +1940,6 @@ package body GNATLLVM.Types is
             begin
                case Nkind (N) is
                   when N_Identifier =>
-
                      if  Ekind (Entity (N)) = E_Discriminant then
                         SO_Info := Create_Discrim_Ref (Entity (N));
                      end if;
@@ -1946,6 +1950,7 @@ package body GNATLLVM.Types is
                      --  'Min, and 'Max
 
                      Attr := Get_Attribute_Id (Attribute_Name (N));
+
                      if Attr = Attribute_Range_Length
                        and then Is_Scalar_Type (Full_Etype (Prefix (N)))
                      then

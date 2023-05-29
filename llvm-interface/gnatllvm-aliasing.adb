@@ -993,6 +993,7 @@ package body GNATLLVM.Aliasing is
          Native_TBAA := TBAA_Parent (TBAA);
       else
          Native_TBAA := Create_TBAA_Type (GT, Native);
+
          if No (Native_TBAA) then
             return No_Metadata_T;
          end if;
@@ -1073,6 +1074,7 @@ package body GNATLLVM.Aliasing is
          Native_TBAA := TBAA_Parent (TBAA);
       else
          Native_TBAA := Create_TBAA_Type (TE, Native);
+
          if No (Native_TBAA) then
             return No_Metadata_T;
          end if;

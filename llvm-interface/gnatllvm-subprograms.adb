@@ -239,7 +239,7 @@ package body GNATLLVM.Subprograms is
 
    First_Body_Elab_Idx    : Nat                    := 0;
    --  Indicates the first entry in Elaborations that represents
-   --  an elab entry for the body of a package.  If zero, then all entries
+   --  an elab entry for the body of a package. If zero, then all entries
    --  are for the spec.
 
    Ada_Main_Elabb         : GL_Value               := No_GL_Value;
@@ -793,7 +793,7 @@ package body GNATLLVM.Subprograms is
                                   Mechanism (Param_Ent) = By_Reference);
 
             --  If the mechanism requested was by-copy and we use by-ref,
-            --  give a warning.  If the mechanism was defaulted, set
+            --  give a warning. If the mechanism was defaulted, set
             --  what we used.
 
             if Mechanism (Param_Ent) = By_Copy and then PK_By_Ref then
@@ -804,7 +804,7 @@ package body GNATLLVM.Subprograms is
             end if;
 
             --  If this is an input or reference, set the type for the
-            --  param For foreign convention, we pass small record (less
+            --  param. For foreign convention, we pass small record (less
             --  than a word) as an integer to avoid issues with the x86-64
             --  ABI.
 
@@ -843,6 +843,7 @@ package body GNATLLVM.Subprograms is
 
          when Struct_Out | Struct_Out_Subprog =>
             J := 1;
+
             if LRK = Struct_Out_Subprog then
                Out_Arg_Types (J) := LLVM_Ret_Typ;
                Out_Arg_Names (J) := Name_Find ("RESULT");
@@ -875,7 +876,7 @@ package body GNATLLVM.Subprograms is
       --  It would be nice to have the field of this struct to be a pointer
       --  to the subprogram type, but it can't be because the signature of
       --  an access type doesn't include the possibility of an activation
-      --  record while the actual subprogram might have one.  So we use a
+      --  record while the actual subprogram might have one. So we use a
       --  generic pointer for it and cast at the actual call.
 
       if No (Subprogram_Access_Type) then
@@ -1001,8 +1002,8 @@ package body GNATLLVM.Subprograms is
       --  records, if this object is allocated space in an activation
       --  record, if we have an activation record as a parameter of this
       --  subprogram, this isn't a reference to the variable in its own
-      --  subprogram, and if this isn't a constant.  If so, get the object
-      --  from the activation record.  We return the address from the
+      --  subprogram, and if this isn't a constant. If so, get the object
+      --  from the activation record. We return the address from the
       --  record so we can either give an LValue or an expression.
 
       if Ekind (E) in E_Constant | E_Variable | Formal_Kind | E_Loop_Parameter
@@ -1036,8 +1037,8 @@ package body GNATLLVM.Subprograms is
 
          begin
             --  If GT is unconstrained, we have an access type, which is a
-            --  fat pointer.  Convert it to a reference to the underlying
-            --  type.  Otherwise, this is a System.Address which needs to
+            --  fat pointer. Convert it to a reference to the underlying
+            --  type. Otherwise, this is a System.Address which needs to
             --  be converted to a pointer.
 
             if Is_Unconstrained_Array (GT) then
@@ -1155,17 +1156,18 @@ package body GNATLLVM.Subprograms is
 
          begin
             Set_Debug_Pos_At_Node (Param);
+
             if Present (V) then
                Set_Value_Name (V, P_Name);
                Name := A_Name'Access;
                C_Set_Entity (V, Param);
             end if;
 
-            --  If this is an out parameter, we have to make a variable
-            --  for it, possibly initialized to our parameter value if this
-            --  is also an in parameter.  Otherwise, we can use the parameter
-            --  unchanged.  If we make a variable for it, indicate that
-            --  the variable is no longer a parameter.
+            --  If this is an out parameter, we have to make a variable for
+            --  it, possibly initialized to our parameter value if this is
+            --  also an in parameter. Otherwise, we can use the parameter
+            --  unchanged. If we make a variable for it, indicate that the
+            --  variable is no longer a parameter.
 
             if PK_Is_Out (PK) then
                P_Num      := 0;
@@ -1201,8 +1203,8 @@ package body GNATLLVM.Subprograms is
                end;
 
             --  If this is an array passed to a foreign convention, we
-            --  pass it as a reference to the component type.  So we have
-            --  to convert to a pointer to the array type.  If it's an
+            --  pass it as a reference to the component type. So we have
+            --  to convert to a pointer to the array type. If it's an
             --  unconstrained array, we have to materialize bounds for a
             --  fat pointer.
 
@@ -1287,6 +1289,7 @@ package body GNATLLVM.Subprograms is
             Create_Local_Variable_Debug_Data (Param, LLVM_Param, P_Num);
             Set_Value (Param, LLVM_Param);
             Next_Formal_With_Extras (Param);
+
             if PK_Is_In_Or_Ref (PK) then
                Param_Num := Param_Num + 1;
             end if;
@@ -1456,7 +1459,7 @@ package body GNATLLVM.Subprograms is
       end if;
 
       --  If this is the elaboration for the body of the main unit that was
-      --  already generated, use it.  Otherwise make a new function.
+      --  already generated, use it. Otherwise make a new function.
 
       if Present (Ada_Main_Elabb)
         and then Get_Ext_Name (Ada_Main_Elabb_Ident) = Name
@@ -1498,7 +1501,7 @@ package body GNATLLVM.Subprograms is
               and then Nkind (Stmt) = N_Handled_Sequence_Of_Statements
             then
                --  If Stmt is an N_Handled_Sequence_Of_Statements, it must
-               --  have come from a package body.  Make a block around it
+               --  have come from a package body. Make a block around it
                --  so exceptions will work properly, if needed.
 
                Push_Block;
@@ -1532,6 +1535,7 @@ package body GNATLLVM.Subprograms is
       BB := Get_First_Basic_Block (+LLVM_Func);
       while Present (BB) loop
          Last_Instr := Get_Last_Instruction (BB);
+
          if Last_Instr /= Get_First_Instruction (BB)
            or else (not Present (Is_A_Return_Inst (Last_Instr))
                       and then not Present (Is_A_Branch_Inst (Last_Instr)))
@@ -1543,7 +1547,7 @@ package body GNATLLVM.Subprograms is
          BB := Get_Next_Basic_Block (BB);
       end loop;
 
-      --  If the function we made has no work to do delete, it.  Otherwise,
+      --  If the function we made has no work to do delete, it. Otherwise,
       --  show there will be elaboration code
 
       if not Contains_Work then
@@ -1577,8 +1581,8 @@ package body GNATLLVM.Subprograms is
       if Is_Eliminated (Defining_Entity (Spec)) then
          return;
 
-      --  If we're not at library level, this a nested function.  Defer it
-      --  until we complete elaboration of the enclosing function.  But do
+      --  If we're not at library level, this a nested function. Defer it
+      --  until we complete elaboration of the enclosing function. But do
       --  ensure that the spec has been elaborated.
 
       elsif not Library_Level then
@@ -1739,7 +1743,7 @@ package body GNATLLVM.Subprograms is
          else
             Result := Get_Value (Ent_Caller.ARECnF);
 
-            --  Go levels up via the ARECnU field if needed.  Each time,
+            --  Go levels up via the ARECnU field if needed. Each time,
             --  get the new type from the first field of the record that
             --  it points to.
 
@@ -1917,7 +1921,7 @@ package body GNATLLVM.Subprograms is
       V  : GL_Value := Get_Value (E);
 
    begin
-      --  If this has an Alias, use that.  But make sure that it's the proper
+      --  If this has an Alias, use that. But make sure that it's the proper
       --  type since we may have extension records or slightly different
       --  subtypes for some parameters.
 
@@ -1934,7 +1938,7 @@ package body GNATLLVM.Subprograms is
          end;
       end if;
 
-      --  If we haven't gotten one yet, make it.  Otherwise, see if we need
+      --  If we haven't gotten one yet, make it. Otherwise, see if we need
       --  to dereference it.
 
       if No (V) then
@@ -1945,7 +1949,7 @@ package body GNATLLVM.Subprograms is
 
       --  If we're elaborating this for 'Access or 'Address, we want the
       --  actual subprogram type here, not the type of the return value,
-      --  which is what GT is set to.  We also may have to make a
+      --  which is what GT is set to. We also may have to make a
       --  trampoline or Fat_Reference_To_Subprogram here since it's too
       --  late to make it in Get because it doesn't know what subprogram it
       --  was for.
@@ -2006,7 +2010,7 @@ package body GNATLLVM.Subprograms is
          In_RHS  : GL_Value;
          VFA     : Boolean)
         with Pre => Present (In_RHS) and then Is_Reference (In_LHS);
-      --  Write the value in In_RHS to the location In_LHS.  F, if Present,
+      --  Write the value in In_RHS to the location In_LHS. F, if Present,
       --  is a field into In_LHS to write.
 
       function Misaligned_Copy_Required
@@ -2016,7 +2020,7 @@ package body GNATLLVM.Subprograms is
          Bitfield : Boolean) return Boolean
         with Pre => Present (V) and then Present (Param);
       --  Return whether V, when passed to a by-reference Formal, must be
-      --  copied due to a misalignment.  If Bitfield is True, we know that
+      --  copied due to a misalignment. If Bitfield is True, we know that
       --  we have a bitfield.  Also produce any required errors or
       --  warnings.
 
@@ -2101,13 +2105,13 @@ package body GNATLLVM.Subprograms is
          end if;
 
          --  We've looked through any conversions in the actual and
-         --  evaluated the actual LHS to be assigned before the call.  We
+         --  evaluated the actual LHS to be assigned before the call. We
          --  wouldn't be here if this were a dynamic-sized type, and we
          --  know that the types of LHS and RHS are similar, but it may be
          --  a small record and the types on both sides may differ.
          --
          --  If we're dealing with elementary types, convert the RHS to the
-         --  type of the LHS.  Otherwise, convert the type of the LHS to be
+         --  type of the LHS. Otherwise, convert the type of the LHS to be
          --  a reference to the type of the RHS unless this is a field
          --  or indexed store.
 
@@ -2151,8 +2155,8 @@ package body GNATLLVM.Subprograms is
          N            : N_Subexpr_Id     := Actual;
 
       begin
-         --  If this is a fat pointer type, we don't need a copy.  Don't
-         --  give error if just analyzing decls.  And if this is an undef,
+         --  If this is a fat pointer type, we don't need a copy. Don't
+         --  give error if just analyzing decls. And if this is an undef,
          --  we already know that we have an error
 
          if Relationship (V) in Fat_Pointer | Fat_Reference_To_Subprogram
@@ -2207,21 +2211,23 @@ package body GNATLLVM.Subprograms is
 
    begin  -- Start of processing for Emit_Call
 
-      --  See if this is an instrinsic subprogram that we handle.  We're
+      --  See if this is an instrinsic subprogram that we handle. We're
       --  done if so.
 
       if Direct_Call and then Is_Intrinsic_Subprogram (Entity (Subp)) then
          Result := Emit_Intrinsic_Call (N, Entity (Subp));
+
          if Present (Result) then
             return Result;
          end if;
       end if;
 
-      --  Get the suprogram to call.  If we have a static link, extract
-      --  it.  Then, unless the subprogram address is already a reference
-      --  to a subprogram, get it as a reference.
+      --  Get the suprogram to call. If we have a static link, extract
+      --  it. Then, unless the subprogram address is already a reference to
+      --  a subprogram, get it as a reference.
 
       LLVM_Func := Emit_Safe_LValue (Subp);
+
       if This_Adds_S_Link then
          S_Link := Get (LLVM_Func, Reference_To_Activation_Record);
       end if;
@@ -2283,7 +2289,7 @@ package body GNATLLVM.Subprograms is
             if PK_Is_In_Or_Ref (PK) then
 
                --  If the param isn't passed by reference, convert the
-               --  value to the parameter's type.  If it is, convert the
+               --  value to the parameter's type. If it is, convert the
                --  pointer to being a pointer to the parameter's type.
 
                if PK_Is_Reference (PK) then
@@ -2304,6 +2310,7 @@ package body GNATLLVM.Subprograms is
                   --  the field load, and set up for a writeback.
 
                   pragma Assert (Idxs = null);
+
                   if Present (F)
                     and then Misaligned_Copy_Required (LHS, Actual, Param,
                                                        True)
@@ -2320,7 +2327,7 @@ package body GNATLLVM.Subprograms is
                      Arg := Get (Arg, R);
 
                   else
-                     --  If we have to make a copy, do so.  Also set up a
+                     --  If we have to make a copy, do so. Also set up a
                      --  writeback if we have to.
 
                      if Misaligned_Copy_Required (LHS, Actual, Param, False)
@@ -2331,6 +2338,7 @@ package body GNATLLVM.Subprograms is
                         Arg  := Allocate_For_Type (Related_Type (LHS),
                                                    N => Actual,
                                                    V => LHS);
+
                         if Ekind (Param) /= E_In_Parameter then
                            WBs (In_Idx) := (LHS   => LHS,
                                             RHS   => Arg,
@@ -2357,7 +2365,7 @@ package body GNATLLVM.Subprograms is
                   Arg := Emit_Conversion (Actual, GT);
 
                   --  Handle the case where this is a parameter passed by
-                  --  integer.  In that case, we have to store the parameter
+                  --  integer. In that case, we have to store the parameter
                   --  in memory, pun that memory to a pointer to the integer,
                   --  and load the integer.
 
@@ -2386,10 +2394,10 @@ package body GNATLLVM.Subprograms is
 
             --  For out and in out parameters, we need to evaluate the
             --  expression before the call (see, e.g., c64107a) into an
-            --  LValue and use that after the return.  We look through any
-            --  conversions here.  However, if the input is an undef, it
+            --  LValue and use that after the return. We look through any
+            --  conversions here. However, if the input is an undef, it
             --  really isn't an LValue, so we don't want to write anything
-            --  back.  Use an undef instead and check for it when we do the
+            --  back. Use an undef instead and check for it when we do the
             --  writeback.
 
             if PK_Is_Out (PK) then
@@ -2510,6 +2518,7 @@ package body GNATLLVM.Subprograms is
       --  LHS involving a bitfield internally.
 
       Perform_Writebacks;
+
       if RK = Return_By_Parameter then
          return Convert_Ref (Args (1), Our_Return_GT);
       else
@@ -2578,7 +2587,7 @@ package body GNATLLVM.Subprograms is
 
                --  If we're in an elab proc, we already have the global
                --  variable for the function's address and have just
-               --  previously evaluate the address.  So jus convert and
+               --  previously evaluate the address. So just convert and
                --  store it.
 
                elsif In_Elab_Proc then
@@ -2644,7 +2653,7 @@ package body GNATLLVM.Subprograms is
       Check_Convention (E);
 
       --  If we've already seen this function name before, verify that we
-      --  have the same type.  Convert it to it if not.
+      --  have the same type. Convert it to it if not.
 
       if Present (LLVM_Func)
         and then Type_Of (LLVM_Func) /= Pointer_Type (Subp_Type, 0)
@@ -2679,11 +2688,13 @@ package body GNATLLVM.Subprograms is
          if CPU.all /= "generic" then
             Add_Named_Attribute (LLVM_Func, "target-cpu", CPU.all);
          end if;
+
          if Features.all /= "" then
             Add_Named_Attribute (LLVM_Func, "target-features", Features.all);
          end if;
 
          Add_Inline_Attribute (LLVM_Func, E);
+
          if No_Tail_Calls then
             Add_Named_Attribute (LLVM_Func, "disable-tail-calls", "true");
          end if;
@@ -2740,16 +2751,17 @@ package body GNATLLVM.Subprograms is
                --  any parameter attributes.
 
                Check_Convention (Formal);
+
                if PK = Activation_Record then
                   Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, DT);
                   Add_Noalias_Attribute         (LLVM_Func, Param_Num);
                   Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
                   Add_Readonly_Attribute        (LLVM_Func, Param_Num);
+
                   if not Restrictions_On_Target.Set (No_Implicit_Dynamic_Code)
                   then
                      Add_Nest_Attribute         (LLVM_Func, Param_Num);
                   end if;
-
                elsif PK_Is_Reference (PK)
                  and then (not Is_Unconstrained_Array (GT)
                              or else PK in Foreign_By_Ref |
@@ -2761,6 +2773,7 @@ package body GNATLLVM.Subprograms is
 
                   Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, GT);
                   Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
+
                   if Ekind (Formal) = E_In_Parameter then
                      Add_Readonly_Attribute     (LLVM_Func, Param_Num);
                   elsif Ekind (Formal) = E_Out_Parameter then
@@ -2768,8 +2781,8 @@ package body GNATLLVM.Subprograms is
                   end if;
 
                   --  See RM 6.2(12) for a discussion of when parameters
-                  --  can alias.  If the mechanism is specified as being
-                  --  by reference, they can alias.  Likewise if they're
+                  --  can alias. If the mechanism is specified as being by
+                  --  reference, they can alias. Likewise if they're
                   --  explicitly marked as aliased.
 
                   if not Is_Aliased (Formal)
@@ -2783,6 +2796,7 @@ package body GNATLLVM.Subprograms is
                  and then Ekind (DT) /= E_Subprogram_Type
                then
                   Readonly := False;
+
                   if Can_Never_Be_Null (GT) then
                      Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, DT);
                   else
@@ -2811,6 +2825,7 @@ package body GNATLLVM.Subprograms is
       Set_Value (E, LLVM_Func);
       C_Set_Function (UID, LLVM_Func);
       C_Set_Entity   (LLVM_Func, E);
+
       if Readonly then
          Add_Readonly_Attribute (LLVM_Func);
       end if;
@@ -2951,7 +2966,7 @@ package body GNATLLVM.Subprograms is
    procedure Add_Functions_To_Module is
    begin
       for J in 1 .. Created_Subprograms.Last loop
-         if not Get_Added_To_Module (Created_Subprograms.Table (J)) then
+x         if not Get_Added_To_Module (Created_Subprograms.Table (J)) then
             Add_Function_To_Module (Get_Value (Created_Subprograms.Table (J)));
          end if;
       end loop;

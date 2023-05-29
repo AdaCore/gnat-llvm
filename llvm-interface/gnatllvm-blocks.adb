@@ -419,6 +419,7 @@ package body GNATLLVM.Blocks is
 
          End_Subp := Entity (At_End_Proc);
          End_Proc := Emit_LValue (At_End_Proc);
+
          if Has_Activation_Record (End_Subp)
            and then Present (Subps.Table (Subp_Index (End_Subp)).ARECnF)
          then
@@ -542,6 +543,7 @@ package body GNATLLVM.Blocks is
 
       for J in reverse 1 .. Block_Stack.Last loop
          BI := Block_Stack.Table (J);
+
          if (Present (BI.EH_List) or else Present (BI.At_End_Proc))
            and then not BI.Unprotected
          then
@@ -630,6 +632,7 @@ package body GNATLLVM.Blocks is
          --  location for this block.
 
          Call_At_End (J);
+
          if Present (Block_Stack.Table (J).Stack_Save) then
             Stack_Save := Block_Stack.Table (J).Stack_Save;
          end if;
@@ -875,6 +878,7 @@ package body GNATLLVM.Blocks is
             Set_Global_Constant (V);
             File_Name_Strings (Index, Is_Global) :=
               Ptr_To_Int (V, Size_GL_Type);
+
             if not Is_Global then
                Set_Linkage (V, Private_Linkage);
             end if;
@@ -951,6 +955,7 @@ package body GNATLLVM.Blocks is
       case Nkind (Right_Opnd (Cond)) is
          when N_In =>
             Rng := Right_Opnd (Right_Opnd (Cond));
+
             if Is_Entity_Name (Rng) then
                Rng := Simplify_Range (Scalar_Range (Full_Etype (Rng)));
             end if;
@@ -1094,6 +1099,7 @@ package body GNATLLVM.Blocks is
       if Present (BI.Landing_Pad) then
          Position_Builder_At_End (BI.Landing_Pad);
          LP_Inst := Landing_Pad (LP_Type, Personality_Fn);
+
          if Have_Cleanup then
             Set_Cleanup (LP_Inst);
          end if;
@@ -1117,6 +1123,7 @@ package body GNATLLVM.Blocks is
                                                             A_Char_GL_Type),
                                 Param => Choice_Parameter (Handler),
                                 Stmts => Statements (Handler)));
+
                if Present (LP_Inst) then
                   Add_Clause (LP_Inst, Exc);
                end if;
@@ -1144,6 +1151,7 @@ package body GNATLLVM.Blocks is
                   Choice := First (Exception_Choices (Handler));
                   while Present (Choice) loop
                      Exc := Choice_To_Exc (Choice);
+
                      if not (for some K in 1 .. Exceptions_Seen.Last =>
                                Exceptions_Seen.Table (K) = Exc)
                      then
@@ -1187,6 +1195,7 @@ package body GNATLLVM.Blocks is
 
             for J in 1 .. Dispatch_Info.Last loop
                DDT := Dispatch_Info.Table (J);
+
                if DDT.Dispatch_BB = BI.Dispatch_BB then
                   From_Vals (From_Idx) := DDT.From_EH_Data;
                   From_BBs  (From_Idx) := DDT.From_BB;
@@ -1209,6 +1218,7 @@ package body GNATLLVM.Blocks is
       --  Generate handlers and the code to dispatch to them
 
       Next_BB := Create_Basic_Block;
+
       if Present (BI.EH_List) or else BI.At_End_Pass_Excptr then
 
          --  Extract the selector and the exception pointer
@@ -1345,6 +1355,7 @@ package body GNATLLVM.Blocks is
       --  any At_End handler.
 
       BI.Unprotected := True;
+
       if not At_Dead then
          Build_Fixups_From_To (Depth, Depth - 1);
          Maybe_Build_Br (Next_BB);
@@ -1833,6 +1844,7 @@ package body GNATLLVM.Blocks is
 
       if Present (Cond) and then not Present (Label) then
          Position_Builder_At_End (BB_Next);
+
          if Is_Equivalent_Position (Pos, Get_Current_Position) then
             Cannot_Raise := True;
             Delete_Basic_Block (BB_Raise);
@@ -1862,7 +1874,6 @@ package body GNATLLVM.Blocks is
 
             if Exception_Extra_Info and then Kind = CE_Access_Check_Failed then
                Emit_Raise_Call (N, Kind, Column => True);
-
             elsif Exception_Extra_Info and then Present (Cond)
               and then Kind in
                 CE_Index_Check_Failed | CE_Range_Check_Failed | CE_Invalid_Data

@@ -302,6 +302,7 @@ package body GNATLLVM.Arrays is
                --  The only ones we support are 'Range_Length, 'Min, and 'Max
 
                Attr := Get_Attribute_Id (Attribute_Name (N));
+
                if Attr = Attribute_Range_Length
                  and then Is_Scalar_Type (Full_Etype (Prefix (N)))
                then
@@ -1553,6 +1554,7 @@ package body GNATLLVM.Arrays is
 
       if VFA then
          Result := Get (Result, Object);
+
          if Is_Data (Result) and For_LHS then
             Result := Get (Result, Any_Reference);
             Add_Write_Back (V, Empty, Result);

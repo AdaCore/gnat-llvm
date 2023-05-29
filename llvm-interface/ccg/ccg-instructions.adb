@@ -349,6 +349,7 @@ package body CCG.Instructions is
    procedure Remove_Pending_Value (V : Value_T) is
    begin
       Delete (Pending_Values_Map, V);
+
       if Has_Operands (V) then
          for J in Nat (0) .. Get_Num_Operands (V) - 1 loop
             if Contains (Pending_Values_Map, Get_Operand (V, J)) then
@@ -516,6 +517,7 @@ package body CCG.Instructions is
       if Has_Side_Effects (Op2) then
          Force_To_Variable (Op2);
       end if;
+
       if Has_Side_Effects (Op3) then
          Force_To_Variable (Op3);
       end if;
@@ -605,6 +607,7 @@ package body CCG.Instructions is
             end if;
 
          when Op_Or =>
+
             if T = Bit_T and then not Has_Side_Effects (Op1)
               and then not Has_Side_Effects (Op2)
             then
@@ -614,6 +617,7 @@ package body CCG.Instructions is
             end if;
 
          when Op_Xor =>
+
             if T = Bit_T and then Is_A_Constant_Int (Op2)
               and then Equals_Int (Op2, 1)
             then
@@ -815,6 +819,7 @@ package body CCG.Instructions is
                --  Op2 is a constant since it often is.
 
                Result := TP ("#1 == #1", Op1) + Relation;
+
                if not Is_A_Constant (Op2) then
                   Result :=
                     (Result & " && " & (TP ("#1 == #1", Op2) + Relation))
@@ -828,6 +833,7 @@ package body CCG.Instructions is
                --  This is the opposite of ORD
 
                Result := TP ("#1 != #1", Op1) + Relation;
+
                if not Is_A_Constant (Op2) then
                   Result :=
                     (Result & " || " & (TP ("#1 != #1", Op2) + Relation))
@@ -980,6 +986,7 @@ package body CCG.Instructions is
          --  call. Also do this if it depends on a pending value.
 
          Set_C_Value (LHS, RHS);
+
          if (Is_A_Call_Inst (LHS) and then not Is_Opencode_Builtin)
            or else Is_A_Load_Inst (LHS)
            or else Depends_On_Pending (LHS)
@@ -1116,6 +1123,7 @@ package body CCG.Instructions is
                --  We support "c_pragma" and "verbatim"
 
                String_To_Name_Buffer (Strval (Expr3));
+
                if Get_Name_String (Chars (Expr2)) = "c_pragma" then
                   S := +"#pragma " & Name_Buffer (1 .. Name_Len);
                elsif Get_Name_String (Chars (Expr2)) = "verbatim" then

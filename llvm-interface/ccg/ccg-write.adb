@@ -1267,6 +1267,7 @@ package body CCG.Write is
       --  Process special indentation for this line
 
       Our_Indent := Indent;
+
       if OL.Indent_Type = Left then
          Our_Indent := 0;
       elsif OL.Indent_Type = Under_Brace then

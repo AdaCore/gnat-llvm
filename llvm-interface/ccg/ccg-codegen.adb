@@ -213,7 +213,8 @@ package body CCG.Codegen is
          end if;
       end Maybe_Decl_Func;
 
-   begin
+   begin -- Start of processing for Generate
+
       --  Scan all public enums and add declarations for them
 
       for J in 1 .. Enum_List.Last loop

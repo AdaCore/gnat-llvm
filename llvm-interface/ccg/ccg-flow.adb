@@ -769,6 +769,7 @@ package body CCG.Flow is
       --  consecutive to a previous line if any.
 
       Idx := New_Line (S, V, Force_Left, Semicolon);
+
       if No (First_Line (Current_Flow)) then
          Set_First_Line (Current_Flow, Idx);
       else
@@ -902,6 +903,7 @@ package body CCG.Flow is
                --  it. Otherwise, make one and record it.
 
                Position := Find (Return_Map, Retval);
+
                if Has_Element (Position) then
                   Ret_Idx := Element (Position);
                else
@@ -1111,6 +1113,7 @@ package body CCG.Flow is
       procedure Process_Flow_Graph (Idx : Flow_Idx) is
       begin
          Process_One_Flow (Next (Idx));
+
          if Present (First_If (Idx)) then
             for Iidx in First_If (Idx) .. Last_If (Idx) loop
                Process_One_Flow (Target (Iidx));
@@ -1161,6 +1164,7 @@ package body CCG.Flow is
       --  Replace all targets in Idx with their final targets
 
       Set_Next (Idx, Final_Target (Next (Idx)));
+
       if Present (First_If (Idx)) then
          for Iidx in First_If (Idx) .. Last_If (Idx) loop
             Set_Target (Iidx, Final_Target (Target (Iidx)));
@@ -1597,6 +1601,7 @@ package body CCG.Flow is
 
          else
             Output_Stmt ("goto " & BB (Idx), V => V);
+
             if not Contains (Output, Idx) then
                Include (To_Output, Idx);
             end if;
@@ -1621,6 +1626,7 @@ package body CCG.Flow is
                begin
                   for J in 1 .. 200 loop
                      exit when Contains (Output, Next_Idx);
+
                      if No (Next (Next_Idx)) then
                         Set_Next (Next_Idx, Our_Next);
                         exit;
@@ -1654,6 +1660,7 @@ package body CCG.Flow is
 
          T := Get_Basic_Block_Terminator (BB (Idx));
          Insert (Output, Idx);
+
          if Contains (To_Output, Idx) then
             Delete (To_Output, Idx);
          end if;
@@ -1824,8 +1831,10 @@ package body CCG.Flow is
          end if;
 
          Result := Result & Pos (Idx);
+
          if Is_Return (Idx) then
             Result := Result & " (return";
+
             if Present (Return_Value (Idx)) then
                Result := Result & " " & Return_Value (Idx);
             end if;
@@ -1882,6 +1891,7 @@ package body CCG.Flow is
 
          for Fidx in Flow_Idx_Low_Bound + 1 .. Flows.Last loop
             Maybe_Output_Use (Next (Fidx), Fidx);
+
             if Present (First_If (Fidx)) then
                for Iidx in First_If (Fidx) .. Last_If (Fidx) loop
                   Maybe_Output_Use (Target (Iidx), Fidx);
@@ -1902,6 +1912,7 @@ package body CCG.Flow is
 
          if Is_Return (Idx) then
             Write_Str ("   return");
+
             if Present (Return_Value (Idx)) then
                Write_Str (" " & Return_Value (Idx));
             end if;
@@ -1952,6 +1963,7 @@ package body CCG.Flow is
 
       Insert (Dumped, Idx);
       Dump_One_Flow (Idx);
+
       if Dump_All then
          while not Is_Empty (To_Dump) loop
             declare

@@ -172,6 +172,7 @@ package body CCG.Aggregates is
         and then not Need_Pack
       then
          Need_Pack := True;
+
          if Pack_Not_Supported then
             Set_Cannot_Pack (T);
          end if;
@@ -269,6 +270,7 @@ package body CCG.Aggregates is
 
          begin
             Error_If_Cannot_Pack (ST);
+
             if not Omitted_Field_Type (ST, J = 0, J = Num_Types - 1)
               and then not (SOS = Normal and then Is_Field_Padding (T, J))
             then
@@ -305,6 +307,7 @@ package body CCG.Aggregates is
                    (if   Pack_Via_Modifier and then SOS = Packed
                     then Output_Modifier ("packed", Before) else +""),
                    Is_Typedef => True, End_Block => Decl);
+
       if Pack_Via_Pragma and then SOS = Packed then
          Output_Decl ("#pragma pack(pop)",
                       Is_Typedef  => True,
@@ -334,6 +337,7 @@ package body CCG.Aggregates is
       Maybe_Output_Typedef (Elem_T);
       Error_If_Cannot_Pack (Elem_T);
       Decl := Decl & Elem_T & " " & T & "[";
+
       if Effective_Array_Length (T) /= 0 then
          Decl := Decl & Effective_Array_Length (T);
       end if;
@@ -417,6 +421,7 @@ package body CCG.Aggregates is
       --  first copy it to the result variable.
 
       Maybe_Decl (V);
+
       if Is_Undef (Aggr) then
          null;
       else
@@ -481,6 +486,7 @@ package body CCG.Aggregates is
 
       for Op of Ops (Ops'First + 2 .. Ops'Last) loop
          Maybe_Output_Typedef (Aggr_T);
+
          if Is_Array_Type (Aggr_T) then
 
             --  If this isn't an LHS, we have to make it one
@@ -577,6 +583,7 @@ package body CCG.Aggregates is
       --  dereference for nested GEP's.
 
       Set_Is_LHS (V, Is_LHS);
+
       if Is_LHS then
 
          --  If we have more than one uses and side-effects (e.g., an

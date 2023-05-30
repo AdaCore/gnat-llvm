@@ -42,10 +42,10 @@ package body GNATLLVM.GLType is
       --  The actual type to perform computations in
 
       Dummy,
-      --  A dummy type, made due to a chain of access types.  There are two
-      --  cases, each handled differently.  The most common case is an access
-      --  type pointing to a record.  In that case, we can make an opaque
-      --  record that we can actually use for the record.  In that case,
+      --  A dummy type, made due to a chain of access types. There are two
+      --  cases, each handled differently. The most common case is an access
+      --  type pointing to a record. In that case, we can make an opaque
+      --  record that we can actually use for the record. In that case,
       --  that's the same type that we really be used for the record, so the
       --  access type is "real" and the record type will only be considered
       --  "dummy" for a transitory period after which we'll change this entry
@@ -53,7 +53,7 @@ package body GNATLLVM.GLType is
       --
       --  The other case is when we have an access to something else. In that
       --  case, we have to make a completely fake access type that points to
-      --  something else.  In that case, we'll keep this entry around as a
+      --  something else. In that case, we'll keep this entry around as a
       --  GL_Type because things will have that type and we'll have to convert
       --  as appropriate.
 
@@ -72,31 +72,31 @@ package body GNATLLVM.GLType is
 
       Padded,
       --  A record whose first field is the primitive type and the second
-      --  is padding to make the record the proper length.  This can only
+      --  is padding to make the record the proper length. This can only
       --  be done if the primitive type is a native LLVM type.
 
       Truncated,
       --  A type that's shorter than the underlying LLVM type because
-      --  (e.g.) the LLVM type represents an array with padding.  We only
-      --  can have this if the primitive type is a native LLVM type.  We
+      --  (e.g.) the LLVM type represents an array with padding. We only
+      --  can have this if the primitive type is a native LLVM type. We
       --  disallow the use of Load or Store instructions of this type by
       --  marking it as a non-loadable type, so all operations on the type
       --  are done with memcpy and a specified length.
 
       Byte_Array,
       --  An array of bytes (i8) whose length is the desired size of the
-      --  GL_Type.  This should only be used when the primitive type is not
+      --  GL_Type. This should only be used when the primitive type is not
       --  a native LLVM type.
 
       Max_Size_Type,
       --  We're denoting that the maximum size of the type is used, but
       --  that maximum size is dynamic, so the LLVM type is actually that
-      --  of the primitive type.  This also implies that the LLVM type is
+      --  of the primitive type. This also implies that the LLVM type is
       --  non-native.
 
       Aligning);
       --  The same LLVM type as for the primitive type, but recorded to
-      --  indicate that we need to align it differently.  This occurs
+      --  indicate that we need to align it differently. This occurs
       --  when the primitive type is not a native LLVM type or when we're
       --  just changing the alignment and not type.
 
@@ -422,7 +422,7 @@ package body GNATLLVM.GLType is
 
       --  If this is an entity that comes from source, is in the unit being
       --  compiled, a size was specified, and we've made a padded type, set
-      --  a warning saying how many bits are unused.  Consider the alignment
+      --  a warning saying how many bits are unused. Consider the alignment
       --  of the type when doing that.
 
       if Present (Err_Ident) and then Comes_From_Source (Err_Ident)
@@ -539,7 +539,7 @@ package body GNATLLVM.GLType is
 
    begin
       --  If we're not specifying a size, alignment, or a request for
-      --  maximum size, we want the original type.  This isn't quite the
+      --  maximum size, we want the original type. This isn't quite the
       --  same test as below since it will get confused with 0-sized types.
 
       if No (Size_V) and then Align_N = 0 and then not Needs_Max then
@@ -558,6 +558,7 @@ package body GNATLLVM.GLType is
         and then No (Size_V)
       then
          Size_V := Get_Type_Size (Prim_GT, Max_Size => True);
+
          if Overflowed (Size_V) then
             Size_V := No_GL_Value;
          end if;
@@ -588,7 +589,7 @@ package body GNATLLVM.GLType is
                                   and then ULL'(Get_Type_Size (GTI.LLVM_Type))
                                              /= +Size))
               --  If the size and alignment are the same, this must be the
-              --  same type.  But this isn't the case if we need the
+              --  same type. But this isn't the case if we need the
               --  maximim size and there's no size for the type or the
               --  primitive type isn't native (the latter can happen for a
               --  variant record where all the variants are the same size.)
@@ -601,7 +602,7 @@ package body GNATLLVM.GLType is
                          and then Align_N = GTI.Alignment)
               --  It's also the same type even if there's no match if
               --  we want the maximum size and we have an entry where
-              --  we got the maximum size.  But we need the right alignment.
+              --  we got the maximum size. But we need the right alignment.
 
             then
                return Found_GT;
@@ -761,8 +762,8 @@ package body GNATLLVM.GLType is
 
       --  If Size_Type hasn't been elaborated yet, we're done for now.
       --  If this is a E_Void or E_Subprogram_Type, it doesn't have a
-      --  size or alignment.  Otherwise, set the alignment and also
-      --  set the size if it's a constant.  If T is a non-native type,
+      --  size or alignment. Otherwise, set the alignment and also
+      --  set the size if it's a constant. If T is a non-native type,
       --  the size in the GT must agree with the size of T since this is
       --  a primitive type.
 
@@ -771,6 +772,7 @@ package body GNATLLVM.GLType is
         and then not (Decls_Only and then not Type_Is_Sized (T))
       then
          GTI.Alignment  := Get_Type_Alignment (GT, Use_Specified => False);
+
          if not Is_Dynamic_Size (GT) then
             GTI.Size    :=
               (if    Is_Integer_Type (GT)
@@ -797,7 +799,7 @@ package body GNATLLVM.GLType is
       GT : GL_Type := Get_Or_Create_GL_Type (TE, True);
 
    begin
-      --  First look for a primitive type.  If there isn't one, then a
+      --  First look for a primitive type. If there isn't one, then a
       --  dummy type is the best we have.
 
       while Present (GT) loop
@@ -813,7 +815,7 @@ package body GNATLLVM.GLType is
          end loop;
       end if;
 
-      --  If what we got was a dummy type, try again to make a type.  Note that
+      --  If what we got was a dummy type, try again to make a type. Note that
       --  we may not have succeded, so we may get the dummy type back.
 
       if Present (GT) and then Is_Dummy_Type (GT) then
@@ -942,7 +944,7 @@ package body GNATLLVM.GLType is
 
          --  Another case is if we have a GT that's not the default, in
          --  which case we have to adjust between its size and the default
-         --  size.  For elementary types, we only do this for padding types
+         --  size. For elementary types, we only do this for padding types
          --  and if the difference is positive.
 
          if not Is_Default (GT) and then not Is_Dynamic_Size (GT) then
@@ -1094,8 +1096,8 @@ package body GNATLLVM.GLType is
 
          --  If we're making a wider type, we can't just pun the pointer
          --  since it would result in an access outside the object, so we
-         --  need to allocate a copy of the data and copy that.  Use our
-         --  helper.  For tagged types, we know this punning is safe.
+         --  need to allocate a copy of the data and copy that. Use our
+         --  helper. For tagged types, we know this punning is safe.
 
          if In_GTI.Kind = Truncated and then not No_Copy
            and then not Is_Tagged_Type (Out_GT)
@@ -1129,14 +1131,14 @@ package body GNATLLVM.GLType is
       if Related_Type (V) = GT then
          return Result;
 
-      --  If the result is Aligning the object is the
-      --  same, we just note that it now has the right type.
+      --  If the result is Aligning the object is the same, we just note
+      --  that it now has the right type.
 
       elsif GTI.Kind = Aligning then
          return G_Is (Result, GT);
 
-      --  For Biased, we need to be sure we have data, then subtract
-      --  the bias, then convert to the underlying type.
+      --  For Biased, we need to be sure we have data, then subtract the
+      --  bias, then convert to the underlying type.
 
       elsif GTI.Kind = Biased then
          return Trunc (Get (Result, Data) - GTI.Bias, GT);
@@ -1182,8 +1184,8 @@ package body GNATLLVM.GLType is
 
          --  If we're making a wider type, we can't just pun the pointer
          --  since this will result in an access outside the object, so we
-         --  need to allocate a copy of the data and copy that.  Use our
-         --  helper.  For tagged types, we know this punning is safe.
+         --  need to allocate a copy of the data and copy that. Use our
+         --  helper. For tagged types, we know this punning is safe.
 
          if GTI.Kind in Padded | Byte_Array | Max_Size_Type
            and then not No_Copy and then not Is_Tagged_Type (GT)
@@ -1321,7 +1323,7 @@ package body GNATLLVM.GLType is
 
    begin
       --  If we've built an LLVM type to do padding, then that's a native
-      --  type.  Otherwise, we have to look at whether the underlying type
+      --  type. Otherwise, we have to look at whether the underlying type
       --  has a native representation or not.
 
       return GTI.Kind not in Padded | Byte_Array
@@ -1428,30 +1430,37 @@ package body GNATLLVM.GLType is
    begin
       Write_Str (GT_Kind_Type'Image (GTI.Kind) & "(");
       Write_Int (Int (GTI.GNAT_Type));
+
       if Present (GTI.Size) then
          Write_Str (", S=");
          Write_Int_From_LLI (+GTI.Size);
       end if;
+
       if GTI.Alignment /= 0 then
          Write_Str (", A=");
          Write_Int (GTI.Alignment);
       end if;
+
       if Present (GTI.Bias) then
          Write_Str (", B=");
          Write_Int_From_LLI (+GTI.Bias);
       end if;
+
       if GTI.Default then
          Write_Str (", default");
       end if;
 
       Write_Str (")");
+
       if Full_Dump then
          Write_Str (": ");
+
          if Present (GTI.LLVM_Type) then
             Dump_LLVM_Type (GTI.LLVM_Type);
          end if;
 
          pg (Union_Id (GTI.GNAT_Type));
+
          if Present (GTI.TBAA) then
             Dump_LLVM_Metadata (GTI.TBAA);
          end if;

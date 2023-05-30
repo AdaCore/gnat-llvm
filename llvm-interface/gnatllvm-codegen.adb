@@ -144,6 +144,7 @@ package body GNATLLVM.Codegen is
          Target_Triple     := new String'(Switch_Value (S, "--target="));
          Target_Triple_Set := True;
          Idx               := Index (Target_Triple.all, ":");
+
          if Idx /= 0 then
             Free (To_Free);
             To_Free       := Target_Triple;
@@ -447,6 +448,7 @@ package body GNATLLVM.Codegen is
            Code_Model => Code_Model);
 
       Get_Target_C_Types (Target_Triple.all, CPU.all, Target_C_Types, Success);
+
       if not Success then
          Early_Error ("cannot get C type information from LLVM");
       end if;

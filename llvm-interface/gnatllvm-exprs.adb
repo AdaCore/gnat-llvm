@@ -237,7 +237,7 @@ package body GNATLLVM.Exprs is
       Only_Bitfield : Boolean := False) is
    begin
       --  Start by assuming there's no special processing, then
-      --  see if there is.  If we're just elaborating decls, there isn't
+      --  see if there is. If we're just elaborating decls, there isn't
 
       F    := Empty;
       Idxs := null;
@@ -356,7 +356,7 @@ package body GNATLLVM.Exprs is
 
          begin
             --  If this is a normal string, where the size of a character
-            --  is a byte, use Const_String to create the string.  We can't
+            --  is a byte, use Const_String to create the string. We can't
             --  use Name_Buffer here since it might overflow.
 
             if ULL'(Get_Type_Size (Type_Of (Elmt_GT))) = 8 then
@@ -526,9 +526,9 @@ package body GNATLLVM.Exprs is
       end if;
 
       --  If this is a signed mod operation, we have to adjust the result,
-      --  since what we did is a rem operation.  If the result is zero or
+      --  since what we did is a rem operation. If the result is zero or
       --  the result and the RHS have the same sign, the result is correct.
-      --  Otherwise, we have to add the RHS to the result.  Two values have
+      --  Otherwise, we have to add the RHS to the result. Two values have
       --  the same sign iff their xor is non-negative, which is the best
       --  code for the general case, but having a variable as the second
       --  operand of mod is quite rare, so it's best to do slightly less
@@ -553,7 +553,7 @@ package body GNATLLVM.Exprs is
          end;
 
       --  If this is an integer division operation with Round_Result set,
-      --  we have to do that rounding.  There are two different cases, one
+      --  we have to do that rounding. There are two different cases, one
       --  for signed and one for unsigned.
 
       elsif Nkind (N) = N_Op_Divide and then Rounded_Result (N)
@@ -561,7 +561,7 @@ package body GNATLLVM.Exprs is
       then
          declare
 
-            --  We compute the remainder.  If the remainder is greater then
+            --  We compute the remainder. If the remainder is greater then
             --  half of the RHS (e.g., > (RHS + 1) / 2), we add one to the
             --  result.
 
@@ -581,12 +581,12 @@ package body GNATLLVM.Exprs is
       then
          declare
 
-            --  We compute the quotient.  Then it gets more complicated.
+            --  We compute the quotient. Then it gets more complicated.
             --  As in the mod case, we optimize for the case when RHS is a
-            --  constant.  If twice the absolute value of the remainder is
+            --  constant. If twice the absolute value of the remainder is
             --  greater than RHS, we have to either add or subtract one
             --  from the result, depending on whether the remainder is the
-            --  same sign as the RHS not.  Again, we optimize for the case
+            --  same sign as the RHS not. Again, we optimize for the case
             --  where the RHS is a constant.
 
             One          : constant GL_Value  := Const_Int (RVal, Uint_1);
@@ -754,8 +754,8 @@ package body GNATLLVM.Exprs is
    begin
       --  If both types are integers, we determine the need for each check
       --  individually by seeing if the output bounds are tighter than the
-      --  input bounds.  But this isn't worth doing for FP since the
-      --  chances of having a difference is very low.  Since an FP NaN or
+      --  input bounds. But this isn't worth doing for FP since the
+      --  chances of having a difference is very low. Since an FP NaN or
       --  Inf always compares false, do the comparison so false is a
       --  failure.
 
@@ -778,8 +778,8 @@ package body GNATLLVM.Exprs is
       if No (Compare_LB) and then No (Compare_HB) then
          return;
 
-      --  Test for a known result.  If either comparison is always false,
-      --  we know this test will fail.  So generate the raise.
+      --  Test for a known result. If either comparison is always false,
+      --  we know this test will fail. So generate the raise.
 
       elsif Compare_LB = Const_False or else Compare_HB = Const_False then
          if Present (Label_Ent) then
@@ -798,7 +798,7 @@ package body GNATLLVM.Exprs is
       end if;
 
       --  Otherwise, make the labels and branch to them depending on the
-      --  results of the tests.  If we're doing both comparisons, we'll have
+      --  results of the tests. If we're doing both comparisons, we'll have
       --  put both before the first test, but the optimizer can clean that up.
 
       BB_Raise :=
@@ -808,6 +808,7 @@ package body GNATLLVM.Exprs is
 
       if Present (Compare_HB) then
          Build_Cond_Br (Compare_HB, BB_Next, BB_Raise);
+
          if Present (Compare_LB) then
             Position_Builder_At_End (BB_Next);
             BB_Next := Create_Basic_Block;
@@ -1155,6 +1156,7 @@ package body GNATLLVM.Exprs is
       --  in the tree.
 
       Ret_UI := Get_Attribute_From_Annotation (N);
+
       if Present (Ret_UI) then
          return Const_Int (GT, Ret_UI);
       end if;
@@ -1221,6 +1223,7 @@ package body GNATLLVM.Exprs is
             --  it to a reference.
 
             V := Emit (Pref, Prefer_LHS => True);
+
             if Is_Access_Type (P_GT) then
                V := From_Access (Get (V, Data));
             end if;
@@ -1521,6 +1524,7 @@ package body GNATLLVM.Exprs is
 
       if No (Src) then
          Src := Emit (E, LHS => (if VFA then No_GL_Value else Dest));
+
          if Src = Dest then
             Maybe_Store_Bounds (Dest, Src, Src_GT, False);
             return;
@@ -1557,7 +1561,7 @@ package body GNATLLVM.Exprs is
       --  If we're assigning to a type that's the nominal constrained
       --  subtype of an unconstrained array for an aliased object, see if
       --  we can get the value and bounds together and store them.  If we
-      --  can, do so and we're done.  Otherwise, store the bounds.
+      --  can, do so and we're done. Otherwise, store the bounds.
 
       if Type_Needs_Bounds (Dest_GT) and then Src_R /= Bounds_And_Data then
          if Is_Data (Src) and then Is_Loadable_Type (Dest_GT) then
@@ -1576,7 +1580,7 @@ package body GNATLLVM.Exprs is
       --  variable size.
       --
       --  First handle the easy case: convert the source to the destination
-      --  type and store it.  However, we may have a packed array
+      --  type and store it. However, we may have a packed array
       --  implementation type on the LHS and an array on the RHS.  Convert
       --  it to the LHS type if so.
 
@@ -1621,10 +1625,10 @@ package body GNATLLVM.Exprs is
          end;
 
       --  Now see if the source is of an LLVM value small enough to store, but
-      --  the destination may or may not be a variable-sized type.  Since
+      --  the destination may or may not be a variable-sized type. Since
       --  we know the size and know the object to store, we can convert
       --  Dest to the type of the pointer to Src, which we know is
-      --  fixed-size, and do the store.  If Dest is a pointer to an array
+      --  fixed-size, and do the store. If Dest is a pointer to an array
       --  type, we need to point to the actual array data.
 
       elsif (No (E) or else Is_Loadable_Type (Full_GL_Type (E)))
@@ -1632,6 +1636,7 @@ package body GNATLLVM.Exprs is
         and then not Is_Class_Wide_Equivalent_Type (Dest_GT)
       then
          Src := Get (Src, (if Src_R = Bounds_And_Data then Src_R else Data));
+
          if Relationship (Dest) = Fat_Pointer
            or else Type_Of (Src) /= Element_Type_Of (Dest)
          then
@@ -1652,9 +1657,9 @@ package body GNATLLVM.Exprs is
             Mem_Src, Mem_Dst : GL_Value;
 
          begin
-            --  Get the proper relationship.  If we're copying both bounds
-            --  and data, get the reference to that.  Otherwise, if this is
-            --  a fat pointer, get the reference to the data.  Otherwise,
+            --  Get the proper relationship. If we're copying both bounds
+            --  and data, get the reference to that. Otherwise, if this is
+            --  a fat pointer, get the reference to the data. Otherwise,
             --  any reference will do.
 
             Dest_R := (if    Src_R = Bounds_And_Data then Ref (Src_R)
@@ -1896,7 +1901,7 @@ package body GNATLLVM.Exprs is
                             Is_Asm_Volatile (N), False);
 
          --  If we have an output, generate the call with an output and store
-         --  the result.  Otherwise, just do the call.
+         --  the result. Otherwise, just do the call.
 
          if Present (Output_Variable) then
             Store (Call (Asm, Fn_T, Args), Output_Val);

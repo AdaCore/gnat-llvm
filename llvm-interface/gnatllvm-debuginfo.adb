@@ -122,9 +122,9 @@ package body GNATLLVM.DebugInfo is
       MD        : Metadata_T := No_Metadata_T) return Boolean
    with Pre => Present (GT) or else Present (MD);
    --  Add debug information for one field with Name, S, Align, and either
-   --  GT or MD to the Field_MDs, starting at Idx, which we update.  Update
+   --  GT or MD to the Field_MDs, starting at Idx, which we update. Update
    --  Offset to point to the byte past this field and Rec_Align to reflect
-   --  what alignment is required past this point.  Return False if we
+   --  what alignment is required past this point. Return False if we
    --  aren't able to properly update Offset, for example because we have a
    --  variable-sized object.
 
@@ -145,7 +145,7 @@ package body GNATLLVM.DebugInfo is
    function Create_Fat_Pointer_Type_Data (GT : GL_Type) return Metadata_T
      with Pre => Present (GT)
                  and then Is_Unconstrained_Array (Full_Designated_Type (GT));
-   --  Create debug information for a fat pointer to GT.  We cant't
+   --  Create debug information for a fat pointer to GT. We cant't
    --  do this if we can't make debug information for the component type
    --  of the array type.
 
@@ -748,8 +748,8 @@ package body GNATLLVM.DebugInfo is
             Result := DI_Create_Basic_Type (Name, Size, DW_ATE_Float,
                                             DI_Flag_Zero);
 
-         --  For access types, handle fat pointer specially.  Otherwise,
-         --  get the type info for what this points to.  If we have
+         --  For access types, handle fat pointer specially. Otherwise,
+         --  get the type info for what this points to. If we have
          --  something, make our type.
 
          when Access_Kind =>
@@ -760,13 +760,14 @@ package body GNATLLVM.DebugInfo is
                Result := Create_Fat_Pointer_Type_Data (GT);
             else
                Result := Create_Type_Data (Full_Designated_GL_Type (GT));
+
                if Present (Result) then
                   Result :=
                     DI_Create_Pointer_Type (Result, Size, Align, 0, Name);
                end if;
             end if;
 
-         --  For arrays, get the component type's data.  If it exists and
+         --  For arrays, get the component type's data. If it exists and
          --  this is of fixed size, get info for each of the bounds and
          --  make a description of the type.
 
@@ -794,7 +795,7 @@ package body GNATLLVM.DebugInfo is
                                                     Ranges);
          end Array_Type;
 
-         --  For records, go through each field.  If we can make debug info
+         --  For records, go through each field. If we can make debug info
          --  for the type and the position and size are known and static,
          --  add that field as a member.
 
@@ -1028,7 +1029,7 @@ package body GNATLLVM.DebugInfo is
          end if;
 
          --  If this is a reference, insert a dbg.declare call.  Otherwise,
-         --  a dbg.value call.  ???  However, there sees to be an LLVM issue
+         --  a dbg.value call. ??? However, there sees to be an LLVM issue
          --  when we do this for a zero-length array.
 
          if Is_Data (V) then

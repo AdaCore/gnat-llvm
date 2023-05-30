@@ -217,6 +217,7 @@ package body GNATLLVM.Arrays.Create is
          begin
             if Is_A_Constant_Int (V) then
                Val := +V;
+
                if Val in LLI (Int'First) .. LLI (Int'Last) then
                   return (Cnst => +Val, Value => Empty);
                end if;
@@ -420,6 +421,7 @@ package body GNATLLVM.Arrays.Create is
                Total_Size := Total_Size * Dim_Info.Bound_Range;
             else
                This_Nonnative := True;
+
                if Dim /= 0 then
                   Must_Use_Fake := True;
                end if;

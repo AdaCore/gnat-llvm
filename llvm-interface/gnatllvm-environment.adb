@@ -46,7 +46,7 @@ package body GNATLLVM.Environment is
       --  LLVM type. This is always the case if the saved type is an opaque
       --  type, but if we have an array type with zero size, we need to use
       --  this flag to disambiguate the cases of a zero-length array and a
-      --  variable-sized array.  This usually, but not always, means that
+      --  variable-sized array. This usually, but not always, means that
       --  the type's size is not known at compile time.
 
       Is_Being_Elaborated   : Boolean;

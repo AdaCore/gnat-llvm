@@ -46,7 +46,7 @@ package body GNATLLVM.GLValue is
                                and then (Is_Constant (V.Value)
                                            or else Is_Undef (V.Value)))));
    --  Return True if it's appropriate to use Data for V when converting to
-   --  a GL_Relationship of Object.  Since this is called from
+   --  a GL_Relationship of Object. Since this is called from
    --  GL_Value_Is_Valid, we have to be careful not to call any function
    --  that takes a GL_Value as an operand.
 
@@ -681,7 +681,7 @@ package body GNATLLVM.GLValue is
       GT : constant GL_Type         := Default_GL_Type (TE);
    begin
       --  The difference here is when we need to allocate both bounds
-      --  and data.  We do this for string literals because they are most
+      --  and data. We do this for string literals because they are most
       --  commonly used in situations where they're passed as parameters
       --  where the formal is a String.
 
@@ -854,13 +854,13 @@ package body GNATLLVM.GLValue is
 
       --  If we just need to make this into a reference, we can store it
       --  into memory since we only have those relationships if this is a
-      --  actual LLVM value.  If we have a constant, we should put it in
-      --  static memory.  Not only is it more efficient to do this at
+      --  actual LLVM value. If we have a constant, we should put it in
+      --  static memory. Not only is it more efficient to do this at
       --  compile-time, but if these are bounds of an array, we may be
       --  passing them using 'Unrestricted_Access and will have problems if
       --  it's on the stack of the calling subprogram since the called
       --  subprogram may capture the address and store it for later (this
-      --  happens a lot with tasking).  If we have a string literal, we
+      --  happens a lot with tasking). If we have a string literal, we
       --  also materialize the bounds if we can.
 
       elsif Equiv_Relationship (Ref (Our_R), R) then
@@ -896,7 +896,7 @@ package body GNATLLVM.GLValue is
                return Extract_Value (GT, V, Data_Index_In_BD_Type (V));
 
                --  If we have a reference to something else, try to convert
-               --  to a normal reference and then get the data.  If this
+               --  to a normal reference and then get the data. If this
                --  was reference to bounds and data, we could also just
                --  dereference and extract the data, but that involves
                --  more memory accesses.
@@ -1044,7 +1044,7 @@ package body GNATLLVM.GLValue is
                  Ptr_To_Relationship (Extract_Value_To_Ref (GT, V, 0), GT, R);
 
             --  If we have a reference to both bounds and data, we can
-            --  compute where the data starts.  If we have the actual
+            --  compute where the data starts. If we have the actual
             --  bounds and data, we can store them and proceed as above.
 
             elsif Our_R = Reference_To_Bounds_And_Data then
@@ -1060,8 +1060,8 @@ package body GNATLLVM.GLValue is
 
             --  There are only two cases where we can make a thin pointer.
             --  One is where we have the address of bounds and data (or the
-            --  bounds and data themselves).  The other is if we have a fat
-            --  pointer.  In the latter case, we can't know directly that
+            --  bounds and data themselves). The other is if we have a fat
+            --  pointer. In the latter case, we can't know directly that
             --  the address in the fat pointer is actually suitable, but
             --  Ada language rules guarantee that it will be.
 
@@ -1128,7 +1128,7 @@ package body GNATLLVM.GLValue is
          when Trampoline =>
 
             --  LLVM doesn't allow making a trampoline from an arbitrary
-            --  address.  So all we can do here is to just use the function
+            --  address. So all we can do here is to just use the function
             --  address and hope that we don't need the static link.
             --  For all valid Ada operations, this is the case, but this
             --  may be an issue if people do wierd stuff.
@@ -1157,6 +1157,7 @@ package body GNATLLVM.GLValue is
 
       --  If we reach here, this is case we can't handle.  Return null, which
       --  will cause our postcondition to fail.
+
       return No_GL_Value;
    end Get;
 
@@ -1561,10 +1562,10 @@ package body GNATLLVM.GLValue is
    begin
       --  The type we pass to Add_Global is the type of the actual data, but
       --  since the global value in LLVM is a pointer, the relationship is
-      --  the reference.  So we compute the reference we want and then make the
-      --  type corresponding to a data of that reference.  But first handle
+      --  the reference. So we compute the reference we want and then make the
+      --  type corresponding to a data of that reference. But first handle
       --  the case where we need an indirection (because of an address clause
-      --  or a dynamically-sized object).  In that case, if we would normally
+      --  or a dynamically-sized object). In that case, if we would normally
       --  have a pointer to the bounds and data, we actually store the thin
       --  pointer (which points in the middle).
 
@@ -1832,6 +1833,7 @@ package body GNATLLVM.GLValue is
       end if;
 
       Set_Initializer (VV, VE);
+
       if Get_Linkage (VV) = External_Weak_Linkage then
          Set_Linkage (VV, Weak_Any_Linkage);
       end if;
@@ -1918,10 +1920,10 @@ package body GNATLLVM.GLValue is
    function Set_Arith_Attrs (Inst : Value_T; V : GL_Value) return Value_T is
    begin
       --  Before trying to set attributes, we need to verify that this is
-      --  an instruction.  If so, set the flags according to the type.
+      --  an instruction. If so, set the flags according to the type.
       --  We have to treat a pointer as unsigned here, since it's possible
       --  that it might cross the boundary where the high-bit changes.
-      --  A modular type is defined to wrap.  Biased type are unsigned.
+      --  A modular type is defined to wrap. Biased type are unsigned.
 
       if No (Is_A_Instruction (Inst)) or else Is_Modular_Integer_Type (V) then
          null;
@@ -2013,7 +2015,7 @@ package body GNATLLVM.GLValue is
             Bound := +Idxs (J);
 
             --  Since this is an LLVM object, we know that all valid bounds
-            --  are within the range of unsigned.  But we don't want to get
+            --  are within the range of unsigned. But we don't want to get
             --  a constraint error below if the constant is invalid.  So
             --  test and force to zero (any constant will do since this is
             --  erroneous) in that case.
@@ -2088,6 +2090,7 @@ package body GNATLLVM.GLValue is
 
             if Present (Is_A_Constant_Int (This_Op)) then
                Const_Val := ULL (Const_Int_Get_S_Ext_Value (This_Op));
+
                if Const_Val /= 0 then
                   This_Align := This_Align * ULL_Align_Bytes (Const_Val);
                end if;
@@ -2169,41 +2172,52 @@ package body GNATLLVM.GLValue is
 
       Dump_LLVM_Value (V.Value);
       Dump_LLVM_Type (Type_Of (V.Value));
+
       if Present (V.TBAA_Type) then
          Dump_LLVM_Metadata (V.TBAA_Type);
       end if;
+
       Write_Str ("Align=");
       Write_Int (V.Alignment);
       Write_Str (" ");
+
       if Is_Pristine (V) then
          Write_Str ("Pristine ");
       end if;
+
       if Is_Volatile (V) then
          Write_Str ("Volatile ");
       end if;
+
       if Is_Atomic (V) then
          Write_Str ("Atomic ");
       end if;
+
       if Overflowed (V) then
          Write_Str ("Overflowed ");
       end if;
+
       if Aliases_All (V) then
          Write_Str ("Aliases_All ");
       end if;
+
       if Has_Storage_Model (V) then
          Write_Str ("SM_Object=");
          Write_Int (Int (V.SM_Object));
          Write_Str (" ");
       end if;
+
       if Present (V.TBAA_Type) then
          Write_Str ("TBAA_Offset=");
          Write_Int (Int (V.TBAA_Offset));
          Write_Str (" ");
       end if;
+
       if Present (V.Unknown_T) then
          Write_Str ("Unknown_T=");
          Dump_LLVM_Type (V.Unknown_T);
       end if;
+
       Write_Str (GL_Relationship'Image (V.Relationship) & "(");
       Dump_GL_Type_Int (V.GT, False);
       Write_Str ("): ");

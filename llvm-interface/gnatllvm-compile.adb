@@ -67,7 +67,7 @@ package body GNATLLVM.Compile is
 
    procedure GNAT_To_LLVM (GNAT_Root : N_Compilation_Unit_Id) is
       function Stand_Type (Size : Nat) return Opt_Signed_Integer_Kind_Id;
-      --  Find a standard integer type with the specified size.  If none,
+      --  Find a standard integer type with the specified size. If none,
       --  return Empty.
 
       function Stand_Type (Size : Nat) return Opt_Signed_Integer_Kind_Id is
@@ -154,6 +154,7 @@ package body GNATLLVM.Compile is
 
       Int_32_GL_Type := Primitive_GL_Type (Int_32_Type);
       Int_32_T       := Type_Of (Int_32_GL_Type);
+
       if Present (Int_64_Type) then
          Int_64_GL_Type := Primitive_GL_Type (Int_64_Type);
          Int_64_T       := Type_Of (Int_64_GL_Type);
@@ -405,12 +406,14 @@ package body GNATLLVM.Compile is
                   end if;
 
                   Emit (Stmts);
+
                   if not Library_Level and then No (At_End_Proc (N)) then
                      Pop_Block;
                   end if;
                end if;
 
                Pop_Debug_Scope;
+
                if Present (At_End_Proc (N)) then
                   Pop_Block;
                end if;
@@ -425,6 +428,7 @@ package body GNATLLVM.Compile is
                          in Generic_Subprogram_Kind)
             then
                Emit_Subprogram_Body (N);
+
                if Library_Level then
                   C_Add_To_Source_Order (N);
                end if;
@@ -439,6 +443,7 @@ package body GNATLLVM.Compile is
               or else not Rewritten_For_C (Unique_Defining_Entity (N))
             then
                Emit (Specification (N));
+
                if Library_Level then
                   C_Add_To_Source_Order (N);
                end if;
@@ -487,6 +492,7 @@ package body GNATLLVM.Compile is
                end if;
 
                Emit (Statements (N));
+
                if Need_Block then
                   Pop_Block;
                end if;
@@ -500,6 +506,7 @@ package body GNATLLVM.Compile is
 
          when N_Object_Declaration | N_Exception_Declaration =>
             Emit_Declaration (N);
+
             if Library_Level then
                C_Add_To_Source_Order (N);
             end if;
@@ -508,6 +515,7 @@ package body GNATLLVM.Compile is
             | N_Exception_Renaming_Declaration =>
 
             Emit_Renaming_Declaration (N);
+
             if Library_Level then
                C_Add_To_Source_Order (N);
             end if;
@@ -892,6 +900,7 @@ package body GNATLLVM.Compile is
       --  it and get the inner expression.
 
       Has_All := Nkind (Expr) = N_Explicit_Dereference;
+
       if Has_All then
          Expr := Prefix (Expr);
       end if;
@@ -1051,6 +1060,7 @@ package body GNATLLVM.Compile is
                                        Is_Unchecked  => True,
                                        No_Truncation => No_Truncation (N));
             Clear_Overflowed (Result);
+
             if Full_Base_Type (Full_Etype (Expr)) /= BT then
                Set_Aliases_All (Result);
             end if;
@@ -1153,6 +1163,7 @@ package body GNATLLVM.Compile is
                --  value for the object.
 
                pragma Assert (not For_LHS);
+
                if Is_Entity_Name (Expr) then
                   A_GT  := Default_GL_Type (Get_Fullest_View (Entity (Expr)));
                   Value := No_GL_Value;

@@ -626,6 +626,7 @@ package body GNATLLVM.Conditionals is
       while Present (Alt) loop
          First_Choice := Current_Choice;
          Choice       := First (Discrete_Choices (Alt));
+
          if Nkind (Choice) = N_Others_Choice then
             Choice    := First (Others_Discrete_Choices (Choice));
          end if;
@@ -953,6 +954,7 @@ package body GNATLLVM.Conditionals is
 
             pragma Assert (No (Alternatives (N)));
             Decode_Range (Right_Opnd (N), Low, High);
+
             if Present (Low) and then Present (High) then
                Build_If_Range
                  (Emit_Expression (Left_Opnd (N)), Low, High,
@@ -974,6 +976,7 @@ package body GNATLLVM.Conditionals is
 
       pragma Assert (Is_Boolean_Type (Full_Etype (N)));
       Result := Emit (N);
+
       if Relationship (Result) /= Boolean_Data then
          Result := To_Primitive (Get (Result, Data));
          Result := I_Cmp (Int_NE, Result, Const_Null (Result));
@@ -1168,6 +1171,7 @@ package body GNATLLVM.Conditionals is
             All_As_Data_R := (if    All_As_Data_R = Object then Data_R
                               elsif All_As_Data_R = Data_R
                               then All_As_Data_R else Invalid);
+
             if R in Fat_Pointer | Fat_Reference_To_Subprogram then
                Fat_R      := R;
             end if;
@@ -1176,12 +1180,12 @@ package body GNATLLVM.Conditionals is
       end loop;
 
       --  The front end guarantees that the types of the parts and the
-      --  result are very similar types.  However, they may not be
-      --  identical and we need identical types for the Phi.  If the types
+      --  result are very similar types. However, they may not be
+      --  identical and we need identical types for the Phi. If the types
       --  are the same, we can use that one and later convert to Expr_GT.
       --  Otherwise, we may as well convert both to Expr_GT instead of
       --  finding some intermediate type, especially because all three are
-      --  usually the same.  If the only conversion is after the Phi, we
+      --  usually the same. If the only conversion is after the Phi, we
       --  can use data up to then if all are data, but would prefer
       --  reference over data if we have one if each since we need
       --  reference for that conversion.
@@ -1189,8 +1193,8 @@ package body GNATLLVM.Conditionals is
       --  We also need to have the Relationship be the same on all parts
       --  and that's more complex since there are a lot of cases.
       --
-      --  Normally, data is preferred.  But there are some cases where we
-      --  can't use data.  If we have to convert types, the types are
+      --  Normally, data is preferred. But there are some cases where we
+      --  can't use data. If we have to convert types, the types are
       --  composite and either we can't statically convert to the type or
       --  we need to convert a non-constant value, we can only do the
       --  conversion by pointer punning, so we need a reference.
@@ -1202,7 +1206,7 @@ package body GNATLLVM.Conditionals is
 
       --  We use a reference if we need to use a reference, if all parts
       --  are a reference, or if we prefer a reference and at least one
-      --  part is a reference.  However, we must use data if we have an
+      --  part is a reference. However, we must use data if we have an
       --  elementary type and need to do a conversion.
 
       if Elementary and then Need_Convert then
@@ -1267,7 +1271,7 @@ package body GNATLLVM.Conditionals is
             if Is_Data (Result) and then Is_Reference (Phi_R) then
 
                --  If we're going to be converting to a wider GT, do the
-               --  conversion as data and then take a reference.  Although
+               --  conversion as data and then take a reference. Although
                --  this may cause us to store more data than we need, the
                --  alternative will generate invalid LLVM IR since we may
                --  end up reading outside of allocated memory.
@@ -1363,7 +1367,7 @@ package body GNATLLVM.Conditionals is
          else Const_True);
 
    begin
-      --  If the comparison is True, the result is the LHS.  But if the
+      --  If the comparison is True, the result is the LHS. But if the
       --  comparison is False, the result RHS is RHS isn't a Nan and
       --  otherwise LHS.
 
@@ -1511,11 +1515,11 @@ package body GNATLLVM.Conditionals is
             --  If we use an inequality comparison against the last element
             --  in the range each iteration of the loop, that comparison
             --  will always succeed if that element is a bound of the
-            --  subtype.  We can replace that comparison with a equality
+            --  subtype. We can replace that comparison with a equality
             --  comparison if we add a test that verifies that the loop
             --  will be executed at least once. But once we do that, we can
             --  move the test to the end of the loop, which is a more
-            --  canonical form.  We need not do this test if we can prove
+            --  canonical form.  e need not do this test if we can prove
             --  that the loop will always be executed, but we only check
             --  for the trivial case of constants. If we determine that the
             --  loop is never executed, we don't do anything more.

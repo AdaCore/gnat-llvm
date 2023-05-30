@@ -91,7 +91,7 @@ package body GNATLLVM.Types.Create is
 
          return Present (F);
 
-      --  If this is a subprogram type, if depends on its result type
+      --  If this is a subprogram type, it depends on its result type
       --  and the type of its parameters.
 
       elsif Ekind (TE) = E_Subprogram_Type then
@@ -231,8 +231,8 @@ package body GNATLLVM.Types.Create is
       elsif R = Fat_Reference_To_Subprogram then
          return Type_For_Relationship (No_GL_Type, R);
 
-      --  If DT doesn't depend on something that's being
-      --  elaborated, handle this normally.
+      --  If DT doesn't depend on something that's being elaborated,
+      --  handle this normally.
 
       elsif not Depends_On_Being_Elaborated (DT) then
          if No (GT) then
@@ -245,13 +245,14 @@ package body GNATLLVM.Types.Create is
       --  Otherwise, if DT is currently being elaborated, we have to make a
       --  dummy type that we know will be the same width of an access to
       --  the actual object and we'll convert to the actual type when we
-      --  try to access an object of this access type.  The only types
-      --  where there's an elaboration that can recurse are record, array,
-      --  and access types (though access types whose designated types are
+      --  try to access an object of this access type. The only types where
+      --  there's an elaboration that can recurse are record, array, and
+      --  access types (though access types whose designated types are
       --  other access types are quite rare).
 
       else
          Dummy := True;
+
          if Is_Array_Type (DT) then
 
             --  For arrays, a pointer to void will work for all but a fat
@@ -300,7 +301,7 @@ package body GNATLLVM.Types.Create is
       end if;
 
       --  Now see if this isn't a base type and process the base type if
-      --  so.  Copy sizes from the base type if a size clause was present
+      --  so. Copy sizes from the base type if a size clause was present
       --  and the corresponding value hasn't already been set.
 
       if not Is_Full_Base_Type (TE) then
@@ -373,7 +374,7 @@ package body GNATLLVM.Types.Create is
       end if;
 
       --  GT is either a new type (Kind = None) or a
-      --  dummy.  If all we were able to return is a dummy type and GT is
+      --  dummy. If all we were able to return is a dummy type and GT is
       --  also a dummy type, its type should be the same as ours.
 
       if Dummy and then Is_Dummy_Type (GT) then
@@ -381,8 +382,8 @@ package body GNATLLVM.Types.Create is
          return T;
 
       --  If we're not a dummy type and GT is a dummy type, we need to
-      --  create a new GL_Type for the real type.  This can only happen
-      --  for access types.
+      --  create a new GL_Type for the real type. This can only happen for
+      --  access types.
 
       elsif not Dummy and then Is_Dummy_Type (GT) then
          pragma Assert (Is_Access_Type (TE));
@@ -390,8 +391,8 @@ package body GNATLLVM.Types.Create is
       end if;
 
       --  Set the LLVM type and status of the new GL_Type we made and show
-      --  that this type is no longer being elaborated.  If all we have is
-      --  a dummy type or if this is a void type, do no more.
+      --  that this type is no longer being elaborated. If all we have is a
+      --  dummy type or if this is a void type, do no more.
 
       Update_GL_Type (GT, T, Dummy);
       Set_Is_Being_Elaborated (TE, False);
@@ -408,9 +409,9 @@ package body GNATLLVM.Types.Create is
       end if;
 
       --  Make a GL_Type corresponding to any specified sizes and
-      --  alignments, as well as for biased repesentation.  But don't
-      --  do this for void or subprogram types or if we haven't
-      --  elaborated Size_Type yet.
+      --  alignments, as well as for biased repesentation. But don't do
+      --  this for void or subprogram types or if we haven't elaborated
+      --  Size_Type yet.
 
       if Ekind (GT) not in E_Void | E_Subprogram_Type
         and then Present (Size_GL_Type)
@@ -473,10 +474,10 @@ package body GNATLLVM.Types.Create is
             Align := Validate_Alignment
               (TE, Align, Get_Type_Alignment (GT, Use_Specified => False));
 
-            --  Now make the GT that we need for this type.  We do this in
+            --  Now make the GT that we need for this type. We do this in
             --  two steps so that we can give the proper diagnostics.
             --  First, for composite types and if specified, we use the
-            --  RM_Size with no alignment.  Then we make the final GL_Type
+            --  RM_Size with no alignment. Then we make the final GL_Type
             --  from the alignment and specified Esize, if any.
 
             if Is_Composite_Type (GT) then
@@ -516,7 +517,7 @@ package body GNATLLVM.Types.Create is
            ("reverse storage order for & not supported by 'L'L'V'M", TE, TE);
       end if;
 
-      --  Back-annotate sizes and alignments if not already set.  Be sure
+      --  Back-annotate sizes and alignments if not already set. Be sure
       --  to annotate the original array type if there is one. Don't try to
       --  do this before Size_Type is elaborated since we can't compute
       --  sizes that early.
@@ -692,7 +693,7 @@ package body GNATLLVM.Types.Create is
       end if;
 
       --  If the alignment either doesn't fit into an int or is larger than the
-      --  maximum allowed, give an error.  Otherwise, we try to use the new
+      --  maximum allowed, give an error. Otherwise, we try to use the new
       --  alignment if one is specified.
 
       if Present (Align)
@@ -711,7 +712,7 @@ package body GNATLLVM.Types.Create is
       end if;
 
       --  If the alignment is too small, stick with the old alignment and give
-      --  an error if required.  We allow discrete types to be under-aligned
+      --  an error if required. We allow discrete types to be under-aligned
       --  as compared to the alignment of the corresponding LLVM type when
       --  defining a type, but not a object.
 
@@ -807,7 +808,7 @@ package body GNATLLVM.Types.Create is
 
       --  If this is an integral type or a packed array type, the front-end
       --  has already verified the size, so we need not do it here (which
-      --  would mean checking against the bounds).  However, if this is an
+      --  would mean checking against the bounds). However, if this is an
       --  aliased object, it may not be smaller than the type of the
       --  object.
 

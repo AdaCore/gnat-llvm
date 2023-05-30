@@ -41,8 +41,8 @@ package body GNATLLVM.Records is
    --  When computing the size of a record subtype, we push the subtype so
    --  we can see if we run into a discriminant from its base type.  If we
    --  do, we substitute the expression that corresponds to the discriminant
-   --  type.  In most cases, but not all, the front end already does this
-   --  substitution for us.  However, we have to be sure that we don't use
+   --  type. In most cases, but not all, the front end already does this
+   --  substitution for us. However, we have to be sure that we don't use
    --  the same entry more than once since this could cause infinite recursion.
 
    type SS_Entry is record
@@ -217,11 +217,11 @@ package body GNATLLVM.Records is
          Is_Align    : out Nat;
          Return_Size : Boolean := True;
          No_Padding  : Boolean := False);
-      --  Return information about a record fragment RI.  This includes the
+      --  Return information about a record fragment RI. This includes the
       --  amount to which this fragment must be aligned and the amout to
-      --  which the resulting size is known to be aligned.  Also update the
+      --  which the resulting size is known to be aligned. Also update the
       --  total size with the size of the fragment. If the size isn't
-      --  wanted, don't compute it.  Cur_Align is the known alignment of
+      --  wanted, don't compute it. Cur_Align is the known alignment of
       --  the size so far.
 
       function Get_Variant_For_RI
@@ -232,7 +232,7 @@ package body GNATLLVM.Records is
          Use_Overlap : Boolean := False) return Record_Info_Id
         with Pre => Present (Need_Idx);
       --  We are at RI when walking the description for a record and
-      --  it has variants.  We're looking for Need_Idx.  If Need_Idx is an
+      --  it has variants. We're looking for Need_Idx. If Need_Idx is an
       --  index in one of the variants, return that variant.
 
       function Get_Variant_Max_Size
@@ -256,9 +256,9 @@ package body GNATLLVM.Records is
          Max_Size    : Boolean        := False;
          No_Padding  : Boolean        := False) return Result;
       --  Similar to Get_Record_Type_Size, but stop at record info segment Idx
-      --  or the last segment, whichever comes first.d  If TE is Present, it
+      --  or the last segment, whichever comes first. If TE is Present, it
       --  provides the default for Start_Idx and also requests alignment to
-      --  TE's alignment if we're looking for the size.  Total_Size is the
+      --  TE's alignment if we're looking for the size. Total_Size is the
 
       function Get_Record_Type_Size
         (TE         : Record_Kind_Id;
@@ -270,7 +270,7 @@ package body GNATLLVM.Records is
       function Emit_Field_Position
         (E : Record_Field_Kind_Id; V : GL_Value) return Result;
       --  Compute and return the position in bytes of the field specified by E
-      --  from the start of its type as a value of Size_Type.  If Present, V
+      --  from the start of its type as a value of Size_Type. If Present, V
       --  is a value of that type, which is used in the case of a
       --  discriminated record.
 
@@ -332,8 +332,8 @@ package body GNATLLVM.Records is
       end if;
 
       --  See if we've pushed a subtype of this record type into our
-      --  stack of record subtypes.  If so, get the discriminant constraint
-      --  from that subtype.  But ignore a constraint on this discriminant
+      --  stack of record subtypes. If so, get the discriminant constraint
+      --  from that subtype. But ignore a constraint on this discriminant
       --  that just repeats the discriminant.
 
       for J in reverse 1 .. Subtype_Stack.Last loop
@@ -368,7 +368,7 @@ package body GNATLLVM.Records is
 
    begin
       --  We'd prefer to use GT's type, but only if we can find a match for
-      --  F.  If not, we have to use F's type.
+      --  F. If not, we have to use F's type.
 
       return (if Present (New_F) then TE else Full_Scope (F));
 
@@ -481,7 +481,7 @@ package body GNATLLVM.Records is
          end if;
 
          --  If we have an LLVM type, it's packed record, so our size will
-         --  be that of the record and we aren't forcing an alignment.  If
+         --  be that of the record and we aren't forcing an alignment. If
          --  our total size is a constant, we can say what our alignment is.
 
          if Present (T) then
@@ -499,12 +499,13 @@ package body GNATLLVM.Records is
          elsif Present (GT) then
             Must_Align   := Get_Type_Alignment (GT);
             Is_Align     := Must_Align;
+
             if Return_Size then
                This_Size := Get_Type_Size (GT, V, Max_Size);
             end if;
 
          --  For a variant, we've already set the variant alignment, so use
-         --  that for Must_Align.  We can have fields after the variants
+         --  that for Must_Align. We can have fields after the variants
          --  in the case of extension records, so we care about Is_Align.
          --  But pessimize it rather than calculate it since the saving
          --  isn't worth it in this obscure case.
@@ -512,13 +513,14 @@ package body GNATLLVM.Records is
          elsif RI.Variants /= null or else RI.Overlap_Variants /= null then
 
             --  If we're looking for the maximum size, do our normal
-            --  processing of aligning and adding the size.  But if looking
+            --  processing of aligning and adding the size. But if looking
             --  for the actual size, pass in the total size and let it be
-            --  updated.  That avoids aligning if the variant part chosen
-            --  has no fields.  So we return in that case.
+            --  updated. That avoids aligning if the variant part chosen
+            --  has no fields. So we return in that case.
 
             Must_Align := Nat'Max (Force_Align, RI.Align);
             Is_Align   := BPU;
+
             if Return_Size then
                Total_Size :=
                  (if   Max_Size
@@ -537,7 +539,7 @@ package body GNATLLVM.Records is
             This_Size  := Size_Const_Int (0);
          end if;
 
-         --  Take into account any alignment we set for this RI.  We
+         --  Take into account any alignment we set for this RI. We
          --  needn't force alignment in the case of a forced position.
 
          if RI.Align /= 0 and then RI.Position = 0 then
@@ -550,6 +552,7 @@ package body GNATLLVM.Records is
          --  subtract the unused bits from the size of this piece.
 
          Must_Align := Nat'Max (Force_Align, Must_Align);
+
          if Return_Size then
             if Only_Overlap_RIs (RI.Next) and then No_Padding then
                This_Size :=
@@ -585,13 +588,14 @@ package body GNATLLVM.Records is
          for Variant_Idx of Variants.all loop
 
             --  Now look through each entry in the variant, looking into nested
-            --  variants if necessary.  We start looking at the first chained
+            --  variants if necessary. We start looking at the first chained
             --  entry of each variant, since that's where fields of that
             --  variant start.
 
             Idx := Variant_Idx;
             while Present (Idx) loop
                RI := Record_Info_Table.Table (Idx);
+
                if Idx = Need_Idx then
                   return Variant_Idx;
                end if;
@@ -722,19 +726,21 @@ package body GNATLLVM.Records is
             New_Idx := Empty_Record_Info_Id;
             RI      := Record_Info_Table.Table (Cur_Idx);
 
-            --  If we're reached a variant point, we have two cases.  We
+            --  If we're reached a variant point, we have two cases. We
             --  could be looking for a specific RI index, in which case we
             --  see which variant has that index and set it as next, or
             --  we're looking to compute the size of the record.
 
             if RI.Variants /= null and then Present (Idx) then
                New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Idx, False);
+
                if Present (New_Idx) and then RI.Align /= 0 then
                   Total_Size := Align_To (Total_Size, Cur_Align, RI.Align);
                end if;
 
                if No (New_Idx) then
                   New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Idx, True);
+
                   if Present (New_Idx) then
                      Total_Size := Size_Const_Int (0);
                   end if;
@@ -760,13 +766,13 @@ package body GNATLLVM.Records is
 
          --  At this point, either Idx is not Present, meaning we were
          --  supposed to be at the end of the type, or it is, in which case
-         --  we should have hit it.  If either is the case, we have an
+         --  we should have hit it. If either is the case, we have an
          --  error where we're looking for a field in the wrong type.
 
          pragma Assert (Cur_Idx = Idx);
 
-         --  Now we may have to do a final alignment.  If Idx is specified,
-         --  use the alignment for that field.  Otherwise, use the
+         --  Now we may have to do a final alignment. If Idx is specified,
+         --  use the alignment for that field. Otherwise, use the
          --  alignment for the type.
 
          if Present (Idx) then
@@ -834,8 +840,8 @@ package body GNATLLVM.Records is
                                            Idx       => Idx);
 
          --  Offset now gives the offset from the start of the record to the
-         --  piece that this field is in.  If this piece has a GL_Type, then
-         --  the field is the entire piece and we have the offset.  If it's an
+         --  piece that this field is in. If this piece has a GL_Type, then
+         --  the field is the entire piece and we have the offset. If it's an
          --  LLVM type, we need to compute the offset within that type.
 
          if Present (RI.GT) then
@@ -860,7 +866,7 @@ package body GNATLLVM.Records is
         (V : Result; Cur_Align, Must_Align : Nat) return Result is
       begin
          --  If we can determine that we needn't do any alignment, do
-         --  nothing.  Otherwise, align.
+         --  nothing. Otherwise, align.
 
          if Must_Align <= Cur_Align then
             return V;
@@ -912,10 +918,10 @@ package body GNATLLVM.Records is
 
    --  Replace_Val is used to replace a size value with a new value.
    --  For both the normal and back-annotation cases, this is the second
-   --  operand.  However, for the purpose of determining if this is of
+   --  operand. However, for the purpose of determining if this is of
    --  dynamic size, we need to conside the size variable if either the old
    --  or the new value is variable to avoid trying to compute something
-   --  dynamic at the global level.  We could probably avoid this computation
+   --  dynamic at the global level. We could probably avoid this computation
    --  if worth it, but the case here is very unusual (involving partially-
    --  repped extension records), so it's not worth the trouble.
 
@@ -1098,7 +1104,7 @@ package body GNATLLVM.Records is
       --  use with Phi) basic blocks for each.
       --
       --  However, if the input size is constant, see if any variants are
-      --  of a constant size and avoid creating BB's for them.  We also need
+      --  of a constant size and avoid creating BB's for them. We also need
       --  this logic to avoid trying to create a BB at top level for a
       --  record where each variant is the same size and hence isn't dynamic.
 
@@ -1191,7 +1197,7 @@ package body GNATLLVM.Records is
          Our_Size := Variant_Part_Size (RI, V, J, In_Size, Force_Align,
                                         No_Padding => No_Padding);
 
-         --  If we haven't already set a size, set it.  Otherwise, if our
+         --  If we haven't already set a size, set it. Otherwise, if our
          --  size differs from the size we saved, the size is variable.
 
          if No (Size) then
@@ -1333,10 +1339,10 @@ package body GNATLLVM.Records is
          then  ULL_Align (+RM_Size (TE))
          elsif Known_Esize (TE) then ULL_Align (+Esize (TE))
          else  Nat'Max (Max_Align, F_Align));
-      --  If an alignment is specified for the record, use it.  If not, but
+      --  If an alignment is specified for the record, use it. If not, but
       --  a size is specified for the record and we require strict
-      --  alignment, derive the alignment from that.  Similarly if an
-      --  Object_Size clause has been specified.  Otherwise, the only
+      --  alignment, derive the alignment from that. Similarly if an
+      --  Object_Size clause has been specified. Otherwise, the only
       --  contributions to alignment are the alignment of the fields.
 
    begin
@@ -1353,7 +1359,7 @@ package body GNATLLVM.Records is
       then
          return BPU;
 
-      --  If there's no component clause use this field's alignment.  But
+      --  If there's no component clause use this field's alignment. But
       --  we can't use an alignment smaller than that of the record
 
       elsif No (Component_Clause (AF)) then
@@ -1503,6 +1509,7 @@ package body GNATLLVM.Records is
       return AF : Record_Field_Kind_Id := F do
          loop
             PF := Parent_Field (AF);
+
             if Present (PF) then
                AF := PF;
             else
@@ -1510,7 +1517,6 @@ package body GNATLLVM.Records is
             end if;
          end loop;
       end return;
-
    end Ancestor_Field;
 
    ------------------------------
@@ -1547,6 +1553,7 @@ package body GNATLLVM.Records is
 
       while Present (F_Idx) loop
          FI := Field_Info_Table.Table (F_Idx);
+
          if FI.Field_Ordinal /= Last_Ord then
             Last_Ord := FI.Field_Ordinal;
             declare
@@ -1595,7 +1602,7 @@ package body GNATLLVM.Records is
 
    begin
       --  If we have a rep clause, we'll use that rather than packing it.
-      --  If the record isn't packed, neither is the field.  Aliased fields
+      --  If the record isn't packed, neither is the field. Aliased fields
       --  or fields whose types are strictly aligned aren't packed either.
       --  If the type's size is variable or if the type is nonnative, we
       --  can't pack, even to a byte boundary.
@@ -1612,7 +1619,7 @@ package body GNATLLVM.Records is
       --  We can pack to a bit boundary if the record is packed, the
       --  field's RM Size is known and smaller than the Esize (unless we're
       --  forcing packing), and the field isn't too large (unless we're to
-      --  ignore that test).  Otherwise, we pack only to a byte boundary.
+      --  ignore that test). Otherwise, we pack only to a byte boundary.
       --  We rely here on back-annotation of types so we're sure that both
       --  sizes are set.
 
@@ -1788,7 +1795,7 @@ package body GNATLLVM.Records is
    begin
       --  If the field information isn't present, this must be because
       --  we're referencing a field that's not in this variant and hence is
-      --  a constraint error.  So return undefined.  But first try to see
+      --  a constraint error. So return undefined. But first try to see
       --  if we can come up with the right field.
 
       if No (F_Idx) then
@@ -1812,7 +1819,7 @@ package body GNATLLVM.Records is
       RI      := Record_Info_Table.Table (Our_Idx);
 
       --  If this is the "_parent" field, just do a conversion so we point
-      --  to that type.  But add it to the LValue table in case there's
+      --  to that type. But add it to the LValue table in case there's
       --  a reference to its discrminant.
 
       if Chars (Our_Field) = Name_uParent then
@@ -1821,7 +1828,7 @@ package body GNATLLVM.Records is
          return Result;
 
       --  If the current piece is for a variable-sized object, we offset
-      --  to that object and make a pointer to its type.  Otherwise,
+      --  to that object and make a pointer to its type. Otherwise,
       --  make sure we're pointing to Rec_Type.
 
       elsif Present (RI.GT) then
@@ -1875,6 +1882,7 @@ package body GNATLLVM.Records is
       --  we know what we're pointing to.
 
       Maybe_Initialize_TBAA_For_Field (Result, Field, F_GT);
+
       if Is_Bitfield (Field) then
          Set_Unknown_T (Result,
                         Struct_Get_Type_At_Index
@@ -1900,15 +1908,15 @@ package body GNATLLVM.Records is
       --  components must be just a simple component into an LLVM
       --  structure, so we just go through each of the part of the
       --  aggregate and use the offset for that field, skipping a
-      --  discriminant of an unchecked union.  If not, we use
+      --  discriminant of an unchecked union. If not, we use
       --  Record_Field_Offset to do the reference.
 
       Expr := First (Component_Associations (N));
       return Result : GL_Value := Result_So_Far do
 
-         --  If we haven't already made a value, do so now.  If this is a
+         --  If we haven't already made a value, do so now. If this is a
          --  loadable type or not of dynamic size and we have a value, we
-         --  start with an undef of that type.  Otherwise, it's a variable
+         --  start with an undef of that type. Otherwise, it's a variable
          --  of that type.
 
          if No (Result) then
@@ -1954,12 +1962,13 @@ package body GNATLLVM.Records is
                   Result := Emit_Record_Aggregate (Val, Result);
 
                else
-                  --  We are to actually insert the field.  However, if we
+                  --  We are to actually insert the field. However, if we
                   --  haven't set any information for this field, it may be
                   --  a reference to a field that will cause Constraint_Error.
                   --  If so, just don't do anything with it.
 
                   F := Find_Matching_Field (Full_Etype (GT), In_F);
+
                   if Present (Get_Field_Info (F)) then
                      V := Emit_Convert_Value (Val, Field_Type (F));
                      V := Build_Field_Store (Result, F, V);
@@ -2005,11 +2014,12 @@ package body GNATLLVM.Records is
 
    begin
       --  If V is Volatile_Full_Access, we have to try to load the full record
-      --  into memory.  If we did, and this is for an LHS, we also need to
+      --  into memory. If we did, and this is for an LHS, we also need to
       --  set up a writeback.
 
       if VFA then
          V  := Get (V, Object);
+
          if Is_Data (V) and For_LHS then
             V := Get (V, Any_Reference);
             Add_Write_Back (In_V, Empty, V);
@@ -2047,7 +2057,7 @@ package body GNATLLVM.Records is
                  elsif Is_Loadable_Type (F_GT)   then Get_Undef (F_GT)
                  else  Get_Undef_Ref (F_GT));
 
-      --  If we have a bitfield, we need special processing.  Because we have
+      --  If we have a bitfield, we need special processing. Because we have
       --  a lot of intermediate values that don't correspond to Ada types,
       --  we do some low-level processing here when we can't avoid it.
 
@@ -2260,7 +2270,7 @@ package body GNATLLVM.Records is
 
          --  If this is a bitfield array type, we need to pointer-pun or
          --  convert it to an integral type that's the width of the
-         --  bitfield field type.  We've forced Rec_Data to be a reference
+         --  bitfield field type. We've forced Rec_Data to be a reference
          --  in this case.
 
          if Is_Array_Bitfield (F) then
@@ -2299,6 +2309,7 @@ package body GNATLLVM.Records is
          --  width as the converted input.
 
          New_RHS_T := Int_Ty (Nat (RHS_Width));
+
          if Is_Floating_Point_Type (RHS_Cvt) then
             RHS_Cvt := Bit_Cast_To_Relationship (Get (RHS_Cvt, Data),
                                                  New_RHS_T, Unknown);
@@ -2360,7 +2371,7 @@ package body GNATLLVM.Records is
          Rec_Data := Build_Or (Build_And (Rec_Data, Mask), RHS_Cvt);
 
          --  If we're still working with data, then insert the new value into
-         --  the field. Otherwise, store it where it belongs.  In the array
+         --  the field. Otherwise, store it where it belongs. In the array
          --  bitfield case, we have to convert the constant back.
 
          if Is_Data (LHS_For_Access) then
@@ -2478,12 +2489,14 @@ package body GNATLLVM.Records is
       Write_Str ("Scope = ");
       Write_Int (Nat (Full_Scope (E)));
       Write_Eol;
+
       if Present (F_Idx) then
          FI := Field_Info_Table.Table (F_Idx);
          Write_Str ("RI => ");
          Write_Int (Nat (FI.Rec_Info_Idx));
          Write_Str (", Ordinal = ");
          Write_Int (FI.Field_Ordinal);
+
          if Present (FI.First_Bit) then
             Write_Str (", Bits = ");
             Write_Int (+FI.First_Bit);
@@ -2554,6 +2567,7 @@ package body GNATLLVM.Records is
             end if;
 
             Write_Eol;
+
             if Present (RI.GT) then
                Write_Str (Prefix);
                Dump_GL_Type (RI.GT);
@@ -2566,9 +2580,11 @@ package body GNATLLVM.Records is
                FI := Field_Info_Table.Table (F_Idx);
                Write_Str (Prefix);
                Write_Str ("    Field");
+
                if Present (RI.LLVM_Type) then
                   Write_Str ("@");
                   Write_Int (FI.Field_Ordinal);
+
                   if Present (FI.First_Bit) then
                      Write_Str ("[");
                      Write_Int (+FI.First_Bit);
@@ -2605,9 +2621,11 @@ package body GNATLLVM.Records is
                   end loop;
 
                   Write_Line (" =>");
+
                   if Present (RI.Variants (J)) then
                      Print_RI_Chain (RI.Variants (J), Prefix & "    ");
                   end if;
+
                   if Present (RI.Overlap_Variants (J)) then
                      Print_One_RI (RI.Overlap_Variants (J),
                                    Prefix & "   overlap ");
@@ -2638,6 +2656,7 @@ package body GNATLLVM.Records is
          Push_Output;
          Set_Standard_Error;
          Print_RI_Chain (Get_Record_Info (TE));
+
          if Eol then
             Write_Eol;
          end if;

@@ -25,42 +25,41 @@ with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 package GNATLLVM.Types is
 
    --  Our strategy for handling types is very different from what's done by
-   --  Gigi in the GCC implementation of GNAT.  Here, we never pass a type
+   --  Gigi in the GCC implementation of GNAT. Here, we never pass a type
    --  to any function that expects a type unless that type is the fullest
    --  possible view.
    --
-   --  We also ignore freeze nodes for types.  We can safely do this
+   --  We also ignore freeze nodes for types. We can safely do this
    --  because we don't actually do anything with an expression used as a
    --  bound of the type other than putting the tree node for that
-   --  expression into a data structure.  The expression itself isn't
+   --  expression into a data structure. The expression itself isn't
    --  evaluated until an object of the type is referenced (or some other
-   --  operation that freezes the type).  We can safely do this because the
+   --  operation that freezes the type). We can safely do this because the
    --  front end has removed all side effects from type bounds and other
    --  constraints.
    --
    --  Finally, we always use a recursive algorithm to define types,
-   --  whether they're external or internal.  This means we have to "break
+   --  whether they're external or internal. This means we have to "break
    --  the loop" when there's a reference back to a type (such as a record
-   --  or array with an access type to itself).  We do this by looking at
+   --  or array with an access type to itself). We do this by looking at
    --  whether the designated type of an access type depends on something
    --  that's being elaborated and, if so, make a dummy access type of the
-   --  same width and structure.  For a designated type that's a record,
-   --  that dummy type will actually be the type of the record.  For scalar
+   --  same width and structure. For a designated type that's a record,
+   --  that dummy type will actually be the type of the record. For scalar
    --  types, we can fully elaborate the type and access to function types
    --  always use void pointers, so don't depend on the designated type.
    --
    --  This means the only cases where we need a dummy type are the less
-   --  common cases of an array and access type.  We've also arranged
-   --  things so that the only place this dummy can show up is as the
-   --  component of a record, the component type of an array, or the
-   --  designated type of an access type.  So whenever we get one of those,
-   --  we check for the need to convert to the actual access type and not
-   --  the dummy one.
+   --  common cases of an array and access type. We've also arranged things
+   --  so that the only place this dummy can show up is as the component of
+   --  a record, the component type of an array, or the designated type of
+   --  an access type. So whenever we get one of those, we check for the
+   --  need to convert to the actual access type and not the dummy one.
 
    Max_Load_Size : constant := 8;
    --  LLVM supports loading and storing of arbitrarily-large values, but
    --  code generation and optimization is very slow if the value's size is
-   --  too large.  We pick an arbitary constant here to cut it off.  This
+   --  too large. We pick an arbitary constant here to cut it off. This
    --  constant is in number of loads or stores, meaning the maximum value
    --  of the size divided by the alignment.
 
@@ -71,7 +70,7 @@ package GNATLLVM.Types is
       Max_Size       : Boolean := False;
       Allow_Overflow : Boolean := False) return Boolean
      with Pre => Present (GT);
-   --  Returns True if GT's size is not known at compile-time.  Max_Size
+   --  Returns True if GT's size is not known at compile-time. Max_Size
    --  is True if we're to consider the maximum size of GT's type.
    --  Allow_Overflow is True if we're to ignore any possible overflow.
 
@@ -80,7 +79,7 @@ package GNATLLVM.Types is
      with Pre => Present (GT), Post => Present (Create_Access_Type_To'Result);
    --  Function that creates the access type for a corresponding type. Since
    --  access types are not just pointers, this is the abstraction bridge
-   --  between the two.  Note that we need not have a GNAT type corresponding
+   --  between the two. Note that we need not have a GNAT type corresponding
    --  to this access type, which makes this different than calling
    --  Type_Of on an access to GT.
 
@@ -106,11 +105,10 @@ package GNATLLVM.Types is
    function Field_Error_Msg
      (E : Entity_Id; GT : GL_Type; Only_Special : Boolean) return String
      with Pre => Present (E) and then Present (GT);
-   --  If E is a field in a record, return a string to use to describe
-   --  any special attributes (e.g., atomic) for use in an error
-   --  message.  If Only_Special, then return a null string if there's
-   --  no special attribute.  Otherwise, just return "&".  GT is the
-   --  type to be used.
+   --  If E is a field in a record, return a string to use to describe any
+   --  special attributes (e.g., atomic) for use in an error message. If
+   --  Only_Special, then return a null string if there's no special
+   --  attribute. Otherwise, just return "&". GT is the type to be used.
 
    procedure Push_LValue_List  with Inline;
    procedure Pop_LValue_List   with Inline;
@@ -212,7 +210,7 @@ package GNATLLVM.Types is
 
    function Is_Full_Base_Type (TE : Void_Or_Type_Kind_Id) return Boolean is
      (Full_Base_Type (TE) = TE);
-   --  True when TE is its own base type.  Similar, but not identical to
+   --  True when TE is its own base type. Similar, but not identical to
    --  the front-end function Is_Base_Type, which just tests the Ekind.
 
    function Ultimate_Base_Type (TE : Type_Kind_Id) return Type_Kind_Id
@@ -289,10 +287,10 @@ package GNATLLVM.Types is
       then To_Bits (Store_Size_Of_Type (Module_Data_Layout, T))
       else To_Bits (ABI_Size_Of_Type (Module_Data_Layout, T)))
      with Pre => Present (T);
-     --  Return the size of an LLVM type, in bits.  For structures, we want
-     --  to return the actual size, not including padding, but for other types
-     --  we need the size, including padding.  This is important for some
-     --  of the FP types.
+   --  Return the size of an LLVM type, in bits. For structures, we want to
+   --  return the actual size, not including padding, but for other types
+   --  we need the size, including padding. This is important for some of
+   --  the FP types.
 
    function Get_Type_Size (T : Type_T) return GL_Value is
      (Size_Const_Int (Get_Type_Size (T)))
@@ -330,8 +328,8 @@ package GNATLLVM.Types is
 
    function ULL_Align (C : ULL) return Nat;
    --  Return the maximum alignment that a constant C, representing a
-   --  position or offset, in bits, has.  This is the highest power of two that
-   --  divides C.
+   --  position or offset, in bits, has. This is the highest power of two
+   --  that divides C.
 
    function ULL_Align_Bytes (C : ULL) return Nat is
      (ULL_Align (C * UBPU));
@@ -346,9 +344,9 @@ package GNATLLVM.Types is
 
    function Is_Loadable_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
-   --  Returns True if we should use a load/store instruction to copy values
-   --  of this type.  We can't do this if it's of dynamic size, but LLVM
-   --  also doesn't do well with large load/store instructions.
+   --  Returns True if we should use a load/store instruction to copy
+   --  values of this type. We can't do this if it's of dynamic size, but
+   --  LLVM also doesn't do well with large load/store instructions.
 
    function Allocate_For_Type
      (GT       : GL_Type;
@@ -362,10 +360,10 @@ package GNATLLVM.Types is
      with Pre  => Present (GT),
           Post => Is_Reference (Allocate_For_Type'Result);
    --  Allocate space on the stack for an object of type GT and return a
-   --  pointer to the space.  Name is the name to use for the LLVM value.
+   --  pointer to the space. Name is the name to use for the LLVM value.
    --  V, if Present, is a value to be copied to the temporary and can be
-   --  used to size the allocated space.  Likewise For Expr, but both Expr
-   --  and V can't be Present.  N is a node used for a Sloc if we have to
+   --  used to size the allocated space. Likewise For Expr, but both Expr
+   --  and V can't be Present. N is a node used for a Sloc if we have to
    --  raise an exception.
 
    function Heap_Allocate_For_Type
@@ -381,7 +379,7 @@ package GNATLLVM.Types is
       Max_Size  : Boolean                 := False) return GL_Value
      with Pre  => Present (GT) and then (No (Proc) or else Present (Pool)),
           Post => Is_Reference (Heap_Allocate_For_Type'Result);
-   --  Similarly, but allocate storage on the heap.  This handles default
+   --  Similarly, but allocate storage on the heap. This handles default
    --  allocation, secondary stack, and storage pools.
 
    procedure Heap_Deallocate
@@ -401,13 +399,13 @@ package GNATLLVM.Types is
    function To_Size_Type (V : GL_Value) return GL_Value
      with Pre  => Present (V),
           Post => Type_Of (To_Size_Type'Result) = Size_T;
-   --  Convert V to Size_Type.  This is always Size_Type's width, but may
+   --  Convert V to Size_Type. This is always Size_Type's width, but may
    --  actually be a different GNAT type.
 
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return Nat
      with Pre => Present (GT);
-   --  Return the alignment of a type.  If Use_Specified is False, ignore a
+   --  Return the alignment of a type. If Use_Specified is False, ignore a
    --  specified alignment.
 
    function Get_Type_Alignment
@@ -428,10 +426,10 @@ package GNATLLVM.Types is
       Max_Size   : Boolean  := False;
       No_Padding : Boolean  := False) return GL_Value
      with Pre => Present (GT), Post => Present (Get_Type_Size'Result);
-   --  Return the size of a type, in bytes, as a GL_Value.  If TE is
-   --  an unconstrained array type, V must be the value of the array.
-   --  If Max_Size is true, we return the maximum size of the type.
-   --  If No_Padding is true, we don't count any padding of the type.
+   --  Return the size of a type, in bytes, as a GL_Value. If TE is an
+   --  unconstrained array type, V must be the value of the array. If
+   --  Max_Size is true, we return the maximum size of the type. If
+   --  No_Padding is true, we don't count any padding of the type.
 
    function Compute_Size
      (Left_GT, Right_GT       : GL_Type;
@@ -440,19 +438,18 @@ package GNATLLVM.Types is
                   and then Present (Right_Value),
           Post =>  Present (Compute_Size'Result);
    --  Used for comparison and assignment: compute the size to be used in
-   --  the operation.  Right_Value must be specified.  Left_Value is
-   --  optional and will be specified in the comparison case, but not the
-   --  assignment case.  If Right_Value is a discriminated record, we
-   --  assume here that the last call to Emit_LValue was to compute
-   --  Right_Value so that we can use Get_Matching_Value to return the
-   --  proper object.  In the comparison case, where Left_Value is
-   --  specified, we can only be comparing arrays, so we won't need to
-   --  use Get_Matching_Value.
+   --  the operation. Right_Value must be specified. Left_Value is optional
+   --  and will be specified in the comparison case, but not the assignment
+   --  case.  If Right_Value is a discriminated record, we assume here that
+   --  the last call to Emit_LValue was to compute Right_Value so that we
+   --  can use Get_Matching_Value to return the proper object. In the
+   --  comparison case, where Left_Value is specified, we can only be
+   --  comparing arrays, so we won't need to use Get_Matching_Value.
 
    function Get_Type_Size_Complexity
      (GT : GL_Type; Max_Size : Boolean := False) return Nat
      with Pre  => Present (GT);
-   --  Return the complexity of computing the size of a type.  This roughly
+   --  Return the complexity of computing the size of a type. This roughly
    --  gives the number of "things" needed to access to compute the size.
    --  This returns zero iff the type is of a constant size.
 
@@ -460,7 +457,7 @@ package GNATLLVM.Types is
      (N : N_Attribute_Reference_Id) return Uint;
    --  If the attribute referenced by N is known statically (either by being
    --  set by the front end or by us via back-annotation, return the value
-   --  as a Uint.  Otherwise, return No_Uint.
+   --  as a Uint. Otherwise, return No_Uint.
 
    procedure Add_Flags_To_Instruction
      (Inst : Value_T; V : GL_Value; Special_Atomic : Boolean := False)
@@ -471,8 +468,7 @@ package GNATLLVM.Types is
    --  In order to use the generic functions that computing sizing
    --  information to compute whether a size is dynamic, we need versions
    --  of the routines that actually compute the size that instead only
-   --  record the size if it's a constant.  We use the data structure
-   --  below.
+   --  record the size if it's a constant. We use the data structure below.
 
    type IDS is record
       Is_None     : Boolean;
@@ -629,9 +625,9 @@ package GNATLLVM.Types is
    --  In order to use the generic functions that computing sizing
    --  information to compute a size and position in the form needs for
    --  back-annotation, we need versions of the routines that actually
-   --  compute the size that instead track whether it's a constant or
-   --  where we need a to use the tree structure that the front-end
-   --  provides.  We use the data structure below.
+   --  compute the size that instead track whether it's a constant or where
+   --  we need a to use the tree structure that the front-end provides. We
+   --  use the data structure below.
 
    type BA_Data is record
       Is_None     : Boolean;
@@ -705,9 +701,9 @@ package GNATLLVM.Types is
           Post => Is_Const (Const_Int'Result);
 
    function Annotated_Value (V : BA_Data) return Node_Ref_Or_Val;
-   --  Return a Node_Ref corresponding to BA_Data.  This may be either the
-   --  T_Value of that data, C_Value converted to a Uint, or No_Uint if
-   --  the conversion can't be done.
+   --  Return a Node_Ref corresponding to BA_Data. This may be either the
+   --  T_Value of that data, C_Value converted to a Uint, or No_Uint if the
+   --  conversion can't be done.
 
    function SO_Ref_To_BA (V : SO_Ref) return BA_Data is
      ((if   Is_Static_SO_Ref (V) then Const_Int (Size_GL_Type, V)
@@ -720,9 +716,9 @@ package GNATLLVM.Types is
       Want_Max : Boolean := True) return Node_Ref_Or_Val
      with Pre => Present (GT);
    --  Given a type that's used for the type of an object, return the
-   --  SO_Ref corresponding to the object's size.  If Do_Align is True,
-   --  align the size to the alignment.  If Want_Max is True, we want
-   --  the maximum size of GT, if it's an unconstrained record.
+   --  SO_Ref corresponding to the object's size. If Do_Align is True,
+   --  align the size to the alignment. If Want_Max is True, we want the
+   --  maximum size of GT, if it's an unconstrained record.
 
    function Unop
      (V    : BA_Data;
@@ -730,7 +726,7 @@ package GNATLLVM.Types is
       C    : TCode;
       Name : String := "") return BA_Data;
    --  Perform the operation on V defined by F (which is how to modify the
-   --  GL_Value) and C (which is how to make a representation tree).;
+   --  GL_Value) and C (which is how to make a representation tree).
 
    function Binop
      (LHS, RHS : BA_Data;
@@ -754,7 +750,7 @@ package GNATLLVM.Types is
       LHS, RHS : BA_Data;
       Name     : String := "") return BA_Data;
 
-   --  These are the arithmetic operations for back-annotation.  We want to
+   --  These are the arithmetic operations for back-annotation. We want to
    --  do simple constant-folding to make the expression simpler, but we
    --  can't do 0 * X => 0 because that could cause us to consider an
    --  array of size zero with a variable-sized component as being zero

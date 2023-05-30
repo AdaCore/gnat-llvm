@@ -71,18 +71,18 @@ package body GNATLLVM.Aliasing is
      with Pre => Is_Struct_Tag (MD);
 
    --  We need to record all types that are the designated types of access
-   --  types that are unchecked-converted into each other.  All of those
-   --  types need to have the same TBAA value.  Likewise for a UC where one
+   --  types that are unchecked-converted into each other. All of those
+   --  types need to have the same TBAA value. Likewise for a UC where one
    --  of the types is an aggregate.
    --
    --  We rely on the fact that UC's are uncommon, so we can have a table
-   --  that we traverse inefficiently.  The table maps the entity for a
-   --  type (the designated type) into an ordinal corresponding to the
-   --  types which have access types that are UC'ed to each other.  If any
-   --  of these objects are aggregates, we can't do this because we can't
-   --  use the same struct type tag for other than that struct.  We also
-   --  can't do this if any objects in the group are of different sizes.
-   --  So check for that and invalidate the group if so.
+   --  that we traverse inefficiently. The table maps the entity for a type
+   --  (the designated type) into an ordinal corresponding to the types
+   --  which have access types that are UC'ed to each other. If any of
+   --  these objects are aggregates, we can't do this because we can't use
+   --  the same struct type tag for other than that struct. We also can't
+   --  do this if any objects in the group are of different sizes.  So
+   --  check for that and invalidate the group if so.
 
    type UC_Group_Idx is new Nat;
    Empty_UC_Group_Idx : constant UC_Group_Idx := 0;
@@ -116,16 +116,16 @@ package body GNATLLVM.Aliasing is
    --  Look through all units for UC's between two access types
 
    --  The front end often makes distinct subtypes that have the same
-   --  relationship to the base type.  For example, there may be
-   --  multiple array subtypes with bounds 1 .. 2 and there may be
-   --  multiple record subtypes with the same discriminant value.
-   --  The front end uses these subtypes interchangably, so we need
-   --  to be sure that we use the same TBAA type tag for each of them.
-   --  To do this, we maintain a list of subtypes of a base type for
-   --  which we've made a TBAA and see if a new subtype is the same as
-   --  any of those.  The chain is maintained via the following table
-   --  (where each entry points to another entry in the chain, ending in
-   --  zero) and the head of the chain in is the TBAA_Data record below.
+   --  relationship to the base type. For example, there may be multiple
+   --  array subtypes with bounds 1 .. 2 and there may be multiple record
+   --  subtypes with the same discriminant value. The front end uses these
+   --  subtypes interchangably, so we need to be sure that we use the same
+   --  TBAA type tag for each of them.  To do this, we maintain a list of
+   --  subtypes of a base type for which we've made a TBAA and see if a new
+   --  subtype is the same as any of those. The chain is maintained via the
+   --  following table (where each entry points to another entry in the
+   --  chain, ending in zero) and the head of the chain in is the TBAA_Data
+   --  record below.
 
    type TBAA_Equiv is record
       Next : Nat;
@@ -144,18 +144,18 @@ package body GNATLLVM.Aliasing is
      with Post => Base_Type_For_Aliasing (TE) =
                   Base_Type_For_Aliasing (Find_Equiv_Subtype'Result);
    --  If TE is a subtype and there's another subtype of its base type
-   --  with an equivalent layout, return it.  Otherwise, return TE.
+   --  with an equivalent layout, return it. Otherwise, return TE.
 
    --  There are various objects related to arrays that each need to have
-   --  their own TBAAA type tags.  These basically correspond to different
-   --  GL_Relationships.  For most values here, the type data for both the
-   --  base type and subtypes are the same.  The exception is
-   --  Bounds_And_Data, which is only defined for constrained subtypes.  In
+   --  their own TBAAA type tags. These basically correspond to different
+   --  GL_Relationships. For most values here, the type data for both the
+   --  base type and subtypes are the same. The exception is
+   --  Bounds_And_Data, which is only defined for constrained subtypes. In
    --  that case, it represents a structure consisting of both the bounds
    --  (which are the same for all subtypes) and the data (which is unique
-   --  to the subtype and defined only for that subtype).  Note that the
+   --  to the subtype and defined only for that subtype). Note that the
    --  TBAA type tag for the data isn't stored here, but rather as the TBAA
-   --  data for the subtype.  For records, the only data used is for base
+   --  data for the subtype. For records, the only data used is for base
    --  types and contains the subtype chain.
 
    type TBAA_Data is record
@@ -257,8 +257,8 @@ package body GNATLLVM.Aliasing is
           Post => Present (Extract_Access_Type'Result)
                   and then Offset'Old >= Offset;
    --  MD is a type tag and we are doing an access of Size_In_Bytes wide
-   --  from it at Offset bytes from it.  Return the corresponding access
-   --  tag and new offset.  If MD is not a struct tag or if we're accessing
+   --  from it at Offset bytes from it. Return the corresponding access
+   --  tag and new offset. If MD is not a struct tag or if we're accessing
    --  the entire structure, we keep Offset unchanged and return MD.
 
    function Get_Field_TBAA
@@ -294,7 +294,7 @@ package body GNATLLVM.Aliasing is
          return Base_Type_For_Aliasing (Full_Base_Type (TE));
 
       --  If this is a composite derived type with the same representation
-      --  as its parent, use the parent.  But don't do this for tagged types
+      --  as its parent, use the parent. But don't do this for tagged types
       --  since we can track those using a parent relationship.
 
       elsif Is_Composite_Type (TE) and then Is_Derived_Type (TE)
@@ -367,8 +367,8 @@ package body GNATLLVM.Aliasing is
 
       begin
          --  If neither of these are base types for aliasing purposes, make
-         --  an entry for the base types.  This will produce entries all the
-         --  way up the base chain to make those types equivalent.  If any
+         --  an entry for the base types. This will produce entries all the
+         --  way up the base chain to make those types equivalent. If any
          --  aren't valid, then the below call will make the subtypes invalid.
 
          if not S_Is_Base and then not T_Is_Base then
@@ -450,7 +450,7 @@ package body GNATLLVM.Aliasing is
             return Skip;
 
          --  All we care about are N_Validate_Unchecked_Conversion nodes
-         --  between access types.  If the target type has
+         --  between access types. If the target type has
          --  No_Strict_Aliasing set, we're taking care of this another way,
          --  so we're OK here.
 
@@ -701,9 +701,9 @@ package body GNATLLVM.Aliasing is
    function Find_Equiv_Subtype (TE : Type_Kind_Id) return Type_Kind_Id is
       procedure Get_String_Bounds (TE : Array_Kind_Id; LB, HB : out Uint);
       --  Get the bounds of TE, which is known to be a subtype of String.
-      --  Handle both string literal and normal array case.  If a bound
-      --  isn't constant (which isn't the case for a string literal), set that
-      --  value to No_Uint.
+      --  Handle both string literal and normal array case. If a bound
+      --  isn't constant (which isn't the case for a string literal), set
+      --  that value to No_Uint.
 
       BT   : constant Type_Kind_Id := Base_Type_For_Aliasing (TE);
       Tidx : constant TBAA_Info_Id := Get_TBAA_Info (BT);
@@ -766,14 +766,14 @@ package body GNATLLVM.Aliasing is
          if Is_Layout_Identical (Type_Of (TE), Type_Of (E_TE))
            and then Has_Compatible_Representation (TE, E_TE)
          then
-            --  We have to check differently for arrays and records.  For
+            --  We have to check differently for arrays and records. For
             --  arrays, we need to have identical bounds.
 
             if Is_Array_Type (TE) then
 
-               --  If either is a string literal subtype, we know we're
-               --  a subtype of String and one dimension.  So get the
-               --  bounds and compare.
+               --  If either is a string literal subtype, we know we're a
+               --  subtype of String and one dimension. So get the bounds
+               --  and compare.
 
                if Ekind (TE) = E_String_Literal_Subtype
                  or else Ekind (E_TE) = E_String_Literal_Subtype
@@ -840,9 +840,9 @@ package body GNATLLVM.Aliasing is
 
             elsif Is_Record_Type (TE) then
 
-               --  We only have the potential of a match either if both have
-               --  constraints or neither do.  But if neither, we know we
-               --  have a match.
+               --  We only have the potential of a match either if both
+               --  have constraints or neither do. But if neither, we know
+               --  we have a match.
 
                declare
                   Constraint   : constant Elist_Id := Stored_Constraint (TE);
@@ -903,7 +903,7 @@ package body GNATLLVM.Aliasing is
       if No (TBAA) then
 
          --  If we have a parent field, its TBAA type tag, if any, is our
-         --  parent and we make a new TBAA type tag for our type.  If not,
+         --  parent and we make a new TBAA type tag for our type. If not,
          --  we get a new TBAA type tag for GT.
 
          if Present (PF)
@@ -1056,7 +1056,7 @@ package body GNATLLVM.Aliasing is
 
                --  Check for something invalidating the group, such as an
                --  aggregate type, because can't use the same type tag
-               --  because looking into the structures will fail.  We have
+               --  because looking into the structures will fail. We have
                --  no choice here but to not return a type tag in this
                --  case.
 
@@ -1167,10 +1167,10 @@ package body GNATLLVM.Aliasing is
          return Prim_TBAA;
 
       --  If this is a padded type, make a struct type with the primitive
-      --  tag as the only field since we don't care about padding.  But we
+      --  tag as the only field since we don't care about padding. But we
       --  can't do this for subtypes of aggregates since two identical
-      --  GL_Types for equivalent types must have the same TBAA type tag and
-      --  it's not at all worth making that happen.
+      --  GL_Types for equivalent types must have the same TBAA type tag
+      --  and it's not at all worth making that happen.
 
       elsif Is_Padded_GL_Type (GT)
         and then (Is_Elementary_Type (TE) or else Full_Base_Type (TE) = TE)
@@ -1294,7 +1294,7 @@ package body GNATLLVM.Aliasing is
          return No_Metadata_T;
       end if;
 
-      --  Otherwise fill in the three arrays above.  If we can't get a TBAA
+      --  Otherwise fill in the three arrays above. If we can't get a TBAA
       --  entry for a field, we can't make a TBAA type for the struct.
 
       for J in Struct_Fields'Range loop
@@ -1306,7 +1306,7 @@ package body GNATLLVM.Aliasing is
             Sizes   (J) := To_Bytes (Get_Type_Size (SF.T));
 
             --  If there's no GT for the field, this is a field used to
-            --  store bitfields.  So we make a unique scalar TBAA type
+            --  store bitfields. So we make a unique scalar TBAA type
             --  entry for it.
 
             if No (SF.GT) then
@@ -1319,7 +1319,7 @@ package body GNATLLVM.Aliasing is
                TBAAs (J) := Get_Field_TBAA (SF.Field, SF.GT);
             end if;
 
-            --  If we found an entry, store it.  Otherwise, we fail.
+            --  If we found an entry, store it. Otherwise, we fail.
 
             if No (TBAAs (J)) then
                return No_Metadata_T;
@@ -1360,7 +1360,7 @@ package body GNATLLVM.Aliasing is
         Get_TBAA_Type (Comp_GT,
                        Kind_From_Aliased (Has_Aliased_Components (A_TE)));
 
-      --  Now compute the TBAA struct tag for bounds.  Since bounds can't
+      --  Now compute the TBAA struct tag for bounds. Since bounds can't
       --  be modified, use a non-aliased unique version of the bound type.
 
       declare
@@ -1406,7 +1406,7 @@ package body GNATLLVM.Aliasing is
             end loop;
 
             --  If one of the index types has Universal_Aliasing, we won't
-            --  have a TBAA type for it above.  So we can't form a TBAA type
+            --  have a TBAA type for it above. So we can't form a TBAA type
             --  for our bounds either.
             --  ??? Should we do something about this?
 
@@ -1451,7 +1451,7 @@ package body GNATLLVM.Aliasing is
       end if;
 
       --  Most of the fields are the same as for the base type and were
-      --  initialized above.  However, if we have a type for the array data,
+      --  initialized above. However, if we have a type for the array data,
       --  we have a type for the array bounds + data.
 
       if Present (TBAA_Data) then
@@ -1506,7 +1506,7 @@ package body GNATLLVM.Aliasing is
    begin
       --  If this isn't a loadable type, we don't need to handle this and
       --  we either might not be able to (if it's of variable size) or don't
-      --  want to (if it has too many elements).  We also can't do anything
+      --  want to (if it has too many elements). We also can't do anything
       --  if there's no type tag for the component or if the component is
       --  of zero size.
 
@@ -1529,7 +1529,7 @@ package body GNATLLVM.Aliasing is
          --  We'd like to use a unique TBAA tag for each array element if
          --  components aren't aliased, but we can't do that because we'd
          --  then have two different chains, one per-component and one
-         --  per-object, and they won't conflict as they should.  It's more
+         --  per-object, and they won't conflict as they should. It's more
          --  important to detect that different objects don't conflict than
          --  different elements don't because it's usually easier to detect
          --  non-conflicting elements by seeing the different addresses.
@@ -1563,7 +1563,7 @@ package body GNATLLVM.Aliasing is
       end if;
 
       --  Otherwise we know (from the preconditions) that MD is a struct
-      --  tag.  We find the last field whose offset is less than or equal
+      --  tag. We find the last field whose offset is less than or equal
       --  to our offset and recurse in case we're into a nested struct.
 
       for J in 0 .. Last_Field_Index (MD) loop
@@ -1643,7 +1643,7 @@ package body GNATLLVM.Aliasing is
    begin
       --  If size isn't a constant, we can't do anything or if either side
       --  aliases everything or if we can't use access tags for struct
-      --  types due to an LLVM bug.  Otherwise, see if we can find a tag on
+      --  types due to an LLVM bug. Otherwise, see if we can find a tag on
       --  both sides that have a common tag if both sides are Present or
       --  use the one for LHS if only it's Present.
 
@@ -1688,7 +1688,7 @@ package body GNATLLVM.Aliasing is
 
    begin
       --  If size isn't a constant, we can't do anything or if either side
-      --  aliases everything.  Otherwise, see if we can find a struct type
+      --  aliases everything. Otherwise, see if we can find a struct type
       --  tag on either side that corresponds to the specified size.
 
       if not Is_A_Constant_Int (Size) or else Aliases_All (LHS)

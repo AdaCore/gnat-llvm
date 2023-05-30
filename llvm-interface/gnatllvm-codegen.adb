@@ -681,7 +681,7 @@ package body GNATLLVM.Codegen is
 
       --  For now we allow the -f/-m/-W/-w, -nostdlib and -pipe switches,
       --  even though they will have no effect, though some are handled in
-      --  Scan_Command_Line above.  This permits compatibility with
+      --  Scan_Command_Line above. This permits compatibility with
       --  existing scripts.
 
       return Switch (First + 1) in 'f' | 'm' | 'W' | 'w'

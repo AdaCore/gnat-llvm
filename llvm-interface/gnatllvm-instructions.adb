@@ -91,8 +91,8 @@ package body GNATLLVM.Instructions is
       --  point in front of it. Secondly, if we have an instruction, the
       --  builder operation inserts in front of it, but we want to insert
       --  after. The way to do that is to get the next instruction and
-      --  insert before that, but there may not be another instruction.
-      --  If so, then insert at the end of the block.
+      --  insert before that, but there may not be another instruction. If
+      --  so, then insert at the end of the block.
 
       if Present (P.Instr) then
          Next := Get_Next_Instruction (P.Instr);
@@ -386,10 +386,10 @@ package body GNATLLVM.Instructions is
       Mark_Overflowed (Result, Overflowed (LHS) or else Overflowed (RHS));
       Set_Alignment (Result, Nat'Min (Alignment (LHS), Alignment (RHS)));
 
-      --  If we have a TBAA type on the LHS (and hence on the result),
-      --  we can only leave it that way (and update the offset) if there's
-      --  no TBAA type on the RHS and the RHS is a constant.  It must also
-      --  be true that the new offset is not negative.
+      --  If we have a TBAA type on the LHS (and hence on the result), we
+      --  can only leave it that way (and update the offset) if there's no
+      --  TBAA type on the RHS and the RHS is a constant. It must also be
+      --  true that the new offset is not negative.
 
       if Present (TBAA_Type (Result)) then
          if Present (TBAA_Type (RHS)) or else not Is_A_Constant_Int (RHS)
@@ -426,10 +426,10 @@ package body GNATLLVM.Instructions is
       then
          return Result;
 
-      --  Otherwise, test for overflow.  Note that, unlike in C, LLVM
+      --  Otherwise, test for overflow. Note that, unlike in C, LLVM
       --  defines the result if an overflow occurs (mod 2**N), so we can
       --  safely do post-operation testing that we couldn't do if this were
-      --  the C addition operation.  The unsigned case is simple
+      --  the C addition operation. The unsigned case is simple
 
       elsif Is_Unsigned_Type (Result) then
          declare
@@ -491,7 +491,7 @@ package body GNATLLVM.Instructions is
       Mark_Overflowed (Result, Overflowed (LHS) or else Overflowed (RHS));
       Set_TBAA_Type   (Result, No_Metadata_T);
 
-      --  Set the resulting alignment.  Be careful about overflow, but be
+      --  Set the resulting alignment. Be careful about overflow, but be
       --  conservative on overflow with regard to BPU.
 
       Set_Alignment
@@ -613,17 +613,17 @@ package body GNATLLVM.Instructions is
          RV := Set_Arith_Attrs (RV, V);
       end if;
 
-      --  Build the result and propagate the overflow indication.  We're
-      --  not going to check for a possible constant overflow in the
-      --  shift itself.
+      --  Build the result and propagate the overflow indication. We're not
+      --  going to check for a possible constant overflow in the shift
+      --  itself.
 
       Result := G_From (RV, V);
       Mark_Overflowed (Result, Overflowed (V) or else Overflowed (Count));
       Set_TBAA_Type   (Result, No_Metadata_T);
 
       --  If count is a positive constant, we can compute the alignment of
-      --  the result from the input.  Otherwise we don't know anything
-      --  about the alignment.
+      --  the result from the input. Otherwise we don't know anything about
+      --  the alignment.
 
       if Is_A_Constant_Int (Count) and then +Count > ULL (0) then
          if +Count >= ULL (20) then
@@ -836,9 +836,9 @@ package body GNATLLVM.Instructions is
       elsif C_If = Const_False then
          return C_Else;
 
-      --  Otherwise, form the result.  The alignment can be the most
-      --  conservative of the two, but we can only keep the TBAA information
-      --  if it's the same on both arms.
+      --  Otherwise, form the result. The alignment can be the most
+      --  conservative of the two, but we can only keep the TBAA
+      --  information if it's the same on both arms.
 
       else
          Result := G_From (Build_Select (IR_Builder,
@@ -1151,9 +1151,9 @@ package body GNATLLVM.Instructions is
       --  Otherwise, adjust Result's offset. We know that Result is a GEP,
       --  but it's possible that Ptr was also a GEP with the same input as
       --  Result and that Result is folded into a GEP with an additional
-      --  operand.  In that case, incrementing the TBAA offset of Ptr by
-      --  the offset of Result is wrong since that would be counting the
-      --  offset of Ptr's GEP twice.
+      --  operand. In that case, incrementing the TBAA offset of Ptr by the
+      --  offset of Result is wrong since that would be counting the offset
+      --  of Ptr's GEP twice.
 
       else
          Set_TBAA_Offset (Result, TBAA_Offset (Result) + New_Offset);

@@ -62,11 +62,11 @@ package body GNATLLVM.Builtins is
       End_Index   : out Integer;
       Op          : out Atomic_RMW_Bin_Op_T) return Boolean;
    --  See if the string S starting at position Index is the name of
-   --  a supported LLVM atomicrmw instruction.  If so, set End_Index
+   --  a supported LLVM atomicrmw instruction. If so, set End_Index
    --  to after the name and Op to the code for the operation and return True.
 
    function Last_Non_Suffix (S : String) return Integer;
-   --  S is the name of some intrinsic function.  Return the index of
+   --  S is the name of some intrinsic function. Return the index of
    --  the last character of that name that doesn't include a "_N" suffix
    --  where N is a string of digits denoting a size and the '_' is optional.
 
@@ -77,20 +77,20 @@ package body GNATLLVM.Builtins is
      with Pre => Present (GT);
    --  Return True if the characteers at the end of string S
    --  represents an integer corresponding to the size of GT measured
-   --  in bytes or bits, depending on In_Bytes.  If it's in bits, a
+   --  in bytes or bits, depending on In_Bytes. If it's in bits, a
    --  leading underscore isn't required.
 
    function Emit_Ptr (N : N_Subexpr_Id; GT : GL_Type) return GL_Value
      with Pre => Present (GT);
    --  If N is an Address or an access type pointing to GT, return a
-   --  GL_Value that's a Reference to GT.  If not, or if GT is not an
+   --  GL_Value that's a Reference to GT. If not, or if GT is not an
    --  elementary type, return No_GL_Value.
 
    function Emit_And_Maybe_Deref
      (N : N_Subexpr_Id; GT : GL_Type) return GL_Value
      with Pre => Present (GT);
    --  If N's type is GT or if it's an access type to GT, return the
-   --  evaluated expression (with a dereference if an access type).  If
+   --  evaluated expression (with a dereference if an access type). If
    --  not, return No_GL_Value.
 
    function Memory_Order
@@ -110,10 +110,10 @@ package body GNATLLVM.Builtins is
       GT      : GL_Type) return GL_Value
      with Pre => Present (Val) and then Present (GT);
    --  Perform the Fetch_And_Op (Atomic_RMW) given by Op at the location
-   --  N.  If Op_Back is True, we want the new value, so we have to
+   --  N. If Op_Back is True, we want the new value, so we have to
    --  perform the operation on the result.  Order is the memory ordering
-   --  needed.  S and GT are as for Type_Size_Matches_Name.  If we can
-   --  peform the operation, return the result.  Otherwise, return
+   --  needed. S and GT are as for Type_Size_Matches_Name. If we can
+   --  peform the operation, return the result. Otherwise, return
    --  No_GL_Value.
 
    function Emit_Atomic_Load
@@ -472,7 +472,7 @@ package body GNATLLVM.Builtins is
          return No_GL_Value;
       end if;
 
-      --  Now we can emit the operation.  But we can't have unordered
+      --  Now we can emit the operation. But we can't have unordered
       --  atomic RMW operations, so silently avoid that.
 
       Result := Atomic_RMW (Op, Ptr_Val, Val,
@@ -481,7 +481,7 @@ package body GNATLLVM.Builtins is
                              else Order));
       Set_Volatile_For_Atomic (Result);
 
-      --  If we want the value before the operation, we're done.  Otherwise,
+      --  If we want the value before the operation, we're done. Otherwise,
       --  we have to do the operation.
 
       if not Op_Back then
@@ -593,8 +593,8 @@ package body GNATLLVM.Builtins is
       Result    : GL_Value;
 
    begin
-      --  This may be a __sync builtin.  Parse it to see what it tells us
-      --  to do.  If anything is wrong with the builtin or its operands,
+      --  This may be a __sync builtin. Parse it to see what it tells us
+      --  to do. If anything is wrong with the builtin or its operands,
       --  just return No_GL_Value and a normal call will result, which will
       --  produce a link error.
       --
@@ -679,7 +679,7 @@ package body GNATLLVM.Builtins is
       GT        : GL_Type;
 
    begin
-      --  This is supposedly a __builtin_bswap builtin.  Verify that it is.
+      --  This is supposedly a __builtin_bswap builtin. Verify that it is.
       --  There must be exactly one actual.
 
       if No (Val) or else Present (Next_Actual (Val)) then
@@ -773,7 +773,7 @@ package body GNATLLVM.Builtins is
          elsif N_Args > 3 then Full_GL_Type (Arg3)
          elsif not Is_Proc then Full_GL_Type (N) else No_GL_Type);
       --  The above is a bit of a kludge to get the "operation" GL_Type
-      --  given all the possible variants of atomic operations.  The last
+      --  given all the possible variants of atomic operations. The last
       --  argument is always an ordering type, so can't determine the
       --  needed type.
 
@@ -896,7 +896,7 @@ package body GNATLLVM.Builtins is
                F_Order := S_Order;
             end if;
 
-            --  Now do the operation.  Return the result as a boolean, but
+            --  Now do the operation. Return the result as a boolean, but
             --  if "expected" was a pointer (or address), set it to the old
             --  value.
 

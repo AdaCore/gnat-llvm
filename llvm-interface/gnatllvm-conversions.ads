@@ -33,7 +33,7 @@ package GNATLLVM.Conversions is
                   and then not (Is_Unchecked and Need_Overflow_Check),
           Post => Present (Emit_Conversion'Result);
    --  Emit code to convert N to GT, optionally in unchecked mode
-   --  and optionally with an overflow check.  From_N is the conversion node,
+   --  and optionally with an overflow check. From_N is the conversion node,
    --  if there is a corresponding source node.
 
    function Emit_Convert_Value
@@ -54,7 +54,7 @@ package GNATLLVM.Conversions is
           Post => Is_Data (Convert'Result)
                   and then Is_Elementary_Type (Convert'Result);
    --  Convert V to the type GT, with both the types of V and GT being
-   --  elementary.  Flags are as for Emit_Conversion.
+   --  elementary. Flags are as for Emit_Conversion.
 
    function Convert
      (V, T           : GL_Value;
@@ -98,11 +98,11 @@ package GNATLLVM.Conversions is
    function Convert_GT (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Present (V) and then Present (GT),
           Post => Present (Convert_GT'Result);
-   --  Convert V to GT. ???  We have a mess here because the front end
+   --  Convert V to GT. ??? We have a mess here because the front end
    --  often treats different types as if they're identical, but we,
-   --  unfortunately, sometimes must keep the original type.  This means that
+   --  unfortunately, sometimes must keep the original type. This means that
    --  we may sometimes do nothing even though we actually have to convert
-   --  due to a GT difference of the types.  Nothing we can do about it
+   --  due to a GT difference of the types. Nothing we can do about it
    --  for now.
 
    function Maybe_Convert_GT (V : GL_Value; GT : GL_Type) return GL_Value is
@@ -115,7 +115,7 @@ package GNATLLVM.Conversions is
    function Convert_Pointer (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Is_Pointer (V) and then Present (GT),
           Post => Is_Pointer (Convert_Pointer'Result);
-   --  V is a reference to some object.  Convert it to a reference to GT
+   --  V is a reference to some object. Convert it to a reference to GT
    --  with the same relationship.
 
    function Convert_Aggregate_Constant
@@ -158,7 +158,7 @@ package GNATLLVM.Conversions is
 
    function Is_Unsigned_For_RM (GT : GL_Type) return Boolean
      with Pre => Present (GT);
-   --  Return true if GT has an unsigned representation.  This needs to be
+   --  Return true if GT has an unsigned representation. This needs to be
    --  used when the representation of types whose precision is not equal
    --  to their size is manipulated based on the RM size.
 

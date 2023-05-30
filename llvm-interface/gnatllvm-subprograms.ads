@@ -37,9 +37,9 @@ package GNATLLVM.Subprograms is
    function Create_Subprogram_Type
      (E : Subprogram_Type_Or_Kind_Id) return Type_T
      with Post => Present (Create_Subprogram_Type'Result);
-   --  Create subprogram type.  E can either be a subprogram,
-   --  in which case a subprogram type will be created from it or a
-   --  subprogram type directly.
+   --  Create subprogram type.  E can either be a subprogram, in which case
+   --  a subprogram type will be created from it or a subprogram type
+   --  directly.
 
    function Create_Subprogram_Access_Type return Type_T
      with Post => Present (Create_Subprogram_Access_Type'Result);
@@ -54,7 +54,7 @@ package GNATLLVM.Subprograms is
      with Pre => S'Length > 0 and then Present (Subp_Type)
                  and then Present (GT);
    --  Create a function with the give name and type, but handling the case
-   --  where we're also compiling a function with that name.  By default,
+   --  where we're also compiling a function with that name. By default,
    --  these functions can return, but will not throw an exception, but
    --  this can be changed.
 
@@ -84,8 +84,8 @@ package GNATLLVM.Subprograms is
    function Emit_Call
      (N         : N_Subprogram_Call_Id;
       Outer_LHS : GL_Value := No_GL_Value) return GL_Value;
-   --  Compile a call statement/expression and return its result value.  If
-   --  this is calling a procedure, there will be no return value.  If
+   --  Compile a call statement/expression and return its result value. If
+   --  this is calling a procedure, there will be no return value. If
    --  Outer_LHS is Present, it's a place that we'll be storing the result
    --  of the function in case that turns out to be useful.
 
@@ -127,7 +127,7 @@ package GNATLLVM.Subprograms is
    --  Emit code for the elaboration procedure for N.  For_Body says
    --  whether this is the elab proc for the body or the spec of a package.
    --  CU is the corresponding N_Compilation_Unit on which we set
-   --  Has_No_Elaboration_Code if there is any.  Stmts, if Present, is an
+   --  Has_No_Elaboration_Code if there is any. Stmts, if Present, is an
    --  N_Handled_Sequence_Of_Statements that also have to be in the
    --  elaboration procedure.
 
@@ -141,7 +141,7 @@ package GNATLLVM.Subprograms is
 
    procedure Emit_One_Body
      (N : N_Subprogram_Body_Id; For_Inline : Boolean := False);
-   --  Generate code for one given subprogram body.  If For_Inline is
+   --  Generate code for one given subprogram body. If For_Inline is
    --  True, we're compiling this just to possibly inline it.
 
    --  For subprogram return, we have the mechanism for handling the
@@ -167,7 +167,7 @@ package GNATLLVM.Subprograms is
    --  Get the Return_Kind of E, a subprogram or subprogram type
 
    --  Next we have the actual LLVM return contents, which can be the
-   --  subprogram return, one or more out parameters, or both.  This
+   --  subprogram return, one or more out parameters, or both. This
    --  says which.
 
    type L_Ret_Kind is
@@ -196,7 +196,7 @@ package GNATLLVM.Subprograms is
 
    function Number_In_Params (E : Subprogram_Type_Or_Kind_Id) return Nat;
    --  Return a count of the number of parameters of E, that are
-   --  explict input parameters to E.  We may have to add a parameter for
+   --  explict input parameters to E. We may have to add a parameter for
    --  an activation record and/or address to place the return.
 
    function Number_Out_Params (E : Subprogram_Type_Or_Kind_Id) return Nat;
@@ -240,12 +240,12 @@ package GNATLLVM.Subprograms is
      (N      : N_Subprogram_Specification_Id;
       Frozen : Boolean := True) return GL_Value;
    --  Compile a subprogram specification, creating the subprogram if not
-   --  already done.  Return the subprogram value.
+   --  already done. Return the subprogram value.
 
    procedure Emit_Subprogram_Body
      (N : N_Subprogram_Body_Id; For_Inline : Boolean := False);
-   --  Compile a subprogram body and save it in the environment.  If For_Inline
-   --  is True, we're compiling this just to possibly inline it.
+   --  Compile a subprogram body and save it in the environment. If
+   --  For_Inline is True, we're compiling this just to possibly inline it.
 
    procedure Emit_Return_Statement (N : N_Simple_Return_Statement_Id)
      with Pre => Nkind (N) = N_Simple_Return_Statement;
@@ -263,9 +263,9 @@ package GNATLLVM.Subprograms is
    procedure Enter_Subp (Func : GL_Value)
      with Pre  => Present (Func) and then Library_Level,
           Post => not Library_Level, Inline;
-   --  Create an entry basic block for this subprogram and position
-   --  the builder at its end. Mark that we're in a subprogram.  To be
-   --  used when starting the compilation of a subprogram body.
+   --  Create an entry basic block for this subprogram and position the
+   --  builder at its end. Mark that we're in a subprogram. To be used when
+   --  starting the compilation of a subprogram body.
 
    procedure Leave_Subp
      with Pre  => not Library_Level, Post => Library_Level, Inline;

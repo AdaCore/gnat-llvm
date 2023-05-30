@@ -80,7 +80,7 @@ package body GNATLLVM.Conditionals is
       Move_To_BB (Block_Exit);
 
       --  If we exited the entry block, it means that for AND, the result
-      --  is false and for OR, it's true.  Otherwise, the result is the right.
+      --  is false and for OR, it's true. Otherwise, the result is the right.
 
       return Build_Phi
         ((1 => (if And_Op then Const_False else Const_True), 2 => RHS),
@@ -104,8 +104,8 @@ package body GNATLLVM.Conditionals is
       if Decls_Only then
          return Get (Get_Undef (Boolean_GL_Type), Boolean_Data);
 
-      --  LLVM treats pointers as integers regarding comparison.  But we first
-      --  have to see if the pointer has an activation record.  If so,
+      --  LLVM treats pointers as integers regarding comparison. But we first
+      --  have to see if the pointer has an activation record. If so,
       --  we just compare the functions, not the activation record.
 
       elsif Is_Access_Subprogram_Type (GT)
@@ -135,7 +135,7 @@ package body GNATLLVM.Conditionals is
       elsif Is_Record_Type (GT) then
          declare
             --  Now we need to get the size of the record (in bytes) to do
-            --  the memory comparison.  Memcmp is defined as returning zero
+            --  the memory comparison. Memcmp is defined as returning zero
             --  for a zero size, so we don't need to worry about testing
             --  for that case, but handle the case of a constant 0.
 
@@ -256,8 +256,8 @@ package body GNATLLVM.Conditionals is
          begin
             --  There's an obscure case where if both arrays have a
             --  dimension that's zero (whether or not it's the same
-            --  dimension in both), the arrays compare true.  This is
-            --  tested in C45264A.  If this is a single-dimensional array,
+            --  dimension in both), the arrays compare true. This is
+            --  tested in C45264A. If this is a single-dimensional array,
             --  this falls through from the normal computation, but for
             --  multi-dimensional arrays, we have to actually do the test.
 
@@ -272,8 +272,8 @@ package body GNATLLVM.Conditionals is
 
             if Last_Dim /= 0 then
 
-               --  RHS is the least complex.  So check its dimensions.
-               --  If any are zero, we need to check LHS.  If none are zero
+               --  RHS is the least complex. So check its dimensions.
+               --  If any are zero, we need to check LHS. If none are zero
                --  (and hopefully we'll know this at compile-time), we
                --  don't need to check LHS and can go to the next test.
 
@@ -315,7 +315,7 @@ package body GNATLLVM.Conditionals is
             end if;
 
             --  For each dimension, see if the lengths of the two arrays
-            --  are different.  If so, the comparison is false.
+            --  are different. If so, the comparison is false.
 
             --  We need to be careful with types here: LHS and RHS are
             --  the actual array types, but, because we called Emit_LValue,
@@ -333,7 +333,7 @@ package body GNATLLVM.Conditionals is
             declare
 
                --  Now we need to get the size of the array (in bytes)
-               --  to do the memory comparison.  Memcmp is defined as
+               --  to do the memory comparison. Memcmp is defined as
                --  returning zero for a zero size, so we don't need to worry
                --  about testing for that case, but do check for constant 0.
 
@@ -357,7 +357,7 @@ package body GNATLLVM.Conditionals is
             end;
          end;
 
-      --  And now we have the other cases.  We do have to be careful in how
+      --  And now we have the other cases. We do have to be careful in how
       --  the tests work that we don't have infinite mutual recursion.
 
       else
@@ -391,7 +391,7 @@ package body GNATLLVM.Conditionals is
 
       --  If we're comparing two access types, first get the values as
       --  references to the designated types, then as a single-word
-      --  reference.  To be a valid comparison, they must be the same LLVM
+      --  reference. To be a valid comparison, they must be the same LLVM
       --  type at that point.
 
       if Is_Access_Type (LHS) then
@@ -399,7 +399,7 @@ package body GNATLLVM.Conditionals is
          RHS := Get (From_Access (RHS), Reference_For_Integer);
 
          --  Now we have simple pointers, but they may not be the same LLVM
-         --  type.  If they aren't, convert the RHS to the type of the LHS.
+         --  type. If they aren't, convert the RHS to the type of the LHS.
 
          if Type_Of (LHS) /= Type_Of (RHS) then
             RHS := Pointer_Cast (RHS, LHS);
@@ -416,7 +416,7 @@ package body GNATLLVM.Conditionals is
                           or else Is_Access_Type (LHS));
 
          --  At this point, if LHS is an access type, then RHS is too and
-         --  we know the aren't pointers to unconstrained arrays.  It's
+         --  we know the aren't pointers to unconstrained arrays. It's
          --  possible that the two pointer types aren't the same, however.
          --  So in that case, convert one to the pointer of the other.
 
@@ -512,7 +512,7 @@ package body GNATLLVM.Conditionals is
       --  Count the total number of choices in this case part
 
       procedure Swap_Highest_Cost (Is_Switch : Boolean);
-      --  Move the highest-cost alternative to the last entry.  Is_Switch
+      --  Move the highest-cost alternative to the last entry. Is_Switch
       --  says whether we look at the switch cost or the if cost.
 
       -------------------
@@ -528,8 +528,8 @@ package body GNATLLVM.Conditionals is
             while Present (Alt) loop
 
                --  We have a peculiarity in the "others" case of a case
-               --  statement.  The Alternative points to a list of choices
-               --  of which the first choice is an N_Others_Choice.  So
+               --  statement. The Alternative points to a list of choices
+               --  of which the first choice is an N_Others_Choice. So
                --  handle that specially both here and when we compute our
                --  Choices below.
 
@@ -545,14 +545,14 @@ package body GNATLLVM.Conditionals is
       end Count_Choices;
 
       --  We have data structures to record information about each choice
-      --  and each alternative in the case statement.  For each choice, we
-      --  record the bounds and costs.  The "if" cost is one if both bounds
-      --  are the same, otherwise two.  The "switch" cost is the size of the
+      --  and each alternative in the case statement. For each choice, we
+      --  record the bounds and costs. The "if" cost is one if both bounds
+      --  are the same, otherwise two. The "switch" cost is the size of the
       --  range, if known and fits in an integer, otherwise a large number
-      --  (we arbitrary use 1000).  For the alternative, we record the
-      --  basic block in which we've emitted the relevant code, the basic
-      --  block we'll use for the test (in the "if" case), the first and
-      --  last choice, and the total costs for all the choices in this
+      --  (we arbitrary use 1000). For the alternative, we record the basic
+      --  block in which we've emitted the relevant code, the basic block
+      --  we'll use for the test (in the "if" case), the first and last
+      --  choice, and the total costs for all the choices in this
       --  alternative.
 
       type One_Choice is record
@@ -635,7 +635,7 @@ package body GNATLLVM.Conditionals is
             Decode_Range (Choice, Low, High);
 
             --  When we compute the cost, set the cost of a null range
-            --  to zero.  If the if cost is 0 or 1, that's the switch cost too,
+            --  to zero. If the if cost is 0 or 1, that's the switch cost too,
             --  but if either of the bounds aren't in Int, we can't use
             --  switch at all.
 
@@ -686,10 +686,10 @@ package body GNATLLVM.Conditionals is
       end loop;
 
       --  We have two strategies: we can use an LLVM switch instruction if
-      --  there aren't too many choices.  If not, we use "if".  First we
+      --  there aren't too many choices. If not, we use "if". First we
       --  find the alternative with the largest switch cost and make that
-      --  the "others" option.  Then we see if the total cost of the remaining
-      --  alternatives is low enough (we use 100).  If so, use that approach.
+      --  the "others" option. Then we see if the total cost of the remaining
+      --  alternatives is low enough (we use 100). If so, use that approach.
 
       Swap_Highest_Cost (True);
       Switch_Cost := 0;
@@ -701,7 +701,7 @@ package body GNATLLVM.Conditionals is
       if Switch_Cost < 100 then
 
          --  First we emit the actual "switch" statement, then we add
-         --  the cases to it.  Here we collect all the basic blocks.
+         --  the cases to it. Here we collect all the basic blocks.
 
          declare
             BBs : Basic_Block_Array (Alts'Range);
@@ -738,7 +738,7 @@ package body GNATLLVM.Conditionals is
                   --  If we're processing the very last choice, then
                   --  if the choice is not a match, we go to "others".
                   --  Otherwise, we go to a new basic block that's the
-                  --  next choice.  Note that we can't simply test
+                  --  next choice. Note that we can't simply test
                   --  against Choices'Last because we may have swapped
                   --  some other alternative with Alts'Last.
 
@@ -809,7 +809,7 @@ package body GNATLLVM.Conditionals is
          end loop;
       end if;
 
-      --  When done, each part goes to the end of the statement.  If there's
+      --  When done, each part goes to the end of the statement. If there's
       --  an "else" clause, it's a new basic block and the end; otherwise,
       --  it's the last False block.
 
@@ -857,7 +857,7 @@ package body GNATLLVM.Conditionals is
 
          when N_In | N_Not_In =>
 
-            --  These could be done using the trick that maps signed
+            --  ??? These could be done using the trick that maps signed
             --  range comparisons to unsigned comparisons, but not worth
             --  the trouble.
 
@@ -972,7 +972,7 @@ package body GNATLLVM.Conditionals is
       --  If we haven't handled it via one of the special cases above, just
       --  evaluate the expression and do the branch, depending on whether
       --  the result if zero or nonzero, unless we already have an i1
-      --  (Boolean_Data relationship).  We must have a boolean type here.
+      --  (Boolean_Data relationship). We must have a boolean type here.
 
       pragma Assert (Is_Boolean_Type (Full_Etype (N)));
       Result := Emit (N);
@@ -1002,9 +1002,9 @@ package body GNATLLVM.Conditionals is
 
    begin
       --  For discrete types (all we handle here), handle ranges by testing
-      --  against the high and the low and branching as appropriate.  We
-      --  must be sure to evaluate the LHS only once.  But first check for
-      --  a range of size one since that's only one comparison.  If we are
+      --  against the high and the low and branching as appropriate. We
+      --  must be sure to evaluate the LHS only once. But first check for
+      --  a range of size one since that's only one comparison. If we are
       --  comparing against a range, be sure to do the comparison in the
       --  base type in case the subtype is unsigned and the base type isn't.
 
@@ -1110,9 +1110,9 @@ package body GNATLLVM.Conditionals is
 
    begin  --  Start of processing for Emit_If_Expression
 
-      --  Start by building the table of parts.  If we don't have any
-      --  nested N_If_Expression, there are two parts: one for 'then' and
-      --  one for 'else'.
+      --  Start by building the table of parts. If we don't have any nested
+      --  N_If_Expression, there are two parts: one for 'then' and one for
+      --  'else'.
 
       loop
          Expr := First (Expressions (Expr));

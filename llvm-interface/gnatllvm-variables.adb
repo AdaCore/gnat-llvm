@@ -53,7 +53,7 @@ package body GNATLLVM.Variables is
    --  As long as both aren't simultaneously visible, there's no problem,
    --  but if we try to elaborate both of them, LLVM will detect the
    --  duplicate name and "disambiguate" it, which isn't what we want
-   --  because they are, indeed, meant to refer to the same variable.  So
+   --  because they are, indeed, meant to refer to the same variable. So
    --  we record here which entities correspond to the same external name.
    --  We also have to record internally-defined names that are defined in
    --  the library with matching external names.
@@ -569,7 +569,7 @@ package body GNATLLVM.Variables is
                return False;
             end if;
 
-            --  Now check the lower bound of the prefix.  A string literal
+            --  Now check the lower bound of the prefix. A string literal
             --  is always static.
 
             declare
@@ -796,7 +796,7 @@ package body GNATLLVM.Variables is
                --  elements because we can't form the resulting
                --  GL_Value. But be careful not to be confused by having
                --  the unconstrained array as the type of inner aggregates
-               --  of multi-dimensional arrays.  We also can't support an
+               --  of multi-dimensional arrays. We also can't support an
                --  aggregate where the component type is a unconstrained
                --  record.
 
@@ -904,8 +904,10 @@ package body GNATLLVM.Variables is
                                                        (Expression (N)))
                           or else Is_A_Constant_FP  (Emit_No_Error
                                                        (Expression (N))))
+
               --  If converting to a scalar type other than Size_Type,
               --  we can't have a relocatable expression.
+
               and then (Nkind (N) /= N_Type_Conversion
                           or else not Do_Overflow_Check (N)
                           or else not Overflowed (Emit_No_Error (N)));
@@ -1244,10 +1246,9 @@ package body GNATLLVM.Variables is
         ULL (Get_Bits_Per_Word) *  Threshold_In_Words;
 
    begin
-      --  If we promoted this alloca, update the position for allocas
-      --  to after this one and restore the saved position.
-      --  Otherwise, indicate that a stack save may be needed in the
-      --  current block.
+      --  If we promoted this alloca, update the position for allocas to
+      --  after this one and restore the saved position. Otherwise,
+      --  indicate that a stack save may be needed in the current block.
 
       if Present (BB) then
          Entry_Block_Allocas.Instr := +Alloca;
@@ -1376,7 +1377,7 @@ package body GNATLLVM.Variables is
                      null;
 
                   --  Renamed subprograms may not be elaborated yet at this
-                  --  point since renamings do not trigger freezing.  Wait
+                  --  point since renamings do not trigger freezing. Wait
                   --  for the second pass to take care of them.
 
                   elsif Nkind (N) = N_Subprogram_Renaming_Declaration then
@@ -1393,7 +1394,7 @@ package body GNATLLVM.Variables is
       end if;
 
       --  Here we elaborate everything we deferred above except for package
-      --  bodies, which are elaborated at their freeze nodes.  Note that we
+      --  bodies, which are elaborated at their freeze nodes. Note that we
       --  must also go inside things (package specs and freeze nodes) the
       --  first pass did.  */
 
@@ -1440,7 +1441,7 @@ package body GNATLLVM.Variables is
         (if   Ekind (Etype (E)) = E_Class_Wide_Type and then Present (Expr)
               and then Nkind (Expr) = N_Qualified_Expression
          then Full_Etype (Expression (Expr)) else Full_Etype (E));
-      --  Type to use for allocation.  Normally, the type of the identifier
+      --  Type to use for allocation. Normally, the type of the identifier
       --  unless we have a qualified expression initializing a class wide
       --  type.
 
@@ -1515,7 +1516,7 @@ package body GNATLLVM.Variables is
       end if;
 
       --  Get the proper GT for this object given all of the above
-      --  computations.  But don't use a size that overflows.
+      --  computations. But don't use a size that overflows.
 
       GT := Make_GT_Alternative
         (GT, E,
@@ -1529,7 +1530,7 @@ package body GNATLLVM.Variables is
          Is_Biased     => Biased);
 
       --  To avoid linker issues, pad a zero-size object to one byte, but
-      --  don't get confused for cases where we need to store bounds.  We
+      --  don't get confused for cases where we need to store bounds. We
       --  needn't do this for non-file-level objects, but do so for
       --  compatibility with Gigi. But don't do this when generating C,
       --  since we want to delete zero-sized objects in that case.
@@ -1588,7 +1589,7 @@ package body GNATLLVM.Variables is
          end if;
       end if;
 
-      --  Now make a GL_Value.  We do this here since different constant
+      --  Now make a GL_Value. We do this here since different constant
       --  literals may have different types (i.e., bounds).
 
       return G (Const_Map.Element (+In_V), GT, Ref (In_V),
@@ -2089,7 +2090,7 @@ package body GNATLLVM.Variables is
 
          --  If this is a constrained subtype for a unconstrained
          --  actual array subtype of native type, this is aliased, and
-         --  we have no expression.  In that case, we still have to
+         --  we have no expression. In that case, we still have to
          --  initialize the bounds.
 
          elsif Type_Needs_Bounds (GT) and then not Nonnative

@@ -206,7 +206,7 @@ package body GNATLLVM.Arrays.Create is
       --  Even if this isn't a constant known to the front end, see if we
       --  can evaluate it at compile-time (without generating any code).
       --  If so, see if that results in an integer (it might be a symbolic
-      --  value) and an integer that's in range of an Int.  If all that is
+      --  value) and an integer that's in range of an Int. If all that is
       --  true, make a Uint out of it and use it as a constant bound.
 
       elsif Is_No_Elab_Needed (N) then
@@ -355,15 +355,15 @@ package body GNATLLVM.Arrays.Create is
       end if;
 
       --  We loop through each dimension of the array creating the entries
-      --  for Array_Info.  If the component type is of variable size or if
+      --  for Array_Info. If the component type is of variable size or if
       --  either bound of an index is a dynamic size, this type is of
-      --  dynamic size.  We could use an opaque type in that case, but
-      --  we have numerous array subtypes that should be treated identically
-      --  but couldn't if we took that approach.  However, all of those
-      --  subtypes will have the same component type.  If that component
+      --  dynamic size. We could use an opaque type in that case, but we
+      --  have numerous array subtypes that should be treated identically
+      --  but couldn't if we took that approach. However, all of those
+      --  subtypes will have the same component type. If that component
       --  type is of fixed size, we can make an LLVM array [0 x CT] where
-      --  CT is the component type.  Otherwise, we have to use [0 x i8].
-      --  We refer to both of these cases as creating a "fake" type.
+      --  CT is the component type. Otherwise, we have to use [0 x i8].  We
+      --  refer to both of these cases as creating a "fake" type.
 
       Index      := First_Index (A_TE);
       Base_Index := First_Index (Base_Type);
@@ -399,7 +399,7 @@ package body GNATLLVM.Arrays.Create is
             --  We have to be careful here and flag the type of the index
             --  from that of the base type since we can have index ranges
             --  that are outside the base type if the subtype is superflat
-            --  (see C37172C).  We also need to record the subtype of the
+            --  (see C37172C). We also need to record the subtype of the
             --  index as it appears in the base array type since that's
             --  what's used to compute the min/max sizes of objects.
             LB_Uint   : constant Uint    := Dim_Info.Low.Cnst;
@@ -477,9 +477,9 @@ package body GNATLLVM.Arrays.Create is
       end if;
 
       --  Now set our results, either recording it as the information for
-      --  the original array type or as the primary info.  In the latter case,
-      --  we do a redundant-looking setting of the type to simplify handling
-      --  of the other sets.
+      --  the original array type or as the primary info. In the latter
+      --  case, we do a redundant-looking setting of the type to simplify
+      --  handling of the other sets.
 
       if For_Orig then
          Set_Orig_Array_Info   (TE, First_Info);

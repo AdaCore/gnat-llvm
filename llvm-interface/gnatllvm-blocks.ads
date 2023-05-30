@@ -105,7 +105,7 @@ package GNATLLVM.Blocks is
    --  Raise an exception (default is overflow) if V evaluates to True
 
    procedure Emit_Fixups_For_Return;
-   --  We're going to do a return.  Emit any needed fixups from the block
+   --  We're going to do a return. Emit any needed fixups from the block
    --  we're in all the way out of the subprogram.
 
    procedure Emit_Raise_Call

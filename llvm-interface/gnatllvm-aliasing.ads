@@ -20,8 +20,8 @@ with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 
 package GNATLLVM.Aliasing is
 
-   --  LLVM has "new format" TBAA type and access tags.  We use them because
-   --  they allow the access type to be an aggregate.  We need this because
+   --  LLVM has "new format" TBAA type and access tags. We use them because
+   --  they allow the access type to be an aggregate. We need this because
    --  loads and stores of aggregates are very common in Ada.
    --
    --  Unfortunately, there's no documentation of this "new format" in LLVM
@@ -46,7 +46,7 @@ package GNATLLVM.Aliasing is
    --           i64 4, !5, i64 8, i64 4, !6, i64 12, i64 4}
    --
    --  where !2 is also a pointer to the parent, 16 is the size, in bytes,
-   --  of the type, and then we have triples of three entries each.  The
+   --  of the type, and then we have triples of three entries each. The
    --  first in each triple is the type tag for that field, the second is
    --  the offset of that type from the start of the struct, and the third is
    --  the size of that field.
@@ -62,12 +62,12 @@ package GNATLLVM.Aliasing is
    --  Note that "immutable" here means that the value of the memory in
    --  question is NEVER changed, not that it isn't changed at a later point
    --  in the execution (the latter is what the invariant.start intrinsic is
-   --  for).  However, LLVM already knows when memory is actually a constant,
+   --  for). However, LLVM already knows when memory is actually a constant,
    --  so it's not clear when we'd actually use this option.
 
    --  Unlike in C, access types can only point to aliased objects
    --  (RM 3.10(9/3)), so if we have two names for the same type, they can
-   --  only reference the same location if both are aliased.  We implement
+   --  only reference the same location if both are aliased. We implement
    --  this by using a per-type TBAA type tag for the cases where the object
    --  is aliased and a unique TBAA type tag for other references to objects
    --  of the type (e.g., a non-aliased field) and track the TBAA type tag
@@ -76,11 +76,11 @@ package GNATLLVM.Aliasing is
    --  However, there will be cases where the operations performed on
    --  GL_Values are too complex to accurately track (we need to know both
    --  the struct tag and offset and may not be able to find a constant
-   --  offset).  We could omit giving those a TBAA type tag, but that would
+   --  offset). We could omit giving those a TBAA type tag, but that would
    --  mean any such could alias any other such, which would pessimize the
    --  code because we do know that it can't alias anything other than its
    --  own type (with the exception of unchecked-converion issues, which
-   --  are handled elsewhere).  So instead, we define a "native" TBAA type
+   --  are handled elsewhere). So instead, we define a "native" TBAA type
    --  for a type which is the parent of both the TBAA type for aliased
    --  objects of that type and all the unique TBAA types made for that
    --  type.
@@ -108,8 +108,8 @@ package GNATLLVM.Aliasing is
 
    type TBAA_Kind is
      (Native,
-      --  The lowest-level TBAA type for a type.  Everything else related
-      --  to that type has it as a parent.  We use this for accesses where
+      --  The lowest-level TBAA type for a type. Everything else related
+      --  to that type has it as a parent. We use this for accesses where
       --  all we know is the type.
 
       For_Aliased,
@@ -118,11 +118,11 @@ package GNATLLVM.Aliasing is
 
       Unique,
       --  Used for non-aliased objects of the type (but not if
-      --  -fc-style-aliasing).  The parent is the Native kind.
+      --  -fc-style-aliasing). The parent is the Native kind.
 
       Unique_Aliased
       --  Used for aliased object of the type (or all objects if
-      --  -fc-style-aliasing).  The parent is the For_Aliased kind.
+      --  -fc-style-aliasing). The parent is the For_Aliased kind.
      );
 
    function Kind_From_Aliased (Is_Aliased : Boolean) return TBAA_Kind is

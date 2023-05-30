@@ -48,7 +48,7 @@ package GNATLLVM.Records is
 
    function Get_Record_Size_Complexity
      (TE : Record_Kind_Id; Max_Size : Boolean := False) return Nat;
-   --  Return the complexity of computing the size of a record.  This roughly
+   --  Return the complexity of computing the size of a record. This roughly
    --  gives the number of "things" needed to access to compute the size.
    --  This returns zero iff the record type is of a constant size.
 
@@ -99,10 +99,10 @@ package GNATLLVM.Records is
      (E : Record_Field_Kind_Id; V : GL_Value) return GL_Value
      with Post => No (Emit_Field_Position'Result)
                   or else Type_Of (Emit_Field_Position'Result) = Size_T;
-   --  Compute and return the position in bits of the field specified
-   --  by E from the start of its type as a value of Size_Type.  If
-   --  Present, V is a value of that type, which is used in the case
-   --  of a discriminated record.
+   --  Compute and return the position in bits of the field specified by E
+   --  from the start of its type as a value of Size_Type. If Present, V is
+   --  a value of that type, which is used in the case of a discriminated
+   --  record.
 
    --  Because the structure of record and field info is private and we
    --  don't want to generate too many accessors, we provide a function
@@ -166,10 +166,10 @@ package GNATLLVM.Records is
      (F           : Record_Field_Kind_Id;
       Force       : Boolean := False;
       Ignore_Size : Boolean := False) return Pack_Kind;
-   --  Returns how tightly we can pack F.  If Force is True, we want to
+   --  Returns how tightly we can pack F. If Force is True, we want to
    --  pack the field if it's valid to do so, not only when we does
    --  something from the perspective of this field (e.g., because we have
-   --  some bits to fill).  If Ignore_Size, ignore the fact that the field
+   --  some bits to fill). If Ignore_Size, ignore the fact that the field
    --  may be too large to pack.
 
    function Is_Bitfield_By_Rep
@@ -178,7 +178,7 @@ package GNATLLVM.Records is
       Size         : Uint := No_Uint;
       Use_Pos_Size : Boolean := False) return Boolean;
    --  True if we need bitfield processing for this field based on its
-   --  rep clause.  If Use_Pos_Size is specified, Pos and Size
+   --  rep clause. If Use_Pos_Size is specified, Pos and Size
    --  override that from F.
 
    function Is_Array_Bitfield (F : Record_Field_Kind_Id) return Boolean
@@ -214,8 +214,8 @@ package GNATLLVM.Records is
       VFA        : Boolean  := False) return GL_Value
      with  Pre  => Is_Record_Type (In_V),
            Post => Present (Build_Field_Load'Result);
-   --  V represents a record.  Return a value representing loading field
-   --  In_F from that record.  If For_LHS is True, this must be a reference
+   --  V represents a record. Return a value representing loading field
+   --  In_F from that record. If For_LHS is True, this must be a reference
    --  to the field, otherwise, it may or may not be a reference, depending
    --  on what's simpler and the value of Prefer_LHS.
 
@@ -227,7 +227,7 @@ package GNATLLVM.Records is
      with Pre => Is_Record_Type (In_LHS) and then Present (RHS);
    --  Likewise, but perform a store of RHS into the F component of In_LHS.
    --  If we return a value, that's the record that needs to be stored into
-   --  the actual LHS.  If no value if returned, all our work is done.
+   --  the actual LHS. If no value if returned, all our work is done.
 
    procedure Build_Field_Store
      (LHS  : GL_Value;
@@ -242,7 +242,7 @@ package GNATLLVM.Records is
      with  Pre  => (No (F) or else Is_Record_Type (LHS))
                    and then Present (RHS);
    --  Like Build_Field_Store, but stack the operation to be performed
-   --  later.  The operations are performed LIFO.
+   --  later. The operations are performed LIFO.
 
    procedure Perform_Writebacks;
    --  Perform any writebacks put onto the stack by the Add_Write_Back
@@ -266,19 +266,19 @@ private
    --  fields within the record.
    --
    --  The Record_Info type is the format of an entry in the
-   --  Record_Info_Table, indexed by the Record_Info_Id type.  The
+   --  Record_Info_Table, indexed by the Record_Info_Id type. The
    --  Field_Info type is the format of an entry in the Field_Info_Table,
-   --  indexed by the Field_Info_Id type.  Get_Record_Info applied to a
+   --  indexed by the Field_Info_Id type. Get_Record_Info applied to a
    --  record type points to a Record_Info_Id, which is the start of the
    --  description of the record. Get_Field_Info for each field points to a
    --  Field_Info_Id, which contains information about how to locate that
-   --  field within the record.  Record_Info objects are chained.  For
+   --  field within the record. Record_Info objects are chained.  For
    --  variant records, we use one chain for the common part of the record
    --  and chain for each variant.
    --
    --  The Record_Info data is used to compute the size of a record and, in
    --  conjunction with the Field_Info data, to determine the offset of a
-   --  field from the start of an object of that record type.  We record
+   --  field from the start of an object of that record type. We record
    --  information for each subtype separately.
    --
    --  A single Record_Info item can represent one of the following:
@@ -300,24 +300,24 @@ private
    --
    --  A simple record (unpacked, with just scalar components) is
    --  represented by a single Record_Info item which points to the LLVM
-   --  struct type corresponding to the Ada record.  More complex but
+   --  struct type corresponding to the Ada record. More complex but
    --  non-variant cases containing variable-sized objects require a mix of
-   --  Record_Info items corresponding to LLVM and GL types.  Note that a
+   --  Record_Info items corresponding to LLVM and GL types. Note that a
    --  reference to a discriminant is handled within the description of
    --  array types.
    --
    --  For more complex records, the LLVM type generated may not directly
-   --  correspond to that of the Ada type for two reasons.  First, the
+   --  correspond to that of the Ada type for two reasons. First, the
    --  GL_Type of a field may have an alignment larger than the alignment
    --  of the native LLVM type of that field or there may be record rep
    --  clauses that creates holes either at the start of a record or
-   --  between Ada fields.  In both of those cases, we add extra fields to
+   --  between Ada fields. In both of those cases, we add extra fields to
    --  the LLVM type to reflect the padding.
    --
    --  Secondly, LLVM doesn't support bitfields, so we have to do the work
-   --  of generating the corresponding operations directly.  We make a
+   --  of generating the corresponding operations directly. We make a
    --  field corresponding to a primitive scalar type with the proper size
-   --  and alignments to represent one or more bit fields.  In the
+   --  and alignments to represent one or more bit fields. In the
    --  Field_Info item corresponding to each bitfield, we identify the
    --  ordinal of the field in the LLVM type as well as the starting bit
    --  position and bit size.
@@ -334,7 +334,7 @@ private
    --  of the struct. For example, if we have { i32, i8 }, LLVM aligns the
    --  length and sets it to eight bytes, but there are many cases where we
    --  need it to be five bytes. One case is if this is a complete record
-   --  with a Size clause of 80 bytes.  But we'd also have issues with a
+   --  with a Size clause of 80 bytes. But we'd also have issues with a
    --  record like:
    --
    --      type R (D : Integer) is record
@@ -365,11 +365,11 @@ private
    --      discriminant) to determine which variant is present
    --
    --      An array of Record_Info chains (corresponding to the order in
-   --      the GNAT tree) for each variant.  The offset of each of these
+   --      the GNAT tree) for each variant. The offset of each of these
    --      chains starts at the offset of the variant Record_Info item.
    --
    --      An array of Record_Info items (in the same order) corresponding
-   --      to any fields that are repped into a fixed position.  The
+   --      to any fields that are repped into a fixed position. The
    --      relative offset of these fields is zero.
 
    type Record_Info_Base is record
@@ -432,7 +432,7 @@ private
 
    --  The information for a field is the index of the piece in the record
    --  information and optionally the location within the piece in the case
-   --  when the Record_Info is an LLVM_type.  We also record the GL_Type
+   --  when the Record_Info is an LLVM_type. We also record the GL_Type
    --  used to represent the field and bit positions if this is a bitfield.
 
    type Field_Info is record
@@ -464,14 +464,14 @@ private
       --  The TBAA type tag corresponding to this field
 
       Array_Bitfield       : Boolean;
-      --  If True, the underlying LLVM field is an array.  This means that
+      --  If True, the underlying LLVM field is an array. This means that
       --  we must use pointer-punning as part of accessing this field
       --  unless it's a constant, which forces it in memory and means we
       --  can't do get a static access to this field.
 
       Large_Array_Bitfield : Boolean;
       --  If True, this is an array bitfield, but one where the size is
-      --  larger than a word.  In this case, we can't even handle constants
+      --  larger than a word. In this case, we can't even handle constants
       --  statically.
 
    end record;

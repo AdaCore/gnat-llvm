@@ -41,8 +41,8 @@ package GNATLLVM.Types.Create is
           Post => Present (Validate_Alignment'Result);
    --  Current_Align is the current alignment of E, either because it's the
    --  alignment of the LLVM type (if E is a type) or because it's the
-   --  alignment of E's type (if E if an object).  Align is a proposed
-   --  alignment for E.  See if it's valid (possibly issuing an error
+   --  alignment of E's type (if E if an object). Align is a proposed
+   --  alignment for E. See if it's valid (possibly issuing an error
    --  message if not) and return it if so or some other acceptable value
    --  if not.
 
@@ -55,11 +55,11 @@ package GNATLLVM.Types.Create is
       Zero_Allowed  : Boolean := False;
       Is_RM_Size    : Boolean := False) return Uint
      with Pre => Present (E) and then Present (GT);
-   --  Validate that size Size is valid for entity E of type GT.  For_Type
+   --  Validate that size Size is valid for entity E of type GT. For_Type
    --  is True if we're doing this for a type, For_Component if this is
    --  for the component of an array and Zero_Allowed if a size of zero is
-   --  considered a valid size.  Give an error message if needed and return
-   --  a valid size.  Is_RM_Size indicates this size is from RM_Size;
+   --  considered a valid size. Give an error message if needed and return
+   --  a valid size. Is_RM_Size indicates this size is from RM_Size;
    --  this may change the text of the error message.
 
 end GNATLLVM.Types.Create;

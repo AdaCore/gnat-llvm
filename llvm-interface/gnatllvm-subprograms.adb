@@ -84,11 +84,11 @@ package body GNATLLVM.Subprograms is
       In_Value_By_Int,
       --  Similar to In_Value, but for a parameter with foreign convention
       --  that we have to pass as an integer to avoid issues with LLVM's
-      --  implementation of the x86-64 calling convention.  We don't
+      --  implementation of the x86-64 calling convention. We don't
       --  try to conditionalize this on the calling convention because
       --  in all other cases, the integer and record is passed the same.
       --  We also don't do this for large records even though there'd
-      --  be a difference in the ABI.   We do this compromise since this
+      --  be a difference in the ABI. We do this compromise since this
       --  case is rare and all known instances are of small size.
 
       Zero_Size,
@@ -206,7 +206,7 @@ package body GNATLLVM.Subprograms is
       Table_Name           => "Created_Subprograms");
 
    --  We maintain a map within a subprogram for variables that need to be
-   --  extracted from the activation record.  The LLVM optimizer will do this
+   --  extracted from the activation record. The LLVM optimizer will do this
    --  for us, so we don't have to do it, but lowering the amount of work the
    --  optimizer has to do is worthwhile and this will also make the code
    --  much easier to read.
@@ -230,8 +230,8 @@ package body GNATLLVM.Subprograms is
           Post => Is_Reference (Get_Activation_Record_Ptr'Result)
                   and then Is_Record_Type (Related_Type
                                         (Get_Activation_Record_Ptr'Result));
-   --  We need field E from an activation record.  V is the activation record
-   --  pointer passed to the current subprogram.  Return a pointer to the
+   --  We need field E from an activation record. V is the activation record
+   --  pointer passed to the current subprogram. Return a pointer to the
    --  proper activation record, which is either V or an up-level pointer.
 
    function Is_Binder_Elab_Proc (Name : String) return Boolean;
@@ -410,10 +410,10 @@ package body GNATLLVM.Subprograms is
       then
          return True;
 
-      --  We have to be careful in how we test for array types.  This could
+      --  We have to be careful in how we test for array types. This could
       --  be a normal array type or it could be a packed array
-      --  implementation type.  Check for both separately since both are
-      --  arrays;
+      --  implementation type. Check for both separately since both are
+      --  arrays.
 
       elsif Is_Array_Type (GT) then
          return Recurse and then Is_Initialized (Full_Component_GL_Type (GT));
@@ -489,7 +489,7 @@ package body GNATLLVM.Subprograms is
          return Out_Value;
 
       --  There are some case where an out parameter needs to be
-      --  viewed as in out.  These are detailed at 6.4.1(12).
+      --  viewed as in out. These are detailed at 6.4.1(12).
 
       elsif Param_Mode = E_Out_Parameter and then Is_Initialized (GT) then
          Param_Mode := E_In_Out_Parameter;
@@ -529,7 +529,7 @@ package body GNATLLVM.Subprograms is
 
       --  For foreign convention, the only time we pass by value is an
       --  elementary type that's an In parameter and Mechanism isn't
-      --  By_Reference or any type with a Mechanism of By_Copy.  Handle the
+      --  By_Reference or any type with a Mechanism of By_Copy. Handle them.
 
       elsif Foreign then
          return (if   Param_Mode = E_In_Parameter and then By_Ref_Mech /= Must
@@ -556,7 +556,7 @@ package body GNATLLVM.Subprograms is
          return By_Copy_Kind;
 
       --  For the default case, return by reference if it's larger than
-      --  two pointer.
+      --  two pointers.
 
       else
          return (if   By_Ref_Mech = Default_By_Ref then By_Ref_Kind
@@ -787,7 +787,7 @@ package body GNATLLVM.Subprograms is
 
          begin
             --  Save whether the original mechanism used was by-ref before
-            --  we change it.  We need this to warn on misaligned actuals.
+            --  we change it. We need this to warn on misaligned actuals.
 
             Set_Orig_By_Ref_Mech (Param_Ent,
                                   Mechanism (Param_Ent) = By_Reference);
@@ -830,7 +830,7 @@ package body GNATLLVM.Subprograms is
          In_Arg_Types (J) := Void_Ptr_T;
       end if;
 
-      --  Now deal with the result type.  We've already set if it it's
+      --  Now deal with the result type. We've already set if it it's
       --  simply the return type.
 
       case LRK is
@@ -1262,7 +1262,7 @@ package body GNATLLVM.Subprograms is
 
             --  If we have a reference to an unconstrained array, mark that
             --  the bounds can't change unless the bound itself is in the
-            --  fat pointer.  If the array is an In parameter (but not if
+            --  fat pointer. If the array is an In parameter (but not if
             --  its an access type), the data can't change as well. Don't
             --  do any of this when generating C.
 
@@ -2021,7 +2021,7 @@ package body GNATLLVM.Subprograms is
         with Pre => Present (V) and then Present (Param);
       --  Return whether V, when passed to a by-reference Formal, must be
       --  copied due to a misalignment. If Bitfield is True, we know that
-      --  we have a bitfield.  Also produce any required errors or
+      --  we have a bitfield. Also produce any required errors or
       --  warnings.
 
       type WB is record
@@ -2440,7 +2440,7 @@ package body GNATLLVM.Subprograms is
          Args (In_Idx) := S_Link;
       end if;
 
-      --  Now we handle the result.  It may be the return type of a function,
+      --  Now we handle the result. It may be the return type of a function,
       --  in which case we return it, one or more out parameters, or both.
       --  We may also have used the first parameter to pass an address where
       --  our value was returned.
@@ -2677,12 +2677,12 @@ package body GNATLLVM.Subprograms is
          Process_Pragmas      (E, LLVM_Func);
          Set_Dup_Global_Value (E, LLVM_Func);
 
-         --  Add function to the table of
-         --  subprograms that we've created, so we can add it to the module.
+         --  Add function to the table of subprograms that we've created,
+         --  so we can add it to the module.
 
          Created_Subprograms.Append (E);
 
-         --  Now deal with function and parameter attributes
+         --  Now deal with function and parameter attributes.
          --  ??? We don't handle some return value attributes yet.
 
          if CPU.all /= "generic" then

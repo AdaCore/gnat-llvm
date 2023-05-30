@@ -22,8 +22,8 @@ package GNATLLVM.Arrays.Create is
      with Pre  => (if   For_Orig then Is_Packed_Array_Impl_Type (TE)
                    else Is_Array_Type (TE)),
           Post => Present (Create_Array_Type'Result);
-   --  Return the type used to represent Array_Type_Node.  This will be
-   --  an opaque type if LLVM can't represent it directly.  If For_Orig
+   --  Return the type used to represent Array_Type_Node. This will be
+   --  an opaque type if LLVM can't represent it directly. If For_Orig
    --  is True, set the array info for the Original_Record_Type of TE.
 
    function Create_Array_Fat_Pointer_Type

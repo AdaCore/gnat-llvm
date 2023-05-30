@@ -52,10 +52,10 @@ package GNATLLVM is
    --  They represent a complete implemention of the Ada language.
    --
    --  We directly call subprograms from the front end and access the data
-   --  structures that it creates.  For the most part, our interface to
+   --  structures that it creates. For the most part, our interface to
    --  LLVM is via its C API, which we've converted into Ada specs so we
-   --  can call them directly.  However, there are some cases when we need
-   --  to call things available only in the LLVM C++ API.  In those cases,
+   --  can call them directly. However, there are some cases when we need
+   --  to call things available only in the LLVM C++ API. In those cases,
    --  we add functions to llvm_wrapper.cc, which are called from
    --  GNATLLVM.Wrapper.
    --
@@ -69,7 +69,7 @@ package GNATLLVM is
    --  to LLVM nodes: http://llvm.org/svn/llvm-project/dragonegg/trunk
    --
    --  Unlike gigi, where we build a tree from the GNAT tree, we directly
-   --  generate IR from the GNAT tree.  To do this effectively while tracking
+   --  generate IR from the GNAT tree. To do this effectively while tracking
    --  where we are, we do three things:
    --
    --  (1) The package GNATLLVM.Environment creates a linkage between GNAT
@@ -78,13 +78,13 @@ package GNATLLVM is
    --  (2) The package GNATLLVM.GLType contains an abstraction that lets us
    --  create variants of types, corresponding to different representations
    --  of those types, such as when padding, biasing, or different
-   --  alignment is needed.  We define functions on these GLTypes that
+   --  alignment is needed. We define functions on these GLTypes that
    --  correspond to the same accessors of the underlying GNAT type.
    --
    --  (3) The package GNATLLVM.GLValue defines the values that we pass
-   --  around and act on.  This consists of an LLVM Value_T, the GLType
+   --  around and act on. This consists of an LLVM Value_T, the GLType
    --  that it's related to, and the nature of the relationship (data,
-   --  bounds, address, etc.)  This contains functions to access both
+   --  bounds, address, etc.) This contains functions to access both
    --  LLVM attributes of the Value_T, but also function to access attibutes
    --  of the related type, including those of the underlying GNAT tree type.
    --
@@ -100,9 +100,9 @@ package GNATLLVM is
    --  Note that it can be very easy to make the error of calling some
    --  function with multiple operands, each of which cause code generation
    --  (which can be something like X + Y if X and Y are non-constant
-   --  GLValues).  This will generate correct code, but the precise code
+   --  GLValues). This will generate correct code, but the precise code
    --  generated will depend on the parameter evaluation order, which is
-   --  undefined in Ada.  This unpredictability can cause bootstrap
+   --  undefined in Ada. This unpredictability can cause bootstrap
    --  failures.
 
    --  This specific package contains very low-level types, objects, and

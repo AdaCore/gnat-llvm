@@ -56,7 +56,7 @@ package body GNATLLVM.Records.Create is
 
    function Variant_Alignment (Var_Part : N_Variant_Part_Id) return Nat;
    --  Compute the alignment of the variant at Var_Part, which is the
-   --  maximum size of any field in the variant.  We recurse through
+   --  maximum size of any field in the variant. We recurse through
    --  any nested variants.
 
    function Align_Pos (Pos : ULL; Align : Nat) return ULL is
@@ -127,7 +127,7 @@ package body GNATLLVM.Records.Create is
       Initial_Cur_Field : constant Opt_Record_Field_Kind_Id := Cur_Field;
 
    begin
-      --  Look from Cur_Field until the end of the list.  Then look from
+      --  Look from Cur_Field until the end of the list. Then look from
       --  the beginning to its previous value.
 
       while Present (Cur_Field) loop
@@ -366,18 +366,18 @@ package body GNATLLVM.Records.Create is
       type Field_Info_Id_Array is array (Nat range <>) of Field_Info_Id;
 
       --  This function creates a record type and the description of that
-      --  record.  Note that this function does not itself lay out the record.
-      --  We don't actually lay out record in that sense.  Instead, we create
+      --  record. Note that this function does not itself lay out the record.
+      --  We don't actually lay out record in that sense. Instead, we create
       --  Record_Info structures whose chaining describe the record structure
       --  and Field_Info structures, one for each field, showing where each
-      --  field is located in the record.  We then compute any information
+      --  field is located in the record. We then compute any information
       --  we need on the fly, mostly in Get_Record_Size_So_Far.
 
       --  For each "piece" of the record (for variant records, the common
       --  portion and each variant), we first list all the fields in that
       --  part, then sort the list to deal with record rep clauses and the
       --  few cases when we reorder records, then lay out the fields into
-      --  Record_Info pieces.  We start with a simple data structure that
+      --  Record_Info pieces. We start with a simple data structure that
       --  records information about the field to add and its location
       --  within the record.
 
@@ -422,7 +422,7 @@ package body GNATLLVM.Records.Create is
          Table_Name           => "Added_Fields");
 
       --  We maintain a table of all the LLVM types that will be put in a
-      --  LLVM struct type in an RI.  These are both for actual and padding
+      --  LLVM struct type in an RI. These are both for actual and padding
       --  fields.
 
       package LLVM_Types is new Table.Table
@@ -496,8 +496,8 @@ package body GNATLLVM.Records.Create is
 
       Split_Align    : Nat                      := Max_Valid_Align;
       --  We need to split an LLVM fragment type if the alignment of the
-      --  next field is greater than both this and Last_Align.  This occurs
-      --  for variant records; see details there.  It also occurs for the
+      --  next field is greater than both this and Last_Align. This occurs
+      --  for variant records; see details there. It also occurs for the
       --  same reason after a variable-size field.
 
       First_Field_Id : Field_Info_Id            := Empty_Field_Info_Id;
@@ -516,8 +516,9 @@ package body GNATLLVM.Records.Create is
       Discrim_FIs    : Field_Info_Id_Array      :=
         (1 .. Max_Discriminant (Full_Base_Type (TE)) => Empty_Field_Info_Id);
       --  In entry J, we record the Field_Info corresponding to the
-      --  discriminant number J.  We use this for record subtypes of
+      --  discriminant number J. We use this for record subtypes of
       --  derived types.
+
       Cur_Idx        : Record_Info_Id;
       --  The index of the record table entry we're building
 
@@ -549,7 +550,7 @@ package body GNATLLVM.Records.Create is
          Array_Bitfield       : Boolean := False;
          Large_Array_Bitfield : Boolean := False);
       --  Add a Field_Info info the table, if appropriate, and set
-      --  the field to point to it.  Update F_GT if we used a matching field.
+      --  the field to point to it. Update F_GT if we used a matching field.
 
       procedure Push_Parent_Depth;
       procedure Pop_Parent_Depth (Par_TE : Record_Kind_Id);
@@ -610,7 +611,7 @@ package body GNATLLVM.Records.Create is
 
          --  If we've had a previous RI for this part, link us to it.
          --  Otherwise, if this is an overlap RI, indicate it as so and
-         --  start the chain over.  If not, indicate the first index in our
+         --  start the chain over. If not, indicate the first index in our
          --  chain.
 
          if Present (Prev_Idx) then
@@ -935,8 +936,8 @@ package body GNATLLVM.Records.Create is
          Components := Component_List (Record_Definition);
 
          --  Add the parent field, which means adding all subfields of the
-         --  parent.  We can't just rely on field sorting to do this because
-         --  the parent record might have variants.  The way we do this
+         --  parent. We can't just rely on field sorting to do this because
+         --  the parent record might have variants. The way we do this
          --  depends on whether we're in normal mode or just elaborating
          --  types.
 
@@ -983,7 +984,7 @@ package body GNATLLVM.Records.Create is
 
                --  If this field is a hidden discriminant, we need to allow
                --  space for it in the record even though we won't have a
-               --  field for it. Handle that case here.  The test for scope
+               --  field for it. Handle that case here. The test for scope
                --  is testing whether we'll be setting the field info for
                --  the field.
 
@@ -1276,7 +1277,7 @@ package body GNATLLVM.Records.Create is
            and then not Debug_Flag_Dot_R and then not Is_Tagged_Type (BT)
            and then not (if   Is_Packed (BT) then Has_NP_Fixed
                          else Optimize_Alignment_Space (BT));
-         --  Says that it's OK to reorder fields in this record.  We don't
+         --  Says that it's OK to reorder fields in this record. We don't
          --  reorder for tagged records since an extension could add an
          --  aliased field but we must have the same ordering in
          --  extensions.
@@ -1353,7 +1354,7 @@ package body GNATLLVM.Records.Create is
 
          procedure Create_Bitfield_Field (J : Int);
          --  We're processing the component at table index J, which is known
-         --  to be a bitfield.  Create an LLVM field to hold contents of
+         --  to be a bitfield. Create an LLVM field to hold contents of
          --  the J'th field to process, which is known to be a bitfield.
 
          procedure Flush_Types;
@@ -1399,7 +1400,7 @@ package body GNATLLVM.Records.Create is
                return;
             end if;
 
-            --  Otherwise rebuild the added field table.  First write the
+            --  Otherwise rebuild the added field table. First write the
             --  fields before the one that references the discriminant,
             --  then those after that are aliased, then those after that
             --  aren't aliasd.
@@ -1599,7 +1600,7 @@ package body GNATLLVM.Records.Create is
          begin
             --  We need to create an LLVM field to use to represent one or
             --  more bitfields starting at location J in the Added_Fields
-            --  table.  We need to continue widening the field until we run
+            --  table. We need to continue widening the field until we run
             --  into a component that no longer overlaps any of the bits in
             --  the field or we've reached the end of the field list.
             --
@@ -1767,7 +1768,7 @@ package body GNATLLVM.Records.Create is
             begin
                --  If the parent depth has decreased and the previous
                --  parent has strict alignment, align our position to that
-               --  of its type.  Then save the potential current parent.
+               --  of its type. Then save the potential current parent.
 
                if AF.Par_Depth < Last_Par_Depth and then Present (Parent_TE)
                  and then Strict_Alignment (Parent_TE)
@@ -1879,7 +1880,7 @@ package body GNATLLVM.Records.Create is
 
                if Is_Nonnative_Type (F_GT) then
                   --  ??  This is the only case where we use an F_GT that
-                  --  might have been modified by Add_FI.  We need to be
+                  --  might have been modified by Add_FI. We need to be
                   --  sure that's OK.
 
                   Flush_Types;

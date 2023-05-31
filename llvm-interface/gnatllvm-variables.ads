@@ -40,8 +40,8 @@ package GNATLLVM.Variables is
    procedure Register_Global_Name (S : String)
      with Pre => not Detected_Duplicates;
    --  Register that we may be generating a global (variable or subprogram)
-   --  of name S.  Must be called after we've looked for globals with
-   --  Interface_Names.  Must not be called twice with the same name.
+   --  of name S. Must be called after we've looked for globals with
+   --  Interface_Names. Must not be called twice with the same name.
 
    procedure Detect_Duplicate_Global_Names;
    --  Make a pass over all library units looking for the use of the same
@@ -68,28 +68,28 @@ package GNATLLVM.Variables is
       End_List : Node_Id := Empty;
       Pass1    : Boolean := True;
       Pass2    : Boolean := True);
-   --  Elaborate decls in the lists List1 and List2, if present.  We make
+   --  Elaborate decls in the lists List1 and List2, if present. We make
    --  two passes, one to elaborate anything other than bodies (but we
-   --  declare a function if there was no spec).  The second pass
+   --  declare a function if there was no spec). The second pass
    --  elaborates the bodies.
    --
-   --  End_List gives the element in the list past the end.  Normally, this
+   --  End_List gives the element in the list past the end. Normally, this
    --  is Empty, but can be First_Real_Statement for a
    --  Handled_Sequence_Of_Statements.
    --
    --  We make a complete pass through both lists if Pass1 is true, then
-   --  make the second pass over both lists if Pass2 is true.  The lists
+   --  make the second pass over both lists if Pass2 is true. The lists
    --  usually correspond to the public and private parts of a package.
 
    function Maybe_Promote_Alloca
      (T : Type_T; Elts : GL_Value := No_GL_Value) return Basic_Block_T
      with Pre => Present (T);
    --  Called when about to do an alloca of type T to see if that
-   --  alloca should be promoted to the entry block.  The return from
+   --  alloca should be promoted to the entry block. The return from
    --  this function must be passed to Done_Promoting_Alloca along
-   --  with the alloca immediately after emitting the alloca.  The
+   --  with the alloca immediately after emitting the alloca. The
    --  pair of calls will do what's necessary, either promoting the
-   --  alloca or forcing a stack save/restore.  If Elts isn't specified,
+   --  alloca or forcing a stack save/restore. If Elts isn't specified,
    --  it's presumed to be 1.
    procedure Done_Promoting_Alloca
      (Alloca : GL_Value;
@@ -110,8 +110,8 @@ package GNATLLVM.Variables is
       Restrict_Types : Boolean := False) return Boolean
      with Pre => Present (N);
    --  Return True if N represents an expression that can be computed
-   --  without needing an elab proc.  If Not_Symbolic is True, we also
-   --  can't alllow anything symbolic.  If Restrict_Types is True, we can't
+   --  without needing an elab proc. If Not_Symbolic is True, we also
+   --  can't alllow anything symbolic. If Restrict_Types is True, we can't
    --  allow anything that's an access type or an elementary type wider
    --  than a word.
 
@@ -120,8 +120,8 @@ package GNATLLVM.Variables is
       Not_Symbolic   : Boolean := False;
       Restrict_Types : Boolean := False) return Boolean;
    --  Return True if E represents an entity that can be computed
-   --  without needing an elab proc.  If Not_Symbolic is True, we also
-   --  can't alllow anything symbolic.  If Restrict_Types is True, we can't
+   --  without needing an elab proc. If Not_Symbolic is True, we also
+   --  can't alllow anything symbolic. If Restrict_Types is True, we can't
    --  allow anything that's an access type or an elementary type wider
    --  than a word.
 
@@ -133,7 +133,7 @@ package GNATLLVM.Variables is
 
    procedure Emit_Declaration
      (N : N_Declaration_Id; For_Freeze_Entity : Boolean := False);
-   --  Emit a declaration.  For_Freeze_Entity is True if we're processing
+   --  Emit a declaration. For_Freeze_Entity is True if we're processing
    --  a Freeze_Entity.
 
    procedure Emit_Renaming_Declaration (N : N_Renaming_Declaration_Id);

@@ -215,7 +215,7 @@ package body GNATLLVM.GLType is
       Valid : constant Boolean := GL_Type_Info_Is_Valid_Int (GTI);
    begin
       --  This function exists so a conditional breakpoint can be set at
-      --  the following line to see the invalid value.  Otherwise, there
+      --  the following line to see the invalid value. Otherwise, there
       --  seems no other reasonable way to get to see it.
 
       return Valid;
@@ -612,7 +612,7 @@ package body GNATLLVM.GLType is
          Next (Found_GT);
       end loop;
 
-      --  Otherwise, we have to create a new GL_Type.  We know that the
+      --  Otherwise, we have to create a new GL_Type. We know that the
       --  size, alignment, or both differ from that of the primitive type.
       --  Once we set GTI below, be sure that we don't do any operations
       --  that could create a new GL_Type since that will invalidate it.
@@ -1013,8 +1013,8 @@ package body GNATLLVM.GLType is
 
    begin
       --  We've allocated memory for the type we're converting into, which
-      --  is the wider type.  Get a pointer to it in the narrower type and
-      --  copy V to it.  The result is the memory.
+      --  is the wider type. Get a pointer to it in the narrower type and
+      --  copy V to it. The result is the memory.
 
       Emit_Assignment (Ptr_To_Relationship (Memory, V, Relationship (V)),
                        Value => V);
@@ -1072,7 +1072,7 @@ package body GNATLLVM.GLType is
          return Convert_Access (Get (Result, Data), Out_GT);
 
       --  For Padded, use either GEP or Extract_Value, depending on whether
-      --  this is a reference or not.  But only do this for an actual
+      --  this is a reference or not. But only do this for an actual
       --  Reference, not something else, such as a double reference or
       --  a reference to bounds and data
 
@@ -1339,7 +1339,7 @@ package body GNATLLVM.GLType is
       DT : constant GL_Type      := Get_Associated_GL_Type (TE);
 
    begin
-      --  Normally, we've saved the associated GL_Type.  But we don't do
+      --  Normally, we've saved the associated GL_Type. But we don't do
       --  this in the E_Subprogram_Type case.
 
       return (if   Present (DT) then DT

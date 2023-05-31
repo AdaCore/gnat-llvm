@@ -39,7 +39,7 @@ with GNATLLVM.Wrapper;       use GNATLLVM.Wrapper;
 package body GNATLLVM.Records is
 
    --  When computing the size of a record subtype, we push the subtype so
-   --  we can see if we run into a discriminant from its base type.  If we
+   --  we can see if we run into a discriminant from its base type. If we
    --  do, we substitute the expression that corresponds to the discriminant
    --  type. In most cases, but not all, the front end already does this
    --  substitution for us. However, we have to be sure that we don't use
@@ -162,11 +162,11 @@ package body GNATLLVM.Records is
    function Record_Type_For_Field
      (GT : GL_Type; F : Record_Field_Kind_Id) return Record_Kind_Id
      with Pre  => Present (GT);
-   --  We have an object of type GT and want to reference field F.  Return
+   --  We have an object of type GT and want to reference field F. Return
    --  the record type that we have to use for the reference.
 
    --  We put the routines used to compute sizes into a generic so that we
-   --  can instantiate them using various types of sizing.  The most common
+   --  can instantiate them using various types of sizing. The most common
    --  case is an actual size computation, where we produce a GL_Value.
    --  But we may also instantiate this package to generate the structure
    --  needed for back-annotation.
@@ -276,7 +276,7 @@ package body GNATLLVM.Records is
 
       function Align_To
         (V : Result; Cur_Align, Must_Align : Nat) return Result;
-      --  V is a value aligned to Cur_Align.  Ensure that it's aligned to
+      --  V is a value aligned to Cur_Align. Ensure that it's aligned to
       --  Align_To.
 
       function Variant_Part_Size
@@ -546,7 +546,7 @@ package body GNATLLVM.Records is
             Must_Align := Nat'Max (Must_Align, RI.Align);
          end if;
 
-         --  Now update the total size given what we've computed above.  If
+         --  Now update the total size given what we've computed above. If
          --  this is the last RI (or subsequent RI's only have overlap RIs
          --  in variants), and we're asking for the size without padding,
          --  subtract the unused bits from the size of this piece.
@@ -635,7 +635,7 @@ package body GNATLLVM.Records is
          Our_Size       : Result;
 
       begin
-         --  We need to compute the maximum size of each variant.  Most
+         --  We need to compute the maximum size of each variant. Most
          --  discriminant sizes are constant, so we use an algorithm
          --  that'll work best in that situation. First record the largest
          --  constant size and make a chain of Max operations to compute
@@ -1190,7 +1190,7 @@ package body GNATLLVM.Records is
       end if;
 
       --  Otherwise, first go through each variant and compute the size of
-      --  each, looking only at constant values.  If a size differs from a
+      --  each, looking only at constant values. If a size differs from a
       --  previous size, it's not a constant.
 
       for J in RI.Variants'Range loop
@@ -1249,10 +1249,10 @@ package body GNATLLVM.Records is
          --
          --  (if C1 then V1 elsif C2 then V2 ... else VO)
          --
-         --  where VO is the "others" alternative.  We rely on the fact that,
+         --  where VO is the "others" alternative. We rely on the fact that,
          --  especially for alignments, that many of the values above are
          --  the same and "strike out" those values that are the same as
-         --  ones we've already processed.  We rely on the others alternative
+         --  ones we've already processed. We rely on the others alternative
          --  being last.
          --
          --  The initial expression is VO, so we start by removing any
@@ -1265,7 +1265,7 @@ package body GNATLLVM.Records is
          end loop;
 
          --  Now iterate over the list of values until we've removed all of
-         --  them.  This is a quadratic algorithm, but even in records with
+         --  them. This is a quadratic algorithm, but even in records with
          --  large numbers of variants, the number of different sizes
          --  should be small, so that shouldn't be an issue.
 
@@ -1547,7 +1547,7 @@ package body GNATLLVM.Records is
          return Struct_Field_Array'(1 .. 0 => <>);
       end if;
 
-      --  Otherwise, loop through all the fields in this record.  There may
+      --  Otherwise, loop through all the fields in this record. There may
       --  be multiple fields corresponding to one ordinal, so just look at
       --  one of them.
 
@@ -2227,12 +2227,12 @@ package body GNATLLVM.Records is
       end if;
 
       --  Now we handle the bitfield case.  Like the load case, we do our
-      --  masking and shifting operations in an integral type.  This is
+      --  masking and shifting operations in an integral type. This is
       --  either the type of the field or an integral type of the same
       --  width as the array used for the field.
       --
       --  We need to get both the field within LHS that contains F into this
-      --  integral type (if it isn't already) and RHS.  Then we perform the
+      --  integral type (if it isn't already) and RHS. Then we perform the
       --  masking and store the data back.
 
       declare
@@ -2256,7 +2256,7 @@ package body GNATLLVM.Records is
 
       begin
          --  We first have to form an access to the appropriate field, either
-         --  a reference or actual data.  The code above has ensured that
+         --  a reference or actual data. The code above has ensured that
          --  we'll have a reference in the case of an array bitfield in
          --  the non-constant case.
 
@@ -2304,7 +2304,7 @@ package body GNATLLVM.Records is
          pragma Assert (Get_Type_Kind (Data_T) = Integer_Type_Kind);
 
          --  Our next step is to get RHS into the same type as the
-         --  record data.  We have the same three cases as field load,
+         --  record data. We have the same three cases as field load,
          --  but here we want to start with an integral value the same
          --  width as the converted input.
 

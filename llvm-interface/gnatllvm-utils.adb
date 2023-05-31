@@ -449,9 +449,9 @@ package body GNATLLVM.Utils is
 
          when Function_Type_Kind =>
 
-            --  Two function types have different layouts if their
-            --  return types have different layouts or they have
-            --  a different number of parameter types.
+            --  Two function types have different layouts if their return
+            --  types have different layouts or they have a different
+            --  number of parameter types.
 
             if not Is_Layout_Identical (Get_Return_Type (T1),
                                         Get_Return_Type (T2))
@@ -523,8 +523,8 @@ package body GNATLLVM.Utils is
    procedure Process_Pragmas (E : Entity_Id; V : GL_Value) is
    begin
       --  We call Get_Pragma to see if an interesting pragma is present
-      --  instead of walking the loop.  This is quadratic, but the number
-      --  of pragma is small and makes the code easier to read.
+      --  instead of walking the loop. This is quadratic, but the number
+      --  of pragmas is small and this makes the code easier to read.
 
       if Present (Get_Pragma (E, Pragma_Weak_External)) then
          Set_Linkage (V, External_Weak_Linkage);

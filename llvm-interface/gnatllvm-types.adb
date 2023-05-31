@@ -57,11 +57,11 @@ package body GNATLLVM.Types is
    --  Table of intermediate results for Emit_LValue
 
    LValue_Pair_First : Nat := 1;
-   --  The current first entry in the above table.  See the below table.
+   --  The current first entry in the above table. See the below table.
 
    --  In the process of computing an LValue, we may need to compute
    --  another expression, e.g., an index or a bound, which may, in turn,
-   --  compute another LValue.  So we need to have a stack to save and restore
+   --  compute another LValue. So we need to have a stack to save and restore
    --  a starting pointer to the above table.
 
    package LValue_Stack is new Table.Table
@@ -142,7 +142,7 @@ package body GNATLLVM.Types is
    --  or target part of that call, respectively.
 
    --  We put the function used to compute sizes into a generic so that we
-   --  can instantiate it using various types of sizing.  The most common
+   --  can instantiate it using various types of sizing. The most common
    --  case is an actual size computation, where we produce a GL_Value.
    --  But we may also instantiate this package to generate the structure
    --  needed for back-annotation.
@@ -257,7 +257,7 @@ package body GNATLLVM.Types is
 
       Size := Get_Type_Size (GT, No_GL_Value, Max_Size);
 
-      --  If the size isn't a constant, this is dynamically-sized.  If it's
+      --  If the size isn't a constant, this is dynamically-sized. If it's
       --  a constant and we allow overflow, it isn't. Otherwise, we need to
       --  check for overflow.
 
@@ -700,7 +700,7 @@ package body GNATLLVM.Types is
          end if;
       end if;
 
-      --  If the number of elements overflowed, raise Storage_Error.  But
+      --  If the number of elements overflowed, raise Storage_Error. But
       --  check for the pathological case of an array of zero-sized elements.
 
       if Overflowed (Num_Elts) or else Is_Undef (Num_Elts) then
@@ -1726,9 +1726,9 @@ package body GNATLLVM.Types is
 
    begin
       --  We need to return a size that's a muliple of the alignment or at
-      --  least aligned to a byte boundary.  It's possible that it already
-      --  is and we can't detect it.  This isn't a problem for constant
-      --  sizes, but may cause an extra computation for dynamic sizes.  For
+      --  least aligned to a byte boundary. It's possible that it already
+      --  is and we can't detect it. This isn't a problem for constant
+      --  sizes, but may cause an extra computation for dynamic sizes. For
       --  now, at least, we won't worry about that.
 
       return Annotated_Value

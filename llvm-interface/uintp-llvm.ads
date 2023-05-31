@@ -38,8 +38,8 @@ package Uintp.LLVM is
      (UI_From_LLI (LLI (V)));
    function "+" (V : ULL) return Uint renames UI_From_ULL;
    --  Like UI_From_Int, but for ULL.
-   --  This implementation doesn't work for the highest half of ULL, but we're
-   --  not going to see sizes that large (the only place where this is used),
-   --  so that's OK.
+   --  ??? This implementation doesn't work for the highest half of ULL,
+   --  but we're not going to see sizes that large (the only place where
+   --  this is used), so that's OK.
 
 end Uintp.LLVM;

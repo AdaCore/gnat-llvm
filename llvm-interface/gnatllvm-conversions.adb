@@ -367,7 +367,7 @@ package body GNATLLVM.Conversions is
          Result := Convert_Ref (Get (Result, Any_Reference), GT);
 
       --  For unchecked conversion between pointer and integer, just copy
-      --  the bits.  But use Size_Type and generic pointers to make sure
+      --  the bits. But use Size_Type and generic pointers to make sure
       --  that any size changes are taken into account (they shouldn't be
       --  because of the rules of UC, but let's be conservative).
 
@@ -381,7 +381,7 @@ package body GNATLLVM.Conversions is
         and then Is_Access_Type (GT)
       then
          --  If GT is an access to unconstrained, this means that the
-         --  address is to be taken as a thin pointer.  We also need special
+         --  address is to be taken as a thin pointer. We also need special
          --  code in the case of access to subprogram and we also need
          --  to show that the alignment is of the designated type.
 
@@ -423,7 +423,7 @@ package body GNATLLVM.Conversions is
       elsif Is_Elementary_Type (In_GT) and then Is_Elementary_Type (GT) then
 
          --  If the aim of the conversion is one integral type to the same
-         --  result type, just show that the type has changed.  There may
+         --  result type, just show that the type has changed. There may
          --  have been smaller types involved in primitive types of the
          --  conversion, but converting to and from them is not only
          --  unnecessary code, but can break 'Valid of a widened field.
@@ -459,7 +459,7 @@ package body GNATLLVM.Conversions is
          end if;
 
       --  If we have a constant (which we know is an aggregate), we
-      --  can make a new constant.  This is the desired result for both
+      --  can make a new constant. This is the desired result for both
       --  checked and unchecked conversion.
 
       elsif Can_Convert_Aggregate_Constant (Result, GT) then
@@ -641,7 +641,7 @@ package body GNATLLVM.Conversions is
          return Convert_To_Access (Value, GT, Is_Unchecked => Is_Unchecked);
 
       --  Having dealt with pointers, we have four cases: FP to FP, FP to
-      --  Int, Int to FP, and Int to Int.  We already know that this isn't
+      --  Int, Int to FP, and Int to Int. We already know that this isn't
       --  a noop case because we've checked above for the same type.
 
       elsif Src_FP and then Dest_FP then
@@ -653,20 +653,21 @@ package body GNATLLVM.Conversions is
          if not Float_Truncate then
 
             --  In the FP to Integer case, the LLVM instructions round to
-            --  zero, but the Ada semantics round away from zero, so we have
-            --  to adjust the input. We first compute Type'Pred (0.5).  If
-            --  the input is strictly negative, subtract this value and
-            --  otherwise add it from the input. For 0.5, the result is
-            --  exactly between 1.0 and the machine number preceding 1.0.
-            --  Since the last bit of 1.0 is even, this 0.5 will round to 1.0,
-            --  while all other number with an absolute value less than 0.5
-            --  round to 0.0. For larger numbers exactly halfway between
-            --  integers, rounding will always be correct as the true
-            --  mathematical result will be closer to the higher integer
-            --  compared to the lower one. So, this constant works for all
-            --  floating-point numbers. We compute this using an LLVM
-            --  function ("next") that operates on an APFloat and returns
-            --  either a value epsilon higher or lower than the original.
+            --  zero, but the Ada semantics round away from zero, so we
+            --  have to adjust the input. We first compute Type'Pred
+            --  (0.5). If the input is strictly negative, subtract this
+            --  value and otherwise add it from the input. For 0.5, the
+            --  result is exactly between 1.0 and the machine number
+            --  preceding 1.0.  Since the last bit of 1.0 is even, this 0.5
+            --  will round to 1.0, while all other number with an absolute
+            --  value less than 0.5 round to 0.0. For larger numbers
+            --  exactly halfway between integers, rounding will always be
+            --  correct as the true mathematical result will be closer to
+            --  the higher integer compared to the lower one. So, this
+            --  constant works for all floating-point numbers. We compute
+            --  this using an LLVM function ("next") that operates on an
+            --  APFloat and returns either a value epsilon higher or lower
+            --  than the original.
             --
             --  The reason to use the same constant with subtract/add instead
             --  of a positive and negative constant is to allow the comparison
@@ -750,9 +751,9 @@ package body GNATLLVM.Conversions is
       then
          Result := Get (Ptr_To_Relationship (As_Ref, DT, Reference), R);
 
-      --  If we have an unchecked conversion to a fat pointer, we can
-      --  have all sorts of weird stuff as input.  In that case, we want
-      --  to do whatever is as reasonable as we can, but not crash
+      --  If we have an unchecked conversion to a fat pointer, we can have
+      --  all sorts of weird stuff as input. In that case, we want to do
+      --  whatever is as reasonable as we can, but not crash
 
       elsif Is_Unchecked and then R = Fat_Pointer
         and then not Contains_Bounds (As_Ref)
@@ -841,7 +842,7 @@ package body GNATLLVM.Conversions is
       elsif Is_Reference (V) then
          return Convert_Ref (V, GT);
 
-      --  We now have Data of a composite type.  If they're the same GNAT
+      --  We now have Data of a composite type. If they're the same GNAT
       --  type, convert via the primitive type.
 
       elsif Full_Etype (In_GT) = Full_Etype (GT) then
@@ -1047,7 +1048,7 @@ package body GNATLLVM.Conversions is
       then
          return True;
 
-      --  Otherwise, this is some other type of constant.  We're only concerned
+      --  Otherwise, this is some other type of constant. We're only concerned
       --  about structs and arrays and we set an upper bound on the size
       --  since LLVM's combiner does too.
 
@@ -1196,7 +1197,7 @@ package body GNATLLVM.Conversions is
       Delete_Function (Our_Func);
       Dispose_Pass_Manager (Our_PM);
 
-      --  If we were in a block previously, switch back to it.  Then return
+      --  If we were in a block previously, switch back to it. Then return
       --  our value.
 
       if Present (BB) then
@@ -1302,7 +1303,7 @@ package body GNATLLVM.Conversions is
          return Convert_Struct_Constant (V, T);
 
       --  Otherwise, assume this is a nonsymbolic constant and convert
-      --  that way.  (If it isn't, we'll get an assertion failure.)
+      --  that way. (If it isn't, we'll get an assertion failure.)
 
       else
          return Convert_Nonsymbolic_Constant (V, T);

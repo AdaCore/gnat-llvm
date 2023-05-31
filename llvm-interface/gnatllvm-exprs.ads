@@ -35,9 +35,9 @@ package GNATLLVM.Exprs is
       Only_Bitfield : Boolean := False);
    --  N is an expression that's used in a LHS context, either the LHS side
    --  of an N_Assignment_Statement or an actual corresponding to an Out
-   --  (or in Out) parameter.  If N represents an field selection (if
+   --  (or in Out) parameter. If N represents an field selection (if
    --  Only_Bitfield then only if that field is a bitfield), then LHS is
-   --  the Prefix of that selection and F is the field being selected.  If
+   --  the Prefix of that selection and F is the field being selected. If
    --  N is an indexed reference, Idxs is a pointer to the list of indices.
    --  Otherwise, F is Empty, Idxs is null, and LHS is the LValue form of N.
 

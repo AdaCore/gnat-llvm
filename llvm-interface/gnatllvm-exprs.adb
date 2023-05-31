@@ -51,7 +51,7 @@ package body GNATLLVM.Exprs is
    procedure Emit_For_Address
      (N : N_Subexpr_Id; V : out GL_Value; Bits : out Uint);
    --  Helper for Emit_Attribute_Reference to recursively find the address
-   --  of an object.  Returns a GL_Value that's a reference that points into
+   --  of an object. Returns a GL_Value that's a reference that points into
    --  an object and a number of bits that must be added to that value.
 
    function Is_Safe_From_Entity (LHS : GL_Value; E : Entity_Id) return Boolean
@@ -1167,7 +1167,7 @@ package body GNATLLVM.Exprs is
 
             --  We store values as pointers, so getting an access to an
             --  expression is the same as getting an LValue and has the
-            --  same constraints.  But we do have to be sure that it's of
+            --  same constraints. But we do have to be sure that it's of
             --  the right type.
 
             if Decls_Only and then Is_Access_Protected_Subprogram_Type (GT)
@@ -1217,9 +1217,9 @@ package body GNATLLVM.Exprs is
 
          when Attribute_Pool_Address =>
 
-            --  Evaluate this object.  We normally want to look at the
+            --  Evaluate this object. We normally want to look at the
             --  address of the object itself (e.g., as a Reference), but if
-            --  it's an access type, what we want is the value.  So convert
+            --  it's an access type, what we want is the value. So convert
             --  it to a reference.
 
             V := Emit (Pref, Prefer_LHS => True);
@@ -1503,10 +1503,10 @@ package body GNATLLVM.Exprs is
    begin
       --  The back-end supports exactly two types of array aggregates.
       --  One, handled in Emit_Array_Aggregate, is for a fixed-size
-      --  aggregate of fixed-size components.  The other type is the
-      --  special case of a single entry that's tested for in
-      --  Aggr_Assignment_OK_For_Backend in Exp_Aggr.  We have to handle
-      --  them here because we want to store directly into the LHS.  The
+      --  aggregate of fixed-size components. The other type is the special
+      --  case of a single entry that's tested for in
+      --  Aggr_Assignment_OK_For_Backend in Exp_Aggr. We have to handle
+      --  them here because we want to store directly into the LHS. The
       --  front end guarantees that any single-entry aggregate will always
       --  be the RHS of an assignment, so we'll see it here.
 
@@ -1518,7 +1518,7 @@ package body GNATLLVM.Exprs is
          return;
       end if;
 
-      --  If we haven't yet computed our source expression, do it now.  If
+      --  If we haven't yet computed our source expression, do it now. If
       --  the evaluation used the location we specified, we're done.
       --  Otherwise, if we want a value, get it.
 
@@ -1560,7 +1560,7 @@ package body GNATLLVM.Exprs is
 
       --  If we're assigning to a type that's the nominal constrained
       --  subtype of an unconstrained array for an aliased object, see if
-      --  we can get the value and bounds together and store them.  If we
+      --  we can get the value and bounds together and store them. If we
       --  can, do so and we're done. Otherwise, store the bounds.
 
       if Type_Needs_Bounds (Dest_GT) and then Src_R /= Bounds_And_Data then
@@ -1581,7 +1581,7 @@ package body GNATLLVM.Exprs is
       --
       --  First handle the easy case: convert the source to the destination
       --  type and store it. However, we may have a packed array
-      --  implementation type on the LHS and an array on the RHS.  Convert
+      --  implementation type on the LHS and an array on the RHS. Convert
       --  it to the LHS type if so.
 
       if Is_Elementary_Type (Dest_GT) and then Src_R /= Bounds_And_Data then
@@ -1790,7 +1790,7 @@ package body GNATLLVM.Exprs is
       end loop;
 
       --  Likewise for clobbers, but we only need the length of the
-      --  constraints here.  Node that Clobber_Get_Next isn't very friendly
+      --  constraints here. Node that Clobber_Get_Next isn't very friendly
       --  for an Ada caller, so we'll use fact that it's set Name_Buffer
       --  and Name_Len;
 

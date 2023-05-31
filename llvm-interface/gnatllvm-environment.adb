@@ -22,7 +22,7 @@ with GNATLLVM.Types;   use GNATLLVM.Types;
 
 package body GNATLLVM.Environment is
 
-   --  For each GNAT entity, we store various information.  Not all of this
+   --  For each GNAT entity, we store various information. Not all of this
    --  information is used for each Ekind.
 
    type LLVM_Data is record
@@ -33,8 +33,8 @@ package body GNATLLVM.Environment is
       --  The head of the GL_Type chain for this entity, if a type
 
       Associated_GL_Type    : GL_Type;
-      --  For arrays, the GL_Type for the component of the array.  For
-      --  access types, the GL_Type of the Designated type.  In both cases,
+      --  For arrays, the GL_Type for the component of the array. For
+      --  access types, the GL_Type of the Designated type. In both cases,
       --  this takes into account any Component_Size clause.
 
       TBAA                  : Metadata_T;
@@ -116,7 +116,7 @@ package body GNATLLVM.Environment is
    function Get_LLVM_Info_For_Set (N : Node_Id)  return Access_LLVM_Data
      with Inline;
    --  Helpers for below to either create type and then return entry or
-   --  or to allocate LLVM_Info_Table entry if needed (for set).  In either
+   --  or to allocate LLVM_Info_Table entry if needed (for set). In either
    --  case, the returned access type must only be used immediately since
    --  it will be invalid if the table is reallocated.
 

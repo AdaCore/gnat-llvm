@@ -80,7 +80,7 @@ package body GNATLLVM.Blocks is
       --  activation record.
 
       At_End_Parameter_2 : GL_Value;
-      --  If Present, a second parameter to pass to the At_End_Proc.  This is
+      --  If Present, a second parameter to pass to the At_End_Proc. This is
       --  currently only used for calling the End_Handler procedure.
 
       At_End_Pass_Excptr : Boolean;
@@ -118,12 +118,12 @@ package body GNATLLVM.Blocks is
    --  Stack of blocks that we're in.
 
    --  We need to jump from the end of one piece dispatch code to the start
-   --  of the outer dispatch code when we have nested handlers.  To do
-   --  this, we need a Phi for the exception information (or a variable,
-   --  but finding a scope for that variable is non-trivial).  We record
-   --  that in this table, which contains the starting BB for dispatch code
+   --  of the outer dispatch code when we have nested handlers. To do this,
+   --  we need a Phi for the exception information (or a variable, but
+   --  finding a scope for that variable is non-trivial). We record that in
+   --  this table, which contains the starting BB for dispatch code
    --  (Dispatch_BB from the above) and the BB that jumps to it as well as
-   --  the exception data location (for the Phi).  We don't try to remove
+   --  the exception data location (for the Phi). We don't try to remove
    --  these from the table when used because it's not worth the
    --  complexity: there aren't that many nested handlers.
 
@@ -206,7 +206,7 @@ package body GNATLLVM.Blocks is
    --  Table of scoped loop exit points. Last inserted exit point correspond
    --  to the innermost loop.
 
-   --  We maintain two tables to handles gotos and labels.  We need to
+   --  We maintain two tables to handles gotos and labels. We need to
    --  generate fixups when gotos branch outside of blocks, but have both
    --  the case where we've previously seen the label and where we haven't.
    --
@@ -217,16 +217,16 @@ package body GNATLLVM.Blocks is
    --
    --  If we're branching to a label at a known location, we generate a
    --  second block that contains the fixup code followed by the actual
-   --  branch to the label's block.  We use Label_Info as a one-element
+   --  branch to the label's block. We use Label_Info as a one-element
    --  cache to save the location of the fixup code in case we see another
-   --  branch to that same label from the same depth.  However, this cache
+   --  branch to that same label from the same depth. However, this cache
    --  needs to be invalidated once we leave that block since a new block
    --  at the same depth will have a different fixup.
    --
    --  If where we don't know the label's location when branching to it, we
    --  create an additional label, this time to collect the needed fixups.
-   --  We use the Open_Branches table for this.  Each time we exit a block,
-   --  its fixup is added to each Open_Branch.  When the label is finally
+   --  We use the Open_Branches table for this. Each time we exit a block,
+   --  its fixup is added to each Open_Branch. When the label is finally
    --  defined, we close the Open_Branch block (which may be a different
    --  block from the one originally created if the fixup started a new
    --  block) by doing the branch to the actual label (we knew this label
@@ -235,9 +235,9 @@ package body GNATLLVM.Blocks is
    --
    --  Note that this algorithm is quadratic in the number of labels and
    --  can generate duplicate copies of fixups if there are many gotos to
-   --  the same label from different depths in the block stack.  Luckily,
+   --  the same label from different depths in the block stack. Luckily,
    --  there are very few labels and gotos in real programs, so this
-   --  implementation works well.  The same approach would work with more
+   --  implementation works well. The same approach would work with more
    --  labels, but we'd need more complex data structures that cache fixups
    --  from more levels and avoid searching the entire list for open
    --  branches.
@@ -301,22 +301,22 @@ package body GNATLLVM.Blocks is
 
    procedure Call_At_End
      (Block : Block_Stack_Level; For_Exception : Boolean := False);
-   --  Call the At_End procedure of Block, if any.  If For_Exception is True,
-   --  this is the exception case.  This only matters when At_End_Pass_Excptr
+   --  Call the At_End procedure of Block, if any. If For_Exception is True,
+   --  this is the exception case. This only matters when At_End_Pass_Excptr
    --  is set, which is only for the End_Handler.
 
    procedure Build_Fixups_From_To (From, To : Block_Stack_Level);
-   --  We're currently in block From and going to block To.  Call any
+   --  We're currently in block From and going to block To. Call any
    --  "at end" procedures in between and restore the stack, if needed.
 
    procedure Emit_Handlers (Block : Block_Stack_Level);
    --  Generate the parts of a block at level Block used for exception
-   --  handling, including at end procs and exception handlers.  This
+   --  handling, including at end procs and exception handlers. This
    --  includes the landingpad instruction, the exception handlers, code to
-   --  dispatch to the handlers, and code to handle falling through.  If a
+   --  dispatch to the handlers, and code to handle falling through. If a
    --  landingpad was requested, the block will start with a landingpad
-   --  instruction starting that basic block.  Otherwise, there may not be
-   --  a need for a landing pad.  Return the actual landing pad
+   --  instruction starting that basic block  Otherwise, there may not be
+   --  a need for a landing pad. Return the actual landing pad
    --  instruction, if any.
 
    function Get_File_Name_Address (Index : Source_File_Index) return GL_Value
@@ -327,7 +327,7 @@ package body GNATLLVM.Blocks is
    function Get_Raise_Fn
      (Kind : RT_Exception_Code; Ext : Boolean := False) return GL_Value
      with Post => Present (Get_Raise_Fn'Result);
-   --  Get function for raising a builtin exception of Kind.  Ext is True if
+   --  Get function for raising a builtin exception of Kind. Ext is True if
    --  we want the "extended" (-gnateE) versions of the exception functions.
 
    function Emit_Raise_Call_With_Extra_Info
@@ -335,15 +335,15 @@ package body GNATLLVM.Blocks is
       Kind : RT_Exception_Code;
       Cond : N_Subexpr_Id) return Boolean;
    --  Like Emit_Raise_Call, but generate extra info, if possible, about
-   --  the bad value and the range that it's supposed to be within.  If
-   --  if returns True, it was able to get the info and emit the call.
+   --  the bad value and the range that it's supposed to be within. If if
+   --  returns True, it was able to get the info and emit the call.
    --  Otherwise, it couldn't and the caller should make a normal call.
 
    function Get_Set_EH_Param_Fn (Exc_GT : GL_Type) return GL_Value
      with Pre  => Present (Exc_GT),
           Post => Present (Get_Set_EH_Param_Fn'Result);
    --  Get (and create if needed) the function that sets the exception
-   --  parameter.  This can only be called once we have an exception parameter
+   --  parameter. This can only be called once we have an exception parameter
    --  since we can't easily find the exception type before that.
 
    procedure Initialize_Predefines;
@@ -414,7 +414,7 @@ package body GNATLLVM.Blocks is
          --  Save both the end proc and the value of the static link.
          --  Since we'll be generating the call directly, we have to
          --  convert the static link to the proper pointer type for the
-         --  activation record.  There may not be a static link, however,
+         --  activation record. There may not be a static link, however,
          --  if there are no uplevel references.
 
          End_Subp := Entity (At_End_Proc);
@@ -518,7 +518,7 @@ package body GNATLLVM.Blocks is
       end if;
 
       --  We need to put the call to start the lifetime at the start of
-      --  this block.  However, if the start of this block is the entry
+      --  this block. However, if the start of this block is the entry
       --  BB, we need to put this after the allocas.
 
       Set_Current_Position
@@ -539,7 +539,7 @@ package body GNATLLVM.Blocks is
 
    begin
       --  If we're in the Statements part of a block that has exceptions,
-      --  see if we've made a block for the landing-pad.  If not, make one.
+      --  see if we've made a block for the landing-pad. If not, make one.
 
       for J in reverse 1 .. Block_Stack.Last loop
          BI := Block_Stack.Table (J);
@@ -611,7 +611,7 @@ package body GNATLLVM.Blocks is
       Stack_Save : GL_Value := No_GL_Value;
 
    begin
-      --  We're going from block From to block To.  Run fixups for any blocks
+      --  We're going from block From to block To. Run fixups for any blocks
       --  we pass and then restore the outermost stack pointer.
 
       for J in reverse To + 1 .. From loop
@@ -845,7 +845,7 @@ package body GNATLLVM.Blocks is
       end if;
 
       --  If we haven't already computed a string literal for this filename,
-      --  do it now.  Take into account pragma Suppress_Exception_Location.
+      --  do it now. Take into account pragma Suppress_Exception_Location.
 
       if No (File_Name_Strings (Index, Is_Global)) then
          declare
@@ -943,8 +943,8 @@ package body GNATLLVM.Blocks is
       HB_V   : GL_Value;
 
    begin
-      --  If this isn't a NOT operation, we can't handle it.  If we're
-      --  only processing decls, don't try.
+      --  If this isn't a NOT operation, we can't handle it. If we're only
+      --  processing decls, don't try.
 
       if Nkind (Cond) /= N_Op_Not or else Decls_Only then
          return False;
@@ -1080,14 +1080,14 @@ package body GNATLLVM.Blocks is
       --  executed if none of the handlers in our block are executed.
       --
       --  The landing pad must take into account the requirements of any
-      --  block above our own as well as this block.  If this or any upper
+      --  block above our own as well as this block. If this or any upper
       --  block has an At_End proc, we must catch all exceptions, so the
       --  landingpad must contain a cleanup and hence need not list any
-      --  exceptions other than ones we catch.  Otherwise, we need to list
+      --  exceptions other than ones we catch. Otherwise, we need to list
       --  all exceptions that we or any parent blocks catch.
       --
       --  The dispatcher may be entered either from the landingpad or by
-      --  falling through from the dispatchers of inner blocks.  In the
+      --  falling through from the dispatchers of inner blocks. In the
       --  latter case, we need to generate a Phi to track the location of
       --  the exception data.
 
@@ -1106,9 +1106,9 @@ package body GNATLLVM.Blocks is
       end if;
 
       --  If we have handlers, we have to record them in the table of
-      --  clauses so we can dispatch to them.  If we have a landingpad
-      --  instruction, add them to it.  Also record what we've seen here
-      --  for the following code.
+      --  clauses so we can dispatch to them. If we have a landingpad
+      --  instruction, add them to it. Also record what we've seen here for
+      --  the following code.
 
       if Present (BI.EH_List) then
          Handler := First_Non_Pragma (BI.EH_List);
@@ -1136,10 +1136,10 @@ package body GNATLLVM.Blocks is
       end if;
 
       --  If we don't have a landingpad, we need to add clauses to it to
-      --  cover any uplevel exceptions that we haven't added yet.  One
-      --  might think this isn't neccessary, but it is in order to
-      --  get the proper values for the exception slot.  The LLVM exception
-      --  documentation is very weak on this point.
+      --  cover any uplevel exceptions that we haven't added yet. One might
+      --  think this isn't neccessary, but it is in order to get the proper
+      --  values for the exception slot. The LLVM exception documentation
+      --  is very weak on this point.
 
       if Present (LP_Inst) then
          for J in reverse 1 .. Block - 1 loop
@@ -1169,9 +1169,9 @@ package body GNATLLVM.Blocks is
       end if;
 
       --  Now generate the dispatch code to branch to each exception
-      --  handler, if we have any.  If no inner block set up a BB for us to
+      --  handler, if we have any. If no inner block set up a BB for us to
       --  use, we can emit this inline and the exception data is in the
-      --  landing-pad instruction.  Otherwise, we have to branch to the
+      --  landing-pad instruction. Otherwise, we have to branch to the
       --  dispatch code location and add a Phi to collect the values.
 
       if Present (BI.Dispatch_BB) then
@@ -1228,10 +1228,10 @@ package body GNATLLVM.Blocks is
          BI.Exc_Ptr := Exc_Ptr;
 
          --  Generate code for the handlers, taking into account that we
-         --  have duplicate BB's in the table.  We make a block for the
+         --  have duplicate BB's in the table. We make a block for the
          --  handler to deal with allocated variables and to establish the
-         --  end handler procedure.  But that block does not produce an
-         --  EH context itself.
+         --  end handler procedure. But that block does not produce an EH
+         --  context itself.
 
          for J in 1 .. Clauses.Last loop
             if No (Get_Last_Instruction (Clauses.Table (J).BB)) then
@@ -1291,15 +1291,15 @@ package body GNATLLVM.Blocks is
       Call_At_End (Block, For_Exception => True);
 
       --  Finally, see if there's an outer block that has an "at end" or
-      --  exception handlers.  Ignore any block that's no longer
+      --  exception handlers. Ignore any block that's no longer
       --  "protected", meaning that we're generating code for the handlers.
       --  If code in those handlers gets an exception, that should
       --  propagate to the next outer block, not the one with the handlers.
-      --  Find the innermost such.  If so, we branch to that dispatch table
+      --  Find the innermost such. If so, we branch to that dispatch table
       --  (possibly making a BB for it) and indicate the data needed for
-      --  that block's Phi.  Note that fixups have already been done for
-      --  this block, so the only ones we have to do here are if we go
-      --  more than one level up.
+      --  that block's Phi. Note that fixups have already been done for
+      --  this block, so the only ones we have to do here are if we go more
+      --  than one level up.
 
       for J in reverse 1 .. Block - 1 loop
          declare
@@ -1350,7 +1350,7 @@ package body GNATLLVM.Blocks is
                                                         A_Lifetime_Data);
    begin
       --  If we're not in dead code, we have to fixup the block and the branch
-      --  around any landingpad.  But that code is not protected by any
+      --  around any landingpad. But that code is not protected by any
       --  exception handlers in the block and this code isn't protected by
       --  any At_End handler.
 
@@ -1368,9 +1368,9 @@ package body GNATLLVM.Blocks is
          Emit_Handlers (Depth);
       end if;
 
-      --  Look through the Open_Branches table to see if we have any
-      --  open branches at our level.  For each, add our fixup.  Note that
-      --  the fixup may have switched to a different block, so update it.
+      --  Look through the Open_Branches table to see if we have any open
+      --  branches at our level. For each, add our fixup. Note that the
+      --  fixup may have switched to a different block, so update it.
 
       for J in 1 .. Open_Branches.Last loop
          declare
@@ -1561,9 +1561,9 @@ package body GNATLLVM.Blocks is
          if For_Address then
             return Orig_BB;
 
-         --  Otherwise see if we know where this label is.  If we do, and
+         --  Otherwise see if we know where this label is. If we do, and
          --  the depth of this entry is our depth, we have the label to
-         --  branch to which includes the needed fixups.  If not, we can
+         --  branch to which includes the needed fixups. If not, we can
          --  make a block for the fixups.
 
          elsif LI.Block_Depth >= 0 then
@@ -1579,8 +1579,8 @@ package body GNATLLVM.Blocks is
             return LI.Fixup_BB;
 
          --  If we don't know where this label is, we need an entry in the
-         --  Open_Branches table for this label.  But first see if somebody
-         --  already made one.  However, if we've already started writing
+         --  Open_Branches table for this label. But first see if somebody
+         --  already made one. However, if we've already started writing
          --  fixups to it, we need to make sure that we branch to after
          --  those fixup by starting a new block since a branch from an
          --  outer level shouldn't be using those fixups.
@@ -1636,8 +1636,8 @@ package body GNATLLVM.Blocks is
            elsif No (Last_Inst) and then This_BB /= Entry_BB
            then  This_BB else Create_Basic_Block (Name));
       --  If we have an identifier and it has a basic block already set,
-      --  that's the one that we have to use.  If we've just started a
-      --  basic block with no instructions in it, that basic block will do,
+      --  that's the one that we have to use. If we've just started a basic
+      --  block with no instructions in it, that basic block will do,
       --  unless it's the entry BB since we're going to branch to it.
       --  Otherwise, get a new one.
 
@@ -1866,9 +1866,9 @@ package body GNATLLVM.Blocks is
             end if;
 
             --  See if we're asked to provide extended exception information.
-            --  If so, there are two cases.  For Access checks, we provide
-            --  column information.  For some other checks, we provide the
-            --  actual value and the bounds, if we know them.  In the latter
+            --  If so, there are two cases. For Access checks, we provide
+            --  column information. For some other checks, we provide the
+            --  actual value and the bounds, if we know them. In the latter
             --  case, we may not be able to find all the information and, if
             --  so, we fall back to the basic case.
 

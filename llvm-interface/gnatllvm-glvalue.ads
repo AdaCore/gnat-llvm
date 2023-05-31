@@ -25,26 +25,26 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 package GNATLLVM.GLValue is
 
    --  It's not sufficient to just pass around an LLVM Value_T when
-   --  generating code because there's a lot of information lost about
-   --  the value and where it came from.  We construct a record of type
-   --  GL_Value, which contains the LLVM Value_T (which in turn
-   --  contains its LLVM Type_T), a GNAT type to which it is related,
-   --  and a field indicating the relationship between the value and
-   --  the type.  For example, the value may contain bits of the type
-   --  or the value may be the address of the bits of the type.
+   --  generating code because there's a lot of information lost about the
+   --  value and where it came from. We construct a record of type
+   --  GL_Value, which contains the LLVM Value_T (which in turn contains
+   --  its LLVM Type_T), a GNAT type to which it is related, and a field
+   --  indicating the relationship between the value and the type. For
+   --  example, the value may contain bits of the type or the value may be
+   --  the address of the bits of the type.
 
    type GL_Relationship is
      (Data,
-      --  Value is actual bits of Typ.  This can never be set for
-      --  subprogram types or for types of variable size.  It can be set
-      --  for non-first-class types in the LLVM sense as long as LLVM can
-      --  represent a value of that object.  If Typ is an access type, this
+      --  Value is actual bits of Typ. This can never be set for subprogram
+      --  types or for types of variable size. It can be set for
+      --  non-first-class types in the LLVM sense as long as LLVM can
+      --  represent a value of that object. If Typ is an access type, this
       --  is equivalent to a relationship of Reference to the
       --  Designated_Type of Typ.
 
       Boolean_Data,
       --  Like Data, but this is an actual LLVM boolean value (i1) instead
-      --  of the normal i8 that we'd use for a Boolean type.  In this case,
+      --  of the normal i8 that we'd use for a Boolean type. In this case,
       --  the type must be Standard_Boolean.
 
       Boolean_And_Data,
@@ -53,14 +53,14 @@ package GNATLLVM.GLValue is
       --  whether it represents an overflow or not.
 
       Reference,
-      --  Value contains the address of an object of Typ.  This is always
+      --  Value contains the address of an object of Typ. This is always
       --  the case for types of variable size or for names corresponding to
       --  globals because those names represent the address of the global,
       --  either for data or functions.
 
       Reference_To_Reference,
       --  Value contains the address of memory that contains the address of
-      --  an object of Typ.  This occurs for globals where either an
+      --  an object of Typ. This occurs for globals where either an
       --  'Address attribute was specifed or where an object of dynamic
       --  size was allocated because in both of those cases the global name
       --  is a pointer to a location containing the address of the object.
@@ -99,10 +99,10 @@ package GNATLLVM.GLValue is
 
       Reference_To_Subprogram,
       --  Value contains the address of a subprogram which is a procedure
-      --  if Typ is an E_Void or which is a function returning type Typ
-      --  if Typ is not a Void.  If Typ is a subprogram type, then
-      --  Reference should be used instead and if Typ is an access
-      --  to subprogram type, then Data is the appropriate relationship.
+      --  if Typ is an E_Void or which is a function returning type Typ if
+      --  Typ is not a Void. If Typ is a subprogram type, then Reference
+      --  should be used instead and if Typ is an access to subprogram
+      --  type, then Data is the appropriate relationship.
 
       Reference_To_Ref_To_Subprogram,
       --  Value contains an address at which the address of a subprogram
@@ -119,15 +119,15 @@ package GNATLLVM.GLValue is
       --  a pointer to the subprogram and to the activation record.
 
       Trampoline,
-      --  A pointer to a piece of code that can be called.  This can
-      --  either be the subprogram itself or a fragment on the stack
-      --  that can be called and encapsulates both the address of the
-      --  subprogram and the address of the static link.
+      --  A pointer to a piece of code that can be called. This can either
+      --  be the subprogram itself or a fragment on the stack that can be
+      --  called and encapsulates both the address of the subprogram and
+      --  the address of the static link.
 
       Unknown,
-      --  Object is an unknown relation to the type.  Used for peculiar
-      --  LLVM objects such as landing pads or the structure representing
-      --  the return from a function.
+      --  Object is an unknown relation to the type. Used for peculiar LLVM
+      --  objects such as landing pads or the structure representing the
+      --  return from a function.
 
       Reference_To_Unknown,
       --  Similar to Unknown, but we know that this is a reference and a
@@ -135,16 +135,16 @@ package GNATLLVM.GLValue is
 
       Any_Reference,
       --  Valid only as an operand to Get and indicates that a value with
-      --  any reference to data can be returned.  This includes fat and
+      --  any reference to data can be returned. This includes fat and
       --  thin pointers, but not such things as references to bounds
       --  or references to references.
 
       Reference_For_Integer,
-      --  Valid only as an operand to Get and indicates that a value
-      --  with a single-word reference to data can be returned.  This
-      --  includes thin pointers, but not such things as references to
-      --  bounds or any fat structure.  This is used when we want to compare
-      --  two access types or convert an address to an integer.
+      --  Valid only as an operand to Get and indicates that a value with a
+      --  single-word reference to data can be returned. This includes thin
+      --  pointers, but not such things as references to bounds or any fat
+      --  structure. This is used when we want to compare two access types
+      --  or convert an address to an integer.
 
       Object,
       --  Valid only as an operand to Get and means Any_Reference if
@@ -154,8 +154,8 @@ package GNATLLVM.GLValue is
       --  This is invalid relationship, which will result from, e.g.,
       --  doing a dereference operation on something that isn't a reference.
 
-   --  We define some properties on each relationship type so we can
-   --  do some reasoning on them.  This record and array are used to express
+   --  We define some properties on each relationship type so we can do
+   --  some reasoning on them. This record and array are used to express
    --  those properties.
 
    type Relationship_Property is record
@@ -288,14 +288,14 @@ package GNATLLVM.GLValue is
    function Relationship_For_Access_Type (GT : GL_Type) return GL_Relationship
      with Pre => Present (GT), Inline;
    --  Given an access type, return the Relationship that a value of this
-   --  type would have with its Designated_Type.  Similar to
+   --  type would have with its Designated_Type. Similar to
    --  Relationship_For_Ref on the Designated_Type of GT, but takes into
    --  account anything special about TE, such as its size.
 
    function Relationship_For_Access_Type
      (TE : Access_Kind_Id) return GL_Relationship with Inline;
    --  Given an access type, return the Relationship that a value of this
-   --  type would have with its Designated_Type.  Similar to
+   --  type would have with its Designated_Type. Similar to
    --  Relationship_For_Ref on the Designated_Type of TE, but takes into
    --  account anything special about TE, such as its size.
 
@@ -331,19 +331,19 @@ package GNATLLVM.GLValue is
       Alignment            : Nat;
       --  The maximum alignment, expressed in bits, and no larger than the
       --  largest supported alignment, that the represented value is known
-      --  to have if used as an address.  This corresponds to the largest
+      --  to have if used as an address. This corresponds to the largest
       --  power of two known to divide the value multiplied by the number
-      --  of bits per unit.  If we know nothing about this value, the
-      --  alignment is BPU.  If this value is the address of a variable, we
-      --  set the alignment to that of the variables.  If we have a pointer
+      --  of bits per unit. If we know nothing about this value, the
+      --  alignment is BPU. If this value is the address of a variable, we
+      --  set the alignment to that of the variables. If we have a pointer
       --  to the type, either by dereferencing an access type or as a
       --  parameter to or return value from a subprogram, we initialize
-      --  this to the alignment of the type.  For other operations (e.g.,
+      --  this to the alignment of the type. For other operations (e.g.,
       --  arithmetic), we track the effect on the alignment.
 
       Is_Pristine          : Boolean;
       --  Set when this value has just been allocated and there's no chance
-      --  yet of it being written.  We know that no expression can conflict
+      --  yet of it being written. We know that no expression can conflict
       --  with it.
 
       Is_Volatile          : Boolean;
@@ -353,18 +353,18 @@ package GNATLLVM.GLValue is
       --  Set when this value represents an atomic object or type
 
       Overflowed           : Boolean;
-      --  Set when an arithmetic operation overflowed.  This is propagated
-      --  on further arithmetic or conversions.  When we're ready to post
-      --  an error message about the overflow, this will be converted
-      --  to an undef.
+      --  Set when an arithmetic operation overflowed. This is propagated
+      --  on further arithmetic or conversions. When we're ready to post an
+      --  error message about the overflow, this will be converted to an
+      --  undef.
 
       Aliases_All          : Boolean;
-      --  Set when this GL_Value is allowed to alias anything.  This is
-      --  used to implement the No_Strict_Aliasing pragma on an access
-      --  type.  In that case, all references to objects of that type
-      --  can alias anything.  We need a separate flag here rather than
-      --  relying on no TBAA_Type because without this flag, we might
-      --  deduce some type-based TBAA as we manipulate this value.
+      --  Set when this GL_Value is allowed to alias anything. This is used
+      --  to implement the No_Strict_Aliasing pragma on an access type.  In
+      --  that case, all references to objects of that type can alias
+      --  anything. We need a separate flag here rather than relying on no
+      --  TBAA_Type because without this flag, we might deduce some
+      --  type-based TBAA as we manipulate this value.
 
       SM_Object            : Opt_E_Variable_Id;
       --  If this is a value of an access type that has a nonstandard
@@ -378,7 +378,7 @@ package GNATLLVM.GLValue is
       TBAA_Offset          : ULL;
       --  The offset in bytes that this value, treated as an address, points
       --  to from the start of the type given by TBAA_Type (always zero
-      --  if a scalar type).  If TBAA_Type isn't Present, this value is
+      --  if a scalar type). If TBAA_Type isn't Present, this value is
       --  undefined.
 
       Unknown_T            : Type_T;
@@ -392,7 +392,7 @@ package GNATLLVM.GLValue is
    function "=" (V1, V2 : GL_Value_Base) return Boolean is
      (V1.Value = V2.Value and then V1.GT = V2.GT);
    --  Two GL_Types are the same if their LLVM values and GL_types are
-   --  the same.  We don't want to compare flags.
+   --  the same. We don't want to compare flags.
 
    function GL_Value_Is_Valid (V : GL_Value_Base) return Boolean;
    --  Return whether V is a valid GL_Value or not
@@ -721,7 +721,7 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    function Initialize_Alignment (V : GL_Value) return GL_Value
      with Pre => Present (V);
-   --  V is a value that we know nothing about except for its type.  If it's
+   --  V is a value that we know nothing about except for its type. If it's
    --  data, we have no idea of its alignment, but if it's a reference or
    --  double reference, we know at least a minimum alignment, from either
    --  the type or the alignment of a pointer to the type.
@@ -780,8 +780,8 @@ package GNATLLVM.GLValue is
    --  Is_Pristine flag.
 
    --  Now define predicates on the GL_Value type to easily access
-   --  properties of the LLVM value and the effective type.  These have the
-   --  same names as those for types and Value_T's.  The first of these
+   --  properties of the LLVM value and the effective type. These have the
+   --  same names as those for types and Value_T's. The first of these
    --  represent abstractions that will be used in later predicates.
 
    function Type_Of (V : GL_Value) return Type_T is
@@ -947,12 +947,12 @@ package GNATLLVM.GLValue is
           Post => Relationship (To_Access'Result) = Data
                   and then Related_Type (To_Access'Result) = GT, Inline;
    --  V is a reference to an object whose type is the designated type of
-   --  GT.  Convert it to being viewed as an object of type GT.
+   --  GT. Convert it to being viewed as an object of type GT.
 
    function From_Access (V : GL_Value) return GL_Value
      with Pre  => Is_Data (V) and then Is_Access_Type (Full_Etype (V)),
           Post => Is_Reference (From_Access'Result), Inline;
-   --  V is a value of an access type.  Instead, represent it as a reference
+   --  V is a value of an access type. Instead, represent it as a reference
    --  to the designated type of that access type.
 
    function Equiv_Relationship

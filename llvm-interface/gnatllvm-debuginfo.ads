@@ -25,11 +25,11 @@ package GNATLLVM.DebugInfo is
 
    procedure Push_Debug_Scope (SFI : Source_File_Index; Scope : Metadata_T)
      with Pre => not Emit_Debug_Info or else Present (Scope);
-   --  Push the current debug scope and make Scope the present scope.  Does
+   --  Push the current debug scope and make Scope the present scope. Does
    --  nothing if not debugging.
 
    procedure Pop_Debug_Scope;
-   --  Pop the debugging scope.  Does nothing if not debugging.
+   --  Pop the debugging scope. Does nothing if not debugging.
 
    procedure Initialize;
    --  Set up the environment for generating debugging information
@@ -64,12 +64,12 @@ package GNATLLVM.DebugInfo is
 
    procedure Push_Debug_Freeze_Pos;
    procedure Pop_Debug_Freeze_Pos;
-   --  When we're doing expansion for computing sizes and/or field positions,
-   --  we'll sometimes be going into nodes whose Sloc is at the point of
-   --  definition of a type.  Jumping to that Sloc is not helpful so these
-   --  calls should be used to freeze the position.  Each "push" must be
-   --  cancelled with a "pop" and the position will be frozen until the
-   --  all pushes have been popped.
+   --  When we're doing expansion for computing sizes and/or field
+   --  positions, we'll sometimes be going into nodes whose Sloc is at the
+   --  point of definition of a type. Jumping to that Sloc is not helpful
+   --  so these calls should be used to freeze the position. Each "push"
+   --  must be cancelled with a "pop" and the position will be frozen until
+   --  the all pushes have been popped.
 
    procedure Create_Global_Variable_Debug_Data (E : Entity_Id; V : GL_Value)
      with Pre => not Is_Type (E) and then Present (V);
@@ -79,7 +79,7 @@ package GNATLLVM.DebugInfo is
    procedure Create_Local_Variable_Debug_Data
      (E : Entity_Id; V : GL_Value; Arg_Num : Nat := 0)
      with Pre => not Is_Type (E) and then Present (V);
-   --  Likewise, for local variables.  Arg_Num is the argument number if
+   --  Likewise, for local variables. Arg_Num is the argument number if
    --  this is for a parameter.
 
    Empty_DI_Expr : Metadata_T;
@@ -87,7 +87,7 @@ package GNATLLVM.DebugInfo is
 
 private
 
-   --  Define the various Dwarf type attributes.  This is encoded in
+   --  Define the various Dwarf type attributes. This is encoded in
    --  llvm/BinaryFormat/Dwarf.def, but it's simpler to just repeat them
    --  here since they are part of the standard and won't change.
 

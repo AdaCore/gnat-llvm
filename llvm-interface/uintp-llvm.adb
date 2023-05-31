@@ -96,7 +96,7 @@ package body Uintp.LLVM is
    function UI_To_Words (U : Uint) return Word_Array is
       Words : Word_Array (1 .. 1);
    begin
-      --  If this fits in an int, get that value.  We can't use
+      --  If this fits in an int, get that value. We can't use
       --  Big_UI_To_Words for many integer values due to the way Uint works.
 
       if UI_Is_In_Int_Range (U) then
@@ -142,13 +142,13 @@ package body Uintp.LLVM is
          --  Cur_Bit is how many bits are left inside the current word
 
          if Length > Cur_Bit then
-            --  There are more bits to store than free bits inside the current
-            --  word: first store the upper ones.
+            --  There are more bits to store than free bits inside the
+            --  current word: first store the upper ones.
 
             declare
                Left_Over : constant Nat := Buffer_Length - Cur_Bit;
-               --  Number of bits left in the buffer after storing high-order
-               --  bits.
+               --  Number of bits left in the buffer after storing
+               --  high-order bits.
 
             begin
                --  First finish filling the current word

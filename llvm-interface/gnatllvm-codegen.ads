@@ -58,7 +58,7 @@ package GNATLLVM.Codegen is
 
    DSO_Preemptable : Boolean        := False;
    --  Indicates that the function or variable may be replaced by a symbol
-   --  from outside the linkage unit at runtime.  clang derives this from
+   --  from outside the linkage unit at runtime. clang derives this from
    --  a complex set of machine-dependent criterial, but the need for
    --  this is rare enough that we'll just provide a switch instead.
 
@@ -82,7 +82,7 @@ package GNATLLVM.Codegen is
 
    Force_Activation_Record_Parameter : Boolean := False;
    --  Indicates that we need to force all subprograms to have an activation
-   --  record parameter.  We need to do this for targets, such as WebAssembly,
+   --  record parameter. We need to do this for targets, such as WebAssembly,
    --  that require strict parameter agreement between calls and declarations.
 
    procedure Scan_Command_Line;
@@ -116,7 +116,7 @@ package GNATLLVM.Codegen is
 
    Libdevice_Filename : String_Access :=
      new String'("/usr/local/cuda/nvvm/libdevice/libdevice.10.bc");
-   --  Location for libdevice for CUDA
-   --  This should be moved back to the body once VC21-031 is fixed
+   --  Location for libdevice for CUDA.
+   --  ??? This should be moved back to the body once VC21-031 is fixed
 
 end GNATLLVM.Codegen;

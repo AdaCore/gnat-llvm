@@ -49,10 +49,10 @@ package body GNATLLVM.Arrays is
    function Get_GEP_Safe_Type (V : GL_Value) return GL_Type
      with Pre  => Is_Data (V),
           Post => Is_Discrete_Type (Get_GEP_Safe_Type'Result);
-   --  GEP treats array indices as signed values.  If the type is unsigned
+   --  GEP treats array indices as signed values. If the type is unsigned
    --  (including Boolean; see C55C02B), it will sign-extend rather than
-   --  zero-extend the value.  So if this type is smaller than the size of
-   --  a pointer and is unsigned, we must return a wider type.
+   --  zero-extend the value. So if this type is smaller than the size of a
+   --  pointer and is unsigned, we must return a wider type.
 
    function Emit_Constant_Aggregate
      (N         : N_Subexpr_Id;
@@ -63,9 +63,9 @@ package body GNATLLVM.Arrays is
                   and then Present (Comp_Type),
           Post => Is_Constant (Emit_Constant_Aggregate'Result);
    --  N is a constant aggregate.  GT is either the array type (at the
-   --  outer level) or Any_Array (if not).  Comp_Type is the underlying
+   --  outer level) or Any_Array (if not). Comp_Type is the underlying
    --  component type of the array, and Dims_Left are the number of dimensions
-   --  remaining.  Return an LLVM constant including all of the constants
+   --  remaining. Return an LLVM constant including all of the constants
    --  in that aggregate.
 
    function Swap_Indices
@@ -80,7 +80,7 @@ package body GNATLLVM.Arrays is
                  and then Present (Comp_GT);
    --  If the native type of Comp_GT has less strict alignment than the
    --  alignment of the type, the alignment computed from the GEP (in
-   --  Result) will be too conservative.  But if the alignment agrees,
+   --  Result) will be too conservative. But if the alignment agrees,
    --  use the value computed by GEP since it takes into account any
    --  alignment of the indices, which we don't want to bother doing here.
 
@@ -89,7 +89,7 @@ package body GNATLLVM.Arrays is
    function To_Result (V : GL_Value) return BA_Data  is ((False, V, No_Uint));
 
    --  We put the routines used to compute sizes into a generic so that we
-   --  can instantiate them using various types of sizing.  The most common
+   --  can instantiate them using various types of sizing. The most common
    --  case is an actual size computation, where we produce a GL_Value.
    --  But we may also instantiate this package to generate the structure
    --  needed for back-annotation.
@@ -448,7 +448,7 @@ package body GNATLLVM.Arrays is
             end if;
 
          --  See if we're asking for the maximum size of an uncontrained
-         --  array.  If so, return the appropriate bound.
+         --  array. If so, return the appropriate bound.
 
          elsif Max_Size and then Is_Unconstrained_Array (GT) then
             declare
@@ -519,7 +519,7 @@ package body GNATLLVM.Arrays is
 
       begin
          --  The length of an array that has the maximum range of its type
-         --  is not representable in that type (it's one too high).  Rather
+         --  is not representable in that type (it's one too high). Rather
          --  than trying to find some suitable type, we use Size_Type,
          --  which will also make thing simpler for some of our callers.
 
@@ -538,8 +538,8 @@ package body GNATLLVM.Arrays is
       begin
          return Size : Result := Size_Const_Int (1) do
 
-            --  Go through every array dimension.  Get its size and
-            --  multiply all of them together.
+            --  Go through every array dimension. Get its size and multiply
+            --  all of them together.
 
             for Dim in Nat range 0 .. Number_Dimensions (TE) - 1 loop
                Size := Size * Get_Array_Length (TE, Dim, V, Max_Size);
@@ -818,7 +818,7 @@ package body GNATLLVM.Arrays is
       then
          return Comp_Align;
 
-      --  We now know that it's back-end packed.  If an alignment was
+      --  We now know that it's back-end packed. If an alignment was
       --  specified, use it.
 
       elsif Known_Alignment (TE) then
@@ -1001,8 +1001,8 @@ package body GNATLLVM.Arrays is
       end loop;
 
       --  If the type is floating-point, the front-end has verified that
-      --  it's zero, so use that.  Otherwise, evaluate the value and
-      --  convert it to a short short integer type.
+      --  it's zero, so use that. Otherwise, evaluate the value and convert
+      --  it to a short short integer type.
 
       if Is_Floating_Point_Type (Full_Etype (E)) then
          Value := Const_Null (SSI_GL_Type);
@@ -1090,16 +1090,16 @@ package body GNATLLVM.Arrays is
 
    begin
       --  The back-end supports exactly two types of array aggregates.
-      --  One, which we handle here, is for a fixed-size aggregate.  The
+      --  One, which we handle here, is for a fixed-size aggregate. The
       --  other are very special cases of single-entry aggre that are
-      --  tested for in Aggr_Assignment_OK_For_Backend in Exp_Aggr.  This
+      --  tested for in Aggr_Assignment_OK_For_Backend in Exp_Aggr. This
       --  may be such an aggregate if it's not directly on the RHS of an
       --  assignment statement, for example if we're assigning such to a
-      --  bitfield.  So handle it here.
+      --  bitfield. So handle it here.
 
       if Is_Single_Aggregate (N) then
 
-         --  If we've already been passed in an LHS, use it.  Otherwise,
+         --  If we've already been passed in an LHS, use it. Otherwise,
          --  allocate one.
 
          declare
@@ -1112,8 +1112,8 @@ package body GNATLLVM.Arrays is
             return Result;
          end;
 
-      --  Handle the case where we have all constants.  In that case, it's
-      --  better to just make the array directly.  The test here checks for
+      --  Handle the case where we have all constants. In that case, it's
+      --  better to just make the array directly. The test here checks for
       --  multi-dimensional Fortran arrays, which we don't handle.
       --  However, we can only do this if we're either at the top level of
       --  the array or the type is loadable.
@@ -1280,7 +1280,7 @@ package body GNATLLVM.Arrays is
 
    begin
       --  If we are of an unsigned type narrower than Size_Type, we must find
-      --  a wider type to use.  We use the first, which will be the narrowest.
+      --  a wider type to use. We use the first, which will be the narrowest.
 
       if not Is_Unsigned_Type (Our_GT)
         or else RM_Size (Our_GT) >= RM_Size (Size_GL_Type)
@@ -1318,7 +1318,7 @@ package body GNATLLVM.Arrays is
       N := First (Indices);
       while Present (N) loop
 
-         --  Adjust the index according to the range lower bound.  If the
+         --  Adjust the index according to the range lower bound. If the
          --  type is an unconstrained PAT, we skip this adjustment.
 
          declare
@@ -1403,17 +1403,17 @@ package body GNATLLVM.Arrays is
          return Result;
       end if;
 
-      --  Otherwise, we choose a type to use for the indexing.  If the
+      --  Otherwise, we choose a type to use for the indexing. If the
       --  component type is of fixed size, the array type must be [0 x CT],
-      --  and we can count in units of CT.  If CT is of variable size, we
+      --  and we can count in units of CT. If CT is of variable size, we
       --  convert the array data type to an i8*, do the indexing
       --  computation in units of bytes, and then convert back to the array
-      --  type.  If the array has aliased components, we must be sure that
-      --  the component size is at least one byte.  We then start with the
+      --  type. If the array has aliased components, we must be sure that
+      --  the component size is at least one byte. We then start with the
       --  first index then for each dimension after the first, multiply by
-      --  the size of that dimension and add that index.  Finally, we
+      --  the size of that dimension and add that index. Finally, we
       --  multiply by the size of the component type if it isn't the
-      --  indexing type.  We do all of this in Size_Type.  Getting the
+      --  indexing type. We do all of this in Size_Type. Getting the
       --  indexing here correct for the Fortran and non-Fortran cases are
       --  tricky.
 
@@ -1448,9 +1448,9 @@ package body GNATLLVM.Arrays is
          Result := GEP (Unit_GT, Data, (1 => Index * Unit_Mult), "arr.lvalue");
          Result := Ptr_To_Ref (Result, Comp_GT);
 
-         --  Set the attributes of the result.  However, the above will have
+         --  Set the attributes of the result. However, the above will have
          --  set incorrect TBAA values, so clear them out first.
-         --  ??? Perhaps we should avoid those invalid values.  They occur
+         --  ??? Perhaps we should avoid those invalid values. They occur
          --  when we have a GEP whose input is a pointer to a scalar.
 
          Set_TBAA_Type (Result, No_Metadata_T);
@@ -1495,9 +1495,9 @@ package body GNATLLVM.Arrays is
          return Get_Undef_Ref (GT);
 
       --  Like in Get_Indexed_LValue, we have to hande both the fake and
-      --  non-fake cases.  Luckily, we know we're only a single dimension.
+      --  non-fake cases. Luckily, we know we're only a single dimension.
       --  However, GEP's result type is a pointer to the component type, so
-      --  we need to cast to the result (array) type in both cases.  We also
+      --  we need to cast to the result (array) type in both cases. We also
       --  need to reinitialize any TBAA type since we've potentially changed
       --  the size.
 
@@ -1549,7 +1549,7 @@ package body GNATLLVM.Arrays is
 
    begin
       --  If V is Volatile_Full_Access, we have to try to load the full array
-      --  into memory.  If we did, and this is for an LHS, we also need to
+      --  into memory. If we did, and this is for an LHS, we also need to
       --  set up a writeback.
 
       if VFA then

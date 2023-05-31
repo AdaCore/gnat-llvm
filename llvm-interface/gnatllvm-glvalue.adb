@@ -94,7 +94,7 @@ package body GNATLLVM.GLValue is
       Valid : constant Boolean := GL_Value_Is_Valid_Int (V);
    begin
       --  This function exists so a conditional breakpoint can be set at
-      --  the following line to see the invalid value.  Otherwise, there
+      --  the following line to see the invalid value. Otherwise, there
       --  seems no other reasonable way to get to see it.
 
       return Valid;
@@ -114,7 +114,7 @@ package body GNATLLVM.GLValue is
    begin
       --  We have to be very careful in this function not to call any
       --  functions that take a GL_Value as an operand to avoid infinite
-      --  recursion.  So we can't call "No" below, for example.
+      --  recursion. So we can't call "No" below, for example.
 
       if V = No_GL_Value then
          return True;
@@ -134,10 +134,11 @@ package body GNATLLVM.GLValue is
          when Data | Boolean_And_Data =>
 
             --  We allow a non-loadable type to be Data to handle cases
-            --  such as passing large objects by value.  We don't want to
-            --  generate such unless we have to, but we also don't want
-            --  to make it invalid.  We can't use Data for a dynamic
-            --  size type, though.
+            --  such as passing large objects by value. We don't want to
+            --  generate such unless we have to, but we also don't want to
+            --  make it invalid. We can't use Data for a dynamic size type,
+            --  though.
+
             return Ekind (GT) /= E_Subprogram_Type
               and then not Is_Nonnative_Type (GT);
 
@@ -883,10 +884,11 @@ package body GNATLLVM.GLValue is
          end if;
       end if;
 
-      --  Now we have specific rules for each relationship type.  It's tempting
-      --  to automate the cases where we do recursive calls by computing which
-      --  cases are possible here directly and searching for an intermediate
-      --  relationship, but that could easily make a bad choice.
+      --  Now we have specific rules for each relationship type. It's
+      --  tempting to automate the cases where we do recursive calls by
+      --  computing which cases are possible here directly and searching
+      --  for an intermediate relationship, but that could easily make a
+      --  bad choice.
 
       case R is
          when Data =>
@@ -896,10 +898,10 @@ package body GNATLLVM.GLValue is
                return Extract_Value (GT, V, Data_Index_In_BD_Type (V));
 
                --  If we have a reference to something else, try to convert
-               --  to a normal reference and then get the data. If this
-               --  was reference to bounds and data, we could also just
-               --  dereference and extract the data, but that involves
-               --  more memory accesses.
+               --  to a normal reference and then get the data. If this was
+               --  reference to bounds and data, we could also just
+               --  dereference and extract the data, but that involves more
+               --  memory accesses.
 
             elsif Is_Reference (V) then
                return Get (Get (V, Reference), R);
@@ -1029,7 +1031,7 @@ package body GNATLLVM.GLValue is
          when Reference =>
 
             --  For Thin_Pointer, we have the value we need, possibly just
-            --  converting it.  For fat pointer, we can extract it.
+            --  converting it. For fat pointer, we can extract it.
 
             if Our_R in Thin_Pointer | Trampoline then
                return Ptr_To_Relationship (V, GT, R);
@@ -1107,7 +1109,7 @@ package body GNATLLVM.GLValue is
          when Reference_To_Activation_Record =>
 
             --  The activation record is inside a fat reference to a
-            --  subprogram.  Otherwise, we make an undefined one.
+            --  subprogram. Otherwise, we make an undefined one.
 
             if Our_R = Fat_Reference_To_Subprogram then
                return Extract_Value_To_Relationship (GT, V, 1, R);
@@ -1414,10 +1416,10 @@ package body GNATLLVM.GLValue is
       end loop;
 
       --  We have a kludge here in the case of making a string literal
-      --  that's not in the source (e.g., for a filename) or when
-      --  we're handling inner dimensions of a multi-dimensional
-      --  array.  In those cases, we use Any_Array for the type, but
-      --  that's unconstrained, so we want use relationship "Unknown".
+      --  that's not in the source (e.g., for a filename) or when we're
+      --  handling inner dimensions of a multi-dimensional array. In those
+      --  cases, we use Any_Array for the type, but that's unconstrained,
+      --  so we want use relationship "Unknown".
 
       V := G (Const_Array (T, Values.all'Address, Values.all'Length),
               GT, (if GT = Any_Array_GL_Type then Unknown else Data));
@@ -1441,9 +1443,9 @@ package body GNATLLVM.GLValue is
          Values (J) := +Elmts (J);
       end loop;
 
-      --  We have a kludge here in the case of making a struct that's
-      --  not in the source.  In those cases, we pass Any_Array
-      --  for the type, so we want use relationship "Unknown".
+      --  We have a kludge here in the case of making a struct that's not
+      --  in the source. In those cases, we pass Any_Array for the type, so
+      --  we want use relationship "Unknown".
 
       V := G (Const_Struct (Values.all'Address, Values.all'Length, Packed),
               GT, (if GT = Any_Array_GL_Type then Unknown else Data));
@@ -1986,7 +1988,7 @@ package body GNATLLVM.GLValue is
          begin
             --  It's possible that we have two identical constants but
             --  the inner types are also the same structure but different
-            --  named types.  So we have to make a recursive call.
+            --  named types. So we have to make a recursive call.
 
             if In_T /= Out_T
               and then Get_Type_Kind (In_T) = Struct_Type_Kind
@@ -2068,7 +2070,7 @@ package body GNATLLVM.GLValue is
       end if;
 
       --  Otherwise, loop through operands as long as we have operands left
-      --  and T is a pointer or array.  For each, take the alignment of
+      --  and T is a pointer or array. For each, take the alignment of
       --  what T points to. The only time T can be a pointer is the
       --  first time through, in which case the next type must be the source
       --  operand type of the GEP.

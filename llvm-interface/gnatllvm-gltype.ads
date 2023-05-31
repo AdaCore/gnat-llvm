@@ -29,18 +29,18 @@ package GNATLLVM.GLType is
 
    --  To support representation clauses on objects and components, we need
    --  multiple LLVM types for the same GNAT tree type (Ada type), each
-   --  corresponding to a different length and alignment.  Some of these
+   --  corresponding to a different length and alignment. Some of these
    --  may be biased types or may represent the maximum size of an
    --  unconstrained discriminated record with default discriminant values.
    --
    --  We maintain a table of such types, referring to the index of the
-   --  table as a GL_Type.  Each table entry contains the GNAT Entity_Id of
+   --  table as a GL_Type. Each table entry contains the GNAT Entity_Id of
    --  the type, the LLVM type, the size, alignment, and related flags, and
-   --  a chain to record all the alternates for the GNAT type.  We create a
-   --  link from the GNAT type to its first GL_Type.  One entry is
+   --  a chain to record all the alternates for the GNAT type. We create a
+   --  link from the GNAT type to its first GL_Type. One entry is
    --  designated as "primitive", meaning it's the actual type used for the
    --  value (in the case of scalar types) or the natural type (without any
-   --  padding) in the case of aggregates.  One GL_Type (possibly the same
+   --  padding) in the case of aggregates. One GL_Type (possibly the same
    --  one, but not necessarily) is the default for that type.
 
    procedure Discard (GT : GL_Type) is null;
@@ -74,16 +74,15 @@ package GNATLLVM.GLType is
      with Pre  => Present (GT),
           Post => Full_Etype (Make_GT_Alternative'Result) = Full_Etype (GT);
    --  Return a GL_Type (creating one if necessary) with the specified
-   --  parameters.  For_Type is True if we're doing this for a type; in
-   --  that case the size needs to be rounded to the alignment.  Max_Size
-   --  is True if we're computing the maximum size of an unconstrained
-   --  record and Biased is True if we're using a biased representation to
-   --  store this integral value.  E is the identifier that we're doing
-   --  this for and is used for a warning message if we're padding.
-   --  For_Component is true if we're changing the component size and is
-   --  used for any warning message.  If Align_For_Msg is specified, use
-   --  that alignment, instead of GT's alignment, in giving warnings about
-   --  unused bits.
+   --  parameters. For_Type is True if we're doing this for a type; in that
+   --  case the size needs to be rounded to the alignment. Max_Size is True
+   --  if we're computing the maximum size of an unconstrained record and
+   --  Biased is True if we're using a biased representation to store this
+   --  integral value. E is the identifier that we're doing this for and is
+   --  used for a warning message if we're padding.  For_Component is true
+   --  if we're changing the component size and is used for any warning
+   --  message. If Align_For_Msg is specified, use that alignment, instead
+   --  of GT's alignment, in giving warnings about unused bits.
 
    procedure Update_GL_Type (GT : GL_Type; T : Type_T; Is_Dummy : Boolean)
      with Pre => Is_Empty_GL_Type (GT) or else Is_Dummy_Type (GT)
@@ -123,8 +122,8 @@ package GNATLLVM.GLType is
      (TE : Void_Or_Type_Kind_Id; Create : Boolean := True) return GL_Type
      with Post => not Create or else Present (Default_GL_Type'Result), Inline;
    --  Return the GT_Type for TE that's to be used as the default for
-   --  objects or components of the type.  If Create is True, make one if
-   --  it doesn't already exist.  This may or may not be the same as what
+   --  objects or components of the type. If Create is True, make one if
+   --  it doesn't already exist. This may or may not be the same as what
    --  Primitive_GL_Type returns.
 
    function Default_GL_Type (GT : GL_Type) return GL_Type
@@ -164,7 +163,7 @@ package GNATLLVM.GLType is
      with Pre  => Present (V),
           Post => Is_Primitive_GL_Type (Base_GL_Type'Result);
    --  Given a or GL_Type, return a GL_Type that corresponds to the
-   --  primitive GL_Type of the base type of a type.  This is used to perform
+   --  primitive GL_Type of the base type of a type. This is used to perform
    --  computation on a type.
 
    function Array_Base_GL_Type (GT : GL_Type) return GL_Type
@@ -268,7 +267,7 @@ package GNATLLVM.GLType is
      (V : GL_Value; No_Copy : Boolean := False)  return GL_Value
      with Pre  => Present (V),
           Post => Is_Primitive_GL_Type (Related_Type (To_Primitive'Result));
-   --  Convert V to its primitive GL_Type.  If No_Copy is True, the caller
+   --  Convert V to its primitive GL_Type. If No_Copy is True, the caller
    --  is guaranteeing that it'll either make a sub-reference to the value
    --  or use a size computed by some other means so that we don't need
    --  to make a copy (and must not make a copy) of V.

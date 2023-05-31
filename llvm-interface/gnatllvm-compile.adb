@@ -102,7 +102,7 @@ package body GNATLLVM.Compile is
       end if;
 
       --  Initialize the environment and get the sizes of fat and thin
-      --  pointers and make some types.  We must do this after initializing
+      --  pointers and make some types. We must do this after initializing
       --  the target info since Pointer_Size requires it.
 
       Initialize_Environment;
@@ -124,7 +124,7 @@ package body GNATLLVM.Compile is
                        else +Long_Long_Size);
 
       --  We want to be able to support overaligned values, but we still need
-      --  to have a maximum possible alignment to start with.  The maximum
+      --  to have a maximum possible alignment to start with. The maximum
       --  alignment in bytes supported by LLVM is actually 2 ** 29, but if
       --  we convert to an alignment in bits, which is the way we store
       --  alignments, that will overflow, so we restrict it to a value
@@ -382,7 +382,7 @@ package body GNATLLVM.Compile is
 
                --  If we're at library level and our parent is an
                --  N_Compilation_Unit, make an elab proc and put the
-               --  statements there.  Otherwise, emit them, which may add
+               --  statements there. Otherwise, emit them, which may add
                --  them to the elaboration table (if we're not at library
                --  level).
 
@@ -452,7 +452,7 @@ package body GNATLLVM.Compile is
          when N_Function_Specification | N_Procedure_Specification =>
 
             --  Ignore intrinsic subprograms as calls to those will be
-            --  expanded.  Also ignore eliminated subprograms.
+            --  expanded. Also ignore eliminated subprograms.
 
             if not Is_Intrinsic_Subprogram (Unique_Defining_Entity (N))
               and then not Is_Eliminated (Unique_Defining_Entity (N))
@@ -523,7 +523,7 @@ package body GNATLLVM.Compile is
          when N_Subprogram_Renaming_Declaration =>
 
             --  Nothing is needed except for debugging information.
-            --  ??? Skip it for now.  Note that in any case, we should
+            --  ??? Skip it for now. Note that in any case, we should
             --  skip Intrinsic subprograms
 
             null;
@@ -531,12 +531,12 @@ package body GNATLLVM.Compile is
          when N_Implicit_Label_Declaration =>
 
             --  Don't do anything here in case this label isn't actually
-            --  used in an N_Label or N_Goto_Statement operation.  If it
+            --  used in an N_Label or N_Goto_Statement operation. If it
             --  were unused, the basic block we create here would be empty,
-            --  which LLVM doesn't allow.  This can't occur for
-            --  user-defined labels, but can occur with some labels placed
-            --  by the front end.  Instead, lazily create the basic block
-            --  where it's placed or when its the target of a goto.
+            --  which LLVM doesn't allow. This can't occur for user-defined
+            --  labels, but can occur with some labels placed by the front
+            --  end. Instead, lazily create the basic block where it's
+            --  placed or when its the target of a goto.
 
             null;
 
@@ -588,9 +588,9 @@ package body GNATLLVM.Compile is
          when N_Procedure_Call_Statement =>
 
             --  If we're only elaborating decls, we may have a call to a
-            --  function whose Name is an N_Selected_Component.  This is
-            --  an unexpanded tasking-related call.  Skip it and hope there
-            --  are no types only in that call.
+            --  function whose Name is an N_Selected_Component. This is an
+            --  unexpanded tasking-related call. Skip it and hope there are
+            --  no types only in that call.
 
             if not Decls_Only or else Nkind (Name (N)) /= N_Selected_Component
             then
@@ -793,9 +793,9 @@ package body GNATLLVM.Compile is
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False) return GL_Value is
    begin
-      --  We have an important special case here.  If N represents an
-      --  entity and its value is a Reference, always return that reference
-      --  in preference to returning its value and forcing it into memory.
+      --  We have an important special case here. If N represents an entity
+      --  and its value is a Reference, always return that reference in
+      --  preference to returning its value and forcing it into memory.
       --  But don't do this for subprograms since they may need static
       --  links and avoid variables that are in activation records.
 
@@ -852,7 +852,7 @@ package body GNATLLVM.Compile is
         Emit_Internal (N, LHS, For_LHS => For_LHS, Prefer_LHS => Prefer_LHS);
 
    begin
-      --  If we have an overflow, convert it to an undef.  Unless we're to
+      --  If we have an overflow, convert it to an undef. Unless we're to
       --  suppress the error, also give an error and emit a raise.
 
       if Overflowed (Result) then
@@ -1083,8 +1083,8 @@ package body GNATLLVM.Compile is
          when N_Function_Call =>
 
             --  If we're only elaborating decls, we may have a call to a
-            --  function whose Name is an N_Selected_Component.  This is
-            --  an unexpanded tasking-related call.  Skip it and hope there
+            --  function whose Name is an N_Selected_Component. This is
+            --  an unexpanded tasking-related call. Skip it and hope there
             --  are no types only in that call.
 
             if Decls_Only and then Nkind (Name (N)) = N_Selected_Component then
@@ -1156,11 +1156,11 @@ package body GNATLLVM.Compile is
                A_GT  : GL_Type;
 
             begin
-               --  There are two cases: the Expression operand can
-               --  either be an N_Identifier or Expanded_Name, which
-               --  must represent a type, or a N_Qualified_Expression,
-               --  which contains both the object type and an initial
-               --  value for the object.
+               --  There are two cases: the Expression operand can either
+               --  be an N_Identifier or Expanded_Name, which must
+               --  represent a type, or a N_Qualified_Expression, which
+               --  contains both the object type and an initial value for
+               --  the object.
 
                pragma Assert (not For_LHS);
 
@@ -1175,7 +1175,7 @@ package body GNATLLVM.Compile is
 
                --  If GT's designated type is a record with discriminants
                --  and there's no Value, we're usually passed a subtype as
-               --  A_GT.  But in some cases (such as where it's limited), we
+               --  A_GT. But in some cases (such as where it's limited), we
                --  aren't.
 
                Result := Heap_Allocate_For_Type
@@ -1244,9 +1244,9 @@ package body GNATLLVM.Compile is
             if Decls_Only then
                return Emit_Undef (GT);
 
-            --  This can be an integer type if it's the implementation
-            --  type of a packed array type.  In that case, convert it to
-            --  the result type.
+            --  This can be an integer type if it's the implementation type
+            --  of a packed array type. In that case, convert it to the
+            --  result type.
 
             elsif Is_Integer_Type (Related_Type (Result))
               and then Is_Packed_Array_Impl_Type (Related_Type (Result))
@@ -1301,9 +1301,9 @@ package body GNATLLVM.Compile is
                return Emit_Undef (GT);
             else
                --  The back-end supports exactly two types of array
-               --  aggregates.  One is for a fixed-size aggregate.  The
-               --  other are very special cases of Others that are tested
-               --  for in Aggr_Assignment_OK_For_Backend in Exp_Aggr.
+               --  aggregates. One is for a fixed-size aggregate. The other
+               --  are very special cases of Others that are tested for in
+               --  Aggr_Assignment_OK_For_Backend in Exp_Aggr.
 
                return Emit_Array_Aggregate
                  (N, Number_Dimensions (GT), (1 .. 0 => <>),
@@ -1372,7 +1372,7 @@ package body GNATLLVM.Compile is
          while Present (N) loop
 
             --  If N is an N_Handled_Sequence_Of_Statements here, we know
-            --  that it's not nested in a block.  It probably was from a
+            --  that it's not nested in a block. It probably was from a
             --  package body at library level and ended in the elab proc.
             --  Make a block around it.
 
@@ -1392,13 +1392,13 @@ package body GNATLLVM.Compile is
 
    --  Freeze nodes for package bodies are relatively rare, so we can store
    --  information about them in a table that we search for the relevant
-   --  entity.  We need to handle the case where we're at library level
-   --  (so what we have to save is the position into the elab table) or
-   --  in code, where we need to save a pointer to a branch we add to a new
-   --  basic block that we made.  Note that in the latter case, we can't
-   --  use Get_Current_Position / Set_Current_Position because those are
-   --  intended for adding individual instructions within a basic block
-   --  but here we need to insert large amounts of code, including basic
+   --  entity. We need to handle the case where we're at library level (so
+   --  what we have to save is the position into the elab table) or in
+   --  code, where we need to save a pointer to a branch we add to a new
+   --  basic block that we made. Note that in the latter case, we can't use
+   --  Get_Current_Position / Set_Current_Position because those are
+   --  intended for adding individual instructions within a basic block but
+   --  here we need to insert large amounts of code, including basic
    --  blocks.
 
    type Code_Position (Library : Boolean := False) is record
@@ -1436,9 +1436,9 @@ package body GNATLLVM.Compile is
          Code_Positions.Append ((True, E, Get_Elab_Position));
 
       else
-         --  Create a new basic block and branch to it.  Later, we'll
-         --  replace the branch we made to a branch to our new code and then
-         --  branch to that new block.
+         --  Create a new basic block and branch to it. Later, we'll
+         --  replace the branch we made to a branch to our new code and
+         --  then branch to that new block.
 
          declare
             BB : constant Basic_Block_T := Create_Basic_Block;
@@ -1510,9 +1510,9 @@ package body GNATLLVM.Compile is
                   end;
                else
                   --  Make a new block and and get pointers to all the
-                  --  relevant blocks.  Then rewrite the branch to point
-                  --  to our code, emit our code, and branch to the new
-                  --  block that we used to branch to.
+                  --  relevant blocks. Then rewrite the branch to point to
+                  --  our code, emit our code, and branch to the new block
+                  --  that we used to branch to.
 
                   declare
                      Our_BB  : constant Basic_Block_T := Get_Insert_Block;
@@ -1568,7 +1568,7 @@ package body GNATLLVM.Compile is
          when N_Procedure_Specification | N_Function_Specification =>
 
             --  For subprograms, the decl node points to the subprogram
-            --  specification.  We only want to consider "normal"
+            --  specification. We only want to consider "normal"
             --  subprograms that aren't intrinsic, so we not only test for
             --  intrinsic but for an N_Subprogram_Declaration, as opposed
             --  to, for example an N_Abstract_Subprogram_Declaration, which

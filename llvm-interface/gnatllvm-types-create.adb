@@ -256,7 +256,7 @@ package body GNATLLVM.Types.Create is
          if Is_Array_Type (DT) then
 
             --  For arrays, a pointer to void will work for all but a fat
-            --  pointer.  For a fat pointer, use two pointers to void (we
+            --  pointer. For a fat pointer, use two pointers to void (we
             --  could make an array bound type without actually fully
             --  elaborating the array type, but it's not worth the trouble).
 
@@ -287,7 +287,7 @@ package body GNATLLVM.Types.Create is
       T     : Type_T;
 
    begin
-      --  Set that we're elaborating the type.  Note that we have to do this
+      --  Set that we're elaborating the type. Note that we have to do this
       --  here rather than right before the case statement because we may
       --  have two different types being elaborated that have the same
       --  base type.
@@ -352,7 +352,7 @@ package body GNATLLVM.Types.Create is
          when E_Incomplete_Type =>
 
             --  This is normally a Taft Amendment type, so return a
-            --  dummy type that we can take a pointer to.  But it may also
+            --  dummy type that we can take a pointer to. But it may also
             --  be an actual type in the case of an error, so use something
             --  that we can take the size an alignment of.
 
@@ -467,7 +467,7 @@ package body GNATLLVM.Types.Create is
                end if;
             end if;
 
-            --  Ensure the alignment is valid.  Note, that Align was
+            --  Ensure the alignment is valid. Note that Align was
             --  previously measured in units of bytes, but is now measured
             --  in bits.
 
@@ -530,6 +530,7 @@ package body GNATLLVM.Types.Create is
             --  We normally want to use the maximum size here, but not in
             --  the cases where Analyze_Object_Declaration in Sem_Ch3 would
             --  build a default subtype for objects.
+
             BA_Esize   : constant Node_Ref_Or_Val  :=
               Annotated_Object_Size (GT,
                                      Do_Align => True,
@@ -675,7 +676,7 @@ package body GNATLLVM.Types.Create is
 
    begin
       --  Find a possibly better place to post an alignment error.  If
-      --  there's an alignment clause, use its expression.  However, for
+      --  there's an alignment clause, use its expression. However, for
       --  the implicit base type of an array type, the alignment clause is
       --  on the first subtype.
 

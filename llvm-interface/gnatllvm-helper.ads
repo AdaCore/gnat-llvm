@@ -24,7 +24,7 @@ package GNATLLVM.Helper is
 
    --  This package contains definitions for "helper" subprograms that do
    --  some small amounts of maniplations and then call the lower-level
-   --  LLVM function.  If the major purpose of the LLVM function is to
+   --  LLVM function. If the major purpose of the LLVM function is to
    --  generate code, the helper subprogram should be in
    --  GNATLLVM.Instructions and if it's to perform operations on a
    --  GL_Value that LLVM supports on a Value_T, it should be in

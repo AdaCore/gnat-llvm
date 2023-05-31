@@ -59,7 +59,7 @@ package GNATLLVM.Conditionals is
                   and then Kind in N_Op_Compare,
           Post => Present (Build_Elementary_Comparison'Result);
    --  Helpers for Emit_Expression: handle comparison operations for
-   --  elementary types.  The second form only supports discrete or pointer
+   --  elementary types. The second form only supports discrete or pointer
    --  types.
 
    procedure Emit_If (N : N_If_Statement_Id);
@@ -100,7 +100,7 @@ package GNATLLVM.Conditionals is
    --  Emit the code for a case-like part, which can be either a case
    --  statement or a computation related to a variant part of a record.
    --  Alts is a list of alternates whose values are to be compared with
-   --  LHS.  If alternative J has a matching choice, branch to In_BBs (J).
+   --  LHS. If alternative J has a matching choice, branch to In_BBs (J).
 
    function Emit_Min_Max
      (Exprs : List_Id; Compute_Max : Boolean) return GL_Value

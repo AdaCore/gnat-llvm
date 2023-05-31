@@ -48,9 +48,9 @@ package GNATLLVM.Utils is
 
    procedure Decode_Range (N : N_Is_Range_Id; Low, High : out Uint);
    --  Decode the right operand of an N_In or N_Not_In or of a Choice in a
-   --  case statement into the low and high bounds.  If either Low or High
+   --  case statement into the low and high bounds. If either Low or High
    --  is not Present, we have a nonstatic value, a non-discrete value, or
-   --  we can't find the value.  This should not happen in switch
+   --  we can't find the value. This should not happen in switch
    --  statements.
 
    function Range_Length
@@ -87,7 +87,7 @@ package GNATLLVM.Utils is
    --  corresponding subprogram declaration.
 
    function Get_Uint_Value (N : N_Subexpr_Id) return Uint;
-   --  If Node has a static Uint value, return it.  Otherwise, return No_Uint
+   --  If Node has a static Uint value, return it. Otherwise, return No_Uint
 
    function Const_Int (T : Type_T; Value : Uint)
      return Value_T renames UI_To_LLVM;

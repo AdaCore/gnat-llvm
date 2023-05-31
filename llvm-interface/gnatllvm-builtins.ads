@@ -21,7 +21,7 @@ with GNATLLVM.GLValue; use GNATLLVM.GLValue;
 package GNATLLVM.Builtins is
 
    --  When we want to create an overloaded intrinsic, we need to specify
-   --  what operand signature the intrinsic has.  The following are those
+   --  what operand signature the intrinsic has. The following are those
    --  that we currently support.
 
    type Overloaded_Intrinsic_Kind is (Unary, Binary, Boolean_And_Data);
@@ -37,7 +37,7 @@ package GNATLLVM.Builtins is
    function Emit_Intrinsic_Call
      (N : N_Subprogram_Call_Id; Subp : Subprogram_Kind_Id) return GL_Value;
    --  If Subp is an intrinsic that we know how to handle, emit the LLVM
-   --  for it and return the result.  Otherwise, No_GL_Value.
+   --  for it and return the result. Otherwise, No_GL_Value.
 
    function Get_Default_Alloc_Fn return GL_Value
      with Post => Present (Get_Default_Alloc_Fn'Result);

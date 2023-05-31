@@ -37,16 +37,16 @@ package GNATLLVM.Compile is
       Prefer_LHS : Boolean  := False) return GL_Value
      with Post => Present (Emit'Result);
    --  Compile an expression node to an LLVM value or a reference to the
-   --  value, whichever involves the least work.  LHS may be an expression
-   --  to which the value should be assigned.  If the assignment was done,
-   --  return LHS.  For_LHS is true if we're evaluating this for the LHS
-   --  of an assignment.  Prefer_LHS is true if we're in a context (like
+   --  value, whichever involves the least work. LHS may be an expression
+   --  to which the value should be assigned. If the assignment was done,
+   --  return LHS. For_LHS is true if we're evaluating this for the LHS of
+   --  an assignment. Prefer_LHS is true if we're in a context (like
    --  'Address) where we prefer returning an LValue if we can, but we are
    --  allowed to have a context where the result isn't an LHS.
 
    procedure Push_Suppress_Overflow;
    procedure Pop_Suppress_Overflow;
-   --  Push and pop the level of supressing overflow messages.  This is used
+   --  Push and pop the level of supressing overflow messages. This is used
    --  during trial elaborations, such as in Is_No_Elab_Needed to avoid
    --  producing error messages for values that may not be used and
    --  certainly will not be used in that context.
@@ -56,9 +56,9 @@ package GNATLLVM.Compile is
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False) return GL_Value
      with Post => Present (Emit_LValue'Result);
-   --  Compile an expression node to an LLVM value that's a reference.
-   --  If N corresponds to an LValue in the language, then the result
-   --  will also be an LValue.  LHS, For_LHS is like for Emit.
+   --  Compile an expression node to an LLVM value that's a reference.  If
+   --  N corresponds to an LValue in the language, then the result will
+   --  also be an LValue. LHS, For_LHS is like for Emit.
 
    function Emit_Safe_LValue
      (N          : N_Subexpr_Id;
@@ -66,7 +66,7 @@ package GNATLLVM.Compile is
       For_LHS    : Boolean  := False) return GL_Value
      with Post => Present (Emit_Safe_LValue'Result);
    --  Likewise, but push the LValue pair table so we compute this as
-   --  a safe subexpression.  LHS is like for Emit.
+   --  a safe subexpression. LHS is like for Emit.
 
    function Emit_Expression
      (N       : N_Subexpr_Id;
@@ -76,7 +76,7 @@ package GNATLLVM.Compile is
      with Post => Is_Primitive_GL_Type (Emit_Expression'Result);
    --  Likewise, but return something that's to be used as a value (but
    --  may nevertheless be a reference if its type is of variable size).
-   --  LHS is like for Emit.  It will always be the primitive form.
+   --  LHS is like for Emit. It will always be the primitive form.
 
    function Emit_Safe_Expr
      (N : N_Subexpr_Id; LHS : GL_Value := No_GL_Value) return GL_Value
@@ -89,7 +89,7 @@ package GNATLLVM.Compile is
      (N : N_Expression_With_Actions_Id; Has_All : out Boolean)
      return Opt_N_Subexpr_Id;
    --  If N just declares the value it returns, return the initializer
-   --  of that value; otherwise return Empty.  Has_All is True if we
+   --  of that value; otherwise return Empty. Has_All is True if we
    --  have an N_Explicit_Dereference of the expression.
 
    procedure Process_Freeze_Entity (N : N_Freeze_Entity_Id);

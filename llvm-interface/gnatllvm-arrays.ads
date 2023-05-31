@@ -33,7 +33,7 @@ package GNATLLVM.Arrays is
    function Is_Self_Referential_Type (GT : GL_Type) return Boolean
      with Pre => Present (GT);
    --  Return True if GT is a type where computing the size of the type
-   --  requires an instance of the type.  This is true for an unconstrained
+   --  requires an instance of the type. This is true for an unconstrained
    --  type or an array subtype that has a discriminant as a bound.
 
    function Get_Bound_Size (GT : Array_Or_PAT_GL_Type) return GL_Value
@@ -62,9 +62,9 @@ package GNATLLVM.Arrays is
                   and then Present (GT)
                   and then Type_Of (In_Low) = Type_Of (In_High),
           Post => Related_Type (Bounds_To_Length'Result) = GT;
-   --  Low and High are bounds of a discrete type.  Compute the length of
+   --  Low and High are bounds of a discrete type. Compute the length of
    --  that type, taking into account the superflat case, and do that
-   --  computation in GT.  We would like to have the above test be that the
+   --  computation in GT. We would like to have the above test be that the
    --  two types be identical, but that's too strict (for example, one
    --  may be Integer and the other Integer'Base), so just check the width.
 
@@ -113,7 +113,7 @@ package GNATLLVM.Arrays is
 
    function Get_Array_Size_Complexity
      (TE : Array_Kind_Id; Max_Size : Boolean := False) return Nat;
-   --  Return the complexity of computing the size of an array.  This roughly
+   --  Return the complexity of computing the size of an array. This roughly
    --  gives the number of "things" needed to access to compute the size.
    --  This returns zero iff the array type is of a constant size.
 
@@ -134,7 +134,7 @@ package GNATLLVM.Arrays is
                               Number_Dimensions (Related_Type (V))),
           Post => Present (Get_Indexed_LValue'Result);
    --  Get an LValue corresponding to indexing V by the list of indices
-   --  in Idxs.  This list is the constant zero followed by the actual indices
+   --  in Idxs. This list is the constant zero followed by the actual indices
    --  (i.e., with the lower bound already subtracted).
 
    function Get_Slice_LValue (GT : Array_GL_Type; V : GL_Value) return GL_Value
@@ -233,8 +233,8 @@ package GNATLLVM.Arrays is
                   and then Is_Array_Type (Full_Etype (N)),
                Post => Present (Emit_Array_Aggregate'Result);
    --  Emit an aggregate which is an array, returning the GL_Value that
-   --  contains the data.  Value_So_Far, if Present, is any of the array
-   --  whose value we've accumulated so far.  Dims_Left says how many
+   --  contains the data. Value_So_Far, if Present, is any of the array
+   --  whose value we've accumulated so far. Dims_Left says how many
    --  dimensions of the outer array type we still can recurse into.
    --  Indices_So_Far are the indices of any outer N_Aggregate expressions
    --  we went through.
@@ -250,8 +250,8 @@ package GNATLLVM.Arrays is
    function Get_Array_Bounds
      (GT, V_GT : Array_Or_PAT_GL_Type; V : GL_Value) return GL_Value
      with Post => Present (Get_Array_Bounds'Result);
-   --  Get the bounds of the array type V_GT using V if necessary.  GT
-   --  is the type of the array we're getting the bounds for, in case they're
+   --  Get the bounds of the array type V_GT using V if necessary. GT is
+   --  the type of the array we're getting the bounds for, in case they're
    --  different.
 
    function Build_Indexed_Load
@@ -271,7 +271,7 @@ package GNATLLVM.Arrays is
      with Pre => Present (In_LHS) and then Present (RHS);
    --  Perform an indexed store operation with prefix In_LHS, indices Idxs,
    --  and RHS, the data to store.  If we return a value, that's the array
-   --  that needs to be stored into the actual LHS.  If no value if
+   --  that needs to be stored into the actual LHS. If no value if
    --  returned, all our work is done.
 
    procedure Build_Indexed_Store
@@ -287,17 +287,17 @@ private
    --  A bound of a constrained array can either be a compile-time
    --  constant, which we record as a Uint or some dynamic value that was
    --  known at the declaration of the type, which can include a refdrence
-   --  to a discriminant.  We use the structures and table below to
-   --  indicate which.  The value return by Get_Array_Info is the index
+   --  to a discriminant. We use the structures and table below to
+   --  indicate which. The value return by Get_Array_Info is the index
    --  into this table for the first index of a constrained array whose
-   --  size isn't known at compile-time.  The remaining bounds are
+   --  size isn't known at compile-time. The remaining bounds are
    --  subsequent entries in the table.
 
    type One_Bound is record
       Cnst    : Uint;
       Value   : Opt_N_Subexpr_Id;
    end record
-     --  Only one item can be specified.  We might think that exactly one
+     --  Only one item can be specified. We might think that exactly one
      --  item must be specified, but that's not the case for an
      --  unconstrained array.
      with Predicate => ((if No (Cnst)  then 0 else 1) +

@@ -237,7 +237,7 @@ package CCG.Utils is
    --  to the array. In this LLVM usage, we never have any objects of that
    --  array type. However, Ada can have arrays of zero length and can have
    --  objects of that length and doing the above conversion will cause
-   --  confusion there.  So we instead interpret an array of length zero as
+   --  confusion there. So we instead interpret an array of length zero as
    --  an array of length one.
 
    function Effective_Array_Length (T : Type_T) return Nat is

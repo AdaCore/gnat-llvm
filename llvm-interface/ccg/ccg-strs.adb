@@ -225,8 +225,9 @@ package body CCG.Strs is
       New_S    : Str;
 
    begin
-      --  See if we already have this string in the set.  If so, return the
-      --  element.  If not, make a copy in the heap and add that to the set.
+      --  See if we already have this string in the set. If so, return the
+      --  element. If not, make a copy in the heap and add that to the set.
+
       if Has_Element (Position) then
          return Element (Position);
       else
@@ -566,8 +567,8 @@ package body CCG.Strs is
    function "&" (L : String; R : Value_T) return Str is
    begin
       --  If the string is small enough, we just construct a two-component
-      --  object.  Otherwise (a rare case), we construct a Str for both and
-      --  concatenate.  We could check for the case where we could make a
+      --  object. Otherwise (a rare case), we construct a Str for both and
+      --  concatenate. We could check for the case where we could make a
       --  new component that concatenated the strings from both sides, but
       --  the number of times that would happen isn't worth the trouble.
       --  It is worth checking for a null string.

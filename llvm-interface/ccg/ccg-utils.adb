@@ -167,7 +167,7 @@ package body CCG.Utils is
 
       --  We need two maps into the above table. One maps a Unique_Id into
       --  a table entry. This is used to track the initial setting and is
-      --  used again when we set the key.  The second maps a (key,
+      --  used again when we set the key. The second maps a (key,
       --  component index) pair into the name info for that component.
 
       function Hash (UID : Unique_Id) return Hash_Type is (Hash_Type (UID));
@@ -329,7 +329,7 @@ package body CCG.Utils is
          end if;
 
          --  Now create a name for the component, based on the saved
-         --  information.  We really shouldn't be requesting a padding
+         --  information. We really shouldn't be requesting a padding
          --  field, but handle it anyway.
 
          if Present (CD.Name) then
@@ -1036,8 +1036,8 @@ package body CCG.Utils is
                return;
             end if;
 
-            --  Otherwise, show that we've walked it and call the
-            --  procedure on this value (unless we're asked not to).
+            --  Otherwise, show that we've walked it and call the procedure
+            --  on this value (unless we're asked not to).
 
             Insert (Walked, V);
 
@@ -1110,9 +1110,9 @@ package body CCG.Utils is
               (if Unsigned_P then +"u" else +"") & "int" & Our_Size & "_t";
          end;
 
-      --  ??? There are a number of issues here: Ada supports a "long
-      --  long long" type, which could correspond to C's int128_t. But
-      --  for now we'll keep it simple.
+      --  ??? There are a number of issues here: Ada supports a "long long
+      --  long" type, which could correspond to C's int128_t. But for now
+      --  we'll keep it simple.
 
       else
          declare

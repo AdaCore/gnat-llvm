@@ -21,15 +21,20 @@ ADALIB=lib/rts-llvm/adalib
 
 pwd:=$(shell pwd)
 
-ifneq ($(wildcard $(pwd)/../llvm/llvm-obj/bin/llvm-config),)
-  LLVM_CONFIG=$(pwd)/../llvm/llvm-obj/bin/llvm-config
+LLVM_BUILD=$(pwd)/../llvm/llvm-obj
+
+ifneq ($(wildcard $(LLVM_BUILD)/bin/llvm-config),)
+  LLVM_SRC=$(shell echo $(pwd)/../llvm/llvm-project-*.src)
+  LLVM_CONFIG=$(LLVM_BUILD)/bin/llvm-config
+  CLANG_CXXFLAGS=-I$(LLVM_BUILD)/tools/clang/include -I$(LLVM_SRC)/clang/include
 else
   LLVM_CONFIG=llvm-config
+  CLANG_CXXFLAGS=
 endif
 
 LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs)
 CXXFLAGS=
-ALL_CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags) $(CXXFLAGS)
+ALL_CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags) $(CXXFLAGS) $(CLANG_CXXFLAGS)
 
 ifeq ($(OS),Windows_NT)
   LN_S=cp -p

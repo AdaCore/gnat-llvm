@@ -2966,7 +2966,7 @@ package body GNATLLVM.Subprograms is
    procedure Add_Functions_To_Module is
    begin
       for J in 1 .. Created_Subprograms.Last loop
-x         if not Get_Added_To_Module (Created_Subprograms.Table (J)) then
+         if not Get_Added_To_Module (Created_Subprograms.Table (J)) then
             Add_Function_To_Module (Get_Value (Created_Subprograms.Table (J)));
          end if;
       end loop;

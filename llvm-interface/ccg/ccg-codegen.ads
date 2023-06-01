@@ -42,7 +42,7 @@ package CCG.Codegen is
    --  Function corresponding to the spec and body elab proc, respectively.
 
    procedure Initialize_Output;
-   --  Do any initialization needed to output C.  This is always called after
+   --  Do any initialization needed to output C. This is always called after
    --  we've obtained target parameters.
 
    procedure Note_Enum (TE : E_Enumeration_Type_Id);

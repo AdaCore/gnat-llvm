@@ -77,7 +77,7 @@ package CCG is
    --  also output decls for any global variables at a similar time.
    --  However, we keep lists of subprograms and decls and statements for
    --  each and only write those after we've finished processing the module
-   --  so that all typedefs and globals are written first.  These
+   --  so that all typedefs and globals are written first. These
    --  procedures manage those lists.
 
    function Present (Idx : Global_Decl_Idx) return Boolean is
@@ -115,7 +115,7 @@ package CCG is
    --  The lowest line number of any object that we're writting out
 
    procedure C_Initialize_Output;
-   --  Do any initialization needed to output C.  This is always called after
+   --  Do any initialization needed to output C. This is always called after
    --  we've obtained target parameters.
 
    procedure C_Generate (Module : Module_T);

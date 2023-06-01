@@ -380,7 +380,7 @@ package body CCG.Flow is
      with Pre => Present (Pidx);
    --  Starting at the target of Pidx, follow the Next chain through
    --  flows that have only one use looking for Wanted_Target, if
-   --  present, or the end of the chain if it isn't.  Then clear the
+   --  present, or the end of the chain if it isn't. Then clear the
    --  Next or Target of Pidx, as appropriate, and
    --  return its old value.
 

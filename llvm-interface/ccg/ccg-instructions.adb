@@ -155,7 +155,7 @@ package body CCG.Instructions is
 
    --  For annotations (pragma Annotate and Comment) that aren't at top
    --  level, we need to generate a builtin call (to llvm.ccg.annotate)
-   --  that points to the string.  We could pass the Str as an integer, but
+   --  that points to the string. We could pass the Str as an integer, but
    --  that involves potentially nonportable code, so it's simplest to make
    --  a table of these and pass the index in the table.
 
@@ -375,7 +375,7 @@ package body CCG.Instructions is
       --  elaboration of that later list entry.
       --
       --  We work from the end of the list towards the front since we don't
-      --  need to produce variables for expressions only used later.  But
+      --  need to produce variables for expressions only used later. But
       --  because the only entries in the list are used exactly once, we
       --  know that we don't see the reference to the value as a variable
       --  in elaborating any other list entry. So we know that the values

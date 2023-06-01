@@ -358,20 +358,20 @@ private
    --  Most strings that we have are a combination of operators and
    --  keywords and a string denoting a value (which may be either the
    --  value's name, if it has one, or an expression denoting that value)
-   --  or a type.  We record each string we use as a concatenation of
+   --  or a type. We record each string we use as a concatenation of
    --  actual strings, values, and types and create a hash table so that we
-   --  only keep one copy of each string.  For the purpose of minimizing
+   --  only keep one copy of each string. For the purpose of minimizing
    --  memory, we assume that each LLVM value and type has a distinct
-   --  string representation.  This isn't necessarily true (e.g., the same
+   --  string representation. This isn't necessarily true (e.g., the same
    --  local variable in multiple programs), but is a good compromise
-   --  between time and space usage.  Most of the strings are small, so
+   --  between time and space usage. Most of the strings are small, so
    --  rather than creating a mechanism for variable-sized strings, each
-   --  component of the concatenation is limited to a small size.  In the
+   --  component of the concatenation is limited to a small size. In the
    --  rare case where we need a larger string, we break it into segments.
 
    Str_Max : constant Integer := 9;
    subtype Str_Length is Integer range 0 .. Str_Max;
-   --  The longest string we'll use often is "unsigned ".  We allow empty
+   --  The longest string we'll use often is "unsigned ". We allow empty
    --  strings, but optimize operations to not create them except when
    --  necessary.
 

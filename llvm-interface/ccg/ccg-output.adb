@@ -222,7 +222,7 @@ package body CCG.Output is
 
             --  For globals, we write the decl immediately. Otherwise, it's
             --  part of the decls for the subprogram.  Figure out whether this
-            --  is static or extern.  It's extern if there's no initializer.
+            --  is static or extern. It's extern if there's no initializer.
 
             if Is_A_Global_Variable (V) then
                declare

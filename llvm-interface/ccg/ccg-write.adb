@@ -733,8 +733,6 @@ package body CCG.Write is
       procedure Write_Str_With_Signedness (S : String);
       --  Write S possibly preceeded by "unsigned".
 
-      Is_Ref     : constant Boolean           :=
-        Present (V) and then Get_Entity_Is_Ref (V);
       TE         : constant Opt_Type_Kind_Id  :=
         (if    Present (E) then Full_Etype (E)
          elsif Present (V) then GNAT_Type (V)
@@ -859,16 +857,6 @@ package body CCG.Write is
                Write_Str ("ccg_f");
                Write_Int (Get_Output_Idx (T));
 
-            --  If we have a value and it's an access to a subprogram,
-            --  we must use "ccg_f", a generic function pointer, and
-            --  not char *.
-
-            elsif (Present (V) and then Is_Access_Subprogram (V))
-              or else (not Is_Ref and then Present (TE)
-                       and then Is_Access_Subprogram_Type (TE))
-            then
-               Write_Str ("ccg_f");
-
             --  Otherwise, this is handled normally. We don't want to use a
             --  concatenation operator because that might cause us to try
             --  to write out the typedef for the pointed-to type, which
@@ -982,12 +970,6 @@ package body CCG.Write is
 
       if Wrote_Include then
          Write_Eol;
-      end if;
-
-      --  And maybe write a typedef for ccg_f
-
-      if Has_Access_Subtype then
-         Write_Line ("typedef void (*ccg_f) (void);");
       end if;
 
       --  If we're writing lines from the Ada source, set up our main

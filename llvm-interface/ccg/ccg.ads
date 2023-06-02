@@ -108,9 +108,6 @@ package CCG is
       Hash                => Hash_BB,
       Equivalent_Elements => "=");
 
-   Has_Access_Subtype : Boolean := False;
-   --  If True, we need to use our generic "ccg_f" type for a function pointer
-
    Lowest_Line_Number : Physical_Line_Number := Physical_Line_Number'First;
    --  The lowest line number of any object that we're writting out
 

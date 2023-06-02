@@ -658,13 +658,6 @@ package body CCG.Instructions is
          Unary);
 
    begin
-      --  If our input is a function, we're likely to need the special
-      --  ccg_f typedef.
-
-      if Is_A_Function (Op) and then not Has_Access_Subtype then
-         Has_Access_Subtype := True;
-      end if;
-
       --  If we're doing a bitcast and the input and output types aren't
       --  both pointers, we need to do this by pointer-punning.
 

@@ -23,7 +23,6 @@ with Stand;       use Stand;
 with Sinput;      use Sinput;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
-with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Codegen;      use CCG.Codegen;
@@ -153,18 +152,6 @@ package body CCG is
          Set_Entity             (V, E);
          Set_Entity_Is_Ref      (V, Reference);
       end if;
-
-      --  If we have a type that's an access function type, show that we
-      --  have such since we need to write out a typedef.
-
-      if (not (Is_Type (E) and then Is_Access_Subprogram_Type (E))
-          or else (not Is_Type (E)
-                   and then Is_Access_Subprogram_Type (Full_Etype (E))))
-        and then not Reference
-      then
-         Has_Access_Subtype := True;
-      end if;
-
    end C_Set_Entity;
 
    ------------------

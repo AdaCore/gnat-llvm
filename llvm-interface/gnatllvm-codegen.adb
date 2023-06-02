@@ -328,7 +328,7 @@ package body GNATLLVM.Codegen is
 
          Debug_Flag_Dot_HH := True;
 
-         --  Don't merge function, since this can cause references to
+         --  Don't merge functions, since this can cause references to
          --  pad fields and also generate messier C code.
 
          Merge_Functions := False;

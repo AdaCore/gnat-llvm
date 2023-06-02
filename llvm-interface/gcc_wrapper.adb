@@ -502,9 +502,12 @@ begin
          --  the linker.
 
          if Have_Clang then
-            Spawn (S.all, new String'("-no-pie") & Args, Status);
+            Spawn (S.all,
+                   new String'("-no-pie") & Args (1 .. Arg_Count),
+                   Status);
+
          else
-            Spawn (S.all, Args, Status);
+            Spawn (S.all, Args (1 .. Arg_Count), Status);
          end if;
 
          Free (S);

@@ -556,7 +556,7 @@ package GNATLLVM.GLValue is
      (Has_Storage_Model (V) and then Present (SM_Copy_From (V)))
       with Pre => Present (V);
    function Has_SM_Copy_To (V : GL_Value) return Boolean is
-     (Has_Storage_Model (V) and then Present (SM_Copy_From (V)))
+     (Has_Storage_Model (V) and then Present (SM_Copy_To (V)))
       with Pre => Present (V);
 
    --  Constructors for a GL_Value

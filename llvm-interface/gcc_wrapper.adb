@@ -473,8 +473,7 @@ begin
       end;
    else
       declare
-         S          : String_Access;
-         Have_Clang : Boolean := True;
+         S : String_Access;
       begin
          --  We use the bundled Clang for linking by default.
 
@@ -488,7 +487,6 @@ begin
          if S = null then
             --  Last fallback is gcc
             S := Locate_Exec_On_Path ("gcc");
-            Have_Clang := False;
          end if;
 
          if S = null then
@@ -497,19 +495,7 @@ begin
             return;
          end if;
 
-         --  Clang 15 and above default to creating position-independent
-         --  executables; since we don't use PIE for Ada code, disable it in
-         --  the linker.
-
-         if Have_Clang then
-            Spawn (S.all,
-                   new String'("-no-pie") & Args (1 .. Arg_Count),
-                   Status);
-
-         else
-            Spawn (S.all, Args (1 .. Arg_Count), Status);
-         end if;
-
+         Spawn (S.all, Args (1 .. Arg_Count), Status);
          Free (S);
       end;
    end if;

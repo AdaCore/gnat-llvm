@@ -60,6 +60,9 @@ package body GNATLLVM.Codegen is
    Target_Triple_Set            : Boolean := False;
    --  Set to True by Process_Switch if Target_Triple was modified
 
+   PIC_PIE_Set                   : Boolean := False;
+   --  True if any of the PIC/PIE options was specified
+
    Output_Assembly               : Boolean := False;
    --  True if -S was specified
 
@@ -261,6 +264,32 @@ package body GNATLLVM.Codegen is
          Force_Activation_Record_Parameter := True;
       elsif S = "-fno-force-activation-record-parameter" then
          Force_Activation_Record_Parameter := False;
+
+      --  PIC and PIE options are handled like in Clang: The last option wins;
+      --  PIE implies PIC at the same level; any of the "-fno-X" options
+      --  disable both PIC and PIE.
+
+      elsif S = "-fpic" then
+         PIC_PIE_Set := True;
+         PIC_Level := 1;
+         PIE_Level := 0;
+      elsif S = "-fPIC" then
+         PIC_PIE_Set := True;
+         PIC_Level := 2;
+         PIE_Level := 0;
+      elsif S = "-fpie" then
+         PIC_PIE_Set := True;
+         PIC_Level := 1;
+         PIE_Level := 1;
+      elsif S = "-fPIE" then
+         PIC_PIE_Set := True;
+         PIC_Level := 2;
+         PIE_Level := 2;
+      elsif S in "-fno-pic" | "-fno-PIC" | "-fno-pie" | "-fno-PIE" then
+         PIC_PIE_Set := True;
+         PIC_Level := 0;
+         PIE_Level := 0;
+
       elsif S = "-mdso-preemptable" then
          DSO_Preemptable := True;
       elsif S = "-mdso-local" then
@@ -277,7 +306,7 @@ package body GNATLLVM.Codegen is
          Code_Model := Code_Model_Default;
       elsif S = "-mrelocation-model=static" then
          Reloc_Mode := Reloc_Static;
-      elsif S in "-fPIC" | "-mrelocation-model=pic" then
+      elsif S = "-mrelocation-model=pic" then
          Reloc_Mode := Reloc_PIC;
       elsif S = "-mrelocation-model=dynamic-no-pic" then
          Reloc_Mode := Reloc_Dynamic_No_Pic;
@@ -430,6 +459,25 @@ package body GNATLLVM.Codegen is
                         Get_LLVM_Error_Msg (Ptr_Err_Msg));
       end if;
 
+      if not PIC_PIE_Set then
+         --  Set the same target-dependent default as Clang: PIE level 2 for
+         --  Linux and 64-bit Windows, and neither PIC nor PIE otherwise. (The
+         --  computation of the default values in Clang is a bit more involved,
+         --  see ParsePICArgs in clang/lib/Driver/ToolChains/CommonArgs.cpp,
+         --  but the other cases are for targets that we don't support. For
+         --  example, Clang defaults to PIE level 1 when targeting x86_64
+         --  OpenBSD, and PIC level 1 on ARM/MIPS Android.)
+
+         if Has_Default_PIE (Target_Triple.all) then
+            PIC_Level := 2;
+            PIE_Level := 2;
+         end if;
+      end if;
+
+      if PIC_Level /= 0 and then Reloc_Mode = Reloc_Default then
+         Reloc_Mode := Reloc_PIC;
+      end if;
+
       Target_Machine    :=
         Create_Target_Machine
           (T          => LLVM_Target,
@@ -457,6 +505,10 @@ package body GNATLLVM.Codegen is
 
       Set_Target             (Module, Target_Triple.all);
       Set_Module_Data_Layout (Module, Module_Data_Layout);
+
+      if PIC_Level > 0 then
+         Set_Module_PIC_PIE (Module, PIC_Level, PIE_Level);
+      end if;
 
       --  ??? Replace this by a parameter in system.ads or target.atp
 

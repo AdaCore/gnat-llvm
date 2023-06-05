@@ -417,4 +417,10 @@ package GNATLLVM.Wrapper is
    type N_O_D_Fn is access procedure (V : Value_T) with Convention => C;
    procedure Notify_On_Value_Delete (V : Value_T; Fn : N_O_D_Fn)
      with Import, Convention => C, External_Name => "Notify_On_Value_Delete";
+
+   procedure Set_Module_PIC_PIE
+     (Module : Module_T; PIC : PIC_PIE_Level; PIE : PIC_PIE_Level)
+     with Import, Convention => C, External_Name => "Set_Module_PIC_PIE";
+
+   function Has_Default_PIE (Triple : String) return Boolean;
 end GNATLLVM.Wrapper;

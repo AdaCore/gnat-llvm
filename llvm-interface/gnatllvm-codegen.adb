@@ -60,9 +60,6 @@ package body GNATLLVM.Codegen is
    Target_Triple_Set            : Boolean := False;
    --  Set to True by Process_Switch if Target_Triple was modified
 
-   Target_Config_File_Specified : Boolean := False;
-   --  Set to True by Process_Switch if -gnateT is specified
-
    Output_Assembly               : Boolean := False;
    --  True if -S was specified
 
@@ -129,8 +126,6 @@ package body GNATLLVM.Codegen is
       then
          Emit_Debug_Info      := True;
          Emit_Full_Debug_Info := True;
-      elsif Starts_With (S, "-gnateT=") then
-         Target_Config_File_Specified := True;
       elsif S = "-fstack-check" then
          Do_Stack_Check := True;
       elsif S = "-fshort-enums" then
@@ -335,9 +330,7 @@ package body GNATLLVM.Codegen is
 
          --  Use a simple 32bits target by default for C code generation
 
-         if not Target_Triple_Set
-           and then not Target_Config_File_Specified
-         then
+         if not Target_Triple_Set then
             Free (Target_Triple);
             Target_Triple := new String'("i386-linux");
          end if;

@@ -2213,14 +2213,21 @@ package body GNATLLVM.Records is
          LHS := Get (To_Primitive (LHS), Object);
       end if;
 
-      --  Handle the cases where F isn't a bitfield
+      --  Handle the cases where F isn't a bitfield. If we're dealing with
+      --  data, just insert the data. Otherwise, emit an assignment. We
+      --  convert RHS to the type of the field except in the case where the
+      --  field is an unconstrained record. In that case, the size of the
+      --  field shouldn't be used for the copy since it's the maximum size
+      --  of the record and hence almost always larger than the amount of
+      --  data to be copied.
 
       if not Is_Bitfield (F) then
          if Is_Data (LHS) and then not Is_Nonnative_Type (R_TE) then
             Result := Insert_Value (LHS, Get (RHS_Cvt, Data), unsigned (Idx));
          else
             Emit_Assignment (Record_Field_Offset (LHS, F), Empty,
-                             Convert_GT (RHS, F_GT));
+                             (if   Is_Unconstrained_Record (F_GT) then RHS
+                              else Convert_GT (RHS, F_GT)));
          end if;
 
          return Result;

@@ -1326,7 +1326,7 @@ package body GNATLLVM.Types is
 
    begin
       --  In most cases, the two sizes are equal. However, we can't verify
-      --  that.  In most cases, our goal is to just choose the type whose
+      --  that. In most cases, our goal is to just choose the type whose
       --  size is easiest to compute, either in terms of what we need to do
       --  the computation (favoring unconstrained over constrained) or the
       --  amount of work to compute the type. There are, however, two

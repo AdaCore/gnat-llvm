@@ -1369,7 +1369,8 @@ package body GNATLLVM.Types is
          Size_Value := Right_Value;
       end if;
 
-      return Get_Type_Size (Size_GT, Size_Value, No_Padding => not Class_Wide);
+      return Get_Type_Size (Size_GT, Size_Value,
+                            No_Padding => not Class_Wide and not LHS_Unc);
    end Compute_Size;
 
    ------------------------------

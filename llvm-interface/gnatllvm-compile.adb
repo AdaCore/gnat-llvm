@@ -540,50 +540,8 @@ package body GNATLLVM.Compile is
 
             null;
 
-         when N_Assignment_Statement => Assignment_Statement : declare
-            LHS  : GL_Value;
-            Idxs : Access_GL_Value_Array;
-            F    : Opt_Record_Field_Kind_Id;
-
-         begin
-            --  Get the LHS to evaluate and see if we need to do a field or
-            --  array operation.
-
-            LHS_And_Component_For_Assignment (Name (N), LHS, F, Idxs,
-                                              For_LHS => True);
-
-            --  If this is a reference, set atomic or volatile as neeed
-
-            if Present (F) or else Idxs /= null then
-               Mark_Volatile (LHS,
-                              Atomic_Sync_Required (Name (N))
-                                or else Is_Volatile_Reference (Name (N)));
-               Mark_Atomic   (LHS, Atomic_Sync_Required (Name (N)));
-            end if;
-
-            --  Now do the operation
-
-            if Present (F) then
-               Build_Field_Store (LHS, F, Emit_Expression (Expression (N)),
-                                  VFA => Is_VFA_Ref (Name (N)));
-            elsif Idxs /= null then
-               Build_Indexed_Store (LHS, Idxs.all,
-                                    Emit_Expression (Expression (N)),
-                                    VFA => Is_VFA_Ref (Name (N)));
-               Free (Idxs);
-            else
-               Emit_Assignment (LHS,
-                                Expr         => Expression (N),
-                                Forwards_OK  => Forwards_OK (N),
-                                Backwards_OK => Backwards_OK (N),
-                                   VFA          => Has_Full_Access (Name (N)));
-            end if;
-
-            --  Deal with any writebacks needed if we had a bitfield in an
-            --  LHS context above.
-
-            Perform_Writebacks;
-         end Assignment_Statement;
+         when N_Assignment_Statement =>
+            Emit_Assignment_Statement (N);
 
          when N_Procedure_Call_Statement =>
 

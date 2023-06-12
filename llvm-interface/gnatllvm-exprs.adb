@@ -19,6 +19,7 @@ with Einfo.Utils; use Einfo.Utils;
 with Errout;      use Errout;
 with Eval_Fat;    use Eval_Fat;
 with Exp_Code;    use Exp_Code;
+with Exp_Util;    use Exp_Util;
 with Nlists;      use Nlists;
 with Opt;         use Opt;
 with Sem_Aggr;    use Sem_Aggr;
@@ -1010,6 +1011,55 @@ package body GNATLLVM.Exprs is
             Bits := Uint_0;
       end case;
    end Emit_For_Address;
+
+   -------------------------------
+   -- Emit_Assignment_Statement --
+   -------------------------------
+
+   procedure Emit_Assignment_Statement (N : N_Assignment_Statement_Id) is
+      LHS  : GL_Value;
+      Idxs : Access_GL_Value_Array;
+      F    : Opt_Record_Field_Kind_Id;
+
+   begin
+      --  Get the LHS to evaluate and see if we need to do a field or
+      --  array operation.
+
+      LHS_And_Component_For_Assignment (Name (N), LHS, F, Idxs,
+                                        For_LHS => True);
+
+      --  If this is a reference, set atomic or volatile as neeed
+
+      if Present (F) or else Idxs /= null then
+         Mark_Volatile (LHS,
+                        Atomic_Sync_Required (Name (N))
+                        or else Is_Volatile_Reference (Name (N)));
+         Mark_Atomic   (LHS, Atomic_Sync_Required (Name (N)));
+      end if;
+
+      --  Now do the operation
+
+      if Present (F) then
+         Build_Field_Store (LHS, F, Emit_Expression (Expression (N)),
+                            VFA => Is_VFA_Ref (Name (N)));
+      elsif Idxs /= null then
+         Build_Indexed_Store (LHS, Idxs.all,
+                              Emit_Expression (Expression (N)),
+                              VFA => Is_VFA_Ref (Name (N)));
+         Free (Idxs);
+      else
+         Emit_Assignment (LHS,
+                          Expr         => Expression (N),
+                          Forwards_OK  => Forwards_OK (N),
+                          Backwards_OK => Backwards_OK (N),
+                          VFA          => Has_Full_Access (Name (N)));
+      end if;
+
+      --  Deal with any writebacks needed if we had a bitfield in an
+      --  LHS context above.
+
+      Perform_Writebacks;
+   end Emit_Assignment_Statement;
 
    -----------------
    -- Emit_Pragma --

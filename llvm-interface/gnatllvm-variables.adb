@@ -2491,7 +2491,12 @@ package body GNATLLVM.Variables is
       elsif Present (Expr) and then Is_No_Elab_Needed (Expr)
         and then (not Prefer_LHS or else Sloc (E) <= Standard_Location)
       then
-         return Emit_Conversion (Expr, GT);
+         --  If this entity is of an unconstrained record type, we want to
+         --  use the type of the defining constant.
+
+         return Emit_Conversion (Expr,
+                                 (if   Is_Unconstrained_Record (GT)
+                                  then Full_GL_Type (Expr) else GT));
       end if;
 
       --  Otherwise, see if we have any special cases

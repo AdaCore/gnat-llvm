@@ -1605,14 +1605,20 @@ package body GNATLLVM.Arrays is
          LHS := Get (To_Primitive (LHS), Object);
       end if;
 
-      --  Now use one of two stratgies, depending on whether or not we have
+      --  Now use one of two strategies, depending on whether or not we have
       --  data.
 
       if Is_Data (LHS) then
          Result := Insert_Value
            (LHS, RHS, Idxs_From_GL_Values (Swap_Indices (Idxs, LHS)));
       else
-         Emit_Assignment (Get_Indexed_LValue (Idxs, LHS), Value => RHS);
+         --  If the component is an unconstrained record, we need to remove
+         --  padding to be sure that we don't try to read too much.
+
+         Emit_Assignment (Get_Indexed_LValue (Idxs, LHS),
+                          Value => (if   Is_Unconstrained_Record
+                                           (Full_Component_GL_Type (LHS))
+                                    then Remove_Padding (RHS) else RHS));
       end if;
 
       return Result;

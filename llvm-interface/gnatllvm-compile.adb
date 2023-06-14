@@ -178,6 +178,14 @@ package body GNATLLVM.Compile is
 
       Void_Ptr_T        := Type_Of (A_Char_GL_Type);
 
+      --  The size of a pointer is specified in both the LLVM data layout
+      --  string (usually from a --target specification) and the target
+      --  parameter file. Make sure they agree.
+
+      if Get_Scalar_Bit_Size (Void_Ptr_T) /= ULL (Thin_Pointer_Size) then
+         Early_Error
+           ("Pointer size mismatch between target and target parameters");
+      end if;
       --  Initialize modules and handle duplicate globals
 
       Stringt.Unlock;

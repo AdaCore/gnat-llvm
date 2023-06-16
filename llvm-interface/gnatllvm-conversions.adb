@@ -481,7 +481,13 @@ package body GNATLLVM.Conversions is
       --  Some of these operations will likely be nops.
 
       else
-         Result := To_Primitive (Result, No_Copy => Is_Unchecked);
+         --  If the result type is an unconstrained record, don't convert
+         --  to the primitive type since this will often result in
+         --  copying from beyond the size of the object.
+
+         if not Is_Unconstrained_Record (GT) then
+            Result := To_Primitive (Result, No_Copy => Is_Unchecked);
+         end if;
 
          --  If both types are the same, just change the type of the result.
          --  Avoid confusing [0 x T] as both a zero-size constrained type and

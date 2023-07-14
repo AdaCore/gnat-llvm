@@ -1340,6 +1340,17 @@ package body GNATLLVM.Types is
          Size_GT    := Left_GT;
          Size_Value := Left_Value;
 
+      --  If one type is a byte array type, use the other one. This avoids
+      --  reading or writing undefined memory by forcing us to use the
+      --  actual size of the object.
+
+      elsif Is_Byte_Array_GL_Type (Left_GT) then
+         Size_GT    := Right_GT;
+         Size_Value := Right_Value;
+      elsif Is_Byte_Array_GL_Type (Right_GT) then
+         Size_GT    := Left_GT;
+         Size_Value := Right_Value;
+
       --  If one size is contrained and the other isn't, use the
       --  constrained size.
 

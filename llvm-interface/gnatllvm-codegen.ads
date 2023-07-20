@@ -50,6 +50,8 @@ package GNATLLVM.Codegen is
 
    Code_Model      : Code_Model_T   := Code_Model_Default;
    Reloc_Mode      : Reloc_Mode_T   := Reloc_Default;
+   PIC_Level       : PIC_PIE_Level  := 0;
+   PIE_Level       : PIC_PIE_Level  := 0;
    --  Code generation options
 
    Code_Opt_Level  : Int            := 0;

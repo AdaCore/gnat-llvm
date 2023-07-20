@@ -563,4 +563,15 @@ package body GNATLLVM.Wrapper is
       return Is_Dead_Basic_Block (BB) /= 0;
    end Is_Dead_Basic_Block;
 
+   --------------------------
+   -- Has_Default_PIE --
+   --------------------------
+
+   function Has_Default_PIE (Triple : String) return Boolean is
+      function Has_Default_PIE_C (Triple : String) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Has_Default_PIE";
+   begin
+      return Has_Default_PIE_C (Triple) /= 0;
+   end Has_Default_PIE;
+
 end GNATLLVM.Wrapper;

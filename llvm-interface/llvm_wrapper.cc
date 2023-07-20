@@ -1072,3 +1072,24 @@ Notify_On_Value_Delete (Value *V, void (*Fn) (Value *))
 {
   GNATCallbackVH *CB= new GNATCallbackVH (V, Fn);
 }
+
+extern "C"
+void
+Set_Module_PIC_PIE (Module *M, int PIC, int PIE)
+{
+  M->setPICLevel(static_cast<PICLevel::Level>(PIC));
+  M->setPIELevel(static_cast<PIELevel::Level>(PIE));
+}
+
+extern "C"
+bool
+Has_Default_PIE (const char *Target)
+{
+  Triple TargetTriple(Target);
+
+  // Like Clang, we default to PIE on Linux and x86_64 Windows (out of the
+  // supported targets). See the comment at the call site in GNATLLVM.Codegen
+  // for details.
+  return TargetTriple.isOSLinux() ||
+    (TargetTriple.isOSWindows() && TargetTriple.getArch() == Triple::x86_64);
+}

@@ -139,6 +139,9 @@ package GNATLLVM is
    type MD_Builder_T is new System.Address;
    --  Metadata builder type: opaque for us
 
+   type PIC_PIE_Level is range 0 .. 2;
+   --  Valid PIC or PIE level in LLVM
+
    type Target_C_Type_Info is record
       Pointer_Size          : Interfaces.C.unsigned;
       Char_Size             : Interfaces.C.unsigned;

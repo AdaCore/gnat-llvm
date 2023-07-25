@@ -1313,83 +1313,66 @@ package body GNATLLVM.Types is
 
    function Compute_Size
      (Left_GT, Right_GT       : GL_Type;
-      Left_Value, Right_Value : GL_Value) return GL_Value
+      Left_Value, Right_Value : GL_Value;
+      For_Assignment          : Boolean := False) return GL_Value
    is
-      LHS_Complex : constant Nat     := Get_Type_Size_Complexity (Left_GT);
-      RHS_Complex : constant Nat     := Get_Type_Size_Complexity (Right_GT);
-      LHS_Unc     : constant Boolean := Is_Unconstrained_Type (Left_GT);
-      RHS_Unc     : constant Boolean := Is_Unconstrained_Type (Right_GT);
-      Class_Wide  : constant Boolean :=
+      Left_BAT       : constant Boolean := Is_Byte_Array_GL_Type (Left_GT);
+      Right_BAT      : constant Boolean := Is_Byte_Array_GL_Type (Right_GT);
+      Left_PT        : constant GL_Type :=
+        (if Left_BAT then Primitive_GL_Type (Left_GT) else Left_GT);
+      Right_PT        : constant GL_Type :=
+        (if Right_BAT then Primitive_GL_Type (Right_GT) else Right_GT);
+      Left_Complex   : constant Nat     := Get_Type_Size_Complexity (Left_PT);
+      Right_Complex  : constant Nat     := Get_Type_Size_Complexity (Right_PT);
+      Class_Wide     : constant Boolean :=
         Is_Class_Wide_Equivalent_Type (Left_GT);
-      Use_Right   : Boolean;
+      Copy_Padding   : Boolean          := False;
+      Use_Right      : Boolean;
+      Size_GT        : GL_Type;
+      Size_Value     : GL_Value;
 
    begin
-      --  In most cases, the two sizes are equal. However, we can't verify
-      --  that. In most cases, our goal is to just choose the type whose
-      --  size is easiest to compute, either in terms of what we need to do
-      --  the computation (favoring unconstrained over constrained) or the
-      --  amount of work to compute the type. There are, however, two
-      --  exceptions: if the LHS is a class-wide equivalent type, we must
-      --  do the copy using that size. We check for that first. Conversely,
-      --  if the LHS is an unconstrained record, we must use the size of
-      --  the RHS. This case, however, is covered in our general preference
-      --  of unconstrained.
+      --  Next, handle some special cases. If this is an assignment to a
+      --  classwide equivalent type, we must use the size of that type
+      --  since that's the way the type is defined. We include padding in
+      --  this case.
 
-      if Class_Wide then
-         Use_Right := False;
+      if For_Assignment and then Class_Wide then
+         Use_Right    := False;
+         Copy_Padding := True;
 
-      --  If one type is a byte array type, use the other one. This avoids
-      --  reading or writing undefined memory by forcing us to use the
-      --  actual size of the object. If both are a byte array type, they
-      --  must have the same size (the maximum size of the type), so it
-      --  doesn't matter which we use to get the size from.
+      --  If the LHS of an assignment is a byte array type, we use the size
+      --  of the RHS.
 
-      elsif Is_Byte_Array_GL_Type (Left_GT) then
+      elsif For_Assignment and then Left_BAT then
          Use_Right := True;
-      elsif Is_Byte_Array_GL_Type (Right_GT) then
-         Use_Right := False;
 
-      --  If one size is contrained and the other isn't, use the
-      --  constrained size.
+      --  Otherwise, legal code requires that the sizes of both types are
+      --  the same, so we can use either size and chose the one that's
+      --  easiest to compute.
 
-      elsif LHS_Unc and then not RHS_Unc then
-         Use_Right := True;
-      elsif not LHS_Unc and then RHS_Unc then
-         Use_Right := False;
-
-      --  Use the type of right side unless its complexity is more
-      --  than that of the size of the type on the left side. If both
-      --  sizes are constant, use the smaller one.
-
-      elsif RHS_Complex > LHS_Complex or else Class_Wide then
-         Use_Right := False;
-      elsif RHS_Complex = 0 and then LHS_Complex = 0
-        and then Present (GT_Size (Left_GT))
-        and then Present (GT_Size (Right_GT))
-        and then GT_Size (Left_GT) < GT_Size (Right_GT)
-      then
-         Use_Right := False;
       else
-         Use_Right := True;
+         Use_Right := Right_Complex <= Left_Complex;
       end if;
 
       --  Now that we know which side to use, return the size of that type.
-      --  Whether to ignore padding or not is somewhat of a heuristic here,
-      --  but the idea is that if we have record with default discriminant
-      --  values, we can put it into a field whose size can be set with a
-      --  rep clause the maximum size of the record type not taking into
-      --  account the padding and we want to be sure that an assignment
-      --  into that field won't clobber beyond the field. In other cases,
-      --  we likely want to include the padding since it'll be more
-      --  efficient to copy multiples of the alignment.
 
-      if Use_Right then
-         return Get_Type_Size (Right_GT, Right_Value,
-                               No_Padding => not Class_Wide and then RHS_Unc);
-      else
-         return Get_Type_Size (Left_GT, Left_Value,
-                               No_Padding => not Class_Wide and then LHS_Unc);
+      Size_GT    := (if Use_Right then Right_GT else Left_GT);
+      Size_Value := (if Use_Right then Right_Value else Left_Value);
+
+      --  If we're left with computing the size of a byte array type,
+      --  we know this isn't the LHS of a comparison. So we want the actual
+      --  data size.
+
+      if Is_Byte_Array_GL_Type (Size_GT) then
+         Size_GT    := Primitive_GL_Type (Size_GT);
+         Size_Value := To_Primitive (Size_Value);
       end if;
+
+      --  Now we have everything we need
+
+      return Get_Type_Size (Size_GT, Size_Value,
+                            No_Padding => not Copy_Padding);
    end Compute_Size;
 
    ------------------------------

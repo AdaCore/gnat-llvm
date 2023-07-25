@@ -1660,7 +1660,8 @@ package body GNATLLVM.Exprs is
       then
          declare
             Size : constant GL_Value :=
-              To_Bytes (Compute_Size (Dest_GT, Related_Type (Src), Dest, Src));
+              To_Bytes (Compute_Size (Dest_GT, Related_Type (Src), Dest, Src,
+                                      For_Assignment => True));
 
          begin
             if Size /= 0 then
@@ -1703,7 +1704,8 @@ package body GNATLLVM.Exprs is
             Need_Volatile    : constant Boolean :=
               Is_Volatile (Src) or else Is_Volatile (Dest);
             Size             : GL_Value         :=
-              Compute_Size (Dest_GT, Related_Type (Src), Dest, Src);
+              Compute_Size (Dest_GT, Related_Type (Src), Dest, Src,
+                            For_Assignment => True);
             Mem_Src, Mem_Dst : GL_Value;
 
          begin

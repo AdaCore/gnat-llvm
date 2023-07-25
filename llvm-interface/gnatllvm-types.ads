@@ -433,18 +433,20 @@ package GNATLLVM.Types is
 
    function Compute_Size
      (Left_GT, Right_GT       : GL_Type;
-      Left_Value, Right_Value : GL_Value) return GL_Value
+      Left_Value, Right_Value : GL_Value;
+      For_Assignment          : Boolean := False) return GL_Value
      with Pre  => Present (Left_GT) and then Present (Right_GT)
                   and then Present (Right_Value),
           Post =>  Present (Compute_Size'Result);
    --  Used for comparison and assignment: compute the size to be used in
-   --  the operation. Right_Value must be specified. Left_Value is optional
-   --  and will be specified in the comparison case, but not the assignment
-   --  case.  If Right_Value is a discriminated record, we assume here that
-   --  the last call to Emit_LValue was to compute Right_Value so that we
-   --  can use Get_Matching_Value to return the proper object. In the
-   --  comparison case, where Left_Value is specified, we can only be
-   --  comparing arrays, so we won't need to use Get_Matching_Value.
+   --  the operation. For_Assignment says which operation. Right_Value must
+   --  be specified. Left_Value is optional and will be specified in the
+   --  comparison case, but not the assignment case.  If Right_Value is a
+   --  discriminated record, we assume here that the last call to
+   --  Emit_LValue was to compute Right_Value so that we can use
+   --  Get_Matching_Value to return the proper object. In the comparison
+   --  case, where Left_Value is specified, we can only be comparing
+   --  arrays, so we won't need to use Get_Matching_Value.
 
    function Get_Type_Size_Complexity
      (GT : GL_Type; Max_Size : Boolean := False) return Nat

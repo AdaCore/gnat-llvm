@@ -389,7 +389,9 @@ package body GNATLLVM.Conversions is
             Result := Int_To_Relationship (Get (Result, Data),
                                            Full_Designated_GL_Type (GT),
                                            Thin_Pointer);
-         elsif Ekind (GT) = E_Access_Subprogram_Type then
+         elsif Ekind (GT) in E_Access_Subprogram_Type |
+                             E_Anonymous_Access_Subprogram_Type
+         then
             Result := Int_To_Relationship (Get (Result, Data),
                                            Full_Designated_GL_Type (GT),
                                            Reference);

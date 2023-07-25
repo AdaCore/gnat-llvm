@@ -6,6 +6,7 @@ pragma Warnings (Off, "-gnatwu");
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
 with System;
 with Clang.Index;
+with Clang.CX_Source_Location;
 with Interfaces.C.Strings;
 
 package Clang.Rewrite is
@@ -36,7 +37,7 @@ package Clang.Rewrite is
 
 procedure CX_Rewriter_Insert_Text_Before
      (Rew    : Rewriter_T;
-      Loc    : Clang.Index.Source_Location_T;
+      Loc    : Clang.CX_Source_Location.Source_Location_T;
       Insert : String);
 
   --*
@@ -46,14 +47,14 @@ procedure CX_Rewriter_Insert_Text_Before
 
 procedure CX_Rewriter_Replace_Text
      (Rew            : Rewriter_T;
-      To_Be_Replaced : Clang.Index.Source_Range_T;
+      To_Be_Replaced : Clang.CX_Source_Location.Source_Range_T;
       Replacement    : String);
 
   --*
   -- * Remove the specified range.
   --  
 
-   procedure CX_Rewriter_Remove_Text (Rew : Rewriter_T; To_Be_Removed : Clang.Index.Source_Range_T)  -- install/include/clang-c/Rewrite.h:43
+   procedure CX_Rewriter_Remove_Text (Rew : Rewriter_T; To_Be_Removed : Clang.CX_Source_Location.Source_Range_T)  -- install/include/clang-c/Rewrite.h:43
    with Import => True, 
         Convention => C, 
         External_Name => "clang_CXRewriter_removeText";

@@ -37,6 +37,9 @@ package CCG.Codegen is
    Use_Stdint         : Boolean := False;
    --  If True, use the integer type names in <stdint.h>
 
+   Prefer_Packed      : Boolean := False;
+   --  If True, prefe to emit a "packed" attribute on records
+
    Elab_Spec_Func     : Value_T := No_Value_T;
    Elab_Body_Func     : Value_T := No_Value_T;
    --  Function corresponding to the spec and body elab proc, respectively.

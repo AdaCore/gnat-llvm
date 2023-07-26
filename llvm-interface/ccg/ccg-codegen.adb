@@ -99,6 +99,9 @@ package body CCG.Codegen is
            ("packed-mechanism must be 'modifier', 'pragma', or 'none'");
       elsif Use_Stdint and then C_Version < 1999 then
          Early_Error ("-fuse-stdint only supported on C99 or later");
+      elsif Prefer_Packed and then Packed_Mechanism.all = "none" then
+         Early_Error
+           ("-fprefer-packed not allowed when packed not supported by target");
       end if;
 
    end Initialize_Output;
@@ -307,6 +310,12 @@ package body CCG.Codegen is
          return True;
       elsif S = "-fuse-stdint" then
          Use_Stdint  := True;
+      elsif S = "-fno-use-stdint" then
+         Use_Stdint := False;
+      elsif S = "-fprefer-packed" then
+         Prefer_Packed := True;
+      elsif S = "-fno-prefer-packed" then
+         Prefer_Packed := False;
       elsif Starts_With (S, "-header-inline=") then
          if Switch_Value (S, "-header-inline=") = "none" then
             Header_Inline := None;

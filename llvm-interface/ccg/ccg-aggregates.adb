@@ -22,6 +22,7 @@ with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
+with CCG.Codegen;      use CCG.Codegen;
 with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
@@ -118,6 +119,11 @@ package body CCG.Aggregates is
 
       elsif Code_Opt_Level > 0 then
          Need_Pad := True;
+
+      --  If the user asked to prefer packing, do so
+
+      elsif Prefer_Packed then
+         Need_Pack := True;
       end if;
 
       --  Now we look at the position of each field relative to its default

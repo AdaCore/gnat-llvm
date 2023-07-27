@@ -2776,8 +2776,6 @@ package body GNATLLVM.Subprograms is
 
                   if Ekind (Formal) = E_In_Parameter then
                      Add_Readonly_Attribute     (LLVM_Func, Param_Num);
-                  elsif Ekind (Formal) = E_Out_Parameter then
-                     Add_Writeonly_Attribute    (LLVM_Func, Param_Num);
                   end if;
 
                   --  See RM 6.2(12) for a discussion of when parameters

@@ -574,4 +574,17 @@ package body GNATLLVM.Wrapper is
       return Has_Default_PIE_C (Triple) /= 0;
    end Has_Default_PIE;
 
+   -----------------------------------
+   -- Get_Personality_Function_Name --
+   -----------------------------------
+
+   function Get_Personality_Function_Name (Triple : String) return String is
+      function Get_Personality_Function_Name_C
+        (Triple : String) return chars_ptr with
+        Import, Convention => C,
+        External_Name      => "Get_Personality_Function_Name";
+   begin
+      return Value (Get_Personality_Function_Name_C (Triple));
+   end Get_Personality_Function_Name;
+
 end GNATLLVM.Wrapper;

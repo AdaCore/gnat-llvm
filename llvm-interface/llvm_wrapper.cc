@@ -1085,7 +1085,7 @@ extern "C"
 bool
 Has_Default_PIE (const char *Target)
 {
-  Triple TargetTriple(Triple::normalize(Target));
+  Triple TargetTriple(Target);
 
   // Like Clang, we default to PIE on Linux and x86_64 Windows (out of the
   // supported targets). See the comment at the call site in GNATLLVM.Codegen

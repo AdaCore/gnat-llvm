@@ -68,11 +68,13 @@ package GNATLLVM.Types is
    function Is_Dynamic_Size
      (GT             : GL_Type;
       Max_Size       : Boolean := False;
-      Allow_Overflow : Boolean := False) return Boolean
+      Allow_Overflow : Boolean := False;
+      No_Padding     : Boolean := False) return Boolean
      with Pre => Present (GT);
    --  Returns True if GT's size is not known at compile-time. Max_Size
    --  is True if we're to consider the maximum size of GT's type.
    --  Allow_Overflow is True if we're to ignore any possible overflow.
+   --  No_Padding is True if we're to ignore padding
 
    function Create_Access_Type_To (GT : GL_Type) return Type_T is
      (Type_For_Relationship (GT, Relationship_For_Ref (GT)))

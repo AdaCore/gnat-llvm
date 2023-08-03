@@ -238,7 +238,8 @@ package body GNATLLVM.Types is
    function Is_Dynamic_Size
      (GT             : GL_Type;
       Max_Size       : Boolean := False;
-      Allow_Overflow : Boolean := False) return Boolean
+      Allow_Overflow : Boolean := False;
+      No_Padding     : Boolean := False) return Boolean
    is
       Size : IDS;
    begin
@@ -255,7 +256,9 @@ package body GNATLLVM.Types is
       --  But we conservatively test for the range of Int to be consistent
       --  with how we create arrays.
 
-      Size := Get_Type_Size (GT, No_GL_Value, Max_Size);
+      Size := Get_Type_Size (GT, No_GL_Value,
+                             Max_Size   => Max_Size,
+                             No_Padding => No_Padding);
 
       --  If the size isn't a constant, this is dynamically-sized. If it's
       --  a constant and we allow overflow, it isn't. Otherwise, we need to
@@ -1189,7 +1192,8 @@ package body GNATLLVM.Types is
          elsif Is_Record_Type (GT) then
             return Get_Record_Type_Size (Full_Etype (GT), V,
                                          Max_Size   => Use_Max_Size,
-                                         No_Padding => No_Padding
+                                         No_Padding =>
+                                           No_Padding
                                            and then not Strict_Alignment (GT));
          elsif Is_Array_Type (GT) and then not Is_Constrained (GT) then
             return Get_Unc_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
@@ -1357,7 +1361,7 @@ package body GNATLLVM.Types is
 
       --  Now that we know which side to use, return the size of that type.
 
-      Size_GT    := (if Use_Right then Right_GT else Left_GT);
+      Size_GT    := (if Use_Right then Right_GT    else Left_GT);
       Size_Value := (if Use_Right then Right_Value else Left_Value);
 
       --  If we're left with computing the size of a byte array type,

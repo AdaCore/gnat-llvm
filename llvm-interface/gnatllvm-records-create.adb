@@ -2049,7 +2049,7 @@ package body GNATLLVM.Records.Create is
 
          if Strict_Alignment (TE) then
             Force_To_Pos (Align_Pos (Cur_RI_Pos,
-                                     Get_Record_Type_Alignment (TE)));
+                                     Get_Record_Type_Alignment (BT)));
          end if;
 
          Struct_Set_Body (LLVM_Type,

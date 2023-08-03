@@ -772,7 +772,8 @@ package body GNATLLVM.Types.Create is
       Is_Dynamic : Boolean          :=
          Is_Dynamic_Size (Size_GT,
                           Max_Size       => Is_Unconstrained_Record (Size_GT),
-                          Allow_Overflow => True);
+                          Allow_Overflow => True,
+                          No_Padding     => True);
       In_Size    : GL_Value;
 
    begin

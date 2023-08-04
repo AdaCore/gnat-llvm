@@ -390,6 +390,7 @@ package body GNATLLVM.Arrays.Create is
                First_Field   => Field_Index,
                Not_Superflat =>
                  (Ekind (TE) = E_Array_Subtype and then Nkind (Index) = N_Range
+                    and then Is_Constrained (TE)
                     and then Known_Not_Superflat (Idx_Range))
                  or else (not For_Orig and then Is_Packed_Array_Impl_Type (TE)
                             and then Is_Bit_Packed_Array

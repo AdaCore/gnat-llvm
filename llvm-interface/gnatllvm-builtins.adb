@@ -1136,6 +1136,16 @@ package body GNATLLVM.Builtins is
          if Present (Result) then
             return Result;
          end if;
+
+         if S'Length >= 13
+           and then S (First .. First + 12) = "__builtin_inf"
+           and then
+           (S'Length = 13
+            or else
+            (S'Length = 14 and then S (First + 13) in 'f' | 'l'))
+         then
+            return Const_Infinity (Full_GL_Type (N));
+         end if;
       end if;
 
       --  That's all we support for now

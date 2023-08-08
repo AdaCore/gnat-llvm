@@ -1048,15 +1048,18 @@ package body GNATLLVM.Subprograms is
                Set_Alignment
                  (Result,
                   (if   Relationship (Result) = Relationship (V)
+                        and then Related_Type (Result) = Related_Type (V)
                    then Alignment (V) else Get_Type_Alignment (V)));
             end if;
 
-            --  If we have the same relationship as that of the underlying
-            --  variable, the aliasing information for our reference is the
-            --  same as as if we were accessing it directly in the scope in
-            --  which it's defined.
+            --  If we have the same relationship and type as that of the
+            --  underlying variable, the aliasing information for our
+            --  reference is the same as as if we were accessing it
+            --  directly in the scope in which it's defined.
 
-            if Relationship (Result) = Relationship (V) then
+            if Relationship (Result) = Relationship (V)
+              and then Related_Type (Result) = Related_Type (V)
+            then
                Set_TBAA_Type   (Result, TBAA_Type   (V));
                Set_TBAA_Offset (Result, TBAA_Offset (V));
                Set_Aliases_All (Result, Aliases_All (V));

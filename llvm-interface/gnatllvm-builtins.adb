@@ -213,6 +213,9 @@ package body GNATLLVM.Builtins is
          when Binary =>
             Fun_Ty := Fn_Ty ((1 => T, 2 => T), T);
 
+         when Ternary =>
+            Fun_Ty := Fn_Ty ((1 => T, 2 => T, 3 => T), T);
+
          when Boolean_And_Data =>
             Fun_Ty := Fn_Ty ((1 => T, 2 => T),
                              Type_For_Relationship (GT, Boolean_And_Data));
@@ -997,15 +1000,21 @@ package body GNATLLVM.Builtins is
          (4, "exp2 ", Unary),
          (3, "log  ", Unary),
          (5, "log10", Unary),
-         (4, "log2 ", Unary));
+         (4, "log2 ", Unary),
+         (3, "fma  ", Ternary));
 
-      Len : Integer;
+      Len     : Integer;
+      Actuals : Nat;
 
    begin
       for FP of FP_Builtins loop
          Len := FP.Length;
+         Actuals := (case FP.Kind is
+                     when Unary => 1,
+                     when Binary | Boolean_And_Data => 2,
+                     when Ternary => 3);
 
-         if Num_Actuals (N) = (if FP.Kind = Unary then 1 else 2)
+         if Num_Actuals (N) = Actuals
            and then S'Length >= Len + 10
            and then S (S'First .. S'First + 9) = "__builtin_"
            and then S (S'First + 10 .. S'First + Len + 9) = FP.Name (1 .. Len)
@@ -1023,13 +1032,21 @@ package body GNATLLVM.Builtins is
                Actual : constant Opt_N_Subexpr_Id  := First_Actual (N);
 
             begin
-               if FP.Kind = Unary then
+               case FP.Kind is
+               when Unary =>
                   return Call (Subp, (1 => Emit_Expression (Actual)));
-               else
+               when Binary | Boolean_And_Data =>
                   return Call (Subp, (1 => Emit_Expression (Actual),
                                       2 => Emit_Expression (Next_Actual
                                                               (Actual))));
-               end if;
+               when Ternary =>
+                  return Call
+                           (Subp,
+                            (1 => Emit_Expression (Actual),
+                             2 => Emit_Expression (Next_Actual (Actual)),
+                             3 => Emit_Expression
+                                    (Next_Actual (Next_Actual (Actual)))));
+               end case;
             end;
          end if;
       end loop;

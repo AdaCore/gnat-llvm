@@ -423,4 +423,6 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C, External_Name => "Set_Module_PIC_PIE";
 
    function Has_Default_PIE (Triple : String) return Boolean;
+
+   function Get_Personality_Function_Name (Triple : String) return String;
 end GNATLLVM.Wrapper;

@@ -364,6 +364,17 @@ package body GNATLLVM.Codegen is
             Target_Triple := new String'("i386-linux");
          end if;
       end if;
+
+      --  LLVM functions that receive triple strings usually expect them to be
+      --  normalized, so let's normalize our target triple. This is especially
+      --  important for Windows targets, where LLVM doesn't understand our
+      --  GCC-style triples without normalization. (For example,
+      --  x86_64-w64-mingw32 is misinterpreted as a non-Windows system running
+      --  ELF binaries.)
+
+      Normalized_Target_Triple :=
+        new String'(Normalize_Target_Triple (Target_Triple.all));
+
    end Scan_Command_Line;
 
    -----------------
@@ -453,7 +464,8 @@ package body GNATLLVM.Codegen is
       Convert_Module := Module_Create_With_Name ("Convert_Constant");
 
       if Get_Target_From_Triple
-        (Target_Triple.all, LLVM_Target'Address, Ptr_Err_Msg'Address)
+          (Normalized_Target_Triple.all, LLVM_Target'Address,
+           Ptr_Err_Msg'Address)
       then
          Early_Error ("cannot set target to " & Target_Triple.all & ": " &
                         Get_LLVM_Error_Msg (Ptr_Err_Msg));
@@ -468,7 +480,7 @@ package body GNATLLVM.Codegen is
          --  example, Clang defaults to PIE level 1 when targeting x86_64
          --  OpenBSD, and PIC level 1 on ARM/MIPS Android.)
 
-         if Has_Default_PIE (Target_Triple.all) then
+         if Has_Default_PIE (Normalized_Target_Triple.all) then
             PIC_Level := 2;
             PIE_Level := 2;
          end if;
@@ -481,14 +493,15 @@ package body GNATLLVM.Codegen is
       Target_Machine    :=
         Create_Target_Machine
           (T          => LLVM_Target,
-           Triple     => Target_Triple.all,
+           Triple     => Normalized_Target_Triple.all,
            CPU        => CPU.all,
            Features   => Features.all,
            Level      => Code_Gen_Level,
            Reloc      => Reloc_Mode,
            Code_Model => Code_Model);
 
-      Get_Target_C_Types (Target_Triple.all, CPU.all, Target_C_Types, Success);
+      Get_Target_C_Types
+        (Normalized_Target_Triple.all, CPU.all, Target_C_Types, Success);
 
       if not Success then
          Early_Error ("cannot get C type information from LLVM");
@@ -503,7 +516,7 @@ package body GNATLLVM.Codegen is
          Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
       end if;
 
-      Set_Target             (Module, Target_Triple.all);
+      Set_Target             (Module, Normalized_Target_Triple.all);
       Set_Module_Data_Layout (Module, Module_Data_Layout);
 
       if PIC_Level > 0 then

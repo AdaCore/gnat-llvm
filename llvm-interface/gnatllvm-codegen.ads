@@ -42,6 +42,9 @@ package GNATLLVM.Codegen is
      new String'(Get_Default_Target_Triple);
    --  Name of the target for this compilation
 
+   Normalized_Target_Triple : String_Access := null;
+   --  Target for this compilation, normalized for LLVM
+
    Target_Layout   : String_Access  := null;
    --  Target data layout, if specified
 

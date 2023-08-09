@@ -39,6 +39,7 @@ with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
+with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Blocks is
 
@@ -669,10 +670,10 @@ package body GNATLLVM.Blocks is
          return;
       end if;
 
-      Personality_Fn  :=
-        Add_Global_Function ("__gnat_personality_v0",
-                             Fn_Ty ((1 .. 0 => <>), Int_32_T, True),
-                             Void_GL_Type);
+      Personality_Fn :=
+        Add_Global_Function
+          (Get_Personality_Function_Name (Normalized_Target_Triple.all),
+           Fn_Ty ((1 .. 0 => <>), Int_32_T, True), Void_GL_Type);
 
       Begin_Handler_Fn :=
         Add_Global_Function ("__gnat_begin_handler_v1",
@@ -1909,7 +1910,8 @@ package body GNATLLVM.Blocks is
       Register_Global_Name ("__gnat_begin_handler");
       Register_Global_Name ("__gnat_end_handler");
       Register_Global_Name ("__gnat_others_value");
-      Register_Global_Name ("__gnat_personality_v0");
+      Register_Global_Name
+        (Get_Personality_Function_Name (Normalized_Target_Triple.all));
       Register_Global_Name ("__gnat_reraise_zcx");
       Register_Global_Name ("__gnat_set_exception_parameter");
 

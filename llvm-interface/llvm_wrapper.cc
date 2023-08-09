@@ -1085,11 +1085,25 @@ extern "C"
 bool
 Has_Default_PIE (const char *Target)
 {
-  Triple TargetTriple(Triple::normalize(Target));
+  Triple TargetTriple(Target);
 
   // Like Clang, we default to PIE on Linux and x86_64 Windows (out of the
   // supported targets). See the comment at the call site in GNATLLVM.Codegen
   // for details.
   return TargetTriple.isOSLinux() ||
     (TargetTriple.isOSWindows() && TargetTriple.getArch() == Triple::x86_64);
+}
+
+extern "C"
+const char *
+Get_Personality_Function_Name (const char *Target)
+{
+  Triple TargetTriple(Target);
+
+  // For now, we don't support SJLJ exceptions, so we just need to decide
+  // whether the target uses SEH.
+  if (TargetTriple.isOSWindows())
+    return "__gnat_personality_seh0";
+  else
+    return "__gnat_personality_v0";
 }

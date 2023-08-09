@@ -376,7 +376,7 @@ Value *
 Build_Extract_Value_C (IRBuilder<> *bld, Value *aggr,
 		       unsigned *IdxList, unsigned NumIdx, char *name)
 {
-  return bld->CreateExtractValue (aggr, makeArrayRef (IdxList, NumIdx), name);
+  return bld->CreateExtractValue (aggr, {IdxList, NumIdx}, name);
 }
 
 extern "C"
@@ -384,8 +384,7 @@ Value *
 Build_Insert_Value_C (IRBuilder<> *bld, Value *aggr, Value *elt,
 		     unsigned *IdxList, unsigned NumIdx, char *name)
 {
-  return bld->CreateInsertValue (aggr, elt, makeArrayRef (IdxList, NumIdx),
-				 name);
+  return bld->CreateInsertValue (aggr, elt, {IdxList, NumIdx}, name);
 }
 
 /* The LLVM C interface only provides a subset of the arguments for building
@@ -737,7 +736,7 @@ Value *
 Get_Float_From_Words_And_Exp (LLVMContext *Context, Type *T, int Exp,
 			      unsigned NumWords, const uint64_t Words[])
 {
-  auto LongInt = APInt (NumWords * 64, makeArrayRef (Words, NumWords));
+  auto LongInt = APInt (NumWords * 64, {Words, NumWords});
   auto Initial = APFloat (T->getFltSemantics (),
 			  APInt::getNullValue (T->getPrimitiveSizeInBits ()));
   Initial.convertFromAPInt (LongInt, false, APFloat::rmTowardZero);

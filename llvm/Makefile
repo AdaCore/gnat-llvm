@@ -24,11 +24,17 @@ LLVM_TARGETS=X86
 # memory issues.
 CMAKE_FLAGS=-DLLVM_TARGETS_TO_BUILD="$(LLVM_TARGETS)" \
 	-DBUILD_SHARED_LIBS=ON -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_ENABLE_PROJECTS=clang \
-	-DLLVM_PARALLEL_LINK_JOBS=1
+	-DLLVM_PARALLEL_LINK_JOBS=1 \
+	-DLLVM_ENABLE_RUNTIMES="compiler-rt;libunwind" \
+	-DCLANG_DEFAULT_RTLIB=compiler-rt -DCLANG_DEFAULT_UNWINDLIB=libunwind \
+	-DLIBUNWIND_WEAK_PTHREAD_LIB=ON -DLIBUNWIND_USE_COMPILER_RT=ON
 # LLVM 15 requires us to specify a CMake build type explicitly; we use Debug for
 # the default target.
 CMAKE_FLAGS_DEBUG=-DCMAKE_BUILD_TYPE=Debug
-CMAKE_FLAGS_NO_DEBUG=-DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON
+# No-debug mode is still good for GNAT-LLVM development: we enable assertions
+# and debug info. But it's much faster than debug mode because the LLVM code is
+# optimized during compilation.
+CMAKE_FLAGS_NO_DEBUG=-DCMAKE_BUILD_TYPE=RelWithDebInfo -DLLVM_ENABLE_ASSERTIONS=ON
 CMAKE_FLAGS_PROD=-DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 .PHONY: configure clang-bindings

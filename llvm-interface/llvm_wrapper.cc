@@ -495,7 +495,26 @@ extern "C"
 void
 Add_Function_To_Module (Function *f, Module *m)
 {
-  m->getFunctionList ().push_back (f);
+  // Check if the function already exists in the module. We only add functions
+  // to the module after we've processed the entire GNAT tree, and we
+  // deduplicate based on GNAT node IDs. However, builtin functions such as
+  // __gnat_last_chance_handler are processed separately (because there is no
+  // associated node in the GNAT tree) and added eagerly to the module.
+  //
+  // If a module uses a builtin function implicitly and also calls it
+  // explicitly, we don't want two LLVM values representing the same function.
+  // In this case, we replace all uses of one with the other, which is safe
+  // because the LLVM value is just a declaration for a function to be
+  // imported.
+
+  if (auto existingFunction = m->getFunction(f->getName())) {
+    assert(f->isDeclaration() && existingFunction->isDeclaration() &&
+           f->getType() == existingFunction->getType());
+    f->replaceAllUsesWith(existingFunction);
+    delete f;
+  } else {
+    m->getFunctionList().push_back(f);
+  }
 }
 
 extern "C"

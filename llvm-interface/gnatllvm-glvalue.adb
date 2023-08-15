@@ -1910,9 +1910,10 @@ package body GNATLLVM.GLValue is
    -- Add_Function_To_Module --
    ----------------------------
 
-   procedure Add_Function_To_Module (V : GL_Value) is
+   procedure Add_Function_To_Module
+     (V : GL_Value; Allow_Deduplication : Boolean) is
    begin
-      Add_Function_To_Module (+V, Module);
+      Add_Function_To_Module (+V, Module, Allow_Deduplication);
    end Add_Function_To_Module;
 
    ---------------------

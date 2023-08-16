@@ -306,6 +306,24 @@ package body GNATLLVM.Wrapper is
       return Has_NSW (V) /= 0;
    end Has_NSW;
 
+   ----------------------------
+   -- Add_Function_To_Module --
+   ----------------------------
+
+   procedure Add_Function_To_Module
+     (Fn : Value_T; Module : Module_T; Allow_Deduplication : Boolean)
+   is
+      procedure Add_Function_To_Module_C
+        (Fn                  : Value_T;
+         Module              : Module_T;
+         Allow_Deduplication : LLVM_Bool)
+        with Import, Convention => C,
+             External_Name => "Add_Function_To_Module";
+   begin
+      Add_Function_To_Module_C
+        (Fn, Module, Boolean'Pos (Allow_Deduplication));
+   end Add_Function_To_Module;
+
    -----------------------------------------
    -- Get_Metadata_Operand_Constant_Value --
    -----------------------------------------

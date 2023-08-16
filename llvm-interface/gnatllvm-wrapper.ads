@@ -267,8 +267,8 @@ package GNATLLVM.Wrapper is
    procedure Set_Weak_For_Atomic_Xchg (V : Value_T)
      with Import, Convention => C, External_Name => "Set_Weak_For_Atomic_Xchg";
 
-   procedure Add_Function_To_Module (Fn : Value_T; Module : Module_T)
-     with Import, Convention => C, External_Name => "Add_Function_To_Module";
+   procedure Add_Function_To_Module
+     (Fn : Value_T; Module : Module_T; Allow_Deduplication : Boolean);
 
    procedure Dump_Metadata (MD : Metadata_T)
      with Import, Convention => C, External_Name => "Dump_Metadata";

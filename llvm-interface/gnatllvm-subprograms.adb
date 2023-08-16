@@ -1112,10 +1112,12 @@ package body GNATLLVM.Subprograms is
          Set_Linkage (Func, Weak_Any_Linkage);
       end if;
 
-      --  Now set up to process this subprogram
+      --  Now set up to process this subprogram. The frontend takes care of
+      --  generating unique names where necessary, so we can allow LLVM
+      --  deduplication for the rest.
 
       Current_Subp := E;
-      Add_Function_To_Module (Func);
+      Add_Function_To_Module (Func, Allow_Deduplication => True);
       Set_Added_To_Module (E);
       Enter_Subp (Func);
       Push_Debug_Scope
@@ -2968,7 +2970,16 @@ package body GNATLLVM.Subprograms is
    begin
       for J in 1 .. Created_Subprograms.Last loop
          if not Get_Added_To_Module (Created_Subprograms.Table (J)) then
-            Add_Function_To_Module (Get_Value (Created_Subprograms.Table (J)));
+
+            --  The functions that we add here don't have a body, so they're
+            --  imported. We generally don't want LLVM deduplication for
+            --  imported functions because it yields unresolved symbols, but in
+            --  Decls_Only mode we have to allow it because the frontend then
+            --  doesn't deduplicate Ada subprogram names for us.
+
+            Add_Function_To_Module
+              (Get_Value (Created_Subprograms.Table (J)),
+               Allow_Deduplication => Decls_Only);
          end if;
       end loop;
    end Add_Functions_To_Module;

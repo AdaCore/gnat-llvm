@@ -493,10 +493,10 @@ Set_Weak_For_Atomic_Xchg (AtomicCmpXchgInst *inst)
 
 extern "C"
 void
-Add_Function_To_Module (Function *f, Module *m)
+Add_Function_To_Module (Function *f, Module *m, bool allowDeduplication)
 {
-  // Check if the function already exists in the module. We only add functions
-  // to the module after we've processed the entire GNAT tree, and we
+  // Check if the function already exists in the module. We only add imported
+  // functions to the module after we've processed the entire GNAT tree, and we
   // deduplicate based on GNAT node IDs. However, builtin functions such as
   // __gnat_last_chance_handler are processed separately (because there is no
   // associated node in the GNAT tree) and added eagerly to the module.
@@ -507,7 +507,8 @@ Add_Function_To_Module (Function *f, Module *m)
   // because the LLVM value is just a declaration for a function to be
   // imported.
 
-  if (auto existingFunction = m->getFunction(f->getName())) {
+  if (auto existingFunction = m->getFunction(f->getName());
+      existingFunction && !allowDeduplication) {
     assert(f->isDeclaration() && existingFunction->isDeclaration() &&
            f->getType() == existingFunction->getType());
     f->replaceAllUsesWith(existingFunction);

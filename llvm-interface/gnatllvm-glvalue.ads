@@ -1477,7 +1477,8 @@ package GNATLLVM.GLValue is
    procedure Set_Volatile_For_Atomic (V : GL_Value)
      with Pre => Present (V), Inline;
 
-   procedure Add_Function_To_Module (V : GL_Value)
+   procedure Add_Function_To_Module
+     (V : GL_Value; Allow_Deduplication : Boolean)
      with Pre => Present (V), Inline;
 
    function Is_Layout_Identical (V : GL_Value; GT : GL_Type) return Boolean

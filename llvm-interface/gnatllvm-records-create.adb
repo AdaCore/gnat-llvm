@@ -1900,6 +1900,7 @@ package body GNATLLVM.Records.Create is
                           Unused_Bits => Get_Unused_Bits (F_GT));
                   Set_Is_Nonnative_Type (TE);
                   Split_Align := Nat'Max (Need_Align, BPU);
+                  RI_Align    := 0;
 
                --  If it's a native type, add it to the current set of
                --  fields and make a field descriptor.

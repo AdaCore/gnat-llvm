@@ -28,6 +28,8 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
+#include "llvm/Transforms/Instrumentation/SanitizerCoverage.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/Scalar/LoopPassManager.h"
@@ -212,6 +214,20 @@ void
 Add_Writeonly_Attribute (Function *fn, unsigned idx)
 {
   fn->addParamAttr (idx, Attribute::WriteOnly);
+}
+
+extern "C"
+void
+Add_Opt_For_Fuzzing_Attribute (Function *fn)
+{
+  fn->addFnAttr(Attribute::OptForFuzzing);
+}
+
+extern "C"
+void
+Add_Sanitize_Address_Attribute (Function *fn)
+{
+  fn->addFnAttr(Attribute::SanitizeAddress);
 }
 
 extern "C"
@@ -669,7 +685,8 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
 		      bool NoUnrollLoops, bool NoLoopVectorization,
 		      bool NoSLPVectorization, bool MergeFunctions,
 		      bool PrepareForThinLTO, bool PrepareForLTO,
-		      bool RerollLoops, const char *PassPluginName,
+		      bool RerollLoops, bool EnableFuzzer,
+                      bool EnableAddressSanitizer, const char *PassPluginName,
                       char** ErrorMessage)
 {
   // This code is derived from EmitAssemblyWithNewPassManager in clang
@@ -727,6 +744,28 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
   PB.registerFunctionAnalyses (FAM);
   PB.registerLoopAnalyses (LAM);
   PB.crossRegisterProxies (LAM, FAM, CGAM, MAM);
+
+  // Register additional passes for the sanitizers if applicable. This code is
+  // inspired by addSanitizers in LLVM's clang/lib/CodeGen/BackendUtil.cpp.
+  PB.registerOptimizerLastEPCallback(
+      [&](ModulePassManager &MPM, OptimizationLevel Level) {
+        if (EnableFuzzer) {
+          // Configure sanitizer coverage according to what Clang does in
+          // clang/lib/Driver/SanitizerArgs.cpp when the fuzzer is enabled.
+          SanitizerCoverageOptions CoverageOpts;
+          CoverageOpts.CoverageType = SanitizerCoverageOptions::SCK_Edge;
+          CoverageOpts.Inline8bitCounters = true;
+          CoverageOpts.IndirectCalls = true;
+          CoverageOpts.TraceCmp = true;
+          CoverageOpts.PCTable = true;
+          if (TargetTriple.isOSLinux())
+            CoverageOpts.StackDepth = true;
+          MPM.addPass(SanitizerCoveragePass(CoverageOpts));
+        }
+
+        if (EnableAddressSanitizer)
+          MPM.addPass(AddressSanitizerPass(AddressSanitizerOptions()));
+      });
 
   ModulePassManager MPM;
   if (CodeOptLevel == 0)

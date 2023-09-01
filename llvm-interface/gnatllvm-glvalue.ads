@@ -1154,6 +1154,14 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V), Inline;
    --  Add the Writeonly attribute to parameter with index Idx
 
+   procedure Add_Opt_For_Fuzzing_Attribute (V : GL_Value)
+     with Pre => Is_A_Function (V), Inline;
+   --  Add the OptForFuzzing attribute to function V
+
+   procedure Add_Sanitize_Address_Attribute (V : GL_Value)
+     with Pre => Is_A_Function (V), Inline;
+   --  Add the SanitizeAddress attribute to function V
+
    procedure Set_DSO_Local (V : GL_Value)
      with Pre => Is_A_Function (V) or else Is_A_Global_Variable (V), Inline;
    --  Add the DSOlocal attribute to a global (variable or function)

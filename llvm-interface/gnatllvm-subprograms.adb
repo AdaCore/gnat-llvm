@@ -2730,6 +2730,14 @@ package body GNATLLVM.Subprograms is
             end if;
          end if;
 
+         if Enable_Fuzzer then
+            Add_Opt_For_Fuzzing_Attribute (LLVM_Func);
+         end if;
+
+         if Enable_Address_Sanitizer then
+            Add_Sanitize_Address_Attribute (LLVM_Func);
+         end if;
+
          Formal := First_Formal_With_Extras (E);
          while Present (Formal) loop
             declare

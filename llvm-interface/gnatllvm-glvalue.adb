@@ -1796,6 +1796,24 @@ package body GNATLLVM.GLValue is
       Add_Writeonly_Attribute (+V, unsigned (Idx));
    end Add_Writeonly_Attribute;
 
+   -----------------------------------
+   -- Add_Opt_For_Fuzzing_Attribute --
+   -----------------------------------
+
+   procedure Add_Opt_For_Fuzzing_Attribute (V : GL_Value) is
+   begin
+      Add_Opt_For_Fuzzing_Attribute (+V);
+   end Add_Opt_For_Fuzzing_Attribute;
+
+   ------------------------------------
+   -- Add_Sanitize_Address_Attribute --
+   ------------------------------------
+
+   procedure Add_Sanitize_Address_Attribute (V : GL_Value) is
+   begin
+      Add_Sanitize_Address_Attribute (+V);
+   end Add_Sanitize_Address_Attribute;
+
    -------------------
    -- Set_DSO_Local --
    -------------------

@@ -875,4 +875,9 @@ package GNATLLVM.Types is
    Disable_LV_Append : Nat := 0;
    --  If nonzero, disable appending expressions to the LValue list.
 
+   Found_Alignment_Clause : Boolean := False;
+   --  Set to True if we see an alignment clause during processing. This is
+   --  used by CCG to decide whether we need to emit alignment annotations for
+   --  the C compiler.
+
 end GNATLLVM.Types;

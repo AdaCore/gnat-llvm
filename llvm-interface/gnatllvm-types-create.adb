@@ -691,6 +691,7 @@ package body GNATLLVM.Types.Create is
 
       if Present (Clause) then
          N := Expression (Clause);
+         Found_Alignment_Clause := True;
       end if;
 
       --  If the alignment either doesn't fit into an int or is larger than the

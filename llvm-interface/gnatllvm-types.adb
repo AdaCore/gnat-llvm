@@ -1533,9 +1533,9 @@ package body GNATLLVM.Types is
          Add_Aliasing_To_Instruction (Inst, V);
       end if;
 
-      --  But nothing else is correct in all cases
+      --  But nothing else is correct unless this is a single reference.
 
-      if not Is_Data (Deref (V)) then
+      if not Is_Single_Reference (V) then
          return;
       end if;
 

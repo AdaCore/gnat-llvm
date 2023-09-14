@@ -465,11 +465,33 @@ package body CCG.Instructions is
    --------------------------
 
    function Deref_For_Load_Store (Op, V : Value_T) return Str is
+      T             : constant Type_T  := Get_Load_Store_Type (V);
+      Need_Volatile : constant Boolean :=
+        Get_Volatile (V) and then not Is_Ref_To_Volatile (Op);
+
    begin
+      --  If this is a load or store of a partial integer, we need to
+      --  cast to a pointer to a struct consisting of an int of that bitsize
+      --  and reference the integer field.
+
+      if Is_Integral_Type (T)
+        and then Get_Scalar_Bit_Size (T) not in 8 | 16 | 32 | 64 | 128
+      then
+         declare
+            Bits : constant Nat := Get_Scalar_Bit_Size (T);
+
+         begin
+            pragma Assert (Bits < Long_Long_Size);
+            return "((struct { unsigned " &
+              (if Bits > Int_Size then "long long" else "int") & " f:" &
+              Bits & "; } * " & (if Need_Volatile then "volatile" else "") &
+              ") " & Op & ")->f";
+         end;
+
       --  If this isn't volatile, it's a normal dereference. Likewise if
       --  it's already known to be volatile.
 
-      if not Get_Volatile (V) or else Is_Ref_To_Volatile (Op) then
+      elsif not Need_Volatile then
          return Deref (Op);
 
       --  Otherwise, cast to a volatile form of the type and dereference that

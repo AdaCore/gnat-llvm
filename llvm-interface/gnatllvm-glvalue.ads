@@ -126,8 +126,9 @@ package GNATLLVM.GLValue is
 
       Unknown,
       --  Object is an unknown relation to the type. Used for peculiar LLVM
-      --  objects such as landing pads or the structure representing the
-      --  return from a function.
+      --  objects such as landing pads, the structure representing the
+      --  return from a function, and fields that represent multiple
+      --  bitfields.
 
       Reference_To_Unknown,
       --  Similar to Unknown, but we know that this is a reference and a

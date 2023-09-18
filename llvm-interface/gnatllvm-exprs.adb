@@ -1680,9 +1680,13 @@ package body GNATLLVM.Exprs is
       --  we know the size and know the object to store, we can convert
       --  Dest to the type of the pointer to Src, which we know is
       --  fixed-size, and do the store. If Dest is a pointer to an array
-      --  type, we need to point to the actual array data.
+      --  type, we need to point to the actual array data. But if Dest
+      --  isn't of its default type, the pointer pun below may cause us to
+      --  copy the wrong amount of data, so don't do this optimization
+      --  in that case.
 
-      elsif (No (E) or else Is_Loadable_Type (Full_GL_Type (E)))
+      elsif (No (E) or else (Is_Loadable_Type (Full_GL_Type (E))
+                             and then Full_GL_Type (E) = Related_Type (Dest)))
         and then (No (Value) or else Is_Loadable_Type (Value))
         and then not Is_Class_Wide_Equivalent_Type (Dest_GT)
       then

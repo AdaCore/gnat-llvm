@@ -195,6 +195,16 @@ package body CCG.Output is
             --  the variable's type and more that the preferred alignment
             --  for that type.
 
+            --  As a special case, we also emit an alignment annotation if
+            --  the specified alignment is more than the default alignment
+            --  and we've seen alignment clauses in the source code; we
+            --  want to be sure that the user's alignment request is
+            --  respected even by compilers with different preferred
+            --  alignments.
+
+            --  ??? We'd like to refine this later by understanding the
+            --  preferred alignment rules of the user's compiler.
+
             if Is_A_Global_Variable (V) or else Is_A_Alloca_Inst (V) then
                declare
                   Align  : constant Nat    :=
@@ -203,7 +213,10 @@ package body CCG.Output is
                   Pref   : constant Nat    := Get_Preferred_Type_Alignment (T);
 
                begin
-                  if Align > Actual and then Align > Pref then
+                  if Align > Actual
+                    and then
+                    (Align > Pref or else Found_Alignment_Clause)
+                  then
                      Decl :=
                        Output_Modifier ("aligned", Val => To_Bytes (Align)) &
                        Decl;

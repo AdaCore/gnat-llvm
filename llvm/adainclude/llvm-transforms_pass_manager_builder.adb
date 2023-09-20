@@ -53,4 +53,24 @@ package body LLVM.Transforms_Pass_Manager_Builder is
       Pass_Manager_Builder_Set_Disable_Simplify_Lib_Calls (PMB, Value_Bool);
    end Pass_Manager_Set_Disable_Simplify_Lib_Calls;
 
+   procedure Pass_Manager_Builder_Populate_LTO_Pass_Manager
+     (PMB         : Pass_Manager_Builder_T;
+      PM          : LLVM.Types.Pass_Manager_T;
+      Internalize : LLVM.Types.Bool_T;
+      Run_Inliner : LLVM.Types.Bool_T)
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMPassManagerBuilderPopulateLTOPassManager";
+   procedure Pass_Manager_Populate_LTO_Pass_Manager
+     (PMB         : Pass_Manager_Builder_T;
+      PM          : LLVM.Types.Pass_Manager_T;
+      Internalize : Boolean;
+      Run_Inliner : Boolean)
+   is
+      Internalize_Bool : constant LLVM.Types.Bool_T := Boolean'Pos (Internalize);
+      Run_Inliner_Bool : constant LLVM.Types.Bool_T := Boolean'Pos (Run_Inliner);
+   begin
+      Pass_Manager_Builder_Populate_LTO_Pass_Manager (PMB, PM, Internalize_Bool, Run_Inliner_Bool);
+   end Pass_Manager_Populate_LTO_Pass_Manager;
+
 end LLVM.Transforms_Pass_Manager_Builder;

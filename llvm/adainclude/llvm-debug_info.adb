@@ -301,36 +301,32 @@ package body LLVM.Debug_Info is
    end DI_Create_Function;
 
    function DI_Builder_Create_Imported_Declaration
-     (Builder      : LLVM.Types.DI_Builder_T;
-      Scope        : LLVM.Types.Metadata_T;
-      Decl         : LLVM.Types.Metadata_T;
-      File         : LLVM.Types.Metadata_T;
-      Line         : unsigned;
-      Name         : Interfaces.C.Strings.chars_ptr;
-      Name_Len     : stddef_h.size_t;
-      Elements     : System.Address;
-      Num_Elements : unsigned)
+     (Builder  : LLVM.Types.DI_Builder_T;
+      Scope    : LLVM.Types.Metadata_T;
+      Decl     : LLVM.Types.Metadata_T;
+      File     : LLVM.Types.Metadata_T;
+      Line     : unsigned;
+      Name     : Interfaces.C.Strings.chars_ptr;
+      Name_Len : stddef_h.size_t)
       return LLVM.Types.Metadata_T
    with Import => True,
         Convention => C,
         External_Name => "LLVMDIBuilderCreateImportedDeclaration";
    function DI_Create_Imported_Declaration
-     (Builder      : LLVM.Types.DI_Builder_T;
-      Scope        : LLVM.Types.Metadata_T;
-      Decl         : LLVM.Types.Metadata_T;
-      File         : LLVM.Types.Metadata_T;
-      Line         : unsigned;
-      Name         : String;
-      Name_Len     : stddef_h.size_t;
-      Elements     : System.Address;
-      Num_Elements : unsigned)
+     (Builder  : LLVM.Types.DI_Builder_T;
+      Scope    : LLVM.Types.Metadata_T;
+      Decl     : LLVM.Types.Metadata_T;
+      File     : LLVM.Types.Metadata_T;
+      Line     : unsigned;
+      Name     : String;
+      Name_Len : stddef_h.size_t)
       return LLVM.Types.Metadata_T
    is
       Return_Value : LLVM.Types.Metadata_T;
       Name_Array   : aliased char_array := To_C (Name);
       Name_String  : constant chars_ptr := To_Chars_Ptr (Name_Array'Unchecked_Access);
    begin
-      Return_Value := DI_Builder_Create_Imported_Declaration (Builder, Scope, Decl, File, Line, Name_String, Name_Len, Elements, Num_Elements);
+      Return_Value := DI_Builder_Create_Imported_Declaration (Builder, Scope, Decl, File, Line, Name_String, Name_Len);
       return Return_Value;
    end DI_Create_Imported_Declaration;
 

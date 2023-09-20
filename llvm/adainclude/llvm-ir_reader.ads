@@ -23,13 +23,6 @@ package LLVM.IR_Reader is
   --\*===----------------------------------------------------------------------=== 
 
   --*
-  -- * @defgroup LLVMCCoreIRReader IR Reader
-  -- * @ingroup LLVMCCore
-  -- *
-  -- * @{
-  --  
-
-  --*
   -- * Read LLVM IR from a memory buffer and convert it into an in-memory Module
   -- * object. Returns 0 on success.
   -- * Optionally returns a human-readable description of any errors that
@@ -45,10 +38,6 @@ function Parse_IR_In_Context
       Out_M       : System.Address;
       Out_Message : System.Address)
       return Boolean;
-
-  --*
-  -- * @}
-  --  
 
 end LLVM.IR_Reader;
 

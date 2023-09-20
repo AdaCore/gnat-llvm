@@ -36,13 +36,6 @@ package LLVM.LLJIT is
   --\*===----------------------------------------------------------------------=== 
 
   --*
-  -- * @defgroup LLVMCExecutionEngineLLJIT LLJIT
-  -- * @ingroup LLVMCExecutionEngine
-  -- *
-  -- * @{
-  --  
-
-  --*
   -- * A function for constructing an ObjectLinkingLayer instance to be used
   -- * by an LLJIT instance.
   -- *
@@ -60,7 +53,7 @@ package LLVM.LLJIT is
         (Arg_1 : System.Address;
          Arg_2 : LLVM.Orc.Orc_Execution_Session_T;
          Arg_3 : Interfaces.C.Strings.chars_ptr) return LLVM.Orc.Orc_Object_Layer_T
-   with Convention => C;  -- install/include/llvm-c/LLJIT.h:55
+   with Convention => C;  -- install/include/llvm-c/LLJIT.h:48
 
   --*
   -- * A reference to an orc::LLJITBuilder instance.
@@ -68,7 +61,7 @@ package LLVM.LLJIT is
 
    type Orc_Opaque_LLJIT_Builder_Impl_T is null record;   -- incomplete struct
 
-   type Orc_LLJIT_Builder_T is access all Orc_Opaque_LLJIT_Builder_Impl_T;  -- install/include/llvm-c/LLJIT.h:61
+   type Orc_LLJIT_Builder_T is access all Orc_Opaque_LLJIT_Builder_Impl_T;  -- install/include/llvm-c/LLJIT.h:54
 
   --*
   -- * A reference to an orc::LLJIT instance.
@@ -76,7 +69,7 @@ package LLVM.LLJIT is
 
    type Orc_Opaque_LLJIT_Impl_T is null record;   -- incomplete struct
 
-   type Orc_LLJIT_T is access all Orc_Opaque_LLJIT_Impl_T;  -- install/include/llvm-c/LLJIT.h:66
+   type Orc_LLJIT_T is access all Orc_Opaque_LLJIT_Impl_T;  -- install/include/llvm-c/LLJIT.h:59
 
   --*
   -- * Create an LLVMOrcLLJITBuilder.
@@ -85,7 +78,7 @@ package LLVM.LLJIT is
   -- * LLVMOrcDisposeLLJITBuilder once they are done with it.
   --  
 
-   function Orc_Create_LLJIT_Builder return Orc_LLJIT_Builder_T  -- install/include/llvm-c/LLJIT.h:74
+   function Orc_Create_LLJIT_Builder return Orc_LLJIT_Builder_T  -- install/include/llvm-c/LLJIT.h:67
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcCreateLLJITBuilder";
@@ -96,7 +89,7 @@ package LLVM.LLJIT is
   -- * that function from being called).
   --  
 
-   procedure Orc_Dispose_LLJIT_Builder (Builder : Orc_LLJIT_Builder_T)  -- install/include/llvm-c/LLJIT.h:81
+   procedure Orc_Dispose_LLJIT_Builder (Builder : Orc_LLJIT_Builder_T)  -- install/include/llvm-c/LLJIT.h:74
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcDisposeLLJITBuilder";
@@ -111,7 +104,7 @@ package LLVM.LLJIT is
   -- * dispose of the JITTargetMachineBuilder after calling this function.
   --  
 
-   procedure Orc_LLJIT_Builder_Set_JIT_Target_Machine_Builder (Builder : Orc_LLJIT_Builder_T; JTMB : LLVM.Orc.Orc_JIT_Target_Machine_Builder_T)  -- install/include/llvm-c/LLJIT.h:92
+   procedure Orc_LLJIT_Builder_Set_JIT_Target_Machine_Builder (Builder : Orc_LLJIT_Builder_T; JTMB : LLVM.Orc.Orc_JIT_Target_Machine_Builder_T)  -- install/include/llvm-c/LLJIT.h:85
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcLLJITBuilderSetJITTargetMachineBuilder";
@@ -123,7 +116,7 @@ package LLVM.LLJIT is
    procedure Orc_LLJIT_Builder_Set_Object_Linking_Layer_Creator
      (Builder : Orc_LLJIT_Builder_T;
       F : Orc_LLJIT_Builder_Object_Linking_Layer_Creator_Function_T;
-      Ctx : System.Address)  -- install/include/llvm-c/LLJIT.h:98
+      Ctx : System.Address)  -- install/include/llvm-c/LLJIT.h:91
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcLLJITBuilderSetObjectLinkingLayerCreator";
@@ -143,7 +136,7 @@ package LLVM.LLJIT is
   -- * and not-yet compiled modules.
   --  
 
-   function Orc_Create_LLJIT (Result : System.Address; Builder : Orc_LLJIT_Builder_T) return LLVM.Error.Error_T  -- install/include/llvm-c/LLJIT.h:116
+   function Orc_Create_LLJIT (Result : System.Address; Builder : Orc_LLJIT_Builder_T) return LLVM.Error.Error_T  -- install/include/llvm-c/LLJIT.h:109
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcCreateLLJIT";
@@ -152,7 +145,7 @@ package LLVM.LLJIT is
   -- * Dispose of an LLJIT instance.
   --  
 
-   function Orc_Dispose_LLJIT (J : Orc_LLJIT_T) return LLVM.Error.Error_T  -- install/include/llvm-c/LLJIT.h:122
+   function Orc_Dispose_LLJIT (J : Orc_LLJIT_T) return LLVM.Error.Error_T  -- install/include/llvm-c/LLJIT.h:115
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcDisposeLLJIT";
@@ -164,7 +157,7 @@ package LLVM.LLJIT is
   -- * responsible for managing its memory.
   --  
 
-   function Orc_LLJIT_Get_Execution_Session (J : Orc_LLJIT_T) return LLVM.Orc.Orc_Execution_Session_T  -- install/include/llvm-c/LLJIT.h:130
+   function Orc_LLJIT_Get_Execution_Session (J : Orc_LLJIT_T) return LLVM.Orc.Orc_Execution_Session_T  -- install/include/llvm-c/LLJIT.h:123
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcLLJITGetExecutionSession";
@@ -176,7 +169,7 @@ package LLVM.LLJIT is
   -- * for managing its memory.
   --  
 
-   function Orc_LLJIT_Get_Main_JIT_Dylib (J : Orc_LLJIT_T) return LLVM.Orc.Orc_JIT_Dylib_T  -- install/include/llvm-c/LLJIT.h:138
+   function Orc_LLJIT_Get_Main_JIT_Dylib (J : Orc_LLJIT_T) return LLVM.Orc.Orc_JIT_Dylib_T  -- install/include/llvm-c/LLJIT.h:131
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcLLJITGetMainJITDylib";
@@ -194,7 +187,7 @@ function Orc_LLJIT_Get_Triple_String
   -- * Returns the global prefix character according to the LLJIT's DataLayout.
   --  
 
-   function Orc_LLJIT_Get_Global_Prefix (J : Orc_LLJIT_T) return char  -- install/include/llvm-c/LLJIT.h:149
+   function Orc_LLJIT_Get_Global_Prefix (J : Orc_LLJIT_T) return char  -- install/include/llvm-c/LLJIT.h:142
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcLLJITGetGlobalPrefix";
@@ -225,7 +218,7 @@ function Orc_LLJIT_Mangle_And_Intern
    function Orc_LLJIT_Add_Object_File
      (J : Orc_LLJIT_T;
       JD : LLVM.Orc.Orc_JIT_Dylib_T;
-      Obj_Buffer : LLVM.Types.Memory_Buffer_T) return LLVM.Error.Error_T  -- install/include/llvm-c/LLJIT.h:170
+      Obj_Buffer : LLVM.Types.Memory_Buffer_T) return LLVM.Error.Error_T  -- install/include/llvm-c/LLJIT.h:163
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcLLJITAddObjectFile";
@@ -243,7 +236,7 @@ function Orc_LLJIT_Mangle_And_Intern
    function Orc_LLJIT_Add_Object_File_With_RT
      (J : Orc_LLJIT_T;
       RT : LLVM.Orc.Orc_Resource_Tracker_T;
-      Obj_Buffer : LLVM.Types.Memory_Buffer_T) return LLVM.Error.Error_T  -- install/include/llvm-c/LLJIT.h:182
+      Obj_Buffer : LLVM.Types.Memory_Buffer_T) return LLVM.Error.Error_T  -- install/include/llvm-c/LLJIT.h:175
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcLLJITAddObjectFileWithRT";
@@ -261,7 +254,7 @@ function Orc_LLJIT_Mangle_And_Intern
    function Orc_LLJIT_Add_LLVMIR_Module
      (J : Orc_LLJIT_T;
       JD : LLVM.Orc.Orc_JIT_Dylib_T;
-      TSM : LLVM.Orc.Orc_Thread_Safe_Module_T) return LLVM.Error.Error_T  -- install/include/llvm-c/LLJIT.h:195
+      TSM : LLVM.Orc.Orc_Thread_Safe_Module_T) return LLVM.Error.Error_T  -- install/include/llvm-c/LLJIT.h:188
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcLLJITAddLLVMIRModule";
@@ -279,7 +272,7 @@ function Orc_LLJIT_Mangle_And_Intern
    function Orc_LLJIT_Add_LLVMIR_Module_With_RT
      (J : Orc_LLJIT_T;
       JD : LLVM.Orc.Orc_Resource_Tracker_T;
-      TSM : LLVM.Orc.Orc_Thread_Safe_Module_T) return LLVM.Error.Error_T  -- install/include/llvm-c/LLJIT.h:208
+      TSM : LLVM.Orc.Orc_Thread_Safe_Module_T) return LLVM.Error.Error_T  -- install/include/llvm-c/LLJIT.h:201
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcLLJITAddLLVMIRModuleWithRT";
@@ -300,7 +293,7 @@ function Orc_LLJIT_Lookup
   -- * Returns a non-owning reference to the LLJIT instance's object linking layer.
   --  
 
-   function Orc_LLJIT_Get_Obj_Linking_Layer (J : Orc_LLJIT_T) return LLVM.Orc.Orc_Object_Layer_T  -- install/include/llvm-c/LLJIT.h:224
+   function Orc_LLJIT_Get_Obj_Linking_Layer (J : Orc_LLJIT_T) return LLVM.Orc.Orc_Object_Layer_T  -- install/include/llvm-c/LLJIT.h:217
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcLLJITGetObjLinkingLayer";
@@ -309,7 +302,7 @@ function Orc_LLJIT_Lookup
   -- * Returns a non-owning reference to the LLJIT instance's object linking layer.
   --  
 
-   function Orc_LLJIT_Get_Obj_Transform_Layer (J : Orc_LLJIT_T) return LLVM.Orc.Orc_Object_Transform_Layer_T  -- install/include/llvm-c/LLJIT.h:230
+   function Orc_LLJIT_Get_Obj_Transform_Layer (J : Orc_LLJIT_T) return LLVM.Orc.Orc_Object_Transform_Layer_T  -- install/include/llvm-c/LLJIT.h:223
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcLLJITGetObjTransformLayer";
@@ -318,7 +311,7 @@ function Orc_LLJIT_Lookup
   -- * Returns a non-owning reference to the LLJIT instance's IR transform layer.
   --  
 
-   function Orc_LLJIT_Get_IR_Transform_Layer (J : Orc_LLJIT_T) return LLVM.Orc.Orc_IR_Transform_Layer_T  -- install/include/llvm-c/LLJIT.h:235
+   function Orc_LLJIT_Get_IR_Transform_Layer (J : Orc_LLJIT_T) return LLVM.Orc.Orc_IR_Transform_Layer_T  -- install/include/llvm-c/LLJIT.h:228
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMOrcLLJITGetIRTransformLayer";
@@ -333,10 +326,6 @@ function Orc_LLJIT_Lookup
 function Orc_LLJIT_Get_Data_Layout_Str
      (J : Orc_LLJIT_T)
       return String;
-
-  --*
-  -- * @}
-  --  
 
 end LLVM.LLJIT;
 

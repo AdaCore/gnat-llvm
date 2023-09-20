@@ -4,12 +4,11 @@ pragma Style_Checks (Off);
 pragma Warnings (Off, "-gnatwu");
 
 pragma Warnings (Off); with Interfaces.C; use Interfaces.C; pragma Warnings (On);
+with LLVM.Types;
 
-package LLVM.Deprecated is
+package LLVM.Transforms_Aggressive_Inst_Combine is
 
-   --  arg-macro: procedure LLVM_ATTRIBUTE_C_DEPRECATED (decl, message)
-   --    decl __attribute__((deprecated))
-  --===-- llvm-c/Deprecated.h - Deprecation macro -------------------*- C -*-===*|*                                                                            *|
+  --===-- AggressiveInstCombine.h ---------------------------------*- C++ -*-===*|*                                                                            *|
   --|
   --|* Part of the LLVM Project, under the Apache License v2.0 with LLVM          *|
   --|* Exceptions.                                                                *|
@@ -18,14 +17,29 @@ package LLVM.Deprecated is
   --|*                                                                            *|
   --|*===----------------------------------------------------------------------===*|
   --|*                                                                            *|
-  --|* This header declares LLVM_ATTRIBUTE_C_DEPRECATED() macro, which can be     *|
-  --|* used to deprecate functions in the C interface.                            *|
+  --|* This header declares the C interface to libLLVMAggressiveInstCombine.a,    *|
+  --|* which combines instructions to form fewer, simple IR instructions.         *|
   --|*                                                                            *|
   --\*===----------------------------------------------------------------------=== 
 
-  -- This is a variant of LLVM_ATTRIBUTE_DEPRECATED() that is compatible with
-  -- C compilers.
-end LLVM.Deprecated;
+  --*
+  -- * @defgroup LLVMCTransformsAggressiveInstCombine Aggressive Instruction Combining transformations
+  -- * @ingroup LLVMCTransforms
+  -- *
+  -- * @{
+  --  
+
+  --* See llvm::createAggressiveInstCombinerPass function.  
+   procedure Add_Aggressive_Inst_Combiner_Pass (PM : LLVM.Types.Pass_Manager_T)  -- install/include/llvm-c/Transforms/AggressiveInstCombine.h:31
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMAddAggressiveInstCombinerPass";
+
+  --*
+  -- * @}
+  --  
+
+end LLVM.Transforms_Aggressive_Inst_Combine;
 
 pragma Style_Checks (On);
 pragma Warnings (On, "-gnatwu");

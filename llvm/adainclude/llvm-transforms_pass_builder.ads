@@ -25,13 +25,6 @@ package LLVM.Transforms_Pass_Builder is
   --\*===----------------------------------------------------------------------=== 
 
   --*
-  -- * @defgroup LLVMCCoreNewPM New Pass Manager
-  -- * @ingroup LLVMCCore
-  -- *
-  -- * @{
-  --  
-
-  --*
   -- * A set of options passed which are attached to the Pass Manager upon run.
   -- *
   -- * This corresponds to an llvm::LLVMPassBuilderOptions instance
@@ -42,7 +35,7 @@ package LLVM.Transforms_Pass_Builder is
 
    type Opaque_Pass_Builder_Options_Impl_T is null record;   -- incomplete struct
 
-   type Pass_Builder_Options_T is access all Opaque_Pass_Builder_Options_Impl_T;  -- install/include/llvm-c/Transforms/PassBuilder.h:38
+   type Pass_Builder_Options_T is access all Opaque_Pass_Builder_Options_Impl_T;  -- install/include/llvm-c/Transforms/PassBuilder.h:31
 
   --*
   -- * Construct and run a set of passes over a module
@@ -69,7 +62,7 @@ function Run_Passes
   -- * to free the pass builder options.
   --  
 
-   function Create_Pass_Builder_Options return Pass_Builder_Options_T  -- install/include/llvm-c/Transforms/PassBuilder.h:60
+   function Create_Pass_Builder_Options return Pass_Builder_Options_T  -- install/include/llvm-c/Transforms/PassBuilder.h:53
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMCreatePassBuilderOptions";
@@ -111,12 +104,12 @@ procedure Pass_Options_Set_Forget_All_SCEV_In_Loop_Unroll
      (Options                        : Pass_Builder_Options_T;
       Forget_All_SCEV_In_Loop_Unroll : Boolean);
 
-   procedure Pass_Builder_Options_Set_Licm_Mssa_Opt_Cap (Options : Pass_Builder_Options_T; Licm_Mssa_Opt_Cap : unsigned)  -- install/include/llvm-c/Transforms/PassBuilder.h:90
+   procedure Pass_Builder_Options_Set_Licm_Mssa_Opt_Cap (Options : Pass_Builder_Options_T; Licm_Mssa_Opt_Cap : unsigned)  -- install/include/llvm-c/Transforms/PassBuilder.h:83
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMPassBuilderOptionsSetLicmMssaOptCap";
 
-   procedure Pass_Builder_Options_Set_Licm_Mssa_No_Acc_For_Promotion_Cap (Options : Pass_Builder_Options_T; Licm_Mssa_No_Acc_For_Promotion_Cap : unsigned)  -- install/include/llvm-c/Transforms/PassBuilder.h:93
+   procedure Pass_Builder_Options_Set_Licm_Mssa_No_Acc_For_Promotion_Cap (Options : Pass_Builder_Options_T; Licm_Mssa_No_Acc_For_Promotion_Cap : unsigned)  -- install/include/llvm-c/Transforms/PassBuilder.h:86
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMPassBuilderOptionsSetLicmMssaNoAccForPromotionCap";
@@ -133,14 +126,10 @@ procedure Pass_Options_Set_Merge_Functions
   -- * Dispose of a heap-allocated PassBuilderOptions instance
   --  
 
-   procedure Dispose_Pass_Builder_Options (Options : Pass_Builder_Options_T)  -- install/include/llvm-c/Transforms/PassBuilder.h:105
+   procedure Dispose_Pass_Builder_Options (Options : Pass_Builder_Options_T)  -- install/include/llvm-c/Transforms/PassBuilder.h:98
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDisposePassBuilderOptions";
-
-  --*
-  -- * @}
-  --  
 
 end LLVM.Transforms_Pass_Builder;
 

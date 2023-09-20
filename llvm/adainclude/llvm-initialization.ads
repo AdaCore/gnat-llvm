@@ -47,37 +47,52 @@ package LLVM.Initialization is
         Convention => C, 
         External_Name => "LLVMInitializeScalarOpts";
 
-   procedure Initialize_Vectorization (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:36
+   procedure Initialize_Obj_CARC_Opts (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:36
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMInitializeObjCARCOpts";
+
+   procedure Initialize_Vectorization (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:37
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeVectorization";
 
-   procedure Initialize_Inst_Combine (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:37
+   procedure Initialize_Inst_Combine (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:38
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeInstCombine";
 
-   procedure Initialize_IPO (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:38
+   procedure Initialize_Aggressive_Inst_Combiner (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:39
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMInitializeAggressiveInstCombiner";
+
+   procedure Initialize_IPO (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:40
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeIPO";
 
-   procedure Initialize_Analysis (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:39
+   procedure Initialize_Instrumentation (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:41
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMInitializeInstrumentation";
+
+   procedure Initialize_Analysis (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:42
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeAnalysis";
 
-   procedure Initialize_IPA (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:40
+   procedure Initialize_IPA (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:43
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeIPA";
 
-   procedure Initialize_Code_Gen (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:41
+   procedure Initialize_Code_Gen (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:44
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeCodeGen";
 
-   procedure Initialize_Target (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:42
+   procedure Initialize_Target (R : LLVM.Types.Pass_Registry_T)  -- install/include/llvm-c/Initialization.h:45
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInitializeTarget";

@@ -24,12 +24,6 @@ package LLVM.Support is
   --\*===----------------------------------------------------------------------=== 
 
   --*
-  -- * @addtogroup LLVMCCore
-  -- *
-  -- * @{
-  --  
-
-  --*
   -- * This function permanently loads the dynamic library at the given path.
   -- * It is safe to call this function multiple times for the same library.
   -- *
@@ -77,10 +71,6 @@ function Search_For_Address_Of_Symbol
 procedure Add_Symbol
      (Symbol_Name  : String;
       Symbol_Value : System.Address);
-
-  --*
-  -- * @}
-  --  
 
 end LLVM.Support;
 

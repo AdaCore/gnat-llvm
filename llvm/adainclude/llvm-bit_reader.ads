@@ -79,13 +79,8 @@ function Get_Bitcode_Module_In_Context
       Out_Message : System.Address)
       return Boolean;
 
-  --* Reads a module from the given memory buffer, returning via the OutMP
-  -- * parameter a module provider which performs lazy deserialization.
-  -- *
-  -- * Returns 0 on success.
-  -- *
-  -- * Takes ownership of \p MemBuf if (and only if) the module was read
-  -- * successfully.  
+  --* Reads a module from the specified path, returning via the OutMP parameter a
+  -- * module provider which performs lazy deserialization. Returns 0 on success.  
 
 function Get_Bitcode_Module_In_Context_2
      (Context_Ref : LLVM.Types.Context_T;

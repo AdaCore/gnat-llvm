@@ -1353,7 +1353,7 @@ package body GNATLLVM.Instructions is
       --  Generate the load instruction and set up any flags. Don't set flags
       --  if the pointer is undefined (which includes poison).
 
-      Load_Inst := Load_2 (IR_Builder, Ptr_T, Ptr_Val, Name);
+      Load_Inst := Load (IR_Builder, Ptr_Val, Name);
       if not Is_Undef (Ptr) then
          Add_Flags_To_Instruction (Load_Inst, Ptr, Special_Atomic);
       end if;

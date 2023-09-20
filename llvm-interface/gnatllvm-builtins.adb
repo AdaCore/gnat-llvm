@@ -521,13 +521,11 @@ package body GNATLLVM.Builtins is
 
          when Atomic_RMW_Bin_Op_Max
             | Atomic_RMW_Bin_Op_U_Max
-            | Atomic_RMW_Bin_Op_F_Max
             =>
             return Build_Max (Result, Val);
 
          when Atomic_RMW_Bin_Op_Min
             | Atomic_RMW_Bin_Op_U_Min
-            | Atomic_RMW_Bin_Op_F_Min
             =>
             return Build_Min (Result, Val);
       end case;
@@ -1223,7 +1221,7 @@ package body GNATLLVM.Builtins is
    begin
       if No (Stack_Save_Fn) then
          Stack_Save_Fn := Add_Function
-           ("llvm.stacksave", Fn_Ty ((1 .. 0 => <>), Void_Ptr_T),
+           ("llvm.stacksave.p0i8", Fn_Ty ((1 .. 0 => <>), Void_Ptr_T),
             A_Char_GL_Type, Is_Builtin => True);
          Set_Does_Not_Throw (Stack_Save_Fn);
       end if;
@@ -1239,7 +1237,7 @@ package body GNATLLVM.Builtins is
    begin
       if No (Stack_Restore_Fn) then
          Stack_Restore_Fn := Add_Function
-           ("llvm.stackrestore",
+           ("llvm.stackrestore.p0i8",
             Fn_Ty ((1 => Void_Ptr_T), Void_Type), Void_GL_Type,
             Is_Builtin => True);
          Set_Does_Not_Throw (Stack_Restore_Fn);

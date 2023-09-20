@@ -497,7 +497,6 @@ package body GNATLLVM.Codegen is
       --  Initialize the translation environment
 
       Initialize_LLVM;
-      Context_Set_Opaque_Pointers (Get_Global_Context, not Emit_C);
       IR_Builder     := Create_Builder;
       MD_Builder     := Create_MDBuilder;
       Module         := Module_Create_With_Name (Filename.all);

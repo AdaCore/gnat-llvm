@@ -508,6 +508,22 @@ Set_Weak_For_Atomic_Xchg (AtomicCmpXchgInst *inst)
 }
 
 extern "C"
+Value *
+Create_Function (Module *M, const char *Name, FunctionType *T, bool AddToModule)
+{
+  if (AddToModule) {
+    return Function::Create(T, GlobalValue::ExternalLinkage, Name, M);
+  } else {
+    // Morello LLVM doesn't allow us to create a function in the default
+    // namespace, but we can use the module's address space: even though we're
+    // not supposed to add the function to the module right now, we know that
+    // it will eventually be added there.
+    return Function::Create(T, GlobalValue::ExternalLinkage,
+                            M->getDataLayout().getProgramAddressSpace(), Name);
+  }
+}
+
+extern "C"
 void
 Add_Function_To_Module (Function *f, Module *m, bool allowDeduplication)
 {

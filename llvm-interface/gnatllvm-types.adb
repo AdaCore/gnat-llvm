@@ -894,6 +894,7 @@ package body GNATLLVM.Types is
       Conv_V   : GL_Value := V;
       DT       : GL_Type  := Related_Type (V);
       Alloc_GT : GL_Type  := DT;
+      Free_V   : GL_Value;
 
    begin
       --  If V is an access type, convert it to a reference to the
@@ -918,7 +919,7 @@ package body GNATLLVM.Types is
       --  and data. Otherwise just a Reference. We'll then either convert
       --  it to a generic pointer or to an integer (System.Address).
 
-      Conv_V := Get (Conv_V, Relationship_For_Alloc (DT));
+      Free_V := Get (Conv_V, Relationship_For_Alloc (DT));
 
       declare
          Size    : constant GL_Value :=
@@ -937,8 +938,8 @@ package body GNATLLVM.Types is
          then
             Call (Get_Default_Free_Fn,
                   (1 => (if   Emit_C
-                         then Convert_To_Access (Conv_V, A_Char_GL_Type)
-                         else Ptr_To_Int (Conv_V, Size_GL_Type))));
+                         then Convert_To_Access (Free_V, A_Char_GL_Type)
+                         else Ptr_To_Int (Free_V, Size_GL_Type))));
 
          --  If we have to use the normal deallocation procedure to
          --  deallocate an overaligned value, the actual address of the
@@ -948,7 +949,7 @@ package body GNATLLVM.Types is
          elsif No (Proc) then
             declare
                Addr       : constant GL_Value :=
-                 Ptr_To_Int (Conv_V, Size_GL_Type);
+                 Ptr_To_Int (Free_V, Size_GL_Type);
                Ptr_Size   : constant GL_Value :=
                  Get_Type_Size (A_Char_GL_Type);
                Ptr_Loc    : constant GL_Value := Addr - To_Bytes (Ptr_Size);
@@ -972,7 +973,7 @@ package body GNATLLVM.Types is
                           (1 => Ptr_To_Ref (Emit_Entity (Pool),
                                             Full_GL_Type
                                               (First_Formal (Proc))),
-                           2 => Ptr_To_Size_Type (Conv_V),
+                           2 => Ptr_To_Size_Type (Free_V),
                            3 => To_Bytes (Size),
                            4 => To_Bytes (Align_V)));
 
@@ -980,7 +981,7 @@ package body GNATLLVM.Types is
             --  it with the size.
 
          else
-            Call_Dealloc (Proc, (1 => Ptr_To_Size_Type (Conv_V),
+            Call_Dealloc (Proc, (1 => Ptr_To_Size_Type (Free_V),
                                  2 => To_Bytes (Size)));
          end if;
       end;

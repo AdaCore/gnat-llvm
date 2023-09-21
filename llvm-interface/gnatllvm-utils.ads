@@ -22,6 +22,7 @@ with Uintp.LLVM;  use Uintp.LLVM;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package GNATLLVM.Utils is
 
@@ -38,7 +39,8 @@ package GNATLLVM.Utils is
    function Num_Actuals (N : N_Subprogram_Call_Id) return Nat;
    --  The number of actual arguments in N, a subprogram call
 
-   function Number_Bounds (TE : Array_Kind_Id) return Nat;
+   function Number_Bounds (TE : Type_Kind_Id) return Nat
+     with Pre => Is_Array_Or_Packed_Array_Type (TE);
    --  Usually Number_Dimensions * 2, but may be lower if one or more index
    --  has a fixed lower bound.
 

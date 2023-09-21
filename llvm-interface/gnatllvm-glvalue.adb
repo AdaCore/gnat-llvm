@@ -683,7 +683,8 @@ package body GNATLLVM.GLValue is
       if Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (GT)
         or else Ekind (GT) = E_String_Literal_Subtype
       then
-         return Reference_To_Bounds_And_Data;
+         return (if   Has_Bounds_In_Fat_Pointer (GT)
+                 then Reference else Reference_To_Bounds_And_Data);
       else
          return R;
       end if;

@@ -142,58 +142,6 @@ package body LLVM.Orc is
       return Return_Value;
    end Orc_Execution_Session_Get_JIT_Dylib_By_Name;
 
-   function Orc_Create_Dynamic_Library_Search_Generator_For_Path
-     (Result        : System.Address;
-      File_Name     : Interfaces.C.Strings.chars_ptr;
-      Global_Prefix : char;
-      Filter        : Orc_Symbol_Predicate_T;
-      Filter_Ctx    : System.Address)
-      return LLVM.Error.Error_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMOrcCreateDynamicLibrarySearchGeneratorForPath";
-   function Orc_Create_Dynamic_Library_Search_Generator_For_Path
-     (Result        : System.Address;
-      File_Name     : String;
-      Global_Prefix : char;
-      Filter        : Orc_Symbol_Predicate_T;
-      Filter_Ctx    : System.Address)
-      return LLVM.Error.Error_T
-   is
-      Return_Value     : LLVM.Error.Error_T;
-      File_Name_Array  : aliased char_array := To_C (File_Name);
-      File_Name_String : constant chars_ptr := To_Chars_Ptr (File_Name_Array'Unchecked_Access);
-   begin
-      Return_Value := Orc_Create_Dynamic_Library_Search_Generator_For_Path (Result, File_Name_String, Global_Prefix, Filter, Filter_Ctx);
-      return Return_Value;
-   end Orc_Create_Dynamic_Library_Search_Generator_For_Path;
-
-   function Orc_Create_Static_Library_Search_Generator_For_Path
-     (Result        : System.Address;
-      Obj_Layer     : Orc_Object_Layer_T;
-      File_Name     : Interfaces.C.Strings.chars_ptr;
-      Target_Triple : Interfaces.C.Strings.chars_ptr)
-      return LLVM.Error.Error_T
-   with Import => True,
-        Convention => C,
-        External_Name => "LLVMOrcCreateStaticLibrarySearchGeneratorForPath";
-   function Orc_Create_Static_Library_Search_Generator_For_Path
-     (Result        : System.Address;
-      Obj_Layer     : Orc_Object_Layer_T;
-      File_Name     : String;
-      Target_Triple : String)
-      return LLVM.Error.Error_T
-   is
-      Return_Value         : LLVM.Error.Error_T;
-      File_Name_Array      : aliased char_array := To_C (File_Name);
-      File_Name_String     : constant chars_ptr := To_Chars_Ptr (File_Name_Array'Unchecked_Access);
-      Target_Triple_Array  : aliased char_array := To_C (Target_Triple);
-      Target_Triple_String : constant chars_ptr := To_Chars_Ptr (Target_Triple_Array'Unchecked_Access);
-   begin
-      Return_Value := Orc_Create_Static_Library_Search_Generator_For_Path (Result, Obj_Layer, File_Name_String, Target_Triple_String);
-      return Return_Value;
-   end Orc_Create_Static_Library_Search_Generator_For_Path;
-
    function Orc_JIT_Target_Machine_Builder_Get_Target_Triple
      (JTMB : Orc_JIT_Target_Machine_Builder_T)
       return Interfaces.C.Strings.chars_ptr

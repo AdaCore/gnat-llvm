@@ -107,6 +107,10 @@ package CCG.Environment is
      with Pre => Present (T), Inline;
    --  True if we're in the process of outputting a typedef
 
+   function Get_Used_In_Struct           (T : Type_T) return Boolean
+     with Pre => Present (T), Inline;
+   --  True if T is the type of an element of a struct
+
    function Get_Cannot_Pack              (T : Type_T) return Boolean
      with Pre => Present (T), Inline;
    --  True if this is a type that we want to pack, but can't because of
@@ -124,6 +128,9 @@ package CCG.Environment is
           Inline;
    procedure Set_Are_Outputting_Typedef   (T : Type_T; B : Boolean := True)
      with Pre  => Present (T), Post => Get_Are_Outputting_Typedef (T) = B,
+          Inline;
+   procedure Set_Used_In_Struct           (T : Type_T; B : Boolean := True)
+     with Pre  => Present (T), Post => Get_Used_In_Struct (T) = B,
           Inline;
    procedure Set_Cannot_Pack              (T : Type_T; B : Boolean := True)
      with Pre  => Present (T), Post => Get_Cannot_Pack (T) = B,

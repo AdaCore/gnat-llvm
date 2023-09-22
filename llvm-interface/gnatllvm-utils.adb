@@ -24,7 +24,6 @@ with Stand;    use Stand;
 with Stringt;  use Stringt;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
-with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
@@ -140,12 +139,15 @@ package body GNATLLVM.Utils is
    -- Number_Bounds --
    -------------------
 
-   function Number_Bounds (TE : Array_Kind_Id) return Nat is
+   function Number_Bounds (TE : Type_Kind_Id) return Nat is
       N : Opt_N_Is_Index_Id;
 
    begin
       if Ekind (TE) = E_String_Literal_Subtype then
-         return 1;
+         return 2;
+
+      elsif Is_Packed_Array_Impl_Type (TE) then
+         return Number_Bounds (Original_Array_Type (TE));
 
       else
          return Num : Nat := 0 do

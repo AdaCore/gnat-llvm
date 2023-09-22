@@ -90,6 +90,9 @@ package body CCG.Environment is
       Are_Outputting_Typedef   : Boolean;
       --  True if we're in the process of outputting a typedef
 
+      Used_In_Struct           : Boolean;
+      --  True if this type is the type of a field in a struct
+
       Cannot_Pack              : Boolean;
       --  True if this is a type that we want to pack, but can't because of
       --  restrictions in our C compiler.
@@ -255,6 +258,7 @@ package body CCG.Environment is
                             Is_Return_Typedef_Output => False,
                             Is_Incomplete_Output     => False,
                             Are_Outputting_Typedef   => False,
+                            Used_In_Struct           => False,
                             Cannot_Pack              => False,
                             Output_Idx               => 0));
          Insert (Type_Info_Map, T, Type_Info.Last);
@@ -532,6 +536,17 @@ package body CCG.Environment is
       return Present (Idx) and then Type_Info.Table (Idx).Cannot_Pack;
    end Get_Cannot_Pack;
 
+   ------------------------
+   -- Get_Used_In_Struct --
+   ------------------------
+
+   function Get_Used_In_Struct (T : Type_T) return Boolean is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
+
+   begin
+      return Present (Idx) and then Type_Info.Table (Idx).Used_In_Struct;
+   end Get_Used_In_Struct;
+
    ----------------
    -- Set_Entity --
    ----------------
@@ -586,6 +601,17 @@ package body CCG.Environment is
    begin
       Type_Info.Table (Idx).Are_Outputting_Typedef := B;
    end Set_Are_Outputting_Typedef;
+
+   ------------------------
+   -- Set_Used_In_Struct --
+   ------------------------
+
+   procedure Set_Used_In_Struct (T : Type_T; B : Boolean := True) is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
+
+   begin
+      Type_Info.Table (Idx).Used_In_Struct := B;
+   end Set_Used_In_Struct;
 
    ---------------------
    -- Set_Cannot_Pack --

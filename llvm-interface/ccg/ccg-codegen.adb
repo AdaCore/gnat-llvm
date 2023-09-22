@@ -28,6 +28,7 @@ with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
+with CCG.Environment; use CCG.Environment;
 with CCG.Helper;      use CCG.Helper;
 with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
@@ -128,6 +129,17 @@ package body CCG.Codegen is
       function Is_Public (V : Value_T) return Boolean;
       --  True if V is publically-visible
 
+      procedure Mark_Struct_Fields (T : Type_T)
+        with Pre => Present (T);
+      --  If T is a struct type, mark the types of all fields in it as
+      --  used in a struct.
+
+      procedure Mark_Structs_Used (V : Value_T)
+        with Pre => Present (V);
+      --  Likewise, but for the type of V
+
+      procedure Mark_All_Structs_Used is new Walk_Object (Mark_Structs_Used);
+
       procedure Maybe_Decl_Func (V : Value_T)
         with Pre => Present (V);
       --  Called for each value in an inline function
@@ -205,6 +217,44 @@ package body CCG.Codegen is
       function Is_Public (V : Value_T) return Boolean is
         (Get_Linkage (V) not in Internal_Linkage | Private_Linkage);
 
+      ------------------------
+      -- Mark_Struct_Fields --
+      ------------------------
+
+      procedure Mark_Struct_Fields (T : Type_T) is
+      begin
+         if Is_Struct_Type (T) then
+            declare
+               Types : constant Nat := Count_Struct_Element_Types (T);
+
+            begin
+               for J in 0 .. Types - 1 loop
+                  declare
+                     ST : constant Type_T := Struct_Get_Type_At_Index (T, J);
+
+                  begin
+                     if not Get_Used_In_Struct (ST) then
+                        Set_Used_In_Struct (ST);
+                        Mark_Struct_Fields (ST);
+                     end if;
+                  end;
+               end loop;
+            end;
+
+         elsif Is_Array_Type (T) or else Is_Pointer_Type (T) then
+            Mark_Struct_Fields (Get_Element_Type (T));
+         end if;
+      end Mark_Struct_Fields;
+
+      -----------------------
+      -- Mark_Structs_Used --
+      -----------------------
+
+      procedure Mark_Structs_Used (V : Value_T) is
+      begin
+         Mark_Struct_Fields (Type_Of (V));
+      end Mark_Structs_Used;
+
       ---------------------
       -- Maybe_Decl_Func --
       ---------------------
@@ -217,6 +267,21 @@ package body CCG.Codegen is
       end Maybe_Decl_Func;
 
    begin -- Start of processing for Generate
+
+      --  Scan all global decls and functions to mark any types that are
+      --  used as the type of struct fields.
+
+      Glob := Get_First_Global (Module);
+      while Present (Glob) loop
+         Mark_All_Structs_Used (Glob);
+         Glob := Get_Next_Global (Glob);
+      end loop;
+
+      Func := Get_First_Function (Module);
+      while Present (Func) loop
+         Mark_All_Structs_Used (Func);
+         Func := Get_Next_Function (Func);
+      end loop;
 
       --  Scan all public enums and add declarations for them
 

@@ -171,10 +171,15 @@ package body CCG.Aggregates is
       --  If we can't determine the base type, its base type is
       --  unconstrained (see the discussion in GNATLLVM.Records.Create for
       --  the rationale of this test), or if the alignment of the struct
-      --  is smaller that the default alignment, we must pack.
+      --  is smaller that the default alignment, we must pack. We also
+      --  need to pack if the total size of the fields isn't a multiple of
+      --  the alignment and this record is used as the type of a field in
+      --  another record.
 
       if (No (TE) or else not Is_Constrained (TE)
-            or else (+Alignment (TE)) * UBPU < ULL (Default_Alignment (T)))
+          or else (+Alignment (TE)) * UBPU < ULL (Default_Alignment (T))
+          or else (Cur_Pos mod ((+Alignment (TE)) * UBPU) /= 0
+                   and then Get_Used_In_Struct (T)))
         and then not Need_Pack
       then
          Need_Pack := True;

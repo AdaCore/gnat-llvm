@@ -530,16 +530,10 @@ package body GNATLLVM.GLValue is
 
    function Element_Type_Of (V : GL_Value) return Type_T is
    begin
-      --  If we don't have opaque pointers, we can get the type from the
-      --  pointer.
-
-      if not Pointer_Type_Is_Opaque (Void_Ptr_T) then
-         return Get_Element_Type (Type_Of (V));
-
       --  If this is a double reference, the type is a pointer and since
       --  pointers are opaque, they're all the same.
 
-      elsif Is_Double_Reference (V) then
+      if Is_Double_Reference (V) then
          return Void_Ptr_T;
 
       --  If this is a reference to Unknown, we're supposed to have set the

@@ -1689,9 +1689,9 @@ package body GNATLLVM.Variables is
                Error_Msg_NE ("No matching object found", Linker_Alias, Our_E);
                LLVM_Var := Get_Undef (GT);
             else
-               LLVM_Var := G (Add_Alias_2 (Module, Type_Of (GT), 0,
-                                           +Get_Value (Our_E),
-                                           Get_Ext_Name (E)),
+               LLVM_Var := G (Add_Alias (Module, Type_Of (GT),
+                                         +Get_Value (Our_E),
+                                         Get_Ext_Name (E)),
                               GT, Reference);
                Initialize_TBAA (LLVM_Var, Kind_From_Decl (E));
             end if;

@@ -306,6 +306,34 @@ package body GNATLLVM.Wrapper is
       return Has_NSW (V) /= 0;
    end Has_NSW;
 
+   ------------------
+   -- Create_Function --
+   ------------------
+
+   function Create_Function
+     (M             : Module_T;
+      Name          : String;
+      Function_Ty   : Type_T;
+      Add_To_Module : Boolean)
+      return Value_T
+   is
+      function Create_Function_C (M             : LLVM.Types.Module_T;
+                                  Name          : chars_ptr;
+                                  Function_Ty   : LLVM.Types.Type_T;
+                                  Add_To_Module : LLVM_Bool)
+                                  return LLVM.Types.Value_T
+        with Import, Convention => C, External_Name => "Create_Function";
+
+      Name_C : chars_ptr := New_String (Name);
+      Result : Value_T;
+   begin
+      Result :=
+        Create_Function_C
+          (M, Name_C, Function_Ty, Boolean'Pos (Add_To_Module));
+      Free (Name_C);
+      return Result;
+   end Create_Function;
+
    ----------------------------
    -- Add_Function_To_Module --
    ----------------------------

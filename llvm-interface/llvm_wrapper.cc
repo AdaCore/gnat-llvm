@@ -178,7 +178,7 @@ extern "C"
 void
 Add_Ret_Noalias_Attribute (Function *fn)
 {
-  fn->addRetAttr (Attribute::NoAlias);
+  fn->setReturnDoesNotAlias ();
 }
 
 extern "C"
@@ -199,7 +199,7 @@ extern "C"
 void
 Add_Ret_Non_Null_Attribute (Function *fn, unsigned idx)
 {
-  fn->addRetAttr (Attribute::NonNull);
+  fn->addAttribute (AttributeList::ReturnIndex, Attribute::NonNull);
 }
 
 extern "C"
@@ -508,6 +508,22 @@ Set_Weak_For_Atomic_Xchg (AtomicCmpXchgInst *inst)
 }
 
 extern "C"
+Value *
+Create_Function (Module *M, const char *Name, FunctionType *T, bool AddToModule)
+{
+  if (AddToModule) {
+    return Function::Create(T, GlobalValue::ExternalLinkage, Name, M);
+  } else {
+    // Morello LLVM doesn't allow us to create a function in the default
+    // namespace, but we can use the module's address space: even though we're
+    // not supposed to add the function to the module right now, we know that
+    // it will eventually be added there.
+    return Function::Create(T, GlobalValue::ExternalLinkage,
+                            M->getDataLayout().getProgramAddressSpace(), Name);
+  }
+}
+
+extern "C"
 void
 Add_Function_To_Module (Function *f, Module *m, bool allowDeduplication)
 {
@@ -523,8 +539,8 @@ Add_Function_To_Module (Function *f, Module *m, bool allowDeduplication)
   // because the LLVM value is just a declaration for a function to be
   // imported.
 
-  if (auto existingFunction = m->getFunction(f->getName());
-      existingFunction && !allowDeduplication) {
+  auto existingFunction = m->getFunction(f->getName());
+  if (existingFunction && !allowDeduplication) {
     assert(f->isDeclaration() && existingFunction->isDeclaration() &&
            f->getType() == existingFunction->getType());
     f->replaceAllUsesWith(existingFunction);
@@ -625,7 +641,7 @@ Get_Target_C_Types (const char *Triple, const char *CPU,
   if (Info == nullptr)
     return;
 
-  Result->PointerSize = Info->getPointerWidth(LangAS::Default);
+  Result->PointerSize = Info->getPointerWidth(static_cast<unsigned>(LangAS::Default));
   Result->CharSize = Info->getCharWidth();
   Result->WCharTSize = Info->getWCharWidth();
   Result->ShortSize = Info->getShortWidth();
@@ -633,12 +649,10 @@ Get_Target_C_Types (const char *Triple, const char *CPU,
   Result->LongSize = Info->getLongWidth();
   Result->LongLongSize = Info->getLongLongWidth();
   Result->LongLongLongSize = Info->hasInt128Type() ? 128 : 64;
-  if (Info->hasLongDoubleType()) {
-    Result->LongDoubleSemanticSize =
-      APFloat::semanticsSizeInBits(Info->getLongDoubleFormat());
-    Result->LongDoubleStorageSize = Info->getLongDoubleWidth();
-    Result->LongDoubleAlignment = Info->getLongDoubleAlign();
-  }
+  Result->LongDoubleSemanticSize =
+    APFloat::semanticsSizeInBits(Info->getLongDoubleFormat());
+  Result->LongDoubleStorageSize = Info->getLongDoubleWidth();
+  Result->LongDoubleAlignment = Info->getLongDoubleAlign();
   Result->MaximumAlignmentBytes = Info->getSuitableAlign() / 8;
   *success = 1;
 }
@@ -691,15 +705,15 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
 {
   // This code is derived from EmitAssemblyWithNewPassManager in clang
 
-  std::optional<PGOOptions> PGOOpt;
+  Optional<PGOOptions> PGOOpt;
   PipelineTuningOptions PTO;
   PassInstrumentationCallbacks PIC;
   Triple TargetTriple (M->getTargetTriple ());
-  OptimizationLevel Level
-    = (CodeOptLevel == 1 ? OptimizationLevel::O1
-       : CodeOptLevel == 2 ? OptimizationLevel::O2
-       : CodeOptLevel == 3 ? OptimizationLevel::O3
-       : OptimizationLevel::O0);
+  PassBuilder::OptimizationLevel Level
+    = (CodeOptLevel == 1 ? PassBuilder::OptimizationLevel::O1
+       : CodeOptLevel == 2 ? PassBuilder::OptimizationLevel::O2
+       : CodeOptLevel == 3 ? PassBuilder::OptimizationLevel::O3
+       : PassBuilder::OptimizationLevel::O0);
   PTO.LoopUnrolling = !NoUnrollLoops;
   PTO.LoopInterleaving = !NoUnrollLoops;
   PTO.LoopVectorization = !NoLoopVectorization;
@@ -748,7 +762,7 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
   // Register additional passes for the sanitizers if applicable. This code is
   // inspired by addSanitizers in LLVM's clang/lib/CodeGen/BackendUtil.cpp.
   PB.registerOptimizerLastEPCallback(
-      [&](ModulePassManager &MPM, OptimizationLevel Level) {
+      [&](ModulePassManager &MPM, llvm::PassBuilder::OptimizationLevel Level) {
         if (EnableFuzzer) {
           // Configure sanitizer coverage according to what Clang does in
           // clang/lib/Driver/SanitizerArgs.cpp when the fuzzer is enabled.
@@ -760,11 +774,15 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
           CoverageOpts.PCTable = true;
           if (TargetTriple.isOSLinux())
             CoverageOpts.StackDepth = true;
-          MPM.addPass(SanitizerCoveragePass(CoverageOpts));
+          MPM.addPass(ModuleSanitizerCoveragePass(CoverageOpts));
         }
 
         if (EnableAddressSanitizer)
-          MPM.addPass(AddressSanitizerPass(AddressSanitizerOptions()));
+          MPM.addPass(
+              RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
+          MPM.addPass(ModuleAddressSanitizerPass());
+          MPM.addPass(
+              createModuleToFunctionPassAdaptor(AddressSanitizerPass()));
       });
 
   ModulePassManager MPM;
@@ -1032,7 +1050,7 @@ extern "C"
 void
 Insert_At_Block_End (Instruction *I, BasicBlock *BB, Instruction *From)
 {
-  I->insertInto (BB, BB->end());
+  BB->getInstList ().insert (BB->end(), I);
   I->setDebugLoc (From->getDebugLoc ());
 }
 

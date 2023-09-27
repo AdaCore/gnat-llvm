@@ -1333,7 +1333,10 @@ package body GNATLLVM.Instructions is
       --  an undef. Likewise if the pointer is an undef (meaning it was
       --  zero-sized).
 
-      if Emit_C and then (Is_Zero_Size (Load_GT) or else Is_Undef (Ptr)) then
+      if Emit_C
+        and then ((Is_Zero_Size (Load_GT) and then New_R /= Bounds_And_Data)
+                  or else Is_Undef (Ptr))
+      then
          return Get_Undef_Relationship (Load_GT, New_R);
 
       --  If this needs a copy-in, make a temporary for it, copy the
@@ -1436,11 +1439,7 @@ package body GNATLLVM.Instructions is
       --  Likewise if the address is an object that was zero-sized and is
       --  now an undef.
 
-      if Emit_C
-        and then ((Is_Zero_Size (GT)
-                   and then Relationship (Expr) /= Bounds_And_Data)
-                 or else Is_Undef (Ptr))
-      then
+      if Emit_C and then (Is_Zero_Size (Expr) or else Is_Undef (Ptr)) then
          return;
 
       --  Otherwise, do the actual store and set the attributes

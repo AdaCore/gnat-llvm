@@ -670,6 +670,11 @@ package GNATLLVM.GLType is
      (not Is_Nonnative_Type (GT) and then GT_Size (GT) = Size_Const_Null)
      with Pre => Present (GT);
 
+   function Is_Zero_Size (V : GL_Value) return Boolean is
+     (Is_Zero_Size (Related_Type (V))
+      and then Relationship (V) /= Bounds_And_Data)
+     with Pre => Present (V);
+
    function C_Pass_By_Copy (GT : GL_Type) return Boolean is
      (C_Pass_By_Copy (Full_Etype (GT)))
      with Pre => Present (GT);

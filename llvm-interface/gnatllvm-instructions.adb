@@ -1436,7 +1436,11 @@ package body GNATLLVM.Instructions is
       --  Likewise if the address is an object that was zero-sized and is
       --  now an undef.
 
-      if Emit_C and then (Is_Zero_Size (GT) or else Is_Undef (Ptr)) then
+      if Emit_C
+        and then ((Is_Zero_Size (GT)
+                   and then Relationship (Expr) /= Bounds_And_Data)
+                 or else Is_Undef (Ptr))
+      then
          return;
 
       --  Otherwise, do the actual store and set the attributes

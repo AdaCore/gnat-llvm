@@ -641,4 +641,28 @@ package body GNATLLVM.Wrapper is
       return Value (Get_Personality_Function_Name_C (Triple));
    end Get_Personality_Function_Name;
 
+   ------------------
+   -- Get_Features --
+   ------------------
+
+   function Get_Features (Triple, Arch, CPU : String) return String is
+      use Interfaces.C;
+
+      function Get_Features_C
+        (Triple, Arch, CPU : char_array) return chars_ptr with
+        Import, Convention => C, External_Name => "Get_Features";
+
+      Triple_C : constant char_array := To_C (Triple);
+      Arch_C   : constant char_array := To_C (Arch);
+      CPU_C    : constant char_array := To_C (CPU);
+
+      Result_C : chars_ptr := Get_Features_C (Triple_C, Arch_C, CPU_C);
+      Result : constant String :=
+        (if Result_C = Null_Ptr then "" else Value (Result_C));
+
+   begin
+      Free (Result_C);
+      return Result;
+   end Get_Features;
+
 end GNATLLVM.Wrapper;

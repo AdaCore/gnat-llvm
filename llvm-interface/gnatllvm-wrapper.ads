@@ -442,4 +442,6 @@ package GNATLLVM.Wrapper is
    function Has_Default_PIE (Triple : String) return Boolean;
 
    function Get_Personality_Function_Name (Triple : String) return String;
+
+   function Get_Features (Triple, Arch, CPU : String) return String;
 end GNATLLVM.Wrapper;

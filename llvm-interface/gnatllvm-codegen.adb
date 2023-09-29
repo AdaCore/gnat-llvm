@@ -72,6 +72,9 @@ package body GNATLLVM.Codegen is
    GNAT_LLVM_Initialized          : Boolean := False;
    --  Set when Initialize_GNAT_LLVM has done something
 
+   Arch                           : String_Access;
+   --  Name of the architecture requested with -march.
+
    procedure Process_Switch (S : String);
    --  Process one command-line switch
 
@@ -162,17 +165,18 @@ package body GNATLLVM.Codegen is
          Libdevice_Filename :=
            new String'(Switch_Value (S, "-mcuda-libdevice="));
 
-      --  -march= and -mcpu= set the CPU to be used. -mtune= does likewise,
-      --  but only if we haven't already seen one of the previous two switches
+      --  -march= and -mcpu= set the architecture and CPU to be used.
+      --  -mtune= does likewise, but only if we haven't already seen one of
+      --  the previous two switches
 
       elsif Starts_With (S, "-march=") then
-         To_Free       := CPU;
-         CPU           := new String'(Switch_Value (S, "-march="));
+         To_Free       := Arch;
+         Arch          := new String'(Switch_Value (S, "-march="));
       elsif Starts_With (S, "-mcpu=") then
          To_Free       := CPU;
          CPU           := new String'(Switch_Value (S, "-mcpu="));
       elsif Starts_With (S, "-mtune=") then
-         if CPU.all = "generic" then
+         if CPU.all = "generic" and then Arch = null then
             To_Free    := CPU;
             CPU        := new String'(Switch_Value (S, "-march="));
          end if;
@@ -528,6 +532,33 @@ package body GNATLLVM.Codegen is
       if PIC_Level /= 0 and then Reloc_Mode = Reloc_Default then
          Reloc_Mode := Reloc_PIC;
       end if;
+
+      --  The CPU and the list of features are determined based on various
+      --  settings, such as the user-specified target architecture and CPU,
+      --  and target-specific defaults.
+
+      if Starts_With (Normalized_Target_Triple.all, "nvptx") then
+         --  For Nvidia GPU targets, the architecture name is also the CPU
+         --  name (see tools::getCPUName in
+         --  clang/lib/Driver/ToolChains/CommonArgs.cpp).
+         CPU := Arch;
+      end if;
+
+      declare
+         Arch_Features : constant String :=
+           Get_Features
+             (Normalized_Target_Triple.all,
+              (if Arch = null then "" else Arch.all), CPU.all);
+         New_Features  : String_Access;
+
+      begin
+         if Arch_Features /= "" then
+            New_Features :=
+              new String'(Arch_Features & "," & Features.all);
+            Free (Features);
+            Features := New_Features;
+         end if;
+      end;
 
       Target_Machine    :=
         Create_Target_Machine

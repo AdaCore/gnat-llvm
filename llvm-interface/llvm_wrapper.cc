@@ -1,6 +1,9 @@
+#include <string.h>
+
 #include "llvm-c/Types.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
@@ -20,6 +23,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
+#include "llvm/Support/AArch64TargetParser.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
@@ -1164,4 +1168,78 @@ Get_Personality_Function_Name (const char *Target)
     return "__gnat_personality_seh0";
   else
     return "__gnat_personality_v0";
+}
+
+extern "C"
+char *
+Get_Features (const char *TargetTriple, const char *Arch, const char *CPU)
+{
+  // This is a simplified version of Clang's tools::getTargetFeatures (see
+  // clang/lib/Driver/ToolChains/CommonArgs.cpp), adapted to the arguments that
+  // we have available and the defaults that we set during option parsing.
+
+  Triple T(TargetTriple);
+
+  // ??? We may want to add code for more target architectures here; Clang
+  // often puts it in clang/lib/Driver/ToolChains/Arch/.
+
+  switch (T.getArch()) {
+  default:
+    return nullptr;
+
+  case Triple::aarch64: {
+    // Here we replicate relevant parts of Clang's aarch64::getAArch64Features
+    // (see clang/lib/Driver/ToolChains/Arch/AArch64.cpp).
+
+    std::vector<StringRef> Features;
+
+    // Clang enables NEON by default, so we do the same.
+    Features.push_back("+neon");
+
+    auto ArchLowerCase = StringRef(Arch).lower();
+    if (ArchLowerCase.empty()) {
+      // Clang defaults to ARMv8-A if the user hasn't specified a CPU either,
+      // so let's do the same.
+      if (StringRef(CPU) == "generic")
+        ArchLowerCase = "armv8-a";
+      else
+        // ??? Clang can also derive the list of features from -mcpu (which only
+        // happens if -march isn't specified); we may want to do the same here.
+        return nullptr;
+    }
+
+    // The -march option value has the format
+    // "architecture+feature1+feature2", so first split the architecture from
+    // the list of features.
+    auto const ArchSplit = StringRef(ArchLowerCase).split("+");
+    auto const ArchInfo = AArch64::parseArch(ArchSplit.first);
+
+    if (ArchInfo == AArch64::INVALID) {
+      errs() << "warning: ignoring unsupported -march value " << Arch << "\n";
+      return nullptr;
+    }
+
+    Features.push_back(ArchInfo.ArchFeature);
+
+    // Now process the user-specified additional features, if any.
+    if (!ArchSplit.second.empty()) {
+      SmallVector<StringRef, 8> FeatureSplit;
+      ArchSplit.second.split(FeatureSplit, "+", /*MaxSplit=*/-1,
+                             /*KeepEmpty=*/false);
+
+      for (auto const Feature : FeatureSplit) {
+        auto const FeatureName = AArch64::getArchExtFeature(Feature);
+        if (!FeatureName.empty())
+          Features.push_back(FeatureName);
+        else
+          errs() << "warning: ignoring unsupported feature " << Feature << "\n";
+      }
+    }
+
+    // ??? There is a lot more in Clang's AArch64 feature lookup code that we
+    // may want to copy.
+
+    return strdup(join(Features, ",").c_str());
+  }
+  }
 }

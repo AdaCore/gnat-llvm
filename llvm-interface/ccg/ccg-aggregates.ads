@@ -19,6 +19,8 @@ with Interfaces.C; use Interfaces.C;
 
 with LLVM.Core; use LLVM.Core;
 
+with Set_Targ; use Set_Targ;
+
 with CCG.Helper; use CCG.Helper;
 with CCG.Strs;   use CCG.Strs;
 with CCG.Utils;  use CCG.Utils;
@@ -77,6 +79,13 @@ package CCG.Aggregates is
    type Struct_Out_Style_T is (Normal, Padding, Packed);
    --  Says how we want to output the struct. Packed also means that we
    --  output padding fields.
+
+   procedure Need_IXX_Struct (J : Nat)
+     with Pre => J < Long_Long_Size, Inline;
+   --  Show that we need a struct to support a load or store of an iXX type
+
+   procedure Output_IXX_Structs;
+   --  Output any needed such structs
 
    function Default_Alignment (T : Type_T) return Nat
      with Pre => Present (T);

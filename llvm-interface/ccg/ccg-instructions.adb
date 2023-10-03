@@ -472,20 +472,21 @@ package body CCG.Instructions is
    begin
       --  If this is a load or store of a partial integer, we need to
       --  cast to a pointer to a struct consisting of an int of that bitsize
-      --  and reference the integer field.
+      --  and reference the integer field. However, if the C compiler we're
+      --  using doesn't support packing, this won't help, so don't worry
+      --  about the out-of-bounds access.
 
-      if Is_Integral_Type (T)
+      if not Pack_Not_Supported
+        and then Is_Integral_Type (T)
         and then Get_Scalar_Bit_Size (T) not in 8 | 16 | 32 | 64 | 128
       then
          declare
             Bits : constant Nat := Get_Scalar_Bit_Size (T);
 
          begin
-            pragma Assert (Bits < Long_Long_Size);
-            return "((struct { unsigned " &
-              (if Bits > Int_Size then "long long" else "int") & " f:" &
-              Bits & "; } * " & (if Need_Volatile then "volatile" else "") &
-              ") " & Op & ")->f";
+            Need_IXX_Struct (Bits);
+            return "((struct ccg_i" & Bits & " *" &
+              (if Need_Volatile then "volatile" else "") & ") " & Op & ")->f";
          end;
 
       --  If this isn't volatile, it's a normal dereference. Likewise if

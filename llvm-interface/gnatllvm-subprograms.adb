@@ -810,13 +810,16 @@ package body GNATLLVM.Subprograms is
 
             if PK_Is_In_Or_Ref (PK) then
                In_Arg_Types (J) :=
-                 (if    PK = Foreign_By_Ref
-                  then  Pointer_Type (Type_Of (GT), 0)
-                  elsif PK = Foreign_By_Component_Ref
-                  then  Pointer_Type (Type_Of (Full_Component_GL_Type (GT)), 0)
+                 (if PK = Foreign_By_Ref then
+                    Pointer_Type (Type_Of (GT), Address_Space)
+                  elsif PK = Foreign_By_Component_Ref then
+                    Pointer_Type
+                      (Type_Of (Full_Component_GL_Type (GT)),
+                       Address_Space)
                   elsif PK = In_Value_By_Int then Int_Ty (Size)
-                  elsif PK_By_Ref then Create_Access_Type_To (GT)
-                  else  Type_Of (GT));
+                  elsif PK_By_Ref then
+                    Create_Access_Type_To (GT)
+                  else Type_Of (GT));
                J := J + 1;
             end if;
          end;
@@ -908,9 +911,12 @@ package body GNATLLVM.Subprograms is
       --  being sure it's in the same type that we need.
 
       if Present (Func) then
-         return G_From
-           (Pointer_Cast
-              (IR_Builder, +Func, Pointer_Type (Subp_Type, 0), S), Func);
+         return
+           G_From
+             (Pointer_Cast
+                (IR_Builder, +Func,
+                 Pointer_Type (Subp_Type, Address_Space), S),
+              Func);
       else
          Func := Add_Function (S, Subp_Type, GT, Is_Builtin => True);
 
@@ -1200,8 +1206,11 @@ package body GNATLLVM.Subprograms is
                      E    => Param,
                      Name => Name.all);
 
-                  Val := Ptr_To_Relationship (LLVM_Param, Pointer_Type (T, 0),
-                                              Reference_To_Unknown);
+                  Val :=
+                    Ptr_To_Relationship
+                      (LLVM_Param,
+                       Pointer_Type (T, Address_Space),
+                       Reference_To_Unknown);
                   Set_Unknown_T (Val, T);
                   Store (V, Val);
                   C_Set_Entity  (LLVM_Param, Param);
@@ -1933,7 +1942,7 @@ package body GNATLLVM.Subprograms is
       if Present (Alias (E)) then
          declare
             T : constant Type_T :=
-              Pointer_Type (Create_Subprogram_Type (E), 0);
+              Pointer_Type (Create_Subprogram_Type (E), Address_Space);
 
          begin
             V := Emit_Entity (Alias (E));
@@ -2382,9 +2391,12 @@ package body GNATLLVM.Subprograms is
 
                      begin
                         Arg := Get (Arg, Reference);
-                        Arg := Ptr_To_Relationship (Get (Arg, Reference),
-                                                    Pointer_Type (T, 0),
-                                                    Reference_To_Unknown);
+                        Arg :=
+                          Ptr_To_Relationship
+                            (Get (Arg, Reference),
+                             Pointer_Type
+                               (T, Address_Space),
+                             Reference_To_Unknown);
                         Set_Unknown_T (Arg, T);
                         Arg := Load (Arg);
                      end;
@@ -2562,7 +2574,7 @@ package body GNATLLVM.Subprograms is
       elsif Present (Addr_Clause) then
          declare
             Subp_T    : constant Type_T          :=
-              Pointer_Type (Create_Subprogram_Type (E), 0);
+              Pointer_Type (Create_Subprogram_Type (E), Address_Space);
             GT        : constant GL_Type         := Full_GL_Type (E);
             Addr_Expr : constant N_Subexpr_Id    := Expression (Addr_Clause);
             R         : constant GL_Relationship := Reference_To_Subprogram;
@@ -2661,12 +2673,15 @@ package body GNATLLVM.Subprograms is
       --  have the same type. Convert it to it if not.
 
       if Present (LLVM_Func)
-        and then Type_Of (LLVM_Func) /= Pointer_Type (Subp_Type, 0)
+        and then Type_Of (LLVM_Func) /=
+          Pointer_Type (Subp_Type, Address_Space)
       then
-         LLVM_Func := G_From (Pointer_Cast (IR_Builder, +LLVM_Func,
-                                            Pointer_Type (Subp_Type, 0),
-                                            Subp_Name),
-                              LLVM_Func);
+         LLVM_Func :=
+           G_From
+             (Pointer_Cast
+                (IR_Builder, +LLVM_Func,
+                 Pointer_Type (Subp_Type, Address_Space), Subp_Name),
+              LLVM_Func);
       elsif No (LLVM_Func) then
          LLVM_Func := Add_Function (Actual_Name, Subp_Type, Full_GL_Type (E));
 

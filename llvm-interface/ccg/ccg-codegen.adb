@@ -28,6 +28,7 @@ with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
+with CCG.Aggregates;  use CCG.Aggregates;
 with CCG.Environment; use CCG.Environment;
 with CCG.Helper;      use CCG.Helper;
 with CCG.Output;      use CCG.Output;
@@ -350,6 +351,10 @@ package body CCG.Codegen is
 
          Func := Get_Next_Function (Func);
       end loop;
+
+      --  Output any ccg_iXX structs that we're using
+
+      Output_IXX_Structs;
 
       --  Now that we know if we have any inline_always functions, set up
       --  for writing the desired file. Finally, write all the code we

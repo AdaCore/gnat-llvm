@@ -446,4 +446,9 @@ package GNATLLVM.Wrapper is
    function Get_Personality_Function_Name (Triple : String) return String;
 
    function Get_Features (Triple, Arch, CPU : String) return String;
+
+   function Get_Default_Address_Space
+     (Layout : Target_Data_T) return unsigned
+     with Import, Convention => C,
+          External_Name => "Get_Default_Address_Space";
 end GNATLLVM.Wrapper;

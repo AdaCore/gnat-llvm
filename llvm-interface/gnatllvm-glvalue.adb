@@ -706,7 +706,9 @@ package body GNATLLVM.GLValue is
       --  that relationship and make a pointer to it.
 
       if Deref (R) /= Invalid then
-         return Pointer_Type (Type_For_Relationship (GT, Deref (R)), 0);
+         return
+           Pointer_Type
+             (Type_For_Relationship (GT, Deref (R)), Address_Space);
       end if;
 
       --  Handle all other relationships here
@@ -722,10 +724,11 @@ package body GNATLLVM.GLValue is
             return Build_Struct_Type ((1 => T, 2 => Bit_T));
 
          when Object =>
-            return (if Is_Loadable_Type (GT) then T else Pointer_Type (T, 0));
+            return (if   Is_Loadable_Type (GT)
+                    then T else Pointer_Type (T, Address_Space));
 
          when Trampoline | Thin_Pointer | Any_Reference =>
-            return Pointer_Type (T, 0);
+            return Pointer_Type (T, Address_Space);
 
          when Activation_Record =>
             return Byte_T;

@@ -269,6 +269,9 @@ package GNATLLVM is
    Module_Data_Layout : Target_Data_T;
    --  LLVM current module data layout.
 
+   Address_Space      : Interfaces.C.unsigned;
+   --  Default LLVM address space for our module
+
    Convert_Module     : Module_T;
    --  The module use by Convert_Nonsymbolic_Constant
 

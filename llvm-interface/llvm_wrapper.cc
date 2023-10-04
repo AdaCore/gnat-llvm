@@ -1273,3 +1273,10 @@ Get_Features (const char *TargetTriple, const char *Arch, const char *CPU)
   }
   }
 }
+
+extern "C"
+unsigned
+Get_Default_Address_Space (const DataLayout &DL)
+{
+  return DL.getDefaultGlobalsAddressSpace();
+}

@@ -182,6 +182,44 @@ package body LLVM.Target_Machine is
       return Return_Value;
    end Create_Target_Machine;
 
+   function Create_Target_Machine_With_ABI
+     (T          : Target_T;
+      Triple     : Interfaces.C.Strings.chars_ptr;
+      CPU        : Interfaces.C.Strings.chars_ptr;
+      Features   : Interfaces.C.Strings.chars_ptr;
+      ABI        : Interfaces.C.Strings.chars_ptr;
+      Level      : Code_Gen_Opt_Level_T;
+      Reloc      : Reloc_Mode_T;
+      Code_Model : Code_Model_T)
+      return Target_Machine_T
+   with Import => True,
+        Convention => C,
+        External_Name => "LLVMCreateTargetMachineWithABI";
+   function Create_Target_Machine_With_ABI
+     (T          : Target_T;
+      Triple     : String;
+      CPU        : String;
+      Features   : String;
+      ABI        : String;
+      Level      : Code_Gen_Opt_Level_T;
+      Reloc      : Reloc_Mode_T;
+      Code_Model : Code_Model_T)
+      return Target_Machine_T
+   is
+      Return_Value    : Target_Machine_T;
+      Triple_Array    : aliased char_array := To_C (Triple);
+      Triple_String   : constant chars_ptr := To_Chars_Ptr (Triple_Array'Unchecked_Access);
+      CPU_Array       : aliased char_array := To_C (CPU);
+      CPU_String      : constant chars_ptr := To_Chars_Ptr (CPU_Array'Unchecked_Access);
+      Features_Array  : aliased char_array := To_C (Features);
+      Features_String : constant chars_ptr := To_Chars_Ptr (Features_Array'Unchecked_Access);
+      ABI_Array       : aliased char_array := To_C (ABI);
+      ABI_String      : constant chars_ptr := To_Chars_Ptr (ABI_Array'Unchecked_Access);
+   begin
+      Return_Value := Create_Target_Machine_With_ABI (T, Triple_String, CPU_String, Features_String, ABI_String, Level, Reloc, Code_Model);
+      return Return_Value;
+   end Create_Target_Machine_With_ABI;
+
    function Get_Target_Machine_Triple
      (T : Target_Machine_T)
       return Interfaces.C.Strings.chars_ptr

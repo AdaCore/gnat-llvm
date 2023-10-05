@@ -15,11 +15,10 @@ gnatlib%: sanity-check
 	$(MAKE) -C llvm-interface $@
 
 # Entry points for cross builds. Currently, it builds a cross compiler that
-# isn't bootstrapped (i.e., we build it directly with native GNAT). Cross
-# GNAT-LLVM then compiles the minimal ZFP runtime (to be extended to the
-# standard cross runtimes).
+# isn't bootstrapped (i.e., we build it directly with native GNAT). The
+# runtimes need to be built separately.
 cross-automated:
-	$(MAKE) -C llvm-interface zfp-opt
+	$(MAKE) -C llvm-interface build-opt
 
 # Build the full runtime instrumented with SymCC. This target requires SymCC and
 # a working GNAT-LLVM on the path, i.e., it builds only the runtime.

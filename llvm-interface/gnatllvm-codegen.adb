@@ -181,6 +181,13 @@ package body GNATLLVM.Codegen is
             CPU        := new String'(Switch_Value (S, "-march="));
          end if;
 
+      --  -mabi= tells the code generator which ABI to use on some
+      --  platforms
+
+      elsif Starts_With (S, "-mabi=") then
+         To_Free := ABI;
+         ABI     := new String'(Switch_Value (S, "-mabi="));
+
       --  We support -mXXX and -mno-XXX by adding +XXX or -XXX, respectively,
       --  to the list of features.
 
@@ -562,11 +569,12 @@ package body GNATLLVM.Codegen is
       end;
 
       Target_Machine    :=
-        Create_Target_Machine
+        Create_Target_Machine_With_ABI
           (T          => LLVM_Target,
            Triple     => Normalized_Target_Triple.all,
            CPU        => CPU.all,
            Features   => Features.all,
+           ABI        => ABI.all,
            Level      => Code_Gen_Level,
            Reloc      => Reloc_Mode,
            Code_Model => Code_Model);

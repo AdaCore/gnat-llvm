@@ -549,7 +549,7 @@ package body GNATLLVM.Codegen is
          --  For Nvidia GPU targets, the architecture name is also the CPU
          --  name (see tools::getCPUName in
          --  clang/lib/Driver/ToolChains/CommonArgs.cpp).
-         CPU := Arch;
+         CPU := (if Arch = null then new String'("") else Arch);
       end if;
 
       declare

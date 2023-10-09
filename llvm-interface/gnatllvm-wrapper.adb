@@ -461,26 +461,30 @@ package body GNATLLVM.Wrapper is
    ------------------------
 
    procedure Get_Target_C_Types
-     (Triple  : String;
-      CPU     : String;
-      Info    : out Target_C_Type_Info;
-      Success : out Boolean)
+     (Triple   : String;
+      CPU      : String;
+      ABI      : String;
+      Features : String;
+      Info     : out Target_C_Type_Info;
+      Success  : out Boolean)
    is
       use Interfaces.C;
 
       procedure Get_Target_C_Types_C
-        (Triple  : char_array;
-         CPU     : char_array;
-         Info    : out Target_C_Type_Info;
-         Success : out unsigned_char)
+        (Triple   : char_array;
+         CPU      : char_array;
+         ABI      : char_array;
+         Features : char_array;
+         Info     : out Target_C_Type_Info;
+         Success  : out unsigned_char)
         with Import, Convention => C, External_Name => "Get_Target_C_Types";
 
-      Triple_Array : constant char_array := To_C (Triple);
-      CPU_Array    : constant char_array := To_C (CPU);
       Success_C    : unsigned_char;
 
    begin
-      Get_Target_C_Types_C (Triple_Array, CPU_Array, Info, Success_C);
+      Get_Target_C_Types_C
+        (To_C (Triple), To_C (CPU), To_C (ABI), To_C (Features), Info,
+         Success_C);
       Success := Success_C /= 0;
    end Get_Target_C_Types;
 

@@ -254,10 +254,12 @@ package GNATLLVM.Wrapper is
    --  Initializes various parts of the LLVM infrastructure.
 
    procedure Get_Target_C_Types
-     (Triple  : String;
-      CPU     : String;
-      Info    : out Target_C_Type_Info;
-      Success : out Boolean);
+     (Triple   : String;
+      CPU      : String;
+      ABI      : String;
+      Features : String;
+      Info     : out Target_C_Type_Info;
+      Success  : out Boolean);
    --  Retrieve information about the C types for the target.
 
    procedure Set_NUW (V : Value_T)

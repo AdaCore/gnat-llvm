@@ -600,19 +600,27 @@ struct Target_C_Type_Info {
 
 extern "C"
 void
-Get_Target_C_Types (const char *Triple, const char *CPU,
-                    Target_C_Type_Info *Result, unsigned char *success)
+Get_Target_C_Types (const char *Triple, const char *CPU, const char *ABI,
+                    const char *Features, Target_C_Type_Info *Result,
+                    unsigned char *success)
 {
   *Result = {};
   *success = 0;
 
   auto Options = std::make_shared<clang::TargetOptions>();
   Options->Triple = Triple;
+
   std::string CPUString = CPU;
   if (CPUString != "generic") // GNAT-LLVM's default CPU, unknown to LLVM
     Options->CPU = CPU;
-  // ??? If we encounter target features which are relevant for the C type
-  // information that we're interested in, set Options->Features.
+
+  std::string FeatureString = Features;
+  if (!FeatureString.empty()) {
+    SmallVector<StringRef, 16> FeatureVector;
+    SplitString(FeatureString, FeatureVector, ",");
+    for (const auto F : FeatureVector)
+      Options->Features.push_back(F.str());
+  }
 
   // The Clang API requires us to provide a handler for diagnostic messages
   // emitted during the operation.
@@ -625,6 +633,10 @@ Get_Target_C_Types (const char *Triple, const char *CPU,
   // Finally, we can create the TargetInfo structure.
   std::unique_ptr<TargetInfo> Info(
     TargetInfo::CreateTargetInfo(Diags, Options));
+
+  std::string ABIString = ABI;
+  if (!ABIString.empty())
+    Info->setABI(ABIString);
 
   if (Info == nullptr)
     return;

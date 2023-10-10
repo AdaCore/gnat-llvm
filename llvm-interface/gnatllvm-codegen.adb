@@ -596,6 +596,8 @@ package body GNATLLVM.Codegen is
          Module_Data_Layout := Create_Target_Data_Layout (Target_Machine);
       end if;
 
+      Address_Space := Get_Default_Address_Space (Module_Data_Layout);
+
       Set_Target             (Module, Normalized_Target_Triple.all);
       Set_Module_Data_Layout (Module, Module_Data_Layout);
 

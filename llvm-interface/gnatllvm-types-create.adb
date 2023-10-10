@@ -222,7 +222,7 @@ package body GNATLLVM.Types.Create is
          end if;
 
          Set_Associated_GL_Type (TE, GT);
-         return Pointer_Type (Type_Of (GT), 0);
+         return Pointer_Type (Type_Of (GT), Address_Space);
 
       --  If we have a fat reference to a subprogram, handle this normally
       --  (since the access type to it is always the same type), but don't

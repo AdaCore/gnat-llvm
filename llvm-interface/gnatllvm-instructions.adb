@@ -235,7 +235,7 @@ package body GNATLLVM.Instructions is
    is
       Result : GL_Value :=
         GM_Ref (Int_To_Ptr (IR_Builder, +V,
-                            Pointer_Type (Type_Of (GT), 0), Name),
+                            Pointer_Type (Type_Of (GT), Address_Space), Name),
                 GT, V);
 
    begin
@@ -293,9 +293,11 @@ package body GNATLLVM.Instructions is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM_Ref (Pointer_Cast (IR_Builder, +V,
-                              Pointer_Type (Type_Of (GT), 0), Name),
-                GT, V);
+        GM_Ref
+          (Pointer_Cast
+             (IR_Builder, +V, Pointer_Type (Type_Of (GT), Address_Space),
+              Name),
+           GT, V);
 
    begin
       Initialize_TBAA_If_Changed (Result, V);
@@ -310,7 +312,7 @@ package body GNATLLVM.Instructions is
    is
       Result : GL_Value :=
         GM_Ref (Pointer_Cast (IR_Builder, +V,
-                              Pointer_Type (Type_Of (T), 0), Name),
+                              Pointer_Type (Type_Of (T), Address_Space), Name),
                 Full_Designated_GL_Type (T), V);
 
    begin
@@ -1312,8 +1314,9 @@ package body GNATLLVM.Instructions is
         (if Special_Atomic then Int_Ty (Result_Bits) else T);
       --  Type that Ptr_Val will have
 
-      Equiv_T        : constant Type_T         :=
-        (if Special_Atomic then Pointer_Type (Ptr_T, 0) else No_Type_T);
+      Equiv_T : constant Type_T :=
+        (if Special_Atomic then Pointer_Type (Ptr_T, Address_Space)
+         else No_Type_T);
       --  Pointer to integer type with size matching that of the type
       --  to be loaded
 
@@ -1404,7 +1407,7 @@ package body GNATLLVM.Instructions is
       Equiv_T        : constant Type_T  :=
         (if   Special_Atomic then Int_Ty (Result_Bits) else No_Type_T);
       Ptr_T          : constant Type_T  :=
-        (if   Special_Atomic then Pointer_Type (Equiv_T, 0)
+        (if   Special_Atomic then Pointer_Type (Equiv_T, Address_Space)
          else No_Type_T);
       Ptr_Val        : constant Value_T :=
         (if   Special_Atomic then Pointer_Cast (IR_Builder, +Ptr, Ptr_T, "")

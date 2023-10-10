@@ -1151,7 +1151,7 @@ package body GNATLLVM.Conversions is
      (V : Value_T; T : Type_T) return Value_T
    is
       BB       : constant Basic_Block_T  := Get_Insert_Block (IR_Builder);
-      Ptr_Ty   : constant Type_T         := Pointer_Type (T, 0);
+      Ptr_Ty   : constant Type_T         := Pointer_Type (T, Address_Space);
       Our_Func : constant Value_T        :=
         Add_Function (Convert_Module, "__CC", Fn_Ty ((1 .. 0 => <>), T));
       Our_BB   : constant Basic_Block_T  := Append_Basic_Block (Our_Func, "");

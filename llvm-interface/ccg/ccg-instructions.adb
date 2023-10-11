@@ -474,11 +474,15 @@ package body CCG.Instructions is
       --  cast to a pointer to a struct consisting of an int of that bitsize
       --  and reference the integer field. However, if the C compiler we're
       --  using doesn't support packing, this won't help, so don't worry
-      --  about the out-of-bounds access.
+      --  about the out-of-bounds access. "Partial" here means that the LLVM
+      --  IR is asking to load fewer bits than a normal hardware operation
+      --  (which corresponds to a C type). So the first issue is when the
+      --  IR is referencing a three-byte object (17 to 24 bits) and the
+      --  next is above 32 but below 64-8.
 
       if not Pack_Not_Supported
         and then Is_Integral_Type (T)
-        and then Get_Scalar_Bit_Size (T) not in 8 | 16 | 32 | 64 | 128
+        and then Get_Scalar_Bit_Size (T) in 17 .. 24 | 33 .. 56 | 65 .. 120
       then
          declare
             Bits : constant Nat := Get_Scalar_Bit_Size (T);

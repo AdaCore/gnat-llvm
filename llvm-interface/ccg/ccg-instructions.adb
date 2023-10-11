@@ -736,17 +736,6 @@ package body CCG.Instructions is
                  Next_Pow2 (Get_Scalar_Bit_Size (Dest_T))
       then
          return +Op;
-
-      --  Similarly, if this is an extension from a small integral type
-      --  that's the same C type and the signedness is the same, it's
-      --  the same C type.
-
-      elsif Opc in Op_Z_Ext | Op_S_Ext
-        and then Next_Pow2 (Get_Scalar_Bit_Size (Dest_T)) =
-                 Next_Pow2 (Get_Scalar_Bit_Size (Src_T))
-        and then (Opc = Op_Z_Ext) = Is_Unsigned (Op)
-      then
-         return +Op;
       end if;
 
       --  Otherwise, just do a cast. If we're considered volatile, make

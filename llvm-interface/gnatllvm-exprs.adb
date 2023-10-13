@@ -1274,9 +1274,14 @@ package body GNATLLVM.Exprs is
             V := Ptr_To_Int (Get (V, Reference_For_Integer), GT,
                              "attr.address");
 
-            --  Now add in any bit offset
+            --  Now add in any bit offset. If the offset is zero don't try
+            --  to add it because the code that we emit in this case is
+            --  unsuitable for constant initializers.
 
-            return V + Const_Int (GT, Bits / BPU);
+            return
+              (if   Bits = 0
+               then V
+               else Address_Add (V, Const_Int (Size_GL_Type, Bits / BPU)));
 
          when Attribute_Pool_Address =>
 

@@ -21,6 +21,7 @@ with Rident;   use Rident;
 with Targparm; use Targparm;
 
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
+with GNATLLVM.Builtins;    use GNATLLVM.Builtins;
 with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
 with GNATLLVM.Conversions; use GNATLLVM.Conversions;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
@@ -225,7 +226,11 @@ package body GNATLLVM.Instructions is
    function Ptr_To_Int
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (GM (Ptr_To_Int (IR_Builder, +V, Type_Of (GT), Name), GT, GV => V));
+     (GM
+        ((if   Tagged_Pointers
+          then Bit_Cast (IR_Builder, +V, Void_Ptr_T, Name)
+          else Ptr_To_Int (IR_Builder, +V, Type_Of (GT), Name)),
+         GT, GV => V));
 
    ----------------
    -- Int_To_Ref --
@@ -1778,5 +1783,24 @@ package body GNATLLVM.Instructions is
                                   Is_Stack_Align),
                 GT, Reference_To_Subprogram);
    end Inline_Asm;
+
+   -------------------------
+   -- Get_Pointer_Address --
+   -------------------------
+
+   function Get_Pointer_Address (Ptr : GL_Value) return GL_Value
+   is (G (+Call (Get_Get_Address_Fn, (1 => Bit_Cast (Ptr, Void_Ptr_T))),
+          Size_GL_Type));
+
+   -------------------------
+   -- Set_Pointer_Address --
+   -------------------------
+
+   function Set_Pointer_Address (Ptr, Addr : GL_Value) return GL_Value
+   is (Bit_Cast
+         (Call
+            (Get_Set_Address_Fn,
+             (1 => Bit_Cast (Ptr, Void_Ptr_T), 2 => Addr)),
+          Ptr));
 
 end GNATLLVM.Instructions;

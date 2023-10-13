@@ -431,10 +431,11 @@ package body GNATLLVM.Exprs is
       RHS_GT     : constant GL_Type      := Full_GL_Type (RHS_Node);
       LHS_BT     : constant GL_Type      := Base_GL_Type (LHS_GT);
       RHS_BT     : constant GL_Type      := Base_GL_Type (RHS_GT);
-      LVal       : constant GL_Value     :=
+      LVal       :          GL_Value     :=
         Emit_Convert_Value (LHS_Node, LHS_BT);
-      RVal       : constant GL_Value     :=
+      RVal       :          GL_Value     :=
         Emit_Convert_Value (RHS_Node, RHS_BT);
+      Ptr        :          GL_Value     := No_GL_Value;
       FP         : constant Boolean      := Is_Floating_Point_Type (LHS_BT);
       Ovfl_Check : constant Boolean      := Do_Overflow_Check (N)
         and then not (Is_A_Constant_Int (LVal)
@@ -457,6 +458,22 @@ package body GNATLLVM.Exprs is
 
       if Decls_Only then
          return Emit_Undef (Full_GL_Type (N));
+      end if;
+
+      --  If we're doing arithmetic on tagged pointers, extract their
+      --  addresses, perform the computation, and then reassemble the
+      --  result pointer.
+
+      if Tagged_Pointers then
+         if Is_Address (RVal) then
+            Ptr  := RVal;
+            RVal := Get_Pointer_Address (RVal);
+         end if;
+
+         if Is_Address (LVal) then
+            Ptr  := LVal;
+            LVal := Get_Pointer_Address (LVal);
+         end if;
       end if;
 
       case Nkind (N) is
@@ -626,6 +643,13 @@ package body GNATLLVM.Exprs is
          begin
             Result := Build_Select (Need_Adjust, Which_Adjust, Result);
          end;
+      end if;
+
+      --  If this was an operation on tagged pointers, assemble the result
+      --  pointer using tags from (one of) the arguments.
+
+      if Present (Ptr) then
+         Result := Set_Pointer_Address (Ptr, Result);
       end if;
 
       return Result;

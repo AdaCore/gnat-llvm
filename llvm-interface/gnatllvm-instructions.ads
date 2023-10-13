@@ -1019,6 +1019,22 @@ package GNATLLVM.Instructions is
                   and then (for all V of Args => Present (V)),
           Inline;
 
+   function Get_Pointer_Address (Ptr : GL_Value) return GL_Value
+     with Pre  => Is_Address (Ptr) or else Is_Pointer (Ptr),
+          Post => Present (Get_Pointer_Address'Result);
+
+   function Set_Pointer_Address (Ptr, Addr : GL_Value) return GL_Value
+     with Pre  => (Is_Address (Ptr) or else Is_Pointer (Ptr))
+                  and then Is_Integer_Type (Addr),
+          Post => Present (Set_Pointer_Address'Result);
+
+   function Address_Add (Ptr, Offset : GL_Value) return GL_Value
+   is (if   Tagged_Pointers
+       then Set_Pointer_Address (Ptr, Get_Pointer_Address (Ptr) + Offset)
+       else Ptr + Offset)
+     with Pre  => Is_Discrete_Type (Ptr) and then Is_Integer_Type (Offset),
+          Post => Is_Discrete_Type (Address_Add'Result);
+
    function Landing_Pad
      (T                : Type_T;
       Personality_Func : GL_Value;

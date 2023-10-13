@@ -648,6 +648,51 @@ package body GNATLLVM.Conversions is
       elsif Src_Access and then Dest_Access then
          return Convert_To_Access (Value, GT, Is_Unchecked => Is_Unchecked);
 
+      --  With tagged pointers, we store addresses as LLVM pointers; when
+      --  converting between different address types, we therefore don't do
+      --  anything beyond changing the Ada type.
+
+      elsif Tagged_Pointers
+        and then Is_Address (In_V)
+        and then Is_Address (GT)
+      then
+         return G_Is (In_V, GT);
+
+      --  Conversions from integer to tagged-pointer address yield a result
+      --  derived from the null pointer; it can't be dereferenced, but it
+      --  can be combined with valid pointers, inheriting tags.
+
+      elsif Tagged_Pointers
+        and then Is_Integer_Type (In_V)
+        and then Is_Address (GT)
+      then
+         Subp := Null_Derived_Ptr'Access;
+
+      --  Conversely, when converting tagged-pointer addresses to integers,
+      --  we need to extract the pointer's address. Afterwards, we may need
+      --  to truncate or zero-extend the resulting integer.
+
+      elsif Tagged_Pointers
+        and then Is_Address (In_V)
+        and then Is_Integer_Type (GT)
+      then
+         Value := Get_Pointer_Address (Value);
+
+         declare
+            Addr_GT   : constant GL_Type := Related_Type (Value);
+            Addr_Size : constant Nat :=
+              Nat (ULL'(Get_Scalar_Bit_Size (Addr_GT)));
+         begin
+            if GT = Addr_GT then
+               return Value;
+            else
+               Subp :=
+                 (if   Dest_Size < Addr_Size
+                  then Trunc'Access
+                  else Z_Ext'Access);
+            end if;
+         end;
+
       --  Having dealt with pointers, we have four cases: FP to FP, FP to
       --  Int, Int to FP, and Int to Int. We already know that this isn't
       --  a noop case because we've checked above for the same type.

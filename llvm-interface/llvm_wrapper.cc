@@ -920,7 +920,8 @@ extern "C"
 bool
 Get_GEP_Constant_Offset (Value *GEP, DataLayout &dl, uint64_t *result)
 {
-  auto Offset = APInt (dl.getTypeAllocSize (GEP->getType()) * 8, 0);
+  auto Offset =
+      APInt(dl.getIndexSizeInBits(GEP->getType()->getPointerAddressSpace()), 0);
   auto GEPO = dyn_cast<GEPOperator>(GEP);
 
   if (!GEPO || !GEPO->accumulateConstantOffset (dl, Offset)

@@ -85,7 +85,7 @@ package body CCG.Aggregates is
                          Semicolon => False, Is_Typedef => True);
             Start_Output_Block (Decl);
             Output_Decl ("unsigned " &
-                         (if J > Long_Size then "long long" else "int") &
+                         (if J > Int_Size then "long long" else "int") &
                          " f : " & J,
                          Is_Typedef => True);
             Output_Decl ("}" &

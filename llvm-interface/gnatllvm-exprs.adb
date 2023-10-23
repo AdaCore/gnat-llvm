@@ -1859,21 +1859,29 @@ package body GNATLLVM.Exprs is
       end loop;
 
       declare
-         Args           : GL_Value_Array (1 .. Num_Inputs);
-         Constraint_Pos : Integer          := 0;
-         Input_Pos      : Nat              := 0;
-         Need_Comma     : Boolean          := False;
-         Constraint_Len : constant Integer :=
+         Args             : GL_Value_Array (1 .. Num_Inputs);
+         Constraint_Pos   : Integer          := 0;
+         Input_Pos        : Nat              := 0;
+         Need_Comma       : Boolean          := False;
+         Constraint_Len   : constant Integer :=
            Integer (Num_Inputs + Constraint_Length + 3);
-         Template_Len   : constant Integer :=
+         In_Template_Len  : constant Integer :=
            Integer (String_Length (Template_Strval));
-         Constraints    : String (1 .. Constraint_Len);
-         Template       : String (1 .. Template_Len);
-         Template_Char  : Character;
-         Asm            : GL_Value;
+         Out_Template_Len : constant Integer :=
+           In_Template_Len + (Integer (Num_Inputs) * 3);
+         Constraints      : String (1 .. Constraint_Len);
+         Template         : String (1 .. Out_Template_Len);
+         Template_Char    : Character;
+         Arg_Modifier     : String (1 .. In_Template_Len);
+         Arg_Modifier_Pos : Integer;
+         Asm              : GL_Value;
+         In_Template_Pos  : Integer := 0;
+         Out_Template_Pos : Integer := 0;
 
          procedure Add_Char (C : Character);
          procedure Add_Constraint (N : N_String_Literal_Id);
+         procedure Add_Template_Char (C : Character);
+         procedure Next_Template_Char;
 
          --------------
          -- Add_Char --
@@ -1900,6 +1908,29 @@ package body GNATLLVM.Exprs is
                Add_Char (Get_Character (Get_String_Char (Strval (N), J)));
             end loop;
          end Add_Constraint;
+
+         -----------------------
+         -- Add_Template_Char --
+         -----------------------
+
+         procedure Add_Template_Char (C : Character) is
+         begin
+            Out_Template_Pos := Out_Template_Pos + 1;
+            Template (Out_Template_Pos) := C;
+         end Add_Template_Char;
+
+         ------------------------
+         -- Next_Template_Char --
+         ------------------------
+
+         procedure Next_Template_Char is
+         begin
+            In_Template_Pos := In_Template_Pos + 1;
+            Template_Char :=
+              Get_Character
+                (Get_String_Char
+                   (Template_Strval, Int (In_Template_Pos)));
+         end Next_Template_Char;
 
       begin
          --  Output constraints come first
@@ -1939,22 +1970,62 @@ package body GNATLLVM.Exprs is
             Clobber := Clobber_Get_Next;
          end loop;
 
-         --  Finally, build the template.  LLVM bitcode uses a syntax for the
-         --  template that is different from GNU as.  For now, we only
-         --  translate numeric input/output references (e.g., "%0").
+         --  Finally, build the template. LLVM bitcode uses a syntax for
+         --  the template that is different from GNU as. For now, we only
+         --  translate numeric input/output references with optional
+         --  argument modifiers (e.g., "%1" or "%w1").
 
-         for J in 1 .. Template_Len loop
-            Template_Char := Get_Character (Get_String_Char (Template_Strval,
-                                                             Int (J)));
-            Template (J) :=
-              (if Template_Char = '%' then '$' else Template_Char);
-         end loop;
+         Template_Parser : while In_Template_Pos < In_Template_Len loop
+            Next_Template_Char;
+
+            if Template_Char = '%' then
+
+               --  Parse the argument reference. It can be a simple
+               --  reference like "%1", or a reference with argument
+               --  modifiers like "%w1". The LLVM equivalents are "$1" and
+               --  "${1:w}", respectively.
+
+               Add_Template_Char ('$');
+               exit Template_Parser when
+                 In_Template_Pos = In_Template_Len;
+               Next_Template_Char;
+
+               if Template_Char in '0' .. '9' then
+                  Add_Template_Char (Template_Char);
+               else
+                  Arg_Modifier_Pos := 0;
+
+                  while Template_Char not in '0' .. '9' loop
+                     Arg_Modifier_Pos := Arg_Modifier_Pos + 1;
+                     Arg_Modifier (Arg_Modifier_Pos) := Template_Char;
+
+                     exit Template_Parser when
+                       In_Template_Pos = In_Template_Len;
+                     Next_Template_Char;
+                  end loop;
+
+                  Add_Template_Char ('{');
+                  Add_Template_Char (Template_Char);
+                  Add_Template_Char (':');
+
+                  for J in 1 .. Arg_Modifier_Pos loop
+                     Add_Template_Char (Arg_Modifier (J));
+                  end loop;
+
+                  Add_Template_Char ('}');
+               end if;
+            else
+               Add_Template_Char (Template_Char);
+            end if;
+         end loop Template_Parser;
 
          --  Create the inline asm
 
-         Asm := Inline_Asm (Args, Output_Variable, Template,
-                            Constraints (1 .. Constraint_Pos), Fn_T,
-                            Is_Asm_Volatile (N), False);
+         Asm :=
+           Inline_Asm
+             (Args, Output_Variable, Template (1 .. Out_Template_Pos),
+              Constraints (1 .. Constraint_Pos), Fn_T,
+              Is_Asm_Volatile (N), False);
 
          --  If we have an output, generate the call with an output and store
          --  the result. Otherwise, just do the call.

@@ -953,13 +953,14 @@ package body GNATLLVM.Types is
                Ptr_Size   : constant GL_Value :=
                  Get_Type_Size (A_Char_GL_Type);
                Ptr_Loc    : constant GL_Value := Addr - To_Bytes (Ptr_Size);
-               Ptr_Addr   : constant GL_Value := Load (Ptr_Loc);
+               Ptr_Addr   : constant GL_Value :=
+                 Load (Int_To_Ref (Ptr_Loc, A_Char_GL_Type));
 
             begin
                Call (Get_Default_Free_Fn,
                      (1 => (if   Emit_C
                             then Convert_To_Access (Ptr_Addr, A_Char_GL_Type)
-                            else Ptr_Addr)));
+                            else Ptr_To_Int (Ptr_Addr, Size_GL_Type))));
             end;
 
          --  If a procedure was specified (meaning that a pool must also

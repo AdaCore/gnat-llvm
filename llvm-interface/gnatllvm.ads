@@ -155,6 +155,7 @@ package GNATLLVM is
       Long_Double_Size      : Interfaces.C.unsigned;
       Long_Double_Alignment : Interfaces.C.unsigned;
       Maximum_Alignment     : Interfaces.C.unsigned;
+      Register_Size         : Interfaces.C.unsigned;
    end record
      with Convention => C;
    --  C-compatible record of target-specific C type information. Members are

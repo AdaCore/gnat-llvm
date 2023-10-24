@@ -108,7 +108,7 @@ package body GNATLLVM.Compile is
       Initialize_Environment;
       Thin_Pointer_Size := Set_Targ.Pointer_Size;
       Fat_Pointer_Size  := Thin_Pointer_Size * 2;
-      Size_Type         := Stand_Type (Thin_Pointer_Size);
+      Size_Type         := Stand_Type (Set_Targ.Bits_Per_Word);
       Int_32_Type       := Stand_Type (32);
       Int_64_Type       := Stand_Type (64);
 

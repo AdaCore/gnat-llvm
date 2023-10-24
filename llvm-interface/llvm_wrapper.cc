@@ -596,6 +596,7 @@ struct Target_C_Type_Info {
   unsigned LongDoubleStorageSize;  // 0 if the target doesn't have long double
   unsigned LongDoubleAlignment;    // 0 if the target doesn't have long double
   unsigned MaximumAlignmentBytes;
+  unsigned RegisterSize;
 };
 
 extern "C"
@@ -656,6 +657,7 @@ Get_Target_C_Types (const char *Triple, const char *CPU, const char *ABI,
     Result->LongDoubleAlignment = Info->getLongDoubleAlign();
   }
   Result->MaximumAlignmentBytes = Info->getSuitableAlign() / 8;
+  Result->RegisterSize = Info->getRegisterWidth();
   *success = 1;
 }
 

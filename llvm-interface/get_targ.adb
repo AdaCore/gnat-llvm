@@ -50,7 +50,7 @@ package body Get_Targ is
 
    function Get_Bits_Per_Word return Pos is
    begin
-      return Pos (Target_C_Types.Pointer_Size);
+      return Pos (Target_C_Types.Register_Size);
    end Get_Bits_Per_Word;
 
    -------------------

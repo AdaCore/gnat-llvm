@@ -147,11 +147,14 @@ package body CCG.Output is
 
       --  If we've already processed this or if it's a simple constant
       --  (any constant if this is for an initializer), we don't need
-      --  to do anything.
+      --  to do anything unless it's a global variable, which always
+      --  has to be declared.
 
       if Get_Is_Decl_Output (V)
-        or else Is_Simple_Constant (V)
-        or else (For_Initializer and then Is_A_Constant (V))
+         or else (not Is_A_Global_Variable (V)
+                  and then (Is_Simple_Constant (V)
+                            or else (For_Initializer
+                                     and then Is_A_Constant (V))))
       then
          return;
       end if;

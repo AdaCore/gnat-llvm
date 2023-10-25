@@ -647,7 +647,6 @@ package body CCG.Aggregates is
       --  dereference for nested GEP's.
 
       Set_Is_LHS (V, Is_LHS);
-
       if Is_LHS then
 
          --  If we have more than one uses and side-effects (e.g., an

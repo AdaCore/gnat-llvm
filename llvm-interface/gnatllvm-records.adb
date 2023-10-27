@@ -1345,6 +1345,8 @@ package body GNATLLVM.Records is
       --  Object_Size clause has been specified. Otherwise, the only
       --  contributions to alignment are the alignment of the fields.
 
+      E_Align : constant Nat                  := Nat'Min (F_Align, R_Align);
+
    begin
       --  If the field can't be misaligned, its alignment always contributes
       --  directly to the alignment of the record.
@@ -1365,16 +1367,12 @@ package body GNATLLVM.Records is
       elsif No (Component_Clause (AF)) then
          return Nat'Min (F_Align, R_Align);
 
-      --  Otherwise, find the largest alignment that's consistent with the
-      --  size and position of the component.
+      --  Otherwise, if the alignment is consistent with the size and
+      --  position of the component, use it.
 
       else
-         return This_Align : Nat := Nat'Min (F_Align, R_Align) do
-            while Pos mod This_Align /= 0 or else Size mod This_Align /= 0 loop
-               This_Align := This_Align / 2;
-            end loop;
-
-         end return;
+         return (if   Pos mod E_Align = 0 and then Size mod E_Align = 0
+                 then E_Align else BPU);
       end if;
 
    end Effective_Field_Alignment;

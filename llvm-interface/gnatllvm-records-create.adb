@@ -1304,7 +1304,7 @@ package body GNATLLVM.Records.Create is
 
          Had_Non_Repped         : Boolean            := False;
          --  True once we saw a non-repped field; used to ensure that all
-         --  non-repped fields as positions after all repped fields.
+         --  non-repped fields are positioned after all repped fields.
 
          Packed_Field_Bitpos    : Uint               := No_Uint;
          --  Our current position in the packed field type

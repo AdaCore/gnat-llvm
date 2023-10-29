@@ -1608,17 +1608,29 @@ package body GNATLLVM.Arrays is
       --  Now use one of two strategies, depending on whether or not we have
       --  data.
 
-      if Is_Data (LHS) then
+      if Is_Data (LHS)
+        and then (for all J of Idxs => Is_A_Constant_Int (J))
+      then
          Result := Insert_Value
            (LHS, RHS, Idxs_From_GL_Values (Swap_Indices (Idxs, LHS)));
       else
-         --  If the component is an unconstrained record, we need to remove
-         --  padding to be sure that we don't try to read too much.
+         --  It's possible at this point that LHS isn't a reference.  This
+         --  can happen if we're in a VFA case with a variable index, for
+         --  example. Also, if the component is an unconstrained record, we
+         --  need to remove padding to be sure that we don't try to read
+         --  too much.
 
+         LHS := Get (LHS, Any_Reference);
          Emit_Assignment (Get_Indexed_LValue (Idxs, LHS),
                           Value => (if   Is_Unconstrained_Record
                                            (Full_Component_GL_Type (LHS))
                                     then Remove_Padding (RHS) else RHS));
+
+         --  For a volatile full access object, we have to store it back.
+
+         if VFA then
+            Emit_Assignment (In_LHS, Value => LHS);
+         end if;
       end if;
 
       return Result;

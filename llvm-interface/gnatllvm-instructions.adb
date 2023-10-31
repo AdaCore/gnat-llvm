@@ -15,6 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Errout;   use Errout;
 with Restrict; use Restrict;
 with Rident;   use Rident;
 with Targparm; use Targparm;
@@ -1733,15 +1734,34 @@ package body GNATLLVM.Instructions is
       Is_Volatile    : Boolean := False;
       Is_Stack_Align : Boolean := False) return GL_Value
    is
-      GT        : constant GL_Type :=
+      GT        : GL_Type :=
         (if   Present (Output_Value)
          then Primitive_GL_Type (Full_Etype (Output_Value))
          else Void_GL_Type);
-      T         : constant Type_T  :=
+      T         : Type_T  :=
         (if Present (Output_Value) then Type_Of (GT) else Void_Type);
       Arg_Types : Type_Array (Args'Range);
 
    begin
+      if Is_Record_Type (GT) then
+         --  LLVM doesn't allow struct return types for inline assembly.
+         --  Therefore, if GT is a record, we need to use the equivalent
+         --  integer type for the return value, and then pointer-cast when
+         --  storing the result.
+
+         declare
+            GT_Bits : constant ULL := Get_Scalar_Bit_Size (GT);
+         begin
+            if GT_Bits not in 32 | 64 then
+               Error_Msg_N ("unsupported Asm output", Output_Value);
+            end if;
+
+            T  := Int_Ty (GT_Bits);
+            GT :=
+              (if GT_Bits = 32 then Int_32_GL_Type else Int_64_GL_Type);
+         end;
+      end if;
+
       for J in Args'Range loop
          Arg_Types (J) := Type_Of (Args (J));
       end loop;

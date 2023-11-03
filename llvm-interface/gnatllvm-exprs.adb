@@ -2027,11 +2027,15 @@ package body GNATLLVM.Exprs is
               Constraints (1 .. Constraint_Pos), Fn_T,
               Is_Asm_Volatile (N), False);
 
-         --  If we have an output, generate the call with an output and store
-         --  the result. Otherwise, just do the call.
+         --  If we have an output, generate the call with an output and
+         --  store the result, casting the output pointer to the right type
+         --  to handle LLVM's refusal of some output types. Otherwise, just
+         --  do the call.
 
          if Present (Output_Variable) then
-            Store (Call (Asm, Fn_T, Args), Output_Val);
+            Store
+              (Call (Asm, Fn_T, Args),
+               Ptr_To_Ref (Output_Val, Related_Type (Asm)));
          else
             Call (Asm, Fn_T, Args);
          end if;

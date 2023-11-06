@@ -481,12 +481,24 @@ package body CCG.Instructions is
         and then Get_Scalar_Bit_Size (T) not in 8 | 16 | 32 | 64 | 128
       then
          declare
-            Bits : constant Nat := Get_Scalar_Bit_Size (T);
+            Bits   : constant Nat := Get_Scalar_Bit_Size (T);
+            Result : Str :=
+              "((struct ccg_i" & Bits & " *" &
+              (if Need_Volatile then "volatile" else "") & ") " & Op & ")->f";
 
          begin
             Need_IXX_Struct (Bits);
-            return "((struct ccg_i" & Bits & " *" &
-              (if Need_Volatile then "volatile" else "") & ") " & Op & ")->f";
+
+            --  If this is larger than an int size record, some C compilers,
+            --  such as GCC, will treat a subsequent operation, such as a
+            --  shift, as being done in Bits, so cast to long long to
+            --  prevent that odd behavior.
+
+            if Is_A_Load_Inst (V) and then Bits > Int_Size then
+               Result := "((long long) " & Result & ")";
+            end if;
+
+            return Result;
          end;
 
       --  If this isn't volatile, it's a normal dereference. Likewise if

@@ -185,8 +185,9 @@ package body GNATLLVM.Codegen is
       --  platforms
 
       elsif Starts_With (S, "-mabi=") then
-         To_Free := ABI;
-         ABI     := new String'(Switch_Value (S, "-mabi="));
+         To_Free         := ABI;
+         ABI             := new String'(Switch_Value (S, "-mabi="));
+         Tagged_Pointers := ABI.all = "purecap";
 
       --  We support -mXXX and -mno-XXX by adding +XXX or -XXX, respectively,
       --  to the list of features.

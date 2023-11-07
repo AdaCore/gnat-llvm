@@ -332,7 +332,16 @@ package body GNATLLVM.Types.Create is
             T := Void_Type;
 
          when Discrete_Or_Fixed_Point_Kind =>
-            T := Create_Discrete_Type (TE);
+
+            --  When targeting an architecture with tagged pointers, we
+            --  need to represent address types as pointers so that we
+            --  don't lose the ability to turn them back into access types.
+
+            T :=
+              (if Tagged_Pointers
+                 and then Is_Address_Compatible_Type (TE)
+               then Void_Ptr_T
+               else Create_Discrete_Type (TE));
 
          when Float_Kind =>
             T := Create_Floating_Point_Type (TE);

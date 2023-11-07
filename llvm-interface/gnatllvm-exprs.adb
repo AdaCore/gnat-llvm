@@ -300,7 +300,20 @@ package body GNATLLVM.Exprs is
                                       else Char_Literal_Value (N)));
 
          when N_Integer_Literal =>
-            V := Const_Int (Prim_GT, Intval (N));
+
+            --  On architectures with tagged pointers, we need to represent
+            --  addresses as pointers to preserve tags; consequently,
+            --  address literals also need to be pointers. The easiest way
+            --  to get one from an integer is to derive it from the null
+            --  pointer.
+
+            if Tagged_Pointers and then Is_Address (GT) then
+               V :=
+                 Null_Derived_Ptr
+                   (Const_Int (Size_GL_Type, Intval (N)), GT);
+            else
+               V := Const_Int (Prim_GT, Intval (N));
+            end if;
 
          when N_Real_Literal =>
             if Is_Fixed_Point_Type (GT) then

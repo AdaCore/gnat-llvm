@@ -288,6 +288,11 @@ package GNATLLVM is
    --  Pointer to arbitrary memory (we use i8 *); equivalent of
    --  Standard_A_Char.
 
+   Address_T          : Type_T := No_Type_T;
+   --  Type to represent System.Address and similar values. They need
+   --  special treatment on architectures with tagged pointers because a
+   --  simple integer type would lose any tags.
+
    A_Char_GL_Type    : GL_Type := No_GL_Type;
    Boolean_GL_Type   : GL_Type := No_GL_Type;
    SSI_GL_Type       : GL_Type := No_GL_Type;
@@ -333,6 +338,11 @@ package GNATLLVM is
 
    Short_Enums          : Boolean := False;
    --  True if we should use the RM_Size, not Esize, for enums
+
+   Tagged_Pointers      : Boolean := False;
+   --  True if we're generating code for an architecture with tagged
+   --  pointers. This implies that we need special handling for values
+   --  representing addresses, such as System.Address.
 
    --  Define pieces to have maps from one value to another
 

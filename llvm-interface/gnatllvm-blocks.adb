@@ -321,7 +321,7 @@ package body GNATLLVM.Blocks is
    --  instruction, if any.
 
    function Get_File_Name_Address (Index : Source_File_Index) return GL_Value
-     with Post => Type_Of (Get_File_Name_Address'Result) = Size_T;
+     with Post => Type_Of (Get_File_Name_Address'Result) = Address_T;
    --  Return a GL_Value giving the address of a string corresponding to
    --  the name of the file with the specified file index.
 
@@ -751,7 +751,7 @@ package body GNATLLVM.Blocks is
    is
       Int_T    : constant Type_T := Type_Of (Integer_GL_Type);
       Fun_Type : Type_T          :=
-        Fn_Ty ((1 => Size_T, 2 => Int_T), Void_Type);
+        Fn_Ty ((1 => Address_T, 2 => Int_T), Void_Type);
 
    begin
       --  If we're using a last-chance handler, that's the function we need
@@ -772,13 +772,14 @@ package body GNATLLVM.Blocks is
             case Kind is
                when CE_Access_Check_Failed =>
                   Fun_Type :=
-                    Fn_Ty ((1 => Size_T, 2 => Int_T, 3 => Int_T), Void_Type);
+                    Fn_Ty ((1 => Address_T, 2 => Int_T, 3 => Int_T),
+                           Void_Type);
 
                when CE_Index_Check_Failed | CE_Range_Check_Failed
                   | CE_Invalid_Data =>
                   Fun_Type :=
-                    Fn_Ty ((1 => Size_T, 2 => Int_T, 3 => Int_T, 4 => Int_T,
-                            5 => Int_T, 6 => Int_T),
+                    Fn_Ty ((1 => Address_T, 2 => Int_T, 3 => Int_T,
+                            4 => Int_T, 5 => Int_T, 6 => Int_T),
                            Void_Type);
 
                when others =>

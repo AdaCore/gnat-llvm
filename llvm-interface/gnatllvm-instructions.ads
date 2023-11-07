@@ -940,6 +940,14 @@ package GNATLLVM.Instructions is
      with Pre  => Is_Pointer (Ptr) and then Present (GT),
           Post => Is_Pointer (GEP_Idx'Result), Inline;
 
+   function Null_Derived_Ptr
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+     (G (GEP (IR_Builder, Byte_T, Const_Null (Void_Ptr_T), (1 => +V), Name),
+         GT))
+   with Pre  => Is_Discrete_Type (V),
+        Post => Present (Null_Derived_Ptr'Result);
+
    function Call
      (Func : GL_Value;
       Args : GL_Value_Array;

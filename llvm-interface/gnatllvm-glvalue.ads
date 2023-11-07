@@ -838,6 +838,10 @@ package GNATLLVM.GLValue is
      (Is_Descendant_Of_Address (Full_Etype (V)))
      with Pre => Present (V);
 
+   function Is_Address (V : GL_Value) return Boolean is
+     (Is_Address_Compatible_Type (Full_Etype (V)))
+     with Pre => Present (V);
+
    function Is_Constrained (V : GL_Value) return Boolean is
      (Is_Constrained (Full_Etype (V)))
      with Pre => Present (V);

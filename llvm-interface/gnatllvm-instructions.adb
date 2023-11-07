@@ -234,10 +234,13 @@ package body GNATLLVM.Instructions is
    function Int_To_Ref
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-      Result : GL_Value :=
-        GM_Ref (Int_To_Ptr (IR_Builder, +V,
-                            Pointer_Type (Type_Of (GT), Address_Space), Name),
-                GT, V);
+      Typ    : constant Type_T  :=
+        Pointer_Type (Type_Of (GT), Address_Space);
+      Ptr    : constant Value_T :=
+        (if   Tagged_Pointers
+         then Pointer_Cast (IR_Builder, +V, Typ, Name)
+         else Int_To_Ptr (IR_Builder, +V, Typ, Name));
+      Result : GL_Value         := GM_Ref (Ptr, GT, V);
 
    begin
       Initialize_TBAA_If_Changed (Result, V);
@@ -254,9 +257,12 @@ package body GNATLLVM.Instructions is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-      Result : GL_Value :=
-        GM (Int_To_Ptr (IR_Builder, +V, Type_For_Relationship (GT, R), Name),
-            GT, R, GV => V);
+      Typ    : constant Type_T  := Type_For_Relationship (GT, R);
+      Ptr    : constant Value_T :=
+        (if   Tagged_Pointers
+         then Pointer_Cast (IR_Builder, +V, Typ, Name)
+         else Int_To_Ptr (IR_Builder, +V, Typ, Name));
+      Result : GL_Value         := GM (Ptr, GT, R, GV => V);
 
    begin
       Initialize_TBAA_If_Changed (Result, V);

@@ -427,6 +427,13 @@ package body GNATLLVM.Codegen is
       Normalized_Target_Triple :=
         new String'(Normalize_Target_Triple (Target_Triple.all));
 
+      if Tagged_Pointers then
+
+         --  The merge-functions pass currently can't handle architectures
+         --  where the size type doesn't have pointer length.
+
+         Merge_Functions := False;
+      end if;
    end Scan_Command_Line;
 
    -----------------

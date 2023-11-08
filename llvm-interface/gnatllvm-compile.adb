@@ -178,6 +178,16 @@ package body GNATLLVM.Compile is
 
       Void_Ptr_T        := Type_Of (A_Char_GL_Type);
 
+      --  In most cases, addresses can be represented as Size_T (which
+      --  usually is an integer type of pointer width), but on
+      --  architectures with tagged pointers we would lose information by
+      --  doing so; use a void pointer on those architectures instead. We
+      --  don't want to use void pointers unconditionally because it puts a
+      --  burden on address arithmetic, which now requires conversions to
+      --  and from a suitable integer representation of the address.
+
+      Address_T := (if Tagged_Pointers then Void_Ptr_T else Size_T);
+
       --  The size of a pointer is specified in both the LLVM data layout
       --  string (usually from a --target specification) and the target
       --  parameter file. Make sure they agree.

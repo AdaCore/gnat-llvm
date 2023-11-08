@@ -995,7 +995,10 @@ package body GNATLLVM.GLValue is
             --  The bounds are in front of the data for a thin pointer
 
             elsif Our_R = Thin_Pointer then
-               Result := Ptr_To_Size_Type (V) - To_Bytes (Get_Bound_Size (GT));
+               Result :=
+                 Address_Add
+                   (Ptr_To_Size_Type (V),
+                    -To_Bytes (Get_Bound_Size (GT)));
                return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);

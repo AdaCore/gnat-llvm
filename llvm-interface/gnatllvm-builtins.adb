@@ -182,6 +182,11 @@ package body GNATLLVM.Builtins is
    Expect_Fn          : GL_Value := No_GL_Value;
    --  Function to provide branch prediction information
 
+   Get_Address_Fn     : GL_Value := No_GL_Value;
+   Set_Address_Fn     : GL_Value := No_GL_Value;
+   --  Functions to get and set the address of a pointer (for tagged
+   --  pointers).
+
    ---------------------
    -- Build_Intrinsic --
    ---------------------
@@ -1299,6 +1304,52 @@ package body GNATLLVM.Builtins is
 
       return Expect_Fn;
    end Get_Expect_Fn;
+
+   ------------------------
+   -- Get_Get_Address_Fn --
+   ------------------------
+
+   function Get_Get_Address_Fn return GL_Value is
+   begin
+      if No (Get_Address_Fn) then
+
+         --  This is currently implemented for the Morello purecap ABI
+         --  only.
+
+         pragma Assert (ABI.all = "purecap");
+
+         Get_Address_Fn :=
+           Add_Function
+             ("llvm.cheri.cap.address.get.i64",
+              Fn_Ty ((1 => Void_Ptr_T), Size_T), Size_GL_Type,
+              Is_Builtin => True);
+      end if;
+
+      return Get_Address_Fn;
+   end Get_Get_Address_Fn;
+
+   ------------------------
+   -- Get_Set_Address_Fn --
+   ------------------------
+
+   function Get_Set_Address_Fn return GL_Value is
+   begin
+      if No (Set_Address_Fn) then
+
+         --  This is currently implemented for the Morello purecap ABI
+         --  only.
+
+         pragma Assert (ABI.all = "purecap");
+
+         Set_Address_Fn :=
+           Add_Function
+             ("llvm.cheri.cap.address.set.i64",
+              Fn_Ty ((1 => Void_Ptr_T, 2 => Size_T), Void_Ptr_T),
+              A_Char_GL_Type, Is_Builtin => True);
+      end if;
+
+      return Set_Address_Fn;
+   end Get_Set_Address_Fn;
 
    ----------------
    -- Initialize --

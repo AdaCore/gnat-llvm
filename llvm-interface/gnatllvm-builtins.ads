@@ -28,12 +28,15 @@ package GNATLLVM.Builtins is
      (Unary, Binary, Ternary, Boolean_And_Data);
 
    function Build_Intrinsic
-     (Kind : Overloaded_Intrinsic_Kind;
-      Name : String;
-      GT   : GL_Type) return GL_Value
-     with Pre  => Is_Primitive_GL_Type (GT) and then Known_RM_Size (GT),
+     (Name             : String;
+      Return_GT        : GL_Type;
+      Overloaded_Types : Type_Array := (1 .. 0 => <>)) return GL_Value
+     with Pre  => Is_Primitive_GL_Type (Return_GT),
           Post => Present (Build_Intrinsic'Result);
-   --  Build an intrinsic function of the specified type, name, and kind
+   --  Build an intrinsic function of the specified return type and name.
+   --  The function parameters are obtained from LLVM. The list of
+   --  overloaded types must contain exactly one LLVM type for each
+   --  overloaded type in the intrinsic's function signature.
 
    function Emit_Intrinsic_Call
      (N : N_Subprogram_Call_Id; Subp : Subprogram_Kind_Id) return GL_Value;

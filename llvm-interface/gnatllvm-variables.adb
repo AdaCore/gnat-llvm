@@ -2445,6 +2445,7 @@ package body GNATLLVM.Variables is
          Mark_Volatile (LLVM_Var, Is_Volatile);
          Mark_Atomic   (LLVM_Var, Is_Atomic (E) or else Is_Atomic (GT));
          Set_Value     (E, LLVM_Var);
+         C_Set_Entity  (LLVM_Var, E);
          Set_Initializer
            (LLVM_Var, Const_Null_Relationship (GT, Deref (LLVM_Var)));
          Add_To_Elab_Proc (N);

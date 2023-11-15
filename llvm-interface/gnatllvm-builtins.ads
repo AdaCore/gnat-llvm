@@ -65,7 +65,11 @@ package GNATLLVM.Builtins is
 
    function Get_Expect_Fn return GL_Value
      with Post => Present (Get_Expect_Fn'Result);
-   --  Get function corresponing to llvm.expect
+   --  Get function corresponding to llvm.expect
+
+   function Get_Frame_Address_Fn return GL_Value
+     with Post => Present (Get_Frame_Address_Fn'Result);
+   --  Get function corresponding to llvm.frameaddress
 
    function Get_Tramp_Init_Fn   return GL_Value
      with Post => Present (Get_Tramp_Init_Fn'Result);

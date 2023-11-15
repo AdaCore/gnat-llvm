@@ -113,6 +113,10 @@ package body GNATLLVM.Builtins is
      (N : N_Subprogram_Call_Id; S : String) return GL_Value;
    --  If N is a valid call to builtin_bswap, generate it
 
+   function Emit_Frame_Address_Call
+     (N : N_Subprogram_Call_Id) return GL_Value;
+   --  If N is a valid call to __builtin_frame_address, generate it
+
    function Emit_FP_Builtin_Call
      (N : N_Subprogram_Call_Id; S : String) return GL_Value;
    --  If N is a valid call to a floating point builtin, generate it
@@ -161,6 +165,9 @@ package body GNATLLVM.Builtins is
 
    Expect_Fn          : GL_Value := No_GL_Value;
    --  Function to provide branch prediction information
+
+   Frame_Address_Fn   : GL_Value := No_GL_Value;
+   --  Function to provide the address of a stack frame
 
    Get_Address_Fn     : GL_Value := No_GL_Value;
    Set_Address_Fn     : GL_Value := No_GL_Value;
@@ -663,6 +670,24 @@ package body GNATLLVM.Builtins is
                    (1 => Emit_Expression (Val)));
    end Emit_Bswap_Call;
 
+   function Emit_Frame_Address_Call
+     (N : N_Subprogram_Call_Id) return GL_Value
+   is
+      Val : constant Opt_N_Subexpr_Id := First_Actual (N);
+
+   begin
+      --  Verify that the types and number of arguments are correct
+
+      if No (Val) or else Present (Next_Actual (Val))
+        or else Nkind (Val) /= N_Integer_Literal
+        or else not Is_Descendant_Of_Address (Full_Etype (N))
+      then
+         return No_GL_Value;
+      end if;
+
+      return Call (Get_Frame_Address_Fn, (1 => Emit_Expression (Val)));
+   end Emit_Frame_Address_Call;
+
    ------------------------------
    -- Emit_Branch_Predict_Call --
    ------------------------------
@@ -1076,6 +1101,8 @@ package body GNATLLVM.Builtins is
 
       elsif Name = "__builtin_bswap" then
          return Emit_Bswap_Call (N, S);
+      elsif Name = "__builtin_frame_address" then
+         return Emit_Frame_Address_Call (N);
       elsif S in "__builtin_expect" | "__builtin_likely" | "__builtin_unlikely"
       then
          return Emit_Branch_Prediction_Call (N, S);
@@ -1247,6 +1274,22 @@ package body GNATLLVM.Builtins is
 
       return Expect_Fn;
    end Get_Expect_Fn;
+
+   --------------------------
+   -- Get_Frame_Address_Fn --
+   --------------------------
+
+   function Get_Frame_Address_Fn return GL_Value is
+   begin
+      if No (Frame_Address_Fn) then
+         Frame_Address_Fn :=
+           Build_Intrinsic
+             ("llvm.frameaddress.p0", A_Char_GL_Type,
+              (1 => Void_Ptr_T));
+      end if;
+
+      return Frame_Address_Fn;
+   end Get_Frame_Address_Fn;
 
    ------------------------
    -- Get_Get_Address_Fn --

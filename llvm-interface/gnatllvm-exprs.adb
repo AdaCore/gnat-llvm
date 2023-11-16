@@ -533,8 +533,8 @@ package body GNATLLVM.Exprs is
          declare
             Func      : constant GL_Value       :=
               Build_Intrinsic
-               (Boolean_And_Data, "llvm." & Ovfl_Name & ".with.overflow.i",
-                LHS_BT);
+               ("llvm." & Ovfl_Name & ".with.overflow", LHS_BT,
+                (1 => Type_Of (LHS_BT)));
             Fn_Ret    : constant GL_Value       :=
               Call_Relationship (Func, (1 => LVal, 2 => RVal),
                                  Boolean_And_Data);
@@ -732,8 +732,8 @@ package body GNATLLVM.Exprs is
             then
                declare
                   Func      : constant GL_Value      :=
-                    Build_Intrinsic (Boolean_And_Data,
-                                     "llvm.ssub.with.overflow.i", BT);
+                    Build_Intrinsic ("llvm.ssub.with.overflow", BT,
+                                     (1 => Type_Of (BT)));
                   Fn_Ret    : constant GL_Value       :=
                     Call_Relationship (Func, (1 => Const_Null (BT), 2 => V),
                                        Boolean_And_Data);

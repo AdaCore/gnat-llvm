@@ -22,7 +22,6 @@ with Errout;      use Errout;
 with Sem_Eval;    use Sem_Eval;
 with Sem_Util;    use Sem_Util;
 with Stand;       use Stand;
-with Table;       use Table;
 
 with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
@@ -36,25 +35,6 @@ with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 package body GNATLLVM.Builtins is
-
-   type Intrinsic is record
-      Name  : String_Access;
-      Width : ULL;
-      Func  : GL_Value;
-   end record;
-   --  A description of an intrinsic function that we've created
-
-   --  Since we aren't going to be creating all that many different
-   --  intrinsic functions, a simple list that we search should be
-   --  fast enough.
-
-   package Intrinsic_Functions_Table is new Table.Table
-     (Table_Component_Type => Intrinsic,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 20,
-      Table_Increment      => 5,
-      Table_Name           => "Intrinsic_Function_Table");
 
    function Name_To_RMW_Op
      (S           : String;
@@ -192,45 +172,22 @@ package body GNATLLVM.Builtins is
    ---------------------
 
    function Build_Intrinsic
-     (Kind : Overloaded_Intrinsic_Kind;
-      Name : String;
-      GT   : GL_Type) return GL_Value
+     (Name             : String;
+      Return_GT        : GL_Type;
+      Overloaded_Types : Type_Array := (1 .. 0 => <>)) return GL_Value
    is
-      T         : constant Type_T := Type_Of (GT);
-      Width     : constant ULL    := Get_Scalar_Bit_Size (T);
-      Full_Name : constant String := Name & To_String (Nat (Width));
-      Fun_Ty    : Type_T;
-      Result    : GL_Value;
-
+      Intrinsic_ID : constant unsigned :=
+        Lookup_Intrinsic_ID (Name, Name'Length);
    begin
-      for J in 1 .. Intrinsic_Functions_Table.Last loop
-         if Intrinsic_Functions_Table.Table (J).Name.all = Name
-           and then Intrinsic_Functions_Table.Table (J).Width = Width
-         then
-            return Intrinsic_Functions_Table.Table (J).Func;
-         end if;
-      end loop;
+      if Intrinsic_ID = 0 then
+         return No_GL_Value;
+      end if;
 
-      case Kind is
-         when Unary =>
-            Fun_Ty := Fn_Ty ((1 => T), T);
-
-         when Binary =>
-            Fun_Ty := Fn_Ty ((1 => T, 2 => T), T);
-
-         when Ternary =>
-            Fun_Ty := Fn_Ty ((1 => T, 2 => T, 3 => T), T);
-
-         when Boolean_And_Data =>
-            Fun_Ty := Fn_Ty ((1 => T, 2 => T),
-                             Type_For_Relationship (GT, Boolean_And_Data));
-
-      end case;
-
-      Result := Add_Function (Full_Name, Fun_Ty, GT, Is_Builtin => True);
-      Set_Does_Not_Throw (Result);
-      Intrinsic_Functions_Table.Append ((new String'(Name), Width, Result));
-      return Result;
+      return
+        G (Get_Intrinsic_Declaration
+             (Module, Intrinsic_ID, Overloaded_Types'Address,
+              Overloaded_Types'Length),
+           Return_GT, Reference_To_Subprogram);
    end Build_Intrinsic;
 
    --------------------
@@ -704,7 +661,7 @@ package body GNATLLVM.Builtins is
 
       --  Otherwise, emit the intrinsic
 
-      return Call (Build_Intrinsic (Unary, "llvm.bswap.i", GT),
+      return Call (Build_Intrinsic ("llvm.bswap", GT, (1 => Type_Of (GT))),
                    (1 => Emit_Expression (Val)));
    end Emit_Bswap_Call;
 
@@ -1031,9 +988,9 @@ package body GNATLLVM.Builtins is
             declare
                GT     : constant GL_Type           := Full_GL_Type (N);
                I_Name : constant String            :=
-                 "llvm." & FP.Name (1 .. FP.Length) & ".f";
+                 "llvm." & FP.Name (1 .. FP.Length);
                Subp   : constant GL_Value          :=
-                 Build_Intrinsic (FP.Kind, I_Name, GT);
+                 Build_Intrinsic (I_Name, GT, (1 => Type_Of (GT)));
                Actual : constant Opt_N_Subexpr_Id  := First_Actual (N);
 
             begin
@@ -1227,10 +1184,8 @@ package body GNATLLVM.Builtins is
    function Get_Stack_Save_Fn return GL_Value is
    begin
       if No (Stack_Save_Fn) then
-         Stack_Save_Fn := Add_Function
-           ("llvm.stacksave", Fn_Ty ((1 .. 0 => <>), Void_Ptr_T),
-            A_Char_GL_Type, Is_Builtin => True);
-         Set_Does_Not_Throw (Stack_Save_Fn);
+         Stack_Save_Fn :=
+           Build_Intrinsic ("llvm.stacksave", A_Char_GL_Type);
       end if;
 
       return Stack_Save_Fn;
@@ -1243,11 +1198,8 @@ package body GNATLLVM.Builtins is
    function Get_Stack_Restore_Fn return GL_Value is
    begin
       if No (Stack_Restore_Fn) then
-         Stack_Restore_Fn := Add_Function
-           ("llvm.stackrestore",
-            Fn_Ty ((1 => Void_Ptr_T), Void_Type), Void_GL_Type,
-            Is_Builtin => True);
-         Set_Does_Not_Throw (Stack_Restore_Fn);
+         Stack_Restore_Fn :=
+           Build_Intrinsic ("llvm.stackrestore", Void_GL_Type);
       end if;
 
       return Stack_Restore_Fn;
@@ -1260,12 +1212,8 @@ package body GNATLLVM.Builtins is
    function Get_Tramp_Init_Fn return GL_Value is
    begin
       if No (Tramp_Init_Fn) then
-         Tramp_Init_Fn := Add_Function
-           ("llvm.init.trampoline",
-            Fn_Ty ((1 => Void_Ptr_T, 2 => Void_Ptr_T, 3 => Void_Ptr_T),
-                   Void_Type),
-            Void_GL_Type, Is_Builtin => True);
-         Set_Does_Not_Throw (Tramp_Init_Fn);
+         Tramp_Init_Fn :=
+           Build_Intrinsic ("llvm.init.trampoline", Void_GL_Type);
       end if;
 
       return Tramp_Init_Fn;
@@ -1278,11 +1226,8 @@ package body GNATLLVM.Builtins is
    function Get_Tramp_Adjust_Fn return GL_Value is
    begin
       if No (Tramp_Adjust_Fn) then
-         Tramp_Adjust_Fn := Add_Function
-           ("llvm.adjust.trampoline",
-            Fn_Ty ((1 => Void_Ptr_T), Void_Ptr_T), A_Char_GL_Type,
-            Is_Builtin => True);
-         Set_Does_Not_Throw (Tramp_Adjust_Fn);
+         Tramp_Adjust_Fn :=
+           Build_Intrinsic ("llvm.adjust.trampoline", A_Char_GL_Type);
       end if;
 
       return Tramp_Adjust_Fn;
@@ -1295,11 +1240,9 @@ package body GNATLLVM.Builtins is
    function Get_Expect_Fn return GL_Value is
    begin
       if No (Expect_Fn) then
-         Expect_Fn := Add_Function
-           ("llvm.expect.i1",
-            Fn_Ty ((1 => Bit_T, 2 => Bit_T), Bit_T),
-            Boolean_GL_Type, Is_Builtin => True);
-         Set_Does_Not_Throw      (Get_Expect_Fn);
+         Expect_Fn :=
+           Build_Intrinsic
+             ("llvm.expect", Boolean_GL_Type, (1 => Bit_T));
       end if;
 
       return Expect_Fn;
@@ -1319,10 +1262,9 @@ package body GNATLLVM.Builtins is
          pragma Assert (ABI.all = "purecap");
 
          Get_Address_Fn :=
-           Add_Function
-             ("llvm.cheri.cap.address.get.i64",
-              Fn_Ty ((1 => Void_Ptr_T), Size_T), Size_GL_Type,
-              Is_Builtin => True);
+           Build_Intrinsic
+             ("llvm.cheri.cap.address.get", Size_GL_Type,
+              (1 => Size_T));
       end if;
 
       return Get_Address_Fn;
@@ -1342,10 +1284,9 @@ package body GNATLLVM.Builtins is
          pragma Assert (ABI.all = "purecap");
 
          Set_Address_Fn :=
-           Add_Function
-             ("llvm.cheri.cap.address.set.i64",
-              Fn_Ty ((1 => Void_Ptr_T, 2 => Size_T), Void_Ptr_T),
-              A_Char_GL_Type, Is_Builtin => True);
+           Build_Intrinsic
+             ("llvm.cheri.cap.address.set", A_Char_GL_Type,
+              (1 => Size_T));
       end if;
 
       return Set_Address_Fn;

@@ -795,12 +795,13 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
           MPM.addPass(ModuleSanitizerCoveragePass(CoverageOpts));
         }
 
-        if (EnableAddressSanitizer)
+        if (EnableAddressSanitizer) {
           MPM.addPass(
               RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
           MPM.addPass(ModuleAddressSanitizerPass());
           MPM.addPass(
               createModuleToFunctionPassAdaptor(AddressSanitizerPass()));
+        }
       });
 
   ModulePassManager MPM;

@@ -131,6 +131,11 @@ package body GNATLLVM.Builtins is
    --  the operands are value, emit it. Otherwise, return
    --  No_GL_Value.
 
+   function Emit_Cheri_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value;
+   --  If S is a valid __builtin_cheri name for an instrinsic subprogram
+   --  and the operands are valid, emit it. Otherwise, return No_GL_Value.
+
    function Emit_Branch_Prediction_Call
      (N : N_Subprogram_Call_Id; S : String) return GL_Value;
    --  Generate a call to the branch prediction function if the operands
@@ -641,6 +646,94 @@ package body GNATLLVM.Builtins is
    end Emit_Sync_Call;
 
    ---------------------
+   -- Emit_Cheri_Call --
+   ---------------------
+
+   function Emit_Cheri_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value
+   is
+      N_Args    : constant Nat              := Num_Actuals (N);
+      Val       : constant Opt_N_Subexpr_Id := First_Actual (N);
+      V         : GL_Value;
+
+   begin
+      if S = "address_get" and then N_Args = 1 then
+         return Call (Get_Get_Address_Fn, (1 => Emit_Expression (Val)));
+
+      elsif S = "address_set" and then N_Args = 2 then
+         V := Emit_Expression (Val);
+         return
+           Call
+             (Get_Set_Address_Fn,
+              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+
+      elsif S = "bounds_set" and then N_Args = 2 then
+         V := Emit_Expression (Val);
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.cap.bounds.set", A_Char_GL_Type,
+                 (1 => Size_T)),
+              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+
+      elsif S = "bounds_set_exact" and then N_Args = 2 then
+         V := Emit_Expression (Val);
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.cap.bounds.set.exact", A_Char_GL_Type,
+                 (1 => Size_T)),
+              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+
+      elsif S = "global_data_get" and then N_Args = 0 then
+         return
+           Call
+             (Build_Intrinsic ("llvm.cheri.ddc.get", A_Char_GL_Type),
+              (1 .. 0 => <>));
+
+      elsif S = "perms_and" and then N_Args = 2 then
+         V := Emit_Expression (Val);
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.cap.perms.and", A_Char_GL_Type,
+                 (1 => Size_T)),
+              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+
+      elsif S = "program_counter_get" and then N_Args = 0 then
+         return
+           Call
+             (Build_Intrinsic ("llvm.cheri.pcc.get", A_Char_GL_Type),
+              (1 .. 0 => <>));
+
+      elsif S = "representable_alignment_mask" and then N_Args = 1 then
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.representable.alignment.mask", Size_GL_Type,
+                 (1 => Size_T)),
+              (1 => Emit_Expression (Val)));
+
+      elsif S = "round_representable_length" and then N_Args = 1 then
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.round.representable.length", Size_GL_Type,
+                 (1 => Size_T)),
+              (1 => Emit_Expression (Val)));
+
+      elsif S = "seal_entry" and then N_Args = 1 then
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.cap.seal.entry", A_Char_GL_Type),
+              (1 => Emit_Expression (Val)));
+      end if;
+
+      return No_GL_Value;
+   end Emit_Cheri_Call;
+
+   ---------------------
    -- Emit_Bswap_Call --
    ---------------------
 
@@ -1098,6 +1191,13 @@ package body GNATLLVM.Builtins is
 
       if S'Length > 7 and then S (First .. First + 6) = "__sync_" then
          return Emit_Sync_Call (N, S);
+
+      --  Next, check if it's a CHERI builtin
+
+      elsif S'Length > 16
+        and then S (First .. First + 15) = "__builtin_cheri_"
+      then
+         return Emit_Cheri_Call (N, S (First + 16 .. S'Last));
 
       --  Check for __builtin_bswap, __builtin_expect, and __atomic_load
 

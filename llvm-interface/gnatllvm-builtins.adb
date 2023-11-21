@@ -131,6 +131,11 @@ package body GNATLLVM.Builtins is
    --  the operands are value, emit it. Otherwise, return
    --  No_GL_Value.
 
+   function Emit_Cheri_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value;
+   --  If S is a valid __builtin_cheri name for an instrinsic subprogram
+   --  and the operands are valid, emit it. Otherwise, return No_GL_Value.
+
    function Emit_Branch_Prediction_Call
      (N : N_Subprogram_Call_Id; S : String) return GL_Value;
    --  Generate a call to the branch prediction function if the operands
@@ -552,10 +557,6 @@ package body GNATLLVM.Builtins is
         (if    Present (Val) then Full_GL_Type (Val)
          elsif Present (Ptr) and then Is_Access_Type (Full_Etype (Ptr))
          then  Full_Designated_GL_Type (Full_Etype (Ptr)) else No_GL_Type);
-      First     : constant Integer          :=
-        S'First + String'("__sync_")'Length;
-      Last      : constant Integer          := Last_Non_Suffix (S);
-      Name      : constant String           := S (First .. Last);
       Ptr_Val   : constant GL_Value         :=
         (if Present (Ptr) then Emit_Ptr (Ptr, GT) else No_GL_Value);
       Order     : Atomic_Ordering_T := Atomic_Ordering_Sequentially_Consistent;
@@ -572,12 +573,12 @@ package body GNATLLVM.Builtins is
       --
       --  First handle the compare_and_swap variants.
 
-      if (Name = "bool_compare_and_swap" or else Name = "val_compare_and_swap")
+      if (S = "bool_compare_and_swap" or else S = "val_compare_and_swap")
         and then N_Args = 3 and then Nkind (N) = N_Function_Call
       then
          declare
             New_Val : constant GL_Value := Emit_Expression (Next_Actual (Val));
-            For_Val : constant Boolean  := Name (Name'First) = 'v';
+            For_Val : constant Boolean  := S (S'First) = 'v';
 
          begin
             if Present (Ptr_Val) and then Type_Of (New_Val) = Type_Of (GT)
@@ -595,7 +596,7 @@ package body GNATLLVM.Builtins is
 
       --  Now handle fence
 
-      elsif Name = "synchronize" and then N_Args = 0
+      elsif S = "synchronize" and then N_Args = 0
         and then Nkind (N) = N_Procedure_Call_Statement
       then
          Fence;
@@ -603,7 +604,7 @@ package body GNATLLVM.Builtins is
 
       --  Handle __sync_release, which is an atomic write of zero
 
-      elsif Name = "lock_release" and then N_Args = 1
+      elsif S = "lock_release" and then N_Args = 1
         and then Nkind (N) = N_Procedure_Call_Statement
         and then Present (GT)
         and then Type_Size_Matches_Name (S, True, GT)
@@ -617,16 +618,20 @@ package body GNATLLVM.Builtins is
       --  "fetch_and_Op", or "lock_test_and_set", all of which are
       --  fetch-and-ops.
 
-      elsif Name_To_RMW_Op (S, First, Index, Op) and then Last = Index + 9
-        and then S (Index .. Last) = "_and_fetch" and then N_Args = 2
+      elsif Name_To_RMW_Op (S, S'First, Index, Op)
+        and then S'Last = Index + 9
+        and then S (Index .. S'Last) = "_and_fetch"
+        and then N_Args = 2
       then
          Op_Back := True;
-      elsif S'Last > First + 9 and then S (First .. First + 9) = "fetch_and_"
-        and then Name_To_RMW_Op (S, First + 10, Index, Op)
-        and then Index - 1 = Last and then N_Args = 2
+      elsif S'Last > S'First + 9
+        and then S (S'First .. S'First + 9) = "fetch_and_"
+        and then Name_To_RMW_Op (S, S'First + 10, Index, Op)
+        and then Index - 1 = S'Last
+        and then N_Args = 2
       then
          Op_Back := False;
-      elsif Name = "lock_test_and_set" and then Nkind (N) = N_Function_Call
+      elsif S = "lock_test_and_set" and then Nkind (N) = N_Function_Call
         and then N_Args = 2
       then
          Op      := Atomic_RMW_Bin_Op_Xchg;
@@ -639,6 +644,94 @@ package body GNATLLVM.Builtins is
       return Emit_Fetch_And_Op (Ptr, Emit_Expression (Val), Op, Op_Back,
                                 Order, S, GT);
    end Emit_Sync_Call;
+
+   ---------------------
+   -- Emit_Cheri_Call --
+   ---------------------
+
+   function Emit_Cheri_Call
+     (N : N_Subprogram_Call_Id; S : String) return GL_Value
+   is
+      N_Args    : constant Nat              := Num_Actuals (N);
+      Val       : constant Opt_N_Subexpr_Id := First_Actual (N);
+      V         : GL_Value;
+
+   begin
+      if S = "address_get" and then N_Args = 1 then
+         return Call (Get_Get_Address_Fn, (1 => Emit_Expression (Val)));
+
+      elsif S = "address_set" and then N_Args = 2 then
+         V := Emit_Expression (Val);
+         return
+           Call
+             (Get_Set_Address_Fn,
+              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+
+      elsif S = "bounds_set" and then N_Args = 2 then
+         V := Emit_Expression (Val);
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.cap.bounds.set", A_Char_GL_Type,
+                 (1 => Size_T)),
+              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+
+      elsif S = "bounds_set_exact" and then N_Args = 2 then
+         V := Emit_Expression (Val);
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.cap.bounds.set.exact", A_Char_GL_Type,
+                 (1 => Size_T)),
+              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+
+      elsif S = "global_data_get" and then N_Args = 0 then
+         return
+           Call
+             (Build_Intrinsic ("llvm.cheri.ddc.get", A_Char_GL_Type),
+              (1 .. 0 => <>));
+
+      elsif S = "perms_and" and then N_Args = 2 then
+         V := Emit_Expression (Val);
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.cap.perms.and", A_Char_GL_Type,
+                 (1 => Size_T)),
+              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+
+      elsif S = "program_counter_get" and then N_Args = 0 then
+         return
+           Call
+             (Build_Intrinsic ("llvm.cheri.pcc.get", A_Char_GL_Type),
+              (1 .. 0 => <>));
+
+      elsif S = "representable_alignment_mask" and then N_Args = 1 then
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.representable.alignment.mask", Size_GL_Type,
+                 (1 => Size_T)),
+              (1 => Emit_Expression (Val)));
+
+      elsif S = "round_representable_length" and then N_Args = 1 then
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.round.representable.length", Size_GL_Type,
+                 (1 => Size_T)),
+              (1 => Emit_Expression (Val)));
+
+      elsif S = "seal_entry" and then N_Args = 1 then
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.cap.seal.entry", A_Char_GL_Type),
+              (1 => Emit_Expression (Val)));
+      end if;
+
+      return No_GL_Value;
+   end Emit_Cheri_Call;
 
    ---------------------
    -- Emit_Bswap_Call --
@@ -772,10 +865,6 @@ package body GNATLLVM.Builtins is
       --  In some cases (test_and_set and clear), we may not have a type at
       --  all.  In that case, we mean to use a byte.
 
-      First     : constant Integer          :=
-        S'First + String'("__atomic_")'Length;
-      Last      : constant Integer          := Last_Non_Suffix (S);
-      Name      : constant String           := S (First .. Last);
       Op        : Atomic_RMW_Bin_Op_T;
       Op_Back   : Boolean;
       Index     : Integer;
@@ -784,7 +873,7 @@ package body GNATLLVM.Builtins is
    begin
       --  First check for the function form of load
 
-      if not Is_Proc and then N_Args = 2 and then Name in "load" | "load_n"
+      if not Is_Proc and then N_Args = 2 and then S in "load" | "load_n"
         and then Type_Size_Matches_Name (S, True, GT)
         and then Full_GL_Type (N) = GT
       then
@@ -794,7 +883,7 @@ package body GNATLLVM.Builtins is
 
       --  Next check for the procedural form of load
 
-      elsif Is_Proc and then N_Args = 3 and then Name = "load"
+      elsif Is_Proc and then N_Args = 3 and then S = "load"
         and then Is_Access_Type (Full_Etype (Next_Actual (Ptr)))
         and then Full_Designated_GL_Type (Full_Etype (Arg2)) = GT
         and then Type_Size_Matches_Name (S, True, GT)
@@ -806,7 +895,7 @@ package body GNATLLVM.Builtins is
 
       --  Check for store
 
-      elsif Is_Proc and then N_Args = 3 and then Name in "store" | "store_n"
+      elsif Is_Proc and then N_Args = 3 and then S in "store" | "store_n"
         and then Type_Size_Matches_Name (S, True, GT)
       then
          Result := Emit_And_Maybe_Deref (Next_Actual (Ptr), GT);
@@ -824,13 +913,13 @@ package body GNATLLVM.Builtins is
       --  Handle exchange, which is a fetch-and operation
 
       elsif not Is_Proc and then N_Args = 3 and then Full_GL_Type (N) = GT
-        and then Name in "exchange" | "exchange_n"
+        and then S in "exchange" | "exchange_n"
       then
          return
            Emit_Fetch_And_Op (Ptr, Emit_Expression (Arg2),
                               Atomic_RMW_Bin_Op_Xchg, False,
                               Memory_Order (Arg3), S, GT);
-      elsif Is_Proc and then N_Args = 4 and then Name = "exchange"
+      elsif Is_Proc and then N_Args = 4 and then S = "exchange"
         and then Full_Designated_GL_Type (Full_Etype (Arg3)) = GT
       then
          Result := Emit_And_Maybe_Deref (Arg2, GT);
@@ -851,7 +940,7 @@ package body GNATLLVM.Builtins is
       --  Next is compare-exchange
 
       elsif not Is_Proc and then N_Args = 6
-        and then Name in "compare_exchange" | "compare_exchange_n"
+        and then S in "compare_exchange" | "compare_exchange_n"
         and then Is_Boolean_Type (Full_Etype (N))
         and then Is_Boolean_Type (Full_Etype (Arg4))
         and then Full_GL_Type (Arg3) = GT
@@ -901,7 +990,7 @@ package body GNATLLVM.Builtins is
 
       --  Now test-and-set, which is an exchange
 
-      elsif not Is_Proc and then N_Args = 2 and then Name = "test_and_set"
+      elsif not Is_Proc and then N_Args = 2 and then S = "test_and_set"
         and then Is_Boolean_Type (Full_Etype (N))
       then
          Result := Emit_Fetch_And_Op (Ptr, Const_Int (Def_GT, Uint_1),
@@ -916,7 +1005,7 @@ package body GNATLLVM.Builtins is
 
       --  Next is clear, which is a store of zero
 
-      elsif Is_Proc and then N_Args = 2 and then Name = "clear" then
+      elsif Is_Proc and then N_Args = 2 and then S = "clear" then
          Emit_Atomic_Store (Emit_Ptr (Ptr, Def_GT), Const_Null (Def_GT),
                             Memory_Order (Arg2, No_Acquire => True),
                             Def_GT);
@@ -925,7 +1014,7 @@ package body GNATLLVM.Builtins is
       --  Now we have the fence operations, which we treat the same
 
       elsif Is_Proc and then N_Args = 1
-        and then (Name = "thread_fence" or else Name = "signal_fence")
+        and then (S = "thread_fence" or else S = "signal_fence")
       then
          Fence (Order => Memory_Order (Ptr));
          return Const_True;
@@ -934,7 +1023,7 @@ package body GNATLLVM.Builtins is
 
       elsif not Is_Proc and then N_Args in 1 .. 2
         and then Compile_Time_Known_Value (Ptr)
-        and then (Name = "always_lock_free" or else Name = "is_lock_free")
+        and then (S = "always_lock_free" or else S = "is_lock_free")
       then
          return (if   Expr_Value (Ptr) = Uint_1
                       or else Expr_Value (Ptr) = Uint_2
@@ -944,14 +1033,17 @@ package body GNATLLVM.Builtins is
 
       --  The remaining possibilities are "op_fetch" and "fetch_op"
 
-      elsif Name_To_RMW_Op (S, First, Index, Op) and then Last = Index + 5
-        and then S (Index .. Last) = "_fetch"
-        and then Nkind (N) = N_Function_Call and then N_Args = 3
+      elsif Name_To_RMW_Op (S, S'First, Index, Op)
+        and then S'Last = Index + 5
+        and then S (Index .. S'Last) = "_fetch"
+        and then Nkind (N) = N_Function_Call
+        and then N_Args = 3
       then
          Op_Back := True;
-      elsif S'Last > First + 5 and then S (First .. First + 5) = "fetch_"
-        and then Name_To_RMW_Op (S, First + 6, Index, Op)
-        and then Index - 1 = Last
+      elsif S'Last > S'First + 5
+        and then S (S'First .. S'First + 5) = "fetch_"
+        and then Name_To_RMW_Op (S, S'First + 6, Index, Op)
+        and then Index - 1 = S'Last
         and then Nkind (N) = N_Function_Call and then N_Args = 3
       then
          Op_Back := False;
@@ -1097,7 +1189,14 @@ package body GNATLLVM.Builtins is
       --  First see if this is a __sync class of subprogram
 
       if S'Length > 7 and then S (First .. First + 6) = "__sync_" then
-         return Emit_Sync_Call (N, S);
+         return Emit_Sync_Call (N, S (First + 7 .. Last));
+
+      --  Next, check if it's a CHERI builtin
+
+      elsif S'Length > 16
+        and then S (First .. First + 15) = "__builtin_cheri_"
+      then
+         return Emit_Cheri_Call (N, S (First + 16 .. S'Last));
 
       --  Check for __builtin_bswap, __builtin_expect, and __atomic_load
 
@@ -1111,7 +1210,7 @@ package body GNATLLVM.Builtins is
       elsif S'Length > 9
         and then S (First .. First + 8) = "__atomic_"
       then
-         return Emit_Atomic_Call (N, S);
+         return Emit_Atomic_Call (N, S (First + 9 .. Last));
 
       --  Now see if this is a FP builtin
 

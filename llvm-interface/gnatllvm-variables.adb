@@ -1699,7 +1699,9 @@ package body GNATLLVM.Variables is
 
       --  If we're emitting C and this is of zero size, use undef.
 
-      elsif Emit_C and then Is_Zero_Size (GT) then
+      elsif Emit_C and then Is_Zero_Size (GT)
+        and then not Type_Needs_Bounds (GT)
+      then
          LLVM_Var := Get_Undef (GT);
 
       --  Otherwise, make one here and properly set its linkage

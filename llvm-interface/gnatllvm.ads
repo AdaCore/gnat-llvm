@@ -301,6 +301,7 @@ package GNATLLVM is
    LI_GL_Type        : GL_Type := No_GL_Type;
    LLI_GL_Type       : GL_Type := No_GL_Type;
    Void_GL_Type      : GL_Type := No_GL_Type;
+   Address_GL_Type   : GL_Type := No_GL_Type;
    Any_Array_GL_Type : GL_Type := No_GL_Type;
    --  GL_Types for builtin types
 

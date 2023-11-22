@@ -186,7 +186,8 @@ package body GNATLLVM.Compile is
       --  burden on address arithmetic, which now requires conversions to
       --  and from a suitable integer representation of the address.
 
-      Address_T := (if Tagged_Pointers then Void_Ptr_T else Size_T);
+      Address_T       := (if Tagged_Pointers then Void_Ptr_T else Size_T);
+      Address_GL_Type := Primitive_GL_Type (Standard_Address);
 
       --  The size of a pointer is specified in both the LLVM data layout
       --  string (usually from a --target specification) and the target

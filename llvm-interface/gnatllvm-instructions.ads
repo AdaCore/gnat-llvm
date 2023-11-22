@@ -102,12 +102,12 @@ package GNATLLVM.Instructions is
      with Pre  => Is_Pointer (V) and then Present (GT),
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result), Inline;
 
-   function Ptr_To_Size_Type
+   function Ptr_To_Address_Type
      (V : GL_Value; Name : String := "") return GL_Value
    is
-     (Ptr_To_Int (V, Size_GL_Type, Name))
+     (Ptr_To_Int (V, Address_GL_Type, Name))
      with Pre  => Is_Pointer (V),
-          Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Size_Type'Result);
+          Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Address_Type'Result);
 
    function Bit_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
@@ -1032,8 +1032,8 @@ package GNATLLVM.Instructions is
    is (if   Tagged_Pointers
        then Set_Pointer_Address (Ptr, Get_Pointer_Address (Ptr) + Offset)
        else Ptr + Offset)
-     with Pre  => Is_Discrete_Type (Ptr) and then Is_Integer_Type (Offset),
-          Post => Is_Discrete_Type (Address_Add'Result);
+     with Pre  => Is_Address (Ptr) and then Is_Integer_Type (Offset),
+          Post => Is_Address (Address_Add'Result);
 
    function Landing_Pad
      (T                : Type_T;

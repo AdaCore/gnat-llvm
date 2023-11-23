@@ -1055,7 +1055,8 @@ package body CCG.Write is
    -----------------------
 
    procedure Write_Source_Line (L : Physical_Line_Number) is
-      Scn : Source_Ptr;
+      Scn       : Source_Ptr;
+      Last_Char : Character := ' ';
 
    begin
       if Is_Comment_Line (L) then
@@ -1068,7 +1069,17 @@ package body CCG.Write is
 
       Scn := Line_Start (L, Main_Source_File);
       while Scn <= Src'Last and then Src (Scn) not in Line_Terminator loop
+
+         --  We have the pathological case of a Ada source line containing
+         --  a "*/" string, which will cause the C comment line we're writing
+         --  to be ended prematurely. So write "*_/" instead in that case.
+
+         if Last_Char = '*' and then Src (Scn) = '/' then
+            Write_Char ('_');
+         end if;
+
          Write_Char (Src (Scn));
+         Last_Char := Src (Scn);
          Scn := Scn + 1;
       end loop;
 

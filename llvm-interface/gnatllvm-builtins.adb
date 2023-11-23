@@ -1248,9 +1248,11 @@ package body GNATLLVM.Builtins is
       if No (Default_Alloc_Fn) then
          Default_Alloc_Fn :=
            Add_Global_Function
-           (Get_Default_Alloc_Fn_Name,
-            Fn_Ty ((1 => Size_T), (if Emit_C then Void_Ptr_T else Size_T)),
-              (if Emit_C then A_Char_GL_Type else Size_GL_Type));
+             (Get_Default_Alloc_Fn_Name,
+              Fn_Ty
+                ((1 => Size_T),
+                 (if Emit_C then Void_Ptr_T else Address_T)),
+              (if Emit_C then A_Char_GL_Type else Address_GL_Type));
       end if;
 
       return Default_Alloc_Fn;
@@ -1265,9 +1267,10 @@ package body GNATLLVM.Builtins is
       if No (Default_Free_Fn) then
          Default_Free_Fn :=
            Add_Global_Function
-           (Get_Default_Free_Fn_Name,
-            Fn_Ty ((1 => (if Emit_C then Void_Ptr_T else Size_T)),
-              Void_Type),
+             (Get_Default_Free_Fn_Name,
+              Fn_Ty
+                ((1 => (if Emit_C then Void_Ptr_T else Address_T)),
+                 Void_Type),
               Void_GL_Type);
       end if;
 

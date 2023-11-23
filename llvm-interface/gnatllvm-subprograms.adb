@@ -1853,7 +1853,7 @@ package body GNATLLVM.Subprograms is
 
             --  Finally, return the address of the return parameter
 
-            return Ptr_To_Size_Type (Return_Address_Param);
+            return Ptr_To_Address_Type (Return_Address_Param);
          end;
 
          --  Otherwise, call the procedure with our size. We treat this as

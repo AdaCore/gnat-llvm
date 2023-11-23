@@ -974,7 +974,7 @@ package body GNATLLVM.Types is
                           (1 => Ptr_To_Ref (Emit_Entity (Pool),
                                             Full_GL_Type
                                               (First_Formal (Proc))),
-                           2 => Ptr_To_Size_Type (Free_V),
+                           2 => Ptr_To_Address_Type (Free_V),
                            3 => To_Bytes (Size),
                            4 => To_Bytes (Align_V)));
 
@@ -982,7 +982,7 @@ package body GNATLLVM.Types is
             --  it with the size.
 
          else
-            Call_Dealloc (Proc, (1 => Ptr_To_Size_Type (Free_V),
+            Call_Dealloc (Proc, (1 => Ptr_To_Address_Type (Free_V),
                                  2 => To_Bytes (Size)));
          end if;
       end;
@@ -1008,7 +1008,7 @@ package body GNATLLVM.Types is
 
       --  Then convert to a size_type
 
-      return Ptr_To_Size_Type (Result);
+      return Ptr_To_Address_Type (Result);
    end Prepare_SM_Copy_Host;
 
    ----------------------------

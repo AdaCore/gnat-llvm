@@ -17,7 +17,6 @@
 
 with Atree;       use Atree;
 with Einfo.Utils; use Einfo.Utils;
-with Lib;         use Lib;
 with Sem_Aux;     use Sem_Aux;
 with Stand;       use Stand;
 with Sinput;      use Sinput;
@@ -60,7 +59,7 @@ package body CCG is
 
       if Emit_C and then not Emit_Header then
          Add_To_Source_Order (N);
-         if Get_Source_File_Index (Sloc (N)) = Source_Index (Main_Unit)
+         if Get_Source_File_Index (Sloc (N)) = Main_Source_File
            and then (Get_Physical_Line_Number (Sloc (N)) < Lowest_Line_Number
                      or else Lowest_Line_Number = Physical_Line_Number'First)
          then

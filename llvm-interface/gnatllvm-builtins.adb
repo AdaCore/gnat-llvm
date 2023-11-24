@@ -940,7 +940,9 @@ package body GNATLLVM.Builtins is
       --  Next is compare-exchange
 
       elsif not Is_Proc and then N_Args = 6
-        and then S in "compare_exchange" | "compare_exchange_n"
+        and then S in "compare_exchange" |
+                      "compare_exchange_n" |
+                      "compare_exchange_capability"
         and then Is_Boolean_Type (Full_Etype (N))
         and then Is_Boolean_Type (Full_Etype (Arg4))
         and then Full_GL_Type (Arg3) = GT
@@ -973,6 +975,13 @@ package body GNATLLVM.Builtins is
                Error_Msg_N
                  ("Failure order cannot be stronger than success order", N);
                F_Order := S_Order;
+            elsif S = "compare_exchange_capability"
+              and then ABI.all /= "purecap"
+            then
+               Error_Msg_N
+                 ("__atomic_compare_exchange_capability is only valid " &
+                  "with the Morello purecap ABI",
+                  N);
             end if;
 
             --  Now do the operation. Return the result as a boolean, but

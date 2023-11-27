@@ -25,7 +25,6 @@ with Atree;       use Atree;
 with Csets;       use Csets;
 with Debug;       use Debug;
 with Einfo.Utils; use Einfo.Utils;
-with Lib;         use Lib;
 with Opt;         use Opt;
 with Osint;       use Osint;
 with Osint.C;     use Osint.C;
@@ -916,9 +915,7 @@ package body CCG.Write is
    ------------------------
 
    procedure Initialize_Writing is
-      Main_Source_File : constant Source_File_Index :=
-        Source_Index (Main_Unit);
-      Wrote_Include    : Boolean                    := False;
+      Wrote_Include : Boolean := False;
 
    begin
       --  If we're not writing to standard output, open the .c or .h file

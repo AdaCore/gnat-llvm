@@ -553,8 +553,8 @@ package body GNATLLVM.Types is
          else
             if not Is_Constrained (GT) or else No (New_V)
               or else New_V = Memory
-              or else (Is_Constr_Subt_For_UN_Aliased (GT) and then
-                         not Is_Constr_Subt_For_UN_Aliased (Alloc_GT))
+              or else (Is_Constr_Array_Subt_With_Bounds (GT) and then
+                         not Is_Constr_Array_Subt_With_Bounds (Alloc_GT))
             then
                declare
                   Bounds : constant GL_Value :=
@@ -655,7 +655,7 @@ package body GNATLLVM.Types is
 
       if Is_Array_Type (A_GT)
         and then Is_Native_Component_GT (Full_Component_GL_Type (A_GT))
-        and then not Is_Constr_Subt_For_UN_Aliased (GT)
+        and then not Is_Constr_Array_Subt_With_Bounds (GT)
       then
          Element_GT := Full_Component_GL_Type (A_GT);
          Num_Elts   := Get_Array_Elements (Value, Full_Etype (A_GT));
@@ -669,8 +669,10 @@ package body GNATLLVM.Types is
       --  number of elements isn't a constant, make sure that it's at least one
       --  element.
 
-      if Present (E) and then Is_Array_Type (A_GT)
-        and then not Is_Constr_Subt_For_UN_Aliased (GT) and then Is_Aliased (E)
+      if Present (E)
+        and then Is_Aliased (E)
+        and then Is_Array_Type (A_GT)
+        and then not Is_Constr_Array_Subt_With_Bounds (GT)
         and then not Is_Constant (Num_Elts)
       then
          Num_Elts := Build_Max (Num_Elts, Size_Const_Int (Uint_1));
@@ -796,8 +798,10 @@ package body GNATLLVM.Types is
       --  type and the number of elements isn't a constant, make sure that
       --  it's at least one byte.
 
-      elsif Present (E) and then Is_Array_Type (A_GT)
-        and then not Is_Constr_Subt_For_UN_Aliased (GT) and then Is_Aliased (E)
+      elsif Present (E)
+        and then Is_Aliased (E)
+        and then Is_Array_Type (A_GT)
+        and then not Is_Constr_Array_Subt_With_Bounds (GT)
         and then not Is_Constant (Size)
       then
          Size := Build_Max (Size, Size_Const_Int (Uint_1));

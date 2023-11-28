@@ -496,8 +496,8 @@ package GNATLLVM.GLType is
      (Is_Bit_Packed_Array_Impl_Type (Full_Etype (GT)))
      with Pre => Present (GT);
 
-   function Is_Constr_Subt_For_UN_Aliased (GT : GL_Type) return Boolean is
-     (Is_Constr_Subt_For_UN_Aliased (Full_Etype (GT)))
+   function Is_Constr_Array_Subt_With_Bounds (GT : GL_Type) return Boolean is
+     (Is_Constr_Array_Subt_With_Bounds (Full_Etype (GT)))
      with Pre => Present (GT);
 
    function Is_Class_Wide_Equivalent_Type (GT : GL_Type) return Boolean is

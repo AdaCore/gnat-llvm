@@ -468,12 +468,12 @@ package body GNATLLVM.GLValue is
    function Is_Unconstrained_Type (V : GL_Value) return Boolean is
      (Is_Unconstrained_Type (Related_Type (V)));
 
-   -----------------------------------
-   -- Is_Constr_Subt_For_UN_Aliased --
-   -----------------------------------
+   --------------------------------------
+   -- Is_Constr_Array_Subt_With_Bounds --
+   --------------------------------------
 
-   function Is_Constr_Subt_For_UN_Aliased (V : GL_Value) return Boolean is
-     (Is_Constr_Subt_For_UN_Aliased (Related_Type (V)));
+   function Is_Constr_Array_Subt_With_Bounds (V : GL_Value) return Boolean is
+     (Is_Constr_Array_Subt_With_Bounds (Related_Type (V)));
 
    -----------------------------------
    -- Is_Bit_Packed_Array_Impl_Type --

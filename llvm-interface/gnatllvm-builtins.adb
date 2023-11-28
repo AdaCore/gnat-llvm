@@ -726,6 +726,14 @@ package body GNATLLVM.Builtins is
              (Build_Intrinsic
                 ("llvm.cheri.cap.seal.entry", A_Char_GL_Type),
               (1 => Emit_Expression (Val)));
+
+      elsif S = "unseal" and then N_Args = 2 then
+         V := Emit_Expression (Val);
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.cap.unseal", A_Char_GL_Type),
+              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
       end if;
 
       return No_GL_Value;

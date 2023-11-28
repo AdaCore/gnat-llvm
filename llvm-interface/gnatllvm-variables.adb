@@ -1482,7 +1482,8 @@ package body GNATLLVM.Variables is
                                               E_Loop_Parameter
                                and then Is_Composite_Type (GT)
                                and then not Optimize_Alignment_Space (E)
-                               and then not Is_Constr_Subt_For_UN_Aliased (GT)
+                               and then
+                                 not Is_Constr_Array_Subt_With_Bounds (GT)
                                and then not Is_Exported (E)
                                and then not Is_Imported (E)
                                and then No (Renamed_Object (E))
@@ -1536,8 +1537,7 @@ package body GNATLLVM.Variables is
       --  since we want to delete zero-sized objects in that case.
 
       if not Emit_C and then Is_Zero_Size (GT)
-        and then not (Is_Constr_Subt_For_UN_Aliased (GT)
-                        and then Is_Array_Type (GT))
+        and then not Is_Constr_Array_Subt_With_Bounds (GT)
       then
          GT := Make_GT_Alternative (GT, Empty, +BPU, No_Uint);
       end if;
@@ -1869,8 +1869,7 @@ package body GNATLLVM.Variables is
               Full_GL_Type (Other_Id);
 
          begin
-            return Is_Array_Type (Other_GT)
-              and then Is_Constr_Subt_For_UN_Aliased (Other_GT)
+            return Is_Constr_Array_Subt_With_Bounds (Other_GT)
               and then Get_Bound_Size (GT) = Get_Bound_Size (Other_GT);
          end;
       end Is_Matching_Unc_Array;
@@ -1985,9 +1984,7 @@ package body GNATLLVM.Variables is
       --  subtype, then it can overlay only another aliased object with an
       --  unconstrained array nominal subtype and compatible template.
 
-      if Has_Addr and then Is_Array_Type (GT)
-        and then Is_Constr_Subt_For_UN_Aliased (GT)
-      then
+      if Has_Addr and then Is_Constr_Array_Subt_With_Bounds (GT) then
          --  We make an exception for an absolute address but we warn
          --  that there's a descriptor at the start of the object.
 

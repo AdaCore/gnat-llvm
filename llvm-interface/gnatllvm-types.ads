@@ -279,7 +279,7 @@ package GNATLLVM.Types is
      (Is_Array_Type (TE) or else Is_Packed_Array_Impl_Type (TE));
 
    function Type_Needs_Bounds (TE : Type_Kind_Id) return Boolean is
-     ((Is_Constr_Subt_For_UN_Aliased (TE) and then Is_Array_Type (TE))
+     (Is_Constr_Array_Subt_With_Bounds (TE)
       or else (Is_Packed_Array_Impl_Type (TE)
                  and then Type_Needs_Bounds (Original_Array_Type (TE))));
    --  True is TE is a type that needs bounds stored with data

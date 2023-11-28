@@ -918,7 +918,7 @@ package GNATLLVM.GLValue is
    function Is_Bit_Packed_Array_Impl_Type (V : GL_Value) return Boolean
      with Pre => Present (V), Inline;
 
-   function Is_Constr_Subt_For_UN_Aliased (V : GL_Value) return Boolean
+   function Is_Constr_Array_Subt_With_Bounds (V : GL_Value) return Boolean
      with Pre => Present (V), Inline;
 
    function Type_Needs_Bounds (V : GL_Value) return Boolean

@@ -1058,6 +1058,10 @@ package body CCG.Subprograms is
 
          Exclude (Declaration_Map, V);
 
+         --  First write any decls that this depends on
+
+         Scan_For_Decls (V);
+
          --  Write any decls that declare this variable. There should
          --  only be one, but we don't want or need to depend on that.
 

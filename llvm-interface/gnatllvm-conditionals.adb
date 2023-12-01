@@ -450,7 +450,7 @@ package body GNATLLVM.Conditionals is
 
    begin
       --  If both are Boolean_Data, we can compute our result in that
-      --  relationship.  Otherwise, force to Data.
+      --  relationship. Otherwise, force to Data.
 
       if Relationship (LHS) /= Boolean_Data
         or else Relationship (RHS) /= Boolean_Data
@@ -665,7 +665,7 @@ package body GNATLLVM.Conditionals is
 
          --  If this alternative has an N_Others_Choice, there is a
          --  possibility it may not have any Others_Discrete_Choices (e.g.,
-         --  if it was added by the front end).  If so, it means we don't
+         --  if it was added by the front end). If so, it means we don't
          --  have the list of its choices, so it must remain the default.
 
          if Nkind (First (Discrete_Choices (Alt))) = N_Others_Choice
@@ -1163,7 +1163,7 @@ package body GNATLLVM.Conditionals is
             Some_Ref      := Some_Ref or else  Is_Reference (R);
             Need_Convert  := Need_Convert or else GT /= Expr_GT;
 
-            --  See if all relationships are the same.  We've initialized
+            --  See if all relationships are the same. We've initialized
             --  to Object since that can't be an actual relationship.
 
             All_R         := (if    All_R = Object then R
@@ -1289,8 +1289,8 @@ package body GNATLLVM.Conditionals is
                Result := Get (Result, Deref (Relationship (Result)));
             end if;
 
-            --  Now convert.  First see if this is being converted to the same
-            --  native LLVM type.  If so, just change the GT.
+            --  Now convert. First see if this is being converted to the same
+            --  native LLVM type. If so, just change the GT.
 
             if not Is_Nonnative_Type (GT)
               and then not Is_Nonnative_Type (Phi_GT)
@@ -1308,7 +1308,7 @@ package body GNATLLVM.Conditionals is
             elsif Elementary then
                Result := Convert (Result, Phi_GT);
 
-               --  Otherwise, we must have a reference.  So convert that.
+               --  Otherwise, we must have a reference. So convert that.
 
             else
                Result := Convert_Ref (Result, Phi_GT);
@@ -1519,7 +1519,7 @@ package body GNATLLVM.Conditionals is
             --  comparison if we add a test that verifies that the loop
             --  will be executed at least once. But once we do that, we can
             --  move the test to the end of the loop, which is a more
-            --  canonical form.  e need not do this test if we can prove
+            --  canonical form. We need not do this test if we can prove
             --  that the loop will always be executed, but we only check
             --  for the trivial case of constants. If we determine that the
             --  loop is never executed, we don't do anything more.

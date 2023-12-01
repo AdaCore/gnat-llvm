@@ -38,7 +38,7 @@ package body GNATLLVM.Environment is
       --  this takes into account any Component_Size clause.
 
       TBAA                  : Metadata_T;
-      --  An LLVM TBAA Metadata node corresponding to the type.  Set only
+      --  An LLVM TBAA Metadata node corresponding to the type. Set only
       --  For types that are sufficiently primitive.
 
       Is_Nonnative_Type     : Boolean;

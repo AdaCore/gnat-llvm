@@ -433,7 +433,7 @@ package body GNATLLVM.Types is
 
    function Get_Matching_Value (TE : Type_Kind_Id) return GL_Value is
    begin
-      --  Check in the opposite order of what we push.  We may, for example
+      --  Check in the opposite order of what we push. We may, for example
       --  be finding the size of an object of that size, in which case the
       --  object will have been added last.
 
@@ -678,7 +678,7 @@ package body GNATLLVM.Types is
          Num_Elts := Build_Max (Num_Elts, Size_Const_Int (Uint_1));
       end if;
 
-      --  Check that we aren't trying to allocate too much memory.  Raise
+      --  Check that we aren't trying to allocate too much memory. Raise
       --  Storage_Error if so. We don't try to support local exception
       --  labels and -fstack-check at the same time. The divide below
       --  will constant-fold, but make sure we aren't dividing by zero.
@@ -837,7 +837,7 @@ package body GNATLLVM.Types is
 
          begin
             --  It may have been the case that Size didn't oveflow until
-            --  we did the computation above.  So check again.
+            --  we did the computation above. So check again.
 
             if Overflowed (Total_Size) then
                Error_Msg_N ("??Storage_Error will be raised at run time!",

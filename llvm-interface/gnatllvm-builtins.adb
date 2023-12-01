@@ -91,7 +91,7 @@ package body GNATLLVM.Builtins is
      with Pre => Present (Val) and then Present (GT);
    --  Perform the Fetch_And_Op (Atomic_RMW) given by Op at the location
    --  N. If Op_Back is True, we want the new value, so we have to
-   --  perform the operation on the result.  Order is the memory ordering
+   --  perform the operation on the result. Order is the memory ordering
    --  needed. S and GT are as for Type_Size_Matches_Name. If we can
    --  peform the operation, return the result. Otherwise, return
    --  No_GL_Value.
@@ -263,7 +263,7 @@ package body GNATLLVM.Builtins is
       if not Is_Digit (S (S'Last)) then
          return S'Last;
 
-      --  Otherwise, search for the last non-digit.  We know that the
+      --  Otherwise, search for the last non-digit. We know that the
       --  last character is a digit.
 
       else
@@ -869,7 +869,7 @@ package body GNATLLVM.Builtins is
       Def_GT    : constant GL_Type          :=
         (if Present (GT) then GT else SSI_GL_Type);
       --  In some cases (test_and_set and clear), we may not have a type at
-      --  all.  In that case, we mean to use a byte.
+      --  all. In that case, we mean to use a byte.
 
       Op        : Atomic_RMW_Bin_Op_T;
       Op_Back   : Boolean;

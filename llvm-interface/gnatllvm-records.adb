@@ -121,7 +121,7 @@ package body GNATLLVM.Records is
                   and then J in RI.Variants'Range and then Present (In_Size),
           Post => Present (Variant_Part_Size'Result);
    --  Computes the contribution to Total_Size of the variant part with
-   --  index J in RI.  In_Size is the total size not considering the
+   --  index J in RI. In_Size is the total size not considering the
    --  variant and the known alignment at that point.
 
    function Variant_Part_Size
@@ -1444,7 +1444,7 @@ package body GNATLLVM.Records is
    function Field_Type (F : Record_Field_Kind_Id) return GL_Type is
       GT : constant GL_Type := Field_Info_Table.Table (Get_Field_Info (F)).GT;
    begin
-      --  GT may be a dummy type.  In that case, we need to get the
+      --  GT may be a dummy type. In that case, we need to get the
       --  replacement default type.
 
       return (if Is_Dummy_Type (GT) then Default_GL_Type (GT) else GT);
@@ -2237,7 +2237,7 @@ package body GNATLLVM.Records is
          return Result;
       end if;
 
-      --  Now we handle the bitfield case.  Like the load case, we do our
+      --  Now we handle the bitfield case. Like the load case, we do our
       --  masking and shifting operations in an integral type. This is
       --  either the type of the field or an integral type of the same
       --  width as the array used for the field.

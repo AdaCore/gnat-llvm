@@ -37,7 +37,7 @@ package GNATLLVM.Subprograms is
    function Create_Subprogram_Type
      (E : Subprogram_Type_Or_Kind_Id) return Type_T
      with Post => Present (Create_Subprogram_Type'Result);
-   --  Create subprogram type.  E can either be a subprogram, in which case
+   --  Create subprogram type. E can either be a subprogram, in which case
    --  a subprogram type will be created from it or a subprogram type
    --  directly.
 
@@ -78,7 +78,7 @@ package GNATLLVM.Subprograms is
      with Pre  => Present (GT),
           Post => Present (Emit_Subprogram_Identifier'Result);
    --  Emit the value (creating the subprogram if needed) of E whose
-   --  type is TE.  N, if Present, is the N_Identifier showing how this
+   --  type is TE. N, if Present, is the N_Identifier showing how this
    --  was used.
 
    function Emit_Call
@@ -102,14 +102,14 @@ package GNATLLVM.Subprograms is
 
    procedure Call_Dealloc (Proc : E_Procedure_Id; Args : GL_Value_Array);
    --  Proc is a Procedure_To_Call for a deallocation and Args are its
-   --  arguments.  See if Proc needs a static link and pass one, if so.
+   --  arguments. See if Proc needs a static link and pass one, if so.
 
    procedure Add_To_Elab_Proc (N : Node_Id; For_GT : GL_Type := No_GL_Type)
      with Pre => Library_Level;
-   --  Add N to the elaboration table if it's not already there.  We assume
-   --  here that if it's already there, it was the last one added.  If
+   --  Add N to the elaboration table if it's not already there. We assume
+   --  here that if it's already there, it was the last one added. If
    --  For_GT is Present, elaborate N as an expression, convert to
-   --  For_GT, and save it as the value for N.  If N isn't Present, it
+   --  For_GT, and save it as the value for N. If N isn't Present, it
    --  denotes an empty entry.
 
    procedure Mark_Body_Elab;
@@ -124,7 +124,7 @@ package GNATLLVM.Subprograms is
      with Pre => Library_Level
                  and then Nkind (N) in N_Package_Specification | N_Package_Body
                  and then Nkind (CU) = N_Compilation_Unit;
-   --  Emit code for the elaboration procedure for N.  For_Body says
+   --  Emit code for the elaboration procedure for N. For_Body says
    --  whether this is the elab proc for the body or the spec of a package.
    --  CU is the corresponding N_Compilation_Unit on which we set
    --  Has_No_Elaboration_Code if there is any. Stmts, if Present, is an

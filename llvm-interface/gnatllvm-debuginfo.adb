@@ -97,16 +97,16 @@ package body GNATLLVM.DebugInfo is
      with Pre  => Present (MD) and then Present (E),
           Post => Present (Create_Pointer_To'Result);
    --  Given MD, debug metadata for some type, create debug metadata for a
-   --  pointer to that type.  E and Suffix is used for naming the type.
+   --  pointer to that type. E and Suffix is used for naming the type.
 
    function Create_Type_Data (GT : GL_Type) return Metadata_T
      with Pre => Present (GT);
-   --  Create metadata corresponding to the type of GT.  Return
+   --  Create metadata corresponding to the type of GT. Return
    --  No_Metadata_T if the type is too complex.
 
    function Create_Type_Data (V : GL_Value) return Metadata_T
      with Pre => Present (V);
-   --  Create metadata for the type and relationship of R.  Don't return
+   --  Create metadata for the type and relationship of R. Don't return
    --  anything if we don't know how to create the metadata.
 
    function Add_Field
@@ -869,7 +869,7 @@ package body GNATLLVM.DebugInfo is
          end Record_Type;
 
          --  For an enumeration type, make an enumerator metadata for each
-         --  entry.  The code below is a bit convoluted to avoid needing a
+         --  entry. The code below is a bit convoluted to avoid needing a
          --  UI_To_LLI function just for this purpose.
 
          when Enumeration_Kind => Enumeration : declare
@@ -1028,7 +1028,7 @@ package body GNATLLVM.DebugInfo is
                Type_Data, False, DI_Flag_Zero);
          end if;
 
-         --  If this is a reference, insert a dbg.declare call.  Otherwise,
+         --  If this is a reference, insert a dbg.declare call. Otherwise,
          --  a dbg.value call. ??? However, there sees to be an LLVM issue
          --  when we do this for a zero-length array.
 

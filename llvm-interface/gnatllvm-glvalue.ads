@@ -90,7 +90,7 @@ package GNATLLVM.GLValue is
       Thin_Pointer,
       --  Similar to Reference, except that the bounds are guaranteed to be
       --  in memory in front of the data (with the minimal padding between
-      --  them).  Also similar to Reference_To_Bounds_And_Data, except for
+      --  them). Also similar to Reference_To_Bounds_And_Data, except for
       --  exactly where the pointer references.
 
       Reference_To_Thin_Pointer,

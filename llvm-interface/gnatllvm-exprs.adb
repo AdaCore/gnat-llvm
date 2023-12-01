@@ -896,7 +896,7 @@ package body GNATLLVM.Exprs is
       end if;
 
       --  Extract properties for the operation we are asked to generate code
-      --  for.  We defaulted to a right shift above.
+      --  for. We defaulted to a right shift above.
 
       case Operation is
          when N_Op_Shift_Left =>
@@ -1139,7 +1139,7 @@ package body GNATLLVM.Exprs is
 
          when Pragma_Compile_Time_Error | Pragma_Compile_Time_Warning =>
 
-            --  We need to force elaboration of any types here.  This should
+            --  We need to force elaboration of any types here. This should
             --  be an expression that doesn't need any elaboration proc,
             --  but testing to see that it doesn't will elaborate the types.
 

@@ -1024,7 +1024,7 @@ package body GNATLLVM.Subprograms is
             return Activation_Var_Map.Element (E);
          end if;
 
-         --  Otherwise, do the computations to fetch it.  We must do this
+         --  Otherwise, do the computations to fetch it. We must do this
          --  in the entry block so that it dominates every possible use.
 
          BB := Get_Insert_Block;
@@ -2112,7 +2112,7 @@ package body GNATLLVM.Subprograms is
          RHS_GT   : constant GL_Type      := Related_Type (RHS);
 
       begin
-         --  Handle the case of an undef as our arg.  See below in Emit_Call.
+         --  Handle the case of an undef as our arg. See below in Emit_Call.
 
          if Is_Undef (LHS) then
             return;

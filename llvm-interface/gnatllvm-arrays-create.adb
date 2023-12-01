@@ -362,7 +362,7 @@ package body GNATLLVM.Arrays.Create is
       --  but couldn't if we took that approach. However, all of those
       --  subtypes will have the same component type. If that component
       --  type is of fixed size, we can make an LLVM array [0 x CT] where
-      --  CT is the component type. Otherwise, we have to use [0 x i8].  We
+      --  CT is the component type. Otherwise, we have to use [0 x i8]. We
       --  refer to both of these cases as creating a "fake" type.
 
       Index      := First_Index (A_TE);

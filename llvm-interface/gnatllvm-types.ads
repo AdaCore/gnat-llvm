@@ -443,7 +443,7 @@ package GNATLLVM.Types is
    --  Used for comparison and assignment: compute the size to be used in
    --  the operation. For_Assignment says which operation. Right_Value must
    --  be specified. Left_Value is optional and will be specified in the
-   --  comparison case, but not the assignment case.  If Right_Value is a
+   --  comparison case, but not the assignment case. If Right_Value is a
    --  discriminated record, we assume here that the last call to
    --  Emit_LValue was to compute Right_Value so that we can use
    --  Get_Matching_Value to return the proper object. In the comparison

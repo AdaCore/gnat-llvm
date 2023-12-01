@@ -795,7 +795,7 @@ package body GNATLLVM.Records.Create is
             J                  : Nat;
 
          begin
-            --  Return quickly if nothing to do.  Otherwise, walk the
+            --  Return quickly if nothing to do. Otherwise, walk the
             --  component list.
 
             if No (List) then
@@ -1953,7 +1953,7 @@ package body GNATLLVM.Records.Create is
                   begin
                      --  If this is a bitfield, we'll be using the special
                      --  "bitfield field". If we don't fit in the current
-                     --  one or there isn't one, make one.  Otherwise, just
+                     --  one or there isn't one, make one. Otherwise, just
                      --  record this field. If we have a truncated type
                      --  that's not the last field, also treat it as a
                      --  bitfield.
@@ -2070,7 +2070,7 @@ package body GNATLLVM.Records.Create is
       end if;
 
       --  If we have a new discriminant that renames one from our parent,
-      --  we need to mark which field the discriminant corresponds to.  So
+      --  we need to mark which field the discriminant corresponds to. So
       --  make a pass over the discriminants of this type seeing if any
       --  haven't had field information set. If we find any, copy it from
       --  the original field.

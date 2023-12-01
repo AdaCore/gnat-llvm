@@ -67,7 +67,7 @@ package body GNATLLVM.Conversions is
      with Pre  => Present (V) and then Present (T)
                   and then Is_Nonsymbolic_Constant (V),
           Post => Type_Of (Convert_Nonsymbolic_Constant_Internal'Result) = T;
-   --  Convert V, a constant, to T.  This version only works if one side
+   --  Convert V, a constant, to T. This version only works if one side
    --  is an array of bytes.
 
    -----------------------------------------------
@@ -262,7 +262,7 @@ package body GNATLLVM.Conversions is
       BT_Have : constant Record_Kind_Id := Full_Base_Type (T_Have);
 
    begin
-      --  If the two types are the same return True.  Likewise if
+      --  If the two types are the same return True. Likewise if
       --  T_Have has a parent different than itself and that and this
       --  relation holds for that.
 
@@ -301,7 +301,7 @@ package body GNATLLVM.Conversions is
    begin
       --  We have to be careful here. There isn't as clear a distinction
       --  between unchecked conversion and regular conversion as we might
-      --  like.  Both the front-end and RTS have code of the form "Type
+      --  like. Both the front-end and RTS have code of the form "Type
       --  (LValue)'Unrestricted_Access" and expect this to produce a
       --  reference to the address of LValue. This code is called in both
       --  the LValue and value case. If we're starting with a reference,
@@ -711,7 +711,7 @@ package body GNATLLVM.Conversions is
             --  (0.5). If the input is strictly negative, subtract this
             --  value and otherwise add it from the input. For 0.5, the
             --  result is exactly between 1.0 and the machine number
-            --  preceding 1.0.  Since the last bit of 1.0 is even, this 0.5
+            --  preceding 1.0. Since the last bit of 1.0 is even, this 0.5
             --  will round to 1.0, while all other number with an absolute
             --  value less than 0.5 round to 0.0. For larger numbers
             --  exactly halfway between integers, rounding will always be

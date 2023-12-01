@@ -85,7 +85,7 @@ package GNATLLVM.Records is
      with Pre  => Nkind (N) in N_Aggregate | N_Extension_Aggregate
                   and then Is_Record_Type (Full_Etype (N)),
           Post => Present (Emit_Record_Aggregate'Result);
-   --  Emit code for a record aggregate at Node.  Result_So_Far, if
+   --  Emit code for a record aggregate at Node. Result_So_Far, if
    --  Present, contain any fields already filled in for the record.
 
    function Find_Matching_Field
@@ -133,8 +133,8 @@ package GNATLLVM.Records is
      with Post => Ekind (F) = Ekind (Ancestor_Field'Result);
    --  Find the parent or ancestor field by walking up both the
    --  Original_Record_Component chain and the
-   --  Corresponding_Record_Component chains.  Only look at records whose
-   --  base types have the same representation as our base type.  Only return
+   --  Corresponding_Record_Component chains. Only look at records whose
+   --  base types have the same representation as our base type. Only return
    --  a parent if there is one, but the ancestor can be the original field.
 
    function Field_Type (F : Record_Field_Kind_Id) return GL_Type
@@ -199,7 +199,7 @@ package GNATLLVM.Records is
    function Align_To
      (V : GL_Value; Cur_Align, Must_Align : Nat) return GL_Value
      with Pre => Present (V), Post => Present (Align_To'Result);
-   --  V is a value aligned to Cur_Align.  Ensure that it's aligned to
+   --  V is a value aligned to Cur_Align. Ensure that it's aligned to
    --  Align_To.
    --  ??? We might be better off getting the current alignment from
    --  V but then we have to properly handle the alignment in the BA_Data
@@ -272,7 +272,7 @@ private
    --  record type points to a Record_Info_Id, which is the start of the
    --  description of the record. Get_Field_Info for each field points to a
    --  Field_Info_Id, which contains information about how to locate that
-   --  field within the record. Record_Info objects are chained.  For
+   --  field within the record. Record_Info objects are chained. For
    --  variant records, we use one chain for the common part of the record
    --  and chain for each variant.
    --
@@ -384,7 +384,7 @@ private
 
       Position         : ULL;
       --  If nonzero, a forced starting position (in bits, but on a byte
-      --  boundary) of this piece.  This can't be set on the first RI for a
+      --  boundary) of this piece. This can't be set on the first RI for a
       --  record.
 
       Next             : Record_Info_Id;
@@ -410,7 +410,7 @@ private
 
       Unused_Bits      : Uint;
       --  The number of unused bits in the last type for this RI, either
-      --  a GNAT type or a bitfield type.  This is only used in the last
+      --  a GNAT type or a bitfield type. This is only used in the last
       --  RI of the chain.
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make

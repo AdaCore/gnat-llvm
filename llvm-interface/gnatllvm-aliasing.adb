@@ -81,7 +81,7 @@ package body GNATLLVM.Aliasing is
    --  which have access types that are UC'ed to each other. If any of
    --  these objects are aggregates, we can't do this because we can't use
    --  the same struct type tag for other than that struct. We also can't
-   --  do this if any objects in the group are of different sizes.  So
+   --  do this if any objects in the group are of different sizes. So
    --  check for that and invalidate the group if so.
 
    type UC_Group_Idx is new Nat;
@@ -120,7 +120,7 @@ package body GNATLLVM.Aliasing is
    --  array subtypes with bounds 1 .. 2 and there may be multiple record
    --  subtypes with the same discriminant value. The front end uses these
    --  subtypes interchangably, so we need to be sure that we use the same
-   --  TBAA type tag for each of them.  To do this, we maintain a list of
+   --  TBAA type tag for each of them. To do this, we maintain a list of
    --  subtypes of a base type for which we've made a TBAA and see if a new
    --  subtype is the same as any of those. The chain is maintained via the
    --  following table (where each entry points to another entry in the
@@ -334,7 +334,7 @@ package body GNATLLVM.Aliasing is
       procedure Add_To_UC
         (STE, TTE : Type_Kind_Id; Valid : in out Boolean);
       --  Make an entry in the UC table showing that STE and TTE are to
-      --  be treated identically.  If we can't do that, clear Valid.
+      --  be treated identically. If we can't do that, clear Valid.
 
       function Check_For_UC (N : Node_Id) return Traverse_Result;
 
@@ -478,9 +478,9 @@ package body GNATLLVM.Aliasing is
 
          begin
             --  If the the target is either the same or a subtype of the
-            --  source, we have nothing to do.  This can happen when we
+            --  source, we have nothing to do. This can happen when we
             --  have two access types to the same underlying type or in
-            --  some subtype cases.  Likewise if the target has been marked
+            --  some subtype cases. Likewise if the target has been marked
             --  for universal aliasing.
 
             if Is_Subtype_For_Aliasing (TDT, SDT)
@@ -491,11 +491,11 @@ package body GNATLLVM.Aliasing is
             --  The most efficient way of dealing with this if the
             --  target is an access type is to set No_Strict_Aliasing on
             --  that type because that will only affect references to the
-            --  designated type via that access type.   The front end has
+            --  designated type via that access type. The front end has
             --  already done that for us in the cases where it can be done
             --  and we've checked for that above.
             --
-            --  The next best option is to make a table entry.  However, we
+            --  The next best option is to make a table entry. However, we
             --  can't do that if this UC is in a body and one of the types
             --  isn't in the same compilation unit.
 
@@ -744,7 +744,7 @@ package body GNATLLVM.Aliasing is
 
    begin
       --  If we're a base type, not an aggregate, or nonnative, return
-      --  ourselves.  Likewise if no subtypes are chained yet.
+      --  ourselves. Likewise if no subtypes are chained yet.
 
       if Is_Full_Base_Type (TE) or else Is_Elementary_Type (TE)
         or else Is_Nonnative_Type (TE) or else No (Tidx)

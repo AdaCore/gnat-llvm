@@ -32,7 +32,7 @@ with CCG; use CCG;
 
 package body GNATLLVM.GLType is
 
-   --  A GL_Type can be of various different kinds.  We list them here.
+   --  A GL_Type can be of various different kinds. We list them here.
 
    type GT_Kind_Type is
      (None,
@@ -932,7 +932,7 @@ package body GNATLLVM.GLType is
 
    function Get_Unused_Bits (GT : GL_Type) return Uint is
    begin
-      --  There are two ways we can have unused bits.  We can have a
+      --  There are two ways we can have unused bits. We can have a
       --  composite type with padding at the end.
 
       return Bits : Uint := Uint_0 do

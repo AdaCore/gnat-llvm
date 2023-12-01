@@ -268,7 +268,7 @@ package body GNATLLVM.Types.Create is
             return Void_Ptr_T;
 
          else
-            --  Access type is the only case left.  We use a void pointer.
+            --  Access type is the only case left. We use a void pointer.
 
             pragma Assert (Is_Access_Type (DT) and then R = Reference);
             return Void_Ptr_T;
@@ -684,7 +684,7 @@ package body GNATLLVM.Types.Create is
       --  By default, the new alignment is the same as the old one
 
    begin
-      --  Find a possibly better place to post an alignment error.  If
+      --  Find a possibly better place to post an alignment error. If
       --  there's an alignment clause, use its expression. However, for
       --  the implicit base type of an array type, the alignment clause is
       --  on the first subtype.

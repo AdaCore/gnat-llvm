@@ -151,7 +151,7 @@ package body GNATLLVM.Variables is
       GT         : GL_Type;
       Definition : Boolean) return GL_Value
      with Pre => Present (GT), Post => Present (Make_Global_Variable'Result);
-   --  Create a global variable for E.  Definition is true if we
+   --  Create a global variable for E. Definition is true if we
    --  are doing this for a declaration.
 
    function Alloca_Smaller_Than
@@ -1219,7 +1219,7 @@ package body GNATLLVM.Variables is
    begin
       --  If this is of a size that allows promotion, promote it to the
       --  entry block by setting our position into that block and returning
-      --  our current position.  Otherwise, nothing to do here.
+      --  our current position. Otherwise, nothing to do here.
 
       if Present (Entry_Block_Allocas)
         and then Alloca_Smaller_Than (T, Elts, Max_Promote_Size)
@@ -1396,7 +1396,7 @@ package body GNATLLVM.Variables is
       --  Here we elaborate everything we deferred above except for package
       --  bodies, which are elaborated at their freeze nodes. Note that we
       --  must also go inside things (package specs and freeze nodes) the
-      --  first pass did.  */
+      --  first pass did.
 
       if Pass2 then
          for J in 1 .. 2 loop
@@ -1925,7 +1925,7 @@ package body GNATLLVM.Variables is
       end if;
 
       --  Object declarations are variables either allocated on the
-      --  stack (local) or global.  For globals, we operate in two phases:
+      --  stack (local) or global. For globals, we operate in two phases:
       --  first we allocate the global itself, which may include some static
       --  initialization, and then do any required dynamic operations,
       --  which may include setting an address, allocating memory from the
@@ -2216,7 +2216,7 @@ package body GNATLLVM.Variables is
                       else Emit_Conversion (Expr, GT));
          end if;
 
-         --  If this is an elementary type, be sure it's a value.  In any
+         --  If this is an elementary type, be sure it's a value. In any
          --  case, if it is a value, use that value for this variable.
 
          if Is_Elementary_Type (GT) then

@@ -371,11 +371,11 @@ package body GNATLLVM.Blocks is
    --  "Exception" address for "others" and special "all others"
 
    Set_Exception_Param_Fn : GL_Value := No_GL_Value;
-   --  Declaration for __gnat_set_exception_parameter.  This can't be
+   --  Declaration for __gnat_set_exception_parameter. This can't be
    --  initialized with the ones above since we need its type.
 
    LCH_Fn            : GL_Value      := No_GL_Value;
-   --  Last-chance handler.  We only initialize this if needed
+   --  Last-chance handler. We only initialize this if needed
 
    type File_GL_Value_Array is
      array (Source_File_Index range <>, Boolean range <>) of GL_Value;
@@ -1272,7 +1272,7 @@ package body GNATLLVM.Blocks is
             end if;
          end loop;
 
-         --  Now generate the dispatch table.  We left off in BB.
+         --  Now generate the dispatch table. We left off in BB.
 
          for J in 1 .. Clauses.Last loop
             Position_Builder_At_End (BB);
@@ -1424,7 +1424,7 @@ package body GNATLLVM.Blocks is
 
    procedure Emit_Reraise is
    begin
-      --  Find the innermost block that has exception data.  Call reraise
+      --  Find the innermost block that has exception data. Call reraise
       --  with that data.
 
       for J in reverse 1 .. Block_Stack.Last loop
@@ -1827,7 +1827,7 @@ package body GNATLLVM.Blocks is
       Cannot_Raise : Boolean := False;
 
    begin
-      --  If there's a condition, test it.  If we have the label case,
+      --  If there's a condition, test it. If we have the label case,
       --  that's all we have to do since it's one of two branches.
 
       if Present (Cond) then

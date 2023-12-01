@@ -62,7 +62,7 @@ package body GNATLLVM.Arrays is
      with Pre  => Nkind (N) in N_Aggregate | N_Extension_Aggregate
                   and then Present (Comp_Type),
           Post => Is_Constant (Emit_Constant_Aggregate'Result);
-   --  N is a constant aggregate.  GT is either the array type (at the
+   --  N is a constant aggregate. GT is either the array type (at the
    --  outer level) or Any_Array (if not). Comp_Type is the underlying
    --  component type of the array, and Dims_Left are the number of dimensions
    --  remaining. Return an LLVM constant including all of the constants
@@ -192,8 +192,8 @@ package body GNATLLVM.Arrays is
         (if No (V) then No_GL_Type else Related_Type (V));
 
    begin
-      --  If only GT is around, use it.  Likewise if V_Type is not an array
-      --  type or not related to GT.  Otherwise, use the type that's
+      --  If only GT is around, use it. Likewise if V_Type is not an array
+      --  type or not related to GT. Otherwise, use the type that's
       --  constrained, preferring V's type, but only if GT is
       --  unconstrained.
 
@@ -1130,9 +1130,9 @@ package body GNATLLVM.Arrays is
       Expr := First (Expressions (N));
       return Cur_Value : GL_Value := Value_So_Far do
 
-         --  If we haven't already made a value, do so now.  If this is
+         --  If we haven't already made a value, do so now. If this is
          --  a loadable type or we have a value, we start with an undef
-         --  of that type.  Otherwise, it's a variable of that type.  We
+         --  of that type. Otherwise, it's a variable of that type. We
          --  already handled the constant case above.
 
          if No (Cur_Value) then
@@ -1614,7 +1614,7 @@ package body GNATLLVM.Arrays is
          Result := Insert_Value
            (LHS, RHS, Idxs_From_GL_Values (Swap_Indices (Idxs, LHS)));
       else
-         --  It's possible at this point that LHS isn't a reference.  This
+         --  It's possible at this point that LHS isn't a reference. This
          --  can happen if we're in a VFA case with a variable index, for
          --  example. Also, if the component is an unconstrained record, we
          --  need to remove padding to be sure that we don't try to read

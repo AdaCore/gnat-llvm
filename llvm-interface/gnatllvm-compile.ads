@@ -56,7 +56,7 @@ package GNATLLVM.Compile is
       LHS        : GL_Value := No_GL_Value;
       For_LHS    : Boolean  := False) return GL_Value
      with Post => Present (Emit_LValue'Result);
-   --  Compile an expression node to an LLVM value that's a reference.  If
+   --  Compile an expression node to an LLVM value that's a reference. If
    --  N corresponds to an LValue in the language, then the result will
    --  also be an LValue. LHS, For_LHS is like for Emit.
 
@@ -82,7 +82,7 @@ package GNATLLVM.Compile is
      (N : N_Subexpr_Id; LHS : GL_Value := No_GL_Value) return GL_Value
      with Post => Present (Emit_Safe_Expr'Result);
    --  Like Emit_Primitive_Expression, but push the LValue pair table
-   --  so we compute this as a safe subexpression.  LHS is like for
+   --  so we compute this as a safe subexpression. LHS is like for
    --  Emit.
 
    function Simple_Value_Action

@@ -1167,7 +1167,7 @@ package body GNATLLVM.GLValue is
 
       end case;
 
-      --  If we reach here, this is case we can't handle.  Return null, which
+      --  If we reach here, this is case we can't handle. Return null, which
       --  will cause our postcondition to fail.
 
       return No_GL_Value;
@@ -2047,7 +2047,7 @@ package body GNATLLVM.GLValue is
 
             --  Since this is an LLVM object, we know that all valid bounds
             --  are within the range of unsigned. But we don't want to get
-            --  a constraint error below if the constant is invalid.  So
+            --  a constraint error below if the constant is invalid. So
             --  test and force to zero (any constant will do since this is
             --  erroneous) in that case.
 

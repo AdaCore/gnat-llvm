@@ -713,14 +713,13 @@ OurLoopPass::run (Loop &L, LoopAnalysisManager &LAM,
 extern "C"
 LLVMBool
 LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
-		      int SizeOptLevel, bool NeedLoopInfo,
-		      bool NoUnrollLoops, bool NoLoopVectorization,
-		      bool NoSLPVectorization, bool MergeFunctions,
-		      bool PrepareForThinLTO, bool PrepareForLTO,
-		      bool RerollLoops, bool EnableFuzzer,
-                      bool EnableAddressSanitizer, const char *PassPluginName,
-                      char** ErrorMessage)
-{
+                      int SizeOptLevel, bool NeedLoopInfo, bool NoUnrollLoops,
+                      bool NoLoopVectorization, bool NoSLPVectorization,
+                      bool MergeFunctions, bool PrepareForThinLTO,
+                      bool PrepareForLTO, bool RerollLoops, bool EnableFuzzer,
+                      bool EnableAddressSanitizer, const char *SanCovAllowList,
+                      const char *SanCovIgnoreList, const char *PassPluginName,
+                      char **ErrorMessage) {
   // This code is derived from EmitAssemblyWithNewPassManager in clang
 
   Optional<PGOOptions> PGOOpt;
@@ -792,7 +791,17 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
           CoverageOpts.PCTable = true;
           if (TargetTriple.isOSLinux())
             CoverageOpts.StackDepth = true;
-          MPM.addPass(ModuleSanitizerCoveragePass(CoverageOpts));
+
+          std::vector<std::string> AllowListFiles;
+          if (SanCovAllowList != nullptr)
+            AllowListFiles.push_back(SanCovAllowList);
+
+          std::vector<std::string> IgnoreListFiles;
+          if (SanCovIgnoreList != nullptr)
+            IgnoreListFiles.push_back(SanCovIgnoreList);
+
+          MPM.addPass(ModuleSanitizerCoveragePass(CoverageOpts, AllowListFiles,
+                                                  IgnoreListFiles));
         }
 
         if (EnableAddressSanitizer) {

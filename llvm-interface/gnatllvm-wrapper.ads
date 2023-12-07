@@ -316,6 +316,8 @@ package GNATLLVM.Wrapper is
       Reroll_Loops             : Boolean;
       Enable_Fuzzer            : Boolean;
       Enable_Address_Sanitizer : Boolean;
+      San_Cov_Allow_List       : String_Access;
+      San_Cov_Ignore_List      : String_Access;
       Pass_Plugin_Name         : String_Access;
       Error_Message            : System.Address) return Boolean;
    --  Perform optimizations on the module. The function's interface mimics our

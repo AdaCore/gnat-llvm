@@ -357,9 +357,14 @@ package body GNATLLVM.Wrapper is
       Reroll_Loops             : Boolean;
       Enable_Fuzzer            : Boolean;
       Enable_Address_Sanitizer : Boolean;
+      San_Cov_Allow_List       : String_Access;
+      San_Cov_Ignore_List      : String_Access;
       Pass_Plugin_Name         : String_Access;
       Error_Message            : System.Address) return Boolean
    is
+      function Maybe_To_C (S : String_Access) return chars_ptr
+      is (if S = null then Null_Ptr else New_String (S.all));
+
       function LLVM_Optimize_Module_C
         (Module                   : Module_T;
          Target_Machine           : Target_Machine_T;
@@ -375,6 +380,8 @@ package body GNATLLVM.Wrapper is
          Reroll_Loops             : LLVM_Bool;
          Enable_Fuzzer            : LLVM_Bool;
          Enable_Address_Sanitizer : LLVM_Bool;
+         San_Cov_Allow_List       : chars_ptr;
+         San_Cov_Ignore_List      : chars_ptr;
          Pass_Plugin_Name         : chars_ptr;
          Error_Message            : System.Address) return LLVM_Bool
         with Import, Convention => C, External_Name => "LLVM_Optimize_Module";
@@ -392,21 +399,22 @@ package body GNATLLVM.Wrapper is
       Fuzzer_B         : constant LLVM_Bool := Boolean'Pos (Enable_Fuzzer);
       ASan_B           : constant LLVM_Bool :=
         Boolean'Pos (Enable_Address_Sanitizer);
-      Pass_PN_Ptr      : chars_ptr :=
-        (if Pass_Plugin_Name = null then
-            Null_Ptr
-         else
-            New_String (Pass_Plugin_Name.all));
+      Pass_PN_Ptr      : chars_ptr          := Maybe_To_C (Pass_Plugin_Name);
+      Allow_List_Ptr   : chars_ptr          :=
+        Maybe_To_C (San_Cov_Allow_List);
+      Ignore_List_Ptr  : chars_ptr          :=
+        Maybe_To_C (San_Cov_Ignore_List);
       Result           : LLVM_Bool;
 
    begin
       Result :=
-        LLVM_Optimize_Module_C (Module, Target_Machine,
-                                Code_Opt_Level, Size_Opt_Level,
-                                Need_Loop_Info_B, No_Unroll_B, No_Loop_Vect_B,
-                                No_SLP_Vect_B, Merge_B, Thin_LTO_B, LTO_B,
-                                Reroll_B, Fuzzer_B, ASan_B, Pass_PN_Ptr,
-                                Error_Message);
+        LLVM_Optimize_Module_C
+          (Module, Target_Machine, Code_Opt_Level, Size_Opt_Level,
+           Need_Loop_Info_B, No_Unroll_B, No_Loop_Vect_B, No_SLP_Vect_B,
+           Merge_B, Thin_LTO_B, LTO_B, Reroll_B, Fuzzer_B, ASan_B,
+           Allow_List_Ptr, Ignore_List_Ptr, Pass_PN_Ptr, Error_Message);
+      Free (Allow_List_Ptr);
+      Free (Ignore_List_Ptr);
       Free (Pass_PN_Ptr);
       return Result /= 0;
    end LLVM_Optimize_Module;

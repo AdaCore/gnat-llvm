@@ -342,6 +342,35 @@ package body GNATLLVM.Codegen is
                Current_Start := Current_End + 2;
             end loop;
          end;
+
+      elsif Starts_With (S, "-fsanitize-coverage-allowlist=") then
+         declare
+            Name : constant String :=
+              Switch_Value (S, "-fsanitize-coverage-allowlist=");
+
+         begin
+            if not Is_Regular_File (Name) then
+               Early_Error ("allow list file not found: " & Name);
+            end if;
+
+            To_Free            := San_Cov_Allow_List;
+            San_Cov_Allow_List := new String'(Name);
+         end;
+
+      elsif Starts_With (S, "-fsanitize-coverage-ignorelist=") then
+         declare
+            Name : constant String :=
+              Switch_Value (S, "-fsanitize-coverage-ignorelist=");
+
+         begin
+            if not Is_Regular_File (Name) then
+               Early_Error ("ignore list file not found: " & Name);
+            end if;
+
+            To_Free             := San_Cov_Ignore_List;
+            San_Cov_Ignore_List := new String'(Name);
+         end;
+
       elsif S = "-mdso-preemptable" then
          DSO_Preemptable := True;
       elsif S = "-mdso-local" then
@@ -720,6 +749,8 @@ package body GNATLLVM.Codegen is
                Reroll_Loops             => Reroll_Loops,
                Enable_Fuzzer            => Enable_Fuzzer,
                Enable_Address_Sanitizer => Enable_Address_Sanitizer,
+               San_Cov_Allow_List       => San_Cov_Allow_List,
+               San_Cov_Ignore_List      => San_Cov_Ignore_List,
                Pass_Plugin_Name         => Pass_Plugin_Name,
                Error_Message            => Err_Msg'Address)
             then

@@ -88,8 +88,10 @@ package GNATLLVM.Codegen is
    Pass_Plugin_Name        : String_Access := null;
    --  Switch options for optimization
 
-   Enable_Fuzzer            : Boolean := False;
-   Enable_Address_Sanitizer : Boolean := False;
+   Enable_Fuzzer            : Boolean       := False;
+   Enable_Address_Sanitizer : Boolean       := False;
+   San_Cov_Allow_List       : String_Access := null;
+   San_Cov_Ignore_List      : String_Access := null;
    --  Sanitizer options (including the fuzzer, which implies coverage
    --  sanitizer)
 

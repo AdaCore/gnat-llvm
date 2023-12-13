@@ -897,11 +897,11 @@ package body CCG.Subprograms is
       --  Handle the builtins we created for or else / and then
 
       elsif Matches (S, "ccg.orelse") then
-         Assignment (V, TP ("#1 || #2", Op1, Op2),
+         Assignment (V, TP ("#1 || #2", Op1, Op2) + Logical_OR,
                      Is_Opencode_Builtin => True);
          return True;
       elsif Matches (S, "ccg.andthen") then
-         Assignment (V, TP ("#1 && #2", Op1, Op2),
+         Assignment (V, TP ("#1 && #2", Op1, Op2) + Logical_AND,
                      Is_Opencode_Builtin => True);
          return True;
 

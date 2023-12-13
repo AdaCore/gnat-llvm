@@ -638,6 +638,9 @@ package body GNATLLVM.Codegen is
       Set_Target             (Module, Normalized_Target_Triple.all);
       Set_Module_Data_Layout (Module, Module_Data_Layout);
 
+      Set_Target             (Convert_Module, Normalized_Target_Triple.all);
+      Set_Module_Data_Layout (Convert_Module, Module_Data_Layout);
+
       if PIC_Level > 0 then
          Set_Module_PIC_PIE (Module, PIC_Level, PIE_Level);
       end if;

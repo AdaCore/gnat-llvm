@@ -831,9 +831,10 @@ package body GNATLLVM.Types is
               (if   Is_Pointer (Alloc_R)
                then Ptr_To_Int (Alloc_R, Size_GL_Type) else Alloc_R);
             Aligned    : constant GL_Value :=
-              Align_To (Alloc + To_Bytes (Ptr_Size),
+              Align_To (Address_Add (Alloc, To_Bytes (Ptr_Size)),
                         Get_System_Allocator_Alignment, To_Bytes (Align));
-            Ptr_Loc    : constant GL_Value := Aligned - To_Bytes (Ptr_Size);
+            Ptr_Loc    : constant GL_Value :=
+              Address_Sub (Aligned, To_Bytes (Ptr_Size));
 
          begin
             --  It may have been the case that Size didn't oveflow until

@@ -1035,6 +1035,9 @@ package GNATLLVM.Instructions is
      with Pre  => Is_Address (Ptr) and then Is_Integer_Type (Offset),
           Post => Is_Address (Address_Add'Result);
 
+   function Address_Sub (Ptr, Offset : GL_Value) return GL_Value is
+     (Address_Add (Ptr, -Offset));
+
    function Landing_Pad
      (T                : Type_T;
       Personality_Func : GL_Value;

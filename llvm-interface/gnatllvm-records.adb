@@ -935,16 +935,34 @@ package body GNATLLVM.Records is
       (if Is_Const (O) then N else Var_IDS);
 
    --  Here we instantiate the size routines with functions that compute
-   --  the LLVM value the size and make those visible to clients.
+   --  the LLVM value the size and make those visible to clients. Since the
+   --  addition and subtraction functions as well as binary "and" can be
+   --  called with both addresses and integers, we define wrappers that
+   --  either call our abstractions for address arithmetic or directly
+   --  generate code for regular integer operations.
+
+   function Address_Or_Integer_Add (V1, V2 : GL_Value) return GL_Value is
+     (if Is_Address (V1) then Address_Add (V1, V2) else V1 + V2);
+
+   function Address_Or_Integer_Sub (V1, V2 : GL_Value) return GL_Value is
+     (if Is_Address (V1) then Address_Sub (V1, V2) else V1 - V2);
+
+   function Address_Or_Integer_And
+     (V1, V2 : GL_Value; Name : String := "") return GL_Value
+   is
+     (if Tagged_Pointers and then Is_Address (V1) then
+        Set_Pointer_Address
+          (V1, Build_And (Get_Pointer_Address (V1), V2, Name))
+      else Build_And (V1, V2, Name));
 
    package LLVM_Size is
       new Size (Result                  => GL_Value,
                 No_Result               => No_GL_Value,
                 Size_Const_Int          => Size_Const_Int,
-                "+"                     => "+",
-                "-"                     => "-",
+                "+"                     => Address_Or_Integer_Add,
+                "-"                     => Address_Or_Integer_Sub,
                 Neg                     => Neg,
-                Build_And               => Build_And,
+                Build_And               => Address_Or_Integer_And,
                 Build_Max               => Build_Max,
                 Is_A_Constant_Int       => Is_A_Constant_Int,
                 Get_Const_Int_Value_ULL => Get_Const_Int_Value_ULL,

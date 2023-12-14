@@ -894,6 +894,23 @@ package body CCG.Subprograms is
                      Is_Opencode_Builtin => True);
          return True;
 
+      --  Handle copysign. We could do this by calling the library
+      --  function, but that would add complexity to the user's
+      --  build. Doing this as a conditional is equivalent except for
+      --  signed zeros and obscure cases involving NaNs and it appears that
+      --  LLVM doesn't generate this builtin in most of those cases. If
+      --  this ever becomes no longer true and it becomes an issue, we may
+      --  need to add a switch that forces exact FP semantics and makes
+      --  the library call.
+
+      elsif Matches (S, "copysign") then
+         Force_To_Variable (Op1);
+         Force_To_Variable (Op2);
+         Assignment (V, TP ("(#1 >= 0) == (#2 >= 0) ? #1 : - #1", Op1, Op2)
+                       + Conditional,
+                     Is_Opencode_Builtin => True);
+         return True;
+
       --  Handle the builtins we created for or else / and then
 
       elsif Matches (S, "ccg.orelse") then

@@ -263,7 +263,9 @@ package body GNATLLVM.GLValue is
       --  If this is a pointer to an object, we can use the alignment of
       --  the type of the object.
 
-      elsif Deref (R) in Data | Bounds | Bounds_And_Data then
+      elsif R = Thin_Pointer or
+        else Deref (R) in Data | Bounds | Bounds_And_Data
+      then
          Align := Get_Type_Alignment (Default_GL_Type (V));
 
       --  If it's Data but an access type, get the alignment of the

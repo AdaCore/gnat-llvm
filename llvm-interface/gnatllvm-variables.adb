@@ -867,6 +867,10 @@ package body GNATLLVM.Variables is
                                              Restrict_Types => Our_RT)
               --  If either side needs an elab proc, we do
 
+              or else (Tagged_Pointers and then Is_Address (GT))
+              --  If this is arithmetic on tagged pointers, we need an elab
+              --  proc to create a valid pointer result.
+
               or else (Do_Overflow_Check (N)
                          and then Overflowed (Emit_No_Error (N)))
               --  If we're to check for overflow, this needs an elab proc

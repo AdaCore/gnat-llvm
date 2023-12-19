@@ -124,6 +124,42 @@ package body CCG.Subprograms is
    --  Return a string corresponding to the return type of T, adjusting the
    --  type in the case where it's an array.
 
+   function Matches
+     (S, Name : String; Exact : Boolean := False) return Boolean
+   is
+     (S'Length >= Name'Length + 5
+        and then (not Exact or else S'Length = Name'Length + 5)
+        and then S (S'First + 5 .. S'First + Name'Length + 4) = Name);
+   --  True iff the string Name is present starting at position 5 of S
+   --  (after "llvm."). If Exact is true, there must be nothing following
+   --  Name in S.
+
+   type Arithmetic_Operation is (Add, Subtract, Multiply);
+
+   function Op_With_Overflow
+     (V    : Value_T;
+      Ops  : Value_Array;
+      S    : String;
+      Arit : Arithmetic_Operation) return Boolean
+     with Pre => Present (V) and then Ops'Length >= 2;
+   --  Handle an arithmetic operation with overflow. Return True if we're able
+   --  to process this builtin.
+
+   Overflow_Declared : array (Arithmetic_Operation) of Boolean :=
+     (others => False);
+
+   function Memory_Operation
+     (V : Value_T; Ops : Value_Array; S : String) return Boolean
+     with Pre => Present (V) and then Ops'Length >= 3;
+   --  Process memcpy, memmove, and memset. Return True if we're able to
+   --  process this builtin.
+
+   function Funnel_Shift
+     (V : Value_T; Ops : Value_Array; Left : Boolean) return Boolean
+     with Pre => Present (V) and then Ops'Length >= 3;
+   --  Process a left or right funnel shift builtin. Return True if we're
+   --  able to process this builtin
+
    ------------------------------
    -- Delete_From_Source_Order --
    ------------------------------
@@ -673,42 +709,6 @@ package body CCG.Subprograms is
          Assignment (V, Call);
       end if;
    end Call_Instruction;
-
-   function Matches
-     (S, Name : String; Exact : Boolean := False) return Boolean
-   is
-     (S'Length >= Name'Length + 5
-        and then (not Exact or else S'Length = Name'Length + 5)
-        and then S (S'First + 5 .. S'First + Name'Length + 4) = Name);
-   --  True iff the string Name is present starting at position 5 of S
-   --  (after "llvm."). If Exact is true, there must be nothing following
-   --  Name in S.
-
-   type Arithmetic_Operation is (Add, Subtract, Multiply);
-
-   function Op_With_Overflow
-     (V    : Value_T;
-      Ops  : Value_Array;
-      S    : String;
-      Arit : Arithmetic_Operation) return Boolean
-     with Pre => Present (V) and then Ops'Length >= 2;
-   --  Handle an arithmetic operation with overflow. Return True if we're able
-   --  to process this builtin.
-
-   Overflow_Declared : array (Arithmetic_Operation) of Boolean :=
-     (others => False);
-
-   function Memory_Operation
-     (V : Value_T; Ops : Value_Array; S : String) return Boolean
-     with Pre => Present (V) and then Ops'Length >= 3;
-   --  Process memcpy, memmove, and memset. Return True if we're able to
-   --  process this builtin.
-
-   function Funnel_Shift
-     (V : Value_T; Ops : Value_Array; Left : Boolean) return Boolean
-     with Pre => Present (V) and then Ops'Length >= 3;
-   --  Process a left or right funnel shift builtin. Return True if we're
-   --  able to process this builtin
 
    ----------------------
    -- Op_With_Overflow --

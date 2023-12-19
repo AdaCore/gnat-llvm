@@ -158,7 +158,12 @@ package body CCG.Subprograms is
      (V : Value_T; Ops : Value_Array; Left : Boolean) return Boolean
      with Pre => Present (V) and then Ops'Length >= 3;
    --  Process a left or right funnel shift builtin. Return True if we're
-   --  able to process this builtin
+   --  able to process this builtin.
+
+   function Bit_Byte_Reverse
+     (V : Value_T; Op : Value_T; Is_Byte : Boolean) return Str
+     with Pre => Present (V) and then Present (Op);
+   --  Process a bitreverse or byte swap builtin
 
    ------------------------------
    -- Delete_From_Source_Order --
@@ -803,6 +808,56 @@ package body CCG.Subprograms is
 
    end Funnel_Shift;
 
+   ----------------------
+   -- Bit_Byte_Reverse --
+   ----------------------
+
+   function Bit_Byte_Reverse
+     (V : Value_T; Op : Value_T; Is_Byte : Boolean) return Str
+   is
+      Width     : constant Nat := Get_Scalar_Bit_Size (Type_Of (V));
+      Part_Size : constant Nat := (if Is_Byte then BPU else 1);
+      Mask      : constant Nat := 2 ** Integer (Part_Size) - 1;
+
+   begin
+
+      --  We generate Width / Part operations whose results are "or"ed
+      --  together. Each can be written as one or more shifts with an
+      --  "and".  The simplest way to code this, which avoids having to be
+      --  concerned about large constants or signedness, is to shift the part
+      --  (bit or byte) to the low-order bit(s), mask it to a bit or byte,
+      --  and shift it back.
+
+      return Result : Str := +"" do
+         for J in 0 .. Width / Part_Size - 1 loop
+            declare
+               Initial_Pos : constant Nat := Width - (J + 1) * Part_Size;
+               Desired_Pos : constant Nat := J * Part_Size;
+               Piece : Str := +Op;
+
+            begin
+               --  If this isn't at the low-order location, move it there
+
+               if Initial_Pos /= 0 then
+                  Piece := Piece + Shift & " >> " & Initial_Pos;
+               end if;
+
+               --  Now do the mask and put it where we want it, if not
+               --  already there.
+
+               Piece := Piece + Bit & " & " & Mask;
+               if Desired_Pos /= 0 then
+                  Piece := Piece + Shift & " << " & Desired_Pos;
+               end if;
+
+               --  Finally, add this piece to the result
+
+               Result := Result + Bit & (if J /= 0 then " | " else "") & Piece;
+            end;
+         end loop;
+      end return;
+   end Bit_Byte_Reverse;
+
    -----------------------
    --  Memory_Operation --
    -----------------------
@@ -921,6 +976,15 @@ package body CCG.Subprograms is
       elsif Matches (S, "ccg.andthen") then
          Assignment (V, TP ("#1 && #2", Op1, Op2) + Logical_AND,
                      Is_Opencode_Builtin => True);
+         return True;
+
+      --  Handle bitreverse and bswap builtins
+
+      elsif (Matches (S, "bswap") or else Matches (S, "bitreverse"))
+        and then Ops'Length = 2 and then Is_Integral_Type (Op1)
+      then
+         Force_To_Variable (V);
+         Assignment (V, Bit_Byte_Reverse (V, Op1, Matches (S, "bswap")));
          return True;
 
       --  Handle the builtin for annotations

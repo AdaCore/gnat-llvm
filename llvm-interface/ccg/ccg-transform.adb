@@ -173,8 +173,9 @@ package body CCG.Transform is
 
       function Is_Return_Phi (V : Value_T) return Boolean
         with Pre => Is_APHI_Node (V);
-      --  Return True if V is a Phi instruction that's only used in a Return
-      --  instruction.
+      --  Return True if V is a Phi instruction that's only used in a
+      --  Return instruction and whose basic block contains just Phis and
+      --  the Return.
 
       BB         : Basic_Block_T := Get_First_Basic_Block (V);
       Alloca_Loc : Value_T       :=
@@ -248,6 +249,7 @@ package body CCG.Transform is
 
       function Is_Return_Phi (V : Value_T) return Boolean is
          User : constant Value_T := Single_User (V);
+         Inst : Value_T := V;
 
       begin
          --  The optimizer sometimes creates a Phi just to merge returns.
@@ -255,10 +257,30 @@ package body CCG.Transform is
          --  the return. So check for a Phi that's just used once and for a
          --  return. For simplicity, do this only if it's the first Phi
          --  (which it should be) and don't do this for array types, since
-         --  they can't be directly returned in C.
+         --  they can't be directly returned in C. It also must be in the same
+         --  basic block as the Phi.
 
-         return Present (User) and then Get_Opcode (User) = Op_Ret
-           and then not Is_Array_Type (V);
+         if No (User) or else Get_Opcode (User) /= Op_Ret
+           or else Is_Array_Type (V)
+           or else Get_Instruction_Parent (V) /= Get_Instruction_Parent (User)
+         then
+            return False;
+         end if;
+
+         --  Now see if we run into something that's not a Phi before we
+         --  hit the return.
+
+         while Present (Inst) and then Inst /= User loop
+            if not Is_APHI_Node (Inst) then
+               return False;
+            end if;
+
+            Inst := Get_Next_Instruction (Inst);
+         end loop;
+
+         --  Otherwise, it's a return Phi
+
+         return True;
       end Is_Return_Phi;
 
    begin -- Start of processing for Eliminate_Phis

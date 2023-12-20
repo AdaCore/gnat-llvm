@@ -1055,11 +1055,13 @@ package body CCG.Subprograms is
             Write_Eol;
          end if;
 
-         --  Now write out the statements for the subprogram
+         --  Now write out the statements for the subprogram, if any
 
-         for Idx in SD.First_Stmt .. SD.Last_Stmt loop
-            Write_C_Line (Idx);
-         end loop;
+         if Present (SD.First_Stmt) then
+            for Idx in SD.First_Stmt .. SD.Last_Stmt loop
+               Write_C_Line (Idx);
+            end loop;
+         end if;
 
          --  Finally, write the closing brace. We have to do it this
          --  way rather than using End_Output_Block because we can't

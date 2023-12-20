@@ -98,11 +98,6 @@ package body CCG.Transform is
    --  If Do_Nothing is True, don't actually make any change, just indicate
    --  whether such a change can be made.
 
-   function Is_Return_Phi (V : Value_T) return Boolean
-     with Pre => Is_APHI_Node (V);
-   --  Return True if V is a Phi instruction that's only used in a Return
-   --  instruction.
-
    function Is_Only_Condition (BB : Basic_Block_T) return Boolean
      with Pre => Present (BB);
    --  Returns True if every instruction in the basic block is used
@@ -173,6 +168,13 @@ package body CCG.Transform is
       function Phi_Value (V : Value_T; From_BB : Basic_Block_T) return Value_T
         with Pre  => Is_APHI_Node (V) and then Present (From_BB),
              Post => Type_Of (V) = Type_Of (Phi_Value'Result);
+      --  Return the value of V, a Phi node, that's active when branched yto
+      --  by From_BB.
+
+      function Is_Return_Phi (V : Value_T) return Boolean
+        with Pre => Is_APHI_Node (V);
+      --  Return True if V is a Phi instruction that's only used in a Return
+      --  instruction.
 
       BB         : Basic_Block_T := Get_First_Basic_Block (V);
       Alloca_Loc : Value_T       :=
@@ -239,6 +241,25 @@ package body CCG.Transform is
             end loop;
          end return;
       end Phi_Value;
+
+      -------------------
+      -- Is_Return_Phi --
+      -------------------
+
+      function Is_Return_Phi (V : Value_T) return Boolean is
+         User : constant Value_T := Single_User (V);
+
+      begin
+         --  The optimizer sometimes creates a Phi just to merge returns.
+         --  When generating C, we want to undo that and prefer to generate
+         --  the return. So check for a Phi that's just used once and for a
+         --  return. For simplicity, do this only if it's the first Phi
+         --  (which it should be) and don't do this for array types, since
+         --  they can't be directly returned in C.
+
+         return Present (User) and then Get_Opcode (User) = Op_Ret
+           and then not Is_Array_Type (V);
+      end Is_Return_Phi;
 
    begin -- Start of processing for Eliminate_Phis
 
@@ -522,25 +543,6 @@ package body CCG.Transform is
       end if;
 
    end Negate_Condition;
-
-   -------------------
-   -- Is_Return_Phi --
-   -------------------
-
-   function Is_Return_Phi (V : Value_T) return Boolean is
-      User : constant Value_T := Single_User (V);
-
-   begin
-      --  The optimizer sometimes creates a Phi just to merge returns.
-      --  When generating C, we want to undo that and prefer to generate
-      --  the return. So check for a Phi that's just used once and for a
-      --  return. For simplicity, do this only if it's the first Phi (which
-      --  it should be) and don't do this for array types, since they can't
-      --  be directly returned in C.
-
-      return Present (User) and then Get_Opcode (User) = Op_Ret
-        and then not Is_Array_Type (V);
-   end Is_Return_Phi;
 
    ----------------------------
    -- Has_Unique_Predecessor --

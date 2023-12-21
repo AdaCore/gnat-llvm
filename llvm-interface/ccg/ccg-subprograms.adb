@@ -949,6 +949,12 @@ package body CCG.Subprograms is
          Assignment (V, TP ("#1 < #2 ? #1 : #2", Op1, Op2) + Conditional,
                      Is_Opencode_Builtin => True);
          return True;
+      elsif Matches (S, "usub.sat") then
+         Force_To_Variable (Op1);
+         Force_To_Variable (Op2);
+         Assignment (V, TP ("#2 > #1 ? 0 : #1 - #2", Op1, Op2) + Conditional,
+                     Is_Opencode_Builtin => True);
+         return True;
 
       --  Handle copysign. We could do this by calling the library
       --  function, but that would add complexity to the user's

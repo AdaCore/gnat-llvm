@@ -557,9 +557,17 @@ package body CCG.Instructions is
          Force_To_Variable (Op3);
       end if;
 
-      --  Now generate the C conditional operation
+      --  If we have a pointer type, it's possible that the two pointers
+      --  point to something that differs in signedness, so we need to cast
+      --  both to the same signedness.
+      --  ??? When we support opaque pointer and track what something
+      --  points to, we'll be able to do better here.
 
-      return TP ("#1 ? #2 : #3", Op1, Op2, Op3) + Conditional;
+      if Is_Pointer_Type (Op2) then
+         return TP ("#1 ? (#T2) #2 : (#T2) #3", Op1, Op2, Op3) + Conditional;
+      else
+         return TP ("#1 ? #2 : #3", Op1, Op2, Op3) + Conditional;
+      end if;
    end Select_Instruction;
 
    ------------------------

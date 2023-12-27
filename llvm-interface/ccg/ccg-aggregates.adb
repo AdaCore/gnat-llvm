@@ -167,16 +167,17 @@ package body CCG.Aggregates is
       elsif not Is_Packed_Struct (T) or else Num_Types = 0 then
          return Padding;
 
+      --  If the user asked to prefer packing, do so
+
+      elsif Prefer_Packed then
+         Need_Pack := True;
+
       --  ??? For now, if optimizing, we need to include padding
       --  fields since LLVM's SROA may try to preserve padding fields.
 
       elsif Code_Opt_Level > 0 then
          Need_Pad := True;
 
-      --  If the user asked to prefer packing, do so
-
-      elsif Prefer_Packed then
-         Need_Pack := True;
       end if;
 
       --  Now we look at the position of each field relative to its default

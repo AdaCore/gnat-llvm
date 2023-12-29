@@ -928,33 +928,73 @@ package body CCG.Subprograms is
       elsif Matches (S, "memset") then
          return Memory_Operation (V, Ops, "memset");
 
-      --  Handle the arithmetic functions. Once we force to a variable, the
-      --  signedness is known, so the signed and unsigned versions of min
-      --  and max are the same C code.
+      --  For min and max, we have to make sure that the operands are the
+      --  right signedness. Even though we're forcing the operands to
+      --  variables (to avoid side-effects), the LLVM optimizer may choose
+      --  to generate a signed min/max for a variable that's used as unsigned
+      --  and vice versa.
+
+      elsif Matches (S, "smax") or else Matches (S, "umax")
+        or else Matches (S, "smin") or else Matches (S, "umin")
+      then
+         declare
+            POO    : constant Process_Operand_Option :=
+              (if Matches (S, "umin") or else Matches (S, "umax")
+               then POO_Unsigned else POO_Signed);
+            Is_Max : constant Boolean :=
+              Matches (S, "smax") or else Matches (S, "umax");
+
+         begin
+            Force_To_Variable (Op1);
+            Force_To_Variable (Op2);
+            Assignment (V,
+                        Process_Operand (Op1, POO, Conditional) &
+                        (if Is_Max then " > " else " < ") &
+                        Process_Operand (Op2, POO, Conditional) &
+                        " ? " & Op1 & " : " & Op2 + Conditional,
+                        Is_Opencode_Builtin => True);
+            return True;
+         end;
+
+      --  abs is simple, but we have to be sure that we do a signed operation
 
       elsif Matches (S, "abs") then
          Force_To_Variable (Op1);
-         Assignment (V, TP ("#1 >= 0 ? #1 : - #1", Op1) + Conditional,
-                     Is_Opencode_Builtin => True);
-         return True;
-      elsif Matches (S, "smax") or else Matches (S, "umax") then
-         Force_To_Variable (Op1);
-         Force_To_Variable (Op2);
-         Assignment (V, TP ("#1 > #2 ? #1 : #2", Op1, Op2) + Conditional,
-                     Is_Opencode_Builtin => True);
-         return True;
-      elsif Matches (S, "smin") or else Matches (S, "umin") then
-         Force_To_Variable (Op1);
-         Force_To_Variable (Op2);
-         Assignment (V, TP ("#1 < #2 ? #1 : #2", Op1, Op2) + Conditional,
-                     Is_Opencode_Builtin => True);
-         return True;
+
+         declare
+            Str1 : constant Str :=
+              Process_Operand (Op1, POO_Signed, Conditional);
+
+         begin
+            Assignment (V,
+                        Str1 & " >= 0 ? " & Str1 & " : - " &
+                        Str1 + Conditional,
+                        Is_Opencode_Builtin => True);
+            return True;
+         end;
+
+      --  The only saturating arithmetic we've seen the LLVM optimizer
+      --  generate so far is unsigned subtraction, so that's all we support
+      --  at the moment. But we have to be sure the operands are the proper
+      --  signedness for the comparison.
+
       elsif Matches (S, "usub.sat") then
          Force_To_Variable (Op1);
          Force_To_Variable (Op2);
-         Assignment (V, TP ("#2 > #1 ? 0 : #1 - #2", Op1, Op2) + Conditional,
-                     Is_Opencode_Builtin => True);
-         return True;
+
+         declare
+            Str1 : constant Str :=
+              Process_Operand (Op1, POO_Unsigned, Conditional);
+            Str2 : constant Str :=
+              Process_Operand (Op2, POO_Unsigned, Conditional);
+
+         begin
+            Assignment (V,
+                        Str2 & " > " & Str1 & " ? 0 : " & Str1 & " - " &
+                        Str2 + Conditional,
+                        Is_Opencode_Builtin => True);
+            return True;
+         end;
 
       --  Handle copysign. We could do this by calling the library
       --  function, but that would add complexity to the user's

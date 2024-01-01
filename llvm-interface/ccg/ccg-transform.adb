@@ -317,6 +317,7 @@ package body CCG.Transform is
          for J in Nat range 0 .. Get_Num_Successors (Inst) - 1 loop
             declare
                Dest_BB     : constant Basic_Block_T := Get_Successor (Inst, J);
+               Inst_Erased : Boolean                := False;
                Insert_BB   : Basic_Block_T          := BB;
                Dest_Inst   : Value_T                :=
                  Get_First_Instruction (Dest_BB);
@@ -350,6 +351,7 @@ package body CCG.Transform is
 
                      if Is_Unc_Br (Inst) then
                         Instruction_Erase_From_Parent (Inst);
+                        Inst_Erased := True;
                      end if;
 
                      --  If we have nested phi nodes, it's possible that
@@ -392,7 +394,9 @@ package body CCG.Transform is
 
                --  Now possibly update our successor
 
-               if not Is_Unc_Br (Inst) and then Insert_BB /= BB then
+               if not Inst_Erased and then not Is_Unc_Br (Inst)
+                 and then Insert_BB /= BB
+               then
                   Set_Successor (Inst, J, Insert_BB);
                end if;
             end;
@@ -723,11 +727,11 @@ package body CCG.Transform is
       Call_Inst   : Value_T;
 
    begin
-      --  Delete the present terminator from the current basic block and
-      --  all instructions other than the terminator from our other basic
-      --  block.
+      --  Remove the present terminator from the current basic block and
+      --  move all instructions other than the terminator from our other
+      --  basic block.
 
-      Instruction_Erase_From_Parent (Our_Term);
+      Instruction_Remove_From_Parent (Our_Term);
       while Inst /= SC_Term loop
          Next_Inst := Get_Next_Instruction (Inst);
          Instruction_Remove_From_Parent (Inst);
@@ -737,13 +741,14 @@ package body CCG.Transform is
 
       --  Now add the or else / and or builtin call, change the condition
       --  of our other block's terminator to it, move that one as well,
-      --  and delete the other basic block.
+      --  and delete our terminator and the other basic block.
 
       Call_Inst := Create_Call_2 (Fn, Our_Cond, Get_Last_Instruction (BB));
       Insert_At_Block_End (Call_Inst, BB, Our_Term);
       Set_Condition (SC_Term, Call_Inst);
       Instruction_Remove_From_Parent (SC_Term);
       Insert_At_Block_End (SC_Term, BB, SC_Term);
+      Delete_Instruction (Our_Term);
       Delete_Basic_Block (SC_BB);
 
    end Make_Short_Circuit_Op;

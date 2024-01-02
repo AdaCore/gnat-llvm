@@ -351,6 +351,10 @@ package body CCG.Flow is
      with Pre => Present (L) and then Present (R);
    --  Return whether L is before R in the sort order for case values
 
+   procedure Maybe_Delete_Default (Idx : Flow_Idx)
+   with Pre => Present (Idx);
+   --  Remove any default case that has no target
+
    procedure Swap_Cases (L, R : Case_Idx)
      with Pre => Present (L) and then Present (R);
    --  Swap the contents of L and R in the case table
@@ -1062,6 +1066,31 @@ package body CCG.Flow is
       end if;
    end Case_Before;
 
+   --------------------------
+   -- Maybe_Delete_Default --
+   --------------------------
+
+   procedure Maybe_Delete_Default (Idx : Flow_Idx) is
+   begin
+      --  If our last part is a default case with no target, delete it.
+      --  If that's all that's left, show we don't have any case parts.
+      --  But be careful that there aren't any previous parts that have
+      --  the same target as the one we plan to delete and don't actually
+      --  delete it in that case.
+
+      if Present (Last_Case (Idx)) and then No (Value (Last_Case (Idx)))
+        and then No (Target (Last_Case (Idx)))
+      then
+         if First_Case (Idx) = Last_Case (Idx) then
+            Set_Case_Expr  (Idx, No_Str);
+            Set_First_Case (Idx, Empty_Case_Idx);
+            Set_Last_Case  (Idx, Empty_Case_Idx);
+         elsif not Is_Same_As_Next (Last_Case (Idx) - 1) then
+            Set_Last_Case (Idx, Last_Case (Idx) - 1);
+         end if;
+      end if;
+   end Maybe_Delete_Default;
+
    ----------------
    -- Swap_Cases --
    ----------------
@@ -1313,14 +1342,17 @@ package body CCG.Flow is
 
    procedure Factor_One_Case (Idx : Flow_Idx) is
    begin
+      Maybe_Delete_Default (Idx);
+
       --  If this doesn't have any "case" parts, we have nothing to do
 
       if No (Case_Expr (Idx)) then
          return;
 
       --  If we haven't we haven't set a Next, do so from our last clause
+      --  if it has a target.
 
-      elsif No (Next (Idx)) then
+      elsif No (Next (Idx)) and then Present (Target (Last_Case (Idx))) then
          declare
             New_Idx : constant Flow_Idx :=
               Replace_Target (Last_Case (Idx), Empty_Flow_Idx);
@@ -1337,23 +1369,7 @@ package body CCG.Flow is
          Remove_Use (Replace_Target (Cidx, Next (Idx)));
       end loop;
 
-      --  If our last part is a default case with no target, delete it.
-      --  If that's all that's left, show we don't have any case parts.
-      --  But be careful that there aren't any previous parts that have
-      --  the same target as the one we plan to delete and don't actually
-      --  delete it in that case.
-
-      if No (Value (Last_Case (Idx)))
-        and then No (Target (Last_Case (Idx)))
-      then
-         if First_Case (Idx) = Last_Case (Idx) then
-            Set_Case_Expr  (Idx, No_Str);
-            Set_First_Case (Idx, Empty_Case_Idx);
-            Set_Last_Case  (Idx, Empty_Case_Idx);
-         elsif not Is_Same_As_Next (Last_Case (Idx) - 1) then
-            Set_Last_Case (Idx, Last_Case (Idx) - 1);
-         end if;
-      end if;
+      Maybe_Delete_Default (Idx);
    end Factor_One_Case;
 
    --------------------

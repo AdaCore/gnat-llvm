@@ -5219,7 +5219,7 @@ function Insert_Basic_Block
         External_Name => "LLVMGetPreviousInstruction";
 
   --*
-  -- * Remove and delete an instruction.
+  -- * Remove an instruction.
   -- *
   -- * The instruction specified is removed from its containing building
   -- * block but is kept alive.
@@ -5245,6 +5245,20 @@ function Insert_Basic_Block
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMInstructionEraseFromParent";
+
+  --*
+  -- * Delete an instruction.
+  -- *
+  -- * The instruction specified is deleted. It must have previously been
+  -- * removed from its containing building block.
+  -- *
+  -- * @see llvm::Value::deleteValue()
+  --  
+
+   procedure Delete_Instruction (Inst : LLVM.Types.Value_T)  -- install/include/llvm-c/Core.h:3209
+   with Import => True, 
+        Convention => C, 
+        External_Name => "LLVMDeleteInstruction";
 
   --*
   -- * Obtain the code opcode for an individual instruction.

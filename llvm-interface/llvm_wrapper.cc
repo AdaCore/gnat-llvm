@@ -1151,7 +1151,6 @@ Is_Lifetime_Intrinsic (Instruction *v)
 
 class GNATCallbackVH final : public CallbackVH
 {
-  Value *val;
   void (*fn) (Value *);
   void deleted () override;
 
@@ -1162,12 +1161,15 @@ class GNATCallbackVH final : public CallbackVH
 void
 GNATCallbackVH::deleted()
 {
+  (this->fn) (getValPtr());
+
+  // This callback object is no longer needed, and we don't keep references to
+  // it anywhere, so self-delete.
   delete this;
-  (this->fn) (this->val);
 }
 
 GNATCallbackVH::GNATCallbackVH (Value *V, void (*Fn) (Value *))
-  : CallbackVH (V), val (V), fn (Fn)
+  : CallbackVH (V), fn (Fn)
 {
 }
 

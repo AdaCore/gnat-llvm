@@ -104,6 +104,11 @@ package GNATLLVM.Variables is
    --  If Not_Symbolic is True, only return if this address is a constant
    --  integer (rare).
 
+   function Static_Address (N : N_Subexpr_Id) return GL_Value;
+   --  Return the LLVM representation of the address represented by N, or
+   --  report an error and return undefined if N isn't (a conversion of) a
+   --  compile-time known address.
+
    function Is_No_Elab_Needed
      (N              : N_Subexpr_Id;
       Not_Symbolic   : Boolean := False;

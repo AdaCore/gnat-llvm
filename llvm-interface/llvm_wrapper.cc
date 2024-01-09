@@ -1276,3 +1276,12 @@ Get_Default_Address_Space (const DataLayout &DL)
 {
   return DL.getDefaultGlobalsAddressSpace();
 }
+
+extern "C"
+void
+Set_Absolute_Address (LLVMContext &Ctx, Value *V, Value *Addr)
+{
+  cast<GlobalObject>(V)->setMetadata(
+      LLVMContext::MD_absolute_symbol,
+      MDNode::get(Ctx, {ValueAsMetadata::get(Addr)}));
+}

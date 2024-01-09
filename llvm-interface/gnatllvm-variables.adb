@@ -674,6 +674,35 @@ package body GNATLLVM.Variables is
       end case;
    end Is_Static_Address;
 
+   --------------------
+   -- Static_Address --
+   --------------------
+
+   function Static_Address (N : N_Subexpr_Id) return GL_Value is
+   begin
+      case Nkind (N) is
+         when N_Unchecked_Type_Conversion
+            | N_Type_Conversion
+            | N_Qualified_Expression
+         =>
+            return Static_Address (Expression (N));
+
+         when N_Integer_Literal =>
+
+            --  Return the LLVM representation of the integer. We can't go
+            --  through Emit because we exceptionally need the address
+            --  represented as an integer here (as opposed to a void
+            --  pointer); therefore, we generate the LLVM value directly
+            --  with a suitable type.
+
+            return Const_Int (Size_GL_Type, Intval (N));
+
+         when others =>
+            Error_Msg_N ("unsupported static address", N);
+            return Get_Undef (Size_GL_Type);
+      end case;
+   end Static_Address;
+
    ------------------------------
    -- Is_Entity_Static_Address --
    ------------------------------
@@ -1690,7 +1719,7 @@ package body GNATLLVM.Variables is
             end loop;
 
             if No (Our_E) then
-               Error_Msg_NE ("No matching object found", Linker_Alias, Our_E);
+               Error_Msg_NE ("no matching object found", Linker_Alias, Our_E);
                LLVM_Var := Get_Undef (GT);
             else
                LLVM_Var := G (Add_Alias (Module, Type_Of (GT),
@@ -1724,7 +1753,11 @@ package body GNATLLVM.Variables is
          --  declaring it. If not, this will generate an undefined external
          --  when linking.
 
-         if not Is_Public (E) and then not Is_Imported (E) then
+         if Tagged_Pointers and then Has_Static_Addr then
+            Set_Absolute_Address
+              (LLVM_Var, Static_Address (Addr_Expr));
+            Set_Linkage (LLVM_Var, External_Linkage);
+         elsif not Is_Public (E) and then not Is_Imported (E) then
             pragma Assert (Definition);
             Set_Linkage (LLVM_Var, Internal_Linkage);
          end if;
@@ -1734,14 +1767,19 @@ package body GNATLLVM.Variables is
          Process_Pragmas      (E, LLVM_Var);
          Initialize_TBAA      (LLVM_Var, Kind_From_Decl (E));
 
-         if not Is_Ref then
-            Set_Alignment (LLVM_Var, Set_Object_Align (LLVM_Var, GT, E));
-         else
-            Set_Alignment (LLVM_Var, Get_Type_Alignment (Type_Of (LLVM_Var)));
-         end if;
+         if not Tagged_Pointers or else not Has_Static_Addr then
+            if not Is_Ref then
+               Set_Alignment
+                 (LLVM_Var, Set_Object_Align (LLVM_Var, GT, E));
+            else
+               Set_Alignment
+                 (LLVM_Var,
+                  Get_Type_Alignment (Type_Of (LLVM_Var)));
+            end if;
 
-         if not DSO_Preemptable then
-            Set_DSO_Local (LLVM_Var);
+            if not DSO_Preemptable then
+               Set_DSO_Local (LLVM_Var);
+            end if;
          end if;
       end if;
 
@@ -2016,9 +2054,11 @@ package body GNATLLVM.Variables is
          pragma Assert (not In_Elab_Proc or else Is_Statically_Allocated (E));
 
          --  If we have a static address clause, we can convert it to a
-         --  pointer to us and use that as our variable.
+         --  pointer to us and use that as our variable, except if we have
+         --  tagged pointers, because then we can't create valid pointers
+         --  out of thin air.
 
-         if Has_Static_Addr then
+         if Has_Static_Addr and not Tagged_Pointers then
             LLVM_Var :=
               Int_To_Ref ((if   Present (Addr) then Addr
                            else Emit_Expression (Addr_Expr)),
@@ -2028,13 +2068,18 @@ package body GNATLLVM.Variables is
             Set_Init := True;
             Set_Value (E, LLVM_Var);
          else
-            --  Otherwise, make a global variable. If we have an address
-            --  expression, we know it must be nonstatic, so add this to
-            --  the elab proc if at library level.
+            --  Otherwise, make a global variable. If we have an absolute
+            --  address clause on a tagged-pointer target, skip
+            --  initialization, just like we do for objects with address
+            --  clauses in the absence of tagged pointers. Otherwise, if we
+            --  have a non-static address expression, add it to the elab
+            --  proc if at library level.
 
             LLVM_Var := Make_Global_Variable (E, GT, True);
 
-            if Library_Level and then Has_Addr then
+            if Tagged_Pointers and then Has_Static_Addr then
+               Set_Init := True;
+            elsif Library_Level and then Has_Addr then
                Add_To_Elab_Proc (N);
             end if;
          end if;

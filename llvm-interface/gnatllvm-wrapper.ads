@@ -453,4 +453,7 @@ package GNATLLVM.Wrapper is
      (Layout : Target_Data_T) return unsigned
      with Import, Convention => C,
           External_Name => "Get_Default_Address_Space";
+
+   procedure Set_Absolute_Address (V : Value_T; Addr : Value_T);
+
 end GNATLLVM.Wrapper;

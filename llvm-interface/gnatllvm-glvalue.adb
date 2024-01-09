@@ -1880,6 +1880,15 @@ package body GNATLLVM.GLValue is
       Set_Linkage (+V, Linkage);
    end Set_Linkage;
 
+   --------------------------
+   -- Set_Absolute_Address --
+   --------------------------
+
+   procedure Set_Absolute_Address (V : GL_Value; Addr : GL_Value) is
+   begin
+      Set_Absolute_Address (+V, +Addr);
+   end Set_Absolute_Address;
+
    -------------------------
    -- Set_Global_Constant --
    -------------------------

@@ -622,7 +622,7 @@ package body CCG.Instructions is
             return TP ("#1 << #2", Op1, Op2) + Shift;
 
          when Op_L_Shr | Op_A_Shr =>
-            return Process_Operand (Op1, POO, Shift) & " >> " & Op2 + Shift;
+            return Process_Operand (Op1, POO, Shift) & " >> " & (Op2 + Shift);
 
          when Op_F_Add =>
             return TP ("#1 + #2", Op1, Op2) + Add;

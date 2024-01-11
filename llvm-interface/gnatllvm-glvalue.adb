@@ -274,6 +274,12 @@ package body GNATLLVM.GLValue is
       elsif R = Data and then Is_Access_Type (V) then
          Align := Get_Type_Alignment (Default_GL_Type
                                         (Full_Designated_GL_Type (V)));
+
+      --  If it's Data representing an address on a tagged-pointer target,
+      --  we know that it has pointer alignment.
+
+      elsif R = Data and then Tagged_Pointers and then Is_Address (V) then
+         Align := Get_Type_Alignment (Address_GL_Type);
       end if;
 
       --  Now set the alignment to the maximum of any alignment we may

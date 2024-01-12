@@ -66,12 +66,15 @@ package body GNATLLVM.Builtins is
    --  GL_Value that's a Reference to GT. If not, or if GT is not an
    --  elementary type, return No_GL_Value.
 
-   function Emit_And_Maybe_Deref
-     (N : N_Subexpr_Id; GT : GL_Type) return GL_Value
+   function Emit_And_Convert (N : N_Subexpr_Id; GT : GL_Type) return GL_Value
      with Pre => Present (GT);
-   --  If N's type is GT or if it's an access type to GT, return the
-   --  evaluated expression (with a dereference if an access type). If
-   --  not, return No_GL_Value.
+   --  If N's type is GT, return the evaluated expression. If not, return
+   --  No_GL_Value.
+
+   function Emit_And_Deref (N : N_Subexpr_Id; GT : GL_Type) return GL_Value
+     with Pre => Present (GT);
+   --  If N's type is an address or if it's an access type to GT, return
+   --  the evaluated expression. If not, return No_GL_Value.
 
    function Memory_Order
      (N          : N_Subexpr_Id;
@@ -397,22 +400,33 @@ package body GNATLLVM.Builtins is
       end if;
    end Emit_Ptr;
 
-   --------------------------
-   -- Emit_And_Maybe_Deref --
-   --------------------------
+   ----------------------
+   -- Emit_And_Convert --
+   ----------------------
 
-   function Emit_And_Maybe_Deref
+   function Emit_And_Convert
+     (N : N_Subexpr_Id; GT : GL_Type) return GL_Value
+   is
+      Result : constant GL_Value := Emit_Expression (N);
+
+   begin
+      return
+        (if   Full_Etype (Result) = Full_Etype (GT)
+         then Convert_GT (Result, GT)
+         else No_GL_Value);
+   end Emit_And_Convert;
+
+   --------------------
+   -- Emit_And_Deref --
+   --------------------
+
+   function Emit_And_Deref
      (N : N_Subexpr_Id; GT : GL_Type) return GL_Value
    is
       Result : GL_Value := Emit_Expression (N);
 
    begin
-      --  This is valid if the Ada types are the same, but we need to be sure
-      --  that we have the actual GT.
-
-      if Full_Etype (Result) = Full_Etype (GT) then
-         return Convert_GT (Result, GT);
-      elsif Is_Descendant_Of_Address (Result) then
+      if Is_Address (Result) then
          return Get (Int_To_Ref (Result, GT), Data);
       elsif Is_Access_Type (Result) then
          Result := Get (From_Access (Result), Data);
@@ -420,7 +434,7 @@ package body GNATLLVM.Builtins is
       else
          return No_GL_Value;
       end if;
-   end Emit_And_Maybe_Deref;
+   end Emit_And_Deref;
 
    -----------------------
    -- Emit_Fetch_And_Op --
@@ -881,6 +895,15 @@ package body GNATLLVM.Builtins is
         S (S'First .. Last_Non_Suffix (S));
       --  The operation name without its concrete size suffix
 
+      Integral  : constant Boolean          :=
+        Last_Non_Suffix (S) /= S'Last
+        or else Ends_With (S, "_n")
+        or else Ends_With (S, "_capability");
+      --  The atomic builtins for integer types (whose names typically end
+      --  with "_N" for some size value N, or literal "_n") take a value
+      --  parameter, whereas the generic versions (without suffix) take a
+      --  pointer.
+
       Op        : Atomic_RMW_Bin_Op_T;
       Op_Back   : Boolean;
       Index     : Integer;
@@ -916,7 +939,10 @@ package body GNATLLVM.Builtins is
         and then Op_Name in "store" | "store_n"
         and then Type_Size_Matches_Name (S, True, GT)
       then
-         Result := Emit_And_Maybe_Deref (Next_Actual (Ptr), GT);
+         Result :=
+           (if   Integral
+            then Emit_And_Convert (Next_Actual (Ptr), GT)
+            else Emit_And_Deref (Next_Actual (Ptr), GT));
 
          if No (Result) then
             return No_GL_Value;
@@ -940,7 +966,7 @@ package body GNATLLVM.Builtins is
       elsif Is_Proc and then N_Args = 4 and then Op_Name = "exchange"
         and then Full_Designated_GL_Type (Full_Etype (Arg3)) = GT
       then
-         Result := Emit_And_Maybe_Deref (Arg2, GT);
+         Result := Emit_And_Deref (Arg2, GT);
 
          if Present (Result) then
             Result := Emit_Fetch_And_Op (Ptr, Result,
@@ -971,9 +997,11 @@ package body GNATLLVM.Builtins is
               Compile_Time_Known_Value (Arg4)
               and then Expr_Value (Arg4) = Uint_1;
             Old_Val      : constant GL_Value          :=
-              Emit_And_Maybe_Deref (Arg2, GT);
+              Emit_And_Deref (Arg2, GT);
             New_Val      : constant GL_Value          :=
-              Emit_And_Maybe_Deref (Arg3, GT);
+              (if   Integral
+               then Emit_And_Convert (Arg3, GT)
+               else Emit_And_Deref (Arg3, GT));
             Old_As_Ptr   : constant GL_Value          := Emit_Ptr (Arg2, GT);
             Orig_S_Order : constant Atomic_Ordering_T := Memory_Order (Arg5);
             Orig_F_Order : constant Atomic_Ordering_T :=

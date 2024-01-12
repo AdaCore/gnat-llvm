@@ -369,6 +369,11 @@ package GNATLLVM is
      and then Switch (Switch'First .. Switch'First + S'Length - 1) = S);
    --  Return True if Switch starts with S
 
+   function Ends_With (Switch, S : String) return Boolean is
+     (Switch'Length > S'Length
+     and then Switch (Switch'Last - S'Length + 1 .. Switch'Last) = S);
+   --  Return True if Switch ends with S
+
    function Switch_Value (Switch, S : String) return String is
      (Switch (S'Length + Switch'First .. Switch'Last));
    --  Returns the value of a switch known to start with S

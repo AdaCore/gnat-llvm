@@ -1474,6 +1474,12 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Global_Variable (V) or else Is_A_Function (V), Inline;
    --  Set the linkage type for a variable or function
 
+   procedure Set_Absolute_Address (V : GL_Value; Addr : GL_Value)
+     with Pre => Tagged_Pointers
+                 and then Present (V)
+                 and then Is_Discrete_Type (Addr);
+   --  Place a global at a statically known constant address
+
    procedure Set_Global_Constant (V : GL_Value; B : Boolean := True)
      with Pre => Present (V), Inline;
 

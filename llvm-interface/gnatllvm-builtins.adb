@@ -367,7 +367,7 @@ package body GNATLLVM.Builtins is
         or else (Order = Atomic_Ordering_Acquire and then No_Acquire)
         or else (Order = Atomic_Ordering_Release and then No_Release)
       then
-         Error_Msg_N ("Invalid memory ordering for operation", N);
+         Error_Msg_N ("invalid memory ordering for operation", N);
          Order := Atomic_Ordering_Sequentially_Consistent;
       end if;
 
@@ -979,7 +979,7 @@ package body GNATLLVM.Builtins is
                return No_GL_Value;
             elsif F_Order > S_Order then
                Error_Msg_N
-                 ("Failure order cannot be stronger than success order", N);
+                 ("failure order cannot be stronger than success order", N);
                F_Order := S_Order;
             elsif S = "compare_exchange_capability"
               and then ABI.all /= "purecap"

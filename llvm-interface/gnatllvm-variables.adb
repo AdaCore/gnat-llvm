@@ -1671,7 +1671,7 @@ package body GNATLLVM.Variables is
            or else Type_Needs_Bounds (GT)
          then
             Error_Msg_N
-              ("All uses of same interface name must have static size", E);
+              ("all uses of same interface name must have static size", E);
             LLVM_Var := Get_Undef_Relationship
               (GT, (if Is_Ref then Reference_To_Reference else Reference));
 

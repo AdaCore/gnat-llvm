@@ -47,12 +47,13 @@ package CCG.Target is
    --  True if we're to always write C lexical blocks using braces even
    --  if they're only a single line.
 
+   Parens                  : aliased String_Access := new String'("warns");
+   --  Indicates how we handle parentheses. We can either always output
+   --  them, output them only when needed, or output them when needed or
+   --  when precedence is correct but looks suspicious to compilers.
+
    Have_Includes           : aliased Boolean       := True;
    --  True if we're to write #include lines for the standard C includes
-
-   Warns_Parens            : aliased Boolean       := True;
-   --  True if this C compiler will issue warning in cases where the
-   --  precedence is correct but looks suspicious.
 
    Inline_Always_Must      : aliased Boolean       := True;
    --  In some C compilers (e.g., clang), Inline_Always means to make a
@@ -111,5 +112,9 @@ package CCG.Target is
    function Pack_Not_Supported return Boolean
      is (Packed_Mechanism.all = "none");
    --  Functions to say how we're indicating packed records in the C output
+
+   function Always_Parens return Boolean is (Parens.all = "always");
+   function Warns_Parens  return Boolean is (Parens.all = "warns");
+   --  Functions to affect when we write parentheses
 
 end CCG.Target;

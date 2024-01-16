@@ -347,9 +347,9 @@ package body CCG.Target is
       end loop;
 
       if Equal_Pos = S'First - 1 then
-         Early_Error ("Missing equal sign in parameter specification");
+         Early_Error ("missing equal sign in parameter specification");
       elsif Equal_Pos = S'Last then
-         Early_Error ("Missing value in parameter specification");
+         Early_Error ("missing value in parameter specification");
       elsif Starts_With (S (S'First .. Equal_Pos - 1), "modifier-") then
          Add_Modifier (Switch_Value (S (S'First .. Equal_Pos - 1),
                                      "modifier-"),
@@ -524,21 +524,20 @@ package body CCG.Target is
    end Output_C_Parameters;
 
 begin
-   Add_Param ("version",               Num,  Int_Ptr  => C_Version'Access,
+   Add_Param ("version",            Num,   Int_Ptr  => C_Version'Access,
               Is_Version => True);
-   Add_Param ("indent",                Num,  Int_Ptr  => C_Indent'Access);
-   Add_Param ("max-depth",             Num,  Int_Ptr  => Max_Depth'Access);
-   Add_Param ("always-brace",          Bool, Bool_Ptr => Always_Brace'Access);
-   Add_Param ("warns-parens",          Bool, Bool_Ptr => Warns_Parens'Access);
-   Add_Param ("have-includes",         Bool,
-              Bool_Ptr => Have_Includes'Access);
-   Add_Param ("inline-always-must",    Bool,
+   Add_Param ("indent",             Num,   Int_Ptr  => C_Indent'Access);
+   Add_Param ("max-depth",          Num,   Int_Ptr  => Max_Depth'Access);
+   Add_Param ("always-brace",       Bool,  Bool_Ptr => Always_Brace'Access);
+   Add_Param ("parens",             P_Str, Str_Ptr  => Parens'Access);
+   Add_Param ("have-includes",      Bool,  Bool_Ptr => Have_Includes'Access);
+   Add_Param ("inline-always-must", Bool,
               Bool_Ptr => Inline_Always_Must'Access);
-   Add_Param ("code-section-modifier", P_Str,
+
+   Add_Param ("code-section-modifier",    P_Str,
               Str_Ptr => Code_Section_Modifier'Access);
    Add_Param ("declare-section-modifier", P_Str,
               Str_Ptr => Declare_Section_Modifier'Access);
-   Add_Param ("packed-mechanism",      P_Str,
+   Add_Param ("packed-mechanism",         P_Str,
               Str_Ptr => Packed_Mechanism'Access);
-
 end CCG.Target;

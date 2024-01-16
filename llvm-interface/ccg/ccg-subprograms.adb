@@ -302,6 +302,9 @@ package body CCG.Subprograms is
    function Function_Proto
      (V : Value_T; Definition : Boolean := True) return Str
    is
+      function Has_Unreachable return Boolean;
+      --  True if there's an "unreachable" instruction in V
+
       Num_Params     : constant Nat     := Count_Params (V);
       Fn_Typ         : constant Type_T  := Get_Element_Type (V);
       Result         : Str              :=
@@ -311,6 +314,26 @@ package body CCG.Subprograms is
         and then (Num_Params = 0
                   or else not Has_Nest_Attribute
                                 (V, unsigned (Num_Params - 1)));
+
+      ---------------------
+      -- Has_Unreachable --
+      ---------------------
+
+      function Has_Unreachable return Boolean is
+         BB : Basic_Block_T := Get_First_Basic_Block (V);
+
+      begin
+         while Present (BB) loop
+            if Get_Opcode (Get_Basic_Block_Terminator (BB)) = Op_Unreachable
+            then
+               return True;
+            end if;
+
+            BB := Get_Next_Basic_Block (BB);
+         end loop;
+
+         return False;
+      end Has_Unreachable;
 
    begin
       --  If this is an internal subprogram, mark it as static
@@ -345,9 +368,10 @@ package body CCG.Subprograms is
          Result := Output_Modifier ("always_inline") & Result;
       end if;
 
-      --  If this doesn't return mark that
+      --  If this doesn't return mark that. But if we have an "unreachable",
+      --  that will confuse the analysis.
 
-      if Does_Not_Return (V) then
+      if Does_Not_Return (V) and then not Has_Unreachable then
          Result := Output_Modifier ("noreturn") & Result;
       end if;
 

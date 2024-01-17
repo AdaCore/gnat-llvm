@@ -99,6 +99,8 @@ package body CCG.Codegen is
       if Packed_Mechanism.all not in "modifier" | "pragma" | "none" then
          Early_Error
            ("packed-mechanism must be 'modifier', 'pragma', or 'none'");
+      elsif Parens.all not in "always" | "normal" | "warns" then
+         Early_Error ("parens must be 'always', 'normal' or 'warns'");
       elsif Use_Stdint and then C_Version < 1999 then
          Early_Error ("-fuse-stdint only supported on C99 or later");
       elsif Prefer_Packed and then Packed_Mechanism.all = "none" then

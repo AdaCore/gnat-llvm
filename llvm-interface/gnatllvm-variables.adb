@@ -2058,7 +2058,10 @@ package body GNATLLVM.Variables is
          --  tagged pointers, because then we can't create valid pointers
          --  out of thin air.
 
-         if Has_Static_Addr and not Tagged_Pointers then
+         if Has_Static_Addr
+           and then (not Tagged_Pointers or else
+                     not Compile_Time_Known_Value (Addr_Expr))
+         then
             LLVM_Var :=
               Int_To_Ref ((if   Present (Addr) then Addr
                            else Emit_Expression (Addr_Expr)),

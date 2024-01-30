@@ -392,12 +392,17 @@ package body CCG.Subprograms is
       end if;
 
       --  If inline was requested, mark that, but only if the language
-      --  version is recent enough and only if it's a definition.
+      --  version is recent enough and only if it's a definition. If it's
+      --  not internal, declare it as "extern".
 
       if (Has_Inline_Attribute (V) or else Has_Inline_Always_Attribute (V))
         and then C_Version > 1990 and then Definition
       then
-         Result := "inline " & Result;
+         if Get_Linkage (V) = Internal_Linkage then
+            Result := "inline " & Result;
+         else
+            Result := "extern inline " & Result;
+         end if;
       end if;
 
       --  If inline always was requested, mark it as such, but only in

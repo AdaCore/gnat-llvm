@@ -1602,7 +1602,14 @@ package body GNATLLVM.Records.Create is
             --  more bitfields starting at location J in the Added_Fields
             --  table. We need to continue widening the field until we run
             --  into a component that no longer overlaps any of the bits in
-            --  the field or we've reached the end of the field list.
+            --  the field or we've reached the end of the field list. If
+            --  we're processing a full-access record, we aggregate all
+            --  components into a single field because LLVM can split
+            --  volatile load operations of records, but it guarantees that
+            --  volatile loads of native integer types are never split; we
+            --  know that the components will fit because we've checked
+            --  when seeing the full-access attribute on the record
+            --  declaration.
             --
             --  Start by making a field just wide enough for this component.
 
@@ -1624,7 +1631,8 @@ package body GNATLLVM.Records.Create is
                   exit when No (AF_K.Pos) or else No (AF_K.Size)
                     or else not Is_Bitfield_By_Rep (F, AF_K.Pos, AF_K.Size,
                                                     Use_Pos_Size => True)
-                    or else not Fits_In_Bitfield_Field (AF_K);
+                    or else (not Fits_In_Bitfield_Field (AF_K)
+                             and then not Is_Full_Access (BT));
 
                   Bitfield_End_Pos := End_Position (AF_K.Pos, AF_K.Size);
                end;

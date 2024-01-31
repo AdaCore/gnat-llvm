@@ -637,7 +637,7 @@ package body GNATLLVM.Wrapper is
       function Has_Default_PIE_C (Triple : String) return LLVM_Bool
         with Import, Convention => C, External_Name => "Has_Default_PIE";
    begin
-      return Has_Default_PIE_C (Triple) /= 0;
+      return Has_Default_PIE_C (Triple & ASCII.NUL) /= 0;
    end Has_Default_PIE;
 
    -----------------------------------
@@ -650,7 +650,7 @@ package body GNATLLVM.Wrapper is
         Import, Convention => C,
         External_Name      => "Get_Personality_Function_Name";
    begin
-      return Value (Get_Personality_Function_Name_C (Triple));
+      return Value (Get_Personality_Function_Name_C (Triple & ASCII.NUL));
    end Get_Personality_Function_Name;
 
    ------------------

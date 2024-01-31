@@ -42,6 +42,7 @@ with CCG.Output;      use CCG.Output;
 with CCG.Subprograms; use CCG.Subprograms;
 with CCG.Target;      use CCG.Target;
 with CCG.Utils;       use CCG.Utils;
+with CCG.Write;       use CCG.Write;
 
 package body CCG.Instructions is
 
@@ -446,6 +447,7 @@ package body CCG.Instructions is
 
          begin
             Assignment (V, TP ("(#T1) ", V) & Call + Unary);
+            Needs_Malloc_H := True;
 
             --  We can't support alloca in very early versions of C.
 

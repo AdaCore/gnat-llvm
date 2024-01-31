@@ -966,6 +966,11 @@ package body CCG.Write is
       then
          Write_Line ("#include <string.h>");
          Write_Line ("#include <stdlib.h>");
+
+         if Needs_Malloc_H then
+            Write_Line ("#include <malloc.h>");
+         end if;
+
          Wrote_Include := True;
       end if;
 

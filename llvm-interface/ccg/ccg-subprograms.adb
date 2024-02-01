@@ -101,11 +101,14 @@ package body CCG.Subprograms is
    --  Defining says if it's being declared or defined there.
 
    function Function_Proto
-     (V : Value_T; Definition : Boolean := True) return Str
+     (V           : Value_T;
+      Definition  : Boolean := True;
+      Need_Extern : Boolean := True) return Str
      with Pre  => Is_A_Function (V),
           Post => Present (Function_Proto'Result);
    --  Return the prototype for function V, for either a definition or
-   --  a declaration, as appropriate.
+   --  a declaration, as appropriate. If Need_Extern is True, we must
+   --  always write "extern".
 
    function Is_Builtin_Name (S : String) return Boolean is
      (S'Length > 5 and then S (S'First .. S'First + 4) = "llvm.");
@@ -341,7 +344,9 @@ package body CCG.Subprograms is
    --------------------
 
    function Function_Proto
-     (V : Value_T; Definition : Boolean := True) return Str
+     (V           : Value_T;
+      Definition  : Boolean := True;
+      Need_Extern : Boolean := True) return Str
    is
       function Has_Unreachable return Boolean;
       --  True if there's an "unreachable" instruction in V
@@ -393,12 +398,13 @@ package body CCG.Subprograms is
 
       --  If inline was requested, mark that, but only if the language
       --  version is recent enough and only if it's a definition. If it's
-      --  not internal, declare it as "extern".
+      --  not internal, declare it as "extern", but not if we always need
+      --  "extern" since we're adding it below.
 
       if (Has_Inline_Attribute (V) or else Has_Inline_Always_Attribute (V))
         and then C_Version > 1990 and then Definition
       then
-         if Get_Linkage (V) = Internal_Linkage then
+         if Get_Linkage (V) = Internal_Linkage or else Need_Extern then
             Result := "inline " & Result;
          else
             Result := "extern inline " & Result;
@@ -474,6 +480,12 @@ package body CCG.Subprograms is
          end if;
       end if;
 
+      --  If we are to unconditionally write "extern", do it
+
+      if Need_Extern then
+         Result := "extern " & Result;
+      end if;
+
       return Result & ")";
    end Function_Proto;
 
@@ -504,12 +516,13 @@ package body CCG.Subprograms is
       --  basic blocks, it must be an extern. We don't want to use the
       --  debug info here if we'll later have declaration.
 
-      Output_Decl ((if   Emit_Header or else No (Get_First_Basic_Block (V))
-                    then "extern " else "") &
-                         Function_Proto (V, Definition => False),
-                    V             => V,
-                    Is_Global     => True,
-                    No_Debug_Info => Present (Get_First_Basic_Block (V)));
+      Output_Decl (Function_Proto (V,
+                                   Definition  => False,
+                                   Need_Extern => Emit_Header
+                                     or else No (Get_First_Basic_Block (V))),
+                   V             => V,
+                   Is_Global     => True,
+                   No_Debug_Info => Present (Get_First_Basic_Block (V)));
    end Declare_Subprogram;
 
    -----------------------
@@ -534,7 +547,7 @@ package body CCG.Subprograms is
       New_Subprogram (V);
       Transform_Blocks (V);
       Output_Decl
-        ((if Emit_Header then "extern " else "") & Function_Proto (V),
+        (Function_Proto (V, Need_Extern => Emit_Header),
          Semicolon => False,
          V         => V);
       Output_Decl ("{", Semicolon => False, Start_Block => Decl);

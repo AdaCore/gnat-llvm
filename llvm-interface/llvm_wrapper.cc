@@ -523,12 +523,15 @@ Add_Function_To_Module (Function *f, Module *m, bool allowDeduplication)
   //
   // If a module uses a builtin function implicitly and also calls it
   // explicitly, we don't want two LLVM values representing the same function.
-  // In this case, we replace all uses of one with the other, which is safe
-  // because the LLVM value is just a declaration for a function to be
-  // imported.
+  // In this case, we replace all uses of one with the other (unless they're
+  // identical), which is safe because the LLVM value is just a declaration for
+  // a function to be imported.
 
-  if (auto existingFunction = m->getFunction(f->getName());
-      existingFunction && !allowDeduplication) {
+  auto existingFunction = m->getFunction(f->getName());
+  if (existingFunction == f)
+    return;
+
+  if (existingFunction && !allowDeduplication) {
     assert(f->isDeclaration() && existingFunction->isDeclaration() &&
            f->getType() == existingFunction->getType());
     f->replaceAllUsesWith(existingFunction);

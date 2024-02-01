@@ -120,8 +120,8 @@ package GNATLLVM.Arrays is
    function Get_Indices
      (Indices : List_Id; V : GL_Value) return GL_Value_Array
      with Pre  => Is_Array_Type (Related_Type (V))
-                  and then (List_Length (Indices) =
-                              Number_Dimensions (Related_Type (V))),
+                  and then List_Length (Indices) =
+                             Number_Dimensions (Related_Type (V)),
           Post => Get_Indices'Result'Length = List_Length (Indices);
    --  Given a list of indices and V, return a list where we've evaluated
    --  all the indices and subtracted the lower bounds of each dimension.
@@ -130,8 +130,8 @@ package GNATLLVM.Arrays is
    function Get_Indexed_LValue
      (Idxs : GL_Value_Array; V : GL_Value) return GL_Value
      with Pre  => Is_Reference (V) and then Is_Array_Type (Related_Type (V))
-                  and then (Idxs'Length =
-                              Number_Dimensions (Related_Type (V))),
+                  and then Idxs'Length =
+                             Number_Dimensions (Related_Type (V)),
           Post => Present (Get_Indexed_LValue'Result);
    --  Get an LValue corresponding to indexing V by the list of indices
    --  in Idxs. This list is the constant zero followed by the actual indices

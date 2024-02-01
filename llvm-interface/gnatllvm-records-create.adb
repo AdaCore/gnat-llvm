@@ -458,6 +458,9 @@ package body GNATLLVM.Records.Create is
         Record_Has_Aliased_Components (BT);
       --  Indicates that at least one field is aliased
 
+      Full_Access    : constant Boolean         := Is_Full_Access (BT);
+      --  Indicates that the record requires full access.
+
       Has_NP_Fixed   : Boolean                  := False;
       --  Indicates that at least one field of fixed size isn't packable
 
@@ -1629,10 +1632,11 @@ package body GNATLLVM.Records.Create is
 
                begin
                   exit when No (AF_K.Pos) or else No (AF_K.Size)
-                    or else not Is_Bitfield_By_Rep (F, AF_K.Pos, AF_K.Size,
-                                                    Use_Pos_Size => True)
+                    or else (not Is_Bitfield_By_Rep (F, AF_K.Pos, AF_K.Size,
+                                                     Use_Pos_Size => True)
+                             and then not Full_Access)
                     or else (not Fits_In_Bitfield_Field (AF_K)
-                             and then not Is_Full_Access (BT));
+                             and then not Full_Access);
 
                   Bitfield_End_Pos := End_Position (AF_K.Pos, AF_K.Size);
                end;
@@ -1963,12 +1967,14 @@ package body GNATLLVM.Records.Create is
                      --  "bitfield field". If we don't fit in the current
                      --  one or there isn't one, make one. Otherwise, just
                      --  record this field. If we have a truncated type
-                     --  that's not the last field, also treat it as a
-                     --  bitfield.
+                     --  that's not the last field, or a field in a
+                     --  full-access type, also treat it as a bitfield.
 
                      if Is_Bitfield_By_Rep (F, Pos, Size, Use_Pos_Size => True)
                        or else (Is_Truncated_GL_Type (F_GT)
                                   and then J /= Added_Fields.Last)
+                       or else (Present (Pos) and then Present (Size)
+                                  and then Full_Access)
                      then
                         if No (Bitfield_Start_Pos)
                           or else not Fits_In_Bitfield_Field (AF)

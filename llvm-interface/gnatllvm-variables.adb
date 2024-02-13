@@ -1699,7 +1699,9 @@ package body GNATLLVM.Variables is
 
       --  If we're emitting C and this is of zero size, use undef.
 
-      elsif Emit_C and then Is_Zero_Size (GT) then
+      elsif Emit_C and then Is_Zero_Size (GT)
+        and then not Type_Needs_Bounds (GT)
+      then
          LLVM_Var := Get_Undef (GT);
 
       --  Otherwise, make one here and properly set its linkage
@@ -2443,6 +2445,7 @@ package body GNATLLVM.Variables is
          Mark_Volatile (LLVM_Var, Is_Volatile);
          Mark_Atomic   (LLVM_Var, Is_Atomic (E) or else Is_Atomic (GT));
          Set_Value     (E, LLVM_Var);
+         C_Set_Entity  (LLVM_Var, E);
          Set_Initializer
            (LLVM_Var, Const_Null_Relationship (GT, Deref (LLVM_Var)));
          Add_To_Elab_Proc (N);

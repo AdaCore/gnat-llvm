@@ -5258,7 +5258,7 @@ function Insert_Basic_Block
   -- * @see llvm::Value::deleteValue()
   --  
 
-   procedure Delete_Instruction (Inst : LLVM.Types.Value_T)  -- install/include/llvm-c/Core.h:3258
+   procedure Delete_Instruction (Inst : LLVM.Types.Value_T)  -- install/include/llvm-c/Core.h:3209
    with Import => True, 
         Convention => C, 
         External_Name => "LLVMDeleteInstruction";

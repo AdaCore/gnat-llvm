@@ -52,6 +52,59 @@ package body CCG.Aggregates is
    --  Is_First and Is_Last says if it's the first or last field in the
    --  struct, respectively.
 
+   Needed_IXX_Structs : array (Nat range 1 .. 128) of Boolean :=
+     (others => False);
+   --  Indicates for which integer types we need to generate a struct
+   --  to handle loads and stores of that type.
+
+   ---------------------
+   -- Need_IXX_Struct --
+   ---------------------
+
+   procedure Need_IXX_Struct (J : Nat) is
+   begin
+      Needed_IXX_Structs (J) := True;
+   end Need_IXX_Struct;
+
+   ------------------------
+   -- Output_IXX_Structs --
+   ------------------------
+
+   procedure Output_IXX_Structs is
+   begin
+      for J in Needed_IXX_Structs'Range loop
+         if Needed_IXX_Structs (J) then
+            if Pack_Via_Pragma then
+               Output_Decl ("#pragma pack(push, 1)",
+                            Is_Typedef  => True,
+                            Semicolon   => False,
+                            Indent_Type => Left);
+            end if;
+
+            Output_Decl ("struct ccg_i" & J,
+                         Semicolon => False, Is_Typedef => True);
+            Start_Output_Block (Decl);
+            Output_Decl ("unsigned " &
+                         (if J > Int_Size then "long long" else "int") &
+                         " f : " & J,
+                         Is_Typedef => True);
+            Output_Decl ("}" &
+                         (if   Pack_Via_Modifier
+                          then Output_Modifier ("packed", Before) else +""),
+                         Is_Typedef => True, End_Block => Decl);
+
+            if Pack_Via_Pragma then
+               Output_Decl ("#pragma pack(pop)",
+                            Is_Typedef  => True,
+                            Semicolon   => False,
+                            Indent_Type => Left);
+            end if;
+
+            Output_Decl ("", Semicolon => False, Is_Typedef => True);
+         end if;
+      end loop;
+   end Output_IXX_Structs;
+
    -----------------------
    -- Default_Alignment --
    -----------------------
@@ -114,16 +167,17 @@ package body CCG.Aggregates is
       elsif not Is_Packed_Struct (T) or else Num_Types = 0 then
          return Padding;
 
+      --  If the user asked to prefer packing, do so
+
+      elsif Prefer_Packed then
+         Need_Pack := True;
+
       --  ??? For now, if optimizing, we need to include padding
       --  fields since LLVM's SROA may try to preserve padding fields.
 
       elsif Code_Opt_Level > 0 then
          Need_Pad := True;
 
-      --  If the user asked to prefer packing, do so
-
-      elsif Prefer_Packed then
-         Need_Pack := True;
       end if;
 
       --  Now we look at the position of each field relative to its default
@@ -594,7 +648,6 @@ package body CCG.Aggregates is
       --  dereference for nested GEP's.
 
       Set_Is_LHS (V, Is_LHS);
-
       if Is_LHS then
 
          --  If we have more than one uses and side-effects (e.g., an

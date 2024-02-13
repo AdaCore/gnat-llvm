@@ -124,6 +124,47 @@ package body CCG.Subprograms is
    --  Return a string corresponding to the return type of T, adjusting the
    --  type in the case where it's an array.
 
+   function Matches
+     (S, Name : String; Exact : Boolean := False) return Boolean
+   is
+     (S'Length >= Name'Length + 5
+        and then (not Exact or else S'Length = Name'Length + 5)
+        and then S (S'First + 5 .. S'First + Name'Length + 4) = Name);
+   --  True iff the string Name is present starting at position 5 of S
+   --  (after "llvm."). If Exact is true, there must be nothing following
+   --  Name in S.
+
+   type Arithmetic_Operation is (Add, Subtract, Multiply);
+
+   function Op_With_Overflow
+     (V    : Value_T;
+      Ops  : Value_Array;
+      S    : String;
+      Arit : Arithmetic_Operation) return Boolean
+     with Pre => Present (V) and then Ops'Length >= 2;
+   --  Handle an arithmetic operation with overflow. Return True if we're able
+   --  to process this builtin.
+
+   Overflow_Declared : array (Arithmetic_Operation) of Boolean :=
+     (others => False);
+
+   function Memory_Operation
+     (V : Value_T; Ops : Value_Array; S : String) return Boolean
+     with Pre => Present (V) and then Ops'Length >= 3;
+   --  Process memcpy, memmove, and memset. Return True if we're able to
+   --  process this builtin.
+
+   function Funnel_Shift
+     (V : Value_T; Ops : Value_Array; Left : Boolean) return Boolean
+     with Pre => Present (V) and then Ops'Length >= 3;
+   --  Process a left or right funnel shift builtin. Return True if we're
+   --  able to process this builtin.
+
+   function Bit_Byte_Reverse
+     (V : Value_T; Op : Value_T; Is_Byte : Boolean) return Str
+     with Pre => Present (V) and then Present (Op);
+   --  Process a bitreverse or byte swap builtin
+
    ------------------------------
    -- Delete_From_Source_Order --
    ------------------------------
@@ -302,6 +343,9 @@ package body CCG.Subprograms is
    function Function_Proto
      (V : Value_T; Definition : Boolean := True) return Str
    is
+      function Has_Unreachable return Boolean;
+      --  True if there's an "unreachable" instruction in V
+
       Num_Params     : constant Nat     := Count_Params (V);
       Fn_Typ         : constant Type_T  := Get_Element_Type (V);
       Result         : Str              :=
@@ -311,6 +355,26 @@ package body CCG.Subprograms is
         and then (Num_Params = 0
                   or else not Has_Nest_Attribute
                                 (V, unsigned (Num_Params - 1)));
+
+      ---------------------
+      -- Has_Unreachable --
+      ---------------------
+
+      function Has_Unreachable return Boolean is
+         BB : Basic_Block_T := Get_First_Basic_Block (V);
+
+      begin
+         while Present (BB) loop
+            if Get_Opcode (Get_Basic_Block_Terminator (BB)) = Op_Unreachable
+            then
+               return True;
+            end if;
+
+            BB := Get_Next_Basic_Block (BB);
+         end loop;
+
+         return False;
+      end Has_Unreachable;
 
    begin
       --  If this is an internal subprogram, mark it as static
@@ -345,9 +409,10 @@ package body CCG.Subprograms is
          Result := Output_Modifier ("always_inline") & Result;
       end if;
 
-      --  If this doesn't return mark that
+      --  If this doesn't return mark that. But if we have an "unreachable",
+      --  that will confuse the analysis.
 
-      if Does_Not_Return (V) then
+      if Does_Not_Return (V) and then not Has_Unreachable then
          Result := Output_Modifier ("noreturn") & Result;
       end if;
 
@@ -674,42 +739,6 @@ package body CCG.Subprograms is
       end if;
    end Call_Instruction;
 
-   function Matches
-     (S, Name : String; Exact : Boolean := False) return Boolean
-   is
-     (S'Length >= Name'Length + 5
-        and then (not Exact or else S'Length = Name'Length + 5)
-        and then S (S'First + 5 .. S'First + Name'Length + 4) = Name);
-   --  True iff the string Name is present starting at position 5 of S
-   --  (after "llvm."). If Exact is true, there must be nothing following
-   --  Name in S.
-
-   type Arithmetic_Operation is (Add, Subtract, Multiply);
-
-   function Op_With_Overflow
-     (V    : Value_T;
-      Ops  : Value_Array;
-      S    : String;
-      Arit : Arithmetic_Operation) return Boolean
-     with Pre => Present (V) and then Ops'Length >= 2;
-   --  Handle an arithmetic operation with overflow. Return True if we're able
-   --  to process this builtin.
-
-   Overflow_Declared : array (Arithmetic_Operation) of Boolean :=
-     (others => False);
-
-   function Memory_Operation
-     (V : Value_T; Ops : Value_Array; S : String) return Boolean
-     with Pre => Present (V) and then Ops'Length >= 3;
-   --  Process memcpy, memmove, and memset. Return True if we're able to
-   --  process this builtin.
-
-   function Funnel_Shift
-     (V : Value_T; Ops : Value_Array; Left : Boolean) return Boolean
-     with Pre => Present (V) and then Ops'Length >= 3;
-   --  Process a left or right funnel shift builtin. Return True if we're
-   --  able to process this builtin
-
    ----------------------
    -- Op_With_Overflow --
    ----------------------
@@ -803,6 +832,56 @@ package body CCG.Subprograms is
 
    end Funnel_Shift;
 
+   ----------------------
+   -- Bit_Byte_Reverse --
+   ----------------------
+
+   function Bit_Byte_Reverse
+     (V : Value_T; Op : Value_T; Is_Byte : Boolean) return Str
+   is
+      Width     : constant Nat := Get_Scalar_Bit_Size (Type_Of (V));
+      Part_Size : constant Nat := (if Is_Byte then BPU else 1);
+      Mask      : constant Nat := 2 ** Integer (Part_Size) - 1;
+
+   begin
+
+      --  We generate Width / Part operations whose results are "or"ed
+      --  together. Each can be written as one or more shifts with an
+      --  "and".  The simplest way to code this, which avoids having to be
+      --  concerned about large constants or signedness, is to shift the part
+      --  (bit or byte) to the low-order bit(s), mask it to a bit or byte,
+      --  and shift it back.
+
+      return Result : Str := +"" do
+         for J in 0 .. Width / Part_Size - 1 loop
+            declare
+               Initial_Pos : constant Nat := Width - (J + 1) * Part_Size;
+               Desired_Pos : constant Nat := J * Part_Size;
+               Piece : Str := +Op;
+
+            begin
+               --  If this isn't at the low-order location, move it there
+
+               if Initial_Pos /= 0 then
+                  Piece := Piece + Shift & " >> " & Initial_Pos;
+               end if;
+
+               --  Now do the mask and put it where we want it, if not
+               --  already there.
+
+               Piece := Piece + Bit & " & " & Mask;
+               if Desired_Pos /= 0 then
+                  Piece := Piece + Shift & " << " & Desired_Pos;
+               end if;
+
+               --  Finally, add this piece to the result
+
+               Result := Result + Bit & (if J /= 0 then " | " else "") & Piece;
+            end;
+         end loop;
+      end return;
+   end Bit_Byte_Reverse;
+
    -----------------------
    --  Memory_Operation --
    -----------------------
@@ -834,13 +913,14 @@ package body CCG.Subprograms is
         (if Ops'Length >= 2 then Ops (Ops'First + 1) else No_Value_T);
 
    begin
-      --  We ignore experimental noalias call. Also ignore
+      --  We ignore experimental noalias call and llvm.assume. Also ignore
       --  stackrestore/stacksave calls: these are generated by the
       --  optimizer and in many cases the stack usage is actually zero or
       --  very low.
       --  ??? Not clear that we can do better for now.
 
-      if  Matches (S, "experimental.noalias.scope.decl")
+      if Matches (S, "assume")
+        or else Matches (S, "experimental.noalias.scope.decl")
         or else Matches (S, "stackrestore", True)
         or else Matches (S, "stacksave", True)
       then
@@ -872,37 +952,109 @@ package body CCG.Subprograms is
       elsif Matches (S, "memset") then
          return Memory_Operation (V, Ops, "memset");
 
-      --  Handle the arithmetic functions. Once we force to a variable, the
-      --  signedness is known, so the signed and unsigned versions of min
-      --  and max are the same C code.
+      --  For min and max, we have to make sure that the operands are the
+      --  right signedness. Even though we're forcing the operands to
+      --  variables (to avoid side-effects), the LLVM optimizer may choose
+      --  to generate a signed min/max for a variable that's used as unsigned
+      --  and vice versa.
+
+      elsif Matches (S, "smax") or else Matches (S, "umax")
+        or else Matches (S, "smin") or else Matches (S, "umin")
+      then
+         declare
+            POO    : constant Process_Operand_Option :=
+              (if Matches (S, "umin") or else Matches (S, "umax")
+               then POO_Unsigned else POO_Signed);
+            Is_Max : constant Boolean :=
+              Matches (S, "smax") or else Matches (S, "umax");
+
+         begin
+            Force_To_Variable (Op1);
+            Force_To_Variable (Op2);
+            Assignment (V,
+                        Process_Operand (Op1, POO, Conditional) &
+                        (if Is_Max then " > " else " < ") &
+                        Process_Operand (Op2, POO, Conditional) &
+                        " ? " & Op1 & " : " & Op2 + Conditional,
+                        Is_Opencode_Builtin => True);
+            return True;
+         end;
+
+      --  abs is simple, but we have to be sure that we do a signed operation
 
       elsif Matches (S, "abs") then
          Force_To_Variable (Op1);
-         Assignment (V, TP ("#1 >= 0 ? #1 : - #1", Op1) + Conditional,
-                     Is_Opencode_Builtin => True);
-         return True;
-      elsif Matches (S, "smax") or else Matches (S, "umax") then
+
+         declare
+            Str1 : constant Str :=
+              Process_Operand (Op1, POO_Signed, Conditional);
+
+         begin
+            Assignment (V,
+                        Str1 & " >= 0 ? " & Str1 & " : - " &
+                        Str1 + Conditional,
+                        Is_Opencode_Builtin => True);
+            return True;
+         end;
+
+      --  The only saturating arithmetic we've seen the LLVM optimizer
+      --  generate so far is unsigned subtraction, so that's all we support
+      --  at the moment. But we have to be sure the operands are the proper
+      --  signedness for the comparison.
+
+      elsif Matches (S, "usub.sat") then
          Force_To_Variable (Op1);
          Force_To_Variable (Op2);
-         Assignment (V, TP ("#1 > #2 ? #1 : #2", Op1, Op2) + Conditional,
-                     Is_Opencode_Builtin => True);
-         return True;
-      elsif Matches (S, "smin") or else Matches (S, "umin") then
+
+         declare
+            Str1 : constant Str :=
+              Process_Operand (Op1, POO_Unsigned, Conditional);
+            Str2 : constant Str :=
+              Process_Operand (Op2, POO_Unsigned, Conditional);
+
+         begin
+            Assignment (V,
+                        Str2 & " > " & Str1 & " ? 0 : " & Str1 & " - " &
+                        Str2 + Conditional,
+                        Is_Opencode_Builtin => True);
+            return True;
+         end;
+
+      --  Handle copysign. We could do this by calling the library
+      --  function, but that would add complexity to the user's
+      --  build. Doing this as a conditional is equivalent except for
+      --  signed zeros and obscure cases involving NaNs and it appears that
+      --  LLVM doesn't generate this builtin in most of those cases. If
+      --  this ever becomes no longer true and it becomes an issue, we may
+      --  need to add a switch that forces exact FP semantics and makes
+      --  the library call.
+
+      elsif Matches (S, "copysign") then
          Force_To_Variable (Op1);
          Force_To_Variable (Op2);
-         Assignment (V, TP ("#1 < #2 ? #1 : #2", Op1, Op2) + Conditional,
+         Assignment (V, TP ("(#1 >= 0) == (#2 >= 0) ? #1 : - #1", Op1, Op2)
+                       + Conditional,
                      Is_Opencode_Builtin => True);
          return True;
 
       --  Handle the builtins we created for or else / and then
 
       elsif Matches (S, "ccg.orelse") then
-         Assignment (V, TP ("#1 || #2", Op1, Op2),
+         Assignment (V, TP ("#1 || #2", Op1, Op2) + Logical_OR,
                      Is_Opencode_Builtin => True);
          return True;
       elsif Matches (S, "ccg.andthen") then
-         Assignment (V, TP ("#1 && #2", Op1, Op2),
+         Assignment (V, TP ("#1 && #2", Op1, Op2) + Logical_AND,
                      Is_Opencode_Builtin => True);
+         return True;
+
+      --  Handle bitreverse and bswap builtins
+
+      elsif (Matches (S, "bswap") or else Matches (S, "bitreverse"))
+        and then Ops'Length = 2 and then Is_Integral_Type (Op1)
+      then
+         Force_To_Variable (V);
+         Assignment (V, Bit_Byte_Reverse (V, Op1, Matches (S, "bswap")));
          return True;
 
       --  Handle the builtin for annotations
@@ -1030,11 +1182,13 @@ package body CCG.Subprograms is
             Write_Eol;
          end if;
 
-         --  Now write out the statements for the subprogram
+         --  Now write out the statements for the subprogram, if any
 
-         for Idx in SD.First_Stmt .. SD.Last_Stmt loop
-            Write_C_Line (Idx);
-         end loop;
+         if Present (SD.First_Stmt) then
+            for Idx in SD.First_Stmt .. SD.Last_Stmt loop
+               Write_C_Line (Idx);
+            end loop;
+         end if;
 
          --  Finally, write the closing brace. We have to do it this
          --  way rather than using End_Output_Block because we can't
@@ -1057,6 +1211,10 @@ package body CCG.Subprograms is
          --  declaration to avoid doing it more than once.
 
          Exclude (Declaration_Map, V);
+
+         --  First write any decls that this depends on
+
+         Scan_For_Decls (V);
 
          --  Write any decls that declare this variable. There should
          --  only be one, but we don't want or need to depend on that.

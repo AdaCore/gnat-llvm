@@ -472,20 +472,33 @@ package body CCG.Instructions is
    begin
       --  If this is a load or store of a partial integer, we need to
       --  cast to a pointer to a struct consisting of an int of that bitsize
-      --  and reference the integer field.
+      --  and reference the integer field. However, if the C compiler we're
+      --  using doesn't support packing, this won't help, so don't worry
+      --  about the out-of-bounds access.
 
-      if Is_Integral_Type (T)
+      if not Pack_Not_Supported
+        and then Is_Integral_Type (T)
         and then Get_Scalar_Bit_Size (T) not in 8 | 16 | 32 | 64 | 128
       then
          declare
-            Bits : constant Nat := Get_Scalar_Bit_Size (T);
+            Bits   : constant Nat := Get_Scalar_Bit_Size (T);
+            Result : Str :=
+              "((struct ccg_i" & Bits & " *" &
+              (if Need_Volatile then "volatile" else "") & ") " & Op & ")->f";
 
          begin
-            pragma Assert (Bits < Long_Long_Size);
-            return "((struct { unsigned " &
-              (if Bits > Int_Size then "long long" else "int") & " f:" &
-              Bits & "; } * " & (if Need_Volatile then "volatile" else "") &
-              ") " & Op & ")->f";
+            Need_IXX_Struct (Bits);
+
+            --  If this is larger than an int size record, some C compilers,
+            --  such as GCC, will treat a subsequent operation, such as a
+            --  shift, as being done in Bits, so cast to long long to
+            --  prevent that odd behavior.
+
+            if Is_A_Load_Inst (V) and then Bits > Int_Size then
+               Result := "((long long) " & Result & ")";
+            end if;
+
+            return Result;
          end;
 
       --  If this isn't volatile, it's a normal dereference. Likewise if
@@ -544,9 +557,17 @@ package body CCG.Instructions is
          Force_To_Variable (Op3);
       end if;
 
-      --  Now generate the C conditional operation
+      --  If we have a pointer type, it's possible that the two pointers
+      --  point to something that differs in signedness, so we need to cast
+      --  both to the same signedness.
+      --  ??? When we support opaque pointer and track what something
+      --  points to, we'll be able to do better here.
 
-      return TP ("#1 ? #2 : #3", Op1, Op2, Op3) + Conditional;
+      if Is_Pointer_Type (Op2) then
+         return TP ("#1 ? (#T2) #2 : (#T2) #3", Op1, Op2, Op3) + Conditional;
+      else
+         return TP ("#1 ? #2 : #3", Op1, Op2, Op3) + Conditional;
+      end if;
    end Select_Instruction;
 
    ------------------------
@@ -601,7 +622,7 @@ package body CCG.Instructions is
             return TP ("#1 << #2", Op1, Op2) + Shift;
 
          when Op_L_Shr | Op_A_Shr =>
-            return Process_Operand (Op1, POO, Shift) & " >> " & Op2 + Shift;
+            return Process_Operand (Op1, POO, Shift) & " >> " & (Op2 + Shift);
 
          when Op_F_Add =>
             return TP ("#1 + #2", Op1, Op2) + Add;
@@ -729,17 +750,6 @@ package body CCG.Instructions is
       elsif Opc = Op_Trunc
         and then Next_Pow2 (Get_Scalar_Bit_Size (Src_T)) =
                  Next_Pow2 (Get_Scalar_Bit_Size (Dest_T))
-      then
-         return +Op;
-
-      --  Similarly, if this is an extension from a small integral type
-      --  that's the same C type and the signedness is the same, it's
-      --  the same C type.
-
-      elsif Opc in Op_Z_Ext | Op_S_Ext
-        and then Next_Pow2 (Get_Scalar_Bit_Size (Dest_T)) =
-                 Next_Pow2 (Get_Scalar_Bit_Size (Src_T))
-        and then (Opc = Op_Z_Ext) = Is_Unsigned (Op)
       then
          return +Op;
       end if;

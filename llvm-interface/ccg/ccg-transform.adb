@@ -98,11 +98,6 @@ package body CCG.Transform is
    --  If Do_Nothing is True, don't actually make any change, just indicate
    --  whether such a change can be made.
 
-   function Is_Return_Phi (V : Value_T) return Boolean
-     with Pre => Is_APHI_Node (V);
-   --  Return True if V is a Phi instruction that's only used in a Return
-   --  instruction.
-
    function Is_Only_Condition (BB : Basic_Block_T) return Boolean
      with Pre => Present (BB);
    --  Returns True if every instruction in the basic block is used
@@ -173,6 +168,14 @@ package body CCG.Transform is
       function Phi_Value (V : Value_T; From_BB : Basic_Block_T) return Value_T
         with Pre  => Is_APHI_Node (V) and then Present (From_BB),
              Post => Type_Of (V) = Type_Of (Phi_Value'Result);
+      --  Return the value of V, a Phi node, that's active when branched yto
+      --  by From_BB.
+
+      function Is_Return_Phi (V : Value_T) return Boolean
+        with Pre => Is_APHI_Node (V);
+      --  Return True if V is a Phi instruction that's only used in a
+      --  Return instruction and whose basic block contains just Phis and
+      --  the Return.
 
       BB         : Basic_Block_T := Get_First_Basic_Block (V);
       Alloca_Loc : Value_T       :=
@@ -240,6 +243,46 @@ package body CCG.Transform is
          end return;
       end Phi_Value;
 
+      -------------------
+      -- Is_Return_Phi --
+      -------------------
+
+      function Is_Return_Phi (V : Value_T) return Boolean is
+         User : constant Value_T := Single_User (V);
+         Inst : Value_T := V;
+
+      begin
+         --  The optimizer sometimes creates a Phi just to merge returns.
+         --  When generating C, we want to undo that and prefer to generate
+         --  the return. So check for a Phi that's just used once and for a
+         --  return. For simplicity, do this only if it's the first Phi
+         --  (which it should be) and don't do this for array types, since
+         --  they can't be directly returned in C. It also must be in the same
+         --  basic block as the Phi.
+
+         if No (User) or else Get_Opcode (User) /= Op_Ret
+           or else Is_Array_Type (V)
+           or else Get_Instruction_Parent (V) /= Get_Instruction_Parent (User)
+         then
+            return False;
+         end if;
+
+         --  Now see if we run into something that's not a Phi before we
+         --  hit the return.
+
+         while Present (Inst) and then Inst /= User loop
+            if not Is_APHI_Node (Inst) then
+               return False;
+            end if;
+
+            Inst := Get_Next_Instruction (Inst);
+         end loop;
+
+         --  Otherwise, it's a return Phi
+
+         return True;
+      end Is_Return_Phi;
+
    begin -- Start of processing for Eliminate_Phis
 
       --  We want to put any allocas we create after any that are already
@@ -274,6 +317,7 @@ package body CCG.Transform is
          for J in Nat range 0 .. Get_Num_Successors (Inst) - 1 loop
             declare
                Dest_BB     : constant Basic_Block_T := Get_Successor (Inst, J);
+               Inst_Erased : Boolean                := False;
                Insert_BB   : Basic_Block_T          := BB;
                Dest_Inst   : Value_T                :=
                  Get_First_Instruction (Dest_BB);
@@ -307,6 +351,7 @@ package body CCG.Transform is
 
                      if Is_Unc_Br (Inst) then
                         Instruction_Erase_From_Parent (Inst);
+                        Inst_Erased := True;
                      end if;
 
                      --  If we have nested phi nodes, it's possible that
@@ -349,7 +394,9 @@ package body CCG.Transform is
 
                --  Now possibly update our successor
 
-               if not Is_Unc_Br (Inst) and then Insert_BB /= BB then
+               if not Inst_Erased and then not Is_Unc_Br (Inst)
+                 and then Insert_BB /= BB
+               then
                   Set_Successor (Inst, J, Insert_BB);
                end if;
             end;
@@ -523,25 +570,6 @@ package body CCG.Transform is
 
    end Negate_Condition;
 
-   -------------------
-   -- Is_Return_Phi --
-   -------------------
-
-   function Is_Return_Phi (V : Value_T) return Boolean is
-      User : constant Value_T := Single_User (V);
-
-   begin
-      --  The optimizer sometimes creates a Phi just to merge returns.
-      --  When generating C, we want to undo that and prefer to generate
-      --  the return. So check for a Phi that's just used once and for a
-      --  return. For simplicity, do this only if it's the first Phi (which
-      --  it should be) and don't do this for array types, since they can't
-      --  be directly returned in C.
-
-      return Present (User) and then Get_Opcode (User) = Op_Ret
-        and then not Is_Array_Type (V);
-   end Is_Return_Phi;
-
    ----------------------------
    -- Has_Unique_Predecessor --
    ----------------------------
@@ -699,11 +727,11 @@ package body CCG.Transform is
       Call_Inst   : Value_T;
 
    begin
-      --  Delete the present terminator from the current basic block and
-      --  all instructions other than the terminator from our other basic
-      --  block.
+      --  Remove the present terminator from the current basic block and
+      --  move all instructions other than the terminator from our other
+      --  basic block.
 
-      Instruction_Erase_From_Parent (Our_Term);
+      Instruction_Remove_From_Parent (Our_Term);
       while Inst /= SC_Term loop
          Next_Inst := Get_Next_Instruction (Inst);
          Instruction_Remove_From_Parent (Inst);
@@ -713,13 +741,14 @@ package body CCG.Transform is
 
       --  Now add the or else / and or builtin call, change the condition
       --  of our other block's terminator to it, move that one as well,
-      --  and delete the other basic block.
+      --  and delete our terminator and the other basic block.
 
       Call_Inst := Create_Call_2 (Fn, Our_Cond, Get_Last_Instruction (BB));
       Insert_At_Block_End (Call_Inst, BB, Our_Term);
       Set_Condition (SC_Term, Call_Inst);
       Instruction_Remove_From_Parent (SC_Term);
       Insert_At_Block_End (SC_Term, BB, SC_Term);
+      Delete_Instruction (Our_Term);
       Delete_Basic_Block (SC_BB);
 
    end Make_Short_Circuit_Op;

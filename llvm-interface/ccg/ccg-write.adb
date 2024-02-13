@@ -25,7 +25,6 @@ with Atree;       use Atree;
 with Csets;       use Csets;
 with Debug;       use Debug;
 with Einfo.Utils; use Einfo.Utils;
-with Lib;         use Lib;
 with Opt;         use Opt;
 with Osint;       use Osint;
 with Osint.C;     use Osint.C;
@@ -210,16 +209,25 @@ package body CCG.Write is
          Append_Suffix := True;
       else
          --  We assume here that the only characters we have to be concerned
-         --  about are "." and "-", which we remap to "_".
-         --  GNAT LLVM itself only generates '.' but the LLVM optimizer may
-         --  generate e.g. .pre-phixxx variables, see
+         --  about are "." and "-", which we remap to "_" and "__",
+         --  respectively. GNAT LLVM itself mostly generates '.' but the LLVM
+         --  optimizer may generate e.g. .pre-phixxx variables, see
          --  lib/Transforms/Scalar/GVN.cpp or xxxthread-pre-split, see
-         --  lib/Transforms/Scalar/JumpThreading.cpp.
+         --  lib/Transforms/Scalar/JumpThreading.cpp. However, GNAT LLVM can
+         --  generate "-" in cases where the filename has a "-" and we're
+         --  making file-level globals (e.g., FNAME). Because we could have
+         --  two files, one with "-" and one with "_", we can't convert "-"
+         --  into "_", but must double it (we could have a file named that
+         --  way too, but it would give a compilation warning because the
+         --  package can't be named that way, so this can't conflict).
 
          for C of S loop
-            if C in '.' | '-' then
+            if C = '.' then
                Append_Suffix := True;
                Write_Char ('_');
+            elsif C = '-' then
+               Append_Suffix := True;
+               Write_Str ("__");
             else
                Write_Char (C);
             end if;
@@ -907,9 +915,7 @@ package body CCG.Write is
    ------------------------
 
    procedure Initialize_Writing is
-      Main_Source_File : constant Source_File_Index :=
-        Source_Index (Main_Unit);
-      Wrote_Include    : Boolean                    := False;
+      Wrote_Include : Boolean := False;
 
    begin
       --  If we're not writing to standard output, open the .c or .h file
@@ -1046,7 +1052,8 @@ package body CCG.Write is
    -----------------------
 
    procedure Write_Source_Line (L : Physical_Line_Number) is
-      Scn : Source_Ptr;
+      Scn       : Source_Ptr;
+      Last_Char : Character := ' ';
 
    begin
       if Is_Comment_Line (L) then
@@ -1059,7 +1066,17 @@ package body CCG.Write is
 
       Scn := Line_Start (L, Main_Source_File);
       while Scn <= Src'Last and then Src (Scn) not in Line_Terminator loop
+
+         --  We have the pathological case of a Ada source line containing
+         --  a "*/" string, which will cause the C comment line we're writing
+         --  to be ended prematurely. So write "*_/" instead in that case.
+
+         if Last_Char = '*' and then Src (Scn) = '/' then
+            Write_Char ('_');
+         end if;
+
          Write_Char (Src (Scn));
+         Last_Char := Src (Scn);
          Scn := Scn + 1;
       end loop;
 

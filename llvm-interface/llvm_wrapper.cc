@@ -1205,6 +1205,17 @@ Has_Default_PIE (const char *Target)
 }
 
 extern "C"
+bool
+Has_SEH (const char *Target)
+{
+  Triple TargetTriple(Target);
+
+  return TargetTriple.isOSWindows ()
+         && (TargetTriple.isX86 ()
+             || TargetTriple.getArch () == Triple::aarch64);
+}
+
+extern "C"
 const char *
 Get_Personality_Function_Name (const char *Target)
 {

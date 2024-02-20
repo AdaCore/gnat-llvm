@@ -41,7 +41,9 @@ package GNATLLVM.Blocks is
    --  region of the block.
 
    procedure Push_Block
-     (At_End_Proc : Opt_N_Subexpr_Id := Empty; EH_List : List_Id := No_List)
+     (At_End_Proc     : Opt_N_Subexpr_Id := Empty;
+      EH_List         : List_Id          := No_List;
+      Catch_Unhandled : Boolean          := False)
      with Pre => not Library_Level;
    --  Push a block onto the block stack
 

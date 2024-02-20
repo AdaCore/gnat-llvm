@@ -566,6 +566,8 @@ package body GNATLLVM.Codegen is
                         Get_LLVM_Error_Msg (Ptr_Err_Msg));
       end if;
 
+      SEH := Has_SEH (Normalized_Target_Triple.all);
+
       if not PIC_PIE_Set then
          --  Set the same target-dependent default as Clang: PIE level 2 for
          --  Linux and 64-bit Windows, and neither PIC nor PIE otherwise. (The

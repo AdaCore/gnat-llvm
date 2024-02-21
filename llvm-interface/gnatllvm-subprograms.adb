@@ -1148,7 +1148,9 @@ package body GNATLLVM.Subprograms is
       end if;
 
       Entry_Block_Allocas := Get_Current_Position;
-      Push_Block (At_End_Proc => At_End_Proc (N));
+      Push_Block
+        (At_End_Proc     => At_End_Proc (N),
+         Catch_Unhandled => SEH and then Get_Value_Name (Func) = "main");
       Param := First_Formal_With_Extras (E);
       while Present (Param) loop
          declare

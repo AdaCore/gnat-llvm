@@ -104,6 +104,10 @@ package body GNATLLVM.Blocks is
       --  List of memory locations whose lifetimes end at the end of this
       --  block.
 
+      Catch_Unhandled    : Boolean;
+      --  True if this block catches unhandled exceptions. This is used for
+      --  the main subprogram on SEH targets.
+
    end record;
 
    type Block_Stack_Level is new Integer;
@@ -363,12 +367,17 @@ package body GNATLLVM.Blocks is
    End_Handler_Fn   : GL_Value;
    --  Begin and end functions for handlers
 
+   Unhandler_Fn     : GL_Value;
+   --  Handler for unhandled exceptions
+
    Reraise_Fn       : GL_Value;
    --  Function to reraise an exception
 
-   Others_Value     : GL_Value;
-   All_Others_Value : GL_Value;
-   --  "Exception" address for "others" and special "all others"
+   Others_Value           : GL_Value;
+   All_Others_Value       : GL_Value;
+   Unhandled_Others_Value : GL_Value;
+   --  "Exception" address for "others" and special "all others" and
+   --  "unhandled others".
 
    Set_Exception_Param_Fn : GL_Value := No_GL_Value;
    --  Declaration for __gnat_set_exception_parameter. This can't be
@@ -403,7 +412,9 @@ package body GNATLLVM.Blocks is
    ----------------
 
    procedure Push_Block
-     (At_End_Proc : Opt_N_Subexpr_Id := Empty; EH_List : List_Id := No_List)
+     (At_End_Proc     : Opt_N_Subexpr_Id := Empty;
+      EH_List         : List_Id          := No_List;
+      Catch_Unhandled : Boolean          := False)
    is
       End_Subp      : Opt_Subprogram_Kind_Id := Empty;
       End_Proc      : GL_Value               := No_GL_Value;
@@ -453,7 +464,8 @@ package body GNATLLVM.Blocks is
                            Unprotected        => False,
                            At_Entry_Start     =>
                              Get_Current_Position = Entry_Block_Allocas,
-                           Lifetime_List      => null));
+                           Lifetime_List      => null,
+                           Catch_Unhandled    => Catch_Unhandled));
 
    end Push_Block;
 
@@ -545,7 +557,9 @@ package body GNATLLVM.Blocks is
       for J in reverse 1 .. Block_Stack.Last loop
          BI := Block_Stack.Table (J);
 
-         if (Present (BI.EH_List) or else Present (BI.At_End_Proc))
+         if (Present (BI.EH_List)
+             or else Present (BI.At_End_Proc)
+             or else BI.Catch_Unhandled)
            and then not BI.Unprotected
          then
             if No (BI.Landing_Pad) then
@@ -687,6 +701,11 @@ package body GNATLLVM.Blocks is
                                     Void_Type),
                              Void_GL_Type);
 
+      Unhandler_Fn     :=
+        Add_Global_Function ("__gnat_unhandled_except_handler",
+                             Fn_Ty ((1 => Void_Ptr_T), Void_Type),
+                             Void_GL_Type);
+
       Reraise_Fn       :=
         Add_Global_Function ("__gnat_reraise_zcx",
                              Fn_Ty ((1 => Void_Ptr_T), Void_Type),
@@ -697,9 +716,14 @@ package body GNATLLVM.Blocks is
         Build_Intrinsic ("llvm.eh.typeid.for", Int_32_GL_Type);
       Set_Does_Not_Throw (EH_Slot_Id_Fn);
 
-      Others_Value     := Add_Global (SSI_GL_Type, "__gnat_others_value");
-      All_Others_Value := Add_Global (SSI_GL_Type, "__gnat_all_others_value");
-      Predefines_Set   := True;
+      Others_Value           :=
+        Add_Global (SSI_GL_Type, "__gnat_others_value");
+      All_Others_Value       :=
+        Add_Global (SSI_GL_Type, "__gnat_all_others_value");
+      Unhandled_Others_Value :=
+        Add_Global (SSI_GL_Type, "__gnat_unhandled_others_value");
+
+      Predefines_Set := True;
 
    end Initialize_Predefines;
 
@@ -1166,6 +1190,10 @@ package body GNATLLVM.Blocks is
                end loop;
             end if;
          end loop;
+
+         if BI.Catch_Unhandled then
+            Add_Clause (LP_Inst, Unhandled_Others_Value);
+         end if;
       end if;
 
       --  Now generate the dispatch code to branch to each exception
@@ -1219,7 +1247,10 @@ package body GNATLLVM.Blocks is
 
       Next_BB := Create_Basic_Block;
 
-      if Present (BI.EH_List) or else BI.At_End_Pass_Excptr then
+      if Present (BI.EH_List)
+        or else BI.Catch_Unhandled
+        or else BI.At_End_Pass_Excptr
+      then
 
          --  Extract the selector and the exception pointer
 
@@ -1282,6 +1313,31 @@ package body GNATLLVM.Blocks is
                                         (1 => Clauses.Table (J).Exc))),
                            Clauses.Table (J).BB, BB);
          end loop;
+
+         --  If we're supposed to catch unhandled exceptions (i.e., the
+         --  special exception type __gnat_unhandled_others_value), emit a
+         --  handler that calls __gnat_unhandled_except_handler.
+
+         if BI.Catch_Unhandled then
+            declare
+               Handler_BB : constant Basic_Block_T :=
+                 Create_Basic_Block ("UNHANDLED_OTHERS");
+            begin
+               Position_Builder_At_End (Handler_BB);
+               Call (Unhandler_Fn, (1 => Exc_Ptr));
+               Build_Unreachable;
+
+               Position_Builder_At_End (BB);
+               BB := Create_Basic_Block;
+               Build_Cond_Br
+                 (I_Cmp
+                    (Int_EQ, Selector,
+                     Call
+                       (EH_Slot_Id_Fn,
+                       (1 => Unhandled_Others_Value))),
+                  Handler_BB, BB);
+            end;
+         end if;
       end if;
 
       --  This is the code point where we've fallen through the dispatch

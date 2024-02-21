@@ -612,6 +612,17 @@ package body GNATLLVM.Wrapper is
       return Has_Default_PIE_C (Triple & ASCII.NUL) /= 0;
    end Has_Default_PIE;
 
+   -------------
+   -- Has_SEH --
+   -------------
+
+   function Has_SEH (Triple : String) return Boolean is
+      function Has_SEH_C (Triple : String) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Has_SEH";
+   begin
+      return Has_SEH_C (Triple & ASCII.NUL) /= 0;
+   end Has_SEH;
+
    -----------------------------------
    -- Get_Personality_Function_Name --
    -----------------------------------

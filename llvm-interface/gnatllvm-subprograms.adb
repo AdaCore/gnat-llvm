@@ -1150,7 +1150,12 @@ package body GNATLLVM.Subprograms is
       Entry_Block_Allocas := Get_Current_Position;
       Push_Block
         (At_End_Proc     => At_End_Proc (N),
-         Catch_Unhandled => SEH and then Get_Value_Name (Func) = "main");
+         Catch_Unhandled =>
+           SEH
+           and then not
+           (No_Exception_Handlers_Set
+            or else No_Exception_Propagation_Active)
+           and then Get_Value_Name (Func) = "main");
       Param := First_Formal_With_Extras (E);
       while Present (Param) loop
          declare

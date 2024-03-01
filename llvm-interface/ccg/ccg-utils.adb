@@ -24,7 +24,8 @@ with Lib;         use Lib;
 with Set_Targ;    use Set_Targ;
 with Table;
 
-with GNATLLVM.Utils; use GNATLLVM.Utils;
+with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
 with CCG.Codegen;     use CCG.Codegen;
 with CCG.Environment; use CCG.Environment;
@@ -728,11 +729,18 @@ package body CCG.Utils is
       --  will interpret our generated code for V as unsigned, not
       --  whether it actually IS unsigned.
 
+      --  If V is a function, the result is the signedness of the actual
+      --  returned type.
+
+      if Is_A_Function (V) then
+         return
+           Opt_Is_Unsigned_Type (Actual_Subprogram_Base_Type (Get_Entity (V)));
+
       --  If V isn't a LHS but is a variable and we've written a
       --  declaration for it, it's only unsigned if we've written "unsigned"
       --  in the declaration.
 
-      if not Get_Is_LHS (V) and then Is_Variable (V, False)
+      elsif not Get_Is_LHS (V) and then Is_Variable (V, False)
         and then Get_Is_Decl_Output (V)
       then
          return Opt_Is_Unsigned_Type (BT);
@@ -769,14 +777,7 @@ package body CCG.Utils is
          --  and has an unsigned return type.
 
          when Op_Call =>
-
-            declare
-               TE : constant Opt_Type_Kind_Id := GNAT_Type (Get_Operand0 (V));
-               BT : constant Opt_Type_Kind_Id := Opt_Full_Base_Type (TE);
-
-            begin
-               return Opt_Is_Unsigned_Type (BT);
-            end;
+            return Is_Unsigned (Get_Operand (V, Get_Num_Operands (V) - 1));
 
          --  Some conversions don't change signedness and neither does left
          --  shift.

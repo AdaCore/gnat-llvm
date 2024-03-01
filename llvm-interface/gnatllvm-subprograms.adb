@@ -1739,6 +1739,41 @@ package body GNATLLVM.Subprograms is
 
    end Emit_Return_Statement;
 
+   ---------------------------------
+   -- Actual_Subprogram_Base_Type --
+   ---------------------------------
+
+   function Actual_Subprogram_Base_Type
+     (E : Entity_Id) return Opt_Type_Kind_Id
+   is
+      TE : Opt_Type_Kind_Id := Empty;
+
+   begin
+      --  If there's no entity or it's not a subprogram, we don't have a
+      --  type to return.
+
+      if No (E) or else Ekind (E) not in Subprogram_Kind then
+         return Empty;
+      end if;
+
+      --  Otherwise, it depends on the LLVM return kind
+
+      case Get_L_Ret_Kind (E) is
+         when Subprog_Return =>
+            TE := Etype (E);
+
+         when Out_Return =>
+            TE := Etype (First_Out_Param (E));
+
+         when others =>
+            null;
+      end case;
+
+      --  We want the full base type
+
+      return (if Present (TE) then Full_Base_Type (TE) else Empty);
+   end Actual_Subprogram_Base_Type;
+
    ---------------------
    -- Get_Static_Link --
    ---------------------

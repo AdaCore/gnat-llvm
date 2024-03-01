@@ -251,6 +251,11 @@ package GNATLLVM.Subprograms is
      with Pre => Nkind (N) = N_Simple_Return_Statement;
    --  Emit code for a return statement
 
+   function Actual_Subprogram_Base_Type
+     (E : Entity_Id) return Opt_Type_Kind_Id;
+   --  If E is Present and a subprogram, return the base type of the GNAT
+   --  type corresponding to the LLVM type of its return value, if any.
+
    function Add_Static_Link
      (Proc : Opt_Subprogram_Kind_Id;
       Args : GL_Value_Array) return GL_Value_Array;

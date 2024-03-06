@@ -351,6 +351,11 @@ package body GNATLLVM.Blocks is
    --  parameter. This can only be called once we have an exception parameter
    --  since we can't easily find the exception type before that.
 
+   function Get_EH_Slot (Exc : GL_Value) return GL_Value
+     with Pre  => Is_Access_Type (Exc),
+          Post => Present (Get_EH_Slot'Result);
+   --  Emit code that obtains the type info index for the exception
+
    procedure Initialize_Predefines;
    --  Initialize the predefined functions and variables below
 
@@ -1309,8 +1314,7 @@ package body GNATLLVM.Blocks is
             Position_Builder_At_End (BB);
             BB := Create_Basic_Block;
             Build_Cond_Br (I_Cmp (Int_EQ, Selector,
-                                  Call (EH_Slot_Id_Fn,
-                                        (1 => Clauses.Table (J).Exc))),
+                                  Get_EH_Slot (Clauses.Table (J).Exc)),
                            Clauses.Table (J).BB, BB);
          end loop;
 
@@ -1954,6 +1958,26 @@ package body GNATLLVM.Blocks is
          Position_Builder_At_End (BB_Next);
       end if;
    end Emit_Raise;
+
+   -----------------
+   -- Get_EH_Slot --
+   -----------------
+
+   function Get_EH_Slot (Exc : GL_Value) return GL_Value is
+
+      --  The LLVM intrinsic llvm.eh.typeid.for is special in that it
+      --  always requires its argument to be a pointer in address space 0,
+      --  regardless of the module's default address space. We therefore
+      --  need to cast the exception pointer first.
+
+      Exc_AS0 : constant GL_Value :=
+        G_From
+          (Addr_Space_Cast
+             (IR_Builder, +Exc, Pointer_Type (Byte_T, 0), ""),
+           Exc);
+   begin
+      return Call (EH_Slot_Id_Fn, (1 => Exc_AS0));
+   end Get_EH_Slot;
 
    ----------------
    -- Initialize --

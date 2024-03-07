@@ -35,6 +35,7 @@ endif
 LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs)
 CXXFLAGS=
 ALL_CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags) $(CXXFLAGS) $(CLANG_CXXFLAGS)
+LLVM_INCLUDE_DIR=$(shell $(LLVM_CONFIG) --includedir)
 
 ifeq ($(OS),Windows_NT)
   LN_S=cp -p
@@ -249,7 +250,7 @@ gnatlib-bc:
 quicklib: $(RTSDIR)
 	PATH=$(pwd)/bin:$$PATH \
 	$(GPRBUILD) -p --target=llvm -j$(PROCS) -P$(RTSDIR)/libada \
-	  -XCFLAGS="$(CFLAGS) -Wno-implicit-function-declaration" \
+	  -XCFLAGS="$(CFLAGS) -Wno-implicit-function-declaration -I$(LLVM_INCLUDE_DIR)" \
 	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS) -gdwarf-aranges" \
 	  -XLIBRARY_KIND=$(LIBRARY_KIND)
 	cd $(RTSLIB) && $(CHMOD) a-wx *.ali

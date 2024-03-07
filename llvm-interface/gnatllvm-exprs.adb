@@ -43,7 +43,6 @@ with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
-with GNATLLVM.Variables;    use GNATLLVM.Variables;
 
 with CCG; use CCG;
 
@@ -1104,7 +1103,6 @@ package body GNATLLVM.Exprs is
 
    procedure Emit_Pragma (N : N_Pragma_Id) is
       PAAs : constant List_Id := Pragma_Argument_Associations (N);
-      Expr : Opt_N_Pragma_Argument_Association_Id;
 
    begin
       case Get_Pragma_Id (N) is
@@ -1137,38 +1135,54 @@ package body GNATLLVM.Exprs is
                   pragma Assert (Standard.False);
             end case;
 
+         --  For Compile_Time_Error or warning, be sure that any types of
+         --  expressions in the first argument are elaborated.
+
          when Pragma_Compile_Time_Error | Pragma_Compile_Time_Warning =>
+            declare
+               function Elaborate_Type (N : Node_Id) return Traverse_Result;
+               --  If N has a type, ensure that we've elaborated it
 
-            --  We need to force elaboration of any types here. This should
-            --  be an expression that doesn't need any elaboration proc,
-            --  but testing to see that it doesn't will elaborate the types.
+               procedure Scan is new Traverse_Proc (Elaborate_Type);
+               --  Search an expression for unelaborated types
 
-            Expr := First (PAAs);
-            while Present (Expr) loop
-               Discard (Is_No_Elab_Needed (Expression (Expr)));
-               Next (Expr);
-            end loop;
+               --------------------
+               -- Elaborate_Type --
+               --------------------
+
+               function Elaborate_Type (N : Node_Id) return Traverse_Result is
+               begin
+                  if Nkind (N) in N_Has_Etype and then Present (Etype (N)) then
+                     Discard (Type_Of (Full_Etype (N)));
+                  end if;
+
+                  return OK;
+               end Elaborate_Type;
+
+            begin
+               Scan (Expression (First (PAAs)));
+            end;
 
          when Pragma_Inspection_Point
-            | Pragma_Loop_Optimize
-            | Pragma_Warning_As_Error
-            | Pragma_Warnings =>
+           | Pragma_Loop_Optimize
+           | Pragma_Warning_As_Error
+           | Pragma_Warnings =>
             --  ??? These are the ones that Gigi supports and we may want
             --  to support as well at some point.
 
             null;
 
-         when Pragma_Annotate | Pragma_GNAT_Annotate =>
+         --  For Annotate, only do something if we're emitting C and we
+         --  have three operands.
 
-            --  Only do something if we're emitting C and we have three
-            --  operands.
+         when Pragma_Annotate | Pragma_GNAT_Annotate =>
 
             if Emit_C and then List_Length (PAAs) = 3 then
                Emit_Annotation (N);
             end if;
 
-          --  For pragma Comment, set up an annotation for the comment
-          --  if we're generating C and aren't outputting source code.
+         --  For pragma Comment, set up an annotation for the comment
+         --  if we're generating C and aren't outputting source code.
 
          when Pragma_Comment =>
             if Emit_C and then not Dump_Source_Text

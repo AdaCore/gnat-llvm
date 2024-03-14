@@ -685,6 +685,14 @@ package body GNATLLVM.Builtins is
              (Get_Set_Address_Fn,
               (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
 
+      elsif S = "base_get" and then N_Args = 1 then
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.cap.base.get", Size_GL_Type,
+                 (1 => Size_T)),
+              (1 => Emit_Expression (Val)));
+
       elsif S = "bounds_set" and then N_Args = 2 then
          V := Emit_Expression (Val);
          return
@@ -718,6 +726,14 @@ package body GNATLLVM.Builtins is
                  (1 => Size_T)),
               (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
 
+      elsif S = "perms_get" and then N_Args = 1 then
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.cap.perms.get", Size_GL_Type,
+                 (1 => Size_T)),
+              (1 => Emit_Expression (Val)));
+
       elsif S = "program_counter_get" and then N_Args = 0 then
          return
            Call
@@ -745,6 +761,28 @@ package body GNATLLVM.Builtins is
            Call
              (Build_Intrinsic
                 ("llvm.cheri.cap.seal.entry", A_Char_GL_Type),
+              (1 => Emit_Expression (Val)));
+
+      elsif S = "sealed_get" and then N_Args = 1 then
+         return
+           Call_Relationship
+             (Build_Intrinsic
+                ("llvm.cheri.cap.sealed.get", Boolean_GL_Type),
+              (1 => Emit_Expression (Val)), Boolean_Data);
+
+      elsif S = "tag_get" and then N_Args = 1 then
+         return
+           Call_Relationship
+             (Build_Intrinsic
+                ("llvm.cheri.cap.tag.get", Boolean_GL_Type),
+              (1 => Emit_Expression (Val)), Boolean_Data);
+
+      elsif S = "type_get" and then N_Args = 1 then
+         return
+           Call
+             (Build_Intrinsic
+                ("llvm.cheri.cap.type.get", Size_GL_Type,
+                 (1 => Size_T)),
               (1 => Emit_Expression (Val)));
 
       elsif S = "unseal" and then N_Args = 2 then

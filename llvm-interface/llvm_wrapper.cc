@@ -235,6 +235,13 @@ Add_Sanitize_Address_Attribute (Function *fn)
 }
 
 extern "C"
+void
+Add_No_Implicit_Float_Attribute (Function *fn)
+{
+  fn->addFnAttr(Attribute::NoImplicitFloat);
+}
+
+extern "C"
 bool
 Has_Inline_Attribute (Function *fn)
 {

@@ -2795,6 +2795,10 @@ package body GNATLLVM.Subprograms is
             Add_Sanitize_Address_Attribute (LLVM_Func);
          end if;
 
+         if No_Implicit_Float then
+            Add_No_Implicit_Float_Attribute (LLVM_Func);
+         end if;
+
          Formal := First_Formal_With_Extras (E);
          while Present (Formal) loop
             declare

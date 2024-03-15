@@ -145,6 +145,10 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C,
           External_Name => "Add_Sanitize_Address_Attribute";
 
+   procedure Add_No_Implicit_Float_Attribute (Func : Value_T)
+     with Import, Convention => C,
+          External_Name => "Add_No_Implicit_Float_Attribute";
+
    function Has_Inline_Attribute (Func : Value_T) return Boolean
      with Pre => Present (Is_A_Function (Func));
 

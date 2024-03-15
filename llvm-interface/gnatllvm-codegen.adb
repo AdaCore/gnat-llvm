@@ -189,6 +189,31 @@ package body GNATLLVM.Codegen is
          ABI             := new String'(Switch_Value (S, "-mabi="));
          Tagged_Pointers := ABI.all = "purecap";
 
+      elsif S = "-mdso-preemptable" then
+         DSO_Preemptable := True;
+      elsif S = "-mdso-local" then
+         DSO_Preemptable := False;
+      elsif S = "-mcode-model=small" then
+         Code_Model := Code_Model_Small;
+      elsif S = "-mcode-model=kernel" then
+         Code_Model := Code_Model_Kernel;
+      elsif S = "-mcode-model=medium" then
+         Code_Model := Code_Model_Medium;
+      elsif S = "-mcode-model=large" then
+         Code_Model := Code_Model_Large;
+      elsif S = "-mcode-model=default" then
+         Code_Model := Code_Model_Default;
+      elsif S = "-mrelocation-model=static" then
+         Reloc_Mode := Reloc_Static;
+      elsif S = "-mrelocation-model=pic" then
+         Reloc_Mode := Reloc_PIC;
+      elsif S = "-mrelocation-model=dynamic-no-pic" then
+         Reloc_Mode := Reloc_Dynamic_No_Pic;
+      elsif S = "-mrelocation-model=default" then
+         Reloc_Mode := Reloc_Default;
+      elsif S = "-mno-implicit-float" then
+         No_Implicit_Float := True;
+
       --  We support -mXXX and -mno-XXX by adding +XXX or -XXX, respectively,
       --  to the list of features.
 
@@ -370,29 +395,6 @@ package body GNATLLVM.Codegen is
             To_Free             := San_Cov_Ignore_List;
             San_Cov_Ignore_List := new String'(Name);
          end;
-
-      elsif S = "-mdso-preemptable" then
-         DSO_Preemptable := True;
-      elsif S = "-mdso-local" then
-         DSO_Preemptable := False;
-      elsif S = "-mcode-model=small" then
-         Code_Model := Code_Model_Small;
-      elsif S = "-mcode-model=kernel" then
-         Code_Model := Code_Model_Kernel;
-      elsif S = "-mcode-model=medium" then
-         Code_Model := Code_Model_Medium;
-      elsif S = "-mcode-model=large" then
-         Code_Model := Code_Model_Large;
-      elsif S = "-mcode-model=default" then
-         Code_Model := Code_Model_Default;
-      elsif S = "-mrelocation-model=static" then
-         Reloc_Mode := Reloc_Static;
-      elsif S = "-mrelocation-model=pic" then
-         Reloc_Mode := Reloc_PIC;
-      elsif S = "-mrelocation-model=dynamic-no-pic" then
-         Reloc_Mode := Reloc_Dynamic_No_Pic;
-      elsif S = "-mrelocation-model=default" then
-         Reloc_Mode := Reloc_Default;
       elsif Starts_With (S, "-fpass-plugin=") then
          To_Free := Pass_Plugin_Name;
          Pass_Plugin_Name := new String'(Switch_Value (S, "-fpass-plugin="));

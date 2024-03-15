@@ -1826,6 +1826,15 @@ package body GNATLLVM.GLValue is
       Add_Sanitize_Address_Attribute (+V);
    end Add_Sanitize_Address_Attribute;
 
+   ------------------------------------
+   -- Add_No_Implicit_Float_Attribute --
+   ------------------------------------
+
+   procedure Add_No_Implicit_Float_Attribute (V : GL_Value) is
+   begin
+      Add_No_Implicit_Float_Attribute (+V);
+   end Add_No_Implicit_Float_Attribute;
+
    -------------------
    -- Set_DSO_Local --
    -------------------

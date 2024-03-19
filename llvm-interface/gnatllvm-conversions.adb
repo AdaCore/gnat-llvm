@@ -638,9 +638,15 @@ package body GNATLLVM.Conversions is
       --  If converting pointer to/from integer, copy the bits using the
       --  appropriate instruction.
 
-      elsif Dest_Access and then Is_Integer_Type (In_V) then
+      elsif not Tagged_Pointers
+        and then Dest_Access
+        and then Is_Integer_Type (In_V)
+      then
          Subp := Int_To_Ptr'Access;
-      elsif Is_Integer_Type (GT) and then Src_Access then
+      elsif not Tagged_Pointers
+        and then Is_Integer_Type (GT)
+        and then Src_Access
+      then
          Subp := Ptr_To_Int'Access;
 
       --  For pointer to pointer, call our helper
@@ -664,7 +670,7 @@ package body GNATLLVM.Conversions is
 
       elsif Tagged_Pointers
         and then Is_Integer_Type (In_V)
-        and then Is_Address (GT)
+        and then (Dest_Access or else Is_Address (GT))
       then
          Subp := Null_Derived_Ptr'Access;
 
@@ -673,7 +679,7 @@ package body GNATLLVM.Conversions is
       --  to truncate or zero-extend the resulting integer.
 
       elsif Tagged_Pointers
-        and then Is_Address (In_V)
+        and then (Src_Access or else Is_Address (In_V))
         and then Is_Integer_Type (GT)
       then
          Value := Get_Pointer_Address (Value);

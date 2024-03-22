@@ -793,6 +793,10 @@ package GNATLLVM.GLValue is
      with Pre => Is_Double_Reference (V) or else Is_Access_Type (V)
                  or else Relationship (V) = Thin_Pointer or else Can_Deref (V);
 
+   function Data_Type_Of (V : GL_Value) return Type_T is
+     ((if Is_Reference (V) then Element_Type_Of (V) else Type_Of (V)))
+     with Pre => Present (V), Post => Present (Data_Type_Of'Result);
+
    function Get_Type_Kind (V : GL_Value) return Type_Kind_T is
      (Get_Type_Kind (Type_Of (V)))
      with Pre => Present (V);

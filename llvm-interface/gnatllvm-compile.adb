@@ -768,7 +768,9 @@ package body GNATLLVM.Compile is
    function Emit_LValue
      (N          : N_Subexpr_Id;
       LHS        : GL_Value := No_GL_Value;
-      For_LHS    : Boolean  := False) return GL_Value is
+      For_LHS    : Boolean  := False) return GL_Value
+   is
+      Result : GL_Value;
    begin
       --  We have an important special case here. If N represents an entity
       --  and its value is a Reference, always return that reference in
@@ -781,11 +783,25 @@ package body GNATLLVM.Compile is
         and then Present (Get_Value (Entity (N)))
         and then Is_Single_Reference (Get_Value (Entity (N)))
       then
-         return Get_Value (Entity (N));
+         Result := Get_Value (Entity (N));
       else
-         return Get (Emit (N, LHS, For_LHS => For_LHS, Prefer_LHS => True),
-                     Any_Reference);
+         Result :=
+           Emit (N, LHS, For_LHS => For_LHS, Prefer_LHS => True);
+
+         --  If what we've got now is a Reference_To_Bounds_And_Data let's
+         --  return it instead of turning it into Any_Reference. Doing so
+         --  would throw away the pointer to the bounds; we can recompute
+         --  it (because the bounds are in front of the data in memory) but
+         --  for some targets this isn't possible in an expression context
+         --  (e.g., on Morello, where address arithmetic requires calls to
+         --  intrinsics).
+
+         if Relationship (Result) /= Reference_To_Bounds_And_Data then
+            Result := Get (Result, Any_Reference);
+         end if;
       end if;
+
+      return Result;
    end Emit_LValue;
 
    ----------------------

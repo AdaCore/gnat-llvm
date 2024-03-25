@@ -500,16 +500,54 @@ package body GNATLLVM.Conversions is
          then
             Result := G_Is (Result, Prim_GT);
 
-            --  Otherwise, do an actual pointer pun. But if we have a modular
-            --  integer type that's a packed array implementation type,
-            --  we can't use the primitive since that's i1 and the data
-            --  will have been stored as i8.
+         --  If this is a zero-sized input and our result is an
+         --  integer type, we don't want to load anything, so set
+         --  the result as undefined.
+
+         elsif Is_Integer_Type (GT) and then Is_Zero_Size (Result) then
+            Result := Emit_Undef (GT);
+
+         --  If the result type is an integer and is wider than our
+         --  input width, we need to do an integer load of exactly the
+         --  width of the input so we don't overrun memory and to avoid
+         --  any endianness issues. But don't get confused by fat pointers
+         --  or variable-sized objects.
+
+         elsif Is_Integer_Type (GT)
+           and then Relationship (Result) /= Fat_Pointer
+           and then not Is_Nonnative_Type (Result)
+           and then Get_Scalar_Bit_Size (GT) >
+           Get_Scalar_Bit_Size (Data_Type_Of (Result))
+         then
+            declare
+               T : constant Type_T :=
+                 Int_Ty (Get_Scalar_Bit_Size (Data_Type_Of (Result)));
+
+            begin
+               Result :=
+                 Ptr_To_Relationship
+                   (Get (Result, Any_Reference),
+                    Pointer_Type (T, Address_Space), Reference_To_Unknown);
+               Set_Unknown_T (Result, T);
+               Result := Load (Result);
+               Result := GM (+Result, GT, GV => Result);
+               if Is_Unsigned_Type (GT) then
+                  Result := Z_Ext (Result, GT);
+               else
+                  Result := S_Ext (Result, GT);
+               end if;
+            end;
+
+         --  Otherwise, do an actual pointer pun. But if we have a modular
+         --  integer type that's a packed array implementation type, we
+         --  can't use the primitive since that's i1 and the data will have
+         --  been stored as i8.
 
          else
             Result :=
               Convert_Ref (Get (Result, Any_Reference),
                            (if   (Is_Modular_Integer_Type (GT)
-                                  and then Is_Packed_Array_Impl_Type (GT))
+                                   and then Is_Packed_Array_Impl_Type (GT))
                                  or else Is_Unchecked
                             then GT else Prim_GT));
          end if;

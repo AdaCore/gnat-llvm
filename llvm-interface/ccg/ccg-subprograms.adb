@@ -370,10 +370,32 @@ package body CCG.Subprograms is
 
       begin
          while Present (BB) loop
-            if Get_Opcode (Get_Basic_Block_Terminator (BB)) = Op_Unreachable
-            then
-               return True;
-            end if;
+            declare
+               Term : constant Value_T := Get_Basic_Block_Terminator (BB);
+               Prev : constant Value_T := Get_Previous_Instruction (Term);
+
+            begin
+               --  An "unreachable" after a call to a noreturn function can
+               --  be ignored
+
+               if Get_Opcode (Term) = Op_Unreachable then
+                  if No (Prev) or else Get_Opcode (Prev) /= Op_Call then
+                     return True;
+                  else
+                     declare
+                        F : constant Value_T :=
+                          Get_Operand (Prev, Get_Num_Operands (Prev) - 1);
+
+                     begin
+                        if not Is_A_Function (F)
+                          or else not Does_Not_Return (F)
+                        then
+                           return True;
+                        end if;
+                     end;
+                  end if;
+               end if;
+            end;
 
             BB := Get_Next_Basic_Block (BB);
          end loop;

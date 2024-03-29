@@ -73,9 +73,9 @@ package body GNATLLVM.Exprs is
       Expr : Opt_N_Subexpr_Id;
 
    begin
-      --  If LHS is pristine, we know this must be safe
+      --  If LHS is pristine or N is static, we know this must be safe
 
-      if Is_Pristine (LHS) then
+      if Is_Pristine (LHS) or else Is_Static_Expression (N) then
          return True;
       end if;
 
@@ -256,7 +256,7 @@ package body GNATLLVM.Exprs is
 
             if not Only_Bitfield or else Is_Bitfield_By_Rep (Fld) then
                LHS := Emit_LValue (Prefix (N), For_LHS => For_LHS);
-               F   := Fld;
+               F   := Field_To_Use (LHS, Fld);
             end if;
          end;
 
@@ -1076,8 +1076,26 @@ package body GNATLLVM.Exprs is
       --  Now do the operation
 
       if Present (F) then
-         Build_Field_Store (LHS, F, Emit_Expression (Expression (N)),
-                            VFA => Is_VFA_Ref (Name (N)));
+
+         --  We have a special case when LHS is a reference, F is not a
+         --  bitfield, and we have no VFA. In the case, we may be able to
+         --  do this assignment in place, so pass the LHS when we evaluate N.
+
+         if Is_Reference (LHS) and then not Is_Bitfield (F)
+           and then not Is_VFA_Ref (Name (N))
+         then
+            declare
+               Our_LHS : constant GL_Value := Record_Field_Offset (LHS, F);
+
+            begin
+               Emit_Assignment (Our_LHS, Expression (N));
+            end;
+         else
+            Build_Field_Store (LHS, F,
+                               Emit_Expression (Expression (N)),
+                               VFA => Is_VFA_Ref (Name (N)));
+         end if;
+
       elsif Idxs /= null then
          Build_Indexed_Store (LHS, Idxs.all,
                               Emit_Expression (Expression (N)),
@@ -1631,7 +1649,7 @@ package body GNATLLVM.Exprs is
       if No (Src) then
          Src := Emit (E, LHS => (if VFA then No_GL_Value else Dest));
 
-         if Src = Dest then
+         if Value_T'(+Src) = +Dest then
             Maybe_Store_Bounds (Dest, Src, Src_GT, False);
             return;
          elsif not Is_Data (Src) and then Is_Loadable_Type (Src_GT)

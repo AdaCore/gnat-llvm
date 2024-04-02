@@ -2197,6 +2197,23 @@ package body GNATLLVM.Records is
       return Result;
    end Build_Field_Load;
 
+   ------------------
+   -- Field_To_Use --
+   ------------------
+
+   function Field_To_Use
+     (LHS : GL_Value; F : Record_Field_Kind_Id) return Record_Field_Kind_Id
+   is
+      GT      : constant GL_Type        := Related_Type (LHS);
+      TE      : constant Record_Kind_Id := Record_Type_For_Field (GT, F);
+
+   begin
+      --  Ensure TE is elaborated since we may need info about this field
+
+      Discard (Type_Of (TE));
+      return Find_Matching_Field (TE, F);
+   end Field_To_Use;
+
    -----------------------
    -- Build_Field_Store --
    -----------------------

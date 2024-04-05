@@ -171,6 +171,9 @@ package body GNATLLVM.Builtins is
    Tramp_Adjust_Fn    : GL_Value := No_GL_Value;
    --  Functions to initialize and adjust a trampoline
 
+   Enable_Execute_Stack_Fn : GL_Value := No_GL_Value;
+   --  Function to make a portion of the stack executable
+
    Expect_Fn          : GL_Value := No_GL_Value;
    --  Function to provide branch prediction information
 
@@ -1455,6 +1458,23 @@ package body GNATLLVM.Builtins is
 
       return Tramp_Adjust_Fn;
    end Get_Tramp_Adjust_Fn;
+
+   ---------------------------------
+   -- Get_Enable_Execute_Stack_Fn --
+   ---------------------------------
+
+   function Get_Enable_Execute_Stack_Fn return GL_Value is
+   begin
+      if No (Enable_Execute_Stack_Fn) then
+         --  Defined in libgcc and compiler-rt builtins
+         Enable_Execute_Stack_Fn :=
+           Add_Global_Function
+             ("__enable_execute_stack",
+              Fn_Ty ((1 => Void_Ptr_T), Void_Type), Void_GL_Type);
+      end if;
+
+      return Enable_Execute_Stack_Fn;
+   end Get_Enable_Execute_Stack_Fn;
 
    -------------------
    -- Get_Expect_Fn --

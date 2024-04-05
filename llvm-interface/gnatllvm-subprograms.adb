@@ -961,6 +961,10 @@ package body GNATLLVM.Subprograms is
       Check_Implicit_Dynamic_Code_Allowed (N);
       Call (Get_Tramp_Init_Fn, (1 => Tramp, 2 => Cvt_Fn, 3 => Static_Link));
 
+      if Enable_Execute_Stack then
+         Call (Get_Enable_Execute_Stack_Fn, (1 => Tramp));
+      end if;
+
       return G_Is_Relationship
         (Call (Get_Tramp_Adjust_Fn, (1 => Tramp)), GT, Trampoline);
 

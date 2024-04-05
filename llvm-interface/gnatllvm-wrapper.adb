@@ -672,4 +672,16 @@ package body GNATLLVM.Wrapper is
       Set_Absolute_Address_C (Get_Global_Context, V, Addr);
    end Set_Absolute_Address;
 
+   -------------------------------
+   -- Need_Enable_Execute_Stack --
+   -------------------------------
+
+   function Need_Enable_Execute_Stack (Triple : String) return Boolean is
+      function Need_Enable_Execute_Stack_C (Triple : String) return LLVM_Bool
+        with Import, Convention => C,
+             External_Name => "Need_Enable_Execute_Stack";
+   begin
+      return Need_Enable_Execute_Stack_C (Triple & ASCII.NUL) /= 0;
+   end Need_Enable_Execute_Stack;
+
 end GNATLLVM.Wrapper;

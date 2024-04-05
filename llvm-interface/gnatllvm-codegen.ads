@@ -78,6 +78,10 @@ package GNATLLVM.Codegen is
    --  True if we should optimize IR before writing it out when optimization
    --  is enabled.
 
+   Enable_Execute_Stack : Boolean := False;
+   --  True if we have to explicitly make the stack executable when we need
+   --  it to be (e.g., when using stack-allocated trampolines).
+
    No_Strict_Aliasing_Flag : Boolean       := False;
    C_Style_Aliasing        : Boolean       := False;
    No_Inlining             : Boolean       := False;

@@ -1543,8 +1543,8 @@ package body GNATLLVM.Exprs is
    is
       E       : constant Opt_N_Subexpr_Id := Strip_Complex_Conversions (Expr);
       Dest_GT : constant GL_Type          := Related_Type (LValue);
-      Src_GT  : constant GL_Type          :=
-        (if Present (Value) then Related_Type (Value) else Full_GL_Type (E));
+      Src_GT  : GL_Type                   :=
+        (if Present (Value) then Related_Type (Value) else No_GL_Type);
       Dest    : GL_Value                  := LValue;
       Src     : GL_Value                  := Value;
       Dest_R  : GL_Relationship;
@@ -1574,6 +1574,7 @@ package body GNATLLVM.Exprs is
 
       if No (Src) then
          Src := Emit (E, LHS => (if VFA then No_GL_Value else Dest));
+         Src_GT := Related_Type (Src);
 
          if Src = Dest then
             Maybe_Store_Bounds (Dest, Src, Src_GT, False);
@@ -1585,14 +1586,6 @@ package body GNATLLVM.Exprs is
             Src := Get (Src, Object);
          end if;
 
-         --  If we have the proper GNAT type, but a different alternative,
-         --  make sure it's the right alternative.
-
-         if Full_Etype (Src_GT) = Full_Etype (Related_Type (Src))
-           and then Related_Type (Src) /= Src_GT
-         then
-            Src := From_Primitive (To_Primitive (Src), Src_GT);
-         end if;
       end if;
 
       --  Once we've elaborated everything, we don't need to do anything

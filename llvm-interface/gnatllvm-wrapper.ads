@@ -455,4 +455,6 @@ package GNATLLVM.Wrapper is
 
    procedure Set_Absolute_Address (V : Value_T; Addr : Value_T);
 
+   function Need_Enable_Execute_Stack (Triple : String) return Boolean;
+
 end GNATLLVM.Wrapper;

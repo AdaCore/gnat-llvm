@@ -77,6 +77,10 @@ package GNATLLVM.Builtins is
      with Post => Present (Get_Tramp_Adjust_Fn'Result);
    --  Get functions to create and adjust trampolines
 
+   function Get_Enable_Execute_Stack_Fn return GL_Value
+     with Post => Present (Get_Enable_Execute_Stack_Fn'Result);
+   --  Get function to make a portion of the stack executable
+
    function Get_Get_Address_Fn return GL_Value
      with Post => Present (Get_Get_Address_Fn'Result);
    --  Get function to obtain the address from a pointer

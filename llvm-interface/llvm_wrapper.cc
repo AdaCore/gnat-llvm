@@ -1306,3 +1306,15 @@ Set_Absolute_Address (LLVMContext &Ctx, Value *V, Value *Addr)
       LLVMContext::MD_absolute_symbol,
       MDNode::get(Ctx, {ValueAsMetadata::get(Addr)}));
 }
+
+extern "C"
+bool
+Need_Enable_Execute_Stack (const char *Target)
+{
+  // Decide whether we need to call __enable_execute_stack in order to make the
+  // stack executable. The GNU linker does this automatically in ELF binaries,
+  // but on Windows the helper function is required.
+
+  Triple TargetTriple(Target);
+  return TargetTriple.isOSWindows();
+}

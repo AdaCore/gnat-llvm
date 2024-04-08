@@ -1402,6 +1402,11 @@ package body GNATLLVM.GLType is
 
    procedure Dump_GL_Type (GT : GL_Type) is
    begin
+      if No (GT) then
+         Write_Line ("None");
+         return;
+      end if;
+
       Dump_GL_Type_Int (GT, True);
    end Dump_GL_Type;
 

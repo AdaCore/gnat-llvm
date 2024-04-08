@@ -135,6 +135,11 @@ package body GNATLLVM.Variables is
    --  Determine the proper GL_Type to use for E. If Expr is Present, it's
    --  an initializing expression for E.
 
+   function Variable_Alloc_GL_Type
+     (E : Exception_Or_Object_Kind_Id; Expr : Opt_N_Subexpr_Id) return GL_Type
+     with Post => Present (Variable_Alloc_GL_Type'Result);
+   --  Likewise, but the proper GL_Type to use when allocating E.
+
    function Is_Volatile_Entity (E : Evaluable_Kind_Id) return Boolean is
      (Is_Volatile_Object (E) or else Treat_As_Volatile (E)
         or else (not Emit_C and then Address_Taken (E)));
@@ -1563,21 +1568,31 @@ package body GNATLLVM.Variables is
          Max_Size      => Max_Size,
          Is_Biased     => Biased);
 
+      return GT;
+
+   end Variable_GL_Type;
+
+   -----------------------------
+   --  Variable_Alloc_GL_Type --
+   -----------------------------
+
+   function Variable_Alloc_GL_Type
+     (E : Exception_Or_Object_Kind_Id; Expr : Opt_N_Subexpr_Id) return GL_Type
+   is
+      GT       : constant GL_Type := Variable_GL_Type (E, Expr);
+
+   begin
       --  To avoid linker issues, pad a zero-size object to one byte, but
       --  don't get confused for cases where we need to store bounds. We
       --  needn't do this for non-file-level objects, but do so for
       --  compatibility with Gigi. But don't do this when generating C,
       --  since we want to delete zero-sized objects in that case.
 
-      if not Emit_C and then Is_Zero_Size (GT)
-        and then not Is_Constr_Array_Subt_With_Bounds (GT)
-      then
-         GT := Make_GT_Alternative (GT, Empty, +BPU, No_Uint);
-      end if;
-
-      return GT;
-
-   end Variable_GL_Type;
+      return (if    not Emit_C and then Is_Zero_Size (GT)
+                    and then not Is_Constr_Array_Subt_With_Bounds (GT)
+              then Make_GT_Alternative (GT, Empty, +BPU, No_Uint)
+              else GT);
+   end Variable_Alloc_GL_Type;
 
    --------------------------
    -- Make_Global_Constant --
@@ -1827,12 +1842,8 @@ package body GNATLLVM.Variables is
       --  Type to use for E
 
       Alloc_GT        : constant GL_Type                     :=
-        (if   not Is_Class_Wide_Equivalent_Type (GT)
-              and then not Is_Unconstrained_Record (GT)
-              and then Present (Expr)
-              and then not Is_Unconstrained_Type (Full_Etype (Expr))
-         then Full_Alloc_GL_Type (Expr) else GT);
-      --  Type to use for allocating E, if different
+        Variable_Alloc_GL_Type (E, Expr);
+      --  Type to use for allocating E (may be different)
 
       Nonnative       : constant Boolean                     :=
         Is_Nonnative_Type (GT);
@@ -2174,7 +2185,7 @@ package body GNATLLVM.Variables is
          Create_Global_Variable_Debug_Data (E, LLVM_Var);
       end if;
 
-      Annotate_Object_Size_And_Alignment (E, GT);
+      Annotate_Object_Size_And_Alignment (E, Alloc_GT);
 
       --  If we're at library level and not in an elab proc, we can't do
       --  anything else now.
@@ -2596,9 +2607,10 @@ package body GNATLLVM.Variables is
             elsif No (V)
               and then Enclosing_Dynamic_Scope (Full_E) = Standard_Standard
             then
-               V := Make_Global_Variable (Full_E,
-                                          Variable_GL_Type (Full_E, Empty),
-                                          False);
+               V :=
+                 Make_Global_Variable (Full_E,
+                                       Variable_Alloc_GL_Type (Full_E, Empty),
+                                       False);
 
             --  If we still have nothing, but are just elaboration decls,
             --  make this an undef.

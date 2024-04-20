@@ -149,10 +149,12 @@ package body GNATLLVM.Builtins is
    --  Generate a call to the an __atomic builtin if valid
 
    function Get_Default_Alloc_Fn_Name return String is
-     ((if Emit_C then "malloc" else "__gnat_malloc"));
+     ((if   Emit_C and then not Use_GNAT_Allocs
+       then "malloc" else "__gnat_malloc"));
 
    function Get_Default_Free_Fn_Name return String is
-     ((if Emit_C then "free" else "__gnat_free"));
+     ((if   Emit_C and then not Use_GNAT_Allocs
+       then "free" else "__gnat_free"));
 
    Default_Alloc_Fn   : GL_Value := No_GL_Value;
    --  Default memory allocation function

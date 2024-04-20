@@ -127,6 +127,8 @@ package body GNATLLVM.Codegen is
          Emit_LLVM := True;
       elsif S = "-S" then
          Output_Assembly := True;
+      elsif S = "-fuse-gnat-allocs" then
+         Use_GNAT_Allocs := True;
       elsif S = "-g"
         or else (Starts_With (S, "-g") and then not Starts_With (S, "-gnat"))
       then

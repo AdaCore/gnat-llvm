@@ -216,10 +216,11 @@ package CCG.Strs is
       Need_Signed    => X.Need_Signed   or Y.Need_Signed,
       Write_Type     => X.Write_Type    or Y.Write_Type);
 
-   type Flag_Array is array (Value_Flag) of Value_Flags;
+   type Value_Flag_Array is array (Value_Flag) of Value_Flags;
 
-   Default_Flags : constant Value_Flags := (False, False, False, False, False);
-   Flag_To_Flags : constant Flag_Array :=
+   Default_Value_Flags : constant Value_Flags      :=
+     (False, False, False, False, False);
+   Value_Flag_To_Flags : constant Value_Flag_Array :=
      (LHS           => (True,  False, False, False, False),
       Initializer   => (False, True,  False, False, False),
       Need_Unsigned => (False, False, True,  False, False),
@@ -227,7 +228,7 @@ package CCG.Strs is
       Write_Type    => (False, False, False, False, True));
 
    function "+" (F : Value_Flag) return Value_Flags is
-     (Flag_To_Flags (F));
+     (Value_Flag_To_Flags (F));
 
    function "+" (V : Value_T; VF : Value_Flags) return Str
      with Pre => Present (V), Post => Present ("+"'Result);
@@ -239,6 +240,49 @@ package CCG.Strs is
    function "+" (E : Entity_Id; VF : Value_Flag) return Str is
      (E + (+VF))
      with Pre => Present (E), Post => Present ("+"'Result);
+
+   --  We define Type_Flag values in a similar way to how we handle
+   --  Value_Flags values, with the same set of operations.
+
+   type Type_Flag is
+     (Need_Unsigned,
+      --  We need an unsigned form of this type. If the value isn't unsigned
+      --  or can't be made unsigned (e.g. an integer constant), we emit a
+      --  cast to unsigned.
+
+      Need_Signed);
+      --  We need a signed form of this type. This is ignored if the
+      --  value isn't of an integral type.
+
+   type Type_Flags is record
+      Need_Unsigned : Boolean;
+      Need_Signed   : Boolean;
+   end record;
+
+   function "or" (X, Y : Type_Flags) return Type_Flags is
+     (Need_Unsigned  => X.Need_Unsigned or Y.Need_Unsigned,
+      Need_Signed    => X.Need_Signed   or Y.Need_Signed);
+
+   type Type_Flag_Array is array (Type_Flag) of Type_Flags;
+
+   Default_Type_Flags : constant Type_Flags      := (False, False);
+   Type_Flag_To_Flags : constant Type_Flag_Array :=
+     (Need_Unsigned => (True,  False),
+      Need_Signed   => (False, True));
+
+   function "+" (F : Type_Flag) return Type_Flags is
+     (Type_Flag_To_Flags (F));
+
+   function "+" (T : Type_T; TF : Type_Flags) return Str
+     with Pre => Present (T), Post => Present ("+"'Result);
+   function "+" (T : Type_T; TF : Type_Flag) return Str is
+     (T + (+TF))
+     with Pre => Present (T), Post => Present ("+"'Result);
+   function "+" (T : Type_T; Is_Unsigned : Boolean) return Str is
+     (T + (if Is_Unsigned then Need_Unsigned else Need_Signed))
+     with Pre => Present (T), Post => Present ("+"'Result);
+   function "+" (T : Type_T; V : Value_T) return Str
+     with Pre => Present (T), Post => Present ("+"'Result);
 
    type String_Kind is (Normal, C_Name);
    --  A string can either be a literal string or a name, in which case we
@@ -410,7 +454,8 @@ private
             For_P   : Precedence;
 
          when Typ =>
-            T       :  Type_T;
+            T       : Type_T;
+            T_Flags : Type_Flags;
 
          when BB =>
             B       : Basic_Block_T;

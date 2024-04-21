@@ -121,11 +121,13 @@ package body CCG.Subprograms is
    --  of Ops. Return True if the builtin is handled and supported, False
    --  otherwise.
 
-   function Effective_Return_Type (T : Type_T) return Str
+   function Effective_Return_Type
+     (T : Type_T; V : Value_T := No_Value_T) return Str
      with Pre  => Is_Function_Type (T),
           Post => Present (Effective_Return_Type'Result);
    --  Return a string corresponding to the return type of T, adjusting the
-   --  type in the case where it's an array.
+   --  type in the case where it's an array. If V is Present, it's a value
+   --  representing the function so we can get the signedness of the type.
 
    function Matches
      (S, Name : String; Exact : Boolean := False) return Boolean
@@ -324,7 +326,9 @@ package body CCG.Subprograms is
    -- Effective_Return_Type --
    ---------------------------
 
-   function Effective_Return_Type (T : Type_T) return Str is
+   function Effective_Return_Type
+     (T : Type_T; V : Value_T := No_Value_T) return Str
+   is
       Ret_Typ : constant Type_T := Get_Return_Type (T);
 
    begin
@@ -335,7 +339,7 @@ package body CCG.Subprograms is
          Maybe_Output_Array_Return_Typedef (Ret_Typ);
          return Ret_Typ & "_R";
       else
-         return +Ret_Typ;
+         return Ret_Typ + V;
       end if;
    end Effective_Return_Type;
 
@@ -354,7 +358,7 @@ package body CCG.Subprograms is
       Num_Params     : constant Nat     := Count_Params (V);
       Fn_Typ         : constant Type_T  := Get_Element_Type (V);
       Result         : Str              :=
-        Effective_Return_Type (Fn_Typ) & " " & V & " (";
+        Effective_Return_Type (Fn_Typ, V) & " " & V & " (";
       Maybe_Add_Nest : constant Boolean :=
         Get_Needs_Nest (V)
         and then (Num_Params = 0
@@ -447,12 +451,6 @@ package body CCG.Subprograms is
 
       if Does_Not_Return (V) and then not Has_Unreachable then
          Result := Output_Modifier ("noreturn") & Result;
-      end if;
-
-      --  Indicate if this returns unsigned
-
-      if Is_Unsigned (V) then
-         Result := "unsigned " & Result;
       end if;
 
       --  Then output the list of parameter types, if any. If this isn't

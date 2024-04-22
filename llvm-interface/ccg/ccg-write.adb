@@ -86,7 +86,7 @@ package body CCG.Write is
 
    procedure Write_Constant_Value
      (V             : Value_T;
-      Flags         : Value_Flags := Default_Flags;
+      Flags         : Value_Flags := Default_Value_Flags;
       Need_Unsigned : Boolean     := False)
      with Pre => Is_A_Constant (V);
    --  Write the constant value of V, optionally specifying a preference of
@@ -384,7 +384,7 @@ package body CCG.Write is
 
    procedure Write_Constant_Value
      (V             : Value_T;
-      Flags         : Value_Flags := Default_Flags;
+      Flags         : Value_Flags := Default_Value_Flags;
       Need_Unsigned : Boolean     := False)
    is
       procedure Write_Int_Qualifier (Width : Int);
@@ -560,7 +560,7 @@ package body CCG.Write is
 
    procedure Write_Value
      (V              : Value_T;
-      Flags          : Value_Flags := Default_Flags;
+      Flags          : Value_Flags := Default_Value_Flags;
       For_Precedence : Precedence  := Primary)
    is
       --  We're either writing V alone or V prefixed by one or more unary
@@ -648,7 +648,7 @@ package body CCG.Write is
 
          elsif Must_Write_Cast or else not Is_Unsigned (V) then
             Maybe_Write_Parens;
-            Write_Str ("(unsigned " & Type_Of (V) & ") ");
+            Write_Str ("(" & (Type_Of (V) + Need_Unsigned) & ") ");
          end if;
 
          --  Otherwise, if this is an object that must be interpreted as
@@ -736,7 +736,10 @@ package body CCG.Write is
    -----------------
 
    procedure Write_Type
-     (T : Type_T; E : Entity_Id := Empty; V : Value_T := No_Value_T)
+     (T     : Type_T;
+      Flags : Type_Flags := Default_Type_Flags;
+      E     : Entity_Id  := Empty;
+      V     : Value_T    := No_Value_T)
    is
       procedure Write_Str_With_Signedness (S : String);
       --  Write S possibly preceeded by "unsigned".
@@ -775,11 +778,18 @@ package body CCG.Write is
 
          when Integer_Type_Kind =>
 
-            --  First see if we have a reference that says whether this
+            --  If we force signedness, use that
+
+            if Flags.Need_Unsigned then
+               Unsigned_P := True;
+            elsif Flags.Need_Signed then
+               null;
+
+            --  Next see if we have a reference that says whether this
             --  type is unsigned or not. Note that we need to check the
             --  base type to avoid unnecessary conversions.
 
-            if (Present (V) and then Is_Unsigned (V))
+            elsif (Present (V) and then Is_Unsigned (V))
               or else (Present (BT) and then Is_Unsigned_Type (BT))
             then
                Unsigned_P := True;

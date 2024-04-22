@@ -32,6 +32,10 @@ package GNATLLVM.Codegen is
    Emit_C          : Boolean        := CCG;
    --  True if -emit-c was specified explicitly or CCG set
 
+   Use_GNAT_Allocs : Boolean        := False;
+   --  True if we should emit calls to __gnat_malloc and __gnat_free even
+   --  if generating C.
+
    CPU             : String_Access  := new String'("generic");
    --  Name of the specific CPU for this compilation.
 

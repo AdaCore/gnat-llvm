@@ -311,12 +311,13 @@ package body GNATLLVM.Compile is
             while Present (Subp) loop
                Subp_Body := Parent (Declaration_Node (Subp));
 
-               --  Without optimization or if inlining is disabled,
-               --  process only the required subprograms.
+               --  If inlining is disabled, process only the required
+               --  subprograms. Likewise if optimization is disabled, unless
+               --  we're generating C.
 
                if (Has_Pragma_Inline_Always (Subp)
-                     or else (not No_Inlining and then Code_Opt_Level > 0))
-
+                   or else (not No_Inlining
+                            and then (Code_Opt_Level > 0 or else Emit_C)))
                  --  The set of inlined subprograms is computed from data
                  --  recorded early during expansion and it can be a strict
                  --  superset of the final set computed after semantic

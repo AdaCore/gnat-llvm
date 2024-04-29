@@ -304,8 +304,9 @@ package body GNATLLVM.Compile is
                --  process only the required subprograms.
 
                if (Has_Pragma_Inline_Always (Subp)
-                     or else (not No_Inlining and then Code_Opt_Level > 0))
-
+                   or else (not No_Inlining
+                                and then (Code_Opt_Level > 0
+                                          or else C_Can_Cross_Inline)))
                  --  The set of inlined subprograms is computed from data
                  --  recorded early during expansion and it can be a strict
                  --  superset of the final set computed after semantic

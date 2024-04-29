@@ -21,6 +21,7 @@ with Ada.Containers.Hashed_Maps;
 with Interfaces.C; use Interfaces.C;
 
 with Atree;  use Atree;
+with Lib;    use Lib;
 with Output; use Output;
 with Table;
 
@@ -350,8 +351,11 @@ package body CCG.Subprograms is
       function Has_Unreachable return Boolean;
       --  True if there's an "unreachable" instruction in V
 
+      function In_Main_Unit return Boolean;
+
       Num_Params     : constant Nat     := Count_Params (V);
       Fn_Typ         : constant Type_T  := Get_Element_Type (V);
+      Write_Extern   : Boolean          := Need_Extern;
       Result         : Str              :=
         Effective_Return_Type (Fn_Typ, V) & " " & V & " (";
       Maybe_Add_Nest : constant Boolean :=
@@ -402,6 +406,18 @@ package body CCG.Subprograms is
          return False;
       end Has_Unreachable;
 
+      ------------------
+      -- In_Main_Unit --
+      ------------------
+
+      function In_Main_Unit return Boolean is
+         E : constant Entity_Id := Get_Entity (V);
+
+      begin
+         return Present (E) and then Ekind (E) in Subprogram_Kind
+           and then Entity_Is_In_Main_Unit (E);
+      end In_Main_Unit;
+
    begin
       --  If this is an internal subprogram, mark it as static
 
@@ -417,13 +433,20 @@ package body CCG.Subprograms is
            Result;
       end if;
 
-      --  If inline was requested, mark that, but only if the language
-      --  version is recent enough and only if it's a definition.
+      --  If inline was requested and we have the body, mark that, but only
+      --  if the language version is recent enough to support it. If it's
+      --  not internal and is in the main unit, declare it as "extern".
 
       if (Has_Inline_Attribute (V) or else Has_Inline_Always_Attribute (V))
-        and then C_Version > 1990 and then Definition
+        and then C_Version > 1990
+        and then Present (Get_First_Basic_Block (V))
       then
          Result := "inline " & Result;
+         if In_Main_Unit and then not Definition
+           and then Get_Linkage (V) /= Internal_Linkage
+         then
+            Write_Extern := True;
+         end if;
       end if;
 
       --  If inline always was requested, mark it as such, but only in
@@ -487,6 +510,12 @@ package body CCG.Subprograms is
          if Maybe_Add_Nest then
             Result := Result & ", char * _n";
          end if;
+      end if;
+
+      --  If we are to unconditionally write "extern", do it
+
+      if Write_Extern then
+         Result := "extern " & Result;
       end if;
 
       return Result & ")";

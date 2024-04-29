@@ -196,4 +196,8 @@ package CCG is
    --  Switch is a switch passed to GNAT LLVM. If it's a switch meaningful
    --  to CCG, return True.
 
+   function C_Can_Cross_Inline return Boolean;
+   --  True if we're generating C with a late-enough version of C to
+   --  support cross-module inlining properly.
+
 end CCG;

@@ -67,6 +67,12 @@ package CCG.Environment is
    --  static chain. This is the usually the case if its address is taken
    --  and it doesn't already have one.
 
+   function Get_Must_Globalize (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if V, which is a constant, is used in a inlined function and so
+   --  must be promoted to being a global variable if we have to make
+   --  a variable for it.
+
    procedure Set_C_Value        (V : Value_T; S : Str)
      with Pre => Present (V), Post => Get_C_Value (V) = S, Inline;
    procedure Set_Is_Decl_Output (V : Value_T; B : Boolean := True)
@@ -83,6 +89,8 @@ package CCG.Environment is
      with Pre => Present (V), Post => Get_Is_Used (V) = B, Inline;
    procedure Set_Needs_Nest     (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Needs_Nest (V) = B, Inline;
+   procedure Set_Must_Globalize (V : Value_T; B : Boolean := True)
+     with Pre => Present (V), Post => Get_Must_Globalize (V) = B, Inline;
 
    function Get_Entity                   (T : Type_T) return Opt_Type_Kind_Id
      with Pre => Present (T), Inline;

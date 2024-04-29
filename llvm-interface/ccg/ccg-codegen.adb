@@ -118,12 +118,12 @@ package body CCG.Codegen is
 
       function Must_Output_To_Header (F : Value_T) return Boolean is
         (Emit_Header
-         and then (case Header_Inline is
+           and then (case Header_Inline is
                         when None          => False,
                         when Inline_Always => Has_Inline_Always_Attribute (F),
                         when Inline        => Has_Inline_Always_Attribute (F)
-                                              or else Has_Inline_Attribute
-                                                        (F)))
+                          or else Has_Inline_Attribute
+                            (F)))
         with Pre => Is_A_Function (F);
       --  True if we should output F to the header file
 
@@ -143,9 +143,17 @@ package body CCG.Codegen is
 
       procedure Maybe_Decl_Func (V : Value_T)
         with Pre => Present (V);
-      --  Called for each value in an inline function
+      --  See if V is a value in a function that must be declared
 
       procedure Scan_For_Func_To_Decl is new Walk_Object (Maybe_Decl_Func);
+
+      procedure Maybe_Globalize_Constant (V : Value_T)
+        with Pre => Present (V);
+      --  See if V is a constant that must be globalize. We only call this
+      --  for inlined functions.
+
+      procedure Scan_For_Constant_To_Globalize
+        is new Walk_Object (Maybe_Globalize_Constant);
 
       Func      : Value_T;
       Glob      : Value_T;
@@ -176,8 +184,8 @@ package body CCG.Codegen is
          elsif Esize (TE) >= Int_Size then
             Name_Part := TE_Name;
 
-         --  Otherwise, don't write the enum name and instead write a
-         --  typedef when we're done.
+            --  Otherwise, don't write the enum name and instead write a
+            --  typedef when we're done.
 
          else
             Name_Part    := +"";
@@ -192,8 +200,8 @@ package body CCG.Codegen is
                       Semicolon  => False);
          while Present (Lit) loop
             Output_Decl ("    " & Get_Ext_Name (Lit) & " = " &
-                         UI_Image (Enumeration_Rep (Lit)) &
-                         (if Present (Next_Literal (Lit)) then "," else ""),
+                           UI_Image (Enumeration_Rep (Lit)) &
+                           (if Present (Next_Literal (Lit)) then "," else ""),
                          Is_Typedef => True,
                          Semicolon  => False);
             Next_Literal (Lit);
@@ -267,10 +275,24 @@ package body CCG.Codegen is
          end if;
       end Maybe_Decl_Func;
 
+      ------------------------------
+      -- Maybe_Globalize_Constant --
+      ------------------------------
+
+      procedure Maybe_Globalize_Constant (V : Value_T) is
+      begin
+         if Is_A_Constant (V) and then not Is_Simple_Constant (V)
+           and then not Is_A_Function (V) and then not Is_A_Global_Variable (V)
+         then
+            Set_Must_Globalize (V);
+         end if;
+      end Maybe_Globalize_Constant;
+
    begin -- Start of processing for Generate
 
       --  Scan all global decls and functions to mark any types that are
-      --  used as the type of struct fields.
+      --  used as the type of struct fields. For inlined functions, mark
+      --  any non-simple constants.
 
       Glob := Get_First_Global (Module);
       while Present (Glob) loop
@@ -281,6 +303,13 @@ package body CCG.Codegen is
       Func := Get_First_Function (Module);
       while Present (Func) loop
          Mark_All_Structs_Used (Func);
+
+         if Has_Inline_Attribute (Func)
+           or else Has_Inline_Always_Attribute (Func)
+         then
+            Scan_For_Constant_To_Globalize (Func);
+         end if;
+
          Func := Get_Next_Function (Func);
       end loop;
 
@@ -315,8 +344,8 @@ package body CCG.Codegen is
       while Present (Func) loop
          if not Emit_Header
            or else (not Is_Declaration (Func)
-                    and then (Is_Public (Func)
-                              or else Must_Output_To_Header (Func)))
+                      and then (Is_Public (Func)
+                                  or else Must_Output_To_Header (Func)))
            or else Contains (Must_Decl, Func)
          then
             Declare_Subprogram (Func);

@@ -61,9 +61,14 @@ package body CCG.Environment is
       --  expression.
 
       Needs_Nest     : Boolean;
-      --  True if V is a function that needs to have a parameter added for
-      --  the static chain. This is the usually the case if its address is
-      --  taken and it doesn't already have one.
+      --  True if this value is a function that needs to have a parameter
+      --  added for the static chain. This is the usually the case if its
+      --  address is taken and it doesn't already have one.
+
+      Must_Globalize : Boolean;
+      --  True if this value is a constant used in a inlined function and
+      --  so must be promoted to being a global variable if we have to make
+      --  a variable for it.
 
       Output_Idx     : Nat;
       --  A positive number if we've assigned an ordinal to use as
@@ -205,6 +210,7 @@ package body CCG.Environment is
                              Entity_Is_Ref  => False,
                              Is_Used        => False,
                              Needs_Nest     => False,
+                             Must_Globalize => False,
                              Output_Idx     => 0));
          Insert (Value_Info_Map, V, Value_Info.Last);
          return Value_Info.Last;
@@ -379,6 +385,17 @@ package body CCG.Environment is
       return Present (Idx) and then Value_Info.Table (Idx).Needs_Nest;
    end Get_Needs_Nest;
 
+   ------------------------
+   -- Get_Must_Globalize --
+   ------------------------
+
+   function Get_Must_Globalize (V : Value_T) return Boolean is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
+
+   begin
+      return Present (Idx) and then Value_Info.Table (Idx).Must_Globalize;
+   end Get_Must_Globalize;
+
    -----------------
    -- Set_C_Value --
    -----------------
@@ -466,6 +483,17 @@ package body CCG.Environment is
    begin
       Value_Info.Table (Idx).Needs_Nest := B;
    end Set_Needs_Nest;
+
+   ------------------------
+   -- Set_Must_Globalize --
+   ------------------------
+
+   procedure Set_Must_Globalize (V : Value_T; B : Boolean := True) is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
+
+   begin
+      Value_Info.Table (Idx).Must_Globalize := B;
+   end Set_Must_Globalize;
 
    ----------------
    -- Get_Entity --

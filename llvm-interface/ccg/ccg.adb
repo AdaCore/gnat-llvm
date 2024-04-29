@@ -247,4 +247,12 @@ package body CCG is
    -----------------
 
    function C_Is_Switch (Switch : String) return Boolean renames Is_Switch;
+
+   ------------------------
+   -- C_Can_Cross_Inline --
+   ------------------------
+
+   function C_Can_Cross_Inline return Boolean is
+     (Emit_C and then C_Version >= 1999);
+
 end CCG;

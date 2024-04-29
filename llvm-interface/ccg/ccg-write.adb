@@ -264,6 +264,16 @@ package body CCG.Write is
       --  value.
 
       else
+         --  If this is a value that's used in an inline function, we can't
+         --  make it static, which means that the name must not conflict,
+         --  so qualify it with our filename.
+
+         if Get_Must_Globalize (V) then
+            Set_File_Name ("");
+            Write_C_Name (Name_Buffer (1 .. Name_Len - 1),
+                          Need_Suffix => True);
+         end if;
+
          Write_Str ("ccg_v");
          Write_Int (Get_Output_Idx (V));
       end if;

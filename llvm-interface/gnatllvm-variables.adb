@@ -1640,7 +1640,7 @@ package body GNATLLVM.Variables is
       else
          Out_Val := Const_Map.Element (+In_V);
          if Globalize then
-            Set_Linkage (Out_Val, Available_Externally_Linkage);
+            Set_Linkage (Out_Val, External_Linkage);
          end if;
       end if;
 

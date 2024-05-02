@@ -65,7 +65,7 @@ procedure GCC_Wrapper is
    --  is a Clang instance that we expect to be on the PATH, like GNAT-LLVM C.
 
    GCC                  : constant String := Command_Name;
-   Args                 : Argument_List (1 .. Argument_Count);
+   Args                 : Argument_List (1 .. Argument_Count + 1);
    Arg_Count            : Natural := 0;
    Status               : Boolean;
    Last                 : Natural;
@@ -216,7 +216,7 @@ procedure GCC_Wrapper is
    end Locate_Exec_In_Libexec;
 
 begin
-   if Args'Last = 1 then
+   if Argument_Count = 1 then
       declare
          Arg : constant String := Argument (1);
       begin
@@ -280,7 +280,7 @@ begin
       end;
    end if;
 
-   for J in Args'Range loop
+   for J in 1 .. Argument_Count loop
       declare
          Arg  : constant String := Argument (J);
       begin
@@ -299,7 +299,7 @@ begin
       end;
    end loop;
 
-   for J in Args'Range loop
+   for J in 1 .. Argument_Count loop
       declare
          Arg  : constant String := Argument (J);
          Skip : Boolean := False;
@@ -430,6 +430,24 @@ begin
       Put_Line ("unexpected program name: " & GCC & ", exiting.");
       Set_Exit_Status (Failure);
       return;
+   end if;
+
+   --  Translate the environment variable ENV_PREFIX to a --sysroot
+   --  argument if we're linking or compiling with Clang.
+
+   if (Compile and then Compiler in Bundled_Clang | External_Clang)
+     or else not Compile
+   then
+      declare
+         Sysroot : String_Access := Getenv ("ENV_PREFIX");
+      begin
+         if Sysroot.all /= "" then
+            Arg_Count        := Arg_Count + 1;
+            Args (Arg_Count) := new String'("--sysroot=" & Sysroot.all);
+         end if;
+
+         Free (Sysroot);
+      end;
    end if;
 
    --  Compile c/c++ files with clang

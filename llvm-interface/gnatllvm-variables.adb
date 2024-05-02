@@ -2502,7 +2502,9 @@ package body GNATLLVM.Variables is
             Set_Linker_Section  (LLVM_Var, E);
          end if;
       elsif Is_Static_Location (Name (N)) or else not Library_Level then
-         Set_Value (E, Convert_Ref (Emit_LValue (Name (N)), GT));
+         LLVM_Var := Convert_Ref (Emit_LValue (Name (N)), GT);
+         Set_Value (E, LLVM_Var);
+         C_Set_Entity  (LLVM_Var, E);
       else
          --  If this is a constant, we're going to put the actual value there;
          --  otherwise, we'll put the address of the expression.

@@ -628,6 +628,9 @@ package body CCG.Write is
       if Flags.Write_Type then
          Write_Type ((if   Flags.LHS and then Get_Is_LHS (V)
                       then Get_Element_Type (Type_Of (V)) else Type_Of (V)),
+                     Flags => (if    Flags.Need_Unsigned then +Need_Unsigned
+                               elsif Flags.Need_Signed   then +Need_Signed
+                               else  Default_Type_Flags),
                      V => V);
          return;
       end if;
@@ -754,13 +757,14 @@ package body CCG.Write is
       procedure Write_Str_With_Signedness (S : String);
       --  Write S possibly preceeded by "unsigned".
 
-      TE         : constant Opt_Type_Kind_Id  :=
+      TE         : constant Opt_Void_Or_Type_Kind_Id :=
         (if    Present (E) then Full_Etype (E)
          elsif Present (V) then GNAT_Type (V)
          else  Empty);
-      BT         : constant Opt_Type_Kind_Id  := Opt_Full_Base_Type (TE);
-      RT         : Opt_Type_Kind_Id           := TE;
-      Unsigned_P : Boolean                    := False;
+      BT         : constant Opt_Void_Or_Type_Kind_Id :=
+        Opt_Full_Base_Type (TE);
+      RT         : Opt_Void_Or_Type_Kind_Id          := TE;
+      Unsigned_P : Boolean                           := False;
 
       -------------------------------
       -- Write_Str_With_Signedness --
@@ -860,7 +864,8 @@ package body CCG.Write is
                        or else Name = "Tsigned_charB"
                        or else Name = "Tunsigned_charB"
                      then
-                        Write_Str_With_Signedness ("char");
+                        Write_Str ((if   Unsigned_P then "unsigned char"
+                                    else "signed char"));
                         return;
                      end if;
                   end;
@@ -891,7 +896,11 @@ package body CCG.Write is
             --  will then be at the wrong place.
 
             else
-               Write_Type (Get_Element_Type (T));
+               Write_Type (Get_Element_Type (T),
+                           Flags => Flags,
+                           E     =>
+                             (if   Present (BT) and then Is_Access_Type (BT)
+                              then Full_Designated_Type (BT) else Empty));
                Write_Str (" *");
             end if;
 

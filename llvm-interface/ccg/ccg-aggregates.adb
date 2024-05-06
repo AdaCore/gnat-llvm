@@ -352,7 +352,8 @@ package body CCG.Aggregates is
       --  ISO C89 doesn't allow an empty struct.
 
       if Fields_Written = 0 then
-         Output_Decl ("char dummy_for_null_recordC", Is_Typedef => True);
+         Output_Decl ((if Use_Stdint then "int8_t" else "signed char") &
+                        " dummy_for_null_recordC", Is_Typedef => True);
       end if;
 
       --  End the decl and deal with any packing
@@ -583,8 +584,9 @@ package body CCG.Aggregates is
                         --  field, point to the end of it.
 
                         if not Is_Zero_Length_Array (Prev_ST) then
-                           Result := ("(char *) " & Addr_Of (Ref) &
-                                        " + sizeof (" & Ref & ")");
+                           Result :=
+                             "(" & Generic_Ptr & ")" & Addr_Of (Ref) &
+                             " + sizeof (" & Ref & ")";
                            Found  := True;
                            exit;
                         end if;
@@ -595,7 +597,7 @@ package body CCG.Aggregates is
                   --  of the object.
 
                   if not Found then
-                     Result := "(char *) " &
+                     Result := "(" & Generic_Ptr & ")" &
                        (if Is_LHS then Addr_Of (Result) else Result);
                   end if;
 

@@ -476,7 +476,8 @@ package body CCG.Subprograms is
       --  is really size_t and that our result is really void *.
 
       if Num_Params = 0 then
-         Result := Result & (if Maybe_Add_Nest then "char * _n" else "void");
+         Result := Result & (if   Maybe_Add_Nest then Generic_Ptr & "_n"
+                             else +"void");
       elsif Get_Value_Name (V) = "calloc" then
          Result := +"void *calloc (size_t, size_t";
       else
@@ -513,8 +514,7 @@ package body CCG.Subprograms is
          --  function, do it.
 
          if Maybe_Add_Nest then
-            Result := Result & ", " &
-              (if Use_Stdint then "int8_t" else "signed char") & " * _n";
+            Result := Result & ", " & Generic_Ptr & " _n";
          end if;
       end if;
 

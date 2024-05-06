@@ -17,6 +17,7 @@
 
 with LLVM.Core; use LLVM.Core;
 
+with CCG.Codegen;     use CCG.Codegen;
 with CCG.Environment; use CCG.Environment;
 with CCG.Helper;      use CCG.Helper;
 with CCG.Strs;        use CCG.Strs;
@@ -164,5 +165,9 @@ package CCG.Output is
      with Pre => Present (V);
    --  See if we need to write a declaration for V and write one if so.
    --  If For_Initializer, we can allow any constants, not just simple ones.
+
+   function Generic_Ptr return Str is
+     (if Use_Stdint then +"int8_t *" else +"signed char *");
+   --  Return the string to use for a "generic" pointer
 
 end CCG.Output;

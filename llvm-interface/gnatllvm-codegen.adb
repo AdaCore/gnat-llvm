@@ -167,6 +167,10 @@ package body GNATLLVM.Codegen is
          Libdevice_Filename :=
            new String'(Switch_Value (S, "-mcuda-libdevice="));
 
+      elsif Starts_With (S, "--layout=") then
+         To_Free           := Target_Layout;
+         Target_Layout := new String'(Switch_Value (S, "--layout="));
+
       --  -march= and -mcpu= set the architecture and CPU to be used.
       --  -mtune= does likewise, but only if we haven't already seen one of
       --  the previous two switches
@@ -879,6 +883,7 @@ package body GNATLLVM.Codegen is
         or else Switch = "-g"
         or else (Starts_With ("-g") and then not Starts_With ("-gnat"))
         or else Starts_With ("--target=")
+        or else Starts_With ("--layout=")
         or else Starts_With ("-llvm-")
         or else Starts_With ("-emit-")
         or else C_Is_Switch (Switch)

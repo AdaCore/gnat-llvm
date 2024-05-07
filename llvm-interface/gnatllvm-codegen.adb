@@ -82,6 +82,7 @@ package body GNATLLVM.Codegen is
    procedure Initialize_GNAT_LLVM is
    begin
       if not GNAT_LLVM_Initialized then
+         Switches.Init;
          Scan_Command_Line;
          Initialize_LLVM_Target;
          Always_Compatible_Rep_On_Target := False;

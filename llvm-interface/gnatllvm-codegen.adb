@@ -75,6 +75,8 @@ package body GNATLLVM.Codegen is
    Arch                           : String_Access;
    --  Name of the architecture requested with -march.
 
+   Dump_Targets                   : Boolean := False;
+
    procedure Process_Switch (S : String);
    --  Process one command-line switch
 
@@ -143,6 +145,8 @@ package body GNATLLVM.Codegen is
          Optimize_IR := True;
       elsif S = "-fno-optimize-ir" then
          Optimize_IR := False;
+      elsif S = "--dump-targets" then
+         Dump_Targets := True;
       elsif Starts_With (S, "--target=") then
          To_Free           := Target_Triple;
          Target_Triple     := new String'(Switch_Value (S, "--target="));
@@ -678,6 +682,15 @@ package body GNATLLVM.Codegen is
       if Target_Triple (TT_First .. TT_First + 3) = "wasm" then
          Force_Activation_Record_Parameter := True;
       end if;
+
+      --  Dump the list of supported targets if requested
+
+      if Dump_Targets then
+         Write_Str ("  Current target triple: ");
+         Write_Str (Normalized_Target_Triple.all);
+         Write_Eol;
+         Print_Targets;
+      end if;
    end Initialize_LLVM_Target;
 
    -------------------
@@ -880,6 +893,7 @@ package body GNATLLVM.Codegen is
       elsif Switch = "--dump-ir"
         or else Switch = "--dump-bc"
         or else Switch = "--write-bc"
+        or else Switch = "--dump-targets"
         or else Switch = "-S"
         or else Switch = "-g"
         or else (Starts_With ("-g") and then not Starts_With ("-gnat"))

@@ -27,7 +27,6 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
-#include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
@@ -40,6 +39,12 @@
 #include "llvm/Transforms/Scalar/LoopRotation.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm-c/Core.h"
+
+#if LLVM_VERSION_MAJOR < 15
+#include "llvm/Support/TargetRegistry.h"
+#else
+#include "llvm/MC/TargetRegistry.h"
+#endif
 
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/DiagnosticIDs.h"
@@ -1317,4 +1322,11 @@ Need_Enable_Execute_Stack (const char *Target)
 
   Triple TargetTriple(Target);
   return TargetTriple.isOSWindows();
+}
+
+extern "C"
+void
+Print_Targets (void)
+{
+  TargetRegistry::printRegisteredTargetsForVersion(outs());
 }

@@ -464,4 +464,7 @@ package GNATLLVM.Wrapper is
 
    function Need_Enable_Execute_Stack (Triple : String) return Boolean;
 
+   procedure Print_Targets
+     with Import, Convention => C, External_Name => "Print_Targets";
+
 end GNATLLVM.Wrapper;

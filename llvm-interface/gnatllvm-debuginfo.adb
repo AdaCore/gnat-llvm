@@ -17,6 +17,7 @@
 
 with Opt;        use Opt;
 with Sinput;     use Sinput;
+with Stand;      use Stand;
 with Table;      use Table;
 with Uintp.LLVM; use Uintp.LLVM;
 
@@ -905,15 +906,22 @@ package body GNATLLVM.DebugInfo is
                Members : Metadata_Array (1 .. Member_Table.Last);
 
             begin
-               for J in Members'Range loop
-                  Members (J) := Member_Table.Table (J);
-               end loop;
+               if TE = Standard_Character or TE = Standard_Wide_Character
+                 or TE = Standard_Wide_Wide_Character
+               then
+                  Result := DI_Create_Basic_Type
+                    (Name, Size, DW_ATE_Unsigned_Char, DI_Flag_Zero);
+               else
+                  for J in Members'Range loop
+                     Members (J) := Member_Table.Table (J);
+                  end loop;
 
-               Result := DI_Create_Enumeration_Type
-                 (Debug_Compile_Unit, Name,
-                  Get_Debug_File_Node (Get_Source_File_Index (S)),
-                  Get_Physical_Line_Number (S), Size, Align, Members,
-                  No_Metadata_T);
+                  Result := DI_Create_Enumeration_Type
+                    (Debug_Compile_Unit, Name,
+                     Get_Debug_File_Node (Get_Source_File_Index (S)),
+                     Get_Physical_Line_Number (S), Size, Align, Members,
+                     No_Metadata_T);
+               end if;
             end;
          end Enumeration;
 

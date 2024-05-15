@@ -18,6 +18,7 @@
 with LLVM.Core; use LLVM.Core;
 
 with Atree;       use Atree;
+with Debug;       use Debug;
 with Einfo.Utils; use Einfo.Utils;
 with Set_Targ;    use Set_Targ;
 with Table;
@@ -81,6 +82,10 @@ package body CCG.Codegen is
       Emit_Full_Debug_Info := False;
       Emit_C_Line          := Emit_Debug_Info;
       Emit_Debug_Info      := True;
+
+      --  Use data from front end unless -gnatd_w
+
+      Use_FE_Data          := not Debug_Flag_Underscore_W;
 
       --  If we're to read C parameter values, do so
 

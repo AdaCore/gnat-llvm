@@ -57,7 +57,7 @@ package body CCG is
       --  If we're emitting C, add the item to the source order list and
       --  record the lowest line number we've seen.
 
-      if Emit_C and then not Emit_Header then
+      if Use_FE_Data and then not Emit_Header then
          Add_To_Source_Order (N);
          if Get_Source_File_Index (Sloc (N)) = Main_Source_File
            and then (Get_Physical_Line_Number (Sloc (N)) < Lowest_Line_Number
@@ -86,7 +86,7 @@ package body CCG is
       Is_Padding  : Boolean   := False;
       Is_Bitfield : Boolean   := False) is
    begin
-      if Emit_C then
+      if Use_FE_Data then
          Set_Field_C_Info (UID, Idx, Name, Entity, Is_Padding, Is_Bitfield);
       end if;
    end C_Set_Field_Info;
@@ -97,7 +97,7 @@ package body CCG is
 
    procedure C_Set_Struct (UID : Unique_Id; T : Type_T) is
    begin
-      if Emit_C then
+      if Use_FE_Data then
          Set_Struct (UID, T);
       end if;
    end C_Set_Struct;
@@ -109,7 +109,7 @@ package body CCG is
    procedure C_Set_Parameter
      (UID : Unique_Id; Idx : Nat; Entity : Entity_Id) is
    begin
-      if Emit_C then
+      if Use_FE_Data then
          Set_Parameter (UID, Idx, Entity);
       end if;
    end C_Set_Parameter;
@@ -120,7 +120,7 @@ package body CCG is
 
    procedure C_Set_Function (UID : Unique_Id; V : Value_T) is
    begin
-      if Emit_C then
+      if Use_FE_Data then
          Set_Function (UID, V);
       end if;
    end C_Set_Function;
@@ -137,7 +137,7 @@ package body CCG is
    begin
       --  If we're not emitting C, we don't need to do anything
 
-      if not Emit_C then
+      if not Use_FE_Data then
          return;
 
       --  We only want to set this the first time because that will be the
@@ -160,7 +160,7 @@ package body CCG is
    procedure C_Set_Entity (T : Type_T; TE : Type_Kind_Id)
    is
    begin
-      if Emit_C then
+      if Use_FE_Data then
          Set_Entity (T, TE);
       end if;
    end C_Set_Entity;
@@ -253,6 +253,6 @@ package body CCG is
    ------------------------
 
    function C_Can_Cross_Inline return Boolean is
-     (Emit_C and then C_Version >= 1999);
+     (Use_FE_Data and then C_Version >= 1999);
 
 end CCG;

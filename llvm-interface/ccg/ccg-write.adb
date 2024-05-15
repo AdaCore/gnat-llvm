@@ -33,6 +33,7 @@ with Set_Targ;    use Set_Targ;
 with Sinput;      use Sinput;
 with Uintp;       use Uintp;
 
+with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -253,12 +254,16 @@ package body CCG.Write is
       --  If it has a name, write that name and we're done. But if it's a
       --  variable not associated with a source entity, append "_" to the
       --  name since an internal name could conflict with a user name
-      --  (variable vs. function).
+      --  (variable vs. function). But don't do this if we aren't getting
+      --  data from the front end since that would cause us to append the "_"
+      --  unconditionally, which can interfere with External_Names and is
+      --  more likely to cause an issue than a conflict.
 
       if Has_Name (V) then
          Write_C_Name
            (Get_Value_Name (V),
-            not Is_A_Function (V) and then (No (E) or else Is_Type (E)));
+            not Is_A_Function (V) and then (No (E) or else Is_Type (E))
+            and then Use_FE_Data);
 
       --  Otherwise print (and make if necessary) an internal name for this
       --  value.

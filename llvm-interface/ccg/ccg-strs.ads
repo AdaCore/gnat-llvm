@@ -149,6 +149,20 @@ package CCG.Strs is
      with Pre => Present (S);
    --  Return the precedence assigned to S
 
+   function Is_Value (S : Str) return Boolean
+     with Pre => Present (S), Inline;
+   function Single_Value (S : Str) return Value_T
+     with Pre => Present (S);
+
+   function Is_Null_String (S : Str) return Boolean
+     with Pre => Present (S);
+
+   function Is_First_Char (S : Str; C : Character) return Boolean
+     with Pre => Present (S);
+
+   function Starts_With (S1 : Str; S2 : String) return Boolean
+     with Pre => Present (S1) and then S2'Length < Str_Max;
+
    function Will_Warn (Is_P, For_P : Precedence) return Boolean is
       ((Is_P = Relation and then For_P = Bit)
        or else (Is_P = Add and then For_P = Shift));
@@ -157,7 +171,8 @@ package CCG.Strs is
 
    function Needs_Parens (Is_P, For_P : Precedence) return Boolean;
    function Needs_Parens (S : Str; For_P : Precedence) return Boolean is
-     (Needs_Parens (Get_Precedence (S), For_P));
+     (not Is_Null_String (S)
+      and then Needs_Parens (Get_Precedence (S), For_P));
    --  Indicates whether we need to enclose S (or an expression of precedence
    --  Is_P) in parentheses if it's being inserted into an expression of
    --  precedence For_P. If the precedence is the same, we want to add
@@ -376,20 +391,6 @@ package CCG.Strs is
    --  Make an Str that represents rerefencing S or V. This usually means
    --  prepending "*", but we can also do that by removing a leading "&" or
    --  changing the value kind.
-
-   function Is_Value (S : Str) return Boolean
-     with Pre => Present (S), Inline;
-   function Single_Value (S : Str) return Value_T
-     with Pre => Present (S);
-
-   function Is_Null_String (S : Str) return Boolean
-     with Pre => Present (S);
-
-   function Is_First_Char (S : Str; C : Character) return Boolean
-     with Pre => Present (S);
-
-   function Starts_With (S1 : Str; S2 : String) return Boolean
-     with Pre => Present (S1) and then S2'Length < Str_Max;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helper");
 

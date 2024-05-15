@@ -25,6 +25,7 @@ with Lib;    use Lib;
 with Output; use Output;
 with Table;
 
+with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
@@ -447,7 +448,7 @@ package body CCG.Subprograms is
         and then Present (Get_First_Basic_Block (V))
       then
          Result := "inline " & Result;
-         if In_Main_Unit and then not Definition
+         if (In_Main_Unit or else not Use_FE_Data) and then not Definition
            and then Get_Linkage (V) /= Internal_Linkage
          then
             Write_Extern := True;

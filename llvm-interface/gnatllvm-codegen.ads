@@ -32,6 +32,9 @@ package GNATLLVM.Codegen is
    Emit_C          : Boolean        := CCG;
    --  True if -emit-c was specified explicitly or CCG set
 
+   Use_FE_Data     : Boolean        := Emit_C;
+   --  Use Front End data to help C code generation
+
    Use_GNAT_Allocs : Boolean        := False;
    --  True if we should emit calls to __gnat_malloc and __gnat_free even
    --  if generating C.

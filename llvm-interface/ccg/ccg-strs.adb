@@ -257,7 +257,7 @@ package body CCG.Strs is
    ------------------
 
    function Needs_Parens (Is_P, For_P : Precedence) return Boolean is
-     (Always_Parens
+     ((Always_Parens and then For_P /= Component)
       or else (Is_P /= Unknown and then For_P /= Unknown
                and then (Is_P < For_P
                          or else (Is_P = For_P

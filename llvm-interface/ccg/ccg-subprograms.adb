@@ -1112,7 +1112,7 @@ package body CCG.Subprograms is
       elsif (Matches (S, "bswap") or else Matches (S, "bitreverse"))
         and then Ops'Length = 2 and then Is_Integral_Type (Op1)
       then
-         Force_To_Variable (V);
+         Force_To_Variable (Op1);
          Assignment (V, Bit_Byte_Reverse (V, Op1, Matches (S, "bswap")));
          return True;
 

@@ -59,7 +59,7 @@ package body CCG is
 
       if Use_FE_Data and then not Emit_Header then
          Add_To_Source_Order (N);
-         if Get_Source_File_Index (Sloc (N)) = Main_Source_File
+         if Get_Source_File_Index (Sloc (N)) = Our_Source_File
            and then (Get_Physical_Line_Number (Sloc (N)) < Lowest_Line_Number
                      or else Lowest_Line_Number = Physical_Line_Number'First)
          then

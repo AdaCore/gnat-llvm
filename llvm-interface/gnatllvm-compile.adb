@@ -23,6 +23,7 @@ with Opt;         use Opt;
 with Restrict;    use Restrict;
 with Sem_Util;    use Sem_Util;
 with Set_Targ;    use Set_Targ;
+with Sinput;      use Sinput;
 with Snames;      use Snames;
 with Stand;       use Stand;
 with Stringt;     use Stringt;
@@ -198,6 +199,11 @@ package body GNATLLVM.Compile is
            ("Pointer size mismatch between target and target parameters");
       end if;
       --  Initialize modules and handle duplicate globals
+
+      --  Get the actual main source file index. If -gnatDG,
+      --  Main_Source_File_Index is wrong.
+
+      Our_Source_File := Get_Source_File_Index (Sloc (GNAT_Root));
 
       Stringt.Unlock;
       GNATLLVM.Blocks.Initialize;

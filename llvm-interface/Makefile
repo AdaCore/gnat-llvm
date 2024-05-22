@@ -188,6 +188,19 @@ else
   target_os=$(word 3,$(target_list))
 endif
 
+# If we're cross compiling for Linux, the environment variable ENV_PREFIX
+# contains the path to the sysroot. It's not picked up automatically by
+# gprbuild as long as we're using the "llvm" pseudo target, so we need to
+# configure an explicit "--sysroot=" argument.
+#
+# Remove this code when we move away from target "llvm" for the runtime build
+# (eng/toolchain/gnat-llvm#149).
+ifdef ENV_PREFIX
+  sysroot_arg="--sysroot=$(ENV_PREFIX)"
+else
+  sysroot_arg=""
+endif
+
 RTS=$(pwd)/lib/rts-native
 RTSDIR=$(RTS)/adainclude
 RTSLIB=$(RTS)/adalib
@@ -251,7 +264,7 @@ quicklib: $(RTSDIR)
 	PATH=$(pwd)/bin:$$PATH \
 	$(GPRBUILD) -p --target=llvm -j$(PROCS) -P$(RTSDIR)/libada \
 	  -XCFLAGS="$(CFLAGS) -Wno-implicit-function-declaration -I$(LLVM_INCLUDE_DIR)" \
-	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS) -gdwarf-aranges" \
+	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS) -gdwarf-aranges $(sysroot_arg)" \
 	  -XLIBRARY_KIND=$(LIBRARY_KIND)
 	cd $(RTSLIB) && $(CHMOD) a-wx *.ali
 

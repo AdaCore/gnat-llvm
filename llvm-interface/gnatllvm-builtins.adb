@@ -1002,6 +1002,7 @@ package body GNATLLVM.Builtins is
       elsif not Is_Proc and then N_Args = 3
         and then Base_GL_Type (Full_GL_Type (N)) = Base_GL_Type (GT)
         and then Op_Name in "exchange" | "exchange_n"
+        and then Type_Size_Matches_Name (S, True, GT)
       then
          return
            Emit_Fetch_And_Op (Ptr, Emit_Expression (Arg2),

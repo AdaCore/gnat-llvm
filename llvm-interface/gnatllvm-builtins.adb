@@ -958,7 +958,7 @@ package body GNATLLVM.Builtins is
       if not Is_Proc and then N_Args = 2
         and then Op_Name in "load" | "load_n"
         and then Type_Size_Matches_Name (S, True, GT)
-        and then Full_GL_Type (N) = GT
+        and then Base_GL_Type (Full_GL_Type (N)) = Base_GL_Type (GT)
       then
          return Emit_Atomic_Load
            (Emit_Ptr (Ptr, GT),
@@ -999,7 +999,8 @@ package body GNATLLVM.Builtins is
 
       --  Handle exchange, which is a fetch-and operation
 
-      elsif not Is_Proc and then N_Args = 3 and then Full_GL_Type (N) = GT
+      elsif not Is_Proc and then N_Args = 3
+        and then Base_GL_Type (Full_GL_Type (N)) = Base_GL_Type (GT)
         and then Op_Name in "exchange" | "exchange_n"
       then
          return
@@ -1007,7 +1008,8 @@ package body GNATLLVM.Builtins is
                               Atomic_RMW_Bin_Op_Xchg, False,
                               Memory_Order (Arg3), S, GT);
       elsif Is_Proc and then N_Args = 4 and then Op_Name = "exchange"
-        and then Full_Designated_GL_Type (Full_Etype (Arg3)) = GT
+        and then Base_GL_Type (Full_Designated_GL_Type (Full_Etype (Arg3))) =
+                 Base_GL_Type (GT)
       then
          Result := Emit_And_Deref (Arg2, GT);
 
@@ -1032,7 +1034,7 @@ package body GNATLLVM.Builtins is
                             "compare_exchange_capability"
         and then Is_Boolean_Type (Full_Etype (N))
         and then Is_Boolean_Type (Full_Etype (Arg4))
-        and then Full_GL_Type (Arg3) = GT
+        and then Base_GL_Type (Full_GL_Type (Arg3)) = Base_GL_Type (GT)
         and then Type_Size_Matches_Name (S, True, GT)
       then
          declare

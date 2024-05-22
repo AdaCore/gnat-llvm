@@ -970,7 +970,7 @@ package body CCG.Write is
       if Emit_Header then
          declare
             File   : constant String :=
-              Get_Name_String (File_Name (Main_Source_File));
+              Get_Name_String (File_Name (Our_Source_File));
             Result : String (File'Range);
 
          begin
@@ -1022,8 +1022,8 @@ package body CCG.Write is
 
       if not Emit_Header and then Dump_Source_Text then
          Main_Source_Name :=
-           +Get_Name_String (Full_Debug_Name (Main_Source_File));
-         Src              := Source_Text (Main_Source_File);
+           +Get_Name_String (Full_Debug_Name (Our_Source_File));
+         Src              := Source_Text (Our_Source_File);
          for J in Physical_Line_Number'First .. Lowest_Line_Number - 1 loop
             Write_Source_Line (J);
          end loop;
@@ -1042,7 +1042,7 @@ package body CCG.Write is
       --  If we're dumping source lines, dump any that remain
 
       if not Emit_Header and then Dump_Source_Text then
-         for J in Next_Line_To_Dump .. Last_Source_Line (Main_Source_File) loop
+         for J in Next_Line_To_Dump .. Last_Source_Line (Our_Source_File) loop
             Write_Source_Line (J);
          end loop;
       end if;
@@ -1077,12 +1077,12 @@ package body CCG.Write is
       Scn : Source_Ptr;
 
    begin
-      Scn := Line_Start (L, Main_Source_File);
+      Scn := Line_Start (L, Our_Source_File);
       while Src (Scn) = ' ' or else Src (Scn) = ASCII.HT loop
          Scn := Scn + 1;
       end loop;
 
-      return Src (Scn) in Line_Terminator
+      return Src (Scn) in Line_Terminator | EOF
         or else Src (Scn .. Scn + 1) = "--";
    end Is_Comment_Line;
 
@@ -1103,7 +1103,7 @@ package body CCG.Write is
       Write_Int (Nat (L));
       Write_Str (": ");
 
-      Scn := Line_Start (L, Main_Source_File);
+      Scn := Line_Start (L, Our_Source_File);
       while Scn <= Src'Last and then Src (Scn) not in Line_Terminator loop
 
          --  We have the pathological case of a Ada source line containing

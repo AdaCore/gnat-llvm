@@ -323,6 +323,11 @@ package GNATLLVM is
    Max_Valid_Align    : Nat;
    Max_Int_Size       : Uint;
 
+   --  The actual main source file index. If -gnatDG,
+   --  Main_Source_File_Index is wrong.
+
+   Our_Source_File : Source_File_Index;
+
    --  GNAT LLVM switches
 
    Decls_Only           : Boolean := False;

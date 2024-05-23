@@ -23,6 +23,10 @@ package CCG.Write is
    --  This package contains subprograms and data used to output the saved
    --  C statements into the output file.
 
+   Needs_Malloc_H : Boolean := False;
+   --  True if we need to add an include for <malloc.h> because we
+   --  use alloca.
+
    procedure Write_Value
      (V              : Value_T;
       Flags          : Value_Flags := Default_Flags;

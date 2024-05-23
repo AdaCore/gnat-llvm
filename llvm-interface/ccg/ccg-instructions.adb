@@ -223,11 +223,11 @@ package body CCG.Instructions is
 
       elsif not Use_Signed and then Extras < ULL'Size - 1 then
          declare
-            Size   : constant Nat     := Next_Pow2 (Get_Scalar_Bit_Size (T));
-            Mask_T : constant Type_T  := Int_Ty (Size);
-            Mask_W : constant Natural := Integer (Size - Extras);
-            Mask   : constant ULL     := Shift_Left (1, Mask_W) - 1;
-            Mask_V : constant Value_T := Const_Int (Mask_T, Mask, False);
+            P2_Size : constant Nat     := Next_Pow2 (Get_Scalar_Bit_Size (T));
+            Mask_T  : constant Type_T  := Int_Ty (P2_Size);
+            Mask_W  : constant Natural := Integer (P2_Size - Extras);
+            Mask    : constant ULL     := Shift_Left (1, Mask_W) - 1;
+            Mask_V  : constant Value_T := Const_Int (Mask_T, Mask, False);
 
          begin
             return (Result + Bit & " & " & Mask_V) + P;
@@ -241,8 +241,7 @@ package body CCG.Instructions is
 
       else
          declare
-            Cast       : constant Str     :=
-              (if Use_Signed then "(" else "(unsigned ") & T & ") ";
+            Cast : constant Str := "(" & (T + not Use_Signed) & ")";
 
          begin
             Result := Cast & "(" & (Result + Shift) & " << " & Extras & ")";

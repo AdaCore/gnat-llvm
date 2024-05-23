@@ -40,6 +40,8 @@ package body CCG.Strs is
 
    procedure Update_Hash (H : in out Hash_Type; Flags : Value_Flags)
      with Inline;
+   procedure Update_Hash (H : in out Hash_Type; Flags : Type_Flags)
+     with Inline;
    --  Update the hash key from Flags
 
    package Str_Sets is new Ada.Containers.Hashed_Sets
@@ -66,6 +68,16 @@ package body CCG.Strs is
       Update_Hash (H, Flags.Write_Type);
    end Update_Hash;
 
+   -----------------
+   -- Update_Hash --
+   -----------------
+
+   procedure Update_Hash (H : in out Hash_Type; Flags : Type_Flags) is
+   begin
+      Update_Hash (H, Flags.Need_Unsigned);
+      Update_Hash (H, Flags.Need_Signed);
+   end Update_Hash;
+
    ----------
    -- Hash --
    ----------
@@ -88,6 +100,7 @@ package body CCG.Strs is
                      Update_Hash (H, Precedence'Pos (Comp.For_P));
                   when Typ =>
                      Update_Hash (H, Comp.T);
+                     Update_Hash (H, Comp.T_Flags);
                   when BB =>
                      Update_Hash (H, Comp.B);
                   when Number =>
@@ -186,7 +199,9 @@ package body CCG.Strs is
                   end if;
 
                when Typ =>
-                  if SL.Comps (PosL).T /= SR.Comps (PosR).T then
+                  if SL.Comps (PosL).T /= SR.Comps (PosR).T
+                    or else SL.Comps (PosL).T_Flags /= SR.Comps (PosR).T_Flags
+                  then
                      return False;
                   end if;
 
@@ -311,7 +326,7 @@ package body CCG.Strs is
 
    function "+" (V : Value_T) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Value, 1, V, Default_Flags, Unknown)));
+        (1, Unknown, (1 => (Value, 1, V, Default_Value_Flags, Unknown)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -325,7 +340,7 @@ package body CCG.Strs is
 
    function "+" (E : Entity_Id) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Entity, 1, E, Default_Flags)));
+        (1, Unknown, (1 => (Entity, 1, E, Default_Value_Flags)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -378,6 +393,27 @@ package body CCG.Strs is
    -- "+" --
    ---------
 
+   function "+" (T : Type_T; TF : Type_Flags) return Str is
+      S_Rec  : aliased constant Str_Record (1) :=
+        (1, Unknown, (1 => (Typ, 1, T, TF)));
+      Result : constant Str := Undup_Str (S_Rec);
+
+   begin
+      Maybe_Output_Typedef (T);
+      return Result;
+   end "+";
+
+   ---------
+   -- "+" --
+   ---------
+
+   function "+" (T : Type_T; V : Value_T) return Str is
+     (T + (Present (V) and then Is_Unsigned (V)));
+
+   ---------
+   -- "+" --
+   ---------
+
    function "+" (S : String; K : String_Kind) return Str is
       Orig   : constant Str := +S;
       S_Rec  : aliased Str_Record := Orig.all;
@@ -415,7 +451,7 @@ package body CCG.Strs is
 
    function "+" (V : Value_T; P : Precedence) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-              (1, P, (1 => (Value, 1, V, Default_Flags, P)));
+              (1, P, (1 => (Value, 1, V, Default_Value_Flags, P)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -486,7 +522,7 @@ package body CCG.Strs is
 
    function "+" (T : Type_T) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Typ, 1, T)));
+        (1, Unknown, (1 => (Typ, 1, T, Default_Type_Flags)));
       Result : constant Str := Undup_Str (S_Rec);
    begin
       Maybe_Output_Typedef (T);
@@ -541,7 +577,7 @@ package body CCG.Strs is
                             For_Precedence => Comp.For_P);
 
             when Typ =>
-               Write_Type (Comp.T);
+               Write_Type (Comp.T, Comp.T_Flags);
 
             when BB =>
                Write_BB_Value (Comp.B);
@@ -580,7 +616,7 @@ package body CCG.Strs is
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown,
                (1 => (Var_String, L'Length, Normal, L),
-                2 => (Value, 1, R, Default_Flags, Unknown)));
+                2 => (Value, 1, R, Default_Value_Flags, Unknown)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -604,7 +640,8 @@ package body CCG.Strs is
          declare
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown,
-               (1 => (Var_String, L'Length, Normal, L), 2 => (Typ, 1, R)));
+               (1 => (Var_String, L'Length, Normal, L),
+                2 => (Typ, 1, R, Default_Type_Flags)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -699,7 +736,7 @@ package body CCG.Strs is
          declare
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Primary,
-               (1 => (Value, 1, L, Default_Flags, Unknown),
+               (1 => (Value, 1, L, Default_Value_Flags, Unknown),
                 2 => (Var_String, R'Length, Normal, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
@@ -723,7 +760,7 @@ package body CCG.Strs is
       elsif R'Length <= Str_Max then
          declare
             S_Rec  : aliased constant Str_Record (2) :=
-              (2, Unknown, (1 => (Typ, 1, L),
+              (2, Unknown, (1 => (Typ, 1, L, Default_Type_Flags),
                             2 => (Var_String, R'Length, Normal, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
@@ -796,7 +833,8 @@ package body CCG.Strs is
    begin
       Set_Is_Used (L);
       S_Rec.P                         := R.P;
-      S_Rec.Comps (1)                 := (Value, 1, L, Default_Flags, Unknown);
+      S_Rec.Comps (1)                 :=
+        (Value, 1, L, Default_Value_Flags, Unknown);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
       Result := Undup_Str (S_Rec);
       return Result;
@@ -813,7 +851,7 @@ package body CCG.Strs is
    begin
       Maybe_Output_Typedef (L);
       S_Rec.P                         := R.P;
-      S_Rec.Comps (1)                 := (Typ, 1, L);
+      S_Rec.Comps (1)                 := (Typ, 1, L, Default_Type_Flags);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
       Result := Undup_Str (S_Rec);
       return Result;
@@ -851,7 +889,8 @@ package body CCG.Strs is
       Set_Is_Used (R);
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
-      S_Rec.Comps (L.Length + 1)  := (Value, 1, R, Default_Flags, Unknown);
+      S_Rec.Comps (L.Length + 1)  :=
+        (Value, 1, R, Default_Value_Flags, Unknown);
       Result := Undup_Str (S_Rec);
       return Result;
    end "&";
@@ -872,7 +911,7 @@ package body CCG.Strs is
       Maybe_Output_Typedef (R);
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
-      S_Rec.Comps (L.Length + 1)  := (Typ, 1, R);
+      S_Rec.Comps (L.Length + 1)  := (Typ, 1, R, Default_Type_Flags);
       Result := Undup_Str (S_Rec);
       return Result;
    end "&";
@@ -1012,7 +1051,7 @@ package body CCG.Strs is
       then
          declare
             S_Rec  : aliased constant Str_Record :=
-              (1, S.P, (1 => (Value, 0, S.Comps (1).Val, Default_Flags,
+              (1, S.P, (1 => (Value, 0, S.Comps (1).Val, Default_Value_Flags,
                               S.Comps (1).For_P)));
             Result : constant Str                := Undup_Str (S_Rec);
          begin

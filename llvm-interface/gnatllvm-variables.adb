@@ -1551,9 +1551,13 @@ package body GNATLLVM.Variables is
    --------------------------
 
    function Make_Global_Constant (V : GL_Value) return GL_Value is
-      GT      : constant GL_Type := Related_Type (V);
-      In_V    : GL_Value         := V;
-      Out_Val : Value_T;
+      GT        : constant GL_Type := Related_Type (V);
+      Globalize : constant Boolean :=
+        Emit_C and then Present (Current_Func)
+        and then (Has_Inline_Attribute (Current_Func)
+                  or else Has_Inline_Always_Attribute (Current_Func));
+      In_V      : GL_Value         := V;
+      Out_Val   : Value_T;
 
    begin
       --  If we're making a constant for an undef, use an undef address
@@ -1582,17 +1586,20 @@ package body GNATLLVM.Variables is
          Set_Unnamed_Addr       (Out_Val, True);
          Const_Map.Insert       (+In_V,  Out_Val);
 
-         if not (Emit_C and then Present (Current_Func)
-                   and then Has_Inline_Attribute (Current_Func))
-         then
+         if not Globalize then
             Set_Linkage         (Out_Val, Private_Linkage);
+         end if;
+      else
+         Out_Val := Const_Map.Element (+In_V);
+         if Globalize then
+            Set_Linkage (Out_Val, External_Linkage);
          end if;
       end if;
 
       --  Now make a GL_Value. We do this here since different constant
       --  literals may have different types (i.e., bounds).
 
-      return G (Const_Map.Element (+In_V), GT, Ref (In_V),
+      return G (Out_Val, GT, Ref (In_V),
                 Alignment => Get_Type_Alignment (Default_GL_Type (GT)));
    end Make_Global_Constant;
 

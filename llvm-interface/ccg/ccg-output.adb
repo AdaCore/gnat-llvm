@@ -274,20 +274,20 @@ package body CCG.Output is
 
                   Output_Decl (Decl, Is_Global => True, V => V);
                end;
-            else
-               --  If this is a constant (we know that it can't be a simple
-               --  constant), we need to initialize the value to that of the
-               --  constant and put it at the top level.
 
-               if Is_A_Constant (V) then
-                  Maybe_Output_Typedef_And_Decl (V);
-                  Output_Decl ("static const " & Decl & " = " &
-                                 (V + Initializer),
-                               Is_Global => True, V => V);
-                  Set_Is_Constant (V);
-               else
-                  Output_Decl (Decl, V => V);
-               end if;
+            --  If this is a constant (we know that it can't be a simple
+            --  constant), we need to initialize the value to that of the
+            --  constant and put it at the top level.
+
+            elsif Is_A_Constant (V) then
+               Maybe_Output_Typedef_And_Decl (V);
+               Output_Decl ((if   Get_Must_Globalize (V) then "const "
+                             else "static const ") &
+                            Decl & " = " & (V + Initializer),
+                            Is_Global => True, V => V);
+               Set_Is_Constant (V);
+            else
+               Output_Decl (Decl, V => V);
             end if;
          end;
       end if;

@@ -486,12 +486,12 @@ package body CCG.Subprograms is
 
             begin
                --  We may be passing an unsigned integer type by reference.
-               --  If so, add "unsigned ".
+               --  If so, use unsigned version of type.
 
                if Present (BT) and then Is_Unsigned_Type (BT)
                  and then Is_Pointer_Type (Param)
                then
-                  Typ := "unsigned " & Typ;
+                  Typ := Type_Of (Param) + Need_Unsigned;
                end if;
 
                --  Add this parameter to the list, usually preceeded by a comma
@@ -508,7 +508,8 @@ package body CCG.Subprograms is
          --  function, do it.
 
          if Maybe_Add_Nest then
-            Result := Result & ", char * _n";
+            Result := Result & ", " &
+              (if Use_Stdint then "int8_t" else "signed char") & " * _n";
          end if;
       end if;
 
@@ -874,8 +875,10 @@ package body CCG.Subprograms is
         (Str_Op2 + Shift) & (if Left then " >> " else " << ") & (Size - Cnt);
       Res := (Sh1 & " | " & Sh2) + Bit;
       Assignment (V,
-                  (if Is_Unsigned (V) then "(" else "(unsigned ") &
-                  (V + Write_Type) & ") (" & Res & ")" + Unary,
+                  "(" &
+                  (V + (if   Is_Unsigned (V) then +Write_Type
+                        else +Write_Type or +Need_Unsigned)) &
+                   ") (" & Res & ")" + Unary,
                   Is_Opencode_Builtin => True);
       return True;
 

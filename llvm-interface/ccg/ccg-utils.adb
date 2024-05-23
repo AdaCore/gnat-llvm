@@ -674,16 +674,30 @@ package body CCG.Utils is
    begin
       --  Note that what we care about here is whether the C compiler
       --  will interpret our generated code for V as a pointer to
-      --  unsigned, not whether it actually IS unsigned. The only two
-      --  cases where we have a pointer to unsigned are when we have the
-      --  address of an unsigned variable or an unsigned field.
-
+      --  unsigned, not whether it actually IS unsigned.
+      --
       --  If this is an LHS and a variable, there has to be a declaration,
       --  and we either declared it as unsigned or we didn't. We did if the
       --  condition below is true.
 
       if Get_Is_LHS (V) and then Is_Variable (V, False) then
          return Opt_Is_Unsigned_Type (BT);
+      elsif Is_A_Argument (V) then
+         return Opt_Is_Unsigned_Type (BT);
+      elsif Has_Operands (V)
+        and then Get_Opcode (V) in Op_Bit_Cast | Op_Ptr_To_Int | Op_Int_To_Ptr
+      then
+         return Is_Unsigned_Ref (Get_Operand0 (V));
+      elsif Is_A_Load_Inst (V) then
+         declare
+            Load_TE : constant Opt_Type_Kind_Id :=
+              GNAT_Type (Get_Operand0 (V));
+
+         begin
+            return Present (Load_TE) and then Is_Access_Type (Load_TE)
+              and then Is_Unsigned_Type
+                         (Full_Base_Type (Full_Designated_Type (Load_TE)));
+         end;
       else
          return Is_A_Get_Element_Ptr_Inst (V) and then Is_Unsigned_GEP (V);
       end if;
@@ -1132,7 +1146,7 @@ package body CCG.Utils is
             elsif Size > Char_Size and then Size <= Short_Size then
                return Result & "short";
             elsif Size <= Char_Size then
-               return Result & "char";
+               return Result & (if Unsigned_P then "char" else "signed char");
             else
                return +"<unknown int type:" & Size'Image & ">";
             end if;

@@ -1555,7 +1555,7 @@ package body GNATLLVM.Variables is
       --  since we want to delete zero-sized objects in that case.
 
       return (if    not Emit_C and then Is_Zero_Size (GT)
-                    and then not Is_Constr_Array_Subt_With_Bounds (GT)
+                    and then not Is_Constr_Subt_For_UN_Aliased (GT)
               then Make_GT_Alternative (GT, Empty, +BPU, No_Uint)
               else GT);
 

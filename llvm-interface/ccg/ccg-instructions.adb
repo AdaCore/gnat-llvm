@@ -1096,9 +1096,7 @@ package body CCG.Instructions is
             null;
 
          when others =>
-            Error_Msg ("unsupported instruction: " & Get_Opcode_Name (Opc), V);
-            Output_Stmt
-              ("<unsupported instruction: " & Get_Opcode_Name (Opc) & ">");
+            raise Program_Error;
       end case;
    end Instruction;
 

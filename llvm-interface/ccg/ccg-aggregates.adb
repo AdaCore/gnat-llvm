@@ -121,7 +121,7 @@ package body CCG.Aggregates is
             end return;
          end;
       else
-         return Get_Type_Alignment (T);
+         return Get_Preferred_Type_Alignment (T);
       end if;
 
    end Default_Alignment;

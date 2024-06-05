@@ -427,6 +427,36 @@ package body GNATLLVM.Types is
       return V;
    end Add_To_LValue_List;
 
+   ---------------------
+   -- Get_LValue_List --
+   ---------------------
+
+   function Get_LValue_List return Access_GL_Value_Array is
+      List : constant Access_GL_Value_Array :=
+        new GL_Value_Array (1 .. LValue_Pairs.Last);
+
+   begin
+      for J in List'Range loop
+         List (J) := LValue_Pairs.Table (J);
+      end loop;
+
+      return List;
+   end Get_LValue_List;
+
+   ---------------------
+   -- Put_LValue_List --
+   ---------------------
+
+   procedure Put_LValue_List (L : in out Access_GL_Value_Array) is
+   begin
+      Clear_LValue_List;
+      for V of L.all loop
+         Add_To_LValue_List (V);
+      end loop;
+
+      Free (L);
+   end Put_LValue_List;
+
    ------------------------
    -- Get_Matching_Value --
    ------------------------

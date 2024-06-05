@@ -127,6 +127,12 @@ package GNATLLVM.Types is
      with Pre => Present (V), Post => Add_To_LValue_List'Result = V, Inline;
    --  Likewise, but return V
 
+   function Get_LValue_List return Access_GL_Value_Array;
+   --  Return the list of LValues that have been pushed
+
+   procedure Put_LValue_List (L : in out Access_GL_Value_Array);
+   --  Restore the list of LValues
+
    function Get_Matching_Value (TE : Type_Kind_Id) return GL_Value
      with Post => Present (Get_Matching_Value'Result);
    --  Find a value that's being computed by the current Emit_LValue

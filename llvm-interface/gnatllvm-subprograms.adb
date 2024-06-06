@@ -2068,10 +2068,12 @@ package body GNATLLVM.Subprograms is
          F       : Opt_Record_Field_Kind_Id;
          In_Idxs : Access_GL_Value_Array;
          In_RHS  : GL_Value;
+         LVs     : in out Access_GL_Value_Array;
          VFA     : Boolean)
         with Pre => Present (In_RHS) and then Is_Reference (In_LHS);
       --  Write the value in In_RHS to the location In_LHS. F, if Present,
-      --  is a field into In_LHS to write.
+      --  is a field into In_LHS to write. LVs are the list of LValues
+      --  pushed by the argument's evaluation.
 
       function Misaligned_Copy_Required
         (V        : GL_Value;
@@ -2088,6 +2090,7 @@ package body GNATLLVM.Subprograms is
          LHS, RHS : GL_Value;
          Field    : Opt_Record_Field_Kind_Id;
          Idxs     : Access_GL_Value_Array;
+         LVs      : Access_GL_Value_Array;
          VFA      : Boolean;
       end record;
       --   A writeback entry for an by-ref type that's In or In Out
@@ -2126,11 +2129,12 @@ package body GNATLLVM.Subprograms is
           (if RK = Return_By_Parameter then 1 else 0);
       Args             : GL_Value_Array (1 .. Arg_Count);
       WBs              : WB_Array       (1 .. Arg_Count) :=
-        (others => (No_GL_Value, No_GL_Value, Empty, null, False));
+        (others => (No_GL_Value, No_GL_Value, Empty, null, null, False));
       Out_LHSs         : GL_Value_Array (1 .. Out_Arg_Count);
       Out_Flds         : Entity_Array   (1 .. Out_Arg_Count);
       Out_VFAs         : array (1 .. Out_Arg_Count) of Boolean;
       Out_Idxs         : array (1 .. Out_Arg_Count) of Access_GL_Value_Array;
+      Out_LVs          : array (1 .. Out_Arg_Count) of Access_GL_Value_Array;
       Actual_Return    : GL_Value;
       S_Link           : GL_Value;
       LLVM_Func        : GL_Value;
@@ -2146,6 +2150,7 @@ package body GNATLLVM.Subprograms is
          F       : Opt_Record_Field_Kind_Id;
          In_Idxs : Access_GL_Value_Array;
          In_RHS  : GL_Value;
+         LVs     : in out Access_GL_Value_Array;
          VFA     : Boolean)
       is
          LHS      : GL_Value              := In_LHS;
@@ -2189,6 +2194,10 @@ package body GNATLLVM.Subprograms is
          --  list of LValues used to compute the size so may not be able
          --  to copy it back if it's self-referential.
 
+         if LVs /= null then
+            Put_LValue_List (LVs);
+         end if;
+
          if Present (F) then
             Build_Field_Store (LHS, F, RHS, VFA);
          elsif Idxs /= null then
@@ -2198,6 +2207,11 @@ package body GNATLLVM.Subprograms is
             Emit_Assignment (LHS, Value => RHS);
          end if;
 
+         --  Clear any LValues that we pushed above
+
+         if not No_Adjust_LV then
+            Clear_LValue_List;
+         end if;
       end Write_Back;
 
       ------------------------------
@@ -2382,6 +2396,7 @@ package body GNATLLVM.Subprograms is
                                       RHS   => Arg,
                                       Field => F,
                                       Idxs  => Idxs,
+                                      LVs   => Get_LValue_List,
                                       VFA   => Is_VFA_Ref (Actual));
 
                      Arg := Get (Arg, R);
@@ -2404,6 +2419,7 @@ package body GNATLLVM.Subprograms is
                                             RHS   => Arg,
                                             Field => Empty,
                                             Idxs  => null,
+                                            LVs   => Get_LValue_List,
                                             VFA   => Is_VFA_Ref (Actual));
                         end if;
                      else
@@ -2481,6 +2497,7 @@ package body GNATLLVM.Subprograms is
                   else LHS);
                Out_Flds (Out_Idx) := F;
                Out_Idxs (Out_Idx) := Idxs;
+               Out_LVs  (Out_Idx) := Get_LValue_List;
                Out_VFAs (Out_Idx) := Is_VFA_Ref (Actual);
                Out_Idx            := Out_Idx + 1;
             end if;
@@ -2533,6 +2550,7 @@ package body GNATLLVM.Subprograms is
             Write_Back
               (Out_LHSs (1), Out_Flds (1), Out_Idxs (1),
                Call (LLVM_Func, Fn_Ty, Args, Get_Param_GL_Type (Out_Param)),
+               LVs => Out_LVs (1),
                VFA => Out_VFAs (1));
 
          when Struct_Out | Struct_Out_Subprog =>
@@ -2561,6 +2579,7 @@ package body GNATLLVM.Subprograms is
                            Out_Idxs (Out_Idx),
                            Extract_Value (Get_Param_GL_Type (Out_Param),
                                           Actual_Return, unsigned (Ret_Idx)),
+                           LVs => Out_LVs (Out_Idx),
                            VFA => Out_VFAs (Out_Idx));
                Ret_Idx := Ret_Idx + 1;
                Out_Idx := Out_Idx + 1;
@@ -2573,7 +2592,7 @@ package body GNATLLVM.Subprograms is
       for J in WBs'Range loop
          if Present (WBs (J).LHS) then
             Write_Back (WBs (J).LHS, WBs (J).Field, WBs (J).Idxs, WBs (J).RHS,
-                        WBs (J).VFA);
+                        WBs (J).LVs, WBs (J).VFA);
          end if;
       end loop;
 

@@ -856,12 +856,13 @@ package body CCG.Subprograms is
       Op1      : constant Value_T := Ops (Ops'First);
       Op2      : constant Value_T := Ops (Ops'First + 1);
       Op3      : constant Value_T := Ops (Ops'First + 2);
-      Str_Op1  : constant Str     := Process_Operand (Op1, X, Shift);
-      Str_Op2  : constant Str     := Process_Operand (Op2, X, Shift);
+      Str_Op1  : constant Str     :=
+        Process_Operand (Op1, POO_Unsigned, Shift);
+      Str_Op2  : constant Str     :=
+        Process_Operand (Op2, POO_Unsigned, Shift);
       Size     : constant Nat     := Get_Scalar_Bit_Size (Op1);
       Cnt      : Nat;
       Sh1, Sh2 : Str;
-      Res      : Str;
 
    begin
       --  There are two cases here, where Op3 is an integer and where
@@ -880,13 +881,7 @@ package body CCG.Subprograms is
       Sh1 := (Str_Op1 + Shift) & (if Left then " << " else " >> ") & Cnt;
       Sh2 :=
         (Str_Op2 + Shift) & (if Left then " >> " else " << ") & (Size - Cnt);
-      Res := (Sh1 & " | " & Sh2) + Bit;
-      Assignment (V,
-                  "(" &
-                  (V + (if   Is_Unsigned (V) then +Write_Type
-                        else +Write_Type or +Need_Unsigned)) &
-                   ") (" & Res & ")" + Unary,
-                  Is_Opencode_Builtin => True);
+      Assignment (V, Sh1 + Bit & " | " & Sh2, Is_Opencode_Builtin => True);
       return True;
 
    end Funnel_Shift;

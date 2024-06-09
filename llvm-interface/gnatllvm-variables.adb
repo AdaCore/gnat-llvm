@@ -884,7 +884,8 @@ package body GNATLLVM.Variables is
             --  comparison involving symbolic operands and that comparison
             --  has a constant value. Note that having a comparison
             --  operation "clears" the flags because all we'll see is the
-            --  result of the comparison.
+            --  result of the comparison. However, C doesn't allow the
+            --  subtracting two addresses.
 
             Is_Cmp : constant Boolean := Nkind (N) in N_Op_Compare;
             Our_NS : constant Boolean :=
@@ -897,7 +898,7 @@ package body GNATLLVM.Variables is
                                       Not_Symbolic   => Our_NS,
                                       Restrict_Types => Our_RT)
               or else not Is_No_Elab_Needed (Right_Opnd (N),
-                                             Not_Symbolic   => Our_NS,
+                                             Not_Symbolic => Our_NS or Emit_C,
                                              Restrict_Types => Our_RT)
               --  If either side needs an elab proc, we do
 

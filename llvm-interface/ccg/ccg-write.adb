@@ -75,6 +75,10 @@ package body CCG.Write is
    --  S is the string to write, if any. It must begin with an open brace
    --  for the start of the block and an end brace for the end of the block.
 
+   procedure Write_Internal_Name (S : String; Qualify : Boolean := True);
+   --  If Qualify is true, prepend the filename to S and and write both.
+   --  Otherwise, just write S
+
    procedure Write_Value_Name (V : Value_T)
      with Pre => Present (V);
    --  Write the value name of V, which is either the LLVM name or a name
@@ -187,6 +191,21 @@ package body CCG.Write is
       First := False;
    end Maybe_Write_Comma;
 
+   -------------------------
+   -- Write_Internal_Name --
+   -------------------------
+
+   procedure Write_Internal_Name (S : String; Qualify : Boolean := True) is
+   begin
+      if Qualify then
+         Set_File_Name ("");
+         Write_C_Name (Name_Buffer (1 .. Name_Len - 1),
+                       Need_Suffix => True);
+      end if;
+
+      Write_Str (S);
+   end Write_Internal_Name;
+
    ------------------
    -- Write_C_Name --
    ------------------
@@ -273,13 +292,7 @@ package body CCG.Write is
          --  make it static, which means that the name must not conflict,
          --  so qualify it with our filename.
 
-         if Get_Must_Globalize (V) then
-            Set_File_Name ("");
-            Write_C_Name (Name_Buffer (1 .. Name_Len - 1),
-                          Need_Suffix => True);
-         end if;
-
-         Write_Str ("ccg_v");
+         Write_Internal_Name ("ccg_v", Get_Must_Globalize (V));
          Write_Int (Get_Output_Idx (V));
       end if;
    end Write_Value_Name;
@@ -887,7 +900,7 @@ package body CCG.Write is
             --  pointer to function type. So we special-case that.
 
             if Is_Function_Type (Get_Element_Type (T)) then
-               Write_Str ("ccg_f");
+               Write_Internal_Name ("ccg_f");
                Write_Int (Get_Output_Idx (T));
 
             --  Otherwise, this is handled normally. We don't want to use a
@@ -908,12 +921,12 @@ package body CCG.Write is
             if Struct_Has_Name (T) then
                Write_C_Name (Get_Struct_Name (T));
             else
-               Write_Str ("ccg_s");
+               Write_Internal_Name ("ccg_s");
                Write_Int (Get_Output_Idx (T));
             end if;
 
          when Array_Type_Kind =>
-            Write_Str ("ccg_a");
+            Write_Internal_Name ("ccg_a");
             Write_Int (Get_Output_Idx (T));
 
          when others =>

@@ -27,8 +27,9 @@ with Table;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
-with CCG.Codegen;     use CCG.Codegen;
-with CCG.Environment; use CCG.Environment;
+with CCG.Codegen;      use CCG.Codegen;
+with CCG.Environment;  use CCG.Environment;
+with CCG.Instructions; use CCG.Instructions;
 
 package body CCG.Utils is
 
@@ -594,6 +595,8 @@ package body CCG.Utils is
                      Result := Result & (Op + Initializer);
                   when 'L' =>
                      Result := Result & (Op + LHS);
+                  when 'P' =>
+                     Result := Result & Process_Operand (Op, X, Unknown);
                   when 'T' =>
                      Result := Result & (Op + Write_Type);
                   when others =>

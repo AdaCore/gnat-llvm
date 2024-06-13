@@ -580,7 +580,7 @@ package body CCG.Instructions is
    ------------------------
 
    function Binary_Instruction (V, Op1, Op2 : Value_T) return Str is
-      Opc      : constant Opcode_T                := Get_Opcode (V);
+      Opc      : constant Opcode_T               := Get_Opcode (V);
       T        : constant Type_T                 := Type_Of (V);
       Can_Ovfl : constant Boolean                :=
         Is_A_Instruction (V) and then Opc in Op_Add | Op_Sub | Op_Mul

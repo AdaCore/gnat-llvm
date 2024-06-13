@@ -529,7 +529,7 @@ package body CCG.Aggregates is
       then
          Result := Aggr + LHS + Component;
       else
-         Result := TP ("#1[#2]", Aggr, Ops (Ops'First + 1)) + Component;
+         Result := TP ("#1[#P2]", Aggr, Ops (Ops'First + 1)) + Component;
          Is_LHS := True;
       end if;
 
@@ -550,7 +550,7 @@ package body CCG.Aggregates is
                Result := Deref (Result) + Component;
             end if;
 
-            Result := Result & TP ("[#1]", Op) + Component;
+            Result := Result & TP ("[#P1]", Op) + Component;
             Aggr_T := Get_Element_Type (Aggr_T);
             Is_LHS := True;
 

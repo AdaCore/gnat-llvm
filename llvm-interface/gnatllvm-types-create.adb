@@ -149,9 +149,15 @@ package body GNATLLVM.Types.Create is
 
       if Is_Modular_Integer_Type (Size_TE)
         and then not Non_Binary_Modulus (Size_TE)
-        and then RM_Size (Size_TE) /= 0
       then
-         Size := RM_Size (Size_TE);
+         --  Compute the size from the modulus. RM_Size defaults to that
+         --  value, but may have been overriden with a size clause.
+
+         for J in Nat (1) .. +Size loop
+            if UI_Expon (2, J) = Modulus (Full_Base_Type (Size_TE)) then
+               Size := +J;
+            end if;
+         end loop;
       elsif Esize (Size_TE) = 0 then
          Size := +BPU;
       end if;

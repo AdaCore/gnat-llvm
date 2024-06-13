@@ -863,6 +863,7 @@ package body CCG.Subprograms is
       Size     : constant Nat     := Get_Scalar_Bit_Size (Op1);
       Cnt      : Nat;
       Sh1, Sh2 : Str;
+      Result   : Str;
 
    begin
       --  There are two cases here, where Op3 is an integer and where
@@ -875,13 +876,15 @@ package body CCG.Subprograms is
       end if;
 
       --  Otherwise, get the constant shift count and generate the OR of
-      --  the two shifts.
+      --  the two shifts. Then cast it back to our type to truncate or
+      --  sign-extend.
 
       Cnt := Nat (Const_Int_Get_Z_Ext_Value (Op3));
       Sh1 := (Str_Op1 + Shift) & (if Left then " << " else " >> ") & Cnt;
       Sh2 :=
         (Str_Op2 + Shift) & (if Left then " >> " else " << ") & (Size - Cnt);
-      Assignment (V, Sh1 + Bit & " | " & Sh2, Is_Opencode_Builtin => True);
+      Result := "(" & (V + Write_Type) & ") (" & Sh1 + Bit & " | " & Sh2 & ")";
+      Assignment (V, Result, Is_Opencode_Builtin => True);
       return True;
 
    end Funnel_Shift;

@@ -1,0 +1,11 @@
+def build():
+    anod_install("binutils")
+    anod_build("gnat-llvm")
+
+def test_fixedbugs():
+    anod_install("gnat-llvm")
+    anod_test("fixedbugs", qualifier="compiler=gnat-llvm")
+
+def test_acats():
+    anod_install("gnat-llvm")
+    anod_test("acats", qualifier="compiler=gnat-llvm")

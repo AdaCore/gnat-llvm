@@ -1,0 +1,61 @@
+include:
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/check-issue@~latest
+
+variables:
+   PACKAGE_ANOD_EXPORT: anod-export.tar.xz
+
+stages:
+  - check
+  - build
+  - test
+
+.template:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  interruptible: true  # Cancel job if the branch is pushed
+  services:
+     - run_as_root:false
+     - image:sandbox
+     - cpu:16
+
+build:
+  extends: .template
+  stage: build
+  needs: []
+  script:
+    - generic_anod_ci
+    - . /tmp/ci_env.sh
+    - anod run --plan $CI_PROJECT_DIR/.gitlab-ci.plan build
+    - anod-copy-components --standalone-export $ANOD_DEFAULT_SANDBOX_DIR /tmp/anod-export/
+    - tar cjf $CI_PROJECT_DIR/$PACKAGE_ANOD_EXPORT -C /tmp anod-export
+  artifacts:
+    paths:
+      - $PACKAGE_ANOD_EXPORT
+
+.test_template:
+  extends: .template
+  stage: test
+  needs: [build]
+  script:
+    - generic_anod_ci
+    - . /tmp/ci_env.sh
+    - cd /tmp && tar xf $CI_PROJECT_DIR/$PACKAGE_ANOD_EXPORT
+    - anod-copy-components /tmp/anod-export $ANOD_DEFAULT_SANDBOX_DIR
+    - anod run --plan $CI_PROJECT_DIR/.gitlab-ci.plan test_$ANOD_ENTRY_POINT
+    - testsuite_reports
+  artifacts:
+     when: always
+     paths:
+        - xunit-*.xml
+#        - __results*
+     reports:
+       junit: xunit-*.xml
+
+fixedbugs:
+  extends: .test_template
+  variables:
+    ANOD_ENTRY_POINT: fixedbugs
+acats:
+  extends: .test_template
+  variables:
+    ANOD_ENTRY_POINT: acats

@@ -150,14 +150,26 @@ package body GNATLLVM.Types.Create is
       if Is_Modular_Integer_Type (Size_TE)
         and then not Non_Binary_Modulus (Size_TE)
       then
-         --  Compute the size from the modulus. RM_Size defaults to that
-         --  value, but may have been overriden with a size clause.
+         --  Normally. RM_Size is the size we want here. If this is a
+         --  packed array implementation type, it is. Otherwise, it will
+         --  only be correct if there's no size clause. If there is, we
+         --  have to compute the size from the modulus. Note that it's
+         --  probbably sufficient to test for a size clause since packed
+         --  array implementation types shouldn't have one, but the explicit
+         --  test is safer.
 
-         for J in Nat (1) .. +Size loop
-            if UI_Expon (2, J) = Modulus (Full_Base_Type (Size_TE)) then
-               Size := +J;
-            end if;
-         end loop;
+         if Is_Packed_Array_Impl_Type (Size_TE)
+           or else (not Has_Size_Clause (Size_TE)
+                    and then RM_Size (Size_TE) /= 0)
+         then
+            Size := RM_Size (Size_TE);
+         else
+            for J in Nat (1) .. +Size loop
+               if UI_Expon (2, J) = Modulus (Full_Base_Type (Size_TE)) then
+                  Size := +J;
+               end if;
+            end loop;
+         end if;
       elsif Esize (Size_TE) = 0 then
          Size := +BPU;
       end if;

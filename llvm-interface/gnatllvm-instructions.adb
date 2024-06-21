@@ -1171,6 +1171,7 @@ package body GNATLLVM.Instructions is
 
       else
          Set_TBAA_Offset (Result, TBAA_Offset (Result) + New_Offset);
+
          if Get_Value_Kind (Ptr)
              in Constant_Expr_Value_Kind | Instruction_Value_Kind
            and then Get_Num_Operands (Ptr) >= 1
@@ -1181,6 +1182,17 @@ package body GNATLLVM.Instructions is
             else
                Set_TBAA_Offset (Result, TBAA_Offset (Result) - Orig_Offset);
             end if;
+         end if;
+
+         --  If the above set the offset to beyond the size of the object
+         --  being referenced, we have an erroneous access and we must
+         --  clear the TBAA information.
+
+         if Present (GT_Size (Related_Type (Ptr)))
+           and then TBAA_Offset (Result) * UBPU >=
+                    +GT_Size (Related_Type (Ptr))
+         then
+            Set_TBAA_Type (Result, No_Metadata_T);
          end if;
       end if;
    end Update_Offset_For_GEP;

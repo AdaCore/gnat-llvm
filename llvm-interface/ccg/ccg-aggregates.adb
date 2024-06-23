@@ -527,7 +527,20 @@ package body CCG.Aggregates is
       if Is_A_Constant_Int (Ops (Ops'First + 1))
         and then Equals_Int (Ops (Ops'First + 1), 0)
       then
-         Result := Aggr + LHS + Component;
+         --  If we have a NULL, we need to include the type so that C
+         --  can properly interpret it.
+
+         if Is_A_Constant_Pointer_Null (Aggr) or else Is_Undef (Aggr) then
+            Result := TP ("((volatile #T1) #1)", Aggr) + Component;
+            Is_LHS := True;
+         else
+            Result := Aggr + LHS + Component;
+         end if;
+      elsif Is_A_Constant_Pointer_Null (Aggr) or else Is_Undef (Aggr) then
+         Result := TP ("((volatile #T1) #1)[#P2]", Aggr,
+                       Ops (Ops'First + 1)) + Component;
+         Is_LHS := True;
+
       else
          Result := TP ("#1[#P2]", Aggr, Ops (Ops'First + 1)) + Component;
          Is_LHS := True;

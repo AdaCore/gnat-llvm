@@ -507,14 +507,19 @@ package body CCG.Instructions is
          end;
 
       --  If this isn't volatile, it's a normal dereference. Likewise if
-      --  it's already known to be volatile.
+      --  it's already known to be volatile. But if this is a null, we need
+      --  to cast it to a volatile form of its type to avoid an error from
+      --  most C compilers.
 
-      elsif not Need_Volatile then
+      elsif not Need_Volatile and then not Is_A_Constant_Pointer_Null (Op)
+        and then not Is_Undef (Op)
+      then
          return Deref (Op);
 
       --  Otherwise, cast to a volatile form of the type and dereference that
+
       else
-         return Deref (TP ("(#T1 volatile) #1", Op));
+         return Deref (TP ("(volatile #T1) #1", Op));
       end if;
 
    end Deref_For_Load_Store;

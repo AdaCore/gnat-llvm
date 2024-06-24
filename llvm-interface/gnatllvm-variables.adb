@@ -587,6 +587,12 @@ package body GNATLLVM.Variables is
                            (Low_Bound (Simplify_Range (First_Index (GT))));
             end;
 
+         --  If this is a dereference of a static address, it's at a
+         --  static location.
+
+         when N_Explicit_Dereference =>
+            return Is_Static_Address (Prefix (N));
+
          when others =>
             return False;
       end case;
@@ -717,8 +723,7 @@ package body GNATLLVM.Variables is
    is
       CV : constant Opt_N_Subexpr_Id := Initialized_Value (E);
    begin
-      return Present (CV)
-        and then Is_Static_Address (CV, Not_Symbolic);
+      return Present (CV) and then Is_Static_Address (CV, Not_Symbolic);
 
    end Is_Entity_Static_Address;
 
@@ -2179,8 +2184,9 @@ package body GNATLLVM.Variables is
          --  this is not an external or something we've already defined,
          --  set one to null to indicate that this is being defined.
 
-         if not Set_Init and then not Is_External and then not Is_Imported (E)
+         if not Set_Init and then not Is_External
            and then Is_A_Global_Variable (LLVM_Var)
+           and then (not Get_Dup_Global_Is_Defined (E) or Is_Exported (E))
          then
             Set_Initializer
               (LLVM_Var,

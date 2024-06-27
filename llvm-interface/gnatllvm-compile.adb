@@ -462,18 +462,10 @@ package body GNATLLVM.Compile is
             end if;
 
          when N_Subprogram_Declaration =>
+            Emit (Specification (N));
 
-            --  Do not process functions that return arrays because they have
-            --  been rewritten as procedures.
-
-            if Ekind (Unique_Defining_Entity (N)) /= E_Function
-              or else not Rewritten_For_C (Unique_Defining_Entity (N))
-            then
-               Emit (Specification (N));
-
-               if Library_Level then
-                  C_Add_To_Source_Order (N);
-               end if;
+            if Library_Level then
+               C_Add_To_Source_Order (N);
             end if;
 
          when N_Function_Specification | N_Procedure_Specification =>
@@ -1574,17 +1566,13 @@ package body GNATLLVM.Compile is
             --  intrinsic but for an N_Subprogram_Declaration, as opposed
             --  to, for example an N_Abstract_Subprogram_Declaration, which
             --  we don't process. We also have to test for protected
-            --  subprograms and finally ignore functions that return arrays
-            --  because they have been rewritten as procedures.
+            --  subprograms.
 
             if not Is_Intrinsic_Subprogram (E)
               and then Nkind (Parent (Decl)) = N_Subprogram_Declaration
               and then Convention (E) /= Convention_Protected
               and then No (Protected_Body_Subprogram (E))
               and then not Is_Eliminated (E)
-              and then not
-                (Ekind (Defining_Unit_Name (Decl)) = E_Function
-                  and then Rewritten_For_C (Defining_Unit_Name (Decl)))
             then
                Discard (Emit_Subprogram_Decl (Decl));
             end if;

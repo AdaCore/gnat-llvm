@@ -870,7 +870,12 @@ package body GNATLLVM.Codegen is
       Dispose_Builder (IR_Builder);
       Dispose_Module (Module);
       Dispose_Target_Data (Module_Data_Layout);
-      pragma Assert (Verified);
+
+      -- If LLVM verifier failed raise an exception, rather then quitting
+      -- with no error whatsoever.
+      if not Verified then
+         raise Program_Error with "LLVM verifier error";
+      end if;
    end Generate_Code;
 
    ------------------------

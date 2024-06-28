@@ -29,6 +29,7 @@ with Ada.Text_IO;             use Ada.Text_IO;
 with Ada.Command_Line;        use Ada.Command_Line;
 with Ada.Strings.Fixed;       use Ada.Strings.Fixed;
 with GNAT.OS_Lib;             use GNAT.OS_Lib;
+with GNATLLVM;
 
 with LLVM.Target_Machine; use LLVM.Target_Machine;
 
@@ -282,15 +283,14 @@ begin
 
    for J in 1 .. Argument_Count loop
       declare
-         Arg  : constant String := Argument (J);
+         Arg : constant String := Argument (J);
+         use GNATLLVM;
       begin
          if Arg'Length > 0 and then Arg (1) /= '-' then
-            if ((Arg'Length > 2
-                  and then Arg (Arg'Last - 1 .. Arg'Last) = ".c")
-                or else (Arg'Length > 3
-                          and then Arg (Arg'Last - 2 .. Arg'Last) = ".cc")
-                or else (Arg'Length > 4
-                          and then Arg (Arg'Last - 3 .. Arg'Last) = ".cpp"))
+            if (Ends_With (Arg, ".c")
+                or else Ends_With (Arg, ".h")
+                or else Ends_With (Arg, ".cc")
+                or else Ends_With (Arg, ".cpp"))
               and then (J = Args'First or else Argument (J - 1) /= "-o")
             then
                Compiler := External_Clang;

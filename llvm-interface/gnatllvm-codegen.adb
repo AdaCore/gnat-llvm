@@ -871,8 +871,8 @@ package body GNATLLVM.Codegen is
       Dispose_Module (Module);
       Dispose_Target_Data (Module_Data_Layout);
 
-      -- If LLVM verifier failed raise an exception, rather then quitting
-      -- with no error whatsoever.
+      --  If LLVM verifier failed raise an exception, rather then quitting
+      --  with no error whatsoever.
       if not Verified then
          raise Program_Error with "LLVM verifier error";
       end if;

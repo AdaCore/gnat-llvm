@@ -177,7 +177,9 @@ package body CCG.Output is
 
          if Is_Zero_Length_Array (T) and then Effective_Array_Length (T) = 0
          then
-            Output_Decl (Get_Element_Type (T) & " " & (V + LHS) & "[1]");
+            Output_Decl (Get_Element_Type (T) & " " & (V + LHS) & "[1]",
+                         Is_Global => Is_A_Global_Variable (V));
+            Set_Is_LHS (V);
             return;
 
          --  If this is a global, mark it as an LHS

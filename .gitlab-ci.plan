@@ -1,6 +1,8 @@
 def build():
-    anod_install("binutils")
-    anod_build("gnat-llvm")
+    # Do not rebuild gcc/gnat
+    anod_install("gcc")
+    anod_install("gnat-doc", qualifier="ugx")
+    anod_build("gnat-llvm")    
 
 def test_fixedbugs():
     anod_install("gnat-llvm")

@@ -22,8 +22,10 @@ build:
   extends: .template
   stage: build
   needs: []
+  variables:
+    GENERIC_ANOD_CI_ARGS: --add-dep eng/toolchain/gnat
   script:
-    - generic_anod_ci
+    - generic_anod_ci $GENERIC_ANOD_CI_ARGS
     - . /tmp/ci_env.sh
     - anod run --plan $CI_PROJECT_DIR/.gitlab-ci.plan build
     - anod-copy-components --standalone-export $ANOD_DEFAULT_SANDBOX_DIR /tmp/anod-export/
@@ -37,7 +39,7 @@ build:
   stage: test
   needs: [build]
   script:
-    - generic_anod_ci
+    - generic_anod_ci $GENERIC_ANOD_CI_ARGS
     - . /tmp/ci_env.sh
     - cd /tmp && tar xf $CI_PROJECT_DIR/$PACKAGE_ANOD_EXPORT
     - anod-copy-components /tmp/anod-export $ANOD_DEFAULT_SANDBOX_DIR
@@ -55,7 +57,10 @@ fixedbugs:
   extends: .test_template
   variables:
     ANOD_ENTRY_POINT: fixedbugs
+    GENERIC_ANOD_CI_ARGS: --add-dep eng/toolchain/gnatbugs-fixed
+
 acats:
   extends: .test_template
   variables:
     ANOD_ENTRY_POINT: acats
+    GENERIC_ANOD_CI_ARGS: --add-dep eng/toolchain/acats

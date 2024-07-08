@@ -11,3 +11,18 @@ def test_fixedbugs():
 def test_acats():
     anod_install("gnat-llvm")
     anod_test("acats", qualifier="compiler=gnat-llvm")
+
+def ccg_common():
+    # Installed from the artifact
+    anod_install("gnat-llvm-core")
+    # We need to force the build here, since the dependency to the sources
+    # is lost by the installation of gnat-llvm-core
+    anod_build("ccg", target="c")
+
+def test_acats_ccg():
+    ccg_common()
+    anod_test("acats-4-ccg", target="c")
+
+def test_ccg():
+    ccg_common()
+    anod_test("ccg", target="c")

@@ -7,7 +7,8 @@ variables:
 stages:
   - check
   - build
-  - test
+  - test-gnat-llvm
+  - test-ccg
 
 .template:
   rules:
@@ -36,8 +37,7 @@ build:
 
 .test_template:
   extends: .template
-  stage: test
-  needs: [build]
+  needs: [build] # Do not depend on the rest of the testing
   script:
     - generic_anod_ci $GENERIC_ANOD_CI_ARGS
     - . /tmp/ci_env.sh
@@ -53,14 +53,48 @@ build:
      reports:
        junit: xunit-*.xml
 
+
+# Testing for gnat-llvm
+
 fixedbugs:
   extends: .test_template
+  stage: test-gnat-llvm
   variables:
     ANOD_ENTRY_POINT: fixedbugs
     GENERIC_ANOD_CI_ARGS: --add-dep eng/toolchain/gnatbugs-fixed
 
 acats:
   extends: .test_template
+  stage: test-gnat-llvm
   variables:
     ANOD_ENTRY_POINT: acats
     GENERIC_ANOD_CI_ARGS: --add-dep eng/toolchain/acats
+
+
+# Testing for ccg
+
+.ccg:
+  stage: test-ccg
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes:
+        - llvm-interface/ccg/*
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      when: manual
+      allow_failure: true # This improves reporting. Otherwise the CI remains "stuck" untils those jobs are launched
+
+acats-ccg:
+  extends:
+    - .test_template
+    - .ccg
+  variables:
+    ANOD_ENTRY_POINT: acats_ccg
+    GENERIC_ANOD_CI_ARGS: --add-dep eng/toolchain/acats
+
+ccg:
+  extends:
+    - .test_template
+    - .ccg
+  variables:
+    ANOD_ENTRY_POINT: ccg
+    GENERIC_ANOD_CI_ARGS: --add-dep eng/toolchain/ccg-tests

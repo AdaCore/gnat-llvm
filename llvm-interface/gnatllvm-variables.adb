@@ -111,6 +111,27 @@ package body GNATLLVM.Variables is
       Table_Increment      => 1,
       Table_Name           => "Global_Dup_Value_Table");
 
+   --  We memoize the result of Is_No_Elab_Needed. Since most calls just use
+   --  the default values, we only consider that for hashing purposes.
+
+   type No_Elab_Needed_Key is record
+      N              : N_Subexpr_Id;
+      Not_Symbolic   : Boolean;
+      Restrict_Types : Boolean;
+   end record;
+
+   function Hash_No_Elab_Needed (EN : No_Elab_Needed_Key) return Hash_Type is
+      (Hash_Type'Mod (Integer (EN.N)));
+
+   package No_Elab_Needed_Map is new Ada.Containers.Hashed_Maps
+     (Key_Type        => No_Elab_Needed_Key,
+      Element_Type    => Boolean,
+      Hash            => Hash_No_Elab_Needed,
+      Equivalent_Keys => "=");
+
+   NE_Map : No_Elab_Needed_Map.Map;
+   --  Map to memoize Is_No_Elab_Needed
+
    function Find_Dup_Entry
      (E : Global_Name_Kind_Id) return Global_Dup_Value_Id;
    --  If E is present in the above table, returns the value of Index
@@ -185,6 +206,12 @@ package body GNATLLVM.Variables is
    --  Return True if E represents an address that can computed statically.
    --  If Not_Symbolic is True, only return if this address is a constant
    --  integer (rare).
+
+   function Is_No_Elab_Needed_Internal
+     (N              : N_Subexpr_Id;
+      Not_Symbolic   : Boolean := False;
+      Restrict_Types : Boolean := False) return Boolean;
+   --  Internal version, after memoization
 
    function Is_No_Elab_For_Convert
      (N              : N_Subexpr_Id;
@@ -802,6 +829,33 @@ package body GNATLLVM.Variables is
       Not_Symbolic   : Boolean := False;
       Restrict_Types : Boolean := False) return Boolean
    is
+      Key    : constant No_Elab_Needed_Key :=
+        (N, Not_Symbolic, Restrict_Types);
+      Result : Boolean;
+
+   begin
+      --  If we've computed this before, return that value. Otherwise,
+      --  compute it and save for possible later use.
+
+      if NE_Map.Contains (Key) then
+         return NE_Map.Element (Key);
+      else
+         Result :=
+           Is_No_Elab_Needed_Internal (N, Not_Symbolic, Restrict_Types);
+         NE_Map.Insert (Key, Result);
+         return Result;
+      end if;
+   end Is_No_Elab_Needed;
+
+   --------------------------------
+   -- Is_No_Elab_Needed_Internal --
+   --------------------------------
+
+   function Is_No_Elab_Needed_Internal
+     (N              : N_Subexpr_Id;
+      Not_Symbolic   : Boolean := False;
+      Restrict_Types : Boolean := False) return Boolean
+   is
       GT   : constant GL_Type := Full_GL_Type (N);
       Expr : Node_Id;
       F    : Record_Field_Kind_Id;
@@ -1076,7 +1130,7 @@ package body GNATLLVM.Variables is
             return Is_Static_Address (N, Not_Symbolic);
       end case;
 
-   end Is_No_Elab_Needed;
+   end Is_No_Elab_Needed_Internal;
 
    ----------------------------------
    -- Is_No_Elab_Needed_For_Entity --
@@ -2545,7 +2599,6 @@ package body GNATLLVM.Variables is
         (if   Ekind (E) = E_Constant and then Present (Full_View (E))
               and then No (Address_Clause (E))
          then Full_View (E) else E);
-      Expr      : constant Opt_N_Subexpr_Id := Initialized_Value (Full_E);
       V_Act     : constant GL_Value         :=
         Get_From_Activation_Record (Full_E);
       V         : GL_Value                  := Get_Value (Full_E);
@@ -2563,19 +2616,46 @@ package body GNATLLVM.Variables is
       elsif Present (V) and then Can_Convert_Constant (V, GT) then
          return Convert_Constant (V, GT);
 
-      --  If this entity has a known constant value, use it unless we're
-      --  getting the address or an operation where we likely need an LValue,
-      --  but if it's part of Standard, we have to use it even then.
+      --  Similarly, if we have a reference to a global constant of an
+      --  integer type that we can convert. We have to be concerned about
+      --  the case where we were renaming a component and the total
+      --  offset was zero, so the initializer is still the entire
+      --  aggregate.
 
-      elsif Present (Expr) and then Is_No_Elab_Needed (Expr)
-        and then (not Prefer_LHS or else Sloc (E) <= Standard_Location)
+      elsif Present (V) and then Is_Reference (V)
+        and then Is_A_Global_Variable (V) and then Is_Global_Constant (V)
+        and then Is_Integer_Type (GT)
+        and then Type_Of (GT) = Type_Of (Get_Initializer (V))
+        and then Can_Convert_Constant (Get_Initializer (V), GT)
       then
-         --  If this entity is of an unconstrained record type, we want to
-         --  use the type of the defining constant.
+         return Convert_Constant (Get_Initializer (V), GT);
 
-         return Emit_Conversion (Expr,
-                                 (if   Is_Unconstrained_Record (GT)
-                                  then Full_GL_Type (Expr) else GT));
+      --  Otherwise, see if there's an initialized value. Note that we want
+      --  to elaborate this only if we haven't already saved a value since
+      --  it can be quite slow if we have many constants that are defined
+      --  in terms of other constants.a
+
+      else
+         declare
+            Expr : constant Opt_N_Subexpr_Id := Initialized_Value (Full_E);
+
+         begin
+            --  If this entity has a known constant value, use it unless
+            --  we're getting the address or an operation where we likely
+            --  need an LValue, but if it's part of Standard, we have to
+            --  use it even then.
+
+            if Present (Expr) and then Is_No_Elab_Needed (Expr)
+              and then (not Prefer_LHS or else Sloc (E) <= Standard_Location)
+            then
+               --  If this entity is of an unconstrained record type, we
+               --  want to use the type of the defining constant.
+
+               return Emit_Conversion (Expr,
+                                       (if   Is_Unconstrained_Record (GT)
+                                        then Full_GL_Type (Expr) else GT));
+            end if;
+         end;
       end if;
 
       --  Otherwise, see if we have any special cases

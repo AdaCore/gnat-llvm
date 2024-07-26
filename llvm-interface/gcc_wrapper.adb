@@ -295,6 +295,13 @@ begin
             then
                Compiler := External_Clang;
             end if;
+
+            if (Ends_With (Arg, ".ll")
+                or else Ends_With (Arg, ".bc"))
+              and then (J = Args'First or else Argument (J - 1) /= "-o")
+            then
+               Compiler := Bundled_Clang;
+            end if;
          end if;
       end;
    end loop;

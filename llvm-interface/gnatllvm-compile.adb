@@ -113,6 +113,27 @@ package body GNATLLVM.Compile is
       Int_32_Type       := Stand_Type (32);
       Int_64_Type       := Stand_Type (64);
 
+      --  Do some sanity checking of type sizes
+
+      if No (Size_Type) then
+         Early_Error ("No integer type corresponds to word size");
+      elsif No (Int_32_Type) then
+         Early_Error ("No 32-bit type defined");
+      elsif Short_Size < Char_Size then
+         Early_Error ("short must not be narrower than char");
+      elsif Int_Size < Short_Size then
+         Early_Error ("int must not be narrower than short");
+      elsif Long_Size < Int_Size then
+         Early_Error ("long must not be narrower than int");
+      elsif Long_Long_Size < Long_Size then
+         Early_Error ("long long must not be narrower than long");
+      elsif Long_Long_Long_Size < Long_Long_Size then
+         Early_Error ("long long long must not be narrower than long long");
+      elsif Emit_C and then Long_Long_Long_Size /= Long_Long_Size then
+         Early_Error
+           ("long long long must be same as long long when generating C");
+      end if;
+
       --  Get single bit and single byte values and types, max alignmen
       --  and maximum integer size.
 
@@ -150,17 +171,6 @@ package body GNATLLVM.Compile is
       Update_GL_Type (Size_GL_Type, Size_T, False);
       Update_GL_Type (Base_GL_Type (Size_Type), Size_T, False);
 
-      --  Now create the 32-bit and 64-bit integer types, allowing for the
-      --  possibility that we don't have a 64-bit type.
-
-      Int_32_GL_Type := Primitive_GL_Type (Int_32_Type);
-      Int_32_T       := Type_Of (Int_32_GL_Type);
-
-      if Present (Int_64_Type) then
-         Int_64_GL_Type := Primitive_GL_Type (Int_64_Type);
-         Int_64_T       := Type_Of (Int_64_GL_Type);
-      end if;
-
       --  Create GL_Types for builtin types. Create Boolean first because
       --  we use it internally to make boolean constants in the evaluation
       --  of expressions used in elaborating other types.
@@ -178,6 +188,17 @@ package body GNATLLVM.Compile is
       --  Create a "void" pointer, which is i8* in LLVM
 
       Void_Ptr_T        := Type_Of (A_Char_GL_Type);
+
+      --  Now create the 32-bit and 64-bit integer types, allowing for the
+      --  possibility that we don't have a 64-bit type.
+
+      Int_32_GL_Type := Primitive_GL_Type (Int_32_Type);
+      Int_32_T       := Type_Of (Int_32_GL_Type);
+
+      if Present (Int_64_Type) then
+         Int_64_GL_Type := Primitive_GL_Type (Int_64_Type);
+         Int_64_T       := Type_Of (Int_64_GL_Type);
+      end if;
 
       --  In most cases, addresses can be represented as Size_T (which
       --  usually is an integer type of pointer width), but on

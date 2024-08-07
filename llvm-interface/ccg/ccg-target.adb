@@ -533,6 +533,7 @@ begin
    Add_Param ("have-includes",      Bool,  Bool_Ptr => Have_Includes'Access);
    Add_Param ("inline-always-must", Bool,
               Bool_Ptr => Inline_Always_Must'Access);
+   Add_Param ("inline-style",       P_Str, Str_Ptr => Inline_Style'Access);
 
    Add_Param ("code-section-modifier",    P_Str,
               Str_Ptr => Code_Section_Modifier'Access);

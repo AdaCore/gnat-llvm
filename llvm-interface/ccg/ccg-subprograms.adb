@@ -447,7 +447,7 @@ package body CCG.Subprograms is
         and then C_Version > 1990
         and then Present (Get_First_Basic_Block (V))
       then
-         Result := "inline " & Result;
+         Result := (if Inline_MSVC then "__inline " else "inline ") & Result;
          if (In_Main_Unit or else not Use_FE_Data) and then not Definition
            and then Get_Linkage (V) /= Internal_Linkage
          then

@@ -33,34 +33,38 @@ package CCG.Target is
 
    --  These are the parameters themselves
 
-   C_Version               : aliased Integer       := 1999;
+   C_Version                : aliased Integer       := 1999;
    --  C standard for which we're to write output
 
-   C_Indent                : aliased Integer       := 2;
+   C_Indent                 : aliased Integer       := 2;
    --  Number of characters to indent at each level
 
-   Max_Depth               : aliased Integer       :=
+   Max_Depth                : aliased Integer       :=
      (80 / 2) / (2 * C_Indent);
    --  Maximum allowable nesting depth of constructs
 
-   Always_Brace            : aliased Boolean       := False;
+   Always_Brace             : aliased Boolean       := False;
    --  True if we're to always write C lexical blocks using braces even
    --  if they're only a single line.
 
-   Parens                  : aliased String_Access := new String'("warns");
+   Parens                   : aliased String_Access := new String'("warns");
    --  Indicates how we handle parentheses. We can either always output
    --  them, output them only when needed, or output them when needed or
    --  when precedence is correct but looks suspicious to compilers.
 
-   Have_Includes           : aliased Boolean       := True;
+   Have_Includes            : aliased Boolean       := True;
    --  True if we're to write #include lines for the standard C includes
 
-   Inline_Always_Must      : aliased Boolean       := True;
+   Inline_Always_Must       : aliased Boolean       := True;
    --  In some C compilers (e.g., clang), Inline_Always means to make a
    --  best try at inlining, but be silent if the function can't be inlned.
    --  In others (e.g., gcc), if the function can't be inlined, it issues
    --  a warning (or error, depending on the warning mode). The value of
    --  this option says which is the case.
+
+   Inline_Style             : aliased String_Access := new String'("std");
+   --  Says whether to use the MSVC form of the inline keyword ("__inline")
+   --  or the standard form ("inline").
 
    Code_Section_Modifier    : aliased String_Access := new String'("section");
    --  Gives the value of the "modifier" used for code sections. By default,
@@ -112,6 +116,8 @@ package CCG.Target is
    function Pack_Not_Supported return Boolean
      is (Packed_Mechanism.all = "none");
    --  Functions to say how we're indicating packed records in the C output
+
+   function Inline_MSVC return Boolean is (Inline_Style.all = "msvc");
 
    function Always_Parens return Boolean is (Parens.all = "always");
    function Warns_Parens  return Boolean is (Parens.all = "warns");

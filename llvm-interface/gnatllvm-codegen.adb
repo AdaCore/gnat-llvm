@@ -650,7 +650,7 @@ package body GNATLLVM.Codegen is
 
       Get_Target_C_Types
         (Normalized_Target_Triple.all, CPU.all, ABI.all, Features.all,
-         Target_C_Types, Success);
+         Target_C_Types, Emit_C, Success);
 
       if not Success then
          Early_Error ("cannot get C type information from LLVM");

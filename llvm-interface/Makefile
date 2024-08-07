@@ -188,18 +188,7 @@ else
   target_os=$(word 3,$(target_list))
 endif
 
-# If we're cross compiling for Linux, the environment variable ENV_PREFIX
-# contains the path to the sysroot. It's not picked up automatically by
-# gprbuild as long as we're using the "llvm" pseudo target, so we need to
-# configure an explicit "--sysroot=" argument.
-#
-# Remove this code when we move away from target "llvm" for the runtime build
-# (eng/toolchain/gnat-llvm#149).
-ifdef ENV_PREFIX
-  sysroot_arg="--sysroot=$(ENV_PREFIX)"
-else
-  sysroot_arg=""
-endif
+clang_path=$(dir $(shell which clang))
 
 RTS=$(pwd)/lib/rts-native
 RTSDIR=$(RTS)/adainclude
@@ -247,8 +236,8 @@ gnatlib-shared:
 	  LIBRARY_KIND=dynamic gnatlib
 
 gnatlib-bc:
-	PATH=$(pwd)/bin:$$PATH \
-	$(GPRBUILD) -c --subdirs=bc --target=llvm -j$(PROCS) \
+	PATH=$(pwd)/bin:$(clang_path):$$PATH \
+	$(GPRBUILD) -c --subdirs=bc -j$(PROCS) \
 	  -P$(RTSDIR)/libada \
 	  -XCFLAGS="$(CFLAGS) -I../../adainclude -I../../include -emit-llvm"
 	@echo "creating libgnat.bc"
@@ -261,10 +250,10 @@ gnatlib-bc:
 # (eng/toolchain/gnat-llvm#5). Until we have a proper fix, disable the warning
 # when building the runtime.
 quicklib: $(RTSDIR)
-	PATH=$(pwd)/bin:$$PATH \
-	$(GPRBUILD) -p --target=llvm -j$(PROCS) -P$(RTSDIR)/libada \
+	PATH=$(pwd)/bin:$(clang_path):$$PATH \
+	$(GPRBUILD) -p --target=$(target) -j$(PROCS) -P$(RTSDIR)/libada \
 	  -XCFLAGS="$(CFLAGS) -Wno-implicit-function-declaration -I$(LLVM_INCLUDE_DIR)" \
-	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS) -gdwarf-aranges $(sysroot_arg)" \
+	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS) -gdwarf-aranges" \
 	  -XLIBRARY_KIND=$(LIBRARY_KIND)
 	cd $(RTSLIB) && $(CHMOD) a-wx *.ali
 
@@ -294,8 +283,8 @@ zfp-build:
 	  cp -p $(GNAT_SRC)/libgnat/$$f $(ZFPINCLUDE); \
 	done
 	cp -p zfp/*.* $(ZFPINCLUDE)
-	PATH=$(pwd)/bin:$$PATH \
-	$(GPRBUILD) -p --target=llvm --RTS=zfp -j$(PROCS) -P$(ZFPINCLUDE)/zfp \
+	PATH=$(pwd)/bin:$(clang_path):$$PATH \
+	$(GPRBUILD) -p --target=$(target) --RTS=zfp -j$(PROCS) -P$(ZFPINCLUDE)/zfp \
 	  -XCFLAGS="$(CFLAGS)" \
 	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
 	  -XLIBRARY_KIND=$(LIBRARY_KIND) \

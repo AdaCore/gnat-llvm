@@ -263,6 +263,7 @@ package GNATLLVM.Wrapper is
       ABI      : String;
       Features : String;
       Info     : out Target_C_Type_Info;
+      Emit_C   : Boolean;
       Success  : out Boolean);
    --  Retrieve information about the C types for the target.
 

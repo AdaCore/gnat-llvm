@@ -618,7 +618,7 @@ extern "C"
 void
 Get_Target_C_Types (const char *Triple, const char *CPU, const char *ABI,
                     const char *Features, Target_C_Type_Info *Result,
-                    unsigned char *success)
+		    int Emit_C, unsigned char *success)
 {
   *Result = {};
   *success = 0;
@@ -664,7 +664,8 @@ Get_Target_C_Types (const char *Triple, const char *CPU, const char *ABI,
   Result->IntSize = Info->getIntWidth();
   Result->LongSize = Info->getLongWidth();
   Result->LongLongSize = Info->getLongLongWidth();
-  Result->LongLongLongSize = Info->hasInt128Type() ? 128 : 64;
+  Result->LongLongLongSize
+    = Info->hasInt128Type() && !Emit_C ? 128 : Result->LongLongSize;
   if (Info->hasLongDoubleType()) {
     Result->LongDoubleSemanticSize =
       APFloat::semanticsSizeInBits(Info->getLongDoubleFormat());

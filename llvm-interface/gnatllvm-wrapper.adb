@@ -474,6 +474,7 @@ package body GNATLLVM.Wrapper is
       ABI      : String;
       Features : String;
       Info     : out Target_C_Type_Info;
+      Emit_C   : Boolean;
       Success  : out Boolean)
    is
       use Interfaces.C;
@@ -484,6 +485,7 @@ package body GNATLLVM.Wrapper is
          ABI      : char_array;
          Features : char_array;
          Info     : out Target_C_Type_Info;
+         Emit_C   : LLVM_Bool;
          Success  : out unsigned_char)
         with Import, Convention => C, External_Name => "Get_Target_C_Types";
 
@@ -492,7 +494,7 @@ package body GNATLLVM.Wrapper is
    begin
       Get_Target_C_Types_C
         (To_C (Triple), To_C (CPU), To_C (ABI), To_C (Features), Info,
-         Success_C);
+         Boolean'Pos (Emit_C), Success_C);
       Success := Success_C /= 0;
    end Get_Target_C_Types;
 

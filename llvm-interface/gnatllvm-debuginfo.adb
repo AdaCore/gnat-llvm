@@ -963,11 +963,15 @@ package body GNATLLVM.DebugInfo is
       elsif R = Thin_Pointer then
          return MD;
 
-      --  Handle bounds and bounds and data relationships
+      --  Handle bounds and bounds and data relationships, but don't deal
+      --  with PATs because we can't easily get the bounds and the info
+      --  wouldn't be correct anyway.
 
-      elsif Base_R = Bounds then
+      elsif Base_R = Bounds and then not Is_Packed_Array_Impl_Type (GT) then
          return Create_Bounds_Type_Data (GT, Size);
-      elsif Base_R = Bounds_And_Data then
+      elsif Base_R = Bounds_And_Data
+        and then not Is_Packed_Array_Impl_Type (GT)
+      then
          return Create_Bounds_And_Data_Type_Data (GT);
 
       --  Otherwise, we don't (yet) support this.

@@ -58,6 +58,11 @@ build:
 
 fixedbugs:
   extends: .test_template
+  # It happens regularly that tests are added which fail for GNAT-LLVM; not
+  # failing the pipeline improves the user experience in such cases because it
+  # lets us merge without scary warning messages (while still showing failed
+  # tests for assessment).
+  allow_failure: true
   stage: test-gnat-llvm
   variables:
     ANOD_ENTRY_POINT: fixedbugs

@@ -50,6 +50,8 @@ endif
 
 compare=cmp --ignore-initial=16
 
+clang_path=$(dir $(shell which clang))
+
 .PHONY: setup force clean
 
 all: setup build
@@ -136,13 +138,13 @@ stage1:
 	$(MV) $(BOOT_DIRS) stage1
 
 stage2: stage1
-	PATH=$(pwd)/stage1/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage1/bin/llvm-gnatmake GPRBUILD="gprbuild -v -largs -L$(LIBSTDCXX_PATH) -margs" build-opt gnatlib-automated
+	PATH=$(clang_path):$(pwd)/stage1/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage1/bin/llvm-gnatmake GPRBUILD="gprbuild -v -largs -L$(LIBSTDCXX_PATH) -margs" build-opt gnatlib-automated
 	$(RMDIR) stage2
 	$(MKDIR) stage2
 	$(MV) $(BOOT_DIRS) stage2
 
 stage3: stage2
-	PATH=$(pwd)/stage2/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="gprbuild -v -largs -L$(LIBSTDCXX_PATH) -margs" build-opt gnatlib-automated
+	PATH=$(clang_path):$(pwd)/stage2/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="gprbuild -v -largs -L$(LIBSTDCXX_PATH) -margs" build-opt gnatlib-automated
 	@echo "Comparing stage2 and stage3 objects"
 	$(MAKE) bootstrap-compare
 
@@ -187,8 +189,6 @@ else
   target_vendor=$(word 2,$(target_list))
   target_os=$(word 3,$(target_list))
 endif
-
-clang_path=$(dir $(shell which clang))
 
 RTS=$(pwd)/lib/rts-native
 RTSDIR=$(RTS)/adainclude

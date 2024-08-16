@@ -6,17 +6,7 @@ project GNAT_LLVM_C is
    type Build_Type is ("Debug", "Production");
    Build : Build_Type := External ("Build", "Debug");
 
-   Target := project'Canonical_Target;
-
    package Compiler is
-      --  Force g++ during bootstrap, this is needed on some linux distribs
-      case Target is
-         when "llvm" =>
-            for Driver ("C++") use "g++";
-         when others =>
-            null;
-      end case;
-
       case Build is
          when "Debug" =>
             for Switches ("C") use ("-g");

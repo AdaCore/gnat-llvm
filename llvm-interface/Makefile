@@ -126,10 +126,16 @@ cov-info:
 
 # Bootstrap targets
 
+# We want to use Clang for C and C++ compilation during bootstrap. However,
+# since we don't have a full C++ runtime at the moment, we tell Clang to use
+# our GCC's C++ runtime. Providing the path explicitly is important because
+# otherwise Clang falls back to the system installation of GCC, if any; this
+# can lead to crashes on some Linux distributions.
+
 CXX_PREFIX=$(shell dirname $(dir $(shell which gcc)))
-LD_PATH=$(shell dirname $(shell gcc --print-prog-name=cc1))
-LIBSTDCXX_PATH=$(CXX_PREFIX)/lib64
 BOOT_DIRS=obj obj-tools bin lib
+GCC_TOOLCHAIN=--gcc-toolchain="$(CXX_PREFIX)"
+BOOTSTRAP_GPRBUILD=gprbuild -v -cargs:c++ $(GCC_TOOLCHAIN) -largs $(GCC_TOOLCHAIN) -margs
 
 stage1: 
 	$(MAKE) GPRBUILD="gprbuild -v -gnatwns" build-opt gnatlib-automated
@@ -138,13 +144,13 @@ stage1:
 	$(MV) $(BOOT_DIRS) stage1
 
 stage2: stage1
-	PATH=$(clang_path):$(pwd)/stage1/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage1/bin/llvm-gnatmake GPRBUILD="gprbuild -v -largs -L$(LIBSTDCXX_PATH) -margs" build-opt gnatlib-automated
+	PATH=$(clang_path):$(pwd)/stage1/bin:$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage1/bin/llvm-gnatmake GPRBUILD="$(BOOTSTRAP_GPRBUILD)" build-opt gnatlib-automated
 	$(RMDIR) stage2
 	$(MKDIR) stage2
 	$(MV) $(BOOT_DIRS) stage2
 
 stage3: stage2
-	PATH=$(clang_path):$(pwd)/stage2/bin:$(LD_PATH):$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="gprbuild -v -largs -L$(LIBSTDCXX_PATH) -margs" build-opt gnatlib-automated
+	PATH=$(clang_path):$(pwd)/stage2/bin:$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="$(BOOTSTRAP_GPRBUILD)" build-opt gnatlib-automated
 	@echo "Comparing stage2 and stage3 objects"
 	$(MAKE) bootstrap-compare
 

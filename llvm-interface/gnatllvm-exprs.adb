@@ -603,7 +603,7 @@ package body GNATLLVM.Exprs is
             --  half of the RHS (e.g., > (RHS + 1) / 2), we add one to the
             --  result.
 
-            One         : constant GL_Value := Const_Int (RVal, Uint_1);
+            One         : constant GL_Value := Const_Int (RVal, 1);
             Remainder   : constant GL_Value := U_Rem (LVal, RVal);
             Half_RHS    : constant GL_Value := L_Shr (RVal - One, One);
             Plus_One    : constant GL_Value := Result + One;
@@ -627,7 +627,7 @@ package body GNATLLVM.Exprs is
             --  same sign as the RHS not. Again, we optimize for the case
             --  where the RHS is a constant.
 
-            One          : constant GL_Value  := Const_Int (RVal, Uint_1);
+            One          : constant GL_Value  := Const_Int (RVal, 1);
             Remainder    : constant GL_Value  := S_Rem (LVal, RVal);
             Rem_Neg      : constant GL_Value  :=
               I_Cmp (Int_SLT, Remainder, Const_Null (Remainder));
@@ -1498,7 +1498,7 @@ package body GNATLLVM.Exprs is
             Exprs : constant List_Id      := Expressions (N);
             Expr  : constant N_Subexpr_Id := First (Exprs);
             Base  : constant GL_Value     := Emit_Expression (Expr);
-            One   : constant GL_Value     := Const_Int (Base, Uint_1);
+            One   : constant GL_Value     := Const_Int (Base, 1);
 
          begin
             pragma Assert (List_Length (Exprs) = 1);
@@ -1596,7 +1596,7 @@ package body GNATLLVM.Exprs is
 
             return Const_Int
               (GT, (if   Get_Param_By_Ref_Mech (P_GT) = Default_By_Copy
-                    then Uint_0 else Uint_1));
+                    then 0 else 1));
 
          when Attribute_Mechanism_Code =>
             return Const_Int

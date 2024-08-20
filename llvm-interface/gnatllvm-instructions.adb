@@ -383,9 +383,9 @@ package body GNATLLVM.Instructions is
    begin
       --  First, do some simple constant folding
 
-      if Is_Const_Int_Value (RHS, 0) then
+      if Is_Const_0 (RHS) then
          return Mark_Overflowed (LHS, Overflowed (RHS));
-      elsif Is_Const_Int_Value (LHS, 0) then
+      elsif Is_Const_0 (LHS) then
          return Mark_Overflowed ((if Is_Add then RHS else Neg (RHS, Name)),
                                  Overflowed (LHS));
       end if;
@@ -487,13 +487,13 @@ package body GNATLLVM.Instructions is
       --  First, do some simple constant folding. Note that 0 * overflow is
       --  still zero.
 
-      if Is_Const_Int_Value (RHS, 0) then
+      if Is_Const_0 (RHS) then
          return RHS;
-      elsif Is_Const_Int_Value (LHS, 0) then
+      elsif Is_Const_0 (LHS) then
          return LHS;
-      elsif Is_Const_Int_Value (RHS, 1) then
+      elsif Is_Const_1 (RHS) then
          return Mark_Overflowed (LHS, Overflowed (RHS));
-      elsif Is_Const_Int_Value (LHS, 1) then
+      elsif Is_Const_1 (LHS) then
          return Mark_Overflowed (RHS, Overflowed (LHS));
       end if;
 
@@ -553,7 +553,7 @@ package body GNATLLVM.Instructions is
    begin
       --  Constant fold dividing by one
 
-      if Is_Const_Int_Value (RHS, 1) then
+      if Is_Const_1 (RHS) then
          return LHS;
       end if;
 
@@ -607,7 +607,7 @@ package body GNATLLVM.Instructions is
    begin
       --  Constant fold shifting by zero
 
-      if Is_Const_Int_Value (Count, 0) then
+      if Is_Const_0 (Count) then
          return V;
       end if;
 

@@ -1430,7 +1430,7 @@ package body GNATLLVM.Arrays is
            (if   Has_Aliased_Components (GT)
             then Build_Max (Comp_Size, Size_Const_Int (+BPU)) else Comp_Size);
          Unit_Mult : constant GL_Value :=
-           (if   Use_Comp then Size_Const_Int (Uint_1)
+           (if   Use_Comp then Size_Const_Int (1)
             else To_Bytes (Unit_Size));
          Index     : GL_Value          := To_Size_Type (Idxs (1));
          Dim       : Int               := (if Fortran then N_Dim - 2 else 1);
@@ -1519,7 +1519,7 @@ package body GNATLLVM.Arrays is
          Data      : constant GL_Value :=
            Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference);
          Unit_Mult : constant GL_Value :=
-           (if   Use_Comp then Size_Const_Int (Uint_1)
+           (if   Use_Comp then Size_Const_Int (1)
             else To_Bytes (Get_Type_Size (Comp_GT, Max_Size => Comp_Unc)));
          Index     : constant GL_Value :=
            To_Size_Type (Index_Shift) * Unit_Mult;

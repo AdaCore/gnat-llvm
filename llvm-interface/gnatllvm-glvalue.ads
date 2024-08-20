@@ -1185,6 +1185,14 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
    --  Return True if V is a constant integer of value Val
 
+   function Is_Const_0 (V : GL_Value) return Boolean is
+     (Is_Const_Int_Value (V, 0))
+     with Pre => Present (V);
+
+   function Is_Const_1 (V : GL_Value) return Boolean is
+     (Is_Const_Int_Value (V, 1))
+     with Pre => Present (V);
+
    function Is_Const_Int_Values_Equal (V1, V2 : GL_Value) return Boolean is
      (Is_A_Constant_Int (V1) and then Is_A_Constant_Int (V2)
         and then not Overflowed (V1) and then not Overflowed (V2)
@@ -1277,13 +1285,6 @@ package GNATLLVM.GLValue is
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
           Post => Present (Const_Int'Result), Inline;
 
-   function Const_Int
-     (V           : GL_Value;
-      N           : unsigned;
-      Sign_Extend : Boolean := False) return GL_Value
-     with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
-          Post => Present (Const_Int'Result), Inline;
-
    function Const_Ones (V : GL_Value) return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V),
           Post => Present (Const_Ones'Result), Inline;
@@ -1304,7 +1305,7 @@ package GNATLLVM.GLValue is
      with Post => Present (Size_Const_Int'Result);
 
    function Size_Const_Null return GL_Value is
-     (Size_Const_Int (ULL (0)))
+     (Size_Const_Int (0))
      with Post => Present (Size_Const_Null'Result);
 
    function Const_Int_32 (N : Uint) return GL_Value is
@@ -1317,14 +1318,8 @@ package GNATLLVM.GLValue is
      (Const_Int (Int_32_GL_Type, N, Sign_Extend))
      with Post => Present (Const_Int_32'Result);
 
-   function Const_Int_32
-     (N : Nat; Sign_Extend : Boolean := False) return GL_Value
-   is
-     (Const_Int (Int_32_GL_Type, unsigned_long_long (N), Sign_Extend))
-     with Post => Present (Const_Int_32'Result);
-
    function Const_Null_32 return GL_Value is
-     (Const_Int_32 (ULL (0)))
+     (Const_Int_32 (0))
      with Post => Present (Const_Null_32'Result);
 
    function Const_Int_64
@@ -1334,7 +1329,7 @@ package GNATLLVM.GLValue is
      with Post => Present (Const_Int_64'Result);
 
    function Const_Null_64 return GL_Value is
-     (Const_Int_64 (ULL (0)))
+     (Const_Int_64 (0))
      with Post => Present (Const_Null_64'Result);
 
    function Const_Real

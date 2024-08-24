@@ -15,8 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with GNATLLVM.GLType;  use GNATLLVM.GLType;
-with GNATLLVM.GLValue; use GNATLLVM.GLValue;
+with GNATLLVM.GLType;       use GNATLLVM.GLType;
+with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
+with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 
 package GNATLLVM.Builtins is
 
@@ -37,6 +38,19 @@ package GNATLLVM.Builtins is
    --  The function parameters are obtained from LLVM. The list of
    --  overloaded types must contain exactly one LLVM type for each
    --  overloaded type in the intrinsic's function signature.
+
+   function Call_Intrinsic
+     (Name : String; Args : GL_Value_Array) return GL_Value
+   is
+     (Call (Build_Intrinsic (Name, Related_Type (Args (Args'First)),
+                             (1 => Type_Of (Args (Args'First)))),
+            Args));
+   --  Create an intrinsic with the give name and type of the arguments
+   --  and call it.
+
+   function Call_Intrinsic0 (Name : String; GT : GL_Type) return GL_Value is
+     (Call (Build_Intrinsic (Name, GT, (1 => Type_Of (GT))), (1 .. 0 => <>)));
+   --  Similar, but for intrinsics with no arguments
 
    function Emit_Intrinsic_Call
      (N : N_Subprogram_Call_Id; Subp : Subprogram_Kind_Id) return GL_Value;

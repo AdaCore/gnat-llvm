@@ -857,9 +857,9 @@ package body CCG.Subprograms is
       Op2      : constant Value_T := Ops (Ops'First + 1);
       Op3      : constant Value_T := Ops (Ops'First + 2);
       Str_Op1  : constant Str     :=
-        Process_Operand (Op1, POO_Unsigned, Shift);
+        Process_Operand ((if Left then Op1 else Op2), POO_Unsigned, Shift);
       Str_Op2  : constant Str     :=
-        Process_Operand (Op2, POO_Unsigned, Shift);
+        Process_Operand ((if Left then Op2 else Op1), POO_Unsigned, Shift);
       Size     : constant Nat     := Get_Scalar_Bit_Size (Op1);
       Cnt      : Nat;
       Sh1, Sh2 : Str;
@@ -1307,7 +1307,12 @@ package body CCG.Subprograms is
                Gidx : constant Global_Decl_Idx := Element (Pos);
 
             begin
-               Write_One_Declaration (Gidx, V);
+               --  If V is a builtin, it's possible that we don't have a
+               --  decls to write here.
+
+               if Present (Gidx) then
+                  Write_One_Declaration (Gidx, V);
+               end if;
             end;
          end if;
       end Maybe_Write_Decl;

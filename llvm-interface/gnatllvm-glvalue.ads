@@ -1359,6 +1359,13 @@ package GNATLLVM.GLValue is
      (G (Const_String (S, unsigned (S'Length), True), GT))
      with Pre => Present (GT), Post => Is_Constant (Const_String'Result);
 
+   function Const_String
+     (File_Index : Source_File_Index;
+      GT : GL_Type) return GL_Value
+   is
+     (G (Const_String (File_Index), GT))
+     with Pre => Present (GT), Post => Is_Constant (Const_String'Result);
+
    function Const_Struct
      (Elmts : GL_Value_Array; GT : GL_Type; Packed : Boolean) return GL_Value
      with Pre =>  Present (GT)

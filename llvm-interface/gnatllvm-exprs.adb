@@ -298,6 +298,14 @@ package body GNATLLVM.Exprs is
                                       then Enumeration_Rep (Entity (N))
                                       else Char_Literal_Value (N)));
 
+         when N_External_Initializer => declare
+            Index : constant Source_File_Index := File_Index (N);
+            Elmt_GT : constant GL_Type   := Full_Component_GL_Type (GT);
+         begin
+            pragma Assert (ULL'(Get_Type_Size (Type_Of (Elmt_GT))) = 8);
+            V := Const_String (Index, Prim_GT);
+         end;
+
          when N_Integer_Literal =>
 
             --  On architectures with tagged pointers, we need to represent

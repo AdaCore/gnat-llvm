@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with System;
+with Types;
 
 package GNATLLVM.Wrapper is
 
@@ -460,5 +461,9 @@ package GNATLLVM.Wrapper is
 
    procedure Print_Targets
      with Import, Convention => C, External_Name => "Print_Targets";
+
+   function Const_String
+     (File_Index : Standard.Types.Source_File_Index)
+      return LLVM.Types.Value_T;
 
 end GNATLLVM.Wrapper;

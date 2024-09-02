@@ -1041,7 +1041,9 @@ package body GNATLLVM.Compile is
                          Prefer_LHS => Prefer_LHS);
          end Expression_With_Actions;
 
-         when N_Character_Literal | N_Numeric_Or_String_Literal =>
+         when N_Character_Literal
+              | N_Numeric_Or_String_Literal
+              | N_External_Initializer =>
             pragma Assert (not For_LHS);
 
             return Emit_Literal (N);

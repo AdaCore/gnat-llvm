@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C.Strings; use Interfaces.C.Strings;
+with Sinput;
 
 package body GNATLLVM.Wrapper is
 
@@ -686,4 +687,39 @@ package body GNATLLVM.Wrapper is
       return Need_Enable_Execute_Stack_C (Triple & ASCII.NUL) /= 0;
    end Need_Enable_Execute_Stack;
 
+   ------------------------------
+   -- Const_String_From_Access --
+   ------------------------------
+
+   function Const_String_From_Access
+     (Str                 : access constant Character;
+      Length              : unsigned;
+      Dont_Null_Terminate : LLVM.Types.Bool_T)
+      return LLVM.Types.Value_T
+   with Import => True,
+      Convention => C,
+      External_Name => "LLVMConstString";
+
+   ------------------
+   -- Const_String --
+   ------------------
+
+   function Const_String
+     (File_Index : Standard.Types.Source_File_Index)
+      return LLVM.Types.Value_T
+   is
+      use Sinput;
+
+      Length : constant unsigned :=
+        unsigned (Source_Last (File_Index) - Source_First (File_Index));
+
+      Text : constant Standard.Types.Source_Buffer_Ptr :=
+        Source_Text (File_Index);
+
+      Pointer : constant access constant Character :=
+        (if Length = 0 then null else
+            Text (Text'First)'Access);
+   begin
+      return Const_String_From_Access (Pointer, Length, 1);
+   end Const_String;
 end GNATLLVM.Wrapper;

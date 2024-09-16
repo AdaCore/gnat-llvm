@@ -19,6 +19,7 @@ with Debug;       use Debug;
 with Einfo.Utils; use Einfo.Utils;
 with Errout;      use Errout;
 with Exp_Ch11;    use Exp_Ch11;
+with Exp_Tss;     use Exp_Tss;
 with Exp_Unst;    use Exp_Unst;
 with Nlists;      use Nlists;
 with Opt;         use Opt;
@@ -965,11 +966,12 @@ package body GNATLLVM.Blocks is
                         then 0 else Get_Logical_Line_Number (S)));
       Col    : constant GL_Value   :=
         Const_Int (Integer_GL_Type, ULL (Get_Column_Number (S)));
-      LB, HB : N_Subexpr_Id;
-      Rng    : N_Subexpr_Id;
-      Index  : GL_Value;
-      LB_V   : GL_Value;
-      HB_V   : GL_Value;
+
+      LB, HB  : N_Subexpr_Id;
+      Rng     : N_Subexpr_Id;
+      Index_V : GL_Value;
+      LB_V    : GL_Value;
+      HB_V    : GL_Value;
 
    begin
       --  If this isn't a NOT operation, we can't handle it. If we're only
@@ -981,48 +983,57 @@ package body GNATLLVM.Blocks is
 
       --  Otherwise, get the range
 
-      case Nkind (Right_Opnd (Cond)) is
-         when N_In =>
-            Rng := Right_Opnd (Right_Opnd (Cond));
+      declare
+         Index : constant Node_Id := Left_Opnd (Right_Opnd (Cond));
+         Value : constant Node_Id := Right_Opnd (Right_Opnd (Cond));
 
-            if Is_Entity_Name (Rng) then
-               Rng := Simplify_Range (Scalar_Range (Full_Etype (Rng)));
-            end if;
+      begin
+         case Nkind (Right_Opnd (Cond)) is
+            when N_In =>
+               Rng := Value;
 
-            LB := Low_Bound  (Rng);
-            HB := High_Bound (Rng);
+               if Is_Entity_Name (Rng) then
+                  Rng := Simplify_Range (Scalar_Range (Full_Etype (Rng)));
+               end if;
 
-         when N_Op_Ge =>
-            LB := Right_Opnd (Right_Opnd (Cond));
-            HB := Type_High_Bound (Full_Etype (Left_Opnd (Right_Opnd (Cond))));
+               LB := Low_Bound (Rng);
+               HB := High_Bound (Rng);
 
-         when N_Op_Le =>
-            LB := Type_Low_Bound (Full_Etype (Left_Opnd (Right_Opnd (Cond))));
-            HB := Right_Opnd (Right_Opnd (Cond));
+            when N_Op_Ge =>
+               LB := Value;
+               HB := Type_High_Bound (Full_Etype (Index));
 
-         when others =>
+            when N_Op_Le =>
+               LB := Type_Low_Bound (Full_Etype (Index));
+               HB := Value;
+
+            when others =>
+               return False;
+         end case;
+
+         --  If we don't know the size of the type or if it's wider than an
+         --  Integer or if it's an enumeration type with holes, we can't give
+         --  the extended information.
+
+         if not Known_RM_Size (Full_Etype (LB))
+           or else RM_Size (Full_Etype (LB)) > RM_Size (Standard_Integer)
+           or else (Nkind (Index) = N_Function_Call
+                    and then Is_Entity_Name (Name (Index))
+                    and then Is_Rep_To_Pos (Entity (Name (Index))))
+         then
             return False;
-      end case;
+         end if;
 
-      --  If we don't know the size of the type or if it's wider than an
-      --  Integer, we can't give the extended information.
+         --  Now convert everything to Integer and call the raise function
 
-      if not Known_RM_Size (Full_Etype (LB))
-        or else RM_Size (Full_Etype (LB)) > RM_Size (Standard_Integer)
-      then
-         return False;
-      end if;
-
-      --  Now convert everything to Integer and call the raise function
-
-      Index := Emit_Convert_Value (Left_Opnd (Right_Opnd (Cond)),
-                                   Integer_GL_Type);
-      LB_V  := Emit_Convert_Value (LB, Integer_GL_Type);
-      HB_V  := Emit_Convert_Value (HB, Integer_GL_Type);
-      Call (Get_Raise_Fn (Kind, Ext => True),
-            (1 => File,  2 => Line, 3 => Col,
-             4 => Index, 5 => LB_V, 6 => HB_V));
-      return True;
+         Index_V := Emit_Convert_Value (Index, Integer_GL_Type);
+         LB_V  := Emit_Convert_Value (LB, Integer_GL_Type);
+         HB_V  := Emit_Convert_Value (HB, Integer_GL_Type);
+         Call (Get_Raise_Fn (Kind, Ext => True),
+               (1 => File, 2 => Line, 3 => Col,
+                4 => Index_V, 5 => LB_V, 6 => HB_V));
+         return True;
+      end;
 
    end Emit_Raise_Call_With_Extra_Info;
 

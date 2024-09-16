@@ -1,105 +1,74 @@
-include:
-  - component: $CI_SERVER_FQDN/eng/gitlab-templates/check-issue@~latest
-
-variables:
-   PACKAGE_ANOD_EXPORT: anod-export.tar.xz
-
 stages:
   - check
   - build
   - test-gnat-llvm
   - test-ccg
 
-.template:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-  interruptible: true  # Cancel job if the branch is pushed
-  services:
-     - run_as_root:false
-     - image:sandbox
-     - cpu:16
+include:
+# Issue check
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/check-issue@~latest
 
-build:
-  extends: .template
-  stage: build
-  needs: []
-  variables:
-    GENERIC_ANOD_CI_ARGS: --add-dep eng/toolchain/gnat
-  script:
-    - generic_anod_ci $GENERIC_ANOD_CI_ARGS
-    - . /tmp/ci_env.sh
-    - anod run --plan $CI_PROJECT_DIR/.gitlab-ci.plan build
-    - anod-copy-components --standalone-export $ANOD_DEFAULT_SANDBOX_DIR /tmp/anod-export/
-    - tar cjf $CI_PROJECT_DIR/$PACKAGE_ANOD_EXPORT -C /tmp anod-export
-  artifacts:
-    paths:
-      - $PACKAGE_ANOD_EXPORT
+# Build
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/build@mr/boris/template-anod
+    inputs:
+      anod-args: run build
+      generic-anod-ci-args: --add-dep eng/toolchain/gnat
+      cpus: 16
+      save-component: true
 
-.test_template:
-  extends: .template
-  needs: [build] # Do not depend on the rest of the testing
-  script:
-    - generic_anod_ci $GENERIC_ANOD_CI_ARGS
-    - . /tmp/ci_env.sh
-    - cd /tmp && tar xf $CI_PROJECT_DIR/$PACKAGE_ANOD_EXPORT
-    - anod-copy-components /tmp/anod-export $ANOD_DEFAULT_SANDBOX_DIR
-    - anod run --plan $CI_PROJECT_DIR/.gitlab-ci.plan test_$ANOD_ENTRY_POINT
-    - testsuite_reports
-  artifacts:
-     when: always
-     paths:
-        - xunit-*.xml
-#        - __results*
-     reports:
-       junit: xunit-*.xml
+# Testing of gnat-llvm
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@mr/boris/template-anod
+    inputs:
+      job-name: fixedbugs
+      stage: test-gnat-llvm
+      anod-args: run test_fixedbugs
+      generic-anod-ci-args: --add-dep eng/toolchain/gnatbugs-fixed
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@mr/boris/template-anod
+    inputs:
+      job-name: acats
+      stage: test-gnat-llvm
+      anod-args: run test_acats
+      generic-anod-ci-args: --add-dep eng/toolchain/acats
+
+# Testing of ccg
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@mr/boris/template-anod
+    inputs:
+      job-name: ccg
+      stage: test-ccg
+      anod-args: run test_ccg
+      generic-anod-ci-args: --add-dep eng/toolchain/ccg-tests
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@mr/boris/template-anod
+    inputs:
+      job-name: acats-ccg
+      stage: test-ccg
+      anod-args: run test_acats_ccg
+      generic-anod-ci-args: --add-dep eng/toolchain/acats
 
 
-# Testing for gnat-llvm
+# Additional customization
 
 fixedbugs:
-  extends: .test_template
   # It happens regularly that tests are added which fail for GNAT-LLVM; not
   # failing the pipeline improves the user experience in such cases because it
   # lets us merge without scary warning messages (while still showing failed
   # tests for assessment).
   allow_failure: true
-  stage: test-gnat-llvm
-  variables:
-    ANOD_ENTRY_POINT: fixedbugs
-    GENERIC_ANOD_CI_ARGS: --add-dep eng/toolchain/gnatbugs-fixed
-
-acats:
-  extends: .test_template
-  stage: test-gnat-llvm
-  variables:
-    ANOD_ENTRY_POINT: acats
-    GENERIC_ANOD_CI_ARGS: --add-dep eng/toolchain/acats
 
 
-# Testing for ccg
+# Special configuration for ccg testing
 
-.ccg:
-  stage: test-ccg
+# CCG testing is launched when some specific files have changed, or manually
+.job_template:: &ccg-rules
   rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-      changes:
-        - llvm-interface/ccg/*
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-      when: manual
-      allow_failure: true # This improves reporting. Otherwise the CI remains "stuck" untils those jobs are launched
-
-acats-ccg:
-  extends:
-    - .test_template
-    - .ccg
-  variables:
-    ANOD_ENTRY_POINT: acats_ccg
-    GENERIC_ANOD_CI_ARGS: --add-dep eng/toolchain/acats
+  - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    changes:
+    - llvm-interface/ccg/*
+  - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    when: manual
+    allow_failure: true # This improves reporting. Otherwise the CI remains "stuck" untils those jobs are launched
 
 ccg:
-  extends:
-    - .test_template
-    - .ccg
-  variables:
-    ANOD_ENTRY_POINT: ccg
-    GENERIC_ANOD_CI_ARGS: --add-dep eng/toolchain/ccg-tests
+  <<: *ccg-rules
+
+acats-ccg:
+  <<: *ccg-rules

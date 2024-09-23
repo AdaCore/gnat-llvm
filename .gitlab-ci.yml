@@ -4,6 +4,16 @@ stages:
   - test-gnat-llvm
   - test-ccg
 
+# CCG testing is launched when some specific files have changed, or manually
+.ccg-rulesrules_template:: &ccg-rules
+  - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    changes:
+    - llvm-interface/ccg/*
+  - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    when: manual
+    allow_failure: true # This improves reporting. Otherwise the CI remains "stuck" untils those jobs are launched
+
+
 include:
 # Issue check
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/check-issue@~latest
@@ -37,12 +47,14 @@ include:
       stage: test-ccg
       anod-args: run test_ccg
       generic-anod-ci-args: --add-dep eng/toolchain/ccg-tests
+      rules: *ccg-rules
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@mr/boris/template-anod
     inputs:
       job-name: acats-ccg
       stage: test-ccg
       anod-args: run test_acats_ccg
       generic-anod-ci-args: --add-dep eng/toolchain/acats
+      rules: *ccg-rules
 
 
 # Additional customization
@@ -53,22 +65,3 @@ fixedbugs:
   # lets us merge without scary warning messages (while still showing failed
   # tests for assessment).
   allow_failure: true
-
-
-# Special configuration for ccg testing
-
-# CCG testing is launched when some specific files have changed, or manually
-.job_template:: &ccg-rules
-  rules:
-  - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-    changes:
-    - llvm-interface/ccg/*
-  - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-    when: manual
-    allow_failure: true # This improves reporting. Otherwise the CI remains "stuck" untils those jobs are launched
-
-ccg:
-  <<: *ccg-rules
-
-acats-ccg:
-  <<: *ccg-rules

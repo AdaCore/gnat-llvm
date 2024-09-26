@@ -1386,18 +1386,6 @@ package body GNATLLVM.GLValue is
    ---------------
 
    function Const_Int
-     (V           : GL_Value;
-      N           : unsigned;
-      Sign_Extend : Boolean := False) return GL_Value
-   is
-     (Set_Alignment (Const_Int (Related_Type (V), ULL (N), Sign_Extend),
-                     ULL_Align_Bytes (ULL (N))));
-
-   ---------------
-   -- Const_Int --
-   ---------------
-
-   function Const_Int
      (GT : GL_Type; N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is
      (G (Const_Int (Type_Of (GT), N, Sign_Extend => Sign_Extend), GT,

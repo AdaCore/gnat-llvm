@@ -145,8 +145,7 @@ package body GNATLLVM.Conditionals is
               Compute_Size (Related_Type (LHS_Val), Related_Type (RHS_Val),
                             LHS_Val, RHS_Val);
             Memcmp  : constant GL_Value :=
-              (if   Is_Const_Int_Value (Size, 0)
-               then Const_Null (Integer_GL_Type)
+              (if   Is_Const_0 (Size) then Const_Null (Integer_GL_Type)
                else Call (Get_Memory_Compare_Fn,
                           (1 => Pointer_Cast (LHS_Val, A_Char_GL_Type),
                            2 => Pointer_Cast (RHS_Val, A_Char_GL_Type),
@@ -341,8 +340,7 @@ package body GNATLLVM.Conditionals is
                  Compute_Size (Related_Type (LHS_Val), Related_Type (RHS_Val),
                                LHS_Val, RHS_Val);
                Memcmp : constant GL_Value :=
-                 (if   Is_Const_Int_Value (Size, 0)
-                  then Const_Null (Integer_GL_Type)
+                 (if   Is_Const_0 (Size) then Const_Null (Integer_GL_Type)
                   else Call (Get_Memory_Compare_Fn,
                              (1 => Pointer_Cast (Get (LHS_Val, Reference),
                                                  A_Char_GL_Type),
@@ -1496,7 +1494,7 @@ package body GNATLLVM.Conditionals is
             Uns_BT     : constant Boolean                           :=
               Is_Unsigned_Type (Var_BT);
             One        : constant GL_Value                          :=
-              Const_Int (Var_BT, Uint_1);
+              Const_Int (Var_BT, 1);
             SRange     : constant N_Has_Bounds_Id                   :=
               Simplify_Range (Scalar_Range (Var_GT));
             Low        : constant GL_Value                          :=

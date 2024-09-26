@@ -301,7 +301,7 @@ package body GNATLLVM.Arrays.Create is
       Comp_GT           : constant GL_Type      :=
         (if  Has_Aliased_Components (A_TE)
              and then Present (GT_Size (Comp_Initial_GT))
-             and then Is_Const_Int_Value (GT_Size (Comp_Initial_GT), 0)
+             and then Is_Const_0 (GT_Size (Comp_Initial_GT))
          then Make_GT_Alternative (Comp_Initial_GT, TE,
                                    Size          => +BPU,
                                    For_Component => True)

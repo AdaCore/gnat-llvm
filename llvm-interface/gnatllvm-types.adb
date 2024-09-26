@@ -705,7 +705,7 @@ package body GNATLLVM.Types is
         and then not Is_Constr_Array_Subt_With_Bounds (GT)
         and then not Is_Constant (Num_Elts)
       then
-         Num_Elts := Build_Max (Num_Elts, Size_Const_Int (Uint_1));
+         Num_Elts := Build_Max (Num_Elts, Size_Const_Int (1));
       end if;
 
       --  Check that we aren't trying to allocate too much memory. Raise
@@ -740,7 +740,7 @@ package body GNATLLVM.Types is
 
       if Overflowed (Num_Elts) or else Is_Undef (Num_Elts) then
          if Get_Type_Size (Element_GT) = 0 then
-            Num_Elts := Size_Const_Int (Uint_1);
+            Num_Elts := Size_Const_Int (1);
          else
             if not Is_Undef (Num_Elts) then
                Error_Msg_N ("??Storage_Error will be raised at run time!",
@@ -834,7 +834,7 @@ package body GNATLLVM.Types is
         and then not Is_Constr_Array_Subt_With_Bounds (GT)
         and then not Is_Constant (Size)
       then
-         Size := Build_Max (Size, Size_Const_Int (Uint_1));
+         Size := Build_Max (Size, Size_Const_Int (1));
       end if;
 
       --  If no procedure was specified, use the default memory allocation

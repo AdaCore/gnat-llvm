@@ -202,6 +202,9 @@ package body GNATLLVM.Records is
       function No      (V : Result) return Boolean is (V =  No_Result);
       function Present (V : Result) return Boolean is (V /= No_Result);
 
+      function Is_Const_0 (V : Result) return Boolean is
+        (Is_A_Constant_Int (V) and then Get_Const_Int_Value_ULL (V) = 0);
+
       function Only_Overlap_RIs (Idx : Record_Info_Id) return Boolean;
       --  Return True if Idx is null or if the only RIs after it are RIs
       --  for variants with only overlap parts.
@@ -905,9 +908,9 @@ package body GNATLLVM.Records is
          --  The resulting size is the maximum of that and the size of the
          --  overlap portion (but special-case zero).
 
-         if Variant_Size = Size_Const_Int (0) then
+         if Is_Const_0 (Variant_Size) then
             return Overlap_Size;
-         elsif Overlap_Size = Size_Const_Int (0) then
+         elsif Is_Const_0 (Overlap_Size) then
             return Variant_Size;
          else
             return Build_Max (Variant_Size, Overlap_Size);
@@ -1893,7 +1896,7 @@ package body GNATLLVM.Records is
         (F_GT,
          (if Is_Bitfield (Field) then Reference_To_Unknown else Reference),
          Result, Result_T,
-         (1 => Const_Null_32, 2 => Const_Int_32 (FI.Field_Ordinal)));
+         (1 => Const_Null_32, 2 => Const_Int_32 (ULL (FI.Field_Ordinal))));
 
       --  If we've set this to a an unknown reference, set the type so that
       --  we know what we're pointing to.

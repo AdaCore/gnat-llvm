@@ -1331,3 +1331,10 @@ Print_Targets (void)
 {
   TargetRegistry::printRegisteredTargetsForVersion(outs());
 }
+
+extern "C"
+void
+Enable_Init_Array (TargetMachine *TM)
+{
+  TM->Options.UseInitArray = 1;
+}

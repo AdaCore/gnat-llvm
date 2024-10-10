@@ -648,6 +648,8 @@ package body GNATLLVM.Codegen is
            Reloc      => Reloc_Mode,
            Code_Model => Code_Model);
 
+      Enable_Init_Array (Target_Machine);
+
       Get_Target_C_Types
         (Normalized_Target_Triple.all, CPU.all, ABI.all, Features.all,
          Target_C_Types, Emit_C, Success);

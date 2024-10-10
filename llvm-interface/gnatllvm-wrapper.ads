@@ -466,4 +466,10 @@ package GNATLLVM.Wrapper is
      (File_Index : Standard.Types.Source_File_Index)
       return LLVM.Types.Value_T;
 
+   procedure Enable_Init_Array (Target_Machine : Target_Machine_T)
+      with Import, Convention => C, External_Name => "Enable_Init_Array";
+   --  Configure the target machine to put global constructors (like
+   --  stand-alone library initializers) into .init_array instead of the
+   --  default .ctors.
+
 end GNATLLVM.Wrapper;

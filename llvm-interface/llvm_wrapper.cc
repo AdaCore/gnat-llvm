@@ -1319,10 +1319,10 @@ Need_Enable_Execute_Stack (const char *Target)
 {
   // Decide whether we need to call __enable_execute_stack in order to make the
   // stack executable. The GNU linker does this automatically in ELF binaries,
-  // but on Windows the helper function is required.
+  // but lld doesn't, and on Windows the helper function is also required.
 
   Triple TargetTriple(Target);
-  return TargetTriple.isOSWindows();
+  return TargetTriple.isOSWindows() || TargetTriple.isOSLinux();
 }
 
 extern "C"

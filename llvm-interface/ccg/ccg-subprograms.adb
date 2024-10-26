@@ -334,6 +334,8 @@ package body CCG.Subprograms is
       Ret_Typ : constant Type_T := Get_Return_Type (T);
 
    begin
+      Maybe_Output_Typedef (Ret_Typ);
+
       --  If this function returns an array, change it to return a
       --  struct containing that array.
 
@@ -341,7 +343,7 @@ package body CCG.Subprograms is
          Maybe_Output_Array_Return_Typedef (Ret_Typ);
          return Ret_Typ & "_R";
       else
-         return Ret_Typ + V;
+         return (if Present (V) then V + Write_Return else +T);
       end if;
    end Effective_Return_Type;
 

@@ -212,9 +212,13 @@ package CCG.Strs is
       --  We need a signed form of this value. This is ignored if the
       --  value isn't of an integral type.
 
-      Write_Type);
+      Write_Type,
       --  We want to write out the type of the value (including its
       --  signedness) and not the value itself.
+
+      Write_Return);
+      --  Like Write_Type, but we have a function and want to write the
+      --  return type.
 
    type Value_Flags is record
       LHS           : Boolean;
@@ -222,6 +226,7 @@ package CCG.Strs is
       Need_Unsigned : Boolean;
       Need_Signed   : Boolean;
       Write_Type    : Boolean;
+      Write_Return  : Boolean;
    end record;
 
    function "or" (X, Y : Value_Flags) return Value_Flags is
@@ -229,18 +234,20 @@ package CCG.Strs is
       Initializer    => X.Initializer   or Y.Initializer,
       Need_Unsigned  => X.Need_Unsigned or Y.Need_Unsigned,
       Need_Signed    => X.Need_Signed   or Y.Need_Signed,
-      Write_Type     => X.Write_Type    or Y.Write_Type);
+      Write_Type     => X.Write_Type    or Y.Write_Type,
+      Write_Return   => X.Write_Return  or Y.Write_Return);
 
    type Value_Flag_Array is array (Value_Flag) of Value_Flags;
 
    Default_Value_Flags : constant Value_Flags      :=
-     (False, False, False, False, False);
+     (False, False, False, False, False, False);
    Value_Flag_To_Flags : constant Value_Flag_Array :=
-     (LHS           => (True,  False, False, False, False),
-      Initializer   => (False, True,  False, False, False),
-      Need_Unsigned => (False, False, True,  False, False),
-      Need_Signed   => (False, False, False, True,  False),
-      Write_Type    => (False, False, False, False, True));
+     (LHS           => (True,  False, False, False, False, False),
+      Initializer   => (False, True,  False, False, False, False),
+      Need_Unsigned => (False, False, True,  False, False, False),
+      Need_Signed   => (False, False, False, True,  False, False),
+      Write_Type    => (False, False, False, False, True,  False),
+      Write_Return  => (False, False, False, False, False, True));
 
    function "+" (F : Value_Flag) return Value_Flags is
      (Value_Flag_To_Flags (F));

@@ -28,7 +28,6 @@ with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
-with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
@@ -685,118 +684,80 @@ package body GNATLLVM.Builtins is
 
       elsif S = "address_set" and then N_Args = 2 then
          V := Emit_Expression (Val);
-         return
-           Call
-             (Get_Set_Address_Fn,
-              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+         return Call (Get_Set_Address_Fn,
+                      (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
 
       elsif S = "base_get" and then N_Args = 1 then
          return
-           Call
-             (Build_Intrinsic
-                ("llvm.cheri.cap.base.get", Size_GL_Type,
-                 (1 => Size_T)),
-              (1 => Emit_Expression (Val)));
+           Call (Build_Intrinsic ("llvm.cheri.cap.base.get", Size_GL_Type,
+                                  (1 => Size_T)),
+                 (1 => Emit_Expression (Val)));
 
       elsif S = "bounds_set" and then N_Args = 2 then
          V := Emit_Expression (Val);
-         return
-           Call
-             (Build_Intrinsic
-                ("llvm.cheri.cap.bounds.set", A_Char_GL_Type,
-                 (1 => Size_T)),
-              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+         return Call_Intrinsic ("llvm.cheri.cap.bounds.set",
+                                (1 => V,
+                                 2 => Emit_Expression (Next_Actual (Val))));
 
       elsif S = "bounds_set_exact" and then N_Args = 2 then
          V := Emit_Expression (Val);
-         return
-           Call
-             (Build_Intrinsic
-                ("llvm.cheri.cap.bounds.set.exact", A_Char_GL_Type,
-                 (1 => Size_T)),
-              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+         return Call_Intrinsic ("llvm.cheri.cap.bounds.set.exact",
+                                (1 => V,
+                                 2 => Emit_Expression (Next_Actual (Val))));
 
       elsif S = "global_data_get" and then N_Args = 0 then
-         return
-           Call
-             (Build_Intrinsic ("llvm.cheri.ddc.get", A_Char_GL_Type),
-              (1 .. 0 => <>));
+         return Call_Intrinsic0 ("llvm.cheri.ddc.get", A_Char_GL_Type);
 
       elsif S = "perms_and" and then N_Args = 2 then
          V := Emit_Expression (Val);
-         return
-           Call
-             (Build_Intrinsic
-                ("llvm.cheri.cap.perms.and", A_Char_GL_Type,
-                 (1 => Size_T)),
-              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+         return Call_Intrinsic ("llvm.cheri.cap.perms.and",
+                                (1 => V,
+                                 2 => Emit_Expression (Next_Actual (Val))));
 
       elsif S = "perms_get" and then N_Args = 1 then
-         return
-           Call
-             (Build_Intrinsic
-                ("llvm.cheri.cap.perms.get", Size_GL_Type,
-                 (1 => Size_T)),
-              (1 => Emit_Expression (Val)));
+         return Call (Build_Intrinsic
+                        ("llvm.cheri.cap.perms.get", Size_GL_Type,
+                         (1 => Size_T)),
+                      (1 => Emit_Expression (Val)));
 
       elsif S = "program_counter_get" and then N_Args = 0 then
-         return
-           Call
-             (Build_Intrinsic ("llvm.cheri.pcc.get", A_Char_GL_Type),
-              (1 .. 0 => <>));
+         return Call_Intrinsic0 ("llvm.cheri.pcc.get", A_Char_GL_Type);
 
       elsif S = "representable_alignment_mask" and then N_Args = 1 then
-         return
-           Call
-             (Build_Intrinsic
-                ("llvm.cheri.representable.alignment.mask", Size_GL_Type,
-                 (1 => Size_T)),
-              (1 => Emit_Expression (Val)));
+         return Call_Intrinsic ("llvm.cheri.representable.alignment.mask",
+                                (1 => Emit_Expression (Val)));
 
       elsif S = "round_representable_length" and then N_Args = 1 then
-         return
-           Call
-             (Build_Intrinsic
-                ("llvm.cheri.round.representable.length", Size_GL_Type,
-                 (1 => Size_T)),
-              (1 => Emit_Expression (Val)));
+         return Call_Intrinsic ("llvm.cheri.round.representable.length",
+                                (1 => Emit_Expression (Val)));
 
       elsif S = "seal_entry" and then N_Args = 1 then
-         return
-           Call
-             (Build_Intrinsic
-                ("llvm.cheri.cap.seal.entry", A_Char_GL_Type),
-              (1 => Emit_Expression (Val)));
+         return Call_Intrinsic ("llvm.cheri.cap.seal.entry",
+                                (1 => Emit_Expression (Val)));
 
       elsif S = "sealed_get" and then N_Args = 1 then
-         return
-           Call_Relationship
-             (Build_Intrinsic
-                ("llvm.cheri.cap.sealed.get", Boolean_GL_Type),
-              (1 => Emit_Expression (Val)), Boolean_Data);
+         return Call_Relationship
+                  (Build_Intrinsic ("llvm.cheri.cap.sealed.get",
+                                    Boolean_GL_Type),
+                  (1 => Emit_Expression (Val)), Boolean_Data);
 
       elsif S = "tag_get" and then N_Args = 1 then
-         return
-           Call_Relationship
-             (Build_Intrinsic
-                ("llvm.cheri.cap.tag.get", Boolean_GL_Type),
-              (1 => Emit_Expression (Val)), Boolean_Data);
+         return Call_Relationship
+                   (Build_Intrinsic
+                       ("llvm.cheri.cap.tag.get", Boolean_GL_Type),
+                   (1 => Emit_Expression (Val)), Boolean_Data);
 
       elsif S = "type_get" and then N_Args = 1 then
-         return
-           Call
-             (Build_Intrinsic
-                ("llvm.cheri.cap.type.get", Size_GL_Type,
-                 (1 => Size_T)),
-              (1 => Emit_Expression (Val)));
+         return Call (Build_Intrinsic
+                        ("llvm.cheri.cap.type.get", Size_GL_Type,
+                         (1 => Size_T)),
+                      (1 => Emit_Expression (Val)));
 
       elsif S = "unseal" and then N_Args = 2 then
          V := Emit_Expression (Val);
-         return
-           Call
-             (Build_Intrinsic
-                ("llvm.cheri.cap.unseal", A_Char_GL_Type),
-              (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
+         return Call_Intrinsic ("llvm.cheri.cap.unseal",
+                                (1 => V,
+                                 2 => Emit_Expression (Next_Actual (Val))));
       end if;
 
       return No_GL_Value;
@@ -830,9 +791,12 @@ package body GNATLLVM.Builtins is
 
       --  Otherwise, emit the intrinsic
 
-      return Call (Build_Intrinsic ("llvm.bswap", GT, (1 => Type_Of (GT))),
-                   (1 => Emit_Expression (Val)));
+      return Call_Intrinsic ("llvm.bswap", (1 => Emit_Expression (Val)));
    end Emit_Bswap_Call;
+
+   -----------------------------
+   -- Emit_Frame_Address_Call --
+   -----------------------------
 
    function Emit_Frame_Address_Call
      (N : N_Subprogram_Call_Id) return GL_Value

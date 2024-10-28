@@ -33,10 +33,11 @@ with Set_Targ;    use Set_Targ;
 with Sinput;      use Sinput;
 with Uintp;       use Uintp;
 
-with GNATLLVM.Codegen; use GNATLLVM.Codegen;
-with GNATLLVM.Types;   use GNATLLVM.Types;
-with GNATLLVM.Utils;   use GNATLLVM.Utils;
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
+with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
+with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;  use CCG.Aggregates;
 with CCG.Codegen;     use CCG.Codegen;
@@ -646,6 +647,20 @@ package body CCG.Write is
                                else  Default_Type_Flags),
                      V => V);
          return;
+
+      --  Similarly for writing the return type
+
+      elsif Flags.Write_Return then
+         declare
+            E : constant Entity_Id                 :=
+              (if Present (V) then Get_Entity (V) else Empty);
+            BT : constant Opt_Void_Or_Type_Kind_Id :=
+              (if Present (E) then Actual_Subprogram_Base_Type (E) else Empty);
+
+         begin
+            Write_Type (Get_Element_Type (Type_Of (V)), V => V, E => BT);
+            return;
+         end;
       end if;
 
       --  Otherwise, see if we want an unsigned version of V (unless this
@@ -916,6 +931,9 @@ package body CCG.Write is
                               then Full_Designated_Type (BT) else Empty));
                Write_Str (" *");
             end if;
+
+         when Function_Type_Kind =>
+            Write_Type (Get_Return_Type (T), Flags => Flags, E => BT);
 
          when Struct_Type_Kind =>
             if Struct_Has_Name (T) then

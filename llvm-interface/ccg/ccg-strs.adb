@@ -22,7 +22,8 @@ with LLVM.Core; use LLVM.Core;
 
 with Output; use Output;
 
-with GNATLLVM.GLType; use GNATLLVM.GLType;
+with GNATLLVM.GLType;      use GNATLLVM.GLType;
+with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 
 with CCG.Environment; use CCG.Environment;
 with CCG.Target;      use CCG.Target;
@@ -66,6 +67,7 @@ package body CCG.Strs is
       Update_Hash (H, Flags.Need_Unsigned);
       Update_Hash (H, Flags.Need_Signed);
       Update_Hash (H, Flags.Write_Type);
+      Update_Hash (H, Flags.Write_Return);
    end Update_Hash;
 
    -----------------
@@ -368,6 +370,12 @@ package body CCG.Strs is
          Maybe_Output_Typedef
            ((if   VF.LHS and then Get_Is_LHS (V)
              then Get_Element_Type (Type_Of (V)) else Type_Of (V)));
+
+      --  Similarly if writing the return type
+
+      elsif VF.Write_Return then
+         Maybe_Output_Typedef
+           (Get_Return_Type (Get_Element_Type (Type_Of (V))));
       end if;
 
       return Result;
@@ -385,6 +393,9 @@ package body CCG.Strs is
    begin
       if VF.Write_Type then
          Maybe_Output_Typedef (Type_Of (Full_GL_Type (E)));
+      elsif VF.Write_Return then
+         Maybe_Output_Typedef
+           (Type_Of (Full_GL_Type (Actual_Subprogram_Base_Type (E))));
       end if;
 
       return Result;

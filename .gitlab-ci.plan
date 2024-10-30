@@ -6,6 +6,10 @@ def build():
 
 def test_fixedbugs():
     anod_install("gnat-llvm")
+    anod_build("aunit", qualifier={"compiler": "gnat-llvm"})
+    anod_build("gnatcoll-core", qualifier={"compiler": "gnat-llvm"})
+    anod_build("libgpr", qualifier={"compiler": "gnat-llvm"})
+    anod_build("xmlada", qualifier={"compiler": "gnat-llvm"})
     anod_test("fixedbugs", qualifier="compiler=gnat-llvm")
 
 def test_acats():

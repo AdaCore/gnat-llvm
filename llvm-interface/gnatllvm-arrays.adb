@@ -46,13 +46,10 @@ package body GNATLLVM.Arrays is
        elsif Present (B.Value) then 1
        elsif Max_Size then 1 else 2);
 
-   function Get_GEP_Safe_Type (V : GL_Value) return GL_Type
+   function Get_Index_Type (V : GL_Value) return GL_Type
      with Pre  => Is_Data (V),
-          Post => Is_Discrete_Type (Get_GEP_Safe_Type'Result);
-   --  GEP treats array indices as signed values. If the type is unsigned
-   --  (including Boolean; see C55C02B), it will sign-extend rather than
-   --  zero-extend the value. So if this type is smaller than the size of a
-   --  pointer and is unsigned, we must return a wider type.
+          Post => Is_Discrete_Type (Get_Index_Type'Result);
+   --  Get the proper type to use for an index computation for value V
 
    function Emit_Constant_Aggregate
      (N         : N_Subexpr_Id;
@@ -1269,33 +1266,45 @@ package body GNATLLVM.Arrays is
       end return;
    end Get_Array_Bounds;
 
-   -----------------------
-   -- Get_GEP_Safe_Type --
-   -----------------------
+   --------------------
+   -- Get_Index_Type --
+   --------------------
 
-   function Get_GEP_Safe_Type (V : GL_Value) return GL_Type is
+   function Get_Index_Type (V : GL_Value) return GL_Type is
       Int_Types : constant array (Nat range <>) of GL_Type :=
         (SSI_GL_Type, SI_GL_Type, Integer_GL_Type, LI_GL_Type, LLI_GL_Type);
       Our_GT  : constant GL_Type                           := Related_Type (V);
 
    begin
-      --  If we are of an unsigned type narrower than Size_Type, we must find
-      --  a wider type to use. We use the first, which will be the narrowest.
+      --  We have two potential problems, depending on whether V is a
+      --  signed or an unsigneed type. First, GEP treats array indices as
+      --  signed values. If the type is unsigned (including Boolean; see
+      --  C55C02B), it will sign-extend rather than zero-extend the value,
+      --  which is a problem if the unbiased index is in the top half of
+      --  the unsigned range. So if this type is smaller than the size of a
+      --  pointer and is unsigned, we must return a wider type.
+      --
+      --  If we have a signed type, the subtraction of the lowest bound may
+      --  create a value outside the range of the signed type. So we need
+      --  to return a wider type in this case too.
+      --
+      --  In either case, if we are of an unsigned type narrower than
+      --  Size_Type, we must find a wider type to use. We use the first,
+      --  which will be the narrowest.
 
-      if not Is_Unsigned_Type (Our_GT)
-        or else RM_Size (Our_GT) >= RM_Size (Size_GL_Type)
+      if Get_Scalar_Bit_Size (Our_GT) >= Get_Scalar_Bit_Size (Size_GL_Type)
       then
          return Our_GT;
       end if;
 
       for GT of Int_Types loop
-         if RM_Size (GT) > RM_Size (Our_GT) then
+         if Get_Scalar_Bit_Size (GT) >= Get_Scalar_Bit_Size (Our_GT) * 2 then
             return GT;
          end if;
       end loop;
 
       return No_GL_Type;
-   end Get_GEP_Safe_Type;
+   end Get_Index_Type;
 
    -----------------
    -- Get_Indices --
@@ -1329,7 +1338,7 @@ package body GNATLLVM.Arrays is
                then Const_Null (User_Index)
                else Get_Array_Bound (GT, Dim, True, V));
             Dim_Op_GT           : constant GL_Type  :=
-              Get_GEP_Safe_Type (Dim_Low_Bound);
+              Get_Index_Type (Dim_Low_Bound);
             Converted_Index     : constant GL_Value :=
               Convert (User_Index, Dim_Op_GT);
             Converted_Low_Bound : constant GL_Value :=
@@ -1477,7 +1486,7 @@ package body GNATLLVM.Arrays is
         Get_Array_Bound (Arr_GT, 0, True, V);
       Index_Val   : constant GL_Value        :=
         Emit_Safe_Expr (Low_Bound (Rng));
-      Dim_Op_GT   : constant GL_Type         := Get_GEP_Safe_Type (Idx_LB);
+      Dim_Op_GT   : constant GL_Type         := Get_Index_Type (Idx_LB);
       Cvt_Index   : constant GL_Value        := Convert (Index_Val, Dim_Op_GT);
       Cvt_LB      : constant GL_Value        := Convert (Idx_LB, Dim_Op_GT);
       Index_Shift : constant GL_Value        := Cvt_Index - Cvt_LB;

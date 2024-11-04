@@ -127,14 +127,14 @@ cov-info:
 # Bootstrap targets
 
 # We want to use Clang for C and C++ compilation during bootstrap. However,
-# since we don't have a full C++ runtime at the moment, we tell Clang to use
+# since our LLVM libraries expect libstdc++ at the moment, we tell Clang to use
 # our GCC's C++ runtime. Providing the path explicitly is important because
 # otherwise Clang falls back to the system installation of GCC, if any; this
 # can lead to crashes on some Linux distributions.
 
 CXX_PREFIX=$(shell dirname $(dir $(shell which gcc)))
 BOOT_DIRS=obj obj-tools bin lib
-GCC_TOOLCHAIN=--gcc-toolchain="$(CXX_PREFIX)"
+GCC_TOOLCHAIN=--gcc-toolchain="$(CXX_PREFIX)" --stdlib=libstdc++
 BOOTSTRAP_GPRBUILD=gprbuild -v -cargs:c++ $(GCC_TOOLCHAIN) -largs $(GCC_TOOLCHAIN) -margs
 
 stage1: 

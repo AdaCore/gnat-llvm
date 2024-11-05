@@ -231,7 +231,7 @@ gnatlib: build
 
 gnatlib-automated: build-opt
 	$(RMDIR) $(RTS)
-	$(MAKE) BUILD_TYPE=automated CFLAGS="$(CFLAGS)" \
+	$(MAKE) CFLAGS="$(CFLAGS)" \
 	  EXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
 	  RTSSWITCH="$(RTSSWITCH)" \
 	  LN_S="cp -p" quicklib

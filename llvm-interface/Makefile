@@ -154,8 +154,6 @@ stage3: stage2
 	@echo "Comparing stage2 and stage3 objects"
 	$(MAKE) bootstrap-compare
 
-automated: build-opt gnatlib-automated
-
 bootstrap: stage3
 
 unbootstrap:
@@ -196,7 +194,16 @@ else
   target_os=$(word 3,$(target_list))
 endif
 
-RTS=$(pwd)/lib/rts-native
+automated: build-opt
+ifeq ($(strip $(filter-out vxworks7r2,$(target_os))),)
+	make gnatlib-automated RTSSWITCH=--RTS:C=kernel RTSBASE=rts-kernel THREAD_KIND=kernel-smp
+	make gnatlib-automated RTSSWITCH=--RTS:C=rtp RTSBASE=rts-rtp THREAD_KIND=rtp-smp
+else
+	make gnatlib-automated
+endif
+
+RTSBASE=rts-native
+RTS=$(pwd)/lib/$(RTSBASE)
 RTSDIR=$(RTS)/adainclude
 RTSLIB=$(RTS)/adalib
 RTSOBJ=$(RTS)/obj-static
@@ -224,7 +231,9 @@ gnatlib: build
 
 gnatlib-automated: build-opt
 	$(RMDIR) $(RTS)
-	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
+	$(MAKE) BUILD_TYPE=automated CFLAGS="$(CFLAGS)" \
+	  EXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
+	  RTSSWITCH="$(RTSSWITCH)" \
 	  LN_S="cp -p" quicklib
 	$(RMDIR) $(RTSOBJ)
 
@@ -257,7 +266,7 @@ gnatlib-bc:
 # when building the runtime.
 quicklib: $(RTSDIR)
 	PATH=$(pwd)/bin:$(clang_path):$$PATH \
-	$(GPRBUILD) -p --target=$(target) -j$(PROCS) -P$(RTSDIR)/libada \
+	$(GPRBUILD) -p --target=$(target) $(RTSSWITCH) -j$(PROCS) -P$(RTSDIR)/libada \
 	  -XCFLAGS="$(CFLAGS) -Wno-implicit-function-declaration -I$(LLVM_INCLUDE_DIR)" \
 	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS) -gdwarf-aranges" \
 	  -XLIBRARY_KIND=$(LIBRARY_KIND)

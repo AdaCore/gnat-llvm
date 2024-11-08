@@ -1441,6 +1441,13 @@ package body GNATLLVM.Instructions is
       Memory         : GL_Value;
 
    begin
+      --  If we're storing something that's undefined, we don't have to
+      --  do anything unless this is a volatile store.
+
+      if Is_Undef (Expr) and then not Is_Volatile (Ptr) then
+         return;
+      end if;
+
       --  If Ptr has a non-default storage model, we have to generate
       --  a copy procedure.
 

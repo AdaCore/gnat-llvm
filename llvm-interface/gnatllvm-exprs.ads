@@ -15,8 +15,9 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
-with GNATLLVM.Instructions; use GNATLLVM.Instructions;
+with GNATLLVM.GLValue;           use GNATLLVM.GLValue;
+with GNATLLVM.Instructions;      use GNATLLVM.Instructions;
+with GNATLLVM.Records.Field_Ref; use GNATLLVM.Records.Field_Ref;
 
 package GNATLLVM.Exprs is
    --  This can't be named GNATLLVM.Expressions because it conflicts
@@ -31,7 +32,7 @@ package GNATLLVM.Exprs is
       LHS           : out GL_Value;
       F             : out Opt_Record_Field_Kind_Id;
       Idxs          : out Access_GL_Value_Array;
-      For_LHS       : Boolean := False;
+      BRD           : out Bitfield_Ref_Desc;
       Only_Bitfield : Boolean := False);
    --  N is an expression that's used in a LHS context, either the LHS side
    --  of an N_Assignment_Statement or an actual corresponding to an Out
@@ -39,6 +40,7 @@ package GNATLLVM.Exprs is
    --  Only_Bitfield then only if that field is a bitfield), then LHS is
    --  the Prefix of that selection and F is the field being selected. If
    --  N is an indexed reference, Idxs is a pointer to the list of indices.
+   --  If N is a mixed bitfield reference, BRD describes the bitfield.
    --  Otherwise, F is Empty, Idxs is null, and LHS is the LValue form of N.
 
    procedure Emit_Overflow_Check (V : GL_Value; N : N_Type_Conversion_Id)

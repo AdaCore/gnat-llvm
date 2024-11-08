@@ -138,35 +138,50 @@ package GNATLLVM.Types is
    --  Find a value that's being computed by the current Emit_LValue
    --  recursion that has the same base type as T.
 
-   function To_Bytes (Size : Nat)     return Nat is
+   function To_Bytes (Size : Nat)        return Nat is
      ((Size + (BPU - 1)) / BPU);
 
-   function To_Bytes (Size : ULL)     return ULL is
+   function To_Bytes (Size : ULL)        return ULL is
      ((Size + (UBPU - 1)) / UBPU);
 
-   function To_Bytes (Size : LLI)     return LLI is
+   function To_Bytes (Size : LLI)        return LLI is
      ((Size + (LLI (BPU) - 1)) / LLI (BPU));
 
-   function To_Bytes (Size : Uint)    return Uint is
+   function To_Bytes (Size : Uint)       return Uint is
      ((Size + (BPU - 1)) / BPU);
 
-   function To_Bytes (Size : unsigned) return unsigned is
+   function To_Bytes (Size : unsigned)   return unsigned is
      ((Size + (unsigned (BPU) - 1)) / unsigned (BPU));
 
-   function To_Bits (Size : Nat)       return Nat is
+   function To_Bits (Size : Nat)         return Nat is
      (Size * BPU);
 
-   function To_Bits (Size : ULL)       return ULL is
+   function To_Bits (Size : ULL)         return ULL is
      (Size * UBPU);
 
-   function To_Bits (Size : LLI)       return LLI is
+   function To_Bits (Size : LLI)         return LLI is
      (Size * LLI (BPU));
 
-   function To_Bits (Size : Uint)      return Uint is
+   function To_Bits (Size : Uint)        return Uint is
      (Size * BPU);
 
-   function To_Bits (Size : unsigned)  return unsigned is
+   function To_Bits (Size : unsigned)    return unsigned is
      (Size * unsigned (BPU));
+
+   function Byte_Align (Size : Nat)      return Nat is
+     (To_Bits (To_Bytes (Size)));
+
+   function Byte_Align (Size : ULL)      return ULL is
+     (To_Bits (To_Bytes (Size)));
+
+   function Byte_Align (Size : LLI)      return LLI is
+     (To_Bits (To_Bytes (Size)));
+
+   function Byte_Align (Size : Uint)     return Uint is
+     (To_Bits (To_Bytes (Size)));
+
+   function Byte_Align (Size : unsigned) return unsigned is
+     (To_Bits (To_Bytes (Size)));
 
    function Int_Ty (Num_Bits : Nat) return Type_T is
      (Int_Type (unsigned (Num_Bits)))

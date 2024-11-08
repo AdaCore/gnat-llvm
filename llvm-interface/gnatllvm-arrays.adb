@@ -17,7 +17,8 @@
 
 with Ada.Unchecked_Deallocation;
 
-with Snames;   use Snames;
+with Nlists; use Nlists;
+with Snames; use Snames;
 
 with GNATLLVM.Aliasing;      use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
@@ -1311,9 +1312,10 @@ package body GNATLLVM.Arrays is
    -----------------
 
    function Get_Indices
-     (Indices : List_Id; V : GL_Value) return GL_Value_Array
+     (N : N_Indexed_Component_Id; V : GL_Value) return GL_Value_Array
    is
-      GT         : constant Array_Or_PAT_GL_Type := Related_Type (V);
+      Indices    : constant List_Id              := Expressions (N);
+      GT         : constant Array_Or_PAT_GL_Type := Full_GL_Type (Prefix (N));
       N_Dim      : constant Int                  := Number_Dimensions (GT);
       Fortran    : constant Boolean              :=
         Convention (GT) = Convention_Fortran;
@@ -1321,17 +1323,17 @@ package body GNATLLVM.Arrays is
         (if Fortran then N_Dim else 1);
       Dim        : Nat                           := 0;
       Idxs       : GL_Value_Array (1 .. N_Dim);
-      N          : Opt_N_Subexpr_Id;
+      Exp        : Opt_N_Subexpr_Id;
 
    begin
-      N := First (Indices);
-      while Present (N) loop
+      Exp := First (Indices);
+      while Present (Exp) loop
 
          --  Adjust the index according to the range lower bound. If the
          --  type is an unconstrained PAT, we skip this adjustment.
 
          declare
-            User_Index          : constant GL_Value := Emit_Safe_Expr (N);
+            User_Index          : constant GL_Value := Emit_Safe_Expr (Exp);
             Dim_Low_Bound       : constant GL_Value :=
               (if   Is_Packed_Array_Impl_Type (GT)
                     and then not Is_Constrained (GT)
@@ -1350,7 +1352,7 @@ package body GNATLLVM.Arrays is
 
          Idx := (if Fortran then Idx - 1 else Idx + 1);
          Dim := Dim + 1;
-         Next (N);
+         Next (Exp);
       end loop;
 
       return Idxs;
@@ -1376,6 +1378,48 @@ package body GNATLLVM.Arrays is
 
    end Adjust_Array_Component_Alignment;
 
+   --------------------------
+   -- Compute_Index_Offset --
+   --------------------------
+
+   function Compute_Index_Offset
+     (Idxs     : GL_Value_Array;
+      GT       : GL_Type;
+      Use_Comp : Boolean;
+      V        : GL_Value := No_GL_Value) return GL_Value
+   is
+      N_Dim     : constant Int      := Number_Dimensions (GT);
+      Fortran   : constant Boolean  :=
+        Convention (GT) = Convention_Fortran;
+      Comp_GT   : constant GL_Type  :=
+        Full_Component_GL_Type (GT);
+      Comp_Unc  : constant Boolean  := Is_Unconstrained_Record (Comp_GT);
+      Comp_Size : constant GL_Value :=
+        Get_Type_Size (Comp_GT, Max_Size => Comp_Unc);
+      Unit_Size : constant GL_Value :=
+        (if   Has_Aliased_Components (GT)
+         then Build_Max (Comp_Size, Size_Const_Int (+BPU)) else Comp_Size);
+      Unit_Mult : constant GL_Value :=
+        (if   Use_Comp then Size_Const_Int (1)
+         else To_Bytes (Unit_Size));
+      Index     : GL_Value          := To_Size_Type (Idxs (1));
+      Dim       : Int               := (if Fortran then N_Dim - 2 else 1);
+
+   begin
+      for Idx in 2 .. Idxs'Last loop
+
+         --  The functions below emit bitcode as a side effect; perform the
+         --  index computation in two steps to prevent non-determinism
+         --  introduced by Ada's arbitrary parameter evaluation order.
+
+         Index := Index * Get_Array_Length (Full_Etype (GT), Dim, V);
+         Index := Index + To_Size_Type (Idxs (Idx));
+         Dim   := (if Fortran then Dim - 1 else Dim + 1);
+      end loop;
+
+      return Index * Unit_Mult;
+   end Compute_Index_Offset;
+
    ------------------------
    -- Get_Indexed_LValue --
    ------------------------
@@ -1384,13 +1428,10 @@ package body GNATLLVM.Arrays is
      (Idxs : GL_Value_Array; V : GL_Value) return GL_Value
    is
       GT         : constant Array_Or_PAT_GL_Type := Related_Type (V);
-      N_Dim      : constant Int                  := Number_Dimensions (GT);
       Comp_GT    : constant GL_Type              :=
         Full_Component_GL_Type (GT);
       Array_Data : constant GL_Value             :=
         Get (To_Primitive (V, No_Copy => True), Reference);
-      Fortran    : constant Boolean              :=
-        Convention (GT) = Convention_Fortran;
       Result     : GL_Value;
 
    begin
@@ -1427,34 +1468,15 @@ package body GNATLLVM.Arrays is
       --  tricky.
 
       declare
-         Comp_Unc  : constant Boolean  := Is_Unconstrained_Record (Comp_GT);
          Use_Comp  : constant Boolean  := Is_Native_Component_GT (Comp_GT);
          Unit_GT   : constant GL_Type  :=
            (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value :=
            Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference);
-         Comp_Size : constant GL_Value :=
-           Get_Type_Size (Comp_GT, Max_Size => Comp_Unc);
-         Unit_Size : constant GL_Value :=
-           (if   Has_Aliased_Components (GT)
-            then Build_Max (Comp_Size, Size_Const_Int (+BPU)) else Comp_Size);
-         Unit_Mult : constant GL_Value :=
-           (if   Use_Comp then Size_Const_Int (1)
-            else To_Bytes (Unit_Size));
-         Index     : GL_Value          := To_Size_Type (Idxs (1));
-         Dim       : Int               := (if Fortran then N_Dim - 2 else 1);
 
       begin
-         for Idx in 2 .. Idxs'Last loop
-            --  The functions below emit bitcode as a side effect; perform the
-            --  index computation in two steps to prevent non-determinism
-            --  introduced by Ada's arbitrary parameter evaluation order.
-            Index := Index * Get_Array_Length (Full_Etype (GT), Dim, V);
-            Index := Index + To_Size_Type (Idxs (Idx));
-            Dim   := (if Fortran then Dim - 1 else Dim + 1);
-         end loop;
-
-         Result := GEP (Unit_GT, Data, (1 => Index * Unit_Mult), "arr.lvalue");
+         Result := GEP (Unit_GT, Data,
+                        (1 => Compute_Index_Offset (Idxs, GT, Use_Comp, V)));
          Result := Ptr_To_Ref (Result, Comp_GT);
 
          --  Set the attributes of the result. However, the above will have

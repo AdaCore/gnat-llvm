@@ -175,7 +175,7 @@ package body GNATLLVM.Types.Create is
       end if;
 
       return
-        Int_Ty (if Size <= Max_Int_Size then Size else Max_Int_Size);
+        Int_Ty (if +Size <= Max_Int_Size then +Size else Max_Int_Size);
 
    end Create_Discrete_Type;
 

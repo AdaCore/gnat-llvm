@@ -102,6 +102,18 @@ package GNATLLVM.Instructions is
      with Pre  => Is_Pointer (V) and then Present (GT),
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result), Inline;
 
+   function Ptr_To_Int_To_Relationship
+     (V    : GL_Value;
+      T    : Type_T;
+      R    : GL_Relationship;
+      Name : String := "") return GL_Value
+   is
+     (Initialize_TBAA
+        (G (Ptr_To_Int (IR_Builder, +V, T, Name), Related_Type (V),
+            R, Alignment => Alignment (V))))
+     with Pre  => Present (V) and then Present (T),
+          Post => Present (Ptr_To_Int_To_Relationship'Result);
+
    function Ptr_To_Address_Type
      (V : GL_Value; Name : String := "") return GL_Value
    is
@@ -459,14 +471,15 @@ package GNATLLVM.Instructions is
    function Build_Or
      (LHS, RHS : GL_Value; Name : String := "") return GL_Value
    is
-     ((if   Is_Const_Int_Value (RHS, 0) then LHS
-       else Set_TBAA_Type
-             (Set_Alignment
-                (Mark_Overflowed
-                   (G_From (Build_Or (IR_Builder, +LHS, +RHS, Name), LHS),
-                    Overflowed (LHS) or else Overflowed (RHS)),
-                 Nat'Min (Alignment (LHS), Alignment (RHS))),
-              No_Metadata_T)))
+     ((if    Is_Const_Int_Value (RHS, 0) then LHS
+       elsif Is_Const_Int_Value (LHS, 0) then RHS
+       else  Set_TBAA_Type
+               (Set_Alignment
+                  (Mark_Overflowed
+                     (G_From (Build_Or (IR_Builder, +LHS, +RHS, Name), LHS),
+                      Overflowed (LHS) or else Overflowed (RHS)),
+                   Nat'Min (Alignment (LHS), Alignment (RHS))),
+                No_Metadata_T)))
       with Pre  => Present (LHS) and then Present (RHS),
            Post => Present (Build_Or'Result);
 

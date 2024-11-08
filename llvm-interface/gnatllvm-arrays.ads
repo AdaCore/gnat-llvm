@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Einfo.Utils; use Einfo.Utils;
-with Nlists;      use Nlists;
 with Sem_Aggr;    use Sem_Aggr;
 with Table;       use Table;
 
@@ -118,14 +117,22 @@ package GNATLLVM.Arrays is
    --  This returns zero iff the array type is of a constant size.
 
    function Get_Indices
-     (Indices : List_Id; V : GL_Value) return GL_Value_Array
-     with Pre  => Is_Array_Type (Related_Type (V))
-                  and then List_Length (Indices) =
-                             Number_Dimensions (Related_Type (V)),
-          Post => Get_Indices'Result'Length = List_Length (Indices);
-   --  Given a list of indices and V, return a list where we've evaluated
+     (N : N_Indexed_Component_Id; V : GL_Value) return GL_Value_Array;
+   --  Given an index reference and V, return a list where we've evaluated
    --  all the indices and subtracted the lower bounds of each dimension.
-   --  This list consists of the constant zero followed by the indices.
+   --  V is used as an LHS in case we're referencing a discriminant.
+
+   function Compute_Index_Offset
+     (Idxs     : GL_Value_Array;
+      GT       : GL_Type;
+      Use_Comp : Boolean;
+      V        : GL_Value := No_GL_Value) return GL_Value
+     with Pre  => Is_Array_Type (GT)
+                  and then Idxs'Length = Number_Dimensions (GT),
+          Post => Present (Compute_Index_Offset'Result);
+   --  Compute the index offset from Idxs of an array of type GT. If
+   --  Use_Comp, this is in units of the component size of GT; otherwise,
+   --  it's in bytes.
 
    function Get_Indexed_LValue
      (Idxs : GL_Value_Array; V : GL_Value) return GL_Value

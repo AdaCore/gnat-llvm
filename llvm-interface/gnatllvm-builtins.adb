@@ -1059,7 +1059,7 @@ package body GNATLLVM.Builtins is
         and then Op_Name = "test_and_set"
         and then Is_Boolean_Type (Full_Etype (N))
       then
-         Result := Emit_Fetch_And_Op (Ptr, Const_Int (Def_GT, 1),
+         Result := Emit_Fetch_And_Op (Ptr, Const_Int (Def_GT, Uint_1),
                                       Atomic_RMW_Bin_Op_Xchg, False,
                                       Memory_Order (Arg2), S, Def_GT);
 

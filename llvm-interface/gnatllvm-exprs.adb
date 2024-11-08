@@ -233,20 +233,35 @@ package body GNATLLVM.Exprs is
       LHS           : out GL_Value;
       F             : out Opt_Record_Field_Kind_Id;
       Idxs          : out Access_GL_Value_Array;
-      For_LHS       : Boolean := False;
-      Only_Bitfield : Boolean := False) is
+      BRD           : out Bitfield_Ref_Desc;
+      Only_Bitfield : Boolean := False)
+   is
+      Is_Indexed  : constant Boolean :=
+        not Decls_Only and Nkind (N) = N_Indexed_Component;
+      Is_Selected : constant Boolean :=
+        not Decls_Only and Nkind (N) = N_Selected_Component;
+
    begin
       --  Start by assuming there's no special processing, then
-      --  see if there is. If we're just elaborating decls, there isn't
+      --  see if there is.
 
       F    := Empty;
       Idxs := null;
       LHS  := No_GL_Value;
+      BRD  := No_BRD;
 
-      if Decls_Only then
-         null;
+      if Is_Indexed or else Is_Selected then
+         BRD := Collect_Mixed_Bitfield (N, True);
+      end if;
 
-      elsif Nkind (N) = N_Selected_Component then
+      --  If we have a mixed bitfield, get LHS for later
+
+      if Present (BRD) then
+         LHS := BRD.LHS;
+
+      --  Otherwise, test for simple component references
+
+      elsif Is_Selected then
          declare
             Fld  : constant Record_Field_Kind_Id := Entity (Selector_Name (N));
 
@@ -255,18 +270,26 @@ package body GNATLLVM.Exprs is
             --  bitfield, set the field and LHS.
 
             if not Only_Bitfield or else Is_Bitfield_By_Rep (Fld) then
-               LHS := Emit_LValue (Prefix (N), For_LHS => For_LHS);
+               LHS := Emit_LValue (Prefix (N), For_LHS => True);
                F   := Field_To_Use (LHS, Fld);
             end if;
          end;
 
-      elsif Nkind (N) = N_Indexed_Component and then not Only_Bitfield then
-         LHS  := Emit_LValue (Prefix (N), For_LHS => For_LHS);
-         Idxs := new GL_Value_Array'(Get_Indices (Expressions (N), LHS));
+      elsif Is_Indexed and then not Only_Bitfield then
+         LHS  := Emit_LValue (Prefix (N), For_LHS => True);
+         Idxs := new GL_Value_Array'(Get_Indices (N, LHS));
       end if;
 
       if No (LHS) then
-         LHS := Emit_LValue (N, For_LHS => For_LHS);
+         LHS := Emit_LValue (N, For_LHS => True);
+      end if;
+
+      --  If this is a reference, set atomic or volatile as neeed
+
+      if Present (F) or else Idxs /= null or else Present (BRD) then
+         Mark_Volatile (LHS, Atomic_Sync_Required (N)
+                        or else Is_Volatile_Reference (N));
+         Mark_Atomic   (LHS, Atomic_Sync_Required (N));
       end if;
 
    end LHS_And_Component_For_Assignment;
@@ -1014,7 +1037,7 @@ package body GNATLLVM.Exprs is
       case Nkind (N) is
          when N_Indexed_Component =>
             Emit_For_Address (Prefix (N), V, Bits);
-            V := Get_Indexed_LValue (Get_Indices (Expressions (N), V), V);
+            V := Get_Indexed_LValue (Get_Indices (N, V), V);
 
          when N_Slice =>
             Emit_For_Address (Prefix (N), V, Bits);
@@ -1022,13 +1045,7 @@ package body GNATLLVM.Exprs is
 
          when N_Selected_Component => Selected_Component : declare
 
-            In_F  : constant Record_Field_Kind_Id :=
-              Entity (Selector_Name (N));
-            R_TE  : constant Record_Kind_Id       := Full_Scope (In_F);
-            Rec_T : constant Type_T               := Type_Of (R_TE);
-            F     : constant Record_Field_Kind_Id :=
-              Find_Matching_Field (R_TE, In_F);
-            pragma Unreferenced (Rec_T);
+            F : constant Record_Field_Kind_Id := Selector_Field (N);
 
          begin
             --  Compute an LValue that points either to the field or the
@@ -1064,26 +1081,18 @@ package body GNATLLVM.Exprs is
       LHS  : GL_Value;
       Idxs : Access_GL_Value_Array;
       F    : Opt_Record_Field_Kind_Id;
+      BRD  : Bitfield_Ref_Desc;
 
    begin
-      --  Get the LHS to evaluate and see if we need to do a field or
-      --  array operation.
+      --  Get the LHS to evaluate and see if we need to do a field,
+      --  array, or bitfield operation.
 
-      LHS_And_Component_For_Assignment (Name (N), LHS, F, Idxs,
-                                        For_LHS => True);
+      LHS_And_Component_For_Assignment (Name (N), LHS, F, Idxs, BRD);
 
-      --  If this is a reference, set atomic or volatile as neeed
+      if Present (BRD) then
+         Build_Bitfield_Store (Emit_Expression (Expression (N)), BRD);
 
-      if Present (F) or else Idxs /= null then
-         Mark_Volatile (LHS,
-                        Atomic_Sync_Required (Name (N))
-                        or else Is_Volatile_Reference (Name (N)));
-         Mark_Atomic   (LHS, Atomic_Sync_Required (Name (N)));
-      end if;
-
-      --  Now do the operation
-
-      if Present (F) then
+      elsif Present (F) then
 
          --  We have a special case when LHS is a reference, F is not a
          --  bitfield, and we have no VFA. In the case, we may be able to

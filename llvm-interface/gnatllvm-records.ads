@@ -60,6 +60,20 @@ package GNATLLVM.Records is
      with Post => Present (Get_Record_Type_Size'Result);
    --  Like Get_Type_Size, but only for record types
 
+   function Get_Record_Size_So_Far
+     (TE          : Opt_Record_Kind_Id;
+      V           : GL_Value;
+      Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
+      Idx         : Record_Info_Id := Empty_Record_Info_Id;
+      In_Size     : GL_Value       := No_GL_Value;
+      Force_Align : Nat            := BPU;
+      Max_Size    : Boolean        := False;
+      No_Padding  : Boolean        := False) return GL_Value;
+   --  Similar to Get_Record_Type_Size, but stop at record info segment Idx
+   --  or the last segment, whichever comes first. If TE is Present, it
+   --  provides the default for Start_Idx and also requests alignment to
+   --  TE's alignment if we're looking for the size.
+
    function Get_Record_Type_Size
      (TE         : Record_Kind_Id;
       V          : GL_Value;
@@ -91,7 +105,6 @@ package GNATLLVM.Records is
    function Find_Matching_Field
      (TE    : Record_Kind_Id;
       Field : Record_Field_Kind_Id) return Opt_Record_Field_Kind_Id;
-
    --  Find a field, if any, in the entity list of TE that has the same
    --  name as F and has Field_Info.
 
@@ -210,6 +223,12 @@ package GNATLLVM.Records is
      with Pre => Present (LHS);
    --  Return the actual field to use to access field F of LHS. This may
    --  be a field from a related type.
+
+   function Selector_Field
+     (N : N_Selected_Component_Id) return Record_Field_Kind_Id;
+   --  Given a selector for a record, return the actual field to use, taking
+   --  into account the need to find a matching field in related records
+   --  in some cases.
 
    function Build_Field_Load
      (In_V       : GL_Value;
@@ -391,7 +410,9 @@ private
       Position         : ULL;
       --  If nonzero, a forced starting position (in bits, but on a byte
       --  boundary) of this piece. This can't be set on the first RI for a
-      --  record.
+      --  record. And note that we must be sure that we're not trying to
+      --  reset to position zero sine this will appear as though we aren't
+      --  resetting the position.
 
       Next             : Record_Info_Id;
       --  Link to the next Record_Info entry for this record or variant

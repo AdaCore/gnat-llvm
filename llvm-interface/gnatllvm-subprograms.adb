@@ -32,23 +32,24 @@ with Snames;      use Snames;
 with Table;       use Table;
 with Targparm;    use Targparm;
 
-with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
-with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
-with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
-with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
-with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
-with GNATLLVM.Compile;      use GNATLLVM.Compile;
-with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
-with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
-with GNATLLVM.Environment;  use GNATLLVM.Environment;
-with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
-with GNATLLVM.GLType;       use GNATLLVM.GLType;
-with GNATLLVM.Helper;       use GNATLLVM.Helper;
-with GNATLLVM.Records;      use GNATLLVM.Records;
-with GNATLLVM.Types;        use GNATLLVM.Types;
-with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
-with GNATLLVM.Utils;        use GNATLLVM.Utils;
-with GNATLLVM.Variables;    use GNATLLVM.Variables;
+with GNATLLVM.Aliasing;          use GNATLLVM.Aliasing;
+with GNATLLVM.Arrays;            use GNATLLVM.Arrays;
+with GNATLLVM.Blocks;            use GNATLLVM.Blocks;
+with GNATLLVM.Builtins;          use GNATLLVM.Builtins;
+with GNATLLVM.Codegen;           use GNATLLVM.Codegen;
+with GNATLLVM.Compile;           use GNATLLVM.Compile;
+with GNATLLVM.Conversions;       use GNATLLVM.Conversions;
+with GNATLLVM.DebugInfo;         use GNATLLVM.DebugInfo;
+with GNATLLVM.Environment;       use GNATLLVM.Environment;
+with GNATLLVM.Exprs;             use GNATLLVM.Exprs;
+with GNATLLVM.GLType;            use GNATLLVM.GLType;
+with GNATLLVM.Helper;            use GNATLLVM.Helper;
+with GNATLLVM.Records;           use GNATLLVM.Records;
+with GNATLLVM.Records.Field_Ref; use GNATLLVM.Records.Field_Ref;
+with GNATLLVM.Types;             use GNATLLVM.Types;
+with GNATLLVM.Types.Create;      use GNATLLVM.Types.Create;
+with GNATLLVM.Utils;             use GNATLLVM.Utils;
+with GNATLLVM.Variables;         use GNATLLVM.Variables;
 
 with CCG; use CCG;
 
@@ -2067,6 +2068,7 @@ package body GNATLLVM.Subprograms is
         (In_LHS  : GL_Value;
          F       : Opt_Record_Field_Kind_Id;
          In_Idxs : Access_GL_Value_Array;
+         BRD     : Bitfield_Ref_Desc;
          In_RHS  : GL_Value;
          LVs     : in out Access_GL_Value_Array;
          VFA     : Boolean)
@@ -2090,6 +2092,7 @@ package body GNATLLVM.Subprograms is
          LHS, RHS : GL_Value;
          Field    : Opt_Record_Field_Kind_Id;
          Idxs     : Access_GL_Value_Array;
+         BRD      : Bitfield_Ref_Desc;
          LVs      : Access_GL_Value_Array;
          VFA      : Boolean;
       end record;
@@ -2129,12 +2132,14 @@ package body GNATLLVM.Subprograms is
           (if RK = Return_By_Parameter then 1 else 0);
       Args             : GL_Value_Array (1 .. Arg_Count);
       WBs              : WB_Array       (1 .. Arg_Count) :=
-        (others => (No_GL_Value, No_GL_Value, Empty, null, null, False));
+        (others => (No_GL_Value, No_GL_Value, Empty, null, No_BRD,
+                    null, False));
       Out_LHSs         : GL_Value_Array (1 .. Out_Arg_Count);
       Out_Flds         : Entity_Array   (1 .. Out_Arg_Count);
       Out_VFAs         : array (1 .. Out_Arg_Count) of Boolean;
       Out_Idxs         : array (1 .. Out_Arg_Count) of Access_GL_Value_Array;
       Out_LVs          : array (1 .. Out_Arg_Count) of Access_GL_Value_Array;
+      Out_BRDs         : array (1 .. Out_Arg_Count) of Bitfield_Ref_Desc;
       Actual_Return    : GL_Value;
       S_Link           : GL_Value;
       LLVM_Func        : GL_Value;
@@ -2149,6 +2154,7 @@ package body GNATLLVM.Subprograms is
         (In_LHS  : GL_Value;
          F       : Opt_Record_Field_Kind_Id;
          In_Idxs : Access_GL_Value_Array;
+         BRD     : Bitfield_Ref_Desc;
          In_RHS  : GL_Value;
          LVs     : in out Access_GL_Value_Array;
          VFA     : Boolean)
@@ -2157,8 +2163,9 @@ package body GNATLLVM.Subprograms is
          RHS      : GL_Value              := Get (In_RHS, Object);
          Idxs     : Access_GL_Value_Array := In_Idxs;
          LHS_GT   : constant GL_Type      :=
-           (if    Present (F) then Field_Type (F)
+           (if    Present (F)   then Field_Type (F)
             elsif Idxs /= null then Full_Component_GL_Type (Related_Type (LHS))
+            elsif Present (BRD) then BRD.GT
             else  Related_Type (LHS));
          RHS_GT   : constant GL_Type      := Related_Type (RHS);
 
@@ -2198,7 +2205,9 @@ package body GNATLLVM.Subprograms is
             Put_LValue_List (LVs);
          end if;
 
-         if Present (F) then
+         if Present (BRD) then
+            Build_Bitfield_Store (RHS, BRD);
+         elsif Present (F) then
             Build_Field_Store (LHS, F, RHS, VFA);
          elsif Idxs /= null then
             Build_Indexed_Store (LHS, Idxs.all, RHS, VFA);
@@ -2349,6 +2358,7 @@ package body GNATLLVM.Subprograms is
             F    : Opt_Record_Field_Kind_Id := Empty;
             Idxs : Access_GL_Value_Array    := null;
             LHS  : GL_Value                 := No_GL_Value;
+            BRD  : Bitfield_Ref_Desc        := No_BRD;
             Arg  : GL_Value;
 
          begin
@@ -2374,8 +2384,8 @@ package body GNATLLVM.Subprograms is
                   if Ekind (Param) = E_In_Parameter then
                      LHS := Emit_LValue (Actual);
                   else
-                     LHS_And_Component_For_Assignment (Actual, LHS, F, Idxs,
-                                                       For_LHS       => True,
+                     LHS_And_Component_For_Assignment (Actual, LHS,
+                                                       F, Idxs, BRD,
                                                        Only_Bitfield => True);
                   end if;
 
@@ -2385,7 +2395,26 @@ package body GNATLLVM.Subprograms is
 
                   pragma Assert (Idxs = null);
 
-                  if Present (F)
+                  if Present (BRD)
+                    and then Misaligned_Copy_Required (LHS, Actual, Param,
+                                                       True)
+                  then
+                     Arg := Allocate_For_Type
+                       (GT,
+                        N => Actual,
+                        V => Build_Bitfield_Load (BRD, LHS));
+
+                     WBs (In_Idx) := (LHS   => LHS,
+                                      RHS   => Arg,
+                                      Field => F,
+                                      Idxs  => Idxs,
+                                      BRD   => BRD,
+                                      LVs   => Get_LValue_List,
+                                      VFA   => Is_VFA_Ref (Actual));
+
+                     Arg := Get (Arg, R);
+
+                  elsif Present (F)
                     and then Misaligned_Copy_Required (LHS, Actual, Param,
                                                        True)
                   then
@@ -2396,6 +2425,7 @@ package body GNATLLVM.Subprograms is
                                       RHS   => Arg,
                                       Field => F,
                                       Idxs  => Idxs,
+                                      BRD   => BRD,
                                       LVs   => Get_LValue_List,
                                       VFA   => Is_VFA_Ref (Actual));
 
@@ -2419,6 +2449,7 @@ package body GNATLLVM.Subprograms is
                                             RHS   => Arg,
                                             Field => Empty,
                                             Idxs  => null,
+                                            BRD   => BRD,
                                             LVs   => Get_LValue_List,
                                             VFA   => Is_VFA_Ref (Actual));
                         end if;
@@ -2432,8 +2463,8 @@ package body GNATLLVM.Subprograms is
                              then  Ptr_To_Relationship (Get (Arg, R), GT, R)
                              elsif PK = Foreign_By_Component_Ref
                              then  Ptr_To_Relationship
-                                     (Get (Arg, R),
-                                       Full_Component_GL_Type (GT), R)
+                               (Get (Arg, R),
+                                Full_Component_GL_Type (GT), R)
                              else  Get (Convert_Ref (Arg, GT), R));
                   end if;
 
@@ -2484,8 +2515,7 @@ package body GNATLLVM.Subprograms is
                   LHS := Get_Undef_Ref (GT);
                elsif No (LHS) or else Actual /= Strip_Conversions (Actual) then
                   LHS_And_Component_For_Assignment (Strip_Conversions (Actual),
-                                                    LHS, F, Idxs,
-                                                    For_LHS => True);
+                                                    LHS, F, Idxs, BRD);
                end if;
 
                --  If LHS represents the full parameter (i.e., no field
@@ -2493,10 +2523,11 @@ package body GNATLLVM.Subprograms is
                --  returned value.
 
                Out_LHSs (Out_Idx) :=
-                 (if   No (F) and then Idxs = null then Convert_Ref (LHS, GT)
-                  else LHS);
+                 (if   No (F) and then Idxs = null and then No (BRD)
+                  then Convert_Ref (LHS, GT) else LHS);
                Out_Flds (Out_Idx) := F;
                Out_Idxs (Out_Idx) := Idxs;
+               Out_BRDs (Out_Idx) := BRD;
                Out_LVs  (Out_Idx) := Get_LValue_List;
                Out_VFAs (Out_Idx) := Is_VFA_Ref (Actual);
                Out_Idx            := Out_Idx + 1;
@@ -2548,7 +2579,7 @@ package body GNATLLVM.Subprograms is
             --  Write back the single out parameter to our saved LHS
 
             Write_Back
-              (Out_LHSs (1), Out_Flds (1), Out_Idxs (1),
+              (Out_LHSs (1), Out_Flds (1), Out_Idxs (1), Out_BRDs (1),
                Call (LLVM_Func, Fn_Ty, Args, Get_Param_GL_Type (Out_Param)),
                LVs => Out_LVs (1),
                VFA => Out_VFAs (1));
@@ -2576,7 +2607,7 @@ package body GNATLLVM.Subprograms is
             Out_Idx := 1;
             while Present (Out_Param) loop
                Write_Back (Out_LHSs (Out_Idx), Out_Flds (Out_Idx),
-                           Out_Idxs (Out_Idx),
+                           Out_Idxs (Out_Idx), Out_BRDs (Out_Idx),
                            Extract_Value (Get_Param_GL_Type (Out_Param),
                                           Actual_Return, unsigned (Ret_Idx)),
                            LVs => Out_LVs (Out_Idx),
@@ -2591,8 +2622,8 @@ package body GNATLLVM.Subprograms is
 
       for J in WBs'Range loop
          if Present (WBs (J).LHS) then
-            Write_Back (WBs (J).LHS, WBs (J).Field, WBs (J).Idxs, WBs (J).RHS,
-                        WBs (J).LVs, WBs (J).VFA);
+            Write_Back (WBs (J).LHS, WBs (J).Field, WBs (J).Idxs, WBs (J).BRD,
+                        WBs (J).RHS, WBs (J).LVs, WBs (J).VFA);
          end if;
       end loop;
 

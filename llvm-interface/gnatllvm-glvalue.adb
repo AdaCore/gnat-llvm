@@ -874,10 +874,11 @@ package body GNATLLVM.GLValue is
       --  it's on the stack of the calling subprogram since the called
       --  subprogram may capture the address and store it for later (this
       --  happens a lot with tasking). If we have a string literal, we
-      --  also materialize the bounds if we can.
+      --  also materialize the bounds if we can. If we have an Undef,
+      --  allocate memory for it.
 
       elsif Equiv_Relationship (Ref (Our_R), R) then
-         if Is_Constant (V) then
+         if Is_Constant (V) and then not Is_Undef (V) then
             return Get (Make_Global_Constant (V), R);
          else
             declare

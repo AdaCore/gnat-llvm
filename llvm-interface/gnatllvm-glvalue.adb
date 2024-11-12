@@ -1883,6 +1883,15 @@ package body GNATLLVM.GLValue is
       Set_Linkage (+V, Linkage);
    end Set_Linkage;
 
+   ----------------------------
+   -- Set_Function_Call_Conv --
+   ----------------------------
+
+   procedure Set_Function_Call_Conv (V : GL_Value; CC : Convention_Id) is
+   begin
+      Set_Function_Call_Conv (+V, GNAT_To_LLVM_Convention (CC));
+   end Set_Function_Call_Conv;
+
    --------------------------
    -- Set_Absolute_Address --
    --------------------------

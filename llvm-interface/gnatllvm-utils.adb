@@ -19,7 +19,6 @@ with Errout;   use Errout;
 with Output;   use Output;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
-with Snames;   use Snames;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
 
@@ -223,6 +222,18 @@ package body GNATLLVM.Utils is
          Error_Msg_NE ("Convention C++ not supported", E, E);
       end if;
    end Check_Convention;
+
+      --------------------------
+   -- GNAT_To_LLVM_Convention --
+   -----------------------------
+
+   function GNAT_To_LLVM_Convention (CC : Convention_Id) return Call_Conv_T is
+   begin
+      case CC is
+         when Convention_Stdcall => return X86_Stdcall_Call_Conv;
+         when others => return C_Call_Conv;
+      end case;
+   end GNAT_To_LLVM_Convention;
 
    ----------------------------
    -- List_Length_Non_Pragma --

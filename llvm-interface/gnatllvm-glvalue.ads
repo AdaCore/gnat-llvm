@@ -19,6 +19,7 @@ with Ada.Unchecked_Deallocation;
 
 with Einfo.Utils; use Einfo.Utils;
 with Sem_Util;    use Sem_Util; use Sem_Util.Storage_Model_Support;
+with Snames;      use Snames;
 
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
@@ -1483,6 +1484,10 @@ package GNATLLVM.GLValue is
    procedure Set_Linkage (V : GL_Value; Linkage : Linkage_T)
      with Pre => Is_A_Global_Variable (V) or else Is_A_Function (V), Inline;
    --  Set the linkage type for a variable or function
+
+   procedure Set_Function_Call_Conv (V : GL_Value; CC : Convention_Id)
+     with Pre => Is_A_Function (V), Inline;
+   --  Set the calling convention for a function
 
    procedure Set_Absolute_Address (V : GL_Value; Addr : GL_Value)
      with Pre => Tagged_Pointers

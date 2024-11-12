@@ -2758,6 +2758,8 @@ package body GNATLLVM.Subprograms is
             Set_Linkage (LLVM_Func, Internal_Linkage);
          end if;
 
+         Set_Function_Call_Conv (LLVM_Func, Convention (E));
+
          Set_Linker_Section   (LLVM_Func, E);
          Process_Pragmas      (E, LLVM_Func);
          Set_Dup_Global_Value (E, LLVM_Func);

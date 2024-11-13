@@ -178,8 +178,17 @@ package GNATLLVM.Utils is
    procedure Scan_Library_Item (U : Node_Id);
    --  Procedure to scan all library units calling the parameter for each
 
-   function
-     Globalize_Name (S : String; Is_Global : Boolean := True) return String;
+   function Const_String
+     (File_Index : Source_File_Index) return Value_T;
+
+   function Const_String
+     (File_Index : Source_File_Index; GT : GL_Type) return GL_Value
+   is
+     (G (Const_String (File_Index), GT))
+     with Pre => Present (GT), Post => Is_Constant (Const_String'Result);
+
+   function Globalize_Name
+     (S : String; Is_Global : Boolean := True) return String;
    --  If Is_Global, return a version of S that's known to be globally unique
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");

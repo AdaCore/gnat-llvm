@@ -322,10 +322,12 @@ package body GNATLLVM.Exprs is
                                       else Char_Literal_Value (N)));
 
          when N_External_Initializer => declare
-            Index : constant Source_File_Index := File_Index (N);
-            Elmt_GT : constant GL_Type   := Full_Component_GL_Type (GT);
+
+            Index   : constant Source_File_Index := File_Index (N);
+            Elmt_GT : constant GL_Type           :=
+              Full_Component_GL_Type (GT);
          begin
-            pragma Assert (ULL'(Get_Type_Size (Type_Of (Elmt_GT))) = 8);
+            pragma Assert (Get_Type_Size (Type_Of (Elmt_GT)) = UBPU);
             V := Const_String (Index, Prim_GT);
          end;
 
@@ -338,14 +340,14 @@ package body GNATLLVM.Exprs is
             --  pointer.
 
             if Tagged_Pointers and then Is_Address (GT) then
-               V :=
-                 Null_Derived_Ptr
-                   (Const_Int (Size_GL_Type, Intval (N)), GT);
+               V := Null_Derived_Ptr
+                 (Const_Int (Size_GL_Type, Intval (N)), GT);
             else
                V := Const_Int (Prim_GT, Intval (N));
             end if;
 
          when N_Real_Literal =>
+
             if Is_Fixed_Point_Type (GT) then
                V := Const_Int (Prim_GT, Corresponding_Integer_Value (N));
             else

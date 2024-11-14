@@ -26,6 +26,7 @@ with Sem_Aggr;    use Sem_Aggr;
 with Sem_Util;    use Sem_Util;
 with Snames;      use Snames;
 with Stringt;     use Stringt;
+with Table;       use Table;
 with Uintp.LLVM;  use Uintp.LLVM;
 with Urealp;      use Urealp;
 
@@ -48,6 +49,20 @@ with CCG; use CCG;
 
 package body GNATLLVM.Exprs is
 
+   type Write_Back is record
+      LHS : GL_Value;
+      F   : Opt_Record_Field_Kind_Id;
+      RHS : GL_Value;
+   end record;
+
+   package Writeback_Stack is new Table.Table
+     (Table_Component_Type => Write_Back,
+      Table_Index_Type     => Nat,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 2,
+      Table_Increment      => 1,
+      Table_Name           => "Writeback_Stack");
+
    procedure Emit_For_Address
      (N : N_Subexpr_Id; V : out GL_Value; Bits : out Uint);
    --  Helper for Emit_Attribute_Reference to recursively find the address
@@ -64,6 +79,38 @@ package body GNATLLVM.Exprs is
 
    Annotate_Fn : GL_Value := No_GL_Value;
    --  Declaration for CCG builtin annotation function, if any
+
+   --------------------
+   -- Add_Write_Back --
+   --------------------
+
+   procedure Add_Write_Back
+     (LHS : GL_Value; F : Opt_Record_Field_Kind_Id; RHS : GL_Value) is
+   begin
+      Writeback_Stack.Append ((LHS => LHS, F => F, RHS => RHS));
+   end Add_Write_Back;
+
+   ------------------------
+   -- Perform_Writebacks --
+   ------------------------
+
+   procedure Perform_Writebacks is
+   begin
+      for J in reverse 1 .. Writeback_Stack.Last loop
+         declare
+            WB : constant Write_Back := Writeback_Stack.Table (J);
+
+         begin
+            if Present (WB.F) then
+               Discard (Build_Field_Store (WB.LHS, WB.F, WB.RHS));
+            else
+               Emit_Assignment (WB.LHS, Value => WB.RHS);
+            end if;
+         end;
+      end loop;
+
+      Writeback_Stack.Set_Last (0);
+   end Perform_Writebacks;
 
    ------------------
    -- Is_Safe_From --

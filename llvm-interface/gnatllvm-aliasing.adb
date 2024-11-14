@@ -27,16 +27,17 @@ with Sem_Eval;    use Sem_Eval;
 with Sem_Util;    use Sem_Util;
 with Table;       use Table;
 
-with GNATLLVM.Aliasing.Params; use GNATLLVM.Aliasing.Params;
-with GNATLLVM.Arrays;          use GNATLLVM.Arrays;
-with GNATLLVM.Environment;     use GNATLLVM.Environment;
-with GNATLLVM.GLType;          use GNATLLVM.GLType;
-with GNATLLVM.Helper;          use GNATLLVM.Helper;
-with GNATLLVM.Instructions;    use GNATLLVM.Instructions;
-with GNATLLVM.Records;         use GNATLLVM.Records;
-with GNATLLVM.Types;           use GNATLLVM.Types;
-with GNATLLVM.Utils;           use GNATLLVM.Utils;
-with GNATLLVM.Wrapper;         use GNATLLVM.Wrapper;
+with GNATLLVM.Aliasing.Params;   use GNATLLVM.Aliasing.Params;
+with GNATLLVM.Arrays;            use GNATLLVM.Arrays;
+with GNATLLVM.Environment;       use GNATLLVM.Environment;
+with GNATLLVM.GLType;            use GNATLLVM.GLType;
+with GNATLLVM.Helper;            use GNATLLVM.Helper;
+with GNATLLVM.Instructions;      use GNATLLVM.Instructions;
+with GNATLLVM.Records;           use GNATLLVM.Records;
+with GNATLLVM.Records.Field_Ref; use GNATLLVM.Records.Field_Ref;
+with GNATLLVM.Types;             use GNATLLVM.Types;
+with GNATLLVM.Utils;             use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;           use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Aliasing is
 

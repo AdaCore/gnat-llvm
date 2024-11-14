@@ -440,6 +440,10 @@ package GNATLLVM.GLType is
      (Is_Integer_Type (Full_Etype (GT)))
      with Pre => Present (GT);
 
+   function Is_Enumeration_Type (GT : GL_Type) return Boolean is
+     (Is_Enumeration_Type (Full_Etype (GT)))
+     with Pre => Present (GT);
+
    function Is_Boolean_Type (GT : GL_Type) return Boolean is
      (Is_Boolean_Type (Full_Etype (GT)))
      with Pre => Present (GT);

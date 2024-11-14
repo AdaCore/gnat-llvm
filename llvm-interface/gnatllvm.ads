@@ -300,6 +300,7 @@ package GNATLLVM is
    Integer_GL_Type   : GL_Type := No_GL_Type;
    LI_GL_Type        : GL_Type := No_GL_Type;
    LLI_GL_Type       : GL_Type := No_GL_Type;
+   Max_Int_GL_Type   : GL_Type := No_GL_Type;
    Void_GL_Type      : GL_Type := No_GL_Type;
    Address_GL_Type   : GL_Type := No_GL_Type;
    Any_Array_GL_Type : GL_Type := No_GL_Type;
@@ -319,9 +320,10 @@ package GNATLLVM is
    UBPU               : ULL;
    Bit_T              : Type_T := No_Type_T;
    Byte_T             : Type_T := No_Type_T;
+   Max_Int_T          : Type_T := No_Type_T;
    Max_Align          : Nat;
    Max_Valid_Align    : Nat;
-   Max_Int_Size       : Uint;
+   Max_Int_Size       : Nat;
 
    --  The actual main source file index. If -gnatDG,
    --  Main_Source_File_Index is wrong.

@@ -31,7 +31,6 @@ with Table;      use Table;
 with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
-with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
@@ -1351,10 +1350,6 @@ package body GNATLLVM.Records.Create is
          function End_Position (Pos, Size : Uint) return Uint is
            (Align_Pos (Pos + Size, BPU));
 
-         function Fits_In_Bitfield_Field (AF : Added_Field) return Boolean;
-         --  True if the field denoted by AF fits in the current bitfield
-         --  field.
-
          procedure Create_Bitfield_Field (J : Int);
          --  We're processing the component at table index J, which is known
          --  to be a bitfield. Create an LLVM field to hold contents of
@@ -1574,24 +1569,6 @@ package body GNATLLVM.Records.Create is
             Added_Fields.Table (R) := Temp;
          end Swap_Fields;
 
-         ----------------------------
-         -- Fits_In_Bitfield_Field --
-         ----------------------------
-
-         function Fits_In_Bitfield_Field (AF : Added_Field) return Boolean is
-            SP : constant Uint := Start_Position (AF.Pos);
-            EP : constant Uint := End_Position (AF.Pos, AF.Size);
-
-         begin
-            return SP < Bitfield_End_Pos
-              and then (not Emit_C
-                        or else EP - Bitfield_Start_Pos <=
-                                Get_Long_Long_Size);
-         end Fits_In_Bitfield_Field;
-
-         --  If we're emitting C, don't let the bitsize be wider than
-         --  "long long" since we can't do arithmetic wider than that.
-
          ---------------------------
          -- Create_Bitfield_Field --
          ---------------------------
@@ -1621,8 +1598,6 @@ package body GNATLLVM.Records.Create is
 
             --  Now go through all the remaining components that start within
             --  the field we made and widen the bitfield field to include it.
-            --  If we're emitting C, don't let the bitsize be wider than
-            --  "long long" since we can't do arithmetic wider than that.
 
             for K in J + 1 .. Added_Fields.Last loop
                declare
@@ -1635,7 +1610,7 @@ package body GNATLLVM.Records.Create is
                     or else (not Is_Bitfield_By_Rep (F, AF_K.Pos, AF_K.Size,
                                                      Use_Pos_Size => True)
                              and then not Full_Access)
-                    or else (not Fits_In_Bitfield_Field (AF_K)
+                    or else (Start_Position (AF_K.Pos) >= Bitfield_End_Pos
                              and then not Full_Access);
 
                   Bitfield_End_Pos := End_Position (AF_K.Pos, AF_K.Size);
@@ -1977,7 +1952,7 @@ package body GNATLLVM.Records.Create is
                                   and then Full_Access)
                      then
                         if No (Bitfield_Start_Pos)
-                          or else not Fits_In_Bitfield_Field (AF)
+                          or else Start_Position (AF.Pos) >= Bitfield_End_Pos
                         then
                            Create_Bitfield_Field (J);
                         end if;

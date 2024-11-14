@@ -879,6 +879,10 @@ package GNATLLVM.GLValue is
      (Is_Integer_Type (Full_Etype (V)))
      with Pre => Present (V);
 
+   function Is_Enumeration_Type (V : GL_Value) return Boolean is
+     (Is_Enumeration_Type (Full_Etype (V)))
+     with Pre => Present (V);
+
    function Is_Boolean_Type (V : GL_Value) return Boolean is
      (Is_Boolean_Type (Full_Etype (V)))
      with Pre => Present (V);
@@ -1026,6 +1030,10 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function Is_Nonsymbolic_Constant (V : GL_Value) return Boolean
+     with Pre => Present (V);
+
+   function Is_Undef_Or_Nonsymbolic_Constant (V : GL_Value) return Boolean is
+     (Is_Undef (V) or else Is_Nonsymbolic_Constant (V))
      with Pre => Present (V);
 
    function Is_A_Constant_Int (V : GL_Value) return Boolean is

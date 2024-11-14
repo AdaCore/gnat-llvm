@@ -1304,18 +1304,8 @@ package body CCG.Subprograms is
          --  See if V is in the list of deferred decls
 
          Pos := Find (Declaration_Map, V);
-         if Has_Element (Pos) then
-            declare
-               Gidx : constant Global_Decl_Idx := Element (Pos);
-
-            begin
-               --  If V is a builtin, it's possible that we don't have a
-               --  decls to write here.
-
-               if Present (Gidx) then
-                  Write_One_Declaration (Gidx, V);
-               end if;
-            end;
+         if Has_Element (Pos) and then Present (Element (Pos)) then
+            Write_One_Declaration (Element (Pos), V);
          end if;
       end Maybe_Write_Decl;
 

@@ -29,23 +29,24 @@ with Stand;       use Stand;
 with Stringt;     use Stringt;
 with Table;       use Table;
 
-with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
-with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
-with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
-with GNATLLVM.Builtins;     use GNATLLVM.Builtins;
-with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
-with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
-with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
-with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
-with GNATLLVM.Environment;  use GNATLLVM.Environment;
-with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
-with GNATLLVM.Instructions; use GNATLLVM.Instructions;
-with GNATLLVM.Records;      use GNATLLVM.Records;
-with GNATLLVM.Types;        use GNATLLVM.Types;
-with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
-with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
-with GNATLLVM.Utils;        use GNATLLVM.Utils;
-with GNATLLVM.Variables;    use GNATLLVM.Variables;
+with GNATLLVM.Aliasing;          use GNATLLVM.Aliasing;
+with GNATLLVM.Arrays;            use GNATLLVM.Arrays;
+with GNATLLVM.Blocks;            use GNATLLVM.Blocks;
+with GNATLLVM.Builtins;          use GNATLLVM.Builtins;
+with GNATLLVM.Codegen;           use GNATLLVM.Codegen;
+with GNATLLVM.Conditionals;      use GNATLLVM.Conditionals;
+with GNATLLVM.Conversions;       use GNATLLVM.Conversions;
+with GNATLLVM.DebugInfo;         use GNATLLVM.DebugInfo;
+with GNATLLVM.Environment;       use GNATLLVM.Environment;
+with GNATLLVM.Exprs;             use GNATLLVM.Exprs;
+with GNATLLVM.Instructions;      use GNATLLVM.Instructions;
+with GNATLLVM.Records;           use GNATLLVM.Records;
+with GNATLLVM.Records.Field_Ref; use GNATLLVM.Records.Field_Ref;
+with GNATLLVM.Types;             use GNATLLVM.Types;
+with GNATLLVM.Types.Create;      use GNATLLVM.Types.Create;
+with GNATLLVM.Subprograms;       use GNATLLVM.Subprograms;
+with GNATLLVM.Utils;             use GNATLLVM.Utils;
+with GNATLLVM.Variables;         use GNATLLVM.Variables;
 
 with CCG; use CCG;
 
@@ -113,7 +114,8 @@ package body GNATLLVM.Compile is
       Int_32_Type       := Stand_Type (32);
       Int_64_Type       := Stand_Type (64);
 
-      --  Do some sanity checking of type sizes
+      --  Do some sanity checking of type sizes to ensure they're
+      --  nondecreasing.
 
       if No (Size_Type) then
          Early_Error ("No integer type corresponds to word size");
@@ -142,8 +144,9 @@ package body GNATLLVM.Compile is
       Bit_T        := Int_Ty (Nat (1));
       Byte_T       := Int_Ty (BPU);
       Max_Align    := Maximum_Alignment * BPU;
-      Max_Int_Size := (if   Enable_128bit_Types then +Long_Long_Long_Size
-                       else +Long_Long_Size);
+      Max_Int_Size := (if   Enable_128bit_Types then Long_Long_Long_Size
+                       else Long_Long_Size);
+      Max_Int_T    := Int_Ty (Max_Int_Size);
 
       --  We want to be able to support overaligned values, but we still need
       --  to have a maximum possible alignment to start with. The maximum
@@ -182,6 +185,7 @@ package body GNATLLVM.Compile is
       Integer_GL_Type   := Primitive_GL_Type (Standard_Integer);
       LI_GL_Type        := Primitive_GL_Type (Standard_Long_Integer);
       LLI_GL_Type       := Primitive_GL_Type (Standard_Long_Long_Integer);
+      Max_Int_GL_Type   := Primitive_GL_Type (Standard_Long_Long_Long_Integer);
       Void_GL_Type      := Primitive_GL_Type (Standard_Void_Type);
       Any_Array_GL_Type := Primitive_GL_Type (Any_Array);
 
@@ -809,6 +813,13 @@ package body GNATLLVM.Compile is
          Result :=
            Emit (N, LHS, For_LHS => For_LHS, Prefer_LHS => True);
 
+         --  If we have an Undef as data, turn it into an undef reference.
+         --  The normal handling of Get, allocating it as a variable, isn't
+         --  wanted in this case.
+
+         if Is_Data (Result) and then Is_Undef (Result) then
+            Result := Get_Undef_Ref (Related_Type (Result));
+
          --  If what we've got now is a Reference_To_Bounds_And_Data let's
          --  return it instead of turning it into Any_Reference. Doing so
          --  would throw away the pointer to the bounds; we can recompute
@@ -817,7 +828,7 @@ package body GNATLLVM.Compile is
          --  (e.g., on Morello, where address arithmetic requires calls to
          --  intrinsics).
 
-         if Relationship (Result) /= Reference_To_Bounds_And_Data then
+         elsif Relationship (Result) /= Reference_To_Bounds_And_Data then
             Result := Get (Result, Any_Reference);
          end if;
       end if;
@@ -1228,8 +1239,10 @@ package body GNATLLVM.Compile is
          when N_Attribute_Reference =>
             return Emit_Attribute_Reference (N);
 
-         when N_Selected_Component =>
+         when N_Selected_Component => Selected_Component : declare
+            BRD : Bitfield_Ref_Desc;
 
+         begin
             --  If we're just processing declarations, make sure we've
             --  elaborated the type of the prefix and do nothing more.
 
@@ -1237,20 +1250,43 @@ package body GNATLLVM.Compile is
                Discard (Full_GL_Type (Prefix (N)));
                return Emit_Undef (GT);
             else
-               return Maybe_Convert_GT
-                 (Build_Field_Load (Emit (Prefix (N),
-                                          For_LHS    => For_LHS,
-                                          Prefer_LHS => Prefer_LHS),
-                                    Entity (Selector_Name (N)),
-                                    LHS        => LHS,
-                                    For_LHS    => For_LHS,
-                                    Prefer_LHS => Prefer_LHS,
-                                    VFA        =>
-                                      Has_Full_Access (Prefix (N))),
-                  GT);
+               --  See if this is part of a mixed bitfield operation. If so,
+               --  handle it that way.
+
+               BRD := Collect_Mixed_Bitfield (N);
+               if Present (BRD) then
+                  return Maybe_Convert_GT (Build_Bitfield_Load (BRD, LHS), GT);
+               else
+                  return Maybe_Convert_GT
+                    (Build_Field_Load (Emit (Prefix (N),
+                                             For_LHS    => For_LHS,
+                                             Prefer_LHS => Prefer_LHS),
+                                       Entity (Selector_Name (N)),
+                                       LHS        => LHS,
+                                       For_LHS    => For_LHS,
+                                       Prefer_LHS => Prefer_LHS,
+                                       VFA        =>
+                                         Has_Full_Access (Prefix (N))),
+                     GT);
+               end if;
             end if;
 
-         when N_Indexed_Component | N_Slice =>
+         end Selected_Component;
+
+         when N_Indexed_Component | N_Slice => Indexed_Component : declare
+            BRD : Bitfield_Ref_Desc;
+
+         begin
+            --  See if this is part of a mixed bitfield operation. If so,
+            --  handle it that way.
+
+            BRD := Collect_Mixed_Bitfield (N);
+            if Present (BRD) then
+               return Maybe_Convert_GT (Build_Bitfield_Load (BRD, LHS), GT);
+            end if;
+
+            --  Otherwise, start by evaluating the prefix
+
             Result := Emit (Prefix (N),
                             For_LHS    => For_LHS,
                             Prefer_LHS => Prefer_LHS);
@@ -1287,8 +1323,7 @@ package body GNATLLVM.Compile is
 
             elsif Nkind (N) = N_Indexed_Component then
                return Maybe_Convert_GT
-                 (Build_Indexed_Load (Result,
-                                      Get_Indices (Expressions (N), Result),
+                 (Build_Indexed_Load (Result, Get_Indices (N, Result),
                                       For_LHS    => For_LHS,
                                       Prefer_LHS => Prefer_LHS,
                                       VFA        =>
@@ -1298,6 +1333,8 @@ package body GNATLLVM.Compile is
             else
                return Get_Slice_LValue (GT, Get (Result, Any_Reference));
             end if;
+
+         end Indexed_Component;
 
          when N_Aggregate | N_Extension_Aggregate =>
             pragma Assert (not For_LHS);
@@ -1309,7 +1346,7 @@ package body GNATLLVM.Compile is
                return Convert_GT
                  (Emit_Record_Aggregate
                     (N, (if   Present (LHS) and then Is_Safe_From (LHS, N)
-                           then LHS else No_GL_Value)),
+                         then LHS else No_GL_Value)),
                   GT);
 
             elsif not Is_Array_Type (GT) then

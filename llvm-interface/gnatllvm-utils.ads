@@ -18,6 +18,7 @@
 with Einfo.Utils; use Einfo.Utils;
 with Nlists;      use Nlists;
 with Sem_Util;    use Sem_Util;
+with Snames;      use Snames;
 with Uintp.LLVM;  use Uintp.LLVM;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
@@ -72,6 +73,9 @@ package GNATLLVM.Utils is
      with Pre => Present (E);
    --  Validate that we support the Convention on E and give an error if we
    --  don't.
+
+   function GNAT_To_LLVM_Convention (CC : Convention_Id) return Call_Conv_T;
+   --  Convert GNAT calling convention to LLVM's CallingConv
 
    procedure Process_Pragmas (E : Entity_Id; V : GL_Value)
      with Pre => not Is_Type (E)

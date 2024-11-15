@@ -19,6 +19,7 @@ with Errout;   use Errout;
 with Output;   use Output;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
+with Sinput;   use Sinput;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
 
@@ -623,6 +624,26 @@ package body GNATLLVM.Utils is
    begin
       Set_Flag1 (E, F);
    end Set_Allocated_For_Return;
+
+   ------------------
+   -- Const_String --
+   ------------------
+
+   function Const_String
+     (File_Index : Source_File_Index) return Value_T
+   is
+      Length : constant unsigned :=
+        unsigned (Source_Last (File_Index) - Source_First (File_Index));
+
+      Text : constant Standard.Types.Source_Buffer_Ptr :=
+        Source_Text (File_Index);
+
+      Pointer : constant access constant Character :=
+        (if Length = 0 then null else
+            Text (Text'First)'Access);
+   begin
+      return Const_String_From_Access (Pointer, Length, 1);
+   end Const_String;
 
    -----------------------
    -- Scan_Library_Item --

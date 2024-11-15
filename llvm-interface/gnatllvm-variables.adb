@@ -29,22 +29,23 @@ with Stand;       use Stand;
 with Stringt;     use Stringt;
 with Table;       use Table;
 
-with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
-with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
-with GNATLLVM.Blocks;       use GNATLLVM.Blocks;
-with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
-with GNATLLVM.Compile;      use GNATLLVM.Compile;
-with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
-with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
-with GNATLLVM.Environment;  use GNATLLVM.Environment;
-with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
-with GNATLLVM.GLType;       use GNATLLVM.GLType;
-with GNATLLVM.Instructions; use GNATLLVM.Instructions;
-with GNATLLVM.Records;      use GNATLLVM.Records;
-with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
-with GNATLLVM.Types;        use GNATLLVM.Types;
-with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
-with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Aliasing;          use GNATLLVM.Aliasing;
+with GNATLLVM.Arrays;            use GNATLLVM.Arrays;
+with GNATLLVM.Blocks;            use GNATLLVM.Blocks;
+with GNATLLVM.Codegen;           use GNATLLVM.Codegen;
+with GNATLLVM.Compile;           use GNATLLVM.Compile;
+with GNATLLVM.Conversions;       use GNATLLVM.Conversions;
+with GNATLLVM.DebugInfo;         use GNATLLVM.DebugInfo;
+with GNATLLVM.Environment;       use GNATLLVM.Environment;
+with GNATLLVM.Exprs;             use GNATLLVM.Exprs;
+with GNATLLVM.GLType;            use GNATLLVM.GLType;
+with GNATLLVM.Instructions;      use GNATLLVM.Instructions;
+with GNATLLVM.Records;           use GNATLLVM.Records;
+with GNATLLVM.Records.Field_Ref; use GNATLLVM.Records.Field_Ref;
+with GNATLLVM.Subprograms;       use GNATLLVM.Subprograms;
+with GNATLLVM.Types;             use GNATLLVM.Types;
+with GNATLLVM.Types.Create;      use GNATLLVM.Types.Create;
+with GNATLLVM.Utils;             use GNATLLVM.Utils;
 
 package body GNATLLVM.Variables is
 

@@ -40,17 +40,42 @@ package GNATLLVM.Records is
    --  If we are expecting one as a possible bound, evaluate this discriminant
    --  as required to compute that bound.
 
-   function Record_Field_Offset
-     (V : GL_Value; Field : Record_Field_Kind_Id) return GL_Value
-     with Pre  => not Is_Data (V),
-          Post => Present (Record_Field_Offset'Result);
-   --  Return a GL_Value that represents the offset of a given record field
-
    function Get_Record_Size_Complexity
      (TE : Record_Kind_Id; Max_Size : Boolean := False) return Nat;
    --  Return the complexity of computing the size of a record. This roughly
    --  gives the number of "things" needed to access to compute the size.
    --  This returns zero iff the record type is of a constant size.
+
+   function Find_Matching_Field
+     (TE    : Record_Kind_Id;
+      Field : Record_Field_Kind_Id) return Opt_Record_Field_Kind_Id;
+   --  Find a field, if any, in the entity list of TE that has the same
+   --  name as F and has Field_Info.
+
+   function Field_Ordinal (F : Record_Field_Kind_Id) return unsigned;
+   --  Return the index of the field denoted by F. We assume here, but
+   --  don't check, that the F is in a record with just a single RI.
+
+   function Parent_Field
+     (F : Record_Field_Kind_Id) return Opt_Record_Field_Kind_Id;
+   function Ancestor_Field
+     (F : Record_Field_Kind_Id) return Record_Field_Kind_Id
+     with Post => Ekind (F) = Ekind (Ancestor_Field'Result);
+   --  Find the parent or ancestor field by walking up both the
+   --  Original_Record_Component chain and the
+   --  Corresponding_Record_Component chains. Only look at records whose
+   --  base types have the same representation as our base type. Only return
+   --  a parent if there is one, but the ancestor can be the original field.
+
+   function Field_Type (F : Record_Field_Kind_Id) return GL_Type
+     with Pre  => Present (Get_Field_Info (F)),
+          Post => Present (Field_Type'Result);
+   --  Return the GL_Type of the field denoted by F
+
+   function Field_Bit_Offset (F : Record_Field_Kind_Id) return Uint
+     with Pre  => Present (Get_Field_Info (F)),
+          Post => Present (Field_Bit_Offset'Result);
+   --  Return the bitfield offset of F or zero if it's not a bitfield
 
    function Get_Record_Type_Size
      (TE         : Record_Kind_Id;
@@ -94,71 +119,10 @@ package GNATLLVM.Records is
    --  Like Get_Type_Alignment, but only for records and is called with
    --  the GNAT type.
 
-   function Emit_Record_Aggregate
-     (N : N_Subexpr_Id; Result_So_Far : GL_Value) return GL_Value
-     with Pre  => Nkind (N) in N_Aggregate | N_Extension_Aggregate
-                  and then Is_Record_Type (Full_Etype (N)),
-          Post => Present (Emit_Record_Aggregate'Result);
-   --  Emit code for a record aggregate at Node. Result_So_Far, if
-   --  Present, contain any fields already filled in for the record.
-
-   function Find_Matching_Field
-     (TE    : Record_Kind_Id;
-      Field : Record_Field_Kind_Id) return Opt_Record_Field_Kind_Id;
-   --  Find a field, if any, in the entity list of TE that has the same
-   --  name as F and has Field_Info.
-
    function Emit_Field_Position
      (E : Record_Field_Kind_Id; V : GL_Value) return GL_Value
      with Post => No (Emit_Field_Position'Result)
                   or else Type_Of (Emit_Field_Position'Result) = Size_T;
-   --  Compute and return the position in bits of the field specified by E
-   --  from the start of its type as a value of Size_Type. If Present, V is
-   --  a value of that type, which is used in the case of a discriminated
-   --  record.
-
-   --  Because the structure of record and field info is private and we
-   --  don't want to generate too many accessors, we provide a function
-   --  here to collect and return information about fields in an RI.
-
-   type Struct_Field is record
-      Field      : Record_Field_Kind_Id;
-      Offset     : ULL;
-      T          : Type_T;
-      GT         : GL_Type;
-   end record;
-
-   type Struct_Field_Array is array (Nat range <>) of Struct_Field;
-
-   function RI_To_Struct_Field_Array
-     (Ridx : Record_Info_Id) return Struct_Field_Array
-     with Pre => Present (Ridx);
-   --  Return an array of struct field entries for the fields in the RI
-
-   function Field_Ordinal (F : Record_Field_Kind_Id) return unsigned;
-   --  Return the index of the field denoted by F. We assume here, but
-   --  don't check, that the F is in a record with just a single RI.
-
-   function Parent_Field
-     (F : Record_Field_Kind_Id) return Opt_Record_Field_Kind_Id;
-   function Ancestor_Field
-     (F : Record_Field_Kind_Id) return Record_Field_Kind_Id
-     with Post => Ekind (F) = Ekind (Ancestor_Field'Result);
-   --  Find the parent or ancestor field by walking up both the
-   --  Original_Record_Component chain and the
-   --  Corresponding_Record_Component chains. Only look at records whose
-   --  base types have the same representation as our base type. Only return
-   --  a parent if there is one, but the ancestor can be the original field.
-
-   function Field_Type (F : Record_Field_Kind_Id) return GL_Type
-     with Pre  => Present (Get_Field_Info (F)),
-          Post => Present (Field_Type'Result);
-   --  Return the GL_Type of the field denoted by F
-
-   function Field_Bit_Offset (F : Record_Field_Kind_Id) return Uint
-     with Pre  => Present (Get_Field_Info (F)),
-          Post => Present (Field_Bit_Offset'Result);
-   --  Return the bitfield offset of F or zero if it's not a bitfield
 
    function Is_Bitfield (F : Record_Field_Kind_Id) return Boolean
      with Pre => Present (Get_Field_Info (F));
@@ -218,60 +182,11 @@ package GNATLLVM.Records is
    --  V but then we have to properly handle the alignment in the BA_Data
    --  case and that's a lot of work.
 
-   function Field_To_Use
-     (LHS : GL_Value; F : Record_Field_Kind_Id) return Record_Field_Kind_Id
-     with Pre => Present (LHS);
-   --  Return the actual field to use to access field F of LHS. This may
-   --  be a field from a related type.
-
-   function Selector_Field
-     (N : N_Selected_Component_Id) return Record_Field_Kind_Id;
-   --  Given a selector for a record, return the actual field to use, taking
-   --  into account the need to find a matching field in related records
-   --  in some cases.
-
-   function Build_Field_Load
-     (In_V       : GL_Value;
-      In_F       : Record_Field_Kind_Id;
-      LHS        : GL_Value := No_GL_Value;
-      For_LHS    : Boolean  := False;
-      Prefer_LHS : Boolean  := False;
-      VFA        : Boolean  := False) return GL_Value
-     with  Pre  => Is_Record_Type (In_V),
-           Post => Present (Build_Field_Load'Result);
-   --  V represents a record. Return a value representing loading field
-   --  In_F from that record. If For_LHS is True, this must be a reference
-   --  to the field, otherwise, it may or may not be a reference, depending
-   --  on what's simpler and the value of Prefer_LHS.
-
-   function Build_Field_Store
-     (In_LHS : GL_Value;
-      In_F   : Record_Field_Kind_Id;
-      RHS    : GL_Value;
-      VFA    : Boolean := False) return GL_Value
-     with Pre => Is_Record_Type (In_LHS) and then Present (RHS);
-   --  Likewise, but perform a store of RHS into the F component of In_LHS.
-   --  If we return a value, that's the record that needs to be stored into
-   --  the actual LHS. If no value if returned, all our work is done.
-
-   procedure Build_Field_Store
-     (LHS  : GL_Value;
-      In_F : Record_Field_Kind_Id;
-      RHS  : GL_Value;
-      VFA  : Boolean := False)
-     with  Pre => Is_Record_Type (LHS) and then Present (RHS);
-   --  Similar to the function version, but we always update LHS.
-
-   procedure Add_Write_Back
-     (LHS : GL_Value; F : Opt_Record_Field_Kind_Id; RHS : GL_Value)
-     with  Pre  => (No (F) or else Is_Record_Type (LHS))
-                   and then Present (RHS);
-   --  Like Build_Field_Store, but stack the operation to be performed
-   --  later. The operations are performed LIFO.
-
-   procedure Perform_Writebacks;
-   --  Perform any writebacks put onto the stack by the Add_Write_Back
-   --  procedure.
+   function Record_Type_For_Field
+     (GT : GL_Type; F : Record_Field_Kind_Id) return Record_Kind_Id
+     with Pre  => Present (GT);
+   --  We have an object of type GT and want to reference field F. Return
+   --  the record type that we have to use for the reference.
 
    function Record_Has_Aliased_Components (TE : Record_Kind_Id) return Boolean;
    --  Return True if any component of TE other than the tag is aliased

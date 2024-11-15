@@ -24,7 +24,6 @@ with Snames;     use Snames;
 with Sprint;     use Sprint;
 with Uintp.LLVM; use Uintp.LLVM;
 
-with GNATLLVM.Aliasing;          use GNATLLVM.Aliasing;
 with GNATLLVM.Compile;           use GNATLLVM.Compile;
 with GNATLLVM.Conditionals;      use GNATLLVM.Conditionals;
 with GNATLLVM.Conversions;       use GNATLLVM.Conversions;
@@ -34,8 +33,6 @@ with GNATLLVM.Instructions;      use GNATLLVM.Instructions;
 with GNATLLVM.Records.Field_Ref; use GNATLLVM.Records.Field_Ref;
 with GNATLLVM.Subprograms;       use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;             use GNATLLVM.Utils;
-with GNATLLVM.Variables;         use GNATLLVM.Variables;
-with GNATLLVM.Wrapper;           use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Records is
 
@@ -58,20 +55,6 @@ package body GNATLLVM.Records is
       Table_Initial        => 5,
       Table_Increment      => 2,
       Table_Name           => "Subtype_Stack");
-
-   type Write_Back is record
-      LHS : GL_Value;
-      F   : Opt_Record_Field_Kind_Id;
-      RHS : GL_Value;
-   end record;
-
-   package Writeback_Stack is new Table.Table
-     (Table_Component_Type => Write_Back,
-      Table_Index_Type     => Nat,
-      Table_Low_Bound      => 1,
-      Table_Initial        => 2,
-      Table_Increment      => 1,
-      Table_Name           => "Writeback_Stack");
 
    function RI_Size_Complexity
      (Idx : Record_Info_Id; Max_Size : Boolean) return Nat
@@ -159,12 +142,6 @@ package body GNATLLVM.Records is
      (V : BA_Data; Cur_Align, Must_Align : Nat) return BA_Data
      with Pre => Present (V), Post => Present (Align_To'Result);
    --  Version for computing back-annotation
-
-   function Record_Type_For_Field
-     (GT : GL_Type; F : Record_Field_Kind_Id) return Record_Kind_Id
-     with Pre  => Present (GT);
-   --  We have an object of type GT and want to reference field F. Return
-   --  the record type that we have to use for the reference.
 
    --  We put the routines used to compute sizes into a generic so that we
    --  can instantiate them using various types of sizing. The most common
@@ -405,6 +382,77 @@ package body GNATLLVM.Records is
 
       return Ent;
    end Find_Matching_Field;
+
+   -------------------
+   -- Field_Ordinal --
+   -------------------
+
+   function Field_Ordinal (F : Record_Field_Kind_Id) return unsigned is
+     (unsigned (Field_Info_Table.Table (Get_Field_Info (F)).Field_Ordinal));
+
+   ----------------
+   -- Field_Type --
+   ----------------
+
+   function Field_Type (F : Record_Field_Kind_Id) return GL_Type is
+      GT : constant GL_Type := Field_Info_Table.Table (Get_Field_Info (F)).GT;
+   begin
+      --  GT may be a dummy type. In that case, we need to get the
+      --  replacement default type.
+
+      return (if Is_Dummy_Type (GT) then Default_GL_Type (GT) else GT);
+   end Field_Type;
+
+   ------------------
+   -- Parent_Field --
+   ------------------
+
+   function Parent_Field
+     (F : Record_Field_Kind_Id) return Opt_Record_Field_Kind_Id
+   is
+      R_TE : constant Record_Kind_Id           := Full_Scope (F);
+      ORC  : constant Opt_Record_Field_Kind_Id :=
+        Original_Record_Component (F);
+      CRC  : constant Opt_Record_Field_Kind_Id :=
+        Corresponding_Record_Component (F);
+
+   begin
+      if Present (ORC) and then ORC /= F
+        and then Has_Compatible_Representation (R_TE, Full_Scope (ORC))
+      then
+         return ORC;
+      elsif Present (CRC) and then CRC /= F
+        and then Has_Compatible_Representation (R_TE, Full_Scope (CRC))
+      then
+         return CRC;
+      else
+         return Empty;
+      end if;
+
+   end Parent_Field;
+
+   --------------------
+   -- Ancestor_Field --
+   --------------------
+
+   function Ancestor_Field
+     (F : Record_Field_Kind_Id) return Record_Field_Kind_Id
+   is
+      PF : Opt_Record_Field_Kind_Id;
+
+   begin
+      return AF : Record_Field_Kind_Id := F do
+         loop
+            PF := Parent_Field (AF);
+
+            if Present (PF) then
+               AF := PF;
+            else
+               exit;
+            end if;
+         end loop;
+      end return;
+   end Ancestor_Field;
 
    ---------------------------------
    -- Get_Discriminant_Constraint --
@@ -1452,26 +1500,6 @@ package body GNATLLVM.Records is
       end return;
    end Get_Record_Type_Alignment;
 
-   -------------------
-   -- Field_Ordinal --
-   -------------------
-
-   function Field_Ordinal (F : Record_Field_Kind_Id) return unsigned is
-     (unsigned (Field_Info_Table.Table (Get_Field_Info (F)).Field_Ordinal));
-
-   ----------------
-   -- Field_Type --
-   ----------------
-
-   function Field_Type (F : Record_Field_Kind_Id) return GL_Type is
-      GT : constant GL_Type := Field_Info_Table.Table (Get_Field_Info (F)).GT;
-   begin
-      --  GT may be a dummy type. In that case, we need to get the
-      --  replacement default type.
-
-      return (if Is_Dummy_Type (GT) then Default_GL_Type (GT) else GT);
-   end Field_Type;
-
    ---------------
    -- TBAA_Type --
    ---------------
@@ -1487,122 +1515,6 @@ package body GNATLLVM.Records is
    begin
       Field_Info_Table.Table (Fidx).TBAA_Type := M;
    end Set_TBAA_Type;
-
-   ------------------
-   -- Parent_Field --
-   ------------------
-
-   function Parent_Field
-     (F : Record_Field_Kind_Id) return Opt_Record_Field_Kind_Id
-   is
-      R_TE : constant Record_Kind_Id           := Full_Scope (F);
-      ORC  : constant Opt_Record_Field_Kind_Id :=
-        Original_Record_Component (F);
-      CRC  : constant Opt_Record_Field_Kind_Id :=
-        Corresponding_Record_Component (F);
-
-   begin
-      if Present (ORC) and then ORC /= F
-        and then Has_Compatible_Representation (R_TE, Full_Scope (ORC))
-      then
-         return ORC;
-      elsif Present (CRC) and then CRC /= F
-        and then Has_Compatible_Representation (R_TE, Full_Scope (CRC))
-      then
-         return CRC;
-      else
-         return Empty;
-      end if;
-
-   end Parent_Field;
-
-   --------------------
-   -- Ancestor_Field --
-   --------------------
-
-   function Ancestor_Field
-     (F : Record_Field_Kind_Id) return Record_Field_Kind_Id
-   is
-      PF : Opt_Record_Field_Kind_Id;
-
-   begin
-      return AF : Record_Field_Kind_Id := F do
-         loop
-            PF := Parent_Field (AF);
-
-            if Present (PF) then
-               AF := PF;
-            else
-               exit;
-            end if;
-         end loop;
-      end return;
-   end Ancestor_Field;
-
-   ------------------------------
-   -- RI_To_Struct_Field_Array --
-   ------------------------------
-
-   function RI_To_Struct_Field_Array
-     (Ridx : Record_Info_Id) return Struct_Field_Array
-   is
-      package Fields is new Table.Table
-        (Table_Component_Type => Struct_Field,
-         Table_Index_Type     => Nat,
-         Table_Low_Bound      => 1,
-         Table_Initial        => 20,
-         Table_Increment      => 5,
-         Table_Name           => "Fields");
-
-      Last_Ord : Int                  := -1;
-      RI       : constant Record_Info := Record_Info_Table.Table (Ridx);
-      F_Idx    : Field_Info_Id        := RI.First_Field;
-      FI       : Field_Info;
-
-   begin
-      --  If this doesn't contain an LLVM type, this is not a native LLVM
-      --  structure, so we can't do anything.
-
-      if No (RI.LLVM_Type) then
-         return Struct_Field_Array'(1 .. 0 => <>);
-      end if;
-
-      --  Otherwise, loop through all the fields in this record. There may
-      --  be multiple fields corresponding to one ordinal, so just look at
-      --  one of them.
-
-      while Present (F_Idx) loop
-         FI := Field_Info_Table.Table (F_Idx);
-
-         if FI.Field_Ordinal /= Last_Ord then
-            Last_Ord := FI.Field_Ordinal;
-            declare
-               F_Type  : constant Type_T        :=
-                 Struct_Get_Type_At_Index (RI.LLVM_Type, unsigned (Last_Ord));
-               Offset  : constant ULL           :=
-                 Get_Element_Offset (RI.LLVM_Type, Last_Ord);
-               GT      : constant GL_Type       :=
-                 (if Is_Bitfield_By_Rep (FI.Field) then No_GL_Type else FI.GT);
-
-            begin
-               Fields.Append ((FI.Field, Offset, F_Type, GT));
-            end;
-         end if;
-
-         F_Idx := FI.Next;
-      end loop;
-
-      declare
-         Result : Struct_Field_Array (1 .. Fields.Last);
-
-      begin
-         for J in Result'Range loop
-            Result (J) := Fields.Table (J);
-         end loop;
-
-         return Result;
-      end;
-   end RI_To_Struct_Field_Array;
 
    ---------------------
    -- Field_Pack_Kind --
@@ -1783,493 +1695,6 @@ package body GNATLLVM.Records is
          end loop;
       end return;
    end Get_Record_Size_Complexity;
-
-   --------------------
-   -- Selector_Field --
-   --------------------
-
-   function Selector_Field
-     (N : N_Selected_Component_Id) return Record_Field_Kind_Id
-   is
-      In_F  : constant Record_Field_Kind_Id := Entity (Selector_Name (N));
-      R_TE  : constant Record_Kind_Id       := Full_Scope (In_F);
-
-   begin
-      --  Ensure R_TE is defined, then find the matching field
-
-      Discard (Type_Of (R_TE));
-      return Find_Matching_Field (R_TE, In_F);
-
-   end Selector_Field;
-
-   -------------------------
-   -- Record_Field_Offset --
-   -------------------------
-
-   function Record_Field_Offset
-     (V : GL_Value; Field : Record_Field_Kind_Id) return GL_Value
-   is
-      F_GT       : GL_Type                           := Full_GL_Type (Field);
-      CRC        : constant Opt_Record_Field_Kind_Id :=
-        Corresponding_Record_Component (Field);
-      Our_Field  : constant Record_Field_Kind_Id     :=
-        (if   No (Get_Field_Info (Field)) and then Present (CRC)
-              and then Full_Etype (CRC) = Full_Etype (F_GT)
-         then CRC else Field);
-      Rec_Type   : constant Record_Kind_Id           := Full_Scope (Our_Field);
-      Rec_GT     : constant GL_Type                  :=
-        Primitive_GL_Type (Rec_Type);
-      First_Idx  : constant Record_Info_Id           :=
-        Get_Record_Info (Rec_Type);
-      F_Idx      : Field_Info_Id                     :=
-        Get_Field_Info (Our_Field);
-      FI         : Field_Info;
-      Our_Idx    : Record_Info_Id;
-      Offset     : GL_Value;
-      RI         : Record_Info;
-      Result     : GL_Value;
-      Result_T   : Type_T;
-
-   begin
-      --  If the field information isn't present, this must be because
-      --  we're referencing a field that's not in this variant and hence is
-      --  a constraint error. So return undefined. But first try to see
-      --  if we can come up with the right field.
-
-      if No (F_Idx) then
-         pragma Assert (Has_Discriminants (Rec_Type));
-
-         if Rec_Type /= Scope (Field) then
-            F_Idx := Get_Field_Info (Find_Matching_Field (Rec_Type, Field));
-         end if;
-
-         if No (F_Idx) then
-            return Get_Undef_Ref (F_GT);
-         end if;
-      end if;
-
-      FI      := Field_Info_Table.Table (F_Idx);
-      F_GT    := FI.GT;
-      Our_Idx := FI.Rec_Info_Idx;
-      Offset  := To_Bytes (Get_Record_Size_So_Far (Rec_Type, V,
-                                                   Start_Idx => First_Idx,
-                                                   Idx       => Our_Idx));
-      RI      := Record_Info_Table.Table (Our_Idx);
-
-      --  If this is the "_parent" field, just do a conversion so we point
-      --  to that type. But add it to the LValue table in case there's
-      --  a reference to its discrminant.
-
-      if Chars (Our_Field) = Name_uParent then
-         Result := Ptr_To_Ref (V, F_GT);
-         Add_To_LValue_List (Result);
-         return Result;
-
-      --  If the current piece is for a variable-sized object, we offset
-      --  to that object and make a pointer to its type. Otherwise,
-      --  make sure we're pointing to Rec_Type.
-
-      elsif Present (RI.GT) then
-         pragma Assert (not Is_Bitfield (Field));
-         Result := GEP (SSI_GL_Type, Pointer_Cast (V, A_Char_GL_Type),
-                        (1 => Offset));
-         Set_Alignment (Result, Nat'Min (Alignment (V), Alignment (Offset)));
-         return Ptr_To_Ref (Result, F_GT);
-      end if;
-
-      --  Get the primitive form of V and make sure that it's not a fat or
-      --  thin pointer, but we don't a copy because we'll be indexing into
-      --  it (and the copy would be incorrect if we want this offset as an
-      --  LValue).
-
-      Result := Get (To_Primitive (V, No_Copy => True), Any_Reference);
-
-      --  Otherwise, if this is not the first piece, we have to offset to
-      --  the field (in bytes).
-
-      if Our_Idx /= First_Idx then
-         Result := Set_Alignment
-           (GEP (SSI_GL_Type, Pointer_Cast (Result, A_Char_GL_Type),
-                 (1 => Offset)),
-            Nat'Min (Alignment (V), Alignment (Offset)));
-      end if;
-
-      --  If the type is not native, we have to convert the pointer to the
-      --  type of this piece (which has no corresponding GNAT type).
-
-      if Is_Nonnative_Type (Rec_Type) then
-         Result :=
-           Ptr_To_Relationship
-             (Result, Pointer_Type (RI.LLVM_Type, Address_Space),
-              Rec_GT, Reference_To_Unknown);
-         Set_Unknown_T (Result, RI.LLVM_Type);
-         Result_T := RI.LLVM_Type;
-      else
-         Result   := Convert_Ref (Result, Rec_GT);
-         Result_T := Type_Of (Rec_GT);
-      end if;
-
-      --  Finally, do a regular GEP for the field
-
-      Result := GEP_To_Relationship
-        (F_GT,
-         (if Is_Bitfield (Field) then Reference_To_Unknown else Reference),
-         Result, Result_T,
-         (1 => Const_Null_32, 2 => Const_Int_32 (ULL (FI.Field_Ordinal))));
-
-      --  If we've set this to a an unknown reference, set the type so that
-      --  we know what we're pointing to.
-
-      Maybe_Initialize_TBAA_For_Field (Result, Field, F_GT);
-
-      if Is_Bitfield (Field) then
-         Set_Unknown_T (Result,
-                        Struct_Get_Type_At_Index
-                          (Result_T, unsigned (FI.Field_Ordinal)));
-      end if;
-
-      return Result;
-
-   end Record_Field_Offset;
-
-   ---------------------------
-   -- Emit_Record_Aggregate --
-   ---------------------------
-
-   function Emit_Record_Aggregate
-     (N : N_Subexpr_Id; Result_So_Far : GL_Value) return GL_Value
-   is
-      GT   : constant GL_Type := Primitive_GL_Type (Full_GL_Type (N));
-      Expr : Opt_N_Component_Association_Id;
-
-   begin
-      --  If we can use Data for the result, it means that each of its
-      --  components must be just a simple component into an LLVM
-      --  structure, so we just go through each of the part of the
-      --  aggregate and use the offset for that field, skipping a
-      --  discriminant of an unchecked union. If not, we use
-      --  Record_Field_Offset to do the reference.
-
-      Expr := First (Component_Associations (N));
-      return Result : GL_Value := Result_So_Far do
-
-         --  If we haven't already made a value, do so now. If this is a
-         --  loadable type or not of dynamic size and we have a value, we
-         --  start with an undef of that type. Otherwise, it's a variable
-         --  of that type.
-
-         if No (Result) then
-            if (Is_Loadable_Type (GT)
-                  or else (not Is_Dynamic_Size (GT)
-                             and then Is_No_Elab_Needed (N)))
-              and then not Is_Nonnative_Type (GT)
-            then
-               Result := Get_Undef (GT);
-            else
-               Result := Allocate_For_Type (GT, N => N);
-            end if;
-         end if;
-
-         --  Now process each expression
-
-         while Present (Expr) loop
-            declare
-               In_F : constant Record_Field_Kind_Id :=
-                 Entity (First (Choices (Expr)));
-               Val  : constant Opt_N_Subexpr_Id     := Expression (Expr);
-               V    : GL_Value;
-               F    : Record_Field_Kind_Id;
-
-            begin
-               if (Ekind (In_F) = E_Discriminant
-                     and then Is_Unchecked_Union (GT))
-                 or else Decls_Only
-               then
-                  if Present (Val) then
-                     Discard (Emit_Expression (Val));
-                  end if;
-
-               elsif Chars (In_F) = Name_uParent then
-
-                  --  If this is "_parent", its fields are our fields too.
-                  --  Assume Expression is also an N_Aggregate.
-
-                  pragma Assert
-                    (Nkind (Expression (Expr))
-                       in N_Aggregate | N_Extension_Aggregate);
-
-                  Result := Emit_Record_Aggregate (Val, Result);
-
-               else
-                  --  We are to actually insert the field. However, if we
-                  --  haven't set any information for this field, it may be
-                  --  a reference to a field that will cause Constraint_Error.
-                  --  If so, just don't do anything with it.
-
-                  F := Find_Matching_Field (Full_Etype (GT), In_F);
-
-                  if Present (Get_Field_Info (F)) then
-                     V := Emit_Convert_Value (Val, Field_Type (F));
-                     V := Build_Field_Store (Result, F, V);
-
-                     if Present (V) then
-                        Result := V;
-                     end if;
-                  else
-                     --  Ensure we understand this case
-
-                     pragma Assert (Ekind (GT) = E_Record_Subtype
-                                      and then Has_Discriminants (GT)
-                                      and then Ekind (F) = E_Component);
-                  end if;
-               end if;
-            end;
-
-            Next (Expr);
-         end loop;
-      end return;
-   end Emit_Record_Aggregate;
-
-   ----------------------
-   -- Build_Field_Load --
-   ----------------------
-
-   function Build_Field_Load
-     (In_V       : GL_Value;
-      In_F       : Record_Field_Kind_Id;
-      LHS        : GL_Value := No_GL_Value;
-      For_LHS    : Boolean  := False;
-      Prefer_LHS : Boolean  := False;
-      VFA        : Boolean  := False) return GL_Value
-   is
-      R_GT   : constant GL_Type              := Related_Type (In_V);
-      R_TE   : constant Record_Kind_Id       :=
-        Record_Type_For_Field (R_GT, In_F);
-      F      : constant Record_Field_Kind_Id :=
-        Find_Matching_Field (R_TE, In_F);
-      F_GT   : constant GL_Type              := Field_Type (F);
-      V      : GL_Value                      := To_Primitive (In_V);
-      Result : GL_Value;
-
-   begin
-      --  If V is Volatile_Full_Access, we have to try to load the full record
-      --  into memory. If we did, and this is for an LHS, we also need to
-      --  set up a writeback.
-
-      if VFA then
-         V  := Get (V, Object);
-
-         if Is_Data (V) and For_LHS then
-            V := Get (V, Any_Reference);
-            Add_Write_Back (In_V, Empty, V);
-         end if;
-      end if;
-
-      --  If we have something in a data form and we're not requiring or
-      --  preferring an LHS, and we have information about the field, we
-      --  can and should do this with an Extract_Value.
-
-      if Is_Data (V) and then not For_LHS and then not Prefer_LHS
-        and then Present (Get_Field_Info (F))
-        and then not Is_Nonnative_Type (F_GT)
-        and then not Is_Nonnative_Type (R_TE)
-        and then (not Is_Array_Bitfield (F)
-                    or else (Is_Nonsymbolic_Constant (V)
-                               and then not Is_Large_Array_Bitfield (F)))
-      then
-         Result := Extract_Value_To_Relationship
-           (F_GT, V, Field_Ordinal (F),
-            (if Is_Bitfield (F) then Unknown else Data));
-      else
-         Result := Record_Field_Offset (Get (V, Any_Reference), F);
-      end if;
-
-      --  If this is the parent field, we're done
-
-      if Chars (F) = Name_uParent then
-         return Result;
-
-      --  Check for the trivial case of a zero-length field
-
-      elsif Known_Esize (F) and then Esize (F) = 0 then
-         return (if    Is_Elementary_Type (F_GT) then Const_Null (F_GT)
-                 elsif Is_Loadable_Type (F_GT)   then Get_Undef (F_GT)
-                 else  Get_Undef_Ref (F_GT));
-
-      --  If we have a bitfield, we need additional processing
-
-      elsif Is_Bitfield (F) then
-         Result := Build_Bitfield_Load
-           (Normalize ((Result, Field_Type (F), +Field_Bit_Offset (F),
-                        +Esize (F))),
-            LHS);
-      end if;
-
-      return Result;
-   end Build_Field_Load;
-
-   ------------------
-   -- Field_To_Use --
-   ------------------
-
-   function Field_To_Use
-     (LHS : GL_Value; F : Record_Field_Kind_Id) return Record_Field_Kind_Id
-   is
-      GT      : constant GL_Type        := Related_Type (LHS);
-      TE      : constant Record_Kind_Id := Record_Type_For_Field (GT, F);
-
-   begin
-      --  Ensure TE is elaborated since we may need info about this field
-
-      Discard (Type_Of (TE));
-      return Find_Matching_Field (TE, F);
-   end Field_To_Use;
-
-   -----------------------
-   -- Build_Field_Store --
-   -----------------------
-
-   function Build_Field_Store
-     (In_LHS : GL_Value;
-      In_F   : Record_Field_Kind_Id;
-      RHS    : GL_Value;
-      VFA    : Boolean := False) return GL_Value
-   is
-      R_GT      : constant GL_Type              := Related_Type (In_LHS);
-      R_TE      : constant Record_Kind_Id       :=
-        Record_Type_For_Field (R_GT, In_F);
-      F         : constant Record_Field_Kind_Id :=
-        Find_Matching_Field (R_TE, In_F);
-      F_Idx     : constant Field_Info_Id        := Get_Field_Info (F);
-      FI        : constant Field_Info           :=
-        Field_Info_Table.Table (F_Idx);
-      F_GT      : constant GL_Type              := FI.GT;
-      Idx       : constant Nat                  := FI.Field_Ordinal;
-      RHS_Cvt   : constant GL_Value             := Convert_GT (RHS, F_GT);
-      LHS       : GL_Value                      := In_LHS;
-      Result    : GL_Value                      := No_GL_Value;
-
-   begin
-      --  First check for the trivial case of a zero-length field
-
-      if Known_Esize (F) and then Esize (F) = 0 then
-         return (if Is_Data (LHS) then LHS else No_GL_Value);
-
-      --  If this is for a volatile full access object, load that object
-
-      elsif VFA and then not Is_Data (LHS) then
-         LHS := Get (To_Primitive (LHS), Object);
-      end if;
-
-      --  If F is a bitfield, we need to process it as such. If it's data
-      --  and not an array bitfield (or the data is an undef or constant),
-      --  we extract the field, call our processing function, store the
-      --  field back, and return it. If it's not data, we pass the address
-      --  and return our original value.
-
-      if Is_Bitfield (F) then
-         if Is_Data (LHS) and then not Is_Large_Array_Bitfield (F)
-           and then (not Is_Array_Bitfield (F)
-                     or else (Is_Undef_Or_Nonsymbolic_Constant (LHS)
-                              and then Is_Nonsymbolic_Constant (RHS)))
-         then
-            declare
-               Idx       : constant unsigned := Field_Ordinal (F);
-               Inner_LHS : constant GL_Value :=
-                 Extract_Value_To_Relationship (F_GT, LHS, Idx, Unknown);
-               New_Inner : constant GL_Value :=
-                 Build_Bitfield_Store
-                   (RHS_Cvt, Normalize ((Inner_LHS, Field_Type (F),
-                                         +Field_Bit_Offset (F), +Esize (F))));
-            begin
-               return Insert_Value (LHS, New_Inner, Idx);
-            end;
-         else
-            declare
-               LHS_For_Access : constant GL_Value := Get (LHS, Any_Reference);
-
-            begin
-               Build_Bitfield_Store
-                 (RHS_Cvt, Normalize
-                    ((Record_Field_Offset (LHS_For_Access, F),
-                     Field_Type (F), +Field_Bit_Offset (F), +Esize (F))));
-               return LHS_For_Access;
-            end;
-         end if;
-
-      --  Handle the cases where F isn't a bitfield. If we're dealing with
-      --  data, just insert the data. Otherwise, emit an assignment. We
-      --  convert RHS to the type of the field except in the case where the
-      --  field is an unconstrained record. In that case, the size of the
-      --  field shouldn't be used for the copy since it's the maximum size
-      --  of the record and hence almost always larger than the amount of
-      --  data to be copied.
-
-      else
-         if Is_Data (LHS) then
-            Result := Insert_Value (LHS, Get (RHS_Cvt, Data), unsigned (Idx));
-         else
-            Emit_Assignment (Record_Field_Offset (LHS, F), Empty,
-                             (if   Is_Unconstrained_Record (F_GT) then RHS
-                              else Convert_GT (RHS, F_GT)));
-         end if;
-
-         return Result;
-      end if;
-
-   end Build_Field_Store;
-
-   -----------------------
-   -- Build_Field_Store --
-   -----------------------
-
-   procedure Build_Field_Store
-     (LHS  : GL_Value;
-      In_F : Record_Field_Kind_Id;
-      RHS  : GL_Value;
-      VFA  : Boolean := False)
-   is
-      Result : constant GL_Value := Build_Field_Store (LHS, In_F, RHS, VFA);
-
-   begin
-      --  If we have a value, copy it back into LHS
-
-      if Present (Result) then
-         Emit_Assignment (LHS, Value => Result);
-      end if;
-   end Build_Field_Store;
-
-   --------------------
-   -- Add_Write_Back --
-   --------------------
-
-   procedure Add_Write_Back
-     (LHS : GL_Value; F : Opt_Record_Field_Kind_Id; RHS : GL_Value) is
-   begin
-      Writeback_Stack.Append ((LHS => LHS, F => F, RHS => RHS));
-   end Add_Write_Back;
-
-   ------------------------
-   -- Perform_Writebacks --
-   ------------------------
-
-   procedure Perform_Writebacks is
-   begin
-      for J in reverse 1 .. Writeback_Stack.Last loop
-         declare
-            WB : constant Write_Back := Writeback_Stack.Table (J);
-
-         begin
-            if Present (WB.F) then
-               Discard (Build_Field_Store (WB.LHS, WB.F, WB.RHS));
-            else
-               Emit_Assignment (WB.LHS, Value => WB.RHS);
-            end if;
-         end;
-      end loop;
-
-      Writeback_Stack.Set_Last (0);
-   end Perform_Writebacks;
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 

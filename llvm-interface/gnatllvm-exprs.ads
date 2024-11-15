@@ -43,6 +43,17 @@ package GNATLLVM.Exprs is
    --  If N is a mixed bitfield reference, BRD describes the bitfield.
    --  Otherwise, F is Empty, Idxs is null, and LHS is the LValue form of N.
 
+   procedure Add_Write_Back
+     (LHS : GL_Value; F : Opt_Record_Field_Kind_Id; RHS : GL_Value)
+     with  Pre  => (No (F) or else Is_Record_Type (LHS))
+                   and then Present (RHS);
+   --  Like Build_Field_Store, but stack the operation to be performed
+   --  later. The operations are performed LIFO.
+
+   procedure Perform_Writebacks;
+   --  Perform any writebacks put onto the stack by the Add_Write_Back
+   --  procedure.
+
    procedure Emit_Overflow_Check (V : GL_Value; N : N_Type_Conversion_Id)
      with Pre => Present (V) and then Is_Elementary_Type (V);
    --  Check that V is within the bounds of N's type.

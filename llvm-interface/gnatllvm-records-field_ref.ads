@@ -57,12 +57,93 @@ package GNATLLVM.Records.Field_Ref is
           Post => Is_Normalized (Normalize'Result);
    --  Return a BRD that has been normalized
 
+   function Record_Field_Offset
+     (V : GL_Value; Field : Record_Field_Kind_Id) return GL_Value
+     with Pre  => not Is_Data (V),
+          Post => Present (Record_Field_Offset'Result);
+   --  Return a GL_Value that represents the offset of a given record field
+
+   function Emit_Record_Aggregate
+     (N : N_Subexpr_Id; Result_So_Far : GL_Value) return GL_Value
+     with Pre  => Nkind (N) in N_Aggregate | N_Extension_Aggregate
+                  and then Is_Record_Type (Full_Etype (N)),
+          Post => Present (Emit_Record_Aggregate'Result);
+   --  Emit code for a record aggregate at Node. Result_So_Far, if
+   --  Present, contain any fields already filled in for the record.
+
+   --  Compute and return the position in bits of the field specified by E
+   --  from the start of its type as a value of Size_Type. If Present, V is
+   --  a value of that type, which is used in the case of a discriminated
+   --  record.
+
+   --  Because the structure of record and field info is private and we
+   --  don't want to generate too many accessors, we provide a function
+   --  here to collect and return information about fields in an RI.
+
+   type Struct_Field is record
+      Field      : Record_Field_Kind_Id;
+      Offset     : ULL;
+      T          : Type_T;
+      GT         : GL_Type;
+   end record;
+
+   type Struct_Field_Array is array (Nat range <>) of Struct_Field;
+
+   function RI_To_Struct_Field_Array
+     (Ridx : Record_Info_Id) return Struct_Field_Array
+     with Pre => Present (Ridx);
+   --  Return an array of struct field entries for the fields in the RI
+
    function Collect_Mixed_Bitfield
      (In_N       : N_Subexpr_Id;
       For_LHS    : Boolean := False;
       Prefer_LHS : Boolean := False) return Bitfield_Ref_Desc
      with Post => No (Collect_Mixed_Bitfield'Result)
                   or else Is_Normalized (Collect_Mixed_Bitfield'Result);
+
+   function Field_To_Use
+     (LHS : GL_Value; F : Record_Field_Kind_Id) return Record_Field_Kind_Id
+     with Pre => Present (LHS);
+   --  Return the actual field to use to access field F of LHS. This may
+   --  be a field from a related type.
+
+   function Selector_Field
+     (N : N_Selected_Component_Id) return Record_Field_Kind_Id;
+   --  Given a selector for a record, return the actual field to use, taking
+   --  into account the need to find a matching field in related records
+   --  in some cases.
+
+   function Build_Field_Load
+     (In_V       : GL_Value;
+      In_F       : Record_Field_Kind_Id;
+      LHS        : GL_Value := No_GL_Value;
+      For_LHS    : Boolean  := False;
+      Prefer_LHS : Boolean  := False;
+      VFA        : Boolean  := False) return GL_Value
+     with  Pre  => Is_Record_Type (In_V),
+           Post => Present (Build_Field_Load'Result);
+   --  V represents a record. Return a value representing loading field
+   --  In_F from that record. If For_LHS is True, this must be a reference
+   --  to the field, otherwise, it may or may not be a reference, depending
+   --  on what's simpler and the value of Prefer_LHS.
+
+   function Build_Field_Store
+     (In_LHS : GL_Value;
+      In_F   : Record_Field_Kind_Id;
+      RHS    : GL_Value;
+      VFA    : Boolean := False) return GL_Value
+     with Pre => Is_Record_Type (In_LHS) and then Present (RHS);
+   --  Likewise, but perform a store of RHS into the F component of In_LHS.
+   --  If we return a value, that's the record that needs to be stored into
+   --  the actual LHS. If no value if returned, all our work is done.
+
+   procedure Build_Field_Store
+     (LHS  : GL_Value;
+      In_F : Record_Field_Kind_Id;
+      RHS  : GL_Value;
+      VFA  : Boolean := False)
+     with  Pre => Is_Record_Type (LHS) and then Present (RHS);
+   --  Similar to the function version, but we always update LHS.
 
    --  If In_N is a nested mix of component and indexed references and one of
    --  the component references is to a bitfield, return data describing

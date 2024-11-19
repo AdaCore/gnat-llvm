@@ -804,7 +804,11 @@ package body GNATLLVM.GLValue is
    -- Get --
    ---------
 
-   function Get (In_V : GL_Value; Rel : GL_Relationship) return GL_Value is
+   function Get
+     (In_V    : GL_Value;
+      Rel     : GL_Relationship;
+      For_LHS : Boolean := False) return GL_Value
+   is
       GT     : constant GL_Type := Related_Type (In_V);
       Our_R  : GL_Relationship  := Relationship (In_V);
       V      : GL_Value         := In_V;
@@ -878,7 +882,7 @@ package body GNATLLVM.GLValue is
       --  allocate memory for it.
 
       elsif Equiv_Relationship (Ref (Our_R), R) then
-         if Is_Constant (V) and then not Is_Undef (V) then
+         if not For_LHS and then Is_Constant (V) then
             return Get (Make_Global_Constant (V), R);
          else
             declare

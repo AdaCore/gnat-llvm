@@ -193,11 +193,12 @@ package body GNATLLVM.Records.Field_Ref is
       end if;
 
       --  Get the primitive form of V and make sure that it's not a fat or
-      --  thin pointer, but we don't a copy because we'll be indexing into
-      --  it (and the copy would be incorrect if we want this offset as an
-      --  LValue).
+      --  thin pointer, but we don't make a copy because we'll be indexing
+      --  into it (and the copy would be incorrect if we want this offset
+      --  as an LValue).
 
-      Result := Get (To_Primitive (V, No_Copy => True), Any_Reference);
+      Result := Get (To_Primitive (V, No_Copy => True), Any_Reference,
+                    For_LHS => True);
 
       --  Otherwise, if this is not the first piece, we have to offset to
       --  the field (in bytes).
@@ -375,7 +376,7 @@ package body GNATLLVM.Records.Field_Ref is
          V  := Get (V, Object);
 
          if Is_Data (V) and For_LHS then
-            V := Get (V, Any_Reference);
+            V := Get (V, Any_Reference, For_LHS => True);
             Add_Write_Back (In_V, Empty, V);
          end if;
       end if;
@@ -396,7 +397,8 @@ package body GNATLLVM.Records.Field_Ref is
            (F_GT, V, Field_Ordinal (F),
             (if Is_Bitfield (F) then Unknown else Data));
       else
-         Result := Record_Field_Offset (Get (V, Any_Reference), F);
+         Result := Record_Field_Offset
+           (Get (V, Any_Reference, For_LHS => True), F);
       end if;
 
       --  If this is the parent field, we're done
@@ -501,7 +503,8 @@ package body GNATLLVM.Records.Field_Ref is
             end;
          else
             declare
-               LHS_For_Access : constant GL_Value := Get (LHS, Any_Reference);
+               LHS_For_Access : constant GL_Value :=
+                 Get (LHS, Any_Reference, For_LHS => True);
 
             begin
                Build_Bitfield_Store
@@ -676,7 +679,8 @@ package body GNATLLVM.Records.Field_Ref is
       N := Refs.Table (Last_Bitfield);
       Result := Emit (Prefix (N), For_LHS    => For_LHS,
                       Prefer_LHS => Prefer_LHS);
-      Result := Record_Field_Offset (Get (Result, Any_Reference),
+      Result := Record_Field_Offset (Get (Result, Any_Reference,
+                                          For_LHS => True),
                                      Selector_Field (N));
       Result := Ptr_To_Ref (Result, SSI_GL_Type);
       Bit_Offset := +Field_Bit_Offset (Selector_Field (N));
@@ -957,7 +961,7 @@ package body GNATLLVM.Records.Field_Ref is
             New_RHS := G (Convert_Aggregate_Constant (+New_RHS, F_T),
                           F_GT, Unknown);
          else
-            New_RHS := Get (New_RHS, Reference);
+            New_RHS := Get (New_RHS, Reference, For_LHS => True);
             New_RHS :=
               Ptr_To_Relationship (New_RHS,
                                    Pointer_Type (F_T, Address_Space),

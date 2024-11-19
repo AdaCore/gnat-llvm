@@ -951,10 +951,15 @@ package GNATLLVM.GLValue is
 
    --  Next are useful functions to manipulate GL_Values
 
-   function Get (In_V : GL_Value; Rel : GL_Relationship) return GL_Value
-     with Pre => Present (In_V), Post => Equiv_Relationship (Get'Result, Rel);
+   function Get
+     (In_V    : GL_Value;
+      Rel     : GL_Relationship;
+      For_LHS : Boolean := False) return GL_Value
+   with Pre => Present (In_V), Post => Equiv_Relationship (Get'Result, Rel);
    --  Produce a GL_Value from In_V whose relationship to its type is given
-   --  by Rel.
+   --  by Rel. If For_LHS is True, this is for an LHS that we're modifying,
+   --  so if we need a reference and In_V is a constant, we need to treat
+   --  it as if it were a variable.
 
    function To_Access (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Present (GT) and then Is_Reference (V),

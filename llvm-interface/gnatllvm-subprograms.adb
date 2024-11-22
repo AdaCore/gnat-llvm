@@ -933,10 +933,6 @@ package body GNATLLVM.Subprograms is
             Add_Cold_Attribute (Func);
          end if;
 
-         if not DSO_Preemptable then
-            Set_DSO_Local (Func);
-         end if;
-
          Set_Dup_Global_Value (S, Func);
          return Func;
       end if;
@@ -1121,6 +1117,10 @@ package body GNATLLVM.Subprograms is
 
       elsif Get_Linkage (Func) = External_Weak_Linkage then
          Set_Linkage (Func, Weak_Any_Linkage);
+      end if;
+
+      if not DSO_Preemptable then
+         Set_DSO_Local (Func);
       end if;
 
       --  Now set up to process this subprogram. The frontend takes care of

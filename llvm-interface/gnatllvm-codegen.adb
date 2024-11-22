@@ -321,10 +321,12 @@ package body GNATLLVM.Codegen is
          PIC_PIE_Set := True;
          PIC_Level := 1;
          PIE_Level := 0;
+         DSO_Preemptable := True;
       elsif S = "-fPIC" then
          PIC_PIE_Set := True;
          PIC_Level := 2;
          PIE_Level := 0;
+         DSO_Preemptable := True;
       elsif S = "-fpie" then
          PIC_PIE_Set := True;
          PIC_Level := 1;

@@ -1146,10 +1146,20 @@ package body GNATLLVM.Types is
             --  These usually use a fat pointer, so force the alignment to
             --  be its size unless the alignment in the tree is smaller.
 
-            return (if   Known_Alignment (TE)
-                    then Nat'Min (Nat (ULL'(Get_Type_Size (T))),
-                                  +Alignment (TE) * BPU)
-                    else Nat (ULL'(Get_Type_Size (T))));
+            --  ??? As a special case, require pointer alignment for
+            --  Ada.Tags.Prim_Ptr because the runtime makes strong
+            --  assumptions about the layout of records containing it, in
+            --  particular Ada.Tags.Dispatch_Table_Wrapper. Ideally, the
+            --  runtime should be improved to relax its assumptions.
+
+            if Get_Ext_Name (TE) = "ada__tags__prim_ptr" then
+               return Nat (ULL'(Get_Type_Size (Address_T)));
+            elsif Known_Alignment (TE) then
+               return Nat'Min (Nat (ULL'(Get_Type_Size (T))),
+                               +Alignment (TE) * BPU);
+            else
+               return Nat (ULL'(Get_Type_Size (T)));
+            end if;
 
          when E_Subprogram_Type =>
 

@@ -1071,13 +1071,15 @@ package body GNATLLVM.Records.Field_Ref is
               (if   Bytes_Big_Endian
                then GEP_To_Relationship (Max_Int_GL_Type, Reference_To_Unknown,
                                          BRD.LHS, (1 => Size_Const_Int (1)))
-               else Convert_Ref (BRD.LHS, SSI_GL_Type));
+               else Convert_Ref (BRD.LHS, Max_Int_GL_Type));
             High_Addr   : constant GL_Value :=
-              (if   Bytes_Big_Endian then BRD.LHS
+              (if   Bytes_Big_Endian then Convert_Ref (BRD.LHS, SSI_GL_Type)
                else GEP (A_Char_GL_Type, BRD.LHS,
                          (1 => To_Bytes (Get_Type_Size (New_F_T)))));
             Low_Ptr     : constant GL_Value :=
               Convert_Ref (Low_Addr, Max_Int_GL_Type);
+            High_Ptr    : constant GL_Value :=
+              Convert_Ref (High_Addr, SSI_GL_Type);
             Shift_Cnt_L : constant GL_Value :=
               G (Const_Int (Max_Int_T, ULL (First_Bit), False), F_GT, Unknown);
             Shift_Cnt_H : constant GL_Value :=
@@ -1095,7 +1097,7 @@ package body GNATLLVM.Records.Field_Ref is
               Trunc_To_Relationship (L_Shr (New_RHS, Shift_Cnt_H), Byte_T,
                                      Unknown);
             Low_Part    : GL_Value          := Load (Low_Ptr);
-            High_Part   : GL_Value          := Load (High_Addr);
+            High_Part   : GL_Value          := Load (High_Ptr);
 
          begin
             --  Verify that the field type is the maximum integer type
@@ -1112,7 +1114,7 @@ package body GNATLLVM.Records.Field_Ref is
             end if;
 
             Store (Build_Or (Low_Part,  Low_Data),  Low_Ptr);
-            Store (Build_Or (High_Part, High_Data), High_Addr);
+            Store (Build_Or (High_Part, High_Data), High_Ptr);
             return No_GL_Value;
          end;
 

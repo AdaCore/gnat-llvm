@@ -45,11 +45,11 @@ package GNATLLVM.Builtins is
      (Call (Build_Intrinsic (Name, Related_Type (Args (Args'First)),
                              (1 => Type_Of (Args (Args'First)))),
             Args));
-   --  Create an intrinsic with the give name and type of the arguments
-   --  and call it.
+   --  Create an intrinsic with the given name and type of the arguments,
+   --  overloaded on the type of the first argument, and call it.
 
    function Call_Intrinsic0 (Name : String; GT : GL_Type) return GL_Value is
-     (Call (Build_Intrinsic (Name, GT, (1 => Type_Of (GT))), (1 .. 0 => <>)));
+     (Call (Build_Intrinsic (Name, GT, (1 .. 0 => <>)), (1 .. 0 => <>)));
    --  Similar, but for intrinsics with no arguments
 
    function Emit_Intrinsic_Call

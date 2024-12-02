@@ -695,29 +695,28 @@ package body GNATLLVM.Builtins is
 
       elsif S = "bounds_set" and then N_Args = 2 then
          V := Emit_Expression (Val);
-         return Call_Intrinsic ("llvm.cheri.cap.bounds.set",
-                                (1 => V,
-                                 2 => Emit_Expression (Next_Actual (Val))));
+         return Call (Build_Intrinsic ("llvm.cheri.cap.bounds.set",
+                                       A_Char_GL_Type, (1 => Size_T)),
+                      (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
 
       elsif S = "bounds_set_exact" and then N_Args = 2 then
          V := Emit_Expression (Val);
-         return Call_Intrinsic ("llvm.cheri.cap.bounds.set.exact",
-                                (1 => V,
-                                 2 => Emit_Expression (Next_Actual (Val))));
+         return Call (Build_Intrinsic ("llvm.cheri.cap.bounds.set.exact",
+                                       A_Char_GL_Type, (1 => Size_T)),
+                      (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
 
       elsif S = "global_data_get" and then N_Args = 0 then
          return Call_Intrinsic0 ("llvm.cheri.ddc.get", A_Char_GL_Type);
 
       elsif S = "perms_and" and then N_Args = 2 then
          V := Emit_Expression (Val);
-         return Call_Intrinsic ("llvm.cheri.cap.perms.and",
-                                (1 => V,
-                                 2 => Emit_Expression (Next_Actual (Val))));
+         return Call (Build_Intrinsic ("llvm.cheri.cap.perms.and",
+                                       A_Char_GL_Type, (1 => Size_T)),
+                      (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
 
       elsif S = "perms_get" and then N_Args = 1 then
-         return Call (Build_Intrinsic
-                        ("llvm.cheri.cap.perms.get", Size_GL_Type,
-                         (1 => Size_T)),
+         return Call (Build_Intrinsic ("llvm.cheri.cap.perms.get",
+                                       Size_GL_Type, (1 => Size_T)),
                       (1 => Emit_Expression (Val)));
 
       elsif S = "program_counter_get" and then N_Args = 0 then
@@ -732,8 +731,9 @@ package body GNATLLVM.Builtins is
                                 (1 => Emit_Expression (Val)));
 
       elsif S = "seal_entry" and then N_Args = 1 then
-         return Call_Intrinsic ("llvm.cheri.cap.seal.entry",
-                                (1 => Emit_Expression (Val)));
+         return Call (Build_Intrinsic ("llvm.cheri.cap.seal.entry",
+                                       A_Char_GL_Type),
+                      (1 => Emit_Expression (Val)));
 
       elsif S = "sealed_get" and then N_Args = 1 then
          return Call_Relationship
@@ -755,9 +755,9 @@ package body GNATLLVM.Builtins is
 
       elsif S = "unseal" and then N_Args = 2 then
          V := Emit_Expression (Val);
-         return Call_Intrinsic ("llvm.cheri.cap.unseal",
-                                (1 => V,
-                                 2 => Emit_Expression (Next_Actual (Val))));
+         return Call (Build_Intrinsic ("llvm.cheri.cap.unseal",
+                                       A_Char_GL_Type),
+                      (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
       end if;
 
       return No_GL_Value;

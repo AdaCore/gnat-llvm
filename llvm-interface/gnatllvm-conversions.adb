@@ -17,6 +17,7 @@
 
 with Einfo.Utils; use Einfo.Utils;
 with Errout;      use Errout;
+with Opt;         use Opt;
 with Snames;      use Snames;
 
 with LLVM.Transforms_Inst_Combine; use LLVM.Transforms_Inst_Combine;
@@ -333,6 +334,7 @@ package body GNATLLVM.Conversions is
                     or else not Can_Use_Internal_Rep (GT))
         and then not (Has_Foreign_Convention (In_GT)
                        or else not Can_Use_Internal_Rep (In_GT))
+        and then not GNAT_Mode
       then
          Error_Msg_Node_1 := Full_Etype (In_GT);
          Error_Msg_Node_2 := Full_Etype (GT);

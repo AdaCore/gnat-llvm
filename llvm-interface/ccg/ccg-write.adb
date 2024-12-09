@@ -214,17 +214,23 @@ package body CCG.Write is
    procedure Write_C_Name (S : String; Need_Suffix : Boolean := False) is
       Append_Suffix : Boolean := Need_Suffix;
    begin
-      --  First check for C predefined types and keywords. Note that we do not
-      --  need to check C keywords which are also Ada reserved words since
-      --  (if present) they were rejected by the Ada front end.
-      --  Those keywords are: case do else for goto if return while.
-      --  In this case, append an _ at the end of the name.
+      --  A leading '#' character means that we are not to declare this
+      --  function because it's declared in some file that the user included.
 
-      if S in "auto" | "bool" | "break" | "char" | "const" | "continue" |
-              "default" | "double" | "enum" | "extern" | "float" | "int" |
-              "long" | "register" | "short" | "signed" | "sizeof" | "static" |
-              "struct" | "switch" | "typedef" | "union" | "unsigned" | "void" |
-              "volatile"
+      if Has_Suppress_Decl_Prefix (S) then
+         Write_C_Name (Decl_Without_Prefix (S));
+
+      --  Next check for C predefined types and keywords and append an _ at
+      --  the end of the name. Note that we do not need to check C keywords
+      --  which are also Ada reserved words since (if present) they were
+      --  rejected by the Ada front end. Those keywords are: case do else
+      --  for goto if return while.
+
+      elsif S in "auto" | "bool" | "break" | "char" | "const" | "continue" |
+                 "default" | "double" | "enum" | "extern" | "float" | "int" |
+                 "long" | "register" | "short" | "signed" | "sizeof" |
+                 "static" | "struct" | "switch" | "typedef" | "union" |
+                 "unsigned" | "void" | "volatile"
       then
          Write_Str (S);
          Append_Suffix := True;

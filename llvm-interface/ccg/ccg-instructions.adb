@@ -1161,6 +1161,8 @@ package body CCG.Instructions is
                   S := +"#pragma " & Name_Buffer (1 .. Name_Len);
                elsif Get_Name_String (Chars (Expr2)) = "verbatim" then
                   S := +Name_Buffer (1 .. Name_Len);
+               elsif Get_Name_String (Chars (Expr2)) = "include" then
+                  S := +"#include """ & Name_Buffer (1 .. Name_Len) & """";
                end if;
             end if;
          end;

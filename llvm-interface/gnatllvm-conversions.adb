@@ -327,6 +327,8 @@ package body GNATLLVM.Conversions is
       --  ??? Even in the "bad" direction, if we have a constant, we may be
       --  able to know more about whether it needs an activation record, for
       --  example if it's not a nested function.
+      --  ??? Disable the warning in GNAT_Mode as a temporary workaround
+      --  for foreign-convention access types in the runtime.
 
       if Is_Access_Subprogram_Type (GT)
         and then Is_Access_Subprogram_Type (In_GT)

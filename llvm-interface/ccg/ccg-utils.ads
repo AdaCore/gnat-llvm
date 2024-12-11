@@ -309,6 +309,14 @@ package CCG.Utils is
    --  user is an instruction, both are in the same basic block, and
    --  there are no instructions with side effects between them.
 
+   function Has_Suppress_Decl_Prefix (S : String) return Boolean is
+     (S'Length > 5 and then S (S'First .. S'First + 4) = "_0023");
+   --  True if S had a leading '#', which means to suppress its declaration
+
+   function Decl_Without_Prefix (S : String) return String is
+     (S (S'First + 5 .. S'Last))
+     with Pre => Has_Suppress_Decl_Prefix (S);
+
    procedure Error_Msg (Msg : String; V : Value_T);
    --  Post an error message via the GNAT errout mechanism. If V
    --  corresponds to an entity from the front end, post it on

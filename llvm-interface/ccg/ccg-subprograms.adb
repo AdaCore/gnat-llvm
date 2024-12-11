@@ -549,6 +549,11 @@ package body CCG.Subprograms is
       if Is_Builtin_Name (S)
         or else S = "memcpy" or else S = "memmove" or else S = "memset"
         or else S = "memcmp" or else S = "malloc" or else S = "free"
+
+         --  If this isn't to be declared (because it's declared in an included
+         --  file), the user has prefixed the name with a '#' character.
+
+         or else Has_Suppress_Decl_Prefix (S)
       then
          return;
       end if;

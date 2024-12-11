@@ -261,7 +261,9 @@ package body CCG.Output is
                      Decl := Decl & " = " & (Init + Initializer);
                   end if;
 
-                  Output_Decl (Decl, Is_Global => True, V => V);
+                  if not Has_Suppress_Decl_Prefix (Get_Value_Name (V)) then
+                     Output_Decl (Decl, Is_Global => True, V => V);
+                  end if;
                end;
 
             --  If this is a constant (we know that it can't be a simple

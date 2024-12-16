@@ -89,6 +89,9 @@ package body GNATLLVM.Blocks is
       --  If True, pass the exception pointer as a third parameter to the
       --  At_End_Proc.
 
+      Finally_Stmts      : List_Id;
+      --  Statements to be executed at normal or abnormal exit of the block
+
       Landing_Pad        : Basic_Block_T;
       --  Basic block containing the landing pad for this block, if any.
 
@@ -420,6 +423,7 @@ package body GNATLLVM.Blocks is
    procedure Push_Block
      (At_End_Proc     : Opt_N_Subexpr_Id := Empty;
       EH_List         : List_Id          := No_List;
+      Finally_Stmts   : List_Id          := No_List;
       Catch_Unhandled : Boolean          := False)
    is
       End_Subp      : Opt_Subprogram_Kind_Id := Empty;
@@ -463,6 +467,7 @@ package body GNATLLVM.Blocks is
                            At_End_Parameter   => End_Parameter,
                            At_End_Parameter_2 => No_GL_Value,
                            At_End_Pass_Excptr => False,
+                           Finally_Stmts      => Finally_Stmts,
                            Landing_Pad        => No_BB_T,
                            Dispatch_BB        => No_BB_T,
                            Exc_Ptr            => No_GL_Value,
@@ -565,6 +570,7 @@ package body GNATLLVM.Blocks is
 
          if (Present (BI.EH_List)
              or else Present (BI.At_End_Proc)
+             or else Present (BI.Finally_Stmts)
              or else BI.Catch_Unhandled)
            and then not BI.Unprotected
          then
@@ -613,14 +619,17 @@ package body GNATLLVM.Blocks is
       end Push_If_Present;
 
    begin
+      Our_BI.Unprotected := True;
+      Emit (BI.Finally_Stmts);
+
       if Present (BI.At_End_Proc) then
          Push_If_Present (BI.At_End_Parameter);
          Push_If_Present (BI.At_End_Parameter_2);
          Push_If_Present (Our_Exc_Ptr);
-         Our_BI.Unprotected := True;
          Call (BI.At_End_Proc, Params (1 .. Last_Param));
-         Our_BI.Unprotected := Unprotected;
       end if;
+
+      Our_BI.Unprotected := Unprotected;
    end Call_At_End;
 
    -------------------------
@@ -1046,7 +1055,8 @@ package body GNATLLVM.Blocks is
       LP_Type           : constant Type_T        := Get_LP_Type;
       Have_Cleanup      : constant Boolean       :=
         (for some J in 1 .. Block =>
-           Present (Block_Stack.Table (J).At_End_Proc)
+           (Present (Block_Stack.Table (J).At_End_Proc)
+            or else Present (Block_Stack.Table (J).Finally_Stmts))
            and then (not Block_Stack.Table (J).Unprotected or else J = Block));
       LP_Inst           : GL_Value               := No_GL_Value;
       N_Dispatch_Froms  : Nat                    :=

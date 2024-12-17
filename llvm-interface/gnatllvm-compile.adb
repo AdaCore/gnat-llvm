@@ -520,19 +520,25 @@ package body GNATLLVM.Compile is
             declare
                Need_Block : constant Boolean :=
                  Present (At_End_Proc (N))
-                 or else Present (Exception_Handlers (N));
+                 or else Present (Exception_Handlers (N))
+                 or else Present (Finally_Statements (N));
 
             begin
                --  If this block doesn't contain any statements, ignore it
 
-               if not Has_Non_Null_Statements (Statements (N)) then
+               if not Has_Non_Null_Statements (Statements (N))
+                    and then No (Finally_Statements (N))
+               then
                   return;
                end if;
 
                --  If we need a block, make it
 
                if Need_Block then
-                  Push_Block (At_End_Proc (N), Exception_Handlers (N));
+                  Push_Block
+                    (At_End_Proc (N),
+                     Exception_Handlers (N),
+                     Finally_Statements (N));
                end if;
 
                Emit (Statements (N));

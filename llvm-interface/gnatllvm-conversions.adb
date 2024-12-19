@@ -17,7 +17,6 @@
 
 with Einfo.Utils; use Einfo.Utils;
 with Errout;      use Errout;
-with Opt;         use Opt;
 with Snames;      use Snames;
 
 with LLVM.Transforms_Inst_Combine; use LLVM.Transforms_Inst_Combine;
@@ -327,8 +326,6 @@ package body GNATLLVM.Conversions is
       --  ??? Even in the "bad" direction, if we have a constant, we may be
       --  able to know more about whether it needs an activation record, for
       --  example if it's not a nested function.
-      --  ??? Disable the warning in GNAT_Mode as a temporary workaround
-      --  for foreign-convention access types in the runtime.
 
       if Is_Access_Subprogram_Type (GT)
         and then Is_Access_Subprogram_Type (In_GT)
@@ -336,7 +333,6 @@ package body GNATLLVM.Conversions is
                     or else not Can_Use_Internal_Rep (GT))
         and then not (Has_Foreign_Convention (In_GT)
                        or else not Can_Use_Internal_Rep (In_GT))
-        and then not GNAT_Mode
       then
          Error_Msg_Node_1 := Full_Etype (In_GT);
          Error_Msg_Node_2 := Full_Etype (GT);

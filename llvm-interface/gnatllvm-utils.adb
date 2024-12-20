@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Errout;   use Errout;
-with Opt;      use Opt;
 with Output;   use Output;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
@@ -220,10 +219,7 @@ package body GNATLLVM.Utils is
 
    procedure Check_Convention (E : Entity_Id) is
    begin
-      --  ??? Disable the warning in GNAT_Mode as a temporary workaround
-      --  for convention C++ in the runtime.
-
-      if Convention (E) = Convention_CPP and then not GNAT_Mode then
+      if Convention (E) = Convention_CPP then
          Error_Msg_NE ("Convention C++ not supported", E, E);
       end if;
    end Check_Convention;

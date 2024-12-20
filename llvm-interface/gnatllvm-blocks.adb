@@ -645,26 +645,28 @@ package body GNATLLVM.Blocks is
       --  we pass and then restore the outermost stack pointer.
 
       for J in reverse To + 1 .. From loop
+         if not Block_Stack.Table (J).Unprotected or else J = From then
+            --  Process any ends of variable lifetimes
 
-         --  Process any ends of variable lifetimes
+            declare
+               Lifetimes : A_Lifetime_Data :=
+                 Block_Stack.Table (J).Lifetime_List;
 
-         declare
-            Lifetimes : A_Lifetime_Data := Block_Stack.Table (J).Lifetime_List;
+            begin
+               while Lifetimes /= null loop
+                  Create_Lifetime_End (Lifetimes.Memory, Lifetimes.Size);
+                  Lifetimes := Lifetimes.Next;
+               end loop;
+            end;
 
-         begin
-            while Lifetimes /= null loop
-               Create_Lifetime_End (Lifetimes.Memory, Lifetimes.Size);
-               Lifetimes := Lifetimes.Next;
-            end loop;
-         end;
+            --  Now call the at-end handler, if any, and record the stack save
+            --  location for this block.
 
-         --  Now call the at-end handler, if any, and record the stack save
-         --  location for this block.
+            Call_At_End (J);
 
-         Call_At_End (J);
-
-         if Present (Block_Stack.Table (J).Stack_Save) then
-            Stack_Save := Block_Stack.Table (J).Stack_Save;
+            if Present (Block_Stack.Table (J).Stack_Save) then
+               Stack_Save := Block_Stack.Table (J).Stack_Save;
+            end if;
          end if;
       end loop;
 

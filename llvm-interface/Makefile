@@ -21,12 +21,12 @@ ADALIB=lib/rts-llvm/adalib
 
 pwd:=$(shell pwd)
 
-LLVM_BUILD=$(pwd)/../llvm/llvm-obj
+LLVM_BUILD_DIR=$(pwd)/../llvm/llvm-obj
 
-ifneq ($(wildcard $(LLVM_BUILD)/bin/llvm-config),)
-  LLVM_CONFIG=$(LLVM_BUILD)/bin/llvm-config
+ifneq ($(wildcard $(LLVM_BUILD_DIR)/bin/llvm-config),)
+  LLVM_CONFIG=$(LLVM_BUILD_DIR)/bin/llvm-config
   LLVM_SRC=$(shell cd `$(LLVM_CONFIG) --includedir`/../..;pwd)
-  CLANG_CXXFLAGS=-I$(LLVM_BUILD)/tools/clang/include -I$(LLVM_SRC)/clang/include
+  CLANG_CXXFLAGS=-I$(LLVM_BUILD_DIR)/tools/clang/include -I$(LLVM_SRC)/clang/include
 else
   LLVM_CONFIG=llvm-config
   CLANG_CXXFLAGS=

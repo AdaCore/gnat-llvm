@@ -422,7 +422,19 @@ package body GNATLLVM.Conditionals is
             RHS := Pointer_Cast (RHS, LHS);
          end if;
 
-         --  Now just do the normal comparison, but be sure to get the
+         --  If this is a one-bit type and we are doing an equality
+         --  comparison with one or an inequality comparison with zero, the
+         --  result is the LHS. We could convert the opposite comparison
+         --  into a NOT operation, but that's not worth the trouble.
+
+         if Type_Of (LHS) = Bit_T
+           and then ((Kind = N_Op_Eq and then Is_Const_1 (RHS))
+                       or else (Kind = N_Op_Ne and then Is_Const_0 (RHS)))
+         then
+            return LHS;
+         end if;
+
+         --  Otherwise just do the normal comparison, but be sure to get the
          --  signedness from the original type, not the base type, unless
          --  the two inputs are of different types.
 

@@ -665,7 +665,7 @@ package GNATLLVM.Instructions is
      (C_If           : GL_Value;
       C_Then, C_Else : Basic_Block_T;
       Optimize       : Boolean := True)
-     with Pre => Ekind (Full_Etype (C_If)) in Enumeration_Kind
+     with Pre => Ekind (Full_Etype (C_If)) in Discrete_Kind
                  and then Present (C_Then) and then Present (C_Else),
           Inline;
 

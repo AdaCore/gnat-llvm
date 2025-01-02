@@ -443,7 +443,8 @@ package body CCG.Write is
          begin
             if Width = 1 then
                Write_Str
-                 (if Const_Int_Get_S_Ext_Value (V) = 0 then "0" else "1");
+                 (if     Const_Int_Get_S_Ext_Value (V) = 0 then "0"
+                  elsif  Need_Unsigned then "1" else "-1");
             elsif Need_Unsigned then
                declare
                   U_Img : constant String :=

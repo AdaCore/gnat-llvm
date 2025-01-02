@@ -1,6 +1,7 @@
 stages:
   - check
   - build
+  - test                        # not actually used, needed for test template
   - test-gnat-llvm
   - test-ccg
 
@@ -59,7 +60,7 @@ include:
 
 # Additional customization
 
-fixedbugs:
+.fixedbugs:common:
   # It happens regularly that tests are added which fail for GNAT-LLVM; not
   # failing the pipeline improves the user experience in such cases because it
   # lets us merge without scary warning messages (while still showing failed

@@ -320,6 +320,15 @@ package body GNATLLVM.GLValue is
       return New_V;
    end Set_SM_Object;
 
+   -------------------
+   -- Mark_Pristine --
+   -------------------
+
+   procedure Mark_Pristine (V : in out GL_Value) is
+   begin
+      V.Is_Pristine := True;
+   end Mark_Pristine;
+
    ------------------
    -- Not_Pristine --
    ------------------

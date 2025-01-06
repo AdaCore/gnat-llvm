@@ -734,6 +734,11 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Inline;
    --  Set the Storage_Module object for V
 
+   procedure Mark_Pristine (V : in out GL_Value)
+     with Pre => Present (V), Post => Is_Pristine (V),
+          Inline;
+   --  Set the Is_Pristine flag in V
+
    procedure Not_Pristine (V : in out GL_Value)
      with Pre => Present (V), Post => not Is_Pristine (V),
           Inline;

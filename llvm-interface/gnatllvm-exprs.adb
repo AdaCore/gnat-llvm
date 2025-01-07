@@ -1138,6 +1138,16 @@ package body GNATLLVM.Exprs is
 
       LHS_And_Component_For_Assignment (Name (N), LHS, F, Idxs, BRD);
 
+      --  If either of these flags is set, is means that we are able
+      --  to build the result into LHS directly and the front end has
+      --  guaranteed that there's no conflict.
+
+      if No_Ctrl_Actions (N) or else No_Finalize_Actions (N) then
+         Mark_Pristine (LHS);
+      end if;
+
+      --  Now do the appropriate type of assignment
+
       if Present (BRD) then
          Build_Bitfield_Store (Emit_Expression (Expression (N)), BRD);
 

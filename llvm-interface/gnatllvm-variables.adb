@@ -596,8 +596,8 @@ package body GNATLLVM.Variables is
             --  the node.
 
             if not Is_Static_Location (Prefix (N))
-              or else not (Is_Static_Expression
-                             (Low_Bound (Simplify_Range (Discrete_Range (N)))))
+              or else not Is_Static_Expression
+                            (Low_Bound (Simplify_Range (Discrete_Range (N))))
             then
                return False;
             end if;

@@ -1907,12 +1907,14 @@ package body GNATLLVM.Subprograms is
          --  a function because we know that it's been converted into a
          --  function whose return is the parameter which has "out" mode,
          --  but we have to make sure the type is correct. We have to
-         --  handle both the integral and record pointer cases.
+         --  handle both the integral and record pointer cases. Also mark that
+         --  the result of an allocator has no useful data in it.
 
       else
          declare
             Result : constant GL_Value  :=
-              Call (Emit_Entity (Proc), Add_Static_Link (Proc, Args));
+              Mark_Pristine (Call (Emit_Entity (Proc),
+                                   Add_Static_Link (Proc, Args)));
             Formal : Opt_Formal_Kind_Id := First_Formal_With_Extras (Proc);
             GT     : GL_Type;
 

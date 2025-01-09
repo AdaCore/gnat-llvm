@@ -2310,7 +2310,7 @@ package body GNATLLVM.Variables is
                                                 E        => E,
                                                 Max_Size => Is_Max_Size (GT)),
                         Any_Reference),
-                   LLVM_Var);
+                   Mark_Pristine (LLVM_Var));
             Copied := True;
          end if;
 
@@ -2488,7 +2488,8 @@ package body GNATLLVM.Variables is
       --  expression, do that now.
 
       elsif not Copied and then (Present (Expr) or else Present (Value)) then
-         Emit_Assignment (Get (LLVM_Var, Any_Reference), Expr, Value);
+         Emit_Assignment
+           (Get (Mark_Pristine (LLVM_Var), Any_Reference), Expr, Value);
       end if;
 
       --  Generate debug information

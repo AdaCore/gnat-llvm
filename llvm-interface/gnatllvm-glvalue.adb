@@ -324,9 +324,22 @@ package body GNATLLVM.GLValue is
    -- Mark_Pristine --
    -------------------
 
-   procedure Mark_Pristine (V : in out GL_Value) is
+   procedure Mark_Pristine (V : in out GL_Value; Flag : Boolean := True) is
    begin
-      V.Is_Pristine := True;
+      V.Is_Pristine := Flag;
+   end Mark_Pristine;
+
+   -------------------
+   -- Mark_Pristine --
+   -------------------
+
+   function Mark_Pristine
+     (V : GL_Value; Flag : Boolean := True) return GL_Value
+   is
+      New_V : GL_Value := V;
+   begin
+      Mark_Pristine (New_V, Flag);
+      return New_V;
    end Mark_Pristine;
 
    ------------------

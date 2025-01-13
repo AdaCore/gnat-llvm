@@ -911,6 +911,9 @@ package body GNATLLVM.DebugInfo is
                then
                   Result := DI_Create_Basic_Type
                     (Name, Size, DW_ATE_Unsigned_Char, DI_Flag_Zero);
+               elsif TE = Standard_Boolean then
+                  Result := DI_Create_Basic_Type
+                    (Name, Size, DW_ATE_Boolean, DI_Flag_Zero);
                else
                   for J in Members'Range loop
                      Members (J) := Member_Table.Table (J);

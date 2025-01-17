@@ -733,10 +733,62 @@ package body GNATLLVM.DebugInfo is
       Set_Is_Being_Elaborated (TE, True);
       case Ekind (TE) is
 
+         when E_Enumeration_Subtype | E_Signed_Integer_Subtype
+              | E_Modular_Integer_Subtype => Sub_Type :
+         declare
+
+            Full_BT : constant Entity_Id := Full_Base_Type (TE);
+            Full_Low : constant Uint
+               := Get_Uint_Value (Type_Low_Bound (Full_BT));
+            Full_High : constant Uint
+               := Get_Uint_Value (Type_High_Bound (Full_BT));
+
+            Base_Type_Data : constant Metadata_T :=
+               Create_Type_Data (Primitive_GL_Type (Full_BT));
+            Low : constant Uint := Get_Uint_Value (Type_Low_Bound (TE));
+            Low_Cst : constant Metadata_T :=
+               (if Present (Low)
+                then Const_64_As_Metadata (Low)
+                else No_Metadata_T);
+            High : constant Uint := Get_Uint_Value (Type_High_Bound (TE));
+            High_Cst : constant Metadata_T :=
+               (if Present (High)
+                then Const_64_As_Metadata (High)
+                else No_Metadata_T);
+
+         begin
+
+            if Present (Low) and then Present (Full_Low)
+               and then Present (High) and then Present (Full_High)
+               and then Low = Full_Low and then High = Full_High
+            then
+
+               Result := DI_Builder_Create_Typedef (Base_Type_Data, Name,
+                  Get_Debug_File_Node (Get_Source_File_Index (S)),
+                  Get_Physical_Line_Number (S), No_Metadata_T, Align);
+
+            else
+
+               Result := Create_Subrange_Type
+                  (DI_Builder, No_Metadata_T, Name,
+                   Get_Debug_File_Node (Get_Source_File_Index (S)),
+                   Get_Physical_Line_Number (S), Size, Align,
+                   DI_Flag_Zero, Is_Unsigned_Type (TE),
+                   Base_Type_Data, Low_Cst, High_Cst,
+                   No_Metadata_T,
+                   (if Has_Biased_Representation (TE)
+                    then Low_Cst
+                    else No_Metadata_T));
+
+            end if;
+
+         end Sub_Type;
+
          --  For scalar, non-enumeration types, we create the corresponding
          --  debug type.
 
-         when Integer_Kind | Fixed_Point_Kind =>
+         when E_Signed_Integer_Type | E_Modular_Integer_Type
+              | Fixed_Point_Kind =>
             Result := DI_Create_Basic_Type
               (Name, Size,
                (if Is_Unsigned_Type (TE) then DW_ATE_Unsigned
@@ -883,7 +935,7 @@ package body GNATLLVM.DebugInfo is
          --  entry. The code below is a bit convoluted to avoid needing a
          --  UI_To_LLI function just for this purpose.
 
-         when Enumeration_Kind => Enumeration :
+         when E_Enumeration_Type => Enumeration :
             begin
                if TE = Standard_Character or TE = Standard_Wide_Character
                   or TE = Standard_Wide_Wide_Character

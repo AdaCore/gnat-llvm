@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with System;
+with LLVM.Debug_Info; use LLVM.Debug_Info;
 
 package GNATLLVM.Wrapper is
 
@@ -484,5 +485,21 @@ package GNATLLVM.Wrapper is
       Line_No         : Physical_Line_Number;
       Debug_Loc       : Metadata_T;
       Block           : Basic_Block_T);
+
+   function Create_Subrange_Type
+     (Builder        : DI_Builder_T;
+      Scope          : Metadata_T;
+      Name           : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Size           : ULL;
+      Align_In_Bits  : Nat;
+      Flags          : DI_Flags_T;
+      IsUnsigned     : Boolean;
+      BaseType       : Metadata_T;
+      Lower_Bound    : Metadata_T;
+      Upper_Bound    : Metadata_T;
+      Stride         : Metadata_T;
+      Bias           : Metadata_T) return Metadata_T;
 
 end GNATLLVM.Wrapper;

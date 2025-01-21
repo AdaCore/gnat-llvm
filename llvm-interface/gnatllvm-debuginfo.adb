@@ -738,10 +738,7 @@ package body GNATLLVM.DebugInfo is
          when Integer_Kind | Fixed_Point_Kind =>
             Result := DI_Create_Basic_Type
               (Name, Size,
-               (if    Size = UBPU
-                then  (if   Is_Unsigned_Type (TE) then DW_ATE_Unsigned_Char
-                       else DW_ATE_Signed_Char)
-                elsif Is_Unsigned_Type (TE) then DW_ATE_Unsigned
+               (if Is_Unsigned_Type (TE) then DW_ATE_Unsigned
                 else  DW_ATE_Signed),
                DI_Flag_Zero);
 

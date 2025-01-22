@@ -680,9 +680,9 @@ package body GNATLLVM.DebugInfo is
       --  data for that structure.
 
       P_Comp_MD := Create_Pointer_To (Comp_MD, Full_Component_Type (DT));
-      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align, "p_array",
+      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align, "P_ARRAY",
                                 S, Align, Size, MD => P_Comp_MD));
-      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align, "p_bounds",
+      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align, "P_BOUNDS",
                                 S, Align, Size, MD => P_Bounds_MD));
 
       return DI_Create_Struct_Type

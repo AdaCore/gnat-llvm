@@ -937,8 +937,11 @@ package body GNATLLVM.DebugInfo is
 
          when E_Enumeration_Type => Enumeration :
             begin
-               if TE = Standard_Character or TE = Standard_Wide_Character
-                  or TE = Standard_Wide_Wide_Character
+               --  Check the Etype here to handle a case like
+               --  "type My_Character is new Character".
+               if Etype (TE) = Standard_Character
+                  or Etype (TE) = Standard_Wide_Character
+                  or Etype (TE) = Standard_Wide_Wide_Character
                then
                   Result := DI_Create_Basic_Type
                     (Name, Size, DW_ATE_Unsigned_Char, DI_Flag_Zero);

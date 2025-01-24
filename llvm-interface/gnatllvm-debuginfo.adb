@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Opt;        use Opt;
+with Sem_Util;   use Sem_Util;
 with Sinput;     use Sinput;
 with Stand;      use Stand;
 with Table;      use Table;
@@ -809,10 +810,22 @@ package body GNATLLVM.DebugInfo is
 
             F : Opt_Record_Field_Kind_Id;
 
+            Original_Type : constant Entity_Id :=
+               (if Is_Packed (TE)
+                then Etype (TE)
+                elsif Ekind (TE) = E_Record_Subtype
+                then Implementation_Base_Type (TE)
+                else Get_Fullest_View (TE));
+
          begin
             F := First_Component_Or_Discriminant (TE);
             while Present (F) loop
-               if Known_Static_Component_Bit_Offset (F)
+               if Get_Fullest_View (Scope (Ancestor_Field (F)))
+                  /= Original_Type
+               then
+                  --  Inherited component, so we can skip it here.
+                  null;
+               elsif Known_Static_Component_Bit_Offset (F)
                  and then Known_Static_Esize (F)
                then
                   declare

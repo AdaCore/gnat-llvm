@@ -870,60 +870,67 @@ package body GNATLLVM.DebugInfo is
          --  entry. The code below is a bit convoluted to avoid needing a
          --  UI_To_LLI function just for this purpose.
 
-         when Enumeration_Kind => Enumeration : declare
-
-            package Member_Table is new Table.Table
-              (Table_Component_Type => Metadata_T,
-               Table_Index_Type     => Int,
-               Table_Low_Bound      => 1,
-               Table_Initial        => 20,
-               Table_Increment      => 5,
-               Table_Name           => "Member_Table");
-
-            Member : Opt_E_Enumeration_Literal_Id;
-
-         begin
-            Member := First_Literal (TE);
-            while Present (Member) loop
-               declare
-                  UI  : constant Uint       := Enumeration_Rep (Member);
-                  Val : constant LLI        :=
-                    Const_Int_Get_S_Ext_Value (Const_Int (Int_Ty (Uint_64),
-                                                             UI));
-                  MD  : constant Metadata_T :=
-                    DI_Create_Enumerator (Get_Name (Member), Val, UI >= 0);
-
-               begin
-                  Member_Table.Append (MD);
-                  Next_Literal (Member);
-               end;
-            end loop;
-
-            declare
-               Members : Metadata_Array (1 .. Member_Table.Last);
-
+         when Enumeration_Kind => Enumeration :
             begin
                if TE = Standard_Character or TE = Standard_Wide_Character
-                 or TE = Standard_Wide_Wide_Character
+                  or TE = Standard_Wide_Wide_Character
                then
                   Result := DI_Create_Basic_Type
                     (Name, Size, DW_ATE_Unsigned_Char, DI_Flag_Zero);
+
                elsif TE = Standard_Boolean then
                   Result := DI_Create_Basic_Type
                     (Name, Size, DW_ATE_Boolean, DI_Flag_Zero);
-               else
-                  for J in Members'Range loop
-                     Members (J) := Member_Table.Table (J);
-                  end loop;
 
-                  Result := DI_Create_Enumeration_Type
-                    (Debug_Compile_Unit, Name,
-                     Get_Debug_File_Node (Get_Source_File_Index (S)),
-                     Get_Physical_Line_Number (S), Size, Align, Members,
-                     No_Metadata_T);
+               else
+                  declare
+
+                     package Member_Table is new Table.Table
+                       (Table_Component_Type => Metadata_T,
+                        Table_Index_Type     => Int,
+                        Table_Low_Bound      => 1,
+                        Table_Initial        => 20,
+                        Table_Increment      => 5,
+                        Table_Name           => "Member_Table");
+
+                     Member : Opt_E_Enumeration_Literal_Id;
+
+                  begin
+                     Member := First_Literal (TE);
+                     while Present (Member) loop
+                        declare
+                           UI  : constant Uint       :=
+                             Enumeration_Rep (Member);
+                           Val : constant LLI        :=
+                             Const_Int_Get_S_Ext_Value
+                                (Const_Int (Int_Ty (Uint_64), UI));
+                           MD  : constant Metadata_T :=
+                             DI_Create_Enumerator (Get_Name (Member), Val,
+                                                   UI >= 0);
+
+                        begin
+                           Member_Table.Append (MD);
+                           Next_Literal (Member);
+                        end;
+                     end loop;
+
+                     declare
+                        Members : Metadata_Array (1 .. Member_Table.Last);
+
+                     begin
+                        for J in Members'Range loop
+                           Members (J) := Member_Table.Table (J);
+                        end loop;
+
+                        Result := DI_Create_Enumeration_Type
+                          (Debug_Compile_Unit, Name,
+                           Get_Debug_File_Node (Get_Source_File_Index (S)),
+                           Get_Physical_Line_Number (S), Size, Align, Members,
+                           No_Metadata_T);
+                     end;
+                  end;
                end if;
-            end;
-         end Enumeration;
+            end Enumeration;
 
          --  Use "unspecified" for every other kind
 

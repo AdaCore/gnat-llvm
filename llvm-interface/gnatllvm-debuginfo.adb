@@ -842,8 +842,10 @@ package body GNATLLVM.DebugInfo is
                end;
             end loop;
 
-            Result := DI_Builder_Create_Array_Type (Size, Align, Inner_Type,
-                                                    Ranges);
+            Result := Create_Array_Type_With_Name (DI_Builder, No_Metadata_T,
+               Name, Get_Debug_File_Node (Get_Source_File_Index (S)),
+               Get_Physical_Line_Number (S),
+               Size, Align, Inner_Type, Ranges);
          end Array_Type;
 
          --  For records, go through each field. If we can make debug info

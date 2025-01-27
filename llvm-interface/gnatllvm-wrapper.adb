@@ -761,4 +761,40 @@ package body GNATLLVM.Wrapper is
          Lower_Bound, Upper_Bound, Stride, Bias);
    end Create_Subrange_Type;
 
+   ---------------------------------
+   -- Create_Array_Type_With_Name --
+   ---------------------------------
+
+   function Create_Array_Type_With_Name
+     (Builder        : DI_Builder_T;
+      Scope          : Metadata_T;
+      Name           : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Size           : ULL;
+      Align_In_Bits  : Nat;
+      Ty             : Metadata_T;
+      Subscripts     : Metadata_Array) return Metadata_T
+   is
+      function Create_Array_Type_With_Name_C
+        (Builder        : DI_Builder_T;
+         Scope          : Metadata_T;
+         Name           : String;
+         File           : Metadata_T;
+         Line_Number    : unsigned;
+         Size           : uint64_t;
+         Align_In_Bits  : uint32_t;
+         Ty             : Metadata_T;
+         Subscripts     : System.Address;
+         Num_Subscripts : unsigned) return Metadata_T
+      with Import => True,
+         Convention => C,
+         External_Name => "Create_Array_Type_With_Name";
+   begin
+      return Create_Array_Type_With_Name_C
+        (Builder, Scope, Name & ASCII.NUL, File, unsigned (Line_Number),
+         uint64_t (Size), uint32_t (Align_In_Bits), Ty,
+         Subscripts'Address, unsigned (Subscripts'Length));
+   end Create_Array_Type_With_Name;
+
 end GNATLLVM.Wrapper;

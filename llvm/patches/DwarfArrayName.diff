@@ -1,0 +1,76 @@
+diff --git a/llvm/include/llvm/IR/DIBuilder.h b/llvm/include/llvm/IR/DIBuilder.h
+index 45b94044bc64..90ac220a0387 100644
+--- a/llvm/include/llvm/IR/DIBuilder.h
++++ b/llvm/include/llvm/IR/DIBuilder.h
+@@ -557,6 +557,35 @@ namespace llvm {
+         PointerUnion<DIExpression *, DIVariable *> Allocated = nullptr,
+         PointerUnion<DIExpression *, DIVariable *> Rank = nullptr);
+ 
++    /// Create debugging information entry for an array.
++    /// \param Scope          Scope in which this enumeration is defined.
++    /// \param Name           Union name.
++    /// \param File           File where this member is defined.
++    /// \param LineNumber     Line number.
++    /// \param Size         Array size.
++    /// \param AlignInBits  Alignment.
++    /// \param Ty           Element type.
++    /// \param Subscripts   Subscripts.
++    /// \param DataLocation The location of the raw data of a descriptor-based
++    ///                     Fortran array, either a DIExpression* or
++    ///                     a DIVariable*.
++    /// \param Associated   The associated attribute of a descriptor-based
++    ///                     Fortran array, either a DIExpression* or
++    ///                     a DIVariable*.
++    /// \param Allocated    The allocated attribute of a descriptor-based
++    ///                     Fortran array, either a DIExpression* or
++    ///                     a DIVariable*.
++    /// \param Rank         The rank attribute of a descriptor-based
++    ///                     Fortran array, either a DIExpression* or
++    ///                     a DIVariable*.
++    DICompositeType *createArrayType(
++        DIScope *Scope, StringRef Name, DIFile *File, unsigned LineNumber,
++        uint64_t Size, uint32_t AlignInBits, DIType *Ty, DINodeArray Subscripts,
++        PointerUnion<DIExpression *, DIVariable *> DataLocation = nullptr,
++        PointerUnion<DIExpression *, DIVariable *> Associated = nullptr,
++        PointerUnion<DIExpression *, DIVariable *> Allocated = nullptr,
++        PointerUnion<DIExpression *, DIVariable *> Rank = nullptr);
++
+     /// Create debugging information entry for a vector type.
+     /// \param Size         Array size.
+     /// \param AlignInBits  Alignment.
+diff --git a/llvm/lib/IR/DIBuilder.cpp b/llvm/lib/IR/DIBuilder.cpp
+index 6c873c3c6644..27e930e5a87f 100644
+--- a/llvm/lib/IR/DIBuilder.cpp
++++ b/llvm/lib/IR/DIBuilder.cpp
+@@ -600,6 +600,31 @@ DIBuilder::createArrayType(uint64_t Size, uint32_t AlignInBits, DIType *Ty,
+   return R;
+ }
+ 
++DICompositeType *
++DIBuilder::createArrayType(DIScope *Scope, StringRef Name, DIFile *File, unsigned LineNumber,
++                           uint64_t Size, uint32_t AlignInBits, DIType *Ty,
++                           DINodeArray Subscripts,
++                           PointerUnion<DIExpression *, DIVariable *> DL,
++                           PointerUnion<DIExpression *, DIVariable *> AS,
++                           PointerUnion<DIExpression *, DIVariable *> AL,
++                           PointerUnion<DIExpression *, DIVariable *> RK) {
++  auto *R = DICompositeType::get(
++      VMContext, dwarf::DW_TAG_array_type, Name, File, LineNumber,
++      getNonCompileUnitScope(Scope), Ty, Size,
++      AlignInBits, 0, DINode::FlagZero, Subscripts, 0, nullptr, nullptr, "",
++      nullptr,
++      DL.is<DIExpression *>() ? (Metadata *)DL.get<DIExpression *>()
++                              : (Metadata *)DL.get<DIVariable *>(),
++      AS.is<DIExpression *>() ? (Metadata *)AS.get<DIExpression *>()
++                              : (Metadata *)AS.get<DIVariable *>(),
++      AL.is<DIExpression *>() ? (Metadata *)AL.get<DIExpression *>()
++                              : (Metadata *)AL.get<DIVariable *>(),
++      RK.is<DIExpression *>() ? (Metadata *)RK.get<DIExpression *>()
++                              : (Metadata *)RK.get<DIVariable *>());
++  trackIfUnresolved(R);
++  return R;
++}
++
+ DICompositeType *DIBuilder::createVectorType(uint64_t Size,
+                                              uint32_t AlignInBits, DIType *Ty,
+                                              DINodeArray Subscripts) {

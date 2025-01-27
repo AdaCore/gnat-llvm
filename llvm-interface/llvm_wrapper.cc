@@ -1336,3 +1336,17 @@ Enable_Init_Array (TargetMachine *TM)
 {
   TM->Options.UseInitArray = 1;
 }
+
+extern "C"
+void
+Create_And_Insert_Label (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
+			 const char *Name, LLVMMetadataRef File,
+			 unsigned LineNo, LLVMMetadataRef DebugLoc,
+			 LLVMBasicBlockRef Block)
+{
+  auto *L = unwrap(Builder)->createLabel(
+      unwrap<DIScope>(Scope), StringRef(Name, strlen(Name)), unwrap<DIFile>(File),
+      LineNo, false);
+  unwrap(Builder)->insertLabel(L, unwrap<DILocation>(DebugLoc),
+      unwrap(Block));
+}

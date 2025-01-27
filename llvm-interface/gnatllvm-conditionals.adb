@@ -1457,6 +1457,10 @@ package body GNATLLVM.Conditionals is
       end Emit_Loop_Body;
 
    begin
+      if Present (Loop_Identifier) then
+         Add_Label_Debug_Info (Loop_Identifier, BB_Start);
+      end if;
+
       --  Handle each case separarely. First we have the case of no
       --  iteration scheme, where the only ways to exit the loop are
       --  explicit.

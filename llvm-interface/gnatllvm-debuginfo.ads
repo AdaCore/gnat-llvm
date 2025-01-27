@@ -82,6 +82,11 @@ package GNATLLVM.DebugInfo is
    --  Likewise, for local variables. Arg_Num is the argument number if
    --  this is for a parameter.
 
+   procedure Add_Label_Debug_Info (E : Entity_Id; B : Basic_Block_T)
+     with Pre => Present (E);
+   --  Add debugging info for the label E, corresponding to the
+   --  given basic block.
+
    Empty_DI_Expr : Metadata_T;
    --  An empty DI_Expr
 

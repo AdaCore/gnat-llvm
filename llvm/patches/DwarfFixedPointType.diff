@@ -1,0 +1,855 @@
+diff --git a/llvm/include/llvm-c/DebugInfo.h b/llvm/include/llvm-c/DebugInfo.h
+index 72285da40ee3..91b4ace1a21f 100644
+--- a/llvm/include/llvm-c/DebugInfo.h
++++ b/llvm/include/llvm-c/DebugInfo.h
+@@ -156,6 +156,7 @@ enum {
+   LLVMDISubrangeMetadataKind,
+   LLVMDIEnumeratorMetadataKind,
+   LLVMDIBasicTypeMetadataKind,
++  LLVMDIFixedPointTypeMetadataKind,
+   LLVMDIDerivedTypeMetadataKind,
+   LLVMDISubrangeTypeMetadataKind,
+   LLVMDICompositeTypeMetadataKind,
+diff --git a/llvm/include/llvm/AsmParser/LLToken.h b/llvm/include/llvm/AsmParser/LLToken.h
+index 60e25cefbd24..1dd4733ece6b 100644
+--- a/llvm/include/llvm/AsmParser/LLToken.h
++++ b/llvm/include/llvm/AsmParser/LLToken.h
+@@ -449,6 +449,7 @@ enum Kind {
+   DwarfCC,          // DW_CC_foo
+   EmissionKind,     // lineTablesOnly
+   NameTableKind,    // GNU
++  FixedPointKind,   // Fixed point
+   DwarfOp,          // DW_OP_foo
+   DIFlag,           // DIFlagFoo
+   DISPFlag,         // DISPFlagFoo
+diff --git a/llvm/include/llvm/Bitcode/LLVMBitCodes.h b/llvm/include/llvm/Bitcode/LLVMBitCodes.h
+index 3d997382cab0..2b4024c76d8c 100644
+--- a/llvm/include/llvm/Bitcode/LLVMBitCodes.h
++++ b/llvm/include/llvm/Bitcode/LLVMBitCodes.h
+@@ -370,6 +370,7 @@ enum MetadataCodes {
+   METADATA_ARG_LIST = 46,         // [n x [type num, value num]]
+   METADATA_ASSIGN_ID = 47,        // [distinct, ...]
+   METADATA_SUBRANGE_TYPE = 48,    // [distinct, ...]
++  METADATA_FIXED_POINT_TYPE = 49, // [distinct, ...]
+ };
+ 
+ // The constants block (CONSTANTS_BLOCK_ID) describes emission for each
+diff --git a/llvm/include/llvm/IR/DIBuilder.h b/llvm/include/llvm/IR/DIBuilder.h
+index 72f8cf703577..99ef3e585349 100644
+--- a/llvm/include/llvm/IR/DIBuilder.h
++++ b/llvm/include/llvm/IR/DIBuilder.h
+@@ -217,6 +217,42 @@ namespace llvm {
+                                  unsigned Encoding,
+                                  DINode::DIFlags Flags = DINode::FlagZero);
+ 
++    /// Create debugging information entry for a binary fixed-point type.
++    /// \param Name        Type name.
++    /// \param Encoding    DWARF encoding code, either
++    ///                    dwarf::DW_ATE_signed_fixed or DW_ATE_unsigned_fixed.
++    /// \param Flags       Optional DWARF attributes, e.g., DW_AT_endianity.
++    /// \param Factor      Binary scale factor.
++    DIFixedPointType *
++    createBinaryFixedPointType(StringRef Name, uint64_t SizeInBits,
++                               uint32_t AlignInBits, unsigned Encoding,
++                               DINode::DIFlags Flags, int Factor);
++
++    /// Create debugging information entry for a decimal fixed-point type.
++    /// \param Name        Type name.
++    /// \param Encoding    DWARF encoding code, either
++    ///                    dwarf::DW_ATE_signed_fixed or DW_ATE_unsigned_fixed.
++    /// \param Flags       Optional DWARF attributes, e.g., DW_AT_endianity.
++    /// \param Factor      Decimal scale factor.
++    DIFixedPointType *
++    createDecimalFixedPointType(StringRef Name, uint64_t SizeInBits,
++                                uint32_t AlignInBits, unsigned Encoding,
++                                DINode::DIFlags Flags, int Factor);
++
++    /// Create debugging information entry for an arbitrary rational
++    /// fixed-point type.
++    /// \param Name        Type name.
++    /// \param Encoding    DWARF encoding code, either
++    ///                    dwarf::DW_ATE_signed_fixed or DW_ATE_unsigned_fixed.
++    /// \param Flags       Optional DWARF attributes, e.g., DW_AT_endianity.
++    /// \param Numerator   Numerator of scale factor.
++    /// \param Denominator Denominator of scale factor.
++    DIFixedPointType *
++    createRationalFixedPointType(StringRef Name, uint64_t SizeInBits,
++                                 uint32_t AlignInBits, unsigned Encoding,
++                                 DINode::DIFlags Flags, APInt Numerator,
++                                 APInt Denominator);
++
+     /// Create debugging information entry for a string
+     /// type.
+     /// \param Name        Type name.
+diff --git a/llvm/include/llvm/IR/DebugInfoMetadata.h b/llvm/include/llvm/IR/DebugInfoMetadata.h
+index 08e699b232b2..4beaa37d7b3d 100644
+--- a/llvm/include/llvm/IR/DebugInfoMetadata.h
++++ b/llvm/include/llvm/IR/DebugInfoMetadata.h
+@@ -194,6 +194,7 @@ public:
+     case DISubrangeKind:
+     case DIEnumeratorKind:
+     case DIBasicTypeKind:
++    case DIFixedPointTypeKind:
+     case DIStringTypeKind:
+     case DISubrangeTypeKind:
+     case DIDerivedTypeKind:
+@@ -536,6 +537,7 @@ public:
+     default:
+       return false;
+     case DIBasicTypeKind:
++    case DIFixedPointTypeKind:
+     case DIStringTypeKind:
+     case DISubrangeTypeKind:
+     case DIDerivedTypeKind:
+@@ -786,6 +788,7 @@ public:
+     default:
+       return false;
+     case DIBasicTypeKind:
++    case DIFixedPointTypeKind:
+     case DIStringTypeKind:
+     case DISubrangeTypeKind:
+     case DIDerivedTypeKind:
+@@ -806,12 +809,18 @@ class DIBasicType : public DIType {
+ 
+   unsigned Encoding;
+ 
++protected:
+   DIBasicType(LLVMContext &C, StorageType Storage, unsigned Tag,
+               uint64_t SizeInBits, uint32_t AlignInBits, unsigned Encoding,
+               DIFlags Flags, ArrayRef<Metadata *> Ops)
+       : DIType(C, DIBasicTypeKind, Storage, Tag, 0, SizeInBits, AlignInBits, 0,
+                Flags, Ops),
+         Encoding(Encoding) {}
++  DIBasicType(LLVMContext &C, unsigned ID, StorageType Storage, unsigned Tag,
++              uint64_t SizeInBits, uint32_t AlignInBits, unsigned Encoding,
++              DIFlags Flags, ArrayRef<Metadata *> Ops)
++      : DIType(C, ID, Storage, Tag, 0, SizeInBits, AlignInBits, 0, Flags, Ops),
++        Encoding(Encoding) {}
+   ~DIBasicType() = default;
+ 
+   static DIBasicType *getImpl(LLVMContext &Context, unsigned Tag,
+@@ -863,7 +872,132 @@ public:
+   std::optional<Signedness> getSignedness() const;
+ 
+   static bool classof(const Metadata *MD) {
+-    return MD->getMetadataID() == DIBasicTypeKind;
++    return MD->getMetadataID() == DIBasicTypeKind ||
++           MD->getMetadataID() == DIFixedPointTypeKind;
++  }
++};
++
++/// Fixed-point type.
++class DIFixedPointType : public DIBasicType {
++  friend class LLVMContextImpl;
++  friend class MDNode;
++
++  // Actually FixedPointKind.
++  unsigned Kind;
++  // Used for binary and decimal.
++  int Factor;
++  // Used for rational.
++  APInt Numerator;
++  APInt Denominator;
++
++  DIFixedPointType(LLVMContext &C, StorageType Storage, unsigned Tag,
++                   uint64_t SizeInBits, uint32_t AlignInBits, unsigned Encoding,
++                   DIFlags Flags, unsigned Kind, int Factor,
++                   ArrayRef<Metadata *> Ops)
++      : DIBasicType(C, DIFixedPointTypeKind, Storage, Tag, SizeInBits,
++                    AlignInBits, Encoding, Flags, Ops),
++        Kind(Kind), Factor(Factor) {
++    assert(Kind == FixedPointBinary || Kind == FixedPointDecimal);
++  }
++  DIFixedPointType(LLVMContext &C, StorageType Storage, unsigned Tag,
++                   uint64_t SizeInBits, uint32_t AlignInBits, unsigned Encoding,
++                   DIFlags Flags, unsigned Kind, APInt Numerator,
++                   APInt Denominator, ArrayRef<Metadata *> Ops)
++      : DIBasicType(C, DIFixedPointTypeKind, Storage, Tag, SizeInBits,
++                    AlignInBits, Encoding, Flags, Ops),
++        Kind(Kind), Factor(0), Numerator(Numerator), Denominator(Denominator) {
++    assert(Kind == FixedPointRational);
++  }
++  DIFixedPointType(LLVMContext &C, StorageType Storage, unsigned Tag,
++                   uint64_t SizeInBits, uint32_t AlignInBits, unsigned Encoding,
++                   DIFlags Flags, unsigned Kind, int Factor, APInt Numerator,
++                   APInt Denominator, ArrayRef<Metadata *> Ops)
++      : DIBasicType(C, DIFixedPointTypeKind, Storage, Tag, SizeInBits,
++                    AlignInBits, Encoding, Flags, Ops),
++        Kind(Kind), Factor(Factor), Numerator(Numerator),
++        Denominator(Denominator) {}
++  ~DIFixedPointType() = default;
++
++  static DIFixedPointType *
++  getImpl(LLVMContext &Context, unsigned Tag, StringRef Name,
++          uint64_t SizeInBits, uint32_t AlignInBits, unsigned Encoding,
++          DIFlags Flags, unsigned Kind, int Factor, APInt Numerator,
++          APInt Denominator, StorageType Storage, bool ShouldCreate = true) {
++    return getImpl(Context, Tag, getCanonicalMDString(Context, Name),
++                   SizeInBits, AlignInBits, Encoding, Flags, Kind, Factor,
++                   Numerator, Denominator, Storage, ShouldCreate);
++  }
++  static DIFixedPointType *
++  getImpl(LLVMContext &Context, unsigned Tag, MDString *Name,
++          uint64_t SizeInBits, uint32_t AlignInBits, unsigned Encoding,
++          DIFlags Flags, unsigned Kind, int Factor, APInt Numerator,
++          APInt Denominator, StorageType Storage, bool ShouldCreate = true);
++
++  TempDIFixedPointType cloneImpl() const {
++    return getTemporary(getContext(), getTag(), getName(), getSizeInBits(),
++                        getAlignInBits(), getEncoding(), getFlags(), Kind,
++                        Factor, Numerator, Denominator);
++  }
++
++public:
++  enum FixedPointKind : unsigned {
++    /// Scale factor 2^Factor.
++    FixedPointBinary,
++    /// Scale factor 10^Factor.
++    FixedPointDecimal,
++    /// Arbitrary rational scale factor.
++    FixedPointRational,
++    LastFixedPointKind = FixedPointRational,
++  };
++
++  static std::optional<FixedPointKind> getFixedPointKind(StringRef Str);
++  static const char *fixedPointKindString(FixedPointKind);
++
++  DEFINE_MDNODE_GET(DIFixedPointType,
++                    (unsigned Tag, MDString *Name, uint64_t SizeInBits,
++                     uint32_t AlignInBits, unsigned Encoding, DIFlags Flags,
++                     unsigned Kind, int Factor, APInt Numerator,
++                     APInt Denominator),
++                    (Tag, Name, SizeInBits, AlignInBits, Encoding, Flags, Kind,
++                     Factor, Numerator, Denominator))
++  DEFINE_MDNODE_GET(DIFixedPointType,
++                    (unsigned Tag, StringRef Name, uint64_t SizeInBits,
++                     uint32_t AlignInBits, unsigned Encoding, DIFlags Flags,
++                     unsigned Kind, int Factor, APInt Numerator,
++                     APInt Denominator),
++                    (Tag, Name, SizeInBits, AlignInBits, Encoding, Flags, Kind,
++                     Factor, Numerator, Denominator))
++
++  TempDIFixedPointType clone() const { return cloneImpl(); }
++
++  bool isBinary() const { return Kind == FixedPointBinary; }
++  bool isDecimal() const { return Kind == FixedPointDecimal; }
++  bool isRational() const { return Kind == FixedPointRational; }
++
++  bool isSigned() const;
++
++  FixedPointKind getKind() const { return static_cast<FixedPointKind>(Kind); }
++
++  int getFactorRaw() const { return Factor; }
++  int getFactor() const {
++    assert(Kind == FixedPointBinary || Kind == FixedPointDecimal);
++    return Factor;
++  }
++
++  const APInt &getNumeratorRaw() const { return Numerator; }
++  const APInt &getNumerator() const {
++    assert(Kind == FixedPointRational);
++    return Numerator;
++  }
++
++  const APInt &getDenominatorRaw() const { return Denominator; }
++  const APInt &getDenominator() const {
++    assert(Kind == FixedPointRational);
++    return Denominator;
++  }
++
++  static bool classof(const Metadata *MD) {
++    return MD->getMetadataID() == DIFixedPointTypeKind;
+   }
+ };
+ 
+diff --git a/llvm/include/llvm/IR/Metadata.def b/llvm/include/llvm/IR/Metadata.def
+index 43e83bde3e3b..5cc64dc72735 100644
+--- a/llvm/include/llvm/IR/Metadata.def
++++ b/llvm/include/llvm/IR/Metadata.def
+@@ -119,6 +119,7 @@ HANDLE_SPECIALIZED_MDNODE_LEAF_UNIQUABLE(DIArgList)
+ HANDLE_SPECIALIZED_MDNODE_LEAF_UNIQUABLE(DIStringType)
+ HANDLE_SPECIALIZED_MDNODE_LEAF_UNIQUABLE(DIGenericSubrange)
+ HANDLE_SPECIALIZED_MDNODE_LEAF_UNIQUABLE(DISubrangeType)
++HANDLE_SPECIALIZED_MDNODE_LEAF_UNIQUABLE(DIFixedPointType)
+ 
+ #undef HANDLE_METADATA
+ #undef HANDLE_METADATA_LEAF
+diff --git a/llvm/lib/AsmParser/LLLexer.cpp b/llvm/lib/AsmParser/LLLexer.cpp
+index a9cac4de0c2f..dccba3bf9225 100644
+--- a/llvm/lib/AsmParser/LLLexer.cpp
++++ b/llvm/lib/AsmParser/LLLexer.cpp
+@@ -933,6 +933,11 @@ lltok::Kind LLLexer::LexIdentifier() {
+     return lltok::NameTableKind;
+   }
+ 
++  if (Keyword == "Binary" || Keyword == "Decimal" || Keyword == "Rational") {
++    StrVal.assign(Keyword.begin(), Keyword.end());
++    return lltok::FixedPointKind;
++  }
++
+   // Check for [us]0x[0-9A-Fa-f]+ which are Hexadecimal constant generated by
+   // the CFE to avoid forcing it to deal with 64-bit numbers.
+   if ((TokStart[0] == 'u' || TokStart[0] == 's') &&
+diff --git a/llvm/lib/AsmParser/LLParser.cpp b/llvm/lib/AsmParser/LLParser.cpp
+index 12d8a961ee15..b0aaecbe649d 100644
+--- a/llvm/lib/AsmParser/LLParser.cpp
++++ b/llvm/lib/AsmParser/LLParser.cpp
+@@ -4222,6 +4222,10 @@ struct EmissionKindField : public MDUnsignedField {
+   EmissionKindField() : MDUnsignedField(0, DICompileUnit::LastEmissionKind) {}
+ };
+ 
++struct FixedPointKindField : public MDUnsignedField {
++  FixedPointKindField() : MDUnsignedField(0, DIFixedPointType::LastFixedPointKind) {}
++};
++
+ struct NameTableKindField : public MDUnsignedField {
+   NameTableKindField()
+       : MDUnsignedField(
+@@ -4446,6 +4450,25 @@ bool LLParser::parseMDField(LocTy Loc, StringRef Name,
+   return false;
+ }
+ 
++template <>
++bool LLParser::parseMDField(LocTy Loc, StringRef Name,
++                            FixedPointKindField &Result) {
++  if (Lex.getKind() == lltok::APSInt)
++    return parseMDField(Loc, Name, static_cast<MDUnsignedField &>(Result));
++
++  if (Lex.getKind() != lltok::FixedPointKind)
++    return tokError("expected fixed-point kind");
++
++  auto Kind = DIFixedPointType::getFixedPointKind(Lex.getStrVal());
++  if (!Kind)
++    return tokError("invalid fixed-point kind" + Twine(" '") + Lex.getStrVal() +
++                    "'");
++  assert(*Kind <= Result.Max && "Expected valid fixed-point kind");
++  Result.assign(*Kind);
++  Lex.Lex();
++  return false;
++}
++
+ template <>
+ bool LLParser::parseMDField(LocTy Loc, StringRef Name,
+                             NameTableKindField &Result) {
+@@ -4966,6 +4989,33 @@ bool LLParser::parseDIBasicType(MDNode *&Result, bool IsDistinct) {
+   return false;
+ }
+ 
++/// parseDIFixedPointType:
++///   ::= !DIFixedPointType(tag: DW_TAG_base_type, name: "xyz", size: 32, align:
++///   32,
++///                    encoding: DW_ATE_signed_fixed, flags: 0,
++///                    kind: 2, factor: 3, numerator: 1, denominator: 8)
++bool LLParser::parseDIFixedPointType(MDNode *&Result, bool IsDistinct) {
++#define VISIT_MD_FIELDS(OPTIONAL, REQUIRED)                                    \
++  OPTIONAL(tag, DwarfTagField, (dwarf::DW_TAG_base_type));                     \
++  OPTIONAL(name, MDStringField, );                                             \
++  OPTIONAL(size, MDUnsignedField, (0, UINT64_MAX));                            \
++  OPTIONAL(align, MDUnsignedField, (0, UINT32_MAX));                           \
++  OPTIONAL(encoding, DwarfAttEncodingField, );                                 \
++  OPTIONAL(flags, DIFlagField, );                                              \
++  OPTIONAL(kind, FixedPointKindField, );                                       \
++  OPTIONAL(factor, MDSignedField, );                                           \
++  OPTIONAL(numerator, MDAPSIntField, );                                        \
++  OPTIONAL(denominator, MDAPSIntField, );
++  PARSE_MD_FIELDS();
++#undef VISIT_MD_FIELDS
++
++  Result = GET_OR_DISTINCT(DIFixedPointType,
++                           (Context, tag.Val, name.Val, size.Val, align.Val,
++                            encoding.Val, flags.Val, kind.Val, factor.Val,
++                            numerator.Val, denominator.Val));
++  return false;
++}
++
+ /// parseDIStringType:
+ ///   ::= !DIStringType(name: "character(4)", size: 32, align: 32)
+ bool LLParser::parseDIStringType(MDNode *&Result, bool IsDistinct) {
+diff --git a/llvm/lib/Bitcode/Reader/MetadataLoader.cpp b/llvm/lib/Bitcode/Reader/MetadataLoader.cpp
+index 205b7dee9f59..8616c9aef5f1 100644
+--- a/llvm/lib/Bitcode/Reader/MetadataLoader.cpp
++++ b/llvm/lib/Bitcode/Reader/MetadataLoader.cpp
+@@ -1433,6 +1433,39 @@ Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
+     NextMetadataNo++;
+     break;
+   }
++  case bitc::METADATA_FIXED_POINT_TYPE: {
++    if (Record.size() < 11)
++      return error("Invalid record");
++
++    IsDistinct = Record[0];
++    DINode::DIFlags Flags = static_cast<DINode::DIFlags>(Record[6]);
++
++    size_t Offset = 9;
++
++    auto ReadWideInt = [&]() {
++      uint64_t Encoded = Record[Offset++];
++      unsigned NumWords = Encoded >> 32;
++      unsigned BitWidth = Encoded & 0xffffffff;
++      auto Value = readWideAPInt(ArrayRef(&Record[Offset], NumWords), BitWidth);
++      Offset += NumWords;
++      return Value;
++    };
++
++    APInt Numerator = ReadWideInt();
++    APInt Denominator = ReadWideInt();
++
++    if (Offset != Record.size())
++      return error("Invalid record");
++
++    MetadataList.assignValue(
++        GET_OR_DISTINCT(DIFixedPointType,
++                        (Context, Record[1], getMDString(Record[2]), Record[3],
++                         Record[4], Record[5], Flags, Record[7], Record[8],
++                         Numerator, Denominator)),
++        NextMetadataNo);
++    NextMetadataNo++;
++    break;
++  }
+   case bitc::METADATA_STRING_TYPE: {
+     if (Record.size() > 9 || Record.size() < 8)
+       return error("Invalid record");
+diff --git a/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp b/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp
+index a4391636fc4e..090de4f192ae 100644
+--- a/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp
++++ b/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp
+@@ -307,6 +307,9 @@ private:
+                          SmallVectorImpl<uint64_t> &Record, unsigned Abbrev);
+   void writeDIBasicType(const DIBasicType *N, SmallVectorImpl<uint64_t> &Record,
+                         unsigned Abbrev);
++  void writeDIFixedPointType(const DIFixedPointType *N,
++                             SmallVectorImpl<uint64_t> &Record,
++                             unsigned Abbrev);
+   void writeDIStringType(const DIStringType *N,
+                          SmallVectorImpl<uint64_t> &Record, unsigned Abbrev);
+   void writeDIDerivedType(const DIDerivedType *N,
+@@ -1718,6 +1721,35 @@ void ModuleBitcodeWriter::writeDIBasicType(const DIBasicType *N,
+   Record.clear();
+ }
+ 
++void ModuleBitcodeWriter::writeDIFixedPointType(
++    const DIFixedPointType *N, SmallVectorImpl<uint64_t> &Record,
++    unsigned Abbrev) {
++  Record.push_back(N->isDistinct());
++  Record.push_back(N->getTag());
++  Record.push_back(VE.getMetadataOrNullID(N->getRawName()));
++  Record.push_back(N->getSizeInBits());
++  Record.push_back(N->getAlignInBits());
++  Record.push_back(N->getEncoding());
++  Record.push_back(N->getFlags());
++  Record.push_back(N->getKind());
++  Record.push_back(N->getFactorRaw());
++
++  auto WriteWideInt = [&](const APInt &Value) {
++    // Write an encoded word that holds the number of active words and
++    // the number of bits.
++    uint64_t NumWords = Value.getActiveWords();
++    uint64_t Encoded = (NumWords << 32) | Value.getBitWidth();
++    Record.push_back(Encoded);
++    emitWideAPInt(Record, Value);
++  };
++
++  WriteWideInt(N->getNumeratorRaw());
++  WriteWideInt(N->getDenominatorRaw());
++
++  Stream.EmitRecord(bitc::METADATA_FIXED_POINT_TYPE, Record, Abbrev);
++  Record.clear();
++}
++
+ void ModuleBitcodeWriter::writeDIStringType(const DIStringType *N,
+                                             SmallVectorImpl<uint64_t> &Record,
+                                             unsigned Abbrev) {
+diff --git a/llvm/lib/CodeGen/AsmPrinter/DebugHandlerBase.cpp b/llvm/lib/CodeGen/AsmPrinter/DebugHandlerBase.cpp
+index e183f0c5917c..48a180c93c76 100644
+--- a/llvm/lib/CodeGen/AsmPrinter/DebugHandlerBase.cpp
++++ b/llvm/lib/CodeGen/AsmPrinter/DebugHandlerBase.cpp
+@@ -230,12 +230,15 @@ bool DebugHandlerBase::isUnsignedDIType(const DIType *Ty) {
+           Encoding == dwarf::DW_ATE_signed_char ||
+           Encoding == dwarf::DW_ATE_float || Encoding == dwarf::DW_ATE_UTF ||
+           Encoding == dwarf::DW_ATE_boolean ||
++          Encoding == dwarf::DW_ATE_signed_fixed ||
++          Encoding == dwarf::DW_ATE_unsigned_fixed ||
+           (Ty->getTag() == dwarf::DW_TAG_unspecified_type &&
+            Ty->getName() == "decltype(nullptr)")) &&
+          "Unsupported encoding");
+   return Encoding == dwarf::DW_ATE_unsigned ||
+          Encoding == dwarf::DW_ATE_unsigned_char ||
+          Encoding == dwarf::DW_ATE_UTF || Encoding == dwarf::DW_ATE_boolean ||
++         Encoding == dwarf::DW_ATE_unsigned_fixed ||
+          Ty->getTag() == dwarf::DW_TAG_unspecified_type;
+ }
+ 
+diff --git a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
+index 58d0d7166d1f..dd5a7454d9e9 100644
+--- a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
++++ b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
+@@ -597,7 +597,9 @@ DIE *DwarfUnit::createTypeDIE(const DIScope *Context, DIE &ContextDIE,
+ 
+   updateAcceleratorTables(Context, Ty, TyDIE);
+ 
+-  if (auto *BT = dyn_cast<DIBasicType>(Ty))
++  if (auto *FPT = dyn_cast<DIFixedPointType>(Ty))
++    constructTypeDIE(TyDIE, FPT);
++  else if (auto *BT = dyn_cast<DIBasicType>(Ty))
+     constructTypeDIE(TyDIE, BT);
+   else if (auto *ST = dyn_cast<DIStringType>(Ty))
+     constructTypeDIE(TyDIE, ST);
+@@ -732,6 +734,32 @@ void DwarfUnit::constructTypeDIE(DIE &Buffer, const DIBasicType *BTy) {
+     addUInt(Buffer, dwarf::DW_AT_endianity, std::nullopt, dwarf::DW_END_little);
+ }
+ 
++void DwarfUnit::constructTypeDIE(DIE &Buffer, const DIFixedPointType *BTy) {
++  // Base type handling.
++  constructTypeDIE(Buffer, static_cast<const DIBasicType *>(BTy));
++
++  // Note that DW_FORM_sdata is used here.  This works around a
++  // disagreement between LLVM, GCC, and GDB about whether or not sign
++  // extension should be done.
++  if (BTy->isBinary())
++    addSInt(Buffer, dwarf::DW_AT_binary_scale, dwarf::DW_FORM_sdata,
++            BTy->getFactor());
++  else if (BTy->isDecimal())
++    addSInt(Buffer, dwarf::DW_AT_decimal_scale, dwarf::DW_FORM_sdata,
++            BTy->getFactor());
++  else {
++    DIE *ContextDIE = getOrCreateContextDIE(BTy->getScope());
++    DIE &Constant = createAndAddDIE(dwarf::DW_TAG_constant, *ContextDIE);
++
++    addInt(Constant, dwarf::DW_AT_GNU_numerator, BTy->getNumerator(),
++           !BTy->isSigned());
++    addInt(Constant, dwarf::DW_AT_GNU_denominator, BTy->getDenominator(),
++           !BTy->isSigned());
++
++    addDIEEntry(Buffer, dwarf::DW_AT_small, Constant);
++  }
++}
++
+ void DwarfUnit::constructTypeDIE(DIE &Buffer, const DIStringType *STy) {
+   // Get core information.
+   StringRef Name = STy->getName();
+diff --git a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h
+index abcfef36d42e..3010b7522318 100644
+--- a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h
++++ b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h
+@@ -324,6 +324,7 @@ private:
+   void addIntAsBlock(DIE &Die, dwarf::Attribute Attribute, const APInt &Val);
+ 
+   void constructTypeDIE(DIE &Buffer, const DIBasicType *BTy);
++  void constructTypeDIE(DIE &Buffer, const DIFixedPointType *BTy);
+   void constructTypeDIE(DIE &Buffer, const DIStringType *BTy);
+   void constructTypeDIE(DIE &Buffer, const DIDerivedType *DTy);
+   void constructTypeDIE(DIE &Buffer, const DISubroutineType *CTy);
+diff --git a/llvm/lib/IR/AsmWriter.cpp b/llvm/lib/IR/AsmWriter.cpp
+index a61017b14196..4b8605eaeabf 100644
+--- a/llvm/lib/IR/AsmWriter.cpp
++++ b/llvm/lib/IR/AsmWriter.cpp
+@@ -1694,6 +1694,7 @@ struct MDFieldPrinter {
+   void printEmissionKind(StringRef Name, DICompileUnit::DebugEmissionKind EK);
+   void printNameTableKind(StringRef Name,
+                           DICompileUnit::DebugNameTableKind NTK);
++  void printFixedPointKind(StringRef Name, DIFixedPointType::FixedPointKind V);
+ };
+ 
+ } // end anonymous namespace
+@@ -1830,6 +1831,11 @@ void MDFieldPrinter::printNameTableKind(StringRef Name,
+   Out << FS << Name << ": " << DICompileUnit::nameTableKindString(NTK);
+ }
+ 
++void MDFieldPrinter::printFixedPointKind(StringRef Name,
++                                         DIFixedPointType::FixedPointKind V) {
++  Out << FS << Name << ": " << DIFixedPointType::fixedPointKindString(V);
++}
++
+ template <class IntTy, class Stringifier>
+ void MDFieldPrinter::printDwarfEnum(StringRef Name, IntTy Value,
+                                     Stringifier toString, bool ShouldSkipZero) {
+@@ -2001,6 +2007,29 @@ static void writeDIBasicType(raw_ostream &Out, const DIBasicType *N,
+   Out << ")";
+ }
+ 
++static void writeDIFixedPointType(raw_ostream &Out, const DIFixedPointType *N,
++                                  AsmWriterContext &) {
++  Out << "!DIFixedPointType(";
++  MDFieldPrinter Printer(Out);
++  if (N->getTag() != dwarf::DW_TAG_base_type)
++    Printer.printTag(N);
++  Printer.printString("name", N->getName());
++  Printer.printInt("size", N->getSizeInBits());
++  Printer.printInt("align", N->getAlignInBits());
++  Printer.printDwarfEnum("encoding", N->getEncoding(),
++                         dwarf::AttributeEncodingString);
++  Printer.printDIFlags("flags", N->getFlags());
++  Printer.printFixedPointKind("kind", N->getKind());
++  if (N->isRational()) {
++    bool IsUnsigned = !N->isSigned();
++    Printer.printAPInt("numerator", N->getNumerator(), IsUnsigned, false);
++    Printer.printAPInt("denominator", N->getDenominator(), IsUnsigned, false);
++  } else {
++    Printer.printInt("factor", N->getFactor());
++  }
++  Out << ")";
++}
++
+ static void writeDIStringType(raw_ostream &Out, const DIStringType *N,
+                               AsmWriterContext &WriterCtx) {
+   Out << "!DIStringType(";
+diff --git a/llvm/lib/IR/DIBuilder.cpp b/llvm/lib/IR/DIBuilder.cpp
+index b8de7a132122..3619fc0b0628 100644
+--- a/llvm/lib/IR/DIBuilder.cpp
++++ b/llvm/lib/IR/DIBuilder.cpp
+@@ -288,6 +288,37 @@ DIBasicType *DIBuilder::createBasicType(StringRef Name, uint64_t SizeInBits,
+                           0, Encoding, Flags);
+ }
+ 
++DIFixedPointType *
++DIBuilder::createBinaryFixedPointType(StringRef Name, uint64_t SizeInBits,
++                                      uint32_t AlignInBits, unsigned Encoding,
++                                      DINode::DIFlags Flags, int Factor) {
++  return DIFixedPointType::get(VMContext, dwarf::DW_TAG_base_type, Name,
++                               SizeInBits, AlignInBits, Encoding, Flags,
++                               DIFixedPointType::FixedPointBinary, Factor,
++                               APInt(), APInt());
++}
++
++DIFixedPointType *
++DIBuilder::createDecimalFixedPointType(StringRef Name, uint64_t SizeInBits,
++                                       uint32_t AlignInBits, unsigned Encoding,
++                                       DINode::DIFlags Flags, int Factor) {
++  return DIFixedPointType::get(VMContext, dwarf::DW_TAG_base_type, Name,
++                               SizeInBits, AlignInBits, Encoding, Flags,
++                               DIFixedPointType::FixedPointDecimal, Factor,
++                               APInt(), APInt());
++}
++
++DIFixedPointType *
++DIBuilder::createRationalFixedPointType(StringRef Name, uint64_t SizeInBits,
++                                        uint32_t AlignInBits, unsigned Encoding,
++                                        DINode::DIFlags Flags, APInt Numerator,
++                                        APInt Denominator) {
++  return DIFixedPointType::get(VMContext, dwarf::DW_TAG_base_type, Name,
++                               SizeInBits, AlignInBits, Encoding, Flags,
++                               DIFixedPointType::FixedPointRational, 0,
++                               Numerator, Denominator);
++}
++
+ DIStringType *DIBuilder::createStringType(StringRef Name, uint64_t SizeInBits) {
+   assert(!Name.empty() && "Unable to create type without name");
+   return DIStringType::get(VMContext, dwarf::DW_TAG_string_type, Name,
+diff --git a/llvm/lib/IR/DebugInfoMetadata.cpp b/llvm/lib/IR/DebugInfoMetadata.cpp
+index 5370ae66f060..e8d7fdbb8143 100644
+--- a/llvm/lib/IR/DebugInfoMetadata.cpp
++++ b/llvm/lib/IR/DebugInfoMetadata.cpp
+@@ -648,15 +648,55 @@ std::optional<DIBasicType::Signedness> DIBasicType::getSignedness() const {
+   switch (getEncoding()) {
+   case dwarf::DW_ATE_signed:
+   case dwarf::DW_ATE_signed_char:
++  case dwarf::DW_ATE_signed_fixed:
+     return Signedness::Signed;
+   case dwarf::DW_ATE_unsigned:
+   case dwarf::DW_ATE_unsigned_char:
++  case dwarf::DW_ATE_unsigned_fixed:
+     return Signedness::Unsigned;
+   default:
+     return std::nullopt;
+   }
+ }
+ 
++DIFixedPointType *
++DIFixedPointType::getImpl(LLVMContext &Context, unsigned Tag, MDString *Name,
++                          uint64_t SizeInBits, uint32_t AlignInBits,
++                          unsigned Encoding, DIFlags Flags, unsigned Kind,
++                          int Factor, APInt Numerator, APInt Denominator,
++                          StorageType Storage, bool ShouldCreate) {
++  DEFINE_GETIMPL_LOOKUP(DIFixedPointType,
++                        (Tag, Name, SizeInBits, AlignInBits, Encoding, Flags,
++                         Kind, Factor, Numerator, Denominator));
++  Metadata *Ops[] = {nullptr, nullptr, Name};
++  DEFINE_GETIMPL_STORE(DIFixedPointType,
++                       (Tag, SizeInBits, AlignInBits, Encoding, Flags, Kind,
++                        Factor, Numerator, Denominator),
++                       Ops);
++}
++
++bool DIFixedPointType::isSigned() const {
++  return getEncoding() == dwarf::DW_ATE_signed_fixed;
++}
++
++std::optional<DIFixedPointType::FixedPointKind>
++DIFixedPointType::getFixedPointKind(StringRef Str) {
++  return StringSwitch<std::optional<FixedPointKind>>(Str)
++      .Case("Binary", FixedPointBinary)
++      .Case("Decimal", FixedPointDecimal)
++      .Case("Rational", FixedPointRational)
++      .Default(std::nullopt);
++}
++
++const char *DIFixedPointType::fixedPointKindString(FixedPointKind V) {
++  switch (V) {
++  case FixedPointBinary: return "Binary";
++  case FixedPointDecimal: return "Decimal";
++  case FixedPointRational: return "Rational";
++  }
++  return nullptr;
++}
++
+ DIStringType *DIStringType::getImpl(LLVMContext &Context, unsigned Tag,
+                                     MDString *Name, Metadata *StringLength,
+                                     Metadata *StringLengthExp,
+diff --git a/llvm/lib/IR/LLVMContextImpl.h b/llvm/lib/IR/LLVMContextImpl.h
+index 1c63412d08f5..568d263cb898 100644
+--- a/llvm/lib/IR/LLVMContextImpl.h
++++ b/llvm/lib/IR/LLVMContextImpl.h
+@@ -487,6 +487,43 @@ template <> struct MDNodeKeyImpl<DIBasicType> {
+   }
+ };
+ 
++template <> struct MDNodeKeyImpl<DIFixedPointType> {
++  unsigned Tag;
++  MDString *Name;
++  uint64_t SizeInBits;
++  uint32_t AlignInBits;
++  unsigned Encoding;
++  unsigned Flags;
++  unsigned Kind;
++  int Factor;
++  APInt Numerator;
++  APInt Denominator;
++
++  MDNodeKeyImpl(unsigned Tag, MDString *Name, uint64_t SizeInBits,
++                uint32_t AlignInBits, unsigned Encoding, unsigned Flags,
++                unsigned Kind, int Factor, APInt Numerator, APInt Denominator)
++      : Tag(Tag), Name(Name), SizeInBits(SizeInBits), AlignInBits(AlignInBits),
++        Encoding(Encoding), Flags(Flags), Kind(Kind), Factor(Factor),
++        Numerator(Numerator), Denominator(Denominator) {}
++  MDNodeKeyImpl(const DIFixedPointType *N)
++      : Tag(N->getTag()), Name(N->getRawName()), SizeInBits(N->getSizeInBits()),
++        AlignInBits(N->getAlignInBits()), Encoding(N->getEncoding()),
++        Flags(N->getFlags()), Kind(N->getKind()), Factor(N->getFactorRaw()),
++        Numerator(N->getNumeratorRaw()), Denominator(N->getDenominatorRaw()) {}
++
++  bool isKeyOf(const DIFixedPointType *RHS) const {
++    return Name == RHS->getRawName() && SizeInBits == RHS->getSizeInBits() &&
++           AlignInBits == RHS->getAlignInBits() && Kind == RHS->getKind() &&
++           (RHS->isRational() ? (Numerator == RHS->getNumerator() &&
++                                 Denominator == RHS->getDenominator())
++                              : Factor == RHS->getFactor());
++  }
++
++  unsigned getHashValue() const {
++    return hash_combine(Name, Flags, Kind, Factor, Numerator, Denominator);
++  }
++};
++
+ template <> struct MDNodeKeyImpl<DIStringType> {
+   unsigned Tag;
+   MDString *Name;
+diff --git a/llvm/lib/IR/Verifier.cpp b/llvm/lib/IR/Verifier.cpp
+index eca708b35138..fb2df85e5f21 100644
+--- a/llvm/lib/IR/Verifier.cpp
++++ b/llvm/lib/IR/Verifier.cpp
+@@ -1120,6 +1120,25 @@ void Verifier::visitDIBasicType(const DIBasicType &N) {
+           "invalid tag", &N);
+ }
+ 
++void Verifier::visitDIFixedPointType(const DIFixedPointType &N) {
++  visitDIBasicType(N);
++
++  CheckDI(N.getTag() == dwarf::DW_TAG_base_type, "invalid tag", &N);
++  CheckDI(N.getEncoding() == dwarf::DW_ATE_signed_fixed ||
++              N.getEncoding() == dwarf::DW_ATE_unsigned_fixed,
++          "invalid encoding", &N);
++  CheckDI(N.getKind() == DIFixedPointType::FixedPointBinary ||
++              N.getKind() == DIFixedPointType::FixedPointDecimal ||
++              N.getKind() == DIFixedPointType::FixedPointRational,
++          "invalid kind", &N);
++  CheckDI(N.getKind() != DIFixedPointType::FixedPointRational ||
++              N.getFactorRaw() == 0,
++          "factor should be 0 for rationals", &N);
++  CheckDI(N.getKind() == DIFixedPointType::FixedPointRational ||
++              (N.getNumeratorRaw() == 0 && N.getDenominatorRaw() == 0),
++          "numerator and denominator should be 0 for non-rationals", &N);
++}
++
+ void Verifier::visitDIStringType(const DIStringType &N) {
+   CheckDI(N.getTag() == dwarf::DW_TAG_string_type, "invalid tag", &N);
+   CheckDI(!(N.isBigEndian() && N.isLittleEndian()), "has conflicting flags",
+diff --git a/llvm/test/Bitcode/fixedpoint_type.ll b/llvm/test/Bitcode/fixedpoint_type.ll
+new file mode 100644
+index 000000000000..b805787c5d98
+--- /dev/null
++++ b/llvm/test/Bitcode/fixedpoint_type.ll
+@@ -0,0 +1,29 @@
++;; This test checks generation of DIFixedPointType.
++
++; RUN: llvm-as < %s | llvm-dis | llvm-as | llvm-dis | FileCheck %s
++
++;; Test whether DIFixedPointType is generated.
++; CHECK: !DIFixedPointType(name: "fp__decimal", size: 32, align: 32, encoding: DW_ATE_signed_fixed, kind: Decimal, factor: -4)
++; CHECK: !DIFixedPointType(name: "fp__rational", size: 32, align: 32, encoding: DW_ATE_unsigned_fixed, kind: Rational, numerator: 1234, denominator: 5678)
++
++; ModuleID = 'fixedpoint_type.ll'
++source_filename = "/dir/fixedpoint_type.adb"
++
++!llvm.module.flags = !{!0, !1}
++!llvm.dbg.cu = !{!2}
++
++!0 = !{i32 2, !"Debug Info Version", i32 3}
++!1 = !{i32 2, !"Dwarf Version", i32 4}
++!2 = distinct !DICompileUnit(language: DW_LANG_Ada95, file: !3, producer: "GNAT/LLVM", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, enums: !4, retainedTypes: !5, globals: !4, imports: !4)
++!3 = !DIFile(filename: "fixedpoint_type.adb", directory: "/dir")
++!4 = !{}
++!5 = !{!11, !12}
++!6 = distinct !DISubprogram(name: "fp", scope: !3, file: !3, line: 1, type: !7, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !4, retainedNodes: !9)
++!7 = !DISubroutineType(types: !8)
++!8 = !{null}
++!9 = !{!10}
++!10 = !DILocalVariable(name: "x", scope: !6, file: !3, line: 3, type: !11, align: 32)
++!11 = !DIFixedPointType(name: "fp__decimal", size: 32, align: 32, encoding: DW_ATE_signed_fixed, kind: Decimal, factor: -4)
++!12 = !DIFixedPointType(name: "fp__rational", size: 32, align: 32, encoding: DW_ATE_unsigned_fixed, kind: Rational, numerator: 1234, denominator: 5678)
++!13 = !DILocation(line: 3, column: 4, scope: !6)
++!14 = !DILocation(line: 6, column: 5, scope: !6)
+diff --git a/llvm/unittests/IR/DebugInfoTest.cpp b/llvm/unittests/IR/DebugInfoTest.cpp
+index 8e504d574e91..d4c20b8b32e9 100644
+--- a/llvm/unittests/IR/DebugInfoTest.cpp
++++ b/llvm/unittests/IR/DebugInfoTest.cpp
+@@ -321,6 +321,40 @@ TEST(DIBuilder, DIEnumerator) {
+   EXPECT_FALSE(E2);
+ }
+ 
++TEST(DIBuilder, FixedPointType) {
++  LLVMContext Ctx;
++  std::unique_ptr<Module> M(new Module("MyModule", Ctx));
++  DIBuilder DIB(*M);
++
++  DIFixedPointType *Ty = DIB.createBinaryFixedPointType(
++      {}, 32, 0, dwarf::DW_ATE_signed_fixed, DINode::FlagZero, -4);
++  EXPECT_TRUE(Ty);
++  EXPECT_TRUE(Ty->getKind() == DIFixedPointType::FixedPointBinary);
++  EXPECT_TRUE(Ty->getFactor() == -4);
++  EXPECT_TRUE(Ty->getEncoding() == dwarf::DW_ATE_signed_fixed);
++  EXPECT_TRUE(Ty->getTag() == dwarf::DW_TAG_base_type);
++
++  Ty = DIB.createDecimalFixedPointType(
++      {}, 32, 0, dwarf::DW_ATE_unsigned_fixed, DINode::FlagZero, -7);
++  EXPECT_TRUE(Ty);
++  EXPECT_TRUE(Ty->getKind() == DIFixedPointType::FixedPointDecimal);
++  EXPECT_TRUE(Ty->getFactor() == -7);
++  EXPECT_TRUE(Ty->getEncoding() == dwarf::DW_ATE_unsigned_fixed);
++  EXPECT_TRUE(Ty->getTag() == dwarf::DW_TAG_base_type);
++
++  APSInt Num(APInt(32, 1));
++  APSInt Denom(APInt(33, 72));
++  Ty = DIB.createRationalFixedPointType(
++      {}, 32, 0, dwarf::DW_ATE_unsigned_fixed, DINode::FlagZero, Num, Denom);
++  EXPECT_TRUE(Ty);
++  EXPECT_TRUE(Ty->getKind() == DIFixedPointType::FixedPointRational);
++  EXPECT_TRUE(Ty->getFactorRaw() == 0);
++  EXPECT_TRUE(Ty->getNumerator() == Num);
++  EXPECT_TRUE(Ty->getDenominator() == Denom);
++  EXPECT_TRUE(Ty->getEncoding() == dwarf::DW_ATE_unsigned_fixed);
++  EXPECT_TRUE(Ty->getTag() == dwarf::DW_TAG_base_type);
++}
++
+ TEST(DIBuilder, createDbgAddr) {
+   LLVMContext C;
+   std::unique_ptr<Module> M = parseIR(C, R"(

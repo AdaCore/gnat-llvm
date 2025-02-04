@@ -476,4 +476,13 @@ package GNATLLVM.Wrapper is
    --  stand-alone library initializers) into .init_array instead of the
    --  default .ctors.
 
+   procedure Create_And_Insert_Label
+     (Builder         : DI_Builder_T;
+      Scope           : Metadata_T;
+      Name            : String;
+      File            : Metadata_T;
+      Line_No         : Physical_Line_Number;
+      Debug_Loc       : Metadata_T;
+      Block           : Basic_Block_T);
+
 end GNATLLVM.Wrapper;

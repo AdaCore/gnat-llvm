@@ -1078,4 +1078,21 @@ package body GNATLLVM.DebugInfo is
       end if;
    end Create_Local_Variable_Debug_Data;
 
+   --------------------------
+   -- Add_Label_Debug_Info --
+   --------------------------
+
+   procedure Add_Label_Debug_Info (E : Entity_Id; B : Basic_Block_T) is
+      Name      : constant String     := Get_Name (E);
+      S         : constant Source_Ptr := Sloc         (E);
+   begin
+      if Emit_Debug_Info then
+         Create_And_Insert_Label
+           (DI_Builder, Current_Debug_Scope, Name,
+            Get_Debug_File_Node (Get_Source_File_Index (S)),
+            Get_Physical_Line_Number (S),
+            Create_Location (E), B);
+      end if;
+   end Add_Label_Debug_Info;
+
 end GNATLLVM.DebugInfo;

@@ -34,6 +34,7 @@ with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
@@ -1757,6 +1758,8 @@ package body GNATLLVM.Blocks is
       if No (E) then
          return BB;
       end if;
+
+      Add_Label_Debug_Info (E, BB);
 
       --  If we didn't previously have an entry, make one and we're done
 

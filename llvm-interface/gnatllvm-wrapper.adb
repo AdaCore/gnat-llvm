@@ -686,4 +686,33 @@ package body GNATLLVM.Wrapper is
       return Need_Enable_Execute_Stack_C (Triple & ASCII.NUL) /= 0;
    end Need_Enable_Execute_Stack;
 
+   -----------------------------
+   -- Create_And_Insert_Label --
+   -----------------------------
+
+   procedure Create_And_Insert_Label
+     (Builder         : DI_Builder_T;
+      Scope           : Metadata_T;
+      Name            : String;
+      File            : Metadata_T;
+      Line_No         : Physical_Line_Number;
+      Debug_Loc       : Metadata_T;
+      Block           : Basic_Block_T)
+   is
+      procedure Create_And_Insert_Label_C
+        (Builder         : DI_Builder_T;
+         Scope           : Metadata_T;
+         Name            : String;
+         File            : Metadata_T;
+         Line_No         : Physical_Line_Number;
+         Debug_Loc       : Metadata_T;
+         Block           : Basic_Block_T)
+      with Import => True,
+         Convention => C,
+         External_Name => "Create_And_Insert_Label";
+   begin
+      Create_And_Insert_Label_C (Builder, Scope, Name & ASCII.NUL,
+                                 File, Line_No, Debug_Loc, Block);
+   end Create_And_Insert_Label;
+
 end GNATLLVM.Wrapper;

@@ -2762,6 +2762,12 @@ package body GNATLLVM.Subprograms is
          Process_Pragmas      (E, LLVM_Func);
          Set_Dup_Global_Value (E, LLVM_Func);
 
+         if not DSO_Preemptable
+           and then Get_Linkage (LLVM_Func) /= External_Weak_Linkage
+         then
+            Set_DSO_Local (LLVM_Func);
+         end if;
+
          --  Add function to the table of subprograms that we've created,
          --  so we can add it to the module.
 

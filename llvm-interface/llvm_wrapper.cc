@@ -368,7 +368,7 @@ Add_TBAA_Access (Instruction *inst, MDNode *md)
 
 extern "C"
 void
-Set_DSO_Local (GlobalVariable *GV)
+Set_DSO_Local (GlobalObject *GV)
 {
   GV->setDSOLocal (true);
 }

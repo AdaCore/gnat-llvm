@@ -106,6 +106,11 @@ package GNATLLVM.Arrays is
           Post => Present (Array_Index_GT'Result);
    --  Get the type of the Dim'th index of a type
 
+   function Original_Array_Index_GT
+     (TE : Void_Or_Type_Kind_Id; Dim : Nat) return GL_Type
+     with Post => Present (Original_Array_Index_GT'Result);
+   --  Like Array_Index_GT but uses the Original_Array_Type.
+
    function Array_Index_Has_FLB (TE : Array_Kind_Id; Dim : Nat) return Boolean
      with Pre  => Dim < Number_Dimensions (TE);
    --  See if Dim of TE has a fixed lower bound

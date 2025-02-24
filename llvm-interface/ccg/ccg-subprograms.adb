@@ -1062,9 +1062,31 @@ package body CCG.Subprograms is
          end;
 
       --  The only saturating arithmetic we've seen the LLVM optimizer
-      --  generate so far is unsigned subtraction, so that's all we support
-      --  at the moment. But we have to be sure the operands are the proper
-      --  signedness for the comparison.
+      --  generate so far is unsigned addition and subtraction, so that's
+      --  all we support at the moment. But we have to be sure the operands
+      --  are the proper signedness for the comparison.
+
+      elsif Matches (S, "uadd.sat") then
+         Force_To_Variable (Op1);
+         Force_To_Variable (Op2);
+
+         declare
+            Str1      : constant Str :=
+              Process_Operand (Op1, POO_Unsigned, Conditional);
+            Str2      : constant Str :=
+              Process_Operand (Op2, POO_Unsigned, Conditional);
+            Str_Const : constant Str :=
+              Process_Operand (Const_Ones (Type_Of (Op1)), POO_Unsigned,
+                               Conditional);
+
+         begin
+            Assignment (V,
+                        (Str1 & " > " & Str_Const & " - " & Str2 &
+                           " ? " & Str_Const & " : " & Str1 & " + " & Str2) +
+                        Conditional,
+                        Is_Opencode_Builtin => True);
+            return True;
+         end;
 
       elsif Matches (S, "usub.sat") then
          Force_To_Variable (Op1);

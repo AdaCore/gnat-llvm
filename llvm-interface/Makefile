@@ -34,7 +34,7 @@ endif
 
 LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs)
 CXXFLAGS=
-ALL_CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags) $(CXXFLAGS) $(CLANG_CXXFLAGS)
+ALL_CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags) $(CXXFLAGS) $(CLANG_CXXFLAGS) -I.
 LLVM_INCLUDE_DIR=$(shell $(LLVM_CONFIG) --includedir)
 
 ifeq ($(OS),Windows_NT)
@@ -84,6 +84,7 @@ setup:
 	  $(LN_S) $(GNAT_SRC)/libgnat/$$f obj; \
 	done
 	./check_for_LLVM_aliasing_bug.sh
+	./check_for_llvm_apis.sh "$(LLVM_CONFIG)"
 
 build: setup force
 	$(GPRBUILD) -Pgnat_llvm -j$(PROCS) \

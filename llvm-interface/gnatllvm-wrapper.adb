@@ -715,4 +715,50 @@ package body GNATLLVM.Wrapper is
                                  File, Line_No, Debug_Loc, Block);
    end Create_And_Insert_Label;
 
+   --------------------------
+   -- Create_Subrange_Type --
+   --------------------------
+
+   function Create_Subrange_Type
+     (Builder        : DI_Builder_T;
+      Scope          : Metadata_T;
+      Name           : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Size           : ULL;
+      Align_In_Bits  : Nat;
+      Flags          : DI_Flags_T;
+      IsUnsigned     : Boolean;
+      BaseType       : Metadata_T;
+      Lower_Bound    : Metadata_T;
+      Upper_Bound    : Metadata_T;
+      Stride         : Metadata_T;
+      Bias           : Metadata_T) return Metadata_T
+   is
+      function Create_Subrange_Type_C
+         (Builder        : DI_Builder_T;
+          Scope          : Metadata_T;
+          Name           : String;
+          File           : Metadata_T;
+          Line_Number    : unsigned;
+          Size           : uint64_t;
+          Align_In_Bits  : uint32_t;
+          Flags          : DI_Flags_T;
+          IsUnsigned     : LLVM_Bool;
+          BaseType       : Metadata_T;
+          Lower_Bound    : Metadata_T;
+          Upper_Bound    : Metadata_T;
+          Stride         : Metadata_T;
+          Bias           : Metadata_T) return Metadata_T
+      with Import => True,
+         Convention => C,
+         External_Name => "Create_Subrange_Type";
+   begin
+      return Create_Subrange_Type_C
+        (Builder, Scope, Name & ASCII.NUL, File, unsigned (Line_Number),
+         uint64_t (Size), uint32_t (Align_In_Bits), Flags,
+         Boolean'Pos (IsUnsigned), BaseType,
+         Lower_Bound, Upper_Bound, Stride, Bias);
+   end Create_Subrange_Type;
+
 end GNATLLVM.Wrapper;

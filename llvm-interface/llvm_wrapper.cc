@@ -39,6 +39,7 @@
 #include "llvm/Transforms/Scalar/LoopRotation.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm-c/Core.h"
+#include "llvm-c/DebugInfo.h"
 
 #if LLVM_VERSION_MAJOR < 15
 #include "llvm/Support/TargetRegistry.h"
@@ -1349,4 +1350,86 @@ Create_And_Insert_Label (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
       LineNo, false);
   unwrap(Builder)->insertLabel(L, unwrap<DILocation>(DebugLoc),
       unwrap(Block));
+}
+
+// We patched LLVM to add support for subrange types.  If this support
+// does not exist, we want to generate a basic type instead.
+// Detection of the LLVM patch is done at compile time, by seeing
+// whether the class in question is complete.
+
+template <typename T, typename Ignore = void>
+struct is_complete : std::false_type {};
+
+template <typename T>
+struct is_complete<T, std::void_t<decltype(sizeof(T) != 0)>> : std::true_type {};
+
+// Make sure this is at least declared.
+namespace llvm {
+  class DISubrangeType;
+}
+
+// Base case.
+template<bool V>
+MDNode *
+Create_Subrange_Type (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
+		      const char *Name, LLVMMetadataRef File, unsigned LineNumber,
+		      uint64_t SizeInBits, uint32_t AlignInBits,
+		      LLVMDIFlags Flags, LLVMBool IsUnsigned,
+		      LLVMMetadataRef BaseType, LLVMMetadataRef LowerBound,
+		      LLVMMetadataRef UpperBound, LLVMMetadataRef Stride,
+		      LLVMMetadataRef Bias);
+
+// Used when DISubrangeType does not exist -- fall back to basic type.
+template<>
+MDNode *
+Create_Subrange_Type<false> (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
+			     const char *Name, LLVMMetadataRef File, unsigned LineNumber,
+			     uint64_t SizeInBits, uint32_t AlignInBits,
+			     LLVMDIFlags Flags, LLVMBool IsUnsigned,
+			     LLVMMetadataRef BaseType, LLVMMetadataRef LowerBound,
+			     LLVMMetadataRef UpperBound, LLVMMetadataRef Stride,
+			     LLVMMetadataRef Bias)
+{
+  DINode::DIFlags DIF = static_cast<DINode::DIFlags>(Flags);
+  return unwrap(Builder)->createBasicType(StringRef(Name, strlen(Name)), SizeInBits,
+					  IsUnsigned
+					  ? llvm::dwarf::DW_ATE_unsigned
+					  : llvm::dwarf::DW_ATE_signed,
+					  DIF);
+}
+
+// Used when DISubrangeType does exist.
+template<>
+MDNode *
+Create_Subrange_Type<true> (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
+			    const char *Name, LLVMMetadataRef File, unsigned LineNumber,
+			    uint64_t SizeInBits, uint32_t AlignInBits,
+			    LLVMDIFlags Flags, LLVMBool IsUnsigned,
+			    LLVMMetadataRef BaseType, LLVMMetadataRef LowerBound,
+			    LLVMMetadataRef UpperBound, LLVMMetadataRef Stride,
+			    LLVMMetadataRef Bias)
+{
+  DIScope *DS = Scope ? unwrap<DIScope>(Scope) : nullptr;
+  DIFile *DF = File ? unwrap<DIFile>(File) : nullptr;
+  DIType *Ty = BaseType ? unwrap<DIType>(BaseType) : nullptr;
+  DINode::DIFlags DIF = static_cast<DINode::DIFlags>(Flags);
+  return unwrap(Builder)->createSubrangeType(
+      StringRef(Name, strlen(Name)), DF, LineNumber,
+      DS, SizeInBits, AlignInBits, DIF, Ty,
+      unwrap(LowerBound), unwrap(UpperBound), unwrap(Stride), unwrap(Bias));
+}
+
+extern "C"
+MDNode *
+Create_Subrange_Type (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
+		      const char *Name, LLVMMetadataRef File, unsigned LineNumber,
+		      uint64_t SizeInBits, uint32_t AlignInBits,
+		      LLVMDIFlags Flags, LLVMBool IsUnsigned,
+		      LLVMMetadataRef BaseType, LLVMMetadataRef LowerBound,
+		      LLVMMetadataRef UpperBound, LLVMMetadataRef Stride,
+		      LLVMMetadataRef Bias)
+{
+  return Create_Subrange_Type<is_complete<llvm::DISubrangeType>::value>
+    (Builder, Scope, Name, File, LineNumber, SizeInBits, AlignInBits, Flags,
+     IsUnsigned, BaseType, LowerBound, UpperBound, Stride, Bias);
 }

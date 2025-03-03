@@ -1,0 +1,840 @@
+diff --git a/llvm/include/llvm-c/DebugInfo.h b/llvm/include/llvm-c/DebugInfo.h
+index 122bfccedf5c..72285da40ee3 100644
+--- a/llvm/include/llvm-c/DebugInfo.h
++++ b/llvm/include/llvm-c/DebugInfo.h
+@@ -157,6 +157,7 @@ enum {
+   LLVMDIEnumeratorMetadataKind,
+   LLVMDIBasicTypeMetadataKind,
+   LLVMDIDerivedTypeMetadataKind,
++  LLVMDISubrangeTypeMetadataKind,
+   LLVMDICompositeTypeMetadataKind,
+   LLVMDISubroutineTypeMetadataKind,
+   LLVMDIFileMetadataKind,
+diff --git a/llvm/include/llvm/Bitcode/LLVMBitCodes.h b/llvm/include/llvm/Bitcode/LLVMBitCodes.h
+index 62dc01877b27..3d997382cab0 100644
+--- a/llvm/include/llvm/Bitcode/LLVMBitCodes.h
++++ b/llvm/include/llvm/Bitcode/LLVMBitCodes.h
+@@ -369,6 +369,7 @@ enum MetadataCodes {
+   METADATA_GENERIC_SUBRANGE = 45, // [distinct, count, lo, up, stride]
+   METADATA_ARG_LIST = 46,         // [n x [type num, value num]]
+   METADATA_ASSIGN_ID = 47,        // [distinct, ...]
++  METADATA_SUBRANGE_TYPE = 48,    // [distinct, ...]
+ };
+ 
+ // The constants block (CONSTANTS_BLOCK_ID) describes emission for each
+diff --git a/llvm/include/llvm/IR/DIBuilder.h b/llvm/include/llvm/IR/DIBuilder.h
+index 90ac220a0387..72f8cf703577 100644
+--- a/llvm/include/llvm/IR/DIBuilder.h
++++ b/llvm/include/llvm/IR/DIBuilder.h
+@@ -644,6 +644,26 @@ namespace llvm {
+     /// FlagArtificial set.
+     static DIType *createObjectPointerType(DIType *Ty);
+ 
++    /// Create a type describing a subrange of another type.
++    /// \param Scope          Scope in which this set is defined.
++    /// \param Name           Set name.
++    /// \param File           File where this set is defined.
++    /// \param LineNo         Line number.
++    /// \param SizeInBits     Size.
++    /// \param AlignInBits    Alignment.
++    /// \param Flags          Flags to encode attributes.
++    /// \param Ty             Base type.
++    /// \param LowerBound     Lower bound.
++    /// \param UpperBound     Upper bound.
++    /// \param Stride         Stride, if any.
++    /// \param Bias           Bias, if any.
++    DISubrangeType *
++    createSubrangeType(StringRef Name, DIFile *File, unsigned LineNo,
++                       DIScope *Scope, uint64_t SizeInBits,
++                       uint32_t AlignInBits, DINode::DIFlags Flags, DIType *Ty,
++                       Metadata *LowerBound, Metadata *UpperBound,
++                       Metadata *Stride, Metadata *Bias);
++
+     /// Create a permanent forward-declared type.
+     DICompositeType *createForwardDecl(unsigned Tag, StringRef Name,
+                                        DIScope *Scope, DIFile *F, unsigned Line,
+diff --git a/llvm/include/llvm/IR/DebugInfoMetadata.h b/llvm/include/llvm/IR/DebugInfoMetadata.h
+index def3ce2b56ea..08e699b232b2 100644
+--- a/llvm/include/llvm/IR/DebugInfoMetadata.h
++++ b/llvm/include/llvm/IR/DebugInfoMetadata.h
+@@ -195,6 +195,7 @@ public:
+     case DIEnumeratorKind:
+     case DIBasicTypeKind:
+     case DIStringTypeKind:
++    case DISubrangeTypeKind:
+     case DIDerivedTypeKind:
+     case DICompositeTypeKind:
+     case DISubroutineTypeKind:
+@@ -331,9 +332,6 @@ public:
+ };
+ 
+ /// Array subrange.
+-///
+-/// TODO: Merge into node for DW_TAG_array_type, which should have a custom
+-/// type.
+ class DISubrange : public DINode {
+   friend class LLVMContextImpl;
+   friend class MDNode;
+@@ -539,6 +537,7 @@ public:
+       return false;
+     case DIBasicTypeKind:
+     case DIStringTypeKind:
++    case DISubrangeTypeKind:
+     case DIDerivedTypeKind:
+     case DICompositeTypeKind:
+     case DISubroutineTypeKind:
+@@ -788,6 +787,7 @@ public:
+       return false;
+     case DIBasicTypeKind:
+     case DIStringTypeKind:
++    case DISubrangeTypeKind:
+     case DIDerivedTypeKind:
+     case DICompositeTypeKind:
+     case DISubroutineTypeKind:
+@@ -1076,6 +1076,97 @@ public:
+   }
+ };
+ 
++/// Subrange type.  This is somewhat similar to DISubrange, but it
++/// is also a DIType.
++class DISubrangeType : public DIType {
++public:
++  typedef PointerUnion<ConstantInt *, DIVariable *, DIExpression *> BoundType;
++
++private:
++  friend class LLVMContextImpl;
++  friend class MDNode;
++
++  DISubrangeType(LLVMContext &C, StorageType Storage, unsigned Line,
++                 uint64_t SizeInBits, uint32_t AlignInBits, DIFlags Flags,
++                 ArrayRef<Metadata *> Ops);
++
++  ~DISubrangeType() = default;
++
++  static DISubrangeType *
++  getImpl(LLVMContext &Context, StringRef Name, DIFile *File, unsigned Line,
++          DIScope *Scope, uint64_t SizeInBits, uint32_t AlignInBits,
++          DIFlags Flags, DIType *BaseType, Metadata *LowerBound,
++          Metadata *UpperBound, Metadata *Stride, Metadata *Bias,
++          StorageType Storage, bool ShouldCreate = true) {
++    return getImpl(Context, getCanonicalMDString(Context, Name), File, Line,
++                   Scope, SizeInBits, AlignInBits, Flags, BaseType, LowerBound,
++                   UpperBound, Stride, Bias, Storage, ShouldCreate);
++  }
++
++  static DISubrangeType *getImpl(LLVMContext &Context, MDString *Name,
++                                 Metadata *File, unsigned Line, Metadata *Scope,
++                                 uint64_t SizeInBits, uint32_t AlignInBits,
++                                 DIFlags Flags, Metadata *BaseType,
++                                 Metadata *LowerBound, Metadata *UpperBound,
++                                 Metadata *Stride, Metadata *Bias,
++                                 StorageType Storage, bool ShouldCreate = true);
++
++  TempDISubrangeType cloneImpl() const {
++    return getTemporary(getContext(), getName(), getFile(), getLine(),
++                        getScope(), getSizeInBits(), getAlignInBits(),
++                        getFlags(), getBaseType(), getRawLowerBound(),
++                        getRawUpperBound(), getRawStride(), getRawBias());
++  }
++
++  BoundType convertRawToBound(Metadata *IN) const;
++
++public:
++  DEFINE_MDNODE_GET(DISubrangeType,
++                    (MDString * Name, Metadata *File, unsigned Line,
++                     Metadata *Scope, uint64_t SizeInBits, uint32_t AlignInBits,
++                     DIFlags Flags, Metadata *BaseType, Metadata *LowerBound,
++                     Metadata *UpperBound, Metadata *Stride, Metadata *Bias),
++                    (Name, File, Line, Scope, SizeInBits, AlignInBits, Flags,
++                     BaseType, LowerBound, UpperBound, Stride, Bias))
++  DEFINE_MDNODE_GET(DISubrangeType,
++                    (StringRef Name, DIFile *File, unsigned Line,
++                     DIScope *Scope, uint64_t SizeInBits, uint32_t AlignInBits,
++                     DIFlags Flags, DIType *BaseType, Metadata *LowerBound,
++                     Metadata *UpperBound, Metadata *Stride, Metadata *Bias),
++                    (Name, File, Line, Scope, SizeInBits, AlignInBits, Flags,
++                     BaseType, LowerBound, UpperBound, Stride, Bias))
++
++  TempDISubrangeType clone() const { return cloneImpl(); }
++
++  /// Get the base type this is derived from.
++  DIType *getBaseType() const { return cast_or_null<DIType>(getRawBaseType()); }
++  Metadata *getRawBaseType() const { return getOperand(3); }
++
++  Metadata *getRawLowerBound() const { return getOperand(4).get(); }
++
++  Metadata *getRawUpperBound() const { return getOperand(5).get(); }
++
++  Metadata *getRawStride() const { return getOperand(6).get(); }
++
++  Metadata *getRawBias() const { return getOperand(7).get(); }
++
++  BoundType getLowerBound() const {
++    return convertRawToBound(getRawLowerBound());
++  }
++
++  BoundType getUpperBound() const {
++    return convertRawToBound(getRawUpperBound());
++  }
++
++  BoundType getStride() const { return convertRawToBound(getRawStride()); }
++
++  BoundType getBias() const { return convertRawToBound(getRawBias()); }
++
++  static bool classof(const Metadata *MD) {
++    return MD->getMetadataID() == DISubrangeTypeKind;
++  }
++};
++
+ /// Composite types.
+ ///
+ /// TODO: Detach from DerivedTypeBase (split out MDEnumType?).
+diff --git a/llvm/include/llvm/IR/Metadata.def b/llvm/include/llvm/IR/Metadata.def
+index 36c34c1d2347..43e83bde3e3b 100644
+--- a/llvm/include/llvm/IR/Metadata.def
++++ b/llvm/include/llvm/IR/Metadata.def
+@@ -118,6 +118,7 @@ HANDLE_SPECIALIZED_MDNODE_LEAF_UNIQUABLE(DICommonBlock)
+ HANDLE_SPECIALIZED_MDNODE_LEAF_UNIQUABLE(DIArgList)
+ HANDLE_SPECIALIZED_MDNODE_LEAF_UNIQUABLE(DIStringType)
+ HANDLE_SPECIALIZED_MDNODE_LEAF_UNIQUABLE(DIGenericSubrange)
++HANDLE_SPECIALIZED_MDNODE_LEAF_UNIQUABLE(DISubrangeType)
+ 
+ #undef HANDLE_METADATA
+ #undef HANDLE_METADATA_LEAF
+diff --git a/llvm/lib/AsmParser/LLParser.cpp b/llvm/lib/AsmParser/LLParser.cpp
+index 7f451620a08e..12d8a961ee15 100644
+--- a/llvm/lib/AsmParser/LLParser.cpp
++++ b/llvm/lib/AsmParser/LLParser.cpp
+@@ -4807,6 +4807,50 @@ bool LLParser::parseGenericDINode(MDNode *&Result, bool IsDistinct) {
+   return false;
+ }
+ 
++/// parseDISubrangeType:
++///   ::= !DISubrangeType(name: "whatever", file: !0,
++///                      line: 7, scope: !1, baseType: !2, size: 32,
++///                      align: 32, flags: 0, lowerBound: !3
++///                      upperBound: !4, stride: !5, bias: !6)
++bool LLParser::parseDISubrangeType(MDNode *&Result, bool IsDistinct) {
++#define VISIT_MD_FIELDS(OPTIONAL, REQUIRED)                                    \
++  OPTIONAL(name, MDStringField, );                                             \
++  OPTIONAL(file, MDField, );                                                   \
++  OPTIONAL(line, LineField, );                                                 \
++  OPTIONAL(scope, MDField, );                                                  \
++  OPTIONAL(baseType, MDField, );                                               \
++  OPTIONAL(size, MDUnsignedField, (0, UINT64_MAX));                            \
++  OPTIONAL(align, MDUnsignedField, (0, UINT32_MAX));                           \
++  OPTIONAL(flags, DIFlagField, );                                              \
++  OPTIONAL(lowerBound, MDSignedOrMDField, );                                   \
++  OPTIONAL(upperBound, MDSignedOrMDField, );                                   \
++  OPTIONAL(stride, MDSignedOrMDField, );                                       \
++  OPTIONAL(bias, MDSignedOrMDField, );
++  PARSE_MD_FIELDS();
++#undef VISIT_MD_FIELDS
++
++  auto convToMetadata = [&](MDSignedOrMDField Bound) -> Metadata * {
++    if (Bound.isMDSignedField())
++      return ConstantAsMetadata::get(ConstantInt::getSigned(
++          Type::getInt64Ty(Context), Bound.getMDSignedValue()));
++    if (Bound.isMDField())
++      return Bound.getMDFieldValue();
++    return nullptr;
++  };
++
++  Metadata *LowerBound = convToMetadata(lowerBound);
++  Metadata *UpperBound = convToMetadata(upperBound);
++  Metadata *Stride = convToMetadata(stride);
++  Metadata *Bias = convToMetadata(bias);
++
++  Result = GET_OR_DISTINCT(DISubrangeType,
++                           (Context, name.Val, file.Val, line.Val, scope.Val,
++                            size.Val, align.Val, flags.Val, baseType.Val,
++                            LowerBound, UpperBound, Stride, Bias));
++
++  return false;
++}
++
+ /// parseDISubrange:
+ ///   ::= !DISubrange(count: 30, lowerBound: 2)
+ ///   ::= !DISubrange(count: !node, lowerBound: 2)
+@@ -4825,7 +4869,7 @@ bool LLParser::parseDISubrange(MDNode *&Result, bool IsDistinct) {
+   Metadata *UpperBound = nullptr;
+   Metadata *Stride = nullptr;
+ 
+-  auto convToMetadata = [&](MDSignedOrMDField Bound) -> Metadata * {
++  auto convToMetadata = [&](const MDSignedOrMDField &Bound) -> Metadata * {
+     if (Bound.isMDSignedField())
+       return ConstantAsMetadata::get(ConstantInt::getSigned(
+           Type::getInt64Ty(Context), Bound.getMDSignedValue()));
+diff --git a/llvm/lib/Bitcode/Reader/MetadataLoader.cpp b/llvm/lib/Bitcode/Reader/MetadataLoader.cpp
+index 4b5cfedaa99c..205b7dee9f59 100644
+--- a/llvm/lib/Bitcode/Reader/MetadataLoader.cpp
++++ b/llvm/lib/Bitcode/Reader/MetadataLoader.cpp
+@@ -1481,6 +1481,24 @@ Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
+     NextMetadataNo++;
+     break;
+   }
++  case bitc::METADATA_SUBRANGE_TYPE: {
++    if (Record.size() != 13)
++      return error("Invalid record");
++
++    IsDistinct = Record[0];
++    DINode::DIFlags Flags = static_cast<DINode::DIFlags>(Record[7]);
++    MetadataList.assignValue(
++        GET_OR_DISTINCT(DISubrangeType,
++                        (Context, getMDString(Record[1]),
++                         getMDOrNull(Record[2]), Record[3],
++                         getMDOrNull(Record[4]), Record[5], Record[6], Flags,
++                         getDITypeRefOrNull(Record[8]), getMDOrNull(Record[9]),
++                         getMDOrNull(Record[10]), getMDOrNull(Record[11]),
++                         getMDOrNull(Record[12]))),
++        NextMetadataNo);
++    NextMetadataNo++;
++    break;
++  }
+   case bitc::METADATA_COMPOSITE_TYPE: {
+     if (Record.size() < 16 || Record.size() > 22)
+       return error("Invalid record");
+diff --git a/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp b/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp
+index f85fd86c114c..a4391636fc4e 100644
+--- a/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp
++++ b/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp
+@@ -311,6 +311,8 @@ private:
+                          SmallVectorImpl<uint64_t> &Record, unsigned Abbrev);
+   void writeDIDerivedType(const DIDerivedType *N,
+                           SmallVectorImpl<uint64_t> &Record, unsigned Abbrev);
++  void writeDISubrangeType(const DISubrangeType *N,
++                           SmallVectorImpl<uint64_t> &Record, unsigned Abbrev);
+   void writeDICompositeType(const DICompositeType *N,
+                             SmallVectorImpl<uint64_t> &Record, unsigned Abbrev);
+   void writeDISubroutineType(const DISubroutineType *N,
+@@ -1762,6 +1764,27 @@ void ModuleBitcodeWriter::writeDIDerivedType(const DIDerivedType *N,
+   Record.clear();
+ }
+ 
++void ModuleBitcodeWriter::writeDISubrangeType(const DISubrangeType *N,
++                                              SmallVectorImpl<uint64_t> &Record,
++                                              unsigned Abbrev) {
++  Record.push_back(N->isDistinct());
++  Record.push_back(VE.getMetadataOrNullID(N->getRawName()));
++  Record.push_back(VE.getMetadataOrNullID(N->getFile()));
++  Record.push_back(N->getLine());
++  Record.push_back(VE.getMetadataOrNullID(N->getScope()));
++  Record.push_back(N->getSizeInBits());
++  Record.push_back(N->getAlignInBits());
++  Record.push_back(N->getFlags());
++  Record.push_back(VE.getMetadataOrNullID(N->getBaseType()));
++  Record.push_back(VE.getMetadataOrNullID(N->getRawLowerBound()));
++  Record.push_back(VE.getMetadataOrNullID(N->getRawUpperBound()));
++  Record.push_back(VE.getMetadataOrNullID(N->getRawStride()));
++  Record.push_back(VE.getMetadataOrNullID(N->getRawBias()));
++
++  Stream.EmitRecord(bitc::METADATA_SUBRANGE_TYPE, Record, Abbrev);
++  Record.clear();
++}
++
+ void ModuleBitcodeWriter::writeDICompositeType(
+     const DICompositeType *N, SmallVectorImpl<uint64_t> &Record,
+     unsigned Abbrev) {
+diff --git a/llvm/lib/CodeGen/AsmPrinter/DebugHandlerBase.cpp b/llvm/lib/CodeGen/AsmPrinter/DebugHandlerBase.cpp
+index 858a3e75e515..e183f0c5917c 100644
+--- a/llvm/lib/CodeGen/AsmPrinter/DebugHandlerBase.cpp
++++ b/llvm/lib/CodeGen/AsmPrinter/DebugHandlerBase.cpp
+@@ -145,19 +145,20 @@ MCSymbol *DebugHandlerBase::getLabelAfterInsn(const MachineInstr *MI) {
+ /// If this type is derived from a base type then return base type size.
+ uint64_t DebugHandlerBase::getBaseTypeSize(const DIType *Ty) {
+   assert(Ty);
+-  const DIDerivedType *DDTy = dyn_cast<DIDerivedType>(Ty);
+-  if (!DDTy)
+-    return Ty->getSizeInBits();
+ 
+-  unsigned Tag = DDTy->getTag();
++  unsigned Tag = Ty->getTag();
+ 
+   if (Tag != dwarf::DW_TAG_member && Tag != dwarf::DW_TAG_typedef &&
+       Tag != dwarf::DW_TAG_const_type && Tag != dwarf::DW_TAG_volatile_type &&
+       Tag != dwarf::DW_TAG_restrict_type && Tag != dwarf::DW_TAG_atomic_type &&
+       Tag != dwarf::DW_TAG_immutable_type)
+-    return DDTy->getSizeInBits();
++    return Ty->getSizeInBits();
+ 
+-  DIType *BaseType = DDTy->getBaseType();
++  DIType *BaseType = nullptr;
++  if (const DIDerivedType *DDTy = dyn_cast<DIDerivedType>(Ty))
++    BaseType = DDTy->getBaseType();
++  else if (const DISubrangeType *SRTy = dyn_cast<DISubrangeType>(Ty))
++    BaseType = SRTy->getBaseType();
+ 
+   if (!BaseType)
+     return 0;
+@@ -183,6 +184,12 @@ bool DebugHandlerBase::isUnsignedDIType(const DIType *Ty) {
+     return true;
+   }
+ 
++  if (auto *SRTy = dyn_cast<DISubrangeType>(Ty)) {
++    Ty = SRTy->getBaseType();
++    if (!Ty)
++      return false;
++  }
++
+   if (auto *CTy = dyn_cast<DICompositeType>(Ty)) {
+     if (CTy->getTag() == dwarf::DW_TAG_enumeration_type) {
+       if (!(Ty = CTy->getBaseType()))
+diff --git a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
+index c2ff899c04ab..19465cf6bce6 100644
+--- a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
++++ b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
+@@ -596,6 +596,8 @@ DIE *DwarfUnit::createTypeDIE(const DIScope *Context, DIE &ContextDIE,
+       return &TyDIE;
+     }
+     constructTypeDIE(TyDIE, CTy);
++  } else if (auto *SRTy = dyn_cast<DISubrangeType>(Ty)) {
++    constructSubrangeDIE(TyDIE, SRTy);
+   } else {
+     constructTypeDIE(TyDIE, cast<DIDerivedType>(Ty));
+   }
+@@ -1349,10 +1351,69 @@ void DwarfUnit::applySubprogramAttributes(const DISubprogram *SP, DIE &SPDie,
+     addFlag(SPDie, dwarf::DW_AT_deleted);
+ }
+ 
+-void DwarfUnit::constructSubrangeDIE(DIE &Buffer, const DISubrange *SR,
+-                                     DIE *IndexTy) {
++void DwarfUnit::constructSubrangeDIE(DIE &DW_Subrange, const DISubrangeType *SR,
++                                     bool ForArray) {
++  StringRef Name = SR->getName();
++  if (!Name.empty())
++    addString(DW_Subrange, dwarf::DW_AT_name, Name);
++
++  if (SR->getBaseType())
++    addType(DW_Subrange, SR->getBaseType());
++
++  addSourceLine(DW_Subrange, SR);
++
++  if (uint64_t Size = SR->getSizeInBits())
++    addUInt(DW_Subrange, dwarf::DW_AT_byte_size, std::nullopt, Size >> 3);
++  if (uint32_t AlignInBytes = SR->getAlignInBytes())
++    addUInt(DW_Subrange, dwarf::DW_AT_alignment, dwarf::DW_FORM_udata,
++            AlignInBytes);
++
++  if (SR->isBigEndian())
++    addUInt(DW_Subrange, dwarf::DW_AT_endianity, std::nullopt,
++            dwarf::DW_END_big);
++  else if (SR->isLittleEndian())
++    addUInt(DW_Subrange, dwarf::DW_AT_endianity, std::nullopt,
++            dwarf::DW_END_little);
++
++  // The LowerBound value defines the lower bounds which is typically
++  // zero for C/C++. Values are 64 bit.
++  int64_t DefaultLowerBound = getDefaultLowerBound();
++
++  auto AddBoundTypeEntry = [&](dwarf::Attribute Attr,
++                               DISubrangeType::BoundType Bound) -> void {
++    if (auto *BV = Bound.dyn_cast<DIVariable *>()) {
++      if (auto *VarDIE = getDIE(BV))
++        addDIEEntry(DW_Subrange, Attr, *VarDIE);
++    } else if (auto *BE = Bound.dyn_cast<DIExpression *>()) {
++      DIELoc *Loc = new (DIEValueAllocator) DIELoc;
++      DIEDwarfExpression DwarfExpr(*Asm, getCU(), *Loc);
++      DwarfExpr.setMemoryLocationKind();
++      DwarfExpr.addExpression(BE);
++      addBlock(DW_Subrange, Attr, DwarfExpr.finalize());
++    } else if (auto *BI = Bound.dyn_cast<ConstantInt *>()) {
++      if (Attr == dwarf::DW_AT_GNU_bias) {
++        if (BI->getSExtValue() != 0)
++          addUInt(DW_Subrange, Attr, dwarf::DW_FORM_sdata, BI->getSExtValue());
++      } else if (Attr != dwarf::DW_AT_lower_bound || DefaultLowerBound == -1 ||
++                 BI->getSExtValue() != DefaultLowerBound || !ForArray)
++        addSInt(DW_Subrange, Attr, dwarf::DW_FORM_sdata, BI->getSExtValue());
++    }
++  };
++
++  AddBoundTypeEntry(dwarf::DW_AT_lower_bound, SR->getLowerBound());
++
++  AddBoundTypeEntry(dwarf::DW_AT_upper_bound, SR->getUpperBound());
++
++  AddBoundTypeEntry(dwarf::DW_AT_byte_stride, SR->getStride());
++
++  AddBoundTypeEntry(dwarf::DW_AT_GNU_bias, SR->getBias());
++}
++
++void DwarfUnit::constructSubrangeDIE(DIE &Buffer, const DISubrange *SR) {
+   DIE &DW_Subrange = createAndAddDIE(dwarf::DW_TAG_subrange_type, Buffer);
+-  addDIEEntry(DW_Subrange, dwarf::DW_AT_type, *IndexTy);
++
++  DIE *IdxTy = getIndexTyDie();
++  addDIEEntry(DW_Subrange, dwarf::DW_AT_type, *IdxTy);
+ 
+   // The LowerBound value defines the lower bounds which is typically zero for
+   // C/C++. The Count value is the number of elements.  Values are 64 bit. If
+@@ -1391,11 +1452,14 @@ void DwarfUnit::constructSubrangeDIE(DIE &Buffer, const DISubrange *SR,
+ }
+ 
+ void DwarfUnit::constructGenericSubrangeDIE(DIE &Buffer,
+-                                            const DIGenericSubrange *GSR,
+-                                            DIE *IndexTy) {
++                                            const DIGenericSubrange *GSR) {
+   DIE &DwGenericSubrange =
+       createAndAddDIE(dwarf::DW_TAG_generic_subrange, Buffer);
+-  addDIEEntry(DwGenericSubrange, dwarf::DW_AT_type, *IndexTy);
++  // Get an anonymous type for index type.
++  // FIXME: This type should be passed down from the front end
++  // as different languages may have different sizes for indexes.
++  DIE *IdxTy = getIndexTyDie();
++  addDIEEntry(DwGenericSubrange, dwarf::DW_AT_type, *IdxTy);
+ 
+   int64_t DefaultLowerBound = getDefaultLowerBound();
+ 
+@@ -1527,22 +1591,16 @@ void DwarfUnit::constructArrayTypeDIE(DIE &Buffer, const DICompositeType *CTy) {
+   // Emit the element type.
+   addType(Buffer, CTy->getBaseType());
+ 
+-  // Get an anonymous type for index type.
+-  // FIXME: This type should be passed down from the front end
+-  // as different languages may have different sizes for indexes.
+-  DIE *IdxTy = getIndexTyDie();
+-
+   // Add subranges to array type.
+   DINodeArray Elements = CTy->getElements();
+   for (DINode *E : Elements) {
+-    // FIXME: Should this really be such a loose cast?
+-    if (auto *Element = dyn_cast_or_null<DINode>(E)) {
+-      if (Element->getTag() == dwarf::DW_TAG_subrange_type)
+-        constructSubrangeDIE(Buffer, cast<DISubrange>(Element), IdxTy);
+-      else if (Element->getTag() == dwarf::DW_TAG_generic_subrange)
+-        constructGenericSubrangeDIE(Buffer, cast<DIGenericSubrange>(Element),
+-                                    IdxTy);
+-    }
++    if (auto *Element = dyn_cast_or_null<DISubrangeType>(E)) {
++      DIE &TyDIE = createAndAddDIE(CTy->getTag(), Buffer, CTy);
++      constructSubrangeDIE(TyDIE, Element, true);
++    } else if (auto *Element = dyn_cast_or_null<DISubrange>(E))
++      constructSubrangeDIE(Buffer, Element);
++    else if (auto *Element = dyn_cast_or_null<DIGenericSubrange>(E))
++      constructGenericSubrangeDIE(Buffer, Element);
+   }
+ }
+ 
+diff --git a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h
+index 0caa6adbfa62..ebec14af6594 100644
+--- a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h
++++ b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h
+@@ -319,9 +319,10 @@ private:
+   void constructTypeDIE(DIE &Buffer, const DIStringType *BTy);
+   void constructTypeDIE(DIE &Buffer, const DIDerivedType *DTy);
+   void constructTypeDIE(DIE &Buffer, const DISubroutineType *CTy);
+-  void constructSubrangeDIE(DIE &Buffer, const DISubrange *SR, DIE *IndexTy);
+-  void constructGenericSubrangeDIE(DIE &Buffer, const DIGenericSubrange *SR,
+-                                   DIE *IndexTy);
++  void constructSubrangeDIE(DIE &Buffer, const DISubrangeType *SR,
++                            bool ForArray = false);
++  void constructSubrangeDIE(DIE &Buffer, const DISubrange *SR);
++  void constructGenericSubrangeDIE(DIE &Buffer, const DIGenericSubrange *SR);
+   void constructArrayTypeDIE(DIE &Buffer, const DICompositeType *CTy);
+   void constructEnumTypeDIE(DIE &Buffer, const DICompositeType *CTy);
+   DIE &constructMemberDIE(DIE &Buffer, const DIDerivedType *DT);
+diff --git a/llvm/lib/IR/AsmWriter.cpp b/llvm/lib/IR/AsmWriter.cpp
+index 6108ce09c289..a61017b14196 100644
+--- a/llvm/lib/IR/AsmWriter.cpp
++++ b/llvm/lib/IR/AsmWriter.cpp
+@@ -2042,6 +2042,26 @@ static void writeDIDerivedType(raw_ostream &Out, const DIDerivedType *N,
+   Out << ")";
+ }
+ 
++static void writeDISubrangeType(raw_ostream &Out, const DISubrangeType *N,
++                                AsmWriterContext &WriterCtx) {
++  Out << "!DISubrangeType(";
++  MDFieldPrinter Printer(Out, WriterCtx);
++  Printer.printString("name", N->getName());
++  Printer.printMetadata("scope", N->getRawScope());
++  Printer.printMetadata("file", N->getRawFile());
++  Printer.printInt("line", N->getLine());
++  Printer.printInt("size", N->getSizeInBits());
++  Printer.printInt("align", N->getAlignInBits());
++  Printer.printDIFlags("flags", N->getFlags());
++  Printer.printMetadata("baseType", N->getRawBaseType(),
++                        /* ShouldSkipNull */ false);
++  Printer.printMetadata("lowerBound", N->getRawLowerBound());
++  Printer.printMetadata("upperBound", N->getRawUpperBound());
++  Printer.printMetadata("stride", N->getRawStride());
++  Printer.printMetadata("bias", N->getRawBias());
++  Out << ")";
++}
++
+ static void writeDICompositeType(raw_ostream &Out, const DICompositeType *N,
+                                  AsmWriterContext &WriterCtx) {
+   Out << "!DICompositeType(";
+diff --git a/llvm/lib/IR/DIBuilder.cpp b/llvm/lib/IR/DIBuilder.cpp
+index 27e930e5a87f..b8de7a132122 100644
+--- a/llvm/lib/IR/DIBuilder.cpp
++++ b/llvm/lib/IR/DIBuilder.cpp
+@@ -753,6 +753,16 @@ DIGenericSubrange *DIBuilder::getOrCreateGenericSubrange(
+                                 ConvToMetadata(Stride));
+ }
+ 
++DISubrangeType *DIBuilder::createSubrangeType(
++    StringRef Name, DIFile *File, unsigned LineNo, DIScope *Scope,
++    uint64_t SizeInBits, uint32_t AlignInBits, DINode::DIFlags Flags,
++    DIType *Ty, Metadata *LowerBound, Metadata *UpperBound, Metadata *Stride,
++    Metadata *Bias) {
++  return DISubrangeType::get(VMContext, Name, File, LineNo, Scope, SizeInBits,
++                             AlignInBits, Flags, Ty, LowerBound, UpperBound,
++                             Stride, Bias);
++}
++
+ static void checkGlobalVariableScope(DIScope *Context) {
+ #ifndef NDEBUG
+   if (auto *CT =
+diff --git a/llvm/lib/IR/DebugInfoMetadata.cpp b/llvm/lib/IR/DebugInfoMetadata.cpp
+index fb9a7b882220..5370ae66f060 100644
+--- a/llvm/lib/IR/DebugInfoMetadata.cpp
++++ b/llvm/lib/IR/DebugInfoMetadata.cpp
+@@ -573,6 +573,48 @@ DIGenericSubrange::BoundType DIGenericSubrange::getStride() const {
+   return BoundType();
+ }
+ 
++DISubrangeType::DISubrangeType(LLVMContext &C, StorageType Storage,
++                               unsigned Line, uint64_t SizeInBits,
++                               uint32_t AlignInBits, DIFlags Flags,
++                               ArrayRef<Metadata *> Ops)
++    : DIType(C, DISubrangeTypeKind, Storage, dwarf::DW_TAG_subrange_type, Line,
++             SizeInBits, AlignInBits, 0, Flags, Ops) {}
++
++DISubrangeType *DISubrangeType::getImpl(
++    LLVMContext &Context, MDString *Name, Metadata *File, unsigned Line,
++    Metadata *Scope, uint64_t SizeInBits, uint32_t AlignInBits, DIFlags Flags,
++    Metadata *BaseType, Metadata *LowerBound, Metadata *UpperBound,
++    Metadata *Stride, Metadata *Bias, StorageType Storage, bool ShouldCreate) {
++  assert(isCanonical(Name) && "Expected canonical MDString");
++  DEFINE_GETIMPL_LOOKUP(DISubrangeType, (Name, File, Line, Scope, SizeInBits,
++                                         AlignInBits, Flags, BaseType,
++                                         LowerBound, UpperBound, Stride, Bias));
++  Metadata *Ops[] = {File,       Scope,      Name,   BaseType,
++                     LowerBound, UpperBound, Stride, Bias};
++  DEFINE_GETIMPL_STORE(DISubrangeType, (Line, SizeInBits, AlignInBits, Flags),
++                       Ops);
++}
++
++DISubrangeType::BoundType
++DISubrangeType::convertRawToBound(Metadata *IN) const {
++  if (!IN)
++    return BoundType();
++
++  assert(isa<ConstantAsMetadata>(IN) || isa<DIVariable>(IN) ||
++         isa<DIExpression>(IN));
++
++  if (auto *MD = dyn_cast<ConstantAsMetadata>(IN))
++    return BoundType(cast<ConstantInt>(MD->getValue()));
++
++  if (auto *MD = dyn_cast<DIVariable>(IN))
++    return BoundType(MD);
++
++  if (auto *MD = dyn_cast<DIExpression>(IN))
++    return BoundType(MD);
++
++  return BoundType();
++}
++
+ DIEnumerator::DIEnumerator(LLVMContext &C, StorageType Storage,
+                            const APInt &Value, bool IsUnsigned,
+                            ArrayRef<Metadata *> Ops)
+diff --git a/llvm/lib/IR/LLVMContextImpl.h b/llvm/lib/IR/LLVMContextImpl.h
+index d2651a6ec72e..1c63412d08f5 100644
+--- a/llvm/lib/IR/LLVMContextImpl.h
++++ b/llvm/lib/IR/LLVMContextImpl.h
+@@ -581,6 +581,84 @@ template <> struct MDNodeKeyImpl<DIDerivedType> {
+   }
+ };
+ 
++template <> struct MDNodeKeyImpl<DISubrangeType> {
++  MDString *Name;
++  Metadata *File;
++  unsigned Line;
++  Metadata *Scope;
++  uint64_t SizeInBits;
++  uint32_t AlignInBits;
++  unsigned Flags;
++  Metadata *BaseType;
++  Metadata *LowerBound;
++  Metadata *UpperBound;
++  Metadata *Stride;
++  Metadata *Bias;
++
++  MDNodeKeyImpl(MDString *Name, Metadata *File, unsigned Line, Metadata *Scope,
++                uint64_t SizeInBits, uint32_t AlignInBits, unsigned Flags,
++                Metadata *BaseType, Metadata *LowerBound, Metadata *UpperBound,
++                Metadata *Stride, Metadata *Bias)
++      : Name(Name), File(File), Line(Line), Scope(Scope),
++        SizeInBits(SizeInBits), AlignInBits(AlignInBits), Flags(Flags),
++        BaseType(BaseType), LowerBound(LowerBound), UpperBound(UpperBound),
++        Stride(Stride), Bias(Bias) {}
++  MDNodeKeyImpl(const DISubrangeType *N)
++      : Name(N->getRawName()), File(N->getRawFile()), Line(N->getLine()),
++        Scope(N->getRawScope()), SizeInBits(N->getSizeInBits()),
++        AlignInBits(N->getAlignInBits()), Flags(N->getFlags()),
++        BaseType(N->getRawBaseType()), LowerBound(N->getRawLowerBound()),
++        UpperBound(N->getRawUpperBound()), Stride(N->getRawStride()),
++        Bias(N->getRawBias()) {}
++
++  bool isKeyOf(const DISubrangeType *RHS) const {
++    auto BoundsEqual = [=](Metadata *Node1, Metadata *Node2) -> bool {
++      if (Node1 == Node2)
++        return true;
++
++      ConstantAsMetadata *MD1 = dyn_cast_or_null<ConstantAsMetadata>(Node1);
++      ConstantAsMetadata *MD2 = dyn_cast_or_null<ConstantAsMetadata>(Node2);
++      if (MD1 && MD2) {
++        ConstantInt *CV1 = cast<ConstantInt>(MD1->getValue());
++        ConstantInt *CV2 = cast<ConstantInt>(MD2->getValue());
++        if (CV1->getSExtValue() == CV2->getSExtValue())
++          return true;
++      }
++      return false;
++    };
++
++    return Name == RHS->getRawName() && File == RHS->getRawFile() &&
++           Line == RHS->getLine() && Scope == RHS->getRawScope() &&
++           SizeInBits == RHS->getSizeInBits() &&
++           AlignInBits == RHS->getAlignInBits() && Flags == RHS->getFlags() &&
++           BaseType == RHS->getRawBaseType() &&
++           BoundsEqual(LowerBound, RHS->getRawLowerBound()) &&
++           BoundsEqual(UpperBound, RHS->getRawUpperBound()) &&
++           BoundsEqual(Stride, RHS->getRawStride()) &&
++           BoundsEqual(Bias, RHS->getRawBias());
++  }
++
++  unsigned getHashValue() const {
++    unsigned val = 0;
++    auto HashBound = [&](Metadata *Node) -> void {
++      ConstantAsMetadata *MD = dyn_cast_or_null<ConstantAsMetadata>(Node);
++      if (MD) {
++        ConstantInt *CV = cast<ConstantInt>(MD->getValue());
++        val = hash_combine(val, CV->getSExtValue());
++      } else {
++        val = hash_combine(val, Node);
++      }
++    };
++
++    HashBound(LowerBound);
++    HashBound(UpperBound);
++    HashBound(Stride);
++    HashBound(Bias);
++
++    return hash_combine(val, Name, File, Line, Scope, BaseType, Flags);
++  }
++};
++
+ template <> struct MDNodeSubsetEqualImpl<DIDerivedType> {
+   using KeyTy = MDNodeKeyImpl<DIDerivedType>;
+ 
+diff --git a/llvm/lib/IR/Verifier.cpp b/llvm/lib/IR/Verifier.cpp
+index 2d62d31cf6b4..eca708b35138 100644
+--- a/llvm/lib/IR/Verifier.cpp
++++ b/llvm/lib/IR/Verifier.cpp
+@@ -1029,6 +1029,30 @@ void Verifier::visitDIScope(const DIScope &N) {
+     CheckDI(isa<DIFile>(F), "invalid file", &N, F);
+ }
+ 
++void Verifier::visitDISubrangeType(const DISubrangeType &N) {
++  CheckDI(N.getTag() == dwarf::DW_TAG_subrange_type, "invalid tag", &N);
++  auto *BaseType = N.getRawBaseType();
++  CheckDI(!BaseType || isType(BaseType), "BaseType must be a type");
++  auto *LBound = N.getRawLowerBound();
++  CheckDI(!LBound || isa<ConstantAsMetadata>(LBound) ||
++              isa<DIVariable>(LBound) || isa<DIExpression>(LBound),
++          "LowerBound must be signed constant or DIVariable or DIExpression",
++          &N);
++  auto *UBound = N.getRawUpperBound();
++  CheckDI(!UBound || isa<ConstantAsMetadata>(UBound) ||
++              isa<DIVariable>(UBound) || isa<DIExpression>(UBound),
++          "UpperBound must be signed constant or DIVariable or DIExpression",
++          &N);
++  auto *Stride = N.getRawStride();
++  CheckDI(!Stride || isa<ConstantAsMetadata>(Stride) ||
++              isa<DIVariable>(Stride) || isa<DIExpression>(Stride),
++          "Stride must be signed constant or DIVariable or DIExpression", &N);
++  auto *Bias = N.getRawBias();
++  CheckDI(!Bias || isa<ConstantAsMetadata>(Bias) || isa<DIVariable>(Bias) ||
++              isa<DIExpression>(Bias),
++          "Bias must be signed constant or DIVariable or DIExpression", &N);
++}
++
+ void Verifier::visitDISubrange(const DISubrange &N) {
+   CheckDI(N.getTag() == dwarf::DW_TAG_subrange_type, "invalid tag", &N);
+   bool HasAssumedSizedArraySupport = dwarf::isFortran(CurrentSourceLang);
+diff --git a/llvm/test/Bitcode/subrange_type.ll b/llvm/test/Bitcode/subrange_type.ll
+new file mode 100644
+index 000000000000..82de042e92bb
+--- /dev/null
++++ b/llvm/test/Bitcode/subrange_type.ll
+@@ -0,0 +1,28 @@
++;; This test checks generation of DISubrangeType.
++
++; RUN: llvm-as < %s | llvm-dis | llvm-as | llvm-dis | FileCheck %s
++
++;; Test whether DISubrangeType is generated.
++; CHECK: !DISubrangeType(name: "sr__int_range", file: !{{[0-9]+}}, line: 2, size: 32, align: 32, baseType: !{{[0-9]+}}, lowerBound: i64 -7, upperBound: i64 23)
++
++; ModuleID = 'subrange_type.ll'
++source_filename = "/dir/subrange_type.adb"
++
++!llvm.module.flags = !{!0, !1}
++!llvm.dbg.cu = !{!2}
++
++!0 = !{i32 2, !"Debug Info Version", i32 3}
++!1 = !{i32 2, !"Dwarf Version", i32 4}
++!2 = distinct !DICompileUnit(language: DW_LANG_Ada95, file: !3, producer: "GNAT/LLVM", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, enums: !4, retainedTypes: !5, globals: !4, imports: !4)
++!3 = !DIFile(filename: "subrange_type.adb", directory: "/dir")
++!4 = !{}
++!5 = !{!11}
++!6 = distinct !DISubprogram(name: "sr", scope: !3, file: !3, line: 1, type: !7, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !4, retainedNodes: !9)
++!7 = !DISubroutineType(types: !8)
++!8 = !{null}
++!9 = !{!10}
++!10 = !DILocalVariable(name: "x", scope: !6, file: !3, line: 3, type: !11, align: 32)
++!11 = !DISubrangeType(name: "sr__int_range", file: !3, line: 2, size: 32, align: 32, baseType: !12, lowerBound: i64 -7, upperBound: i64 23)
++!12 = !DIBasicType(name: "sr__Tint_rangeB", size: 32, encoding: DW_ATE_signed)
++!13 = !DILocation(line: 3, column: 4, scope: !6)
++!14 = !DILocation(line: 6, column: 5, scope: !6)
+diff --git a/llvm/unittests/IR/MetadataTest.cpp b/llvm/unittests/IR/MetadataTest.cpp
+index 3b60a719780c..e79cbcb3da9f 100644
+--- a/llvm/unittests/IR/MetadataTest.cpp
++++ b/llvm/unittests/IR/MetadataTest.cpp
+@@ -1442,6 +1442,39 @@ TEST_F(DISubrangeTest, fortranAllocatableExpr) {
+   EXPECT_NE(N, DISubrange::get(Context, nullptr, LVother, UE, SE));
+ }
+ 
++typedef MetadataTest DISubrangeTypeTest;
++
++TEST_F(DISubrangeTypeTest, get) {
++  auto *Base =
++      DIBasicType::get(Context, dwarf::DW_TAG_base_type, "test_integer", 32, 0,
++                       dwarf::DW_ATE_signed, 100, DINode::FlagZero);
++
++  DILocalScope *Scope = getSubprogram();
++  DIFile *File = getFile();
++
++  ConstantInt *Lower = ConstantInt::get(Context, APInt(32, -7, true));
++  ConstantAsMetadata *LowerConst = ConstantAsMetadata::get(Lower);
++  ConstantInt *Upper = ConstantInt::get(Context, APInt(32, 23, true));
++  ConstantAsMetadata *UpperConst = ConstantAsMetadata::get(Upper);
++
++  auto *N = DISubrangeType::get(Context, StringRef(), File, 101, Scope, 32, 0,
++                                DINode::FlagZero, Base, LowerConst, UpperConst,
++                                nullptr, LowerConst);
++  EXPECT_EQ(dwarf::DW_TAG_subrange_type, N->getTag());
++
++  auto L = N->getLowerBound();
++  EXPECT_EQ(-7, cast<ConstantInt *>(L)->getSExtValue());
++
++  auto U = N->getUpperBound();
++  EXPECT_EQ(23, cast<ConstantInt *>(U)->getSExtValue());
++
++  EXPECT_EQ(101u, N->getLine());
++  EXPECT_EQ(32u, N->getSizeInBits());
++
++  TempDISubrangeType Temp = N->clone();
++  EXPECT_EQ(N, MDNode::replaceWithUniqued(std::move(Temp)));
++}
++
+ typedef MetadataTest DIGenericSubrangeTest;
+ 
+ TEST_F(DIGenericSubrangeTest, fortranAssumedRankInt) {

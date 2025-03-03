@@ -106,6 +106,10 @@ package GNATLLVM.Helper is
      (Value_As_Metadata (+Const_Int_32 (U)))
      with Pre => Present (U), Post => Present (Const_32_As_Metadata'Result);
 
+   function Const_64_As_Metadata (U : Uint) return Metadata_T is
+     (Value_As_Metadata (+Const_Int_64 (U)))
+     with Pre => Present (U), Post => Present (Const_64_As_Metadata'Result);
+
    function MD_String (S : String) return Metadata_T is
      (MD_String_In_Context_2 (Get_Global_Context, S, S'Length))
      with Post => Present (MD_String'Result);
@@ -246,6 +250,22 @@ package GNATLLVM.Helper is
      (DI_Builder_Get_Or_Create_Subrange
         (DI_Builder, int64_t (Lower_Bound), int64_t (Count)))
      with Post => Present (DI_Builder_Get_Or_Create_Subrange'Result);
+
+   function DI_Builder_Create_Typedef
+     (Base_Type      : Metadata_T;
+      Name           : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Scope          : Metadata_T;
+      Align_In_Bits  : Nat)
+   return Metadata_T
+   is
+     (DI_Create_Typedef
+        (DI_Builder, Base_Type, Name, Name'Length, File,
+        unsigned (Line_Number), Scope,
+        uint32_t (Align_In_Bits)))
+     with Pre  => Present (Base_Type),
+          Post => Present (DI_Builder_Create_Typedef'Result);
 
    function DI_Builder_Create_Array_Type
      (Size          : ULL;

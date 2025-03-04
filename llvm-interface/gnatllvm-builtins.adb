@@ -708,6 +708,12 @@ package body GNATLLVM.Builtins is
       elsif S = "global_data_get" and then N_Args = 0 then
          return Call_Intrinsic0 ("llvm.cheri.ddc.get", A_Char_GL_Type);
 
+      elsif S = "length_get" and then N_Args = 1 then
+         return
+           Call (Build_Intrinsic ("llvm.cheri.cap.length.get", Size_GL_Type,
+                                  (1 => Size_T)),
+                 (1 => Emit_Expression (Val)));
+
       elsif S = "perms_and" and then N_Args = 2 then
          V := Emit_Expression (Val);
          return Call (Build_Intrinsic ("llvm.cheri.cap.perms.and",

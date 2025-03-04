@@ -1382,3 +1382,25 @@ Create_Subrange_Type (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
 					  DIF);
 #endif // GNAT_LLVM_HAVE_SUBRANGE_TYPE
 }
+
+extern "C"
+MDNode *
+Create_Array_Type_With_Name (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
+			     const char *Name, LLVMMetadataRef File,
+			     unsigned LineNo, uint64_t Size,
+                             uint32_t AlignInBits, LLVMMetadataRef Ty,
+                             LLVMMetadataRef *Subscripts,
+                             unsigned NumSubscripts)
+{
+  auto Subs = unwrap(Builder)->getOrCreateArray({unwrap(Subscripts),
+                                                 NumSubscripts});
+#ifdef GNAT_LLVM_HAVE_ARRAY_NAME
+  DIScope *DS = Scope ? unwrap<DIScope>(Scope) : nullptr;
+  return unwrap(Builder)->createArrayType(
+      DS, StringRef(Name, strlen(Name)), unwrap<DIFile>(File),
+      LineNo, Size, AlignInBits, unwrap<DIType>(Ty), Subs);
+#else
+  return unwrap(Builder)->createArrayType(Size, AlignInBits,
+					  unwrap<DIType>(Ty), Subs);
+#endif // GNAT_LLVM_HAVE_ARRAY_NAME
+}

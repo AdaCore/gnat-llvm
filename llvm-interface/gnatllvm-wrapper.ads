@@ -502,4 +502,17 @@ package GNATLLVM.Wrapper is
       Stride         : Metadata_T;
       Bias           : Metadata_T) return Metadata_T;
 
+   function Create_Array_Type_With_Name
+     (Builder        : DI_Builder_T;
+      Scope          : Metadata_T;
+      Name           : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Size           : ULL;
+      Align_In_Bits  : Nat;
+      Ty             : Metadata_T;
+      Subscripts     : Metadata_Array) return Metadata_T
+     with Pre  => Present (Ty),
+          Post => Present (Create_Array_Type_With_Name'Result);
+
 end GNATLLVM.Wrapper;

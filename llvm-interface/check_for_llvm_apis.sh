@@ -20,6 +20,7 @@ function api_test() {
     # Just include whatever headers are required by any test.
     cat <<EOF > $filename
 #include "llvm/IR/DIBuilder.h"
+using namespace llvm;
 $program
 EOF
 
@@ -28,7 +29,8 @@ EOF
     fi
 }
 
-api_test HAVE_SUBRANGE_TYPE "llvm::DISubrangeType *subrange_value = nullptr;"
+api_test HAVE_SUBRANGE_TYPE "DISubrangeType *subrange_value = nullptr;"
+api_test HAVE_ARRAY_NAME "MDNode *named(DIBuilder *builder) { return builder->createArrayType(nullptr, StringRef(), nullptr, 0, 32, 0, nullptr, {}); }"
 
 for def in $haves; do
     echo "#define GNAT_LLVM_$def"

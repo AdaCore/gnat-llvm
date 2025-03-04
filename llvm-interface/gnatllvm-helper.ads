@@ -267,18 +267,6 @@ package GNATLLVM.Helper is
      with Pre  => Present (Base_Type),
           Post => Present (DI_Builder_Create_Typedef'Result);
 
-   function DI_Builder_Create_Array_Type
-     (Size          : ULL;
-      Align_In_Bits : Nat;
-      Ty            : Metadata_T;
-      Subscripts    : Metadata_Array) return Metadata_T
-   is
-     (DI_Builder_Create_Array_Type
-        (DI_Builder, uint64_t (Size), uint32_t (Align_In_Bits), Ty,
-         Subscripts'Address, unsigned (Subscripts'Length)))
-     with Pre  => Present (Ty),
-          Post => Present (DI_Builder_Create_Array_Type'Result);
-
    function DI_Create_Struct_Type
      (Scope          : Metadata_T;
       Name           : String;

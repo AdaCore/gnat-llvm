@@ -1404,3 +1404,79 @@ Create_Array_Type_With_Name (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
 					  unwrap<DIType>(Ty), Subs);
 #endif // GNAT_LLVM_HAVE_ARRAY_NAME
 }
+
+extern "C"
+Metadata *
+Constant_As_Metadata (LLVMContext *Context, MDBuilder *MDHelper,
+		      unsigned NumWords, const uint64_t Words[])
+{
+  auto Result = APInt (NumWords * 64, {Words, NumWords});
+  return MDHelper->createConstant (ConstantInt::get (*Context, Result));
+}
+
+extern "C"
+MDNode *
+Create_Binary_Fixed_Point_Type (LLVMDIBuilderRef Builder, const char *Name,
+				uint64_t Size, uint32_t AlignInBits,
+				bool IsUnsigned, int Factor)
+{
+#ifdef GNAT_LLVM_HAVE_FIXED_POINT
+  return unwrap(Builder)->createBinaryFixedPointType(
+      Name, Size, AlignInBits,
+      IsUnsigned ? dwarf::DW_ATE_unsigned_fixed : dwarf::DW_ATE_signed_fixed,
+      DINode::FlagZero, Factor);
+#else
+  return unwrap(Builder)->createBasicType(Name, Size,
+					  IsUnsigned ?
+					  dwarf::DW_ATE_unsigned :
+					  dwarf::DW_ATE_signed,
+					  DINode::FlagZero);
+#endif // GNAT_LLVM_HAVE_FIXED_POINT
+}
+
+extern "C"
+MDNode *
+Create_Decimal_Fixed_Point_Type (LLVMDIBuilderRef Builder, const char *Name,
+				 uint64_t Size, uint32_t AlignInBits,
+				 bool IsUnsigned, int Factor)
+{
+#ifdef GNAT_LLVM_HAVE_FIXED_POINT
+  return unwrap(Builder)->createDecimalFixedPointType(
+      Name, Size, AlignInBits,
+      IsUnsigned ? dwarf::DW_ATE_unsigned_fixed : dwarf::DW_ATE_signed_fixed,
+      DINode::FlagZero, Factor);
+#else
+  return unwrap(Builder)->createBasicType(Name, Size,
+					  IsUnsigned ?
+					  dwarf::DW_ATE_unsigned :
+					  dwarf::DW_ATE_signed,
+					  DINode::FlagZero);
+#endif // GNAT_LLVM_HAVE_FIXED_POINT
+}
+
+extern "C"
+MDNode *
+Create_Rational_Fixed_Point_Type (LLVMDIBuilderRef Builder, const char *Name,
+				  uint64_t Size, uint32_t AlignInBits,
+				  bool IsUnsigned, Metadata *Num,
+				  Metadata *Denom)
+{
+#ifdef GNAT_LLVM_HAVE_FIXED_POINT
+  Constant *Num_C = dyn_cast<ConstantAsMetadata>(Num)->getValue();
+  ConstantInt *Num_Int = dyn_cast<ConstantInt>(Num_C);
+
+  Constant *Denom_C = dyn_cast<ConstantAsMetadata>(Denom)->getValue();
+  ConstantInt *Denom_Int = dyn_cast<ConstantInt>(Denom_C);
+
+  return unwrap(Builder)->createRationalFixedPointType(
+      Name, Size, AlignInBits,
+      IsUnsigned ? dwarf::DW_ATE_unsigned_fixed : dwarf::DW_ATE_signed_fixed,
+      DINode::FlagZero, Num_Int->getValue(), Denom_Int->getValue());
+#else
+  return unwrap(Builder)->createBasicType(Name, Size,
+					  IsUnsigned ?
+					  dwarf::DW_ATE_unsigned :
+					  dwarf::DW_ATE_signed,
+					  DINode::FlagZero);
+#endif // GNAT_LLVM_HAVE_FIXED_POINT
+}

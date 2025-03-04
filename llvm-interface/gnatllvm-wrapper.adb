@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Interfaces.C.Strings; use Interfaces.C.Strings;
+with Uintp.LLVM;           use Uintp.LLVM;
 
 package body GNATLLVM.Wrapper is
 
@@ -796,5 +797,97 @@ package body GNATLLVM.Wrapper is
          uint64_t (Size), uint32_t (Align_In_Bits), Ty,
          Subscripts'Address, unsigned (Subscripts'Length));
    end Create_Array_Type_With_Name;
+
+   function Create_Binary_Fixed_Point_Type
+     (Builder        : DI_Builder_T;
+      Name           : String;
+      Size           : ULL;
+      Align_In_Bits  : Nat;
+      Is_Unsigned    : Boolean;
+      Factor         : Int) return Metadata_T
+   is
+      function Create_Binary_Fixed_Point_Type_C
+        (Builder        : DI_Builder_T;
+         Name           : String;
+         Size           : uint64_t;
+         Align_In_Bits  : uint32_t;
+         Is_Unsigned    : LLVM_Bool;
+         Factor         : Int) return Metadata_T
+      with Import => True,
+         Convention => C,
+         External_Name => "Create_Binary_Fixed_Point_Type";
+   begin
+      return Create_Binary_Fixed_Point_Type_C
+         (Builder, Name & ASCII.NUL, uint64_t (Size),
+          uint32_t (Align_In_Bits), Boolean'Pos (Is_Unsigned), Factor);
+   end Create_Binary_Fixed_Point_Type;
+
+   function Create_Decimal_Fixed_Point_Type
+     (Builder        : DI_Builder_T;
+      Name           : String;
+      Size           : ULL;
+      Align_In_Bits  : Nat;
+      Is_Unsigned    : Boolean;
+      Factor         : Int) return Metadata_T
+   is
+      function Create_Decimal_Fixed_Point_Type_C
+        (Builder        : DI_Builder_T;
+         Name           : String;
+         Size           : uint64_t;
+         Align_In_Bits  : uint32_t;
+         Is_Unsigned    : LLVM_Bool;
+         Factor         : Int) return Metadata_T
+      with Import => True,
+         Convention => C,
+         External_Name => "Create_Decimal_Fixed_Point_Type";
+   begin
+      return Create_Decimal_Fixed_Point_Type_C
+         (Builder, Name & ASCII.NUL, uint64_t (Size),
+          uint32_t (Align_In_Bits), Boolean'Pos (Is_Unsigned), Factor);
+   end Create_Decimal_Fixed_Point_Type;
+
+   function Create_Rational_Fixed_Point_Type
+     (Builder        : DI_Builder_T;
+      Name           : String;
+      Size           : ULL;
+      Align_In_Bits  : Nat;
+      Is_Unsigned    : Boolean;
+      Numerator      : Metadata_T;
+      Denominator    : Metadata_T) return Metadata_T
+   is
+      function Create_Rational_Fixed_Point_Type_C
+        (Builder        : DI_Builder_T;
+         Name           : String;
+         Size           : uint64_t;
+         Align_In_Bits  : uint32_t;
+         Is_Unsigned    : LLVM_Bool;
+         Numerator      : Metadata_T;
+         Denominator    : Metadata_T) return Metadata_T
+      with Import => True,
+         Convention => C,
+         External_Name => "Create_Rational_Fixed_Point_Type";
+   begin
+      return Create_Rational_Fixed_Point_Type_C
+         (Builder, Name & ASCII.NUL, uint64_t (Size),
+          uint32_t (Align_In_Bits), Boolean'Pos (Is_Unsigned),
+          Numerator, Denominator);
+   end Create_Rational_Fixed_Point_Type;
+
+   function Constant_As_Metadata (U : Uint) return Metadata_T
+   is
+      function Constant_As_Metadata
+         (Ctx       : Context_T;
+          Builder    : MD_Builder_T;
+          Num_Words : unsigned;
+          Words     : access uint64_t) return Metadata_T
+      with Import => True,
+         Convention => C,
+         External_Name => "Constant_As_Metadata";
+
+      Words : Word_Array := UI_To_Words (U);
+   begin
+      return Constant_As_Metadata (Get_Global_Context, MD_Builder,
+                                   Words'Length, Words (Words'First)'Access);
+   end Constant_As_Metadata;
 
 end GNATLLVM.Wrapper;

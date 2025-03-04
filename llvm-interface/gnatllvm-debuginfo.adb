@@ -21,6 +21,7 @@ with Sinput;     use Sinput;
 with Stand;      use Stand;
 with Table;      use Table;
 with Uintp.LLVM; use Uintp.LLVM;
+with Urealp;     use Urealp;
 
 with GNATLLVM.Arrays;      use GNATLLVM.Arrays;
 with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
@@ -787,13 +788,36 @@ package body GNATLLVM.DebugInfo is
          --  For scalar, non-enumeration types, we create the corresponding
          --  debug type.
 
-         when E_Signed_Integer_Type | E_Modular_Integer_Type
-              | Fixed_Point_Kind =>
+         when E_Signed_Integer_Type | E_Modular_Integer_Type =>
             Result := DI_Create_Basic_Type
               (Name, Size,
                (if Is_Unsigned_Type (TE) then DW_ATE_Unsigned
                 else  DW_ATE_Signed),
                DI_Flag_Zero);
+
+         when Fixed_Point_Kind => Fixed_Point : declare
+            Small : constant Ureal := Small_Value (TE);
+            Base : constant Int := Rbase (Small);
+            Numer : constant Uint := Numerator (Small);
+            Denom : constant Uint := Denominator (Small);
+         begin
+            if Numer = 1 and then (Base = 2 or Base = 10) then
+               begin
+                  if Base = 2 then
+                     Result := Create_Binary_Fixed_Point_Type (DI_Builder,
+                        Name, Size, Align, Is_Unsigned_Type (TE), -(+Denom));
+                  else
+                     Result := Create_Decimal_Fixed_Point_Type (DI_Builder,
+                        Name, Size, Align, Is_Unsigned_Type (TE), -(+Denom));
+                  end if;
+               end;
+            else
+               Result := Create_Rational_Fixed_Point_Type (DI_Builder,
+                  Name, Size, Align, Is_Unsigned_Type (TE),
+                  Constant_As_Metadata (Norm_Num (Small)),
+                  Constant_As_Metadata (Norm_Den (Small)));
+            end if;
+         end Fixed_Point;
 
          when Float_Kind =>
             Result := DI_Create_Basic_Type (Name, Size, DW_ATE_Float,

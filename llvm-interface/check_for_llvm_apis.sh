@@ -31,6 +31,7 @@ EOF
 
 api_test HAVE_SUBRANGE_TYPE "DISubrangeType *subrange_value = nullptr;"
 api_test HAVE_ARRAY_NAME "MDNode *named(DIBuilder *builder) { return builder->createArrayType(nullptr, StringRef(), nullptr, 0, 32, 0, nullptr, {}); }"
+api_test HAVE_FIXED_POINT "DIFixedPointType *fp_type = nullptr;"
 
 for def in $haves; do
     echo "#define GNAT_LLVM_$def"

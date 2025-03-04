@@ -515,4 +515,32 @@ package GNATLLVM.Wrapper is
      with Pre  => Present (Ty),
           Post => Present (Create_Array_Type_With_Name'Result);
 
+   function Create_Binary_Fixed_Point_Type
+     (Builder        : DI_Builder_T;
+      Name           : String;
+      Size           : ULL;
+      Align_In_Bits  : Nat;
+      Is_Unsigned    : Boolean;
+      Factor         : Int) return Metadata_T;
+
+   function Create_Decimal_Fixed_Point_Type
+     (Builder        : DI_Builder_T;
+      Name           : String;
+      Size           : ULL;
+      Align_In_Bits  : Nat;
+      Is_Unsigned    : Boolean;
+      Factor         : Int) return Metadata_T;
+
+   function Create_Rational_Fixed_Point_Type
+     (Builder        : DI_Builder_T;
+      Name           : String;
+      Size           : ULL;
+      Align_In_Bits  : Nat;
+      Is_Unsigned    : Boolean;
+      Numerator      : Metadata_T;
+      Denominator    : Metadata_T) return Metadata_T;
+
+   function Constant_As_Metadata (U : Uint) return Metadata_T
+      with Pre => Present (U), Post => Present (Constant_As_Metadata'Result);
+
 end GNATLLVM.Wrapper;

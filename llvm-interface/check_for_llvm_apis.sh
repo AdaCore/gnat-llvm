@@ -12,7 +12,7 @@ ldflags=$($llvm_config  --libs all --ldflags --system-libs)
 haves=
 
 # Test for some specific LLVM API.
-function api_test() {
+api_test() {
     defname="$1"
     program="$2"
     filename=obj/test_${defname}.cpp

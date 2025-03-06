@@ -461,10 +461,14 @@ package body GNATLLVM.DebugInfo is
             Sub_Type_Node : constant Metadata_T          :=
               DI_Builder_Create_Subroutine_Type
               (File_Node, Types, DI_Flag_Zero);
+            Is_Main : constant Boolean := S_Ext_Name = "main";
             Function_Node : constant Metadata_T          :=
               DI_Create_Function
-                (Dyn_Scope, S_Name,
-                 (if S_Ext_Name = S_Name then "" else S_Ext_Name),
+                (Dyn_Scope,
+                 (if Is_Main then S_Ext_Name else S_Name),
+                 (if S_Ext_Name = S_Name or else Is_Main
+                  then ""
+                  else S_Ext_Name),
                  File_Node, Line_Number, Sub_Type_Node, False, True,
                  Line_Number, DI_Flag_Zero,
                  Code_Gen_Level /= Code_Gen_Level_None);

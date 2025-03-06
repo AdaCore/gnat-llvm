@@ -491,7 +491,7 @@ package GNATLLVM.Wrapper is
       Scope          : Metadata_T;
       Name           : String;
       File           : Metadata_T;
-      Line_Number    : Physical_Line_Number;
+      Line_Number    : Logical_Line_Number;
       Size           : ULL;
       Align_In_Bits  : Nat;
       Flags          : DI_Flags_T;

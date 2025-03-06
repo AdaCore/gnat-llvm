@@ -777,7 +777,7 @@ package body GNATLLVM.DebugInfo is
                Result := Create_Subrange_Type
                   (DI_Builder, No_Metadata_T, Name,
                    Get_Debug_File_Node (Get_Source_File_Index (S)),
-                   Get_Physical_Line_Number (S), Size, Align,
+                   Get_Logical_Line_Number (S), Size, Align,
                    DI_Flag_Zero, Is_Unsigned_Type (TE),
                    Base_Type_Data, Low_Cst, High_Cst,
                    No_Metadata_T,

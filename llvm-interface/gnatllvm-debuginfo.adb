@@ -102,6 +102,12 @@ package body GNATLLVM.DebugInfo is
    --  Given MD, debug metadata for some type, create debug metadata for a
    --  pointer to that type. E and Suffix is used for naming the type.
 
+   function Create_Array_Type (GT : GL_Type; Size : ULL; Align : Nat;
+                               S : Source_Ptr) return Metadata_T
+     with Pre => Present (GT),
+          Post => Present (Create_Array_Type'Result);
+   --  Create metadata corresponding to the array type GT.
+
    function Create_Type_Data (GT : GL_Type) return Metadata_T
      with Pre => Present (GT);
    --  Create metadata corresponding to the type of GT. Return
@@ -699,6 +705,68 @@ package body GNATLLVM.DebugInfo is
 
    end Create_Fat_Pointer_Type_Data;
 
+   -----------------------
+   -- Create_Array_Type --
+   -----------------------
+
+   function Create_Array_Type (GT : GL_Type; Size : ULL; Align : Nat;
+                               S : Source_Ptr) return Metadata_T
+   is
+      TE         : constant Void_Or_Type_Kind_Id := Full_Etype (GT);
+      Is_Packed  : constant Boolean := Is_Packed_Array_Impl_Type (TE);
+      Array_TE   : constant Type_Kind_Id :=
+         (if Is_Packed
+          then Full_Original_Array_Type (TE)
+          else TE);
+      Name       : constant String := Get_Name (Array_TE);
+      Comp_TE    : constant Void_Or_Type_Kind_Id :=
+         Get_Fullest_View (Component_Type (Array_TE));
+      Comp_Ty    : constant GL_Type
+         := Get_GL_Type (Comp_TE);
+      Inner_Type : constant Metadata_T := Create_Type_Data (Comp_Ty);
+      Ranges     : Metadata_Array (0 .. Number_Dimensions (Array_TE) - 1);
+   begin
+      --  For arrays, get the component type's data. If it exists and
+      --  this is of fixed size, get info for each of the bounds and
+      --  make a description of the type.
+
+      for J in Ranges'Range loop
+         declare
+            Low_Bound  : constant GL_Value   :=
+              Get_Array_Bound (GT, J, True, No_GL_Value,
+                               For_Orig => Is_Packed);
+            Low_Cst : constant Metadata_T :=
+              Value_As_Metadata (Low_Bound);
+            High_Bound : constant GL_Value   :=
+              Get_Array_Bound (GT, J, False, No_GL_Value,
+                               For_Orig => Is_Packed);
+            High_Cst : constant Metadata_T :=
+              Value_As_Metadata (High_Bound);
+            Index_Type : constant GL_Type :=
+               (if Is_Packed
+                then Original_Array_Index_GT (TE, J)
+                else Array_Index_GT (Array_TE, J));
+            Base_Type_Data : constant Metadata_T :=
+               Create_Type_Data (Index_Type);
+            Stride : constant Metadata_T :=
+               (if J = 0
+                   and then Component_Size (Array_TE) /= Esize (Comp_TE)
+                then Const_64_As_Metadata (Component_Size (Array_TE))
+                else No_Metadata_T);
+         begin
+            Ranges (J) := Create_Subrange_Type (DI_Builder, No_Metadata_T,
+               "", No_Metadata_T, No_Line_Number, 0, 0, DI_Flag_Zero,
+               Is_Unsigned_Type (Full_Etype (Index_Type)),
+               Base_Type_Data, Low_Cst, High_Cst, Stride, No_Metadata_T);
+         end;
+      end loop;
+
+      return Create_Array_Type_With_Name (DI_Builder, No_Metadata_T,
+         Name, Get_Debug_File_Node (Get_Source_File_Index (S)),
+         Get_Physical_Line_Number (S),
+         Size, Align, Inner_Type, Ranges);
+   end Create_Array_Type;
+
    ----------------------
    -- Create_Type_Data --
    ----------------------
@@ -740,54 +808,63 @@ package body GNATLLVM.DebugInfo is
 
          when E_Enumeration_Subtype | E_Signed_Integer_Subtype
               | E_Modular_Integer_Subtype => Sub_Type :
-         declare
+            begin
+               if Is_Packed_Array_Impl_Type (TE) then
+                  Result := Create_Array_Type (GT, Size, Align, S);
+               else
+                  declare
 
-            Full_BT : constant Entity_Id := Full_Base_Type (TE);
-            Full_Low : constant Uint
-               := Get_Uint_Value (Type_Low_Bound (Full_BT));
-            Full_High : constant Uint
-               := Get_Uint_Value (Type_High_Bound (Full_BT));
+                     Full_BT : constant Entity_Id :=
+                        Get_Fullest_View (Base_Type (TE));
+                     Full_Low : constant Uint
+                        := Get_Uint_Value (Type_Low_Bound (Full_BT));
+                     Full_High : constant Uint
+                        := Get_Uint_Value (Type_High_Bound (Full_BT));
 
-            Base_Type_Data : constant Metadata_T :=
-               Create_Type_Data (Primitive_GL_Type (Full_BT));
-            Low : constant Uint := Get_Uint_Value (Type_Low_Bound (TE));
-            Low_Cst : constant Metadata_T :=
-               (if Present (Low)
-                then Const_64_As_Metadata (Low)
-                else No_Metadata_T);
-            High : constant Uint := Get_Uint_Value (Type_High_Bound (TE));
-            High_Cst : constant Metadata_T :=
-               (if Present (High)
-                then Const_64_As_Metadata (High)
-                else No_Metadata_T);
+                     Base_Type_Data : constant Metadata_T :=
+                        Create_Type_Data (Primitive_GL_Type (Full_BT));
+                     Low : constant Uint
+                        := Get_Uint_Value (Type_Low_Bound (TE));
+                     Low_Cst : constant Metadata_T :=
+                        (if Present (Low)
+                         then Const_64_As_Metadata (Low)
+                         else No_Metadata_T);
+                     High : constant Uint
+                        := Get_Uint_Value (Type_High_Bound (TE));
+                     High_Cst : constant Metadata_T :=
+                        (if Present (High)
+                         then Const_64_As_Metadata (High)
+                         else No_Metadata_T);
 
-         begin
+                  begin
 
-            if Present (Low) and then Present (Full_Low)
-               and then Present (High) and then Present (Full_High)
-               and then Low = Full_Low and then High = Full_High
-            then
+                     if Present (Low) and then Present (Full_Low)
+                        and then Present (High) and then Present (Full_High)
+                        and then Low = Full_Low and then High = Full_High
+                     then
 
-               Result := DI_Builder_Create_Typedef (Base_Type_Data, Name,
-                  Get_Debug_File_Node (Get_Source_File_Index (S)),
-                  Get_Physical_Line_Number (S), No_Metadata_T, Align);
+                        Result := DI_Builder_Create_Typedef
+                          (Base_Type_Data, Name,
+                           Get_Debug_File_Node (Get_Source_File_Index (S)),
+                           Get_Physical_Line_Number (S), No_Metadata_T, Align);
 
-            else
+                     else
 
-               Result := Create_Subrange_Type
-                  (DI_Builder, No_Metadata_T, Name,
-                   Get_Debug_File_Node (Get_Source_File_Index (S)),
-                   Get_Physical_Line_Number (S), Size, Align,
-                   DI_Flag_Zero, Is_Unsigned_Type (TE),
-                   Base_Type_Data, Low_Cst, High_Cst,
-                   No_Metadata_T,
-                   (if Has_Biased_Representation (TE)
-                    then Low_Cst
-                    else No_Metadata_T));
+                        Result := Create_Subrange_Type
+                           (DI_Builder, No_Metadata_T, Name,
+                            Get_Debug_File_Node (Get_Source_File_Index (S)),
+                            Get_Logical_Line_Number (S), Size, Align,
+                            DI_Flag_Zero, Is_Unsigned_Type (TE),
+                            Base_Type_Data, Low_Cst, High_Cst,
+                            No_Metadata_T,
+                            (if Has_Biased_Representation (TE)
+                             then Low_Cst
+                             else No_Metadata_T));
 
-            end if;
-
-         end Sub_Type;
+                     end if;
+                  end;
+               end if;
+            end Sub_Type;
 
          --  For scalar, non-enumeration types, we create the corresponding
          --  debug type.
@@ -846,35 +923,8 @@ package body GNATLLVM.DebugInfo is
                end if;
             end if;
 
-         --  For arrays, get the component type's data. If it exists and
-         --  this is of fixed size, get info for each of the bounds and
-         --  make a description of the type.
-
-         when Array_Kind => Array_Type : declare
-
-            Inner_Type : constant Metadata_T :=
-              Create_Type_Data (Full_Component_GL_Type (GT));
-            Ranges     : Metadata_Array (0 .. Number_Dimensions (TE) - 1);
-
-         begin
-            for J in Ranges'Range loop
-               declare
-                  Low_Bound  : constant GL_Value   :=
-                    Get_Array_Bound (GT, J, True, No_GL_Value);
-                  Length     : constant GL_Value   :=
-                    Get_Array_Length (TE, J, No_GL_Value);
-
-               begin
-                  Ranges (J) := DI_Builder_Get_Or_Create_Subrange (+Low_Bound,
-                                                                   +Length);
-               end;
-            end loop;
-
-            Result := Create_Array_Type_With_Name (DI_Builder, No_Metadata_T,
-               Name, Get_Debug_File_Node (Get_Source_File_Index (S)),
-               Get_Physical_Line_Number (S),
-               Size, Align, Inner_Type, Ranges);
-         end Array_Type;
+         when Array_Kind =>
+            Result := Create_Array_Type (GT, Size, Align, S);
 
          --  For records, go through each field. If we can make debug info
          --  for the type and the position and size are known and static,

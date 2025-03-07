@@ -738,6 +738,19 @@ package body GNATLLVM.Arrays is
       return Array_Info.Table (Info_Id + Dim).Bound_GT;
    end Array_Index_GT;
 
+   -----------------------------
+   -- Original_Array_Index_GT --
+   -----------------------------
+
+   function Original_Array_Index_GT (TE : Void_Or_Type_Kind_Id; Dim : Nat)
+      return GL_Type
+   is
+      Info_Id : constant Array_Info_Id := Get_Orig_Array_Info (TE);
+
+   begin
+      return Array_Info.Table (Info_Id + Dim).Bound_GT;
+   end Original_Array_Index_GT;
+
    -------------------------
    -- Array_Index_Has_FLB --
    -------------------------

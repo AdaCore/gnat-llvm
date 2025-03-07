@@ -244,13 +244,6 @@ package GNATLLVM.Helper is
      with Pre  => Present (Pointee_Ty),
           Post => Present (DI_Create_Pointer_Type'Result);
 
-   function DI_Builder_Get_Or_Create_Subrange
-     (Lower_Bound, Count : LLI) return Metadata_T
-   is
-     (DI_Builder_Get_Or_Create_Subrange
-        (DI_Builder, int64_t (Lower_Bound), int64_t (Count)))
-     with Post => Present (DI_Builder_Get_Or_Create_Subrange'Result);
-
    function DI_Builder_Create_Typedef
      (Base_Type      : Metadata_T;
       Name           : String;

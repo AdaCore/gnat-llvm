@@ -93,10 +93,10 @@ package body GNATLLVM.DebugInfo is
    --  Return debug metadata for a location
 
    function Create_Pointer_To
-     (MD : Metadata_T; E : Entity_Id; Suffix : String := "") return Metadata_T
+     (MD : Metadata_T; E : Entity_Id) return Metadata_T
    is
      (DI_Create_Pointer_Type (MD, ULL (Thin_Pointer_Size), Thin_Pointer_Size,
-                              0, Get_Name (E, Suffix & "_RF")))
+                              0, ""))
      with Pre  => Present (MD) and then Present (E),
           Post => Present (Create_Pointer_To'Result);
    --  Given MD, debug metadata for some type, create debug metadata for a
@@ -604,7 +604,7 @@ package body GNATLLVM.DebugInfo is
         ((Offset + ULL (Rec_Align) - 1) / ULL (Rec_Align)) * ULL (Rec_Align);
 
       return DI_Create_Struct_Type
-        (No_Metadata_T, Get_Name (GT, "__XUB"),
+        (No_Metadata_T, "",
          Get_Debug_File_Node (Get_Source_File_Index (S)),
          Get_Physical_Line_Number (S), Size, Rec_Align, DI_Flag_Zero,
          No_Metadata_T, Field_MDs (1 .. Idx - 1), 0, No_Metadata_T, "");
@@ -651,7 +651,7 @@ package body GNATLLVM.DebugInfo is
                                 Data_Align, +Size_V, MD => Data_MD));
 
       return DI_Create_Struct_Type
-        (No_Metadata_T, Get_Name (GT, "__XUT"),
+        (No_Metadata_T, "",
          Get_Debug_File_Node (Get_Source_File_Index (S)),
          Get_Physical_Line_Number (S), Offset, Align, DI_Flag_Zero,
          No_Metadata_T, Field_MDs, 0, No_Metadata_T, "");
@@ -672,7 +672,7 @@ package body GNATLLVM.DebugInfo is
       Bounds_MD   : constant Metadata_T :=
         Create_Bounds_Type_Data (DT, Bounds_Size);
       P_Bounds_MD : constant Metadata_T :=
-        Create_Pointer_To (Bounds_MD, Full_Etype (GT), "_B");
+        Create_Pointer_To (Bounds_MD, Full_Etype (GT));
       Comp_MD     : constant Metadata_T := Create_Type_Data (CT);
       P_Comp_MD   : Metadata_T;
       Field_MDs   : Metadata_Array (1 .. 2);

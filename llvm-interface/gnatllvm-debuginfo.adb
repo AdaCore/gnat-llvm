@@ -102,6 +102,10 @@ package body GNATLLVM.DebugInfo is
    --  Given MD, debug metadata for some type, create debug metadata for a
    --  pointer to that type. E and Suffix is used for naming the type.
 
+   function Convert_Bound_To_Metadata (Bound_Type : GL_Type; Bound : GL_Value)
+     return Metadata_T;
+   --  Convert a type bound to metadata, handling some peculiarities.
+
    function Create_Array_Type (GT : GL_Type; Size : ULL; Align : Nat;
                                S : Source_Ptr) return Metadata_T
      with Pre => Present (GT),
@@ -705,6 +709,33 @@ package body GNATLLVM.DebugInfo is
 
    end Create_Fat_Pointer_Type_Data;
 
+   -------------------------------
+   -- Convert_Bound_To_Metadata --
+   -------------------------------
+
+   function Convert_Bound_To_Metadata (Bound_Type : GL_Type; Bound : GL_Value)
+      return Metadata_T is
+   begin
+      --  Since LLVM only really has signed scalar types (and then
+      --  some unsigned operations), we may end up with a type bound
+      --  that is incorrectly (for DWARF's purposes) sign-extended.
+      --  So for example if an array uses Character as an index type,
+      --  the upper bound is 255, but this will show up as "i8 -1".
+      --  This function undoes the sign extension in this scenario.
+      if Is_Unsigned_Type (Bound_Type) then
+         declare
+            Bitsize : constant Uint  :=
+               UI_From_ULL (Get_Scalar_Bit_Size (Bound_Type));
+            Max : constant Uint := 2 ** Bitsize;
+            Masked : constant Uint := UI_From_GL_Value (Bound) mod Max;
+         begin
+            return Constant_As_Metadata (Masked);
+         end;
+      else
+         return Value_As_Metadata (Bound);
+      end if;
+   end Convert_Bound_To_Metadata;
+
    -----------------------
    -- Create_Array_Type --
    -----------------------
@@ -732,20 +763,20 @@ package body GNATLLVM.DebugInfo is
 
       for J in Ranges'Range loop
          declare
-            Low_Bound  : constant GL_Value   :=
-              Get_Array_Bound (GT, J, True, No_GL_Value,
-                               For_Orig => Is_Packed);
-            Low_Cst : constant Metadata_T :=
-              Value_As_Metadata (Low_Bound);
-            High_Bound : constant GL_Value   :=
-              Get_Array_Bound (GT, J, False, No_GL_Value,
-                               For_Orig => Is_Packed);
-            High_Cst : constant Metadata_T :=
-              Value_As_Metadata (High_Bound);
             Index_Type : constant GL_Type :=
                (if Is_Packed
                 then Original_Array_Index_GT (TE, J)
                 else Array_Index_GT (Array_TE, J));
+            Low_Bound  : constant GL_Value   :=
+              Get_Array_Bound (GT, J, True, No_GL_Value,
+                               For_Orig => Is_Packed);
+            Low_Cst : constant Metadata_T :=
+              Convert_Bound_To_Metadata (Index_Type, Low_Bound);
+            High_Bound : constant GL_Value   :=
+              Get_Array_Bound (GT, J, False, No_GL_Value,
+                               For_Orig => Is_Packed);
+            High_Cst : constant Metadata_T :=
+              Convert_Bound_To_Metadata (Index_Type, High_Bound);
             Base_Type_Data : constant Metadata_T :=
                Create_Type_Data (Index_Type);
             Stride : constant Metadata_T :=

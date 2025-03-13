@@ -775,6 +775,7 @@ package body GNATLLVM.Wrapper is
       Size           : ULL;
       Align_In_Bits  : Nat;
       Ty             : Metadata_T;
+      Stride         : Metadata_T;
       Subscripts     : Metadata_Array) return Metadata_T
    is
       function Create_Array_Type_With_Name_C
@@ -786,6 +787,7 @@ package body GNATLLVM.Wrapper is
          Size           : uint64_t;
          Align_In_Bits  : uint32_t;
          Ty             : Metadata_T;
+         Stride         : Metadata_T;
          Subscripts     : System.Address;
          Num_Subscripts : unsigned) return Metadata_T
       with Import => True,
@@ -794,7 +796,7 @@ package body GNATLLVM.Wrapper is
    begin
       return Create_Array_Type_With_Name_C
         (Builder, Scope, Name & ASCII.NUL, File, unsigned (Line_Number),
-         uint64_t (Size), uint32_t (Align_In_Bits), Ty,
+         uint64_t (Size), uint32_t (Align_In_Bits), Ty, Stride,
          Subscripts'Address, unsigned (Subscripts'Length));
    end Create_Array_Type_With_Name;
 

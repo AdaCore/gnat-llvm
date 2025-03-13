@@ -1389,6 +1389,7 @@ Create_Array_Type_With_Name (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
 			     const char *Name, LLVMMetadataRef File,
 			     unsigned LineNo, uint64_t Size,
                              uint32_t AlignInBits, LLVMMetadataRef Ty,
+			     LLVMMetadataRef BitStride,
                              LLVMMetadataRef *Subscripts,
                              unsigned NumSubscripts)
 {
@@ -1398,7 +1399,8 @@ Create_Array_Type_With_Name (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
   DIScope *DS = Scope ? unwrap<DIScope>(Scope) : nullptr;
   return unwrap(Builder)->createArrayType(
       DS, StringRef(Name, strlen(Name)), unwrap<DIFile>(File),
-      LineNo, Size, AlignInBits, unwrap<DIType>(Ty), Subs);
+      LineNo, Size, AlignInBits, unwrap<DIType>(Ty), Subs,
+      nullptr, nullptr, nullptr, nullptr, unwrap(BitStride));
 #else
   return unwrap(Builder)->createArrayType(Size, AlignInBits,
 					  unwrap<DIType>(Ty), Subs);

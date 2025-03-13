@@ -1,0 +1,662 @@
+From 93d842861068af8356a4f9fb0c4e928f0e827caf Mon Sep 17 00:00:00 2001
+From: Tom Tromey <tromey@adacore.com>
+Date: Thu, 13 Mar 2025 08:34:14 -0600
+Subject: [PATCH 4/4] Add bit stride to DICompositeType
+
+In Ada, an array can be packed and the elements can take less space
+than their natural object size; for example a range type might occupy
+less than a full byte.
+
+In DWARF, this is represented by putting a DW_AT_bit_stride onto the
+array type itself.
+
+This patch adds a bit stride to DICompositeType so that gnat-llvm can
+emit DWARF for these sorts of arrays.
+---
+ llvm/docs/LangRef.rst                         |  5 +-
+ llvm/include/llvm/IR/DIBuilder.h              |  5 +-
+ llvm/include/llvm/IR/DebugInfoMetadata.h      | 55 +++++++++++--------
+ llvm/lib/AsmParser/LLParser.cpp               |  7 ++-
+ llvm/lib/Bitcode/Reader/MetadataLoader.cpp    | 10 +++-
+ llvm/lib/Bitcode/Writer/BitcodeWriter.cpp     |  1 +
+ llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp     |  4 ++
+ llvm/lib/IR/AsmWriter.cpp                     |  1 +
+ llvm/lib/IR/DIBuilder.cpp                     | 23 ++++----
+ llvm/lib/IR/DebugInfoMetadata.cpp             | 19 ++++---
+ llvm/lib/IR/LLVMContextImpl.h                 | 12 ++--
+ llvm/test/Bitcode/array-bitstride.ll          | 30 ++++++++++
+ llvm/unittests/IR/DebugInfoTest.cpp           | 18 ++++++
+ .../unittests/IR/DebugTypeODRUniquingTest.cpp | 39 +++++++------
+ 14 files changed, 153 insertions(+), 76 deletions(-)
+ create mode 100644 llvm/test/Bitcode/array-bitstride.ll
+
+diff --git a/llvm/docs/LangRef.rst b/llvm/docs/LangRef.rst
+index 4c1ed0f4fc9a..715ff47fdc3c 100644
+--- a/llvm/docs/LangRef.rst
++++ b/llvm/docs/LangRef.rst
+@@ -5624,7 +5624,10 @@ DIExpression that describes whether the pointer array is currently associated.
+ The optional ``allocated`` is a DIExpression that describes whether the
+ allocatable array is currently allocated.  The optional ``rank`` is a
+ DIExpression that describes the rank (number of dimensions) of fortran assumed
+-rank array (rank is known at runtime).
++rank array (rank is known at runtime).  The optional ``bitStride`` is
++an unsigned constant that describes the number of bits occupied by an
++element of the array; this is only needed if it differs from the element
++type's natural size, and is normally used for packed arrays.
+ 
+ For ``DW_TAG_enumeration_type``, the ``elements:`` should be :ref:`enumerator
+ descriptors <DIEnumerator>`, each representing the definition of an enumeration
+diff --git a/llvm/include/llvm/IR/DIBuilder.h b/llvm/include/llvm/IR/DIBuilder.h
+index 99ef3e585349..61f3de5a9eae 100644
+--- a/llvm/include/llvm/IR/DIBuilder.h
++++ b/llvm/include/llvm/IR/DIBuilder.h
+@@ -614,13 +614,16 @@ namespace llvm {
+     /// \param Rank         The rank attribute of a descriptor-based
+     ///                     Fortran array, either a DIExpression* or
+     ///                     a DIVariable*.
++    /// \param BitStride    The bit size of an element of the array.
++    ///                     Zero means to use the underlying type's size.
+     DICompositeType *createArrayType(
+         DIScope *Scope, StringRef Name, DIFile *File, unsigned LineNumber,
+         uint64_t Size, uint32_t AlignInBits, DIType *Ty, DINodeArray Subscripts,
+         PointerUnion<DIExpression *, DIVariable *> DataLocation = nullptr,
+         PointerUnion<DIExpression *, DIVariable *> Associated = nullptr,
+         PointerUnion<DIExpression *, DIVariable *> Allocated = nullptr,
+-        PointerUnion<DIExpression *, DIVariable *> Rank = nullptr);
++        PointerUnion<DIExpression *, DIVariable *> Rank = nullptr,
++        Metadata *BitStride = nullptr);
+ 
+     /// Create debugging information entry for a vector type.
+     /// \param Size         Array size.
+diff --git a/llvm/include/llvm/IR/DebugInfoMetadata.h b/llvm/include/llvm/IR/DebugInfoMetadata.h
+index 4beaa37d7b3d..25329518ed53 100644
+--- a/llvm/include/llvm/IR/DebugInfoMetadata.h
++++ b/llvm/include/llvm/IR/DebugInfoMetadata.h
+@@ -1338,14 +1338,15 @@ class DICompositeType : public DIType {
+           DITemplateParameterArray TemplateParams, StringRef Identifier,
+           DIDerivedType *Discriminator, Metadata *DataLocation,
+           Metadata *Associated, Metadata *Allocated, Metadata *Rank,
+-          DINodeArray Annotations, StorageType Storage,
++          DINodeArray Annotations, Metadata *BitStride, StorageType Storage,
+           bool ShouldCreate = true) {
+-    return getImpl(
+-        Context, Tag, getCanonicalMDString(Context, Name), File, Line, Scope,
+-        BaseType, SizeInBits, AlignInBits, OffsetInBits, Flags, Elements.get(),
+-        RuntimeLang, VTableHolder, TemplateParams.get(),
+-        getCanonicalMDString(Context, Identifier), Discriminator, DataLocation,
+-        Associated, Allocated, Rank, Annotations.get(), Storage, ShouldCreate);
++    return getImpl(Context, Tag, getCanonicalMDString(Context, Name), File,
++                   Line, Scope, BaseType, SizeInBits, AlignInBits, OffsetInBits,
++                   Flags, Elements.get(), RuntimeLang, VTableHolder,
++                   TemplateParams.get(),
++                   getCanonicalMDString(Context, Identifier), Discriminator,
++                   DataLocation, Associated, Allocated, Rank, Annotations.get(),
++                   BitStride, Storage, ShouldCreate);
+   }
+   static DICompositeType *
+   getImpl(LLVMContext &Context, unsigned Tag, MDString *Name, Metadata *File,
+@@ -1355,7 +1356,8 @@ class DICompositeType : public DIType {
+           Metadata *VTableHolder, Metadata *TemplateParams,
+           MDString *Identifier, Metadata *Discriminator, Metadata *DataLocation,
+           Metadata *Associated, Metadata *Allocated, Metadata *Rank,
+-          Metadata *Annotations, StorageType Storage, bool ShouldCreate = true);
++          Metadata *Annotations, Metadata *BitStride, StorageType Storage,
++          bool ShouldCreate = true);
+ 
+   TempDICompositeType cloneImpl() const {
+     return getTemporary(
+@@ -1364,7 +1366,7 @@ class DICompositeType : public DIType {
+         getFlags(), getElements(), getRuntimeLang(), getVTableHolder(),
+         getTemplateParams(), getIdentifier(), getDiscriminator(),
+         getRawDataLocation(), getRawAssociated(), getRawAllocated(),
+-        getRawRank(), getAnnotations());
++        getRawRank(), getAnnotations(), getRawBitStride());
+   }
+ 
+ public:
+@@ -1378,11 +1380,11 @@ public:
+        StringRef Identifier = "", DIDerivedType *Discriminator = nullptr,
+        Metadata *DataLocation = nullptr, Metadata *Associated = nullptr,
+        Metadata *Allocated = nullptr, Metadata *Rank = nullptr,
+-       DINodeArray Annotations = nullptr),
++       DINodeArray Annotations = nullptr, Metadata *BitStride = nullptr),
+       (Tag, Name, File, Line, Scope, BaseType, SizeInBits, AlignInBits,
+        OffsetInBits, Flags, Elements, RuntimeLang, VTableHolder, TemplateParams,
+        Identifier, Discriminator, DataLocation, Associated, Allocated, Rank,
+-       Annotations))
++       Annotations, BitStride))
+   DEFINE_MDNODE_GET(
+       DICompositeType,
+       (unsigned Tag, MDString *Name, Metadata *File, unsigned Line,
+@@ -1392,11 +1394,12 @@ public:
+        Metadata *TemplateParams = nullptr, MDString *Identifier = nullptr,
+        Metadata *Discriminator = nullptr, Metadata *DataLocation = nullptr,
+        Metadata *Associated = nullptr, Metadata *Allocated = nullptr,
+-       Metadata *Rank = nullptr, Metadata *Annotations = nullptr),
++       Metadata *Rank = nullptr, Metadata *Annotations = nullptr,
++       Metadata *BitStride = nullptr),
+       (Tag, Name, File, Line, Scope, BaseType, SizeInBits, AlignInBits,
+        OffsetInBits, Flags, Elements, RuntimeLang, VTableHolder, TemplateParams,
+        Identifier, Discriminator, DataLocation, Associated, Allocated, Rank,
+-       Annotations))
++       Annotations, BitStride))
+ 
+   TempDICompositeType clone() const { return cloneImpl(); }
+ 
+@@ -1415,7 +1418,7 @@ public:
+              unsigned RuntimeLang, Metadata *VTableHolder,
+              Metadata *TemplateParams, Metadata *Discriminator,
+              Metadata *DataLocation, Metadata *Associated, Metadata *Allocated,
+-             Metadata *Rank, Metadata *Annotations);
++             Metadata *Rank, Metadata *Annotations, Metadata *BitStride);
+   static DICompositeType *getODRTypeIfExists(LLVMContext &Context,
+                                              MDString &Identifier);
+ 
+@@ -1428,15 +1431,14 @@ public:
+   ///
+   /// If not \a LLVMContext::isODRUniquingDebugTypes(), this function returns
+   /// nullptr.
+-  static DICompositeType *
+-  buildODRType(LLVMContext &Context, MDString &Identifier, unsigned Tag,
+-               MDString *Name, Metadata *File, unsigned Line, Metadata *Scope,
+-               Metadata *BaseType, uint64_t SizeInBits, uint32_t AlignInBits,
+-               uint64_t OffsetInBits, DIFlags Flags, Metadata *Elements,
+-               unsigned RuntimeLang, Metadata *VTableHolder,
+-               Metadata *TemplateParams, Metadata *Discriminator,
+-               Metadata *DataLocation, Metadata *Associated,
+-               Metadata *Allocated, Metadata *Rank, Metadata *Annotations);
++  static DICompositeType *buildODRType(
++      LLVMContext &Context, MDString &Identifier, unsigned Tag, MDString *Name,
++      Metadata *File, unsigned Line, Metadata *Scope, Metadata *BaseType,
++      uint64_t SizeInBits, uint32_t AlignInBits, uint64_t OffsetInBits,
++      DIFlags Flags, Metadata *Elements, unsigned RuntimeLang,
++      Metadata *VTableHolder, Metadata *TemplateParams, Metadata *Discriminator,
++      Metadata *DataLocation, Metadata *Associated, Metadata *Allocated,
++      Metadata *Rank, Metadata *Annotations, Metadata *BitStride);
+ 
+   DIType *getBaseType() const { return cast_or_null<DIType>(getRawBaseType()); }
+   DINodeArray getElements() const {
+@@ -1496,6 +1498,13 @@ public:
+     return cast_or_null<MDTuple>(getRawAnnotations());
+   }
+ 
++  Metadata *getRawBitStride() const { return getOperand(14); }
++  ConstantInt *getBitStrideConst() const {
++    if (auto *MD = dyn_cast_or_null<ConstantAsMetadata>(getRawBitStride()))
++      return dyn_cast_or_null<ConstantInt>(MD->getValue());
++    return nullptr;
++  }
++
+   /// Replace operands.
+   ///
+   /// If this \a isUniqued() and not \a isResolved(), on a uniquing collision
+diff --git a/llvm/lib/AsmParser/LLParser.cpp b/llvm/lib/AsmParser/LLParser.cpp
+index b0aaecbe649d..33bfcbba0bc2 100644
+--- a/llvm/lib/AsmParser/LLParser.cpp
++++ b/llvm/lib/AsmParser/LLParser.cpp
+@@ -5095,7 +5095,8 @@ bool LLParser::parseDICompositeType(MDNode *&Result, bool IsDistinct) {
+   OPTIONAL(associated, MDField, );                                             \
+   OPTIONAL(allocated, MDField, );                                              \
+   OPTIONAL(rank, MDSignedOrMDField, );                                         \
+-  OPTIONAL(annotations, MDField, );
++  OPTIONAL(annotations, MDField, );                                            \
++  OPTIONAL(bitStride, MDField, );
+   PARSE_MD_FIELDS();
+ #undef VISIT_MD_FIELDS
+ 
+@@ -5113,7 +5114,7 @@ bool LLParser::parseDICompositeType(MDNode *&Result, bool IsDistinct) {
+             scope.Val, baseType.Val, size.Val, align.Val, offset.Val, flags.Val,
+             elements.Val, runtimeLang.Val, vtableHolder.Val, templateParams.Val,
+             discriminator.Val, dataLocation.Val, associated.Val, allocated.Val,
+-            Rank, annotations.Val)) {
++            Rank, annotations.Val, bitStride.Val)) {
+       Result = CT;
+       return false;
+     }
+@@ -5126,7 +5127,7 @@ bool LLParser::parseDICompositeType(MDNode *&Result, bool IsDistinct) {
+        size.Val, align.Val, offset.Val, flags.Val, elements.Val,
+        runtimeLang.Val, vtableHolder.Val, templateParams.Val, identifier.Val,
+        discriminator.Val, dataLocation.Val, associated.Val, allocated.Val, Rank,
+-       annotations.Val));
++       annotations.Val, bitStride.Val));
+   return false;
+ }
+ 
+diff --git a/llvm/lib/Bitcode/Reader/MetadataLoader.cpp b/llvm/lib/Bitcode/Reader/MetadataLoader.cpp
+index 8616c9aef5f1..b9d49f84151a 100644
+--- a/llvm/lib/Bitcode/Reader/MetadataLoader.cpp
++++ b/llvm/lib/Bitcode/Reader/MetadataLoader.cpp
+@@ -1533,7 +1533,7 @@ Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
+     break;
+   }
+   case bitc::METADATA_COMPOSITE_TYPE: {
+-    if (Record.size() < 16 || Record.size() > 22)
++    if (Record.size() < 16 || Record.size() > 23)
+       return error("Invalid record");
+ 
+     // If we have a UUID and this is not a forward declaration, lookup the
+@@ -1562,6 +1562,7 @@ Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
+     Metadata *Allocated = nullptr;
+     Metadata *Rank = nullptr;
+     Metadata *Annotations = nullptr;
++    Metadata *BitStride = nullptr;
+     auto *Identifier = getMDString(Record[15]);
+     // If this module is being parsed so that it can be ThinLTO imported
+     // into another module, composite types only need to be imported
+@@ -1605,6 +1606,9 @@ Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
+       if (Record.size() > 21) {
+         Annotations = getMDOrNull(Record[21]);
+       }
++      if (Record.size() > 22) {
++        BitStride = getMDOrNull(Record[22]);
++      }
+     }
+     DICompositeType *CT = nullptr;
+     if (Identifier)
+@@ -1612,7 +1616,7 @@ Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
+           Context, *Identifier, Tag, Name, File, Line, Scope, BaseType,
+           SizeInBits, AlignInBits, OffsetInBits, Flags, Elements, RuntimeLang,
+           VTableHolder, TemplateParams, Discriminator, DataLocation, Associated,
+-          Allocated, Rank, Annotations);
++          Allocated, Rank, Annotations, BitStride);
+ 
+     // Create a node if we didn't get a lazy ODR type.
+     if (!CT)
+@@ -1621,7 +1625,7 @@ Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
+                             SizeInBits, AlignInBits, OffsetInBits, Flags,
+                             Elements, RuntimeLang, VTableHolder, TemplateParams,
+                             Identifier, Discriminator, DataLocation, Associated,
+-                            Allocated, Rank, Annotations));
++                            Allocated, Rank, Annotations, BitStride));
+     if (!IsNotUsedInTypeRef && Identifier)
+       MetadataList.addTypeRef(*Identifier, *cast<DICompositeType>(CT));
+ 
+diff --git a/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp b/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp
+index 090de4f192ae..b3707f61ac68 100644
+--- a/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp
++++ b/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp
+@@ -1843,6 +1843,7 @@ void ModuleBitcodeWriter::writeDICompositeType(
+   Record.push_back(VE.getMetadataOrNullID(N->getRawAllocated()));
+   Record.push_back(VE.getMetadataOrNullID(N->getRawRank()));
+   Record.push_back(VE.getMetadataOrNullID(N->getAnnotations().get()));
++  Record.push_back(VE.getMetadataOrNullID(N->getRawBitStride()));
+ 
+   Stream.EmitRecord(bitc::METADATA_COMPOSITE_TYPE, Record, Abbrev);
+   Record.clear();
+diff --git a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
+index 261c7cab84dc..e8ac662bd195 100644
+--- a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
++++ b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
+@@ -1630,6 +1630,10 @@ void DwarfUnit::constructArrayTypeDIE(DIE &Buffer, const DICompositeType *CTy) {
+     addBlock(Buffer, dwarf::DW_AT_rank, DwarfExpr.finalize());
+   }
+ 
++  if (auto *BitStride = CTy->getBitStrideConst()) {
++    addUInt(Buffer, dwarf::DW_AT_bit_stride, {}, BitStride->getZExtValue());
++  }
++
+   // Emit the element type.
+   addType(Buffer, CTy->getBaseType());
+ 
+diff --git a/llvm/lib/IR/AsmWriter.cpp b/llvm/lib/IR/AsmWriter.cpp
+index 4b8605eaeabf..3efb1714091e 100644
+--- a/llvm/lib/IR/AsmWriter.cpp
++++ b/llvm/lib/IR/AsmWriter.cpp
+@@ -2121,6 +2121,7 @@ static void writeDICompositeType(raw_ostream &Out, const DICompositeType *N,
+   else
+     Printer.printMetadata("rank", N->getRawRank(), /*ShouldSkipNull */ true);
+   Printer.printMetadata("annotations", N->getRawAnnotations());
++  Printer.printMetadata("bitStride", N->getRawBitStride());
+   Out << ")";
+ }
+ 
+diff --git a/llvm/lib/IR/DIBuilder.cpp b/llvm/lib/IR/DIBuilder.cpp
+index 3619fc0b0628..a5da28dd604f 100644
+--- a/llvm/lib/IR/DIBuilder.cpp
++++ b/llvm/lib/IR/DIBuilder.cpp
+@@ -631,19 +631,17 @@ DIBuilder::createArrayType(uint64_t Size, uint32_t AlignInBits, DIType *Ty,
+   return R;
+ }
+ 
+-DICompositeType *
+-DIBuilder::createArrayType(DIScope *Scope, StringRef Name, DIFile *File, unsigned LineNumber,
+-                           uint64_t Size, uint32_t AlignInBits, DIType *Ty,
+-                           DINodeArray Subscripts,
+-                           PointerUnion<DIExpression *, DIVariable *> DL,
+-                           PointerUnion<DIExpression *, DIVariable *> AS,
+-                           PointerUnion<DIExpression *, DIVariable *> AL,
+-                           PointerUnion<DIExpression *, DIVariable *> RK) {
++DICompositeType *DIBuilder::createArrayType(
++    DIScope *Scope, StringRef Name, DIFile *File, unsigned LineNumber,
++    uint64_t Size, uint32_t AlignInBits, DIType *Ty, DINodeArray Subscripts,
++    PointerUnion<DIExpression *, DIVariable *> DL,
++    PointerUnion<DIExpression *, DIVariable *> AS,
++    PointerUnion<DIExpression *, DIVariable *> AL,
++    PointerUnion<DIExpression *, DIVariable *> RK, Metadata *BitStride) {
+   auto *R = DICompositeType::get(
+       VMContext, dwarf::DW_TAG_array_type, Name, File, LineNumber,
+-      getNonCompileUnitScope(Scope), Ty, Size,
+-      AlignInBits, 0, DINode::FlagZero, Subscripts, 0, nullptr, nullptr, "",
+-      nullptr,
++      getNonCompileUnitScope(Scope), Ty, Size, AlignInBits, 0, DINode::FlagZero,
++      Subscripts, 0, nullptr, nullptr, "", nullptr,
+       DL.is<DIExpression *>() ? (Metadata *)DL.get<DIExpression *>()
+                               : (Metadata *)DL.get<DIVariable *>(),
+       AS.is<DIExpression *>() ? (Metadata *)AS.get<DIExpression *>()
+@@ -651,7 +649,8 @@ DIBuilder::createArrayType(DIScope *Scope, StringRef Name, DIFile *File, unsigne
+       AL.is<DIExpression *>() ? (Metadata *)AL.get<DIExpression *>()
+                               : (Metadata *)AL.get<DIVariable *>(),
+       RK.is<DIExpression *>() ? (Metadata *)RK.get<DIExpression *>()
+-                              : (Metadata *)RK.get<DIVariable *>());
++                              : (Metadata *)RK.get<DIVariable *>(),
++      nullptr, BitStride);
+   trackIfUnresolved(R);
+   return R;
+ }
+diff --git a/llvm/lib/IR/DebugInfoMetadata.cpp b/llvm/lib/IR/DebugInfoMetadata.cpp
+index e8d7fdbb8143..57a732de8668 100644
+--- a/llvm/lib/IR/DebugInfoMetadata.cpp
++++ b/llvm/lib/IR/DebugInfoMetadata.cpp
+@@ -771,8 +771,8 @@ DICompositeType *DICompositeType::getImpl(
+     Metadata *Elements, unsigned RuntimeLang, Metadata *VTableHolder,
+     Metadata *TemplateParams, MDString *Identifier, Metadata *Discriminator,
+     Metadata *DataLocation, Metadata *Associated, Metadata *Allocated,
+-    Metadata *Rank, Metadata *Annotations, StorageType Storage,
+-    bool ShouldCreate) {
++    Metadata *Rank, Metadata *Annotations, Metadata *BitStride,
++    StorageType Storage, bool ShouldCreate) {
+   assert(isCanonical(Name) && "Expected canonical MDString");
+ 
+   // Keep this in sync with buildODRType.
+@@ -781,11 +781,11 @@ DICompositeType *DICompositeType::getImpl(
+                          AlignInBits, OffsetInBits, Flags, Elements,
+                          RuntimeLang, VTableHolder, TemplateParams, Identifier,
+                          Discriminator, DataLocation, Associated, Allocated,
+-                         Rank, Annotations));
++                         Rank, Annotations, BitStride));
+   Metadata *Ops[] = {File,          Scope,        Name,           BaseType,
+                      Elements,      VTableHolder, TemplateParams, Identifier,
+                      Discriminator, DataLocation, Associated,     Allocated,
+-                     Rank,          Annotations};
++                     Rank,          Annotations,  BitStride};
+   DEFINE_GETIMPL_STORE(
+       DICompositeType,
+       (Tag, Line, RuntimeLang, SizeInBits, AlignInBits, OffsetInBits, Flags),
+@@ -799,7 +799,7 @@ DICompositeType *DICompositeType::buildODRType(
+     DIFlags Flags, Metadata *Elements, unsigned RuntimeLang,
+     Metadata *VTableHolder, Metadata *TemplateParams, Metadata *Discriminator,
+     Metadata *DataLocation, Metadata *Associated, Metadata *Allocated,
+-    Metadata *Rank, Metadata *Annotations) {
++    Metadata *Rank, Metadata *Annotations, Metadata *BitStride) {
+   assert(!Identifier.getString().empty() && "Expected valid identifier");
+   if (!Context.isODRUniquingDebugTypes())
+     return nullptr;
+@@ -809,7 +809,8 @@ DICompositeType *DICompositeType::buildODRType(
+                Context, Tag, Name, File, Line, Scope, BaseType, SizeInBits,
+                AlignInBits, OffsetInBits, Flags, Elements, RuntimeLang,
+                VTableHolder, TemplateParams, &Identifier, Discriminator,
+-               DataLocation, Associated, Allocated, Rank, Annotations);
++               DataLocation, Associated, Allocated, Rank, Annotations,
++               BitStride);
+ 
+   if (CT->getTag() != Tag)
+     return nullptr;
+@@ -825,7 +826,7 @@ DICompositeType *DICompositeType::buildODRType(
+   Metadata *Ops[] = {File,          Scope,        Name,           BaseType,
+                      Elements,      VTableHolder, TemplateParams, &Identifier,
+                      Discriminator, DataLocation, Associated,     Allocated,
+-                     Rank,          Annotations};
++                     Rank,          Annotations,  BitStride};
+   assert((std::end(Ops) - std::begin(Ops)) == (int)CT->getNumOperands() &&
+          "Mismatched number of operands");
+   for (unsigned I = 0, E = CT->getNumOperands(); I != E; ++I)
+@@ -841,7 +842,7 @@ DICompositeType *DICompositeType::getODRType(
+     DIFlags Flags, Metadata *Elements, unsigned RuntimeLang,
+     Metadata *VTableHolder, Metadata *TemplateParams, Metadata *Discriminator,
+     Metadata *DataLocation, Metadata *Associated, Metadata *Allocated,
+-    Metadata *Rank, Metadata *Annotations) {
++    Metadata *Rank, Metadata *Annotations, Metadata *BitStride) {
+   assert(!Identifier.getString().empty() && "Expected valid identifier");
+   if (!Context.isODRUniquingDebugTypes())
+     return nullptr;
+@@ -851,7 +852,7 @@ DICompositeType *DICompositeType::getODRType(
+         Context, Tag, Name, File, Line, Scope, BaseType, SizeInBits,
+         AlignInBits, OffsetInBits, Flags, Elements, RuntimeLang, VTableHolder,
+         TemplateParams, &Identifier, Discriminator, DataLocation, Associated,
+-        Allocated, Rank, Annotations);
++        Allocated, Rank, Annotations, BitStride);
+   } else {
+     if (CT->getTag() != Tag)
+       return nullptr;
+diff --git a/llvm/lib/IR/LLVMContextImpl.h b/llvm/lib/IR/LLVMContextImpl.h
+index 568d263cb898..58a750625e92 100644
+--- a/llvm/lib/IR/LLVMContextImpl.h
++++ b/llvm/lib/IR/LLVMContextImpl.h
+@@ -749,6 +749,7 @@ template <> struct MDNodeKeyImpl<DICompositeType> {
+   Metadata *Allocated;
+   Metadata *Rank;
+   Metadata *Annotations;
++  Metadata *BitStride;
+ 
+   MDNodeKeyImpl(unsigned Tag, MDString *Name, Metadata *File, unsigned Line,
+                 Metadata *Scope, Metadata *BaseType, uint64_t SizeInBits,
+@@ -757,7 +758,8 @@ template <> struct MDNodeKeyImpl<DICompositeType> {
+                 Metadata *VTableHolder, Metadata *TemplateParams,
+                 MDString *Identifier, Metadata *Discriminator,
+                 Metadata *DataLocation, Metadata *Associated,
+-                Metadata *Allocated, Metadata *Rank, Metadata *Annotations)
++                Metadata *Allocated, Metadata *Rank, Metadata *Annotations,
++                Metadata *BitStride)
+       : Tag(Tag), Name(Name), File(File), Line(Line), Scope(Scope),
+         BaseType(BaseType), SizeInBits(SizeInBits), OffsetInBits(OffsetInBits),
+         AlignInBits(AlignInBits), Flags(Flags), Elements(Elements),
+@@ -765,7 +767,7 @@ template <> struct MDNodeKeyImpl<DICompositeType> {
+         TemplateParams(TemplateParams), Identifier(Identifier),
+         Discriminator(Discriminator), DataLocation(DataLocation),
+         Associated(Associated), Allocated(Allocated), Rank(Rank),
+-        Annotations(Annotations) {}
++        Annotations(Annotations), BitStride(BitStride) {}
+   MDNodeKeyImpl(const DICompositeType *N)
+       : Tag(N->getTag()), Name(N->getRawName()), File(N->getRawFile()),
+         Line(N->getLine()), Scope(N->getRawScope()),
+@@ -778,7 +780,8 @@ template <> struct MDNodeKeyImpl<DICompositeType> {
+         Discriminator(N->getRawDiscriminator()),
+         DataLocation(N->getRawDataLocation()),
+         Associated(N->getRawAssociated()), Allocated(N->getRawAllocated()),
+-        Rank(N->getRawRank()), Annotations(N->getRawAnnotations()) {}
++        Rank(N->getRawRank()), Annotations(N->getRawAnnotations()),
++        BitStride(N->getRawBitStride()) {}
+ 
+   bool isKeyOf(const DICompositeType *RHS) const {
+     return Tag == RHS->getTag() && Name == RHS->getRawName() &&
+@@ -796,7 +799,8 @@ template <> struct MDNodeKeyImpl<DICompositeType> {
+            DataLocation == RHS->getRawDataLocation() &&
+            Associated == RHS->getRawAssociated() &&
+            Allocated == RHS->getRawAllocated() && Rank == RHS->getRawRank() &&
+-           Annotations == RHS->getRawAnnotations();
++           Annotations == RHS->getRawAnnotations() &&
++           BitStride == RHS->getRawBitStride();
+   }
+ 
+   unsigned getHashValue() const {
+diff --git a/llvm/test/Bitcode/array-bitstride.ll b/llvm/test/Bitcode/array-bitstride.ll
+new file mode 100644
+index 000000000000..5137e6fec991
+--- /dev/null
++++ b/llvm/test/Bitcode/array-bitstride.ll
+@@ -0,0 +1,30 @@
++;; Test bit stride of arrays.
++
++; RUN: llvm-as < %s | llvm-dis | llvm-as | llvm-dis | FileCheck %s
++
++; CHECK:  !DICompositeType(tag: DW_TAG_array_type, baseType: !{{[0-9]+}}, size: 32, align: 32, elements: !{{[0-9]+}}, bitStride: i32 7)
++
++; ModuleID = 'stride.adb'
++source_filename = "/dir/stride.ll"
++
++!llvm.module.flags = !{!0, !1}
++!llvm.dbg.cu = !{!2}
++
++!0 = !{i32 2, !"Dwarf Version", i32 4}
++!1 = !{i32 2, !"Debug Info Version", i32 3}
++!2 = distinct !DICompileUnit(language: DW_LANG_Ada95, file: !3, isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, enums: !4, retainedTypes: !5, globals: !4, imports: !4)
++!3 = !DIFile(filename: "stride.adb", directory: "/dir")
++!4 = !{}
++!5 = !{!6, !17}
++!6 = !DICompositeType(tag: DW_TAG_array_type, baseType: !7, size: 32, align: 32, elements: !8, dataLocation: !10, associated: !15)
++!7 = !DIBasicType(name: "integer", size: 32, align: 32, encoding: DW_ATE_signed)
++!8 = !{!9}
++!9 = !DISubrange(count: 19, lowerBound: 2)
++!10 = distinct !DILocalVariable(scope: !11, file: !3, type: !14, flags: DIFlagArtificial)
++!11 = distinct !DISubprogram(name: "main", scope: !2, file: !3, line: 1, type: !12, scopeLine: 1, spFlags: DISPFlagDefinition | DISPFlagMainSubprogram, unit: !2)
++!12 = !DISubroutineType(cc: DW_CC_program, types: !13)
++!13 = !{null}
++!14 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !7, size: 32, align: 32)
++!15 = distinct !DILocalVariable(scope: !11, file: !3, type: !16, flags: DIFlagArtificial)
++!16 = !DIBasicType(name: "integer", size: 32, align: 32, encoding: DW_ATE_signed)
++!17 = !DICompositeType(tag: DW_TAG_array_type, baseType: !7, size: 32, align: 32, elements: !8, bitStride: i32 7)
+diff --git a/llvm/unittests/IR/DebugInfoTest.cpp b/llvm/unittests/IR/DebugInfoTest.cpp
+index d4c20b8b32e9..a83d7fd59e48 100644
+--- a/llvm/unittests/IR/DebugInfoTest.cpp
++++ b/llvm/unittests/IR/DebugInfoTest.cpp
+@@ -251,6 +251,24 @@ TEST(DIBuilder, CreateFortranArrayTypeWithAttributes) {
+   DIVariable::deleteTemporary(DataLocation);
+ }
+ 
++TEST(DIBuilder, CreateArrayWithBitStride) {
++  LLVMContext Ctx;
++  std::unique_ptr<Module> M(new Module("MyModule", Ctx));
++  DIBuilder DIB(*M);
++
++  Type *Int32Ty = Type::getInt32Ty(Ctx);
++  Constant *Ci = ConstantInt::get(Int32Ty, 7);
++  Metadata *CM = ConstantAsMetadata::get(Ci);
++
++  StringRef ArrayNameExp = "AnArray";
++  DICompositeType *NamedArray =
++      DIB.createArrayType(nullptr, ArrayNameExp, nullptr, 0, 8, 8, nullptr, {},
++                          nullptr, nullptr, nullptr, nullptr, CM);
++  EXPECT_EQ(NamedArray->getTag(), dwarf::DW_TAG_array_type);
++  EXPECT_EQ(NamedArray->getRawBitStride(), CM);
++  EXPECT_EQ(NamedArray->getBitStrideConst(), Ci);
++}
++
+ TEST(DIBuilder, CreateSetType) {
+   LLVMContext Ctx;
+   std::unique_ptr<Module> M(new Module("MyModule", Ctx));
+diff --git a/llvm/unittests/IR/DebugTypeODRUniquingTest.cpp b/llvm/unittests/IR/DebugTypeODRUniquingTest.cpp
+index e3a7facb8575..17437f7ea01a 100644
+--- a/llvm/unittests/IR/DebugTypeODRUniquingTest.cpp
++++ b/llvm/unittests/IR/DebugTypeODRUniquingTest.cpp
+@@ -31,7 +31,7 @@ TEST(DebugTypeODRUniquingTest, getODRType) {
+   EXPECT_FALSE(DICompositeType::getODRType(
+       Context, UUID, dwarf::DW_TAG_class_type, nullptr, nullptr, 0, nullptr,
+       nullptr, 0, 0, 0, DINode::FlagZero, nullptr, 0, nullptr, nullptr, nullptr,
+-      nullptr, nullptr, nullptr, nullptr, nullptr));
++      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr));
+ 
+   // Enable the mapping.  There still shouldn't be a type.
+   Context.enableDebugTypeODRUniquing();
+@@ -41,23 +41,22 @@ TEST(DebugTypeODRUniquingTest, getODRType) {
+   auto &CT = *DICompositeType::getODRType(
+       Context, UUID, dwarf::DW_TAG_class_type, nullptr, nullptr, 0, nullptr,
+       nullptr, 0, 0, 0, DINode::FlagZero, nullptr, 0, nullptr, nullptr, nullptr,
+-      nullptr, nullptr, nullptr, nullptr, nullptr);
++      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+   EXPECT_EQ(UUID.getString(), CT.getIdentifier());
+ 
+   // Check that we get it back, even if we change a field.
+   EXPECT_EQ(&CT, DICompositeType::getODRTypeIfExists(Context, UUID));
+-  EXPECT_EQ(&CT,
+-            DICompositeType::getODRType(
+-                Context, UUID, dwarf::DW_TAG_class_type, nullptr, nullptr, 0,
+-                nullptr, nullptr, 0, 0, 0, DINode::FlagZero, nullptr, 0,
+-                nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+-                nullptr));
+   EXPECT_EQ(&CT, DICompositeType::getODRType(
+-                     Context, UUID, dwarf::DW_TAG_class_type,
+-                     MDString::get(Context, "name"), nullptr, 0, nullptr,
+-                     nullptr, 0, 0, 0, DINode::FlagZero, nullptr, 0, nullptr,
++                     Context, UUID, dwarf::DW_TAG_class_type, nullptr, nullptr,
++                     0, nullptr, nullptr, 0, 0, 0, DINode::FlagZero, nullptr, 0,
+                      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+-                     nullptr));
++                     nullptr, nullptr, nullptr));
++  EXPECT_EQ(&CT,
++            DICompositeType::getODRType(
++                Context, UUID, dwarf::DW_TAG_class_type,
++                MDString::get(Context, "name"), nullptr, 0, nullptr, nullptr, 0,
++                0, 0, DINode::FlagZero, nullptr, 0, nullptr, nullptr, nullptr,
++                nullptr, nullptr, nullptr, nullptr, nullptr, nullptr));
+ 
+   // Check that it's discarded with the type map.
+   Context.disableDebugTypeODRUniquing();
+@@ -77,7 +76,7 @@ TEST(DebugTypeODRUniquingTest, buildODRType) {
+   auto &CT = *DICompositeType::buildODRType(
+       Context, UUID, dwarf::DW_TAG_class_type, nullptr, nullptr, 0, nullptr,
+       nullptr, 0, 0, 0, DINode::FlagFwdDecl, nullptr, 0, nullptr, nullptr,
+-      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
++      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+   EXPECT_EQ(&CT, DICompositeType::getODRTypeIfExists(Context, UUID));
+   EXPECT_EQ(dwarf::DW_TAG_class_type, CT.getTag());
+ 
+@@ -86,19 +85,19 @@ TEST(DebugTypeODRUniquingTest, buildODRType) {
+                      Context, UUID, dwarf::DW_TAG_class_type, nullptr, nullptr,
+                      0, nullptr, nullptr, 0, 0, 0, DINode::FlagFwdDecl, nullptr,
+                      0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+-                     nullptr, nullptr));
++                     nullptr, nullptr, nullptr));
+ 
+   EXPECT_FALSE(DICompositeType::buildODRType(
+       Context, UUID, dwarf::DW_TAG_structure_type, nullptr, nullptr, 0, nullptr,
+       nullptr, 0, 0, 0, DINode::FlagFwdDecl, nullptr, 0, nullptr, nullptr,
+-      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr));
++      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr));
+ 
+   // Update with a definition.  This time we should see a change.
+   EXPECT_EQ(&CT, DICompositeType::buildODRType(
+                      Context, UUID, dwarf::DW_TAG_class_type, nullptr, nullptr,
+                      0, nullptr, nullptr, 0, 0, 0, DINode::FlagZero, nullptr, 0,
+                      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+-                     nullptr, nullptr));
++                     nullptr, nullptr, nullptr));
+   EXPECT_FALSE(CT.isForwardDecl());
+ 
+   // Further updates should be ignored.
+@@ -106,13 +105,13 @@ TEST(DebugTypeODRUniquingTest, buildODRType) {
+                      Context, UUID, dwarf::DW_TAG_class_type, nullptr, nullptr,
+                      0, nullptr, nullptr, 0, 0, 0, DINode::FlagFwdDecl, nullptr,
+                      0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+-                     nullptr, nullptr));
++                     nullptr, nullptr, nullptr));
+   EXPECT_FALSE(CT.isForwardDecl());
+   EXPECT_EQ(&CT, DICompositeType::buildODRType(
+                      Context, UUID, dwarf::DW_TAG_class_type, nullptr, nullptr,
+                      111u, nullptr, nullptr, 0, 0, 0, DINode::FlagZero, nullptr,
+                      0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+-                     nullptr, nullptr));
++                     nullptr, nullptr, nullptr));
+   EXPECT_NE(111u, CT.getLine());
+ }
+ 
+@@ -125,7 +124,7 @@ TEST(DebugTypeODRUniquingTest, buildODRTypeFields) {
+   auto &CT = *DICompositeType::buildODRType(
+       Context, UUID, 0, nullptr, nullptr, 0, nullptr, nullptr, 0, 0, 0,
+       DINode::FlagFwdDecl, nullptr, 0, nullptr, nullptr, nullptr, nullptr,
+-      nullptr, nullptr, nullptr, nullptr);
++      nullptr, nullptr, nullptr, nullptr, nullptr);
+ 
+ // Create macros for running through all the fields except Identifier and Flags.
+ #define FOR_EACH_MDFIELD()                                                     \
+@@ -158,7 +157,7 @@ TEST(DebugTypeODRUniquingTest, buildODRTypeFields) {
+                 Context, UUID, 0, Name, File, Line, Scope, BaseType, SizeInBits,
+                 AlignInBits, OffsetInBits, DINode::FlagArtificial, Elements,
+                 RuntimeLang, VTableHolder, TemplateParams, nullptr, nullptr,
+-                nullptr, nullptr, nullptr, nullptr));
++                nullptr, nullptr, nullptr, nullptr, nullptr));
+ 
+   // Confirm that all the right fields got updated.
+ #define DO_FOR_FIELD(X) EXPECT_EQ(X, CT.getRaw##X());
+-- 
+2.47.1
+

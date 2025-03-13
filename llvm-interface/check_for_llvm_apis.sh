@@ -30,7 +30,8 @@ EOF
 }
 
 api_test HAVE_SUBRANGE_TYPE "DISubrangeType *subrange_value = nullptr;"
-api_test HAVE_ARRAY_NAME "MDNode *named(DIBuilder *builder) { return builder->createArrayType(nullptr, StringRef(), nullptr, 0, 32, 0, nullptr, {}); }"
+# This checks for both the "name" patch and the "bit stride" patch.
+api_test HAVE_ARRAY_NAME "MDNode *named(DIBuilder *builder) { return builder->createArrayType(nullptr, StringRef(), nullptr, 0, 32, 0, nullptr, {}, nullptr, nullptr, nullptr, nullptr, nullptr); }"
 api_test HAVE_FIXED_POINT "DIFixedPointType *fp_type = nullptr;"
 
 for def in $haves; do

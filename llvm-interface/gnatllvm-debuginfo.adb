@@ -756,6 +756,7 @@ package body GNATLLVM.DebugInfo is
          := Get_GL_Type (Comp_TE);
       Inner_Type : constant Metadata_T := Create_Type_Data (Comp_Ty);
       Ranges     : Metadata_Array (0 .. Number_Dimensions (Array_TE) - 1);
+      Stride     : Metadata_T := No_Metadata_T;
    begin
       --  For arrays, get the component type's data. If it exists and
       --  this is of fixed size, get info for each of the bounds and
@@ -779,23 +780,24 @@ package body GNATLLVM.DebugInfo is
               Convert_Bound_To_Metadata (Index_Type, High_Bound);
             Base_Type_Data : constant Metadata_T :=
                Create_Type_Data (Index_Type);
-            Stride : constant Metadata_T :=
-               (if J = 0
-                   and then Component_Size (Array_TE) /= Esize (Comp_TE)
-                then Const_64_As_Metadata (Component_Size (Array_TE))
-                else No_Metadata_T);
          begin
-            Ranges (J) := Create_Subrange_Type (DI_Builder, No_Metadata_T,
-               "", No_Metadata_T, No_Line_Number, 0, 0, DI_Flag_Zero,
-               Is_Unsigned_Type (Full_Etype (Index_Type)),
-               Base_Type_Data, Low_Cst, High_Cst, Stride, No_Metadata_T);
+            if J = 0 and then Component_Size (Array_TE) /= Esize (Comp_TE) then
+               Stride := Const_64_As_Metadata (Component_Size (Array_TE));
+            end if;
+            Ranges (J) :=
+              Create_Subrange_Type
+                (DI_Builder, No_Metadata_T, "", No_Metadata_T,
+                 No_Line_Number, 0, 0, DI_Flag_Zero,
+                 Is_Unsigned_Type (Full_Etype (Index_Type)),
+                 Base_Type_Data, Low_Cst, High_Cst, No_Metadata_T,
+                 No_Metadata_T);
          end;
       end loop;
 
       return Create_Array_Type_With_Name (DI_Builder, No_Metadata_T,
          Name, Get_Debug_File_Node (Get_Source_File_Index (S)),
          Get_Physical_Line_Number (S),
-         Size, Align, Inner_Type, Ranges);
+         Size, Align, Inner_Type, Stride, Ranges);
    end Create_Array_Type;
 
    ----------------------

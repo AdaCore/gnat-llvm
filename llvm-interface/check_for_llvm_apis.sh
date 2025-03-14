@@ -35,4 +35,5 @@ api_test HAVE_FIXED_POINT "DIFixedPointType *fp_type = nullptr;"
 
 for def in $haves; do
     echo "#define GNAT_LLVM_$def"
-done > obj/gnat-llvm-config.h
+done > obj/tmp-gnat-llvm-config.h
+./move-if-change obj/tmp-gnat-llvm-config.h obj/gnat-llvm-config.h

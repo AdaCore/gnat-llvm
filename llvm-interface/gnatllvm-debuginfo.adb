@@ -1254,7 +1254,7 @@ package body GNATLLVM.DebugInfo is
       Name      : constant String     := Get_Name (E);
       S         : constant Source_Ptr := Sloc         (E);
    begin
-      if Emit_Debug_Info then
+      if Emit_Debug_Info and then Comes_From_Source (E) then
          Create_And_Insert_Label
            (DI_Builder, Current_Debug_Scope, Name,
             Get_Debug_File_Node (Get_Source_File_Index (S)),

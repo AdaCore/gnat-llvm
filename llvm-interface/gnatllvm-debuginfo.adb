@@ -1209,6 +1209,10 @@ package body GNATLLVM.DebugInfo is
       Type_Data : constant Metadata_T := Create_Type_Data (V);
       Name      : constant String     := Get_Name (E);
       Var_Data  : Metadata_T;
+      Flags     : constant DI_Flags_T :=
+         (if Comes_From_Source (E)
+          then DI_Flag_Zero
+          else DI_Flag_Artificial);
 
    begin
       if Emit_Full_Debug_Info and then Present (Type_Data) then
@@ -1218,14 +1222,14 @@ package body GNATLLVM.DebugInfo is
               (Current_Debug_Scope, Name,
                Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
                Get_Physical_Line_Number (Sloc (E)), Type_Data, False,
-               DI_Flag_Zero, Get_Type_Alignment (GT));
+               Flags, Get_Type_Alignment (GT));
          else
             Var_Data :=
               DI_Create_Parameter_Variable
               (Current_Debug_Scope, Name, Arg_Num,
                Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
                Get_Physical_Line_Number (Sloc (E)),
-               Type_Data, False, DI_Flag_Zero);
+               Type_Data, False, Flags);
          end if;
 
          --  If this is a reference, insert a dbg.declare call. Otherwise,

@@ -511,6 +511,7 @@ package GNATLLVM.Wrapper is
       Size           : ULL;
       Align_In_Bits  : Nat;
       Ty             : Metadata_T;
+      Stride         : Metadata_T;
       Subscripts     : Metadata_Array) return Metadata_T
      with Pre  => Present (Ty),
           Post => Present (Create_Array_Type_With_Name'Result);

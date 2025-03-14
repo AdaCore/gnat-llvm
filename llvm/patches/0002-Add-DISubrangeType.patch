@@ -1,3 +1,40 @@
+From a9e3d490c398e0a18dbd3a11e7a04166005b752e Mon Sep 17 00:00:00 2001
+From: Tom Tromey <tromey@adacore.com>
+Date: Thu, 16 Jan 2025 13:11:56 -0700
+Subject: [PATCH 2/3] Add DISubrangeType
+
+An Ada program can have types that are subranges of other types.  This
+patch adds a new DIType node, DISubrangeType, to represent this
+concept.
+
+I considered extending the existing DISubrange to do this, but as
+DISubrange does not derive from DIType, that approach seemed more
+disruptive.
+
+A DISubrangeType can be used both as an ordinary type, but also as the
+type of an array index.  This is also important for Ada.
+---
+ llvm/include/llvm-c/DebugInfo.h               |  1 +
+ llvm/include/llvm/Bitcode/LLVMBitCodes.h      |  1 +
+ llvm/include/llvm/IR/DIBuilder.h              | 20 ++++
+ llvm/include/llvm/IR/DebugInfoMetadata.h      | 97 ++++++++++++++++++-
+ llvm/include/llvm/IR/Metadata.def             |  1 +
+ llvm/lib/AsmParser/LLParser.cpp               | 46 ++++++++-
+ llvm/lib/Bitcode/Reader/MetadataLoader.cpp    | 18 ++++
+ llvm/lib/Bitcode/Writer/BitcodeWriter.cpp     | 23 +++++
+ .../CodeGen/AsmPrinter/DebugHandlerBase.cpp   | 19 ++--
+ llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp     | 96 ++++++++++++++----
+ llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h       |  7 +-
+ llvm/lib/IR/AsmWriter.cpp                     | 20 ++++
+ llvm/lib/IR/DIBuilder.cpp                     | 10 ++
+ llvm/lib/IR/DebugInfoMetadata.cpp             | 42 ++++++++
+ llvm/lib/IR/LLVMContextImpl.h                 | 78 +++++++++++++++
+ llvm/lib/IR/Verifier.cpp                      | 24 +++++
+ llvm/test/Bitcode/subrange_type.ll            | 28 ++++++
+ llvm/unittests/IR/MetadataTest.cpp            | 33 +++++++
+ 18 files changed, 532 insertions(+), 32 deletions(-)
+ create mode 100644 llvm/test/Bitcode/subrange_type.ll
+
 diff --git a/llvm/include/llvm-c/DebugInfo.h b/llvm/include/llvm-c/DebugInfo.h
 index 122bfccedf5c..72285da40ee3 100644
 --- a/llvm/include/llvm-c/DebugInfo.h
@@ -380,7 +417,7 @@ index 858a3e75e515..e183f0c5917c 100644
      if (CTy->getTag() == dwarf::DW_TAG_enumeration_type) {
        if (!(Ty = CTy->getBaseType()))
 diff --git a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
-index c2ff899c04ab..19465cf6bce6 100644
+index c2ff899c04ab..db6e129c1719 100644
 --- a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
 +++ b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
 @@ -596,6 +596,8 @@ DIE *DwarfUnit::createTypeDIE(const DIScope *Context, DIE &ContextDIE,
@@ -451,7 +488,7 @@ index c2ff899c04ab..19465cf6bce6 100644
 +
 +  AddBoundTypeEntry(dwarf::DW_AT_upper_bound, SR->getUpperBound());
 +
-+  AddBoundTypeEntry(dwarf::DW_AT_byte_stride, SR->getStride());
++  AddBoundTypeEntry(dwarf::DW_AT_bit_stride, SR->getStride());
 +
 +  AddBoundTypeEntry(dwarf::DW_AT_GNU_bias, SR->getBias());
 +}
@@ -504,7 +541,7 @@ index c2ff899c04ab..19465cf6bce6 100644
 -                                    IdxTy);
 -    }
 +    if (auto *Element = dyn_cast_or_null<DISubrangeType>(E)) {
-+      DIE &TyDIE = createAndAddDIE(CTy->getTag(), Buffer, CTy);
++      DIE &TyDIE = createAndAddDIE(Element->getTag(), Buffer, CTy);
 +      constructSubrangeDIE(TyDIE, Element, true);
 +    } else if (auto *Element = dyn_cast_or_null<DISubrange>(E))
 +      constructSubrangeDIE(Buffer, Element);
@@ -795,7 +832,7 @@ index 000000000000..82de042e92bb
 +!13 = !DILocation(line: 3, column: 4, scope: !6)
 +!14 = !DILocation(line: 6, column: 5, scope: !6)
 diff --git a/llvm/unittests/IR/MetadataTest.cpp b/llvm/unittests/IR/MetadataTest.cpp
-index 3b60a719780c..e79cbcb3da9f 100644
+index 3b60a719780c..10bd48426bc8 100644
 --- a/llvm/unittests/IR/MetadataTest.cpp
 +++ b/llvm/unittests/IR/MetadataTest.cpp
 @@ -1442,6 +1442,39 @@ TEST_F(DISubrangeTest, fortranAllocatableExpr) {
@@ -807,7 +844,7 @@ index 3b60a719780c..e79cbcb3da9f 100644
 +TEST_F(DISubrangeTypeTest, get) {
 +  auto *Base =
 +      DIBasicType::get(Context, dwarf::DW_TAG_base_type, "test_integer", 32, 0,
-+                       dwarf::DW_ATE_signed, 100, DINode::FlagZero);
++                       dwarf::DW_ATE_signed, DINode::FlagZero);
 +
 +  DILocalScope *Scope = getSubprogram();
 +  DIFile *File = getFile();
@@ -838,3 +875,6 @@ index 3b60a719780c..e79cbcb3da9f 100644
  typedef MetadataTest DIGenericSubrangeTest;
  
  TEST_F(DIGenericSubrangeTest, fortranAssumedRankInt) {
+-- 
+2.47.1
+

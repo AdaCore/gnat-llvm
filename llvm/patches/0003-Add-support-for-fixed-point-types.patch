@@ -1,3 +1,39 @@
+From 8bf9a2aca56d2ce9468d3ddfc9794f937d0ca88b Mon Sep 17 00:00:00 2001
+From: Tom Tromey <tom@tromey.com>
+Date: Tue, 4 Feb 2025 14:36:22 -0700
+Subject: [PATCH 3/3] Add support for fixed-point types
+
+This adds DWARF generation for fixed-point types.  This feature is
+needed by Ada.
+
+Note that a pre-existing GNU extension is used in one case.  This has
+been emitted by GCC for years, and is needed because standard DWARF is
+otherwise incapable of representing these types.
+---
+ llvm/include/llvm-c/DebugInfo.h               |   1 +
+ llvm/include/llvm/AsmParser/LLToken.h         |   1 +
+ llvm/include/llvm/Bitcode/LLVMBitCodes.h      |   1 +
+ llvm/include/llvm/IR/DIBuilder.h              |  36 +++++
+ llvm/include/llvm/IR/DebugInfoMetadata.h      | 136 +++++++++++++++++-
+ llvm/include/llvm/IR/Metadata.def             |   1 +
+ llvm/lib/AsmParser/LLLexer.cpp                |   5 +
+ llvm/lib/AsmParser/LLParser.cpp               |  50 +++++++
+ llvm/lib/Bitcode/Reader/MetadataLoader.cpp    |  33 +++++
+ llvm/lib/Bitcode/Writer/BitcodeWriter.cpp     |  32 +++++
+ .../CodeGen/AsmPrinter/DebugHandlerBase.cpp   |   3 +
+ llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp     |  94 ++++++++----
+ llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h       |   9 ++
+ llvm/lib/IR/AsmWriter.cpp                     |  29 ++++
+ llvm/lib/IR/DIBuilder.cpp                     |  31 ++++
+ llvm/lib/IR/DebugInfoMetadata.cpp             |  40 ++++++
+ llvm/lib/IR/LLVMContextImpl.h                 |  37 +++++
+ llvm/lib/IR/Verifier.cpp                      |  19 +++
+ llvm/test/Bitcode/fixedpoint_type.ll          |  29 ++++
+ .../DebugInfo/Generic/discriminated-union.ll  |   7 +-
+ llvm/unittests/IR/DebugInfoTest.cpp           |  34 +++++
+ 21 files changed, 598 insertions(+), 30 deletions(-)
+ create mode 100644 llvm/test/Bitcode/fixedpoint_type.ll
+
 diff --git a/llvm/include/llvm-c/DebugInfo.h b/llvm/include/llvm-c/DebugInfo.h
 index 72285da40ee3..91b4ace1a21f 100644
 --- a/llvm/include/llvm-c/DebugInfo.h
@@ -480,10 +516,80 @@ index e183f0c5917c..48a180c93c76 100644
  }
  
 diff --git a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
-index 58d0d7166d1f..dd5a7454d9e9 100644
+index db6e129c1719..261c7cab84dc 100644
 --- a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
 +++ b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.cpp
-@@ -597,7 +597,9 @@ DIE *DwarfUnit::createTypeDIE(const DIScope *Context, DIE &ContextDIE,
+@@ -231,6 +231,42 @@ void DwarfUnit::addUInt(DIEValueList &Block, dwarf::Form Form,
+   addUInt(Block, (dwarf::Attribute)0, Form, Integer);
+ }
+ 
++void DwarfUnit::addIntAsBlock(DIE &Die, dwarf::Attribute Attribute, const APInt &Val) {
++  DIEBlock *Block = new (DIEValueAllocator) DIEBlock;
++
++  // Get the raw data form of the large APInt.
++  const uint64_t *Ptr64 = Val.getRawData();
++
++  int NumBytes = Val.getBitWidth() / 8; // 8 bits per byte.
++  bool LittleEndian = Asm->getDataLayout().isLittleEndian();
++
++  // Output the constant to DWARF one byte at a time.
++  for (int i = 0; i < NumBytes; i++) {
++    uint8_t c;
++    if (LittleEndian)
++      c = Ptr64[i / 8] >> (8 * (i & 7));
++    else
++      c = Ptr64[(NumBytes - 1 - i) / 8] >> (8 * ((NumBytes - 1 - i) & 7));
++    addUInt(*Block, dwarf::DW_FORM_data1, c);
++  }
++
++  addBlock(Die, Attribute, Block);
++}
++
++void DwarfUnit::addInt(DIE &Die, dwarf::Attribute Attribute,
++		       const APInt &Val, bool Unsigned) {
++  unsigned CIBitWidth = Val.getBitWidth();
++  if (CIBitWidth <= 64) {
++    if (Unsigned)
++      addUInt(Die, Attribute, std::nullopt, Val.getZExtValue());
++    else
++      addSInt(Die, Attribute, std::nullopt, Val.getSExtValue());
++    return;
++  }
++
++  addIntAsBlock(Die, Attribute, Val);
++}
++
+ void DwarfUnit::addSInt(DIEValueList &Die, dwarf::Attribute Attribute,
+                         std::optional<dwarf::Form> Form, int64_t Integer) {
+   if (!Form)
+@@ -483,25 +519,7 @@ void DwarfUnit::addConstantValue(DIE &Die, const APInt &Val, bool Unsigned) {
+     return;
+   }
+ 
+-  DIEBlock *Block = new (DIEValueAllocator) DIEBlock;
+-
+-  // Get the raw data form of the large APInt.
+-  const uint64_t *Ptr64 = Val.getRawData();
+-
+-  int NumBytes = Val.getBitWidth() / 8; // 8 bits per byte.
+-  bool LittleEndian = Asm->getDataLayout().isLittleEndian();
+-
+-  // Output the constant to DWARF one byte at a time.
+-  for (int i = 0; i < NumBytes; i++) {
+-    uint8_t c;
+-    if (LittleEndian)
+-      c = Ptr64[i / 8] >> (8 * (i & 7));
+-    else
+-      c = Ptr64[(NumBytes - 1 - i) / 8] >> (8 * ((NumBytes - 1 - i) & 7));
+-    addUInt(*Block, dwarf::DW_FORM_data1, c);
+-  }
+-
+-  addBlock(Die, dwarf::DW_AT_const_value, Block);
++  addIntAsBlock(Die, dwarf::DW_AT_const_value, Val);
+ }
+ 
+ void DwarfUnit::addLinkageName(DIE &Die, StringRef LinkageName) {
+@@ -579,7 +597,9 @@ DIE *DwarfUnit::createTypeDIE(const DIScope *Context, DIE &ContextDIE,
  
    updateAcceleratorTables(Context, Ty, TyDIE);
  
@@ -494,7 +600,7 @@ index 58d0d7166d1f..dd5a7454d9e9 100644
      constructTypeDIE(TyDIE, BT);
    else if (auto *ST = dyn_cast<DIStringType>(Ty))
      constructTypeDIE(TyDIE, ST);
-@@ -732,6 +734,32 @@ void DwarfUnit::constructTypeDIE(DIE &Buffer, const DIBasicType *BTy) {
+@@ -714,6 +734,32 @@ void DwarfUnit::constructTypeDIE(DIE &Buffer, const DIBasicType *BTy) {
      addUInt(Buffer, dwarf::DW_AT_endianity, std::nullopt, dwarf::DW_END_little);
  }
  
@@ -527,13 +633,44 @@ index 58d0d7166d1f..dd5a7454d9e9 100644
  void DwarfUnit::constructTypeDIE(DIE &Buffer, const DIStringType *STy) {
    // Get core information.
    StringRef Name = STy->getName();
+@@ -929,12 +975,8 @@ void DwarfUnit::constructTypeDIE(DIE &Buffer, const DICompositeType *CTy) {
+           DIE &Variant = createAndAddDIE(dwarf::DW_TAG_variant, Buffer);
+           if (const ConstantInt *CI =
+               dyn_cast_or_null<ConstantInt>(DDTy->getDiscriminantValue())) {
+-            if (DD->isUnsignedDIType(Discriminator->getBaseType()))
+-              addUInt(Variant, dwarf::DW_AT_discr_value, std::nullopt,
+-                      CI->getZExtValue());
+-            else
+-              addSInt(Variant, dwarf::DW_AT_discr_value, std::nullopt,
+-                      CI->getSExtValue());
++	    addInt(Variant, dwarf::DW_AT_discr_value, CI->getValue(),
++		   DD->isUnsignedDIType(Discriminator->getBaseType()));
+           }
+           constructMemberDIE(Variant, DDTy);
+         } else {
 diff --git a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h
-index abcfef36d42e..3010b7522318 100644
+index ebec14af6594..3010b7522318 100644
 --- a/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h
 +++ b/llvm/lib/CodeGen/AsmPrinter/DwarfUnit.h
-@@ -324,6 +324,7 @@ private:
-   void addIntAsBlock(DIE &Die, dwarf::Attribute Attribute, const APInt &Val);
+@@ -153,6 +153,10 @@ public:
  
+   void addSInt(DIELoc &Die, std::optional<dwarf::Form> Form, int64_t Integer);
+ 
++  /// Add an integer attribute data and value; value may be any width.
++  void addInt(DIE &Die, dwarf::Attribute Attribute, const APInt &Integer,
++	      bool Unsigned);
++
+   /// Add a string attribute data and value.
+   ///
+   /// We always emit a reference to the string pool instead of immediate
+@@ -315,7 +319,12 @@ protected:
+   void emitCommonHeader(bool UseOffsets, dwarf::UnitType UT);
+ 
+ private:
++  /// A helper to add a wide integer constant to a DIE using a block
++  /// form.
++  void addIntAsBlock(DIE &Die, dwarf::Attribute Attribute, const APInt &Val);
++
    void constructTypeDIE(DIE &Buffer, const DIBasicType *BTy);
 +  void constructTypeDIE(DIE &Buffer, const DIFixedPointType *BTy);
    void constructTypeDIE(DIE &Buffer, const DIStringType *BTy);
@@ -808,6 +945,36 @@ index 000000000000..b805787c5d98
 +!12 = !DIFixedPointType(name: "fp__rational", size: 32, align: 32, encoding: DW_ATE_unsigned_fixed, kind: Rational, numerator: 1234, denominator: 5678)
 +!13 = !DILocation(line: 3, column: 4, scope: !6)
 +!14 = !DILocation(line: 6, column: 5, scope: !6)
+diff --git a/llvm/test/DebugInfo/Generic/discriminated-union.ll b/llvm/test/DebugInfo/Generic/discriminated-union.ll
+index 0acf478f653a..b57b16dea91c 100644
+--- a/llvm/test/DebugInfo/Generic/discriminated-union.ll
++++ b/llvm/test/DebugInfo/Generic/discriminated-union.ll
+@@ -1,5 +1,5 @@
+ ; RUN: %llc_dwarf -O0 -filetype=obj < %s > %t
+-; RUN: llvm-dwarfdump -v -debug-info %t | FileCheck %s
++; RUN: llvm-dwarfdump -v -debug-info %t | FileCheck %s --check-prefix %if target-byteorder-big-endian %{ CHECK-BE %} %else %{ CHECK-LE %}
+ 
+ ; Check for a variant part that has two members, one of which has a
+ ; discriminant value.
+@@ -19,7 +19,8 @@
+ ;         CHECK: DW_AT_alignment
+ ;         CHECK: DW_AT_data_member_location [DW_FORM_data1]	(0x00)
+ ;     CHECK: DW_TAG_variant
+-;       CHECK: DW_AT_discr_value [DW_FORM_data1]	(0x00)
++;       CHECK-LE: DW_AT_discr_value [DW_FORM_block1]	(<0x10> 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 )
++;       CHECK-BE: DW_AT_discr_value [DW_FORM_block1]	(<0x10> 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 )
+ ;       CHECK: DW_TAG_member
+ ;         CHECK: DW_AT_type
+ ;         CHECK: DW_AT_alignment
+@@ -68,7 +69,7 @@ attributes #0 = { nounwind uwtable }
+ !21 = !DIBasicType(name: "u8", size: 8, encoding: DW_ATE_unsigned)
+ !22 = !DIDerivedType(tag: DW_TAG_member, name: "__1", scope: !18, file: !7, baseType: !23, size: 64, align: 64)
+ !23 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "&u8", baseType: !21, size: 64, align: 64)
+-!24 = !DIDerivedType(tag: DW_TAG_member, scope: !14, file: !7, baseType: !25, size: 128, align: 64, extraData: i64 0)
++!24 = !DIDerivedType(tag: DW_TAG_member, scope: !14, file: !7, baseType: !25, size: 128, align: 64, extraData: i128 18446744073709551616)
+ !25 = !DICompositeType(tag: DW_TAG_structure_type, name: "Nope", scope: !12, file: !7, size: 128, align: 64, elements: !4, identifier: "7ce1efff6b82281ab9ceb730566e7e20::Nope")
+ !27 = !DIBasicType(name: "u64", size: 64, encoding: DW_ATE_unsigned)
+ !28 = !DIExpression()
 diff --git a/llvm/unittests/IR/DebugInfoTest.cpp b/llvm/unittests/IR/DebugInfoTest.cpp
 index 8e504d574e91..d4c20b8b32e9 100644
 --- a/llvm/unittests/IR/DebugInfoTest.cpp
@@ -853,3 +1020,6 @@ index 8e504d574e91..d4c20b8b32e9 100644
  TEST(DIBuilder, createDbgAddr) {
    LLVMContext C;
    std::unique_ptr<Module> M = parseIR(C, R"(
+-- 
+2.47.1
+

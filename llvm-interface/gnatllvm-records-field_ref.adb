@@ -848,7 +848,9 @@ package body GNATLLVM.Records.Field_Ref is
               (if   Bytes_Big_Endian then Result
                else GEP (A_Char_GL_Type, Result,
                          (1 => To_Bytes (Get_Type_Size (Max_Int_T)))));
-            Byte        : constant GL_Value := Load (High_Addr);
+            High_Ptr    : constant GL_Value :=
+              Convert_Ref (High_Addr, SSI_GL_Type);
+            Byte        : constant GL_Value := Load (High_Ptr);
             High_Part   : constant GL_Value :=
               Z_Ext_To_Relationship (Byte, Max_Int_T, Unknown);
             Low_Ptr     : constant GL_Value :=

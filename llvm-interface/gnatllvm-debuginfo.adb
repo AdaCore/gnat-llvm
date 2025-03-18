@@ -876,10 +876,22 @@ package body GNATLLVM.DebugInfo is
                         and then Low = Full_Low and then High = Full_High
                      then
 
-                        Result := DI_Builder_Create_Typedef
-                          (Base_Type_Data, Name,
-                           Get_Debug_File_Node (Get_Source_File_Index (S)),
-                           Get_Physical_Line_Number (S), No_Metadata_T, Align);
+                        --  If the underlying type is identical, just
+                        --  return it rather than building a typedef.
+                        if Name = Get_Name (Full_BT)
+                        then
+                           Result := Base_Type_Data;
+                        else
+                           Result :=
+                             DI_Builder_Create_Typedef
+                               (Base_Type_Data, Name,
+                                Get_Debug_File_Node
+                                  (Get_Source_File_Index
+                                     (S)),
+                                Get_Physical_Line_Number
+                                  (S),
+                                No_Metadata_T, Align);
+                        end if;
 
                      else
 

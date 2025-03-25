@@ -918,4 +918,52 @@ package body GNATLLVM.Wrapper is
       return Types_Can_Have_Function_Scope_C /= 0;
    end Types_Can_Have_Function_Scope;
 
+   function Types_Can_Have_Dynamic_Offsets return Boolean
+   is
+      function Types_Can_Have_Dynamic_Offsets_C return LLVM_Bool
+        with Import => True, Convention => C,
+             External_Name => "Types_Can_Have_Dynamic_Offsets";
+   begin
+      return Types_Can_Have_Dynamic_Offsets_C /= 0;
+   end Types_Can_Have_Dynamic_Offsets;
+
+   function Create_Global_Variable_Declaration
+     (Builder : DI_Builder_T;
+      Scope : Metadata_T;
+      Name : String;
+      Linkage_Name : String;
+      File : Metadata_T;
+      Line_Number : Physical_Line_Number;
+      Ty : Metadata_T;
+      Local_To_Unit : Boolean;
+      Expr : Metadata_T;
+      Decl : Metadata_T;
+      Align_In_Bits : Nat) return Metadata_T
+   is
+      function Create_Global_Variable_Declaration_C
+        (Builder : DI_Builder_T;
+         Scope : Metadata_T;
+         Name : String;
+         Linkage_Name : String;
+         File : Metadata_T;
+         Line_Number : unsigned;
+         Ty : Metadata_T;
+         Local_To_Unit : LLVM_Bool;
+         Expr : Metadata_T;
+         Decl : Metadata_T;
+         Align_In_Bits : uint32_t)
+        return Metadata_T
+        with Import => True, Convention => C,
+             External_Name => "Create_Global_Variable_Declaration";
+   begin
+      return Create_Global_Variable_Declaration_C (Builder, Scope,
+                                                   Name & ASCII.NUL,
+                                                   Linkage_Name & ASCII.NUL,
+                                                   File,
+                                                   unsigned (Line_Number), Ty,
+                                                   Boolean'Pos (Local_To_Unit),
+                                                   Expr, Decl,
+                                                   uint32_t (Align_In_Bits));
+   end Create_Global_Variable_Declaration;
+
 end GNATLLVM.Wrapper;

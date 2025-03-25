@@ -1537,3 +1537,31 @@ Types_Can_Have_Function_Scope ()
   return false;
 #endif
 }
+
+extern "C"
+bool
+Types_Can_Have_Dynamic_Offsets ()
+{
+#ifdef GNAT_LLVM_HAVE_DYNAMIC_OFFSETS
+  return true;
+#else
+  return false;
+#endif
+}
+
+extern "C"
+LLVMMetadataRef Create_Global_Variable_Declaration(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    const char *Linkage, LLVMMetadataRef File,
+    unsigned LineNo, LLVMMetadataRef Ty, LLVMBool LocalToUnit,
+    LLVMMetadataRef Expr, LLVMMetadataRef Decl, uint32_t AlignInBits) {
+  DIScope *DS = Scope ? unwrap<DIScope>(Scope) : nullptr;
+  DIFile *DF = File ? unwrap<DIFile>(File) : nullptr;
+  MDNode *MD = Decl ? unwrap<MDNode>(Decl) : nullptr;
+
+  return wrap(unwrap(Builder)->createGlobalVariableExpression(
+      DS, {Name, strlen(Name)}, {Linkage, strlen(Linkage)},
+      DF, LineNo, unwrap<DIType>(Ty), LocalToUnit,
+      false, unwrap<DIExpression>(Expr), MD,
+      nullptr, AlignInBits));
+}

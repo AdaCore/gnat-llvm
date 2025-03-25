@@ -39,6 +39,9 @@ api_test HAVE_FIXED_POINT "DIFixedPointType *fp_type = nullptr;"
 # function scope.
 api_test HAVE_TYPE_FN_SCOPE "void call(DebugInfoFinder *f, DILocalVariable *v) { f->processVariable(v); }"
 
+# Test that checks if sizes and offsets can be dynamic.
+api_test HAVE_DYNAMIC_OFFSETS "void call(DIBuilder *b) { b->createMemberType(nullptr, StringRef(), nullptr, 0, nullptr, 0, nullptr, DINode::FlagZero, nullptr); }"
+
 for def in $haves; do
     echo "#define GNAT_LLVM_$def"
 done > obj/tmp-gnat-llvm-config.h

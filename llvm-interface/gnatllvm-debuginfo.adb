@@ -883,7 +883,7 @@ package body GNATLLVM.DebugInfo is
         (if Type_Is_Sized (T) then Get_Type_Size (T) else 0);
       Align       : constant Nat                  := Get_Type_Alignment (GT);
       S           : constant Source_Ptr           := Sloc (TE);
-      Result      : Metadata_T                    := Get_Debug_Type (TE);
+      Result      : Metadata_T                    := Get_Debug_Metadata (TE);
 
    begin
       --  If we already made debug info for this type, return it
@@ -1216,7 +1216,7 @@ package body GNATLLVM.DebugInfo is
       --  Show no longer elaborating this type and save and return the result
 
       Set_Is_Being_Elaborated (TE, False);
-      Set_Debug_Type (TE, Result);
+      Set_Debug_Metadata (TE, Result);
       return Result;
    end Create_Type_Data;
 

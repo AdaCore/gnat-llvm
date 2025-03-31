@@ -119,11 +119,11 @@ package GNATLLVM.Environment is
    function Get_SO_Ref                (N  : N_Subexpr_Id) return Dynamic_SO_Ref
      with Inline;
 
-   function Get_Debug_Type            (TE : Entity_Id)    return Metadata_T
-     with Pre => Is_Type_Or_Void (TE), Inline;
+   function Get_Debug_Metadata        (TE : Entity_Id)    return Metadata_T
+     with Inline;
 
-   function Get_Debug_Type_N          (TE : Entity_Id)    return Metadata_T
-     with Pre => Is_Type_Or_Void (TE), Inline;
+   function Get_Debug_Metadata_N      (TE : Entity_Id)    return Metadata_T
+     with Inline;
 
    function Get_Array_Info            (TE : Entity_Id)    return Array_Info_Id
      with Pre => Is_Array_Type (TE), Inline;
@@ -194,11 +194,10 @@ package GNATLLVM.Environment is
                   and then (No (Get_SO_Ref (N)) or else Get_SO_Ref (N) = U),
           Post => Get_SO_Ref (N) = U, Inline;
 
-   procedure Set_Debug_Type           (TE : Entity_Id; DT : Metadata_T)
-     with Pre  => Is_Type_Or_Void (TE)
-                  and then (No (Get_Debug_Type_N (TE))
-                              or else Get_Debug_Type_N (TE) = DT),
-          Post => Get_Debug_Type_N (TE) = DT, Inline;
+   procedure Set_Debug_Metadata       (TE : Entity_Id; DT : Metadata_T)
+     with Pre  => (No (Get_Debug_Metadata_N (TE))
+                   or else Get_Debug_Metadata_N (TE) = DT),
+          Post => Get_Debug_Metadata_N (TE) = DT, Inline;
 
    procedure Set_Array_Info           (TE : Entity_Id; AI : Array_Info_Id)
      with Pre  => Is_Array_Type (TE)

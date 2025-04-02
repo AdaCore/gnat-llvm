@@ -1281,14 +1281,19 @@ package body GNATLLVM.DebugInfo is
       if Emit_Debug_Info and then Present (Type_Data)
         and then Is_A_Global_Variable (V) and then not Is_Imported (E)
       then
-         Global_Set_Metadata
-           (+V, 0,
-            DI_Create_Global_Variable_Expression
-              (Debug_Compile_Unit, Name,
-               (if Ext_Name = Name then "" else Ext_Name),
-               Get_Debug_File_Node (Get_Source_File_Index (S)),
-               Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
-               No_Metadata_T, Get_Type_Alignment (GT)));
+         declare
+            MD : constant Metadata_T :=
+              DI_Create_Global_Variable_Expression
+                (Debug_Compile_Unit, Name,
+                 (if Ext_Name = Name then "" else Ext_Name),
+                 Get_Debug_File_Node (Get_Source_File_Index (S)),
+                 Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
+                 No_Metadata_T, Get_Type_Alignment (GT));
+         begin
+            Set_Debug_Metadata
+              (E, DI_Global_Variable_Expression_Get_Variable (MD));
+            Global_Set_Metadata (+V, 0, MD);
+         end;
       end if;
    end Create_Global_Variable_Debug_Data;
 
@@ -1302,7 +1307,7 @@ package body GNATLLVM.DebugInfo is
       GT        : constant GL_Type    := Related_Type (V);
       Type_Data : constant Metadata_T := Create_Type_Data (V);
       Name      : constant String     := Get_Unqualified_Name (E);
-      Var_Data  : Metadata_T;
+      Var_Data  : Metadata_T          := Get_Debug_Metadata (E);
       Flags     : constant DI_Flags_T :=
          (if Comes_From_Source (E)
           then DI_Flag_Zero
@@ -1312,20 +1317,24 @@ package body GNATLLVM.DebugInfo is
       if Emit_Full_Debug_Info and then Present (Type_Data)
          and then not Is_A_Global_Variable (V)
       then
-         if Arg_Num = 0 then
-            Var_Data :=
-              DI_Create_Auto_Variable
-              (Current_Debug_Scope, Name,
-               Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
-               Get_Physical_Line_Number (Sloc (E)), Type_Data, False,
-               Flags, Get_Type_Alignment (GT));
-         else
-            Var_Data :=
-              DI_Create_Parameter_Variable
-              (Current_Debug_Scope, Name, Arg_Num,
-               Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
-               Get_Physical_Line_Number (Sloc (E)),
-               Type_Data, False, Flags);
+         if No (Var_Data) then
+            if Arg_Num = 0 then
+               Var_Data :=
+                 DI_Create_Auto_Variable
+                 (Current_Debug_Scope, Name,
+                  Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
+                  Get_Physical_Line_Number (Sloc (E)), Type_Data, False,
+                  Flags, Get_Type_Alignment (GT));
+
+            else
+               Var_Data :=
+                 DI_Create_Parameter_Variable
+                 (Current_Debug_Scope, Name, Arg_Num,
+                  Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
+                  Get_Physical_Line_Number (Sloc (E)),
+                  Type_Data, False, Flags);
+            end if;
+            Set_Debug_Metadata (E, Var_Data);
          end if;
 
          --  If this is a reference, insert a dbg.declare call. Otherwise,

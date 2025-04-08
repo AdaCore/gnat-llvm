@@ -683,6 +683,7 @@ package body GNATLLVM.DebugInfo is
       Rec_Align   : Nat                 := Thin_Pointer_Size;
       Offset      : ULL                 := 0;
       Idx         : Nat                 := 1;
+      Ranges      : Metadata_Array (0 .. 0);
 
    begin
       --  If we can't make data for the component type, we can't make
@@ -692,10 +693,18 @@ package body GNATLLVM.DebugInfo is
          return No_Metadata_T;
       end if;
 
+      --  GDB expects P_ARRAY to have type pointer-to-array.  The
+      --  bounds here do not matter.
+      Ranges (0) := DI_Builder_Get_Or_Create_Subrange (DI_Builder, 0, 0);
+      P_Comp_MD := Create_Array_Type_With_Name (DI_Builder, No_Metadata_T, "",
+                                                No_Metadata_T, 0, 0, Align,
+                                                Comp_MD, No_Metadata_T,
+                                                Ranges);
+      P_Comp_MD := Create_Pointer_To (P_Comp_MD, Full_Component_Type (DT));
+
       --  Add fields for pointers to bounds and component and create debug
       --  data for that structure.
 
-      P_Comp_MD := Create_Pointer_To (Comp_MD, Full_Component_Type (DT));
       pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align, "P_ARRAY",
                                 S, Align, Size, MD => P_Comp_MD));
       pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align, "P_BOUNDS",
@@ -796,7 +805,7 @@ package body GNATLLVM.DebugInfo is
 
       return Create_Array_Type_With_Name (DI_Builder, No_Metadata_T,
          Name, Get_Debug_File_Node (Get_Source_File_Index (S)),
-         Get_Physical_Line_Number (S),
+         Get_Logical_Line_Number (S),
          Size, Align, Inner_Type, Stride, Ranges);
    end Create_Array_Type;
 

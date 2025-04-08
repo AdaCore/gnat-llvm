@@ -38,34 +38,38 @@ To build GNAT LLVM from sources, follow these steps:
 
       $ mv llvm-interface/gcc/gcc/ada llvm-interface/gnat_src
 
+- Obtain the Ada bindings for LLVM:
+
+      $ git clone https://github.com/AdaCore/llvm-bindings.git
+
 - Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2021
   or GCC 11.
 
 - Install LLVM and Clang 16.0.x
 
   The recommended way to build GNAT LLVM is to use an existing LLVM and
-  clang package installed via e.g.  "brew install llvm" on Mac OS or "sudo
-  apt-get install llvm-dev" on Ubuntu. You can also build llvm yourself with
+  Clang package installed via e.g. `brew install llvm` on Mac OS or `sudo
+  apt-get install llvm-dev` on Ubuntu. You can also build LLVM yourself with
   the options that suit your needs. After installing/building, make sure the
-  llvm bin directory containing llvm-config and clang is in your PATH.
+  LLVM bin directory containing `llvm-config` and `clang` is in your `PATH`.
 
   An alternative only suitable for core GNAT LLVM development on x86 native
-  configurations is to use the following command, assuming you have cmake
+  configurations is to use the following command, assuming you have CMake
   version >= 3.13.4 in your path:
 
       $ make llvm
 
   Note that there's currently a bug in LLVM's aliasing handling. We check
   for it and generate slightly pessimized code in that case, but a patch
-  to be applied to LLVM's lib/Analyze directory is in the file
-  llvm/patches/LLVMStructTBAAPatch.diff.
+  to be applied to LLVM's `lib/Analyze` directory is in the file
+  `llvm/patches/LLVMStructTBAAPatch.diff`.
 
 - Finally build GNAT LLVM:
 
       $ make
 
-This creates a "ready to use" set of directories "bin" and "lib" under
-llvm-interface which you can put in your PATH:
+  This creates a "ready to use" set of directories "bin" and "lib" under
+  llvm-interface which you can put in your PATH:
 
     PATH=$PWD/llvm-interface/bin:$PATH
 
@@ -73,8 +77,8 @@ llvm-interface which you can put in your PATH:
 
       $ make gnatlib-bc
 
-  This will generate libgnat.bc and libgnarl.bc in the adalib directory, along
-  with libgnat.a and libgnarl.a.
+  This will generate `libgnat.bc` and `libgnarl.bc` in the `adalib` directory, along
+  with `libgnat.a` and `libgnarl.a`.
 
 Usage
 -----
@@ -93,7 +97,7 @@ Usage
 
 - To build a whole project:
 
-      $ gprbuild --target=llvm -Pprj ...
+      $ gprbuild -Pprj ...
 
 - To generate LLVM bitcode (will generate a .bc file):
 

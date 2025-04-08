@@ -1,6 +1,4 @@
 # Build/test results directories
-gen
-out
 llvm-obj
 install
 

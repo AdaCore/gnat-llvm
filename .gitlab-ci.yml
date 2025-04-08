@@ -23,7 +23,7 @@ include:
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/build@~latest
     inputs:
       anod-args: run build
-      generic-anod-ci-args: --add-dep eng/toolchain/gnat
+      generic-anod-ci-args: --add-dep eng/toolchain/gnat --add-dep eng/toolchain/llvm-bindings
       cpus: 16
       save-component: true
 

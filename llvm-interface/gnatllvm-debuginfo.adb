@@ -702,7 +702,7 @@ package body GNATLLVM.DebugInfo is
                                 S, Align, Size, MD => P_Bounds_MD));
 
       return DI_Create_Struct_Type
-        (No_Metadata_T, Get_Name (GT),
+        (No_Metadata_T, "",
          Get_Debug_File_Node (Get_Source_File_Index (S)),
          Get_Physical_Line_Number (S), Offset, Align, DI_Flag_Zero,
          No_Metadata_T, Field_MDs, 0, No_Metadata_T, "");
@@ -964,8 +964,18 @@ package body GNATLLVM.DebugInfo is
 
                if Present (Result) then
                   Result :=
-                    DI_Create_Pointer_Type (Result, Size, Align, 0, Name);
+                    DI_Create_Pointer_Type (Result, Size, Align, 0, "");
+
                end if;
+            end if;
+
+            --  GDB and GNAT have a convention that an access type is
+            --  represented by a typedef in DWARF.
+            if Present (Result) then
+               Result := DI_Builder_Create_Typedef
+                 (Result, Name,
+                  Get_Debug_File_Node (Get_Source_File_Index (S)),
+                  Get_Physical_Line_Number (S), No_Metadata_T, Align);
             end if;
 
          when Array_Kind =>

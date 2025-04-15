@@ -1397,8 +1397,9 @@ Create_Array_Type_With_Name (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
                                                  NumSubscripts});
 #ifdef GNAT_LLVM_HAVE_ARRAY_NAME
   DIScope *DS = Scope ? unwrap<DIScope>(Scope) : nullptr;
+  DIFile *DF = File ? unwrap<DIFile>(File) : nullptr;
   return unwrap(Builder)->createArrayType(
-      DS, StringRef(Name, strlen(Name)), unwrap<DIFile>(File),
+      DS, StringRef(Name, strlen(Name)), DF,
       LineNo, Size, AlignInBits, unwrap<DIType>(Ty), Subs,
       nullptr, nullptr, nullptr, nullptr, unwrap(BitStride));
 #else

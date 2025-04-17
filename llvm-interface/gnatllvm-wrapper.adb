@@ -349,9 +349,9 @@ package body GNATLLVM.Wrapper is
       Code_Opt_Level           : Nat;
       Size_Opt_Level           : Nat;
       Need_Loop_Info           : Boolean;
-      No_Unroll_Loops          : Boolean;
-      No_Loop_Vectorization    : Boolean;
-      No_SLP_Vectorization     : Boolean;
+      Unroll_Loops             : Boolean;
+      Loop_Vectorization       : Boolean;
+      SLP_Vectorization        : Boolean;
       Merge_Functions          : Boolean;
       Prepare_For_Thin_LTO     : Boolean;
       Prepare_For_LTO          : Boolean;
@@ -372,9 +372,9 @@ package body GNATLLVM.Wrapper is
          Code_Opt_Level           : Nat;
          Size_Opt_Level           : Nat;
          Need_Loop_Info           : LLVM_Bool;
-         No_Unroll_Loops          : LLVM_Bool;
-         No_Loop_Vectorization    : LLVM_Bool;
-         No_SLP_Vectorization     : LLVM_Bool;
+         Unroll_Loops             : LLVM_Bool;
+         Loop_Vectorization       : LLVM_Bool;
+         SLP_Vectorization        : LLVM_Bool;
          Merge_Functions          : LLVM_Bool;
          Prepare_For_Thin_LTO     : LLVM_Bool;
          PrepareFor_LTO           : LLVM_Bool;
@@ -387,11 +387,10 @@ package body GNATLLVM.Wrapper is
          Error_Message            : System.Address) return LLVM_Bool
         with Import, Convention => C, External_Name => "LLVM_Optimize_Module";
       Need_Loop_Info_B : constant LLVM_Bool := Boolean'Pos (Need_Loop_Info);
-      No_Unroll_B      : constant LLVM_Bool := Boolean'Pos (No_Unroll_Loops);
-      No_Loop_Vect_B   : constant LLVM_Bool :=
-        Boolean'Pos (No_Loop_Vectorization);
-      No_SLP_Vect_B    : constant LLVM_Bool :=
-        Boolean'Pos (No_SLP_Vectorization);
+      Unroll_B         : constant LLVM_Bool := Boolean'Pos (Unroll_Loops);
+      Loop_Vect_B      : constant LLVM_Bool :=
+        Boolean'Pos (Loop_Vectorization);
+      SLP_Vect_B       : constant LLVM_Bool := Boolean'Pos (SLP_Vectorization);
       Merge_B          : constant LLVM_Bool := Boolean'Pos (Merge_Functions);
       Thin_LTO_B       : constant LLVM_Bool :=
         Boolean'Pos (Prepare_For_Thin_LTO);
@@ -411,7 +410,7 @@ package body GNATLLVM.Wrapper is
       Result :=
         LLVM_Optimize_Module_C
           (Module, Target_Machine, Code_Opt_Level, Size_Opt_Level,
-           Need_Loop_Info_B, No_Unroll_B, No_Loop_Vect_B, No_SLP_Vect_B,
+           Need_Loop_Info_B, Unroll_B, Loop_Vect_B, SLP_Vect_B,
            Merge_B, Thin_LTO_B, LTO_B, Reroll_B, Fuzzer_B, ASan_B,
            Allow_List_Ptr, Ignore_List_Ptr, Pass_PN_Ptr, Error_Message);
       Free (Allow_List_Ptr);

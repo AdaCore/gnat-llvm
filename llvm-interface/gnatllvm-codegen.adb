@@ -57,11 +57,10 @@ package body GNATLLVM.Codegen is
       Table_Increment      => 1,
       Table_Name           => "Switches");
 
-   Target_Triple_Set            : Boolean := False;
-   --  Set to True by Process_Switch if Target_Triple was modified
-
+   Target_Triple_Set             : Boolean := False;
    PIC_PIE_Set                   : Boolean := False;
-   --  True if any of the PIC/PIE options was specified
+   Unroll_Loops_Set              : Boolean := False;
+   --  True if the respective setting was modified
 
    Output_Assembly               : Boolean := False;
    --  True if -S was specified
@@ -276,17 +275,19 @@ package body GNATLLVM.Codegen is
       elsif S = "-fc-style-aliasing" then
          C_Style_Aliasing := True;
       elsif S = "-fno-unroll-loops" then
-         No_Unroll_Loops := True;
+         Unroll_Loops := False;
+         Unroll_Loops_Set := True;
       elsif S = "-funroll-loops" then
-         No_Unroll_Loops := False;
+         Unroll_Loops := True;
+         Unroll_Loops_Set := True;
       elsif S = "-fno-vectorize" then
-         No_Loop_Vectorization := True;
+         Loop_Vectorization := False;
       elsif S = "-fvectorize" then
-         No_Loop_Vectorization := False;
+         Loop_Vectorization := True;
       elsif S = "-fno-slp-vectorize" then
-         No_SLP_Vectorization := True;
+         SLP_Vectorization := False;
       elsif S = "-fslp-vectorize" then
-         No_SLP_Vectorization := False;
+         SLP_Vectorization := True;
       elsif S = "-fno-inline" then
          No_Inlining := True;
       elsif S = "-fmerge-functions" then
@@ -435,6 +436,13 @@ package body GNATLLVM.Codegen is
          Process_Switch (Argument (J));
       end loop;
 
+      --  Match Clang's defaults for loop unrolling unless the user has
+      --  explicitly configured it.
+
+      if not Unroll_Loops_Set and then Code_Opt_Level > 1 then
+         Unroll_Loops := True;
+      end if;
+
       --  If emitting C, change some other defaults
 
       if Emit_C then
@@ -452,6 +460,12 @@ package body GNATLLVM.Codegen is
          --  pad fields and also generate messier C code.
 
          Merge_Functions := False;
+
+         --  Loop vectorization and SLP vectorization are disabled for CCG
+         --  because we don't support vector types.
+
+         Loop_Vectorization := False;
+         SLP_Vectorization := False;
 
          --  Use a simple 32bits target by default for C code generation
 
@@ -788,9 +802,9 @@ package body GNATLLVM.Codegen is
                Code_Opt_Level           => Code_Opt_Level,
                Size_Opt_Level           => Size_Opt_Level,
                Need_Loop_Info           => Emit_C,
-               No_Unroll_Loops          => No_Unroll_Loops,
-               No_Loop_Vectorization    => No_Loop_Vectorization or Emit_C,
-               No_SLP_Vectorization     => No_SLP_Vectorization or Emit_C,
+               Unroll_Loops             => Unroll_Loops,
+               Loop_Vectorization       => Loop_Vectorization,
+               SLP_Vectorization        => SLP_Vectorization,
                Merge_Functions          => Merge_Functions,
                Prepare_For_Thin_LTO     => Prepare_For_Thin_LTO,
                Prepare_For_LTO          => Prepare_For_LTO,

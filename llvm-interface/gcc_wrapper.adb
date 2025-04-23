@@ -439,24 +439,6 @@ begin
       return;
    end if;
 
-   --  Translate the environment variable ENV_PREFIX to a --sysroot
-   --  argument if we're linking or compiling with Clang.
-
-   if (Compile and then Compiler in Bundled_Clang | External_Clang)
-     or else not Compile
-   then
-      declare
-         Sysroot : String_Access := Getenv ("ENV_PREFIX");
-      begin
-         if Sysroot.all /= "" then
-            Arg_Count        := Arg_Count + 1;
-            Args (Arg_Count) := new String'("--sysroot=" & Sysroot.all);
-         end if;
-
-         Free (Sysroot);
-      end;
-   end if;
-
    --  Compile c/c++ files with clang
 
    if Compiler = Bundled_Clang or else Compiler = External_Clang then

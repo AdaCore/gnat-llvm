@@ -92,10 +92,10 @@ package GNATLLVM.Codegen is
    No_Strict_Aliasing_Flag : Boolean       := False;
    C_Style_Aliasing        : Boolean       := False;
    No_Inlining             : Boolean       := False;
-   No_Unroll_Loops         : Boolean       := False;
-   No_Loop_Vectorization   : Boolean       := False;
-   No_SLP_Vectorization    : Boolean       := False;
-   Merge_Functions         : Boolean       := True;
+   Unroll_Loops            : Boolean       := True;
+   Loop_Vectorization      : Boolean       := False;
+   SLP_Vectorization       : Boolean       := False;
+   Merge_Functions         : Boolean       := False;
    Prepare_For_Thin_LTO    : Boolean       := False;
    Prepare_For_LTO         : Boolean       := False;
    Reroll_Loops            : Boolean       := False;

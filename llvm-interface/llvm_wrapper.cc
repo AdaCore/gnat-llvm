@@ -719,8 +719,8 @@ OurLoopPass::run (Loop &L, LoopAnalysisManager &LAM,
 extern "C"
 LLVMBool
 LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
-                      int SizeOptLevel, bool NeedLoopInfo, bool NoUnrollLoops,
-                      bool NoLoopVectorization, bool NoSLPVectorization,
+                      int SizeOptLevel, bool NeedLoopInfo, bool UnrollLoops,
+                      bool LoopVectorization, bool NoSLPVectorization,
                       bool MergeFunctions, bool PrepareForThinLTO,
                       bool PrepareForLTO, bool RerollLoops, bool EnableFuzzer,
                       bool EnableAddressSanitizer, const char *SanCovAllowList,
@@ -737,9 +737,9 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
        : CodeOptLevel == 2 ? OptimizationLevel::O2
        : CodeOptLevel == 3 ? OptimizationLevel::O3
        : OptimizationLevel::O0);
-  PTO.LoopUnrolling = !NoUnrollLoops;
-  PTO.LoopInterleaving = !NoUnrollLoops;
-  PTO.LoopVectorization = !NoLoopVectorization;
+  PTO.LoopUnrolling = UnrollLoops;
+  PTO.LoopInterleaving = UnrollLoops;
+  PTO.LoopVectorization = LoopVectorization;
   PTO.SLPVectorization = !NoSLPVectorization;
   PTO.MergeFunctions = MergeFunctions;
 

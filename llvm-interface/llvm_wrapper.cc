@@ -1504,3 +1504,25 @@ void
 Add_Instruction_Combining_Pass(legacy::PassManager *PM) {
   PM->add(createInstructionCombiningPass());
 }
+
+extern "C"
+void
+Create_Import_Declarations (LLVMDIBuilderRef Builder, const char *Name,
+			    LLVMMetadataRef Comp_Unit, LLVMMetadataRef File,
+			    unsigned LineNo)
+{
+  DIScope *Scope = unwrap<DIScope>(Comp_Unit);
+
+  DIScope *Outer = Scope;
+  DIModule *Module;
+  StringRef NameRef (Name);
+  SmallVector<StringRef, 8> NameSplit;
+  NameRef.split(NameSplit, "__");
+  for (StringRef ModName : NameSplit) {
+    Module = unwrap(Builder)->createModule(Outer, ModName, {}, {});
+    Outer = Module;
+  }
+
+  unwrap(Builder)->createImportedModule(Scope, Module, unwrap<DIFile>(File),
+					LineNo);
+}

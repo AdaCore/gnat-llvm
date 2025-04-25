@@ -1062,7 +1062,9 @@ package body CCG.Flow is
       --  Otherwise, put the values in order
 
       else
-         return Equals_Int (Const_I_Cmp (Int_SLE, Value (L), Value (R)), 1);
+         return
+           Const_Int_Get_S_Ext_Value (Value (L)) <=
+           Const_Int_Get_S_Ext_Value (Value (R));
       end if;
    end Case_Before;
 

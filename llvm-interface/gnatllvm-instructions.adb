@@ -82,30 +82,36 @@ package body GNATLLVM.Instructions is
    --------------------------
 
    procedure Set_Current_Position (P : Position_T) is
-      BB   : constant Basic_Block_T := P.BB;
-      Next : Value_T;
+      BB    : constant Basic_Block_T := P.BB;
+      Instr : Value_T;
 
    begin
       --  There are two tricky parts here. First is that if there's no
       --  instruction, LLVM will treat this as a request to insert at the
       --  end of a basic block, but we mean the beginning. So we need to
       --  get the first instruction in the block and set the insertion
-      --  point in front of it. Secondly, if we have an instruction, the
-      --  builder operation inserts in front of it, but we want to insert
-      --  after. The way to do that is to get the next instruction and
-      --  insert before that, but there may not be another instruction. If
-      --  so, then insert at the end of the block.
+      --  point in front of it, unless the block is empty. Secondly, if we
+      --  have an instruction, the builder operation inserts in front of
+      --  it, but we want to insert after. The way to do that is to get the
+      --  next instruction and insert before that, but there may not be
+      --  another instruction. If so, then insert at the end of the block.
 
       if Present (P.Instr) then
-         Next := Get_Next_Instruction (P.Instr);
+         Instr := Get_Next_Instruction (P.Instr);
 
-         if Present (Next) then
-            Position_Builder (IR_Builder, BB, Next);
+         if Present (Instr) then
+            Position_Builder (IR_Builder, BB, Instr);
          else
             Position_Builder_At_End (IR_Builder, BB);
          end if;
       else
-         Position_Builder (IR_Builder, BB, Get_First_Instruction (BB));
+         Instr := Get_First_Instruction (BB);
+
+         if Present (Instr) then
+            Position_Builder (IR_Builder, BB, Instr);
+         else
+            Position_Builder_At_End (IR_Builder, BB);
+         end if;
       end if;
    end Set_Current_Position;
 

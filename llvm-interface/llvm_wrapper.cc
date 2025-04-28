@@ -19,6 +19,7 @@
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Passes/PassBuilder.h"
@@ -31,6 +32,7 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/SanitizerCoverage.h"
 #include "llvm/Transforms/IPO.h"
@@ -1482,4 +1484,10 @@ Create_Rational_Fixed_Point_Type (LLVMDIBuilderRef Builder, const char *Name,
 					  dwarf::DW_ATE_signed,
 					  DINode::FlagZero);
 #endif // GNAT_LLVM_HAVE_FIXED_POINT
+}
+
+extern "C"
+void
+Add_Instruction_Combining_Pass(legacy::PassManager *PM) {
+  PM->add(createInstructionCombiningPass());
 }

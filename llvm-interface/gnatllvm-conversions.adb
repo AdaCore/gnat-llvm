@@ -19,8 +19,6 @@ with Einfo.Utils; use Einfo.Utils;
 with Errout;      use Errout;
 with Snames;      use Snames;
 
-with LLVM.Transforms_Inst_Combine; use LLVM.Transforms_Inst_Combine;
-
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;

@@ -169,14 +169,18 @@ package GNATLLVM is
    type Index_Array        is array (Nat range <>) of unsigned;
    type ULL_Array          is array (Nat range <>) of ULL;
    type Access_Value_Array is access all Value_Array;
+#if LLVM_Version_Major <= 16 then
+   type Dbg_Record_T       is new Value_T;
+#end if;
 
-   No_Value_T    : constant Value_T       := null;
-   No_Type_T     : constant Type_T        := null;
-   No_BB_T       : constant Basic_Block_T := null;
-   No_Metadata_T : constant Metadata_T    := null;
-   No_Builder_T  : constant Builder_T     := null;
-   No_Module_T   : constant Module_T      := null;
-   No_Use_T      : constant Use_T         := null;
+   No_Value_T      : constant Value_T       := null;
+   No_Type_T       : constant Type_T        := null;
+   No_BB_T         : constant Basic_Block_T := null;
+   No_Metadata_T   : constant Metadata_T    := null;
+   No_Builder_T    : constant Builder_T     := null;
+   No_Module_T     : constant Module_T      := null;
+   No_Use_T        : constant Use_T         := null;
+   No_Dbg_Record_T : constant Dbg_Record_T  := null;
    --  Constant for null objects of various types
 
    function No (V : Value_T)            return Boolean is (V = No_Value_T);
@@ -192,12 +196,15 @@ package GNATLLVM is
    function Present (M : Metadata_T)    return Boolean is (M /= No_Metadata_T);
    function Present (M : Builder_T)     return Boolean is (M /= No_Builder_T);
    function Present (U : Use_T)         return Boolean is (U /= No_Use_T);
+   function Present (U : Dbg_Record_T)  return Boolean is
+     (U /= No_Dbg_Record_T);
    --  Test for presence and absence of fields of LLVM types
 
    procedure Discard (V  : Value_T)       is null;
    procedure Discard (T  : Type_T)        is null;
    procedure Discard (BB : Basic_Block_T) is null;
    procedure Discard (B  : Boolean)       is null;
+   procedure Discard (D  : Dbg_Record_T)  is null;
 
    function Is_Type_Or_Void (E : Entity_Id) return Boolean is
      (Ekind (E) in Void_Or_Type_Kind)

@@ -1,5 +1,3 @@
-GPRBUILD=gprbuild -v -n
-
 # number of processors
 PROCS=0
 
@@ -36,6 +34,9 @@ LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs)
 CXXFLAGS=
 ALL_CXXFLAGS=$(shell $(LLVM_CONFIG) --cxxflags) $(CXXFLAGS) $(CLANG_CXXFLAGS) -I.
 LLVM_INCLUDE_DIR=$(shell $(LLVM_CONFIG) --includedir)
+LLVM_VERSION=$(shell $(LLVM_CONFIG) --version | cut -d. -f1)
+
+GPRBUILD=gprbuild -v -n -XLLVM_Version=$(LLVM_VERSION) -x
 
 ifeq ($(OS),Windows_NT)
   LN_S=cp -p

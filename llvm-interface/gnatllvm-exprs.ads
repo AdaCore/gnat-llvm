@@ -128,4 +128,27 @@ package GNATLLVM.Exprs is
      with Pre  => Present (LHS) and then Present (RHS),
           Post => Present (Build_Min'Result);
 
+   function Build_Inc_Wrap
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
+   is
+     --  LLVM Language Reference:
+     --  *ptr = (*ptr u>= val) ? 0 : (*ptr + 1)
+
+     (Build_Select (I_Cmp (Int_UGE, LHS, RHS), Const_Int (LHS, 0), LHS + 1,
+                    Name))
+     with Pre  => Present (LHS) and then Present (RHS),
+          Post => Present (Build_Inc_Wrap'Result);
+
+   function Build_Dec_Wrap
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
+   is
+     --  LLVM Language Reference:
+     --  *ptr = ((*ptr == 0) || (*ptr u> val)) ? val : (*ptr - 1)
+
+     (Build_Select (Build_Or (I_Cmp (Int_EQ, LHS, Const_Int (LHS, 0)),
+                              I_Cmp (Int_UGT, LHS, RHS)),
+                    RHS, LHS - 1, Name))
+     with Pre  => Present (LHS) and then Present (RHS),
+          Post => Present (Build_Dec_Wrap'Result);
+
 end GNATLLVM.Exprs;

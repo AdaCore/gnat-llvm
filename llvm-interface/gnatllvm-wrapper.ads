@@ -544,4 +544,8 @@ package GNATLLVM.Wrapper is
    function Constant_As_Metadata (U : Uint) return Metadata_T
       with Pre => Present (U), Post => Present (Constant_As_Metadata'Result);
 
+   procedure Add_Instruction_Combining_Pass (PM : LLVM.Types.Pass_Manager_T)
+      with Import => True, Convention => C,
+           External_Name => "Add_Instruction_Combining_Pass";
+
 end GNATLLVM.Wrapper;

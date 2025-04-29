@@ -24,10 +24,8 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
-#include "llvm/Support/AArch64TargetParser.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Error.h"
-#include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
@@ -47,6 +45,13 @@
 #include "llvm/Support/TargetRegistry.h"
 #else
 #include "llvm/MC/TargetRegistry.h"
+#endif
+
+#if LLVM_VERSION_MAJOR < 19
+#include "llvm/Support/AArch64TargetParser.h"
+#include "llvm/Support/FileSystem.h"
+#else
+#include "llvm/TargetParser/AArch64TargetParser.h"
 #endif
 
 #include "clang/Basic/Diagnostic.h"
@@ -846,7 +851,7 @@ Get_Float_From_Words_And_Exp (LLVMContext *Context, Type *T, int Exp,
 {
   auto LongInt = APInt (NumWords * 64, {Words, NumWords});
   auto Initial = APFloat (T->getFltSemantics (),
-			  APInt::getNullValue (T->getPrimitiveSizeInBits ()));
+                          APInt::getZero(T->getPrimitiveSizeInBits()));
   Initial.convertFromAPInt (LongInt, false, APFloat::rmTowardZero);
   auto Result = scalbn (Initial, Exp, APFloat::rmTowardZero);
   return ConstantFP::get (*Context, Result);
@@ -1271,12 +1276,20 @@ Get_Features (const char *TargetTriple, const char *Arch, const char *CPU)
     auto const ArchSplit = StringRef(ArchLowerCase).split("+");
     auto const ArchInfo = AArch64::parseArch(ArchSplit.first);
 
+#if LLVM_VERSION_MAJOR < 19
     if (ArchInfo == AArch64::INVALID) {
+#else
+    if (ArchInfo == nullptr) {
+#endif
       errs() << "warning: ignoring unsupported -march value " << Arch << "\n";
       return nullptr;
     }
 
+#if LLVM_VERSION_MAJOR < 19
     Features.push_back(ArchInfo.ArchFeature);
+#else
+    Features.push_back(ArchInfo->ArchFeature);
+#endif
 
     // Now process the user-specified additional features, if any.
     if (!ArchSplit.second.empty()) {

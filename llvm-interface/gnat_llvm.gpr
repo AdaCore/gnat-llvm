@@ -11,6 +11,9 @@ project Gnat_LLVM is
    type Build_Type is ("Debug", "Production");
    Build : Build_Type := External ("Build", "Debug");
 
+   type Supported_LLVM_Version is ("16", "19");
+   LLVM_Version : Supported_LLVM_Version := External ("LLVM_Version", "16");
+
    package Builder is
       for Executable ("gnat1drv.adb") use "llvm-gnat1";
       for Executable ("gcc_wrapper.adb") use "llvm-gcc";
@@ -19,7 +22,8 @@ project Gnat_LLVM is
       for Global_Configuration_Pragmas use "gnat.adc";
    end Builder;
 
-   Common_Switches := ("-g", "-gnatg");
+   Common_Switches := ("-g", "-gnatg", "-gnatep=prep.control",
+                       "-gnateDLLVM_Version_Major=" & LLVM_Version);
 
    package Compiler is
       case Build is

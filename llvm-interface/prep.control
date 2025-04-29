@@ -1,0 +1,3 @@
+* -c
+--  Preprocess all files, but instead of deleting disabled lines turn them into
+--  special comments.

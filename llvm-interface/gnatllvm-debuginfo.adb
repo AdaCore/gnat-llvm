@@ -1298,4 +1298,17 @@ package body GNATLLVM.DebugInfo is
       end if;
    end Add_Label_Debug_Info;
 
+   procedure Import_Module (N : Node_Id) is
+      E     : constant Entity_Id   := Entity (Name (N));
+      S     : constant Source_Ptr  := Sloc (N);
+      Name  : constant String      := Get_Name (E);
+   begin
+      if Emit_Debug_Info then
+         Create_Import_Declarations
+           (DI_Builder, Name, Debug_Compile_Unit,
+            Get_Debug_File_Node (Get_Source_File_Index (S)),
+            Get_Logical_Line_Number (S));
+      end if;
+   end Import_Module;
+
 end GNATLLVM.DebugInfo;

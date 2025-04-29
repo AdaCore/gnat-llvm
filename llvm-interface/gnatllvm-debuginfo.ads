@@ -87,6 +87,10 @@ package GNATLLVM.DebugInfo is
    --  Add debugging info for the label E, corresponding to the
    --  given basic block.
 
+   procedure Import_Module (N : Node_Id)
+     with Pre => Present (N);
+   --  Add debugging info for the "use" clause N.
+
    Empty_DI_Expr : Metadata_T;
    --  An empty DI_Expr
 

@@ -891,4 +891,22 @@ package body GNATLLVM.Wrapper is
                                    Words'Length, Words (Words'First)'Access);
    end Constant_As_Metadata;
 
+   procedure Create_Import_Declarations (Builder : DI_Builder_T;
+                                          Name : String;
+                                          Comp_Unit : Metadata_T;
+                                          File : Metadata_T;
+                                          Line_Number : Logical_Line_Number)
+   is
+      procedure Create_Import_Declarations (Builder : DI_Builder_T;
+                                             Name : String;
+                                             Comp_Unit : Metadata_T;
+                                             File : Metadata_T;
+                                             Line_Number : unsigned)
+        with Import => True, Convention => C,
+             External_Name => "Create_Import_Declarations";
+   begin
+      Create_Import_Declarations (Builder, Name & ASCII.NUL, Comp_Unit,
+                                   File, unsigned (Line_Number));
+   end Create_Import_Declarations;
+
 end GNATLLVM.Wrapper;

@@ -730,11 +730,13 @@ package body GNATLLVM.Compile is
             | N_Record_Representation_Clause
             | N_Validate_Unchecked_Conversion
             | N_Variable_Reference_Marker
-            | N_Use_Package_Clause
             | N_Use_Type_Clause
             | N_With_Clause
            =>
             null;
+
+         when N_Use_Package_Clause =>
+            Import_Module (N);
 
          when N_Push_Constraint_Error_Label .. N_Pop_Storage_Error_Label =>
             Process_Push_Pop_xxx_Error_Label (N);

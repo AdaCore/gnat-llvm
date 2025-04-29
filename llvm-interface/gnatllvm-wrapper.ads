@@ -548,4 +548,13 @@ package GNATLLVM.Wrapper is
       with Import => True, Convention => C,
            External_Name => "Add_Instruction_Combining_Pass";
 
+   procedure Create_Import_Declarations (Builder : DI_Builder_T;
+                                         Name : String;
+                                         Comp_Unit : Metadata_T;
+                                         File : Metadata_T;
+                                         Line_Number : Logical_Line_Number);
+   --  Create import declarations for a "use" clause.  "Name" holds
+   --  the encoded name, and is split to make multiple DW_TAG_module
+   --  declarations.
+
 end GNATLLVM.Wrapper;

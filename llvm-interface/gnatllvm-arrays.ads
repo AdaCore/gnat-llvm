@@ -327,7 +327,9 @@ private
 
    type Index_Bounds is record
       Bound_GT      : GL_Type;
+      --  The type used for index computations.
       Bound_Sub_GT  : GL_Type;
+      --  The type used to store the bounds.
       Low, High     : One_Bound;
       Bound_Range   : GL_Value;
       First_Field   : Nat;

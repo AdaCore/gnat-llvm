@@ -106,6 +106,11 @@ package GNATLLVM.Arrays is
           Post => Present (Array_Index_GT'Result);
    --  Get the type of the Dim'th index of a type
 
+   function Array_Index_Sub_GT (GT : Array_GL_Type; Dim : Nat) return GL_Type
+     with Pre  => Dim < Number_Dimensions (GT),
+          Post => Present (Array_Index_Sub_GT'Result);
+   --  Like Array_Index_GT but return the Bound_Sub_GT.
+
    function Original_Array_Index_GT
      (TE : Void_Or_Type_Kind_Id; Dim : Nat) return GL_Type
      with Post => Present (Original_Array_Index_GT'Result);

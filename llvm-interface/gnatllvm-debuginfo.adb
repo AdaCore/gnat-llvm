@@ -589,7 +589,7 @@ package body GNATLLVM.DebugInfo is
    begin
       for J in 0 .. Ndim - 1 loop
          declare
-            B_GT  : constant GL_Type := Array_Index_GT (GT, J);
+            B_GT  : constant GL_Type := Array_Index_Sub_GT (GT, J);
             Align : constant Nat     := Get_Type_Alignment (B_GT);
 
          begin

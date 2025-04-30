@@ -738,6 +738,21 @@ package body GNATLLVM.Arrays is
       return Array_Info.Table (Info_Id + Dim).Bound_GT;
    end Array_Index_GT;
 
+   ------------------------
+   -- Array_Index_Sub_GT --
+   ------------------------
+
+   function Array_Index_Sub_GT (GT : Array_GL_Type; Dim : Nat) return GL_Type
+   is
+      Info_Id : constant Array_Info_Id :=
+        (if   Is_Packed_Array_Impl_Type (GT)
+         then Get_Orig_Array_Info (Full_Etype (GT))
+         else Get_Array_Info (Full_Etype (GT)));
+
+   begin
+      return Array_Info.Table (Info_Id + Dim).Bound_Sub_GT;
+   end Array_Index_Sub_GT;
+
    -----------------------------
    -- Original_Array_Index_GT --
    -----------------------------

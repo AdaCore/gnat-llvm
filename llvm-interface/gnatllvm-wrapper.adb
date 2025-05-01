@@ -909,4 +909,13 @@ package body GNATLLVM.Wrapper is
                                    File, unsigned (Line_Number));
    end Create_Import_Declarations;
 
+   function Types_Can_Have_Function_Scope return Boolean
+   is
+      function Types_Can_Have_Function_Scope_C return LLVM_Bool
+        with Import => True, Convention => C,
+             External_Name => "Types_Can_Have_Function_Scope";
+   begin
+      return Types_Can_Have_Function_Scope_C /= 0;
+   end Types_Can_Have_Function_Scope;
+
 end GNATLLVM.Wrapper;

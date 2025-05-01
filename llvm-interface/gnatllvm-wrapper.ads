@@ -557,4 +557,8 @@ package GNATLLVM.Wrapper is
    --  the encoded name, and is split to make multiple DW_TAG_module
    --  declarations.
 
+   function Types_Can_Have_Function_Scope return Boolean;
+   --  Return true if the LLVM contains the patch that allows types to
+   --  be put in function scope.
+
 end GNATLLVM.Wrapper;

@@ -1526,3 +1526,14 @@ Create_Import_Declarations (LLVMDIBuilderRef Builder, const char *Name,
   unwrap(Builder)->createImportedModule(Scope, Module, unwrap<DIFile>(File),
 					LineNo);
 }
+
+extern "C"
+bool
+Types_Can_Have_Function_Scope ()
+{
+#ifdef GNAT_LLVM_HAVE_TYPE_FN_SCOPE
+  return true;
+#else
+  return false;
+#endif
+}

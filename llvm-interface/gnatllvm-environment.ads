@@ -19,6 +19,7 @@ with Einfo.Utils; use Einfo.Utils;
 with Repinfo;     use Repinfo;
 
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
+with GNATLLVM.MDType;  use GNATLLVM.MDType;
 
 package GNATLLVM.Environment is
 
@@ -148,7 +149,7 @@ package GNATLLVM.Environment is
    function Get_Label_Info            (VE : Entity_Id)    return Label_Info_Id
      with Pre => Present (VE), Inline;
 
-   function Get_Subprogram_Type       (VE : Entity_Id)    return Type_T
+   function Get_Subprogram_Type       (VE : Entity_Id)    return MD_Type
      with Pre => Present (VE), Inline;
 
    function Get_Flag1                 (VE : Entity_Id)    return Boolean
@@ -229,11 +230,11 @@ package GNATLLVM.Environment is
                               or else Get_Label_Info (VE) = LI),
           Post => Get_Label_Info (VE) = LI, Inline;
 
-   procedure Set_Subprogram_Type       (VE : Entity_Id; T : Type_T)
+   procedure Set_Subprogram_Type       (VE : Entity_Id; MDT : MD_Type)
      with Pre  => Present (VE)
                   and then (No (Get_Subprogram_Type (VE))
-                              or else Get_Subprogram_Type (VE) = T),
-          Post => Get_Subprogram_Type (VE) = T, Inline;
+                              or else Get_Subprogram_Type (VE) = MDT),
+          Post => Get_Subprogram_Type (VE) = MDT, Inline;
 
    procedure Set_Flag1                 (VE : Entity_Id; F : Boolean)
      with Pre  => Present (VE),

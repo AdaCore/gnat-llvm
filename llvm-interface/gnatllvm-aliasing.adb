@@ -33,6 +33,7 @@ with GNATLLVM.Environment;       use GNATLLVM.Environment;
 with GNATLLVM.GLType;            use GNATLLVM.GLType;
 with GNATLLVM.Helper;            use GNATLLVM.Helper;
 with GNATLLVM.Instructions;      use GNATLLVM.Instructions;
+with GNATLLVM.MDType;            use GNATLLVM.MDType;
 with GNATLLVM.Records;           use GNATLLVM.Records;
 with GNATLLVM.Records.Field_Ref; use GNATLLVM.Records.Field_Ref;
 with GNATLLVM.Types;             use GNATLLVM.Types;
@@ -762,7 +763,7 @@ package body GNATLLVM.Aliasing is
          Idx  := TBAA_Equiv_Subtype.Table (Idx).Next;
 
          --  Only if the LLVM types and GNAT representations are the same
-         --  if the a chance that they can be equivalent.
+         --  is there a chance they can be equivalent.
 
          if Is_Layout_Identical (Type_Of (TE), Type_Of (E_TE))
            and then Has_Compatible_Representation (TE, E_TE)
@@ -1304,7 +1305,7 @@ package body GNATLLVM.Aliasing is
 
          begin
             Offsets (J) := SF.Offset;
-            Sizes   (J) := To_Bytes (Get_Type_Size (SF.T));
+            Sizes   (J) := To_Bytes (Get_Type_Size (SF.MDT));
 
             --  If there's no GT for the field, this is a field used to
             --  store bitfields. So we make a unique scalar TBAA type
@@ -1365,11 +1366,11 @@ package body GNATLLVM.Aliasing is
       --  be modified, use a non-aliased unique version of the bound type.
 
       declare
-         Nbounds  : constant Nat    := Number_Bounds (A_TE);
-         Ndims    : constant Nat    := Number_Dimensions (A_TE);
-         Bound_T  : constant Type_T := Type_For_Relationship (A_GT, Bounds);
-         Idx      : Nat             := 0;
-         Offset   : ULL             := 0;
+         Nbounds  : constant Nat     := Number_Bounds (A_TE);
+         Ndims    : constant Nat     := Number_Dimensions (A_TE);
+         Bound_MD : constant MD_Type := Type_For_Relationship (A_GT, Bounds);
+         Idx      : Nat              := 0;
+         Offset   : ULL              := 0;
          Offsets  : ULL_Array (0 .. Nbounds - 1);
          Sizes    : ULL_Array (0 .. Nbounds - 1);
          TBAAs    : Metadata_Array (0 .. Nbounds - 1);
@@ -1384,7 +1385,7 @@ package body GNATLLVM.Aliasing is
             for Dim in 0 .. Ndims - 1 loop
                declare
                   Dim_GT : constant GL_Type := Array_Index_GT (A_TE, Dim);
-                  Dim_T  : constant Type_T  := Type_Of (Dim_GT);
+                  Dim_T  : constant Type_T  := +Type_Of (Dim_GT);
                   Size   : constant ULL     :=
                     To_Bytes (Get_Type_Size (Dim_T));
                   FLB    : constant Boolean := Array_Index_Has_FLB (A_TE, Dim);
@@ -1415,7 +1416,7 @@ package body GNATLLVM.Aliasing is
                TI.Bounds :=
                  Create_TBAA_Struct_Type_Node
                  (Get_TBAA_Name (Unique, TE => TE, Suffix => "#BND"),
-                  To_Bytes (Get_Type_Size (Bound_T)), TBAA_Root, Offsets,
+                  To_Bytes (Get_Type_Size (Bound_MD)), TBAA_Root, Offsets,
                   Sizes, TBAAs);
             end if;
          end if;
@@ -1459,10 +1460,10 @@ package body GNATLLVM.Aliasing is
          declare
             Bound_Size  : constant ULL            := Size_In_Bytes (TI.Bounds);
             Data_Size   : constant ULL            := Size_In_Bytes (TBAA_Data);
-            BD_T        : constant Type_T         :=
+            BD_MD       : constant MD_Type        :=
               Type_For_Relationship (GT, Bounds_And_Data);
             Size        : constant ULL            :=
-              To_Bytes (Get_Type_Size (BD_T));
+              To_Bytes (Get_Type_Size (BD_MD));
             Align       : constant ULL            :=
               ULL (To_Bytes (Get_Array_Type_Alignment (TE)));
             Align_BS    : constant ULL            :=

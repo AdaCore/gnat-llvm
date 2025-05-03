@@ -20,6 +20,7 @@ with Repinfo;      use Repinfo;
 with Sem_Util;     use Sem_Util;
 
 with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
+with GNATLLVM.MDType;       use GNATLLVM.MDType;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 
 package GNATLLVM.Types is
@@ -63,8 +64,6 @@ package GNATLLVM.Types is
    --  constant is in number of loads or stores, meaning the maximum value
    --  of the size divided by the alignment.
 
-   type Name_Id_Array is array (Nat range <>) of Name_Id;
-
    function Is_Dynamic_Size
      (GT             : GL_Type;
       Max_Size       : Boolean := False;
@@ -76,7 +75,7 @@ package GNATLLVM.Types is
    --  Allow_Overflow is True if we're to ignore any possible overflow.
    --  No_Padding is True if we're to ignore padding
 
-   function Create_Access_Type_To (GT : GL_Type) return Type_T is
+   function Create_Access_Type_To (GT : GL_Type) return MD_Type is
      (Type_For_Relationship (GT, Relationship_For_Ref (GT)))
      with Pre => Present (GT), Post => Present (Create_Access_Type_To'Result);
    --  Function that creates the access type for a corresponding type. Since
@@ -85,11 +84,17 @@ package GNATLLVM.Types is
    --  to this access type, which makes this different than calling
    --  Type_Of on an access to GT.
 
-   function Type_Of (TE : Void_Or_Type_Kind_Id) return Type_T
+   function Type_Of (TE : Void_Or_Type_Kind_Id) return MD_Type
      with Pre  => TE = Get_Fullest_View (TE),
           Post => Present (Type_Of'Result), Inline;
-   --  Given a GNAT type TE, return the corresponding LLVM type, building
-   --  it and a GL_Type first if necessary.
+   --  Given a GNAT type TE, return the corresponding MD_Type
+
+   function MD_Type_Of (V : GL_Value) return MD_Type is
+     ((if    Relationship (V) = Reference_To_Unknown
+       then  Pointer_Type (Unknown_MDT (V), Address_Space)
+       elsif Relationship (V) = Unknown then From_Type (Type_Of (V))
+       else  Type_For_Relationship (Related_Type (V), Relationship (V))))
+     with Pre  => Present (V), Post => Present (MD_Type_Of'Result);
 
    procedure Check_OK_For_Atomic_Type
      (GT : GL_Type; E : Entity_Id; Is_Component : Boolean := False)

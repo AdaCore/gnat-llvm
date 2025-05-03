@@ -17,6 +17,7 @@
 
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
+with GNATLLVM.MDType;       use GNATLLVM.MDType;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 
 package GNATLLVM.Builtins is
@@ -31,7 +32,7 @@ package GNATLLVM.Builtins is
    function Build_Intrinsic
      (Name             : String;
       Return_GT        : GL_Type;
-      Overloaded_Types : Type_Array := (1 .. 0 => <>)) return GL_Value
+      Overloaded_Types : MD_Type_Array := (1 .. 0 => <>)) return GL_Value
      with Pre  => Is_Primitive_GL_Type (Return_GT),
           Post => Present (Build_Intrinsic'Result);
    --  Build an intrinsic function of the specified return type and name.
@@ -43,7 +44,7 @@ package GNATLLVM.Builtins is
      (Name : String; Args : GL_Value_Array) return GL_Value
    is
      (Call (Build_Intrinsic (Name, Related_Type (Args (Args'First)),
-                             (1 => Type_Of (Args (Args'First)))),
+                             (1 => From_Type (Type_Of (Args (Args'First))))),
             Args));
    --  Create an intrinsic with the given name and type of the arguments,
    --  overloaded on the type of the first argument, and call it.

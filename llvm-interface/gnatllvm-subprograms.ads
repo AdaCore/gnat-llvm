@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
+with GNATLLVM.MDType;       use GNATLLVM.MDType;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 
 package GNATLLVM.Subprograms is
@@ -35,19 +36,19 @@ package GNATLLVM.Subprograms is
    --  Return 2 is passed by reference, otherwise, return 1.
 
    function Create_Subprogram_Type
-     (E : Subprogram_Type_Or_Kind_Id) return Type_T
+     (E : Subprogram_Type_Or_Kind_Id) return MD_Type
      with Post => Present (Create_Subprogram_Type'Result);
    --  Create subprogram type. E can either be a subprogram, in which case
    --  a subprogram type will be created from it or a subprogram type
    --  directly.
 
-   function Create_Subprogram_Access_Type return Type_T
+   function Create_Subprogram_Access_Type return MD_Type
      with Post => Present (Create_Subprogram_Access_Type'Result);
    --  Return a structure type that embeds Subp_Type and a static link pointer
 
    function Add_Global_Function
      (S          : String;
-      Subp_Type  : Type_T;
+      Subp_Type  : MD_Type;
       GT         : GL_Type;
       Can_Throw  : Boolean := False;
       Can_Return : Boolean := True) return GL_Value

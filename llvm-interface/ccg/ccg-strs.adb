@@ -23,6 +23,7 @@ with LLVM.Core; use LLVM.Core;
 with Output; use Output;
 
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
+with GNATLLVM.MDType;      use GNATLLVM.MDType;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 
 with CCG.Environment; use CCG.Environment;
@@ -392,10 +393,10 @@ package body CCG.Strs is
 
    begin
       if VF.Write_Type then
-         Maybe_Output_Typedef (Type_Of (Full_GL_Type (E)));
+         Maybe_Output_Typedef (+Type_Of (Full_GL_Type (E)));
       elsif VF.Write_Return then
          Maybe_Output_Typedef
-           (Type_Of (Full_GL_Type (Actual_Subprogram_Base_Type (E))));
+           (+Type_Of (Full_GL_Type (Actual_Subprogram_Base_Type (E))));
       end if;
 
       return Result;
@@ -599,7 +600,7 @@ package body CCG.Strs is
 
             when Entity =>
                pragma Assert (Comp.E_Flags.Write_Type);
-               Write_Type (Type_Of (Full_GL_Type (Comp.E)), E => Comp.E);
+               Write_Type (+Type_Of (Full_GL_Type (Comp.E)), E => Comp.E);
          end case;
       end loop;
 

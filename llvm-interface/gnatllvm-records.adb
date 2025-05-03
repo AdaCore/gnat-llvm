@@ -278,14 +278,14 @@ package body GNATLLVM.Records is
 
    function RI_Value_Is_Valid (RI : Record_Info_Base) return Boolean is
    begin
-      --  This must be an LLVM Type, which is a struct, a GL_Type, or a
+      --  This must be an MD_Type, which is a struct, a GL_Type, or a
       --  variant and only one of those.
 
-      if Present (RI.LLVM_Type) then
+      if Present (RI.MD_Typ) then
          return No (RI.GT) and then RI.Variants = null
-           and then Get_Type_Kind (RI.LLVM_Type) = Struct_Type_Kind;
+           and then Is_Struct (RI.MD_Typ);
       elsif Present (RI.GT) then
-         --  We already know that LLVM_Type isn't Present
+         --  We already know that MD_Typ isn't Present
 
          return RI.Variants = null and then RI.Overlap_Variants = null;
       else
@@ -493,7 +493,7 @@ package body GNATLLVM.Records is
                RI : constant Record_Info := Record_Info_Table.Table (J);
 
             begin
-               exit when Present (RI.LLVM_Type) or else Present (RI.GT);
+               exit when Present (RI.MD_Typ) or else Present (RI.GT);
                exit when RI.Variants /= null
                  and then (for some K of RI.Variants.all => Present (K));
 
@@ -520,9 +520,9 @@ package body GNATLLVM.Records is
          Return_Size : Boolean := True;
          No_Padding  : Boolean := False)
       is
-         T         : constant Type_T  := RI.LLVM_Type;
-         GT        : constant GL_Type := RI.GT;
-         This_Size : Result           := No_Result;
+         MDT       : constant MD_Type  := RI.MD_Typ;
+         GT        : constant GL_Type  := RI.GT;
+         This_Size : Result            := No_Result;
 
       begin
          --  If this piece has a starting position specified, move to it.
@@ -536,8 +536,8 @@ package body GNATLLVM.Records is
          --  be that of the record and we aren't forcing an alignment. If
          --  our total size is a constant, we can say what our alignment is.
 
-         if Present (T) then
-            This_Size  := Size_Const_Int (Get_Type_Size (T));
+         if Present (MDT) then
+            This_Size  := Size_Const_Int (Get_Type_Size (MDT));
             Must_Align := BPU;
             Is_Align   :=
               (if   Is_A_Constant_Int (Total_Size)
@@ -902,7 +902,7 @@ package body GNATLLVM.Records is
             declare
                Ordinal     : constant unsigned := unsigned (FI.Field_Ordinal);
                This_Offset : constant ULL      :=
-                 Offset_Of_Element (Module_Data_Layout, RI.LLVM_Type, Ordinal);
+                 Offset_Of_Element (Module_Data_Layout, +RI.MD_Typ, Ordinal);
 
             begin
                return Offset + Size_Const_Int (This_Offset * UBPU);
@@ -1525,14 +1525,15 @@ package body GNATLLVM.Records is
       Force       : Boolean := False;
       Ignore_Size : Boolean := False) return Pack_Kind
    is
-      AF : constant Record_Field_Kind_Id := Ancestor_Field (F);
-      GT : constant GL_Type              := Full_GL_Type (AF);
-      TE : constant Record_Kind_Id       := Full_Scope (AF);
-      T  : constant Type_T               := Type_Of (GT);
-      pragma Unreferenced (T);
-      --  We need to be sure that the type of the field is elaborated
+      AF  : constant Record_Field_Kind_Id := Ancestor_Field (F);
+      GT  : constant GL_Type              := Full_GL_Type (AF);
+      TE  : constant Record_Kind_Id       := Full_Scope (AF);
 
    begin
+      --  We need to be sure that the type of the field is elaborated
+
+      Discard (Type_Of (GT));
+
       --  If we have a rep clause, we'll use that rather than packing it.
       --  If the record isn't packed, neither is the field. Aliased fields
       --  or fields whose types are strictly aligned aren't packed either.
@@ -1710,8 +1711,8 @@ package body GNATLLVM.Records is
    begin
       if Present (RI.GT) then
          Dump_GL_Type (RI.GT);
-      elsif Present (RI.LLVM_Type) then
-         Dump_LLVM_Type (RI.LLVM_Type);
+      elsif Present (RI.MD_Typ) then
+         Dump_MD_Type (RI.MD_Typ);
       end if;
 
    end Print_RI_Briefly;
@@ -1816,8 +1817,8 @@ package body GNATLLVM.Records is
             if Present (RI.GT) then
                Write_Str (Prefix);
                Dump_GL_Type (RI.GT);
-            elsif Present (RI.LLVM_Type) then
-               Dump_LLVM_Type (RI.LLVM_Type);
+            elsif Present (RI.MD_Typ) then
+               Dump_MD_Type (RI.MD_Typ);
             end if;
 
             F_Idx := RI.First_Field;
@@ -1826,7 +1827,7 @@ package body GNATLLVM.Records is
                Write_Str (Prefix);
                Write_Str ("    Field");
 
-               if Present (RI.LLVM_Type) then
+               if Present (RI.MD_Typ) then
                   Write_Str ("@");
                   Write_Int (FI.Field_Ordinal);
 

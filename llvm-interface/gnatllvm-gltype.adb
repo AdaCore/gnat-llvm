@@ -26,7 +26,6 @@ with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Exprs;        use GNATLLVM.Exprs;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Records;      use GNATLLVM.Records;
-with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 
 with CCG; use CCG;
 
@@ -106,8 +105,8 @@ package body GNATLLVM.GLType is
       GNAT_Type   : Void_Or_Type_Kind_Id;
       --  GNAT type
 
-      LLVM_Type   : Type_T;
-      --  LLVM type used for this alternative
+      MD_Ty       : MD_Type;
+      --  MD_Type used for this alternative
 
       TBAA        : Metadata_T;
       --  If Present, the TBAA tag to use
@@ -228,8 +227,8 @@ package body GNATLLVM.GLType is
    function GL_Type_Info_Is_Valid_Int
      (GTI : GL_Type_Info_Base) return Boolean
    is
-      TE : constant Void_Or_Type_Kind_Id := GTI.GNAT_Type;
-      T  : constant Type_T               := GTI.LLVM_Type;
+      TE  : constant Void_Or_Type_Kind_Id := GTI.GNAT_Type;
+      MDT : constant MD_Type              := GTI.MD_Ty;
 
    begin
       --  We have to be careful below and not call anything that will cause
@@ -239,7 +238,7 @@ package body GNATLLVM.GLType is
       if GTI.Kind = None then
          return True;
 
-      elsif not Is_Type_Or_Void (TE) or else No (T)
+      elsif not Is_Type_Or_Void (TE) or else No (MDT)
         or else (GTI.Size /= No_GL_Value
                    and then No (Is_A_Constant_Int (GTI.Size.Value)))
         or else (GTI.Alignment /= 0 and then GTI.Alignment mod BPU /= 0)
@@ -262,11 +261,9 @@ package body GNATLLVM.GLType is
          when Biased =>
             return GTI.Bias /= No_GL_Value and then Is_Discrete_Type (TE);
          when Padded =>
-            return not Is_Nonnative_Type (TE)
-              and then Get_Type_Kind (T) = Struct_Type_Kind;
+            return not Is_Nonnative_Type (TE) and then Is_Struct (MDT);
          when Byte_Array =>
-            return Is_Nonnative_Type (TE)
-              and then Get_Type_Kind (T) = Array_Type_Kind;
+            return Is_Nonnative_Type (TE) and then Is_Array (MDT);
          when Truncated =>
             return not Is_Nonnative_Type (TE);
          when Max_Size_Type =>
@@ -372,7 +369,7 @@ package body GNATLLVM.GLType is
 
    begin
       GL_Types.Append ((GNAT_Type   => TE,
-                        LLVM_Type   => No_Type_T,
+                        MD_Ty       => No_MD_Type,
                         TBAA        => No_Metadata_T,
                         Next        => Get_GL_Type (TE),
                         Size        => No_GL_Value,
@@ -407,7 +404,7 @@ package body GNATLLVM.GLType is
       Out_GT    : constant GL_Type   :=
         Make_GT_Alternative_Internal (GT, Size, Align, For_Type, Max_Size,
                                       Is_Biased);
-      T         : constant Type_T    := Type_Of (GT);
+      MDT       : constant MD_Type   := Type_Of (GT);
       Err_Ident : constant Entity_Id :=
         (if   Present (E) and then Is_Packed_Array_Impl_Type (E)
          then Original_Array_Type (E) else E);
@@ -416,8 +413,8 @@ package body GNATLLVM.GLType is
       --  Struct types that have names aren't shared, so we can link them
       --  to the GNAT entity.
 
-      if Get_Type_Kind (T) = Struct_Type_Kind and then Struct_Has_Name (T) then
-         C_Set_Entity (T, Full_Etype (GT));
+      if Is_Struct (MDT) and then Has_Name (MDT) then
+         C_Set_Entity (+MDT, Full_Etype (GT));
       end if;
 
       --  If this is an entity that comes from source, is in the unit being
@@ -486,8 +483,8 @@ package body GNATLLVM.GLType is
       Max_Size  : Boolean;
       Is_Biased : Boolean) return GL_Type
    is
-      function Make_Large_Array (Count : ULL) return Type_T
-        with Post => Get_Type_Kind (Make_Large_Array'Result) = Array_Type_Kind;
+      function Make_Large_Array (Count : ULL) return MD_Type
+        with Post => Is_Array (Make_Large_Array'Result);
       --  Build an array (possibly a nested array) of Count entries
 
       In_GTI      : constant GL_Type_Info := GL_Types.Table (GT);
@@ -497,7 +494,7 @@ package body GNATLLVM.GLType is
       TE          : constant Type_Kind_Id := Full_Etype (GT);
       Prim_GT     : constant GL_Type      := Primitive_GL_Type (GT);
       Prim_Native : constant Boolean      := not Is_Nonnative_Type (Prim_GT);
-      Prim_T      : constant Type_T       := Type_Of (Prim_GT);
+      Prim_MDT    : constant MD_Type      := Type_Of (Prim_GT);
       Prim_Fixed  : constant Boolean      :=
         not Is_Dynamic_Size (Prim_GT, Allow_Overflow => True);
       Prim_Size   : constant GL_Value     :=
@@ -517,7 +514,7 @@ package body GNATLLVM.GLType is
       -- Make_Large_Array --
       ----------------------
 
-      function Make_Large_Array (Count : ULL) return Type_T is
+      function Make_Large_Array (Count : ULL) return MD_Type is
          Count_Left : ULL := Count;
          This_Count : ULL;
 
@@ -527,10 +524,10 @@ package body GNATLLVM.GLType is
          --  a nested array. Set a limit a bit under the maximum to avoid
          --  any corner cases.
 
-         return Result : Type_T := Byte_T do
+         return Result : MD_Type := Byte_MD do
             loop
                This_Count := ULL'Min (Count_Left, ULL (unsigned'Last / 2));
-               Result     := Array_Type (Result, unsigned (This_Count));
+               Result     := Array_Type (Result, Nat (This_Count));
                exit when This_Count = Count_Left;
                Count_Left := Count_Left / This_Count;
             end loop;
@@ -584,10 +581,8 @@ package body GNATLLVM.GLType is
                                   and then (No (Size_V)
                                               or else not Prim_Native))
                   and then not (Present (Size)
-                                  and then Get_Type_Kind (GTI.LLVM_Type) =
-                                             Integer_Type_Kind
-                                  and then ULL'(Get_Type_Size (GTI.LLVM_Type))
-                                             /= +Size))
+                                  and then Is_Integer (GTI.MD_Ty)
+                                  and then Get_Type_Size (GTI.MD_Ty) /= +Size))
               --  If the size and alignment are the same, this must be the
               --  same type. But this isn't the case if we need the
               --  maximim size and there's no size for the type or the
@@ -632,8 +627,9 @@ package body GNATLLVM.GLType is
          --  bias.
 
          if Needs_Bias then
-            GTI.LLVM_Type :=
-              (if No (Int_Sz) then Prim_T else Int_Ty (Int_Sz));
+            GTI.MD_Ty :=
+              (if   No (Int_Sz) then Prim_MDT
+               else Int_Ty (+Int_Sz, Is_Unsigned_Type (GT)));
             GTI.Kind      := Biased;
             GTI.Bias      :=
               Emit_Convert_Value
@@ -646,8 +642,8 @@ package body GNATLLVM.GLType is
          elsif Is_Discrete_Or_Fixed_Point_Type (GT)
            and then Present (Size) and then Size <= Max_Int_Size
          then
-            GTI.LLVM_Type := Int_Ty (Int_Sz);
-            GTI.Kind      := Int_Alt;
+            GTI.MD_Ty := Int_Ty (+Int_Sz, Is_Unsigned_Type (GT));
+            GTI.Kind  := Int_Alt;
 
          --  If this is an access type to an unconstrained array and we have
          --  a size that corresponds to either a thin or fat pointer, make
@@ -668,8 +664,8 @@ package body GNATLLVM.GLType is
 
             begin
                pragma Assert (R in Thin_Pointer | Fat_Pointer);
-               GTI.LLVM_Type := Type_For_Relationship (DT, New_R);
-               GTI.Kind      := Access_Alt;
+               GTI.MD_Ty := Type_For_Relationship (DT, New_R);
+               GTI.Kind  := Access_Alt;
             end;
 
          --  If we have a native primitive type, we specified a size, and
@@ -689,16 +685,17 @@ package body GNATLLVM.GLType is
                --  Otherwise, this is an aligning type.
 
                if Pad_Count > 0 then
-                  GTI.LLVM_Type :=
+                  GTI.MD_Ty :=
                     Build_Struct_Type
-                    ((1 => Prim_T, 2 => Make_Large_Array (ULL (Pad_Count))),
+                    ((1 => Prim_MDT, 2 => Make_Large_Array (ULL (Pad_Count))),
                      Name        => Get_Ext_Name (GT, "_PAD"),
-                     Field_Names => (1 => Name_Find ("DATA"), 2 => No_Name),
+                       Field_Names => (1 => Name_Find ("DATA"),
+                                       2 => Name_Find ("PAD")),
                      Packed      => (+Size_V) mod ULL (Align_N) /= 0);
-                  GTI.Kind      := Padded;
+                  GTI.Kind   := Padded;
                else
-                  GTI.LLVM_Type := Prim_T;
-                  GTI.Kind      := Aligning;
+                  GTI.MD_Ty := Prim_MDT;
+                  GTI.Kind  := Aligning;
                end if;
             end;
 
@@ -707,30 +704,30 @@ package body GNATLLVM.GLType is
          elsif Prim_Native and then Present (Size_V)
            and then Size_V < Prim_Size
          then
-            GTI.LLVM_Type := Prim_T;
-            GTI.Kind      := Truncated;
+            GTI.MD_Ty := Prim_MDT;
+            GTI.Kind  := Truncated;
 
          --  If we're making a fixed-size version of something of dynamic
          --  size (possibly because we need the maximum size), we need a
          --  Byte_Array.
 
          elsif not Prim_Native and then Present (Size_V) then
-            GTI.LLVM_Type := Make_Large_Array (To_Bytes (+Size_V));
-            GTI.Kind      := Byte_Array;
+            GTI.MD_Ty := Make_Large_Array (To_Bytes (+Size_V));
+            GTI.Kind  := Byte_Array;
 
          --  If we're looking for the maximum size and none of the above cases
          --  are true, we just make a GT showing that's what we need.
 
          elsif Needs_Max then
-            GTI.LLVM_Type := Prim_T;
-            GTI.Kind      := Max_Size_Type;
+            GTI.MD_Ty := Prim_MDT;
+            GTI.Kind  := Max_Size_Type;
 
          --  Othewise, we must just be changing the alignment of a
          --  variable-size type.
 
          else
-            GTI.LLVM_Type := Prim_T;
-            GTI.Kind      := Aligning;
+            GTI.MD_Ty := Prim_MDT;
+            GTI.Kind  := Aligning;
          end if;
 
          if For_Type then
@@ -745,40 +742,43 @@ package body GNATLLVM.GLType is
    -- Update_GL_Type --
    --------------------
 
-   procedure Update_GL_Type (GT : GL_Type; T : Type_T; Is_Dummy : Boolean) is
+   procedure Update_GL_Type
+     (GT : GL_Type;
+      MDT : MD_Type;
+      Is_Dummy : Boolean)
+   is
       GTI : GL_Type_Info renames GL_Types.Table (GT);
 
    begin
-      GTI.LLVM_Type := T;
-      GTI.Kind      := (if Is_Dummy then Dummy else Primitive);
+      GTI.MD_Ty := MDT;
+      GTI.Kind  := (if Is_Dummy then Dummy else Primitive);
       Mark_Default (GT);
 
       --  Struct types that have names aren't shared, so we can link them
       --  to the GNAT entity.
 
-      if Get_Type_Kind (T) = Struct_Type_Kind and then Struct_Has_Name (T) then
-         C_Set_Entity (T, Full_Etype (GT));
+      if Is_Struct (MDT) and then Has_Name (MDT) then
+         C_Set_Entity (+MDT, Full_Etype (GT));
       end if;
 
       --  If Size_Type hasn't been elaborated yet, we're done for now.
       --  If this is a E_Void or E_Subprogram_Type, it doesn't have a
       --  size or alignment. Otherwise, set the alignment and also
-      --  set the size if it's a constant. If T is a non-native type,
-      --  the size in the GT must agree with the size of T since this is
+      --  set the size if it's a constant. If MDT is a non-native type,
+      --  the size in the GT must agree with the size of MDT since this is
       --  a primitive type.
 
       if Present (Size_GL_Type) and then not Is_Dummy
         and then Ekind (GT) not in E_Void | E_Subprogram_Type
-        and then not (Decls_Only and then not Type_Is_Sized (T))
       then
          GTI.Alignment  := Get_Type_Alignment (GT, Use_Specified => False);
 
          if not Is_Dynamic_Size (GT) then
             GTI.Size    :=
-              (if    Is_Integer_Type (GT)
-               then  Size_Const_Int (Get_Scalar_Bit_Size (T))
+              (if    Is_Integer (MDT)
+               then  Size_Const_Int (ULL (Int_Bits (MDT)))
                elsif Is_Nonnative_Type (GT) then Get_Type_Size (GT)
-               else  Size_Const_Int (Get_Type_Size (T)));
+               else  Size_Const_Int (Get_Type_Size (MDT)));
 
             --  In the case where this isn't a native type, pad the size to
             --  if we have something that requires strict alignment.
@@ -974,11 +974,11 @@ package body GNATLLVM.GLType is
       type Cvtf is access function
         (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value;
 
-      T           : constant Type_T  := Type_Of (GT);
+      MDT         : constant MD_Type := Type_Of (GT);
       In_GT       : constant GL_Type := Related_Type (V);
       Src_Uns     : constant Boolean := Is_Unsigned_For_RM (In_GT);
       Src_Size    : constant Nat     := Nat (ULL'(Get_Scalar_Bit_Size (V)));
-      Dest_Size   : constant Nat     := Nat (ULL'(Get_Scalar_Bit_Size (T)));
+      Dest_Size   : constant Nat     := Int_Bits (MDT);
       Is_Trunc    : constant Boolean := Dest_Size < Src_Size;
       Subp        : Cvtf             := null;
 
@@ -1212,8 +1212,8 @@ package body GNATLLVM.GLType is
    -- Type_Of --
    -------------
 
-   function Type_Of (GT : GL_Type) return Type_T is
-     (GL_Types.Table (GT).LLVM_Type);
+   function Type_Of (GT : GL_Type) return MD_Type is
+     (GL_Types.Table (GT).MD_Ty);
 
    ------------------
    -- Base_GL_Type --
@@ -1460,8 +1460,8 @@ package body GNATLLVM.GLType is
       if Full_Dump then
          Write_Str (": ");
 
-         if Present (GTI.LLVM_Type) then
-            Dump_LLVM_Type (GTI.LLVM_Type);
+         if Present (GTI.MD_Ty) then
+            Dump_MD_Type (GTI.MD_Ty);
          end if;
 
          pg (Union_Id (GTI.GNAT_Type));

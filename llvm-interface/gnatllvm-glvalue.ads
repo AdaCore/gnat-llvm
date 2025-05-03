@@ -21,6 +21,7 @@ with Einfo.Utils; use Einfo.Utils;
 with Sem_Util;    use Sem_Util; use Sem_Util.Storage_Model_Support;
 with Snames;      use Snames;
 
+with GNATLLVM.MDType;  use GNATLLVM.MDType;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package GNATLLVM.GLValue is
@@ -314,9 +315,9 @@ package GNATLLVM.GLValue is
    --  also allocate space for bounds in some situations.
 
    function Type_For_Relationship
-     (GT : GL_Type; R : GL_Relationship) return Type_T
+     (GT : GL_Type; R : GL_Relationship) return MD_Type
      with Post => Present (Type_For_Relationship'Result);
-   --  Return the LLVM type corresponding to a value of relationship R to GT.
+   --  Return the MD_Type corresponding to a value of relationship R to GT.
    --  If this is a kind of relationship where we don't need a GT, it may
    --  be omitted. This applies to subprogram types.
 
@@ -383,9 +384,9 @@ package GNATLLVM.GLValue is
       --  if a scalar type). If TBAA_Type isn't Present, this value is
       --  undefined.
 
-      Unknown_T            : Type_T;
+      Unknown_MDT          : MD_Type;
       --  If Relationship is Reference_To_Unknown, this gives the
-      --  LLVM type of the object being referenced.
+      --  MD_Type of the object being referenced.
 
    end record;
    --  We want to put a Predicate on this, but can't, so we need to make
@@ -432,7 +433,7 @@ package GNATLLVM.GLValue is
       SM_Object    => Empty,
       TBAA_Type    => No_Metadata_T,
       TBAA_Offset  => 0,
-      Unknown_T    => No_Type_T);
+      Unknown_MDT  => No_MD_Type);
 
    function Present (V : GL_Value) return Boolean      is (Present (V.Value));
    function No      (V : GL_Value) return Boolean      is (No      (V.Value));
@@ -491,7 +492,7 @@ package GNATLLVM.GLValue is
    function TBAA_Offset  (V : GL_Value)  return ULL        is (V.TBAA_Offset)
      with Pre => Present (V);
 
-   function Unknown_T    (V : GL_Value)  return Type_T     is (V.Unknown_T)
+   function Unknown_MDT  (V : GL_Value)  return MD_Type    is (V.Unknown_MDT)
      with Pre => Present (V);
 
    --  Define functions about relationships
@@ -576,7 +577,7 @@ package GNATLLVM.GLValue is
       SM_Object   : Opt_E_Variable_Id := Empty;
       TBAA_Type   : Metadata_T        := No_Metadata_T;
       TBAA_Offset : ULL               := 0;
-      Unknown_T   : Type_T            := No_Type_T) return GL_Value
+      Unknown_MDT : MD_Type           := No_MD_Type) return GL_Value
      with Pre => Present (V) and then Present (GT), Inline;
    --  Raw constructor that allows full specification of all fields
 
@@ -595,7 +596,7 @@ package GNATLLVM.GLValue is
          SM_Object   => SM_Object   (GV),
          TBAA_Type   => TBAA_Type   (GV),
          TBAA_Offset => TBAA_Offset (GV),
-         Unknown_T   => Unknown_T   (GV)))
+         Unknown_MDT => Unknown_MDT (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
           Post => Present (GM'Result);
    --  Likewise, but copy all but type and relationship from an existing value
@@ -669,7 +670,7 @@ package GNATLLVM.GLValue is
       SM_Object   : Opt_E_Variable_Id := Empty;
       TBAA_Type   : Metadata_T        := No_Metadata_T;
       TBAA_Offset : ULL               := 0;
-      Unknown_T   : Type_T            := No_Type_T) return GL_Value
+      Unknown_MDT : MD_Type           := No_MD_Type) return GL_Value
    is
      (G (V, GT, Relationship_For_Ref (GT),
          Alignment   => Alignment,
@@ -681,7 +682,7 @@ package GNATLLVM.GLValue is
          SM_Object   => SM_Object,
          TBAA_Type   => TBAA_Type,
          TBAA_Offset => TBAA_Offset,
-         Unknown_T   => Unknown_T))
+         Unknown_MDT => Unknown_MDT))
      with Pre  => Present (V) and then Present (GT),
           Post => Is_Reference (G_Ref'Result);
    --  Constructor for case where we create a value that's a pointer
@@ -700,7 +701,7 @@ package GNATLLVM.GLValue is
              SM_Object   => SM_Object   (GV),
              TBAA_Type   => TBAA_Type   (GV),
              TBAA_Offset => TBAA_Offset (GV),
-             Unknown_T   => Unknown_T   (GV)))
+             Unknown_MDT => Unknown_MDT (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
           Post => Is_Reference (GM_Ref'Result);
    --  Likewise, but copy the rest of the attributes from GV
@@ -772,8 +773,8 @@ package GNATLLVM.GLValue is
    procedure Set_Aliases_All (V : in out GL_Value; AA : Boolean := True)
      with Pre => Present (V), Post => not AA or else Aliases_All (V), Inline;
 
-   procedure Set_Unknown_T   (V : in out GL_Value; T : Type_T)
-     with Pre => Present (V), Post => Unknown_T (V) = T, Inline;
+   procedure Set_Unknown_MDT (V : in out GL_Value; MDT : MD_Type)
+     with Pre => Present (V), Post => Unknown_MDT (V) = MDT, Inline;
 
    procedure Set_TBAA_Type (V : in out GL_Value; MD : Metadata_T)
      with Pre => Present (V), Post => TBAA_Type (V) = MD, inline;
@@ -798,12 +799,11 @@ package GNATLLVM.GLValue is
      (Type_Of (+V))
      with Pre => Present (V), Post => Present (Type_Of'Result);
 
-   function Element_Type_Of (V : GL_Value) return Type_T
+   function Element_Type_Of (V : GL_Value) return MD_Type
      with Pre => Is_Double_Reference (V) or else Is_Access_Type (V)
                  or else Relationship (V) = Thin_Pointer or else Can_Deref (V);
 
-   function Data_Type_Of (V : GL_Value) return Type_T is
-     ((if Is_Reference (V) then Element_Type_Of (V) else Type_Of (V)))
+   function Data_Type_Of (V : GL_Value) return MD_Type
      with Pre => Present (V), Post => Present (Data_Type_Of'Result);
 
    function Get_Type_Kind (V : GL_Value) return Type_Kind_T is
@@ -1230,6 +1230,10 @@ package GNATLLVM.GLValue is
    function Get_Undef (GT : GL_Type) return GL_Value
      with Pre => Present (GT), Post => Present (Get_Undef'Result), Inline;
 
+   function Get_Undef (MDT : MD_Type) return Value_T is
+     (Get_Undef (Type_T'(+MDT)))
+     with Pre => Present (MDT), Post => Present (Get_Undef'Result);
+
    function Get_Undef_Ref (GT : GL_Type) return GL_Value
      with Pre => Present (GT), Post => Is_Reference (Get_Undef_Ref'Result),
           Inline;
@@ -1250,6 +1254,10 @@ package GNATLLVM.GLValue is
 
    function Const_Null (GT : GL_Type) return GL_Value
      with Pre => Present (GT), Post => Present (Const_Null'Result), Inline;
+
+   function Const_Null (MDT : MD_Type) return Value_T is
+     (Const_Null (Type_T'(+MDT)))
+     with Pre => Present (MDT), Post => Present (Const_Null'Result);
 
    function Const_Null_Relationship
      (GT : GL_Type; R : GL_Relationship) return GL_Value
@@ -1438,13 +1446,14 @@ package GNATLLVM.GLValue is
 
    function Add_Function
      (Name       : String;
-      T          : Type_T;
+      MDT        : MD_Type;
       Return_GT  : GL_Type;
       Is_Builtin : Boolean := False) return GL_Value
    is
-     (G (Add_Function ((if Is_Builtin then Module else No_Module_T), Name, T),
+     (G (Add_Function ((if Is_Builtin then Module else No_Module_T), Name,
+                       +MDT),
          Return_GT, Reference_To_Subprogram))
-     with Pre  => Present (T) and then Present (Return_GT),
+     with Pre  => Present (MDT) and then Present (Return_GT),
           Post => Present (Add_Function'Result);
    --  Add a function to the environment
 

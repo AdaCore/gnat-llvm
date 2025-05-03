@@ -25,6 +25,7 @@ with GNATLLVM.Compile;      use GNATLLVM.Compile;
 with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
+with GNATLLVM.MDType;       use GNATLLVM.MDType;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 
@@ -578,7 +579,7 @@ package body GNATLLVM.Conditionals is
 
       Max_Cost       : constant Nat      := 10_000;
       Num_Alts       : constant Nat      := List_Length_Non_Pragma (In_Alts);
-      Typ            : constant Type_T   := Type_Of (Related_Type (LHS));
+      Typ            : constant Type_T   := +Type_Of (Related_Type (LHS));
       First_Choice   : Nat               := 1;
       Current_Alt    : Nat               := 1;
       Current_Choice : Nat               := 1;

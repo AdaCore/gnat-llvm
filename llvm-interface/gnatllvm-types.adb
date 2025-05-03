@@ -313,7 +313,7 @@ package body GNATLLVM.Types is
    ----------------------
 
    function Is_Loadable_Type (GT : GL_Type) return Boolean is
-      T     : constant Type_T := Type_Of (GT);
+      T     : constant Type_T := +Type_Of (GT);
       Align : constant Nat    := Get_Type_Alignment (GT);
 
    begin
@@ -504,7 +504,7 @@ package body GNATLLVM.Types is
    -- Type_Of --
    -------------
 
-   function Type_Of (TE : Void_Or_Type_Kind_Id) return Type_T is
+   function Type_Of (TE : Void_Or_Type_Kind_Id) return MD_Type is
       GT    : GL_Type;
 
    begin
@@ -1112,7 +1112,7 @@ package body GNATLLVM.Types is
    is
       TE    : constant Type_Kind_Id := Full_Etype (GT);
       Align : constant Nat          := GT_Alignment (GT);
-      T     : constant Type_T       := Type_Of (GT);
+      T     : constant Type_T       := +Type_Of (GT);
 
    begin
       --  If there's a known alignment in this GL_Type, use it
@@ -1234,7 +1234,7 @@ package body GNATLLVM.Types is
          --  record type.
 
          elsif not Is_Nonnative_Type (GT) and then not Unpad_Record then
-            return From_Const (Get_Type_Size (Type_Of (GT)));
+            return From_Const (Get_Type_Size (+Type_Of (GT)));
 
          elsif Is_Record_Type (GT) then
             return Get_Record_Type_Size (Full_Etype (GT), V,
@@ -1568,7 +1568,7 @@ package body GNATLLVM.Types is
       Our_Volatile : constant Boolean    := Is_Volatile (V);
       Our_Atomic   : constant Boolean    :=
         Is_Atomic (V)
-        and then (Special_Atomic or else Atomic_Kind (Element_Type_Of (V)));
+        and then (Special_Atomic or else Atomic_Kind (+Element_Type_Of (V)));
 
    begin
       --  We always set the alignment, since that's correct for all
@@ -1590,7 +1590,7 @@ package body GNATLLVM.Types is
       --  size.
 
       pragma Assert (not Our_Atomic
-                       or else ULL (Align) >= Get_Type_Size (Type_Of (GT)));
+                     or else ULL (Align) >= Get_Type_Size (Type_Of (GT)));
       Set_Volatile  (Inst, Our_Volatile);
       Set_Ordering  (Inst,
                      (if  Our_Atomic
@@ -1606,7 +1606,7 @@ package body GNATLLVM.Types is
    procedure Check_OK_For_Atomic_Type
      (GT : GL_Type; E : Entity_Id; Is_Component : Boolean := False)
    is
-      T           : constant Type_T          := Type_Of (GT);
+      T           : constant Type_T          := +Type_Of (GT);
       Align       : constant Nat             := Get_Type_Alignment (GT);
       Pragma_Node : constant Opt_N_Pragma_Id :=
         Get_Pragma (E, (if   Is_Component then Pragma_Atomic_Components

@@ -28,6 +28,7 @@ with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Helper;      use GNATLLVM.Helper;
+with GNATLLVM.MDType;      use GNATLLVM.MDType;
 with GNATLLVM.Records;     use GNATLLVM.Records;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
@@ -816,7 +817,7 @@ package body GNATLLVM.DebugInfo is
    function Create_Type_Data (GT : GL_Type) return Metadata_T is
       TE          : constant Void_Or_Type_Kind_Id := Full_Etype (GT);
       Name        : constant String               := Get_Name (TE);
-      T           : constant Type_T               := Type_Of (GT);
+      T           : constant Type_T               := +Type_Of (GT);
       Size        : constant ULL                  :=
         (if Type_Is_Sized (T) then Get_Type_Size (T) else 0);
       Align       : constant Nat                  := Get_Type_Alignment (GT);

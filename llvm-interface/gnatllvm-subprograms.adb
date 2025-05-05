@@ -2902,12 +2902,7 @@ package body GNATLLVM.Subprograms is
                              or else PK in Foreign_By_Ref |
                                            Foreign_By_Component_Ref)
                then
-                  --  Technically, we can take 'Address of a parameter
-                  --  and put the address someplace, but that's undefined,
-                  --  so we can set this as nocapture.
-
                   Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, GT);
-                  Add_Nocapture_Attribute       (LLVM_Func, Param_Num);
 
                   if Ekind (Formal) = E_In_Parameter then
                      Add_Readonly_Attribute     (LLVM_Func, Param_Num);

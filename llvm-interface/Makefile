@@ -137,10 +137,10 @@ cov-info:
 CXX_PREFIX=$(shell dirname $(dir $(shell which gcc)))
 BOOT_DIRS=obj obj-tools bin lib
 GCC_TOOLCHAIN=--gcc-toolchain="$(CXX_PREFIX)" --stdlib=libstdc++
-BOOTSTRAP_GPRBUILD=gprbuild -v -XLLVM_Version=$(LLVM_VERSION) -x -cargs:c++ $(GCC_TOOLCHAIN) -largs $(GCC_TOOLCHAIN) -margs
+BOOTSTRAP_GPRBUILD=$(GPRBUILD) -cargs:c++ $(GCC_TOOLCHAIN) -largs $(GCC_TOOLCHAIN) -margs
 
 stage1: 
-	$(MAKE) GPRBUILD="gprbuild -v -gnatwns" build-opt gnatlib-automated
+	$(MAKE) build-opt gnatlib-automated
 	$(RMDIR) stage1
 	$(MKDIR) stage1
 	$(MV) $(BOOT_DIRS) stage1

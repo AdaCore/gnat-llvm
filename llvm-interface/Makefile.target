@@ -1,0 +1,10 @@
+zfp-c: build
+	$(MAKE) -f gnat_src/Makefile.rts-c \
+		ADAINCLUDE=lib/rts-ccg/adainclude ADALIB=lib/rts-ccg/adalib \
+		SPARK2C="$(pwd)/bin/c-gcc" GNAT_SRC=gnat_src \
+		SECONDARY_STACK=1 OVERFLOW_CHECKS=1
+
+ccg-links:
+	cd bin; for f in llvm-*; do \
+	  ln -sf $$f `echo $$f | sed -e "s/llvm-/c-/"`; \
+	done

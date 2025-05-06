@@ -2899,7 +2899,7 @@ package body GNATLLVM.Subprograms is
                elsif PK_Is_Reference (PK)
                  and then (not Is_Unconstrained_Array (GT)
                              or else PK in Foreign_By_Ref |
-                                           Foreign_By_Component_Ref)
+                             Foreign_By_Component_Ref)
                then
                   Add_Dereferenceable_Attribute (LLVM_Func, Param_Num, GT);
 
@@ -2915,7 +2915,14 @@ package body GNATLLVM.Subprograms is
                   if not Is_Aliased (Formal)
                     and then not Is_By_Reference_Type (GT)
                   then
-                     Add_Noalias_Attribute         (LLVM_Func, Param_Num);
+                     Add_Noalias_Attribute       (LLVM_Func, Param_Num);
+                  end if;
+
+                  --  RM 3.10(9/5) says when a view is aliased. If it isn't,
+                  --  then we can't legally capture its address.
+
+                  if not Is_Aliased_View (Formal) then
+                     Add_Nocapture_Attribute     (LLVM_Func, Param_Num);
                   end if;
 
                elsif PK_Is_In_Or_Ref (PK) and then Is_Access_Type (GT)

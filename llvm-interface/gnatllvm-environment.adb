@@ -81,8 +81,8 @@ package body GNATLLVM.Environment is
       --  For an expression, the value returned by Create_Dynamic_SO_Ref,
       --  used for back-annotation purposes.
 
-      Subprogram_Type       : Type_T;
-      --  For a subprogram or subprogram type, the LLVM type created
+      Subprogram_Type       : MD_Type;
+      --  For a subprogram or subprogram type, the MD_Type created
 
       Flag1                 : Boolean;
       --  Used for multiple purposes, depending on Ekind
@@ -150,7 +150,7 @@ package body GNATLLVM.Environment is
      (LI.Orig_Array_Info);
    function Raw_Get_Record (LI : Access_LLVM_Data) return Record_Info_Id is
      (LI.Record_Info);
-   function Raw_Get_S_T    (LI : Access_LLVM_Data) return Type_T is
+   function Raw_Get_S_MDT  (LI : Access_LLVM_Data) return MD_Type is
      (LI.Subprogram_Type);
    function Raw_Get_Flag1  (LI : Access_LLVM_Data) return Boolean is
      (LI.Flag1);
@@ -185,7 +185,7 @@ package body GNATLLVM.Environment is
        with Inline;
    procedure Raw_Set_Record (LI : Access_LLVM_Data; Val : Record_Info_Id)
        with Inline;
-   procedure Raw_Set_S_T    (LI : Access_LLVM_Data; Val : Type_T)
+   procedure Raw_Set_S_MDT  (LI : Access_LLVM_Data; Val : MD_Type)
        with Inline;
    procedure Raw_Set_Flag1  (LI : Access_LLVM_Data; Val : Boolean)
        with Inline;
@@ -232,8 +232,8 @@ package body GNATLLVM.Environment is
    procedure Raw_Set_Record (LI : Access_LLVM_Data; Val : Record_Info_Id) is
    begin LI.Record_Info := Val; end Raw_Set_Record;
 
-   procedure Raw_Set_S_T    (LI : Access_LLVM_Data; Val : Type_T) is
-   begin LI.Subprogram_Type := Val; end Raw_Set_S_T;
+   procedure Raw_Set_S_MDT  (LI : Access_LLVM_Data; Val : MD_Type) is
+   begin LI.Subprogram_Type := Val; end Raw_Set_S_MDT;
 
    procedure Raw_Set_Flag1  (LI : Access_LLVM_Data; Val : Boolean) is
    begin LI.Flag1 := Val; end Raw_Set_Flag1;
@@ -298,7 +298,7 @@ package body GNATLLVM.Environment is
                             Label_Info          => Empty_Label_Info_Id,
                             Orig_Array_Info     => Empty_Array_Info_Id,
                             SO_Info             => No_Uint,
-                            Subprogram_Type     => No_Type_T,
+                            Subprogram_Type     => No_MD_Type,
                             Flag1               => False));
          Id := LLVM_Info.Last;
          LLVM_Info_Map (N) := Id;
@@ -451,8 +451,8 @@ package body GNATLLVM.Environment is
                                          Raw_Get_Array, Raw_Set_Array);
    package Env_NN_N     is new Pkg_None (Boolean, False,
                                          Raw_Get_NN, Raw_Set_NN);
-   package Env_S_T      is new Pkg_None (Type_T, No_Type_T,
-                                         Raw_Get_S_T, Raw_Set_S_T);
+   package Env_S_MDT    is new Pkg_None (MD_Type, No_MD_Type,
+                                         Raw_Get_S_MDT, Raw_Set_S_MDT);
    package Env_Flag1    is new Pkg_None (Boolean, False,
                                          Raw_Get_Flag1, Raw_Set_Flag1);
 
@@ -562,10 +562,10 @@ package body GNATLLVM.Environment is
    procedure Set_Record_Info          (TE : Entity_Id; RI : Record_Info_Id)
      renames Env_Record.Set;
 
-   function  Get_Subprogram_Type      (VE : Entity_Id) return Type_T
-     renames Env_S_T.Get;
-   procedure Set_Subprogram_Type      (VE : Entity_Id; T : Type_T)
-     renames Env_S_T.Set;
+   function  Get_Subprogram_Type      (VE : Entity_Id) return MD_Type
+     renames Env_S_MDT.Get;
+   procedure Set_Subprogram_Type      (VE : Entity_Id; MDT : MD_Type)
+     renames Env_S_MDT.Set;
 
    function  Get_Flag1                (VE : Entity_Id) return Boolean
      renames Env_Flag1.Get;

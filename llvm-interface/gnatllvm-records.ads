@@ -21,6 +21,7 @@ with Table;       use Table;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.MDType;      use GNATLLVM.MDType;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package GNATLLVM.Records is
@@ -313,7 +314,7 @@ private
    --      relative offset of these fields is zero.
 
    type Record_Info_Base is record
-      LLVM_Type        : Type_T;
+      MD_Typ           : MD_Type;
       --  LLVM type corresponding to this fragment, if any
 
       GT               : GL_Type;

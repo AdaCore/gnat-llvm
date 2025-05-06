@@ -41,11 +41,10 @@ package body GNATLLVM.Arrays.Create is
    --  Helper function to build a One_Bound object from N
 
    function Create_String_Literal_Type
-     (TE : E_String_Literal_Subtype_Id; Comp_Typ : Type_T) return Type_T
+     (TE : E_String_Literal_Subtype_Id; Comp_Typ : MD_Type) return MD_Type
      with Pre  => Ekind (TE) = E_String_Literal_Subtype
                   and then Present (Comp_Typ),
-          Post => (Get_Type_Kind (Create_String_Literal_Type'Result) =
-                     Array_Type_Kind);
+          Post => Is_Array (Create_String_Literal_Type'Result);
    --  Helper function to create type for string literals
 
    --  For each array type, we record the types built for the bounds, bounds
@@ -53,9 +52,9 @@ package body GNATLLVM.Arrays.Create is
    --  can optionally point to that.
 
    type Array_Types_Data is record
-     Bounds          : Type_T;
-     Bounds_And_Data : Type_T;
-     Fat_Pointer     : Type_T;
+     Bounds          : MD_Type;
+     Bounds_And_Data : MD_Type;
+     Fat_Pointer     : MD_Type;
    end record;
 
    package Array_Types is new Table.Table
@@ -75,33 +74,34 @@ package body GNATLLVM.Arrays.Create is
    --  If we've already made an Array_Types entry for GT, return it.
    --  Otherwise, make a new one.
 
-   function Get_Bounds_Type           (GT : Array_Or_PAT_GL_Type) return Type_T
+   function Get_Bounds_Type (GT : Array_Or_PAT_GL_Type) return MD_Type
      with Inline;
-   function Get_Bounds_And_Data_Type  (GT : Array_Or_PAT_GL_Type) return Type_T
+   function Get_Bounds_And_Data_Type (GT : Array_Or_PAT_GL_Type) return MD_Type
      with Inline;
-   function Get_Fat_Pointer_Type      (GT : Array_Or_PAT_GL_Type) return Type_T
+   function Get_Fat_Pointer_Type (GT : Array_Or_PAT_GL_Type) return MD_Type
      with Inline;
 
-   procedure Set_Bounds_Type          (GT : Array_Or_PAT_GL_Type; T : Type_T)
-     with Pre => Present (T), Inline;
-   procedure Set_Bounds_And_Data_Type (GT : Array_Or_PAT_GL_Type; T : Type_T)
-     with Pre => Present (T), Inline;
-   procedure Set_Fat_Pointer_Type     (GT : Array_Or_PAT_GL_Type; T : Type_T)
-     with Pre => Present (T), Inline;
+   procedure Set_Bounds_Type (GT : Array_Or_PAT_GL_Type; MDT : MD_Type)
+     with Pre => Present (MDT), Inline;
+   procedure Set_Bounds_And_Data_Type
+     (GT : Array_Or_PAT_GL_Type; MDT : MD_Type)
+     with Pre => Present (MDT), Inline;
+   procedure Set_Fat_Pointer_Type (GT : Array_Or_PAT_GL_Type; MDT : MD_Type)
+     with Pre => Present (MDT), Inline;
 
    function Create_Array_Fat_Pointer_Type_Internal
-     (GT : Array_Or_PAT_GL_Type) return Type_T
+     (GT : Array_Or_PAT_GL_Type) return MD_Type
      with Post => Present (Create_Array_Fat_Pointer_Type_Internal'Result);
    --  Return the type used for fat pointers to the array type GT
 
    function Create_Array_Bounds_Type_Internal
-     (GT : Array_Or_PAT_GL_Type) return Type_T
+     (GT : Array_Or_PAT_GL_Type) return MD_Type
      with Post => Present (Create_Array_Bounds_Type_Internal'Result);
    --  Return the type used to store array bounds. This is a structure
    --  that that follows the following pattern: { LB0, UB0, LB1, UB1, ... }
 
    function Create_Array_Bounds_And_Data_Type_Internal
-     (GT : Array_Or_PAT_GL_Type) return Type_T
+     (GT : Array_Or_PAT_GL_Type) return MD_Type
      with Post => Present (Create_Array_Bounds_And_Data_Type_Internal'Result);
    --  Return the type used to store the bounds and data of an array
 
@@ -236,7 +236,7 @@ package body GNATLLVM.Arrays.Create is
    --------------------------------
 
    function Create_String_Literal_Type
-     (TE : E_String_Literal_Subtype_Id; Comp_Typ : Type_T) return Type_T
+     (TE : E_String_Literal_Subtype_Id; Comp_Typ : MD_Type) return MD_Type
    is
       First      : constant Uint         :=
         Get_Uint_Value (String_Literal_Low_Bound (TE));
@@ -254,8 +254,7 @@ package body GNATLLVM.Arrays.Create is
          Bound_Range   => Size_Const_Int (Length),
          First_Field   => 0,
          Not_Superflat => True);
-      Result_Typ : constant Type_T       :=
-        Array_Type (Comp_Typ, unsigned (+Length));
+      Result_Typ : constant MD_Type      := Array_Type (Comp_Typ, +Length);
 
    begin
       Array_Info.Append (Dim_Info);
@@ -269,7 +268,7 @@ package body GNATLLVM.Arrays.Create is
    -----------------------
 
    function Create_Array_Type
-     (TE : Type_Kind_Id; For_Orig : Boolean := False) return Type_T
+     (TE : Type_Kind_Id; For_Orig : Boolean := False) return MD_Type
    is
       type Dim_Info_Array is array (Nat range <>) of Index_Bounds;
 
@@ -314,7 +313,7 @@ package body GNATLLVM.Arrays.Create is
         Must_Use_Fake or Unconstrained;
       CT_To_Use         : constant GL_Type      :=
         (if Must_Use_Fake then SSI_GL_Type else Comp_GT);
-      Typ               : Type_T                := Type_Of (CT_To_Use);
+      Typ               : MD_Type               := Type_Of (CT_To_Use);
       Dim               : Nat                   := 0;
       Last_Dim          : constant Nat          :=
         (if   Ekind (A_TE) = E_String_Literal_Subtype
@@ -458,7 +457,7 @@ package body GNATLLVM.Arrays.Create is
       --  through the types making the LLVM type.
 
       if This_Nonnative then
-         Typ := Array_Type (Typ, 0);
+         Typ := Variable_Array_Type (Typ);
       else
          for J in reverse First_Info .. Array_Info.Last loop
             declare
@@ -471,8 +470,8 @@ package body GNATLLVM.Arrays.Create is
             begin
                Typ := Array_Type (Typ,
                                   (if   Present (Rng)
-                                   then unsigned (Get_Const_Int_Value (Rng))
-                                   else 0));
+                                   then Nat (Get_Const_Int_Value (Rng))
+                                  else 0));
             end;
          end loop;
       end if;
@@ -505,7 +504,7 @@ package body GNATLLVM.Arrays.Create is
       --  If we didn't previously make an entry, make an empty one now
 
       if No (ATs) then
-         Array_Types.Append ((No_Type_T, No_Type_T, No_Type_T));
+         Array_Types.Append ((No_MD_Type, No_MD_Type, No_MD_Type));
          ATs := Array_Types.Last;
          Set_Array_Types (GT, ATs);
       end if;
@@ -517,66 +516,67 @@ package body GNATLLVM.Arrays.Create is
    -- Get_Bounds_Type --
    ---------------------
 
-   function Get_Bounds_Type (GT : Array_Or_PAT_GL_Type) return Type_T is
+   function Get_Bounds_Type (GT : Array_Or_PAT_GL_Type) return MD_Type is
       ATs : constant Array_Types_Id := Get_Array_Types (GT);
    begin
       return (if   Present (ATs) then Array_Types.Table (ATs).Bounds
-              else No_Type_T);
+              else No_MD_Type);
    end Get_Bounds_Type;
 
    ------------------------------
    -- Get_Bounds_And_Data_Type --
    ------------------------------
 
-   function Get_Bounds_And_Data_Type (GT : Array_Or_PAT_GL_Type) return Type_T
+   function Get_Bounds_And_Data_Type (GT : Array_Or_PAT_GL_Type) return MD_Type
    is
       ATs : constant Array_Types_Id := Get_Array_Types (GT);
    begin
       return (if   Present (ATs)
               then Array_Types.Table (ATs).Bounds_And_Data
-              else No_Type_T);
+              else No_MD_Type);
    end Get_Bounds_And_Data_Type;
 
    --------------------------
    -- Get_Fat_Pointer_Type --
    --------------------------
 
-   function Get_Fat_Pointer_Type (GT : Array_Or_PAT_GL_Type) return Type_T is
+   function Get_Fat_Pointer_Type (GT : Array_Or_PAT_GL_Type) return MD_Type is
       ATs : constant Array_Types_Id := Get_Array_Types (GT);
    begin
       return (if   Present (ATs) then Array_Types.Table (ATs).Fat_Pointer
-              else No_Type_T);
+              else No_MD_Type);
    end Get_Fat_Pointer_Type;
 
    ---------------------
    -- Set_Bounds_Type --
    ---------------------
 
-   procedure Set_Bounds_Type (GT : Array_Or_PAT_GL_Type; T : Type_T) is
+   procedure Set_Bounds_Type (GT : Array_Or_PAT_GL_Type; MDT : MD_Type) is
       ATs : constant Array_Types_Id := Get_Or_Create_Array_Types (GT);
    begin
-      Array_Types.Table (ATs).Bounds := T;
+      Array_Types.Table (ATs).Bounds := MDT;
    end Set_Bounds_Type;
 
    ------------------------------
    -- Set_Bounds_And_Data_Type --
    ------------------------------
 
-   procedure Set_Bounds_And_Data_Type (GT : Array_Or_PAT_GL_Type; T : Type_T)
+   procedure Set_Bounds_And_Data_Type
+     (GT : Array_Or_PAT_GL_Type; MDT : MD_Type)
    is
       ATs : constant Array_Types_Id := Get_Or_Create_Array_Types (GT);
    begin
-      Array_Types.Table (ATs).Bounds_And_Data := T;
+      Array_Types.Table (ATs).Bounds_And_Data := MDT;
    end Set_Bounds_And_Data_Type;
 
    --------------------------
    -- Set_Fat_Pointer_Type --
    --------------------------
 
-   procedure Set_Fat_Pointer_Type (GT : Array_Or_PAT_GL_Type; T : Type_T) is
+   procedure Set_Fat_Pointer_Type (GT : Array_Or_PAT_GL_Type; MDT : MD_Type) is
       ATs : constant Array_Types_Id := Get_Or_Create_Array_Types (GT);
    begin
-      Array_Types.Table (ATs).Fat_Pointer := T;
+      Array_Types.Table (ATs).Fat_Pointer := MDT;
    end Set_Fat_Pointer_Type;
 
    ---------------------------------------
@@ -584,14 +584,14 @@ package body GNATLLVM.Arrays.Create is
    ---------------------------------------
 
    function Create_Array_Bounds_Type_Internal
-     (GT : Array_Or_PAT_GL_Type) return Type_T
+     (GT : Array_Or_PAT_GL_Type) return MD_Type
    is
       A_GT       : constant Array_Kind_Id :=
         (if   Is_Packed_Array_Impl_Type (GT) then Full_Original_Array_Type (GT)
          else Full_Etype (GT));
       Dims       : constant Nat           := Number_Dimensions (A_GT);
       Bounds     : constant Nat           := Number_Bounds (A_GT);
-      Fields     : aliased Type_Array (Nat range 0 .. Bounds - 1);
+      Fields     : aliased MD_Type_Array (Nat range 0 .. Bounds - 1);
       F_Names    : Name_Id_Array (0 .. Bounds - 1);
       First_Info : constant Array_Info_Id :=
         (if   Is_Packed_Array_Impl_Type (GT)
@@ -631,8 +631,8 @@ package body GNATLLVM.Arrays.Create is
       end loop;
 
       return Build_Struct_Type (Fields,
-                                Name        => Get_Ext_Name (GT, "_BOUNDS"),
-                                Field_Names => F_Names);
+                                Field_Names => F_Names,
+                                Name        => Get_Ext_Name (GT, "_BOUNDS"));
    end Create_Array_Bounds_Type_Internal;
 
    ------------------------------------------------
@@ -640,18 +640,18 @@ package body GNATLLVM.Arrays.Create is
    ------------------------------------------------
 
    function Create_Array_Bounds_And_Data_Type_Internal
-     (GT : Array_Or_PAT_GL_Type) return Type_T
+     (GT : Array_Or_PAT_GL_Type) return MD_Type
    is
-      Align  : constant Nat    := Get_Type_Alignment (GT);
-      B_T    : constant Type_T := Create_Array_Bounds_Type (GT);
-      B_T_Sz : constant Nat    := Nat (ULL'(Get_Type_Size (B_T)));
+      Align    : constant Nat     := Get_Type_Alignment (GT);
+      B_MDT    : constant MD_Type := Create_Array_Bounds_Type (GT);
+      B_MDT_Sz : constant Nat     := Nat (ULL'(Get_Type_Size (B_MDT)));
 
    begin
       --  If the size of the bounds type is a multiple of the alignment,
       --  we have the normal case of two types.
 
-      if B_T_Sz mod Align = 0 then
-         return Build_Struct_Type ((1 => B_T, 2 => Type_Of (GT)),
+      if B_MDT_Sz mod Align = 0 then
+         return Build_Struct_Type ((1 => B_MDT, 2 => Type_Of (GT)),
                                    Name        => Get_Ext_Name (GT, "_BD"),
                                    Field_Names => (1 => Name_Find ("BOUNDS"),
                                                    2 => Name_Find ("DATA")));
@@ -660,18 +660,18 @@ package body GNATLLVM.Arrays.Create is
 
       else
          declare
-            Align_Sz : constant Nat := (B_T_Sz + Align - 1) / Align * Align;
-            Pad      : constant Nat := (Align_Sz - B_T_Sz) / BPU;
+            Align_Sz : constant Nat := (B_MDT_Sz + Align - 1) / Align * Align;
+            Pad      : constant Nat := (Align_Sz - B_MDT_Sz) / BPU;
 
          begin
             return
-              Build_Struct_Type ((1 => B_T,
-                                  2 => Array_Type (Byte_T, unsigned (Pad)),
+              Build_Struct_Type ((1 => B_MDT,
+                                  2 => Array_Type (Byte_MD, Pad),
                                   3 => Type_Of (GT)),
-                                 Name => Get_Ext_Name (GT, "_BD"),
                                  Field_Names => (1 => Name_Find ("BOUNDS"),
                                                  2 => No_Name,
-                                                 3 => Name_Find ("DATA")));
+                                                 3 => Name_Find ("DATA")),
+                                 Name => Get_Ext_Name (GT, "_BD"));
 
          end;
       end if;
@@ -682,12 +682,12 @@ package body GNATLLVM.Arrays.Create is
    --------------------------------------------
 
    function Create_Array_Fat_Pointer_Type_Internal
-     (GT : Array_Or_PAT_GL_Type) return Type_T
+     (GT : Array_Or_PAT_GL_Type) return MD_Type
    is
-      Name      : constant Name_Id := Get_Ext_Name (GT, "_FP");
-      P_Data_T  : constant Type_T :=
+      Name       : constant Name_Id := Get_Ext_Name (GT, "_FP");
+      P_Data_MDT : constant MD_Type :=
         Pointer_Type (Type_Of (GT), Address_Space);
-      Data_Name : constant Name_Id := Name_Find ("P_DATA");
+      Data_Name  : constant Name_Id := Name_Find ("P_DATA");
 
    begin
       --  A fat pointer is normally a pointer to the data and a pointer to
@@ -695,15 +695,15 @@ package body GNATLLVM.Arrays.Create is
 
       if Has_Bounds_In_Fat_Pointer (GT) then
          return Build_Struct_Type
-           ((1 => P_Data_T, 2 => Create_Array_Bounds_Type (GT)),
-            Name        => Name,
-            Field_Names => (0 => Data_Name, 1 => Name_Find ("UB")));
+           ((1 => P_Data_MDT, 2 => Create_Array_Bounds_Type (GT)),
+            Field_Names => (1 => Data_Name, 2 => Name_Find ("UB")),
+            Name        => Name);
       else
          return Build_Struct_Type
-           ((1 => P_Data_T,
+           ((1 => P_Data_MDT,
              2 => Pointer_Type (Create_Array_Bounds_Type (GT), Address_Space)),
-            Name        => Name,
-            Field_Names => (0 => Data_Name, 1 => Name_Find ("P_BOUNDS")));
+            Field_Names => (1 => Data_Name, 2 => Name_Find ("P_BOUNDS")),
+            Name        => Name);
       end if;
    end Create_Array_Fat_Pointer_Type_Internal;
 
@@ -712,10 +712,10 @@ package body GNATLLVM.Arrays.Create is
    ------------------------------
 
    function Create_Array_Bounds_Type
-     (GT : Array_Or_PAT_GL_Type) return Type_T
+     (GT : Array_Or_PAT_GL_Type) return MD_Type
    is
       BT      : constant Array_Or_PAT_GL_Type := Array_Base_GL_Type (GT);
-      Result  : Type_T                        := Get_Bounds_Type (GT);
+      Result  : MD_Type                       := Get_Bounds_Type (GT);
       To_Save : Boolean                       := True;
 
    begin
@@ -750,9 +750,9 @@ package body GNATLLVM.Arrays.Create is
    ---------------------------------------
 
    function Create_Array_Bounds_And_Data_Type
-     (GT : Array_Or_PAT_GL_Type) return Type_T
+     (GT : Array_Or_PAT_GL_Type) return MD_Type
    is
-      Result  : Type_T := Get_Bounds_And_Data_Type (GT);
+      Result : MD_Type := Get_Bounds_And_Data_Type (GT);
 
    begin
       --  If we haven't made one, build it and save it
@@ -770,10 +770,10 @@ package body GNATLLVM.Arrays.Create is
    ------------------------------
 
    function Create_Array_Fat_Pointer_Type
-     (GT : Array_Or_PAT_GL_Type) return Type_T
+     (GT : Array_Or_PAT_GL_Type) return MD_Type
    is
       BT      : constant Array_Or_PAT_GL_Type := Array_Base_GL_Type (GT);
-      Result  : Type_T                        := Get_Fat_Pointer_Type (GT);
+      Result  : MD_Type                       := Get_Fat_Pointer_Type (GT);
       To_Save : Boolean                       := True;
 
    begin

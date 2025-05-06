@@ -22,6 +22,7 @@ with Snames;      use Snames;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.MDType;      use GNATLLVM.MDType;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 with GNATLLVM.Utils;       use GNATLLVM.Utils;
 
@@ -84,9 +85,9 @@ package GNATLLVM.GLType is
    --  message. If Align_For_Msg is specified, use that alignment, instead
    --  of GT's alignment, in giving warnings about unused bits.
 
-   procedure Update_GL_Type (GT : GL_Type; T : Type_T; Is_Dummy : Boolean)
+   procedure Update_GL_Type (GT : GL_Type; MDT : MD_Type; Is_Dummy : Boolean)
      with Pre => Is_Empty_GL_Type (GT) or else Is_Dummy_Type (GT)
-                 or else T = Type_Of (GT);
+                 or else MDT = Type_Of (GT);
    --  Update GT with a new type and dummy status
 
    function Primitive_GL_Type (TE : Void_Or_Type_Kind_Id) return GL_Type
@@ -182,7 +183,7 @@ package GNATLLVM.GLType is
    function Full_Etype (GT : GL_Type)            return Void_Or_Type_Kind_Id
      with Pre => Present (GT), Inline;
 
-   function Type_Of (GT : GL_Type)               return Type_T
+   function Type_Of (GT : GL_Type)               return MD_Type
      with Pre => Present (GT), Inline;
 
    function GT_Size (GT : GL_Type)               return GL_Value
@@ -288,7 +289,7 @@ package GNATLLVM.GLType is
    --  Convert V, which must be of a primitive GL_Type, to GT
 
    function Get_Type_Kind (GT : GL_Type) return Type_Kind_T is
-     (Get_Type_Kind (Type_Of (GT)))
+     (Get_Type_Kind (+Type_Of (GT)))
      with Pre => Present (GT);
 
    --  Now define functions that operate on GNAT types that we want to

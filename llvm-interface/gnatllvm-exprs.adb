@@ -1,3 +1,4 @@
+
 ------------------------------------------------------------------------------
 --                             G N A T - L L V M                            --
 --                                                                          --
@@ -40,6 +41,7 @@ with GNATLLVM.Conditionals; use GNATLLVM.Conditionals;
 with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
+with GNATLLVM.MDType;       use GNATLLVM.MDType;
 with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Types;        use GNATLLVM.Types;
@@ -1319,7 +1321,7 @@ package body GNATLLVM.Exprs is
          Annotate_Fn :=
            Add_Global_Function ("llvm.ccg.annotate",
                                 Fn_Ty ((1 => Type_Of (Integer_GL_Type)),
-                                       Void_Type),
+                                       Void_Ty),
                                 Void_GL_Type);
       end if;
 
@@ -1954,7 +1956,7 @@ package body GNATLLVM.Exprs is
       Output_Variable   : Node_Id;
       Input             : Node_Id;
       Clobber           : System.Address;
-      Fn_T              : Type_T;
+      Fn_MDT            : MD_Type;
 
    begin
       --  LLVM only allows one output, so just get the information on
@@ -2167,7 +2169,7 @@ package body GNATLLVM.Exprs is
          Asm :=
            Inline_Asm
              (Args, Output_Variable, Template (1 .. Out_Template_Pos),
-              Constraints (1 .. Constraint_Pos), Fn_T,
+              Constraints (1 .. Constraint_Pos), Fn_MDT,
               Is_Asm_Volatile (N), False);
 
          --  If we have an output, generate the call with an output and
@@ -2177,10 +2179,10 @@ package body GNATLLVM.Exprs is
 
          if Present (Output_Variable) then
             Store
-              (Call (Asm, Fn_T, Args),
+              (Call (Asm, Fn_MDT, Args),
                Ptr_To_Ref (Output_Val, Related_Type (Asm)));
          else
-            Call (Asm, Fn_T, Args);
+            Call (Asm, Fn_MDT, Args);
          end if;
       end;
    end Emit_Code_Statement;

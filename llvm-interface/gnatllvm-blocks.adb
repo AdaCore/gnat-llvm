@@ -38,6 +38,7 @@ with GNATLLVM.DebugInfo;    use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;  use GNATLLVM.Environment;
 with GNATLLVM.GLType;       use GNATLLVM.GLType;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
+with GNATLLVM.MDType;       use GNATLLVM.MDType;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
 with GNATLLVM.Variables;    use GNATLLVM.Variables;
@@ -299,11 +300,11 @@ package body GNATLLVM.Blocks is
       Table_Name           => "Open_Branches");
    --  Information needed to fixup branches to labels we haven't defined yet
 
-   Global_LP_Type : Type_T := No_Type_T;
+   Global_LP_Type : MD_Type := No_MD_Type;
    --  Type for the "landing pad" used in exception handling
 
-   function Get_LP_Type return Type_T
-     with Post => Get_Type_Kind (Get_LP_Type'Result) = Struct_Type_Kind;
+   function Get_LP_Type return MD_Type
+     with Post => Is_Struct (Get_LP_Type'Result);
    --  Get (and create, if necessary, the type for an EH Landing Pad
 
    function Find_Exit_Point (N : Opt_N_Identifier_Id) return Exit_Point_Level;
@@ -705,28 +706,28 @@ package body GNATLLVM.Blocks is
       Personality_Fn :=
         Add_Global_Function
           (Get_Personality_Function_Name (Normalized_Target_Triple.all),
-           Fn_Ty ((1 .. 0 => <>), Int_32_T, True), Void_GL_Type);
+           Fn_Ty ((1 .. 0 => <>), Int_32_MD, True), Void_GL_Type);
 
       Begin_Handler_Fn :=
         Add_Global_Function ("__gnat_begin_handler_v1",
-                             Fn_Ty ((1 => Void_Ptr_T), Void_Ptr_T),
+                             Fn_Ty ((1 => Void_Ptr_MD), Void_Ptr_MD),
                              A_Char_GL_Type);
 
       End_Handler_Fn   :=
         Add_Global_Function ("__gnat_end_handler_v1",
-                             Fn_Ty ((1 => Void_Ptr_T, 2 => Void_Ptr_T,
-                                     3 => Void_Ptr_T),
-                                    Void_Type),
+                             Fn_Ty ((1 => Void_Ptr_MD, 2 => Void_Ptr_MD,
+                                     3 => Void_Ptr_MD),
+                                    Void_Ty),
                              Void_GL_Type);
 
       Unhandler_Fn     :=
         Add_Global_Function ("__gnat_unhandled_except_handler",
-                             Fn_Ty ((1 => Void_Ptr_T), Void_Type),
+                             Fn_Ty ((1 => Void_Ptr_MD), Void_Ty),
                              Void_GL_Type);
 
       Reraise_Fn       :=
         Add_Global_Function ("__gnat_reraise_zcx",
-                             Fn_Ty ((1 => Void_Ptr_T), Void_Type),
+                             Fn_Ty ((1 => Void_Ptr_MD), Void_Ty),
                              Void_GL_Type,
                              Can_Return => False, Can_Throw => True);
 
@@ -754,14 +755,14 @@ package body GNATLLVM.Blocks is
    -- Get_LP_Type --
    -----------------
 
-   function Get_LP_Type return Type_T is
+   function Get_LP_Type return MD_Type is
    begin
       if No (Global_LP_Type) then
          Global_LP_Type := Build_Struct_Type
-           ((1 => Void_Ptr_T, 2 => Int_32_T),
-            Name        => Name_Find ("LANDING_PAD"),
+           ((1 => Void_Ptr_MD, 2 => Int_32_MD),
             Field_Names => (1 => Name_Find ("EH_PTR"),
-                            2 => Name_Find ("EH_SELECT")));
+                            2 => Name_Find ("EH_SELECT")),
+            Name        => Name_Find ("LANDING_PAD"));
       end if;
 
       return Global_LP_Type;
@@ -779,8 +780,8 @@ package body GNATLLVM.Blocks is
       if No (Set_Exception_Param_Fn) then
          Set_Exception_Param_Fn := Add_Global_Function
            ("__gnat_set_exception_parameter",
-            Fn_Ty ((1 => Create_Access_Type_To (Exc_GT), 2 => Void_Ptr_T),
-                   Void_Type),
+            Fn_Ty ((1 => Create_Access_Type_To (Exc_GT), 2 => Void_Ptr_MD),
+                   Void_Ty),
             Void_GL_Type);
       end if;
 
@@ -794,9 +795,9 @@ package body GNATLLVM.Blocks is
    function Get_Raise_Fn
      (Kind : RT_Exception_Code; Ext : Boolean := False) return GL_Value
    is
-      Int_T    : constant Type_T := Type_Of (Integer_GL_Type);
-      Fun_Type : Type_T          :=
-        Fn_Ty ((1 => Address_T, 2 => Int_T), Void_Type);
+      Int_MDT  : constant MD_Type := Type_Of (Integer_GL_Type);
+      Fun_Type : MD_Type          :=
+        Fn_Ty ((1 => Address_MD, 2 => Int_MDT), Void_Ty);
 
    begin
       --  If we're using a last-chance handler, that's the function we need
@@ -817,15 +818,15 @@ package body GNATLLVM.Blocks is
             case Kind is
                when CE_Access_Check_Failed =>
                   Fun_Type :=
-                    Fn_Ty ((1 => Address_T, 2 => Int_T, 3 => Int_T),
-                           Void_Type);
+                    Fn_Ty ((1 => Address_MD, 2 => Int_MDT, 3 => Int_MDT),
+                           Void_Ty);
 
                when CE_Index_Check_Failed | CE_Range_Check_Failed
                   | CE_Invalid_Data =>
                   Fun_Type :=
-                    Fn_Ty ((1 => Address_T, 2 => Int_T, 3 => Int_T,
-                            4 => Int_T, 5 => Int_T, 6 => Int_T),
-                           Void_Type);
+                    Fn_Ty ((1 => Address_MD, 2 => Int_MDT, 3 => Int_MDT,
+                            4 => Int_MDT, 5 => Int_MDT, 6 => Int_MDT),
+                           Void_Ty);
 
                when others =>
                   pragma Assert (Standard.False);
@@ -1060,7 +1061,7 @@ package body GNATLLVM.Blocks is
 
    procedure Emit_Handlers (Block : Block_Stack_Level) is
       BI                : Block_Info renames Block_Stack.Table (Block);
-      LP_Type           : constant Type_T        := Get_LP_Type;
+      LP_Type           : constant MD_Type       := Get_LP_Type;
       Have_Cleanup      : constant Boolean       :=
         (for some J in 1 .. Block =>
            (Present (Block_Stack.Table (J).At_End_Proc)

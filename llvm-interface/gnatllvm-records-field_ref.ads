@@ -83,7 +83,7 @@ package GNATLLVM.Records.Field_Ref is
    type Struct_Field is record
       Field      : Record_Field_Kind_Id;
       Offset     : ULL;
-      T          : Type_T;
+      MDT        : MD_Type;
       GT         : GL_Type;
    end record;
 

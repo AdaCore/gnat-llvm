@@ -40,6 +40,7 @@ with GNATLLVM.DebugInfo;         use GNATLLVM.DebugInfo;
 with GNATLLVM.Environment;       use GNATLLVM.Environment;
 with GNATLLVM.Exprs;             use GNATLLVM.Exprs;
 with GNATLLVM.Instructions;      use GNATLLVM.Instructions;
+with GNATLLVM.MDType;            use GNATLLVM.MDType;
 with GNATLLVM.Records;           use GNATLLVM.Records;
 with GNATLLVM.Records.Field_Ref; use GNATLLVM.Records.Field_Ref;
 with GNATLLVM.Types;             use GNATLLVM.Types;
@@ -141,12 +142,15 @@ package body GNATLLVM.Compile is
 
       BPU          := Bits_Per_Unit;
       UBPU         := ULL (BPU);
-      Bit_T        := Int_Ty (Nat (1));
-      Byte_T       := Int_Ty (BPU);
+      Bit_MD       := Int_Ty (1);
+      Byte_MD      := Int_Ty (BPU);
       Max_Align    := Maximum_Alignment * BPU;
       Max_Int_Size := (if   Enable_128bit_Types then Long_Long_Long_Size
                        else Long_Long_Size);
-      Max_Int_T    := Int_Ty (Max_Int_Size);
+      Max_Int_MD   := Int_Ty (Max_Int_Size);
+      Bit_T        := +Bit_MD;
+      Byte_T       := +Byte_MD;
+      Max_Int_T    := +Max_Int_MD;
 
       --  We want to be able to support overaligned values, but we still need
       --  to have a maximum possible alignment to start with. The maximum
@@ -170,9 +174,10 @@ package body GNATLLVM.Compile is
       --  of the GL_Type only when the below variables have been set.
 
       Size_GL_Type := Primitive_GL_Type (Size_Type);
-      Size_T       := Type_Of (Size_Type);
-      Update_GL_Type (Size_GL_Type, Size_T, False);
-      Update_GL_Type (Base_GL_Type (Size_Type), Size_T, False);
+      Size_MD      := Type_Of (Size_Type);
+      Size_T       := +Size_MD;
+      Update_GL_Type (Size_GL_Type, Size_MD, False);
+      Update_GL_Type (Base_GL_Type (Size_Type), Size_MD, False);
 
       --  Create GL_Types for builtin types. Create Boolean first because
       --  we use it internally to make boolean constants in the evaluation
@@ -191,17 +196,20 @@ package body GNATLLVM.Compile is
 
       --  Create a "void" pointer, which is i8* in LLVM
 
-      Void_Ptr_T        := Type_Of (A_Char_GL_Type);
+      Void_Ptr_MD       := Pointer_Type (Void_Ty, 0);
+      Void_Ptr_T        := +Void_Ptr_MD;
 
       --  Now create the 32-bit and 64-bit integer types, allowing for the
       --  possibility that we don't have a 64-bit type.
 
       Int_32_GL_Type := Primitive_GL_Type (Int_32_Type);
-      Int_32_T       := Type_Of (Int_32_GL_Type);
+      Int_32_MD      := Type_Of (Int_32_GL_Type);
+      Int_32_T       := +Int_32_MD;
 
       if Present (Int_64_Type) then
          Int_64_GL_Type := Primitive_GL_Type (Int_64_Type);
-         Int_64_T       := Type_Of (Int_64_GL_Type);
+         Int_64_MD      := Type_Of (Int_64_GL_Type);
+         Int_64_T       := +Int_64_MD;
       end if;
 
       --  In most cases, addresses can be represented as Size_T (which
@@ -212,7 +220,8 @@ package body GNATLLVM.Compile is
       --  burden on address arithmetic, which now requires conversions to
       --  and from a suitable integer representation of the address.
 
-      Address_T       := (if Tagged_Pointers then Void_Ptr_T else Size_T);
+      Address_MD      := (if Tagged_Pointers then Void_Ptr_MD else Size_MD);
+      Address_T       := +Address_MD;
       Address_GL_Type := Primitive_GL_Type (Standard_Address);
 
       --  The size of a pointer is specified in both the LLVM data layout

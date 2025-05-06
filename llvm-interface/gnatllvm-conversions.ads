@@ -17,6 +17,7 @@
 
 with GNATLLVM.GLType;  use GNATLLVM.GLType;
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
+with GNATLLVM.MDType;  use GNATLLVM.MDType;
 
 package GNATLLVM.Conversions is
 
@@ -118,6 +119,10 @@ package GNATLLVM.Conversions is
    --  V is a reference to some object. Convert it to a reference to GT
    --  with the same relationship.
 
+   function Is_Nonsymbolic_Constant
+     (V : Value_T; MDT : MD_Type) return Boolean
+      with  Pre => Present (V) and then Present (MDT);
+
    function Convert_Aggregate_Constant
      (V : GL_Value; GT : GL_Type) return GL_Value
      with Pre  => Present (V) and then not Is_Nonnative_Type (GT)
@@ -126,7 +131,8 @@ package GNATLLVM.Conversions is
                   and then Is_Constant (Convert_Aggregate_Constant'Result);
    --  Convert V, a constant, to GT
 
-   function Convert_Aggregate_Constant (V : Value_T; T : Type_T) return Value_T
+   function Convert_Aggregate_Constant
+     (V : Value_T; T : Type_T) return Value_T
      with Pre  => Present (V) and then Present (T) and then Is_Constant (V),
           Post => Type_Of (Convert_Aggregate_Constant'Result) = T
                   and then Is_Constant (Convert_Aggregate_Constant'Result);
@@ -136,11 +142,6 @@ package GNATLLVM.Conversions is
      (V : GL_Value; GT : GL_Type) return Boolean
      with Pre => Present (V) and then Present (GT);
    --  Return True iff Convert_Aggregate_Constant can convert V to GT
-
-   function Is_Nonsymbolic_Constant (V : Value_T) return Boolean
-     with Pre => Present (V);
-   --  Return True iff V is a constant and that constant contains no
-   --  symbolic or pointer values.
 
    function Strip_Complex_Conversions
      (N : Opt_N_Subexpr_Id) return Opt_N_Subexpr_Id;

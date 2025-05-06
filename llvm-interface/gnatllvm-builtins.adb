@@ -193,19 +193,25 @@ package body GNATLLVM.Builtins is
    function Build_Intrinsic
      (Name             : String;
       Return_GT        : GL_Type;
-      Overloaded_Types : Type_Array := (1 .. 0 => <>)) return GL_Value
+      Overloaded_Types : MD_Type_Array := (1 .. 0 => <>)) return GL_Value
    is
       Intrinsic_ID : constant unsigned :=
         Lookup_Intrinsic_ID (Name, Name'Length);
+      Types            : Type_Array (Overloaded_Types'Range);
+
    begin
       if Intrinsic_ID = 0 then
          return No_GL_Value;
       end if;
 
+      for J in Overloaded_Types'Range loop
+         Types (J) := +Overloaded_Types (J);
+      end loop;
+
       return
         G (Get_Intrinsic_Declaration
-             (Module, Intrinsic_ID, Overloaded_Types'Address,
-              Overloaded_Types'Length),
+             (Module, Intrinsic_ID, Types'Address,
+              Types'Length),
            Return_GT, Reference_To_Subprogram);
    end Build_Intrinsic;
 
@@ -541,7 +547,7 @@ package body GNATLLVM.Builtins is
      (Ptr : GL_Value; Order : Atomic_Ordering_T; GT : GL_Type) return GL_Value
    is
       Inst : constant Value_T :=
-        Load_2 (IR_Builder, Element_Type_Of (Ptr), +Ptr, "");
+        Load_2 (IR_Builder, +Element_Type_Of (Ptr), +Ptr, "");
 
    begin
       Set_Ordering  (Inst, Order);
@@ -698,19 +704,19 @@ package body GNATLLVM.Builtins is
       elsif S = "base_get" and then N_Args = 1 then
          return
            Call (Build_Intrinsic ("llvm.cheri.cap.base.get", Size_GL_Type,
-                                  (1 => Size_T)),
+                                  (1 => Size_MD)),
                  (1 => Emit_Expression (Val)));
 
       elsif S = "bounds_set" and then N_Args = 2 then
          V := Emit_Expression (Val);
          return Call (Build_Intrinsic ("llvm.cheri.cap.bounds.set",
-                                       A_Char_GL_Type, (1 => Size_T)),
+                                       A_Char_GL_Type, (1 => Size_MD)),
                       (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
 
       elsif S = "bounds_set_exact" and then N_Args = 2 then
          V := Emit_Expression (Val);
          return Call (Build_Intrinsic ("llvm.cheri.cap.bounds.set.exact",
-                                       A_Char_GL_Type, (1 => Size_T)),
+                                       A_Char_GL_Type, (1 => Size_MD)),
                       (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
 
       elsif S = "global_data_get" and then N_Args = 0 then
@@ -719,18 +725,18 @@ package body GNATLLVM.Builtins is
       elsif S = "length_get" and then N_Args = 1 then
          return
            Call (Build_Intrinsic ("llvm.cheri.cap.length.get", Size_GL_Type,
-                                  (1 => Size_T)),
+                                  (1 => Size_MD)),
                  (1 => Emit_Expression (Val)));
 
       elsif S = "perms_and" and then N_Args = 2 then
          V := Emit_Expression (Val);
          return Call (Build_Intrinsic ("llvm.cheri.cap.perms.and",
-                                       A_Char_GL_Type, (1 => Size_T)),
+                                       A_Char_GL_Type, (1 => Size_MD)),
                       (1 => V, 2 => Emit_Expression (Next_Actual (Val))));
 
       elsif S = "perms_get" and then N_Args = 1 then
          return Call (Build_Intrinsic ("llvm.cheri.cap.perms.get",
-                                       Size_GL_Type, (1 => Size_T)),
+                                       Size_GL_Type, (1 => Size_MD)),
                       (1 => Emit_Expression (Val)));
 
       elsif S = "program_counter_get" and then N_Args = 0 then
@@ -764,7 +770,7 @@ package body GNATLLVM.Builtins is
       elsif S = "type_get" and then N_Args = 1 then
          return Call (Build_Intrinsic
                         ("llvm.cheri.cap.type.get", Size_GL_Type,
-                         (1 => Size_T)),
+                         (1 => Size_MD)),
                       (1 => Emit_Expression (Val)));
 
       elsif S = "unseal" and then N_Args = 2 then
@@ -1332,8 +1338,8 @@ package body GNATLLVM.Builtins is
            Add_Global_Function
              (Get_Default_Alloc_Fn_Name,
               Fn_Ty
-                ((1 => Size_T),
-                 (if Emit_C then Void_Ptr_T else Address_T)),
+                ((1 => Size_MD),
+                 (if Emit_C then Void_Ptr_MD else Address_MD)),
               (if Emit_C then A_Char_GL_Type else Address_GL_Type));
       end if;
 
@@ -1351,8 +1357,8 @@ package body GNATLLVM.Builtins is
            Add_Global_Function
              (Get_Default_Free_Fn_Name,
               Fn_Ty
-                ((1 => (if Emit_C then Void_Ptr_T else Address_T)),
-                 Void_Type),
+                ((1 => (if Emit_C then Void_Ptr_MD else Address_MD)),
+                 Void_Ty),
               Void_GL_Type);
       end if;
 
@@ -1368,7 +1374,7 @@ package body GNATLLVM.Builtins is
       if No (Memory_Compare_Fn) then
          Memory_Compare_Fn := Add_Global_Function
            ("memcmp",
-            Fn_Ty ((1 => Void_Ptr_T, 2 => Void_Ptr_T, 3 => Size_T),
+            Fn_Ty ((1 => Void_Ptr_MD, 2 => Void_Ptr_MD, 3 => Size_MD),
                    Type_Of (Integer_GL_Type)),
             Integer_GL_Type);
 
@@ -1463,7 +1469,7 @@ package body GNATLLVM.Builtins is
          Enable_Execute_Stack_Fn :=
            Add_Global_Function
              ("__enable_execute_stack",
-              Fn_Ty ((1 => Void_Ptr_T), Void_Type), Void_GL_Type);
+              Fn_Ty ((1 => Void_Ptr_MD), Void_Ty), Void_GL_Type);
       end if;
 
       return Enable_Execute_Stack_Fn;
@@ -1477,8 +1483,7 @@ package body GNATLLVM.Builtins is
    begin
       if No (Expect_Fn) then
          Expect_Fn :=
-           Build_Intrinsic
-             ("llvm.expect", Boolean_GL_Type, (1 => Bit_T));
+           Build_Intrinsic ("llvm.expect", Boolean_GL_Type, (1 => Bit_MD));
       end if;
 
       return Expect_Fn;
@@ -1492,9 +1497,8 @@ package body GNATLLVM.Builtins is
    begin
       if No (Frame_Address_Fn) then
          Frame_Address_Fn :=
-           Build_Intrinsic
-             ("llvm.frameaddress.p0", A_Char_GL_Type,
-              (1 => Void_Ptr_T));
+           Build_Intrinsic ("llvm.frameaddress.p0", A_Char_GL_Type,
+                            (1 => Void_Ptr_MD));
       end if;
 
       return Frame_Address_Fn;
@@ -1515,8 +1519,7 @@ package body GNATLLVM.Builtins is
 
          Get_Address_Fn :=
            Build_Intrinsic
-             ("llvm.cheri.cap.address.get", Size_GL_Type,
-              (1 => Size_T));
+             ("llvm.cheri.cap.address.get", Size_GL_Type, (1 => Size_MD));
       end if;
 
       return Get_Address_Fn;
@@ -1537,8 +1540,7 @@ package body GNATLLVM.Builtins is
 
          Set_Address_Fn :=
            Build_Intrinsic
-             ("llvm.cheri.cap.address.set", A_Char_GL_Type,
-              (1 => Size_T));
+             ("llvm.cheri.cap.address.set", A_Char_GL_Type, (1 => Size_MD));
       end if;
 
       return Set_Address_Fn;

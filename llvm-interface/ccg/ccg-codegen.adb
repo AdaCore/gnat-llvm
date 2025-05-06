@@ -25,6 +25,7 @@ with Table;
 with Uintp;       use Uintp;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
+with GNATLLVM.MDType;  use GNATLLVM.MDType;
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -184,7 +185,7 @@ package body CCG.Codegen is
          --  type used to represent the enum.
 
          if C_Version >= 2023 then
-            Name_Part := TE_Name & " : " & Type_Of (TE);
+            Name_Part := TE_Name & " : " & (+Type_Of (TE));
 
          --  Otherwise, if the width of the type used to represent the
          --  enum is equal to or greater than the width of an integer,
@@ -221,7 +222,7 @@ package body CCG.Codegen is
          --  If we need to write a typedef for this enum, do it now
 
          if Need_Typedef then
-            Output_Decl ("typedef " & Type_Of (TE) & " " & TE_Name,
+            Output_Decl ("typedef " & (+Type_Of (TE)) & " " & TE_Name,
                          Is_Typedef => True);
          end if;
 

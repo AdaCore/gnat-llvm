@@ -422,7 +422,7 @@ package body GNATLLVM.Utils is
       case Kind1 is
          when Array_Type_Kind =>
 
-            --  Arrays are identifical if their lengths are the same and
+            --  Arrays are identical if their lengths are the same and
             --  component types are identical.
 
             return Get_Array_Length (T1) = Get_Array_Length (T2)
@@ -500,6 +500,84 @@ package body GNATLLVM.Utils is
 
             return False;
       end case;
+   end Is_Layout_Identical;
+
+   -------------------------
+   -- Is_Layout_Identical --
+   -------------------------
+
+   function Is_Layout_Identical (MDT1, MDT2 : MD_Type) return Boolean is
+   begin
+      --  If the types are the same, they're identical, but if they have
+      --  different kinds, they aren't.
+
+      if MDT1 = MDT2 then
+         return True;
+      elsif not Is_Same_Kind (MDT1, MDT2) then
+         return False;
+
+      --  Otherwise, it's kind-specific
+
+      elsif Is_Array (MDT1)
+        and then Is_Fixed_Array (MDT1) and then Is_Fixed_Array (MDT2)
+        and then Array_Count (MDT1) = Array_Count (MDT2)
+        and then Is_Layout_Identical (Element_Type (MDT1), Element_Type (MDT2))
+      then
+         return True;
+
+      elsif Is_Struct (MDT1)
+        and then Is_Packed (MDT1) = Is_Packed (MDT2)
+        and then Element_Count (MDT1) = Element_Count (MDT2)
+      then
+         --  Structures are identical if their packed status is the same,
+         --  they have the same number of fields, and each field is
+         --  identical.
+
+         for J in 1 .. Element_Count (MDT1) loop
+            if not Is_Layout_Identical (Element_Type (MDT1, J),
+                                        Element_Type (MDT2, J))
+            then
+               return False;
+            end if;
+         end loop;
+
+         return True;
+
+      --  Pointers have the same layout if they're pointing at the
+      --  same address space.
+
+      elsif Is_Pointer (MDT1)
+        and then Pointer_Space (MDT1) = Pointer_Space (MDT2)
+      then
+         return True;
+
+      --  Two function types have different layouts if their return types
+      --  have different layouts or they have a different number of
+      --  parameter types.
+
+      elsif Is_Function_Type (MDT1)
+        and then Is_Layout_Identical (Return_Type (MDT1), Return_Type (MDT2))
+        and then Parameter_Count (MDT1) = Parameter_Count (MDT2)
+      then
+         --  If any parameter type is not the identical layout of the
+         --  corresponding parameter type, the layouts aren't the same.
+
+         for J in 1 .. Parameter_Count (MDT1) loop
+            if not Is_Layout_Identical (Parameter_Type (MDT1, J),
+                                        Parameter_Type (MDT2, J))
+            then
+               return False;
+            end if;
+         end loop;
+
+         return True;
+
+      --  Otherwise, types are only identical if they're the same and that
+      --  was checked above.
+
+      else
+         return False;
+      end if;
    end Is_Layout_Identical;
 
    ------------------------

@@ -18,7 +18,7 @@
 package GNATLLVM.Arrays.Create is
 
    function Create_Array_Type
-     (TE : Type_Kind_Id; For_Orig : Boolean := False) return Type_T
+     (TE : Type_Kind_Id; For_Orig : Boolean := False) return MD_Type
      with Pre  => (if   For_Orig then Is_Packed_Array_Impl_Type (TE)
                    else Is_Array_Type (TE)),
           Post => Present (Create_Array_Type'Result);
@@ -27,17 +27,17 @@ package GNATLLVM.Arrays.Create is
    --  is True, set the array info for the Original_Record_Type of TE.
 
    function Create_Array_Fat_Pointer_Type
-     (GT : Array_Or_PAT_GL_Type) return Type_T
+     (GT : Array_Or_PAT_GL_Type) return MD_Type
      with Post => Present (Create_Array_Fat_Pointer_Type'Result);
    --  Return the type used for fat pointers to the array type GT
 
-   function Create_Array_Bounds_Type (GT : Array_Or_PAT_GL_Type) return Type_T
+   function Create_Array_Bounds_Type (GT : Array_Or_PAT_GL_Type) return MD_Type
      with Post => Present (Create_Array_Bounds_Type'Result);
    --  Return the type used to store array bounds. This is a structure
    --  that that follows the following pattern: { LB0, UB0, LB1, UB1, ... }
 
    function Create_Array_Bounds_And_Data_Type
-     (GT : Array_Or_PAT_GL_Type) return Type_T
+     (GT : Array_Or_PAT_GL_Type) return MD_Type
      with Post => Present (Create_Array_Bounds_And_Data_Type'Result);
    --  Return the type used to store the bounds and data of an array
 

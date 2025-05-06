@@ -32,20 +32,21 @@ with GNATLLVM.Variables;   use GNATLLVM.Variables;
 package body GNATLLVM.Instructions is
 
    function Call_Internal
-     (Func : GL_Value;
-      Fn_T : Type_T;
-      Args : GL_Value_Array;
-      Name : String := "") return Value_T;
+     (Func   : GL_Value;
+      Fn_T   : Type_T;
+      Args   : GL_Value_Array;
+      Name   : String := "") return Value_T;
    --  Internal version of Call and Call_Ref
 
    function GEP_To_Relationship_Internal
      (Ptr      : GL_Value;
-      Ptr_T    : Type_T;
+      Ptr_MDT  : MD_Type;
       GT       : GL_Type;
       R        : GL_Relationship;
       Val_Idxs : Value_Array;
       Name     : String) return GL_Value
-     with Pre => Present (Ptr) and then Present (Ptr_T) and then Present (GT);
+       with Pre => Present (Ptr) and then Present (Ptr_MDT)
+                   and then Present (GT);
    --  Internal version of GEP_To_Relationship variants
 
    function Trunc_Overflowed (V, Result : GL_Value) return Boolean
@@ -168,7 +169,7 @@ package body GNATLLVM.Instructions is
    is
       R         : constant GL_Relationship := Relationship_For_Alloc (GT);
       T         : constant Type_T          :=
-        Type_For_Relationship (GT, Deref (R));
+        +Type_For_Relationship (GT, Deref (R));
       Promote   : constant Basic_Block_T   := Maybe_Promote_Alloca (T);
       Inst      : constant Value_T         :=
         Alloca (IR_Builder, T, Get_Alloca_Name (E, Name));
@@ -194,10 +195,10 @@ package body GNATLLVM.Instructions is
       Align    : Nat                := 0;
       Name     : String             := "") return GL_Value
    is
-      T         : constant Type_T        := Type_Of (GT);
+      T         : constant Type_T        := +Type_Of (GT);
       Promote   : constant Basic_Block_T := Maybe_Promote_Alloca (T, Num_Elts);
       Inst      : constant Value_T       :=
-        Array_Alloca (IR_Builder, Type_Of (GT), +Num_Elts,
+        Array_Alloca (IR_Builder, +Type_Of (GT), +Num_Elts,
                       Get_Alloca_Name (E, Name));
       Our_Align : constant Nat           :=
         Set_Object_Align (Inst, GT, E, Align);
@@ -218,7 +219,7 @@ package body GNATLLVM.Instructions is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM (Int_To_Ptr (IR_Builder, +V, Type_Of (GT), Name), GT, GV => V);
+        GM (Int_To_Ptr (IR_Builder, +V, +Type_Of (GT), Name), GT, GV => V);
 
    begin
       Initialize_TBAA_If_Changed (Result, V);
@@ -235,7 +236,7 @@ package body GNATLLVM.Instructions is
      (GM
         ((if   Tagged_Pointers
           then Bit_Cast (IR_Builder, +V, Void_Ptr_T, Name)
-          else Ptr_To_Int (IR_Builder, +V, Type_Of (GT), Name)),
+          else Ptr_To_Int (IR_Builder, +V, +Type_Of (GT), Name)),
          GT, GV => V));
 
    ----------------
@@ -246,7 +247,7 @@ package body GNATLLVM.Instructions is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
       Typ    : constant Type_T  :=
-        Pointer_Type (Type_Of (GT), Address_Space);
+        Pointer_Type (+Type_Of (GT), unsigned (Address_Space));
       Ptr    : constant Value_T :=
         (if   Tagged_Pointers
          then Pointer_Cast (IR_Builder, +V, Typ, Name)
@@ -268,7 +269,7 @@ package body GNATLLVM.Instructions is
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-      Typ    : constant Type_T  := Type_For_Relationship (GT, R);
+      Typ    : constant Type_T  := +Type_For_Relationship (GT, R);
       Ptr    : constant Value_T :=
         (if   Tagged_Pointers
          then Pointer_Cast (IR_Builder, +V, Typ, Name)
@@ -287,7 +288,7 @@ package body GNATLLVM.Instructions is
    function Bit_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (GM (Bit_Cast (IR_Builder, +V, Type_Of (GT), Name), GT, GV => V));
+     (GM (Bit_Cast (IR_Builder, +V, +Type_Of (GT), Name), GT, GV => V));
 
    ------------------
    -- Pointer_Cast --
@@ -297,7 +298,7 @@ package body GNATLLVM.Instructions is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM (Pointer_Cast (IR_Builder, +V, Type_Of (GT), Name), GT, GV => V);
+        GM (Pointer_Cast (IR_Builder, +V, +Type_Of (GT), Name), GT, GV => V);
    begin
       Initialize_TBAA_If_Changed (Result, V);
       return Result;
@@ -313,7 +314,8 @@ package body GNATLLVM.Instructions is
       Result : GL_Value :=
         GM_Ref
           (Pointer_Cast
-             (IR_Builder, +V, Pointer_Type (Type_Of (GT), Address_Space),
+             (IR_Builder, +V,
+              Pointer_Type (+Type_Of (GT), unsigned (Address_Space)),
               Name),
            GT, V);
 
@@ -330,7 +332,9 @@ package body GNATLLVM.Instructions is
    is
       Result : GL_Value :=
         GM_Ref (Pointer_Cast (IR_Builder, +V,
-                              Pointer_Type (Type_Of (T), Address_Space), Name),
+                              Pointer_Type (Type_Of (T),
+                                            unsigned (Address_Space)),
+                              Name),
                 Full_Designated_GL_Type (T), V);
 
    begin
@@ -349,7 +353,8 @@ package body GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM (Pointer_Cast (IR_Builder, +V, Type_For_Relationship (GT, R), Name),
+        GM (Pointer_Cast (IR_Builder, +V, +Type_For_Relationship (GT, R),
+                          Name),
             GT, R, V);
 
    begin
@@ -368,7 +373,8 @@ package body GNATLLVM.Instructions is
    is
       Result : GL_Value :=
         GM (Pointer_Cast (IR_Builder, +V,
-                          Type_For_Relationship (Related_Type (T), R), Name),
+                          +Type_For_Relationship (Related_Type (T), R),
+                          Name),
             Related_Type (T), R, V);
 
    begin
@@ -677,8 +683,7 @@ package body GNATLLVM.Instructions is
    ---------------------
 
    function Trunc_Overflowed (V, Result : GL_Value) return Boolean is
-      Bitsize : constant Integer :=
-        Integer (Get_Scalar_Bit_Size (Type_Of (Result)));
+      Bitsize : constant Integer := Integer (Get_Scalar_Bit_Size (Result));
 
    begin
       --  If this is a modular type or the input or output isn't an integer,
@@ -731,7 +736,7 @@ package body GNATLLVM.Instructions is
    function Trunc
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-      T      : constant Type_T := Type_Of (GT);
+      T      : constant Type_T := +Type_Of (GT);
       Result :  GL_Value       :=
         GM (Trunc (IR_Builder, +V, T, Name), GT, Data, V);
 
@@ -747,12 +752,12 @@ package body GNATLLVM.Instructions is
 
    function Trunc_To_Relationship
      (V    : GL_Value;
-      T    : Type_T;
+      MDT  : MD_Type;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
       Result : GL_Value :=
-        GM (Trunc (IR_Builder, +V, T, Name), Related_Type (V), R, V);
+        GM (Trunc (IR_Builder, +V, +MDT, Name), Related_Type (V), R, V);
 
    begin
       Mark_Overflowed (Result,
@@ -767,7 +772,7 @@ package body GNATLLVM.Instructions is
    function S_Ext
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (S_Ext (IR_Builder, +V, Type_Of (GT), Name), GT));
+     (G (S_Ext (IR_Builder, +V, +Type_Of (GT), Name), GT));
 
    -----------
    -- Z_Ext --
@@ -776,7 +781,7 @@ package body GNATLLVM.Instructions is
    function Z_Ext
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (Z_Ext (IR_Builder, +V, Type_Of (GT), Name), GT,
+     (G (Z_Ext (IR_Builder, +V, +Type_Of (GT), Name), GT,
          Alignment  => Alignment  (V),
          Overflowed => Overflowed (V)));
 
@@ -787,7 +792,7 @@ package body GNATLLVM.Instructions is
    function FP_Trunc
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (FP_Trunc (IR_Builder, +V, Type_Of (GT), Name), GT,
+     (G (FP_Trunc (IR_Builder, +V, +Type_Of (GT), Name), GT,
          Overflowed => Overflowed (V)));
 
    ------------
@@ -797,7 +802,7 @@ package body GNATLLVM.Instructions is
    function FP_Ext
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (FP_Ext (IR_Builder, +V, Type_Of (GT), Name), GT,
+     (G (FP_Ext (IR_Builder, +V, +Type_Of (GT), Name), GT,
          Overflowed => Overflowed (V)));
 
    --------------
@@ -807,7 +812,7 @@ package body GNATLLVM.Instructions is
    function FP_To_SI
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (FP_To_SI (IR_Builder, +V, Type_Of (GT), Name), GT,
+     (G (FP_To_SI (IR_Builder, +V, +Type_Of (GT), Name), GT,
          Overflowed => Overflowed (V)));
 
    --------------
@@ -817,7 +822,7 @@ package body GNATLLVM.Instructions is
    function FP_To_UI
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (FP_To_UI (IR_Builder, +V, Type_Of (GT), Name), GT));
+     (G (FP_To_UI (IR_Builder, +V, +Type_Of (GT), Name), GT));
 
    --------------
    -- UI_To_FP --
@@ -826,7 +831,7 @@ package body GNATLLVM.Instructions is
    function UI_To_FP
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (UI_To_FP (IR_Builder, +V, Type_Of (GT), Name), GT,
+     (G (UI_To_FP (IR_Builder, +V, +Type_Of (GT), Name), GT,
         Overflowed => Overflowed (V)));
 
    --------------
@@ -836,7 +841,7 @@ package body GNATLLVM.Instructions is
    function SI_To_FP
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
-     (G (SI_To_FP (IR_Builder, +V, Type_Of (GT), Name), GT,
+     (G (SI_To_FP (IR_Builder, +V, +Type_Of (GT), Name), GT,
          Overflowed => Overflowed (V)));
 
    ------------------
@@ -1209,12 +1214,12 @@ package body GNATLLVM.Instructions is
 
    function GEP
      (Bld     : Builder_T;
-      T       : Type_T;
+      MDT     : MD_Type;
       Ptr     : Value_T;
       Indices : Value_Array;
       Name    : String := "") return Value_T
    is
-     (GEP2 (Bld, T, Ptr, Indices'Address, Indices'Length, Name));
+     (GEP2 (Bld, +MDT, Ptr, Indices'Address, Indices'Length, Name));
 
    ----------------------------------
    -- GEP_To_Relationship_Internal --
@@ -1222,13 +1227,13 @@ package body GNATLLVM.Instructions is
 
    function GEP_To_Relationship_Internal
      (Ptr      : GL_Value;
-      Ptr_T    : Type_T;
+      Ptr_MDT  : MD_Type;
       GT       : GL_Type;
       R        : GL_Relationship;
       Val_Idxs : Value_Array;
       Name     : String) return GL_Value
    is
-      Result : GL_Value := GM (In_Bounds_GEP2 (IR_Builder, Ptr_T,
+      Result : GL_Value := GM (In_Bounds_GEP2 (IR_Builder, +Ptr_MDT,
                                                +Ptr, Val_Idxs'Address,
                                                Val_Idxs'Length, Name),
                                GT, R, Ptr);
@@ -1275,7 +1280,7 @@ package body GNATLLVM.Instructions is
      (GT      : GL_Type;
       R       : GL_Relationship;
       Ptr     : GL_Value;
-      Ptr_T   : Type_T;
+      Ptr_MDT : MD_Type;
       Indices : GL_Value_Array;
       Name    : String := "") return GL_Value
    is
@@ -1286,7 +1291,8 @@ package body GNATLLVM.Instructions is
          Val_Idxs (J) := +Indices (J);
       end loop;
 
-      return GEP_To_Relationship_Internal (Ptr, Ptr_T, GT, R, Val_Idxs, Name);
+      return
+        GEP_To_Relationship_Internal (Ptr, Ptr_MDT, GT, R, Val_Idxs, Name);
    end GEP_To_Relationship;
 
    -----------------------------
@@ -1325,7 +1331,7 @@ package body GNATLLVM.Instructions is
       --  If our input is data, the resulting type is the designated type
       --  of an access type. Otherwise, it's the same type.
 
-      T              : constant Type_T          := Element_Type_Of (Ptr);
+      T              : constant Type_T          := +Element_Type_Of (Ptr);
       --  The LLVM type that will be loaded by this instruction
 
       Result_Bits    : constant Nat             :=
@@ -1345,7 +1351,7 @@ package body GNATLLVM.Instructions is
       --  Type that Ptr_Val will have
 
       Equiv_T : constant Type_T :=
-        (if Special_Atomic then Pointer_Type (Ptr_T, Address_Space)
+        (if Special_Atomic then Pointer_Type (Ptr_T, unsigned (Address_Space))
          else No_Type_T);
       --  Pointer to integer type with size matching that of the type
       --  to be loaded
@@ -1377,7 +1383,7 @@ package body GNATLLVM.Instructions is
 
       elsif Has_SM_Copy_From (Ptr) then
          declare
-            T : constant Type_T := Element_Type_Of (Ptr);
+            T : constant Type_T := +Element_Type_Of (Ptr);
 
          begin
             Result := G_From (Alloca (IR_Builder, T, ""), Ptr);
@@ -1408,7 +1414,7 @@ package body GNATLLVM.Instructions is
               unsigned (To_Bytes (Alignment (Ptr)));
 
          begin
-            Load_Inst := Load_2 (IR_Builder, Type_Of (Load_GT), +Memory, "");
+            Load_Inst := Load_2 (IR_Builder, +Type_Of (Load_GT), +Memory, "");
             Set_Alignment (Store_Inst, Align);
             Set_Alignment (Load_Inst, Align);
          end;
@@ -1437,7 +1443,8 @@ package body GNATLLVM.Instructions is
       Equiv_T        : constant Type_T  :=
         (if   Special_Atomic then Int_Ty (Result_Bits) else No_Type_T);
       Ptr_T          : constant Type_T  :=
-        (if   Special_Atomic then Pointer_Type (Equiv_T, Address_Space)
+        (if   Special_Atomic
+         then Pointer_Type (Equiv_T, unsigned (Address_Space))
          else No_Type_T);
       Ptr_Val        : constant Value_T :=
         (if   Special_Atomic then Pointer_Cast (IR_Builder, +Ptr, Ptr_T, "")
@@ -1458,9 +1465,8 @@ package body GNATLLVM.Instructions is
       --  a copy procedure.
 
       if Has_SM_Copy_To (Ptr) then
-         Call_SM_Copy_To
-           (Ptr, Expr,
-            To_Bytes (Get_Type_Size (Element_Type_Of (Ptr))));
+         Call_SM_Copy_To (Ptr, Expr,
+                          To_Bytes (Get_Type_Size (+Element_Type_Of (Ptr))));
          return;
 
       --  If this is a special atomic store, allocate a temporary, store
@@ -1556,10 +1562,10 @@ package body GNATLLVM.Instructions is
    ------------------
 
    function Call_Internal
-     (Func : GL_Value;
-      Fn_T : Type_T;
-      Args : GL_Value_Array;
-      Name : String := "") return Value_T
+     (Func   : GL_Value;
+      Fn_T   : Type_T;
+      Args   : GL_Value_Array;
+      Name   : String := "") return Value_T
    is
       function To_Param_Num (Idx : Nat) return unsigned;
       --  Map index in Args array to LLVM parameter number
@@ -1636,13 +1642,13 @@ package body GNATLLVM.Instructions is
    ----------
 
    function Call
-     (Func : GL_Value;
-      Fn_T : Type_T;
-      Args : GL_Value_Array;
-      Name : String := "") return GL_Value
+     (Func   : GL_Value;
+      Fn_MDT : MD_Type;
+      Args   : GL_Value_Array;
+      Name   : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (Initialize_Alignment (G (Call_Internal (Func, Fn_T, Args, Name),
+        (Initialize_Alignment (G (Call_Internal (Func, +Fn_MDT, Args, Name),
                                   Return_GL_Type (Func))),
          For_Aliased));
 
@@ -1651,14 +1657,15 @@ package body GNATLLVM.Instructions is
    ----------
 
    function Call
-     (Func : GL_Value;
-      Fn_T : Type_T;
-      Args : GL_Value_Array;
-      GT   : GL_Type;
-      Name : String := "") return GL_Value
+     (Func   : GL_Value;
+      Fn_MDT : MD_Type;
+      Args   : GL_Value_Array;
+      GT     : GL_Type;
+      Name   : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (Initialize_Alignment (G (Call_Internal (Func, Fn_T, Args, Name), GT)),
+        (Initialize_Alignment (G (Call_Internal (Func, +Fn_MDT, Args, Name),
+                                  GT)),
          For_Aliased));
 
    ----------
@@ -1682,13 +1689,14 @@ package body GNATLLVM.Instructions is
    --------------
 
    function Call_Ref
-     (Func : GL_Value;
-      Fn_T : Type_T;
-      Args : GL_Value_Array;
-      Name : String := "") return GL_Value
+     (Func   : GL_Value;
+      Fn_MDT : MD_Type;
+      Args   : GL_Value_Array;
+      Name   : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (Initialize_Alignment (G_Ref (Call_Internal (Func, Fn_T, Args, Name),
+        (Initialize_Alignment (G_Ref (Call_Internal (Func, +Fn_MDT, Args,
+                                                     Name),
                                       Return_GL_Type (Func))),
          For_Aliased));
 
@@ -1697,14 +1705,14 @@ package body GNATLLVM.Instructions is
    -----------------------
 
    function Call_Relationship
-     (Func : GL_Value;
-      Fn_T : Type_T;
-      Args : GL_Value_Array;
-      R    : GL_Relationship;
-      Name : String := "") return GL_Value
+     (Func   : GL_Value;
+      Fn_MDT : MD_Type;
+      Args   : GL_Value_Array;
+      R      : GL_Relationship;
+      Name   : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (Initialize_Alignment (G (Call_Internal (Func, Fn_T, Args, Name),
+        (Initialize_Alignment (G (Call_Internal (Func, +Fn_MDT, Args, Name),
                                   Return_GL_Type (Func), R)),
          For_Aliased));
 
@@ -1740,12 +1748,12 @@ package body GNATLLVM.Instructions is
    ----------
 
    procedure Call
-     (Func : GL_Value;
-      Fn_T : Type_T;
-      Args : GL_Value_Array;
-      Name : String := "") is
+     (Func   : GL_Value;
+      Fn_MDT : MD_Type;
+      Args   : GL_Value_Array;
+      Name   : String := "") is
    begin
-      Discard (Call_Internal (Func, Fn_T, Args, Name));
+      Discard (Call_Internal (Func, +Fn_MDT, Args, Name));
    end Call;
 
    ------------------
@@ -1766,7 +1774,7 @@ package body GNATLLVM.Instructions is
       Output_Value   : Entity_Id;
       Template       : String;
       Constraints    : String;
-      Fn_T           : out Type_T;
+      Fn_MDT         : out MD_Type;
       Is_Volatile    : Boolean := False;
       Is_Stack_Align : Boolean := False) return GL_Value
    is
@@ -1774,9 +1782,9 @@ package body GNATLLVM.Instructions is
         (if   Present (Output_Value)
          then Primitive_GL_Type (Full_Etype (Output_Value))
          else Void_GL_Type);
-      T         : Type_T  :=
-        (if Present (Output_Value) then Type_Of (GT) else Void_Type);
-      Arg_Types : Type_Array (Args'Range);
+      MDT       : MD_Type  :=
+        (if Present (Output_Value) then Type_Of (GT) else Void_Ty);
+      Arg_Types : MD_Type_Array (Args'Range);
 
    begin
       if Is_Record_Type (GT) then
@@ -1786,25 +1794,26 @@ package body GNATLLVM.Instructions is
          --  storing the result.
 
          declare
-            GT_Bits : constant ULL := Get_Scalar_Bit_Size (GT);
+            GT_Bits : constant Nat := Nat (Get_Scalar_Bit_Size (GT));
          begin
             if GT_Bits not in 32 | 64 then
                Error_Msg_N ("unsupported Asm output", Output_Value);
             end if;
 
-            T  := Int_Ty (GT_Bits);
-            GT :=
+            MDT := Int_Ty (GT_Bits);
+            GT  :=
               (if GT_Bits = 32 then Int_32_GL_Type else Int_64_GL_Type);
          end;
       end if;
 
       for J in Args'Range loop
-         Arg_Types (J) := Type_Of (Args (J));
+         --  ??? Fix this later
+         Arg_Types (J) := MD_Type_Of (Args (J));
       end loop;
 
       --  ??? Is the Relationship really right?
-      Fn_T := Fn_Ty (Arg_Types, T);
-      return G (Const_Inline_Asm (Fn_T, Template, Constraints, Is_Volatile,
+      Fn_MDT := Fn_Ty (Arg_Types, MDT);
+      return G (Const_Inline_Asm (+Fn_MDT, Template, Constraints, Is_Volatile,
                                   Is_Stack_Align),
                 GT, Reference_To_Subprogram);
    end Inline_Asm;
@@ -1814,7 +1823,7 @@ package body GNATLLVM.Instructions is
    -------------------------
 
    function Get_Pointer_Address (Ptr : GL_Value) return GL_Value
-   is (G (+Call (Get_Get_Address_Fn, (1 => Bit_Cast (Ptr, Void_Ptr_T))),
+   is (G (+Call (Get_Get_Address_Fn, (1 => Bit_Cast (Ptr, Void_Ptr_MD))),
           Size_GL_Type));
 
    -------------------------
@@ -1825,7 +1834,7 @@ package body GNATLLVM.Instructions is
    is (Bit_Cast
          (Call
             (Get_Set_Address_Fn,
-             (1 => Bit_Cast (Ptr, Void_Ptr_T), 2 => Addr)),
+             (1 => Bit_Cast (Ptr, Void_Ptr_MD), 2 => Addr)),
           Ptr));
 
 end GNATLLVM.Instructions;

@@ -17,7 +17,7 @@
 
 package GNATLLVM.Types.Create is
 
-   function Create_Type (TE : Void_Or_Type_Kind_Id) return Type_T
+   function Create_Type (TE : Void_Or_Type_Kind_Id) return MD_Type
      with Pre  => TE = Get_Fullest_View (TE),
           Post => Present (Create_Type'Result);
    --  Given a GNAT type TE, build the corresponding LLVM type, building

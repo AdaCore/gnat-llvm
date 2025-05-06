@@ -48,22 +48,20 @@ package body GNATLLVM.Conversions is
    --  Return True iff V is a constant and that constant contains no
    --  symbolic pointer values.
 
-   function Contains_Restricted_Type (T : Type_T) return Boolean
-     with Pre => Present (T);
-   --  Return True iff T is either a pointer type, a wide FP type, or
+   function Contains_Restricted_Type (MDT : MD_Type) return Boolean
+     with Pre => Present (MDT);
+   --  Return True if MDT is either a pointer type, a wide FP type, or
    --  a composite type that contains one of those.
 
    function Convert_Nonsymbolic_Constant
      (V : Value_T; T : Type_T) return Value_T
-     with Pre  => Present (V) and then Present (T)
-                  and then Is_Nonsymbolic_Constant (V),
+     with Pre  => Present (V) and then Present (T),
           Post => Type_Of (Convert_Nonsymbolic_Constant'Result) = T;
    --  Convert V, a constant, to T
 
    function Convert_Nonsymbolic_Constant_Internal
      (V : Value_T; T : Type_T) return Value_T
-     with Pre  => Present (V) and then Present (T)
-                  and then Is_Nonsymbolic_Constant (V),
+     with Pre  => Present (V) and then Present (T),
           Post => Type_Of (Convert_Nonsymbolic_Constant_Internal'Result) = T;
    --  Convert V, a constant, to T. This version only works if one side
    --  is an array of bytes.
@@ -90,8 +88,8 @@ package body GNATLLVM.Conversions is
       --  The string literal case is easy
 
       elsif Ekind (GT2) = E_String_Literal_Subtype then
-         return (Type_Of (Full_Etype (First_Index (GT1)))
-                   /= Type_Of (Integer_GL_Type));
+         return (Type_Of (Full_Base_Type (Full_Etype (First_Index (GT1))))) /=
+                 Type_Of (Integer_GL_Type);
       end if;
 
       --  The front end should not have gotten us here if the number
@@ -143,7 +141,7 @@ package body GNATLLVM.Conversions is
          return (Is_Reference (V) and then Relationship (V) /= Fat_Pointer
                  and then Element_Type_Of (V) = Type_Of (GT))
            or else (not Is_Scalar_Type (GT)
-                      and then not Is_Scalar_Type (Related_Type (V)));
+                    and then not Is_Scalar_Type (Related_Type (V)));
       end if;
 
    end Is_Nop_Conversion;
@@ -165,7 +163,7 @@ package body GNATLLVM.Conversions is
 
       else
          return (if   ULL'(Get_Type_Size (Type_Of (GT))) <
-                        ULL'(Get_Type_Size (Type_Of (BT)))
+                      ULL'(Get_Type_Size (Type_Of (BT)))
                  then Is_Unsigned_Type (GT) else Is_Unsigned_Type (BT));
       end if;
 
@@ -410,7 +408,7 @@ package body GNATLLVM.Conversions is
                   or else (Is_Discrete_Or_Fixed_Point_Type (GT)
                              and then Is_Floating_Point_Type (In_GT)))
         and then ULL'(Get_Type_Size (Type_Of (GT))) =
-                   ULL'(Get_Type_Size (Type_Of (In_GT)))
+                 ULL'(Get_Type_Size (Type_Of (In_GT)))
         and then Get_Type_Kind (GT) /= X86_FP80_Type_Kind
         and then Get_Type_Kind (In_GT) /= X86_FP80_Type_Kind
       then
@@ -515,18 +513,18 @@ package body GNATLLVM.Conversions is
            and then Relationship (Result) /= Fat_Pointer
            and then not Is_Nonnative_Type (Result)
            and then Get_Scalar_Bit_Size (GT) >
-           Get_Scalar_Bit_Size (Data_Type_Of (Result))
+                    Get_Scalar_Bit_Size (Data_Type_Of (Result))
          then
             declare
-               T : constant Type_T :=
-                 Int_Ty (Get_Scalar_Bit_Size (Data_Type_Of (Result)));
+               MDT : constant MD_Type :=
+                 Int_Ty (Nat (Get_Scalar_Bit_Size (Data_Type_Of (Result))));
 
             begin
                Result :=
                  Ptr_To_Relationship
                    (Get (Result, Any_Reference),
-                    Pointer_Type (T, Address_Space), Reference_To_Unknown);
-               Set_Unknown_T (Result, T);
+                    Pointer_Type (MDT, Address_Space), Reference_To_Unknown);
+               Set_Unknown_MDT (Result, MDT);
                Result := Load (Result);
                Result := GM (+Result, GT, GV => Result);
                if Is_Unsigned_Type (GT) then
@@ -1059,33 +1057,36 @@ package body GNATLLVM.Conversions is
 
    function Convert_Pointer (V : GL_Value; GT : GL_Type) return GL_Value is
       R     : constant GL_Relationship := Relationship (V);
-      T     : constant Type_T          := Type_For_Relationship (GT, R);
+      MDT   : constant MD_Type         := Type_For_Relationship (GT, R);
       Value : Value_T;
 
    begin
-      if Type_Of (V) = T then
+      --  ??? Fixme later
+      if Type_Of (V) = MDT then
          return G_Is_Relationship (V, GT, R);
 
       --  If the input is an actual pointer, convert it
 
-      elsif Get_Type_Kind (T) = Pointer_Type_Kind then
-         return GM (Pointer_Cast (IR_Builder, +V, T, ""), GT, R, V);
+      elsif Is_Pointer (MDT) then
+         return GM (Pointer_Cast (IR_Builder, +V, +MDT, ""),
+                    GT, R, V);
       end if;
 
       --  Otherwise, we have a composite pointer and must make a new
       --  structure corresponding to converting each pointer individually.
 
-      Value := Get_Undef (T);
-      for J in 0 .. Count_Struct_Element_Types (T) - 1 loop
+      Value := Get_Undef (MDT);
+      for J in 1 .. Element_Count (MDT) loop
          declare
-            Out_Type : constant Type_T   := Struct_Get_Type_At_Index (T, J);
+            Out_Type : constant MD_Type  := Element_Type (MDT, J);
             In_Value : constant Value_T  :=
-              Extract_Value (IR_Builder, +V, J, "");
+              Extract_Value (IR_Builder, +V, unsigned (J - 1), "");
             Cvt_Value : constant Value_T :=
-              Pointer_Cast (IR_Builder, In_Value, Out_Type, "");
+              Pointer_Cast (IR_Builder, In_Value, +Out_Type, "");
 
          begin
-            Value := Insert_Value (IR_Builder, Value, Cvt_Value, J, "");
+            Value := Insert_Value (IR_Builder, Value, Cvt_Value,
+                                   unsigned (J - 1), "");
          end;
       end loop;
 
@@ -1096,30 +1097,25 @@ package body GNATLLVM.Conversions is
    -- Contains_Restricted_Type --
    ------------------------------
 
-   function Contains_Restricted_Type (T : Type_T) return Boolean is
+   function Contains_Restricted_Type (MDT : MD_Type) return Boolean is
    begin
-      case Get_Type_Kind (T) is
-         when Pointer_Type_Kind | X86_FP80_Type_Kind | FP128_Type_Kind
-            | PPC_FP128_Type_Kind =>
-            return True;
+      if Is_Pointer (MDT)
+        or else (Is_Float (MDT) and then Float_Bits (MDT) > 64)
+      then
+         return True;
+      elsif Is_Array (MDT) then
+         return Contains_Restricted_Type (Element_Type (MDT));
+      elsif Is_Struct (MDT) then
+         for J in 1 .. Element_Count (MDT) loop
+            if Contains_Restricted_Type (Element_Type (MDT, J)) then
+               return True;
+            end if;
+         end loop;
 
-         when Array_Type_Kind =>
-            return Contains_Restricted_Type (Get_Element_Type (T));
-
-         when Struct_Type_Kind =>
-            for J in 0 .. Int (Count_Struct_Element_Types (T)) - 1 loop
-               if Contains_Restricted_Type
-                 (Struct_Get_Type_At_Index (T, unsigned (J)))
-               then
-                  return True;
-               end if;
-            end loop;
-
-            return False;
-
-         when others =>
-            return False;
-      end case;
+         return False;
+      else
+         return False;
+      end if;
    end Contains_Restricted_Type;
 
    --------------------------------------
@@ -1181,9 +1177,11 @@ package body GNATLLVM.Conversions is
    -- Is_Nonsymbolic_Constant --
    -----------------------------
 
-   function Is_Nonsymbolic_Constant (V : Value_T) return Boolean is
-     (not Contains_Restricted_Type (Type_Of (V))
-        and then Is_Nonsymbolic_Constant_Internal (V));
+   function Is_Nonsymbolic_Constant
+     (V : Value_T; MDT : MD_Type) return Boolean
+   is
+     (not Contains_Restricted_Type (MDT)
+      and then Is_Nonsymbolic_Constant_Internal (V));
 
    ------------------------------------
    -- Can_Convert_Aggregate_Constant --
@@ -1197,8 +1195,8 @@ package body GNATLLVM.Conversions is
         (if Is_Padded_GL_Type (V_GT) then Primitive_GL_Type (V_GT) else V_GT);
       Out_GT : constant GL_Type :=
         (if Is_Padded_GL_Type (GT) then Primitive_GL_Type (GT) else GT);
-      In_T   : constant Type_T := Type_Of (In_GT);
-      Out_T  : constant Type_T := Type_Of (Out_GT);
+      In_T   : constant MD_Type := Type_Of (In_GT);
+      Out_T  : constant MD_Type := Type_Of (Out_GT);
 
    begin
       --  If this isn't data, isn't a constant, we have a nonnative
@@ -1226,7 +1224,7 @@ package body GNATLLVM.Conversions is
       else
          return Is_Nonsymbolic_Constant (V)
            and then not Contains_Restricted_Type (Out_T)
-           and then Get_Type_Size (Out_T) < 1024 * BPU;
+           and then Get_Type_Size (Out_T) < 1024 * UBPU;
       end if;
    end Can_Convert_Aggregate_Constant;
 
@@ -1238,7 +1236,8 @@ package body GNATLLVM.Conversions is
      (V : Value_T; T : Type_T) return Value_T
    is
       BB       : constant Basic_Block_T  := Get_Insert_Block (IR_Builder);
-      Ptr_Ty   : constant Type_T         := Pointer_Type (T, Address_Space);
+      Ptr_Ty   : constant Type_T         :=
+        Pointer_Type (T, unsigned (Address_Space));
       Our_Func : constant Value_T        :=
         Add_Function (Convert_Module, "__CC", Fn_Ty ((1 .. 0 => <>), T));
       Our_BB   : constant Basic_Block_T  := Append_Basic_Block (Our_Func, "");
@@ -1367,10 +1366,9 @@ package body GNATLLVM.Conversions is
    -- Convert_Aggregate_Constant --
    --------------------------------
 
-   function Convert_Aggregate_Constant
-     (V : Value_T; T : Type_T) return Value_T
+   function Convert_Aggregate_Constant (V : Value_T; T : Type_T) return Value_T
    is
-      In_T  : constant Type_T := Type_Of (V);
+      In_T : constant Type_T := Type_Of (V);
 
    begin
       --  There are many ways we can do this conversion. If the types
@@ -1419,7 +1417,7 @@ package body GNATLLVM.Conversions is
       Out_GT : constant GL_Type  :=
         (if Is_Padded_GL_Type (GT) then Primitive_GL_Type (GT) else GT);
       Cvt_V  : constant GL_Value :=
-          G (Convert_Aggregate_Constant (+In_V, Type_Of (Out_GT)), Out_GT);
+        G (Convert_Aggregate_Constant (+In_V, +Type_Of (Out_GT)), Out_GT);
 
    begin
       return (if Out_GT = GT then Cvt_V else From_Primitive (Cvt_V, GT));

@@ -15,17 +15,17 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Errout;     use Errout;
-with Get_Targ;   use Get_Targ;
-with Opt;        use Opt;
-with Sem_Aux;    use Sem_Aux;
-with Snames;     use Snames;
-with Uintp.LLVM; use Uintp.LLVM;
+with Errout;   use Errout;
+with Get_Targ; use Get_Targ;
+with Opt;      use Opt;
+with Sem_Aux;  use Sem_Aux;
+with Snames;   use Snames;
 
 with GNATLLVM.Arrays;         use GNATLLVM.Arrays;
 with GNATLLVM.Arrays.Create;  use GNATLLVM.Arrays.Create;
 with GNATLLVM.Environment;    use GNATLLVM.Environment;
 with GNATLLVM.GLType;         use GNATLLVM.GLType;
+with GNATLLVM.MDType;         use GNATLLVM.MDType;
 with GNATLLVM.Records;        use GNATLLVM.Records;
 with GNATLLVM.Records.Create; use GNATLLVM.Records.Create;
 with GNATLLVM.Subprograms;    use GNATLLVM.Subprograms;
@@ -38,14 +38,14 @@ package body GNATLLVM.Types.Create is
    --  Return True if TE or any type it depends on is being elaborated
 
    function Create_Discrete_Type
-     (TE : Discrete_Or_Fixed_Point_Kind_Id) return Type_T
+     (TE : Discrete_Or_Fixed_Point_Kind_Id) return MD_Type
      with Post => Present (Create_Discrete_Type'Result);
-   function Create_Floating_Point_Type (TE : Float_Kind_Id) return Type_T
+   function Create_Floating_Point_Type (TE : Float_Kind_Id) return MD_Type
      with Post => Present (Create_Floating_Point_Type'Result);
    function Create_Access_Type
-     (TE : Access_Kind_Id; Dummy : out Boolean) return Type_T
+     (TE : Access_Kind_Id; Dummy : out Boolean) return MD_Type
      with Post => Present (Create_Access_Type'Result);
-   --  Create an LLVM type for various GNAT types
+   --  Create an MD_Type for various GNAT types
 
    ---------------------------------
    -- Depends_On_Being_Elaborated --
@@ -118,7 +118,7 @@ package body GNATLLVM.Types.Create is
    --------------------------
 
    function Create_Discrete_Type
-     (TE : Discrete_Or_Fixed_Point_Kind_Id) return Type_T
+     (TE : Discrete_Or_Fixed_Point_Kind_Id) return MD_Type
    is
       Size_TE : constant Discrete_Or_Fixed_Point_Kind_Id :=
         (if Has_Biased_Representation (TE) then Full_Base_Type (TE) else TE);
@@ -128,7 +128,7 @@ package body GNATLLVM.Types.Create is
       --  type and we'll use a biased representation as the default
       --  representation of the type.
 
-      Size    : Uint               := Esize (Size_TE);
+      Size    : Uint                                     := Esize (Size_TE);
 
    begin
       --  It's tempting to use i1 for boolean types, but that causes issues.
@@ -175,7 +175,8 @@ package body GNATLLVM.Types.Create is
       end if;
 
       return
-        Int_Ty (if +Size <= Max_Int_Size then +Size else Max_Int_Size);
+        Int_Ty ((if +Size <= Max_Int_Size then +Size else Max_Int_Size),
+               Is_Unsigned_Type (Size_TE));
 
    end Create_Discrete_Type;
 
@@ -183,30 +184,13 @@ package body GNATLLVM.Types.Create is
    -- Create_Floating_Point_Type --
    --------------------------------
 
-   function Create_Floating_Point_Type (TE : Float_Kind_Id) return Type_T
+   function Create_Floating_Point_Type (TE : Float_Kind_Id) return MD_Type
    is
       Size : constant Uint := Esize (Full_Base_Type (TE));
-      T    : Type_T;
       pragma Assert (UI_Is_In_Int_Range (Size));
 
    begin
-      case Float_Rep (TE) is
-         when IEEE_Binary =>
-            case UI_To_ULL (Size) is
-               when 32 =>
-                  T := Float_Type;
-               when 64 =>
-                  T := Double_Type;
-               when 80 | 96 | 128 =>
-                  --  Extended precision; not IEEE_128
-                  T := X86FP80_Type;
-               when others =>
-                  pragma Assert (Decls_Only);
-                  T := Byte_T;
-            end case;
-      end case;
-
-      return T;
+      return Float_Ty (+Size);
    end Create_Floating_Point_Type;
 
    ------------------------
@@ -214,7 +198,7 @@ package body GNATLLVM.Types.Create is
    ------------------------
 
    function Create_Access_Type
-     (TE : Access_Kind_Id; Dummy : out Boolean) return Type_T
+     (TE : Access_Kind_Id; Dummy : out Boolean) return MD_Type
    is
       DT : constant Type_Kind_Id    := Full_Designated_Type (TE);
       R  : constant GL_Relationship := Relationship_For_Access_Type (TE);
@@ -278,18 +262,19 @@ package body GNATLLVM.Types.Create is
             --  could make an array bound type without actually fully
             --  elaborating the array type, but it's not worth the trouble).
 
-            return (if   R /= Fat_Pointer then Void_Ptr_T
-                    else Build_Struct_Type ((1 => Void_Ptr_T,
-                                             2 => Void_Ptr_T)));
+            return (if   R /= Fat_Pointer then Void_Ptr_MD
+                    else Build_Struct_Type ((1 .. 2 => Void_Ptr_MD),
+                                            (1 .. 2 => No_Name),
+                                            Packed => False));
 
          elsif Ekind (DT) = E_Subprogram_Type then
-            return Void_Ptr_T;
+            return Void_Ptr_MD;
 
          else
             --  Access type is the only case left. We use a void pointer.
 
             pragma Assert (Is_Access_Type (DT) and then R = Reference);
-            return Void_Ptr_T;
+            return Void_Ptr_MD;
          end if;
       end if;
    end Create_Access_Type;
@@ -298,11 +283,11 @@ package body GNATLLVM.Types.Create is
    -- Create_Type --
    -----------------
 
-   function Create_Type (TE : Void_Or_Type_Kind_Id) return Type_T is
+   function Create_Type (TE : Void_Or_Type_Kind_Id) return MD_Type is
       Dummy : Boolean := False;
       Align : Uint    := No_Uint;
       GT    : GL_Type;
-      T     : Type_T;
+      MDT   : MD_Type;
 
    begin
       --  Set that we're elaborating the type. Note that we have to do this
@@ -347,7 +332,7 @@ package body GNATLLVM.Types.Create is
 
       case Ekind (TE) is
          when E_Void =>
-            T := Void_Type;
+            MDT := Void_Ty;
 
          when Discrete_Or_Fixed_Point_Kind =>
 
@@ -355,26 +340,25 @@ package body GNATLLVM.Types.Create is
             --  need to represent address types as pointers so that we
             --  don't lose the ability to turn them back into access types.
 
-            T :=
+            MDT :=
               (if Tagged_Pointers
                  and then Is_Address_Compatible_Type (TE)
-               then Void_Ptr_T
-               else Create_Discrete_Type (TE));
+               then Void_Ptr_MD else Create_Discrete_Type (TE));
 
          when Float_Kind =>
-            T := Create_Floating_Point_Type (TE);
+            MDT := Create_Floating_Point_Type (TE);
 
          when Access_Kind =>
-            T := Create_Access_Type (TE, Dummy);
+            MDT := Create_Access_Type (TE, Dummy);
 
          when Record_Kind =>
-            T := Create_Record_Type (TE);
+            MDT := Create_Record_Type (TE);
 
          when Array_Kind =>
-            T := Create_Array_Type (TE);
+            MDT := Create_Array_Type (TE);
 
          when E_Subprogram_Type =>
-            T := Create_Subprogram_Type (TE);
+            MDT := Create_Subprogram_Type (TE);
 
          when E_Incomplete_Type =>
 
@@ -383,11 +367,11 @@ package body GNATLLVM.Types.Create is
             --  be an actual type in the case of an error, so use something
             --  that we can take the size an alignment of.
 
-            T := Byte_T;
+            MDT := Byte_MD;
 
          when others =>
             pragma Assert (Decls_Only);
-            T := Byte_T;
+            MDT := Byte_MD;
       end case;
 
       --  Now save the result
@@ -405,8 +389,8 @@ package body GNATLLVM.Types.Create is
       --  also a dummy type, its type should be the same as ours.
 
       if Dummy and then Is_Dummy_Type (GT) then
-         pragma Assert (Type_Of (GT) = T);
-         return T;
+         pragma Assert (Type_Of (GT) = MDT);
+         return MDT;
 
       --  If we're not a dummy type and GT is a dummy type, we need to
       --  create a new GL_Type for the real type. This can only happen for
@@ -421,10 +405,10 @@ package body GNATLLVM.Types.Create is
       --  that this type is no longer being elaborated. If all we have is a
       --  dummy type or if this is a void type, do no more.
 
-      Update_GL_Type (GT, T, Dummy);
+      Update_GL_Type (GT, MDT, Dummy);
       Set_Is_Being_Elaborated (TE, False);
       if Dummy or else Ekind (TE) = E_Void then
-         return T;
+         return MDT;
       end if;
 
       --  If this is a packed array implementation type and the original

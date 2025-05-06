@@ -40,6 +40,7 @@ with GNATLLVM.Environment;       use GNATLLVM.Environment;
 with GNATLLVM.Exprs;             use GNATLLVM.Exprs;
 with GNATLLVM.GLType;            use GNATLLVM.GLType;
 with GNATLLVM.Instructions;      use GNATLLVM.Instructions;
+with GNATLLVM.MDType;            use GNATLLVM.MDType;
 with GNATLLVM.Records;           use GNATLLVM.Records;
 with GNATLLVM.Records.Field_Ref; use GNATLLVM.Records.Field_Ref;
 with GNATLLVM.Subprograms;       use GNATLLVM.Subprograms;
@@ -537,7 +538,7 @@ package body GNATLLVM.Variables is
       --  pop back to the previous state.
 
       Current_Func :=
-        Add_Function ("__dummy", Fn_Ty ((1 .. 0 => <>), Void_Type),
+        Add_Function ("__dummy", Fn_Ty ((1 .. 0 => <>), Void_Ty),
                       Void_GL_Type, Is_Builtin => True);
       Position_Builder_At_End (Create_Basic_Block ("entry"));
       Push_Suppress_Overflow;
@@ -1222,7 +1223,7 @@ package body GNATLLVM.Variables is
 
             if Is_Elementary_Type (In_GT) and then Is_Elementary_Type (GT) then
                if Is_Scalar_Type (GT)
-                 and then Type_Of (GT) /= Address_T
+                 and then Type_Of (GT) /= Address_MD
                  and then Type_Of (GT) /= Type_Of (In_GT)
                then
                   Our_NS := True;
@@ -1280,7 +1281,7 @@ package body GNATLLVM.Variables is
 
             if Is_Elementary_Type (In_GT) and then Is_Elementary_Type (GT) then
                if Is_Scalar_Type (GT)
-                 and then Type_Of (GT) /= Size_T
+                 and then Type_Of (GT) /= Size_MD
                  and then Type_Of (GT) /= Type_Of (In_GT)
                then
                   Our_NS := True;
@@ -1827,7 +1828,7 @@ package body GNATLLVM.Variables is
                Error_Msg_NE ("no matching object found", Linker_Alias, Our_E);
                LLVM_Var := Get_Undef (GT);
             else
-               LLVM_Var := G (Add_Alias_2 (Module, Type_Of (GT), 0,
+               LLVM_Var := G (Add_Alias_2 (Module, +Type_Of (GT), 0,
                                            +Get_Value (Our_E),
                                            Get_Ext_Name (E)),
                               GT, Reference);

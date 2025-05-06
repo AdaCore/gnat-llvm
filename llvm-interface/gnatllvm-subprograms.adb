@@ -124,7 +124,7 @@ package body GNATLLVM.Subprograms is
    --  check component types as above, but otherwise just check GT itself.
 
    function Create_Subprogram_Type_Internal
-     (E : Subprogram_Type_Or_Kind_Id) return Type_T
+     (E : Subprogram_Type_Or_Kind_Id) return MD_Type
      with Post => Present (Create_Subprogram_Type_Internal'Result);
 
    function Get_Param_Kind (Param : Formal_Kind_Id) return Param_Kind;
@@ -249,7 +249,7 @@ package body GNATLLVM.Subprograms is
    --  confusion with global names. So if we made it as part of the
    --  processing of a declaration, save it.
 
-   Subprogram_Access_Type : Type_T                 := No_Type_T;
+   Subprogram_Access_Type : MD_Type                := No_MD_Type;
    --  A type used for a subprogram access
 
    ----------------------
@@ -386,7 +386,8 @@ package body GNATLLVM.Subprograms is
    begin
       if Is_By_Reference_Type (GT) or else Is_Nonnative_Type (GT) then
          return Must;
-      elsif not Decls_Only and then Get_Type_Size (Type_Of (GT)) > 2 * Ptr_Size
+      elsif not Decls_Only
+        and then Get_Type_Size (Type_Of (GT)) > 2 * Ptr_Size
       then
          return Default_By_Ref;
       else
@@ -461,10 +462,10 @@ package body GNATLLVM.Subprograms is
    function Get_Param_Kind (Param : Formal_Kind_Id) return Param_Kind is
       GT           : constant GL_Type                    :=
         Get_Param_GL_Type (Param);
-      T            : constant Type_T                     := Type_Of (GT);
+      MDT          : constant MD_Type                    := Type_Of (GT);
       Size         : constant ULL                        :=
         (if   Decls_Only or else Is_Nonnative_Type (GT)
-         then ULL (Get_Bits_Per_Word) * 2 else Get_Type_Size (T));
+         then ULL (Get_Bits_Per_Word) * 2 else Get_Type_Size (MDT));
       Subp         : constant Subprogram_Type_Or_Kind_Id := Scope (Param);
       By_Ref_Mech  : constant Param_By_Ref_Mech          :=
           Get_Param_By_Ref_Mech (GT);
@@ -573,9 +574,9 @@ package body GNATLLVM.Subprograms is
    is
       TE       : constant Void_Or_Type_Kind_Id := Etype (E);
       GT       : constant GL_Type              := Full_GL_Type (E);
-      T        : constant Type_T               :=
-        (if Ekind (GT) /= E_Void then Type_Of (GT) else No_Type_T);
-      Ptr_Size : constant ULL                  := Get_Type_Size (Void_Ptr_T);
+      MDT      : constant MD_Type               :=
+        (if Ekind (GT) /= E_Void then Type_Of (GT) else No_MD_Type);
+      Ptr_Size : constant ULL                  := Get_Type_Size (Void_Ptr_MD);
 
    begin
       --  If there's no return type, that's simple. If we're emitting C
@@ -609,7 +610,7 @@ package body GNATLLVM.Subprograms is
         and then (Is_Nonnative_Type (GT)
                     or else (not Has_Foreign_Convention (E)
                                and then not Decls_Only
-                               and then Get_Type_Size (T) > 5 * Ptr_Size))
+                               and then Get_Type_Size (MDT) > 5 * Ptr_Size))
       then
          return Return_By_Parameter;
 
@@ -711,17 +712,17 @@ package body GNATLLVM.Subprograms is
    ----------------------------
 
    function Create_Subprogram_Type
-     (E : Subprogram_Type_Or_Kind_Id) return Type_T
+     (E : Subprogram_Type_Or_Kind_Id) return MD_Type
    is
-      T : Type_T := Get_Subprogram_Type (E);
+      MDT : MD_Type := Get_Subprogram_Type (E);
 
    begin
-      if not Present (T) then
-         T := Create_Subprogram_Type_Internal (E);
-         Set_Subprogram_Type (E, T);
+      if not Present (MDT) then
+         MDT := Create_Subprogram_Type_Internal (E);
+         Set_Subprogram_Type (E, MDT);
       end if;
 
-      return T;
+      return MDT;
    end Create_Subprogram_Type;
 
    -------------------------------------
@@ -729,7 +730,7 @@ package body GNATLLVM.Subprograms is
    -------------------------------------
 
    function Create_Subprogram_Type_Internal
-     (E : Subprogram_Type_Or_Kind_Id) return Type_T
+     (E : Subprogram_Type_Or_Kind_Id) return MD_Type
    is
       Return_GT       : constant GL_Type     := Full_GL_Type    (E);
       RK              : constant Return_Kind := Get_Return_Kind (E);
@@ -740,8 +741,8 @@ package body GNATLLVM.Subprograms is
         (Is_Type (E) and then not Foreign)
         or else (not Has_S_Link and then Force_Activation_Record_Parameter
                    and then not Foreign);
-      LLVM_Ret_Typ    : Type_T               :=
-        (if    RK in None | Return_By_Parameter then Void_Type
+      Ret_Typ         : MD_Type               :=
+        (if    RK in None | Return_By_Parameter then Void_Ty
          elsif RK = RK_By_Reference then Create_Access_Type_To (Return_GT)
          else  Type_Of (Return_GT));
       In_Args_Count   : constant Nat         :=
@@ -750,12 +751,12 @@ package body GNATLLVM.Subprograms is
       Out_Args_Count  : constant Nat         :=
         Number_Out_Params (E) +
           (if LRK = Struct_Out_Subprog then 1 else 0);
-      In_Arg_Types    : Type_Array    (1 .. In_Args_Count);
-      Out_Arg_Types   : Type_Array    (1 .. Out_Args_Count);
+      In_Arg_Types    : MD_Type_Array (1 .. In_Args_Count);
+      Out_Arg_Types   : MD_Type_Array (1 .. Out_Args_Count);
       Out_Arg_Names   : Name_Id_Array (1 .. Out_Args_Count);
       Param_Ent       : Opt_Formal_Kind_Id   := First_Formal_With_Extras (E);
       J               : Nat                  := 1;
-      LLVM_Result_Typ : Type_T               := LLVM_Ret_Typ;
+      Result_Typ      : MD_Type              := Ret_Typ;
 
    begin
       --  If the return type has dynamic size, we need to add a parameter
@@ -763,7 +764,7 @@ package body GNATLLVM.Subprograms is
 
       if RK = Return_By_Parameter then
          In_Arg_Types (1) := Create_Access_Type_To (Return_GT);
-         LLVM_Ret_Typ     := Void_Type;
+         Ret_Typ          := Void_Ty;
          J                := 2;
       end if;
 
@@ -779,12 +780,12 @@ package body GNATLLVM.Subprograms is
       while Present (Param_Ent) loop
          declare
             GT        : constant GL_Type    := Get_Param_GL_Type (Param_Ent);
-            T         : constant Type_T     := Type_Of (GT);
+            MDT       : constant MD_Type    := Type_Of (GT);
             PK        : constant Param_Kind := Get_Param_Kind (Param_Ent);
             PK_By_Ref : constant Boolean    := PK_Is_Reference (PK);
             Size      : constant ULL        :=
               (if   Decls_Only or else Is_Nonnative_Type (GT) then 0
-               else Get_Type_Size (T));
+               else Get_Type_Size (MDT));
 
          begin
             --  Save whether the original mechanism used was by-ref before
@@ -811,16 +812,14 @@ package body GNATLLVM.Subprograms is
 
             if PK_Is_In_Or_Ref (PK) then
                In_Arg_Types (J) :=
-                 (if PK = Foreign_By_Ref then
-                    Pointer_Type (Type_Of (GT), Address_Space)
-                  elsif PK = Foreign_By_Component_Ref then
-                    Pointer_Type
-                      (Type_Of (Full_Component_GL_Type (GT)),
-                       Address_Space)
-                  elsif PK = In_Value_By_Int then Int_Ty (Size)
-                  elsif PK_By_Ref then
-                    Create_Access_Type_To (GT)
-                  else Type_Of (GT));
+                 (if    PK = Foreign_By_Ref
+                  then  Pointer_Type (Type_Of (GT), Address_Space)
+                  elsif PK = Foreign_By_Component_Ref
+                  then  Pointer_Type (Type_Of (Full_Component_GL_Type (GT)),
+                                      Address_Space)
+                  elsif PK = In_Value_By_Int then Int_Ty (Nat (Size))
+                  elsif PK_By_Ref then Create_Access_Type_To (GT)
+                  else  Type_Of (GT));
                J := J + 1;
             end if;
          end;
@@ -831,7 +830,7 @@ package body GNATLLVM.Subprograms is
       --  Set the argument for the static link, if any
 
       if Adds_S_Link then
-         In_Arg_Types (J) := Void_Ptr_T;
+         In_Arg_Types (J) := Void_Ptr_MD;
       end if;
 
       --  Now deal with the result type. We've already set if it it's
@@ -842,14 +841,14 @@ package body GNATLLVM.Subprograms is
             null;
 
          when Out_Return =>
-            LLVM_Result_Typ :=
+            Result_Typ :=
               Type_Of (Get_Param_GL_Type (First_Out_Param (E)));
 
          when Struct_Out | Struct_Out_Subprog =>
             J := 1;
 
             if LRK = Struct_Out_Subprog then
-               Out_Arg_Types (J) := LLVM_Ret_Typ;
+               Out_Arg_Types (J) := Ret_Typ;
                Out_Arg_Names (J) := Name_Find ("RESULT");
                J                 := J + 1;
             end if;
@@ -862,20 +861,20 @@ package body GNATLLVM.Subprograms is
                Next_Out_Param (Param_Ent);
             end loop;
 
-            LLVM_Result_Typ :=
+            Result_Typ :=
               Build_Struct_Type (Out_Arg_Types,
                                  Name        => Get_Ext_Name (E, "_RET"),
                                  Field_Names => Out_Arg_Names);
       end case;
 
-      return Fn_Ty (In_Arg_Types, LLVM_Result_Typ);
+      return Fn_Ty (In_Arg_Types, Result_Typ);
    end Create_Subprogram_Type_Internal;
 
    -----------------------------------
    -- Create_Subprogram_Access_Type --
    -----------------------------------
 
-   function Create_Subprogram_Access_Type return Type_T is
+   function Create_Subprogram_Access_Type return MD_Type is
    begin
       --  It would be nice to have the field of this struct to be a pointer
       --  to the subprogram type, but it can't be because the signature of
@@ -885,7 +884,7 @@ package body GNATLLVM.Subprograms is
 
       if No (Subprogram_Access_Type) then
          Subprogram_Access_Type :=
-           Build_Struct_Type ((1 => Void_Ptr_T, 2 => Void_Ptr_T),
+           Build_Struct_Type ((1 => Void_Ptr_MD, 2 => Void_Ptr_MD),
                               Name => Name_Find ("SUBPROGRAM_FP"),
                               Field_Names => (1 => Name_Find ("SUBP"),
                                               2 => Name_Find ("STATIC_LINK")));
@@ -900,7 +899,7 @@ package body GNATLLVM.Subprograms is
 
    function Add_Global_Function
      (S          : String;
-      Subp_Type  : Type_T;
+      Subp_Type  : MD_Type;
       GT         : GL_Type;
       Can_Throw  : Boolean := False;
       Can_Return : Boolean := True) return GL_Value
@@ -916,7 +915,7 @@ package body GNATLLVM.Subprograms is
            G_From
              (Pointer_Cast
                 (IR_Builder, +Func,
-                 Pointer_Type (Subp_Type, Address_Space), S),
+                 +Pointer_Type (Subp_Type, Address_Space), S),
               Func);
       else
          Func := Add_Function (S, Subp_Type, GT, Is_Builtin => True);
@@ -1142,7 +1141,7 @@ package body GNATLLVM.Subprograms is
 
       if RK = Return_By_Parameter then
          LLVM_Param := Get_Param (Func, Param_Num, Return_GT,
-                                  (if Is_Unconstrained_Array (Return_GT)
+                                  (if   Is_Unconstrained_Array (Return_GT)
                                    then Fat_Pointer else Reference),
                                   Is_Pristine => True);
          Initialize_Alignment (LLVM_Param);
@@ -1160,7 +1159,8 @@ package body GNATLLVM.Subprograms is
            and then not
            (No_Exception_Handlers_Set
             or else No_Exception_Propagation_Active)
-           and then Get_Value_Name (Func) = "main");
+            and then Get_Value_Name (Func) = "main");
+
       Param := First_Formal_With_Extras (E);
       while Present (Param) loop
          declare
@@ -1207,8 +1207,8 @@ package body GNATLLVM.Subprograms is
 
             elsif PK = In_Value_By_Int then
                declare
-                  Size  : constant ULL      := Get_Type_Size (Type_Of (GT));
-                  T     : constant Type_T   := Int_Ty (Size);
+                  Size  : constant ULL     := Get_Type_Size (Type_Of (GT));
+                  MDT   : constant MD_Type := Int_Ty (Nat (Size));
                   Val   : GL_Value;
 
                begin
@@ -1220,10 +1220,9 @@ package body GNATLLVM.Subprograms is
 
                   Val :=
                     Ptr_To_Relationship
-                      (LLVM_Param,
-                       Pointer_Type (T, Address_Space),
+                      (LLVM_Param, Pointer_Type (MDT, Address_Space),
                        Reference_To_Unknown);
-                  Set_Unknown_T (Val, T);
+                  Set_Unknown_MDT (Val, MDT);
                   Store (V, Val);
                   C_Set_Entity  (LLVM_Param, Param);
                end;
@@ -1492,7 +1491,7 @@ package body GNATLLVM.Subprograms is
       then
          LLVM_Func := Ada_Main_Elabb;
       else
-         LLVM_Func := Add_Function (Name, Fn_Ty ((1 .. 0 => <>), Void_Type),
+         LLVM_Func := Add_Function (Name, Fn_Ty ((1 .. 0 => <>), Void_Ty),
                                     Void_GL_Type,
                                     Is_Builtin => True);
       end if;
@@ -1930,6 +1929,7 @@ package body GNATLLVM.Subprograms is
             end loop;
 
             pragma Assert (False);
+            return No_GL_Value;
          end;
       end if;
    end Call_Alloc;
@@ -1990,13 +1990,13 @@ package body GNATLLVM.Subprograms is
 
       if Present (Alias (E)) then
          declare
-            T : constant Type_T :=
+            MDT : constant MD_Type :=
               Pointer_Type (Create_Subprogram_Type (E), Address_Space);
 
          begin
             V := Emit_Entity (Alias (E));
-            return (if   Type_Of (V) /= T
-                    then Ptr_To_Relationship (V, T, Reference_To_Subprogram)
+            return (if   Type_Of (V) /= MDT
+                    then Ptr_To_Relationship (V, MDT, Reference_To_Subprogram)
                     else V);
          end;
       end if;
@@ -2108,7 +2108,7 @@ package body GNATLLVM.Subprograms is
       Direct_Call      : constant Boolean      := Is_Entity_Name (Subp);
       Subp_Typ         : constant Subprogram_Type_Or_Kind_Id :=
         (if Direct_Call then Entity (Subp) else Full_Etype (Subp));
-      Fn_Ty            : constant Type_T       :=
+      Fn_Typ           : constant MD_Type       :=
         Create_Subprogram_Type (Subp_Typ);
       RK               : constant Return_Kind  := Get_Return_Kind   (Subp_Typ);
       LRK              : constant L_Ret_Kind   := Get_L_Ret_Kind    (Subp_Typ);
@@ -2477,19 +2477,18 @@ package body GNATLLVM.Subprograms is
 
                   if PK = In_Value_By_Int then
                      declare
-                        Size : constant ULL    :=
+                        Size : constant ULL     :=
                           Get_Type_Size (Type_Of (Related_Type (Arg)));
-                        T    : constant Type_T := Int_Ty (Size);
+                        MDT  : constant MD_Type := Int_Ty (Nat (Size));
 
                      begin
                         Arg := Get (Arg, Reference);
                         Arg :=
                           Ptr_To_Relationship
                             (Get (Arg, Reference),
-                             Pointer_Type
-                               (T, Address_Space),
+                             Pointer_Type (MDT, Address_Space),
                              Reference_To_Unknown);
-                        Set_Unknown_T (Arg, T);
+                        Set_Unknown_MDT (Arg, MDT);
                         Arg := Load (Arg);
                      end;
                   else
@@ -2557,7 +2556,7 @@ package body GNATLLVM.Subprograms is
 
       case LRK is
          when Void =>
-            Call (LLVM_Func, Fn_Ty, Args);
+            Call (LLVM_Func, Fn_Typ, Args);
 
             --  If we're emitting C and the return type is of zero size,
             --  we may get here, in which case our result is undef.
@@ -2568,9 +2567,9 @@ package body GNATLLVM.Subprograms is
 
          when Subprog_Return =>
             if RK = RK_By_Reference then
-               Result := Call_Ref (LLVM_Func, Fn_Ty, Args);
+               Result := Call_Ref (LLVM_Func, Fn_Typ, Args);
             else
-               Result := Call (LLVM_Func, Fn_Ty, Args);
+               Result := Call (LLVM_Func, Fn_Typ, Args);
             end if;
 
          when Out_Return =>
@@ -2579,13 +2578,14 @@ package body GNATLLVM.Subprograms is
 
             Write_Back
               (Out_LHSs (1), Out_Flds (1), Out_Idxs (1), Out_BRDs (1),
-               Call (LLVM_Func, Fn_Ty, Args, Get_Param_GL_Type (Out_Param)),
+               Call (LLVM_Func, Fn_Typ, Args,
+                     Get_Param_GL_Type (Out_Param)),
                LVs => Out_LVs (1),
                VFA => Out_VFAs (1));
 
          when Struct_Out | Struct_Out_Subprog =>
             Actual_Return :=
-              Call_Relationship (LLVM_Func, Fn_Ty, Args, Unknown);
+              Call_Relationship (LLVM_Func, Fn_Typ, Args, Unknown);
 
             --  First extract the return value (possibly returned by-ref)
 
@@ -2668,7 +2668,7 @@ package body GNATLLVM.Subprograms is
 
       elsif Present (Addr_Clause) then
          declare
-            Subp_T    : constant Type_T          :=
+            Subp_MDT  : constant MD_Type         :=
               Pointer_Type (Create_Subprogram_Type (E), Address_Space);
             GT        : constant GL_Type         := Full_GL_Type (E);
             Addr_Expr : constant N_Subexpr_Id    := Expression (Addr_Clause);
@@ -2676,13 +2676,14 @@ package body GNATLLVM.Subprograms is
             Addr      : GL_Value                 := Get_Value (Addr_Expr);
 
             function Int_To_Subp (V : GL_Value) return GL_Value is
-              (GM (Int_To_Ptr (IR_Builder, +Addr, Subp_T, ""), GT, R, V))
+              (GM (Int_To_Ptr (IR_Builder, +Addr, +Subp_MDT, ""),
+                   GT, R, V))
               with Pre => Present (V), Post => Present (Int_To_Subp'Result);
 
          begin
             if Library_Level or else In_Elab_Proc then
                if No (V) then
-                  V := G (Add_Global (Module, Subp_T, Get_Ext_Name (E)),
+                  V := G (Add_Global (Module, +Subp_MDT, Get_Ext_Name (E)),
                           GT, Ref (R));
                   Set_Value (E, V);
                end if;
@@ -2708,7 +2709,7 @@ package body GNATLLVM.Subprograms is
                --  Otherwise, initialize this to null and add to elab proc
 
                else
-                  Set_Initializer  (V, G (Const_Null (Subp_T), GT, R));
+                  Set_Initializer  (V, G (Const_Null (Subp_MDT), GT, R));
                   Add_To_Elab_Proc (N);
                end if;
 
@@ -2741,7 +2742,9 @@ package body GNATLLVM.Subprograms is
    ------------------------
 
    function Create_Subprogram (E : Subprogram_Kind_Id) return GL_Value is
-      Subp_Type   : constant Type_T      := Create_Subprogram_Type (E);
+      Subp_Type   : constant MD_Type     := Create_Subprogram_Type (E);
+      Subp_P_Type : constant MD_Type     :=
+        Pointer_Type (Subp_Type, Address_Space);
       Subp_Name   : constant String      := Get_Ext_Name (E);
       Is_Imported : constant Boolean     :=
         Present (Interface_Name (E)) and then No (Address_Clause (E));
@@ -2767,15 +2770,11 @@ package body GNATLLVM.Subprograms is
       --  If we've already seen this function name before, verify that we
       --  have the same type. Convert it to it if not.
 
-      if Present (LLVM_Func)
-        and then Type_Of (LLVM_Func) /=
-          Pointer_Type (Subp_Type, Address_Space)
-      then
+      if Present (LLVM_Func) and then Type_Of (LLVM_Func) /= Subp_P_Type then
          LLVM_Func :=
            G_From
              (Pointer_Cast
-                (IR_Builder, +LLVM_Func,
-                 Pointer_Type (Subp_Type, Address_Space), Subp_Name),
+                (IR_Builder, +LLVM_Func, +Subp_P_Type, Subp_Name),
               LLVM_Func);
       elsif No (LLVM_Func) then
          LLVM_Func := Add_Function (Actual_Name, Subp_Type, Full_GL_Type (E));

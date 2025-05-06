@@ -809,9 +809,9 @@ package body GNATLLVM.Arrays is
    --------------------
 
    function Get_Bound_Size (GT : Array_Or_PAT_GL_Type) return GL_Value is
-      T : constant Type_T := Create_Array_Bounds_Type (GT);
+      MDT : constant MD_Type := Create_Array_Bounds_Type (GT);
    begin
-      return Align_To (Get_Type_Size (T), Get_Type_Alignment (T),
+      return Align_To (Get_Type_Size (+MDT), Nat (Get_Type_Alignment (MDT)),
                        Get_Type_Alignment (GT));
    end Get_Bound_Size;
 
@@ -820,7 +820,7 @@ package body GNATLLVM.Arrays is
    -------------------------
 
    function Get_Bound_Alignment (GT : Array_Or_PAT_GL_Type) return Nat is
-      (Get_Type_Alignment (Create_Array_Bounds_Type (GT)));
+      (Nat (Get_Type_Alignment (Create_Array_Bounds_Type (GT))));
 
    ------------------------------
    -- Get_Array_Type_Alignment --
@@ -893,11 +893,12 @@ package body GNATLLVM.Arrays is
    ---------------------------
 
    function Data_Index_In_BD_Type (V : GL_Value) return unsigned is
-      BD_T : constant Type_T :=
-        (if Is_Reference (V) then Element_Type_Of (V) else Type_Of (V));
+      BD_MD : constant MD_Type :=
+        (if Is_Reference (V) then Element_Type_Of (V) else MD_Type_Of (V));
+      --  ??? Fix later
 
    begin
-      return Count_Struct_Element_Types (BD_T) - 1;
+      return unsigned (Element_Count (BD_MD) - 1);
    end Data_Index_In_BD_Type;
 
    ---------------------------
@@ -1395,7 +1396,7 @@ package body GNATLLVM.Arrays is
    is
       Native_Align : constant Nat :=
         (if   Is_Nonnative_Type (Comp_GT) then BPU
-         else Get_Type_Alignment (Type_Of (Comp_GT)));
+         else Nat (Get_Type_Alignment (Type_Of (Comp_GT))));
       Our_Align    : constant Nat := Get_Type_Alignment (Comp_GT);
       Base_Align   : constant Nat := Alignment (Base);
 

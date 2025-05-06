@@ -164,6 +164,7 @@ package GNATLLVM is
 
    type Value_Array        is array (Nat range <>) of Value_T;
    type Type_Array         is array (Nat range <>) of Type_T;
+   type Name_Id_Array      is array (Nat range <>) of Name_Id;
    type Basic_Block_Array  is array (Nat range <>) of Basic_Block_T;
    type Metadata_Array     is array (Nat range <>) of Metadata_T;
    type Index_Array        is array (Nat range <>) of unsigned;
@@ -277,7 +278,7 @@ package GNATLLVM is
    Module_Data_Layout : Target_Data_T;
    --  LLVM current module data layout.
 
-   Address_Space      : Interfaces.C.unsigned;
+   Address_Space      : Nat;
    --  Default LLVM address space for our module
 
    Convert_Module     : Module_T;

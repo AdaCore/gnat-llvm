@@ -22,6 +22,7 @@ with Table;       use Table;
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.MDType;      use GNATLLVM.MDType;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package GNATLLVM.Arrays is
@@ -217,7 +218,7 @@ package GNATLLVM.Arrays is
 
    function Is_Native_Component_GT (GT : GL_Type) return Boolean is
      (not Is_Nonnative_Type (GT) and then not Is_Truncated_GL_Type (GT)
-        and then Get_Type_Size (Type_Of (GT)) = Get_Type_Size (GT))
+        and then Get_Type_Size (+Type_Of (GT)) = Get_Type_Size (GT))
      with Pre => Present (GT);
    --  True if this is a component type that we can use natively; i.e.
    --  without making the array [N x i8] and doing our own indexing.

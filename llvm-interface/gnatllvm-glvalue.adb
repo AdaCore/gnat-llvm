@@ -561,11 +561,15 @@ package body GNATLLVM.GLValue is
    function Element_Type_Of (V : GL_Value) return MD_Type is
    begin
       --  ??  If this is a double reference, get the type of V with
-      --  this relationship and rereference it. Fix later.
+      --  this relationship and rereference it. Fix later. For a reference
+      --  to reference to subprogram, use a void pointer for now.
 
       if Is_Double_Reference (V) then
-         return Designated_Type (Type_For_Relationship (Related_Type (V),
-                                                        Relationship (V)));
+         return (if   Relationship (V) = Reference_To_Ref_To_Subprogram
+                 then Void_Ptr_MD
+                 else Designated_Type (Type_For_Relationship
+                                         (Related_Type (V),
+                                          Relationship (V))));
 
       --  If this is a reference to Unknown, we're supposed to have set the
       --  type to use.

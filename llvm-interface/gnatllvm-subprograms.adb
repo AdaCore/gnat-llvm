@@ -1995,7 +1995,7 @@ package body GNATLLVM.Subprograms is
 
          begin
             V := Emit_Entity (Alias (E));
-            return (if   Type_Of (V) /= MDT
+            return (if   Type_Of (+V) /= MDT
                     then Ptr_To_Relationship (V, MDT, Reference_To_Subprogram)
                     else V);
          end;
@@ -2770,7 +2770,7 @@ package body GNATLLVM.Subprograms is
       --  If we've already seen this function name before, verify that we
       --  have the same type. Convert it to it if not.
 
-      if Present (LLVM_Func) and then Type_Of (LLVM_Func) /= Subp_P_Type then
+      if Present (LLVM_Func) and then Type_Of (+LLVM_Func) /= Subp_P_Type then
          LLVM_Func :=
            G_From
              (Pointer_Cast
@@ -3069,7 +3069,7 @@ package body GNATLLVM.Subprograms is
          end loop;
 
          Val := Const_Array  (Constructors, Any_Array_GL_Type);
-         Var := Add_Global   (Module, Type_Of (Val), "llvm.global_ctors");
+         Var := Add_Global   (Module, Type_Of (+Val), "llvm.global_ctors");
          Set_Initializer     (Var, +Val);
          Set_Linkage         (Var, Appending_Linkage);
          Set_Global_Constant (Var, True);
@@ -3085,7 +3085,7 @@ package body GNATLLVM.Subprograms is
          end loop;
 
          Val := Const_Array  (Destructors, Any_Array_GL_Type);
-         Var := Add_Global   (Module, Type_Of (Val), "llvm.global_dtors");
+         Var := Add_Global   (Module, Type_Of (+Val), "llvm.global_dtors");
          Set_Initializer     (Var, +Val);
          Set_Linkage         (Var, Appending_Linkage);
          Set_Global_Constant (Var, True);

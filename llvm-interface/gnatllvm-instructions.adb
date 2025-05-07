@@ -332,8 +332,7 @@ package body GNATLLVM.Instructions is
    is
       Result : GL_Value :=
         GM_Ref (Pointer_Cast (IR_Builder, +V,
-                              Pointer_Type (Type_Of (T),
-                                            unsigned (Address_Space)),
+                              +Pointer_Type (Type_Of (T), Address_Space),
                               Name),
                 Full_Designated_GL_Type (T), V);
 
@@ -1016,7 +1015,7 @@ package body GNATLLVM.Instructions is
          Align := Nat'Min (Align, Alignment (GL_Values (J)));
       end loop;
 
-      Our_Phi := Phi (IR_Builder, Type_Of (First), Name);
+      Our_Phi := Phi (IR_Builder, Type_Of (+First), Name);
       Add_Incoming (Our_Phi, Values'Address, BBs'Address, Values'Length);
       Result := G_From (Our_Phi, First);
       Set_Alignment (Result, Align);
@@ -1434,7 +1433,7 @@ package body GNATLLVM.Instructions is
 
    procedure Store (Expr, Ptr : GL_Value) is
       GT             : constant GL_Type := Related_Type (Expr);
-      T              : constant Type_T  := Type_Of (Expr);
+      T              : constant Type_T  := +Type_Of (Expr);
       Result_Bits    : constant Nat     :=
         (if Is_Data (Expr) then Nat (Get_Scalar_Bit_Size (T)) else 0);
       Special_Atomic : constant Boolean :=
@@ -1615,7 +1614,7 @@ package body GNATLLVM.Instructions is
 
          --  For each parameter that's a pointer, set the alignment.
 
-         if Get_Type_Kind (Type_Of (Args (J))) = Pointer_Type_Kind then
+         if Is_Pointer (Type_Of (Args (J))) then
             Set_Instr_Param_Alignment (Call_Inst, To_Param_Num (J) + 1,
                                        unsigned (To_Bytes (Alignment
                                                              (Args (J)))));
@@ -1807,8 +1806,7 @@ package body GNATLLVM.Instructions is
       end if;
 
       for J in Args'Range loop
-         --  ??? Fix this later
-         Arg_Types (J) := MD_Type_Of (Args (J));
+         Arg_Types (J) := Type_Of (Args (J));
       end loop;
 
       --  ??? Is the Relationship really right?

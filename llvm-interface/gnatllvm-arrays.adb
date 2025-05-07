@@ -892,8 +892,7 @@ package body GNATLLVM.Arrays is
 
    function Data_Index_In_BD_Type (V : GL_Value) return unsigned is
       BD_MD : constant MD_Type :=
-        (if Is_Reference (V) then Element_Type_Of (V) else MD_Type_Of (V));
-      --  ??? Fix later
+        (if Is_Reference (V) then Element_Type_Of (V) else Type_Of (V));
 
    begin
       return unsigned (Element_Count (BD_MD) - 1);

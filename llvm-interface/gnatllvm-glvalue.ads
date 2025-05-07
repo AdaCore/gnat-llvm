@@ -795,9 +795,12 @@ package GNATLLVM.GLValue is
    --  same names as those for types and Value_T's. The first of these
    --  represent abstractions that will be used in later predicates.
 
-   function Type_Of (V : GL_Value) return Type_T is
-     (Type_Of (+V))
-     with Pre => Present (V), Post => Present (Type_Of'Result);
+   function Type_Of (V : GL_Value) return MD_Type is
+     ((if    Relationship (V) = Reference_To_Unknown
+       then  Pointer_Type (Unknown_MDT (V), Address_Space)
+       elsif Relationship (V) = Unknown then From_Type (Type_Of (+V))
+       else  Type_For_Relationship (Related_Type (V), Relationship (V))))
+     with Pre  => Present (V), Post => Present (Type_Of'Result);
 
    function Element_Type_Of (V : GL_Value) return MD_Type
      with Pre => Is_Double_Reference (V) or else Is_Access_Type (V)
@@ -807,7 +810,7 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Post => Present (Data_Type_Of'Result);
 
    function Get_Type_Kind (V : GL_Value) return Type_Kind_T is
-     (Get_Type_Kind (Type_Of (V)))
+     (Get_Type_Kind (Type_T'(+Type_Of (V))))
      with Pre => Present (V);
 
    function Ekind (V : GL_Value) return Entity_Kind is
@@ -1441,7 +1444,7 @@ package GNATLLVM.GLValue is
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return GL_Value
      with Pre  => Present (GT),
-          Post => Type_Of (Get_Type_Alignment'Result) = Size_T,
+          Post => Type_Of (Get_Type_Alignment'Result) = Size_MD,
           Inline;
 
    function Add_Function

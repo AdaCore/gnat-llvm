@@ -89,13 +89,6 @@ package GNATLLVM.Types is
           Post => Present (Type_Of'Result), Inline;
    --  Given a GNAT type TE, return the corresponding MD_Type
 
-   function MD_Type_Of (V : GL_Value) return MD_Type is
-     ((if    Relationship (V) = Reference_To_Unknown
-       then  Pointer_Type (Unknown_MDT (V), Address_Space)
-       elsif Relationship (V) = Unknown then From_Type (Type_Of (V))
-       else  Type_For_Relationship (Related_Type (V), Relationship (V))))
-     with Pre  => Present (V), Post => Present (MD_Type_Of'Result);
-
    procedure Check_OK_For_Atomic_Type
      (GT : GL_Type; E : Entity_Id; Is_Component : Boolean := False)
      with Pre => Present (GT) and then Present (E);

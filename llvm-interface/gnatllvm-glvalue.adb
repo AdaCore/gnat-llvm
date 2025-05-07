@@ -538,7 +538,7 @@ package body GNATLLVM.GLValue is
    -----------------------------
 
    function Is_Nonsymbolic_Constant (V : GL_Value) return Boolean is
-     (Is_Nonsymbolic_Constant (+V, MD_Type_Of (V)));
+     (Is_Nonsymbolic_Constant (+V, Type_Of (V)));
 
    -----------------------
    -- Is_Nonnative_Type --
@@ -599,7 +599,7 @@ package body GNATLLVM.GLValue is
    ------------------
 
    function Data_Type_Of (V : GL_Value) return MD_Type is
-     ((if  Is_Reference (V) then Element_Type_Of (V) else MD_Type_Of (V)));
+     ((if  Is_Reference (V) then Element_Type_Of (V) else Type_Of (V)));
 
    ---------------------------
    --  Relationship_For_Ref --
@@ -914,7 +914,7 @@ package body GNATLLVM.GLValue is
             return Get (Make_Global_Constant (V), R);
          else
             declare
-               T       : constant Type_T        := Type_Of (V);
+               T       : constant Type_T        := +Type_Of (V);
                Promote : constant Basic_Block_T := Maybe_Promote_Alloca (T);
                Inst    : constant Value_T       := Alloca (IR_Builder, T, "");
                Align   : constant Nat           := Set_Object_Align (Inst, GT);
@@ -1441,8 +1441,8 @@ package body GNATLLVM.GLValue is
      (Elmts : GL_Value_Array; GT : GL_Type) return GL_Value
    is
       T      : constant Type_T            :=
-        (if   Elmts'Length = 0 then +Type_Of (Full_Component_Type (GT))
-         else Type_Of (Elmts (Elmts'First)));
+        (if   Elmts'Length = 0 then +Element_Type (Type_Of (GT))
+         else Type_Of (+Elmts (Elmts'First)));
       --  Take the element type from what was passed, but if no elements
       --  were passed, the only choice is from the component type of the array.
       Values : aliased Value_Array (Elmts'Range);
@@ -1509,7 +1509,7 @@ package body GNATLLVM.GLValue is
 
    function Pred_FP (V : GL_Value) return GL_Value is
    begin
-      return G (Pred_FP (Get_Global_Context, Type_Of (V), +V),
+      return G (Pred_FP (Get_Global_Context, +Type_Of (V), +V),
                 Related_Type (V));
    end Pred_FP;
 

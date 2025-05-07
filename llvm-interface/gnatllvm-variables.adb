@@ -1711,7 +1711,7 @@ package body GNATLLVM.Variables is
       --  to make this a global.
 
       if not Const_Map.Contains (+In_V) then
-         Out_Val := Add_Global  (Module, Type_Of (In_V),
+         Out_Val := Add_Global  (Module, Type_Of (+In_V),
                                  Globalize_Name ("for.ref"));
          Set_Initializer        (Out_Val, +In_V);
          Set_Global_Constant    (Out_Val, True);
@@ -2650,7 +2650,7 @@ package body GNATLLVM.Variables is
       elsif Present (V) and then Is_Reference (V)
         and then Is_A_Global_Variable (V) and then Is_Global_Constant (V)
         and then Is_Integer_Type (GT)
-        and then Type_Of (GT) = Type_Of (Get_Initializer (V))
+        and then Type_Of (GT) = Type_Of (+Get_Initializer (V))
         and then Can_Convert_Constant (Get_Initializer (V), GT)
       then
          return Convert_Constant (Get_Initializer (V), GT);

@@ -671,14 +671,18 @@ package body GNATLLVM.MDType is
       if No (MD_Name (MDT)) then
          Set_LLVM_Type (MDT, Struct_Type (Typs'Address, Typs'Length,
                                           Is_Packed (MDT)));
-      elsif No (LLVM_Type (MDT)) then
-         Set_LLVM_Type (MDT,
-                        Struct_Create_Named (Get_Global_Context,
-                                             Get_Name_String (MD_Name (MDT))));
+      else
+         if No (LLVM_Type (MDT)) then
+            Set_LLVM_Type (MDT,
+                           Struct_Create_Named
+                             (Get_Global_Context,
+                              Get_Name_String (MD_Name (MDT))));
+         end if;
+
+         Struct_Set_Body (LLVM_Type (MDT), Typs'Address, Typs'Length,
+                          Is_Packed (MDT));
       end if;
 
-      Struct_Set_Body (LLVM_Type (MDT), Typs'Address, Typs'Length,
-                       Is_Packed (MDT));
       C_Set_Struct (UID, LLVM_Type (MDT));
    end Struct_Set_Body_Internal;
 

@@ -798,7 +798,7 @@ package body GNATLLVM.Records.Field_Ref is
          declare
             MDT : constant MD_Type :=
               (if   Is_Reference (Result) then Int_Ty (Needed_Bits)
-               else MD_Type_Of (Result));
+               else Type_Of (Result));
 
          begin
             --  If we have data, we have the entire bitfield. So all we have
@@ -911,7 +911,7 @@ package body GNATLLVM.Records.Field_Ref is
                else Allocate_For_Type (F_GT));
             Mem_As_Int_Ptr : GL_Value          :=
               Ptr_To_Relationship
-                (Memory, Pointer_Type (MD_Type_Of (Result), Address_Space),
+                (Memory, Pointer_Type (Type_Of (Result), Address_Space),
                  F_GT, Reference_To_Unknown);
 
          begin
@@ -987,8 +987,7 @@ package body GNATLLVM.Records.Field_Ref is
 
       if not Emit_C or else Our_Bits <= Max_Int_Size then
          declare
-            Orig_MDT    : constant MD_Type  := MD_Type_Of (BRD.LHS);
-            --  ???? fix later
+            Orig_MDT    : constant MD_Type  := Type_Of (BRD.LHS);
             MDT         : constant MD_Type  := Int_Ty (Our_Bits);
             Shift_Count : constant GL_Value :=
               G (Const_Int (+MDT, ULL (First_Bit), False), F_GT, Unknown);
@@ -1046,7 +1045,7 @@ package body GNATLLVM.Records.Field_Ref is
                Store (LHS, LHS_Ptr);
                return No_GL_Value;
             else
-               if MD_Type_Of (LHS) /= Orig_MDT then
+               if Type_Of (LHS) /= Orig_MDT then
                   if Is_Undef (LHS) then
                      LHS := G (Get_Undef (Orig_MDT), F_GT, Unknown);
                   else

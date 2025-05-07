@@ -734,7 +734,7 @@ package body GNATLLVM.Blocks is
       EH_Slot_Id_Fn    :=
 #if LLVM_Version_Major > 16 then
         Build_Intrinsic
-          ("llvm.eh.typeid.for", Int_32_GL_Type, (1 => Void_Ptr_T));
+          ("llvm.eh.typeid.for", Int_32_GL_Type, (1 => Void_Ptr_MD));
 #else
         Build_Intrinsic ("llvm.eh.typeid.for", Int_32_GL_Type);
 #end if;

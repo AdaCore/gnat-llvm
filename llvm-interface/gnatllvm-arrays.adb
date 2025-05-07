@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Deallocation;
-
 with Nlists; use Nlists;
 with Snames; use Snames;
 
@@ -1057,12 +1055,9 @@ package body GNATLLVM.Arrays is
    is
       Prim_GT : constant Array_GL_Type := Primitive_GL_Type (GT);
       Idx     : Int                    := 1;
-      Vals    : Access_GL_Value_Array  :=
-        new GL_Value_Array (1 .. List_Length (Expressions (N)));
+      Vals    : GL_Value_Array (1 .. List_Length (Expressions (N)));
       Expr    : Opt_N_Subexpr_Id;
       Result  : GL_Value;
-      procedure Free is new Ada.Unchecked_Deallocation (GL_Value_Array,
-                                                        Access_GL_Value_Array);
 
    begin
       Expr := First (Expressions (N));
@@ -1075,8 +1070,7 @@ package body GNATLLVM.Arrays is
          Next (Expr);
       end loop;
 
-      Result := From_Primitive (Const_Array (Vals.all, Prim_GT), GT);
-      Free (Vals);
+      Result := From_Primitive (Const_Array (Vals, Prim_GT), GT);
       return Result;
 
    end Emit_Constant_Aggregate;

@@ -1445,10 +1445,9 @@ package body GNATLLVM.GLValue is
          else Type_Of (Elmts (Elmts'First)));
       --  Take the element type from what was passed, but if no elements
       --  were passed, the only choice is from the component type of the array.
-      Values : aliased Access_Value_Array := new Value_Array (Elmts'Range);
+      Values : aliased Value_Array (Elmts'Range);
       V      : GL_Value;
-      procedure Free is new Ada.Unchecked_Deallocation (Value_Array,
-                                                        Access_Value_Array);
+
    begin
       for J in Elmts'Range loop
          Values (J) := +Elmts (J);
@@ -1460,9 +1459,8 @@ package body GNATLLVM.GLValue is
       --  cases, we use Any_Array for the type, but that's unconstrained,
       --  so we want use relationship "Unknown".
 
-      V := G (Const_Array (T, Values.all'Address, Values.all'Length),
+      V := G (Const_Array (T, Values'Address, Values'Length),
               GT, (if GT = Any_Array_GL_Type then Unknown else Data));
-      Free (Values);
       return V;
    end Const_Array;
 
@@ -1473,10 +1471,9 @@ package body GNATLLVM.GLValue is
    function Const_Struct
      (Elmts : GL_Value_Array; GT : GL_Type; Packed : Boolean) return GL_Value
    is
-      Values : aliased Access_Value_Array := new Value_Array (Elmts'Range);
+      Values : aliased Value_Array (Elmts'Range);
       V      : GL_Value;
-      procedure Free is new Ada.Unchecked_Deallocation (Value_Array,
-                                                        Access_Value_Array);
+
    begin
       for J in Elmts'Range loop
          Values (J) := +Elmts (J);
@@ -1486,9 +1483,8 @@ package body GNATLLVM.GLValue is
       --  in the source. In those cases, we pass Any_Array for the type, so
       --  we want use relationship "Unknown".
 
-      V := G (Const_Struct (Values.all'Address, Values.all'Length, Packed),
+      V := G (Const_Struct (Values'Address, Values'Length, Packed),
               GT, (if GT = Any_Array_GL_Type then Unknown else Data));
-      Free (Values);
       return V;
    end Const_Struct;
 

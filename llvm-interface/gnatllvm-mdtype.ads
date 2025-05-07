@@ -99,9 +99,10 @@ package GNATLLVM.MDType is
      with Pre => Is_Struct (MDT);
    --  True if we've called Struct_Create_Name but not yet Struct_Set_Body
 
-   function "+" (MDT : MD_Type) return Type_T
-     with Pre => Present (MDT), Post => Present ("+"'Result);
+   function LLVM_Type_Of (MDT : MD_Type) return Type_T
+     with Pre => Present (MDT), Post => Present (LLVM_Type_Of'Result);
    --  Create an LLVM type from an MD_Type
+   function "+" (MDT : MD_Type) return Type_T renames LLVM_Type_Of;
 
    function "=" (MDT : MD_Type; T : Type_T) return Boolean is
      (Type_T'(+MDT) = T)

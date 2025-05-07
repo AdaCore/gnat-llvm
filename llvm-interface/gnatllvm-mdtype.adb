@@ -682,11 +682,11 @@ package body GNATLLVM.MDType is
       C_Set_Struct (UID, LLVM_Type (MDT));
    end Struct_Set_Body_Internal;
 
-   ---------
-   -- "+" --
-   ---------
+   ------------------
+   -- LLVM_Type_Of --
+   ------------------
 
-   function "+" (MDT : MD_Type) return Type_T is
+   function LLVM_Type_Of (MDT : MD_Type) return Type_T is
       Result : Type_T;
 
    begin
@@ -771,7 +771,7 @@ package body GNATLLVM.MDType is
 
       Set_LLVM_Type (MDT, Result);
       return Result;
-   end "+";
+   end LLVM_Type_Of;
 
    ---------------
    -- From_Type --

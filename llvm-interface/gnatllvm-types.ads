@@ -340,16 +340,6 @@ package GNATLLVM.Types is
      with Pre => Present (T);
    --  Return the preferred alignment of an LLVM type, in bits
 
-   function Get_Type_Alignment (T : Type_T) return ULL is
-     (To_Bits (ULL (ABI_Alignment_Of_Type (Module_Data_Layout, T))))
-     with Pre => Present (T);
-   --  Return the size of an LLVM type, in bits
-
-   function Get_Type_Alignment (T : Type_T) return unsigned is
-     (To_Bits (ABI_Alignment_Of_Type (Module_Data_Layout, T)))
-     with Pre => Present (T);
-   --  Return the size of an LLVM type, in bits
-
    function Get_Type_Alignment (T : Type_T) return GL_Value is
      (Size_Const_Int (ULL (Nat'(Get_Type_Alignment (T)))));
    --  Return the alignment of an LLVM type, in bytes, as an LLVM constant
@@ -435,18 +425,6 @@ package GNATLLVM.Types is
      with Pre => Present (GT);
    --  Return the alignment of a type. If Use_Specified is False, ignore a
    --  specified alignment.
-
-   function Get_Type_Alignment
-     (GT : GL_Type; Use_Specified : Boolean := True) return ULL
-   is
-     (ULL (Nat'(Get_Type_Alignment (GT, Use_Specified => Use_Specified))))
-     with Pre => Present (GT);
-
-   function Get_Type_Alignment
-     (GT : GL_Type; Use_Specified : Boolean := True) return unsigned
-   is
-     (unsigned (Nat'(Get_Type_Alignment (GT, Use_Specified => Use_Specified))))
-     with Pre => Present (GT);
 
    function Get_Type_Size
      (GT         : GL_Type;

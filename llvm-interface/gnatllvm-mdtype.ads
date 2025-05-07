@@ -164,7 +164,7 @@ package GNATLLVM.MDType is
      with Pre => Present (MDT);
    function Get_Scalar_Bit_Size (MDT : MD_Type) return ULL
      with Pre => Present (MDT);
-   function Get_Type_Alignment (MDT : MD_Type) return ULL
+   function Get_Type_Alignment (MDT : MD_Type) return Nat
      with Pre => Present (MDT);
 
    --  Now functions to create types

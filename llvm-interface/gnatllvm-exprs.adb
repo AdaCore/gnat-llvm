@@ -1605,7 +1605,8 @@ package body GNATLLVM.Exprs is
             return Emit_Expression (First (Expressions (N)));
 
          when Attribute_Alignment =>
-            return Const_Int (GT, To_Bytes (Get_Type_Alignment (P_GT)),
+            return Const_Int (GT,
+                              To_Bytes (ULL (Nat'(Get_Type_Alignment (P_GT)))),
                               Sign_Extend => False);
 
          when Attribute_Size | Attribute_Object_Size | Attribute_Value_Size

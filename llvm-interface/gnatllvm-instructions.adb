@@ -1047,9 +1047,9 @@ package body GNATLLVM.Instructions is
 
    procedure Build_MemCpy
      (Dst         : GL_Value;
-      Dst_Align   : ULL;
+      Dst_Align   : Nat;
       Src         : GL_Value;
-      Src_Align   : ULL;
+      Src_Align   : Nat;
       Size        : GL_Value;
       Is_Volatile : Boolean;
       TBAA        : Metadata_T := No_Metadata_T;
@@ -1070,9 +1070,9 @@ package body GNATLLVM.Instructions is
 
    procedure Build_MemMove
      (Dst         : GL_Value;
-      Dst_Align   : ULL;
+      Dst_Align   : Nat;
       Src         : GL_Value;
-      Src_Align   : ULL;
+      Src_Align   : Nat;
       Size        : GL_Value;
       Is_Volatile : Boolean;
       TBAA        : Metadata_T := No_Metadata_T;
@@ -1092,7 +1092,7 @@ package body GNATLLVM.Instructions is
      (Ptr         : GL_Value;
       Val         : GL_Value;
       Size        : GL_Value;
-      Align       : ULL;
+      Align       : Nat;
       Is_Volatile : Boolean;
       TBAA        : Metadata_T := No_Metadata_T;
       Scope       : Metadata_T := No_Metadata_T;

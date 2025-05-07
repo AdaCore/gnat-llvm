@@ -1586,8 +1586,8 @@ package body GNATLLVM.GLValue is
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return GL_Value
    is
-     (Size_Const_Int (Get_Type_Alignment (GT,
-                                          Use_Specified => Use_Specified)));
+     (Size_Const_Int (ULL (Nat'(Get_Type_Alignment
+                                  (GT, Use_Specified => Use_Specified)))));
 
    ----------------
    -- Add_Global --

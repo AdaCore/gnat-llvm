@@ -1335,7 +1335,7 @@ package GNATLLVM.GLValue is
      with Post => Present (Size_Const_Int'Result);
 
    function Size_Const_Null return GL_Value is
-     (Size_Const_Int (0))
+     (Size_Const_Int (ULL (0)))
      with Post => Present (Size_Const_Null'Result);
 
    function Const_Int_32 (N : Uint) return GL_Value is

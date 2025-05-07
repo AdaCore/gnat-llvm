@@ -1775,7 +1775,7 @@ package body GNATLLVM.Types is
         Get_Type_Size (GT, Max_Size => Use_Max and then Want_Max);
       Align : constant BA_Data :=
         Const (if   Do_Align
-               then Get_Type_Alignment (GT, Use_Specified => False)
+               then ULL (Nat'(Get_Type_Alignment (GT, Use_Specified => False)))
                else UBPU);
 
    begin

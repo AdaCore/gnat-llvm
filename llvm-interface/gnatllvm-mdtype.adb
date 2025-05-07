@@ -819,7 +819,7 @@ package body GNATLLVM.MDType is
    -- Get_Type_Alignment --
    ------------------------
 
-   function Get_Type_Alignment (MDT : MD_Type) return ULL is
+   function Get_Type_Alignment (MDT : MD_Type) return Nat is
      (Get_Type_Alignment (Type_T'(+MDT)));
 
    ---------------

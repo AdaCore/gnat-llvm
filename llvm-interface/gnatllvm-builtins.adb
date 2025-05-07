@@ -1402,7 +1402,7 @@ package body GNATLLVM.Builtins is
          Stack_Save_Fn :=
 #if LLVM_Version_Major > 16 then
            Build_Intrinsic
-             ("llvm.stacksave", A_Char_GL_Type, (1 => Void_Ptr_T));
+             ("llvm.stacksave", A_Char_GL_Type, (1 => Void_Ptr_MD));
 #else
            Build_Intrinsic ("llvm.stacksave", A_Char_GL_Type);
 #end if;
@@ -1421,7 +1421,7 @@ package body GNATLLVM.Builtins is
          Stack_Restore_Fn :=
 #if LLVM_Version_Major > 16 then
            Build_Intrinsic
-             ("llvm.stackrestore", Void_GL_Type, (1 => Void_Ptr_T));
+             ("llvm.stackrestore", Void_GL_Type, (1 => Void_Ptr_MD));
 #else
            Build_Intrinsic ("llvm.stackrestore", Void_GL_Type);
 #end if;

@@ -4,7 +4,7 @@
 # PATH.
 
 PWD:=$(shell pwd)
-LLVM_RELEASE=16.0.6
+LLVM_RELEASE=19.1.7
 LLVM_INSTALL_DIR=$(PWD)/install
 LLVM_SRC_DIR=llvm-project-$(LLVM_RELEASE).src
 DL=wget

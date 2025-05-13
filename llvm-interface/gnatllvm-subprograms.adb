@@ -2911,17 +2911,17 @@ package body GNATLLVM.Subprograms is
                   --  can alias. If the mechanism is specified as being by
                   --  reference, they can alias. Likewise if they're
                   --  explicitly marked as aliased.
+                  --
+                  --  When it's known not to be aliased in that sense, it
+                  --  means both that the data can't be referenced via
+                  --  some other pointer while the subprogam is executing
+                  --  (LLVM's "noalias" attribute) or after it has
+                  --  returned (LLVM's "capture(none)" attribute.
 
                   if not Is_Aliased (Formal)
                     and then not Is_By_Reference_Type (GT)
                   then
                      Add_Noalias_Attribute       (LLVM_Func, Param_Num);
-                  end if;
-
-                  --  RM 3.10(9/5) says when a view is aliased. If it isn't,
-                  --  then we can't legally capture its address.
-
-                  if not Is_Aliased_View (Formal) then
                      Add_Nocapture_Attribute     (LLVM_Func, Param_Num);
                   end if;
 

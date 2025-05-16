@@ -75,6 +75,9 @@ package GNATLLVM.Utils is
    --  Validate that we support the Convention on E and give an error if we
    --  don't.
 
+   function Has_Stdcall_Convention (V : Value_T) return Boolean is
+     (Get_Function_Call_Conv (V) = X86_Stdcall_Call_Conv);
+
    function GNAT_To_LLVM_Convention (CC : Convention_Id) return Call_Conv_T;
    --  Convert GNAT calling convention to LLVM's CallingConv
 

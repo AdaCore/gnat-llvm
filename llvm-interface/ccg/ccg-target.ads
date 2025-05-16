@@ -106,6 +106,9 @@ package CCG.Target is
    --  value. If we're writing the null string, we don't write a blank at
    --  all.
 
+   function Has_Modifier (M : String) return Boolean;
+   --  Return true if modifier M is present and not set to '$'
+
    procedure Maybe_Declare_Section (S : String);
    --  If we have to declare code sections, do so for section S
 

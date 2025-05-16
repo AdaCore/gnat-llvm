@@ -180,6 +180,28 @@ package body CCG.Target is
       Modifiers.Append ((new String'(Name), new String'(Value), Percent_Pos));
    end Add_Modifier;
 
+   ------------------
+   -- Has_Modifier --
+   ------------------
+
+   function Has_Modifier (M : String) return Boolean
+   is
+      Idx    : Integer      := 0;
+   begin
+      for J in 1 .. Modifiers.Last loop
+         if Modifiers.Table (J).Name.all = M then
+            Idx := J;
+         end if;
+      end loop;
+
+      if Idx > 0 and then Modifiers.Table (Idx).Value.all = "$" then
+         return False;
+      end if;
+
+      --  Either we have the modifier set, or we'll use default one
+      return True;
+   end Has_Modifier;
+
    ---------------------
    -- Output_Modifier --
    ---------------------
@@ -434,14 +456,16 @@ package body CCG.Target is
            "modifier-decl_sect=#pragma section(%);" &
            "modifier-always_inline=$;" &
            "modifier-noreturn=__declspec(noreturn);" &
-           "modifier-aligned=__declspec(align(%));";
+           "modifier-aligned=__declspec(align(%));" &
+           "modifier-stdcall=__stdcall;";
       elsif To_Lower (S) = "generic" then
          return
            "packed-mechanism=none;" &
            "modifier-section=$;" &
            "modifier-always_inline=$;" &
            "modifier-noreturn=$;" &
-           "modifier-aligned=$;";
+           "modifier-aligned=$;" &
+           "modifier-stdcall=$;";
       else
          Early_Error ("unsupported C compiler: " & S);
          return "";

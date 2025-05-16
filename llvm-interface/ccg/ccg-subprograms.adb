@@ -364,8 +364,7 @@ package body CCG.Subprograms is
       Num_Params     : constant Nat     := Count_Params (V);
       Fn_Typ         : constant Type_T  := Get_Element_Type (V);
       Write_Extern   : Boolean          := Need_Extern;
-      Result         : Str              :=
-        Effective_Return_Type (Fn_Typ, V) & " " & V & " (";
+      Result         : Str := Effective_Return_Type (Fn_Typ, V);
       Maybe_Add_Nest : constant Boolean :=
         Get_Needs_Nest (V)
         and then (Num_Params = 0
@@ -427,6 +426,18 @@ package body CCG.Subprograms is
       end In_Main_Unit;
 
    begin
+      --  If subprogram has a StdCall convention set, output the modifier
+      if Has_Stdcall_Convention (V) then
+         if Has_Modifier ("stdcall") then
+            Result := Result & Output_Modifier ("stdcall", Blank => Before);
+         else
+            Error_Msg ("function has StdCall convention, but C compiler" &
+                       "doesn't support it", V);
+         end if;
+      end if;
+
+      Result := Result & " " & V & " (";
+
       --  If this is an internal subprogram, mark it as static
 
       if Get_Linkage (V) = Internal_Linkage then

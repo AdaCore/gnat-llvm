@@ -2,7 +2,12 @@ def build():
     # Do not rebuild gcc/gnat
     anod_install("gcc")
     anod_install("gnat-doc", qualifier="ugx")
-    anod_build("gnat-llvm")    
+    anod_build("gnat-llvm")
+
+def build_ccg():
+    anod_install("gcc")
+    anod_install("gnat-doc", qualifier="ugx")
+    anod_build("gnat-llvm-core", qualifier="ccg")
 
 def test_fixedbugs():
     anod_install("gnat-llvm")
@@ -18,7 +23,7 @@ def test_acats():
 
 def ccg_common():
     # Installed from the artifact
-    anod_install("gnat-llvm-core")
+    anod_install("gnat-llvm-core", qualifier="ccg")
     # We need to force the build here, since the dependency to the sources
     # is lost by the installation of gnat-llvm-core
     anod_build("ccg", target="c")

@@ -89,13 +89,6 @@ package GNATLLVM.Types is
           Post => Present (Type_Of'Result), Inline;
    --  Given a GNAT type TE, return the corresponding MD_Type
 
-   function MD_Type_Of (V : GL_Value) return MD_Type is
-     ((if    Relationship (V) = Reference_To_Unknown
-       then  Pointer_Type (Unknown_MDT (V), Address_Space)
-       elsif Relationship (V) = Unknown then From_Type (Type_Of (V))
-       else  Type_For_Relationship (Related_Type (V), Relationship (V))))
-     with Pre  => Present (V), Post => Present (MD_Type_Of'Result);
-
    procedure Check_OK_For_Atomic_Type
      (GT : GL_Type; E : Entity_Id; Is_Component : Boolean := False)
      with Pre => Present (GT) and then Present (E);
@@ -340,16 +333,6 @@ package GNATLLVM.Types is
      with Pre => Present (T);
    --  Return the preferred alignment of an LLVM type, in bits
 
-   function Get_Type_Alignment (T : Type_T) return ULL is
-     (To_Bits (ULL (ABI_Alignment_Of_Type (Module_Data_Layout, T))))
-     with Pre => Present (T);
-   --  Return the size of an LLVM type, in bits
-
-   function Get_Type_Alignment (T : Type_T) return unsigned is
-     (To_Bits (ABI_Alignment_Of_Type (Module_Data_Layout, T)))
-     with Pre => Present (T);
-   --  Return the size of an LLVM type, in bits
-
    function Get_Type_Alignment (T : Type_T) return GL_Value is
      (Size_Const_Int (ULL (Nat'(Get_Type_Alignment (T)))));
    --  Return the alignment of an LLVM type, in bytes, as an LLVM constant
@@ -435,18 +418,6 @@ package GNATLLVM.Types is
      with Pre => Present (GT);
    --  Return the alignment of a type. If Use_Specified is False, ignore a
    --  specified alignment.
-
-   function Get_Type_Alignment
-     (GT : GL_Type; Use_Specified : Boolean := True) return ULL
-   is
-     (ULL (Nat'(Get_Type_Alignment (GT, Use_Specified => Use_Specified))))
-     with Pre => Present (GT);
-
-   function Get_Type_Alignment
-     (GT : GL_Type; Use_Specified : Boolean := True) return unsigned
-   is
-     (unsigned (Nat'(Get_Type_Alignment (GT, Use_Specified => Use_Specified))))
-     with Pre => Present (GT);
 
    function Get_Type_Size
      (GT         : GL_Type;

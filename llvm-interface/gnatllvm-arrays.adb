@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Unchecked_Deallocation;
-
 with Nlists; use Nlists;
 with Snames; use Snames;
 
@@ -811,7 +809,7 @@ package body GNATLLVM.Arrays is
    function Get_Bound_Size (GT : Array_Or_PAT_GL_Type) return GL_Value is
       MDT : constant MD_Type := Create_Array_Bounds_Type (GT);
    begin
-      return Align_To (Get_Type_Size (+MDT), Nat (Get_Type_Alignment (MDT)),
+      return Align_To (Get_Type_Size (+MDT), Get_Type_Alignment (MDT),
                        Get_Type_Alignment (GT));
    end Get_Bound_Size;
 
@@ -820,7 +818,7 @@ package body GNATLLVM.Arrays is
    -------------------------
 
    function Get_Bound_Alignment (GT : Array_Or_PAT_GL_Type) return Nat is
-      (Nat (Get_Type_Alignment (Create_Array_Bounds_Type (GT))));
+      (Get_Type_Alignment (Create_Array_Bounds_Type (GT)));
 
    ------------------------------
    -- Get_Array_Type_Alignment --
@@ -894,8 +892,7 @@ package body GNATLLVM.Arrays is
 
    function Data_Index_In_BD_Type (V : GL_Value) return unsigned is
       BD_MD : constant MD_Type :=
-        (if Is_Reference (V) then Element_Type_Of (V) else MD_Type_Of (V));
-      --  ??? Fix later
+        (if Is_Reference (V) then Element_Type_Of (V) else Type_Of (V));
 
    begin
       return unsigned (Element_Count (BD_MD) - 1);
@@ -1057,12 +1054,9 @@ package body GNATLLVM.Arrays is
    is
       Prim_GT : constant Array_GL_Type := Primitive_GL_Type (GT);
       Idx     : Int                    := 1;
-      Vals    : Access_GL_Value_Array  :=
-        new GL_Value_Array (1 .. List_Length (Expressions (N)));
+      Vals    : GL_Value_Array (1 .. List_Length (Expressions (N)));
       Expr    : Opt_N_Subexpr_Id;
       Result  : GL_Value;
-      procedure Free is new Ada.Unchecked_Deallocation (GL_Value_Array,
-                                                        Access_GL_Value_Array);
 
    begin
       Expr := First (Expressions (N));
@@ -1075,8 +1069,7 @@ package body GNATLLVM.Arrays is
          Next (Expr);
       end loop;
 
-      Result := From_Primitive (Const_Array (Vals.all, Prim_GT), GT);
-      Free (Vals);
+      Result := From_Primitive (Const_Array (Vals, Prim_GT), GT);
       return Result;
 
    end Emit_Constant_Aggregate;
@@ -1396,7 +1389,7 @@ package body GNATLLVM.Arrays is
    is
       Native_Align : constant Nat :=
         (if   Is_Nonnative_Type (Comp_GT) then BPU
-         else Nat (Get_Type_Alignment (Type_Of (Comp_GT))));
+         else Get_Type_Alignment (Type_Of (Comp_GT)));
       Our_Align    : constant Nat := Get_Type_Alignment (Comp_GT);
       Base_Align   : constant Nat := Alignment (Base);
 
@@ -1427,7 +1420,7 @@ package body GNATLLVM.Arrays is
         Get_Type_Size (Comp_GT, Max_Size => Comp_Unc);
       Unit_Size : constant GL_Value :=
         (if   Has_Aliased_Components (GT)
-         then Build_Max (Comp_Size, Size_Const_Int (+BPU)) else Comp_Size);
+         then Build_Max (Comp_Size, Size_Const_Int (UBPU)) else Comp_Size);
       Unit_Mult : constant GL_Value :=
         (if   Use_Comp then Size_Const_Int (1)
          else To_Bytes (Unit_Size));

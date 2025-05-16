@@ -1110,9 +1110,9 @@ package body GNATLLVM.Types is
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return Nat
    is
-      TE    : constant Type_Kind_Id := Full_Etype (GT);
-      Align : constant Nat          := GT_Alignment (GT);
-      T     : constant Type_T       := +Type_Of (GT);
+      TE    : constant Void_Or_Type_Kind_Id := Full_Etype (GT);
+      Align : constant Nat                  := GT_Alignment (GT);
+      T     : constant Type_T               := +Type_Of (GT);
 
    begin
       --  If there's a known alignment in this GL_Type, use it
@@ -1205,7 +1205,7 @@ package body GNATLLVM.Types is
          if Present (V) and then Is_Data (V)
            and then not Use_Max_Size and then not Unpad_Record
          then
-            Our_Size := From_Const (Get_Type_Size (Type_Of (V)));
+            Our_Size := From_Const (Get_Type_Size (+Type_Of (V)));
 
             --  However, if this is both bounds and data, we have to subtract
             --  the size of the bounds since we define the size of the
@@ -1775,7 +1775,7 @@ package body GNATLLVM.Types is
         Get_Type_Size (GT, Max_Size => Use_Max and then Want_Max);
       Align : constant BA_Data :=
         Const (if   Do_Align
-               then Get_Type_Alignment (GT, Use_Specified => False)
+               then ULL (Nat'(Get_Type_Alignment (GT, Use_Specified => False)))
                else UBPU);
 
    begin

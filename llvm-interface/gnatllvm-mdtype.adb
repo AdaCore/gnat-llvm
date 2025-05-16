@@ -671,22 +671,26 @@ package body GNATLLVM.MDType is
       if No (MD_Name (MDT)) then
          Set_LLVM_Type (MDT, Struct_Type (Typs'Address, Typs'Length,
                                           Is_Packed (MDT)));
-      elsif No (LLVM_Type (MDT)) then
-         Set_LLVM_Type (MDT,
-                        Struct_Create_Named (Get_Global_Context,
-                                             Get_Name_String (MD_Name (MDT))));
+      else
+         if No (LLVM_Type (MDT)) then
+            Set_LLVM_Type (MDT,
+                           Struct_Create_Named
+                             (Get_Global_Context,
+                              Get_Name_String (MD_Name (MDT))));
+         end if;
+
+         Struct_Set_Body (LLVM_Type (MDT), Typs'Address, Typs'Length,
+                          Is_Packed (MDT));
       end if;
 
-      Struct_Set_Body (LLVM_Type (MDT), Typs'Address, Typs'Length,
-                       Is_Packed (MDT));
       C_Set_Struct (UID, LLVM_Type (MDT));
    end Struct_Set_Body_Internal;
 
-   ---------
-   -- "+" --
-   ---------
+   ------------------
+   -- LLVM_Type_Of --
+   ------------------
 
-   function "+" (MDT : MD_Type) return Type_T is
+   function LLVM_Type_Of (MDT : MD_Type) return Type_T is
       Result : Type_T;
 
    begin
@@ -771,7 +775,7 @@ package body GNATLLVM.MDType is
 
       Set_LLVM_Type (MDT, Result);
       return Result;
-   end "+";
+   end LLVM_Type_Of;
 
    ---------------
    -- From_Type --
@@ -819,7 +823,7 @@ package body GNATLLVM.MDType is
    -- Get_Type_Alignment --
    ------------------------
 
-   function Get_Type_Alignment (MDT : MD_Type) return ULL is
+   function Get_Type_Alignment (MDT : MD_Type) return Nat is
      (Get_Type_Alignment (Type_T'(+MDT)));
 
    ---------------

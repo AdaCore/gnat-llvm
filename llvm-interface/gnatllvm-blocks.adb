@@ -919,7 +919,7 @@ package body GNATLLVM.Blocks is
 
             Elements (Elements'Last) := Const_Null (SSI_GL_Type);
             Str := Const_Array (Elements, Any_Array_GL_Type);
-            V   := G_Ref (Add_Global (Module, Type_Of (Str),
+            V   := G_Ref (Add_Global (Module, Type_Of (+Str),
                                       Globalize_Name ("FNAME", Is_Global)),
                           Any_Array_GL_Type);
             Set_Initializer     (V, Str);

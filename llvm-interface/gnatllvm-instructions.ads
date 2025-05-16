@@ -129,7 +129,7 @@ package GNATLLVM.Instructions is
           Post => Present (Bit_Cast'Result), Inline;
 
    function Bit_Cast (V, T : GL_Value; Name : String := "") return GL_Value is
-     (G_From (Bit_Cast (IR_Builder, +V, Type_Of (T), Name), T))
+     (G_From (Bit_Cast (IR_Builder, +V, +Type_Of (T), Name), T))
      with Pre  => Present (V) and then Present (T),
           Post => Present (Bit_Cast'Result);
 
@@ -162,7 +162,7 @@ package GNATLLVM.Instructions is
      (V, T : GL_Value; Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (G_From (Pointer_Cast (IR_Builder, +V, Type_Of (T), Name), T)))
+        (G_From (Pointer_Cast (IR_Builder, +V, +Type_Of (T), Name), T)))
      with Pre  => Is_Pointer (V) and then Is_Pointer (T),
           Post => Is_Pointer (Pointer_Cast'Result);
 
@@ -282,7 +282,7 @@ package GNATLLVM.Instructions is
      (V, T : GL_Value; Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (G_From (Int_To_Ptr (IR_Builder, +V, Type_Of (T), Name), T)))
+        (G_From (Int_To_Ptr (IR_Builder, +V, +Type_Of (T), Name), T)))
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V)
                   and then Is_Pointer (T),
           Post => Is_Pointer (Int_To_Ptr'Result);
@@ -291,7 +291,7 @@ package GNATLLVM.Instructions is
      (V, T : GL_Value; Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (G_From (Ptr_To_Int (IR_Builder, +V, Type_Of (T), Name), T)))
+        (G_From (Ptr_To_Int (IR_Builder, +V, +Type_Of (T), Name), T)))
      with Pre  => Is_Pointer (V)
                   and then Is_Discrete_Or_Fixed_Point_Type (T),
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result);
@@ -851,9 +851,9 @@ package GNATLLVM.Instructions is
 
    procedure Build_MemCpy
      (Dst         : GL_Value;
-      Dst_Align   : ULL;
+      Dst_Align   : Nat;
       Src         : GL_Value;
-      Src_Align   : ULL;
+      Src_Align   : Nat;
       Size        : GL_Value;
       Is_Volatile : Boolean;
       TBAA        : Metadata_T := No_Metadata_T;
@@ -864,9 +864,9 @@ package GNATLLVM.Instructions is
 
    procedure Build_MemMove
      (Dst         : GL_Value;
-      Dst_Align   : ULL;
+      Dst_Align   : Nat;
       Src         : GL_Value;
-      Src_Align   : ULL;
+      Src_Align   : Nat;
       Size        : GL_Value;
       Is_Volatile : Boolean;
       TBAA        : Metadata_T := No_Metadata_T;
@@ -878,7 +878,7 @@ package GNATLLVM.Instructions is
      (Ptr         : GL_Value;
       Val         : GL_Value;
       Size        : GL_Value;
-      Align       : ULL;
+      Align       : Nat;
       Is_Volatile : Boolean;
       TBAA        : Metadata_T := No_Metadata_T;
       Scope       : Metadata_T := No_Metadata_T;

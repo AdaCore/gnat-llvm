@@ -44,7 +44,7 @@ package GNATLLVM.Builtins is
      (Name : String; Args : GL_Value_Array) return GL_Value
    is
      (Call (Build_Intrinsic (Name, Related_Type (Args (Args'First)),
-                             (1 => From_Type (Type_Of (Args (Args'First))))),
+                             (1 => Type_Of (Args (Args'First)))),
             Args));
    --  Create an intrinsic with the given name and type of the arguments,
    --  overloaded on the type of the first argument, and call it.

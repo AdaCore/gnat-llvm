@@ -27,6 +27,15 @@ include:
       cpus: 16
       save-component: true
 
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/build@~latest
+    inputs:
+      job-name: build-ccg
+      component-name: ccg
+      anod-args: run build_ccg
+      generic-anod-ci-args: --add-dep eng/toolchain/gnat --add-dep eng/toolchain/llvm-bindings
+      cpus: 16
+      save-component: true
+
 # Testing of gnat-llvm
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
     inputs:
@@ -45,6 +54,11 @@ include:
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
     inputs:
       job-name: ccg
+      component-name: ccg
+      # Declaring an explicit dependency on the "build-ccg" job is required to
+      # make generic_anod_ci import the right set of Cathod components.
+      needs:
+        - build-ccg:linux
       stage: test-ccg
       anod-args: run test_ccg
       generic-anod-ci-args: --add-dep eng/toolchain/ccg-tests
@@ -52,6 +66,11 @@ include:
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
     inputs:
       job-name: acats-ccg
+      component-name: ccg
+      # Declaring an explicit dependency on the "build-ccg" job is required to
+      # make generic_anod_ci import the right set of Cathod components.
+      needs:
+        - build-ccg:linux
       stage: test-ccg
       anod-args: run test_acats_ccg
       generic-anod-ci-args: --add-dep eng/toolchain/acats

@@ -58,7 +58,7 @@ package body GNATLLVM.Records.Field_Ref is
       --  If this doesn't contain an LLVM type, this is not a native LLVM
       --  structure, so we can't do anything.
 
-      if No (RI.MD_Typ) then
+      if No (RI.MDT) then
          return Struct_Field_Array'(1 .. 0 => <>);
       end if;
 
@@ -72,10 +72,9 @@ package body GNATLLVM.Records.Field_Ref is
          if FI.Field_Ordinal /= Last_Ord then
             Last_Ord := FI.Field_Ordinal;
             declare
-               F_Type  : constant MD_Type :=
-                 Element_Type (RI.MD_Typ, Last_Ord + 1);
+               F_Type  : constant MD_Type := Element_Type (RI.MDT, Last_Ord);
                Offset  : constant ULL     :=
-                 Get_Element_Offset (+RI.MD_Typ, Last_Ord);
+                 Get_Element_Offset (+RI.MDT, Last_Ord);
                GT      : constant GL_Type :=
                  (if Is_Bitfield_By_Rep (FI.Field) then No_GL_Type else FI.GT);
 
@@ -215,11 +214,10 @@ package body GNATLLVM.Records.Field_Ref is
 
       if Is_Nonnative_Type (Rec_Type) then
          Result     :=
-           Ptr_To_Relationship
-             (Result, Pointer_Type (RI.MD_Typ, Address_Space), Rec_GT,
-              Reference_To_Unknown);
-         Set_Unknown_MDT (Result, RI.MD_Typ);
-         Result_MDT := RI.MD_Typ;
+           Ptr_To_Relationship (Result, Pointer_Type (RI.MDT), Rec_GT,
+                                Reference_To_Unknown);
+         Set_Unknown_MDT (Result, RI.MDT);
+         Result_MDT := RI.MDT;
       else
          Result     := Convert_Ref (Result, Rec_GT);
          Result_MDT := Type_Of (Rec_GT);
@@ -239,8 +237,7 @@ package body GNATLLVM.Records.Field_Ref is
       Maybe_Initialize_TBAA_For_Field (Result, Field, F_GT);
 
       if Is_Bitfield (Field) then
-         Set_Unknown_MDT (Result,
-                          Element_Type (Result_MDT, FI.Field_Ordinal + 1));
+         Set_Unknown_MDT (Result, Element_Type (Result_MDT, FI.Field_Ordinal));
       end if;
 
       return Result;
@@ -710,13 +707,13 @@ package body GNATLLVM.Records.Field_Ref is
                --  In this case, when we're nested inside of a bitfield,
                --  we should be a native LLVM struct. So check for that.
 
-               pragma Assert (Present (RI.MD_Typ));
+               pragma Assert (Present (RI.MDT));
 
                Offset := Offset +
                  To_Bytes (Get_Record_Size_So_Far (TE, Result,
                                                    Start_Idx => R_Ridx,
                                                    Idx       => F_Ridx)) +
-                 Size_Const_Int (Get_Element_Offset (+RI.MD_Typ,
+                 Size_Const_Int (Get_Element_Offset (+RI.MDT,
                                                      FI.Field_Ordinal));
                Bit_Offset := Bit_Offset + (+Field_Bit_Offset (F));
             end;
@@ -784,7 +781,7 @@ package body GNATLLVM.Records.Field_Ref is
 
       if Relationship (Result) = Unknown and then Is_Constant (Result) then
          Result := G (Convert_Aggregate_Constant (+Result, Int_Ty (Our_Bits)),
-                      F_GT, Unknown);
+                      F_GT, Int_Ty (Our_Bits), Unknown);
       end if;
 
       --  LLVM IR's load and store instructions are only defined when they're
@@ -806,9 +803,8 @@ package body GNATLLVM.Records.Field_Ref is
             --  location within the field.
 
             if Is_Reference (Result) then
-               Result := Ptr_To_Relationship
-                 (Result, Pointer_Type (MDT, Address_Space),
-                  Reference_To_Unknown);
+               Result := Ptr_To_Relationship (Result, Pointer_Type (MDT),
+                                              Reference_To_Unknown);
 
                Set_Unknown_MDT (Result, MDT);
                Result := Get (Result, Unknown);
@@ -819,7 +815,7 @@ package body GNATLLVM.Records.Field_Ref is
             if First_Bit /= 0 then
                Result := L_Shr (Result,
                                 G (Const_Int (+MDT, ULL (First_Bit), False),
-                                   F_GT, Unknown));
+                                   F_GT, MDT, Unknown));
             end if;
 
             if Num_Bits /= Our_Bits then
@@ -910,9 +906,8 @@ package body GNATLLVM.Records.Field_Ref is
               (if   Present (LHS) then LHS
                else Allocate_For_Type (F_GT));
             Mem_As_Int_Ptr : GL_Value          :=
-              Ptr_To_Relationship
-                (Memory, Pointer_Type (Type_Of (Result), Address_Space),
-                 F_GT, Reference_To_Unknown);
+              Ptr_To_Relationship (Memory, Pointer_Type (Type_Of (Result)),
+                                   F_GT, Reference_To_Unknown);
 
          begin
             Set_Unknown_MDT (Mem_As_Int_Ptr, Type_Of (Related_Type (Result)));
@@ -960,13 +955,11 @@ package body GNATLLVM.Records.Field_Ref is
       then
          if Is_Nonsymbolic_Constant (New_RHS) then
             New_RHS := G (Convert_Aggregate_Constant (+New_RHS, +F_MDT),
-                          F_GT, Unknown);
+                          F_GT, F_MDT, Unknown);
          else
             New_RHS := Get (New_RHS, Reference, For_LHS => True);
-            New_RHS :=
-              Ptr_To_Relationship (New_RHS,
-                                   Pointer_Type (F_MDT, Address_Space),
-                                   Reference_To_Unknown);
+            New_RHS := Ptr_To_Relationship (New_RHS, Pointer_Type (F_MDT),
+                                            Reference_To_Unknown);
             Set_Unknown_MDT (New_RHS, F_MDT);
          end if;
       end if;
@@ -990,10 +983,10 @@ package body GNATLLVM.Records.Field_Ref is
             Orig_MDT    : constant MD_Type  := Type_Of (BRD.LHS);
             MDT         : constant MD_Type  := Int_Ty (Our_Bits);
             Shift_Count : constant GL_Value :=
-              G (Const_Int (+MDT, ULL (First_Bit), False), F_GT, Unknown);
+              G (Const_Int (+MDT, ULL (First_Bit), False), F_GT, MDT, Unknown);
             Ones        : constant GL_Value :=
               Z_Ext_To_Relationship (G (Const_Ones (+New_F_MDT), F_GT,
-                                        Unknown),
+                                        New_F_MDT, Unknown),
                                      MDT, Unknown);
             Mask        : constant GL_Value := Shl (Ones, Shift_Count);
             Ext_RHS     : constant GL_Value :=
@@ -1013,15 +1006,14 @@ package body GNATLLVM.Records.Field_Ref is
                   return No_GL_Value;
                end if;
 
-               LHS_Ptr := Ptr_To_Relationship
-                 (LHS, Pointer_Type (MDT, Address_Space),
-                  Reference_To_Unknown);
+               LHS_Ptr := Ptr_To_Relationship (LHS, Pointer_Type (MDT),
+                                               Reference_To_Unknown);
                Set_Unknown_MDT (LHS_Ptr, MDT);
                LHS := Load (LHS_Ptr);
             elsif Is_Undef (LHS) then
-               LHS := G (Const_Null (MDT), F_GT, Unknown);
+               LHS := G (Const_Null (MDT), F_GT, MDT, Unknown);
             elsif Is_Constant (LHS) then
-               LHS := G (Convert_Aggregate_Constant (+LHS, +MDT), F_GT,
+               LHS := G (Convert_Aggregate_Constant (+LHS, +MDT), F_GT, MDT,
                          Unknown);
             end if;
 
@@ -1047,10 +1039,10 @@ package body GNATLLVM.Records.Field_Ref is
             else
                if Type_Of (LHS) /= Orig_MDT then
                   if Is_Undef (LHS) then
-                     LHS := G (Get_Undef (Orig_MDT), F_GT, Unknown);
+                     LHS := G (Get_Undef (Orig_MDT), F_GT, Orig_MDT, Unknown);
                   else
                      LHS := G (Convert_Aggregate_Constant (+LHS, +Orig_MDT),
-                               F_GT, Unknown);
+                               F_GT, Orig_MDT, Unknown);
                   end if;
                end if;
 
@@ -1085,13 +1077,14 @@ package body GNATLLVM.Records.Field_Ref is
             High_Ptr    : constant GL_Value :=
               Convert_Ref (High_Addr, SSI_GL_Type);
             Shift_Cnt_L : constant GL_Value :=
-              G (Const_Int (Max_Int_T, ULL (First_Bit), False), F_GT, Unknown);
+              G (Const_Int (Max_Int_T, ULL (First_Bit), False), F_GT,
+                 Max_Int_MD, Unknown);
             Shift_Cnt_H : constant GL_Value :=
               G (Const_Int (Max_Int_T, ULL (Max_Int_Size - First_Bit), False),
-                 F_GT, Unknown);
+                 F_GT, Max_Int_MD, Unknown);
             Ones        : constant GL_Value :=
               Z_Ext_To_Relationship (G (Const_Ones (+New_F_MDT),
-                                        F_GT, Unknown),
+                                        F_GT, New_F_MDT, Unknown),
                                      New_F_MDT, Unknown);
             Low_Mask    : constant GL_Value := Shl (Ones, Shift_Cnt_L);
             High_Mask   : constant GL_Value :=

@@ -189,8 +189,6 @@ package GNATLLVM.Utils is
 
    function Const_String
      (File_Index : Source_File_Index; GT : GL_Type) return GL_Value
-   is
-     (G (Const_String (File_Index), GT))
      with Pre => Present (GT), Post => Is_Constant (Const_String'Result);
 
    function Globalize_Name

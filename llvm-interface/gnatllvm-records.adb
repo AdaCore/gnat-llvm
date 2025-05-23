@@ -281,11 +281,11 @@ package body GNATLLVM.Records is
       --  This must be an MD_Type, which is a struct, a GL_Type, or a
       --  variant and only one of those.
 
-      if Present (RI.MD_Typ) then
+      if Present (RI.MDT) then
          return No (RI.GT) and then RI.Variants = null
-           and then Is_Struct (RI.MD_Typ);
+           and then Is_Struct (RI.MDT);
       elsif Present (RI.GT) then
-         --  We already know that MD_Typ isn't Present
+         --  We already know that MDT isn't Present
 
          return RI.Variants = null and then RI.Overlap_Variants = null;
       else
@@ -493,7 +493,7 @@ package body GNATLLVM.Records is
                RI : constant Record_Info := Record_Info_Table.Table (J);
 
             begin
-               exit when Present (RI.MD_Typ) or else Present (RI.GT);
+               exit when Present (RI.MDT) or else Present (RI.GT);
                exit when RI.Variants /= null
                  and then (for some K of RI.Variants.all => Present (K));
 
@@ -520,7 +520,7 @@ package body GNATLLVM.Records is
          Return_Size : Boolean := True;
          No_Padding  : Boolean := False)
       is
-         MDT       : constant MD_Type  := RI.MD_Typ;
+         MDT       : constant MD_Type  := RI.MDT;
          GT        : constant GL_Type  := RI.GT;
          This_Size : Result            := No_Result;
 
@@ -902,7 +902,7 @@ package body GNATLLVM.Records is
             declare
                Ordinal     : constant unsigned := unsigned (FI.Field_Ordinal);
                This_Offset : constant ULL      :=
-                 Offset_Of_Element (Module_Data_Layout, +RI.MD_Typ, Ordinal);
+                 Offset_Of_Element (Module_Data_Layout, +RI.MDT, Ordinal);
 
             begin
                return Offset + Size_Const_Int (This_Offset * UBPU);
@@ -1711,8 +1711,8 @@ package body GNATLLVM.Records is
    begin
       if Present (RI.GT) then
          Dump_GL_Type (RI.GT);
-      elsif Present (RI.MD_Typ) then
-         Dump_MD_Type (RI.MD_Typ);
+      elsif Present (RI.MDT) then
+         Dump_MD_Type (RI.MDT);
       end if;
 
    end Print_RI_Briefly;
@@ -1817,8 +1817,8 @@ package body GNATLLVM.Records is
             if Present (RI.GT) then
                Write_Str (Prefix);
                Dump_GL_Type (RI.GT);
-            elsif Present (RI.MD_Typ) then
-               Dump_MD_Type (RI.MD_Typ);
+            elsif Present (RI.MDT) then
+               Dump_MD_Type (RI.MDT);
             end if;
 
             F_Idx := RI.First_Field;
@@ -1827,7 +1827,7 @@ package body GNATLLVM.Records is
                Write_Str (Prefix);
                Write_Str ("    Field");
 
-               if Present (RI.MD_Typ) then
+               if Present (RI.MDT) then
                   Write_Str ("@");
                   Write_Int (FI.Field_Ordinal);
 

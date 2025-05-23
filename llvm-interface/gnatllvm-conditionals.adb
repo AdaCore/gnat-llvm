@@ -428,7 +428,7 @@ package body GNATLLVM.Conditionals is
          --  result is the LHS. We could convert the opposite comparison
          --  into a NOT operation, but that's not worth the trouble.
 
-         if Type_Of (LHS) = Bit_T
+         if Type_Of (LHS) = Bit_MD
            and then ((Kind = N_Op_Eq and then Is_Const_1 (RHS))
                        or else (Kind = N_Op_Ne and then Is_Const_0 (RHS)))
          then

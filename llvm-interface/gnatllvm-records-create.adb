@@ -535,7 +535,7 @@ package body GNATLLVM.Records.Create is
       Cur_Idx        : Record_Info_Id;
       --  The index of the record table entry we're building
 
-      MD_Typ         : MD_Type;
+      MDT            : MD_Type;
       --  The MD_Type for this record type
 
       Field          : Opt_Record_Field_Kind_Id;
@@ -610,7 +610,7 @@ package body GNATLLVM.Records.Create is
          --  but we may not actually end up using that one.
 
          Record_Info_Table.Table (Cur_Idx) :=
-           (MD_Typ           => MDT,
+           (MDT              => MDT,
             GT               => F_GT,
             Align            => Align,
             Position         => Position,
@@ -2016,14 +2016,14 @@ package body GNATLLVM.Records.Create is
          GT := New_GT (TE);
       end if;
 
-      MD_Typ := Type_Of (GT);
+      MDT := Type_Of (GT);
 
-      if No (MD_Typ) then
+      if No (MDT) then
          pragma Assert (Is_Empty_GL_Type (GT));
-         MD_Typ := Struct_Create_Named (Get_Ext_Name (TE));
+         MDT := Struct_Create_Named (Get_Ext_Name (TE));
       end if;
 
-      Update_GL_Type (GT, MD_Typ, True);
+      Update_GL_Type (GT, MDT, True);
 
       --  See if we have any non-packable fields of fixed size
 
@@ -2062,14 +2062,14 @@ package body GNATLLVM.Records.Create is
          end if;
 
          Struct_Set_Body
-           (MD_Typ,
+           (MDT,
             MD_Type_Array (MD_Type_List.Table (0 .. MD_Type_List.Last)),
             Name_Id_Array (Field_Name_List.Table (0 .. MD_Type_List.Last)),
             Fields => Field_Id_Array (Field_Entity_List.Table
                                         (0 .. MD_Type_List.Last)),
             Packed => True);
 
-         Add_RI (MDT         => MD_Typ,
+         Add_RI (MDT         => MDT,
                  Align       => RI_Align,
                  Unused_Bits => RI_Unused_Bits);
       else
@@ -2120,7 +2120,7 @@ package body GNATLLVM.Records.Create is
 
       --  Show that the type is no longer a dummy
 
-      Update_GL_Type (GT, MD_Typ, False);
+      Update_GL_Type (GT, MDT, False);
 
       --  Back-annotate all fields that exist in this record type
 
@@ -2175,7 +2175,7 @@ package body GNATLLVM.Records.Create is
          Print_Record_Info (TE, Eol => True);
       end if;
 
-      return MD_Typ;
+      return MDT;
    end Create_Record_Type;
 
 begin

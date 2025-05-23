@@ -121,7 +121,6 @@ package body GNATLLVM.MDType is
 
    function Hash (Info : MD_Type_Info) return Hash_Index_Type;
    function MD_Find (Info : MD_Type_Info) return MD_Type;
-   function To_String (MDT : MD_Type; Top : Boolean := False) return String;
 
    --  Here are the internal accessors for MD_Type components
 
@@ -375,7 +374,7 @@ package body GNATLLVM.MDType is
       E_MDT : MD_Type := Continuation_Type (MDT);
 
    begin
-      for J in 1 .. Idx - 1 loop
+      for J in 0 .. Idx - 1 loop
          E_MDT := Continuation_Type (E_MDT);
       end loop;
 
@@ -390,7 +389,7 @@ package body GNATLLVM.MDType is
       E_MDT : MD_Type := Continuation_Type (MDT);
 
    begin
-      for J in 1 .. Idx - 1 loop
+      for J in 0 .. Idx - 1 loop
          E_MDT := Continuation_Type (E_MDT);
       end loop;
 
@@ -405,7 +404,7 @@ package body GNATLLVM.MDType is
       E_MDT : MD_Type := Continuation_Type (MDT);
 
    begin
-      for J in 1 .. Idx - 1 loop
+      for J in 0 .. Idx - 1 loop
          E_MDT := Continuation_Type (E_MDT);
       end loop;
 
@@ -475,7 +474,10 @@ package body GNATLLVM.MDType is
    -- Pointer_Type --
    ------------------
 
-   function Pointer_Type (Elem_Type : MD_Type; Space : Nat) return MD_Type is
+   function Pointer_Type
+     (Elem_Type : MD_Type;
+      Space     : Nat := Address_Space) return MD_Type
+   is
    begin
       return MD_Find ((Kind         => Pointer,
                        Related_Type => Elem_Type,
@@ -712,7 +714,7 @@ package body GNATLLVM.MDType is
 
       case Kind (MDT) is
          when Void =>
-            Result := Byte_T;
+            Result := Void_Type;
 
          when Integer =>
             Result := Int_Type (unsigned (Int_Bits (MDT)));
@@ -735,7 +737,8 @@ package body GNATLLVM.MDType is
             end case;
 
          when Pointer =>
-            Result := Pointer_Type (+Designated_Type (MDT),
+            Result := Pointer_Type ((if   Is_Void (Designated_Type (MDT))
+                                     then Byte_T else +Designated_Type (MDT)),
                                     unsigned (Pointer_Space (MDT)));
 
          when Array_Type =>
@@ -793,12 +796,53 @@ package body GNATLLVM.MDType is
          when Double_Type_Kind =>
             return Float_Ty (64);
 
+         when X86_FP80_Type_Kind =>
+            return Float_Ty (80);
+
          when Pointer_Type_Kind =>
-            return Pointer_Type (From_Type (Get_Element_Type (T)),
-                                 Address_Space);
+            return Pointer_Type ((if   Pointer_Type_Is_Opaque (T)
+                                  then Void_Ty
+                                  else From_Type (Get_Element_Type (T))));
+
          when Array_Type_Kind =>
             return Array_Type (From_Type (Get_Element_Type (T)),
                                Nat (Get_Array_Length (T)));
+
+         when Struct_Type_Kind =>
+            declare
+               Num_Elts : constant Nat := Nat (Count_Struct_Element_Types (T));
+               Types    : Type_Array (1 .. Num_Elts);
+               MDTs     : MD_Type_Array (1 .. Num_Elts);
+
+            begin
+               Get_Struct_Element_Types (T, Types'Address);
+
+               for J in Types'Range loop
+                  MDTs (J) := From_Type (Types (J));
+               end loop;
+
+               return Build_Struct_Type (MDTs, (MDTs'Range => No_Name));
+            end;
+
+         when Function_Type_Kind =>
+            declare
+               Num_Params : constant Nat := Nat (Count_Param_Types (T));
+               Types      : Type_Array (1 .. Num_Params);
+               MDTs       : MD_Type_Array (1 .. Num_Params);
+
+            begin
+               Get_Param_Types (T, Types'Address);
+
+               for J in Types'Range loop
+                  MDTs (J) := From_Type (Types (J));
+               end loop;
+
+               return Fn_Ty (MDTs, From_Type (Get_Return_Type (T)));
+            end;
+
+         when Void_Type_Kind =>
+            return Void_Ty;
+
          when others =>
             pragma Assert (False);
             return Void_Ty;
@@ -895,11 +939,15 @@ package body GNATLLVM.MDType is
                Append (Result, To_String (Related (C_MDT)));
 
                if Has_Name (C_MDT) then
+                  Append (Result, " ");
                   Append (Result, MD_Name (C_MDT));
                end if;
 
-               Append (Result, "; ");
                C_MDT := Continuation_Type (C_MDT);
+
+               if Present (C_MDT) then
+                  Append (Result, ", ");
+               end if;
             end loop;
 
             Append (Result, "}");
@@ -915,7 +963,7 @@ package body GNATLLVM.MDType is
 
          when Func =>
             Append (Result, To_String (Return_Type (MDT)));
-            Append (Result, "(*) (");
+            Append (Result, "() (");
 
             while Present (C_MDT) loop
                Append (Result, To_String (Related (C_MDT)));

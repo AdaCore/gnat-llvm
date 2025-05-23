@@ -481,7 +481,7 @@ package body GNATLLVM.Arrays is
                --  If we just have one bound, that's our result, but if we
                --  have a struct, we need to extract the desired bound.
 
-               if Get_Type_Kind (Bound) = Struct_Type_Kind then
+               if Is_Struct (Type_Of (Bound)) then
                   Res := Extract_Value
                     (Bound_GT, Bound, (1 => unsigned (Bound_Idx)),
                      (if Is_Low then "low.bound" else "high.bound"));
@@ -1068,13 +1068,13 @@ package body GNATLLVM.Arrays is
       while Present (Expr) loop
          Vals (Idx) :=
            (if   Dims_Left = 1 then Emit_Convert_Value (Expr, Comp_Type)
-            else Emit_Constant_Aggregate (Expr, Comp_Type, Any_Array_GL_Type,
-                                          Dims_Left - 1));
+            else Emit_Constant_Aggregate (Expr, Comp_Type, GT, Dims_Left - 1));
          Idx        := Idx + 1;
          Next (Expr);
       end loop;
 
-      Result := From_Primitive (Const_Array (Vals.all, Prim_GT), GT);
+      Result := From_Primitive (Const_Array (Vals.all, Prim_GT, Dims_Left),
+                                GT);
       Free (Vals);
       return Result;
 

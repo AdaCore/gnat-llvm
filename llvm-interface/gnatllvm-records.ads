@@ -123,7 +123,7 @@ package GNATLLVM.Records is
    function Emit_Field_Position
      (E : Record_Field_Kind_Id; V : GL_Value) return GL_Value
      with Post => No (Emit_Field_Position'Result)
-                  or else Type_Of (Emit_Field_Position'Result) = Size_T;
+                  or else Type_Of (Emit_Field_Position'Result) = Size_MD;
 
    function Is_Bitfield (F : Record_Field_Kind_Id) return Boolean
      with Pre => Present (Get_Field_Info (F));
@@ -314,7 +314,7 @@ private
    --      relative offset of these fields is zero.
 
    type Record_Info_Base is record
-      MD_Typ           : MD_Type;
+      MDT              : MD_Type;
       --  LLVM type corresponding to this fragment, if any
 
       GT               : GL_Type;

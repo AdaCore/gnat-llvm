@@ -91,7 +91,7 @@ package GNATLLVM.Arrays is
      with Pre  => Dim < Number_Dimensions (TE)
                   and then (Present (V) or else Is_Constrained (TE)
                               or else Max_Size),
-          Post => Type_Of (Get_Array_Length'Result) = Size_T;
+          Post => Type_Of (Get_Array_Length'Result) = Size_MD;
    --  Similar, but get the length of that dimension of the array.  This is
    --  always Size_Type's width, but may actually be a different GNAT type.
 

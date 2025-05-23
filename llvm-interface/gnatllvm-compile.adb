@@ -194,6 +194,9 @@ package body GNATLLVM.Compile is
       Void_GL_Type      := Primitive_GL_Type (Standard_Void_Type);
       Any_Array_GL_Type := Primitive_GL_Type (Any_Array);
 
+      Boolean_MD        := Type_Of (Boolean_GL_Type);
+      SSI_MD            := Type_Of (SSI_GL_Type);
+
       --  Create a "void" pointer, which is i8* in LLVM
 
       Void_Ptr_MD       := Pointer_Type (Void_Ty, 0);
@@ -220,9 +223,10 @@ package body GNATLLVM.Compile is
       --  burden on address arithmetic, which now requires conversions to
       --  and from a suitable integer representation of the address.
 
-      Address_MD      := (if Tagged_Pointers then Void_Ptr_MD else Size_MD);
-      Address_T       := +Address_MD;
       Address_GL_Type := Primitive_GL_Type (Standard_Address);
+      Address_MD      :=
+        (if Tagged_Pointers then Void_Ptr_MD else Type_Of (Address_GL_Type));
+      Address_T       := +Address_MD;
 
       --  The size of a pointer is specified in both the LLVM data layout
       --  string (usually from a --target specification) and the target
@@ -1167,7 +1171,7 @@ package body GNATLLVM.Compile is
             if Is_Reference (Result) and then Is_A_Global_Variable (Result)
               and then Is_Global_Constant (Result)
               and then not Is_Nonnative_Type (Result)
-              and then Type_Of (Related_Type (Result)) =
+              and then +Type_Of (Related_Type (Result)) =
                        Global_Get_Value_Type (Result)
             then
                Result := Get_Initializer (Result);

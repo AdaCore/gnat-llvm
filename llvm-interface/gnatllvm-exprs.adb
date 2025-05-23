@@ -390,7 +390,7 @@ package body GNATLLVM.Exprs is
 
             if Tagged_Pointers and then Is_Address (GT) then
                V := Null_Derived_Ptr
-                 (Const_Int (Size_GL_Type, Intval (N)), GT);
+                 (Const_Int (Address_GL_Type, Intval (N)), GT);
             else
                V := Const_Int (Prim_GT, Intval (N));
             end if;
@@ -484,7 +484,7 @@ package body GNATLLVM.Exprs is
                                   ULL (Get_String_Char (Str_Id, Nat (J))));
                   end loop;
 
-                  V := Const_Array (Elements.all, Prim_GT);
+                  V := Const_Array (Elements.all, Prim_GT, 1);
                   Free (Elements);
                end;
             end if;
@@ -1415,7 +1415,7 @@ package body GNATLLVM.Exprs is
             return
               (if   Bits = 0
                then V
-               else Address_Add (V, Const_Int (Size_GL_Type, Bits / BPU)));
+               else Address_Add (V, Const_Int (Address_GL_Type, Bits / BPU)));
 
          when Attribute_Pool_Address =>
 
@@ -1793,6 +1793,19 @@ package body GNATLLVM.Exprs is
          if Related_Type (Src) /= Dest_GT or else not Has_SM_Copy_From (Dest)
          then
             Src := Convert (Get (Src, Data), Dest_GT);
+
+            --  We have one special case, which is with access subprogram
+            --  types. In the case, there may be a static link on one side
+            --  that's not on other other. So check for that case and do
+            --  a pointer conversion if needed. But don't get confused by
+            --  a fat subprogram pointer.
+
+            if Is_Access_Subprogram_Type (Src)
+              and then Is_Pointer (Type_Of (Dest))
+              and then Type_Of (Src) /= Designated_Type_Of (Dest)
+            then
+               Src := Pointer_Cast (Src, Designated_Type_Of (Dest));
+            end if;
          end if;
 
          --  And finally do the store

@@ -556,7 +556,7 @@ Add_Function_To_Module (Function *f, Module *m, bool allowDeduplication)
 
   if (existingFunction && !allowDeduplication) {
     assert(f->isDeclaration() && existingFunction->isDeclaration() &&
-           f->getType() == existingFunction->getType());
+           f->getFunctionType() == existingFunction->getFunctionType());
     f->replaceAllUsesWith(existingFunction);
     delete f;
   } else {

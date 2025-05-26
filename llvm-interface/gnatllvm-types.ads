@@ -20,8 +20,8 @@ with Repinfo;      use Repinfo;
 with Sem_Util;     use Sem_Util;
 
 with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
-with GNATLLVM.MDType;       use GNATLLVM.MDType;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
+with GNATLLVM.MDType;       use GNATLLVM.MDType;
 
 package GNATLLVM.Types is
 
@@ -95,12 +95,6 @@ package GNATLLVM.Types is
    --  GT is a type proposed for entity E, which is either an atomic
    --  object, atomic component, or atomic type. Produce an error message
    --  if we can't make it atomic.
-
-   function Atomic_Kind (T : Type_T) return Boolean is
-     (Get_Type_Kind (T)
-        in Half_Type_Kind .. Integer_Type_Kind | Pointer_Type_Kind)
-     with Pre => Present (T);
-   --  Return True if type T is valid for an atomic operation
 
    function Field_Error_Msg
      (E : Entity_Id; GT : GL_Type; Only_Special : Boolean) return String
@@ -409,7 +403,7 @@ package GNATLLVM.Types is
 
    function To_Size_Type (V : GL_Value) return GL_Value
      with Pre  => Present (V),
-          Post => Type_Of (To_Size_Type'Result) = Size_T;
+          Post => Type_Of (To_Size_Type'Result) = Size_MD;
    --  Convert V to Size_Type. This is always Size_Type's width, but may
    --  actually be a different GNAT type.
 
@@ -866,6 +860,9 @@ package GNATLLVM.Types is
 
    procedure Dump_BA_Data (V : BA_Data)
      with Export, External_Name => "dbad";
+
+   function Get_LLVM_Type (V : Value_T) return Type_T is
+     (Type_Of (V));
 
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");
 

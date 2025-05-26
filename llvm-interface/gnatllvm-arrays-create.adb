@@ -685,8 +685,7 @@ package body GNATLLVM.Arrays.Create is
      (GT : Array_Or_PAT_GL_Type) return MD_Type
    is
       Name       : constant Name_Id := Get_Ext_Name (GT, "_FP");
-      P_Data_MDT : constant MD_Type :=
-        Pointer_Type (Type_Of (GT), Address_Space);
+      P_Data_MDT : constant MD_Type := Pointer_Type (Type_Of (GT));
       Data_Name  : constant Name_Id := Name_Find ("P_DATA");
 
    begin
@@ -701,7 +700,7 @@ package body GNATLLVM.Arrays.Create is
       else
          return Build_Struct_Type
            ((1 => P_Data_MDT,
-             2 => Pointer_Type (Create_Array_Bounds_Type (GT), Address_Space)),
+             2 => Pointer_Type (Create_Array_Bounds_Type (GT))),
             Field_Names => (1 => Data_Name, 2 => Name_Find ("P_BOUNDS")),
             Name        => Name);
       end if;

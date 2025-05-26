@@ -859,7 +859,7 @@ package body GNATLLVM.Types is
               Call (Get_Default_Alloc_Fn, (1 => To_Bytes (Total_Size)));
             Alloc      : constant GL_Value :=
               (if   Is_Pointer (Alloc_R)
-               then Ptr_To_Int (Alloc_R, Size_GL_Type) else Alloc_R);
+               then Ptr_To_Int (Alloc_R, Address_GL_Type) else Alloc_R);
             Aligned    : constant GL_Value :=
               Align_To (Address_Add (Alloc, To_Bytes (Ptr_Size)),
                         Get_System_Allocator_Alignment, To_Bytes (Align));
@@ -877,7 +877,7 @@ package body GNATLLVM.Types is
                return Get_Undef_Ref (GT);
             end if;
 
-            Store (Alloc, Int_To_Ref (Ptr_Loc, A_Char_GL_Type));
+            Store (Alloc, Int_To_Ref (Ptr_Loc, Address_GL_Type));
             Result := Convert (Aligned, A_Char_GL_Type);
          end;
 
@@ -974,7 +974,7 @@ package body GNATLLVM.Types is
             Call (Get_Default_Free_Fn,
                   (1 => (if   Emit_C
                          then Convert_To_Access (Free_V, A_Char_GL_Type)
-                         else Ptr_To_Int (Free_V, Size_GL_Type))));
+                         else Ptr_To_Int (Free_V, Address_GL_Type))));
 
          --  If we have to use the normal deallocation procedure to
          --  deallocate an overaligned value, the actual address of the
@@ -984,7 +984,7 @@ package body GNATLLVM.Types is
          elsif No (Proc) then
             declare
                Addr       : constant GL_Value :=
-                 Ptr_To_Int (Free_V, Size_GL_Type);
+                 Ptr_To_Int (Free_V, Address_GL_Type);
                Ptr_Size   : constant GL_Value :=
                  Get_Type_Size (A_Char_GL_Type);
                Ptr_Loc    : constant GL_Value := Addr - To_Bytes (Ptr_Size);
@@ -995,7 +995,7 @@ package body GNATLLVM.Types is
                Call (Get_Default_Free_Fn,
                      (1 => (if   Emit_C
                             then Convert_To_Access (Ptr_Addr, A_Char_GL_Type)
-                            else Ptr_To_Int (Ptr_Addr, Size_GL_Type))));
+                            else Ptr_To_Int (Ptr_Addr, Address_GL_Type))));
             end;
 
          --  If a procedure was specified (meaning that a pool must also
@@ -1077,7 +1077,7 @@ package body GNATLLVM.Types is
    procedure Call_SM_Copy_From (Dest, Src, Size : GL_Value) is
    begin
       Call (Emit_Entity (SM_Copy_From (Src)),
-            (1 => Emit_Entity (SM_Object (Src)),
+            (1 => To_Primitive (Emit_Entity (SM_Object (Src))),
              2 => Prepare_SM_Copy_Host (Dest),
              3 => Prepare_SM_Copy_Target (Src),
              4 => Get (Size, Data)));
@@ -1090,7 +1090,7 @@ package body GNATLLVM.Types is
    procedure Call_SM_Copy_To (Dest, Src, Size : GL_Value) is
    begin
       Call (Emit_Entity (SM_Copy_To (Dest)),
-            (1 => Emit_Entity (SM_Object (Dest)),
+            (1 => To_Primitive (Emit_Entity (SM_Object (Dest))),
              2 => Prepare_SM_Copy_Target (Dest),
              3 => Prepare_SM_Copy_Host (Src),
              4 => Get (Size, Data)));
@@ -1568,7 +1568,7 @@ package body GNATLLVM.Types is
       Our_Volatile : constant Boolean    := Is_Volatile (V);
       Our_Atomic   : constant Boolean    :=
         Is_Atomic (V)
-        and then (Special_Atomic or else Atomic_Kind (+Element_Type_Of (V)));
+        and then (Special_Atomic or else Atomic_Kind (Element_Type_Of (V)));
 
    begin
       --  We always set the alignment, since that's correct for all

@@ -1021,7 +1021,7 @@ package body GNATLLVM.Variables is
               --  Operand must not need elaboration
 
               and then (not Is_Scalar_Type (GT)
-                          or else Type_Of (GT) = Address_T
+                          or else Type_Of (GT) = Address_MD
                           or else Test_Emit (Expression (N),
                                              Is_A_Constant_Int'Access)
                           or else Test_Emit (Expression (N),
@@ -1576,8 +1576,8 @@ package body GNATLLVM.Variables is
       In_Align     : constant GL_Value             := Get_Type_Alignment (GT);
       In_Align_Nat : constant Nat                  := +In_Align;
       Size         : constant Uint                 :=
-        (if not Known_Esize (E) then No_Uint
-         else   Validate_Size (E, GT, Esize (E),
+        (if   not Known_Esize (E) then No_Uint
+         else Validate_Size (E, GT, Esize (E),
                              Zero_Allowed => Has_Size_Clause (E)));
       Align        : Uint                          :=
         (if not Known_Alignment (E) then No_Uint
@@ -1586,6 +1586,13 @@ package body GNATLLVM.Variables is
         Has_Biased_Representation (E);
 
    begin
+      --  If we've already made a value for this object, use the type we
+      --  previously used. If we don't do this, we may get confused by
+      --  back-annotation of sizes.
+
+      if Present (Get_Value (E)) then
+         return Related_Type (Get_Value (E));
+
       --  If this is an object with no specified size and alignment, and if
       --  either it is atomic or we are not optimizing alignment for space
       --  and it is composite and not an exception, an Out parameter or a
@@ -1596,7 +1603,7 @@ package body GNATLLVM.Variables is
       --  harder to detect user-specified alignments and this really should
       --  be done by the underlying C compiler if it would benefit the target.
 
-      if not Emit_C and then No (Size) and then No (Align)
+      elsif not Emit_C and then No (Size) and then No (Align)
         and then Present (In_Size)
         and then (Is_Full_Access_Object (E)
                     or else (Ekind (E) not in E_Exception     |
@@ -1731,7 +1738,8 @@ package body GNATLLVM.Variables is
       --  Now make a GL_Value. We do this here since different constant
       --  literals may have different types (i.e., bounds).
 
-      return G (Out_Val, GT, Ref (In_V),
+      return G (Out_Val, GT, Type_For_Relationship (GT, Ref (In_V)),
+                Ref (In_V),
                 Alignment => Get_Type_Alignment (Default_GL_Type (GT)));
    end Make_Global_Constant;
 
@@ -1831,7 +1839,8 @@ package body GNATLLVM.Variables is
                LLVM_Var := G (Add_Alias_2 (Module, +Type_Of (GT), 0,
                                            +Get_Value (Our_E),
                                            Get_Ext_Name (E)),
-                              GT, Reference);
+                              GT, Pointer_Type (Type_Of (GT), Address_Space),
+                              Reference);
                Initialize_TBAA (LLVM_Var, Kind_From_Decl (E));
             end if;
          end;
@@ -1875,12 +1884,10 @@ package body GNATLLVM.Variables is
 
          if not Tagged_Pointers or else not Has_Static_Addr then
             if not Is_Ref then
-               Set_Alignment
-                 (LLVM_Var, Set_Object_Align (LLVM_Var, GT, E));
+               Set_Alignment (LLVM_Var, Set_Object_Align (LLVM_Var, GT, E));
             else
-               Set_Alignment
-                 (LLVM_Var,
-                  Get_Type_Alignment (Type_Of (LLVM_Var)));
+               Set_Alignment (LLVM_Var,
+                              Get_Type_Alignment (Type_Of (LLVM_Var)));
             end if;
 
             if not DSO_Preemptable then
@@ -2650,7 +2657,7 @@ package body GNATLLVM.Variables is
       elsif Present (V) and then Is_Reference (V)
         and then Is_A_Global_Variable (V) and then Is_Global_Constant (V)
         and then Is_Integer_Type (GT)
-        and then Type_Of (GT) = Type_Of (+Get_Initializer (V))
+        and then +Type_Of (GT) = Type_Of (Get_Initializer (+V))
         and then Can_Convert_Constant (Get_Initializer (V), GT)
       then
          return Convert_Constant (Get_Initializer (V), GT);

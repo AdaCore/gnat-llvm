@@ -372,7 +372,7 @@ package body GNATLLVM.Conversions is
       then
          Result := Get (From_Access (Get (Result, Data)),
                         Reference_For_Integer);
-         Result := Convert (Ptr_To_Int (Result, Size_GL_Type), GT);
+         Result := Convert (Ptr_To_Int (Result, Address_GL_Type), GT);
       elsif Is_Unchecked and then Is_Discrete_Or_Fixed_Point_Type (In_GT)
         and then Is_Access_Type (GT)
       then
@@ -520,13 +520,12 @@ package body GNATLLVM.Conversions is
                  Int_Ty (Nat (Get_Scalar_Bit_Size (Data_Type_Of (Result))));
 
             begin
-               Result :=
-                 Ptr_To_Relationship
-                   (Get (Result, Any_Reference),
-                    Pointer_Type (MDT, Address_Space), Reference_To_Unknown);
+               Result := Ptr_To_Relationship
+                 (Get (Result, Any_Reference), Pointer_Type (MDT),
+                  Reference_To_Unknown);
                Set_Unknown_MDT (Result, MDT);
                Result := Load (Result);
-               Result := GM (+Result, GT, GV => Result);
+               Result := GM (+Result, GT, MDT, GV => Result);
                if Is_Unsigned_Type (GT) then
                   Result := Z_Ext (Result, GT);
                else
@@ -1069,28 +1068,28 @@ package body GNATLLVM.Conversions is
 
       elsif Is_Pointer (MDT) then
          return GM (Pointer_Cast (IR_Builder, +V, +MDT, ""),
-                    GT, R, V);
+                    GT, MDT, R, V);
       end if;
 
       --  Otherwise, we have a composite pointer and must make a new
       --  structure corresponding to converting each pointer individually.
 
       Value := Get_Undef (MDT);
-      for J in 1 .. Element_Count (MDT) loop
+      for J in 0 .. Element_Count (MDT) - 1 loop
          declare
             Out_Type : constant MD_Type  := Element_Type (MDT, J);
             In_Value : constant Value_T  :=
-              Extract_Value (IR_Builder, +V, unsigned (J - 1), "");
+              Extract_Value (IR_Builder, +V, unsigned (J), "");
             Cvt_Value : constant Value_T :=
               Pointer_Cast (IR_Builder, In_Value, +Out_Type, "");
 
          begin
             Value := Insert_Value (IR_Builder, Value, Cvt_Value,
-                                   unsigned (J - 1), "");
+                                   unsigned (J), "");
          end;
       end loop;
 
-      return GM (Value, GT, R, V);
+      return GM (Value, GT, Type_For_Relationship (GT, R), R, V);
    end Convert_Pointer;
 
    ------------------------------
@@ -1106,7 +1105,7 @@ package body GNATLLVM.Conversions is
       elsif Is_Array (MDT) then
          return Contains_Restricted_Type (Element_Type (MDT));
       elsif Is_Struct (MDT) then
-         for J in 1 .. Element_Count (MDT) loop
+         for J in 0 .. Element_Count (MDT) - 1 loop
             if Contains_Restricted_Type (Element_Type (MDT, J)) then
                return True;
             end if;
@@ -1411,13 +1410,14 @@ package body GNATLLVM.Conversions is
    function Convert_Aggregate_Constant
      (V : GL_Value; GT : GL_Type) return GL_Value
    is
-      In_GT  : constant GL_Type  := Related_Type (V);
-      In_V   : constant GL_Value :=
+      In_GT   : constant GL_Type  := Related_Type (V);
+      In_V    : constant GL_Value :=
         (if Is_Padded_GL_Type (In_GT) then To_Primitive (V) else V);
-      Out_GT : constant GL_Type  :=
+      Out_GT  : constant GL_Type  :=
         (if Is_Padded_GL_Type (GT) then Primitive_GL_Type (GT) else GT);
-      Cvt_V  : constant GL_Value :=
-        G (Convert_Aggregate_Constant (+In_V, +Type_Of (Out_GT)), Out_GT);
+      Out_MDT : constant MD_Type  := Type_Of (Out_GT);
+      Cvt_V   : constant GL_Value :=
+        G (Convert_Aggregate_Constant (+In_V, +Out_MDT), Out_GT, Out_MDT);
 
    begin
       return (if Out_GT = GT then Cvt_V else From_Primitive (Cvt_V, GT));

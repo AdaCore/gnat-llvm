@@ -314,19 +314,15 @@ package GNATLLVM.GLValue is
    --  Similar to Relationship_For_Ref, but take into account the need to
    --  also allocate space for bounds in some situations.
 
-   function Type_For_Relationship
-     (GT : GL_Type; R : GL_Relationship) return MD_Type
-     with Post => Present (Type_For_Relationship'Result);
-   --  Return the MD_Type corresponding to a value of relationship R to GT.
-   --  If this is a kind of relationship where we don't need a GT, it may
-   --  be omitted. This applies to subprogram types.
-
    type GL_Value_Base is record
       Value                : Value_T;
       --  The LLVM value that was generated
 
       GT                   : GL_Type;
       --  The GL_Type of this value, which points to the GNAT and LLVM types
+
+      MDT                  : MD_Type;
+      --  The MD_Type corresponding to the type of this value
 
       Relationship         : GL_Relationship;
       --  The relationship between Value and GT
@@ -393,9 +389,10 @@ package GNATLLVM.GLValue is
    --  a subtype for that purpose.
 
    function "=" (V1, V2 : GL_Value_Base) return Boolean is
-     (V1.Value = V2.Value and then V1.GT = V2.GT);
-   --  Two GL_Types are the same if their LLVM values and GL_types are
-   --  the same. We don't want to compare flags.
+     (V1.Value = V2.Value and then V1.GT = V2.GT and then V1.MDT = V2.MDT);
+   --  Two GL_Values are the same if their LLVM values, GL_Types, and
+   --  MD_Types are the same. We don't want to compare flags and don't
+   --  need to compare relatinships if we know the types are the same.
 
    function GL_Value_Is_Valid (V : GL_Value_Base) return Boolean;
    --  Return whether V is a valid GL_Value or not
@@ -423,6 +420,7 @@ package GNATLLVM.GLValue is
    No_GL_Value : constant GL_Value :=
      (Value        => No_Value_T,
       GT           => No_GL_Type,
+      MDT          => No_MD_Type,
       Relationship => Data,
       Alignment    => BPU,
       Is_Pristine  => False,
@@ -452,6 +450,11 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Post => Present (Related_Type'Result);
    --  Return the GL_Type to which V is related, irrespective of the
    --  relationship.
+
+   function Type_Of (V : GL_Value)  return MD_Type is
+     (V.MDT)
+     with Pre => Present (V), Post => Present (Type_Of'Result);
+   --  Return the MD_Type of V, which should precisely reflect its LLVM type
 
    function Relationship (V : GL_Value)  return GL_Relationship is
      (V.Relationship)
@@ -562,11 +565,24 @@ package GNATLLVM.GLValue is
      (Has_Storage_Model (V) and then Present (SM_Copy_To (V)))
       with Pre => Present (V);
 
+   function Type_For_Relationship
+     (GT : GL_Type; R : GL_Relationship) return MD_Type
+     with Post => Present (Type_For_Relationship'Result);
+   function Type_For_Relationship
+     (V : GL_Value; R : GL_Relationship) return MD_Type
+   is
+     (Type_For_Relationship (Related_Type (V), R))
+     with Pre => Present (V), Post => Present (Type_For_Relationship'Result);
+   --  Return the MD_Type corresponding to a value of relationship R to GT.
+   --  If this is a kind of relationship where we don't need a GT, it may
+   --  be omitted. This applies to subprogram types.
+
    --  Constructors for a GL_Value
 
    function G
      (V           : Value_T;
       GT          : GL_Type;
+      MDT         : MD_Type;
       R           : GL_Relationship   := Data;
       Alignment   : Nat               := BPU;
       Is_Pristine : Boolean           := False;
@@ -582,11 +598,12 @@ package GNATLLVM.GLValue is
    --  Raw constructor that allows full specification of all fields
 
    function GM
-     (V  : Value_T;
-      GT : GL_Type;
-      R  : GL_Relationship := Data;
-      GV : GL_Value) return GL_Value is
-     (G (V, GT, R,
+     (V   : Value_T;
+      GT  : GL_Type;
+      MDT : MD_Type;
+      R   : GL_Relationship := Data;
+      GV  : GL_Value) return GL_Value is
+     (G (V, GT, MDT, R,
          Alignment   => Alignment   (GV),
          Is_Pristine => Is_Pristine (GV),
          Is_Volatile => Is_Volatile (GV),
@@ -599,36 +616,36 @@ package GNATLLVM.GLValue is
          Unknown_MDT => Unknown_MDT (GV)))
      with Pre  => Present (V) and then Present (GT) and then Present (GV),
           Post => Present (GM'Result);
-   --  Likewise, but copy all but type and relationship from an existing value
+   --  Likewise, but copy all but types and relationship from an existing value
 
    function G_From (V : Value_T; GV : GL_Value) return GL_Value is
-     (GM (V, Related_Type (GV), Relationship (GV), GV))
+     (GM (V, Related_Type (GV), Type_Of (GV), Relationship (GV), GV))
      with Pre  => Present (V) and then Present (GV),
           Post => Present (G_From'Result);
    --  Constructor for most common operation cases where we aren't changing
    --  any typing information, so we just copy it from an existing value.
 
    function G_Is (V : GL_Value; GT : GL_Type) return GL_Value is
-     (GM (+V, GT, Relationship (V), V))
+     (GM (+V, GT, Type_Of (V), Relationship (V), V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is'Result);
    --  Constructor for case where we want to show that V has a different type
 
    function G_Is_Ref (V : GL_Value; GT : GL_Type) return GL_Value is
-     (GM (+V, GT, Ref (Relationship (V)), V))
+     (GM (+V, GT, Type_Of (V), Ref (Relationship (V)), V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is_Ref'Result);
    --  Constructor for case where we want to show that V has a different type
 
    function G_Is (V : GL_Value; T : GL_Value) return GL_Value is
-     (GM (+V, Related_Type (T), Relationship (V), V))
+     (GM (+V, Related_Type (T), Type_Of (V), Relationship (V), V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is'Result);
 
    function G_Is_Relationship
      (V : GL_Value; GT : GL_Type; R : GL_Relationship) return GL_Value
    is
-     (GM (+V, GT, R, V))
+     (GM (+V, GT, Type_Of (V), R, V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -637,7 +654,7 @@ package GNATLLVM.GLValue is
    function G_Is_Relationship
      (V : GL_Value; T : GL_Value; R : GL_Relationship) return GL_Value
    is
-     (GM (+V, Related_Type (T), R, V))
+     (GM (+V, Related_Type (T), Type_Of (V), R, V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -646,13 +663,13 @@ package GNATLLVM.GLValue is
    function G_Is_Relationship
      (V : GL_Value; R : GL_Relationship) return GL_Value
    is
-     (GM (+V, Related_Type (V), R, V))
+     (GM (+V, Related_Type (V), Type_Of (V), R, V))
      with Pre => Present (V), Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a
    --  different relationship.
 
    function G_Is_Relationship (V : GL_Value; T : GL_Value) return GL_Value is
-      (GM (+V, Related_Type (T), Relationship (T), V))
+      (GM (+V, Related_Type (T), Type_Of (V), Relationship (T), V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -661,6 +678,7 @@ package GNATLLVM.GLValue is
    function G_Ref
      (V           : Value_T;
       GT          : GL_Type;
+      MDT         : MD_Type;
       Alignment   : Nat               := BPU;
       Is_Pristine : Boolean           := False;
       Is_Volatile : Boolean           := False;
@@ -672,7 +690,7 @@ package GNATLLVM.GLValue is
       TBAA_Offset : ULL               := 0;
       Unknown_MDT : MD_Type           := No_MD_Type) return GL_Value
    is
-     (G (V, GT, Relationship_For_Ref (GT),
+     (G (V, GT, MDT, Relationship_For_Ref (GT),
          Alignment   => Alignment,
          Is_Pristine => Is_Pristine,
          Is_Volatile => Is_Volatile,
@@ -689,9 +707,9 @@ package GNATLLVM.GLValue is
    --  to type GT.
 
    function GM_Ref
-     (V : Value_T; GT : GL_Type; GV : GL_Value) return GL_Value
+     (V : Value_T; GT : GL_Type; MDT : MD_Type; GV : GL_Value) return GL_Value
    is
-     (G_Ref (V, GT,
+     (G_Ref (V, GT, MDT,
              Alignment   => Alignment   (GV),
              Is_Pristine => Is_Pristine (GV),
              Is_Volatile => Is_Volatile (GV),
@@ -795,19 +813,17 @@ package GNATLLVM.GLValue is
    --  same names as those for types and Value_T's. The first of these
    --  represent abstractions that will be used in later predicates.
 
-   function Type_Of (V : GL_Value) return MD_Type is
-     ((if    Relationship (V) = Reference_To_Unknown
-       then  Pointer_Type (Unknown_MDT (V), Address_Space)
-       elsif Relationship (V) = Unknown then From_Type (Type_Of (+V))
-       else  Type_For_Relationship (Related_Type (V), Relationship (V))))
-     with Pre  => Present (V), Post => Present (Type_Of'Result);
-
    function Element_Type_Of (V : GL_Value) return MD_Type
      with Pre => Is_Double_Reference (V) or else Is_Access_Type (V)
                  or else Relationship (V) = Thin_Pointer or else Can_Deref (V);
 
    function Data_Type_Of (V : GL_Value) return MD_Type
      with Pre => Present (V), Post => Present (Data_Type_Of'Result);
+
+   function Designated_Type_Of (V : GL_Value) return MD_Type is
+     (Designated_Type (Type_Of (V)))
+     with Pre  => Is_Pointer (Type_Of (V)),
+          Post => Present (Designated_Type_Of'Result);
 
    function Get_Type_Kind (V : GL_Value) return Type_Kind_T is
      (Get_Type_Kind (Type_T'(+Type_Of (V))))
@@ -999,8 +1015,9 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function Get_Function_Type (V : GL_Value) return Type_T is
-     (Get_Function_Type (+V))
-     with Pre => Is_A_Function (V);
+     (+Designated_Type (Type_Of (V)))
+     with Pre => Is_Pointer (Type_Of (V))
+                 and then Is_Function_Type (Designated_Type (Type_Of (V)));
 
    function Get_Source_Element_Type (V : GL_Value) return Type_T is
      (Get_Source_Element_Type (+V))
@@ -1108,6 +1125,11 @@ package GNATLLVM.GLValue is
    function Get_Operand (V : GL_Value; Idx : Nat) return Value_T is
      (Get_Operand (+V, unsigned (Idx)))
      with Pre => Present (V);
+
+   function Fn_Return_Type (V : GL_Value) return MD_Type is
+     (Return_Type (Designated_Type (Type_Of (V))))
+     with  Pre => Present (V), Post => Present (Fn_Return_Type'Result);
+   --  Get the return type of V, a function
 
    procedure Set_Value_Name (V : GL_Value; Name : String)
      with Pre => Present (V), Inline;
@@ -1243,16 +1265,18 @@ package GNATLLVM.GLValue is
 
    function Get_Undef_Relationship
      (GT : GL_Type; R : GL_Relationship) return GL_Value
-   is
+     is
      (Initialize_Alignment
-        (G (Get_Undef (Type_For_Relationship (GT, R)), GT, R,
+        (G (Get_Undef (Type_For_Relationship (GT, R)), GT,
+            Type_For_Relationship (GT, R), R,
             Is_Pristine => True)))
-     with Pre  => Present (GT),
-          Post => Present (Get_Undef_Relationship'Result);
+   with Pre  => Present (GT),
+     Post => Present (Get_Undef_Relationship'Result);
 
    function Get_Undef_Fn_Ret (V : GL_Value) return GL_Value is
      (G (Get_Undef (Get_Return_Type (Get_Function_Type ((V)))),
-         Related_Type (V), Unknown, Is_Pristine => True))
+         Related_Type (V), Fn_Return_Type (V), Unknown,
+         Is_Pristine => True))
      with Pre => Is_A_Function (V), Post => Is_Undef (Get_Undef_Fn_Ret'Result);
 
    function Const_Null (GT : GL_Type) return GL_Value
@@ -1265,7 +1289,8 @@ package GNATLLVM.GLValue is
    function Const_Null_Relationship
      (GT : GL_Type; R : GL_Relationship) return GL_Value
    is
-     (G (Const_Null (Type_For_Relationship (GT, R)), GT, R))
+     (G (Const_Null (Type_For_Relationship (GT, R)), GT,
+         Type_For_Relationship (GT, R), R))
      with Pre  => Present (GT),
           Post => Present (Const_Null_Relationship'Result);
 
@@ -1382,13 +1407,17 @@ package GNATLLVM.GLValue is
      with Post => Relationship (Const_False'Result) = Boolean_Data, Inline;
 
    function Const_Array
-     (Elmts : GL_Value_Array; GT : GL_Type) return GL_Value
+     (Elmts : GL_Value_Array; GT : GL_Type; Dims_Left : Nat) return GL_Value
      with Pre  => Present (GT)
                   and then (for all V of Elmts => Present (V)),
-          Post => Present (Const_Array'Result), Inline;
+          Post => Present (Const_Array'Result);
+   --  Create a constant array of Elmts, whose type is GT. Dims_Left is
+   --  used if there are no elements to determine how many dimensions were
+   --  also of zero size to produce the proper type for the array.
 
    function Const_String (S : String; GT : GL_Type) return GL_Value is
-     (G (Const_String (S, unsigned (S'Length), True), GT))
+     (G (Const_String (S, unsigned (S'Length), True), GT,
+         Array_Type (Byte_MD, Nat (S'Length))))
      with Pre => Present (GT), Post => Is_Constant (Const_String'Result);
 
    function Const_Struct
@@ -1424,7 +1453,7 @@ package GNATLLVM.GLValue is
    function Block_Address
      (Func : GL_Value; BB : Basic_Block_T) return GL_Value
    is
-      (G (Block_Address (+Func, BB), SSI_GL_Type, Reference))
+     (G (Block_Address (+Func, BB), SSI_GL_Type, SSI_MD, Reference))
      with Pre  => Present (Func) and then Present (BB),
           Post => Present (Block_Address'Result);
 
@@ -1455,8 +1484,8 @@ package GNATLLVM.GLValue is
    is
      (G (Add_Function ((if Is_Builtin then Module else No_Module_T), Name,
                        +MDT),
-         Return_GT, Reference_To_Subprogram))
-     with Pre  => Present (MDT) and then Present (Return_GT),
+         Return_GT, Pointer_Type (MDT), Reference_To_Subprogram))
+     with Pre  => Is_Function_Type (MDT) and then Present (Return_GT),
           Post => Present (Add_Function'Result);
    --  Add a function to the environment
 
@@ -1472,13 +1501,15 @@ package GNATLLVM.GLValue is
      (Func        : GL_Value;
       Param_Num   : Nat;
       GT          : GL_Type;
+      MDT         : MD_Type;
       R           : GL_Relationship;
       Is_Pristine : Boolean := False) return GL_Value
-   is
-     (G (Get_Param (+Func, unsigned (Param_Num)), GT, R,
-         Is_Pristine => Is_Pristine))
      with Pre  => Present (Func) and then Present (GT),
           Post => Present (Get_Param'Result);
+   --  Create a GL_Value for the Parm_Num'th parameter of Func. GT and R
+   --  are the type and relationship, respectively. If MDT is Present,
+   --  it's the type to use; otherwise the type is the standard type for
+   --  that GL_Type and Relationship.
 
    function Get_Insert_Block return Basic_Block_T is
      (Get_Insert_Block (IR_Builder))
@@ -1497,8 +1528,7 @@ package GNATLLVM.GLValue is
      with Pre => Present (V), Inline;
    --  Indicate that V does not return
 
-   function Get_Initializer (V : GL_Value) return GL_Value is
-     (Initialize_Alignment (G (Get_Initializer (+V), Related_Type (V), Data)))
+   function Get_Initializer (V : GL_Value) return GL_Value
      with Pre  => Is_A_Global_Variable (V) and then Is_Global_Constant (V),
           Post => Present (Get_Initializer'Result);
 

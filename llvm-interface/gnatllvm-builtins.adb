@@ -208,11 +208,15 @@ package body GNATLLVM.Builtins is
          Types (J) := +Overloaded_Types (J);
       end loop;
 
-      return
-        G (Get_Intrinsic_Declaration
-             (Module, Intrinsic_ID, Types'Address,
-              Types'Length),
-           Return_GT, Reference_To_Subprogram);
+      return G (Get_Intrinsic_Declaration (Module, Intrinsic_ID, Types'Address,
+                                           Types'Length),
+                Return_GT,
+                Pointer_Type (From_Type
+                                (Intrinsic_Get_Type (Get_Global_Context,
+                                                     Intrinsic_ID,
+                                                     Types'Address,
+                                                     Types'Length))),
+                Reference_To_Subprogram);
    end Build_Intrinsic;
 
    --------------------
@@ -555,7 +559,7 @@ package body GNATLLVM.Builtins is
       Set_Alignment (Inst,
                      unsigned (Nat'(To_Bytes (Get_Type_Alignment (GT)))));
 
-      return G (Inst, GT);
+      return G (Inst, GT, Type_Of (GT));
    end Emit_Atomic_Load;
 
    -----------------------
@@ -1519,7 +1523,8 @@ package body GNATLLVM.Builtins is
 
          Get_Address_Fn :=
            Build_Intrinsic
-             ("llvm.cheri.cap.address.get", Size_GL_Type, (1 => Size_MD));
+             ("llvm.cheri.cap.address.get", Address_GL_Type,
+              (1 => Address_MD));
       end if;
 
       return Get_Address_Fn;

@@ -1001,7 +1001,7 @@ package body CCG.Strs is
       --  If there's an entity specified and the default type of the entity
       --  matches T, it's best to use the entity, otherwise T.
 
-      return ((if   Present (E) and then Type_Of (Full_GL_Type (E)) = T
+      return ((if   Present (E) and then +Type_Of (Full_GL_Type (E)) = T
                then E + Write_Type else +T));
    end "or";
 

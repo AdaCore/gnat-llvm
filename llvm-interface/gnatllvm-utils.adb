@@ -24,6 +24,7 @@ with Stand;    use Stand;
 with Stringt;  use Stringt;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
+with GNATLLVM.GLType;  use GNATLLVM.GLType;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 package body GNATLLVM.Utils is
@@ -533,7 +534,7 @@ package body GNATLLVM.Utils is
          --  they have the same number of fields, and each field is
          --  identical.
 
-         for J in 1 .. Element_Count (MDT1) loop
+         for J in 0 .. Element_Count (MDT1) - 1 loop
             if not Is_Layout_Identical (Element_Type (MDT1, J),
                                         Element_Type (MDT2, J))
             then
@@ -722,6 +723,15 @@ package body GNATLLVM.Utils is
    begin
       return Const_String_From_Access (Pointer, Length, 1);
    end Const_String;
+
+   ------------------
+   -- Const_String --
+   ------------------
+
+   function Const_String
+     (File_Index : Source_File_Index; GT : GL_Type) return GL_Value
+   is
+     (G (Const_String (File_Index), GT, Type_Of (GT)));
 
    -----------------------
    -- Scan_Library_Item --

@@ -41,10 +41,10 @@ package body GNATLLVM.GLValue is
 
    function Object_Can_Be_Data (V : GL_Value_Base) return Boolean is
      (not Is_Nonnative_Type (V.GT)
-        and then (Is_Loadable_Type (V.GT)
-                    or else (Is_Data (V.Relationship)
-                               and then (Is_Constant (V.Value)
-                                           or else Is_Undef (V.Value)))));
+      and then (Is_Loadable_Type (V.GT)
+                or else (Is_Data (V.Relationship)
+                         and then (Is_Constant (V.Value)
+                                   or else Is_Undef (V.Value)))));
    --  Return True if it's appropriate to use Data for V when converting to
    --  a GL_Relationship of Object. Since this is called from
    --  GL_Value_Is_Valid, we have to be careful not to call any function
@@ -57,6 +57,7 @@ package body GNATLLVM.GLValue is
    function G
      (V           : Value_T;
       GT          : GL_Type;
+      MDT         : MD_Type;
       R           : GL_Relationship   := Data;
       Alignment   : Nat               := BPU;
       Is_Pristine : Boolean           := False;
@@ -81,7 +82,7 @@ package body GNATLLVM.GLValue is
          C_Set_Entity (V, GT);
       end if;
 
-      return (V, GT, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic,
+      return (V, GT, MDT, R, Alignment, Is_Pristine, Is_Volatile, Is_Atomic,
               Overflowed, Aliases_All, SM_Object, TBAA_Type, TBAA_Offset,
               Unknown_MDT);
    end G;
@@ -107,9 +108,14 @@ package body GNATLLVM.GLValue is
    function GL_Value_Is_Valid_Int (V : GL_Value_Base) return Boolean is
       GT   : constant GL_Type     :=
         (if V = No_GL_Value then No_GL_Type else V.GT);
-      Val  : constant Value_T     := V.Value;
+      MDT  : constant MD_Type     :=
+        (if V = No_GL_Value then No_MD_Type else V.MDT);
+      Val  : constant Value_T     :=
+        (if V = No_GL_Value then No_Value_T else V.Value);
+      T    : constant Type_T      :=
+        (if V = No_GL_Value then No_Type_T else Type_Of (Val));
       Kind : constant Type_Kind_T :=
-        (if No (Val) then Void_Type_Kind else Get_Type_Kind (Type_Of (Val)));
+        (if No (Val) then Void_Type_Kind else Get_Type_Kind (T));
 
    begin
       --  We have to be very careful in this function not to call any
@@ -118,13 +124,19 @@ package body GNATLLVM.GLValue is
 
       if V = No_GL_Value then
          return True;
-      elsif No (Val) or else No (GT) then
+      elsif No (Val) or else No (GT) or else No (MDT) then
          return False;
       end if;
 
       --  The alignment must be a multiple of BPU
 
       if V.Alignment mod BPU /= 0 then
+         return False;
+      end if;
+
+      --  The type of the value must match the LLVM-equivalent of MDT
+
+      if T /= +MDT then
          return False;
       end if;
 
@@ -560,16 +572,11 @@ package body GNATLLVM.GLValue is
 
    function Element_Type_Of (V : GL_Value) return MD_Type is
    begin
-      --  ??  If this is a double reference, get the type of V with
-      --  this relationship and rereference it. Fix later. For a reference
-      --  to reference to subprogram, use a void pointer for now.
+      --  For a double reference, we get the designated type of the type of
+      --  the value.
 
       if Is_Double_Reference (V) then
-         return (if   Relationship (V) = Reference_To_Ref_To_Subprogram
-                 then Void_Ptr_MD
-                 else Designated_Type (Type_For_Relationship
-                                         (Related_Type (V),
-                                          Relationship (V))));
+         return Designated_Type (Type_Of (V));
 
       --  If this is a reference to Unknown, we're supposed to have set the
       --  type to use.
@@ -590,7 +597,7 @@ package body GNATLLVM.GLValue is
       --  dereferenced relationship.
 
       else
-         return Type_For_Relationship (Related_Type (V), Deref (V));
+         return Type_For_Relationship (V, Deref (V));
       end if;
    end Element_Type_Of;
 
@@ -748,8 +755,7 @@ package body GNATLLVM.GLValue is
       --  that relationship and make a pointer to it.
 
       if Deref (R) /= Invalid then
-         return
-           Pointer_Type (Type_For_Relationship (GT, Deref (R)), Address_Space);
+         return Pointer_Type (Type_For_Relationship (GT, Deref (R)));
       end if;
 
       --  Handle all other relationships here
@@ -766,11 +772,10 @@ package body GNATLLVM.GLValue is
               (1 => Name_Find ("BOOLEAN"), 2 => Name_Find ("DATA")));
 
          when Object =>
-            return (if   Is_Loadable_Type (GT)
-                    then MDT else Pointer_Type (MDT, Address_Space));
+            return (if Is_Loadable_Type (GT) then MDT else Pointer_Type (MDT));
 
          when Trampoline | Thin_Pointer | Any_Reference =>
-            return Pointer_Type (MDT, Address_Space);
+            return Pointer_Type (MDT);
 
          when Activation_Record =>
             return Byte_MD;
@@ -920,7 +925,8 @@ package body GNATLLVM.GLValue is
                Align   : constant Nat           := Set_Object_Align (Inst, GT);
 
             begin
-               Result := G (Inst, GT, Ref (Our_R));
+               Result := G (Inst, GT, Type_For_Relationship (GT, Ref (Our_R)),
+                            Ref (Our_R));
                Done_Promoting_Alloca (Result, Promote, T);
                Set_Alignment (Result, Align);
                Store (V, Result);
@@ -1219,7 +1225,7 @@ package body GNATLLVM.GLValue is
    ---------------
 
    function To_Access (V : GL_Value; GT : GL_Type) return GL_Value is
-     (GM (+V, GT, Data, V));
+     (GM (+V, GT, Type_Of (V), Data, V));
 
    -----------------
    -- From_Access --
@@ -1229,7 +1235,7 @@ package body GNATLLVM.GLValue is
       GT     : constant GL_Type         := Related_Type (V);
       Acc_GT : constant GL_Type         := Full_Designated_GL_Type (GT);
       R      : constant GL_Relationship := Relationship_For_Access_Type (GT);
-      Result : GL_Value                 := GM (+V, Acc_GT, R, V);
+      Result : GL_Value                 := GM (+V, Acc_GT, Type_Of (V), R, V);
 
    begin
       Initialize_Alignment (Result);
@@ -1287,15 +1293,19 @@ package body GNATLLVM.GLValue is
    ---------------
 
    function Get_Undef (GT : GL_Type) return GL_Value is
-     (G (Get_Undef (Type_Of (GT)), GT));
+     (G (Get_Undef (Type_Of (GT)), GT, Type_Of (GT)));
 
    -------------------
    -- Get_Undef_Ref --
    -------------------
 
    function Get_Undef_Ref (GT : GL_Type) return GL_Value is
-     (Initialize_Alignment (G_Ref (Get_Undef (Create_Access_Type_To (GT)),
-                                   GT, Is_Pristine => True)));
+      MDT : constant MD_Type := Create_Access_Type_To (GT);
+
+   begin
+      return Initialize_Alignment (G_Ref (Get_Undef (MDT), GT, MDT,
+                                          Is_Pristine => True));
+   end Get_Undef_Ref;
 
    ----------------
    -- Const_Ones --
@@ -1309,7 +1319,7 @@ package body GNATLLVM.GLValue is
    ----------------
 
    function Const_Null (GT : GL_Type) return GL_Value is
-     (G (Const_Null (Type_Of (GT)), GT,
+     (G (Const_Null (Type_Of (GT)), GT, Type_Of (GT),
          Alignment => Max_Valid_Align));
 
    --------------------
@@ -1317,32 +1327,39 @@ package body GNATLLVM.GLValue is
    --------------------
 
    function Const_Infinity (GT : GL_Type) return GL_Value is
-     (G (Get_Infinity (+Type_Of (GT)), GT));
+     (G (Get_Infinity (+Type_Of (GT)), GT, Type_Of (GT)));
 
    ----------------------
    -- Const_Null_Alloc --
    ----------------------
 
    function Const_Null_Alloc (GT : GL_Type) return GL_Value is
-     (G (Const_Null (Type_For_Relationship
-                       (GT, Deref (Relationship_For_Alloc (GT)))),
-         GT, Deref (Relationship_For_Alloc (GT)),
-         Alignment => Max_Valid_Align));
+      R   : constant GL_Relationship := Deref (Relationship_For_Alloc (GT));
+      MDT : constant MD_Type         := Type_For_Relationship (GT, R);
+
+   begin
+      return G (Const_Null (MDT), GT, MDT, R,
+                Alignment => Max_Valid_Align);
+   end Const_Null_Alloc;
 
    --------------------
    -- Const_Null_Ref --
    --------------------
 
    function Const_Null_Ref (GT : GL_Type) return GL_Value is
-     (G_Ref (Const_Null (Create_Access_Type_To (GT)), GT,
-             Alignment => Max_Valid_Align));
+      MDT : constant MD_Type := Create_Access_Type_To (GT);
+
+   begin
+      return G_Ref (Const_Null (MDT), GT, MDT,
+                    Alignment => Max_Valid_Align);
+   end Const_Null_Ref;
 
    ----------------
    -- Const_True --
    ----------------
 
    function Const_True return GL_Value is
-     (G (Const_Int (Bit_T, ULL (1), False), Boolean_GL_Type,
+     (G (Const_Int (Bit_T, ULL (1), False), Boolean_GL_Type, Bit_MD,
          Boolean_Data));
 
    -----------------
@@ -1350,7 +1367,7 @@ package body GNATLLVM.GLValue is
    -----------------
 
    function Const_False return GL_Value is
-     (G (Const_Int (Bit_T, ULL (0), False), Boolean_GL_Type,
+     (G (Const_Int (Bit_T, ULL (0), False), Boolean_GL_Type, Bit_MD,
          Boolean_Data, Alignment => Max_Valid_Align));
 
    ---------------
@@ -1375,7 +1392,8 @@ package body GNATLLVM.GLValue is
    ---------------
 
    function Const_Int (GT : GL_Type; N : Uint) return GL_Value is
-      Result  : GL_Value          := G (Const_Int (+Type_Of (GT), N), GT);
+      Result  : GL_Value          :=
+        G (Const_Int (+Type_Of (GT), N), GT, Type_Of (GT));
       Bitsize : constant Integer  := Integer (Get_Scalar_Bit_Size (Result));
 
    begin
@@ -1422,7 +1440,7 @@ package body GNATLLVM.GLValue is
      (GT : GL_Type; N : ULL; Sign_Extend : Boolean := False) return GL_Value
    is
      (G (Const_Int (+Type_Of (GT), N, Sign_Extend => Sign_Extend), GT,
-         Alignment => ULL_Align_Bytes (N)));
+         Type_Of (GT), Alignment => ULL_Align_Bytes (N)));
 
    ----------------
    -- Const_Real --
@@ -1431,37 +1449,53 @@ package body GNATLLVM.GLValue is
    function Const_Real
      (GT : GL_Type; V : Interfaces.C.double) return GL_Value
    is
-     (G (Const_Real (+Type_Of (GT), V), GT));
+     (G (Const_Real (+Type_Of (GT), V), GT, Type_Of (GT)));
 
    -----------------
    -- Const_Array --
    -----------------
 
    function Const_Array
-     (Elmts : GL_Value_Array; GT : GL_Type) return GL_Value
+     (Elmts : GL_Value_Array; GT : GL_Type; Dims_Left : Nat) return GL_Value
    is
-      T      : constant Type_T            :=
-        (if   Elmts'Length = 0 then +Element_Type (Type_Of (GT))
-         else Type_Of (+Elmts (Elmts'First)));
-      --  Take the element type from what was passed, but if no elements
-      --  were passed, the only choice is from the component type of the array.
       Values : aliased Access_Value_Array := new Value_Array (Elmts'Range);
       V      : GL_Value;
+      MDT    : MD_Type;
       procedure Free is new Ada.Unchecked_Deallocation (Value_Array,
                                                         Access_Value_Array);
    begin
+      --  If some elements have been specified, we know the element type:
+      --  it's the type of those elements.
+
+      if Elmts'Length /= 0 then
+         MDT := Type_Of (Elmts (Elmts'First));
+
+      --  Otherwise, we start with the array type and remove a number of
+      --  dimensions equal to the total number minus the ones left.
+
+      else
+         MDT := Type_Of (GT);
+
+         for J in Dims_Left .. Number_Dimensions (GT) loop
+            MDT := Element_Type (MDT);
+         end loop;
+      end if;
+
+      --  Now copy in the types.
+
       for J in Elmts'Range loop
          Values (J) := +Elmts (J);
       end loop;
 
       --  We have a kludge here in the case of making a string literal
       --  that's not in the source (e.g., for a filename) or when we're
-      --  handling inner dimensions of a multi-dimensional array. In those
-      --  cases, we use Any_Array for the type, but that's unconstrained,
-      --  so we want use relationship "Unknown".
+      --  handling inner dimensions of a multi-dimensional array.
 
-      V := G (Const_Array (T, Values.all'Address, Values.all'Length),
-              GT, (if GT = Any_Array_GL_Type then Unknown else Data));
+      V := G (Const_Array (+MDT, Values.all'Address, Values.all'Length),
+              GT, Array_Type (MDT, Values.all'Length),
+              (if   Number_Dimensions (GT) /= Dims_Left
+                    or else GT = Any_Array_GL_Type
+               then Unknown else Data));
       Free (Values);
       return V;
    end Const_Array;
@@ -1474,12 +1508,14 @@ package body GNATLLVM.GLValue is
      (Elmts : GL_Value_Array; GT : GL_Type; Packed : Boolean) return GL_Value
    is
       Values : aliased Access_Value_Array := new Value_Array (Elmts'Range);
+      Types  : MD_Type_Array (Elmts'Range);
       V      : GL_Value;
       procedure Free is new Ada.Unchecked_Deallocation (Value_Array,
                                                         Access_Value_Array);
    begin
       for J in Elmts'Range loop
          Values (J) := +Elmts (J);
+         Types (J)  := Type_Of (Elmts (J));
       end loop;
 
       --  We have a kludge here in the case of making a struct that's not
@@ -1487,7 +1523,8 @@ package body GNATLLVM.GLValue is
       --  we want use relationship "Unknown".
 
       V := G (Const_Struct (Values.all'Address, Values.all'Length, Packed),
-              GT, (if GT = Any_Array_GL_Type then Unknown else Data));
+              GT, Build_Struct_Type (Types, (Elmts'Range => No_Name)),
+              (if GT = Any_Array_GL_Type then Unknown else Data));
       Free (Values);
       return V;
    end Const_Struct;
@@ -1504,7 +1541,7 @@ package body GNATLLVM.GLValue is
       return G (Get_Float_From_Words_And_Exp
                   (Get_Global_Context, +Type_Of (GT), Exp, Our_Words'Length,
                    Our_Words (Our_Words'First)'Access),
-                GT);
+                GT, Type_Of (GT));
    end Get_Float_From_Words_And_Exp;
 
    -------------
@@ -1514,7 +1551,7 @@ package body GNATLLVM.GLValue is
    function Pred_FP (V : GL_Value) return GL_Value is
    begin
       return G (Pred_FP (Get_Global_Context, +Type_Of (V), +V),
-                Related_Type (V));
+                Related_Type (V), Type_Of (V));
    end Pred_FP;
 
    ------------------------
@@ -1598,7 +1635,7 @@ package body GNATLLVM.GLValue is
       Name           : String;
       Need_Reference : Boolean := False) return GL_Value
    is
-      R : GL_Relationship := Relationship_For_Alloc (GT);
+      R   : GL_Relationship := Relationship_For_Alloc (GT);
 
    begin
       --  The type we pass to Add_Global is the type of the actual data, but
@@ -1615,10 +1652,36 @@ package body GNATLLVM.GLValue is
                    then Thin_Pointer else R);
       end if;
 
-      return G (Add_Global (Module,
-                            +Type_For_Relationship (GT, Deref (R)), Name),
-                GT, R);
+      return
+        G (Add_Global (Module, +Type_For_Relationship (GT, Deref (R)), Name),
+           GT, Type_For_Relationship (GT, R), R);
+
    end Add_Global;
+
+   ---------------
+   -- Get_Param --
+   ---------------
+
+   function Get_Param
+     (Func        : GL_Value;
+      Param_Num   : Nat;
+      GT          : GL_Type;
+      MDT         : MD_Type;
+      R           : GL_Relationship;
+      Is_Pristine : Boolean := False) return GL_Value
+   is
+     (G (Get_Param (+Func, unsigned (Param_Num)), GT,
+         (if Present (MDT) then MDT else Type_For_Relationship (GT, R)), R,
+         Is_Pristine => Is_Pristine));
+
+   ---------------------
+   -- Get_Initializer --
+   ---------------------
+
+   function Get_Initializer (V : GL_Value) return GL_Value is
+     (Initialize_Alignment
+        (G (Get_Initializer (+V), Related_Type (V),
+            Designated_Type (Type_Of (V)))));
 
    --------------------
    -- Set_Value_Name --
@@ -2050,7 +2113,7 @@ package body GNATLLVM.GLValue is
    begin
       return G ((if   Is_Null (Val) then Const_Null (T)
                  else Convert_Struct_Constant (Val, T)),
-                GT, Data);
+                GT, Type_Of (GT));
    end Convert_Struct_Constant;
 
    -----------------------------
@@ -2308,6 +2371,7 @@ package body GNATLLVM.GLValue is
       Write_Str (GL_Relationship'Image (V.Relationship) & "(");
       Dump_GL_Type_Int (V.GT, False);
       Write_Str ("): ");
+      Dump_MD_Type (V.MDT);
       pg (Union_Id (Full_Etype (V.GT)));
    end Dump_GL_Value;
 

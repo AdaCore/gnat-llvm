@@ -50,8 +50,10 @@ package GNATLLVM.MDType is
    Max_Int_MD  : MD_Type := No_MD_Type;
    Void_Ptr_MD : MD_Type := No_MD_Type;
    Address_MD  : MD_Type := No_MD_Type;
+   SSI_MD      : MD_Type := No_MD_Type;
    Int_32_MD   : MD_Type := No_MD_Type;
    Int_64_MD   : MD_Type := No_MD_Type;
+   Boolean_MD  : MD_Type := No_MD_Type;
 
    --  Accessor functions for MD_Type, starting with predicates for
    --  type kind.
@@ -104,16 +106,10 @@ package GNATLLVM.MDType is
    --  Create an LLVM type from an MD_Type
    function "+" (MDT : MD_Type) return Type_T renames LLVM_Type_Of;
 
-   function "=" (MDT : MD_Type; T : Type_T) return Boolean is
-     (Type_T'(+MDT) = T)
-     with Pre => Present (MDT) and then Present (T);
-   function "=" (T : Type_T; MDT : MD_Type) return Boolean is
-     (Type_T'(+MDT) = T)
-     with Pre => Present (MDT) and then Present (T);
-
    function From_Type (T : Type_T) return MD_Type
-     with Pre => Present (T), Post => From_Type'Result = T;
-   --  The opposite, but temporary and incomplete
+     with Pre => Present (T), Post => +From_Type'Result = T;
+   --  Create a MD_Type from a type. This is mostly used for intrinsic
+   --  functions and isn't guaranteed to work in all cases.
 
    function Int_Bits (MDT : MD_Type) return Nat
      with Pre => Is_Integer (MDT), Post => Int_Bits'Result /= 0;
@@ -150,16 +146,23 @@ package GNATLLVM.MDType is
    --  Return type of a function
 
    function Element_Name (MDT : MD_Type; Idx : Nat) return Name_Id
-     with Pre =>  Is_Struct (MDT) and then Idx <= Element_Count (MDT);
+     with Pre =>  Is_Struct (MDT) and then Idx < Element_Count (MDT);
    function Element_Type (MDT : MD_Type; Idx : Nat) return MD_Type
-     with Pre =>  Is_Struct (MDT) and then Idx <= Element_Count (MDT),
+     with Pre =>  Is_Struct (MDT) and then Idx < Element_Count (MDT),
           Post => Present (Element_Type'Result);
-   --  Name and type, respectively, for structs
+   --  Name and type, respectively, for structs. Idx is 0-origin.
 
    function Parameter_Type (MDT : MD_Type; Idx : Nat) return MD_Type
-     with Pre =>  Is_Function_Type (MDT) and then Idx <= Parameter_Count (MDT),
+     with Pre =>  Is_Function_Type (MDT) and then Idx < Parameter_Count (MDT),
           Post => Present (Parameter_Type'Result);
    --  Parameter type for a function type
+
+   function Atomic_Kind (MDT : MD_Type) return Boolean is
+     (Is_Integer (MDT) or else Is_Float (MDT) or else Is_Pointer (MDT))
+   with Pre => Present (MDT);
+   --  Return True if the type is valid for an atomic operation
+
+   --  Operations on LLVM types that we can call on an MD_Type
 
    function Get_Type_Size (MDT : MD_Type) return ULL
      with Pre => Present (MDT);
@@ -184,7 +187,9 @@ package GNATLLVM.MDType is
                   and then Float_Bits (Float_Ty'Result) = Bits;
    --  Make a float type with the corresponding number of bits
 
-   function Pointer_Type (Elem_Type : MD_Type; Space : Nat) return MD_Type
+   function Pointer_Type
+     (Elem_Type : MD_Type;
+      Space     : Nat := Address_Space) return MD_Type
      with Pre  => Present (Elem_Type),
           Post => Is_Pointer (Pointer_Type'Result)
                   and then Pointer_Space (Pointer_Type'Result) = Space;
@@ -226,11 +231,11 @@ package GNATLLVM.MDType is
                   and then MD_Name (Build_Struct_Type'Result) = Name
                   and then (for all J in Field_Names'Range =>
                               Element_Name (Build_Struct_Type'Result,
-                                            J - Field_Names'First + 1) =
+                                            J - Field_Names'First) =
                               Field_Names (J)
                               and then Element_Type
                                 (Build_Struct_Type'Result,
-                                   J - Field_Names'First + 1) = Types (J));
+                                   J - Field_Names'First) = Types (J));
    --  Create a Struct type with the specified field types and field names,
    --  also specifying if it's packed and it's name, if any.
 
@@ -245,10 +250,10 @@ package GNATLLVM.MDType is
                   and then Is_Struct (MDT) and then not Have_Fields (MDT),
           Post => Is_Packed (MDT) = Packed and then Have_Fields (MDT)
                   and then (for all J in Names'Range =>
-                              Element_Name (MDT, J - Names'First + 1) =
+                              Element_Name (MDT, J - Names'First) =
                               Names (J)
                               and then Element_Type (MDT,
-                                                     J - Names'First + 1) =
+                                                     J - Names'First) =
                                        Types (J));
    --  Similar to Build_Struct_Type, but modify a type created with
    --  Struct_Create_Named.
@@ -264,7 +269,7 @@ package GNATLLVM.MDType is
              and then Parameter_Count (Fn_Ty'Result) = Arg_Types'Length
              and then (for all J in Arg_Types'Range =>
                          Parameter_Type (Fn_Ty'Result,
-                                         J - Arg_Types'First + 1) =
+                                         J - Arg_Types'First) =
                            Arg_Types (J));
    --  Make a function type with the specified return and argument types
 
@@ -277,6 +282,9 @@ package GNATLLVM.MDType is
    --  Create a copy of MDT that's marked as volatile
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
+
+   function To_String (MDT : MD_Type; Top : Boolean := False) return String
+     with Pre => Present (MDT);
 
    procedure Dump_MD_Type (MDT : MD_Type)
      with Export, External_Name => "dmdt";

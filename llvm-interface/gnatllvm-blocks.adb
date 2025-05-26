@@ -331,7 +331,7 @@ package body GNATLLVM.Blocks is
    --  instruction, if any.
 
    function Get_File_Name_Address (Index : Source_File_Index) return GL_Value
-     with Post => Type_Of (Get_File_Name_Address'Result) = Address_T;
+     with Post => Type_Of (Get_File_Name_Address'Result) = Address_MD;
    --  Return a GL_Value giving the address of a string corresponding to
    --  the name of the file with the specified file index.
 
@@ -918,14 +918,14 @@ package body GNATLLVM.Blocks is
             --  need to make this a global.
 
             Elements (Elements'Last) := Const_Null (SSI_GL_Type);
-            Str := Const_Array (Elements, Any_Array_GL_Type);
+            Str := Const_Array (Elements, Any_Array_GL_Type, 1);
             V   := G_Ref (Add_Global (Module, Type_Of (+Str),
                                       Globalize_Name ("FNAME", Is_Global)),
-                          Any_Array_GL_Type);
+                          Any_Array_GL_Type, Pointer_Type (Type_Of (Str)));
             Set_Initializer     (V, Str);
             Set_Global_Constant (V);
             File_Name_Strings (Index, Is_Global) :=
-              Ptr_To_Int (V, Size_GL_Type);
+              Ptr_To_Int (V, Address_GL_Type);
 
             if not Is_Global then
                Set_Linkage (V, Private_Linkage);

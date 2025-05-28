@@ -41,7 +41,9 @@ package body Sdefault is
    begin
       return Relocate_Path ("/PREFIX",
                             (if CCG then "/PREFIX/lib/rts-ccg/adainclude"
-                             else "/PREFIX/lib/rts-native/adainclude"));
+                             else "/PREFIX/lib/gnat-llvm/" &
+                                  Get_Default_Target_Triple &
+                                  "/rts-native/adainclude"));
    end Include_Dir_Default_Name;
 
    -----------------------------
@@ -52,7 +54,9 @@ package body Sdefault is
    begin
       return Relocate_Path ("/PREFIX",
                             (if CCG then "/PREFIX/lib/rts-ccg/adalib"
-                             else "/PREFIX/lib/rts-native/adalib"));
+                             else "/PREFIX/lib/gnat-llvm/" &
+                                  Get_Default_Target_Triple &
+                                  "/rts-native/adalib"));
    end Object_Dir_Default_Name;
 
    -----------------------

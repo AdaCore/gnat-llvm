@@ -183,6 +183,9 @@ clean:
 
 # Full runtime
 
+# Note some of these target(.*) variables are used in gnat_src's Makefiles.
+# Renaming them will lead to runtime compilation errors.
+
 target=$(shell gcc -dumpmachine)
 
 target_list=$(filter-out gnu,$(subst -, ,$(target)))
@@ -204,8 +207,10 @@ else
 	make gnatlib-automated
 endif
 
+llvm_target=$(shell clang -dumpmachine)
+
 RTSBASE=rts-native
-RTS=$(pwd)/lib/$(RTSBASE)
+RTS=$(pwd)/lib/gnat-llvm/$(llvm_target)/$(RTSBASE)
 RTSDIR=$(RTS)/adainclude
 RTSLIB=$(RTS)/adalib
 RTSOBJ=$(RTS)/obj-static
@@ -215,6 +220,7 @@ CFLAGS=-O2 -g
 EXTRALIBFLAGS=
 LIBRARY_KIND=static
 
+# used in Makefile.rtl
 ADAC=$(pwd)/bin/llvm-gcc
 CROSSGCC=gcc
 

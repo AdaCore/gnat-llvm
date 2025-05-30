@@ -48,6 +48,16 @@ package CCG.Environment is
    --  True if this value is a constant and was declared that way
    --  in C.
 
+   function Get_MD_Type        (V : Value_T) return MD_Type
+     with Pre => Present (V), Inline;
+   --  Get the MD Type associated with this value when it was created.
+   --  This is used to determine the appropriate C type if we need to create
+   --  and declare this value as a variable.
+
+   function Get_Is_Multi_MD    (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if this value has been shared between multiple MD_Types
+
    function Get_Entity         (V : Value_T) return Entity_Id
      with Pre => Present (V), Inline;
    --  Get the GNAT entity (either object or type) of this value, if known
@@ -81,6 +91,11 @@ package CCG.Environment is
      with Pre => Present (V), Post => Get_Is_LHS (V) = B, Inline;
    procedure Set_Is_Constant    (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Is_Constant (V) = B, Inline;
+   procedure Set_MD_Type        (V : Value_T; M : MD_Type)
+     with Pre => Present (V) and Present (M), Post => Get_MD_Type (V) = M,
+          Inline;
+   procedure Set_Is_Multi_MD    (V : Value_T; B : Boolean := True)
+     with Pre => Present (V), Post => Get_Is_Multi_MD (V) = B, Inline;
    procedure Set_Entity         (V : Value_T; E : Entity_Id)
      with Pre => Present (V), Post => Get_Entity (V) = E, Inline;
    procedure Set_Entity_Is_Ref  (V : Value_T; B : Boolean := True)
@@ -91,6 +106,20 @@ package CCG.Environment is
      with Pre => Present (V), Post => Get_Needs_Nest (V) = B, Inline;
    procedure Set_Must_Globalize (V : Value_T; B : Boolean := True)
      with Pre => Present (V), Post => Get_Must_Globalize (V) = B, Inline;
+
+   function Get_MD_Type                  (T : Type_T) return MD_Type
+     with Pre => Present (T), Inline;
+   --  Get the MD type that T was created from
+
+   function Get_Is_Multi_MD              (T : Type_T) return Boolean
+     with Pre => Present (T), Inline;
+   --  True if this type has been shared between multiple MD_Types.
+   --  This will often be the case for types since LLVM shares types.
+   --  So i32 might correspond to both signed and unsigned 32-bit
+   --  integers and all pointer types are the same. But in some cases,
+   --  such as structs or specific-dimensioned arrays, there may only
+   --  be one MD_type that a type came from and we want to take
+   --  advantage of those cases.
 
    function Get_Entity                   (T : Type_T) return Opt_Type_Kind_Id
      with Pre => Present (T), Inline;
@@ -124,6 +153,11 @@ package CCG.Environment is
    --  True if this is a type that we want to pack, but can't because of
    --  restrictions in our C compiler.
 
+   procedure Set_MD_Type                  (T : Type_T; M : MD_Type)
+     with Pre => Present (T) and Present (M), Post => Get_MD_Type (T) = M,
+          Inline;
+   procedure Set_Is_Multi_MD              (T : Type_T; B : Boolean := True)
+     with Pre => Present (T), Post => Get_Is_Multi_MD (T) = B, Inline;
    procedure Set_Entity                   (T : Type_T; TE : Type_Kind_Id)
      with Pre => Present (T), Post => Get_Entity (T) = TE, Inline;
    procedure Set_Is_Typedef_Output        (T : Type_T; B : Boolean := True)

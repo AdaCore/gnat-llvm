@@ -200,6 +200,7 @@ package body GNATLLVM.MDType is
    procedure Set_LLVM_Type (MDT : MD_Type; T : Type_T) is
    begin
       MD_Types.Table (MDT).LLVM_Type := T;
+      C_Set_MD_Type (T, MDT);
    end Set_LLVM_Type;
 
    -----------------

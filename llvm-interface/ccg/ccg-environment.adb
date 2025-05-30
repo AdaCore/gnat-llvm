@@ -31,7 +31,7 @@ with CCG.Utils;  use CCG.Utils;
 package body CCG.Environment is
 
    type Value_Data is record
-      C_Value        : Str;
+     C_Value        : Str;
       --  If Present, a string that represents the value of the Value_T
 
       Is_Decl_Output : Boolean;
@@ -49,6 +49,14 @@ package body CCG.Environment is
       --  True if this value is a constant and was declared that way
       --  in C. We use this to indicate that we have to cast the type
       --  to the non-constant pointer to take the address of the value.
+
+      MDT            : MD_Type;
+      --  The MD_Type that was used to create this value, if known.  This
+      --  is used to determine the appropriate C type if we need to create
+      --  and declare this value as a variable.
+
+      Is_Multi_MD    : Boolean;
+      --  True if this value has been shared by multiple MD Types
 
       Entity         : Entity_Id;
       --  GNAT entity (either object or type) of this value, if known
@@ -77,6 +85,18 @@ package body CCG.Environment is
    end record;
 
    type Type_Data is record
+      MDT                      : MD_Type;
+      --  The MD type that this type  was created from
+
+      Is_Multi_MD              : Boolean;
+      --  True if this type has been shared between multiple MD_Types.
+      --  This will often be the case for types since LLVM shares types.
+      --  So i32 might correspond to both signed and unsigned 32-bit
+      --  integers and all pointer types are the same. But in some cases,
+      --  such as structs or specific-dimensioned arrays, there may only be
+      --  one MD_type that a type came from and we want to take advantage
+      --  of those cases.
+
       Entity                   : Opt_Type_Kind_Id;
       --  GNAT entity of this type, if known
 
@@ -206,6 +226,8 @@ package body CCG.Environment is
                              Is_Decl_Output => False,
                              Is_LHS         => False,
                              Is_Constant    => False,
+                             MDT            => No_MD_Type,
+                             Is_Multi_MD    => False,
                              Entity         => Types.Empty,
                              Entity_Is_Ref  => False,
                              Is_Used        => False,
@@ -259,7 +281,9 @@ package body CCG.Environment is
       elsif not Create then
          return No_Type_Idx;
       else
-         Type_Info.Append ((Entity                   => Types.Empty,
+         Type_Info.Append ((MDT                      => No_MD_Type,
+                            Is_Multi_MD              => False,
+                            Entity                   => Types.Empty,
                             Is_Typedef_Output        => False,
                             Is_Return_Typedef_Output => False,
                             Is_Incomplete_Output     => False,
@@ -339,6 +363,29 @@ package body CCG.Environment is
    begin
       return Present (Idx) and then Value_Info.Table (Idx).Is_Constant;
    end Get_Is_Constant;
+
+   -----------------
+   -- Get_MD_Type --
+   -----------------
+
+   function Get_MD_Type (V : Value_T) return MD_Type is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
+
+   begin
+      return (if  Present (Idx) then Value_Info.Table (Idx).MDT
+              else No_MD_Type);
+   end Get_MD_Type;
+
+   ---------------------
+   -- Get_Is_Multi_MD --
+   ---------------------
+
+   function Get_Is_Multi_MD (V : Value_T) return Boolean is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
+
+   begin
+      return Present (Idx) and then Value_Info.Table (Idx).Is_Multi_MD;
+   end Get_Is_Multi_MD;
 
    ----------------
    -- Get_Entity --
@@ -440,6 +487,28 @@ package body CCG.Environment is
       Value_Info.Table (Idx).Is_Constant := B;
    end Set_Is_Constant;
 
+   -----------------
+   -- Set_MD_Type --
+   -----------------
+
+   procedure Set_MD_Type (V : Value_T; M : MD_Type) is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
+
+   begin
+      Value_Info.Table (Idx).MDT := M;
+   end Set_MD_Type;
+
+   ---------------------
+   -- Set_Is_Multi_MD --
+   ---------------------
+
+   procedure Set_Is_Multi_MD (V : Value_T; B : Boolean := True) is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
+
+   begin
+      Value_Info.Table (Idx).Is_Multi_MD := B;
+   end Set_Is_Multi_MD;
+
    ----------------
    -- Set_Entity --
    ----------------
@@ -494,6 +563,29 @@ package body CCG.Environment is
    begin
       Value_Info.Table (Idx).Must_Globalize := B;
    end Set_Must_Globalize;
+
+   -----------------
+   -- Get_MD_Type --
+   -----------------
+
+   function Get_MD_Type (T : Type_T) return MD_Type is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
+
+   begin
+      return (if  Present (Idx) then Type_Info.Table (Idx).MDT
+              else No_MD_Type);
+   end Get_MD_Type;
+
+   ---------------------
+   -- Get_Is_Multi_MD --
+   ---------------------
+
+   function Get_Is_Multi_MD (T : Type_T) return Boolean is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
+
+   begin
+      return Present (Idx) and then Type_Info.Table (Idx).Is_Multi_MD;
+   end Get_Is_Multi_MD;
 
    ----------------
    -- Get_Entity --
@@ -574,6 +666,28 @@ package body CCG.Environment is
    begin
       return Present (Idx) and then Type_Info.Table (Idx).Used_In_Struct;
    end Get_Used_In_Struct;
+
+   -----------------
+   -- Set_MD_Type --
+   -----------------
+
+   procedure Set_MD_Type (T : Type_T; M : MD_Type) is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
+
+   begin
+      Type_Info.Table (Idx).MDT := M;
+   end Set_MD_Type;
+
+   ---------------------
+   -- Set_Is_Multi_MD --
+   ---------------------
+
+   procedure Set_Is_Multi_MD (T : Type_T; B : Boolean := True) is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
+
+   begin
+      Type_Info.Table (Idx).Is_Multi_MD := B;
+   end Set_Is_Multi_MD;
 
    ----------------
    -- Set_Entity --

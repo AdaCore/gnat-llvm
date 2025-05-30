@@ -26,7 +26,8 @@ with Namet;          use Namet;
 with Sinfo.Nodes;    use Sinfo.Nodes;
 with Types;          use Types;
 
-with GNATLLVM; use GNATLLVM;
+with GNATLLVM;        use GNATLLVM;
+with GNATLLVM.MDType; use GNATLLVM.MDType;
 
 package CCG is
 
@@ -145,9 +146,17 @@ package CCG is
    --  Indicate that the previous calls to C_Set_Field_Info for SID
    --  were for LLVM struct type T.
 
+   procedure C_Set_MD_Type (V : Value_T; MDT : MD_Type)
+     with Pre => Present (V) and then Present (MDT), Inline;
+   --  Indicate that V was created to be of MD_Type MDT
+
+   procedure C_Set_MD_Type (T : Type_T; MDT : MD_Type)
+     with Pre => Present (T) and then Present (MDT), Inline;
+   --  Indicate that T was created from MD_Type MDT
+
    procedure C_Set_Entity
      (V : Value_T; E : Entity_Id; Reference : Boolean := False)
-     with Pre => Present (V), Inline;
+   with Pre => Present (V), Inline;
    --  Indicate that E is related to V, either the object that V represents
    --  or the GNAT type of V. If Reference, then V is actually a reference
    --  to (the address of) E.

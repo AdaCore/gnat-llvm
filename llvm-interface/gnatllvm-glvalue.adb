@@ -71,6 +71,10 @@ package body GNATLLVM.GLValue is
       Unknown_MDT : MD_Type           := No_MD_Type) return GL_Value
    is
    begin
+      --  Tell CCG what MD_Type we used to create V
+
+      C_Set_MD_Type (V, MDT);
+
       --  Set the entity corresponding to the type of the value if this is
       --  a discrete type. We have to check for Void here since void is not
       --  a type. Also don't do this is V is a constant.

@@ -1420,7 +1420,7 @@ package GNATLLVM.GLValue is
 
    function Const_String (S : String; GT : GL_Type) return GL_Value is
      (G (Const_String (S, unsigned (S'Length), True), GT,
-         Array_Type (Byte_MD, Nat (S'Length))))
+         Array_Type (Int_Ty (BPU, True), Nat (S'Length))))
      with Pre => Present (GT), Post => Is_Constant (Const_String'Result);
 
    function Const_Struct

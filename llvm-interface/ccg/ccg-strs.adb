@@ -23,7 +23,6 @@ with LLVM.Core; use LLVM.Core;
 with Output; use Output;
 
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
-with GNATLLVM.MDType;      use GNATLLVM.MDType;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 
 with CCG.Environment; use CCG.Environment;

@@ -26,6 +26,7 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Codegen;      use CCG.Codegen;
 with CCG.Environment;  use CCG.Environment;
+with CCG.Helper;       use CCG.Helper;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Subprograms;  use CCG.Subprograms;
 with CCG.Target;       use CCG.Target;
@@ -124,6 +125,66 @@ package body CCG is
          Set_Function (UID, V);
       end if;
    end C_Set_Function;
+
+   -------------------
+   -- C_Set_MD_Type --
+   -------------------
+
+   procedure C_Set_MD_Type (V : Value_T; MDT : MD_Type) is
+   begin
+      --  If we're not recording front end data, we do nothing. If
+      --  this value has already been used for multiple MD types, we
+      --  also do nothing.
+
+      if not Use_FE_Data or else Get_Is_Multi_MD (V) then
+         return;
+
+      --  Otherwise, if we haven't previously set an MD_Type, set this one
+
+      elsif No (Get_MD_Type (V)) then
+         Set_MD_Type (V, MDT);
+
+      --  Finally, see if we previously set this to a different type.  That
+      --  can occur for two reasons: if it was a constant, we may have
+      --  created the constant for different types (e.g., different
+      --  signedness or a null pointer). In that case, mark this as having
+      --  multiple types. It's possible for a non-constant to have
+      --  different types in cases such as converting a variable from
+      --  Natural to Integer since the conversion is a no-op, but the
+      --  two uses of the variable are of different signedness. In that case,
+      --  we'll want to use the first-assigned type to declare the variable,
+      --  so do nothing here.
+
+      elsif Get_MD_Type (V) /= MDT and then Is_A_Constant (V) then
+         Set_Is_Multi_MD (V);
+      end if;
+   end C_Set_MD_Type;
+
+   -------------------
+   -- C_Set_MD_Type --
+   -------------------
+
+   procedure C_Set_MD_Type (T : Type_T; MDT : MD_Type) is
+   begin
+      --  If we're not recording front end data, we do nothing. If
+      --  this type has already been generated from multiple MD types, we
+      --  also do nothing.
+
+      if not Use_FE_Data or else Get_Is_Multi_MD (T) then
+         return;
+
+      --  Otherwise, if we haven't previously set an MD_Type, set this one
+
+      elsif No (Get_MD_Type (T)) then
+         Set_MD_Type (T, MDT);
+
+      --  Finally, see if we previously set this to a different type.
+      --  In that case, mark this as having multiple types.
+
+      elsif Get_MD_Type (T) /= MDT then
+         Set_Is_Multi_MD (T);
+      end if;
+   end C_Set_MD_Type;
 
    ------------------
    -- C_Set_Entity --

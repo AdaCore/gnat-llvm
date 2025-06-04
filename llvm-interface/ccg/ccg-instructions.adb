@@ -767,9 +767,11 @@ package body CCG.Instructions is
       --  Otherwise, just do a cast. If we're considered volatile, make
       --  sure that's reflected in the cast we write.
 
-      return ("(" & (V + Write_Type) &
-              (if Is_Volatile (V) then " volatile) " else ") ") & Our_Op) +
-              Unary;
+      return ("(" & (V + (if   Is_Unsigned_Pointer (V)
+                          then +Write_Type or Value_Flags'(+Need_Unsigned)
+                          else +Write_Type)) &
+                (if Is_Volatile (V) then " volatile) " else ") ") & Our_Op) +
+        Unary;
 
    end Cast_Instruction;
 

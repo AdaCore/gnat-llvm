@@ -106,10 +106,23 @@ package GNATLLVM.MDType is
    --  Create an LLVM type from an MD_Type
    function "+" (MDT : MD_Type) return Type_T renames LLVM_Type_Of;
 
+   function Check_From_Type (T1, T2 : Type_T) return Boolean
+     with Pre => Present (T1) and then Present (T2);
+   --  Used to check the result of the next function. This is a renaming
+   --  of Is_Layout_Identical, but we 'with' that unit here.
+
    function From_Type (T : Type_T) return MD_Type
-     with Pre => Present (T), Post => +From_Type'Result = T;
-   --  Create a MD_Type from a type. This is mostly used for intrinsic
-   --  functions and isn't guaranteed to work in all cases.
+     with Pre  => Present (T),
+          Post => Check_From_Type (T, +From_Type'Result);
+   --  Create an MD_Type from a type. This is used for intrinsic functions
+   --  and values created by the optimzer and isn't guaranteed to work in
+   --  all cases. If T was a named struct type, the LLVM type generated
+   --  from the result may not precisely agree with the input and likewise
+   --  for an array of such, so we just check that the layout is the same.
+
+   function Is_Layout_Identical (MDT1, MDT2 : MD_Type) return Boolean
+     with Pre => Present (MDT1) and then Present (MDT2);
+   --  Return True iff types MDT1 and MDT2 have identical layouts.
 
    function Int_Bits (MDT : MD_Type) return Nat
      with Pre => Is_Integer (MDT), Post => Int_Bits'Result /= 0;
@@ -182,6 +195,14 @@ package GNATLLVM.MDType is
                   and then Int_Bits (Int_Ty'Result) = Bits;
    --  Make an integer type with specified bitsize and signedness.
 
+   function Signed_Type (MDT : MD_Type) return MD_Type is
+     (Int_Ty (Int_Bits (MDT), Unsigned => False))
+     with Pre => Is_Integer (MDT), Post => Is_Signed (Signed_Type'Result);
+   function Unsigned_Type (MDT : MD_Type) return MD_Type is
+     (Int_Ty (Int_Bits (MDT), Unsigned => True))
+     with Pre => Is_Integer (MDT), Post => Is_Unsigned (Unsigned_Type'Result);
+   --  Make signed or unsigned variants of a type
+
    function Float_Ty (Bits : Nat) return MD_Type
      with Post => Is_Float (Float_Ty'Result)
                   and then Float_Bits (Float_Ty'Result) = Bits;
@@ -198,8 +219,8 @@ package GNATLLVM.MDType is
    function Array_Type (Elem_Type : MD_Type; Count : Nat) return MD_Type
      with Pre  => Present (Elem_Type),
           Post => Is_Fixed_Array (Array_Type'Result)
-                  and then Array_Count (Array_Type'Result) = Count
-                  and then Element_Type (Array_Type'Result) = Elem_Type;
+                  and then Array_Count (Array_Type'Result) = Count;
+   --  ?? for now: and then Element_Type (Array_Type'Result) = Elem_Type;
    --  Make a fixed-size array with the specifed count and element type
 
    function Variable_Array_Type (Elem_Type : MD_Type) return MD_Type

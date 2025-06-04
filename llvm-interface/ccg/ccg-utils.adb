@@ -24,8 +24,7 @@ with Lib;         use Lib;
 with Set_Targ;    use Set_Targ;
 with Table;
 
-with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
+with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 with CCG.Codegen;      use CCG.Codegen;
 with CCG.Environment;  use CCG.Environment;
@@ -61,12 +60,6 @@ package body CCG.Utils is
    function Is_Access_SP_GEP (V : Value_T) return Boolean
      with Pre => Is_A_Get_Element_Ptr_Inst (V);
    --  True if V, a GEP instruction, points to an access to a subprogram
-
-   function Is_Unsigned_Ref (V : Value_T) return Boolean
-     with Pre => Present (V);
-   --  True if V is a reference to an unsigned integer, meaning that the
-   --  result of a "load" instruction with that operand will produce
-   --  an unsigned result.
 
    function Is_Access_SP_Ref (V : Value_T) return Boolean
      with Pre => Present (V);
@@ -667,47 +660,6 @@ package body CCG.Utils is
    end GNAT_Ref_Type;
 
    ---------------------
-   -- Is_Unsigned_Ref --
-   ---------------------
-
-   function Is_Unsigned_Ref (V : Value_T) return Boolean is
-      TE : constant Opt_Type_Kind_Id := GNAT_Ref_Type (V);
-      BT : constant Opt_Type_Kind_Id := Opt_Full_Base_Type (TE);
-
-   begin
-      --  Note that what we care about here is whether the C compiler
-      --  will interpret our generated code for V as a pointer to
-      --  unsigned, not whether it actually IS unsigned.
-      --
-      --  If this is an LHS and a variable, there has to be a declaration,
-      --  and we either declared it as unsigned or we didn't. We did if the
-      --  condition below is true.
-
-      if Get_Is_LHS (V) and then Is_Variable (V, False) then
-         return Opt_Is_Unsigned_Type (BT);
-      elsif Is_A_Argument (V) then
-         return Opt_Is_Unsigned_Type (BT);
-      elsif Has_Operands (V)
-        and then Get_Opcode (V) in Op_Bit_Cast | Op_Ptr_To_Int | Op_Int_To_Ptr
-      then
-         return Is_Unsigned_Ref (Get_Operand0 (V));
-      elsif Is_A_Load_Inst (V) then
-         declare
-            Load_TE : constant Opt_Type_Kind_Id :=
-              GNAT_Type (Get_Operand0 (V));
-
-         begin
-            return Present (Load_TE) and then Is_Access_Type (Load_TE)
-              and then Is_Unsigned_Type
-                         (Full_Base_Type (Full_Designated_Type (Load_TE)));
-         end;
-      else
-         return Is_A_Get_Element_Ptr_Inst (V) and then Is_Unsigned_GEP (V);
-      end if;
-
-   end Is_Unsigned_Ref;
-
-   ---------------------
    -- Is_Access_SP_Ref --
    ---------------------
 
@@ -738,79 +690,24 @@ package body CCG.Utils is
    -----------------
 
    function Is_Unsigned (V : Value_T) return Boolean is
-      TE : constant Opt_Type_Kind_Id := GNAT_Type (V);
-      BT : constant Opt_Type_Kind_Id := Opt_Full_Base_Type (TE);
+      MDT : constant MD_Type := Declaration_Type (V);
 
    begin
-      --  Note that what we care about here is whether the C compiler
-      --  will interpret our generated code for V as unsigned, not
-      --  whether it actually IS unsigned.
-
-      --  If V is a function, the result is the signedness of the actual
-      --  returned type.
-
-      if Is_A_Function (V) then
-         return
-           Opt_Is_Unsigned_Type (Actual_Subprogram_Base_Type (Get_Entity (V)));
-
-      --  If V isn't a LHS but is a variable and we've written a
-      --  declaration for it, it's only unsigned if we've written "unsigned"
-      --  in the declaration.
-
-      elsif not Get_Is_LHS (V) and then Is_Variable (V, False)
-        and then Get_Is_Decl_Output (V)
-      then
-         return Opt_Is_Unsigned_Type (BT);
-
-      --  If it doesn't have operands, we won't have made it unsigned
-
-      elsif not Has_Operands (V) then
-         return False;
-      end if;
-
-      --  Now handle instructions that could produce unsigned
-
-      case Get_Opcode (V) is
-
-         --  A load is unsigned iff the pointer is a reference to unsigned
-
-         when Op_Load =>
-            return Is_Unsigned_Ref (Get_Operand0 (V));
-
-         --  Some instructions always produce unsigned results
-
-         when Op_U_Div | Op_U_Rem | Op_L_Shr | Op_Z_Ext | Op_FP_To_UI |
-              Op_I_Cmp | Op_F_Cmp =>
-            return True;
-
-         --  Arithmetic instructions are unsigned if either operand are
-         --  (since we know that both operands are the same size).
-
-         when Op_Add | Op_Sub | Op_Mul | Op_And | Op_Or | Op_Xor =>
-            return Is_Unsigned (Get_Operand0 (V))
-              or else Is_Unsigned (Get_Operand1 (V));
-
-         --  A call instruction is unsigned if the function called is known
-         --  and has an unsigned return type.
-
-         when Op_Call =>
-            return Is_Unsigned (Get_Operand (V, Get_Num_Operands (V) - 1));
-
-         --  Some conversions don't change signedness and neither does left
-         --  shift.
-
-         when Op_Bit_Cast | Op_Trunc | Op_Shl =>
-            return Is_Unsigned (Get_Operand0 (V));
-
-         when others =>
-            null;
-
-      end case;
-
-      --  In all other case, it isn't unsigned
-
-      return False;
+      return Is_Integer (MDT) and then Is_Unsigned (MDT);
    end Is_Unsigned;
+
+   -------------------------
+   -- Is_Unsigned_Pointer --
+   -------------------------
+
+   function Is_Unsigned_Pointer (V : Value_T) return Boolean is
+      MDT : constant MD_Type := Declaration_Type (V);
+
+   begin
+      return Is_Pointer (MDT)
+        and then Is_Integer (Designated_Type (MDT))
+        and then Is_Unsigned (Designated_Type (MDT));
+   end Is_Unsigned_Pointer;
 
    --------------------------
    -- Is_Access_Subprogram --
@@ -1108,6 +1005,100 @@ package body CCG.Utils is
          Walk_Value (V, False);
       end if;
    end Walk_Object;
+
+   ----------------------
+   -- Declaration_Type --
+   ----------------------
+
+   function Declaration_Type
+     (V : Value_T; No_Force : Boolean := False) return MD_Type
+   is
+      T   : constant Type_T := Type_Of (V);
+      MDT : MD_Type         := No_MD_Type;
+
+   begin
+      --  If we have a single type for this value, use it
+
+      if Present (Get_MD_Type (V)) and then not Get_Is_Multi_MD (V) then
+         return Get_MD_Type (V);
+
+      --  Othewise, if we have a single MD_Type corresponding to V's
+      --  type, use that
+
+      elsif Present (Get_MD_Type (T)) and then not Get_Is_Multi_MD (V) then
+         MDT := Get_MD_Type (T);
+
+      --  If it's an instruction, see if we can deduce the type from
+      --  the operands of the instruction. This is simplest in the
+      --  case of unary or binary operations. In most other cases, all
+      --  we have is the type of the result.
+
+      elsif Is_A_Instruction (V) then
+         case Get_Opcode (V) is
+            when Op_F_Neg =>
+               MDT := Declaration_Type (Get_Operand0 (V), No_Force => True);
+
+            when Op_Add   | Op_F_Add | Op_F_Sub | Op_Mul | Op_F_Mul
+               | Op_F_Div | Op_F_Rem | Op_And   | Op_Or  | Op_Xor =>
+
+               MDT := Declaration_Type (Get_Operand0 (V), No_Force => True);
+
+               if No (MDT) then
+                  MDT := Declaration_Type (Get_Operand1 (V), No_Force => True);
+               end if;
+
+            when Op_Load =>
+
+               --  The load might be loading the full data from the pointer
+               --  or might be casting it into a pointer to a smaller portion
+               --  of the data. We can only get an accurate MD_Type for the
+               --  load in the former case, which we detect by comparing the
+               --  LLVM type corresponding to the MD Type with the type of
+               --  the load.
+
+               MDT := Declaration_Type (Get_Operand0 (V), No_Force => True);
+
+               if Present (MDT) and then T /= +Designated_Type (MDT) then
+                  MDT := No_MD_Type;
+               end if;
+
+            when Op_U_Div | Op_U_Rem | Op_L_Shr =>
+               MDT := Declaration_Type (Get_Operand0 (V), No_Force => True);
+
+               if Present (MDT) then
+                  MDT := Unsigned_Type (MDT);
+               end if;
+            when Op_S_Div | Op_S_Rem | Op_A_Shr =>
+               MDT := Declaration_Type (Get_Operand0 (V), No_Force => True);
+
+               if Present (MDT) then
+                  MDT := Signed_Type (MDT);
+               end if;
+
+            when others =>
+               null;
+         end case;
+      end if;
+
+      --  If we have a type, we're done. But first see if this value
+      --  hasn't already had a type assigned for it. If not, assign
+      --  this one so that we don't have to repeat the above logic the
+      --  next time we do this.
+
+      if Present (MDT) then
+         if not Get_Is_Multi_MD (V) then
+            Set_MD_Type (V, MDT);
+         end if;
+
+      --  Otherwise, if we're supposed to force a type from V's LLVM
+      --  type, do that.
+
+      elsif not No_Force then
+         MDT := From_Type (T);
+      end if;
+
+      return MDT;
+   end Declaration_Type;
 
    ---------------------
    -- Int_Type_String --

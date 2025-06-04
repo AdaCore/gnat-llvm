@@ -183,6 +183,10 @@ package CCG.Utils is
      with Pre => Present (V), Inline;
    --  True if V is known from sources to be unsigned
 
+   function Is_Unsigned_Pointer (V : Value_T) return Boolean
+     with Pre => Present (V), Inline;
+   --  True if V is known from sources to be a pointer to unsigned
+
    function Is_Access_Subprogram (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if V is known from sources to be an access to a subprogram
@@ -316,6 +320,17 @@ package CCG.Utils is
    function Decl_Without_Prefix (S : String) return String is
      (S (S'First + 5 .. S'Last))
      with Pre => Has_Suppress_Decl_Prefix (S);
+
+   function Declaration_Type
+     (V : Value_T; No_Force : Boolean := False) return MD_Type
+   with Pre => Present (V);
+   --  Return the MD type that we'd use to declare V, if such a declaration
+   --  were to be necessary. Usually, we'll get this from data saved when
+   --  we're generating the IR, but if not, try to see if we can derive
+   --  it from the operands of V, if it's an instruction. If none of that
+   --  works and No_Force is False, we build an MD type from the LLVM
+   --  type of T. This will be an approximate, but is the best we can do
+   --  in that situation.
 
    procedure Error_Msg (Msg : String; V : Value_T);
    --  Post an error message via the GNAT errout mechanism. If V

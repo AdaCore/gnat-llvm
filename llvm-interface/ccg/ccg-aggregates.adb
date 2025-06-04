@@ -278,7 +278,10 @@ package body CCG.Aggregates is
       Vol_Str        : constant String             :=
         (if Is_Vol then "volatile " else "");
       SOS            : constant Struct_Out_Style_T := Struct_Out_Style (T);
+      MDT            : constant MD_Type            :=
+        (if Get_Is_Multi_MD (T) then No_MD_Type else Get_MD_Type (T));
       Fields_Written : Nat                         := 0;
+
    begin
       --  Because this struct may contain a pointer to itself, we always have
       --  to write an incomplete struct. So we write, e.g.,
@@ -336,11 +339,18 @@ package body CCG.Aggregates is
                   F_Is_Vol       : constant Boolean                  :=
                     Present (F) and then Treat_As_Volatile (F)
                     and then not Is_Vol;
-
+                  S_MDT          : constant MD_Type                  :=
+                    (if   Present (MDT) then Element_Type (MDT, J)
+                     else No_MD_Type);
+                  F_Is_Unsigned  : constant Boolean                  :=
+                    Present (S_MDT) and then Is_Integer (S_MDT)
+                    and then Is_Unsigned (S_MDT);
+                  ST_Str         : constant Str                      :=
+                    (if F_Is_Unsigned then ST + Need_Unsigned else ST or F);
                begin
                   Output_Decl
-                    ((ST or F) & (if F_Is_Vol then " volatile" else "") &
-                      " " & Name,
+                    (ST_Str & (if F_Is_Vol then " volatile" else "") &
+                                           " " & Name,
                      Is_Typedef => True);
                   Fields_Written := Fields_Written + 1;
                end;

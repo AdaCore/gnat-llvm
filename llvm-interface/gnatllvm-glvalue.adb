@@ -2328,8 +2328,11 @@ package body GNATLLVM.GLValue is
 
    procedure Dump_GL_Value (V : GL_Value) is
    begin
+      Push_Output;
+      Set_Standard_Error;
       if No (V) then
          Write_Line ("None");
+         Pop_Output;
          return;
       end if;
 
@@ -2386,6 +2389,7 @@ package body GNATLLVM.GLValue is
       Write_Str ("): ");
       Dump_MD_Type (V.MDT);
       pg (Union_Id (Full_Etype (V.GT)));
+      Pop_Output;
    end Dump_GL_Value;
 
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");

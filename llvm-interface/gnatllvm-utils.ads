@@ -23,7 +23,6 @@ with Uintp.LLVM;  use Uintp.LLVM;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
-with GNATLLVM.MDType;      use GNATLLVM.MDType;
 with GNATLLVM.Types;       use GNATLLVM.Types;
 
 package GNATLLVM.Utils is
@@ -140,9 +139,7 @@ package GNATLLVM.Utils is
 
    function Is_Layout_Identical (T1, T2 : Type_T) return Boolean
      with Pre => Present (T1) and then Present (T2);
-   function Is_Layout_Identical (MDT1, MDT2 : MD_Type) return Boolean
-     with Pre => Present (MDT1) and then Present (MDT2);
-   --  Return True iff types MDT1 and MDT2 have identical layout.
+   --  Return True iff types MDT1 and MDT2 have identical layouts.
    --  We can't use the LLVM routine of similar name because we want to
    --  recurse into records: two fields of types with identical
    --  layout are enough for the fields to be considered the same layout:

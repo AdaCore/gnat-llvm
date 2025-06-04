@@ -70,7 +70,7 @@ package body GNATLLVM.MDType is
       Kind           : MD_Kind;
       --  The kind of type or type part
 
-      Count          : Nat;
+      Count          : Nat     := 0;
       --  An integer used in various ways depending on the kind
 
       Related_Type   : MD_Type := No_MD_Type;
@@ -479,9 +479,14 @@ package body GNATLLVM.MDType is
      (Elem_Type : MD_Type;
       Space     : Nat := Address_Space) return MD_Type
    is
+      Kludge_MDT : constant MD_Type :=
+        (if   Is_Integer (Elem_Type) then Signed_Type (Elem_Type)
+         else Elem_Type);
+      --  ?? For now, CCG will be respecting types, but not declaring pointers
+      --  to integers with the proper signedness, so we need to kludge this.
    begin
       return MD_Find ((Kind         => Pointer,
-                       Related_Type => Elem_Type,
+                       Related_Type => Kludge_MDT,
                        Count        => Space,
                        others       => <>));
    end Pointer_Type;
@@ -491,10 +496,15 @@ package body GNATLLVM.MDType is
    ----------------
 
    function Array_Type (Elem_Type : MD_Type; Count : Nat) return MD_Type is
+      Kludge_MDT : constant MD_Type :=
+        (if   Is_Integer (Elem_Type) then Signed_Type (Elem_Type)
+         else Elem_Type);
+      --  ?? For now, CCG will be respecting types, but not declaring arrays
+      --  of integers with the proper signedness, so we need to kludge this.
    begin
       return MD_Find ((Kind         => Array_Type,
                        Count        => Count,
-                       Related_Type => Elem_Type,
+                       Related_Type => Kludge_MDT,
                        others       => <>));
    end Array_Type;
 
@@ -801,9 +811,7 @@ package body GNATLLVM.MDType is
             return Float_Ty (80);
 
          when Pointer_Type_Kind =>
-            return Pointer_Type ((if   Pointer_Type_Is_Opaque (T)
-                                  then Void_Ty
-                                  else From_Type (Get_Element_Type (T))));
+            return Pointer_Type (Void_Ty);
 
          when Array_Type_Kind =>
             return Array_Type (From_Type (Get_Element_Type (T)),
@@ -811,7 +819,9 @@ package body GNATLLVM.MDType is
 
          when Struct_Type_Kind =>
             declare
-               Num_Elts : constant Nat := Nat (Count_Struct_Element_Types (T));
+               Num_Elts : constant Nat    :=
+                 Nat (Count_Struct_Element_Types (T));
+               Name     : constant String := Get_Struct_Name (T);
                Types    : Type_Array (1 .. Num_Elts);
                MDTs     : MD_Type_Array (1 .. Num_Elts);
 
@@ -822,7 +832,11 @@ package body GNATLLVM.MDType is
                   MDTs (J) := From_Type (Types (J));
                end loop;
 
-               return Build_Struct_Type (MDTs, (MDTs'Range => No_Name));
+               return Build_Struct_Type (MDTs, (MDTs'Range => No_Name),
+                                         Packed => Is_Packed_Struct (T),
+                                         Name   =>
+                                           (if   Name'Length = 0 then No_Name
+                                            else Name_Find (Name)));
             end;
 
          when Function_Type_Kind =>
@@ -870,6 +884,91 @@ package body GNATLLVM.MDType is
 
    function Get_Type_Alignment (MDT : MD_Type) return Nat is
      (Get_Type_Alignment (Type_T'(+MDT)));
+
+   ---------------------
+   -- Check_From_Type --
+   ---------------------
+
+   function Check_From_Type (T1, T2 : Type_T) return Boolean
+      renames Is_Layout_Identical;
+
+   -------------------------
+   -- Is_Layout_Identical --
+   -------------------------
+
+   function Is_Layout_Identical (MDT1, MDT2 : MD_Type) return Boolean is
+   begin
+      --  If the types are the same, they're identical, but if they have
+      --  different kinds, they aren't.
+
+      if MDT1 = MDT2 then
+         return True;
+      elsif not Is_Same_Kind (MDT1, MDT2) then
+         return False;
+
+      --  Otherwise, it's kind-specific
+
+      elsif Is_Array (MDT1)
+        and then Is_Fixed_Array (MDT1) and then Is_Fixed_Array (MDT2)
+        and then Array_Count (MDT1) = Array_Count (MDT2)
+        and then Is_Layout_Identical (Element_Type (MDT1), Element_Type (MDT2))
+      then
+         return True;
+
+      elsif Is_Struct (MDT1)
+        and then Is_Packed (MDT1) = Is_Packed (MDT2)
+        and then Element_Count (MDT1) = Element_Count (MDT2)
+      then
+         --  Structures are identical if their packed status is the same,
+         --  they have the same number of fields, and each field is
+         --  identical.
+
+         for J in 0 .. Element_Count (MDT1) - 1 loop
+            if not Is_Layout_Identical (Element_Type (MDT1, J),
+                                        Element_Type (MDT2, J))
+            then
+               return False;
+            end if;
+         end loop;
+
+         return True;
+
+      --  Pointers have the same layout if they're pointing at the
+      --  same address space.
+
+      elsif Is_Pointer (MDT1)
+        and then Pointer_Space (MDT1) = Pointer_Space (MDT2)
+      then
+         return True;
+
+      --  Two function types have different layouts if their return types
+      --  have different layouts or they have a different number of
+      --  parameter types.
+
+      elsif Is_Function_Type (MDT1)
+        and then Is_Layout_Identical (Return_Type (MDT1), Return_Type (MDT2))
+        and then Parameter_Count (MDT1) = Parameter_Count (MDT2)
+      then
+         --  If any parameter type is not the identical layout of the
+         --  corresponding parameter type, the layouts aren't the same.
+
+         for J in 1 .. Parameter_Count (MDT1) loop
+            if not Is_Layout_Identical (Parameter_Type (MDT1, J),
+                                        Parameter_Type (MDT2, J))
+            then
+               return False;
+            end if;
+         end loop;
+
+         return True;
+
+      --  Otherwise, types are only identical if they're the same and that
+      --  was checked above.
+
+      else
+         return False;
+      end if;
+   end Is_Layout_Identical;
 
    ---------------
    -- To_String --
@@ -1000,7 +1099,10 @@ package body GNATLLVM.MDType is
 
    procedure Dump_MD_Type (MDT : MD_Type) is
    begin
+      Push_Output;
+      Set_Standard_Error;
       Write_Line (To_String (MDT, Top => True));
+      Pop_Output;
    end Dump_MD_Type;
 
 begin

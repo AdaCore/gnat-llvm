@@ -727,7 +727,7 @@ extern "C"
 LLVMBool
 LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
                       int SizeOptLevel, bool NeedLoopInfo, bool UnrollLoops,
-                      bool LoopVectorization, bool NoSLPVectorization,
+                      bool LoopVectorization, bool SLPVectorization,
                       bool MergeFunctions, bool PrepareForThinLTO,
                       bool PrepareForLTO, bool RerollLoops, bool EnableFuzzer,
                       bool EnableAddressSanitizer, const char *SanCovAllowList,
@@ -747,7 +747,7 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
   PTO.LoopUnrolling = UnrollLoops;
   PTO.LoopInterleaving = UnrollLoops;
   PTO.LoopVectorization = LoopVectorization;
-  PTO.SLPVectorization = !NoSLPVectorization;
+  PTO.SLPVectorization = SLPVectorization;
   PTO.MergeFunctions = MergeFunctions;
 
   LoopAnalysisManager LAM;

@@ -203,15 +203,15 @@ package body GNATLLVM.Codegen is
          DSO_Preemptable := True;
       elsif S = "-mdso-local" then
          DSO_Preemptable := False;
-      elsif S = "-mcode-model=small" then
+      elsif S in "-mcode-model=small" | "-mcmodel=small" then
          Code_Model := Code_Model_Small;
-      elsif S = "-mcode-model=kernel" then
+      elsif S in "-mcode-model=kernel" | "-mcmodel=kernel" then
          Code_Model := Code_Model_Kernel;
-      elsif S = "-mcode-model=medium" then
+      elsif S in "-mcode-model=medium" | "-mcmodel=medium" then
          Code_Model := Code_Model_Medium;
-      elsif S = "-mcode-model=large" then
+      elsif S in "-mcode-model=large" | "-mcmodel=large" then
          Code_Model := Code_Model_Large;
-      elsif S = "-mcode-model=default" then
+      elsif S in "-mcode-model=default" | "-mcmodel=default" then
          Code_Model := Code_Model_Default;
       elsif S = "-mrelocation-model=static" then
          Reloc_Mode := Reloc_Static;

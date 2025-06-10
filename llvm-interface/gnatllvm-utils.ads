@@ -86,10 +86,6 @@ package GNATLLVM.Utils is
                              or else Is_A_Function (V));
    --  Process any pragmas for V, whose corresponding tree node is E
 
-   function Enclosing_Subprogram_Scope (E : Entity_Id) return Entity_Id
-     with Pre => not Is_Type (E);
-   --  Return any enclosing subprogram scope above E
-
    function Acting_Spec
      (N : N_Subprogram_Body_Id) return N_Subprogram_Specification_Id;
    --  If Subp_Body acts as a spec, return it. Otherwise, return the

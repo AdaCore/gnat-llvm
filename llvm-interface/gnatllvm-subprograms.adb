@@ -2775,7 +2775,7 @@ package body GNATLLVM.Subprograms is
       if Present (LLVM_Func) and then Type_Of (LLVM_Func) /= Subp_P_Type then
          LLVM_Func :=
            GM (Pointer_Cast (IR_Builder, +LLVM_Func, +Subp_P_Type, Subp_Name),
-               Related_Type (LLVM_Func), Subp_P_Type, Relationship (LLVM_Func),
+               Return_GT, Subp_P_Type, Relationship (LLVM_Func),
                LLVM_Func);
       elsif No (LLVM_Func) then
          LLVM_Func := Add_Function (Actual_Name, Subp_Type, Full_GL_Type (E));

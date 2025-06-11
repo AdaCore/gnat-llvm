@@ -22,25 +22,25 @@ To build GNAT LLVM from sources, follow these steps:
 
 - First do a checkout of this repository and go to this directory:
 
-      $ git clone https://github.com/AdaCore/gnat-llvm.git
-      $ cd gnat-llvm
+      git clone https://github.com/AdaCore/gnat-llvm.git
+      cd gnat-llvm
 
 - Then obtain a check out of the latest GNAT sources from gcc.gnu.org under
   the llvm-interface directory:
 
-      $ git clone git://gcc.gnu.org/git/gcc.git llvm-interface/gcc
+      git clone git://gcc.gnu.org/git/gcc.git llvm-interface/gcc
 
   then under non Windows systems:
 
-      $ ln -s gcc/gcc/ada llvm-interface/gnat_src
+      ln -s gcc/gcc/ada llvm-interface/gnat_src
 
   under Windows systems:
 
-      $ mv llvm-interface/gcc/gcc/ada llvm-interface/gnat_src
+      mv llvm-interface/gcc/gcc/ada llvm-interface/gnat_src
 
 - Obtain the Ada bindings for LLVM:
 
-      $ git clone https://github.com/AdaCore/llvm-bindings.git
+      git clone https://github.com/AdaCore/llvm-bindings.git
 
 - Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2021
   or GCC 11.
@@ -57,7 +57,7 @@ To build GNAT LLVM from sources, follow these steps:
   configurations is to use the following command, assuming you have CMake
   version >= 3.13.4 in your path:
 
-      $ make llvm
+      make llvm
 
   Note that there's currently a bug in LLVM's aliasing handling. We check
   for it and generate slightly pessimized code in that case, but a patch
@@ -66,7 +66,7 @@ To build GNAT LLVM from sources, follow these steps:
 
 - Finally build GNAT LLVM:
 
-      $ make
+      make
 
   This creates a "ready to use" set of directories "bin" and "lib" under
   llvm-interface which you can put in your PATH:
@@ -75,7 +75,7 @@ To build GNAT LLVM from sources, follow these steps:
 
 - If you want in addition to generate bitcode for the GNAT runtime, you can do:
 
-      $ make gnatlib-bc
+      make gnatlib-bc
 
   This will generate `libgnat.bc` and `libgnarl.bc` in the `adalib` directory, along
   with `libgnat.a` and `libgnarl.a`.
@@ -85,31 +85,31 @@ Usage
 
 - To run the compiler and produce a native object file:
 
-      $ llvm-gcc -c file.adb
+      llvm-gcc -c file.adb
 
 - To debug the compiler:
 
-      $ gdb -args llvm-gnat1 -c file.adb
+      gdb -args llvm-gnat1 -c file.adb
 
 - To build a complete native executable:
 
-      $ llvm-gnatmake main.adb
+      llvm-gnatmake main.adb
 
 - To build a whole project:
 
-      $ gprbuild -Pprj ...
+      gprbuild -Pprj ...
 
 - To generate LLVM bitcode (will generate a .bc file):
 
-      $ llvm-gcc -c -emit-llvm file.adb
+      llvm-gcc -c -emit-llvm file.adb
 
 - To generate LLVM assembly (will generate a .ll file):
 
-      $ llvm-gcc -c -S -emit-llvm file.adb
+      llvm-gcc -c -S -emit-llvm file.adb
 
 - To generate native assembly file (will generate a .s file):
 
-      $ llvm-gcc -S file.adb
+      llvm-gcc -S file.adb
 
 License
 -------

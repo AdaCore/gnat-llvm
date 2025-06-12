@@ -2795,7 +2795,8 @@ package body GNATLLVM.Subprograms is
          Set_Dup_Global_Value (E, LLVM_Func);
 
          if not DSO_Preemptable
-           and then Get_Linkage (LLVM_Func) /= External_Weak_Linkage
+           and then Get_Linkage (LLVM_Func) not in External_Linkage |
+                                                   External_Weak_Linkage
          then
             Set_DSO_Local (LLVM_Func);
          end if;

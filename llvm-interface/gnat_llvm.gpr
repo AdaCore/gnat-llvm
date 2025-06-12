@@ -39,7 +39,7 @@ project Gnat_LLVM is
    package Linker is
       --  Force -static-libgcc via Required_Switches so that gprbuild does
       --  not override it.
-      for Required_Switches use ("-static-libgcc", "-no-pie");
+      for Required_Switches use ("-static-libgcc");
       for Switches ("Ada") use ("-static-libstdc++", "-lclangBasic");
    end Linker;
 

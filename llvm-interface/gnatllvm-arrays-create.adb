@@ -452,9 +452,12 @@ package body GNATLLVM.Arrays.Create is
          This_Nonnative := True;
       end if;
 
-      --  If not using a native types, then make a type with a zero
-      --  number of elements and the type we set above. Otherwise loop
-      --  through the types making the LLVM type.
+      --  If we have volatile components, mark the type that way. If not
+      --  using a native types, then make a type with a zero number of
+      --  elements and the type we set above. Otherwise loop through the
+      --  types making the LLVM type.
+
+      Make_Volatile (Typ, Has_Volatile_Components (TE));
 
       if This_Nonnative then
          Typ := Variable_Array_Type (Typ);

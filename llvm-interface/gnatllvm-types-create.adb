@@ -374,8 +374,9 @@ package body GNATLLVM.Types.Create is
             MDT := Byte_MD;
       end case;
 
-      --  Now save the result
+      --  Now make volatile if requested and save the result
 
+      Make_Volatile (MDT, Is_Volatile (TE));
       GT := Default_GL_Type (TE, Create => False);
 
       --  If we don't have a GT already made, make one

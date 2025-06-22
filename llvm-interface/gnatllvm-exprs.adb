@@ -1801,7 +1801,7 @@ package body GNATLLVM.Exprs is
             --  a fat subprogram pointer.
 
             if Is_Access_Subprogram_Type (Src)
-              and then Is_Pointer (Type_Of (Dest))
+              and then Is_Pointer (Designated_Type_Of (Dest))
               and then Type_Of (Src) /= Designated_Type_Of (Dest)
             then
                Src := Pointer_Cast (Src, Designated_Type_Of (Dest));

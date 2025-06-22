@@ -91,7 +91,7 @@ package body GNATLLVM.MDType is
       Is_Volatile    : Boolean := False;
       --  Whether the type is volatile
 
-      Have_Fields    : Boolean := False;
+      Has_Fields     : Boolean := False;
       --  For Struct, indicates that we have set the fields for this
       --  type, meaning that we called either Build_Struct_Type or both
       --  Struct_Create_Named and Struct_Set_Body.
@@ -154,7 +154,7 @@ package body GNATLLVM.MDType is
    function Not_Flag (MDT : MD_Type) return Boolean is (not Flag (MDT));
 
    procedure Struct_Set_Body_Internal (MDT : MD_Type)
-     with Pre => Have_Fields (MDT);
+     with Pre => Has_Fields (MDT);
    --  Set up the LLVM type corresponding to MDT with the field information
    --  from MDT. This may either create or update the type.
 
@@ -203,12 +203,12 @@ package body GNATLLVM.MDType is
       C_Set_MD_Type (T, MDT);
    end Set_LLVM_Type;
 
-   -----------------
-   -- Have_Fields --
-   -----------------
+   ----------------
+   -- Has_Fields --
+   ----------------
 
-   function Have_Fields (MDT : MD_Type) return Boolean is
-     (MD_Types.Table (MDT).Have_Fields);
+   function Has_Fields (MDT : MD_Type) return Boolean is
+     (MD_Types.Table (MDT).Has_Fields);
 
    ------------------
    -- Is_Same_Kind --
@@ -447,29 +447,23 @@ package body GNATLLVM.MDType is
    -------------
 
    function Void_Ty return MD_Type is
-   begin
-      return MD_Find ((Kind => Void, others => <>));
-   end Void_Ty;
+     (MD_Find ((Kind => Void, others => <>)));
 
    ------------
    -- Int_Ty --
    ------------
 
-   function Int_Ty
-     (Bits : Nat; Unsigned : Boolean := False) return MD_Type is
-   begin
-      return MD_Find
-        ((Kind => Integer, Count => Bits, Flag => Unsigned, others => <>));
-   end Int_Ty;
+   function Int_Ty (Bits : Nat; Unsigned : Boolean := False) return MD_Type
+   is
+     (MD_Find
+        ((Kind => Integer, Count => Bits, Flag => Unsigned, others => <>)));
 
    ------------
    -- Float_Ty --
    ------------
 
    function Float_Ty (Bits : Nat) return MD_Type is
-   begin
-      return MD_Find ((Kind => Float, Count => Bits, others => <>));
-   end Float_Ty;
+     (MD_Find ((Kind => Float, Count => Bits, others => <>)));
 
    ------------------
    -- Pointer_Type --
@@ -479,34 +473,20 @@ package body GNATLLVM.MDType is
      (Elem_Type : MD_Type;
       Space     : Nat := Address_Space) return MD_Type
    is
-      Kludge_MDT : constant MD_Type :=
-        (if   Is_Integer (Elem_Type) then Signed_Type (Elem_Type)
-         else Elem_Type);
-      --  ?? For now, CCG will be respecting types, but not declaring pointers
-      --  to integers with the proper signedness, so we need to kludge this.
-   begin
-      return MD_Find ((Kind         => Pointer,
-                       Related_Type => Kludge_MDT,
-                       Count        => Space,
-                       others       => <>));
-   end Pointer_Type;
+      (MD_Find ((Kind         => Pointer,
+                Related_Type => Elem_Type,
+                Count        => Space,
+                others       => <>)));
 
    ----------------
    -- Array_Type --
    ----------------
 
    function Array_Type (Elem_Type : MD_Type; Count : Nat) return MD_Type is
-      Kludge_MDT : constant MD_Type :=
-        (if   Is_Integer (Elem_Type) then Signed_Type (Elem_Type)
-         else Elem_Type);
-      --  ?? For now, CCG will be respecting types, but not declaring arrays
-      --  of integers with the proper signedness, so we need to kludge this.
-   begin
-      return MD_Find ((Kind         => Array_Type,
-                       Count        => Count,
-                       Related_Type => Kludge_MDT,
-                       others       => <>));
-   end Array_Type;
+     (MD_Find ((Kind         => Array_Type,
+                Count        => Count,
+                Related_Type => Elem_Type,
+                others       => <>)));
 
    -----------------------
    -- Build_Struct_Type --
@@ -520,12 +500,12 @@ package body GNATLLVM.MDType is
       Name        : Name_Id := No_Name) return MD_Type
    is
       Info : MD_Type_Info :=
-        (Kind        => Struct,
-         Count       => Field_Names'Length,
-         Have_Fields => True,
-         Flag        => Packed,
-         Name        => Name,
-         others => <>);
+        (Kind       => Struct,
+         Count      => Field_Names'Length,
+         Has_Fields => True,
+         Flag       => Packed,
+         Name       => Name,
+         others     => <>);
       Prev : MD_Type := No_MD_Type;
 
    begin
@@ -573,10 +553,10 @@ package body GNATLLVM.MDType is
                            others       => <>));
       end loop;
 
-      MD_Types.Table (MDT).Cont_Type   := Prev;
-      MD_Types.Table (MDT).Have_Fields := True;
-      MD_Types.Table (MDT).Flag        := Packed;
-      MD_Types.Table (MDT).Count       := Names'Length;
+      MD_Types.Table (MDT).Cont_Type  := Prev;
+      MD_Types.Table (MDT).Has_Fields := True;
+      MD_Types.Table (MDT).Flag       := Packed;
+      MD_Types.Table (MDT).Count      := Names'Length;
 
    end Struct_Set_Body;
 
@@ -654,12 +634,22 @@ package body GNATLLVM.MDType is
    -- Make_Volatile --
    -------------------
 
-   function Make_Volatile (MDT : MD_Type) return MD_Type is
+   function Make_Volatile (MDT : MD_Type; B : Boolean := True) return MD_Type
+   is
       Info : MD_Type_Info := MD_Types.Table (MDT);
 
    begin
-      Info.Is_Volatile := True;
+      Info.Is_Volatile := B;
       return MD_Find (Info);
+   end Make_Volatile;
+
+   -------------------
+   -- Make_Volatile --
+   -------------------
+
+   procedure Make_Volatile (MDT : in out MD_Type; B : Boolean := False) is
+   begin
+      MDT := Make_Volatile (MDT, B);
    end Make_Volatile;
 
    ------------------------------
@@ -668,7 +658,7 @@ package body GNATLLVM.MDType is
 
    procedure Struct_Set_Body_Internal (MDT : MD_Type) is
       UID   : constant Unique_Id :=
-        (if Have_Fields (MDT) then New_Unique_Id else No_Unique_Id);
+        (if Has_Fields (MDT) then New_Unique_Id else No_Unique_Id);
       C_MDT : MD_Type := Continuation_Type (MDT);
       Typs  : Type_Array (1 .. Element_Count (MDT));
 
@@ -714,7 +704,7 @@ package body GNATLLVM.MDType is
          --  However, if that's an opaque type, but we've set our field list,
          --  update that type first.
 
-         if Is_Struct (MDT) and then Have_Fields (MDT)
+         if Is_Struct (MDT) and then Has_Fields (MDT)
            and then Is_Opaque_Struct (LLVM_Type (MDT))
          then
             Struct_Set_Body_Internal (MDT);
@@ -758,7 +748,7 @@ package body GNATLLVM.MDType is
                                    then unsigned (Array_Count (MDT)) else 0));
 
          when Struct =>
-            if Have_Fields (MDT) then
+            if Has_Fields (MDT) then
                Struct_Set_Body_Internal (MDT);
                return LLVM_Type (MDT);
             else
@@ -917,13 +907,16 @@ package body GNATLLVM.MDType is
 
       elsif Is_Struct (MDT1)
         and then Is_Packed (MDT1) = Is_Packed (MDT2)
-        and then Element_Count (MDT1) = Element_Count (MDT2)
+        and then Has_Fields (MDT1) = Has_Fields (MDT2)
+        and then (not Has_Fields (MDT1)
+                  or else Element_Count (MDT1) = Element_Count (MDT2))
       then
          --  Structures are identical if their packed status is the same,
          --  they have the same number of fields, and each field is
          --  identical.
 
-         for J in 0 .. Element_Count (MDT1) - 1 loop
+         for J in 0 ..
+           (if Has_Fields (MDT1) then Element_Count (MDT1) else 0) - 1 loop
             if not Is_Layout_Identical (Element_Type (MDT1, J),
                                         Element_Type (MDT2, J))
             then

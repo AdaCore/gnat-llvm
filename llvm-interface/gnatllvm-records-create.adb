@@ -1947,8 +1947,6 @@ package body GNATLLVM.Records.Create is
                      MDT   : constant MD_Type :=
                        (if   Decls_Only and then Is_Void (F_MDT)
                         then Byte_MD else F_MDT);
-                     --  LLVM type to use
-
                      Needed_Pos  : constant ULL    :=
                        (if    Present (Pos)   then +Pos
                         elsif Forced_Pos /= 0 then Forced_Pos
@@ -1988,12 +1986,13 @@ package body GNATLLVM.Records.Create is
                         RI_Unused_Bits := Bitfield_End_Pos - (Pos + Size);
                      else
                         Force_To_Pos (Needed_Pos);
-                        MD_Type_List.Append (MDT);
+                        MD_Type_List.Append (Make_Volatile (MDT,
+                                                            Is_Volatile (F)));
                         Field_Name_List.Append
-                          (if    Present (Interface_Name (F))
-                           then  Get_Ext_Name (F)
-                           elsif Emit_C then Unique_Component_Name (F)
-                           else  Chars (F));
+                          ((if    Present (Interface_Name (F))
+                            then  Get_Ext_Name (F)
+                            elsif Emit_C then Unique_Component_Name (F)
+                            else  Chars (F)));
                         Field_Entity_List.Append (F);
                         Cur_RI_Pos :=
                           Align_Pos (Cur_RI_Pos + Get_Type_Size (MDT), BPU);

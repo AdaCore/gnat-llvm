@@ -374,6 +374,23 @@ package body GNATLLVM.GLValue is
    procedure Mark_Volatile (V : in out GL_Value; Flag : Boolean := True) is
    begin
       V.Is_Volatile := V.Is_Volatile or Flag;
+
+      --  The intent here is to mark whatever V refers to as volatile.
+      --  If V is data, that means V's type is volatile. If it's a
+      --  reference, it means it's a reference to volatile. Similarly
+      --  for a double reference. But don't get confused with references
+      --  such as FAT_POINTER that aren't actually pointers to someting.
+
+      if Is_Double_Reference (V) then
+         V.MDT := Pointer_Type (Pointer_Type (Make_Volatile
+                                                (Designated_Type
+                                                   (Designated_Type (V.MDT)),
+                                                 Flag)));
+      elsif Is_Reference (V) and then Can_Deref (V) then
+         V.MDT := Pointer_Type (Make_Volatile (Designated_Type (V.MDT), Flag));
+      else
+         V.MDT := Make_Volatile (V.MDT, Flag);
+      end if;
    end Mark_Volatile;
 
    -----------------

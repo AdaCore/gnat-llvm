@@ -87,7 +87,7 @@ package GNATLLVM.GLType is
 
    procedure Update_GL_Type (GT : GL_Type; MDT : MD_Type; Is_Dummy : Boolean)
      with Pre => Is_Empty_GL_Type (GT) or else Is_Dummy_Type (GT)
-                 or else MDT = Type_Of (GT);
+                 or else Is_Layout_Identical (MDT, Type_Of (GT));
    --  Update GT with a new type and dummy status
 
    function Primitive_GL_Type (TE : Void_Or_Type_Kind_Id) return GL_Type

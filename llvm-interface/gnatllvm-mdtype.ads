@@ -97,7 +97,7 @@ package GNATLLVM.MDType is
      (Present (MD_Name (MDT)))
      with Pre => Present (MDT);
 
-   function Have_Fields (MDT : MD_Type) return Boolean
+   function Has_Fields (MDT : MD_Type) return Boolean
      with Pre => Is_Struct (MDT);
    --  True if we've called Struct_Create_Name but not yet Struct_Set_Body
 
@@ -139,7 +139,7 @@ package GNATLLVM.MDType is
    --  Number of elements for a fixed-size array
 
    function Element_Count (MDT : MD_Type) return Nat
-     with Pre => Is_Struct (MDT) and then Have_Fields (MDT);
+     with Pre => Is_Struct (MDT) and then Has_Fields (MDT);
    --  Number of elements in a structure
 
    function Parameter_Count (MDT : MD_Type) return Nat
@@ -184,6 +184,12 @@ package GNATLLVM.MDType is
    function Get_Type_Alignment (MDT : MD_Type) return Nat
      with Pre => Present (MDT);
 
+   function Make_Volatile (MDT : MD_Type; B : Boolean := True) return MD_Type
+     with Pre => Present (MDT), Post => Is_Volatile (Make_Volatile'Result) = B;
+   procedure Make_Volatile (MDT : in out MD_Type; B : Boolean := False)
+     with Pre => Present (MDT), Post => Is_Volatile (MDT) = B;
+   --  Create a copy of MDT that's marked as volatile
+
    --  Now functions to create types
 
    function Void_Ty return MD_Type
@@ -196,11 +202,20 @@ package GNATLLVM.MDType is
    --  Make an integer type with specified bitsize and signedness.
 
    function Signed_Type (MDT : MD_Type) return MD_Type is
-     (Int_Ty (Int_Bits (MDT), Unsigned => False))
-     with Pre => Is_Integer (MDT), Post => Is_Signed (Signed_Type'Result);
+     (Make_Volatile (Int_Ty (Int_Bits (MDT), Unsigned => False),
+                     Is_Volatile (MDT)))
+     with Pre  => Is_Integer (MDT),
+          Post => Is_Signed (Signed_Type'Result)
+                  and then Is_Volatile (Signed_Type'Result) =
+                           Is_Volatile (MDT);
+
    function Unsigned_Type (MDT : MD_Type) return MD_Type is
-     (Int_Ty (Int_Bits (MDT), Unsigned => True))
-     with Pre => Is_Integer (MDT), Post => Is_Unsigned (Unsigned_Type'Result);
+     (Make_Volatile (Int_Ty (Int_Bits (MDT), Unsigned => True),
+                     Is_Volatile (MDT)))
+     with Pre  => Is_Integer (MDT),
+          Post => Is_Unsigned (Unsigned_Type'Result)
+                  and then Is_Volatile (Unsigned_Type'Result) =
+                           Is_Volatile (MDT);
    --  Make signed or unsigned variants of a type
 
    function Float_Ty (Bits : Nat) return MD_Type
@@ -232,7 +247,7 @@ package GNATLLVM.MDType is
    function Struct_Create_Named (Name : Name_Id) return MD_Type
      with Post => Is_Struct (Struct_Create_Named'Result)
                   and then MD_Name (Struct_Create_Named'Result) = Name
-                  and then not Have_Fields (Struct_Create_Named'Result);
+                  and then not Has_Fields (Struct_Create_Named'Result);
    --  Create a named struct. These aren't merged because we may have
    --  two structs of the same name at this level.
 
@@ -268,8 +283,8 @@ package GNATLLVM.MDType is
       Packed : Boolean := False)
      with Pre  => Names'First = Types'First and then Names'Last = Types'Last
                   and then (for all F_MDT of Types => Present (F_MDT))
-                  and then Is_Struct (MDT) and then not Have_Fields (MDT),
-          Post => Is_Packed (MDT) = Packed and then Have_Fields (MDT)
+                  and then Is_Struct (MDT) and then not Has_Fields (MDT),
+          Post => Is_Packed (MDT) = Packed and then Has_Fields (MDT)
                   and then (for all J in Names'Range =>
                               Element_Name (MDT, J - Names'First) =
                               Names (J)
@@ -297,10 +312,6 @@ package GNATLLVM.MDType is
    function Name_Type (MDT : MD_Type; New_Name : Name_Id) return MD_Type
      with Pre => Present (MDT), Post => MD_Name (Name_Type'Result) = New_Name;
    --  Create a copy of MDT that has the specified name
-
-   function Make_Volatile (MDT : MD_Type) return MD_Type
-     with Pre => Present (MDT), Post => Is_Volatile (Make_Volatile'Result);
-   --  Create a copy of MDT that's marked as volatile
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 

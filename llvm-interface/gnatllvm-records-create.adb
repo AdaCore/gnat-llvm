@@ -31,6 +31,7 @@ with Table;      use Table;
 with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
+with GNATLLVM.Codegen;      use GNATLLVM.Codegen;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
@@ -1987,7 +1988,9 @@ package body GNATLLVM.Records.Create is
                      else
                         Force_To_Pos (Needed_Pos);
                         MD_Type_List.Append (MDT);
-                        Field_Name_List.Append (Get_Ext_Name (F));
+                        Field_Name_List.Append
+                          (if   Emit_C then Unique_Component_Name (F)
+                           else Chars (F));
                         Field_Entity_List.Append (F);
                         Cur_RI_Pos :=
                           Align_Pos (Cur_RI_Pos + Get_Type_Size (MDT), BPU);

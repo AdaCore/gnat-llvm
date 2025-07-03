@@ -1989,8 +1989,10 @@ package body GNATLLVM.Records.Create is
                         Force_To_Pos (Needed_Pos);
                         MD_Type_List.Append (MDT);
                         Field_Name_List.Append
-                          (if   Emit_C then Unique_Component_Name (F)
-                           else Chars (F));
+                          (if    Present (Interface_Name (F))
+                           then  Get_Ext_Name (F)
+                           elsif Emit_C then Unique_Component_Name (F)
+                           else  Chars (F));
                         Field_Entity_List.Append (F);
                         Cur_RI_Pos :=
                           Align_Pos (Cur_RI_Pos + Get_Type_Size (MDT), BPU);

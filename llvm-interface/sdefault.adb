@@ -65,7 +65,10 @@ package body Sdefault is
 
    function Search_Dir_Prefix return String_Ptr is
    begin
-      return Relocate_Path ("/PREFIX", "/PREFIX/lib/");
+      return Relocate_Path ("/PREFIX",
+                            (if CCG then "/PREFIX/lib/"
+                             else "/PREFIX/lib/gnat-llvm/" &
+                                  Get_Default_Target_Triple & "//"));
    end Search_Dir_Prefix;
 
    -----------------

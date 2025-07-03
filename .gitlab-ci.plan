@@ -22,6 +22,7 @@ def test_acats():
     anod_test("acats", qualifier="compiler=gnat-llvm")
 
 def ccg_common():
+    anod_install("gcc", build="x86-linux")
     # Installed from the artifact
     anod_install("gnat-llvm-core", qualifier="ccg")
     # We need to force the build here, since the dependency to the sources

@@ -1309,7 +1309,9 @@ package body GNATLLVM.DebugInfo is
           else DI_Flag_Artificial);
 
    begin
-      if Emit_Full_Debug_Info and then Present (Type_Data) then
+      if Emit_Full_Debug_Info and then Present (Type_Data)
+         and then not Is_A_Global_Variable (V)
+      then
          if Arg_Num = 0 then
             Var_Data :=
               DI_Create_Auto_Variable

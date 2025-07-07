@@ -2762,7 +2762,8 @@ package body GNATLLVM.Subprograms is
       LLVM_Func   : GL_Value             := Get_Dup_Global_Value (E);
       Param_Num   : Natural              := 0;
       Readonly    : Boolean              :=
-          Pure_Func or else (Is_Pure (E) and then not Is_Imported);
+          Pure_Func or else (Is_Pure (E) and then not Is_Imported
+                             and then Ekind (E) = E_Function);
       UID         : constant Unique_Id   := New_Unique_Id;
       Formal      : Opt_Formal_Kind_Id;
 
@@ -2961,6 +2962,10 @@ package body GNATLLVM.Subprograms is
       Set_Value (E, LLVM_Func);
       C_Set_Function (UID, LLVM_Func);
       C_Set_Entity   (LLVM_Func, E);
+
+      --  If this is a function that only reads memory, declare it as
+      --  such. Note that we have to exclude procedures above due to
+      --  RM 10.2.1(18), 11.6(5), and 1.1.3(12).
 
       if Readonly then
          Add_Readonly_Attribute (LLVM_Func);

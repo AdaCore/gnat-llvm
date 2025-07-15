@@ -591,7 +591,7 @@ package body CCG.Utils is
                   when 'P' =>
                      Result := Result & Process_Operand (Op, X, Unknown);
                   when 'T' =>
-                     Result := Result & (Op + Write_Type);
+                     Result := Result & (Op + Only_Type);
                   when others =>
                         Result := Result & Op;
                end case;
@@ -884,6 +884,15 @@ package body CCG.Utils is
    procedure Update_Hash (H : in out Hash_Type; B : Basic_Block_T) is
    begin
       Update_Hash (H, Hash (B));
+   end Update_Hash;
+
+   -----------------
+   -- Update_Hash --
+   -----------------
+
+   procedure Update_Hash (H : in out Hash_Type; S : Str) is
+   begin
+      Update_Hash (H, Hash (S));
    end Update_Hash;
 
    ----------------------

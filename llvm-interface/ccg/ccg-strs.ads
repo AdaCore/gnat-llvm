@@ -212,9 +212,13 @@ package CCG.Strs is
       --  We need a signed form of this value. This is ignored if the
       --  value isn't of an integral type.
 
-      Write_Type,
+      Only_Type,
       --  We want to write out the type of the value (including its
       --  signedness) and not the value itself.
+
+      With_Type,
+      --  We want to write the value and its type in the manner normally
+      --  used to declare the value being of its type.
 
       Write_Return);
       --  Like Write_Type, but we have a function and want to write the
@@ -225,7 +229,8 @@ package CCG.Strs is
       Initializer   : Boolean;
       Need_Unsigned : Boolean;
       Need_Signed   : Boolean;
-      Write_Type    : Boolean;
+      Only_Type     : Boolean;
+      With_Type     : Boolean;
       Write_Return  : Boolean;
    end record;
 
@@ -234,20 +239,27 @@ package CCG.Strs is
       Initializer    => X.Initializer   or Y.Initializer,
       Need_Unsigned  => X.Need_Unsigned or Y.Need_Unsigned,
       Need_Signed    => X.Need_Signed   or Y.Need_Signed,
-      Write_Type     => X.Write_Type    or Y.Write_Type,
+      Only_Type      => X.Only_Type     or Y.Only_Type,
+      With_Type      => X.With_Type     or Y.With_Type,
       Write_Return   => X.Write_Return  or Y.Write_Return);
 
    type Value_Flag_Array is array (Value_Flag) of Value_Flags;
 
    Default_Value_Flags : constant Value_Flags      :=
-     (False, False, False, False, False, False);
+     (False, False, False, False, False, False, False);
    Value_Flag_To_Flags : constant Value_Flag_Array :=
-     (LHS           => (True,  False, False, False, False, False),
-      Initializer   => (False, True,  False, False, False, False),
-      Need_Unsigned => (False, False, True,  False, False, False),
-      Need_Signed   => (False, False, False, True,  False, False),
-      Write_Type    => (False, False, False, False, True,  False),
-      Write_Return  => (False, False, False, False, False, True));
+     (LHS           =>
+        (True,  False, False, False, False, False, False),
+      Initializer   =>
+        (False, True,  False, False, False, False, False),
+      Need_Unsigned =>
+        (False, False, True,  False, False, False, False),
+      Need_Signed   =>
+        (False, False, False, True,  False, False, False),
+      Only_Type     =>
+        (False, False, False, False, True,  False, False),
+      With_Type     => (False, False, False, False, False, True,  False),
+      Write_Return  => (False, False, False, False, False, False, True));
 
    function "+" (F : Value_Flag) return Value_Flags is
      (Value_Flag_To_Flags (F));
@@ -303,8 +315,15 @@ package CCG.Strs is
    function "+" (T : Type_T; Is_Unsigned : Boolean) return Str is
      (T + (if Is_Unsigned then Need_Unsigned else Need_Signed))
      with Pre => Present (T), Post => Present ("+"'Result);
+
+   function "+" (S : Str; T : Type_T) return Str
+     with Pre  => Present (T), Post => Present ("+"'Result);
+   function "+" (V : Value_T; T : Type_T) return Str
+     with Pre  => Present (V) and then Present (T),
+          Post => Present ("+"'Result);
    function "+" (T : Type_T; V : Value_T) return Str
-     with Pre => Present (T), Post => Present ("+"'Result);
+     with Pre  => Present (T) and then Present (V),
+          Post => Present ("+"'Result);
 
    type String_Kind is (Normal, C_Name);
    --  A string can either be a literal string or a name, in which case we
@@ -448,13 +467,17 @@ private
       Entity);
       --  A GNAT Entity
 
+   type Str_Record (Length : Integer);
+   type Str is access constant Str_Record;
+   --  This is what we pass around for strings
+
    type Str_Component
      (Kind : Str_Component_Kind := Var_String; Length : Str_Length := 3)
    is record
       case Kind is
          when Var_String =>
             S_Kind  : String_Kind;
-            Str     : String (1 .. Length);
+            S       : String (1 .. Length);
 
          when Value =>
             Val     : Value_T;
@@ -463,6 +486,7 @@ private
 
          when Typ =>
             T       : Type_T;
+            Name    : Str;
             T_Flags : Type_Flags;
 
          when BB =>
@@ -483,9 +507,6 @@ private
       Comps : Str_Component_Array (1 .. Length);
    end record;
 
-   type Str is access constant Str_Record;
-   --  This is what we pass around for strings
-
    No_Str  : constant Str    := null;
    Eol_Str : constant String := "@@";
 
@@ -494,7 +515,8 @@ private
 
    function "=" (SL, SR : Str_Record) return Boolean;
    function "=" (SL, SR : Str)        return Boolean is
-     (SL.all = SR.all);
+     ((No (SL) and then No (SR)) or else SL.all = SR.all);
+   --  ?? Is that really correct?  We de-duplicate Strs.
 
    function Get_Precedence (S : Str) return Precedence is
      (S.P);
@@ -507,10 +529,10 @@ private
 
    function Is_First_Char (S : Str; C : Character) return Boolean is
      (S.Length >= 1 and then S.Comps (1).Kind = Var_String
-      and then S.Comps (1).Str (1) = C);
+      and then S.Comps (1).S (1) = C);
 
    function Starts_With (S1 : Str; S2 : String) return Boolean is
      (S1.Length >= 1 and then S1.Comps (1).Kind = Var_String
       and then S1.Comps (1).Length >= S2'Length
-      and then S1.Comps (1).Str (1 .. S2'Length) = S2);
+      and then S1.Comps (1).S (1 .. S2'Length) = S2);
 end CCG.Strs;

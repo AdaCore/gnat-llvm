@@ -66,7 +66,8 @@ package body CCG.Strs is
       Update_Hash (H, Flags.Initializer);
       Update_Hash (H, Flags.Need_Unsigned);
       Update_Hash (H, Flags.Need_Signed);
-      Update_Hash (H, Flags.Write_Type);
+      Update_Hash (H, Flags.Only_Type);
+      Update_Hash (H, Flags.With_Type);
       Update_Hash (H, Flags.Write_Return);
    end Update_Hash;
 
@@ -95,13 +96,14 @@ package body CCG.Strs is
             begin
                case Comp.Kind is
                   when Var_String =>
-                     Update_Hash (H, Comp.Str);
+                     Update_Hash (H, Comp.S);
                   when Value =>
                      Update_Hash (H, Comp.Val);
                      Update_Hash (H, Comp.V_Flags);
                      Update_Hash (H, Precedence'Pos (Comp.For_P));
                   when Typ =>
                      Update_Hash (H, Comp.T);
+                     Update_Hash (H, Comp.Name);
                      Update_Hash (H, Comp.T_Flags);
                   when BB =>
                      Update_Hash (H, Comp.B);
@@ -165,7 +167,7 @@ package body CCG.Strs is
          --  every character for simplicity).
 
          if SL.Comps (PosL).Kind = Var_String then
-            if SL.Comps (PosL).Str (CharL) /= SR.Comps (PosR).Str (CharR)
+            if SL.Comps (PosL).S (CharL) /= SR.Comps (PosR).S (CharR)
               or else SL.Comps (PosL).S_Kind /= SR.Comps (PosR).S_Kind
             then
                return False;
@@ -202,6 +204,7 @@ package body CCG.Strs is
 
                when Typ =>
                   if SL.Comps (PosL).T /= SR.Comps (PosR).T
+                    or else SL.Comps (PosL).Name /= SR.Comps (PosR).Name
                     or else SL.Comps (PosL).T_Flags /= SR.Comps (PosR).T_Flags
                   then
                      return False;
@@ -366,7 +369,7 @@ package body CCG.Strs is
       --  need a typedef for it. But respect whether this is actually the
       --  type of V or the type if points to, depending on LHS status.
 
-      if VF.Write_Type then
+      if VF.Only_Type or VF.With_Type then
          Maybe_Output_Typedef
            ((if   VF.LHS and then Get_Is_LHS (V)
              then Get_Element_Type (Type_Of (V)) else Type_Of (V)));
@@ -391,7 +394,7 @@ package body CCG.Strs is
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      if VF.Write_Type then
+      if VF.Only_Type or VF.With_Type then
          Maybe_Output_Typedef (+Type_Of (Full_GL_Type (E)));
       elsif VF.Write_Return then
          Maybe_Output_Typedef
@@ -407,7 +410,34 @@ package body CCG.Strs is
 
    function "+" (T : Type_T; TF : Type_Flags) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Typ, 1, T, TF)));
+        (1, Unknown, (1 => (Typ, 1, T, No_Str, TF)));
+      Result : constant Str := Undup_Str (S_Rec);
+
+   begin
+      Maybe_Output_Typedef (T);
+      return Result;
+   end "+";
+
+   ---------
+   -- "+" --
+   ---------
+
+   function "+" (S : Str; T : Type_T) return Str is
+      S_Rec  : aliased constant Str_Record (1) :=
+        (1, Unknown, (1 => (Typ, 1, T, S, Default_Type_Flags)));
+      Result : constant Str := Undup_Str (S_Rec);
+
+   begin
+      return Result;
+   end "+";
+
+   ---------
+   -- "+" --
+   ---------
+
+   function "+" (V : Value_T; T : Type_T) return Str is
+      S_Rec  : aliased constant Str_Record (1) :=
+        (1, Unknown, (1 => (Typ, 1, T, +V, Default_Type_Flags)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -534,7 +564,7 @@ package body CCG.Strs is
 
    function "+" (T : Type_T) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Typ, 1, T, Default_Type_Flags)));
+        (1, Unknown, (1 => (Typ, 1, T, No_Str, Default_Type_Flags)));
       Result : constant Str := Undup_Str (S_Rec);
    begin
       Maybe_Output_Typedef (T);
@@ -576,12 +606,12 @@ package body CCG.Strs is
       for Comp of S.Comps loop
          case Comp.Kind is
             when Var_String =>
-               if Comp.Str = Eol_Str then
+               if Comp.S = Eol_Str then
                   Write_Eol;
                elsif Comp.S_Kind = C_Name then
-                  Write_C_Name (Comp.Str);
+                  Write_C_Name (Comp.S);
                else
-                  Write_Str (Comp.Str);
+                  Write_Str (Comp.S);
                end if;
 
             when Value =>
@@ -589,7 +619,7 @@ package body CCG.Strs is
                             For_Precedence => Comp.For_P);
 
             when Typ =>
-               Write_Type (Comp.T, Comp.T_Flags);
+               Write_Type (Comp.T, No_Str, Comp.T_Flags);
 
             when BB =>
                Write_BB_Value (Comp.B);
@@ -598,7 +628,7 @@ package body CCG.Strs is
                Write_Int (Comp.N);
 
             when Entity =>
-               pragma Assert (Comp.E_Flags.Write_Type);
+               pragma Assert (Comp.E_Flags.Only_Type);
                Write_Type (+Type_Of (Full_GL_Type (Comp.E)), E => Comp.E);
          end case;
       end loop;
@@ -653,7 +683,7 @@ package body CCG.Strs is
             S_Rec  : aliased constant Str_Record (2) :=
               (2, Unknown,
                (1 => (Var_String, L'Length, Normal, L),
-                2 => (Typ, 1, R, Default_Type_Flags)));
+                2 => (Typ, 1, R, No_Str, Default_Type_Flags)));
             Result : constant Str := Undup_Str (S_Rec);
 
          begin
@@ -772,7 +802,7 @@ package body CCG.Strs is
       elsif R'Length <= Str_Max then
          declare
             S_Rec  : aliased constant Str_Record (2) :=
-              (2, Unknown, (1 => (Typ, 1, L, Default_Type_Flags),
+              (2, Unknown, (1 => (Typ, 1, L, No_Str, Default_Type_Flags),
                             2 => (Var_String, R'Length, Normal, R)));
             Result : constant Str := Undup_Str (S_Rec);
 
@@ -862,8 +892,8 @@ package body CCG.Strs is
 
    begin
       Maybe_Output_Typedef (L);
-      S_Rec.P                         := R.P;
-      S_Rec.Comps (1)                 := (Typ, 1, L, Default_Type_Flags);
+      S_Rec.P         := R.P;
+      S_Rec.Comps (1) := (Typ, 1, L, No_Str, Default_Type_Flags);
       S_Rec.Comps (2 .. R.Length + 1) := R.Comps;
       Result := Undup_Str (S_Rec);
       return Result;
@@ -923,7 +953,7 @@ package body CCG.Strs is
       Maybe_Output_Typedef (R);
       S_Rec.P                     := L.P;
       S_Rec.Comps (1 .. L.Length) := L.Comps;
-      S_Rec.Comps (L.Length + 1)  := (Typ, 1, R, Default_Type_Flags);
+      S_Rec.Comps (L.Length + 1)  := (Typ, 1, R, No_Str, Default_Type_Flags);
       Result := Undup_Str (S_Rec);
       return Result;
    end "&";
@@ -1001,7 +1031,7 @@ package body CCG.Strs is
       --  matches T, it's best to use the entity, otherwise T.
 
       return ((if   Present (E) and then +Type_Of (Full_GL_Type (E)) = T
-               then E + Write_Type else +T));
+               then E + Only_Type else +T));
    end "or";
 
    ------------------
@@ -1045,7 +1075,7 @@ package body CCG.Strs is
       --  ??? What if this is "(* ... )"?
 
       elsif S.Length > 1 and then S.Comps (1).Kind = Var_String
-        and then S.Comps (1).Str = "*"
+        and then S.Comps (1).S = "*"
       then
          declare
             S_Rec  : aliased constant Str_Record :=
@@ -1128,7 +1158,7 @@ package body CCG.Strs is
       --  of removing it.
 
       elsif S.Length > 1 and then S.Comps (1).Kind = Var_String
-        and then S.Comps (1).Str = "&"
+        and then S.Comps (1).S = "&"
       then
          declare
             S_Rec  : aliased constant Str_Record :=

@@ -253,6 +253,7 @@ package CCG.Utils is
    function UC_T is new Ada.Unchecked_Conversion (Type_T, System.Address);
    function UC_B is new Ada.Unchecked_Conversion (Basic_Block_T,
                                                   System.Address);
+   function UC_S is new Ada.Unchecked_Conversion (Str, System.Address);
 
    function Hash (V : Value_T)       return Hash_Type is
      (Hash_Type'Mod (To_Integer (UC_V (V)) / (V'Size / 8)));
@@ -262,7 +263,9 @@ package CCG.Utils is
    function Hash (B : Basic_Block_T) return Hash_Type is
      (Hash_Type'Mod (To_Integer (UC_B (B)) / (B'Size / 8)))
      with Pre => Present (B);
-   --  Hash functions for LLVM values, types, and basic blocks
+   function Hash (S : Str) return Hash_Type is
+     (Hash_Type'Mod (To_Integer (UC_S (S)) / (S'Size / 8)));
+   --  Hash functions for LLVM values, types, basic blocks, and Strs
 
    --  We want to compute a hash code for a Str_Component_Array that will be
    --  the same no matter how we break up a concatentation of strings
@@ -288,7 +291,11 @@ package CCG.Utils is
 
    procedure Update_Hash (H : in out Hash_Type; B : Basic_Block_T)
      with Pre => Present (B), Inline;
-   --  Update H taking into account the type T
+   --  Update H taking into account the basic block B
+
+   procedure Update_Hash (H : in out Hash_Type; S : Str)
+     with Inline;
+   --  Update H taking into account the Str S
 
    function Get_Scalar_Bit_Size (T : Type_T) return Nat is
      (Nat (Size_Of_Type_In_Bits (Module_Data_Layout, T)))

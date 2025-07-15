@@ -647,13 +647,14 @@ package body CCG.Write is
       --  If we're to write the type of V instead of the value of V, do so.
       --  If this is for a decl and its an LHS, use the element type instead.
 
-      if Flags.Write_Type then
+      if Flags.Only_Type or Flags.With_Type then
          Write_Type ((if   Flags.LHS and then Get_Is_LHS (V)
                       then Get_Element_Type (Type_Of (V)) else Type_Of (V)),
                      Flags => (if    Flags.Need_Unsigned then +Need_Unsigned
                                elsif Flags.Need_Signed   then +Need_Signed
                                else  Default_Type_Flags),
-                     V => V);
+                     S     => (if Flags.With_Type then +V else No_Str),
+                     V     => V);
          return;
 
       --  Similarly for writing the return type
@@ -786,6 +787,7 @@ package body CCG.Write is
 
    procedure Write_Type
      (T     : Type_T;
+      S     : Str        := No_Str;
       Flags : Type_Flags := Default_Type_Flags;
       E     : Entity_Id  := Empty;
       V     : Value_T    := No_Value_T)
@@ -958,6 +960,13 @@ package body CCG.Write is
          when others =>
             raise Program_Error;
       end case;
+
+      --  Finally, write the "variable to be declared" part, if any
+
+      if Present (S) then
+         Write_Str (" ");
+         Write_Str (S);
+      end if;
    end Write_Type;
 
    --------------------

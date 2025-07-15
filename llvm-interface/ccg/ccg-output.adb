@@ -190,7 +190,7 @@ package body CCG.Output is
 
          declare
             Decl : Str :=
-              (V + (+Write_Type or +LHS)) & " " &
+              (V + (+Only_Type or +LHS)) & " " &
                (if Is_Volatile (V) then "volatile " else "") & (V + LHS);
 
          begin

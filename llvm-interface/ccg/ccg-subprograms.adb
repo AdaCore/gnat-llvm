@@ -901,7 +901,7 @@ package body CCG.Subprograms is
       Sh1 := (Str_Op1 + Shift) & (if Left then " << " else " >> ") & Cnt;
       Sh2 :=
         (Str_Op2 + Shift) & (if Left then " >> " else " << ") & (Size - Cnt);
-      Result := "(" & (V + Write_Type) & ") (" & Sh1 + Bit & " | " & Sh2 & ")";
+      Result := "(" & (V + Only_Type) & ") (" & Sh1 + Bit & " | " & Sh2 & ")";
       Assignment (V, Result, Is_Opencode_Builtin => True);
       return True;
 

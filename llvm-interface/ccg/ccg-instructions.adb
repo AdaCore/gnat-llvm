@@ -768,8 +768,8 @@ package body CCG.Instructions is
       --  sure that's reflected in the cast we write.
 
       return ("(" & (V + (if   Is_Unsigned_Pointer (V)
-                          then +Write_Type or Value_Flags'(+Need_Unsigned)
-                          else +Write_Type)) &
+                          then +Only_Type or Value_Flags'(+Need_Unsigned)
+                          else +Only_Type)) &
                 (if Is_Volatile (V) then " volatile) " else ") ") & Our_Op) +
         Unary;
 

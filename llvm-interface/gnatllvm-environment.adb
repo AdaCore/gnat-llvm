@@ -52,8 +52,8 @@ package body GNATLLVM.Environment is
       Is_Being_Elaborated   : Boolean;
       --  True if we're in the process of elaborating this type.
 
-      Debug_Type            : Metadata_T;
-      --  Cache for debug information for this entity, if it's a type.
+      Debug_Metadata            : Metadata_T;
+      --  Cache for debug information for this entity.
       --  LLVM will also cache this, but it'll save us the time of
       --  recomputing debug info, especially for complex types.
 
@@ -111,7 +111,7 @@ package body GNATLLVM.Environment is
 
    type Access_LLVM_Data is access all LLVM_Data;
 
-   function Get_LLVM_Info (TE : Void_Or_Type_Kind_Id) return Access_LLVM_Data
+   function Get_LLVM_Info (TE : Node_Id) return Access_LLVM_Data
      with Inline;
    function Get_LLVM_Info_For_Set (N : Node_Id)  return Access_LLVM_Data
      with Inline;
@@ -143,7 +143,7 @@ package body GNATLLVM.Environment is
    function Raw_Get_TBAA_I (LI : Access_LLVM_Data) return TBAA_Info_Id is
      (LI.TBAA_Array_Info);
    function Raw_Get_Debug  (LI : Access_LLVM_Data) return Metadata_T is
-     (LI.Debug_Type);
+     (LI.Debug_Metadata);
    function Raw_Get_Array  (LI : Access_LLVM_Data) return Array_Info_Id is
      (LI.Array_Info);
    function Raw_Get_O_A    (LI : Access_LLVM_Data) return Array_Info_Id is
@@ -221,7 +221,7 @@ package body GNATLLVM.Environment is
    begin LI.TBAA_Array_Info := Val; end Raw_Set_TBAA_I;
 
    procedure Raw_Set_Debug  (LI : Access_LLVM_Data; Val : Metadata_T) is
-   begin LI.Debug_Type := Val; end Raw_Set_Debug;
+   begin LI.Debug_Metadata := Val; end Raw_Set_Debug;
 
    procedure Raw_Set_Array  (LI : Access_LLVM_Data; Val : Array_Info_Id) is
    begin LI.Array_Info := Val; end Raw_Set_Array;
@@ -258,18 +258,23 @@ package body GNATLLVM.Environment is
    -- Get_LLVM_Info --
    -------------------
 
-   function Get_LLVM_Info (TE : Void_Or_Type_Kind_Id) return Access_LLVM_Data
+   function Get_LLVM_Info (TE : Node_Id) return Access_LLVM_Data
    is
-      GT : constant GL_Type := Default_GL_Type (TE, Create => False);
 
    begin
       --  If we're not already elaborating TE and we either don't already
       --  have a type or we have a dummy type, do elaborate it.
 
-      if not Is_Being_Elaborated (TE)
-        and then (No (GT) or else Is_Dummy_Type (GT))
-      then
-         Discard (Type_Of (TE));
+      if Is_Type (TE) then
+         declare
+            GT : constant GL_Type := Default_GL_Type (TE, Create => False);
+         begin
+            if not Is_Being_Elaborated (TE)
+              and then (No (GT) or else Is_Dummy_Type (GT))
+            then
+               Discard (Type_Of (TE));
+            end if;
+         end;
       end if;
 
       return LLVM_Info.Table (LLVM_Info_Map (TE))'Unrestricted_Access;
@@ -293,7 +298,7 @@ package body GNATLLVM.Environment is
                             Is_Being_Elaborated => False,
                             Record_Info         => Empty_Record_Info_Id,
                             Field_Info          => Empty_Field_Info_Id,
-                            Debug_Type          => No_Metadata_T,
+                            Debug_Metadata      => No_Metadata_T,
                             Array_Info          => Empty_Array_Info_Id,
                             Label_Info          => Empty_Label_Info_Id,
                             Orig_Array_Info     => Empty_Array_Info_Id,
@@ -534,11 +539,11 @@ package body GNATLLVM.Environment is
    procedure Set_TBAA_Info            (TE : Entity_Id; T : TBAA_Info_Id)
      renames Env_TBAA_I.Set;
 
-   function  Get_Debug_Type           (TE : Entity_Id) return Metadata_T
+   function  Get_Debug_Metadata       (TE : Entity_Id) return Metadata_T
      renames Env_Debug.Get;
-   function  Get_Debug_Type_N         (TE : Entity_Id) return Metadata_T
+   function  Get_Debug_Metadata_N     (TE : Entity_Id) return Metadata_T
      renames Env_Debug_N.Get;
-   procedure Set_Debug_Type           (TE : Entity_Id; DT : Metadata_T)
+   procedure Set_Debug_Metadata       (TE : Entity_Id; DT : Metadata_T)
      renames Env_Debug.Set;
 
    function  Get_Array_Info           (TE : Entity_Id) return Array_Info_Id

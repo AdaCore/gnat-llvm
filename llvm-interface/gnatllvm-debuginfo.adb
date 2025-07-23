@@ -103,8 +103,10 @@ package body GNATLLVM.DebugInfo is
    --  Given MD, debug metadata for some type, create debug metadata for a
    --  pointer to that type. E and Suffix is used for naming the type.
 
-   function Convert_Bound_To_Metadata (Bound_Type : GL_Type; Bound : GL_Value)
-     return Metadata_T;
+   function Convert_Bound_To_Metadata
+     (GT : GL_Type; Dimension : Nat; Lower_Bound : Boolean;
+      Packed : Boolean; Bound_Type : GL_Type; E_Bound : Node_Id)
+      return Metadata_T;
    --  Convert a type bound to metadata, handling some peculiarities.
 
    function Create_Array_Type (GT : GL_Type; Size : ULL; Align : Nat;
@@ -179,6 +181,11 @@ package body GNATLLVM.DebugInfo is
    --  entity has CU scope, the full name is returned, but if the
    --  entity has a more local scope, just the unqualified name is
    --  returned.
+
+   function Create_Global_Variable_Declaration (E : Entity_Id)
+     return Metadata_T with Pre => Present (E);
+   --  Return the LLVM declaration of a global variable representing
+   --  E, creating it if necessary.
 
    Debug_Loc_Sloc  : Source_Ptr := No_Location;
    Debug_Loc_Scope : Metadata_T := No_Metadata_T;
@@ -784,27 +791,60 @@ package body GNATLLVM.DebugInfo is
    -- Convert_Bound_To_Metadata --
    -------------------------------
 
-   function Convert_Bound_To_Metadata (Bound_Type : GL_Type; Bound : GL_Value)
-      return Metadata_T is
+   function Convert_Bound_To_Metadata
+     (GT : GL_Type; Dimension : Nat; Lower_Bound : Boolean;
+      Packed : Boolean; Bound_Type : GL_Type; E_Bound : Node_Id)
+     return Metadata_T is
    begin
-      --  Since LLVM only really has signed scalar types (and then
-      --  some unsigned operations), we may end up with a type bound
-      --  that is incorrectly (for DWARF's purposes) sign-extended.
-      --  So for example if an array uses Character as an index type,
-      --  the upper bound is 255, but this will show up as "i8 -1".
-      --  This function undoes the sign extension in this scenario.
-      if Is_Unsigned_Type (Bound_Type) then
+      if not Is_Nonnative_Type (Full_Etype (GT)) then
          declare
-            Bitsize : constant Uint  :=
-               UI_From_ULL (Get_Scalar_Bit_Size (Bound_Type));
-            Max : constant Uint := 2 ** Bitsize;
-            Masked : constant Uint := UI_From_GL_Value (Bound) mod Max;
+            Bound : constant GL_Value :=
+              Get_Array_Bound (GT, Dimension, Lower_Bound, No_GL_Value,
+                               For_Orig => Packed);
          begin
-            return Constant_As_Metadata (Masked);
+            if Is_Constant (Bound) then
+               begin
+                  --  Since LLVM only really has signed scalar types
+                  --  (and then some unsigned operations), we may end
+                  --  up with a type bound that is incorrectly (for
+                  --  DWARF's purposes) sign-extended.  So for example
+                  --  if an array uses Character as an index type, the
+                  --  upper bound is 255, but this will show up as "i8
+                  --  -1".  This function undoes the sign extension in
+                  --  this scenario.
+                  if Is_Unsigned_Type (Bound_Type) then
+                     declare
+                        Bitsize : constant Uint :=
+                          UI_From_ULL (Get_Scalar_Bit_Size (Bound_Type));
+                        Max     : constant Uint := 2**Bitsize;
+                        Masked  : constant Uint
+                           := UI_From_GL_Value (Bound) mod Max;
+                     begin
+                        return Constant_As_Metadata (Masked);
+                     end;
+                  else
+                     return Value_As_Metadata (Bound);
+                  end if;
+               end;
+            end if;
          end;
-      else
-         return Value_As_Metadata (Bound);
       end if;
+      case Nkind (E_Bound) is
+         when N_Identifier => Ident : declare
+            MD : Metadata_T := Get_Debug_Metadata (Entity (E_Bound));
+         begin
+            if not Present (MD) then
+               MD := Create_Global_Variable_Declaration (Entity (E_Bound));
+            end if;
+            return MD;
+         end Ident;
+
+         when N_Integer_Literal =>
+            return Constant_As_Metadata (Intval (E_Bound));
+
+         when others =>
+            return No_Metadata_T;
+      end case;
    end Convert_Bound_To_Metadata;
 
    -----------------------
@@ -828,30 +868,34 @@ package body GNATLLVM.DebugInfo is
       Inner_Type : constant Metadata_T := Create_Type_Data (Comp_Ty);
       Ranges     : Metadata_Array (0 .. Number_Dimensions (Array_TE) - 1);
       Stride     : Metadata_T := No_Metadata_T;
+      E_Index : Opt_N_Is_Index_Id := First_Index (Array_TE);
    begin
-      --  For arrays, get the component type's data. If it exists and
-      --  this is of fixed size, get info for each of the bounds and
-      --  make a description of the type.
+      if Is_Unconstrained_Array (Array_TE) then
+         return DI_Create_Unspecified_Type (Name);
+      end if;
+
+      --  For arrays, get the component type's data.
 
       for J in Ranges'Range loop
          declare
+            E_Range : constant N_Has_Bounds_Id :=
+              Simplify_Range (E_Index);
             Index_Type : constant GL_Type :=
                (if Is_Packed
                 then Original_Array_Index_GT (TE, J)
                 else Array_Index_GT (Array_TE, J));
-            Low_Bound  : constant GL_Value   :=
-              Get_Array_Bound (GT, J, True, No_GL_Value,
-                               For_Orig => Is_Packed);
-            Low_Cst : constant Metadata_T :=
-              Convert_Bound_To_Metadata (Index_Type, Low_Bound);
-            High_Bound : constant GL_Value   :=
-              Get_Array_Bound (GT, J, False, No_GL_Value,
-                               For_Orig => Is_Packed);
-            High_Cst : constant Metadata_T :=
-              Convert_Bound_To_Metadata (Index_Type, High_Bound);
             Base_Type_Data : constant Metadata_T :=
                Create_Type_Data (Index_Type);
+            Low_Exp : constant Metadata_T :=
+              Convert_Bound_To_Metadata (GT, J, True, Is_Packed,
+                                         Index_Type, Low_Bound (E_Range));
+            High_Exp : constant Metadata_T :=
+              Convert_Bound_To_Metadata (GT, J, False, Is_Packed,
+                                         Index_Type, High_Bound (E_Range));
          begin
+            if Low_Exp = No_Metadata_T or else High_Exp = No_Metadata_T then
+               return DI_Create_Unspecified_Type (Name);
+            end if;
             if J = 0 and then Component_Size (Array_TE) /= Esize (Comp_TE) then
                Stride := Const_64_As_Metadata (Component_Size (Array_TE));
             end if;
@@ -860,8 +904,10 @@ package body GNATLLVM.DebugInfo is
                 (DI_Builder, No_Metadata_T, "", No_Metadata_T,
                  No_Line_Number, 0, 0, DI_Flag_Zero,
                  Is_Unsigned_Type (Full_Etype (Index_Type)),
-                 Base_Type_Data, Low_Cst, High_Cst, No_Metadata_T,
+                 Base_Type_Data, Low_Exp, High_Exp, No_Metadata_T,
                  No_Metadata_T);
+
+            Next_Index (E_Index);
          end;
       end loop;
 
@@ -883,7 +929,7 @@ package body GNATLLVM.DebugInfo is
         (if Type_Is_Sized (T) then Get_Type_Size (T) else 0);
       Align       : constant Nat                  := Get_Type_Alignment (GT);
       S           : constant Source_Ptr           := Sloc (TE);
-      Result      : Metadata_T                    := Get_Debug_Type (TE);
+      Result      : Metadata_T                    := Get_Debug_Metadata (TE);
 
    begin
       --  If we already made debug info for this type, return it
@@ -900,8 +946,15 @@ package body GNATLLVM.DebugInfo is
       --  type that points to itself) or if this is a nonnative type, this
       --  is an "unspecified" type.
 
-      elsif Is_Being_Elaborated (TE) or else Is_Nonnative_Type (TE) then
+      elsif Is_Being_Elaborated (TE) then
          return DI_Create_Unspecified_Type (Name);
+
+      elsif Is_Nonnative_Type (TE) then
+         if Ekind (TE) in Record_Kind or
+            else not Types_Can_Have_Dynamic_Offsets
+         then
+            return DI_Create_Unspecified_Type (Name);
+         end if;
       end if;
 
       --  Mark as being elaborated and create debug information based on
@@ -1216,7 +1269,7 @@ package body GNATLLVM.DebugInfo is
       --  Show no longer elaborating this type and save and return the result
 
       Set_Is_Being_Elaborated (TE, False);
-      Set_Debug_Type (TE, Result);
+      Set_Debug_Metadata (TE, Result);
       return Result;
    end Create_Type_Data;
 
@@ -1281,16 +1334,50 @@ package body GNATLLVM.DebugInfo is
       if Emit_Debug_Info and then Present (Type_Data)
         and then Is_A_Global_Variable (V) and then not Is_Imported (E)
       then
-         Global_Set_Metadata
-           (+V, 0,
-            DI_Create_Global_Variable_Expression
-              (Debug_Compile_Unit, Name,
-               (if Ext_Name = Name then "" else Ext_Name),
-               Get_Debug_File_Node (Get_Source_File_Index (S)),
-               Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
-               No_Metadata_T, Get_Type_Alignment (GT)));
+         declare
+            MD : constant Metadata_T :=
+              DI_Create_Global_Variable_Expression
+                (Debug_Compile_Unit, Name,
+                 (if Ext_Name = Name then "" else Ext_Name),
+                 Get_Debug_File_Node (Get_Source_File_Index (S)),
+                 Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
+                 No_Metadata_T, Get_Type_Alignment (GT));
+         begin
+            Set_Debug_Metadata
+              (E, DI_Global_Variable_Expression_Get_Variable (MD));
+            Global_Set_Metadata (+V, 0, MD);
+         end;
       end if;
    end Create_Global_Variable_Debug_Data;
+
+   ----------------------------------------
+   -- Create_Global_Variable_Declaration --
+   ----------------------------------------
+
+   function Create_Global_Variable_Declaration (E : Entity_Id)
+     return Metadata_T
+   is
+      GT        : constant GL_Type    := Default_GL_Type (Etype (E));
+      Type_Data : constant Metadata_T := Create_Type_Data (GT);
+      Name      : constant String     := Get_Name     (E);
+      Ext_Name  : constant String     := Get_Ext_Name (E);
+      S         : constant Source_Ptr := Sloc         (E);
+      MD : Metadata_T;
+
+   begin
+      pragma Assert (Emit_Debug_Info);
+      pragma Assert (Present (Type_Data));
+
+      MD := Create_Global_Variable_Declaration
+        (DI_Builder, Debug_Compile_Unit, Name,
+         (if Ext_Name = Name then "" else Ext_Name),
+         Get_Debug_File_Node (Get_Source_File_Index (S)),
+         Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
+         No_Metadata_T, Get_Type_Alignment (GT));
+      MD := DI_Global_Variable_Expression_Get_Variable (MD);
+      Set_Debug_Metadata (E, MD);
+      return MD;
+   end Create_Global_Variable_Declaration;
 
    --------------------------------------
    -- Create_Local_Variable_Debug_Data --
@@ -1302,28 +1389,34 @@ package body GNATLLVM.DebugInfo is
       GT        : constant GL_Type    := Related_Type (V);
       Type_Data : constant Metadata_T := Create_Type_Data (V);
       Name      : constant String     := Get_Unqualified_Name (E);
-      Var_Data  : Metadata_T;
+      Var_Data  : Metadata_T          := Get_Debug_Metadata (E);
       Flags     : constant DI_Flags_T :=
          (if Comes_From_Source (E)
           then DI_Flag_Zero
           else DI_Flag_Artificial);
 
    begin
-      if Emit_Full_Debug_Info and then Present (Type_Data) then
-         if Arg_Num = 0 then
-            Var_Data :=
-              DI_Create_Auto_Variable
-              (Current_Debug_Scope, Name,
-               Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
-               Get_Physical_Line_Number (Sloc (E)), Type_Data, False,
-               Flags, Get_Type_Alignment (GT));
-         else
-            Var_Data :=
-              DI_Create_Parameter_Variable
-              (Current_Debug_Scope, Name, Arg_Num,
-               Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
-               Get_Physical_Line_Number (Sloc (E)),
-               Type_Data, False, Flags);
+      if Emit_Full_Debug_Info and then Present (Type_Data)
+         and then not Is_A_Global_Variable (V)
+      then
+         if No (Var_Data) then
+            if Arg_Num = 0 then
+               Var_Data :=
+                 DI_Create_Auto_Variable
+                 (Current_Debug_Scope, Name,
+                  Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
+                  Get_Physical_Line_Number (Sloc (E)), Type_Data, False,
+                  Flags, Get_Type_Alignment (GT));
+
+            else
+               Var_Data :=
+                 DI_Create_Parameter_Variable
+                 (Current_Debug_Scope, Name, Arg_Num,
+                  Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
+                  Get_Physical_Line_Number (Sloc (E)),
+                  Type_Data, False, Flags);
+            end if;
+            Set_Debug_Metadata (E, Var_Data);
          end if;
 
          --  If this is a reference, insert a dbg.declare call. Otherwise,

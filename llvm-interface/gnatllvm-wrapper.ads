@@ -561,4 +561,21 @@ package GNATLLVM.Wrapper is
    --  Return true if the LLVM contains the patch that allows types to
    --  be put in function scope.
 
+   function Types_Can_Have_Dynamic_Offsets return Boolean;
+   --  Return true if the LLVM contains the patch that allows types to
+   --  have dynamic offsets and sizes.
+
+   function Create_Global_Variable_Declaration
+     (Builder : DI_Builder_T;
+      Scope : Metadata_T;
+      Name : String;
+      Linkage_Name : String;
+      File : Metadata_T;
+      Line_Number : Physical_Line_Number;
+      Ty : Metadata_T;
+      Local_To_Unit : Boolean;
+      Expr : Metadata_T;
+      Decl : Metadata_T;
+      Align_In_Bits : Nat) return Metadata_T;
+
 end GNATLLVM.Wrapper;

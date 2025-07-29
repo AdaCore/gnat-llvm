@@ -24,7 +24,7 @@ cross-automated:
 # a working GNAT-LLVM on the path, i.e., it builds only the runtime.
 symcc-automated:
 	$(MAKE) -C llvm-interface \
-	  RTS="$(shell pwd)/llvm-interface/lib/rts-symcc" \
+	  RTSBASE=rts-symcc \
 	  gnatlib-symcc-automated
 
 llvm:

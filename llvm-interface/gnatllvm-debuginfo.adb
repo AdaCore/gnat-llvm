@@ -950,8 +950,11 @@ package body GNATLLVM.DebugInfo is
          return DI_Create_Unspecified_Type (Name);
 
       elsif Is_Nonnative_Type (TE) then
-         if Ekind (TE) in Record_Kind or
-            else not Types_Can_Have_Dynamic_Offsets
+         if Is_Unchecked_Union (TE) then
+            --  Allow.
+            null;
+         elsif Ekind (TE) in Record_Kind or
+               else not Types_Can_Have_Dynamic_Offsets
          then
             return DI_Create_Unspecified_Type (Name);
          end if;
@@ -1183,11 +1186,19 @@ package body GNATLLVM.DebugInfo is
                   Members (J) := Member_Table.Table (J);
                end loop;
 
-               Result := DI_Create_Struct_Type
-                 (Get_Scope_For (TE), Get_Possibly_Local_Name (TE),
-                  Get_Debug_File_Node (Get_Source_File_Index (S)),
-                  Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
-                  No_Metadata_T, Members, 0, No_Metadata_T, "");
+               if Is_Unchecked_Union (TE) then
+                  Result := DI_Create_Union_Type
+                    (Get_Scope_For (TE), Get_Possibly_Local_Name (TE),
+                     Get_Debug_File_Node (Get_Source_File_Index (S)),
+                     Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
+                     Members, 0, "");
+               else
+                  Result := DI_Create_Struct_Type
+                    (Get_Scope_For (TE), Get_Possibly_Local_Name (TE),
+                     Get_Debug_File_Node (Get_Source_File_Index (S)),
+                     Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
+                     No_Metadata_T, Members, 0, No_Metadata_T, "");
+               end if;
             end;
          end Record_Type;
 

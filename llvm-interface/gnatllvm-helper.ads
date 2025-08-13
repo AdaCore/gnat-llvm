@@ -283,6 +283,27 @@ package GNATLLVM.Helper is
      with Pre =>  (for all MD of Elements => Present (MD)),
           Post => Present (DI_Create_Struct_Type'Result);
 
+   function DI_Create_Union_Type
+     (Scope          : Metadata_T;
+      Name           : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Size_In_Bits   : ULL;
+      Align_In_Bits  : Nat;
+      Flags          : DI_Flags_T;
+      Elements       : Metadata_Array;
+      Run_Time_Lang  : Nat;
+      Unique_Id      : String) return Metadata_T
+     is
+     (DI_Create_Union_Type (DI_Builder, Scope, Name, Name'Length, File,
+                            unsigned (Line_Number), uint64_t (Size_In_Bits),
+                            uint32_t (Align_In_Bits), Flags,
+                            Elements'Address, unsigned (Elements'Length),
+                            unsigned (Run_Time_Lang),
+                            Unique_Id, Unique_Id'Length))
+     with Pre =>  (for all MD of Elements => Present (MD)),
+          Post => Present (DI_Create_Union_Type'Result);
+
    function DI_Create_Enumeration_Type
      (Scope         : Metadata_T;
       Name          : String;

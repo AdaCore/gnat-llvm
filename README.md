@@ -45,7 +45,7 @@ To build GNAT LLVM from sources, follow these steps:
 - Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2021
   or GCC 11.
 
-- Install LLVM and Clang 16.0.x
+- Install LLVM and Clang 19.1.x
 
   The recommended way to build GNAT LLVM is to use an existing LLVM and
   Clang package installed via e.g. `brew install llvm` on Mac OS or `sudo
@@ -55,7 +55,7 @@ To build GNAT LLVM from sources, follow these steps:
 
   An alternative only suitable for core GNAT LLVM development on x86 native
   configurations is to use the following command, assuming you have CMake
-  version >= 3.13.4 in your path:
+  version >= 3.20 in your path:
 
       make llvm
 

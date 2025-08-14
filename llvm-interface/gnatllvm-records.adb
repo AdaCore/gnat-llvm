@@ -1818,6 +1818,7 @@ package body GNATLLVM.Records is
                Write_Str (Prefix);
                Dump_GL_Type (RI.GT);
             elsif Present (RI.MDT) then
+               Write_Str (Prefix);
                Dump_MD_Type (RI.MDT);
             end if;
 

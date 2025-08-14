@@ -15,7 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Options; use Options;
+with Options;        use Options;
+with Options.Target; use Options.Target;
 
 package GNATLLVM.Codegen is
 
@@ -49,7 +50,7 @@ package GNATLLVM.Codegen is
    --  Features to enable or disable for this target
 
    Target_Triple   : String_Access  :=
-     new String'(Get_Default_Target_Triple);
+     new String'(Default_Target_Triple);
    --  Name of the target for this compilation
 
    Normalized_Target_Triple : String_Access := null;

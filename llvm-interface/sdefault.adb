@@ -25,9 +25,8 @@
 --  This package body provides the llvm-gnat1 implementation of the routines
 --  that locate the Ada library source and object directories.
 
-with LLVM.Target_Machine; use LLVM.Target_Machine;
-
 with Options; use Options;
+with Options.Target; use Options.Target;
 with Osint; use Osint;
 
 package body Sdefault is
@@ -42,7 +41,7 @@ package body Sdefault is
       return Relocate_Path ("/PREFIX",
                             (if CCG then "/PREFIX/lib/rts-ccg/adainclude"
                              else "/PREFIX/lib/gnat-llvm/" &
-                                  Get_Default_Target_Triple &
+                                  Default_Target_Triple &
                                   "/rts-native/adainclude"));
    end Include_Dir_Default_Name;
 
@@ -55,7 +54,7 @@ package body Sdefault is
       return Relocate_Path ("/PREFIX",
                             (if CCG then "/PREFIX/lib/rts-ccg/adalib"
                              else "/PREFIX/lib/gnat-llvm/" &
-                                  Get_Default_Target_Triple &
+                                  Default_Target_Triple &
                                   "/rts-native/adalib"));
    end Object_Dir_Default_Name;
 
@@ -68,7 +67,7 @@ package body Sdefault is
       return Relocate_Path ("/PREFIX",
                             (if CCG then "/PREFIX/lib/"
                              else "/PREFIX/lib/gnat-llvm/" &
-                                  Get_Default_Target_Triple & "//"));
+                                  Default_Target_Triple & "//"));
    end Search_Dir_Prefix;
 
    -----------------
@@ -77,7 +76,7 @@ package body Sdefault is
 
    function Target_Name return String_Ptr is
    begin
-      return new String'(Get_Default_Target_Triple);
+      return new String'(Default_Target_Triple);
    end Target_Name;
 
 end Sdefault;

@@ -28,6 +28,109 @@ with LLVM.Debug_Info; use LLVM.Debug_Info;
 
 package body GNATLLVM.Records.Debug is
 
+   function Convert_One_Field (F : Record_Field_Kind_Id) return Metadata_T;
+   --  Convert a single field to LLVM debuginfo metadata.
+
+   function Convert_RI_Chain (Start : Record_Info_Id;
+                              Original_Type : Entity_Id) return Metadata_Array;
+   --  Convert a chain of Record_Info_Ids to LLVM debug metadata,
+   --  returning an array holding the metadata for the relevant
+   --  fields.
+
+   -----------------------
+   -- Convert_One_Field --
+   -----------------------
+
+   function Convert_One_Field (F : Record_Field_Kind_Id) return Metadata_T
+   is
+      F_GT           : constant GL_Type    := Field_Type (F);
+      Mem_MD         : constant Metadata_T :=
+        Create_Type_Data (F_GT);
+      Name           : constant String     := Get_Name (F);
+      F_S            : constant Source_Ptr := Sloc (F);
+      File           : constant Metadata_T :=
+        Get_Debug_File_Node (Get_Source_File_Index (F_S));
+      Offset         : constant ULL        :=
+        UI_To_ULL (Component_Bit_Offset (F));
+      Storage_Offset : constant ULL        :=
+        (Offset / UBPU) * UBPU;
+      MD             : constant Metadata_T :=
+        (if   Is_Bitfield (F)
+         then DI_Create_Bit_Field_Member_Type
+           (No_Metadata_T, Name, File,
+            Get_Physical_Line_Number (F_S),
+            UI_To_ULL (Esize (F)), Offset,
+            Storage_Offset, Mem_MD)
+         else DI_Create_Member_Type
+           (No_Metadata_T, Name, File,
+            Get_Physical_Line_Number (F_S),
+            UI_To_ULL (Esize (F)),
+            Get_Type_Alignment (F_GT), Offset, Mem_MD));
+   begin
+      return MD;
+   end Convert_One_Field;
+
+   ----------------------
+   -- Convert_RI_Chain --
+   ----------------------
+
+   function Convert_RI_Chain (Start : Record_Info_Id;
+                              Original_Type : Entity_Id) return Metadata_Array
+   is
+      package Member_Table is new Table.Table
+        (Table_Component_Type => Metadata_T,
+         Table_Index_Type     => Int,
+         Table_Low_Bound      => 1,
+         Table_Initial        => 20,
+         Table_Increment      => 5,
+         Table_Name           => "Member_Table");
+
+      Ridx : Record_Info_Id := Start;
+
+      RI : Record_Info;
+
+      F : Record_Field_Kind_Id;
+      F_Idx : Field_Info_Id;
+      FI : Field_Info;
+
+   begin
+      while Present (Ridx) loop
+         RI := Record_Info_Table.Table (Ridx);
+         F_Idx := RI.First_Field;
+         while Present (F_Idx) loop
+            FI := Field_Info_Table.Table (F_Idx);
+            F := FI.Field;
+
+            if Present (Original_Type) and then
+               Get_Fullest_View (Scope (Ancestor_Field (F))) /= Original_Type
+            then
+               --  Inherited component, so we can skip it here.
+               null;
+            elsif Known_Static_Component_Bit_Offset (F)
+                  and then Known_Static_Esize (F)
+            then
+               Member_Table.Append (Convert_One_Field (F));
+            end if;
+
+            F_Idx := FI.Next;
+         end loop;
+
+         Ridx := RI.Next;
+      end loop;
+
+      declare
+         Members : Metadata_Array (1 .. Member_Table.Last);
+
+      begin
+         for J in Members'Range loop
+            Members (J) := Member_Table.Table (J);
+         end loop;
+
+         return Members;
+      end;
+
+   end Convert_RI_Chain;
+
    ------------------------------
    -- Create_Record_Debug_Info --
    ------------------------------
@@ -40,16 +143,6 @@ package body GNATLLVM.Records.Debug is
                                       Align : Nat;
                                       S : Source_Ptr) return Metadata_T
    is
-
-      package Member_Table is new Table.Table
-        (Table_Component_Type => Metadata_T,
-         Table_Index_Type     => Int,
-         Table_Low_Bound      => 1,
-         Table_Initial        => 20,
-         Table_Increment      => 5,
-         Table_Name           => "Member_Table");
-
-      F : Opt_Record_Field_Kind_Id;
 
       Empty_Fields : Metadata_Array (1 .. 0);
 
@@ -77,63 +170,16 @@ package body GNATLLVM.Records.Debug is
 
       Set_Debug_Metadata (TE, Result);
 
-      F := First_Component_Or_Discriminant (TE);
-      while Present (F) loop
-         if Get_Fullest_View (Scope (Ancestor_Field (F)))
-            /= Original_Type
-         then
-            --  Inherited component, so we can skip it here.
-            null;
-         elsif Known_Static_Component_Bit_Offset (F)
-               and then Known_Static_Esize (F)
-         then
-            declare
-               F_GT           : constant GL_Type    := Field_Type (F);
-               Mem_MD         : constant Metadata_T :=
-                 Create_Type_Data (F_GT);
-               Name           : constant String     := Get_Name (F);
-               F_S            : constant Source_Ptr := Sloc (F);
-               File           : constant Metadata_T :=
-                 Get_Debug_File_Node (Get_Source_File_Index (F_S));
-               Offset         : constant ULL        :=
-                 UI_To_ULL (Component_Bit_Offset (F));
-               Storage_Offset : constant ULL        :=
-                 (Offset / UBPU) * UBPU;
-               MD             : constant Metadata_T :=
-                 (if   Is_Bitfield (F)
-                  then DI_Create_Bit_Field_Member_Type
-                    (No_Metadata_T, Name, File,
-                     Get_Physical_Line_Number (F_S),
-                     UI_To_ULL (Esize (F)), Offset,
-                     Storage_Offset, Mem_MD)
-                  else DI_Create_Member_Type
-                    (No_Metadata_T, Name, File,
-                     Get_Physical_Line_Number (F_S),
-                     UI_To_ULL (Esize (F)),
-                     Get_Type_Alignment (F_GT), Offset, Mem_MD));
-
-            begin
-               --  Add the member type to the table
-
-               Member_Table.Append (MD);
-            end;
-         end if;
-
-         Next_Component_Or_Discriminant (F);
-      end loop;
-
       declare
-         Members : Metadata_Array (1 .. Member_Table.Last);
-
+         Ridx : constant Record_Info_Id := Get_Record_Info (TE);
+         Members : constant Metadata_Array :=
+           Convert_RI_Chain (Ridx, Original_Type);
       begin
-         for J in Members'Range loop
-            Members (J) := Member_Table.Table (J);
-         end loop;
-
          --  At least in theory it seems that LLVM may replace
          --  the object entirely, so don't assume Result will be
          --  the same, and be sure to clear it from the cache.
          Result := Replace_Composite_Elements (DI_Builder, Result, Members);
+
          Clear_Debug_Metadata (TE);
          return Result;
       end;

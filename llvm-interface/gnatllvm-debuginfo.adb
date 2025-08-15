@@ -949,9 +949,7 @@ package body GNATLLVM.DebugInfo is
          if Is_Unchecked_Union (TE) then
             --  Allow.
             null;
-         elsif Ekind (TE) in Record_Kind or
-               else not Types_Can_Have_Dynamic_Offsets
-         then
+         elsif not Types_Can_Have_Dynamic_Offsets then
             return DI_Create_Unspecified_Type (Name);
          end if;
       end if;

@@ -91,6 +91,11 @@ package GNATLLVM.DebugInfo is
      with Pre => Present (N);
    --  Add debugging info for the "use" clause N.
 
+   function Create_Type_Data (GT : GL_Type) return Metadata_T
+     with Pre => Present (GT);
+   --  Create metadata corresponding to the type of GT. Return
+   --  No_Metadata_T if the type is too complex.
+
    Empty_DI_Expr : Metadata_T;
    --  An empty DI_Expr
 

@@ -1565,3 +1565,14 @@ LLVMMetadataRef Create_Global_Variable_Declaration(
       false, unwrap<DIExpression>(Expr), MD,
       nullptr, AlignInBits));
 }
+
+extern "C"
+LLVMMetadataRef Replace_Composite_Elements(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef Composite,
+    LLVMMetadataRef *Elements, unsigned NumElements) {
+  auto Elems = unwrap(Builder)->getOrCreateArray({unwrap(Elements), NumElements});
+  DICompositeType *T = unwrap<DICompositeType>(Composite);
+  unwrap(Builder)->replaceArrays(T, Elems);
+  // T might have been modified by replaceArrays.
+  return wrap(T);
+}

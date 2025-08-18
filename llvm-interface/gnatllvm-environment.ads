@@ -199,6 +199,9 @@ package GNATLLVM.Environment is
                    or else Get_Debug_Metadata_N (TE) = DT),
           Post => Get_Debug_Metadata_N (TE) = DT, Inline;
 
+   procedure Clear_Debug_Metadata     (TE : Entity_Id)
+     with Post => No (Get_Debug_Metadata_N (TE)), Inline;
+
    procedure Set_Array_Info           (TE : Entity_Id; AI : Array_Info_Id)
      with Pre  => Is_Array_Type (TE)
                   and then (No (Get_Array_Info_N (TE))

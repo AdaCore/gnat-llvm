@@ -966,4 +966,22 @@ package body GNATLLVM.Wrapper is
                                                    uint32_t (Align_In_Bits));
    end Create_Global_Variable_Declaration;
 
+   function Replace_Composite_Elements
+     (Builder   : DI_Builder_T;
+      Composite : Metadata_T;
+      Elements  : Metadata_Array) return Metadata_T
+   is
+      function Replace_Composite_Elements_C
+        (Builder   : DI_Builder_T;
+         Composite : Metadata_T;
+         Elements  : System.Address;
+         Num_Elements : unsigned) return Metadata_T
+        with Import => True, Convention => C,
+             External_Name => "Replace_Composite_Elements";
+   begin
+      return Replace_Composite_Elements_C (Builder, Composite,
+                                           Elements'Address,
+                                           unsigned (Elements'Length));
+   end Replace_Composite_Elements;
+
 end GNATLLVM.Wrapper;

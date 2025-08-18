@@ -546,6 +546,11 @@ package body GNATLLVM.Environment is
    procedure Set_Debug_Metadata       (TE : Entity_Id; DT : Metadata_T)
      renames Env_Debug.Set;
 
+   procedure Clear_Debug_Metadata     (TE : Entity_Id) is
+   begin
+      Env_Debug.Set (TE, No_Metadata_T);
+   end Clear_Debug_Metadata;
+
    function  Get_Array_Info           (TE : Entity_Id) return Array_Info_Id
      renames Env_Array.Get;
    function  Get_Array_Info_N         (TE : Entity_Id) return Array_Info_Id

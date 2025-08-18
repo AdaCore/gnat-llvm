@@ -6,12 +6,16 @@ obj
 acats
 fixedbugs
 ccg-tests
+llvm-bindings
 
 # Code editors artifacts
 .#*
 #*
 *~
 gnatinspect.db
+.dir-locals.el
+.helix
+compile_flags.txt
 
 # Compilation artifacts
 *.o

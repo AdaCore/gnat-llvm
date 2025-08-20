@@ -1142,13 +1142,15 @@ package body GNATLLVM.DebugInfo is
             --  update the members of the type.
             if Is_Unchecked_Union (TE) then
                Result := DI_Create_Union_Type
-                 (Get_Scope_For (TE), Get_Possibly_Local_Name (TE),
+                 (Get_Scope_For (Original_Type),
+                  Get_Possibly_Local_Name (Original_Type),
                   Get_Debug_File_Node (Get_Source_File_Index (S)),
                   Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
                   Empty_Fields, 0, "");
             else
                Result := DI_Create_Struct_Type
-                 (Get_Scope_For (TE), Get_Possibly_Local_Name (TE),
+                 (Get_Scope_For (Original_Type),
+                  Get_Possibly_Local_Name (Original_Type),
                   Get_Debug_File_Node (Get_Source_File_Index (S)),
                   Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
                   No_Metadata_T, Empty_Fields, 0, No_Metadata_T, "");

@@ -578,4 +578,11 @@ package GNATLLVM.Wrapper is
       Decl : Metadata_T;
       Align_In_Bits : Nat) return Metadata_T;
 
+   function Replace_Composite_Elements
+     (Builder   : DI_Builder_T;
+      Composite : Metadata_T;
+      Elements  : Metadata_Array) return Metadata_T;
+   --  Wrapper for DIBuilder::replaceArrays that only allows updating
+   --  the elements of a composite type.
+
 end GNATLLVM.Wrapper;

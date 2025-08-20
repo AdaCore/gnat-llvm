@@ -1132,7 +1132,30 @@ package body GNATLLVM.DebugInfo is
                 then Implementation_Base_Type (TE)
                 else Get_Fullest_View (TE));
 
+            Empty_Fields : Metadata_Array (1 .. 0);
+
          begin
+            --  A type might be self-referential.  For example, a
+            --  record may have a member whose type refers back to the
+            --  same record type.  To handle this case, we construct a
+            --  empty composite type and record it; then later we
+            --  update the members of the type.
+            if Is_Unchecked_Union (TE) then
+               Result := DI_Create_Union_Type
+                 (Get_Scope_For (TE), Get_Possibly_Local_Name (TE),
+                  Get_Debug_File_Node (Get_Source_File_Index (S)),
+                  Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
+                  Empty_Fields, 0, "");
+            else
+               Result := DI_Create_Struct_Type
+                 (Get_Scope_For (TE), Get_Possibly_Local_Name (TE),
+                  Get_Debug_File_Node (Get_Source_File_Index (S)),
+                  Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
+                  No_Metadata_T, Empty_Fields, 0, No_Metadata_T, "");
+            end if;
+
+            Set_Debug_Metadata (TE, Result);
+
             F := First_Component_Or_Discriminant (TE);
             while Present (F) loop
                if Get_Fullest_View (Scope (Ancestor_Field (F)))
@@ -1186,20 +1209,14 @@ package body GNATLLVM.DebugInfo is
                   Members (J) := Member_Table.Table (J);
                end loop;
 
-               if Is_Unchecked_Union (TE) then
-                  Result := DI_Create_Union_Type
-                    (Get_Scope_For (TE), Get_Possibly_Local_Name (TE),
-                     Get_Debug_File_Node (Get_Source_File_Index (S)),
-                     Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
-                     Members, 0, "");
-               else
-                  Result := DI_Create_Struct_Type
-                    (Get_Scope_For (TE), Get_Possibly_Local_Name (TE),
-                     Get_Debug_File_Node (Get_Source_File_Index (S)),
-                     Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
-                     No_Metadata_T, Members, 0, No_Metadata_T, "");
-               end if;
+               --  At least in theory it seems that LLVM may replace
+               --  the object entirely, so don't assume Result will be
+               --  the same, and be sure to clear it from the cache.
+               Result := Replace_Composite_Elements (DI_Builder, Result,
+                                                     Members);
+               Clear_Debug_Metadata (TE);
             end;
+
          end Record_Type;
 
          --  For an enumeration type, make an enumerator metadata for each

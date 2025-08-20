@@ -232,11 +232,11 @@ package GNATLLVM.Environment is
                               or else Get_Label_Info (VE) = LI),
           Post => Get_Label_Info (VE) = LI, Inline;
 
-   procedure Set_Subprogram_Type       (VE : Entity_Id; MDT : MD_Type)
+   procedure Set_Subprogram_Type       (VE : Entity_Id; MD : MD_Type)
      with Pre  => Present (VE)
                   and then (No (Get_Subprogram_Type (VE))
-                              or else Get_Subprogram_Type (VE) = MDT),
-          Post => Get_Subprogram_Type (VE) = MDT, Inline;
+                              or else Get_Subprogram_Type (VE) = MD),
+          Post => Get_Subprogram_Type (VE) = MD, Inline;
 
    procedure Set_Flag1                 (VE : Entity_Id; F : Boolean)
      with Pre  => Present (VE),

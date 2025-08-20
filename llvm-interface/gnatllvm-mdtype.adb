@@ -126,45 +126,45 @@ package body GNATLLVM.MDType is
 
    --  Here are the internal accessors for MD_Type components
 
-   function Kind (MDT : MD_Type) return MD_Kind is
-     (MD_Types.Table (MDT).Kind)
-     with Pre => Present (MDT), Post => Kind'Result /= Continuation;
+   function Kind (MD : MD_Type) return MD_Kind is
+     (MD_Types.Table (MD).Kind)
+     with Pre => Present (MD), Post => Kind'Result /= Continuation;
 
-   function Related (MDT : MD_Type) return MD_Type is
-     (MD_Types.Table (MDT).Related_Type)
-     with Pre => Present (MDT), Post => Present (Related'Result);
+   function Related (MD : MD_Type) return MD_Type is
+     (MD_Types.Table (MD).Related_Type)
+     with Pre => Present (MD), Post => Present (Related'Result);
 
-   function Continuation_Type (MDT : MD_Type) return MD_Type is
-     (MD_Types.Table (MDT).Cont_Type)
-     with Pre => Present (MDT);
+   function Continuation_Type (MD : MD_Type) return MD_Type is
+     (MD_Types.Table (MD).Cont_Type)
+     with Pre => Present (MD);
 
-   function LLVM_Type (MDT : MD_Type) return Type_T is
-     (MD_Types.Table (MDT).LLVM_Type)
-     with Pre => Present (MDT);
+   function LLVM_Type (MD : MD_Type) return Type_T is
+     (MD_Types.Table (MD).LLVM_Type)
+     with Pre => Present (MD);
 
-   function MD_Count (MDT : MD_Type) return Nat is
-     (MD_Types.Table (MDT).Count)
-     with Pre => Present (MDT);
+   function MD_Count (MD : MD_Type) return Nat is
+     (MD_Types.Table (MD).Count)
+     with Pre => Present (MD);
 
-   function MD_Entity (MDT : MD_Type) return Opt_Record_Field_Kind_Id is
-     (MD_Types.Table (MDT).Entity)
-     with Pre => Present (MDT);
+   function MD_Entity (MD : MD_Type) return Opt_Record_Field_Kind_Id is
+     (MD_Types.Table (MD).Entity)
+     with Pre => Present (MD);
 
-   function Flag (MDT : MD_Type) return Boolean is
-     (MD_Types.Table (MDT).Flag)
-     with Pre => Present (MDT);
-   function Not_Flag (MDT : MD_Type) return Boolean is (not Flag (MDT));
+   function Flag (MD : MD_Type) return Boolean is
+     (MD_Types.Table (MD).Flag)
+     with Pre => Present (MD);
+   function Not_Flag (MD : MD_Type) return Boolean is (not Flag (MD));
 
-   procedure Struct_Set_Body_Internal (MDT : MD_Type)
-     with Pre => Has_Fields (MDT);
-   --  Set up the LLVM type corresponding to MDT with the field information
-   --  from MDT. This may either create or update the type.
+   procedure Struct_Set_Body_Internal (MD : MD_Type)
+     with Pre => Has_Fields (MD);
+   --  Set up the LLVM type corresponding to MD with the field information
+   --  from MD. This may either create or update the type.
 
-   procedure Set_LLVM_Type (MDT : MD_Type; T : Type_T)
-     with Pre =>  Present (MDT) and then Present (T)
-                  and then No (LLVM_Type (MDT)),
-          Post => LLVM_Type (MDT) = T, Inline;
-   --  Set the LLVM_Type of MDT to T
+   procedure Set_LLVM_Type (MD : MD_Type; T : Type_T)
+     with Pre =>  Present (MD) and then Present (T)
+                  and then No (LLVM_Type (MD)),
+          Post => LLVM_Type (MD) = T, Inline;
+   --  Set the LLVM_Type of MD to T
 
    ----------
    -- Hash --
@@ -201,264 +201,264 @@ package body GNATLLVM.MDType is
    -- Set_LLVM_Type --
    -------------------
 
-   procedure Set_LLVM_Type (MDT : MD_Type; T : Type_T) is
+   procedure Set_LLVM_Type (MD : MD_Type; T : Type_T) is
    begin
-      MD_Types.Table (MDT).LLVM_Type := T;
-      C_Set_MD_Type (T, MDT);
+      MD_Types.Table (MD).LLVM_Type := T;
+      C_Set_MD_Type (T, MD);
    end Set_LLVM_Type;
 
    ----------------
    -- Has_Fields --
    ----------------
 
-   function Has_Fields (MDT : MD_Type) return Boolean is
-     (MD_Types.Table (MDT).Has_Fields);
+   function Has_Fields (MD : MD_Type) return Boolean is
+     (MD_Types.Table (MD).Has_Fields);
 
    ------------------
    -- Is_Same_Kind --
    ------------------
 
-   function Is_Same_Kind (MDT1, MDT2 : MD_Type) return Boolean is
-      (Kind (MDT1) = Kind (MDT2));
+   function Is_Same_Kind (MD1, MD2 : MD_Type) return Boolean is
+      (Kind (MD1) = Kind (MD2));
 
    -------------
    -- Is_Void --
    -------------
 
-   function Is_Void (MDT : MD_Type) return Boolean is (Kind (MDT) = Void);
+   function Is_Void (MD : MD_Type) return Boolean is (Kind (MD) = Void);
 
    ----------------
    -- Is_Integer --
    ----------------
 
-   function Is_Integer (MDT : MD_Type) return Boolean is
-     (Kind (MDT) = Integer);
+   function Is_Integer (MD : MD_Type) return Boolean is
+     (Kind (MD) = Integer);
 
    ----------------
    -- Is_Float --
    ----------------
 
-   function Is_Float (MDT : MD_Type) return Boolean is (Kind (MDT) = Float);
+   function Is_Float (MD : MD_Type) return Boolean is (Kind (MD) = Float);
 
    ---------------
    -- Is_Signed --
    ---------------
 
-   function Is_Signed (MDT : MD_Type) return Boolean renames Not_Flag;
+   function Is_Signed (MD : MD_Type) return Boolean renames Not_Flag;
 
    -----------------
    -- Is_Unsigned --
    -----------------
 
-   function Is_Unsigned (MDT : MD_Type) return Boolean renames Flag;
+   function Is_Unsigned (MD : MD_Type) return Boolean renames Flag;
 
    --------------
    -- Is_Array --
    --------------
 
-   function Is_Array (MDT : MD_Type) return Boolean is
-     (Kind (MDT) = Array_Type);
+   function Is_Array (MD : MD_Type) return Boolean is
+     (Kind (MD) = Array_Type);
 
    --------------------
    -- Is_Fixed_Array --
    --------------------
 
-   function Is_Fixed_Array (MDT : MD_Type) return Boolean renames Not_Flag;
+   function Is_Fixed_Array (MD : MD_Type) return Boolean renames Not_Flag;
 
    -----------------------
    -- Is_Variable_Array --
    -----------------------
 
-   function Is_Variable_Array (MDT : MD_Type) return Boolean renames Flag;
+   function Is_Variable_Array (MD : MD_Type) return Boolean renames Flag;
 
    -----------------------
    -- Is_Variable_Array --
    -----------------------
 
-   function Is_Varargs_Function (MDT : MD_Type) return Boolean renames Flag;
+   function Is_Varargs_Function (MD : MD_Type) return Boolean renames Flag;
 
    --------------
    -- Is_Struct --
    --------------
 
-   function Is_Struct (MDT : MD_Type) return Boolean is (Kind (MDT) = Struct);
+   function Is_Struct (MD : MD_Type) return Boolean is (Kind (MD) = Struct);
 
    ---------------
    -- Is_Packed --
    ---------------
 
-   function Is_Packed (MDT : MD_Type) return Boolean renames Flag;
+   function Is_Packed (MD : MD_Type) return Boolean renames Flag;
 
    ----------------
    -- Is_Pointer --
    ----------------
 
-   function Is_Pointer (MDT : MD_Type) return Boolean is
-     (Kind (MDT) = Pointer);
+   function Is_Pointer (MD : MD_Type) return Boolean is
+     (Kind (MD) = Pointer);
 
    ----------------------
    -- Is_Function_Type --
    ----------------------
 
-   function Is_Function_Type (MDT : MD_Type) return Boolean is
-     (Kind (MDT) = Func);
+   function Is_Function_Type (MD : MD_Type) return Boolean is
+     (Kind (MD) = Func);
 
    --------------
    -- Int_Bits --
    --------------
 
-   function Int_Bits (MDT : MD_Type) return Nat renames MD_Count;
+   function Int_Bits (MD : MD_Type) return Nat renames MD_Count;
 
    ----------------
    -- Float_Bits --
    ----------------
 
-   function Float_Bits (MDT : MD_Type) return Nat renames MD_Count;
+   function Float_Bits (MD : MD_Type) return Nat renames MD_Count;
 
    -----------------
    -- Array_Count --
    -----------------
 
-   function Array_Count (MDT : MD_Type) return Nat renames MD_Count;
+   function Array_Count (MD : MD_Type) return Nat renames MD_Count;
 
    -------------------
    -- Element_Count --
    -------------------
 
-   function Element_Count (MDT : MD_Type) return Nat renames MD_Count;
+   function Element_Count (MD : MD_Type) return Nat renames MD_Count;
 
    -------------------
    -- Pointer_Space --
    -------------------
 
-   function Pointer_Space (MDT : MD_Type) return Nat renames MD_Count;
+   function Pointer_Space (MD : MD_Type) return Nat renames MD_Count;
 
    ---------------------
    -- Parameter_Count --
    ---------------------
 
-   function Parameter_Count (MDT : MD_Type) return Nat renames MD_Count;
+   function Parameter_Count (MD : MD_Type) return Nat renames MD_Count;
 
    ---------------------
    -- Designated_Type --
    ---------------------
 
-   function Designated_Type (MDT : MD_Type) return MD_Type renames Related;
+   function Designated_Type (MD : MD_Type) return MD_Type renames Related;
 
    ------------------
    -- Element_Type --
    ------------------
 
-   function Element_Type (MDT : MD_Type) return MD_Type renames Related;
+   function Element_Type (MD : MD_Type) return MD_Type renames Related;
 
    -----------------
    -- Return_Type --
    -----------------
 
-   function Return_Type (MDT : MD_Type) return MD_Type renames Related;
+   function Return_Type (MD : MD_Type) return MD_Type renames Related;
 
    -----------------
    -- Is_Volatile --
    -----------------
 
-   function Is_Volatile (MDT : MD_Type) return Boolean is
-      (MD_Types.Table (MDT).Is_Volatile);
+   function Is_Volatile (MD : MD_Type) return Boolean is
+      (MD_Types.Table (MD).Is_Volatile);
 
    ----------
    -- Name --
    ----------
 
-   function MD_Name (MDT : MD_Type) return Name_Id is
-     (MD_Types.Table (MDT).Name);
+   function MD_Name (MD : MD_Type) return Name_Id is
+     (MD_Types.Table (MD).Name);
 
    ------------------
    -- Element_Name --
    ------------------
 
-   function Element_Name (MDT : MD_Type; Idx : Nat) return Name_Id is
-      E_MDT : MD_Type := Continuation_Type (MDT);
+   function Element_Name (MD : MD_Type; Idx : Nat) return Name_Id is
+      E_MD : MD_Type := Continuation_Type (MD);
 
    begin
       for J in 0 .. Idx - 1 loop
-         E_MDT := Continuation_Type (E_MDT);
+         E_MD := Continuation_Type (E_MD);
       end loop;
 
-      return MD_Name (E_MDT);
+      return MD_Name (E_MD);
    end Element_Name;
 
    ------------------
    -- Element_Type --
    ------------------
 
-   function Element_Type (MDT : MD_Type; Idx : Nat) return MD_Type is
-      E_MDT : MD_Type := Continuation_Type (MDT);
+   function Element_Type (MD : MD_Type; Idx : Nat) return MD_Type is
+      E_MD : MD_Type := Continuation_Type (MD);
 
    begin
       for J in 0 .. Idx - 1 loop
-         E_MDT := Continuation_Type (E_MDT);
+         E_MD := Continuation_Type (E_MD);
       end loop;
 
-      return Related (E_MDT);
+      return Related (E_MD);
    end Element_Type;
 
    ------------------
    -- Element_Entity --
    ------------------
 
-   function Element_Entity (MDT : MD_Type; Idx : Nat) return Entity_Id is
-      E_MDT : MD_Type := Continuation_Type (MDT);
+   function Element_Entity (MD : MD_Type; Idx : Nat) return Entity_Id is
+      E_MD : MD_Type := Continuation_Type (MD);
 
    begin
       for J in 0 .. Idx - 1 loop
-         E_MDT := Continuation_Type (E_MDT);
+         E_MD := Continuation_Type (E_MD);
       end loop;
 
-      return MD_Entity (E_MDT);
+      return MD_Entity (E_MD);
    end Element_Entity;
 
    -----------------
    --  Is_Padding --
    -----------------
 
-   function Is_Padding (MDT : MD_Type; Idx : Nat) return Boolean is
-      E_MDT : MD_Type := Continuation_Type (MDT);
+   function Is_Padding (MD : MD_Type; Idx : Nat) return Boolean is
+      E_MD : MD_Type := Continuation_Type (MD);
 
    begin
       for J in 0 .. Idx - 1 loop
-         E_MDT := Continuation_Type (E_MDT);
+         E_MD := Continuation_Type (E_MD);
       end loop;
 
-      return Flag (E_MDT);
+      return Flag (E_MD);
    end Is_Padding;
 
    --------------------
    -- Parameter_Name --
    --------------------
 
-   function Parameter_Name (MDT : MD_Type; Idx : Nat) return Name_Id is
-      E_MDT : MD_Type := Continuation_Type (MDT);
+   function Parameter_Name (MD : MD_Type; Idx : Nat) return Name_Id is
+      E_MD : MD_Type := Continuation_Type (MD);
 
    begin
       for J in 0 .. Idx - 1 loop
-         E_MDT := Continuation_Type (E_MDT);
+         E_MD := Continuation_Type (E_MD);
       end loop;
 
-      return MD_Name (E_MDT);
+      return MD_Name (E_MD);
    end Parameter_Name;
 
    --------------------
    -- Parameter_Type --
    --------------------
 
-   function Parameter_Type (MDT : MD_Type; Idx : Nat) return MD_Type is
-      E_MDT : MD_Type := Continuation_Type (MDT);
+   function Parameter_Type (MD : MD_Type; Idx : Nat) return MD_Type is
+      E_MD : MD_Type := Continuation_Type (MD);
 
    begin
       for J in 0 .. Idx - 1 loop
-         E_MDT := Continuation_Type (E_MDT);
+         E_MD := Continuation_Type (E_MD);
       end loop;
 
-      return Related (E_MDT);
+      return Related (E_MD);
    end Parameter_Type;
 
    -------------
@@ -583,7 +583,7 @@ package body GNATLLVM.MDType is
    ---------------------
 
    procedure Struct_Set_Body
-     (MDT     : MD_Type;
+     (MD     : MD_Type;
       Types   : MD_Type_Array;
       Names   : Name_Id_Array;
       Fields  : Field_Id_Array := (1 .. 0 => Empty);
@@ -608,10 +608,10 @@ package body GNATLLVM.MDType is
                            others       => <>));
       end loop;
 
-      MD_Types.Table (MDT).Cont_Type  := Prev;
-      MD_Types.Table (MDT).Has_Fields := True;
-      MD_Types.Table (MDT).Flag       := Packed;
-      MD_Types.Table (MDT).Count      := Names'Length;
+      MD_Types.Table (MD).Cont_Type  := Prev;
+      MD_Types.Table (MD).Has_Fields := True;
+      MD_Types.Table (MD).Flag       := Packed;
+      MD_Types.Table (MD).Count      := Names'Length;
 
    end Struct_Set_Body;
 
@@ -680,8 +680,8 @@ package body GNATLLVM.MDType is
    -- Name_Type --
    ---------------
 
-   function Name_Type (MDT : MD_Type; New_Name : Name_Id) return MD_Type is
-      Info : MD_Type_Info := MD_Types.Table (MDT);
+   function Name_Type (MD : MD_Type; New_Name : Name_Id) return MD_Type is
+      Info : MD_Type_Info := MD_Types.Table (MD);
 
    begin
       Info.Name := New_Name;
@@ -692,9 +692,9 @@ package body GNATLLVM.MDType is
    -- Make_Volatile --
    -------------------
 
-   function Make_Volatile (MDT : MD_Type; B : Boolean := True) return MD_Type
+   function Make_Volatile (MD : MD_Type; B : Boolean := True) return MD_Type
    is
-      Info : MD_Type_Info := MD_Types.Table (MDT);
+      Info : MD_Type_Info := MD_Types.Table (MD);
 
    begin
       Info.Is_Volatile := B;
@@ -705,81 +705,81 @@ package body GNATLLVM.MDType is
    -- Make_Volatile --
    -------------------
 
-   procedure Make_Volatile (MDT : in out MD_Type; B : Boolean := False) is
+   procedure Make_Volatile (MD : in out MD_Type; B : Boolean := False) is
    begin
-      MDT := Make_Volatile (MDT, B);
+      MD := Make_Volatile (MD, B);
    end Make_Volatile;
 
    ------------------------------
    -- Struct_Set_Body_Internal --
    ------------------------------
 
-   procedure Struct_Set_Body_Internal (MDT : MD_Type) is
+   procedure Struct_Set_Body_Internal (MD : MD_Type) is
       UID   : constant Unique_Id :=
-        (if Has_Fields (MDT) then New_Unique_Id else No_Unique_Id);
-      C_MDT : MD_Type := Continuation_Type (MDT);
-      Typs  : Type_Array (1 .. Element_Count (MDT));
+        (if Has_Fields (MD) then New_Unique_Id else No_Unique_Id);
+      C_MD : MD_Type := Continuation_Type (MD);
+      Typs  : Type_Array (1 .. Element_Count (MD));
 
    begin
       for J in Typs'Range loop
-         Typs (J) := +Related (C_MDT);
-         C_Set_Field_Info (UID, J - Typs'First, MD_Name (C_MDT),
-                           Is_Padding => not Has_Name (C_MDT),
-                           Entity     => MD_Entity (C_MDT));
-         C_MDT := Continuation_Type (C_MDT);
+         Typs (J) := +Related (C_MD);
+         C_Set_Field_Info (UID, J - Typs'First, MD_Name (C_MD),
+                           Is_Padding => not Has_Name (C_MD),
+                           Entity     => MD_Entity (C_MD));
+         C_MD := Continuation_Type (C_MD);
       end loop;
 
-      if No (MD_Name (MDT)) then
-         Set_LLVM_Type (MDT, Struct_Type (Typs'Address, Typs'Length,
-                                          Is_Packed (MDT)));
+      if No (MD_Name (MD)) then
+         Set_LLVM_Type (MD, Struct_Type (Typs'Address, Typs'Length,
+                                          Is_Packed (MD)));
       else
-         if No (LLVM_Type (MDT)) then
-            Set_LLVM_Type (MDT,
+         if No (LLVM_Type (MD)) then
+            Set_LLVM_Type (MD,
                            Struct_Create_Named
                              (Get_Global_Context,
-                              Get_Name_String (MD_Name (MDT))));
+                              Get_Name_String (MD_Name (MD))));
          end if;
 
-         Struct_Set_Body (LLVM_Type (MDT), Typs'Address, Typs'Length,
-                          Is_Packed (MDT));
+         Struct_Set_Body (LLVM_Type (MD), Typs'Address, Typs'Length,
+                          Is_Packed (MD));
       end if;
 
-      C_Set_Struct (UID, LLVM_Type (MDT));
+      C_Set_Struct (UID, LLVM_Type (MD));
    end Struct_Set_Body_Internal;
 
    ------------------
    -- LLVM_Type_Of --
    ------------------
 
-   function LLVM_Type_Of (MDT : MD_Type) return Type_T is
+   function LLVM_Type_Of (MD : MD_Type) return Type_T is
       Result : Type_T;
 
    begin
       --  If we already made an LLVM type, return it
 
-      if Present (LLVM_Type (MDT)) then
+      if Present (LLVM_Type (MD)) then
 
          --  However, if that's an opaque type, but we've set our field list,
          --  update that type first.
 
-         if Is_Struct (MDT) and then Has_Fields (MDT)
-           and then Is_Opaque_Struct (LLVM_Type (MDT))
+         if Is_Struct (MD) and then Has_Fields (MD)
+           and then Is_Opaque_Struct (LLVM_Type (MD))
          then
-            Struct_Set_Body_Internal (MDT);
+            Struct_Set_Body_Internal (MD);
          end if;
 
-         return LLVM_Type (MDT);
+         return LLVM_Type (MD);
       end if;
 
-      case Kind (MDT) is
+      case Kind (MD) is
          when Void =>
             Result := Void_Type;
 
          when Integer =>
-            Result := Int_Type (unsigned (Int_Bits (MDT)));
+            Result := Int_Type (unsigned (Int_Bits (MD)));
 
          when Float =>
-            case Float_Bits (MDT) is
+            case Float_Bits (MD) is
                when 32 =>
                   Result := Float_Type;
 
@@ -796,31 +796,31 @@ package body GNATLLVM.MDType is
             end case;
 
          when Pointer =>
-            Result := Pointer_Type ((if   Is_Void (Designated_Type (MDT))
-                                     then Byte_T else +Designated_Type (MDT)),
-                                    unsigned (Pointer_Space (MDT)));
+            Result := Pointer_Type ((if   Is_Void (Designated_Type (MD))
+                                     then Byte_T else +Designated_Type (MD)),
+                                    unsigned (Pointer_Space (MD)));
 
          when Array_Type =>
-            Result := Array_Type (+Element_Type (MDT),
-                                  (if   Is_Fixed_Array (MDT)
-                                   then unsigned (Array_Count (MDT)) else 0));
+            Result := Array_Type (+Element_Type (MD),
+                                  (if   Is_Fixed_Array (MD)
+                                   then unsigned (Array_Count (MD)) else 0));
 
          when Struct =>
-            if Has_Fields (MDT) then
-               Struct_Set_Body_Internal (MDT);
-               return LLVM_Type (MDT);
+            if Has_Fields (MD) then
+               Struct_Set_Body_Internal (MD);
+               return LLVM_Type (MD);
             else
                Result := Struct_Create_Named (Get_Global_Context,
-                                              Get_Name_String (MD_Name (MDT)));
+                                              Get_Name_String (MD_Name (MD)));
             end if;
 
          when Func =>
             declare
-               C_MDT : MD_Type          := Continuation_Type (MDT);
+               C_MD : MD_Type          := Continuation_Type (MD);
                Ret_T : constant Type_T  :=
-                 (if   Is_Void (Related (MDT)) then Void_Type
-                  else +Related (MDT));
-               Types : Type_Array (1 .. Parameter_Count (MDT));
+                 (if   Is_Void (Related (MD)) then Void_Type
+                  else +Related (MD));
+               Types : Type_Array (1 .. Parameter_Count (MD));
 
             begin
                --  Process each argument type. If one type is void
@@ -831,19 +831,19 @@ package body GNATLLVM.MDType is
                --  for example.
 
                for J in Types'Range loop
-                  Types (J) := (if   Is_Void (Related (C_MDT))
-                                then Void_Ptr_T else +Related (C_MDT));
-                  C_MDT     := Continuation_Type (C_MDT);
+                  Types (J) := (if   Is_Void (Related (C_MD))
+                                then Void_Ptr_T else +Related (C_MD));
+                  C_MD     := Continuation_Type (C_MD);
                end loop;
 
-               Result := Fn_Ty (Types, Ret_T, Is_Varargs_Function (MDT));
+               Result := Fn_Ty (Types, Ret_T, Is_Varargs_Function (MD));
             end;
 
          when others =>
             Result := Void_Ptr_T;
       end case;
 
-      Set_LLVM_Type (MDT, Result);
+      Set_LLVM_Type (MD, Result);
       return Result;
    end LLVM_Type_Of;
 
@@ -887,16 +887,16 @@ package body GNATLLVM.MDType is
                  Nat (Count_Struct_Element_Types (T));
                Name     : constant String := Get_Struct_Name (T);
                Types    : Type_Array (1 .. Num_Elts);
-               MDTs     : MD_Type_Array (1 .. Num_Elts);
+               MDs      : MD_Type_Array (1 .. Num_Elts);
 
             begin
                Get_Struct_Element_Types (T, Types'Address);
 
                for J in Types'Range loop
-                  MDTs (J) := From_Type (Types (J));
+                  MDs (J) := From_Type (Types (J));
                end loop;
 
-               return Build_Struct_Type (MDTs, (MDTs'Range => No_Name),
+               return Build_Struct_Type (MDs, (MDs'Range => No_Name),
                                          Packed => Is_Packed_Struct (T),
                                          Name   =>
                                            (if   Name'Length = 0 then No_Name
@@ -907,16 +907,16 @@ package body GNATLLVM.MDType is
             declare
                Num_Params : constant Nat := Nat (Count_Param_Types (T));
                Types      : Type_Array (1 .. Num_Params);
-               MDTs       : MD_Type_Array (1 .. Num_Params);
+               MDs        : MD_Type_Array (1 .. Num_Params);
 
             begin
                Get_Param_Types (T, Types'Address);
 
                for J in Types'Range loop
-                  MDTs (J) := From_Type (Types (J));
+                  MDs (J) := From_Type (Types (J));
                end loop;
 
-               return Fn_Ty (MDTs, From_Type (Get_Return_Type (T)));
+               return Fn_Ty (MDs, From_Type (Get_Return_Type (T)));
             end;
 
          when Void_Type_Kind | Metadata_Type_Kind =>
@@ -932,47 +932,47 @@ package body GNATLLVM.MDType is
    -- Get_Type_Size --
    -------------------
 
-   function Get_Type_Size (MDT : MD_Type) return ULL is
-     (Get_Type_Size (Type_T'(+MDT)));
+   function Get_Type_Size (MD : MD_Type) return ULL is
+     (Get_Type_Size (Type_T'(+MD)));
 
    -------------------------
    -- Get_Scalar_Bit_Size --
    -------------------------
 
-   function Get_Scalar_Bit_Size (MDT : MD_Type) return ULL is
-     (Get_Scalar_Bit_Size (Type_T'(+MDT)));
+   function Get_Scalar_Bit_Size (MD : MD_Type) return ULL is
+     (Get_Scalar_Bit_Size (Type_T'(+MD)));
 
    ------------------------
    -- Get_Type_Alignment --
    ------------------------
 
-   function Get_Type_Alignment (MDT : MD_Type) return Nat is
-     (Get_Type_Alignment (Type_T'(+MDT)));
+   function Get_Type_Alignment (MD : MD_Type) return Nat is
+     (Get_Type_Alignment (Type_T'(+MD)));
 
    -------------------
    -- Contains_Void --
    -------------------
 
-   function Contains_Void (MDT : MD_Type) return Boolean is
+   function Contains_Void (MD : MD_Type) return Boolean is
    begin
-      if Is_Void (MDT)
-        or else (Is_Array (MDT) and then Contains_Void (Element_Type (MDT)))
+      if Is_Void (MD)
+        or else (Is_Array (MD) and then Contains_Void (Element_Type (MD)))
       then
          return True;
 
-      elsif Is_Struct (MDT) then
-         for J in 0 .. Element_Count (MDT) - 1 loop
-            if Contains_Void (Element_Type (MDT, J)) then
+      elsif Is_Struct (MD) then
+         for J in 0 .. Element_Count (MD) - 1 loop
+            if Contains_Void (Element_Type (MD, J)) then
                return True;
             end if;
          end loop;
 
-      elsif Is_Function_Type (MDT) then
-         if Contains_Void (Return_Type (MDT)) then
+      elsif Is_Function_Type (MD) then
+         if Contains_Void (Return_Type (MD)) then
             return True;
          else
-            for J in 0 .. Parameter_Count (MDT) - 1 loop
-               if Contains_Void (Parameter_Type (MDT, J)) then
+            for J in 0 .. Parameter_Count (MD) - 1 loop
+               if Contains_Void (Parameter_Type (MD, J)) then
                   return True;
                end if;
             end loop;
@@ -993,39 +993,39 @@ package body GNATLLVM.MDType is
    -- Is_Layout_Identical --
    -------------------------
 
-   function Is_Layout_Identical (MDT1, MDT2 : MD_Type) return Boolean is
+   function Is_Layout_Identical (MD1, MD2 : MD_Type) return Boolean is
    begin
       --  If the types are the same, they're identical, but if they have
       --  different kinds, they aren't.
 
-      if MDT1 = MDT2 then
+      if MD1 = MD2 then
          return True;
-      elsif not Is_Same_Kind (MDT1, MDT2) then
+      elsif not Is_Same_Kind (MD1, MD2) then
          return False;
 
       --  Otherwise, it's kind-specific
 
-      elsif Is_Array (MDT1)
-        and then Is_Fixed_Array (MDT1) and then Is_Fixed_Array (MDT2)
-        and then Array_Count (MDT1) = Array_Count (MDT2)
-        and then Is_Layout_Identical (Element_Type (MDT1), Element_Type (MDT2))
+      elsif Is_Array (MD1)
+        and then Is_Fixed_Array (MD1) and then Is_Fixed_Array (MD2)
+        and then Array_Count (MD1) = Array_Count (MD2)
+        and then Is_Layout_Identical (Element_Type (MD1), Element_Type (MD2))
       then
          return True;
 
-      elsif Is_Struct (MDT1)
-        and then Is_Packed (MDT1) = Is_Packed (MDT2)
-        and then Has_Fields (MDT1) = Has_Fields (MDT2)
-        and then (not Has_Fields (MDT1)
-                  or else Element_Count (MDT1) = Element_Count (MDT2))
+      elsif Is_Struct (MD1)
+        and then Is_Packed (MD1) = Is_Packed (MD2)
+        and then Has_Fields (MD1) = Has_Fields (MD2)
+        and then (not Has_Fields (MD1)
+                  or else Element_Count (MD1) = Element_Count (MD2))
       then
          --  Structures are identical if their packed status is the same,
          --  they have the same number of fields, and each field is
          --  identical.
 
          for J in 0 ..
-           (if Has_Fields (MDT1) then Element_Count (MDT1) else 0) - 1 loop
-            if not Is_Layout_Identical (Element_Type (MDT1, J),
-                                        Element_Type (MDT2, J))
+           (if Has_Fields (MD1) then Element_Count (MD1) else 0) - 1 loop
+            if not Is_Layout_Identical (Element_Type (MD1, J),
+                                        Element_Type (MD2, J))
             then
                return False;
             end if;
@@ -1036,8 +1036,8 @@ package body GNATLLVM.MDType is
       --  Pointers have the same layout if they're pointing at the
       --  same address space.
 
-      elsif Is_Pointer (MDT1)
-        and then Pointer_Space (MDT1) = Pointer_Space (MDT2)
+      elsif Is_Pointer (MD1)
+        and then Pointer_Space (MD1) = Pointer_Space (MD2)
       then
          return True;
 
@@ -1045,16 +1045,16 @@ package body GNATLLVM.MDType is
       --  have different layouts or they have a different number of
       --  parameter types.
 
-      elsif Is_Function_Type (MDT1)
-        and then Is_Layout_Identical (Return_Type (MDT1), Return_Type (MDT2))
-        and then Parameter_Count (MDT1) = Parameter_Count (MDT2)
+      elsif Is_Function_Type (MD1)
+        and then Is_Layout_Identical (Return_Type (MD1), Return_Type (MD2))
+        and then Parameter_Count (MD1) = Parameter_Count (MD2)
       then
          --  If any parameter type is not the identical layout of the
          --  corresponding parameter type, the layouts aren't the same.
 
-         for J in 1 .. Parameter_Count (MDT1) loop
-            if not Is_Layout_Identical (Parameter_Type (MDT1, J),
-                                        Parameter_Type (MDT2, J))
+         for J in 1 .. Parameter_Count (MD1) loop
+            if not Is_Layout_Identical (Parameter_Type (MD1, J),
+                                        Parameter_Type (MD2, J))
             then
                return False;
             end if;
@@ -1074,78 +1074,78 @@ package body GNATLLVM.MDType is
    -- To_String --
    ---------------
 
-   function To_String (MDT : MD_Type; Top : Boolean := False) return String is
-      C_MDT  : MD_Type;
+   function To_String (MD : MD_Type; Top : Boolean := False) return String is
+      C_MD   : MD_Type;
       Result : Bounded_String;
 
    begin
-      if No (MDT) then
+      if No (MD) then
          return "void ";
-      elsif not Top and then Present (MD_Name (MDT)) then
-         return Get_Name_String (MD_Name (MDT));
+      elsif not Top and then Present (MD_Name (MD)) then
+         return Get_Name_String (MD_Name (MD));
       end if;
 
-      C_MDT := Continuation_Type (MDT);
-      if Is_Volatile (MDT) then
+      C_MD := Continuation_Type (MD);
+      if Is_Volatile (MD) then
          Append (Result, "volatile ");
       end if;
 
-      case Kind (MDT) is
+      case Kind (MD) is
          when Void =>
             Append (Result, "void");
 
          when Integer =>
 
-            if Is_Unsigned (MDT) then
+            if Is_Unsigned (MD) then
                Append (Result, 'u');
             end if;
 
             Append (Result, "int_");
-            Append (Result, Int_Bits (MDT));
+            Append (Result, Int_Bits (MD));
             Append (Result, "t ");
 
          when Float =>
 
             Append (Result, "float_");
-            Append (Result, Float_Bits (MDT));
+            Append (Result, Float_Bits (MD));
             Append (Result, "t ");
 
          when Array_Type =>
-            Append (Result, To_String (Element_Type (MDT)));
+            Append (Result, To_String (Element_Type (MD)));
             Append (Result, "[");
 
-            if Is_Fixed_Array (MDT) then
-               Append (Result, Array_Count (MDT));
+            if Is_Fixed_Array (MD) then
+               Append (Result, Array_Count (MD));
             end if;
 
             Append (Result, "]");
 
          when Struct =>
 
-            if Is_Packed (MDT) then
+            if Is_Packed (MD) then
                Append (Result, "packed ");
             end if;
 
             Append (Result, "struct ");
 
-            if Has_Name (MDT) then
-               Append (Result, MD_Name (MDT));
+            if Has_Name (MD) then
+               Append (Result, MD_Name (MD));
                Append (Result, " ");
             end if;
 
             Append (Result, "{");
 
-            while Present (C_MDT) loop
-               Append (Result, To_String (Related (C_MDT)));
+            while Present (C_MD) loop
+               Append (Result, To_String (Related (C_MD)));
 
-               if Has_Name (C_MDT) then
+               if Has_Name (C_MD) then
                   Append (Result, " ");
-                  Append (Result, MD_Name (C_MDT));
+                  Append (Result, MD_Name (C_MD));
                end if;
 
-               C_MDT := Continuation_Type (C_MDT);
+               C_MD := Continuation_Type (C_MD);
 
-               if Present (C_MDT) then
+               if Present (C_MD) then
                   Append (Result, ", ");
                end if;
             end loop;
@@ -1153,28 +1153,28 @@ package body GNATLLVM.MDType is
             Append (Result, "}");
 
          when Pointer =>
-            Append (Result, To_String (Designated_Type (MDT)));
+            Append (Result, To_String (Designated_Type (MD)));
             Append (Result, "*");
-            if Pointer_Space (MDT) /= 0 then
+            if Pointer_Space (MD) /= 0 then
                Append (Result, "{");
-               Append (Result, Pointer_Space (MDT));
+               Append (Result, Pointer_Space (MD));
                Append (Result, "}");
             end if;
 
          when Func =>
-            Append (Result, To_String (Return_Type (MDT)));
+            Append (Result, To_String (Return_Type (MD)));
             Append (Result, "() (");
 
-            while Present (C_MDT) loop
-               Append (Result, To_String (Related (C_MDT)));
-               C_MDT := Continuation_Type (C_MDT);
+            while Present (C_MD) loop
+               Append (Result, To_String (Related (C_MD)));
+               C_MD := Continuation_Type (C_MD);
 
-               if Present (C_MDT) then
+               if Present (C_MD) then
                   Append (Result, ", ");
                end if;
             end loop;
 
-            if Is_Varargs_Function (MDT) then
+            if Is_Varargs_Function (MD) then
                Append (Result, ", ..");
             end if;
 
@@ -1184,9 +1184,9 @@ package body GNATLLVM.MDType is
             raise Program_Error;
       end case;
 
-      if not Is_Struct (MDT) and then Present (MD_Name (MDT)) then
+      if not Is_Struct (MD) and then Present (MD_Name (MD)) then
          Append (Result, "[");
-         Append (Result, MD_Name (MDT));
+         Append (Result, MD_Name (MD));
          Append (Result, "] ");
       end if;
 
@@ -1197,15 +1197,15 @@ package body GNATLLVM.MDType is
    -- Dump_MD_Type --
    ------------------
 
-   procedure Dump_MD_Type (MDT : MD_Type) is
+   procedure Dump_MD_Type (MD : MD_Type) is
    begin
       Push_Output;
       Set_Standard_Error;
 
-      if No (MDT) then
+      if No (MD) then
          Write_Line ("None");
       else
-         Write_Line (To_String (MDT, Top => True));
+         Write_Line (To_String (MD, Top => True));
       end if;
 
       Pop_Output;

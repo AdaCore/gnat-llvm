@@ -85,9 +85,9 @@ package GNATLLVM.GLType is
    --  message. If Align_For_Msg is specified, use that alignment, instead
    --  of GT's alignment, in giving warnings about unused bits.
 
-   procedure Update_GL_Type (GT : GL_Type; MDT : MD_Type; Is_Dummy : Boolean)
+   procedure Update_GL_Type (GT : GL_Type; MD : MD_Type; Is_Dummy : Boolean)
      with Pre => Is_Empty_GL_Type (GT) or else Is_Dummy_Type (GT)
-                 or else Is_Layout_Identical (MDT, Type_Of (GT));
+                 or else Is_Layout_Identical (MD, Type_Of (GT));
    --  Update GT with a new type and dummy status
 
    function Primitive_GL_Type (TE : Void_Or_Type_Kind_Id) return GL_Type

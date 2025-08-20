@@ -314,7 +314,7 @@ private
    --      relative offset of these fields is zero.
 
    type Record_Info_Base is record
-      MDT              : MD_Type;
+      MD               : MD_Type;
       --  LLVM type corresponding to this fragment, if any
 
       GT               : GL_Type;

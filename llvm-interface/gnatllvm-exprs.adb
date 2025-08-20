@@ -1970,7 +1970,7 @@ package body GNATLLVM.Exprs is
       Output_Variable   : Node_Id;
       Input             : Node_Id;
       Clobber           : System.Address;
-      Fn_MDT            : MD_Type;
+      Fn_MD             : MD_Type;
 
    begin
       --  LLVM only allows one output, so just get the information on
@@ -2183,7 +2183,7 @@ package body GNATLLVM.Exprs is
          Asm :=
            Inline_Asm
              (Args, Output_Variable, Template (1 .. Out_Template_Pos),
-              Constraints (1 .. Constraint_Pos), Fn_MDT,
+              Constraints (1 .. Constraint_Pos), Fn_MD,
               Is_Asm_Volatile (N), False);
 
          --  If we have an output, generate the call with an output and
@@ -2193,10 +2193,10 @@ package body GNATLLVM.Exprs is
 
          if Present (Output_Variable) then
             Store
-              (Call (Asm, Fn_MDT, Args),
+              (Call (Asm, Fn_MD, Args),
                Ptr_To_Ref (Output_Val, Related_Type (Asm)));
          else
-            Call (Asm, Fn_MDT, Args);
+            Call (Asm, Fn_MD, Args);
          end if;
       end;
    end Emit_Code_Statement;

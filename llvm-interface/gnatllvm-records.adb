@@ -281,11 +281,12 @@ package body GNATLLVM.Records is
       --  This must be an MD_Type, which is a struct, a GL_Type, or a
       --  variant and only one of those.
 
-      if Present (RI.MDT) then
+      if Present (RI.MD) then
          return No (RI.GT) and then RI.Variants = null
-           and then Is_Struct (RI.MDT);
+           and then Is_Struct (RI.MD);
       elsif Present (RI.GT) then
-         --  We already know that MDT isn't Present
+
+         --  We already know that an MD_Type isn't Present
 
          return RI.Variants = null and then RI.Overlap_Variants = null;
       else
@@ -493,7 +494,7 @@ package body GNATLLVM.Records is
                RI : constant Record_Info := Record_Info_Table.Table (J);
 
             begin
-               exit when Present (RI.MDT) or else Present (RI.GT);
+               exit when Present (RI.MD) or else Present (RI.GT);
                exit when RI.Variants /= null
                  and then (for some K of RI.Variants.all => Present (K));
 
@@ -520,7 +521,7 @@ package body GNATLLVM.Records is
          Return_Size : Boolean := True;
          No_Padding  : Boolean := False)
       is
-         MDT       : constant MD_Type  := RI.MDT;
+         MD        : constant MD_Type  := RI.MD;
          GT        : constant GL_Type  := RI.GT;
          This_Size : Result            := No_Result;
 
@@ -536,8 +537,8 @@ package body GNATLLVM.Records is
          --  be that of the record and we aren't forcing an alignment. If
          --  our total size is a constant, we can say what our alignment is.
 
-         if Present (MDT) then
-            This_Size  := Size_Const_Int (Get_Type_Size (MDT));
+         if Present (MD) then
+            This_Size  := Size_Const_Int (Get_Type_Size (MD));
             Must_Align := BPU;
             Is_Align   :=
               (if   Is_A_Constant_Int (Total_Size)
@@ -902,7 +903,7 @@ package body GNATLLVM.Records is
             declare
                Ordinal     : constant unsigned := unsigned (FI.Field_Ordinal);
                This_Offset : constant ULL      :=
-                 Offset_Of_Element (Module_Data_Layout, +RI.MDT, Ordinal);
+                 Offset_Of_Element (Module_Data_Layout, +RI.MD, Ordinal);
 
             begin
                return Offset + Size_Const_Int (This_Offset * UBPU);
@@ -1711,8 +1712,8 @@ package body GNATLLVM.Records is
    begin
       if Present (RI.GT) then
          Dump_GL_Type (RI.GT);
-      elsif Present (RI.MDT) then
-         Dump_MD_Type (RI.MDT);
+      elsif Present (RI.MD) then
+         Dump_MD_Type (RI.MD);
       end if;
 
    end Print_RI_Briefly;
@@ -1817,9 +1818,9 @@ package body GNATLLVM.Records is
             if Present (RI.GT) then
                Write_Str (Prefix);
                Dump_GL_Type (RI.GT);
-            elsif Present (RI.MDT) then
+            elsif Present (RI.MD) then
                Write_Str (Prefix);
-               Dump_MD_Type (RI.MDT);
+               Dump_MD_Type (RI.MD);
             end if;
 
             F_Idx := RI.First_Field;
@@ -1828,7 +1829,7 @@ package body GNATLLVM.Records is
                Write_Str (Prefix);
                Write_Str ("    Field");
 
-               if Present (RI.MDT) then
+               if Present (RI.MD) then
                   Write_Str ("@");
                   Write_Int (FI.Field_Ordinal);
 

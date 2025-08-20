@@ -1305,7 +1305,7 @@ package body GNATLLVM.Aliasing is
 
          begin
             Offsets (J) := SF.Offset;
-            Sizes   (J) := To_Bytes (Get_Type_Size (SF.MDT));
+            Sizes   (J) := To_Bytes (Get_Type_Size (SF.MD));
 
             --  If there's no GT for the field, this is a field used to
             --  store bitfields. So we make a unique scalar TBAA type

@@ -21,8 +21,9 @@ with Sem_Aux;     use Sem_Aux;
 with Stand;       use Stand;
 with Sinput;      use Sinput;
 
+with LLVM.Core; use LLVM.Core;
+
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Codegen;      use CCG.Codegen;
 with CCG.Environment;  use CCG.Environment;
@@ -132,11 +133,24 @@ package body CCG is
 
    procedure C_Set_MD_Type (V : Value_T; MDT : MD_Type) is
    begin
-      --  If we're not recording front end data, we do nothing. If
-      --  this value has already been used for multiple MD types, we
-      --  also do nothing.
+      --  If we're not recording front end data, we do nothing
 
-      if not Use_FE_Data or else Get_Is_Multi_MD (V) then
+      if not Use_FE_Data then
+         return;
+      end if;
+
+      --  If this is a global variable or function, set the type
+      --  corresponding to the name in case the optimizer recreates this
+      --  value as a different value.
+
+      if Is_A_Global_Variable (V) or else Is_A_Function (V) then
+         Set_MD_Type (Get_Value_Name (V), MDT);
+      end if;
+
+      --  If this value has already been used for multiple MD types, we
+      --  do nothing further.
+
+      if Get_Is_Multi_MD (V) then
          return;
 
       --  Otherwise, if we haven't previously set an MD_Type, set this one
@@ -155,7 +169,9 @@ package body CCG is
       --  we'll want to use the first-assigned type to declare the variable,
       --  so do nothing here.
 
-      elsif Get_MD_Type (V) /= MDT and then Is_A_Constant (V) then
+      elsif Get_MD_Type (V) /= MDT and then Is_A_Constant (V)
+        and then not Is_A_Global_Variable (V) and then not Is_A_Function (V)
+      then
          Set_Is_Multi_MD (V);
       end if;
    end C_Set_MD_Type;
@@ -186,6 +202,17 @@ package body CCG is
       end if;
    end C_Set_MD_Type;
 
+   -------------------
+   -- C_Get_MD_Type --
+   -------------------
+
+   function C_Get_MD_Type (T : Type_T) return MD_Type is
+      MDT : constant MD_Type := Get_MD_Type (T);
+
+   begin
+      return (if Get_Is_Multi_MD (T) then No_MD_Type else MDT);
+   end C_Get_MD_Type;
+
    ------------------
    -- C_Set_Entity --
    ------------------
@@ -208,7 +235,6 @@ package body CCG is
              and then Is_Type (Prev_E))
         or else No (Prev_E)
       then
-         Notify_On_Value_Delete (V, Delete_Value_Info'Access);
          Set_Entity             (V, E);
          Set_Entity_Is_Ref      (V, Reference);
       end if;

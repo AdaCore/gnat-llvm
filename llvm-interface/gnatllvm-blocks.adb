@@ -706,7 +706,7 @@ package body GNATLLVM.Blocks is
       Personality_Fn :=
         Add_Global_Function
           (Get_Personality_Function_Name (Normalized_Target_Triple.all),
-           Fn_Ty ((1 .. 0 => <>), Int_32_MD, True), Void_GL_Type);
+           Fn_Ty ((1 .. 0 => <>), Int_32_MD, Varargs => True), Void_GL_Type);
 
       Begin_Handler_Fn :=
         Add_Global_Function ("__gnat_begin_handler_v1",

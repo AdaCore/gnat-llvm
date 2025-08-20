@@ -17,12 +17,17 @@
 
 with Ada.Containers; use Ada.Containers;
 with Ada.Containers.Hashed_Maps;
+with Ada.Containers.Indefinite_Hashed_Maps;
+with Ada.Strings.Hash;
 
 with Atree; use Atree;
 with Table; use Table;
 
+with LLVM.Core; use LLVM.Core;
+
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 with CCG.Helper; use CCG.Helper;
 with CCG.Output; use CCG.Output;
@@ -31,7 +36,7 @@ with CCG.Utils;  use CCG.Utils;
 package body CCG.Environment is
 
    type Value_Data is record
-     C_Value        : Str;
+      C_Value        : Str;
       --  If Present, a string that represents the value of the Value_T
 
       Is_Decl_Output : Boolean;
@@ -194,6 +199,13 @@ package body CCG.Environment is
       Equivalent_Keys => "=");
    BB_Info_Map : BB_Info_Maps.Map;
 
+   package Ext_Name_Info_Maps is new Ada.Containers.Indefinite_Hashed_Maps
+     (Key_Type        => String,
+      Element_Type    => MD_Type,
+      Hash            => Ada.Strings.Hash,
+      Equivalent_Keys => "=");
+   Ext_Name_Info_Map : Ext_Name_Info_Maps.Map;
+
    Output_Idx : Nat := 1;
    --  The next output index to use for values, types, and basic blocks
 
@@ -201,11 +213,11 @@ package body CCG.Environment is
    --  basic block and whether to create one if one isn't present.
 
    function Value_Info_Idx (V : Value_T; Create : Boolean) return Value_Idx
-     with Pre => Present (V), Pure_Function;
+   with Pre => Present (V), Pure_Function;
    function Type_Info_Idx  (T : Type_T; Create : Boolean) return Type_Idx
-     with Pre => Present (T), Pure_Function;
+   with Pre => Present (T), Pure_Function;
    function BB_Info_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx
-     with Pre => Present (B), Pure_Function;
+   with Pre => Present (B), Pure_Function;
 
    --------------------
    -- Value_Info_Idx --
@@ -214,11 +226,10 @@ package body CCG.Environment is
    function Value_Info_Idx (V : Value_T; Create : Boolean) return Value_Idx
    is
       use Value_Info_Maps;
-      Position : constant Cursor := Find (Value_Info_Map, V);
 
    begin
-      if Has_Element (Position) then
-         return Element (Position);
+      if Value_Info_Map.Contains (V) then
+         return Value_Info_Map (V);
       elsif not Create then
          return No_Value_Idx;
       else
@@ -235,6 +246,7 @@ package body CCG.Environment is
                              Must_Globalize => False,
                              Output_Idx     => 0));
          Insert (Value_Info_Map, V, Value_Info.Last);
+         Notify_On_Value_Delete (V, Delete_Value_Info'Access);
          return Value_Info.Last;
       end if;
    end Value_Info_Idx;
@@ -245,6 +257,7 @@ package body CCG.Environment is
 
    procedure Delete_Value_Info (V : Value_T) is
       use Value_Info_Maps;
+      use BB_Info_Maps;
    begin
       --  If we had an entity associated with this value, show that we
       --  no longer have that assocation.
@@ -260,6 +273,12 @@ package body CCG.Environment is
          Delete_Function_Info (V);
       end if;
 
+      --  Likewise if it's a basic block
+
+      if Is_A_Basic_Block (V) then
+         Exclude (BB_Info_Map, Value_As_Basic_Block (V));
+      end if;
+
       --  Finally delete all other information we think we know about
       --  this value.
 
@@ -273,11 +292,10 @@ package body CCG.Environment is
    function Type_Info_Idx (T : Type_T; Create : Boolean) return Type_Idx
    is
       use Type_Info_Maps;
-      Position : constant Cursor := Find (Type_Info_Map, T);
 
    begin
-      if Has_Element (Position) then
-         return Element (Position);
+      if Type_Info_Map.Contains (T) then
+         return Type_Info_Map (T);
       elsif not Create then
          return No_Type_Idx;
       else
@@ -303,17 +321,22 @@ package body CCG.Environment is
    function BB_Info_Idx (B : Basic_Block_T; Create : Boolean) return BB_Idx
    is
       use BB_Info_Maps;
-      Position : constant Cursor := Find (BB_Info_Map, B);
 
    begin
-      if Has_Element (Position) then
-         return Element (Position);
+      if BB_Info_Map.Contains (B) then
+         return BB_Info_Map (B);
       elsif not Create then
          return No_BB_Idx;
       else
          BB_Info.Append ((Flow        => Empty_Flow_Idx,
                           Output_Idx  => 0));
          Insert (BB_Info_Map, B, BB_Info.Last);
+
+         --  Handle the case where a basic block is delete sine it may
+         --  be reused.
+
+         Notify_On_Value_Delete
+           (Basic_Block_As_Value (B), Delete_Value_Info'Access);
          return BB_Info.Last;
       end if;
    end BB_Info_Idx;
@@ -793,8 +816,10 @@ package body CCG.Environment is
    -- Maybe_Output_Typedef --
    --------------------------
 
-   procedure Maybe_Output_Typedef (T : Type_T; Incomplete : Boolean := False)
+   procedure Maybe_Output_Typedef (MD : MD_Type; Incomplete : Boolean := False)
    is
+      T : constant Type_T := +MD;
+
    begin
       --  If we're outputting this, have output it, or are just looking for
       --  an incomplete definition and have already output one, we don't
@@ -806,7 +831,7 @@ package body CCG.Environment is
       then
          null;
       else
-         Output_Typedef (T, Incomplete => Incomplete);
+         Output_Typedef (MD, Incomplete => Incomplete);
       end if;
    end Maybe_Output_Typedef;
 
@@ -872,5 +897,26 @@ package body CCG.Environment is
       Output_Idx := Output_Idx + 1;
       return Result;
    end Get_Output_Idx;
+
+   -----------------
+   -- Get_MD_Type --
+   -----------------
+
+   function Get_MD_Type (S : String) return MD_Type is
+      use Ext_Name_Info_Maps;
+   begin
+      return (if   Ext_Name_Info_Map.Contains (S) then Ext_Name_Info_Map (S)
+              else No_MD_Type);
+   end Get_MD_Type;
+
+   -----------------
+   -- Set_MD_Type --
+   -----------------
+
+   procedure Set_MD_Type (S : String; MD : MD_Type) is
+      use Ext_Name_Info_Maps;
+   begin
+      Ext_Name_Info_Map.Include (S, MD);
+   end Set_MD_Type;
 
 end CCG.Environment;

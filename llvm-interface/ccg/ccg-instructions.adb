@@ -195,11 +195,11 @@ package body CCG.Instructions is
    function Process_Operand
      (V : Value_T; POO : Process_Operand_Option; P : Precedence) return Str
    is
-      T      : constant Type_T := Type_Of (V);
-      Size   : constant Nat    :=
-        (if Is_Integral_Type (T) then Get_Scalar_Bit_Size (T) else BPU);
-      Extras : constant Nat    := Get_Extra_Bits (Size);
-      Result : Str             :=
+      MD     : constant MD_Type := Actual_Type (V);
+      Size   : constant Nat     :=
+        (if Is_Integer (MD) then Int_Bits (MD) else BPU);
+      Extras : constant Nat     := Get_Extra_Bits (Size);
+      Result : Str              :=
         (case POO is when X            => V + P,
                      when POO_Signed   => V + Need_Signed + P,
                      when POO_Unsigned => V + Need_Unsigned + P);
@@ -223,7 +223,7 @@ package body CCG.Instructions is
 
       elsif not Use_Signed and then Extras < ULL'Size - 1 then
          declare
-            P2_Size : constant Nat     := Next_Pow2 (Get_Scalar_Bit_Size (T));
+            P2_Size : constant Nat     := Next_Pow2 (Int_Bits (MD));
             Mask_T  : constant Type_T  := Int_Ty (P2_Size);
             Mask_W  : constant Natural := Integer (P2_Size - Extras);
             Mask    : constant ULL     := Shift_Left (1, Mask_W) - 1;
@@ -241,7 +241,7 @@ package body CCG.Instructions is
 
       else
          declare
-            Cast : constant Str := "(" & (T + not Use_Signed) & ")";
+            Cast : constant Str := "(" & (MD + not Use_Signed) & ")";
 
          begin
             Result := Cast & "(" & (Result + Shift) & " << " & Extras & ")";
@@ -258,13 +258,13 @@ package body CCG.Instructions is
    begin
       --  If this isn't a bit type, we know it isn't a comparison. If it's
       --  a simple constant, we know that it is.  If this isn't an
-      --  instruction, we don't know that it's a comparison.
+      --  operation, we don't know that it's a comparison.
 
       if Type_Of (V) /= Bit_T then
          return False;
       elsif Is_Simple_Constant (V) then
          return True;
-      elsif not Is_A_Instruction (V) then
+      elsif not Has_Operands (V) then
          return False;
       end if;
 
@@ -440,7 +440,8 @@ package body CCG.Instructions is
       else
          declare
             Size : constant Str :=
-              "sizeof (" & Get_Allocated_Type (V) & ") * " & (Op + Mult);
+              "sizeof (" & Declaration_Type (Get_Allocated_Type (V)) &
+              ") * " & (Op + Mult);
             Call : constant Str :=
               "alloca (" & Size & ")" + Unknown + Component;
 
@@ -461,14 +462,36 @@ package body CCG.Instructions is
       end if;
    end Alloca_Instruction;
 
+   --------------
+   -- LS_Op_MD --
+   --------------
+
+   function LS_Op_MD (V, Op : Value_T) return MD_Type is
+      LS_T          : constant Type_T  := Get_Load_Store_Type (V);
+      Inst_MD       : constant MD_Type := From_Type (LS_T);
+      Ptr_MD        : constant MD_Type := Actual_Type (Op, As_LHS => True);
+      Val_MD        : constant MD_Type := Designated_Type (Ptr_MD);
+
+      --  If we're loading or storing using the same type and volatility as
+      --  the instruction, we can use the operand's type unless what we
+      --  have is a pointer to void. Otherwise, we need to cast to a
+      --  pointer to the type and volatility designated by the instruction.
+
+   begin
+      return (if   +Val_MD = LS_T
+                   and then Get_Volatile (V) = Is_Volatile (Val_MD)
+                   and then not Is_A_Constant_Pointer_Null (Op)
+                   and then Ptr_MD /= Void_Ptr_MD
+              then Val_MD else Make_Volatile (Inst_MD, Get_Volatile (V)));
+
+   end LS_Op_MD;
+
    --------------------------
    -- Deref_For_Load_Store --
    --------------------------
 
    function Deref_For_Load_Store (Op, V : Value_T) return Str is
-      T             : constant Type_T  := Get_Load_Store_Type (V);
-      Need_Volatile : constant Boolean :=
-        Get_Volatile (V) and then not Is_Ref_To_Volatile (Op);
+      LS_T : constant Type_T  := Get_Load_Store_Type (V);
 
    begin
       --  If this is a load or store of a partial integer, we need to
@@ -482,14 +505,15 @@ package body CCG.Instructions is
       --  next is above 32 but below 64-8.
 
       if not Pack_Not_Supported
-        and then Is_Integral_Type (T)
-        and then Get_Scalar_Bit_Size (T) in 17 .. 24 | 33 .. 56 | 65 .. 120
+        and then Is_Integral_Type (LS_T)
+        and then Get_Scalar_Bit_Size (LS_T) in 17 .. 24 | 33 .. 56 | 65 .. 120
       then
          declare
-            Bits   : constant Nat := Get_Scalar_Bit_Size (T);
+            Bits   : constant Nat := Get_Scalar_Bit_Size (LS_T);
             Result : Str :=
               "((struct ccg_i" & Bits & " *" &
-              (if Need_Volatile then "volatile" else "") & ") " & Op & ")->f";
+              (if   Get_Volatile (V) then "volatile"
+               else "") & ") " & Op & ")->f";
 
          begin
             Need_IXX_Struct (Bits);
@@ -505,22 +529,12 @@ package body CCG.Instructions is
 
             return Result;
          end;
-
-      --  If this isn't volatile, it's a normal dereference. Likewise if
-      --  it's already known to be volatile. But if this is a null, we need
-      --  to cast it to a volatile form of its type to avoid an error from
-      --  most C compilers.
-
-      elsif not Need_Volatile and then not Is_A_Constant_Pointer_Null (Op)
-        and then not Is_Undef (Op)
-      then
-         return Deref (Op);
-
-      --  Otherwise, cast to a volatile form of the type and dereference that
-
-      else
-         return Deref (TP ("(volatile #T1) #1", Op));
       end if;
+
+      --  Possibly cast Op to the pointer type to the type in which we'll
+      --  be performing the instruction.
+
+      return Deref (Maybe_Cast (Pointer_Type (LS_Op_MD (V, Op)), Op, True));
 
    end Deref_For_Load_Store;
 
@@ -542,12 +556,12 @@ package body CCG.Instructions is
 
    procedure Store_Instruction (V, Op1, Op2 : Value_T) is
       LHS : constant Str := Deref_For_Load_Store (Op2, V);
-      RHS : constant Str := +Op1;
+      RHS : constant Str := Maybe_Cast (LS_Op_MD (V, Op2), Op1);
 
    begin
       Error_If_Cannot_Pack (Type_Of (Op1));
       Process_Pending_Values;
-      Output_Copy (LHS, RHS, Type_Of (Op1), V => V);
+      Output_Copy (LHS, RHS, Declaration_Type (Op1), V => V);
    end Store_Instruction;
 
    ------------------------
@@ -555,6 +569,8 @@ package body CCG.Instructions is
    ------------------------
 
    function Select_Instruction (Op1, Op2, Op3 : Value_T) return Str is
+      MD : constant MD_Type := Actual_Type (Op2, True);
+
    begin
       --  If either operand has side effects, force it to a variable so that
       --  we're sure that both are evaluated.
@@ -574,7 +590,9 @@ package body CCG.Instructions is
       --  points to, we'll be able to do better here.
 
       if Is_Pointer_Type (Op2) then
-         return TP ("#1 ? (#T2) #2 : (#T2) #3", Op1, Op2, Op3) + Conditional;
+         return
+           Op1 & "? (" & MD & ") " & Op2 & ": (" & MD & ")" & Op3 +
+           Conditional;
       else
          return TP ("#1 ? #2 : #3", Op1, Op2, Op3) + Conditional;
       end if;
@@ -586,7 +604,7 @@ package body CCG.Instructions is
 
    function Binary_Instruction (V, Op1, Op2 : Value_T) return Str is
       Opc      : constant Opcode_T               := Get_Opcode (V);
-      T        : constant Type_T                 := Type_Of (V);
+      MD       : constant MD_Type                := Actual_Type (V);
       Can_Ovfl : constant Boolean                :=
         Is_A_Instruction (V) and then Opc in Op_Add | Op_Sub | Op_Mul
         and then not Has_NSW (V);
@@ -651,7 +669,7 @@ package body CCG.Instructions is
             --  If this is a bit operation and neither has side-effects, use
             --  && because this is clearer and more efficient in C.
 
-            if T = Bit_T and then not Has_Side_Effects (Op1)
+            if MD = Bit_MD and then not Has_Side_Effects (Op1)
               and then not Has_Side_Effects (Op2)
             then
                return TP ("#1 && #2", Op1, Op2) + Logical_AND;
@@ -661,7 +679,7 @@ package body CCG.Instructions is
 
          when Op_Or =>
 
-            if T = Bit_T and then not Has_Side_Effects (Op1)
+            if MD = Bit_MD and then not Has_Side_Effects (Op1)
               and then not Has_Side_Effects (Op2)
             then
                return TP ("#1 || #2", Op1, Op2) + Logical_OR;
@@ -671,7 +689,7 @@ package body CCG.Instructions is
 
          when Op_Xor =>
 
-            if T = Bit_T and then Is_A_Constant_Int (Op2)
+            if MD = Bit_MD and then Is_A_Constant_Int (Op2)
               and then Equals_Int (Op2, 1)
             then
                return TP ("! #1", Op1) + Unary;
@@ -688,7 +706,7 @@ package body CCG.Instructions is
       --  result to signed.
 
       if Can_Ovfl and then not Is_Unsigned (V) then
-         Result := "(" & T & ") (" & Result & ")" + Unary;
+         Result := "(" & MD & ") (" & Result & ")" + Unary;
       end if;
 
       return Result;
@@ -725,27 +743,15 @@ package body CCG.Instructions is
          Force_To_Variable (Op);
          return TP ("*((#T2 *) #A1)", Op, V) + Unary;
 
-         --  If we have a bitcast where both are pointers, we have a few cases
-         --  to look at.
+      --  If we have a bitcast where both are pointers, we don't do anything
+      --  since we'll do a final adjustment of pointer types when needed.
+      --  But do be sure we indicate that our value has the form of an LHS
+      --  if our input does.
 
       elsif Opc = Op_Bit_Cast and then Is_Pointer_Type (Src_T)
         and then Is_Pointer_Type (Dest_T)
       then
-         declare
-            Safe_User : constant Value_T := Safe_Single_User (V);
-
-         begin
-            --  If our only user is another bitcast to a pointer type, this
-            --  is a nop because multiple conversions between pointer types
-            --  are equivalent to just the outer one.
-
-            if Present (Safe_User) and then Is_A_Bit_Cast_Inst (Safe_User)
-              and then Is_Pointer_Type (Safe_User)
-              and then not Get_Is_LHS (Op)
-            then
-               return Our_Op;
-            end if;
-         end;
+         return Our_Op;
 
       --  If we're zero-extending a value that's known to be a comparison
       --  result, we do nothing since we know that the value is already
@@ -886,27 +892,27 @@ package body CCG.Instructions is
    -- Output_Copy --
    -----------------
 
-   procedure Output_Copy (LHS : Value_T; RHS : Str; T : Type_T) is
+   procedure Output_Copy (LHS : Value_T; RHS : Str; MD : MD_Type) is
    begin
-      Output_Copy (+LHS, RHS, T, V => LHS);
+      Output_Copy (+LHS, RHS, MD, V => LHS);
    end Output_Copy;
 
    -----------------
    -- Output_Copy --
    -----------------
 
-   procedure Output_Copy (LHS : Str; RHS : Value_T; T : Type_T) is
+   procedure Output_Copy (LHS : Str; RHS : Value_T; MD : MD_Type) is
    begin
-      Output_Copy (LHS, +RHS, T, V => RHS);
+      Output_Copy (LHS, +RHS, MD, V => RHS);
    end Output_Copy;
 
    -----------------
    -- Output_Copy --
    -----------------
 
-   procedure Output_Copy (LHS, RHS : Value_T; T : Type_T) is
+   procedure Output_Copy (LHS, RHS : Value_T; MD : MD_Type) is
    begin
-      Output_Copy (+LHS, +RHS, T, V => LHS);
+      Output_Copy (+LHS, +RHS, MD, V => LHS);
    end Output_Copy;
 
    -----------------
@@ -914,7 +920,7 @@ package body CCG.Instructions is
    -----------------
 
    procedure Output_Copy
-     (LHS, RHS : Str; T : Type_T; V : Value_T := No_Value_T)
+     (LHS, RHS : Str; MD : MD_Type; V : Value_T := No_Value_T)
    is
    begin
       --  If this isn't an array type, write a normal assignment. Otherwise,
@@ -922,7 +928,7 @@ package body CCG.Instructions is
       --  ??? We can usually use memcpy, but it's not clear what test to
       --  do here at the moment.
 
-      if not Is_Array_Type (T) then
+      if not Is_Array (MD) then
          Add_Line (LHS & " = " & RHS + Assign, V);
 
       --  If T is a zero-sized array, it means that we're not to move
@@ -932,10 +938,10 @@ package body CCG.Instructions is
       --  to explicitly take the address here and, in fact, doing that
       --  is wrong in some cases.
 
-      elsif Get_Array_Length (T) /= Nat (0) then
+      elsif Array_Count (MD) /= 0 then
          Add_Line ("memmove ((void *) " & (LHS + Unary) &
                      ", (void *) " & (RHS + Unary) &
-                     ", sizeof (" & T & "))", V);
+                     ", sizeof (" & MD & "))", V);
       end if;
    end Output_Copy;
 
@@ -966,7 +972,7 @@ package body CCG.Instructions is
          --  Declare the variable and write the copy into it
 
          Maybe_Decl  (V);
-         Output_Copy  (V, C_Val, Type_Of (V));
+         Output_Copy  (V, C_Val, Declaration_Type (V));
       end if;
    end Force_To_Variable;
 
@@ -984,7 +990,7 @@ package body CCG.Instructions is
       if Num_Uses (LHS) = 0 then
          if Has_Side_Effects (LHS) then
             Maybe_Decl (LHS);
-            Output_Copy (LHS, RHS, Type_Of (LHS));
+            Output_Copy (LHS, RHS, Declaration_Type (LHS));
          else
             return;
          end if;
@@ -1015,7 +1021,7 @@ package body CCG.Instructions is
         and then not (Get_Is_LHS (LHS) and then Is_Array_Type (LHS))
       then
          Maybe_Decl (LHS);
-         Output_Copy (LHS, RHS, Type_Of (LHS));
+         Output_Copy (LHS, RHS, Declaration_Type (LHS));
       else
          --  Make a note of the value of V. If V is an instruction, that
          --  has a potential side effect-such as call or load, make a

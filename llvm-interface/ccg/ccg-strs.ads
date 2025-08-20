@@ -40,15 +40,15 @@ package CCG.Strs is
      with Post => Present ("+"'Result);
    function "+" (V : Value_T)       return Str
      with Pre => Present (V), Post => Present ("+"'Result);
-   function "+" (T : Type_T)        return Str
-     with Pre => Present (T), Post => Present ("+"'Result);
+   function "+" (MD : MD_Type)        return Str
+     with Pre => Present (MD), Post => Present ("+"'Result);
    function "+" (B : Basic_Block_T) return Str
      with Pre => Present (B), Post => Present ("+"'Result);
    function "+" (N : Nat)           return Str
      with Post => Present ("+"'Result);
    function "+" (E : Entity_Id)     return Str
      with Pre => Present (E), Post => Present ("+"'Result);
-   --  Return an internal representation of S, V, T, B, or E
+   --  Return a Str representation of S, V, MD, B, N, or E
 
    --  In order to eliminate most parentheses, we record the operator
    --  precedence, if known, of a string, and the precedence of how a value
@@ -234,15 +234,6 @@ package CCG.Strs is
       Write_Return  : Boolean;
    end record;
 
-   function "or" (X, Y : Value_Flags) return Value_Flags is
-     (LHS            => X.LHS           or Y.LHS,
-      Initializer    => X.Initializer   or Y.Initializer,
-      Need_Unsigned  => X.Need_Unsigned or Y.Need_Unsigned,
-      Need_Signed    => X.Need_Signed   or Y.Need_Signed,
-      Only_Type      => X.Only_Type     or Y.Only_Type,
-      With_Type      => X.With_Type     or Y.With_Type,
-      Write_Return   => X.Write_Return  or Y.Write_Return);
-
    type Value_Flag_Array is array (Value_Flag) of Value_Flags;
 
    Default_Value_Flags : constant Value_Flags      :=
@@ -263,6 +254,17 @@ package CCG.Strs is
 
    function "+" (F : Value_Flag) return Value_Flags is
      (Value_Flag_To_Flags (F));
+
+   function "or" (X, Y : Value_Flags) return Value_Flags is
+     (LHS            => X.LHS           or Y.LHS,
+      Initializer    => X.Initializer   or Y.Initializer,
+      Need_Unsigned  => X.Need_Unsigned or Y.Need_Unsigned,
+      Need_Signed    => X.Need_Signed   or Y.Need_Signed,
+      Only_Type      => X.Only_Type     or Y.Only_Type,
+      With_Type      => X.With_Type     or Y.With_Type,
+      Write_Return   => X.Write_Return  or Y.Write_Return);
+   function "or" (X, Y : Value_Flag) return Value_Flags is
+     (+X or +Y);
 
    function "+" (V : Value_T; VF : Value_Flags) return Str
      with Pre => Present (V), Post => Present ("+"'Result);
@@ -293,10 +295,6 @@ package CCG.Strs is
       Need_Signed   : Boolean;
    end record;
 
-   function "or" (X, Y : Type_Flags) return Type_Flags is
-     (Need_Unsigned  => X.Need_Unsigned or Y.Need_Unsigned,
-      Need_Signed    => X.Need_Signed   or Y.Need_Signed);
-
    type Type_Flag_Array is array (Type_Flag) of Type_Flags;
 
    Default_Type_Flags : constant Type_Flags      := (False, False);
@@ -307,22 +305,28 @@ package CCG.Strs is
    function "+" (F : Type_Flag) return Type_Flags is
      (Type_Flag_To_Flags (F));
 
-   function "+" (T : Type_T; TF : Type_Flags) return Str
-     with Pre => Present (T), Post => Present ("+"'Result);
-   function "+" (T : Type_T; TF : Type_Flag) return Str is
-     (T + (+TF))
-     with Pre => Present (T), Post => Present ("+"'Result);
-   function "+" (T : Type_T; Is_Unsigned : Boolean) return Str is
-     (T + (if Is_Unsigned then Need_Unsigned else Need_Signed))
-     with Pre => Present (T), Post => Present ("+"'Result);
+   function "or" (X, Y : Type_Flags) return Type_Flags is
+     (Need_Unsigned  => X.Need_Unsigned or Y.Need_Unsigned,
+      Need_Signed    => X.Need_Signed   or Y.Need_Signed);
+   function "or" (X, Y : Type_Flag) return Type_Flags is
+     (+X or +Y);
 
-   function "+" (S : Str; T : Type_T) return Str
-     with Pre  => Present (T), Post => Present ("+"'Result);
-   function "+" (V : Value_T; T : Type_T) return Str
-     with Pre  => Present (V) and then Present (T),
+   function "+" (MD : MD_Type; TF : Type_Flags) return Str
+     with Pre => Present (MD), Post => Present ("+"'Result);
+   function "+" (MD : MD_Type; TF : Type_Flag) return Str is
+     (MD + (+TF))
+     with Pre => Present (MD), Post => Present ("+"'Result);
+   function "+" (MD : MD_Type; Is_Unsigned : Boolean) return Str is
+     (MD + (if Is_Unsigned then Need_Unsigned else Need_Signed))
+     with Pre => Present (MD), Post => Present ("+"'Result);
+
+   function "+" (S : Str; MD : MD_Type) return Str
+     with Pre  => Present (MD), Post => Present ("+"'Result);
+   function "+" (V : Value_T; MD : MD_Type) return Str
+     with Pre  => Present (V) and then Present (MD),
           Post => Present ("+"'Result);
-   function "+" (T : Type_T; V : Value_T) return Str
-     with Pre  => Present (T) and then Present (V),
+   function "+" (MD : MD_Type; V : Value_T) return Str
+     with Pre  => Present (MD) and then Present (V),
           Post => Present ("+"'Result);
 
    type String_Kind is (Normal, C_Name);
@@ -337,7 +341,7 @@ package CCG.Strs is
 
    function "&" (L : String;         R : Value_T)       return Str
      with Post => Present ("&"'Result);
-   function "&" (L : String;         R : Type_T)        return Str
+   function "&" (L : String;         R : MD_Type)       return Str
      with Pre => Present (R), Post => Present ("&"'Result);
    function "&" (L : String;         R : Basic_Block_T) return Str
      with Pre => Present (R), Post => Present ("&"'Result);
@@ -350,9 +354,9 @@ package CCG.Strs is
    function "&" (L : Value_T;        R : Str)           return Str
      with Pre  => Present (L) and then Present (R),
           Post => Present ("&"'Result);
-   function "&" (L : Type_T;         R : String)        return Str
+   function "&" (L : MD_Type;        R : String)        return Str
      with Pre => Present (L), Post => Present ("&"'Result);
-   function "&" (L : Type_T;         R : Str)           return Str
+   function "&" (L : MD_Type;        R : Str)           return Str
      with Pre  => Present (L) and then Present (R),
           Post => Present ("&"'Result);
    function "&" (L : Basic_Block_T;  R : String)        return Str
@@ -365,7 +369,7 @@ package CCG.Strs is
    function "&" (L : Str;            R : Value_T)       return Str
      with Pre  => Present (R),
           Post => Present ("&"'Result);
-   function "&" (L : Str;            R : Type_T)        return Str
+   function "&" (L : Str;            R : MD_Type)       return Str
      with Pre  => Present (R),
           Post => Present ("&"'Result);
    function "&" (L : Str;            R : Basic_Block_T) return Str
@@ -393,15 +397,15 @@ package CCG.Strs is
      (Str'(+L) & R)
      with Post => Present ("&"'Result);
 
-   function "or" (T : Type_T; E : Entity_Id)             return Str
-     with Pre => Present (T), Post => Present ("or"'Result);
+   function "or" (MD : MD_Type; E : Entity_Id)           return Str
+     with Pre => Present (MD), Post => Present ("or"'Result);
    --  Produce a string that either references T or E, depending on which
    --  will provide a more accurate version of the type
 
-   function Addr_Of (S : Str; T : Type_T := No_Type_T) return Str
+   function Addr_Of (S : Str;     MD : MD_Type := No_MD_Type) return Str
      with Pre => Present (S), Post => Present (Addr_Of'Result);
-   function Addr_Of (V : Value_T; T : Type_T := No_Type_T) return Str is
-     (Addr_Of (+V, T))
+   function Addr_Of (V : Value_T; MD : MD_Type := No_MD_Type) return Str is
+     (Addr_Of (+V, MD))
      with Pre => Present (V), Post => Present (Addr_Of'Result);
    --  Make an Str that represents taking the address of S or V. This usually
    --  means prepending "&", but we can also do that by removing a leading
@@ -485,7 +489,7 @@ private
             For_P   : Precedence;
 
          when Typ =>
-            T       : Type_T;
+            MD      : MD_Type;
             Name    : Str;
             T_Flags : Type_Flags;
 
@@ -522,7 +526,8 @@ private
      (S.P);
 
    function Is_Value (S : Str) return Boolean is
-     (S.Length = 1 and then S.Comps (1).Kind = Value);
+     (S.Length = 1 and then S.Comps (1).Kind = Value
+      and then S.Comps (1).V_Flags = Default_Value_Flags);
 
    function Is_Null_String (S : Str) return Boolean is
      (S.Length = 0);

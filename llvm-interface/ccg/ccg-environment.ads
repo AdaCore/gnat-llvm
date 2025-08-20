@@ -15,8 +15,6 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Core; use LLVM.Core;
-
 with CCG.Strs;   use CCG.Strs;
 
 package CCG.Environment is
@@ -201,38 +199,20 @@ package CCG.Environment is
    function Get_Output_Idx                      return Nat
      with Post => Get_Output_Idx'Result /= 0, Inline;
 
-   procedure Maybe_Output_Typedef (T : Type_T; Incomplete : Boolean := False)
-     with Pre  => Present (T),
-          Post => Get_Is_Typedef_Output (T)
-                  or else Get_Are_Outputting_Typedef (T)
-                  or else (Incomplete and then Get_Is_Incomplete_Output (T));
+   procedure Maybe_Output_Typedef (MD : MD_Type; Incomplete : Boolean := False)
+     with Pre  => Present (MD),
+          Post => Get_Is_Typedef_Output (+MD)
+                  or else Get_Are_Outputting_Typedef (+MD)
+                  or else (Incomplete and then Get_Is_Incomplete_Output (+MD));
    --  See if we need to write a typedef for T and write one if so. If
    --  Incomplete is True, all we need is the initial portion of a struct
    --  definition.
 
-   --  Provide a set of functions to reference an Str that contains just
-   --  a value or contains exactly one value.
+   --  We provide a table mapping external names to their MD types in case
+   --  the optimizer recreates a function or external declaration.
 
-   function Contains_One_Value (S : Str) return Boolean is
-     (Present (Single_Value (S)))
-     with Pre => Present (S);
-   function "+" (S : Str) return Value_T is
-     (Single_Value (S))
-     with Pre => Contains_One_Value (S), Inline;
-   function Get_Is_LHS (S : Str) return Boolean is
-     (Get_Is_LHS (+S))
-     with Pre => Contains_One_Value (S);
-   function Get_Is_Constant (S : Str) return Boolean is
-     (Get_Is_Constant (+S))
-     with Pre => Contains_One_Value (S);
-   function Get_C_Value (S : Str) return Str is
-     (Get_C_Value (+S))
-     with Pre => Contains_One_Value (S);
-   function Type_Of (S : Str) return Type_T is
-     (Type_Of (+S))
-     with Pre => Contains_One_Value (S);
-   function Get_Type_Kind (S : Str) return Type_Kind_T is
-     (Get_Type_Kind (Type_Of (S)))
-     with Pre => Contains_One_Value (S);
+   function Get_MD_Type (S : String) return MD_Type;
+   procedure Set_MD_Type (S : String; MD : MD_Type)
+     with Post => Get_MD_Type (S) = MD;
 
 end CCG.Environment;

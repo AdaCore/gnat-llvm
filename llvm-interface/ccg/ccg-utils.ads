@@ -160,6 +160,10 @@ package CCG.Utils is
      (Get_Type_Kind (V) = Metadata_Type_Kind)
      with Pre => Present (V);
 
+   function Is_Zero_Length_Array (MD : MD_Type) return Boolean is
+     (Is_Array (MD) and then Is_Fixed_Array (MD) and then Array_Count (MD) = 0)
+     with Pre => Present (MD);
+
    function Is_Zero_Length_Array (T : Type_T) return Boolean is
      (Is_Array_Type (T) and then Get_Array_Length (T) = Nat (0))
      with Pre => Present (T);
@@ -174,6 +178,10 @@ package CCG.Utils is
    --  source as a constant.
    --  ??? Strings are also simple constants, but we don't support them just
    --  yet.
+
+   function Element_Str (MD : MD_Type; Idx : Nat) return Str is
+     (+Get_Name_String (Element_Name (MD, Idx)))
+     with Pre => Is_Struct (MD), Post => Present (Element_Str'Result);
 
    function GNAT_Type (V : Value_T) return Opt_Type_Kind_Id
      with Pre => Present (V), Inline;
@@ -248,12 +256,19 @@ package CCG.Utils is
      (if   C_Version < 1999 and then Get_Array_Length (T) = 0
       then 1 else Get_Array_Length (T))
       with Pre => Present (T);
+   function Effective_Array_Length (MD : MD_Type) return Nat is
+     (if    C_Version < 1999 and then Is_Fixed_Array (MD)
+            and then Array_Count (MD) = 0
+      then  1
+      elsif Is_Variable_Array (MD) then 1
+      else  Array_Count (MD))
+      with Pre => Present (MD);
 
-   function UC_V is new Ada.Unchecked_Conversion (Value_T, System.Address);
-   function UC_T is new Ada.Unchecked_Conversion (Type_T, System.Address);
-   function UC_B is new Ada.Unchecked_Conversion (Basic_Block_T,
+   function UC_V  is new Ada.Unchecked_Conversion (Value_T, System.Address);
+   function UC_T  is new Ada.Unchecked_Conversion (Type_T, System.Address);
+   function UC_B  is new Ada.Unchecked_Conversion (Basic_Block_T,
                                                   System.Address);
-   function UC_S is new Ada.Unchecked_Conversion (Str, System.Address);
+   function UC_S  is new Ada.Unchecked_Conversion (Str, System.Address);
 
    function Hash (V : Value_T)       return Hash_Type is
      (Hash_Type'Mod (To_Integer (UC_V (V)) / (V'Size / 8)));
@@ -265,6 +280,9 @@ package CCG.Utils is
      with Pre => Present (B);
    function Hash (S : Str) return Hash_Type is
      (Hash_Type'Mod (To_Integer (UC_S (S)) / (S'Size / 8)));
+   function Hash (MD : MD_Type)        return Hash_Type is
+     (Hash_Type'Mod (MD))
+     with Pre => Present (MD);
    --  Hash functions for LLVM values, types, basic blocks, and Strs
 
    --  We want to compute a hash code for a Str_Component_Array that will be
@@ -285,9 +303,9 @@ package CCG.Utils is
      with Pre => Present (V), Inline;
    --  Update H taking into account the value V
 
-   procedure Update_Hash (H : in out Hash_Type; T : Type_T)
-     with Pre => Present (T), Inline;
-   --  Update H taking into account the type T
+   procedure Update_Hash (H : in out Hash_Type; MD : MD_Type)
+     with Pre => Present (MD), Inline;
+   --  Update H taking into account the type MD
 
    procedure Update_Hash (H : in out Hash_Type; B : Basic_Block_T)
      with Pre => Present (B), Inline;
@@ -330,7 +348,8 @@ package CCG.Utils is
 
    function Declaration_Type
      (V : Value_T; No_Force : Boolean := False) return MD_Type
-   with Pre => Present (V);
+     with Pre  => Present (V),
+          Post => No_Force or else Present (Declaration_Type'Result);
    --  Return the MD type that we'd use to declare V, if such a declaration
    --  were to be necessary. Usually, we'll get this from data saved when
    --  we're generating the IR, but if not, try to see if we can derive
@@ -338,6 +357,26 @@ package CCG.Utils is
    --  works and No_Force is False, we build an MD type from the LLVM
    --  type of T. This will be an approximate, but is the best we can do
    --  in that situation.
+   function Declaration_Type
+     (T : Type_T; No_Force : Boolean := False) return MD_Type
+     with Pre  => Present (T),
+          Post => No_Force or else Present (Declaration_Type'Result);
+
+   function Actual_Type (V : Value_T; As_LHS : Boolean := False) return MD_Type
+     with Pre => Present (V), Post => Present (Actual_Type'Result);
+   --  Unlike Declaration_Type, this is the type that V will have in the C
+   --  code generated so far. If V is declared as a variable, this will be
+   --  either the declaration type or what it points to (if it's an LHS),
+   --  but if not, we have to look at the expression chain leading back to
+   --  the declaration and understand what we generate and how that will
+   --  affect the C type, if at all. If As_LHS is true, we're going to be
+   --  using this in the context of an LHS, so return the type appropriately.
+
+   function Maybe_Cast
+     (MD : MD_Type; V : Value_T; As_LHS : Boolean := False) return Str
+     with Pre  => Present (MD) and then Present (V),
+          Post => Present (Maybe_Cast'Result);
+   --  If the actual type of V isn't MD, cast it to MD
 
    procedure Error_Msg (Msg : String; V : Value_T);
    --  Post an error message via the GNAT errout mechanism. If V

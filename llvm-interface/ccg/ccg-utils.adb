@@ -24,7 +24,8 @@ with Lib;         use Lib;
 with Set_Targ;    use Set_Targ;
 with Table;
 
-with GNATLLVM.Utils; use GNATLLVM.Utils;
+with GNATLLVM.Utils;   use GNATLLVM.Utils;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Codegen;      use CCG.Codegen;
 with CCG.Environment;  use CCG.Environment;
@@ -66,6 +67,20 @@ package body CCG.Utils is
    --  True if V is a reference to an access to a subprogram, meaning that the
    --  result of a "load" instruction with that operand will be an access
    --  to a subprogram.
+
+   procedure Update_Function_Type (MD : in out MD_Type; V : Value_T)
+     with Pre =>  Is_A_Function (V)
+                  and then Is_Function_Type (Designated_Type (MD)),
+          Post => Is_Function_Type (Designated_Type (MD))
+                  and then Count_Params (V) =
+                           Parameter_Count (Designated_Type (MD))
+                  and then Get_Return_Type (Global_Get_Value_Type (V)) =
+                           +Return_Type (Designated_Type (MD));
+   --  MD is a type that was previously used for a function of the name as
+   --  V, but one or more parameters have been removed as dead or the
+   --  return type has changed. Use the parameter names to construct a new
+   --  MD_Type corresponding to the new type of the function with the
+   --  removed parameters eliminated and the new return type.
 
    --  We have cases where we want to record information about components
    --  of LLVM types or values, such as fields of a struct type and
@@ -426,9 +441,9 @@ package body CCG.Utils is
       if Is_Volatile (Op) then
          return True;
 
-      --  If it's not an instruction, it's not a reference to volatile
+      --  If it's not an operation, it's not a reference to volatile
 
-      elsif not Is_A_Instruction (Op) then
+      elsif not Has_Operands (Op) then
          return False;
       end if;
 
@@ -690,7 +705,7 @@ package body CCG.Utils is
    -----------------
 
    function Is_Unsigned (V : Value_T) return Boolean is
-      MDT : constant MD_Type := Declaration_Type (V);
+      MDT : constant MD_Type := Actual_Type (V);
 
    begin
       return Is_Integer (MDT) and then Is_Unsigned (MDT);
@@ -701,7 +716,7 @@ package body CCG.Utils is
    -------------------------
 
    function Is_Unsigned_Pointer (V : Value_T) return Boolean is
-      MDT : constant MD_Type := Declaration_Type (V);
+      MDT : constant MD_Type := Actual_Type (V);
 
    begin
       return Is_Pointer (MDT)
@@ -805,24 +820,24 @@ package body CCG.Utils is
 
    function Has_Side_Effects (V : Value_T) return Boolean is
    begin
-      --  If this isn't an instruction, it doesn't have a side effect. If
-      --  it's a call instruction, a terminator, or a load that's either
-      --  volatile or not from a variable, it does have side effects.
-      --  Otherwise, it has a side effect iff any operand does. We treat a
-      --  Phi node as volatile since we can have infinite recursion if we
-      --  try to walk its operands.
+      --  If we've already written a decl for this or if it isn't an
+      --  instruction, it doesn't have a side effect. If it's a call
+      --  instruction, a terminator, or a load that's either volatile or
+      --  not from a variable, it does have side effects.  Otherwise, it
+      --  has a side effect iff any operand does.
 
-      return (if not Is_A_Instruction (V) then False
-        elsif Is_A_Call_Inst (V) or else Is_APHI_Node (V)
-              or else (Is_A_Alloca_Inst (V) and then not Get_Is_LHS (V))
-              or else Is_A_Terminator_Inst (V)
-              or else Is_A_Store_Inst (V)
-              or else (Is_A_Load_Inst (V)
-                       and then (Get_Volatile (V)
-                                 or else not Is_Variable (Get_Operand0 (V))))
-        then True
-        else (for some J in Nat range 0 .. Get_Num_Operands (V) - 1 =>
-              Has_Side_Effects (Get_Operand (V, J))));
+      return (if Get_Is_Decl_Output (V) or else not Is_A_Instruction (V)
+              then False
+              elsif Is_A_Call_Inst (V)
+                or else (Is_A_Alloca_Inst (V) and then not Get_Is_LHS (V))
+                or else Is_A_Terminator_Inst (V)
+                or else Is_A_Store_Inst (V)
+                or else (Is_A_Load_Inst (V)
+                         and then (Get_Volatile (V)
+                                   or else not Is_Variable (Get_Operand0 (V))))
+              then True
+              else (for some J in Nat range 0 .. Get_Num_Operands (V) - 1 =>
+                      Has_Side_Effects (Get_Operand (V, J))));
 
    end Has_Side_Effects;
 
@@ -846,7 +861,7 @@ package body CCG.Utils is
    procedure Update_Hash (H : in out Hash_Type; S : String) is
    begin
       for C of S loop
-         Update_Hash (H, Character'Pos (C));
+         Update_Hash (H, Hash_Type (Character'Pos (C)));
       end loop;
    end Update_Hash;
 
@@ -856,7 +871,7 @@ package body CCG.Utils is
 
    procedure Update_Hash (H : in out Hash_Type; B : Boolean) is
    begin
-      Update_Hash (H, Boolean'Pos (B));
+      Update_Hash (H, Hash_Type (Boolean'Pos (B)));
    end Update_Hash;
 
    -----------------
@@ -872,9 +887,9 @@ package body CCG.Utils is
    -- Update_Hash --
    -----------------
 
-   procedure Update_Hash (H : in out Hash_Type; T : Type_T) is
+   procedure Update_Hash (H : in out Hash_Type; MD : MD_Type) is
    begin
-      Update_Hash (H, Hash (T));
+      Update_Hash (H, Hash (MD));
    end Update_Hash;
 
    -----------------
@@ -1015,6 +1030,45 @@ package body CCG.Utils is
       end if;
    end Walk_Object;
 
+   --------------------------
+   -- Update_Function_Type --
+   --------------------------
+
+   procedure Update_Function_Type (MD : in out MD_Type; V : Value_T) is
+      Num_Params  : constant Nat     := Count_Params (V);
+      Fn_MD       : constant MD_Type := Designated_Type (MD);
+      Fn_T        : constant Type_T  := Global_Get_Value_Type (V);
+      Return_T    : constant Type_T  := Get_Return_Type (Fn_T);
+      Return_MD   : constant MD_Type :=
+        (if   Return_T = +Return_Type (Fn_MD)
+         then Return_Type (Fn_MD) else Declaration_Type (Return_T));
+      New_Idx     : Nat              := 0;
+      Param_Types : MD_Type_Array (0 .. Num_Params - 1);
+      Param_Names : Name_Id_Array (0 .. Num_Params - 1);
+
+   begin
+      --  We loop through each original parameter. If it's not the same name
+      --  as the next parameter in the new function, it's been removed.
+
+      for Old_Idx in 0 .. Parameter_Count (Fn_MD) - 1 loop
+         if New_Idx < Num_Params
+           and then Get_Name_String (Parameter_Name (Fn_MD, Old_Idx)) =
+                    Get_Value_Name (Get_Param (V, New_Idx))
+         then
+            Param_Types (New_Idx) := Parameter_Type (Fn_MD, Old_Idx);
+            Param_Names (New_Idx) := Parameter_Name (Fn_MD, Old_Idx);
+            New_Idx               := New_Idx + 1;
+         end if;
+      end loop;
+
+      --  We should have accounted for all of the current arguments
+
+      pragma Assert (New_Idx = Num_Params);
+
+      MD := Pointer_Type (Fn_Ty (Param_Types, Return_MD, Param_Names));
+
+   end Update_Function_Type;
+
    ----------------------
    -- Declaration_Type --
    ----------------------
@@ -1022,39 +1076,93 @@ package body CCG.Utils is
    function Declaration_Type
      (V : Value_T; No_Force : Boolean := False) return MD_Type
    is
-      T   : constant Type_T := Type_Of (V);
-      MDT : MD_Type         := No_MD_Type;
+      T     : constant Type_T := Type_Of (V);
+      V_Use : Use_T           := Get_First_Use (V);
+      MD    : MD_Type         := No_MD_Type;
 
    begin
       --  If we have a single type for this value, use it
 
       if Present (Get_MD_Type (V)) and then not Get_Is_Multi_MD (V) then
-         return Get_MD_Type (V);
+         MD := Get_MD_Type (V);
+
+      --  Otherwise, if this is a global variable or a function and we have
+      --  a type set for that, use it.
+
+      elsif (Is_A_Global_Variable (V) or else Is_A_Function (V))
+        and then Present (Get_MD_Type (Get_Value_Name (V)))
+      then
+         MD := Get_MD_Type (Get_Value_Name (V));
+
+         --  We may have a situation where the optimizer removed one or
+         --  more dead arguments or changed the return type. So check for
+         --  and handle that case.
+
+         if Is_A_Function (V) then
+            if Count_Params (V) /= Parameter_Count (Designated_Type (MD))
+              or else (Get_Return_Type (Global_Get_Value_Type (V)) /=
+                       +Return_Type (Designated_Type (MD)))
+            then
+               Update_Function_Type (MD, V);
+            end if;
+         end if;
+
+      --  Otherwise, if this is a global variable or a function, see if
+      --  there's an LLVM type corresponding to the value (not V's type,
+      --  which is a pointer).
+
+      elsif (Is_A_Global_Variable (V) or else Is_A_Function (V))
+        and then Present (Declaration_Type (Global_Get_Value_Type (V)))
+      then
+         MD := Pointer_Type (Declaration_Type (Global_Get_Value_Type (V)));
 
       --  Othewise, if we have a single MD_Type corresponding to V's
       --  type, use that
 
-      elsif Present (Get_MD_Type (T)) and then not Get_Is_Multi_MD (V) then
-         MDT := Get_MD_Type (T);
+      elsif Present (Get_MD_Type (T)) and then not Get_Is_Multi_MD (T) then
+         MD := Get_MD_Type (T);
 
-      --  If it's an instruction, see if we can deduce the type from
-      --  the operands of the instruction. This is simplest in the
+      --  If it's an operation, see if we can deduce the type from
+      --  the operands of the operation. This is simplest in the
       --  case of unary or binary operations. In most other cases, all
       --  we have is the type of the result.
 
-      elsif Is_A_Instruction (V) then
+      elsif Has_Operands (V) then
+
          case Get_Opcode (V) is
-            when Op_F_Neg =>
-               MDT := Declaration_Type (Get_Operand0 (V), No_Force => True);
+
+            --  We start with simple cases where we can either derive
+            --  the type directly from the operation or we look at the
+            --  type of the operand(s) of the instruction.
+
+            when Op_F_Neg | Op_Bit_Cast =>
+               MD := Declaration_Type (Get_Operand0 (V), No_Force => True);
 
             when Op_Add   | Op_F_Add | Op_F_Sub | Op_Mul | Op_F_Mul
                | Op_F_Div | Op_F_Rem | Op_And   | Op_Or  | Op_Xor =>
 
-               MDT := Declaration_Type (Get_Operand0 (V), No_Force => True);
+               MD := Declaration_Type (Get_Operand0 (V), No_Force => True);
 
-               if No (MDT) then
-                  MDT := Declaration_Type (Get_Operand1 (V), No_Force => True);
+               if No (MD) then
+                  MD := Declaration_Type (Get_Operand1 (V), No_Force => True);
                end if;
+
+            when Op_U_Div | Op_U_Rem | Op_L_Shr =>
+               MD := Declaration_Type (Get_Operand0 (V), No_Force => True);
+
+               if Present (MD) and then Is_Integer (MD) then
+                  MD := Unsigned_Type (MD);
+               end if;
+
+            when Op_S_Div | Op_S_Rem | Op_A_Shr =>
+               MD := Declaration_Type (Get_Operand0 (V), No_Force => True);
+
+               if Present (MD) and then Is_Integer (MD) then
+                  MD := Signed_Type (MD);
+               end if;
+
+            when Op_Alloca =>
+               MD := Pointer_Type (From_Type (Get_Allocated_Type (V)));
 
             when Op_Load =>
 
@@ -1065,28 +1173,61 @@ package body CCG.Utils is
                --  LLVM type corresponding to the MD Type with the type of
                --  the load.
 
-               MDT := Declaration_Type (Get_Operand0 (V), No_Force => True);
+               MD := Declaration_Type (Get_Operand0 (V), No_Force => True);
+               MD := (if Present (MD) then Designated_Type (MD) else MD);
 
-               if Present (MDT) and then T /= +Designated_Type (MDT) then
-                  MDT := No_MD_Type;
+               if Present (MD) and then T /= +MD then
+                  MD := No_MD_Type;
                end if;
 
-            when Op_U_Div | Op_U_Rem | Op_L_Shr =>
-               MDT := Declaration_Type (Get_Operand0 (V), No_Force => True);
+            --  For GEP, we're dealing with pointers and we have a "hint"
+            --  of the type of the aggregate. We always use that type
+            --  because the processing of the GEP will force the input to
+            --  that type.
 
-               if Present (MDT) then
-                  MDT := Unsigned_Type (MDT);
-               end if;
-            when Op_S_Div | Op_S_Rem | Op_A_Shr =>
-               MDT := Declaration_Type (Get_Operand0 (V), No_Force => True);
+            when Op_Get_Element_Ptr =>
 
-               if Present (MDT) then
-                  MDT := Signed_Type (MDT);
-               end if;
+               MD := Declaration_Type (Get_GEP_Source_Element_Type (V));
+
+               for J in Nat (2) .. Get_Num_Operands (V) - 2 loop
+                  if Is_Struct (MD) then
+                     MD := Element_Type
+                       (MD, Nat (Const_Int_Get_S_Ext_Value
+                                   (Get_Operand (V, J))));
+                  else
+                     MD := Element_Type (MD);
+                  end if;
+               end loop;
+
+               MD := Pointer_Type (MD);
 
             when others =>
                null;
          end case;
+      end if;
+
+      --  If the best we've been able to do is pointer to void, see if any
+      --  use of this value is a load, store, or GEP instruction since these
+      --  give the type of the thing pointed to.
+
+      if MD = Void_Ptr_MD then
+         while Present (V_Use) loop
+            case Get_Opcode (Get_User (V_Use)) is
+               when Op_Load | Op_Store =>
+                  return Pointer_Type (Declaration_Type
+                                         (Get_Load_Store_Type
+                                            (Get_User (V_Use))));
+               when Op_Get_Element_Ptr =>
+                  return
+                    Pointer_Type (Declaration_Type
+                                    (Get_GEP_Source_Element_Type
+                                       (Get_User (V_Use))));
+               when others =>
+                  null;
+            end case;
+
+            V_Use := Get_Next_Use (V_Use);
+         end loop;
       end if;
 
       --  If we have a type, we're done. But first see if this value
@@ -1094,20 +1235,159 @@ package body CCG.Utils is
       --  this one so that we don't have to repeat the above logic the
       --  next time we do this.
 
-      if Present (MDT) then
+      if Present (MD) then
          if not Get_Is_Multi_MD (V) then
-            Set_MD_Type (V, MDT);
+            Set_MD_Type (V, MD);
          end if;
 
       --  Otherwise, if we're supposed to force a type from V's LLVM
       --  type, do that.
 
       elsif not No_Force then
-         MDT := From_Type (T);
+         MD := From_Type (T);
       end if;
 
-      return MDT;
+      return MD;
    end Declaration_Type;
+
+   ----------------------
+   -- Declaration_Type --
+   ----------------------
+
+   function Declaration_Type
+     (T : Type_T; No_Force : Boolean := False) return MD_Type
+   is
+      (if   Present (Get_MD_Type (T)) and then not Get_Is_Multi_MD (T)
+       then Get_MD_Type (T) elsif not No_Force then From_Type (T)
+       else No_MD_Type);
+
+   -----------------
+   -- Actual_Type --
+   -----------------
+
+   function Actual_Type (V : Value_T; As_LHS : Boolean := False) return MD_Type
+   is
+      MD : MD_Type;
+
+   begin
+      --  If V has been declared, its actual type corresponds to the
+      --  declared type. If it's not an operation, that's the best
+      --  we're going to do by looking backwards.
+
+      if Get_Is_Decl_Output (V) or else not Has_Operands (V) then
+         MD := Declaration_Type (V);
+         MD := (if   Get_Is_LHS (V) and then not As_LHS
+                     and then not Is_Function_Pointer (MD)
+                then Designated_Type (MD) else MD);
+
+      --  Otherwise, what we do depends on the operation
+
+      else
+         case Get_Opcode (V) is
+
+            --  There are also some instructions that "start over" in that
+            --  the type of the result of that instruction isn't a function
+            --  of the types of the operands, but is always the same.
+
+            when Op_Alloca | Op_U_Div | Op_U_Rem | Op_S_Div | Op_S_Rem
+               | Op_L_Shr | Op_A_Shr | Op_Call | Op_Store | Op_I_Cmp
+               | Op_F_Cmp | Op_Trunc | Op_SI_To_FP | Op_FP_Trunc | Op_FP_Ext
+               | Op_S_Ext | Op_UI_To_FP | Op_FP_To_SI | Op_FP_To_UI
+               | Op_Z_Ext | Op_Ptr_To_Int | Op_Int_To_Ptr
+               | Op_Get_Element_Ptr =>
+
+               MD := Declaration_Type (V);
+
+            --  For FP operations, the type of the output is the same as
+            --  that of the input.  If the second input is declared, use
+            --  its type. Otherwise, just look at the first operand (for
+            --  simplicity).
+
+            when Op_F_Add | Op_F_Sub | Op_F_Mul | Op_F_Div | Op_F_Rem =>
+
+               MD := (if   Get_Is_Decl_Output (Get_Operand1 (V))
+                      then Actual_Type (Get_Operand1 (V), As_LHS)
+                      else Actual_Type (Get_Operand0 (V), As_LHS));
+
+            --  We have a similar situation with the two branches of SELECT.
+
+            when Op_Select =>
+
+               MD := (if   Get_Is_Decl_Output (Get_Operand2 (V))
+                      then Actual_Type (Get_Operand2 (V), As_LHS)
+                      else Actual_Type (Get_Operand1 (V), As_LHS));
+
+            --  Similarly for integer arithmetic operations that don't
+            --  force signedness, except that we need to deal with C
+            --  integral promotion.
+
+            when Op_Add | Op_Sub | Op_Mul | Op_Shl | Op_And | Op_Or | Op_Xor =>
+
+               MD := (if   Get_Is_Decl_Output (Get_Operand1 (V))
+                      then Actual_Type (Get_Operand1 (V), As_LHS)
+                      else Actual_Type (Get_Operand0 (V), As_LHS));
+               MD := (if   Int_Bits (MD) >= Int_Size then MD
+                      else Int_Ty (Int_Bits (MD), Is_Unsigned (MD)));
+
+            --  There are some operations where the input type is the same
+            --  as the output type. We can get a return here in unusual
+            --  circumstances.
+
+            when Op_F_Neg | Op_Insert_Value | Op_Freeze | Op_Ret =>
+               MD := Actual_Type (Get_Operand0 (V), As_LHS);
+
+            --  A bit cast is a noop when both input and output are pointers
+            --  but "start over" when they aren't.
+
+            when Op_Bit_Cast =>
+
+               MD := (if   Is_Pointer_Type (V)
+                           and then Is_Pointer_Type (Get_Operand0 (V))
+                      then Actual_Type (Get_Operand0 (V), As_LHS)
+                      else Declaration_Type (V));
+
+            --  For load, get the type used for the load
+
+            when Op_Load =>
+
+               return LS_Op_MD (V, Get_Operand0 (V));
+
+            --  For extractvalue, we start with the value that's in the first
+            --  operand and then look inside to get the element types as we
+            --  go deeper inside it.
+
+            when Op_Extract_Value =>
+
+               MD := Actual_Type (Get_Operand0 (V), As_LHS);
+
+               for J in Nat (0) .. Get_Num_Indices (V) - 1 loop
+                  if Is_Struct (MD) then
+                     MD := Element_Type (MD, Get_Index (V, J));
+                  else
+                     MD := Element_Type (MD);
+                  end if;
+               end loop;
+
+            --  Otherwise, someting went wrong
+
+            when others =>
+               pragma Assert (False);
+               MD := No_MD_Type;
+         end case;
+      end if;
+
+      return MD;
+   end Actual_Type;
+
+   ----------------
+   -- Maybe_Cast --
+   ----------------
+
+   function Maybe_Cast
+     (MD : MD_Type; V : Value_T; As_LHS : Boolean := False) return Str
+   is
+      (if   Actual_Type (V, As_LHS) = MD then +V
+       else "(" & MD & ") " & (V + Unary));
 
    ---------------------
    -- Int_Type_String --

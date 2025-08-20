@@ -207,6 +207,8 @@ package body CCG.Transform is
                --  isn't already a reference.
 
                Set_Value_Name_2 (V, "", 0);
+               Set_MD_Type (Result, Pointer_Type (Declaration_Type (V)));
+               Set_Is_LHS  (Result);
 
                if not Get_Entity_Is_Ref (V) then
                   Set_Entity (Result, Get_Entity (V));
@@ -425,6 +427,7 @@ package body CCG.Transform is
                   Next_Inst : constant Value_T := Get_Next_Instruction (Inst);
 
                begin
+                  Set_MD_Type (Load_Inst, Declaration_Type (Inst));
                   Replace_All_Uses_With (Inst, Load_Inst);
                   Instruction_Erase_From_Parent (Inst);
                   Inst := Next_Inst;

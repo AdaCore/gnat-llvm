@@ -754,6 +754,7 @@ package body GNATLLVM.Subprograms is
         Number_Out_Params (E) +
           (if LRK = Struct_Out_Subprog then 1 else 0);
       In_Arg_Types    : MD_Type_Array (1 .. In_Args_Count);
+      In_Arg_Names    : Name_Id_Array (1 .. In_Args_Count);
       Out_Arg_Types   : MD_Type_Array (1 .. Out_Args_Count);
       Out_Arg_Names   : Name_Id_Array (1 .. Out_Args_Count);
       Param_Ent       : Opt_Formal_Kind_Id   := First_Formal_With_Extras (E);
@@ -766,6 +767,7 @@ package body GNATLLVM.Subprograms is
 
       if RK = Return_By_Parameter then
          In_Arg_Types (1) := Create_Access_Type_To (Return_GT);
+         In_Arg_Names (1) := Name_Find ("_return");
          Ret_Typ          := Void_Ty;
          J                := 2;
       end if;
@@ -820,6 +822,7 @@ package body GNATLLVM.Subprograms is
                   elsif PK = In_Value_By_Int then Int_Ty (Nat (Size))
                   elsif PK_By_Ref then Create_Access_Type_To (GT)
                   else  Type_Of (GT));
+               In_Arg_Names (J) := Get_Ext_Name (Param_Ent);
                J := J + 1;
             end if;
          end;
@@ -867,7 +870,7 @@ package body GNATLLVM.Subprograms is
                                  Field_Names => Out_Arg_Names);
       end case;
 
-      return Fn_Ty (In_Arg_Types, Result_Typ);
+      return Fn_Ty (In_Arg_Types, Result_Typ, In_Arg_Names);
    end Create_Subprogram_Type_Internal;
 
    -----------------------------------
@@ -885,7 +888,7 @@ package body GNATLLVM.Subprograms is
       if No (Subprogram_Access_Type) then
          Subprogram_Access_Type :=
            Build_Struct_Type ((1 => Void_Ptr_MD, 2 => Void_Ptr_MD),
-                              Name => Name_Find ("SUBPROGRAM_FP"),
+                              Name        => Name_Find ("SUBPROGRAM_FP"),
                               Field_Names => (1 => Name_Find ("SUBP"),
                                               2 => Name_Find ("STATIC_LINK")));
       end if;
@@ -1138,7 +1141,8 @@ package body GNATLLVM.Subprograms is
       --  value.
 
       if RK = Return_By_Parameter then
-         LLVM_Param := Get_Param (Func, Param_Num, Return_GT, No_MD_Type,
+         LLVM_Param := Get_Param (Func, Param_Num, Return_GT,
+                                  Create_Access_Type_To (Return_GT),
                                   (if   Is_Unconstrained_Array (Return_GT)
                                    then Fat_Pointer else Reference),
                                   Is_Pristine => True);
@@ -1158,6 +1162,8 @@ package body GNATLLVM.Subprograms is
            (No_Exception_Handlers_Set
             or else No_Exception_Propagation_Active)
             and then Get_Value_Name (Func) = "main");
+
+      --  ??? Parameter types and names should come from MD_Type of function
 
       Param := First_Formal_With_Extras (E);
       while Present (Param) loop

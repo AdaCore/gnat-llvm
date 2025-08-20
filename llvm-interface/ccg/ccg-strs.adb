@@ -18,8 +18,6 @@
 with Ada.Containers; use Ada.Containers;
 with Ada.Containers.Hashed_Sets;
 
-with LLVM.Core; use LLVM.Core;
-
 with Output; use Output;
 
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
@@ -100,9 +98,9 @@ package body CCG.Strs is
                   when Value =>
                      Update_Hash (H, Comp.Val);
                      Update_Hash (H, Comp.V_Flags);
-                     Update_Hash (H, Precedence'Pos (Comp.For_P));
+                     Update_Hash (H, Hash_Type (Precedence'Pos (Comp.For_P)));
                   when Typ =>
-                     Update_Hash (H, Comp.T);
+                     Update_Hash (H, Comp.MD);
                      Update_Hash (H, Comp.Name);
                      Update_Hash (H, Comp.T_Flags);
                   when BB =>
@@ -203,7 +201,7 @@ package body CCG.Strs is
                   end if;
 
                when Typ =>
-                  if SL.Comps (PosL).T /= SR.Comps (PosR).T
+                  if SL.Comps (PosL).MD /= SR.Comps (PosR).MD
                     or else SL.Comps (PosL).Name /= SR.Comps (PosR).Name
                     or else SL.Comps (PosL).T_Flags /= SR.Comps (PosR).T_Flags
                   then
@@ -344,23 +342,11 @@ package body CCG.Strs is
    -- "+" --
    ---------
 
-   function "+" (E : Entity_Id) return Str is
-      S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Entity, 1, E, Default_Value_Flags)));
-      Result : constant Str := Undup_Str (S_Rec);
-
-   begin
-      return Result;
-   end "+";
-
-   ---------
-   -- "+" --
-   ---------
-
    function "+" (V : Value_T; VF : Value_Flags) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
         (1, Unknown, (1 => (Value, 1, V, VF, Unknown)));
-      Result : constant Str := Undup_Str (S_Rec);
+      Result : constant Str                    := Undup_Str (S_Rec);
+      MD     : constant MD_Type                := Declaration_Type (V);
 
    begin
       Set_Is_Used (V);
@@ -372,13 +358,12 @@ package body CCG.Strs is
       if VF.Only_Type or VF.With_Type then
          Maybe_Output_Typedef
            ((if   VF.LHS and then Get_Is_LHS (V)
-             then Get_Element_Type (Type_Of (V)) else Type_Of (V)));
+             then Designated_Type (MD) else MD));
 
       --  Similarly if writing the return type
 
       elsif VF.Write_Return then
-         Maybe_Output_Typedef
-           (Get_Return_Type (Get_Element_Type (Type_Of (V))));
+         Maybe_Output_Typedef (Return_Type (Designated_Type (MD)));
       end if;
 
       return Result;
@@ -395,10 +380,10 @@ package body CCG.Strs is
 
    begin
       if VF.Only_Type or VF.With_Type then
-         Maybe_Output_Typedef (+Type_Of (Full_GL_Type (E)));
+         Maybe_Output_Typedef (Type_Of (Full_GL_Type (E)));
       elsif VF.Write_Return then
          Maybe_Output_Typedef
-           (+Type_Of (Full_GL_Type (Actual_Subprogram_Base_Type (E))));
+           (Type_Of (Full_GL_Type (Actual_Subprogram_Base_Type (E))));
       end if;
 
       return Result;
@@ -408,13 +393,13 @@ package body CCG.Strs is
    -- "+" --
    ---------
 
-   function "+" (T : Type_T; TF : Type_Flags) return Str is
+   function "+" (MD : MD_Type; TF : Type_Flags) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Typ, 1, T, No_Str, TF)));
+        (1, Unknown, (1 => (Typ, 1, MD, No_Str, TF)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      Maybe_Output_Typedef (T);
+      Maybe_Output_Typedef (MD);
       return Result;
    end "+";
 
@@ -422,9 +407,9 @@ package body CCG.Strs is
    -- "+" --
    ---------
 
-   function "+" (S : Str; T : Type_T) return Str is
+   function "+" (S : Str; MD : MD_Type) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Typ, 1, T, S, Default_Type_Flags)));
+        (1, Unknown, (1 => (Typ, 1, MD, S, Default_Type_Flags)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
@@ -435,13 +420,13 @@ package body CCG.Strs is
    -- "+" --
    ---------
 
-   function "+" (V : Value_T; T : Type_T) return Str is
+   function "+" (V : Value_T; MD : MD_Type) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Typ, 1, T, +V, Default_Type_Flags)));
+        (1, Unknown, (1 => (Typ, 1, MD, +V, Default_Type_Flags)));
       Result : constant Str := Undup_Str (S_Rec);
 
    begin
-      Maybe_Output_Typedef (T);
+      Maybe_Output_Typedef (MD);
       return Result;
    end "+";
 
@@ -449,8 +434,8 @@ package body CCG.Strs is
    -- "+" --
    ---------
 
-   function "+" (T : Type_T; V : Value_T) return Str is
-     (T + (Present (V) and then Is_Unsigned (V)));
+   function "+" (MD : MD_Type; V : Value_T) return Str is
+     (MD + (Present (V) and then Is_Unsigned (V)));
 
    ---------
    -- "+" --
@@ -562,12 +547,12 @@ package body CCG.Strs is
    -- "+" --
    ---------
 
-   function "+" (T : Type_T) return Str is
+   function "+" (MD : MD_Type) return Str is
       S_Rec  : aliased constant Str_Record (1) :=
-        (1, Unknown, (1 => (Typ, 1, T, No_Str, Default_Type_Flags)));
+        (1, Unknown, (1 => (Typ, 1, MD, No_Str, Default_Type_Flags)));
       Result : constant Str := Undup_Str (S_Rec);
    begin
-      Maybe_Output_Typedef (T);
+      Maybe_Output_Typedef (MD);
       return Result;
    end "+";
 
@@ -597,6 +582,19 @@ package body CCG.Strs is
       return Result;
    end "+";
 
+   ---------
+   -- "+" --
+   ---------
+
+   function "+" (E : Entity_Id) return Str is
+      S_Rec  : aliased constant Str_Record (1) :=
+        (1, Unknown, (1 => (Entity, 1, E, Default_Value_Flags)));
+      Result : constant Str := Undup_Str (S_Rec);
+
+   begin
+      return Result;
+   end "+";
+
    ---------------
    -- Write_Str --
    ---------------
@@ -619,7 +617,7 @@ package body CCG.Strs is
                             For_Precedence => Comp.For_P);
 
             when Typ =>
-               Write_Type (Comp.T, No_Str, Comp.T_Flags);
+               Write_Type (Comp.MD, No_Str, Comp.T_Flags);
 
             when BB =>
                Write_BB_Value (Comp.B);
@@ -629,7 +627,7 @@ package body CCG.Strs is
 
             when Entity =>
                pragma Assert (Comp.E_Flags.Only_Type);
-               Write_Type (+Type_Of (Full_GL_Type (Comp.E)), E => Comp.E);
+               Write_Type (Type_Of (Full_GL_Type (Comp.E)), E => Comp.E);
          end case;
       end loop;
 
@@ -674,7 +672,7 @@ package body CCG.Strs is
    -- "&" --
    ---------
 
-   function "&" (L : String; R : Type_T) return Str is
+   function "&" (L : String; R : MD_Type) return Str is
    begin
       if L'Length = 0 then
          return +R;
@@ -691,7 +689,7 @@ package body CCG.Strs is
             return Result;
          end;
       else
-         return +L & (+R);
+         return +L & (Str'(+R));
       end if;
    end "&";
 
@@ -795,7 +793,7 @@ package body CCG.Strs is
    -- "&" --
    ---------
 
-   function "&" (L : Type_T; R : String) return Str is
+   function "&" (L : MD_Type; R : String) return Str is
    begin
       if R'Length = 0 then
          return +L;
@@ -811,7 +809,7 @@ package body CCG.Strs is
             return Result;
          end;
       else
-         return +L & (+R);
+         return Str'(+L) & (Str'(+R));
       end if;
    end "&";
 
@@ -886,7 +884,7 @@ package body CCG.Strs is
    -- "&" --
    ---------
 
-   function "&" (L : Type_T; R : Str) return Str is
+   function "&" (L : MD_Type; R : Str) return Str is
       S_Rec  : aliased Str_Record (R.Length + 1);
       Result : Str;
 
@@ -941,7 +939,7 @@ package body CCG.Strs is
    -- "&" --
    ---------
 
-   function "&" (L : Str; R : Type_T) return Str is
+   function "&" (L : Str; R : MD_Type) return Str is
       S_Rec  : aliased Str_Record ((if Present (L) then L.Length + 1 else 0));
       Result : Str;
 
@@ -1025,13 +1023,13 @@ package body CCG.Strs is
    -- "or" --
    ----------
 
-   function "or" (T : Type_T; E : Entity_Id) return Str is
+   function "or" (MD : MD_Type; E : Entity_Id) return Str is
    begin
       --  If there's an entity specified and the default type of the entity
-      --  matches T, it's best to use the entity, otherwise T.
+      --  matches MD, it's best to use the entity, otherwise MD.
 
-      return ((if   Present (E) and then +Type_Of (Full_GL_Type (E)) = T
-               then E + Only_Type else +T));
+      return ((if   Present (E) and then Type_Of (Full_GL_Type (E)) = MD
+               then E + Only_Type else +MD));
    end "or";
 
    ------------------
@@ -1058,17 +1056,17 @@ package body CCG.Strs is
    -- Addr_Of --
    -------------
 
-   function Addr_Of (S : Str; T : Type_T := No_Type_T) return Str is
-      Result : Str := No_Str;
-
+   function Addr_Of (S : Str; MD : MD_Type := No_MD_Type) return Str is
    begin
       --  If this is a single value handled normally that has a C expression,
       --  compute the address of that expression.
 
-      if Is_Value (S) and then Present (Get_C_Value (S))
+      if S.Length = 1 and then S.Comps (1).Kind = Value
+        and then Present (Get_C_Value (S.Comps (1).Val))
+        and then Get_Is_LHS (S.Comps (1).Val)
         and then not S.Comps (1).V_Flags.LHS
       then
-         return Addr_Of (Get_C_Value (S), T);
+         return Addr_Of (Get_C_Value (S.Comps (1).Val), MD);
 
       --  If this is "*" concatenated with some string, return the result
       --  of removing it.
@@ -1088,8 +1086,9 @@ package body CCG.Strs is
 
       --  If this is an LHS, convert it into a normal reference
 
-      elsif Is_Value (S) and then Get_Is_LHS (S)
-        and then S.Comps (1).V_Flags.LHS
+      elsif S.Length = 1 and then S.Comps (1).Kind = Value
+        and then not S.Comps (1).V_Flags.LHS
+        and then Get_Is_LHS (S.Comps (1).Val) and then S.Comps (1).V_Flags.LHS
       then
          declare
             S_Rec  : aliased constant Str_Record :=
@@ -1100,27 +1099,25 @@ package body CCG.Strs is
             return Result;
          end;
 
-      --  If we're taking the address of a value that's of array type, we
-      --  do nothing since a value of an array type represents the address
-      --  of the array.
+      --  If we're taking the address of a value that's of array or
+      --  function type, we do nothing since a value of such a type
+      --  represents the address of the value.
 
-      elsif Is_Value (S) and then Get_Type_Kind (S) = Array_Type_Kind then
+      elsif S.Length = 1 and then S.Comps (1).Kind = Value
+        and then not S.Comps (1).V_Flags.LHS
+        and then (Is_Array (Actual_Type (S.Comps (1).Val))
+                  or else Is_Function_Type (Actual_Type (S. Comps (1).Val)))
+      then
          return S;
 
-      --  Otherwise, add the operator to take the address. If this is a
-      --  value that's constant, we have to cast to the non-constant
+      --  Otherwise, add the operator to take the address.
+      --  ??? We used to deal with conversions to a non-constant form of the
+      --  pointer here, but that can't be done here since we have no way of
+      --  knowing the type of S.
       --  pointer type.
-      --  ??? This can lose "volatile", but it's not clear what to do
-      --  about that.
 
       else
-         Result := "&" & (S + Unary);
-         if Contains_One_Value (S) and then Get_Is_Constant (S) then
-            Result :=
-              "(" & (if Present (T) then T else Type_Of (S)) & "*) " & Result;
-         end if;
-
-         return Result;
+         return "&" & (S + Unary);
       end if;
    end Addr_Of;
 
@@ -1133,7 +1130,8 @@ package body CCG.Strs is
       --  If this is an LHS referenced normally, convert it into a
       --  reference to the name.
 
-      if Is_Value (S) and then Get_Is_LHS (S)
+      if S.Length = 1 and then S.Comps (1).Kind = Value
+        and then Get_Is_LHS (S.Comps (1).Val)
         and then not S.Comps (1).V_Flags.LHS
       then
          declare
@@ -1149,13 +1147,15 @@ package body CCG.Strs is
       --  If this is a single value handled normally that has a C expression,
       --  compute the dereference of that expression.
 
-      elsif Is_Value (S) and then Present (Get_C_Value (S))
+      elsif S.Length = 1 and then S.Comps (1).Kind = Value
+        and then S.Comps (1).V_Flags = Default_Value_Flags
+        and then Present (Get_C_Value (S.Comps (1).Val))
         and then not S.Comps (1).V_Flags.LHS
       then
          return Deref (Get_C_Value (S.Comps (1).Val));
 
-      --  If this is "&" concatenated with some string, return the result
-      --  of removing it.
+         --  If this is "&" concatenated with some string, return the result
+         --  of removing it.
 
       elsif S.Length > 1 and then S.Comps (1).Kind = Var_String
         and then S.Comps (1).S = "&"
@@ -1169,7 +1169,7 @@ package body CCG.Strs is
             return Result;
          end;
 
-      --  Otherwise, add the operator to dereference
+         --  Otherwise, add the operator to dereference
 
       else
          return "*" & (S + Unary);

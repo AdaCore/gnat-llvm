@@ -106,6 +106,11 @@ package GNATLLVM.MDType is
    --  Create an LLVM type from an MD_Type
    function "+" (MDT : MD_Type) return Type_T renames LLVM_Type_Of;
 
+   function Contains_Void (MDT : MD_Type) return Boolean
+     with Pre => Present (MDT);
+   --  True if any part of MDT is void, with the exception of a pointer
+   --  to void.
+
    function Check_From_Type (T1, T2 : Type_T) return Boolean
      with Pre => Present (T1) and then Present (T2);
    --  Used to check the result of the next function. This is a renaming
@@ -113,12 +118,15 @@ package GNATLLVM.MDType is
 
    function From_Type (T : Type_T) return MD_Type
      with Pre  => Present (T),
-          Post => Check_From_Type (T, +From_Type'Result);
+          Post => Contains_Void (From_Type'Result)
+                  or else Check_From_Type (T, +From_Type'Result);
    --  Create an MD_Type from a type. This is used for intrinsic functions
    --  and values created by the optimzer and isn't guaranteed to work in
    --  all cases. If T was a named struct type, the LLVM type generated
    --  from the result may not precisely agree with the input and likewise
    --  for an array of such, so we just check that the layout is the same.
+   --  We also can return Void for a number of reasons, so we allow that
+   --  to always be valid.
 
    function Is_Layout_Identical (MDT1, MDT2 : MD_Type) return Boolean
      with Pre => Present (MDT1) and then Present (MDT2);
@@ -163,8 +171,15 @@ package GNATLLVM.MDType is
    function Element_Type (MDT : MD_Type; Idx : Nat) return MD_Type
      with Pre =>  Is_Struct (MDT) and then Idx < Element_Count (MDT),
           Post => Present (Element_Type'Result);
-   --  Name and type, respectively, for structs. Idx is 0-origin.
+   function Element_Entity (MDT : MD_Type; Idx : Nat) return Entity_Id
+     with Pre =>  Is_Struct (MDT) and then Idx < Element_Count (MDT);
+   function Is_Padding (MDT : MD_Type; Idx : Nat) return Boolean
+     with Pre =>  Is_Struct (MDT) and then Idx < Element_Count (MDT);
+   --  Name, type, and whether field is padding, respectively, for
+   --  structs. Idx is 0-origin.
 
+   function Parameter_Name (MDT : MD_Type; Idx : Nat) return Name_Id
+     with Pre =>  Is_Function_Type (MDT) and then Idx < Parameter_Count (MDT);
    function Parameter_Type (MDT : MD_Type; Idx : Nat) return MD_Type
      with Pre =>  Is_Function_Type (MDT) and then Idx < Parameter_Count (MDT),
           Post => Present (Parameter_Type'Result);
@@ -174,6 +189,10 @@ package GNATLLVM.MDType is
      (Is_Integer (MDT) or else Is_Float (MDT) or else Is_Pointer (MDT))
    with Pre => Present (MDT);
    --  Return True if the type is valid for an atomic operation
+
+   function Is_Function_Pointer (MDT : MD_Type) return Boolean is
+     (Is_Pointer (MDT) and then Is_Function_Type (Designated_Type (MDT)))
+     with Pre => Present (MDT);
 
    --  Operations on LLVM types that we can call on an MD_Type
 
@@ -257,8 +276,9 @@ package GNATLLVM.MDType is
      (Types       : MD_Type_Array;
       Field_Names : Name_Id_Array;
       Fields      : Field_Id_Array := (1 .. 0 => Empty);
-      Packed      : Boolean := False;
-      Name        : Name_Id := No_Name) return MD_Type
+      Padding     : Boolean_Array  := (1 .. 0 => False);
+      Packed      : Boolean        := False;
+      Name        : Name_Id        := No_Name) return MD_Type
      with Pre  => Field_Names'First = Types'First
                   and then Field_Names'Last = Types'Last
                   and then (for all MDT of Types => Present (MDT)),
@@ -270,17 +290,29 @@ package GNATLLVM.MDType is
                                             J - Field_Names'First) =
                               Field_Names (J)
                               and then Element_Type
-                                (Build_Struct_Type'Result,
-                                   J - Field_Names'First) = Types (J));
+                                        (Build_Struct_Type'Result,
+                                          J - Field_Names'First) = Types (J)
+                              and then (Fields'Length = 0
+                                        or else Element_Entity
+                                                  (Build_Struct_Type'Result,
+                                                     J - Fields'First) =
+                                        Fields (J))
+                              and then (Padding'Length = 0
+                                        or else Is_Padding
+                                                  (Build_Struct_Type'Result,
+                                                     J - Padding'First) =
+                                        Padding (J)));
+
    --  Create a Struct type with the specified field types and field names,
    --  also specifying if it's packed and it's name, if any.
 
    procedure Struct_Set_Body
-     (MDT    : MD_Type;
-      Types  : MD_Type_Array;
-      Names  : Name_Id_Array;
-      Fields : Field_Id_Array := (1 .. 0 => Empty);
-      Packed : Boolean := False)
+     (MDT     : MD_Type;
+      Types   : MD_Type_Array;
+      Names   : Name_Id_Array;
+      Fields  : Field_Id_Array := (1 .. 0 => Empty);
+      Padding : Boolean_Array  := (1 .. 0 => False);
+      Packed  : Boolean        := False)
      with Pre  => Names'First = Types'First and then Names'Last = Types'Last
                   and then (for all F_MDT of Types => Present (F_MDT))
                   and then Is_Struct (MDT) and then not Has_Fields (MDT),
@@ -290,23 +322,42 @@ package GNATLLVM.MDType is
                               Names (J)
                               and then Element_Type (MDT,
                                                      J - Names'First) =
-                                       Types (J));
+                                       Types (J)
+                              and then (Fields'Length = 0
+                                        or else Element_Entity
+                                                  (MDT, J - Fields'First) =
+                                        Fields (J))
+                              and then (Padding'Length = 0
+                                        or else Is_Padding
+                                                  (MDT, J - Padding'First) =
+                                        Padding (J)));
+
    --  Similar to Build_Struct_Type, but modify a type created with
    --  Struct_Create_Named.
 
    function Fn_Ty
      (Arg_Types   : MD_Type_Array;
       Return_Type : MD_Type;
-      Varargs     : Boolean := False) return MD_Type
+      Arg_Names   : Name_Id_Array := (1 .. 0 => No_Name);
+      Varargs     : Boolean       := False) return MD_Type
    with Pre  => Present (Return_Type)
-                and then (for all MDT of Arg_Types => Present (MDT)),
+                and then (for all MDT of Arg_Types => Present (MDT))
+                and then (Arg_Names'Length = 0
+                          or else Arg_Names'First = Arg_Types'First)
+                and then (Arg_Names'Length = 0
+                          or else Arg_Names'Last = Arg_Types'Last),
      Post => Is_Function_Type (Fn_Ty'Result)
              and then Is_Varargs_Function (Fn_Ty'Result) = Varargs
              and then Parameter_Count (Fn_Ty'Result) = Arg_Types'Length
              and then (for all J in Arg_Types'Range =>
                          Parameter_Type (Fn_Ty'Result,
                                          J - Arg_Types'First) =
-                           Arg_Types (J));
+                           Arg_Types (J))
+             and then (Arg_Names'Length = 0
+                       or else (for all J in Arg_Names'Range =>
+                                  Parameter_Name (Fn_Ty'Result,
+                                                  J - Arg_Names'First) =
+                                    Arg_Names (J)));
    --  Make a function type with the specified return and argument types
 
    function Name_Type (MDT : MD_Type; New_Name : Name_Id) return MD_Type

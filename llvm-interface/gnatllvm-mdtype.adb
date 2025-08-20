@@ -30,7 +30,9 @@ package body GNATLLVM.MDType is
    type MD_Kind is
      (Continuation,
       --  A continuation of a type, presently used for function and struct
-      --  types. The related type is the type of the next field or parameter.
+      --  types. The related type is the type of the next field or
+      --  parameter.  For the fields in a struct, the flag indicates that
+      --  the field represents padding.
 
       Void,
       --  A null type, which is used for a function that doesn't return or
@@ -174,6 +176,7 @@ package body GNATLLVM.MDType is
        MD_Hash_Type (Info.Count * 3) +
        MD_Hash_Type ((Info.Related_Type - MD_Type'First) * 5) +
        MD_Hash_Type ((Info.Cont_Type - MD_Type'First) * 7) +
+       MD_Hash_Type (Info.Entity * 42) +
        MD_Hash_Type (Boolean'Pos (Info.Is_Volatile) * 1283) +
        MD_Hash_Type (Boolean'Pos (Info.Flag) * 2039))
      mod Hash_Num);
@@ -187,6 +190,7 @@ package body GNATLLVM.MDType is
       and then Info1.Count = Info2.Count
       and then Info1.Related_Type = Info2.Related_Type
       and then Info1.Cont_Type = Info2.Cont_Type
+      and then Info1.Entity = Info2.Entity
       and then Info1.Is_Volatile = Info2.Is_Volatile
       and then Info1.Flag = Info2.Flag);
    --  Note that we don't want to compare Hash_Link and LLVM_Type because
@@ -397,6 +401,51 @@ package body GNATLLVM.MDType is
       return Related (E_MDT);
    end Element_Type;
 
+   ------------------
+   -- Element_Entity --
+   ------------------
+
+   function Element_Entity (MDT : MD_Type; Idx : Nat) return Entity_Id is
+      E_MDT : MD_Type := Continuation_Type (MDT);
+
+   begin
+      for J in 0 .. Idx - 1 loop
+         E_MDT := Continuation_Type (E_MDT);
+      end loop;
+
+      return MD_Entity (E_MDT);
+   end Element_Entity;
+
+   -----------------
+   --  Is_Padding --
+   -----------------
+
+   function Is_Padding (MDT : MD_Type; Idx : Nat) return Boolean is
+      E_MDT : MD_Type := Continuation_Type (MDT);
+
+   begin
+      for J in 0 .. Idx - 1 loop
+         E_MDT := Continuation_Type (E_MDT);
+      end loop;
+
+      return Flag (E_MDT);
+   end Is_Padding;
+
+   --------------------
+   -- Parameter_Name --
+   --------------------
+
+   function Parameter_Name (MDT : MD_Type; Idx : Nat) return Name_Id is
+      E_MDT : MD_Type := Continuation_Type (MDT);
+
+   begin
+      for J in 0 .. Idx - 1 loop
+         E_MDT := Continuation_Type (E_MDT);
+      end loop;
+
+      return MD_Name (E_MDT);
+   end Parameter_Name;
+
    --------------------
    -- Parameter_Type --
    --------------------
@@ -496,8 +545,9 @@ package body GNATLLVM.MDType is
      (Types       : MD_Type_Array;
       Field_Names : Name_Id_Array;
       Fields      : Field_Id_Array := (1 .. 0 => Empty);
-      Packed      : Boolean := False;
-      Name        : Name_Id := No_Name) return MD_Type
+      Padding     : Boolean_Array  := (1 .. 0 => False);
+      Packed      : Boolean        := False;
+      Name        : Name_Id        := No_Name) return MD_Type
    is
       Info : MD_Type_Info :=
         (Kind       => Struct,
@@ -519,6 +569,8 @@ package body GNATLLVM.MDType is
                            Entity       => (if   Fields'Length > 0
                                             then Fields (J) else Empty),
                            Cont_Type    => Prev,
+                           Flag         => (if   Padding'Length > 0
+                                            then Padding (J) else False),
                            others       => <>));
       end loop;
 
@@ -531,11 +583,12 @@ package body GNATLLVM.MDType is
    ---------------------
 
    procedure Struct_Set_Body
-     (MDT    : MD_Type;
-      Types  : MD_Type_Array;
-      Names  : Name_Id_Array;
-      Fields : Field_Id_Array := (1 .. 0 => Empty);
-      Packed : Boolean := False)
+     (MDT     : MD_Type;
+      Types   : MD_Type_Array;
+      Names   : Name_Id_Array;
+      Fields  : Field_Id_Array := (1 .. 0 => Empty);
+      Padding : Boolean_Array  := (1 .. 0 => False);
+      Packed  : Boolean        := False)
    is
       Prev : MD_Type := No_MD_Type;
 
@@ -549,6 +602,8 @@ package body GNATLLVM.MDType is
                            Name         => Names (J),
                            Entity       => (if   Fields'Length > 0
                                             then Fields (J) else Empty),
+                           Flag         => (if   Padding'Length > 0
+                                            then Padding (J) else False),
                            Cont_Type    => Prev,
                            others       => <>));
       end loop;
@@ -593,7 +648,8 @@ package body GNATLLVM.MDType is
    function Fn_Ty
      (Arg_Types   : MD_Type_Array;
       Return_Type : MD_Type;
-      Varargs     : Boolean := False) return MD_Type
+      Arg_Names   : Name_Id_Array := (1 .. 0 => No_Name);
+      Varargs     : Boolean       := False) return MD_Type
    is
       Info : MD_Type_Info :=
         (Kind         => Func,
@@ -610,6 +666,8 @@ package body GNATLLVM.MDType is
       for J in reverse Arg_Types'Range loop
          Prev := MD_Find ((Kind         => Continuation,
                            Related_Type => Arg_Types (J),
+                           Name         => (if   Arg_Names'Length > 0
+                                            then Arg_Names (J) else No_Name),
                            Cont_Type    => Prev,
                            others       => <>));
       end loop;
@@ -765,8 +823,16 @@ package body GNATLLVM.MDType is
                Types : Type_Array (1 .. Parameter_Count (MDT));
 
             begin
+               --  Process each argument type. If one type is void
+               --  that means we don't know the type, but void isn't
+               --  valid, so convert it to void *, which is the best
+               --  we can do. This case shouldn't occur in situations
+               --  where it matters (it occurs when types are metadata,
+               --  for example.
+
                for J in Types'Range loop
-                  Types (J) := +Related (C_MDT);
+                  Types (J) := (if   Is_Void (Related (C_MDT))
+                                then Void_Ptr_T else +Related (C_MDT));
                   C_MDT     := Continuation_Type (C_MDT);
                end loop;
 
@@ -787,6 +853,14 @@ package body GNATLLVM.MDType is
 
    function From_Type (T : Type_T) return MD_Type is
    begin
+      --  First see if we already know about this type. This will almost
+      --  never be true for the toplevel call, but may be true for internal
+      --  calls.
+
+      if Present (C_Get_MD_Type (T)) then
+         return C_Get_MD_Type (T);
+      end if;
+
       case Get_Type_Kind (T) is
          when Integer_Type_Kind =>
             return Int_Ty (Nat (Get_Scalar_Bit_Size (T)));
@@ -845,7 +919,7 @@ package body GNATLLVM.MDType is
                return Fn_Ty (MDTs, From_Type (Get_Return_Type (T)));
             end;
 
-         when Void_Type_Kind =>
+         when Void_Type_Kind | Metadata_Type_Kind =>
             return Void_Ty;
 
          when others =>
@@ -874,6 +948,39 @@ package body GNATLLVM.MDType is
 
    function Get_Type_Alignment (MDT : MD_Type) return Nat is
      (Get_Type_Alignment (Type_T'(+MDT)));
+
+   -------------------
+   -- Contains_Void --
+   -------------------
+
+   function Contains_Void (MDT : MD_Type) return Boolean is
+   begin
+      if Is_Void (MDT)
+        or else (Is_Array (MDT) and then Contains_Void (Element_Type (MDT)))
+      then
+         return True;
+
+      elsif Is_Struct (MDT) then
+         for J in 0 .. Element_Count (MDT) - 1 loop
+            if Contains_Void (Element_Type (MDT, J)) then
+               return True;
+            end if;
+         end loop;
+
+      elsif Is_Function_Type (MDT) then
+         if Contains_Void (Return_Type (MDT)) then
+            return True;
+         else
+            for J in 0 .. Parameter_Count (MDT) - 1 loop
+               if Contains_Void (Parameter_Type (MDT, J)) then
+                  return True;
+               end if;
+            end loop;
+         end if;
+      end if;
+
+      return False;
+   end Contains_Void;
 
    ---------------------
    -- Check_From_Type --
@@ -1094,7 +1201,13 @@ package body GNATLLVM.MDType is
    begin
       Push_Output;
       Set_Standard_Error;
-      Write_Line (To_String (MDT, Top => True));
+
+      if No (MDT) then
+         Write_Line ("None");
+      else
+         Write_Line (To_String (MDT, Top => True));
+      end if;
+
       Pop_Output;
    end Dump_MD_Type;
 

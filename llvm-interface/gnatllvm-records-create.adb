@@ -447,6 +447,14 @@ package body GNATLLVM.Records.Create is
          Table_Increment      => 5,
          Table_Name           => "Field_Entity_List");
 
+      package Field_Padding_List is new Table.Table
+        (Table_Component_Type => Boolean,
+         Table_Index_Type     => Int,
+         Table_Low_Bound      => 0,
+         Table_Initial        => 20,
+         Table_Increment      => 5,
+         Table_Name           => "Field_Padding_List");
+
       --  We maintain a stack for the depth of variants that we're in.
       --  For each, we indicate whether we're in a dynamic or static variant.
       --  By "static", we mean the case where we have a static subtype,
@@ -1032,7 +1040,9 @@ package body GNATLLVM.Records.Create is
                  Build_Struct_Type
                    (MD_Type_Array (MD_Type_List.Table (0 .. Last_Type)),
                     Name_Id_Array (Field_Name_List.Table (0 .. Last_Type)),
-                    Fields => Field_Id_Array (Field_Entity_List.Table
+                    Fields  => Field_Id_Array (Field_Entity_List.Table
+                                                 (0 .. Last_Type)),
+                    Padding => Boolean_Array (Field_Padding_List.Table
                                                 (0 .. Last_Type)),
                     Packed => True,
                     Name   => Get_Ext_Name (TE, "_I"));
@@ -1221,6 +1231,7 @@ package body GNATLLVM.Records.Create is
                MD_Type_List.Append (Use_MDT);
                Field_Name_List.Append (No_Name);
                Field_Entity_List.Append (Empty);
+               Field_Padding_List.Append (True);
                Cur_RI_Pos  := Cur_RI_Pos + Count * ULL (Size);
                Left_To_Pad := Left_To_Pad - Count * ULL (Size);
             end if;
@@ -1675,6 +1686,7 @@ package body GNATLLVM.Records.Create is
                MD_Type_List.Append (Int_Ty (Nat (Bitfield_Len)));
                Field_Name_List.Append (No_Name);
                Field_Entity_List.Append (Empty);
+               Field_Padding_List.Append (False);
             else
                Bitfield_Is_Array := True;
                Bitfield_Is_Large_Array :=
@@ -1684,6 +1696,7 @@ package body GNATLLVM.Records.Create is
                                        Nat (To_Bytes (Bitfield_Len))));
                Field_Name_List.Append (No_Name);
                Field_Entity_List.Append (Empty);
+               Field_Padding_List.Append (False);
             end if;
 
             Cur_RI_Pos := +Bitfield_End_Pos;
@@ -1725,6 +1738,7 @@ package body GNATLLVM.Records.Create is
             MD_Type_List.Append (Void_Ptr_MD);
             Field_Name_List.Append (No_Name);
             Field_Entity_List.Append (Empty);
+            Field_Padding_List.Append (False);
             Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (Void_Ptr_MD);
          end if;
 
@@ -1994,6 +2008,7 @@ package body GNATLLVM.Records.Create is
                             elsif Emit_C then Unique_Component_Name (F)
                             else  Chars (F)));
                         Field_Entity_List.Append (F);
+                        Field_Padding_List.Append (False);
                         Cur_RI_Pos :=
                           Align_Pos (Cur_RI_Pos + Get_Type_Size (MDT), BPU);
                         Add_FI (F, Cur_Idx, F_GT,
@@ -2070,7 +2085,9 @@ package body GNATLLVM.Records.Create is
            (MDT,
             MD_Type_Array (MD_Type_List.Table (0 .. MD_Type_List.Last)),
             Name_Id_Array (Field_Name_List.Table (0 .. MD_Type_List.Last)),
-            Fields => Field_Id_Array (Field_Entity_List.Table
+            Fields  => Field_Id_Array (Field_Entity_List.Table
+                                         (0 .. MD_Type_List.Last)),
+            Padding => Boolean_Array (Field_Padding_List.Table
                                         (0 .. MD_Type_List.Last)),
             Packed => True);
 
@@ -2081,8 +2098,9 @@ package body GNATLLVM.Records.Create is
          --  Otherwise, close out the last record info if we have any
          --  fields. Note that if we don't have any fields, the entry we
          --  allocated will remain unused, but trying to reclaim it is
-         --  risky.
+         --  risky. Also show that the type we created has no fields.
 
+         Struct_Set_Body (MDT, (1 .. 0 => No_MD_Type), (1 .. 0 => No_Name));
          Flush_Current_Types;
       end if;
 

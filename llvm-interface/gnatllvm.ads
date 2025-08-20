@@ -166,6 +166,7 @@ package GNATLLVM is
    --  named after the functions in the Get_Targ package and have the same
    --  meaning.
 
+   type Boolean_Array      is array (Nat range <>) of Boolean;
    type Value_Array        is array (Nat range <>) of Value_T;
    type Type_Array         is array (Nat range <>) of Type_T;
    type Name_Id_Array      is array (Nat range <>) of Name_Id;
@@ -174,6 +175,7 @@ package GNATLLVM is
    type Index_Array        is array (Nat range <>) of unsigned;
    type ULL_Array          is array (Nat range <>) of ULL;
    type Access_Value_Array is access all Value_Array;
+
 #if LLVM_Version_Major <= 16 then
    type Dbg_Record_T       is new Value_T;
 #end if;

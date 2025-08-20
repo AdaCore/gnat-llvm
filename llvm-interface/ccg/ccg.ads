@@ -154,6 +154,10 @@ package CCG is
      with Pre => Present (T) and then Present (MDT), Inline;
    --  Indicate that T was created from MD_Type MDT
 
+   function C_Get_MD_Type (T : Type_T) return MD_Type
+     with Pre => Present (T), Inline;
+   --  Get the MD_Type previously set for T, if any
+
    procedure C_Set_Entity
      (V : Value_T; E : Entity_Id; Reference : Boolean := False)
    with Pre => Present (V), Inline;

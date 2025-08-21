@@ -71,6 +71,9 @@ GEN_IL_FILES = nmake.adb nmake.ads \
   seinfo.ads sinfo-nodes.ads sinfo-nodes.adb \
   einfo-entities.ads einfo-entities.adb
 
+target=$(shell gcc -dumpmachine)
+llvm_target=$(shell clang -dumpmachine)
+
 setup:
 	$(MKDIR) obj obj-tools/libgnat bin gnat_src/vast
 	for f in `cd $(GNAT_SRC); ls gen_il*.ad? xutil.ad? *-tmpl xoscons.adb xsnamest.adb`; \
@@ -86,21 +89,22 @@ setup:
 	done
 	./check_for_LLVM_aliasing_bug.sh
 	./check_for_llvm_apis.sh "$(LLVM_CONFIG)"
+	./configure_default_target.sh "$(llvm_target)"
 
 build: setup force
 	$(GPRBUILD) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
-	$(GPRBUILD) -Ptools -j$(PROCS) -largs $(LDFLAGS)
+	$(GPRBUILD) -Ptools -j$(PROCS)
 
 build-uninit: setup force
 	$(GPRBUILD) -XBuild=Uninitialized -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
-	$(GPRBUILD) -Ptools -j$(PROCS) -largs $(LDFLAGS)
+	$(GPRBUILD) -Ptools -j$(PROCS)
 
 build-opt: setup force
 	$(GPRBUILD) $(GPROPT) -Pgnat_llvm -j$(PROCS) \
 	  -largs $(LDFLAGS) -cargs:c++ $(ALL_CXXFLAGS)
-	$(GPRBUILD) $(GPROPT) -Ptools -j$(PROCS) -largs $(LDFLAGS)
+	$(GPRBUILD) $(GPROPT) -Ptools -j$(PROCS)
 
 # Target for building with coverage instrumentation.
 build-cov: setup force
@@ -186,8 +190,6 @@ clean:
 # Note some of these target(.*) variables are used in gnat_src's Makefiles.
 # Renaming them will lead to runtime compilation errors.
 
-target=$(shell gcc -dumpmachine)
-
 target_list=$(filter-out gnu,$(subst -, ,$(target)))
 target_cpu=$(word 1,$(target_list))
 
@@ -206,8 +208,6 @@ ifeq ($(strip $(filter-out vxworks7r2,$(target_os))),)
 else
 	make gnatlib-automated
 endif
-
-llvm_target=$(shell clang -dumpmachine)
 
 RTSBASE=rts-native
 RTS=$(pwd)/lib/gnat-llvm/$(llvm_target)/$(RTSBASE)

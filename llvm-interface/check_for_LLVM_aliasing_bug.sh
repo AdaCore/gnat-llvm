@@ -119,8 +119,10 @@ else
     BUG=True
     echo "using LLVM with the aliasing bug, will pessimize slightly the optimized code"
 fi
-cat << EOF > obj/gnatllvm-aliasing-params.ads
+cat << EOF > obj/tmp-gnatllvm-aliasing-params.ads
 package GNATLLVM.Aliasing.Params is
    LLVM_Struct_Tag_Bug : constant Boolean := $BUG;
 end GNATLLVM.Aliasing.Params;
 EOF
+
+./move-if-change obj/tmp-gnatllvm-aliasing-params.ads obj/gnatllvm-aliasing-params.ads

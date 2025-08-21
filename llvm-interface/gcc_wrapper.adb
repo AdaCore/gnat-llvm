@@ -30,8 +30,7 @@ with Ada.Command_Line;        use Ada.Command_Line;
 with Ada.Strings.Fixed;       use Ada.Strings.Fixed;
 with GNAT.OS_Lib;             use GNAT.OS_Lib;
 with GNATLLVM;
-
-with LLVM.Target_Machine; use LLVM.Target_Machine;
+with Options.Target;          use Options.Target;
 
 with Gnatvsn; use Gnatvsn;
 
@@ -207,7 +206,7 @@ procedure GCC_Wrapper is
       Suffix  : String_Access    := Get_Target_Executable_Suffix;
       Result  : constant String  :=
         Executable_Location & "libexec/gnat-llvm/" &
-        Get_Default_Target_Triple & "/bin/" & Exec;
+        Default_Target_Triple & "/bin/" & Exec;
       Is_Exec : constant Boolean :=
         Is_Executable_File (Result & Suffix.all);
 
@@ -248,7 +247,7 @@ begin
 
          elsif Arg = "-dumpmachine" then
 
-            Put_Line (Get_Default_Target_Triple);
+            Put_Line (Default_Target_Triple);
             OS_Exit (0);
 
          elsif Arg = "--version" then

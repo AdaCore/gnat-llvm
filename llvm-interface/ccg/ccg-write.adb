@@ -651,6 +651,15 @@ package body CCG.Write is
          if Flags.LHS or else Is_A_Constant_Int (V) then
             return False;
 
+         --  Don't cast to a C aggregate or function type because it's useless
+         --  and can cause errors in some cases with some compilers.
+
+         elsif Present (Cast_MD)
+           and then (Is_Array (Cast_MD) or else Is_Struct (Cast_MD)
+                     or else Is_Function_Type (Cast_MD))
+         then
+            return False;
+
          --  Otherwise, write a cast if we're asked to and it's the
          --  wrong type.
 

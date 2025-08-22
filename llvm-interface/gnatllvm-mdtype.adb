@@ -35,12 +35,16 @@ package body GNATLLVM.MDType is
       --  the field represents padding.
 
       Void,
-      --  A null type, which is used for a function that doesn't return or
-      --  a generic pointer.
+      --  A null type, which is used for a function that doesn't return,
+      --  a generic pointer, or a pointer where we don't know what it
+      --  points to.
 
       Integer,
       --  An integer. The count field is the number of bits and the flag
       --  indicates signedness.
+
+      Unknown_Integer,
+      --  Like Integer, but where we don't know the signedness
 
       Float,
       --  A floating-point value. The count field is the number of bits.
@@ -232,7 +236,7 @@ package body GNATLLVM.MDType is
    ----------------
 
    function Is_Integer (MD : MD_Type) return Boolean is
-     (Kind (MD) = Integer);
+     (Kind (MD) in Integer | Unknown_Integer);
 
    ----------------
    -- Is_Float --
@@ -244,13 +248,21 @@ package body GNATLLVM.MDType is
    -- Is_Signed --
    ---------------
 
-   function Is_Signed (MD : MD_Type) return Boolean renames Not_Flag;
+   function Is_Signed (MD : MD_Type) return Boolean is
+     (Kind (MD) = Integer and then not Flag (MD));
 
    -----------------
    -- Is_Unsigned --
    -----------------
 
    function Is_Unsigned (MD : MD_Type) return Boolean renames Flag;
+
+   ---------------------
+   -- Is_Unknown_Sign --
+   --------------------
+
+   function Is_Unknown_Sign (MD : MD_Type) return Boolean is
+     (Kind (MD) = Unknown_Integer);
 
    --------------
    -- Is_Array --
@@ -502,10 +514,16 @@ package body GNATLLVM.MDType is
    -- Int_Ty --
    ------------
 
-   function Int_Ty (Bits : Nat; Unsigned : Boolean := False) return MD_Type
+   function Int_Ty
+     (Bits     : Nat;
+      Unsigned : Boolean := False;
+      Unknown  : Boolean := False) return MD_Type
    is
      (MD_Find
-        ((Kind => Integer, Count => Bits, Flag => Unsigned, others => <>)));
+        ((Kind   => (if Unknown then Unknown_Integer else Integer),
+          Count  => Bits,
+          Flag   => Unsigned,
+          others => <>)));
 
    ------------
    -- Float_Ty --
@@ -583,7 +601,7 @@ package body GNATLLVM.MDType is
    ---------------------
 
    procedure Struct_Set_Body
-     (MD     : MD_Type;
+     (MD      : MD_Type;
       Types   : MD_Type_Array;
       Names   : Name_Id_Array;
       Fields  : Field_Id_Array := (1 .. 0 => Empty);
@@ -621,10 +639,10 @@ package body GNATLLVM.MDType is
 
    function Struct_Create_Named (Name : Name_Id) return MD_Type is
    begin
-      MD_Types.Append ((Kind           => Struct,
-                        Name           => Name,
-                        Count          => 0,
-                        others         => <>));
+      MD_Types.Append ((Kind   => Struct,
+                        Name   => Name,
+                        Count  => 0,
+                        others => <>));
       return MD_Types.Last;
    end Struct_Create_Named;
 
@@ -775,7 +793,7 @@ package body GNATLLVM.MDType is
          when Void =>
             Result := Void_Type;
 
-         when Integer =>
+         when Integer | Unknown_Integer =>
             Result := Int_Type (unsigned (Int_Bits (MD)));
 
          when Float =>
@@ -863,7 +881,7 @@ package body GNATLLVM.MDType is
 
       case Get_Type_Kind (T) is
          when Integer_Type_Kind =>
-            return Int_Ty (Nat (Get_Scalar_Bit_Size (T)));
+            return Int_Ty (Nat (Get_Scalar_Bit_Size (T)), Unknown => True);
 
          when Float_Type_Kind =>
             return Float_Ty (32);
@@ -875,7 +893,7 @@ package body GNATLLVM.MDType is
             return Float_Ty (80);
 
          when Pointer_Type_Kind =>
-            return Pointer_Type (Void_Ty);
+            return Void_Ptr_MD;
 
          when Array_Type_Kind =>
             return Array_Type (From_Type (Get_Element_Type (T)),
@@ -1094,7 +1112,7 @@ package body GNATLLVM.MDType is
          when Void =>
             Append (Result, "void");
 
-         when Integer =>
+         when Integer | Unknown_Integer =>
 
             if Is_Unsigned (MD) then
                Append (Result, 'u');

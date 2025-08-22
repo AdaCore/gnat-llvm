@@ -1386,8 +1386,13 @@ package body CCG.Utils is
    function Maybe_Cast
      (MD : MD_Type; V : Value_T; As_LHS : Boolean := False) return Str
    is
-      (if   Actual_Type (V, As_LHS) = MD then +V
-       else "(" & MD & ") " & (V + Unary));
+     --  Don't cast to a C aggregate or function type because it's useless
+     --  and can cause errors in some cases with some compilers.
+
+     (if   Actual_Type (V, As_LHS) = MD
+           or else Is_Struct (MD) or else Is_Array (MD)
+           or else Is_Function_Type (MD)
+           then +V else "(" & MD & ") " & (V + Unary));
 
    ---------------------
    -- Int_Type_String --

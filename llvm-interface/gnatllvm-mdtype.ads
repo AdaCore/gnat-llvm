@@ -66,6 +66,8 @@ package GNATLLVM.MDType is
      with Pre => Is_Integer (MD);
    function Is_Unsigned (MD : MD_Type) return Boolean
      with Pre => Is_Integer (MD);
+   function Is_Unknown_Sign (MD : MD_Type) return Boolean
+     with Pre => Is_Integer (MD);
    function Is_Float (MD : MD_Type) return Boolean
      with Pre => Present (MD);
    function Is_Array (MD : MD_Type) return Boolean
@@ -215,8 +217,14 @@ package GNATLLVM.MDType is
      with Post => Is_Void (Void_Ty'Result);
    --  Create a void type. We'll end up with only one of them
 
-   function Int_Ty (Bits : Nat; Unsigned : Boolean := False) return MD_Type
+   function Int_Ty
+     (Bits     : Nat;
+      Unsigned : Boolean := False;
+      Unknown  : Boolean := False) return MD_Type
      with Post => Is_Unsigned (Int_Ty'Result) = Unsigned
+                  and then Is_Signed (Int_Ty'Result) =
+                           (not Unknown and not Unsigned)
+                  and then Is_Unknown_Sign (Int_Ty'Result) = Unknown
                   and then Int_Bits (Int_Ty'Result) = Bits;
    --  Make an integer type with specified bitsize and signedness.
 
@@ -307,7 +315,7 @@ package GNATLLVM.MDType is
    --  also specifying if it's packed and it's name, if any.
 
    procedure Struct_Set_Body
-     (MD     : MD_Type;
+     (MD      : MD_Type;
       Types   : MD_Type_Array;
       Names   : Name_Id_Array;
       Fields  : Field_Id_Array := (1 .. 0 => Empty);

@@ -65,7 +65,7 @@ procedure GCC_Wrapper is
    --  is a Clang instance that we expect to be on the PATH, like GNAT-LLVM C.
 
    GCC                  : constant String := Command_Name;
-   Args                 : Argument_List (1 .. Argument_Count + 1);
+   Args                 : Argument_List (1 .. Argument_Count + 2);
    Arg_Count            : Natural := 0;
    Status               : Boolean;
    Last                 : Natural;
@@ -314,7 +314,7 @@ begin
             null;
 
          elsif Arg = "-x" then
-            if J < Args'Last then
+            if J < Argument_Count then
 
                --  While we can use our embedded Clang ("llvm-helper") to
                --  compile assembly code, we need to forward C and C++ code to
@@ -436,6 +436,14 @@ begin
       Put_Line ("unexpected program name: " & GCC & ", exiting.");
       Set_Exit_Status (Failure);
       return;
+   end if;
+
+   --  Tell Clang which target to compile or link for
+
+   if Compiler /= Ada_Frontend or else not Compile then
+      Args (Arg_Count + 1) := new String'("-target");
+      Args (Arg_Count + 2) := new String'(Default_Target_Triple);
+      Arg_Count := Arg_Count + 2;
    end if;
 
    --  Compile c/c++ files with clang

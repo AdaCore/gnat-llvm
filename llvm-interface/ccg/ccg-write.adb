@@ -663,7 +663,8 @@ package body CCG.Write is
          --  Otherwise, write a cast if we're asked to and it's the
          --  wrong type.
 
-         elsif Present (Cast_MD) and then MD /= Cast_MD then
+         elsif Present (Cast_MD) and then not Is_Same_C_Types (MD, Cast_MD)
+         then
             return True;
 
          --  Otherwise write cast only if we need to be concerned with

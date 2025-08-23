@@ -434,32 +434,32 @@ package body CCG.Utils is
    -- Is_Ref_To_Volatile --
    ------------------------
 
-   function Is_Ref_To_Volatile (Op : Value_T) return Boolean is
+   function Is_Ref_To_Volatile (V : Value_T) return Boolean is
    begin
       --  If it is volatile, then it's a reference to a volatile object
 
-      if Is_Volatile (Op) then
+      if Is_Volatile (V) then
          return True;
 
       --  If it's not an operation, it's not a reference to volatile
 
-      elsif not Has_Operands (Op) then
+      elsif not Has_Operands (V) then
          return False;
       end if;
 
       --  Otherwise, look at the opcode
 
-      case Get_Opcode (Op) is
+      case Get_Opcode (V) is
 
          --  For addition and subtraction look at the first operand
 
          when Op_Add | Op_Sub =>
-            return Is_Ref_To_Volatile (Get_Operand0 (Op));
+            return Is_Ref_To_Volatile (Get_Operand0 (V));
 
          --  For GEP, first look at the first operand
 
          when Op_Get_Element_Ptr =>
-            return Is_Volatile_GEP (Op);
+            return Is_Volatile_GEP (V);
 
          --  All else isn't known to be volatile
 
@@ -1389,7 +1389,7 @@ package body CCG.Utils is
      --  Don't cast to a C aggregate or function type because it's useless
      --  and can cause errors in some cases with some compilers.
 
-     (if   Actual_Type (V, As_LHS) = MD
+     (if   Is_Same_C_Types (Actual_Type (V, As_LHS), MD)
            or else Is_Struct (MD) or else Is_Array (MD)
            or else Is_Function_Type (MD)
            then +V else "(" & MD & ") " & (V + Unary));

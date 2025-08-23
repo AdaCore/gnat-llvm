@@ -130,9 +130,11 @@ package GNATLLVM.MDType is
    --  We also can return Void for a number of reasons, so we allow that
    --  to always be valid.
 
-   function Is_Layout_Identical (MD1, MD2 : MD_Type) return Boolean
+   function Is_Layout_Identical
+     (MD1, MD2 : MD_Type; Strict : Boolean := False) return Boolean
      with Pre => Present (MD1) and then Present (MD2);
    --  Return True iff types MD1 and MD2 have identical layouts.
+   --  If Strict is true, the types must also have identical C types.
 
    function Int_Bits (MD : MD_Type) return Nat
      with Pre => Is_Integer (MD), Post => Int_Bits'Result /= 0;

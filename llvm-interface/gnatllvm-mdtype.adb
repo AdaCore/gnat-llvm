@@ -223,7 +223,8 @@ package body GNATLLVM.MDType is
    ------------------
 
    function Is_Same_Kind (MD1, MD2 : MD_Type) return Boolean is
-      (Kind (MD1) = Kind (MD2));
+     (Kind (MD1) = Kind (MD2)
+      or else (Is_Integer (MD1) and then Is_Integer (MD2)));
 
    -------------
    -- Is_Void --
@@ -1011,7 +1012,9 @@ package body GNATLLVM.MDType is
    -- Is_Layout_Identical --
    -------------------------
 
-   function Is_Layout_Identical (MD1, MD2 : MD_Type) return Boolean is
+   function Is_Layout_Identical
+     (MD1, MD2 : MD_Type; Strict : Boolean := False) return Boolean
+   is
    begin
       --  If the types are the same, they're identical, but if they have
       --  different kinds, they aren't.
@@ -1052,10 +1055,13 @@ package body GNATLLVM.MDType is
          return True;
 
       --  Pointers have the same layout if they're pointing at the
-      --  same address space.
+      --  same address space and, if we're being strict, pointing at
+      --  the same type.
 
       elsif Is_Pointer (MD1)
         and then Pointer_Space (MD1) = Pointer_Space (MD2)
+        and then (not Strict
+                  or else (Designated_Type (MD1) = Designated_Type (MD2)))
       then
          return True;
 

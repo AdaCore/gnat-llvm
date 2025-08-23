@@ -103,13 +103,17 @@ package CCG.Utils is
    --  is present. If 'T' is present, we output the type of that operand.
    --  If 'P' is present, we use the value of the Phi temporary.
 
-   function Is_Ref_To_Volatile (Op : Value_T) return Boolean
-     with Pre => Present (Op);
-   --  True if Op represents a value that we can determine to be volatile
+   function Is_Ref_To_Volatile (V : Value_T) return Boolean
+     with Pre => Present (V);
+   --  True if V represents a value that we can determine to be volatile
 
    function Num_Uses (V : Value_T) return Nat
      with Pre => Present (V);
    --  Returns the number of uses of V
+
+   function Is_Same_C_Types (MD1, MD2 : MD_Type) return Boolean is
+     (Is_Layout_Identical (MD1, MD2, Strict => True))
+     with Pre => Present (MD1) and then Present (MD2);
 
    function Is_Integral_Type (T : Type_T) return Boolean is
      (Get_Type_Kind (T) = Integer_Type_Kind)

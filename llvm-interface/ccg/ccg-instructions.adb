@@ -478,7 +478,7 @@ package body CCG.Instructions is
       --  pointer to the type and volatility designated by the instruction.
 
    begin
-      return (if   +Val_MD = LS_T
+      return (if   Is_Same_C_Types (Val_MD, From_Type (LS_T))
                    and then Get_Volatile (V) = Is_Volatile (Val_MD)
                    and then not Is_A_Constant_Pointer_Null (Op)
                    and then Ptr_MD /= Void_Ptr_MD

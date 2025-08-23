@@ -637,12 +637,17 @@ package body GNATLLVM.GLType is
 
          --  If this is a discrete or fixed-point type and a size was
          --  specified that's no larger than the largest integral type,
-         --  make an alternate integer type.
+         --  make an alternate integer type, but use the same type if the
+         --  size and signedness are the same.
 
          elsif Is_Discrete_Or_Fixed_Point_Type (GT)
            and then Present (Size) and then Size <= Max_Int_Size
          then
-            GTI.MD   := Int_Ty (+Int_Sz, Is_Unsigned_Type (GT));
+            GTI.MD   := (if   Int_Bits (Prim_MD) = +Int_Sz
+                              and then Is_Unsigned (Prim_MD)
+                                       = Is_Unsigned_Type (GT)
+                         then Prim_MD
+                         else Int_Ty (+Int_Sz, Is_Unsigned_Type (GT)));
             GTI.Kind := Int_Alt;
 
          --  If this is an access type to an unconstrained array and we have

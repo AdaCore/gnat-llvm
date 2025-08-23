@@ -23,6 +23,7 @@ with Snames;   use Snames;
 
 with GNATLLVM.Arrays;         use GNATLLVM.Arrays;
 with GNATLLVM.Arrays.Create;  use GNATLLVM.Arrays.Create;
+with GNATLLVM.Codegen;        use GNATLLVM.Codegen;
 with GNATLLVM.Environment;    use GNATLLVM.Environment;
 with GNATLLVM.GLType;         use GNATLLVM.GLType;
 with GNATLLVM.MDType;         use GNATLLVM.MDType;
@@ -129,6 +130,8 @@ package body GNATLLVM.Types.Create is
       --  representation of the type.
 
       Size    : Uint                                     := Esize (Size_TE);
+      RT      : Discrete_Or_Fixed_Point_Kind_Id          := TE;
+      MD      : MD_Type;
 
    begin
       --  It's tempting to use i1 for boolean types, but that causes issues.
@@ -160,7 +163,7 @@ package body GNATLLVM.Types.Create is
 
          if Is_Packed_Array_Impl_Type (Size_TE)
            or else (not Has_Size_Clause (Size_TE)
-                    and then RM_Size (Size_TE) /= 0)
+                      and then RM_Size (Size_TE) /= 0)
          then
             Size := RM_Size (Size_TE);
          else
@@ -174,9 +177,27 @@ package body GNATLLVM.Types.Create is
          Size := +BPU;
       end if;
 
-      return
-        Int_Ty ((if +Size <= Max_Int_Size then +Size else Max_Int_Size),
-               Is_Unsigned_Type (Size_TE));
+      MD := Int_Ty ((if +Size <= Max_Int_Size then +Size else Max_Int_Size),
+                    Is_Unsigned_Type (Full_Base_Type (Size_TE)));
+
+      --  If we're emitting C, check if a type in Interfaces.C is in the
+      --  type chain at the same size.
+
+      if Emit_C then
+         while Present (RT) and then RM_Size (RT) = Size loop
+            if Get_Name (Scope (RT)) = "interfaces__c" then
+               MD := Set_Type_Name (MD, Chars (RT));
+            end if;
+
+            if RT /= Full_Etype (RT) then
+               RT := Full_Etype (RT);
+            else
+               exit;
+            end if;
+         end loop;
+      end if;
+
+      return MD;
 
    end Create_Discrete_Type;
 

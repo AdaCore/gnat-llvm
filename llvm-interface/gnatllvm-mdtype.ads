@@ -379,8 +379,9 @@ package GNATLLVM.MDType is
                                     Arg_Names (J)));
    --  Make a function type with the specified return and argument types
 
-   function Name_Type (MD : MD_Type; New_Name : Name_Id) return MD_Type
-     with Pre => Present (MD), Post => MD_Name (Name_Type'Result) = New_Name;
+   function Set_Type_Name (MD : MD_Type; New_Name : Name_Id) return MD_Type
+     with Pre  => Present (MD),
+          Post => MD_Name (Set_Type_Name'Result) = New_Name;
    --  Create a copy of MD that has the specified name
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");

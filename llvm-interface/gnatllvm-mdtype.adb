@@ -729,17 +729,17 @@ package body GNATLLVM.MDType is
       return MD_Find (Info);
    end Fn_Ty;
 
-   ---------------
-   -- Name_Type --
-   ---------------
+   -------------------
+   -- Set_Type_Name --
+   -------------------
 
-   function Name_Type (MD : MD_Type; New_Name : Name_Id) return MD_Type is
+   function Set_Type_Name (MD : MD_Type; New_Name : Name_Id) return MD_Type is
       Info : MD_Type_Info := MD_Types.Table (MD);
 
    begin
       Info.Name := New_Name;
       return MD_Find (Info);
-   end Name_Type;
+   end Set_Type_Name;
 
    -------------------
    -- Make_Volatile --

@@ -170,6 +170,40 @@ package body GNATLLVM.MDType is
           Post => LLVM_Type (MD) = T, Inline;
    --  Set the LLVM_Type of MD to T
 
+   -----------
+   -- Class --
+   -----------
+
+   function Class (MD : MD_Type) return MD_Type_Class is
+   begin
+      case Kind (MD) is
+         when Void =>
+            return Void_Class;
+
+         when Integer | Unknown_Integer =>
+            return Integer_Class;
+
+         when Float =>
+            return Float_Class;
+
+         when Array_Type =>
+            return Array_Class;
+
+         when Struct =>
+            return Struct_Class;
+
+         when Pointer =>
+            return Pointer_Class;
+
+         when Func =>
+            return Function_Class;
+
+         when others =>
+            pragma Assert (False);
+            return Void_Class;
+      end case;
+   end Class;
+
    ----------
    -- Hash --
    ----------

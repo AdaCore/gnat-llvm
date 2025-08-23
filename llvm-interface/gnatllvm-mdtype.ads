@@ -55,6 +55,15 @@ package GNATLLVM.MDType is
    Int_64_MD   : MD_Type := No_MD_Type;
    Boolean_MD  : MD_Type := No_MD_Type;
 
+   --  We divide MD_Types into classes
+
+   type MD_Type_Class is
+     (Void_Class, Integer_Class, Float_Class, Array_Class, Struct_Class,
+      Pointer_Class, Function_Class);
+
+   function Class (MD : MD_Type) return MD_Type_Class
+     with Pre => Present (MD);
+
    --  Accessor functions for MD_Type, starting with predicates for
    --  type kind.
 

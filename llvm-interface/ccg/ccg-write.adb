@@ -358,54 +358,55 @@ package body CCG.Write is
    begin
       --  We can write anything for undef, so we might as well write zero
 
-      if Is_Float (MD) then
-         Write_Str ("0.0");
+      case Class (MD) is
+         when Float_Class =>
+            Write_Str ("0.0");
 
-      elsif Is_Integer (MD) then
-         Write_Str ("0");
+         when Integer_Class =>
+            Write_Str ("0");
 
-      elsif Is_Pointer (MD) then
-         Write_Str (NULL_String);
+         when Pointer_Class =>
+            Write_Str (NULL_String);
 
-      elsif Is_Struct (MD) then
-         declare
-            SOS            : constant Struct_Out_Style_T :=
-              Struct_Out_Style (MD);
-            Fields_Written : Nat                         := 0;
+         when Struct_Class =>
+            declare
+               SOS            : constant Struct_Out_Style_T :=
+                 Struct_Out_Style (MD);
+               Fields_Written : Nat                         := 0;
 
-         begin
-            Write_Str ("{");
-            for J in 0 .. Element_Count (MD) - 1 loop
-               if not Is_Zero_Length_Array (Element_Type (MD, J))
-                 and then SOS /= Normal and then Is_Padding (MD, J)
-               then
-                  Maybe_Write_Comma (First);
-                  Write_Undef (Element_Type (MD, J));
-                  Fields_Written := Fields_Written + 1;
+            begin
+               Write_Str ("{");
+               for J in 0 .. Element_Count (MD) - 1 loop
+                  if not Is_Zero_Length_Array (Element_Type (MD, J))
+                    and then SOS /= Normal and then Is_Padding (MD, J)
+                  then
+                     Maybe_Write_Comma (First);
+                     Write_Undef (Element_Type (MD, J));
+                     Fields_Written := Fields_Written + 1;
+                  end if;
+               end loop;
+
+               --  For an empty struct, write out a value for the dummy field
+
+               if Fields_Written = 0 then
+                  Write_Str ("0");
                end if;
+
+               Write_Str ("}");
+            end;
+
+         when Array_Class =>
+            Write_Str ("{");
+            for J in 0 .. Effective_Array_Length (MD) - 1 loop
+               Maybe_Write_Comma (First);
+               Write_Undef (Element_Type (MD));
             end loop;
 
-            --  For an empty struct, write out a value for the dummy field
-
-            if Fields_Written = 0 then
-               Write_Str ("0");
-            end if;
-
             Write_Str ("}");
-         end;
 
-      elsif Is_Array (MD) then
-         Write_Str ("{");
-         for J in 0 .. Effective_Array_Length (MD) - 1 loop
-            Maybe_Write_Comma (First);
-            Write_Undef (Element_Type (MD));
-         end loop;
-
-         Write_Str ("}");
-
-      else
-         raise Program_Error;
-      end if;
+         when others =>
+            raise Program_Error;
+      end case;
 
    end Write_Undef;
 

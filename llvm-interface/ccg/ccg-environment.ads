@@ -159,21 +159,73 @@ package CCG.Environment is
    procedure Set_Entity                   (T : Type_T; TE : Type_Kind_Id)
      with Pre => Present (T), Post => Get_Entity (T) = TE, Inline;
    procedure Set_Is_Typedef_Output        (T : Type_T; B : Boolean := True)
-     with Pre  => Present (T), Post => Get_Is_Typedef_Output (T) = B, Inline;
+     with Pre => Present (T), Post => Get_Is_Typedef_Output (T) = B, Inline;
    procedure Set_Is_Return_Typedef_Output (T : Type_T; B : Boolean := True)
-     with Pre  => Present (T), Post => Get_Is_Return_Typedef_Output (T) = B,
+     with Pre => Present (T), Post => Get_Is_Return_Typedef_Output (T) = B,
           Inline;
    procedure Set_Is_Incomplete_Output     (T : Type_T; B : Boolean := True)
-     with Pre  => Present (T), Post => Get_Is_Incomplete_Output (T) = B,
+     with Pre => Present (T), Post => Get_Is_Incomplete_Output (T) = B,
           Inline;
    procedure Set_Are_Outputting_Typedef   (T : Type_T; B : Boolean := True)
-     with Pre  => Present (T), Post => Get_Are_Outputting_Typedef (T) = B,
+     with Pre => Present (T), Post => Get_Are_Outputting_Typedef (T) = B,
           Inline;
    procedure Set_Used_In_Struct           (T : Type_T; B : Boolean := True)
-     with Pre  => Present (T), Post => Get_Used_In_Struct (T) = B,
+     with Pre => Present (T), Post => Get_Used_In_Struct (T) = B,
           Inline;
    procedure Set_Cannot_Pack              (T : Type_T; B : Boolean := True)
-     with Pre  => Present (T), Post => Get_Cannot_Pack (T) = B,
+     with Pre => Present (T), Post => Get_Cannot_Pack (T) = B,
+          Inline;
+
+   function Get_Entity                    (M : MD_Type) return Opt_Type_Kind_Id
+     with Pre => Present (M), Inline;
+   --  Get the GNAT entity for non-void type M, if Present
+
+   function Get_Is_Typedef_Output         (M : MD_Type) return Boolean
+     with Pre => Present (M), Inline;
+   --  True if this is a type either for which we don't write a typedef
+   --  or if it is and we've written that typedef previously.
+
+   function Get_Is_Return_Typedef_Output  (M : MD_Type) return Boolean
+     with Pre => Present (M), Inline;
+   --  True if this is an array type and we've written the struct type
+   --  that we use for the return type of a function returning this type.
+
+   function Get_Is_Incomplete_Output      (M : MD_Type) return Boolean
+     with Pre => Present (M), Inline;
+   --  True if this is a struct type and we've just written the struct
+   --  definition without fields (an incomplete type).
+
+   function Get_Are_Outputting_Typedef    (M : MD_Type) return Boolean
+     with Pre => Present (M), Inline;
+   --  True if we're in the process of outputting a typedef
+
+   function Get_Used_In_Struct            (M : MD_Type) return Boolean
+     with Pre => Present (M), Inline;
+   --  True if T is the type of an element of a struct
+
+   function Get_Cannot_Pack               (M : MD_Type) return Boolean
+     with Pre => Present (M), Inline;
+   --  True if this is a type that we want to pack, but can't because of
+   --  restrictions in our C compiler.
+
+   procedure Set_Entity                   (M : MD_Type; TE : Type_Kind_Id)
+     with Pre => Present (M), Post => Get_Entity (M) = TE, Inline;
+   procedure Set_Is_Typedef_Output        (M : MD_Type; B : Boolean := True)
+     with Pre => Present (M), Post => Get_Is_Typedef_Output (M) = B, Inline;
+   procedure Set_Is_Return_Typedef_Output (M : MD_Type; B : Boolean := True)
+     with Pre => Present (M), Post => Get_Is_Return_Typedef_Output (M) = B,
+          Inline;
+   procedure Set_Is_Incomplete_Output     (M : MD_Type; B : Boolean := True)
+     with Pre => Present (M), Post => Get_Is_Incomplete_Output (M) = B,
+          Inline;
+   procedure Set_Are_Outputting_Typedef   (M : MD_Type; B : Boolean := True)
+     with Pre => Present (M), Post => Get_Are_Outputting_Typedef (M) = B,
+          Inline;
+   procedure Set_Used_In_Struct           (M : MD_Type; B : Boolean := True)
+     with Pre => Present (M), Post => Get_Used_In_Struct (M) = B,
+          Inline;
+   procedure Set_Cannot_Pack              (M : MD_Type; B : Boolean := True)
+     with Pre => Present (M), Post => Get_Cannot_Pack (M) = B,
           Inline;
 
    function Get_Flow        (BB : Basic_Block_T) return Flow_Idx
@@ -201,10 +253,11 @@ package CCG.Environment is
 
    procedure Maybe_Output_Typedef (MD : MD_Type; Incomplete : Boolean := False)
      with Pre  => Present (MD),
-          Post => Get_Is_Typedef_Output (+MD)
-                  or else Get_Are_Outputting_Typedef (+MD)
-                  or else (Incomplete and then Get_Is_Incomplete_Output (+MD));
-   --  See if we need to write a typedef for T and write one if so. If
+          Post => Get_Is_Typedef_Output (Type_T'(+MD))
+                  or else Get_Are_Outputting_Typedef (Type_T'(+MD))
+                  or else (Incomplete
+                           and then Get_Is_Incomplete_Output (Type_T'(+MD)));
+   --  See if we need to write a typedef for MD and write one if so. If
    --  Incomplete is True, all we need is the initial portion of a struct
    --  definition.
 

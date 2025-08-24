@@ -419,12 +419,12 @@ package body CCG.Aggregates is
       --  the typedef for T since we reference it, then write the actual
       --  typedef, and mark it as written.
 
-      if not Get_Is_Return_Typedef_Output (+MD) then
+      if not Get_Is_Return_Typedef_Output (Type_T'(+MD)) then
          Maybe_Output_Typedef (MD);
          Output_Decl ("typedef struct " & MD & "_R {" & MD & " F;} " &
                         MD & "_R",
                       Is_Typedef => True);
-         Set_Is_Return_Typedef_Output (+MD);
+         Set_Is_Return_Typedef_Output (Type_T'(+MD));
       end if;
    end Maybe_Output_Array_Return_Typedef;
 

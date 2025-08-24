@@ -36,9 +36,7 @@ package CCG.Write is
    procedure Write_Type
      (MD    : MD_Type;
       S     : Str        := No_Str;
-      Flags : Type_Flags := Default_Type_Flags;
-      E     : Entity_Id  := Empty;
-      V     : Value_T    := No_Value_T)
+      Flags : Type_Flags := Default_Type_Flags)
    with Pre => Present (MD);
    procedure Write_BB_Value  (BB : Basic_Block_T)
    with Pre => Present (BB);

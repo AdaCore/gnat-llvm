@@ -290,7 +290,8 @@ package body GNATLLVM.MDType is
    -- Is_Unsigned --
    -----------------
 
-   function Is_Unsigned (MD : MD_Type) return Boolean renames Flag;
+   function Is_Unsigned (MD : MD_Type) return Boolean is
+     (Kind (MD) = Integer and then Flag (MD));
 
    ---------------------
    -- Is_Unknown_Sign --
@@ -559,6 +560,32 @@ package body GNATLLVM.MDType is
           Count  => Bits,
           Flag   => Unsigned,
           others => <>)));
+
+   -----------------
+   -- Signed_Type --
+   -----------------
+
+   function Signed_Type (MD : MD_Type) return MD_Type is
+      Info : MD_Type_Info := MD_Types.Table (MD);
+
+   begin
+      Info.Kind := Integer;
+      Info.Flag := False;
+      return MD_Find (Info);
+   end Signed_Type;
+
+   -------------------
+   -- Unsigned_Type --
+   -------------------
+
+   function Unsigned_Type (MD : MD_Type) return MD_Type is
+      Info : MD_Type_Info := MD_Types.Table (MD);
+
+   begin
+      Info.Kind := Integer;
+      Info.Flag := True;
+      return MD_Find (Info);
+   end Unsigned_Type;
 
    ------------
    -- Float_Ty --
@@ -1057,75 +1084,71 @@ package body GNATLLVM.MDType is
          return True;
       elsif not Is_Same_Kind (MD1, MD2) then
          return False;
+      end if;
 
       --  Otherwise, it's kind-specific
 
-      elsif Is_Array (MD1)
-        and then Is_Fixed_Array (MD1) and then Is_Fixed_Array (MD2)
-        and then Array_Count (MD1) = Array_Count (MD2)
-        and then Is_Layout_Identical (Element_Type (MD1), Element_Type (MD2))
-      then
-         return True;
+      case Class (MD1) is
 
-      elsif Is_Struct (MD1)
-        and then Is_Packed (MD1) = Is_Packed (MD2)
-        and then Has_Fields (MD1) = Has_Fields (MD2)
-        and then (not Has_Fields (MD1)
-                  or else Element_Count (MD1) = Element_Count (MD2))
-      then
-         --  Structures are identical if their packed status is the same,
-         --  they have the same number of fields, and each field is
-         --  identical.
+         when Void_Class =>
+            return True;
 
-         for J in 0 ..
-           (if Has_Fields (MD1) then Element_Count (MD1) else 0) - 1 loop
-            if not Is_Layout_Identical (Element_Type (MD1, J),
-                                        Element_Type (MD2, J))
-            then
-               return False;
-            end if;
-         end loop;
+         when Integer_Class =>
+            return Int_Bits (MD1) = Int_Bits (MD2)
+              and then (not Strict
+                        or else Is_Unsigned (MD1) = Is_Unsigned (MD2));
 
-         return True;
+         when Float_Class =>
+            return Float_Bits (MD1) = Float_Bits (MD2);
 
-      --  Pointers have the same layout if they're pointing at the
-      --  same address space and, if we're being strict, pointing at
-      --  the same type.
+         when Array_Class =>
+            return
+              Is_Fixed_Array (MD1) = Is_Fixed_Array (MD2)
+              and then (Is_Variable_Array (MD1)
+                        or else Array_Count (MD1) = Array_Count (MD2))
+              and then Is_Layout_Identical (Element_Type (MD1),
+                                            Element_Type (MD2));
 
-      elsif Is_Pointer (MD1)
-        and then Pointer_Space (MD1) = Pointer_Space (MD2)
-        and then (not Strict
-                  or else (Designated_Type (MD1) = Designated_Type (MD2)))
-      then
-         return True;
+         when Struct_Class =>
 
-      --  Two function types have different layouts if their return types
-      --  have different layouts or they have a different number of
-      --  parameter types.
+            --  Structures are identical if their packed status is the
+            --  same, they have the same number of fields, and each field
+            --  is identical.
 
-      elsif Is_Function_Type (MD1)
-        and then Is_Layout_Identical (Return_Type (MD1), Return_Type (MD2))
-        and then Parameter_Count (MD1) = Parameter_Count (MD2)
-      then
-         --  If any parameter type is not the identical layout of the
-         --  corresponding parameter type, the layouts aren't the same.
+            return Is_Packed (MD1) = Is_Packed (MD2)
+              and then Has_Fields (MD1) = Has_Fields (MD2)
+              and then (not Has_Fields (MD1)
+                        or else Element_Count (MD1) = Element_Count (MD2))
+              and then (not Has_Fields (MD1)
+                        or else (for all J in 0 .. Element_Count (MD1) - 1 =>
+                                     Is_Layout_Identical
+                                       (Element_Type (MD1, J),
+                                        Element_Type (MD2, J))));
 
-         for J in 1 .. Parameter_Count (MD1) loop
-            if not Is_Layout_Identical (Parameter_Type (MD1, J),
-                                        Parameter_Type (MD2, J))
-            then
-               return False;
-            end if;
-         end loop;
+         when Pointer_Class =>
 
-         return True;
+            --  Pointers have the same layout if they're pointing at the
+            --  same address space and, if we're being strict, pointing to
+            --  the same type.
 
-      --  Otherwise, types are only identical if they're the same and that
-      --  was checked above.
+            return Pointer_Space (MD1) = Pointer_Space (MD2)
+              and then (not Strict
+                        or else (Designated_Type (MD1) =
+                                 Designated_Type (MD2)));
 
-      else
-         return False;
-      end if;
+         when Function_Class =>
+
+            --  Two function types have different layouts if their return
+            --  types have different layouts, they have a different number
+            --  of parameter types, or any parameter type is not the
+            --  identical layout of the corresponding parameter type.
+
+            return Is_Layout_Identical (Return_Type (MD1), Return_Type (MD2))
+              and then Parameter_Count (MD1) = Parameter_Count (MD2)
+              and then (for all J in 0 .. Parameter_Count (MD1) - 1 =>
+                          Is_Layout_Identical (Parameter_Type (MD1, J),
+                                               Parameter_Type (MD2, J)));
+      end case;
    end Is_Layout_Identical;
 
    ---------------

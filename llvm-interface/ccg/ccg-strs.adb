@@ -627,7 +627,7 @@ package body CCG.Strs is
 
             when Entity =>
                pragma Assert (Comp.E_Flags.Only_Type);
-               Write_Type (Type_Of (Full_GL_Type (Comp.E)), E => Comp.E);
+               Write_Type (Type_Of (Full_GL_Type (Comp.E)));
          end case;
       end loop;
 

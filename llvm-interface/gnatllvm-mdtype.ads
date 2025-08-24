@@ -239,17 +239,12 @@ package GNATLLVM.MDType is
                   and then Int_Bits (Int_Ty'Result) = Bits;
    --  Make an integer type with specified bitsize and signedness.
 
-   function Signed_Type (MD : MD_Type) return MD_Type is
-     (Make_Volatile (Int_Ty (Int_Bits (MD), Unsigned => False),
-                     Is_Volatile (MD)))
+   function Signed_Type (MD : MD_Type) return MD_Type
      with Pre  => Is_Integer (MD),
           Post => Is_Signed (Signed_Type'Result)
                   and then Is_Volatile (Signed_Type'Result) =
                            Is_Volatile (MD);
-
-   function Unsigned_Type (MD : MD_Type) return MD_Type is
-     (Make_Volatile (Int_Ty (Int_Bits (MD), Unsigned => True),
-                     Is_Volatile (MD)))
+   function Unsigned_Type (MD : MD_Type) return MD_Type
      with Pre  => Is_Integer (MD),
           Post => Is_Unsigned (Unsigned_Type'Result)
                   and then Is_Volatile (Unsigned_Type'Result) =

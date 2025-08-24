@@ -31,13 +31,9 @@ with Osint.C;     use Osint.C;
 with Output;      use Output;
 with Set_Targ;    use Set_Targ;
 with Sinput;      use Sinput;
-with Uintp;       use Uintp;
 
-with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
-with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
-with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
-with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
+with GNATLLVM.Codegen; use GNATLLVM.Codegen;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;  use CCG.Aggregates;
 with CCG.Codegen;     use CCG.Codegen;
@@ -693,23 +689,14 @@ package body CCG.Write is
                      Flags => (if    Flags.Need_Unsigned then +Need_Unsigned
                                elsif Flags.Need_Signed   then +Need_Signed
                                else  Default_Type_Flags),
-                     S     => (if Flags.With_Type then +V else No_Str),
-                     V     => V);
+                     S     => (if Flags.With_Type then +V else No_Str));
          return;
 
       --  Similarly for writing the return type
 
       elsif Flags.Write_Return then
-         declare
-            E : constant Entity_Id                 :=
-              (if Present (V) then Get_Entity (V) else Empty);
-            BT : constant Opt_Void_Or_Type_Kind_Id :=
-              (if Present (E) then Actual_Subprogram_Base_Type (E) else Empty);
-
-         begin
-            Write_Type (Return_Type (Designated_Type (MD)), V => V, E => BT);
-            return;
-         end;
+         Write_Type (Return_Type (Designated_Type (MD)));
+         return;
       end if;
 
       --  Otherwise, see if we want an unsigned version of V (unless this
@@ -834,23 +821,16 @@ package body CCG.Write is
    procedure Write_Type
      (MD    : MD_Type;
       S     : Str        := No_Str;
-      Flags : Type_Flags := Default_Type_Flags;
-      E     : Entity_Id  := Empty;
-      V     : Value_T    := No_Value_T)
+      Flags : Type_Flags := Default_Type_Flags)
+
    is
       procedure Write_Str_With_Signedness (S : String);
       --  Write S possibly preceeded by "unsigned".
 
-      T          : constant Type_T                   := +MD;
-      TE         : constant Opt_Void_Or_Type_Kind_Id :=
-        (if    Present (E) then Full_Etype (E)
-         elsif Present (V) then GNAT_Type (V)
-         else  Empty);
-      BT         : constant Opt_Void_Or_Type_Kind_Id :=
-        Opt_Full_Base_Type (TE);
-      RT         : Opt_Void_Or_Type_Kind_Id          := TE;
-      Unsigned_P : Boolean                           :=
-        Is_Integer (MD) and then Is_Unsigned (MD);
+      Unsigned_P : constant Boolean :=
+        (Flags.Need_Unsigned
+         or else (Is_Integer (MD) and then Is_Unsigned (MD)
+                  and then not Flags.Need_Signed));
 
       -------------------------------
       -- Write_Str_With_Signedness --
@@ -862,45 +842,29 @@ package body CCG.Write is
       end Write_Str_With_Signedness;
 
    begin
-      case Get_Type_Kind (T) is
-         when Void_Type_Kind =>
+      case Class (MD) is
+         when Void_Class =>
             Write_Str ("void");
 
          --  ??? For FP types, we'd ideally want to compare the number of bits
          --  and use that, but there's no simple way to do that.  So let's
-         --  start with just "float" and "double".
+         --  start with just "float" and "double" and assume 32 bits for the
+         --  former.
 
-         when Float_Type_Kind =>
-            Write_Str ("float");
-
-         when Double_Type_Kind =>
-            Write_Str ("double");
-
-         when Integer_Type_Kind =>
-
-            --  If we force signedness, use that
-
-            if Flags.Need_Unsigned then
-               Unsigned_P := True;
-            elsif Flags.Need_Signed then
-               null;
-
-            --  Next see if we have a reference that says whether this
-            --  type is unsigned or not. Note that we need to check the
-            --  base type to avoid unnecessary conversions.
-
-            elsif (Present (V) and then Is_Unsigned (V))
-              or else (Present (BT) and then Is_Unsigned_Type (BT))
-            then
-               Unsigned_P := True;
+         when Float_Class =>
+            if Float_Bits (MD) = 32 then
+               Write_Str ("float");
+            else
+               Write_Str ("double");
             end if;
 
-            --  Now see if a type in Interfaces.C is in the type chain
-            --  at the same size.
+         when Integer_Class =>
 
-            while Present (RT) and then Etype (RT) /= RT
-              and then RM_Size (RT) = RM_Size (Etype (RT))
-            loop
+            --  Now see if we've set a name for this type. That means that
+            --  a type in Interfaces.C is in the type chain at the same size.
+
+            if Has_Name (MD) then
+
                --  Now see if this is a known type in Interfaces.C. Note
                --  that we can ignore signedness here since it's been taken
                --  care of above. We really only need to worry about "long"
@@ -917,96 +881,85 @@ package body CCG.Write is
                --  but Name_Enter is used to enter that name into the
                --  table.
 
-               if Get_Name (Scope (Etype (RT))) = "interfaces__c" then
-                  declare
-                     Full_Name : constant String := Get_Name (Etype (RT));
-                     Name      : constant String :=
-                       Full_Name (Full_Name'First + 15 .. Full_Name'Last);
+               declare
+                  Full_Name : constant String :=
+                    Get_Name_String (MD_Name (MD));
+                  Name      : constant String :=
+                    Full_Name (Full_Name'First + 15 .. Full_Name'Last);
 
-                  begin
-                     if Name = "long_long" or else Name = "unsigned_long_long"
-                       or else Name = "Tlong_longB"
-                       or else Name = "Tunsigned_long_longB"
-                     then
-                        Write_Str_With_Signedness ("long long");
-                        return;
-                     elsif Name = "long" or else Name = "unsigned_long"
-                       or else Name = "TlongB" or else Name = "Tunsigned_longB"
-                     then
-                        Write_Str_With_Signedness ("long");
-                        return;
-                     elsif Name = "int" or else Name = "unsigned_int"
-                       or else Name = "TintB" or else Name = "Tunsigned_intB"
-                     then
-                        Write_Str_With_Signedness ("int");
-                        return;
-                     elsif Name = "short" or else Name = "unsigned_short"
-                       or else Name = "TshortB"
-                       or else Name = "Tunsigned_short"
-                     then
-                        Write_Str_With_Signedness ("short");
-                        return;
-                     elsif Name = "signed_char" or else Name = "unsigned_char"
-                       or else Name = "Tsigned_charB"
-                       or else Name = "Tunsigned_charB"
-                     then
-                        Write_Str ((if   Unsigned_P then "unsigned char"
+               begin
+                  if Name = "long_long" or else Name = "unsigned_long_long"
+                    or else Name = "Tlong_longB"
+                    or else Name = "Tunsigned_long_longB"
+                  then
+                     Write_Str_With_Signedness ("long long");
+                     return;
+                  elsif Name = "long" or else Name = "unsigned_long"
+                    or else Name = "TlongB" or else Name = "Tunsigned_longB"
+                  then
+                     Write_Str_With_Signedness ("long");
+                     return;
+                  elsif Name = "int" or else Name = "unsigned_int"
+                    or else Name = "TintB" or else Name = "Tunsigned_intB"
+                  then
+                     Write_Str_With_Signedness ("int");
+                     return;
+                  elsif Name = "short" or else Name = "unsigned_short"
+                    or else Name = "TshortB"
+                    or else Name = "Tunsigned_short"
+                  then
+                     Write_Str_With_Signedness ("short");
+                     return;
+                  elsif Name = "signed_char" or else Name = "unsigned_char"
+                    or else Name = "Tsigned_charB"
+                    or else Name = "Tunsigned_charB"
+                  then
+                     Write_Str ((if   Unsigned_P then "unsigned char"
                                     else "signed char"));
-                        return;
-                     end if;
-                  end;
-               end if;
-
-               --  Go on to the next type in the type chain
-
-               RT := Etype (RT);
-            end loop;
+                     return;
+                  end if;
+               end;
+            end if;
 
             --  If nothing in Interfaces.C, write type name from size
 
             Write_Str
               (Int_Type_String (Pos (Int_Bits (MD)), Unsigned_P));
 
-         when Pointer_Type_Kind =>
+         when Pointer_Class =>
 
             --  There's no such thing in C as a function type, only a
             --  pointer to function type. So we special-case that.
 
-            if Is_Function_Type (Designated_Type (MD)) then
+            if Is_Function_Pointer (MD) then
                Write_Internal_Name ("ccg_f");
-               Write_Int (Get_Output_Idx (T));
+               Write_Int (Get_Output_Idx (+MD));
 
-            --  Otherwise, this is handled normally. We don't want to use a
-            --  concatenation operator because that might cause us to try
-            --  to write out the typedef for the pointed-to type, which
-            --  will then be at the wrong place.
+               --  Otherwise, this is handled normally. We don't want to use a
+               --  concatenation operator because that might cause us to try
+               --  to write out the typedef for the pointed-to type, which
+               --  will then be at the wrong place.
 
             else
                Write_Type (Designated_Type (MD),
-                           Flags => Flags,
-                           E     =>
-                             (if   Present (BT) and then Is_Access_Type (BT)
-                              then Full_Designated_Type (BT) else Empty));
+                           Flags => Flags);
                Write_Str (" *");
             end if;
 
-         when Function_Type_Kind =>
-            Write_Type (Return_Type (MD), Flags => Flags, E => BT);
+         when Function_Class =>
+            Write_Type (Return_Type (MD), Flags => Flags);
 
-         when Struct_Type_Kind =>
+         when Struct_Class =>
             if Has_Name (MD) then
-               Write_C_Name (Get_Struct_Name (T));
+               Write_C_Name (Get_Name_String (MD_Name (MD)));
             else
                Write_Internal_Name ("ccg_s");
-               Write_Int (Get_Output_Idx (T));
+               Write_Int (Get_Output_Idx (+MD));
             end if;
 
-         when Array_Type_Kind =>
+         when Array_Class =>
             Write_Internal_Name ("ccg_a");
-            Write_Int (Get_Output_Idx (T));
-
-         when others =>
-            raise Program_Error;
+            Write_Int (Get_Output_Idx (+MD));
       end case;
 
       --  Finally, write the "variable to be declared" part, if any

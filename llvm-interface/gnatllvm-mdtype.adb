@@ -1179,7 +1179,9 @@ package body GNATLLVM.MDType is
 
          when Integer | Unknown_Integer =>
 
-            if Is_Unsigned (MD) then
+            if Is_Unknown_Sign (MD) then
+               Append (Result, 'x');
+            elsif Is_Unsigned (MD) then
                Append (Result, 'u');
             end if;
 

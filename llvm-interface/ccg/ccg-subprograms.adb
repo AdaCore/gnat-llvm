@@ -494,33 +494,13 @@ package body CCG.Subprograms is
          Result := +"void *calloc (size_t, size_t";
       else
          for J in 0 .. Num_Params - 1 loop
-            declare
-               Param  : constant Value_T          := Get_Param (V, J);
-               E      : constant Entity_Id        :=
-                 Get_Parameter_Entity (V, J);
-               BT     : constant Opt_Type_Kind_Id :=
-                 Opt_Full_Base_Type (Opt_Full_Etype (E));
-               Typ    : Str                       :=
-                 Declaration_Type (Param) or E;
+            Result := Result & (if J = 0 then "" else ", ") &
+                 Parameter_Type (Fn_MD, J);
 
-            begin
-               --  We may be passing an unsigned integer type by reference.
-               --  If so, use unsigned version of type.
-
-               if Present (BT) and then Is_Unsigned_Type (BT)
-                 and then Is_Pointer_Type (Param)
-               then
-                  Typ := Declaration_Type (Param) + Need_Unsigned;
-               end if;
-
-               --  Add this parameter to the list, usually preceeded by a comma
-
-               Result := Result & (if J = 0 then "" else ", ") & Typ;
-               if Definition then
-                  Result := Result & " " & Param;
-                  Set_Is_Decl_Output (Param);
-               end if;
-            end;
+            if Definition then
+               Result := Result & " " & Get_Param (V, J);
+               Set_Is_Decl_Output (Get_Param (V, J));
+            end if;
          end loop;
 
          --  If we've determined that we need to add a nest parameter to this

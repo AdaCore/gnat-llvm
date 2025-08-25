@@ -146,13 +146,13 @@ package CCG is
    --  Indicate that the previous calls to C_Set_Field_Info for SID
    --  were for LLVM struct type T.
 
-   procedure C_Set_MD_Type (V : Value_T; MDT : MD_Type)
-     with Pre => Present (V) and then Present (MDT), Inline;
-   --  Indicate that V was created to be of MD_Type MDT
+   procedure C_Set_MD_Type (V : Value_T; MD : MD_Type)
+     with Pre => Present (V) and then Present (MD), Inline;
+   --  Indicate that V was created to be of the MD_Type
 
-   procedure C_Set_MD_Type (T : Type_T; MDT : MD_Type)
-     with Pre => Present (T) and then Present (MDT), Inline;
-   --  Indicate that T was created from MD_Type MDT
+   procedure C_Set_MD_Type (T : Type_T; MD : MD_Type)
+     with Pre => Present (T) and then Present (MD), Inline;
+   --  Indicate that T was created from the MD_Type
 
    function C_Get_MD_Type (T : Type_T) return MD_Type
      with Pre => Present (T), Inline;

@@ -131,7 +131,7 @@ package body CCG is
    -- C_Set_MD_Type --
    -------------------
 
-   procedure C_Set_MD_Type (V : Value_T; MDT : MD_Type) is
+   procedure C_Set_MD_Type (V : Value_T; MD : MD_Type) is
    begin
       --  If we're not recording front end data, we do nothing
 
@@ -144,7 +144,7 @@ package body CCG is
       --  value as a different value.
 
       if Is_A_Global_Variable (V) or else Is_A_Function (V) then
-         Set_MD_Type (Get_Value_Name (V), MDT);
+         Set_MD_Type (Get_Value_Name (V), MD);
       end if;
 
       --  If this value has already been used for multiple MD types, we
@@ -156,7 +156,7 @@ package body CCG is
       --  Otherwise, if we haven't previously set an MD_Type, set this one
 
       elsif No (Get_MD_Type (V)) then
-         Set_MD_Type (V, MDT);
+         Set_MD_Type (V, MD);
 
       --  Finally, see if we previously set this to a different type.  That
       --  can occur for two reasons: if it was a constant, we may have
@@ -169,7 +169,7 @@ package body CCG is
       --  we'll want to use the first-assigned type to declare the variable,
       --  so do nothing here.
 
-      elsif Get_MD_Type (V) /= MDT and then Is_A_Constant (V)
+      elsif Get_MD_Type (V) /= MD and then Is_A_Constant (V)
         and then not Is_A_Global_Variable (V) and then not Is_A_Function (V)
       then
          Set_Is_Multi_MD (V);
@@ -180,7 +180,7 @@ package body CCG is
    -- C_Set_MD_Type --
    -------------------
 
-   procedure C_Set_MD_Type (T : Type_T; MDT : MD_Type) is
+   procedure C_Set_MD_Type (T : Type_T; MD : MD_Type) is
    begin
       --  If we're not recording front end data, we do nothing. If
       --  this type has already been generated from multiple MD types, we
@@ -192,12 +192,12 @@ package body CCG is
       --  Otherwise, if we haven't previously set an MD_Type, set this one
 
       elsif No (Get_MD_Type (T)) then
-         Set_MD_Type (T, MDT);
+         Set_MD_Type (T, MD);
 
       --  Finally, see if we previously set this to a different type.
       --  In that case, mark this as having multiple types.
 
-      elsif Get_MD_Type (T) /= MDT then
+      elsif not Is_Same_C_Types (Get_MD_Type (T), MD) then
          Set_Is_Multi_MD (T);
       end if;
    end C_Set_MD_Type;
@@ -207,10 +207,10 @@ package body CCG is
    -------------------
 
    function C_Get_MD_Type (T : Type_T) return MD_Type is
-      MDT : constant MD_Type := Get_MD_Type (T);
+      MD : constant MD_Type := Get_MD_Type (T);
 
    begin
-      return (if Get_Is_Multi_MD (T) then No_MD_Type else MDT);
+      return (if Get_Is_Multi_MD (T) then No_MD_Type else MD);
    end C_Get_MD_Type;
 
    ------------------

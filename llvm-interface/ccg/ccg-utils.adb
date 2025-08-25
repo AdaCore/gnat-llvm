@@ -1483,7 +1483,8 @@ package body CCG.Utils is
    -- Error_Msg --
    ---------------
 
-   procedure Error_Msg (Msg : String; T : Type_T) is
+   procedure Error_Msg (Msg : String; MD : MD_Type) is
+      T : constant Type_T := +MD;
    begin
       --  First see if this corresponds to a type that we can get a Sloc
       --  from.
@@ -1494,8 +1495,9 @@ package body CCG.Utils is
       --  Otherwise, post it on the main unit and try to find a name for
       --  the type.
 
-      elsif Is_Struct_Type (T) then
-         Error_Msg_N (Msg & " for type `" & Get_Struct_Name (T) & "`",
+      elsif Is_Struct (MD) and then Has_Name (MD) then
+         Error_Msg_N (Msg & " for type `" & Get_Name_String (MD_Name (MD)) &
+                      "`",
                       Cunit (Main_Unit));
       else
          Error_Msg_N (Msg, Cunit (Main_Unit));

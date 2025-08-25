@@ -217,7 +217,7 @@ package body GNATLLVM.MDType is
        MD_Hash_Type (Info.Entity * 42) +
        MD_Hash_Type (Boolean'Pos (Info.Is_Volatile) * 1283) +
        MD_Hash_Type (Boolean'Pos (Info.Flag) * 2039))
-     mod Hash_Num);
+      mod Hash_Num);
 
    ---------
    -- "=" --
@@ -602,7 +602,7 @@ package body GNATLLVM.MDType is
      (Elem_Type : MD_Type;
       Space     : Nat := Address_Space) return MD_Type
    is
-      (MD_Find ((Kind         => Pointer,
+      (MD_Find ((Kind        => Pointer,
                 Related_Type => Elem_Type,
                 Count        => Space,
                 others       => <>)));
@@ -999,7 +999,7 @@ package body GNATLLVM.MDType is
                return Fn_Ty (MDs, From_Type (Get_Return_Type (T)));
             end;
 
-         when Void_Type_Kind | Metadata_Type_Kind =>
+         when Void_Type_Kind | Metadata_Type_Kind | Label_Type_Kind =>
             return Void_Ty;
 
          when others =>
@@ -1107,7 +1107,7 @@ package body GNATLLVM.MDType is
               and then (Is_Variable_Array (MD1)
                         or else Array_Count (MD1) = Array_Count (MD2))
               and then Is_Layout_Identical (Element_Type (MD1),
-                                            Element_Type (MD2));
+                                            Element_Type (MD2), Strict);
 
          when Struct_Class =>
 
@@ -1123,7 +1123,7 @@ package body GNATLLVM.MDType is
                         or else (for all J in 0 .. Element_Count (MD1) - 1 =>
                                      Is_Layout_Identical
                                        (Element_Type (MD1, J),
-                                        Element_Type (MD2, J))));
+                                        Element_Type (MD2, J), Strict)));
 
          when Pointer_Class =>
 
@@ -1133,8 +1133,9 @@ package body GNATLLVM.MDType is
 
             return Pointer_Space (MD1) = Pointer_Space (MD2)
               and then (not Strict
-                        or else (Designated_Type (MD1) =
-                                 Designated_Type (MD2)));
+                        or else (Is_Layout_Identical (Designated_Type (MD1),
+                                                      Designated_Type (MD2),
+                                                      Strict)));
 
          when Function_Class =>
 
@@ -1147,7 +1148,8 @@ package body GNATLLVM.MDType is
               and then Parameter_Count (MD1) = Parameter_Count (MD2)
               and then (for all J in 0 .. Parameter_Count (MD1) - 1 =>
                           Is_Layout_Identical (Parameter_Type (MD1, J),
-                                               Parameter_Type (MD2, J)));
+                                               Parameter_Type (MD2, J),
+                                               Strict));
       end case;
    end Is_Layout_Identical;
 

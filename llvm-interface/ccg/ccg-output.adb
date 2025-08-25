@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Containers; use Ada.Containers;
+
 with Table;
 
 with GNATLLVM.Types; use GNATLLVM.Types;
@@ -65,6 +67,23 @@ package body CCG.Output is
    --  The Block_Style to use for the next line written using Output_Decl
    --  or Output_Stmt.
 
+   function Hash (Name : Name_Id) return Hash_Type is
+     (Hash_Type'Mod (Name))
+     with Pre => Present (Name);
+
+   --  It's possible to have many MD_Types corresponding to a single
+   --  named struct (for example, a volatile variant), so we track when
+   --  we've written the full declaration for each name so we don't
+   --  duplicate it.
+
+   package Struct_Names_Written_Set is new Ada.Containers.Hashed_Sets
+     (Element_Type        => Name_Id,
+      Hash                => Hash,
+      Equivalent_Elements => "=");
+
+   Struct_Names_Written : Struct_Names_Written_Set.Set;
+   --  A list by Name_Id of all struct typedefs that we've written
+
    procedure Maybe_Output_Typedef_And_Decl (V : Value_T)
      with Pre => Is_A_Constant (V);
    --  Ensure that we're output typedefs for any types within V and
@@ -75,20 +94,31 @@ package body CCG.Output is
    --------------------
 
    procedure Output_Typedef (MD : MD_Type; Incomplete : Boolean := False) is
-      T : constant Type_T := +MD;
-
+      use Struct_Names_Written_Set;
    begin
       --  Show we're outputting the typedef (so we know not to do it
       --  recursively).
 
-      Set_Are_Outputting_Typedef (T);
+      Set_Are_Outputting_Typedef (MD);
 
       --  See what type of type this is
 
       if Is_Struct (MD) then
-         Output_Struct_Typedef (MD, Incomplete => Incomplete);
+
+         --  If we've already written a typedef for a struct of this name,
+         --  don't write another one.
+
+         if not Has_Name (MD)
+           or else not Contains (Struct_Names_Written, MD_Name (MD))
+         then
+            Output_Struct_Typedef (MD, Incomplete => Incomplete);
+         elsif Incomplete then
+            Set_Is_Incomplete_Output (MD);
+         end if;
+
       elsif Is_Array (MD) then
          Output_Array_Typedef (MD);
+
       elsif Is_Function_Pointer (MD) then
 
          --  We don't have typedefs for function types, just pointer to
@@ -98,6 +128,7 @@ package body CCG.Output is
          --  a header file
 
          Output_Function_Type_Typedef (MD);
+
       elsif Is_Pointer (MD) then
          Maybe_Output_Typedef (Designated_Type (MD),
                                Incomplete => not Emit_Header);
@@ -106,10 +137,14 @@ package body CCG.Output is
       --  Show we've written the typedef unless this is a struct type and
       --  we're only writing an incomplete definition.
 
-      Set_Are_Outputting_Typedef (T, False);
+      Set_Are_Outputting_Typedef (MD, False);
 
       if not Incomplete or else not Is_Struct (MD) then
-         Set_Is_Typedef_Output   (T);
+         Set_Is_Typedef_Output   (MD);
+
+         if Is_Struct (MD) and then Has_Name (MD) then
+            Include (Struct_Names_Written, MD_Name (MD));
+         end if;
       end if;
    end Output_Typedef;
 

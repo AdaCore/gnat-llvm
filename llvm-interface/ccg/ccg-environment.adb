@@ -105,31 +105,6 @@ package body CCG.Environment is
       Entity                   : Opt_Type_Kind_Id;
       --  GNAT entity of this type, if known
 
-      Is_Typedef_Output        : Boolean;
-      --  True if this is a type either for which we don't write a typedef
-      --  or if it is and we've written that typedef previously.
-
-      Is_Return_Typedef_Output : Boolean;
-      --  True if this is an array type and we've written the struct type
-      --  that we use for the return type of a function returning this type.
-
-      Is_Incomplete_Output     : Boolean;
-      --  True if this is a struct type and we've just written the struct
-      --  definition without fields (an incomplete type).
-
-      Are_Outputting_Typedef   : Boolean;
-      --  True if we're in the process of outputting a typedef
-
-      Used_In_Struct           : Boolean;
-      --  True if this type is the type of a field in a struct
-
-      Cannot_Pack              : Boolean;
-      --  True if this is a type that we want to pack, but can't because of
-      --  restrictions in our C compiler.
-
-      Output_Idx               : Nat;
-      --  A positive number if we've assigned an ordinal to use as
-      --  part of the name for this anonymous type.
    end record;
 
    type MD_Type_Data is record
@@ -353,14 +328,7 @@ package body CCG.Environment is
       else
          Type_Info.Append ((MDT                      => No_MD_Type,
                             Is_Multi_MD              => False,
-                            Entity                   => Types.Empty,
-                            Is_Typedef_Output        => False,
-                            Is_Return_Typedef_Output => False,
-                            Is_Incomplete_Output     => False,
-                            Are_Outputting_Typedef   => False,
-                            Used_In_Struct           => False,
-                            Cannot_Pack              => False,
-                            Output_Idx               => 0));
+                            Entity                   => Types.Empty));
          Insert (Type_Info_Map, T, Type_Info.Last);
          return Type_Info.Last;
       end if;
@@ -701,74 +669,6 @@ package body CCG.Environment is
               else Types.Empty);
    end Get_Entity;
 
-   ---------------------------
-   -- Get_Is_Typedef_Output --
-   ---------------------------
-
-   function Get_Is_Typedef_Output (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
-
-   begin
-      return Present (Idx) and then Type_Info.Table (Idx).Is_Typedef_Output;
-   end Get_Is_Typedef_Output;
-
-   ----------------------------------
-   -- Get_Is_Return_Typedef_Output --
-   ----------------------------------
-
-   function Get_Is_Return_Typedef_Output (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
-
-   begin
-      return Present (Idx)
-        and then Type_Info.Table (Idx).Is_Return_Typedef_Output;
-   end Get_Is_Return_Typedef_Output;
-
-   ------------------------------
-   -- Get_Is_Incomplete_Output --
-   ------------------------------
-
-   function Get_Is_Incomplete_Output (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
-
-   begin
-      return Present (Idx) and then Type_Info.Table (Idx).Is_Incomplete_Output;
-   end Get_Is_Incomplete_Output;
-
-   --------------------------------
-   -- Get_Are_Outputting_Typedef --
-   --------------------------------
-
-   function Get_Are_Outputting_Typedef (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
-
-   begin
-      return Present (Idx)
-        and then Type_Info.Table (Idx).Are_Outputting_Typedef;
-   end Get_Are_Outputting_Typedef;
-
-   ---------------------
-   -- Get_Cannot_Pack --
-   ---------------------
-
-   function Get_Cannot_Pack (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
-
-   begin
-      return Present (Idx) and then Type_Info.Table (Idx).Cannot_Pack;
-   end Get_Cannot_Pack;
-
-   ------------------------
-   -- Get_Used_In_Struct --
-   ------------------------
-
-   function Get_Used_In_Struct (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
-
-   begin
-      return Present (Idx) and then Type_Info.Table (Idx).Used_In_Struct;
-   end Get_Used_In_Struct;
-
    -----------------
    -- Set_MD_Type --
    -----------------
@@ -801,72 +701,6 @@ package body CCG.Environment is
    begin
       Type_Info.Table (Idx).Entity := TE;
    end Set_Entity;
-
-   --------------------------
-   -- Set_Is_Typedef_Output --
-   --------------------------
-
-   procedure Set_Is_Typedef_Output (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
-
-   begin
-      Type_Info.Table (Idx).Is_Typedef_Output := B;
-   end Set_Is_Typedef_Output;
-
-   ----------------------------------
-   -- Set_Is_Return_Typedef_Output --
-   ----------------------------------
-
-   procedure Set_Is_Return_Typedef_Output (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
-
-   begin
-      Type_Info.Table (Idx).Is_Return_Typedef_Output := B;
-   end Set_Is_Return_Typedef_Output;
-
-   ------------------------------
-   -- Set_Is_Incomplete_Output --
-   ------------------------------
-
-   procedure Set_Is_Incomplete_Output (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
-
-   begin
-      Type_Info.Table (Idx).Is_Incomplete_Output := B;
-   end Set_Is_Incomplete_Output;
-
-   --------------------------------
-   -- Set_Are_Outputting_Typedef --
-   --------------------------------
-
-   procedure Set_Are_Outputting_Typedef (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
-
-   begin
-      Type_Info.Table (Idx).Are_Outputting_Typedef := B;
-   end Set_Are_Outputting_Typedef;
-
-   ------------------------
-   -- Set_Used_In_Struct --
-   ------------------------
-
-   procedure Set_Used_In_Struct (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
-
-   begin
-      Type_Info.Table (Idx).Used_In_Struct := B;
-   end Set_Used_In_Struct;
-
-   ---------------------
-   -- Set_Cannot_Pack --
-   ---------------------
-
-   procedure Set_Cannot_Pack (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
-
-   begin
-      Type_Info.Table (Idx).Cannot_Pack := B;
-   end Set_Cannot_Pack;
 
    ----------------
    -- Get_Entity --
@@ -1055,16 +889,14 @@ package body CCG.Environment is
 
    procedure Maybe_Output_Typedef (MD : MD_Type; Incomplete : Boolean := False)
    is
-      T : constant Type_T := +MD;
-
    begin
       --  If we're outputting this, have output it, or are just looking for
       --  an incomplete definition and have already output one, we don't
       --  need to do anything. Otherwise, output the typedef.
 
-      if Get_Are_Outputting_Typedef (T)
-        or else Get_Is_Typedef_Output (T)
-        or else (Incomplete and then Get_Is_Incomplete_Output (T))
+      if Get_Are_Outputting_Typedef (MD)
+        or else Get_Is_Typedef_Output (MD)
+        or else (Incomplete and then Get_Is_Incomplete_Output (MD))
       then
          null;
       else
@@ -1093,17 +925,17 @@ package body CCG.Environment is
    -- Get_Output_Idx --
    --------------------
 
-   function Get_Output_Idx (T : Type_T) return Nat is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
-      TD  : Type_Data renames Type_Info.Table (Idx);
+   function Get_Output_Idx (M : MD_Type) return Nat is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => True);
+      MTD : MD_Type_Data renames MD_Type_Info.Table (Idx);
 
    begin
-      if TD.Output_Idx = 0 then
-         TD.Output_Idx := Output_Idx;
-         Output_Idx    := Output_Idx + 1;
+      if MTD.Output_Idx = 0 then
+         MTD.Output_Idx := Output_Idx;
+         Output_Idx     := Output_Idx + 1;
       end if;
 
-      return TD.Output_Idx;
+      return MTD.Output_Idx;
    end Get_Output_Idx;
 
    --------------------

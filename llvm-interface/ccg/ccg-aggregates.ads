@@ -101,9 +101,9 @@ package CCG.Aggregates is
    --  Output a typedef for MD, a struct type. If Incomplete, only output the
    --  initial struct definition, not the fields.
 
-   procedure Error_If_Cannot_Pack (T : Type_T)
-     with Pre => Present (T);
-   --  We're using T in a context where it matters if its size isn't a
+   procedure Error_If_Cannot_Pack (MD : MD_Type)
+     with Pre => Present (MD);
+   --  We're using MD in a context where it matters if its size isn't a
    --  multiple of its alignment, so give an error if that's that case
    --  and we don't support packing.
 

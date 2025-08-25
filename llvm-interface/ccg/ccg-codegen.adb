@@ -139,9 +139,9 @@ package body CCG.Codegen is
       function Is_Public (V : Value_T) return Boolean;
       --  True if V is publically-visible
 
-      procedure Mark_Struct_Fields (T : Type_T)
-        with Pre => Present (T);
-      --  If T is a struct type, mark the types of all fields in it as
+      procedure Mark_Struct_Fields (MD : MD_Type)
+        with Pre => Present (MD);
+      --  If MD is a struct type, mark the types of all fields in it as
       --  used in a struct.
 
       procedure Mark_Structs_Used (V : Value_T)
@@ -239,31 +239,33 @@ package body CCG.Codegen is
       -- Mark_Struct_Fields --
       ------------------------
 
-      procedure Mark_Struct_Fields (T : Type_T) is
+      procedure Mark_Struct_Fields (MD : MD_Type) is
       begin
-         --  ??? This may have to be changed to work on MD_Types
+         case Class (MD) is
 
-         if Is_Struct_Type (T) then
-            declare
-               Types : constant Nat := Count_Struct_Element_Types (T);
+            when Struct_Class =>
 
-            begin
-               for J in 0 .. Types - 1 loop
+               for J in 0 .. Element_Count (MD) - 1 loop
                   declare
-                     ST : constant Type_T := Struct_Get_Type_At_Index (T, J);
+                     S_MD : constant MD_Type := Element_Type (MD, J);
 
                   begin
-                     if not Get_Used_In_Struct (ST) then
-                        Set_Used_In_Struct (ST);
-                        Mark_Struct_Fields (ST);
+                     if not Get_Used_In_Struct (S_MD) then
+                        Set_Used_In_Struct (S_MD);
+                        Mark_Struct_Fields (S_MD);
                      end if;
                   end;
                end loop;
-            end;
 
-         elsif Is_Array_Type (T) or else Is_Pointer_Type (T) then
-            Mark_Struct_Fields (Get_Element_Type (T));
-         end if;
+            when Array_Class =>
+               Mark_Struct_Fields (Element_Type (MD));
+
+            when Pointer_Class =>
+               Mark_Struct_Fields (Designated_Type (MD));
+
+            when others =>
+               null;
+         end case;
       end Mark_Struct_Fields;
 
       -----------------------
@@ -272,7 +274,7 @@ package body CCG.Codegen is
 
       procedure Mark_Structs_Used (V : Value_T) is
       begin
-         Mark_Struct_Fields (Type_Of (V));
+         Mark_Struct_Fields (Declaration_Type (V));
       end Mark_Structs_Used;
 
       ---------------------

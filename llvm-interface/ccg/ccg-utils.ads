@@ -389,7 +389,7 @@ package CCG.Utils is
    --  an associated debug location, append this location to the error
    --  message as " at file:line".
 
-   procedure Error_Msg (Msg : String; T : Type_T);
+   procedure Error_Msg (Msg : String; MD : MD_Type);
    --  Similarly, but for a type
 
    generic

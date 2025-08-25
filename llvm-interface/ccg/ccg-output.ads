@@ -78,9 +78,8 @@ package CCG.Output is
 
    procedure Output_Typedef (MD : MD_Type; Incomplete : Boolean := False)
      with Pre =>  Present (MD),
-          Post => Get_Is_Typedef_Output (Type_T'(+MD))
-                  or else (Incomplete
-                           and then Get_Is_Incomplete_Output (Type_T'(+MD)));
+          Post => Get_Is_Typedef_Output (MD)
+                  or else (Incomplete and then Get_Is_Incomplete_Output (MD));
    --  Output the typedef for MD, if any. If Incomplete and MD is a
    --  struct type, write it as an incomplete type.
 

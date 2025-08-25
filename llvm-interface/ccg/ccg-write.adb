@@ -933,7 +933,7 @@ package body CCG.Write is
 
             if Is_Function_Pointer (MD) then
                Write_Internal_Name ("ccg_f");
-               Write_Int (Get_Output_Idx (+MD));
+               Write_Int (Get_Output_Idx (MD));
 
                --  Otherwise, this is handled normally. We don't want to use a
                --  concatenation operator because that might cause us to try
@@ -954,12 +954,12 @@ package body CCG.Write is
                Write_C_Name (Get_Name_String (MD_Name (MD)));
             else
                Write_Internal_Name ("ccg_s");
-               Write_Int (Get_Output_Idx (+MD));
+               Write_Int (Get_Output_Idx (MD));
             end if;
 
          when Array_Class =>
             Write_Internal_Name ("ccg_a");
-            Write_Int (Get_Output_Idx (+MD));
+            Write_Int (Get_Output_Idx (MD));
       end case;
 
       --  Finally, write the "variable to be declared" part, if any

@@ -559,7 +559,7 @@ package body CCG.Instructions is
       RHS : constant Str := Maybe_Cast (LS_Op_MD (V, Op2), Op1);
 
    begin
-      Error_If_Cannot_Pack (Type_Of (Op1));
+      Error_If_Cannot_Pack (Actual_Type (Op1));
       Process_Pending_Values;
       Output_Copy (LHS, RHS, Declaration_Type (Op1), V => V);
    end Store_Instruction;

@@ -210,7 +210,7 @@ package body CCG.Aggregates is
       --  have a way of indicating that to the C compiler, give an error.
 
       if Need_Pack and then Pack_Not_Supported then
-         Error_Msg ("C compiler does not support packing", T);
+         Error_Msg ("C compiler does not support packing", MD);
       end if;
 
       --  If we can't determine the base type, its base type is
@@ -224,13 +224,13 @@ package body CCG.Aggregates is
       if (No (TE) or else not Is_Constrained (TE)
           or else (+Alignment (TE)) * UBPU < ULL (Default_Alignment (MD))
           or else (Cur_Pos mod ((+Alignment (TE)) * UBPU) /= 0
-                   and then Get_Used_In_Struct (T)))
+                   and then Get_Used_In_Struct (MD)))
         and then not Need_Pack
       then
          Need_Pack := True;
 
          if Pack_Not_Supported then
-            Set_Cannot_Pack (T);
+            Set_Cannot_Pack (MD);
          end if;
       end if;
 
@@ -253,7 +253,7 @@ package body CCG.Aggregates is
    -- Error_If_Cannot_Pack --
    --------------------------
 
-   procedure Error_If_Cannot_Pack (T : Type_T) is
+   procedure Error_If_Cannot_Pack (MD : MD_Type) is
    begin
       --  We want this error to be output only once for a type. If the
       --  type corresponds to a GNAT type, the handling of error messages
@@ -261,8 +261,8 @@ package body CCG.Aggregates is
       --  but let's assume that's a rare case and not add a bit just for
       --  that purpose.
 
-      if Get_Cannot_Pack (T) then
-         Error_Msg ("unsupported use when packing not available", T);
+      if Get_Cannot_Pack (MD) then
+         Error_Msg ("unsupported use when packing not available", MD);
       end if;
    end Error_If_Cannot_Pack;
 
@@ -290,10 +290,10 @@ package body CCG.Aggregates is
       --       typedef struct foo foo;
       --       struct foo { ... full definition ..}
 
-      if not Get_Is_Incomplete_Output (T) then
+      if not Get_Is_Incomplete_Output (MD) then
          Output_Decl ("typedef " & Vol_Str & "struct " & MD & " " & MD,
                       Is_Typedef => True);
-         Set_Is_Incomplete_Output (T);
+         Set_Is_Incomplete_Output (MD);
       end if;
 
       --  If all we're to do is to output the incomplete definition,
@@ -324,8 +324,6 @@ package body CCG.Aggregates is
       Start_Output_Block (Decl);
       for J in 0 .. Num_Types - 1 loop
          declare
-            ST : constant Type_T                               :=
-              Struct_Get_Type_At_Index (T, J);
             Name           : constant Str                      :=
               Get_Field_Name (T, J);
             F              : constant Opt_Record_Field_Kind_Id :=
@@ -341,7 +339,7 @@ package body CCG.Aggregates is
               (if F_Is_Unsigned then S_MD + Need_Unsigned else S_MD or F);
 
          begin
-            Error_If_Cannot_Pack (ST);
+            Error_If_Cannot_Pack (S_MD);
 
             if not Is_Zero_Length_Array (S_MD)
               and then not (SOS = Normal and then Is_Field_Padding (T, J))
@@ -419,12 +417,12 @@ package body CCG.Aggregates is
       --  the typedef for T since we reference it, then write the actual
       --  typedef, and mark it as written.
 
-      if not Get_Is_Return_Typedef_Output (Type_T'(+MD)) then
+      if not Get_Is_Return_Typedef_Output (MD) then
          Maybe_Output_Typedef (MD);
          Output_Decl ("typedef struct " & MD & "_R {" & MD & " F;} " &
                         MD & "_R",
                       Is_Typedef => True);
-         Set_Is_Return_Typedef_Output (Type_T'(+MD));
+         Set_Is_Return_Typedef_Output (MD);
       end if;
    end Maybe_Output_Array_Return_Typedef;
 

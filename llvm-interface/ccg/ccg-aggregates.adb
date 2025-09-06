@@ -20,6 +20,7 @@ with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
+with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Codegen;      use CCG.Codegen;
@@ -273,14 +274,16 @@ package body CCG.Aggregates is
    procedure Output_Struct_Typedef
      (MD : MD_Type; Incomplete : Boolean := False)
    is
-      Num_Types      : constant Nat                := Element_Count (MD);
+      Num_Types      : constant Nat                :=
+        (if Incomplete then 0 else Element_Count (MD));
       T              : constant Type_T             := +MD;
       TE             : constant Opt_Type_Kind_Id   := Get_Entity (T);
       Is_Vol         : constant Boolean            :=
         Present (TE) and then Treat_As_Volatile (TE);
       Vol_Str        : constant String             :=
         (if Is_Vol then "volatile " else "");
-      SOS            : constant Struct_Out_Style_T := Struct_Out_Style (MD);
+      SOS            : constant Struct_Out_Style_T :=
+        (if Incomplete then Normal else Struct_Out_Style (MD));
       Fields_Written : Nat                         := 0;
 
    begin
@@ -396,11 +399,7 @@ package body CCG.Aggregates is
 
       Maybe_Output_Typedef (Elem_MD);
       Error_If_Cannot_Pack (+Elem_MD);
-      Decl := Decl & Elem_MD & " " & MD & "[";
-
-      if Effective_Array_Length (MD) /= 0 then
-         Decl := Decl & Effective_Array_Length (MD);
-      end if;
+      Decl := Decl & Elem_MD & " " & MD & "[" & Effective_Array_Length (MD);
 
       --  Finally, output it
 
@@ -502,7 +501,7 @@ package body CCG.Aggregates is
       --  LLVM types here.
 
       pragma Assert ((Is_Pointer (MD) and then Is_Pointer_Type (Type_Of (Op)))
-                     or else +MD = Type_Of (Op));
+                     or else Is_Layout_Identical (+MD, Type_Of (Op)));
       Output_Copy (Acc, Maybe_Cast (MD, Op) + Assign, MD, V);
    end Insert_Value_Instruction;
 
@@ -608,8 +607,8 @@ package body CCG.Aggregates is
                         Prev_MD : constant MD_Type :=
                           Element_Type (Aggr_MD, Prev_Idx);
                         Ref     : constant Str     :=
-                          Result & (if Is_LHS then "." else "->") +
-                          Component & Get_Field_Name (+Aggr_MD, Prev_Idx);
+                          Result + Component & (if Is_LHS then "." else "->") &
+                          Get_Field_Name (+Aggr_MD, Prev_Idx) + Component;
 
                      begin
                         --  If we found a previous non-zero-length array

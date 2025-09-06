@@ -662,7 +662,7 @@ package body CCG.Subprograms is
          begin
             if Is_Pointer (Dest_MD)
               and then Is_Function_Type (Dest_Fn_MD)
-              and then Is_Layout_Identical (Src_Fn_MD, Dest_Fn_MD)
+              and then Is_Same_C_Types (Src_Fn_MD, Dest_Fn_MD)
               and then Parameter_Count (Dest_Fn_MD) = Num_Params
               and then (Return_Type (Dest_Fn_MD) = Return_Type (Src_Fn_MD)
                           or else not Is_Struct (Return_Type (Src_Fn_MD)))
@@ -689,6 +689,10 @@ package body CCG.Subprograms is
             end if;
          end;
       end if;
+
+      --  Force out any other call to preserve the order of calls
+
+      Process_Pending_Values (Calls_Only => True);
 
       --  Now generate the argument list for the call
 

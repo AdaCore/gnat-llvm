@@ -170,6 +170,13 @@ package body GNATLLVM.MDType is
           Post => LLVM_Type (MD) = T, Inline;
    --  Set the LLVM_Type of MD to T
 
+   ---------------------------
+   -- Check_Types_Identical --
+   ---------------------------
+
+   function Check_Types_Identical (T1, T2 : Type_T) return Boolean
+      renames Is_Layout_Identical;
+
    -----------
    -- Class --
    -----------
@@ -1061,97 +1068,6 @@ package body GNATLLVM.MDType is
 
       return False;
    end Contains_Void;
-
-   ---------------------
-   -- Check_From_Type --
-   ---------------------
-
-   function Check_From_Type (T1, T2 : Type_T) return Boolean
-      renames Is_Layout_Identical;
-
-   -------------------------
-   -- Is_Layout_Identical --
-   -------------------------
-
-   function Is_Layout_Identical
-     (MD1, MD2 : MD_Type; Strict : Boolean := False) return Boolean
-   is
-   begin
-      --  If the types are the same, they're identical, but if they have
-      --  different kinds, they aren't.
-
-      if MD1 = MD2 then
-         return True;
-      elsif not Is_Same_Kind (MD1, MD2) then
-         return False;
-      end if;
-
-      --  Otherwise, it's kind-specific
-
-      case Class (MD1) is
-
-         when Void_Class =>
-            return True;
-
-         when Integer_Class =>
-            return Int_Bits (MD1) = Int_Bits (MD2)
-              and then (not Strict
-                        or else Is_Unsigned (MD1) = Is_Unsigned (MD2));
-
-         when Float_Class =>
-            return Float_Bits (MD1) = Float_Bits (MD2);
-
-         when Array_Class =>
-            return
-              Is_Fixed_Array (MD1) = Is_Fixed_Array (MD2)
-              and then (Is_Variable_Array (MD1)
-                        or else Array_Count (MD1) = Array_Count (MD2))
-              and then Is_Layout_Identical (Element_Type (MD1),
-                                            Element_Type (MD2), Strict);
-
-         when Struct_Class =>
-
-            --  Structures are identical if their packed status is the
-            --  same, they have the same number of fields, and each field
-            --  is identical.
-
-            return Is_Packed (MD1) = Is_Packed (MD2)
-              and then Has_Fields (MD1) = Has_Fields (MD2)
-              and then (not Has_Fields (MD1)
-                        or else Element_Count (MD1) = Element_Count (MD2))
-              and then (not Has_Fields (MD1)
-                        or else (for all J in 0 .. Element_Count (MD1) - 1 =>
-                                     Is_Layout_Identical
-                                       (Element_Type (MD1, J),
-                                        Element_Type (MD2, J), Strict)));
-
-         when Pointer_Class =>
-
-            --  Pointers have the same layout if they're pointing at the
-            --  same address space and, if we're being strict, pointing to
-            --  the same type.
-
-            return Pointer_Space (MD1) = Pointer_Space (MD2)
-              and then (not Strict
-                        or else (Is_Layout_Identical (Designated_Type (MD1),
-                                                      Designated_Type (MD2),
-                                                      Strict)));
-
-         when Function_Class =>
-
-            --  Two function types have different layouts if their return
-            --  types have different layouts, they have a different number
-            --  of parameter types, or any parameter type is not the
-            --  identical layout of the corresponding parameter type.
-
-            return Is_Layout_Identical (Return_Type (MD1), Return_Type (MD2))
-              and then Parameter_Count (MD1) = Parameter_Count (MD2)
-              and then (for all J in 0 .. Parameter_Count (MD1) - 1 =>
-                          Is_Layout_Identical (Parameter_Type (MD1, J),
-                                               Parameter_Type (MD2, J),
-                                               Strict));
-      end case;
-   end Is_Layout_Identical;
 
    ---------------
    -- To_String --

@@ -74,8 +74,10 @@ package body CCG.Utils is
           Post => Is_Function_Type (Designated_Type (MD))
                   and then Count_Params (V) =
                            Parameter_Count (Designated_Type (MD))
-                  and then Get_Return_Type (Global_Get_Value_Type (V)) =
-                           +Return_Type (Designated_Type (MD));
+                  and then Is_Layout_Identical
+                             (Get_Return_Type (Global_Get_Value_Type (V)),
+                              +Return_Type (Designated_Type (MD)));
+
    --  MD is a type that was previously used for a function of the name as
    --  V, but one or more parameters have been removed as dead or the
    --  return type has changed. Use the parameter names to construct a new
@@ -1030,6 +1032,98 @@ package body CCG.Utils is
       end if;
    end Walk_Object;
 
+   -------------------------
+   -- Is_Layout_Identical --
+   -------------------------
+
+   function Is_Same_C_Types (MD1, MD2 : MD_Type) return Boolean is
+   begin
+      --  If the types are the same, they're identical, but if they have
+      --  different kinds, they aren't.
+
+      if MD1 = MD2 then
+         return True;
+      elsif not Is_Same_Kind (MD1, MD2) then
+         return False;
+      end if;
+
+      --  Otherwise, it's kind-specific
+
+      case Class (MD1) is
+
+         when Void_Class =>
+            return True;
+
+         when Integer_Class =>
+
+            --  The two types are the same if they have the same bitsize and
+            --  signedness, but if either has unknown signedness,
+            --  treat them as the same type.
+
+            return Int_Bits (MD1) = Int_Bits (MD2)
+              and then (Is_Unknown_Sign (MD1) or else Is_Unknown_Sign (MD2)
+                        or else Is_Unsigned (MD1) = Is_Unsigned (MD2));
+
+         when Float_Class =>
+            return Float_Bits (MD1) = Float_Bits (MD2);
+
+         when Array_Class =>
+            return
+              Is_Fixed_Array (MD1) = Is_Fixed_Array (MD2)
+              and then (Is_Variable_Array (MD1)
+                        or else Array_Count (MD1) = Array_Count (MD2))
+              and then Is_Same_C_Types (Element_Type (MD1),
+                                        Element_Type (MD2));
+
+         when Struct_Class =>
+
+            --  If either struct is named, they are the same C type
+            --  if and only if they have the same name.
+
+            if Has_Name (MD1) or else Has_Name (MD2) then
+               return Has_Name (MD1) and then Has_Name (MD2)
+                 and then MD_Name (MD1) = MD_Name (MD2);
+            end if;
+
+            --  Structures are identical if their packed status is the
+            --  same, they have the same number of fields, and each field
+            --  is identical.
+
+            return Is_Packed (MD1) = Is_Packed (MD2)
+              and then Has_Fields (MD1) = Has_Fields (MD2)
+              and then (not Has_Fields (MD1)
+                        or else Element_Count (MD1) = Element_Count (MD2))
+              and then (not Has_Fields (MD1)
+                        or else (for all J in 0 .. Element_Count (MD1) - 1 =>
+                                     Is_Same_C_Types
+                                       (Element_Type (MD1, J),
+                                        Element_Type (MD2, J))));
+
+         when Pointer_Class =>
+
+            --  Pointers are the same if they're in the same address
+            --  space and pointing to the same type.
+
+            return Pointer_Space (MD1) = Pointer_Space (MD2)
+              and then Is_Same_C_Types (Designated_Type (MD1),
+                                        Designated_Type (MD2));
+
+         when Function_Class =>
+
+            --  Two function types have different layouts if their return
+            --  types have different layouts, they have a different number
+            --  of parameter types, or any parameter type is not the
+            --  identical layout of the corresponding parameter type.
+
+            return Is_Same_C_Types (Return_Type (MD1), Return_Type (MD2))
+              and then Parameter_Count (MD1) = Parameter_Count (MD2)
+              and then (for all J in 0 .. Parameter_Count (MD1) - 1 =>
+                          Is_Same_C_Types (Parameter_Type (MD1, J),
+                                           Parameter_Type (MD2, J)));
+      end case;
+
+   end Is_Same_C_Types;
+
    --------------------------
    -- Update_Function_Type --
    --------------------------
@@ -1100,8 +1194,9 @@ package body CCG.Utils is
 
          if Is_A_Function (V) then
             if Count_Params (V) /= Parameter_Count (Designated_Type (MD))
-              or else (Get_Return_Type (Global_Get_Value_Type (V)) /=
-                       +Return_Type (Designated_Type (MD)))
+              or else not Is_Same_C_Types
+                (From_Type (Get_Return_Type (Global_Get_Value_Type (V))),
+                 Return_Type (Designated_Type (MD)))
             then
                Update_Function_Type (MD, V);
             end if;
@@ -1135,11 +1230,11 @@ package body CCG.Utils is
             --  the type directly from the operation or we look at the
             --  type of the operand(s) of the instruction.
 
-            when Op_F_Neg | Op_Bit_Cast =>
+            when Op_F_Neg =>
                MD := Declaration_Type (Get_Operand0 (V), No_Force => True);
 
             when Op_Add   | Op_F_Add | Op_F_Sub | Op_Mul | Op_F_Mul
-               | Op_F_Div | Op_F_Rem | Op_And   | Op_Or  | Op_Xor =>
+              | Op_F_Div | Op_F_Rem | Op_And   | Op_Or  | Op_Xor =>
 
                MD := Declaration_Type (Get_Operand0 (V), No_Force => True);
 
@@ -1164,6 +1259,19 @@ package body CCG.Utils is
             when Op_Alloca =>
                MD := Pointer_Type (From_Type (Get_Allocated_Type (V)));
 
+            when Op_Bit_Cast =>
+
+               --  A cast from one pointer type to another is a nop, so
+               --  we use the type of the operand. Otherwise, we use the
+               --  type of the instruction.
+
+               MD := Declaration_Type (Get_Operand0 (V), No_Force => True);
+               if No (MD) or else not Is_Pointer (MD)
+                 or else not Is_Pointer_Type (V)
+               then
+                  MD := From_Type (Type_Of (V));
+               end if;
+
             when Op_Load =>
 
                --  The load might be loading the full data from the pointer
@@ -1180,16 +1288,16 @@ package body CCG.Utils is
                   MD := No_MD_Type;
                end if;
 
-            --  For GEP, we're dealing with pointers and we have a "hint"
-            --  of the type of the aggregate. We always use that type
-            --  because the processing of the GEP will force the input to
-            --  that type.
+               --  For GEP, we're dealing with pointers and we have a "hint"
+               --  of the type of the aggregate. We always use that type
+               --  because the processing of the GEP will force the input to
+               --  that type.
 
             when Op_Get_Element_Ptr =>
 
                MD := Declaration_Type (Get_GEP_Source_Element_Type (V));
 
-               for J in Nat (2) .. Get_Num_Operands (V) - 2 loop
+               for J in Nat (2) .. Get_Num_Operands (V) - 1 loop
                   if Is_Struct (MD) then
                      MD := Element_Type
                        (MD, Nat (Const_Int_Get_S_Ext_Value
@@ -1200,6 +1308,10 @@ package body CCG.Utils is
                end loop;
 
                MD := Pointer_Type (MD);
+
+            when Op_Call =>
+               return
+                 Return_Type (Declaration_Type (Get_Called_Function_Type (V)));
 
             when others =>
                null;

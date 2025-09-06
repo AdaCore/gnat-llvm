@@ -324,6 +324,26 @@ package body GNATLLVM.Utils is
    is
       Buf : Bounded_String;
 
+      procedure Prepend_Scope (E : Entity_Id);
+      --  Prepend the scope of E into Buf and if that's not fully qualified,
+      --  Prepend the name of its scope first.
+
+      -------------------
+      -- Prepend_Scope --
+      -------------------
+
+      procedure Prepend_Scope (E : Entity_Id) is
+      begin
+         if Scope (E) /= Standard_Standard
+           and then not Has_Fully_Qualified_Name (E)
+         then
+            Prepend_Scope (Scope (E));
+            Append (Buf, "__");
+         end if;
+
+         Append (Buf, Chars (E));
+      end Prepend_Scope;
+
    begin
       --  If we have an enumeration literal, write the name of the type
       --  followed by "__" and then the unqualified name of the literal.
@@ -352,6 +372,17 @@ package body GNATLLVM.Utils is
                Append (Buf, Str);
             end if;
          end;
+
+      --  If we have a record type and its name isn't fully qualified,
+      --  write out its scope first.
+
+      elsif Ekind (E) in Record_Kind
+        and then Scope (E) /= Standard_Standard
+        and then not Has_Fully_Qualified_Name (E)
+      then
+         Prepend_Scope (Scope (E));
+         Append (Buf, "__");
+         Append (Buf, Chars (E));
 
       --  If we don't have a suffix, just use the name of E. Otherwise,
       --  set the name of E into the buffer.

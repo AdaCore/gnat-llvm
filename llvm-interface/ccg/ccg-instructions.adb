@@ -115,11 +115,11 @@ package body CCG.Instructions is
    --  such value when we make the assignment, but don't delete it when
    --  we've written it; we assume that the caller will check if it's been
    --  written. We record whether this is from a chain containing a load
-   --  since we have cases where we only need to flush stores.
+   --  or call since we have cases where we only need to flush stores.
 
    type Pending_Value_Entry is record
-      Value    : Value_T;
-      Has_Load : Boolean;
+      Value            : Value_T;
+      Has_Load_Or_Call : Boolean;
    end record;
 
    package Pending_Values is new Table.Table
@@ -297,13 +297,14 @@ package body CCG.Instructions is
    -----------------------
 
    procedure Add_Pending_Value (V : Value_T) is
-      Has_Load : Boolean := Is_A_Load_Inst (V);
+      Has_Load_Or_Call : Boolean :=
+        Is_A_Load_Inst (V) or else Is_A_Call_Inst (V);
 
    begin
       --  If this has operands, go through the operands to see if any
       --  are pending loads.
 
-      if Has_Operands (V) then
+      if not Has_Load_Or_Call and then Has_Operands (V) then
          for J in Nat (0) .. Get_Num_Operands (V) - 1 loop
             declare
                Op : constant Value_T := Get_Operand (V, J);
@@ -311,9 +312,10 @@ package body CCG.Instructions is
             begin
                if Contains (Pending_Values_Map, Op)
                  and then Pending_Values.Table
-                            (Element (Pending_Values_Map, Op)).Has_Load
+                            (Element
+                              (Pending_Values_Map, Op)).Has_Load_Or_Call
                then
-                  Has_Load := True;
+                  Has_Load_Or_Call := True;
                end if;
             end;
          end loop;
@@ -321,7 +323,7 @@ package body CCG.Instructions is
 
       --  Finally add to both table and map
 
-      Pending_Values.Append ((V, Has_Load));
+      Pending_Values.Append ((V, Has_Load_Or_Call));
       Insert (Pending_Values_Map, V, Pending_Values.Last);
    end Add_Pending_Value;
 
@@ -393,7 +395,7 @@ package body CCG.Instructions is
          begin
             if not Get_Is_Used (V)
               and then (not Calls_Only
-                        or else not Pending_Values.Table (J).Has_Load)
+                        or else Pending_Values.Table (J).Has_Load_Or_Call)
             then
                Remove_Pending_Value (V);
                Force_To_Variable (V);

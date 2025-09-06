@@ -1194,8 +1194,8 @@ package body GNATLLVM.Conversions is
         (if Is_Padded_GL_Type (V_GT) then Primitive_GL_Type (V_GT) else V_GT);
       Out_GT : constant GL_Type :=
         (if Is_Padded_GL_Type (GT) then Primitive_GL_Type (GT) else GT);
-      In_T   : constant MD_Type := Type_Of (In_GT);
-      Out_T  : constant MD_Type := Type_Of (Out_GT);
+      In_MD  : constant MD_Type := Type_Of (In_GT);
+      Out_MD : constant MD_Type := Type_Of (Out_GT);
 
    begin
       --  If this isn't data, isn't a constant, we have a nonnative
@@ -1211,7 +1211,7 @@ package body GNATLLVM.Conversions is
       --  If the layout of the types are identical, we can do the conversion.
       --  Likewise if the input is undefined or all zero
 
-      elsif Is_Layout_Identical (In_T, Out_T)
+      elsif Is_Layout_Identical (+In_MD, +Out_MD)
         or else Is_Undef (V) or else Is_A_Constant_Aggregate_Zero (V)
       then
          return True;
@@ -1222,8 +1222,8 @@ package body GNATLLVM.Conversions is
 
       else
          return Is_Nonsymbolic_Constant (V)
-           and then not Contains_Restricted_Type (Out_T)
-           and then Get_Type_Size (Out_T) < 1024 * UBPU;
+           and then not Contains_Restricted_Type (Out_MD)
+           and then Get_Type_Size (Out_MD) < 1024 * UBPU;
       end if;
    end Can_Convert_Aggregate_Constant;
 

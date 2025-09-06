@@ -111,9 +111,9 @@ package CCG.Utils is
      with Pre => Present (V);
    --  Returns the number of uses of V
 
-   function Is_Same_C_Types (MD1, MD2 : MD_Type) return Boolean is
-     (Is_Layout_Identical (MD1, MD2, Strict => True))
+   function Is_Same_C_Types (MD1, MD2 : MD_Type) return Boolean
      with Pre => Present (MD1) and then Present (MD2);
+   --  True iff the two types will have the same C representation
 
    function Is_Integral_Type (T : Type_T) return Boolean is
      (Get_Type_Kind (T) = Integer_Type_Kind)
@@ -256,17 +256,13 @@ package CCG.Utils is
    --  confusion there. So we instead interpret an array of length zero as
    --  an array of length one.
 
-   function Effective_Array_Length (T : Type_T) return Nat is
-     (if   C_Version < 1999 and then Get_Array_Length (T) = 0
-      then 1 else Get_Array_Length (T))
-      with Pre => Present (T);
    function Effective_Array_Length (MD : MD_Type) return Nat is
-     (if    C_Version < 1999 and then Is_Fixed_Array (MD)
-            and then Array_Count (MD) = 0
+     (if    C_Version < 1999
+            and then (Is_Variable_Array (MD) or else Array_Count (MD) = 0)
       then  1
-      elsif Is_Variable_Array (MD) then 1
+      elsif Is_Variable_Array (MD) then 0
       else  Array_Count (MD))
-      with Pre => Present (MD);
+     with Pre => Present (MD);
 
    function UC_V  is new Ada.Unchecked_Conversion (Value_T, System.Address);
    function UC_T  is new Ada.Unchecked_Conversion (Type_T, System.Address);

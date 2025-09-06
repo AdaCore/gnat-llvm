@@ -765,7 +765,7 @@ package body GNATLLVM.Aliasing is
          --  Only if the LLVM types and GNAT representations are the same
          --  is there a chance they can be equivalent.
 
-         if Is_Layout_Identical (Type_Of (TE), Type_Of (E_TE))
+         if Is_Layout_Identical (+Type_Of (TE), +Type_Of (E_TE))
            and then Has_Compatible_Representation (TE, E_TE)
          then
             --  We have to check differently for arrays and records. For

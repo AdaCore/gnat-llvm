@@ -122,15 +122,15 @@ package GNATLLVM.MDType is
    --  True if any part of MD is void, with the exception of a pointer
    --  to void.
 
-   function Check_From_Type (T1, T2 : Type_T) return Boolean
+   function Check_Types_Identical (T1, T2 : Type_T) return Boolean
      with Pre => Present (T1) and then Present (T2);
-   --  Used to check the result of the next function. This is a renaming
-   --  of Is_Layout_Identical, but we 'with' that unit here.
+   --  Equivalent to Is_Layout_Identical and used only in the next call to
+   --  avoid an elaboration loop.
 
    function From_Type (T : Type_T) return MD_Type
      with Pre  => Present (T),
           Post => Contains_Void (From_Type'Result)
-                  or else Check_From_Type (T, +From_Type'Result);
+                  or else Check_Types_Identical (T, +From_Type'Result);
    --  Create an MD_Type from a type. This is used for intrinsic functions
    --  and values created by the optimzer and isn't guaranteed to work in
    --  all cases. If T was a named struct type, the LLVM type generated
@@ -138,12 +138,6 @@ package GNATLLVM.MDType is
    --  for an array of such, so we just check that the layout is the same.
    --  We also can return Void for a number of reasons, so we allow that
    --  to always be valid.
-
-   function Is_Layout_Identical
-     (MD1, MD2 : MD_Type; Strict : Boolean := False) return Boolean
-     with Pre => Present (MD1) and then Present (MD2);
-   --  Return True iff types MD1 and MD2 have identical layouts.
-   --  If Strict is true, the types must also have identical C types.
 
    function Int_Bits (MD : MD_Type) return Nat
      with Pre => Is_Integer (MD), Post => Int_Bits'Result /= 0;

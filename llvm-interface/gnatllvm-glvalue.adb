@@ -2119,14 +2119,14 @@ package body GNATLLVM.GLValue is
    -------------------------
 
    function Is_Layout_Identical (V : GL_Value; GT : GL_Type) return Boolean is
-     (Is_Layout_Identical (Type_Of (V), +Type_Of (GT)));
+     (Is_Layout_Identical (+Type_Of (V), +Type_Of (GT)));
 
    -------------------------
    -- Is_Layout_Identical --
    -------------------------
 
    function Is_Layout_Identical (GT1, GT2 : GL_Type) return Boolean is
-     (Is_Layout_Identical (Type_Of (GT1), Type_Of (GT2)));
+     (Is_Layout_Identical (+Type_Of (GT1), +Type_Of (GT2)));
 
    -----------------------------
    -- Convert_Struct_Constant --

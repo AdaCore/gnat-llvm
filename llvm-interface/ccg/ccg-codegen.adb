@@ -245,17 +245,19 @@ package body CCG.Codegen is
 
             when Struct_Class =>
 
-               for J in 0 .. Element_Count (MD) - 1 loop
-                  declare
-                     S_MD : constant MD_Type := Element_Type (MD, J);
+               if Has_Fields (MD) then
+                  for J in 0 .. Element_Count (MD) - 1 loop
+                     declare
+                        S_MD : constant MD_Type := Element_Type (MD, J);
 
-                  begin
-                     if not Get_Used_In_Struct (S_MD) then
-                        Set_Used_In_Struct (S_MD);
-                        Mark_Struct_Fields (S_MD);
-                     end if;
-                  end;
-               end loop;
+                     begin
+                        if not Get_Used_In_Struct (S_MD) then
+                           Set_Used_In_Struct (S_MD);
+                           Mark_Struct_Fields (S_MD);
+                        end if;
+                     end;
+                  end loop;
+               end if;
 
             when Array_Class =>
                Mark_Struct_Fields (Element_Type (MD));

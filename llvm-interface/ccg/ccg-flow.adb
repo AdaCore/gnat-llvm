@@ -897,7 +897,10 @@ package body CCG.Flow is
                   --  memmove), and return that value.
 
                   if Is_Array_Type (Retval) then
-                     Output_Decl (TP ("#T1_R #2", Retval, T), V => T);
+                     Output_Decl (Return_Type
+                                    (Designated_Type
+                                       (Declaration_Type (Curr_Func))) &
+                                  "_R " & T, V => T);
                      Output_Copy (T & ".F", Retval, Declaration_Type (Retval));
                      Retval := T;
                   end if;

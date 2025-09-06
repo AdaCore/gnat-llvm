@@ -216,7 +216,11 @@ package body CCG.Output is
          then
             Output_Decl (Element_Type (MD) & " " & (V + LHS) & "[1]",
                          Is_Global => Is_A_Global_Variable (V));
-            Set_Is_LHS (V, Is_A_Global_Variable (V));
+
+            if Is_A_Global_Variable (V) then
+               Set_Is_LHS (V);
+            end if;
+
             return;
 
          --  If this is a global, mark it as an LHS

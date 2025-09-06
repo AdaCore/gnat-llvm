@@ -87,12 +87,12 @@ package GNATLLVM.GLType is
 
    procedure Update_GL_Type (GT : GL_Type; MD : MD_Type; Is_Dummy : Boolean)
      with Pre => Is_Empty_GL_Type (GT) or else Is_Dummy_Type (GT)
-                 or else Is_Layout_Identical (MD, Type_Of (GT));
+                 or else Is_Layout_Identical (+MD, +Type_Of (GT));
    --  Update GT with a new type and dummy status
 
    function Primitive_GL_Type (TE : Void_Or_Type_Kind_Id) return GL_Type
      with Post => (Is_Primitive_GL_Type (Primitive_GL_Type'Result)
-                     or else Is_Dummy_Type (Primitive_GL_Type'Result))
+                   or else Is_Dummy_Type (Primitive_GL_Type'Result))
                   and then TE = Full_Etype (Primitive_GL_Type'Result);
    --  Return the GT_Type for TE that corresponds to its basic computational
    --  form, creating it if it doesn't exist.
@@ -100,7 +100,7 @@ package GNATLLVM.GLType is
    function Primitive_GL_Type (GT : GL_Type) return GL_Type
      with Pre  => Present (GT),
           Post => (Is_Primitive_GL_Type (Primitive_GL_Type'Result)
-                     or else Is_Dummy_Type (Primitive_GL_Type'Result))
+                   or else Is_Dummy_Type (Primitive_GL_Type'Result))
                   and then Full_Etype (GT) =
                       Full_Etype (Primitive_GL_Type'Result),
           Inline;
@@ -110,7 +110,7 @@ package GNATLLVM.GLType is
    function Primitive_GL_Type (V : GL_Value) return GL_Type
      with Pre  => Present (V),
           Post => (Is_Primitive_GL_Type (Primitive_GL_Type'Result)
-                     or else Is_Dummy_Type (Primitive_GL_Type'Result))
+                   or else Is_Dummy_Type (Primitive_GL_Type'Result))
                   and then Full_Etype (V) = Full_Etype
                              (Primitive_GL_Type'Result),
           Inline;

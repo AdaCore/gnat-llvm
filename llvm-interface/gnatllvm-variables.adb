@@ -2357,14 +2357,17 @@ package body GNATLLVM.Variables is
       --  type. But don't do this if this comes from source and we're
       --  generating C since we'd prefer to materialize those variable. If
       --  the value is a Reference, it may be to something that's not
-      --  constant, so we actually have to allocate our entity and copy
-      --  into it. We assume here if something is marked "constant" at
-      --  source level, we can't modify it even if its address is taken.
+      --  constant, so we actually have to allocate our entity and copy into
+      --  it. If the value is a record or an array, we have to allocate it
+      --  as well in order for LLVM to emit correct debug info. We assume
+      --  here if something is marked "constant" at source level, we can't
+      --  modify it even if its address is taken.
 
       elsif Is_True_Constant (E)
         and then (not Emit_C or else not Comes_From_Source (E)
                   or else Is_No_Elab_Needed_For_Entity (E))
         and then (not Is_Volatile or else Ekind (E) = E_Constant)
+        and then (Emit_C or else not Is_Aggregate_Type (GT))
         and then (Present (Expr) or else Present (Value))
       then
          --  Evaluate the expression if needed. Normally, convert it to

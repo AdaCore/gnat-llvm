@@ -357,6 +357,15 @@ package CCG.Utils is
    --  works and No_Force is False, we build an MD type from the LLVM
    --  type of T. This will be an approximate, but is the best we can do
    --  in that situation.
+   --
+   --  This type can be derived by heuristics and need not be "correct".
+   --  If the type chosen here isn't the best type for the variable to be
+   --  declared with, we'll insert casts to any needed type if such type
+   --  is needed. So the idea here is to try to use various mechanisms to
+   --  pick the type that will require the least casts (hopefully none in
+   --  most cases), but we'll still generate correct code if we choose badly.
+
+
    function Declaration_Type
      (T : Type_T; No_Force : Boolean := False) return MD_Type
      with Pre  => Present (T),
@@ -371,6 +380,12 @@ package CCG.Utils is
    --  the declaration and understand what we generate and how that will
    --  affect the C type, if at all. If As_LHS is true, we're going to be
    --  using this in the context of an LHS, so return the type appropriately.
+   --
+   --  Unlike Declaration_Type, this type must be correct and correspond to
+   --  what the C type of the value is because this is the type that will be
+   --  used to determine whether or not a cast is needed. So if this type
+   --  is wrong, we may generate incorrect code, which will either generate
+   --  compilation errors or the wrong results (if signedness is wrong).
 
    function Maybe_Cast
      (MD : MD_Type; V : Value_T; As_LHS : Boolean := False) return Str

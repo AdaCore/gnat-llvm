@@ -1231,6 +1231,27 @@ package body GNATLLVM.Subprograms is
                   C_Set_Entity  (LLVM_Param, Param);
                end;
 
+            --  If this is a record passed by value, copy it to a stack slot to
+            --  help LLVM generate correct debug information for the value. The
+            --  stack allocation is usually optimized out. We need it because
+            --  LLVM understands a #dbg_declare annotation on a local alloca of
+            --  struct type (which is also what Clang emits), but can't handle
+            --  a #dbg_value annotation on a struct parameter (which we would
+            --  get if we didn't copy the struct to memory).
+
+            elsif PK = In_Value
+              and then Is_Record_Type (GT)
+              and then not Emit_C
+            then
+
+               LLVM_Param := Allocate_For_Type
+                 (GT,
+                  N => Param,
+                  E => Param,
+                  Name => Get_Name (Param, ".local"),
+                  V => V);
+               C_Set_Entity (LLVM_Param, Param);
+
             --  If this is an array passed to a foreign convention, we
             --  pass it as a reference to the component type. So we have
             --  to convert to a pointer to the array type. If it's an

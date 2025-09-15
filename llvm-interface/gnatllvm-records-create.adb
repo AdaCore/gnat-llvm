@@ -678,7 +678,8 @@ package body GNATLLVM.Records.Create is
              Num_Bits             => Num_Bits,
              TBAA_Type            => No_Metadata_T,
              Array_Bitfield       => Array_Bitfield,
-             Large_Array_Bitfield => Large_Array_Bitfield));
+             Large_Array_Bitfield => Large_Array_Bitfield,
+             Is_Inherited         => Full_Scope (E) /= TE));
 
          if No (Last_Field_Id) then
             First_Field_Id := Field_Info_Table.Last;

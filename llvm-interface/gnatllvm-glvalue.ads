@@ -1171,6 +1171,9 @@ package GNATLLVM.GLValue is
    --  Add the appropropriate Inline attributes, if any, to the LLVM
    --  function V based on the flags in Subp.
 
+   procedure Add_Uwtable_Attribute (V : GL_Value)
+     with Pre => Is_A_Function (V), Inline;
+
    procedure Add_Named_Attribute (V : GL_Value; Name, Value : String)
      with Pre => Is_A_Function (V), Inline;
 

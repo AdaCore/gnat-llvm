@@ -2854,6 +2854,10 @@ package body GNATLLVM.Subprograms is
 
          Add_Inline_Attribute (LLVM_Func, E);
 
+         if SEH then
+            Add_Uwtable_Attribute (LLVM_Func);
+         end if;
+
          if No_Tail_Calls then
             Add_Named_Attribute (LLVM_Func, "disable-tail-calls", "true");
          end if;

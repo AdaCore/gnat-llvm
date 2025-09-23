@@ -18,6 +18,7 @@
 with Ada.Containers.Vectors;
 
 with Nlists;     use Nlists;
+with Sem_Aux;    use Sem_Aux;
 with Sinput;     use Sinput;
 with Uintp.LLVM; use Uintp.LLVM;
 
@@ -30,16 +31,44 @@ with LLVM.Debug_Info; use LLVM.Debug_Info;
 
 package body GNATLLVM.Records.Debug is
 
-   function Hash (F : Record_Field_Kind_Id) return Ada.Containers.Hash_Type
-     is (Hash_Type (F));
-   --  A hash function for use in the discriminant map.
+   subtype DWARF_OP_Encoding_T is uint64_t;
 
-   package Discriminant_Map is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Record_Field_Kind_Id,
-      Element_Type    => Metadata_T,
-      Hash            => Hash,
-      Equivalent_Keys => "=");
-   --  A map from a discriminant's entity to the LLVM debuginfo.
+   --  DWARF expression constants.  These come from the DWARF standard
+   --  and won't change.
+   DW_OP_deref               : constant DWARF_OP_Encoding_T := 16#06#;
+   DW_OP_constu              : constant DWARF_OP_Encoding_T := 16#10#;
+   DW_OP_consts              : constant DWARF_OP_Encoding_T := 16#11#;
+   DW_OP_over                : constant DWARF_OP_Encoding_T := 16#14#;
+   DW_OP_swap                : constant DWARF_OP_Encoding_T := 16#16#;
+   DW_OP_rot                 : constant DWARF_OP_Encoding_T := 16#17#;
+   DW_OP_abs                 : constant DWARF_OP_Encoding_T := 16#19#;
+   DW_OP_and                 : constant DWARF_OP_Encoding_T := 16#1a#;
+   DW_OP_div                 : constant DWARF_OP_Encoding_T := 16#1b#;
+   DW_OP_minus               : constant DWARF_OP_Encoding_T := 16#1c#;
+   DW_OP_mod                 : constant DWARF_OP_Encoding_T := 16#1d#;
+   DW_OP_mul                 : constant DWARF_OP_Encoding_T := 16#1e#;
+   DW_OP_neg                 : constant DWARF_OP_Encoding_T := 16#1f#;
+   DW_OP_not                 : constant DWARF_OP_Encoding_T := 16#20#;
+   DW_OP_or                  : constant DWARF_OP_Encoding_T := 16#21#;
+   DW_OP_plus                : constant DWARF_OP_Encoding_T := 16#22#;
+   DW_OP_plus_uconst         : constant DWARF_OP_Encoding_T := 16#23#;
+   DW_OP_shl                 : constant DWARF_OP_Encoding_T := 16#24#;
+   DW_OP_shr                 : constant DWARF_OP_Encoding_T := 16#25#;
+   DW_OP_shra                : constant DWARF_OP_Encoding_T := 16#26#;
+   DW_OP_xor                 : constant DWARF_OP_Encoding_T := 16#27#;
+   DW_OP_eq                  : constant DWARF_OP_Encoding_T := 16#29#;
+   DW_OP_ge                  : constant DWARF_OP_Encoding_T := 16#2a#;
+   DW_OP_gt                  : constant DWARF_OP_Encoding_T := 16#2b#;
+   DW_OP_le                  : constant DWARF_OP_Encoding_T := 16#2c#;
+   DW_OP_lt                  : constant DWARF_OP_Encoding_T := 16#2d#;
+   DW_OP_ne                  : constant DWARF_OP_Encoding_T := 16#2e#;
+   DW_OP_lit0                : constant DWARF_OP_Encoding_T := 16#30#;
+   DW_OP_deref_size          : constant DWARF_OP_Encoding_T := 16#94#;
+   DW_OP_push_object_address : constant DWARF_OP_Encoding_T := 16#97#;
+
+   type Dwarf_Expression is array (Nat range <>) of aliased uint64_t;
+   --  In LLVM, a DWARF expression is constructed from an array of
+   --  uint64_t.
 
    package Member_Vectors is new
      Ada.Containers.Vectors (Index_Type => Pos,
@@ -57,16 +86,29 @@ package body GNATLLVM.Records.Debug is
    --  bounds of a given choice.  Returns an empty array for 'others'
    --  or if the choice list is not recognized in some way.
 
-   function Convert_One_Field (M : in out Discriminant_Map.Map;
+   package Dw_Vector is new Ada.Containers.Vectors (Index_Type => Nat,
+                                                    Element_Type => uint64_t);
+   --  Used when building a DWARF expression, which is just a vector
+   --  of uint64_t; this particular representation is chosen because
+   --  it is convenient to pass to LLVM.
+
+   function Find_Discriminant_From_Index (Original_Type : Entity_Id;
+                                          Index : Pos) return Entity_Id;
+   --  Given the index of a discriminant (like Discriminant_Number)
+   --  and a type, return the corresponding field.
+
+   function Convert_One_Field (M : in out Discriminant_Map;
+                               Original_Type : Entity_Id;
                                F : Record_Field_Kind_Id;
                                Artificial : Boolean := False)
      return Metadata_T;
    --  Convert a single field to LLVM debug metadata.  M is a map to
    --  update; if the field is a discriminant, then it is recorded in
    --  the map for later lookup.  If Artificial is True, the created
-   --  field is marked artificial.  Returns the LLVM debug metadata.
+   --  field is marked artificial.  Returns the LLVM debug metadata,
+   --  or No_Metadata_T is the field could not be converted.
 
-   function Convert_Variant_Part (M : in out Discriminant_Map.Map;
+   function Convert_Variant_Part (M : in out Discriminant_Map;
                                   RI : Record_Info;
                                   Original_Type : Entity_Id;
                                   Is_Union : Boolean;
@@ -77,7 +119,7 @@ package body GNATLLVM.Records.Debug is
    --  array holding the LLVM debug metadata for all the relevant
    --  fields.
 
-   function Convert_RI_Chain (M : in out Discriminant_Map.Map;
+   function Convert_RI_Chain (M : in out Discriminant_Map;
                               Start : Record_Info_Id;
                               Original_Type : Entity_Id;
                               Is_Union : Boolean;
@@ -91,7 +133,7 @@ package body GNATLLVM.Records.Debug is
    --  to add a field there when processing a variant part.  This is
    --  only null for the outermost call to Convert_RI_Chain.
 
-   function Convert_RI_Chain (M : in out Discriminant_Map.Map;
+   function Convert_RI_Chain (M : in out Discriminant_Map;
                               Start : Record_Info_Id;
                               Original_Type : Entity_Id;
                               Is_Union : Boolean)
@@ -137,46 +179,417 @@ package body GNATLLVM.Records.Debug is
       end;
    end Convert_Choices;
 
+   ----------------------------------
+   -- Find_Discriminant_From_Index --
+   ----------------------------------
+
+   function Find_Discriminant_From_Index (Original_Type : Entity_Id;
+                                          Index : Pos) return Entity_Id is
+      N : Pos := 1;
+      Discr : Entity_Id := First_Discriminant (Original_Type);
+   begin
+      while Present (Discr) loop
+         if Index = N then
+            return Discr;
+         end if;
+         N := N + 1;
+         Next_Discriminant (Discr);
+      end loop;
+      pragma Assert (False);
+   end Find_Discriminant_From_Index;
+
+   ---------------------------------
+   -- Convert_To_Dwarf_Expression --
+   ---------------------------------
+
+   function Convert_To_Dwarf_Expression (Expr : Node_Ref_Or_Val;
+                                         Original_Type : Entity_Id)
+     return Metadata_T
+   is
+
+      Could_Not_Convert : Boolean := False;
+      --  If this expression could not be converted to a DWARF
+      --  expression for some reason, this flag will be set.
+
+      Expression : Dw_Vector.Vector;
+      --  The expression being built.
+
+      procedure Unop (Code : TCode; Op : Node_Ref_Or_Val);
+      procedure Binop (Code : TCode; Lhs : Node_Ref_Or_Val;
+                       Rhs : Node_Ref_Or_Val);
+      procedure Cond_Expr (Test : Node_Ref_Or_Val;
+                           Lhs : Node_Ref_Or_Val;
+                           Rhs : Node_Ref_Or_Val);
+      procedure Const (Val : Node_Ref_Or_Val);
+      procedure Discriminant (Val : Node_Ref_Or_Val);
+      procedure Variable (Val : Node_Ref_Or_Val);
+
+      procedure Convert_It is new Visit (Visit_Unop => Unop,
+                                         Visit_Binop => Binop,
+                                         Visit_Cond_Expr => Cond_Expr,
+                                         Visit_Constant => Const,
+                                         Visit_Discriminant => Discriminant,
+                                         Visit_Variable => Variable);
+      --  Expression conversion via the visitor API.  The approach
+      --  taken when generating a DWARF expression is that each
+      --  visited operation leaves a single new element on the top of
+      --  the stack.  That is, a callback can visit its operands and
+      --  then emit code that assumes that the needed values are on
+      --  the stack in the emission order.  Conversion failures are
+      --  handled by setting Could_Not_Convert; in this case code may
+      --  still be emitted to Expression for convenience, but at the
+      --  end it should be assumed to be garbage.
+
+      procedure Unop (Code : TCode; Op : Node_Ref_Or_Val) is
+      begin
+         Convert_It (Op);
+         case Code is
+            when Negate_Expr =>
+               if DI_Expression_Extensions then
+                  Expression.Append (DW_OP_neg);
+               else
+                  Could_Not_Convert := True;
+               end if;
+            when Abs_Expr =>
+               if DI_Expression_Extensions then
+                  Expression.Append (DW_OP_abs);
+               else
+                  Could_Not_Convert := True;
+               end if;
+            when Truth_Not_Expr =>
+               Expression.Append (DW_OP_lit0);
+               Expression.Append (DW_OP_eq);
+
+            when others =>
+               pragma Assert (False);
+         end case;
+      end Unop;
+
+      procedure Binop (Code : TCode; Lhs : Node_Ref_Or_Val;
+                       Rhs : Node_Ref_Or_Val) is
+      begin
+         Convert_It (Lhs);
+         Convert_It (Rhs);
+
+         case Code is
+            when Plus_Expr =>
+               Expression.Append (DW_OP_plus);
+            when Minus_Expr =>
+               Expression.Append (DW_OP_minus);
+            when Mult_Expr =>
+               Expression.Append (DW_OP_mul);
+            when Trunc_Div_Expr | Ceil_Div_Expr | Floor_Div_Expr
+                 | Exact_Div_Expr =>
+               --  FIXME the kinds of div
+               Expression.Append (DW_OP_div);
+            when Trunc_Mod_Expr | Ceil_Mod_Expr | Floor_Mod_Expr =>
+               --  This (erroneously) implements all forms of 'mod'
+               --  the same way.  However note that DWARF does not
+               --  clearly specify the definition of mod, so there are
+               --  already debugger differences here.
+               --  https://dwarfstd.org/issues/250924.2.html
+               Expression.Append (DW_OP_mod);
+            when Min_Expr =>
+               if DI_Expression_Extensions then
+                  --  LLVM can't emit branches, so we use an old HAKMEM
+                  --  trick to compute a branchless minimum, namely:
+                  --  MIN := Y ^ ((X ^ Y) & - (X < Y))
+                  --  Stack: x y
+                  Expression.Append (DW_OP_swap);
+                  Expression.Append (DW_OP_over);
+                  Expression.Append (DW_OP_over);
+                  Expression.Append (DW_OP_over);
+                  --  Stack: y x y x y
+                  Expression.Append (DW_OP_lt);
+                  Expression.Append (DW_OP_neg);
+                  Expression.Append (DW_OP_rot);
+                  --  Stack: y [-(x<y)] x y
+                  Expression.Append (DW_OP_xor);
+                  Expression.Append (DW_OP_and);
+                  Expression.Append (DW_OP_xor);
+               else
+                  Could_Not_Convert := True;
+               end if;
+
+            when Max_Expr =>
+               if DI_Expression_Extensions then
+                  --  Similar to minimum, above.
+                  --  MAX := X ^ ((X ^ Y) & - (X < Y))
+                  --  Stack: x y
+                  Expression.Append (DW_OP_over);
+                  Expression.Append (DW_OP_swap);
+                  Expression.Append (DW_OP_over);
+                  Expression.Append (DW_OP_over);
+                  --  Stack: x x y x y
+                  Expression.Append (DW_OP_lt);
+                  Expression.Append (DW_OP_neg);
+                  Expression.Append (DW_OP_rot);
+                  --  Stack: x [-(x<y)] x y
+                  Expression.Append (DW_OP_xor);
+                  Expression.Append (DW_OP_and);
+                  Expression.Append (DW_OP_xor);
+               else
+                  Could_Not_Convert := True;
+               end if;
+
+            when Truth_And_Expr =>
+               Expression.Append (DW_OP_and);
+            when Truth_Or_Expr =>
+               Expression.Append (DW_OP_or);
+            when Truth_Xor_Expr =>
+               Expression.Append (DW_OP_xor);
+            when Lt_Expr =>
+               Expression.Append (DW_OP_lt);
+            when Le_Expr =>
+               Expression.Append (DW_OP_le);
+            when Gt_Expr =>
+               Expression.Append (DW_OP_gt);
+            when Ge_Expr =>
+               Expression.Append (DW_OP_ge);
+            when Eq_Expr =>
+               Expression.Append (DW_OP_eq);
+            when Ne_Expr =>
+               Expression.Append (DW_OP_ne);
+            when Bit_And_Expr =>
+               Expression.Append (DW_OP_and);
+            when others =>
+               pragma Assert (False);
+         end case;
+      end Binop;
+
+      procedure Cond_Expr (Test : Node_Ref_Or_Val;
+                           Lhs : Node_Ref_Or_Val;
+                           Rhs : Node_Ref_Or_Val) is
+      begin
+         if not DI_Expression_Extensions then
+            Could_Not_Convert := True;
+            return;
+         end if;
+
+         --  LLVM can't emit branches, so we use an old HAKMEM
+         --  trick to compute a branchless condition, namely:
+         --     C := T ? L : R
+         --  Introduce M = -T (assuming T == 0 or 1)
+         --     C := (L & M) | (R & ~M)
+
+         Convert_It (Test);
+         --  Just in case, let's make sure that the value is 0 or 1.
+         Expression.Append (DW_OP_lit0);
+         Expression.Append (DW_OP_ne);
+         --  Now compute "M".
+         Expression.Append (DW_OP_neg);
+
+         Convert_It (Lhs);
+
+         --  Stack: M L
+         Expression.Append (DW_OP_over);
+         Expression.Append (DW_OP_and);
+         Expression.Append (DW_OP_swap);
+
+         --  Stack: [M&L] M
+         Expression.Append (DW_OP_not);
+         Convert_It (Rhs);
+         Expression.Append (DW_OP_and);
+
+         --  Stack: [M&L] [~M&R]
+         Expression.Append (DW_OP_or);
+      end Cond_Expr;
+
+      procedure Const (Val : Node_Ref_Or_Val) is
+         Int_Val : constant Int := UI_To_Int (Val);
+      begin
+         if Int_Val < 0 then
+            Expression.Append (DW_OP_consts);
+         else
+            Expression.Append (DW_OP_constu);
+         end if;
+         Expression.Append (uint64_t (Int_Val));
+      end Const;
+
+      procedure Discriminant (Val : Node_Ref_Or_Val) is
+         F : constant Record_Field_Kind_Id :=
+           Find_Discriminant_From_Index (Original_Type, UI_To_Int (Val));
+         Offset_In_Bits : constant ULL := UI_To_ULL (Component_Bit_Offset (F));
+         Offset_In_Bytes : constant ULL := Offset_In_Bits / UBPU;
+         --  The low-order bits to shift off.
+         Relative_Bit_Offset : constant ULL := Offset_In_Bits -
+                                               UBPU * Offset_In_Bytes;
+         Size_In_Bits : constant ULL := UI_To_ULL (Esize (F));
+         Size_In_Bytes : constant ULL := (Size_In_Bits + UBPU - 1) / UBPU;
+         Pointer_Bits : constant ULL := ULL (Thin_Pointer_Size);
+         Is_Unsigned : constant Boolean := Is_Unsigned_Type (Etype (F));
+      begin
+         --  Find the location of the discriminant.
+         Expression.Append (DW_OP_push_object_address);
+         --  Frequently the discriminant is the first member, so avoid
+         --  some extra work in this case.
+         if Offset_In_Bytes /= 0 then
+            Expression.Append (DW_OP_plus_uconst);
+            Expression.Append (uint64_t (Offset_In_Bytes));
+         end if;
+         --  Extract the necessary bytes.
+         if Size_In_Bytes * UBPU = Pointer_Bits then
+            Expression.Append (DW_OP_deref);
+         else
+            Expression.Append (DW_OP_deref_size);
+            Expression.Append (uint64_t (Size_In_Bytes));
+         end if;
+
+         --  For unsigned types, when there is no bit offset, some
+         --  optimization is possible.
+         if Is_Unsigned and then Relative_Bit_Offset = 0 then
+            --  If the dereference was exactly the desired number of
+            --  bits, nothing more need be done.  Otherwise, mask.
+            if Size_In_Bytes * UBPU /= Size_In_Bits then
+               Expression.Append (DW_OP_constu);
+               Expression.Append (uint64_t (2 ** Integer (Size_In_Bits)) - 1);
+               Expression.Append (DW_OP_and);
+            end if;
+         else
+            declare
+               Left_Shift : constant ULL :=
+                 Pointer_Bits - (Size_In_Bits + Relative_Bit_Offset);
+               Right_Shift : constant ULL := Pointer_Bits - Size_In_Bits;
+            begin
+               if Left_Shift /= 0 then
+                  Expression.Append (DW_OP_constu);
+                  Expression.Append (uint64_t (Left_Shift));
+                  Expression.Append (DW_OP_shl);
+               end if;
+               if Right_Shift /= 0 then
+                  Expression.Append (DW_OP_constu);
+                  Expression.Append (uint64_t (Right_Shift));
+                  Expression.Append (if Is_Unsigned
+                                     then DW_OP_shr
+                                     else DW_OP_shra);
+               end if;
+            end;
+         end if;
+      end Discriminant;
+
+      procedure Variable (Val : Node_Ref_Or_Val) is
+         E : constant Entity_Id := Get_Dynamic_SO_Entity (-Val);
+         MD : constant Metadata_T := (if Present (E)
+                                      then Get_Debug_Metadata (E)
+                                      else No_Metadata_T);
+      begin
+         if Present (MD) then
+            --  FIXME
+            null;
+         end if;
+         Could_Not_Convert := True;
+      end Variable;
+
+   begin
+      --  If the outermost value is an ordinary constant, just return
+      --  a constant.  This results in cleaner DWARF.
+      if Expr >= 0 then
+         return Constant_As_Metadata (Expr);
+      end if;
+
+      Convert_It (Expr);
+      if Could_Not_Convert then
+         return No_Metadata_T;
+      end if;
+
+      declare
+         Data : aliased Dwarf_Expression (0 .. Nat (Expression.Length) - 1);
+      begin
+         for I in Data'Range loop
+            Data (I) := Expression (I);
+         end loop;
+
+         return DI_Builder_Create_Expression (DI_Builder,
+                                              Data (Data'First)'Access,
+                                              Data'Length);
+
+      end;
+   end Convert_To_Dwarf_Expression;
+
+   --------------------------------
+   -- Canonical_Discriminant_For --
+   --------------------------------
+
+   function Canonical_Discriminant_For (E : Entity_Id) return Entity_Id is
+      Iter : Entity_Id := Original_Record_Component (E);
+   begin
+      while Present (Corresponding_Discriminant (Iter)) loop
+         Iter := Corresponding_Discriminant (Iter);
+      end loop;
+      return Iter;
+   end Canonical_Discriminant_For;
+
    -----------------------
    -- Convert_One_Field --
    -----------------------
 
-   function Convert_One_Field (M : in out Discriminant_Map.Map;
+   function Convert_One_Field (M : in out Discriminant_Map;
+                               Original_Type : Entity_Id;
                                F : Record_Field_Kind_Id;
                                Artificial : Boolean := False) return Metadata_T
    is
       F_GT           : constant GL_Type    := Field_Type (F);
       Mem_MD         : constant Metadata_T :=
-        Create_Type_Data (F_GT);
+        Create_Type_Data (F_GT, M'Access);
       Name           : constant String     := Get_Name (F);
       F_S            : constant Source_Ptr := Sloc (F);
       File           : constant Metadata_T :=
         Get_Debug_File_Node (Get_Source_File_Index (F_S));
-      Offset         : constant ULL        :=
-        UI_To_ULL (Component_Bit_Offset (F));
-      Storage_Offset : constant ULL        :=
-        (Offset / UBPU) * UBPU;
       Flags          : constant DI_Flags_T :=
         (if Artificial then DI_Flag_Artificial else DI_Flag_Zero);
-      MD             : constant Metadata_T :=
-        (if   Is_Bitfield (F)
-         then DI_Create_Bit_Field_Member_Type
-           (No_Metadata_T, Name, File,
-            Get_Physical_Line_Number (F_S),
-            UI_To_ULL (Esize (F)), Offset,
-            Storage_Offset, Mem_MD, Flags)
-         else DI_Create_Member_Type
-           (No_Metadata_T, Name, File,
-            Get_Physical_Line_Number (F_S),
-            UI_To_ULL (Esize (F)),
-            Get_Type_Alignment (F_GT), Offset, Mem_MD, Flags));
+      Offset         : constant Metadata_T :=
+        Convert_To_Dwarf_Expression (Component_Bit_Offset (F), Original_Type);
+      Size           : constant Metadata_T :=
+        (if Is_Bitfield (F)
+         then Constant_As_Metadata (Esize (F))
+         else No_Metadata_T);
+      MD             : Metadata_T;
    begin
+      --  Special case known static offset and size, because this will
+      --  still work with an unpatched LLVM.
+      if No (Mem_MD) then
+         --  Nothing to do here.
+         return No_Metadata_T;
+      elsif Known_Static_Component_Bit_Offset (F) and then
+            Known_Static_Esize (F)
+      then
+         declare
+            Offset         : constant ULL        :=
+              UI_To_ULL (Component_Bit_Offset (F));
+            Storage_Offset : constant ULL        :=
+              (Offset / UBPU) * UBPU;
+         begin
+            if Is_Bitfield (F) then
+               MD := DI_Create_Bit_Field_Member_Type
+                 (No_Metadata_T, Name, File,
+                  Get_Physical_Line_Number (F_S),
+                  UI_To_ULL (Esize (F)), Offset,
+                  Storage_Offset, Mem_MD, Flags);
+            else
+               MD := DI_Create_Member_Type
+                 (No_Metadata_T, Name, File,
+                  Get_Physical_Line_Number (F_S),
+                  UI_To_ULL (Esize (F)),
+                  Get_Type_Alignment (F_GT), Offset, Mem_MD, Flags);
+            end if;
+         end;
+      elsif not Types_Can_Have_Dynamic_Offsets then
+         --  Unpatched LLVM.  There's nothing really sensible to do
+         --  here.
+         return No_Metadata_T;
+      else
+         MD := Create_Member (DI_Builder, No_Metadata_T, Name, File,
+                              Get_Physical_Line_Number (F_S),
+                              Size, Offset,
+                              Mem_MD, Flags, Is_Bitfield (F));
+      end if;
+
       --  Ensure the field is available so that a later lookup of a
       --  discriminant will succeed.
       if Ekind (F) = E_Discriminant then
          --  Should not have been seen before.
-         pragma Assert (not M.Contains (Original_Record_Component (F)));
-         M.Insert (Original_Record_Component (F), MD);
+         pragma Assert (not M.Contains (Canonical_Discriminant_For (F)));
+         M.Insert (Canonical_Discriminant_For (F), MD);
       end if;
       return MD;
    end Convert_One_Field;
@@ -186,7 +599,7 @@ package body GNATLLVM.Records.Debug is
    --------------------------
 
    function Convert_Variant_Part
-     (M : in out Discriminant_Map.Map;
+     (M : in out Discriminant_Map;
       RI : Record_Info;
       Original_Type : Entity_Id;
       Is_Union : Boolean;
@@ -245,7 +658,7 @@ package body GNATLLVM.Records.Debug is
    -- Convert_RI_Chain --
    ----------------------
 
-   function Convert_RI_Chain (M : in out Discriminant_Map.Map;
+   function Convert_RI_Chain (M : in out Discriminant_Map;
                               Start : Record_Info_Id;
                               Original_Type : Entity_Id;
                               Is_Union : Boolean;
@@ -272,13 +685,25 @@ package body GNATLLVM.Records.Debug is
             FI := Field_Info_Table.Table (F_Idx);
             F := FI.Field;
 
-            if FI.Is_Inherited then
-               --  Inherited component, so we can skip it here.
-               null;
-            elsif Known_Static_Component_Bit_Offset (F) and then
-                  Known_Static_Esize (F)
-            then
-               Members_To_Update.Append (Convert_One_Field (M, F));
+            --  Skip inherited components.
+            if not FI.Is_Inherited then
+               declare
+                  Member : constant Metadata_T :=
+                    Convert_One_Field (M, Original_Type, F);
+               begin
+                  if Present (Member) then
+                     Members_To_Update.Append (Member);
+                  end if;
+               end;
+            elsif Ekind (F) = E_Discriminant then
+               declare
+                  --  However, inherited discriminants must still be
+                  --  recorded in the discriminant vector.
+                  Ignore : constant Metadata_T :=
+                    Convert_One_Field (M, Original_Type, F, True);
+               begin
+                  null;
+               end;
             end if;
 
             F_Idx := FI.Next;
@@ -313,12 +738,15 @@ package body GNATLLVM.Records.Debug is
                   --  debuginfo for it.  In this case, we emit an
                   --  artificial discriminant into this record, so
                   --  that the variant part can refer to it.
-                  if M.Contains (Original_Record_Component (Discrim)) then
-                     Variant_MD := M (Original_Record_Component (Discrim));
+                  if M.Contains (Canonical_Discriminant_For (Discrim)) then
+                     Variant_MD := M (Canonical_Discriminant_For (Discrim));
                   else
                      Variant_MD := Convert_One_Field
-                       (M, Original_Record_Component (Discrim), True);
-                     Toplevel_Members.Append (Variant_MD);
+                       (M, Original_Type, Canonical_Discriminant_For (Discrim),
+                        True);
+                     if Present (Variant_MD) then
+                        Toplevel_Members.Append (Variant_MD);
+                     end if;
                   end if;
                   MD := Create_Variant_Part (DI_Builder, Variant_MD, Parts);
                   Members_To_Update.Append (MD);
@@ -344,7 +772,7 @@ package body GNATLLVM.Records.Debug is
    -- Convert_RI_Chain --
    ----------------------
 
-   function Convert_RI_Chain (M : in out Discriminant_Map.Map;
+   function Convert_RI_Chain (M : in out Discriminant_Map;
                               Start : Record_Info_Id;
                               Original_Type : Entity_Id;
                               Is_Union : Boolean)
@@ -371,6 +799,7 @@ package body GNATLLVM.Records.Debug is
       Empty_Fields : Metadata_Array (1 .. 0);
       Result : Metadata_T;
       Is_Union : constant Boolean := Is_Unchecked_Union (Original_Type);
+      Is_Unspecified : Boolean := False;
    begin
       if Original_Type /= TE
          and then Present (Get_Debug_Metadata (Original_Type))
@@ -391,12 +820,29 @@ package body GNATLLVM.Records.Debug is
             Get_Debug_File_Node (Get_Source_File_Index (S)),
             Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
             Empty_Fields, 0, Name);
-      else
+      elsif Known_Static_RM_Size (Original_Type) then
          Result := DI_Create_Struct_Type
            (Debug_Scope, Name,
             Get_Debug_File_Node (Get_Source_File_Index (S)),
             Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
             No_Metadata_T, Empty_Fields, 0, No_Metadata_T, Name);
+      elsif Types_Can_Have_Dynamic_Offsets then
+         declare
+            Expr_Size : constant Metadata_T :=
+              Convert_To_Dwarf_Expression (RM_Size (Original_Type),
+                                           Original_Type);
+         begin
+            Result := DI_Create_Struct_Type
+              (Debug_Scope, Name,
+               Get_Debug_File_Node (Get_Source_File_Index (S)),
+               Get_Physical_Line_Number (S), Expr_Size, Align, DI_Flag_Zero,
+               No_Metadata_T, Empty_Fields, 0, No_Metadata_T, Name);
+         end;
+      else
+         --  Type with non-constant size, but the LLVM in use doesn't
+         --  support that.  Just turn it into an unspecified type.
+         Result := DI_Create_Unspecified_Type (Name);
+         Is_Unspecified := True;
       end if;
 
       Set_Debug_Metadata (TE, Result);
@@ -404,8 +850,13 @@ package body GNATLLVM.Records.Debug is
          Set_Debug_Metadata (Original_Type, Result);
       end if;
 
+      --  Bail out early if we didn't actually create a record.
+      if Is_Unspecified then
+         return Result;
+      end if;
+
       declare
-         M : Discriminant_Map.Map;
+         M : Discriminant_Map;
          Ridx : constant Record_Info_Id := Get_Record_Info (Original_Type);
          Members : constant Metadata_Array :=
            Convert_RI_Chain (M, Ridx, Original_Type, Is_Union);

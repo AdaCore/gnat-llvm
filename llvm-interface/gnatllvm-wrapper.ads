@@ -565,6 +565,10 @@ package GNATLLVM.Wrapper is
    --  Return true if the LLVM contains the patch that allows types to
    --  have dynamic offsets and sizes.
 
+   function Types_Can_Have_Multiple_Variant_Members return Boolean;
+   --  Return true if the LLVM contains the patch that allows types to
+   --  have multiple members in a variant part.
+
    function Create_Global_Variable_Declaration
      (Builder : DI_Builder_T;
       Scope : Metadata_T;
@@ -584,5 +588,19 @@ package GNATLLVM.Wrapper is
       Elements  : Metadata_Array) return Metadata_T;
    --  Wrapper for DIBuilder::replaceArrays that only allows updating
    --  the elements of a composite type.
+
+   function Create_Variant_Part
+     (Builder : DI_Builder_T;
+      Discriminator : Metadata_T;
+      Elements : Metadata_Array) return Metadata_T;
+   --  A wrapper for an LLVM DIBuilder method that creates a variant
+   --  part.
+
+   function Create_Variant_Member
+     (Builder : DI_Builder_T;
+      Elements : Metadata_Array;
+      Discriminants : Word_Array) return Metadata_T;
+   --  A wrapper for an LLVM DIBuilder method that creates a variant
+   --  member.
 
 end GNATLLVM.Wrapper;

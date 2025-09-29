@@ -42,6 +42,9 @@ api_test HAVE_TYPE_FN_SCOPE "void call(DebugInfoFinder *f, DILocalVariable *v) {
 # Test that checks if sizes and offsets can be dynamic.
 api_test HAVE_DYNAMIC_OFFSETS "void call(DIBuilder *b) { b->createMemberType(nullptr, StringRef(), nullptr, 0, nullptr, 0, nullptr, DINode::FlagZero, nullptr); }"
 
+# Test whether multiple members can be included in a variant.
+api_test HAVE_MULTI_MEMBER_VARIANT "void call(DIBuilder *b) { b->createVariantMemberType(nullptr, DINodeArray(), (Constant*)nullptr, (DIType*)nullptr); }"
+
 for def in $haves; do
     echo "#define GNAT_LLVM_$def"
 done > obj/tmp-gnat-llvm-config.h

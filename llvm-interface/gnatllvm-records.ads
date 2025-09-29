@@ -417,6 +417,9 @@ private
       --  larger than a word. In this case, we can't even handle constants
       --  statically.
 
+      Is_Inherited         : Boolean;
+      --  True if this field comes from a parent.
+
    end record;
 
    package Field_Info_Table is new Table.Table

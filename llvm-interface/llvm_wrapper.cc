@@ -1550,6 +1550,17 @@ Types_Can_Have_Dynamic_Offsets ()
 }
 
 extern "C"
+bool
+Types_Can_Have_Multiple_Variant_Members ()
+{
+#ifdef GNAT_LLVM_HAVE_MULTI_MEMBER_VARIANT
+  return true;
+#else
+  return false;
+#endif
+}
+
+extern "C"
 LLVMMetadataRef Create_Global_Variable_Declaration(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     const char *Linkage, LLVMMetadataRef File,
@@ -1575,4 +1586,45 @@ LLVMMetadataRef Replace_Composite_Elements(
   unwrap(Builder)->replaceArrays(T, Elems);
   // T might have been modified by replaceArrays.
   return wrap(T);
+}
+
+extern "C"
+LLVMMetadataRef Create_Variant_Part(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef Discriminator,
+    LLVMMetadataRef *Elements, unsigned NumElements) {
+  DIDerivedType *Disc = Discriminator ? unwrap<DIDerivedType>(Discriminator) : nullptr;
+  auto Elems = unwrap(Builder)->getOrCreateArray({unwrap(Elements), NumElements});
+
+  return wrap(unwrap(Builder)->createVariantPart(
+      nullptr, {}, nullptr, 0, 0, 0, DINode::FlagZero,
+      Disc, Elems));
+}
+
+extern "C"
+LLVMMetadataRef Create_Variant_Member(
+    LLVMContext *Context, LLVMDIBuilderRef Builder,
+    LLVMMetadataRef *Elements, unsigned NumElements,
+    uint64_t *Discriminants, unsigned NumDiscriminants) {
+#ifdef GNAT_LLVM_HAVE_MULTI_MEMBER_VARIANT
+  auto Elems = unwrap(Builder)->getOrCreateArray({unwrap(Elements), NumElements});
+  Constant *D = nullptr;
+  // Note that this small optimization is actually required: when
+  // adding support for discriminant lists to LLVM, I did not realize
+  // that ConstantDataArray::get will return a ConstantAggregateZero
+  // when possible; and so the DWARF generation code does not handle
+  // this case.  If a variant uses "when 0", this will result in a
+  // discriminant array of {0, 0}, which would then be ignored by the
+  // DWARF writer.  This optimization works around this oddity to
+  // provide correct DWARF output.
+  if (NumDiscriminants == 2 && Discriminants[0] == Discriminants[1]) {
+    D = ConstantInt::get (Type::getInt64Ty (*Context), Discriminants[0]);
+  } else if (NumDiscriminants > 0) {
+    ArrayRef<uint64_t> Vals(Discriminants, NumDiscriminants);
+    D = ConstantDataArray::get(*Context, Vals);
+  }
+  return wrap(unwrap(Builder)->createVariantMemberType(nullptr, Elems, D, nullptr));
+#else
+  // This should never be called in this situation.
+  assert(0);
+#endif
 }

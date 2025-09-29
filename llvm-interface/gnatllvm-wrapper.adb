@@ -927,6 +927,19 @@ package body GNATLLVM.Wrapper is
       return Types_Can_Have_Dynamic_Offsets_C /= 0;
    end Types_Can_Have_Dynamic_Offsets;
 
+   ---------------------------------------------
+   -- Types_Can_Have_Multiple_Variant_Members --
+   ---------------------------------------------
+
+   function Types_Can_Have_Multiple_Variant_Members return Boolean
+   is
+      function Types_Can_Have_Multiple_Variant_Members_C return LLVM_Bool
+        with Import => True, Convention => C,
+             External_Name => "Types_Can_Have_Multiple_Variant_Members";
+   begin
+      return Types_Can_Have_Multiple_Variant_Members_C /= 0;
+   end Types_Can_Have_Multiple_Variant_Members;
+
    function Create_Global_Variable_Declaration
      (Builder : DI_Builder_T;
       Scope : Metadata_T;
@@ -983,5 +996,55 @@ package body GNATLLVM.Wrapper is
                                            Elements'Address,
                                            unsigned (Elements'Length));
    end Replace_Composite_Elements;
+
+   -------------------------
+   -- Create_Variant_Part --
+   -------------------------
+
+   function Create_Variant_Part
+     (Builder : DI_Builder_T;
+      Discriminator : Metadata_T;
+      Elements : Metadata_Array) return Metadata_T
+   is
+      function Create_Variant_Part_C
+        (Builder : DI_Builder_T;
+         Discriminator : Metadata_T;
+         Elements : System.Address;
+         Num_Elements : unsigned) return Metadata_T
+        with Import => True, Convention => C,
+             External_Name => "Create_Variant_Part";
+   begin
+      return Create_Variant_Part_C (Builder, Discriminator,
+                                    Elements'Address,
+                                    unsigned (Elements'Length));
+   end Create_Variant_Part;
+
+   ---------------------------
+   -- Create_Variant_Member --
+   ---------------------------
+
+   function Create_Variant_Member
+     (Builder : DI_Builder_T;
+      Elements : Metadata_Array;
+      Discriminants : Word_Array) return Metadata_T
+   is
+      function Create_Variant_Member_C
+        (Ctx : Context_T;
+         Builder : DI_Builder_T;
+         Elements : System.Address;
+         Num_Elements : unsigned;
+         Discriminants : System.Address;
+         Num_Discriminants : unsigned) return Metadata_T
+        with Import => True, Convention => C,
+             External_Name => "Create_Variant_Member";
+   begin
+      return Create_Variant_Member_C
+        (Get_Global_Context,
+         Builder,
+         Elements'Address,
+         unsigned (Elements'Length),
+         Discriminants'Address,
+         unsigned (Discriminants'Length));
+   end Create_Variant_Member;
 
 end GNATLLVM.Wrapper;

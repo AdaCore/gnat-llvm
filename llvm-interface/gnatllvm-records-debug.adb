@@ -316,23 +316,25 @@ package body GNATLLVM.Records.Debug is
          return Get_Debug_Metadata (Original_Type);
       end if;
 
-      --  A type might be self-referential.  For example, a
-      --  record may have a member whose type refers back to the
-      --  same record type.  To handle this case, we construct a
-      --  empty composite type and record it; then later we
-      --  update the members of the type.
+      --  A type might be self-referential.  For example, a record may
+      --  have a member whose type refers back to the same record
+      --  type.  To handle this case, we construct a empty composite
+      --  type and record it; then later we update the members of the
+      --  type.  Note that we pass a unique identifier here; that
+      --  prevents LLVM from reusing an existing type in the case that
+      --  this composite is nameless.
       if Is_Unchecked_Union (TE) then
          Result := DI_Create_Union_Type
            (Debug_Scope, Name,
             Get_Debug_File_Node (Get_Source_File_Index (S)),
             Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
-            Empty_Fields, 0, "");
+            Empty_Fields, 0, Name);
       else
          Result := DI_Create_Struct_Type
            (Debug_Scope, Name,
             Get_Debug_File_Node (Get_Source_File_Index (S)),
             Get_Physical_Line_Number (S), Size, Align, DI_Flag_Zero,
-            No_Metadata_T, Empty_Fields, 0, No_Metadata_T, "");
+            No_Metadata_T, Empty_Fields, 0, No_Metadata_T, Name);
       end if;
 
       Set_Debug_Metadata (TE, Result);

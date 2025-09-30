@@ -248,6 +248,13 @@ package body GNATLLVM.DebugInfo is
    function Get_Possibly_Local_Name (E : Entity_Id) return String is
       S : constant Metadata_T := Get_Scope_For (E);
    begin
+      --  Most artificial types should be nameless.  The only
+      --  exception here is that there are some types that LLVM does
+      --  not allow to be nameless; these are handled specially at the
+      --  point at which such types are built.
+      if not Comes_From_Source (E) and then Sloc (E) /= Standard_Location then
+         return "";
+      end if;
       if S = No_Metadata_T or not Types_Can_Have_Function_Scope then
          return Get_Name (E);
       end if;
@@ -867,7 +874,9 @@ package body GNATLLVM.DebugInfo is
       E_Index : Opt_N_Is_Index_Id := First_Index (Array_TE);
    begin
       if Is_Unconstrained_Array (Array_TE) then
-         return DI_Create_Unspecified_Type (Name);
+         --  LLVM does not allow a nameless unspecified type, so use
+         --  the original name in this instance.
+         return DI_Create_Unspecified_Type (Get_Name (Array_TE));
       end if;
 
       --  For arrays, get the component type's data.
@@ -890,7 +899,9 @@ package body GNATLLVM.DebugInfo is
                                          Index_Type, High_Bound (E_Range));
          begin
             if Low_Exp = No_Metadata_T or else High_Exp = No_Metadata_T then
-               return DI_Create_Unspecified_Type (Name);
+               --  LLVM does not allow a nameless unspecified type, so use
+               --  the original name in this instance.
+               return DI_Create_Unspecified_Type (Get_Name (Array_TE));
             end if;
             if J = 0 and then Component_Size (Array_TE) /= Esize (Comp_TE) then
                Stride := Const_64_As_Metadata (Component_Size (Array_TE));

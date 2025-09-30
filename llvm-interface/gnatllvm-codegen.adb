@@ -720,6 +720,10 @@ package body GNATLLVM.Codegen is
          Set_Module_PIC_PIE (Module, PIC_Level, PIE_Level);
       end if;
 
+      if SEH then
+         Set_Unwind_Tables (Module);
+      end if;
+
       --  ??? Replace this by a parameter in system.ads or target.atp
 
       if Target_Triple (TT_First .. TT_First + 3) = "wasm" then

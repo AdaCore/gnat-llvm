@@ -150,6 +150,10 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C,
           External_Name => "Add_No_Implicit_Float_Attribute";
 
+   procedure Add_Uwtable_Attribute (Func : Value_T)
+     with Import, Convention => C,
+          External_Name => "Add_Uwtable_Attribute";
+
    function Has_Inline_Attribute (Func : Value_T) return Boolean
      with Pre => Present (Is_A_Function (Func));
 
@@ -441,6 +445,10 @@ package GNATLLVM.Wrapper is
    procedure Set_Module_PIC_PIE
      (Module : Module_T; PIC : PIC_PIE_Level; PIE : PIC_PIE_Level)
      with Import, Convention => C, External_Name => "Set_Module_PIC_PIE";
+
+   procedure Set_Unwind_Tables
+     (Module : Module_T)
+     with Import, Convention => C, External_Name => "Set_Unwind_Tables";
 
    function Has_Default_PIE (Triple : String) return Boolean;
 

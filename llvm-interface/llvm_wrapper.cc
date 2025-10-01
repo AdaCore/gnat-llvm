@@ -1611,6 +1611,28 @@ Types_Can_Have_Multiple_Variant_Members ()
 }
 
 extern "C"
+bool
+DI_Expression_Extensions ()
+{
+#ifdef GNAT_LLVM_HAVE_DW_EXPRESSION_EXTENSIONS
+  return true;
+#else
+  return false;
+#endif
+}
+
+extern "C"
+bool
+DI_Subrange_Allows_Member ()
+{
+#ifdef GNAT_LLVM_HAVE_SUBRANGE_TYPE_EXTENSION
+  return true;
+#else
+  return false;
+#endif
+}
+
+extern "C"
 LLVMMetadataRef Create_Global_Variable_Declaration(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     const char *Linkage, LLVMMetadataRef File,
@@ -1686,4 +1708,63 @@ LLVMMetadataRef Create_Pointer_Type(LLVMDIBuilderRef Builder,
 				    uint32_t AlignInBits) {
   return wrap(unwrap(Builder)->createPointerType(
       unwrap<DIType>(Pointee), SizeInBits, AlignInBits));
+}
+
+extern "C"
+LLVMMetadataRef Create_Member(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    LLVMMetadataRef File, unsigned LineNo,
+    LLVMMetadataRef SizeInBits, LLVMMetadataRef OffsetInBits,
+    LLVMMetadataRef Ty, LLVMDIFlags Flags, LLVMBool IsBitField) {
+#ifdef GNAT_LLVM_HAVE_DYNAMIC_OFFSETS
+  DINode::DIFlags DIF = static_cast<DINode::DIFlags>(Flags);
+  DIScope *DS = Scope ? unwrap<DIScope>(Scope) : nullptr;
+  DIFile *DF = File ? unwrap<DIFile>(File) : nullptr;
+  Metadata *SB = SizeInBits ? unwrap(SizeInBits) : nullptr;
+  Metadata *OB = OffsetInBits ? unwrap(OffsetInBits) : nullptr;
+  DIDerivedType *Result;
+  if (IsBitField) {
+    Result = unwrap(Builder)->createBitFieldMemberType(DS, Name, DF, LineNo,
+						       SB, OB, 0, DIF,
+						       unwrap<DIType>(Ty));
+  } else {
+    Result = unwrap(Builder)->createMemberType(DS, Name, DF, LineNo,
+					       SB, 0, OB, DIF,
+					       unwrap<DIType>(Ty));
+  }
+  return wrap(Result);
+#else
+  // This should never be called in this situation.
+  assert(0);
+#endif
+}
+
+extern "C"
+LLVMMetadataRef Create_Struct_Type_Non_Constant_Size(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    LLVMMetadataRef File, unsigned LineNo,
+    LLVMMetadataRef SizeInBits, uint32_t AlignInBits,
+    LLVMDIFlags Flags, LLVMMetadataRef DerivedFrom,
+    LLVMMetadataRef *Elements, unsigned NumElements,
+    unsigned RunTimeLang, LLVMMetadataRef VTableHolder,
+    const char *UniqueId) {
+#ifdef GNAT_LLVM_HAVE_DYNAMIC_OFFSETS
+  DINode::DIFlags DIF = static_cast<DINode::DIFlags>(Flags);
+  DIScope *DS = Scope ? unwrap<DIScope>(Scope) : nullptr;
+  DIFile *DF = File ? unwrap<DIFile>(File) : nullptr;
+  Metadata *SB = SizeInBits ? unwrap(SizeInBits) : nullptr;
+  DIType *DerF = DerivedFrom ? unwrap<DIType>(DerivedFrom) : nullptr;
+  DIType *VTH = VTableHolder ? unwrap<DIType>(VTableHolder) : nullptr;
+  StringRef NameRef(Name);
+  StringRef UniqueRef(UniqueId);
+  auto Elems = unwrap(Builder)->getOrCreateArray({unwrap(Elements), NumElements});
+  DICompositeType *Result
+    = unwrap(Builder)->createStructType(DS, NameRef, DF, LineNo, SB,
+					AlignInBits, DIF, DerF, Elems,
+					RunTimeLang, VTH, UniqueRef);
+  return wrap(Result);
+#else
+  // This should never be called in this situation.
+  assert(0);
+#endif
 }

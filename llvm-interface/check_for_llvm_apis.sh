@@ -32,6 +32,19 @@ EOF
     rm $filename
 }
 
+# Test a ".ll" file to see if llvm-as parses it.
+ll_test() {
+    defname="$1"
+    program="$2"
+    filename=obj/test_${defname}.ll
+    llvmas=$($llvm_config --bindir)/llvm-as
+
+    echo "$program" > $filename
+    if $llvmas < $filename > /dev/null 2>&1; then
+	echo "#define GNAT_LLVM_$defname" >obj/def_${defname}.h
+    fi
+}
+
 api_test HAVE_SUBRANGE_TYPE "DISubrangeType *subrange_value = nullptr;" &
 # This checks for both the "name" patch and the "bit stride" patch.
 api_test HAVE_ARRAY_NAME "MDNode *named(DIBuilder *builder) { return builder->createArrayType(nullptr, StringRef(), nullptr, 0, 32, 0, nullptr, {}, nullptr, nullptr, nullptr, nullptr, nullptr); }" &
@@ -46,6 +59,15 @@ api_test HAVE_DYNAMIC_OFFSETS "void call(DIBuilder *b) { b->createMemberType(nul
 
 # Test whether multiple members can be included in a variant.
 api_test HAVE_MULTI_MEMBER_VARIANT "void call(DIBuilder *b) { b->createVariantMemberType(nullptr, DINodeArray(), (Constant*)nullptr, (DIType*)nullptr); }" &
+
+# Test whether DISubrangeType can hold a DIDerivedType.  This was
+# added after the initial DISubrangeType patch.
+api_test HAVE_SUBRANGE_TYPE_EXTENSION "DIDerivedType *call(DISubrangeType::BoundType bound) { return bound.dyn_cast<DIDerivedType *>(); }" &
+
+# Test whether DIExpression can handle DW_OP_rot, DW_OP_neg, and
+# DW_OP_ops.  A single test is sufficient because these all landed in
+# the same patch.
+ll_test HAVE_DW_EXPRESSION_EXTENSIONS '!named = !{!DIExpression(DW_OP_push_object_address, DW_OP_lit0, DW_OP_lit0, DW_OP_neg, DW_OP_abs, DW_OP_rot, DW_OP_rot, DW_OP_rot, DW_OP_plus, DW_OP_plus)}' &
 
 wait
 

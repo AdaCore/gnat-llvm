@@ -72,9 +72,6 @@ package body GNATLLVM.Types is
       Table_Increment      => 2,
       Table_Name           => "LValue_Stack");
 
-   Var_Idx_For_BA : Int := 1;
-   --  Index of variable used for Dynamic_Val in back-annotation.
-
    function Get_Alloc_Size
      (GT          : GL_Type;
       Alloc_GT    : GL_Type;
@@ -2022,6 +2019,21 @@ package body GNATLLVM.Types is
       pragma Unreferenced (LHS);
       SO_Info : Dynamic_SO_Ref := Get_SO_Ref (N);
 
+      function Create_Var_Node return Dynamic_SO_Ref;
+      --  Create a Dynamic_Val node that refers to N.
+
+      function Create_Var_Node return Dynamic_SO_Ref is
+      begin
+         --  Negate the result of Create_Dynamic_SO_Ref so that the
+         --  value in the back-annotations is positive.  This
+         --  preserves the expected behavior when printing the
+         --  annotations, e.g., with -gnatR3.  Note also that the
+         --  encoding of dynamic SO ref used here is also known by the
+         --  debuginfo generator and is used to extract the entity
+         --  from the back-annotations.
+         return Create_Node (Dynamic_Val, -Create_Dynamic_SO_Ref (N));
+      end Create_Var_Node;
+
    begin
       --  If we didn't already get an SO_Ref for this expression, get one
 
@@ -2124,15 +2136,16 @@ package body GNATLLVM.Types is
                if not Overflowed (Result) and then not Is_Undef (Result) then
                   return (False, To_UI (Result), No_Uint);
                else
-                  SO_Info :=
-                    Create_Node (Dynamic_Val, +Var_Idx_For_BA);
-                  Var_Idx_For_BA := Var_Idx_For_BA + 1;
+                  --  Note that the dynamic SO ref used here is also
+                  --  known by the debuginfo generator.
+                  SO_Info := Create_Var_Node;
                end if;
             end;
 
          else
-            SO_Info := Create_Node (Dynamic_Val, +Var_Idx_For_BA);
-            Var_Idx_For_BA := Var_Idx_For_BA + 1;
+            --  Note that the dynamic SO ref used here is also
+            --  known by the debuginfo generator.
+            SO_Info := Create_Var_Node;
          end if;
 
          --  Save the computed value, if any

@@ -1,13 +1,14 @@
 def build():
     # Do not rebuild gcc/gnat
     anod_install("gcc")
-    anod_install("gnat-doc", qualifier="ugx")
     anod_build("gnat-llvm")
+
 
 def build_ccg():
     anod_install("gcc")
     anod_install("gnat-doc", qualifier="ugx")
     anod_build("gnat-llvm-core", qualifier="ccg")
+
 
 def test_fixedbugs():
     anod_install("gnat-llvm")
@@ -17,9 +18,11 @@ def test_fixedbugs():
     anod_build("xmlada", qualifier={"compiler": "gnat-llvm"})
     anod_test("fixedbugs", qualifier="compiler=gnat-llvm")
 
+
 def test_acats():
     anod_install("gnat-llvm")
     anod_test("acats", qualifier="compiler=gnat-llvm")
+
 
 def ccg_common():
     anod_install("gcc", build="x86-linux")
@@ -29,9 +32,11 @@ def ccg_common():
     # is lost by the installation of gnat-llvm-core
     anod_build("ccg", target="c")
 
+
 def test_acats_ccg():
     ccg_common()
     anod_test("acats-4-ccg", target="c")
+
 
 def test_ccg():
     ccg_common()

@@ -1,7 +1,7 @@
 stages:
   - check
   - build
-  - test                        # not actually used, needed for test template
+  - test # not actually used, needed for test template
   - test-gnat-llvm
   - test-ccg
 
@@ -9,23 +9,25 @@ stages:
 .ccg-rulesrules_template:: &ccg-rules
   - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     changes:
-    - llvm-interface/ccg/*
+      - llvm-interface/ccg/*
   - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     when: manual
     allow_failure: true # This improves reporting. Otherwise the CI remains "stuck" untils those jobs are launched
 
-
 include:
-# Issue check
+  # Issue check
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/check-issue@~latest
 
-# Build
+  # Build
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/build@~latest
     inputs:
       anod-args: run build
       generic-anod-ci-args: --add-dep eng/toolchain/gnat --add-dep eng/toolchain/llvm-bindings
       cpus: 16
       save-component: true
+      windows: true
+      windows-cpus: 8
+      windows-mem: 16
 
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/build@~latest
     inputs:
@@ -36,21 +38,27 @@ include:
       cpus: 16
       save-component: true
 
-# Testing of gnat-llvm
+  # Testing of gnat-llvm
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
     inputs:
       job-name: fixedbugs
       stage: test-gnat-llvm
       anod-args: run test_fixedbugs
       generic-anod-ci-args: --add-dep eng/toolchain/gnatbugs-fixed
+      windows: true
+      windows-cpus: 8
+      windows-mem: 16
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
     inputs:
       job-name: acats
       stage: test-gnat-llvm
       anod-args: run test_acats
       generic-anod-ci-args: --add-dep eng/toolchain/acats
+      windows: true
+      windows-cpus: 8
+      windows-mem: 16
 
-# Testing of ccg
+  # Testing of ccg
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
     inputs:
       job-name: ccg
@@ -76,7 +84,6 @@ include:
       generic-anod-ci-args: --add-dep eng/toolchain/acats
       rules: *ccg-rules
 
-
 # Additional customization
 
 .fixedbugs:common:
@@ -85,3 +92,25 @@ include:
   # lets us merge without scary warning messages (while still showing failed
   # tests for assessment).
   allow_failure: true
+
+.build:common:
+  variables:
+    # Let's not bother with the docs; they're unaffected by this repository's
+    # code.
+    ANOD_ENABLE_DOC: false
+
+build:windows:
+  rules:
+    # The Windows build shouldn't trigger automatically because it takes a long
+    # time, and most changes aren't specific to Windows. Also mark it as
+    # non-critical because otherwise the pipeline gets stuck if the job isn't
+    # started.
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      allow_failure: true
+      when: manual
+
+acats:windows:
+  timeout: 4h
+
+fixedbugs:windows:
+  timeout: 4h

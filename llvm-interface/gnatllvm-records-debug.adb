@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Containers.Vectors;
+
 with Nlists;     use Nlists;
 with Sinput;     use Sinput;
 with Uintp.LLVM; use Uintp.LLVM;
@@ -39,6 +41,15 @@ package body GNATLLVM.Records.Debug is
       Equivalent_Keys => "=");
    --  A map from a discriminant's entity to the LLVM debuginfo.
 
+   package Member_Vectors is new
+     Ada.Containers.Vectors (Index_Type => Pos,
+                             Element_Type => Metadata_T);
+   --  A vector of LLVM metadata, used when building the fields for a
+   --  type or a variant part.
+
+   subtype Member_Vector is Member_Vectors.Vector;
+   --  Type of vector of members.
+
    function Convert_Choices (Choices : List_Id) return Word_Array;
    --  Convert a list of choices (the discrete choices selecting a
    --  variant part) to a word array.  The resulting word array has an
@@ -47,15 +58,20 @@ package body GNATLLVM.Records.Debug is
    --  or if the choice list is not recognized in some way.
 
    function Convert_One_Field (M : in out Discriminant_Map.Map;
-                               F : Record_Field_Kind_Id) return Metadata_T;
+                               F : Record_Field_Kind_Id;
+                               Artificial : Boolean := False)
+     return Metadata_T;
    --  Convert a single field to LLVM debug metadata.  M is a map to
    --  update; if the field is a discriminant, then it is recorded in
-   --  the map for later lookup.  Returns the LLVM debug metadata.
+   --  the map for later lookup.  If Artificial is True, the created
+   --  field is marked artificial.  Returns the LLVM debug metadata.
 
    function Convert_Variant_Part (M : in out Discriminant_Map.Map;
                                   RI : Record_Info;
                                   Original_Type : Entity_Id;
-                                  Is_Union : Boolean) return Metadata_Array
+                                  Is_Union : Boolean;
+                                  Toplevel_Members : in out Member_Vector)
+     return Metadata_Array
      with pre => RI.Variants /= null;
    --  Convert a variant part to LLVM debug metadata, returning an
    --  array holding the LLVM debug metadata for all the relevant
@@ -64,10 +80,24 @@ package body GNATLLVM.Records.Debug is
    function Convert_RI_Chain (M : in out Discriminant_Map.Map;
                               Start : Record_Info_Id;
                               Original_Type : Entity_Id;
-                              Is_Union : Boolean) return Metadata_Array;
+                              Is_Union : Boolean;
+                              Toplevel_Members : in out Member_Vector;
+                              Outermost_Call : Boolean)
+     return Metadata_Array;
    --  Convert a chain of Record_Info_Ids to LLVM debug metadata,
    --  returning an array holding the metadata for the relevant
-   --  fields.
+   --  fields.  Toplevel_Members points to the vector of members for
+   --  the outermost type being constructed; in some cases we may need
+   --  to add a field there when processing a variant part.  This is
+   --  only null for the outermost call to Convert_RI_Chain.
+
+   function Convert_RI_Chain (M : in out Discriminant_Map.Map;
+                              Start : Record_Info_Id;
+                              Original_Type : Entity_Id;
+                              Is_Union : Boolean)
+     return Metadata_Array;
+   --  A wrapper for Convert_RI_Chain that creates the outermost
+   --  member vector and passes it in.
 
    ---------------------
    -- Convert_Choices --
@@ -112,7 +142,8 @@ package body GNATLLVM.Records.Debug is
    -----------------------
 
    function Convert_One_Field (M : in out Discriminant_Map.Map;
-                               F : Record_Field_Kind_Id) return Metadata_T
+                               F : Record_Field_Kind_Id;
+                               Artificial : Boolean := False) return Metadata_T
    is
       F_GT           : constant GL_Type    := Field_Type (F);
       Mem_MD         : constant Metadata_T :=
@@ -125,18 +156,20 @@ package body GNATLLVM.Records.Debug is
         UI_To_ULL (Component_Bit_Offset (F));
       Storage_Offset : constant ULL        :=
         (Offset / UBPU) * UBPU;
+      Flags          : constant DI_Flags_T :=
+        (if Artificial then DI_Flag_Artificial else DI_Flag_Zero);
       MD             : constant Metadata_T :=
         (if   Is_Bitfield (F)
          then DI_Create_Bit_Field_Member_Type
            (No_Metadata_T, Name, File,
             Get_Physical_Line_Number (F_S),
             UI_To_ULL (Esize (F)), Offset,
-            Storage_Offset, Mem_MD)
+            Storage_Offset, Mem_MD, Flags)
          else DI_Create_Member_Type
            (No_Metadata_T, Name, File,
             Get_Physical_Line_Number (F_S),
             UI_To_ULL (Esize (F)),
-            Get_Type_Alignment (F_GT), Offset, Mem_MD));
+            Get_Type_Alignment (F_GT), Offset, Mem_MD, Flags));
    begin
       --  Ensure the field is available so that a later lookup of a
       --  discriminant will succeed.
@@ -152,10 +185,12 @@ package body GNATLLVM.Records.Debug is
    -- Convert_Variant_Part --
    --------------------------
 
-   function Convert_Variant_Part (M : in out Discriminant_Map.Map;
-                                  RI : Record_Info;
-                                  Original_Type : Entity_Id;
-                                  Is_Union : Boolean) return Metadata_Array
+   function Convert_Variant_Part
+     (M : in out Discriminant_Map.Map;
+      RI : Record_Info;
+      Original_Type : Entity_Id;
+      Is_Union : Boolean;
+      Toplevel_Members : in out Member_Vector) return Metadata_Array
    is
       package Member_Table is new Table.Table
         (Table_Component_Type => Metadata_T,
@@ -173,7 +208,7 @@ package body GNATLLVM.Records.Debug is
             Fields : constant Metadata_Array :=
               (if Present (RI.Variants (J))
                then Convert_RI_Chain (M, RI.Variants (J), Original_Type,
-                                      Is_Union)
+                                      Is_Union, Toplevel_Members, False)
                else Empty_Fields);
          begin
             if Is_Union then
@@ -213,16 +248,16 @@ package body GNATLLVM.Records.Debug is
    function Convert_RI_Chain (M : in out Discriminant_Map.Map;
                               Start : Record_Info_Id;
                               Original_Type : Entity_Id;
-                              Is_Union : Boolean) return Metadata_Array
+                              Is_Union : Boolean;
+                              Toplevel_Members : in out Member_Vector;
+                              Outermost_Call : Boolean)
+     return Metadata_Array
    is
-      package Member_Table is new Table.Table
-        (Table_Component_Type => Metadata_T,
-         Table_Index_Type     => Int,
-         Table_Low_Bound      => 1,
-         Table_Initial        => 20,
-         Table_Increment      => 5,
-         Table_Name           => "Member_Table");
-
+      Local_Members : aliased Member_Vector;
+      Members_To_Update : constant access Member_Vector :=
+        (if Outermost_Call
+         then Toplevel_Members'Access
+         else Local_Members'Access);
       Ridx : Record_Info_Id := Start;
       RI : Record_Info;
       F : Record_Field_Kind_Id;
@@ -243,7 +278,7 @@ package body GNATLLVM.Records.Debug is
             elsif Known_Static_Component_Bit_Offset (F) and then
                   Known_Static_Esize (F)
             then
-               Member_Table.Append (Convert_One_Field (M, F));
+               Members_To_Update.Append (Convert_One_Field (M, F));
             end if;
 
             F_Idx := FI.Next;
@@ -259,39 +294,66 @@ package body GNATLLVM.Records.Debug is
          RI.Variants /= null
       then
          declare
+            Variant_MD : Metadata_T;
             MD : Metadata_T;
             Parts : constant Metadata_Array :=
-              Convert_Variant_Part (M, RI, Original_Type, Is_Union);
+              Convert_Variant_Part (M, RI, Original_Type, Is_Union,
+                                    Toplevel_Members);
             Discrim : constant Entity_Id := Entity (RI.Variant_Expr);
          begin
             if Is_Union then
                for I in Parts'Range loop
-                  Member_Table.Append (Parts (I));
+                  Members_To_Update.Append (Parts (I));
                end loop;
             else
                if Ekind (Discrim) = E_Discriminant then
-                  pragma Assert
-                    (M.Contains (Original_Record_Component (Discrim)));
-                  MD := Create_Variant_Part
-                    (DI_Builder, M (Original_Record_Component (Discrim)),
-                     Parts);
-                  Member_Table.Append (MD);
+                  --  If we already processed the discriminant, just
+                  --  reuse its metadata here.  However, if the
+                  --  discriminant was inherited, there will not be
+                  --  debuginfo for it.  In this case, we emit an
+                  --  artificial discriminant into this record, so
+                  --  that the variant part can refer to it.
+                  if M.Contains (Original_Record_Component (Discrim)) then
+                     Variant_MD := M (Original_Record_Component (Discrim));
+                  else
+                     Variant_MD := Convert_One_Field
+                       (M, Original_Record_Component (Discrim), True);
+                     Toplevel_Members.Append (Variant_MD);
+                  end if;
+                  MD := Create_Variant_Part (DI_Builder, Variant_MD, Parts);
+                  Members_To_Update.Append (MD);
                end if;
             end if;
          end;
       end if;
 
       declare
-         Members : Metadata_Array (1 .. Member_Table.Last);
-
+         Members : Metadata_Array (Members_To_Update.First_Index
+                                     .. Members_To_Update.Last_Index);
       begin
          for J in Members'Range loop
-            Members (J) := Member_Table.Table (J);
+            Members (J) := Members_To_Update (J);
          end loop;
 
          return Members;
       end;
 
+   end Convert_RI_Chain;
+
+   ----------------------
+   -- Convert_RI_Chain --
+   ----------------------
+
+   function Convert_RI_Chain (M : in out Discriminant_Map.Map;
+                              Start : Record_Info_Id;
+                              Original_Type : Entity_Id;
+                              Is_Union : Boolean)
+     return Metadata_Array
+   is
+      Toplevel_Members : Member_Vector;
+   begin
+      return Convert_RI_Chain (M, Start, Original_Type, Is_Union,
+                               Toplevel_Members, True);
    end Convert_RI_Chain;
 
    ------------------------------

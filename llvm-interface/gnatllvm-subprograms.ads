@@ -123,7 +123,9 @@ package GNATLLVM.Subprograms is
       CU       : N_Compilation_Unit_Id;
       For_Body : Boolean := False)
      with Pre => Library_Level
-                 and then Nkind (N) in N_Package_Specification | N_Package_Body
+                 and then Nkind (N) in N_Package_Specification
+                                     | N_Package_Body
+                                     | N_Subprogram_Body
                  and then Nkind (CU) = N_Compilation_Unit;
    --  Emit code for the elaboration procedure for N. For_Body says
    --  whether this is the elab proc for the body or the spec of a package.

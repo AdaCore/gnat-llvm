@@ -338,11 +338,20 @@ package body GNATLLVM.Compile is
             Set_Has_No_Elaboration_Code (N, True);
 
             --  For a body, first process the spec if there is one
+            --  ??? There's disparity here with the gcc-interface
+            --  ??? Acts_As_Spec called with U vs N. To be investigated.
 
             if (Nkind (U) = N_Subprogram_Body and then not Acts_As_Spec (U))
               or else Nkind (U) = N_Package_Body
             then
                Emit (Library_Unit (N));
+
+            --  Otherwise, if a compilation unit is only a single procedure
+            --  body, everything needing elaboration will be in an elab proc
+            --  for the body, so note that.
+
+            elsif Nkind (U) = N_Subprogram_Body and then Acts_As_Spec (N) then
+               Mark_Body_Elab;
             end if;
 
             Emit (Context_Items (N));
@@ -496,6 +505,15 @@ package body GNATLLVM.Compile is
 
                if Library_Level then
                   C_Add_To_Source_Order (N);
+               end if;
+
+               --  Handle the case where there is only a subprogram within the
+               --  compilation unit which requires elaboration procedure.
+
+               if Nkind (Parent (N)) = N_Compilation_Unit
+                  and then Acts_As_Spec (Parent (N))
+               then
+                  Emit_Elab_Proc (N, Empty, Parent (N), For_Body => True);
                end if;
             end if;
 

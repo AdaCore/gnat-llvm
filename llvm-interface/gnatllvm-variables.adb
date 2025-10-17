@@ -1875,6 +1875,8 @@ package body GNATLLVM.Variables is
          elsif not Is_Public (E) and then not Is_Imported (E) then
             pragma Assert (Definition);
             Set_Linkage (LLVM_Var, Internal_Linkage);
+         elsif Is_Link_Once (E) and then not Is_Imported (E) then
+            Set_Linkage (LLVM_Var, Link_Once_ODR_Linkage);
          end if;
 
          Set_Dup_Global_Value (E, LLVM_Var);

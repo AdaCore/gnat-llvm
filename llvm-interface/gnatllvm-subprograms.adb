@@ -1478,7 +1478,10 @@ package body GNATLLVM.Subprograms is
       For_Body : Boolean := False)
    is
       Nest_Table_First : constant Nat      := Nested_Functions.Last + 1;
-      U                : constant Node_Id  := Defining_Unit_Name (N);
+      U                : constant Node_Id  :=
+        (if   Nkind (N) = N_Subprogram_Body
+         then Defining_Unit_Name (Specification (N))
+         else Defining_Unit_Name (N));
       Unit             : constant Node_Id  :=
         (if   Nkind (U) = N_Defining_Program_Unit_Name
          then Defining_Identifier (U) else U);
@@ -2808,6 +2811,8 @@ package body GNATLLVM.Subprograms is
             Set_Linkage (LLVM_Func, External_Linkage);
          elsif not Is_Public (E) and then not Is_Imported then
             Set_Linkage (LLVM_Func, Internal_Linkage);
+         elsif Is_Link_Once (E) and then not Is_Imported then
+            Set_Linkage (LLVM_Func, Link_Once_ODR_Linkage);
          end if;
 
          Set_Function_Call_Conv (LLVM_Func, Convention (E));

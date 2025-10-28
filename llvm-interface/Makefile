@@ -11,6 +11,8 @@ CHMOD=chmod
 AR=ar q
 LN_S=ln -sf
 
+SOEXT=.so
+
 GNATMAKE=gnatmake
 
 GPROPT=-XBuild=Production
@@ -41,6 +43,7 @@ ifeq ($(OS),Windows_NT)
   LN_S=cp -p
   LDFLAGS+=-Wl,--stack=0x2000000
   EXE=.exe
+  SOEXT=.dll
 else
   # In order to enable pass plugins, the compiler binary needs to reexport LLVM
   # symbols to shared objects. We achieve this by building with -rdynamic (which
@@ -137,7 +140,7 @@ BOOT_DIRS=obj obj-tools bin lib
 GCC_TOOLCHAIN=--gcc-toolchain="$(CXX_PREFIX)"
 BOOTSTRAP_GPRBUILD=gprbuild -v -cargs:c++ $(GCC_TOOLCHAIN) -largs $(GCC_TOOLCHAIN) -margs
 
-stage1: 
+stage1:
 	$(MAKE) GPRBUILD="gprbuild -v -gnatwns" build-opt gnatlib-automated
 	$(RMDIR) stage1
 	$(MKDIR) stage1
@@ -153,8 +156,6 @@ stage3: stage2
 	PATH=$(clang_path):$(pwd)/stage2/bin:$$PATH $(MAKE) CXX_PREFIX=$(CXX_PREFIX) GNATMAKE=$(pwd)/stage2/bin/llvm-gnatmake GPRBUILD="$(BOOTSTRAP_GPRBUILD)" build-opt gnatlib-automated
 	@echo "Comparing stage2 and stage3 objects"
 	$(MAKE) bootstrap-compare
-
-automated: build-opt gnatlib-automated
 
 bootstrap: stage3
 
@@ -217,6 +218,33 @@ OSCONS_EXTRACT=$(OSCONS_CC) -S s-oscons-tmplt.i
 objext=.o
 
 include $(GNAT_SRC)/Makefile.rtl
+
+automated: build-opt
+ifeq ($(target),x86_64-pc-linux-gnu)
+	$(MAKE) gnatlib-automated LIBRARY_KIND=static-pic
+	$(MV) $(RTSLIB)/libgnat.a ./libgnat_pic.a
+	$(MV) $(RTSLIB)/libgnarl.a ./libgnarl_pic.a
+	cd $(RTS)/obj-static-pic; clang -shared -o ./libgnat.so -fPIC \
+		$(GNATRTL_NONTASKING_OBJS) \
+		$(LIBGNAT_OBJS) \
+		$(SO_OPTS)libgnat-$(LIBRARY_VERSION)$(SOEXT) \
+		$(MISCLIB) -lm
+	cd $(RTS)/obj-static-pic; clang -shared -o ./libgnarl.so -fPIC \
+		$(GNATRTL_TASKING_OBJS) \
+		$(SO_OPTS)libgnarl-$(LIBRARY_VERSION)$(SOEXT) \
+		$(THREADSLIB)
+	$(MV) $(RTS)/obj-static-pic/libgnat.so ./libgnat.so
+	$(MV) $(RTS)/obj-static-pic/libgnarl.so ./libgnarl.so
+	$(MAKE) gnatlib-automated
+	$(MV) libgnat_pic.a $(RTSLIB)
+	$(MV) libgnarl_pic.a $(RTSLIB)
+	$(MV) libgnat.so $(RTSLIB)/libgnat-$(LIBRARY_VERSION)$(SOEXT)
+	$(MV) libgnarl.so $(RTSLIB)/libgnarl-$(LIBRARY_VERSION)$(SOEXT)
+	cd $(RTSLIB); $(LN_S) libgnat-$(LIBRARY_VERSION)$(SOEXT) libgnat$(SOEXT)
+	cd $(RTSLIB); $(LN_S) libgnarl-$(LIBRARY_VERSION)$(SOEXT) libgnarl$(SOEXT)
+else
+	$(MAKE) gnatlib-automated
+endif
 
 gnatlib: build
 	$(RMDIR) $(RTS)

@@ -66,18 +66,32 @@ procedure GCC_Wrapper is
 
    GCC                  : constant String := Command_Name;
    Args                 : Argument_List (1 .. Argument_Count + 2);
+   --  The wrapper might add some extra arguments if necessary, hence the
+   --  upper bound here does not correspond to Argument_Count.
    Arg_Count            : Natural := 0;
    Status               : Boolean;
    Last                 : Natural;
    Compile              : Boolean := False;
    Compiler             : Compiler_Type := Ada_Frontend;
    Verbose              : Boolean := False;
-   Dash_O_Index         : Natural := 0;
-   Dash_w_Index         : Natural := 0;
-   Dash_Wall_Index      : Natural := 0;
-   Dump_SCOs_Index      : Natural := 0;
-   Static_Libasan_Index : Natural := 0;
    S                    : String_Access;
+
+   function Argument_Exists (Arg : String) return Boolean;
+   --  Check if Arg is already on the list.
+
+   procedure Append_Argument (Arg : String; No_Duplicate : Boolean := False);
+   --  Add arguments to global variable Arguments and increase Arg_Count.
+   --  If No_Duplicate = True, skip if already on the list.
+
+   procedure Prepend_Argument
+      (Arg          : String;
+       No_Duplicate : Boolean := False);
+   --  Insert a given Arg in front of the list and increase Arg_Count.
+   --  If No_Duplicate = True, skip if already on the list.
+
+   procedure Handle_One_Arg_And_Exit;
+   --  Handle cases when only one argument was given, print required
+   --  information, and exit.
 
    procedure Spawn (S : String; Args : Argument_List; Status : out Boolean);
    --  Call GNAT.OS_Lib.Spawn and take Verbose into account
@@ -91,6 +105,128 @@ procedure GCC_Wrapper is
    function Locate_Exec_In_Libexec (Exec : String) return String_Access;
    --  Locate Exec in <prefix>/libexec/gnat-llvm/<arch>/bin. The function
    --  allocates memory that needs to be freed by the caller.
+
+   ---------------------
+   -- Argument_Exists --
+   ---------------------
+
+   function Argument_Exists (Arg : String) return Boolean is
+   begin
+      for J in 1 .. Arg_Count loop
+         if Arg = Args (J).all then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Argument_Exists;
+
+   ---------------------
+   -- Append_Argument --
+   ---------------------
+
+   procedure Append_Argument (Arg : String; No_Duplicate : Boolean := False) is
+   begin
+      if No_Duplicate and then Argument_Exists (Arg) then
+         return;
+      end if;
+
+      if Arg_Count = Args'Last then
+         raise Constraint_Error with "Args list is full";
+      end if;
+
+      Arg_Count := Arg_Count + 1;
+      Args (Arg_Count) := new String'(Arg);
+   end Append_Argument;
+
+   ----------------------
+   -- Prepend_Argument --
+   ----------------------
+
+   procedure Prepend_Argument
+      (Arg          : String;
+       No_Duplicate : Boolean := False) is
+   begin
+      if No_Duplicate and then Argument_Exists (Arg) then
+         return;
+      end if;
+
+      if Arg_Count = Args'Last then
+         raise Constraint_Error with "Args list is full";
+      end if;
+
+      for J in reverse Args'First .. Arg_Count loop
+         Args (J + 1) := Args (J);
+      end loop;
+
+      Args (1) := new String'(Arg);
+      Arg_Count := Arg_Count + 1;
+   end Prepend_Argument;
+
+   -----------------------------
+   -- Handle_One_Arg_And_Exit --
+   -----------------------------
+
+   procedure Handle_One_Arg_And_Exit is
+      Arg : constant String := Argument (1);
+   begin
+      if Arg = "-v" then
+         declare
+            Version : constant String := Gnat_Version_String;
+         begin
+            Put_Line ("Target: llvm");
+
+            if Version = "1.0" then
+               Put_Line (Base_Name (GCC) & " version " &
+                           Gnatvsn.Library_Version);
+            else
+               Put_Line (Base_Name (GCC) & " version " &
+                           Gnatvsn.Library_Version & " (for GNAT " &
+                           Gnatvsn.Gnat_Version_String & ")");
+            end if;
+
+            OS_Exit (0);
+         end;
+
+      elsif Arg = "-dumpversion" then
+
+         --  Fixed bugs expect a version of the form x.y.z
+
+         Put_Line ("1.1.1");
+         OS_Exit (0);
+
+      elsif Arg = "-dumpmachine" then
+
+         Put_Line (Default_Target_Triple);
+         OS_Exit (0);
+
+      elsif Arg = "--version" then
+         declare
+            Version : constant String := Gnatvsn.Gnat_Version_String;
+         begin
+            if Version = "1.0" then
+               Put_Line (Base_Name (GCC) & " " & Gnatvsn.Library_Version);
+            else
+               Put_Line (Base_Name (GCC) & " " &
+                           Gnatvsn.Library_Version & " (for GNAT " &
+                           Version & ")");
+            end if;
+         end;
+
+         Put_Line ("Copyright (C) 2018-" & Gnatvsn.Current_Year &
+                     " Free Software Foundation, Inc.");
+         Put_Line ("This is free software; see the source for copying " &
+                     "conditions.");
+         Put_Line ("See your AdaCore support agreement for details of " &
+                     "warranty and support.");
+         Put_Line ("If you do not have a current support agreement, then " &
+                     "there is absolutely");
+         Put_Line ("no warranty; not even for MERCHANTABILITY or FITNESS " &
+                     "FOR A PARTICULAR");
+         Put_Line ("PURPOSE.");
+
+         OS_Exit (0);
+      end if;
+   end Handle_One_Arg_And_Exit;
 
    -----------
    -- Spawn --
@@ -217,68 +353,26 @@ procedure GCC_Wrapper is
 
 begin
    if Argument_Count = 1 then
-      declare
-         Arg : constant String := Argument (1);
-      begin
-         if Arg = "-v" then
-            declare
-               Version : constant String := Gnat_Version_String;
-            begin
-               Put_Line ("Target: llvm");
-
-               if Version = "1.0" then
-                  Put_Line (Base_Name (GCC) & " version " &
-                            Gnatvsn.Library_Version);
-               else
-                  Put_Line (Base_Name (GCC) & " version " &
-                            Gnatvsn.Library_Version & " (for GNAT " &
-                            Gnatvsn.Gnat_Version_String & ")");
-               end if;
-
-               OS_Exit (0);
-            end;
-
-         elsif Arg = "-dumpversion" then
-
-            --  Fixed bugs expect a version of the form x.y.z
-
-            Put_Line ("1.1.1");
-            OS_Exit (0);
-
-         elsif Arg = "-dumpmachine" then
-
-            Put_Line (Default_Target_Triple);
-            OS_Exit (0);
-
-         elsif Arg = "--version" then
-            declare
-               Version : constant String := Gnatvsn.Gnat_Version_String;
-            begin
-               if Version = "1.0" then
-                  Put_Line (Base_Name (GCC) & " " & Gnatvsn.Library_Version);
-               else
-                  Put_Line (Base_Name (GCC) & " " &
-                            Gnatvsn.Library_Version & " (for GNAT " &
-                            Version & ")");
-               end if;
-            end;
-
-            Put_Line ("Copyright (C) 2018-" & Gnatvsn.Current_Year &
-                      " Free Software Foundation, Inc.");
-            Put_Line ("This is free software; see the source for copying " &
-                      "conditions.");
-            Put_Line ("See your AdaCore support agreement for details of " &
-                      "warranty and support.");
-            Put_Line ("If you do not have a current support agreement, then " &
-                      "there is absolutely");
-            Put_Line ("no warranty; not even for MERCHANTABILITY or FITNESS " &
-                      "FOR A PARTICULAR");
-            Put_Line ("PURPOSE.");
-
-            OS_Exit (0);
-         end if;
-      end;
+      Handle_One_Arg_And_Exit;
    end if;
+
+   if GCC'Length >= 3
+     and then GCC (GCC'Last - 2 .. GCC'Last) = "gcc"
+   then
+      Last := GCC'Last - 3;
+
+   elsif GCC'Length >= 7
+     and then To_Lower (GCC (GCC'Last - 6 .. GCC'Last)) = "gcc.exe"
+   then
+      Last := GCC'Last - 7;
+
+   else
+      Put_Line ("unexpected program name: " & GCC & ", exiting.");
+      Set_Exit_Status (Failure);
+      return;
+   end if;
+
+   --  determine first the Compiler and whether we are actually Compile'ing
 
    for J in 1 .. Argument_Count loop
       declare
@@ -301,18 +395,6 @@ begin
             then
                Compiler := Bundled_Clang;
             end if;
-         end if;
-      end;
-   end loop;
-
-   for J in 1 .. Argument_Count loop
-      declare
-         Arg  : constant String := Argument (J);
-         Skip : Boolean := False;
-      begin
-         if Arg'Length > 0 and then Arg (1) /= '-' then
-            null;
-
          elsif Arg = "-x" then
             if J < Argument_Count then
 
@@ -326,18 +408,24 @@ begin
                   Compiler := External_Clang;
                end if;
             end if;
-
          elsif Arg = "-c" or else Arg = "-S" then
             Compile := True;
+         end if;
+      end;
+   end loop;
 
+   for J in 1 .. Argument_Count loop
+      declare
+         Arg  : constant String := Argument (J);
+      begin
          --  If compiling Ada, Ignore -Dxxx and -E switches for compatibility
          --  with GCC
 
-         elsif Compiler = Ada_Frontend
+         if Compiler = Ada_Frontend
            and then (Arg = "-E"
                      or else (Arg'Length >= 2 and then Arg (1 .. 2) = "-D"))
          then
-            Skip := True;
+            null;
 
          --  If compiling with Clang, ignore GCC switches that Clang doesn't
          --  support
@@ -345,105 +433,54 @@ begin
          elsif (Compiler = Bundled_Clang or else Compiler = External_Clang)
            and then Arg = "-fno-tree-loop-distribute-patterns"
          then
-            Skip := True;
+            null;
 
          --  Recognize -fdump-scos specially
 
-         elsif Arg = "-fdump-scos" then
-            Dump_SCOs_Index := Arg_Count + 1;
+         elsif Arg = "-fdump-scos" and then Compile
+            and then Compiler = Ada_Frontend
+         then
+            Append_Argument ("-gnateS");
 
          --  Recognize -o specially
 
-         elsif Arg = "-o" then
-            Dash_O_Index := Arg_Count + 1;
+         elsif Arg = "-o" and then Compile and then Compiler = Ada_Frontend
+         then
+            Append_Argument ("-gnatO");
 
-         --  Recognize -w specially
-
-         elsif Arg = "-w" then
-            Dash_w_Index := Arg_Count + 1;
-
-         elsif Arg = "-Wall" then
-            Dash_Wall_Index := Arg_Count + 1;
+         --  Recognize -static-libasan specially
 
          elsif Arg = "-static-libasan" then
-            Static_Libasan_Index := Arg_Count + 1;
+            Append_Argument ("-static-libsan");
 
          elsif Arg = "-v" then
             Verbose := True;
-            Skip := True;
-         end if;
+         elsif Arg = "-w" and then Compile and then Compiler = Ada_Frontend
+         then
 
-         if not Skip then
-            Arg_Count := Arg_Count + 1;
-            Args (Arg_Count) := new String'(Arg);
+            --  Put -gnatws in front of the options and make sure
+            --  we do it only once.
+
+            Prepend_Argument ("-gnatws", True);
+         elsif Arg = "-Wall" and then Compile and then Compiler = Ada_Frontend
+         then
+
+            --  Put -gnatwa in front of the options to avoid emitting
+            --  warnings that should be silenced.
+            --  Make sure it's added only once.
+
+            Prepend_Argument ("-gnatwa", True);
+         else
+            Append_Argument (Arg);
          end if;
       end;
    end loop;
 
-   --  Replace -fdump-scos by -gnateS when compiling Ada code
-
-   if Dump_SCOs_Index /= 0
-     and then Compile
-     and then Compiler = Ada_Frontend
-   then
-      Args (Dump_SCOs_Index) := new String'("-gnateS");
-   end if;
-
-   --  Replace -o by -gnatO when compiling Ada code
-
-   if Dash_O_Index /= 0
-     and then Compile
-     and then Compiler = Ada_Frontend
-   then
-      Args (Dash_O_Index) := new String'("-gnatO");
-   end if;
-
-   --  Replace -w by -gnatws when compiling Ada code
-
-   if Dash_w_Index /= 0
-     and then Compile
-     and then Compiler = Ada_Frontend
-   then
-      Args (Dash_w_Index) := new String'("-gnatws");
-   end if;
-
-   --  Replace -Wall by -gnatwa when compiling Ada code
-
-   if Dash_Wall_Index /= 0
-     and then Compile
-     and then Compiler = Ada_Frontend
-   then
-      Args (Dash_Wall_Index) := new String'("-gnatwa");
-   end if;
-
-   --  Replace -static-libasan with the LLVM equivalent -static-libsan
-
-   if Static_Libasan_Index /= 0 then
-      Args (Static_Libasan_Index) := new String'("-static-libsan");
-   end if;
-
-   if GCC'Length >= 3
-     and then GCC (GCC'Last - 2 .. GCC'Last) = "gcc"
-   then
-      Last := GCC'Last - 3;
-
-   elsif GCC'Length >= 7
-     and then To_Lower (GCC (GCC'Last - 6 .. GCC'Last)) = "gcc.exe"
-   then
-      Last := GCC'Last - 7;
-
-   else
-      Put_Line ("unexpected program name: " & GCC & ", exiting.");
-      Set_Exit_Status (Failure);
-      return;
-   end if;
-
    --  Tell Clang which target to compile or link for
 
    if Compiler /= Ada_Frontend or else not Compile then
-      Args (Arg_Count + 1) := new String'("-target");
-      Args (Arg_Count + 2) := new String'(Default_Target_Triple);
-      Arg_Count := Arg_Count + 2;
+      Append_Argument ("-target");
+      Append_Argument (Default_Target_Triple);
    end if;
 
    --  Compile c/c++ files with clang

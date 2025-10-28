@@ -2762,9 +2762,22 @@ package body GNATLLVM.Subprograms is
          Process_Pragmas      (E, LLVM_Func);
          Set_Dup_Global_Value (E, LLVM_Func);
 
+         --  Deciding whether or not a function should be marked as
+         --  DSO-local is non-trivial: On the one hand, when we're building
+         --  position-independent code, we can't use the dso_local
+         --  attribute because we need GOT relocations on some systems
+         --  (especially x86-linux). On the other hand, for static binaries
+         --  we need dso_local on some targets, including VxWorks kernel
+         --  modules.
+         --
+         --  The following condition is loosely based on Clang's
+         --  shouldAssumeDSOLocal (see
+         --  clang/lib/CodeGen/CodeGenModule.cpp).
+
          if not DSO_Preemptable
-           and then Get_Linkage (LLVM_Func) not in External_Linkage |
-                                                   External_Weak_Linkage
+           and then Get_Linkage (LLVM_Func) /= External_Weak_Linkage
+           and then (Get_Linkage (LLVM_Func) /= External_Linkage
+                       or else Reloc_Mode in Reloc_Static | Reloc_Default)
          then
             Set_DSO_Local (LLVM_Func);
          end if;

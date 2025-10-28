@@ -161,6 +161,13 @@ Add_Inline_No_Attribute (Function *fn)
 
 extern "C"
 void
+Add_Uwtable_Attribute (Function *fn)
+{
+  fn->setUWTableKind(UWTableKind::Default);
+}
+
+extern "C"
+void
 Add_Fn_Readonly_Attribute (Function *fn)
 {
   fn->setOnlyReadsMemory ();
@@ -1194,6 +1201,13 @@ Set_Module_PIC_PIE (Module *M, int PIC, int PIE)
 {
   M->setPICLevel(static_cast<PICLevel::Level>(PIC));
   M->setPIELevel(static_cast<PIELevel::Level>(PIE));
+}
+
+extern "C"
+void
+Set_Unwind_Tables (Module *M)
+{
+  M->setUwtable(UWTableKind::Default);
 }
 
 extern "C"

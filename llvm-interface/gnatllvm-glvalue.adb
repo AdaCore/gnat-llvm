@@ -1817,6 +1817,15 @@ package body GNATLLVM.GLValue is
       Add_Named_Attribute (+V, Name, Value, Get_Global_Context);
    end Add_Named_Attribute;
 
+   ---------------------------
+   -- Add_Uwtable_Attribute --
+   ---------------------------
+
+   procedure Add_Uwtable_Attribute (V : GL_Value) is
+   begin
+      Add_Uwtable_Attribute (+V);
+   end Add_Uwtable_Attribute;
+
    ------------------------
    -- Add_Nest_Attribute --
    ------------------------

@@ -363,11 +363,7 @@ package body CCG.Subprograms is
       Num_Params     : constant Nat     := Parameter_Count (Fn_MD);
       Write_Extern   : Boolean          := Need_Extern;
       Result         : Str              := Effective_Return_Type (Fn_MD, V);
-      Maybe_Add_Nest : constant Boolean :=
-        Get_Needs_Nest (V)
-        and then (Num_Params = 0
-                  or else not Has_Nest_Attribute
-                                (V, unsigned (Num_Params - 1)));
+      Maybe_Add_Nest : constant Boolean := Needs_Nest (V);
 
       ---------------------
       -- Has_Unreachable --
@@ -690,13 +686,15 @@ package body CCG.Subprograms is
          end;
       end if;
 
-      --  Force out any other call to preserve the order of calls
+      --  Force out any other call to preserve the order of calls and
+      --  force out any loads in case the call changed the value.
 
-      Process_Pending_Values (Calls_Only => True);
+      Process_Pending_Values (Calls_Or_Loads);
 
       --  Now generate the argument list for the call
 
-      Call := Maybe_Cast (Pointer_Type (Fn_MD), Func, True) + Component & " (";
+      Call :=
+        Maybe_Cast (Pointer_Type (Fn_MD), Func, True, True) + Component & " (";
 
       for J in Ops'First .. Ops'Last - 1 loop
          declare

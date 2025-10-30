@@ -71,11 +71,12 @@ package CCG.Instructions is
    --  Write a statement to copy RHS, of type MD, to LHS. If V is Present,
    --  it represents something that may give line/file information.
 
-   procedure Process_Pending_Values (Calls_Only : Boolean := False);
+   type Process_Pending_Kind is (Every, Calls, Calls_Or_Loads);
+
+   procedure Process_Pending_Values (K : Process_Pending_Kind := Every);
    --  Walk the set of pending values in reverse order and generate
-   --  assignments for any that haven't been written yet. Is Call_Only,
-   --  we only want to process pending calls (this is used when seeing a
-   --  load).
+   --  assignments for any that haven't been written yet. K says which
+   --  types of pending values need to be processed.
 
    procedure Clear_Pending_Values with Inline;
    --  Clear any pending values that remain in the table. We do this after

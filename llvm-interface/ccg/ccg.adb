@@ -141,10 +141,12 @@ package body CCG is
 
       --  If this is a global variable or function, set the type
       --  corresponding to the name in case the optimizer recreates this
-      --  value as a different value.
+      --  value as a different value. Also set the equalence between the
+      --  object's type and what MD points to.
 
       if Is_A_Global_Variable (V) or else Is_A_Function (V) then
          Set_MD_Type (Get_Value_Name (V), MD);
+         C_Set_MD_Type (Global_Get_Value_Type (V), Designated_Type (MD));
       end if;
 
       --  If this value has already been used for multiple MD types, we
@@ -153,27 +155,30 @@ package body CCG is
       if Get_Is_Multi_MD (V) then
          return;
 
-      --  Otherwise, if we haven't previously set an MD_Type, set this one
+      --  Otherwise, if we haven't previously set an MD_Type, or if this
+      --  type is a better version of the previous type, set this one.
 
-      elsif No (Get_MD_Type (V)) then
+      elsif No (Get_MD_Type (V)) or else Is_Better_Type (Get_MD_Type (V), MD)
+      then
          Set_MD_Type (V, MD);
 
-      --  Finally, see if we previously set this to a different type.  That
-      --  can occur for two reasons: if it was a constant, we may have
-      --  created the constant for different types (e.g., different
-      --  signedness or a null pointer). In that case, mark this as having
-      --  multiple types. It's possible for a non-constant to have
-      --  different types in cases such as converting a variable from
-      --  Natural to Integer since the conversion is a no-op, but the
-      --  two uses of the variable are of different signedness. In that case,
-      --  we'll want to use the first-assigned type to declare the variable,
-      --  so do nothing here.
+      --  As the last option, see if we previously set this to a different
+      --  type.  That can occur for two reasons: if it was a constant, we
+      --  may have created the constant for different types (e.g.,
+      --  different signedness or a null pointer). In that case, mark this
+      --  as having multiple types. It's possible for a non-constant to
+      --  have different types in cases such as converting a variable from
+      --  Natural to Integer since the conversion is a no-op, but the two
+      --  uses of the variable are of different signedness. In that case,
+      --  we'll want to use the first-assigned type to declare the
+      --  variable, so do nothing here.
 
       elsif Get_MD_Type (V) /= MD and then Is_A_Constant (V)
         and then not Is_A_Global_Variable (V) and then not Is_A_Function (V)
       then
          Set_Is_Multi_MD (V);
       end if;
+
    end C_Set_MD_Type;
 
    -------------------
@@ -189,9 +194,11 @@ package body CCG is
       if not Use_FE_Data or else Get_Is_Multi_MD (T) then
          return;
 
-      --  Otherwise, if we haven't previously set an MD_Type, set this one
+      --  Otherwise, if we haven't previously set an MD_Type or if this
+      --  is a better version of the previous type, set this one.
 
-      elsif No (Get_MD_Type (T)) then
+      elsif No (Get_MD_Type (T)) or else Is_Better_Type (Get_MD_Type (T), MD)
+      then
          Set_MD_Type (T, MD);
 
       --  Finally, see if we previously set this to a different type.

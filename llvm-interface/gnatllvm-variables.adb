@@ -123,7 +123,7 @@ package body GNATLLVM.Variables is
    end record;
 
    function Hash_No_Elab_Needed (EN : No_Elab_Needed_Key) return Hash_Type is
-      (Hash_Type'Mod (Integer (EN.N)));
+     (Hash_Type'Mod (Integer (EN.N)));
 
    package No_Elab_Needed_Map is new Ada.Containers.Hashed_Maps
      (Key_Type        => No_Elab_Needed_Key,

@@ -959,8 +959,8 @@ package body CCG.Flow is
                   Set_Target   (Iidx2, Get_Or_Create_Flow (Get_False_BB (T)));
                end;
             else
-               Set_Next (Idx, Get_Or_Create_Flow (Get_Dest_BB (T)));
                Process_Pending_Values;
+               Set_Next (Idx, Get_Or_Create_Flow (Get_Dest_BB (T)));
             end if;
 
          when Op_Switch =>

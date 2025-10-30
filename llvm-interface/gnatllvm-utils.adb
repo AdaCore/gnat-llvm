@@ -320,7 +320,7 @@ package body GNATLLVM.Utils is
    ------------------
 
    function Get_Ext_Name
-     (E : Entity_Id; Suffix : String := "") return Name_Id
+     (E : Entity_Id; Suffix : String := ""; Seq : Nat := 0) return Name_Id
    is
       Buf : Bounded_String;
 
@@ -376,26 +376,37 @@ package body GNATLLVM.Utils is
       --  If we have a record type and its name isn't fully qualified,
       --  write out its scope first.
 
-      elsif Ekind (E) in Record_Kind
-        and then Scope (E) /= Standard_Standard
+      elsif Ekind (E) in Record_Kind and then Scope (E) /= Standard_Standard
         and then not Has_Fully_Qualified_Name (E)
       then
          Prepend_Scope (Scope (E));
          Append (Buf, "__");
          Append (Buf, Chars (E));
 
-      --  If we don't have a suffix, just use the name of E. Otherwise,
-      --  set the name of E into the buffer.
+      --  If we have a record type that is fully qualified, it may not have
+      --  been run through Name_Find and may not be unique and we depend on
+      --  that. So make a unique version here.
 
-      elsif Suffix = "" then
+      elsif Ekind (E) in Record_Kind and then Has_Fully_Qualified_Name (E) then
+         Append (Buf, Chars (E));
+
+      --  If we don't have a suffix or sequence, just use the name of
+      --  E. Otherwise, set the name of E into the buffer.
+
+      elsif Suffix = "" and then Seq = 0 then
          return Chars (E);
       else
          Append (Buf, Chars (E));
       end if;
 
-      --  Finally, append the suffix and make a name
+      --  Finally, append the suffix and/or sequence and make a name
 
       Append (Buf, Suffix);
+
+      if Seq /= 0 then
+         Append (Buf, Seq);
+      end if;
+
       return Name_Find (Buf);
    end Get_Ext_Name;
 

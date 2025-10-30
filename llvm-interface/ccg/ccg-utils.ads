@@ -26,11 +26,13 @@ with Atree; use Atree;
 with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
 
-with GNATLLVM.Types; use GNATLLVM.Types;
+with GNATLLVM.Types;   use GNATLLVM.Types;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
-with CCG.Helper; use CCG.Helper;
-with CCG.Strs;   use CCG.Strs;
-with CCG.Target; use CCG.Target;
+with CCG.Environment; use CCG.Environment;
+with CCG.Helper;      use CCG.Helper;
+with CCG.Strs;        use CCG.Strs;
+with CCG.Target;      use CCG.Target;
 
 package CCG.Utils is
 
@@ -86,12 +88,20 @@ package CCG.Utils is
      with Pre  => Present (V);
    --  Return the entity corresponding to for parameter Idx of LLVM value V
 
+   function Needs_Nest (V : Value_T) return Boolean is
+     (Get_Needs_Nest (V)
+      and then (Count_Params (V) = 0
+                or else not Has_Nest_Attribute (V, Count_Params (V)  - 1)))
+     with Pre => Is_A_Function (V);
+   --  True iff V's address is taken, but doesn't have a "nest" parameter
+   --  and we'll have to add one.
+
    function TP
      (S           : String;
       Op1         : Value_T := No_Value_T;
       Op2         : Value_T := No_Value_T;
       Op3         : Value_T := No_Value_T) return Str
-     with Post => Present (TP'Result);
+   with Post => Present (TP'Result);
    --  This provides a simple template facility for insertion of operands.
    --  Every character up to '#' in S is placed in Str. '#' is followed
    --  optionally by an 'A', 'B', 'I', 'L', 'P', or 'T' and then a number.  The
@@ -111,9 +121,24 @@ package CCG.Utils is
      with Pre => Present (V);
    --  Returns the number of uses of V
 
-   function Is_Same_C_Types (MD1, MD2 : MD_Type) return Boolean
+   function Is_Same_C_Types
+     (MD1, MD2 : MD_Type; Match_Void : Boolean := False) return Boolean
      with Pre => Present (MD1) and then Present (MD2);
-   --  True iff the two types will have the same C representation
+   --  True iff the two types will have the same C representation. If
+   --  Match_Void,then consider a pointer to void as matching any
+   --  pointer type. This avoids casts to types that we know less about.
+
+   function Is_Better_Type (MD1, MD2 : MD_Type) return Boolean
+     with Pre => Present (MD1) and then Present (MD2);
+   --  True if MD1 and MD2 are the same C type (with void * matching any
+   --  pointer), but we know more about MD2 then MD1, so we should use it.
+
+   function Best_Type (MD1, MD2 : MD_Type) return MD_Type is
+     (if Is_Better_Type (MD1, MD2) then MD2 else MD1)
+      with Pre  => Present (MD1) and then Present (MD2),
+           Post => Best_Type'Result in MD1 | MD2;
+   --  If MD1 and MD2 represent the same C type (treating void * as matching
+   --  any pointer) return the one that we know the most about.
 
    function Is_Integral_Type (T : Type_T) return Boolean is
      (Get_Type_Kind (T) = Integer_Type_Kind)
@@ -365,7 +390,6 @@ package CCG.Utils is
    --  pick the type that will require the least casts (hopefully none in
    --  most cases), but we'll still generate correct code if we choose badly.
 
-
    function Declaration_Type
      (T : Type_T; No_Force : Boolean := False) return MD_Type
      with Pre  => Present (T),
@@ -388,10 +412,17 @@ package CCG.Utils is
    --  compilation errors or the wrong results (if signedness is wrong).
 
    function Maybe_Cast
-     (MD : MD_Type; V : Value_T; As_LHS : Boolean := False) return Str
-     with Pre  => Present (MD) and then Present (V),
+     (MD       : MD_Type;
+      V        : Value_T;
+      As_LHS   : Boolean := False;
+      For_Call : Boolean := False) return Str
+     with Pre  => Present (MD) and then Present (V)
+                  and then (not As_LHS or else (Is_Pointer_Type (V)
+                                                and then Is_Pointer (MD))),
           Post => Present (Maybe_Cast'Result);
-   --  If the actual type of V isn't MD, cast it to MD
+   --  If the actual type of V isn't MD, cast it to MD. If As_LHS, we
+   --  care what the types point to (they must be pointers) instead. If
+   --  For_Call, this is the processing of a name to be called.
 
    procedure Error_Msg (Msg : String; V : Value_T);
    --  Post an error message via the GNAT errout mechanism. If V

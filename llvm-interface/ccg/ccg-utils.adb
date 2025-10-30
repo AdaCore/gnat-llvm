@@ -24,11 +24,9 @@ with Lib;         use Lib;
 with Set_Targ;    use Set_Targ;
 with Table;
 
-with GNATLLVM.Utils;   use GNATLLVM.Utils;
-with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
+with GNATLLVM.Utils; use GNATLLVM.Utils;
 
 with CCG.Codegen;      use CCG.Codegen;
-with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 
 package body CCG.Utils is
@@ -75,7 +73,7 @@ package body CCG.Utils is
                   and then Count_Params (V) =
                            Parameter_Count (Designated_Type (MD))
                   and then Is_Layout_Identical
-                             (Get_Return_Type (Global_Get_Value_Type (V)),
+                             (Get_Return_Type (Get_Function_Type (V)),
                               +Return_Type (Designated_Type (MD)));
 
    --  MD is a type that was previously used for a function of the name as
@@ -827,6 +825,10 @@ package body CCG.Utils is
       --  instruction, a terminator, or a load that's either volatile or
       --  not from a variable, it does have side effects.  Otherwise, it
       --  has a side effect iff any operand does.
+      --
+      --  ??? The criteria for loads is really loading from a variable
+      --  address, not whether the thing loaded corresponds to an Ada
+      --  variable.
 
       return (if Get_Is_Decl_Output (V) or else not Is_A_Instruction (V)
               then False
@@ -1032,11 +1034,13 @@ package body CCG.Utils is
       end if;
    end Walk_Object;
 
-   -------------------------
-   -- Is_Layout_Identical --
-   -------------------------
+   ---------------------
+   -- Is_Same_C_Types --
+   ---------------------
 
-   function Is_Same_C_Types (MD1, MD2 : MD_Type) return Boolean is
+   function Is_Same_C_Types
+     (MD1, MD2 : MD_Type; Match_Void : Boolean := False) return Boolean
+   is
    begin
       --  If the types are the same, they're identical, but if they have
       --  different kinds, they aren't.
@@ -1062,7 +1066,7 @@ package body CCG.Utils is
 
             return Int_Bits (MD1) = Int_Bits (MD2)
               and then (Is_Unknown_Sign (MD1) or else Is_Unknown_Sign (MD2)
-                        or else Is_Unsigned (MD1) = Is_Unsigned (MD2));
+                          or else Is_Unsigned (MD1) = Is_Unsigned (MD2));
 
          when Float_Class =>
             return Float_Bits (MD1) = Float_Bits (MD2);
@@ -1071,9 +1075,9 @@ package body CCG.Utils is
             return
               Is_Fixed_Array (MD1) = Is_Fixed_Array (MD2)
               and then (Is_Variable_Array (MD1)
-                        or else Array_Count (MD1) = Array_Count (MD2))
+                          or else Array_Count (MD1) = Array_Count (MD2))
               and then Is_Same_C_Types (Element_Type (MD1),
-                                        Element_Type (MD2));
+                                        Element_Type (MD2), Match_Void);
 
          when Struct_Class =>
 
@@ -1095,18 +1099,22 @@ package body CCG.Utils is
                         or else Element_Count (MD1) = Element_Count (MD2))
               and then (not Has_Fields (MD1)
                         or else (for all J in 0 .. Element_Count (MD1) - 1 =>
-                                     Is_Same_C_Types
-                                       (Element_Type (MD1, J),
-                                        Element_Type (MD2, J))));
+                                   Is_Same_C_Types
+                                     (Element_Type (MD1, J),
+                                      Element_Type (MD2, J), Match_Void)));
 
          when Pointer_Class =>
 
             --  Pointers are the same if they're in the same address
-            --  space and pointing to the same type.
+            --  space and pointing to the same type, unless one is a
+            --  void pointer and we're asked to match them.
 
             return Pointer_Space (MD1) = Pointer_Space (MD2)
-              and then Is_Same_C_Types (Designated_Type (MD1),
-                                        Designated_Type (MD2));
+              and then ((Match_Void and then (MD1 = Void_Ptr_MD
+                                             or else MD2 = Void_Ptr_MD))
+                        or else Is_Same_C_Types (Designated_Type (MD1),
+                                                 Designated_Type (MD2),
+                                                 Match_Void));
 
          when Function_Class =>
 
@@ -1115,14 +1123,113 @@ package body CCG.Utils is
             --  of parameter types, or any parameter type is not the
             --  identical layout of the corresponding parameter type.
 
-            return Is_Same_C_Types (Return_Type (MD1), Return_Type (MD2))
+            return Is_Same_C_Types (Return_Type (MD1), Return_Type (MD2),
+                                   Match_Void)
               and then Parameter_Count (MD1) = Parameter_Count (MD2)
               and then (for all J in 0 .. Parameter_Count (MD1) - 1 =>
                           Is_Same_C_Types (Parameter_Type (MD1, J),
-                                           Parameter_Type (MD2, J)));
+                                           Parameter_Type (MD2, J),
+                                           Match_Void));
       end case;
 
    end Is_Same_C_Types;
+
+   --------------------
+   -- Is_Better_Typs --
+   --------------------
+
+   function Is_Better_Type (MD1, MD2 : MD_Type) return Boolean
+   is
+   begin
+      --  If the types are the same, they're identical, so neither MD2
+      --  isn't better. If they're different kinds, they aren't the same.
+
+      if MD1 = MD2 or else not Is_Same_Kind (MD1, MD2) then
+         return False;
+      end if;
+
+      --  Otherwise, it's kind-specific
+
+      case Class (MD1) is
+
+         when Void_Class =>
+            return False;
+
+         when Integer_Class =>
+
+            --  If they're different bit sizes, they aren't the same.
+            --  Otherwise, MD2 is better only if MD1 has unknown signedness.
+
+            return Int_Bits (MD1) = Int_Bits (MD2)
+              and then Is_Unknown_Sign (MD1);
+
+         when Float_Class =>
+            return False;
+
+         when Array_Class =>
+            return
+              Is_Fixed_Array (MD1) = Is_Fixed_Array (MD2)
+              and then (Is_Variable_Array (MD1)
+                        or else Array_Count (MD1) = Array_Count (MD2))
+              and then Is_Better_Type (Element_Type (MD1), Element_Type (MD2));
+
+         when Struct_Class =>
+
+            --  If either struct is named, they are the same C type
+            --  if and only if they have the same name, which means that
+            --  neither is better.
+
+            if Has_Name (MD1) or else Has_Name (MD2) then
+               return False;
+            end if;
+
+            --  One structure is better if their packed status is the same,
+            --  they have the same number of fields, and each field is
+            --  identical, but one is better.
+
+            if Is_Packed (MD1) /= Is_Packed (MD2)
+              or else Has_Fields (MD1) /= Has_Fields (MD2)
+              or else (Has_Fields (MD1)
+                       and then Element_Count (MD1) = Element_Count (MD2))
+              or else (Has_Fields (MD1)
+                       and then (for some J in 0 .. Element_Count (MD1) - 1 =>
+                                   not Is_Same_C_Types
+                                         (Element_Type (MD1, J),
+                                          Element_Type (MD2, J),
+                                          Match_Void => True)))
+            then
+               return False;
+            else
+               return (for some J in 0 .. Element_Count (MD1) - 1 =>
+                         Is_Better_Type (Element_Type (MD1, J),
+                                         Element_Type (MD2, J)));
+            end if;
+
+         when Pointer_Class =>
+
+            --  MD2 is better if they're in the same address space and
+            --  MD1 is a pointer to void.
+
+            return Pointer_Space (MD1) = Pointer_Space (MD2)
+              and then MD1 = Void_Ptr_MD;
+
+         when Function_Class =>
+
+            --  If the types aren't identical, one isn't better.  Otherwise,
+            --  one is better if either the return type or one parameter
+            --  type is better.
+
+            if not Is_Same_C_Types (MD1, MD2) then
+               return False;
+            else
+               return Is_Better_Type (Return_Type (MD1), Return_Type (MD2))
+                 or else (for some J in 0 .. Parameter_Count (MD1) - 1 =>
+                            Is_Better_Type (Parameter_Type (MD1, J),
+                                            Parameter_Type (MD2, J)));
+            end if;
+      end case;
+
+   end Is_Better_Type;
 
    --------------------------
    -- Update_Function_Type --
@@ -1131,7 +1238,7 @@ package body CCG.Utils is
    procedure Update_Function_Type (MD : in out MD_Type; V : Value_T) is
       Num_Params  : constant Nat     := Count_Params (V);
       Fn_MD       : constant MD_Type := Designated_Type (MD);
-      Fn_T        : constant Type_T  := Global_Get_Value_Type (V);
+      Fn_T        : constant Type_T  := Get_Function_Type (V);
       Return_T    : constant Type_T  := Get_Return_Type (Fn_T);
       Return_MD   : constant MD_Type :=
         (if   Return_T = +Return_Type (Fn_MD)
@@ -1195,8 +1302,8 @@ package body CCG.Utils is
          if Is_A_Function (V) then
             if Count_Params (V) /= Parameter_Count (Designated_Type (MD))
               or else not Is_Same_C_Types
-                (From_Type (Get_Return_Type (Global_Get_Value_Type (V))),
-                 Return_Type (Designated_Type (MD)))
+                (From_Type (Get_Return_Type (Get_Function_Type (V))),
+                 Return_Type (Designated_Type (MD)), True)
             then
                Update_Function_Type (MD, V);
             end if;
@@ -1402,11 +1509,10 @@ package body CCG.Utils is
             --  of the types of the operands, but is always the same.
 
             when Op_Alloca | Op_U_Div | Op_U_Rem | Op_S_Div | Op_S_Rem
-               | Op_L_Shr | Op_A_Shr | Op_Call | Op_Store | Op_I_Cmp
-               | Op_F_Cmp | Op_Trunc | Op_SI_To_FP | Op_FP_Trunc | Op_FP_Ext
-               | Op_S_Ext | Op_UI_To_FP | Op_FP_To_SI | Op_FP_To_UI
-               | Op_Z_Ext | Op_Ptr_To_Int | Op_Int_To_Ptr
-               | Op_Get_Element_Ptr =>
+               | Op_L_Shr | Op_A_Shr | Op_I_Cmp | Op_F_Cmp | Op_Trunc
+               | Op_SI_To_FP | Op_FP_Trunc | Op_FP_Ext | Op_S_Ext
+               | Op_UI_To_FP | Op_FP_To_SI | Op_FP_To_UI | Op_Z_Ext
+               | Op_Ptr_To_Int | Op_Int_To_Ptr | Op_Get_Element_Ptr =>
 
                MD := Declaration_Type (V);
 
@@ -1458,11 +1564,23 @@ package body CCG.Utils is
                       then Actual_Type (Get_Operand0 (V), As_LHS)
                       else Declaration_Type (V));
 
-            --  For load, get the type used for the load
+            --  For a load, get the type used for the load
 
             when Op_Load =>
 
                return LS_Op_MD (V, Get_Operand0 (V));
+
+            --  For a call, see if the actual type of the called function
+            --  is known to be a pointer to a function type. If not, take
+            --  the type of the called function.  Then use the return type.
+
+            when Op_Call =>
+
+               MD := Actual_Type (Get_Operand0 (V));
+               MD := Return_Type ((if   Is_Function_Pointer (MD)
+                                   then Designated_Type (MD)
+                                   else Declaration_Type
+                                          (Get_Called_Function_Type (V))));
 
             --  For extractvalue, we start with the value that's in the first
             --  operand and then look inside to get the element types as we
@@ -1496,15 +1614,53 @@ package body CCG.Utils is
    ----------------
 
    function Maybe_Cast
-     (MD : MD_Type; V : Value_T; As_LHS : Boolean := False) return Str
+     (MD       : MD_Type;
+      V        : Value_T;
+      As_LHS   : Boolean := False;
+      For_Call : Boolean := False) return Str
    is
-     --  Don't cast to a C aggregate or function type because it's useless
-     --  and can cause errors in some cases with some compilers.
+      A_MD   : constant MD_Type := Actual_Type (V, As_LHS);
+      C_MD   : constant MD_Type :=
+        (if As_LHS then Designated_Type (MD) else MD);
+      C_A_MD : constant MD_Type :=
+        (if As_LHS then Designated_Type (A_MD) else A_MD);
 
-     (if   Is_Same_C_Types (Actual_Type (V, As_LHS), MD)
-           or else Is_Struct (MD) or else Is_Array (MD)
-           or else Is_Function_Type (MD)
-           then +V else "(" & MD & ") " & (V + Unary));
+   begin
+     --  Never cast to a C aggregate or function type because it's useless
+     --  and can cause errors with some compilers.
+
+      if Class (MD) in Struct_Class | Array_Class | Function_Class then
+         return +V;
+
+      --  If V is a function that needs a "nest" parameter, we must cast
+      --  because we have inconsistent types in that case. But don't do
+      --  this is this is for a call itself.
+      --  ??? This mechanism is a kludge.
+
+      elsif not For_Call and then Is_A_Function (V) and then Needs_Nest (V)
+      then
+         return "(" & MD & ") " & (V + Unary);
+
+      --  If the types to be compared are viewed as the same type with
+      --  void * matching any pointer, but the type we have is better,
+      --  don't cast.
+
+      elsif Is_Same_C_Types (C_MD, C_A_MD, Match_Void => True)
+        and then not Is_Better_Type (C_A_MD, C_MD)
+      then
+         return +V;
+
+      --  Otherwise see if they're the same type or point to the same
+      --  type, depending on whether we care about the type or what they
+      --  point to.
+
+      elsif Is_Same_C_Types (C_MD, C_A_MD) then
+         return +V;
+      else
+         return "(" & MD & ") " & (V + Unary);
+      end if;
+
+   end Maybe_Cast;
 
    ---------------------
    -- Int_Type_String --

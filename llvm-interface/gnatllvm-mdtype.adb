@@ -170,6 +170,22 @@ package body GNATLLVM.MDType is
           Post => LLVM_Type (MD) = T, Inline;
    --  Set the LLVM_Type of MD to T
 
+   --  We need to map a struct name to an MD_Type so that when we see
+   --  a struct of that name in the LLVM IR, we can map it to the
+   --  corresponding MD_Type. This is required to preserve field names.
+
+   function Hash_Name_Id (Name : Name_Id) return Hash_Type is
+     (Hash_Type'Mod (Name))
+     with Pre => Present (Name);
+
+   package Name_To_MD_Type_Map is new Ada.Containers.Hashed_Maps
+     (Key_Type        => Name_Id,
+      Element_Type    => MD_Type,
+      Hash            => Hash_Name_Id,
+      Equivalent_Keys => "=");
+
+   Name_Map : Name_To_MD_Type_Map.Map;
+
    ---------------------------
    -- Check_Types_Identical --
    ---------------------------
@@ -644,6 +660,7 @@ package body GNATLLVM.MDType is
          Name       => Name,
          others     => <>);
       Prev : MD_Type := No_MD_Type;
+      MD   : MD_Type;
 
    begin
       --  We build continuation type records in reverse order and point the
@@ -662,7 +679,16 @@ package body GNATLLVM.MDType is
       end loop;
 
       Info.Cont_Type := Prev;
-      return MD_Find (Info);
+      MD := MD_Find (Info);
+
+      --  If we have a name, create a linkage from the name to this MD,
+      --  unless one already exists.
+
+      if Present (Name) and then not Name_Map.Contains (Name) then
+         Name_Map.Insert (Name, MD);
+      end if;
+
+      return MD;
    end Build_Struct_Type;
 
    ---------------------
@@ -707,12 +733,24 @@ package body GNATLLVM.MDType is
    -------------------------
 
    function Struct_Create_Named (Name : Name_Id) return MD_Type is
+      MD : MD_Type;
+
    begin
       MD_Types.Append ((Kind   => Struct,
                         Name   => Name,
                         Count  => 0,
                         others => <>));
-      return MD_Types.Last;
+
+      MD := MD_Types.Last;
+
+      --  Create a linkage from the name to this MD, unless one
+      --  already exists.
+
+      if  not Name_Map.Contains (Name) then
+         Name_Map.Insert (Name, MD);
+      end if;
+
+      return MD;
    end Struct_Create_Named;
 
    -------------------------
@@ -970,13 +1008,24 @@ package body GNATLLVM.MDType is
 
          when Struct_Type_Kind =>
             declare
-               Num_Elts : constant Nat    :=
+               Num_Elts : constant Nat     :=
                  Nat (Count_Struct_Element_Types (T));
-               Name     : constant String := Get_Struct_Name (T);
+               Name_Str : constant String  := Get_Struct_Name (T);
+               Name     : constant Name_Id :=
+                 (if   Name_Str'Length = 0 then No_Name
+                  else Name_Find (Name_Str));
                Types    : Type_Array (1 .. Num_Elts);
                MDs      : MD_Type_Array (1 .. Num_Elts);
-
             begin
+               --  If we have a name and we've previously made an MD_Type
+               --  for this name, use it.
+
+               if Present (Name) and then Name_Map.Contains (Name) then
+                  return Name_Map.Element (Name);
+               end if;
+
+               --  Otherwise, build the type
+
                Get_Struct_Element_Types (T, Types'Address);
 
                for J in Types'Range loop
@@ -985,9 +1034,7 @@ package body GNATLLVM.MDType is
 
                return Build_Struct_Type (MDs, (MDs'Range => No_Name),
                                          Packed => Is_Packed_Struct (T),
-                                         Name   =>
-                                           (if   Name'Length = 0 then No_Name
-                                            else Name_Find (Name)));
+                                         Name   => Name);
             end;
 
          when Function_Type_Kind =>

@@ -538,7 +538,7 @@ package body CCG.Aggregates is
         or else Is_A_Constant_Pointer_Null (Aggr) or else Is_Undef (Aggr)
       then
          Result  := "(" & Want_MD & " *) " &
-                    (if Is_LHS then Addr_Of (Aggr) else +Aggr) + Unary;
+                    (if Is_LHS then Addr_Of (Aggr + LHS) else +Aggr) + Unary;
          Aggr_MD := Want_MD;
          Is_LHS  := False;
       else

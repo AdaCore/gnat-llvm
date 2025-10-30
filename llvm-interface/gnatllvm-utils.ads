@@ -115,14 +115,18 @@ package GNATLLVM.Utils is
    --  Return True if N is an expression that has a Volatile_Full_Access
    --  prefix.
 
-   function Get_Ext_Name (E : Entity_Id; Suffix : String := "") return Name_Id
+   function Get_Ext_Name
+     (E : Entity_Id; Suffix : String := ""; Seq : Nat := 0) return Name_Id
      with Pre => Present (E), Post => Present (Get_Ext_Name'Result);
-   --  Returns a Name_Id corresponding to the external name of E
+   --  Returns a Name_Id corresponding to the external name of E, possibly
+   --  appending Suffix if non-null and Seq if non-zero.
 
-   function Get_Ext_Name (E : Entity_Id; Suffix : String := "") return String
-   is (Get_Name_String (Get_Ext_Name (E, Suffix)))
+   function Get_Ext_Name
+     (E : Entity_Id; Suffix : String := ""; Seq : Nat := 0) return String
+   is
+     (Get_Name_String (Get_Ext_Name (E, Suffix, Seq)))
      with Pre => Present (E);
-   --  Returns a string corresponding to the external name of E
+   --  Likewise, but returns a string
 
    function To_String (J : Nat) return String;
    --  Returns a string corresponding to the image of J with no leading

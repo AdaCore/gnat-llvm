@@ -118,8 +118,9 @@ package body CCG.Instructions is
    --  or call since we have cases where we only need to flush stores.
 
    type Pending_Value_Entry is record
-      Value            : Value_T;
-      Has_Load_Or_Call : Boolean;
+      Value    : Value_T;
+      Has_Load : Boolean;
+      Has_Call : Boolean;
    end record;
 
    package Pending_Values is new Table.Table
@@ -297,25 +298,28 @@ package body CCG.Instructions is
    -----------------------
 
    procedure Add_Pending_Value (V : Value_T) is
-      Has_Load_Or_Call : Boolean :=
-        Is_A_Load_Inst (V) or else Is_A_Call_Inst (V);
+      Has_Load : Boolean := Is_A_Load_Inst (V);
+      Has_Call : Boolean := Is_A_Call_Inst (V);
 
    begin
       --  If this has operands, go through the operands to see if any
-      --  are pending loads.
+      --  are pending loads or calls.
 
-      if not Has_Load_Or_Call and then Has_Operands (V) then
+      if  Has_Operands (V) then
          for J in Nat (0) .. Get_Num_Operands (V) - 1 loop
             declare
                Op : constant Value_T := Get_Operand (V, J);
 
             begin
-               if Contains (Pending_Values_Map, Op)
-                 and then Pending_Values.Table
-                            (Element
-                              (Pending_Values_Map, Op)).Has_Load_Or_Call
-               then
-                  Has_Load_Or_Call := True;
+               if Contains (Pending_Values_Map, Op) then
+                  declare
+                     PVE : constant Pending_Value_Entry :=
+                       Pending_Values.Table (Element (Pending_Values_Map, Op));
+
+                  begin
+                     Has_Load := Has_Load or PVE.Has_Load;
+                     Has_Call := Has_Call or PVE.Has_Call;
+                  end;
                end if;
             end;
          end loop;
@@ -323,7 +327,7 @@ package body CCG.Instructions is
 
       --  Finally add to both table and map
 
-      Pending_Values.Append ((V, Has_Load_Or_Call));
+      Pending_Values.Append ((V, Has_Load => Has_Load, Has_Call => Has_Call));
       Insert (Pending_Values_Map, V, Pending_Values.Last);
    end Add_Pending_Value;
 
@@ -332,17 +336,9 @@ package body CCG.Instructions is
    ------------------------
 
    function Depends_On_Pending (V : Value_T) return Boolean is
-   begin
-      if Has_Operands (V) then
-         for J in Nat (0) .. Get_Num_Operands (V) - 1 loop
-            if Contains (Pending_Values_Map, Get_Operand (V, J)) then
-               return True;
-            end if;
-         end loop;
-      end if;
-
-      return False;
-   end Depends_On_Pending;
+     (Has_Operands (V)
+      and then (for some J in Nat (0) .. Get_Num_Operands (V) - 1 =>
+                  Contains (Pending_Values_Map, Get_Operand (V, J))));
 
    --------------------------
    -- Remove_Pending_Value --
@@ -365,7 +361,7 @@ package body CCG.Instructions is
    -- Process_Pending_Values --
    ----------------------------
 
-   procedure Process_Pending_Values (Calls_Only : Boolean := False) is
+   procedure Process_Pending_Values (K : Process_Pending_Kind := Every) is
    begin
       --  We have a list of pending values, which represent LLVM
       --  instructions that are being stored as C expressions and not
@@ -384,18 +380,17 @@ package body CCG.Instructions is
       --  written out here are independent and thus the fact that we're
       --  writing them out "backwards" is fine.
 
-      --  ??? This is quadratic in the number of pending values and they
-      --  can accumulate between blocks. We need to find a better
-      --  implementation.
-
       for J in reverse 1 .. Pending_Values.Last loop
          declare
-            V : constant Value_T := Pending_Values.Table (J).Value;
+            PVE : constant Pending_Value_Entry := Pending_Values.Table (J);
+            V   : constant Value_T             := PVE.Value;
 
          begin
             if not Get_Is_Used (V)
-              and then (not Calls_Only
-                        or else Pending_Values.Table (J).Has_Load_Or_Call)
+              and then (case K is when Every          => True,
+                                  when Calls          => PVE.Has_Call,
+                                  when Calls_Or_Loads =>
+                                    PVE.Has_Call or PVE.Has_Load)
             then
                Remove_Pending_Value (V);
                Force_To_Variable (V);
@@ -405,7 +400,7 @@ package body CCG.Instructions is
 
       --  If we're processing all of the pending values, clear them
 
-      if not Calls_Only then
+      if K = Every then
          Clear_Pending_Values;
       end if;
 
@@ -480,7 +475,7 @@ package body CCG.Instructions is
       --  pointer to the type and volatility designated by the instruction.
 
    begin
-      return (if   Is_Same_C_Types (Val_MD, From_Type (LS_T))
+      return (if   Is_Same_C_Types (Val_MD, Inst_MD, True)
                    and then Get_Volatile (V) = Is_Volatile (Val_MD)
                    and then not Is_A_Constant_Pointer_Null (Op)
                    and then Ptr_MD /= Void_Ptr_MD
@@ -548,7 +543,7 @@ package body CCG.Instructions is
    begin
       --  ??? Need to deal with both unaligned load and unaligned store
 
-      Process_Pending_Values (Calls_Only => True);
+      Process_Pending_Values (Calls);
       Assignment (V, Deref_For_Load_Store (Op, V));
    end Load_Instruction;
 

@@ -525,6 +525,10 @@ package body GNATLLVM.Records.Create is
       --  for variant records; see details there. It also occurs for the
       --  same reason after a variable-size field.
 
+      Int_Name_Seq   : Nat                      := 0;
+      --  When we make internal records, we need to be sure that each
+      --  has a unique name. This counts each name.
+
       First_Field_Id : Field_Info_Id            := Empty_Field_Info_Id;
       --  First Field_Info_Id in this RI
 
@@ -1045,13 +1049,14 @@ package body GNATLLVM.Records.Create is
                     Padding => Boolean_Array (Field_Padding_List.Table
                                                 (0 .. Last_Type)),
                     Packed => True,
-                    Name   => Get_Ext_Name (TE, "_I"));
+                    Name   => Get_Ext_Name (TE, "_I", Seq => Int_Name_Seq));
 
             begin
                Add_RI (MD          => MD,
                        Align       => RI_Align,
                        Position    => RI_Position,
                        Unused_Bits => RI_Unused_Bits);
+               Int_Name_Seq   := Int_Name_Seq + 1;
                RI_Align       := 0;
                RI_Position    := 0;
                RI_Unused_Bits := Uint_0;

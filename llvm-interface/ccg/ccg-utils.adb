@@ -1601,7 +1601,7 @@ package body CCG.Utils is
             --  Otherwise, someting went wrong
 
             when others =>
-               pragma Assert (False);
+               pragma Assert (Standard.False);
                MD := No_MD_Type;
          end case;
       end if;

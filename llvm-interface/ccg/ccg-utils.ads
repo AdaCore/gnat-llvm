@@ -18,6 +18,8 @@
 with Ada.Unchecked_Conversion;
 with Ada.Containers; use Ada.Containers;
 
+with Interfaces.C; use Interfaces.C;
+
 with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
 
@@ -90,8 +92,10 @@ package CCG.Utils is
 
    function Needs_Nest (V : Value_T) return Boolean is
      (Get_Needs_Nest (V)
-      and then (Count_Params (V) = 0
-                or else not Has_Nest_Attribute (V, Count_Params (V)  - 1)))
+      and then (Count_Params (V) = Nat (0)
+                or else not Has_Nest_Attribute (V, Count_Params (V)
+                                                   - unsigned (1))))
+
      with Pre => Is_A_Function (V);
    --  True iff V's address is taken, but doesn't have a "nest" parameter
    --  and we'll have to add one.

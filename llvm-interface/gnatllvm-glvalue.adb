@@ -71,7 +71,7 @@ package body GNATLLVM.GLValue is
       Unknown_MD  : MD_Type           := No_MD_Type) return GL_Value
    is
    begin
-      --  If know, tell CCG what MD_Type we used to create V
+      --  If known, tell CCG what MD_Type we used to create V
 
       if R not in Unknown | Reference_To_Unknown then
          C_Set_MD_Type (V, MD);

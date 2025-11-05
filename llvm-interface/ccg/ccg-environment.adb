@@ -1,4 +1,4 @@
------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 --                              C C G                                       --
 --                                                                          --
 --                     Copyright (C) 2020-2025, AdaCore                     --
@@ -379,7 +379,7 @@ package body CCG.Environment is
                           Output_Idx  => 0));
          Insert (BB_Info_Map, B, BB_Info.Last);
 
-         --  Handle the case where a basic block is delete sine it may
+         --  Handle the case where a basic block is deleted since it may
          --  be reused.
 
          Notify_On_Value_Delete

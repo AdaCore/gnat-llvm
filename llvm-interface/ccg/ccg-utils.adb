@@ -1047,7 +1047,7 @@ package body CCG.Utils is
 
       if MD1 = MD2 then
          return True;
-      elsif not Is_Same_Kind (MD1, MD2) then
+      elsif Class (MD1) /= Class (MD2) then
          return False;
       end if;
 
@@ -1141,10 +1141,10 @@ package body CCG.Utils is
    function Is_Better_Type (MD1, MD2 : MD_Type) return Boolean
    is
    begin
-      --  If the types are the same, they're identical, so neither MD2
-      --  isn't better. If they're different kinds, they aren't the same.
+      --  If the types are the same, they're identical, so neither
+      --  is better. If they're different kinds, they aren't the same.
 
-      if MD1 = MD2 or else not Is_Same_Kind (MD1, MD2) then
+      if MD1 = MD2 or else Class (MD1) /= Class (MD2) then
          return False;
       end if;
 
@@ -1190,7 +1190,7 @@ package body CCG.Utils is
             if Is_Packed (MD1) /= Is_Packed (MD2)
               or else Has_Fields (MD1) /= Has_Fields (MD2)
               or else (Has_Fields (MD1)
-                       and then Element_Count (MD1) = Element_Count (MD2))
+                       and then Element_Count (MD1) /= Element_Count (MD2))
               or else (Has_Fields (MD1)
                        and then (for some J in 0 .. Element_Count (MD1) - 1 =>
                                    not Is_Same_C_Types

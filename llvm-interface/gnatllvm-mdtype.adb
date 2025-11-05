@@ -31,7 +31,7 @@ package body GNATLLVM.MDType is
      (Continuation,
       --  A continuation of a type, presently used for function and struct
       --  types. The related type is the type of the next field or
-      --  parameter.  For the fields in a struct, the flag indicates that
+      --  parameter. For the fields in a struct, the flag indicates that
       --  the field represents padding.
 
       Void,
@@ -237,7 +237,7 @@ package body GNATLLVM.MDType is
        MD_Hash_Type (Info.Count * 3) +
        MD_Hash_Type ((Info.Related_Type - MD_Type'First) * 5) +
        MD_Hash_Type ((Info.Cont_Type - MD_Type'First) * 7) +
-       MD_Hash_Type (Info.Entity * 42) +
+       MD_Hash_Type (Info.Entity * 41) +
        MD_Hash_Type (Boolean'Pos (Info.Is_Volatile) * 1283) +
        MD_Hash_Type (Boolean'Pos (Info.Flag) * 2039))
       mod Hash_Num);
@@ -274,14 +274,6 @@ package body GNATLLVM.MDType is
 
    function Has_Fields (MD : MD_Type) return Boolean is
      (MD_Types.Table (MD).Has_Fields);
-
-   ------------------
-   -- Is_Same_Kind --
-   ------------------
-
-   function Is_Same_Kind (MD1, MD2 : MD_Type) return Boolean is
-     (Kind (MD1) = Kind (MD2)
-      or else (Is_Integer (MD1) and then Is_Integer (MD2)));
 
    -------------
    -- Is_Void --
@@ -896,14 +888,14 @@ package body GNATLLVM.MDType is
          return LLVM_Type (MD);
       end if;
 
-      case Kind (MD) is
-         when Void =>
+      case Class (MD) is
+         when Void_Class =>
             Result := Void_Type;
 
-         when Integer | Unknown_Integer =>
+         when Integer_Class =>
             Result := Int_Type (unsigned (Int_Bits (MD)));
 
-         when Float =>
+         when Float_Class =>
             case Float_Bits (MD) is
                when 32 =>
                   Result := Float_Type;
@@ -920,17 +912,17 @@ package body GNATLLVM.MDType is
                   Result := Byte_T;
             end case;
 
-         when Pointer =>
+         when Pointer_Class =>
             Result := Pointer_Type ((if   Is_Void (Designated_Type (MD))
                                      then Byte_T else +Designated_Type (MD)),
                                     unsigned (Pointer_Space (MD)));
 
-         when Array_Type =>
+         when Array_Class =>
             Result := Array_Type (+Element_Type (MD),
                                   (if   Is_Fixed_Array (MD)
                                    then unsigned (Array_Count (MD)) else 0));
 
-         when Struct =>
+         when Struct_Class =>
             if Has_Fields (MD) then
                Struct_Set_Body_Internal (MD);
                return LLVM_Type (MD);
@@ -939,7 +931,7 @@ package body GNATLLVM.MDType is
                                               Get_Name_String (MD_Name (MD)));
             end if;
 
-         when Func =>
+         when Function_Class =>
             declare
                C_MD : MD_Type          := Continuation_Type (MD);
                Ret_T : constant Type_T  :=
@@ -953,7 +945,7 @@ package body GNATLLVM.MDType is
                --  valid, so convert it to void *, which is the best
                --  we can do. This case shouldn't occur in situations
                --  where it matters (it occurs when types are metadata,
-               --  for example.
+               --  for example).
 
                for J in Types'Range loop
                   Types (J) := (if   Is_Void (Related (C_MD))
@@ -963,9 +955,6 @@ package body GNATLLVM.MDType is
 
                Result := Fn_Ty (Types, Ret_T, Is_Varargs_Function (MD));
             end;
-
-         when others =>
-            Result := Void_Ptr_T;
       end case;
 
       Set_LLVM_Type (MD, Result);
@@ -1136,11 +1125,11 @@ package body GNATLLVM.MDType is
          Append (Result, "volatile ");
       end if;
 
-      case Kind (MD) is
-         when Void =>
+      case Class (MD) is
+         when Void_Class =>
             Append (Result, "void");
 
-         when Integer | Unknown_Integer =>
+         when Integer_Class =>
 
             if Is_Unknown_Sign (MD) then
                Append (Result, 'x');
@@ -1152,13 +1141,13 @@ package body GNATLLVM.MDType is
             Append (Result, Int_Bits (MD));
             Append (Result, "t ");
 
-         when Float =>
+         when Float_Class =>
 
             Append (Result, "float_");
             Append (Result, Float_Bits (MD));
             Append (Result, "t ");
 
-         when Array_Type =>
+         when Array_Class =>
             Append (Result, To_String (Element_Type (MD)));
             Append (Result, "[");
 
@@ -1168,7 +1157,7 @@ package body GNATLLVM.MDType is
 
             Append (Result, "]");
 
-         when Struct =>
+         when Struct_Class =>
 
             if Is_Packed (MD) then
                Append (Result, "packed ");
@@ -1200,7 +1189,7 @@ package body GNATLLVM.MDType is
 
             Append (Result, "}");
 
-         when Pointer =>
+         when Pointer_Class =>
             Append (Result, To_String (Designated_Type (MD)));
             Append (Result, "*");
             if Pointer_Space (MD) /= 0 then
@@ -1209,7 +1198,7 @@ package body GNATLLVM.MDType is
                Append (Result, "}");
             end if;
 
-         when Func =>
+         when Function_Class =>
             Append (Result, To_String (Return_Type (MD)));
             Append (Result, "() (");
 
@@ -1227,9 +1216,6 @@ package body GNATLLVM.MDType is
             end if;
 
             Append (Result, ")");
-
-         when others =>
-            raise Program_Error;
       end case;
 
       if not Is_Struct (MD) and then Present (MD_Name (MD)) then

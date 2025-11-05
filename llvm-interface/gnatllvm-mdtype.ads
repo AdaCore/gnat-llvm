@@ -96,10 +96,6 @@ package GNATLLVM.MDType is
    function Is_Pointer (MD : MD_Type) return Boolean
      with Pre => Present (MD);
 
-   function Is_Same_Kind (MD1, MD2 : MD_Type) return Boolean
-     with Pre => Present (MD1) and then Present (MD2);
-   --  True if both types have the same kind
-
    function Is_Volatile (MD : MD_Type) return Boolean
      with Pre => Present (MD);
    function MD_Name (MD : MD_Type) return Name_Id

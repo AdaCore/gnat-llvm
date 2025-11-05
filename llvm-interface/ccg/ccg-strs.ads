@@ -221,7 +221,7 @@ package CCG.Strs is
       --  used to declare the value being of its type.
 
       Write_Return);
-      --  Like Write_Type, but we have a function and want to write the
+      --  Like Only_Type, but we have a function and want to write the
       --  return type.
 
    type Value_Flags is record

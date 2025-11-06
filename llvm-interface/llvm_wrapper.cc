@@ -1642,3 +1642,12 @@ LLVMMetadataRef Create_Variant_Member(
   assert(0);
 #endif
 }
+
+extern "C"
+LLVMMetadataRef Create_Pointer_Type(LLVMDIBuilderRef Builder,
+				    LLVMMetadataRef Pointee,
+				    uint64_t SizeInBits,
+				    uint32_t AlignInBits) {
+  return wrap(unwrap(Builder)->createPointerType(
+      unwrap<DIType>(Pointee), SizeInBits, AlignInBits));
+}

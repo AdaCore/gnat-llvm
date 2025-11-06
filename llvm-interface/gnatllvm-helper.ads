@@ -231,19 +231,6 @@ package GNATLLVM.Helper is
          Flags))
      with Post => Present (DI_Create_Basic_Type'Result);
 
-   function DI_Create_Pointer_Type
-     (Pointee_Ty    : Metadata_T;
-      Size_In_Bits  : ULL;
-      Align_In_Bits : Nat;
-      Address_Space : unsigned;
-      Name          : String) return Metadata_T
-   is
-     (DI_Create_Pointer_Type
-        (DI_Builder, Pointee_Ty, uint64_t (Size_In_Bits),
-         uint32_t (Align_In_Bits), Address_Space, Name, Name'Length))
-     with Pre  => Present (Pointee_Ty),
-          Post => Present (DI_Create_Pointer_Type'Result);
-
    function DI_Builder_Create_Typedef
      (Base_Type      : Metadata_T;
       Name           : String;

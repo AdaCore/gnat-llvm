@@ -611,4 +611,14 @@ package GNATLLVM.Wrapper is
    --  A wrapper for an LLVM DIBuilder method that creates a variant
    --  member.
 
+   function Create_Pointer_Type
+     (Pointee_Ty    : Metadata_T;
+      Size_In_Bits  : ULL;
+      Align_In_Bits : Nat) return Metadata_T
+     with Pre  => Present (Pointee_Ty),
+          Post => Present (Create_Pointer_Type'Result);
+   --  A wrapper for an LLVM DIBuilder method that does not pass the
+   --  address class.  This allows for somewhat cleaner DWARF than
+   --  going via the C API.
+
 end GNATLLVM.Wrapper;

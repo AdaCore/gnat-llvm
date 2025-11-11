@@ -217,6 +217,18 @@ package body GNATLLVM.Records.Debug is
    function Convert_To_Dwarf_Expression
      (Expr : Node_Ref_Or_Val; Original_Type : Entity_Id) return Metadata_T
    is
+
+      package Var_Vector_Pkg is new Ada.Containers.Vectors
+        (Index_Type => Nat,
+         Element_Type => Metadata_T);
+      Var_Vector : Var_Vector_Pkg.Vector;
+      --  A vector holding all the variables used by the expression
+      --  being converted.  Because the number of variable references
+      --  is expected to normally be very small, a map is not used,
+      --  and instead the vector is simply searched when adding new
+      --  references.  The argument (used by DW_OP_LLVM_arg) value for
+      --  a variable is its (zero-based) index in the vector.
+
       Could_Not_Convert : Boolean := False;
       --  If this expression could not be converted to a DWARF expression
       --  for some reason, this flag will be set.
@@ -618,12 +630,50 @@ package body GNATLLVM.Records.Debug is
       --------------
 
       procedure Variable (Val : Node_Ref_Or_Val) is
-         pragma Unreferenced (Val);
+         --  The negation is here to coordinate with the
+         --  repinfo-generating code to smuggle the entity through.
+         --  See that code to understand the reason this is done.
+         E : constant Entity_Id := Get_Dynamic_SO_Entity (-Val);
+         MD : Metadata_T := No_Metadata_T;
+         Index : Integer := -1;
       begin
+         --  It's important to check this early, because we don't want
+         --  to create a global variable that then isn't referenced.
+         if not Can_Create_Expression_With_Variable then
+            Could_Not_Convert := True;
+            return;
+         end if;
 
-         --  ??? Not implemented yet
+         if Present (E) and then Present (Entity (E)) then
+            MD := Get_Debug_Metadata (Entity (E));
+            if No (MD) then
+               MD := Create_Global_Variable_Declaration (Entity (E));
+            end if;
+         end if;
 
-         Could_Not_Convert := True;
+         if No (MD) then
+            Could_Not_Convert := True;
+            return;
+         end if;
+
+         --  If we've already used this variable in this expression,
+         --  just re-use the same index.
+         for I in Var_Vector.First_Index .. Var_Vector.Last_Index loop
+            if Var_Vector (I) = MD then
+               Index := Integer (I);
+               exit;
+            end if;
+         end loop;
+
+         --  Otherwise, add a new variable to the vector of
+         --  references.
+         if Index = -1 then
+            Index := Integer (Var_Vector.Length);
+            Var_Vector.Append (MD);
+         end if;
+
+         Expression.Append (DW_OP_LLVM_arg);
+         Expression.Append (uint64_t (Index));
       end Variable;
 
    begin --  Start of processing for Convert_To_Dwarf_Expression
@@ -642,15 +692,33 @@ package body GNATLLVM.Records.Debug is
       end if;
 
       declare
-         Data : aliased Dwarf_Expression (0 .. Nat (Expression.Length) - 1);
+         type Aliased_Metadata_Array is
+            array (Nat range <>) of aliased Metadata_T;
 
+         Data : aliased Dwarf_Expression (0 .. Nat (Expression.Length) - 1);
+         Vars : aliased Aliased_Metadata_Array
+           (0 .. Nat (Var_Vector.Length) - 1);
       begin
          for I in Data'Range loop
             Data (I) := Expression (I);
          end loop;
 
-         return DI_Builder_Create_Expression
-           (DI_Builder, Data (Data'First)'Access, Data'Length);
+         for I in Vars'Range loop
+            Vars (I) := Var_Vector (I);
+         end loop;
+
+         if Var_Vector.Length > 0 then
+            return DI_Create_Expression_With_Variables
+              (DI_Builder,
+               Data (Data'First)'Access,
+               Data'Length,
+               Vars (Vars'First)'Access,
+               Vars'Length);
+         else
+            return DI_Builder_Create_Expression (DI_Builder,
+                                                 Data (Data'First)'Access,
+                                                 Data'Length);
+         end if;
       end;
    end Convert_To_Dwarf_Expression;
 

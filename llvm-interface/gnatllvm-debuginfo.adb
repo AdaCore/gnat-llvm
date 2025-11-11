@@ -181,11 +181,6 @@ package body GNATLLVM.DebugInfo is
    --  entity has a more local scope, just the unqualified name is
    --  returned.
 
-   function Create_Global_Variable_Declaration (E : Entity_Id)
-     return Metadata_T with Pre => Present (E);
-   --  Return the LLVM declaration of a global variable representing
-   --  E, creating it if necessary.
-
    Debug_Loc_Sloc  : Source_Ptr := No_Location;
    Debug_Loc_Scope : Metadata_T := No_Metadata_T;
    Debug_Loc       : Metadata_T := No_Metadata_T;

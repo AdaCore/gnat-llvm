@@ -77,6 +77,11 @@ package GNATLLVM.DebugInfo is
    --  Build debugging data for E, a global variable, with V as its
    --  location.
 
+   function Create_Global_Variable_Declaration (E : Entity_Id)
+     return Metadata_T with Pre => Present (E);
+   --  Return the LLVM declaration of a global variable representing
+   --  E, creating it if necessary.
+
    procedure Create_Local_Variable_Debug_Data
      (E : Entity_Id; V : GL_Value; Arg_Num : Nat := 0)
      with Pre => not Is_Type (E) and then Present (V);

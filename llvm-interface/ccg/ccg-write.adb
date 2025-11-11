@@ -935,10 +935,10 @@ package body CCG.Write is
                Write_Internal_Name ("ccg_f");
                Write_Int (Get_Output_Idx (MD));
 
-               --  Otherwise, this is handled normally. We don't want to use a
-               --  concatenation operator because that might cause us to try
-               --  to write out the typedef for the pointed-to type, which
-               --  will then be at the wrong place.
+            --  Otherwise, this is handled normally. We don't want to use a
+            --  concatenation operator because that might cause us to try
+            --  to write out the typedef for the pointed-to type, which
+            --  will then be at the wrong place.
 
             else
                Write_Type (Designated_Type (MD),

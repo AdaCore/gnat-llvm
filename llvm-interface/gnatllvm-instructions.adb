@@ -335,6 +335,23 @@ package body GNATLLVM.Instructions is
       return Result;
    end Ptr_To_Ref;
 
+   ----------------------
+   -- Ptr_To_Array_Ref --
+   ----------------------
+
+   function Ptr_To_Array_Ref
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+   is
+      MD     : constant MD_Type :=
+        Pointer_Type (Variable_Array_Type (Type_Of (GT)));
+      Result : GL_Value         :=
+        GM_Ref (Pointer_Cast (IR_Builder, +V, +MD, Name), GT, MD, V);
+
+   begin
+      Initialize_TBAA_If_Changed (Result, V);
+      return Result;
+   end Ptr_To_Array_Ref;
+
    ----------------
    -- Ptr_To_Ref --
    ----------------

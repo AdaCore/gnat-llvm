@@ -180,6 +180,15 @@ package GNATLLVM.Instructions is
      with Pre  => Is_Pointer (V) and then Present (GT),
           Post => Is_Pointer (Ptr_To_Ref'Result), Inline;
 
+   function Ptr_To_Array_Ref
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+     with Pre  => Is_Pointer (V) and then Present (GT),
+          Post => Is_Pointer (Ptr_To_Array_Ref'Result)
+                  and then Is_Variable_Array
+                             (Designated_Type
+                               (Type_Of (Ptr_To_Array_Ref'Result))),
+          Inline;
+
    function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
      with Pre  => Is_Pointer (V) and then Is_Pointer (T),
           Post => Is_Pointer (Ptr_To_Ref'Result), Inline;

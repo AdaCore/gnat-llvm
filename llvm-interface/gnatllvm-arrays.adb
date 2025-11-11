@@ -1500,7 +1500,7 @@ package body GNATLLVM.Arrays is
          Unit_GT   : constant GL_Type  :=
            (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value :=
-           Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference);
+           Get (Ptr_To_Array_Ref (Array_Data, Unit_GT), Reference);
 
       begin
          Result := GEP (Unit_GT, Data,

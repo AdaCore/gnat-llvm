@@ -484,14 +484,13 @@ package body CCG.Subprograms is
       --  is really size_t and that our result is really void *.
 
       if Num_Params = 0 then
-         Result := Result & (if   Maybe_Add_Nest then Generic_Ptr & "_n"
-                             else +"void");
+         Result := Result & (if   Maybe_Add_Nest then "void *_n" else "void");
       elsif Get_Value_Name (V) = "calloc" then
          Result := +"void *calloc (size_t, size_t";
       else
          for J in 0 .. Num_Params - 1 loop
             Result := Result & (if J = 0 then "" else ", ") &
-                 Parameter_Type (Fn_MD, J);
+              Parameter_Type (Fn_MD, J);
 
             if Definition then
                Result := Result & " " & Get_Param (V, J);
@@ -503,7 +502,7 @@ package body CCG.Subprograms is
          --  function, do it.
 
          if Maybe_Add_Nest then
-            Result := Result & ", " & Generic_Ptr & " _n";
+            Result := Result & ", " &  "void *_n";
          end if;
       end if;
 

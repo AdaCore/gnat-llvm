@@ -1722,6 +1722,22 @@ DI_Nameless_Basic_Types ()
 }
 
 extern "C"
+bool
+Can_Create_Expression_With_Variable ()
+{
+#ifdef GNAT_LLVM_HAVE_DIVARIABLEEXPRESSION
+  return true;
+#else
+  return false;
+#endif
+}
+
+extern "C"
+uint64_t Get_DW_OP_LLVM_arg() {
+  return llvm::dwarf::DW_OP_LLVM_arg;
+}
+
+extern "C"
 LLVMMetadataRef Create_Global_Variable_Declaration(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     const char *Linkage, LLVMMetadataRef File,
@@ -1852,6 +1868,19 @@ LLVMMetadataRef Create_Struct_Type_Non_Constant_Size(
 					AlignInBits, DIF, DerF, Elems,
 					RunTimeLang, VTH, UniqueRef);
   return wrap(Result);
+#else
+  // This should never be called in this situation.
+  assert(0);
+#endif
+}
+
+extern "C"
+LLVMMetadataRef Create_Expression_With_Variables(LLVMDIBuilderRef Builder,
+						 uint64_t *Expr, size_t Expr_Len,
+						 LLVMMetadataRef *Vars, size_t Vars_Len) {
+#ifdef GNAT_LLVM_HAVE_DIVARIABLEEXPRESSION
+  return wrap(unwrap(Builder)->createExpressionWithVariables({Expr, Expr_Len},
+							     {unwrap(Vars), Vars_Len}));
 #else
   // This should never be called in this situation.
   assert(0);

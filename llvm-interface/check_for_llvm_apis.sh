@@ -109,6 +109,9 @@ ll_test HAVE_DW_EXPRESSION_EXTENSIONS '!named = !{!DIExpression(DW_OP_push_objec
 # types made that way.
 call_test HAVE_NAMELESS_BASIC_TYPE 'builder.createBasicType("", 32, dwarf::DW_ATE_unsigned, DINode::FlagZero);'
 
+# Test whether DIVariableExpression type exists.
+api_test HAVE_DIVARIABLEEXPRESSION "DIVariableExpression *global;" &
+
 wait
 
 for def in obj/def_*.h; do

@@ -95,10 +95,8 @@ package body GNATLLVM.DebugInfo is
    --  Return debug metadata for a location
 
    function Create_Pointer_To
-     (MD : Metadata_T; E : Entity_Id) return Metadata_T
-   is
-     (DI_Create_Pointer_Type (MD, ULL (Thin_Pointer_Size), Thin_Pointer_Size,
-                              0, ""))
+     (MD : Metadata_T; E : Entity_Id) return Metadata_T is
+     (Create_Pointer_Type (MD, ULL (Thin_Pointer_Size), Thin_Pointer_Size))
      with Pre  => Present (MD) and then Present (E),
           Post => Present (Create_Pointer_To'Result);
    --  Given MD, debug metadata for some type, create debug metadata for a
@@ -1096,9 +1094,7 @@ package body GNATLLVM.DebugInfo is
                Result := Create_Type_Data (Full_Designated_GL_Type (GT));
 
                if Present (Result) then
-                  Result :=
-                    DI_Create_Pointer_Type (Result, Size, Align, 0, "");
-
+                  Result := Create_Pointer_Type (Result, Size, Align);
                end if;
             end if;
 

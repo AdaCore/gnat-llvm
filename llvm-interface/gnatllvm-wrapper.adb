@@ -1047,4 +1047,26 @@ package body GNATLLVM.Wrapper is
          unsigned (Discriminants'Length));
    end Create_Variant_Member;
 
+   -------------------------
+   -- Create_Pointer_Type --
+   -------------------------
+
+   function Create_Pointer_Type
+     (Pointee_Ty    : Metadata_T;
+      Size_In_Bits  : ULL;
+      Align_In_Bits : Nat) return Metadata_T
+   is
+      function Create_Pointer_Type_C
+        (Builder       : DI_Builder_T;
+         Pointee_Ty    : Metadata_T;
+         Size_In_Bits  : uint64_t;
+         Align_In_Bits : uint32_t) return Metadata_T
+        with Import => True, Convention => C,
+             External_Name => "Create_Pointer_Type";
+   begin
+      return Create_Pointer_Type_C (DI_Builder, Pointee_Ty,
+                                    uint64_t (Size_In_Bits),
+                                    uint32_t (Align_In_Bits));
+   end Create_Pointer_Type;
+
 end GNATLLVM.Wrapper;

@@ -114,6 +114,10 @@ package body GNATLLVM.DebugInfo is
           Post => Present (Create_Array_Type'Result);
    --  Create metadata corresponding to the array type GT.
 
+   function Is_Recursive_Access_Type (GT : GL_Type) return Boolean;
+   --  Return True if GT is a recursive access type, meaning that it
+   --  ultimately points back to itself.
+
    function Create_Type_Data (V : GL_Value) return Metadata_T
      with Pre => Present (V);
    --  Create metadata for the type and relationship of R. Don't return
@@ -922,6 +926,35 @@ package body GNATLLVM.DebugInfo is
          Size, Align, Inner_Type, Stride, Ranges);
    end Create_Array_Type;
 
+   ------------------------------
+   -- Is_Recursive_Access_Type --
+   ------------------------------
+
+   function Is_Recursive_Access_Type (GT : GL_Type) return Boolean
+   is
+      function Follow (Ptr : GL_Type) return GL_Type;
+
+      function Follow (Ptr : GL_Type) return GL_Type is
+      begin
+         if No (Ptr) or else not Is_Access_Type (Ptr) then
+            return No_GL_Type;
+         end if;
+         return Full_Designated_GL_Type (Ptr);
+      end Follow;
+
+      Tortoise : GL_Type := GT;
+      Hare : GL_Type := Follow (Tortoise);
+   begin
+      while Tortoise /= Hare loop
+         Tortoise := Follow (Tortoise);
+         Hare := Follow (Follow (Hare));
+         if No (Tortoise) or else No (Hare) then
+            return False;
+         end if;
+      end loop;
+      return True;
+   end Is_Recursive_Access_Type;
+
    ----------------------
    -- Create_Type_Data --
    ----------------------
@@ -947,13 +980,6 @@ package body GNATLLVM.DebugInfo is
       elsif not Emit_Debug_Info then
          return No_Metadata_T;
 
-      --  If we've seen this type as part of elaboration (e.g., an access
-      --  type that points to itself) or if this is a nonnative type, this
-      --  is an "unspecified" type.
-
-      elsif Is_Being_Elaborated (TE) then
-         return DI_Create_Unspecified_Type (Name);
-
       elsif Is_Nonnative_Type (TE) then
          if Is_Unchecked_Union (TE) then
             --  Allow.
@@ -963,10 +989,6 @@ package body GNATLLVM.DebugInfo is
          end if;
       end if;
 
-      --  Mark as being elaborated and create debug information based on
-      --  the kind of the type.
-
-      Set_Is_Being_Elaborated (TE, True);
       case Ekind (TE) is
 
          when E_Enumeration_Subtype | E_Signed_Integer_Subtype
@@ -1091,7 +1113,15 @@ package body GNATLLVM.DebugInfo is
             then
                Result := Create_Fat_Pointer_Type_Data (GT);
             else
-               Result := Create_Type_Data (Full_Designated_GL_Type (GT));
+               if Is_Recursive_Access_Type (GT) then
+                  --  These types aren't useful, and LLVM doesn't
+                  --  provide a way to make a pointer type point to
+                  --  itself.  So instead just turn these into
+                  --  pointer-to-unspecified.
+                  Result := DI_Create_Unspecified_Type (Name);
+               else
+                  Result := Create_Type_Data (Full_Designated_GL_Type (GT));
+               end if;
 
                if Present (Result) then
                   Result := Create_Pointer_Type (Result, Size, Align);
@@ -1203,9 +1233,6 @@ package body GNATLLVM.DebugInfo is
             Result := DI_Create_Unspecified_Type (Name);
       end case;
 
-      --  Show no longer elaborating this type and save and return the result
-
-      Set_Is_Being_Elaborated (TE, False);
       Set_Debug_Metadata (TE, Result);
       return Result;
    end Create_Type_Data;

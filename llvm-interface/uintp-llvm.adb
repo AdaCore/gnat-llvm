@@ -189,7 +189,22 @@ package body Uintp.LLVM is
          Push_Bits (uint64_t (abs D_Table (Loc + J - 1)), Base_Bits);
       end loop;
 
-      return Words;
+      --  When the highest-order Udigit has a low value, it can happen that
+      --  the highest-order word is zero. In that case, shorten the array to
+      --  prevent the creation of unnecessarily long LLVM constants.
+
+      --  ??? Removing high-order zeros can change the signed interpretation
+      --  of the value. Since we return the absolute value and rely on the
+      --  caller to negate it if necessary, the negation can now overflow.
+      --  This already happens in UI_To_LLVM because it truncates the result
+      --  via Const_Int_Of_Arbitrary_Precision, but we may still want to
+      --  clean up the code.
+
+      if Words (N_Words) = 0 then
+         return Words (1 .. N_Words - 1);
+      else
+         return Words;
+      end if;
    end Big_UI_To_Words;
 
 end Uintp.LLVM;

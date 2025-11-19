@@ -698,7 +698,7 @@ package body CCG.Subprograms is
       for J in Ops'First .. Ops'Last - 1 loop
          declare
             Op    : constant Value_T := Ops (J);
-            A_MD  : constant MD_Type := Actual_Type (Op);
+            A_MD  : constant MD_Type := Actual_Type (Op, As_LHS => True);
             F_MD  : constant MD_Type := Parameter_Type (Fn_MD, J - Ops'First);
             Param : Str;
 

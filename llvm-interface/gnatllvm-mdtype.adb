@@ -109,6 +109,34 @@ package body GNATLLVM.MDType is
       --  Used as deined above for each kind
    end record;
 
+   --  We have some tricky areas with named Struct types. We can create
+   --  such a Struct type with Build_Struct_Type where Name is Present or
+   --  we can first call Struct_Create_Named and then call Struct_Set_Body.
+   --  We want to be sure that both will create the same MD_Type. Also,
+   --  we may have both a volatile and non-volatile version of the MD_Type,
+   --  but C structs need to be unique, so we need to be sure to only
+   --  output it once. Moreover, if we make the volatile version before
+   --  Struct_Set_Body was called, we need to be sure that the fields
+   --  are set in the volatile version as well.
+   --
+   --  We handle this the following way:
+   --
+   --  - If Struct_Create_Named is called, we hash that partial MD_Type into
+   --    the table.
+   --
+   --  - When Struct_Set_Body is called, we remove the partial type from
+   --    the hash table and rehash with the new fields. We also ensure
+   --    that these fields are set into the opposite volatility.
+   --
+   --  A potential problem would occur if a Struct with a certain name were
+   --  created with Build_Struct_Type and then a Struct with the same name
+   --  were created with Struct_Create_Named because Struct_Set_Body
+   --  updates a type in place and so we might end up with two identical
+   --  Struct MD_Types with the same name, which will cause a C error.
+   --  We check for this with an assert, but this should not occur in
+   --  practice since we use the two paths for different types. Note that
+   --  the other order, although it also won't occur, is not problematic.
+
    function "=" (Info1, Info2 : MD_Type_Info) return Boolean;
 
    package MD_Types is new Table.Table
@@ -126,7 +154,19 @@ package body GNATLLVM.MDType is
    Hash_Table : array (Hash_Index_Type) of MD_Type := (others => No_MD_Type);
 
    function Hash (Info : MD_Type_Info) return Hash_Index_Type;
-   function MD_Find (Info : MD_Type_Info) return MD_Type;
+
+   function MD_Find
+     (Info : MD_Type_Info; Create : Boolean := True) return MD_Type
+     with Post => not Create or else (Present (MD_Find'Result));
+   --  Find an MD_Type that has Info, creating it if Create
+
+   procedure Insert_MD (MD : MD_Type)
+     with Pre  => No (MD_Find (MD_Types.Table (MD), Create => False)),
+          Post => MD_Find (MD_Types.Table (MD), Create => False) = MD;
+   procedure Remove_MD (MD : MD_Type)
+     with Pre  => MD_Find (MD_Types.Table (MD), Create => False) = MD,
+          Post => No (MD_Find (MD_Types.Table (MD), Create => False));
+   --  Insert or remove MD from the hash table
 
    --  Here are the internal accessors for MD_Type components
 
@@ -158,6 +198,15 @@ package body GNATLLVM.MDType is
      (MD_Types.Table (MD).Flag)
      with Pre => Present (MD);
    function Not_Flag (MD : MD_Type) return Boolean is (not Flag (MD));
+
+   procedure Struct_Set_Body_Internal
+     (MD      : MD_Type;
+      Types   : MD_Type_Array;
+      Names   : Name_Id_Array;
+      Fields  : Field_Id_Array := (1 .. 0 => Empty);
+      Padding : Boolean_Array  := (1 .. 0 => False);
+      Packed  : Boolean        := False)
+     with Pre => Is_Struct (MD) and then Has_Name (MD);
 
    procedure Struct_Set_Body_Internal (MD : MD_Type)
      with Pre => Has_Fields (MD);
@@ -528,16 +577,22 @@ package body GNATLLVM.MDType is
    -- MD_Find --
    -------------
 
-   function MD_Find (Info : MD_Type_Info) return MD_Type is
+   function MD_Find
+     (Info : MD_Type_Info; Create : Boolean := True) return MD_Type
+   is
       Hash_Index : constant Hash_Index_Type := Hash (Info);
       New_Id     : MD_Type                  := Hash_Table (Hash_Index);
       Prev_Id    : MD_Type                  := New_Id;
 
    begin
       if No (New_Id) then
-         MD_Types.Append (Info);
-         Hash_Table (Hash_Index) := MD_Types.Last;
-         return MD_Types.Last;
+         if Create then
+            MD_Types.Append (Info);
+            New_Id := MD_Types.Last;
+            Hash_Table (Hash_Index) := New_Id;
+         end if;
+
+         return New_Id;
       end if;
 
       while Present (New_Id) loop
@@ -549,10 +604,77 @@ package body GNATLLVM.MDType is
          New_Id  := MD_Types.Table (Prev_Id).Hash_Link;
       end loop;
 
-      MD_Types.Append (Info);
-      MD_Types.Table (Prev_Id).Hash_Link := MD_Types.Last;
-      return MD_Types.Last;
+      if Create then
+         MD_Types.Append (Info);
+         New_Id := MD_Types.Last;
+         MD_Types.Table (Prev_Id).Hash_Link := New_Id;
+      end if;
+
+      return New_Id;
    end MD_Find;
+
+   ---------------
+   -- Insert_MD --
+   ---------------
+
+   procedure Insert_MD (MD : MD_Type) is
+      Info       : constant MD_Type_Info    := MD_Types.Table (MD);
+      Hash_Index : constant Hash_Index_Type := Hash (Info);
+      New_Id     : MD_Type                  := Hash_Table (Hash_Index);
+      Prev_Id    : MD_Type                  := New_Id;
+
+   begin
+      --  If we don't have a match for this hash, we're it
+
+      if No (New_Id) then
+         Hash_Table (Hash_Index) := MD;
+         return;
+      end if;
+
+      --  Otherwise, add us to the end of the chain. We've already
+      --  verified in the precondition that we're not in the chain.
+
+      while Present (New_Id) loop
+         Prev_Id := New_Id;
+         New_Id  := MD_Types.Table (Prev_Id).Hash_Link;
+      end loop;
+
+      MD_Types.Table (Prev_Id).Hash_Link := MD;
+   end Insert_MD;
+
+   ---------------
+   -- Remove_MD --
+   ---------------
+
+   procedure Remove_MD (MD : MD_Type) is
+      Info       : constant MD_Type_Info    := MD_Types.Table (MD);
+      Hash_Index : constant Hash_Index_Type := Hash (Info);
+      Next_Id    : constant MD_Type         := Info.Hash_Link;
+      New_Id     : MD_Type                  := Hash_Table (Hash_Index);
+
+   begin
+      --  Clear the link from our entry. We've saved it above.
+
+      MD_Types.Table (MD).Hash_Link := No_MD_Type;
+
+      --  If we're the head of the chain, point it to our next, if any
+
+      if New_Id = MD then
+         Hash_Table (Hash_Index) := Next_Id;
+         return;
+      end if;
+
+      --  Otherwise, remove ourselves from the chain
+
+      while Present (New_Id) loop
+         if MD_Types.Table (New_Id).Hash_Link = MD then
+            MD_Types.Table (New_Id).Hash_Link := Next_Id;
+            return;
+         end if;
+
+         New_Id := MD_Types.Table (New_Id).Hash_Link;
+      end loop;
+   end Remove_MD;
 
    -------------
    -- Void_Ty --
@@ -695,9 +817,43 @@ package body GNATLLVM.MDType is
       Padding : Boolean_Array  := (1 .. 0 => False);
       Packed  : Boolean        := False)
    is
+      Info     : MD_Type_Info := MD_Types.Table (MD);
+      Other_MD : MD_Type;
+
+   begin
+      --  We first set the fields in this MD
+
+      Struct_Set_Body_Internal (MD, Types, Names, Fields, Padding, Packed);
+
+      --  Now see if we have an MD_Type for the opposite volatility and
+      --  set the fields for that if so.
+
+      Info.Is_Volatile := not Info.Is_Volatile;
+      Other_MD         := MD_Find (Info, Create => False);
+
+      if Present (Other_MD) then
+         Struct_Set_Body_Internal (MD, Types, Names, Fields, Padding, Packed);
+      end if;
+   end Struct_Set_Body;
+
+   ------------------------------
+   -- Struct_Set_Body_Internal --
+   ------------------------------
+
+   procedure Struct_Set_Body_Internal
+     (MD      : MD_Type;
+      Types   : MD_Type_Array;
+      Names   : Name_Id_Array;
+      Fields  : Field_Id_Array := (1 .. 0 => Empty);
+      Padding : Boolean_Array  := (1 .. 0 => False);
+      Packed  : Boolean        := False)
+   is
       Prev : MD_Type := No_MD_Type;
 
    begin
+
+      Remove_MD (MD);
+
       --  We build continuation type records in reverse order and point the
       --  actual type to the first of them (the last we create).
 
@@ -718,7 +874,12 @@ package body GNATLLVM.MDType is
       MD_Types.Table (MD).Flag       := Packed;
       MD_Types.Table (MD).Count      := Names'Length;
 
-   end Struct_Set_Body;
+      --  If this matches something already in the table, we have a problem.
+      --  Otherwise, insert it.
+
+      pragma Assert (No (MD_Find (MD_Types.Table (MD), Create => False)));
+      Insert_MD (MD);
+   end Struct_Set_Body_Internal;
 
    -------------------------
    -- Struct_Create_Named --
@@ -728,12 +889,10 @@ package body GNATLLVM.MDType is
       MD : MD_Type;
 
    begin
-      MD_Types.Append ((Kind   => Struct,
-                        Name   => Name,
-                        Count  => 0,
-                        others => <>));
-
-      MD := MD_Types.Last;
+      MD := MD_Find ((Kind   => Struct,
+                      Name   => Name,
+                      Count  => 0,
+                      others => <>));
 
       --  Create a linkage from the name to this MD, unless one
       --  already exists.
@@ -814,8 +973,12 @@ package body GNATLLVM.MDType is
       Info : MD_Type_Info := MD_Types.Table (MD);
 
    begin
-      Info.Is_Volatile := B;
-      return MD_Find (Info);
+      if Info.Is_Volatile = B then
+         return MD;
+      else
+         Info.Is_Volatile := B;
+         return MD_Find (Info);
+      end if;
    end Make_Volatile;
 
    -------------------

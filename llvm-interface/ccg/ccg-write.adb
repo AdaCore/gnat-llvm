@@ -915,7 +915,7 @@ package body CCG.Write is
                     or else Name = "Tunsigned_charB"
                   then
                      Write_Str ((if   Unsigned_P then "unsigned char"
-                                    else "signed char"));
+                                 else "signed char"));
                      return;
                   end if;
                end;

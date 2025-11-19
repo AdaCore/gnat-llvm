@@ -317,7 +317,9 @@ package GNATLLVM.MDType is
       Fields  : Field_Id_Array := (1 .. 0 => Empty);
       Padding : Boolean_Array  := (1 .. 0 => False);
       Packed  : Boolean        := False)
-     with Pre  => Names'First = Types'First and then Names'Last = Types'Last
+     with Pre  => Is_Struct (MD) and then Has_Name (MD)
+                  and then Names'First = Types'First
+                  and then Names'Last = Types'Last
                   and then (for all F_MD of Types => Present (F_MD))
                   and then Is_Struct (MD) and then not Has_Fields (MD),
           Post => Is_Packed (MD) = Packed and then Has_Fields (MD)

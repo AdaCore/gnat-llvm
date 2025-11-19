@@ -758,7 +758,7 @@ package body CCG.Write is
             Write_Str ("(" & Declaration_Type (V) & ") ");
          end if;
 
-         if not Is_Array (MD) and then not Is_A_Function (V) then
+         if  not Is_A_Function (V) then
             Maybe_Write_Parens;
             Write_Str ("&");
          end if;

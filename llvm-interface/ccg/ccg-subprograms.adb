@@ -733,9 +733,12 @@ package body CCG.Subprograms is
 
             --  Otherwise, if this parameter is of pointer type, we may need
             --  to cast it to the formal type, especially if it's a pointer
-            --  to a function.
+            --  to a function. But don't do this if the actual type is better.
 
-            elsif Is_Pointer (A_MD) and then A_MD /= F_MD then
+            elsif Is_Pointer (A_MD) and then A_MD /= F_MD
+              and then not (Is_Same_C_Types (A_MD, F_MD, Match_Void => True)
+                              and then Is_Better_Type (F_MD, A_MD))
+            then
                Param := "(" & F_MD & ") (" & Param & ")";
             end if;
 

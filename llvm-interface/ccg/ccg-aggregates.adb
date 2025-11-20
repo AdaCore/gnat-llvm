@@ -521,6 +521,9 @@ package body CCG.Aggregates is
         Declaration_Type (Get_GEP_Source_Element_Type (V));
       --  The type that we want Aggr to point to
 
+      Decl_MD : constant MD_Type := Declaration_Type (V);
+      --  The type that we want the result to be
+
       Is_LHS  : Boolean          := Get_Is_LHS (Aggr);
       --  Whether our result so far is an LHS as opposed to a pointer.
       --  If it is, then we can use normal derefrence operations and we must
@@ -659,6 +662,19 @@ package body CCG.Aggregates is
          Set_Is_LHS (V, Is_LHS);
          Set_C_Value (V, Result);
          return;
+      end if;
+
+      --  In most cases, Result will have the same type as the declaration
+      --  type of V, which is what's expected, but in some cases, such as
+      --  where there's only one operand, it may not. So cast in that case.
+
+      if Pointer_Type (Aggr_MD) /= Decl_MD then
+         if Is_LHS then
+            Result := "&" & Result;
+            Is_LHS := False;
+         end if;
+
+         Result := "((" & Decl_MD & ") (" & Result & "))";
       end if;
 
       --  If we ended up with a LHS, we set this as the value of V but mark

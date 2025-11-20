@@ -129,7 +129,7 @@ package CCG.Utils is
      (MD1, MD2 : MD_Type; Match_Void : Boolean := False) return Boolean
      with Pre => Present (MD1) and then Present (MD2);
    --  True iff the two types will have the same C representation. If
-   --  Match_Void,then consider a pointer to void as matching any
+   --  Match_Void, then consider a pointer to void as matching any
    --  pointer type. This avoids casts to types that we know less about.
 
    function Is_Better_Type (MD1, MD2 : MD_Type) return Boolean

@@ -157,7 +157,7 @@ package body GNATLLVM.MDType is
 
    function MD_Find
      (Info : MD_Type_Info; Create : Boolean := True) return MD_Type
-     with Post => not Create or else (Present (MD_Find'Result));
+     with Post => not Create or else Present (MD_Find'Result);
    --  Find an MD_Type that has Info, creating it if Create
 
    procedure Insert_MD (MD : MD_Type)

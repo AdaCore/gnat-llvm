@@ -27,6 +27,7 @@ with GNATLLVM.Conversions; use GNATLLVM.Conversions;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
 with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
 with GNATLLVM.Types;       use GNATLLVM.Types;
+with GNATLLVM.Utils;       use GNATLLVM.Utils;
 with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.Instructions is
@@ -1715,6 +1716,10 @@ package body GNATLLVM.Instructions is
       --  Map index in Args array to LLVM parameter number
 
       LLVM_Func   : constant Value_T       := +Func;
+      GT          : constant GL_Type       := Related_Type (Func);
+      LLVM_Conv   : constant Call_Conv_T   :=
+        (if   Is_A_Function (Func) then Get_Function_Call_Conv (LLVM_Func)
+         else GNAT_To_LLVM_Convention (Convention (GT)));
       No_Raise    : constant Boolean       :=
         No_Exception_Propagation_Active
           or else (Is_A_Function (Func) and then Does_Not_Throw (Func));
@@ -1777,6 +1782,10 @@ package body GNATLLVM.Instructions is
             Add_Nest_Attribute (Call_Inst, To_Param_Num (J));
          end if;
       end loop;
+
+      if LLVM_Conv /= C_Call_Conv then
+         Set_Instruction_Call_Conv (Call_Inst, LLVM_Conv);
+      end if;
 
       return Call_Inst;
    end Call_Internal;

@@ -1235,6 +1235,16 @@ Has_SEH (const char *Target)
 }
 
 extern "C"
+bool
+Is_x86_Windows (const char *Target)
+{
+  Triple TargetTriple(Target);
+
+  return TargetTriple.isOSWindows ()
+         && (TargetTriple.getArch () == Triple::x86);
+}
+
+extern "C"
 const char *
 Get_Personality_Function_Name (const char *Target)
 {

@@ -454,6 +454,8 @@ package GNATLLVM.Wrapper is
 
    function Has_SEH (Triple : String) return Boolean;
 
+   function Is_x86_Windows (Triple : String) return Boolean;
+
    function Get_Personality_Function_Name (Triple : String) return String;
 
    function Get_Features (Triple, Arch, CPU : String) return String;

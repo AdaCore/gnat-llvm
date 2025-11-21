@@ -60,7 +60,7 @@ package GNATLLVM.Arrays is
       Not_Superflat   : Boolean := False) return GL_Value
      with Pre  => Present (In_Low) and then Present (In_High)
                   and then Present (GT)
-                  and then Type_Of (In_Low) = Type_Of (In_High),
+                  and then Type_T'(+Type_Of (In_Low)) = +Type_Of (In_High),
           Post => Related_Type (Bounds_To_Length'Result) = GT;
    --  Low and High are bounds of a discrete type. Compute the length of
    --  that type, taking into account the superflat case, and do that

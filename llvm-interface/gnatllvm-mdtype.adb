@@ -997,7 +997,7 @@ package body GNATLLVM.MDType is
    procedure Struct_Set_Body_Internal (MD : MD_Type) is
       UID   : constant Unique_Id :=
         (if Has_Fields (MD) then New_Unique_Id else No_Unique_Id);
-      C_MD : MD_Type := Continuation_Type (MD);
+      C_MD  : MD_Type := Continuation_Type (MD);
       Typs  : Type_Array (1 .. Element_Count (MD));
 
    begin
@@ -1049,6 +1049,15 @@ package body GNATLLVM.MDType is
          end if;
 
          return LLVM_Type (MD);
+
+      --  LLVM types don't have volatility, so we want to use the LLVM type
+      --  of the non-volatilel variant if this is volatile. This matters
+      --  for named structs, since LLVM will unique the name.
+
+      elsif Is_Volatile (MD) then
+         Result := LLVM_Type_Of (Make_Volatile (MD, False));
+         Set_LLVM_Type (MD, Result);
+         return Result;
       end if;
 
       case Class (MD) is

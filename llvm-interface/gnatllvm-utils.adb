@@ -231,10 +231,13 @@ package body GNATLLVM.Utils is
 
    function GNAT_To_LLVM_Convention (CC : Convention_Id) return Call_Conv_T is
    begin
-      case CC is
-         when Convention_Stdcall => return X86_Stdcall_Call_Conv;
-         when others => return C_Call_Conv;
-      end case;
+      if CC = Convention_Stdcall
+        and then Is_x86_Windows (Normalized_Target_Triple.all)
+      then
+         return X86_Stdcall_Call_Conv;
+      else
+         return C_Call_Conv;
+      end if;
    end GNAT_To_LLVM_Convention;
 
    ----------------------------

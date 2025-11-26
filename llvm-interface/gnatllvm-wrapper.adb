@@ -673,6 +673,24 @@ package body GNATLLVM.Wrapper is
       return Result;
    end Get_Features;
 
+   ----------------------------
+   -- Get_Target_Default_CPU --
+   ----------------------------
+
+   function Get_Target_Default_CPU (Triple : String) return String is
+      use Interfaces.C;
+
+      function Get_Target_Default_CPU
+        (Triple : char_array) return chars_ptr with
+        Import, Convention => C, External_Name => "Get_Target_Default_CPU";
+
+      Triple_C : constant char_array := To_C (Triple);
+      Result_C : constant chars_ptr  := Get_Target_Default_CPU (Triple_C);
+
+   begin
+      return Value (Result_C);
+   end Get_Target_Default_CPU;
+
    --------------------------
    -- Set_Absolute_Address --
    --------------------------

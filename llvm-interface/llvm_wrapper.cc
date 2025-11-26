@@ -1339,6 +1339,34 @@ Get_Features (const char *TargetTriple, const char *Arch, const char *CPU)
 }
 
 extern "C"
+const char *
+Get_Target_Default_CPU (const char *TargetTriple)
+{
+  // Select a default CPU for a given target triple.
+  //
+  // For now do that only for x86 triples, but this might get extended later.
+  //
+  // If not selected explicitly, set the same default CPU as Clang does.
+  // Consistency with Clang is generally useful, and on x86 in particular,
+  // the choice of CPU results in selection of features.
+  // In this case the use of SSE rather than x87 for floating point
+  // operations improves rounding behavior.
+  //
+  // Return "generic" for anything else than x86.
+
+  Triple T(TargetTriple);
+
+  switch (T.getArch()) {
+    default:
+      return "generic";
+    case llvm::Triple::x86_64:
+      return "x86-64";
+    case llvm::Triple::x86:
+      return "pentium4";
+  }
+}
+
+extern "C"
 unsigned
 Get_Default_Address_Space (const DataLayout &DL)
 {

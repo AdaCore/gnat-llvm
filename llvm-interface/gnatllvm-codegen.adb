@@ -635,6 +635,14 @@ package body GNATLLVM.Codegen is
       --  settings, such as the user-specified target architecture and CPU,
       --  and target-specific defaults.
 
+      --  The CPU is null here if no -mcpu specified on the command line.
+      --  Get the default value for the specified triple.
+
+      if CPU = null then
+         CPU := new String'(Get_Target_Default_CPU
+            (Normalized_Target_Triple.all));
+      end if;
+
       if Starts_With (Normalized_Target_Triple.all, "nvptx") then
          --  For Nvidia GPU targets, the architecture name is also the CPU
          --  name (see tools::getCPUName in

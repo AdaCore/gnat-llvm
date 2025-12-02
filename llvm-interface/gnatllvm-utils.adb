@@ -232,7 +232,7 @@ package body GNATLLVM.Utils is
    function GNAT_To_LLVM_Convention (CC : Convention_Id) return Call_Conv_T is
    begin
       if CC = Convention_Stdcall
-        and then Is_x86_Windows (Normalized_Target_Triple.all)
+        and then Is_x86 (Normalized_Target_Triple.all)
       then
          return X86_Stdcall_Call_Conv;
       else

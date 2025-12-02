@@ -625,16 +625,16 @@ package body GNATLLVM.Wrapper is
       return Has_SEH_C (Triple & ASCII.NUL) /= 0;
    end Has_SEH;
 
-   --------------------
-   -- Is_x86_Windows --
-   --------------------
+   ------------
+   -- Is_x86 --
+   ------------
 
-   function Is_x86_Windows (Triple : String) return Boolean is
-      function Is_x86_Windows (Triple : String) return LLVM_Bool
-        with Import, Convention => C, External_Name => "Is_x86_Windows";
+   function Is_x86 (Triple : String) return Boolean is
+      function Is_x86 (Triple : String) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Is_x86";
    begin
-      return Is_x86_Windows (Triple & ASCII.NUL) /= 0;
-   end Is_x86_Windows;
+      return Is_x86 (Triple & ASCII.NUL) /= 0;
+   end Is_x86;
 
    -----------------------------------
    -- Get_Personality_Function_Name --

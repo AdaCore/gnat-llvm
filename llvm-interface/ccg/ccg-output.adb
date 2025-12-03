@@ -272,7 +272,10 @@ package body CCG.Output is
 
             if Is_A_Global_Variable (V) then
                declare
-                  Init : constant Value_T := Get_Initializer (V);
+                  Init    : constant Value_T := Get_Initializer (V);
+                  Init_MD : constant MD_Type :=
+                    (if   Present (Init) then Actual_Type (Init)
+                     else No_MD_Type);
 
                begin
                   if No (Init) or else Emit_Header then
@@ -299,7 +302,19 @@ package body CCG.Output is
                     and then not Is_A_Constant_Aggregate_Zero (Init)
                   then
                      Maybe_Output_Typedef_And_Decl (Init);
-                     Decl := Decl & " = " & (Init + Initializer);
+
+                     --  If the type of the initializer doesn't agree with
+                     --  the decl and the decl is a pointer, add a cast to
+                     --  avoid pointer mismatches.
+
+                     if not Is_Same_C_Types (MD, Init_MD)
+                       and then Is_Pointer (MD)
+                     then
+                        Decl :=
+                          Decl & " = (" & MD & ") " & (Init + Initializer);
+                     else
+                        Decl := Decl & " = " & (Init + Initializer);
+                     end if;
                   end if;
 
                   if not Has_Suppress_Decl_Prefix (Get_Value_Name (V)) then

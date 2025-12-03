@@ -606,7 +606,8 @@ package body CCG.Subprograms is
       Func        : Value_T                   := Ops (Ops'Last);
       S           : constant String           := Get_Value_Name (Func);
       Fn_MD       : constant MD_Type          :=
-        Declaration_Type (Get_Called_Function_Type (V));
+        Best_Type (Declaration_Type (Get_Called_Function_Type (V)),
+                   Designated_Type (Declaration_Type (Func)));
       First       : Boolean                   := True;
       Cast_MD     : MD_Type_Array (Ops'Range) := (others => No_MD_Type);
       Call        : Str;

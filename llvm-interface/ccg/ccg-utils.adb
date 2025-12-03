@@ -1219,7 +1219,7 @@ package body CCG.Utils is
             --  one is better if either the return type or one parameter
             --  type is better.
 
-            if not Is_Same_C_Types (MD1, MD2) then
+            if not Is_Same_C_Types (MD1, MD2, Match_Void => True) then
                return False;
             else
                return Is_Better_Type (Return_Type (MD1), Return_Type (MD2))

@@ -137,7 +137,7 @@ package body CCG.Flow is
       Is_Return    : Boolean;
       --  This is set for the unique return flow
 
-      Return_Value : Str;
+      Return_Value : Value_T;
       --  If a return flow, the value to return, if any
 
       First_If     : If_Idx;
@@ -277,7 +277,7 @@ package body CCG.Flow is
      with Pre => Present (Idx);
    --  True for a return flow
 
-   function Return_Value (Idx : Flow_Idx) return Str
+   function Return_Value (Idx : Flow_Idx) return Value_T
      with Pre => Is_Return (Idx) and then Present (Idx);
    --  If a return flow, the value to return, if any
 
@@ -584,7 +584,7 @@ package body CCG.Flow is
    -- Return_Value --
    ------------------
 
-   function Return_Value (Idx : Flow_Idx) return Str is
+   function Return_Value (Idx : Flow_Idx) return Value_T is
      (Flows.Table (Idx).Return_Value);
 
    --------------
@@ -845,7 +845,7 @@ package body CCG.Flow is
       --  and as the current flow.
 
       Flows.Append ((Is_Return    => False,
-                     Return_Value => No_Str,
+                     Return_Value => No_Value_T,
                      BB           => B,
                      First_Line   => Empty_Line_Idx,
                      Last_Line    => Empty_Line_Idx,
@@ -915,9 +915,7 @@ package body CCG.Flow is
                   Ret_Idx := Element (Position);
                else
                   Flows.Append ((Is_Return    => True,
-                                 Return_Value =>
-                                   (if   Present (Retval) then +Retval
-                                    else No_Str),
+                                 Return_Value => Retval,
                                  BB           => No_BB_T,
                                  First_Line   => Empty_Line_Idx,
                                  Last_Line    => Empty_Line_Idx,
@@ -1590,11 +1588,25 @@ package body CCG.Flow is
                Output_Stmt ("");
             end if;
 
-         --  If this represents a return, write a return
+            --  If this represents a return, write a return, casting the
+            --  value to the proper type, if necessary.
 
          elsif Is_Return (Idx) then
             if Present (Return_Value (Idx)) then
-               Output_Stmt ("return " & Return_Value (Idx), V => V);
+               declare
+                  Retval  : constant Value_T := Return_Value (Idx);
+                  Val_MD  : constant MD_Type := Actual_Type (Retval);
+                  Fn_R_MD : constant MD_Type :=
+                    Return_Type (Designated_Type
+                                   (Declaration_Type (Curr_Func)));
+                  Cast    : constant Str    :=
+                    (if   not Is_Same_C_Types (Val_MD, Fn_R_MD)
+                          and then Is_Pointer (Fn_R_MD)
+                     then "(" & Fn_R_MD & ")" else +"");
+
+               begin
+                  Output_Stmt ("return " & Cast & Return_Value (Idx), V => V);
+               end;
             elsif not Does_Not_Return (Curr_Func) then
                Output_Stmt ("return", V => V);
             end if;

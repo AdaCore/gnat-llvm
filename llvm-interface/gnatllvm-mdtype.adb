@@ -31,8 +31,9 @@ package body GNATLLVM.MDType is
      (Continuation,
       --  A continuation of a type, presently used for function and struct
       --  types. The related type is the type of the next field or
-      --  parameter. For the fields in a struct, the flag indicates that
-      --  the field represents padding.
+      --  parameter. For the fields in a struct, Flag indicates that
+      --  the field represents padding and Flag2 whether the field
+      --  is being used as a bitfield to contain multiple source fields.
 
       Void,
       --  A null type, which is used for a function that doesn't return,
@@ -105,8 +106,8 @@ package body GNATLLVM.MDType is
       Entity         : Opt_Record_Field_Kind_Id := Empty;
       --  ??? Temporarily store the entity here
 
-      Flag           : Boolean := False;
-      --  Used as deined above for each kind
+      Flag, Flag2    : Boolean := False;
+      --  Used as defined above for each kind
    end record;
 
    --  We have some tricky areas with named Struct types. We can create
@@ -199,12 +200,17 @@ package body GNATLLVM.MDType is
      with Pre => Present (MD);
    function Not_Flag (MD : MD_Type) return Boolean is (not Flag (MD));
 
+   function Flag2 (MD : MD_Type) return Boolean is
+     (MD_Types.Table (MD).Flag2)
+     with Pre => Present (MD);
+
    procedure Struct_Set_Body_Internal
-     (MD      : MD_Type;
-      Types   : MD_Type_Array;
-      Names   : Name_Id_Array;
-      Fields  : Field_Id_Array := (1 .. 0 => Empty);
-      Padding : Boolean_Array  := (1 .. 0 => False);
+     (MD       : MD_Type;
+      Types    : MD_Type_Array;
+      Names    : Name_Id_Array;
+      Fields   : Field_Id_Array := (1 .. 0 => Empty);
+      Padding  : Boolean_Array  := (1 .. 0 => False);
+      Bitfield : Boolean_Array  := (1 .. 0 => False);
       Packed  : Boolean        := False)
      with Pre => Is_Struct (MD) and then Has_Name (MD);
 
@@ -288,7 +294,8 @@ package body GNATLLVM.MDType is
        MD_Hash_Type ((Info.Cont_Type - MD_Type'First) * 7) +
        MD_Hash_Type (Info.Entity * 41) +
        MD_Hash_Type (Boolean'Pos (Info.Is_Volatile) * 1283) +
-       MD_Hash_Type (Boolean'Pos (Info.Flag) * 2039))
+       MD_Hash_Type (Boolean'Pos (Info.Flag) * 2039) +
+       MD_Hash_Type (Boolean'Pos (Info.Flag2) * 2797))
       mod Hash_Num);
 
    ---------
@@ -302,7 +309,7 @@ package body GNATLLVM.MDType is
       and then Info1.Cont_Type = Info2.Cont_Type
       and then Info1.Entity = Info2.Entity
       and then Info1.Is_Volatile = Info2.Is_Volatile
-      and then Info1.Flag = Info2.Flag);
+      and then Info1.Flag = Info2.Flag and then Info1.Flag2 = Info2.Flag2);
    --  Note that we don't want to compare Hash_Link and LLVM_Type because
    --  we want to know that the types are structually the same and those
    --  fields don't relate to the structure.
@@ -543,6 +550,21 @@ package body GNATLLVM.MDType is
       return Flag (E_MD);
    end Is_Padding;
 
+   -----------------
+   --  Is_Bitfield --
+   -----------------
+
+   function Is_Bitfield (MD : MD_Type; Idx : Nat) return Boolean is
+      E_MD : MD_Type := Continuation_Type (MD);
+
+   begin
+      for J in 0 .. Idx - 1 loop
+         E_MD := Continuation_Type (E_MD);
+      end loop;
+
+      return Flag2 (E_MD);
+   end Is_Bitfield;
+
    --------------------
    -- Parameter_Name --
    --------------------
@@ -763,6 +785,7 @@ package body GNATLLVM.MDType is
       Field_Names : Name_Id_Array;
       Fields      : Field_Id_Array := (1 .. 0 => Empty);
       Padding     : Boolean_Array  := (1 .. 0 => False);
+      Bitfield    : Boolean_Array  := (1 .. 0 => False);
       Packed      : Boolean        := False;
       Name        : Name_Id        := No_Name) return MD_Type
    is
@@ -789,6 +812,8 @@ package body GNATLLVM.MDType is
                            Cont_Type    => Prev,
                            Flag         => (if   Padding'Length > 0
                                             then Padding (J) else False),
+                           Flag2        => (if   Bitfield'Length > 0
+                                            then Bitfield (J) else False),
                            others       => <>));
       end loop;
 
@@ -810,12 +835,13 @@ package body GNATLLVM.MDType is
    ---------------------
 
    procedure Struct_Set_Body
-     (MD      : MD_Type;
-      Types   : MD_Type_Array;
-      Names   : Name_Id_Array;
-      Fields  : Field_Id_Array := (1 .. 0 => Empty);
-      Padding : Boolean_Array  := (1 .. 0 => False);
-      Packed  : Boolean        := False)
+     (MD       : MD_Type;
+      Types    : MD_Type_Array;
+      Names    : Name_Id_Array;
+      Fields   : Field_Id_Array := (1 .. 0 => Empty);
+      Padding  : Boolean_Array  := (1 .. 0 => False);
+      Bitfield : Boolean_Array  := (1 .. 0 => False);
+      Packed   : Boolean        := False)
    is
       Info     : MD_Type_Info := MD_Types.Table (MD);
       Other_MD : MD_Type;
@@ -823,7 +849,8 @@ package body GNATLLVM.MDType is
    begin
       --  We first set the fields in this MD
 
-      Struct_Set_Body_Internal (MD, Types, Names, Fields, Padding, Packed);
+      Struct_Set_Body_Internal
+        (MD, Types, Names, Fields, Padding, Bitfield, Packed);
 
       --  Now see if we have an MD_Type for the opposite volatility and
       --  set the fields for that if so.
@@ -832,7 +859,8 @@ package body GNATLLVM.MDType is
       Other_MD         := MD_Find (Info, Create => False);
 
       if Present (Other_MD) then
-         Struct_Set_Body_Internal (MD, Types, Names, Fields, Padding, Packed);
+         Struct_Set_Body_Internal
+           (MD, Types, Names, Fields, Padding, Bitfield, Packed);
       end if;
    end Struct_Set_Body;
 
@@ -841,12 +869,13 @@ package body GNATLLVM.MDType is
    ------------------------------
 
    procedure Struct_Set_Body_Internal
-     (MD      : MD_Type;
-      Types   : MD_Type_Array;
-      Names   : Name_Id_Array;
-      Fields  : Field_Id_Array := (1 .. 0 => Empty);
-      Padding : Boolean_Array  := (1 .. 0 => False);
-      Packed  : Boolean        := False)
+     (MD       : MD_Type;
+      Types    : MD_Type_Array;
+      Names    : Name_Id_Array;
+      Fields   : Field_Id_Array := (1 .. 0 => Empty);
+      Padding  : Boolean_Array  := (1 .. 0 => False);
+      Bitfield : Boolean_Array  := (1 .. 0 => False);
+      Packed   : Boolean        := False)
    is
       Prev : MD_Type := No_MD_Type;
 
@@ -865,6 +894,8 @@ package body GNATLLVM.MDType is
                                             then Fields (J) else Empty),
                            Flag         => (if   Padding'Length > 0
                                             then Padding (J) else False),
+                           Flag2        => (if   Bitfield'Length > 0
+                                            then Bitfield (J) else False),
                            Cont_Type    => Prev,
                            others       => <>));
       end loop;
@@ -1004,14 +1035,15 @@ package body GNATLLVM.MDType is
       for J in Typs'Range loop
          Typs (J) := +Related (C_MD);
          C_Set_Field_Info (UID, J - Typs'First, MD_Name (C_MD),
-                           Is_Padding => not Has_Name (C_MD),
-                           Entity     => MD_Entity (C_MD));
+                           Is_Padding  => Flag (C_MD),
+                           Is_Bitfield => Flag2 (C_MD),
+                           Entity      => MD_Entity (C_MD));
          C_MD := Continuation_Type (C_MD);
       end loop;
 
       if No (MD_Name (MD)) then
          Set_LLVM_Type (MD, Struct_Type (Typs'Address, Typs'Length,
-                                          Is_Packed (MD)));
+                                         Is_Packed (MD)));
       else
          if No (LLVM_Type (MD)) then
             Set_LLVM_Type (MD,

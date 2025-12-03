@@ -455,6 +455,14 @@ package body GNATLLVM.Records.Create is
          Table_Increment      => 5,
          Table_Name           => "Field_Padding_List");
 
+      package Field_Bitfield_List is new Table.Table
+        (Table_Component_Type => Boolean,
+         Table_Index_Type     => Int,
+         Table_Low_Bound      => 0,
+         Table_Initial        => 20,
+         Table_Increment      => 5,
+         Table_Name           => "Field_Bitfield_List");
+
       --  We maintain a stack for the depth of variants that we're in.
       --  For each, we indicate whether we're in a dynamic or static variant.
       --  By "static", we mean the case where we have a static subtype,
@@ -1044,12 +1052,14 @@ package body GNATLLVM.Records.Create is
                  Build_Struct_Type
                    (MD_Type_Array (MD_Type_List.Table (0 .. Last_Type)),
                     Name_Id_Array (Field_Name_List.Table (0 .. Last_Type)),
-                    Fields  => Field_Id_Array (Field_Entity_List.Table
-                                                 (0 .. Last_Type)),
-                    Padding => Boolean_Array (Field_Padding_List.Table
+                    Fields   => Field_Id_Array (Field_Entity_List.Table
+                                                  (0 .. Last_Type)),
+                    Padding  => Boolean_Array (Field_Padding_List.Table
+                                                  (0 .. Last_Type)),
+                    Bitfield => Boolean_Array (Field_Bitfield_List.Table
                                                 (0 .. Last_Type)),
-                    Packed => True,
-                    Name   => Get_Ext_Name (TE, "_I", Seq => Int_Name_Seq));
+                    Packed   => True,
+                    Name     => Get_Ext_Name (TE, "_I", Seq => Int_Name_Seq));
 
             begin
                Add_RI (MD          => MD,
@@ -1233,10 +1243,12 @@ package body GNATLLVM.Records.Create is
 
          begin
             if Count /= 0 then
-               MD_Type_List.Append (Use_MD);
-               Field_Name_List.Append (No_Name);
-               Field_Entity_List.Append (Empty);
-               Field_Padding_List.Append (True);
+               MD_Type_List.Append        (Use_MD);
+               Field_Name_List.Append     (No_Name);
+               Field_Entity_List.Append   (Empty);
+               Field_Padding_List.Append  (True);
+               Field_Bitfield_List.Append (False);
+
                Cur_RI_Pos  := Cur_RI_Pos + Count * ULL (Size);
                Left_To_Pad := Left_To_Pad - Count * ULL (Size);
             end if;
@@ -1688,10 +1700,12 @@ package body GNATLLVM.Records.Create is
             if Bitfield_Len in 8 | 16 | 32 | 64 then
                Bitfield_Is_Array       := False;
                Bitfield_Is_Large_Array := False;
-               MD_Type_List.Append (Int_Ty (Nat (Bitfield_Len)));
-               Field_Name_List.Append (No_Name);
-               Field_Entity_List.Append (Empty);
-               Field_Padding_List.Append (False);
+
+               MD_Type_List.Append        (Int_Ty (Nat (Bitfield_Len)));
+               Field_Name_List.Append     (No_Name);
+               Field_Entity_List.Append   (Empty);
+               Field_Padding_List.Append  (False);
+               Field_Bitfield_List.Append (True);
             else
                Bitfield_Is_Array := True;
                Bitfield_Is_Large_Array :=
@@ -1699,9 +1713,11 @@ package body GNATLLVM.Records.Create is
                MD_Type_List.Append (Array_Type
                                       (Byte_MD,
                                        Nat (To_Bytes (Bitfield_Len))));
-               Field_Name_List.Append (No_Name);
-               Field_Entity_List.Append (Empty);
-               Field_Padding_List.Append (False);
+
+               Field_Name_List.Append     (No_Name);
+               Field_Entity_List.Append   (Empty);
+               Field_Padding_List.Append  (False);
+               Field_Bitfield_List.Append (True);
             end if;
 
             Cur_RI_Pos := +Bitfield_End_Pos;
@@ -1740,10 +1756,12 @@ package body GNATLLVM.Records.Create is
          if Decls_Only and then Is_Tagged_Type (TE) and then No (Prev_Idx)
            and then Variant_Stack.Last = 0
          then
-            MD_Type_List.Append (Void_Ptr_MD);
-            Field_Name_List.Append (No_Name);
-            Field_Entity_List.Append (Empty);
-            Field_Padding_List.Append (False);
+            MD_Type_List.Append        (Void_Ptr_MD);
+            Field_Name_List.Append     (No_Name);
+            Field_Entity_List.Append   (Empty);
+            Field_Padding_List.Append  (False);
+            Field_Bitfield_List.Append (False);
+
             Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (Void_Ptr_MD);
          end if;
 
@@ -2012,8 +2030,11 @@ package body GNATLLVM.Records.Create is
                             then  Get_Ext_Name (F)
                             elsif Emit_C then Unique_Component_Name (F)
                             else  Chars (F)));
-                        Field_Entity_List.Append (F);
-                        Field_Padding_List.Append (False);
+
+                        Field_Entity_List.Append   (F);
+                        Field_Padding_List.Append  (False);
+                        Field_Bitfield_List.Append (False);
+
                         Cur_RI_Pos :=
                           Align_Pos (Cur_RI_Pos + Get_Type_Size (MD), BPU);
                         Add_FI (F, Cur_Idx, F_GT,
@@ -2089,10 +2110,12 @@ package body GNATLLVM.Records.Create is
          Struct_Set_Body
            (MD, MD_Type_Array (MD_Type_List.Table (0 .. MD_Type_List.Last)),
             Name_Id_Array (Field_Name_List.Table (0 .. MD_Type_List.Last)),
-            Fields  => Field_Id_Array (Field_Entity_List.Table
+            Fields   => Field_Id_Array (Field_Entity_List.Table
+                                          (0 .. MD_Type_List.Last)),
+            Padding  => Boolean_Array (Field_Padding_List.Table
                                          (0 .. MD_Type_List.Last)),
-            Padding => Boolean_Array (Field_Padding_List.Table
-                                        (0 .. MD_Type_List.Last)),
+            Bitfield => Boolean_Array (Field_Bitfield_List.Table
+                                         (0 .. MD_Type_List.Last)),
             Packed => True);
 
          Add_RI (MD          => MD,

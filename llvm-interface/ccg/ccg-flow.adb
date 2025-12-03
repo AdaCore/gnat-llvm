@@ -930,6 +930,13 @@ package body CCG.Flow is
                   Insert (Return_Map, Retval, Ret_Idx);
                end if;
 
+               --  Mark Retval as being used so it doesn't get forced to
+               --  a variable if it's added to pending values.
+
+               if Present (Retval) then
+                  Set_Is_Used (Retval);
+               end if;
+
                Set_Next (Idx, Ret_Idx);
                Process_Pending_Values;
             end;

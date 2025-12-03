@@ -178,8 +178,10 @@ package GNATLLVM.MDType is
      with Pre =>  Is_Struct (MD) and then Idx < Element_Count (MD);
    function Is_Padding (MD : MD_Type; Idx : Nat) return Boolean
      with Pre =>  Is_Struct (MD) and then Idx < Element_Count (MD);
-   --  Name, type, and whether field is padding, respectively, for
-   --  structs. Idx is 0-origin.
+   function Is_Bitfield (MD : MD_Type; Idx : Nat) return Boolean
+     with Pre =>  Is_Struct (MD) and then Idx < Element_Count (MD);
+   --  Name, type, entity and whether field is padding or a bitfield,
+   --  respectively, for structs. Idx is 0-origin.
 
    function Parameter_Name (MD : MD_Type; Idx : Nat) return Name_Id
      with Pre =>  Is_Function_Type (MD) and then Idx < Parameter_Count (MD);
@@ -281,6 +283,7 @@ package GNATLLVM.MDType is
       Field_Names : Name_Id_Array;
       Fields      : Field_Id_Array := (1 .. 0 => Empty);
       Padding     : Boolean_Array  := (1 .. 0 => False);
+      Bitfield    : Boolean_Array  := (1 .. 0 => False);
       Packed      : Boolean        := False;
       Name        : Name_Id        := No_Name) return MD_Type
      with Pre  => Field_Names'First = Types'First
@@ -305,18 +308,24 @@ package GNATLLVM.MDType is
                                         or else Is_Padding
                                                   (Build_Struct_Type'Result,
                                                      J - Padding'First) =
-                                        Padding (J)));
+                                        Padding (J))
+                              and then (Bitfield'Length = 0
+                                        or else Is_Bitfield
+                                                  (Build_Struct_Type'Result,
+                                                     J - Bitfield'First) =
+                                        Bitfield (J)));
 
    --  Create a Struct type with the specified field types and field names,
    --  also specifying if it's packed and it's name, if any.
 
    procedure Struct_Set_Body
-     (MD      : MD_Type;
-      Types   : MD_Type_Array;
-      Names   : Name_Id_Array;
-      Fields  : Field_Id_Array := (1 .. 0 => Empty);
-      Padding : Boolean_Array  := (1 .. 0 => False);
-      Packed  : Boolean        := False)
+     (MD       : MD_Type;
+      Types    : MD_Type_Array;
+      Names    : Name_Id_Array;
+      Fields   : Field_Id_Array := (1 .. 0 => Empty);
+      Padding  : Boolean_Array  := (1 .. 0 => False);
+      Bitfield : Boolean_Array  := (1 .. 0 => False);
+      Packed   : Boolean        := False)
      with Pre  => Is_Struct (MD) and then Has_Name (MD)
                   and then Names'First = Types'First
                   and then Names'Last = Types'Last
@@ -336,7 +345,11 @@ package GNATLLVM.MDType is
                               and then (Padding'Length = 0
                                         or else Is_Padding
                                                   (MD, J - Padding'First) =
-                                        Padding (J)));
+                                        Padding (J))
+                              and then (Bitfield'Length = 0
+                                        or else Is_Bitfield
+                                                  (MD, J - Bitfield'First) =
+                                        Bitfield (J)));
 
    --  Similar to Build_Struct_Type, but modify a type created with
    --  Struct_Create_Named.

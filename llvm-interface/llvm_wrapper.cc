@@ -1236,12 +1236,10 @@ Has_SEH (const char *Target)
 
 extern "C"
 bool
-Is_x86_Windows (const char *Target)
+Is_x86 (const char *Target)
 {
   Triple TargetTriple(Target);
-
-  return TargetTriple.isOSWindows ()
-         && (TargetTriple.getArch () == Triple::x86);
+  return TargetTriple.getArch () == Triple::x86;
 }
 
 extern "C"

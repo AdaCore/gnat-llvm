@@ -60,6 +60,8 @@ package body GNATLLVM.Codegen is
    Target_Triple_Set             : Boolean := False;
    PIC_PIE_Set                   : Boolean := False;
    Unroll_Loops_Set              : Boolean := False;
+   Loop_Vectorization_Set        : Boolean := False;
+   SLP_Vectorization_Set         : Boolean := False;
    --  True if the respective setting was modified
 
    Output_Assembly               : Boolean := False;
@@ -282,12 +284,16 @@ package body GNATLLVM.Codegen is
          Unroll_Loops_Set := True;
       elsif S = "-fno-vectorize" then
          Loop_Vectorization := False;
+         Loop_Vectorization_Set := True;
       elsif S = "-fvectorize" then
          Loop_Vectorization := True;
+         Loop_Vectorization_Set := True;
       elsif S = "-fno-slp-vectorize" then
          SLP_Vectorization := False;
+         SLP_Vectorization_Set := True;
       elsif S = "-fslp-vectorize" then
          SLP_Vectorization := True;
+         SLP_Vectorization_Set := True;
       elsif S = "-fno-inline" then
          No_Inlining := True;
       elsif S = "-fmerge-functions" then
@@ -441,6 +447,27 @@ package body GNATLLVM.Codegen is
 
       if not Unroll_Loops_Set and then Code_Opt_Level > 1 then
          Unroll_Loops := True;
+      end if;
+
+      --  Similarly, match Clang's defaults for vectorization in the
+      --  absence of explicit configuration.
+
+      if not Loop_Vectorization_Set then
+#if LLVM_Version_Major > 19 then
+         Loop_Vectorization :=
+           (Code_Opt_Level > 1 and then Size_Opt_Level < 2);
+#else
+         Loop_Vectorization := False;
+#end if;
+      end if;
+
+      if not SLP_Vectorization_Set then
+#if LLVM_Version_Major > 19 then
+         SLP_Vectorization :=
+           (Code_Opt_Level > 1 or else Size_Opt_Level > 1);
+#else
+         SLP_Vectorization := False;
+#end if;
       end if;
 
       --  If emitting C, change some other defaults

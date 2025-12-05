@@ -1457,6 +1457,7 @@ package body GNATLLVM.DebugInfo is
            (DI_Builder, Current_Debug_Scope, Name,
             Get_Debug_File_Node (Get_Source_File_Index (S)),
             Get_Physical_Line_Number (S),
+            Get_Column_Number (S),
             Create_Location (E), B);
       end if;
    end Add_Label_Debug_Info;

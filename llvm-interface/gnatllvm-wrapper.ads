@@ -118,7 +118,8 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C,
           External_Name => "Add_Ret_Noalias_Attribute";
 
-   procedure Add_Nocapture_Attribute (Func : Value_T; Idx : unsigned)
+   procedure Add_Nocapture_Attribute
+     (Context : Context_T; Func : Value_T; Idx : unsigned)
      with Import, Convention => C, External_Name => "Add_Nocapture_Attribute";
 
    procedure Add_Non_Null_Attribute (Func : Value_T; Idx : unsigned)
@@ -504,6 +505,7 @@ package GNATLLVM.Wrapper is
       Name            : String;
       File            : Metadata_T;
       Line_No         : Physical_Line_Number;
+      Column_No       : Column_Number;
       Debug_Loc       : Metadata_T;
       Block           : Basic_Block_T);
 

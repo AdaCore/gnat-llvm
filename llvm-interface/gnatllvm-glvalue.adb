@@ -1880,7 +1880,7 @@ package body GNATLLVM.GLValue is
 
    procedure Add_Nocapture_Attribute (V : GL_Value; Idx : Integer) is
    begin
-      Add_Nocapture_Attribute (+V, unsigned (Idx));
+      Add_Nocapture_Attribute (Get_Global_Context, +V, unsigned (Idx));
    end Add_Nocapture_Attribute;
 
    ----------------------------

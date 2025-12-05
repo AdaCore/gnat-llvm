@@ -28,6 +28,8 @@ package CCG.Helper is
    subtype Double   is Interfaces.C.double;
    subtype unsigned is Interfaces.C.unsigned;
 
+   use type Interfaces.C.unsigned;
+
    --  This package contains helper subprograms of the same name as LLVM
    --  API subprograms, but with different parameter or return types or
    --  other minor changes.

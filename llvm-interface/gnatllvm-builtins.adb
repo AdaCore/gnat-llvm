@@ -540,6 +540,17 @@ package body GNATLLVM.Builtins is
          when Atomic_RMW_Bin_Op_U_Dec_Wrap =>
             return Build_Dec_Wrap (Result, Val);
 #end if;
+
+#if LLVM_Version_Major > 19 then
+         when Atomic_RMW_Bin_Op_U_Sub_Cond
+            | Atomic_RMW_Bin_Op_U_Sub_Sat
+            | Atomic_RMW_Bin_Op_F_Maximum
+            | Atomic_RMW_Bin_Op_F_Minimum
+            =>
+            --  ??? We never emit these operations, so for now let's not
+            --  bother implementing them.
+            return No_GL_Value;
+#end if;
       end case;
    end Emit_Fetch_And_Op;
 

@@ -634,9 +634,10 @@ package GNATLLVM.Instructions is
    function "*" (LHS, RHS : GL_Value)   return GL_Value is
      (Mul (LHS, RHS));
    function "/" (LHS, RHS : GL_Value)   return GL_Value is
-     (U_Div (LHS, RHS));
+     (Div (LHS, RHS, Is_Signed (Type_Of (LHS))));
    function "mod" (LHS, RHS : GL_Value) return GL_Value is
-     (U_Rem (LHS, RHS));
+     ((if   Is_Signed (Type_Of (LHS)) then S_Rem (LHS, RHS)
+       else U_Rem (LHS, RHS)));
 
    function "+" (LHS : Uint; RHS : GL_Value) return Uint is
      (LHS + UI_From_GL_Value (RHS))

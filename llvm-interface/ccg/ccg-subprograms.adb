@@ -848,9 +848,9 @@ package body CCG.Subprograms is
       Output_Copy (+V & ".ccg_field_0",
                    "(" & Int_Type_String (Pos (Bits), False) & ") " & Subp &
                    " ((long long) " & Op1 & ", (long long) " & Op2 & ")",
-                   Int_Ty (Bits),
+                   Int_Ty (Bits), Int_Ty (Bits),
                    V => V);
-      Output_Copy (+V & ".ccg_field_1", +"0", Bit_MD, V => V);
+      Output_Copy (+V & ".ccg_field_1", +"0", Bit_MD, Bit_MD, V => V);
       return True;
    end Op_With_Overflow;
 

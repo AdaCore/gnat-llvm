@@ -60,16 +60,21 @@ package CCG.Instructions is
    --  reference V. If nothing is special, this is just +V + P.
 
    procedure Output_Copy
-     (LHS, RHS : Str; MD : MD_Type; V : Value_T := No_Value_T)
-     with Pre => Present (LHS) and then Present (RHS) and then Present (MD);
-   procedure Output_Copy (LHS : Str; RHS : Value_T; MD : MD_Type)
-     with Pre => Present (LHS) and then Present (RHS) and then Present (MD);
-   procedure Output_Copy (LHS, RHS : Value_T; MD : MD_Type)
-     with Pre => Present (LHS) and then Present (RHS) and then Present (MD);
-   procedure Output_Copy (LHS : Value_T; RHS : Str; MD : MD_Type)
-     with Pre => Present (LHS) and then Present (RHS) and then Present (MD);
-   --  Write a statement to copy RHS, of type MD, to LHS. If V is Present,
-   --  it represents something that may give line/file information.
+     (LHS, RHS : Str; L_MD, R_MD : MD_Type; V : Value_T := No_Value_T)
+     with Pre => Present (LHS) and then Present (RHS) and then Present (L_MD)
+                 and then Present (R_MD);
+   procedure Output_Copy (LHS : Str; RHS : Value_T; L_MD, R_MD : MD_Type)
+     with Pre => Present (LHS) and then Present (RHS) and then Present (L_MD)
+                 and then Present (R_MD);
+   procedure Output_Copy (LHS, RHS : Value_T; L_MD, R_MD : MD_Type)
+     with Pre => Present (LHS) and then Present (RHS) and then Present (L_MD)
+                 and then Present (R_MD);
+   procedure Output_Copy (LHS : Value_T; RHS : Str; L_MD, R_MD : MD_Type)
+     with Pre => Present (LHS) and then Present (RHS) and then Present (L_MD)
+                 and then Present (R_MD);
+   --  Write a statement to copy RHS, of type R_MD, to LHS, of type
+   --  L_MD. If V is Present, it represents something that may give
+   --  line/file information.
 
    type Process_Pending_Kind is (Every, Calls, Calls_Or_Loads);
 

@@ -485,7 +485,7 @@ package body CCG.Aggregates is
       if Is_Undef (Aggr) then
          null;
       else
-         Output_Copy (V, +Aggr, MD);
+         Output_Copy (V, +Aggr, MD, Actual_Type (Aggr));
       end if;
 
       --  Next we generate the string that represents the access of this
@@ -502,7 +502,7 @@ package body CCG.Aggregates is
 
       pragma Assert ((Is_Pointer (MD) and then Is_Pointer_Type (Type_Of (Op)))
                      or else Is_Layout_Identical (+MD, Type_Of (Op)));
-      Output_Copy (Acc, Maybe_Cast (MD, Op) + Assign, MD, V);
+      Output_Copy (Acc, Maybe_Cast (MD, Op) + Assign, MD, MD, V);
    end Insert_Value_Instruction;
 
    ---------------------

@@ -558,7 +558,8 @@ package body CCG.Instructions is
    begin
       Error_If_Cannot_Pack (Actual_Type (Op1));
       Process_Pending_Values;
-      Output_Copy (LHS, RHS, Declaration_Type (Op1), V => V);
+      Output_Copy (LHS, RHS, Declaration_Type (Op1), Declaration_Type (Op1),
+                   V => V);
    end Store_Instruction;
 
    ------------------------
@@ -889,27 +890,27 @@ package body CCG.Instructions is
    -- Output_Copy --
    -----------------
 
-   procedure Output_Copy (LHS : Value_T; RHS : Str; MD : MD_Type) is
+   procedure Output_Copy (LHS : Value_T; RHS : Str; L_MD, R_MD : MD_Type) is
    begin
-      Output_Copy (+LHS, RHS, MD, V => LHS);
+      Output_Copy (+LHS, RHS, L_MD, R_MD, V => LHS);
    end Output_Copy;
 
    -----------------
    -- Output_Copy --
    -----------------
 
-   procedure Output_Copy (LHS : Str; RHS : Value_T; MD : MD_Type) is
+   procedure Output_Copy (LHS : Str; RHS : Value_T; L_MD, R_MD : MD_Type) is
    begin
-      Output_Copy (LHS, +RHS, MD, V => RHS);
+      Output_Copy (LHS, +RHS, L_MD, R_MD, V => RHS);
    end Output_Copy;
 
    -----------------
    -- Output_Copy --
    -----------------
 
-   procedure Output_Copy (LHS, RHS : Value_T; MD : MD_Type) is
+   procedure Output_Copy (LHS, RHS : Value_T; L_MD, R_MD : MD_Type) is
    begin
-      Output_Copy (+LHS, +RHS, MD, V => LHS);
+      Output_Copy (+LHS, +RHS, L_MD, R_MD, V => LHS);
    end Output_Copy;
 
    -----------------
@@ -917,7 +918,7 @@ package body CCG.Instructions is
    -----------------
 
    procedure Output_Copy
-     (LHS, RHS : Str; MD : MD_Type; V : Value_T := No_Value_T)
+     (LHS, RHS : Str; L_MD, R_MD : MD_Type; V : Value_T := No_Value_T)
    is
    begin
       --  If this isn't an array type, write a normal assignment. Otherwise,
@@ -925,8 +926,12 @@ package body CCG.Instructions is
       --  ??? We can usually use memcpy, but it's not clear what test to
       --  do here at the moment.
 
-      if not Is_Array (MD) then
-         Add_Line (LHS & " = " & RHS + Assign, V);
+      if not Is_Array (L_MD) then
+         if Is_Same_C_Types (L_MD, R_MD) then
+            Add_Line (LHS & " = " & RHS + Assign, V);
+         else
+            Add_Line (LHS & " = (" & L_MD & ") " & RHS + Assign, V);
+         end if;
 
       --  If T is a zero-sized array, it means that we're not to move
       --  anything, but we make a one-element array for zero-length arrays,
@@ -935,10 +940,10 @@ package body CCG.Instructions is
       --  to explicitly take the address here and, in fact, doing that
       --  is wrong in some cases.
 
-      elsif Array_Count (MD) /= 0 then
+      elsif Array_Count (L_MD) /= 0 then
          Add_Line ("memmove ((void *) " & (LHS + Unary) &
                      ", (void *) " & (RHS + Unary) &
-                     ", sizeof (" & MD & "))", V);
+                     ", sizeof (" & L_MD & "))", V);
       end if;
    end Output_Copy;
 
@@ -969,7 +974,7 @@ package body CCG.Instructions is
          --  Declare the variable and write the copy into it
 
          Maybe_Decl  (V);
-         Output_Copy  (V, C_Val, Declaration_Type (V));
+         Output_Copy  (V, C_Val, Declaration_Type (V), Actual_Type (V));
       end if;
    end Force_To_Variable;
 
@@ -980,6 +985,9 @@ package body CCG.Instructions is
    procedure Assignment
      (LHS : Value_T; RHS : Str; Is_Opencode_Builtin : Boolean := False)
    is
+      D_MD : constant MD_Type := Declaration_Type (LHS);
+      A_MD : constant MD_Type := Actual_Type (LHS);
+
    begin
       --  If LHS has no uses, see if it has side-effects. If so, force it
       --  out so that we evaluate the side-effects. If not, do nothing.
@@ -987,7 +995,7 @@ package body CCG.Instructions is
       if Num_Uses (LHS) = 0 then
          if Has_Side_Effects (LHS) then
             Maybe_Decl (LHS);
-            Output_Copy (LHS, RHS, Declaration_Type (LHS));
+            Output_Copy (LHS, RHS, D_MD, A_MD);
          else
             return;
          end if;
@@ -1015,10 +1023,10 @@ package body CCG.Instructions is
             or else Is_Variable (LHS) or else Get_Is_Decl_Output (LHS)
             or else (Is_A_Call_Inst (LHS) and then Is_Aggregate_Type (LHS)))
         and then not Is_A_Constant_Expr (LHS)
-        and then not (Get_Is_LHS (LHS) and then Is_Array_Type (LHS))
+        and then not (Get_Is_LHS (LHS) and then Is_Array (D_MD))
       then
          Maybe_Decl (LHS);
-         Output_Copy (LHS, RHS, Declaration_Type (LHS));
+         Output_Copy (LHS, RHS, D_MD, A_MD);
       else
          --  Make a note of the value of V. If V is an instruction, that
          --  has a potential side effect-such as call or load, make a

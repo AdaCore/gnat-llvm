@@ -901,7 +901,8 @@ package body CCG.Flow is
                                     (Designated_Type
                                        (Declaration_Type (Curr_Func))) &
                                   "_R " & T, V => T);
-                     Output_Copy (T & ".F", Retval, Declaration_Type (Retval));
+                     Output_Copy (T & ".F", Retval, Declaration_Type (Retval),
+                                  Actual_Type (Retval));
                      Retval := T;
                   end if;
                end if;

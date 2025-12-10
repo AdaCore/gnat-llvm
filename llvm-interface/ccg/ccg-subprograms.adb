@@ -755,10 +755,27 @@ package body CCG.Subprograms is
             Param : Str;
 
          begin
-            --  If we need a cast and it's a struct type, we need to force
-            --  Op into a variable.
+            --  If we don't already need a cast and this parameter is of
+            --  pointer type or array type, we may need to cast it to the
+            --  formal type, especially if it's a pointer to a
+            --  function. But don't do this if the actual type is better.
+            --  we overw
 
-            if Present (Cast_MD (J)) and then Is_Struct (A_MD) then
+            if No (Cast_MD (J))
+              and then (Is_Pointer (A_MD) or else Is_Array (A_MD))
+              and then A_MD /= F_MD
+              and then not (Is_Same_C_Types (A_MD, F_MD, Match_Void => True)
+                            and then Is_Better_Type (F_MD, A_MD))
+            then
+               Cast_MD (J) := F_MD;
+            end if;
+
+            --  If we need a cast and it's a struct or array type, we need
+            --  to force Op into a variable.
+
+            if Present (Cast_MD (J))
+              and then (Is_Struct (A_MD) or else Is_Array (A_MD))
+            then
                Force_To_Variable (Op);
             end if;
 
@@ -771,28 +788,18 @@ package body CCG.Subprograms is
                Param := Process_Operand (Op, X, Comma) + Comma;
             end if;
 
-            --  If we need a cast for this operand (because LLVM merged
-            --  two functions), generate it. But if we're casting to
-            --  a struct type, do it by pointer putting.
+            --  If we need a cast for this operand for any reason, generate
+            --   it. But if we're casting to a struct type, do it by
+            --   pointer putting.
 
             if Present (Cast_MD (J)) then
-               if Is_Struct (A_MD) then
+               if Is_Struct (A_MD) or else Is_Array (A_MD) then
                   Param :=
                     Deref ("(" & Cast_MD (J) & "*) (" &
                            Addr_Of (Param))  & ")";
                else
                   Param := "(" & Cast_MD (J) & ") (" & Param  & ")";
                end if;
-
-            --  Otherwise, if this parameter is of pointer type, we may need
-            --  to cast it to the formal type, especially if it's a pointer
-            --  to a function. But don't do this if the actual type is better.
-
-            elsif Is_Pointer (A_MD) and then A_MD /= F_MD
-              and then not (Is_Same_C_Types (A_MD, F_MD, Match_Void => True)
-                              and then Is_Better_Type (F_MD, A_MD))
-            then
-               Param := "(" & F_MD & ") (" & Param & ")";
             end if;
 
             if not First then

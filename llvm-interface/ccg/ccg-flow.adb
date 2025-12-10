@@ -1602,18 +1602,23 @@ package body CCG.Flow is
          elsif Is_Return (Idx) then
             if Present (Return_Value (Idx)) then
                declare
-                  Retval  : constant Value_T := Return_Value (Idx);
-                  Val_MD  : constant MD_Type := Actual_Type (Retval);
-                  Fn_R_MD : constant MD_Type :=
+                  Retval   : constant Value_T := Return_Value (Idx);
+                  Val_MD   : constant MD_Type := Actual_Type (Retval);
+                  Fn_R_MD  : constant MD_Type :=
                     Return_Type (Designated_Type
                                    (Declaration_Type (Curr_Func)));
-                  Cast    : constant Str    :=
+                  Cast     : constant Str    :=
                     (if   not Is_Same_C_Types (Val_MD, Fn_R_MD)
                           and then Is_Pointer (Fn_R_MD)
-                     then "(" & Fn_R_MD & ")" else +"");
+                     then "(" & Fn_R_MD & ") (" else +"");
+                  End_Cast : constant Str    :=
+                    (if   not Is_Same_C_Types (Val_MD, Fn_R_MD)
+                          and then Is_Pointer (Fn_R_MD)
+                     then +")" else +"");
 
                begin
-                  Output_Stmt ("return " & Cast & Return_Value (Idx), V => V);
+                  Output_Stmt ("return " & Cast &
+                               Return_Value (Idx) & End_Cast, V => V);
                end;
             elsif not Does_Not_Return (Curr_Func) then
                Output_Stmt ("return", V => V);

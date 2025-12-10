@@ -540,8 +540,8 @@ package body CCG.Aggregates is
       if Type_T'(+Aggr_MD) /= +Want_MD
         or else Is_A_Constant_Pointer_Null (Aggr) or else Is_Undef (Aggr)
       then
-         Result  := "(" & Want_MD & " *) " &
-                    (if Is_LHS then Addr_Of (Aggr + LHS) else +Aggr) + Unary;
+         Result  := "(" & Want_MD & " *) (" &
+           (if Is_LHS then Addr_Of (Aggr + LHS) else +Aggr) & ")" + Unary;
          Aggr_MD := Want_MD;
          Is_LHS  := False;
       else
@@ -619,7 +619,7 @@ package body CCG.Aggregates is
 
                         if not Is_Zero_Length_Array (Prev_MD) then
                            Result :=
-                             "(" & Generic_Ptr & ")" & Addr_Of (Ref) &
+                             "(" & Generic_Ptr & ") (" & Addr_Of (Ref) & ")" &
                              " + sizeof (" & Ref & ")";
                            Found  := True;
                            exit;
@@ -631,8 +631,8 @@ package body CCG.Aggregates is
                   --  of the object.
 
                   if not Found then
-                     Result := "(" & Generic_Ptr & ")" &
-                       (if Is_LHS then Addr_Of (Result) else Result);
+                     Result := "(" & Generic_Ptr & ") (" &
+                       (if Is_LHS then Addr_Of (Result) else Result) & ")";
                   end if;
 
                   --  Now cast to the desired type

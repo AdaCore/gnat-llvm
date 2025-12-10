@@ -789,8 +789,8 @@ package body CCG.Instructions is
       return ("(" & (V + (if   Is_Unsigned_Pointer (V)
                           then +Only_Type or Value_Flags'(+Need_Unsigned)
                           else +Only_Type)) &
-                (if Is_Volatile (V) then " volatile) " else ") ") & Our_Op) +
-        Unary;
+                (if Is_Volatile (V) then " volatile) " else ") (") &
+                Our_Op) & ")" + Unary;
 
    end Cast_Instruction;
 
@@ -851,7 +851,7 @@ package body CCG.Instructions is
             if Is_Pointer (LHS_MD)
               and then not Is_Same_C_Types (LHS_MD, RHS_MD)
             then
-               LHS := "(" & RHS_MD & ") " & LHS;
+               LHS := "(" & RHS_MD & ") (" & LHS & ")";
             end if;
 
             return (LHS & " " & Info.Op (1 .. Info.Length) & " " & RHS) +
@@ -956,7 +956,7 @@ package body CCG.Instructions is
          if Is_Same_C_Types (L_MD, R_MD) then
             Add_Line (LHS & " = " & RHS + Assign, V);
          else
-            Add_Line (LHS & " = (" & L_MD & ") " & RHS + Assign, V);
+            Add_Line (LHS & " = (" & L_MD & ") (" & RHS & ")" + Assign, V);
          end if;
 
       --  If T is a zero-sized array, it means that we're not to move

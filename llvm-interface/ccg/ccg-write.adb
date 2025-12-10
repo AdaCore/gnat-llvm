@@ -746,7 +746,7 @@ package body CCG.Write is
       --  its address. However, in C the name of an array is its address,
       --  so we can omit it in that case.
 
-      if not Flags.LHS and then Get_Is_LHS (V) then
+      If not Flags.LHS and then Get_Is_LHS (V) then
 
          --  If this is a constant, we need to convert the address into a
          --  non-constant pointer type. Likewise if it's declared as unsigned,

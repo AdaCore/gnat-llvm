@@ -778,9 +778,10 @@ package body CCG.Subprograms is
             if Present (Cast_MD (J)) then
                if Is_Struct (A_MD) then
                   Param :=
-                    Deref ("(" & Cast_MD (J) & "*) " & Addr_Of (Param));
+                    Deref ("(" & Cast_MD (J) & "*) (" &
+                           Addr_Of (Param))  & ")";
                else
-                  Param := "(" & Cast_MD (J) & ") " & Param;
+                  Param := "(" & Cast_MD (J) & ") (" & Param  & ")";
                end if;
 
             --  Otherwise, if this parameter is of pointer type, we may need

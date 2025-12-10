@@ -276,7 +276,7 @@ package body CCG.Codegen is
 
       procedure Mark_Structs_Used (V : Value_T) is
       begin
-         Mark_Struct_Fields (Declaration_Type (V));
+         Mark_Struct_Fields (Declaration_Type (V, No_Scan => True));
       end Mark_Structs_Used;
 
       ---------------------

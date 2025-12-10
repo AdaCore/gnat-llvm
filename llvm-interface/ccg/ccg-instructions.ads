@@ -45,7 +45,9 @@ package CCG.Instructions is
    --  An operand to Process_Operand that says whether we care which
    --  signedless the operand is and, if so, which one.
 
-   function LS_Op_MD (V, Op : Value_T) return MD_Type
+   function LS_Op_MD
+     (V, Op   : Value_T;
+      Data_Op : Value_T := No_Value_T) return MD_Type
      with Pre  => (Is_A_Load_Inst (V) or else Is_A_Store_Inst (V))
                   and then Present (V),
           Post => Present (LS_Op_MD'Result);

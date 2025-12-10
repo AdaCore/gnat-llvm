@@ -375,8 +375,14 @@ package CCG.Utils is
      (S (S'First + 5 .. S'Last))
      with Pre => Has_Suppress_Decl_Prefix (S);
 
+   function Find_Type_From_Use (V : Value_T) return MD_Type
+     with Pre => Present (V);
+   --  See if we can deduce the type of V from how its uses in instructions
+
    function Declaration_Type
-     (V : Value_T; No_Force : Boolean := False) return MD_Type
+     (V        : Value_T;
+      No_Force : Boolean := False;
+      No_Scan  : Boolean := False) return MD_Type
      with Pre  => Present (V),
           Post => No_Force or else Present (Declaration_Type'Result);
    --  Return the MD type that we'd use to declare V, if such a declaration
@@ -385,7 +391,9 @@ package CCG.Utils is
    --  it from the operands of V, if it's an instruction. If none of that
    --  works and No_Force is False, we build an MD type from the LLVM
    --  type of T. This will be an approximate, but is the best we can do
-   --  in that situation.
+   --  in that situation. If No_Scan is true, we don't try to scan
+   --  instructions for more information (because we haven't done needed
+   --  transformtions yet).
    --
    --  This type can be derived by heuristics and need not be "correct".
    --  If the type chosen here isn't the best type for the variable to be

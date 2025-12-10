@@ -70,12 +70,15 @@ package body CCG.Instructions is
      with Pre  => Is_A_Alloca_Inst (V) and then Present (Op);
    --  Return the value corresponding to a cast instruction
 
-   function Deref_For_Load_Store (Op, V : Value_T) return Str
+   function Deref_For_Load_Store
+     (Op, V   : Value_T;
+      Data_Op : Value_T := No_Value_T) return Str
      with Pre  => (Is_A_Load_Inst (V) or else Is_A_Store_Inst (V))
                   and then Present (V),
           Post => Present (Deref_For_Load_Store'Result);
    --  Generate a dereference of Op in V, a load or store instruction,
-   --  including a cast to a volatile pointer if necessary
+   --  including a cast to a volatile pointer if necessary. If Present,
+   --  Data_Op is the data for a store instruction.
 
    procedure Load_Instruction (V, Op : Value_T)
      with Pre  => Is_A_Load_Inst (V) and then Present (Op);
@@ -463,23 +466,29 @@ package body CCG.Instructions is
    -- LS_Op_MD --
    --------------
 
-   function LS_Op_MD (V, Op : Value_T) return MD_Type is
+   function LS_Op_MD
+     (V, Op   : Value_T;
+      Data_Op : Value_T := No_Value_T) return MD_Type
+   is
       LS_T          : constant Type_T  := Get_Load_Store_Type (V);
       Inst_MD       : constant MD_Type := From_Type (LS_T);
       Ptr_MD        : constant MD_Type := Actual_Type (Op, As_LHS => True);
       Val_MD        : constant MD_Type := Designated_Type (Ptr_MD);
+      Best_Val_MD   : constant MD_Type :=
+        (if   Present (Data_Op) then Best_Type (Actual_Type (Data_Op), Val_MD)
+         else Val_MD);
 
+   begin
       --  If we're loading or storing using the same type and volatility as
       --  the instruction, we can use the operand's type unless what we
       --  have is a pointer to void. Otherwise, we need to cast to a
       --  pointer to the type and volatility designated by the instruction.
 
-   begin
-      return (if   Is_Same_C_Types (Val_MD, Inst_MD, True)
-                   and then Get_Volatile (V) = Is_Volatile (Val_MD)
+      return (if   Is_Same_C_Types (Best_Val_MD, Inst_MD, True)
+                   and then Get_Volatile (V) = Is_Volatile (Best_Val_MD)
                    and then not Is_A_Constant_Pointer_Null (Op)
                    and then Ptr_MD /= Void_Ptr_MD
-              then Val_MD else Make_Volatile (Inst_MD, Get_Volatile (V)));
+              then Best_Val_MD else Make_Volatile (Inst_MD, Get_Volatile (V)));
 
    end LS_Op_MD;
 
@@ -487,7 +496,10 @@ package body CCG.Instructions is
    -- Deref_For_Load_Store --
    --------------------------
 
-   function Deref_For_Load_Store (Op, V : Value_T) return Str is
+   function Deref_For_Load_Store
+     (Op, V   : Value_T;
+      Data_Op : Value_T := No_Value_T) return Str
+   is
       LS_T : constant Type_T  := Get_Load_Store_Type (V);
 
    begin
@@ -531,7 +543,9 @@ package body CCG.Instructions is
       --  Possibly cast Op to the pointer type to the type in which we'll
       --  be performing the instruction.
 
-      return Deref (Maybe_Cast (Pointer_Type (LS_Op_MD (V, Op)), Op, True));
+      return Deref (Maybe_Cast (Pointer_Type
+                                  (LS_Op_MD (V, Op, Data_Op => Data_Op)),
+                                Op, True));
 
    end Deref_For_Load_Store;
 
@@ -552,8 +566,9 @@ package body CCG.Instructions is
    -----------------------
 
    procedure Store_Instruction (V, Op1, Op2 : Value_T) is
-      LHS : constant Str := Deref_For_Load_Store (Op2, V);
-      RHS : constant Str := Maybe_Cast (LS_Op_MD (V, Op2), Op1);
+      LHS : constant Str := Deref_For_Load_Store (Op2, V, Data_Op => Op1);
+      RHS : constant Str :=
+        Maybe_Cast (LS_Op_MD (V, Op2, Data_Op => Op1), Op1);
 
    begin
       Error_If_Cannot_Pack (Actual_Type (Op1));
@@ -822,14 +837,25 @@ package body CCG.Instructions is
             POO         : constant Process_Operand_Option :=
               (if    X_Signed then X
                elsif Do_Unsigned then POO_Unsigned else POO_Signed);
-            LHS         : constant Str                    :=
+            LHS         : Str                             :=
                Process_Operand (Op1, POO, Relation);
             RHS         : constant Str                    :=
                Process_Operand (Op2, POO, Relation);
+            LHS_MD      : constant MD_Type                := Actual_Type (Op1);
+            RHS_MD      : constant MD_Type                := Actual_Type (Op2);
 
          begin
+            --  If Op1 and Op2 are pointers but to different types,
+            --  add a cast.
+
+            if Is_Pointer (LHS_MD)
+              and then not Is_Same_C_Types (LHS_MD, RHS_MD)
+            then
+               LHS := "(" & RHS_MD & ") " & LHS;
+            end if;
+
             return (LHS & " " & Info.Op (1 .. Info.Length) & " " & RHS) +
-                    Relation;
+              Relation;
          end;
 
       --  If not integer comparison, it must be FP
@@ -843,11 +869,11 @@ package body CCG.Instructions is
             when Real_OEQ | Real_UEQ =>
                return TP ("#1 == #2", Op1, Op2) + Relation;
             when Real_OGT | Real_UGT =>
-               return TP ("#1 > #2", Op1, Op2) + Relation;
+               return TP ("#1 > #2",  Op1, Op2) + Relation;
             when Real_OGE | Real_UGE =>
                return TP ("#1 >= #2", Op1, Op2) + Relation;
             when Real_OLT | Real_ULT =>
-               return TP ("#1 < #2", Op1, Op2) + Relation;
+               return TP ("#1 < #2",  Op1, Op2) + Relation;
             when Real_OLE | Real_ULE =>
                return TP ("#1 <= #2", Op1, Op2) + Relation;
             when Real_ONE | Real_UNE =>

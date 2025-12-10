@@ -132,6 +132,11 @@ package body CCG.Subprograms is
    --  type in the case where it's an array. If V is Present, it's a value
    --  representing the function so we can get the signedness of the type.
 
+   function Best_Function_Type (V, Func : Value_T) return MD_Type
+     with Pre  => Is_A_Call_Inst (V) and then Present (Func),
+          Post => Present (Best_Function_Type'Result);
+   --  Determine the best type to use for Func in V, a call to it
+
    function Matches
      (S, Name : String; Exact : Boolean := False) return Boolean
    is
@@ -482,6 +487,8 @@ package body CCG.Subprograms is
       --  for an extern definition, include the parameter names.
       --  Special-case calloc since we can't tell that the integral type
       --  is really size_t and that our result is really void *.
+      --  It's possible that the optimizer changed the value used for the
+      --  parameter, so be sure that the type is set properly.
 
       if Num_Params = 0 then
          Result := Result & (if   Maybe_Add_Nest then "void *_n" else "void");
@@ -489,13 +496,20 @@ package body CCG.Subprograms is
          Result := +"void *calloc (size_t, size_t";
       else
          for J in 0 .. Num_Params - 1 loop
-            Result := Result & (if J = 0 then "" else ", ") &
-              Parameter_Type (Fn_MD, J);
+            declare
+               Param    : constant Value_T := Get_Param (V, J);
+               Param_MD : constant MD_Type := Parameter_Type (Fn_MD, J);
 
-            if Definition then
-               Result := Result & " " & Get_Param (V, J);
-               Set_Is_Decl_Output (Get_Param (V, J));
-            end if;
+            begin
+               Result := Result & (if J = 0 then "" else ", ") &
+                 Parameter_Type (Fn_MD, J);
+
+               if Definition then
+                  Result := Result & " " & Param;
+                  Set_MD_Type (Param, Param_MD);
+                  Set_Is_Decl_Output (Param);
+               end if;
+            end;
          end loop;
 
          --  If we've determined that we need to add a nest parameter to this
@@ -593,6 +607,45 @@ package body CCG.Subprograms is
 
    end Output_Subprogram;
 
+   ------------------------
+   -- Best_Function_Type --
+   ------------------------
+
+   function Best_Function_Type (V, Func : Value_T) return MD_Type is
+      function Best_Return (MD, Ret_MD : MD_Type) return MD_Type
+         with Pre  => Present (MD) and then Present (Ret_MD),
+              Post => Present (Best_Return'Result);
+      --  If Ret_MD is better than the return type of MD, make a new
+      --  function type with that return.
+
+      -----------------
+      -- Best_Return --
+      -----------------
+
+      function Best_Return (MD, Ret_MD : MD_Type) return MD_Type is
+        ((if   Is_Function_Type (MD)
+               and then Is_Better_Type (Return_Type (MD), Ret_MD)
+          then Update_Fn_Ty (MD, Ret_MD) else MD));
+
+      Ret_MD   : constant MD_Type := Declaration_Type (V);
+      Fn_T     : constant Type_T  := Get_Called_Function_Type (V);
+      Fn_T_MD  : constant MD_Type :=
+        Best_Return (Declaration_Type (Fn_T), Ret_MD);
+      Fn_MD    : constant MD_Type :=
+        Best_Return (Designated_Type (Declaration_Type (Func)), Ret_MD);
+      Best_MD  : constant MD_Type := Best_Type (Fn_T_MD, Fn_MD);
+      B_Ret_MD : constant MD_Type := Return_Type (Best_MD);
+
+   begin
+      --  If the return type of the function (the type of the call) is a
+      --  better type than the return type of our "best" type, make a
+      --  new function type with that return type. Otherwise, use the
+      --  function type we computed above.
+
+      return (if   Is_Better_Type (B_Ret_MD, Ret_MD)
+              then Update_Fn_Ty (Best_MD, Ret_MD) else Best_MD);
+   end Best_Function_Type;
+
    ----------------------
    -- Call_Instruction --
    ----------------------
@@ -605,9 +658,7 @@ package body CCG.Subprograms is
       Num_Params  : constant Nat              := Ops'Length - 1;
       Func        : Value_T                   := Ops (Ops'Last);
       S           : constant String           := Get_Value_Name (Func);
-      Fn_MD       : constant MD_Type          :=
-        Best_Type (Declaration_Type (Get_Called_Function_Type (V)),
-                   Designated_Type (Declaration_Type (Func)));
+      Fn_MD       : constant MD_Type          := Best_Function_Type (V, Func);
       First       : Boolean                   := True;
       Cast_MD     : MD_Type_Array (Ops'Range) := (others => No_MD_Type);
       Call        : Str;

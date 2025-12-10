@@ -983,6 +983,18 @@ package body GNATLLVM.MDType is
       return MD_Find (Info);
    end Fn_Ty;
 
+   ------------------
+   -- Update_Fn_Ty --
+   ------------------
+
+   function Update_Fn_Ty (MD, Return_MD : MD_Type) return MD_Type is
+      Info : MD_Type_Info := MD_Types.Table (MD);
+
+   begin
+      Info.Related_Type := Return_MD;
+      return MD_Find (Info);
+   end Update_Fn_Ty;
+
    -------------------
    -- Set_Type_Name --
    -------------------

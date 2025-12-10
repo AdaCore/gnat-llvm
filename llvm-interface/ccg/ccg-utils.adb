@@ -648,6 +648,149 @@ package body CCG.Utils is
       end return;
    end Num_Uses;
 
+   ------------------------
+   -- Find_Type_From_Use --
+   ------------------------
+
+   function Find_Type_From_Use (V : Value_T) return MD_Type is
+      V_Use : Use_T   := Get_First_Use (V);
+      MD    : MD_Type;
+
+   begin
+      --  Loop through all uses and look at each instruction to see if it's
+      --  of a form where multiple operands must be the same type.
+
+      while Present (V_Use) loop
+         declare
+            Inst  : constant Value_T := Get_User (V_Use);
+            N_Ops : constant Nat     := Get_Num_Operands (Inst);
+            Op1   : constant Value_T  :=
+              (if N_Ops >= 1 then Get_Operand0 (Inst) else No_Value_T);
+            Op2   : constant Value_T  :=
+              (if N_Ops >= 2 then Get_Operand1 (Inst) else No_Value_T);
+            Op3   : constant Value_T  :=
+              (if N_Ops >= 3 then Get_Operand2 (Inst) else No_Value_T);
+
+         begin
+            if Acts_As_Instruction (Inst) then
+
+               case Get_Opcode (Inst) is
+
+                  --  For binary operations, see if we know the type of the
+                  --  result.  Then check the type of the other operand.
+
+                  when Op_Add  | Op_F_Add | Op_F_Sub | Op_Mul   | Op_F_Mul
+                 | Op_F_Div | Op_F_Rem | Op_And   | Op_Or    | Op_Xor
+                 | Op_U_Div | Op_U_Rem | Op_L_Shr | Op_S_Div | Op_S_Rem
+                 | Op_A_Shr =>
+
+                     MD := Declaration_Type (Inst, No_Force => True);
+                     if Present (MD) then
+                        return MD;
+
+                     elsif V = Op1 then
+                        MD := Declaration_Type (Op2, No_Force => True);
+
+                        if Present (MD) then
+                           return MD;
+                        end if;
+
+                     else
+                        pragma Assert (V = Op2);
+                        MD := Declaration_Type (Op1, No_Force => True);
+
+                        if Present (MD) then
+                           return MD;
+                        end if;
+                     end if;
+
+                  --  For unary, just check the result
+
+                  when Op_F_Neg =>
+                     MD := Declaration_Type (Inst, No_Force => True);
+
+                     if Present (MD) then
+                        return MD;
+                     end if;
+
+                  --  For select, check the result and the opposite operand
+
+                  when Op_Select =>
+                     MD := Declaration_Type (Inst, No_Force => True);
+
+                     if Present (MD) then
+                        return MD;
+
+                     elsif V = Op2 then
+                        MD := Declaration_Type (Op3, No_Force => True);
+
+                        if Present (MD) then
+                           return MD;
+                        end if;
+
+                     elsif V = Op3 then
+                        MD := Declaration_Type (Op2, No_Force => True);
+
+                        if Present (MD) then
+                           return MD;
+                        end if;
+                     end if;
+
+                  --  For comparisons, both inputs should be the same type
+
+                  when Op_I_Cmp | Op_F_Cmp =>
+
+                     if V = Op1 then
+                        MD := Declaration_Type (Op2, No_Force => True);
+
+                        if Present (MD) then
+                           return MD;
+                        end if;
+
+                     elsif V = Op2 then
+                        MD := Declaration_Type (Op1, No_Force => True);
+
+                        if Present (MD) then
+                           return MD;
+                        end if;
+                     end if;
+
+                  --  For load, we have the type of the load
+
+                  when Op_Load =>
+                     return Pointer_Type (Declaration_Type
+                                            (Get_Load_Store_Type (Inst)));
+
+                  --  Likewise for store, but the result depends on which
+                  --  operand this is.
+
+                  when Op_Store =>
+                     MD := Declaration_Type (Get_Load_Store_Type (Inst));
+                     return (if V = Op1 then MD else Pointer_Type (MD));
+
+                  --  For GEP, we have the source element type
+
+                  when Op_Get_Element_Ptr =>
+                     if V = Op1 then
+                        return Pointer_Type (Declaration_Type
+                                               (Get_GEP_Source_Element_Type
+                                                  (Inst)));
+                     end if;
+
+                  --  For other instructions, we can't deduce anything
+
+                  when others =>
+                     null;
+               end case;
+            end if;
+         end;
+
+         V_Use := Get_Next_Use (V_Use);
+      end loop;
+
+      return No_MD_Type;
+   end Find_Type_From_Use;
+
    ---------------
    -- GNAT_Type --
    ---------------
@@ -1061,12 +1204,19 @@ package body CCG.Utils is
          when Integer_Class =>
 
             --  The two types are the same if they have the same bitsize and
-            --  signedness, but if either has unknown signedness,
-            --  treat them as the same type.
+            --  signedness.
+            --
+            --  ??? We want to treat unknown signedness as a "don't
+            --  care", but we can't because mixing a pointer to sign
+            --  and a pointer to unsigned can cause a warning in C.
+            --  When we've gotten here, we know that the MD_Types are
+            --  different, so if either has unknown signedness, we must
+            --  treat them as different, at least for now.
 
             return Int_Bits (MD1) = Int_Bits (MD2)
-              and then (Is_Unknown_Sign (MD1) or else Is_Unknown_Sign (MD2)
-                          or else Is_Unsigned (MD1) = Is_Unsigned (MD2));
+              and then Is_Unsigned (MD1) = Is_Unsigned (MD2)
+              and then not Is_Unknown_Sign (MD1)
+              and then not Is_Unknown_Sign (MD2);
 
          when Float_Class =>
             return Float_Bits (MD1) = Float_Bits (MD2);
@@ -1096,12 +1246,12 @@ package body CCG.Utils is
             return Is_Packed (MD1) = Is_Packed (MD2)
               and then Has_Fields (MD1) = Has_Fields (MD2)
               and then (not Has_Fields (MD1)
-                        or else Element_Count (MD1) = Element_Count (MD2))
+                          or else Element_Count (MD1) = Element_Count (MD2))
               and then (not Has_Fields (MD1)
-                        or else (for all J in 0 .. Element_Count (MD1) - 1 =>
-                                   Is_Same_C_Types
-                                     (Element_Type (MD1, J),
-                                      Element_Type (MD2, J), Match_Void)));
+                          or else (for all J in 0 .. Element_Count (MD1) - 1 =>
+                                     Is_Same_C_Types
+                                       (Element_Type (MD1, J),
+                                        Element_Type (MD2, J), Match_Void)));
 
          when Pointer_Class =>
 
@@ -1111,10 +1261,10 @@ package body CCG.Utils is
 
             return Pointer_Space (MD1) = Pointer_Space (MD2)
               and then ((Match_Void and then (MD1 = Void_Ptr_MD
-                                             or else MD2 = Void_Ptr_MD))
-                        or else Is_Same_C_Types (Designated_Type (MD1),
-                                                 Designated_Type (MD2),
-                                                 Match_Void));
+                                                or else MD2 = Void_Ptr_MD))
+                          or else Is_Same_C_Types (Designated_Type (MD1),
+                                                   Designated_Type (MD2),
+                                                   Match_Void));
 
          when Function_Class =>
 
@@ -1124,7 +1274,7 @@ package body CCG.Utils is
             --  identical layout of the corresponding parameter type.
 
             return Is_Same_C_Types (Return_Type (MD1), Return_Type (MD2),
-                                   Match_Void)
+                                    Match_Void)
               and then Parameter_Count (MD1) = Parameter_Count (MD2)
               and then (for all J in 0 .. Parameter_Count (MD1) - 1 =>
                           Is_Same_C_Types (Parameter_Type (MD1, J),
@@ -1208,10 +1358,12 @@ package body CCG.Utils is
          when Pointer_Class =>
 
             --  MD2 is better if they're in the same address space and
-            --  MD1 is a pointer to void.
+            --  MD1 is a pointer to void or if what MD2 points to is better.
 
             return Pointer_Space (MD1) = Pointer_Space (MD2)
-              and then MD1 = Void_Ptr_MD;
+              and then (MD1 = Void_Ptr_MD
+                        or else Is_Better_Type (Designated_Type (MD1),
+                                                Designated_Type (MD2)));
 
          when Function_Class =>
 
@@ -1275,11 +1427,12 @@ package body CCG.Utils is
    ----------------------
 
    function Declaration_Type
-     (V : Value_T; No_Force : Boolean := False) return MD_Type
+     (V        : Value_T;
+      No_Force : Boolean := False;
+      No_Scan  : Boolean := False) return MD_Type
    is
-      T     : constant Type_T := Type_Of (V);
-      V_Use : Use_T           := Get_First_Use (V);
-      MD    : MD_Type         := No_MD_Type;
+      T  : constant Type_T := Type_Of (V);
+      MD : MD_Type         := No_MD_Type;
 
    begin
       --  If we have a single type for this value, use it
@@ -1287,8 +1440,8 @@ package body CCG.Utils is
       if Present (Get_MD_Type (V)) and then not Get_Is_Multi_MD (V) then
          MD := Get_MD_Type (V);
 
-      --  Otherwise, if this is a global variable or a function and we have
-      --  a type set for that, use it.
+         --  Otherwise, if this is a global variable or a function and we have
+         --  a type set for that, use it.
 
       elsif (Is_A_Global_Variable (V) or else Is_A_Function (V))
         and then Present (Get_MD_Type (Get_Value_Name (V)))
@@ -1309,25 +1462,25 @@ package body CCG.Utils is
             end if;
          end if;
 
-      --  Otherwise, if this is a global variable or a function, see if
-      --  there's an LLVM type corresponding to the value (not V's type,
-      --  which is a pointer).
+         --  Otherwise, if this is a global variable or a function, see if
+         --  there's an LLVM type corresponding to the value (not V's type,
+         --  which is a pointer).
 
       elsif (Is_A_Global_Variable (V) or else Is_A_Function (V))
         and then Present (Declaration_Type (Global_Get_Value_Type (V)))
       then
          MD := Pointer_Type (Declaration_Type (Global_Get_Value_Type (V)));
 
-      --  Othewise, if we have a single MD_Type corresponding to V's
-      --  type, use that
+         --  Othewise, if we have a single MD_Type corresponding to V's
+         --  type, use that
 
       elsif Present (Get_MD_Type (T)) and then not Get_Is_Multi_MD (T) then
          MD := Get_MD_Type (T);
 
-      --  If it's an operation, see if we can deduce the type from
-      --  the operands of the operation. This is simplest in the
-      --  case of unary or binary operations. In most other cases, all
-      --  we have is the type of the result.
+         --  If it's an operation, see if we can deduce the type from
+         --  the operands of the operation. This is simplest in the
+         --  case of unary or binary operations. In most other cases, all
+         --  we have is the type of the result.
 
       elsif Has_Operands (V) then
 
@@ -1340,7 +1493,7 @@ package body CCG.Utils is
             when Op_F_Neg =>
                MD := Declaration_Type (Get_Operand0 (V), No_Force => True);
 
-            when Op_Add   | Op_F_Add | Op_F_Sub | Op_Mul | Op_F_Mul
+            when Op_Add  | Op_F_Add | Op_F_Sub | Op_Mul | Op_F_Mul
               | Op_F_Div | Op_F_Rem | Op_And   | Op_Or  | Op_Xor =>
 
                MD := Declaration_Type (Get_Operand0 (V), No_Force => True);
@@ -1425,28 +1578,15 @@ package body CCG.Utils is
          end case;
       end if;
 
-      --  If the best we've been able to do is pointer to void, see if any
-      --  use of this value is a load, store, or GEP instruction since these
-      --  give the type of the thing pointed to.
+      --  If we haven't found a type or if the best we've been able to do
+      --  is pointer to void, see if we can get a type from any use of this
+      --  value unless its too early to safely do that or we're not to try
+      --  to hard.
 
-      if MD = Void_Ptr_MD then
-         while Present (V_Use) loop
-            case Get_Opcode (Get_User (V_Use)) is
-               when Op_Load | Op_Store =>
-                  return Pointer_Type (Declaration_Type
-                                         (Get_Load_Store_Type
-                                            (Get_User (V_Use))));
-               when Op_Get_Element_Ptr =>
-                  return
-                    Pointer_Type (Declaration_Type
-                                    (Get_GEP_Source_Element_Type
-                                       (Get_User (V_Use))));
-               when others =>
-                  null;
-            end case;
-
-            V_Use := Get_Next_Use (V_Use);
-         end loop;
+      if not No_Scan and then not No_Force
+        and then (No (MD) or else MD = Void_Ptr_MD)
+      then
+         MD := Find_Type_From_Use (V);
       end if;
 
       --  If we have a type, we're done. But first see if this value

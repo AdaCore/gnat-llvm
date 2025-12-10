@@ -379,6 +379,21 @@ package GNATLLVM.MDType is
                                     Arg_Names (J)));
    --  Make a function type with the specified return and argument types
 
+   function Update_Fn_Ty (MD, Return_MD : MD_Type) return MD_Type
+     with Pre  => Is_Function_Type (MD) and then Present (Return_MD),
+          Post => Is_Function_Type (Update_Fn_Ty'Result)
+                  and then Return_Type (Update_Fn_Ty'Result) = Return_MD
+                  and then Parameter_Count (Update_Fn_Ty'Result) =
+                           Parameter_Count (MD)
+                  and then (for all J in 0 ..  Parameter_Count (MD) - 1 =>
+                              Parameter_Type (Update_Fn_Ty'Result, J) =
+                              Parameter_Type (MD, J))
+                  and then (for all J in 0 ..  Parameter_Count (MD) - 1 =>
+                              Parameter_Name (Update_Fn_Ty'Result, J) =
+                              Parameter_Name (MD, J));
+   --  Make a new version of MD, a function type, that has the specified
+   --  return type.
+
    function Set_Type_Name (MD : MD_Type; New_Name : Name_Id) return MD_Type
      with Pre  => Present (MD),
           Post => MD_Name (Set_Type_Name'Result) = New_Name;

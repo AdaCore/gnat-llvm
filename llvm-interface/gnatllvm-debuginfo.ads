@@ -20,6 +20,7 @@ with LLVM.Debug_Info; use LLVM.Debug_Info;
 with Einfo.Utils; use Einfo.Utils;
 
 with GNATLLVM.GLValue; use GNATLLVM.GLValue;
+with GNATLLVM.Records.Debug; use GNATLLVM.Records.Debug;
 
 package GNATLLVM.DebugInfo is
 
@@ -91,7 +92,9 @@ package GNATLLVM.DebugInfo is
      with Pre => Present (N);
    --  Add debugging info for the "use" clause N.
 
-   function Create_Type_Data (GT : GL_Type) return Metadata_T
+   function Create_Type_Data (GT : GL_Type;
+                              M : access Discriminant_Map := null)
+     return Metadata_T
      with Pre => Present (GT);
    --  Create metadata corresponding to the type of GT. Return
    --  No_Metadata_T if the type is too complex.

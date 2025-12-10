@@ -30,7 +30,6 @@ with GNATLLVM.GLType;        use GNATLLVM.GLType;
 with GNATLLVM.Helper;        use GNATLLVM.Helper;
 with GNATLLVM.MDType;        use GNATLLVM.MDType;
 with GNATLLVM.Records;       use GNATLLVM.Records;
-with GNATLLVM.Records.Debug; use GNATLLVM.Records.Debug;
 with GNATLLVM.Subprograms;   use GNATLLVM.Subprograms;
 with GNATLLVM.Types;         use GNATLLVM.Types;
 with GNATLLVM.Utils;         use GNATLLVM.Utils;
@@ -104,12 +103,14 @@ package body GNATLLVM.DebugInfo is
 
    function Convert_Bound_To_Metadata
      (GT : GL_Type; Dimension : Nat; Lower_Bound : Boolean;
-      Packed : Boolean; Bound_Type : GL_Type; E_Bound : Node_Id)
-      return Metadata_T;
+      Packed : Boolean; Bound_Type : GL_Type; E_Bound : Node_Id;
+      M : access Discriminant_Map)
+     return Metadata_T;
    --  Convert a type bound to metadata, handling some peculiarities.
 
    function Create_Array_Type (GT : GL_Type; Size : ULL; Align : Nat;
-                               S : Source_Ptr) return Metadata_T
+                               S : Source_Ptr; M : access Discriminant_Map)
+     return Metadata_T
      with Pre => Present (GT),
           Post => Present (Create_Array_Type'Result);
    --  Create metadata corresponding to the array type GT.
@@ -219,7 +220,14 @@ package body GNATLLVM.DebugInfo is
    function Get_Scope_For (E : Entity_Id) return Metadata_T is
       S : Node_Id := Scope (E);
    begin
-      if not Comes_From_Source (E) or not Types_Can_Have_Function_Scope then
+      --  In most cases, artificial types can be put at CU scope.
+      --  However, if an artificial array type depends on a
+      --  discriminant, then it must appear in the enclosing record's
+      --  scope, to ensure that the discriminant DIE is written before
+      --  the reference to it.
+      if Size_Depends_On_Discriminant (E) then
+         return Get_Debug_Metadata (Get_Fullest_View (S));
+      elsif not Comes_From_Source (E) or not Types_Can_Have_Function_Scope then
          return No_Metadata_T;
       end if;
       while Present (S) loop
@@ -798,7 +806,8 @@ package body GNATLLVM.DebugInfo is
 
    function Convert_Bound_To_Metadata
      (GT : GL_Type; Dimension : Nat; Lower_Bound : Boolean;
-      Packed : Boolean; Bound_Type : GL_Type; E_Bound : Node_Id)
+      Packed : Boolean; Bound_Type : GL_Type; E_Bound : Node_Id;
+      M : access Discriminant_Map)
      return Metadata_T is
    begin
       if not Is_Nonnative_Type (Full_Etype (GT)) then
@@ -836,10 +845,22 @@ package body GNATLLVM.DebugInfo is
       end if;
       case Nkind (E_Bound) is
          when N_Identifier => Ident : declare
-            MD : Metadata_T := Get_Debug_Metadata (Entity (E_Bound));
+            MD : Metadata_T := No_Metadata_T;
          begin
-            if not Present (MD) then
-               MD := Create_Global_Variable_Declaration (Entity (E_Bound));
+            if Ekind (Entity (E_Bound)) = E_Discriminant then
+               if DI_Subrange_Allows_Member then
+                  declare
+                     Discr : constant Entity_Id :=
+                       Canonical_Discriminant_For (Entity (E_Bound));
+                  begin
+                     MD := M (Discr);
+                  end;
+               end if;
+            else
+               MD := Get_Debug_Metadata (Entity (E_Bound));
+               if not Present (MD) then
+                  MD := Create_Global_Variable_Declaration (Entity (E_Bound));
+               end if;
             end if;
             return MD;
          end Ident;
@@ -857,7 +878,8 @@ package body GNATLLVM.DebugInfo is
    -----------------------
 
    function Create_Array_Type (GT : GL_Type; Size : ULL; Align : Nat;
-                               S : Source_Ptr) return Metadata_T
+                               S : Source_Ptr; M : access Discriminant_Map)
+     return Metadata_T
    is
       TE         : constant Void_Or_Type_Kind_Id := Full_Etype (GT);
       Is_Packed  : constant Boolean := Is_Packed_Array_Impl_Type (TE);
@@ -895,18 +917,27 @@ package body GNATLLVM.DebugInfo is
                Create_Type_Data (Index_Type);
             Low_Exp : constant Metadata_T :=
               Convert_Bound_To_Metadata (GT, J, True, Is_Packed,
-                                         Index_Type, Low_Bound (E_Range));
+                                         Index_Type, Low_Bound (E_Range), M);
             High_Exp : constant Metadata_T :=
               Convert_Bound_To_Metadata (GT, J, False, Is_Packed,
-                                         Index_Type, High_Bound (E_Range));
+                                         Index_Type, High_Bound (E_Range), M);
          begin
             if Low_Exp = No_Metadata_T or else High_Exp = No_Metadata_T then
                --  LLVM does not allow a nameless unspecified type, so use
                --  the original name in this instance.
                return DI_Create_Unspecified_Type (Get_Name (Array_TE));
             end if;
-            if J = 0 and then Component_Size (Array_TE) /= Esize (Comp_TE) then
-               Stride := Const_64_As_Metadata (Component_Size (Array_TE));
+            if J = 0 then
+               if Component_Size (Array_TE) /= Esize (Comp_TE) then
+                  Stride :=
+                    Convert_To_Dwarf_Expression (Component_Size (Array_TE),
+                                                 Array_TE);
+               elsif not Known_Static_RM_Size (Comp_TE)
+                     and then Known_Static_Esize (Comp_TE)
+               then
+                  Stride :=
+                    Convert_To_Dwarf_Expression (Esize (Comp_TE), Comp_TE);
+               end if;
             end if;
             Ranges (J) :=
               Create_Subrange_Type
@@ -959,7 +990,10 @@ package body GNATLLVM.DebugInfo is
    -- Create_Type_Data --
    ----------------------
 
-   function Create_Type_Data (GT : GL_Type) return Metadata_T is
+   function Create_Type_Data (GT : GL_Type;
+                              M : access Discriminant_Map := null)
+      return Metadata_T
+   is
       TE          : constant Void_Or_Type_Kind_Id := Full_Etype (GT);
       Name        : constant String               := Get_Name (TE);
       T           : constant Type_T               := +Type_Of (GT);
@@ -995,7 +1029,7 @@ package body GNATLLVM.DebugInfo is
               | E_Modular_Integer_Subtype => Sub_Type :
             begin
                if Is_Packed_Array_Impl_Type (TE) then
-                  Result := Create_Array_Type (GT, Size, Align, S);
+                  Result := Create_Array_Type (GT, Size, Align, S, M);
                else
                   declare
 
@@ -1138,7 +1172,7 @@ package body GNATLLVM.DebugInfo is
             end if;
 
          when Array_Kind =>
-            Result := Create_Array_Type (GT, Size, Align, S);
+            Result := Create_Array_Type (GT, Size, Align, S, M);
 
          --  For records, go through each field. If we can make debug info
          --  for the type and the position and size are known and static,

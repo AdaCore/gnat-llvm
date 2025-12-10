@@ -581,6 +581,14 @@ package GNATLLVM.Wrapper is
    --  Return true if the LLVM contains the patch that allows types to
    --  have multiple members in a variant part.
 
+   function DI_Expression_Extensions return Boolean;
+   --  Return true if LLVM contains the patch that allows DW_OP_rot,
+   --  DW_OP_abs, and DW_OP_neg in DIExpression.
+
+   function DI_Subrange_Allows_Member return Boolean;
+   --  Return true if LLVM contains the patch that allows
+   --  DISubrangeType to refer to a DIDerivedType.
+
    function Create_Global_Variable_Declaration
      (Builder : DI_Builder_T;
       Scope : Metadata_T;
@@ -624,5 +632,35 @@ package GNATLLVM.Wrapper is
    --  A wrapper for an LLVM DIBuilder method that does not pass the
    --  address class.  This allows for somewhat cleaner DWARF than
    --  going via the C API.
+
+   function Create_Member (Builder : DI_Builder_T;
+                           Scope : Metadata_T;
+                           Name : String;
+                           File : Metadata_T;
+                           Line_Number : Physical_Line_Number;
+                           Size_In_Bits : Metadata_T;
+                           Offset_In_Bits : Metadata_T;
+                           Ty : Metadata_T;
+                           Flags : DI_Flags_T;
+                           Is_Bit_Field : Boolean) return Metadata_T;
+   --  A wrapper for a couple of LLVM DIBuilder methods.  This allows
+   --  the creation of either a member or a bit-field member, using a
+   --  (potentially) dynamic offset and size.
+
+   function DI_Create_Struct_Type
+     (Scope          : Metadata_T;
+      Name           : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Size_In_Bits   : Metadata_T;
+      Align_In_Bits  : Nat;
+      Flags          : DI_Flags_T;
+      Derived_From   : Metadata_T;
+      Elements       : Metadata_Array;
+      Run_Time_Lang  : Nat;
+      V_Table_Holder : Metadata_T;
+      Unique_Id      : String) return Metadata_T;
+   --  A wrapper for an LLVM DIBuilder method to create a struct type.
+   --  Unlike the C API, this one allows a non-constant bit-size.
 
 end GNATLLVM.Wrapper;

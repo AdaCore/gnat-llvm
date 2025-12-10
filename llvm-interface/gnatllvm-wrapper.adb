@@ -969,6 +969,32 @@ package body GNATLLVM.Wrapper is
       return Types_Can_Have_Multiple_Variant_Members_C /= 0;
    end Types_Can_Have_Multiple_Variant_Members;
 
+   ------------------------------
+   -- DI_Expression_Extensions --
+   ------------------------------
+
+   function DI_Expression_Extensions return Boolean
+   is
+      function DI_Expression_Extensions_C return LLVM_Bool
+        with Import => True, Convention => C,
+             External_Name => "DI_Expression_Extensions";
+   begin
+      return DI_Expression_Extensions_C /= 0;
+   end DI_Expression_Extensions;
+
+   -------------------------------
+   -- DI_Subrange_Allows_Member --
+   -------------------------------
+
+   function DI_Subrange_Allows_Member return Boolean
+   is
+      function DI_Subrange_Allows_Member_C return LLVM_Bool
+        with Import => True, Convention => C,
+             External_Name => "DI_Subrange_Allows_Member";
+   begin
+      return DI_Subrange_Allows_Member_C /= 0;
+   end DI_Subrange_Allows_Member;
+
    function Create_Global_Variable_Declaration
      (Builder : DI_Builder_T;
       Scope : Metadata_T;
@@ -1097,5 +1123,84 @@ package body GNATLLVM.Wrapper is
                                     uint64_t (Size_In_Bits),
                                     uint32_t (Align_In_Bits));
    end Create_Pointer_Type;
+
+   -------------------
+   -- Create_Member --
+   -------------------
+
+   function Create_Member (Builder : DI_Builder_T;
+                           Scope : Metadata_T;
+                           Name : String;
+                           File : Metadata_T;
+                           Line_Number : Physical_Line_Number;
+                           Size_In_Bits : Metadata_T;
+                           Offset_In_Bits : Metadata_T;
+                           Ty : Metadata_T;
+                           Flags : DI_Flags_T;
+                           Is_Bit_Field : Boolean) return Metadata_T
+   is
+      function Create_Member_C (Builder : DI_Builder_T;
+                                Scope : Metadata_T;
+                                Name : String;
+                                File : Metadata_T;
+                                Line_Number : unsigned;
+                                Size_In_Bits : Metadata_T;
+                                Offset_In_Bits : Metadata_T;
+                                Ty : Metadata_T;
+                                Flags : DI_Flags_T;
+                                Is_Bit_Field : LLVM_Bool) return Metadata_T
+        with Import => True, Convention => C,
+             External_Name => "Create_Member";
+   begin
+      return Create_Member_C (Builder, Scope, Name & ASCII.NUL, File,
+                              unsigned (Line_Number), Size_In_Bits,
+                              Offset_In_Bits, Ty, Flags,
+                              Boolean'Pos (Is_Bit_Field));
+   end Create_Member;
+
+   ---------------------------
+   -- DI_Create_Struct_Type --
+   ---------------------------
+
+   function DI_Create_Struct_Type
+     (Scope          : Metadata_T;
+      Name           : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Size_In_Bits   : Metadata_T;
+      Align_In_Bits  : Nat;
+      Flags          : DI_Flags_T;
+      Derived_From   : Metadata_T;
+      Elements       : Metadata_Array;
+      Run_Time_Lang  : Nat;
+      V_Table_Holder : Metadata_T;
+      Unique_Id      : String) return Metadata_T
+   is
+      function DI_Create_Struct_Type_C
+        (Builder        : DI_Builder_T;
+         Scope          : Metadata_T;
+         Name           : String;
+         File           : Metadata_T;
+         Line_Number    : unsigned;
+         Size_In_Bits   : Metadata_T;
+         Align_In_Bits  : uint32_t;
+         Flags          : DI_Flags_T;
+         Derived_From   : Metadata_T;
+         Elements       : System.Address;
+         Num_Elements   : unsigned;
+         Run_Time_Lang  : unsigned;
+         V_Table_Holder : Metadata_T;
+         Unique_Id      : String) return Metadata_T
+        with Import => True, Convention => C,
+             External_Name => "Create_Struct_Type_Non_Constant_Size";
+   begin
+      return DI_Create_Struct_Type_C (DI_Builder, Scope, Name & ASCII.NUL,
+                                      File, unsigned (Line_Number),
+                                      Size_In_Bits, uint32_t (Align_In_Bits),
+                                      Flags, Derived_From, Elements'Address,
+                                      unsigned (Elements'Length),
+                                      unsigned (Run_Time_Lang), V_Table_Holder,
+                                      Unique_Id & ASCII.NUL);
+   end DI_Create_Struct_Type;
 
 end GNATLLVM.Wrapper;

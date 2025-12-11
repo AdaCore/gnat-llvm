@@ -53,10 +53,9 @@ compare=cmp --ignore-initial=16
 
 clang_path=$(dir $(shell which clang))
 
-.PHONY: setup force clean
+.PHONY: all setup force clean
 
-all: setup build
-	$(MAKE) quicklib
+all: setup build gnatlib
 
 LOCAL_RT_FILES=../link.c s-pehage.adb s-pehage.ads s-rident.ads s-utf_32.adb \
   s-utf_32.ads \
@@ -216,7 +215,7 @@ RTSLIB=$(RTS)/adalib
 RTSOBJ=$(RTS)/obj-static
 
 ADAFLAGS=-gnatpg
-CFLAGS=-O2 -g
+CFLAGS=-O2
 EXTRALIBFLAGS=
 LIBRARY_KIND=static
 
@@ -235,7 +234,7 @@ include $(GNAT_SRC)/Makefile.rtl
 
 gnatlib: build
 	$(RMDIR) $(RTS)
-	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" quicklib
+	$(MAKE) CFLAGS="$(CFLAGS) -g" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" quicklib
 
 gnatlib-automated: build-opt
 	$(RMDIR) $(RTS)
@@ -315,7 +314,7 @@ zfp-build:
 	cd $(ZFPLIB) && $(CHMOD) a-wx *.ali
 
 zfp: build
-	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" zfp-build
+	$(MAKE) CFLAGS="$(CFLAGS) -g" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" zfp-build
 
 zfp-opt: build-opt
 	$(MAKE) CFLAGS="$(CFLAGS)" EXTRALIBFLAGS="$(EXTRALIBFLAGS)" zfp-build

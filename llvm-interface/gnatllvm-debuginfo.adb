@@ -673,14 +673,17 @@ package body GNATLLVM.DebugInfo is
          declare
             B_GT  : constant GL_Type := Array_Index_Sub_GT (GT, J);
             Align : constant Nat     := Get_Type_Alignment (B_GT);
+            Ok : Boolean;
 
          begin
-            pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align,
-                                      "LB" & To_String (J), S, Align, 0,
-                                      GT => B_GT));
-            pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align,
-                                      "UB" & To_String (J), S, Align, 0,
-                                      GT => B_GT));
+            Ok := Add_Field (Field_MDs, Idx, Offset, Rec_Align,
+                             "LB" & To_String (J), S, Align, 0,
+                             GT => B_GT);
+            pragma Assert (Ok);
+            Ok := Add_Field (Field_MDs, Idx, Offset, Rec_Align,
+                             "UB" & To_String (J), S, Align, 0,
+                             GT => B_GT);
+            pragma Assert (Ok);
          end;
       end loop;
 
@@ -717,6 +720,7 @@ package body GNATLLVM.DebugInfo is
       Bound_MD    : constant Metadata_T :=
           Create_Bounds_Type_Data (GT, Bounds_Size);
       Field_MDs   : Metadata_Array (1 .. 2);
+      Ok          : Boolean;
 
    begin
       --  If GT is of variable size, we can't return debug info for it
@@ -731,10 +735,12 @@ package body GNATLLVM.DebugInfo is
 
       --  Bounds and data are two fields, the bounds and the data
 
-      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Align, "BOUNDS", S,
-                                Bound_Align, Bounds_Size, MD => Bound_MD));
-      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Align, "ARRAY", S,
-                                Data_Align, +Size_V, MD => Data_MD));
+      Ok := Add_Field (Field_MDs, Idx, Offset, Align, "BOUNDS", S,
+                       Bound_Align, Bounds_Size, MD => Bound_MD);
+      pragma Assert (Ok);
+      Ok := Add_Field (Field_MDs, Idx, Offset, Align, "ARRAY", S,
+                       Data_Align, +Size_V, MD => Data_MD);
+      pragma Assert (Ok);
 
       return DI_Create_Struct_Type
         (No_Metadata_T, "",
@@ -766,6 +772,7 @@ package body GNATLLVM.DebugInfo is
       Offset      : ULL                 := 0;
       Idx         : Nat                 := 1;
       Ranges      : Metadata_Array (0 .. 0);
+      Ok          : Boolean;
 
    begin
       --  If we can't make data for the component type, we can't make
@@ -787,10 +794,12 @@ package body GNATLLVM.DebugInfo is
       --  Add fields for pointers to bounds and component and create debug
       --  data for that structure.
 
-      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align, "P_ARRAY",
-                                S, Align, Size, MD => P_Comp_MD));
-      pragma Assert (Add_Field (Field_MDs, Idx, Offset, Rec_Align, "P_BOUNDS",
-                                S, Align, Size, MD => P_Bounds_MD));
+      Ok := Add_Field (Field_MDs, Idx, Offset, Rec_Align, "P_ARRAY",
+                       S, Align, Size, MD => P_Comp_MD);
+      pragma Assert (Ok);
+      Ok := Add_Field (Field_MDs, Idx, Offset, Rec_Align, "P_BOUNDS",
+                       S, Align, Size, MD => P_Bounds_MD);
+      pragma Assert (Ok);
 
       return DI_Create_Struct_Type
         (No_Metadata_T, "",

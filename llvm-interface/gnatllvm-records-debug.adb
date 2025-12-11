@@ -468,15 +468,9 @@ package body GNATLLVM.Records.Debug is
       end Discriminant;
 
       procedure Variable (Val : Node_Ref_Or_Val) is
-         E : constant Entity_Id := Get_Dynamic_SO_Entity (-Val);
-         MD : constant Metadata_T := (if Present (E)
-                                      then Get_Debug_Metadata (E)
-                                      else No_Metadata_T);
+         pragma Unreferenced (Val);
       begin
-         if Present (MD) then
-            --  FIXME
-            null;
-         end if;
+         --  Not implemented yet.
          Could_Not_Convert := True;
       end Variable;
 

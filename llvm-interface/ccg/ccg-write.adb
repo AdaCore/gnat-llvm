@@ -200,10 +200,11 @@ package body CCG.Write is
       --  In this case, append an _ at the end of the name.
 
       if S in "auto" | "bool" | "break" | "char" | "const" | "continue" |
-              "default" | "double" | "enum" | "extern" | "float" | "int" |
-              "long" | "register" | "short" | "signed" | "sizeof" | "static" |
-              "struct" | "switch" | "typedef" | "union" | "unsigned" | "void" |
-              "volatile"
+              "default" | "double" | "enum" | "extern" | "false" |
+              "float" | "int" | "long" | "nullptr" | "register" | "short" |
+              "signed" | "sizeof" | "static" | "struct" | "switch" |
+              "thread_local" | "true" | "typedef" | "union" | "unsigned" |
+              "void" | "volatile"
       then
          Write_Str (S);
          Append_Suffix := True;

@@ -205,6 +205,12 @@ package GNATLLVM.Records is
    --  V but then we have to properly handle the alignment in the BA_Data
    --  case and that's a lot of work.
 
+   function Field_To_Use
+     (LHS : GL_Value; F : Record_Field_Kind_Id) return Record_Field_Kind_Id
+     with Pre => Present (LHS);
+   --  Return the actual field to use to access field F of LHS. This may
+   --  be a field from a related type.
+
    function Build_Field_Load
      (In_V       : GL_Value;
       In_F       : Record_Field_Kind_Id;

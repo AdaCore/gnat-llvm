@@ -29,7 +29,6 @@ with Interfaces.C;
 with Interfaces.C.Extensions;
 
 with Atree;          use Atree;
-with Einfo;          use Einfo;
 with Einfo.Entities; use Einfo.Entities;
 with Namet;          use Namet;
 with Types;          use Types;

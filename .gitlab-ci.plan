@@ -37,6 +37,9 @@ def test_acats_ccg():
     ccg_common()
     anod_test("acats-4-ccg", target="c")
 
+def test_acats_ccg_optimized():
+    ccg_common()
+    anod_test("acats-4-ccg", target="c", qualifier={"optimize": True})
 
 def test_ccg():
     ccg_common()

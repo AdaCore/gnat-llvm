@@ -83,6 +83,18 @@ include:
       anod-args: run test_acats_ccg
       generic-anod-ci-args: --add-dep eng/toolchain/acats
       rules: *ccg-rules
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
+    inputs:
+      job-name: acats-ccg-optimized
+      component-name: ccg
+      # Declaring an explicit dependency on the "build-ccg" job is required to
+      # make generic_anod_ci import the right set of Cathod components.
+      needs:
+        - build-ccg:linux
+      stage: test-ccg
+      anod-args: run test_acats_ccg_optimized
+      generic-anod-ci-args: --add-dep eng/toolchain/acats
+      rules: *ccg-rules
 
 # Additional customization
 

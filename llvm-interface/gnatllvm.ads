@@ -123,6 +123,11 @@ package GNATLLVM is
    function UI_From_LLI is new UI_From_Integral (LLI);
    --  And conversion routine from LLI to Uint
 
+   function LLI_To_ULL is new Ada.Unchecked_Conversion (LLI, ULL);
+
+   function Int_To_ULL (I : Int) return ULL is
+      (LLI_To_ULL (LLI (I)));
+
    function "+" (U : Uint) return Int   renames UI_To_Int;
    function "+" (J : LLI)  return Uint  renames UI_From_LLI;
    function "+" (J : Int)  return Uint  renames UI_From_Int;

@@ -1095,7 +1095,7 @@ package GNATLLVM.GLValue is
    --  V is a constant integer; get its value
 
    function Get_Const_Int_Value_ULL (V : GL_Value) return ULL is
-     (ULL (Const_Int_Get_S_Ext_Value (+V)))
+     (ULL (Const_Int_Get_Z_Ext_Value (+V)))
      with Pre => Is_A_Constant_Int (V);
 
    function Get_Const_Int_Value_Nat (V : GL_Value) return Nat is

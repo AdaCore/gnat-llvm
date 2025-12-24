@@ -624,26 +624,44 @@ package body CCG.Subprograms is
 
       function Best_Return (MD, Ret_MD : MD_Type) return MD_Type is
         ((if   Is_Function_Type (MD)
-               and then Is_Better_Type (Return_Type (MD), Ret_MD)
-          then Update_Fn_Ty (MD, Ret_MD) else MD));
+               and then (Is_Void (Return_Type (MD))
+                         or else Is_Better_Type (Return_Type (MD), Ret_MD))
+          then Update_Fn_Ty_Return (MD, Ret_MD) else MD));
 
+      N_Params : constant Nat     := Get_Num_Operands (V) - 1;
       Ret_MD   : constant MD_Type := Declaration_Type (V);
+      Fn_D_MD  : constant MD_Type :=
+        (if   Is_A_Function (Func)
+         then Declaration_Type (Func, No_Force => True) else No_MD_Type);
       Fn_T     : constant Type_T  := Get_Called_Function_Type (V);
       Fn_T_MD  : constant MD_Type :=
-        Best_Return (Declaration_Type (Fn_T), Ret_MD);
+        (if   Present (Fn_D_MD) then No_MD_Type
+         else Best_Return (Declaration_Type (Fn_T), Ret_MD));
+      Fn_MD_1  : constant MD_Type :=
+        (if   Present (Fn_D_MD) then No_MD_Type
+         else Best_Return (Designated_Type (Declaration_Type (Func)), Ret_MD));
       Fn_MD    : constant MD_Type :=
-        Best_Return (Designated_Type (Declaration_Type (Func)), Ret_MD);
-      Best_MD  : constant MD_Type := Best_Type (Fn_T_MD, Fn_MD);
-      B_Ret_MD : constant MD_Type := Return_Type (Best_MD);
+        (if   No (Fn_D_MD) and then Is_A_Function (Func)
+              and then Get_Needs_Nest (Func)
+              and then Parameter_Count (Fn_MD_1) = N_Params - 1
+         then Add_Nest_To_Fn_Ty (Fn_MD_1) else Fn_MD_1);
+      Best_MD  : constant MD_Type :=
+        (if    Present (Fn_D_MD) then Designated_Type (Fn_D_MD)
+         elsif not Is_Function_Type (Fn_MD)
+               or else Parameter_Count (Fn_MD) /= N_Params
+         then  Fn_T_MD
+         elsif not Is_Function_Type (Fn_T_MD)
+               or else Parameter_Count (Fn_T_MD) /= N_Params
+         then  Fn_MD else  Best_Type (Fn_MD, Fn_T_MD));
 
    begin
-      --  If the return type of the function (the type of the call) is a
-      --  better type than the return type of our "best" type, make a
-      --  new function type with that return type. Otherwise, use the
-      --  function type we computed above.
+      --  If we found an actual declared type of the function, use that.
+      --  Otherwise, take the best option we found above and possibly
+      --  update its return type.
 
-      return (if   Is_Better_Type (B_Ret_MD, Ret_MD)
-              then Update_Fn_Ty (Best_MD, Ret_MD) else Best_MD);
+      return (if   Present (Fn_D_MD) then Best_MD
+              else Best_Return (Best_MD, Ret_MD));
+
    end Best_Function_Type;
 
    ----------------------
@@ -712,7 +730,7 @@ package body CCG.Subprograms is
               and then Is_Same_C_Types (Src_Fn_MD, Dest_Fn_MD)
               and then Parameter_Count (Dest_Fn_MD) = Num_Params
               and then (Return_Type (Dest_Fn_MD) = Return_Type (Src_Fn_MD)
-                          or else not Is_Struct (Return_Type (Src_Fn_MD)))
+                        or else not Is_Struct (Return_Type (Src_Fn_MD)))
             then
                --  Mark which parameters have a different type (though
                --  an identical layout).
@@ -751,7 +769,9 @@ package body CCG.Subprograms is
          declare
             Op    : constant Value_T := Ops (J);
             A_MD  : constant MD_Type := Actual_Type (Op, As_LHS => True);
-            F_MD  : constant MD_Type := Parameter_Type (Fn_MD, J - Ops'First);
+            F_MD  : constant MD_Type :=
+              (if   J - Ops'First >=  Parameter_Count (Fn_MD)
+               then No_MD_Type else Parameter_Type (Fn_MD, J - Ops'First));
             Param : Str;
 
          begin
@@ -763,8 +783,8 @@ package body CCG.Subprograms is
 
             if No (Cast_MD (J))
               and then (Is_Pointer (A_MD) or else Is_Array (A_MD))
-              and then A_MD /= F_MD
-              and then not (Is_Same_C_Types (A_MD, F_MD, Match_Void => True)
+              and then Present (F_MD) and then A_MD /= F_MD
+              and then not (Is_Same_C_Types (A_MD, F_MD, Loose => True)
                             and then Is_Better_Type (F_MD, A_MD))
             then
                Cast_MD (J) := F_MD;

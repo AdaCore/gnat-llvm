@@ -161,6 +161,12 @@ package body GNATLLVM.MDType is
      with Post => not Create or else Present (MD_Find'Result);
    --  Find an MD_Type that has Info, creating it if Create
 
+   function Set_Type_Sign (MD : MD_Type; Sign : Boolean) return MD_Type
+     with Pre  => Class (MD) = Integer_Class,
+          Post => Is_Integer (Set_Type_Sign'Result)
+                  and then Is_Signed (Set_Type_Sign'Result) = Sign;
+   --  Make a version of MD that has the requested signedness
+
    procedure Insert_MD (MD : MD_Type)
      with Pre  => No (MD_Find (MD_Types.Table (MD), Create => False)),
           Post => MD_Find (MD_Types.Table (MD), Create => False) = MD;
@@ -607,6 +613,14 @@ package body GNATLLVM.MDType is
       Prev_Id    : MD_Type                  := New_Id;
 
    begin
+      --  If we're creating a new type, there must not have been a
+      --  leftover Hash_Link.
+
+      pragma Assert (not Create or else No (Info.Hash_Link));
+
+      --  If we've never seen this hash code before, create the new type
+      --  if requested.
+
       if No (New_Id) then
          if Create then
             MD_Types.Append (Info);
@@ -617,6 +631,8 @@ package body GNATLLVM.MDType is
          return New_Id;
       end if;
 
+      --  Otherwise skip to the end of the clash list
+
       while Present (New_Id) loop
          if MD_Types.Table (New_Id) = Info then
             return New_Id;
@@ -625,6 +641,8 @@ package body GNATLLVM.MDType is
          Prev_Id := New_Id;
          New_Id  := MD_Types.Table (Prev_Id).Hash_Link;
       end loop;
+
+      --  Finally, create the type if requested
 
       if Create then
          MD_Types.Append (Info);
@@ -646,6 +664,8 @@ package body GNATLLVM.MDType is
       Prev_Id    : MD_Type                  := New_Id;
 
    begin
+      pragma Assert (No (Info.Hash_Link));
+
       --  If we don't have a match for this hash, we're it
 
       if No (New_Id) then
@@ -720,31 +740,33 @@ package body GNATLLVM.MDType is
           Flag   => Unsigned,
           others => <>)));
 
+   -------------------
+   -- Set_Type_Sign --
+   -------------------
+
+   function Set_Type_Sign (MD : MD_Type; Sign : Boolean) return MD_Type is
+      Info : MD_Type_Info := MD_Types.Table (MD);
+
+   begin
+      Info.Kind      := Integer;
+      Info.Flag      := not Sign;
+      Info.Hash_Link := No_MD_Type;
+      return MD_Find (Info);
+   end Set_Type_Sign;
+
    -----------------
    -- Signed_Type --
    -----------------
 
    function Signed_Type (MD : MD_Type) return MD_Type is
-      Info : MD_Type_Info := MD_Types.Table (MD);
-
-   begin
-      Info.Kind := Integer;
-      Info.Flag := False;
-      return MD_Find (Info);
-   end Signed_Type;
+     (Set_Type_Sign (MD, True));
 
    -------------------
    -- Unsigned_Type --
    -------------------
 
    function Unsigned_Type (MD : MD_Type) return MD_Type is
-      Info : MD_Type_Info := MD_Types.Table (MD);
-
-   begin
-      Info.Kind := Integer;
-      Info.Flag := True;
-      return MD_Find (Info);
-   end Unsigned_Type;
+     (Set_Type_Sign (MD, False));
 
    ------------
    -- Float_Ty --
@@ -987,13 +1009,35 @@ package body GNATLLVM.MDType is
    -- Update_Fn_Ty --
    ------------------
 
-   function Update_Fn_Ty (MD, Return_MD : MD_Type) return MD_Type is
+   function Update_Fn_Ty_Return (MD, Return_MD : MD_Type) return MD_Type is
       Info : MD_Type_Info := MD_Types.Table (MD);
 
    begin
+      Info.Hash_Link    := No_MD_Type;
       Info.Related_Type := Return_MD;
       return MD_Find (Info);
-   end Update_Fn_Ty;
+   end Update_Fn_Ty_Return;
+
+   -----------------------
+   -- Add_Nest_To_Fn_Ty --
+   -----------------------
+
+   function Add_Nest_To_Fn_Ty (MD : MD_Type) return MD_Type is
+      Num_Params : constant Nat := Parameter_Count (MD);
+      Arg_Types  : MD_Type_Array (0 .. Num_Params);
+      Arg_Names  : Name_Id_Array (0 .. Num_Params);
+
+   begin
+      for J in 0 .. Num_Params - 1 loop
+         Arg_Types (J) := Parameter_Type (MD, J);
+         Arg_Names (J) := Parameter_Name (MD, J);
+      end loop;
+
+      Arg_Types (Num_Params) := Void_Ptr_MD;
+      Arg_Names (Num_Params) := No_Name;
+      return Fn_Ty (Arg_Types, Return_Type (MD), Arg_Names,
+                    Is_Varargs_Function (MD));
+   end Add_Nest_To_Fn_Ty;
 
    -------------------
    -- Set_Type_Name --
@@ -1003,7 +1047,8 @@ package body GNATLLVM.MDType is
       Info : MD_Type_Info := MD_Types.Table (MD);
 
    begin
-      Info.Name := New_Name;
+      Info.Name      := New_Name;
+      Info.Hash_Link := No_MD_Type;
       return MD_Find (Info);
    end Set_Type_Name;
 
@@ -1020,6 +1065,7 @@ package body GNATLLVM.MDType is
          return MD;
       else
          Info.Is_Volatile := B;
+         Info.Hash_Link   := No_MD_Type;
          return MD_Find (Info);
       end if;
    end Make_Volatile;

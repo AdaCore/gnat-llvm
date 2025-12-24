@@ -379,24 +379,43 @@ package GNATLLVM.MDType is
                                     Arg_Names (J)));
    --  Make a function type with the specified return and argument types
 
-   function Update_Fn_Ty (MD, Return_MD : MD_Type) return MD_Type
+   function Update_Fn_Ty_Return (MD, Return_MD : MD_Type) return MD_Type
      with Pre  => Is_Function_Type (MD) and then Present (Return_MD),
-          Post => Is_Function_Type (Update_Fn_Ty'Result)
-                  and then Return_Type (Update_Fn_Ty'Result) = Return_MD
-                  and then Parameter_Count (Update_Fn_Ty'Result) =
+          Post => Is_Function_Type (Update_Fn_Ty_Return'Result)
+                  and then Return_Type (Update_Fn_Ty_Return'Result) = Return_MD
+                  and then Parameter_Count (Update_Fn_Ty_Return'Result) =
                            Parameter_Count (MD)
                   and then (for all J in 0 ..  Parameter_Count (MD) - 1 =>
-                              Parameter_Type (Update_Fn_Ty'Result, J) =
+                              Parameter_Type (Update_Fn_Ty_Return'Result, J) =
                               Parameter_Type (MD, J))
                   and then (for all J in 0 ..  Parameter_Count (MD) - 1 =>
-                              Parameter_Name (Update_Fn_Ty'Result, J) =
+                              Parameter_Name (Update_Fn_Ty_Return'Result, J) =
                               Parameter_Name (MD, J));
    --  Make a new version of MD, a function type, that has the specified
    --  return type.
 
+   function Add_Nest_To_Fn_Ty (MD : MD_Type) return MD_Type
+     with Pre  => Is_Function_Type (MD),
+          Post => Is_Function_Type (Add_Nest_To_Fn_Ty'Result)
+                  and then Return_Type (Add_Nest_To_Fn_Ty'Result) =
+                           Return_Type (MD)
+                  and then Parameter_Count (Add_Nest_To_Fn_Ty'Result) =
+                           Parameter_Count (MD) + 1
+                  and then (for all J in 0 ..  Parameter_Count (MD) - 1 =>
+                              Parameter_Type (Add_Nest_To_Fn_Ty'Result, J) =
+                              Parameter_Type (MD, J))
+                  and then (for all J in 0 ..  Parameter_Count (MD) - 1 =>
+                              Parameter_Name (Add_Nest_To_Fn_Ty'Result, J) =
+                              Parameter_Name (MD, J))
+                  and then Void_Ptr_MD =
+                           Parameter_Type (Add_Nest_To_Fn_Ty'Result,
+                                           Parameter_Count (MD));
+   --  Add a "nest" parameter to MD
+
    function Set_Type_Name (MD : MD_Type; New_Name : Name_Id) return MD_Type
      with Pre  => Present (MD),
           Post => MD_Name (Set_Type_Name'Result) = New_Name;
+
    --  Create a copy of MD that has the specified name
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");

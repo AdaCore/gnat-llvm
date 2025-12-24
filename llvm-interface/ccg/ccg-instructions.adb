@@ -789,7 +789,7 @@ package body CCG.Instructions is
       return ("(" & (V + (if   Is_Unsigned_Pointer (V)
                           then +Only_Type or Value_Flags'(+Need_Unsigned)
                           else +Only_Type)) &
-                (if Is_Volatile (V) then " volatile) " else ") (") &
+                (if Is_Volatile (V) then " volatile) (" else ") (") &
                 Our_Op) & ")" + Unary;
 
    end Cast_Instruction;
@@ -841,8 +841,10 @@ package body CCG.Instructions is
                Process_Operand (Op1, POO, Relation);
             RHS         : constant Str                    :=
                Process_Operand (Op2, POO, Relation);
-            LHS_MD      : constant MD_Type                := Actual_Type (Op1);
-            RHS_MD      : constant MD_Type                := Actual_Type (Op2);
+            LHS_MD      : constant MD_Type                :=
+              Actual_Type (Op1, As_LHS => True);
+            RHS_MD      : constant MD_Type                :=
+              Actual_Type (Op2, As_LHS => True);
 
          begin
             --  If Op1 and Op2 are pointers but to different types,
@@ -978,7 +980,8 @@ package body CCG.Instructions is
    -----------------------
 
    procedure Force_To_Variable (V : Value_T) is
-      C_Val : Str := Get_C_Value (V);
+      Act_MD : constant MD_Type := Actual_Type (V);
+      C_Val  : Str              := Get_C_Value (V);
 
    begin
       if Present (C_Val) then
@@ -1000,7 +1003,7 @@ package body CCG.Instructions is
          --  Declare the variable and write the copy into it
 
          Maybe_Decl  (V);
-         Output_Copy  (V, C_Val, Declaration_Type (V), Actual_Type (V));
+         Output_Copy  (V, C_Val, Declaration_Type (V), Act_MD);
       end if;
    end Force_To_Variable;
 

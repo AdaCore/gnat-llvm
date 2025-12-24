@@ -126,11 +126,12 @@ package CCG.Utils is
    --  Returns the number of uses of V
 
    function Is_Same_C_Types
-     (MD1, MD2 : MD_Type; Match_Void : Boolean := False) return Boolean
+     (MD1, MD2 : MD_Type; Loose : Boolean := False) return Boolean
      with Pre => Present (MD1) and then Present (MD2);
    --  True iff the two types will have the same C representation. If
-   --  Match_Void, then consider a pointer to void as matching any
-   --  pointer type. This avoids casts to types that we know less about.
+   --  Loose, then consider a pointer to void as matching any pointer type
+   --  and unknown signedness as matching either sign. This avoids casts to
+   --  types that we know less about.
 
    function Is_Better_Type (MD1, MD2 : MD_Type) return Boolean
      with Pre => Present (MD1) and then Present (MD2);

@@ -753,13 +753,13 @@ package body GNATLLVM.Subprograms is
       Out_Args_Count  : constant Nat         :=
         Number_Out_Params (E) +
           (if LRK = Struct_Out_Subprog then 1 else 0);
+      Param_Ent       : Opt_Formal_Kind_Id   := First_Formal_With_Extras (E);
+      J               : Nat                  := 1;
+      Result_Typ      : MD_Type              := Ret_Typ;
       In_Arg_Types    : MD_Type_Array (1 .. In_Args_Count);
       In_Arg_Names    : Name_Id_Array (1 .. In_Args_Count);
       Out_Arg_Types   : MD_Type_Array (1 .. Out_Args_Count);
       Out_Arg_Names   : Name_Id_Array (1 .. Out_Args_Count);
-      Param_Ent       : Opt_Formal_Kind_Id   := First_Formal_With_Extras (E);
-      J               : Nat                  := 1;
-      Result_Typ      : MD_Type              := Ret_Typ;
 
    begin
       --  If the return type has dynamic size, we need to add a parameter
@@ -834,6 +834,7 @@ package body GNATLLVM.Subprograms is
 
       if Adds_S_Link then
          In_Arg_Types (J) := Void_Ptr_MD;
+         In_Arg_Names (J) := Name_Find ("_chain");
       end if;
 
       --  Now deal with the result type. We've already set if it it's

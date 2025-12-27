@@ -371,12 +371,12 @@ package GNATLLVM.MDType is
              and then (for all J in Arg_Types'Range =>
                          Parameter_Type (Fn_Ty'Result,
                                          J - Arg_Types'First) =
-                           Arg_Types (J))
+                         Arg_Types (J))
              and then (Arg_Names'Length = 0
                        or else (for all J in Arg_Names'Range =>
                                   Parameter_Name (Fn_Ty'Result,
                                                   J - Arg_Names'First) =
-                                    Arg_Names (J)));
+                                  Arg_Names (J)));
    --  Make a function type with the specified return and argument types
 
    function Update_Fn_Ty_Return (MD, Return_MD : MD_Type) return MD_Type

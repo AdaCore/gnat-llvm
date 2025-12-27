@@ -242,7 +242,9 @@ package body CCG.Environment is
    function Type_Info_Idx  (T : Type_T; Create : Boolean) return Type_Idx
      with Pre => Present (T), Pure_Function;
    function MD_Type_Info_Idx (M : MD_Type; Create : Boolean) return MD_Type_Idx
-     with Pre => Present (M), Pure_Function;
+     with Pre  => Present (M),
+          Post => not Create or Present (MD_Type_Info_Idx'Result),
+          Pure_Function;
    function BB_Info_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx
      with Pre => Present (B), Pure_Function;
 

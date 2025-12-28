@@ -258,13 +258,13 @@ package body GNATLLVM.DebugInfo is
    function Get_Possibly_Local_Name (E : Entity_Id) return String is
       S : constant Metadata_T := Get_Scope_For (E);
    begin
+      --  ??? A previous comment here said:
       --  Most artificial types should be nameless.  The only
       --  exception here is that there are some types that LLVM does
       --  not allow to be nameless; these are handled specially at the
       --  point at which such types are built.
-      if not Comes_From_Source (E) and then Sloc (E) /= Standard_Location then
-         return "";
-      end if;
+      --
+      --  But LLVM 19 requires names for most types.
       if S = No_Metadata_T or not Types_Can_Have_Function_Scope then
          return Get_Name (E);
       end if;
@@ -950,7 +950,7 @@ package body GNATLLVM.DebugInfo is
             end if;
             Ranges (J) :=
               Create_Subrange_Type
-                (DI_Builder, No_Metadata_T, "", No_Metadata_T,
+                (DI_Builder, No_Metadata_T, Name & "_CMP", No_Metadata_T,
                  No_Line_Number, 0, 0, DI_Flag_Zero,
                  Is_Unsigned_Type (Full_Etype (Index_Type)),
                  Base_Type_Data, Low_Exp, High_Exp, No_Metadata_T,

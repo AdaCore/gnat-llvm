@@ -484,11 +484,11 @@ package body CCG.Instructions is
       --  have is a pointer to void. Otherwise, we need to cast to a
       --  pointer to the type and volatility designated by the instruction.
 
-      return (if   Is_Same_C_Types (Best_Val_MD, Inst_MD, True)
-                   and then Get_Volatile (V) = Is_Volatile (Best_Val_MD)
-                   and then not Is_A_Constant_Pointer_Null (Op)
-                   and then Ptr_MD /= Void_Ptr_MD
-              then Best_Val_MD else Make_Volatile (Inst_MD, Get_Volatile (V)));
+      return Make_Volatile ((if   Is_Same_C_Types (Best_Val_MD, Inst_MD, True)
+                                  and then not Is_A_Constant_Pointer_Null (Op)
+                                  and then Ptr_MD /= Void_Ptr_MD
+                             then Best_Val_MD else Inst_MD),
+                            Get_Volatile (V));
 
    end LS_Op_MD;
 

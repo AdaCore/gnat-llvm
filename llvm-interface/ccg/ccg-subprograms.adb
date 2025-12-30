@@ -1065,8 +1065,7 @@ package body CCG.Subprograms is
 
       if Matches (S, "assume")
         or else Matches (S, "experimental.noalias.scope.decl")
-        or else Matches (S, "stackrestore", True)
-        or else Matches (S, "stacksave", True)
+        or else Matches (S, "stackrestore") or else Matches (S, "stacksave")
       then
          return True;
 
@@ -1125,13 +1124,15 @@ package body CCG.Subprograms is
          end;
 
       --  abs is simple, but we have to be sure that we do a signed operation
+      --  for the integer case.
 
-      elsif Matches (S, "abs") then
+      elsif Matches (S, "abs") or else Matches (S, "fabs") then
          Force_To_Variable (Op1);
 
          declare
             Str1 : constant Str :=
-              Process_Operand (Op1, POO_Signed, Conditional);
+              (if   Matches (S, "fabs") then +Op1
+               else Process_Operand (Op1, POO_Signed, Conditional));
 
          begin
             Assignment (V,
@@ -1203,16 +1204,28 @@ package body CCG.Subprograms is
                      Is_Opencode_Builtin => True);
          return True;
 
-      --  Handle the builtins we created for or else / and then
+      --  Handle the builtins we created for or else / and then. Be careful if
+      --  one or more inputs are a trunc.
 
-      elsif Matches (S, "ccg.orelse") then
-         Assignment (V, TP ("#1 || #2", Op1, Op2) + Logical_OR,
-                     Is_Opencode_Builtin => True);
-         return True;
-      elsif Matches (S, "ccg.andthen") then
-         Assignment (V, TP ("#1 && #2", Op1, Op2) + Logical_AND,
-                     Is_Opencode_Builtin => True);
-         return True;
+      elsif Matches (S, "ccg.orelse")
+        or else Matches (S, "ccg.andthen")
+      then
+         declare
+            Is_Or : constant Boolean    := Matches (S, "ccg.orelse");
+            Prec  : constant Precedence :=
+              (if Is_Or then Logical_OR else Logical_AND);
+            LHS   : constant Str        :=
+              (if   Is_A_Trunc_Inst (Op1) then Process_Operand (Op1, X, Prec)
+                    else +Op1);
+            RHS   : constant Str        :=
+              (if   Is_A_Trunc_Inst (Op2) then Process_Operand (Op2, X, Prec)
+                    else +Op2);
+            Op    : constant String     := (if Is_Or then " || " else " && ");
+
+         begin
+            Assignment (V, LHS & Op & RHS + Prec, Is_Opencode_Builtin => True);
+            return True;
+         end;
 
       --  Handle bitreverse and bswap builtins
 

@@ -215,6 +215,10 @@ package CCG.Helper is
      (Present (Is_A_Bit_Cast_Inst (V)))
      with Pre => Present (V);
 
+   function Is_A_Trunc_Inst (V : Value_T) return Boolean is
+     (Present (Is_A_Trunc_Inst (V)))
+     with Pre => Present (V);
+
    function Is_A_Extract_Value_Inst (V : Value_T) return Boolean is
      (Present (Is_A_Extract_Value_Inst (V)))
      with Pre => Present (V);

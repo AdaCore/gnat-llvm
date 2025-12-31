@@ -1156,6 +1156,15 @@ Is_Lifetime_Intrinsic (Instruction *v)
   return v->isLifetimeStartOrEnd ();
 }
 
+extern "C"
+void
+Delete_Trailing_Dbg_Records (BasicBlock *b)
+{
+#if LLVM_VERSION_MAJOR >= 19
+  b->deleteTrailingDbgRecords();
+#endif
+}
+
 /* If we call into CCG from GNAT LLVM during the compilation process to
    record some information about a Value (for example, its signedness),
    there's a chance that that value will be deleted during the optimization

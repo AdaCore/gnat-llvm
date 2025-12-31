@@ -750,6 +750,7 @@ package body CCG.Transform is
       Insert_At_Block_End (Call_Inst, BB, Our_Term);
       Set_Condition (SC_Term, Call_Inst);
       Instruction_Remove_From_Parent (SC_Term);
+      Delete_Trailing_Dbg_Records (SC_BB);
       Insert_At_Block_End (SC_Term, BB, SC_Term);
       Delete_Instruction (Our_Term);
       Delete_Basic_Block (SC_BB);

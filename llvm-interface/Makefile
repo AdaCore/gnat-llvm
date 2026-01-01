@@ -28,8 +28,20 @@ ifneq ($(wildcard $(LLVM_BUILD_DIR)/bin/llvm-config),)
   LLVM_SRC=$(shell cd `$(LLVM_CONFIG) --includedir`/../..;pwd)
   CLANG_CXXFLAGS=-I$(LLVM_BUILD_DIR)/tools/clang/include -I$(LLVM_SRC)/clang/include
 else
-  LLVM_CONFIG=llvm-config
-  CLANG_CXXFLAGS=
+	# Allows the use of alternate named binaries
+	ifneq ($(LLVM_CONFIG),)
+		LLVM_CONFIG:=$(LLVM_CONFIG)
+	else
+		LLVM_CONFIG=llvm-config
+	endif
+	
+	# Allows the use of a custom LLVM prefix
+	ifneq ($(LLVM_PREFIX),)
+		LLVM_CONFIG:=$(LLVM_PREFIX)/$(LLVM_CONFIG)
+		CLANG_CXXFLAGS=-I$(shell $(LLVM_CONFIG) --prefix)/tools/clang/include -I$(shell cd `$(LLVM_CONFIG) --prefix`/..;pwd)/clang/include
+	else
+		CLANG_CXXFLAGS=
+	endif
 endif
 
 LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs)

@@ -1,6 +1,10 @@
 #! /bin/bash
 set -eu
 
+# Usage: check_for_LLVM_aliasing_bug.sh "path/to/llvm-config"
+
+llvm_config="$1"
+
 cat << EOF > obj/c43204h.ll
 ; ModuleID = 'c43204h.adb'
 source_filename = "c43204h.adb"
@@ -110,8 +114,8 @@ declare i32 @report__ident_int(i32)
 !24 = !{!10, !13, i64 4, i64 4}
 
 EOF
-opt -O2 obj/c43204h.ll -o obj/c43204h_o.bc
-llvm-dis obj/c43204h_o.bc
+$("$llvm_config" --bindir)/opt -O2 obj/c43204h.ll -o obj/c43204h_o.bc
+$("$llvm_config" --bindir)/llvm-dis obj/c43204h_o.bc
 if [ "`wc -l obj/c43204h_o.ll | awk '{print $1}'` " -gt "40" ]; then
     BUG=False
     echo "OK: using LLVM without the aliasing bug"

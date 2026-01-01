@@ -103,6 +103,10 @@ package body CCG.Subprograms is
    --  the subtree rooted at entry J in the source order table, if any.
    --  Defining says if it's being declared or defined there.
 
+   procedure Clear_Source_Order;
+   --  Clear the source order table so we don't go astray when LLVM deletes
+   --  values that we may need to look through that table.
+
    function Function_Proto
      (V           : Value_T;
       Definition  : Boolean := True;
@@ -281,6 +285,15 @@ package body CCG.Subprograms is
            (Referenced_Value (J, Defining), Delete_From_Source_Order'Access);
       end loop;
    end Protect_Source_Order;
+
+   ------------------------
+   -- Clear_Source_Order --
+   ------------------------
+
+   procedure Clear_Source_Order is
+   begin
+      Source_Order.Set_Last (0);
+   end Clear_Source_Order;
 
    --------------------
    -- New_Subprogram --
@@ -1565,6 +1578,11 @@ package body CCG.Subprograms is
             end if;
          end;
       end loop;
+
+      --  Clear the source order table so we don't go astray when LLVM deletes
+      --  values that we may need to look through that table.
+
+      Clear_Source_Order;
 
       --  Finally, write each elab proc, if we have it
 

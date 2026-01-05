@@ -38,6 +38,7 @@ package body GNATLLVM.Records.Debug is
    DW_OP_deref               : constant DWARF_OP_Encoding_T := 16#06#;
    DW_OP_constu              : constant DWARF_OP_Encoding_T := 16#10#;
    DW_OP_consts              : constant DWARF_OP_Encoding_T := 16#11#;
+   DW_OP_dup                 : constant DWARF_OP_Encoding_T := 16#12#;
    DW_OP_over                : constant DWARF_OP_Encoding_T := 16#14#;
    DW_OP_swap                : constant DWARF_OP_Encoding_T := 16#16#;
    DW_OP_rot                 : constant DWARF_OP_Encoding_T := 16#17#;
@@ -409,30 +410,78 @@ package body GNATLLVM.Records.Debug is
       procedure Discriminant (Val : Node_Ref_Or_Val) is
          F : constant Record_Field_Kind_Id :=
            Find_Discriminant_From_Index (Original_Type, UI_To_Int (Val));
-         Offset_In_Bits : constant ULL := UI_To_ULL (Component_Bit_Offset (F));
-         Offset_In_Bytes : constant ULL := Offset_In_Bits / UBPU;
+         Bit_Offset : constant Uint := Component_Bit_Offset (F);
+         Bit_Offset_Is_Dynamic : constant Boolean := Bit_Offset < Uint_0;
          --  The low-order bits to shift off.
-         Relative_Bit_Offset : constant ULL := Offset_In_Bits -
-                                               UBPU * Offset_In_Bytes;
+         Relative_Bit_Offset : ULL;
          Size_In_Bits : constant ULL := UI_To_ULL (Esize (F));
          Size_In_Bytes : constant ULL := (Size_In_Bits + UBPU - 1) / UBPU;
          Pointer_Bits : constant ULL := ULL (Thin_Pointer_Size);
          Is_Unsigned : constant Boolean := Is_Unsigned_Type (Etype (F));
       begin
-         --  Find the location of the discriminant.
-         Expression.Append (DW_OP_push_object_address);
-         --  Frequently the discriminant is the first member, so avoid
-         --  some extra work in this case.
-         if Offset_In_Bytes /= 0 then
-            Expression.Append (DW_OP_plus_uconst);
-            Expression.Append (uint64_t (Offset_In_Bytes));
+         if Bit_Offset_Is_Dynamic then
+            --  Dynamic offset to the discriminant, so a more
+            --  complicated approach is needed.
+            Convert_It (Bit_Offset);
+
+            --  The offset in bits is on the stack.  It's convenient
+            --  to compute the relative bit offset first and then keep
+            --  it on the stack for later.
+            Expression.Append (DW_OP_dup);
+            Expression.Append (DW_OP_constu);
+            Expression.Append (7);
+            Expression.Append (DW_OP_and);
+
+            --  Now compute the byte offset.
+            --  Stack: bit-offset relative-bit-offset
+            Expression.Append (DW_OP_swap);
+            Expression.Append (DW_OP_constu);
+            Expression.Append (3);
+            Expression.Append (DW_OP_shr);
+
+            --  Compute the actual location.
+            --  Stack: relative-bit-offset byte-offset
+            Expression.Append (DW_OP_push_object_address);
+            Expression.Append (DW_OP_plus);
+
+            --  Because we're going to shift off the low bits, this is
+            --  correct for the code below.
+            Relative_Bit_Offset := 0;
+         else
+            --  Fixed offset to the discriminant.
+            declare
+               Offset_In_Bits : ULL;
+               Offset_In_Bytes : ULL;
+            begin
+               Offset_In_Bits := UI_To_ULL (Component_Bit_Offset (F));
+               Offset_In_Bytes := Offset_In_Bits / UBPU;
+               Relative_Bit_Offset := Offset_In_Bits - UBPU * Offset_In_Bytes;
+
+               --  Compute the location of the discriminant.
+               Expression.Append (DW_OP_push_object_address);
+               --  Frequently the discriminant is the first member, so avoid
+               --  some extra work in this case.
+               if Offset_In_Bytes /= 0 then
+                  Expression.Append (DW_OP_plus_uconst);
+                  Expression.Append (uint64_t (Offset_In_Bytes));
+               end if;
+            end;
          end if;
+
          --  Extract the necessary bytes.
          if Size_In_Bytes * UBPU = Pointer_Bits then
             Expression.Append (DW_OP_deref);
          else
             Expression.Append (DW_OP_deref_size);
             Expression.Append (uint64_t (Size_In_Bytes));
+         end if;
+
+         --  In the dynamic bit offset case, shift off the low bits.
+         --  This is done to avoid a more complicated calculation.
+         if Bit_Offset_Is_Dynamic then
+            --  Stack: relative-bit-offset value
+            Expression.Append (DW_OP_swap);
+            Expression.Append (DW_OP_shr);
          end if;
 
          --  For unsigned types, when there is no bit offset, some

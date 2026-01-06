@@ -718,7 +718,7 @@ package body CCG.Utils is
                   when Op_Select =>
                      MD := Declaration_Type (Inst, No_Force => True);
 
-                     if Present (MD) then
+                     if V in Op2 | Op3 and then Present (MD) then
                         return MD;
 
                      elsif V = Op2 then

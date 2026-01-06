@@ -238,15 +238,17 @@ package body CCG.Environment is
    --  basic block and whether to create one if one isn't present.
 
    function Value_Info_Idx (V : Value_T; Create : Boolean) return Value_Idx
-     with Pre => Present (V), Pure_Function;
+     with Pre  => Present (V),
+          Post => not Create or else Present (Value_Info_Idx'Result);
    function Type_Info_Idx  (T : Type_T; Create : Boolean) return Type_Idx
-     with Pre => Present (T), Pure_Function;
+     with Pre  => Present (T),
+          Post => not Create or else Present (Type_Info_Idx'Result);
    function MD_Type_Info_Idx (M : MD_Type; Create : Boolean) return MD_Type_Idx
      with Pre  => Present (M),
-          Post => not Create or Present (MD_Type_Info_Idx'Result),
-          Pure_Function;
+          Post => not Create or else Present (MD_Type_Info_Idx'Result);
    function BB_Info_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx
-     with Pre => Present (B), Pure_Function;
+     with Pre  => Present (B),
+          Post => not Create or else Present (BB_Info_Idx'Result);
 
    --------------------
    -- Value_Info_Idx --

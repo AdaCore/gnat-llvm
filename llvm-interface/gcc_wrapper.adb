@@ -494,19 +494,6 @@ begin
          S := Locate_Exec_On_Path ("clang");
       end if;
 
-      --  If the above search didn't work, try to look for clang prefixed with
-      --  the default target triple. This might be the case for x86 or cross
-      --  builds.
-
-      if S = null then
-         S := Locate_Exec_On_Path (Default_Target_Triple & "-clang");
-      end if;
-
-      --  Note this may result in an infinite loop of spawns between a wrapper
-      --  calling this wrapper when neither llvm-helper nor (*-)clang is found.
-      --  That's the case with fixedbugs where llvm-gcc is called through a
-      --  wrapper called gcc.
-
       if S = null then
          Put_Line ("warning: clang not found, using gcc.");
          S := Locate_Exec_On_Path ("gcc");

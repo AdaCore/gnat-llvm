@@ -212,8 +212,7 @@ package body CCG.Output is
          --  don't need to do anything. Otherwise kludge this case by
          --  making it an array of size 1.
 
-         if Is_Zero_Length_Array (MD) and then Effective_Array_Length (MD) = 0
-         then
+         if Is_Array (MD) and then Effective_Array_Length (MD) = 0 then
             Output_Decl (Element_Type (MD) & " " & (V + LHS) & "[1]",
                          Is_Global => Is_A_Global_Variable (V));
 

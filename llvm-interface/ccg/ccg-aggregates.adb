@@ -395,11 +395,16 @@ package body CCG.Aggregates is
          Elem_MD := Element_Type (Elem_MD);
       end loop;
 
-      --  Now build the declaration
+      --  Now build the declaration. If C99 or greater and variable length,
+      --  indicate it that way.
 
       Maybe_Output_Typedef (Elem_MD);
       Error_If_Cannot_Pack (+Elem_MD);
-      Decl := Decl & Elem_MD & " " & MD & "[" & Effective_Array_Length (MD);
+      Decl := Decl & Elem_MD & " " & MD & "[";
+
+      if not Is_Variable_Array (MD) or else C_Version < 1999 then
+         Decl := Decl & Effective_Array_Length (MD);
+      end if;
 
       --  Finally, output it
 

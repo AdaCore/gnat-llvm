@@ -394,7 +394,7 @@ package CCG.Utils is
    --  type of T. This will be an approximate, but is the best we can do
    --  in that situation. If No_Scan is true, we don't try to scan
    --  instructions for more information (because we haven't done needed
-   --  transformtions yet).
+   --  transformations yet).
    --
    --  This type can be derived by heuristics and need not be "correct".
    --  If the type chosen here isn't the best type for the variable to be

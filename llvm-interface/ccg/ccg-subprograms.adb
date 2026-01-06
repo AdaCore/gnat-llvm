@@ -792,7 +792,6 @@ package body CCG.Subprograms is
             --  pointer type or array type, we may need to cast it to the
             --  formal type, especially if it's a pointer to a
             --  function. But don't do this if the actual type is better.
-            --  we overw
 
             if No (Cast_MD (J))
               and then (Is_Pointer (A_MD) or else Is_Array (A_MD))
@@ -822,8 +821,8 @@ package body CCG.Subprograms is
             end if;
 
             --  If we need a cast for this operand for any reason, generate
-            --   it. But if we're casting to a struct type, do it by
-            --   pointer putting.
+            --  it. But if we're casting to a struct type, do it by
+            --  pointer punning.
 
             if Present (Cast_MD (J)) then
                if Is_Struct (A_MD) or else Is_Array (A_MD) then

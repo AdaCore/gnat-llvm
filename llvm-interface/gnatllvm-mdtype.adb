@@ -1141,7 +1141,7 @@ package body GNATLLVM.MDType is
          return LLVM_Type (MD);
 
       --  LLVM types don't have volatility, so we want to use the LLVM type
-      --  of the non-volatilel variant if this is volatile. This matters
+      --  of the non-volatile variant if this is volatile. This matters
       --  for named structs, since LLVM will unique the name.
 
       elsif Is_Volatile (MD) then

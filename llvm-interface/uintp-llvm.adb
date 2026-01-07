@@ -35,7 +35,7 @@ package body Uintp.LLVM is
    function UI_To_LLVM (T : Type_T; U : Uint) return Value_T is
    begin
       if UI_Is_In_Int_Range (U) then
-         return Const_Int (T, ULL (UI_To_Int (U)), True);
+         return Const_Int (T, Int_To_ULL (UI_To_Int (U)), True);
       else
          declare
             Words  : Word_Array       := Big_UI_To_Words (U);
@@ -100,7 +100,7 @@ package body Uintp.LLVM is
       --  Big_UI_To_Words for many integer values due to the way Uint works.
 
       if UI_Is_In_Int_Range (U) then
-         Words (1) := uint64_t (UI_To_Int (U));
+         Words (1) := uint64_t (Int_To_ULL (UI_To_Int (U)));
          return Words;
       else
          return Big_UI_To_Words (U);

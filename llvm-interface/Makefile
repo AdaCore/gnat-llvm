@@ -9,8 +9,6 @@ CHMOD=chmod
 AR=ar q
 LN_S=ln -sf
 
-SOEXT=.so
-
 GNATMAKE=gnatmake
 
 GPROPT=-XBuild=Production
@@ -43,8 +41,6 @@ GPRBUILD=gprbuild -v -n -XLLVM_Version=$(LLVM_VERSION) -x
 ifeq ($(OS),Windows_NT)
   LN_S=cp -p
   LDFLAGS+=-Wl,--stack=0x2000000
-  EXE=.exe
-  SOEXT=.dll
 else
   # In order to enable pass plugins, the compiler binary needs to reexport LLVM
   # symbols to shared objects. We achieve this by building with -rdynamic (which
@@ -232,27 +228,17 @@ ifeq ($(strip $(filter-out vxworks7r2,$(target_os))),)
 	$(MAKE) gnatlib-automated RTSSWITCH=--RTS:C=kernel RTSBASE=rts-kernel THREAD_KIND=kernel-smp
 	$(MAKE) gnatlib-automated RTSSWITCH=--RTS:C=rtp RTSBASE=rts-rtp THREAD_KIND=rtp-smp
 else ifeq ($(target),x86_64-pc-linux-gnu)
-	$(MAKE) gnatlib-automated LIBRARY_KIND=static-pic
-	$(MV) $(RTSLIB)/libgnat.a ./libgnat_pic.a
-	$(MV) $(RTSLIB)/libgnarl.a ./libgnarl_pic.a
-	cd $(RTS)/obj-static-pic; clang -shared -o ./libgnat.so -fPIC \
-		$(GNATRTL_NONTASKING_OBJS) \
-		$(LIBGNAT_OBJS) \
-		$(SO_OPTS)libgnat-$(LIBRARY_VERSION)$(SOEXT) \
-		$(MISCLIB) -lm
-	cd $(RTS)/obj-static-pic; clang -shared -o ./libgnarl.so -fPIC \
-		$(GNATRTL_TASKING_OBJS) \
-		$(SO_OPTS)libgnarl-$(LIBRARY_VERSION)$(SOEXT) \
-		$(THREADSLIB)
-	$(MV) $(RTS)/obj-static-pic/libgnat.so ./libgnat.so
-	$(MV) $(RTS)/obj-static-pic/libgnarl.so ./libgnarl.so
+	$(RMDIR) $(RTS)
+	$(MAKE) quicklib LIBRARY_KIND=static-pic LN_S="cp -p"
+	$(MV) $(RTSLIB)/libgnat_pic.a .
+	$(MV) $(RTSLIB)/libgnarl_pic.a .
+	$(RMDIR) $(RTS)
+	$(MAKE) quicklib LIBRARY_KIND=dynamic GPRBUILD="$(GPRBUILD) --gpr=2" LN_S="cp -p"
+	$(MV) $(RTSLIB)/libgna*.so .
 	$(MAKE) gnatlib-automated
 	$(MV) libgnat_pic.a $(RTSLIB)
 	$(MV) libgnarl_pic.a $(RTSLIB)
-	$(MV) libgnat.so $(RTSLIB)/libgnat-$(LIBRARY_VERSION)$(SOEXT)
-	$(MV) libgnarl.so $(RTSLIB)/libgnarl-$(LIBRARY_VERSION)$(SOEXT)
-	cd $(RTSLIB); $(LN_S) libgnat-$(LIBRARY_VERSION)$(SOEXT) libgnat$(SOEXT)
-	cd $(RTSLIB); $(LN_S) libgnarl-$(LIBRARY_VERSION)$(SOEXT) libgnarl$(SOEXT)
+	$(MV) libgna*.so $(RTSLIB)
 else
 	$(MAKE) gnatlib-automated
 endif
@@ -301,7 +287,7 @@ quicklib: $(RTSDIR)
 	$(GPRBUILD) -p --target=$(target) $(RTSSWITCH) -j$(PROCS) -P$(RTSDIR)/libada \
 	  -XCFLAGS="$(CFLAGS) -Wno-implicit-function-declaration -I$(LLVM_INCLUDE_DIR)" \
 	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS) -gdwarf-aranges" \
-	  -XLIBRARY_KIND=$(LIBRARY_KIND)
+	  -XLIBRARY_KIND=$(LIBRARY_KIND) -XLIBRARY_VERSION=$(LIBRARY_VERSION)
 	cd $(RTSLIB) && $(CHMOD) a-wx *.ali
 
 $(RTSDIR):

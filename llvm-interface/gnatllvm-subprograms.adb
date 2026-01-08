@@ -2863,6 +2863,10 @@ package body GNATLLVM.Subprograms is
             Add_Uwtable_Attribute (LLVM_Func);
          end if;
 
+         if Force_Frame_Pointers then
+            Add_Named_Attribute (LLVM_Func, "frame-pointer", "all");
+         end if;
+
          if No_Tail_Calls then
             Add_Named_Attribute (LLVM_Func, "disable-tail-calls", "true");
          end if;

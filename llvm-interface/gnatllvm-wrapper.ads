@@ -450,9 +450,14 @@ package GNATLLVM.Wrapper is
      (Module : Module_T)
      with Import, Convention => C, External_Name => "Set_Unwind_Tables";
 
+   procedure Enable_Frame_Pointers (Module : Module_T)
+     with Import, Convention => C, External_Name => "Enable_Frame_Pointers";
+
    function Has_Default_PIE (Triple : String) return Boolean;
 
    function Has_SEH (Triple : String) return Boolean;
+
+   function Needs_Frame_Pointers (Triple : String) return Boolean;
 
    function Is_x86 (Triple : String) return Boolean;
 

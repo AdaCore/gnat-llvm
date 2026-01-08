@@ -625,6 +625,17 @@ package body GNATLLVM.Wrapper is
       return Has_SEH_C (Triple & ASCII.NUL) /= 0;
    end Has_SEH;
 
+   --------------------------
+   -- Needs_Frame_Pointers --
+   --------------------------
+
+   function Needs_Frame_Pointers (Triple : String) return Boolean is
+      function Needs_Frame_Pointers_C (Triple : String) return LLVM_Bool
+      with Import, Convention => C, External_Name => "Needs_Frame_Pointers";
+   begin
+      return Needs_Frame_Pointers_C (Triple & ASCII.NUL) /= 0;
+   end Needs_Frame_Pointers;
+
    ------------
    -- Is_x86 --
    ------------

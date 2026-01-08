@@ -609,6 +609,8 @@ package body GNATLLVM.Codegen is
       end if;
 
       SEH := Has_SEH (Normalized_Target_Triple.all);
+      Force_Frame_Pointers :=
+        Needs_Frame_Pointers (Normalized_Target_Triple.all);
       Enable_Execute_Stack :=
         Need_Enable_Execute_Stack (Normalized_Target_Triple.all);
 
@@ -730,6 +732,10 @@ package body GNATLLVM.Codegen is
 
       if SEH then
          Set_Unwind_Tables (Module);
+      end if;
+
+      if Force_Frame_Pointers then
+         Enable_Frame_Pointers (Module);
       end if;
 
       --  ??? Replace this by a parameter in system.ads or target.atp

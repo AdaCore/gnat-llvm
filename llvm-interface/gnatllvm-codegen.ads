@@ -76,6 +76,9 @@ package GNATLLVM.Codegen is
    SEH             : Boolean        := False;
    --  True if the target supports Structured Exception Handling
 
+   Force_Frame_Pointers : Boolean := False;
+   --  True if the target needs frame pointers
+
    DSO_Preemptable : Boolean        := False;
    --  Indicates that the function or variable may be replaced by a symbol
    --  from outside the linkage unit at runtime. clang derives this from

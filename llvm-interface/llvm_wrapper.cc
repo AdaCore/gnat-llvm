@@ -131,7 +131,7 @@ Add_Dereferenceable_Or_Null_Attribute (Function *fn, unsigned idx,
 
 extern "C"
 void
-Add_Ret_Dereferenceable_Or_Null_Attribute (Function *fn, 
+Add_Ret_Dereferenceable_Or_Null_Attribute (Function *fn,
 					   unsigned long long Bytes)
 {
   /* There doesn't appear to be a way to do this in LLVM 14, so skip for now.
@@ -1020,7 +1020,7 @@ Get_Source_Element_Type (Value *I)
   auto *GEPO = cast<GEPOperator>(I);
   return GEPO->getSourceElementType ();
 }
-    
+
 extern "C"
 Type *
 Get_Function_Type (Function *F)
@@ -1211,6 +1211,13 @@ Set_Unwind_Tables (Module *M)
 }
 
 extern "C"
+void
+Enable_Frame_Pointers (Module *M)
+{
+  M->setFramePointer(FramePointerKind::All);
+}
+
+extern "C"
 bool
 Has_Default_PIE (const char *Target)
 {
@@ -1232,6 +1239,17 @@ Has_SEH (const char *Target)
   return TargetTriple.isOSWindows ()
          && (TargetTriple.getArch () == Triple::x86_64
              || TargetTriple.getArch () == Triple::aarch64);
+}
+
+extern "C"
+bool
+Needs_Frame_Pointers (const char *Target)
+{
+  Triple TargetTriple(Target);
+
+  // Like GCC, we enable frame pointers for x86 because backtrace computations
+  // rely on them, except on Linux where they use DWARF.
+  return !TargetTriple.isOSLinux() && (TargetTriple.getArch() == Triple::x86);
 }
 
 extern "C"

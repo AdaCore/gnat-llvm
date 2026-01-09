@@ -110,8 +110,8 @@ declare i32 @report__ident_int(i32)
 !24 = !{!10, !13, i64 4, i64 4}
 
 EOF
-opt -O2 obj/c43204h.ll -o obj/c43204h_o.bc
-llvm-dis obj/c43204h_o.bc
+$("$LLVM_CONFIG" --bindir)/opt -O2 obj/c43204h.ll -o obj/c43204h_o.bc
+$("$LLVM_CONFIG" --bindir)/llvm-dis obj/c43204h_o.bc
 if [ "`wc -l obj/c43204h_o.ll | awk '{print $1}'` " -gt "40" ]; then
     BUG=False
     echo "OK: using LLVM without the aliasing bug"

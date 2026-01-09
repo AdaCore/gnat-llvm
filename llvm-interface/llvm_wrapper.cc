@@ -624,7 +624,11 @@ struct Target_C_Type_Info {
   unsigned IntSize;
   unsigned LongSize;
   unsigned LongLongSize;
+  unsigned LongLongAlignment;
   unsigned LongLongLongSize;
+  unsigned LongLongLongAlignment;
+  unsigned DoubleSize;
+  unsigned DoubleAlignment;
   unsigned LongDoubleSemanticSize; // 0 if the target doesn't have long double
   unsigned LongDoubleStorageSize;  // 0 if the target doesn't have long double
   unsigned LongDoubleAlignment;    // 0 if the target doesn't have long double
@@ -682,8 +686,16 @@ Get_Target_C_Types (const char *Triple, const char *CPU, const char *ABI,
   Result->IntSize = Info->getIntWidth();
   Result->LongSize = Info->getLongWidth();
   Result->LongLongSize = Info->getLongLongWidth();
-  Result->LongLongLongSize
-    = Info->hasInt128Type() && !Emit_C ? 128 : Result->LongLongSize;
+  Result->LongLongAlignment = Info->getLongLongAlign();
+  if (Info->hasInt128Type() && !Emit_C) {
+    Result->LongLongLongSize = 128;
+    Result->LongLongLongAlignment = Info->getInt128Align();
+  } else {
+    Result->LongLongLongSize = Result->LongLongSize;
+    Result->LongLongLongAlignment = Result->LongLongAlignment;
+  }
+  Result->DoubleSize = Info->getDoubleWidth();
+  Result->DoubleAlignment = Info->getDoubleAlign();
   if (Info->hasLongDoubleType()) {
     Result->LongDoubleSemanticSize =
       APFloat::semanticsSizeInBits(Info->getLongDoubleFormat());

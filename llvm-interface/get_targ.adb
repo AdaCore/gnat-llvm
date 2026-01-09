@@ -203,7 +203,7 @@ package body Get_Targ is
 
    function Get_Double_Float_Alignment return Nat is
    begin
-      return 0;
+      return Nat (Target_C_Types.Double_Alignment);
    end Get_Double_Float_Alignment;
 
    ---------------------------------
@@ -212,7 +212,7 @@ package body Get_Targ is
 
    function Get_Double_Scalar_Alignment return Nat is
    begin
-      return 0;
+      return Nat (Target_C_Types.Long_Long_Alignment);
    end Get_Double_Scalar_Alignment;
 
    -----------------------------
@@ -239,8 +239,8 @@ package body Get_Targ is
          Count     => 0,
          Float_Rep => IEEE_Binary,
          Precision => 64,
-         Size      => 64,
-         Alignment => 64);
+         Size      => Integer (Target_C_Types.Double_Size),
+         Alignment => Integer (Target_C_Types.Double_Alignment));
 
       Long_Double_Str (Long_Double_Str'First .. Long_Double_Str'First + 10) :=
         "long double";

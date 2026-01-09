@@ -25,7 +25,6 @@ with Table;
 with Uintp;       use Uintp;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
-with GNATLLVM.MDType;  use GNATLLVM.MDType;
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -140,9 +139,9 @@ package body CCG.Codegen is
       function Is_Public (V : Value_T) return Boolean;
       --  True if V is publically-visible
 
-      procedure Mark_Struct_Fields (T : Type_T)
-        with Pre => Present (T);
-      --  If T is a struct type, mark the types of all fields in it as
+      procedure Mark_Struct_Fields (MD : MD_Type)
+        with Pre => Present (MD);
+      --  If MD is a struct type, mark the types of all fields in it as
       --  used in a struct.
 
       procedure Mark_Structs_Used (V : Value_T)
@@ -185,7 +184,7 @@ package body CCG.Codegen is
          --  type used to represent the enum.
 
          if C_Version >= 2023 then
-            Name_Part := TE_Name & " : " & (+Type_Of (TE));
+            Name_Part := TE_Name & " : " & Type_Of (TE);
 
          --  Otherwise, if the width of the type used to represent the
          --  enum is equal to or greater than the width of an integer,
@@ -222,7 +221,7 @@ package body CCG.Codegen is
          --  If we need to write a typedef for this enum, do it now
 
          if Need_Typedef then
-            Output_Decl ("typedef " & (+Type_Of (TE)) & " " & TE_Name,
+            Output_Decl ("typedef " & Type_Of (TE) & " " & TE_Name,
                          Is_Typedef => True);
          end if;
 
@@ -240,29 +239,35 @@ package body CCG.Codegen is
       -- Mark_Struct_Fields --
       ------------------------
 
-      procedure Mark_Struct_Fields (T : Type_T) is
+      procedure Mark_Struct_Fields (MD : MD_Type) is
       begin
-         if Is_Struct_Type (T) then
-            declare
-               Types : constant Nat := Count_Struct_Element_Types (T);
+         case Class (MD) is
 
-            begin
-               for J in 0 .. Types - 1 loop
-                  declare
-                     ST : constant Type_T := Struct_Get_Type_At_Index (T, J);
+            when Struct_Class =>
 
-                  begin
-                     if not Get_Used_In_Struct (ST) then
-                        Set_Used_In_Struct (ST);
-                        Mark_Struct_Fields (ST);
-                     end if;
-                  end;
-               end loop;
-            end;
+               if Has_Fields (MD) then
+                  for J in 0 .. Element_Count (MD) - 1 loop
+                     declare
+                        S_MD : constant MD_Type := Element_Type (MD, J);
 
-         elsif Is_Array_Type (T) or else Is_Pointer_Type (T) then
-            Mark_Struct_Fields (Get_Element_Type (T));
-         end if;
+                     begin
+                        if not Get_Used_In_Struct (S_MD) then
+                           Set_Used_In_Struct (S_MD);
+                           Mark_Struct_Fields (S_MD);
+                        end if;
+                     end;
+                  end loop;
+               end if;
+
+            when Array_Class =>
+               Mark_Struct_Fields (Element_Type (MD));
+
+            when Pointer_Class =>
+               Mark_Struct_Fields (Designated_Type (MD));
+
+            when others =>
+               null;
+         end case;
       end Mark_Struct_Fields;
 
       -----------------------
@@ -271,7 +276,7 @@ package body CCG.Codegen is
 
       procedure Mark_Structs_Used (V : Value_T) is
       begin
-         Mark_Struct_Fields (Type_Of (V));
+         Mark_Struct_Fields (Declaration_Type (V, No_Scan => True));
       end Mark_Structs_Used;
 
       ---------------------

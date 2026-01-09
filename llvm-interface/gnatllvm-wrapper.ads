@@ -380,6 +380,10 @@ package GNATLLVM.Wrapper is
    function Is_Lifetime_Intrinsic (V : Value_T) return Boolean
      with Pre => Present (V);
 
+   procedure Delete_Trailing_Dbg_Records (B : Basic_Block_T)
+     with Import, Convention => C,
+          External_Name => "Delete_Trailing_Dbg_Records";
+
    function Get_Unique_Predecessor (BB : Basic_Block_T) return Basic_Block_T
      with Import, Convention => C, External_Name => "Get_Unique_Predecessor";
 

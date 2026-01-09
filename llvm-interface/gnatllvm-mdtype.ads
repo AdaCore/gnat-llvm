@@ -35,10 +35,10 @@ package GNATLLVM.MDType is
    type MD_Type is range MD_Type_Low_Bound .. MD_Type_High_Bound;
    No_MD_Type         : constant MD_Type := MD_Type_Low_Bound;
 
-   function No      (MDT : MD_Type) return Boolean is (MDT =  No_MD_Type);
-   function Present (MDT : MD_Type) return Boolean is (MDT /= No_MD_Type);
+   function No      (MD : MD_Type) return Boolean is (MD =  No_MD_Type);
+   function Present (MD : MD_Type) return Boolean is (MD /= No_MD_Type);
 
-   procedure Discard (MDT : MD_Type) is null;
+   procedure Discard (MD : MD_Type) is null;
 
    type MD_Type_Array is array (Nat range <>) of MD_Type;
 
@@ -55,121 +55,164 @@ package GNATLLVM.MDType is
    Int_64_MD   : MD_Type := No_MD_Type;
    Boolean_MD  : MD_Type := No_MD_Type;
 
+   --  We divide MD_Types into classes
+
+   type MD_Type_Class is
+     (Void_Class, Integer_Class, Float_Class, Array_Class, Struct_Class,
+      Pointer_Class, Function_Class);
+
+   function Class (MD : MD_Type) return MD_Type_Class
+     with Pre => Present (MD);
+
    --  Accessor functions for MD_Type, starting with predicates for
    --  type kind.
 
-   function Is_Void (MDT : MD_Type) return Boolean
-     with Pre => Present (MDT);
-   function Is_Integer (MDT : MD_Type) return Boolean
-     with Pre => Present (MDT);
-   function Is_Signed (MDT : MD_Type) return Boolean
-     with Pre => Is_Integer (MDT);
-   function Is_Unsigned (MDT : MD_Type) return Boolean
-     with Pre => Is_Integer (MDT);
-   function Is_Float (MDT : MD_Type) return Boolean
-     with Pre => Present (MDT);
-   function Is_Array (MDT : MD_Type) return Boolean
-     with Pre => Present (MDT);
-   function Is_Fixed_Array (MDT : MD_Type) return Boolean
-     with Pre => Is_Array (MDT);
-   function Is_Variable_Array (MDT : MD_Type) return Boolean
-     with Pre => Is_Array (MDT);
-   function Is_Function_Type (MDT : MD_Type) return Boolean
-     with Pre => Present (MDT);
-   function Is_Varargs_Function (MDT : MD_Type) return Boolean
-     with Pre => Is_Function_Type (MDT);
-   function Is_Struct (MDT : MD_Type) return Boolean
-     with Pre => Present (MDT);
-   function Is_Packed (MDT : MD_Type) return Boolean
-     with Pre => Is_Struct (MDT);
-   function Is_Pointer (MDT : MD_Type) return Boolean
-     with Pre => Present (MDT);
+   function Is_Void (MD : MD_Type) return Boolean
+     with Pre => Present (MD);
+   function Is_Integer (MD : MD_Type) return Boolean
+     with Pre => Present (MD);
+   function Is_Signed (MD : MD_Type) return Boolean
+     with Pre => Is_Integer (MD);
+   function Is_Unsigned (MD : MD_Type) return Boolean
+     with Pre => Is_Integer (MD);
+   function Is_Unknown_Sign (MD : MD_Type) return Boolean
+     with Pre => Is_Integer (MD);
+   function Is_Float (MD : MD_Type) return Boolean
+     with Pre => Present (MD);
+   function Is_Array (MD : MD_Type) return Boolean
+     with Pre => Present (MD);
+   function Is_Fixed_Array (MD : MD_Type) return Boolean
+     with Pre => Is_Array (MD);
+   function Is_Variable_Array (MD : MD_Type) return Boolean
+     with Pre => Is_Array (MD);
+   function Is_Function_Type (MD : MD_Type) return Boolean
+     with Pre => Present (MD);
+   function Is_Varargs_Function (MD : MD_Type) return Boolean
+     with Pre => Is_Function_Type (MD);
+   function Is_Struct (MD : MD_Type) return Boolean
+     with Pre => Present (MD);
+   function Is_Packed (MD : MD_Type) return Boolean
+     with Pre => Is_Struct (MD);
+   function Is_Pointer (MD : MD_Type) return Boolean
+     with Pre => Present (MD);
 
-   function Is_Same_Kind (MDT1, MDT2 : MD_Type) return Boolean
-     with Pre => Present (MDT1) and then Present (MDT2);
-   --  True if both types have the same kind
+   function Is_Volatile (MD : MD_Type) return Boolean
+     with Pre => Present (MD);
+   function MD_Name (MD : MD_Type) return Name_Id
+     with Pre => Present (MD);
+   function Has_Name (MD : MD_Type) return Boolean is
+     (Present (MD_Name (MD)))
+     with Pre => Present (MD);
 
-   function Is_Volatile (MDT : MD_Type) return Boolean
-     with Pre => Present (MDT);
-   function MD_Name (MDT : MD_Type) return Name_Id
-     with Pre => Present (MDT);
-   function Has_Name (MDT : MD_Type) return Boolean is
-     (Present (MD_Name (MDT)))
-     with Pre => Present (MDT);
-
-   function Have_Fields (MDT : MD_Type) return Boolean
-     with Pre => Is_Struct (MDT);
+   function Has_Fields (MD : MD_Type) return Boolean
+     with Pre => Is_Struct (MD);
    --  True if we've called Struct_Create_Name but not yet Struct_Set_Body
 
-   function LLVM_Type_Of (MDT : MD_Type) return Type_T
-     with Pre => Present (MDT), Post => Present (LLVM_Type_Of'Result);
+   function LLVM_Type_Of (MD : MD_Type) return Type_T
+     with Pre => Present (MD), Post => Present (LLVM_Type_Of'Result);
    --  Create an LLVM type from an MD_Type
-   function "+" (MDT : MD_Type) return Type_T renames LLVM_Type_Of;
+   function "+" (MD : MD_Type) return Type_T renames LLVM_Type_Of;
+
+   function Contains_Void (MD : MD_Type) return Boolean
+     with Pre => Present (MD);
+   --  True if any part of MD is void, with the exception of a pointer
+   --  to void.
+
+   function Check_Types_Identical (T1, T2 : Type_T) return Boolean
+     with Pre => Present (T1) and then Present (T2);
+   --  Equivalent to Is_Layout_Identical and used only in the next call to
+   --  avoid an elaboration loop.
 
    function From_Type (T : Type_T) return MD_Type
-     with Pre => Present (T), Post => +From_Type'Result = T;
-   --  Create a MD_Type from a type. This is mostly used for intrinsic
-   --  functions and isn't guaranteed to work in all cases.
+     with Pre  => Present (T),
+          Post => Contains_Void (From_Type'Result)
+                  or else Check_Types_Identical (T, +From_Type'Result);
+   --  Create an MD_Type from a type. This is used for intrinsic functions
+   --  and values created by the optimzer and isn't guaranteed to work in
+   --  all cases. If T was a named struct type, the LLVM type generated
+   --  from the result may not precisely agree with the input and likewise
+   --  for an array of such, so we just check that the layout is the same.
+   --  We also can return Void for a number of reasons, so we allow that
+   --  to always be valid.
 
-   function Int_Bits (MDT : MD_Type) return Nat
-     with Pre => Is_Integer (MDT), Post => Int_Bits'Result /= 0;
-   function Float_Bits (MDT : MD_Type) return Nat
-     with Pre => Is_Float (MDT), Post => Float_Bits'Result /= 0;
+   function Int_Bits (MD : MD_Type) return Nat
+     with Pre => Is_Integer (MD), Post => Int_Bits'Result /= 0;
+   function Float_Bits (MD : MD_Type) return Nat
+     with Pre => Is_Float (MD), Post => Float_Bits'Result /= 0;
    --  Number of bits for integer and float types
 
-   function Pointer_Space (MDT : MD_Type) return Nat
-     with Pre => Is_Pointer (MDT);
+   function Pointer_Space (MD : MD_Type) return Nat
+     with Pre => Is_Pointer (MD);
    --  Address space for a pointer type
 
-   function Array_Count (MDT : MD_Type) return Nat
-     with Pre => Is_Fixed_Array (MDT);
+   function Array_Count (MD : MD_Type) return Nat
+     with Pre => Is_Fixed_Array (MD);
    --  Number of elements for a fixed-size array
 
-   function Element_Count (MDT : MD_Type) return Nat
-     with Pre => Is_Struct (MDT) and then Have_Fields (MDT);
+   function Element_Count (MD : MD_Type) return Nat
+     with Pre => Is_Struct (MD) and then Has_Fields (MD);
    --  Number of elements in a structure
 
-   function Parameter_Count (MDT : MD_Type) return Nat
-     with Pre => Is_Function_Type (MDT);
+   function Parameter_Count (MD : MD_Type) return Nat
+     with Pre => Is_Function_Type (MD);
    --  Number of parameters in a function type
 
-   function Element_Type (MDT : MD_Type) return MD_Type
-     with Pre => Is_Array (MDT);
+   function Element_Type (MD : MD_Type) return MD_Type
+     with Pre => Is_Array (MD);
    --  Type for the elements of an array
 
-   function Designated_Type (MDT : MD_Type) return MD_Type
-     with Pre => Is_Pointer (MDT);
+   function Designated_Type (MD : MD_Type) return MD_Type
+     with Pre => Is_Pointer (MD);
    --  Type that a pointer is referencing
 
-   function Return_Type (MDT : MD_Type) return MD_Type
-     with Pre => Is_Function_Type (MDT);
+   function Return_Type (MD : MD_Type) return MD_Type
+     with Pre => Is_Function_Type (MD);
    --  Return type of a function
 
-   function Element_Name (MDT : MD_Type; Idx : Nat) return Name_Id
-     with Pre =>  Is_Struct (MDT) and then Idx < Element_Count (MDT);
-   function Element_Type (MDT : MD_Type; Idx : Nat) return MD_Type
-     with Pre =>  Is_Struct (MDT) and then Idx < Element_Count (MDT),
+   function Element_Name (MD : MD_Type; Idx : Nat) return Name_Id
+     with Pre =>  Is_Struct (MD) and then Idx < Element_Count (MD);
+   function Element_Type (MD : MD_Type; Idx : Nat) return MD_Type
+     with Pre =>  Is_Struct (MD) and then Idx < Element_Count (MD),
           Post => Present (Element_Type'Result);
-   --  Name and type, respectively, for structs. Idx is 0-origin.
+   function Element_Entity (MD : MD_Type; Idx : Nat) return Entity_Id
+     with Pre =>  Is_Struct (MD) and then Idx < Element_Count (MD);
+   function Is_Padding (MD : MD_Type; Idx : Nat) return Boolean
+     with Pre =>  Is_Struct (MD) and then Idx < Element_Count (MD);
+   function Is_Bitfield (MD : MD_Type; Idx : Nat) return Boolean
+     with Pre =>  Is_Struct (MD) and then Idx < Element_Count (MD);
+   --  Name, type, entity and whether field is padding or a bitfield,
+   --  respectively, for structs. Idx is 0-origin.
 
-   function Parameter_Type (MDT : MD_Type; Idx : Nat) return MD_Type
-     with Pre =>  Is_Function_Type (MDT) and then Idx < Parameter_Count (MDT),
+   function Parameter_Name (MD : MD_Type; Idx : Nat) return Name_Id
+     with Pre =>  Is_Function_Type (MD) and then Idx < Parameter_Count (MD);
+   function Parameter_Type (MD : MD_Type; Idx : Nat) return MD_Type
+     with Pre =>  Is_Function_Type (MD) and then Idx < Parameter_Count (MD),
           Post => Present (Parameter_Type'Result);
    --  Parameter type for a function type
 
-   function Atomic_Kind (MDT : MD_Type) return Boolean is
-     (Is_Integer (MDT) or else Is_Float (MDT) or else Is_Pointer (MDT))
-   with Pre => Present (MDT);
+   function Atomic_Kind (MD : MD_Type) return Boolean is
+     (Is_Integer (MD) or else Is_Float (MD) or else Is_Pointer (MD))
+   with Pre => Present (MD);
    --  Return True if the type is valid for an atomic operation
+
+   function Is_Function_Pointer (MD : MD_Type) return Boolean is
+     (Is_Pointer (MD) and then Is_Function_Type (Designated_Type (MD)))
+     with Pre => Present (MD);
 
    --  Operations on LLVM types that we can call on an MD_Type
 
-   function Get_Type_Size (MDT : MD_Type) return ULL
-     with Pre => Present (MDT);
-   function Get_Scalar_Bit_Size (MDT : MD_Type) return ULL
-     with Pre => Present (MDT);
-   function Get_Type_Alignment (MDT : MD_Type) return Nat
-     with Pre => Present (MDT);
+   function Get_Type_Size (MD : MD_Type) return ULL
+     with Pre => Present (MD);
+   function Get_Scalar_Bit_Size (MD : MD_Type) return ULL
+     with Pre => Present (MD);
+   function Get_Type_Alignment (MD : MD_Type) return Nat
+     with Pre => Present (MD);
+
+   function Make_Volatile (MD : MD_Type; B : Boolean := True) return MD_Type
+     with Pre => Present (MD), Post => Is_Volatile (Make_Volatile'Result) = B;
+   procedure Make_Volatile (MD : in out MD_Type; B : Boolean := False)
+     with Pre => Present (MD), Post => Is_Volatile (MD) = B;
+   --  Create a copy of MD that's marked as volatile
 
    --  Now functions to create types
 
@@ -177,10 +220,28 @@ package GNATLLVM.MDType is
      with Post => Is_Void (Void_Ty'Result);
    --  Create a void type. We'll end up with only one of them
 
-   function Int_Ty (Bits : Nat; Unsigned : Boolean := False) return MD_Type
+   function Int_Ty
+     (Bits     : Nat;
+      Unsigned : Boolean := False;
+      Unknown  : Boolean := False) return MD_Type
      with Post => Is_Unsigned (Int_Ty'Result) = Unsigned
+                  and then Is_Signed (Int_Ty'Result) =
+                           (not Unknown and not Unsigned)
+                  and then Is_Unknown_Sign (Int_Ty'Result) = Unknown
                   and then Int_Bits (Int_Ty'Result) = Bits;
    --  Make an integer type with specified bitsize and signedness.
+
+   function Signed_Type (MD : MD_Type) return MD_Type
+     with Pre  => Is_Integer (MD),
+          Post => Is_Signed (Signed_Type'Result)
+                  and then Is_Volatile (Signed_Type'Result) =
+                           Is_Volatile (MD);
+   function Unsigned_Type (MD : MD_Type) return MD_Type
+     with Pre  => Is_Integer (MD),
+          Post => Is_Unsigned (Unsigned_Type'Result)
+                  and then Is_Volatile (Unsigned_Type'Result) =
+                           Is_Volatile (MD);
+   --  Make signed or unsigned variants of a type
 
    function Float_Ty (Bits : Nat) return MD_Type
      with Post => Is_Float (Float_Ty'Result)
@@ -198,8 +259,8 @@ package GNATLLVM.MDType is
    function Array_Type (Elem_Type : MD_Type; Count : Nat) return MD_Type
      with Pre  => Present (Elem_Type),
           Post => Is_Fixed_Array (Array_Type'Result)
-                  and then Array_Count (Array_Type'Result) = Count
-                  and then Element_Type (Array_Type'Result) = Elem_Type;
+                  and then Array_Count (Array_Type'Result) = Count;
+   --  ?? for now: and then Element_Type (Array_Type'Result) = Elem_Type;
    --  Make a fixed-size array with the specifed count and element type
 
    function Variable_Array_Type (Elem_Type : MD_Type) return MD_Type
@@ -211,7 +272,7 @@ package GNATLLVM.MDType is
    function Struct_Create_Named (Name : Name_Id) return MD_Type
      with Post => Is_Struct (Struct_Create_Named'Result)
                   and then MD_Name (Struct_Create_Named'Result) = Name
-                  and then not Have_Fields (Struct_Create_Named'Result);
+                  and then not Has_Fields (Struct_Create_Named'Result);
    --  Create a named struct. These aren't merged because we may have
    --  two structs of the same name at this level.
 
@@ -221,11 +282,13 @@ package GNATLLVM.MDType is
      (Types       : MD_Type_Array;
       Field_Names : Name_Id_Array;
       Fields      : Field_Id_Array := (1 .. 0 => Empty);
-      Packed      : Boolean := False;
-      Name        : Name_Id := No_Name) return MD_Type
+      Padding     : Boolean_Array  := (1 .. 0 => False);
+      Bitfield    : Boolean_Array  := (1 .. 0 => False);
+      Packed      : Boolean        := False;
+      Name        : Name_Id        := No_Name) return MD_Type
      with Pre  => Field_Names'First = Types'First
                   and then Field_Names'Last = Types'Last
-                  and then (for all MDT of Types => Present (MDT)),
+                  and then (for all MD of Types => Present (MD)),
           Post => Is_Struct (Build_Struct_Type'Result)
                   and then Is_Packed (Build_Struct_Type'Result) = Packed
                   and then MD_Name (Build_Struct_Type'Result) = Name
@@ -234,59 +297,133 @@ package GNATLLVM.MDType is
                                             J - Field_Names'First) =
                               Field_Names (J)
                               and then Element_Type
-                                (Build_Struct_Type'Result,
-                                   J - Field_Names'First) = Types (J));
+                                        (Build_Struct_Type'Result,
+                                          J - Field_Names'First) = Types (J)
+                              and then (Fields'Length = 0
+                                        or else Element_Entity
+                                                  (Build_Struct_Type'Result,
+                                                     J - Fields'First) =
+                                        Fields (J))
+                              and then (Padding'Length = 0
+                                        or else Is_Padding
+                                                  (Build_Struct_Type'Result,
+                                                     J - Padding'First) =
+                                        Padding (J))
+                              and then (Bitfield'Length = 0
+                                        or else Is_Bitfield
+                                                  (Build_Struct_Type'Result,
+                                                     J - Bitfield'First) =
+                                        Bitfield (J)));
+
    --  Create a Struct type with the specified field types and field names,
    --  also specifying if it's packed and it's name, if any.
 
    procedure Struct_Set_Body
-     (MDT    : MD_Type;
-      Types  : MD_Type_Array;
-      Names  : Name_Id_Array;
-      Fields : Field_Id_Array := (1 .. 0 => Empty);
-      Packed : Boolean := False)
-     with Pre  => Names'First = Types'First and then Names'Last = Types'Last
-                  and then (for all F_MDT of Types => Present (F_MDT))
-                  and then Is_Struct (MDT) and then not Have_Fields (MDT),
-          Post => Is_Packed (MDT) = Packed and then Have_Fields (MDT)
+     (MD       : MD_Type;
+      Types    : MD_Type_Array;
+      Names    : Name_Id_Array;
+      Fields   : Field_Id_Array := (1 .. 0 => Empty);
+      Padding  : Boolean_Array  := (1 .. 0 => False);
+      Bitfield : Boolean_Array  := (1 .. 0 => False);
+      Packed   : Boolean        := False)
+     with Pre  => Is_Struct (MD) and then Has_Name (MD)
+                  and then Names'First = Types'First
+                  and then Names'Last = Types'Last
+                  and then (for all F_MD of Types => Present (F_MD))
+                  and then Is_Struct (MD) and then not Has_Fields (MD),
+          Post => Is_Packed (MD) = Packed and then Has_Fields (MD)
                   and then (for all J in Names'Range =>
-                              Element_Name (MDT, J - Names'First) =
+                              Element_Name (MD, J - Names'First) =
                               Names (J)
-                              and then Element_Type (MDT,
+                              and then Element_Type (MD,
                                                      J - Names'First) =
-                                       Types (J));
+                                       Types (J)
+                              and then (Fields'Length = 0
+                                        or else Element_Entity
+                                                  (MD, J - Fields'First) =
+                                        Fields (J))
+                              and then (Padding'Length = 0
+                                        or else Is_Padding
+                                                  (MD, J - Padding'First) =
+                                        Padding (J))
+                              and then (Bitfield'Length = 0
+                                        or else Is_Bitfield
+                                                  (MD, J - Bitfield'First) =
+                                        Bitfield (J)));
+
    --  Similar to Build_Struct_Type, but modify a type created with
    --  Struct_Create_Named.
 
    function Fn_Ty
      (Arg_Types   : MD_Type_Array;
       Return_Type : MD_Type;
-      Varargs     : Boolean := False) return MD_Type
+      Arg_Names   : Name_Id_Array := (1 .. 0 => No_Name);
+      Varargs     : Boolean       := False) return MD_Type
    with Pre  => Present (Return_Type)
-                and then (for all MDT of Arg_Types => Present (MDT)),
+                and then (for all MD of Arg_Types => Present (MD))
+                and then (Arg_Names'Length = 0
+                          or else Arg_Names'First = Arg_Types'First)
+                and then (Arg_Names'Length = 0
+                          or else Arg_Names'Last = Arg_Types'Last),
      Post => Is_Function_Type (Fn_Ty'Result)
              and then Is_Varargs_Function (Fn_Ty'Result) = Varargs
              and then Parameter_Count (Fn_Ty'Result) = Arg_Types'Length
              and then (for all J in Arg_Types'Range =>
                          Parameter_Type (Fn_Ty'Result,
                                          J - Arg_Types'First) =
-                           Arg_Types (J));
+                         Arg_Types (J))
+             and then (Arg_Names'Length = 0
+                       or else (for all J in Arg_Names'Range =>
+                                  Parameter_Name (Fn_Ty'Result,
+                                                  J - Arg_Names'First) =
+                                  Arg_Names (J)));
    --  Make a function type with the specified return and argument types
 
-   function Name_Type (MDT : MD_Type; New_Name : Name_Id) return MD_Type
-     with Pre => Present (MDT), Post => MD_Name (Name_Type'Result) = New_Name;
-   --  Create a copy of MDT that has the specified name
+   function Update_Fn_Ty_Return (MD, Return_MD : MD_Type) return MD_Type
+     with Pre  => Is_Function_Type (MD) and then Present (Return_MD),
+          Post => Is_Function_Type (Update_Fn_Ty_Return'Result)
+                  and then Return_Type (Update_Fn_Ty_Return'Result) = Return_MD
+                  and then Parameter_Count (Update_Fn_Ty_Return'Result) =
+                           Parameter_Count (MD)
+                  and then (for all J in 0 ..  Parameter_Count (MD) - 1 =>
+                              Parameter_Type (Update_Fn_Ty_Return'Result, J) =
+                              Parameter_Type (MD, J))
+                  and then (for all J in 0 ..  Parameter_Count (MD) - 1 =>
+                              Parameter_Name (Update_Fn_Ty_Return'Result, J) =
+                              Parameter_Name (MD, J));
+   --  Make a new version of MD, a function type, that has the specified
+   --  return type.
 
-   function Make_Volatile (MDT : MD_Type) return MD_Type
-     with Pre => Present (MDT), Post => Is_Volatile (Make_Volatile'Result);
-   --  Create a copy of MDT that's marked as volatile
+   function Add_Nest_To_Fn_Ty (MD : MD_Type) return MD_Type
+     with Pre  => Is_Function_Type (MD),
+          Post => Is_Function_Type (Add_Nest_To_Fn_Ty'Result)
+                  and then Return_Type (Add_Nest_To_Fn_Ty'Result) =
+                           Return_Type (MD)
+                  and then Parameter_Count (Add_Nest_To_Fn_Ty'Result) =
+                           Parameter_Count (MD) + 1
+                  and then (for all J in 0 ..  Parameter_Count (MD) - 1 =>
+                              Parameter_Type (Add_Nest_To_Fn_Ty'Result, J) =
+                              Parameter_Type (MD, J))
+                  and then (for all J in 0 ..  Parameter_Count (MD) - 1 =>
+                              Parameter_Name (Add_Nest_To_Fn_Ty'Result, J) =
+                              Parameter_Name (MD, J))
+                  and then Void_Ptr_MD =
+                           Parameter_Type (Add_Nest_To_Fn_Ty'Result,
+                                           Parameter_Count (MD));
+   --  Add a "nest" parameter to MD
+
+   function Set_Type_Name (MD : MD_Type; New_Name : Name_Id) return MD_Type
+     with Pre  => Present (MD),
+          Post => MD_Name (Set_Type_Name'Result) = New_Name;
+
+   --  Create a copy of MD that has the specified name
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 
-   function To_String (MDT : MD_Type; Top : Boolean := False) return String
-     with Pre => Present (MDT);
+   function To_String (MD : MD_Type; Top : Boolean := False) return String
+     with Pre => Present (MD);
 
-   procedure Dump_MD_Type (MDT : MD_Type)
+   procedure Dump_MD_Type (MD : MD_Type)
      with Export, External_Name => "dmdt";
 
    pragma Annotate (Xcov, Exempt_Off, "Debug helpers");

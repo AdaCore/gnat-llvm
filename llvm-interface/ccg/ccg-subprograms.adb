@@ -40,6 +40,7 @@ with CCG.Output;       use CCG.Output;
 with CCG.Strs;         use CCG.Strs;
 with CCG.Target;       use CCG.Target;
 with CCG.Transform;    use CCG.Transform;
+with CCG.Utils;        use CCG.Utils;
 with CCG.Write;        use CCG.Write;
 
 use CCG.Value_Sets;
@@ -102,6 +103,10 @@ package body CCG.Subprograms is
    --  the subtree rooted at entry J in the source order table, if any.
    --  Defining says if it's being declared or defined there.
 
+   procedure Clear_Source_Order;
+   --  Clear the source order table so we don't go astray when LLVM deletes
+   --  values that we may need to look through that table.
+
    function Function_Proto
      (V           : Value_T;
       Definition  : Boolean := True;
@@ -124,12 +129,17 @@ package body CCG.Subprograms is
    --  otherwise.
 
    function Effective_Return_Type
-     (T : Type_T; V : Value_T := No_Value_T) return Str
-     with Pre  => Is_Function_Type (T),
+     (MD : MD_Type; V : Value_T := No_Value_T) return Str
+     with Pre  => Is_Function_Type (MD),
           Post => Present (Effective_Return_Type'Result);
    --  Return a string corresponding to the return type of T, adjusting the
    --  type in the case where it's an array. If V is Present, it's a value
    --  representing the function so we can get the signedness of the type.
+
+   function Best_Function_Type (V, Func : Value_T) return MD_Type
+     with Pre  => Is_A_Call_Inst (V) and then Present (Func),
+          Post => Present (Best_Function_Type'Result);
+   --  Determine the best type to use for Func in V, a call to it
 
    function Matches
      (S, Name : String; Exact : Boolean := False) return Boolean
@@ -276,6 +286,15 @@ package body CCG.Subprograms is
       end loop;
    end Protect_Source_Order;
 
+   ------------------------
+   -- Clear_Source_Order --
+   ------------------------
+
+   procedure Clear_Source_Order is
+   begin
+      Source_Order.Set_Last (0);
+   end Clear_Source_Order;
+
    --------------------
    -- New_Subprogram --
    --------------------
@@ -300,24 +319,20 @@ package body CCG.Subprograms is
    -- Output_Function_Type_Typedef --
    ----------------------------------
 
-   procedure Output_Function_Type_Typedef (T : Type_T) is
-      Fn_T       : constant Type_T := Get_Element_Type (T);
-      Num_Params : constant Nat    := Count_Param_Types (Fn_T);
-      First      : Boolean         := True;
-      Result     : Str             :=
-        Effective_Return_Type (Fn_T) & " " & "(*" & T & ")" & " (";
-      P_Types    : Type_Array (1 .. Num_Params);
+   procedure Output_Function_Type_Typedef (MD : MD_Type) is
+      Fn_MD      : constant MD_Type := Designated_Type (MD);
+      First      : Boolean          := True;
+      Result     : Str              :=
+        Effective_Return_Type (Fn_MD) & " " & "(*" & MD & ")" & " (";
 
    begin
-      if Num_Params = 0 then
+      if Parameter_Count (Fn_MD) = 0 then
          Result := Result & "void";
       else
-         Get_Param_Types (Fn_T, P_Types'Address);
-         for P_T of P_Types loop
-            begin
-               Result := Result & (if First then "" else ", ") & P_T;
-               First := False;
-            end;
+         for J in 0 .. Parameter_Count (Fn_MD) - 1 loop
+            Result := Result & (if First then "" else ", ") &
+              Parameter_Type (Fn_MD, J);
+            First := False;
          end loop;
       end if;
 
@@ -329,21 +344,21 @@ package body CCG.Subprograms is
    ---------------------------
 
    function Effective_Return_Type
-     (T : Type_T; V : Value_T := No_Value_T) return Str
+     (MD : MD_Type; V : Value_T := No_Value_T) return Str
    is
-      Ret_Typ : constant Type_T := Get_Return_Type (T);
+      Ret_MD : constant MD_Type := Return_Type (MD);
 
    begin
-      Maybe_Output_Typedef (Ret_Typ);
+      Maybe_Output_Typedef (Ret_MD);
 
       --  If this function returns an array, change it to return a
       --  struct containing that array.
 
-      if Is_Array_Type (Ret_Typ) then
-         Maybe_Output_Array_Return_Typedef (Ret_Typ);
-         return Ret_Typ & "_R";
+      if Is_Array (Ret_MD) then
+         Maybe_Output_Array_Return_Typedef (Ret_MD);
+         return Ret_MD & "_R";
       else
-         return (if Present (V) then V + Write_Return else +T);
+         return (if Present (V) then V + Write_Return else +MD);
       end if;
    end Effective_Return_Type;
 
@@ -361,15 +376,12 @@ package body CCG.Subprograms is
 
       function In_Main_Unit return Boolean;
 
-      Num_Params     : constant Nat     := Count_Params (V);
-      Fn_Typ         : constant Type_T  := Get_Element_Type (V);
+      MD             : constant MD_Type := Declaration_Type (V);
+      Fn_MD          : constant MD_Type := Designated_Type (MD);
+      Num_Params     : constant Nat     := Parameter_Count (Fn_MD);
       Write_Extern   : Boolean          := Need_Extern;
-      Result         : Str := Effective_Return_Type (Fn_Typ, V);
-      Maybe_Add_Nest : constant Boolean :=
-        Get_Needs_Nest (V)
-        and then (Num_Params = 0
-                  or else not Has_Nest_Attribute
-                                (V, unsigned (Num_Params - 1)));
+      Result         : Str              := Effective_Return_Type (Fn_MD, V);
+      Maybe_Add_Nest : constant Boolean := Needs_Nest (V);
 
       ---------------------
       -- Has_Unreachable --
@@ -436,7 +448,7 @@ package body CCG.Subprograms is
          end if;
       end if;
 
-      Result := Result & " " & V & " (";
+      Result := Result & " " & (V + LHS) & " (";
 
       --  If this is an internal subprogram, mark it as static
 
@@ -488,37 +500,26 @@ package body CCG.Subprograms is
       --  for an extern definition, include the parameter names.
       --  Special-case calloc since we can't tell that the integral type
       --  is really size_t and that our result is really void *.
+      --  It's possible that the optimizer changed the value used for the
+      --  parameter, so be sure that the type is set properly.
 
       if Num_Params = 0 then
-         Result := Result & (if   Maybe_Add_Nest then Generic_Ptr & "_n"
-                             else +"void");
+         Result := Result & (if   Maybe_Add_Nest then "void *_n" else "void");
       elsif Get_Value_Name (V) = "calloc" then
          Result := +"void *calloc (size_t, size_t";
       else
          for J in 0 .. Num_Params - 1 loop
             declare
-               Param  : constant Value_T          := Get_Param (V, J);
-               E      : constant Entity_Id        :=
-                 Get_Parameter_Entity (V, J);
-               BT     : constant Opt_Type_Kind_Id :=
-                 Opt_Full_Base_Type (Opt_Full_Etype (E));
-               Typ    : Str                       := Type_Of (Param) or E;
+               Param    : constant Value_T := Get_Param (V, J);
+               Param_MD : constant MD_Type := Parameter_Type (Fn_MD, J);
 
             begin
-               --  We may be passing an unsigned integer type by reference.
-               --  If so, use unsigned version of type.
+               Result := Result & (if J = 0 then "" else ", ") &
+                 Parameter_Type (Fn_MD, J);
 
-               if Present (BT) and then Is_Unsigned_Type (BT)
-                 and then Is_Pointer_Type (Param)
-               then
-                  Typ := Type_Of (Param) + Need_Unsigned;
-               end if;
-
-               --  Add this parameter to the list, usually preceeded by a comma
-
-               Result := Result & (if J = 0 then "" else ", ") & Typ;
                if Definition then
                   Result := Result & " " & Param;
+                  Set_MD_Type (Param, Param_MD);
                   Set_Is_Decl_Output (Param);
                end if;
             end;
@@ -528,7 +529,7 @@ package body CCG.Subprograms is
          --  function, do it.
 
          if Maybe_Add_Nest then
-            Result := Result & ", " & Generic_Ptr & " _n";
+            Result := Result & ", " &  "void *_n";
          end if;
       end if;
 
@@ -573,6 +574,7 @@ package body CCG.Subprograms is
       --  basic blocks, it must be an extern. We don't want to use the
       --  debug info here if we'll later have declaration.
 
+      Set_Is_LHS (V);
       Output_Decl (Function_Proto (V,
                                    Definition  => False,
                                    Need_Extern => Emit_Header
@@ -618,6 +620,63 @@ package body CCG.Subprograms is
 
    end Output_Subprogram;
 
+   ------------------------
+   -- Best_Function_Type --
+   ------------------------
+
+   function Best_Function_Type (V, Func : Value_T) return MD_Type is
+      function Best_Return (MD, Ret_MD : MD_Type) return MD_Type
+         with Pre  => Present (MD) and then Present (Ret_MD),
+              Post => Present (Best_Return'Result);
+      --  If Ret_MD is better than the return type of MD, make a new
+      --  function type with that return.
+
+      -----------------
+      -- Best_Return --
+      -----------------
+
+      function Best_Return (MD, Ret_MD : MD_Type) return MD_Type is
+        ((if   Is_Function_Type (MD)
+               and then (Is_Void (Return_Type (MD))
+                         or else Is_Better_Type (Return_Type (MD), Ret_MD))
+          then Update_Fn_Ty_Return (MD, Ret_MD) else MD));
+
+      N_Params : constant Nat     := Get_Num_Operands (V) - 1;
+      Ret_MD   : constant MD_Type := Declaration_Type (V);
+      Fn_D_MD  : constant MD_Type :=
+        (if   Is_A_Function (Func)
+         then Declaration_Type (Func, No_Force => True) else No_MD_Type);
+      Fn_T     : constant Type_T  := Get_Called_Function_Type (V);
+      Fn_T_MD  : constant MD_Type :=
+        (if   Present (Fn_D_MD) then No_MD_Type
+         else Best_Return (Declaration_Type (Fn_T), Ret_MD));
+      Fn_MD_1  : constant MD_Type :=
+        (if   Present (Fn_D_MD) then No_MD_Type
+         else Best_Return (Designated_Type (Declaration_Type (Func)), Ret_MD));
+      Fn_MD    : constant MD_Type :=
+        (if   No (Fn_D_MD) and then Is_A_Function (Func)
+              and then Get_Needs_Nest (Func)
+              and then Parameter_Count (Fn_MD_1) = N_Params - 1
+         then Add_Nest_To_Fn_Ty (Fn_MD_1) else Fn_MD_1);
+      Best_MD  : constant MD_Type :=
+        (if    Present (Fn_D_MD) then Designated_Type (Fn_D_MD)
+         elsif not Is_Function_Type (Fn_MD)
+               or else Parameter_Count (Fn_MD) /= N_Params
+         then  Fn_T_MD
+         elsif not Is_Function_Type (Fn_T_MD)
+               or else Parameter_Count (Fn_T_MD) /= N_Params
+         then  Fn_MD else  Best_Type (Fn_MD, Fn_T_MD));
+
+   begin
+      --  If we found an actual declared type of the function, use that.
+      --  Otherwise, take the best option we found above and possibly
+      --  update its return type.
+
+      return (if   Present (Fn_D_MD) then Best_MD
+              else Best_Return (Best_MD, Ret_MD));
+
+   end Best_Function_Type;
+
    ----------------------
    -- Call_Instruction --
    ----------------------
@@ -627,11 +686,12 @@ package body CCG.Subprograms is
       --  The operands to a call instruction are the parameters of the
       --  function being called followed by the function to call.
 
-      Num_Params  : constant unsigned      := unsigned (Ops'Length - 1);
-      Func        : Value_T                := Ops (Ops'Last);
-      S           : constant String        := Get_Value_Name (Func);
-      First       : Boolean                := True;
-      Cast_T      : Type_Array (Ops'Range) := (others => No_Type_T);
+      Num_Params  : constant Nat              := Ops'Length - 1;
+      Func        : Value_T                   := Ops (Ops'Last);
+      S           : constant String           := Get_Value_Name (Func);
+      Fn_MD       : constant MD_Type          := Best_Function_Type (V, Func);
+      First       : Boolean                   := True;
+      Cast_MD     : MD_Type_Array (Ops'Range) := (others => No_MD_Type);
       Call        : Str;
 
    begin
@@ -671,86 +731,106 @@ package body CCG.Subprograms is
       elsif Is_A_Constant_Expr (Func) and then Get_Opcode (Func) = Op_Bit_Cast
       then
          declare
-            Src_T     : constant Type_T := Type_Of (Func);
-            Dest_T    : constant Type_T := Type_Of (Get_Operand0 (Func));
-            Dest_Fn_T : constant Type_T := Get_Element_Type (Dest_T);
-            Src_Fn_T  : constant Type_T := Get_Element_Type (Src_T);
+            Src_MD     : constant MD_Type := Declaration_Type (Func);
+            Dest_MD    : constant MD_Type :=
+              Declaration_Type (Get_Operand0 (Func));
+            Dest_Fn_MD : constant MD_Type := Designated_Type (Dest_MD);
+            Src_Fn_MD  : constant MD_Type := Designated_Type (Src_MD);
 
          begin
-            if Is_Pointer_Type (Dest_T)
-              and then Is_Function_Type (Dest_Fn_T)
-              and then Is_Layout_Identical (Src_Fn_T, Dest_Fn_T)
-              and then Count_Param_Types (Dest_Fn_T) = Num_Params
-              and then (Get_Return_Type (Dest_Fn_T) =
-                        Get_Return_Type (Src_Fn_T)
-                        or else not Is_Struct_Type (Get_Return_Type
-                                                      (Src_Fn_T)))
+            if Is_Pointer (Dest_MD)
+              and then Is_Function_Type (Dest_Fn_MD)
+              and then Is_Same_C_Types (Src_Fn_MD, Dest_Fn_MD)
+              and then Parameter_Count (Dest_Fn_MD) = Num_Params
+              and then (Return_Type (Dest_Fn_MD) = Return_Type (Src_Fn_MD)
+                        or else not Is_Struct (Return_Type (Src_Fn_MD)))
             then
-               declare
-                  Src_P_Types  : Type_Array (Ops'Range);
-                  Dest_P_Types : Type_Array (Ops'Range);
+               --  Mark which parameters have a different type (though
+               --  an identical layout).
 
-               begin
-                  --  Mark which parameters have a different type (though
-                  --  an identical layout).
-
-                  Get_Param_Types (Src_Fn_T, Src_P_Types'Address);
-                  Get_Param_Types (Dest_Fn_T, Dest_P_Types'Address);
-                  for J in Ops'First .. Ops'Last - 1 loop
-                     if Src_P_Types (J) /= Dest_P_Types (J) then
-                        Cast_T (J) := Dest_P_Types (J);
-                     end if;
-                  end loop;
-
-                  --  See if the return needs a cast and then get the new
-                  --  function to call.
-
-                  if Get_Return_Type (Src_Fn_T) /= Get_Return_Type (Dest_Fn_T)
+               for J in Ops'First .. Ops'Last - 1 loop
+                  if Parameter_Type (Src_Fn_MD, J) /=
+                    Parameter_Type (Dest_Fn_MD, J)
                   then
-                     Cast_T (Cast_T'Last) := Get_Return_Type (Dest_Fn_T);
+                     Cast_MD (J) := Parameter_Type (Dest_Fn_MD, J);
                   end if;
+               end loop;
 
-                  Func := Get_Operand0 (Func);
-               end;
+               --  See if the return needs a cast and then get the new
+               --  function to call.
+
+               if Return_Type (Src_Fn_MD) /= Return_Type (Dest_Fn_MD) then
+                  Cast_MD (Cast_MD'Last) := Return_Type (Dest_Fn_MD);
+               end if;
+
+               Func := Get_Operand0 (Func);
             end if;
          end;
       end if;
 
+      --  Force out any other call to preserve the order of calls and
+      --  force out any loads in case the call changed the value.
+
+      Process_Pending_Values (Calls_Or_Loads);
+
       --  Now generate the argument list for the call
 
-      Call := Func + Component & " (";
+      Call :=
+        Maybe_Cast (Pointer_Type (Fn_MD), Func, True, True) + Component & " (";
+
       for J in Ops'First .. Ops'Last - 1 loop
          declare
             Op    : constant Value_T := Ops (J);
+            A_MD  : constant MD_Type := Actual_Type (Op, As_LHS => True);
+            F_MD  : constant MD_Type :=
+              (if   J - Ops'First >=  Parameter_Count (Fn_MD)
+               then No_MD_Type else Parameter_Type (Fn_MD, J - Ops'First));
             Param : Str;
 
          begin
-            --  If we need a cast and it's a struct type, we need to force
-            --  Op into a variable.
+            --  If we don't already need a cast and this parameter is of
+            --  pointer type or array type, we may need to cast it to the
+            --  formal type, especially if it's a pointer to a
+            --  function. But don't do this if the actual type is better.
 
-            if Present (Cast_T (J)) and then Is_Struct_Type (Op) then
+            if No (Cast_MD (J))
+              and then (Is_Pointer (A_MD) or else Is_Array (A_MD))
+              and then Present (F_MD) and then A_MD /= F_MD
+              and then not (Is_Same_C_Types (A_MD, F_MD, Loose => True)
+                            and then Is_Better_Type (F_MD, A_MD))
+            then
+               Cast_MD (J) := F_MD;
+            end if;
+
+            --  If we need a cast and it's a struct or array type, we need
+            --  to force Op into a variable.
+
+            if Present (Cast_MD (J))
+              and then (Is_Struct (A_MD) or else Is_Array (A_MD))
+            then
                Force_To_Variable (Op);
             end if;
 
             --  If Op is a constant array, we have to cast it to the
             --  non-constant type which is a pointer to the element type.
 
-            if Is_Array_Type (Op) and then Get_Is_Constant (Op) then
-               Param := "(" & Get_Element_Type (Op) & " *) " & (Op + Comma);
+            if Is_Array (A_MD) and then Get_Is_Constant (Op) then
+               Param := "(" & Element_Type (A_MD) & " *) " & (Op + Comma);
             else
                Param := Process_Operand (Op, X, Comma) + Comma;
             end if;
 
-            --  If we need a cast for this operand (because LLVM merged
-            --  two functions), generate it. But if we're casting to
-            --  a struct type, do it by pointer putting.
+            --  If we need a cast for this operand for any reason, generate
+            --  it. But if we're casting to a struct type, do it by
+            --  pointer punning.
 
-            if Present (Cast_T (J)) then
-               if Is_Struct_Type (Op) then
+            if Present (Cast_MD (J)) then
+               if Is_Struct (A_MD) or else Is_Array (A_MD) then
                   Param :=
-                    Deref ("(" & Cast_T (J) & "*) " & Addr_Of (Param));
+                    Deref ("(" & Cast_MD (J) & "*) (" &
+                           Addr_Of (Param))  & ")";
                else
-                  Param := "(" & Cast_T (J) & ") " & Param;
+                  Param := "(" & Cast_MD (J) & ") (" & Param  & ")";
                end if;
             end if;
 
@@ -768,15 +848,16 @@ package body CCG.Subprograms is
 
       if Is_A_Function (Func) and then Get_Needs_Nest (Func)
         and then (Num_Params = 0
-                  or else not Call_Param_Has_Nest (V, Num_Params - 1))
+                  or else not Call_Param_Has_Nest
+                                (V, unsigned (Num_Params - 1)))
       then
          Call := Call & (if First then "" else ", ") & NULL_String;
       end if;
 
       --  If we need to cast the result to a different type, do that
 
-      if Present (Cast_T (Cast_T'Last)) then
-         Call := "(" & Cast_T (Cast_T'Last) & ") " & Call;
+      if Present (Cast_MD (Cast_MD'Last)) then
+         Call := "(" & Cast_MD (Cast_MD'Last) & ") " & Call;
       end if;
 
       --  Add the final close paren, then write any pending values (we
@@ -828,7 +909,7 @@ package body CCG.Subprograms is
       Op2  : constant Value_T  := Ops (Ops'First + 1);
       Subp : constant String   :=
         "system__arith_64__" & To_Lower (Arit'Image) & "_with_ovflo_check64";
-      Bits : constant unsigned := unsigned'Value (S (S'First + 25 .. S'Last));
+      Bits : constant Nat      := Nat'Value (S (S'First + 25 .. S'Last));
 
    begin
       Maybe_Decl (V);
@@ -858,9 +939,9 @@ package body CCG.Subprograms is
       Output_Copy (+V & ".ccg_field_0",
                    "(" & Int_Type_String (Pos (Bits), False) & ") " & Subp &
                    " ((long long) " & Op1 & ", (long long) " & Op2 & ")",
-                   Int_Type (Bits),
+                   Int_Ty (Bits), Int_Ty (Bits),
                    V => V);
-      Output_Copy (+V & ".ccg_field_1", +"0", Int_Type (1), V => V);
+      Output_Copy (+V & ".ccg_field_1", +"0", Bit_MD, Bit_MD, V => V);
       return True;
    end Op_With_Overflow;
 
@@ -901,7 +982,7 @@ package body CCG.Subprograms is
       Sh1 := (Str_Op1 + Shift) & (if Left then " << " else " >> ") & Cnt;
       Sh2 :=
         (Str_Op2 + Shift) & (if Left then " >> " else " << ") & (Size - Cnt);
-      Result := "(" & (V + Write_Type) & ") (" & Sh1 + Bit & " | " & Sh2 & ")";
+      Result := "(" & (V + Only_Type) & ") (" & Sh1 + Bit & " | " & Sh2 & ")";
       Assignment (V, Result, Is_Opencode_Builtin => True);
       return True;
 
@@ -996,8 +1077,7 @@ package body CCG.Subprograms is
 
       if Matches (S, "assume")
         or else Matches (S, "experimental.noalias.scope.decl")
-        or else Matches (S, "stackrestore", True)
-        or else Matches (S, "stacksave", True)
+        or else Matches (S, "stackrestore") or else Matches (S, "stacksave")
       then
          return True;
 
@@ -1056,13 +1136,15 @@ package body CCG.Subprograms is
          end;
 
       --  abs is simple, but we have to be sure that we do a signed operation
+      --  for the integer case.
 
-      elsif Matches (S, "abs") then
+      elsif Matches (S, "abs") or else Matches (S, "fabs") then
          Force_To_Variable (Op1);
 
          declare
             Str1 : constant Str :=
-              Process_Operand (Op1, POO_Signed, Conditional);
+              (if   Matches (S, "fabs") then +Op1
+               else Process_Operand (Op1, POO_Signed, Conditional));
 
          begin
             Assignment (V,
@@ -1134,16 +1216,28 @@ package body CCG.Subprograms is
                      Is_Opencode_Builtin => True);
          return True;
 
-      --  Handle the builtins we created for or else / and then
+      --  Handle the builtins we created for or else / and then. Be careful if
+      --  one or more inputs are a trunc.
 
-      elsif Matches (S, "ccg.orelse") then
-         Assignment (V, TP ("#1 || #2", Op1, Op2) + Logical_OR,
-                     Is_Opencode_Builtin => True);
-         return True;
-      elsif Matches (S, "ccg.andthen") then
-         Assignment (V, TP ("#1 && #2", Op1, Op2) + Logical_AND,
-                     Is_Opencode_Builtin => True);
-         return True;
+      elsif Matches (S, "ccg.orelse")
+        or else Matches (S, "ccg.andthen")
+      then
+         declare
+            Is_Or : constant Boolean    := Matches (S, "ccg.orelse");
+            Prec  : constant Precedence :=
+              (if Is_Or then Logical_OR else Logical_AND);
+            LHS   : constant Str        :=
+              (if   Is_A_Trunc_Inst (Op1) then Process_Operand (Op1, X, Prec)
+                    else +Op1);
+            RHS   : constant Str        :=
+              (if   Is_A_Trunc_Inst (Op2) then Process_Operand (Op2, X, Prec)
+                    else +Op2);
+            Op    : constant String     := (if Is_Or then " || " else " && ");
+
+         begin
+            Assignment (V, LHS & Op & RHS + Prec, Is_Opencode_Builtin => True);
+            return True;
+         end;
 
       --  Handle bitreverse and bswap builtins
 
@@ -1483,6 +1577,11 @@ package body CCG.Subprograms is
             end if;
          end;
       end loop;
+
+      --  Clear the source order table so we don't go astray when LLVM deletes
+      --  values that we may need to look through that table.
+
+      Clear_Source_Order;
 
       --  Finally, write each elab proc, if we have it
 

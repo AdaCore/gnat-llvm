@@ -45,6 +45,15 @@ package CCG.Instructions is
    --  An operand to Process_Operand that says whether we care which
    --  signedless the operand is and, if so, which one.
 
+   function LS_Op_MD
+     (V, Op   : Value_T;
+      Data_Op : Value_T := No_Value_T) return MD_Type
+     with Pre  => (Is_A_Load_Inst (V) or else Is_A_Store_Inst (V))
+                  and then Present (V),
+          Post => Present (LS_Op_MD'Result);
+   --  Get the operation in which V, a load or store instruction whose
+   --  pointer operand is OK, will be performed in.
+
    function Process_Operand
      (V : Value_T; POO : Process_Operand_Option; P : Precedence) return Str
      with Pre => Present (V), Post => Present (Process_Operand'Result);
@@ -53,22 +62,28 @@ package CCG.Instructions is
    --  reference V. If nothing is special, this is just +V + P.
 
    procedure Output_Copy
-     (LHS, RHS : Str; T : Type_T; V : Value_T := No_Value_T)
-     with Pre => Present (LHS) and then Present (RHS) and then Present (T);
-   procedure Output_Copy (LHS : Str; RHS : Value_T; T : Type_T)
-     with Pre => Present (LHS) and then Present (RHS) and then Present (T);
-   procedure Output_Copy (LHS, RHS : Value_T; T : Type_T)
-     with Pre => Present (LHS) and then Present (RHS) and then Present (T);
-   procedure Output_Copy (LHS : Value_T; RHS : Str; T : Type_T)
-     with Pre => Present (LHS) and then Present (RHS) and then Present (T);
-   --  Write a statement to copy RHS, of type T, to LHS. If V is Present,
-   --  it represents something that may give line/file information.
+     (LHS, RHS : Str; L_MD, R_MD : MD_Type; V : Value_T := No_Value_T)
+     with Pre => Present (LHS) and then Present (RHS) and then Present (L_MD)
+                 and then Present (R_MD);
+   procedure Output_Copy (LHS : Str; RHS : Value_T; L_MD, R_MD : MD_Type)
+     with Pre => Present (LHS) and then Present (RHS) and then Present (L_MD)
+                 and then Present (R_MD);
+   procedure Output_Copy (LHS, RHS : Value_T; L_MD, R_MD : MD_Type)
+     with Pre => Present (LHS) and then Present (RHS) and then Present (L_MD)
+                 and then Present (R_MD);
+   procedure Output_Copy (LHS : Value_T; RHS : Str; L_MD, R_MD : MD_Type)
+     with Pre => Present (LHS) and then Present (RHS) and then Present (L_MD)
+                 and then Present (R_MD);
+   --  Write a statement to copy RHS, of type R_MD, to LHS, of type
+   --  L_MD. If V is Present, it represents something that may give
+   --  line/file information.
 
-   procedure Process_Pending_Values (Calls_Only : Boolean := False);
+   type Process_Pending_Kind is (Every, Calls, Calls_Or_Loads);
+
+   procedure Process_Pending_Values (K : Process_Pending_Kind := Every);
    --  Walk the set of pending values in reverse order and generate
-   --  assignments for any that haven't been written yet. Is Call_Only,
-   --  we only want to process pending calls (this is used when seeing a
-   --  load).
+   --  assignments for any that haven't been written yet. K says which
+   --  types of pending values need to be processed.
 
    procedure Clear_Pending_Values with Inline;
    --  Clear any pending values that remain in the table. We do this after

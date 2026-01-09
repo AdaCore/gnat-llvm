@@ -17,12 +17,17 @@
 
 with Ada.Containers; use Ada.Containers;
 with Ada.Containers.Hashed_Maps;
+with Ada.Containers.Indefinite_Hashed_Maps;
+with Ada.Strings.Hash;
 
 with Atree; use Atree;
 with Table; use Table;
 
+with LLVM.Core; use LLVM.Core;
+
 with GNATLLVM.Environment; use GNATLLVM.Environment;
 with GNATLLVM.GLValue;     use GNATLLVM.GLValue;
+with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 with CCG.Helper; use CCG.Helper;
 with CCG.Output; use CCG.Output;
@@ -49,6 +54,14 @@ package body CCG.Environment is
       --  True if this value is a constant and was declared that way
       --  in C. We use this to indicate that we have to cast the type
       --  to the non-constant pointer to take the address of the value.
+
+      MDT            : MD_Type;
+      --  The MD_Type that was used to create this value, if known.  This
+      --  is used to determine the appropriate C type if we need to create
+      --  and declare this value as a variable.
+
+      Is_Multi_MD    : Boolean;
+      --  True if this value has been shared by multiple MD Types
 
       Entity         : Entity_Id;
       --  GNAT entity (either object or type) of this value, if known
@@ -77,6 +90,25 @@ package body CCG.Environment is
    end record;
 
    type Type_Data is record
+      MDT                      : MD_Type;
+      --  The MD type that this type  was created from
+
+      Is_Multi_MD              : Boolean;
+      --  True if this type has been shared between multiple MD_Types.
+      --  This will often be the case for types since LLVM shares types.
+      --  So i32 might correspond to both signed and unsigned 32-bit
+      --  integers and all pointer types are the same. But in some cases,
+      --  such as structs or specific-dimensioned arrays, there may only be
+      --  one MD_type that a type came from and we want to take advantage
+      --  of those cases.
+
+      Entity                   : Opt_Type_Kind_Id;
+      --  GNAT entity of this type, if known
+
+   end record;
+
+   type MD_Type_Data is record
+
       Entity                   : Opt_Type_Kind_Id;
       --  GNAT entity of this type, if known
 
@@ -117,17 +149,20 @@ package body CCG.Environment is
 
    end record;
 
-   type Value_Idx is new Nat;
-   type Type_Idx  is new Nat;
-   type BB_Idx    is new Nat;
+   type Value_Idx   is new Nat;
+   type Type_Idx    is new Nat;
+   type MD_Type_Idx is new Nat;
+   type BB_Idx      is new Nat;
 
-   No_Value_Idx : constant Value_Idx := 0;
-   No_Type_Idx  : constant Type_Idx  := 0;
-   No_BB_Idx    : constant BB_Idx    := 0;
+   No_Value_Idx   : constant Value_Idx   := 0;
+   No_Type_Idx    : constant Type_Idx    := 0;
+   No_MD_Type_Idx : constant MD_Type_Idx := 0;
+   No_BB_Idx      : constant BB_Idx      := 0;
 
-   function Present (X : Value_Idx) return Boolean is (X /= No_Value_Idx);
-   function Present (X : Type_Idx)  return Boolean is (X /= No_Type_Idx);
-   function Present (X : BB_Idx)    return Boolean is (X /= No_BB_Idx);
+   function Present (X : Value_Idx)   return Boolean is (X /= No_Value_Idx);
+   function Present (X : Type_Idx)    return Boolean is (X /= No_Type_Idx);
+   function Present (X : MD_Type_Idx) return Boolean is (X /= No_MD_Type_Idx);
+   function Present (X : BB_Idx)      return Boolean is (X /= No_BB_Idx);
 
    package Value_Info is new Table.Table
      (Table_Component_Type => Value_Data,
@@ -144,6 +179,14 @@ package body CCG.Environment is
       Table_Initial        => 200,
       Table_Increment      => 50,
       Table_Name           => "Type_Info");
+
+   package MD_Type_Info is new Table.Table
+     (Table_Component_Type => MD_Type_Data,
+      Table_Index_Type     => MD_Type_Idx,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 200,
+      Table_Increment      => 50,
+      Table_Name           => "MD_Type_Info");
 
    package BB_Info is new Table.Table
      (Table_Component_Type => BB_Data,
@@ -167,12 +210,26 @@ package body CCG.Environment is
       Equivalent_Keys => "=");
    Type_Info_Map : Type_Info_Maps.Map;
 
+   package MD_Type_Info_Maps is new Ada.Containers.Hashed_Maps
+     (Key_Type        => MD_Type,
+      Element_Type    => MD_Type_Idx,
+      Hash            => Hash,
+      Equivalent_Keys => "=");
+   MD_Type_Info_Map : MD_Type_Info_Maps.Map;
+
    package BB_Info_Maps is new Ada.Containers.Hashed_Maps
      (Key_Type        => Basic_Block_T,
       Element_Type    => BB_Idx,
       Hash            => Hash,
       Equivalent_Keys => "=");
    BB_Info_Map : BB_Info_Maps.Map;
+
+   package Ext_Name_Info_Maps is new Ada.Containers.Indefinite_Hashed_Maps
+     (Key_Type        => String,
+      Element_Type    => MD_Type,
+      Hash            => Ada.Strings.Hash,
+      Equivalent_Keys => "=");
+   Ext_Name_Info_Map : Ext_Name_Info_Maps.Map;
 
    Output_Idx : Nat := 1;
    --  The next output index to use for values, types, and basic blocks
@@ -181,11 +238,17 @@ package body CCG.Environment is
    --  basic block and whether to create one if one isn't present.
 
    function Value_Info_Idx (V : Value_T; Create : Boolean) return Value_Idx
-     with Pre => Present (V), Pure_Function;
+     with Pre  => Present (V),
+          Post => not Create or else Present (Value_Info_Idx'Result);
    function Type_Info_Idx  (T : Type_T; Create : Boolean) return Type_Idx
-     with Pre => Present (T), Pure_Function;
+     with Pre  => Present (T),
+          Post => not Create or else Present (Type_Info_Idx'Result);
+   function MD_Type_Info_Idx (M : MD_Type; Create : Boolean) return MD_Type_Idx
+     with Pre  => Present (M),
+          Post => not Create or else Present (MD_Type_Info_Idx'Result);
    function BB_Info_Idx    (B : Basic_Block_T; Create : Boolean) return BB_Idx
-     with Pre => Present (B), Pure_Function;
+     with Pre  => Present (B),
+          Post => not Create or else Present (BB_Info_Idx'Result);
 
    --------------------
    -- Value_Info_Idx --
@@ -194,11 +257,10 @@ package body CCG.Environment is
    function Value_Info_Idx (V : Value_T; Create : Boolean) return Value_Idx
    is
       use Value_Info_Maps;
-      Position : constant Cursor := Find (Value_Info_Map, V);
 
    begin
-      if Has_Element (Position) then
-         return Element (Position);
+      if Value_Info_Map.Contains (V) then
+         return Value_Info_Map (V);
       elsif not Create then
          return No_Value_Idx;
       else
@@ -206,6 +268,8 @@ package body CCG.Environment is
                              Is_Decl_Output => False,
                              Is_LHS         => False,
                              Is_Constant    => False,
+                             MDT            => No_MD_Type,
+                             Is_Multi_MD    => False,
                              Entity         => Types.Empty,
                              Entity_Is_Ref  => False,
                              Is_Used        => False,
@@ -213,6 +277,7 @@ package body CCG.Environment is
                              Must_Globalize => False,
                              Output_Idx     => 0));
          Insert (Value_Info_Map, V, Value_Info.Last);
+         Notify_On_Value_Delete (V, Delete_Value_Info'Access);
          return Value_Info.Last;
       end if;
    end Value_Info_Idx;
@@ -223,6 +288,7 @@ package body CCG.Environment is
 
    procedure Delete_Value_Info (V : Value_T) is
       use Value_Info_Maps;
+      use BB_Info_Maps;
    begin
       --  If we had an entity associated with this value, show that we
       --  no longer have that assocation.
@@ -238,6 +304,12 @@ package body CCG.Environment is
          Delete_Function_Info (V);
       end if;
 
+      --  Likewise if it's a basic block
+
+      if Is_A_Basic_Block (V) then
+         Exclude (BB_Info_Map, Value_As_Basic_Block (V));
+      end if;
+
       --  Finally delete all other information we think we know about
       --  this value.
 
@@ -251,26 +323,47 @@ package body CCG.Environment is
    function Type_Info_Idx (T : Type_T; Create : Boolean) return Type_Idx
    is
       use Type_Info_Maps;
-      Position : constant Cursor := Find (Type_Info_Map, T);
 
    begin
-      if Has_Element (Position) then
-         return Element (Position);
+      if Type_Info_Map.Contains (T) then
+         return Type_Info_Map (T);
       elsif not Create then
          return No_Type_Idx;
       else
-         Type_Info.Append ((Entity                   => Types.Empty,
-                            Is_Typedef_Output        => False,
-                            Is_Return_Typedef_Output => False,
-                            Is_Incomplete_Output     => False,
-                            Are_Outputting_Typedef   => False,
-                            Used_In_Struct           => False,
-                            Cannot_Pack              => False,
-                            Output_Idx               => 0));
+         Type_Info.Append ((MDT                      => No_MD_Type,
+                            Is_Multi_MD              => False,
+                            Entity                   => Types.Empty));
          Insert (Type_Info_Map, T, Type_Info.Last);
          return Type_Info.Last;
       end if;
    end Type_Info_Idx;
+
+   ----------------------
+   -- MD_Type_Info_Idx --
+   ----------------------
+
+   function MD_Type_Info_Idx (M : MD_Type; Create : Boolean) return MD_Type_Idx
+   is
+      use MD_Type_Info_Maps;
+
+   begin
+      if MD_Type_Info_Map.Contains (M) then
+         return MD_Type_Info_Map (M);
+      elsif not Create then
+         return No_MD_Type_Idx;
+      else
+         MD_Type_Info.Append ((Entity                   => Types.Empty,
+                               Is_Typedef_Output        => False,
+                               Is_Return_Typedef_Output => False,
+                               Is_Incomplete_Output     => False,
+                               Are_Outputting_Typedef   => False,
+                               Used_In_Struct           => False,
+                               Cannot_Pack              => False,
+                               Output_Idx               => 0));
+         Insert (MD_Type_Info_Map, M, MD_Type_Info.Last);
+         return MD_Type_Info.Last;
+      end if;
+   end MD_Type_Info_Idx;
 
    -----------------
    -- BB_Info_Idx --
@@ -279,17 +372,22 @@ package body CCG.Environment is
    function BB_Info_Idx (B : Basic_Block_T; Create : Boolean) return BB_Idx
    is
       use BB_Info_Maps;
-      Position : constant Cursor := Find (BB_Info_Map, B);
 
    begin
-      if Has_Element (Position) then
-         return Element (Position);
+      if BB_Info_Map.Contains (B) then
+         return BB_Info_Map (B);
       elsif not Create then
          return No_BB_Idx;
       else
          BB_Info.Append ((Flow        => Empty_Flow_Idx,
                           Output_Idx  => 0));
          Insert (BB_Info_Map, B, BB_Info.Last);
+
+         --  Handle the case where a basic block is deleted since it may
+         --  be reused.
+
+         Notify_On_Value_Delete
+           (Basic_Block_As_Value (B), Delete_Value_Info'Access);
          return BB_Info.Last;
       end if;
    end BB_Info_Idx;
@@ -339,6 +437,29 @@ package body CCG.Environment is
    begin
       return Present (Idx) and then Value_Info.Table (Idx).Is_Constant;
    end Get_Is_Constant;
+
+   -----------------
+   -- Get_MD_Type --
+   -----------------
+
+   function Get_MD_Type (V : Value_T) return MD_Type is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
+
+   begin
+      return (if  Present (Idx) then Value_Info.Table (Idx).MDT
+              else No_MD_Type);
+   end Get_MD_Type;
+
+   ---------------------
+   -- Get_Is_Multi_MD --
+   ---------------------
+
+   function Get_Is_Multi_MD (V : Value_T) return Boolean is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => False);
+
+   begin
+      return Present (Idx) and then Value_Info.Table (Idx).Is_Multi_MD;
+   end Get_Is_Multi_MD;
 
    ----------------
    -- Get_Entity --
@@ -440,6 +561,28 @@ package body CCG.Environment is
       Value_Info.Table (Idx).Is_Constant := B;
    end Set_Is_Constant;
 
+   -----------------
+   -- Set_MD_Type --
+   -----------------
+
+   procedure Set_MD_Type (V : Value_T; M : MD_Type) is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
+
+   begin
+      Value_Info.Table (Idx).MDT := M;
+   end Set_MD_Type;
+
+   ---------------------
+   -- Set_Is_Multi_MD --
+   ---------------------
+
+   procedure Set_Is_Multi_MD (V : Value_T; B : Boolean := True) is
+      Idx : constant Value_Idx := Value_Info_Idx (V, Create => True);
+
+   begin
+      Value_Info.Table (Idx).Is_Multi_MD := B;
+   end Set_Is_Multi_MD;
+
    ----------------
    -- Set_Entity --
    ----------------
@@ -495,6 +638,29 @@ package body CCG.Environment is
       Value_Info.Table (Idx).Must_Globalize := B;
    end Set_Must_Globalize;
 
+   -----------------
+   -- Get_MD_Type --
+   -----------------
+
+   function Get_MD_Type (T : Type_T) return MD_Type is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
+
+   begin
+      return (if  Present (Idx) then Type_Info.Table (Idx).MDT
+              else No_MD_Type);
+   end Get_MD_Type;
+
+   ---------------------
+   -- Get_Is_Multi_MD --
+   ---------------------
+
+   function Get_Is_Multi_MD (T : Type_T) return Boolean is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
+
+   begin
+      return Present (Idx) and then Type_Info.Table (Idx).Is_Multi_MD;
+   end Get_Is_Multi_MD;
+
    ----------------
    -- Get_Entity --
    ----------------
@@ -507,73 +673,27 @@ package body CCG.Environment is
               else Types.Empty);
    end Get_Entity;
 
-   ---------------------------
-   -- Get_Is_Typedef_Output --
-   ---------------------------
+   -----------------
+   -- Set_MD_Type --
+   -----------------
 
-   function Get_Is_Typedef_Output (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
-
-   begin
-      return Present (Idx) and then Type_Info.Table (Idx).Is_Typedef_Output;
-   end Get_Is_Typedef_Output;
-
-   ----------------------------------
-   -- Get_Is_Return_Typedef_Output --
-   ----------------------------------
-
-   function Get_Is_Return_Typedef_Output (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
+   procedure Set_MD_Type (T : Type_T; M : MD_Type) is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
 
    begin
-      return Present (Idx)
-        and then Type_Info.Table (Idx).Is_Return_Typedef_Output;
-   end Get_Is_Return_Typedef_Output;
-
-   ------------------------------
-   -- Get_Is_Incomplete_Output --
-   ------------------------------
-
-   function Get_Is_Incomplete_Output (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
-
-   begin
-      return Present (Idx) and then Type_Info.Table (Idx).Is_Incomplete_Output;
-   end Get_Is_Incomplete_Output;
-
-   --------------------------------
-   -- Get_Are_Outputting_Typedef --
-   --------------------------------
-
-   function Get_Are_Outputting_Typedef (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
-
-   begin
-      return Present (Idx)
-        and then Type_Info.Table (Idx).Are_Outputting_Typedef;
-   end Get_Are_Outputting_Typedef;
+      Type_Info.Table (Idx).MDT := M;
+   end Set_MD_Type;
 
    ---------------------
-   -- Get_Cannot_Pack --
+   -- Set_Is_Multi_MD --
    ---------------------
 
-   function Get_Cannot_Pack (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
+   procedure Set_Is_Multi_MD (T : Type_T; B : Boolean := True) is
+      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
 
    begin
-      return Present (Idx) and then Type_Info.Table (Idx).Cannot_Pack;
-   end Get_Cannot_Pack;
-
-   ------------------------
-   -- Get_Used_In_Struct --
-   ------------------------
-
-   function Get_Used_In_Struct (T : Type_T) return Boolean is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => False);
-
-   begin
-      return Present (Idx) and then Type_Info.Table (Idx).Used_In_Struct;
-   end Get_Used_In_Struct;
+      Type_Info.Table (Idx).Is_Multi_MD := B;
+   end Set_Is_Multi_MD;
 
    ----------------
    -- Set_Entity --
@@ -586,70 +706,162 @@ package body CCG.Environment is
       Type_Info.Table (Idx).Entity := TE;
    end Set_Entity;
 
+   ----------------
+   -- Get_Entity --
+   ----------------
+
+   function Get_Entity (M : MD_Type) return Opt_Type_Kind_Id is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => False);
+
+   begin
+      return (if   Present (Idx) then MD_Type_Info.Table (Idx).Entity
+              else Types.Empty);
+   end Get_Entity;
+
+   ---------------------------
+   -- Get_Is_Typedef_Output --
+   ---------------------------
+
+   function Get_Is_Typedef_Output (M : MD_Type) return Boolean is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => False);
+
+   begin
+      return Present (Idx) and then MD_Type_Info.Table (Idx).Is_Typedef_Output;
+   end Get_Is_Typedef_Output;
+
+   ----------------------------------
+   -- Get_Is_Return_Typedef_Output --
+   ----------------------------------
+
+   function Get_Is_Return_Typedef_Output (M : MD_Type) return Boolean is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => False);
+
+   begin
+      return Present (Idx)
+        and then MD_Type_Info.Table (Idx).Is_Return_Typedef_Output;
+   end Get_Is_Return_Typedef_Output;
+
+   ------------------------------
+   -- Get_Is_Incomplete_Output --
+   ------------------------------
+
+   function Get_Is_Incomplete_Output (M : MD_Type) return Boolean is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => False);
+
+   begin
+      return Present (Idx)
+        and then MD_Type_Info.Table (Idx).Is_Incomplete_Output;
+   end Get_Is_Incomplete_Output;
+
+   --------------------------------
+   -- Get_Are_Outputting_Typedef --
+   --------------------------------
+
+   function Get_Are_Outputting_Typedef (M : MD_Type) return Boolean is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => False);
+
+   begin
+      return Present (Idx)
+        and then MD_Type_Info.Table (Idx).Are_Outputting_Typedef;
+   end Get_Are_Outputting_Typedef;
+
+   ---------------------
+   -- Get_Cannot_Pack --
+   ---------------------
+
+   function Get_Cannot_Pack (M : MD_Type) return Boolean is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => False);
+
+   begin
+      return Present (Idx) and then MD_Type_Info.Table (Idx).Cannot_Pack;
+   end Get_Cannot_Pack;
+
+   ------------------------
+   -- Get_Used_In_Struct --
+   ------------------------
+
+   function Get_Used_In_Struct (M : MD_Type) return Boolean is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => False);
+
+   begin
+      return Present (Idx) and then MD_Type_Info.Table (Idx).Used_In_Struct;
+   end Get_Used_In_Struct;
+
+   ----------------
+   -- Set_Entity --
+   ----------------
+
+   procedure Set_Entity (M : MD_Type; TE : Type_Kind_Id) is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => True);
+
+   begin
+      MD_Type_Info.Table (Idx).Entity := TE;
+   end Set_Entity;
+
    --------------------------
    -- Set_Is_Typedef_Output --
    --------------------------
 
-   procedure Set_Is_Typedef_Output (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
+   procedure Set_Is_Typedef_Output (M : MD_Type; B : Boolean := True) is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => True);
 
    begin
-      Type_Info.Table (Idx).Is_Typedef_Output := B;
+      MD_Type_Info.Table (Idx).Is_Typedef_Output := B;
    end Set_Is_Typedef_Output;
 
    ----------------------------------
    -- Set_Is_Return_Typedef_Output --
    ----------------------------------
 
-   procedure Set_Is_Return_Typedef_Output (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
+   procedure Set_Is_Return_Typedef_Output (M : MD_Type; B : Boolean := True) is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => True);
 
    begin
-      Type_Info.Table (Idx).Is_Return_Typedef_Output := B;
+      MD_Type_Info.Table (Idx).Is_Return_Typedef_Output := B;
    end Set_Is_Return_Typedef_Output;
 
    ------------------------------
    -- Set_Is_Incomplete_Output --
    ------------------------------
 
-   procedure Set_Is_Incomplete_Output (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
+   procedure Set_Is_Incomplete_Output (M : MD_Type; B : Boolean := True) is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => True);
 
    begin
-      Type_Info.Table (Idx).Is_Incomplete_Output := B;
+      MD_Type_Info.Table (Idx).Is_Incomplete_Output := B;
    end Set_Is_Incomplete_Output;
 
    --------------------------------
    -- Set_Are_Outputting_Typedef --
    --------------------------------
 
-   procedure Set_Are_Outputting_Typedef (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
+   procedure Set_Are_Outputting_Typedef (M : MD_Type; B : Boolean := True) is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => True);
 
    begin
-      Type_Info.Table (Idx).Are_Outputting_Typedef := B;
+      MD_Type_Info.Table (Idx).Are_Outputting_Typedef := B;
    end Set_Are_Outputting_Typedef;
 
    ------------------------
    -- Set_Used_In_Struct --
    ------------------------
 
-   procedure Set_Used_In_Struct (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
+   procedure Set_Used_In_Struct (M : MD_Type; B : Boolean := True) is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => True);
 
    begin
-      Type_Info.Table (Idx).Used_In_Struct := B;
+      MD_Type_Info.Table (Idx).Used_In_Struct := B;
    end Set_Used_In_Struct;
 
    ---------------------
    -- Set_Cannot_Pack --
    ---------------------
 
-   procedure Set_Cannot_Pack (T : Type_T; B : Boolean := True) is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
+   procedure Set_Cannot_Pack (M : MD_Type; B : Boolean := True) is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => True);
 
    begin
-      Type_Info.Table (Idx).Cannot_Pack := B;
+      MD_Type_Info.Table (Idx).Cannot_Pack := B;
    end Set_Cannot_Pack;
 
    --------------
@@ -679,20 +891,20 @@ package body CCG.Environment is
    -- Maybe_Output_Typedef --
    --------------------------
 
-   procedure Maybe_Output_Typedef (T : Type_T; Incomplete : Boolean := False)
+   procedure Maybe_Output_Typedef (MD : MD_Type; Incomplete : Boolean := False)
    is
    begin
       --  If we're outputting this, have output it, or are just looking for
       --  an incomplete definition and have already output one, we don't
       --  need to do anything. Otherwise, output the typedef.
 
-      if Get_Are_Outputting_Typedef (T)
-        or else Get_Is_Typedef_Output (T)
-        or else (Incomplete and then Get_Is_Incomplete_Output (T))
+      if Get_Are_Outputting_Typedef (MD)
+        or else Get_Is_Typedef_Output (MD)
+        or else (Incomplete and then Get_Is_Incomplete_Output (MD))
       then
          null;
       else
-         Output_Typedef (T, Incomplete => Incomplete);
+         Output_Typedef (MD, Incomplete => Incomplete);
       end if;
    end Maybe_Output_Typedef;
 
@@ -717,17 +929,17 @@ package body CCG.Environment is
    -- Get_Output_Idx --
    --------------------
 
-   function Get_Output_Idx (T : Type_T) return Nat is
-      Idx : constant Type_Idx := Type_Info_Idx (T, Create => True);
-      TD  : Type_Data renames Type_Info.Table (Idx);
+   function Get_Output_Idx (M : MD_Type) return Nat is
+      Idx : constant MD_Type_Idx := MD_Type_Info_Idx (M, Create => True);
+      MTD : MD_Type_Data renames MD_Type_Info.Table (Idx);
 
    begin
-      if TD.Output_Idx = 0 then
-         TD.Output_Idx := Output_Idx;
-         Output_Idx    := Output_Idx + 1;
+      if MTD.Output_Idx = 0 then
+         MTD.Output_Idx := Output_Idx;
+         Output_Idx     := Output_Idx + 1;
       end if;
 
-      return TD.Output_Idx;
+      return MTD.Output_Idx;
    end Get_Output_Idx;
 
    --------------------
@@ -758,5 +970,26 @@ package body CCG.Environment is
       Output_Idx := Output_Idx + 1;
       return Result;
    end Get_Output_Idx;
+
+   -----------------
+   -- Get_MD_Type --
+   -----------------
+
+   function Get_MD_Type (S : String) return MD_Type is
+      use Ext_Name_Info_Maps;
+   begin
+      return (if   Ext_Name_Info_Map.Contains (S) then Ext_Name_Info_Map (S)
+              else No_MD_Type);
+   end Get_MD_Type;
+
+   -----------------
+   -- Set_MD_Type --
+   -----------------
+
+   procedure Set_MD_Type (S : String; MD : MD_Type) is
+      use Ext_Name_Info_Maps;
+   begin
+      Ext_Name_Info_Map.Include (S, MD);
+   end Set_MD_Type;
 
 end CCG.Environment;

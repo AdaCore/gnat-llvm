@@ -23,6 +23,7 @@ with Snames;   use Snames;
 
 with GNATLLVM.Arrays;         use GNATLLVM.Arrays;
 with GNATLLVM.Arrays.Create;  use GNATLLVM.Arrays.Create;
+with GNATLLVM.Codegen;        use GNATLLVM.Codegen;
 with GNATLLVM.Environment;    use GNATLLVM.Environment;
 with GNATLLVM.GLType;         use GNATLLVM.GLType;
 with GNATLLVM.MDType;         use GNATLLVM.MDType;
@@ -129,6 +130,8 @@ package body GNATLLVM.Types.Create is
       --  representation of the type.
 
       Size    : Uint                                     := Esize (Size_TE);
+      RT      : Discrete_Or_Fixed_Point_Kind_Id          := TE;
+      MD      : MD_Type;
 
    begin
       --  It's tempting to use i1 for boolean types, but that causes issues.
@@ -160,7 +163,7 @@ package body GNATLLVM.Types.Create is
 
          if Is_Packed_Array_Impl_Type (Size_TE)
            or else (not Has_Size_Clause (Size_TE)
-                    and then RM_Size (Size_TE) /= 0)
+                      and then RM_Size (Size_TE) /= 0)
          then
             Size := RM_Size (Size_TE);
          else
@@ -174,9 +177,27 @@ package body GNATLLVM.Types.Create is
          Size := +BPU;
       end if;
 
-      return
-        Int_Ty ((if +Size <= Max_Int_Size then +Size else Max_Int_Size),
-               Is_Unsigned_Type (Size_TE));
+      MD := Int_Ty ((if +Size <= Max_Int_Size then +Size else Max_Int_Size),
+                    Is_Unsigned_Type (Full_Base_Type (Size_TE)));
+
+      --  If we're emitting C, check if a type in Interfaces.C is in the
+      --  type chain at the same size.
+
+      if Emit_C then
+         while Present (RT) and then RM_Size (RT) = Size loop
+            if Get_Name (Scope (RT)) = "interfaces__c" then
+               MD := Set_Type_Name (MD, Chars (RT));
+            end if;
+
+            if RT /= Full_Etype (RT) then
+               RT := Full_Etype (RT);
+            else
+               exit;
+            end if;
+         end loop;
+      end if;
+
+      return MD;
 
    end Create_Discrete_Type;
 
@@ -287,7 +308,7 @@ package body GNATLLVM.Types.Create is
       Dummy : Boolean := False;
       Align : Uint    := No_Uint;
       GT    : GL_Type;
-      MDT   : MD_Type;
+      MD    : MD_Type;
 
    begin
       --  Set that we're elaborating the type. Note that we have to do this
@@ -332,7 +353,7 @@ package body GNATLLVM.Types.Create is
 
       case Ekind (TE) is
          when E_Void =>
-            MDT := Void_Ty;
+            MD := Void_Ty;
 
          when Discrete_Or_Fixed_Point_Kind =>
 
@@ -340,25 +361,25 @@ package body GNATLLVM.Types.Create is
             --  need to represent address types as pointers so that we
             --  don't lose the ability to turn them back into access types.
 
-            MDT :=
-              (if Tagged_Pointers
-                 and then Is_Address_Compatible_Type (TE)
+            MD :=
+              (if   Tagged_Pointers
+                    and then Is_Address_Compatible_Type (TE)
                then Void_Ptr_MD else Create_Discrete_Type (TE));
 
          when Float_Kind =>
-            MDT := Create_Floating_Point_Type (TE);
+            MD := Create_Floating_Point_Type (TE);
 
          when Access_Kind =>
-            MDT := Create_Access_Type (TE, Dummy);
+            MD := Create_Access_Type (TE, Dummy);
 
          when Record_Kind =>
-            MDT := Create_Record_Type (TE);
+            MD := Create_Record_Type (TE);
 
          when Array_Kind =>
-            MDT := Create_Array_Type (TE);
+            MD := Create_Array_Type (TE);
 
          when E_Subprogram_Type =>
-            MDT := Create_Subprogram_Type (TE);
+            MD := Create_Subprogram_Type (TE);
 
          when E_Incomplete_Type =>
 
@@ -367,15 +388,16 @@ package body GNATLLVM.Types.Create is
             --  be an actual type in the case of an error, so use something
             --  that we can take the size an alignment of.
 
-            MDT := Byte_MD;
+            MD := Byte_MD;
 
          when others =>
             pragma Assert (Decls_Only);
-            MDT := Byte_MD;
+            MD := Byte_MD;
       end case;
 
-      --  Now save the result
+      --  Now make volatile if requested and save the result
 
+      Make_Volatile (MD, Is_Volatile (TE));
       GT := Default_GL_Type (TE, Create => False);
 
       --  If we don't have a GT already made, make one
@@ -389,8 +411,8 @@ package body GNATLLVM.Types.Create is
       --  also a dummy type, its type should be the same as ours.
 
       if Dummy and then Is_Dummy_Type (GT) then
-         pragma Assert (Type_Of (GT) = MDT);
-         return MDT;
+         pragma Assert (Type_Of (GT) = MD);
+         return MD;
 
       --  If we're not a dummy type and GT is a dummy type, we need to
       --  create a new GL_Type for the real type. This can only happen for
@@ -405,10 +427,10 @@ package body GNATLLVM.Types.Create is
       --  that this type is no longer being elaborated. If all we have is a
       --  dummy type or if this is a void type, do no more.
 
-      Update_GL_Type (GT, MDT, Dummy);
+      Update_GL_Type (GT, MD, Dummy);
       Set_Is_Being_Elaborated (TE, False);
       if Dummy or else Ekind (TE) = E_Void then
-         return MDT;
+         return MD;
       end if;
 
       --  If this is a packed array implementation type and the original

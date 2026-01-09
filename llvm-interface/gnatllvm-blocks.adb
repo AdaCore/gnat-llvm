@@ -706,7 +706,7 @@ package body GNATLLVM.Blocks is
       Personality_Fn :=
         Add_Global_Function
           (Get_Personality_Function_Name (Normalized_Target_Triple.all),
-           Fn_Ty ((1 .. 0 => <>), Int_32_MD, True), Void_GL_Type);
+           Fn_Ty ((1 .. 0 => <>), Int_32_MD, Varargs => True), Void_GL_Type);
 
       Begin_Handler_Fn :=
         Add_Global_Function ("__gnat_begin_handler_v1",
@@ -795,9 +795,9 @@ package body GNATLLVM.Blocks is
    function Get_Raise_Fn
      (Kind : RT_Exception_Code; Ext : Boolean := False) return GL_Value
    is
-      Int_MDT  : constant MD_Type := Type_Of (Integer_GL_Type);
+      Int_MD   : constant MD_Type := Type_Of (Integer_GL_Type);
       Fun_Type : MD_Type          :=
-        Fn_Ty ((1 => Address_MD, 2 => Int_MDT), Void_Ty);
+        Fn_Ty ((1 => Address_MD, 2 => Int_MD), Void_Ty);
 
    begin
       --  If we're using a last-chance handler, that's the function we need
@@ -818,14 +818,14 @@ package body GNATLLVM.Blocks is
             case Kind is
                when CE_Access_Check_Failed =>
                   Fun_Type :=
-                    Fn_Ty ((1 => Address_MD, 2 => Int_MDT, 3 => Int_MDT),
+                    Fn_Ty ((1 => Address_MD, 2 => Int_MD, 3 => Int_MD),
                            Void_Ty);
 
                when CE_Index_Check_Failed | CE_Range_Check_Failed
                   | CE_Invalid_Data =>
                   Fun_Type :=
-                    Fn_Ty ((1 => Address_MD, 2 => Int_MDT, 3 => Int_MDT,
-                            4 => Int_MDT, 5 => Int_MDT, 6 => Int_MDT),
+                    Fn_Ty ((1 => Address_MD, 2 => Int_MD, 3 => Int_MD,
+                            4 => Int_MD, 5 => Int_MD, 6 => Int_MD),
                            Void_Ty);
 
                when others =>

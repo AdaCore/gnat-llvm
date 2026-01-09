@@ -447,6 +447,22 @@ package body GNATLLVM.Records.Create is
          Table_Increment      => 5,
          Table_Name           => "Field_Entity_List");
 
+      package Field_Padding_List is new Table.Table
+        (Table_Component_Type => Boolean,
+         Table_Index_Type     => Int,
+         Table_Low_Bound      => 0,
+         Table_Initial        => 20,
+         Table_Increment      => 5,
+         Table_Name           => "Field_Padding_List");
+
+      package Field_Bitfield_List is new Table.Table
+        (Table_Component_Type => Boolean,
+         Table_Index_Type     => Int,
+         Table_Low_Bound      => 0,
+         Table_Initial        => 20,
+         Table_Increment      => 5,
+         Table_Name           => "Field_Bitfield_List");
+
       --  We maintain a stack for the depth of variants that we're in.
       --  For each, we indicate whether we're in a dynamic or static variant.
       --  By "static", we mean the case where we have a static subtype,
@@ -517,6 +533,10 @@ package body GNATLLVM.Records.Create is
       --  for variant records; see details there. It also occurs for the
       --  same reason after a variable-size field.
 
+      Int_Name_Seq   : Nat                      := 0;
+      --  When we make internal records, we need to be sure that each
+      --  has a unique name. This counts each name.
+
       First_Field_Id : Field_Info_Id            := Empty_Field_Info_Id;
       --  First Field_Info_Id in this RI
 
@@ -536,14 +556,14 @@ package body GNATLLVM.Records.Create is
       Cur_Idx        : Record_Info_Id;
       --  The index of the record table entry we're building
 
-      MDT            : MD_Type;
+      MD             : MD_Type;
       --  The MD_Type for this record type
 
       Field          : Opt_Record_Field_Kind_Id;
       --  Temporary for loop over components and discriminants
 
       procedure Add_RI
-        (MDT              : MD_Type                     := No_MD_Type;
+        (MD               : MD_Type                     := No_MD_Type;
          F_GT             : GL_Type                     := No_GL_Type;
          Align            : Nat                         := 0;
          Position         : ULL                         := 0;
@@ -596,7 +616,7 @@ package body GNATLLVM.Records.Create is
       ------------
 
       procedure Add_RI
-        (MDT              : MD_Type                     := No_MD_Type;
+        (MD               : MD_Type                     := No_MD_Type;
          F_GT             : GL_Type                     := No_GL_Type;
          Align            : Nat                         := 0;
          Position         : ULL                         := 0;
@@ -611,7 +631,7 @@ package body GNATLLVM.Records.Create is
          --  but we may not actually end up using that one.
 
          Record_Info_Table.Table (Cur_Idx) :=
-           (MDT              => MDT,
+           (MD               => MD,
             GT               => F_GT,
             Align            => Align,
             Position         => Position,
@@ -1028,20 +1048,25 @@ package body GNATLLVM.Records.Create is
       begin
          if Last_Type >= 0 then
             declare
-               MDT : constant MD_Type :=
+               MD : constant MD_Type :=
                  Build_Struct_Type
                    (MD_Type_Array (MD_Type_List.Table (0 .. Last_Type)),
                     Name_Id_Array (Field_Name_List.Table (0 .. Last_Type)),
-                    Fields => Field_Id_Array (Field_Entity_List.Table
+                    Fields   => Field_Id_Array (Field_Entity_List.Table
+                                                  (0 .. Last_Type)),
+                    Padding  => Boolean_Array (Field_Padding_List.Table
+                                                  (0 .. Last_Type)),
+                    Bitfield => Boolean_Array (Field_Bitfield_List.Table
                                                 (0 .. Last_Type)),
-                    Packed => True,
-                    Name   => Get_Ext_Name (TE, "_I"));
+                    Packed   => True,
+                    Name     => Get_Ext_Name (TE, "_I", Seq => Int_Name_Seq));
 
             begin
-               Add_RI (MDT         => MDT,
+               Add_RI (MD          => MD,
                        Align       => RI_Align,
                        Position    => RI_Position,
                        Unused_Bits => RI_Unused_Bits);
+               Int_Name_Seq   := Int_Name_Seq + 1;
                RI_Align       := 0;
                RI_Position    := 0;
                RI_Unused_Bits := Uint_0;
@@ -1211,16 +1236,19 @@ package body GNATLLVM.Records.Create is
          --------------------
 
          procedure Append_Padding (Size : Nat; Count : ULL) is
-            Base_MDT : constant MD_Type := Int_Ty (Size);
-            Use_MDT  : constant MD_Type :=
-              (if   Count > 1 then Array_Type (Base_MDT, Nat (Count))
-               else Base_MDT);
+            Base_MD : constant MD_Type := Int_Ty (Size);
+            Use_MD  : constant MD_Type :=
+              (if   Count > 1 then Array_Type (Base_MD, Nat (Count))
+               else Base_MD);
 
          begin
             if Count /= 0 then
-               MD_Type_List.Append (Use_MDT);
-               Field_Name_List.Append (No_Name);
-               Field_Entity_List.Append (Empty);
+               MD_Type_List.Append        (Use_MD);
+               Field_Name_List.Append     (No_Name);
+               Field_Entity_List.Append   (Empty);
+               Field_Padding_List.Append  (True);
+               Field_Bitfield_List.Append (False);
+
                Cur_RI_Pos  := Cur_RI_Pos + Count * ULL (Size);
                Left_To_Pad := Left_To_Pad - Count * ULL (Size);
             end if;
@@ -1672,9 +1700,12 @@ package body GNATLLVM.Records.Create is
             if Bitfield_Len in 8 | 16 | 32 | 64 then
                Bitfield_Is_Array       := False;
                Bitfield_Is_Large_Array := False;
-               MD_Type_List.Append (Int_Ty (Nat (Bitfield_Len)));
-               Field_Name_List.Append (No_Name);
-               Field_Entity_List.Append (Empty);
+
+               MD_Type_List.Append        (Int_Ty (Nat (Bitfield_Len)));
+               Field_Name_List.Append     (No_Name);
+               Field_Entity_List.Append   (Empty);
+               Field_Padding_List.Append  (False);
+               Field_Bitfield_List.Append (True);
             else
                Bitfield_Is_Array := True;
                Bitfield_Is_Large_Array :=
@@ -1682,8 +1713,11 @@ package body GNATLLVM.Records.Create is
                MD_Type_List.Append (Array_Type
                                       (Byte_MD,
                                        Nat (To_Bytes (Bitfield_Len))));
-               Field_Name_List.Append (No_Name);
-               Field_Entity_List.Append (Empty);
+
+               Field_Name_List.Append     (No_Name);
+               Field_Entity_List.Append   (Empty);
+               Field_Padding_List.Append  (False);
+               Field_Bitfield_List.Append (True);
             end if;
 
             Cur_RI_Pos := +Bitfield_End_Pos;
@@ -1722,9 +1756,12 @@ package body GNATLLVM.Records.Create is
          if Decls_Only and then Is_Tagged_Type (TE) and then No (Prev_Idx)
            and then Variant_Stack.Last = 0
          then
-            MD_Type_List.Append (Void_Ptr_MD);
-            Field_Name_List.Append (No_Name);
-            Field_Entity_List.Append (Empty);
+            MD_Type_List.Append        (Void_Ptr_MD);
+            Field_Name_List.Append     (No_Name);
+            Field_Entity_List.Append   (Empty);
+            Field_Padding_List.Append  (False);
+            Field_Bitfield_List.Append (False);
+
             Cur_RI_Pos := Cur_RI_Pos + Get_Type_Size (Void_Ptr_MD);
          end if;
 
@@ -1943,12 +1980,10 @@ package body GNATLLVM.Records.Create is
                   end if;
 
                   declare
-                     F_MDT : constant MD_Type := Type_Of (F_GT);
-                     MDT   : constant MD_Type :=
-                       (if   Decls_Only and then Is_Void (F_MDT)
-                        then Byte_MD else F_MDT);
-                     --  LLVM type to use
-
+                     F_MD : constant MD_Type := Type_Of (F_GT);
+                     MD   : constant MD_Type :=
+                       (if   Decls_Only and then Is_Void (F_MD) then Byte_MD
+                        else F_MD);
                      Needed_Pos  : constant ULL    :=
                        (if    Present (Pos)   then +Pos
                         elsif Forced_Pos /= 0 then Forced_Pos
@@ -1988,15 +2023,20 @@ package body GNATLLVM.Records.Create is
                         RI_Unused_Bits := Bitfield_End_Pos - (Pos + Size);
                      else
                         Force_To_Pos (Needed_Pos);
-                        MD_Type_List.Append (MDT);
+                        MD_Type_List.Append (Make_Volatile (MD,
+                                                            Is_Volatile (F)));
                         Field_Name_List.Append
-                          (if    Present (Interface_Name (F))
-                           then  Get_Ext_Name (F)
-                           elsif Emit_C then Unique_Component_Name (F)
-                           else  Chars (F));
-                        Field_Entity_List.Append (F);
+                          ((if    Present (Interface_Name (F))
+                            then  Get_Ext_Name (F)
+                            elsif Emit_C then Unique_Component_Name (F)
+                            else  Chars (F)));
+
+                        Field_Entity_List.Append   (F);
+                        Field_Padding_List.Append  (False);
+                        Field_Bitfield_List.Append (False);
+
                         Cur_RI_Pos :=
-                          Align_Pos (Cur_RI_Pos + Get_Type_Size (MDT), BPU);
+                          Align_Pos (Cur_RI_Pos + Get_Type_Size (MD), BPU);
                         Add_FI (F, Cur_Idx, F_GT,
                                 Ordinal => MD_Type_List.Last);
                         RI_Unused_Bits := Get_Unused_Bits (F_GT);
@@ -2022,14 +2062,14 @@ package body GNATLLVM.Records.Create is
          GT := New_GT (TE);
       end if;
 
-      MDT := Type_Of (GT);
+      MD := Type_Of (GT);
 
-      if No (MDT) then
+      if No (MD) then
          pragma Assert (Is_Empty_GL_Type (GT));
-         MDT := Struct_Create_Named (Get_Ext_Name (TE));
+         MD := Struct_Create_Named (Get_Ext_Name (TE));
       end if;
 
-      Update_GL_Type (GT, MDT, True);
+      Update_GL_Type (GT, MD, True);
 
       --  See if we have any non-packable fields of fixed size
 
@@ -2068,22 +2108,26 @@ package body GNATLLVM.Records.Create is
          end if;
 
          Struct_Set_Body
-           (MDT,
-            MD_Type_Array (MD_Type_List.Table (0 .. MD_Type_List.Last)),
+           (MD, MD_Type_Array (MD_Type_List.Table (0 .. MD_Type_List.Last)),
             Name_Id_Array (Field_Name_List.Table (0 .. MD_Type_List.Last)),
-            Fields => Field_Id_Array (Field_Entity_List.Table
-                                        (0 .. MD_Type_List.Last)),
+            Fields   => Field_Id_Array (Field_Entity_List.Table
+                                          (0 .. MD_Type_List.Last)),
+            Padding  => Boolean_Array (Field_Padding_List.Table
+                                         (0 .. MD_Type_List.Last)),
+            Bitfield => Boolean_Array (Field_Bitfield_List.Table
+                                         (0 .. MD_Type_List.Last)),
             Packed => True);
 
-         Add_RI (MDT         => MDT,
+         Add_RI (MD          => MD,
                  Align       => RI_Align,
                  Unused_Bits => RI_Unused_Bits);
       else
          --  Otherwise, close out the last record info if we have any
          --  fields. Note that if we don't have any fields, the entry we
          --  allocated will remain unused, but trying to reclaim it is
-         --  risky.
+         --  risky. Also show that the type we created has no fields.
 
+         Struct_Set_Body (MD, (1 .. 0 => No_MD_Type), (1 .. 0 => No_Name));
          Flush_Current_Types;
       end if;
 
@@ -2126,7 +2170,7 @@ package body GNATLLVM.Records.Create is
 
       --  Show that the type is no longer a dummy
 
-      Update_GL_Type (GT, MDT, False);
+      Update_GL_Type (GT, MD, False);
 
       --  Back-annotate all fields that exist in this record type
 
@@ -2181,7 +2225,7 @@ package body GNATLLVM.Records.Create is
          Print_Record_Info (TE, Eol => True);
       end if;
 
-      return MDT;
+      return MD;
    end Create_Record_Type;
 
 begin

@@ -105,14 +105,14 @@ package GNATLLVM.Instructions is
 
    function Ptr_To_Int_To_Relationship
      (V    : GL_Value;
-      MDT  : MD_Type;
+      MD   : MD_Type;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (G (Ptr_To_Int (IR_Builder, +V, +MDT, Name), Related_Type (V), MDT, R,
+        (G (Ptr_To_Int (IR_Builder, +V, +MD, Name), Related_Type (V), MD, R,
             Alignment => Alignment (V))))
-     with Pre  => Present (V) and then Present (MDT),
+     with Pre  => Present (V) and then Present (MD),
           Post => Present (Ptr_To_Int_To_Relationship'Result);
 
    function Ptr_To_Address_Type
@@ -134,23 +134,23 @@ package GNATLLVM.Instructions is
           Post => Present (Bit_Cast'Result);
 
    function Bit_Cast
-     (V : GL_Value; MDT : MD_Type; Name : String := "") return GL_Value
+     (V : GL_Value; MD : MD_Type; Name : String := "") return GL_Value
    is
-     (G (Bit_Cast (IR_Builder, +V, +MDT, Name), Related_Type (V), MDT, Unknown,
+     (G (Bit_Cast (IR_Builder, +V, +MD, Name), Related_Type (V), MD, Unknown,
          Alignment => Alignment (V)))
-     with Pre  => Present (V) and then Present (MDT),
+     with Pre  => Present (V) and then Present (MD),
           Post => Present (Bit_Cast'Result);
 
    function Bit_Cast_To_Relationship
      (V    : GL_Value;
-      MDT  : MD_Type;
+      MD   : MD_Type;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (G (Bit_Cast (IR_Builder, +V, +MDT, Name), Related_Type (V), MDT, R,
+        (G (Bit_Cast (IR_Builder, +V, +MD, Name), Related_Type (V), MD, R,
             Alignment => Alignment (V))))
-     with Pre  => Present (V) and then Present (MDT),
+     with Pre  => Present (V) and then Present (MD),
           Post => Present (Bit_Cast_To_Relationship'Result);
 
    function Pointer_Cast
@@ -167,18 +167,27 @@ package GNATLLVM.Instructions is
           Post => Is_Pointer (Pointer_Cast'Result);
 
    function Pointer_Cast
-     (V : GL_Value; MDT : MD_Type; Name : String := "") return GL_Value
+     (V : GL_Value; MD : MD_Type; Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (GM (Pointer_Cast (IR_Builder, +V, +MDT, Name), Related_Type (V),
-             MDT, Relationship (V), V)))
-     with Pre  => Is_Pointer (V) and then Is_Pointer (MDT),
+        (GM (Pointer_Cast (IR_Builder, +V, +MD, Name), Related_Type (V),
+             MD, Relationship (V), V)))
+     with Pre  => Is_Pointer (V) and then Is_Pointer (MD),
           Post => Is_Pointer (Pointer_Cast'Result);
 
    function Ptr_To_Ref
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
      with Pre  => Is_Pointer (V) and then Present (GT),
           Post => Is_Pointer (Ptr_To_Ref'Result), Inline;
+
+   function Ptr_To_Array_Ref
+     (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
+     with Pre  => Is_Pointer (V) and then Present (GT),
+          Post => Is_Pointer (Ptr_To_Array_Ref'Result)
+                  and then Is_Variable_Array
+                             (Designated_Type
+                               (Type_Of (Ptr_To_Array_Ref'Result))),
+          Inline;
 
    function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
      with Pre  => Is_Pointer (V) and then Is_Pointer (T),
@@ -194,26 +203,26 @@ package GNATLLVM.Instructions is
 
    function Ptr_To_Relationship
      (V    : GL_Value;
-      MDT  : MD_Type;
+      MD   : MD_Type;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (GM (Pointer_Cast (IR_Builder, +V, +MDT, Name),
-             Related_Type (V), MDT, R, V)))
-     with Pre  => Is_Pointer (V) and then Present (MDT),
+        (GM (Pointer_Cast (IR_Builder, +V, +MD, Name),
+             Related_Type (V), MD, R, V)))
+     with Pre  => Is_Pointer (V) and then Present (MD),
           Post => Is_Pointer (Ptr_To_Relationship'Result), Inline;
 
    function Ptr_To_Relationship
      (V    : GL_Value;
-      MDT  : MD_Type;
+      MD   : MD_Type;
       GT   : GL_Type;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
      (Initialize_TBAA
-        (GM (Pointer_Cast (IR_Builder, +V, +MDT, Name), GT, MDT, R, V)))
-     with Pre  => Is_Pointer (V) and then Present (MDT) and then Present (GT),
+        (GM (Pointer_Cast (IR_Builder, +V, +MD, Name), GT, MD, R, V)))
+     with Pre  => Is_Pointer (V) and then Present (MD) and then Present (GT),
           Post => Is_Pointer (Ptr_To_Relationship'Result), Inline;
 
    function Ptr_To_Relationship
@@ -230,10 +239,10 @@ package GNATLLVM.Instructions is
 
    function Trunc_To_Relationship
      (V    : GL_Value;
-      MDT  : MD_Type;
+      MD   : MD_Type;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
-     with Pre  => Present (V) and then Present (MDT),
+     with Pre  => Present (V) and then Present (MD),
           Post => Present (Trunc_To_Relationship'Result), Inline;
 
    function S_Ext
@@ -248,13 +257,13 @@ package GNATLLVM.Instructions is
 
    function Z_Ext_To_Relationship
      (V    : GL_Value;
-      MDT  : MD_Type;
+      MD   : MD_Type;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
    is
-     (G (Z_Ext (IR_Builder, +V, +MDT, Name), Related_Type (V), MDT, R,
+     (G (Z_Ext (IR_Builder, +V, +MD, Name), Related_Type (V), MD, R,
          Alignment => Alignment (V)))
-     with Pre  => Present (V) and then Present (MDT),
+     with Pre  => Present (V) and then Present (MD),
           Post => Present (Z_Ext_To_Relationship'Result);
 
    function FP_Trunc
@@ -625,9 +634,10 @@ package GNATLLVM.Instructions is
    function "*" (LHS, RHS : GL_Value)   return GL_Value is
      (Mul (LHS, RHS));
    function "/" (LHS, RHS : GL_Value)   return GL_Value is
-     (U_Div (LHS, RHS));
+     (Div (LHS, RHS, Is_Signed (Type_Of (LHS))));
    function "mod" (LHS, RHS : GL_Value) return GL_Value is
-     (U_Rem (LHS, RHS));
+     ((if   Is_Signed (Type_Of (LHS)) then S_Rem (LHS, RHS)
+       else U_Rem (LHS, RHS)));
 
    function "+" (LHS : Uint; RHS : GL_Value) return Uint is
      (LHS + UI_From_GL_Value (RHS))
@@ -884,11 +894,11 @@ package GNATLLVM.Instructions is
 
    function GEP
      (Bld     : Builder_T;
-      MDT     : MD_Type;
+      MD      : MD_Type;
       Ptr     : Value_T;
       Indices : Value_Array;
       Name    : String := "") return Value_T
-     with Pre  => Present (Bld) and then Present (MDT) and then Present (Ptr)
+     with Pre  => Present (Bld) and then Present (MD) and then Present (Ptr)
                   and then (for all V of Indices => Present (V)),
           Post => Present (GEP'Result);
 
@@ -906,11 +916,11 @@ package GNATLLVM.Instructions is
      (GT      : GL_Type;
       R       : GL_Relationship;
       Ptr     : GL_Value;
-      Ptr_MDT : MD_Type;
+      Ptr_MD  : MD_Type;
       Indices : GL_Value_Array;
       Name    : String := "") return GL_Value
      with Pre  => Is_Pointer (Ptr) and then Present (GT)
-                  and then Present (Ptr_MDT)
+                  and then Present (Ptr_MD)
                   and then (for all V of Indices => Present (V)),
           Post => Is_Pointer (GEP_To_Relationship'Result);
 
@@ -959,30 +969,30 @@ package GNATLLVM.Instructions is
 
    function Call
      (Func   : GL_Value;
-      Fn_MDT : MD_Type;
+      Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
       Name   : String := "") return GL_Value
-     with Pre  => Present (Func) and then Present (Fn_MDT)
+     with Pre  => Present (Func) and then Present (Fn_MD)
                   and then (for all V of Args => Present (V)),
           Post => Present (Call'Result), Inline;
 
    function Call
      (Func   : GL_Value;
-      Fn_MDT : MD_Type;
+      Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
       GT     : GL_Type;
       Name   : String := "") return GL_Value
      with Pre  => Present (Func) and then Present (GT)
-                  and then Present (Fn_MDT)
+                  and then Present (Fn_MD)
                   and then (for all V of Args => Present (V)),
           Post => Present (Call'Result), Inline;
 
    function Call_Ref
      (Func   : GL_Value;
-      Fn_MDT : MD_Type;
+      Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
       Name   : String := "") return GL_Value
-     with Pre  => Present (Func) and then Present (Fn_MDT)
+     with Pre  => Present (Func) and then Present (Fn_MD)
                   and then (for all V of Args => Present (V)),
           Post => Is_Reference (Call_Ref'Result), Inline;
 
@@ -996,11 +1006,11 @@ package GNATLLVM.Instructions is
           Post => Present (Call_Relationship'Result), Inline;
    function Call_Relationship
      (Func   : GL_Value;
-      Fn_MDT : MD_Type;
+      Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
       R      : GL_Relationship;
       Name   : String := "") return GL_Value
-     with Pre  => Present (Func) and then Present (Fn_MDT)
+     with Pre  => Present (Func) and then Present (Fn_MD)
                   and then (for all V of Args => Present (V)),
           Post => Present (Call_Relationship'Result), Inline;
      --  Used when an LLVM function is returning something of a specified
@@ -1014,10 +1024,10 @@ package GNATLLVM.Instructions is
 
    procedure Call
      (Func   : GL_Value;
-      Fn_MDT : MD_Type;
+      Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
       Name   : String := "")
-     with Pre => Present (Func) and then Present (Fn_MDT)
+     with Pre => Present (Func) and then Present (Fn_MD)
                   and then (for all V of Args => Present (V)),
           Inline;
 
@@ -1041,15 +1051,15 @@ package GNATLLVM.Instructions is
      (Address_Add (Ptr, -Offset));
 
    function Landing_Pad
-     (MDT              : MD_Type;
+     (MD               : MD_Type;
       Personality_Func : GL_Value;
       Num_Clauses      : Nat    := 5;
       Name             : String := "") return GL_Value
    is
-      (G (Landing_Pad (IR_Builder, +MDT, +Personality_Func,
+      (G (Landing_Pad (IR_Builder, +MD, +Personality_Func,
                        unsigned (Num_Clauses), Name),
-         A_Char_GL_Type, MDT, Unknown))
-     with Pre  => Present (MDT) and then Present (Personality_Func),
+         A_Char_GL_Type, MD, Unknown))
+     with Pre  => Present (MD) and then Present (Personality_Func),
           Post => Present (Landing_Pad'Result);
 
    procedure Build_Resume (V : GL_Value)
@@ -1060,12 +1070,12 @@ package GNATLLVM.Instructions is
       Output_Value   : Entity_Id;
       Template       : String;
       Constraints    : String;
-      Fn_MDT         : out MD_Type;
+      Fn_MD          : out MD_Type;
       Is_Volatile    : Boolean := False;
       Is_Stack_Align : Boolean := False) return GL_Value
      with Pre  => (for all V of Args => Present (V)),
           Post => Present (Inline_Asm'Result)
-                  and then Is_Function_Type (Fn_MDT);
+                  and then Is_Function_Type (Fn_MD);
 
    function Build_Switch
      (V : GL_Value; Default : Basic_Block_T; Blocks : Nat := 15) return Value_T

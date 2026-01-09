@@ -23,7 +23,6 @@ with Set_Targ; use Set_Targ;
 
 with CCG.Helper; use CCG.Helper;
 with CCG.Strs;   use CCG.Strs;
-with CCG.Utils;  use CCG.Utils;
 
 package CCG.Aggregates is
 
@@ -87,35 +86,36 @@ package CCG.Aggregates is
    procedure Output_IXX_Structs;
    --  Output any needed such structs
 
-   function Default_Alignment (T : Type_T) return Nat
-     with Pre => Present (T);
-   function Struct_Out_Style (T : Type_T) return Struct_Out_Style_T
-     with Pre => Is_Struct_Type (T);
-   function Actual_Alignment (T : Type_T) return Nat is
-     ((if   Is_Struct_Type (T) and then Struct_Out_Style (T) = Packed
-       then BPU else Default_Alignment (T)))
-     with Pre => Present (T);
+   function Default_Alignment (MD : MD_Type) return Nat
+     with Pre => Present (MD);
+   function Struct_Out_Style (MD : MD_Type) return Struct_Out_Style_T
+     with Pre => Is_Struct (MD);
+   function Actual_Alignment (MD : MD_Type) return Nat is
+     ((if   Is_Struct (MD) and then Struct_Out_Style (MD) = Packed
+       then BPU else Default_Alignment (MD)))
+     with Pre => Present (MD);
 
-   procedure Output_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
-     with Pre => Is_Struct_Type (T);
-   --  Output a typedef for T, a struct type. If Incomplete, only output the
+   procedure Output_Struct_Typedef
+     (MD : MD_Type; Incomplete : Boolean := False)
+     with Pre => Is_Struct (MD);
+   --  Output a typedef for MD, a struct type. If Incomplete, only output the
    --  initial struct definition, not the fields.
 
-   procedure Error_If_Cannot_Pack (T : Type_T)
-     with Pre => Present (T);
-   --  We're using T in a context where it matters if its size isn't a
+   procedure Error_If_Cannot_Pack (MD : MD_Type)
+     with Pre => Present (MD);
+   --  We're using MD in a context where it matters if its size isn't a
    --  multiple of its alignment, so give an error if that's that case
    --  and we don't support packing.
 
-   procedure Output_Array_Typedef (T : Type_T)
-     with Pre => Is_Array_Type (T);
-   --  Output a typedef for T, an array type
+   procedure Output_Array_Typedef (MD : MD_Type)
+     with Pre => Is_Array (MD);
+   --  Output a typedef for MD, an array type
 
-   procedure Maybe_Output_Array_Return_Typedef (T : Type_T)
-     with Pre => Is_Array_Type (T);
+   procedure Maybe_Output_Array_Return_Typedef (MD : MD_Type)
+     with Pre => Is_Array (MD);
    --  If we haven't done so already, output the typedef for the struct that
-   --  will be used as the actual return type if T were the return type of
-   --  a function. This is known to be the name of T with a suffixed "_R".
+   --  will be used as the actual return type if MD were the return type of
+   --  a function. This is known to be the name of MD with a suffixed "_R".
 
    function Extract_Value_Instruction (V : Value_T; Op : Value_T) return Str
      with Pre  => Is_A_Extract_Value_Inst (V) and then Present (Op),

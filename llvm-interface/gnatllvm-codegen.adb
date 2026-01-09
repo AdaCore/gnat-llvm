@@ -593,7 +593,7 @@ package body GNATLLVM.Codegen is
 
       Initialize_LLVM;
 #if LLVM_Version_Major <= 16 then
-      Context_Set_Opaque_Pointers (Get_Global_Context, not Emit_C);
+      Context_Set_Opaque_Pointers (Get_Global_Context, True);
 #end if;
       IR_Builder     := Create_Builder;
       MD_Builder     := Create_MDBuilder;

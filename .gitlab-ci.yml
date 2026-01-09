@@ -126,3 +126,6 @@ acats:windows:
 
 fixedbugs:windows:
   timeout: 4h
+
+ccg:linux:
+  timeout: 3h

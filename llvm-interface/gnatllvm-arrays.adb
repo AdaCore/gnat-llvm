@@ -809,9 +809,9 @@ package body GNATLLVM.Arrays is
    --------------------
 
    function Get_Bound_Size (GT : Array_Or_PAT_GL_Type) return GL_Value is
-      MDT : constant MD_Type := Create_Array_Bounds_Type (GT);
+      MD : constant MD_Type := Create_Array_Bounds_Type (GT);
    begin
-      return Align_To (Get_Type_Size (+MDT), Get_Type_Alignment (MDT),
+      return Align_To (Get_Type_Size (+MD), Get_Type_Alignment (MD),
                        Get_Type_Alignment (GT));
    end Get_Bound_Size;
 
@@ -1500,7 +1500,7 @@ package body GNATLLVM.Arrays is
          Unit_GT   : constant GL_Type  :=
            (if Use_Comp then Comp_GT else SSI_GL_Type);
          Data      : constant GL_Value :=
-           Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference);
+           Get (Ptr_To_Array_Ref (Array_Data, Unit_GT), Reference);
 
       begin
          Result := GEP (Unit_GT, Data,

@@ -20,6 +20,7 @@ with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
+with GNATLLVM.Utils;   use GNATLLVM.Utils;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Codegen;      use CCG.Codegen;
@@ -27,16 +28,18 @@ with CCG.Environment;  use CCG.Environment;
 with CCG.Instructions; use CCG.Instructions;
 with CCG.Output;       use CCG.Output;
 with CCG.Target;       use CCG.Target;
+with CCG.Utils;        use CCG.Utils;
 
 package body CCG.Aggregates is
 
    --  This package contains routines used to process aggregate data,
    --  which are arrays and structs.
 
-   function Value_Piece (V : Value_T; T : in out Type_T; Idx : Nat) return Str
+   function Value_Piece
+     (V : Value_T; MD : in out MD_Type; Idx : Nat) return Str
      with Pre  => Get_Opcode (V) in Op_Extract_Value | Op_Insert_Value
-                  and then Is_Aggregate_Type (T),
-          Post => Present (Value_Piece'Result) and then T /= T'Old;
+                  and then (Is_Array (MD) or else Is_Struct (MD)),
+          Post => Present (Value_Piece'Result) and then MD /= MD'Old;
    --  T is the type of a component of the aggregate in an extractvalue or
    --  insertvalue instruction V. Return an Str saying how to access that
    --  component and update T to be the type of that component.
@@ -98,30 +101,29 @@ package body CCG.Aggregates is
    -- Default_Alignment --
    -----------------------
 
-   function Default_Alignment (T : Type_T) return Nat is
+   function Default_Alignment (MD : MD_Type) return Nat is
    begin
       --  As documented in the spec of this package, we have three cases,
       --  arrays, structs, and non-composite types
 
-      if Is_Array_Type (T) then
-         return Default_Alignment (Get_Element_Type (T));
+      if Is_Array (MD) then
+         return Default_Alignment (Element_Type (MD));
 
-      elsif Is_Struct_Type (T) then
+      elsif Is_Struct (MD) then
          declare
-            Types : constant Nat := Count_Struct_Element_Types (T);
+            Types : constant Nat := Element_Count (MD);
 
          begin
             return Max_Align : Nat := BPU do
                for J in 0 .. Types - 1 loop
                   Max_Align :=
-                    Nat'Max (Actual_Alignment
-                               (Struct_Get_Type_At_Index (T, J)),
+                    Nat'Max (Actual_Alignment (Element_Type (MD, J)),
                              Max_Align);
                end loop;
             end return;
          end;
       else
-         return Get_Preferred_Type_Alignment (T);
+         return Get_Preferred_Type_Alignment (+MD);
       end if;
 
    end Default_Alignment;
@@ -130,10 +132,11 @@ package body CCG.Aggregates is
    -- Struct_Out_Style --
    ----------------------
 
-   function Struct_Out_Style (T : Type_T) return Struct_Out_Style_T is
-      Num_Types : constant Nat              := Count_Struct_Element_Types (T);
+   function Struct_Out_Style (MD : MD_Type) return Struct_Out_Style_T is
+      T         : constant Type_T           := +MD;
+      Num_Types : constant Nat              := Element_Count (MD);
       F0        : constant Entity_Id        :=
-        (if Num_Types = 0 then Empty else Get_Field_Entity (T, 0));
+        (if Num_Types = 0 then Empty else Element_Entity (MD, 0));
       TE        : constant Opt_Type_Kind_Id :=
         (if   Present (F0) then Full_Base_Type (Full_Etype (Scope (F0)))
          else Empty);
@@ -142,18 +145,18 @@ package body CCG.Aggregates is
       Need_Pad  : Boolean                   := False;
 
    begin
-      --  If this is an opaque type, we're not going to be referencing it
-      --  directly, and certainly aren't going to be outputting fields for
-      --  it, so we can pretend it's normal.
+      --  If we don't have fields this for, we're not going to be
+      --  referencing it directly, and certainly aren't going to be
+      --  outputting fields for it, so we can pretend it's normal.
 
-      if Is_Opaque_Struct (T) then
+      if not Has_Fields (MD) then
          return Normal;
 
       --  If this isn't a packed struct, we don't need packing. Likewise if
       --  there are no fields. But we don't know that we can omit padding
       --  fields.
 
-      elsif not Is_Packed_Struct (T) or else Num_Types = 0 then
+      elsif not Is_Packed (MD) or else Num_Types = 0 then
          return Padding;
 
       --  If the user asked to prefer packing, do so
@@ -176,14 +179,14 @@ package body CCG.Aggregates is
          declare
             Actual_Pos : constant ULL    :=
               To_Bits (Get_Element_Offset (T, J));
-            Elem_T     : constant Type_T := Struct_Get_Type_At_Index (T, J);
-            Size       : constant ULL    := Get_Type_Size (Elem_T);
-            Align      : constant ULL    := ULL (Actual_Alignment (Elem_T));
-            SB_Pos     : constant ULL    :=
+            Elem_MD    : constant MD_Type := Element_Type (MD, J);
+            Size       : constant ULL     := Get_Type_Size (Elem_MD);
+            Align      : constant ULL     := ULL (Actual_Alignment (Elem_MD));
+            SB_Pos     : constant ULL     :=
               (Cur_Pos + Align - 1) / Align * Align;
 
          begin
-            if not Is_Field_Padding (T, J) then
+            if not Is_Padding (MD, J) then
                if Actual_Pos < SB_Pos then
                   Need_Pack := True;
                elsif Actual_Pos > SB_Pos then
@@ -198,7 +201,7 @@ package body CCG.Aggregates is
             --  the address of the next one, so we need to be conservative
             --  here.
 
-            if Is_Zero_Length_Array (Elem_T) and then J /= Num_Types - 1 then
+            if Is_Zero_Length_Array (Elem_MD) and then J /= Num_Types - 1 then
                Need_Pack := True;
             end if;
          end;
@@ -208,7 +211,7 @@ package body CCG.Aggregates is
       --  have a way of indicating that to the C compiler, give an error.
 
       if Need_Pack and then Pack_Not_Supported then
-         Error_Msg ("C compiler does not support packing", T);
+         Error_Msg ("C compiler does not support packing", MD);
       end if;
 
       --  If we can't determine the base type, its base type is
@@ -220,15 +223,15 @@ package body CCG.Aggregates is
       --  another record.
 
       if (No (TE) or else not Is_Constrained (TE)
-          or else (+Alignment (TE)) * UBPU < ULL (Default_Alignment (T))
+          or else (+Alignment (TE)) * UBPU < ULL (Default_Alignment (MD))
           or else (Cur_Pos mod ((+Alignment (TE)) * UBPU) /= 0
-                   and then Get_Used_In_Struct (T)))
+                   and then Get_Used_In_Struct (MD)))
         and then not Need_Pack
       then
          Need_Pack := True;
 
          if Pack_Not_Supported then
-            Set_Cannot_Pack (T);
+            Set_Cannot_Pack (MD);
          end if;
       end if;
 
@@ -251,7 +254,7 @@ package body CCG.Aggregates is
    -- Error_If_Cannot_Pack --
    --------------------------
 
-   procedure Error_If_Cannot_Pack (T : Type_T) is
+   procedure Error_If_Cannot_Pack (MD : MD_Type) is
    begin
       --  We want this error to be output only once for a type. If the
       --  type corresponds to a GNAT type, the handling of error messages
@@ -259,8 +262,8 @@ package body CCG.Aggregates is
       --  but let's assume that's a rare case and not add a bit just for
       --  that purpose.
 
-      if Get_Cannot_Pack (T) then
-         Error_Msg ("unsupported use when packing not available", T);
+      if Get_Cannot_Pack (MD) then
+         Error_Msg ("unsupported use when packing not available", MD);
       end if;
    end Error_If_Cannot_Pack;
 
@@ -268,17 +271,21 @@ package body CCG.Aggregates is
    -- Output_Struct_Typedef --
    ---------------------------
 
-   procedure Output_Struct_Typedef (T : Type_T; Incomplete : Boolean := False)
+   procedure Output_Struct_Typedef
+     (MD : MD_Type; Incomplete : Boolean := False)
    is
       Num_Types      : constant Nat                :=
-        Count_Struct_Element_Types (T);
+        (if Incomplete then 0 else Element_Count (MD));
+      T              : constant Type_T             := +MD;
       TE             : constant Opt_Type_Kind_Id   := Get_Entity (T);
       Is_Vol         : constant Boolean            :=
         Present (TE) and then Treat_As_Volatile (TE);
       Vol_Str        : constant String             :=
         (if Is_Vol then "volatile " else "");
-      SOS            : constant Struct_Out_Style_T := Struct_Out_Style (T);
+      SOS            : constant Struct_Out_Style_T :=
+        (if Incomplete then Normal else Struct_Out_Style (MD));
       Fields_Written : Nat                         := 0;
+
    begin
       --  Because this struct may contain a pointer to itself, we always have
       --  to write an incomplete struct. So we write, e.g.,
@@ -286,10 +293,10 @@ package body CCG.Aggregates is
       --       typedef struct foo foo;
       --       struct foo { ... full definition ..}
 
-      if not Get_Is_Incomplete_Output (T) then
-         Output_Decl ("typedef " & Vol_Str & "struct " & T & " " & T,
+      if not Get_Is_Incomplete_Output (MD) then
+         Output_Decl ("typedef " & Vol_Str & "struct " & MD & " " & MD,
                       Is_Typedef => True);
-         Set_Is_Incomplete_Output (T);
+         Set_Is_Incomplete_Output (MD);
       end if;
 
       --  If all we're to do is to output the incomplete definition,
@@ -303,7 +310,7 @@ package body CCG.Aggregates is
       --  output any inner typedefs.
 
       for J in 0 .. Num_Types - 1 loop
-         Maybe_Output_Typedef (Struct_Get_Type_At_Index (T, J));
+         Maybe_Output_Typedef (Element_Type (MD, J));
       end loop;
 
       --  Now that we know that all inner typedefs have been output,
@@ -316,34 +323,35 @@ package body CCG.Aggregates is
                       Indent_Type => Left);
       end if;
 
-      Output_Decl ("struct " & T, Semicolon => False, Is_Typedef => True);
+      Output_Decl ("struct " & MD, Semicolon => False, Is_Typedef => True);
       Start_Output_Block (Decl);
       for J in 0 .. Num_Types - 1 loop
          declare
-            ST : constant Type_T  := Struct_Get_Type_At_Index (T, J);
+            Name           : constant Str                      :=
+              Get_Field_Name (T, J);
+            F              : constant Opt_Record_Field_Kind_Id :=
+              Get_Field_Entity (T, J);
+            F_Is_Vol       : constant Boolean                  :=
+              Present (F) and then Treat_As_Volatile (F)
+              and then not Is_Vol;
+            S_MD           : constant MD_Type                  :=
+              Element_Type (MD, J);
+            F_Is_Unsigned  : constant Boolean                  :=
+              Is_Integer (S_MD) and then Is_Unsigned (S_MD);
+            ST_Str         : constant Str                      :=
+              (if F_Is_Unsigned then S_MD + Need_Unsigned else S_MD or F);
 
          begin
-            Error_If_Cannot_Pack (ST);
+            Error_If_Cannot_Pack (S_MD);
 
-            if not Is_Zero_Length_Array (ST)
+            if not Is_Zero_Length_Array (S_MD)
               and then not (SOS = Normal and then Is_Field_Padding (T, J))
             then
-               declare
-                  Name           : constant Str                      :=
-                    Get_Field_Name (T, J);
-                  F              : constant Opt_Record_Field_Kind_Id :=
-                    Get_Field_Entity (T, J);
-                  F_Is_Vol       : constant Boolean                  :=
-                    Present (F) and then Treat_As_Volatile (F)
-                    and then not Is_Vol;
-
-               begin
                   Output_Decl
-                    ((ST or F) & (if F_Is_Vol then " volatile" else "") &
-                      " " & Name,
+                    (ST_Str & (if F_Is_Vol then " volatile" else "") &
+                                           " " & Name,
                      Is_Typedef => True);
                   Fields_Written := Fields_Written + 1;
-               end;
             end if;
          end;
       end loop;
@@ -375,26 +383,27 @@ package body CCG.Aggregates is
    -- Write_Array_Typedef --
    -------------------------
 
-   procedure Output_Array_Typedef (T : Type_T) is
-      Elem_T : Type_T := Get_Element_Type (T);
-      Decl   : Str    := +"typedef ";
+   procedure Output_Array_Typedef (MD : MD_Type) is
+      Elem_MD : MD_Type := Element_Type (MD);
+      Decl    : Str     := +"typedef ";
    begin
-      --  If Elem_T is an array that we'll write with indefinite dimensions,
+      --  If Elem_MD is an array that we'll write with indefinite dimensions,
       --  go down into its element type.
 
-      while Is_Array_Type (Elem_T) and then Effective_Array_Length (Elem_T) = 0
+      while Is_Array (Elem_MD) and then Effective_Array_Length (Elem_MD) = 0
       loop
-         Elem_T := Get_Element_Type (Elem_T);
+         Elem_MD := Element_Type (Elem_MD);
       end loop;
 
-      --  Now build the declaration
+      --  Now build the declaration. If C99 or greater and variable length,
+      --  indicate it that way.
 
-      Maybe_Output_Typedef (Elem_T);
-      Error_If_Cannot_Pack (Elem_T);
-      Decl := Decl & Elem_T & " " & T & "[";
+      Maybe_Output_Typedef (Elem_MD);
+      Error_If_Cannot_Pack (+Elem_MD);
+      Decl := Decl & Elem_MD & " " & MD & "[";
 
-      if Effective_Array_Length (T) /= 0 then
-         Decl := Decl & Effective_Array_Length (T);
+      if not Is_Variable_Array (MD) or else C_Version < 1999 then
+         Decl := Decl & Effective_Array_Length (MD);
       end if;
 
       --  Finally, output it
@@ -406,17 +415,18 @@ package body CCG.Aggregates is
    -- Maybe_Output_Array_Return_Typedef --
    ---------------------------------------
 
-   procedure Maybe_Output_Array_Return_Typedef (T : Type_T) is
+   procedure Maybe_Output_Array_Return_Typedef (MD : MD_Type) is
    begin
       --  If we haven't written this yet, first ensure that we've written
       --  the typedef for T since we reference it, then write the actual
       --  typedef, and mark it as written.
 
-      if not Get_Is_Return_Typedef_Output (T) then
-         Maybe_Output_Typedef (T);
-         Output_Decl ("typedef struct " & T & "_R {" & T & " F;} " & T & "_R",
+      if not Get_Is_Return_Typedef_Output (MD) then
+         Maybe_Output_Typedef (MD);
+         Output_Decl ("typedef struct " & MD & "_R {" & MD & " F;} " &
+                        MD & "_R",
                       Is_Typedef => True);
-         Set_Is_Return_Typedef_Output (T);
+         Set_Is_Return_Typedef_Output (MD);
       end if;
    end Maybe_Output_Array_Return_Typedef;
 
@@ -425,7 +435,7 @@ package body CCG.Aggregates is
    -----------------
 
    function Value_Piece
-     (V : Value_T; T : in out Type_T; Idx : Nat) return Str is
+     (V : Value_T; MD : in out MD_Type; Idx : Nat) return Str is
    begin
       return Result : Str do
          declare
@@ -433,12 +443,12 @@ package body CCG.Aggregates is
          begin
             --  We know this is either a struct or an array
 
-            if Is_Struct_Type (T) then
-               Result := "." & Get_Field_Name (T, Ins_Idx) + Component;
-               T      := Struct_Get_Type_At_Index (T, Ins_Idx);
+            if Is_Struct (MD) then
+               Result := "." & Get_Field_Name (+MD, Ins_Idx) + Component;
+               MD     := Element_Type (MD, Ins_Idx);
             else
                Result := " [" & Ins_Idx & "]" + Component;
-               T      := Get_Element_Type (T);
+               MD     := Element_Type (MD);
             end if;
          end;
       end return;
@@ -450,14 +460,14 @@ package body CCG.Aggregates is
 
    function Extract_Value_Instruction (V : Value_T; Op : Value_T) return Str is
       Idxs : constant Nat := Get_Num_Indices (V);
-      T    : Type_T       := Type_Of (Op);
+      MD   : MD_Type      := Declaration_Type (Op);
    begin
       return Result : Str := Op + Component do
 
          --  We process each index in turn, stripping off the reference.
 
          for J in 0 .. Idxs - 1 loop
-            Result := Result & Value_Piece (V, T, J);
+            Result := Result & Value_Piece (V, MD, J);
          end loop;
       end return;
    end Extract_Value_Instruction;
@@ -468,7 +478,7 @@ package body CCG.Aggregates is
 
    procedure Insert_Value_Instruction (V, Aggr, Op : Value_T) is
       Idxs : constant Nat := Get_Num_Indices (V);
-      T    : Type_T       := Type_Of (Aggr);
+      MD   : MD_Type      := Declaration_Type (Aggr);
       Acc  : Str          := +V;
 
    begin
@@ -480,20 +490,24 @@ package body CCG.Aggregates is
       if Is_Undef (Aggr) then
          null;
       else
-         Output_Copy (V, +Aggr, T);
+         Output_Copy (V, +Aggr, MD, Actual_Type (Aggr));
       end if;
 
       --  Next we generate the string that represents the access of this
       --  instruction.
 
       for J in 0 .. Idxs - 1 loop
-         Acc := Acc & Value_Piece (V, T, J);
+         Acc := Acc & Value_Piece (V, MD, J);
       end loop;
 
-      --  The resulting type must be that of Op and we emit the assignment
+      --  The resulting type must be that of Op and we emit the assignment.
+      --  Note that the MD_Types may differ in signedness and we may not
+      --  know what Op points to if it's a pointer, so we just verify the
+      --  LLVM types here.
 
-      pragma Assert (T = Type_Of (Op));
-      Output_Copy (Acc, Op + Assign, T, V);
+      pragma Assert ((Is_Pointer (MD) and then Is_Pointer_Type (Type_Of (Op)))
+                     or else Is_Layout_Identical (+MD, Type_Of (Op)));
+      Output_Copy (Acc, Maybe_Cast (MD, Op) + Assign, MD, MD, V);
    end Insert_Value_Instruction;
 
    ---------------------
@@ -501,21 +515,44 @@ package body CCG.Aggregates is
    ---------------------
 
    procedure GEP_Instruction (V : Value_T; Ops : Value_Array) is
-      Aggr   : constant Value_T := Ops (Ops'First);
+      Aggr    : constant Value_T := Ops (Ops'First);
       --  The pointer to aggregate that we're dereferencing
 
-      Aggr_T : Type_T           := Get_Element_Type (Aggr);
-      --  The type that Aggr, which is always a pointer, points to
+      Aggr_MD : MD_Type          :=
+        Designated_Type (Actual_Type (Aggr, As_LHS => True));
+      --  The type that Aggr currently is
 
-      Is_LHS : Boolean          := Get_Is_LHS (Aggr);
+      Want_MD : constant MD_Type :=
+        Declaration_Type (Get_GEP_Source_Element_Type (V));
+      --  The type that we want Aggr to point to
+
+      Decl_MD : constant MD_Type := Declaration_Type (V);
+      --  The type that we want the result to be
+
+      Is_LHS  : Boolean          := Get_Is_LHS (Aggr);
       --  Whether our result so far is an LHS as opposed to a pointer.
       --  If it is, then we can use normal derefrence operations and we must
       --  take the address at the end of the instruction processing.
 
-      Result : Str;
+      Result  : Str;
       --  The resulting operation so far
 
    begin
+      --  If the LLVM types corresponding to the actual and desired types
+      --  aren't the same or if the address is null or undefined, we must
+      --  first cast the aggregate to the proper type.
+
+      if Type_T'(+Aggr_MD) /= +Want_MD
+        or else Is_A_Constant_Pointer_Null (Aggr) or else Is_Undef (Aggr)
+      then
+         Result  := "(" & Want_MD & " *) (" &
+           (if Is_LHS then Addr_Of (Aggr + LHS) else +Aggr) & ")" + Unary;
+         Aggr_MD := Want_MD;
+         Is_LHS  := False;
+      else
+         Result := Aggr + LHS;
+      end if;
+
       --  The first operand is special in that it represents a value to be
       --  multiplied by the size of the type pointed to and added to the
       --  value of the pointer input. Normally, we have a GEP that either
@@ -524,26 +561,15 @@ package body CCG.Aggregates is
       --  very worth special-casing the zero case here because we have
       --  nothing to do in that case.
 
-      if Is_A_Constant_Int (Ops (Ops'First + 1))
-        and then Equals_Int (Ops (Ops'First + 1), 0)
+      if not Is_A_Constant_Int (Ops (Ops'First + 1))
+        or else not Equals_Int (Ops (Ops'First + 1), 0)
       then
-         --  If we have a NULL, we need to include the type so that C
-         --  can properly interpret it.
-
-         if Is_A_Constant_Pointer_Null (Aggr) or else Is_Undef (Aggr) then
-            Result := TP ("((volatile #T1) #1)", Aggr) + Component;
-            Is_LHS := True;
-         else
-            Result := Aggr + LHS + Component;
-         end if;
-      elsif Is_A_Constant_Pointer_Null (Aggr) or else Is_Undef (Aggr) then
-         Result := TP ("((volatile #T1) #1)[#P2]", Aggr,
-                       Ops (Ops'First + 1)) + Component;
-         Is_LHS := True;
-
-      else
-         Result := TP ("#1[#P2]", Aggr, Ops (Ops'First + 1)) + Component;
-         Is_LHS := True;
+         Result :=
+           "((" & (if Is_LHS then Addr_Of (Result) else Result) &
+                  ") + " &
+           (Process_Operand (Ops (Ops'First + 1), X, Unknown) + Component) &
+           ")";
+         Is_LHS := False;
       end if;
 
       --  Now process any other operands, which must always dereference into
@@ -553,9 +579,9 @@ package body CCG.Aggregates is
       --  type.
 
       for Op of Ops (Ops'First + 2 .. Ops'Last) loop
-         Maybe_Output_Typedef (Aggr_T);
+         Maybe_Output_Typedef (Aggr_MD);
 
-         if Is_Array_Type (Aggr_T) then
+         if Is_Array (Aggr_MD) then
 
             --  If this isn't an LHS, we have to make it one
 
@@ -563,18 +589,18 @@ package body CCG.Aggregates is
                Result := Deref (Result) + Component;
             end if;
 
-            Result := Result & TP ("[#P1]", Op) + Component;
-            Aggr_T := Get_Element_Type (Aggr_T);
-            Is_LHS := True;
+            Result  := (Result + Component) & TP ("[#P1]", Op) + Component;
+            Aggr_MD := Element_Type (Aggr_MD);
+            Is_LHS  := True;
 
          else
-            pragma Assert (Is_Struct_Type (Aggr_T));
+            pragma Assert (Is_Struct (Aggr_MD));
 
             declare
-               Idx   : constant Nat    := Nat (Const_Int_Get_S_Ext_Value (Op));
-               ST    : constant Type_T :=
-                 Struct_Get_Type_At_Index (Aggr_T, Idx);
-               Found : Boolean         := False;
+               Idx   : constant Nat     :=
+                 Nat (Const_Int_Get_S_Ext_Value (Op));
+               S_MD  : constant MD_Type := Element_Type (Aggr_MD, Idx);
+               Found : Boolean          := False;
 
             begin
                --  If this is a zero-length array, it may not actually
@@ -583,22 +609,22 @@ package body CCG.Aggregates is
                --  field (or at the start of the struct if none) and then
                --  cast to a pointer to the array's element type.
 
-               if Is_Zero_Length_Array (ST) then
+               if Is_Zero_Length_Array (S_MD) then
                   for Prev_Idx in reverse 0 .. Idx - 1 loop
                      declare
-                        Prev_ST : constant Type_T :=
-                          Struct_Get_Type_At_Index (Aggr_T, Prev_Idx);
-                        Ref     : constant Str    :=
-                          Result & (if Is_LHS then "." else "->") +
-                            Component & Get_Field_Name (Aggr_T, Prev_Idx);
+                        Prev_MD : constant MD_Type :=
+                          Element_Type (Aggr_MD, Prev_Idx);
+                        Ref     : constant Str     :=
+                          Result + Component & (if Is_LHS then "." else "->") &
+                          Get_Field_Name (+Aggr_MD, Prev_Idx) + Component;
 
                      begin
                         --  If we found a previous non-zero-length array
                         --  field, point to the end of it.
 
-                        if not Is_Zero_Length_Array (Prev_ST) then
+                        if not Is_Zero_Length_Array (Prev_MD) then
                            Result :=
-                             "(" & Generic_Ptr & ")" & Addr_Of (Ref) &
+                             "(" & Generic_Ptr & ") (" & Addr_Of (Ref) & ")" &
                              " + sizeof (" & Ref & ")";
                            Found  := True;
                            exit;
@@ -610,37 +636,50 @@ package body CCG.Aggregates is
                   --  of the object.
 
                   if not Found then
-                     Result := "(" & Generic_Ptr & ")" &
-                       (if Is_LHS then Addr_Of (Result) else Result);
+                     Result := "(" & Generic_Ptr & ") (" &
+                       (if Is_LHS then Addr_Of (Result) else Result) & ")";
                   end if;
 
                   --  Now cast to the desired type
 
-                  Result := "((" & ST & " *) (" & Result & "))";
+                  Result := "((" & S_MD & " *) (" & Result & "))";
                   Is_LHS := False;
 
-               --  Otherwise, just do a normal field reference
+                  --  Otherwise, just do a normal field reference
 
                else
                   Result :=
-                    Result & (if Is_LHS then "." else "->") + Component &
-                      Get_Field_Name (Aggr_T, Idx);
+                    (Result + Component) & (if Is_LHS then "." else "->") &
+                    Get_Field_Name (+Aggr_MD, Idx) + Component;
                   Is_LHS := True;
                end if;
 
-               Aggr_T := ST;
+               Aggr_MD := S_MD;
             end;
          end if;
       end loop;
 
       --  If the input is a constant, mark the output as constant and
-      --  as the value of V, mark as LHS if it is,a and we're done.
+      --  as the value of V, mark as LHS if it is, and we're done.
 
       if Get_Is_Constant (Aggr) then
          Set_Is_Constant (V);
          Set_Is_LHS (V, Is_LHS);
          Set_C_Value (V, Result);
          return;
+      end if;
+
+      --  In most cases, Result will have the same type as the declaration
+      --  type of V, which is what's expected, but in some cases, such as
+      --  where there's only one operand, it may not. So cast in that case.
+
+      if Pointer_Type (Aggr_MD) /= Decl_MD then
+         if Is_LHS then
+            Result := "&" & Result;
+            Is_LHS := False;
+         end if;
+
+         Result := "((" & Decl_MD & ") (" & Result & "))";
       end if;
 
       --  If we ended up with a LHS, we set this as the value of V but mark

@@ -765,7 +765,7 @@ package body GNATLLVM.Aliasing is
          --  Only if the LLVM types and GNAT representations are the same
          --  is there a chance they can be equivalent.
 
-         if Is_Layout_Identical (Type_Of (TE), Type_Of (E_TE))
+         if Is_Layout_Identical (+Type_Of (TE), +Type_Of (E_TE))
            and then Has_Compatible_Representation (TE, E_TE)
          then
             --  We have to check differently for arrays and records. For
@@ -1305,7 +1305,7 @@ package body GNATLLVM.Aliasing is
 
          begin
             Offsets (J) := SF.Offset;
-            Sizes   (J) := To_Bytes (Get_Type_Size (SF.MDT));
+            Sizes   (J) := To_Bytes (Get_Type_Size (SF.MD));
 
             --  If there's no GT for the field, this is a field used to
             --  store bitfields. So we make a unique scalar TBAA type

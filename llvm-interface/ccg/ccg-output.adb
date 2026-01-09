@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Containers; use Ada.Containers;
+
 with Table;
 
 with GNATLLVM.Types; use GNATLLVM.Types;
@@ -65,6 +67,23 @@ package body CCG.Output is
    --  The Block_Style to use for the next line written using Output_Decl
    --  or Output_Stmt.
 
+   function Hash (Name : Name_Id) return Hash_Type is
+     (Hash_Type'Mod (Name))
+     with Pre => Present (Name);
+
+   --  It's possible to have many MD_Types corresponding to a single
+   --  named struct (for example, a volatile variant), so we track when
+   --  we've written the full declaration for each name so we don't
+   --  duplicate it.
+
+   package Struct_Names_Written_Set is new Ada.Containers.Hashed_Sets
+     (Element_Type        => Name_Id,
+      Hash                => Hash,
+      Equivalent_Elements => "=");
+
+   Struct_Names_Written : Struct_Names_Written_Set.Set;
+   --  A list by Name_Id of all struct typedefs that we've written
+
    procedure Maybe_Output_Typedef_And_Decl (V : Value_T)
      with Pre => Is_A_Constant (V);
    --  Ensure that we're output typedefs for any types within V and
@@ -74,20 +93,33 @@ package body CCG.Output is
    -- Output_Typedef --
    --------------------
 
-   procedure Output_Typedef (T : Type_T; Incomplete : Boolean := False) is
+   procedure Output_Typedef (MD : MD_Type; Incomplete : Boolean := False) is
+      use Struct_Names_Written_Set;
    begin
       --  Show we're outputting the typedef (so we know not to do it
       --  recursively).
 
-      Set_Are_Outputting_Typedef (T);
+      Set_Are_Outputting_Typedef (MD);
 
       --  See what type of type this is
 
-      if Is_Struct_Type (T) then
-         Output_Struct_Typedef (T, Incomplete => Incomplete);
-      elsif Is_Array_Type (T) then
-         Output_Array_Typedef (T);
-      elsif Is_Pointer_Type (T) then
+      if Is_Struct (MD) then
+
+         --  If we've already written a typedef for a struct of this name,
+         --  don't write another one.
+
+         if not Has_Name (MD)
+           or else not Contains (Struct_Names_Written, MD_Name (MD))
+         then
+            Output_Struct_Typedef (MD, Incomplete => Incomplete);
+         elsif Incomplete then
+            Set_Is_Incomplete_Output (MD);
+         end if;
+
+      elsif Is_Array (MD) then
+         Output_Array_Typedef (MD);
+
+      elsif Is_Function_Pointer (MD) then
 
          --  We don't have typedefs for function types, just pointer to
          --  function types. But for normal pointer types, make sure we've
@@ -95,21 +127,24 @@ package body CCG.Output is
          --  pointed-to type. Always write the complete definition if writing
          --  a header file
 
-         if Is_Function_Type (Get_Element_Type (T)) then
-            Output_Function_Type_Typedef (T);
-         else
-            Maybe_Output_Typedef (Get_Element_Type (T),
-                                  Incomplete => not Emit_Header);
-         end if;
+         Output_Function_Type_Typedef (MD);
+
+      elsif Is_Pointer (MD) then
+         Maybe_Output_Typedef (Designated_Type (MD),
+                               Incomplete => not Emit_Header);
       end if;
 
       --  Show we've written the typedef unless this is a struct type and
       --  we're only writing an incomplete definition.
 
-      Set_Are_Outputting_Typedef (T, False);
+      Set_Are_Outputting_Typedef (MD, False);
 
-      if not Incomplete or else not Is_Struct_Type (T) then
-         Set_Is_Typedef_Output   (T);
+      if not Incomplete or else not Is_Struct (MD) then
+         Set_Is_Typedef_Output   (MD);
+
+         if Is_Struct (MD) and then Has_Name (MD) then
+            Include (Struct_Names_Written, MD_Name (MD));
+         end if;
       end if;
    end Output_Typedef;
 
@@ -118,9 +153,11 @@ package body CCG.Output is
    ----------------
 
    procedure Maybe_Decl (V : Value_T; For_Initializer : Boolean := False) is
-      T   : constant Type_T :=
+      Orig_MD : constant MD_Type :=
+        (if Is_Metadata (V) then No_MD_Type else Declaration_Type (V));
+      MD      : constant MD_Type :=
         (if   Is_A_Global_Variable (V) or else Is_A_Alloca_Inst (V)
-         then Get_Element_Type (Type_Of (V)) else Type_Of (V));
+         then Designated_Type (Orig_MD) else Orig_MD);
 
    begin
       --  If this is metadata, we do nothing. This can occur for some
@@ -134,7 +171,7 @@ package body CCG.Output is
       --  us to declare its type separately.
 
       elsif not Is_A_Function (V) then
-         Maybe_Output_Typedef (T);
+         Maybe_Output_Typedef (MD);
       end if;
 
       --  If this is an unprocessed constant expression, process it as an
@@ -175,22 +212,25 @@ package body CCG.Output is
          --  don't need to do anything. Otherwise kludge this case by
          --  making it an array of size 1.
 
-         if Is_Zero_Length_Array (T) and then Effective_Array_Length (T) = 0
-         then
-            Output_Decl (Get_Element_Type (T) & " " & (V + LHS) & "[1]",
+         if Is_Array (MD) and then Effective_Array_Length (MD) = 0 then
+            Output_Decl (Element_Type (MD) & " " & (V + LHS) & "[1]",
                          Is_Global => Is_A_Global_Variable (V));
-            Set_Is_LHS (V);
+
+            if Is_A_Global_Variable (V) then
+               Set_Is_LHS (V);
+            end if;
+
             return;
 
          --  If this is a global, mark it as an LHS
 
-         elsif Is_A_Global_Variable (V) then
+         elsif Is_A_Global_Variable (V) or else Is_A_Function (V) then
             Set_Is_LHS (V);
          end if;
 
          declare
             Decl : Str :=
-              (V + (+Write_Type or +LHS)) & " " &
+              (V + (Only_Type or LHS)) & " " &
                (if Is_Volatile (V) then "volatile " else "") & (V + LHS);
 
          begin
@@ -205,7 +245,7 @@ package body CCG.Output is
                declare
                   Align  : constant Nat :=
                     To_Bits (Nat (Get_Alignment (V)));
-                  Actual : constant Nat := Actual_Alignment (T);
+                  Actual : constant Nat := Actual_Alignment (+MD);
 
                begin
                   if Align > Actual then
@@ -231,7 +271,10 @@ package body CCG.Output is
 
             if Is_A_Global_Variable (V) then
                declare
-                  Init : constant Value_T := Get_Initializer (V);
+                  Init    : constant Value_T := Get_Initializer (V);
+                  Init_MD : constant MD_Type :=
+                    (if   Present (Init) then Actual_Type (Init)
+                     else No_MD_Type);
 
                begin
                   if No (Init) or else Emit_Header then
@@ -258,7 +301,19 @@ package body CCG.Output is
                     and then not Is_A_Constant_Aggregate_Zero (Init)
                   then
                      Maybe_Output_Typedef_And_Decl (Init);
-                     Decl := Decl & " = " & (Init + Initializer);
+
+                     --  If the type of the initializer doesn't agree with
+                     --  the decl and the decl is a pointer, add a cast to
+                     --  avoid pointer mismatches.
+
+                     if not Is_Same_C_Types (MD, Init_MD)
+                       and then Is_Pointer (MD)
+                     then
+                        Decl :=
+                          Decl & " = (" & MD & ") " & (Init + Initializer);
+                     else
+                        Decl := Decl & " = " & (Init + Initializer);
+                     end if;
                   end if;
 
                   if not Has_Suppress_Decl_Prefix (Get_Value_Name (V)) then
@@ -299,7 +354,7 @@ package body CCG.Output is
       --  constant expressions, which may reference objects that could be
       --  of types for which we haven't yet written a typedef.
 
-      Maybe_Output_Typedef (Type_Of (V));
+      Maybe_Output_Typedef (Declaration_Type (V));
 
       if Is_A_Constant_Array (V) or else Is_A_Constant_Struct (V)
         or else Is_A_Constant_Expr (V)

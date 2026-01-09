@@ -30,18 +30,21 @@ package CCG.Write is
    procedure Write_Value
      (V              : Value_T;
       Flags          : Value_Flags := Default_Value_Flags;
-      For_Precedence : Precedence  := Primary)
+      For_Precedence : Precedence  := Primary;
+      Cast_MD        : MD_Type     := No_MD_Type)
      with Pre => Present (V);
    procedure Write_Type
-     (T     : Type_T;
-      Flags : Type_Flags := Default_Type_Flags;
-      E     : Entity_Id  := Empty;
-      V     : Value_T    := No_Value_T)
-     with Pre => Present (T);
+     (MD    : MD_Type;
+      S     : Str        := No_Str;
+      Flags : Type_Flags := Default_Type_Flags)
+   with Pre => Present (MD);
    procedure Write_BB_Value  (BB : Basic_Block_T)
-     with Pre => Present (BB);
-   --  Write the name of a value, type, or basic block. For types, possibly
-   --  use entity or value to help say something about the type.
+   with Pre => Present (BB);
+   --  Write the name of a value, type, or basic block. For types, supply
+   --  an optional Str to be placed in the position that a variable would
+   --  be placed if declaring a variable of that type.  Also, possibly use
+   --  entity or value to help say something about the type. For a value,
+   --  we may need to verify that it's of a specific type.
 
    procedure Write_C_Name (S : String; Need_Suffix : Boolean := False)
      with Pre => S'Length > 0;

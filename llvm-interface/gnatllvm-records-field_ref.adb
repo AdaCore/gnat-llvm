@@ -58,7 +58,7 @@ package body GNATLLVM.Records.Field_Ref is
       --  If this doesn't contain an LLVM type, this is not a native LLVM
       --  structure, so we can't do anything.
 
-      if No (RI.MDT) then
+      if No (RI.MD) then
          return Struct_Field_Array'(1 .. 0 => <>);
       end if;
 
@@ -72,9 +72,9 @@ package body GNATLLVM.Records.Field_Ref is
          if FI.Field_Ordinal /= Last_Ord then
             Last_Ord := FI.Field_Ordinal;
             declare
-               F_Type  : constant MD_Type := Element_Type (RI.MDT, Last_Ord);
+               F_Type  : constant MD_Type := Element_Type (RI.MD, Last_Ord);
                Offset  : constant ULL     :=
-                 Get_Element_Offset (+RI.MDT, Last_Ord);
+                 Get_Element_Offset (+RI.MD, Last_Ord);
                GT      : constant GL_Type :=
                  (if Is_Bitfield_By_Rep (FI.Field) then No_GL_Type else FI.GT);
 
@@ -142,7 +142,7 @@ package body GNATLLVM.Records.Field_Ref is
       Offset     : GL_Value;
       RI         : Record_Info;
       Result     : GL_Value;
-      Result_MDT : MD_Type;
+      Result_MD  : MD_Type;
 
    begin
       --  If the field information isn't present, this must be because
@@ -213,14 +213,14 @@ package body GNATLLVM.Records.Field_Ref is
       --  type of this piece (which has no corresponding GNAT type).
 
       if Is_Nonnative_Type (Rec_Type) then
-         Result     :=
-           Ptr_To_Relationship (Result, Pointer_Type (RI.MDT), Rec_GT,
+         Result    :=
+           Ptr_To_Relationship (Result, Pointer_Type (RI.MD), Rec_GT,
                                 Reference_To_Unknown);
-         Set_Unknown_MDT (Result, RI.MDT);
-         Result_MDT := RI.MDT;
+         Set_Unknown_MD (Result, RI.MD);
+         Result_MD := RI.MD;
       else
-         Result     := Convert_Ref (Result, Rec_GT);
-         Result_MDT := Type_Of (Rec_GT);
+         Result    := Convert_Ref (Result, Rec_GT);
+         Result_MD := Type_Of (Rec_GT);
       end if;
 
       --  Finally, do a regular GEP for the field
@@ -228,7 +228,7 @@ package body GNATLLVM.Records.Field_Ref is
       Result := GEP_To_Relationship
         (F_GT,
          (if Is_Bitfield (Field) then Reference_To_Unknown else Reference),
-         Result, Result_MDT,
+         Result, Result_MD,
          (1 => Const_Null_32, 2 => Const_Int_32 (ULL (FI.Field_Ordinal))));
 
       --  If we've set this to a an unknown reference, set the type so that
@@ -237,7 +237,7 @@ package body GNATLLVM.Records.Field_Ref is
       Maybe_Initialize_TBAA_For_Field (Result, Field, F_GT);
 
       if Is_Bitfield (Field) then
-         Set_Unknown_MDT (Result, Element_Type (Result_MDT, FI.Field_Ordinal));
+         Set_Unknown_MD (Result, Element_Type (Result_MD, FI.Field_Ordinal));
       end if;
 
       return Result;
@@ -707,13 +707,13 @@ package body GNATLLVM.Records.Field_Ref is
                --  In this case, when we're nested inside of a bitfield,
                --  we should be a native LLVM struct. So check for that.
 
-               pragma Assert (Present (RI.MDT));
+               pragma Assert (Present (RI.MD));
 
                Offset := Offset +
                  To_Bytes (Get_Record_Size_So_Far (TE, Result,
                                                    Start_Idx => R_Ridx,
                                                    Idx       => F_Ridx)) +
-                 Size_Const_Int (Get_Element_Offset (+RI.MDT,
+                 Size_Const_Int (Get_Element_Offset (+RI.MD,
                                                      FI.Field_Ordinal));
                Bit_Offset := Bit_Offset + (+Field_Bit_Offset (F));
             end;
@@ -793,7 +793,7 @@ package body GNATLLVM.Records.Field_Ref is
 
       if not Emit_C or else Our_Bits <= Max_Int_Size then
          declare
-            MDT : constant MD_Type :=
+            MD : constant MD_Type :=
               (if   Is_Reference (Result) then Int_Ty (Needed_Bits)
                else Type_Of (Result));
 
@@ -803,10 +803,10 @@ package body GNATLLVM.Records.Field_Ref is
             --  location within the field.
 
             if Is_Reference (Result) then
-               Result := Ptr_To_Relationship (Result, Pointer_Type (MDT),
+               Result := Ptr_To_Relationship (Result, Pointer_Type (MD),
                                               Reference_To_Unknown);
 
-               Set_Unknown_MDT (Result, MDT);
+               Set_Unknown_MD (Result, MD);
                Result := Get (Result, Unknown);
             end if;
 
@@ -814,8 +814,8 @@ package body GNATLLVM.Records.Field_Ref is
 
             if First_Bit /= 0 then
                Result := L_Shr (Result,
-                                G (Const_Int (+MDT, ULL (First_Bit), False),
-                                   F_GT, MDT, Unknown));
+                                G (Const_Int (+MD, ULL (First_Bit), False),
+                                   F_GT, MD, Unknown));
             end if;
 
             if Num_Bits /= Our_Bits then
@@ -910,7 +910,7 @@ package body GNATLLVM.Records.Field_Ref is
                                    F_GT, Reference_To_Unknown);
 
          begin
-            Set_Unknown_MDT (Mem_As_Int_Ptr, Type_Of (Related_Type (Result)));
+            Set_Unknown_MD (Mem_As_Int_Ptr, Type_Of (Related_Type (Result)));
             Store (Result, Mem_As_Int_Ptr);
             return Memory;
          end;
@@ -934,8 +934,8 @@ package body GNATLLVM.Records.Field_Ref is
       Our_Bits    : constant Nat     :=
         (if   Have_Ref then Needed_Bits
          else Nat (Get_Scalar_Bit_Size ((BRD.LHS))));
-      F_MDT       : constant MD_Type := Int_Ty (F_Bits);
-      New_F_MDT   : constant MD_Type := Int_Ty (Num_Bits);
+      F_MD        : constant MD_Type := Int_Ty (F_Bits);
+      New_F_MD    : constant MD_Type := Int_Ty (Num_Bits);
       New_RHS     : GL_Value         := Convert_GT (RHS, F_GT);
 
    begin
@@ -943,9 +943,9 @@ package body GNATLLVM.Records.Field_Ref is
       --  point or access type, we bitcast to an integer of the same width.
 
       if Is_Floating_Point_Type (F_GT) then
-         New_RHS := Bit_Cast_To_Relationship (New_RHS, New_F_MDT, Unknown);
+         New_RHS := Bit_Cast_To_Relationship (New_RHS, New_F_MD, Unknown);
       elsif Is_Access_Type (F_GT) then
-         New_RHS := Ptr_To_Int_To_Relationship (New_RHS, New_F_MDT, Unknown);
+         New_RHS := Ptr_To_Int_To_Relationship (New_RHS, New_F_MD, Unknown);
 
          --  Otherwise, unless it's an integral type, we need to either
          --  pointer-pun it into an integral type or convert it if it's a
@@ -954,13 +954,13 @@ package body GNATLLVM.Records.Field_Ref is
       elsif not Is_Integer_Type (F_GT) and then not Is_Enumeration_Type (F_GT)
       then
          if Is_Nonsymbolic_Constant (New_RHS) then
-            New_RHS := G (Convert_Aggregate_Constant (+New_RHS, +F_MDT),
-                          F_GT, F_MDT, Unknown);
+            New_RHS := G (Convert_Aggregate_Constant (+New_RHS, +F_MD),
+                          F_GT, F_MD, Unknown);
          else
             New_RHS := Get (New_RHS, Reference, For_LHS => True);
-            New_RHS := Ptr_To_Relationship (New_RHS, Pointer_Type (F_MDT),
+            New_RHS := Ptr_To_Relationship (New_RHS, Pointer_Type (F_MD),
                                             Reference_To_Unknown);
-            Set_Unknown_MDT (New_RHS, F_MDT);
+            Set_Unknown_MD (New_RHS, F_MD);
          end if;
       end if;
 
@@ -971,7 +971,7 @@ package body GNATLLVM.Records.Field_Ref is
          New_RHS := Load (New_RHS);
       end if;
 
-      New_RHS := Trunc_To_Relationship (New_RHS, New_F_MDT, Unknown);
+      New_RHS := Trunc_To_Relationship (New_RHS, New_F_MD, Unknown);
 
       --  Similarly to the load case, if we're not emitting C or if
       --  there's an integer type wide enough to represent that number of
@@ -980,17 +980,17 @@ package body GNATLLVM.Records.Field_Ref is
 
       if not Emit_C or else Our_Bits <= Max_Int_Size then
          declare
-            Orig_MDT    : constant MD_Type  := Type_Of (BRD.LHS);
-            MDT         : constant MD_Type  := Int_Ty (Our_Bits);
+            Orig_MD     : constant MD_Type  := Type_Of (BRD.LHS);
+            MD          : constant MD_Type  := Int_Ty (Our_Bits);
             Shift_Count : constant GL_Value :=
-              G (Const_Int (+MDT, ULL (First_Bit), False), F_GT, MDT, Unknown);
+              G (Const_Int (+MD, ULL (First_Bit), False), F_GT, MD, Unknown);
             Ones        : constant GL_Value :=
-              Z_Ext_To_Relationship (G (Const_Ones (+New_F_MDT), F_GT,
-                                        New_F_MDT, Unknown),
-                                     MDT, Unknown);
+              Z_Ext_To_Relationship (G (Const_Ones (+New_F_MD), F_GT,
+                                        New_F_MD, Unknown),
+                                     MD, Unknown);
             Mask        : constant GL_Value := Shl (Ones, Shift_Count);
             Ext_RHS     : constant GL_Value :=
-              Z_Ext_To_Relationship (New_RHS, MDT, Unknown);
+              Z_Ext_To_Relationship (New_RHS, MD, Unknown);
             Shifted_RHS : constant GL_Value := Shl (Ext_RHS, Shift_Count);
             LHS         : GL_Value          := BRD.LHS;
             LHS_Ptr     : GL_Value;
@@ -1006,14 +1006,14 @@ package body GNATLLVM.Records.Field_Ref is
                   return No_GL_Value;
                end if;
 
-               LHS_Ptr := Ptr_To_Relationship (LHS, Pointer_Type (MDT),
+               LHS_Ptr := Ptr_To_Relationship (LHS, Pointer_Type (MD),
                                                Reference_To_Unknown);
-               Set_Unknown_MDT (LHS_Ptr, MDT);
+               Set_Unknown_MD (LHS_Ptr, MD);
                LHS := Load (LHS_Ptr);
             elsif Is_Undef (LHS) then
-               LHS := G (Const_Null (MDT), F_GT, MDT, Unknown);
+               LHS := G (Const_Null (MD), F_GT, MD, Unknown);
             elsif Is_Constant (LHS) then
-               LHS := G (Convert_Aggregate_Constant (+LHS, +MDT), F_GT, MDT,
+               LHS := G (Convert_Aggregate_Constant (+LHS, +MD), F_GT, MD,
                          Unknown);
             end if;
 
@@ -1037,12 +1037,12 @@ package body GNATLLVM.Records.Field_Ref is
                Store (LHS, LHS_Ptr);
                return No_GL_Value;
             else
-               if Type_Of (LHS) /= Orig_MDT then
+               if Type_Of (LHS) /= Orig_MD then
                   if Is_Undef (LHS) then
-                     LHS := G (Get_Undef (Orig_MDT), F_GT, Orig_MDT, Unknown);
+                     LHS := G (Get_Undef (Orig_MD), F_GT, Orig_MD, Unknown);
                   else
-                     LHS := G (Convert_Aggregate_Constant (+LHS, +Orig_MDT),
-                               F_GT, Orig_MDT, Unknown);
+                     LHS := G (Convert_Aggregate_Constant (+LHS, +Orig_MD),
+                               F_GT, Orig_MD, Unknown);
                   end if;
                end if;
 
@@ -1071,7 +1071,7 @@ package body GNATLLVM.Records.Field_Ref is
             High_Addr   : constant GL_Value :=
               (if   Bytes_Big_Endian then Convert_Ref (BRD.LHS, SSI_GL_Type)
                else GEP (A_Char_GL_Type, BRD.LHS,
-                         (1 => To_Bytes (Get_Type_Size (+New_F_MDT)))));
+                         (1 => To_Bytes (Get_Type_Size (+New_F_MD)))));
             Low_Ptr     : constant GL_Value :=
               Convert_Ref (Low_Addr, Max_Int_GL_Type);
             High_Ptr    : constant GL_Value :=
@@ -1083,9 +1083,9 @@ package body GNATLLVM.Records.Field_Ref is
               G (Const_Int (Max_Int_T, ULL (Max_Int_Size - First_Bit), False),
                  F_GT, Max_Int_MD, Unknown);
             Ones        : constant GL_Value :=
-              Z_Ext_To_Relationship (G (Const_Ones (+New_F_MDT),
-                                        F_GT, New_F_MDT, Unknown),
-                                     New_F_MDT, Unknown);
+              Z_Ext_To_Relationship (G (Const_Ones (+New_F_MD),
+                                        F_GT, New_F_MD, Unknown),
+                                     New_F_MD, Unknown);
             Low_Mask    : constant GL_Value := Shl (Ones, Shift_Cnt_L);
             High_Mask   : constant GL_Value :=
               Trunc_To_Relationship (L_Shr (Ones, Shift_Cnt_H), Byte_MD,
@@ -1102,7 +1102,7 @@ package body GNATLLVM.Records.Field_Ref is
             --  since the calculations above depend on it, do the logical
             --  operations, and store the values back.
 
-            pragma Assert (New_F_MDT = Max_Int_MD);
+            pragma Assert (New_F_MD = Max_Int_MD);
             if Low_Mask /= Low_Data then
                Low_Part := Build_And (Low_Part, Build_Not (Low_Mask));
             end if;

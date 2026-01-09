@@ -18,7 +18,6 @@
 with LLVM.Core;  use LLVM.Core;
 
 with CCG.Helper; use CCG.Helper;
-with CCG.Utils;  use CCG.Utils;
 
 package CCG.Subprograms is
 
@@ -58,8 +57,9 @@ package CCG.Subprograms is
      with Pre => Is_A_Function (V);
    --  Generate the C statements and decls for V, a subprogram
 
-   procedure Output_Function_Type_Typedef (T : Type_T)
-     with Pre => Is_Function_Type (Get_Element_Type (T));
+   procedure Output_Function_Type_Typedef (MD : MD_Type)
+     with Pre => Is_Pointer (MD)
+                 and then Is_Function_Type (Designated_Type (MD));
    --  Output a typedef for T, which is a pointer to a function type
 
    procedure Add_Decl_Line (Idx : Local_Decl_Idx)

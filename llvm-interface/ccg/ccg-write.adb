@@ -31,13 +31,9 @@ with Osint.C;     use Osint.C;
 with Output;      use Output;
 with Set_Targ;    use Set_Targ;
 with Sinput;      use Sinput;
-with Uintp;       use Uintp;
 
-with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
-with GNATLLVM.Subprograms; use GNATLLVM.Subprograms;
-with GNATLLVM.Types;       use GNATLLVM.Types;
-with GNATLLVM.Utils;       use GNATLLVM.Utils;
-with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
+with GNATLLVM.Codegen; use GNATLLVM.Codegen;
+with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Aggregates;  use CCG.Aggregates;
 with CCG.Codegen;     use CCG.Codegen;
@@ -98,9 +94,9 @@ package body CCG.Write is
    --  Write the constant value of V, optionally specifying a preference of
    --  the expression that it's part of.
 
-   procedure Write_Undef (T : Type_T)
-     with Pre => Present (T);
-   --  Write an undef of type T
+   procedure Write_Undef (MD : MD_Type)
+     with Pre => Present (MD);
+   --  Write an undef of type MD
 
    procedure Maybe_Write_Comma (First : in out Boolean)
      with Post => not First, Inline;
@@ -352,37 +348,36 @@ package body CCG.Write is
    -- Write_Undef --
    -----------------
 
-   procedure Write_Undef (T : Type_T) is
+   procedure Write_Undef (MD : MD_Type) is
       First : Boolean := True;
 
    begin
       --  We can write anything for undef, so we might as well write zero
 
-      case Get_Type_Kind (T) is
-         when Half_Type_Kind | Float_Type_Kind | Double_Type_Kind
-            | X86_FP80_Type_Kind | FP128_Type_Kind | PPC_FP128_Type_Kind =>
+      case Class (MD) is
+         when Float_Class =>
             Write_Str ("0.0");
 
-         when Integer_Type_Kind =>
+         when Integer_Class =>
             Write_Str ("0");
 
-         when Pointer_Type_Kind =>
+         when Pointer_Class =>
             Write_Str (NULL_String);
 
-         when Struct_Type_Kind =>
-
+         when Struct_Class =>
             declare
-               Fields_Written : Nat := 0;
+               SOS            : constant Struct_Out_Style_T :=
+                 Struct_Out_Style (MD);
+               Fields_Written : Nat                         := 0;
 
             begin
                Write_Str ("{");
-               for J in Nat (0) .. Count_Struct_Element_Types (T) - 1 loop
-                  if not Is_Zero_Length_Array (Struct_Get_Type_At_Index (T, J))
-                    and then not (Struct_Out_Style (T) = Normal
-                                  and then Is_Field_Padding (T, J))
+               for J in 0 .. Element_Count (MD) - 1 loop
+                  if not Is_Zero_Length_Array (Element_Type (MD, J))
+                    and then SOS /= Normal and then Is_Padding (MD, J)
                   then
                      Maybe_Write_Comma (First);
-                     Write_Undef (Struct_Get_Type_At_Index (T, J));
+                     Write_Undef (Element_Type (MD, J));
                      Fields_Written := Fields_Written + 1;
                   end if;
                end loop;
@@ -396,11 +391,11 @@ package body CCG.Write is
                Write_Str ("}");
             end;
 
-         when Array_Type_Kind =>
+         when Array_Class =>
             Write_Str ("{");
-            for J in 0 .. Effective_Array_Length (T) - 1 loop
+            for J in 0 .. Effective_Array_Length (MD) - 1 loop
                Maybe_Write_Comma (First);
-               Write_Undef (Get_Element_Type (T));
+               Write_Undef (Element_Type (MD));
             end loop;
 
             Write_Str ("}");
@@ -408,6 +403,7 @@ package body CCG.Write is
          when others =>
             raise Program_Error;
       end case;
+
    end Write_Undef;
 
    --------------------------
@@ -419,6 +415,9 @@ package body CCG.Write is
       Flags         : Value_Flags := Default_Value_Flags;
       Need_Unsigned : Boolean     := False)
    is
+      MD    : constant MD_Type := Actual_Type (V);
+      First : Boolean          := True;
+
       procedure Write_Int_Qualifier (Width : Int);
       --  Write the relevant L/LL signed int qualifier
 
@@ -435,12 +434,10 @@ package body CCG.Write is
          end if;
       end Write_Int_Qualifier;
 
-      First : Boolean := True;
-
    begin
       if Is_A_Constant_Int (V) then
          declare
-            Width : constant Int := Get_Int_Type_Width (V);
+            Width : constant Int := Int_Bits (MD);
          begin
             if Width = 1 then
                Write_Str
@@ -497,11 +494,9 @@ package body CCG.Write is
 
       elsif Is_A_Constant_Struct (V) then
          declare
-            T              : constant Type_T             := Type_Of (V);
-            Types          : constant Nat                :=
-              Count_Struct_Element_Types (T);
+            Types          : constant Nat                := Element_Count (MD);
             SOS            : constant Struct_Out_Style_T :=
-              Struct_Out_Style (T);
+              Struct_Out_Style (MD);
             Fields_Written : Nat                         := 0;
 
          begin
@@ -512,13 +507,14 @@ package body CCG.Write is
                --  If this is a zero-length array or a padding field, omit
                --  the initializer, since we don't have that field.
 
-               if not Is_Zero_Length_Array (Struct_Get_Type_At_Index
-                                              (Type_Of (V), J))
-                 and then not (SOS = Normal and then Is_Field_Padding (T, J))
+               if not Is_Zero_Length_Array (Element_Type (MD, J))
+                 and then not (SOS = Normal and then Is_Padding (MD, J))
                then
                   Maybe_Write_Comma (First);
                   Maybe_Decl (Get_Operand (V, J), For_Initializer => True);
-                  Write_Value (Get_Operand (V, J), Flags => Flags);
+                  Write_Value (Get_Operand (V, J),
+                               Flags   => Flags,
+                               Cast_MD => Element_Type (MD, J));
                   Fields_Written := Fields_Written + 1;
                end if;
             end loop;
@@ -526,7 +522,7 @@ package body CCG.Write is
             --  If this is a zero-length struct, add an extra item
 
             if Fields_Written = 0 then
-               Write_Undef (Get_Element_Type (V));
+               Write_Undef (MD);
             end if;
 
             Write_Str ("}");
@@ -539,13 +535,15 @@ package body CCG.Write is
          for J in 0 .. Nat'(Get_Num_Operands (V)) - 1 loop
             Maybe_Write_Comma (First);
             Maybe_Decl (Get_Operand (V, J), For_Initializer => True);
-            Write_Value (Get_Operand (V, J), Flags => Flags);
+            Write_Value (Get_Operand (V, J),
+                         Flags   => Flags,
+                         Cast_MD => Element_Type (MD));
          end loop;
 
          --  If this is a zero-length array, add an extra item
 
-         if Nat'(Get_Num_Operands (V)) = 0 then
-            Write_Undef (Get_Element_Type (V));
+         if Nat'(Array_Count (Declaration_Type (V))) = 0 then
+            Write_Undef (Declaration_Type (V));
          end if;
 
          Write_Str ("}");
@@ -569,7 +567,7 @@ package body CCG.Write is
             end loop;
 
             if Nat'(Get_Num_CDA_Elements (V)) = 0 then
-               Write_Undef (Get_Element_Type (V));
+               Write_Undef (Declaration_Type (V));
             end if;
 
             Write_Str ("}");
@@ -579,7 +577,7 @@ package body CCG.Write is
          Write_Str (NULL_String);
 
       elsif Is_Undef (V) or else Is_A_Constant_Aggregate_Zero (V) then
-         Write_Undef (Type_Of (V));
+         Write_Undef (Declaration_Type (V));
 
       else
          raise Program_Error;
@@ -593,8 +591,14 @@ package body CCG.Write is
    procedure Write_Value
      (V              : Value_T;
       Flags          : Value_Flags := Default_Value_Flags;
-      For_Precedence : Precedence  := Primary)
+      For_Precedence : Precedence  := Primary;
+      Cast_MD        : MD_Type     := No_MD_Type)
    is
+      C_Value     : constant Str     := Get_C_Value (V);
+      MD          : constant MD_Type := Actual_Type (V);
+      Inner_For_P : Precedence       := For_Precedence;
+      Wrote_Paren : Boolean          := False;
+
       --  We're either writing V alone or V prefixed by one or more unary
       --  operations, such as casts and ampersand. In the former case,
       --  we may have to parenthesize V depending the relationship between
@@ -607,22 +611,11 @@ package body CCG.Write is
       --  operation. If that means we need to parenthesize the entire
       --  expression, set that up. Also mark how V will be used.
 
-      function Must_Write_Cast return Boolean is
-         (Is_Integral_Type (V)
-            and then Get_Scalar_Bit_Size (Type_Of (V)) < Get_Int_Size
-            and then Is_A_Instruction (V)
-            and then Get_Opcode (V) in Op_Add   | Op_Sub   | Op_Mul   |
-                                       Op_U_Div | Op_S_Div | Op_U_Rem |
-                                       Op_S_Rem | Op_L_Shr | Op_A_Shr |
-                                       Op_Shl   | Op_And   | Op_Or    |
-                                       Op_Xor);
+      function Must_Write_Cast return Boolean;
       --  Because of C's integer promotion rules, we must insert a cast if
       --  V is an integer narrower than int and the output of an
-      --  arithmetic, shift, or logical instruction.
-
-      C_Value     : constant Str := Get_C_Value (V);
-      Inner_For_P : Precedence   := For_Precedence;
-      Wrote_Paren : Boolean      := False;
+      --  arithmetic, shift, or logical instruction. We also must insert
+      --  a cast if requested to do so.
 
       ------------------------
       -- Maybe_Write_Parens --
@@ -643,32 +636,67 @@ package body CCG.Write is
          end if;
       end Maybe_Write_Parens;
 
-   begin
+      ---------------------
+      -- Must_Write_Cast --
+      ---------------------
+
+      function Must_Write_Cast return Boolean is
+      begin
+         --  If we're writing this as an LHS, we don't cast. We also don't
+         --  need to cast integer constants.
+
+         if Flags.LHS or else Is_A_Constant_Int (V) then
+            return False;
+
+         --  Don't cast to a C aggregate or function type because it's useless
+         --  and can cause errors in some cases with some compilers.
+
+         elsif Present (Cast_MD)
+           and then (Is_Array (Cast_MD) or else Is_Struct (Cast_MD)
+                     or else Is_Function_Type (Cast_MD))
+         then
+            return False;
+
+         --  Otherwise, write a cast if we're asked to and it's the
+         --  wrong type.
+
+         elsif Present (Cast_MD) and then not Is_Same_C_Types (MD, Cast_MD)
+         then
+            return True;
+
+         --  Otherwise write cast only if we need to be concerned with
+         --  integer promotion rules.
+         else
+            return (Flags.Need_Signed or else Flags.Need_Unsigned)
+                   and then Is_Integer (MD)
+                   and then Int_Bits (MD) < Get_Int_Size
+                   and then Is_A_Instruction (V)
+                   and then Get_Opcode (V) in Op_Add   | Op_Sub   | Op_Mul   |
+                                              Op_U_Div | Op_S_Div | Op_U_Rem |
+                                              Op_S_Rem | Op_L_Shr | Op_A_Shr |
+                                              Op_Shl   | Op_And   | Op_Or    |
+                                              Op_Xor;
+         end if;
+      end Must_Write_Cast;
+
+   begin -- Start of processing for Write_Value
+
       --  If we're to write the type of V instead of the value of V, do so.
       --  If this is for a decl and its an LHS, use the element type instead.
 
-      if Flags.Write_Type then
-         Write_Type ((if   Flags.LHS and then Get_Is_LHS (V)
-                      then Get_Element_Type (Type_Of (V)) else Type_Of (V)),
+      if Flags.Only_Type or Flags.With_Type then
+         Write_Type (MD,
                      Flags => (if    Flags.Need_Unsigned then +Need_Unsigned
                                elsif Flags.Need_Signed   then +Need_Signed
                                else  Default_Type_Flags),
-                     V => V);
+                     S     => (if Flags.With_Type then +V else No_Str));
          return;
 
       --  Similarly for writing the return type
 
       elsif Flags.Write_Return then
-         declare
-            E : constant Entity_Id                 :=
-              (if Present (V) then Get_Entity (V) else Empty);
-            BT : constant Opt_Void_Or_Type_Kind_Id :=
-              (if Present (E) then Actual_Subprogram_Base_Type (E) else Empty);
-
-         begin
-            Write_Type (Get_Element_Type (Type_Of (V)), V => V, E => BT);
-            return;
-         end;
+         Write_Type (Return_Type (Designated_Type (MD)));
+         return;
       end if;
 
       --  Otherwise, see if we want an unsigned version of V (unless this
@@ -684,7 +712,8 @@ package body CCG.Write is
             return;
 
          --  If its a constant, we can write the unsigned version of that
-         --  constant.
+         --  constant. In both this and the above case, we assume that
+         --  we don't need to write a cast to Cast_MD.
 
          elsif Is_A_Constant_Int (V) then
             Write_Constant_Value (V, Need_Unsigned => True);
@@ -697,17 +726,20 @@ package body CCG.Write is
 
          elsif Must_Write_Cast or else not Is_Unsigned (V) then
             Maybe_Write_Parens;
-            Write_Str ("(" & (Type_Of (V) + Need_Unsigned) & ") ");
+            Write_Str ("(" & Unsigned_Type (MD) & ") ");
          end if;
 
          --  Otherwise, if this is an object that must be interpreted as
          --  signed but might be unsigned or we need to be concerned about
          --  integer promotion, write a cast to the signed type.
 
-      elsif Flags.Need_Signed
-        and then (Is_Unsigned (V) or else Must_Write_Cast)
+      elsif (Flags.Need_Signed and then Is_Unsigned (V))
+        or else Must_Write_Cast
       then
-         Write_Str ("(" & Type_Of (V) & ") ");
+         Write_Str ("(" &
+                    (if   Present (Cast_MD) then Cast_MD
+                     else Signed_Type (MD)) &
+                    ") ");
       end if;
 
       --  If this is an LHS that we're writing normally, we need to take
@@ -723,10 +755,10 @@ package body CCG.Write is
 
          if Get_Is_Constant (V) or else Is_Unsigned (V) then
             Maybe_Write_Parens;
-            Write_Str ("(" & Type_Of (V) & ") ");
+            Write_Str ("(" & Declaration_Type (V) & ") ");
          end if;
 
-         if not Is_Array_Type (V) then
+         if  not Is_A_Function (V) then
             Maybe_Write_Parens;
             Write_Str ("&");
          end if;
@@ -744,8 +776,8 @@ package body CCG.Write is
 
       elsif not Get_Is_LHS (V)
         and then (Is_Simple_Constant (V)
-                    or else (Flags.Initializer and then Is_A_Constant (V)
-                             and then not Is_A_Function (V)))
+                  or else (Flags.Initializer and then Is_A_Constant (V)
+                           and then not Is_A_Function (V)))
       then
          Write_Constant_Value (V, Flags => Flags);
 
@@ -771,7 +803,9 @@ package body CCG.Write is
       --  If S is just a single value and that value has a saved expression,
       --  write that one. This preserves precedence.
 
-      if Is_Value (S) and then Present (Get_C_Value (Single_Value (S))) then
+      if Is_Value (S) and then Present (Get_C_Value (Single_Value (S)))
+        and then not Get_Is_LHS (Single_Value (S))
+      then
          Write_Str_With_Precedence (Get_C_Value (Single_Value (S)), P);
       elsif Needs_Parens (S, P) then
          Write_Str ("(" & S & ")");
@@ -785,22 +819,18 @@ package body CCG.Write is
    -----------------
 
    procedure Write_Type
-     (T     : Type_T;
-      Flags : Type_Flags := Default_Type_Flags;
-      E     : Entity_Id  := Empty;
-      V     : Value_T    := No_Value_T)
+     (MD    : MD_Type;
+      S     : Str        := No_Str;
+      Flags : Type_Flags := Default_Type_Flags)
+
    is
       procedure Write_Str_With_Signedness (S : String);
       --  Write S possibly preceeded by "unsigned".
 
-      TE         : constant Opt_Void_Or_Type_Kind_Id :=
-        (if    Present (E) then Full_Etype (E)
-         elsif Present (V) then GNAT_Type (V)
-         else  Empty);
-      BT         : constant Opt_Void_Or_Type_Kind_Id :=
-        Opt_Full_Base_Type (TE);
-      RT         : Opt_Void_Or_Type_Kind_Id          := TE;
-      Unsigned_P : Boolean                           := False;
+      Unsigned_P : constant Boolean :=
+        (Flags.Need_Unsigned
+         or else (Is_Integer (MD) and then Is_Unsigned (MD)
+                  and then not Flags.Need_Signed));
 
       -------------------------------
       -- Write_Str_With_Signedness --
@@ -812,45 +842,29 @@ package body CCG.Write is
       end Write_Str_With_Signedness;
 
    begin
-      case Get_Type_Kind (T) is
-         when Void_Type_Kind =>
+      case Class (MD) is
+         when Void_Class =>
             Write_Str ("void");
 
          --  ??? For FP types, we'd ideally want to compare the number of bits
          --  and use that, but there's no simple way to do that.  So let's
-         --  start with just "float" and "double".
+         --  start with just "float" and "double" and assume 32 bits for the
+         --  former.
 
-         when Float_Type_Kind =>
-            Write_Str ("float");
-
-         when Double_Type_Kind =>
-            Write_Str ("double");
-
-         when Integer_Type_Kind =>
-
-            --  If we force signedness, use that
-
-            if Flags.Need_Unsigned then
-               Unsigned_P := True;
-            elsif Flags.Need_Signed then
-               null;
-
-            --  Next see if we have a reference that says whether this
-            --  type is unsigned or not. Note that we need to check the
-            --  base type to avoid unnecessary conversions.
-
-            elsif (Present (V) and then Is_Unsigned (V))
-              or else (Present (BT) and then Is_Unsigned_Type (BT))
-            then
-               Unsigned_P := True;
+         when Float_Class =>
+            if Float_Bits (MD) = 32 then
+               Write_Str ("float");
+            else
+               Write_Str ("double");
             end if;
 
-            --  Now see if a type in Interfaces.C is in the type chain
-            --  at the same size.
+         when Integer_Class =>
 
-            while Present (RT) and then Etype (RT) /= RT
-              and then RM_Size (RT) = RM_Size (Etype (RT))
-            loop
+            --  Now see if we've set a name for this type. That means that
+            --  a type in Interfaces.C is in the type chain at the same size.
+
+            if Has_Name (MD) then
+
                --  Now see if this is a known type in Interfaces.C. Note
                --  that we can ignore signedness here since it's been taken
                --  care of above. We really only need to worry about "long"
@@ -867,64 +881,59 @@ package body CCG.Write is
                --  but Name_Enter is used to enter that name into the
                --  table.
 
-               if Get_Name (Scope (Etype (RT))) = "interfaces__c" then
-                  declare
-                     Full_Name : constant String := Get_Name (Etype (RT));
-                     Name      : constant String :=
-                       Full_Name (Full_Name'First + 15 .. Full_Name'Last);
+               declare
+                  Full_Name : constant String :=
+                    Get_Name_String (MD_Name (MD));
+                  Name      : constant String :=
+                    Full_Name (Full_Name'First + 15 .. Full_Name'Last);
 
-                  begin
-                     if Name = "long_long" or else Name = "unsigned_long_long"
-                       or else Name = "Tlong_longB"
-                       or else Name = "Tunsigned_long_longB"
-                     then
-                        Write_Str_With_Signedness ("long long");
-                        return;
-                     elsif Name = "long" or else Name = "unsigned_long"
-                       or else Name = "TlongB" or else Name = "Tunsigned_longB"
-                     then
-                        Write_Str_With_Signedness ("long");
-                        return;
-                     elsif Name = "int" or else Name = "unsigned_int"
-                       or else Name = "TintB" or else Name = "Tunsigned_intB"
-                     then
-                        Write_Str_With_Signedness ("int");
-                        return;
-                     elsif Name = "short" or else Name = "unsigned_short"
-                       or else Name = "TshortB"
-                       or else Name = "Tunsigned_short"
-                     then
-                        Write_Str_With_Signedness ("short");
-                        return;
-                     elsif Name = "signed_char" or else Name = "unsigned_char"
-                       or else Name = "Tsigned_charB"
-                       or else Name = "Tunsigned_charB"
-                     then
-                        Write_Str ((if   Unsigned_P then "unsigned char"
-                                    else "signed char"));
-                        return;
-                     end if;
-                  end;
-               end if;
-
-               --  Go on to the next type in the type chain
-
-               RT := Etype (RT);
-            end loop;
+               begin
+                  if Name = "long_long" or else Name = "unsigned_long_long"
+                    or else Name = "Tlong_longB"
+                    or else Name = "Tunsigned_long_longB"
+                  then
+                     Write_Str_With_Signedness ("long long");
+                     return;
+                  elsif Name = "long" or else Name = "unsigned_long"
+                    or else Name = "TlongB" or else Name = "Tunsigned_longB"
+                  then
+                     Write_Str_With_Signedness ("long");
+                     return;
+                  elsif Name = "int" or else Name = "unsigned_int"
+                    or else Name = "TintB" or else Name = "Tunsigned_intB"
+                  then
+                     Write_Str_With_Signedness ("int");
+                     return;
+                  elsif Name = "short" or else Name = "unsigned_short"
+                    or else Name = "TshortB"
+                    or else Name = "Tunsigned_short"
+                  then
+                     Write_Str_With_Signedness ("short");
+                     return;
+                  elsif Name = "signed_char" or else Name = "unsigned_char"
+                    or else Name = "Tsigned_charB"
+                    or else Name = "Tunsigned_charB"
+                  then
+                     Write_Str ((if   Unsigned_P then "unsigned char"
+                                 else "signed char"));
+                     return;
+                  end if;
+               end;
+            end if;
 
             --  If nothing in Interfaces.C, write type name from size
 
             Write_Str
-              (Int_Type_String (Pos (Get_Int_Type_Width (T)), Unsigned_P));
+              (Int_Type_String (Pos (Int_Bits (MD)), Unsigned_P));
 
-         when Pointer_Type_Kind =>
+         when Pointer_Class =>
 
             --  There's no such thing in C as a function type, only a
             --  pointer to function type. So we special-case that.
 
-            if Is_Function_Type (Get_Element_Type (T)) then
+            if Is_Function_Pointer (MD) then
                Write_Internal_Name ("ccg_f");
-               Write_Int (Get_Output_Idx (T));
+               Write_Int (Get_Output_Idx (MD));
 
             --  Otherwise, this is handled normally. We don't want to use a
             --  concatenation operator because that might cause us to try
@@ -932,32 +941,33 @@ package body CCG.Write is
             --  will then be at the wrong place.
 
             else
-               Write_Type (Get_Element_Type (T),
-                           Flags => Flags,
-                           E     =>
-                             (if   Present (BT) and then Is_Access_Type (BT)
-                              then Full_Designated_Type (BT) else Empty));
+               Write_Type (Designated_Type (MD),
+                           Flags => Flags);
                Write_Str (" *");
             end if;
 
-         when Function_Type_Kind =>
-            Write_Type (Get_Return_Type (T), Flags => Flags, E => BT);
+         when Function_Class =>
+            Write_Type (Return_Type (MD), Flags => Flags);
 
-         when Struct_Type_Kind =>
-            if Struct_Has_Name (T) then
-               Write_C_Name (Get_Struct_Name (T));
+         when Struct_Class =>
+            if Has_Name (MD) then
+               Write_C_Name (Get_Name_String (MD_Name (MD)));
             else
                Write_Internal_Name ("ccg_s");
-               Write_Int (Get_Output_Idx (T));
+               Write_Int (Get_Output_Idx (MD));
             end if;
 
-         when Array_Type_Kind =>
+         when Array_Class =>
             Write_Internal_Name ("ccg_a");
-            Write_Int (Get_Output_Idx (T));
-
-         when others =>
-            raise Program_Error;
+            Write_Int (Get_Output_Idx (MD));
       end case;
+
+      --  Finally, write the "variable to be declared" part, if any
+
+      if Present (S) then
+         Write_Str (" ");
+         Write_Str (S);
+      end if;
    end Write_Type;
 
    --------------------

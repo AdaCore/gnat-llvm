@@ -120,8 +120,8 @@ package GNATLLVM.Conversions is
    --  with the same relationship.
 
    function Is_Nonsymbolic_Constant
-     (V : Value_T; MDT : MD_Type) return Boolean
-      with  Pre => Present (V) and then Present (MDT);
+     (V : Value_T; MD : MD_Type) return Boolean
+      with  Pre => Present (V) and then Present (MD);
 
    function Convert_Aggregate_Constant
      (V : GL_Value; GT : GL_Type) return GL_Value

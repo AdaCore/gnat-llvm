@@ -53,6 +53,12 @@ To build GNAT LLVM from sources, follow these steps:
   the options that suit your needs. After installing/building, make sure the
   LLVM bin directory containing `llvm-config` and `clang` is in your `PATH`.
 
+  Alternatively, you can invoke make with an environment variable named 
+  `LLVM_CONFIG` pointing to your `llvm-config` binary, this way the LLVM you
+  intend to use does not need to be in your `PATH`.
+
+      LLVM_CONFIG=/some/path/to/llvm-config make
+
   An alternative only suitable for core GNAT LLVM development on x86 native
   configurations is to use the following command, assuming you have CMake
   version >= 3.20 in your path:

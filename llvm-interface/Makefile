@@ -18,17 +18,12 @@ ADAINCLUDE=lib/rts-llvm/adainclude
 ADALIB=lib/rts-llvm/adalib
 
 pwd:=$(shell pwd)
-
-LLVM_BUILD_DIR=$(pwd)/../llvm/llvm-obj
-
-ifneq ($(wildcard $(LLVM_BUILD_DIR)/bin/llvm-config),)
-  LLVM_CONFIG=$(LLVM_BUILD_DIR)/bin/llvm-config
-  LLVM_SRC=$(shell cd `$(LLVM_CONFIG) --includedir`/../..;pwd)
-  CLANG_CXXFLAGS=-I$(LLVM_BUILD_DIR)/tools/clang/include -I$(LLVM_SRC)/clang/include
+ifeq ($(LLVM_CONFIG),)
+  LLVM_CONFIG:=llvm-config
 else
-  LLVM_CONFIG=llvm-config
-  CLANG_CXXFLAGS=
+  LLVM_CONFIG:=$(LLVM_CONFIG)
 endif
+CLANG_CXXFLAGS=-I$(shell `$(LLVM_CONFIG) --includedir`)/clang
 
 LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs)
 CXXFLAGS=

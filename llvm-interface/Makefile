@@ -25,7 +25,7 @@ ifeq ($(LLVM_CONFIG),)
 else
   LLVM_CONFIG:=$(LLVM_CONFIG)
 endif
-CLANG_CXXFLAGS=-I$(shell $(LLVM_CONFIG) --prefix)/tools/clang/include -I$(shell cd `$(LLVM_CONFIG) --includedir`/../..;pwd)/clang/include
+CLANG_CXXFLAGS=-I$(shell `$(LLVM_CONFIG) --includedir`)/clang
 
 LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs)
 CXXFLAGS=

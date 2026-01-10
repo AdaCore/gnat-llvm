@@ -15,7 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Repinfo;    use Repinfo;
+with Repinfo; use Repinfo;
 
 package GNATLLVM.Records.Debug is
    --  Subpackage for creating the LLVM debuginfo for a given record.
@@ -38,18 +38,18 @@ package GNATLLVM.Records.Debug is
    --  A helper function to find the canonical discriminant (for the
    --  purposes of debuginfo generation) given some discriminant.
 
-   function Create_Record_Debug_Info (TE : Void_Or_Type_Kind_Id;
-                                      Original_Type : Entity_Id;
-                                      Debug_Scope : Metadata_T;
-                                      Name : String;
-                                      Size : ULL;
-                                      Align : Nat;
-                                      S : Source_Ptr) return Metadata_T;
+   function Create_Record_Debug_Info
+     (TE            : Void_Or_Type_Kind_Id;
+      Original_Type : Entity_Id;
+      Debug_Scope   : Metadata_T;
+      Name          : String;
+      Size          : ULL;
+      Align         : Nat;
+      S             : Source_Ptr) return Metadata_T;
    --  Create the LLVM debuginfo for a given record.
 
-   function Convert_To_Dwarf_Expression (Expr : Node_Ref_Or_Val;
-                                         Original_Type : Entity_Id)
-     return Metadata_T;
+   function Convert_To_Dwarf_Expression
+     (Expr : Node_Ref_Or_Val; Original_Type : Entity_Id) return Metadata_T;
    --  Convert a back annotation expression to a DWARF expression.
    --  Returns the LLVM metadata for the expression.  Note that this
    --  may return a DIExpression, but if the expression it is just a

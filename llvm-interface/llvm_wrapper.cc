@@ -22,6 +22,7 @@
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/Casting.h"
@@ -40,12 +41,6 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/DebugInfo.h"
-
-#if LLVM_VERSION_MAJOR < 15
-#include "llvm/Support/TargetRegistry.h"
-#else
-#include "llvm/MC/TargetRegistry.h"
-#endif
 
 #if LLVM_VERSION_MAJOR < 19
 #include "llvm/Support/AArch64TargetParser.h"
@@ -210,9 +205,14 @@ Add_Ret_Noalias_Attribute (Function *fn)
 
 extern "C"
 void
-Add_Nocapture_Attribute (Function *fn, unsigned idx)
+Add_Nocapture_Attribute (LLVMContext *Context, Function *fn, unsigned idx)
 {
-  fn->addParamAttr (idx, Attribute::NoCapture);
+#if LLVM_VERSION_MAJOR < 21
+  fn->addParamAttr(idx, Attribute::NoCapture);
+#else
+  fn->addParamAttr(
+      idx, Attribute::getWithCaptureInfo(*Context, CaptureInfo::none()));
+#endif
 }
 
 extern "C"
@@ -446,9 +446,15 @@ Build_MemCpy (IRBuilder<> *bld, Value *Dst, unsigned DstAlign, Value *Src,
 	      unsigned SrcAlign, Value *Size, bool isVolatile, MDNode *TBAATag,
 	      MDNode *TBAAStructTag, MDNode *ScopeTag, MDNode *NoAliasTag)
 {
-  return bld->CreateMemCpy (Dst, MaybeAlign (DstAlign), Src,
-			    MaybeAlign(SrcAlign), Size, isVolatile, TBAATag,
-			    TBAAStructTag, ScopeTag, NoAliasTag);
+#if LLVM_VERSION_MAJOR < 21
+  return bld->CreateMemCpy(Dst, MaybeAlign(DstAlign), Src, MaybeAlign(SrcAlign),
+                           Size, isVolatile, TBAATag, TBAAStructTag, ScopeTag,
+                           NoAliasTag);
+#else
+  return bld->CreateMemCpy(
+      Dst, MaybeAlign(DstAlign), Src, MaybeAlign(SrcAlign), Size, isVolatile,
+      AAMDNodes(TBAATag, TBAAStructTag, ScopeTag, NoAliasTag));
+#endif
 }
 
 extern "C"
@@ -457,9 +463,15 @@ Build_MemMove (IRBuilder<> *bld, Value *Dst, unsigned DstAlign, Value *Src,
 	       unsigned SrcAlign, Value *Size, bool isVolatile,
 	       MDNode *TBAATag, MDNode *ScopeTag, MDNode *NoAliasTag)
 {
-  return bld->CreateMemMove (Dst, MaybeAlign (DstAlign), Src,
-			     MaybeAlign (SrcAlign), Size, isVolatile, TBAATag,
-			     ScopeTag, NoAliasTag);
+#if LLVM_VERSION_MAJOR < 21
+  return bld->CreateMemMove(Dst, MaybeAlign(DstAlign), Src,
+                            MaybeAlign(SrcAlign), Size, isVolatile, TBAATag,
+                            ScopeTag, NoAliasTag);
+#else
+  return bld->CreateMemMove(Dst, MaybeAlign(DstAlign), Src,
+                            MaybeAlign(SrcAlign), Size, isVolatile,
+                            AAMDNodes(TBAATag, nullptr, ScopeTag, NoAliasTag));
+#endif
 }
 
 extern "C"
@@ -468,8 +480,13 @@ Build_MemSet (IRBuilder<> *bld, Value *Ptr, Value *Val, Value *Size,
 	      unsigned align, bool isVolatile, MDNode *TBAATag,
 	      MDNode *ScopeTag, MDNode *NoAliasTag)
 {
-  return bld->CreateMemSet (Ptr, Val, Size, MaybeAlign (align), isVolatile,
-			    TBAATag, ScopeTag, NoAliasTag);
+#if LLVM_VERSION_MAJOR < 21
+  return bld->CreateMemSet(Ptr, Val, Size, MaybeAlign(align), isVolatile,
+                           TBAATag, ScopeTag, NoAliasTag);
+#else
+  return bld->CreateMemSet(Ptr, Val, Size, MaybeAlign(align), isVolatile,
+                           AAMDNodes(TBAATag, nullptr, ScopeTag, NoAliasTag));
+#endif
 }
 
 extern "C"
@@ -665,12 +682,22 @@ Get_Target_C_Types (const char *Triple, const char *CPU, const char *ABI,
   //
   // ??? Use a real diagnostics consumer if we ever get an error from Clang.
   IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
+#if LLVM_VERSION_MAJOR < 21
   IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
   DiagnosticsEngine Diags(DiagID, &*DiagOpts, new IgnoringDiagConsumer());
+#else
+  DiagnosticOptions DiagOpts;
+  DiagnosticsEngine Diags(DiagID, DiagOpts, new IgnoringDiagConsumer());
+#endif
 
   // Finally, we can create the TargetInfo structure.
+#if LLVM_VERSION_MAJOR < 21
   std::unique_ptr<TargetInfo> Info(
-    TargetInfo::CreateTargetInfo(Diags, Options));
+      TargetInfo::CreateTargetInfo(Diags, Options));
+#else
+  std::unique_ptr<TargetInfo> Info(
+      TargetInfo::CreateTargetInfo(Diags, *Options));
+#endif
 
   std::string ABIString = ABI;
   if (!ABIString.empty())
@@ -811,7 +838,11 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
   // Register additional passes for the sanitizers if applicable. This code is
   // inspired by addSanitizers in LLVM's clang/lib/CodeGen/BackendUtil.cpp.
   PB.registerOptimizerLastEPCallback(
+#if LLVM_VERSION_MAJOR < 21
       [&](ModulePassManager &MPM, OptimizationLevel Level) {
+#else
+      [&](ModulePassManager &MPM, OptimizationLevel Level, ThinOrFullLTOPhase) {
+#endif
         if (EnableFuzzer) {
           // Configure sanitizer coverage according to what Clang does in
           // clang/lib/Driver/SanitizerArgs.cpp when the fuzzer is enabled.
@@ -843,13 +874,21 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
   ModulePassManager MPM;
   if (CodeOptLevel == 0)
     {
-      MPM = PB.buildO0DefaultPipeline (Level,
-				       PrepareForLTO || PrepareForThinLTO);
-      if (NeedLoopInfo)
-	MPM.addPass (createModuleToFunctionPassAdaptor
-		     (createFunctionToLoopPassAdaptor (LoopRotatePass ())));
+#if LLVM_VERSION_MAJOR < 21
+    bool LTOPhase = PrepareForLTO || PrepareForThinLTO;
+#else
+    ThinOrFullLTOPhase LTOPhase = ThinOrFullLTOPhase::None;
+    if (PrepareForLTO) {
+      LTOPhase = ThinOrFullLTOPhase::FullLTOPreLink;
+    } else if (PrepareForThinLTO) {
+      LTOPhase = ThinOrFullLTOPhase::ThinLTOPreLink;
     }
-  else if (PrepareForThinLTO)
+#endif
+    MPM = PB.buildO0DefaultPipeline(Level, LTOPhase);
+    if (NeedLoopInfo)
+      MPM.addPass(createModuleToFunctionPassAdaptor(
+          createFunctionToLoopPassAdaptor(LoopRotatePass())));
+  } else if (PrepareForThinLTO)
     MPM = PB.buildThinLTOPreLinkDefaultPipeline (Level);
   else if (PrepareForLTO)
     MPM = PB.buildLTOPreLinkDefaultPipeline (Level);
@@ -1158,7 +1197,11 @@ extern "C"
 Value *
 Get_First_Non_Phi_Or_Dbg (BasicBlock *BB)
 {
-  return BB->getFirstNonPHIOrDbg ();
+#if LLVM_VERSION_MAJOR < 21
+  return BB->getFirstNonPHIOrDbg();
+#else
+  return &*BB->getFirstNonPHIOrDbg();
+#endif
 }
 
 extern "C"
@@ -1449,12 +1492,18 @@ extern "C"
 void
 Create_And_Insert_Label (LLVMDIBuilderRef Builder, LLVMMetadataRef Scope,
 			 const char *Name, LLVMMetadataRef File,
-			 unsigned LineNo, LLVMMetadataRef DebugLoc,
+			 unsigned LineNo, unsigned ColmunNo, LLVMMetadataRef DebugLoc,
 			 LLVMBasicBlockRef Block)
 {
+#if LLVM_VERSION_MAJOR < 21
+  auto *L = unwrap(Builder)->createLabel(unwrap<DIScope>(Scope),
+                                         StringRef(Name, strlen(Name)),
+                                         unwrap<DIFile>(File), LineNo, false);
+#else
   auto *L = unwrap(Builder)->createLabel(
-      unwrap<DIScope>(Scope), StringRef(Name, strlen(Name)), unwrap<DIFile>(File),
-      LineNo, false);
+      unwrap<DIScope>(Scope), StringRef(Name, strlen(Name)),
+      unwrap<DIFile>(File), LineNo, ColmunNo, false, std::nullopt, false);
+#endif
   unwrap(Builder)->insertLabel(L, unwrap<DILocation>(DebugLoc),
       unwrap(Block));
 }

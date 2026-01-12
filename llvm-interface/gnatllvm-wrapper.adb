@@ -736,6 +736,7 @@ package body GNATLLVM.Wrapper is
       Name            : String;
       File            : Metadata_T;
       Line_No         : Physical_Line_Number;
+      Column_No       : Column_Number;
       Debug_Loc       : Metadata_T;
       Block           : Basic_Block_T)
    is
@@ -745,6 +746,7 @@ package body GNATLLVM.Wrapper is
          Name            : String;
          File            : Metadata_T;
          Line_No         : Physical_Line_Number;
+         Column_No       : Column_Number;
          Debug_Loc       : Metadata_T;
          Block           : Basic_Block_T)
       with Import => True,
@@ -752,7 +754,8 @@ package body GNATLLVM.Wrapper is
          External_Name => "Create_And_Insert_Label";
    begin
       Create_And_Insert_Label_C (Builder, Scope, Name & ASCII.NUL,
-                                 File, Line_No, Debug_Loc, Block);
+                                 File, Line_No, Column_No, Debug_Loc,
+                                 Block);
    end Create_And_Insert_Label;
 
    --------------------------

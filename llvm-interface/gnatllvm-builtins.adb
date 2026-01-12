@@ -533,13 +533,11 @@ package body GNATLLVM.Builtins is
             =>
             return Build_Min (Result, Val);
 
-#if LLVM_Version_Major > 16 then
          when Atomic_RMW_Bin_Op_U_Inc_Wrap =>
             return Build_Inc_Wrap (Result, Val);
 
          when Atomic_RMW_Bin_Op_U_Dec_Wrap =>
             return Build_Dec_Wrap (Result, Val);
-#end if;
 
 #if LLVM_Version_Major > 19 then
          when Atomic_RMW_Bin_Op_U_Sub_Cond
@@ -1415,12 +1413,8 @@ package body GNATLLVM.Builtins is
    begin
       if No (Stack_Save_Fn) then
          Stack_Save_Fn :=
-#if LLVM_Version_Major > 16 then
            Build_Intrinsic
              ("llvm.stacksave", A_Char_GL_Type, (1 => Void_Ptr_MD));
-#else
-           Build_Intrinsic ("llvm.stacksave", A_Char_GL_Type);
-#end if;
       end if;
 
       return Stack_Save_Fn;
@@ -1434,12 +1428,8 @@ package body GNATLLVM.Builtins is
    begin
       if No (Stack_Restore_Fn) then
          Stack_Restore_Fn :=
-#if LLVM_Version_Major > 16 then
            Build_Intrinsic
              ("llvm.stackrestore", Void_GL_Type, (1 => Void_Ptr_MD));
-#else
-           Build_Intrinsic ("llvm.stackrestore", Void_GL_Type);
-#end if;
       end if;
 
       return Stack_Restore_Fn;

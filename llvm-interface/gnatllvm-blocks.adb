@@ -732,12 +732,8 @@ package body GNATLLVM.Blocks is
                              Can_Return => False, Can_Throw => True);
 
       EH_Slot_Id_Fn    :=
-#if LLVM_Version_Major > 16 then
         Build_Intrinsic
           ("llvm.eh.typeid.for", Int_32_GL_Type, (1 => Void_Ptr_MD));
-#else
-        Build_Intrinsic ("llvm.eh.typeid.for", Int_32_GL_Type);
-#end if;
       Set_Does_Not_Throw (EH_Slot_Id_Fn);
 
       Others_Value           :=

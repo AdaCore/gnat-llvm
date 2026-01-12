@@ -189,7 +189,13 @@ package body GNATLLVM.Records.Debug is
      (Original_Type : Entity_Id; Index : Pos) return Entity_Id
    is
       N     : Pos       := 1;
-      Discr : Entity_Id := First_Discriminant (Original_Type);
+      Discr : Entity_Id :=
+        --  A class wide equivalent type will not be marked as having
+        --  discriminants, but instead they can be found in _parent.
+        --  See Exp_Util.Make_CW_Equivalent_Type.
+        (if Is_Class_Wide_Equivalent_Type (Original_Type)
+         then First_Discriminant (Parent_Subtype (Original_Type))
+         else First_Discriminant (Original_Type));
 
    begin
       while Present (Discr) loop

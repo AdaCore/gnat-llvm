@@ -441,6 +441,15 @@ package body GNATLLVM.Conversions is
          then
             Result := G_Is (Result, GT);
 
+         elsif Is_Floating_Point_Type (GT)
+            and then Is_Floating_Point_Type (In_GT)
+            and then Type_Of (GT) /= Type_Of (Result)
+         then
+            Result := Convert (Remove_Padding (Result), GT,
+                               Float_Truncate => Float_Truncate,
+                               Is_Unchecked   => Is_Unchecked,
+                               No_Truncation  => No_Truncation);
+
          --  If we have a reference to an access type and we're converting
          --  to another access type, we can just convert the reference.
          --  This avoids loading the data, including in cases where we
@@ -450,7 +459,7 @@ package body GNATLLVM.Conversions is
             Result := Convert_Ref (Result, GT);
 
          else
-            Result := Convert (Get (Result, Data), GT,
+            Result := Convert (Result, GT,
                                Float_Truncate => Float_Truncate,
                                Is_Unchecked   => Is_Unchecked,
                                No_Truncation  => No_Truncation);
@@ -615,17 +624,20 @@ package body GNATLLVM.Conversions is
       Is_Unc_Bias : constant Boolean  :=
         Is_Unchecked and then (Is_Biased_GL_Type (GT)
                                  or else Is_Biased_GL_Type (Related_Type (V)));
-      In_V        : constant GL_Value :=
-        (if   Is_Unchecked or else Related_Type (V) = GT then V
-         else To_Primitive (V));
-      In_GT       : constant GL_Type  := Related_Type (In_V);
       Prim_GT     : constant GL_Type  :=
         (if Is_Unc_Bias then GT else Primitive_GL_Type (GT));
-      Value       : GL_Value          := In_V;
       Src_Access  : constant Boolean  := Is_Access_Type (V);
       Dest_Access : constant Boolean  := Is_Access_Type (Prim_GT);
       Src_FP      : constant Boolean  := Is_Floating_Point_Type (V);
       Dest_FP     : constant Boolean  := Is_Floating_Point_Type (Prim_GT);
+      No_Padding  : constant Boolean  :=
+        not (Has_Padding (V) and then (Src_FP or else Is_Integer_Type (V)));
+      In_V        : constant GL_Value :=
+        (if   (Is_Unchecked and then No_Padding) or else Related_Type (V) = GT
+         then V
+         else To_Primitive (V));
+      In_GT       : constant GL_Type  := Related_Type (In_V);
+      Value       : GL_Value          := In_V;
       Src_Uns     : constant Boolean  := Is_Unsigned_For_Convert (In_GT);
       Dest_Uns    : constant Boolean  := Is_Unsigned_For_Convert (Prim_GT);
       Src_Size    : constant Nat      :=

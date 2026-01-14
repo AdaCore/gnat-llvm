@@ -10,8 +10,6 @@ AR=ar q
 LN_S=ln -sf
 CP_DIR=cp -pr
 
-EXE=
-
 GNATMAKE=gnatmake
 
 GPROPT=-XBuild=Production
@@ -46,12 +44,15 @@ GPRBUILD=gprbuild -v -XLLVM_Version=$(LLVM_VERSION) -x
 ifeq ($(OS),Windows_NT)
   LN_S=cp -p
   LDFLAGS+=-Wl,--stack=0x2000000
-  EXE=.exe
+  EXEEXT=.exe
+  SOEXT=.dll
 else
   # In order to enable pass plugins, the compiler binary needs to reexport LLVM
   # symbols to shared objects. We achieve this by building with -rdynamic (which
   # is equivalent to -Wl,--export-dynamic), just like Clang.
   LDFLAGS+=-rdynamic
+  EXEEXT=
+  SOEXT=.so
 endif
 
 compare=cmp --ignore-initial=16
@@ -257,11 +258,23 @@ else ifeq ($(strip $(filter-out linux,$(target_os))),)
 	$(MV) $(RTSLIB)/libgnarl_pic.a .
 	$(RMDIR) $(RTS)
 	$(MAKE) quicklib LIBRARY_KIND=dynamic GPRBUILD="$(GPRBUILD) --gpr=2" LN_S="cp -p"
-	$(MV) $(RTSLIB)/libgna*.so .
+	$(MV) $(RTSLIB)/libgna*$(SOEXT) .
 	$(MAKE) gnatlib-automated
 	$(MV) libgnat_pic.a $(RTSLIB)
 	$(MV) libgnarl_pic.a $(RTSLIB)
-	$(MV) libgna*.so $(RTSLIB)
+	$(MV) libgna*$(SOEXT) $(RTSLIB)
+# On Windows, we always build position-independent code. This means that the
+# static runtime is valid for use in DLLs (i.e., encapsulated SALs), so that we
+# don't need to build a separate libgnat_pic.a. The GPR tools automatically
+# pick libgnat.a if libgnat_pic.a doesn't exist, but let's be on the safe side
+# and create a copy, just like GCC does.
+else ifeq ($(strip $(filter-out x86_64-w64-mingw32,$(target))),)
+	$(MAKE) quicklib LIBRARY_KIND=dynamic GPRBUILD="$(GPRBUILD) --gpr=2" LN_S="cp -p"
+	$(MV) $(RTSLIB)/libgna*$(SOEXT) .
+	$(MAKE) gnatlib-automated
+	cp -p $(RTSLIB)/libgnat.a $(RTSLIB)/libgnat_pic.a
+	cp -p $(RTSLIB)/libgnarl.a $(RTSLIB)/libgnarl_pic.a
+	$(MV) libgna*$(SOEXT) $(RTSLIB)
 else
 	$(MAKE) gnatlib-automated
 endif
@@ -330,8 +343,8 @@ $(RTSDIR):
 $(LIBEXEC_DIR):
 ifneq ($(target_clang),)
 	$(MKDIR) "$(LIBEXEC_DIR)/bin"
-	$(LN_S) "$(target_clang)" $(LIBEXEC_DIR)/bin/llvm-helper$(EXE)
-	$(LN_S) "`dirname $(target_clang)`/ld.lld$(EXE)" $(LIBEXEC_DIR)/bin/ld.lld$(EXE)
+	$(LN_S) "$(target_clang)" $(LIBEXEC_DIR)/bin/llvm-helper$(EXEEXT)
+	$(LN_S) "`dirname $(target_clang)`/ld.lld$(EXEEXT)" $(LIBEXEC_DIR)/bin/ld.lld$(EXEEXT)
 	$(CP_DIR) "`dirname $(target_clang)`/../lib" $(LIBEXEC_DIR)/lib
 endif
 

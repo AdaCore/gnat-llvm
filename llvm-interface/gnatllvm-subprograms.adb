@@ -3064,7 +3064,7 @@ package body GNATLLVM.Subprograms is
          return Const_Null (A_Char_GL_Type);
       else
          return Load
-           (Get (GEP (A_Char_GL_Type, Emit_LValue (N),
+           (Get (GEP (A_Char_GL_Type, Remove_Padding (Emit_LValue (N)),
                       (1 => Const_Null_32, 2 => Const_Null_32)),
                  Reference));
 

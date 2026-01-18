@@ -2878,6 +2878,10 @@ package body GNATLLVM.Subprograms is
             Add_Named_Attribute (LLVM_Func, "disable-tail-calls", "true");
          end if;
 
+         if No_Builtins then
+            Add_Named_Attribute (LLVM_Func, "no-builtins", "");
+         end if;
+
          if No_Return (E) then
             Set_Does_Not_Return (LLVM_Func);
             Readonly := False;

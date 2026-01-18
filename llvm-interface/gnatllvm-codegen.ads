@@ -104,6 +104,7 @@ package GNATLLVM.Codegen is
    Prepare_For_LTO         : Boolean       := False;
    Reroll_Loops            : Boolean       := False;
    No_Tail_Calls           : Boolean       := False;
+   No_Builtins             : Boolean       := False;
    Pass_Plugin_Name        : String_Access := null;
    --  Switch options for optimization
 

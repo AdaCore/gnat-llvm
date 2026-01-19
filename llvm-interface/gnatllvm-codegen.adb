@@ -315,6 +315,8 @@ package body GNATLLVM.Codegen is
          Reroll_Loops := False;
       elsif S = "-fno-optimize-sibling-calls" then
          No_Tail_Calls := True;
+      elsif S = "-fno-builtin" then
+         No_Builtins := True;
       elsif S = "-fforce-activation-record-parameter" then
          Force_Activation_Record_Parameter := True;
       elsif S = "-fno-force-activation-record-parameter" then

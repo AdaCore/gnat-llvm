@@ -1632,7 +1632,7 @@ package body GNATLLVM.Variables is
                when 17 .. 32 =>
                   Our_Align := 32;
                when 33 .. 128 =>
-                  Our_Align := 64;
+                  Our_Align := Nat'Min (Get_Bits_Per_Word, 64);
                when others =>
                   null;
             end case;

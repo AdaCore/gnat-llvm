@@ -42,6 +42,8 @@ To build GNAT LLVM from sources, follow these steps:
 
       git clone https://github.com/AdaCore/llvm-bindings.git
 
+  Note that there's no need to regenerate the bindings unless you change LLVM.
+
 - Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2021
   or GCC 11.
 

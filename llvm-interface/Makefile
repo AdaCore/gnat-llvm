@@ -19,15 +19,17 @@ ADALIB=lib/rts-llvm/adalib
 
 pwd:=$(shell pwd)
 
-LLVM_BUILD_DIR=$(pwd)/../llvm/llvm-obj
+LLVM_CONFIG ?= llvm-config
 
-ifneq ($(wildcard $(LLVM_BUILD_DIR)/bin/llvm-config),)
-  LLVM_CONFIG=$(LLVM_BUILD_DIR)/bin/llvm-config
-  LLVM_SRC=$(shell cd `$(LLVM_CONFIG) --includedir`/../..;pwd)
-  CLANG_CXXFLAGS=-I$(LLVM_BUILD_DIR)/tools/clang/include -I$(LLVM_SRC)/clang/include
-else
-  LLVM_CONFIG=llvm-config
-  CLANG_CXXFLAGS=
+# If llvm-config belongs to an installation of LLVM, then its include directory
+# is going to contain everything we need. Otherwise, if llvm-config belongs to a
+# _build tree_, we need to add an extra directory because the Clang headers
+# won't be in `llvm-config --includedir`.
+CLANG_CXXFLAGS :=
+CLANG_INCLUDE_DIR := $(abspath $(shell $(LLVM_CONFIG) --includedir)/../../clang/include)
+
+ifneq ($(wildcard $(CLANG_INCLUDE_DIR)/.),)
+  CLANG_CXXFLAGS := -I$(CLANG_INCLUDE_DIR) -I$(abspath $(shell $(LLVM_CONFIG) --obj-root)/tools/clang/include)
 endif
 
 LDFLAGS=$(shell $(LLVM_CONFIG) --libs all --ldflags --system-libs)
@@ -85,7 +87,7 @@ setup:
 	for f in $(LOCAL_RT_FILES); do \
 	  $(LN_S) $(GNAT_SRC)/libgnat/$$f obj; \
 	done
-	./check_for_LLVM_aliasing_bug.sh
+	./check_for_LLVM_aliasing_bug.sh "$(LLVM_CONFIG)"
 	./check_for_llvm_apis.sh "$(LLVM_CONFIG)"
 	./configure_default_target.sh "$(llvm_target)"
 

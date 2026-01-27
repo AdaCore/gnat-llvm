@@ -231,7 +231,7 @@ automated: build-opt
 ifeq ($(strip $(filter-out vxworks7r2,$(target_os))),)
 	$(MAKE) gnatlib-automated RTSSWITCH=--RTS:C=kernel RTSBASE=rts-kernel THREAD_KIND=kernel-smp
 	$(MAKE) gnatlib-automated RTSSWITCH=--RTS:C=rtp RTSBASE=rts-rtp THREAD_KIND=rtp-smp
-else ifeq ($(target),x86_64-pc-linux-gnu)
+else ifeq ($(strip $(filter-out linux,$(target_os))),)
 	$(RMDIR) $(RTS)
 	$(MAKE) quicklib LIBRARY_KIND=static-pic LN_S="cp -p"
 	$(MV) $(RTSLIB)/libgnat_pic.a .

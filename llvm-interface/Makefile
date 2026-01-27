@@ -183,7 +183,7 @@ bootstrap-compare:
 force:
 
 clean:
-	$(RMDIR) obj obj-tools lib stage1 stage2 bootstrap-compare
+	$(RMDIR) obj obj-tools lib libexec stage1 stage2 bootstrap-compare
 
 # Full runtime
 
@@ -206,6 +206,8 @@ RTS=$(pwd)/lib/gnat-llvm/$(llvm_target)/$(RTSBASE)
 RTSDIR=$(RTS)/adainclude
 RTSLIB=$(RTS)/adalib
 RTSOBJ=$(RTS)/obj-static
+
+LIBEXEC_DIR := $(pwd)/libexec/gnat-llvm/$(llvm_target)
 
 ADAFLAGS=-gnatpg
 CFLAGS=-O2
@@ -284,7 +286,7 @@ gnatlib-bc:
 # Clang 16 complains about a missing function declaration in raise-gcc.c
 # (eng/toolchain/gnat-llvm#5). Until we have a proper fix, disable the warning
 # when building the runtime.
-quicklib: $(RTSDIR)
+quicklib: $(RTSDIR) $(LIBEXEC_DIR)
 	PATH=$(pwd)/bin:$(clang_path):$$PATH \
 	$(GPRBUILD) -p --target=$(target) $(RTSSWITCH) -j$(PROCS) -P$(RTSDIR)/libada \
 	  -XCFLAGS="$(CFLAGS) -Wno-implicit-function-declaration -I$(LLVM_INCLUDE_DIR)" \
@@ -301,6 +303,18 @@ $(RTSDIR):
 	  $(pwd)/obj-tools/xoscons s-oscons && \
 	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR) && \
 	  $(RM) s-oscons-tmplt.*
+
+# llvm-gcc normally links with the Clang binary found on the PATH. If a
+# different binary is needed (such as with our target-specific Clang binaries),
+# we need to create a symlink for llvm-gcc.
+$(LIBEXEC_DIR):
+	target_clang="`command -v $(target)-clang`" ; \
+	if [ $$? -eq 0 ] ; then \
+	  $(MKDIR) "$(LIBEXEC_DIR)/bin" && \
+	  ln -sf "$$target_clang" $(LIBEXEC_DIR)/bin/llvm-helper && \
+	  ln -sf "`dirname $$target_clang`/ld.lld" $(LIBEXEC_DIR)/bin/ld.lld && \
+	  ln -sf "`dirname $$target_clang`/../lib" $(LIBEXEC_DIR)/lib ; \
+	fi
 
 # ZFP runtime
 

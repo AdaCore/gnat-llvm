@@ -8,6 +8,9 @@ MKDIR=mkdir -p
 CHMOD=chmod
 AR=ar q
 LN_S=ln -sf
+CP_DIR=cp -pr
+
+EXE=
 
 GNATMAKE=gnatmake
 
@@ -43,6 +46,7 @@ GPRBUILD=gprbuild -v -n -XLLVM_Version=$(LLVM_VERSION) -x
 ifeq ($(OS),Windows_NT)
   LN_S=cp -p
   LDFLAGS+=-Wl,--stack=0x2000000
+  EXE=.exe
 else
   # In order to enable pass plugins, the compiler binary needs to reexport LLVM
   # symbols to shared objects. We achieve this by building with -rdynamic (which
@@ -71,8 +75,9 @@ GEN_IL_FILES = nmake.adb nmake.ads \
   seinfo.ads sinfo-nodes.ads sinfo-nodes.adb \
   einfo-entities.ads einfo-entities.adb
 
-target=$(shell gcc -dumpmachine)
-llvm_target=$(shell clang -dumpmachine)
+target := $(shell gcc -dumpmachine)
+llvm_target := $(shell clang -dumpmachine)
+target_clang := $(shell which $(target)-clang)
 
 setup:
 	$(MKDIR) obj obj-tools/libgnat bin gnat_src/vast
@@ -298,7 +303,7 @@ $(RTSDIR):
 	$(RMDIR) $(RTS)
 	$(MKDIR) $(RTSLIB)
 	$(MAKE) setup-rts
-	cp -pr include $(RTS)
+	$(CP_DIR) include $(RTS)
 	cd $(RTSLIB) && $(OSCONS_CPP) && $(OSCONS_EXTRACT) && \
 	  $(pwd)/obj-tools/xoscons s-oscons && \
 	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR) && \
@@ -308,13 +313,12 @@ $(RTSDIR):
 # different binary is needed (such as with our target-specific Clang binaries),
 # we need to create a symlink for llvm-gcc.
 $(LIBEXEC_DIR):
-	target_clang="`command -v $(target)-clang`" ; \
-	if [ $$? -eq 0 ] ; then \
-	  $(MKDIR) "$(LIBEXEC_DIR)/bin" && \
-	  ln -sf "$$target_clang" $(LIBEXEC_DIR)/bin/llvm-helper && \
-	  ln -sf "`dirname $$target_clang`/ld.lld" $(LIBEXEC_DIR)/bin/ld.lld && \
-	  ln -sf "`dirname $$target_clang`/../lib" $(LIBEXEC_DIR)/lib ; \
-	fi
+ifneq ($(target_clang),)
+	$(MKDIR) "$(LIBEXEC_DIR)/bin"
+	$(LN_S) "$(target_clang)$(EXE)" $(LIBEXEC_DIR)/bin/llvm-helper$(EXE)
+	$(LN_S) "`dirname $(target_clang)`/ld.lld$(EXE)" $(LIBEXEC_DIR)/bin/ld.lld$(EXE)
+	$(CP_DIR) "`dirname $(target_clang)`/../lib" $(LIBEXEC_DIR)/lib
+endif
 
 # ZFP runtime
 

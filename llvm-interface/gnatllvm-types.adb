@@ -1844,9 +1844,9 @@ package body GNATLLVM.Types is
          Result := F (LHS.C_Value, RHS.C_Value, Name);
          return (if    Overflowed (Result)
                  then  (False, No_GL_Value,
-                        GL_Value_To_Node_Ref_Or_Val (LHS.C_Value)) *
-                       (False, No_GL_Value,
-                        GL_Value_To_Node_Ref_Or_Val (RHS.C_Value))
+                        Create_Node
+                          (C, GL_Value_To_Node_Ref_Or_Val (LHS.C_Value),
+                           GL_Value_To_Node_Ref_Or_Val (RHS.C_Value)))
                  elsif Is_Undef (Result)
                  then  No_BA else (False, Result, No_Uint));
       end if;

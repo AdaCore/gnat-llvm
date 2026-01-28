@@ -55,7 +55,7 @@ package body Uintp.LLVM is
    function UI_To_ULL (U : Uint) return ULL is
    begin
       if UI_Is_In_Int_Range (U) then
-         return ULL (UI_To_Int (U));
+         return Int_To_ULL (UI_To_Int (U));
       else
          declare
             Words : constant Word_Array := Big_UI_To_Words (U);

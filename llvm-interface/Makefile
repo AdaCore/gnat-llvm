@@ -315,7 +315,7 @@ $(RTSDIR):
 $(LIBEXEC_DIR):
 ifneq ($(target_clang),)
 	$(MKDIR) "$(LIBEXEC_DIR)/bin"
-	$(LN_S) "$(target_clang)$(EXE)" $(LIBEXEC_DIR)/bin/llvm-helper$(EXE)
+	$(LN_S) "$(target_clang)" $(LIBEXEC_DIR)/bin/llvm-helper$(EXE)
 	$(LN_S) "`dirname $(target_clang)`/ld.lld$(EXE)" $(LIBEXEC_DIR)/bin/ld.lld$(EXE)
 	$(CP_DIR) "`dirname $(target_clang)`/../lib" $(LIBEXEC_DIR)/lib
 endif

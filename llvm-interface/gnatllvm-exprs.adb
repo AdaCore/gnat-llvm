@@ -46,6 +46,7 @@ with GNATLLVM.Records;      use GNATLLVM.Records;
 with GNATLLVM.Subprograms;  use GNATLLVM.Subprograms;
 with GNATLLVM.Types;        use GNATLLVM.Types;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
+with GNATLLVM.Wrapper;      use GNATLLVM.Wrapper;
 
 with CCG; use CCG;
 
@@ -1261,8 +1262,25 @@ package body GNATLLVM.Exprs is
                Scan (Expression (First (PAAs)));
             end;
 
-         when Pragma_Inspection_Point
-           | Pragma_Loop_Optimize
+         when Pragma_Inspection_Point =>
+            --  It only makes sense to do anything here if debug info
+            --  is being emitted.
+            if Emit_Debug_Info then
+               declare
+                  Item : Node_Id := First (PAAs);
+                  Val  : GL_Value;
+               begin
+                  while Present (Item) loop
+                     Val := Emit_Expression (Expression (Item));
+                     if Present (Val) then
+                        Create_Fake_Use (IR_Builder, Module, +Val);
+                     end if;
+                     Item := Next (Item);
+                  end loop;
+               end;
+            end if;
+
+         when Pragma_Loop_Optimize
            | Pragma_Warning_As_Error
            | Pragma_Warnings =>
             --  ??? These are the ones that Gigi supports and we may want

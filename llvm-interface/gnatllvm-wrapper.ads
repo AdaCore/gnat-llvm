@@ -247,6 +247,11 @@ package GNATLLVM.Wrapper is
       Size : Value_T) return Value_T
      with Import, Convention => C, External_Name => "Create_Invariant_Start";
 
+   procedure Create_Fake_Use
+     (Bld : Builder_T; Module : Module_T; Var : Value_T)
+     with Import, Convention => C, External_Name => "Create_Fake_Use";
+   --  Create an llvm.fake.use, if possible.
+
    function Does_Not_Throw (Fn : Value_T) return Boolean
      with Pre => Present (Is_A_Function (Fn)), Inline;
 

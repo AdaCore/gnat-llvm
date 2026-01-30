@@ -363,6 +363,14 @@ extern "C" unsigned char Does_Not_Throw(Function *fn) {
   return fn->doesNotThrow() ? 1 : 0;
 }
 
+extern "C" void Create_Fake_Use(IRBuilder<> *bld, Module *Mod, Value *Var) {
+#if LLVM_VERSION_MAJOR >= 21
+  llvm::Function *FakeUseDecl =
+      llvm::Intrinsic::getOrInsertDeclaration(Mod, llvm::Intrinsic::fake_use);
+  bld->CreateCall(FakeUseDecl, {Var});
+#endif
+}
+
 extern "C" void Set_Does_Not_Throw(Function *fn) {
   return fn->setDoesNotThrow();
 }

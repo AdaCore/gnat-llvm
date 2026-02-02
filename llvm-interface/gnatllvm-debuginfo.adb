@@ -1039,6 +1039,7 @@ package body GNATLLVM.DebugInfo is
       case Ekind (TE) is
 
          when E_Enumeration_Subtype | E_Signed_Integer_Subtype
+              | E_Modular_Integer_Type
               | E_Modular_Integer_Subtype => Sub_Type :
             begin
                if Is_Packed_Array_Impl_Type (TE) then
@@ -1053,8 +1054,6 @@ package body GNATLLVM.DebugInfo is
                      Full_High : constant Uint
                         := Get_Uint_Value (Type_High_Bound (Full_BT));
 
-                     Base_Type_Data : constant Metadata_T :=
-                        Create_Type_Data (Primitive_GL_Type (Full_BT));
                      Low : constant Uint
                         := Get_Uint_Value (Type_Low_Bound (TE));
                      Low_Cst : constant Metadata_T :=
@@ -1068,16 +1067,52 @@ package body GNATLLVM.DebugInfo is
                          then Const_64_As_Metadata (High)
                          else No_Metadata_T);
 
+                     Uses_Full_Range : Boolean;
+                     Base_Type_Data : Metadata_T;
+
                   begin
 
-                     if Present (Low) and then Present (Full_Low)
-                        and then Present (High) and then Present (Full_High)
-                        and then Low = Full_Low and then High = Full_High
-                     then
+                     if Is_Modular_Integer_Type (TE) then
+                        --  GCC uses a convention that a modular type
+                        --  may be emitted as an unsigned base type,
+                        --  but modular subtypes and modular types
+                        --  that aren't a multiple of 8 bits are
+                        --  emitted as subrange types.  This is
+                        --  presumably done because DWARF doesn't have
+                        --  a way to distinguish a modular type from
+                        --  an unsigned integer type.  Anyway we
+                        --  follow the GCC convention here, because
+                        --  that is what GDB expects.
+                        Uses_Full_Range :=
+                          Ekind (TE) /= E_Modular_Integer_Subtype
+                          and then Esize (TE) = RM_Size (TE);
+                        --  LLVM's DIBbuilder asserts that a basic
+                        --  type must not be nameless (even though
+                        --  this seems to be totally ok with both the
+                        --  DWARF standard and LLVM's own DWARF
+                        --  emitter).  So use a dummy name, again
+                        --  following a GCC convention, if needed.
+                        Base_Type_Data :=
+                          DI_Create_Basic_Type
+                            ((if Uses_Full_Range
+                              then Name
+                              else Name & "___UMT"),
+                             Size, DW_ATE_Unsigned, DI_Flag_Zero);
+                     else
+                        Uses_Full_Range :=
+                          Present (Low) and then Present (Full_Low)
+                          and then Present (High) and then Present (Full_High)
+                          and then Low = Full_Low and then High = Full_High;
+                        Base_Type_Data :=
+                          Create_Type_Data (Primitive_GL_Type (Full_BT));
+                     end if;
+
+                     if Uses_Full_Range then
 
                         --  If the underlying type is identical, just
                         --  return it rather than building a typedef.
-                        if Name = Get_Name (Full_BT)
+                        if Is_Modular_Integer_Type (TE)
+                           or else Name = Get_Name (Full_BT)
                         then
                            Result := Base_Type_Data;
                         else
@@ -1114,12 +1149,9 @@ package body GNATLLVM.DebugInfo is
          --  For scalar, non-enumeration types, we create the corresponding
          --  debug type.
 
-         when E_Signed_Integer_Type | E_Modular_Integer_Type =>
-            Result := DI_Create_Basic_Type
-              (Name, Size,
-               (if Is_Unsigned_Type (TE) then DW_ATE_Unsigned
-                else  DW_ATE_Signed),
-               DI_Flag_Zero);
+         when E_Signed_Integer_Type =>
+            Result := DI_Create_Basic_Type (Name, Size, DW_ATE_Signed,
+                                            DI_Flag_Zero);
 
          when Fixed_Point_Kind => Fixed_Point : declare
             Small : constant Ureal := Small_Value (TE);

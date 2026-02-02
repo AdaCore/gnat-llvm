@@ -760,6 +760,7 @@ package body GNATLLVM.DebugInfo is
       CT          : constant GL_Type    := Full_Component_GL_Type (DT);
       Size        : constant ULL        := ULL (Thin_Pointer_Size);
       Align       : constant Nat        := Thin_Pointer_Size;
+      Ndim        : constant Nat        := Number_Dimensions (DT);
       Bounds_Size : ULL;
       Bounds_MD   : constant Metadata_T :=
         Create_Bounds_Type_Data (DT, Bounds_Size);
@@ -771,7 +772,7 @@ package body GNATLLVM.DebugInfo is
       Rec_Align   : Nat                 := Thin_Pointer_Size;
       Offset      : ULL                 := 0;
       Idx         : Nat                 := 1;
-      Ranges      : Metadata_Array (0 .. 0);
+      Ranges      : Metadata_Array (0 .. Ndim);
       Ok          : Boolean;
 
    begin
@@ -783,8 +784,11 @@ package body GNATLLVM.DebugInfo is
       end if;
 
       --  GDB expects P_ARRAY to have type pointer-to-array.  The
-      --  bounds here do not matter.
-      Ranges (0) := DI_Builder_Get_Or_Create_Subrange (DI_Builder, 0, 0);
+      --  bounds here do not matter, but it's important that the
+      --  number of bounds match the type.
+      for J in 0 .. Ndim - 1 loop
+         Ranges (J) := DI_Builder_Get_Or_Create_Subrange (DI_Builder, 0, 0);
+      end loop;
       P_Comp_MD := Create_Array_Type_With_Name (DI_Builder, No_Metadata_T, "",
                                                 No_Metadata_T, 0, 0, Align,
                                                 Comp_MD, No_Metadata_T,

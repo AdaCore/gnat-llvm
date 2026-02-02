@@ -772,7 +772,7 @@ package body GNATLLVM.DebugInfo is
       Rec_Align   : Nat                 := Thin_Pointer_Size;
       Offset      : ULL                 := 0;
       Idx         : Nat                 := 1;
-      Ranges      : Metadata_Array (0 .. Ndim);
+      Ranges      : Metadata_Array (0 .. Ndim - 1);
       Ok          : Boolean;
 
    begin

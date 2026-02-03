@@ -5,11 +5,7 @@ stages:
   - test-gnat-llvm
   - test-ccg
 
-# CCG testing is launched when some specific files have changed, or manually
-.ccg-rulesrules_template:: &ccg-rules
-  - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-    changes:
-      - llvm-interface/ccg/*
+.optional_testing_template:: &opt-test
   - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     when: manual
     allow_failure: true # This improves reporting. Otherwise the CI remains "stuck" untils those jobs are launched
@@ -28,6 +24,18 @@ include:
       windows: true
       windows-cpus: 8
       windows-mem: 16
+
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/build@~latest
+    inputs:
+      job-name: build-x86
+      anod-args: run build_x86
+      generic-anod-ci-args: --add-dep eng/toolchain/gnat
+      cpus: 16
+      save-component: true
+      windows: true
+      windows-cpus: 8
+      windows-mem: 16
+      rules: *opt-test
 
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/build@~latest
     inputs:
@@ -57,6 +65,24 @@ include:
       windows: true
       windows-cpus: 8
       windows-mem: 16
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
+    inputs:
+      job-name: fixedbugs-x86
+      stage: test-gnat-llvm
+      anod-args: run test_fixedbugs_x86
+      generic-anod-ci-args: --add-dep eng/toolchain/gnatbugs-fixed
+      needs:
+        - build-x86:linux
+      rules: *opt-test
+  - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
+    inputs:
+      job-name: acats-x86
+      stage: test-gnat-llvm
+      anod-args: run test_acats_x86
+      generic-anod-ci-args: --add-dep eng/toolchain/acats
+      needs:
+        - build-x86:linux
+      rules: *opt-test
 
   # Testing of ccg
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
@@ -70,7 +96,6 @@ include:
       stage: test-ccg
       anod-args: run test_ccg
       generic-anod-ci-args: --add-dep eng/toolchain/ccg-tests
-      rules: *ccg-rules
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
     inputs:
       job-name: acats-ccg
@@ -82,7 +107,6 @@ include:
       stage: test-ccg
       anod-args: run test_acats_ccg
       generic-anod-ci-args: --add-dep eng/toolchain/acats
-      rules: *ccg-rules
   - component: $CI_SERVER_FQDN/eng/gitlab-templates/test@~latest
     inputs:
       job-name: acats-ccg-optimized
@@ -94,7 +118,6 @@ include:
       stage: test-ccg
       anod-args: run test_acats_ccg_optimized
       generic-anod-ci-args: --add-dep eng/toolchain/acats
-      rules: *ccg-rules
 
 # Additional customization
 

@@ -3,26 +3,41 @@ def build():
     anod_install("gcc")
     anod_build("gnat-llvm")
 
+def build_x86():
+    build_platform="x86-" + env.host.os.name
+    # Do not rebuild gcc/gnat
+    anod_install("gcc")
+    anod_install("gcc", build=build_platform)
+    anod_build("gnat-llvm", build=build_platform)
 
 def build_ccg():
     anod_install("gcc")
     anod_install("gnat-doc", qualifier="ugx")
     anod_build("gnat-llvm-core", qualifier="ccg")
 
+def test_fixedbugs_generic(build_platform):
+    anod_install("gnat-llvm", build=build_platform)
+    anod_build("aunit", build=build_platform, qualifier={"compiler": "gnat-llvm"})
+    anod_build("gnatcoll-core", build=build_platform, qualifier={"compiler": "gnat-llvm"})
+    anod_build("libgpr", build=build_platform, qualifier={"compiler": "gnat-llvm"})
+    anod_build("xmlada", build=build_platform, qualifier={"compiler": "gnat-llvm"})
+    anod_test("fixedbugs", build=build_platform, qualifier="compiler=gnat-llvm")
 
 def test_fixedbugs():
-    anod_install("gnat-llvm")
-    anod_build("aunit", qualifier={"compiler": "gnat-llvm"})
-    anod_build("gnatcoll-core", qualifier={"compiler": "gnat-llvm"})
-    anod_build("libgpr", qualifier={"compiler": "gnat-llvm"})
-    anod_build("xmlada", qualifier={"compiler": "gnat-llvm"})
-    anod_test("fixedbugs", qualifier="compiler=gnat-llvm")
+    test_fixedbugs_generic(env.build.platform)
 
+def test_fixedbugs_x86():
+    test_fixedbugs_generic("x86-" + env.build.os.name)
+
+def test_acats_generic(build_platform):
+    anod_install("gnat-llvm", build=build_platform)
+    anod_test("acats", qualifier="compiler=gnat-llvm", build=build_platform)
 
 def test_acats():
-    anod_install("gnat-llvm")
-    anod_test("acats", qualifier="compiler=gnat-llvm")
+    test_acats_generic(env.build.platform)
 
+def test_acats_x86():
+    test_acats_generic("x86-" + env.host.os.name)
 
 def ccg_common():
     anod_install("gcc", build="x86-linux")

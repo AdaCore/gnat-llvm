@@ -1008,13 +1008,15 @@ package body GNATLLVM.DebugInfo is
       return Metadata_T
    is
       TE          : constant Void_Or_Type_Kind_Id := Full_Etype (GT);
+      --  Note that Get_Debug_Metadata must be called relatively
+      --  early, as it might affect subsequent calls here.
+      Result      : Metadata_T                    := Get_Debug_Metadata (TE);
       Name        : constant String               := Get_Name (TE);
       T           : constant Type_T               := +Type_Of (GT);
       Size        : constant ULL                  :=
         (if Type_Is_Sized (T) then Get_Type_Size (T) else 0);
       Align       : constant Nat                  := Get_Type_Alignment (GT);
       S           : constant Source_Ptr           := Sloc (TE);
-      Result      : Metadata_T                    := Get_Debug_Metadata (TE);
 
    begin
       --  If we already made debug info for this type, return it

@@ -414,14 +414,8 @@ package GNATLLVM.Helper is
       Debug_Loc : Metadata_T;
       Block     : Basic_Block_T) return Dbg_Record_T
    is
-#if LLVM_Version_Major > 16 then
      (DI_Builder_Insert_Dbg_Value_Record_At_End
         (DI_Builder, +V, Var_Info, Expr, Debug_Loc, Block))
-#else
-     (Dbg_Record_T
-        (DI_Builder_Insert_Dbg_Value_At_End
-          (DI_Builder, +V, Var_Info, Expr, Debug_Loc, Block)))
-#end if;
      with Pre  => Present (V) and then Present (Var_Info)
                   and then Present (Expr) and then Present (Debug_Loc)
                   and then Present (Block),
@@ -434,14 +428,8 @@ package GNATLLVM.Helper is
       Debug_Loc : Metadata_T;
       Block     : Basic_Block_T) return Dbg_Record_T
    is
-#if LLVM_Version_Major > 16 then
      (DI_Builder_Insert_Declare_Record_At_End
         (DI_Builder, +V, Var_Info, Expr, Debug_Loc, Block))
-#else
-     (Dbg_Record_T
-        (DI_Builder_Insert_Declare_At_End
-          (DI_Builder, +V, Var_Info, Expr, Debug_Loc, Block)))
-#end if;
      with Pre  => Present (V) and then Present (Var_Info)
                   and then Present (Expr) and then Present (Debug_Loc)
                   and then Present (Block),

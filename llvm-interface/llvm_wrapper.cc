@@ -31,6 +31,7 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/TargetParser/AArch64TargetParser.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/SanitizerCoverage.h"
@@ -41,13 +42,6 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/DebugInfo.h"
-
-#if LLVM_VERSION_MAJOR < 19
-#include "llvm/Support/AArch64TargetParser.h"
-#include "llvm/Support/FileSystem.h"
-#else
-#include "llvm/TargetParser/AArch64TargetParser.h"
-#endif
 
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/DiagnosticIDs.h"
@@ -1380,20 +1374,12 @@ Get_Features (const char *TargetTriple, const char *Arch, const char *CPU)
     auto const ArchSplit = StringRef(ArchLowerCase).split("+");
     auto const ArchInfo = AArch64::parseArch(ArchSplit.first);
 
-#if LLVM_VERSION_MAJOR < 19
-    if (ArchInfo == AArch64::INVALID) {
-#else
     if (ArchInfo == nullptr) {
-#endif
       errs() << "warning: ignoring unsupported -march value " << Arch << "\n";
       return nullptr;
     }
 
-#if LLVM_VERSION_MAJOR < 19
-    Features.push_back(ArchInfo.ArchFeature);
-#else
     Features.push_back(ArchInfo->ArchFeature);
-#endif
 
     // Now process the user-specified additional features, if any.
     if (!ArchSplit.second.empty()) {

@@ -575,9 +575,7 @@ package body GNATLLVM.Codegen is
       Ptr_Err_Msg  : aliased Ptr_Err_Msg_Type;
       TT_First     : constant Integer  := Target_Triple'First;
       Success      : Boolean;
-#if LLVM_Version_Major > 16 then
       TM_Options   : Target_Machine_Options_T;
-#end if;
 
    begin
       if Emit_C and then Long_Long_Long_Size > 64 then
@@ -697,7 +695,6 @@ package body GNATLLVM.Codegen is
          end if;
       end;
 
-#if LLVM_Version_Major > 16 then
       TM_Options := Create_Target_Machine_Options;
 
       Target_Machine_Options_Set_CPU (TM_Options, CPU.all);
@@ -715,18 +712,6 @@ package body GNATLLVM.Codegen is
            Options    => TM_Options);
 
       Dispose_Target_Machine_Options (TM_Options);
-#else
-      Target_Machine    :=
-        Create_Target_Machine_With_ABI
-          (T          => LLVM_Target,
-           Triple     => Normalized_Target_Triple.all,
-           CPU        => CPU.all,
-           Features   => Features.all,
-           ABI        => ABI.all,
-           Level      => Code_Gen_Level,
-           Reloc      => Reloc_Mode,
-           Code_Model => Code_Model);
-#end if;
 
       Enable_Init_Array (Target_Machine);
 

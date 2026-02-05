@@ -11,8 +11,8 @@ project Gnat_LLVM is
    type Build_Type is ("Debug", "Production");
    Build : Build_Type := External ("Build", "Debug");
 
-   type Supported_LLVM_Version is ("16", "19", "21");
-   LLVM_Version : Supported_LLVM_Version := External ("LLVM_Version", "16");
+   type Supported_LLVM_Version is ("19", "21");
+   LLVM_Version : Supported_LLVM_Version := External ("LLVM_Version", "19");
 
    package Builder is
       for Executable ("gnat1drv.adb") use "llvm-gnat1";

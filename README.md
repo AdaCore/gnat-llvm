@@ -44,16 +44,17 @@ To build GNAT LLVM from sources, follow these steps:
 
   Note that there's no need to regenerate the bindings unless you change LLVM.
 
-- Install (and put in your PATH) a recent GNAT, e.g GNAT Community 2021
-  or GCC 11.
+- Install (and put in your PATH) a recent GNAT.
 
-- Install LLVM and Clang 19.1.x
+- Install LLVM and Clang 21.1.x
 
-  The recommended way to build GNAT LLVM is to use an existing LLVM and
-  Clang package installed via e.g. `brew install llvm` on Mac OS or `sudo
-  apt-get install llvm-dev` on Ubuntu. You can also build LLVM yourself with
-  the options that suit your needs. After installing/building, make sure the
-  LLVM bin directory containing `llvm-config` and `clang` is in your `PATH`.
+  The recommended way to build GNAT LLVM is to use an existing LLVM and Clang
+  package installed via e.g. `brew install llvm` on macOS or `sudo apt-get
+  install llvm-dev` on Ubuntu. You can also build LLVM yourself with the options
+  that suit your needs. You may want to use the lightly patched version that we
+  maintain at https://github.com/AdaCore/llvm-project. After
+  installing/building, make sure the LLVM bin directory containing `llvm-config`
+  and `clang` is in your `PATH`.
 
   Alternatively, you can invoke make with an environment variable named 
   `LLVM_CONFIG` pointing to your `llvm-config` binary, this way the LLVM you
@@ -67,10 +68,11 @@ To build GNAT LLVM from sources, follow these steps:
 
       make llvm
 
-  Note that there's currently a bug in LLVM's aliasing handling. We check
-  for it and generate slightly pessimized code in that case, but a patch
-  to be applied to LLVM's `lib/Analyze` directory is in the file
-  `llvm/patches/LLVMStructTBAAPatch.diff`.
+  Note that there's currently a bug in LLVM's aliasing handling. We check for it
+  and generate slightly pessimized code in that case, but a patch to be applied
+  to LLVM's `lib/Analyze` directory is in the file
+  `llvm/patches/LLVMStructTBAAPatch.diff`; our LLVM repository mentioned above
+  already contains this patch.
 
 - Finally build GNAT LLVM:
 

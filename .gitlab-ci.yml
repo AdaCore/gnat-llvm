@@ -135,14 +135,14 @@ include:
     ANOD_ENABLE_DOC: false
 
 build:windows:
-  rules:
-    # The Windows build shouldn't trigger automatically because it takes a long
-    # time, and most changes aren't specific to Windows. Also mark it as
-    # non-critical because otherwise the pipeline gets stuck if the job isn't
-    # started.
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      allow_failure: true
-      when: manual
+  timeout: 2h
+  # The Linux build is always on, but we don't want to build on Windows
+  # automatically because it takes a long time, and most changes aren't specific
+  # to Windows.
+  rules: *opt-test
+
+build-x86:windows:
+  timeout: 2h
 
 acats:windows:
   timeout: 4h

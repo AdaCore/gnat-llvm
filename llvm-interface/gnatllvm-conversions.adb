@@ -637,6 +637,7 @@ package body GNATLLVM.Conversions is
          then V
          else To_Primitive (V));
       In_GT       : constant GL_Type  := Related_Type (In_V);
+      In_Overflow : constant Boolean  := Overflowed (V);
       Value       : GL_Value          := In_V;
       Src_Uns     : constant Boolean  := Is_Unsigned_For_Convert (In_GT);
       Dest_Uns    : constant Boolean  := Is_Unsigned_For_Convert (Prim_GT);
@@ -668,9 +669,10 @@ package body GNATLLVM.Conversions is
         and then not (Is_Unchecked and then not No_Truncation)
       then
          return Mark_Overflowed (G_Is (In_V, GT),
-                                 not Dest_Uns and then Src_Uns
+                                 (not Dest_Uns and then Src_Uns
                                    and then Is_A_Constant_Int (In_V)
-                                   and then +In_V < ULL (0));
+                                   and then +In_V < ULL (0))
+                                  or else In_Overflow);
 
       --  If we're converting between two GL_Types corresponding to the same
       --  GNAT type, convert to the primitive type and the to the desired
@@ -678,7 +680,7 @@ package body GNATLLVM.Conversions is
       --  we have a UC to or from a biased type.
 
       elsif Full_Etype (In_GT) = Full_Etype (GT) and then not Is_Unc_Bias then
-         return From_Primitive (In_V, GT);
+         return Mark_Overflowed (From_Primitive (In_V, GT), In_Overflow);
 
       --  If converting pointer to/from integer, copy the bits using the
       --  appropriate instruction.
@@ -810,7 +812,8 @@ package body GNATLLVM.Conversions is
       --  non-primitive types and generate the IR instruction.
 
       return Result : GL_Value := Subp (Value, Prim_GT) do
-         Result := Mark_Overflowed (Result, Is_Undef (Result));
+         Result := Mark_Overflowed
+            (Result, Is_Undef (Result) or else In_Overflow);
 
          if Related_Type (Result) /= GT then
             Result := From_Primitive (Result, GT);

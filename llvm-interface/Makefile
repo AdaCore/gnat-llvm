@@ -308,6 +308,7 @@ $(RTSDIR):
 	  $(pwd)/obj-tools/xoscons s-oscons && \
 	  $(MV) s-oscons.ads $(RTSDIR) && $(MV) s-oscons.h $(RTSDIR) && \
 	  $(RM) s-oscons-tmplt.*
+	sed -E -f $(GNAT_SRC)/xsintnam.sed $(RTSDIR)/a-intnam.ads | cat -s > $(RTSDIR)/s-intnam.ads
 
 # llvm-gcc normally links with the Clang binary found on the PATH. If a
 # different binary is needed (such as with our target-specific Clang binaries),

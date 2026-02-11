@@ -181,10 +181,6 @@ package GNATLLVM is
    type ULL_Array          is array (Nat range <>) of ULL;
    type Access_Value_Array is access all Value_Array;
 
-#if LLVM_Version_Major <= 16 then
-   type Dbg_Record_T       is new Value_T;
-#end if;
-
    No_Value_T      : constant Value_T       := null;
    No_Type_T       : constant Type_T        := null;
    No_BB_T         : constant Basic_Block_T := null;

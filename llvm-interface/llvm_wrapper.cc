@@ -1218,9 +1218,7 @@ extern "C"
 void
 Delete_Trailing_Dbg_Records (BasicBlock *b)
 {
-#if LLVM_VERSION_MAJOR >= 19
   b->deleteTrailingDbgRecords();
-#endif
 }
 
 /* If we call into CCG from GNAT LLVM during the compilation process to

@@ -1589,10 +1589,12 @@ package body CCG.Utils is
       --  If we haven't found a type or if the best we've been able to do
       --  is pointer to void, see if we can get a type from any use of this
       --  value unless its too early to safely do that or we're not to try
-      --  too hard.
+      --  too hard. But don't try this for constants since they don't have
+      --  a use list.
 
       if not No_Scan and then not No_Force
         and then (No (MD) or else MD = Void_Ptr_MD)
+        and then not Is_A_Constant (V)
       then
          MD := Find_Type_From_Use (V);
       end if;

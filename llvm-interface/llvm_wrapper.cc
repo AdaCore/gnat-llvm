@@ -645,11 +645,12 @@ struct Target_C_Type_Info {
   unsigned LongDoubleAlignment;    // 0 if the target doesn't have long double
   unsigned MaximumAlignmentBytes;
   unsigned RegisterSize;
+  unsigned SystemAllocatorAlignment;
 };
 
 extern "C"
 void
-Get_Target_C_Types (const char *Triple, const char *CPU, const char *ABI,
+Get_Target_C_Types (const char *TargetTriple, const char *CPU, const char *ABI,
                     const char *Features, Target_C_Type_Info *Result,
 		    int Emit_C, unsigned char *success)
 {
@@ -657,7 +658,7 @@ Get_Target_C_Types (const char *Triple, const char *CPU, const char *ABI,
   *success = 0;
 
   auto Options = std::make_shared<clang::TargetOptions>();
-  Options->Triple = Triple;
+  Options->Triple = TargetTriple;
 
   std::string CPUString = CPU;
   if (CPUString != "generic") // GNAT-LLVM's default CPU, unknown to LLVM
@@ -725,6 +726,14 @@ Get_Target_C_Types (const char *Triple, const char *CPU, const char *ABI,
   }
   Result->MaximumAlignmentBytes = Info->getSuitableAlign() / 8;
   Result->RegisterSize = Info->getRegisterWidth();
+  Result->SystemAllocatorAlignment = Info->getNewAlign() / 8;
+
+  // For Linux on x86, we know that the allocated memory is even more strictly
+  // aligned than what LLVM thinks.
+  Triple TT(TargetTriple);
+  if (TT.getArch() == Triple::x86 && TT.isOSLinux())
+    Result->SystemAllocatorAlignment = 16;
+
   *success = 1;
 }
 

@@ -853,16 +853,22 @@ package body CCG.Instructions is
             Do_Unsigned : constant Boolean                :=
               (if   Pred in Int_EQ | Int_NE then Maybe_Uns
                else Info.Is_Unsigned);
-            X_Signed    : constant Boolean                :=
-               Pred in Int_EQ | Int_NE
-               and then Get_Scalar_Bit_Size (Op1) = Int_Size;
+            X_Sign      : constant Boolean                :=
+              (Pred in Int_EQ | Int_NE
+               and then Get_Scalar_Bit_Size (Op1) = Int_Size)
+              or else Get_I_Cmp_Same_Sign (V);
             POO         : constant Process_Operand_Option :=
-              (if    X_Signed then X
-               elsif Do_Unsigned then POO_Unsigned else POO_Signed);
+              (if Do_Unsigned then POO_Unsigned else POO_Signed);
             LHS         : Str                             :=
-               Process_Operand (Op1, POO, Relation);
+              Process_Operand (Op1,
+                               (if   X_Sign and then not Is_A_Constant (Op1)
+                                then X else POO),
+                               Relation);
             RHS         : constant Str                    :=
-               Process_Operand (Op2, POO, Relation);
+              Process_Operand (Op2,
+                               (if   X_Sign and then not Is_A_Constant (Op2)
+                                then X else POO),
+                               Relation);
             LHS_MD      : constant MD_Type                :=
               Actual_Type (Op1, As_LHS => True);
             RHS_MD      : constant MD_Type                :=

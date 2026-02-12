@@ -509,9 +509,10 @@ package body CCG.Transform is
      (V : Value_T; Do_Nothing : Boolean := False) return Boolean
    is
    begin
-      --  If V is used more than once, it's too complicated to do anything
+      --  If V is undefined or a constant, we can't do a replacement and if
+      --  V is used more than once, it's too complicated to do anything.
 
-      if Num_Uses (V) > 1 then
+      if Is_Undef (V) or else Is_A_Constant (V) or else Num_Uses (V) > 1 then
          return False;
 
       --  If it's a NOT instruction (XOR with 1), we can replace V

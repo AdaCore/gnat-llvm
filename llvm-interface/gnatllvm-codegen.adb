@@ -133,6 +133,8 @@ package body GNATLLVM.Codegen is
          Output_Assembly := True;
       elsif S = "-fuse-gnat-allocs" then
          Use_GNAT_Allocs := True;
+      elsif S = "-gdwarf-aranges" then
+         Switches.Append (new String'("-generate-arange-section"));
       elsif S = "-g"
         or else (Starts_With (S, "-g") and then not Starts_With (S, "-gnat"))
       then
@@ -557,21 +559,18 @@ package body GNATLLVM.Codegen is
 
    procedure Initialize_LLVM_Target is
       Num_Builtin : constant Interfaces.C.int :=
-        (if Emit_C or else ABI.all = "purecap" then 4 else 3);
+        (if Emit_C or else ABI.all = "purecap" then 3 else 2);
       type    Addr_Arr     is array (Interfaces.C.int range <>) of Address;
       subtype Switch_Addrs is Addr_Arr (1 .. Switches.Last + Num_Builtin);
 
       Opt1         : constant String   := "filename" & ASCII.NUL;
       Opt2         : constant String   := "-enable-shrink-wrap=0" & ASCII.NUL;
-      Opt3         : constant String   :=
-        "-generate-arange-section" & ASCII.NUL;
-      Opt4_C       : constant String   :=
+      Opt3_C       : constant String   :=
         "-disable-loop-idiom-all" & ASCII.NUL;
-      Opt4_Purecap : constant String   :=
+      Opt3_Purecap : constant String   :=
         "-cheri-landing-pad-encoding=indirect" & ASCII.NUL;
       Addrs        : Switch_Addrs      :=
-        (1 => Opt1'Address, 2 => Opt2'Address, 3 => Opt3'Address,
-         others => <>);
+        (1 => Opt1'Address, 2 => Opt2'Address, others => <>);
       Ptr_Err_Msg  : aliased Ptr_Err_Msg_Type;
       TT_First     : constant Integer  := Target_Triple'First;
       Success      : Boolean;
@@ -587,9 +586,9 @@ package body GNATLLVM.Codegen is
       --  encoding to match GCC.
 
       if Emit_C then
-         Addrs (4) := Opt4_C'Address;
+         Addrs (3) := Opt3_C'Address;
       elsif ABI.all = "purecap" then
-         Addrs (4) := Opt4_Purecap'Address;
+         Addrs (3) := Opt3_Purecap'Address;
       end if;
 
       --  Add any LLVM parameters to the list of switches

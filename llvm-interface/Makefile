@@ -295,7 +295,7 @@ quicklib: $(RTSDIR) $(LIBEXEC_DIR)
 	PATH=$(pwd)/bin:$(clang_path):$$PATH \
 	$(GPRBUILD) -p --target=$(target) $(RTSSWITCH) -j$(PROCS) -P$(RTSDIR)/libada \
 	  -XCFLAGS="$(CFLAGS) -Wno-implicit-function-declaration -I$(LLVM_INCLUDE_DIR)" \
-	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS) -gdwarf-aranges" \
+	  -XEXTRALIBFLAGS="$(EXTRALIBFLAGS)" \
 	  -XLIBRARY_KIND=$(LIBRARY_KIND) -XLIBRARY_VERSION=$(LIBRARY_VERSION)
 	cd $(RTSLIB) && $(CHMOD) a-wx *.ali
 

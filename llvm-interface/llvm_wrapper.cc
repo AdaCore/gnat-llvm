@@ -1714,6 +1714,17 @@ DI_Subrange_Allows_Member ()
 }
 
 extern "C"
+bool
+DI_Nameless_Basic_Types ()
+{
+#ifdef GNAT_LLVM_HAVE_NAMELESS_BASIC_TYPE
+  return true;
+#else
+  return false;
+#endif
+}
+
+extern "C"
 LLVMMetadataRef Create_Global_Variable_Declaration(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     const char *Linkage, LLVMMetadataRef File,

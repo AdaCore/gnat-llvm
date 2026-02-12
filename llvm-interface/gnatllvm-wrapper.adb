@@ -1009,6 +1009,19 @@ package body GNATLLVM.Wrapper is
       return DI_Subrange_Allows_Member_C /= 0;
    end DI_Subrange_Allows_Member;
 
+   -----------------------------
+   -- DI_Nameless_Basic_Types --
+   -----------------------------
+
+   function DI_Nameless_Basic_Types return Boolean
+   is
+      function DI_Nameless_Basic_Types_C return LLVM_Bool
+        with Import => True, Convention => C,
+             External_Name => "DI_Nameless_Basic_Types";
+   begin
+      return DI_Nameless_Basic_Types_C /= 0;
+   end DI_Nameless_Basic_Types;
+
    function Create_Global_Variable_Declaration
      (Builder : DI_Builder_T;
       Scope : Metadata_T;

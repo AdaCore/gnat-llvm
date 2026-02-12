@@ -32,6 +32,41 @@ EOF
     rm $filename
 }
 
+# Test that invokes a DIBuilder method.
+call_test() {
+    defname="$1"
+    program="$2"
+    filename=obj/test_${defname}.cpp
+    exe=obj/test_${defname}
+
+    # Just include whatever headers are required by any test.
+    cat <<EOF > $filename
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/DIBuilder.h"
+#include "llvm/IR/DebugInfo.h"
+using namespace llvm;
+int main ()
+{
+  LLVMContext context;
+  Module mod ("test", context);
+  DIBuilder builder (mod);
+  $program
+  return 0;
+}
+EOF
+
+    if g++ $cxxflags $ldflags -o $exe $filename; then
+	export LD_LIBRARY_PATH=$($llvm_config --libdir):$LD_LIBRARY_PATH
+	if $exe ; then
+	    echo "#define GNAT_LLVM_$defname" >obj/def_${defname}.h
+	fi
+	rm $exe
+   fi
+
+    rm $filename
+}
+
 # Test a ".ll" file to see if llvm-as parses it.
 ll_test() {
     defname="$1"
@@ -68,6 +103,11 @@ api_test HAVE_SUBRANGE_TYPE_EXTENSION "DIDerivedType *call(DISubrangeType::Bound
 # DW_OP_ops.  A single test is sufficient because these all landed in
 # the same patch.
 ll_test HAVE_DW_EXPRESSION_EXTENSIONS '!named = !{!DIExpression(DW_OP_push_object_address, DW_OP_lit0, DW_OP_lit0, DW_OP_neg, DW_OP_abs, DW_OP_rot, DW_OP_rot, DW_OP_rot, DW_OP_plus, DW_OP_plus)}' &
+
+# Check that createBasicType will accept an empty name.  Note that
+# this can't be checked via a '.ll' file, as LLVM accepted nameless
+# types made that way.
+call_test HAVE_NAMELESS_BASIC_TYPE 'builder.createBasicType("", 32, dwarf::DW_ATE_unsigned, DINode::FlagZero);'
 
 wait
 

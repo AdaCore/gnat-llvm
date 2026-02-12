@@ -766,6 +766,28 @@ package body CCG.Instructions is
       then
          return Our_Op;
 
+      --  If we're truncating to an i1, we must mask to a one or zero if
+      --  it's being used in a Store, Select or branch.
+
+      elsif Opc = Op_Trunc and then Dest_T = Bit_T then
+         declare
+            V_Use : Use_T := Get_First_Use (V);
+
+         begin
+            while Present (V_Use) loop
+               if not Acts_As_Instruction (Get_User (V_Use))
+                 or else Get_Opcode (Get_User (V_Use))
+                         in Op_Store | Op_Select | Op_Br
+               then
+                  return "(" & Our_Op & " & 1)";
+               end if;
+
+               V_Use := Get_Next_Use (V_Use);
+            end loop;
+
+            return Our_Op;
+         end;
+
       --  If we're zero-extending a value that's known to be a comparison
       --  result, we do nothing since we know that the value is already
       --  either a zero or one.

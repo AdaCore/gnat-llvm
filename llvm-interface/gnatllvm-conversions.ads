@@ -53,7 +53,10 @@ package GNATLLVM.Conversions is
      with Pre  => Is_Data (V) and then Present (GT)
                   and then Is_Elementary_Type (V),
           Post => Is_Data (Convert'Result)
-                  and then Is_Elementary_Type (Convert'Result);
+                  and then Is_Elementary_Type (Convert'Result)
+                  and then
+                     ((Overflowed (V) and then Overflowed (Convert'Result))
+                     or else not Overflowed (V));
    --  Convert V to the type GT, with both the types of V and GT being
    --  elementary. Flags are as for Emit_Conversion.
 

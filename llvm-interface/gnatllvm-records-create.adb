@@ -1084,9 +1084,11 @@ package body GNATLLVM.Records.Create is
       ---------------
 
       procedure Add_Field (E : Record_Field_Kind_Id) is
-         Clause      : constant Opt_N_Component_Clause_Id :=
-           Component_Clause (E);
          R_TE        : constant Record_Kind_Id            := Full_Scope (E);
+         ORC         : constant Record_Field_Kind_Id      :=
+           Original_Record_Component (E);
+         Clause      : constant Opt_N_Component_Clause_Id :=
+           Component_Clause (ORC);
          Def_GT      : constant GL_Type                   :=
            Default_GL_Type (Full_Etype (E));
          F_GT        : GL_Type                            := Full_GL_Type (E);
@@ -1100,10 +1102,10 @@ package body GNATLLVM.Records.Create is
          Error_Str   : constant String                    :=
            Field_Error_Msg (E, F_GT, True);
          Pos         : Uint                               :=
-           (if Present (Clause) then Component_Bit_Offset (E) else No_Uint);
+           (if Present (Clause) then Component_Bit_Offset (ORC) else No_Uint);
          Size        : Uint                               :=
-           (if not Known_Esize (E) then No_Uint
-            else   Validate_Size (E, Def_GT, Esize (E),
+           (if not Known_Esize (ORC) then No_Uint
+            else   Validate_Size (E, Def_GT, Esize (ORC),
                                   Zero_Allowed => Present (Clause)));
          Var_Depth   : Int                                := 0;
          Var_Align   : Nat                                := 0;

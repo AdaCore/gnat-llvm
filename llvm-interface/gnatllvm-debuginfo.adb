@@ -1088,16 +1088,15 @@ package body GNATLLVM.DebugInfo is
                         Uses_Full_Range :=
                           Ekind (TE) /= E_Modular_Integer_Subtype
                           and then Esize (TE) = RM_Size (TE);
-                        --  LLVM's DIBbuilder asserts that a basic
-                        --  type must not be nameless (even though
-                        --  this seems to be totally ok with both the
-                        --  DWARF standard and LLVM's own DWARF
-                        --  emitter).  So use a dummy name, again
-                        --  following a GCC convention, if needed.
                         Base_Type_Data :=
                           DI_Create_Basic_Type
-                            ((if Uses_Full_Range
-                              then Name
+                            ((if Uses_Full_Range then Name
+                              --  Some versions of LLVM's DIBbuilder
+                              --  asserts that a basic type must not
+                              --  be nameless, so use a dummy name,
+                              --  again following a GCC convention, if
+                              --  needed.
+                              elsif DI_Nameless_Basic_Types then ""
                               else Name & "___UMT"),
                              Size, DW_ATE_Unsigned, DI_Flag_Zero);
                      else

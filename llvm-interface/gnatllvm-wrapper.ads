@@ -600,6 +600,10 @@ package GNATLLVM.Wrapper is
    --  Return true if LLVM contains the patch that allows
    --  DISubrangeType to refer to a DIDerivedType.
 
+   function DI_Nameless_Basic_Types return Boolean;
+   --  Return true if LLVM contains the patch that allows nameless
+   --  basic types in the debuginfo.
+
    function Create_Global_Variable_Declaration
      (Builder : DI_Builder_T;
       Scope : Metadata_T;

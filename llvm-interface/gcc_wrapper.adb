@@ -29,7 +29,6 @@ with Ada.Text_IO;             use Ada.Text_IO;
 with Ada.Command_Line;        use Ada.Command_Line;
 with Ada.Strings.Fixed;       use Ada.Strings.Fixed;
 with GNAT.OS_Lib;             use GNAT.OS_Lib;
-with GNATLLVM;
 with Options.Target;          use Options.Target;
 
 with Gnatvsn; use Gnatvsn;
@@ -75,6 +74,11 @@ procedure GCC_Wrapper is
    Compiler             : Compiler_Type := Ada_Frontend;
    Verbose              : Boolean := False;
    S                    : String_Access;
+
+   function Ends_With (Switch, S : String) return Boolean is
+     (Switch'Length > S'Length
+     and then Switch (Switch'Last - S'Length + 1 .. Switch'Last) = S);
+   --  Return True if Switch ends with S
 
    function Argument_Exists (Arg : String) return Boolean;
    --  Check if Arg is already on the list.
@@ -377,7 +381,7 @@ begin
    for J in 1 .. Argument_Count loop
       declare
          Arg : constant String := Argument (J);
-         use GNATLLVM;
+
       begin
          if Arg'Length > 0 and then Arg (1) /= '-' then
             if (Ends_With (Arg, ".c")

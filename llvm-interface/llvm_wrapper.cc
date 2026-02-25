@@ -720,8 +720,8 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
                       bool MergeFunctions, bool PrepareForThinLTO,
                       bool PrepareForLTO, bool RerollLoops, bool EnableFuzzer,
                       bool EnableAddressSanitizer, const char *SanCovAllowList,
-                      const char *SanCovIgnoreList, const char *PassPluginName,
-                      char **ErrorMessage) {
+                      const char *SanCovIgnoreList,
+                      const char **PassPluginNames, char **ErrorMessage) {
   // This code is derived from EmitAssemblyWithNewPassManager in clang
 
   std::optional<PGOOptions> PGOOpt;
@@ -746,22 +746,23 @@ LLVM_Optimize_Module (Module *M, TargetMachine *TM, int CodeOptLevel,
 
   PassBuilder PB (TM, PTO, PGOOpt, &PIC);
 
-  if (PassPluginName != nullptr)
-    {
-      auto Plugin = PassPlugin::Load (PassPluginName);
+  if (PassPluginNames != nullptr) {
+    while (*PassPluginNames != nullptr) {
+      auto Plugin = PassPlugin::Load(*PassPluginNames);
 
-      if (auto Err = Plugin.takeError())
-        {
-          handleAllErrors(std::move(Err), [&](const StringError &Err) {
-            if (ErrorMessage != nullptr)
-              *ErrorMessage = strdup (Err.getMessage().c_str());
-          });
+      if (auto Err = Plugin.takeError()) {
+        handleAllErrors(std::move(Err), [&](const StringError &Err) {
+          if (ErrorMessage != nullptr)
+            *ErrorMessage = strdup(Err.getMessage().c_str());
+        });
 
-          return 1;
-        }
+        return 1;
+      }
 
       Plugin->registerPassBuilderCallbacks(PB);
+      PassPluginNames++;
     }
+  }
 
   FAM.registerPass ([&] { return PB.buildDefaultAAPipeline (); });
 

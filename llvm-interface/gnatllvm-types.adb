@@ -2078,7 +2078,7 @@ package body GNATLLVM.Types is
 
             begin
                if not Overflowed (Result) and then not Is_Undef (Result) then
-                  return (False, Emit_Expression (N), No_Uint);
+                  return (False, Result, No_Uint);
                else
                   SO_Info :=
                     Create_Node (Dynamic_Val, +Var_Idx_For_BA);

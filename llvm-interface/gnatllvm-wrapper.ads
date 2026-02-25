@@ -321,7 +321,7 @@ package GNATLLVM.Wrapper is
       Enable_Address_Sanitizer : Boolean;
       San_Cov_Allow_List       : String_Access;
       San_Cov_Ignore_List      : String_Access;
-      Pass_Plugin_Name         : String_Access;
+      Pass_Plugin_Names        : System.Address;
       Error_Message            : System.Address) return Boolean;
    --  Perform optimizations on the module. The function's interface mimics our
    --  LLVM bindings (e.g., LLVM.Core) by taking the address of a value of type

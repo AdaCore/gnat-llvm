@@ -17,6 +17,7 @@
 
 with Options;        use Options;
 with Options.Target; use Options.Target;
+with Table;
 
 package GNATLLVM.Codegen is
 
@@ -101,7 +102,6 @@ package GNATLLVM.Codegen is
    Prepare_For_LTO         : Boolean       := False;
    Reroll_Loops            : Boolean       := False;
    No_Tail_Calls           : Boolean       := False;
-   Pass_Plugin_Name        : String_Access := null;
    --  Switch options for optimization
 
    Enable_Fuzzer            : Boolean       := False;
@@ -145,9 +145,20 @@ package GNATLLVM.Codegen is
    function Get_LLVM_Error_Msg (Msg : Ptr_Err_Msg_Type) return String;
    --  Get the LLVM error message that was stored in Msg
 
+   --  ??? The following should be moved back to the body once VC21-031 aka
+   --  eng/toolchain/gnat-llvm#361 is fixed.
+
    Libdevice_Filename : String_Access :=
      new String'("/usr/local/cuda/nvvm/libdevice/libdevice.10.bc");
    --  Location for libdevice for CUDA.
-   --  ??? This should be moved back to the body once VC21-031 is fixed
+
+   package Plugins is new Table.Table
+     (Table_Component_Type => String_Access,
+      Table_Index_Type     => Interfaces.C.int,
+      Table_Low_Bound      => 1,
+      Table_Initial        => 5,
+      Table_Increment      => 1,
+      Table_Name           => "Plugins");
+   --  Pass plugins to load
 
 end GNATLLVM.Codegen;

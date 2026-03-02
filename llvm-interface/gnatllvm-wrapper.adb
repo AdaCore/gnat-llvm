@@ -360,7 +360,7 @@ package body GNATLLVM.Wrapper is
       Enable_Address_Sanitizer : Boolean;
       San_Cov_Allow_List       : String_Access;
       San_Cov_Ignore_List      : String_Access;
-      Pass_Plugin_Name         : String_Access;
+      Pass_Plugin_Names        : System.Address;
       Error_Message            : System.Address) return Boolean
    is
       function Maybe_To_C (S : String_Access) return chars_ptr
@@ -383,7 +383,7 @@ package body GNATLLVM.Wrapper is
          Enable_Address_Sanitizer : LLVM_Bool;
          San_Cov_Allow_List       : chars_ptr;
          San_Cov_Ignore_List      : chars_ptr;
-         Pass_Plugin_Name         : chars_ptr;
+         Pass_Plugin_Names        : System.Address;
          Error_Message            : System.Address) return LLVM_Bool
         with Import, Convention => C, External_Name => "LLVM_Optimize_Module";
       Need_Loop_Info_B : constant LLVM_Bool := Boolean'Pos (Need_Loop_Info);
@@ -399,7 +399,6 @@ package body GNATLLVM.Wrapper is
       Fuzzer_B         : constant LLVM_Bool := Boolean'Pos (Enable_Fuzzer);
       ASan_B           : constant LLVM_Bool :=
         Boolean'Pos (Enable_Address_Sanitizer);
-      Pass_PN_Ptr      : chars_ptr          := Maybe_To_C (Pass_Plugin_Name);
       Allow_List_Ptr   : chars_ptr          :=
         Maybe_To_C (San_Cov_Allow_List);
       Ignore_List_Ptr  : chars_ptr          :=
@@ -412,10 +411,9 @@ package body GNATLLVM.Wrapper is
           (Module, Target_Machine, Code_Opt_Level, Size_Opt_Level,
            Need_Loop_Info_B, Unroll_B, Loop_Vect_B, SLP_Vect_B,
            Merge_B, Thin_LTO_B, LTO_B, Reroll_B, Fuzzer_B, ASan_B,
-           Allow_List_Ptr, Ignore_List_Ptr, Pass_PN_Ptr, Error_Message);
+           Allow_List_Ptr, Ignore_List_Ptr, Pass_Plugin_Names, Error_Message);
       Free (Allow_List_Ptr);
       Free (Ignore_List_Ptr);
-      Free (Pass_PN_Ptr);
       return Result /= 0;
    end LLVM_Optimize_Module;
 

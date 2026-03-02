@@ -41,7 +41,6 @@ with Osint;    use Osint;
 with Osint.C;  use Osint.C;
 with Output;   use Output;
 with Switch;   use Switch;
-with Table;
 with Targparm; use Targparm;
 
 with GNATLLVM.Helper;  use GNATLLVM.Helper;
@@ -87,6 +86,7 @@ package body GNATLLVM.Codegen is
    begin
       if not GNAT_LLVM_Initialized then
          Switches.Init;
+         Plugins.Init;
          Scan_Command_Line;
          Initialize_LLVM_Target;
          Always_Compatible_Rep_On_Target := False;
@@ -410,8 +410,7 @@ package body GNATLLVM.Codegen is
             San_Cov_Ignore_List := new String'(Name);
          end;
       elsif Starts_With (S, "-fpass-plugin=") then
-         To_Free := Pass_Plugin_Name;
-         Pass_Plugin_Name := new String'(Switch_Value (S, "-fpass-plugin="));
+         Plugins.Append (new String'(Switch_Value (S, "-fpass-plugin=")));
       elsif Starts_With (S, "-llvm-") then
          Switches.Append (new String'(Switch_Value (S, "-llvm")));
       elsif C_Process_Switch (S) then
@@ -826,29 +825,41 @@ package body GNATLLVM.Codegen is
          end if;
 
          if Verified then
-            if LLVM_Optimize_Module
-              (Module, Target_Machine,
-               Code_Opt_Level           => Code_Opt_Level,
-               Size_Opt_Level           => Size_Opt_Level,
-               Need_Loop_Info           => Emit_C,
-               Unroll_Loops             => Unroll_Loops,
-               Loop_Vectorization       => Loop_Vectorization,
-               SLP_Vectorization        => SLP_Vectorization,
-               Merge_Functions          => Merge_Functions,
-               Prepare_For_Thin_LTO     => Prepare_For_Thin_LTO,
-               Prepare_For_LTO          => Prepare_For_LTO,
-               Reroll_Loops             => Reroll_Loops,
-               Enable_Fuzzer            => Enable_Fuzzer,
-               Enable_Address_Sanitizer => Enable_Address_Sanitizer,
-               San_Cov_Allow_List       => San_Cov_Allow_List,
-               San_Cov_Ignore_List      => San_Cov_Ignore_List,
-               Pass_Plugin_Name         => Pass_Plugin_Name,
-               Error_Message            => Err_Msg'Address)
-            then
-               Error_Msg_N ("could not optimize: " &
-                              Get_LLVM_Error_Msg (Err_Msg),
-                            GNAT_Root);
-            end if;
+            declare
+               type Plugin_Array is array (1 .. Plugins.Last + 1) of Address;
+               --  Null-terminated array of C strings to hold plugin names
+
+               Plugins_C : Plugin_Array := (others => Null_Address);
+            begin
+               for J in 1 .. Plugins.Last loop
+                  Plugins_C (J) := Plugins.Table (J).all'Address;
+               end loop;
+
+               if LLVM_Optimize_Module
+                    (Module,
+                     Target_Machine,
+                     Code_Opt_Level           => Code_Opt_Level,
+                     Size_Opt_Level           => Size_Opt_Level,
+                     Need_Loop_Info           => Emit_C,
+                     Unroll_Loops             => Unroll_Loops,
+                     Loop_Vectorization       => Loop_Vectorization,
+                     SLP_Vectorization        => SLP_Vectorization,
+                     Merge_Functions          => Merge_Functions,
+                     Prepare_For_Thin_LTO     => Prepare_For_Thin_LTO,
+                     Prepare_For_LTO          => Prepare_For_LTO,
+                     Reroll_Loops             => Reroll_Loops,
+                     Enable_Fuzzer            => Enable_Fuzzer,
+                     Enable_Address_Sanitizer => Enable_Address_Sanitizer,
+                     San_Cov_Allow_List       => San_Cov_Allow_List,
+                     San_Cov_Ignore_List      => San_Cov_Ignore_List,
+                     Pass_Plugin_Names        => Plugins_C'Address,
+                     Error_Message            => Err_Msg'Address)
+               then
+                  Error_Msg_N
+                    ("could not optimize: " & Get_LLVM_Error_Msg (Err_Msg),
+                     GNAT_Root);
+               end if;
+            end;
          end if;
       end if;
 

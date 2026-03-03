@@ -19,6 +19,7 @@ with Errout;   use Errout;
 with Output;   use Output;
 with Sem_Aux;  use Sem_Aux;
 with Sem_Eval; use Sem_Eval;
+with Set_Targ; use Set_Targ;
 with Sinput;   use Sinput;
 with Stand;    use Stand;
 with Stringt;  use Stringt;
@@ -213,6 +214,43 @@ package body GNATLLVM.Utils is
             return No_Uint;
       end case;
    end Get_Uint_Value;
+
+   ----------------
+   -- Stand_Type --
+   ----------------
+
+   function Stand_Type
+     (Size : Nat; Unsigned : Boolean := False) return Opt_Integer_Kind_Id
+   is
+      type Type_Entry is record
+         Size_Value    : Nat;
+         Signed_Type   : Opt_Signed_Integer_Kind_Id;
+         Unsigned_Type : Opt_Integer_Kind_Id;
+      end record;
+
+      Type_Table : constant array (1 .. 6) of Type_Entry :=
+        ((Char_Size,
+          Standard_Short_Short_Integer,
+          Standard_Short_Short_Unsigned),
+         (Short_Size, Standard_Short_Integer, Standard_Short_Unsigned),
+         (Int_Size, Standard_Integer, Standard_Unsigned),
+         (Long_Size, Standard_Long_Integer, Standard_Long_Unsigned),
+         (Long_Long_Size,
+          Standard_Long_Long_Integer,
+          Standard_Long_Long_Unsigned),
+         (Long_Long_Long_Size,
+          Standard_Long_Long_Long_Integer,
+          Standard_Long_Long_Long_Unsigned));
+
+   begin
+      for Ty of Type_Table loop
+         if Ty.Size_Value = Size then
+            return (if Unsigned then Ty.Unsigned_Type else Ty.Signed_Type);
+         end if;
+      end loop;
+
+      return Empty;
+   end Stand_Type;
 
    ----------------------
    -- Check_Convention --

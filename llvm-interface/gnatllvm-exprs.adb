@@ -1464,7 +1464,7 @@ package body GNATLLVM.Exprs is
                elsif Attr = Attribute_Last then
                   V := High;
                elsif Attr = Attribute_Range_Length then
-                  V := Bounds_To_Length (Low, High, GT);
+                  V := Bounds_To_Length (Low, High);
                else
                   pragma Assert (Decls_Only);
                   V := Emit_Undef (GT);

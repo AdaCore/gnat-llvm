@@ -738,7 +738,11 @@ package body GNATLLVM.Types is
       --  If the number of elements overflowed, raise Storage_Error. But
       --  check for the pathological case of an array of zero-sized elements.
 
-      if Overflowed (Num_Elts) or else Is_Undef (Num_Elts) then
+      if Overflowed (Num_Elts) or else Is_Undef (Num_Elts)
+        or else (Is_Unsigned_Type (Num_Elts)
+                 and then Is_A_Constant_Int (Num_Elts)
+                 and then ULL_To_LLI (Get_Const_Int_Value_ULL (Num_Elts)) < 0)
+      then
          if Get_Type_Size (Element_GT) = 0 then
             Num_Elts := Size_Const_Int (1);
          else
@@ -2018,8 +2022,7 @@ package body GNATLLVM.Types is
 
                            LHS    := Emit_Expr (LB);
                            RHS    := Emit_Expr (HB);
-                           Result := Bounds_To_Length (LHS, RHS,
-                                                       Full_GL_Type (N));
+                           Result := Bounds_To_Length (LHS, RHS);
                         end;
 
                      elsif Attr in Attribute_Min | Attribute_Max then

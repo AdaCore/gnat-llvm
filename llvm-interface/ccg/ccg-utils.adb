@@ -1793,10 +1793,13 @@ package body CCG.Utils is
         (if As_LHS then Designated_Type (A_MD) else A_MD);
 
    begin
-     --  Never cast to a C aggregate or function type because it's useless
-     --  and can cause errors with some compilers.
+      --  Never cast to a C aggregate or function type because it's useless
+      --  and can cause errors with some compilers. Never cast an integer
+      --  because it's useless.
 
-      if Class (MD) in Struct_Class | Array_Class | Function_Class then
+      if Class (MD) in Struct_Class | Array_Class | Function_Class
+        or else Is_A_Constant_Int (V)
+      then
          return +V;
 
       --  If V is a function that needs a "nest" parameter, we must cast

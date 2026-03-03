@@ -626,26 +626,30 @@ package GNATLLVM.GLValue is
    --  any typing information, so we just copy it from an existing value.
 
    function G_Is (V : GL_Value; GT : GL_Type) return GL_Value is
-     (GM (+V, GT, Type_Of (V), Relationship (V), V))
+     (GM (+V, GT, Type_For_Relationship (GT, Relationship (V)),
+          Relationship (V), V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is'Result);
    --  Constructor for case where we want to show that V has a different type
 
    function G_Is_Ref (V : GL_Value; GT : GL_Type) return GL_Value is
-     (GM (+V, GT, Type_Of (V), Ref (Relationship (V)), V))
+     (GM (+V, GT, Type_For_Relationship (GT, Ref (Relationship (V))),
+          Ref (Relationship (V)), V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is_Ref'Result);
    --  Constructor for case where we want to show that V has a different type
 
    function G_Is (V : GL_Value; T : GL_Value) return GL_Value is
-     (GM (+V, Related_Type (T), Type_Of (V), Relationship (V), V))
+     (GM (+V, Related_Type (T),
+          Type_For_Relationship (Related_Type (T), Relationship (V)),
+          Relationship (V), V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is'Result);
 
    function G_Is_Relationship
      (V : GL_Value; GT : GL_Type; R : GL_Relationship) return GL_Value
    is
-     (GM (+V, GT, Type_Of (V), R, V))
+     (GM (+V, GT, Type_For_Relationship (GT, R), R, V))
      with Pre  => Present (V) and then Present (GT),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -654,7 +658,8 @@ package GNATLLVM.GLValue is
    function G_Is_Relationship
      (V : GL_Value; T : GL_Value; R : GL_Relationship) return GL_Value
    is
-     (GM (+V, Related_Type (T), Type_Of (V), R, V))
+     (GM (+V, Related_Type (T), Type_For_Relationship (Related_Type (T), R),
+          R, V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type
@@ -669,7 +674,9 @@ package GNATLLVM.GLValue is
    --  different relationship.
 
    function G_Is_Relationship (V : GL_Value; T : GL_Value) return GL_Value is
-      (GM (+V, Related_Type (T), Type_Of (V), Relationship (T), V))
+     (GM (+V, Related_Type (T),
+          Type_For_Relationship (Related_Type (T), Relationship (T)),
+          Relationship (T), V))
      with Pre  => Present (V) and then Present (T),
           Post => Present (G_Is_Relationship'Result);
    --  Constructor for case where we want to show that V has a different type

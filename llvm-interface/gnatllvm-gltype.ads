@@ -176,6 +176,17 @@ package GNATLLVM.GLType is
    --  Return the number of unused bits that are at the end of objects
    --  of type GT.
 
+   function Wider_GL_Type
+     (GT : GL_Type; Unsigned : Boolean := False) return GL_Type
+   with Pre  => Present (GT),
+        Post => Get_Scalar_Bit_Size (Wider_GL_Type'Result) >=
+                Get_Scalar_Bit_Size (GT)
+                and (not Unsigned
+                     or else Is_Unsigned_Type (Wider_GL_Type'Result));
+   --  If GT is narrower than a word, return a type of the same
+   --  signedness that's larger than GT. If Unsigned, force the type
+   --  to be unsigned.
+
    --  Here are the access function to obtain fields from a GL_Type.
    --  Many are overloaded from the functions that obtain these fields from
    --  a GNAT type.

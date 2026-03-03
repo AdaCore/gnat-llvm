@@ -124,6 +124,7 @@ package GNATLLVM is
    --  And conversion routine from LLI to Uint
 
    function LLI_To_ULL is new Ada.Unchecked_Conversion (LLI, ULL);
+   function ULL_To_LLI is new Ada.Unchecked_Conversion (ULL, LLI);
 
    function Int_To_ULL (I : Int) return ULL is
       (LLI_To_ULL (LLI (I)));

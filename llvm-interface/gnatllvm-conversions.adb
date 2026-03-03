@@ -685,13 +685,11 @@ package body GNATLLVM.Conversions is
       --  If converting pointer to/from integer, copy the bits using the
       --  appropriate instruction.
 
-      elsif not Tagged_Pointers
-        and then Dest_Access
+      elsif not Tagged_Pointers and then Dest_Access
         and then Is_Integer_Type (In_V)
       then
          Subp := Int_To_Ptr'Access;
-      elsif not Tagged_Pointers
-        and then Is_Integer_Type (GT)
+      elsif not Tagged_Pointers and then Is_Integer_Type (GT)
         and then Src_Access
       then
          Subp := Ptr_To_Int'Access;
@@ -705,9 +703,7 @@ package body GNATLLVM.Conversions is
       --  converting between different address types, we therefore don't do
       --  anything beyond changing the Ada type.
 
-      elsif Tagged_Pointers
-        and then Is_Address (In_V)
-        and then Is_Address (GT)
+      elsif Tagged_Pointers and then Is_Address (In_V) and then Is_Address (GT)
       then
          return G_Is (In_V, GT);
 
@@ -715,8 +711,7 @@ package body GNATLLVM.Conversions is
       --  derived from the null pointer; it can't be dereferenced, but it
       --  can be combined with valid pointers, inheriting tags.
 
-      elsif Tagged_Pointers
-        and then Is_Integer_Type (In_V)
+      elsif Tagged_Pointers and then Is_Integer_Type (In_V)
         and then (Dest_Access or else Is_Address (GT))
       then
          Subp := Null_Derived_Ptr'Access;
@@ -725,23 +720,22 @@ package body GNATLLVM.Conversions is
       --  we need to extract the pointer's address. Afterwards, we may need
       --  to truncate or zero-extend the resulting integer.
 
-      elsif Tagged_Pointers
-        and then (Src_Access or else Is_Address (In_V))
+      elsif Tagged_Pointers and then (Src_Access or else Is_Address (In_V))
         and then Is_Integer_Type (GT)
       then
          Value := Get_Pointer_Address (Value);
 
          declare
             Addr_GT   : constant GL_Type := Related_Type (Value);
-            Addr_Size : constant Nat :=
+            Addr_Size : constant Nat     :=
               Nat (ULL'(Get_Scalar_Bit_Size (Addr_GT)));
+
          begin
             if GT = Addr_GT then
                return Value;
             else
                Subp :=
-                 (if   Dest_Size < Addr_Size
-                  then Trunc'Access
+                 (if   Dest_Size < Addr_Size then Trunc'Access
                   else Z_Ext'Access);
             end if;
          end;

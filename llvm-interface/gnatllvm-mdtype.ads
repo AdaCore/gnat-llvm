@@ -224,11 +224,10 @@ package GNATLLVM.MDType is
      (Bits     : Nat;
       Unsigned : Boolean := False;
       Unknown  : Boolean := False) return MD_Type
-     with Post => Is_Unsigned (Int_Ty'Result) = Unsigned
-                  and then Is_Signed (Int_Ty'Result) =
-                           (not Unknown and not Unsigned)
+     with Post => Int_Bits (Int_Ty'Result) = Bits
                   and then Is_Unknown_Sign (Int_Ty'Result) = Unknown
-                  and then Int_Bits (Int_Ty'Result) = Bits;
+                  and then (Unknown
+                            or else Is_Unsigned (Int_Ty'Result) = Unsigned);
    --  Make an integer type with specified bitsize and signedness.
 
    function Signed_Type (MD : MD_Type) return MD_Type

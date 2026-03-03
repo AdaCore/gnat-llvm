@@ -1685,17 +1685,34 @@ package body CCG.Utils is
                       then Actual_Type (Get_Operand2 (V), As_LHS)
                       else Actual_Type (Get_Operand1 (V), As_LHS));
 
-            --  Similarly for integer arithmetic operations that don't
-            --  force signedness, except that we need to deal with C
-            --  integral promotion.
+            --  For integer arithmetic operations that don't
+            --  force signedness, we need to deal both with C integral
+            --  promotion and handling when the signedness differs.
 
             when Op_Add | Op_Sub | Op_Mul | Op_Shl | Op_And | Op_Or | Op_Xor =>
 
-               MD := (if   Get_Is_Decl_Output (Get_Operand1 (V))
-                      then Actual_Type (Get_Operand1 (V), As_LHS)
-                      else Actual_Type (Get_Operand0 (V), As_LHS));
-               MD := (if   Int_Bits (MD) >= Int_Size then MD
-                      else Int_Ty (Int_Bits (MD), Is_Unsigned (MD)));
+               declare
+                  MD0   : constant MD_Type :=
+                    Actual_Type (Get_Operand0 (V), As_LHS);
+                  MD1   : constant MD_Type :=
+                    Actual_Type (Get_Operand1 (V), As_LHS);
+                  P_MD0 : constant MD_Type :=
+                    (if   Int_Bits (MD0) >= Int_Size then MD0
+                     else Int_Ty (Int_Bits (MD0), Is_Unsigned (MD0),
+                                 Is_Unknown_Sign (MD0)));
+                  P_MD1 : constant MD_Type :=
+                    (if   Int_Bits (MD1) >= Int_Size then MD1
+                     else Int_Ty (Int_Bits (MD1), Is_Unsigned (MD1),
+                                 Is_Unknown_Sign (MD1)));
+
+               begin
+                  pragma Assert (Int_Bits (P_MD0) = Int_Bits (P_MD1));
+                  MD := Int_Ty (Int_Bits (P_MD0),
+                                Is_Unsigned (P_MD0)
+                                or else Is_Unsigned (P_MD1),
+                                Is_Unknown_Sign (P_MD0)
+                                or else Is_Unknown_Sign (P_MD1));
+               end;
 
             --  There are some operations where the input type is the same
             --  as the output type. We can get a return here in unusual

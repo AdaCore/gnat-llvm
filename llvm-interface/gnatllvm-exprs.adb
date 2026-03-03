@@ -1408,14 +1408,10 @@ package body GNATLLVM.Exprs is
             V := Ptr_To_Int (Get (V, Reference_For_Integer), GT,
                              "attr.address");
 
-            --  Now add in any bit offset. If the offset is zero don't try
-            --  to add it because the code that we emit in this case is
-            --  unsuitable for constant initializers.
+            --  Now add in any bytes contains in the bit offset. Note that
+            --  we're not rounding here: we want the address of the first bit.
 
-            return
-              (if   Bits = 0
-               then V
-               else Address_Add (V, Const_Int (Address_GL_Type, Bits / BPU)));
+            return Address_Add (V, Const_Int (Address_GL_Type, Bits / BPU));
 
          when Attribute_Pool_Address =>
 
@@ -1468,7 +1464,7 @@ package body GNATLLVM.Exprs is
                elsif Attr = Attribute_Last then
                   V := High;
                elsif Attr = Attribute_Range_Length then
-                     V := Bounds_To_Length (Low, High, GT);
+                  V := Bounds_To_Length (Low, High, GT);
                else
                   pragma Assert (Decls_Only);
                   V := Emit_Undef (GT);

@@ -1041,6 +1041,7 @@ package body GNATLLVM.Instructions is
      (C_If           : GL_Value;
       C_Then, C_Else : Basic_Block_T;
       Optimize       : Boolean := True) is
+
    begin
       if Optimize and then C_If = Const_True then
          Build_Br (C_Then);
@@ -1226,6 +1227,7 @@ package body GNATLLVM.Instructions is
       TBAA        : Metadata_T := No_Metadata_T;
       Scope       : Metadata_T := No_Metadata_T;
       NoAlias     : Metadata_T := No_Metadata_T) is
+
    begin
       Discard (Build_MemMove (IR_Builder, +Dst, unsigned (Dst_Align), +Src,
                               unsigned (Src_Align), +Size, Is_Volatile, TBAA,
@@ -1814,7 +1816,7 @@ package body GNATLLVM.Instructions is
       Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
       Name   : String := "") return GL_Value
-     is
+   is
      (Initialize_TBAA
         (Initialize_Alignment (G (Call_Internal (Func, +Fn_MD, Args, Name),
                                   Return_GL_Type (Func),
@@ -1831,7 +1833,7 @@ package body GNATLLVM.Instructions is
       Args  : GL_Value_Array;
       GT    : GL_Type;
       Name  : String := "") return GL_Value
-     is
+   is
      (Initialize_TBAA
         (Initialize_Alignment (G (Call_Internal (Func, +Fn_MD, Args, Name),
                                   GT, Fn_Return_Type (Func))),
@@ -1845,7 +1847,7 @@ package body GNATLLVM.Instructions is
      (Func : GL_Value;
       Args : GL_Value_Array;
       Name : String := "") return GL_Value
-     is
+   is
      (Initialize_TBAA
         (Initialize_Alignment (G (Call_Internal
                                     (Func, Get_Function_Type (Func), Args,
@@ -1863,7 +1865,7 @@ package body GNATLLVM.Instructions is
       Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
       Name   : String := "") return GL_Value
-     is
+   is
      (Initialize_TBAA
         (Initialize_Alignment (G_Ref (Call_Internal (Func, +Fn_MD, Args, Name),
                                       Return_GL_Type (Func),
@@ -1880,7 +1882,7 @@ package body GNATLLVM.Instructions is
       Args   : GL_Value_Array;
       R      : GL_Relationship;
       Name   : String := "") return GL_Value
-     is
+   is
      (Initialize_TBAA
         (Initialize_Alignment (G (Call_Internal (Func, +Fn_MD, Args, Name),
                                   Return_GL_Type (Func), Return_Type (Fn_MD),
@@ -1896,7 +1898,7 @@ package body GNATLLVM.Instructions is
       Args : GL_Value_Array;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
-     is
+   is
      (Initialize_TBAA
         (Initialize_Alignment (G (Call_Internal
                                     (Func, Get_Function_Type (Func),
@@ -1923,7 +1925,8 @@ package body GNATLLVM.Instructions is
      (Func   : GL_Value;
       Fn_MD  : MD_Type;
       Args   : GL_Value_Array;
-      Name   : String := "") is
+      Name   : String := "")
+   is
    begin
       Discard (Call_Internal (Func, +Fn_MD, Args, Name));
    end Call;
@@ -1992,19 +1995,17 @@ package body GNATLLVM.Instructions is
    -- Get_Pointer_Address --
    -------------------------
 
-   function Get_Pointer_Address (Ptr : GL_Value) return GL_Value
-   is (G (+Call (Get_Get_Address_Fn, (1 => Bit_Cast (Ptr, Void_Ptr_MD))),
+   function Get_Pointer_Address (Ptr : GL_Value) return GL_Value is
+     (G (+Call (Get_Get_Address_Fn, (1 => Bit_Cast (Ptr, Void_Ptr_MD))),
           Address_GL_Type, Address_MD));
 
    -------------------------
    -- Set_Pointer_Address --
    -------------------------
 
-   function Set_Pointer_Address (Ptr, Addr : GL_Value) return GL_Value
-   is (Bit_Cast
-         (Call
-            (Get_Set_Address_Fn,
-             (1 => Bit_Cast (Ptr, Void_Ptr_MD), 2 => Addr)),
-          Ptr));
+   function Set_Pointer_Address (Ptr, Addr : GL_Value) return GL_Value is
+     (Bit_Cast (Call (Get_Set_Address_Fn,
+                      (1 => Bit_Cast (Ptr, Void_Ptr_MD), 2 => Addr)),
+                Ptr));
 
 end GNATLLVM.Instructions;

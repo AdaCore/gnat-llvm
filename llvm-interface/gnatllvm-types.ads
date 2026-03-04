@@ -404,8 +404,8 @@ package GNATLLVM.Types is
    function To_Size_Type (V : GL_Value) return GL_Value
      with Pre  => Present (V),
           Post => Type_Of (To_Size_Type'Result) = Size_MD;
-   --  Convert V to Size_Type. This is always Size_Type's width, but may
-   --  actually be a different GNAT type.
+   --  Convert V to Size_Type. This is always Size_Type's width and
+   --  signedness, but may actually be a different GNAT type.
 
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return Nat
@@ -500,7 +500,8 @@ package GNATLLVM.Types is
      with Pre => Present (V);
 
    function Related_Type (V : IDS) return GL_Type is
-     (Related_Type (V.Value))
+     (if   No (V) or else V = Var_IDS then Size_GL_Type
+      else Related_Type (V.Value))
      with Pre => Present (V);
 
    function Get_Type_Size
@@ -677,7 +678,8 @@ package GNATLLVM.Types is
         and then Is_Const_Int_Value (V.C_Value, 1));
 
    function Related_Type (V : BA_Data) return GL_Type is
-     (Related_Type (V.C_Value))
+     (if   No (V) or else No (V.C_Value) then Size_GL_Type
+      else Related_Type (V.C_Value))
      with Pre => Present (V);
 
    function Const

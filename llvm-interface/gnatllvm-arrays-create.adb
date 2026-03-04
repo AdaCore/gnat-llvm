@@ -20,6 +20,7 @@ with Snames;   use Snames;
 with Table;    use Table;
 
 with GNATLLVM.Compile;      use GNATLLVM.Compile;
+with GNATLLVM.Conversions;  use GNATLLVM.Conversions;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
 with GNATLLVM.Types.Create; use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;        use GNATLLVM.Utils;
@@ -415,9 +416,11 @@ package body GNATLLVM.Arrays.Create is
 
             if Idx_Const then
                Dim_Info.Bound_Range :=
-                 Bounds_To_Length (Size_Const_Int (Dim_Info.Low.Cnst),
-                                   Size_Const_Int (Dim_Info.High.Cnst),
-                                   Size_GL_Type, Dim_Info.Not_Superflat);
+                 Convert
+                   (Bounds_To_Length (Const_Int (Index_BT, Dim_Info.Low.Cnst),
+                                      Const_Int (Index_BT, Dim_Info.High.Cnst),
+                                      Dim_Info.Not_Superflat),
+                    Size_GL_Type);
                Total_Size := Total_Size * Dim_Info.Bound_Range;
             else
                This_Nonnative := True;

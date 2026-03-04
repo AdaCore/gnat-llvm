@@ -147,7 +147,6 @@ package body GNATLLVM.Arrays is
 
       function Bounds_To_Length
         (In_Low, In_High : Result;
-         GT              : GL_Type;
          Not_Superflat   : Boolean := False) return Result;
 
       function Emit_Expr_For_Minmax
@@ -215,24 +214,19 @@ package body GNATLLVM.Arrays is
 
       function Bounds_To_Length
         (In_Low, In_High : Result;
-         GT              : GL_Type;
          Not_Superflat   : Boolean := False) return Result
       is
-         Low       : constant Result          := Convert (In_Low, GT);
-         High      : constant Result          := Convert (In_High, GT);
-         Ovfl_Low  : constant Boolean         := Overflowed (Low);
-         Ovfl_High : constant Boolean         := Overflowed (High);
-         Overflow  : constant Boolean         := Ovfl_Low or else Ovfl_High;
-         Comp_Low  : constant Result          :=
-           (if Overflow then In_Low else Low);
-         Comp_High : constant Result          :=
-           (if Overflow then In_High else High);
-         Comp_GT   : constant GL_Type         :=
-            (if    Ovfl_Low  then Related_Type (In_Low)
-             elsif Ovfl_High then Related_Type (In_High) else GT);
-         Const_0   : constant Result          := Const_Int (Comp_GT, Uint_0);
-         Const_1   : constant Result          := Const_Int (Comp_GT, Uint_1);
-         Cmp_Kind  : constant Int_Predicate_T :=
+         In_GT    : constant GL_Type         := Related_Type (In_Low);
+         Comp_GT  : constant GL_Type         :=
+           Wider_GL_Type (Base_GL_Type (In_GT));
+         Wide_GT  : constant GL_Type         := Wider_GL_Type (Comp_GT, True);
+         Low      : constant Result          := Convert (In_Low, Comp_GT);
+         High     : constant Result          := Convert (In_High, Comp_GT);
+         Const_0  : constant Result          := Const_Int (Comp_GT, Uint_0);
+         Const_1  : constant Result          := Const_Int (Comp_GT, Uint_1);
+         Wide_0   : constant Result          := Const_Int (Wide_GT, Uint_0);
+         Wide_1   : constant Result          := Const_Int (Wide_GT, Uint_1);
+         Cmp_Kind : constant Int_Predicate_T :=
            (if Is_Unsigned_Type (Comp_GT) then Int_UGT else Int_SGT);
          Res       : Result;
 
@@ -240,26 +234,29 @@ package body GNATLLVM.Arrays is
          --  If the low bound is 1, then this is either the max of zero and the
          --  high bound or the high bound if this is known not to be superflat.
 
-         if Comp_Low = Const_1 then
-            Res := (if   Not_Superflat then Comp_High
-                    else Build_Max (Comp_High, Const_0));
+         if Low = Const_1 then
+            Res := (if   Not_Superflat then High
+                    else Build_Max (High, Const_0));
 
          --  Otherwise, it's zero if this is flat or superflat and High -
          --  Low + 1 otherwise.
 
          else
-            Res := Comp_High - Comp_Low + Const_1;
+            --  We have to be careful here. If [Low, High] is the entire
+            --  range of Comp_GT, adding one to their difference will
+            --  overflow. But we need to be sure to do that subtraction
+            --  in Comp_GT in case of signedness differences.
+
+            Res := Convert (High - Low, Wide_GT) + Wide_1;
 
             if not Not_Superflat then
                Res := Build_Select
-                 (C_If   => I_Cmp (Cmp_Kind, Comp_Low, Comp_High, "is.empty"),
-                  C_Then => Const_0, C_Else => Res);
+                 (C_If   => I_Cmp (Cmp_Kind, Low, High, "is.empty"),
+                  C_Then => Wide_0, C_Else => Res);
             end if;
          end if;
 
-         --  Finally convert result to output type
-
-         return Convert (Res, GT);
+         return Res;
       end Bounds_To_Length;
 
       --------------------------
@@ -312,7 +309,7 @@ package body GNATLLVM.Arrays is
                   begin
                      LHS := Emit_Expr_For_Minmax (LB, True);
                      RHS := Emit_Expr_For_Minmax (HB, False);
-                     return Bounds_To_Length (LHS, RHS, Full_GL_Type (N));
+                     return Bounds_To_Length (LHS, RHS);
                   end;
                else
                   pragma Assert (Attr in Attribute_Min | Attribute_Max);
@@ -521,8 +518,9 @@ package body GNATLLVM.Arrays is
          --  than trying to find some suitable type, we use Size_Type,
          --  which will also make thing simpler for some of our callers.
 
-         return Bounds_To_Length (Low_Bound, High_Bound, Size_GL_Type,
-                                  Array_Not_Superflat (TE, Dim));
+         return Convert (Bounds_To_Length (Low_Bound, High_Bound,
+                                           Array_Not_Superflat (TE, Dim)),
+                         Size_GL_Type);
       end Get_Array_Length;
 
       ------------------------
@@ -597,7 +595,6 @@ package body GNATLLVM.Arrays is
 
    function Bounds_To_Length
      (In_Low, In_High : GL_Value;
-      GT              : GL_Type;
       Not_Superflat   : Boolean := False) return GL_Value
      renames LLVM_Size.Bounds_To_Length;
 
@@ -703,7 +700,6 @@ package body GNATLLVM.Arrays is
 
    function Bounds_To_Length
      (In_Low, In_High : BA_Data;
-      GT              : GL_Type;
       Not_Superflat   : Boolean := False) return BA_Data
      renames BA_Size.Bounds_To_Length;
 

@@ -664,14 +664,15 @@ package body GNATLLVM.Conversions is
       --  constant to signed and the result will be negative or if this is
       --  an unchecked (but not non-truncating) conversion.
 
-      elsif Type_Of (In_V) = Type_Of (GT) and then not Is_Biased_GL_Type (In_V)
+      elsif Type_T'(+Type_Of (In_V)) = +Type_Of (GT)
+        and then not Is_Biased_GL_Type (In_V)
         and then not Is_Biased_GL_Type (GT)
         and then not (Is_Unchecked and then not No_Truncation)
       then
          return Mark_Overflowed (G_Is (In_V, GT),
                                  (not Dest_Uns and then Src_Uns
                                    and then Is_A_Constant_Int (In_V)
-                                   and then +In_V < ULL (0))
+                                   and then +In_V < LLI (0))
                                   or else In_Overflow);
 
       --  If we're converting between two GL_Types corresponding to the same

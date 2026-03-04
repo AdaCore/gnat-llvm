@@ -18,6 +18,7 @@
 with Lib;        use Lib;
 with Output;     use Output;
 with Repinfo;    use Repinfo;
+with Set_Targ;   use Set_Targ;
 with Sprint;     use Sprint;
 with Table;
 with Uintp.LLVM; use Uintp.LLVM;
@@ -1380,6 +1381,25 @@ package body GNATLLVM.GLType is
       end if;
 
    end Full_Designated_GL_Type;
+
+   -------------------
+   -- Wider_GL_Type --
+   -------------------
+
+   function Wider_GL_Type
+     (GT : GL_Type; Unsigned : Boolean := False) return GL_Type
+   is
+      Size          : constant Nat     :=
+        Byte_Align (Nat (Get_Scalar_Bit_Size (GT)));
+      Is_Small      : constant Boolean := Size < Bits_Per_Word;
+      New_Size      : constant Nat     :=
+        (if Is_Small then 2 * Size else Size);
+      Want_Unsigned : constant Boolean :=
+        Unsigned or else Is_Unsigned_Type (GT);
+
+   begin
+      return Full_GL_Type (Stand_Type (New_Size, Want_Unsigned));
+   end Wider_GL_Type;
 
    ------------------
    -- C_Set_Entity --

@@ -69,29 +69,6 @@ package body GNATLLVM.Compile is
    ------------------
 
    procedure GNAT_To_LLVM (GNAT_Root : N_Compilation_Unit_Id) is
-      function Stand_Type (Size : Nat) return Opt_Signed_Integer_Kind_Id;
-      --  Find a standard integer type with the specified size. If none,
-      --  return Empty.
-
-      function Stand_Type (Size : Nat) return Opt_Signed_Integer_Kind_Id is
-      begin
-         if Long_Long_Long_Size = Size then
-            return Standard_Long_Long_Long_Integer;
-         elsif Long_Long_Size = Size then
-            return Standard_Long_Long_Integer;
-         elsif Long_Size = Size then
-            return Standard_Long_Integer;
-         elsif Int_Size = Size then
-            return Standard_Integer;
-         elsif Short_Size = Size then
-            return Standard_Short_Integer;
-         elsif Char_Size = Size then
-            return Standard_Short_Short_Integer;
-         else
-            return Empty;
-         end if;
-      end Stand_Type;
-
       Size_Type   : Opt_Signed_Integer_Kind_Id;
       Int_32_Type : Opt_Signed_Integer_Kind_Id;
       Int_64_Type : Opt_Signed_Integer_Kind_Id;
@@ -111,7 +88,7 @@ package body GNATLLVM.Compile is
       Initialize_Environment;
       Thin_Pointer_Size := Set_Targ.Pointer_Size;
       Fat_Pointer_Size  := Thin_Pointer_Size * 2;
-      Size_Type         := Stand_Type (Set_Targ.Bits_Per_Word);
+      Size_Type         := Stand_Type (Bits_Per_Word);
       Int_32_Type       := Stand_Type (32);
       Int_64_Type       := Stand_Type (64);
 

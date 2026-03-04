@@ -98,6 +98,10 @@ package GNATLLVM.Utils is
    function Get_Uint_Value (N : N_Subexpr_Id) return Uint;
    --  If Node has a static Uint value, return it. Otherwise, return No_Uint
 
+   function Stand_Type
+     (Size : Nat; Unsigned : Boolean := False) return Opt_Integer_Kind_Id;
+   --  Return a type from Standard with the given bit width and signedness
+
    function Const_Int (T : Type_T; Value : Uint)
      return Value_T renames UI_To_LLVM;
    --  Return an LLVM value corresponding to the universal int Value

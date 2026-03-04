@@ -56,17 +56,12 @@ package GNATLLVM.Arrays is
 
    function Bounds_To_Length
      (In_Low, In_High : GL_Value;
-      GT              : GL_Type;
       Not_Superflat   : Boolean := False) return GL_Value
      with Pre  => Present (In_Low) and then Present (In_High)
-                  and then Present (GT)
-                  and then Type_T'(+Type_Of (In_Low)) = +Type_Of (In_High),
-          Post => Related_Type (Bounds_To_Length'Result) = GT;
+                  and then Type_T'(+Type_Of (In_Low)) = +Type_Of (In_High);
    --  Low and High are bounds of a discrete type. Compute the length of
-   --  that type, taking into account the superflat case, and do that
-   --  computation in GT. We would like to have the above test be that the
-   --  two types be identical, but that's too strict (for example, one
-   --  may be Integer and the other Integer'Base), so just check the width.
+   --  that type, taking into account the superflat case. The result will
+   --  be in the wider of the input type or Size_Type
 
    function Get_Bound_Alignment (GT : Array_Or_PAT_GL_Type) return Nat;
    --  Get the alignment of the Bounds part of array and data of GT
@@ -227,7 +222,6 @@ package GNATLLVM.Arrays is
 
    function Bounds_To_Length
      (In_Low, In_High : BA_Data;
-      GT              : GL_Type;
       Not_Superflat   : Boolean := False) return BA_Data;
 
    function Data_Index_In_BD_Type (V : GL_Value) return unsigned

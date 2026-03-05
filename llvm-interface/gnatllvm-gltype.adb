@@ -1389,16 +1389,19 @@ package body GNATLLVM.GLType is
    function Wider_GL_Type
      (GT : GL_Type; Unsigned : Boolean := False) return GL_Type
    is
+      Orig_Size     : constant Nat     := Nat (Get_Scalar_Bit_Size (GT));
+      Pow2_Size     : constant Nat     :=
+        (case Orig_Size is
+           when 1 ..  8 => 8,   when 9 .. 16 => 16, when 17 .. 32 => 32,
+           when 33 .. 64 => 64, when others => 128);
+      Is_Small      : constant Boolean := Pow2_Size < Bits_Per_Word;
       Size          : constant Nat     :=
-        Byte_Align (Nat (Get_Scalar_Bit_Size (GT)));
-      Is_Small      : constant Boolean := Size < Bits_Per_Word;
-      New_Size      : constant Nat     :=
-        (if Is_Small then 2 * Size else Size);
+        (if Is_Small then 2 * Pow2_Size else Pow2_Size);
       Want_Unsigned : constant Boolean :=
         Unsigned or else Is_Unsigned_Type (GT);
 
    begin
-      return Full_GL_Type (Stand_Type (New_Size, Want_Unsigned));
+      return Full_GL_Type (Stand_Type (Size, Want_Unsigned));
    end Wider_GL_Type;
 
    ------------------

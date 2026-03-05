@@ -2038,11 +2038,23 @@ package body GNATLLVM.Types is
       --  If we didn't already get an SO_Ref for this expression, get one
 
       if No (SO_Info) then
-         --  If this expression contains a discriminant, build tree nodes
-         --  corresponding to that discriminant. If we have an unsupported
-         --  node, return no value.
+         --  See if this is a constant
 
-         if Contains_Discriminant (N) then
+         if Is_No_Elab_Needed (N) then
+            declare
+               Result : constant GL_Value := Emit_Expression (N);
+
+            begin
+               if not Overflowed (Result) and then not Is_Undef (Result) then
+                  return (False, To_UI (Result), No_Uint);
+               else
+                  --  Note that the dynamic SO ref used here is also
+                  --  known by the debuginfo generator.
+                  SO_Info := Create_Var_Node;
+               end if;
+            end;
+
+         else
             declare
                Result   : BA_Data := No_BA;
                Attr     : Attribute_Id;
@@ -2053,6 +2065,8 @@ package body GNATLLVM.Types is
                   when N_Identifier =>
                      if  Ekind (Entity (N)) = E_Discriminant then
                         SO_Info := Create_Discrim_Ref (Entity (N));
+                     else
+                        SO_Info := Create_Var_Node;
                      end if;
 
                   when N_Attribute_Reference =>
@@ -2121,31 +2135,15 @@ package body GNATLLVM.Types is
                      null;
                end case;
 
-               if Present (Result) then
+               if Present (SO_Info) then
+                  --  Already set above.
+                  null;
+               elsif Present (Result) then
                   SO_Info := Annotated_Value (Result);
-               end if;
-            end;
-
-         --  Otherwise, see if this is a constant
-
-         elsif Is_No_Elab_Needed (N) then
-            declare
-               Result : constant GL_Value := Emit_Expression (N);
-
-            begin
-               if not Overflowed (Result) and then not Is_Undef (Result) then
-                  return (False, To_UI (Result), No_Uint);
-               else
-                  --  Note that the dynamic SO ref used here is also
-                  --  known by the debuginfo generator.
+               elsif not Contains_Discriminant (N) then
                   SO_Info := Create_Var_Node;
                end if;
             end;
-
-         else
-            --  Note that the dynamic SO ref used here is also
-            --  known by the debuginfo generator.
-            SO_Info := Create_Var_Node;
          end if;
 
          --  Save the computed value, if any

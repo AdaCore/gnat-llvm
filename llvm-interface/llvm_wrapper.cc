@@ -646,6 +646,7 @@ struct Target_C_Type_Info {
   unsigned MaximumAlignmentBytes;
   unsigned RegisterSize;
   unsigned SystemAllocatorAlignment;
+  unsigned StrictAlignment;
 };
 
 extern "C"
@@ -727,6 +728,7 @@ Get_Target_C_Types (const char *TargetTriple, const char *CPU, const char *ABI,
   Result->MaximumAlignmentBytes = Info->getSuitableAlign() / 8;
   Result->RegisterSize = Info->getRegisterWidth();
   Result->SystemAllocatorAlignment = Info->getNewAlign() / 8;
+  Result->StrictAlignment = !Info->hasUnalignedAccess();
 
   // For Linux on x86, we know that the allocated memory is even more strictly
   // aligned than what LLVM thinks.

@@ -202,8 +202,13 @@ package body Get_Targ is
    --------------------------------
 
    function Get_Double_Float_Alignment return Nat is
+      Alignment : constant Nat := Nat (Target_C_Types.Double_Alignment);
    begin
-      return Nat (Target_C_Types.Double_Alignment);
+      --  See the documentation of Target_Double_Float_Alignment in
+      --  ttypes.ads.
+      return
+        (if Alignment < Nat (Target_C_Types.Double_Size)
+         then Alignment / 8 else 0);
    end Get_Double_Float_Alignment;
 
    ---------------------------------
@@ -211,8 +216,13 @@ package body Get_Targ is
    ---------------------------------
 
    function Get_Double_Scalar_Alignment return Nat is
+      Alignment : constant Nat := Nat (Target_C_Types.Long_Long_Alignment);
    begin
-      return Nat (Target_C_Types.Long_Long_Alignment);
+      --  See the documentation of Target_Double_Scalar_Alignment in
+      --  ttypes.ads.
+      return
+        (if Alignment < Nat (Target_C_Types.Long_Long_Size)
+         then Alignment / 8 else 0);
    end Get_Double_Scalar_Alignment;
 
    -----------------------------

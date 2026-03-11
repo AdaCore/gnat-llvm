@@ -166,6 +166,7 @@ package GNATLLVM is
       Maximum_Alignment          : Interfaces.C.unsigned;
       Register_Size              : Interfaces.C.unsigned;
       System_Allocator_Alignment : Interfaces.C.unsigned;
+      Strict_Alignment           : Interfaces.C.unsigned;
    end record
      with Convention => C;
    --  C-compatible record of target-specific C type information. Members are

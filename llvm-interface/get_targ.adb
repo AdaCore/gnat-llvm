@@ -194,7 +194,7 @@ package body Get_Targ is
 
    function Get_Strict_Alignment return Nat is
    begin
-      return 0;
+      return Nat (Target_C_Types.Strict_Alignment);
    end Get_Strict_Alignment;
 
    --------------------------------

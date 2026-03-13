@@ -730,12 +730,6 @@ Get_Target_C_Types (const char *TargetTriple, const char *CPU, const char *ABI,
   Result->SystemAllocatorAlignment = Info->getNewAlign() / 8;
   Result->StrictAlignment = !Info->hasUnalignedAccess();
 
-  // For Linux on x86, we know that the allocated memory is even more strictly
-  // aligned than what LLVM thinks.
-  Triple TT(TargetTriple);
-  if (TT.getArch() == Triple::x86 && TT.isOSLinux())
-    Result->SystemAllocatorAlignment = 16;
-
   *success = 1;
 }
 

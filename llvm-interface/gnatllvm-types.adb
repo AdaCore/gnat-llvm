@@ -123,11 +123,16 @@ package body GNATLLVM.Types is
    --  Alloc_GT, but an exception is if it's constrained and GT isn't
    --  unless this is a tagged type.
 
-   function GL_Value_To_Node_Ref_Or_Val (V : GL_Value) return Node_Ref_Or_Val
-     with Pre  => Is_A_Constant_Int (V),
-          Post => Present (GL_Value_To_Node_Ref_Or_Val'Result);
+   function UI_Value_To_Node_Ref_Or_Val (V : Uint) return Node_Ref_Or_Val
+     with Pre  => Present (V),
+          Post => Present (UI_Value_To_Node_Ref_Or_Val'Result);
    --  Make a Node_Ref_Or_Val from V. Normally this is just the integer
    --  value of V, but if it's negative, we need to build a negation node.
+
+   function To_UI (V : GL_Value) return Uint is
+     ((if   Is_Unsigned_Type (V) then UI_From_ULL (Get_Const_Int_Value_ULL (V))
+       else UI_From_LLI (Get_Const_Int_Value (V))));
+   --  Convert a constant integer into a UI
 
    function Prepare_SM_Copy_Host (V : GL_Value) return GL_Value
      with Pre  => Present (V),
@@ -216,18 +221,15 @@ package body GNATLLVM.Types is
       Is_Unchecked   : Boolean := False;
       No_Truncation  : Boolean := False) return BA_Data
    is
-     (if   Is_Const (V)
-      then (False, Convert (V.C_Value, GT, Float_Truncate, Is_Unchecked,
-                            No_Truncation),
-            No_Uint)
-      else V);
+     (V);
 
    ----------------
    -- From_Const --
    ----------------
 
    function From_Const (V : GL_Value) return BA_Data is
-     (if   Is_A_Constant_Int (V) then (False, V, No_Uint) else No_BA)
+     (if   Is_A_Constant_Int (V)
+      then (False, UI_From_LLI (Get_Const_Int_Value (V)), No_Uint) else No_BA)
      with Pre => Is_Constant (V);
    --  Likewise, for back-annotation
 
@@ -298,7 +300,7 @@ package body GNATLLVM.Types is
       --  Otherwise, use the slow approach.
 
       if UI_Is_In_Int_Range (U) and then U >= 0 then
-         return ULL_Align (ULL (+U));
+         return ULL_Align (+U);
       else
          return Align : Nat := Max_Valid_Align do
             while U mod Align /= 0 loop
@@ -1729,17 +1731,11 @@ package body GNATLLVM.Types is
    end Emit_Expr;
 
    ---------------------------------
-   -- GL_Value_To_Node_Ref_Or_Val --
+   -- UI_Value_To_Node_Ref_Or_Val --
    ---------------------------------
 
-   function GL_Value_To_Node_Ref_Or_Val (V : GL_Value) return Node_Ref_Or_Val
-   is
-      Ret : constant Uint := +V;
-
-   begin
-      return (if   Ret < 0 then Create_Node (Negate_Expr, UI_Negate (Ret))
-              else Ret);
-   end GL_Value_To_Node_Ref_Or_Val;
+   function UI_Value_To_Node_Ref_Or_Val (V : Uint) return Node_Ref_Or_Val is
+     ((if V < 0 then Create_Node (Negate_Expr, UI_Negate (V)) else V));
 
    ---------------------
    -- Annotated_Value --
@@ -1760,7 +1756,7 @@ package body GNATLLVM.Types is
       --  Otherwise, we have a constant. If negative, make a Negate_Expr.
 
       else
-         return GL_Value_To_Node_Ref_Or_Val (V.C_Value);
+         return UI_Value_To_Node_Ref_Or_Val (V.C_Value);
       end if;
    end Annotated_Value;
 
@@ -1797,14 +1793,7 @@ package body GNATLLVM.Types is
    -- Unop --
    ----------
 
-   function Unop
-     (V    : BA_Data;
-      F    : Unop_Access;
-      C    : TCode;
-      Name : String := "") return BA_Data
-   is
-      Result   : GL_Value;
-
+   function Unop (V : BA_Data; F : Unop_Access; C : TCode) return BA_Data is
    begin
       --  If we don't have an input, propagate that to the output.
 
@@ -1812,17 +1801,15 @@ package body GNATLLVM.Types is
          return V;
 
       --  If we have a constant, perform the operation on the constant and
-      --  return it unless it overflowed.
+      --  return it.
 
       elsif Is_Const (V) then
-         Result := F (V.C_Value, Name);
-         return (if   Overflowed (Result) or else Is_Undef (Result)
-                 then No_BA else (False, Result, No_Uint));
+         return (False, F (V.C_Value), No_Uint);
 
       --  Otherwise, create a new representation tree node
 
       else
-         return (False, No_GL_Value, Create_Node (C, V.T_Value));
+         return (False, No_Uint, Create_Node (C, V.T_Value));
       end if;
 
    end Unop;
@@ -1832,27 +1819,16 @@ package body GNATLLVM.Types is
    -----------
 
    function Binop
-     (LHS, RHS : BA_Data;
-      F        : Binop_Access;
-      C        : TCode;
-      Name     : String := "") return BA_Data
+     (LHS, RHS : BA_Data; F : Binop_Access; C : TCode) return BA_Data
    is
-      Result         : GL_Value;
       LHS_Op, RHS_Op : Node_Ref_Or_Val;
 
    begin
       --  If both are constants, do the operation as a constant and return
-      --  that value unless it overflows. If it overflows, return a Uint.
+      --  that value.
 
       if Is_Const (LHS) and then Is_Const (RHS) then
-         Result := F (LHS.C_Value, RHS.C_Value, Name);
-         return (if    Overflowed (Result)
-                 then  (False, No_GL_Value,
-                        Create_Node
-                          (C, GL_Value_To_Node_Ref_Or_Val (LHS.C_Value),
-                           GL_Value_To_Node_Ref_Or_Val (RHS.C_Value)))
-                 elsif Is_Undef (Result)
-                 then  No_BA else (False, Result, No_Uint));
+         return (False, F (LHS.C_Value, RHS.C_Value), No_Uint);
       end if;
 
       --  Otherwise, get our two operands as a node reference or Uint
@@ -1869,7 +1845,7 @@ package body GNATLLVM.Types is
       --  should be in the RHS.
 
       else
-         return (False, No_GL_Value,
+         return (False, No_Uint,
                  Create_Node (C, (if   Is_Static_SO_Ref (LHS_Op)
                                   then RHS_Op else LHS_Op),
                               (if   Is_Static_SO_Ref (LHS_Op)
@@ -1887,11 +1863,17 @@ package body GNATLLVM.Types is
       LHS, RHS : BA_Data;
       Name     : String := "") return BA_Data
    is
+      pragma Unreferenced (Name);
       type C_Map is array (Int_Predicate_T range <>) of TCode;
+      type U_Map is array (Int_Predicate_T range <>) of Cmpop_Access;
       Codes          : constant C_Map :=
         (Int_EQ => Eq_Expr, Int_NE => Ne_Expr,
          Int_UGT | Int_SGT => Gt_Expr, Int_UGE | Int_SGE => Ge_Expr,
          Int_ULT | Int_SLT => Lt_Expr, Int_ULE | Int_SLE => Le_Expr);
+      Ops            : constant U_Map :=
+        (Int_EQ => UI_Eq'Access, Int_NE => UI_Ne'Access,
+         Int_UGT | Int_SGT => UI_Gt'Access, Int_UGE | Int_SGE => UI_Ge'Access,
+         Int_ULT | Int_SLT => UI_Lt'Access, Int_ULE | Int_SLE => UI_Le'Access);
       LHS_Op, RHS_Op : Node_Ref_Or_Val;
 
    begin
@@ -1899,7 +1881,10 @@ package body GNATLLVM.Types is
       --  that value.
 
       if Is_Const (LHS) and then Is_Const (RHS) then
-         return (False, I_Cmp (Op, LHS.C_Value, RHS.C_Value, Name), No_Uint);
+         return (False,
+                 (if   Ops (Op)(LHS.C_Value, RHS.C_Value)
+                  then Uint_1 else Uint_0),
+                 No_Uint);
       end if;
 
       --  Otherwise, get our two operands as a node reference or Uint
@@ -1915,7 +1900,7 @@ package body GNATLLVM.Types is
       --  Otherwise, build and return a node
 
       else
-         return (False, No_GL_Value, Create_Node (Codes (Op), LHS_Op, RHS_Op));
+         return (False, No_Uint, Create_Node (Codes (Op), LHS_Op, RHS_Op));
       end if;
 
    end I_Cmp;
@@ -1925,14 +1910,70 @@ package body GNATLLVM.Types is
    ---------------
 
    function Build_Min (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     (Binop (V1, V2, Build_Min'Access, Min_Expr, Name));
+     (Binop (V1, V2, UI_Min'Access, Min_Expr));
 
    ---------------
    -- Build_Max --
    ---------------
 
    function Build_Max (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     (Binop (V1, V2, Build_Max'Access, Max_Expr, Name));
+     (Binop (V1, V2, UI_Max'Access, Max_Expr));
+
+   ---------------
+   -- Build_And --
+   ---------------
+
+   function Build_And (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+   begin
+      pragma Unreferenced (Name);
+
+      --  We assume here that this is being used for alignment, so that the
+      --  second operand is the negative of a constant power of 2, but it's
+      --  not worth checking for.
+
+      if Is_Const (V1) and then Is_Const (V2) then
+         return (False, UI_Mul (UI_Div (V1.C_Value, V2.C_Value), V2.C_Value),
+                 No_Uint);
+      else
+         --  Otherwise, we call Binop for simplicity, but note that the
+         --  second operand will never be used because we've tested for
+         --  the constant case.
+
+         return Binop (V1, V2, UI_Add'Access, Bit_And_Expr);
+      end if;
+
+   end Build_And;
+
+   --------------
+   -- Truth_Or --
+   --------------
+
+   function Truth_Or (V1, V2 : BA_Data; Name : String := "") return BA_Data is
+   begin
+      pragma Unreferenced (Name);
+
+      --  If one operand is zero, the result is the other
+
+      if Is_Const_0 (V1) then
+         return V2;
+      elsif Is_Const_1 (V2) then
+         return V2;
+
+      --  Otherwise, if both operands are constants, the result is
+      --  easy to compute.
+
+      elsif Is_Const (V1) and then Is_Const (V2) then
+         return (False, (if   Is_Const_0 (V1) and then Is_Const_1 (V2)
+                         then Uint_0 else Uint_1),
+                 No_Uint);
+      else
+         --  Otherwise, we call Binop for simplicity, but note that the
+         --  second operand will never be used because we've tested for
+         --  the constant case.
+
+         return Binop (V1, V2, UI_Add'Access, Truth_Or_Expr);
+      end if;
+   end Truth_Or;
 
    ------------------
    -- Build_Select --
@@ -1965,7 +2006,7 @@ package body GNATLLVM.Types is
       --  Otherwise, build and return a node
 
       else
-         return (False, No_GL_Value,
+         return (False, No_Uint,
                  Create_Node (Cond_Expr, If_Op, Then_Op, Else_Op));
       end if;
 
@@ -2081,7 +2122,7 @@ package body GNATLLVM.Types is
 
             begin
                if not Overflowed (Result) and then not Is_Undef (Result) then
-                  return (False, Result, No_Uint);
+                  return (False, To_UI (Result), No_Uint);
                else
                   SO_Info :=
                     Create_Node (Dynamic_Val, +Var_Idx_For_BA);
@@ -2103,7 +2144,7 @@ package body GNATLLVM.Types is
 
       --  And now return the value
 
-      return (No (SO_Info), No_GL_Value, SO_Info);
+      return (No (SO_Info), No_Uint, SO_Info);
    end Emit_Expr;
 
    ------------------
@@ -2115,7 +2156,7 @@ package body GNATLLVM.Types is
       if No (V) then
          Write_Line ("None");
       elsif Is_Const (V) then
-         Dump_LLVM_Value (+V.C_Value);
+         pid (V.C_Value);
       else
          lgx (V.T_Value);
       end if;

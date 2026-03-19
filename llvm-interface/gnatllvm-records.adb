@@ -172,6 +172,8 @@ package body GNATLLVM.Records is
         (V1, V2 : Result; Name : String := "") return Result;
       with function Build_Max
         (V1, V2 : Result; Name : String := "") return Result;
+      with function Build_Min
+        (V1, V2 : Result; Name : String := "") return Result;
       with function Is_A_Constant_Int       (V : Result)    return Boolean;
       with function Get_Const_Int_Value_ULL (V : Result)    return ULL;
       with function Replace_Val             (O, N : Result) return Result;
@@ -180,8 +182,13 @@ package body GNATLLVM.Records is
       function No      (V : Result) return Boolean is (V =  No_Result);
       function Present (V : Result) return Boolean is (V /= No_Result);
 
+      --  See if a constant zero. The use of "min" below is to ensure
+      --  that we won't unnecessarily overflow in the BA_Data case.
+
       function Is_Const_0 (V : Result) return Boolean is
-        (Is_A_Constant_Int (V) and then Get_Const_Int_Value_ULL (V) = 0);
+        (Is_A_Constant_Int (V)
+         and then 0 = Get_Const_Int_Value_ULL
+                        (Build_Min (V, Size_Const_Int (1))));
 
       function Only_Overlap_RIs (Idx : Record_Info_Id) return Boolean;
       --  Return True if Idx is null or if the only RIs after it are RIs
@@ -536,6 +543,8 @@ package body GNATLLVM.Records is
          --  If we have an LLVM type, it's packed record, so our size will
          --  be that of the record and we aren't forcing an alignment. If
          --  our total size is a constant, we can say what our alignment is.
+         --  But be careful in that computation not to unnecessarily overflow
+         --  in the BA_Data case.
 
          if Present (MD) then
             This_Size  := Size_Const_Int (Get_Type_Size (MD));
@@ -543,7 +552,9 @@ package body GNATLLVM.Records is
             Is_Align   :=
               (if   Is_A_Constant_Int (Total_Size)
                then ULL_Align (Get_Const_Int_Value_ULL
-                                 (Total_Size + This_Size))
+                                 (Build_Min (Total_Size + This_Size,
+                                             Size_Const_Int
+                                               (ULL (Max_Valid_Align)))))
                else Nat'(BPU));
 
          --  For a GNAT type, do similar, except that we know more about
@@ -683,7 +694,7 @@ package body GNATLLVM.Records is
          Force_Align : Nat;
          No_Padding  : Boolean := False) return Result
       is
-         Max_Const_Size : ULL    := 0;
+         Max_Const_Size : Result := Size_Const_Int (0);
          Max_Var_Size   : Result := No_Result;
          Our_Size       : Result;
 
@@ -700,9 +711,7 @@ package body GNATLLVM.Records is
                                            Max_Size   => True,
                                            No_Padding => No_Padding);
             if Is_A_Constant_Int (Our_Size) then
-               if Get_Const_Int_Value_ULL (Our_Size) > Max_Const_Size then
-                  Max_Const_Size := Get_Const_Int_Value_ULL (Our_Size);
-               end if;
+               Max_Const_Size := Build_Max (Our_Size, Max_Const_Size);
             elsif No (Max_Var_Size) then
                Max_Var_Size := Our_Size;
             else
@@ -713,11 +722,11 @@ package body GNATLLVM.Records is
          --  Now merge the variable and constant sizes
 
          if No (Max_Var_Size) then
-            return Size_Const_Int (Max_Const_Size);
-         elsif Max_Const_Size = 0 then
+            return Max_Const_Size;
+         elsif Is_Const_0 (Max_Const_Size) then
             return Max_Var_Size;
          else
-            return Build_Max (Max_Var_Size, Size_Const_Int (Max_Const_Size));
+            return Build_Max (Max_Var_Size, Max_Const_Size);
          end if;
       end Get_Variant_Max_Size;
 
@@ -988,35 +997,18 @@ package body GNATLLVM.Records is
       (if Is_Const (O) then N else Var_IDS);
 
    --  Here we instantiate the size routines with functions that compute
-   --  the LLVM value the size and make those visible to clients. Since the
-   --  addition and subtraction functions as well as binary "and" can be
-   --  called with both addresses and integers, we define wrappers that
-   --  either call our abstractions for address arithmetic or directly
-   --  generate code for regular integer operations.
-
-   function Address_Or_Integer_Add (V1, V2 : GL_Value) return GL_Value is
-     (if Is_Address (V1) then Address_Add (V1, V2) else V1 + V2);
-
-   function Address_Or_Integer_Sub (V1, V2 : GL_Value) return GL_Value is
-     (if Is_Address (V1) then Address_Sub (V1, V2) else V1 - V2);
-
-   function Address_Or_Integer_And
-     (V1, V2 : GL_Value; Name : String := "") return GL_Value
-   is
-     (if Tagged_Pointers and then Is_Address (V1) then
-        Set_Pointer_Address
-          (V1, Build_And (Get_Pointer_Address (V1), V2, Name))
-      else Build_And (V1, V2, Name));
+   --  the LLVM value the size and make those visible to clients.
 
    package LLVM_Size is
       new Size (Result                  => GL_Value,
                 No_Result               => No_GL_Value,
                 Size_Const_Int          => Size_Const_Int,
-                "+"                     => Address_Or_Integer_Add,
-                "-"                     => Address_Or_Integer_Sub,
+                "+"                     => "+",
+                "-"                     => "-",
                 Neg                     => Neg,
-                Build_And               => Address_Or_Integer_And,
+                Build_And               => Build_And,
                 Build_Max               => Build_Max,
+                Build_Min               => Build_Min,
                 Is_A_Constant_Int       => Is_A_Constant_Int,
                 Get_Const_Int_Value_ULL => Get_Const_Int_Value_ULL,
                 Get_Type_Size           => Get_Type_Size,
@@ -1071,6 +1063,7 @@ package body GNATLLVM.Records is
                 Neg                     => Neg,
                 Build_And               => Build_And,
                 Build_Max               => Build_Max,
+                Build_Min               => Build_Min,
                 Is_A_Constant_Int       => Is_Const,
                 Get_Const_Int_Value_ULL => Const_Val_ULL,
                 Get_Type_Size           => Get_Type_Size,
@@ -1120,6 +1113,7 @@ package body GNATLLVM.Records is
                 Neg                     => Neg,
                 Build_And               => Build_And,
                 Build_Max               => Build_Max,
+                Build_Min               => Build_Min,
                 Is_A_Constant_Int       => Is_Const,
                 Get_Const_Int_Value_ULL => Const_Val_ULL,
                 Get_Type_Size           => Get_Type_Size,

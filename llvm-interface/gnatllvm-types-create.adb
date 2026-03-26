@@ -889,19 +889,18 @@ package body GNATLLVM.Types.Create is
          return Size;
 
          --  If the size overflowed, our size is definitely too small, but
-         --  ignore the error if this is for a type and it was supplied
-         --  by the front-end, not a user.
+         --  ignore the error if it was supplied by the front-end or our
+         --  back-annotation, not a user.
 
       elsif Overflowed (In_Size) then
-         if Is_Type (E)
-           and then not (if   Is_RM_Size then Has_Size_Clause (E)
-                         else Has_Object_Size_Clause (E))
+         if (if   Is_RM_Size or not Is_Type (E) then Has_Size_Clause (E)
+             else Has_Object_Size_Clause (E))
          then
-            return No_Uint;
-         else
             Error_Msg_NE (Msg_Prefix & " for" & Error_Str & " too small",
                           Error_Node, E);
             return +In_Size;
+         else
+            return No_Uint;
          end if;
 
       --  If too small, we can't use it, but give a different error message

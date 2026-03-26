@@ -18,6 +18,7 @@
 with Einfo.Utils;  use Einfo.Utils;
 with Repinfo;      use Repinfo;
 with Sem_Util;     use Sem_Util;
+with Uintp.LLVM;   use Uintp.LLVM;
 
 with GNATLLVM.GLValue;      use GNATLLVM.GLValue;
 with GNATLLVM.Instructions; use GNATLLVM.Instructions;
@@ -629,7 +630,7 @@ package GNATLLVM.Types is
       Is_None     : Boolean;
       --  True if this is to be treated as an empty entry
 
-      C_Value     : GL_Value;
+      C_Value     : Uint;
       --  If a constant, the value of that constant
 
       T_Value     : Node_Ref_Or_Val;
@@ -640,60 +641,57 @@ package GNATLLVM.Types is
 
    type BA_Data_Array is array (Nat range <>) of BA_Data;
 
-   No_BA   : constant BA_Data := (True,  No_GL_Value, No_Uint);
+   No_BA   : constant BA_Data := (True,  No_Uint, No_Uint);
 
    function No      (V : BA_Data) return Boolean is (V =  No_BA);
    function Present (V : BA_Data) return Boolean is (V /= No_BA);
 
    --  To simplify the operations below, define access types for unary
-   --  and binary operations on GL_Values.
+   --  and binary operations on Uints.
 
-   type Unop_Access is access
-     function (V : GL_Value; Name : String := "") return GL_Value;
-   type Binop_Access is access
-     function (LHS, RHS : GL_Value; Name : String := "") return GL_Value;
+   type Unop_Access  is access function (V : Valid_Uint) return Valid_Uint;
+   type Binop_Access is
+     access function (LHS, RHS : Valid_Uint) return Valid_Uint;
+   type Cmpop_Access is access function (LHS, RHS : Valid_Uint) return Boolean;
 
    function Is_Const  (V : BA_Data) return Boolean is
-     (Present (V.C_Value) and then not Overflowed (V.C_Value)
-        and then not Is_Undef (V.C_Value));
+     (Present (V.C_Value));
 
    function Const_Val_ULL (V : BA_Data) return ULL is
-     (+V.C_Value)
+     (UI_To_ULL (V.C_Value))
      with Pre => Is_Const (V);
 
    function Const_Int (V : BA_Data) return LLI is
-     (+V.C_Value)
+     (LLI (UI_To_ULL (V.C_Value)))
      with Pre => Is_Const (V);
+   --  ??  The above is wrong, but we need to clean up the UI conversion
+   --  functions to fix properly.
 
-   function Overflowed (V : BA_Data) return Boolean is
-     (Present (V) and then not V.Is_None and then Present (V.C_Value)
-        and then Overflowed (V.C_Value));
+   function Overflowed (Unused_V : BA_Data) return Boolean is
+     (False);
 
    function Is_Const_0 (V : BA_Data) return Boolean is
-     (Is_Const (V) and then not Overflowed (V)
-        and then Is_Const_Int_Value (V.C_Value, 0));
+     (Is_Const (V) and then V.C_Value = Uint_0);
 
    function Is_Const_1 (V : BA_Data) return Boolean is
-     (Is_Const (V) and then not Overflowed (V)
-        and then Is_Const_Int_Value (V.C_Value, 1));
+     (Is_Const (V) and then V.C_Value = Uint_1);
 
    function Related_Type (V : BA_Data) return GL_Type is
-     (if   No (V) or else No (V.C_Value) then Size_GL_Type
-      else Related_Type (V.C_Value))
+     (Size_GL_Type)
      with Pre => Present (V);
 
    function Const
-     (C : ULL; Sign_Extend : Boolean := False) return BA_Data
+     (C : ULL; Unused_Sign_Extend : Boolean := False) return BA_Data
    is
-     ((False,  Size_Const_Int (C, Sign_Extend), No_Uint))
+     ((False, UI_From_ULL (C), No_Uint))
      with Post => Is_Const (Const'Result);
 
    function Const (C : Uint) return BA_Data is
-     ((False, Size_Const_Int (C), No_Uint))
+     ((False, C, No_Uint))
      with Pre => Present (C), Post => Is_Const (Const'Result);
 
    function Const_Int (GT : GL_Type; C : Uint) return BA_Data is
-     ((False, Const_Int (GT, C), No_Uint))
+     ((False, C, No_Uint))
      with Pre  => Present (GT) and then Present (C),
           Post => Is_Const (Const_Int'Result);
 
@@ -703,8 +701,8 @@ package GNATLLVM.Types is
    --  conversion can't be done.
 
    function SO_Ref_To_BA (V : SO_Ref) return BA_Data is
-     ((if   Is_Static_SO_Ref (V) then Const_Int (Size_GL_Type, V)
-       else (False, No_GL_Value, V)));
+     ((if   Is_Static_SO_Ref (V) then (False, V, No_Uint)
+       else (False, No_Uint, V)));
    --  Likewise, but in the opposite direction
 
    function Annotated_Object_Size
@@ -717,23 +715,18 @@ package GNATLLVM.Types is
    --  align the size to the alignment. If Want_Max is True, we want the
    --  maximum size of GT, if it's an unconstrained record.
 
-   function Unop
-     (V    : BA_Data;
-      F    : Unop_Access;
-      C    : TCode;
-      Name : String := "") return BA_Data;
+   function Unop (V : BA_Data; F : Unop_Access; C : TCode) return BA_Data;
    --  Perform the operation on V defined by F (which is how to modify the
    --  GL_Value) and C (which is how to make a representation tree).
 
    function Binop
      (LHS, RHS : BA_Data;
       F        : Binop_Access;
-      C        : TCode;
-      Name     : String := "") return BA_Data;
+      C        : TCode) return BA_Data;
    --  Likewise, but for a binary operation.
 
-   function Neg (V : BA_Data; Name : String := "") return BA_Data is
-     (Unop (V, Neg'Access, Negate_Expr, Name));
+   function Neg (V : BA_Data; Unused_Name : String := "") return BA_Data is
+     (Unop (V, UI_Negate'Access, Negate_Expr));
 
    function Get_Type_Size
      (GT         : GL_Type;
@@ -753,28 +746,38 @@ package GNATLLVM.Types is
    --  array of size zero with a variable-sized component as being zero
    --  (fixed) size, which can cause us to generate code at library level.
 
-   function Add (LHS, RHS : BA_Data; Name : String := "") return BA_Data is
+   function Add
+      (LHS, RHS : BA_Data; Unused_Name : String := "") return BA_Data
+   is
      ((if    Is_Const_0 (LHS) then RHS
        elsif Is_Const_0 (RHS) then LHS
-       else  Binop (LHS, RHS, Add'Access, Plus_Expr, Name)));
+       else  Binop (LHS, RHS, UI_Add'Access, Plus_Expr)));
 
-   function Sub (LHS, RHS : BA_Data; Name : String := "") return BA_Data is
+   function Sub
+     (LHS, RHS : BA_Data; Unused_Name : String := "") return BA_Data
+   is
      ((if    Is_Const_0 (RHS) then LHS
-       elsif Is_Const_0 (LHS) then Neg (RHS, Name)
-       else  Binop (LHS, RHS, Sub'Access, Minus_Expr, Name)));
+       elsif Is_Const_0 (LHS) then Neg (RHS)
+       else  Binop (LHS, RHS, UI_Sub'Access, Minus_Expr)));
 
-   function Mul (LHS, RHS : BA_Data; Name : String := "") return BA_Data is
+   function Mul
+     (LHS, RHS : BA_Data; Unused_Name : String := "") return BA_Data
+   is
      ((if    Is_Const_1 (LHS) then RHS
        elsif Is_Const_1 (RHS) then LHS
-       else  Binop (LHS, RHS, Mul'Access, Mult_Expr, Name)));
+       else  Binop (LHS, RHS, UI_Mul'Access, Mult_Expr)));
 
-   function U_Div (LHS, RHS : BA_Data; Name : String := "") return BA_Data is
+   function U_Div
+     (LHS, RHS : BA_Data; Unused_Name : String := "") return BA_Data
+   is
      ((if   Is_Const_1 (RHS) then LHS
-       else Binop (LHS, RHS, U_Div'Access, Trunc_Div_Expr, Name)));
+       else Binop (LHS, RHS, UI_U_Div'Access, Trunc_Div_Expr)));
 
-   function S_Div (LHS, RHS : BA_Data; Name : String := "") return BA_Data is
+   function S_Div
+     (LHS, RHS : BA_Data; Unused_Name : String := "") return BA_Data
+   is
      ((if   Is_Const_1 (RHS) then LHS
-       else Binop (LHS, RHS, S_Div'Access, Trunc_Div_Expr, Name)));
+       else Binop (LHS, RHS, UI_S_Div'Access, Trunc_Div_Expr)));
 
    function "+" (LHS, RHS : BA_Data) return BA_Data is
      (Add (LHS, RHS));
@@ -817,15 +820,9 @@ package GNATLLVM.Types is
    function Build_Max (V1, V2 : BA_Data; Name : String := "") return BA_Data
      with Inline;
 
-   function Build_And (V1, V2 : BA_Data; Name : String := "") return BA_Data is
-     ((if   Is_Const_0 (V1) or else Is_Const_0 (V2) then Const (0)
-       else Binop (V1, V2, Build_And'Access, Bit_And_Expr, Name)));
+   function Build_And (V1, V2 : BA_Data; Name : String := "") return BA_Data;
 
-   function Truth_Or
-         (V1, V2 : BA_Data; Name : String := "") return BA_Data
-   is
-     ((if   Is_Const_0 (V1) then V2 elsif Is_Const_0 (V2) then V1
-       else Binop (V1, V2, Build_Or'Access, Truth_Or_Expr, Name)));
+   function Truth_Or (V1, V2 : BA_Data; Name : String := "") return BA_Data;
 
    function Build_Select
      (V_If, V_Then, V_Else : BA_Data; Name : String := "") return BA_Data;

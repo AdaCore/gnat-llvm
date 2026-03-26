@@ -83,8 +83,15 @@ package body GNATLLVM.Arrays is
    --  alignment of the indices, which we don't want to bother doing here.
 
    function To_Result (V : GL_Value) return GL_Value is (V);
-   function To_Result (V : GL_Value) return IDS      is ((False, V));
-   function To_Result (V : GL_Value) return BA_Data  is ((False, V, No_Uint));
+
+   function To_Result (V : GL_Value) return IDS is
+     ((if Is_A_Constant_Int (V) then (False, V) else Var_IDS))
+     with Pre => Is_Constant (V), Post => Present (To_Result'Result);
+
+   function To_Result (V : GL_Value) return BA_Data is
+     (if   Is_A_Constant_Int (V)
+      then (False, UI_From_LLI (Get_Const_Int_Value (V)), No_Uint) else No_BA)
+     with Pre => Is_Constant (V);
 
    --  We put the routines used to compute sizes into a generic so that we
    --  can instantiate them using various types of sizing. The most common

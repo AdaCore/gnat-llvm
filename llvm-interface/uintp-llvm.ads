@@ -37,9 +37,19 @@ package Uintp.LLVM is
    function UI_From_ULL (V : ULL) return Uint is
      (UI_From_LLI (LLI (V)));
    function "+" (V : ULL) return Uint renames UI_From_ULL;
-   --  Like UI_From_Int, but for ULL.
+   --  Like UI_From_LLI, but for ULL.
    --  ??? This implementation doesn't work for the highest half of ULL,
    --  but we're not going to see sizes that large (the only place where
    --  this is used), so that's OK.
+
+   function UI_S_Div
+     (Left : Valid_Uint; Right : Valid_Uint) return Valid_Uint
+   is
+     (UI_Div (Left, Right));
+
+   function UI_U_Div
+     (Left : Valid_Uint; Right : Valid_Uint) return Valid_Uint
+   is
+     (UI_Div (Left, Right));
 
 end Uintp.LLVM;

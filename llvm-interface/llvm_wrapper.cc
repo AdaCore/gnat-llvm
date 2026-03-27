@@ -1560,15 +1560,20 @@ Constant_As_Metadata (LLVMContext *Context, MDBuilder *MDHelper,
   return MDHelper->createConstant (ConstantInt::get (*Context, Result));
 }
 
-extern "C"
-MDNode *
-Create_Binary_Fixed_Point_Type (LLVMDIBuilderRef Builder, const char *Name,
-				uint64_t Size, uint32_t AlignInBits,
-				bool IsUnsigned, int Factor)
-{
+extern "C" MDNode *Create_Binary_Fixed_Point_Type(
+    LLVMDIBuilderRef Builder, const char *Name, const char *FullName,
+    LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Scope, uint64_t Size,
+    uint32_t AlignInBits, bool IsUnsigned, int Factor) {
 #ifdef GNAT_LLVM_HAVE_FIXED_POINT
+  DIScope *DS = Scope ? unwrap<DIScope>(Scope) : nullptr;
+  DIFile *DF = File ? unwrap<DIFile>(File) : nullptr;
   return unwrap(Builder)->createBinaryFixedPointType(
-      Name, Size, AlignInBits,
+#ifdef GNAT_LLVM_HAVE_BASIC_TYPE_SCOPE
+      Name, DF, LineNo, DS,
+#else
+      FullName,
+#endif // GNAT_LLVM_HAVE_BASIC_TYPE_SCOPE
+      Size, AlignInBits,
       IsUnsigned ? dwarf::DW_ATE_unsigned_fixed : dwarf::DW_ATE_signed_fixed,
       DINode::FlagZero, Factor);
 #else
@@ -1580,15 +1585,20 @@ Create_Binary_Fixed_Point_Type (LLVMDIBuilderRef Builder, const char *Name,
 #endif // GNAT_LLVM_HAVE_FIXED_POINT
 }
 
-extern "C"
-MDNode *
-Create_Decimal_Fixed_Point_Type (LLVMDIBuilderRef Builder, const char *Name,
-				 uint64_t Size, uint32_t AlignInBits,
-				 bool IsUnsigned, int Factor)
-{
+extern "C" MDNode *Create_Decimal_Fixed_Point_Type(
+    LLVMDIBuilderRef Builder, const char *Name, const char *FullName,
+    LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Scope, uint64_t Size,
+    uint32_t AlignInBits, bool IsUnsigned, int Factor) {
 #ifdef GNAT_LLVM_HAVE_FIXED_POINT
+  DIScope *DS = Scope ? unwrap<DIScope>(Scope) : nullptr;
+  DIFile *DF = File ? unwrap<DIFile>(File) : nullptr;
   return unwrap(Builder)->createDecimalFixedPointType(
-      Name, Size, AlignInBits,
+#ifdef GNAT_LLVM_HAVE_BASIC_TYPE_SCOPE
+      Name, DF, LineNo, DS,
+#else
+      FullName,
+#endif // GNAT_LLVM_HAVE_BASIC_TYPE_SCOPE
+      Size, AlignInBits,
       IsUnsigned ? dwarf::DW_ATE_unsigned_fixed : dwarf::DW_ATE_signed_fixed,
       DINode::FlagZero, Factor);
 #else
@@ -1600,13 +1610,10 @@ Create_Decimal_Fixed_Point_Type (LLVMDIBuilderRef Builder, const char *Name,
 #endif // GNAT_LLVM_HAVE_FIXED_POINT
 }
 
-extern "C"
-MDNode *
-Create_Rational_Fixed_Point_Type (LLVMDIBuilderRef Builder, const char *Name,
-				  uint64_t Size, uint32_t AlignInBits,
-				  bool IsUnsigned, Metadata *Num,
-				  Metadata *Denom)
-{
+extern "C" MDNode *Create_Rational_Fixed_Point_Type(
+    LLVMDIBuilderRef Builder, const char *Name, const char *FullName,
+    LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Scope, uint64_t Size,
+    uint32_t AlignInBits, bool IsUnsigned, Metadata *Num, Metadata *Denom) {
 #ifdef GNAT_LLVM_HAVE_FIXED_POINT
   Constant *Num_C = dyn_cast<ConstantAsMetadata>(Num)->getValue();
   ConstantInt *Num_Int = dyn_cast<ConstantInt>(Num_C);
@@ -1614,8 +1621,15 @@ Create_Rational_Fixed_Point_Type (LLVMDIBuilderRef Builder, const char *Name,
   Constant *Denom_C = dyn_cast<ConstantAsMetadata>(Denom)->getValue();
   ConstantInt *Denom_Int = dyn_cast<ConstantInt>(Denom_C);
 
+  DIScope *DS = Scope ? unwrap<DIScope>(Scope) : nullptr;
+  DIFile *DF = File ? unwrap<DIFile>(File) : nullptr;
   return unwrap(Builder)->createRationalFixedPointType(
-      Name, Size, AlignInBits,
+#ifdef GNAT_LLVM_HAVE_BASIC_TYPE_SCOPE
+      Name, DF, LineNo, DS,
+#else
+      FullName,
+#endif // GNAT_LLVM_HAVE_BASIC_TYPE_SCOPE
+      Size, AlignInBits,
       IsUnsigned ? dwarf::DW_ATE_unsigned_fixed : dwarf::DW_ATE_signed_fixed,
       DINode::FlagZero, Num_Int->getValue(), Denom_Int->getValue());
 #else
@@ -1625,6 +1639,23 @@ Create_Rational_Fixed_Point_Type (LLVMDIBuilderRef Builder, const char *Name,
 					  dwarf::DW_ATE_signed,
 					  DINode::FlagZero);
 #endif // GNAT_LLVM_HAVE_FIXED_POINT
+}
+
+extern "C" MDNode *Create_Basic_Type(LLVMDIBuilderRef Builder, const char *Name,
+                                     const char *FullName, LLVMMetadataRef File,
+                                     unsigned LineNo, LLVMMetadataRef Scope,
+                                     uint64_t Size, unsigned Encoding,
+                                     LLVMDIFlags Flags) {
+  DINode::DIFlags DIF = static_cast<DINode::DIFlags>(Flags);
+  DIScope *DS = Scope ? unwrap<DIScope>(Scope) : nullptr;
+  DIFile *DF = File ? unwrap<DIFile>(File) : nullptr;
+  return unwrap(Builder)->createBasicType(
+#ifdef GNAT_LLVM_HAVE_BASIC_TYPE_SCOPE
+      Name, DF, LineNo, DS,
+#else
+      FullName,
+#endif // GNAT_LLVM_HAVE_BASIC_TYPE_SCOPE
+      Size, Encoding, DIF);
 }
 
 extern "C"

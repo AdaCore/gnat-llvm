@@ -542,6 +542,10 @@ package GNATLLVM.Wrapper is
    function Create_Binary_Fixed_Point_Type
      (Builder        : DI_Builder_T;
       Name           : String;
+      Full_Name      : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Scope          : Metadata_T;
       Size           : ULL;
       Align_In_Bits  : Nat;
       Is_Unsigned    : Boolean;
@@ -550,6 +554,10 @@ package GNATLLVM.Wrapper is
    function Create_Decimal_Fixed_Point_Type
      (Builder        : DI_Builder_T;
       Name           : String;
+      Full_Name      : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Scope          : Metadata_T;
       Size           : ULL;
       Align_In_Bits  : Nat;
       Is_Unsigned    : Boolean;
@@ -558,11 +566,31 @@ package GNATLLVM.Wrapper is
    function Create_Rational_Fixed_Point_Type
      (Builder        : DI_Builder_T;
       Name           : String;
+      Full_Name      : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Scope          : Metadata_T;
       Size           : ULL;
       Align_In_Bits  : Nat;
       Is_Unsigned    : Boolean;
       Numerator      : Metadata_T;
       Denominator    : Metadata_T) return Metadata_T;
+
+   function Create_Basic_Type
+     (Builder      : DI_Builder_T;
+      Name         : String;
+      Full_Name    : String;
+      File         : Metadata_T;
+      Line_Number  : Physical_Line_Number;
+      Scope        : Metadata_T;
+      Size_In_Bits : ULL;
+      Encoding     : DWARF_Type_Encoding_T;
+      Flags        : DI_Flags_T) return Metadata_T
+     with Post => Present (Create_Basic_Type'Result);
+   --  Wrapper for LLVM's DIBuilder::createBasicType that allows a
+   --  scope (and location) to be passed in, but also adapts if that
+   --  functionality is not available in LLVM.  To this end the caller
+   --  must pass both the full name and the short (local) name.
 
    function Constant_As_Metadata (U : Uint) return Metadata_T
       with Pre => Present (U), Post => Present (Constant_As_Metadata'Result);

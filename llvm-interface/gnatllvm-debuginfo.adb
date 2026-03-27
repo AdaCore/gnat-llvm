@@ -1084,8 +1084,10 @@ package body GNATLLVM.DebugInfo is
                           Ekind (TE) /= E_Modular_Integer_Subtype
                           and then Esize (TE) = RM_Size (TE);
                         Base_Type_Data :=
-                          DI_Create_Basic_Type
-                            ((if Uses_Full_Range then Name
+                          Create_Basic_Type
+                            (DI_Builder,
+                             (if Uses_Full_Range
+                              then Get_Possibly_Local_Name (TE)
                               --  Some versions of LLVM's DIBbuilder
                               --  asserts that a basic type must not
                               --  be nameless, so use a dummy name,
@@ -1093,6 +1095,9 @@ package body GNATLLVM.DebugInfo is
                               --  needed.
                               elsif DI_Nameless_Basic_Types then ""
                               else Name & "___UMT"),
+                             Name,
+                             Get_Debug_File_Node (Get_Source_File_Index (S)),
+                             Get_Physical_Line_Number (S), Get_Scope_For (TE),
                              Size, DW_ATE_Unsigned, DI_Flag_Zero);
                      else
                         Uses_Full_Range :=
@@ -1146,8 +1151,11 @@ package body GNATLLVM.DebugInfo is
          --  debug type.
 
          when E_Signed_Integer_Type =>
-            Result := DI_Create_Basic_Type (Name, Size, DW_ATE_Signed,
-                                            DI_Flag_Zero);
+            Result := Create_Basic_Type
+              (DI_Builder, Get_Possibly_Local_Name (TE), Name,
+               Get_Debug_File_Node (Get_Source_File_Index (S)),
+               Get_Physical_Line_Number (S), Get_Scope_For (TE),
+               Size, DW_ATE_Signed, DI_Flag_Zero);
 
          when Fixed_Point_Kind => Fixed_Point : declare
             Small : constant Ureal := Small_Value (TE);
@@ -1158,24 +1166,36 @@ package body GNATLLVM.DebugInfo is
             if Numer = 1 and then (Base = 2 or Base = 10) then
                begin
                   if Base = 2 then
-                     Result := Create_Binary_Fixed_Point_Type (DI_Builder,
-                        Name, Size, Align, Is_Unsigned_Type (TE), -(+Denom));
+                     Result := Create_Binary_Fixed_Point_Type
+                       (DI_Builder, Get_Possibly_Local_Name (TE), Name,
+                        Get_Debug_File_Node (Get_Source_File_Index (S)),
+                        Get_Physical_Line_Number (S), Get_Scope_For (TE),
+                        Size, Align, Is_Unsigned_Type (TE), -(+Denom));
                   else
-                     Result := Create_Decimal_Fixed_Point_Type (DI_Builder,
-                        Name, Size, Align, Is_Unsigned_Type (TE), -(+Denom));
+                     Result := Create_Decimal_Fixed_Point_Type
+                       (DI_Builder, Get_Possibly_Local_Name (TE), Name,
+                        Get_Debug_File_Node (Get_Source_File_Index (S)),
+                        Get_Physical_Line_Number (S), Get_Scope_For (TE),
+                        Size, Align, Is_Unsigned_Type (TE), -(+Denom));
                   end if;
                end;
             else
-               Result := Create_Rational_Fixed_Point_Type (DI_Builder,
-                  Name, Size, Align, Is_Unsigned_Type (TE),
-                  Constant_As_Metadata (Norm_Num (Small)),
-                  Constant_As_Metadata (Norm_Den (Small)));
+               Result := Create_Rational_Fixed_Point_Type (
+                 DI_Builder, Get_Possibly_Local_Name (TE), Name,
+                 Get_Debug_File_Node (Get_Source_File_Index (S)),
+                 Get_Physical_Line_Number (S), Get_Scope_For (TE),
+                 Size, Align, Is_Unsigned_Type (TE),
+                 Constant_As_Metadata (Norm_Num (Small)),
+                 Constant_As_Metadata (Norm_Den (Small)));
             end if;
          end Fixed_Point;
 
          when Float_Kind =>
-            Result := DI_Create_Basic_Type (Name, Size, DW_ATE_Float,
-                                            DI_Flag_Zero);
+            Result := Create_Basic_Type
+              (DI_Builder, Get_Possibly_Local_Name (TE), Name,
+               Get_Debug_File_Node (Get_Source_File_Index (S)),
+               Get_Physical_Line_Number (S), Get_Scope_For (TE),
+               Size, DW_ATE_Float, DI_Flag_Zero);
 
          --  For access types, handle fat pointer specially. Otherwise,
          --  get the type info for what this points to. If we have
@@ -1245,12 +1265,18 @@ package body GNATLLVM.DebugInfo is
                   or Etype (TE) = Standard_Wide_Character
                   or Etype (TE) = Standard_Wide_Wide_Character
                then
-                  Result := DI_Create_Basic_Type
-                    (Name, Size, DW_ATE_Unsigned_Char, DI_Flag_Zero);
+                  Result := Create_Basic_Type
+                    (DI_Builder, Get_Possibly_Local_Name (TE), Name,
+                     Get_Debug_File_Node (Get_Source_File_Index (S)),
+                     Get_Physical_Line_Number (S), Get_Scope_For (TE),
+                     Size, DW_ATE_Unsigned_Char, DI_Flag_Zero);
 
                elsif TE = Standard_Boolean then
-                  Result := DI_Create_Basic_Type
-                    (Name, Size, DW_ATE_Boolean, DI_Flag_Zero);
+                  Result := Create_Basic_Type
+                    (DI_Builder, Get_Possibly_Local_Name (TE), Name,
+                     Get_Debug_File_Node (Get_Source_File_Index (S)),
+                     Get_Physical_Line_Number (S), Get_Scope_For (TE),
+                     Size, DW_ATE_Boolean, DI_Flag_Zero);
 
                else
                   declare

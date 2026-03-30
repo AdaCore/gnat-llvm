@@ -968,8 +968,24 @@ package body GNATLLVM.Records.Field_Ref is
       --  bits corresponding to the field.
 
       if Is_Reference (New_RHS) then
+         --  Make sure to do a byte-aligned load, otherwise the behavior may
+         --  be undefined.
+         if Num_Bits mod 8 /= 0 then
+            declare
+               Aligned_MD : constant MD_Type := Int_Ty (Byte_Align (Num_Bits));
+            begin
+               New_RHS :=
+                  Ptr_To_Relationship (New_RHS, Pointer_Type (Aligned_MD),
+                                       Reference_To_Unknown);
+               Set_Unknown_MD (New_RHS, Aligned_MD);
+            end;
+         end if;
          New_RHS := Load (New_RHS);
       end if;
+
+      --  Truncate to exactly Num_Bits.  For the non-byte-aligned path above
+      --  this emits trunc iW->iN, forcing SelectionDAG to mask the upper
+      --  bits.  For the byte-aligned path it is a no-op.
 
       New_RHS := Trunc_To_Relationship (New_RHS, New_F_MD, Unknown);
 

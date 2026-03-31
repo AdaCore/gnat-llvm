@@ -604,6 +604,17 @@ package GNATLLVM.Wrapper is
    --  Return true if LLVM contains the patch that allows nameless
    --  basic types in the debuginfo.
 
+   function Can_Create_Expression_With_Variable return Boolean;
+   --  Return true if LLVM can create a DIVariableExpression; that is,
+   --  an expression that can refer to a variable's value.
+
+   function DW_OP_LLVM_arg return uint64_t
+     with Import => True, Convention => C,
+          External_Name => "Get_DW_OP_LLVM_arg";
+   --  Return the value of the corresponding constant from LLVM.  This
+   --  is used internally by DIExpression, but is lowered to other
+   --  operations during DWARF generation.
+
    function Create_Global_Variable_Declaration
      (Builder : DI_Builder_T;
       Scope : Metadata_T;
@@ -677,5 +688,14 @@ package GNATLLVM.Wrapper is
       Unique_Id      : String) return Metadata_T;
    --  A wrapper for an LLVM DIBuilder method to create a struct type.
    --  Unlike the C API, this one allows a non-constant bit-size.
+
+   function DI_Create_Expression_With_Variables (Builder : DI_Builder_T;
+                                                 Expr : access uint64_t;
+                                                 Expr_Len : uint64_t;
+                                                 Vars : access Metadata_T;
+                                                 Vars_Len : uint64_t)
+     return Metadata_T
+     with Import => True, Convention => C,
+          External_Name => "Create_Expression_With_Variables";
 
 end GNATLLVM.Wrapper;

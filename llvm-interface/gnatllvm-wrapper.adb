@@ -1020,6 +1020,19 @@ package body GNATLLVM.Wrapper is
       return DI_Nameless_Basic_Types_C /= 0;
    end DI_Nameless_Basic_Types;
 
+   -------------------------------
+   -- Can_Create_Expression_With_Variable --
+   -------------------------------
+
+   function Can_Create_Expression_With_Variable return Boolean
+   is
+      function Can_Create_Expression_With_Variable_C return LLVM_Bool
+        with Import => True, Convention => C,
+             External_Name => "Can_Create_Expression_With_Variable";
+   begin
+      return Can_Create_Expression_With_Variable_C /= 0;
+   end Can_Create_Expression_With_Variable;
+
    function Create_Global_Variable_Declaration
      (Builder : DI_Builder_T;
       Scope : Metadata_T;

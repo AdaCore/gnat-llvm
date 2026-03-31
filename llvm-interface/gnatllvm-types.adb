@@ -72,9 +72,6 @@ package body GNATLLVM.Types is
       Table_Increment      => 2,
       Table_Name           => "LValue_Stack");
 
-   Var_Idx_For_BA : Int := 1;
-   --  Index of variable used for Dynamic_Val in back-annotation.
-
    function Get_Alloc_Size
      (GT          : GL_Type;
       Alloc_GT    : GL_Type;
@@ -2022,15 +2019,42 @@ package body GNATLLVM.Types is
       pragma Unreferenced (LHS);
       SO_Info : Dynamic_SO_Ref := Get_SO_Ref (N);
 
+      function Create_Var_Node return Dynamic_SO_Ref;
+      --  Create a Dynamic_Val node that refers to N.
+
+      function Create_Var_Node return Dynamic_SO_Ref is
+      begin
+         --  Negate the result of Create_Dynamic_SO_Ref so that the
+         --  value in the back-annotations is positive.  This
+         --  preserves the expected behavior when printing the
+         --  annotations, e.g., with -gnatR3.  Note also that the
+         --  encoding of dynamic SO ref used here is also known by the
+         --  debuginfo generator and is used to extract the entity
+         --  from the back-annotations.
+         return Create_Node (Dynamic_Val, -Create_Dynamic_SO_Ref (N));
+      end Create_Var_Node;
+
    begin
       --  If we didn't already get an SO_Ref for this expression, get one
 
       if No (SO_Info) then
-         --  If this expression contains a discriminant, build tree nodes
-         --  corresponding to that discriminant. If we have an unsupported
-         --  node, return no value.
+         --  See if this is a constant
 
-         if Contains_Discriminant (N) then
+         if Is_No_Elab_Needed (N) then
+            declare
+               Result : constant GL_Value := Emit_Expression (N);
+
+            begin
+               if not Overflowed (Result) and then not Is_Undef (Result) then
+                  return (False, To_UI (Result), No_Uint);
+               else
+                  --  Note that the dynamic SO ref used here is also
+                  --  known by the debuginfo generator.
+                  SO_Info := Create_Var_Node;
+               end if;
+            end;
+
+         else
             declare
                Result   : BA_Data := No_BA;
                Attr     : Attribute_Id;
@@ -2041,6 +2065,8 @@ package body GNATLLVM.Types is
                   when N_Identifier =>
                      if  Ekind (Entity (N)) = E_Discriminant then
                         SO_Info := Create_Discrim_Ref (Entity (N));
+                     else
+                        SO_Info := Create_Var_Node;
                      end if;
 
                   when N_Attribute_Reference =>
@@ -2109,30 +2135,15 @@ package body GNATLLVM.Types is
                      null;
                end case;
 
-               if Present (Result) then
+               if Present (SO_Info) then
+                  --  Already set above.
+                  null;
+               elsif Present (Result) then
                   SO_Info := Annotated_Value (Result);
+               elsif not Contains_Discriminant (N) then
+                  SO_Info := Create_Var_Node;
                end if;
             end;
-
-         --  Otherwise, see if this is a constant
-
-         elsif Is_No_Elab_Needed (N) then
-            declare
-               Result : constant GL_Value := Emit_Expression (N);
-
-            begin
-               if not Overflowed (Result) and then not Is_Undef (Result) then
-                  return (False, To_UI (Result), No_Uint);
-               else
-                  SO_Info :=
-                    Create_Node (Dynamic_Val, +Var_Idx_For_BA);
-                  Var_Idx_For_BA := Var_Idx_For_BA + 1;
-               end if;
-            end;
-
-         else
-            SO_Info := Create_Node (Dynamic_Val, +Var_Idx_For_BA);
-            Var_Idx_For_BA := Var_Idx_For_BA + 1;
          end if;
 
          --  Save the computed value, if any

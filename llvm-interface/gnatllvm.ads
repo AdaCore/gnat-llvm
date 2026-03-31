@@ -294,8 +294,10 @@ package GNATLLVM is
    --  The module use by Convert_Nonsymbolic_Constant
 
    Size_GL_Type       : GL_Type   := No_GL_Type;
+   Bitsize_GL_Type    : GL_Type   := No_GL_Type;
    Size_T             : Type_T    := No_Type_T;
-   --  Types to use for sizes
+   Bitsize_T          : Type_T    := No_Type_T;
+   --  Types to use for sizes in buyes and in bits
 
    Fat_Pointer_Size   : Nat;
    Thin_Pointer_Size  : Nat;
@@ -341,6 +343,10 @@ package GNATLLVM is
    Max_Align          : Nat;
    Max_Valid_Align    : Nat;
    Max_Int_Size       : Nat;
+
+   Max_Aggr_Const_Bytes : constant ULL := 1024;
+   --  Maximum size we support for an aggregate constant being converted
+   --  from one type to another.
 
    --  The actual main source file index. If -gnatDG,
    --  Main_Source_File_Index is wrong.

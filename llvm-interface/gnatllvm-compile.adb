@@ -18,6 +18,7 @@
 with Einfo.Utils; use Einfo.Utils;
 with Errout;      use Errout;
 with Exp_Util;    use Exp_Util;
+with Get_Targ;    use Get_Targ;
 with Nlists;      use Nlists;
 with Opt;         use Opt;
 with Restrict;    use Restrict;
@@ -69,9 +70,11 @@ package body GNATLLVM.Compile is
    ------------------
 
    procedure GNAT_To_LLVM (GNAT_Root : N_Compilation_Unit_Id) is
-      Size_Type   : Opt_Signed_Integer_Kind_Id;
-      Int_32_Type : Opt_Signed_Integer_Kind_Id;
-      Int_64_Type : Opt_Signed_Integer_Kind_Id;
+      Bitsize_Bits : Nat;
+      Size_Type    : Opt_Signed_Integer_Kind_Id;
+      Bitsize_Type : Opt_Signed_Integer_Kind_Id;
+      Int_32_Type  : Opt_Signed_Integer_Kind_Id;
+      Int_64_Type  : Opt_Signed_Integer_Kind_Id;
 
    begin
       --  If we're going to generate C code (or LLVM IR as if we were to
@@ -89,8 +92,19 @@ package body GNATLLVM.Compile is
       Thin_Pointer_Size := Set_Targ.Pointer_Size;
       Fat_Pointer_Size  := Thin_Pointer_Size * 2;
       Size_Type         := Stand_Type (Bits_Per_Word);
+      Bitsize_Bits      :=
+        (if Bits_Per_Word <= 16 then 32 else 64);
+      Bitsize_Type      := Stand_Type (Bitsize_Bits);
       Int_32_Type       := Stand_Type (32);
       Int_64_Type       := Stand_Type (64);
+
+      --  If we don't have a standard type that we can safely use for sizes
+      --  in bits, use the one for sizes in bytes and accept that we may
+      --  overflow.
+
+      if No (Bitsize_Type) then
+         Bitsize_Type := Size_Type;
+      end if;
 
       --  Do some sanity checking of type sizes to ensure they're
       --  nondecreasing.
@@ -117,9 +131,9 @@ package body GNATLLVM.Compile is
       --  Get single bit and single byte values and types, max alignmen
       --  and maximum integer size.
 
-      BPU          := Bits_Per_Unit;
+      BPU          := Get_Bits_Per_Unit;
       UBPU         := ULL (BPU);
-      Bit_MD       := Int_Ty (1);
+      Bit_MD       := Int_Ty (Nat (1));
       Byte_MD      := Int_Ty (BPU);
       Max_Align    := Maximum_Alignment * BPU;
       Max_Int_Size := (if   Enable_128bit_Types then Long_Long_Long_Size
@@ -146,28 +160,34 @@ package body GNATLLVM.Compile is
 
       Namet.Unlock;
 
-      --  We must elaborate Size_Type first because its needed to elaborate
-      --  all other types and we need to have a kludge here to set the sizes
-      --  of the GL_Type only when the below variables have been set.
+      --  We must elaborate Bitsize_Type first because its needed to
+      --  elaborate all other types and we need to have a kludge here to
+      --  set the sizes of the GL_Type only when the below variables have
+      --  been set.
 
-      Size_GL_Type := Primitive_GL_Type (Size_Type);
-      Size_MD      := Type_Of (Size_Type);
-      Size_T       := +Size_MD;
+      Bitsize_GL_Type := Primitive_GL_Type (Bitsize_Type);
+      Bitsize_MD      := Type_Of (Bitsize_Type);
+      Bitsize_T       := +Bitsize_MD;
+      Size_GL_Type    := Primitive_GL_Type (Size_Type);
+      Size_MD         := Type_Of (Size_Type);
+      Size_T          := +Size_MD;
       Update_GL_Type (Size_GL_Type, Size_MD, False);
+      Update_GL_Type (Bitsize_GL_Type, Bitsize_MD, False);
       Update_GL_Type (Base_GL_Type (Size_Type), Size_MD, False);
+      Update_GL_Type (Base_GL_Type (Bitsize_Type), Bitsize_MD, False);
 
       --  Create GL_Types for builtin types. Create Boolean first because
       --  we use it internally to make boolean constants in the evaluation
       --  of expressions used in elaborating other types.
 
       Boolean_GL_Type   := Primitive_GL_Type (Standard_Boolean);
-      A_Char_GL_Type    := Primitive_GL_Type (Standard_A_Char);
       SSI_GL_Type       := Primitive_GL_Type (Standard_Short_Short_Integer);
       SI_GL_Type        := Primitive_GL_Type (Standard_Short_Integer);
       Integer_GL_Type   := Primitive_GL_Type (Standard_Integer);
       LI_GL_Type        := Primitive_GL_Type (Standard_Long_Integer);
       LLI_GL_Type       := Primitive_GL_Type (Standard_Long_Long_Integer);
       Max_Int_GL_Type   := Primitive_GL_Type (Standard_Long_Long_Long_Integer);
+      A_Char_GL_Type    := Primitive_GL_Type (Standard_A_Char);
       Void_GL_Type      := Primitive_GL_Type (Standard_Void_Type);
       Any_Array_GL_Type := Primitive_GL_Type (Any_Array);
 

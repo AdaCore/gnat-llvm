@@ -1180,8 +1180,7 @@ package body GNATLLVM.Subprograms is
                                 No_MD_Type, R)
                elsif PK = In_Value_By_Int
                then  Get_Param (Func, Param_Num, GT,
-                                Int_Ty (Nat (Get_Type_Size (Type_Of (GT)))),
-                                R)
+                                Int_Ty (Get_Type_Size (Type_Of (GT))), R)
                elsif PK_Is_In_Or_Ref (PK)
                then  Get_Param (Func, Param_Num, GT, No_MD_Type, R)
                else  No_GL_Value);
@@ -1914,8 +1913,9 @@ package body GNATLLVM.Subprograms is
             Ret_GT   : constant GL_Type  :=
               Related_Type (Return_Address_Param);
             Ret_Size : constant GL_Value :=
-              To_Bytes (Get_Type_Size (Ret_GT, Max_Size =>
-                                         Is_Unconstrained_Record (Ret_GT)));
+              Get_Type_Size_In_Bytes (Ret_GT,
+                                      Max_Size =>
+                                        Is_Unconstrained_Record (Ret_GT));
 
          begin
             --  If both sizes are constant, our size must be no larger than

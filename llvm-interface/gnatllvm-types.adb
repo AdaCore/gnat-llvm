@@ -72,16 +72,16 @@ package body GNATLLVM.Types is
       Table_Increment      => 2,
       Table_Name           => "LValue_Stack");
 
-   function Get_Alloc_Size
+   function Get_Alloc_Size_In_Bytes
      (GT          : GL_Type;
       Alloc_GT    : GL_Type;
       V           : GL_Value;
       Max_Size    : Boolean := False;
       For_Dealloc : Boolean := False) return GL_Value
      with Pre  => Present (GT) and then Present (Alloc_GT),
-          Post => Present (Get_Alloc_Size'Result);
-   --  Like Get_Type_Size, but used for the size to be allocated, so we
-   --  include the size of the bounds in some array cases.
+          Post => Present (Get_Alloc_Size_In_Bytes'Result);
+   --  Like Get_Type_Size_In_Bytes, but used for the size to be allocated,
+   --  so we include the size of the bounds in some array cases.
 
    function Get_Alloc_Alignment
      (GT       : GL_Type;
@@ -166,6 +166,8 @@ package body GNATLLVM.Types is
         (TE         : Type_Kind_Id;
          V          : GL_Value;
          Max_Size   : Boolean := False) return Result;
+      with function Get_Type_Size (MD : MD_Type) return GL_Value;
+      with function From_Bits (V : GL_Value) return GL_Value;
       with function  "-" (V1, V2 : Result) return Result;
    package Size is
       function Get_Type_Size
@@ -650,7 +652,7 @@ package body GNATLLVM.Types is
 
       elsif not Is_Nonnative_Type (A_GT) then
          if Do_Stack_Check
-           and then Get_Type_Size (Type_Of (A_GT)) > Max_Alloc * UBPU
+           and then Get_Type_Size_In_Bytes (Type_Of (A_GT)) > Max_Alloc
          then
             Emit_Raise_Call (N, SE_Object_Too_Large);
             Error_Msg_N ("??Storage_Error will be raised at run time!", N);
@@ -690,8 +692,7 @@ package body GNATLLVM.Types is
          Num_Elts   := Get_Array_Elements (Value, Full_Etype (A_GT));
       else
          Element_GT := SSI_GL_Type;
-         Num_Elts   :=
-           To_Bytes (Get_Alloc_Size (GT, A_GT, Value, Max_Size));
+         Num_Elts   := Get_Alloc_Size_In_Bytes (GT, A_GT, Value, Max_Size);
       end if;
 
       --  If this is an aliased array of nominal constrained type and the
@@ -718,8 +719,8 @@ package body GNATLLVM.Types is
          --  overflow.
 
          if not Is_Dynamic_Size (A_GT, Allow_Overflow => True) then
-            if Overflowed (GL_Value'(Get_Type_Size (A_GT)))
-              or else +Get_Type_Size (A_GT) > Max_Alloc * UBPU
+            if Overflowed (GL_Value'(Get_Type_Size_In_Bytes (A_GT)))
+              or else Get_Type_Size_In_Bytes (A_GT) > Max_Alloc
             then
                Emit_Raise_Call (N, SE_Object_Too_Large);
                Error_Msg_N
@@ -727,10 +728,11 @@ package body GNATLLVM.Types is
                return Get_Undef_Ref (GT);
             end if;
          else
-            Emit_Raise_Call_If (I_Cmp (Int_UGT, Num_Elts,
-                                       U_Div (Size_Const_Int (Max_Alloc),
-                                              Get_Type_Size (Element_GT))),
-                                N, SE_Object_Too_Large);
+            Emit_Raise_Call_If
+              (I_Cmp (Int_UGT, Num_Elts,
+                      U_Div (Size_Const_Int (Max_Alloc / UBPU),
+                             Get_Type_Size_In_Bytes (Element_GT))),
+               N, SE_Object_Too_Large);
          end if;
       end if;
 
@@ -742,7 +744,7 @@ package body GNATLLVM.Types is
                  and then Is_A_Constant_Int (Num_Elts)
                  and then ULL_To_LLI (Get_Const_Int_Value_ULL (Num_Elts)) < 0)
       then
-         if Get_Type_Size (Element_GT) = 0 then
+         if Get_Type_Size (Element_GT) = ULL (0) then
             Num_Elts := Size_Const_Int (1);
          else
             if not Is_Undef (Num_Elts) then
@@ -795,7 +797,7 @@ package body GNATLLVM.Types is
       Align   : constant Nat      := Get_Alloc_Alignment (GT, A_GT, E);
       Align_V : constant GL_Value := Size_Const_Int (ULL (Align));
       Size    : GL_Value          :=
-        Get_Alloc_Size (GT, A_GT, Value, Max_Size);
+        Get_Alloc_Size_In_Bytes (GT, A_GT, Value, Max_Size);
       Result  : GL_Value;
 
    begin
@@ -846,7 +848,7 @@ package body GNATLLVM.Types is
       --  than the system allocator alignment.
 
       if No (Proc) and then Align <= Get_System_Allocator_Alignment * BPU then
-         Result := Call (Get_Default_Alloc_Fn, (1 => To_Bytes (Size)));
+         Result := Call (Get_Default_Alloc_Fn, (1 => Size));
 
       --  Otherwise, if we can use the default memory allocation
       --  function but have to overalign, increase the size by both
@@ -856,18 +858,20 @@ package body GNATLLVM.Types is
 
       elsif No (Proc) then
          declare
-            Ptr_Size   : constant GL_Value := Get_Type_Size (A_Char_GL_Type);
-            Total_Size : constant GL_Value := Size + Align + Ptr_Size;
+            Ptr_Size   : constant GL_Value :=
+              Get_Type_Size_In_Bytes (A_Char_GL_Type);
+            Total_Size : constant GL_Value :=
+              Size + To_Bytes (Align) + Ptr_Size;
             Alloc_R    : constant GL_Value :=
-              Call (Get_Default_Alloc_Fn, (1 => To_Bytes (Total_Size)));
+              Call (Get_Default_Alloc_Fn, (1 => Total_Size));
             Alloc      : constant GL_Value :=
               (if   Is_Pointer (Alloc_R)
                then Ptr_To_Int (Alloc_R, Address_GL_Type) else Alloc_R);
             Aligned    : constant GL_Value :=
-              Align_To (Address_Add (Alloc, To_Bytes (Ptr_Size)),
-                        Get_System_Allocator_Alignment, To_Bytes (Align));
-            Ptr_Loc    : constant GL_Value :=
-              Address_Sub (Aligned, To_Bytes (Ptr_Size));
+              Align_To_In_Bytes (Address_Add (Alloc, Ptr_Size),
+                                 To_Bytes (Get_System_Allocator_Alignment),
+                                 To_Bytes (Align));
+            Ptr_Loc    : constant GL_Value := Address_Sub (Aligned, Ptr_Size);
 
          begin
             --  It may have been the case that Size didn't oveflow until
@@ -895,14 +899,13 @@ package body GNATLLVM.Types is
            Call_Alloc (Proc, N,
                        (1 => Ptr_To_Ref (Emit_Entity (Pool),
                                          Full_GL_Type (First_Formal (Proc))),
-                        2 => To_Bytes (Size),
+                        2 => Size,
                         3 => To_Bytes (Align_V)));
 
       --  Otherwise, this is the secondary stack
 
       else
-         Result := Call_Alloc (Proc, N, (1 => To_Bytes (Size),
-                                         2 => To_Bytes (Align_V)));
+         Result := Call_Alloc (Proc, N, (1 => Size, 2 => To_Bytes (Align_V)));
       end if;
 
       --  If this is for a non-default storage model, indicate that
@@ -961,7 +964,7 @@ package body GNATLLVM.Types is
 
       declare
          Size    : constant GL_Value :=
-           Get_Alloc_Size (DT, Alloc_GT, Conv_V, For_Dealloc => True);
+           Get_Alloc_Size_In_Bytes (DT, Alloc_GT, Conv_V, For_Dealloc => True);
          Align   : constant Nat      :=
            Get_Alloc_Alignment (DT, Alloc_GT, Empty);
          Align_V : constant GL_Value := Size_Const_Int (ULL (Align));
@@ -989,8 +992,8 @@ package body GNATLLVM.Types is
                Addr       : constant GL_Value :=
                  Ptr_To_Int (Free_V, Address_GL_Type);
                Ptr_Size   : constant GL_Value :=
-                 Get_Type_Size (A_Char_GL_Type);
-               Ptr_Loc    : constant GL_Value := Addr - To_Bytes (Ptr_Size);
+                 Get_Type_Size_In_Bytes (A_Char_GL_Type);
+               Ptr_Loc    : constant GL_Value := Addr - Ptr_Size;
                Ptr_Addr   : constant GL_Value :=
                  Load (Int_To_Ref (Ptr_Loc, A_Char_GL_Type));
 
@@ -1013,7 +1016,7 @@ package body GNATLLVM.Types is
                                             Full_GL_Type
                                               (First_Formal (Proc))),
                            2 => Ptr_To_Address_Type (Free_V),
-                           3 => To_Bytes (Size),
+                           3 => Size,
                            4 => To_Bytes (Align_V)));
 
             --  Otherwise, this is the secondary stack and we just call
@@ -1021,7 +1024,7 @@ package body GNATLLVM.Types is
 
          else
             Call_Dealloc (Proc, (1 => Ptr_To_Address_Type (Free_V),
-                                 2 => To_Bytes (Size)));
+                                 2 => Size));
          end if;
       end;
    end Heap_Deallocate;
@@ -1105,6 +1108,13 @@ package body GNATLLVM.Types is
 
    function To_Size_Type (V : GL_Value) return GL_Value is
      (Convert (V, Size_GL_Type));
+
+   ---------------------
+   -- To_Bitsize_Type --
+   ---------------------
+
+   function To_Bitsize_Type (V : GL_Value) return GL_Value is
+     (Convert (V, Bitsize_GL_Type));
 
    ------------------------
    -- Get_Type_Alignment --
@@ -1208,7 +1218,7 @@ package body GNATLLVM.Types is
          if Present (V) and then Is_Data (V)
            and then not Use_Max_Size and then not Unpad_Record
          then
-            Our_Size := From_Const (Get_Type_Size (+Type_Of (V)));
+            Our_Size := From_Const (Get_Type_Size (Type_Of (V)));
 
             --  However, if this is both bounds and data, we have to subtract
             --  the size of the bounds since we define the size of the
@@ -1216,7 +1226,8 @@ package body GNATLLVM.Types is
 
             if Relationship (V) = Bounds_And_Data then
                Our_Size :=
-                 Our_Size - From_Const (Get_Bound_Size (Related_Type (V)));
+                 Our_Size -
+                 From_Const (From_Bits (Get_Bound_Size (Related_Type (V))));
             end if;
 
             return Our_Size;
@@ -1225,7 +1236,7 @@ package body GNATLLVM.Types is
          --  unless we aren't to remove padding and this is a record type.
 
          elsif Present (Size_In_GT) and then not Unpad_Record then
-            return From_Const (Size_In_GT);
+            return From_Const (From_Bits (Size_In_GT));
 
          --  If this is a subprogram type, it doesn't have a size
 
@@ -1237,7 +1248,7 @@ package body GNATLLVM.Types is
          --  record type.
 
          elsif not Is_Nonnative_Type (GT) and then not Unpad_Record then
-            return From_Const (Get_Type_Size (+Type_Of (GT)));
+            return From_Const (Get_Type_Size (Type_Of (GT)));
 
          elsif Is_Record_Type (GT) then
             return Get_Record_Type_Size (Full_Etype (GT), V,
@@ -1264,6 +1275,8 @@ package body GNATLLVM.Types is
                 Get_Record_Type_Size    => Get_Record_Type_Size,
                 Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
                 Get_Array_Type_Size     => Get_Array_Type_Size,
+                Get_Type_Size           => Get_Type_Size,
+                From_Bits               => Ident,
                 "-"                     => "-");
 
    function Get_Type_Size
@@ -1273,6 +1286,24 @@ package body GNATLLVM.Types is
       No_Padding : Boolean  := False) return GL_Value
      renames LLVM_Size.Get_Type_Size;
 
+   package LLVM_Size_In_Bytes is
+      new Size (Result                  => GL_Value,
+                Empty_Result            => No_GL_Value,
+                From_Const              => From_Const,
+                Get_Record_Type_Size    => Get_Record_Type_Size_In_Bytes,
+                Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size_In_Bytes,
+                Get_Array_Type_Size     => Get_Array_Type_Size_In_Bytes,
+                From_Bits               => To_Bytes,
+                Get_Type_Size           => Get_Type_Size_In_Bytes,
+                "-"                     => "-");
+
+   function Get_Type_Size_In_Bytes
+     (GT         : GL_Type;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean  := False) return GL_Value
+     renames LLVM_Size_In_Bytes.Get_Type_Size;
+
    package IDS_Size is
       new Size (Result                  => IDS,
                 Empty_Result            => No_IDS,
@@ -1280,6 +1311,8 @@ package body GNATLLVM.Types is
                 Get_Record_Type_Size    => Get_Record_Type_Size,
                 Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
                 Get_Array_Type_Size     => Get_Array_Type_Size,
+                From_Bits               => Ident,
+                Get_Type_Size           => Get_Type_Size,
                 "-"                     => "-");
 
    function Get_Type_Size
@@ -1296,6 +1329,8 @@ package body GNATLLVM.Types is
                 Get_Record_Type_Size    => Get_Record_Type_Size,
                 Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
                 Get_Array_Type_Size     => Get_Array_Type_Size,
+                From_Bits               => Ident,
+                Get_Type_Size           => Get_Type_Size,
                 "-"                     => "-");
 
    function Get_Type_Size
@@ -1305,11 +1340,37 @@ package body GNATLLVM.Types is
       No_Padding : Boolean  := False) return BA_Data
      renames BA_Size.Get_Type_Size;
 
-   --------------------
-   -- Get_Alloc_Size --
-   --------------------
+   -------------------
+   -- Get_Type_Size --
+   -------------------
 
-   function Get_Alloc_Size
+   function Get_Type_Size (GT : GL_Type) return ULL is
+      Result : constant GL_Value := Get_Type_Size (GT);
+
+   begin
+      pragma Assert (Is_A_Constant_Int (Result));
+
+      return Get_Const_Int_Value_ULL (Result);
+   end Get_Type_Size;
+
+   ----------------------------
+   -- Get_Type_Size_In_Bytes --
+   ----------------------------
+
+   function Get_Type_Size_In_Bytes (GT : GL_Type) return ULL is
+      Result : constant GL_Value := Get_Type_Size_In_Bytes (GT);
+
+   begin
+      pragma Assert (Is_A_Constant_Int (Result));
+
+      return Get_Const_Int_Value_ULL (Result);
+   end Get_Type_Size_In_Bytes;
+
+   -----------------------------
+   -- Getgotro_Alloc_Size_In_Bytes --
+   -----------------------------
+
+   function Get_Alloc_Size_In_Bytes
      (GT          : GL_Type;
       Alloc_GT    : GL_Type;
       V           : GL_Value;
@@ -1320,10 +1381,10 @@ package body GNATLLVM.Types is
         Is_Class_Wide_Equivalent_Type (Alloc_GT);
       Size_GT    : constant GL_Type := GT_To_Use (GT, Alloc_GT);
       Size       : GL_Value         :=
-        Get_Type_Size (Size_GT,
-                       (if   not For_Dealloc and then Class_Wide
-                        then No_GL_Value else V),
-                       Max_Size => Max_Size);
+        Get_Type_Size_In_Bytes (Size_GT,
+                                (if   not For_Dealloc and then Class_Wide
+                                 then No_GL_Value else V),
+                                Max_Size => Max_Size);
       --  If we're allocating a classwide equivalent type, we want to ignore
       --  the initial value, but not if deallocating one.
 
@@ -1332,12 +1393,13 @@ package body GNATLLVM.Types is
       --  for unconstrained itself.
 
       if Is_Unconstrained_Array (GT) or else Type_Needs_Bounds (GT) then
-         Size := Align_To (Size + Get_Bound_Size (GT),
-                           Get_Type_Alignment (GT), Get_Bound_Alignment (GT));
+         Size := Align_To_In_Bytes (Size + To_Bytes (Get_Bound_Size (GT)),
+                                 To_Bytes (Get_Type_Alignment (GT)),
+                                 To_Bytes (Get_Bound_Alignment (GT)));
       end if;
 
       return Size;
-   end Get_Alloc_Size;
+   end Get_Alloc_Size_In_Bytes;
 
    -------------------------
    -- Get_Alloc_Alignment --
@@ -1425,8 +1487,8 @@ package body GNATLLVM.Types is
 
       --  Now we have everything we need
 
-      return Get_Type_Size (Size_GT, Size_Value,
-                            No_Padding => not Copy_Padding);
+      return Get_Type_Size_In_Bytes (Size_GT, Size_Value,
+                                     No_Padding => not Copy_Padding);
    end Compute_Size;
 
    ------------------------------
@@ -1649,7 +1711,7 @@ package body GNATLLVM.Types is
 
         or else (not Is_Dynamic_Size (GT)
                    and then Align <= Get_Bits_Per_Word * 2
-                   and then ULL (Align) = +Get_Type_Size (GT))
+                   and then ULL (Align) = Get_Type_Size (GT))
       then
          return;
       end if;

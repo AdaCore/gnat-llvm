@@ -908,7 +908,7 @@ package body GNATLLVM.Types.Create is
       --  if we haven't set up the boolean type yet.
 
       elsif Present (Boolean_GL_Type)
-        and then Size_Const_Int (Size) < In_Size
+        and then Bitsize_Const_Int (Size) < In_Size
       then
          Error_Msg_NE_Num (Msg_Prefix & " for" & Error_Str &
                              (if Ekind (E) in E_Component | E_Discriminant

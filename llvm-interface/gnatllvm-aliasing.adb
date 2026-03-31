@@ -255,7 +255,7 @@ package body GNATLLVM.Aliasing is
      with Pre  => Present (MD) and then Our_Size_In_Bytes /= 0
                   and then (Offset = 0 or else Is_Struct_Tag (MD))
                   and then (Is_Struct_Tag (MD)
-                              or else Our_Size_In_Bytes = Size_In_Bytes (MD)),
+                            or else Our_Size_In_Bytes = Size_In_Bytes (MD)),
           Post => Present (Extract_Access_Type'Result)
                   and then Offset'Old >= Offset;
    --  MD is a type tag and we are doing an access of Size_In_Bytes wide
@@ -582,7 +582,7 @@ package body GNATLLVM.Aliasing is
       if Is_Double_Reference (V) then
          Set_TBAA_Type (V, Create_TBAA_Scalar_Type_Node
                           (Get_TBAA_Name (Unique, GT => GT, Suffix => "#DR"),
-                           To_Bytes (Get_Type_Size (Type_Of (V))), TBAA_Root));
+                           Get_Type_Size_In_Bytes (Type_Of (V)), TBAA_Root));
 
       --  If this is a Reference, we set it to GT's TBAA type tag
 
@@ -1180,7 +1180,7 @@ package body GNATLLVM.Aliasing is
          declare
             TBAAs   : constant Metadata_Array (1 .. 1) := (1 => Prim_TBAA);
             Sizes   : constant ULL_Array (1 .. 1)      :=
-              (1 => To_Bytes (Get_Type_Size (Type_Of (Prim_GT))));
+              (1 => Get_Type_Size_In_Bytes (Type_Of (Prim_GT)));
             Offsets : constant ULL_Array (1 .. 1)      := (1 => 0);
 
          begin
@@ -1195,7 +1195,7 @@ package body GNATLLVM.Aliasing is
       elsif Is_Int_Alt_GL_Type (GT) or else Is_Biased_GL_Type (GT) then
          return Create_TBAA_Scalar_Type_Node
            (Get_TBAA_Name (Kind, GT => GT, TE => TE),
-            To_Bytes (Get_Type_Size (Type_Of (GT))), Our_Parent);
+            Get_Type_Size_In_Bytes (Type_Of (GT)), Our_Parent);
 
       --  We don't support any other cases for now
 
@@ -1257,7 +1257,6 @@ package body GNATLLVM.Aliasing is
       Parent : Metadata_T) return Metadata_T
    is
       GT   : constant GL_Type  := Primitive_GL_Type (TE);
-      Size : constant ULL      := Get_Type_Size (Type_Of (GT));
 
    begin
       --  ??? We don't make a TBAA type tag for access subprogram types.
@@ -1267,7 +1266,8 @@ package body GNATLLVM.Aliasing is
          return No_Metadata_T;
       else
          return Create_TBAA_Scalar_Type_Node
-           (Get_TBAA_Name (Kind, TE => TE), To_Bytes (Size), Parent);
+           (Get_TBAA_Name (Kind, TE => TE),
+            Get_Type_Size_In_Bytes (Type_Of (GT)), Parent);
       end if;
 
    end Create_TBAA_For_Elementary_Type;
@@ -1305,7 +1305,7 @@ package body GNATLLVM.Aliasing is
 
          begin
             Offsets (J) := SF.Offset;
-            Sizes   (J) := To_Bytes (Get_Type_Size (SF.MD));
+            Sizes   (J) := Get_Type_Size_In_Bytes (SF.MD);
 
             --  If there's no GT for the field, this is a field used to
             --  store bitfields. So we make a unique scalar TBAA type
@@ -1331,7 +1331,7 @@ package body GNATLLVM.Aliasing is
 
       return Create_TBAA_Struct_Type_Node
         (Get_TBAA_Name (Kind, TE => TE),
-         +To_Bytes (Get_Type_Size (Primitive_GL_Type (TE))), Parent, Offsets,
+         Get_Type_Size_In_Bytes (Primitive_GL_Type (TE)), Parent, Offsets,
          Sizes, TBAAs);
 
    end Create_TBAA_For_Record_Type;
@@ -1386,8 +1386,7 @@ package body GNATLLVM.Aliasing is
                declare
                   Dim_GT : constant GL_Type := Array_Index_GT (A_TE, Dim);
                   Dim_T  : constant Type_T  := +Type_Of (Dim_GT);
-                  Size   : constant ULL     :=
-                    To_Bytes (Get_Type_Size (Dim_T));
+                  Size   : constant ULL     := Get_Type_Size_In_Bytes (Dim_T);
                   FLB    : constant Boolean := Array_Index_Has_FLB (A_TE, Dim);
 
                begin
@@ -1416,7 +1415,7 @@ package body GNATLLVM.Aliasing is
                TI.Bounds :=
                  Create_TBAA_Struct_Type_Node
                  (Get_TBAA_Name (Unique, TE => TE, Suffix => "#BND"),
-                  To_Bytes (Get_Type_Size (Bound_MD)), TBAA_Root, Offsets,
+                  Get_Type_Size_In_Bytes (Bound_MD), TBAA_Root, Offsets,
                   Sizes, TBAAs);
             end if;
          end if;
@@ -1463,7 +1462,7 @@ package body GNATLLVM.Aliasing is
             BD_MD       : constant MD_Type        :=
               Type_For_Relationship (GT, Bounds_And_Data);
             Size        : constant ULL            :=
-              To_Bytes (Get_Type_Size (BD_MD));
+              Get_Type_Size_In_Bytes (BD_MD);
             Align       : constant ULL            :=
               ULL (To_Bytes (Get_Array_Type_Alignment (TE)));
             Align_BS    : constant ULL            :=
@@ -1499,7 +1498,7 @@ package body GNATLLVM.Aliasing is
       Parent : Metadata_T) return Metadata_T
    is
       C_GT   : constant GL_Type         := Full_Component_GL_Type (TE);
-      C_Size : constant ULL             := +To_Bytes (Get_Type_Size (C_GT));
+      C_Size : constant ULL             := Get_Type_Size_In_Bytes (C_GT);
       GT     : constant GL_Type         := Primitive_GL_Type (TE);
       BT     : constant E_Array_Type_Id := Base_Type_For_Aliasing (TE);
       Tidx   : constant TBAA_Info_Id    := TBAA_Data_For_Array_Type (BT);
@@ -1520,7 +1519,7 @@ package body GNATLLVM.Aliasing is
       --  so set up to make a structure type tag for this array.
 
       declare
-         Size      : constant ULL     := +To_Bytes (Get_Type_Size (GT));
+         Size      : constant ULL     := Get_Type_Size_In_Bytes (GT);
          Elmts     : constant Nat     := Nat (Size / C_Size);
          Offset    : ULL              := 0;
          Offsets   : ULL_Array (1 .. Elmts);
@@ -1593,7 +1592,7 @@ package body GNATLLVM.Aliasing is
         (if   Is_Data (V) then Full_Designated_GL_Type (V)
          else Related_Type (V));
       Size_In_Bytes : constant ULL     :=
-        To_Bytes (Get_Type_Size (Element_Type_Of (V)));
+        Get_Type_Size_In_Bytes (Element_Type_Of (V));
       Offset        : ULL              := TBAA_Offset  (V);
       Base_Type     : Metadata_T       := TBAA_Type    (V);
       Access_Type   : Metadata_T;

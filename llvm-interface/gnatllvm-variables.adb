@@ -1237,7 +1237,7 @@ package body GNATLLVM.Variables is
                Our_NS := True;
                Our_RT := True;
 
-               if Get_Type_Size (GT) >= To_Bits (1024) then
+               if Get_Type_Size_In_Bytes (GT) >= Max_Aggr_Const_Bytes then
                   return False;
                end if;
             end if;
@@ -1295,7 +1295,7 @@ package body GNATLLVM.Variables is
                Our_NS := True;
                Our_RT := True;
 
-               if Get_Type_Size (GT) >= To_Bits (1024) then
+               if Get_Type_Size_In_Bytes (GT) >= Max_Aggr_Const_Bytes then
                   return False;
                end if;
             end if;

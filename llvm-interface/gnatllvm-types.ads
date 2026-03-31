@@ -303,14 +303,22 @@ package GNATLLVM.Types is
       then To_Bits (Store_Size_Of_Type (Module_Data_Layout, T))
       else To_Bits (ABI_Size_Of_Type (Module_Data_Layout, T)))
      with Pre => Present (T);
-   --  Return the size of an LLVM type, in bits. For structures, we want to
-   --  return the actual size, not including padding, but for other types
-   --  we need the size, including padding. This is important for some of
-   --  the FP types.
+   function Get_Type_Size_In_Bytes (T : Type_T) return ULL is
+     (if   Get_Type_Kind (T) = Struct_Type_Kind
+      then Store_Size_Of_Type (Module_Data_Layout, T)
+      else ABI_Size_Of_Type (Module_Data_Layout, T))
+     with Pre => Present (T);
+   --  Return the size of an LLVM type, in bits or bytes. For structures,
+   --  we want to return the actual size, not including padding, but for
+   --  other types we need the size, including padding. This is important
+   --  for some of the FP types.
 
    function Get_Type_Size (T : Type_T) return GL_Value is
-     (Size_Const_Int (Get_Type_Size (T)))
+     (Bitsize_Const_Int (Get_Type_Size (T)))
      with Pre => Present (T), Post => Present (Get_Type_Size'Result);
+   function Get_Type_Size_In_Bytes (T : Type_T) return GL_Value is
+     (Size_Const_Int (Get_Type_Size_In_Bytes (T)))
+     with Pre => Present (T), Post => Present (Get_Type_Size_In_Bytes'Result);
    --  Return the size of an LLVM type, in bytes, as an LLVM constant
 
    function Get_Scalar_Bit_Size (T : Type_T) return ULL is
@@ -329,7 +337,7 @@ package GNATLLVM.Types is
    --  Return the preferred alignment of an LLVM type, in bits
 
    function Get_Type_Alignment (T : Type_T) return GL_Value is
-     (Size_Const_Int (ULL (Nat'(Get_Type_Alignment (T)))));
+     (Bitsize_Const_Int (ULL (Nat'(Get_Type_Alignment (T)))));
    --  Return the alignment of an LLVM type, in bytes, as an LLVM constant
 
    function ULL_Align (C : ULL) return Nat;
@@ -405,8 +413,11 @@ package GNATLLVM.Types is
    function To_Size_Type (V : GL_Value) return GL_Value
      with Pre  => Present (V),
           Post => Type_Of (To_Size_Type'Result) = Size_MD;
-   --  Convert V to Size_Type. This is always Size_Type's width and
-   --  signedness, but may actually be a different GNAT type.
+   function To_Bitsize_Type (V : GL_Value) return GL_Value
+     with Pre  => Present (V),
+          Post => Type_Of (To_Bitsize_Type'Result) = Bitsize_MD;
+   --  Convert V to Size_Type. This is always Size_Type or Bitsize_Type's
+   --  width and signedness, but may actually be a different GNAT type.
 
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return Nat
@@ -420,7 +431,17 @@ package GNATLLVM.Types is
       Max_Size   : Boolean  := False;
       No_Padding : Boolean  := False) return GL_Value
      with Pre => Present (GT), Post => Present (Get_Type_Size'Result);
-   --  Return the size of a type, in bytes, as a GL_Value. If TE is an
+   function Get_Type_Size_In_Bytes
+     (GT         : GL_Type;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean  := False) return GL_Value
+     with Pre => Present (GT), Post => Present (Get_Type_Size_In_Bytes'Result);
+   function Get_Type_Size (GT : GL_Type) return ULL
+     with Pre => Present (GT);
+   function Get_Type_Size_In_Bytes (GT : GL_Type) return ULL
+     with Pre => Present (GT);
+   --  Return the size of a type, in bits or bytes, as a GL_Value. If TE is an
    --  unconstrained array type, V must be the value of the array. If
    --  Max_Size is true, we return the maximum size of the type. If
    --  No_Padding is true, we don't count any padding of the type.
@@ -432,15 +453,15 @@ package GNATLLVM.Types is
      with Pre  => Present (Left_GT) and then Present (Right_GT)
                   and then Present (Right_Value),
           Post =>  Present (Compute_Size'Result);
-   --  Used for comparison and assignment: compute the size to be used in
-   --  the operation. For_Assignment says which operation. Right_Value must
-   --  be specified. Left_Value is optional and will be specified in the
-   --  comparison case, but not the assignment case. If Right_Value is a
-   --  discriminated record, we assume here that the last call to
-   --  Emit_LValue was to compute Right_Value so that we can use
-   --  Get_Matching_Value to return the proper object. In the comparison
-   --  case, where Left_Value is specified, we can only be comparing
-   --  arrays, so we won't need to use Get_Matching_Value.
+   --  Used for comparison and assignment: compute the size in bytes to be
+   --  used in the operation. For_Assignment says which
+   --  operation. Right_Value must be specified. Left_Value is optional and
+   --  will be specified in the comparison case, but not the assignment
+   --  case. If Right_Value is a discriminated record, we assume here that
+   --  the last call to Emit_LValue was to compute Right_Value so that we
+   --  can use Get_Matching_Value to return the proper object. In the
+   --  comparison case, where Left_Value is specified, we can only be
+   --  comparing arrays, so we won't need to use Get_Matching_Value.
 
    function Get_Type_Size_Complexity
      (GT : GL_Type; Max_Size : Boolean := False) return Nat
@@ -481,7 +502,7 @@ package GNATLLVM.Types is
      (Present (V.Value) and then not Is_Undef (V.Value));
 
    function Const (C : ULL; Sign_Extend : Boolean := False) return IDS is
-     ((False,  Size_Const_Int (C, Sign_Extend)))
+     ((False,  Bitsize_Const_Int (C, Sign_Extend)))
      with Post => Is_Const (Const'Result);
 
    function Const_Int (GT : GL_Type; C : Uint) return IDS is

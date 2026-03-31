@@ -1374,7 +1374,21 @@ package GNATLLVM.GLValue is
 
    function Size_Const_Null return GL_Value is
      (Size_Const_Int (ULL (0)))
-     with Post => Present (Size_Const_Null'Result);
+     with Post => Is_Const_0 (Size_Const_Null'Result);
+
+   function Bitsize_Const_Int (N : Uint) return GL_Value is
+     (Const_Int (Bitsize_GL_Type, N))
+     with Pre  => Present (N), Post => Present (Bitsize_Const_Int'Result);
+
+   function Bitsize_Const_Int
+     (N : ULL; Sign_Extend : Boolean := False) return GL_Value
+   is
+     (Const_Int (Bitsize_GL_Type, N, Sign_Extend))
+     with Post => Present (Bitsize_Const_Int'Result);
+
+   function Bitsize_Const_Null return GL_Value is
+     (Bitsize_Const_Int (ULL (0)))
+     with Post => Is_Const_0 (Bitsize_Const_Null'Result);
 
    function Const_Int_32 (N : Uint) return GL_Value is
      (Const_Int (Int_32_GL_Type, N))
@@ -1388,7 +1402,7 @@ package GNATLLVM.GLValue is
 
    function Const_Null_32 return GL_Value is
      (Const_Int_32 (0))
-     with Post => Present (Const_Null_32'Result);
+     with Post => Is_Const_0 (Const_Null_32'Result);
 
    function Const_Int_64 (N : Uint) return GL_Value is
      (Const_Int (Int_64_GL_Type, N))
@@ -1402,7 +1416,7 @@ package GNATLLVM.GLValue is
 
    function Const_Null_64 return GL_Value is
      (Const_Int_64 (0))
-     with Post => Present (Const_Null_64'Result);
+     with Post => Is_Const_0 (Const_Null_64'Result);
 
    function Const_Real
      (V : GL_Value; F : Interfaces.C.double) return GL_Value
@@ -1473,6 +1487,21 @@ package GNATLLVM.GLValue is
    function Get_Type_Size (V : GL_Value) return ULL
      with Pre => Present (V), Inline;
 
+   function Get_Type_Size (MD : MD_Type) return GL_Value is
+     (Bitsize_Const_Int (Get_Type_Size (MD)))
+     with Pre => Present (MD), Inline;
+
+   function Get_Type_Size_In_Bytes (V : GL_Value) return GL_Value
+     with Pre  => Present (V),
+          Post => Present (Get_Type_Size_In_Bytes'Result), Inline;
+
+   function Get_Type_Size_In_Bytes (V : GL_Value) return ULL
+     with Pre => Present (V), Inline;
+
+   function Get_Type_Size_In_Bytes (MD : MD_Type) return GL_Value is
+     (Size_Const_Int (Get_Type_Size_In_Bytes (MD)))
+     with Pre => Present (MD), Inline;
+
    function Get_Scalar_Bit_Size (V : GL_Value) return ULL
      with Pre => Present (V), Inline;
 
@@ -1483,7 +1512,7 @@ package GNATLLVM.GLValue is
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return GL_Value
      with Pre  => Present (GT),
-          Post => Type_Of (Get_Type_Alignment'Result) = Size_MD,
+          Post => Type_Of (Get_Type_Alignment'Result) = Bitsize_MD,
           Inline;
 
    function Add_Function

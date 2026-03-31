@@ -47,6 +47,7 @@ package GNATLLVM.MDType is
    Bit_MD      : MD_Type := No_MD_Type;
    Byte_MD     : MD_Type := No_MD_Type;
    Size_MD     : MD_Type := No_MD_Type;
+   Bitsize_MD  : MD_Type := No_MD_Type;
    Max_Int_MD  : MD_Type := No_MD_Type;
    Void_Ptr_MD : MD_Type := No_MD_Type;
    Address_MD  : MD_Type := No_MD_Type;
@@ -203,6 +204,8 @@ package GNATLLVM.MDType is
 
    function Get_Type_Size (MD : MD_Type) return ULL
      with Pre => Present (MD);
+   function Get_Type_Size_In_Bytes (MD : MD_Type) return ULL
+     with Pre => Present (MD);
    function Get_Scalar_Bit_Size (MD : MD_Type) return ULL
      with Pre => Present (MD);
    function Get_Type_Alignment (MD : MD_Type) return Nat
@@ -225,6 +228,16 @@ package GNATLLVM.MDType is
       Unsigned : Boolean := False;
       Unknown  : Boolean := False) return MD_Type
      with Post => Int_Bits (Int_Ty'Result) = Bits
+                  and then Is_Unknown_Sign (Int_Ty'Result) = Unknown
+                  and then (Unknown
+                            or else Is_Unsigned (Int_Ty'Result) = Unsigned);
+   function Int_Ty
+     (Bits     : ULL;
+      Unsigned : Boolean := False;
+      Unknown  : Boolean := False) return MD_Type
+   is
+     (Int_Ty (Nat (Bits), Unsigned, Unknown))
+     with Post => Int_Bits (Int_Ty'Result) = Nat (Bits)
                   and then Is_Unknown_Sign (Int_Ty'Result) = Unknown
                   and then (Unknown
                             or else Is_Unsigned (Int_Ty'Result) = Unsigned);

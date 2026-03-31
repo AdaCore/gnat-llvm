@@ -70,6 +70,15 @@ package body GNATLLVM.Records is
      with Pre  => RI.Variants /= null and then RI.Overlap_Variants /= null
                   and then Present (In_Size),
           Post => Present (Get_Variant_Size'Result);
+   function Get_Variant_Size_In_Bytes
+     (RI          : Record_Info;
+      V           : GL_Value;
+      In_Size     : GL_Value;
+      Force_Align : Nat;
+      No_Padding : Boolean := False) return GL_Value
+     with Pre  => RI.Variants /= null and then RI.Overlap_Variants /= null
+                  and then Present (In_Size),
+          Post => Present (Get_Variant_Size_In_Bytes'Result);
    --  Compute the total size of a record with the information from a fragment
    --  known to be a variant and where we're not getting the maximum size.
 
@@ -104,6 +113,17 @@ package body GNATLLVM.Records is
      with Pre  => RI.Variants /= null and then RI.Overlap_Variants /= null
                   and then J in RI.Variants'Range and then Present (In_Size),
           Post => Present (Variant_Part_Size'Result);
+   function Variant_Part_Size_In_Bytes
+     (RI          : Record_Info;
+      V           : GL_Value;
+      J           : Int;
+      In_Size     : GL_Value;
+      Force_Align : Nat;
+      Max_Size    : Boolean := False;
+      No_Padding  : Boolean := False) return GL_Value
+     with Pre  => RI.Variants /= null and then RI.Overlap_Variants /= null
+                  and then J in RI.Variants'Range and then Present (In_Size),
+          Post => Present (Variant_Part_Size_In_Bytes'Result);
    --  Computes the contribution to Total_Size of the variant part with
    --  index J in RI. In_Size is the total size not considering the
    --  variant and the known alignment at that point.
@@ -151,7 +171,9 @@ package body GNATLLVM.Records is
 
    generic
       type Result is private;
-      No_Result : Result;
+      No_Result     : Result;
+      Bits_Per_Unit : Nat;
+
       with function Size_Const_Int
         (C : ULL; Sign_Extend : Boolean := False) return Result;
       with function Get_Type_Size
@@ -159,6 +181,7 @@ package body GNATLLVM.Records is
          V          : GL_Value := No_GL_Value;
          Max_Size   : Boolean := False;
          No_Padding : Boolean := False) return Result;
+      with function Get_MD_Type_Size (MD : MD_Type) return ULL;
       with function Get_Variant_Size
         (RI          : Record_Info;
          V           : GL_Value;
@@ -178,6 +201,7 @@ package body GNATLLVM.Records is
       with function Get_Const_Int_Value_ULL (V : Result)    return ULL;
       with function Replace_Val             (O, N : Result) return Result;
    package Size is
+      Units_Per_Byte : constant Nat := Our_BPU / Bits_Per_Unit;
 
       function No      (V : Result) return Boolean is (V =  No_Result);
       function Present (V : Result) return Boolean is (V /= No_Result);
@@ -240,7 +264,7 @@ package body GNATLLVM.Records is
          Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
          Idx         : Record_Info_Id := Empty_Record_Info_Id;
          In_Size     : Result         := No_Result;
-         Force_Align : Nat            := BPU;
+         Force_Align : Nat            := Units_Per_Byte;
          Max_Size    : Boolean        := False;
          No_Padding  : Boolean        := False) return Result;
       --  Similar to Get_Record_Type_Size, but stop at record info segment Idx
@@ -547,21 +571,22 @@ package body GNATLLVM.Records is
          --  in the BA_Data case.
 
          if Present (MD) then
-            This_Size  := Size_Const_Int (Get_Type_Size (MD));
-            Must_Align := BPU;
+            This_Size  := Size_Const_Int (Get_MD_Type_Size (MD));
+            Must_Align := Units_Per_Byte;
             Is_Align   :=
               (if   Is_A_Constant_Int (Total_Size)
                then ULL_Align (Get_Const_Int_Value_ULL
                                  (Build_Min (Total_Size + This_Size,
                                              Size_Const_Int
-                                               (ULL (Max_Valid_Align)))))
-               else Nat'(BPU));
+                                               (ULL (Max_Valid_Align /
+                                                     Bits_Per_Unit)))))
+               else Nat'(Units_Per_Byte));
 
          --  For a GNAT type, do similar, except that we know more about
          --  our alignment.
 
          elsif Present (GT) then
-            Must_Align   := Get_Type_Alignment (GT);
+            Must_Align   := Get_Type_Alignment (GT) / Bits_Per_Unit;
             Is_Align     := Must_Align;
 
             if Return_Size then
@@ -582,8 +607,8 @@ package body GNATLLVM.Records is
             --  updated. That avoids aligning if the variant part chosen
             --  has no fields. So we return in that case.
 
-            Must_Align := Nat'Max (Force_Align, RI.Align);
-            Is_Align   := BPU;
+            Must_Align := Nat'Max (Force_Align, RI.Align / Bits_Per_Unit);
+            Is_Align   := Units_Per_Byte;
 
             if Return_Size then
                Total_Size :=
@@ -598,7 +623,7 @@ package body GNATLLVM.Records is
          --  Otherwise, this is a null entry
 
          else
-            Must_Align := BPU;
+            Must_Align := Units_Per_Byte;
             Is_Align   := Max_Align;
             This_Size  := Size_Const_Int (0);
          end if;
@@ -607,7 +632,7 @@ package body GNATLLVM.Records is
          --  needn't force alignment in the case of a forced position.
 
          if RI.Align /= 0 and then RI.Position = 0 then
-            Must_Align := Nat'Max (Must_Align, RI.Align);
+            Must_Align := Nat'Max (Must_Align, RI.Align / Bits_Per_Unit);
          end if;
 
          --  Now update the total size given what we've computed above. If
@@ -620,7 +645,7 @@ package body GNATLLVM.Records is
          if Return_Size then
             if Only_Overlap_RIs (RI.Next) and then No_Padding then
                This_Size :=
-                 This_Size - Size_Const_Int (+RI.Unused_Bits);
+                 This_Size - Size_Const_Int (+RI.Unused_Bits / Bits_Per_Unit);
             end if;
 
             Total_Size
@@ -740,19 +765,20 @@ package body GNATLLVM.Records is
          Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
          Idx         : Record_Info_Id := Empty_Record_Info_Id;
          In_Size     : Result         := No_Result;
-         Force_Align : Nat            := BPU;
+         Force_Align : Nat            := Units_Per_Byte;
          Max_Size    : Boolean        := False;
          No_Padding  : Boolean        := False) return Result
       is
          Total_Size   : Result         :=
            (if Present (In_Size) then In_Size else Size_Const_Int (0));
          Cur_Align    : Nat            :=
-           (if   Present (In_Size) then BPU else Max_Align);
+           (if   Present (In_Size) then Units_Per_Byte
+            else Max_Align / Bits_Per_Unit);
          Cur_Idx      : Record_Info_Id :=
            (if    Present (Start_Idx) then Start_Idx
             elsif Present (TE) then Get_Record_Info (TE)
             else  Empty_Record_Info_Id);
-         Must_Align   : Nat            := BPU;
+         Must_Align   : Nat            := Units_Per_Byte;
          Pushed_Stack : Boolean        := False;
          This_Align   : Nat;
          New_Idx      : Record_Info_Id;
@@ -797,7 +823,8 @@ package body GNATLLVM.Records is
                New_Idx := Get_Variant_For_RI (RI, V, Max_Size, Idx, False);
 
                if Present (New_Idx) and then RI.Align /= 0 then
-                  Total_Size := Align_To (Total_Size, Cur_Align, RI.Align);
+                  Total_Size := Align_To (Total_Size, Cur_Align,
+                                          RI.Align / Bits_Per_Unit);
                end if;
 
                if No (New_Idx) then
@@ -839,10 +866,12 @@ package body GNATLLVM.Records is
 
          if Present (Idx) then
             Get_RI_Info (Record_Info_Table.Table (Idx), No_GL_Value, False,
-                         Cur_Align, BPU, Total_Size, Must_Align, This_Align,
+                         Cur_Align, Units_Per_Byte, Total_Size, Must_Align,
+                         This_Align,
                          Return_Size => False, No_Padding => No_Padding);
          elsif Present (TE) then
-            Must_Align := Get_Type_Alignment (Default_GL_Type (TE));
+            Must_Align :=
+              Get_Type_Alignment (Default_GL_Type (TE)) / Bits_Per_Unit;
          end if;
 
          if Pushed_Stack then
@@ -915,7 +944,8 @@ package body GNATLLVM.Records is
                  Offset_Of_Element (Module_Data_Layout, +RI.MD, Ordinal);
 
             begin
-               return Offset + Size_Const_Int (This_Offset * UBPU);
+               return
+                 Offset + Size_Const_Int (This_Offset * ULL (Units_Per_Byte));
             end;
          end if;
       end Emit_Field_Position;
@@ -1002,7 +1032,8 @@ package body GNATLLVM.Records is
    package LLVM_Size is
       new Size (Result                  => GL_Value,
                 No_Result               => No_GL_Value,
-                Size_Const_Int          => Size_Const_Int,
+                Bits_Per_Unit           => 1,
+                Size_Const_Int          => Bitsize_Const_Int,
                 "+"                     => "+",
                 "-"                     => "-",
                 Neg                     => Neg,
@@ -1012,6 +1043,7 @@ package body GNATLLVM.Records is
                 Is_A_Constant_Int       => Is_A_Constant_Int,
                 Get_Const_Int_Value_ULL => Get_Const_Int_Value_ULL,
                 Get_Type_Size           => Get_Type_Size,
+                Get_MD_Type_Size        => Get_Type_Size,
                 Get_Variant_Size        => Get_Variant_Size,
                 Replace_Val             => Replace_Val);
 
@@ -1051,12 +1083,63 @@ package body GNATLLVM.Records is
       No_Padding  : Boolean := False) return GL_Value
      renames LLVM_Size.Variant_Part_Size;
 
+   package LLVM_Size_In_Bytes is
+      new Size (Result                  => GL_Value,
+                No_Result               => No_GL_Value,
+                Bits_Per_Unit           => Our_BPU,
+                Size_Const_Int          => Size_Const_Int,
+                "+"                     => "+",
+                "-"                     => "-",
+                Neg                     => Neg,
+                Build_And               => Build_And,
+                Build_Max               => Build_Max,
+                Build_Min               => Build_Min,
+                Is_A_Constant_Int       => Is_A_Constant_Int,
+                Get_Const_Int_Value_ULL => Get_Const_Int_Value_ULL,
+                Get_Type_Size           => Get_Type_Size_In_Bytes,
+                Get_MD_Type_Size        => Get_Type_Size_In_Bytes,
+                Get_Variant_Size        => Get_Variant_Size_In_Bytes,
+                Replace_Val             => Replace_Val);
+
+   function Get_Record_Size_So_Far_In_Bytes
+     (TE          : Opt_Record_Kind_Id;
+      V           : GL_Value;
+      Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
+      Idx         : Record_Info_Id := Empty_Record_Info_Id;
+      In_Size     : GL_Value       := No_GL_Value;
+      Force_Align : Nat            := 1;
+      Max_Size    : Boolean        := False;
+      No_Padding  : Boolean        := False) return GL_Value
+     renames LLVM_Size_In_Bytes.Get_Record_Size_So_Far;
+
+   function Get_Record_Type_Size_In_Bytes
+     (TE         : Record_Kind_Id;
+      V          : GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return GL_Value
+     renames LLVM_Size_In_Bytes.Get_Record_Type_Size;
+
+   function Align_To_In_Bytes
+     (V : GL_Value; Cur_Align, Must_Align : Nat) return GL_Value
+     renames LLVM_Size_In_Bytes.Align_To;
+
+   function Variant_Part_Size_In_Bytes
+     (RI          : Record_Info;
+      V           : GL_Value;
+      J           : Int;
+      In_Size     : GL_Value;
+      Force_Align : Nat;
+      Max_Size    : Boolean := False;
+      No_Padding  : Boolean := False) return GL_Value
+     renames LLVM_Size_In_Bytes.Variant_Part_Size;
+
    --  Here we instantiate the size routines with functions that compute
    --  whether a size is dynamic or not and make those visible to clients.
 
    package IDS_Size is
       new Size (Result                  => IDS,
                 No_Result               => No_IDS,
+                Bits_Per_Unit           => 1,
                 Size_Const_Int          => Const,
                 "+"                     => "+",
                 "-"                     => "-",
@@ -1067,6 +1150,7 @@ package body GNATLLVM.Records is
                 Is_A_Constant_Int       => Is_Const,
                 Get_Const_Int_Value_ULL => Const_Val_ULL,
                 Get_Type_Size           => Get_Type_Size,
+                Get_MD_Type_Size        => Get_Type_Size,
                 Get_Variant_Size        => Get_Variant_Size,
                 Replace_Val             => Replace_Val);
 
@@ -1107,6 +1191,7 @@ package body GNATLLVM.Records is
    package BA_Size is
       new Size (Result                  => BA_Data,
                 No_Result               => No_BA,
+                Bits_Per_Unit           => 1,
                 Size_Const_Int          => Const,
                 "+"                     => "+",
                 "-"                     => "-",
@@ -1117,6 +1202,7 @@ package body GNATLLVM.Records is
                 Is_A_Constant_Int       => Is_Const,
                 Get_Const_Int_Value_ULL => Const_Val_ULL,
                 Get_Type_Size           => Get_Type_Size,
+                Get_MD_Type_Size        => Get_Type_Size,
                 Get_Variant_Size        => Get_Variant_Size,
                 Replace_Val             => Replace_Val);
 
@@ -1232,6 +1318,97 @@ package body GNATLLVM.Records is
       Position_Builder_At_End (End_BB);
       return Build_Phi (Sizes, From_BBs);
    end Get_Variant_Size;
+
+   -------------------------------
+   -- Get_Variant_Size_In_Bytes --
+   -------------------------------
+
+   function Get_Variant_Size_In_Bytes
+     (RI          : Record_Info;
+      V           : GL_Value;
+      In_Size     : GL_Value;
+      Force_Align : Nat;
+      No_Padding  : Boolean := False) return GL_Value
+   is
+      Sizes       : GL_Value_Array (RI.Variants'Range) :=
+        (others => No_GL_Value);
+      Our_BB      : Basic_Block_T;
+      End_BB      : Basic_Block_T;
+      To_BBs      : Basic_Block_Array (RI.Variants'Range);
+      From_BBs    : Basic_Block_Array (RI.Variants'Range);
+
+   begin
+      --  We first go through each variant and compute the sizes of each.
+      --  We store the GL_Value's where we've computed those things along
+      --  with the starting (for branching into the code) and ending (for
+      --  use with Phi) basic blocks for each.
+      --
+      --  However, if the input size is constant, see if any variants are
+      --  of a constant size and avoid creating BB's for them. We also need
+      --  this logic to avoid trying to create a BB at top level for a
+      --  record where each variant is the same size and hence isn't dynamic.
+
+      if Is_A_Constant_Int (In_Size) then
+         for J in RI.Variants'Range loop
+            if Is_Const (IDS'(Get_Record_Size_So_Far
+                                (Empty, No_GL_Value,
+                                 Force_Align => Force_Align,
+                                 Start_Idx   => RI.Variants (J),
+                                 No_Padding  => No_Padding)))
+            then
+               Sizes (J) :=
+                 Variant_Part_Size_In_Bytes (RI, No_GL_Value, J, In_Size,
+                                             Force_Align,
+                                             No_Padding => No_Padding);
+            end if;
+         end loop;
+      end if;
+
+      --  If the above has computed all of the sizes and they're all
+      --  equal, we know the size and needn't do anything else.
+
+      if Present (Sizes (Sizes'First))
+        and then (for all J in Sizes'Range =>
+                    Sizes (J) = Sizes (Sizes'First))
+      then
+         return Sizes (Sizes'First);
+      end if;
+
+      --  Otherwise, get basic block info and compute any variable sizes
+
+      Our_BB := Get_Insert_Block;
+      End_BB := Create_Basic_Block;
+
+      for J in RI.Variants'Range loop
+         Disable_LV_Append := Disable_LV_Append + 1;
+         To_BBs (J) := Create_Basic_Block;
+         Position_Builder_At_End (To_BBs (J));
+
+         --  If this variant is empty, the result is the total size so far.
+         --  Otherwise, align the size coming in and add our size to it.
+
+         if No (Sizes (J)) then
+            Sizes (J) :=
+              Variant_Part_Size_In_Bytes (RI, V, J, In_Size, Force_Align);
+         end if;
+
+         From_BBs (J) := Get_Insert_Block;
+         Build_Br (End_BB);
+         Disable_LV_Append := Disable_LV_Append - 1;
+      end loop;
+
+      --  Now emit the code to branch to the fragments we made above.
+      --  However, if all the sizes are the same, we can just use that size.
+
+      Position_Builder_At_End (Our_BB);
+      Emit_Case_Code (RI.Variant_List, Emit_Expression (RI.Variant_Expr),
+                      To_BBs);
+
+      --  Now make the Phi that holds the size and return it
+
+      Position_Builder_At_End (End_BB);
+      return Build_Phi (Sizes, From_BBs);
+   end Get_Variant_Size_In_Bytes;
 
    ----------------------
    -- Get_Variant_Size --

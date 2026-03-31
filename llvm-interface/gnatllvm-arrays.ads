@@ -38,9 +38,9 @@ package GNATLLVM.Arrays is
 
    function Get_Bound_Size (GT : Array_Or_PAT_GL_Type) return GL_Value
      with Post => Present (Get_Bound_Size'Result);
-   --  Get the size of the Bounds part of array and data of GT, taking into
-   --  account both the size of the bounds and the alignment of the bounds
-   --  and GT.
+   --  Get the size in bits of the Bounds part of array and data of GT,
+   --  taking into account both the size of the bounds and the alignment of
+   --  the bounds and GT.
 
    function Has_Bounds_In_Fat_Pointer
      (GT : Array_Or_PAT_GL_Type) return Boolean
@@ -174,6 +174,12 @@ package GNATLLVM.Arrays is
       Max_Size : Boolean := False) return GL_Value
      with Post => Present (Get_Array_Type_Size'Result);
 
+   function Get_Array_Type_Size_In_Bytes
+     (TE       : Array_Kind_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return GL_Value
+     with Post => Present (Get_Array_Type_Size_In_Bytes'Result);
+
    function Get_Array_Type_Size
      (TE       : Array_Kind_Id;
       V        : GL_Value;
@@ -192,6 +198,14 @@ package GNATLLVM.Arrays is
    is
      (Get_Array_Type_Size (TE, V, Max_Size))
      with Post => Present (Get_Unc_Array_Type_Size'Result);
+
+   function Get_Unc_Array_Type_Size_In_Bytes
+     (TE       : Array_Kind_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return GL_Value
+   is
+     (Get_Array_Type_Size_In_Bytes (TE, V, Max_Size))
+     with Post => Present (Get_Unc_Array_Type_Size_In_Bytes'Result);
 
    function Get_Unc_Array_Type_Size
      (Unused_TE       : Array_Kind_Id;
@@ -213,7 +227,7 @@ package GNATLLVM.Arrays is
 
    function Is_Native_Component_GT (GT : GL_Type) return Boolean is
      (not Is_Nonnative_Type (GT) and then not Is_Truncated_GL_Type (GT)
-        and then Get_Type_Size (+Type_Of (GT)) = Get_Type_Size (GT))
+        and then ULL'(Get_Type_Size (Type_Of (GT))) = Get_Type_Size (GT))
      with Pre => Present (GT);
    --  True if this is a component type that we can use natively; i.e.
    --  without making the array [N x i8] and doing our own indexing.

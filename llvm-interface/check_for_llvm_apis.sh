@@ -112,6 +112,9 @@ call_test HAVE_NAMELESS_BASIC_TYPE 'builder.createBasicType("", 32, dwarf::DW_AT
 # Test whether DIVariableExpression type exists.
 api_test HAVE_DIVARIABLEEXPRESSION "DIVariableExpression *global;" &
 
+# Test whether DIBuilder can create a basic type with a scope.
+api_test HAVE_BASIC_TYPE_SCOPE 'MDNode *named(DIBuilder *builder) { return builder->createBasicType("", (DIFile *)nullptr, 0, (DIScope *) nullptr, 32, dwarf::DW_ATE_unsigned, DINode::FlagZero); }'
+
 wait
 
 for def in obj/def_*.h; do

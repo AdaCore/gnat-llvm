@@ -843,6 +843,10 @@ package body GNATLLVM.Wrapper is
    function Create_Binary_Fixed_Point_Type
      (Builder        : DI_Builder_T;
       Name           : String;
+      Full_Name      : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Scope          : Metadata_T;
       Size           : ULL;
       Align_In_Bits  : Nat;
       Is_Unsigned    : Boolean;
@@ -851,22 +855,32 @@ package body GNATLLVM.Wrapper is
       function Create_Binary_Fixed_Point_Type_C
         (Builder        : DI_Builder_T;
          Name           : String;
+         Full_Name      : String;
+         File           : Metadata_T;
+         Line_Number    : unsigned;
+         Scope          : Metadata_T;
          Size           : uint64_t;
          Align_In_Bits  : uint32_t;
          Is_Unsigned    : LLVM_Bool;
          Factor         : Int) return Metadata_T
-      with Import => True,
-         Convention => C,
-         External_Name => "Create_Binary_Fixed_Point_Type";
+        with Import => True,
+             Convention => C,
+             External_Name => "Create_Binary_Fixed_Point_Type";
    begin
       return Create_Binary_Fixed_Point_Type_C
-         (Builder, Name & ASCII.NUL, uint64_t (Size),
-          uint32_t (Align_In_Bits), Boolean'Pos (Is_Unsigned), Factor);
+        (Builder, Name & ASCII.NUL, Full_Name & ASCII.NUL,
+         File, unsigned (Line_Number), Scope,
+         uint64_t (Size),
+         uint32_t (Align_In_Bits), Boolean'Pos (Is_Unsigned), Factor);
    end Create_Binary_Fixed_Point_Type;
 
    function Create_Decimal_Fixed_Point_Type
      (Builder        : DI_Builder_T;
       Name           : String;
+      Full_Name      : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Scope          : Metadata_T;
       Size           : ULL;
       Align_In_Bits  : Nat;
       Is_Unsigned    : Boolean;
@@ -875,22 +889,32 @@ package body GNATLLVM.Wrapper is
       function Create_Decimal_Fixed_Point_Type_C
         (Builder        : DI_Builder_T;
          Name           : String;
+         Full_Name      : String;
+         File           : Metadata_T;
+         Line_Number    : unsigned;
+         Scope          : Metadata_T;
          Size           : uint64_t;
          Align_In_Bits  : uint32_t;
          Is_Unsigned    : LLVM_Bool;
          Factor         : Int) return Metadata_T
-      with Import => True,
-         Convention => C,
-         External_Name => "Create_Decimal_Fixed_Point_Type";
+        with Import => True,
+             Convention => C,
+             External_Name => "Create_Decimal_Fixed_Point_Type";
    begin
       return Create_Decimal_Fixed_Point_Type_C
-         (Builder, Name & ASCII.NUL, uint64_t (Size),
-          uint32_t (Align_In_Bits), Boolean'Pos (Is_Unsigned), Factor);
+        (Builder, Name & ASCII.NUL, Full_Name & ASCII.NUL,
+         File, unsigned (Line_Number), Scope,
+         uint64_t (Size),
+         uint32_t (Align_In_Bits), Boolean'Pos (Is_Unsigned), Factor);
    end Create_Decimal_Fixed_Point_Type;
 
    function Create_Rational_Fixed_Point_Type
      (Builder        : DI_Builder_T;
       Name           : String;
+      Full_Name      : String;
+      File           : Metadata_T;
+      Line_Number    : Physical_Line_Number;
+      Scope          : Metadata_T;
       Size           : ULL;
       Align_In_Bits  : Nat;
       Is_Unsigned    : Boolean;
@@ -900,20 +924,62 @@ package body GNATLLVM.Wrapper is
       function Create_Rational_Fixed_Point_Type_C
         (Builder        : DI_Builder_T;
          Name           : String;
+         Full_Name      : String;
+         File           : Metadata_T;
+         Line_Number    : unsigned;
+         Scope          : Metadata_T;
          Size           : uint64_t;
          Align_In_Bits  : uint32_t;
          Is_Unsigned    : LLVM_Bool;
          Numerator      : Metadata_T;
          Denominator    : Metadata_T) return Metadata_T
-      with Import => True,
-         Convention => C,
-         External_Name => "Create_Rational_Fixed_Point_Type";
+        with Import => True,
+             Convention => C,
+             External_Name => "Create_Rational_Fixed_Point_Type";
    begin
       return Create_Rational_Fixed_Point_Type_C
-         (Builder, Name & ASCII.NUL, uint64_t (Size),
-          uint32_t (Align_In_Bits), Boolean'Pos (Is_Unsigned),
-          Numerator, Denominator);
+        (Builder, Name & ASCII.NUL, Full_Name & ASCII.NUL,
+         File, unsigned (Line_Number), Scope,
+         uint64_t (Size),
+         uint32_t (Align_In_Bits), Boolean'Pos (Is_Unsigned),
+         Numerator, Denominator);
    end Create_Rational_Fixed_Point_Type;
+
+   -----------------------
+   -- Create_Basic_Type --
+   -----------------------
+
+   function Create_Basic_Type
+     (Builder      : DI_Builder_T;
+      Name         : String;
+      Full_Name    : String;
+      File         : Metadata_T;
+      Line_Number  : Physical_Line_Number;
+      Scope        : Metadata_T;
+      Size_In_Bits : ULL;
+      Encoding     : DWARF_Type_Encoding_T;
+      Flags        : DI_Flags_T) return Metadata_T
+   is
+      function Create_Basic_Type_C
+        (Builder      : DI_Builder_T;
+         Name         : String;
+         Full_Name    : String;
+         File         : Metadata_T;
+         Line_Number  : unsigned;
+         Scope        : Metadata_T;
+         Size_In_Bits : uint64_t;
+         Encoding     : unsigned;
+         Flags        : DI_Flags_T) return Metadata_T
+        with Import => True,
+             Convention => C,
+             External_Name => "Create_Basic_Type";
+   begin
+      return Create_Basic_Type_C (Builder, Name & ASCII.NUL,
+                                  Full_Name & ASCII.NUL,
+                                  File, unsigned (Line_Number), Scope,
+                                  uint64_t (Size_In_Bits), unsigned (Encoding),
+                                  Flags);
+   end Create_Basic_Type;
 
    function Constant_As_Metadata (U : Uint) return Metadata_T
    is

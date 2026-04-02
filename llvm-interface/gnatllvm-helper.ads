@@ -220,17 +220,6 @@ package GNATLLVM.Helper is
      (DI_Create_Unspecified_Type (DI_Builder, Name, Name'Length))
      with Post => Present (DI_Create_Unspecified_Type'Result);
 
-   function DI_Create_Basic_Type
-     (Name         : String;
-      Size_In_Bits : ULL;
-      Encoding     : DWARF_Type_Encoding_T;
-      Flags        : DI_Flags_T) return Metadata_T
-   is
-     (DI_Create_Basic_Type
-        (DI_Builder, Name, Name'Length, uint64_t (Size_In_Bits), Encoding,
-         Flags))
-     with Post => Present (DI_Create_Basic_Type'Result);
-
    function DI_Builder_Create_Typedef
      (Base_Type      : Metadata_T;
       Name           : String;

@@ -376,7 +376,9 @@ package body GNATLLVM.Exprs is
             Elmt_GT : constant GL_Type           :=
               Full_Component_GL_Type (GT);
          begin
-            pragma Assert (Get_Type_Size (Type_Of (Elmt_GT)) = UBPU);
+               pragma Assert
+                 (Get_Type_Size_In_Bytes (Type_Of (Elmt_GT)) = ULL (1));
+
             V := Const_String (Index, Prim_GT);
          end;
 
@@ -454,7 +456,7 @@ package body GNATLLVM.Exprs is
             --  is a byte, use Const_String to create the string. We can't
             --  use Name_Buffer here since it might overflow.
 
-            if ULL'(Get_Type_Size (Type_Of (Elmt_GT))) = 8 then
+            if Get_Type_Size_In_Bytes (Type_Of (Elmt_GT)) = ULL (1) then
                declare
                   Str : String_Access := new String (1 .. Integer (Length));
 
@@ -1529,7 +1531,7 @@ package body GNATLLVM.Exprs is
             if No (Position) then
                return Get_Undef (GT);
             else
-               Position := Position + Size_Const_Int (Field_Bit_Offset (F));
+               Position := Position + Bitsize_Const_Int (Field_Bit_Offset (F));
             end if;
 
             case Attr is
@@ -1540,7 +1542,7 @@ package body GNATLLVM.Exprs is
                   V := Position;
 
                when Attribute_First_Bit | Attribute_Bit =>
-                  V := S_Rem (Position, Size_Const_Int (+BPU));
+                  V := S_Rem (Position, Bitsize_Const_Int (+BPU));
 
                when Attribute_Last_Bit =>
                   V := Position + Size_Const_Int (Esize (F) - 1);
@@ -1815,8 +1817,8 @@ package body GNATLLVM.Exprs is
       then
          declare
             Size : constant GL_Value :=
-              To_Bytes (Compute_Size (Dest_GT, Related_Type (Src), Dest, Src,
-                                      For_Assignment => True));
+              Compute_Size (Dest_GT, Related_Type (Src), Dest, Src,
+                            For_Assignment => True);
 
          begin
             if Size /= 0 then
@@ -1893,7 +1895,6 @@ package body GNATLLVM.Exprs is
             --  outside of the call to create the memory operation to
             --  ensure a consistent ordering.
 
-            Size    := To_Bytes (Size);
             Mem_Src := Get (Src, Src_R);
             Mem_Dst := Get (Dest, Dest_R);
 
@@ -1923,7 +1924,7 @@ package body GNATLLVM.Exprs is
 
             --  If emitting C and this is of zero size, do nothing
 
-            elsif Emit_C and then Size = Size_Const_Null then
+            elsif Emit_C and then Is_Const_0 (Size) then
                null;
 
             --  Otherwise use memcpy if we know there's no overlap

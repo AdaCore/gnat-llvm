@@ -1320,6 +1320,13 @@ package body GNATLLVM.MDType is
    function Get_Type_Size (MD : MD_Type) return ULL is
      (Get_Type_Size (Type_T'(+MD)));
 
+   ----------------------------
+   -- Get_Type_Size_In_Bytes --
+   ----------------------------
+
+   function Get_Type_Size_In_Bytes (MD : MD_Type) return ULL is
+     (Get_Type_Size_In_Bytes (Type_T'(+MD)));
+
    -------------------------
    -- Get_Scalar_Bit_Size --
    -------------------------

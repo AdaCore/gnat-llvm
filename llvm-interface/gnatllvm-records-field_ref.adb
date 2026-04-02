@@ -165,9 +165,9 @@ package body GNATLLVM.Records.Field_Ref is
       FI      := Field_Info_Table.Table (F_Idx);
       F_GT    := FI.GT;
       Our_Idx := FI.Rec_Info_Idx;
-      Offset  := To_Bytes (Get_Record_Size_So_Far (Rec_Type, V,
-                                                   Start_Idx => First_Idx,
-                                                   Idx       => Our_Idx));
+      Offset  := Get_Record_Size_So_Far_In_Bytes (Rec_Type, V,
+                                                  Start_Idx => First_Idx,
+                                                  Idx       => Our_Idx);
       RI      := Record_Info_Table.Table (Our_Idx);
 
       --  If this is the "_parent" field, just do a conversion so we point
@@ -710,9 +710,9 @@ package body GNATLLVM.Records.Field_Ref is
                pragma Assert (Present (RI.MD));
 
                Offset := Offset +
-                 To_Bytes (Get_Record_Size_So_Far (TE, Result,
-                                                   Start_Idx => R_Ridx,
-                                                   Idx       => F_Ridx)) +
+                 Get_Record_Size_So_Far_In_Bytes (TE, Result,
+                                                  Start_Idx => R_Ridx,
+                                                  Idx       => F_Ridx) +
                  Size_Const_Int (Get_Element_Offset (+RI.MD,
                                                      FI.Field_Ordinal));
                Bit_Offset := Bit_Offset + (+Field_Bit_Offset (F));
@@ -842,7 +842,7 @@ package body GNATLLVM.Records.Field_Ref is
             High_Addr   : constant GL_Value :=
               (if   Bytes_Big_Endian then Result
                else GEP (A_Char_GL_Type, Result,
-                         (1 => To_Bytes (Get_Type_Size (Max_Int_T)))));
+                         (1 => Get_Type_Size_In_Bytes (Max_Int_T))));
             High_Ptr    : constant GL_Value :=
               Convert_Ref (High_Addr, SSI_GL_Type);
             Byte        : constant GL_Value := Load (High_Ptr);
@@ -1087,7 +1087,7 @@ package body GNATLLVM.Records.Field_Ref is
             High_Addr   : constant GL_Value :=
               (if   Bytes_Big_Endian then Convert_Ref (BRD.LHS, SSI_GL_Type)
                else GEP (A_Char_GL_Type, BRD.LHS,
-                         (1 => To_Bytes (Get_Type_Size (+New_F_MD)))));
+                         (1 => Get_Type_Size_In_Bytes (New_F_MD))));
             Low_Ptr     : constant GL_Value :=
               Convert_Ref (Low_Addr, Max_Int_GL_Type);
             High_Ptr    : constant GL_Value :=

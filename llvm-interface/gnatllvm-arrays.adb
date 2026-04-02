@@ -566,8 +566,7 @@ package body GNATLLVM.Arrays is
            Get_Array_Elements (V, TE, Max_Size);
 
       begin
-         return Convert (Comp_Size, Size_GL_Type) *
-           Convert (Num_Elements, Size_GL_Type);
+         return Comp_Size * Convert (Num_Elements, Related_Type (Comp_Size));
       end Get_Array_Type_Size;
 
    end Size;
@@ -578,7 +577,7 @@ package body GNATLLVM.Arrays is
    package LLVM_Size is
       new Size (Result             => GL_Value,
                 No_Result          => No_GL_Value,
-                Size_Const_Int     => Size_Const_Int,
+                Size_Const_Int     => Bitsize_Const_Int,
                 Const_Int          => Const_Int,
                 Get_Type_Size      => Get_Type_Size,
                 I_Cmp              => I_Cmp,
@@ -636,6 +635,37 @@ package body GNATLLVM.Arrays is
       V        : GL_Value;
       Max_Size : Boolean := False) return GL_Value
      renames LLVM_Size.Get_Array_Type_Size;
+
+   package LLVM_Size_In_Bytes is
+      new Size (Result             => GL_Value,
+                No_Result          => No_GL_Value,
+                Size_Const_Int     => Size_Const_Int,
+                Const_Int          => Const_Int,
+                Get_Type_Size      => Get_Type_Size_In_Bytes,
+                I_Cmp              => I_Cmp,
+                "+"                => "+",
+                "-"                => "-",
+                "*"                => "*",
+                "/"                => "/",
+                Neg                => Neg,
+                S_Div              => S_Div,
+                Build_Select       => Build_Select,
+                Build_Min          => Build_Min,
+                Build_Max          => Build_Max,
+                Extract_Value      => Extract_Value,
+                Convert            => Convert,
+                Emit_Expr          => Emit_Safe_Expr,
+                Emit_Convert_Value => Emit_Convert_Value,
+                Overflowed         => Overflowed,
+                Related_Type       => Related_Type,
+                Undef              => Get_Undef,
+                To_Result          => To_Result);
+
+   function Get_Array_Type_Size_In_Bytes
+     (TE       : Array_Kind_Id;
+      V        : GL_Value;
+      Max_Size : Boolean := False) return GL_Value
+     renames LLVM_Size_In_Bytes.Get_Array_Type_Size;
 
    --  Here we instantiate the size routines with functions that compute
    --  whether a size is dynamic or not and make those visible to clients.
@@ -814,7 +844,7 @@ package body GNATLLVM.Arrays is
    function Get_Bound_Size (GT : Array_Or_PAT_GL_Type) return GL_Value is
       MD : constant MD_Type := Create_Array_Bounds_Type (GT);
    begin
-      return Align_To (Get_Type_Size (+MD), Get_Type_Alignment (MD),
+      return Align_To (Get_Type_Size (MD), Get_Type_Alignment (MD),
                        Get_Type_Alignment (GT));
    end Get_Bound_Size;
 
@@ -1006,7 +1036,7 @@ package body GNATLLVM.Arrays is
 
    procedure Emit_Single_Aggregate (LValue : GL_Value; N : N_Subexpr_Id) is
       GT    : constant Array_GL_Type := Primitive_GL_Type (Full_GL_Type (N));
-      Size  : constant GL_Value      := To_Bytes (Get_Type_Size (GT));
+      Size  : constant GL_Value      := Get_Type_Size_In_Bytes (GT);
       E     : N_Subexpr_Id           :=
         Expression (First (Component_Associations (N)));
       Value : GL_Value;
@@ -1426,13 +1456,12 @@ package body GNATLLVM.Arrays is
         Full_Component_GL_Type (GT);
       Comp_Unc  : constant Boolean  := Is_Unconstrained_Record (Comp_GT);
       Comp_Size : constant GL_Value :=
-        Get_Type_Size (Comp_GT, Max_Size => Comp_Unc);
+        Get_Type_Size_In_Bytes (Comp_GT, Max_Size => Comp_Unc);
       Unit_Size : constant GL_Value :=
         (if   Has_Aliased_Components (GT)
-         then Build_Max (Comp_Size, Size_Const_Int (UBPU)) else Comp_Size);
+         then Build_Max (Comp_Size, Size_Const_Int (1)) else Comp_Size);
       Unit_Mult : constant GL_Value :=
-        (if   Use_Comp then Size_Const_Int (1)
-         else To_Bytes (Unit_Size));
+        (if Use_Comp then Size_Const_Int (1) else Unit_Size);
       Index     : GL_Value          := To_Size_Type (Idxs (1));
       Dim       : Int               := (if Fortran then N_Dim - 2 else 1);
 
@@ -1582,7 +1611,7 @@ package body GNATLLVM.Arrays is
            Get (Ptr_To_Ref (Array_Data, Unit_GT), Reference);
          Unit_Mult : constant GL_Value :=
            (if   Use_Comp then Size_Const_Int (1)
-            else To_Bytes (Get_Type_Size (Comp_GT, Max_Size => Comp_Unc)));
+            else Get_Type_Size_In_Bytes (Comp_GT, Max_Size => Comp_Unc));
          Index     : constant GL_Value :=
            To_Size_Type (Index_Shift) * Unit_Mult;
 

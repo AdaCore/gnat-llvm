@@ -150,7 +150,7 @@ package body GNATLLVM.Conditionals is
                else Call (Get_Memory_Compare_Fn,
                           (1 => Pointer_Cast (LHS_Val, A_Char_GL_Type),
                            2 => Pointer_Cast (RHS_Val, A_Char_GL_Type),
-                           3 => To_Bytes (Size))));
+                           3 => Size)));
          begin
             return I_Cmp (Operation.Signed, Memcmp,
                           Const_Null (Integer_GL_Type));
@@ -347,7 +347,7 @@ package body GNATLLVM.Conditionals is
                                                  A_Char_GL_Type),
                               2 => Pointer_Cast (Get (RHS_Val, Reference),
                                                  A_Char_GL_Type),
-                              3 => To_Bytes (Size))));
+                              3 => Size)));
                Cond   : constant GL_Value :=
                  I_Cmp (Int_EQ, Memcmp, Const_Null (Integer_GL_Type));
 

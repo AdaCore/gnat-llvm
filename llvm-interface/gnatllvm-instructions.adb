@@ -164,6 +164,23 @@ package body GNATLLVM.Instructions is
       Position_Builder_At_End (IR_Builder, BB);
    end Position_Builder_At_End;
 
+   ---------------
+   -- To_Bytes --
+   ---------------
+
+   function To_Bytes (V : GL_Value) return GL_Value is
+      In_Bytes : GL_Value := (V + (BPU - 1)) / BPU;
+
+   begin
+      --  If the input was Bitsize_Type, convert it to Size_Type
+
+      if Related_Type (In_Bytes) = Bitsize_GL_Type then
+         In_Bytes := Convert_GT (In_Bytes, Size_GL_Type);
+      end if;
+
+      return Set_Alignment (In_Bytes, Alignment (V) / BPU);
+   end To_Bytes;
+
    ------------
    -- Alloca --
    ------------
@@ -1549,7 +1566,7 @@ package body GNATLLVM.Instructions is
 
       elsif Has_SM_Copy_From (Ptr) then
          Result := G_From (Alloca (IR_Builder, +Ptr_MD, ""), Ptr);
-         Call_SM_Copy_From (Result, Ptr, To_Bytes (Get_Type_Size (+MD)));
+         Call_SM_Copy_From (Result, Ptr, Get_Type_Size_In_Bytes (MD));
          Ptr_Val := +Result;
       end if;
 
@@ -1625,8 +1642,7 @@ package body GNATLLVM.Instructions is
 
       if Has_SM_Copy_To (Ptr) then
          Call_SM_Copy_To (Ptr, Expr,
-                          To_Bytes (Get_Type_Size
-                                      (+Designated_Type_Of (Ptr))));
+                          Get_Type_Size_In_Bytes (Designated_Type_Of (Ptr)));
          return;
 
       --  If this is a special atomic store, allocate a temporary, store

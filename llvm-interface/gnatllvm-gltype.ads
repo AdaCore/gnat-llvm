@@ -687,7 +687,8 @@ package GNATLLVM.GLType is
      with Pre => Present (GT);
 
    function Is_Zero_Size (GT : GL_Type) return Boolean is
-     (not Is_Nonnative_Type (GT) and then GT_Size (GT) = Size_Const_Null)
+     (not Is_Nonnative_Type (GT) and then Present (GT_Size (GT))
+      and then Is_Const_0 (GT_Size (GT)))
      with Pre => Present (GT);
 
    function Is_Zero_Size (V : GL_Value) return Boolean is

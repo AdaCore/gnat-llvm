@@ -436,7 +436,7 @@ package body GNATLLVM.GLType is
                then  +Align else BPU);
             Align_V     : constant Nat      :=
               Nat'Max (Align_V1, Get_Type_Alignment (GT));
-            Out_Sz      : constant GL_Value := Size_Const_Int (Size);
+            Out_Sz      : constant GL_Value := Bitsize_Const_Int (Size);
             In_Sz_Align : constant GL_Value :=
               Align_To (GT_Size (GT), 1, Align_V);
             Pad_Sz      : constant GL_Value :=
@@ -488,6 +488,7 @@ package body GNATLLVM.GLType is
         with Post => Is_Array (Make_Large_Array'Result);
       --  Build an array (possibly a nested array) of Count entries
 
+      Size_ULL    : constant ULL          := (if No (Size) then 0 else +Size);
       In_GTI      : constant GL_Type_Info := GL_Types.Table (GT);
       Needs_Bias  : constant Boolean      :=
         Is_Biased or else In_GTI.Kind = Biased;
@@ -501,12 +502,12 @@ package body GNATLLVM.GLType is
       Prim_Size   : constant GL_Value     :=
         (if Prim_Fixed then Get_Type_Size (Prim_GT) else No_GL_Value);
       Prim_Align  : constant Nat          := Get_Type_Alignment (Prim_GT);
-      Int_Sz      : constant Uint         :=
-        (if No (Size) or else Size = 0 then Uint_1 else Size);
+      Int_Sz      : constant ULL          :=
+        (if Size_ULL = 0 then 1 else Size_ULL);
       Size_V      : GL_Value              :=
         (if   No (Size) or else not UI_Is_In_ULL_Range (Size)
               or else Is_Dynamic_SO_Ref (Size)
-         then In_GTI.Size else Size_Const_Int (Size));
+         then In_GTI.Size else Bitsize_Const_Int (Size));
       Align_N     : constant Nat          :=
         (if No (Align) then In_GTI.Alignment else +Align);
       Found_GT    : GL_Type               := Get_GL_Type (TE);
@@ -583,7 +584,7 @@ package body GNATLLVM.GLType is
                                               or else not Prim_Native))
                   and then not (Present (Size)
                                   and then Is_Integer (GTI.MD)
-                                  and then Get_Type_Size (GTI.MD) /= +Size))
+                                  and then Get_Type_Size (GTI.MD) /= Size_ULL))
               --  If the size and alignment are the same, this must be the
               --  same type. But this isn't the case if we need the
               --  maximim size and there's no size for the type or the
@@ -628,9 +629,7 @@ package body GNATLLVM.GLType is
          --  bias.
 
          if Needs_Bias then
-            GTI.MD   :=
-              (if   No (Int_Sz) then Prim_MD
-               else Int_Ty (+Int_Sz, Is_Unsigned_Type (GT)));
+            GTI.MD   := Int_Ty (Int_Sz, Is_Unsigned_Type (GT));
             GTI.Kind := Biased;
             GTI.Bias :=
               Emit_Convert_Value
@@ -644,11 +643,11 @@ package body GNATLLVM.GLType is
          elsif Is_Discrete_Or_Fixed_Point_Type (GT)
            and then Present (Size) and then Size <= Max_Int_Size
          then
-            GTI.MD   := (if   Int_Bits (Prim_MD) = +Int_Sz
+            GTI.MD   := (if   ULL (Int_Bits (Prim_MD)) = Int_Sz
                               and then Is_Unsigned (Prim_MD)
                                        = Is_Unsigned_Type (GT)
                          then Prim_MD
-                         else Int_Ty (+Int_Sz, Is_Unsigned_Type (GT)));
+                         else Int_Ty (Int_Sz, Is_Unsigned_Type (GT)));
             GTI.Kind := Int_Alt;
 
          --  If this is an access type to an unconstrained array and we have
@@ -767,14 +766,14 @@ package body GNATLLVM.GLType is
          C_Set_Entity (+MD, Full_Etype (GT));
       end if;
 
-      --  If Size_Type hasn't been elaborated yet, we're done for now.
+      --  If Bitsize_Type hasn't been elaborated yet, we're done for now.
       --  If this is a E_Void or E_Subprogram_Type, it doesn't have a
       --  size or alignment. Otherwise, set the alignment and also
       --  set the size if it's a constant. If MD is a non-native type,
       --  the size in the GT must agree with the size of MD since this is
       --  a primitive type.
 
-      if Present (Size_GL_Type) and then not Is_Dummy
+      if Present (Bitsize_GL_Type) and then not Is_Dummy
         and then Ekind (GT) not in E_Void | E_Subprogram_Type
       then
          GTI.Alignment := Get_Type_Alignment (GT, Use_Specified => False);
@@ -782,9 +781,9 @@ package body GNATLLVM.GLType is
          if not Is_Dynamic_Size (GT) then
             GTI.Size   :=
               (if    Is_Integer (MD)
-               then  Size_Const_Int (ULL (Int_Bits (MD)))
+               then  Bitsize_Const_Int (ULL (Int_Bits (MD)))
                elsif Is_Nonnative_Type (GT) then Get_Type_Size (GT)
-               else  Size_Const_Int (Get_Type_Size (MD)));
+               else  Bitsize_Const_Int (Get_Type_Size (MD)));
 
             --  In the case where this isn't a native type, pad the size to
             --  if we have something that requires strict alignment.

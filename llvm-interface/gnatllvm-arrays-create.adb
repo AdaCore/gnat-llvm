@@ -320,7 +320,8 @@ package body GNATLLVM.Arrays.Create is
         (if   Ekind (A_TE) = E_String_Literal_Subtype
          then 1 else Number_Dimensions (A_TE) - 1);
       Total_Size        : GL_Value              :=
-        (if This_Nonnative then Size_Const_Null else Get_Type_Size (Comp_GT));
+        (if   This_Nonnative then Size_Const_Null
+         else Get_Type_Size_In_Bytes (Comp_GT));
       Field_Index       : Nat                   := 0;
       Dim_Infos         : Dim_Info_Array (0 .. Last_Dim);
       First_Info        : Array_Info_Id;

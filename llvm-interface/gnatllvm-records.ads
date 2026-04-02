@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Einfo.Utils; use Einfo.Utils;
+with Get_Targ;    use Get_Targ;
 with Table;       use Table;
 
 with GNATLLVM.Environment; use GNATLLVM.Environment;
@@ -86,6 +87,14 @@ package GNATLLVM.Records is
      with Post => Present (Get_Record_Type_Size'Result);
    --  Like Get_Type_Size, but only for record types
 
+   function Get_Record_Type_Size_In_Bytes
+     (TE         : Record_Kind_Id;
+      V          : GL_Value;
+      Max_Size   : Boolean := False;
+      No_Padding : Boolean := False) return GL_Value
+     with Post => Present (Get_Record_Type_Size_In_Bytes'Result);
+   --  Like Get_Type_Size_In_Bytes, but only for record types
+
    function Get_Record_Size_So_Far
      (TE          : Opt_Record_Kind_Id;
       V           : GL_Value;
@@ -99,6 +108,20 @@ package GNATLLVM.Records is
    --  or the last segment, whichever comes first. If TE is Present, it
    --  provides the default for Start_Idx and also requests alignment to
    --  TE's alignment if we're looking for the size.
+
+   function Get_Record_Size_So_Far_In_Bytes
+     (TE          : Opt_Record_Kind_Id;
+      V           : GL_Value;
+      Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
+      Idx         : Record_Info_Id := Empty_Record_Info_Id;
+      In_Size     : GL_Value       := No_GL_Value;
+      Force_Align : Nat            := 1;
+      Max_Size    : Boolean        := False;
+      No_Padding  : Boolean        := False) return GL_Value;
+   --  Similar to Get_Record_Type_Size_In_Bytes, but stop at record info
+   --  segment Idx or the last segment, whichever comes first. If TE is
+   --  Present, it provides the default for Start_Idx and also requests
+   --  alignment to TE's alignment if we're looking for the size.
 
    function Get_Record_Type_Size
      (TE         : Record_Kind_Id;
@@ -177,6 +200,9 @@ package GNATLLVM.Records is
    function Align_To
      (V : GL_Value; Cur_Align, Must_Align : Nat) return GL_Value
      with Pre => Present (V), Post => Present (Align_To'Result);
+   function Align_To_In_Bytes
+     (V : GL_Value; Cur_Align, Must_Align : Nat) return GL_Value
+     with Pre => Present (V), Post => Present (Align_To_In_Bytes'Result);
    --  V is a value aligned to Cur_Align. Ensure that it's aligned to
    --  Align_To.
    --  ??? We might be better off getting the current alignment from
@@ -437,5 +463,8 @@ private
    function Field_Position
      (E : Record_Field_Kind_Id; V : GL_Value) return BA_Data;
    --  Back-annotation version of Emit_Field_Position
+
+   Our_BPU : constant Nat := Get_Bits_Per_Unit;
+   --  Make a copy here for elaboration purposes
 
 end GNATLLVM.Records;

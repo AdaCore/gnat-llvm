@@ -1196,10 +1196,10 @@ package body GNATLLVM.Records.Create is
 
          elsif Present (Clause) and then Present (Size)
            and then not Is_Dynamic_Size (Def_GT)
-           and then (Size_Const_Int (Size) < Get_Type_Size (Def_GT)
+           and then (Bitsize_Const_Int (Size) < Get_Type_Size (Def_GT)
                        or else ((Is_Aliased (E) or else Atomic)
                                 and then (Get_Type_Size (Def_GT)) <
-                                  Size_Const_Int (Size)))
+                                          Bitsize_Const_Int (Size)))
            and then Error_Str'Length > 0
          then
             if Atomic or else Is_Aliased (E) then

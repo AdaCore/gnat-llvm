@@ -1621,6 +1621,20 @@ package body GNATLLVM.GLValue is
    function Get_Type_Size (V : GL_Value) return ULL is
      (Get_Type_Size (Type_Of (V)));
 
+   ----------------------------
+   -- Get_Type_Size_In_Bytes --
+   ----------------------------
+
+   function Get_Type_Size_In_Bytes (V : GL_Value) return GL_Value is
+     (Get_Type_Size_In_Bytes (Related_Type (V), V));
+
+   ----------------------------
+   -- Get_Type_Size_In_Bytes --
+   ----------------------------
+
+   function Get_Type_Size_In_Bytes (V : GL_Value) return ULL is
+     (Get_Type_Size_In_Bytes (Type_Of (V)));
+
    -------------------------
    -- Get_Scalar_Bit_Size --
    -------------------------
@@ -1644,8 +1658,8 @@ package body GNATLLVM.GLValue is
    function Get_Type_Alignment
      (GT : GL_Type; Use_Specified : Boolean := True) return GL_Value
    is
-     (Size_Const_Int (ULL (Nat'(Get_Type_Alignment
-                                  (GT, Use_Specified => Use_Specified)))));
+     (Bitsize_Const_Int (ULL (Nat'(Get_Type_Alignment
+                                     (GT, Use_Specified => Use_Specified)))));
 
    ----------------
    -- Add_Global --
@@ -1738,7 +1752,7 @@ package body GNATLLVM.GLValue is
 
       if Type_Is_Sized (T) then
          Add_Dereferenceable_Attribute (+V, unsigned (Idx),
-                                        To_Bytes (Get_Type_Size (T)));
+                                        Get_Type_Size_In_Bytes (T));
       else
          Add_Non_Null_Attribute (+V, unsigned (Idx));
       end if;
@@ -1758,7 +1772,7 @@ package body GNATLLVM.GLValue is
       --  know the size.
 
       if Type_Is_Sized (T) then
-         Add_Dereferenceable_Attribute (+V, To_Bytes (Get_Type_Size (T)));
+         Add_Dereferenceable_Attribute (+V, Get_Type_Size_In_Bytes (T));
       else
          Add_Non_Null_Attribute (+V);
       end if;
@@ -1776,7 +1790,7 @@ package body GNATLLVM.GLValue is
    begin
       if Type_Is_Sized (T) then
          Add_Dereferenceable_Or_Null_Attribute (+V, unsigned (Idx),
-                                                To_Bytes (Get_Type_Size (T)));
+                                                Get_Type_Size_In_Bytes (T));
       end if;
    end Add_Dereferenceable_Or_Null_Attribute;
 
@@ -1791,7 +1805,7 @@ package body GNATLLVM.GLValue is
    begin
       if Type_Is_Sized (T) then
          Add_Dereferenceable_Or_Null_Attribute
-           (+V, To_Bytes (Get_Type_Size (T)));
+           (+V, Get_Type_Size_In_Bytes (T));
       end if;
    end Add_Dereferenceable_Or_Null_Attribute;
 

@@ -1153,7 +1153,7 @@ package body GNATLLVM.Conversions is
       --  since LLVM's combiner does too.
 
       elsif Get_Type_Kind (T) in Struct_Type_Kind | Array_Type_Kind
-        and then Get_Type_Size (T) < 1024 * BPU
+        and then Get_Type_Size_In_Bytes (T) < Max_Aggr_Const_Bytes
       then
          declare
             Nelts : constant unsigned :=
@@ -1233,7 +1233,7 @@ package body GNATLLVM.Conversions is
       else
          return Is_Nonsymbolic_Constant (V)
            and then not Contains_Restricted_Type (Out_MD)
-           and then Get_Type_Size (Out_MD) < 1024 * UBPU;
+           and then Get_Type_Size_In_Bytes (Out_MD) < Max_Aggr_Const_Bytes;
       end if;
    end Can_Convert_Aggregate_Constant;
 
@@ -1319,7 +1319,7 @@ package body GNATLLVM.Conversions is
    is
       In_T      : constant Type_T  := Type_Of (V);
       In_Size   : constant ULL     := Get_Type_Size (In_T);
-      In_Bytes  : constant ULL     := To_Bytes (In_Size);
+      In_Bytes  : constant ULL     := Get_Type_Size_In_Bytes (In_T);
       Cvt_T     : constant Type_T  :=
         (if   Get_Type_Kind (In_T) /= Integer_Type_Kind
               or else Get_Scalar_Bit_Size (In_T) = In_Size
@@ -1328,7 +1328,7 @@ package body GNATLLVM.Conversions is
       --  size. We do the same for the output type below.
 
       Out_Size  : constant ULL     := Get_Type_Size (T);
-      Out_Bytes : constant ULL     := To_Bytes (Out_Size);
+      Out_Bytes : constant ULL     := Get_Type_Size_In_Bytes (T);
       Out_T     : constant Type_T  :=
         (if   Get_Type_Kind (T) /= Integer_Type_Kind
               or else Get_Scalar_Bit_Size (T) = Out_Size

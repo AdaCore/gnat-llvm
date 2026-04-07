@@ -2170,6 +2170,14 @@ package body GNATLLVM.Exprs is
 
                   Add_Template_Char ('}');
                end if;
+
+            elsif Template_Char = '$' then
+
+               --  Escape '$' with '$$'.
+
+               Add_Template_Char ('$');
+               Add_Template_Char ('$');
+
             else
                Add_Template_Char (Template_Char);
             end if;

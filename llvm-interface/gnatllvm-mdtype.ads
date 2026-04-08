@@ -40,6 +40,10 @@ package GNATLLVM.MDType is
 
    procedure Discard (MD : MD_Type) is null;
 
+   function Hash (MD : MD_Type) return Header_Num is
+     (Header_Num (Integer (MD) mod Header_Max))
+     with Pre => Present (MD);
+
    type MD_Type_Array is array (Nat range <>) of MD_Type;
 
    --  Define MD_type versions of types that we use throughout

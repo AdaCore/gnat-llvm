@@ -1,4 +1,4 @@
-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 --                              C C G                                       --
 --                                                                          --
 --                     Copyright (C) 2020-2026, AdaCore                     --
@@ -16,8 +16,9 @@
 ------------------------------------------------------------------------------
 
 with Ada.Containers.Generic_Sort;
-with Ada.Containers.Hashed_Maps;
 with Ada.Containers.Ordered_Sets;
+
+with GNAT.HTable; use GNAT.HTable;
 
 with Debug;    use Debug;
 with Output;   use Output;
@@ -163,12 +164,13 @@ package body CCG.Flow is
    --  We merge returns that have the same return value (or those that
    --  have no return value) and use a map to allow us to do that.
 
-   package Return_Maps is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Value_T,
-      Element_Type    => Flow_Idx,
-      Hash            => Hash,
-      Equivalent_Keys => "=");
-   Return_Map : Return_Maps.Map;
+   package Return_Map is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => Value_T,
+      Element    => Flow_Idx,
+      No_Element => Empty_Flow_Idx,
+      Hash       => GNATLLVM.Hash,
+      Equal      => "=");
 
    --  The unique Flow that indicates a return
 
@@ -874,10 +876,8 @@ package body CCG.Flow is
       case Get_Opcode (T) is
          when Op_Ret =>
             declare
-               use Return_Maps;
                Retval   : Value_T := No_Value_T;
                Ret_Idx  : Flow_Idx;
-               Position : Cursor;
 
             begin
                --  If this function returns and it returns a value,
@@ -910,11 +910,9 @@ package body CCG.Flow is
                --  If we already have a return flow for this value, use
                --  it. Otherwise, make one and record it.
 
-               Position := Find (Return_Map, Retval);
+               Ret_Idx := Return_Map.Get (Retval);
 
-               if Has_Element (Position) then
-                  Ret_Idx := Element (Position);
-               else
+               if No (Ret_Idx) then
                   Flows.Append ((Is_Return    => True,
                                  Return_Value => Retval,
                                  BB           => No_BB_T,
@@ -928,7 +926,7 @@ package body CCG.Flow is
                                  First_Case   => Empty_Case_Idx,
                                  Last_Case    => Empty_Case_Idx));
                   Ret_Idx := Flows.Last;
-                  Insert (Return_Map, Retval, Ret_Idx);
+                  Return_Map.Set (Retval, Ret_Idx);
                end if;
 
                --  Mark Retval as being used so it doesn't get forced to

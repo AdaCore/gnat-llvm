@@ -18,6 +18,8 @@
 with Output; use Output;
 with Table;  use Table;
 
+with GNAT.HTable; use GNAT.HTable;
+
 with GNATLLVM.Types; use GNATLLVM.Types;
 with GNATLLVM.Utils; use GNATLLVM.Utils;
 
@@ -235,17 +237,17 @@ package body GNATLLVM.MDType is
    --  a struct of that name in the LLVM IR, we can map it to the
    --  corresponding MD_Type. This is required to preserve field names.
 
-   function Hash_Name_Id (Name : Name_Id) return Hash_Type is
-     (Hash_Type'Mod (Name))
+   function Hash (Name : Name_Id) return Header_Num is
+     (Header_Num (Standard.Integer (Name) mod Header_Max))
      with Pre => Present (Name);
 
-   package Name_To_MD_Type_Map is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Name_Id,
-      Element_Type    => MD_Type,
-      Hash            => Hash_Name_Id,
-      Equivalent_Keys => "=");
-
-   Name_Map : Name_To_MD_Type_Map.Map;
+   package Name_To_MD_Map is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => Name_Id,
+      Element    => MD_Type,
+      No_Element => No_MD_Type,
+      Hash       => Hash,
+      Equal      => "=");
 
    ---------------------------
    -- Check_Types_Identical --
@@ -845,8 +847,8 @@ package body GNATLLVM.MDType is
       --  If we have a name, create a linkage from the name to this MD,
       --  unless one already exists.
 
-      if Present (Name) and then not Name_Map.Contains (Name) then
-         Name_Map.Insert (Name, MD);
+      if Present (Name) and then No (Name_To_MD_Map.Get (Name)) then
+         Name_To_MD_Map.Set (Name, MD);
       end if;
 
       return MD;
@@ -950,8 +952,8 @@ package body GNATLLVM.MDType is
       --  Create a linkage from the name to this MD, unless one
       --  already exists.
 
-      if  not Name_Map.Contains (Name) then
-         Name_Map.Insert (Name, MD);
+      if  not No (Name_To_MD_Map.Get (Name)) then
+         Name_To_MD_Map.Set (Name, MD);
       end if;
 
       return MD;
@@ -1259,20 +1261,28 @@ package body GNATLLVM.MDType is
 
          when Struct_Type_Kind =>
             declare
-               Num_Elts : constant Nat     :=
+               Num_Elts   : constant Nat     :=
                  Nat (Count_Struct_Element_Types (T));
-               Name_Str : constant String  := Get_Struct_Name (T);
-               Name     : constant Name_Id :=
+               Name_Str   : constant String  := Get_Struct_Name (T);
+               Name       : constant Name_Id :=
                  (if   Name_Str'Length = 0 then No_Name
                   else Name_Find (Name_Str));
-               Types    : Type_Array (1 .. Num_Elts);
-               MDs      : MD_Type_Array (1 .. Num_Elts);
+               Types      : Type_Array (1 .. Num_Elts);
+               MDs        : MD_Type_Array (1 .. Num_Elts);
+
             begin
                --  If we have a name and we've previously made an MD_Type
                --  for this name, use it.
 
-               if Present (Name) and then Name_Map.Contains (Name) then
-                  return Name_Map.Element (Name);
+               if Present (Name) then
+                  declare
+                     Result : constant MD_Type := Name_To_MD_Map.Get (Name);
+
+                  begin
+                     if Present (Result) then
+                        return Result;
+                     end if;
+                  end;
                end if;
 
                --  Otherwise, build the type

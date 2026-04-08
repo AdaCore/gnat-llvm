@@ -16,9 +16,10 @@
 ------------------------------------------------------------------------------
 
 with Ada.Containers; use Ada.Containers;
-with Ada.Containers.Hashed_Maps;
 with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Strings.Hash;
+
+with GNAT.HTable; use GNAT.HTable;
 
 with Atree; use Atree;
 with Table; use Table;
@@ -196,33 +197,37 @@ package body CCG.Environment is
       Table_Increment      => 50,
       Table_Name           => "BB_Info");
 
-   package Value_Info_Maps is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Value_T,
-      Element_Type    => Value_Idx,
-      Hash            => Hash,
-      Equivalent_Keys => "=");
-   Value_Info_Map : Value_Info_Maps.Map;
+   package Value_Info_Map is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => Value_T,
+      Element    => Value_Idx,
+      No_Element => No_Value_Idx,
+      Hash       => GNATLLVM.Hash,
+      Equal      => "=");
 
-   package Type_Info_Maps is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Type_T,
-      Element_Type    => Type_Idx,
-      Hash            => Hash,
-      Equivalent_Keys => "=");
-   Type_Info_Map : Type_Info_Maps.Map;
+   package Type_Info_Map is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => Type_T,
+      Element    => Type_Idx,
+      No_Element => No_Type_Idx,
+      Hash       => GNATLLVM.Hash,
+      Equal      => "=");
 
-   package MD_Type_Info_Maps is new Ada.Containers.Hashed_Maps
-     (Key_Type        => MD_Type,
-      Element_Type    => MD_Type_Idx,
-      Hash            => Hash,
-      Equivalent_Keys => "=");
-   MD_Type_Info_Map : MD_Type_Info_Maps.Map;
+   package MD_Type_Info_Map is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => MD_Type,
+      Element    => MD_Type_Idx,
+      No_Element => No_MD_Type_Idx,
+      Hash       => GNATLLVM.MDType.Hash,
+      Equal      => "=");
 
-   package BB_Info_Maps is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Basic_Block_T,
-      Element_Type    => BB_Idx,
-      Hash            => Hash,
-      Equivalent_Keys => "=");
-   BB_Info_Map : BB_Info_Maps.Map;
+   package BB_Info_Map is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => Basic_Block_T,
+      Element    => BB_Idx,
+      No_Element => No_BB_Idx,
+      Hash       => GNATLLVM.Hash,
+      Equal      => "=");
 
    package Ext_Name_Info_Maps is new Ada.Containers.Indefinite_Hashed_Maps
      (Key_Type        => String,
@@ -256,11 +261,11 @@ package body CCG.Environment is
 
    function Value_Info_Idx (V : Value_T; Create : Boolean) return Value_Idx
    is
-      use Value_Info_Maps;
+      Result : constant Value_Idx := Value_Info_Map.Get (V);
 
    begin
-      if Value_Info_Map.Contains (V) then
-         return Value_Info_Map (V);
+      if Present (Result) then
+         return Result;
       elsif not Create then
          return No_Value_Idx;
       else
@@ -276,7 +281,7 @@ package body CCG.Environment is
                              Needs_Nest     => False,
                              Must_Globalize => False,
                              Output_Idx     => 0));
-         Insert (Value_Info_Map, V, Value_Info.Last);
+         Value_Info_Map.Set (V, Value_Info.Last);
          Notify_On_Value_Delete (V, Delete_Value_Info'Access);
          return Value_Info.Last;
       end if;
@@ -287,8 +292,6 @@ package body CCG.Environment is
    -----------------------
 
    procedure Delete_Value_Info (V : Value_T) is
-      use Value_Info_Maps;
-      use BB_Info_Maps;
    begin
       --  If we had an entity associated with this value, show that we
       --  no longer have that assocation.
@@ -307,13 +310,13 @@ package body CCG.Environment is
       --  Likewise if it's a basic block
 
       if Is_A_Basic_Block (V) then
-         Exclude (BB_Info_Map, Value_As_Basic_Block (V));
+         BB_Info_Map.Remove (Value_As_Basic_Block (V));
       end if;
 
       --  Finally delete all other information we think we know about
       --  this value.
 
-      Exclude (Value_Info_Map, V);
+      Value_Info_Map.Remove (V);
    end Delete_Value_Info;
 
    -------------------
@@ -322,18 +325,18 @@ package body CCG.Environment is
 
    function Type_Info_Idx (T : Type_T; Create : Boolean) return Type_Idx
    is
-      use Type_Info_Maps;
+      Result : constant Type_Idx := Type_Info_Map.Get (T);
 
    begin
-      if Type_Info_Map.Contains (T) then
-         return Type_Info_Map (T);
+      if Present (Result) then
+         return Result;
       elsif not Create then
          return No_Type_Idx;
       else
          Type_Info.Append ((MDT                      => No_MD_Type,
                             Is_Multi_MD              => False,
                             Entity                   => Types.Empty));
-         Insert (Type_Info_Map, T, Type_Info.Last);
+         Type_Info_Map.Set (T, Type_Info.Last);
          return Type_Info.Last;
       end if;
    end Type_Info_Idx;
@@ -344,11 +347,11 @@ package body CCG.Environment is
 
    function MD_Type_Info_Idx (M : MD_Type; Create : Boolean) return MD_Type_Idx
    is
-      use MD_Type_Info_Maps;
+      Result : constant MD_Type_Idx := MD_Type_Info_Map.Get (M);
 
    begin
-      if MD_Type_Info_Map.Contains (M) then
-         return MD_Type_Info_Map (M);
+      if Present (Result) then
+         return Result;
       elsif not Create then
          return No_MD_Type_Idx;
       else
@@ -360,7 +363,7 @@ package body CCG.Environment is
                                Used_In_Struct           => False,
                                Cannot_Pack              => False,
                                Output_Idx               => 0));
-         Insert (MD_Type_Info_Map, M, MD_Type_Info.Last);
+         MD_Type_Info_Map.Set (M, MD_Type_Info.Last);
          return MD_Type_Info.Last;
       end if;
    end MD_Type_Info_Idx;
@@ -371,17 +374,17 @@ package body CCG.Environment is
 
    function BB_Info_Idx (B : Basic_Block_T; Create : Boolean) return BB_Idx
    is
-      use BB_Info_Maps;
+      Result : constant BB_Idx := BB_Info_Map.Get (B);
 
    begin
-      if BB_Info_Map.Contains (B) then
-         return BB_Info_Map (B);
+      if Present (Result) then
+         return Result;
       elsif not Create then
          return No_BB_Idx;
       else
          BB_Info.Append ((Flow        => Empty_Flow_Idx,
                           Output_Idx  => 0));
-         Insert (BB_Info_Map, B, BB_Info.Last);
+         BB_Info_Map.Set (B, BB_Info.Last);
 
          --  Handle the case where a basic block is deleted since it may
          --  be reused.

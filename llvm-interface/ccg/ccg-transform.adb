@@ -17,6 +17,8 @@
 
 with Interfaces.C; use Interfaces.C;
 
+with GNAT.HTable; use GNAT.HTable;
+
 with LLVM.Core; use LLVM.Core;
 
 with Debug;  use Debug;
@@ -27,9 +29,6 @@ with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
 
 with CCG.Environment;  use CCG.Environment;
 with CCG.Utils;        use CCG.Utils;
-
-use CCG.BB_Sets;
-use CCG.Value_Sets;
 
 package body CCG.Transform is
 
@@ -177,28 +176,49 @@ package body CCG.Transform is
       --  Return instruction and whose basic block contains just Phis and
       --  the Return.
 
+      package Phi_Map is new Simple_HTable
+        (Header_Num => Header_Num,
+         Key        => Value_T,
+         Element    => Value_T,
+         No_Element => No_Value_T,
+         Hash       => GNATLLVM.Hash,
+         Equal      => "=");
+
       BB         : Basic_Block_T := Get_First_Basic_Block (V);
       Alloca_Loc : Value_T       :=
         Get_First_Instruction (Get_Entry_Basic_Block (V));
-      Phi_Map    : Value_Value_Map_P.Map;
-      Ret_Phis   : Value_Sets.Set;
-      New_BBs    : BB_Sets.Set;
       Inst       : Value_T;
       Next_BB    : Basic_Block_T;
+
+      package Ret_Phis is new Simple_HTable
+        (Header_Num => Header_Num,
+         Key        => Value_T,
+         Element    => Boolean,
+         No_Element => False,
+         Hash       => GNATLLVM.Hash,
+         Equal      => "=");
+
+      package New_BBs is new Simple_HTable
+        (Header_Num => Header_Num,
+         Key        => Basic_Block_T,
+         Element    => Boolean,
+         No_Element => False,
+         Hash       => GNATLLVM.Hash,
+         Equal      => "=");
 
       ----------------
       -- Phi_Alloca --
       ----------------
 
       function Phi_Alloca (V : Value_T) return Value_T is
+         Result : Value_T := Phi_Map.Get (V);
+
       begin
          --  If we haven't already made an alloca for this phi, make one now
 
-         if not Phi_Map.Contains (V) then
+         if No (Result) then
             declare
                Name   : constant String  := Get_Value_Name (V);
-               Result : constant Value_T :=
-                 Insert_Alloca_Before (Type_Of (V), Alloca_Loc);
 
             begin
                --  The name of the Phi instruction won't be used, so clear that
@@ -206,6 +226,7 @@ package body CCG.Transform is
                --  Also copy any entity from the original value if the entity
                --  isn't already a reference.
 
+               Result := Insert_Alloca_Before (Type_Of (V), Alloca_Loc);
                Set_Value_Name_2 (V, "", 0);
                Set_MD_Type (Result, Pointer_Type (Declaration_Type (V)));
                Set_Is_LHS  (Result);
@@ -215,18 +236,15 @@ package body CCG.Transform is
                   Set_Entity_Is_Ref (Result);
                end if;
 
-               Phi_Map.Insert (V, Result);
+               Phi_Map.Set (V, Result);
 
                if Name'Length /= 0 then
                   Set_Value_Name_2 (Result, Name, Name'Length);
                end if;
-
-               return Result;
             end;
-         else
-            return Phi_Map.Element (V);
          end if;
 
+         return Result;
       end Phi_Alloca;
 
       ---------------
@@ -326,8 +344,7 @@ package body CCG.Transform is
                Insert_Inst : Value_T                := Inst;
 
             begin
-               while Is_APHI_Node (Dest_Inst)
-                 and then not Contains (New_BBs, BB)
+               while Is_APHI_Node (Dest_Inst) and then not New_BBs.Get (BB)
                loop
 
                   --  If our terminator isn't an unconditional branch and
@@ -335,7 +352,7 @@ package body CCG.Transform is
 
                   if not Is_Unc_Br (Inst) and then Insert_BB = BB then
                      Insert_BB := Append_Basic_Block (V, "");
-                     Insert (New_BBs, Insert_BB);
+                     New_BBs.Set (Insert_BB, True);
                   end if;
 
                   --  Now handle the case of a return Phi and non-return Phi
@@ -362,9 +379,7 @@ package body CCG.Transform is
                      --  That will later cause a crash. So record the Phi's
                      --  that we consider return Phis and use that below.
 
-                     if not Contains (Ret_Phis, Dest_Inst) then
-                        Insert (Ret_Phis, Dest_Inst);
-                     end if;
+                     Ret_Phis.Set (Dest_Inst, True);
 
                      --  Since, by definition, there's only one return
                      --  Phi per block, we're done.
@@ -416,7 +431,7 @@ package body CCG.Transform is
          Next_BB := Get_Next_Basic_Block (BB);
          Inst    := Get_First_Instruction (BB);
          while Is_APHI_Node (Inst) loop
-            if Contains (Ret_Phis, Inst) then
+            if Ret_Phis.Get (Inst) then
                Delete_Basic_Block (BB);
                exit;
             else

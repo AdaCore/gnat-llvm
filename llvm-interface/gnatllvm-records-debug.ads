@@ -15,6 +15,8 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
+with Ada.Containers.Hashed_Maps;
+
 with Repinfo; use Repinfo;
 
 package GNATLLVM.Records.Debug is

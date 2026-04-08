@@ -15,7 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with LLVM.Core; use LLVM.Core;
+with GNAT.HTable; use GNAT.HTable;
 
 with Atree;       use Atree;
 with Debug;       use Debug;
@@ -23,6 +23,8 @@ with Einfo.Utils; use Einfo.Utils;
 with Set_Targ;    use Set_Targ;
 with Table;
 with Uintp;       use Uintp;
+
+with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
 with GNATLLVM.Types;   use GNATLLVM.Types;
@@ -38,8 +40,6 @@ with CCG.Strs;        use CCG.Strs;
 with CCG.Target;      use CCG.Target;
 with CCG.Utils;       use CCG.Utils;
 with CCG.Write;       use CCG.Write;
-
-use CCG.Value_Sets;
 
 package body CCG.Codegen is
 
@@ -166,7 +166,14 @@ package body CCG.Codegen is
 
       Func      : Value_T;
       Glob      : Value_T;
-      Must_Decl : Set;
+
+      package Must_Decl is new Simple_HTable
+        (Header_Num => Header_Num,
+         Key        => Value_T,
+         Element    => Boolean,
+         No_Element => False,
+         Hash       => GNATLLVM.Hash,
+         Equal      => "=");
 
       ----------------------
       -- Output_Enum_Decl --
@@ -286,7 +293,7 @@ package body CCG.Codegen is
       procedure Maybe_Decl_Func (V : Value_T) is
       begin
          if Is_A_Function (V) then
-            Include (Must_Decl, V);
+            Must_Decl.Set (V, True);
          end if;
       end Maybe_Decl_Func;
 
@@ -361,7 +368,7 @@ package body CCG.Codegen is
            or else (not Is_Declaration (Func)
                       and then (Is_Public (Func)
                                   or else Must_Output_To_Header (Func)))
-           or else Contains (Must_Decl, Func)
+           or else Must_Decl.Get (Func)
          then
             Declare_Subprogram (Func);
          end if;

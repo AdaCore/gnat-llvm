@@ -142,11 +142,17 @@ package body CCG is
       --  If this is a global variable or function, set the type
       --  corresponding to the name in case the optimizer recreates this
       --  value as a different value. Also set the equalence between the
-      --  object's type and what MD points to.
+      --  object's type and what MD points to, but only do the latter if
+      --  we haven't already set an MD type for it. This is because a GEP
+      --  might have been applied to this and returned the value when the
+      --  access was to a portion of the value.
 
       if Is_A_Global_Variable (V) or else Is_A_Function (V) then
          Set_MD_Type (Get_Value_Name (V), MD);
-         C_Set_MD_Type (Global_Get_Value_Type (V), Designated_Type (MD));
+
+         if No (Get_MD_Type (Global_Get_Value_Type (V))) then
+            C_Set_MD_Type (Global_Get_Value_Type (V), Designated_Type (MD));
+         end if;
       end if;
 
       --  If this value has already been used for multiple MD types, we

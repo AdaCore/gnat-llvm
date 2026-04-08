@@ -32,6 +32,8 @@ with Snames;      use Snames;
 with Table;       use Table;
 with Targparm;    use Targparm;
 
+with GNAT.HTable; use GNAT.HTable;
+
 with GNATLLVM.Aliasing;          use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;            use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;            use GNATLLVM.Blocks;
@@ -212,18 +214,13 @@ package body GNATLLVM.Subprograms is
    --  optimizer has to do is worthwhile and this will also make the code
    --  much easier to read.
 
-   function Hash_Entity_Id (E : Entity_Id) return Hash_Type is
-      (Hash_Type'Mod (E))
-      with Pre => not Is_Type (E);
-   --  Convert an Entity_Id to a hash
-
-   package Activation_Record_Map_P is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Object_Kind_Id,
-      Element_Type    => GL_Value,
-      Hash            => Hash_Entity_Id,
-      Equivalent_Keys => "=");
-
-   Activation_Var_Map : Activation_Record_Map_P.Map;
+   package Activation_Var_Map is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => Object_Kind_Id,
+      Element    => GL_Value,
+      No_Element => No_GL_Value,
+      Hash       => Hash,
+      Equal      => "=");
 
    function Get_Activation_Record_Ptr
      (V : GL_Value; E : E_Component_Id) return GL_Value
@@ -1003,7 +1000,8 @@ package body GNATLLVM.Subprograms is
 
    function Get_From_Activation_Record (E : Evaluable_Kind_Id) return GL_Value
    is
-      BB : Basic_Block_T;
+      Map_Result : GL_Value;
+      BB         : Basic_Block_T;
 
    begin
       --  See if this is a type of object that's passed in activation
@@ -1022,8 +1020,9 @@ package body GNATLLVM.Subprograms is
       then
          --  If we've already recorded this in our map, return that
 
-         if Activation_Var_Map.Contains (E) then
-            return Activation_Var_Map.Element (E);
+         Map_Result := Activation_Var_Map.Get (E);
+         if Present (Map_Result) then
+            return Map_Result;
          end if;
 
          --  Otherwise, do the computations to fetch it. We must do this
@@ -1077,7 +1076,7 @@ package body GNATLLVM.Subprograms is
             --  position, and restore the saved position.
 
             Set_Value_Name (Result, Get_Name (E));
-            Activation_Var_Map.Insert (E, Result);
+            Activation_Var_Map.Set (E, Result);
             Entry_Block_Allocas := Get_Current_Position;
             Position_Builder_At_End (BB);
 
@@ -1384,7 +1383,7 @@ package body GNATLLVM.Subprograms is
       Pop_Debug_Scope;
       Leave_Subp;
       Reset_Block_Tables;
-      Activation_Var_Map.Clear;
+      Activation_Var_Map.Reset;
       Current_Subp := Empty;
    end Emit_One_Body;
 
@@ -1585,7 +1584,7 @@ package body GNATLLVM.Subprograms is
       In_Elab_Proc_Stmts := False;
       Pop_Debug_Scope;
       Leave_Subp;
-      Activation_Var_Map.Clear;
+      Activation_Var_Map.Reset;
 
       --  Check if the function that we made actually does something. It
       --  does if any basic block has an instruction other than a branch or

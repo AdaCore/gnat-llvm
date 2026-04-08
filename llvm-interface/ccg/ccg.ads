@@ -104,11 +104,6 @@ package CCG is
       Hash                => Hash_Value,
       Equivalent_Elements => "=");
 
-   package BB_Sets is new Ada.Containers.Hashed_Sets
-     (Element_Type        => Basic_Block_T,
-      Hash                => Hash_BB,
-      Equivalent_Elements => "=");
-
    Lowest_Line_Number : Physical_Line_Number := Physical_Line_Number'First;
    --  The lowest line number of any object that we're writting out
 

@@ -226,7 +226,8 @@ package body GNATLLVM.Arrays is
          In_GT    : constant GL_Type         := Related_Type (In_Low);
          Comp_GT  : constant GL_Type         :=
            Wider_GL_Type (Base_GL_Type (In_GT));
-         Wide_GT  : constant GL_Type         := Wider_GL_Type (Comp_GT, True);
+         Wide_GT  : constant GL_Type         :=
+           Wider_GL_Type (Comp_GT, Unsigned => False);
          Low      : constant Result          := Convert (In_Low, Comp_GT);
          High     : constant Result          := Convert (In_High, Comp_GT);
          Const_0  : constant Result          := Const_Int (Comp_GT, Uint_0);

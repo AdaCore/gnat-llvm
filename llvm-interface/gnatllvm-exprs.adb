@@ -1643,7 +1643,7 @@ package body GNATLLVM.Exprs is
                   V := V + Get_Bound_Size (P_GT);
                end if;
 
-               return Convert (To_Bytes (V), GT);
+               return To_Bytes (Convert (V, GT));
             else
                return Convert (V, GT);
             end if;

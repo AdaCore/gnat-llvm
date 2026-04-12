@@ -20,8 +20,7 @@ with System.Storage_Elements; use System.Storage_Elements;
 
 with stdint_h; use stdint_h;
 
-with Ada.Containers;             use Ada.Containers;
-with Ada.Containers.Hashed_Maps;
+with Ada.Containers; use Ada.Containers;
 with Ada.Unchecked_Conversion;
 with Ada.Unchecked_Deallocation;
 
@@ -375,25 +374,6 @@ package GNATLLVM is
    --  pointers. This implies that we need special handling for values
    --  representing addresses, such as System.Address.
 
-   --  Define pieces to have maps from one value to another
-
-   function From_Value is
-      new Ada.Unchecked_Conversion (Value_T, System.Address);
-
-   function Hash_Value (V : Value_T) return Hash_Type is
-     (Hash_Type'Mod (To_Integer (From_Value (V)) / (V'Size / 8)))
-     with Pre => Present (V);
-
-   function Hash_BB (BB : Basic_Block_T) return Hash_Type is
-     (Hash_Value (Basic_Block_As_Value (BB)))
-     with Pre => Present (BB);
-
-   package Value_Value_Map_P is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Value_T,
-      Element_Type    => Value_T,
-      Hash            => Hash_Value,
-      Equivalent_Keys => "=");
-
    function Starts_With (Switch, S : String) return Boolean is
      (Switch'Length > S'Length
      and then Switch (Switch'First .. Switch'First + S'Length - 1) = S);
@@ -411,6 +391,42 @@ package GNATLLVM is
    subtype Err_Msg_Type is String (1 .. 10000);
    type Ptr_Err_Msg_Type is access all Err_Msg_Type;
    --  Used for LLVM error handling
+
+   --  Set up infrastructure for using GNAT.HTables.Simple_HTable. Note that
+   --  we allow empty values for hashing since some maps (e.g., returns)
+   --  have an entry for no value.
+
+   function From_Value is
+      new Ada.Unchecked_Conversion (Value_T, System.Address);
+
+   function From_Type is
+      new Ada.Unchecked_Conversion (Type_T, System.Address);
+
+   Header_Max : constant := 3079;
+   subtype Header_Num is Integer range 0 .. Header_Max - 1;
+
+   function Hash (N : Node_Or_Entity_Id) return Header_Num is
+     (Header_Num (Integer (N) mod Header_Max))
+     with Pre => Present (N);
+
+   function Hash (V : Value_T) return Header_Num is
+     (Header_Num (To_Integer (From_Value (V)) / (V'Size / 8) mod Header_Max));
+
+   function Hash (T : Type_T) return Header_Num is
+     (Header_Num (To_Integer (From_Type (T)) / (T'Size / 8) mod Header_Max))
+     with Pre => Present (T);
+
+   function Hash (BB : Basic_Block_T) return Header_Num is
+     (Hash (Basic_Block_As_Value (BB)))
+     with Pre => Present (BB);
+
+   function Hash_Value (V : Value_T) return Hash_Type is
+     (Hash_Type'Mod (To_Integer (From_Value (V)) / (V'Size / 8)))
+     with Pre => Present (V);
+
+   function Hash_BB (BB : Basic_Block_T) return Hash_Type is
+     (Hash_Value (Basic_Block_As_Value (BB)))
+     with Pre => Present (BB);
 
    --  For use in child packages:
    pragma Warnings (Off);

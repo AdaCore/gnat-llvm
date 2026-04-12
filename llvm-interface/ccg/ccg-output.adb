@@ -15,7 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Containers; use Ada.Containers;
+with GNAT.HTable; use GNAT.HTable;
 
 with Table;
 
@@ -67,8 +67,8 @@ package body CCG.Output is
    --  The Block_Style to use for the next line written using Output_Decl
    --  or Output_Stmt.
 
-   function Hash (Name : Name_Id) return Hash_Type is
-     (Hash_Type'Mod (Name))
+   function Hash (Name : Name_Id) return Header_Num is
+     (Header_Num (Integer (Name) mod Header_Max))
      with Pre => Present (Name);
 
    --  It's possible to have many MD_Types corresponding to a single
@@ -76,13 +76,15 @@ package body CCG.Output is
    --  we've written the full declaration for each name so we don't
    --  duplicate it.
 
-   package Struct_Names_Written_Set is new Ada.Containers.Hashed_Sets
-     (Element_Type        => Name_Id,
-      Hash                => Hash,
-      Equivalent_Elements => "=");
-
-   Struct_Names_Written : Struct_Names_Written_Set.Set;
-   --  A list by Name_Id of all struct typedefs that we've written
+   package Struct_Names_Written is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => Name_Id,
+      Element    => Boolean,
+      No_Element => False,
+      Hash       => Hash,
+      Equal      => "=");
+   --  Map from Name_Id to a boolean saying if this is a struct typedefs
+   --  that we've written.
 
    procedure Maybe_Output_Typedef_And_Decl (V : Value_T)
      with Pre => Is_A_Constant (V);
@@ -94,7 +96,6 @@ package body CCG.Output is
    --------------------
 
    procedure Output_Typedef (MD : MD_Type; Incomplete : Boolean := False) is
-      use Struct_Names_Written_Set;
    begin
       --  Show we're outputting the typedef (so we know not to do it
       --  recursively).
@@ -109,7 +110,7 @@ package body CCG.Output is
          --  don't write another one.
 
          if not Has_Name (MD)
-           or else not Contains (Struct_Names_Written, MD_Name (MD))
+           or else not Struct_Names_Written.Get (MD_Name (MD))
          then
             Output_Struct_Typedef (MD, Incomplete => Incomplete);
          elsif Incomplete then
@@ -143,7 +144,7 @@ package body CCG.Output is
          Set_Is_Typedef_Output   (MD);
 
          if Is_Struct (MD) and then Has_Name (MD) then
-            Include (Struct_Names_Written, MD_Name (MD));
+            Struct_Names_Written.Set (MD_Name (MD), True);
          end if;
       end if;
    end Output_Typedef;

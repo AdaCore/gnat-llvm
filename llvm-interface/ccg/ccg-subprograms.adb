@@ -43,8 +43,6 @@ with CCG.Transform;    use CCG.Transform;
 with CCG.Utils;        use CCG.Utils;
 with CCG.Write;        use CCG.Write;
 
-use CCG.Value_Sets;
-
 package body CCG.Subprograms is
 
    Subprogram_Idx_Low_Bound  : constant := 900_000_000;

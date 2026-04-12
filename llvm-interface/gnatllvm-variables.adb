@@ -29,6 +29,8 @@ with Stand;       use Stand;
 with Stringt;     use Stringt;
 with Table;       use Table;
 
+with GNAT.HTable; use GNAT.HTable;
+
 with GNATLLVM.Aliasing;          use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;            use GNATLLVM.Arrays;
 with GNATLLVM.Blocks;            use GNATLLVM.Blocks;
@@ -122,16 +124,22 @@ package body GNATLLVM.Variables is
       Restrict_Types : Boolean;
    end record;
 
-   function Hash_No_Elab_Needed (EN : No_Elab_Needed_Key) return Hash_Type is
-     (Hash_Type'Mod (Integer (EN.N)));
+   function Hash (EN : No_Elab_Needed_Key) return Header_Num is
+     (Header_Num (Integer (EN.N) mod Header_Max));
 
-   package No_Elab_Needed_Map is new Ada.Containers.Hashed_Maps
-     (Key_Type        => No_Elab_Needed_Key,
-      Element_Type    => Boolean,
-      Hash            => Hash_No_Elab_Needed,
-      Equivalent_Keys => "=");
+   type No_Elab_Needed_Result is (Unknown, True, False);
+   function Present (R : No_Elab_Needed_Result) return Boolean is
+     (R /= Unknown);
+   function Value (R : No_Elab_Needed_Result) return Boolean is (R = True);
 
-   NE_Map : No_Elab_Needed_Map.Map;
+   package No_Elab_Needed_Map is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => No_Elab_Needed_Key,
+      Element    => No_Elab_Needed_Result,
+      No_Element => Unknown,
+      Hash       => Hash,
+      Equal      => "=");
+
    --  Map to memoize Is_No_Elab_Needed
 
    function Find_Dup_Entry
@@ -249,7 +257,13 @@ package body GNATLLVM.Variables is
    function Initialized_Value (E : Evaluable_Kind_Id) return Opt_N_Subexpr_Id;
    --  If E is an E_Constant that has an initializing expression, return it
 
-   Const_Map : Value_Value_Map_P.Map;
+   package Const_Map is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => Value_T,
+      Element    => Value_T,
+      No_Element => No_Value_T,
+      Hash       => Hash,
+      Equal      => "=");
    --  Map the Value_T for a constant to the Value_T for the global
    --  variable containing that constant. We do this at the Value_T level
    --  rather than the GL_Value level because we may want to interpret the
@@ -853,20 +867,22 @@ package body GNATLLVM.Variables is
       Not_Symbolic   : Boolean := False;
       Restrict_Types : Boolean := False) return Boolean
    is
-      Key    : constant No_Elab_Needed_Key :=
+      Key    : constant No_Elab_Needed_Key        :=
         (N, Not_Symbolic, Restrict_Types);
+      Map_Result : constant No_Elab_Needed_Result :=
+        No_Elab_Needed_Map.Get (Key);
       Result : Boolean;
 
    begin
       --  If we've computed this before, return that value. Otherwise,
       --  compute it and save for possible later use.
 
-      if NE_Map.Contains (Key) then
-         return NE_Map.Element (Key);
+      if Present (Map_Result) then
+         return Value (Map_Result);
       else
          Result :=
            Is_No_Elab_Needed_Internal (N, Not_Symbolic, Restrict_Types);
-         NE_Map.Insert (Key, Result);
+         No_Elab_Needed_Map.Set (Key, (if Result then True else False));
          return Result;
       end if;
    end Is_No_Elab_Needed;
@@ -1717,19 +1733,20 @@ package body GNATLLVM.Variables is
       --  If we're generating C and the current function is inline, we need
       --  to make this a global.
 
-      if not Const_Map.Contains (+In_V) then
-         Out_Val := Add_Global  (Module, Type_Of (+In_V),
-                                 Globalize_Name ("for.ref"));
-         Set_Initializer        (Out_Val, +In_V);
-         Set_Global_Constant    (Out_Val, True);
-         Set_Unnamed_Addr       (Out_Val, True);
-         Const_Map.Insert       (+In_V,  Out_Val);
+      Out_Val := Const_Map.Get (+In_V);
+
+      if No (Out_Val) then
+         Out_Val := Add_Global (Module, Type_Of (+In_V),
+                                Globalize_Name ("for.ref"));
+         Set_Initializer       (Out_Val, +In_V);
+         Set_Global_Constant   (Out_Val, True);
+         Set_Unnamed_Addr      (Out_Val, True);
+         Const_Map.Set         (+In_V,  Out_Val);
 
          if not Globalize then
             Set_Linkage         (Out_Val, Private_Linkage);
          end if;
       else
-         Out_Val := Const_Map.Element (+In_V);
          if Globalize then
             Set_Linkage (Out_Val, External_Linkage);
          end if;

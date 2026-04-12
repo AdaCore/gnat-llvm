@@ -17,7 +17,7 @@
 
 with Interfaces.C;            use Interfaces.C;
 
-with Ada.Containers.Hashed_Maps;
+with GNAT.HTable; use GNAT.HTable;
 
 --  This clause is only needed with old versions of GNAT
 pragma Warnings (Off);
@@ -126,24 +126,29 @@ package body CCG.Instructions is
       Has_Call : Boolean;
    end record;
 
+   --  The table of pending values and a map that links a value to its
+   --  entry in the table.
+
+   type PV_Idx is new Nat;
+   No_PV_Idx : constant PV_Idx := 0;
+
+   function Present (PV : PV_Idx) return Boolean is (PV /= No_PV_Idx);
+
    package Pending_Values is new Table.Table
      (Table_Component_Type => Pending_Value_Entry,
-      Table_Index_Type     => Nat,
+      Table_Index_Type     => PV_Idx,
       Table_Low_Bound      => 1,
       Table_Initial        => 50,
       Table_Increment      => 50,
       Table_Name           => "Pending_Values");
 
-   package Pending_Values_Map_P is new Ada.Containers.Hashed_Maps
-     (Key_Type        => Value_T,
-      Element_Type    => Nat,
-      Hash            => Hash_Value,
-      Equivalent_Keys => "=");
-   use Pending_Values_Map_P;
-
-   Pending_Values_Map : Pending_Values_Map_P.Map;
-   --  The table of pending values and a map that links a value to its
-   --  entry in the table.
+   package Pending_Values_Map is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => Value_T,
+      Element    => PV_Idx,
+      No_Element => No_PV_Idx,
+      Hash       => GNATLLVM.Hash,
+      Equal      => "=");
 
    procedure Add_Pending_Value (V : Value_T)
       with Pre => Present (V);
@@ -311,13 +316,14 @@ package body CCG.Instructions is
       if  Has_Operands (V) then
          for J in Nat (0) .. Get_Num_Operands (V) - 1 loop
             declare
-               Op : constant Value_T := Get_Operand (V, J);
+               Op  : constant Value_T := Get_Operand (V, J);
+               Idx : constant PV_Idx := Pending_Values_Map.Get (Op);
 
             begin
-               if Contains (Pending_Values_Map, Op) then
+               if Present (Idx) then
                   declare
                      PVE : constant Pending_Value_Entry :=
-                       Pending_Values.Table (Element (Pending_Values_Map, Op));
+                       Pending_Values.Table (Idx);
 
                   begin
                      Has_Load := Has_Load or PVE.Has_Load;
@@ -331,7 +337,7 @@ package body CCG.Instructions is
       --  Finally add to both table and map
 
       Pending_Values.Append ((V, Has_Load => Has_Load, Has_Call => Has_Call));
-      Insert (Pending_Values_Map, V, Pending_Values.Last);
+      Pending_Values_Map.Set (V, Pending_Values.Last);
    end Add_Pending_Value;
 
    ------------------------
@@ -341,7 +347,7 @@ package body CCG.Instructions is
    function Depends_On_Pending (V : Value_T) return Boolean is
      (Has_Operands (V)
       and then (for some J in Nat (0) .. Get_Num_Operands (V) - 1 =>
-                  Contains (Pending_Values_Map, Get_Operand (V, J))));
+                    Pending_Values_Map.Get (Get_Operand (V, J)) /= 0));
 
    --------------------------
    -- Remove_Pending_Value --
@@ -349,11 +355,11 @@ package body CCG.Instructions is
 
    procedure Remove_Pending_Value (V : Value_T) is
    begin
-      Delete (Pending_Values_Map, V);
+      Pending_Values_Map.Remove (V);
 
       if Has_Operands (V) then
          for J in Nat (0) .. Get_Num_Operands (V) - 1 loop
-            if Contains (Pending_Values_Map, Get_Operand (V, J)) then
+            if Pending_Values_Map.Get (Get_Operand (V, J)) /= 0 then
                Remove_Pending_Value (Get_Operand (V, J));
             end if;
          end loop;
@@ -416,7 +422,7 @@ package body CCG.Instructions is
    procedure Clear_Pending_Values is
    begin
       Pending_Values.Set_Last (0);
-      Clear (Pending_Values_Map);
+      Pending_Values_Map.Reset;
    end Clear_Pending_Values;
 
    ------------------------

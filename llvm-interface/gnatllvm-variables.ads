@@ -23,17 +23,23 @@ package GNATLLVM.Variables is
    type Global_Dup_Id       is new Nat;
    type Global_Dup_Value_Id is new Nat;
 
-   Empty_Interfaces_Name_Id  : constant Interface_Names_Id  := 0;
-   Empty_Global_Dup_Id       : constant Global_Dup_Id       := 0;
-   Empty_Global_Dup_Value_Id : constant Global_Dup_Value_Id := 0;
+   No_Interface_Names_Id  : constant Interface_Names_Id  := 0;
+   No_Global_Dup_Id       : constant Global_Dup_Id       := 0;
+   No_Global_Dup_Value_Id : constant Global_Dup_Value_Id := 0;
 
-   function Present (Idx : Interface_Names_Id)  return Boolean is (Idx /= 0);
-   function Present (Idx : Global_Dup_Id)       return Boolean is (Idx /= 0);
-   function Present (Idx : Global_Dup_Value_Id) return Boolean is (Idx /= 0);
+   function Present (Idx : Interface_Names_Id)  return Boolean is
+     (Idx /= No_Interface_Names_Id);
+   function Present (Idx : Global_Dup_Id)       return Boolean is
+     (Idx /= No_Global_Dup_Id);
+   function Present (Idx : Global_Dup_Value_Id) return Boolean is
+     (Idx /= No_Global_Dup_Value_Id);
 
-   function No (Idx : Interface_Names_Id)       return Boolean is (Idx = 0);
-   function No (Idx : Global_Dup_Id)            return Boolean is (Idx = 0);
-   function No (Idx : Global_Dup_Value_Id)      return Boolean is (Idx = 0);
+   function No (Idx : Interface_Names_Id)       return Boolean is
+     (Idx = No_Interface_Names_Id);
+   function No (Idx : Global_Dup_Id)            return Boolean is
+     (Idx = No_Global_Dup_Id);
+   function No (Idx : Global_Dup_Value_Id)      return Boolean is
+     (Idx = No_Global_Dup_Value_Id);
 
    Detected_Duplicates : Boolean := False;
 

@@ -51,13 +51,13 @@ package body CCG.Subprograms is
      range Subprogram_Idx_Low_Bound .. Subprogram_Idx_High_Bound;
    Subprogram_Idx_Start      : constant Subprogram_Idx :=
      Subprogram_Idx_Low_Bound + 1;
-   Empty_Subprogram_Idx      : constant Subprogram_Idx :=
+   No_Subprogram_Idx      : constant Subprogram_Idx    :=
      Subprogram_Idx_Low_Bound;
 
    function Present (Idx : Subprogram_Idx) return Boolean is
-     (Idx /= Empty_Subprogram_Idx);
+     (Idx /= No_Subprogram_Idx);
    function No      (Idx : Subprogram_Idx) return Boolean is
-     (Idx = Empty_Subprogram_Idx);
+     (Idx = No_Subprogram_Idx);
 
    --  For each subprogram, we record the first and last decl and statement
    --  belonging to that subprogram.
@@ -300,10 +300,10 @@ package body CCG.Subprograms is
    procedure New_Subprogram (V : Value_T) is
    begin
       Subprograms.Append ((Func       => V,
-                           First_Decl => Empty_Local_Decl_Idx,
-                           Last_Decl  => Empty_Local_Decl_Idx,
-                           First_Stmt => Empty_Stmt_Idx,
-                           Last_Stmt  => Empty_Stmt_Idx));
+                           First_Decl => No_Local_Decl_Idx,
+                           Last_Decl  => No_Local_Decl_Idx,
+                           First_Stmt => No_Stmt_Idx,
+                           Last_Stmt  => No_Stmt_Idx));
    end New_Subprogram;
 
    ---------------
@@ -1340,8 +1340,8 @@ package body CCG.Subprograms is
       use Value_To_Decl_Maps;
       use Value_To_Subprogram_Maps;
 
-      Elab_Spec_SI    : Subprogram_Idx := Empty_Subprogram_Idx;
-      Elab_Body_SI    : Subprogram_Idx := Empty_Subprogram_Idx;
+      Elab_Spec_SI    : Subprogram_Idx := No_Subprogram_Idx;
+      Elab_Body_SI    : Subprogram_Idx := No_Subprogram_Idx;
       Declaration_Map : Value_To_Decl_Maps.Map;
       Definition_Map  : Value_To_Subprogram_Maps.Map;
 
@@ -1454,9 +1454,9 @@ package body CCG.Subprograms is
          begin
             if Present (V) then
                if Defining then
-                  Include (Definition_Map,  V, Empty_Subprogram_Idx);
+                  Include (Definition_Map,  V, No_Subprogram_Idx);
                else
-                  Include (Declaration_Map, V, Empty_Global_Decl_Idx);
+                  Include (Declaration_Map, V, No_Global_Decl_Idx);
                end if;
             end if;
          end;

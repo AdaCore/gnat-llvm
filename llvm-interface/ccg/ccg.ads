@@ -49,26 +49,26 @@ package CCG is
      range Global_Decl_Idx_Low_Bound .. Global_Decl_Idx_High_Bound;
    Global_Decl_Idx_Start      : constant Global_Decl_Idx :=
      Global_Decl_Idx_Low_Bound + 1;
-   Empty_Global_Decl_Idx      : constant Global_Decl_Idx  :=
+   No_Global_Decl_Idx         : constant Global_Decl_Idx  :=
      Global_Decl_Idx_Low_Bound;
 
    Local_Decl_Idx_Low_Bound   : constant := 300_000_000;
    Local_Decl_Idx_High_Bound  : constant := 399_999_999;
    type Local_Decl_Idx is
      range Local_Decl_Idx_Low_Bound .. Local_Decl_Idx_High_Bound;
-   Empty_Local_Decl_Idx       : constant Local_Decl_Idx  :=
+   No_Local_Decl_Idx          : constant Local_Decl_Idx  :=
      Local_Decl_Idx_Low_Bound;
 
    Stmt_Idx_Low_Bound         : constant := 400_000_000;
    Stmt_Idx_High_Bound        : constant := 499_999_999;
    type Stmt_Idx is range Stmt_Idx_Low_Bound .. Stmt_Idx_High_Bound;
-   Empty_Stmt_Idx             : constant Stmt_Idx        :=
+   No_Stmt_Idx               : constant Stmt_Idx        :=
      Stmt_Idx_Low_Bound;
 
    Flow_Idx_Low_Bound         : constant := 500_000_000;
    Flow_Idx_High_Bound        : constant := 599_999_999;
    type Flow_Idx is range Flow_Idx_Low_Bound .. Flow_Idx_High_Bound;
-   Empty_Flow_Idx             : constant Flow_Idx := Flow_Idx_Low_Bound;
+   No_Flow_Idx             : constant Flow_Idx := Flow_Idx_Low_Bound;
 
    --  Line_Idx is 6xx_xxx_xxx, Case_Idx is 7xx_xxx_xxx, and If_Idx is
    --  8xx_xxx_xxx (in ccg-flow.ads). Subprogram_Idx (in ccg-subprograms.adb)
@@ -82,22 +82,22 @@ package CCG is
    --  procedures manage those lists.
 
    function Present (Idx : Global_Decl_Idx) return Boolean is
-     (Idx /= Empty_Global_Decl_Idx);
+     (Idx /= No_Global_Decl_Idx);
    function Present (Idx : Local_Decl_Idx)  return Boolean is
-     (Idx /= Empty_Local_Decl_Idx);
+     (Idx /= No_Local_Decl_Idx);
    function Present (Idx : Stmt_Idx)        return Boolean is
-     (Idx /= Empty_Stmt_Idx);
+     (Idx /= No_Stmt_Idx);
    function Present (Idx : Flow_Idx)        return Boolean is
-    (Idx /= Empty_Flow_Idx);
+    (Idx /= No_Flow_Idx);
 
    function No (Idx : Global_Decl_Idx)      return Boolean is
-     (Idx = Empty_Global_Decl_Idx);
+     (Idx = No_Global_Decl_Idx);
    function No (Idx : Local_Decl_Idx)       return Boolean is
-     (Idx = Empty_Local_Decl_Idx);
+     (Idx = No_Local_Decl_Idx);
    function No (Idx : Stmt_Idx)             return Boolean is
-     (Idx = Empty_Stmt_Idx);
+     (Idx = No_Stmt_Idx);
    function No (Idx : Flow_Idx)             return Boolean is
-     (Idx = Empty_Flow_Idx);
+     (Idx = No_Flow_Idx);
 
    package Value_Sets is new Ada.Containers.Hashed_Sets
      (Element_Type        => Value_T,

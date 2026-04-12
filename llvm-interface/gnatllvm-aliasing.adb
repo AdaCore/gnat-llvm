@@ -87,12 +87,12 @@ package body GNATLLVM.Aliasing is
    --  check for that and invalidate the group if so.
 
    type UC_Group_Idx is new Nat;
-   Empty_UC_Group_Idx : constant UC_Group_Idx := 0;
+   No_UC_Group_Idx : constant UC_Group_Idx := 0;
 
    function No      (Idx : UC_Group_Idx) return Boolean is
-     (Idx = Empty_UC_Group_Idx);
+     (Idx = No_UC_Group_Idx);
    function Present (Idx : UC_Group_Idx) return Boolean is
-     (Idx /= Empty_UC_Group_Idx);
+     (Idx /= No_UC_Group_Idx);
 
    type UC_Entry is record
       TE    : Type_Kind_Id;
@@ -553,7 +553,7 @@ package body GNATLLVM.Aliasing is
          end if;
       end loop;
 
-      return Empty_UC_Group_Idx;
+      return No_UC_Group_Idx;
    end Find_UC_Group;
 
    ---------------------

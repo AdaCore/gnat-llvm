@@ -168,13 +168,13 @@ package body CCG.Flow is
      (Header_Num => Header_Num,
       Key        => Value_T,
       Element    => Flow_Idx,
-      No_Element => Empty_Flow_Idx,
+      No_Element => No_Flow_Idx,
       Hash       => GNATLLVM.Hash,
       Equal      => "=");
 
    --  The unique Flow that indicates a return
 
-   Current_Flow : Flow_Idx := Empty_Flow_Idx;
+   Current_Flow : Flow_Idx := No_Flow_Idx;
    --  The flow that we're currently building
 
    --  Getters a Line node. We never change an existing node, so we
@@ -811,7 +811,7 @@ package body CCG.Flow is
    begin
       Cases.Append ((Value           => V,
                      Expr            => S,
-                     Target          => Empty_Flow_Idx,
+                     Target          => No_Flow_Idx,
                      Is_Same_As_Next => False,
                      Inst            => No_Value_T));
       return Cases.Last;
@@ -823,7 +823,7 @@ package body CCG.Flow is
 
    function New_If (S : Str; Inst : Value_T) return If_Idx is
    begin
-      Ifs.Append ((Test => S, Inst => Inst, Target => Empty_Flow_Idx));
+      Ifs.Append ((Test => S, Inst => Inst, Target => No_Flow_Idx));
       return Ifs.Last;
    end New_If;
 
@@ -849,15 +849,15 @@ package body CCG.Flow is
       Flows.Append ((Is_Return    => False,
                      Return_Value => No_Value_T,
                      BB           => B,
-                     First_Line   => Empty_Line_Idx,
-                     Last_Line    => Empty_Line_Idx,
+                     First_Line   => No_Line_Idx,
+                     Last_Line    => No_Line_Idx,
                      Num_Uses     => 0,
-                     Next         => Empty_Flow_Idx,
-                     First_If     => Empty_If_Idx,
-                     Last_If      => Empty_If_Idx,
+                     Next         => No_Flow_Idx,
+                     First_If     => No_If_Idx,
+                     Last_If      => No_If_Idx,
                      Case_Expr    => No_Str,
-                     First_Case   => Empty_Case_Idx,
-                     Last_Case    => Empty_Case_Idx));
+                     First_Case   => No_Case_Idx,
+                     Last_Case    => No_Case_Idx));
       Idx := Flows.Last;
       Set_Flow (B, Idx);
       Current_Flow := Idx;
@@ -916,15 +916,15 @@ package body CCG.Flow is
                   Flows.Append ((Is_Return    => True,
                                  Return_Value => Retval,
                                  BB           => No_BB_T,
-                                 First_Line   => Empty_Line_Idx,
-                                 Last_Line    => Empty_Line_Idx,
+                                 First_Line   => No_Line_Idx,
+                                 Last_Line    => No_Line_Idx,
                                  Num_Uses     => 0,
-                                 Next         => Empty_Flow_Idx,
-                                 First_If     => Empty_If_Idx,
-                                 Last_If      => Empty_If_Idx,
+                                 Next         => No_Flow_Idx,
+                                 First_If     => No_If_Idx,
+                                 Last_If      => No_If_Idx,
                                  Case_Expr    => No_Str,
-                                 First_Case   => Empty_Case_Idx,
-                                 Last_Case    => Empty_Case_Idx));
+                                 First_Case   => No_Case_Idx,
+                                 Last_Case    => No_Case_Idx));
                   Ret_Idx := Flows.Last;
                   Return_Map.Set (Retval, Ret_Idx);
                end if;
@@ -1092,8 +1092,8 @@ package body CCG.Flow is
       then
          if First_Case (Idx) = Last_Case (Idx) then
             Set_Case_Expr  (Idx, No_Str);
-            Set_First_Case (Idx, Empty_Case_Idx);
-            Set_Last_Case  (Idx, Empty_Case_Idx);
+            Set_First_Case (Idx, No_Case_Idx);
+            Set_Last_Case  (Idx, No_Case_Idx);
          elsif not Is_Same_As_Next (Last_Case (Idx) - 1) then
             Set_Last_Case (Idx, Last_Case (Idx) - 1);
          end if;
@@ -1234,7 +1234,7 @@ package body CCG.Flow is
          for Cidx in First_Case (Idx) .. Last_Case (Idx) - 1 loop
             if Target (Cidx) = Target (Cidx + 1) then
                Set_Is_Same_As_Next (Cidx);
-               Set_Target          (Cidx, Empty_Flow_Idx);
+               Set_Target          (Cidx, No_Flow_Idx);
             end if;
          end loop;
       end if;
@@ -1249,14 +1249,14 @@ package body CCG.Flow is
      (Pidx : Part_Idx; Wanted_Target : Flow_Idx) return Flow_Idx
    is
       Idx      : Flow_Idx := Target (Pidx);
-      Prev_Idx : Flow_Idx := Empty_Flow_Idx;
-      Ret_Idx  : Flow_Idx := Empty_Flow_Idx;
+      Prev_Idx : Flow_Idx := No_Flow_Idx;
+      Ret_Idx  : Flow_Idx := No_Flow_Idx;
 
    begin
       --  If there's already no target, we have nothing to do
 
       if No (Idx) then
-         return Empty_Flow_Idx;
+         return No_Flow_Idx;
       end if;
 
       --  If Wanted_Target isn't Present, we're looking for the last
@@ -1280,13 +1280,13 @@ package body CCG.Flow is
          if No (Wanted_Target) or else Target (Pidx) = Wanted_Target then
             Ret_Idx := Target (Pidx);
             Add_Use (Ret_Idx);
-            Set_Target (Pidx, Empty_Flow_Idx);
+            Set_Target (Pidx, No_Flow_Idx);
          end if;
       else
          if No (Wanted_Target) or else Next (Prev_Idx) = Wanted_Target then
             Ret_Idx := Next (Prev_Idx);
             Add_Use (Ret_Idx);
-            Set_Next (Prev_Idx, Empty_Flow_Idx);
+            Set_Next (Prev_Idx, No_Flow_Idx);
          end if;
       end if;
 
@@ -1324,7 +1324,7 @@ package body CCG.Flow is
       elsif No (Next (Idx)) and then No (Test (Last_If (Idx))) then
          declare
             New_Idx : constant Flow_Idx :=
-              Replace_Target (Last_If (Idx), Empty_Flow_Idx);
+              Replace_Target (Last_If (Idx), No_Flow_Idx);
 
          begin
             Set_Next (Idx, New_Idx);
@@ -1364,7 +1364,7 @@ package body CCG.Flow is
       elsif No (Next (Idx)) and then Present (Target (Last_Case (Idx))) then
          declare
             New_Idx : constant Flow_Idx :=
-              Replace_Target (Last_Case (Idx), Empty_Flow_Idx);
+              Replace_Target (Last_Case (Idx), No_Flow_Idx);
 
          begin
             Set_Next (Idx, New_Idx);
@@ -1398,7 +1398,7 @@ package body CCG.Flow is
          --  If we found a return flow, return empty instead
 
          if Present (Ret_Idx) and then Is_Return (Ret_Idx) then
-            Ret_Idx := Empty_Flow_Idx;
+            Ret_Idx := No_Flow_Idx;
          end if;
       end return;
    end Effective_Flow;
@@ -1487,7 +1487,7 @@ package body CCG.Flow is
                  and then Num_Uses (Target (Iidx)) = 1
                  and then Next (Target (Iidx)) = Next (Idx)
                then
-                  Set_Next (Target (Iidx), Empty_Flow_Idx);
+                  Set_Next (Target (Iidx), No_Flow_Idx);
                end if;
             end loop;
          end if;
@@ -1498,7 +1498,7 @@ package body CCG.Flow is
                  and then Num_Uses (Target (Cidx)) = 1
                  and then Next (Target (Cidx)) = Next (Idx)
                then
-                  Set_Next (Target (Cidx), Empty_Flow_Idx);
+                  Set_Next (Target (Cidx), No_Flow_Idx);
                end if;
             end loop;
          end if;
@@ -1546,7 +1546,7 @@ package body CCG.Flow is
       procedure Output_One_Flow
         (Idx         : Flow_Idx;
          Depth       : Nat      := 0;
-         Our_Next    : Flow_Idx := Empty_Flow_Idx;
+         Our_Next    : Flow_Idx := No_Flow_Idx;
          Write_Label : Boolean  := True);
       --  Output the flow for Idx, if Present, and all nested flows.
       --  We write the label if there's more than one use or if Write_Label
@@ -1692,7 +1692,7 @@ package body CCG.Flow is
       procedure Output_One_Flow
         (Idx         : Flow_Idx;
          Depth       : Nat      := 0;
-         Our_Next    : Flow_Idx := Empty_Flow_Idx;
+         Our_Next    : Flow_Idx := No_Flow_Idx;
          Write_Label : Boolean  := True)
       is
          Was_Same : Boolean := False;

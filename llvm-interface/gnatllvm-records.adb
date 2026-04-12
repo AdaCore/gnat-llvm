@@ -261,8 +261,8 @@ package body GNATLLVM.Records is
       function Get_Record_Size_So_Far
         (TE          : Opt_Record_Kind_Id;
          V           : GL_Value;
-         Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
-         Idx         : Record_Info_Id := Empty_Record_Info_Id;
+         Start_Idx   : Record_Info_Id := No_Record_Info_Id;
+         Idx         : Record_Info_Id := No_Record_Info_Id;
          In_Size     : Result         := No_Result;
          Force_Align : Nat            := Units_Per_Byte;
          Max_Size    : Boolean        := False;
@@ -666,8 +666,7 @@ package body GNATLLVM.Records is
       is
          Variants : constant Record_Info_Id_Array_Access :=
            (if Use_Overlap then In_RI.Overlap_Variants else In_RI.Variants);
-         New_Idx  : Record_Info_Id                       :=
-           Empty_Record_Info_Id;
+         New_Idx  : Record_Info_Id                       := No_Record_Info_Id;
          Idx      : Record_Info_Id;
          RI       : Record_Info;
 
@@ -706,7 +705,7 @@ package body GNATLLVM.Records is
             end loop;
          end loop;
 
-         return Empty_Record_Info_Id;
+         return No_Record_Info_Id;
       end Get_Variant_For_RI;
 
       --------------------------
@@ -762,8 +761,8 @@ package body GNATLLVM.Records is
       function Get_Record_Size_So_Far
         (TE          : Opt_Record_Kind_Id;
          V           : GL_Value;
-         Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
-         Idx         : Record_Info_Id := Empty_Record_Info_Id;
+         Start_Idx   : Record_Info_Id := No_Record_Info_Id;
+         Idx         : Record_Info_Id := No_Record_Info_Id;
          In_Size     : Result         := No_Result;
          Force_Align : Nat            := Units_Per_Byte;
          Max_Size    : Boolean        := False;
@@ -777,7 +776,7 @@ package body GNATLLVM.Records is
          Cur_Idx      : Record_Info_Id :=
            (if    Present (Start_Idx) then Start_Idx
             elsif Present (TE) then Get_Record_Info (TE)
-            else  Empty_Record_Info_Id);
+            else  No_Record_Info_Id);
          Must_Align   : Nat            := Units_Per_Byte;
          Pushed_Stack : Boolean        := False;
          This_Align   : Nat;
@@ -811,7 +810,7 @@ package body GNATLLVM.Records is
          --  show what alignment we now have.
 
          while Present (Cur_Idx) and then Cur_Idx /= Idx loop
-            New_Idx := Empty_Record_Info_Id;
+            New_Idx := No_Record_Info_Id;
             RI      := Record_Info_Table.Table (Cur_Idx);
 
             --  If we're reached a variant point, we have two cases. We
@@ -1050,8 +1049,8 @@ package body GNATLLVM.Records is
    function Get_Record_Size_So_Far
      (TE          : Opt_Record_Kind_Id;
       V           : GL_Value;
-      Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
-      Idx         : Record_Info_Id := Empty_Record_Info_Id;
+      Start_Idx   : Record_Info_Id := No_Record_Info_Id;
+      Idx         : Record_Info_Id := No_Record_Info_Id;
       In_Size     : GL_Value       := No_GL_Value;
       Force_Align : Nat            := BPU;
       Max_Size    : Boolean        := False;
@@ -1104,8 +1103,8 @@ package body GNATLLVM.Records is
    function Get_Record_Size_So_Far_In_Bytes
      (TE          : Opt_Record_Kind_Id;
       V           : GL_Value;
-      Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
-      Idx         : Record_Info_Id := Empty_Record_Info_Id;
+      Start_Idx   : Record_Info_Id := No_Record_Info_Id;
+      Idx         : Record_Info_Id := No_Record_Info_Id;
       In_Size     : GL_Value       := No_GL_Value;
       Force_Align : Nat            := 1;
       Max_Size    : Boolean        := False;
@@ -1164,8 +1163,8 @@ package body GNATLLVM.Records is
    function Get_Record_Size_So_Far
      (TE          : Opt_Record_Kind_Id;
       V           : GL_Value;
-      Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
-      Idx         : Record_Info_Id := Empty_Record_Info_Id;
+      Start_Idx   : Record_Info_Id := No_Record_Info_Id;
+      Idx         : Record_Info_Id := No_Record_Info_Id;
       In_Size     : IDS            := No_IDS;
       Force_Align : Nat            := BPU;
       Max_Size    : Boolean        := False;

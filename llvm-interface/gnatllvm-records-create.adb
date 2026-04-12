@@ -494,13 +494,13 @@ package body GNATLLVM.Records.Create is
       Has_NP_Fixed   : Boolean                  := False;
       --  Indicates that at least one field of fixed size isn't packable
 
-      Prev_Idx       : Record_Info_Id           := Empty_Record_Info_Id;
+      Prev_Idx       : Record_Info_Id           := No_Record_Info_Id;
       --  The previous index of the record table entry, if any
 
-      First_Idx      : Record_Info_Id           := Empty_Record_Info_Id;
+      First_Idx      : Record_Info_Id           := No_Record_Info_Id;
       --  The first index used by the current record fragment construction
 
-      Overlap_Idx    : Record_Info_Id           := Empty_Record_Info_Id;
+      Overlap_Idx    : Record_Info_Id           := No_Record_Info_Id;
       --  The index of the overlap component of this variant part, if any
 
       Cur_RI_Pos     : ULL                      := 0;
@@ -537,10 +537,10 @@ package body GNATLLVM.Records.Create is
       --  When we make internal records, we need to be sure that each
       --  has a unique name. This counts each name.
 
-      First_Field_Id : Field_Info_Id            := Empty_Field_Info_Id;
+      First_Field_Id : Field_Info_Id            := No_Field_Info_Id;
       --  First Field_Info_Id in this RI
 
-      Last_Field_Id  : Field_Info_Id            := Empty_Field_Info_Id;
+      Last_Field_Id  : Field_Info_Id            := No_Field_Info_Id;
       --  Last Field_Info_Id created, if any
 
       GT             :  GL_Type                 :=
@@ -548,7 +548,7 @@ package body GNATLLVM.Records.Create is
       --  The GL_Type for this record type
 
       Discrim_FIs    : Field_Info_Id_Array      :=
-        (1 .. Max_Discriminant (Full_Base_Type (TE)) => Empty_Field_Info_Id);
+        (1 .. Max_Discriminant (Full_Base_Type (TE)) => No_Field_Info_Id);
       --  In entry J, we record the Field_Info corresponding to the
       --  discriminant number J. We use this for record subtypes of
       --  derived types.
@@ -635,7 +635,7 @@ package body GNATLLVM.Records.Create is
             GT               => F_GT,
             Align            => Align,
             Position         => Position,
-            Next             => Empty_Record_Info_Id,
+            Next             => No_Record_Info_Id,
             Variant_List     => Variant_List,
             Variant_Expr     => Variant_Expr,
             Variants         => Variants,
@@ -652,7 +652,7 @@ package body GNATLLVM.Records.Create is
             Record_Info_Table.Table (Prev_Idx).Next := Cur_Idx;
          elsif RI_Is_Overlap then
             Overlap_Idx   := Cur_Idx;
-            Cur_Idx       := Empty_Record_Info_Id;
+            Cur_Idx       := No_Record_Info_Id;
             RI_Is_Overlap := False;
          else
             First_Idx     := Cur_Idx;
@@ -665,8 +665,8 @@ package body GNATLLVM.Records.Create is
          --  Reset the chain info for FIs and get a new UID if we need a
          --  new struct.
 
-         First_Field_Id := Empty_Field_Info_Id;
-         Last_Field_Id  := Empty_Field_Info_Id;
+         First_Field_Id := No_Field_Info_Id;
+         Last_Field_Id  := No_Field_Info_Id;
       end Add_RI;
 
       ------------
@@ -690,7 +690,7 @@ package body GNATLLVM.Records.Create is
 
          Field_Info_Table.Append
            ((Field                => E,
-             Next                 => Empty_Field_Info_Id,
+             Next                 => No_Field_Info_Id,
              Rec_Info_Idx         => RI_Idx,
              GT                   => F_GT,
              Field_Ordinal        => Ordinal,
@@ -899,20 +899,20 @@ package body GNATLLVM.Records.Create is
             Var_Array         := new
               Record_Info_Id_Array'(1 .. List_Length_Non_Pragma
                                       (Variants (Var_Part))
-                                      => Empty_Record_Info_Id);
+                                      => No_Record_Info_Id);
             Overlap_Var_Array := new
               Record_Info_Id_Array'(1 .. List_Length_Non_Pragma
                                       (Variants (Var_Part))
-                                      => Empty_Record_Info_Id);
+                                      => No_Record_Info_Id);
 
             while Present (Variant) loop
                Variant_Stack.Append ((Variant_Align, False));
-               First_Idx   := Empty_Record_Info_Id;
-               Overlap_Idx := Empty_Record_Info_Id;
+               First_Idx   := No_Record_Info_Id;
+               Overlap_Idx := No_Record_Info_Id;
 
                if Present (Component_Items (Component_List (Variant))) then
                   Record_Info_Table.Increment_Last;
-                  Prev_Idx      := Empty_Record_Info_Id;
+                  Prev_Idx      := No_Record_Info_Id;
                   Cur_Idx       := Record_Info_Table.Last;
                   Split_Align   := Variant_Align;
                   Add_Component_List (Component_List (Variant), From_Rec);

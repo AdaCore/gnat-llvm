@@ -151,7 +151,7 @@ package body GNATLLVM.Types is
 
    generic
       type Result is private;
-      Empty_Result : Result;
+      No_Result : Result;
       with function From_Const (V : GL_Value) return Result;
       with function Get_Record_Type_Size
         (TE         : Type_Kind_Id;
@@ -1241,7 +1241,7 @@ package body GNATLLVM.Types is
          --  If this is a subprogram type, it doesn't have a size
 
          elsif Ekind (GT) = E_Subprogram_Type then
-            return Empty_Result;
+            return No_Result;
 
          --  If this isn't a non-native type, then the size is the size of the
          --  LLVM type and unless we aren't to remove padding and this is a
@@ -1262,7 +1262,7 @@ package body GNATLLVM.Types is
             return Get_Array_Type_Size (Full_Etype (GT), V, Use_Max_Size);
          else
             pragma Assert (Standard.False);
-            return Empty_Result;
+            return No_Result;
          end if;
 
       end Get_Type_Size;
@@ -1270,7 +1270,7 @@ package body GNATLLVM.Types is
 
    package LLVM_Size is
       new Size (Result                  => GL_Value,
-                Empty_Result            => No_GL_Value,
+                No_Result               => No_GL_Value,
                 From_Const              => From_Const,
                 Get_Record_Type_Size    => Get_Record_Type_Size,
                 Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
@@ -1288,7 +1288,7 @@ package body GNATLLVM.Types is
 
    package LLVM_Size_In_Bytes is
       new Size (Result                  => GL_Value,
-                Empty_Result            => No_GL_Value,
+                No_Result               => No_GL_Value,
                 From_Const              => From_Const,
                 Get_Record_Type_Size    => Get_Record_Type_Size_In_Bytes,
                 Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size_In_Bytes,
@@ -1306,7 +1306,7 @@ package body GNATLLVM.Types is
 
    package IDS_Size is
       new Size (Result                  => IDS,
-                Empty_Result            => No_IDS,
+                No_Result               => No_IDS,
                 From_Const              => From_Const,
                 Get_Record_Type_Size    => Get_Record_Type_Size,
                 Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,
@@ -1324,7 +1324,7 @@ package body GNATLLVM.Types is
 
    package BA_Size is
       new Size (Result                  => BA_Data,
-                Empty_Result            => No_BA,
+                No_Result               => No_BA,
                 From_Const              => From_Const,
                 Get_Record_Type_Size    => Get_Record_Type_Size,
                 Get_Unc_Array_Type_Size => Get_Unc_Array_Type_Size,

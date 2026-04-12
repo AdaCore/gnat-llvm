@@ -1515,6 +1515,9 @@ package GNATLLVM.GLValue is
           Post => Type_Of (Get_Type_Alignment'Result) = Bitsize_MD,
           Inline;
 
+   function GT_Check_Overflow (V : GL_Value) return Boolean
+     with Pre => Present (V), Inline;
+
    function Add_Function
      (Name       : String;
       MD         : MD_Type;

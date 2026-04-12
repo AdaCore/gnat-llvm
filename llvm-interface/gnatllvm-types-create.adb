@@ -153,7 +153,7 @@ package body GNATLLVM.Types.Create is
       if Is_Modular_Integer_Type (Size_TE)
         and then not Non_Binary_Modulus (Size_TE)
       then
-         --  Normally. RM_Size is the size we want here. If this is a
+         --  Normally, RM_Size is the size we want here. If this is a
          --  packed array implementation type, it is. Otherwise, it will
          --  only be correct if there's no size clause. If there is, we
          --  have to compute the size from the modulus. Note that it's
@@ -163,7 +163,7 @@ package body GNATLLVM.Types.Create is
 
          if Is_Packed_Array_Impl_Type (Size_TE)
            or else (not Has_Size_Clause (Size_TE)
-                      and then RM_Size (Size_TE) /= 0)
+                    and then RM_Size (Size_TE) /= 0)
          then
             Size := RM_Size (Size_TE);
          else
@@ -286,7 +286,7 @@ package body GNATLLVM.Types.Create is
             return (if   R /= Fat_Pointer then Void_Ptr_MD
                     else Build_Struct_Type ((1 .. 2 => Void_Ptr_MD),
                                             (1 .. 2 => No_Name),
-                                            Packed => False));
+                                            Packed  => False));
 
          elsif Ekind (DT) = E_Subprogram_Type then
             return Void_Ptr_MD;
@@ -540,10 +540,10 @@ package body GNATLLVM.Types.Create is
       --  know that we don't support that.
 
       if ((Ekind (TE) in Record_Kind | Array_Kind
-             and then Reverse_Storage_Order (TE))
+          and then Reverse_Storage_Order (TE))
           or else (Is_Packed_Array_Impl_Type (TE)
-                     and then Reverse_Storage_Order
-                                (Full_Original_Array_Type (TE))))
+                   and then Reverse_Storage_Order
+                              (Full_Original_Array_Type (TE))))
         and then not GNAT_Mode
       then
          Error_Msg_NE
@@ -640,6 +640,7 @@ package body GNATLLVM.Types.Create is
          if not Known_Esize (Out_TE) and then Known_Esize (In_TE) then
             Set_Esize   (Out_TE, Esize (In_TE));
          end if;
+
          if not Known_RM_Size (Out_TE) and then Known_RM_Size (In_TE) then
             Set_RM_Size (Out_TE, RM_Size (In_TE));
 
@@ -733,7 +734,7 @@ package body GNATLLVM.Types.Create is
 
       if Present (Align)
         and then (not UI_Is_In_Int_Range (Align)
-                    or else Align > Max_Valid_Align)
+                  or else Align > Max_Valid_Align)
       then
          if not No_Error then
             Error_Msg_NE_Num ("largest supported alignment for& is ^",
@@ -754,7 +755,7 @@ package body GNATLLVM.Types.Create is
       if New_Align < Current_Align then
          if not No_Error
            and then (not Is_Type (E)
-                       or else not Is_Discrete_Or_Fixed_Point_Type (TE))
+                     or else not Is_Discrete_Or_Fixed_Point_Type (TE))
            and then (No (Clause) or else not From_At_Mod (Clause))
          then
             --  If we already have an error here but no alignment clause,
@@ -849,9 +850,9 @@ package body GNATLLVM.Types.Create is
       --  object.
 
       elsif (Is_Discrete_Or_Fixed_Point_Type (GT)
-               or else (Is_Packed_Array_Impl_Type (GT)
-                          and then Is_Bit_Packed_Array
-                                     (Full_Original_Array_Type (GT))))
+             or else (Is_Packed_Array_Impl_Type (GT)
+                      and then Is_Bit_Packed_Array
+                                 (Full_Original_Array_Type (GT))))
         and then not (Is_Var and Is_Aliased (E))
       then
          return Size;
@@ -883,7 +884,7 @@ package body GNATLLVM.Types.Create is
       --  valid.
 
       if (Is_Access_Unconstrained_Array (GT)
-            or else Is_Access_Subprogram_Type (GT))
+          or else Is_Access_Subprogram_Type (GT))
         and then (Size = Thin_Pointer_Size or else Size = Fat_Pointer_Size)
       then
          return Size;

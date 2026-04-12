@@ -1422,11 +1422,13 @@ package body GNATLLVM.GLValue is
 
       Set_Alignment (Result, Uint_Align_Bytes (N));
 
-      --  We're OK if this is a modular type or if the value matches.
+      --  We're OK if this is a modular type for which we're not checking
+      --  overflow or if the value matches.
       --  ??? If this is wider than ULL, we can't check if the value matches,
       --  so assume that no overflow is possible.
 
-      if Is_Modular_Integer_Type (GT) or else Bitsize >= ULL'Size
+      if (Is_Modular_Integer_Type (GT) and then not GT_Check_Overflow (GT))
+        or else Bitsize >= ULL'Size
         or else UI_From_LLI (+Result) = N
       then
          return Result;
@@ -1660,6 +1662,13 @@ package body GNATLLVM.GLValue is
    is
      (Bitsize_Const_Int (ULL (Nat'(Get_Type_Alignment
                                      (GT, Use_Specified => Use_Specified)))));
+
+   -----------------------
+   -- GT_Check_Overflow --
+   -----------------------
+
+   function GT_Check_Overflow (V : GL_Value) return Boolean is
+     (GT_Check_Overflow (Related_Type (V)));
 
    ----------------
    -- Add_Global --
@@ -2119,7 +2128,7 @@ package body GNATLLVM.GLValue is
       --  that it might cross the boundary where the high-bit changes.
       --  A modular type is defined to wrap. Biased type are unsigned.
 
-      if No (Is_A_Instruction (Inst)) or else Is_Modular_Integer_Type (V) then
+      if No (Is_A_Instruction (Inst)) or else not GT_Check_Overflow (V) then
          null;
       elsif Is_Access_Type (V) or else Is_Unsigned_Type (V) then
          Set_NUW (Inst);

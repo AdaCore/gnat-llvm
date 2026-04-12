@@ -1697,7 +1697,7 @@ package body GNATLLVM.Variables is
 
       return (if    not Emit_C and then Is_Zero_Size (GT)
                     and then not Is_Constr_Array_Subt_With_Bounds (GT)
-              then Make_GT_Alternative (GT, Empty, +BPU, No_Uint)
+              then Make_GT_Alternative (GT, Size => +BPU)
               else GT);
    end Variable_Alloc_GL_Type;
 

@@ -165,10 +165,12 @@ package body GNATLLVM.Compile is
       --  set the sizes of the GL_Type only when the below variables have
       --  been set.
 
-      Bitsize_GL_Type := Primitive_GL_Type (Bitsize_Type);
+      Bitsize_GL_Type := Make_GT_Alternative (Primitive_GL_Type (Bitsize_Type),
+                                              Check_Overflow => True);
       Bitsize_MD      := Type_Of (Bitsize_Type);
       Bitsize_T       := +Bitsize_MD;
-      Size_GL_Type    := Primitive_GL_Type (Size_Type);
+      Size_GL_Type    := Make_GT_Alternative (Primitive_GL_Type (Size_Type),
+                                              Check_Overflow => True);
       Size_MD         := Type_Of (Size_Type);
       Size_T          := +Size_MD;
       Update_GL_Type (Size_GL_Type, Size_MD, False);

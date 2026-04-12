@@ -59,7 +59,8 @@ package body GNATLLVM.GLType is
 
       Int_Alt,
       --  An integral type of a different width then the primitive type
-      --  (either wider or narrower), but not a biased type.
+      --  (either wider or narrower) or having different overflow
+      --  properties, but not a biased type.
 
       Access_Alt,
       --  An alternate representation of an access type, either a thin
@@ -103,40 +104,45 @@ package body GNATLLVM.GLType is
    --  Define the fields in the table for GL_Type's
 
    type GL_Type_Info_Base is record
-      GNAT_Type   : Void_Or_Type_Kind_Id;
+      GNAT_Type      : Void_Or_Type_Kind_Id;
       --  GNAT type
 
-      MD          : MD_Type;
+      MD             : MD_Type;
       --  MD_Type used for this alternative
 
-      TBAA        : Metadata_T;
+      TBAA           : Metadata_T;
       --  If Present, the TBAA tag to use
 
-      Next        : GL_Type;
+      Next           : GL_Type;
       --  If Present, link to next alternative
 
-      Size        : GL_Value;
+      Size           : GL_Value;
       --  If Present, size of this alternative in bits
 
-      Alignment   : Nat;
+      Alignment      : Nat;
       --  If nonzero, the alignment of this alternative in bits
 
-      Bias        : GL_Value;
+      Bias           : GL_Value;
       --  If Present, the amount of bias for integral types
 
-      Array_Types : Array_Types_Id;
+      Check_Overflow : Boolean;
+      --  If this integral type, true if it needs an overflow check (all
+      --  but a modular integer type, but not when we use one of them as an
+      --  unsigned type for size computations).
+
+      Array_Types     : Array_Types_Id;
       --  If this is an array type and Present, gives the table index at
       --  which the types used for parts of arrays, such as bounds, can
       --  be found.
 
-      Max_Size    : Boolean;
+      Max_Size        : Boolean;
       --  If True, this corresponds to the maxumum size of an unconstrained
       --  variant record with default discriminant values;
 
-      Kind        : GT_Kind_Type;
+      Kind            : GT_Kind_Type;
       --  Says what type of alternative type this is
 
-      Default     : Boolean;
+      Default         : Boolean;
       --  Marks the default GL_Type
 
    end record;
@@ -192,15 +198,16 @@ package body GNATLLVM.GLType is
    --  Likewise, for cases where we have to make a copy
 
    function Make_GT_Alternative_Internal
-     (GT        : GL_Type;
-      Size      : Uint;
-      Align     : Uint;
-      For_Type  : Boolean;
-      Max_Size  : Boolean;
-      Is_Biased : Boolean) return GL_Type
+     (GT             : GL_Type;
+      Size           : Uint;
+      Align          : Uint;
+      For_Type       : Boolean;
+      Max_Size       : Boolean;
+      Is_Biased      : Boolean;
+      Check_Overflow : Boolean) return GL_Type
      with Pre  => Present (GT),
-          Post => Full_Etype (Make_GT_Alternative_Internal'Result)
-                   = Full_Etype (GT);
+          Post => Full_Etype (Make_GT_Alternative_Internal'Result) =
+                  Full_Etype (GT);
    --  Internal version of Make_GT_Alternative to actually make the GL_Type
 
    function GT_Kind (GT : GL_Type) return GT_Kind_Type is
@@ -311,6 +318,13 @@ package body GNATLLVM.GLType is
    function GT_Alignment (GT : GL_Type) return Nat is
      (GL_Types.Table (GT).Alignment);
 
+   -----------------------
+   -- GT_Check_Overflow --
+   -----------------------
+
+   function GT_Check_Overflow (GT : GL_Type) return Boolean is
+     (GL_Types.Table (GT).Check_Overflow);
+
    ---------------
    -- TBAA_Type --
    ---------------
@@ -369,17 +383,18 @@ package body GNATLLVM.GLType is
       GT : GL_Type;
 
    begin
-      GL_Types.Append ((GNAT_Type   => TE,
-                        MD          => No_MD_Type,
-                        TBAA        => No_Metadata_T,
-                        Next        => Get_GL_Type (TE),
-                        Size        => No_GL_Value,
-                        Alignment   => 0,
-                        Bias        => No_GL_Value,
-                        Array_Types => No_Array_Types_Id,
-                        Max_Size    => False,
-                        Kind        => None,
-                        Default     => False));
+      GL_Types.Append ((GNAT_Type      => TE,
+                        MD             => No_MD_Type,
+                        TBAA           => No_Metadata_T,
+                        Next           => Get_GL_Type (TE),
+                        Size           => No_GL_Value,
+                        Alignment      => 0,
+                        Bias           => No_GL_Value,
+                        Check_Overflow => False,
+                        Array_Types    => No_Array_Types_Id,
+                        Max_Size       => False,
+                        Kind           => None,
+                        Default        => False));
 
       GT := GL_Types.Last;
       Set_GL_Type (TE, GT);
@@ -391,20 +406,21 @@ package body GNATLLVM.GLType is
    -------------------------
 
    function Make_GT_Alternative
-     (GT            : GL_Type;
-      E             : Entity_Id;
-      Size          : Uint    := No_Uint;
-      Align         : Uint    := No_Uint;
-      For_Type      : Boolean := False;
-      For_Component : Boolean := False;
-      Max_Size      : Boolean := False;
-      Is_Biased     : Boolean := False;
-      Align_For_Msg : Uint    := No_Uint) return GL_Type
+     (GT             : GL_Type;
+      E              : Entity_Id := Empty;
+      Size           : Uint      := No_Uint;
+      Align          : Uint      := No_Uint;
+      For_Type       : Boolean   := False;
+      For_Component  : Boolean   := False;
+      Max_Size       : Boolean   := False;
+      Is_Biased      : Boolean   := False;
+      Align_For_Msg  : Uint      := No_Uint;
+      Check_Overflow : Boolean   := False) return GL_Type
    is
       In_Sz     : constant GL_Value  := GT_Size (GT);
       Out_GT    : constant GL_Type   :=
         Make_GT_Alternative_Internal (GT, Size, Align, For_Type, Max_Size,
-                                      Is_Biased);
+                                      Is_Biased, Check_Overflow);
       MD        : constant MD_Type   := Type_Of (GT);
       Err_Ident : constant Entity_Id :=
         (if   Present (E) and then Is_Packed_Array_Impl_Type (E)
@@ -477,12 +493,13 @@ package body GNATLLVM.GLType is
    ----------------------------------
 
    function Make_GT_Alternative_Internal
-     (GT        : GL_Type;
-      Size      : Uint;
-      Align     : Uint;
-      For_Type  : Boolean;
-      Max_Size  : Boolean;
-      Is_Biased : Boolean) return GL_Type
+     (GT             : GL_Type;
+      Size           : Uint;
+      Align          : Uint;
+      For_Type       : Boolean;
+      Max_Size       : Boolean;
+      Is_Biased      : Boolean;
+      Check_Overflow : Boolean) return GL_Type
    is
       function Make_Large_Array (Count : ULL) return MD_Type
         with Post => Is_Array (Make_Large_Array'Result);
@@ -500,10 +517,13 @@ package body GNATLLVM.GLType is
       Prim_Fixed  : constant Boolean      :=
         not Is_Dynamic_Size (Prim_GT, Allow_Overflow => True);
       Prim_Size   : constant GL_Value     :=
-        (if Prim_Fixed then Get_Type_Size (Prim_GT) else No_GL_Value);
+        (if   Present (Bitsize_GL_Type) and then Prim_Fixed
+         then Get_Type_Size (Prim_GT) else No_GL_Value);
       Prim_Align  : constant Nat          := Get_Type_Alignment (Prim_GT);
       Int_Sz      : constant ULL          :=
-        (if Size_ULL = 0 then 1 else Size_ULL);
+        (if    No (Size) and then Present (In_GTI.Size)
+               and then Is_Constant (In_GTI.Size) then +In_GTI.Size
+         elsif Size_ULL = 0 then 1 else Size_ULL);
       Size_V      : GL_Value              :=
         (if   No (Size) or else not UI_Is_In_ULL_Range (Size)
               or else Is_Dynamic_SO_Ref (Size)
@@ -537,11 +557,14 @@ package body GNATLLVM.GLType is
       end Make_Large_Array;
 
    begin
-      --  If we're not specifying a size, alignment, or a request for
-      --  maximum size, we want the original type. This isn't quite the
-      --  same test as below since it will get confused with 0-sized types.
+      --  If we're not specifying a size, alignment, a request for maximum
+      --  size, or to check overflow, we want the original type. This isn't
+      --  quite the same test as below since it will get confused with
+      --  0-sized types.
 
-      if No (Size_V) and then Align_N = 0 and then not Needs_Max then
+      if No (Size_V) and then Align_N = 0 and then not Needs_Max
+        and then not (Check_Overflow and then not GT_Check_Overflow (GT))
+      then
          return GT;
 
       --  If the best type we had is a dummy type, don't make any alternatives
@@ -549,9 +572,9 @@ package body GNATLLVM.GLType is
       elsif Is_Dummy_Type (Prim_GT) then
          return Prim_GT;
 
-      --  If we're asking for the maximum size, the maximum size is a
-      --  constant, and we don't have a specified size, use the maximum size
-      --  if we have one.
+         --  If we're asking for the maximum size, the maximum size is a
+         --  constant, and we don't have a specified size, use the maximum size
+         --  if we have one.
 
       elsif Needs_Max and then not Is_Dynamic_Size (Prim_GT, Max_Size => True)
         and then No (Size_V)
@@ -578,13 +601,14 @@ package body GNATLLVM.GLType is
             GTI : constant GL_Type_Info := GL_Types.Table (Found_GT);
          begin
             if (Size_V = GTI.Size and then Align_N = GTI.Alignment
-                  and then Needs_Bias = (GTI.Kind = Biased)
-                  and then not (Needs_Max
-                                  and then (No (Size_V)
-                                              or else not Prim_Native))
-                  and then not (Present (Size)
-                                  and then Is_Integer (GTI.MD)
-                                  and then Get_Type_Size (GTI.MD) /= Size_ULL))
+                and then Needs_Bias = (GTI.Kind = Biased)
+                and then not (Needs_Max
+                              and then (No (Size_V)
+                                        or else not Prim_Native))
+                and then not (Check_Overflow and then not GTI.Check_Overflow)
+                and then not (Present (Size)
+                              and then Is_Integer (GTI.MD)
+                              and then Get_Type_Size (GTI.MD) /= Size_ULL))
               --  If the size and alignment are the same, this must be the
               --  same type. But this isn't the case if we need the
               --  maximim size and there's no size for the type or the
@@ -594,9 +618,9 @@ package body GNATLLVM.GLType is
               --  number of bits.
 
               or else (Needs_Max and then GTI.Max_Size
-                         and then ((No (Size_V) and then No (GTI.Size))
-                                   or else Size_V = GTI.Size)
-                         and then Align_N = GTI.Alignment)
+                       and then ((No (Size_V) and then No (GTI.Size))
+                                 or else Size_V = GTI.Size)
+                       and then Align_N = GTI.Alignment)
               --  It's also the same type even if there's no match if
               --  we want the maximum size and we have an entry where
               --  we got the maximum size. But we need the right alignment.
@@ -624,6 +648,7 @@ package body GNATLLVM.GLType is
          GTI.Size      := Size_V;
          GTI.Alignment := Align_N;
          GTI.Max_Size  := Needs_Max;
+         GTI.Check_Overflow := Check_Overflow or In_GTI.Check_Overflow;
 
          --  If this is a biased type, make a narrower integer and set the
          --  bias.
@@ -641,7 +666,8 @@ package body GNATLLVM.GLType is
          --  size and signedness are the same.
 
          elsif Is_Discrete_Or_Fixed_Point_Type (GT)
-           and then Present (Size) and then Size <= Max_Int_Size
+           and then ((Present (Size) and then Size <= Max_Int_Size)
+                     or else Check_Overflow)
          then
             GTI.MD   := (if   ULL (Int_Bits (Prim_MD)) = Int_Sz
                               and then Is_Unsigned (Prim_MD)
@@ -755,8 +781,9 @@ package body GNATLLVM.GLType is
       GTI : GL_Type_Info renames GL_Types.Table (GT);
 
    begin
-      GTI.MD   := MD;
-      GTI.Kind := (if Is_Dummy then Dummy else Primitive);
+      GTI.MD             := MD;
+      GTI.Kind           := (if Is_Dummy then Dummy else Primitive);
+      GTI.Check_Overflow := not Is_Modular_Integer_Type (GT);
       Mark_Default (GT);
 
       --  Struct types that have names aren't shared, so we can link them
@@ -1400,7 +1427,12 @@ package body GNATLLVM.GLType is
         Unsigned or else Is_Unsigned_Type (GT);
 
    begin
-      return Full_GL_Type (Stand_Type (Size, Want_Unsigned));
+      --  ??? We want to have Check_Oveflow as True (the below call doesn't
+      --  do anything, but we have to clean up Bounds_To_Length first.
+
+      return
+        Make_GT_Alternative (Full_GL_Type (Stand_Type (Size, Want_Unsigned)),
+                             Check_Overflow => False);
    end Wider_GL_Type;
 
    ------------------
@@ -1484,6 +1516,10 @@ package body GNATLLVM.GLType is
 
       if GTI.Default then
          Write_Str (", default");
+      end if;
+
+      if not GTI.Check_Overflow then
+         Write_Str (", no Check_Overflow");
       end if;
 
       Write_Str (")");

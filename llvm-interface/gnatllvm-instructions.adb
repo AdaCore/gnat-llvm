@@ -32,6 +32,12 @@ with GNATLLVM.Variables;   use GNATLLVM.Variables;
 
 package body GNATLLVM.Instructions is
 
+   function No_Overflow_Test
+     (Result, LHS : GL_Value; RHS : GL_Value := No_GL_Value) return Boolean
+     with Pre => Present (Result) and then Present (LHS);
+   --  True if we shouldn't test Result (which was derived from LHS
+   --  and, possibly, RHS) for an overflow.
+
    function MD_From_Indices
      (V : GL_Value; Idx_Array : Index_Array) return MD_Type
      with Pre => Present (V), Post => Present (MD_From_Indices'Result);
@@ -180,6 +186,27 @@ package body GNATLLVM.Instructions is
 
       return Set_Alignment (In_Bytes, Alignment (V) / BPU);
    end To_Bytes;
+
+   ----------------------
+   -- No_Overflow_Test --
+   ----------------------
+
+   function No_Overflow_Test
+     (Result, LHS : GL_Value; RHS : GL_Value := No_GL_Value) return Boolean
+   is
+      --  If either operand or the result isn't a constant integer, if this
+      --  is a modular integer type, or if we already had an overflow, we
+      --  don't have to test for overflow. Note that we do want to test for
+      --  overflow for Size_Type even if it's a modular integer type
+      --  (unsigned).
+      --
+      --  ???  We can't currently test for overflow if wider than ULL.
+
+     (not Is_A_Constant_Int (LHS)
+      or else (Present (RHS) and then not Is_A_Constant_Int (RHS))
+      or else not Is_A_Constant_Int (Result) or else Overflowed (Result)
+      or else not GT_Check_Overflow (Related_Type (Result))
+      or else Esize (Result) > ULL'Size);
 
    ------------
    -- Alloca --
@@ -605,16 +632,9 @@ package body GNATLLVM.Instructions is
          end if;
       end if;
 
-      --  If either operand or the result isn't a constant integer, if this
-      --  is a modular integer type, or if we already had an overflow, we
-      --  don't have to test for overflow.
-      --  ???  We can't currently test for overflow if wider than ULL.
+      --  Check for overflow if required
 
-      if not Is_A_Constant_Int (LHS) or else not Is_A_Constant_Int (RHS)
-        or else not Is_A_Constant_Int (Result) or else Overflowed (Result)
-        or else Is_Modular_Integer_Type (Result)
-        or else Esize (Result) > ULL'Size
-      then
+      if No_Overflow_Test (Result, LHS, RHS) then
          return Result;
 
       --  Otherwise, test for overflow. Note that, unlike in C, LLVM
@@ -691,16 +711,9 @@ package body GNATLLVM.Instructions is
           then Alignment (LHS) * Alignment (RHS) / BPU
           else Max_Valid_Align / BPU));
 
-      --  If either operand or the result isn't a constant integer, if this
-      --  is a modular integer type, or if we already had an overflow, we
-      --  don't have to test for overflow.
-      --  ???  We can't currently test for overflow if wider than ULL.
+      --  Perform overflow test unless there's a reason to omit it
 
-      if not Is_A_Constant_Int (LHS) or else not Is_A_Constant_Int (RHS)
-        or else not Is_A_Constant_Int (Result) or else Overflowed (Result)
-        or else Is_Modular_Integer_Type (Result)
-        or else Esize (Result) > ULL'Size
-      then
+      if No_Overflow_Test (Result, LHS, RHS) then
          return Result;
 
       else
@@ -851,31 +864,26 @@ package body GNATLLVM.Instructions is
       Bitsize : constant Integer := Integer (Get_Scalar_Bit_Size (Result));
 
    begin
-      --  If this is a modular type or the input or output isn't an integer,
-      --  we can't have an overlow (the output should be an integer if the
-      --  input is, but let's check anyway).
+      --  If we can omit an overflow test or the input and output are the
+      --  same, we have no overflow.
 
-      if Is_Modular_Integer_Type (Result) or else not Is_A_Constant_Int (V)
-        or else not Is_A_Constant_Int (Result)
-
-        --  If the values of the old and new constants are the same, there's
-        --  no overflow.
-
+      if No_Overflow_Test (Result, V)
         or else Is_Const_Int_Values_Equal (V, Result)
       then
          return False;
 
-      --  At this point, we have a non-modular type and the values differ.
-      --  That's an overflow if we have a signed type.
+         --  At this point, we have a type where we must check for overflow
+         --  and the values differ.  That's an overflow if we have a signed
+         --  type.
 
       elsif not Is_Unsigned_Type (Result) then
          return True;
 
-      --  Otherwise, we could have an issue because LLVM views all constants
-      --  as sign-extended, so if the high-order bit is set, it'll extend
-      --  the sign all the way out. We check for this by masking the
-      --  value to its width. But don't do this unless we have data (not
-      --  "unknown"
+         --  Otherwise, we could have an issue because LLVM views all constants
+         --  as sign-extended, so if the high-order bit is set, it'll extend
+         --  the sign all the way out. We check for this by masking the
+         --  value to its width. But don't do this unless we have data (not
+         --  "unknown"
 
       elsif Is_Data (V) then
          declare
@@ -887,7 +895,7 @@ package body GNATLLVM.Instructions is
             return not Is_Const_Int_Values_Equal (V, Masked_Result);
          end;
 
-      --  Otherwise, no overflow could have occurred
+         --  Otherwise, no overflow could have occurred
 
       else
          return False;
@@ -1045,6 +1053,11 @@ package body GNATLLVM.Instructions is
          then
             Set_TBAA_Type (Result, No_Metadata_T);
          end if;
+
+         --  If both sides overflowed, we know the result will
+
+         Mark_Overflowed
+           (Result, Overflowed (C_Then) and then Overflowed (C_Else));
 
          return Result;
       end if;

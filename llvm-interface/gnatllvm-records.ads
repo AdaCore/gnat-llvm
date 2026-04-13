@@ -98,8 +98,8 @@ package GNATLLVM.Records is
    function Get_Record_Size_So_Far
      (TE          : Opt_Record_Kind_Id;
       V           : GL_Value;
-      Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
-      Idx         : Record_Info_Id := Empty_Record_Info_Id;
+      Start_Idx   : Record_Info_Id := No_Record_Info_Id;
+      Idx         : Record_Info_Id := No_Record_Info_Id;
       In_Size     : GL_Value       := No_GL_Value;
       Force_Align : Nat            := BPU;
       Max_Size    : Boolean        := False;
@@ -112,8 +112,8 @@ package GNATLLVM.Records is
    function Get_Record_Size_So_Far_In_Bytes
      (TE          : Opt_Record_Kind_Id;
       V           : GL_Value;
-      Start_Idx   : Record_Info_Id := Empty_Record_Info_Id;
-      Idx         : Record_Info_Id := Empty_Record_Info_Id;
+      Start_Idx   : Record_Info_Id := No_Record_Info_Id;
+      Idx         : Record_Info_Id := No_Record_Info_Id;
       In_Size     : GL_Value       := No_GL_Value;
       Force_Align : Nat            := 1;
       Max_Size    : Boolean        := False;

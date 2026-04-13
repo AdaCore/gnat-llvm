@@ -324,7 +324,7 @@ package body GNATLLVM.Variables is
       --  Don't even to search if this doesn't have a global name
 
       if not Has_Global_Name (E) then
-         return Empty_Global_Dup_Value_Id;
+         return No_Global_Dup_Value_Id;
       end if;
 
       for J in 1 .. Global_Dup.Last loop
@@ -333,7 +333,7 @@ package body GNATLLVM.Variables is
          end if;
       end loop;
 
-      return Empty_Global_Dup_Value_Id;
+      return No_Global_Dup_Value_Id;
    end Find_Dup_Entry;
 
    --------------------
@@ -348,7 +348,7 @@ package body GNATLLVM.Variables is
          end if;
       end loop;
 
-      return Empty_Global_Dup_Value_Id;
+      return No_Global_Dup_Value_Id;
    end Find_Dup_Entry;
 
    --------------------------
@@ -431,7 +431,7 @@ package body GNATLLVM.Variables is
    begin
       Start_String;
       Store_String_Chars (S);
-      Interface_Names.Append ((End_String, Empty, Empty_Global_Dup_Value_Id));
+      Interface_Names.Append ((End_String, Empty, No_Global_Dup_Value_Id));
    end Register_Global_Name;
 
    -----------------------------------
@@ -521,7 +521,7 @@ package body GNATLLVM.Variables is
                end if;
             end loop;
 
-            Interface_Names.Append ((This_Str, N, Empty_Global_Dup_Value_Id));
+            Interface_Names.Append ((This_Str, N, No_Global_Dup_Value_Id));
          end if;
 
          return OK;

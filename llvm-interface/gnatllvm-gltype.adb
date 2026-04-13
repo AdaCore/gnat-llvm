@@ -376,7 +376,7 @@ package body GNATLLVM.GLType is
                         Size        => No_GL_Value,
                         Alignment   => 0,
                         Bias        => No_GL_Value,
-                        Array_Types => Empty_Array_Types_Id,
+                        Array_Types => No_Array_Types_Id,
                         Max_Size    => False,
                         Kind        => None,
                         Default     => False));

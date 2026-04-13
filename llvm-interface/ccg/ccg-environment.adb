@@ -382,7 +382,7 @@ package body CCG.Environment is
       elsif not Create then
          return No_BB_Idx;
       else
-         BB_Info.Append ((Flow        => Empty_Flow_Idx,
+         BB_Info.Append ((Flow        => No_Flow_Idx,
                           Output_Idx  => 0));
          BB_Info_Map.Set (B, BB_Info.Last);
 
@@ -876,7 +876,7 @@ package body CCG.Environment is
 
    begin
       return (if   Present (Idx) then BB_Info.Table (Idx).Flow
-              else Empty_Flow_Idx);
+              else No_Flow_Idx);
    end Get_Flow;
 
    --------------

@@ -38,25 +38,25 @@ package CCG.Flow is
    Line_Idx_Low_Bound  : constant := 600_000_000;
    Line_Idx_High_Bound : constant := 699_999_999;
    type Line_Idx is range Line_Idx_Low_Bound .. Line_Idx_High_Bound;
-   Empty_Line_Idx      : constant Line_Idx := Line_Idx_Low_Bound;
+   No_Line_Idx         : constant Line_Idx := Line_Idx_Low_Bound;
 
    Case_Idx_Low_Bound  : constant := 700_000_000;
    Case_Idx_High_Bound : constant := 799_999_999;
    type Case_Idx is range Case_Idx_Low_Bound .. Case_Idx_High_Bound;
-   Empty_Case_Idx      : constant Case_Idx := Case_Idx_Low_Bound;
+   No_Case_Idx         : constant Case_Idx := Case_Idx_Low_Bound;
 
    If_Idx_Low_Bound    : constant := 800_000_000;
    If_Idx_High_Bound   : constant := 899_999_999;
    type If_Idx is range If_Idx_Low_Bound .. If_Idx_High_Bound;
-   Empty_If_Idx        : constant If_Idx := If_Idx_Low_Bound;
+   No_If_Idx           : constant If_Idx := If_Idx_Low_Bound;
 
-   function Present (Idx : Line_Idx) return Boolean is (Idx /= Empty_Line_Idx);
-   function Present (Idx : Case_Idx) return Boolean is (Idx /= Empty_Case_Idx);
-   function Present (Idx : If_Idx)   return Boolean is (Idx /= Empty_If_Idx);
+   function Present (Idx : Line_Idx) return Boolean is (Idx /= No_Line_Idx);
+   function Present (Idx : Case_Idx) return Boolean is (Idx /= No_Case_Idx);
+   function Present (Idx : If_Idx)   return Boolean is (Idx /= No_If_Idx);
 
-   function No (Idx : Line_Idx) return Boolean is (Idx = Empty_Line_Idx);
-   function No (Idx : Case_Idx) return Boolean is (Idx = Empty_Case_Idx);
-   function No (Idx : If_Idx)   return Boolean is (Idx = Empty_If_Idx);
+   function No (Idx : Line_Idx) return Boolean is (Idx = No_Line_Idx);
+   function No (Idx : Case_Idx) return Boolean is (Idx = No_Case_Idx);
+   function No (Idx : If_Idx)   return Boolean is (Idx = No_If_Idx);
 
    procedure Discard (Idx : Line_Idx) is null;
    procedure Discard (Idx : Case_Idx) is null;

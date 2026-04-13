@@ -93,7 +93,9 @@ package body GNATLLVM.Environment is
    LLVM_Info_High_Bound : constant := 299_999_999;
    type LLVM_Info_Id is range LLVM_Info_Low_Bound .. LLVM_Info_High_Bound;
    First_LLVM_Info_Id   : constant LLVM_Info_Id := LLVM_Info_Low_Bound;
-   Empty_LLVM_Info_Id   : constant LLVM_Info_Id := First_LLVM_Info_Id;
+   No_LLVM_Info_Id      : constant LLVM_Info_Id := First_LLVM_Info_Id;
+
+   function No (LI : LLVM_Info_Id) return Boolean is (LI = No_LLVM_Info_Id);
 
    package LLVM_Info is new Table.Table
      (Table_Component_Type => LLVM_Data,
@@ -250,7 +252,7 @@ package body GNATLLVM.Environment is
 
       LLVM_Info_Map := new LLVM_Info_Array (First_Node_Id .. Last_Node_Id);
       for J in LLVM_Info_Map'Range loop
-         LLVM_Info_Map (J) := Empty_LLVM_Info_Id;
+         LLVM_Info_Map (J) := No_LLVM_Info_Id;
       end loop;
    end Initialize_Environment;
 
@@ -288,20 +290,20 @@ package body GNATLLVM.Environment is
       Id : LLVM_Info_Id := LLVM_Info_Map (N);
 
    begin
-      if Id = Empty_LLVM_Info_Id then
+      if No (Id) then
          LLVM_Info.Append ((Value               => No_GL_Value,
                             GLType              => No_GL_Type,
                             Associated_GL_Type  => No_GL_Type,
                             TBAA                => No_Metadata_T,
-                            TBAA_Array_Info     => Empty_TBAA_Info_Id,
+                            TBAA_Array_Info     => No_TBAA_Info_Id,
                             Is_Nonnative_Type   => False,
                             Is_Being_Elaborated => False,
-                            Record_Info         => Empty_Record_Info_Id,
-                            Field_Info          => Empty_Field_Info_Id,
+                            Record_Info         => No_Record_Info_Id,
+                            Field_Info          => No_Field_Info_Id,
                             Debug_Metadata      => No_Metadata_T,
-                            Array_Info          => Empty_Array_Info_Id,
-                            Label_Info          => Empty_Label_Info_Id,
-                            Orig_Array_Info     => Empty_Array_Info_Id,
+                            Array_Info          => No_Array_Info_Id,
+                            Label_Info          => No_Label_Info_Id,
+                            Orig_Array_Info     => No_Array_Info_Id,
                             SO_Info             => No_Uint,
                             Subprogram_Type     => No_MD_Type,
                             Flag1               => False));
@@ -338,7 +340,7 @@ package body GNATLLVM.Environment is
       function Get (E : Entity_Id) return Obj is
          Id : constant LLVM_Info_Id := LLVM_Info_Map (E);
       begin
-         if Id = Empty_LLVM_Info_Id then
+         if No (Id) then
             return None;
          else
             return Getter (LLVM_Info.Table (Id)'Unrestricted_Access);
@@ -381,7 +383,7 @@ package body GNATLLVM.Environment is
       function Get (N : N_Subexpr_Id) return Obj is
          Id : constant LLVM_Info_Id := LLVM_Info_Map (N);
       begin
-         if Id = Empty_LLVM_Info_Id then
+         if No (Id) then
             return None;
          else
             return Getter (LLVM_Info.Table (Id)'Unrestricted_Access);
@@ -436,23 +438,23 @@ package body GNATLLVM.Environment is
                                          Raw_Get_Value, Raw_Set_Value);
    package Env_Elab     is new Pkg_None (Boolean, False,
                                          Raw_Get_Elab, Raw_Set_Elab);
-   package Env_Field    is new Pkg_None (Field_Info_Id, Empty_Field_Info_Id,
+   package Env_Field    is new Pkg_None (Field_Info_Id, No_Field_Info_Id,
                                          Raw_Get_Field, Raw_Set_Field);
-   package Env_Label    is new Pkg_None (Label_Info_Id, Empty_Label_Info_Id,
+   package Env_Label    is new Pkg_None (Label_Info_Id, No_Label_Info_Id,
                                          Raw_Get_Label, Raw_Set_Label);
    package Env_AGLT_N   is new Pkg_None (GL_Type, No_GL_Type,
                                          Raw_Get_AGLT, Raw_Set_AGLT);
    package Env_TBAA_N   is new Pkg_None (Metadata_T, No_Metadata_T,
                                          Raw_Get_TBAA, Raw_Set_TBAA);
-   package Env_TBAA_N_I is new Pkg_None (TBAA_Info_Id, Empty_TBAA_Info_Id,
+   package Env_TBAA_N_I is new Pkg_None (TBAA_Info_Id, No_TBAA_Info_Id,
                                          Raw_Get_TBAA_I, Raw_Set_TBAA_I);
-   package Env_O_A_N    is new Pkg_None (Array_Info_Id, Empty_Array_Info_Id,
+   package Env_O_A_N    is new Pkg_None (Array_Info_Id, No_Array_Info_Id,
                                          Raw_Get_O_A, Raw_Set_O_A);
-   package Env_Record_N is new Pkg_None (Record_Info_Id, Empty_Record_Info_Id,
+   package Env_Record_N is new Pkg_None (Record_Info_Id, No_Record_Info_Id,
                                          Raw_Get_Record, Raw_Set_Record);
    package Env_Debug_N  is new Pkg_None (Metadata_T, No_Metadata_T,
                                          Raw_Get_Debug, Raw_Set_Debug);
-   package Env_Array_N  is new Pkg_None (Array_Info_Id, Empty_Array_Info_Id,
+   package Env_Array_N  is new Pkg_None (Array_Info_Id, No_Array_Info_Id,
                                          Raw_Get_Array, Raw_Set_Array);
    package Env_NN_N     is new Pkg_None (Boolean, False,
                                          Raw_Get_NN, Raw_Set_NN);
@@ -585,6 +587,6 @@ package body GNATLLVM.Environment is
 begin
 
    LLVM_Info.Increment_Last;
-   --  Ensure the first LLVM_Info entry isn't Empty_LLVM_Info_Id
+   --  Ensure the first LLVM_Info entry isn't No_LLVM_Info_Id
 
 end GNATLLVM.Environment;

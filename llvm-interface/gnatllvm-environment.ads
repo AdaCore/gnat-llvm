@@ -29,7 +29,7 @@ package GNATLLVM.Environment is
    Record_Info_High_Bound : constant := 399_999_999;
    type Record_Info_Id is
      range Record_Info_Low_Bound .. Record_Info_High_Bound;
-   Empty_Record_Info_Id   : constant Record_Info_Id := Record_Info_Low_Bound;
+   No_Record_Info_Id      : constant Record_Info_Id := Record_Info_Low_Bound;
 
    type Record_Info_Id_Array is array (Nat range <>) of Record_Info_Id;
    type Record_Info_Id_Array_Access is access all Record_Info_Id_Array;
@@ -37,48 +37,48 @@ package GNATLLVM.Environment is
    Field_Info_Low_Bound  : constant := 400_000_000;
    Field_Info_High_Bound : constant := 499_999_999;
    type Field_Info_Id is range Field_Info_Low_Bound .. Field_Info_High_Bound;
-   Empty_Field_Info_Id   : constant Field_Info_Id := Field_Info_Low_Bound;
+   No_Field_Info_Id      : constant Field_Info_Id := Field_Info_Low_Bound;
 
    Array_Info_Low_Bound  : constant := 500_000_000;
    Array_Info_High_Bound : constant := 599_999_999;
    type Array_Info_Id is range Array_Info_Low_Bound .. Array_Info_High_Bound;
-   Empty_Array_Info_Id   : constant Array_Info_Id := Array_Info_Low_Bound;
+   No_Array_Info_Id      : constant Array_Info_Id := Array_Info_Low_Bound;
 
    Label_Info_Low_Bound  : constant := 600_000_000;
    Label_Info_High_Bound : constant := 699_999_999;
    type Label_Info_Id is range Label_Info_Low_Bound .. Label_Info_High_Bound;
-   Empty_Label_Info_Id   : constant Label_Info_Id := Label_Info_Low_Bound;
+   No_Label_Info_Id      : constant Label_Info_Id := Label_Info_Low_Bound;
 
    --  700_000_000 .. 7999_999_999 is GL_Type, defined in our parent
 
    TBAA_Info_Low_Bound   : constant := 800_000_000;
    TBAA_Info_High_Bound  : constant := 899_999_999;
    type TBAA_Info_Id is range TBAA_Info_Low_Bound .. TBAA_Info_High_Bound;
-   Empty_TBAA_Info_Id   : constant TBAA_Info_Id := TBAA_Info_Low_Bound;
+   No_TBAA_Info_Id       : constant TBAA_Info_Id := TBAA_Info_Low_Bound;
 
    function "+" (A : Array_Info_Id; N : Nat) return Array_Info_Id is
      (Array_Info_Id (Nat (A) + N));
 
    function No (R : Record_Info_Id)      return Boolean is
-      (R = Empty_Record_Info_Id);
+      (R = No_Record_Info_Id);
    function No (F : Field_Info_Id)       return Boolean is
-      (F = Empty_Field_Info_Id);
+      (F = No_Field_Info_Id);
    function No (A : Array_Info_Id)       return Boolean is
-      (A = Empty_Array_Info_Id);
+      (A = No_Array_Info_Id);
    function No (L : Label_Info_Id)       return Boolean is
-      (L = Empty_Label_Info_Id);
+      (L = No_Label_Info_Id);
    function No (T : TBAA_Info_Id)       return Boolean is
-      (T = Empty_TBAA_Info_Id);
+      (T = No_TBAA_Info_Id);
    function Present (R : Record_Info_Id) return Boolean is
-      (R /= Empty_Record_Info_Id);
+      (R /= No_Record_Info_Id);
    function Present (F : Field_Info_Id)  return Boolean is
-      (F /= Empty_Field_Info_Id);
+      (F /= No_Field_Info_Id);
    function Present (A : Array_Info_Id)  return Boolean is
-      (A /= Empty_Array_Info_Id);
+      (A /= No_Array_Info_Id);
    function Present (L : Label_Info_Id)  return Boolean is
-      (L /= Empty_Label_Info_Id);
+      (L /= No_Label_Info_Id);
    function Present (T : TBAA_Info_Id)  return Boolean is
-      (T /= Empty_TBAA_Info_Id);
+      (T /= No_TBAA_Info_Id);
 
    procedure Initialize_Environment;
    --  Do any needed initializing of the environment

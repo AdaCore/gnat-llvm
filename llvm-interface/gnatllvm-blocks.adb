@@ -1716,7 +1716,7 @@ package body GNATLLVM.Blocks is
       Entry_BB  : constant Basic_Block_T   :=
           Get_Entry_Basic_Block (+Current_Func);
       L_Idx     : constant Label_Info_Id   :=
-          (if Present (E) then Get_Label_Info (E) else Empty_Label_Info_Id);
+          (if Present (E) then Get_Label_Info (E) else No_Label_Info_Id);
       BB        : constant Basic_Block_T   :=
           (if    Present (L_Idx) then Label_Info.Table (L_Idx).Orig_BB
            elsif No (Last_Inst) and then This_BB /= Entry_BB

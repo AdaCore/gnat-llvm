@@ -229,12 +229,12 @@ package GNATLLVM is
    Array_Types_High_Bound : constant := 199_999_999;
    type Array_Types_Id is range
      Array_Types_Low_Bound .. Array_Types_High_Bound;
-   Empty_Array_Types_Id   : constant Array_Types_Id := Array_Types_High_Bound;
+   No_Array_Types_Id      : constant Array_Types_Id := Array_Types_High_Bound;
 
    function No      (ATs : Array_Types_Id) return Boolean is
-     (ATs = Empty_Array_Types_Id);
+     (ATs = No_Array_Types_Id);
    function Present (ATs : Array_Types_Id) return Boolean is
-     (ATs /= Empty_Array_Types_Id);
+     (ATs /= No_Array_Types_Id);
 
    --  We have to define GL_Type here so it can be used in GNATLLVM.GLValue,
    --  which GNATLLVM.GLType must reference.

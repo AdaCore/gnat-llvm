@@ -26,6 +26,7 @@ pragma Warnings (On);
 
 with LLVM.Core; use LLVM.Core;
 
+with Namet;    use Namet;
 with Nlists;   use Nlists;
 with Sem_Util; use Sem_Util;
 with Set_Targ; use Set_Targ;

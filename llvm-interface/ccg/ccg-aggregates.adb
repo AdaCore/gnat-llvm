@@ -239,7 +239,7 @@ package body CCG.Aggregates is
       --  the size of the struct to match the alignment and so must always
       --  be there.
 
-      if Is_Field_Padding (T, Num_Types - 1) then
+      if Is_Padding (MD, Num_Types - 1) then
          Need_Pad := True;
       end if;
 
@@ -276,10 +276,7 @@ package body CCG.Aggregates is
    is
       Num_Types      : constant Nat                :=
         (if Incomplete then 0 else Element_Count (MD));
-      T              : constant Type_T             := +MD;
-      TE             : constant Opt_Type_Kind_Id   := Get_Entity (T);
-      Is_Vol         : constant Boolean            :=
-        Present (TE) and then Treat_As_Volatile (TE);
+      Is_Vol         : constant Boolean            := Is_Volatile (MD);
       Vol_Str        : constant String             :=
         (if Is_Vol then "volatile " else "");
       SOS            : constant Struct_Out_Style_T :=
@@ -327,10 +324,8 @@ package body CCG.Aggregates is
       Start_Output_Block (Decl);
       for J in 0 .. Num_Types - 1 loop
          declare
-            Name           : constant Str                      :=
-              Get_Field_Name (T, J);
             F              : constant Opt_Record_Field_Kind_Id :=
-              Get_Field_Entity (T, J);
+              Element_Entity (MD, J);
             F_Is_Vol       : constant Boolean                  :=
               Present (F) and then Treat_As_Volatile (F)
               and then not Is_Vol;
@@ -345,11 +340,11 @@ package body CCG.Aggregates is
             Error_If_Cannot_Pack (S_MD);
 
             if not Is_Zero_Length_Array (S_MD)
-              and then not (SOS = Normal and then Is_Field_Padding (T, J))
+              and then not (SOS = Normal and then Is_Padding (MD, J))
             then
                   Output_Decl
                     (ST_Str & (if F_Is_Vol then " volatile" else "") &
-                                           " " & Name,
+                                           " " & Field_Name (MD, J),
                      Is_Typedef => True);
                   Fields_Written := Fields_Written + 1;
             end if;
@@ -444,7 +439,7 @@ package body CCG.Aggregates is
             --  We know this is either a struct or an array
 
             if Is_Struct (MD) then
-               Result := "." & Get_Field_Name (+MD, Ins_Idx) + Component;
+               Result := "." & Field_Name (MD, Ins_Idx) + Component;
                MD     := Element_Type (MD, Ins_Idx);
             else
                Result := " [" & Ins_Idx & "]" + Component;
@@ -616,7 +611,7 @@ package body CCG.Aggregates is
                           Element_Type (Aggr_MD, Prev_Idx);
                         Ref     : constant Str     :=
                           Result + Component & (if Is_LHS then "." else "->") &
-                          Get_Field_Name (+Aggr_MD, Prev_Idx) + Component;
+                          Field_Name (Aggr_MD, Prev_Idx) + Component;
 
                      begin
                         --  If we found a previous non-zero-length array
@@ -650,7 +645,7 @@ package body CCG.Aggregates is
                else
                   Result :=
                     (Result + Component) & (if Is_LHS then "." else "->") &
-                    Get_Field_Name (+Aggr_MD, Idx) + Component;
+                    Field_Name (Aggr_MD, Idx) + Component;
                   Is_LHS := True;
                end if;
 

@@ -19,6 +19,7 @@ with Ada.Characters.Handling; use Ada.Characters.Handling;
 
 with System.OS_Lib; use System.OS_Lib;
 
+with Namet;   use Namet;
 with Osint;   use Osint;
 with Osint.C; use Osint.C;
 with Output;  use Output;

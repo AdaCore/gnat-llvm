@@ -24,6 +24,7 @@ with System; use System;
 with System.Storage_Elements; use System.Storage_Elements;
 
 with Atree; use Atree;
+with Namet; use Namet;
 
 with LLVM.Core;   use LLVM.Core;
 with LLVM.Target; use LLVM.Target;
@@ -38,57 +39,9 @@ with CCG.Target;      use CCG.Target;
 
 package CCG.Utils is
 
-   --  When creating LLVM structs, we record what each field in the
-   --  struct is for. We first say what each field is for and then
-   --  say what struct it was for. We specify the type so that we can
-   --  link those two. Doing it in the opposite order would make things
-   --  simpler for us, but complicate the record creation process.
-
-   procedure Set_Field_C_Info
-     (UID         : Unique_Id;
-      Idx         : Nat;
-      Name        : Name_Id   := No_Name;
-      Entity      : Entity_Id := Empty;
-      Is_Padding  : Boolean   := False;
-      Is_Bitfield : Boolean   := False);
-   --  Say what field Idx in the struct temporarily denoted by UID is used for
-
-   procedure Set_Struct (UID : Unique_Id; T : Type_T)
-     with Pre => Present (T);
-   --  Indicate that the previous calls to Set_Field_C_Info for UID
-   --  were for LLVM type T.
-
-   function Get_Field_Name (T : Type_T; Idx : Nat) return Str
-     with Pre => Is_Struct_Type (T), Post => Present (Get_Field_Name'Result);
-   --  Return a name to use for field Idx of LLVM struct T
-
-   function Get_Field_Entity (T : Type_T; Idx : Nat) return Entity_Id
-     with Pre => Present (T);
-   --  Return the entity corresponding to for field Idx of LLVM type T
-
-   function Is_Field_Padding (T : Type_T; Idx : Nat) return Boolean
-     with Pre => Present (T);
-   --  Indicate whether field Idx of LLVM type T is added for padding
-
-   --  We do similarly for the parameters of a function
-
-   procedure Set_Parameter (UID : Unique_Id; Idx : Nat; Entity : Entity_Id)
-     with Pre => Present (Entity);
-   --  Give the entity corresponding to parameter Idx of the function that
-   --  will be denoted by UID
-
-   procedure Set_Function (UID : Unique_Id; V : Value_T)
-     with Pre => Present (V);
-   --  Indicate that the previous calls to Set_Parameter_Info for UID
-   --  were for LLVM value V.
-
-   procedure Delete_Function_Info (V : Value_T)
-     with Pre => Is_A_Function (V);
-   --  Delete any mention in our tables of V
-
-   function Get_Parameter_Entity (V : Value_T; Idx : Nat) return Entity_Id
-     with Pre  => Present (V);
-   --  Return the entity corresponding to for parameter Idx of LLVM value V
+   function Field_Name (MD : MD_Type; Idx : Nat) return Str
+     with Pre => Is_Struct (MD), Post => Present (Field_Name'Result);
+   --  Return a name to use for field Idx of struct MD
 
    function Needs_Nest (V : Value_T) return Boolean is
      (Get_Needs_Nest (V)
@@ -116,10 +69,6 @@ package CCG.Utils is
    --  present, we take the address of the operand and deference it if 'D'
    --  is present. If 'T' is present, we output the type of that operand.
    --  If 'P' is present, we use the value of the Phi temporary.
-
-   function Is_Ref_To_Volatile (V : Value_T) return Boolean
-     with Pre => Present (V);
-   --  True if V represents a value that we can determine to be volatile
 
    function Num_Uses (V : Value_T) return Nat
      with Pre => Present (V);
@@ -228,10 +177,6 @@ package CCG.Utils is
    function Is_Unsigned_Pointer (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if V is known from sources to be a pointer to unsigned
-
-   function Is_Access_Subprogram (V : Value_T) return Boolean
-     with Pre => Present (V), Inline;
-   --  True if V is known from sources to be an access to a subprogram
 
    function Is_Variable
      (V : Value_T; Need_From_Source : Boolean := True) return Boolean

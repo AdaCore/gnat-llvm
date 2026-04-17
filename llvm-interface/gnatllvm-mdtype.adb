@@ -1086,18 +1086,12 @@ package body GNATLLVM.MDType is
    ------------------------------
 
    procedure Struct_Set_Body_Internal (MD : MD_Type) is
-      UID   : constant Unique_Id :=
-        (if Has_Fields (MD) then New_Unique_Id else No_Unique_Id);
       C_MD  : MD_Type := Continuation_Type (MD);
       Typs  : Type_Array (1 .. Element_Count (MD));
 
    begin
       for J in Typs'Range loop
          Typs (J) := +Related (C_MD);
-         C_Set_Field_Info (UID, J - Typs'First, MD_Name (C_MD),
-                           Is_Padding  => Flag (C_MD),
-                           Is_Bitfield => Flag2 (C_MD),
-                           Entity      => MD_Entity (C_MD));
          C_MD := Continuation_Type (C_MD);
       end loop;
 
@@ -1115,8 +1109,6 @@ package body GNATLLVM.MDType is
          Struct_Set_Body (LLVM_Type (MD), Typs'Address, Typs'Length,
                           Is_Packed (MD));
       end if;
-
-      C_Set_Struct (UID, LLVM_Type (MD));
    end Struct_Set_Body_Internal;
 
    ------------------

@@ -53,8 +53,6 @@ with GNATLLVM.Types.Create;      use GNATLLVM.Types.Create;
 with GNATLLVM.Utils;             use GNATLLVM.Utils;
 with GNATLLVM.Variables;         use GNATLLVM.Variables;
 
-with CCG; use CCG;
-
 package body GNATLLVM.Subprograms is
 
    --  We define enum types corresponding to information about subprograms
@@ -2794,7 +2792,6 @@ package body GNATLLVM.Subprograms is
       Readonly    : Boolean              :=
           Pure_Func or else (Is_Pure (E) and then not Is_Imported
                              and then Ekind (E) = E_Function);
-      UID         : constant Unique_Id   := New_Unique_Id;
       Formal      : Opt_Formal_Kind_Id;
 
    begin
@@ -3004,7 +3001,6 @@ package body GNATLLVM.Subprograms is
                end if;
 
                if PK_Is_In_Or_Ref (PK) then
-                  C_Set_Parameter (UID, Nat (Param_Num), Formal);
                   Param_Num := Param_Num + 1;
                end if;
 
@@ -3017,8 +3013,7 @@ package body GNATLLVM.Subprograms is
       --  Save the value for this subprogram and possibly set it readonly
 
       Set_Value (E, LLVM_Func);
-      C_Set_Function (UID, LLVM_Func);
-      C_Set_Entity   (LLVM_Func, E);
+      C_Set_Entity (LLVM_Func, E);
 
       --  If this is a function that only reads memory, declare it as
       --  such. Note that we have to exclude procedures above due to

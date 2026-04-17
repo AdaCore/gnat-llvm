@@ -17,6 +17,7 @@
 
 with GNAT.HTable; use GNAT.HTable;
 
+with Namet; use Namet;
 with Table;
 
 with GNATLLVM.Types; use GNATLLVM.Types;

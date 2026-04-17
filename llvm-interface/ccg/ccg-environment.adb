@@ -32,7 +32,6 @@ with GNATLLVM.Wrapper;     use GNATLLVM.Wrapper;
 
 with CCG.Helper; use CCG.Helper;
 with CCG.Output; use CCG.Output;
-with CCG.Utils;  use CCG.Utils;
 
 package body CCG.Environment is
 
@@ -298,13 +297,6 @@ package body CCG.Environment is
 
       if Present (Get_Entity (V)) then
          Set_Value_R (Get_Entity (V), No_GL_Value);
-      end if;
-
-      --  If this a function, delete any information we have about the
-      --  function's parameters
-
-      if Is_A_Function (V) then
-         Delete_Function_Info (V);
       end if;
 
       --  Likewise if it's a basic block

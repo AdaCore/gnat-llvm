@@ -25,6 +25,7 @@ with Atree;       use Atree;
 with Csets;       use Csets;
 with Debug;       use Debug;
 with Einfo.Utils; use Einfo.Utils;
+with Namet;       use Namet;
 with Opt;         use Opt;
 with Osint;       use Osint;
 with Osint.C;     use Osint.C;

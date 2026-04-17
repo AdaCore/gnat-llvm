@@ -200,8 +200,7 @@ package GNATLLVM.Types is
    function Build_Struct_Type
      (Types       : Type_Array;
       Packed      : Boolean       := False;
-      Name        : Name_Id       := No_Name;
-      Field_Names : Name_Id_Array := (1 .. 0 => <>)) return Type_T
+      Name        : Name_Id       := No_Name) return Type_T
      with Post => Present (Build_Struct_Type'Result);
    --  Build an LLVM struct type containing the specified types. If Name
    --  if specified, this is a named LLVM struct type, otherwise it's

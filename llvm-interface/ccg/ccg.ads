@@ -22,7 +22,6 @@ with Interfaces.C;
 with LLVM.Types; use LLVM.Types;
 
 with Einfo.Entities; use Einfo.Entities;
-with Namet;          use Namet;
 with Sinfo.Nodes;    use Sinfo.Nodes;
 with Types;          use Types;
 
@@ -127,20 +126,6 @@ package CCG is
    --  Make a pass over everything we added to the source order and
    --  set up to be notified if any of them have been deleted.
 
-   procedure C_Set_Field_Info
-     (UID         : Unique_Id;
-      Idx         : Nat;
-      Name        : Name_Id   := No_Name;
-      Entity      : Entity_Id := Empty;
-      Is_Padding  : Boolean   := False;
-      Is_Bitfield : Boolean   := False);
-   --  Say what field Idx in the struct temporarily denoted by SID is used for
-
-   procedure C_Set_Struct (UID : Unique_Id; T : Type_T)
-     with Pre => Present (T), Inline;
-   --  Indicate that the previous calls to C_Set_Field_Info for SID
-   --  were for LLVM struct type T.
-
    procedure C_Set_MD_Type (V : Value_T; MD : MD_Type)
      with Pre => Present (V) and then Present (MD), Inline;
    --  Indicate that V was created to be of the MD_Type
@@ -163,18 +148,9 @@ package CCG is
      with Pre => Present (T), Inline;
    --  Indicate that E is the entity corresponding to T
 
-   procedure C_Set_Parameter (UID : Unique_Id; Idx : Nat; Entity : Entity_Id);
-   --  Give the entity corresponding to parameter Idx of the function that
-   --  will be denoted by UID
-
    procedure C_Set_Elab_Proc (V : Value_T; For_Body : Boolean)
      with Pre => Present (V);
    --  Indicate that V is an elab proc and which one it is
-
-   procedure C_Set_Function (UID : Unique_Id; V : Value_T)
-     with Pre => Present (V);
-   --  Indicate that the previous calls to Set_Parameter_Info for UID
-   --  were for LLVM value V.
 
    procedure C_Note_Enum (TE : E_Enumeration_Type_Id);
    --  Indicate that we're processing the declaration of TE, an enumeration

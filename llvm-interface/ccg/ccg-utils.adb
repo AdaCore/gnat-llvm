@@ -310,19 +310,6 @@ package body CCG.Utils is
       return No_MD_Type;
    end Find_Type_From_Use;
 
-   ---------------
-   -- GNAT_Type --
-   ---------------
-
-   function GNAT_Type (V : Value_T) return Opt_Type_Kind_Id is
-      E : constant Entity_Id := Get_Entity (V);
-
-   begin
-      return (if    No (E) then Types.Empty elsif Is_Type (E) then E
-              elsif Ekind (Full_Etype (E)) /= E_Void then Full_Etype (E)
-              else Empty);
-   end GNAT_Type;
-
    -----------------
    -- Is_Unsigned --
    -----------------

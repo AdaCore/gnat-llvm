@@ -166,10 +166,6 @@ package CCG.Utils is
      (+Get_Name_String (Element_Name (MD, Idx)))
      with Pre => Is_Struct (MD), Post => Present (Element_Str'Result);
 
-   function GNAT_Type (V : Value_T) return Opt_Type_Kind_Id
-     with Pre => Present (V), Inline;
-   --  Get the GNAT type of V, if known
-
    function Is_Unsigned (V : Value_T) return Boolean
      with Pre => Present (V), Inline;
    --  True if V is known from sources to be unsigned

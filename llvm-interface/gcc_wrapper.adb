@@ -498,11 +498,6 @@ begin
          S := Locate_Exec_On_Path ("clang");
       end if;
 
-      if S = null then
-         Put_Line ("warning: clang not found, using gcc.");
-         S := Locate_Exec_On_Path ("gcc");
-      end if;
-
       Spawn (S.all, Args (1 .. Arg_Count), Status);
       Set_Exit_Status (if Status then Success else Failure);
 
@@ -540,12 +535,7 @@ begin
          end if;
 
          if S = null then
-            --  Last fallback is gcc
-            S := Locate_Exec_On_Path ("gcc");
-         end if;
-
-         if S = null then
-            Put_Line ("clang or gcc not found: cannot link.");
+            Put_Line ("llvm-helper or clang not found: cannot link.");
             Set_Exit_Status (Failure);
             return;
          end if;

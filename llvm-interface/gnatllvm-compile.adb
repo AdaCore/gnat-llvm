@@ -71,7 +71,7 @@ package body GNATLLVM.Compile is
 
    procedure GNAT_To_LLVM (GNAT_Root : N_Compilation_Unit_Id) is
       Bitsize_Bits : Nat;
-      Size_Type    : Opt_Signed_Integer_Kind_Id;
+      Size_Type    : Opt_Modular_Integer_Kind_Id;
       Bitsize_Type : Opt_Signed_Integer_Kind_Id;
       Int_32_Type  : Opt_Signed_Integer_Kind_Id;
       Int_64_Type  : Opt_Signed_Integer_Kind_Id;
@@ -91,7 +91,7 @@ package body GNATLLVM.Compile is
       Initialize_Environment;
       Thin_Pointer_Size := Set_Targ.Pointer_Size;
       Fat_Pointer_Size  := Thin_Pointer_Size * 2;
-      Size_Type         := Stand_Type (Bits_Per_Word);
+      Size_Type         := Stand_Type (Bits_Per_Word, Unsigned => True);
       Bitsize_Bits      :=
         (if Bits_Per_Word <= 16 then 32 else 64);
       Bitsize_Type      := Stand_Type (Bitsize_Bits);
@@ -173,6 +173,8 @@ package body GNATLLVM.Compile is
                                               Check_Overflow => True);
       Size_MD         := Type_Of (Size_Type);
       Size_T          := +Size_MD;
+      --  ??? the usage of Update_GL_Type should be cleaned up -
+      --  it was meant to create the type in the first place
       Update_GL_Type (Size_GL_Type, Size_MD, False);
       Update_GL_Type (Bitsize_GL_Type, Bitsize_MD, False);
       Update_GL_Type (Base_GL_Type (Size_Type), Size_MD, False);

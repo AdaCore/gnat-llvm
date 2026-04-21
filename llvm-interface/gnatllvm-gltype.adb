@@ -783,7 +783,8 @@ package body GNATLLVM.GLType is
    begin
       GTI.MD             := MD;
       GTI.Kind           := (if Is_Dummy then Dummy else Primitive);
-      GTI.Check_Overflow := not Is_Modular_Integer_Type (GT);
+      GTI.Check_Overflow := GT_Check_Overflow (GT)
+         or else not Is_Modular_Integer_Type (GT);
       Mark_Default (GT);
 
       --  Struct types that have names aren't shared, so we can link them

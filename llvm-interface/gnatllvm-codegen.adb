@@ -678,7 +678,8 @@ package body GNATLLVM.Codegen is
          Arch_Features : constant String :=
            Get_Features
              (Normalized_Target_Triple.all,
-              (if Arch = null then "" else Arch.all), CPU.all);
+              (if Arch = null then "" else Arch.all), CPU.all,
+              (if ABI = null then "" else ABI.all));
          New_Features  : String_Access;
 
       begin
@@ -689,6 +690,19 @@ package body GNATLLVM.Codegen is
             Features := New_Features;
          end if;
       end;
+
+      if ABI = null then
+         declare
+            New_ABI : constant String :=
+              Get_Target_Default_ABI (Normalized_Target_Triple.all,
+                                      (if Arch = null then "" else Arch.all),
+                                      CPU.all);
+         begin
+            if New_ABI /= "" then
+               ABI := new String'(New_ABI);
+            end if;
+         end;
+      end if;
 
       TM_Options := Create_Target_Machine_Options;
 

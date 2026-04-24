@@ -34,6 +34,8 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/AArch64TargetParser.h"
+#include "llvm/TargetParser/RISCVISAInfo.h"
+#include "llvm/TargetParser/RISCVTargetParser.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
@@ -1011,8 +1013,37 @@ extern "C" const char *Get_Personality_Function_Name(const char *Target) {
     return "__gnat_personality_v0";
 }
 
+static StringRef getRISCVArch(const Triple &T, StringRef Arch, StringRef CPU,
+                              StringRef ABI) {
+  // Inspired by riscv::getRISCVArch in
+  // clang/lib/Driver/ToolChains/Arch/RISCV.cpp.
+
+  // Use the explicitly specified arch, if any.
+  if (!Arch.empty())
+    return Arch;
+
+  // If no target architecture has been specified, derive it from the CPU.
+  if (StringRef ArchFromCPU = RISCV::getMArchFromMcpu(CPU);
+      !ArchFromCPU.empty())
+    return ArchFromCPU;
+
+  // Next, try to get the arch from the ABI.
+  if (ABI.equals_insensitive("ilp32e"))
+    return "rv32e";
+  if (ABI.equals_insensitive("lp64e"))
+    return "rv64e";
+  if (ABI.starts_with_insensitive("ilp32"))
+    return "rv32imafdc";
+  if (ABI.starts_with_insensitive("lp64"))
+    return "rv64imafdc";
+
+  // If we still don't have an architecture, choose a default based on the
+  // triple.
+  return (T.getOS() == Triple::UnknownOS) ? "rv64imac" : "rv64imafdc";
+}
+
 extern "C" char *Get_Features(const char *TargetTriple, const char *Arch,
-                              const char *CPU) {
+                              const char *CPU, const char *ABI) {
   // This is a simplified version of Clang's tools::getTargetFeatures (see
   // clang/lib/Driver/ToolChains/CommonArgs.cpp), adapted to the arguments that
   // we have available and the defaults that we set during option parsing.
@@ -1080,32 +1111,118 @@ extern "C" char *Get_Features(const char *TargetTriple, const char *Arch,
 
     return strdup(join(Features, ",").c_str());
   }
+
+  case Triple::riscv64: {
+    // This part is based on Clang's riscv::getRISCVTargetFeatures (see
+    // clang/lib/Driver/ToolChains/Arch/RISCV.cpp).
+
+    StringRef TargetArch = getRISCVArch(T, Arch, CPU, ABI);
+    std::vector<StringRef> Features;
+
+    // ??? Add a command-line switch for this.
+    const bool EnableExperimentalExtensions = true;
+    auto ISAInfo =
+        RISCVISAInfo::parseArchString(TargetArch, EnableExperimentalExtensions);
+    if (!ISAInfo) {
+      handleAllErrors(ISAInfo.takeError(), [&](StringError &ErrMsg) {
+        errs() << "warning: unsupported -march value " << Arch << "\n";
+      });
+
+      return nullptr;
+    }
+
+    std::vector<std::string> ISAFeatures = (*ISAInfo)->toFeatures(true, false);
+    for (const std::string &Feature : ISAFeatures)
+      Features.push_back(Feature);
+
+    if (EnableExperimentalExtensions)
+      Features.push_back("+experimental");
+
+    if (RISCV::hasFastScalarUnalignedAccess(CPU))
+      Features.push_back("+unaligned-scalar-mem");
+    if (RISCV::hasFastVectorUnalignedAccess(CPU))
+      Features.push_back("+unaligned-vector-mem");
+
+    // Clang sets -mrelax by default, so we do the same.
+    Features.push_back("+relax");
+
+    return strdup(join(Features, ",").c_str());
+  }
   }
 }
 
 extern "C" const char *Get_Target_Default_CPU(const char *TargetTriple) {
   // Select a default CPU for a given target triple.
   //
-  // For now do that only for x86 triples, but this might get extended later.
-  //
   // If not selected explicitly, set the same default CPU as Clang does.
   // Consistency with Clang is generally useful, and on x86 in particular,
   // the choice of CPU results in selection of features.
   // In this case the use of SSE rather than x87 for floating point
   // operations improves rounding behavior.
-  //
-  // Return "generic" for anything else than x86.
 
   Triple T(TargetTriple);
 
   switch (T.getArch()) {
   default:
     return "generic";
-  case llvm::Triple::x86_64:
+  case Triple::riscv32:
+    return "generic-rv32";
+  case Triple::riscv64:
+    return "generic-rv64";
+  case Triple::x86_64:
     return "x86-64";
-  case llvm::Triple::x86:
+  case Triple::x86:
     return "pentium4";
   }
+}
+
+extern "C" const char *Get_Target_Default_ABI(const char *TargetTriple,
+                                              const char *Arch,
+                                              const char *CPU) {
+  Triple T(TargetTriple);
+
+  // Collect the result in a std::string and strdup it at the end because when
+  // we get a StringRef we can't guarantee that it points to null-terminated
+  // memory.
+  std::string Result{""};
+
+  switch (T.getArch()) {
+  default:
+    break;
+  case Triple::riscv32:
+  case Triple::riscv64: {
+    // Inspired by riscv::getRISCVABI in
+    // clang/lib/Driver/ToolChains/Arch/RISCV.cpp.
+
+    // Assuming that we wouldn't be called if the user had specified an ABI
+    // explicitly, try to derive the ABI from the architecture.
+    StringRef TargetArch = getRISCVArch(T, Arch, CPU, StringRef{});
+    auto ParseResult = RISCVISAInfo::parseArchString(TargetArch, true);
+    if (!llvm::errorToBool(ParseResult.takeError())) {
+      Result = (*ParseResult)->computeDefaultABI();
+      break;
+    }
+
+    // Use a default ABI based on the triple as a last resort.
+    if (T.isRISCV32()) {
+      if (T.getOS() == llvm::Triple::UnknownOS) {
+        Result = "ilp32";
+      } else {
+        Result = "ilp32d";
+      }
+    } else {
+      if (T.getOS() == llvm::Triple::UnknownOS) {
+        Result = "lp64";
+      } else {
+        Result = "lp64d";
+      }
+    }
+
+    break;
+  }
+  }
+
+  return strdup(Result.c_str());
 }
 
 extern "C" unsigned Get_Default_Address_Space(const DataLayout &DL) {

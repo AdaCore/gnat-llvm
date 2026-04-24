@@ -662,18 +662,19 @@ package body GNATLLVM.Wrapper is
    -- Get_Features --
    ------------------
 
-   function Get_Features (Triple, Arch, CPU : String) return String is
+   function Get_Features (Triple, Arch, CPU, ABI : String) return String is
       use Interfaces.C;
 
       function Get_Features_C
-        (Triple, Arch, CPU : char_array) return chars_ptr with
+        (Triple, Arch, CPU, ABI : char_array) return chars_ptr with
         Import, Convention => C, External_Name => "Get_Features";
 
       Triple_C : constant char_array := To_C (Triple);
       Arch_C   : constant char_array := To_C (Arch);
       CPU_C    : constant char_array := To_C (CPU);
+      ABI_C    : constant char_array := To_C (ABI);
 
-      Result_C : chars_ptr := Get_Features_C (Triple_C, Arch_C, CPU_C);
+      Result_C : chars_ptr := Get_Features_C (Triple_C, Arch_C, CPU_C, ABI_C);
       Result : constant String :=
         (if Result_C = Null_Ptr then "" else Value (Result_C));
 
@@ -699,6 +700,32 @@ package body GNATLLVM.Wrapper is
    begin
       return Value (Result_C);
    end Get_Target_Default_CPU;
+
+   ----------------------------
+   -- Get_Target_Default_ABI --
+   ----------------------------
+
+   function Get_Target_Default_ABI (Triple, Arch, CPU : String) return String
+   is
+      use Interfaces.C;
+
+      function Get_Target_Default_ABI_C
+        (Triple, Arch, CPU : char_array) return chars_ptr
+      with Import, Convention => C, External_Name => "Get_Target_Default_ABI";
+
+      Triple_C : constant char_array := To_C (Triple);
+      Arch_C   : constant char_array := To_C (Arch);
+      CPU_C    : constant char_array := To_C (CPU);
+
+      Result_C : chars_ptr :=
+        Get_Target_Default_ABI_C (Triple_C, Arch_C, CPU_C);
+      Result   : constant String :=
+        (if Result_C = Null_Ptr then "" else Value (Result_C));
+
+   begin
+      Free (Result_C);
+      return Result;
+   end Get_Target_Default_ABI;
 
    --------------------------
    -- Set_Absolute_Address --

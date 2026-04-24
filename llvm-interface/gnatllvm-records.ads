@@ -146,7 +146,7 @@ package GNATLLVM.Records is
    function Emit_Field_Position
      (E : Record_Field_Kind_Id; V : GL_Value) return GL_Value
      with Post => No (Emit_Field_Position'Result)
-                  or else Type_Of (Emit_Field_Position'Result) = Size_MD;
+                  or else Type_Of (Emit_Field_Position'Result) = Bitsize_MD;
 
    function Is_Bitfield (F : Record_Field_Kind_Id) return Boolean
      with Pre => Present (Get_Field_Info (F));

@@ -669,9 +669,10 @@ package body GNATLLVM.Conversions is
       then
          return Mark_Overflowed (G_Is (In_V, GT),
                                  (not Dest_Uns and then Src_Uns
-                                   and then Is_A_Constant_Int (In_V)
-                                   and then +In_V < LLI (0))
-                                  or else In_Overflow);
+                                  and then GT_Check_Overflow (GT)
+                                  and then Is_A_Constant_Int (In_V)
+                                  and then +In_V < LLI (0))
+                                 or else In_Overflow);
 
       --  If we're converting between two GL_Types corresponding to the same
       --  GNAT type, convert to the primitive type and the to the desired
@@ -801,11 +802,17 @@ package body GNATLLVM.Conversions is
       --  overflowing (which only happens for FP to int). Be consistent
       --  with the rest of our infrastructure in that case and mark it as
       --  overflowed. Then all that's left to do is deal with
-      --  non-primitive types and generate the IR instruction.
+      --  non-primitive types and generate the IR instruction. But be sure
+      --  that we don't clear an overflow check flag when we convert to
+      --  the primitive type.
 
-      return Result : GL_Value := Subp (Value, Prim_GT) do
-         Result := Mark_Overflowed
-            (Result, Is_Undef (Result) or else In_Overflow);
+      return Result : GL_Value :=
+        Subp (Value, Make_GT_Alternative (Prim_GT,
+                                          Check_Overflow =>
+                                            GT_Check_Overflow (GT))) do
+         Result := G_Is (Mark_Overflowed
+                           (Result, Is_Undef (Result) or else In_Overflow),
+                         Prim_GT);
 
          if Related_Type (Result) /= GT then
             Result := From_Primitive (Result, GT);

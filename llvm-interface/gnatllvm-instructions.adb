@@ -640,7 +640,7 @@ package body GNATLLVM.Instructions is
       --  Otherwise, test for overflow. Note that, unlike in C, LLVM
       --  defines the result if an overflow occurs (mod 2**N), so we can
       --  safely do post-operation testing that we couldn't do if this were
-      --  the C addition operation. The unsigned case is simple
+      --  the C addition operation. The unsigned case is simple.
 
       elsif Is_Unsigned_Type (Result) then
          declare

@@ -180,17 +180,6 @@ package GNATLLVM.GLType is
    --  Return the number of unused bits that are at the end of objects
    --  of type GT.
 
-   function Wider_GL_Type
-     (GT : GL_Type; Unsigned : Boolean := False) return GL_Type
-   with Pre  => Present (GT),
-        Post => Get_Scalar_Bit_Size (Wider_GL_Type'Result) >=
-                Get_Scalar_Bit_Size (GT)
-                and (not Unsigned
-                     or else Is_Unsigned_Type (Wider_GL_Type'Result));
-   --  If GT is narrower than a word, return a type of the same
-   --  signedness that's larger than GT. If Unsigned, force the type
-   --  to be unsigned.
-
    --  Here are the access function to obtain fields from a GL_Type.
    --  Many are overloaded from the functions that obtain these fields from
    --  a GNAT type.
@@ -714,6 +703,29 @@ package GNATLLVM.GLType is
    procedure C_Set_Entity
      (V : Value_T; GT : GL_Type; Reference : Boolean := False)
      with Pre => Present (V) and then Present (GT), Inline;
+
+   function Wider_GL_Type (GT : GL_Type) return GL_Type
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (GT),
+          Post => Get_Scalar_Bit_Size (Wider_GL_Type'Result) >=
+                  Get_Scalar_Bit_Size (GT)
+                  and then Is_Unsigned_Type (GT) =
+                           Is_Unsigned_Type (Wider_GL_Type'Result);
+   --  If GT is narrower than a word, return a type of the same
+   --  signedness that's larger than GT.
+
+   function Unsigned_GL_Type (GT : GL_Type) return GL_Type is
+     (Full_GL_Type (Stand_Type (Get_Scalar_Bit_Size (GT), True)))
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (GT),
+          Post => Get_Scalar_Bit_Size (Unsigned_GL_Type'Result) =
+                  Get_Scalar_Bit_Size (GT)
+                  and then Is_Unsigned_Type (Unsigned_GL_Type'Result);
+   function Signed_GL_Type (GT : GL_Type) return GL_Type is
+     (Full_GL_Type (Stand_Type (Get_Scalar_Bit_Size (GT), False)))
+     with Pre  => Is_Discrete_Or_Fixed_Point_Type (GT),
+          Post => Get_Scalar_Bit_Size (Signed_GL_Type'Result) =
+                  Get_Scalar_Bit_Size (GT)
+                  and then not Is_Unsigned_Type (Signed_GL_Type'Result);
+   --  Return a type similar to GT, but that's unsigned or unsigned
 
    pragma Annotate (Xcov, Exempt_On, "Debug helpers");
 

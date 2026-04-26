@@ -1545,7 +1545,7 @@ package body GNATLLVM.Exprs is
                   V := S_Rem (Position, Bitsize_Const_Int (+BPU));
 
                when Attribute_Last_Bit =>
-                  V := Position + Size_Const_Int (Esize (F) - 1);
+                  V := Position + Bitsize_Const_Int (Esize (F) - 1);
 
                when others =>
                   pragma Assert (Standard.False);

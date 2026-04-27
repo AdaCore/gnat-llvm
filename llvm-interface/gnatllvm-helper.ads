@@ -190,7 +190,7 @@ package GNATLLVM.Helper is
                           unsigned (Line_No), Ty, Is_Local_To_Unit,
                           Is_Definition, unsigned (Scope_Line), Flags,
                           Is_Optimized))
-     with Pre  => Present (Scope) and then Present (File),
+     with Pre => Present (File),
           Post => Present (DI_Create_Function'Result);
 
    function DI_Builder_Create_Lexical_Block
@@ -358,8 +358,7 @@ package GNATLLVM.Helper is
         (DI_Builder, Scope, Name, Name'Length, Linkage, Linkage'Length, File,
          unsigned (Line_No), Ty, Local_To_Unit, Expr, Decl,
          uint32_t (Align_In_Bits)))
-     with Pre  => Present (Scope) and then Present (File)
-                  and then Present (Expr),
+     with Pre  => Present (File) and then Present (Expr),
           Post => Present (DI_Create_Global_Variable_Expression'Result);
 
    function DI_Create_Auto_Variable
@@ -423,5 +422,22 @@ package GNATLLVM.Helper is
                   and then Present (Expr) and then Present (Debug_Loc)
                   and then Present (Block),
           Post => Present (DI_Builder_Insert_Declare_At_End'Result);
+
+   function DI_Create_Module (Builder : DI_Builder_T;
+                              Scope   : Metadata_T;
+                              Name    : String) return Metadata_T
+     is
+       (DI_Create_Module (Builder, Scope, Name, Name'Length,
+                          "", 0, "", 0, "", 0));
+
+   function DI_Builder_Create_Imported_Module_From_Module
+     (Builder : DI_Builder_T;
+      Scope   : Metadata_T;
+      M       : Metadata_T;
+      File    : Metadata_T;
+      Line    : Logical_Line_Number) return Metadata_T
+     is
+       (DI_Builder_Create_Imported_Module_From_Module
+         (Builder, Scope, M, File, unsigned (Line), System.Null_Address, 0));
 
 end GNATLLVM.Helper;

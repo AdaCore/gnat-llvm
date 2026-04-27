@@ -630,30 +630,6 @@ package body GNATLLVM.Utils is
 
    end Process_Pragmas;
 
-   --------------------------------
-   -- Enclosing_Subprogram_Scope --
-   --------------------------------
-
-   function Enclosing_Subprogram_Scope (E : Entity_Id) return Entity_Id is
-   begin
-      return S : Entity_Id := Scope (E) do
-         loop
-            exit when S = Standard_Standard
-              or else Ekind (S) in E_Function | E_Procedure;
-
-            if Is_Private_Type (S) then
-               S := Full_View (S);
-            else
-               S := Scope (S);
-            end if;
-         end loop;
-
-         if S = Standard_Standard then
-            S := Empty;
-         end if;
-      end return;
-   end Enclosing_Subprogram_Scope;
-
    -----------------
    -- Acting_Spec --
    -----------------

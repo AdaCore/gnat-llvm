@@ -164,6 +164,11 @@ package body GNATLLVM.DebugInfo is
    --  do this if we can't make debug information for the component type
    --  of the array type.
 
+   function Get_Module (N : Node_Id) return Metadata_T
+     with Pre => Present (N);
+   --  Return the LLVM module metadata object for the package N.
+   --  Returns No_Metadata_T if N is the "standard" package.
+
    function Get_Scope_For (E : Entity_Id) return Metadata_T
      with Pre => Present (E);
    --  Return the LLVM metadata object that should be used for the
@@ -208,6 +213,22 @@ package body GNATLLVM.DebugInfo is
       end if;
    end Pop_Debug_Scope;
 
+   ----------------
+   -- Get_Module --
+   ----------------
+
+   function Get_Module (N : Node_Id) return Metadata_T is
+      M : Metadata_T := Get_Debug_Metadata_N (N);
+   begin
+      if No (M) and then N /= Standard_Standard then
+         M := DI_Create_Module (DI_Builder,
+                                Get_Scope_For (N),
+                                Get_Unqualified_Name (N));
+         Set_Debug_Metadata (N, M);
+      end if;
+      return M;
+   end Get_Module;
+
    -------------------
    -- Get_Scope_For --
    -------------------
@@ -222,15 +243,31 @@ package body GNATLLVM.DebugInfo is
       --  the reference to it.
       if Size_Depends_On_Discriminant (E) then
          return Get_Debug_Metadata (Get_Fullest_View (S));
-      elsif not Comes_From_Source (E) or not Types_Can_Have_Function_Scope then
+      elsif E in Type_Kind_Id and (not Comes_From_Source (E)
+                                   or not Types_Can_Have_Function_Scope)
+      then
          return No_Metadata_T;
       end if;
       while Present (S) loop
-         --  For the time being only function scopes are considered.
-         if Ekind (S) = E_Function or else Ekind (S) = E_Procedure then
-            return Current_Debug_Scope;
-         end if;
-         S := Scope (S);
+         case Ekind (S) is
+
+            when E_Function | E_Procedure =>
+               begin
+                  return Get_Debug_Metadata_N (S);
+               end;
+
+            when E_Package | E_Package_Body =>
+               begin
+                  if Is_Wrapper_Package (S) then
+                     S := Scope (Related_Instance (S));
+                  else
+                     return Get_Module (S);
+                  end if;
+               end;
+
+            when others => S := Scope (S);
+
+         end case;
       end loop;
       return No_Metadata_T;
    end Get_Scope_For;
@@ -243,6 +280,15 @@ package body GNATLLVM.DebugInfo is
       Buf : Bounded_String;
    begin
       Append_Unqualified (Buf, Chars (E));
+      --  The subprogram implementing a task body is given a "TKB"
+      --  suffix, but we don't want that, and it seemed better to omit
+      --  it here and generate nice-looking DWARF than to work around
+      --  this in gdb.
+      if Buf.Length > 3
+         and then Buf.Chars (Buf.Length - 2 .. Buf.Length) = "TKB"
+      then
+         Buf.Length := Buf.Length - 3;
+      end if;
       return +Buf;
    end Get_Unqualified_Name;
 
@@ -428,10 +474,16 @@ package body GNATLLVM.DebugInfo is
                                 (if RK = Return_By_Parameter then 1 else 0))
          else 0);
       Types      : Metadata_Array (0 .. Num_MDs);
-      S_Name     : constant String                 :=
+      S_Full_Name : constant String :=
         (if Name /= "" then Name else Get_Name (E));
+      S_Name     : constant String                 :=
+        (if   not Emit_Debug_Info or else Name /= ""
+         then Name
+         else Get_Unqualified_Name (E));
       S_Ext_Name : constant String                 :=
-        (if Ext_Name /= "" then Ext_Name else Get_Ext_Name (E));
+        (if   not Emit_Debug_Info or else Ext_Name /= ""
+         then Ext_Name
+         else Get_Ext_Name (E));
       File_Node     : constant Metadata_T          :=
         (if   Emit_Debug_Info
          then Get_Debug_File_Node (Get_Source_File_Index (Sloc (N)))
@@ -536,24 +588,18 @@ package body GNATLLVM.DebugInfo is
          --  Now create and return the metadata
 
          declare
-            Dyn_Scope_E   : constant Entity_Id           :=
-              (if Present (E) then Enclosing_Subprogram_Scope (E) else Empty);
-            Dyn_Scope_Val : constant GL_Value            :=
-              (if   Present (Dyn_Scope_E) then Get_Value (Dyn_Scope_E)
-               else No_GL_Value);
-            Dyn_Scope     : constant Metadata_T          :=
-              (if   Present (Dyn_Scope_Val)
-               then Get_Subprogram_Debug_Metadata (Dyn_Scope_Val)
-               else File_Node);
             Sub_Type_Node : constant Metadata_T          :=
               DI_Builder_Create_Subroutine_Type
               (File_Node, Types, DI_Flag_Zero);
             Is_Main : constant Boolean := S_Ext_Name = "main";
-            Function_Node : constant Metadata_T          :=
+            Scope : constant Metadata_T := (if Present (E) and then not Is_Main
+                                            then Get_Scope_For (E)
+                                            else No_Metadata_T);
+            Function_Node : constant Metadata_T :=
               DI_Create_Function
-                (Dyn_Scope,
+                (Scope,
                  (if Is_Main then S_Ext_Name else S_Name),
-                 (if S_Ext_Name = S_Name or else Is_Main
+                 (if S_Ext_Name = S_Full_Name or else Is_Main
                   then ""
                   else S_Ext_Name),
                  File_Node, Line_Number, Sub_Type_Node, False, True,
@@ -562,6 +608,9 @@ package body GNATLLVM.DebugInfo is
 
          begin
             Set_Subprogram_Debug_Metadata (Func, Function_Node);
+            if Present (E) then
+               Set_Debug_Metadata (E, Function_Node);
+            end if;
             return Function_Node;
          end;
       else
@@ -1119,10 +1168,11 @@ package body GNATLLVM.DebugInfo is
                         else
                            Result :=
                              DI_Builder_Create_Typedef
-                               (Base_Type_Data, Name,
+                               (Base_Type_Data,
+                                Get_Possibly_Local_Name (TE),
                                 Get_Debug_File_Node
                                   (Get_Source_File_Index
-                                     (S)),
+                                    (S)),
                                 Get_Physical_Line_Number
                                   (S),
                                 Get_Scope_For (TE), Align);
@@ -1301,8 +1351,9 @@ package body GNATLLVM.DebugInfo is
                              Const_Int_Get_S_Ext_Value
                                 (Const_Int (Int_Ty (Uint_64), UI));
                            MD  : constant Metadata_T :=
-                             DI_Create_Enumerator (Get_Name (Member), Val,
-                                                   UI >= 0);
+                             DI_Create_Enumerator
+                               (Get_Unqualified_Name (Member), Val,
+                                UI >= 0);
 
                         begin
                            Member_Table.Append (MD);
@@ -1319,7 +1370,8 @@ package body GNATLLVM.DebugInfo is
                         end loop;
 
                         Result := DI_Create_Enumeration_Type
-                          (Get_Scope_For (TE), Get_Possibly_Local_Name (TE),
+                          (Get_Scope_For (TE),
+                           Get_Possibly_Local_Name (TE),
                            Get_Debug_File_Node (Get_Source_File_Index (S)),
                            Get_Physical_Line_Number (S), Size, Align, Members,
                            No_Metadata_T);
@@ -1389,7 +1441,14 @@ package body GNATLLVM.DebugInfo is
    is
       GT        : constant GL_Type    := Related_Type (V);
       Type_Data : constant Metadata_T := Create_Type_Data (V);
-      Name      : constant String     := Get_Name     (E);
+      Name      : constant String     :=
+        (if   Emit_Debug_Info
+         then Get_Unqualified_Name (E)
+         else "");
+      Full_Name : constant String :=
+        (if   Emit_Debug_Info
+         then Get_Name (E)
+         else "");
       Ext_Name  : constant String     := Get_Ext_Name (E);
       S         : constant Source_Ptr := Sloc         (E);
 
@@ -1402,8 +1461,8 @@ package body GNATLLVM.DebugInfo is
          declare
             MD : constant Metadata_T :=
               DI_Create_Global_Variable_Expression
-                (Debug_Compile_Unit, Name,
-                 (if Ext_Name = Name then "" else Ext_Name),
+                (Get_Scope_For (E), Name,
+                 (if Ext_Name = Full_Name then "" else Ext_Name),
                  Get_Debug_File_Node (Get_Source_File_Index (S)),
                  Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
                  No_Metadata_T, Get_Type_Alignment (GT));
@@ -1424,7 +1483,8 @@ package body GNATLLVM.DebugInfo is
    is
       GT        : constant GL_Type    := Default_GL_Type (Etype (E));
       Type_Data : constant Metadata_T := Create_Type_Data (GT);
-      Name      : constant String     := Get_Name     (E);
+      Name      : constant String     := Get_Unqualified_Name (E);
+      Full_Name : constant String     := Get_Name (E);
       Ext_Name  : constant String     := Get_Ext_Name (E);
       S         : constant Source_Ptr := Sloc         (E);
       MD : Metadata_T;
@@ -1434,8 +1494,8 @@ package body GNATLLVM.DebugInfo is
       pragma Assert (Present (Type_Data));
 
       MD := Create_Global_Variable_Declaration
-        (DI_Builder, Debug_Compile_Unit, Name,
-         (if Ext_Name = Name then "" else Ext_Name),
+        (DI_Builder, Get_Scope_For (E), Name,
+         (if Ext_Name = Full_Name then "" else Ext_Name),
          Get_Debug_File_Node (Get_Source_File_Index (S)),
          Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
          No_Metadata_T, Get_Type_Alignment (GT));
@@ -1521,15 +1581,20 @@ package body GNATLLVM.DebugInfo is
    end Add_Label_Debug_Info;
 
    procedure Import_Module (N : Node_Id) is
-      E     : constant Entity_Id   := Entity (Name (N));
-      S     : constant Source_Ptr  := Sloc (N);
-      Name  : constant String      := Get_Name (E);
    begin
       if Emit_Debug_Info then
-         Create_Import_Declarations
-           (DI_Builder, Name, Debug_Compile_Unit,
-            Get_Debug_File_Node (Get_Source_File_Index (S)),
-            Get_Logical_Line_Number (S));
+         declare
+            E     : constant Entity_Id   := Entity (Name (N));
+            S     : constant Source_Ptr  := Sloc (N);
+            M     : constant Metadata_T  := Get_Module (E);
+            Unused : constant Metadata_T
+              := DI_Builder_Create_Imported_Module_From_Module
+                (DI_Builder, Get_Scope_For (E), M,
+                 Get_Debug_File_Node (Get_Source_File_Index (S)),
+                 Get_Logical_Line_Number (S));
+         begin
+            null;
+         end;
       end if;
    end Import_Module;
 

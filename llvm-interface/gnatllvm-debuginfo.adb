@@ -236,15 +236,12 @@ package body GNATLLVM.DebugInfo is
    function Get_Scope_For (E : Entity_Id) return Metadata_T is
       S : Node_Id := Scope (E);
    begin
-      --  In most cases, artificial types can be put at CU scope.
-      --  However, if an artificial array type depends on a
-      --  discriminant, then it must appear in the enclosing record's
-      --  scope, to ensure that the discriminant DIE is written before
-      --  the reference to it.
+      --  If an array type depends on a discriminant, then it must
+      --  appear in the enclosing record's scope, to ensure that the
+      --  discriminant DIE is written before the reference to it.
       if Size_Depends_On_Discriminant (E) then
          return Get_Debug_Metadata (Get_Fullest_View (S));
-      elsif E in Type_Kind_Id and (not Comes_From_Source (E)
-                                   or not Types_Can_Have_Function_Scope)
+      elsif E in Type_Kind_Id and not Types_Can_Have_Function_Scope
       then
          return No_Metadata_T;
       end if;
@@ -953,6 +950,7 @@ package body GNATLLVM.DebugInfo is
       Ranges     : Metadata_Array (0 .. Number_Dimensions (Array_TE) - 1);
       Stride     : Metadata_T := No_Metadata_T;
       E_Index : Opt_N_Is_Index_Id := First_Index (Array_TE);
+      Scope   : constant Metadata_T := Get_Scope_For (Array_TE);
    begin
       if Is_Unconstrained_Array (Array_TE) then
          --  LLVM does not allow a nameless unspecified type, so use
@@ -998,7 +996,7 @@ package body GNATLLVM.DebugInfo is
             end if;
             Ranges (J) :=
               Create_Subrange_Type
-                (DI_Builder, No_Metadata_T, "", No_Metadata_T,
+                (DI_Builder, Scope, "", No_Metadata_T,
                  No_Line_Number, 0, 0, DI_Flag_Zero,
                  Is_Unsigned_Type (Full_Etype (Index_Type)),
                  Base_Type_Data, Low_Exp, High_Exp, No_Metadata_T,
@@ -1008,7 +1006,7 @@ package body GNATLLVM.DebugInfo is
          end;
       end loop;
 
-      return Create_Array_Type_With_Name (DI_Builder, Get_Scope_For (Array_TE),
+      return Create_Array_Type_With_Name (DI_Builder, Scope,
          Name, Get_Debug_File_Node (Get_Source_File_Index (S)),
          Get_Logical_Line_Number (S),
          Size, Align, Inner_Type, Stride, Ranges);

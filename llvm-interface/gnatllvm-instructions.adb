@@ -1532,7 +1532,7 @@ package body GNATLLVM.Instructions is
       --  The LLVM type that will be loaded by this instruction
 
       Result_Bits    : constant Nat             :=
-        (if Is_Data (New_R) then Nat (Get_Scalar_Bit_Size (MD)) else 0);
+        (if Is_Data (New_R) then Get_Scalar_Bit_Size (MD) else 0);
       --  Size in bits that will be loaded by this instruction
 
       Special_Atomic : constant Boolean         :=
@@ -1627,7 +1627,7 @@ package body GNATLLVM.Instructions is
       GT             : constant GL_Type := Related_Type (Expr);
       MD             : constant MD_Type := Type_Of (Expr);
       Result_Bits    : constant Nat     :=
-        (if Is_Data (Expr) then Nat (Get_Scalar_Bit_Size (MD)) else 0);
+        (if Is_Data (Expr) then Get_Scalar_Bit_Size (MD) else 0);
       Special_Atomic : constant Boolean :=
         Is_Data (Expr) and then Is_Atomic (Ptr) and then not Atomic_Kind (MD)
           and then Nat'(Get_Type_Alignment (GT)) >= Result_Bits;
@@ -1998,7 +1998,7 @@ package body GNATLLVM.Instructions is
          --  storing the result.
 
          declare
-            GT_Bits : constant Nat := Nat (Get_Scalar_Bit_Size (GT));
+            GT_Bits : constant Nat := Get_Scalar_Bit_Size (GT);
          begin
             if GT_Bits not in 32 | 64 then
                Error_Msg_N ("unsupported Asm output", Output_Value);

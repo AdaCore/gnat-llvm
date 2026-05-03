@@ -210,7 +210,7 @@ package GNATLLVM.MDType is
      with Pre => Present (MD);
    function Get_Type_Size_In_Bytes (MD : MD_Type) return ULL
      with Pre => Present (MD);
-   function Get_Scalar_Bit_Size (MD : MD_Type) return ULL
+   function Get_Scalar_Bit_Size (MD : MD_Type) return Nat
      with Pre => Present (MD);
    function Get_Type_Alignment (MD : MD_Type) return Nat
      with Pre => Present (MD);

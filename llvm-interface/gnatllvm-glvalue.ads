@@ -1502,7 +1502,7 @@ package GNATLLVM.GLValue is
      (Size_Const_Int (Get_Type_Size_In_Bytes (MD)))
      with Pre => Present (MD), Inline;
 
-   function Get_Scalar_Bit_Size (V : GL_Value) return ULL
+   function Get_Scalar_Bit_Size (V : GL_Value) return Nat
      with Pre => Present (V), Inline;
 
    function Get_Type_Alignment

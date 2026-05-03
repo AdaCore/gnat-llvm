@@ -886,7 +886,7 @@ package body GNATLLVM.DebugInfo is
                   if Is_Unsigned_Type (Bound_Type) then
                      declare
                         Bitsize : constant Uint :=
-                          UI_From_ULL (Get_Scalar_Bit_Size (Bound_Type));
+                          UI_From_ULL (ULL (Get_Scalar_Bit_Size (Bound_Type)));
                         Max     : constant Uint := 2**Bitsize;
                         Masked  : constant Uint
                            := UI_From_GL_Value (Bound) mod Max;

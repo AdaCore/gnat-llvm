@@ -26,8 +26,7 @@ with System.Storage_Elements; use System.Storage_Elements;
 with Atree; use Atree;
 with Namet; use Namet;
 
-with LLVM.Core;   use LLVM.Core;
-with LLVM.Target; use LLVM.Target;
+with LLVM.Core; use LLVM.Core;
 
 with GNATLLVM.Types;   use GNATLLVM.Types;
 with GNATLLVM.Wrapper; use GNATLLVM.Wrapper;
@@ -285,10 +284,6 @@ package CCG.Utils is
    procedure Update_Hash (H : in out Hash_Type; S : Str)
      with Inline;
    --  Update H taking into account the Str S
-
-   function Get_Scalar_Bit_Size (T : Type_T) return Nat is
-     (Nat (Size_Of_Type_In_Bits (Module_Data_Layout, T)))
-     with Pre => Present (T);
 
    function Get_Scalar_Bit_Size (V : Value_T) return Nat is
      (Get_Scalar_Bit_Size (Type_Of (V)))

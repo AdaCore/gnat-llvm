@@ -233,7 +233,7 @@ package body GNATLLVM.Compile is
       --  string (usually from a --target specification) and the target
       --  parameter file. Make sure they agree.
 
-      if Get_Scalar_Bit_Size (Void_Ptr_T) /= ULL (Thin_Pointer_Size) then
+      if Get_Scalar_Bit_Size (Void_Ptr_T) /= Thin_Pointer_Size then
          Early_Error
            ("Pointer size mismatch between target and target parameters");
       end if;

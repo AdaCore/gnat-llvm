@@ -320,8 +320,8 @@ package GNATLLVM.Types is
      with Pre => Present (T), Post => Present (Get_Type_Size_In_Bytes'Result);
    --  Return the size of an LLVM type, in bytes, as an LLVM constant
 
-   function Get_Scalar_Bit_Size (T : Type_T) return ULL is
-     (Size_Of_Type_In_Bits (Module_Data_Layout, T))
+   function Get_Scalar_Bit_Size (T : Type_T) return Nat is
+     (Nat (Size_Of_Type_In_Bits (Module_Data_Layout, T)))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
 

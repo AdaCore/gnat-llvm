@@ -1641,7 +1641,7 @@ package body GNATLLVM.GLValue is
    -- Get_Scalar_Bit_Size --
    -------------------------
 
-   function Get_Scalar_Bit_Size (V : GL_Value) return ULL is
+   function Get_Scalar_Bit_Size (V : GL_Value) return Nat is
      (Get_Scalar_Bit_Size (Type_Of (V)));
 
    ------------------------

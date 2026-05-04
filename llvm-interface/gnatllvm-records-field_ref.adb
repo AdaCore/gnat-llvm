@@ -771,7 +771,7 @@ package body GNATLLVM.Records.Field_Ref is
       Needed_Bits : constant Nat     := Byte_Align (First_Bit + Num_Bits);
       Our_Bits    : constant Nat     :=
         (if   Is_Reference (BRD.LHS) then Needed_Bits
-         else Nat (Get_Scalar_Bit_Size (BRD.LHS)));
+         else Get_Scalar_Bit_Size (BRD.LHS));
       Result      : GL_Value         := BRD.LHS;
 
    begin
@@ -932,8 +932,7 @@ package body GNATLLVM.Records.Field_Ref is
       First_Bit   : constant Nat     := BRD.Offset;
       Needed_Bits : constant Nat     := Byte_Align (First_Bit + Num_Bits);
       Our_Bits    : constant Nat     :=
-        (if   Have_Ref then Needed_Bits
-         else Nat (Get_Scalar_Bit_Size ((BRD.LHS))));
+        (if   Have_Ref then Needed_Bits else Get_Scalar_Bit_Size ((BRD.LHS)));
       F_MD        : constant MD_Type := Int_Ty (F_Bits);
       New_F_MD    : constant MD_Type := Int_Ty (Num_Bits);
       New_RHS     : GL_Value         := Convert_GT (RHS, F_GT);

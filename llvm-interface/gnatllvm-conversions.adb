@@ -526,7 +526,7 @@ package body GNATLLVM.Conversions is
          then
             declare
                MD : constant MD_Type :=
-                 Int_Ty (Nat (Get_Scalar_Bit_Size (Data_Type_Of (Result))));
+                 Int_Ty (Get_Scalar_Bit_Size (Data_Type_Of (Result)));
 
             begin
                Result := Ptr_To_Relationship
@@ -641,10 +641,8 @@ package body GNATLLVM.Conversions is
       Value       : GL_Value          := In_V;
       Src_Uns     : constant Boolean  := Is_Unsigned_For_Convert (In_GT);
       Dest_Uns    : constant Boolean  := Is_Unsigned_For_Convert (Prim_GT);
-      Src_Size    : constant Nat      :=
-        Nat (ULL'(Get_Scalar_Bit_Size (In_V)));
-      Dest_Size   : constant Nat      :=
-        Nat (ULL'(Get_Scalar_Bit_Size (Prim_GT)));
+      Src_Size    : constant Nat      := Get_Scalar_Bit_Size (In_V);
+      Dest_Size   : constant Nat      := Get_Scalar_Bit_Size (Prim_GT);
       Is_Trunc    : constant Boolean  := Dest_Size < Src_Size;
       Subp        : Cvtf              := null;
 
@@ -728,8 +726,7 @@ package body GNATLLVM.Conversions is
 
          declare
             Addr_GT   : constant GL_Type := Related_Type (Value);
-            Addr_Size : constant Nat     :=
-              Nat (ULL'(Get_Scalar_Bit_Size (Addr_GT)));
+            Addr_Size : constant Nat     := Get_Scalar_Bit_Size (Addr_GT);
 
          begin
             if GT = Addr_GT then
@@ -1322,7 +1319,7 @@ package body GNATLLVM.Conversions is
       In_Bytes  : constant ULL     := Get_Type_Size_In_Bytes (In_T);
       Cvt_T     : constant Type_T  :=
         (if   Get_Type_Kind (In_T) /= Integer_Type_Kind
-              or else Get_Scalar_Bit_Size (In_T) = In_Size
+              or else ULL (Get_Scalar_Bit_Size (In_T)) = In_Size
          then In_T else Int_Ty (In_Bytes * UBPU));
       --  If we have a non-byte-width input type, make one that rounds up the
       --  size. We do the same for the output type below.
@@ -1331,7 +1328,7 @@ package body GNATLLVM.Conversions is
       Out_Bytes : constant ULL     := Get_Type_Size_In_Bytes (T);
       Out_T     : constant Type_T  :=
         (if   Get_Type_Kind (T) /= Integer_Type_Kind
-              or else Get_Scalar_Bit_Size (T) = Out_Size
+              or else ULL (Get_Scalar_Bit_Size (T)) = Out_Size
          then T else Int_Ty (Out_Bytes * UBPU));
       In_V      : constant Value_T :=
         (if Cvt_T = In_T then V else Z_Ext (IR_Builder, V, Cvt_T, ""));

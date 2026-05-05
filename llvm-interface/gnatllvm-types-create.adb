@@ -178,7 +178,7 @@ package body GNATLLVM.Types.Create is
       end if;
 
       MD := Int_Ty ((if +Size <= Max_Int_Size then +Size else Max_Int_Size),
-                    Is_Unsigned_Type (Full_Base_Type (Size_TE)));
+                    Is_Unsigned_Type (Size_TE));
 
       --  If we're emitting C, check if a type in Interfaces.C is in the
       --  type chain at the same size.

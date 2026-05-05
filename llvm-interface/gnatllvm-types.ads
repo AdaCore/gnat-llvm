@@ -500,6 +500,12 @@ package GNATLLVM.Types is
    function Is_Const  (V : IDS) return Boolean is
      (Present (V.Value) and then not Is_Undef (V.Value));
 
+   function Is_Const_0 (V : IDS) return Boolean is
+     (Present (V.Value) and then Is_Const_0 (V.Value));
+
+   function Is_Const_1 (V : IDS) return Boolean is
+     (Present (V.Value) and then Is_Const_1 (V.Value));
+
    function Const (C : ULL; Sign_Extend : Boolean := False) return IDS is
      ((False,  Bitsize_Const_Int (C, Sign_Extend)))
      with Post => Is_Const (Const'Result);
@@ -521,7 +527,7 @@ package GNATLLVM.Types is
      with Pre => Present (V);
 
    function Related_Type (V : IDS) return GL_Type is
-     (if   No (V) or else V = Var_IDS then Size_GL_Type
+     (if   No (V) or else V = Var_IDS then Bitsize_GL_Type
       else Related_Type (V.Value))
      with Pre => Present (V);
 
@@ -650,6 +656,9 @@ package GNATLLVM.Types is
       Is_None     : Boolean;
       --  True if this is to be treated as an empty entry
 
+      GT          : GL_Type;
+      --  The type being used; we use this for signedness
+
       C_Value     : Uint;
       --  If a constant, the value of that constant
 
@@ -661,7 +670,7 @@ package GNATLLVM.Types is
 
    type BA_Data_Array is array (Nat range <>) of BA_Data;
 
-   No_BA   : constant BA_Data := (True,  No_Uint, No_Uint);
+   No_BA   : constant BA_Data := (True, No_GL_Type, No_Uint, No_Uint);
 
    function No      (V : BA_Data) return Boolean is (V =  No_BA);
    function Present (V : BA_Data) return Boolean is (V /= No_BA);
@@ -697,21 +706,21 @@ package GNATLLVM.Types is
      (Is_Const (V) and then V.C_Value = Uint_1);
 
    function Related_Type (V : BA_Data) return GL_Type is
-     (Size_GL_Type)
+     (V.GT)
      with Pre => Present (V);
 
    function Const
      (C : ULL; Unused_Sign_Extend : Boolean := False) return BA_Data
    is
-     ((False, UI_From_ULL (C), No_Uint))
+     ((False, Bitsize_GL_Type, UI_From_ULL (C), No_Uint))
      with Post => Is_Const (Const'Result);
 
    function Const (C : Uint) return BA_Data is
-     ((False, C, No_Uint))
+     ((False, No_GL_Type, C, No_Uint))
      with Pre => Present (C), Post => Is_Const (Const'Result);
 
    function Const_Int (GT : GL_Type; C : Uint) return BA_Data is
-     ((False, C, No_Uint))
+     ((False, GT, C, No_Uint))
      with Pre  => Present (GT) and then Present (C),
           Post => Is_Const (Const_Int'Result);
 
@@ -721,8 +730,8 @@ package GNATLLVM.Types is
    --  conversion can't be done.
 
    function SO_Ref_To_BA (V : SO_Ref) return BA_Data is
-     ((if   Is_Static_SO_Ref (V) then (False, V, No_Uint)
-       else (False, No_Uint, V)));
+     ((if   Is_Static_SO_Ref (V) then (False, Bitsize_GL_Type, V, No_Uint)
+       else (False, Bitsize_GL_Type, No_Uint, V)));
    --  Likewise, but in the opposite direction
 
    function Annotated_Object_Size

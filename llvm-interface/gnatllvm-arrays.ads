@@ -55,13 +55,13 @@ package GNATLLVM.Arrays is
    --  pointer.
 
    function Bounds_To_Length
-     (In_Low, In_High : GL_Value;
-      Not_Superflat   : Boolean := False) return GL_Value
-     with Pre  => Present (In_Low) and then Present (In_High)
-                  and then Type_T'(+Type_Of (In_Low)) = +Type_Of (In_High);
+     (Low, High : GL_Value; Not_Superflat   : Boolean := False) return GL_Value
+     with Pre  => Present (Low) and then Present (High)
+                  and then Type_T'(+Type_Of (Low)) = +Type_Of (High);
    --  Low and High are bounds of a discrete type. Compute the length of
    --  that type, taking into account the superflat case. The result will
-   --  be in the wider of the input type or Size_Type
+   --  not necessarily be the same type as the inputs. If it's wanted
+   --  in a specific type, it must be converted to that type.
 
    function Get_Bound_Alignment (GT : Array_Or_PAT_GL_Type) return Nat;
    --  Get the alignment of the Bounds part of array and data of GT
@@ -235,8 +235,7 @@ package GNATLLVM.Arrays is
    --  isn't consistent with the number of bits, we can't use it either.
 
    function Bounds_To_Length
-     (In_Low, In_High : BA_Data;
-      Not_Superflat   : Boolean := False) return BA_Data;
+     (Low, High : BA_Data; Not_Superflat : Boolean := False) return BA_Data;
 
    function Data_Index_In_BD_Type (V : GL_Value) return unsigned
      with Pre  => Relationship (V)

@@ -218,7 +218,7 @@ package body GNATLLVM.Types is
       Is_Unchecked   : Boolean := False;
       No_Truncation  : Boolean := False) return BA_Data
    is
-     (V);
+     ((V.Is_None, GT, V.C_Value, V.T_Value));
 
    ----------------
    -- From_Const --
@@ -226,7 +226,8 @@ package body GNATLLVM.Types is
 
    function From_Const (V : GL_Value) return BA_Data is
      (if   Is_A_Constant_Int (V)
-      then (False, UI_From_LLI (Get_Const_Int_Value (V)), No_Uint) else No_BA)
+      then (False, Related_Type (V), UI_From_LLI (Get_Const_Int_Value (V)),
+            No_Uint) else No_BA)
      with Pre => Is_Constant (V);
    --  Likewise, for back-annotation
 
@@ -636,23 +637,33 @@ package body GNATLLVM.Types is
       --  raising constraint error, so if we did, omit this one.
 
       elsif not Is_Nonnative_Type (A_GT) then
-         if Do_Stack_Check
-           and then Get_Type_Size_In_Bytes (Type_Of (A_GT)) > Max_Alloc
-         then
-            Emit_Raise_Call (N, SE_Object_Too_Large);
-            Error_Msg_N ("??Storage_Error will be raised at run time!", N);
-            return Get_Undef_Ref (GT);
-         else
-            declare
-               Align_GT : constant GL_Type :=
-                 (if   GT_Alignment (A_GT) >= Align then A_GT
-                  else Make_GT_Alternative (A_GT, E, Align => +Align));
+         declare
+            Size : constant ULL := Get_Type_Size_In_Bytes (Type_Of (A_GT));
 
-            begin
-               return Move_Into_Memory (Alloca (Align_GT, E, Align, Name),
-                                        Value, Expr, GT, A_GT);
-            end;
-         end if;
+         begin
+            --  If we're doing stack checking and the size larger than
+            --  Max_Alloc, this is a Storage_Error. If we're not doing
+            --  stack checking, limit a single allocation to 1/3 of
+            --  the highest value of Size_Type.
+
+            if Size > +Intval (Type_High_Bound (Size_GL_Type)) / 3
+              or else (Do_Stack_Check and then Size > Max_Alloc)
+            then
+               Emit_Raise_Call (N, SE_Object_Too_Large);
+               Error_Msg_N ("??Storage_Error will be raised at run time!", N);
+               return Get_Undef_Ref (GT);
+            else
+               declare
+                  Align_GT : constant GL_Type :=
+                    (if   GT_Alignment (A_GT) >= Align then A_GT
+                     else Make_GT_Alternative (A_GT, E, Align => +Align));
+
+               begin
+                  return Move_Into_Memory (Alloca (Align_GT, E, Align, Name),
+                                           Value, Expr, GT, A_GT);
+               end;
+            end if;
+         end;
       end if;
 
       --  Otherwise, we probably have to do some sort of dynamic allocation. If
@@ -721,14 +732,19 @@ package body GNATLLVM.Types is
          end if;
       end if;
 
+      --  Num_Elts may be an unsigned type, but alloca interprets it as
+      --  a signed value. So convert it to a signed type with overflow
+      --  checking. We'll test for overflow below.
+
+      Num_Elts := Convert (Num_Elts,
+                           Make_GT_Alternative
+                             (Signed_GL_Type (Related_Type (Num_Elts)),
+                              Check_Overflow => True));
+
       --  If the number of elements overflowed, raise Storage_Error. But
       --  check for the pathological case of an array of zero-sized elements.
 
-      if Overflowed (Num_Elts) or else Is_Undef (Num_Elts)
-        or else (Is_Unsigned_Type (Num_Elts)
-                 and then Is_A_Constant_Int (Num_Elts)
-                 and then ULL_To_LLI (Get_Const_Int_Value_ULL (Num_Elts)) < 0)
-      then
+      if Overflowed (Num_Elts) or else Is_Undef (Num_Elts) then
          if Get_Type_Size (Element_GT) = ULL (0) then
             Num_Elts := Size_Const_Int (1);
          else
@@ -786,6 +802,14 @@ package body GNATLLVM.Types is
       Result  : GL_Value;
 
    begin
+      --  Size may be an unsigned type, but some of the allocators take a
+      --  signed type. For consistency, convert it to a signed type with
+      --  overflow checking. We'll test for overflow below.
+
+      Size := Convert (Size, Make_GT_Alternative
+                         (Signed_GL_Type (Related_Type (Size)),
+                          Check_Overflow => True));
+
       --  Check that we aren't violating any restrictions
 
       if Present (N)
@@ -818,13 +842,11 @@ package body GNATLLVM.Types is
       --  type and the number of elements isn't a constant, make sure that
       --  it's at least one byte.
 
-      elsif Present (E)
-        and then Is_Aliased (E)
-        and then Is_Array_Type (A_GT)
+      elsif Present (E) and then Is_Aliased (E) and then Is_Array_Type (A_GT)
         and then not Is_Constr_Array_Subt_With_Bounds (GT)
         and then not Is_Constant (Size)
       then
-         Size := Build_Max (Size, Size_Const_Int (1));
+         Size := Build_Max (Size, Convert (Size_Const_Int (1), Size));
       end if;
 
       --  If no procedure was specified, use the default memory allocation
@@ -846,7 +868,7 @@ package body GNATLLVM.Types is
             Ptr_Size   : constant GL_Value :=
               Get_Type_Size_In_Bytes (A_Char_GL_Type);
             Total_Size : constant GL_Value :=
-              Size + To_Bytes (Align) + Ptr_Size;
+              Size + To_Bytes (Align) + Convert (Ptr_Size, Size);
             Alloc_R    : constant GL_Value :=
               Call (Get_Default_Alloc_Fn, (1 => Total_Size));
             Alloc      : constant GL_Value :=
@@ -1848,12 +1870,12 @@ package body GNATLLVM.Types is
       --  return it.
 
       elsif Is_Const (V) then
-         return (False, F (V.C_Value), No_Uint);
+         return (False, V.GT, F (V.C_Value), No_Uint);
 
       --  Otherwise, create a new representation tree node
 
       else
-         return (False, No_Uint, Create_Node (C, V.T_Value));
+         return (False, V.GT, No_Uint, Create_Node (C, V.T_Value));
       end if;
 
    end Unop;
@@ -1872,7 +1894,7 @@ package body GNATLLVM.Types is
       --  that value.
 
       if Is_Const (LHS) and then Is_Const (RHS) then
-         return (False, F (LHS.C_Value, RHS.C_Value), No_Uint);
+         return (False, LHS.GT, F (LHS.C_Value, RHS.C_Value), No_Uint);
       end if;
 
       --  Otherwise, get our two operands as a node reference or Uint
@@ -1889,7 +1911,7 @@ package body GNATLLVM.Types is
       --  should be in the RHS.
 
       else
-         return (False, No_Uint,
+         return (False, LHS.GT, No_Uint,
                  Create_Node (C, (if   Is_Static_SO_Ref (LHS_Op)
                                   then RHS_Op else LHS_Op),
                               (if   Is_Static_SO_Ref (LHS_Op)
@@ -1925,7 +1947,7 @@ package body GNATLLVM.Types is
       --  that value.
 
       if Is_Const (LHS) and then Is_Const (RHS) then
-         return (False,
+         return (False, Boolean_GL_Type,
                  (if   Ops (Op)(LHS.C_Value, RHS.C_Value)
                   then Uint_1 else Uint_0),
                  No_Uint);
@@ -1944,7 +1966,8 @@ package body GNATLLVM.Types is
       --  Otherwise, build and return a node
 
       else
-         return (False, No_Uint, Create_Node (Codes (Op), LHS_Op, RHS_Op));
+         return (False, Boolean_GL_Type, No_Uint,
+                 Create_Node (Codes (Op), LHS_Op, RHS_Op));
       end if;
 
    end I_Cmp;
@@ -1976,8 +1999,8 @@ package body GNATLLVM.Types is
       --  not worth checking for.
 
       if Is_Const (V1) and then Is_Const (V2) then
-         return (False, UI_Mul (UI_Div (V1.C_Value, V2.C_Value), V2.C_Value),
-                 No_Uint);
+         return (False, V1.GT, UI_Mul (UI_Div (V1.C_Value, V2.C_Value),
+                                      V2.C_Value), No_Uint);
       else
          --  Otherwise, we call Binop for simplicity, but note that the
          --  second operand will never be used because we've tested for
@@ -2007,8 +2030,9 @@ package body GNATLLVM.Types is
       --  easy to compute.
 
       elsif Is_Const (V1) and then Is_Const (V2) then
-         return (False, (if   Is_Const_0 (V1) and then Is_Const_1 (V2)
-                         then Uint_0 else Uint_1),
+         return (False, Boolean_GL_Type,
+                (if   Is_Const_0 (V1) and then Is_Const_1 (V2) then Uint_0
+                 else Uint_1),
                  No_Uint);
       else
          --  Otherwise, we call Binop for simplicity, but note that the
@@ -2050,7 +2074,7 @@ package body GNATLLVM.Types is
       --  Otherwise, build and return a node
 
       else
-         return (False, No_Uint,
+         return (False, V_Then.GT, No_Uint,
                  Create_Node (Cond_Expr, If_Op, Then_Op, Else_Op));
       end if;
 
@@ -2093,7 +2117,8 @@ package body GNATLLVM.Types is
 
             begin
                if not Overflowed (Result) and then not Is_Undef (Result) then
-                  return (False, To_UI (Result), No_Uint);
+                  return (False, Related_Type (Result), To_UI (Result),
+                          No_Uint);
                else
                   --  Note that the dynamic SO ref used here is also
                   --  known by the debuginfo generator.
@@ -2202,7 +2227,7 @@ package body GNATLLVM.Types is
 
       --  And now return the value
 
-      return (No (SO_Info), No_Uint, SO_Info);
+      return (No (SO_Info), Bitsize_GL_Type, No_Uint, SO_Info);
    end Emit_Expr;
 
    ------------------

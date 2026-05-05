@@ -17,8 +17,9 @@
 
 with Ada.Unchecked_Deallocation;
 
-with Nlists; use Nlists;
-with Snames; use Snames;
+with Nlists;   use Nlists;
+with Sem_Eval; use Sem_Eval;
+with Snames;   use Snames;
 
 with GNATLLVM.Aliasing;      use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays.Create; use GNATLLVM.Arrays.Create;
@@ -90,7 +91,9 @@ package body GNATLLVM.Arrays is
 
    function To_Result (V : GL_Value) return BA_Data is
      (if   Is_A_Constant_Int (V)
-      then (False, UI_From_LLI (Get_Const_Int_Value (V)), No_Uint) else No_BA)
+      then (False, Related_Type (V), UI_From_LLI (Get_Const_Int_Value (V)),
+            No_Uint)
+      else No_BA)
      with Pre => Is_Constant (V);
 
    --  We put the routines used to compute sizes into a generic so that we
@@ -105,6 +108,8 @@ package body GNATLLVM.Arrays is
       with function Size_Const_Int
         (C : ULL; Sign_Extend : Boolean := False) return Result;
       with function Const_Int (GT : GL_Type; C : Uint) return Result;
+      with function Is_Const_0 (V : Result) return Boolean;
+      with function Is_Const_1 (V : Result) return Boolean;
       with function Get_Type_Size
         (GT          : GL_Type;
          V           : GL_Value := No_GL_Value;
@@ -153,8 +158,7 @@ package body GNATLLVM.Arrays is
       function Present (V : Result) return Boolean is (V /= No_Result);
 
       function Bounds_To_Length
-        (In_Low, In_High : Result;
-         Not_Superflat   : Boolean := False) return Result;
+        (Low, High : Result; Not_Superflat : Boolean := False) return Result;
 
       function Emit_Expr_For_Minmax
         (N : N_Subexpr_Id; Is_Low : Boolean) return Result;
@@ -220,49 +224,156 @@ package body GNATLLVM.Arrays is
       ----------------------
 
       function Bounds_To_Length
-        (In_Low, In_High : Result;
-         Not_Superflat   : Boolean := False) return Result
+        (Low, High : Result; Not_Superflat : Boolean := False) return Result
       is
-         In_GT    : constant GL_Type         := Related_Type (In_Low);
-         Comp_GT  : constant GL_Type         :=
-           Wider_GL_Type (Base_GL_Type (In_GT));
-         Wide_GT  : constant GL_Type         :=
-           Wider_GL_Type (Comp_GT, Unsigned => False);
-         Low      : constant Result          := Convert (In_Low, Comp_GT);
-         High     : constant Result          := Convert (In_High, Comp_GT);
-         Const_0  : constant Result          := Const_Int (Comp_GT, Uint_0);
-         Const_1  : constant Result          := Const_Int (Comp_GT, Uint_1);
-         Wide_0   : constant Result          := Const_Int (Wide_GT, Uint_0);
-         Wide_1   : constant Result          := Const_Int (Wide_GT, Uint_1);
-         Cmp_Kind : constant Int_Predicate_T :=
-           (if Is_Unsigned_Type (Comp_GT) then Int_UGT else Int_SGT);
-         Res       : Result;
+         GT         : constant GL_Type         := Related_Type (Low);
+         Base_GT    : constant GL_Type         := Base_GL_Type (GT);
+         Is_Uns     : constant Boolean         := Is_Unsigned_Type (GT);
+         Is_Uns_BT  : constant Boolean         := Is_Unsigned_Type (Base_GT);
+         No_Compare : Boolean                  := Not_Superflat;
+         Comp_GT    : GL_Type;
+         Res        : Result;
 
       begin
-         --  If the low bound is 1, then this is either the max of zero and the
-         --  high bound or the high bound if this is known not to be superflat.
+         --  This is conceptually an easy compution. The length of an array
+         --  is High - Low + 1. However, in Ada, an array can be
+         --  "superflat", meaning that its computed length is less than
+         --  zero, in which case the effective length, the one we return
+         --  here, should be zero.  So the full computation is
+         --
+         --     Max (0, High - Low + 1).
+         --
+         --  A more efficient way of computing that is
+         --
+         --     (if High < Low then 0 else High - Low + 1)
+         --
+         --  The tricky aspects of this are efficiency and overflow. We
+         --  want to avoid the comparison, if possible, and also want to
+         --  avoid doing computions that are wider than a word if possible.
+         --
+         --  But overflow is a real concern here. High + 1 can overflow not
+         --  just in the type of the index, but in its base type and in an
+         --  unsigned type the same width as the base type. High - Low can
+         --  overflow in the the type and base type, but can only overflow
+         --  on the negative side in the unsigned version of the base type.
 
-         if Low = Const_1 then
-            Res := (if   Not_Superflat then High
-                    else Build_Max (High, Const_0));
+         --  If the low bound is 1, this is either the max of zero and the
+         --  high bound or just the high bound if this is known not to be
+         --  superflat.
 
-         --  Otherwise, it's zero if this is flat or superflat and High -
-         --  Low + 1 otherwise.
+         if Is_Const_1 (Low) then
+            return (if   Not_Superflat or else Is_Uns then High
+                    else Build_Max (High, Const_Int (GT, Uint_0)));
+
+         --  If the low bound is 0, it's not quite as simple, but still
+         --  simpler than the general case. In this case, we have to add
+         --  one to High and the result is that or zero.
+
+         elsif Is_Const_0 (Low) then
+
+            --  High + 1 may overflow in the index base type, but can't
+            --  overflow in a wider type. If the base type is signed, the
+            --  unsigned version of the type can't overflow in the positive
+            --  direction. If the array is superflat, it can be a negative
+            --  number, which is an overflow of an unsigned type, but in
+            --  that case we aren't going to use the value, so we don't
+            --  care. If we know it's not superflat, we aren't going to
+            --  test, so we do want overflow suppressed because the
+            --  conversion of -1 to unsigned and the addition will overflow
+            --  (but will be the correct value on 2's complement machines).
+
+            if not Is_Uns_BT then
+
+               Comp_GT := Unsigned_GL_Type (GT);
+               Comp_GT := (if   Not_Superflat then Comp_GT
+                           else Make_GT_Alternative (Comp_GT,
+                                                     Check_Overflow => True));
+
+            else
+               --  In the case of an unsigned base type, check if the high
+               --  bound of theindex subtype is known to be different from
+               --  the high bond of the index type. In that case, an
+               --  addition of one can't overflow, so we can use the index
+               --  base type. Otherwise, use a wider type (we could do this
+               --  test above, but we wouldn't gain anything significant).
+               --  In either case, we don't need to do the compare.
+
+               Comp_GT := (if   Compile_Time_Known_Value (Type_High_Bound (GT))
+                                and then Compile_Time_Known_Value
+                                           (Type_High_Bound (Base_GT))
+                                and then Expr_Value (Type_High_Bound (GT)) /=
+                                         Expr_Value (Type_High_Bound (Base_GT))
+                           then GT else Wider_GL_Type (Base_GT));
+               No_Compare := True;
+            end if;
+
+            Res := Convert (High, Comp_GT) + Const_Int (Comp_GT, Uint_1);
 
          else
-            --  We have to be careful here. If [Low, High] is the entire
-            --  range of Comp_GT, adding one to their difference will
-            --  overflow. But we need to be sure to do that subtraction
-            --  in Comp_GT in case of signedness differences.
+            --  Otherwise, we have the general case. We first compute
+            --  High - Low.
+            --
+            --  If the index subtype is unsigned, the result can't
+            --  overflow in the positive direction. It can overflow in the
+            --  negative direction, but only in the superflat case where
+            --  the result won't be used. So we can use the index base type.
+            --
+            --  If the index type is signed, this can overflow in the
+            --  signed type. It will not overflow in the positive
+            --  direction in the unsigned version of the base type and
+            --  will only overflow in the negative direction in the
+            --  superflat case when it's not used. The conversion to the
+            --  unsigned type can overflow if one or both bounds are
+            --  negative and the addition can appear to overflow in that
+            --  case. We ignore those overflows because the subtraction
+            --  will produce the correct result when the result is
+            --  positive. However, if we're not going to be doing the
+            --  comparison, we must avoid the negative overflow of the
+            --  unsigned type, so we have to use a wider type.
 
-            Res := Convert (High - Low, Wide_GT) + Wide_1;
+            Comp_GT :=
+              (if   Is_Uns then Base_GT
+               else (if   No_Compare then Wider_GL_Type (Base_GT)
+                     else Unsigned_GL_Type (Base_GT)));
+            Res     := Convert (High, Comp_GT) - Convert (Low, Comp_GT);
 
-            if not Not_Superflat then
-               Res := Build_Select
-                 (C_If   => I_Cmp (Cmp_Kind, Low, High, "is.empty"),
-                  C_Then => Wide_0, C_Else => Res);
-            end if;
+            --  We can have a signed type here if the index type is
+            --  unsigned but the index base type is signed. In that case,
+            --  the addition of one won't overflow in the unsigned version
+            --  of that type. Otherwise, we need to use a wider type.
+            --  But take into account the above case where we've already
+            --  widened the type. But if we're not doing a comparison,
+            --  we can't switch to an unsigned type.
+
+            Comp_GT := (if    Is_Unsigned_Type (Comp_GT)
+                        then  Wider_GL_Type (Comp_GT)
+                        elsif Is_Uns and then No_Compare then Comp_GT
+                        elsif not No_Compare then Unsigned_GL_Type (Comp_GT)
+                        else Wider_GL_Type (Comp_GT));
+
+            --  We need to be sure we check for overflow here
+
+            Comp_GT := Make_GT_Alternative (Comp_GT, Check_Overflow => True);
+            Res     := Convert (Res, Comp_GT) + Const_Int (Comp_GT, Uint_1);
          end if;
+
+         --  Unless we know we don't have to compare the bounds to check
+         --  for superflat, either because we've determined that above or
+         --  we know the array can't be superflat, do the compare. Note
+         --  that we have to do the compare in the base type because the
+         --  bounds don't have to be in range of the index type if it's a
+         --  null range.
+
+         if not No_Compare then
+            Res := Build_Select
+              (C_If   =>
+                 I_Cmp ((if Is_Uns_BT then Int_UGT else Int_SGT),
+                        Convert (Low, Base_GT), Convert (High, Base_GT)),
+               C_Then => Const_Int (Related_Type (Res), Uint_0),
+               C_Else => Res);
+         end if;
+
+         --  We're finally done
 
          return Res;
       end Bounds_To_Length;
@@ -580,6 +691,8 @@ package body GNATLLVM.Arrays is
                 No_Result          => No_GL_Value,
                 Size_Const_Int     => Bitsize_Const_Int,
                 Const_Int          => Const_Int,
+                Is_Const_0         => Is_Const_0,
+                Is_Const_1         => Is_Const_1,
                 Get_Type_Size      => Get_Type_Size,
                 I_Cmp              => I_Cmp,
                 "+"                => "+",
@@ -601,8 +714,7 @@ package body GNATLLVM.Arrays is
                 To_Result          => To_Result);
 
    function Bounds_To_Length
-     (In_Low, In_High : GL_Value;
-      Not_Superflat   : Boolean := False) return GL_Value
+     (Low, High : GL_Value; Not_Superflat : Boolean := False) return GL_Value
      renames LLVM_Size.Bounds_To_Length;
 
    function Emit_Expr_For_Minmax
@@ -642,6 +754,8 @@ package body GNATLLVM.Arrays is
                 No_Result          => No_GL_Value,
                 Size_Const_Int     => Size_Const_Int,
                 Const_Int          => Const_Int,
+                Is_Const_0         => Is_Const_0,
+                Is_Const_1         => Is_Const_1,
                 Get_Type_Size      => Get_Type_Size_In_Bytes,
                 I_Cmp              => I_Cmp,
                 "+"                => "+",
@@ -676,6 +790,8 @@ package body GNATLLVM.Arrays is
                 No_Result          => No_IDS,
                 Size_Const_Int     => Const,
                 Const_Int          => Const_Int,
+                Is_Const_0         => Is_Const_0,
+                Is_Const_1         => Is_Const_1,
                 Get_Type_Size      => Get_Type_Size,
                 "+"                => "+",
                 "-"                => "-",
@@ -710,6 +826,8 @@ package body GNATLLVM.Arrays is
                 No_Result          => No_BA,
                 Size_Const_Int     => Const,
                 Const_Int          => Const_Int,
+                Is_Const_0         => Is_Const_0,
+                Is_Const_1         => Is_Const_1,
                 Get_Type_Size      => Get_Type_Size,
                 "+"                => "+",
                 "-"                => "-",
@@ -737,8 +855,7 @@ package body GNATLLVM.Arrays is
      renames BA_Size.Get_Array_Type_Size;
 
    function Bounds_To_Length
-     (In_Low, In_High : BA_Data;
-      Not_Superflat   : Boolean := False) return BA_Data
+     (Low, High : BA_Data; Not_Superflat : Boolean := False) return BA_Data
      renames BA_Size.Bounds_To_Length;
 
    -------------------------

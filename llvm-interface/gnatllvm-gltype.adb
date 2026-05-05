@@ -645,9 +645,9 @@ package body GNATLLVM.GLType is
       begin
          --  Record the basic parameters of what we're making
 
-         GTI.Size      := Size_V;
-         GTI.Alignment := Align_N;
-         GTI.Max_Size  := Needs_Max;
+         GTI.Size           := Size_V;
+         GTI.Alignment      := Align_N;
+         GTI.Max_Size       := Needs_Max;
          GTI.Check_Overflow := Check_Overflow or In_GTI.Check_Overflow;
 
          --  If this is a biased type, make a narrower integer and set the
@@ -782,7 +782,9 @@ package body GNATLLVM.GLType is
 
    begin
       GTI.MD             := MD;
-      GTI.Kind           := (if Is_Dummy then Dummy else Primitive);
+      GTI.Kind           :=
+        (if    GTI.Kind not in None | Dummy then GTI.Kind
+         elsif Is_Dummy then Dummy else Primitive);
       GTI.Check_Overflow := GT_Check_Overflow (GT)
          or else not Is_Modular_Integer_Type (GT);
       Mark_Default (GT);
@@ -1413,8 +1415,7 @@ package body GNATLLVM.GLType is
    -- Wider_GL_Type --
    -------------------
 
-   function Wider_GL_Type
-     (GT : GL_Type; Unsigned : Boolean := False) return GL_Type
+   function Wider_GL_Type (GT : GL_Type) return GL_Type
    is
       Orig_Size     : constant Nat     := Get_Scalar_Bit_Size (GT);
       Pow2_Size     : constant Nat     :=
@@ -1424,16 +1425,12 @@ package body GNATLLVM.GLType is
       Is_Small      : constant Boolean := Pow2_Size < Bits_Per_Word;
       Size          : constant Nat     :=
         (if Is_Small then 2 * Pow2_Size else Pow2_Size);
-      Want_Unsigned : constant Boolean :=
-        Unsigned or else Is_Unsigned_Type (GT);
 
    begin
       --  ??? We want to have Check_Oveflow as True (the below call doesn't
       --  do anything, but we have to clean up Bounds_To_Length first.
 
-      return
-        Make_GT_Alternative (Full_GL_Type (Stand_Type (Size, Want_Unsigned)),
-                             Check_Overflow => False);
+      return Full_GL_Type (Stand_Type (Size, Is_Unsigned_Type (GT)));
    end Wider_GL_Type;
 
    ------------------

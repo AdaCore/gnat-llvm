@@ -952,12 +952,6 @@ package body GNATLLVM.DebugInfo is
       E_Index : Opt_N_Is_Index_Id := First_Index (Array_TE);
       Scope   : constant Metadata_T := Get_Scope_For (Array_TE);
    begin
-      if Is_Unconstrained_Array (Array_TE) then
-         --  LLVM does not allow a nameless unspecified type, so use
-         --  the original name in this instance.
-         return DI_Create_Unspecified_Type (Get_Name (Array_TE));
-      end if;
-
       --  For arrays, get the component type's data.
 
       for J in Ranges'Range loop

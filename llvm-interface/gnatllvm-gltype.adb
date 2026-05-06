@@ -281,6 +281,15 @@ package body GNATLLVM.GLType is
 
    end GL_Type_Info_Is_Valid_Int;
 
+   ---------------
+   -- Elaborate --
+   ---------------
+
+   procedure Elaborate (GT : GL_Type) is
+   begin
+      Discard (Type_Of (GT));
+   end Elaborate;
+
    ----------
    -- Next --
    ----------
@@ -369,7 +378,7 @@ package body GNATLLVM.GLType is
    begin
       return GT : GL_Type := Get_GL_Type (TE) do
          if No (GT) and then Create then
-            Discard (Type_Of (TE));
+            Elaborate (TE);
             GT := Get_GL_Type (TE);
          end if;
       end return;
@@ -854,7 +863,7 @@ package body GNATLLVM.GLType is
       --  we may not have succeded, so we may get the dummy type back.
 
       if Present (GT) and then Is_Dummy_Type (GT) then
-         Discard (Type_Of (TE));
+         Elaborate (TE);
          GT := Get_GL_Type (TE);
 
          while Present (GT) loop
@@ -920,7 +929,7 @@ package body GNATLLVM.GLType is
          --  type back.
 
          if Create and then Present (GT) and then Is_Dummy_Type (GT) then
-            Discard (Type_Of (TE));
+            Elaborate (TE);
             GT := Get_GL_Type (TE);
 
             while Present (GT) loop

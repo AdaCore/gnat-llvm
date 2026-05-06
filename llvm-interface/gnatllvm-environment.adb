@@ -52,7 +52,7 @@ package body GNATLLVM.Environment is
       Is_Being_Elaborated   : Boolean;
       --  True if we're in the process of elaborating this type.
 
-      Debug_Metadata            : Metadata_T;
+      Debug_Metadata        : Metadata_T;
       --  Cache for debug information for this entity.
       --  LLVM will also cache this, but it'll save us the time of
       --  recomputing debug info, especially for complex types.
@@ -274,7 +274,7 @@ package body GNATLLVM.Environment is
             if not Is_Being_Elaborated (TE)
               and then (No (GT) or else Is_Dummy_Type (GT))
             then
-               Discard (Type_Of (TE));
+               Elaborate (TE);
             end if;
          end;
       end if;

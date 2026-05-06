@@ -90,6 +90,11 @@ package GNATLLVM.Types is
           Post => Present (Type_Of'Result), Inline;
    --  Given a GNAT type TE, return the corresponding MD_Type
 
+   procedure Elaborate       (TE : Void_Or_Type_Kind_Id) with Inline;
+   procedure Elaborate_Etype (TE : Void_Or_Type_Kind_Id) with Inline;
+   procedure Elaborate_Scope (F  : Record_Field_Kind_Id) with Inline;
+   --  Shortcuts to force elaboration of types
+
    procedure Check_OK_For_Atomic_Type
      (GT : GL_Type; E : Entity_Id; Is_Component : Boolean := False)
      with Pre => Present (GT) and then Present (E);

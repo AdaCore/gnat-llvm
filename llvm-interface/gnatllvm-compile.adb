@@ -699,7 +699,7 @@ package body GNATLLVM.Compile is
          begin
             --  Start by elaborating this type via its fullest view
 
-            Discard (Type_Of (FT));
+            Elaborate (FT);
 
             --  If the fullest view isn't the same as the type being
             --  declared, copy the annotations from the full type to the

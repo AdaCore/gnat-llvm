@@ -46,6 +46,8 @@ package GNATLLVM.GLType is
 
    procedure Discard (GT : GL_Type) is null;
 
+   procedure Elaborate (GT : GL_Type) with Inline;
+
    function New_GT (TE : Void_Or_Type_Kind_Id) return GL_Type
      with Post => Present (New_GT'Result);
    --  Create a new GL_Type with None kind for type TE

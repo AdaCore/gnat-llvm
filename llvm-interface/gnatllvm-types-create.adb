@@ -321,7 +321,7 @@ package body GNATLLVM.Types.Create is
       --  If this is a derived type, ensure we've processed that type first
 
       if Is_Derived_Type (TE) then
-         Discard (Type_Of (Full_Etype (TE)));
+         Elaborate_Etype (TE);
       end if;
 
       --  Now see if this isn't a base type and process the base type if
@@ -333,7 +333,7 @@ package body GNATLLVM.Types.Create is
             BT : constant Type_Kind_Id := Full_Base_Type (TE);
 
          begin
-            Discard (Type_Of (BT));
+            Elaborate (BT);
 
             if Has_Size_Clause (BT) and then not Known_RM_Size (TE)
               and then Known_RM_Size (BT)

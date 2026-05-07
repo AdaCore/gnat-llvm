@@ -1891,10 +1891,10 @@ package body GNATLLVM.Blocks is
 
    procedure Reset_Block_Tables is
    begin
-      Label_Info.Set_Last    (Label_Info_Low_Bound);
-      Block_Stack.Set_Last   (0);
-      Dispatch_Info.Set_Last (0);
-      Open_Branches.Set_Last (0);
+      Label_Info.Set_Last (Label_Info_Low_Bound);
+      Block_Stack.Clear;
+      Dispatch_Info.Clear;
+      Open_Branches.Clear;
    end Reset_Block_Tables;
 
    ----------------

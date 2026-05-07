@@ -111,7 +111,7 @@ package body GNATLLVM.Exprs is
          end;
       end loop;
 
-      Writeback_Stack.Set_Last (0);
+      Writeback_Stack.Clear;
    end Perform_Writebacks;
 
    ------------------

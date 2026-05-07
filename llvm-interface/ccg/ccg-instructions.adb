@@ -422,7 +422,7 @@ package body CCG.Instructions is
 
    procedure Clear_Pending_Values is
    begin
-      Pending_Values.Set_Last (0);
+      Pending_Values.Clear;
       Pending_Values_Map.Reset;
    end Clear_Pending_Values;
 

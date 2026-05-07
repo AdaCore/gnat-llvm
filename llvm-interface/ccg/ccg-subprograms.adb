@@ -291,7 +291,7 @@ package body CCG.Subprograms is
 
    procedure Clear_Source_Order is
    begin
-      Source_Order.Set_Last (0);
+      Source_Order.Clear;
    end Clear_Source_Order;
 
    --------------------

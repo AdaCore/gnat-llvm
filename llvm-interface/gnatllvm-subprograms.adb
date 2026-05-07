@@ -1456,7 +1456,7 @@ package body GNATLLVM.Subprograms is
          Elabs (J) := Elaborations.Table (J);
       end loop;
 
-      Elaborations.Set_Last (0);
+      Elaborations.Clear;
       Append_Range (1, Old_Pos);
       Append_Range (New_Start + 1, Elabs'Last);
       Append_Range (Old_Pos + 1, New_Start);

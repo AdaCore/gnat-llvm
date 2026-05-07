@@ -524,9 +524,9 @@ package body GNATLLVM.Types is
    -- Elaborate_Etype --
    ---------------------
 
-   procedure Elaborate_Etype (TE : Void_Or_Type_Kind_Id) is
+   procedure Elaborate_Etype (N : N_Has_Etype_Id) is
    begin
-      Discard (Type_Of (Full_Etype (TE)));
+      Discard (Type_Of (Full_Etype (N)));
    end Elaborate_Etype;
 
    ---------------------

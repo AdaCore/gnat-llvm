@@ -91,7 +91,7 @@ package GNATLLVM.Types is
    --  Given a GNAT type TE, return the corresponding MD_Type
 
    procedure Elaborate       (TE : Void_Or_Type_Kind_Id) with Inline;
-   procedure Elaborate_Etype (TE : Void_Or_Type_Kind_Id) with Inline;
+   procedure Elaborate_Etype (N  : N_Has_Etype_Id)       with Inline;
    procedure Elaborate_Scope (F  : Record_Field_Kind_Id) with Inline;
    --  Shortcuts to force elaboration of types
 

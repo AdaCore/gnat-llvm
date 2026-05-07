@@ -1703,7 +1703,7 @@ package body GNATLLVM.Records is
    begin
       --  We need to be sure that the type of the field is elaborated
 
-      Discard (Type_Of (GT));
+      Elaborate (GT);
 
       --  If we have a rep clause, we'll use that rather than packing it.
       --  If the record isn't packed, neither is the field. Aliased fields

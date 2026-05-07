@@ -957,7 +957,7 @@ package body GNATLLVM.Variables is
                   if Ekind (F) /= E_Discriminant
                     or else not Is_Unchecked_Union (Full_Scope (F))
                   then
-                     Discard (Type_Of (Full_Scope (F)));
+                     Elaborate_Scope (F);
                      F := Find_Matching_Field (Full_Scope (F), F);
                      exit when not Box_Present (Expr)
                        and then (not Is_No_Elab_For_Convert (Expression (Expr),

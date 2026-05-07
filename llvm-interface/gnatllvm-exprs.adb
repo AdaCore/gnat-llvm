@@ -1251,7 +1251,7 @@ package body GNATLLVM.Exprs is
                function Elaborate_Type (N : Node_Id) return Traverse_Result is
                begin
                   if Nkind (N) in N_Has_Etype and then Present (Etype (N)) then
-                     Discard (Type_Of (Full_Etype (N)));
+                     Elaborate_Etype (N);
                   end if;
 
                   return OK;

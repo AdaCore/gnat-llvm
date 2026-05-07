@@ -111,7 +111,7 @@ package body GNATLLVM.Records.Field_Ref is
    begin
       --  Ensure R_TE is defined, then find the matching field
 
-      Discard (Type_Of (R_TE));
+      Elaborate (R_TE);
       return Find_Matching_Field (R_TE, In_F);
 
    end Selector_Field;
@@ -434,7 +434,7 @@ package body GNATLLVM.Records.Field_Ref is
    begin
       --  Ensure TE is elaborated since we may need info about this field
 
-      Discard (Type_Of (TE));
+      Elaborate (TE);
       return Find_Matching_Field (TE, F);
    end Field_To_Use;
 

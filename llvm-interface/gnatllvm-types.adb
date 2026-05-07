@@ -511,6 +511,33 @@ package body GNATLLVM.Types is
       return Create_Type (TE);
    end Type_Of;
 
+   ---------------
+   -- Elaborate --
+   ---------------
+
+   procedure Elaborate (TE : Void_Or_Type_Kind_Id) is
+   begin
+      Discard (Type_Of (TE));
+   end Elaborate;
+
+   ---------------------
+   -- Elaborate_Etype --
+   ---------------------
+
+   procedure Elaborate_Etype (TE : Void_Or_Type_Kind_Id) is
+   begin
+      Discard (Type_Of (Full_Etype (TE)));
+   end Elaborate_Etype;
+
+   ---------------------
+   -- Elaborate_Scope --
+   ---------------------
+
+   procedure Elaborate_Scope (F : Record_Field_Kind_Id) is
+   begin
+      Discard (Type_Of (Full_Scope (F)));
+   end Elaborate_Scope;
+
    ----------------------
    -- Move_Into_Memory --
    ----------------------
@@ -1546,10 +1573,16 @@ package body GNATLLVM.Types is
    begin
       --  We have to be careful here because even though we don't
       --  usually need to evaluate the Prefix to get its size, we are
-      --  required to, so it must be static
+      --  required to, so it must be static.
 
       if No (E) and then not Is_No_Elab_Needed (Prefix (N)) then
          return No_Uint;
+      end if;
+
+      --  If Our_E is a field, make sure its record has been elaborated
+
+      if Ekind (Our_E) in Record_Field_Kind then
+         Elaborate_Scope (Our_E);
       end if;
 
       case Attr is

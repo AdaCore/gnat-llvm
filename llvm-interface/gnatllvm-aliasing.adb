@@ -190,10 +190,9 @@ package body GNATLLVM.Aliasing is
    --  definition of base type or using a parent relationship among
    --  tagged types.
 
-   function Universal_Aliasing_Including_Bases
-     (TE : Type_Kind_Id) return Boolean;
-   --  Return True iff TE or any base type for aliasing has Universal_Aliasing
-   --  set.
+   function Effective_Universal_Aliasing (TE : Type_Kind_Id) return Boolean;
+   --  Return True iff TE or any base or component type for aliasing has
+   --  Universal_Aliasing set.
 
    function Get_TBAA_Type
      (TE : Void_Or_Type_Kind_Id; Kind : TBAA_Kind) return Metadata_T;
@@ -313,19 +312,20 @@ package body GNATLLVM.Aliasing is
 
    end Base_Type_For_Aliasing;
 
-   ----------------------------------------
-   -- Universal_Aliasing_Including_Bases --
-   ----------------------------------------
+   ----------------------------------
+   -- Effective_Universal_Aliasing --
+   ----------------------------------
 
-   function Universal_Aliasing_Including_Bases
-     (TE : Type_Kind_Id) return Boolean
+   function Effective_Universal_Aliasing (TE : Type_Kind_Id) return Boolean
    is
       BT : constant Type_Kind_Id := Base_Type_For_Aliasing (TE);
 
    begin
       return Universal_Aliasing (TE)
-        or else (BT /= TE and then Universal_Aliasing_Including_Bases (BT));
-   end Universal_Aliasing_Including_Bases;
+        or else (BT /= TE and then Effective_Universal_Aliasing (BT))
+        or else (Is_Array_Type (TE)
+                 and then Effective_Universal_Aliasing (Component_Type (TE)));
+   end Effective_Universal_Aliasing;
 
    --------------------
    -- Search_For_UCs --
@@ -420,21 +420,24 @@ package body GNATLLVM.Aliasing is
       ------------------
 
       function Check_For_UC (N : Node_Id) return Traverse_Result is
-         STE : Type_Kind_Id;
-         TTE : Type_Kind_Id;
+         Valid : Boolean := True;
+         STE   : Type_Kind_Id;
+         TTE   : Type_Kind_Id;
+         SDT   : Type_Kind_Id;
+         TDT   : Type_Kind_Id;
 
          function OK_Unit
            (N  : N_Validate_Unchecked_Conversion_Id;
             TE : Type_Kind_Id) return Boolean
          is
            (In_Same_Extended_Unit (N, TE)
-              or else In_Extended_Main_Code_Unit (TE));
+            or else In_Extended_Main_Code_Unit (TE));
          --  We can do something with TE if it's either in the code unit
          --  that we're compiling or in the same (extended) unit as the UC.
 
          function Is_Data_Access_Type (TE : Type_Kind_Id) return Boolean is
            (Is_Access_Type (TE)
-              and then Ekind (TE) /= E_Access_Subprogram_Type);
+            and then Ekind (TE) /= E_Access_Subprogram_Type);
          --  We don't want to treat access to subprogram as an access type
          --  since we never load a subprogram as data.
 
@@ -446,91 +449,103 @@ package body GNATLLVM.Aliasing is
             Scan (Library_Unit (N));
             return OK;
 
-         --  Ignore if this is generic
+            --  Ignore if this is generic
 
          elsif Is_Generic_Item (N) then
             return Skip;
 
          --  All we care about are N_Validate_Unchecked_Conversion nodes
-         --  between access types. If the target type has
-         --  No_Strict_Aliasing set, we're taking care of this another way,
-         --  so we're OK here.
+         --  between access types and only if we're optimizing.
 
-         elsif Nkind (N) /= N_Validate_Unchecked_Conversion then
+         elsif Nkind (N) /= N_Validate_Unchecked_Conversion
+           or else Code_Gen_Level = Code_Gen_Level_None
+         then
             return OK;
          end if;
 
          STE := Get_Fullest_View (Source_Type (N));
          TTE := Get_Fullest_View (Target_Type (N));
 
-         if not Is_Data_Access_Type (STE)
-           or else not Is_Data_Access_Type (TTE)
-           or else No_Strict_Aliasing (TTE)
+         if not Is_Data_Access_Type (STE) or else not Is_Data_Access_Type (TTE)
+         then
+            return OK;
+         end if;
+
+         --  If the target type isn't an unconstained array and has
+         --  No_Strict_Aliasing set, we're taking care of this another way,
+         --  so we're OK here.
+
+         SDT := Full_Designated_Type (STE);
+         TDT := Full_Designated_Type (TTE);
+
+         if not Is_Unconstrained_Array (TDT) and then No_Strict_Aliasing (TTE)
          then
             return OK;
          end if;
 
          --  There's a potential issue with these types, so we have to check
          --  further and possibly take some action.
+         --
+         --  If the the target is either the same or a subtype of the
+         --  source, we have nothing to do. This can happen when we have
+         --  two access types to the same underlying type or in some
+         --  subtype cases. Likewise if the source or target has been
+         --  marked for universal aliasing.
 
-         declare
-            SDT   : constant Type_Kind_Id := Full_Designated_Type (STE);
-            TDT   : constant Type_Kind_Id := Full_Designated_Type (TTE);
-            Valid : Boolean               := True;
+         if Is_Subtype_For_Aliasing (TDT, SDT)
+           or else Effective_Universal_Aliasing (TDT)
+           or else Effective_Universal_Aliasing (SDT)
+         then
+            return OK;
 
-         begin
-            --  If the the target is either the same or a subtype of the
-            --  source, we have nothing to do. This can happen when we
-            --  have two access types to the same underlying type or in
-            --  some subtype cases. Likewise if the target has been marked
-            --  for universal aliasing.
-
-            if Is_Subtype_For_Aliasing (TDT, SDT)
-              or else Universal_Aliasing_Including_Bases (TDT)
-            then
-               return OK;
-
-            --  The most efficient way of dealing with this if the
-            --  target is an access type is to set No_Strict_Aliasing on
-            --  that type because that will only affect references to the
-            --  designated type via that access type. The front end has
-            --  already done that for us in the cases where it can be done
-            --  and we've checked for that above.
+            --  The most efficient way of dealing with this if the target is
+            --  an access type is to set No_Strict_Aliasing on that type
+            --  because that will only affect references to the designated
+            --  type via that access type. The front end has already done that
+            --  for us in the cases where it can be done and we've checked for
+            --  that above.
             --
             --  The next best option is to make a table entry. However, we
             --  can't do that if this UC is in a body and one of the types
             --  isn't in the same compilation unit.
 
-            elsif Nkind (Unit (Enclosing_Comp_Unit_Node (N)))
-                    in N_Package_Body | N_Subprogram_Body
-              and then (not OK_Unit (N, SDT) or else not OK_Unit (N, TDT))
-            then
-               --  If the target type is in the same unit (meaning that the
-               --  source type isn't), we can still make this work by
-               --  setting Universal_Aliasing on the target if it's not
-               --  an access type.
+         elsif Nkind (Unit (Enclosing_Comp_Unit_Node (N)))
+           in N_Package_Body | N_Subprogram_Body
+           and then (not OK_Unit (N, SDT) or else not OK_Unit (N, TDT))
+         then
+            --  If the target type is in the same unit (meaning that the
+            --  source type isn't), we can still make this work by
+            --  setting Universal_Aliasing on the target if it's not
+            --  an access type.
 
-               if OK_Unit (N, TDT) and then not Is_Data_Access_Type (TTE) then
-                  Set_Universal_Aliasing (TDT, True);
-                  return OK;
-
-               --  Otherwise, issue a warning that there may be an issue.
-               --  But if we aren't optimizing, there's actually no problem.
-
-               elsif Code_Gen_Level /= Code_Gen_Level_None
-                 and then not Is_Unconstrained_Array (TDT)
-               then
-                  Error_Msg_NE
-                    ("??possible aliasing problem for type&", N, TTE);
-                  Error_Msg_N
-                    ("\\??use -fno-strict-aliasing switch for references", N);
-                  Error_Msg_NE
-                    ("\\??or use `pragma No_Strict_Aliasing (&);`", N, TTE);
-               end if;
+            if OK_Unit (N, TDT) and then not Is_Data_Access_Type (TTE) then
+               Set_Universal_Aliasing (TDT, True);
+               return OK;
+            else
+               Valid := False;
             end if;
+         end if;
 
+         --  If this is valid, try to make the table entry
+
+         if Valid then
             Add_To_UC (SDT, TDT, Valid);
-         end;
+         end if;
+
+         --  If it's not valid or we can't make the table entry,
+         --  write warnings.
+
+         if not Valid then
+            Error_Msg_NE
+              ("??possible aliasing problem for type&", N, TTE);
+            Error_Msg_N
+              ("\\??use -fno-strict-aliasing switch for references", N);
+
+            if not Is_Unconstrained_Array (TDT) then
+               Error_Msg_NE
+                 ("\\??or use `pragma No_Strict_Aliasing (&);`", N, TTE);
+            end if;
+         end if;
 
          return OK;
       end Check_For_UC;
@@ -1036,7 +1051,7 @@ package body GNATLLVM.Aliasing is
       --  TBAA tag.
 
       if No_Strict_Aliasing_Flag or else Ekind (E_TE) = E_Void
-        or else Universal_Aliasing_Including_Bases (TE)
+        or else Effective_Universal_Aliasing (TE)
       then
          return No_Metadata_T;
 

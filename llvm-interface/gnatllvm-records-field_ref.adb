@@ -967,11 +967,14 @@ package body GNATLLVM.Records.Field_Ref is
       --  bits corresponding to the field.
 
       if Is_Reference (New_RHS) then
-         --  Make sure to do a byte-aligned load, otherwise the behavior may
-         --  be undefined.
-         if Num_Bits mod 8 /= 0 then
+
+         --  Always do a byte-aligned load to avod undefined behavior
+
+         if Num_Bits mod BPU /= 0 then
+
             declare
                Aligned_MD : constant MD_Type := Int_Ty (Byte_Align (Num_Bits));
+
             begin
                New_RHS :=
                   Ptr_To_Relationship (New_RHS, Pointer_Type (Aligned_MD),
@@ -979,6 +982,7 @@ package body GNATLLVM.Records.Field_Ref is
                Set_Unknown_MD (New_RHS, Aligned_MD);
             end;
          end if;
+
          New_RHS := Load (New_RHS);
       end if;
 

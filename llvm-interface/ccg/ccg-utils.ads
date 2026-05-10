@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Ada.Unchecked_Conversion;
-with Ada.Containers; use Ada.Containers;
 
 with Interfaces.C; use Interfaces.C;
 
@@ -240,18 +239,18 @@ package CCG.Utils is
                                                   System.Address);
    function UC_S  is new Ada.Unchecked_Conversion (Str, System.Address);
 
-   function Hash (V : Value_T)       return Hash_Type is
-     (Hash_Type'Mod (To_Integer (UC_V (V)) / (V'Size / 8)));
-   function Hash (T : Type_T)        return Hash_Type is
-     (Hash_Type'Mod (To_Integer (UC_T (T)) / (T'Size / 8)))
+   function Hash (V : Value_T)       return Header_Num is
+     (Header_Num ((To_Integer (UC_V (V)) / (V'Size / 8)) mod Header_Max));
+   function Hash (T : Type_T)        return Header_Num is
+     (Header_Num ((To_Integer (UC_T (T)) / (T'Size / 8)) mod Header_Max))
      with Pre => Present (T);
-   function Hash (B : Basic_Block_T) return Hash_Type is
-     (Hash_Type'Mod (To_Integer (UC_B (B)) / (B'Size / 8)))
+   function Hash (B : Basic_Block_T) return Header_Num is
+     (Header_Num ((To_Integer (UC_B (B)) / (B'Size / 8)) mod Header_Max))
      with Pre => Present (B);
-   function Hash (S : Str) return Hash_Type is
-     (Hash_Type'Mod (To_Integer (UC_S (S)) / (S'Size / 8)));
-   function Hash (MD : MD_Type)        return Hash_Type is
-     (Hash_Type'Mod (MD))
+   function Hash (S : Str) return Header_Num is
+     (Header_Num ((To_Integer (UC_S (S)) / (S'Size / 8)) mod Header_Max));
+   function Hash (MD : MD_Type)      return Header_Num is
+     (Header_Num (Integer (MD) mod Header_Max))
      with Pre => Present (MD);
    --  Hash functions for LLVM values, types, basic blocks, and Strs
 
@@ -260,28 +259,28 @@ package CCG.Utils is
    --  that do not involve a Value_T, so we don't want to use Ada.Strings.Hash
    --  but instead accumulate the hash value piece by piece.
 
-   procedure Update_Hash (H : in out Hash_Type; Key : Hash_Type) with Inline;
+   procedure Update_Hash (H : in out Header_Num; Key : Integer) with Inline;
    --  Update H by including the value of Key
 
-   procedure Update_Hash (H : in out Hash_Type; S : String)      with Inline;
+   procedure Update_Hash (H : in out Header_Num; S : String)      with Inline;
    --  Update H taking into account the characters in S
 
-   procedure Update_Hash (H : in out Hash_Type; B : Boolean)      with Inline;
+   procedure Update_Hash (H : in out Header_Num; B : Boolean)      with Inline;
    --  Update H taking into account the value of B
 
-   procedure Update_Hash (H : in out Hash_Type; V : Value_T)
+   procedure Update_Hash (H : in out Header_Num; V : Value_T)
      with Pre => Present (V), Inline;
    --  Update H taking into account the value V
 
-   procedure Update_Hash (H : in out Hash_Type; MD : MD_Type)
+   procedure Update_Hash (H : in out Header_Num; MD : MD_Type)
      with Pre => Present (MD), Inline;
    --  Update H taking into account the type MD
 
-   procedure Update_Hash (H : in out Hash_Type; B : Basic_Block_T)
+   procedure Update_Hash (H : in out Header_Num; B : Basic_Block_T)
      with Pre => Present (B), Inline;
    --  Update H taking into account the basic block B
 
-   procedure Update_Hash (H : in out Hash_Type; S : Str)
+   procedure Update_Hash (H : in out Header_Num; S : Str)
      with Inline;
    --  Update H taking into account the Str S
 

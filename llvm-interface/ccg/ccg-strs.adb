@@ -15,8 +15,7 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Ada.Containers; use Ada.Containers;
-with Ada.Containers.Hashed_Sets;
+with GNAT.HTable; use GNAT.HTable;
 
 with Output; use Output;
 
@@ -30,25 +29,28 @@ with CCG.Write;       use CCG.Write;
 
 package body CCG.Strs is
 
-   function Hash (S : Str_Record) return Hash_Type;
-   function Hash (S : Str)        return Hash_Type is
+   function Hash (S : Str_Record) return Header_Num;
+   function Hash (S : Str)        return Header_Num is
      (Hash (S.all))
      with Pre => Present (S);
    --  Given an array of string components or an access to it (how we denote
    --  strings, return its hash value.
 
-   procedure Update_Hash (H : in out Hash_Type; Flags : Value_Flags)
+   procedure Update_Hash (H : in out Header_Num; Flags : Value_Flags)
      with Inline;
-   procedure Update_Hash (H : in out Hash_Type; Flags : Type_Flags)
+   procedure Update_Hash (H : in out Header_Num; Flags : Type_Flags)
      with Inline;
    --  Update the hash key from Flags
 
-   package Str_Sets is new Ada.Containers.Hashed_Sets
-     (Element_Type        => Str,
-      Hash                => Hash,
-      Equivalent_Elements => "=");
-   Str_Set : Str_Sets.Set;
-   --  The set of all strings that we've made so far
+   package Str_Set is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => Str,
+      Element    => Str,
+      No_Element => No_Str,
+      Hash       => Hash,
+      Equal      => "=");
+   --  The set of all strings that we've made so far implemented as a
+   --  map whose value is the allocated version of the Str that we're using.
 
    function Undup_Str (S : aliased Str_Record) return Str
      with Post => Present (Undup_Str'Result), Pure_Function;
@@ -58,7 +60,7 @@ package body CCG.Strs is
    -- Update_Hash --
    -----------------
 
-   procedure Update_Hash (H : in out Hash_Type; Flags : Value_Flags) is
+   procedure Update_Hash (H : in out Header_Num; Flags : Value_Flags) is
    begin
       Update_Hash (H, Flags.LHS);
       Update_Hash (H, Flags.Initializer);
@@ -73,7 +75,7 @@ package body CCG.Strs is
    -- Update_Hash --
    -----------------
 
-   procedure Update_Hash (H : in out Hash_Type; Flags : Type_Flags) is
+   procedure Update_Hash (H : in out Header_Num; Flags : Type_Flags) is
    begin
       Update_Hash (H, Flags.Need_Unsigned);
       Update_Hash (H, Flags.Need_Signed);
@@ -83,9 +85,9 @@ package body CCG.Strs is
    -- Hash --
    ----------
 
-   function Hash (S : Str_Record) return Hash_Type is
+   function Hash (S : Str_Record) return Header_Num is
    begin
-      return H : Hash_Type := 0 do
+      return H : Header_Num := 0 do
          for J in 1 .. S.Length loop
 
             declare
@@ -98,7 +100,7 @@ package body CCG.Strs is
                   when Value =>
                      Update_Hash (H, Comp.Val);
                      Update_Hash (H, Comp.V_Flags);
-                     Update_Hash (H, Hash_Type (Precedence'Pos (Comp.For_P)));
+                     Update_Hash (H, Integer (Precedence'Pos (Comp.For_P)));
                   when Typ =>
                      Update_Hash (H, Comp.MD);
                      Update_Hash (H, Comp.Name);
@@ -106,9 +108,9 @@ package body CCG.Strs is
                   when BB =>
                      Update_Hash (H, Comp.B);
                   when Number =>
-                     Update_Hash (H, Hash_Type (Comp.N));
+                     Update_Hash (H, Integer (Comp.N));
                   when Entity =>
-                     Update_Hash (H, Hash_Type (Comp.E));
+                     Update_Hash (H, Integer (Comp.E));
                      Update_Hash (H, Comp.E_Flags);
                end case;
             end;
@@ -238,21 +240,17 @@ package body CCG.Strs is
    ---------------
 
    function Undup_Str (S : aliased Str_Record) return Str is
-      use Str_Sets;
-      Position : constant Cursor := Find (Str_Set, S'Unchecked_Access);
-      New_S    : Str;
-
    begin
-      --  See if we already have this string in the set. If so, return the
-      --  element. If not, make a copy in the heap and add that to the set.
+      return New_S : Str := Str_Set.Get (S'Unchecked_Access) do
 
-      if Has_Element (Position) then
-         return Element (Position);
-      else
-         New_S := new Str_Record'(S);
-         Insert (Str_Set, New_S);
-         return New_S;
-      end if;
+         --  If we don't already have this string in the set, make a copy in
+         --  the heap and add that to the set.
+
+         if No (New_S) then
+            New_S := new Str_Record'(S);
+            Str_Set.Set (New_S, New_S);
+         end if;
+      end return;
    end Undup_Str;
 
    ------------------

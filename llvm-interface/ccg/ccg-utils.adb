@@ -394,23 +394,20 @@ package body CCG.Utils is
    -- Update_Hash --
    ----------------
 
-   procedure Update_Hash (H : in out Hash_Type; Key : Hash_Type) is
-      function Shift_Left
-        (Value  : Hash_Type;
-         Amount : Natural) return Hash_Type;
-      pragma Import (Intrinsic, Shift_Left);
+   procedure Update_Hash (H : in out Header_Num; Key : Integer) is
    begin
-      H := Key + Shift_Left (H, 6) + Shift_Left (H, 16) - H;
+      H := Header_Num ((Key + Integer (H) * 2 ** 6 +
+                        Integer (H) * 2 ** 16 - H) mod Header_Max);
    end Update_Hash;
 
    -----------------
    -- Update_Hash --
    ----------------
 
-   procedure Update_Hash (H : in out Hash_Type; S : String) is
+   procedure Update_Hash (H : in out Header_Num; S : String) is
    begin
       for C of S loop
-         Update_Hash (H, Hash_Type (Character'Pos (C)));
+         Update_Hash (H, Header_Num (Character'Pos (C)));
       end loop;
    end Update_Hash;
 
@@ -418,16 +415,16 @@ package body CCG.Utils is
    -- Update_Hash --
    -----------------
 
-   procedure Update_Hash (H : in out Hash_Type; B : Boolean) is
+   procedure Update_Hash (H : in out Header_Num; B : Boolean) is
    begin
-      Update_Hash (H, Hash_Type (Boolean'Pos (B)));
+      Update_Hash (H, Header_Num (Boolean'Pos (B)));
    end Update_Hash;
 
    -----------------
    -- Update_Hash --
    -----------------
 
-   procedure Update_Hash (H : in out Hash_Type; V : Value_T) is
+   procedure Update_Hash (H : in out Header_Num; V : Value_T) is
    begin
       Update_Hash (H, Hash (V));
    end Update_Hash;
@@ -436,7 +433,7 @@ package body CCG.Utils is
    -- Update_Hash --
    -----------------
 
-   procedure Update_Hash (H : in out Hash_Type; MD : MD_Type) is
+   procedure Update_Hash (H : in out Header_Num; MD : MD_Type) is
    begin
       Update_Hash (H, Hash (MD));
    end Update_Hash;
@@ -445,7 +442,7 @@ package body CCG.Utils is
    -- Update_Hash --
    -----------------
 
-   procedure Update_Hash (H : in out Hash_Type; B : Basic_Block_T) is
+   procedure Update_Hash (H : in out Header_Num; B : Basic_Block_T) is
    begin
       Update_Hash (H, Hash (B));
    end Update_Hash;
@@ -454,7 +451,7 @@ package body CCG.Utils is
    -- Update_Hash --
    -----------------
 
-   procedure Update_Hash (H : in out Hash_Type; S : Str) is
+   procedure Update_Hash (H : in out Header_Num; S : Str) is
    begin
       Update_Hash (H, Hash (S));
    end Update_Hash;

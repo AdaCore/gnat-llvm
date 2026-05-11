@@ -88,9 +88,6 @@ package body GNATLLVM.MDType is
       Cont_Type      : MD_Type := No_MD_Type;
       --  If Present, the continuation of this type
 
-      Hash_Link      : MD_Type := No_MD_Type;
-      --  The next MD_Type in the hash chain, if Present
-
       Name           : Name_Id := No_Name;
       --  The name of this type or field (for continuation)
 
@@ -150,13 +147,7 @@ package body GNATLLVM.MDType is
       Table_Increment      => 20,
       Table_Name           => "MD_Types");
 
-   type MD_Hash_Type is mod 2 ** 32;
-   Hash_Num : constant MD_Hash_Type := 4093;
-   subtype Hash_Index_Type is MD_Hash_Type range 0 .. Hash_Num - 1;
-
-   Hash_Table : array (Hash_Index_Type) of MD_Type := (others => No_MD_Type);
-
-   function Hash (Info : MD_Type_Info) return Hash_Index_Type;
+   function Hash (Info : MD_Type_Info) return Header_Num;
 
    function MD_Find
      (Info : MD_Type_Info; Create : Boolean := True) return MD_Type
@@ -168,14 +159,6 @@ package body GNATLLVM.MDType is
           Post => Is_Integer (Set_Type_Sign'Result)
                   and then Is_Signed (Set_Type_Sign'Result) = Sign;
    --  Make a version of MD that has the requested signedness
-
-   procedure Insert_MD (MD : MD_Type)
-     with Pre  => No (MD_Find (MD_Types.Table (MD), Create => False)),
-          Post => MD_Find (MD_Types.Table (MD), Create => False) = MD;
-   procedure Remove_MD (MD : MD_Type)
-     with Pre  => MD_Find (MD_Types.Table (MD), Create => False) = MD,
-          Post => No (MD_Find (MD_Types.Table (MD), Create => False));
-   --  Insert or remove MD from the hash table
 
    --  Here are the internal accessors for MD_Type components
 
@@ -232,6 +215,14 @@ package body GNATLLVM.MDType is
                   and then No (LLVM_Type (MD)),
           Post => LLVM_Type (MD) = T, Inline;
    --  Set the LLVM_Type of MD to T
+
+   package MD_Table is new Simple_HTable
+     (Header_Num => Header_Num,
+      Key        => MD_Type_Info,
+      Element    => MD_Type,
+      No_Element => No_MD_Type,
+      Hash       => Hash,
+      Equal      => "=");
 
    --  We need to map a struct name to an MD_Type so that when we see
    --  a struct of that name in the LLVM IR, we can map it to the
@@ -294,17 +285,17 @@ package body GNATLLVM.MDType is
    -- Hash --
    ----------
 
-   function Hash (Info : MD_Type_Info) return Hash_Index_Type is
-     ((MD_Hash_Type (MD_Kind'Pos (Info.Kind)) +
-       MD_Hash_Type ((Info.Name - Names_Low_Bound) * 11) +
-       MD_Hash_Type (Info.Count * 3) +
-       MD_Hash_Type ((Info.Related_Type - MD_Type'First) * 5) +
-       MD_Hash_Type ((Info.Cont_Type - MD_Type'First) * 7) +
-       MD_Hash_Type (Info.Entity * 41) +
-       MD_Hash_Type (Boolean'Pos (Info.Is_Volatile) * 1283) +
-       MD_Hash_Type (Boolean'Pos (Info.Flag) * 2039) +
-       MD_Hash_Type (Boolean'Pos (Info.Flag2) * 2797))
-      mod Hash_Num);
+   function Hash (Info : MD_Type_Info) return Header_Num is
+     (Header_Num ((Natural (MD_Kind'Pos (Info.Kind)) +
+                   Natural (((Info.Name - Names_Low_Bound) * 11)) +
+                   Natural ((Info.Count mod Header_Max) * 3) +
+                   Natural ((Info.Related_Type - MD_Type'First) * 5) +
+                   Natural ((Info.Cont_Type - MD_Type'First) * 7) +
+                   Natural (Info.Entity * 41) +
+                   Natural (Boolean'Pos (Info.Is_Volatile) * 1283) +
+                   Natural (Boolean'Pos (Info.Flag) * 2039) +
+                   Natural (Boolean'Pos (Info.Flag2) * 2797))
+                  mod Header_Max));
 
    ---------
    -- "=" --
@@ -318,9 +309,9 @@ package body GNATLLVM.MDType is
       and then Info1.Entity = Info2.Entity
       and then Info1.Is_Volatile = Info2.Is_Volatile
       and then Info1.Flag = Info2.Flag and then Info1.Flag2 = Info2.Flag2);
-   --  Note that we don't want to compare Hash_Link and LLVM_Type because
-   --  we want to know that the types are structually the same and those
-   --  fields don't relate to the structure.
+   --  Note that we don't want to compare LLVM_Type because we want to know
+   --  that the types are structually the same and that field doesn't
+   --  relate to the structure.
 
    -------------------
    -- Set_LLVM_Type --
@@ -608,117 +599,23 @@ package body GNATLLVM.MDType is
    -------------
 
    function MD_Find
-     (Info : MD_Type_Info; Create : Boolean := True) return MD_Type
-   is
-      Hash_Index : constant Hash_Index_Type := Hash (Info);
-      New_Id     : MD_Type                  := Hash_Table (Hash_Index);
-      Prev_Id    : MD_Type                  := New_Id;
+     (Info : MD_Type_Info; Create : Boolean := True) return MD_Type is
 
    begin
-      --  If we're creating a new type, there must not have been a
-      --  leftover Hash_Link.
+      return MD : MD_Type := MD_Table.Get (Info) do
 
-      pragma Assert (not Create or else No (Info.Hash_Link));
+         --  If we've never seen this type before, create the new type if
+         --  requested.
 
-      --  If we've never seen this hash code before, create the new type
-      --  if requested.
-
-      if No (New_Id) then
-         if Create then
-            MD_Types.Append (Info);
-            New_Id := MD_Types.Last;
-            Hash_Table (Hash_Index) := New_Id;
+         if No (MD) then
+            if Create then
+               MD_Types.Append (Info);
+               MD := MD_Types.Last;
+               MD_Table.Set (Info, MD);
+            end if;
          end if;
-
-         return New_Id;
-      end if;
-
-      --  Otherwise skip to the end of the clash list
-
-      while Present (New_Id) loop
-         if MD_Types.Table (New_Id) = Info then
-            return New_Id;
-         end if;
-
-         Prev_Id := New_Id;
-         New_Id  := MD_Types.Table (Prev_Id).Hash_Link;
-      end loop;
-
-      --  Finally, create the type if requested
-
-      if Create then
-         MD_Types.Append (Info);
-         New_Id := MD_Types.Last;
-         MD_Types.Table (Prev_Id).Hash_Link := New_Id;
-      end if;
-
-      return New_Id;
+      end return;
    end MD_Find;
-
-   ---------------
-   -- Insert_MD --
-   ---------------
-
-   procedure Insert_MD (MD : MD_Type) is
-      Info       : constant MD_Type_Info    := MD_Types.Table (MD);
-      Hash_Index : constant Hash_Index_Type := Hash (Info);
-      New_Id     : MD_Type                  := Hash_Table (Hash_Index);
-      Prev_Id    : MD_Type                  := New_Id;
-
-   begin
-      pragma Assert (No (Info.Hash_Link));
-
-      --  If we don't have a match for this hash, we're it
-
-      if No (New_Id) then
-         Hash_Table (Hash_Index) := MD;
-         return;
-      end if;
-
-      --  Otherwise, add us to the end of the chain. We've already
-      --  verified in the precondition that we're not in the chain.
-
-      while Present (New_Id) loop
-         Prev_Id := New_Id;
-         New_Id  := MD_Types.Table (Prev_Id).Hash_Link;
-      end loop;
-
-      MD_Types.Table (Prev_Id).Hash_Link := MD;
-   end Insert_MD;
-
-   ---------------
-   -- Remove_MD --
-   ---------------
-
-   procedure Remove_MD (MD : MD_Type) is
-      Info       : constant MD_Type_Info    := MD_Types.Table (MD);
-      Hash_Index : constant Hash_Index_Type := Hash (Info);
-      Next_Id    : constant MD_Type         := Info.Hash_Link;
-      New_Id     : MD_Type                  := Hash_Table (Hash_Index);
-
-   begin
-      --  Clear the link from our entry. We've saved it above.
-
-      MD_Types.Table (MD).Hash_Link := No_MD_Type;
-
-      --  If we're the head of the chain, point it to our next, if any
-
-      if New_Id = MD then
-         Hash_Table (Hash_Index) := Next_Id;
-         return;
-      end if;
-
-      --  Otherwise, remove ourselves from the chain
-
-      while Present (New_Id) loop
-         if MD_Types.Table (New_Id).Hash_Link = MD then
-            MD_Types.Table (New_Id).Hash_Link := Next_Id;
-            return;
-         end if;
-
-         New_Id := MD_Types.Table (New_Id).Hash_Link;
-      end loop;
-   end Remove_MD;
 
    -------------
    -- Void_Ty --
@@ -750,9 +647,8 @@ package body GNATLLVM.MDType is
       Info : MD_Type_Info := MD_Types.Table (MD);
 
    begin
-      Info.Kind      := Integer;
-      Info.Flag      := not Sign;
-      Info.Hash_Link := No_MD_Type;
+      Info.Kind := Integer;
+      Info.Flag := not Sign;
       return MD_Find (Info);
    end Set_Type_Sign;
 
@@ -904,8 +800,10 @@ package body GNATLLVM.MDType is
       Prev : MD_Type := No_MD_Type;
 
    begin
+      --  Remove the dummy version from the table before making a
+      --  new entry.
 
-      Remove_MD (MD);
+      MD_Table.Remove (MD_Types.Table (MD));
 
       --  We build continuation type records in reverse order and point the
       --  actual type to the first of them (the last we create).
@@ -932,8 +830,8 @@ package body GNATLLVM.MDType is
       --  If this matches something already in the table, we have a problem.
       --  Otherwise, insert it.
 
-      pragma Assert (No (MD_Find (MD_Types.Table (MD), Create => False)));
-      Insert_MD (MD);
+      pragma Assert (No (MD_Table.Get (MD_Types.Table (MD))));
+      MD_Table.Set (MD_Types.Table (MD), MD);
    end Struct_Set_Body_Internal;
 
    -------------------------
@@ -1015,7 +913,6 @@ package body GNATLLVM.MDType is
       Info : MD_Type_Info := MD_Types.Table (MD);
 
    begin
-      Info.Hash_Link    := No_MD_Type;
       Info.Related_Type := Return_MD;
       return MD_Find (Info);
    end Update_Fn_Ty_Return;
@@ -1049,8 +946,7 @@ package body GNATLLVM.MDType is
       Info : MD_Type_Info := MD_Types.Table (MD);
 
    begin
-      Info.Name      := New_Name;
-      Info.Hash_Link := No_MD_Type;
+      Info.Name := New_Name;
       return MD_Find (Info);
    end Set_Type_Name;
 
@@ -1067,7 +963,6 @@ package body GNATLLVM.MDType is
          return MD;
       else
          Info.Is_Volatile := B;
-         Info.Hash_Link   := No_MD_Type;
          return MD_Find (Info);
       end if;
    end Make_Volatile;

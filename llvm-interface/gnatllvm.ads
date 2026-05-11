@@ -392,7 +392,7 @@ package GNATLLVM is
    type Ptr_Err_Msg_Type is access all Err_Msg_Type;
    --  Used for LLVM error handling
 
-   --  Set up infrastructure for using GNAT.HTables.Simple_HTable. Note that
+   --  Set up infrastructure for using GNAT.HTable.Simple_HTable. Note that
    --  we allow empty values for hashing since some maps (e.g., returns)
    --  have an entry for no value.
 

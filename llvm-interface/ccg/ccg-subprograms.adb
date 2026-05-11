@@ -16,9 +16,13 @@
 ------------------------------------------------------------------------------
 
 with Ada.Characters.Handling; use Ada.Characters.Handling;
+with Ada.Containers;          use Ada.Containers;
 with Ada.Containers.Hashed_Maps;
 
 with Interfaces.C; use Interfaces.C;
+
+with System; use System;
+with System.Storage_Elements; use System.Storage_Elements;
 
 with Atree;  use Atree;
 with Lib;    use Lib;
@@ -1327,6 +1331,9 @@ package body CCG.Subprograms is
       --  or a subprogram) being declared to the (first) global decl that
       --  outputs it and one mapping a value denoting a function to the
       --  subprogram entry for it.
+
+      function Hash (V : Value_T)       return Hash_Type is
+        (Hash_Type'Mod (To_Integer (UC_V (V)) / (V'Size / 8)));
 
       package Value_To_Decl_Maps is new Ada.Containers.Hashed_Maps
         (Key_Type        => Value_T,

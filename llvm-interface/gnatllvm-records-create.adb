@@ -1070,9 +1070,9 @@ package body GNATLLVM.Records.Create is
                RI_Align       := 0;
                RI_Position    := 0;
                RI_Unused_Bits := Uint_0;
-               MD_Type_List.Set_Last (-1);
-               Field_Name_List.Set_Last (-1);
-               Field_Entity_List.Set_Last (-1);
+               MD_Type_List.Clear;
+               Field_Name_List.Clear;
+               Field_Entity_List.Clear;
             end;
          end if;
 

@@ -100,20 +100,20 @@ api_test HAVE_MULTI_MEMBER_VARIANT "void call(DIBuilder *b) { b->createVariantMe
 api_test HAVE_SUBRANGE_TYPE_EXTENSION "DIDerivedType *call(DISubrangeType::BoundType bound) { return bound.dyn_cast<DIDerivedType *>(); }" &
 
 # Test whether DIExpression can handle DW_OP_rot, DW_OP_neg, and
-# DW_OP_ops.  A single test is sufficient because these all landed in
+# DW_OP_abs.  A single test is sufficient because these all landed in
 # the same patch.
 ll_test HAVE_DW_EXPRESSION_EXTENSIONS '!named = !{!DIExpression(DW_OP_push_object_address, DW_OP_lit0, DW_OP_lit0, DW_OP_neg, DW_OP_abs, DW_OP_rot, DW_OP_rot, DW_OP_rot, DW_OP_plus, DW_OP_plus)}' &
 
 # Check that createBasicType will accept an empty name.  Note that
 # this can't be checked via a '.ll' file, as LLVM accepted nameless
 # types made that way.
-call_test HAVE_NAMELESS_BASIC_TYPE 'builder.createBasicType("", 32, dwarf::DW_ATE_unsigned, DINode::FlagZero);'
+call_test HAVE_NAMELESS_BASIC_TYPE 'builder.createBasicType("", 32, dwarf::DW_ATE_unsigned, DINode::FlagZero);' &
 
 # Test whether DIVariableExpression type exists.
 api_test HAVE_DIVARIABLEEXPRESSION "DIVariableExpression *global;" &
 
 # Test whether DIBuilder can create a basic type with a scope.
-api_test HAVE_BASIC_TYPE_SCOPE 'MDNode *named(DIBuilder *builder) { return builder->createBasicType("", (DIFile *)nullptr, 0, (DIScope *) nullptr, 32, dwarf::DW_ATE_unsigned, DINode::FlagZero); }'
+api_test HAVE_BASIC_TYPE_SCOPE 'MDNode *named(DIBuilder *builder) { return builder->createBasicType("", (DIFile *)nullptr, 0, (DIScope *) nullptr, 32, dwarf::DW_ATE_unsigned, DINode::FlagZero); }' &
 
 wait
 

@@ -923,7 +923,8 @@ package body GNATLLVM.DebugInfo is
             return Constant_As_Metadata (Intval (E_Bound));
 
          when others =>
-            return No_Metadata_T;
+            return Convert_To_Dwarf_Expression
+              (Annotated_Value (Emit_Expr (E_Bound)), Empty);
       end case;
    end Convert_Bound_To_Metadata;
 

@@ -207,11 +207,17 @@ package body GNATLLVM.Codegen is
          DSO_Preemptable := True;
       elsif S = "-mdso-local" then
          DSO_Preemptable := False;
-      elsif S in "-mcode-model=small" | "-mcmodel=small" then
+      elsif S in "-mcode-model=small"
+               | "-mcmodel=small"
+               | "-mcmodel=medlow"
+      then
          Code_Model := Code_Model_Small;
       elsif S in "-mcode-model=kernel" | "-mcmodel=kernel" then
          Code_Model := Code_Model_Kernel;
-      elsif S in "-mcode-model=medium" | "-mcmodel=medium" then
+      elsif S in "-mcode-model=medium"
+               | "-mcmodel=medium"
+               | "-mcmodel=medany"
+      then
          Code_Model := Code_Model_Medium;
       elsif S in "-mcode-model=large" | "-mcmodel=large" then
          Code_Model := Code_Model_Large;

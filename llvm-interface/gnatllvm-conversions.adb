@@ -339,9 +339,16 @@ package body GNATLLVM.Conversions is
             Sloc (Error_N));
       end if;
 
-      --  If our type is already what's needed, we're done
+      --  If our type is already what's needed, we're done. For an
+      --  unchecked conversion we still need to honor the promise that
+      --  the alignment is at least that of the type, because the source
+      --  expression may have a smaller tracked alignment (e.g. a
+      --  reference coming from a System.Address-like dereference).
 
       if In_GT = GT then
+         if Is_Unchecked then
+            Initialize_Alignment (Result);
+         end if;
          return Result;
 
       --  If we're converting to an elementary type and need an overflow

@@ -1334,6 +1334,22 @@ package body GNATLLVM.DebugInfo is
 
                      Member : Opt_E_Enumeration_Literal_Id;
 
+                     --  This type does not need a scope.  It also
+                     --  does not need a name but some versions of
+                     --  LLVM require one.  Technically in DWARF an
+                     --  enumeration type does not need a base type,
+                     --  but providing one makes it possible for gdb
+                     --  to handle the sign correctly.
+                     Base_Type : constant Metadata_T :=
+                       DI_Create_Basic_Type ((if DI_Nameless_Basic_Types
+                                              then ""
+                                              else "__gnat_llvm_base_type"),
+                                             Size,
+                                             (if Is_Unsigned_Type (TE)
+                                              then DW_ATE_Unsigned
+                                              else DW_ATE_Signed),
+                                             DI_Flag_Zero);
+
                   begin
                      Member := First_Literal (TE);
                      while Present (Member) loop
@@ -1367,7 +1383,7 @@ package body GNATLLVM.DebugInfo is
                            Get_Possibly_Local_Name (TE),
                            Get_Debug_File_Node (Get_Source_File_Index (S)),
                            Get_Physical_Line_Number (S), Size, Align, Members,
-                           No_Metadata_T);
+                           Base_Type);
                      end;
                   end;
                end if;

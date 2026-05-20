@@ -633,7 +633,7 @@ package body GNATLLVM.Records.Debug is
          --  The negation is here to coordinate with the
          --  repinfo-generating code to smuggle the entity through.
          --  See that code to understand the reason this is done.
-         E : constant Entity_Id := Get_Dynamic_SO_Entity (-Val);
+         N : constant N_Subexpr_Id := Get_Dynamic_SO_Entity (-Val);
          MD : Metadata_T := No_Metadata_T;
          Index : Integer := -1;
       begin
@@ -644,10 +644,15 @@ package body GNATLLVM.Records.Debug is
             return;
          end if;
 
-         if Present (E) and then Present (Entity (E)) then
-            MD := Get_Debug_Metadata (Entity (E));
+         if Nkind (N) not in N_Has_Entity then
+            Could_Not_Convert := True;
+            return;
+         end if;
+
+         if Present (N) and then Present (Entity (N)) then
+            MD := Get_Debug_Metadata (Entity (N));
             if No (MD) then
-               MD := Create_Global_Variable_Declaration (Entity (E));
+               MD := Create_Global_Variable_Declaration (Entity (N));
             end if;
          end if;
 

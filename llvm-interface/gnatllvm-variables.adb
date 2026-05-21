@@ -2620,7 +2620,7 @@ package body GNATLLVM.Variables is
          LLVM_Var := Convert_Ref (Emit_LValue (Name (N)), GT);
          Set_Value (E, LLVM_Var);
          C_Set_Entity  (LLVM_Var, E);
-         if Library_Level then
+         if Is_Static_Location (Name (N)) then
             Create_Global_Variable_Debug_Data (E, LLVM_Var);
          else
             Create_Local_Variable_Debug_Data (E, LLVM_Var);

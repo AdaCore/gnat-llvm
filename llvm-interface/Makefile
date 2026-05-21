@@ -221,12 +221,26 @@ LIBRARY_KIND=static
 
 # used in Makefile.rtl
 ADAC=$(pwd)/bin/llvm-gcc
-CROSSGCC=gcc
 
-OSCONS_CC=$(CROSSGCC)
+# Clang needs the switch "-fno-integrated-as" when processing s-oscons-tmplt.i
+# below because the inline assembly in it isn't real target assembly. Without
+# the switch, Clang would complain that its integrated assembler can't make
+# sense of the pseudo assembly instructions.
+
+ifdef CROSSGCC
+  OSCONS_CC=$(CROSSGCC)
+  OSCONS_SWITCHES=
+else ifneq ($(target_clang),)
+  OSCONS_CC=$(target_clang)
+  OSCONS_SWITCHES=-fno-integrated-as
+else
+  OSCONS_CC=clang
+  OSCONS_SWITCHES=-fno-integrated-as
+endif
+
 OSCONS_CPP=$(OSCONS_CC) -E -C -DTARGET=\"$(target)\" -iquote $(GNAT_SRC) \
   $(GNAT_SRC)/s-oscons-tmplt.c > s-oscons-tmplt.i
-OSCONS_EXTRACT=$(OSCONS_CC) -S s-oscons-tmplt.i
+OSCONS_EXTRACT=$(OSCONS_CC) -S $(OSCONS_SWITCHES) s-oscons-tmplt.i
 
 objext=.o
 

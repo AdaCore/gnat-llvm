@@ -1539,7 +1539,7 @@ package body GNATLLVM.DebugInfo is
                  DI_Create_Auto_Variable
                  (Current_Debug_Scope, Name,
                   Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
-                  Get_Physical_Line_Number (Sloc (E)), Type_Data, False,
+                  Get_Physical_Line_Number (Sloc (E)), Type_Data, True,
                   Flags, Get_Type_Alignment (GT));
 
             else
@@ -1548,7 +1548,7 @@ package body GNATLLVM.DebugInfo is
                  (Current_Debug_Scope, Name, Arg_Num,
                   Get_Debug_File_Node (Get_Source_File_Index (Sloc (E))),
                   Get_Physical_Line_Number (Sloc (E)),
-                  Type_Data, False, Flags);
+                  Type_Data, True, Flags);
             end if;
             Set_Debug_Metadata (E, Var_Data);
          end if;

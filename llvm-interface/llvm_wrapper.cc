@@ -1043,7 +1043,8 @@ static StringRef getRISCVArch(const Triple &T, StringRef Arch, StringRef CPU,
 }
 
 extern "C" char *Get_Features(const char *TargetTriple, const char *Arch,
-                              const char *CPU, const char *ABI) {
+                              const char *CPU, const char *ABI,
+                              int EnableExperimentalExtensions) {
   // This is a simplified version of Clang's tools::getTargetFeatures (see
   // clang/lib/Driver/ToolChains/CommonArgs.cpp), adapted to the arguments that
   // we have available and the defaults that we set during option parsing.
@@ -1119,8 +1120,6 @@ extern "C" char *Get_Features(const char *TargetTriple, const char *Arch,
     StringRef TargetArch = getRISCVArch(T, Arch, CPU, ABI);
     std::vector<StringRef> Features;
 
-    // ??? Add a command-line switch for this.
-    const bool EnableExperimentalExtensions = true;
     auto ISAInfo =
         RISCVISAInfo::parseArchString(TargetArch, EnableExperimentalExtensions);
     if (!ISAInfo) {

@@ -233,6 +233,8 @@ package body GNATLLVM.Codegen is
          Reloc_Mode := Reloc_Default;
       elsif S = "-mno-implicit-float" then
          No_Implicit_Float := True;
+      elsif S = "-menable-experimental-extensions" then
+         Enable_Experimental_Extensions := True;
 
       --  We support -mXXX and -mno-XXX by adding +XXX or -XXX, respectively,
       --  to the list of features.
@@ -685,7 +687,8 @@ package body GNATLLVM.Codegen is
            Get_Features
              (Normalized_Target_Triple.all,
               (if Arch = null then "" else Arch.all), CPU.all,
-              (if ABI = null then "" else ABI.all));
+              (if ABI = null then "" else ABI.all),
+              Enable_Experimental_Extensions);
          New_Features  : String_Access;
 
       begin

@@ -662,19 +662,26 @@ package body GNATLLVM.Wrapper is
    -- Get_Features --
    ------------------
 
-   function Get_Features (Triple, Arch, CPU, ABI : String) return String is
+   function Get_Features
+     (Triple, Arch, CPU, ABI  : String;
+      Experimental_Extensions : Boolean) return String
+   is
       use Interfaces.C;
 
       function Get_Features_C
-        (Triple, Arch, CPU, ABI : char_array) return chars_ptr with
+        (Triple, Arch, CPU, ABI          : char_array;
+         Enable_Experimental_Extensions  : LLVM_Bool) return chars_ptr with
         Import, Convention => C, External_Name => "Get_Features";
 
-      Triple_C : constant char_array := To_C (Triple);
-      Arch_C   : constant char_array := To_C (Arch);
-      CPU_C    : constant char_array := To_C (CPU);
-      ABI_C    : constant char_array := To_C (ABI);
+      Triple_C  : constant char_array := To_C (Triple);
+      Arch_C    : constant char_array := To_C (Arch);
+      CPU_C     : constant char_array := To_C (CPU);
+      ABI_C     : constant char_array := To_C (ABI);
+      Exp_Ext_C : constant LLVM_Bool  :=
+        Boolean'Pos (Experimental_Extensions);
 
-      Result_C : chars_ptr := Get_Features_C (Triple_C, Arch_C, CPU_C, ABI_C);
+      Result_C : chars_ptr :=
+        Get_Features_C (Triple_C, Arch_C, CPU_C, ABI_C, Exp_Ext_C);
       Result : constant String :=
         (if Result_C = Null_Ptr then "" else Value (Result_C));
 

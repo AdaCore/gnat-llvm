@@ -468,7 +468,9 @@ package GNATLLVM.Wrapper is
 
    function Get_Personality_Function_Name (Triple : String) return String;
 
-   function Get_Features (Triple, Arch, CPU, ABI : String) return String;
+   function Get_Features
+     (Triple, Arch, CPU, ABI  : String;
+      Experimental_Extensions : Boolean) return String;
 
    function Get_Target_Default_CPU (Triple : String) return String;
 

@@ -81,9 +81,16 @@ extern "C" void Add_Cold_Attribute(Function *fn) {
   fn->addFnAttr(Attribute::Cold);
 }
 
+// ??? This function and its uses should be removed when System.Address
+// change is merged.
+static bool isPointerParam(Function *fn, unsigned idx) {
+  return fn->getFunctionType()->getParamType(idx)->isPointerTy();
+}
+
 extern "C" void Add_Dereferenceable_Attribute(Function *fn, unsigned idx,
                                               unsigned long long Bytes) {
-  fn->addDereferenceableParamAttr(idx, Bytes);
+  if (isPointerParam(fn, idx))
+    fn->addDereferenceableParamAttr(idx, Bytes);
 }
 
 extern "C" void Add_Ret_Dereferenceable_Attribute(Function *fn,
@@ -95,7 +102,8 @@ extern "C" void Add_Ret_Dereferenceable_Attribute(Function *fn,
 extern "C" void
 Add_Dereferenceable_Or_Null_Attribute(Function *fn, unsigned idx,
                                       unsigned long long Bytes) {
-  fn->addDereferenceableOrNullParamAttr(idx, Bytes);
+  if (isPointerParam(fn, idx))
+    fn->addDereferenceableOrNullParamAttr(idx, Bytes);
 }
 
 extern "C" void
@@ -141,7 +149,8 @@ extern "C" void Add_Nest_Attribute(Value *v, unsigned idx) {
 }
 
 extern "C" void Add_Noalias_Attribute(Function *fn, unsigned idx) {
-  fn->addParamAttr(idx, Attribute::NoAlias);
+  if (isPointerParam(fn, idx))
+    fn->addParamAttr(idx, Attribute::NoAlias);
 }
 
 extern "C" void Add_Ret_Noalias_Attribute(Function *fn) {
@@ -150,6 +159,8 @@ extern "C" void Add_Ret_Noalias_Attribute(Function *fn) {
 
 extern "C" void Add_Nocapture_Attribute(LLVMContext *Context, Function *fn,
                                         unsigned idx) {
+  if (!isPointerParam(fn, idx))
+    return;
 #if LLVM_VERSION_MAJOR < 21
   fn->addParamAttr(idx, Attribute::NoCapture);
 #else
@@ -159,7 +170,8 @@ extern "C" void Add_Nocapture_Attribute(LLVMContext *Context, Function *fn,
 }
 
 extern "C" void Add_Non_Null_Attribute(Function *fn, unsigned idx) {
-  fn->addParamAttr(idx, Attribute::NonNull);
+  if (isPointerParam(fn, idx))
+    fn->addParamAttr(idx, Attribute::NonNull);
 }
 
 extern "C" void Add_Ret_Non_Null_Attribute(Function *fn, unsigned idx) {
@@ -167,11 +179,13 @@ extern "C" void Add_Ret_Non_Null_Attribute(Function *fn, unsigned idx) {
 }
 
 extern "C" void Add_Readonly_Attribute(Function *fn, unsigned idx) {
-  fn->addParamAttr(idx, Attribute::ReadOnly);
+  if (isPointerParam(fn, idx))
+    fn->addParamAttr(idx, Attribute::ReadOnly);
 }
 
 extern "C" void Add_Writeonly_Attribute(Function *fn, unsigned idx) {
-  fn->addParamAttr(idx, Attribute::WriteOnly);
+  if (isPointerParam(fn, idx))
+    fn->addParamAttr(idx, Attribute::WriteOnly);
 }
 
 extern "C" void Add_Opt_For_Fuzzing_Attribute(Function *fn) {

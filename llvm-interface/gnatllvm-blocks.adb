@@ -1105,11 +1105,8 @@ package body GNATLLVM.Blocks is
          Exc   : GL_Value;
          --  The address of the exception caught by this handler
 
-         Param : Opt_E_Variable_Id;
-         --  The value of Choice_Parameter, if any
-
-         Stmts : List_Id;
-         --  The statements in the handler
+         Handler : Opt_N_Exception_Handler_Id;
+         --  The handler.
       end record;
 
       package Clauses is new Table.Table
@@ -1176,8 +1173,7 @@ package body GNATLLVM.Blocks is
                Clauses.Append ((BB    => BB,
                                 Exc   => Convert_To_Access (Exc,
                                                             A_Char_GL_Type),
-                                Param => Choice_Parameter (Handler),
-                                Stmts => Statements (Handler)));
+                                Handler => Handler));
 
                if Present (LP_Inst) then
                   Add_Clause (LP_Inst, Exc);
@@ -1298,6 +1294,7 @@ package body GNATLLVM.Blocks is
          for J in 1 .. Clauses.Last loop
             if No (Get_Last_Instruction (Clauses.Table (J).BB)) then
                Position_Builder_At_End (Clauses.Table (J).BB);
+               Set_Debug_Pos_At_Node (Clauses.Table (J).Handler);
                Push_Block;
 
                declare
@@ -1312,10 +1309,10 @@ package body GNATLLVM.Blocks is
                   BI_Inner.At_End_Pass_Excptr := True;
                end;
 
-               if Present (Clauses.Table (J).Param) then
+               if Present (Choice_Parameter (Clauses.Table (J).Handler)) then
                   declare
                      Param   : constant E_Variable_Id :=
-                       Clauses.Table (J).Param;
+                       Choice_Parameter (Clauses.Table (J).Handler);
                      GT      : constant GL_Type       := Full_GL_Type (Param);
                      V       : constant GL_Value      :=
                        Allocate_For_Type (GT, N => Param, E => Param);
@@ -1328,7 +1325,7 @@ package body GNATLLVM.Blocks is
                   end;
                end if;
 
-               Emit (Clauses.Table (J). Stmts);
+               Emit (Statements (Clauses.Table (J).Handler));
                Pop_Block;
                Maybe_Build_Br (Next_BB);
             end if;

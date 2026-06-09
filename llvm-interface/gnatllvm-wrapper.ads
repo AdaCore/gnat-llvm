@@ -508,6 +508,12 @@ package GNATLLVM.Wrapper is
    --  stand-alone library initializers) into .init_array instead of the
    --  default .ctors.
 
+   procedure Enable_Call_Graph_Section (Target_Machine : Target_Machine_T)
+      with Import, Convention => C,
+           External_Name => "Enable_Call_Graph_Section";
+   --  Configure the target machine to emit call-graph information into an
+   --  ELF section.
+
    procedure Create_And_Insert_Label
      (Builder         : DI_Builder_T;
       Scope           : Metadata_T;

@@ -91,6 +91,9 @@ package GNATLLVM.Codegen is
    --  True if we should optimize IR before writing it out when optimization
    --  is enabled.
 
+   Call_Graph_Section : Boolean := False;
+   --  True if we should emit call-graph information into an ELF section
+
    Enable_Execute_Stack : Boolean := False;
    --  True if we have to explicitly make the stack executable when we need
    --  it to be (e.g., when using stack-allocated trampolines).

@@ -2862,7 +2862,7 @@ package body GNATLLVM.Subprograms is
 
          Add_Inline_Attribute (LLVM_Func, E);
 
-         if SEH then
+         if Need_Unwind_Tables then
             Add_Uwtable_Attribute (LLVM_Func);
          end if;
 

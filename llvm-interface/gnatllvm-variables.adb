@@ -2370,6 +2370,8 @@ package body GNATLLVM.Variables is
       elsif Has_Addr then
          LLVM_Var := Addr;
          Initialize_Alignment (LLVM_Var);
+         Mark_Volatile (LLVM_Var, Is_Volatile);
+         Mark_Atomic   (LLVM_Var, Is_Atomic (E) or else Is_Atomic (GT));
 
       --  If this is a true constant, we can just use the expression that
       --  computed the constant as the value, once converted to the proper

@@ -142,6 +142,8 @@ package body GNATLLVM.Codegen is
          Emit_Full_Debug_Info := True;
       elsif S = "-fstack-check" then
          Do_Stack_Check := True;
+      elsif S = "-fexperimental-call-graph-section" then
+         Call_Graph_Section := True;
       elsif S = "-fshort-enums" then
          Short_Enums := True;
       elsif S = "-foptimize-ir" then
@@ -732,6 +734,10 @@ package body GNATLLVM.Codegen is
       Dispose_Target_Machine_Options (TM_Options);
 
       Enable_Init_Array (Target_Machine);
+
+      if Call_Graph_Section then
+         Enable_Call_Graph_Section (Target_Machine);
+      end if;
 
       Get_Target_C_Types
         (Normalized_Target_Triple.all, CPU.all, ABI.all, Features.all,

@@ -514,6 +514,12 @@ package GNATLLVM.Wrapper is
    --  Configure the target machine to emit call-graph information into an
    --  ELF section.
 
+   procedure Enable_Stack_Size_Section (Target_Machine : Target_Machine_T)
+      with Import, Convention => C,
+           External_Name => "Enable_Stack_Size_Section";
+   --  Configure the target machine to emit stack-size information into an
+   --  ELF section.
+
    procedure Create_And_Insert_Label
      (Builder         : DI_Builder_T;
       Scope           : Metadata_T;

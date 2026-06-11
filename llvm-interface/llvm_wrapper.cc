@@ -1277,6 +1277,10 @@ extern "C" void Enable_Call_Graph_Section(TargetMachine *TM) {
   TM->Options.EmitCallGraphSection = 1;
 }
 
+extern "C" void Enable_Stack_Size_Section(TargetMachine *TM) {
+  TM->Options.EmitStackSizeSection = 1;
+}
+
 extern "C" void Create_And_Insert_Label(LLVMDIBuilderRef Builder,
                                         LLVMMetadataRef Scope, const char *Name,
                                         LLVMMetadataRef File, unsigned LineNo,

@@ -144,6 +144,8 @@ package body GNATLLVM.Codegen is
          Do_Stack_Check := True;
       elsif S = "-fexperimental-call-graph-section" then
          Call_Graph_Section := True;
+      elsif S = "-fstack-size-section" then
+         Stack_Size_Section := True;
       elsif S = "-fshort-enums" then
          Short_Enums := True;
       elsif S = "-foptimize-ir" then
@@ -737,6 +739,10 @@ package body GNATLLVM.Codegen is
 
       if Call_Graph_Section then
          Enable_Call_Graph_Section (Target_Machine);
+      end if;
+
+      if Stack_Size_Section then
+         Enable_Stack_Size_Section (Target_Machine);
       end if;
 
       Get_Target_C_Types

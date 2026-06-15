@@ -214,6 +214,7 @@ package GNATLLVM is
    procedure Discard (BB : Basic_Block_T) is null;
    procedure Discard (B  : Boolean)       is null;
    procedure Discard (D  : Dbg_Record_T)  is null;
+   procedure Discard (M  : Metadata_T)    is null;
 
    function Is_Type_Or_Void (E : Entity_Id) return Boolean is
      (Ekind (E) in Void_Or_Type_Kind)

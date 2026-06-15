@@ -16,6 +16,7 @@
 ------------------------------------------------------------------------------
 
 with Opt;        use Opt;
+with Sem_Aux;    use Sem_Aux;
 with Sem_Util;   use Sem_Util;
 with Sinput;     use Sinput;
 with Stand;      use Stand;
@@ -447,8 +448,7 @@ package body GNATLLVM.DebugInfo is
    ----------------------------------
 
    function Create_Subprogram_Debug_Info
-     (Func     : GL_Value;
-      N        : Node_Id;
+     (N        : Node_Id;
       E        : Opt_Subprogram_Kind_Id := Empty;
       Name     : String                 := "";
       Ext_Name : String                 := "") return Metadata_T
@@ -544,6 +544,10 @@ package body GNATLLVM.DebugInfo is
 
       if Emit_Debug_Info then
 
+         if Present (E) and then Present (Get_Debug_Metadata (E)) then
+            return Get_Debug_Metadata (E);
+         end if;
+
          --  Collect the types of all the parameters, handling types passed
          --  by reference in a simplistic manner by just making a pointer
          --  type.
@@ -599,12 +603,13 @@ package body GNATLLVM.DebugInfo is
                  (if S_Ext_Name = S_Full_Name or else Is_Main
                   then ""
                   else S_Ext_Name),
-                 File_Node, Line_Number, Sub_Type_Node, False, True,
+                 File_Node, Line_Number, Sub_Type_Node, False,
+                 (if No (E) then True
+                  else Present (Subprogram_Body_Entity (E))),
                  Line_Number, DI_Flag_Zero,
                  Code_Gen_Level /= Code_Gen_Level_None);
 
          begin
-            Set_Subprogram_Debug_Metadata (Func, Function_Node);
             if Present (E) then
                Set_Debug_Metadata (E, Function_Node);
             end if;
@@ -614,6 +619,53 @@ package body GNATLLVM.DebugInfo is
          return No_Metadata_T;
       end if;
    end Create_Subprogram_Debug_Info;
+
+   ----------------------------------
+   -- Create_Subprogram_Debug_Info --
+   ----------------------------------
+
+   function Create_Subprogram_Debug_Info
+     (Func     : GL_Value;
+      N        : Node_Id;
+      E        : Opt_Subprogram_Kind_Id := Empty;
+      Name     : String                 := "";
+      Ext_Name : String                 := "") return Metadata_T
+   is
+      Info : constant Metadata_T :=
+        Create_Subprogram_Debug_Info (N, E, Name, Ext_Name);
+   begin
+      if Present (Info) then
+         Set_Subprogram_Debug_Metadata (Func, Info);
+      end if;
+      return Info;
+   end Create_Subprogram_Debug_Info;
+
+   --------------------------------
+   -- Create_Subprogram_Renaming --
+   --------------------------------
+
+   function Create_Subprogram_Renaming (N : Node_Id) return Metadata_T
+   is
+      Renaming : constant Node_Id := Defining_Entity (N);
+      Renamed : constant Node_Id := Renamed_Entity (Renaming);
+      MD : Metadata_T := No_Metadata_T;
+   begin
+      if Emit_Debug_Info then
+         if Needs_Debug_Info (Renaming) and then
+            not Is_Intrinsic_Subprogram (Renaming) and then
+            Present (Renamed) and then
+            not Is_Intrinsic_Subprogram (Renamed)
+         then
+            MD := Create_Subprogram_Debug_Info (N, Renamed);
+            MD := DI_Create_Imported_Declaration
+              (Get_Scope_For (Renaming), MD,
+               Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
+               Get_Physical_Line_Number (Sloc (N)),
+               Get_Unqualified_Name (Renaming));
+         end if;
+      end if;
+      return MD;
+   end Create_Subprogram_Renaming;
 
    ------------------------------
    -- Push_Lexical_Debug_Scope --

@@ -604,10 +604,7 @@ package body GNATLLVM.Compile is
          when N_Subprogram_Renaming_Declaration =>
 
             --  Nothing is needed except for debugging information.
-            --  ??? Skip it for now. Note that in any case, we should
-            --  skip Intrinsic subprograms
-
-            null;
+            Discard (Create_Subprogram_Renaming (N));
 
          when N_Implicit_Label_Declaration =>
 

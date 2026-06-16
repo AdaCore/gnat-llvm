@@ -21,6 +21,7 @@ api_test() {
     cat <<EOF > $filename
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DebugInfo.h"
+#include "llvm/Target/TargetOptions.h"
 using namespace llvm;
 $program
 EOF
@@ -114,6 +115,9 @@ api_test HAVE_DIVARIABLEEXPRESSION "DIVariableExpression *global;" &
 
 # Test whether DIBuilder can create a basic type with a scope.
 api_test HAVE_BASIC_TYPE_SCOPE 'MDNode *named(DIBuilder *builder) { return builder->createBasicType("", (DIFile *)nullptr, 0, (DIScope *) nullptr, 32, dwarf::DW_ATE_unsigned, DINode::FlagZero); }' &
+
+# Test whether TargetOptions has a field EmitCallGraphSection.
+api_test HAVE_EMIT_CALL_GRAPH_SECTION "void set(TargetOptions &Opt) { Opt.EmitCallGraphSection = 1; }"
 
 wait
 

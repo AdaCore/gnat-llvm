@@ -1274,7 +1274,11 @@ extern "C" void Enable_Init_Array(TargetMachine *TM) {
 }
 
 extern "C" void Enable_Call_Graph_Section(TargetMachine *TM) {
+#ifdef GNAT_LLVM_HAVE_EMIT_CALL_GRAPH_SECTION
   TM->Options.EmitCallGraphSection = 1;
+#else
+  errs() << "warning: call-graph section unsupported in this version of LLVM\n";
+#endif
 }
 
 extern "C" void Enable_Stack_Size_Section(TargetMachine *TM) {

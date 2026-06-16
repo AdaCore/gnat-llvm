@@ -643,6 +643,7 @@ package body GNATLLVM.Codegen is
       end if;
 
       SEH := Has_SEH (Normalized_Target_Triple.all);
+      Need_Unwind_Tables := not Suppress_Checks;
       Force_Frame_Pointers :=
         Needs_Frame_Pointers (Normalized_Target_Triple.all);
       Enable_Execute_Stack :=
@@ -774,7 +775,7 @@ package body GNATLLVM.Codegen is
          Set_Module_PIC_PIE (Module, PIC_Level, PIE_Level);
       end if;
 
-      if SEH then
+      if Need_Unwind_Tables then
          Set_Unwind_Tables (Module);
       end if;
 

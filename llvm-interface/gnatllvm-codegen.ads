@@ -78,6 +78,12 @@ package GNATLLVM.Codegen is
    SEH             : Boolean        := False;
    --  True if the target supports Structured Exception Handling
 
+   Need_Unwind_Tables : Boolean := False;
+   --  True if the target requires the `uwtable` attribute to be set on
+   --  emitted functions (and a default unwind-table kind on the module)
+   --  so that every function gets an FDE -- including leaf functions
+   --  that have no EH constructs of their own.
+
    Force_Frame_Pointers : Boolean := False;
    --  True if the target needs frame pointers
 

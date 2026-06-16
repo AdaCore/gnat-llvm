@@ -5,7 +5,7 @@ project Gnat_LLVM is
      (".", "obj", "gnat_src", "ccg", "../llvm-bindings/adainclude");
    for Object_Dir use "obj";
    for Exec_Dir use "bin";
-   for Languages use ("Ada");
+   for Languages use ("Ada", "C++");
    for Main use ("gnat1drv.adb");
 
    type Build_Type is ("Debug", "Production");
@@ -27,9 +27,11 @@ project Gnat_LLVM is
    package Compiler is
       case Build is
          when "Debug" =>
+            for Switches ("C++") use ("-g");
             for Switches ("Ada") use Common_Switches & ("-gnata", "-gnateE");
 
          when "Production" =>
+            for Switches ("C++") use ("-O2", "-g");
             for Switches ("Ada") use
               Common_Switches & ("-O2", "-gnatpn");
       end case;
@@ -41,6 +43,10 @@ project Gnat_LLVM is
       for Required_Switches use ("-static-libgcc");
       for Switches ("Ada") use ("-static-libstdc++", "-lclangBasic");
    end Linker;
+
+   package Naming is
+      for Body_Suffix ("C++") use ".cc";
+   end Naming;
 
    package CodePeer is
       for Switches use ("-level", "1");

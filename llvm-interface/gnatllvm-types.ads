@@ -265,6 +265,16 @@ package GNATLLVM.Types is
      (Get_Fullest_View (Scope (E)))
      with Pre => Present (E), Post => Present (Full_Scope'Result);
 
+   function Full_Base_Type_Of_Scope
+     (E : Entity_Id) return Void_Or_Type_Kind_Id
+   is
+     (Full_Base_Type (Full_Etype (Scope (E))))
+     with Pre => Present (E);
+   --  Return the full base type of E's scope. Centralizes the use of Scope
+   --  so that callers (e.g. the CCG back-end) need not make it directly
+   --  visible, which is useful because Scope is declared in different
+   --  packages across front-end versions.
+
    function Full_Parent_Subtype (TE : Record_Kind_Id) return Record_Kind_Id is
      (Get_Fullest_View (Parent_Subtype (TE)))
      with Post => Present (Full_Parent_Subtype'Result);

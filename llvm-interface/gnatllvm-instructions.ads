@@ -96,11 +96,11 @@ package GNATLLVM.Instructions is
    function Int_To_Ptr
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
      with Pre  => Is_Discrete_Or_Fixed_Point_Type (V) and then Present (GT),
-          Post => Is_Pointer (Int_To_Ptr'Result), Inline;
+          Post => Is_Pointer_Or_Address (Int_To_Ptr'Result), Inline;
 
    function Ptr_To_Int
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V) and then Present (GT),
+     with Pre  => Is_Pointer_Or_Address (V) and then Present (GT),
           Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Int'Result), Inline;
 
    function Ptr_To_Int_To_Relationship
@@ -114,13 +114,6 @@ package GNATLLVM.Instructions is
             Alignment => Alignment (V))))
      with Pre  => Present (V) and then Present (MD),
           Post => Present (Ptr_To_Int_To_Relationship'Result);
-
-   function Ptr_To_Address_Type
-     (V : GL_Value; Name : String := "") return GL_Value
-   is
-     (Ptr_To_Int (V, Address_GL_Type, Name))
-     with Pre  => Is_Pointer (V),
-          Post => Is_Discrete_Or_Fixed_Point_Type (Ptr_To_Address_Type'Result);
 
    function Bit_Cast
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
@@ -175,9 +168,18 @@ package GNATLLVM.Instructions is
      with Pre  => Is_Pointer (V) and then Is_Pointer (MD),
           Post => Is_Pointer (Pointer_Cast'Result);
 
+   function Ptr_To_Address_Type
+     (V : GL_Value; Name : String := "") return GL_Value
+   is
+     (Initialize_TBAA
+        (GM (Pointer_Cast (IR_Builder, +V, +Address_MD, Name), Address_GL_Type,
+             Address_MD, GV => V)))
+     with Pre  => Is_Pointer (V),
+          Post => Is_Address (Ptr_To_Address_Type'Result);
+
    function Ptr_To_Ref
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V) and then Present (GT),
+     with Pre  => Is_Pointer_Or_Address (V) and then Present (GT),
           Post => Is_Pointer (Ptr_To_Ref'Result), Inline;
 
    function Ptr_To_Array_Ref
@@ -190,7 +192,7 @@ package GNATLLVM.Instructions is
           Inline;
 
    function Ptr_To_Ref (V, T : GL_Value; Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V) and then Is_Pointer (T),
+     with Pre  => Is_Pointer_Or_Address (V) and then Is_Pointer (T),
           Post => Is_Pointer (Ptr_To_Ref'Result), Inline;
 
    function Ptr_To_Relationship
@@ -198,7 +200,7 @@ package GNATLLVM.Instructions is
       GT   : GL_Type;
       R    : GL_Relationship;
       Name : String := "") return GL_Value
-     with Pre  => Is_Pointer (V) and then Present (GT),
+     with Pre  => Is_Pointer_Or_Address (V) and then Present (GT),
           Post => Is_Pointer (Ptr_To_Relationship'Result), Inline;
 
    function Ptr_To_Relationship
@@ -210,7 +212,7 @@ package GNATLLVM.Instructions is
      (Initialize_TBAA
         (GM (Pointer_Cast (IR_Builder, +V, +MD, Name),
              Related_Type (V), MD, R, V)))
-     with Pre  => Is_Pointer (V) and then Present (MD),
+     with Pre  => Is_Pointer_Or_Address (V) and then Present (MD),
           Post => Is_Pointer (Ptr_To_Relationship'Result), Inline;
 
    function Ptr_To_Relationship
@@ -909,7 +911,8 @@ package GNATLLVM.Instructions is
       Ptr     : GL_Value;
       Indices : GL_Value_Array;
       Name    : String := "") return GL_Value
-     with Pre  => Is_Pointer (Ptr) and then Present (GT)
+     with Pre  => Is_Pointer_Or_Address (Ptr)
+                  and then Present (GT)
                   and then (for all V of Indices => Present (V)),
           Post => Is_Pointer (GEP_To_Relationship'Result);
 
@@ -920,10 +923,11 @@ package GNATLLVM.Instructions is
       Ptr_MD  : MD_Type;
       Indices : GL_Value_Array;
       Name    : String := "") return GL_Value
-     with Pre  => Is_Pointer (Ptr) and then Present (GT)
+     with Pre  => Is_Pointer_Or_Address (Ptr)
+                  and then Present (GT)
                   and then Present (Ptr_MD)
                   and then (for all V of Indices => Present (V)),
-          Post => Is_Pointer (GEP_To_Relationship'Result);
+          Post => Is_Pointer_Or_Address (GEP_To_Relationship'Result);
 
    function GEP_Idx_To_Relationship
      (GT      : GL_Type;
@@ -1041,19 +1045,25 @@ package GNATLLVM.Instructions is
                   and then Is_Integer_Type (Addr),
           Post => Present (Set_Pointer_Address'Result);
 
-   function Address_Add (Ptr, Offset : GL_Value) return GL_Value is
-     (if   Tagged_Pointers
-      then (if   Is_Const_0 (Offset) then Ptr
-            else Set_Pointer_Address (Ptr, Get_Pointer_Address (Ptr) + Offset))
-      else Ptr + Offset)
-     with Pre  => Is_Address (Ptr) and then Is_Integer_Type (Offset),
-          Post => Is_Address (Address_Add'Result);
-   --  Add an offset to a pointer.
-   --  ??? We should really fold Set_Pointer_Address (Get_Pointer_Address (X)),
-   --  but we can't test that now, so do it this way.
+   function Address_Add_Sub (LHS, RHS : GL_Value; Is_Add : Boolean;
+                             Name : String) return GL_Value
+     with Pre  => Is_Address (LHS)
+                  and then (Is_Integer_Type (RHS) or else Is_Address (RHS)),
+          Post => Is_Address (Address_Add_Sub'Result);
+   --  Address arithmetic. RHS is either a plain integer offset (Integer
+   --  category) or another address (Address category, used for pointer
+   --  differences). The two are now mutually exclusive thanks to the
+   --  tightened Is_Integer_Type predicate.
 
-   function Address_Sub (Ptr, Offset : GL_Value) return GL_Value is
-     (Address_Add (Ptr, -Offset));
+   function Address_Add
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
+   is
+     (Address_Add_Sub (LHS, RHS, True, Name));
+
+   function Address_Sub
+     (LHS, RHS : GL_Value; Name : String := "") return GL_Value
+   is
+     (Address_Add_Sub (LHS, RHS, False, Name));
 
    function Landing_Pad
      (MD               : MD_Type;

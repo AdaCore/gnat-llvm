@@ -447,9 +447,23 @@ package body GNATLLVM.GLType is
       --  compiled, a size was specified, and we've made a padded type, set
       --  a warning saying how many bits are unused. Consider the alignment
       --  of the type when doing that.
+      --
+      --  Address-compatible types (System.Address and types derived from it)
+      --  are excluded from this warning. They are now represented as a
+      --  pointer, not as an integer. When such a type gets a size bigger than
+      --  the pointer width (for example a record component with a 64-bit size
+      --  clause, compiled for a 32-bit target), Make_GT_Alternative_Internal
+      --  can not just widen the pointer the way it widened the old integer
+      --  representation, so it builds a padded type instead. These padding
+      --  bits are expected and not a real waste of space, so warning about
+      --  them is only noise. It also keeps us consistent with GNAT, which
+      --  keeps the address as an integer and stays silent here. Before the
+      --  pointer representation the sized variant was simply a wider integer
+      --  (no padding), so the warning did not appear at all.
 
       if Present (Err_Ident) and then Comes_From_Source (Err_Ident)
         and then In_Extended_Main_Code_Unit (Err_Ident)
+        and then not Is_Address_Compatible_Type (Full_Etype (GT))
         and then (Has_Padding (Out_GT)
                     or else Is_Packed_Array_Impl_Type (GT))
         and then Present (In_Sz) and then Present (Size)
@@ -673,8 +687,26 @@ package body GNATLLVM.GLType is
          --  specified that's no larger than the largest integral type,
          --  make an alternate integer type, but use the same type if the
          --  size and signedness are the same.
+         --
+         --  Address-compatible types (System.Address and its descendants)
+         --  are excluded: Is_Discrete_Or_Fixed_Point_Type is True for them
+         --  (it tracks the Ada source-level category and was deliberately
+         --  not tightened the way Is_Integer_Type was), but their primitive
+         --  LLVM representation is now a pointer, not iN. Building an Int_Ty
+         --  alternate here would turn a sized variant of System.Address into
+         --  an integer (e.g. an i32 activation-record slot on a 64-bit
+         --  target), which then gets pointer-cast/addrspacecast'd and, worse,
+         --  truncates a 64-bit address. Let address-compatible types fall
+         --  through to the padded/aligning/truncating cases below, which keep
+         --  the pointer primitive MD.
+         --
+         --  This was not a problem before this change: the base
+         --  representation of System.Address was also iN then, so a sized
+         --  variant becoming iN was consistent. The mismatch only appears
+         --  now that the base representation is a pointer.
 
          elsif Is_Discrete_Or_Fixed_Point_Type (GT)
+           and then not Is_Address_Compatible_Type (Full_Etype (GT))
            and then ((Present (Size) and then Size <= Max_Int_Size)
                      or else Check_Overflow)
          then

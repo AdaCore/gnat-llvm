@@ -2037,4 +2037,66 @@ package body GNATLLVM.Instructions is
                       (1 => Bit_Cast (Ptr, Void_Ptr_MD), 2 => Addr)),
                 Ptr));
 
+   ---------------------
+   -- Address_Add_Sub --
+   ---------------------
+
+   function Address_Add_Sub (LHS, RHS : GL_Value; Is_Add : Boolean;
+                             Name : String) return GL_Value
+   is
+      GT     : constant GL_Type         := Related_Type (LHS);
+      R      : constant GL_Relationship := Relationship (LHS);
+      Result : GL_Value;
+   begin
+      --  Fold +/- 0: the IR we would otherwise emit (a zero-stride GEP, or
+      --  Set_Pointer_Address (Get_Pointer_Address (X)) on purecap) is
+      --  semantically correct but is not foldable as a constant initializer
+      --  and adds noise to -O0 IR dumps. Skip it when the offset is a plain
+      --  integer zero.
+
+      if Is_Integer_Type (RHS) and then Is_Const_0 (RHS) then
+         return LHS;
+
+      elsif Tagged_Pointers then
+
+         --  On purecap, scalar arithmetic on capabilities is done by
+         --  extracting the address part, computing in integers, then
+         --  storing the new address back into the capability. If RHS is
+         --  itself an Address (pointer-difference case) it also needs to
+         --  be reduced to its integer address part first.
+
+         declare
+            RHS_Int : constant GL_Value :=
+              (if   Is_Address (RHS) then Get_Pointer_Address (RHS)
+               else RHS);
+         begin
+            Result := (if Is_Add
+                       then Get_Pointer_Address (LHS) + RHS_Int
+                       else Get_Pointer_Address (LHS) - RHS_Int);
+            return Set_Pointer_Address (LHS, Result);
+         end;
+
+      elsif Is_Integer_Type (RHS) then
+
+         --  Pointer + integer offset: emit a byte-stride GEP. LLVM
+         --  signed-extends the GEP index, so negating RHS produces the
+         --  right backwards stride for subtraction without needing a
+         --  separate sub instruction.
+
+         Result := (if Is_Add then RHS else -RHS);
+         return GEP_To_Relationship
+                     (GT, R, LHS, SSI_MD, (1 => Result), Name);
+
+      else
+
+         --  Both operands are addresses (pointer difference, or
+         --  ill-typed sum of two addresses). Fall back to int arithmetic.
+
+         Result := Add_Sub (Ptr_To_Int (LHS, Size_GL_Type),
+                            Ptr_To_Int (RHS, Size_GL_Type),
+                            Is_Add, Name);
+         return Int_To_Ptr (Result, GT);
+      end if;
+   end Address_Add_Sub;
+
 end GNATLLVM.Instructions;

@@ -1049,7 +1049,9 @@ package body GNATLLVM.Subprograms is
             if Is_Unconstrained_Array (GT) then
                Result := From_Access (Result);
             else
-               Result := Int_To_Ref (Result, GT);
+               Result := (if   Is_Pointer_Or_Address (Result)
+                          then Ptr_To_Ref (Result, GT)
+                          else Int_To_Ref (Result, GT));
                Set_Alignment
                  (Result,
                   (if   Relationship (Result) = Relationship (V)

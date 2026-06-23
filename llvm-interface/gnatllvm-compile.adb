@@ -225,8 +225,7 @@ package body GNATLLVM.Compile is
       --  and from a suitable integer representation of the address.
 
       Address_GL_Type := Primitive_GL_Type (Standard_Address);
-      Address_MD      :=
-        (if Tagged_Pointers then Void_Ptr_MD else Type_Of (Address_GL_Type));
+      Address_MD      := Void_Ptr_MD;
       Address_T       := +Address_MD;
 
       --  The size of a pointer is specified in both the LLVM data layout

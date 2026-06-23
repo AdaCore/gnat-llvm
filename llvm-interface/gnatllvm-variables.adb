@@ -2334,7 +2334,7 @@ package body GNATLLVM.Variables is
 
          begin
             Addr :=
-              Int_To_Relationship ((if   Present (Addr) then Addr
+              Ptr_To_Relationship ((if   Present (Addr) then Addr
                                     else Emit_Expression (Addr_Expr)),
                                    GT,
                                    (if   R = Reference_To_Bounds_And_Data

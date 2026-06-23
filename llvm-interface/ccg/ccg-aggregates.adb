@@ -16,7 +16,6 @@
 ------------------------------------------------------------------------------
 
 with Atree;       use Atree;
-with Einfo.Utils; use Einfo.Utils;
 with Uintp.LLVM;  use Uintp.LLVM;
 
 with GNATLLVM.Codegen; use GNATLLVM.Codegen;
@@ -139,8 +138,7 @@ package body CCG.Aggregates is
       F0        : constant Entity_Id        :=
         (if Num_Types = 0 then Empty else Element_Entity (MD, 0));
       TE        : constant Opt_Type_Kind_Id :=
-        (if   Present (F0) then Full_Base_Type (Full_Etype (Scope (F0)))
-         else Empty);
+        (if Present (F0) then Full_Base_Type_Of_Scope (F0) else Empty);
       Cur_Pos   : ULL                       := 0;
       Need_Pack : Boolean                   := False;
       Need_Pad  : Boolean                   := False;
@@ -655,19 +653,11 @@ package body CCG.Aggregates is
          end if;
       end loop;
 
-      --  If the input is a constant, mark the output as constant and
-      --  as the value of V, mark as LHS if it is, and we're done.
-
-      if Get_Is_Constant (Aggr) then
-         Set_Is_Constant (V);
-         Set_Is_LHS (V, Is_LHS);
-         Set_C_Value (V, Result);
-         return;
-      end if;
-
       --  In most cases, Result will have the same type as the declaration
       --  type of V, which is what's expected, but in some cases, such as
       --  where there's only one operand, it may not. So cast in that case.
+      --  We apply this fixup for both constant and non-constant aggregates
+      --  so that the C_Value expression type matches the declared (MD) type.
 
       if Pointer_Type (Aggr_MD) /= Decl_MD then
          if Is_LHS then
@@ -676,6 +666,16 @@ package body CCG.Aggregates is
          end if;
 
          Result := "((" & Decl_MD & ") (" & Result & "))";
+      end if;
+
+      --  If the input is a constant, mark the output as constant and
+      --  as the value of V, mark as LHS if it is, and we're done.
+
+      if Get_Is_Constant (Aggr) then
+         Set_Is_Constant (V);
+         Set_Is_LHS (V, Is_LHS);
+         Set_C_Value (V, Result);
+         return;
       end if;
 
       --  If we ended up with a LHS, we set this as the value of V but mark

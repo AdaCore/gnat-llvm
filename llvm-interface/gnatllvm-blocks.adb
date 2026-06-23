@@ -920,8 +920,7 @@ package body GNATLLVM.Blocks is
                           Any_Array_GL_Type, Pointer_Type (Type_Of (Str)));
             Set_Initializer     (V, Str);
             Set_Global_Constant (V);
-            File_Name_Strings (Index, Is_Global) :=
-              Ptr_To_Int (V, Address_GL_Type);
+            File_Name_Strings (Index, Is_Global) := Ptr_To_Address_Type (V);
 
             if not Is_Global then
                Set_Linkage (V, Private_Linkage);

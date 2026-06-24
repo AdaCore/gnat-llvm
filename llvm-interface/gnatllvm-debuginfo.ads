@@ -93,9 +93,13 @@ package GNATLLVM.DebugInfo is
    --  Add debugging info for the label E, corresponding to the
    --  given basic block.
 
-   procedure Import_Module (N : Node_Id)
+   procedure Import_Module (E : Entity_Id; N : Node_Id;
+                            Name : Entity_Id := Empty)
      with Pre => Present (N);
-   --  Add debugging info for the "use" clause N.
+   --  Add debugging info for an imported package.  E is the package
+   --  being imported.  N is used for the location of the import.
+   --  NAME, if given, is the imported name -- this is used for
+   --  package renamings.
 
    function Create_Type_Data (GT : GL_Type;
                               M : access Discriminant_Map := null)

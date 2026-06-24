@@ -755,7 +755,6 @@ package body GNATLLVM.Compile is
             | N_Itype_Reference
             | N_Number_Declaration
             | N_Package_Instantiation
-            | N_Package_Renaming_Declaration
             | N_Procedure_Instantiation
             | N_Protected_Type_Declaration
             | N_Record_Representation_Clause
@@ -766,8 +765,17 @@ package body GNATLLVM.Compile is
            =>
             null;
 
+         when N_Package_Renaming_Declaration => declare
+            Unit_Name : constant Node_Id := Defining_Unit_Name (N);
+         begin
+            Import_Module (Entity (Name (N)), N,
+                           (if Nkind (Unit_Name) = N_Defining_Program_Unit_Name
+                            then Defining_Identifier (Unit_Name)
+                            else Unit_Name));
+         end;
+
          when N_Use_Package_Clause =>
-            Import_Module (N);
+            Import_Module (Entity (Name (N)), N);
 
          when N_Push_Constraint_Error_Label .. N_Pop_Storage_Error_Label =>
             Process_Push_Pop_xxx_Error_Label (N);

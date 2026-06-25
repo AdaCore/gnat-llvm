@@ -117,7 +117,7 @@ api_test HAVE_DIVARIABLEEXPRESSION "DIVariableExpression *global;" &
 api_test HAVE_BASIC_TYPE_SCOPE 'MDNode *named(DIBuilder *builder) { return builder->createBasicType("", (DIFile *)nullptr, 0, (DIScope *) nullptr, 32, dwarf::DW_ATE_unsigned, DINode::FlagZero); }' &
 
 # Test whether TargetOptions has a field EmitCallGraphSection.
-api_test HAVE_EMIT_CALL_GRAPH_SECTION "void set(TargetOptions &Opt) { Opt.EmitCallGraphSection = 1; }"
+api_test HAVE_EMIT_CALL_GRAPH_SECTION "void set(TargetOptions &Opt) { Opt.EmitCallGraphSection = 1; }" &
 
 wait
 

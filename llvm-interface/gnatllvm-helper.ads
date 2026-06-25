@@ -441,14 +441,16 @@ package GNATLLVM.Helper is
        (DI_Create_Module (Builder, Scope, Name, Name'Length,
                           "", 0, "", 0, "", 0));
 
-   function DI_Builder_Create_Imported_Module_From_Module
+   function DI_Builder_Create_Imported_Declaration
      (Builder : DI_Builder_T;
       Scope   : Metadata_T;
-      M       : Metadata_T;
+      Decl    : Metadata_T;
       File    : Metadata_T;
-      Line    : Logical_Line_Number) return Metadata_T
+      Line    : Logical_Line_Number;
+      Name    : String) return Metadata_T
      is
-       (DI_Builder_Create_Imported_Module_From_Module
-         (Builder, Scope, M, File, unsigned (Line), System.Null_Address, 0));
+     (DI_Create_Imported_Declaration
+       (Builder, Scope, Decl, File, unsigned (Line), Name, Name'Length,
+        System.Null_Address, 0));
 
 end GNATLLVM.Helper;

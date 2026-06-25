@@ -1589,18 +1589,25 @@ package body GNATLLVM.DebugInfo is
       end if;
    end Add_Label_Debug_Info;
 
-   procedure Import_Module (N : Node_Id) is
+   -------------------
+   -- Import_Module --
+   -------------------
+
+   procedure Import_Module (E : Entity_Id; N : Node_Id;
+                            Name : Entity_Id := Empty) is
    begin
       if Emit_Debug_Info then
          declare
-            E     : constant Entity_Id   := Entity (Name (N));
             S     : constant Source_Ptr  := Sloc (N);
             M     : constant Metadata_T  := Get_Module (E);
-            Unused : constant Metadata_T
-              := DI_Builder_Create_Imported_Module_From_Module
+            Unused : constant Metadata_T :=
+              DI_Builder_Create_Imported_Declaration
                 (DI_Builder, Get_Scope_For (E), M,
                  Get_Debug_File_Node (Get_Source_File_Index (S)),
-                 Get_Logical_Line_Number (S));
+                 Get_Logical_Line_Number (S),
+                 (if Present (Name)
+                  then Get_Unqualified_Name (Name)
+                  else ""));
          begin
             null;
          end;

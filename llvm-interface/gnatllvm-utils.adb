@@ -395,7 +395,8 @@ package body GNATLLVM.Utils is
       --  all but the first character of the name, depending on whether
       --  the first character is a "*".
 
-      elsif Ekind (E) not in Formal_Kind and then No (Address_Clause (E))
+      elsif Ekind (E) not in Named_Kind | Formal_Kind
+        and then No (Address_Clause (E))
         and then Present (Interface_Name (E))
       then
          declare

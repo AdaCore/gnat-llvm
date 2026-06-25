@@ -86,8 +86,13 @@ package GNATLLVM.DebugInfo is
    --  must be cancelled with a "pop" and the position will be frozen until
    --  the all pushes have been popped.
 
-   procedure Create_Global_Variable_Debug_Data (E : Entity_Id; V : GL_Value)
+   procedure Create_Constant_Debug_Data (E : Entity_Id; V : GL_Value)
      with Pre => not Is_Type (E) and then Present (V);
+   --  Build debugging data for E, a constant, with V as its location.
+
+   procedure Create_Global_Variable_Debug_Data (E : Entity_Id; V : GL_Value)
+     with Pre => not Is_Type (E) and then Present (V)
+                 and then Is_Constant (V);
    --  Build debugging data for E, a global variable, with V as its
    --  location.
 

@@ -930,9 +930,11 @@ package body GNATLLVM.DebugInfo is
             Bound : constant GL_Value :=
               Get_Array_Bound (GT, Dimension, Lower_Bound, No_GL_Value,
                                For_Orig => Packed);
+
          begin
             if Is_Constant (Bound) then
                begin
+
                   --  Since LLVM only really has signed scalar types
                   --  (and then some unsigned operations), we may end
                   --  up with a type bound that is incorrectly (for
@@ -941,13 +943,15 @@ package body GNATLLVM.DebugInfo is
                   --  upper bound is 255, but this will show up as "i8
                   --  -1".  This function undoes the sign extension in
                   --  this scenario.
+
                   if Is_Unsigned_Type (Bound_Type) then
                      declare
                         Bitsize : constant Uint :=
-                          UI_From_ULL (ULL (Get_Scalar_Bit_Size (Bound_Type)));
-                        Max     : constant Uint := 2**Bitsize;
+                          UI_From_ULL (ULL (Get_Scalar_Size (Bound_Type)));
+                        Max     : constant Uint := 2 ** Bitsize;
                         Masked  : constant Uint
                            := UI_From_GL_Value (Bound) mod Max;
+
                      begin
                         return Constant_As_Metadata (Masked);
                      end;

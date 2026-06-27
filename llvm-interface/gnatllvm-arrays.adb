@@ -175,7 +175,8 @@ package body GNATLLVM.Arrays is
         (TE       : Array_Kind_Id;
          Dim      : Nat;
          V        : GL_Value;
-         Max_Size : Boolean := False) return Result;
+         Max_Size : Boolean := False;
+         For_Orig : Boolean := False) return Result;
 
       function Get_Array_Elements
         (V        : GL_Value;
@@ -624,12 +625,15 @@ package body GNATLLVM.Arrays is
         (TE       : Array_Kind_Id;
          Dim      : Nat;
          V        : GL_Value;
-         Max_Size : Boolean := False) return Result
+         Max_Size : Boolean := False;
+         For_Orig : Boolean := False) return Result
       is
          Low_Bound  : constant Result :=
-           Get_Array_Bound (Default_GL_Type (TE), Dim, True,  V, Max_Size);
+           Get_Array_Bound (Default_GL_Type (TE), Dim, True,  V, Max_Size,
+                           For_Orig => For_Orig);
          High_Bound : constant Result :=
-           Get_Array_Bound (Default_GL_Type (TE), Dim, False, V, Max_Size);
+           Get_Array_Bound (Default_GL_Type (TE), Dim, False, V, Max_Size,
+                           For_Orig => For_Orig);
 
       begin
          --  The length of an array that has the maximum range of its type
@@ -734,7 +738,8 @@ package body GNATLLVM.Arrays is
      (TE       : Array_Kind_Id;
       Dim      : Nat;
       V        : GL_Value;
-      Max_Size : Boolean := False) return GL_Value
+      Max_Size : Boolean := False;
+      For_Orig : Boolean := False) return GL_Value
      renames LLVM_Size.Get_Array_Length;
 
    function Get_Array_Elements
@@ -1472,13 +1477,12 @@ package body GNATLLVM.Arrays is
       --  Size_Type, we must find a wider type to use. We use the first,
       --  which will be the narrowest.
 
-      if Get_Scalar_Bit_Size (Our_GT) >= Get_Scalar_Bit_Size (Size_GL_Type)
-      then
+      if Get_Scalar_Size (Our_GT) >= Get_Scalar_Size (Size_GL_Type) then
          return Our_GT;
       end if;
 
       for GT of Int_Types loop
-         if Get_Scalar_Bit_Size (GT) >= Get_Scalar_Bit_Size (Our_GT) * 2 then
+         if Get_Scalar_Size (GT) >= Get_Scalar_Size (Our_GT) * 2 then
             return GT;
          end if;
       end loop;

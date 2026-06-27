@@ -861,7 +861,7 @@ package body GNATLLVM.Instructions is
    ---------------------
 
    function Trunc_Overflowed (V, Result : GL_Value) return Boolean is
-      Bitsize : constant Integer := Integer (Get_Scalar_Bit_Size (Result));
+      Bitsize : constant Integer := Integer (Get_Scalar_Size (Result));
 
    begin
       --  If we can omit an overflow test or the input and output are the
@@ -1531,15 +1531,15 @@ package body GNATLLVM.Instructions is
       MD             : constant MD_Type         := Designated_Type_Of (Ptr);
       --  The LLVM type that will be loaded by this instruction
 
-      Result_Bits    : constant Nat             :=
-        (if Is_Data (New_R) then Get_Scalar_Bit_Size (MD) else 0);
+      Result_Bits    : constant ULL             :=
+        (if Is_Data (New_R) then Get_Type_Size (MD) else 0);
       --  Size in bits that will be loaded by this instruction
 
       Special_Atomic : constant Boolean         :=
         Is_Data (New_R) and then Is_Atomic (Ptr)
           and then not Atomic_Kind (MD)
           and then Result_Bits /= 0
-          and then Nat'(Get_Type_Alignment (Load_GT)) >= Result_Bits;
+          and then ULL (Nat'(Get_Type_Alignment (Load_GT))) >= Result_Bits;
       --  True if this is an atomic reference that LLVM can't handle
       --  directly.
 
@@ -1626,11 +1626,11 @@ package body GNATLLVM.Instructions is
    procedure Store (Expr, Ptr : GL_Value) is
       GT             : constant GL_Type := Related_Type (Expr);
       MD             : constant MD_Type := Type_Of (Expr);
-      Result_Bits    : constant Nat     :=
-        (if Is_Data (Expr) then Get_Scalar_Bit_Size (MD) else 0);
+      Result_Bits    : constant ULL     :=
+        (if Is_Data (Expr) then Get_Type_Size (MD) else 0);
       Special_Atomic : constant Boolean :=
         Is_Data (Expr) and then Is_Atomic (Ptr) and then not Atomic_Kind (MD)
-          and then Nat'(Get_Type_Alignment (GT)) >= Result_Bits;
+          and then ULL (Nat'(Get_Type_Alignment (GT))) >= Result_Bits;
       Equiv_MD       : constant MD_Type :=
         (if   Special_Atomic then Int_Ty (Result_Bits) else No_MD_Type);
       Ptr_MD         : constant MD_Type :=
@@ -1992,13 +1992,15 @@ package body GNATLLVM.Instructions is
 
    begin
       if Is_Record_Type (GT) then
+
          --  LLVM doesn't allow struct return types for inline assembly.
          --  Therefore, if GT is a record, we need to use the equivalent
          --  integer type for the return value, and then pointer-cast when
          --  storing the result.
 
          declare
-            GT_Bits : constant Nat := Get_Scalar_Bit_Size (GT);
+            GT_Bits : constant ULL := Get_Type_Size (GT);
+
          begin
             if GT_Bits not in 32 | 64 then
                Error_Msg_N ("unsupported Asm output", Output_Value);

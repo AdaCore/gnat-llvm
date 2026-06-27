@@ -1021,7 +1021,7 @@ package body GNATLLVM.GLType is
       MD        : constant MD_Type := Type_Of (GT);
       In_GT     : constant GL_Type := Related_Type (V);
       Src_Uns   : constant Boolean := Is_Unsigned_For_RM (In_GT);
-      Src_Size  : constant Nat     := Get_Scalar_Bit_Size (V);
+      Src_Size  : constant Nat     := Get_Scalar_Size (V);
       Dest_Size : constant Nat     := Int_Bits (MD);
       Is_Trunc  : constant Boolean := Dest_Size < Src_Size;
       Subp      : Cvtf             := null;
@@ -1426,7 +1426,7 @@ package body GNATLLVM.GLType is
 
    function Wider_GL_Type (GT : GL_Type) return GL_Type
    is
-      Orig_Size     : constant Nat     := Get_Scalar_Bit_Size (GT);
+      Orig_Size     : constant Nat     := Get_Scalar_Size (GT);
       Pow2_Size     : constant Nat     :=
         (case Orig_Size is
            when 1 ..  8 => 8,   when 9 .. 16 => 16, when 17 .. 32 => 32,

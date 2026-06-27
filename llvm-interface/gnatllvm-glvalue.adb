@@ -1415,7 +1415,7 @@ package body GNATLLVM.GLValue is
    function Const_Int (GT : GL_Type; N : Uint) return GL_Value is
       Result  : GL_Value          :=
         G (Const_Int (+Type_Of (GT), N), GT, Type_Of (GT));
-      Bitsize : constant Integer  := Integer (Get_Scalar_Bit_Size (Result));
+      Bitsize : constant Integer  := Integer (Get_Scalar_Size (Result));
 
    begin
       --  Set the alignment from the value
@@ -1637,12 +1637,12 @@ package body GNATLLVM.GLValue is
    function Get_Type_Size_In_Bytes (V : GL_Value) return ULL is
      (Get_Type_Size_In_Bytes (Type_Of (V)));
 
-   -------------------------
-   -- Get_Scalar_Bit_Size --
-   -------------------------
+   ---------------------
+   -- Get_Scalar_Size --
+   ---------------------
 
-   function Get_Scalar_Bit_Size (V : GL_Value) return Nat is
-     (Get_Scalar_Bit_Size (Type_Of (V)));
+   function Get_Scalar_Size (V : GL_Value) return Nat is
+     (Get_Scalar_Size (Type_Of (V)));
 
    ------------------------
    -- Get_Type_Alignment --

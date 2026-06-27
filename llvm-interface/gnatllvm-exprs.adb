@@ -1503,7 +1503,9 @@ package body GNATLLVM.Exprs is
                end if;
 
                if Attr = Attribute_Length then
-                  V := Get_Array_Length (Full_Etype (P_GT), Dim, Array_Descr);
+                     V := Get_Array_Length
+                       (Full_Etype (P_GT), Dim, Array_Descr,
+                        For_Orig => Is_Bit_Packed_Array_Impl_Type (P_GT));
                else
                   V := Get_Array_Bound
                     (P_GT, Dim, Attr = Attribute_First, Array_Descr,

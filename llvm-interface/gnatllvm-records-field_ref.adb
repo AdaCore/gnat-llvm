@@ -15,10 +15,11 @@
 -- of the license.                                                          --
 ------------------------------------------------------------------------------
 
-with Nlists;   use Nlists;
-with Snames;   use Snames;
-with Table;    use Table;
-with Ttypes;   use Ttypes;
+with Nlists;     use Nlists;
+with Snames;     use Snames;
+with Table;      use Table;
+with Ttypes;     use Ttypes;
+with Uintp.LLVM; use Uintp.LLVM;
 
 with GNATLLVM.Aliasing;     use GNATLLVM.Aliasing;
 with GNATLLVM.Arrays;       use GNATLLVM.Arrays;
@@ -559,9 +560,9 @@ package body GNATLLVM.Records.Field_Ref is
 
    function Is_Normalized (BRD : Bitfield_Ref_Desc) return Boolean is
    begin
-      return Present (BRD) and then BRD.Size <= Max_Int_Size
+      return Present (BRD) and then BRD.Size <= ULL (Max_Int_Size)
         and then not Is_Padded_GL_Type (BRD.GT)
-        and then (not Is_Reference (BRD.LHS) or else BRD.Offset < BPU);
+        and then (not Is_Reference (BRD.LHS) or else BRD.Offset < UBPU);
    end Is_Normalized;
 
    ---------------
@@ -583,13 +584,13 @@ package body GNATLLVM.Records.Field_Ref is
       --  Next see if we have a reference but the bit offet is larger
       --  than a byte. If so, update the address and bit offset.
 
-      if Is_Reference (Out_BRD.LHS) and then Out_BRD.Offset >=  BPU then
+      if Is_Reference (Out_BRD.LHS) and then Out_BRD.Offset >=  UBPU then
          Out_BRD.LHS := Ptr_To_Relationship (Out_BRD.LHS, Void_Ptr_MD,
                                              Out_BRD.GT, Reference_To_Unknown);
          Out_BRD.LHS    := GEP_To_Relationship
            (SSI_GL_Type, Reference_To_Unknown, Out_BRD.LHS, Byte_MD,
-            (1 => Size_Const_Int (ULL (Out_BRD.Offset / BPU))));
-         Out_BRD.Offset := Out_BRD.Offset mod BPU;
+            (1 => Size_Const_Int (Out_BRD.Offset / UBPU)));
+         Out_BRD.Offset := Out_BRD.Offset mod UBPU;
       end if;
 
       return Out_BRD;
@@ -614,11 +615,11 @@ package body GNATLLVM.Records.Field_Ref is
 
       Last_Bitfield : Nat          := 0;
       N             : N_Subexpr_Id := In_N;
-      Bit_Offset    : Nat          := 0;
+      Bit_Offset    : ULL          := 0;
       Offset        : GL_Value     := Size_Const_Null;
       GT            : GL_Type;
       Result        : GL_Value;
-      Size          : Nat;
+      Size          : ULL;
 
    begin
       --  Skip conversions. Record all record and arrays references in our
@@ -726,9 +727,9 @@ package body GNATLLVM.Records.Field_Ref is
       --  with the normalization call below, but we want to combine
       --  the offsets.
 
-      if Bit_Offset >=  BPU then
-         Offset := Offset + Size_Const_Int (ULL (Bit_Offset / BPU));
-         Bit_Offset := Bit_Offset mod BPU;
+      if Bit_Offset >= UBPU then
+         Offset := Offset + Size_Const_Int (Bit_Offset / UBPU);
+         Bit_Offset := Bit_Offset mod UBPU;
       end if;
 
       --  If we have an offset to add, do it via a GEP
@@ -764,14 +765,13 @@ package body GNATLLVM.Records.Field_Ref is
      (BRD : Bitfield_Ref_Desc; LHS : GL_Value := No_GL_Value) return GL_Value
    is
       F_GT        : constant GL_Type := BRD.GT;
-      F_Bits      : constant Nat     :=
-        Nat (ULL'(+Get_Type_Size (F_GT, Max_Size => True)));
-      Num_Bits    : constant Nat     := BRD.Size;
-      First_Bit   : constant Nat     := BRD.Offset;
-      Needed_Bits : constant Nat     := Byte_Align (First_Bit + Num_Bits);
-      Our_Bits    : constant Nat     :=
+      F_Bits      : constant ULL     := Get_Type_Size (F_GT, Max_Size => True);
+      Num_Bits    : constant ULL     := BRD.Size;
+      First_Bit   : constant ULL     := BRD.Offset;
+      Needed_Bits : constant ULL     := Byte_Align (First_Bit + Num_Bits);
+      Our_Bits    : constant ULL     :=
         (if   Is_Reference (BRD.LHS) then Needed_Bits
-         else Get_Scalar_Bit_Size (BRD.LHS));
+         else Get_Type_Size (BRD.LHS));
       Result      : GL_Value         := BRD.LHS;
 
    begin
@@ -791,7 +791,7 @@ package body GNATLLVM.Records.Field_Ref is
       --  wide enough to represent that number of bytes, we can load those
       --  bytes, shift the data to the low-order bits, and truncate.
 
-      if not Emit_C or else Our_Bits <= Max_Int_Size then
+      if not Emit_C or else Our_Bits <= ULL (Max_Int_Size) then
          declare
             MD : constant MD_Type :=
               (if   Is_Reference (Result) then Int_Ty (Needed_Bits)
@@ -814,8 +814,8 @@ package body GNATLLVM.Records.Field_Ref is
 
             if First_Bit /= 0 then
                Result := L_Shr (Result,
-                                G (Const_Int (+MD, ULL (First_Bit), False),
-                                   F_GT, MD, Unknown));
+                                G (Const_Int (+MD, First_Bit, False), F_GT, MD,
+                                   Unknown));
             end if;
 
             if Num_Bits /= Our_Bits then
@@ -832,7 +832,7 @@ package body GNATLLVM.Records.Field_Ref is
       --  extract the needed bits, and truncate to the actual size, if
       --  necessary.
 
-      elsif Needed_Bits = Max_Int_Size + BPU then
+      elsif Needed_Bits = ULL (Max_Int_Size + BPU) then
          declare
             Low_Addr    : constant GL_Value :=
               (if   Bytes_Big_Endian
@@ -856,10 +856,9 @@ package body GNATLLVM.Records.Field_Ref is
             Result := Call_Intrinsic ("llvm.fshr",
                                       (1 => High_Part, 2 => Low_Part,
                                        3 => Const_Int (Max_Int_GL_Type,
-                                                       ULL (First_Bit),
-                                                       False)));
+                                                       First_Bit, False)));
 
-            if Num_Bits /= Max_Int_Size then
+            if Num_Bits /= ULL (Max_Int_Size) then
                Result := Trunc_To_Relationship (Result, Int_Ty (Num_Bits),
                                                 Unknown);
             end if;
@@ -926,13 +925,12 @@ package body GNATLLVM.Records.Field_Ref is
    is
       Have_Ref    : constant Boolean := Is_Reference (BRD.LHS);
       F_GT        : constant GL_Type := BRD.GT;
-      F_Bits      : constant Nat     :=
-        Nat (ULL'(+Get_Type_Size (F_GT, Max_Size => True)));
-      Num_Bits    : constant Nat     := BRD.Size;
-      First_Bit   : constant Nat     := BRD.Offset;
-      Needed_Bits : constant Nat     := Byte_Align (First_Bit + Num_Bits);
-      Our_Bits    : constant Nat     :=
-        (if   Have_Ref then Needed_Bits else Get_Scalar_Bit_Size ((BRD.LHS)));
+      F_Bits      : constant ULL     := Get_Type_Size (F_GT, Max_Size => True);
+      Num_Bits    : constant ULL     := BRD.Size;
+      First_Bit   : constant ULL     := BRD.Offset;
+      Needed_Bits : constant ULL     := Byte_Align (First_Bit + Num_Bits);
+      Our_Bits    : constant ULL     :=
+        (if   Have_Ref then Needed_Bits else Get_Type_Size ((BRD.LHS)));
       F_MD        : constant MD_Type := Int_Ty (F_Bits);
       New_F_MD    : constant MD_Type := Int_Ty (Num_Bits);
       New_RHS     : GL_Value         := Convert_GT (RHS, F_GT);
@@ -970,7 +968,7 @@ package body GNATLLVM.Records.Field_Ref is
 
          --  Always do a byte-aligned load to avod undefined behavior
 
-         if Num_Bits mod BPU /= 0 then
+         if Num_Bits mod UBPU /= 0 then
 
             declare
                Aligned_MD : constant MD_Type := Int_Ty (Byte_Align (Num_Bits));
@@ -997,12 +995,12 @@ package body GNATLLVM.Records.Field_Ref is
       --  bytes, we can load those bytes, shift the RHS to the proper place,
       --  mask out those bits, and "or" in the RHS.
 
-      if not Emit_C or else Our_Bits <= Max_Int_Size then
+      if not Emit_C or else Our_Bits <= ULL (Max_Int_Size) then
          declare
             Orig_MD     : constant MD_Type  := Type_Of (BRD.LHS);
             MD          : constant MD_Type  := Int_Ty (Our_Bits);
             Shift_Count : constant GL_Value :=
-              G (Const_Int (+MD, ULL (First_Bit), False), F_GT, MD, Unknown);
+              G (Const_Int (+MD, First_Bit, False), F_GT, MD, Unknown);
             Ones        : constant GL_Value :=
               Z_Ext_To_Relationship (G (Const_Ones (+New_F_MD), F_GT,
                                         New_F_MD, Unknown),
@@ -1080,7 +1078,7 @@ package body GNATLLVM.Records.Field_Ref is
          --  to get the new low-order part and right the maximum integer
          --  size minus the first bit position to get the high-order part.
 
-      elsif Have_Ref and then Needed_Bits = Max_Int_Size + BPU then
+      elsif Have_Ref and then Needed_Bits = ULL (Max_Int_Size + BPU) then
          declare
             Low_Addr    : constant GL_Value :=
               (if   Bytes_Big_Endian
@@ -1096,10 +1094,10 @@ package body GNATLLVM.Records.Field_Ref is
             High_Ptr    : constant GL_Value :=
               Convert_Ref (High_Addr, SSI_GL_Type);
             Shift_Cnt_L : constant GL_Value :=
-              G (Const_Int (Max_Int_T, ULL (First_Bit), False), F_GT,
-                 Max_Int_MD, Unknown);
+              G (Const_Int (Max_Int_T, First_Bit, False), F_GT, Max_Int_MD,
+                 Unknown);
             Shift_Cnt_H : constant GL_Value :=
-              G (Const_Int (Max_Int_T, ULL (Max_Int_Size - First_Bit), False),
+              G (Const_Int (Max_Int_T, ULL (Max_Int_Size) - First_Bit, False),
                  F_GT, Max_Int_MD, Unknown);
             Ones        : constant GL_Value :=
               Z_Ext_To_Relationship (G (Const_Ones (+New_F_MD),

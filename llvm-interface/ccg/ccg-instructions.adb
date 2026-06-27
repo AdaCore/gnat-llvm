@@ -522,11 +522,11 @@ package body CCG.Instructions is
 
       if not Pack_Not_Supported
         and then Is_Integral_Type (LS_T)
-        and then Get_Scalar_Bit_Size (LS_T) in 17 .. 24 | 33 .. 56 | 65 .. 120
+        and then Get_Scalar_Size (LS_T) in 17 .. 24 | 33 .. 56 | 65 .. 120
       then
          declare
-            Bits   : constant Nat := Get_Scalar_Bit_Size (LS_T);
-            Result : Str :=
+            Bits   : constant Nat := Get_Scalar_Size (LS_T);
+            Result : Str          :=
               "((struct ccg_i" & Bits & " *" &
               (if   Get_Volatile (V) then "volatile"
                else "") & ") " & Op & ")->f";
@@ -806,8 +806,8 @@ package body CCG.Instructions is
       --  the same C type.
 
       elsif Opc = Op_Trunc
-        and then Next_Pow2 (Get_Scalar_Bit_Size (Src_T)) =
-                 Next_Pow2 (Get_Scalar_Bit_Size (Dest_T))
+        and then Next_Pow2 (Get_Scalar_Size (Src_T)) =
+                 Next_Pow2 (Get_Scalar_Size (Dest_T))
       then
          return +Op;
       end if;
@@ -862,7 +862,7 @@ package body CCG.Instructions is
                else Info.Is_Unsigned);
             X_Sign      : constant Boolean                :=
               (Pred in Int_EQ | Int_NE
-               and then Get_Scalar_Bit_Size (Op1) = Int_Size)
+               and then Get_Scalar_Size (Op1) = Int_Size)
               or else Get_I_Cmp_Same_Sign (V);
             POO         : constant Process_Operand_Option :=
               (if Do_Unsigned then POO_Unsigned else POO_Signed);

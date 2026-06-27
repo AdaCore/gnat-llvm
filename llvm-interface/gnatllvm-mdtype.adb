@@ -1128,7 +1128,7 @@ package body GNATLLVM.MDType is
 
       case Get_Type_Kind (T) is
          when Integer_Type_Kind =>
-            return Int_Ty (Get_Scalar_Bit_Size (T), Unknown => True);
+            return Int_Ty (Get_Scalar_Size (T), Unknown => True);
 
          when Float_Type_Kind =>
             return Float_Ty (32);
@@ -1224,12 +1224,12 @@ package body GNATLLVM.MDType is
    function Get_Type_Size_In_Bytes (MD : MD_Type) return ULL is
      (Get_Type_Size_In_Bytes (Type_T'(+MD)));
 
-   -------------------------
-   -- Get_Scalar_Bit_Size --
-   -------------------------
+   ---------------------
+   -- Get_Scalar_Size --
+   ---------------------
 
-   function Get_Scalar_Bit_Size (MD : MD_Type) return Nat is
-     (Get_Scalar_Bit_Size (Type_T'(+MD)));
+   function Get_Scalar_Size (MD : MD_Type) return Nat is
+     (Get_Scalar_Size (Type_T'(+MD)));
 
    ------------------------
    -- Get_Type_Alignment --

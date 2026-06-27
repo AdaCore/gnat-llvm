@@ -1378,8 +1378,14 @@ package body GNATLLVM.Types is
    -- Get_Type_Size --
    -------------------
 
-   function Get_Type_Size (GT : GL_Type) return ULL is
-      Result : constant GL_Value := Get_Type_Size (GT);
+   function Get_Type_Size
+     (GT         : GL_Type;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean  := False) return ULL
+   is
+      Result : constant GL_Value :=
+        Get_Type_Size (GT, V, Max_Size, No_Padding);
 
    begin
       pragma Assert (Is_A_Constant_Int (Result));
@@ -1391,8 +1397,14 @@ package body GNATLLVM.Types is
    -- Get_Type_Size_In_Bytes --
    ----------------------------
 
-   function Get_Type_Size_In_Bytes (GT : GL_Type) return ULL is
-      Result : constant GL_Value := Get_Type_Size_In_Bytes (GT);
+   function Get_Type_Size_In_Bytes
+     (GT         : GL_Type;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean  := False) return ULL
+   is
+      Result : constant GL_Value :=
+        Get_Type_Size_In_Bytes (GT, V, Max_Size, No_Padding);
 
    begin
       pragma Assert (Is_A_Constant_Int (Result));
@@ -1401,7 +1413,7 @@ package body GNATLLVM.Types is
    end Get_Type_Size_In_Bytes;
 
    -----------------------------
-   -- Getgotro_Alloc_Size_In_Bytes --
+   -- Get_Alloc_Size_In_Bytes --
    -----------------------------
 
    function Get_Alloc_Size_In_Bytes

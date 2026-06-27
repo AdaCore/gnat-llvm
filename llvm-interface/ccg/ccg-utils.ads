@@ -284,8 +284,8 @@ package CCG.Utils is
      with Inline;
    --  Update H taking into account the Str S
 
-   function Get_Scalar_Bit_Size (V : Value_T) return Nat is
-     (Get_Scalar_Bit_Size (Type_Of (V)))
+   function Get_Scalar_Size (V : Value_T) return Nat is
+     (Get_Scalar_Size (Type_Of (V)))
      with Pre => Present (V);
 
    function Int_Ty (Num_Bits : ULL) return Type_T is

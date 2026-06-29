@@ -165,10 +165,12 @@ package body GNATLLVM.DebugInfo is
    --  do this if we can't make debug information for the component type
    --  of the array type.
 
-   function Get_Module (N : Node_Id) return Metadata_T
+   function Get_Module (N : Node_Id; Std : Boolean := False) return Metadata_T
      with Pre => Present (N);
-   --  Return the LLVM module metadata object for the package N.
-   --  Returns No_Metadata_T if N is the "standard" package.
+   --  Return the LLVM module metadata object for the package N.  When
+   --  STD is False (the default), returns No_Metadata_T if N is the
+   --  "standard" package.  STD should only be passed when creating a
+   --  renaming of Standard.
 
    function Get_Scope_For (E : Entity_Id) return Metadata_T
      with Pre => Present (E);
@@ -218,14 +220,18 @@ package body GNATLLVM.DebugInfo is
    -- Get_Module --
    ----------------
 
-   function Get_Module (N : Node_Id) return Metadata_T is
+   function Get_Module (N : Node_Id; Std : Boolean := False) return Metadata_T
+   is
       M : Metadata_T := Get_Debug_Metadata_N (N);
    begin
-      if No (M) and then N /= Standard_Standard then
+      if No (M) and then (Std or else N /= Standard_Standard) then
          M := DI_Create_Module (DI_Builder,
                                 Get_Scope_For (N),
                                 Get_Unqualified_Name (N));
          Set_Debug_Metadata (N, M);
+      end if;
+      if not Std and then N = Standard_Standard then
+         M := No_Metadata_T;
       end if;
       return M;
    end Get_Module;
@@ -1651,7 +1657,10 @@ package body GNATLLVM.DebugInfo is
       if Emit_Debug_Info then
          declare
             S     : constant Source_Ptr  := Sloc (N);
-            M     : constant Metadata_T  := Get_Module (E);
+            --  Normally we do not create a package for Standard.
+            --  However, in the specific case of a rename of Standard,
+            --  we must, so that the renaming has some target.
+            M     : constant Metadata_T  := Get_Module (E, True);
             Unused : constant Metadata_T :=
               DI_Builder_Create_Imported_Declaration
                 (DI_Builder, Get_Scope_For (E), M,

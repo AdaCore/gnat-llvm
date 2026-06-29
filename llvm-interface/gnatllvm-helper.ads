@@ -453,4 +453,15 @@ package GNATLLVM.Helper is
        (Builder, Scope, Decl, File, unsigned (Line), Name, Name'Length,
         System.Null_Address, 0));
 
+   function DI_Create_Imported_Declaration
+     (Scope        : Metadata_T;
+      Decl         : Metadata_T;
+      File         : Metadata_T;
+      Line         : Physical_Line_Number;
+      Name         : String) return Metadata_T
+     is
+     (DI_Create_Imported_Declaration
+       (DI_Builder, Scope, Decl, File, unsigned (Line),
+        Name, Name'Length, System.Null_Address, 0));
+
 end GNATLLVM.Helper;

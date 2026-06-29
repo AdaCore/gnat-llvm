@@ -44,6 +44,17 @@ package GNATLLVM.DebugInfo is
    --  Produce and return a DIFile entry for the specified source file index
 
    function Create_Subprogram_Debug_Info
+     (N        : Node_Id;
+      E        : Opt_Subprogram_Kind_Id := Empty;
+      Name     : String                 := "";
+      Ext_Name : String                 := "") return Metadata_T
+     with Pre  => Present (N),
+          Post => not Emit_Debug_Info
+                  or else Present (Create_Subprogram_Debug_Info'Result);
+   --  Create debugging information for entity E using
+   --  the line number information in N for the location.
+
+   function Create_Subprogram_Debug_Info
      (Func     : GL_Value;
       N        : Node_Id;
       E        : Opt_Subprogram_Kind_Id := Empty;
@@ -54,6 +65,9 @@ package GNATLLVM.DebugInfo is
                   or else Present (Create_Subprogram_Debug_Info'Result);
    --  Create debugging information for Func with entity E using
    --  the line number information in N for the location.
+
+   function Create_Subprogram_Renaming (N : Node_Id) return Metadata_T;
+   --  Create debugging information for the given subprogram renaming.
 
    procedure Push_Lexical_Debug_Scope (N : Node_Id)
      with Pre => Present (N);

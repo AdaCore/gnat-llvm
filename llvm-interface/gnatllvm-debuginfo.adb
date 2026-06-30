@@ -676,6 +676,30 @@ package body GNATLLVM.DebugInfo is
       return MD;
    end Create_Subprogram_Renaming;
 
+   -----------------------------------
+   -- Create_Subprogram_Declaration --
+   -----------------------------------
+
+   procedure Create_Subprogram_Declaration (Func : GL_Value;
+                                            E : Subprogram_Kind_Id)
+   is
+      --  Only emit debug info for imports; but there's no need for
+      --  anything when emitting C.
+      MD : constant Metadata_T :=
+        (if not Emit_C and then No (Subprogram_Body_Entity (E))
+            and then Is_Imported (E)
+         then Create_Subprogram_Debug_Info (Func, E, E)
+         else No_Metadata_T);
+   begin
+      if Present (MD) then
+         --  LLVM requires us to wrap the function declaration in an
+         --  import to prevent it from being discarded.  The import is
+         --  "empty" and gdb just ignores it.
+         Discard (DI_Create_Imported_Declaration (No_Metadata_T, MD,
+                                                  No_Metadata_T, 0, ""));
+      end if;
+   end Create_Subprogram_Declaration;
+
    ------------------------------
    -- Push_Lexical_Debug_Scope --
    ------------------------------

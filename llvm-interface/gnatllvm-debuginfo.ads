@@ -69,6 +69,10 @@ package GNATLLVM.DebugInfo is
    function Create_Subprogram_Renaming (N : Node_Id) return Metadata_T;
    --  Create debugging information for the given subprogram renaming.
 
+   procedure Create_Subprogram_Declaration (Func : GL_Value;
+                                            E : Subprogram_Kind_Id);
+   --  Create debugging information for a subprogram declaration.
+
    procedure Push_Lexical_Debug_Scope (N : Node_Id)
      with Pre => Present (N);
    --  Push a lexical scope starting at N into the debug stack

@@ -402,12 +402,10 @@ package body GNATLLVM.Builtins is
       if not Is_Elementary_Type (GT) then
          return No_GL_Value;
 
-      --  If the pointer is derived from System.Address convert to GT.
-      --  Is_Address already covers both descendants and Standard_Address
-      --  itself (see Is_Address_Compatible_Type in einfo-utils.adb).
+      --  If the pointer is derived from System.Address convert to GT
 
-      elsif Is_Address (Val) then
-         return Ptr_To_Ref (Val, GT);
+      elsif Is_Descendant_Of_Address (Val) then
+         return Int_To_Ref (Val, GT);
       elsif Is_Access_Type (Val) then
          Val := From_Access (Val);
          return (if Related_Type (Val) = GT then Val else No_GL_Value);
@@ -443,7 +441,7 @@ package body GNATLLVM.Builtins is
 
    begin
       if Is_Address (Result) then
-         return Get (Ptr_To_Ref (Result, GT), Data);
+         return Get (Int_To_Ref (Result, GT), Data);
       elsif Is_Access_Type (Result) then
          Result := Get (From_Access (Result), Data);
          return (if Related_Type (Result) = GT then Result else No_GL_Value);

@@ -881,17 +881,6 @@ package GNATLLVM.GLValue is
      (Is_Address_Compatible_Type (Full_Etype (V)))
      with Pre => Present (V);
 
-   function Is_Pointer_Or_Address (V : GL_Value) return Boolean is
-     (Is_Pointer (V) or else Is_Address (V))
-     with Pre => Present (V);
-   --  True when V's LLVM representation is `ptr`: it is either a real
-   --  reference / Ada access type, or an Ada address-compatible type
-   --  (System.Address, Storage_Offset, ...). The three categories
-   --  Is_Integer_Type, Is_Pointer/Is_Access_Type, and Is_Address are
-   --  mutually exclusive; this predicate names the union of the latter
-   --  two and is the right precondition for any wrapper that emits a
-   --  pointer-to-pointer or pointer-to-integer cast.
-
    function Is_Constrained (V : GL_Value) return Boolean is
      (Is_Constrained (Full_Etype (V)))
      with Pre => Present (V);
@@ -921,13 +910,8 @@ package GNATLLVM.GLValue is
      with Pre => Present (V);
 
    function Is_Integer_Type (V : GL_Value) return Boolean is
-     (Is_Integer_Type (Full_Etype (V))
-      and then not Is_Address_Compatible_Type (Full_Etype (V)))
+     (Is_Integer_Type (Full_Etype (V)))
      with Pre => Present (V);
-   --  True when V has an integer LLVM representation. Address-compatible
-   --  Ada types are excluded -- see the note on the GL_Type overload
-   --  in gnatllvm-gltype.ads. Use Is_Pointer_Or_Address (V) for the
-   --  "LLVM type is ptr" check.
 
    function Is_Enumeration_Type (V : GL_Value) return Boolean is
      (Is_Enumeration_Type (Full_Etype (V)))
@@ -951,8 +935,6 @@ package GNATLLVM.GLValue is
    function Is_Discrete_Or_Fixed_Point_Type (V : GL_Value) return Boolean is
      (Is_Discrete_Or_Fixed_Point_Type (Full_Etype (V)))
      with Pre => Present (V);
-   --  Not tightened against Is_Address: see the note on the GL_Type
-   --  overload in gnatllvm-gltype.ads.
 
    function Is_Modular_Integer_Type (V : GL_Value) return Boolean is
      (Is_Modular_Integer_Type (Full_Etype (V)))

@@ -405,16 +405,7 @@ package body GNATLLVM.Conditionals is
          end if;
 
          return I_Cmp (Operation.Unsigned, LHS, RHS);
-      elsif Is_Address (LHS) then
-         --  When comparing two System.Address directly, I_Cmp can directly
-         --  return true or false at compile time for, e.g.:
-         --  i'Address /= j'Address
-         --  However if j is a Linker_Alias this comparison would be incorrect.
-         --  We need to convert both addresses into integers to make it work.
-         LHS := Ptr_To_Int (LHS, Size_GL_Type);
-         RHS := Ptr_To_Int (RHS, Size_GL_Type);
 
-         return I_Cmp (Operation.Unsigned, LHS, RHS);
       elsif Is_Floating_Point_Type (LHS) then
          return F_Cmp (Operation.Real, LHS, RHS);
       else

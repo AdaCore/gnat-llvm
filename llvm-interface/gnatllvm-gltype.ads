@@ -448,15 +448,8 @@ package GNATLLVM.GLType is
      with Pre => Present (GT);
 
    function Is_Integer_Type (GT : GL_Type) return Boolean is
-     (Is_Integer_Type (Full_Etype (GT))
-      and then not Is_Address_Compatible_Type (Full_Etype (GT)))
+     (Is_Integer_Type (Full_Etype (GT)))
      with Pre => Present (GT);
-   --  True when GT has an integer LLVM representation. Address-compatible
-   --  Ada types (System.Address and types derived from it) are integer at
-   --  the Ada source level but are represented as LLVM pointers in this
-   --  back end, so they are deliberately excluded -- callers that want
-   --  "is this a pointer-shaped value" should use Is_Pointer_Or_Address
-   --  instead.
 
    function Is_Enumeration_Type (GT : GL_Type) return Boolean is
      (Is_Enumeration_Type (Full_Etype (GT)))
@@ -481,10 +474,6 @@ package GNATLLVM.GLType is
    function Is_Discrete_Or_Fixed_Point_Type (GT : GL_Type) return Boolean is
      (Is_Discrete_Or_Fixed_Point_Type (Full_Etype (GT)))
      with Pre => Present (GT);
-   --  Note that, unlike Is_Integer_Type above, this predicate still
-   --  returns True for address-compatible Ada types: it tracks the Ada
-   --  source-level category, which is broader than the LLVM-level shape
-   --  and is what callers like Z_Ext/S_Ext use as a precondition.
 
    function Is_Modular_Integer_Type (GT : GL_Type) return Boolean is
      (Is_Modular_Integer_Type (Full_Etype (GT)))
@@ -557,14 +546,6 @@ package GNATLLVM.GLType is
    function Is_Address (GT : GL_Type) return Boolean is
      (Is_Address_Compatible_Type (Full_Etype (GT)))
      with Pre => Present (GT);
-
-   function Is_Pointer_Or_Address (GT : GL_Type) return Boolean is
-     (Is_Access_Type (Full_Etype (GT))
-      or else Is_Address_Compatible_Type (Full_Etype (GT)))
-     with Pre => Present (GT);
-   --  True when GT is represented as `ptr` in LLVM (Ada access type or
-   --  address-compatible Ada type). See the GL_Value overload for the
-   --  full discussion of the three mutually-exclusive categories.
 
    function No_Strict_Aliasing (GT : GL_Type) return Boolean is
      (No_Strict_Aliasing (Full_Etype (GT)))

@@ -379,39 +379,30 @@ package body GNATLLVM.Conversions is
       then
          Result := Get (From_Access (Get (Result, Data)),
                         Reference_For_Integer);
-         Result := Convert (Ptr_To_Int (Result, Size_GL_Type), GT);
+         Result := Convert (Ptr_To_Int (Result, Address_GL_Type), GT);
       elsif Is_Unchecked and then Is_Discrete_Or_Fixed_Point_Type (In_GT)
         and then Is_Access_Type (GT)
       then
-         declare
-            Val : constant GL_Value := Get (Result, Data);
-            F_GT : constant GL_Type := Full_Designated_GL_Type (GT);
-            Is_Addr : constant Boolean := Is_Address (In_GT);
-         begin
-            --  If GT is an access to unconstrained, this means that the
-            --  address is to be taken as a thin pointer. We also need special
-            --  code in the case of access to subprogram and we also need
-            --  to show that the alignment is of the designated type.
+         --  If GT is an access to unconstrained, this means that the
+         --  address is to be taken as a thin pointer. We also need special
+         --  code in the case of access to subprogram and we also need
+         --  to show that the alignment is of the designated type.
 
-            if Is_Unconstrained_Array (F_GT) then
-               Result := (if Is_Addr
-                          then Ptr_To_Relationship (Val, F_GT, Thin_Pointer)
-                          else Int_To_Relationship (Val, F_GT, Thin_Pointer));
-            elsif Ekind (GT) in E_Access_Subprogram_Type |
-                                E_Anonymous_Access_Subprogram_Type
-            then
-               Result := (if Is_Addr
-                          then Ptr_To_Relationship (Val, F_GT, Reference)
-                          else Int_To_Relationship (Val, F_GT, Reference));
+         if Is_Unconstrained_Array (Full_Designated_Type (GT)) then
+            Result := Int_To_Relationship (Get (Result, Data),
+                                           Full_Designated_GL_Type (GT),
+                                           Thin_Pointer);
+         elsif Ekind (GT) in E_Access_Subprogram_Type |
+                             E_Anonymous_Access_Subprogram_Type
+         then
+            Result := Int_To_Relationship (Get (Result, Data),
+                                           Full_Designated_GL_Type (GT),
+                                           Reference);
+         else
+            Result := Int_To_Ref (Get (Result, Data), SSI_GL_Type);
+         end if;
 
-            else
-               Result := (if Is_Addr
-                          then Ptr_To_Ref (Val, SSI_GL_Type)
-                          else Int_To_Ref (Val, SSI_GL_Type));
-            end if;
-
-            Result := Convert_To_Access (Result, GT);
-         end;
+         Result := Convert_To_Access (Result, GT);
 
       --  We can unchecked convert floating point of the same width
       --  (the only way that UC is formally defined) with a "bitcast"
@@ -428,24 +419,7 @@ package body GNATLLVM.Conversions is
         and then Get_Type_Kind (GT) /= X86_FP80_Type_Kind
         and then Get_Type_Kind (In_GT) /= X86_FP80_Type_Kind
       then
-         declare
-            Src : GL_Value := Get (Result, Data);
-         begin
-            --  System.Address is now a pointer. We can not bitcast a pointer
-            --  to a float, so first move it to an integer of the same width.
-            --  We do the reverse step when the result type is the address
-            --  one.
-
-            if Is_Pointer_Or_Address (In_GT) then
-               Src := Ptr_To_Int (Src, Size_GL_Type);
-            end if;
-
-            if Is_Pointer_Or_Address (GT) then
-               Result := Int_To_Ptr (Bit_Cast (Src, Size_GL_Type), GT);
-            else
-               Result := Bit_Cast (Src, GT);
-            end if;
-         end;
+         Result := Bit_Cast (Get (Result, Data), GT);
 
       --  If both types are elementary, hand that off to our helper, but
       --  raise a Constraint_Error if this conversion overflowed by producing
@@ -568,11 +542,6 @@ package body GNATLLVM.Conversions is
                Set_Unknown_MD (Result, MD);
                Result := Load (Result);
                Result := GM (+Result, GT, MD, GV => Result);
-
-               --  GT is an integer type here (this whole branch is guarded
-               --  by Is_Integer_Type (GT), which excludes address-compatible
-               --  types), so a plain integer extension is all we need.
-
                if Is_Unsigned_Type (GT) then
                   Result := Z_Ext (Result, GT);
                else
@@ -720,46 +689,15 @@ package body GNATLLVM.Conversions is
       elsif Full_Etype (In_GT) = Full_Etype (GT) and then not Is_Unc_Bias then
          return Mark_Overflowed (From_Primitive (In_V, GT), In_Overflow);
 
-      --  We store addresses as LLVM pointers; when converting between
-      --  different address types, we usually only change the Ada type. But
-      --  the destination can be a padded or aligned variant of an address.
-      --  For example a System.Address field that a record clause made larger
-      --  than the pointer becomes a padded type { ptr, [N x i8] }. If either
-      --  side is not primitive we must go through the primitive type so the
-      --  padding is built or removed. A plain retag here would make a value
-      --  whose LLVM type does not match its MD and the verifier would reject
-      --  it. The source and the destination can be different address types,
-      --  so we first reduce the value to a bare pointer, retag it to the
-      --  primitive type of the destination, and then add any padding the
-      --  destination needs.
-
-      elsif Is_Address (In_V)
-        and then Is_Address (GT)
-      then
-         if Is_Primitive_GL_Type (GT) and then Is_Primitive_GL_Type (In_GT)
-         then
-            return G_Is (In_V, GT);
-         else
-            return From_Primitive
-                     (G_Is (To_Primitive (In_V), Primitive_GL_Type (GT)), GT);
-         end if;
-
       --  If converting pointer to/from integer, copy the bits using the
-      --  appropriate instruction. The source side also covers enumeration
-      --  and fixed-point types, since LLVM holds them as an integer bit
-      --  pattern. We must keep real addresses out of this branch, because
-      --  they are already pointers and are handled by the address-to-address
-      --  branch above.
+      --  appropriate instruction.
 
-      elsif not Tagged_Pointers
-        and then (Dest_Access or else Is_Address (GT))
-        and then Is_Discrete_Or_Fixed_Point_Type (In_V)
-        and then not Is_Address (In_V)
+      elsif not Tagged_Pointers and then Dest_Access
+        and then Is_Integer_Type (In_V)
       then
          Subp := Int_To_Ptr'Access;
-      elsif not Tagged_Pointers
-        and then Is_Integer_Type (GT)
-        and then (Src_Access or else Is_Address (In_V))
+      elsif not Tagged_Pointers and then Is_Integer_Type (GT)
+        and then Src_Access
       then
          Subp := Ptr_To_Int'Access;
 
@@ -767,6 +705,14 @@ package body GNATLLVM.Conversions is
 
       elsif Src_Access and then Dest_Access then
          return Convert_To_Access (Value, GT, Is_Unchecked => Is_Unchecked);
+
+      --  With tagged pointers, we store addresses as LLVM pointers; when
+      --  converting between different address types, we therefore don't do
+      --  anything beyond changing the Ada type.
+
+      elsif Tagged_Pointers and then Is_Address (In_V) and then Is_Address (GT)
+      then
+         return G_Is (In_V, GT);
 
       --  Conversions from integer to tagged-pointer address yield a result
       --  derived from the null pointer; it can't be dereferenced, but it
@@ -1135,9 +1081,7 @@ package body GNATLLVM.Conversions is
       Value : Value_T;
 
    begin
-      --  Same LLVM type already (the common case under opaque pointers),
-      --  so just re-tag the relationship to the new type.
-
+      --  ??? Fixme later
       if Type_Of (V) = MD then
          return G_Is_Relationship (V, GT, R);
 

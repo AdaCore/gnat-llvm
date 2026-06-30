@@ -296,7 +296,7 @@ package body GNATLLVM.GLValue is
       --  If it's Data representing an address on a tagged-pointer target,
       --  we know that it has pointer alignment.
 
-      elsif R = Data and then Is_Address (V) then
+      elsif R = Data and then Tagged_Pointers and then Is_Address (V) then
          Align := Get_Type_Alignment (Address_GL_Type);
       end if;
 
@@ -1069,8 +1069,7 @@ package body GNATLLVM.GLValue is
                  Address_Sub
                    (Ptr_To_Address_Type (V),
                     To_Bytes (Get_Bound_Size (GT)));
-               return Ptr_To_Relationship (Result, GT, R);
-
+               return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
 
@@ -1099,8 +1098,7 @@ package body GNATLLVM.GLValue is
                  Address_Sub
                    (Ptr_To_Address_Type (V),
                     To_Bytes (Get_Bound_Size (GT)));
-               return Ptr_To_Relationship (Result, GT, R);
-
+               return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
 

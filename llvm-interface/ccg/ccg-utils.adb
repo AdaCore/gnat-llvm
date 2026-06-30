@@ -841,45 +841,6 @@ package body CCG.Utils is
       MD : MD_Type         := No_MD_Type;
 
    begin
-      --  A formal parameter is emitted with its declared (signature) type,
-      --  which comes from the enclosing function's type, not from any type
-      --  the body may have stamped onto the parameter value. If that declared
-      --  type is void * (a System.Address formal), return void * here even
-      --  when the body uses the parameter at a concrete pointer type (e.g. an
-      --  object with an address clause overlaid on the parameter, whose
-      --  reference is a no-op opaque-pointer cast that reuses the parameter's
-      --  value and stamps the concrete type onto it). Returning the body's
-      --  type instead would make us declare the parameter void * but
-      --  dereference it as the concrete type (p->field on a void * p); by
-      --  keeping void * here, the use sites cast to the concrete type.
-
-      if Is_A_Argument (V) then
-         declare
-            Parent : constant Value_T :=  Get_Param_Parent (V);
-            Fn_MD  : constant MD_Type  :=
-              (if   Present (Parent)
-               then Designated_Type (Declaration_Type (Parent))
-               else No_MD_Type);
-            Num    : constant Nat      :=
-              (if Present (Parent) then Count_Params (Parent) else 0);
-
-         begin
-            if Present (Fn_MD) and then Is_Function_Type (Fn_MD) then
-               for J in 0 .. Num - 1 loop
-                  if Get_Param (Parent, J) = V then
-                     if J < Parameter_Count (Fn_MD)
-                       and then Parameter_Type (Fn_MD, J) = Void_Ptr_MD
-                     then
-                        return Void_Ptr_MD;
-                     end if;
-
-                     exit;
-                  end if;
-               end loop;
-            end if;
-         end;
-      end if;
-
       --  If we have a single type for this value, use it
 
       if Present (Get_MD_Type (V)) and then not Get_Is_Multi_MD (V) then

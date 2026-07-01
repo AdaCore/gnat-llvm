@@ -893,7 +893,7 @@ package body GNATLLVM.Records.Field_Ref is
 
       elsif Is_Floating_Point_Type (F_GT) then
          return Bit_Cast (Result, F_GT);
-      elsif Is_Pointer_Or_Address (F_GT) then
+      elsif  Is_Access_Type (F_GT) then
          return Int_To_Ptr (Result, F_GT);
 
          --  The final case is when we have a small structure. In that case,
@@ -943,7 +943,7 @@ package body GNATLLVM.Records.Field_Ref is
 
       if Is_Floating_Point_Type (F_GT) then
          New_RHS := Bit_Cast_To_Relationship (New_RHS, New_F_MD, Unknown);
-      elsif Is_Pointer_Or_Address (F_GT) then
+      elsif Is_Access_Type (F_GT) then
          New_RHS := Ptr_To_Int_To_Relationship (New_RHS, New_F_MD, Unknown);
 
          --  Otherwise, unless it's an integral type, we need to either

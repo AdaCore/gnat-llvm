@@ -357,12 +357,13 @@ package body GNATLLVM.Types.Create is
 
          when Discrete_Or_Fixed_Point_Kind =>
 
-            --  Address-compatible types are represented as pointers to
-            --  avoid int-to-ptr/ptr-to-int round-trips when doing address
-            --  arithmetic or passing them to pointer-expecting intrinsics.
+            --  When targeting an architecture with tagged pointers, we
+            --  need to represent address types as pointers so that we
+            --  don't lose the ability to turn them back into access types.
 
             MD :=
-              (if   Is_Address_Compatible_Type (TE)
+              (if   Tagged_Pointers
+                    and then Is_Address_Compatible_Type (TE)
                then Void_Ptr_MD else Create_Discrete_Type (TE));
 
          when Float_Kind =>

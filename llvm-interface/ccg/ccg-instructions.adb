@@ -482,9 +482,7 @@ package body CCG.Instructions is
       Ptr_MD        : constant MD_Type := Actual_Type (Op, As_LHS => True);
       Val_MD        : constant MD_Type := Designated_Type (Ptr_MD);
       Best_Val_MD   : constant MD_Type :=
-        (if   Present (Data_Op)
-         then Best_Type
-                (Actual_Type (Data_Op, As_LHS => Get_Is_LHS (Data_Op)), Val_MD)
+        (if   Present (Data_Op) then Best_Type (Actual_Type (Data_Op), Val_MD)
          else Val_MD);
 
    begin
@@ -812,24 +810,6 @@ package body CCG.Instructions is
                  Next_Pow2 (Get_Scalar_Bit_Size (Dest_T))
       then
          return +Op;
-
-      --  A pointer/integer cast where the integer side isn't pointer-sized
-      --  would, written directly, be a cast to/from a pointer of a different
-      --  size (e.g. (unsigned int) (ptr) or (void *) (val)), which C
-      --  compilers warn about. Route it through a pointer-sized integer
-      --  (size_t) so the narrowing/widening happens in integer land.
-
-      elsif (Opc = Op_Ptr_To_Int
-               and then Get_Scalar_Bit_Size (Dest_T) /= Thin_Pointer_Size)
-        or else (Opc = Op_Int_To_Ptr
-                   and then Get_Scalar_Bit_Size (Src_T) /= Thin_Pointer_Size)
-      then
-         return ("(" & (V + (if   Is_Unsigned_Pointer (V)
-                             then +Only_Type or Value_Flags'(+Need_Unsigned)
-                             else +Only_Type)) &
-                   (if   Is_Volatile (V) then " volatile) (size_t) ("
-                    else ") (size_t) (") &
-                   Our_Op) & ")" + Unary;
       end if;
 
       --  Otherwise, just do a cast. If we're considered volatile, make

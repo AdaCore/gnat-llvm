@@ -562,7 +562,7 @@ package body GNATLLVM.Types is
       New_Expr : constant Opt_N_Subexpr_Id := Strip_Complex_Conversions (Expr);
       Mem_GT   : constant GL_Type          := GT_To_Use (GT, Alloc_GT);
       Memory   : GL_Value                  :=
-        (if   Is_Pointer_Or_Address (Temp)
+        (if   Is_Pointer (Temp)
          then Remove_Padding (Ptr_To_Relationship (Temp, Mem_GT, R))
          else Remove_Padding (Int_To_Relationship (Temp, Mem_GT, R)));
       New_V    : GL_Value                 :=
@@ -898,30 +898,14 @@ package body GNATLLVM.Types is
               Size + To_Bytes (Align) + Convert (Ptr_Size, Size);
             Alloc_R    : constant GL_Value :=
               Call (Get_Default_Alloc_Fn, (1 => Total_Size));
-            --  Normalise Alloc_R to an Address-typed value (LLVM ptr) so
-            --  that Address_Add below satisfies its Is_Address (LHS)
-            --  precondition regardless of what shape the allocator
-            --  returns.
-
             Alloc      : constant GL_Value :=
-              (if    Is_Pointer (Alloc_R)
-               then  Ptr_To_Address_Type (Alloc_R)
-               elsif Is_Integer_Type (Alloc_R)
-               then  Int_To_Ptr (Alloc_R, Address_GL_Type)
-               else  Alloc_R);
-            --  Align_To_In_Bytes uses bitwise AND, which is illegal on
-            --  LLVM pointers. Round the address up to the requested
-            --  alignment in integer space, then convert back to a ptr.
-
-            Aligned_Int : constant GL_Value :=
-              Align_To_In_Bytes
-                (Ptr_To_Int (Address_Add (Alloc, Ptr_Size), Size_GL_Type),
-                 To_Bytes (Get_System_Allocator_Alignment),
-                 To_Bytes (Align));
+              (if   Is_Pointer (Alloc_R)
+               then Ptr_To_Int (Alloc_R, Address_GL_Type) else Alloc_R);
             Aligned    : constant GL_Value :=
-              Int_To_Ptr (Aligned_Int, Address_GL_Type);
-            Ptr_Loc    : constant GL_Value :=
-              Ptr_To_Ref (Address_Sub (Aligned, Ptr_Size), A_Char_GL_Type);
+              Align_To_In_Bytes (Address_Add (Alloc, Ptr_Size),
+                                 To_Bytes (Get_System_Allocator_Alignment),
+                                 To_Bytes (Align));
+            Ptr_Loc    : constant GL_Value := Address_Sub (Aligned, Ptr_Size);
 
          begin
             --  It may have been the case that Size didn't oveflow until
@@ -934,7 +918,7 @@ package body GNATLLVM.Types is
                return Get_Undef_Ref (GT);
             end if;
 
-            Store (Alloc, Ptr_Loc);
+            Store (Alloc, Int_To_Ref (Ptr_Loc, Address_GL_Type));
             Result := Convert (Aligned, A_Char_GL_Type);
          end;
 
@@ -1030,7 +1014,7 @@ package body GNATLLVM.Types is
             Call (Get_Default_Free_Fn,
                   (1 => (if   Emit_C
                          then Convert_To_Access (Free_V, A_Char_GL_Type)
-                         else Free_V)));
+                         else Ptr_To_Int (Free_V, Address_GL_Type))));
 
          --  If we have to use the normal deallocation procedure to
          --  deallocate an overaligned value, the actual address of the
@@ -1039,19 +1023,19 @@ package body GNATLLVM.Types is
 
          elsif No (Proc) then
             declare
+               Addr       : constant GL_Value :=
+                 Ptr_To_Int (Free_V, Address_GL_Type);
                Ptr_Size   : constant GL_Value :=
                  Get_Type_Size_In_Bytes (A_Char_GL_Type);
-               Ptr_Loc    : constant GL_Value :=
-                 Ptr_To_Ref
-                   (Address_Sub (Ptr_To_Address_Type (Free_V), Ptr_Size),
-                    A_Char_GL_Type);
-               Ptr_Addr   : constant GL_Value := Load (Ptr_Loc);
+               Ptr_Loc    : constant GL_Value := Addr - Ptr_Size;
+               Ptr_Addr   : constant GL_Value :=
+                 Load (Int_To_Ref (Ptr_Loc, A_Char_GL_Type));
 
             begin
                Call (Get_Default_Free_Fn,
                      (1 => (if   Emit_C
                             then Convert_To_Access (Ptr_Addr, A_Char_GL_Type)
-                            else Ptr_Addr)));
+                            else Ptr_To_Int (Ptr_Addr, Address_GL_Type))));
             end;
 
          --  If a procedure was specified (meaning that a pool must also

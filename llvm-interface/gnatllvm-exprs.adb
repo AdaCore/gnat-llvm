@@ -83,11 +83,6 @@ package body GNATLLVM.Exprs is
    Annotate_Fn : GL_Value := No_GL_Value;
    --  Declaration for CCG builtin annotation function, if any
 
-   function Const_Ptr (U : Uint; GT : GL_Type) return GL_Value is
-     (Int_To_Ptr (Size_Const_Int (U), GT));
-   --  Build a constant pointer of type GT from the integer value U. Used
-   --  for address values, which are now represented as LLVM pointers.
-
    --------------------
    -- Add_Write_Back --
    --------------------
@@ -390,19 +385,15 @@ package body GNATLLVM.Exprs is
 
          when N_Integer_Literal =>
 
-            if Is_Address (GT) then
-               if Tagged_Pointers then
+            --  On architectures with tagged pointers, we need to represent
+            --  addresses as pointers to preserve tags; consequently,
+            --  address literals also need to be pointers. The easiest way
+            --  to get one from an integer is to derive it from the null
+            --  pointer.
 
-                  --  On architectures with tagged pointers, address
-                  --  literals are constructed as null-derived capabilities
-                  --  carrying the integer literal value. Address_GL_Type
-                  --  itself is ptr-typed so we cannot use Const_Int with
-                  --  it; pass an integer literal of pointer width instead.
-
-                  V := Null_Derived_Ptr (Size_Const_Int (Intval (N)), GT);
-               else
-                  V := Const_Ptr (Intval (N), GT);
-               end if;
+            if Tagged_Pointers and then Is_Address (GT) then
+               V := Null_Derived_Ptr
+                 (Const_Int (Address_GL_Type, Intval (N)), GT);
             else
                V := Const_Int (Prim_GT, Intval (N));
             end if;
@@ -553,16 +544,9 @@ package body GNATLLVM.Exprs is
          return Emit_Undef (Full_GL_Type (N));
       end if;
 
-      --  Address arithmetic. Addresses are now LLVM pointers and there is
-      --  no pointer add/sub instruction in LLVM IR (only GEP). The front-end
-      --  converts both operands of a source-level address "+"/"-" to
-      --  System.Address before we get here, so the operands are address and
-      --  address. We lower it by going through an integer: extract the
-      --  address part, do the integer add/sub, then build the pointer back.
-      --  On purecap we work on the capability address part to keep the
-      --  capability. Direct callers of Address_Add with a real integer
-      --  offset (bit packed field address, allocator) still get a byte
-      --  stride GEP from Address_Add_Sub.
+      --  If we're doing arithmetic on tagged pointers, extract their
+      --  addresses, perform the computation, and then reassemble the
+      --  result pointer.
 
       if Tagged_Pointers then
          if Is_Address (RVal) then
@@ -573,24 +557,6 @@ package body GNATLLVM.Exprs is
          if Is_Address (LVal) then
             Ptr  := LVal;
             LVal := Get_Pointer_Address (LVal);
-         end if;
-
-      else
-         --  Process LHS before RHS so the address part is extracted in the
-         --  same order Address_Add_Sub used. Keep Ptr on the LHS address
-         --  when there is one, so the result is rebuilt with its type.
-
-         if Is_Address (LVal) then
-            Ptr  := LVal;
-            LVal := Ptr_To_Int (LVal, Size_GL_Type);
-         end if;
-
-         if Is_Address (RVal) then
-            if No (Ptr) then
-               Ptr := RVal;
-            end if;
-
-            RVal := Ptr_To_Int (RVal, Size_GL_Type);
          end if;
       end if;
 
@@ -765,12 +731,9 @@ package body GNATLLVM.Exprs is
 
       --  If this was an operation on tagged pointers, assemble the result
       --  pointer using tags from (one of) the arguments.
-      --  If this was an operation on addresses, cast the result back to ptr.
 
       if Present (Ptr) then
-         Result := (if Tagged_Pointers
-                    then Set_Pointer_Address (Ptr, Result)
-                    else Int_To_Ptr (Result, Related_Type (Ptr)));
+         Result := Set_Pointer_Address (Ptr, Result);
       end if;
 
       return Result;
@@ -1412,11 +1375,7 @@ package body GNATLLVM.Exprs is
       Ret_UI := Get_Attribute_From_Annotation (N);
 
       if Present (Ret_UI) then
-         if Is_Address (GT) then
-            return Const_Ptr (Ret_UI, GT);
-         else
-            return Const_Int (GT, Ret_UI);
-         end if;
+         return Const_Int (GT, Ret_UI);
       end if;
 
       case Attr is
@@ -1463,29 +1422,16 @@ package body GNATLLVM.Exprs is
 
             Emit_For_Address (Pref, V, Bits);
 
-            --  Get the reference as a pointer and re-tag it to the address
-            --  type. Ptr_To_Address_Type is a ptr-to-ptr cast (a no-op under
-            --  opaque pointers), so the result is a pointer.
+            --  We need a single-word pointer, then convert it to the
+            --  desired integral type.
 
-            V := Ptr_To_Address_Type (Get (V, Reference_For_Integer),
-                                      "attr.address");
+            V := Ptr_To_Int (Get (V, Reference_For_Integer), GT,
+                             "attr.address");
 
-            --  Now add in any bytes contained in the bit offset. Note
-            --  that we're not rounding here: we want the address of the
-            --  first bit. Address_Add folds the zero-offset case so the
-            --  result is also suitable as a constant initializer.
+            --  Now add in any bytes contains in the bit offset. Note that
+            --  we're not rounding here: we want the address of the first bit.
 
-            V := Address_Add (V, Const_Int (Size_GL_Type, Bits / BPU));
-
-            --  For the C back-end we cast the address to char *. Standard
-            --  C does not allow arithmetic on void *, so the C code needs a
-            --  concrete byte pointer type for the address value. The native
-            --  path returns the bare ptr because the Address_Add above
-            --  already used a byte (i8) stride in its GEP.
-
-            return (if Emit_C
-                    then Bit_Cast (V, A_Char_GL_Type)
-                    else V);
+            return Address_Add (V, Const_Int (Address_GL_Type, Bits / BPU));
 
          when Attribute_Pool_Address =>
 

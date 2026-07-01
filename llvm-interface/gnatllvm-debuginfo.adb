@@ -660,7 +660,9 @@ package body GNATLLVM.DebugInfo is
          if Needs_Debug_Info (Renaming) and then
             not Is_Intrinsic_Subprogram (Renaming) and then
             Present (Renamed) and then
-            not Is_Intrinsic_Subprogram (Renamed)
+            not Is_Intrinsic_Subprogram (Renamed) and then
+            --  Don't emit renamings of enumeration literals here.
+            Ekind (Renamed) in Subprogram_Kind
          then
             MD := Create_Subprogram_Debug_Info (N, Renamed);
             MD := DI_Create_Imported_Declaration

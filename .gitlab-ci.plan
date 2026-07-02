@@ -39,6 +39,21 @@ def test_acats():
 def test_acats_x86():
     test_acats_generic("x86-" + env.host.os.name)
 
+def test_gnatstack_generic(build_platform):
+    # Both the GNATstack tool and the llvm-callgraph-decoder that the testsuite
+    # runs on the linked binary are part of the gnat-llvm package, so
+    # installing the compiler brings in everything the tests need. Do not
+    # install GNATstack for build_platform: the tool is only built for 64-bit
+    # natives, and 32-bit products ship that 64-bit build.
+    anod_install("gnat-llvm", build=build_platform)
+    anod_test("gnatstack", build=build_platform, qualifier="compiler=gnat-llvm")
+
+def test_gnatstack():
+    test_gnatstack_generic(env.build.platform)
+
+def test_gnatstack_x86():
+    test_gnatstack_generic("x86-" + env.build.os.name)
+
 def ccg_common():
     anod_install("gcc", build="x86-linux")
     # Installed from the artifact

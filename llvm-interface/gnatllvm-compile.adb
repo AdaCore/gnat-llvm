@@ -751,7 +751,6 @@ package body GNATLLVM.Compile is
             | N_Generic_Package_Declaration
             | N_Generic_Subprogram_Declaration
             | N_Itype_Reference
-            | N_Number_Declaration
             | N_Package_Instantiation
             | N_Procedure_Instantiation
             | N_Protected_Type_Declaration
@@ -762,6 +761,10 @@ package body GNATLLVM.Compile is
             | N_With_Clause
            =>
             null;
+
+         when N_Number_Declaration =>
+            Create_Constant_Debug_Data (Defining_Identifier (N),
+                                        Emit_Expression (Expression (N)));
 
          when N_Package_Renaming_Declaration => declare
             Unit_Name : constant Node_Id := Defining_Unit_Name (N);

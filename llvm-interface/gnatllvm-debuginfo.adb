@@ -34,6 +34,7 @@ with GNATLLVM.Records;       use GNATLLVM.Records;
 with GNATLLVM.Subprograms;   use GNATLLVM.Subprograms;
 with GNATLLVM.Types;         use GNATLLVM.Types;
 with GNATLLVM.Utils;         use GNATLLVM.Utils;
+with GNATLLVM.Variables;     use GNATLLVM.Variables;
 with GNATLLVM.Wrapper;       use GNATLLVM.Wrapper;
 
 package body GNATLLVM.DebugInfo is
@@ -1501,6 +1502,45 @@ package body GNATLLVM.DebugInfo is
          return No_Metadata_T;
       end if;
    end Create_Type_Data;
+
+   --------------------------------
+   -- Create_Constant_Debug_Data --
+   --------------------------------
+
+   procedure Create_Constant_Debug_Data (E : Entity_Id; V : GL_Value)
+   is
+      GT        : constant GL_Type    := Related_Type (V);
+      Type_Data : constant Metadata_T := Create_Type_Data (V);
+      Name      : constant String     :=
+        (if   Emit_Debug_Info
+         then Get_Unqualified_Name (E)
+         else "");
+      Full_Name : constant String :=
+        (if   Emit_Debug_Info
+         then Get_Name (E)
+         else "");
+      Ext_Name  : constant String     := Get_Ext_Name (E);
+      S         : constant Source_Ptr := Sloc         (E);
+
+   begin
+      if Emit_Debug_Info and then Present (Type_Data)
+      then
+         declare
+            MD : constant Metadata_T :=
+              DI_Create_Global_Variable_Expression
+                (Get_Scope_For (E), Name,
+                 (if Ext_Name = Full_Name then "" else Ext_Name),
+                 Get_Debug_File_Node (Get_Source_File_Index (S)),
+                 Get_Physical_Line_Number (S), Type_Data, False, Empty_DI_Expr,
+                 No_Metadata_T, Get_Type_Alignment (GT));
+            Var : constant GL_Value := Make_Global_Constant (V);
+         begin
+            Set_Debug_Metadata
+              (E, DI_Global_Variable_Expression_Get_Variable (MD));
+            Global_Set_Metadata (+Var, 0, MD);
+         end;
+      end if;
+   end Create_Constant_Debug_Data;
 
    ---------------------------------------
    -- Create_Global_Variable_Debug_Data --

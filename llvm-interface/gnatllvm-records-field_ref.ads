@@ -35,8 +35,8 @@ package GNATLLVM.Records.Field_Ref is
    type Bitfield_Ref_Desc is record
       LHS    : GL_Value;
       GT     : GL_Type;
-      Offset : Nat;
-      Size   : Nat;
+      Offset : ULL;
+      Size   : ULL;
    end record;
 
    No_BRD : Bitfield_Ref_Desc := (No_GL_Value, No_GL_Type, 0, 0);

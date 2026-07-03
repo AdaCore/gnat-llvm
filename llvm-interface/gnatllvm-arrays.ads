@@ -82,7 +82,8 @@ package GNATLLVM.Arrays is
      (TE       : Array_Kind_Id;
       Dim      : Nat;
       V        : GL_Value;
-      Max_Size : Boolean := False) return GL_Value
+      Max_Size : Boolean := False;
+      For_Orig : Boolean := False) return GL_Value
      with Pre  => Dim < Number_Dimensions (TE)
                   and then (Present (V) or else Is_Constrained (TE)
                               or else Max_Size),

@@ -66,6 +66,22 @@ package body GNATLLVM.Conversions is
    --  Convert V, a constant, to T. This version only works if one side
    --  is an array of bytes.
 
+   function Get_Value_Size (GT : GL_Type) return ULL is
+     ((if   Is_Scalar_Type (GT) then ULL (Get_Scalar_Size (GT))
+       else Get_Type_Size (GT)))
+     with Pre => Present (GT);
+   function Get_Value_Size (MD : MD_Type) return ULL is
+     ((if   Is_Integer (MD) or else Is_Float (MD)
+       then ULL (Get_Scalar_Size (MD)) else Get_Type_Size (MD)))
+     with Pre => Present (MD);
+   function Get_Value_Size (V : GL_Value) return ULL is
+     ((if   Is_Scalar_Type (Related_Type (V))
+       then ULL (Get_Scalar_Size (Related_Type (V)))
+       else Get_Type_Size (Related_Type (V), V)))
+   with Pre => Present (V);
+   --  Get the precision of a type. For scalars, this is the number of bits
+   --  of the value. Otherwise, it's the size in bits.
+
    -----------------------------------------------
    -- Are_Arrays_With_Different_Index_Types --
    -----------------------------------------------
@@ -162,8 +178,7 @@ package body GNATLLVM.Conversions is
       --  If GT is narrower than BT, use its signedness, otherwise use BT's
 
       else
-         return (if   ULL'(Get_Type_Size (Type_Of (GT))) <
-                      ULL'(Get_Type_Size (Type_Of (BT)))
+         return (if   ULL'(Get_Type_Size (GT)) < Get_Type_Size (BT)
                  then Is_Unsigned_Type (GT) else Is_Unsigned_Type (BT));
       end if;
 
@@ -414,8 +429,7 @@ package body GNATLLVM.Conversions is
                      and then Is_Discrete_Or_Fixed_Point_Type (In_GT))
                   or else (Is_Discrete_Or_Fixed_Point_Type (GT)
                              and then Is_Floating_Point_Type (In_GT)))
-        and then ULL'(Get_Type_Size (Type_Of (GT))) =
-                 ULL'(Get_Type_Size (Type_Of (In_GT)))
+        and then Get_Scalar_Size (GT) = Get_Scalar_Size (In_GT)
         and then Get_Type_Kind (GT) /= X86_FP80_Type_Kind
         and then Get_Type_Kind (In_GT) /= X86_FP80_Type_Kind
       then
@@ -519,7 +533,7 @@ package body GNATLLVM.Conversions is
          elsif Is_Integer_Type (GT) and then Is_Zero_Size (Result) then
             Result := Emit_Undef (GT);
 
-         --  If the result type is an integer and is wider than our
+         --  If the output type is an integer and is wider than our
          --  input width, we need to do an integer load of exactly the
          --  width of the input so we don't overrun memory and to avoid
          --  any endianness issues. But don't get confused by fat pointers
@@ -528,12 +542,12 @@ package body GNATLLVM.Conversions is
          elsif Is_Integer_Type (GT)
            and then Relationship (Result) /= Fat_Pointer
            and then not Is_Nonnative_Type (Result)
-           and then Get_Scalar_Bit_Size (GT) >
-                    Get_Scalar_Bit_Size (Data_Type_Of (Result))
+           and then Get_Value_Size (GT) >
+                    Get_Value_Size (Data_Type_Of (Result))
          then
             declare
                MD : constant MD_Type :=
-                 Int_Ty (Get_Scalar_Bit_Size (Data_Type_Of (Result)));
+                 Int_Ty (Get_Type_Size (Data_Type_Of (Result)));
 
             begin
                Result := Ptr_To_Relationship
@@ -648,8 +662,8 @@ package body GNATLLVM.Conversions is
       Value       : GL_Value          := In_V;
       Src_Uns     : constant Boolean  := Is_Unsigned_For_Convert (In_GT);
       Dest_Uns    : constant Boolean  := Is_Unsigned_For_Convert (Prim_GT);
-      Src_Size    : constant Nat      := Get_Scalar_Bit_Size (In_V);
-      Dest_Size   : constant Nat      := Get_Scalar_Bit_Size (Prim_GT);
+      Src_Size    : constant ULL      := Get_Value_Size (In_V);
+      Dest_Size   : constant ULL      := Get_Value_Size (Prim_GT);
       Is_Trunc    : constant Boolean  := Dest_Size < Src_Size;
       Subp        : Cvtf              := null;
 
@@ -734,7 +748,7 @@ package body GNATLLVM.Conversions is
 
          declare
             Addr_GT   : constant GL_Type := Related_Type (Value);
-            Addr_Size : constant Nat     := Get_Scalar_Bit_Size (Addr_GT);
+            Addr_Size : constant ULL     := Get_Type_Size (Addr_GT);
 
          begin
             if GT = Addr_GT then
@@ -882,7 +896,7 @@ package body GNATLLVM.Conversions is
          if Is_Pointer (As_Ref) then
             Result := Insert_Value (Result, Ptr_To_Ref (As_Ref, DT), 0);
          elsif Is_Integer_Type (As_Ref)
-           and then Get_Type_Size (Type_Of (As_Ref)) = ULL (Thin_Pointer_Size)
+           and then Get_Scalar_Size (As_Ref) = Thin_Pointer_Size
          then
             Result := Insert_Value (Result, Int_To_Ref (As_Ref, DT), 0);
          end if;
@@ -1333,7 +1347,7 @@ package body GNATLLVM.Conversions is
       In_Bytes  : constant ULL     := Get_Type_Size_In_Bytes (In_T);
       Cvt_T     : constant Type_T  :=
         (if   Get_Type_Kind (In_T) /= Integer_Type_Kind
-              or else ULL (Get_Scalar_Bit_Size (In_T)) = In_Size
+              or else ULL (Get_Scalar_Size (In_T)) = In_Size
          then In_T else Int_Ty (In_Bytes * UBPU));
       --  If we have a non-byte-width input type, make one that rounds up the
       --  size. We do the same for the output type below.
@@ -1342,7 +1356,7 @@ package body GNATLLVM.Conversions is
       Out_Bytes : constant ULL     := Get_Type_Size_In_Bytes (T);
       Out_T     : constant Type_T  :=
         (if   Get_Type_Kind (T) /= Integer_Type_Kind
-              or else ULL (Get_Scalar_Bit_Size (T)) = Out_Size
+              or else ULL (Get_Scalar_Size (T)) = Out_Size
          then T else Int_Ty (Out_Bytes * UBPU));
       In_V      : constant Value_T :=
         (if Cvt_T = In_T then V else Z_Ext (IR_Builder, V, Cvt_T, ""));

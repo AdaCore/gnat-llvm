@@ -323,9 +323,9 @@ package GNATLLVM.Types is
    function Get_Type_Size_In_Bytes (T : Type_T) return GL_Value is
      (Size_Const_Int (Get_Type_Size_In_Bytes (T)))
      with Pre => Present (T), Post => Present (Get_Type_Size_In_Bytes'Result);
-   --  Return the size of an LLVM type, in bytes, as an LLVM constant
+   --  Return the size of an LLVM type, in bit or bytes, as an LLVM constant
 
-   function Get_Scalar_Bit_Size (T : Type_T) return Nat is
+   function Get_Scalar_Size (T : Type_T) return Nat is
      (Nat (Size_Of_Type_In_Bits (Module_Data_Layout, T)))
      with Pre => Present (T);
    --  Return the size of an LLVM type, in bits
@@ -441,9 +441,17 @@ package GNATLLVM.Types is
       Max_Size   : Boolean  := False;
       No_Padding : Boolean  := False) return GL_Value
      with Pre => Present (GT), Post => Present (Get_Type_Size_In_Bytes'Result);
-   function Get_Type_Size (GT : GL_Type) return ULL
+   function Get_Type_Size
+     (GT         : GL_Type;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean  := False) return ULL
      with Pre => Present (GT);
-   function Get_Type_Size_In_Bytes (GT : GL_Type) return ULL
+   function Get_Type_Size_In_Bytes
+     (GT         : GL_Type;
+      V          : GL_Value := No_GL_Value;
+      Max_Size   : Boolean  := False;
+      No_Padding : Boolean  := False) return ULL
      with Pre => Present (GT);
    --  Return the size of a type, in bits or bytes, as a GL_Value. If TE is an
    --  unconstrained array type, V must be the value of the array. If

@@ -599,13 +599,18 @@ package body GNATLLVM.Subprograms is
 
       --  If this is not an unconstrained array, but is either of dynamic
       --  size or a Convention Ada subprogram with a large return, we
-      --  return the value via an extra parameter.
+      --  return the value via an extra parameter. If it's extremely large,
+      --  return it via a parameter even if a foreign convention.
+      --
+      --  ??? This is a kludge, but the best way of having test results
+      --  similar that with GCC, but not doing too much that's odd.
 
       elsif not Is_Unconstrained_Array (GT)
         and then (Is_Nonnative_Type (GT)
-                    or else (not Has_Foreign_Convention (E)
-                               and then not Decls_Only
-                               and then Get_Type_Size (MD) > 5 * Ptr_Size))
+                  or else Get_Type_Size (MD) > ULL (Nat'Last / 2)
+                  or else (not Has_Foreign_Convention (E)
+                           and then not Decls_Only
+                           and then Get_Type_Size (MD) > 5 * Ptr_Size))
       then
          return Return_By_Parameter;
 

@@ -962,7 +962,7 @@ package body CCG.Subprograms is
         Process_Operand ((if Left then Op1 else Op2), POO_Unsigned, Shift);
       Str_Op2  : constant Str     :=
         Process_Operand ((if Left then Op2 else Op1), POO_Unsigned, Shift);
-      Size     : constant Nat     := Get_Scalar_Bit_Size (Op1);
+      Size     : constant Nat     := Get_Scalar_Size (Op1);
       Cnt      : Nat;
       Sh1, Sh2 : Str;
       Result   : Str;
@@ -998,7 +998,7 @@ package body CCG.Subprograms is
    function Bit_Byte_Reverse
      (V : Value_T; Op : Value_T; Is_Byte : Boolean) return Str
    is
-      Width     : constant Nat := Get_Scalar_Bit_Size (Type_Of (V));
+      Width     : constant Nat := Get_Scalar_Size (Type_Of (V));
       Part_Size : constant Nat := (if Is_Byte then BPU else 1);
       Mask      : constant Nat := 2 ** Integer (Part_Size) - 1;
 
@@ -1016,7 +1016,7 @@ package body CCG.Subprograms is
             declare
                Initial_Pos : constant Nat := Width - (J + 1) * Part_Size;
                Desired_Pos : constant Nat := J * Part_Size;
-               Piece : Str := +Op;
+               Piece       : Str          := +Op;
 
             begin
                --  If this isn't at the low-order location, move it there

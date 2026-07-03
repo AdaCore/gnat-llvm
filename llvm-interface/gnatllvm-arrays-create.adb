@@ -397,13 +397,13 @@ package body GNATLLVM.Arrays.Create is
                             and then Is_Bit_Packed_Array
                                        (Original_Array_Type (TE)))
                  or else (FLB and then FLB_Known_Not_Superflat (Index)));
-
             --  We have to be careful here and flag the type of the index
             --  from that of the base type since we can have index ranges
             --  that are outside the base type if the subtype is superflat
             --  (see C37172C). We also need to record the subtype of the
             --  index as it appears in the base array type since that's
             --  what's used to compute the min/max sizes of objects.
+
             LB_Uint   : constant Uint    := Dim_Info.Low.Cnst;
             HB_Uint   : constant Uint    := Dim_Info.High.Cnst;
             Idx_Const : constant Boolean :=

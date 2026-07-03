@@ -486,8 +486,6 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C,
           External_Name => "Get_Default_Address_Space";
 
-   procedure Set_Absolute_Address (V : Value_T; Addr : Value_T);
-
    function Need_Enable_Execute_Stack (Triple : String) return Boolean;
 
    procedure Print_Targets

@@ -1032,29 +1032,6 @@ package GNATLLVM.Instructions is
                   and then (for all V of Args => Present (V)),
           Inline;
 
-   function Get_Pointer_Address (Ptr : GL_Value) return GL_Value
-     with Pre  => Is_Address (Ptr) or else Is_Pointer (Ptr),
-          Post => Present (Get_Pointer_Address'Result);
-
-   function Set_Pointer_Address (Ptr, Addr : GL_Value) return GL_Value
-     with Pre  => (Is_Address (Ptr) or else Is_Pointer (Ptr))
-                  and then Is_Integer_Type (Addr),
-          Post => Present (Set_Pointer_Address'Result);
-
-   function Address_Add (Ptr, Offset : GL_Value) return GL_Value is
-     (if   Tagged_Pointers
-      then (if   Is_Const_0 (Offset) then Ptr
-            else Set_Pointer_Address (Ptr, Get_Pointer_Address (Ptr) + Offset))
-      else Ptr + Offset)
-     with Pre  => Is_Address (Ptr) and then Is_Integer_Type (Offset),
-          Post => Is_Address (Address_Add'Result);
-   --  Add an offset to a pointer.
-   --  ??? We should really fold Set_Pointer_Address (Get_Pointer_Address (X)),
-   --  but we can't test that now, so do it this way.
-
-   function Address_Sub (Ptr, Offset : GL_Value) return GL_Value is
-     (Address_Add (Ptr, -Offset));
-
    function Landing_Pad
      (MD               : MD_Type;
       Personality_Func : GL_Value;

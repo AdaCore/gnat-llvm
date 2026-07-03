@@ -205,7 +205,6 @@ package body GNATLLVM.Codegen is
       elsif Starts_With (S, "-mabi=") then
          To_Free         := ABI;
          ABI             := new String'(Switch_Value (S, "-mabi="));
-         Tagged_Pointers := ABI.all = "purecap";
 
       elsif S = "-mdso-preemptable" then
          DSO_Preemptable := True;
@@ -527,13 +526,6 @@ package body GNATLLVM.Codegen is
       Normalized_Target_Triple :=
         new String'(Normalize_Target_Triple (Target_Triple.all));
 
-      if Tagged_Pointers then
-
-         --  The merge-functions pass currently can't handle architectures
-         --  where the size type doesn't have pointer length.
-
-         Merge_Functions := False;
-      end if;
    end Scan_Command_Line;
 
    -----------------

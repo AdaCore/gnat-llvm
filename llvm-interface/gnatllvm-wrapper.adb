@@ -734,18 +734,6 @@ package body GNATLLVM.Wrapper is
       return Result;
    end Get_Target_Default_ABI;
 
-   --------------------------
-   -- Set_Absolute_Address --
-   --------------------------
-
-   procedure Set_Absolute_Address (V : Value_T; Addr : Value_T) is
-      procedure Set_Absolute_Address_C
-        (Ctx : Context_T; V : Value_T; Addr : Value_T) with
-        Import, Convention => C, External_Name => "Set_Absolute_Address";
-   begin
-      Set_Absolute_Address_C (Get_Global_Context, V, Addr);
-   end Set_Absolute_Address;
-
    -------------------------------
    -- Need_Enable_Execute_Stack --
    -------------------------------

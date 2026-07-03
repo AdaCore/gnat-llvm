@@ -1591,12 +1591,6 @@ package GNATLLVM.GLValue is
      with Pre => Is_A_Function (V), Inline;
    --  Set the calling convention for a function
 
-   procedure Set_Absolute_Address (V : GL_Value; Addr : GL_Value)
-     with Pre => Tagged_Pointers
-                 and then Present (V)
-                 and then Is_Discrete_Type (Addr);
-   --  Place a global at a statically known constant address
-
    procedure Set_Global_Constant (V : GL_Value; B : Boolean := True)
      with Pre => Present (V), Inline;
 

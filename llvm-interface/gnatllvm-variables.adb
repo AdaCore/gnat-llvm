@@ -1001,10 +1001,6 @@ package body GNATLLVM.Variables is
                                              Restrict_Types => Our_RT)
               --  If either side needs an elab proc, we do
 
-              or else (Tagged_Pointers and then Is_Address (GT))
-              --  If this is arithmetic on tagged pointers, we need an elab
-              --  proc to create a valid pointer result.
-
               or else (Do_Overflow_Check (N)
                          and then Test_Emit (N, Overflowed'Access))
               --  If we're to check for overflow, this needs an elab proc
@@ -1885,11 +1881,7 @@ package body GNATLLVM.Variables is
          --  declaring it. If not, this will generate an undefined external
          --  when linking.
 
-         if Tagged_Pointers and then Has_Static_Addr then
-            Set_Absolute_Address
-              (LLVM_Var, Static_Address (Addr_Expr));
-            Set_Linkage (LLVM_Var, External_Linkage);
-         elsif not Is_Public (E) and then not Is_Imported (E) then
+         if not Is_Public (E) and then not Is_Imported (E) then
             pragma Assert (Definition);
             Set_Linkage (LLVM_Var, Internal_Linkage);
          elsif Is_Link_Once (E) and then not Is_Imported (E) then
@@ -1901,7 +1893,7 @@ package body GNATLLVM.Variables is
          Process_Pragmas      (E, LLVM_Var);
          Initialize_TBAA      (LLVM_Var, Kind_From_Decl (E));
 
-         if not Tagged_Pointers or else not Has_Static_Addr then
+         if not Has_Static_Addr then
             if not Is_Ref then
                Set_Alignment (LLVM_Var, Set_Object_Align (LLVM_Var, GT, E));
             else
@@ -2182,14 +2174,9 @@ package body GNATLLVM.Variables is
          pragma Assert (not In_Elab_Proc or else Is_Statically_Allocated (E));
 
          --  If we have a static address clause, we can convert it to a
-         --  pointer to us and use that as our variable, except if we have
-         --  tagged pointers, because then we can't create valid pointers
-         --  out of thin air.
+         --  pointer to us and use that as our variable.
 
-         if Has_Static_Addr
-           and then (not Tagged_Pointers or else
-                     not Compile_Time_Known_Value (Addr_Expr))
-         then
+         if Has_Static_Addr then
             LLVM_Var :=
               Int_To_Ref ((if   Present (Addr) then Addr
                            else Emit_Expression (Addr_Expr)),
@@ -2208,9 +2195,7 @@ package body GNATLLVM.Variables is
 
             LLVM_Var := Make_Global_Variable (E, GT, True);
 
-            if Tagged_Pointers and then Has_Static_Addr then
-               Set_Init := True;
-            elsif Library_Level and then Has_Addr then
+            if Library_Level and then Has_Addr then
                Add_To_Elab_Proc (N);
             end if;
          end if;

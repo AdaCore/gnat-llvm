@@ -385,18 +385,7 @@ package body GNATLLVM.Exprs is
 
          when N_Integer_Literal =>
 
-            --  On architectures with tagged pointers, we need to represent
-            --  addresses as pointers to preserve tags; consequently,
-            --  address literals also need to be pointers. The easiest way
-            --  to get one from an integer is to derive it from the null
-            --  pointer.
-
-            if Tagged_Pointers and then Is_Address (GT) then
-               V := Null_Derived_Ptr
-                 (Const_Int (Address_GL_Type, Intval (N)), GT);
-            else
-               V := Const_Int (Prim_GT, Intval (N));
-            end if;
+            V := Const_Int (Prim_GT, Intval (N));
 
          when N_Real_Literal =>
 
@@ -515,11 +504,10 @@ package body GNATLLVM.Exprs is
       RHS_GT     : constant GL_Type      := Full_GL_Type (RHS_Node);
       LHS_BT     : constant GL_Type      := Base_GL_Type (LHS_GT);
       RHS_BT     : constant GL_Type      := Base_GL_Type (RHS_GT);
-      LVal       :          GL_Value     :=
+      LVal       : constant GL_Value     :=
         Emit_Convert_Value (LHS_Node, LHS_BT);
-      RVal       :          GL_Value     :=
+      RVal       : constant GL_Value     :=
         Emit_Convert_Value (RHS_Node, RHS_BT);
-      Ptr        :          GL_Value     := No_GL_Value;
       FP         : constant Boolean      := Is_Floating_Point_Type (LHS_BT);
       Ovfl_Check : constant Boolean      := Do_Overflow_Check (N)
         and then not (Is_A_Constant_Int (LVal)
@@ -542,22 +530,6 @@ package body GNATLLVM.Exprs is
 
       if Decls_Only then
          return Emit_Undef (Full_GL_Type (N));
-      end if;
-
-      --  If we're doing arithmetic on tagged pointers, extract their
-      --  addresses, perform the computation, and then reassemble the
-      --  result pointer.
-
-      if Tagged_Pointers then
-         if Is_Address (RVal) then
-            Ptr  := RVal;
-            RVal := Get_Pointer_Address (RVal);
-         end if;
-
-         if Is_Address (LVal) then
-            Ptr  := LVal;
-            LVal := Get_Pointer_Address (LVal);
-         end if;
       end if;
 
       case Nkind (N) is
@@ -727,13 +699,6 @@ package body GNATLLVM.Exprs is
          begin
             Result := Build_Select (Need_Adjust, Which_Adjust, Result);
          end;
-      end if;
-
-      --  If this was an operation on tagged pointers, assemble the result
-      --  pointer using tags from (one of) the arguments.
-
-      if Present (Ptr) then
-         Result := Set_Pointer_Address (Ptr, Result);
       end if;
 
       return Result;
@@ -1431,7 +1396,7 @@ package body GNATLLVM.Exprs is
             --  Now add in any bytes contains in the bit offset. Note that
             --  we're not rounding here: we want the address of the first bit.
 
-            return Address_Add (V, Const_Int (Address_GL_Type, Bits / BPU));
+            return V + Const_Int (Address_GL_Type, Bits / BPU);
 
          when Attribute_Pool_Address =>
 

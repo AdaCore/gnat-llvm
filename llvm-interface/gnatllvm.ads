@@ -370,11 +370,6 @@ package GNATLLVM is
    Short_Enums          : Boolean := False;
    --  True if we should use the RM_Size, not Esize, for enums
 
-   Tagged_Pointers      : Boolean := False;
-   --  True if we're generating code for an architecture with tagged
-   --  pointers. This implies that we need special handling for values
-   --  representing addresses, such as System.Address.
-
    function Starts_With (Switch, S : String) return Boolean is
      (Switch'Length > S'Length
      and then Switch (Switch'First .. Switch'First + S'Length - 1) = S);

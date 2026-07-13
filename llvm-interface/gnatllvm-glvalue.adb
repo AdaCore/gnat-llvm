@@ -292,12 +292,6 @@ package body GNATLLVM.GLValue is
       elsif R = Data and then Is_Access_Type (V) then
          Align := Get_Type_Alignment (Default_GL_Type
                                         (Full_Designated_GL_Type (V)));
-
-      --  If it's Data representing an address on a tagged-pointer target,
-      --  we know that it has pointer alignment.
-
-      elsif R = Data and then Tagged_Pointers and then Is_Address (V) then
-         Align := Get_Type_Alignment (Address_GL_Type);
       end if;
 
       --  Now set the alignment to the maximum of any alignment we may
@@ -1066,9 +1060,7 @@ package body GNATLLVM.GLValue is
 
             elsif Our_R = Thin_Pointer then
                Result :=
-                 Address_Sub
-                   (Ptr_To_Address_Type (V),
-                    To_Bytes (Get_Bound_Size (GT)));
+                 Ptr_To_Address_Type (V) - To_Bytes (Get_Bound_Size (GT));
                return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
@@ -1095,9 +1087,7 @@ package body GNATLLVM.GLValue is
 
             elsif Our_R = Thin_Pointer then
                Result :=
-                 Address_Sub
-                   (Ptr_To_Address_Type (V),
-                    To_Bytes (Get_Bound_Size (GT)));
+                 Ptr_To_Address_Type (V) - To_Bytes (Get_Bound_Size (GT));
                return Int_To_Relationship (Result, GT, R);
             elsif Our_R = Reference_To_Thin_Pointer then
                return Get (Get (V, Thin_Pointer), R);
@@ -2040,15 +2030,6 @@ package body GNATLLVM.GLValue is
    begin
       Set_Function_Call_Conv (+V, GNAT_To_LLVM_Convention (CC));
    end Set_Function_Call_Conv;
-
-   --------------------------
-   -- Set_Absolute_Address --
-   --------------------------
-
-   procedure Set_Absolute_Address (V : GL_Value; Addr : GL_Value) is
-   begin
-      Set_Absolute_Address (+V, +Addr);
-   end Set_Absolute_Address;
 
    -------------------------
    -- Set_Global_Constant --

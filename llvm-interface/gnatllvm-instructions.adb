@@ -21,7 +21,6 @@ with Rident;   use Rident;
 with Targparm; use Targparm;
 
 with GNATLLVM.Blocks;      use GNATLLVM.Blocks;
-with GNATLLVM.Builtins;    use GNATLLVM.Builtins;
 with GNATLLVM.Codegen;     use GNATLLVM.Codegen;
 with GNATLLVM.Conversions; use GNATLLVM.Conversions;
 with GNATLLVM.GLType;      use GNATLLVM.GLType;
@@ -290,10 +289,7 @@ package body GNATLLVM.Instructions is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
      (GM
-        ((if   Tagged_Pointers
-          then Bit_Cast (IR_Builder, +V, Void_Ptr_T, Name)
-          else Ptr_To_Int (IR_Builder, +V, +Type_Of (GT), Name)),
-         GT, Type_Of (GT),
+        (Ptr_To_Int (IR_Builder, +V, +Type_Of (GT), Name), GT, Type_Of (GT),
          GV => V));
 
    ----------------
@@ -304,10 +300,7 @@ package body GNATLLVM.Instructions is
      (V : GL_Value; GT : GL_Type; Name : String := "") return GL_Value
    is
       P_MD   : constant MD_Type  := Pointer_Type (Type_Of (GT));
-      Ptr    : constant Value_T  :=
-        (if   Tagged_Pointers
-         then Pointer_Cast (IR_Builder, +V, +P_MD, Name)
-         else Int_To_Ptr (IR_Builder, +V, +P_MD, Name));
+      Ptr    : constant Value_T  := Int_To_Ptr (IR_Builder, +V, +P_MD, Name);
       Result : GL_Value          := GM_Ref (Ptr, GT, P_MD, V);
 
    begin
@@ -326,10 +319,7 @@ package body GNATLLVM.Instructions is
       Name : String := "") return GL_Value
    is
       MD     : constant MD_Type := Type_For_Relationship (GT, R);
-      Ptr    : constant Value_T :=
-        (if   Tagged_Pointers
-         then Pointer_Cast (IR_Builder, +V, +MD, Name)
-         else Int_To_Ptr (IR_Builder, +V, +MD, Name));
+      Ptr    : constant Value_T := Int_To_Ptr (IR_Builder, +V, +MD, Name);
       Result : GL_Value         := GM (Ptr, GT, MD, R, GV => V);
 
    begin
@@ -2021,22 +2011,5 @@ package body GNATLLVM.Instructions is
                                   Is_Stack_Align),
                 GT, Pointer_Type (Fn_MD), Reference_To_Subprogram);
    end Inline_Asm;
-
-   -------------------------
-   -- Get_Pointer_Address --
-   -------------------------
-
-   function Get_Pointer_Address (Ptr : GL_Value) return GL_Value is
-     (G (+Call (Get_Get_Address_Fn, (1 => Bit_Cast (Ptr, Void_Ptr_MD))),
-          Address_GL_Type, Address_MD));
-
-   -------------------------
-   -- Set_Pointer_Address --
-   -------------------------
-
-   function Set_Pointer_Address (Ptr, Addr : GL_Value) return GL_Value is
-     (Bit_Cast (Call (Get_Set_Address_Fn,
-                      (1 => Bit_Cast (Ptr, Void_Ptr_MD), 2 => Addr)),
-                Ptr));
 
 end GNATLLVM.Instructions;

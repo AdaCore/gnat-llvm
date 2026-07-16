@@ -1527,7 +1527,9 @@ package body GNATLLVM.DebugInfo is
       S         : constant Source_Ptr := Sloc         (E);
 
    begin
-      if Emit_Debug_Info and then Present (Type_Data)
+      --  When emitting C we do not want to make a new global constant
+      --  here.
+      if Emit_Debug_Info and then not Emit_C and then Present (Type_Data)
       then
          declare
             MD : constant Metadata_T :=

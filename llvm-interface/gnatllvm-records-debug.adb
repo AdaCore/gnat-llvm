@@ -164,7 +164,7 @@ package body GNATLLVM.Records.Debug is
             return Empty_Result;
          end if;
 
-         Decode_Range (Choice, Low, High);
+         Decode_Range (Choice, Low, High, True);
          Choice_Table.Append (uint64_t (UI_To_ULL (Low)));
          Choice_Table.Append (uint64_t (UI_To_ULL (High)));
          Next (Choice);

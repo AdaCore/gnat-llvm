@@ -79,7 +79,8 @@ package body GNATLLVM.Utils is
    -- Decode_Range --
    ------------------
 
-   procedure Decode_Range (N : N_Is_Range_Id; Low, High : out Uint) is
+   procedure Decode_Range (N : N_Is_Range_Id; Low, High : out Uint;
+                           Allow_Decls : Boolean := not Decls_Only) is
    begin
       case Nkind (N) is
          when N_Entity_Name =>
@@ -88,7 +89,7 @@ package body GNATLLVM.Utils is
             --  at the range of the type, or a constant, in which case we
             --  look at the initializing expression.
 
-            if Is_Type (Entity (N)) and then not Decls_Only then
+            if Is_Type (Entity (N)) and then Allow_Decls then
                Decode_Range (Scalar_Range (Full_Etype (N)), Low, High);
             else
                Low  := Get_Uint_Value (N);

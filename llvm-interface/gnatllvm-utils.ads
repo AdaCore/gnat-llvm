@@ -49,12 +49,15 @@ package GNATLLVM.Utils is
    --  Given N, which can be an index of an array type, return a node that
    --  has the bounds of N.
 
-   procedure Decode_Range (N : N_Is_Range_Id; Low, High : out Uint);
+   procedure Decode_Range (N : N_Is_Range_Id; Low, High : out Uint;
+                           Allow_Decls : Boolean := not Decls_Only);
    --  Decode the right operand of an N_In or N_Not_In or of a Choice in a
    --  case statement into the low and high bounds. If either Low or High
    --  is not Present, we have a nonstatic value, a non-discrete value, or
    --  we can't find the value. This should not happen in switch
-   --  statements.
+   --  statements.  Allow_Decls controls the handling of N_Entity_Name
+   --  nodes where the entity is a type; when True, this will examine
+   --  the scalar range; when false, it will use the node's value.
 
    function Range_Length
      (Low, High : Uint; Max_Length : Int := Int'Last) return Nat;

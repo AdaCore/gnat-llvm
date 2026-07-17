@@ -669,7 +669,7 @@ package body GNATLLVM.DebugInfo is
             MD := DI_Create_Imported_Declaration
               (Get_Scope_For (Renaming), MD,
                Get_Debug_File_Node (Get_Source_File_Index (Sloc (N))),
-               Get_Physical_Line_Number (Sloc (N)),
+               Get_Logical_Line_Number (Sloc (N)),
                Get_Unqualified_Name (Renaming));
          end if;
       end if;
@@ -1710,8 +1710,8 @@ package body GNATLLVM.DebugInfo is
             --  we must, so that the renaming has some target.
             M     : constant Metadata_T  := Get_Module (E, True);
             Unused : constant Metadata_T :=
-              DI_Builder_Create_Imported_Declaration
-                (DI_Builder, Get_Scope_For (E), M,
+              DI_Create_Imported_Declaration
+                (Get_Scope_For (E), M,
                  Get_Debug_File_Node (Get_Source_File_Index (S)),
                  Get_Logical_Line_Number (S),
                  (if Present (Name)

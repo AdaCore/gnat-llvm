@@ -1572,6 +1572,29 @@ package body GNATLLVM.DebugInfo is
       end if;
    end Create_Constant_Debug_Data;
 
+   --------------------------------
+   -- Create_Renaming_Debug_Data --
+   --------------------------------
+
+   procedure Create_Renaming_Debug_Data (E : Entity_Id; GT : GL_Type) is
+      Type_Data : constant Metadata_T := Create_Type_Data (GT);
+      Name      : constant String     := Get_Name (E);
+      S         : constant Source_Ptr := Sloc (E);
+   begin
+      if Emit_Debug_Info and then not Emit_C and then Present (Type_Data) then
+         --  gdb checks the "location class" of the variable created
+         --  this way; so while the value of the variable does not
+         --  matter, emitting a constant here will not work, but
+         --  emitting an optimized-out variable will.
+         Discard
+           (DI_Create_Global_Variable_Expression
+             (Get_Scope_For (E), Name, "",
+              Get_Debug_File_Node (Get_Source_File_Index (S)),
+              Get_Physical_Line_Number (S), Type_Data, True, Empty_DI_Expr,
+              No_Metadata_T, 0));
+      end if;
+   end Create_Renaming_Debug_Data;
+
    ---------------------------------------
    -- Create_Global_Variable_Debug_Data --
    ---------------------------------------

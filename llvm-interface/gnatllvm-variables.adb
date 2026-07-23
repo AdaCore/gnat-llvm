@@ -2043,6 +2043,7 @@ package body GNATLLVM.Variables is
       --  Nothing to do if this is a debug renaming type
 
       if Full_Etype (GT) = Standard_Debug_Renaming_Type then
+         Create_Renaming_Debug_Data (E, GT);
          return;
 
       --  If we're just elaborating decls, just set the variable to be

@@ -3054,6 +3054,8 @@ package body GNATLLVM.Subprograms is
                       3 => Const_32_As_Metadata (Uint_1))));
       end if;
 
+      Create_Subprogram_Declaration (LLVM_Func, E);
+
       return LLVM_Func;
    end Create_Subprogram;
 

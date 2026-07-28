@@ -692,7 +692,9 @@ package body GNATLLVM.Conversions is
                                  (not Dest_Uns and then Src_Uns
                                   and then GT_Check_Overflow (GT)
                                   and then Is_A_Constant_Int (In_V)
-                                  and then +In_V < LLI (0))
+                                  and then I_Cmp (Int_SLT, In_V,
+                                                  Const_Null (In_GT)) =
+                                             Const_True)
                                  or else In_Overflow);
 
       --  If we're converting between two GL_Types corresponding to the same

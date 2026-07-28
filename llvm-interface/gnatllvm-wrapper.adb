@@ -296,6 +296,28 @@ package body GNATLLVM.Wrapper is
       return Call_Param_Has_Nest (V, Idx) /= 0;
    end Call_Param_Has_Nest;
 
+   ---------------------------
+   -- Const_Int_Fits_In_LLI --
+   ---------------------------
+
+   function Const_Int_Fits_In_LLI (V : Value_T) return Boolean is
+      function Const_Int_Fits_In_LLI_C (V : Value_T) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Const_Int_Fits_In_LLI";
+   begin
+      return Const_Int_Fits_In_LLI_C (V) /= 0;
+   end Const_Int_Fits_In_LLI;
+
+   ---------------------------
+   -- Const_Int_Fits_In_ULL --
+   ---------------------------
+
+   function Const_Int_Fits_In_ULL (V : Value_T) return Boolean is
+      function Const_Int_Fits_In_ULL_C (V : Value_T) return LLVM_Bool
+        with Import, Convention => C, External_Name => "Const_Int_Fits_In_ULL";
+   begin
+      return Const_Int_Fits_In_ULL_C (V) /= 0;
+   end Const_Int_Fits_In_ULL;
+
    -------------
    -- Has_NSW --
    -------------

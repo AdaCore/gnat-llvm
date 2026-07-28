@@ -34,13 +34,35 @@ package Uintp.LLVM is
    function UI_Is_In_ULL_Range (U : Uint) return Boolean;
    --  Like UI_Is_In_Int_Range, but for Unsigned_Long_Long;
 
-   function UI_From_ULL (V : ULL) return Uint is
-     (UI_From_LLI (LLI (V)));
+   function UI_From_ULL (V : ULL) return Uint;
    function "+" (V : ULL) return Uint renames UI_From_ULL;
-   --  Like UI_From_LLI, but for ULL.
-   --  ??? This implementation doesn't work for the highest half of ULL,
-   --  but we're not going to see sizes that large (the only place where
-   --  this is used), so that's OK.
+   --  Like UI_From_LLI, but for ULL. Values in the highest half of ULL
+   --  don't fit LLI, so build those in two steps. This is now reachable
+   --  because UI_From_Words feeds it each raw 64-bit word of a wider
+   --  constant, and any such word can have its top bit set regardless of
+   --  the overall magnitude.
+
+   function UI_From_Words
+     (Words : Word_Array; Width : Pos; Is_Signed : Boolean) return Uint
+     with Pre  => Words'Length = Nat'((Width + 63) / 64),
+          Post =>
+            (if   Is_Signed
+             then UI_From_Words'Result <
+                    UI_Expon (Uint_2, Nat'(Width - 1))
+               and then UI_From_Words'Result >=
+                          -UI_Expon (Uint_2, Nat'(Width - 1))
+             else UI_From_Words'Result >= Uint_0
+               and then UI_From_Words'Result < UI_Expon (Uint_2, Width));
+   --  Reconstruct the value of an integer constant of the given bit Width
+   --  from Words, which contains its bits with the low-order word first,
+   --  as filled in by Get_Const_Int_Words. Any unused high-order bits of
+   --  the last word must be zero. If Is_Signed, the bits are interpreted
+   --  as a two's complement signed value, otherwise as an unsigned value.
+   --
+   --  We need to handle widths above 64 because System.Max_Int is now
+   --  2 ** 127 - 1 (Standard_Long_Long_Long_Integer is 128 bits on the
+   --  targets we support), so a folded bound or size of a 128-bit type no
+   --  longer fits in a single word.
 
    function UI_S_Div
      (Left : Valid_Uint; Right : Valid_Uint) return Valid_Uint

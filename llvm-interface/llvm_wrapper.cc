@@ -743,6 +743,21 @@ extern "C" Value *Get_Float_From_Words_And_Exp(LLVMContext *Context, Type *T,
   return ConstantFP::get(*Context, Result);
 }
 
+extern "C" bool Const_Int_Fits_In_LLI(Value *V) {
+  // Mirror the condition under which APInt::getSExtValue is defined
+  return cast<ConstantInt>(V)->getValue().getSignificantBits() <= 64;
+}
+
+extern "C" bool Const_Int_Fits_In_ULL(Value *V) {
+  // Mirror the condition under which APInt::getZExtValue is defined
+  return cast<ConstantInt>(V)->getValue().getActiveBits() <= 64;
+}
+
+extern "C" void Get_Const_Int_Words(Value *V, uint64_t Words[]) {
+  const APInt &Val = cast<ConstantInt>(V)->getValue();
+  memcpy(Words, Val.getRawData(), Val.getNumWords() * sizeof(uint64_t));
+}
+
 extern "C" Value *Pred_FP(LLVMContext *Context, Type *T, Value *Val) {
   // We want to compute the predecessor of Val, but the "next" function
   // can return unnormalized, so we have to multiply by one (adding zero

@@ -91,8 +91,7 @@ package body GNATLLVM.Arrays is
 
    function To_Result (V : GL_Value) return BA_Data is
      (if   Is_A_Constant_Int (V)
-      then (False, Related_Type (V), UI_From_LLI (Get_Const_Int_Value (V)),
-            No_Uint)
+      then (False, Related_Type (V), UI_From_GL_Value (V), No_Uint)
       else No_BA)
      with Pre => Is_Constant (V);
 

@@ -124,11 +124,6 @@ package body GNATLLVM.Types is
    --  Make a Node_Ref_Or_Val from V. Normally this is just the integer
    --  value of V, but if it's negative, we need to build a negation node.
 
-   function To_UI (V : GL_Value) return Uint is
-     ((if   Is_Unsigned_Type (V) then UI_From_ULL (Get_Const_Int_Value_ULL (V))
-       else UI_From_LLI (Get_Const_Int_Value (V))));
-   --  Convert a constant integer into a UI
-
    function Prepare_SM_Copy_Host (V : GL_Value) return GL_Value
      with Pre  => Present (V),
           Post => Get_Type_Kind (Prepare_SM_Copy_Host'Result) =
@@ -226,8 +221,8 @@ package body GNATLLVM.Types is
 
    function From_Const (V : GL_Value) return BA_Data is
      (if   Is_A_Constant_Int (V)
-      then (False, Related_Type (V), UI_From_LLI (Get_Const_Int_Value (V)),
-            No_Uint) else No_BA)
+      then (False, Related_Type (V), UI_From_GL_Value (V), No_Uint)
+      else No_BA)
      with Pre => Is_Constant (V);
    --  Likewise, for back-annotation
 
@@ -2162,8 +2157,8 @@ package body GNATLLVM.Types is
 
             begin
                if not Overflowed (Result) and then not Is_Undef (Result) then
-                  return (False, Related_Type (Result), To_UI (Result),
-                          No_Uint);
+                  return (False, Related_Type (Result),
+                          UI_From_GL_Value (Result), No_Uint);
                else
                   --  Note that the dynamic SO ref used here is also
                   --  known by the debuginfo generator.

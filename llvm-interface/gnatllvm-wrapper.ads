@@ -346,6 +346,23 @@ package GNATLLVM.Wrapper is
      with Import, Convention => C,
           External_Name => "Get_Float_From_Words_And_Exp";
 
+   function Const_Int_Fits_In_LLI (V : Value_T) return Boolean
+     with Pre => Present (Is_A_Constant_Int (V));
+   --  Return True iff the value of the constant integer V is representable
+   --  in a 64-bit signed integer, i.e. iff Const_Int_Get_S_Ext_Value would
+   --  return its exact value.
+
+   function Const_Int_Fits_In_ULL (V : Value_T) return Boolean
+     with Pre => Present (Is_A_Constant_Int (V));
+   --  Likewise for a 64-bit unsigned integer and Const_Int_Get_Z_Ext_Value
+
+   procedure Get_Const_Int_Words (V : Value_T; Words : access uint64_t)
+     with Import, Convention => C, External_Name => "Get_Const_Int_Words";
+   --  Store the value of the constant integer V into the array of 64-bit
+   --  words pointed to by Words, low-order word first. The array must be
+   --  large enough for the width of V's type, i.e. contain one word per
+   --  (started) 64 bits of that width.
+
    function Pred_FP
      (Context : Context_T; T : Type_T; V : Value_T) return Value_T
      with Import, Convention => C, External_Name => "Pred_FP";

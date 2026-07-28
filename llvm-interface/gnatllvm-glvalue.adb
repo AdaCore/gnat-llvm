@@ -1455,6 +1455,34 @@ package body GNATLLVM.GLValue is
      (G (Const_Int (+Type_Of (GT), N, Sign_Extend => Sign_Extend), GT,
          Type_Of (GT), Alignment => ULL_Align_Bytes (N)));
 
+   ----------------------
+   -- UI_From_GL_Value --
+   ----------------------
+
+   function UI_From_GL_Value (V : GL_Value) return Uint is
+      Unsigned : constant Boolean := Is_Unsigned_Type (V);
+
+   begin
+      --  If the value fits in 64 bits with the appropriate sign, we can
+      --  get it directly. Otherwise, reconstruct it from the words of the
+      --  underlying arbitrary-precision integer.
+
+      if not Unsigned and then Fits_In_LLI (V) then
+         return UI_From_LLI (Get_Const_Int_Value (V));
+      elsif Unsigned and then Fits_In_ULL (V) then
+         return UI_From_ULL (Get_Const_Int_Value_ULL (V));
+      else
+         declare
+            Width : constant Nat := Int_Bits (Type_Of (V));
+            Words : aliased Word_Array (1 .. (Width + 63) / 64);
+
+         begin
+            Get_Const_Int_Words (+V, Words (Words'First)'Access);
+            return UI_From_Words (Words, Width, Is_Signed => not Unsigned);
+         end;
+      end if;
+   end UI_From_GL_Value;
+
    ----------------
    -- Const_Real --
    ----------------

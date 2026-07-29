@@ -17,6 +17,7 @@
 
 with Ada.Containers.Vectors;
 
+with Exp_Dbug;   use Exp_Dbug;
 with Nlists;     use Nlists;
 with Sem_Aux;    use Sem_Aux;
 with Sinput;     use Sinput;
@@ -855,9 +856,20 @@ package body GNATLLVM.Records.Debug is
 
          begin
             if Is_Union then
-               for I in Fields'Range loop
-                  Member_Table.Append (Fields (I));
-               end loop;
+               declare
+                  Dummy_Type : constant Metadata_T :=
+                    DI_Create_Struct_Type
+                      (No_Metadata_T, "",
+                       0, 0, DI_Flag_Artificial,
+                       No_Metadata_T, Fields, 0, No_Metadata_T, "");
+               begin
+                  Get_Variant_Encoding (Var_Node);
+                  Member_Table.Append
+                    (DI_Create_Member_Type (No_Metadata_T,
+                                            Name_Buffer (1 .. Name_Len),
+                                            0, 0, 0, Dummy_Type,
+                                            DI_Flag_Zero));
+               end;
             else
                declare
                   Choices : constant Word_Array :=
